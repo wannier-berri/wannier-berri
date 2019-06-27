@@ -6,15 +6,20 @@ from DOS import E_to_DOS
 import wan_ham as wham
 import berry
 
-seedname=sys.argv[1]
-NK=np.array([10,10,10])
-Efermi=12.6
 
-Data=get_data.Data(seedname)
+def main():
+    seedname="Fe"
+    NK=np.array([50,50,50])
+    Efermi=12.6
+    Data=get_data.Data(seedname,getAA=True)
+    berry.calcAHC(NK,Data,Efermi=Efermi)
 
 
-berry.calcAHC(NK,Data,Efermi=Efermi)
 
+
+if __name__ == '__main__':
+    main()
+    
 #E_K=wham.get_eig(NK,Data.HH_R,Data.iRvec)[0]
 
 #print(E_K.min(),E_K.max(),E_K[:,6:].min(),E_K[:,:6].max())
@@ -25,6 +30,6 @@ berry.calcAHC(NK,Data,Efermi=Efermi)
 
 
 
-print(E_K.min(),E_K.max(),E_K[:,6:].min(),E_K[:,:6].max())
-open("DOS.dat","w").write("".join("{0:10.5f} {1:20.8e}\n".format(e,d) for e,d in zip(edos,DOS)))
+#print(E_K.min(),E_K.max(),E_K[:,6:].min(),E_K[:,:6].max())
+#open("DOS.dat","w").write("".join("{0:10.5f} {1:20.8e}\n".format(e,d) for e,d in zip(edos,DOS)))
 

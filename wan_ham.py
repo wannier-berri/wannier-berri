@@ -44,8 +44,10 @@ def get_occ(eig_K,efermi):
 def get_occ_mat_list(UU_k, occ_K=None,efermi=None,eig_K=None):
     if occ_K is None:
         occ_K = get_occ(eig_K, efermi ) 
-    f_list=np.einsum("kni,ki,kmi->nm",UU_k,occ_list,UU_k.cong())
-    g_list=np.eye(f_list.shape)-f_list    
+    f_list=np.einsum("kni,ki,kmi->knm",UU_k,occ_K,UU_k.conj())
+    g_list=-f_list.copy()
+    for ik in range(g_list.shape[0]):
+        g_list[ik]+=np.eye(g_list.shape[1])
     return f_list,g_list
 
 
@@ -96,8 +98,8 @@ def get_JJp_JJm_list(delHH_K, UU_K, eig_K, occ_K=None,efermi=None):
     if not( (occ_K is None) or (efermi is None)):
         raise RuntimeError("either occ or efermi should be specified, NOT BOTH!")
     
-    JJp_list=np.zeros( (nk,num_wann,num_wann,3) )
-    JJm_list=np.zeros( (nk,num_wann,num_wann,3) )
+    JJp_list=np.zeros( (nk,num_wann,num_wann,3) , dtype=complex )
+    JJm_list=np.zeros( (nk,num_wann,num_wann,3) , dtype=complex )
     
     
     for ik in range(nk):
@@ -109,12 +111,13 @@ def get_JJp_JJm_list(delHH_K, UU_K, eig_K, occ_K=None,efermi=None):
           seln=(eig_K[ik]>efermi)
         
         sel2d=selm[:,None]*seln[None,:]
-      
-        JJm_list[ik,sel2d]   = 1j*delHH_K[ik,sel2d  ]/(eig_K[ik,seln][None,:]-eig_K[ik,selm][:,None])
-        JJp_list[ik,sel2d.T] = 1j*delHH_K[ik,sel2d.T]/(eig_K[ik,selm][None,:]-eig_K[ik,seln][:,None])
+        
+        for a in range(3):
+            JJm_list[ik,sel2d,a]   = 1j*delHH_K[ik,sel2d  ,a]/(eig_K[ik,seln][None,:]-eig_K[ik,selm][:,None]).reshape(-1)
+            JJp_list[ik,sel2d.T,a] = 1j*delHH_K[ik,sel2d.T,a]/(eig_K[ik,selm][None,:]-eig_K[ik,seln][:,None]).reshape(-1)
     
-    JJp_list=np.einsum("klm,kmna,kpn->klpa",UU_K,JJp_list,UU.conj())
-    JJm_list=np.einsum("klm,kmna,kpn->klpa",UU_K,JJm_list,UU.conj())
+    JJp_list=np.einsum("klm,kmna,kpn->klpa",UU_K,JJp_list,UU_K.conj())
+    JJm_list=np.einsum("klm,kmna,kpn->klpa",UU_K,JJm_list,UU_K.conj())
     
     return JJp_list, JJm_list
 
