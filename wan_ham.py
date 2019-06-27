@@ -30,23 +30,15 @@ def fourier_R_to_k(AAA_R,iRvec,NKPT):
     nRvec=iRvec.shape[0]
     shapeA=AAA_R.shape
     assert(nRvec==shapeA[2])
-    print (AAA_R.shape)
     AAA_R=AAA_R.transpose( (2,0,1)+tuple(range(3,len(shapeA)))  )    
-    print (AAA_R.shape)
     AAA_R=AAA_R.reshape(nRvec,-1)
-    print (AAA_R.shape)
     AAA_K=np.zeros( NK+(AAA_R.shape[1],), dtype=complex )
-    print (AAA_K.shape)
 
     for ir,irvec in enumerate(iRvec):
-#        if np.all(np.abs(iRvec[iR])<=np.array(NK)/2):
-            AAA_K[irvec]=AAA_R[ir]
-    print (shapeA,AAA_K.shape)
+            AAA_K[tuple(irvec)]=AAA_R[ir]
     for m in range(AAA_K.shape[3]):
             AAA_K[:,:,:,m]=np.fft.fftn(AAA_K[:,:,:,m])
-    print(AAA_K.shape)
     AAA_K=AAA_K.reshape( (np.prod(NK),)+shapeA[0:2]+shapeA[3:])
-    print(AAA_K.shape)
     return AAA_K
 
 
