@@ -18,12 +18,6 @@
 
 import numpy as np
 
-    #================================#
-    ## Occupation matrix f, and g=1-f
-    ## for a list of Fermi energies
-    #================================#
-
-
 def fourier_R_to_k(AAA_R,iRvec,NKPT):
     #  AAA_R is an array of dimension ( num_wann x num_wann x nRpts X ... ) (any further dimensions allowed)
     NK=tuple(NKPT)
@@ -42,20 +36,22 @@ def fourier_R_to_k(AAA_R,iRvec,NKPT):
     return AAA_K
 
 
-def get_occ_mat_list_fermi(UU,num_wann,fermi_energy_list, eig ):
-    occ_list = np.array([get_occ(eig, ef )  for ef in efermi])
-    f_list=np.einsum("ni,fi,mi->nmf",UU,occ_list,UU.cong())
-    g_list=-f_list.copy
-    for n in range(UU.shape[0]):
-        g_list[n,n,:]+=1    
-    return f_list,g_list
+def get_occ(eig_K,efermi):
+    occ=np.zeros(eig_K.shape,dtype=float)
+    occ[eig_K<efermi]=1
+    return occ
 
-
-def get_occ_mat_list_occ(UU, occ):
-    f_list=np.einsum("ni,i,mi->nm",UU,occ_list,UU.cong())
+def get_occ_mat_list(UU_k, occ_K=None,efermi=None,eig_K=None):
+    if occ_K is None:
+        occ_K = get_occ(eig_K, efermi ) 
+    f_list=np.einsum("kni,ki,kmi->nm",UU_k,occ_list,UU_k.cong())
     g_list=np.eye(f_list.shape)-f_list    
     return f_list,g_list
 
+
+def get_eig(NK,HH_R,iRvec):
+    res=get_eig_deleig(NK,HH_R,iRvec)
+    return res[0],res[2],res[3]
 
 def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None):
     ## For all  k point on a NK grid this function returns eigenvalues E and
@@ -73,59 +69,54 @@ def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None):
     UU_K =np.array([euu[1] for euu in EUU])
     print ("Energies calculated")
     
-    if cRvec is None: return E_K,  UU_K, HH_K 
+    if cRvec is None: return E_K, None, UU_K, HH_K, None 
     
     delHH_R=HH_R[:,:,:,None]*cRvec[None,None,:,:]
     delHH_K=fourier_R_to_k(delHH_R,iRvec,NK)
     
-    delE_K=np.einsum("kml,kmna,knl->kla",UU.conj(),delHH,UU)
+    delE_K=np.einsum("kml,kmna,knl->kla",UU_K.conj(),delHH_K,UU_K)
     
     return E_K, delE_K, UU_K, HH_K, delHH_K 
 
-older="""
 
-  subroutine wham_get_eig_UU_HH_JJlist(kpt, eig, UU, HH, JJp_list, JJm_list, occ)
-    #========================================================#
-    #                                                        #
-    ## Wrapper routine used to reduce number of Fourier calls
-    #    Added the optional occ parameter                    #
-    #========================================================#
+def get_JJp_JJm_list(delHH_K, UU_K, eig_K, occ_K=None,efermi=None):
+    #===============================================#
+    #                                               #
+    # Compute JJ^+_a and JJ^-_a (a=Cartesian index) #
+    # for a list of Fermi energies                  #
+    #                                               #
+    #===============================================#
 
-    use w90_parameters, only: num_wann
-    use w90_get_oper, only: HH_R, get_HH_R
-    use w90_postw90_common, only: pw90common_fourier_R_to_k_new
-    use w90_utility, only: utility_diagonalize
-
-    real(kind=dp), dimension(3), intent(in)           :: kpt
-    real(kind=dp), intent(out)                        :: eig(num_wann)
-    complex(kind=dp), dimension(:, :), intent(out)     :: UU
-    complex(kind=dp), dimension(:, :), intent(out)     :: HH
-    complex(kind=dp), dimension(:, :, :, :), intent(out) :: JJp_list
-    complex(kind=dp), dimension(:, :, :, :), intent(out) :: JJm_list
-    real(kind=dp), intent(in), optional, dimension(:) :: occ
-
-    integer                       :: i
-    complex(kind=dp), allocatable :: delHH(:, :, :)
-
-    call get_HH_R
-
-    allocate (delHH(num_wann, num_wann, 3))
-    call pw90common_fourier_R_to_k_new(kpt, HH_R, OO=HH, &
-                                       OO_dx=delHH(:, :, 1), &
-                                       OO_dy=delHH(:, :, 2), &
-                                       OO_dz=delHH(:, :, 3))
-    call utility_diagonalize(HH, num_wann, eig, UU)
-    do i = 1, 3
-      if (present(occ)) then
-        call wham_get_JJp_JJm_list(delHH(:, :, i), UU, eig, JJp_list(:, :, :, i), JJm_list(:, :, :, i), occ=occ)
-      else
-        call wham_get_JJp_JJm_list(delHH(:, :, i), UU, eig, JJp_list(:, :, :, i), JJm_list(:, :, :, i))
-      endif
-    enddo
-
-  end subroutine wham_get_eig_UU_HH_JJlist
+    nk=delHH_K.shape[0]
+    num_wann=delHH_K.shape[1]
+    delHH_K=np.einsum("kml,kmna,knp->klpa",UU_K.conj(),delHH_K,UU_K)
+    
+    if occ_K is None and efermi is None:
+        raise RuntimeError("either occ or efermi should be specified")
+    if not( (occ_K is None) or (efermi is None)):
+        raise RuntimeError("either occ or efermi should be specified, NOT BOTH!")
+    
+    JJp_list=np.zeros( (nk,num_wann,num_wann,3) )
+    JJm_list=np.zeros( (nk,num_wann,num_wann,3) )
+    
+    
+    for ik in range(nk):
+        if efermi is None:
+          selm=(occ_K[ik]<0.5)
+          seln=(occ_K[ik]>0.5)
+        else:
+          selm=(eig_K[ik]<efermi)
+          seln=(eig_K[ik]>efermi)
+        
+        sel2d=selm[:,None]*seln[None,:]
+      
+        JJm_list[ik,sel2d]   = 1j*delHH_K[ik,sel2d  ]/(eig_K[ik,seln][None,:]-eig_K[ik,selm][:,None])
+        JJp_list[ik,sel2d.T] = 1j*delHH_K[ik,sel2d.T]/(eig_K[ik,selm][None,:]-eig_K[ik,seln][:,None])
+    
+    JJp_list=np.einsum("klm,kmna,kpn->klpa",UU_K,JJp_list,UU.conj())
+    JJm_list=np.einsum("klm,kmna,kpn->klpa",UU_K,JJm_list,UU.conj())
+    
+    return JJp_list, JJm_list
 
 
 
-end module w90_wan_ham
-"""
