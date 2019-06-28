@@ -9,10 +9,10 @@ import berry
 
 def main():
     seedname="Fe"
-    NK=np.array([50,50,50])
+    NK=np.array([25,25,25])
     Efermi=12.6
     Data=get_data.Data(seedname,getAA=True)
-    berry.calcAHC(NK,Data,Efermi=Efermi)
+    berry.calcAHC(NK,Data,Efermi=Efermi,evalJ0=False,evalJ1=False,evalJ2=True)
 
 
 

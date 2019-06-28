@@ -100,21 +100,25 @@ def get_JJp_JJm_list(delHH_K, UU_K, eig_K, occ_K=None,efermi=None):
     
     JJp_list=np.zeros( (nk,num_wann,num_wann,3) , dtype=complex )
     JJm_list=np.zeros( (nk,num_wann,num_wann,3) , dtype=complex )
-    
-    
-    for ik in range(nk):
-        if efermi is None:
-          selm=(occ_K[ik]<0.5)
-          seln=(occ_K[ik]>0.5)
-        else:
-          selm=(eig_K[ik]<efermi)
-          seln=(eig_K[ik]>efermi)
+
+
+    if efermi is None:
+        selm=(occ_K<0.5)
+        seln=(occ_K>0.5)
+    else:
+        selm=(eig_K<efermi)
+        seln=(eig_K>efermi)
         
-        sel2d=selm[:,None]*seln[None,:]
+        sel3d=selm[:,:,None]*seln[:,None,:]
+        sel3d1=sel3d.transpose( (0,2,1))
+        dEig=eig_K[:,:,None]-eig_K[:,None,:]
         
-        for a in range(3):
-            JJm_list[ik,sel2d,a]   = 1j*delHH_K[ik,sel2d  ,a]/(eig_K[ik,seln][None,:]-eig_K[ik,selm][:,None]).reshape(-1)
-            JJp_list[ik,sel2d.T,a] = 1j*delHH_K[ik,sel2d.T,a]/(eig_K[ik,selm][None,:]-eig_K[ik,seln][:,None]).reshape(-1)
+        
+#        print (sel3d.shape,dEig.shape,delHH_K.shape,JJm_list.shape)
+#        for a in range(3):
+        JJm_list[sel3d,:]   = 1j*delHH_K[sel3d  ,:]/dEig[sel3d][:,None]
+        JJp_list[sel3d1,:]  = 1j*delHH_K[sel3d1,:]/dEig[sel3d1][:,None]
+
     
     JJp_list=np.einsum("klm,kmna,kpn->klpa",UU_K,JJp_list,UU_K.conj())
     JJm_list=np.einsum("klm,kmna,kpn->klpa",UU_K,JJm_list,UU_K.conj())
