@@ -90,7 +90,7 @@ def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None):
     EUU=[np.linalg.eigh(Hk) for Hk in HH_K]
     E_K=np.array([euu[0] for euu in EUU])
     UU_K =np.array([euu[1] for euu in EUU])
-    print ("Energies calculated")
+#    print ("Energies calculated")
     
     if cRvec is None: return E_K, None, UU_K, HH_K, None 
     

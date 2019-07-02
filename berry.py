@@ -2,9 +2,18 @@ import wan_ham as wham
 import numpy as np
 from scipy import constants as constants
 
-def  calcAHC(NK,Data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True):
+def  calcAHC(NK,Data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True,printJ=False,dk=None):
+    if dk is not None:
+        expdk=np.exp(2j*np.pi*Data.iRvec.dot(dk))
+        AA_R_dk=Data.AA_R[:,:,:,:]*expdk[None,None,:,None]
+        HH_R_dk=Data.HH_R[:,:,:]*expdk[None,None,:]
+    else:
+        AA_R_dk=Data.AA_R
+        HH_R_dk=Data.HH_R
+
+
     if evalJ0 or evalJ1 or evalJ2:
-        E_K, delE_K, UU_K, HH_K, delHH_K =wham.get_eig_deleig(NK,Data.HH_R,Data.iRvec,Data.cRvec)
+        E_K, delE_K, UU_K, HH_K, delHH_K =wham.get_eig_deleig(NK,HH_R_dk,Data.iRvec,Data.cRvec)
     
     if evalJ1 or evalJ2:
         JJp_list,JJm_list=wham.get_JJp_JJm_list(delHH_K, UU_K, E_K, efermi=Efermi,occ_K=occ)
@@ -15,13 +24,14 @@ def  calcAHC(NK,Data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True):
     alpha=np.array([1,2,0])
     beta =np.array([2,0,1])
     
+    
     if evalJ1:
-        AA_K=wham.fourier_R_to_k( Data.AA_R,Data.iRvec, NK )
+        AA_K=wham.fourier_R_to_k( AA_R_dk,Data.iRvec, NK )
     
     if evalJ0:
         OOmega=-1j* wham.fourier_R_to_k( 
-             Data.AA_R[:,:,:,alpha]*Data.cRvec[None,None,:,beta ] - 
-             Data.AA_R[:,:,:,beta ]*Data.cRvec[None,None,:,alpha]   , Data.iRvec, NK )
+             AA_R_dk[:,:,:,alpha]*Data.cRvec[None,None,:,beta ] - 
+             AA_R_dk[:,:,:,beta ]*Data.cRvec[None,None,:,alpha]   , Data.iRvec, NK )
 
     AHC0=np.zeros(3)
     AHC1=np.zeros(3)
@@ -32,18 +42,18 @@ def  calcAHC(NK,Data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True):
 
     if evalJ0:
         AHC0= fac*np.einsum("knm,kmna->a",f_list,OOmega).real
-        print ("J0 term:",AHC0)
+        if printJ: print ("J0 term:",AHC0)
     if evalJ1:
         AHC1=-2*fac*( np.einsum("knma,kmna ->a" , AA_K[:,:,:,alpha],JJp_list[:,:,:,beta]).imag +
                np.einsum("knma,kmna ->a" , AA_K[:,:,:,beta],JJm_list[:,:,:,alpha]).imag )
-        print ("J1 term:",AHC1)
+        if printJ: print ("J1 term:",AHC1)
     if evalJ2:
         AHC2=-2*fac*np.einsum("knma,kmna ->a" , JJm_list[:,:,:,alpha],JJp_list[:,:,:,beta]).imag 
-        print ("J2 term:",AHC2)
+        if printJ: print ("J2 term:",AHC2)
     AHC=(AHC0+AHC1+AHC2)
     
-    print ("Anomalous Hall conductivity: (in S/cm \n",AHC)
-
+    if printJ: print ("Anomalous Hall conductivity: (in S/cm ) \n",AHC)
+    return AHC
     
     
     

@@ -10,10 +10,18 @@ import berry
 def main():
     seedname="Fe"
     NK=np.array([10]*3)
+    NKdiv=np.array([4]*3)
+    
+    dk1=1./(NK*NKdiv)
+    dk_list=[dk1*np.array([x,y,z]) for x in range(NKdiv[0]) for y in range(NKdiv[1]) for z in range(NKdiv[2]) ]
+
+    
     Efermi=12.6
     Data=get_data.Data(seedname,getAA=True)
-    berry.calcAHC(NK,Data,Efermi=Efermi,evalJ0=True,evalJ1=True,evalJ2=True)
-
+    AHC=sum(berry.calcAHC(NK,Data,Efermi=Efermi,evalJ0=True,evalJ1=True,evalJ2=True,dk=dk) 
+        for dk in dk_list)/NKdiv.prod()
+    print "Anomalous Hall conductivity: (in S/cm ) :\n {0}  {1}  {2}".format(*tuple(AHC))
+    
 #    Data.write_tb()
     exit()
 #    E_K=wham.get_eig(NK,Data.HH_R,Data.iRvec)[0]
@@ -27,7 +35,8 @@ def main():
     edos,DOS=E_to_DOS_slow(E_K,sigma=0.001,emin=0,emax=10)
     DOS/=np.prod(NK)*Data.cell_volume
     open("DOS-slow.dat","w").write("".join("{0:10.5f} {1:20.8e}\n".format(e,d) for e,d in zip(edos,DOS)))
-    
+
+
 
     #,emin=5.7,emax=6.3)
 #    berry.calcAHC(NK,Data,Efermi=Efermi,evalJ0=False,evalJ1=False,evalJ2=True)
