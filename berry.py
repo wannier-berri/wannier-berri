@@ -2,6 +2,11 @@ import wan_ham as wham
 import numpy as np
 from scipy import constants as constants
 
+
+def  calcAHC_dk(dk,NK,Data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True,printJ=False):
+    return calcAHC(NK,Data,Efermi=Efermi,occ=occ, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2,printJ=printJ,dk=dk)
+
+
 def  calcAHC(NK,Data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True,printJ=False,dk=None):
     if dk is not None:
         expdk=np.exp(2j*np.pi*Data.iRvec.dot(dk))

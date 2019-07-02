@@ -5,12 +5,13 @@ import get_data
 from DOS import E_to_DOS,E_to_DOS_slow
 import wan_ham as wham
 import berry
-
+import  multiprocessing 
+import functools
 
 def main():
     seedname="Fe"
     NK=np.array([10]*3)
-    NKdiv=np.array([4]*3)
+    NKdiv=np.array([2]*3)
     
     dk1=1./(NK*NKdiv)
     dk_list=[dk1*np.array([x,y,z]) for x in range(NKdiv[0]) for y in range(NKdiv[1]) for z in range(NKdiv[2]) ]
@@ -18,12 +19,50 @@ def main():
     
     Efermi=12.6
     Data=get_data.Data(seedname,getAA=True)
-    AHC=sum(berry.calcAHC(NK,Data,Efermi=Efermi,evalJ0=True,evalJ1=True,evalJ2=True,dk=dk) 
-        for dk in dk_list)/NKdiv.prod()
+    
+    
+    paralfunc=functools.partial(
+            berry.calcAHC_dk, NK=NK,Data=Data,Efermi=Efermi )
+
+    p=multiprocessing.Pool(20)
+    AHC=sum(p.map(paralfunc,dk_list))/len(dk_list)
+
+    print "Anomalous Hall conductivity: (in S/cm ) :\n {0}  {1}  {2}".format(*tuple(AHC))
+
+
+if __name__ == '__main__':
+    main()
+
+
+
+
+def main1():
+    seedname="Fe"
+    NK=np.array([10]*3)
+    NKdiv=np.array([2]*3)
+    
+    dk1=1./(NK*NKdiv)
+    dk_list=[dk1*np.array([x,y,z]) for x in range(NKdiv[0]) for y in range(NKdiv[1]) for z in range(NKdiv[2]) ]
+
+    
+    Efermi=12.6
+    Data=get_data.Data(seedname,getAA=True)
+    
+    def berry_dk(dk):
+        return berry.calcAHC(NK,copy.deepcopy(Data),Efermi=Efermi,evalJ0=True,evalJ1=True,evalJ2=True,dk=dk)
+    
+    print dk_list
+    p=Pool(100)
+    AHC=p.map(berry_dk,dk_list)
+#    AHC=sum(berry_dk(dk) for dk in dk_list)/len(dk_list)
+
+#        for dk in dk_list )
     print "Anomalous Hall conductivity: (in S/cm ) :\n {0}  {1}  {2}".format(*tuple(AHC))
     
-#    Data.write_tb()
     exit()
+
+
+
 #    E_K=wham.get_eig(NK,Data.HH_R,Data.iRvec)[0]
 #    E_K=wham.get_eig1(NK,Data.HH_R,Data.iRvec)
 #    E_K=wham.get_eig_slow(NK,Data.HH_R,Data.iRvec)
@@ -43,9 +82,6 @@ def main():
 
 
 
-
-if __name__ == '__main__':
-    main()
     
 #E_K=wham.get_eig(NK,Data.HH_R,Data.iRvec)[0]
 
