@@ -45,10 +45,31 @@ class Data():
         f.close()
         ncomp=MM_R.shape[2]/self.nRvec
         if ncomp==1:
+            print "reading 0d for ",suffix
             return MM_R/self.Ndegen[None,None,:]
         elif ncomp==3:
+            print "reading 1d for ",suffix
             return MM_R.reshape(self.num_wann, self.num_wann, 3, self.nRvec).transpose(0,1,3,2)/self.Ndegen[None,None,:,None]
         elif ncomp==9:
+            print "reading 2d for ",suffix
             return MM_R.reshape(self.num_wann, self.num_wann, 3,3, self.nRvec).transpose(0,1,4,3,2)/self.Ndegen[None,None,:,None,None]
         
-
+    def write_tb(self,f=None):
+        if f is None: f=self.seedname+"_tb.dat"
+        f=open(f,"w")
+        f.write("written from saved HH_R")
+        f.write("".join( ("  ".join("{0:15.12f}".format(x) for x in y)+"\n") for y in self.real_lattice))
+        f.write("   {0}   \n".format(self.num_wann))
+        f.write("   {0}   \n".format(len(self.iRvec)))
+        for i in range(int(len(self.iRvec)/15)+1):
+            try:
+                a=self.Ndegen[15*i:min(len(self.Ndegen),15*i+15)]
+                if len(a)>0:
+                    f.write(" ".join("{0:5d}".format(i) for i in a)+"\n")
+            except:
+                pass
+        
+        for i,iR in enumerate(self.iRvec):
+            f.write("\n {0} {1} {2}\n".format(i,iR))
+#            f.write("\n".join(" {0:5d} {1:5d}  {2:
+        

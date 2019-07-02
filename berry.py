@@ -19,7 +19,7 @@ def  calcAHC(NK,Data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True):
         AA_K=wham.fourier_R_to_k( Data.AA_R,Data.iRvec, NK )
     
     if evalJ0:
-        OOmega=1j* wham.fourier_R_to_k( 
+        OOmega=-1j* wham.fourier_R_to_k( 
              Data.AA_R[:,:,:,alpha]*Data.cRvec[None,None,:,beta ] - 
              Data.AA_R[:,:,:,beta ]*Data.cRvec[None,None,:,alpha]   , Data.iRvec, NK )
 
@@ -32,14 +32,14 @@ def  calcAHC(NK,Data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True):
 
     if evalJ0:
         AHC0= fac*np.einsum("knm,kmna->a",f_list,OOmega).real
-        print ("J0 term:",AHC0*fac)
+        print ("J0 term:",AHC0)
     if evalJ1:
         AHC1=-2*fac*( np.einsum("knma,kmna ->a" , AA_K[:,:,:,alpha],JJp_list[:,:,:,beta]).imag +
                np.einsum("knma,kmna ->a" , AA_K[:,:,:,beta],JJm_list[:,:,:,alpha]).imag )
-        print ("J1 term:",AHC1*fac)
+        print ("J1 term:",AHC1)
     if evalJ2:
         AHC2=-2*fac*np.einsum("knma,kmna ->a" , JJm_list[:,:,:,alpha],JJp_list[:,:,:,beta]).imag 
-        print ("J2 term:",AHC2*fac)
+        print ("J2 term:",AHC2)
     AHC=(AHC0+AHC1+AHC2)
     
     print ("Anomalous Hall conductivity: (in S/cm \n",AHC)

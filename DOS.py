@@ -1,5 +1,10 @@
 import numpy as np
 
+
+
+
+
+
 def E_to_DOS(E,sigma=0.1,emin=None,emax=None,de=None,divsigma=10,nsigma=5):
     if emin is None: emin=E.min()-nsigma*sigma
     if emax is None: emax=E.max()+nsigma*sigma
@@ -30,4 +35,23 @@ def E_to_DOS(E,sigma=0.1,emin=None,emax=None,de=None,divsigma=10,nsigma=5):
     
 
     return(emin+de_small*np.arange(n_x),DOS)
+
+
+
+
+def E_to_DOS_slow(E,sigma=0.1,emin=None,emax=None,de=None,divsigma=10,nsigma=5):
+    if emin is None: emin=E.min()-nsigma*sigma
+    if emax is None: emax=E.max()+nsigma*sigma
+    if de is None:de=sigma/2
+    E1=E.reshape(-1)
+    print (E.shape)
+    
+    e_all=np.linspace(emin,emax,int((emax-emin)/de))
+    dos=np.zeros(e_all.shape[0])
+    for e in E1:
+        sigma_fun_x=np.abs(e_all-e)
+        sel=np.where( sigma_fun_x<nsigma*sigma )
+        dos[sel]+=np.exp(-(sigma_fun_x[sel]/sigma)**2)/(sigma*np.sqrt(np.pi))
+        
+    return(e_all,dos)
 
