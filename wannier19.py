@@ -2,38 +2,39 @@
 import numpy as np
 import sys
 import get_data
-from DOS import E_to_DOS,E_to_DOS_slow
-import wan_ham as wham
+#from DOS import E_to_DOS,E_to_DOS_slow
+#import wan_ham as wham
 import berry
-import  multiprocessing 
+
 import functools
 
-
-
-parallel=True
-nparal=20
+from parallel import eval_integral_BZ
 
 
 def main():
     seedname="Fe"
     NK=np.array([10]*3)
     NKdiv=np.array([2]*3)
-    
-    dk1=1./(NK*NKdiv)
-    dk_list=[dk1*np.array([x,y,z]) for x in range(NKdiv[0]) for y in range(NKdiv[1]) for z in range(NKdiv[2]) ]
-    
     Efermi=12.6
     Data=get_data.Data(seedname,getAA=True)
+    eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi )
+    AHC=eval_integral_BZ(eval_func,Data,NKdiv,NK=NK,parallel=True,nproc=8)
+    print "Anomalous Hall conductivity: (in S/cm ) :\n {0}  {1}  {2}".format(*tuple(AHC))
+   
 
-    paralfunc=functools.partial(
+
+
+
+def main2():
+    seedname="Fe"
+    NK=np.array([10]*3)
+    NKdiv=np.array([2]*3)
+    
+    
+
+    eval_func=functools.partial(
         berry.calcAHC_dk, NK=NK,data=Data,Efermi=Efermi )
     
-    if parallel:
-        p=multiprocessing.Pool(nparal)
-        AHC=sum(p.map(paralfunc,dk_list))/len(dk_list)
-    else:
-        AHC=sum(paralfunc(dk) for dk in dk_list)/len(dk_list)
-    print "Anomalous Hall conductivity: (in S/cm ) :\n {0}  {1}  {2}".format(*tuple(AHC))
 
 
 if __name__ == '__main__':
