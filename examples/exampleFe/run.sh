@@ -3,6 +3,7 @@ wannier90=$wannier90_path"/wannier90.x"
 postw90=$wannier90_path"/postw90.x"
 
 
+tar -zvf Fe_wan_files.tar.gz
 
 EFERMI=12.6
 
