@@ -171,41 +171,72 @@ class Data_dk(Data):
 
     def get_AA_K(self):
         try:
-            return self.AA_K
+            return self._AA_K
         except AttributeError:
-            self.AA_K=wham.fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT)
-            return self.AA_K
+            print "running get_AA_K.."
+            self._AA_K=wham.fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT)
+            return self._AA_K
+    
             
     def get_OOmega_K(self):
         try:
-            return self.OOmega_K
+            return self._OOmega_K
         except AttributeError:
-            self.OOmega_K=    -1j* wham.fourier_R_to_k( 
+            print "running get_OOmega.."
+            self._OOmega_K=    -1j* wham.fourier_R_to_k( 
                         self.AA_R[:,:,:,wham.alpha]*self.cRvec[None,None,:,wham.beta ] - 
                         self.AA_R[:,:,:,wham.beta ]*self.cRvec[None,None,:,wham.alpha]   , self.iRvec, self.NKFFT )
              
-            return self.OOmega_K
-    
-    
+            return self._OOmega_K
 
 
-"""
-    def write_tb(self,f=None):
-        if f is None: f=self.seedname+"_tb.dat"
-        f=open(f,"w")
-        f.write("written from saved HH_R")
-        f.write("".join( ("  ".join("{0:15.12f}".format(x) for x in y)+"\n") for y in self.real_lattice))
-        f.write("   {0}   \n".format(self.num_wann))
-        f.write("   {0}   \n".format(len(self.iRvec)))
-        for i in range(int(len(self.iRvec)/15)+1):
-            try:
-                a=self.Ndegen[15*i:min(len(self.Ndegen),15*i+15)]
-                if len(a)>0:
-                    f.write(" ".join("{0:5d}".format(i) for i in a)+"\n")
-            except:
-                pass
-        
-        for i,iR in enumerate(self.iRvec):
-            f.write("\n {0} {1} {2}\n".format(i,iR))
-#            f.write("\n".join(" {0:5d} {1:5d}  {2:
-"""
+    def _get_eig_deleig(self):
+        print "running get_eog_deleig.."
+        self._E_K,self._delE_K, self._UU_K, self._HH_K, self._delHH_K =   wham.get_eig_deleig(self.NKFFT,self.HH_R,self.iRvec,self.cRvec)
+
+    
+    def get_E_K(self):
+        try:
+            return self._E_K
+        except AttributeError:
+            self._get_eig_deleig()
+            return self._E_K
+
+    def get_delE_K(self):
+        try:
+            return self._delE_K
+        except AttributeError:
+            self._get_eig_deleig()
+            return self._delE_K
+
+    def get_UU_K(self):
+        try:
+            return self._UU_K
+        except AttributeError:
+            self._get_eig_deleig()
+            return self._UU_K
+
+    def get_HH_K(self):
+        try:
+            return self._HH_K
+        except AttributeError:
+            self._get_eig_deleig()
+            return self._HH_K
+
+    def get_delHH_K(self):
+        try:
+            return self._delHH_K
+        except AttributeError:
+            self._get_eig_deleig()
+            return self._delHH_K
+
+
+    AA_K=property(get_AA_K)
+    OOmega_K=property(get_OOmega_K)
+    UU_K=property(get_UU_K)
+    HH_K=property(get_HH_K)
+    delHH_K=property(get_delHH_K)
+    E_K=property(get_E_K)
+    delE_K=property(get_delE_K)
+
+
