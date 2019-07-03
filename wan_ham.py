@@ -18,6 +18,11 @@
 
 import numpy as np
 
+
+alpha=np.array([1,2,0])
+beta =np.array([2,0,1])
+
+
 def fourier_R_to_k(AAA_R,iRvec,NKPT):
     #  AAA_R is an array of dimension ( num_wann x num_wann x nRpts X ... ) (any further dimensions allowed)
     NK=tuple(NKPT)
@@ -52,19 +57,18 @@ def get_occ_mat_list(UU_k, occ_K=None,efermi=None,eig_K=None):
     return f_list,g_list
 
 
-def get_eig(NK,HH_R,iRvec):
+def get_eig_HH_UU(NK,HH_R,iRvec):
     res=get_eig_deleig(NK,HH_R,iRvec)
     return res[0],res[2],res[3]  # E_K,UU_K,HH_K
 
 
 
-def get_eig1(NK,HH_R,iRvec):
+def get_eig(NK,HH_R,iRvec):
     num_wann=HH_R.shape[0]
     HH_K=fourier_R_to_k(HH_R,iRvec,NK)
     check=np.max( [np.abs(H-H.T.conj()).max() for H in HH_K] )
     if check>1e-10 : raise RuntimeError ("Hermiticity of interpolated Hamiltonian is not good : {0}".format(check))
     return np.array([np.linalg.eigvalsh(Hk) for Hk in HH_K])
-
 
 
 def get_eig_slow(NK,HH_R,iRvec):
@@ -136,17 +140,14 @@ def get_JJp_JJm_list(delHH_K, UU_K, eig_K, occ_K=None,efermi=None):
         
     sel3d=selm[:,:,None]*seln[:,None,:]
     sel3d1=sel3d.transpose( (0,2,1))
+
     dEig=eig_K[:,:,None]-eig_K[:,None,:]
-        
-        
-#        print (sel3d.shape,dEig.shape,delHH_K.shape,JJm_list.shape)
-#        for a in range(3):
     JJp_list[sel3d1,:]  = -1j*delHH_K[sel3d1,:]/dEig[sel3d1][:,None]
     JJm_list[sel3d,:]   = -1j*delHH_K[sel3d  ,:]/dEig[sel3d][:,None]
 
-    
     JJp_list=np.einsum("klm,kmna,kpn->klpa",UU_K,JJp_list,UU_K.conj())
     JJm_list=np.einsum("klm,kmna,kpn->klpa",UU_K,JJm_list,UU_K.conj())
+
     
     return JJp_list, JJm_list
 

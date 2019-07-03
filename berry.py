@@ -1,24 +1,17 @@
 import wan_ham as wham
 import numpy as np
 from scipy import constants as constants
+from get_data import Data_dk
 
 
-def  calcAHC_dk(dk,NK,Data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True,printJ=False):
-    return calcAHC(NK,Data,Efermi=Efermi,occ=occ, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2,printJ=printJ,dk=dk)
+def  calcAHC_dk(dk,NK,data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True,printJ=False):
+    return calcAHC(Data_dk(data,dk,NK=NK),Efermi=Efermi,occ=occ, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2,printJ=printJ)
 
 
-def  calcAHC(NK,Data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True,printJ=False,dk=None):
-    if dk is not None:
-        expdk=np.exp(2j*np.pi*Data.iRvec.dot(dk))
-        AA_R_dk=Data.AA_R[:,:,:,:]*expdk[None,None,:,None]
-        HH_R_dk=Data.HH_R[:,:,:]*expdk[None,None,:]
-    else:
-        AA_R_dk=Data.AA_R
-        HH_R_dk=Data.HH_R
-
+def  calcAHC(data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True,printJ=False):
 
     if evalJ0 or evalJ1 or evalJ2:
-        E_K, delE_K, UU_K, HH_K, delHH_K =wham.get_eig_deleig(NK,HH_R_dk,Data.iRvec,Data.cRvec)
+        E_K, delE_K, UU_K, HH_K, delHH_K =wham.get_eig_deleig(data.NK,data.HH_R,data.iRvec,data.cRvec)
     
     if evalJ1 or evalJ2:
         JJp_list,JJm_list=wham.get_JJp_JJm_list(delHH_K, UU_K, E_K, efermi=Efermi,occ_K=occ)
@@ -26,34 +19,21 @@ def  calcAHC(NK,Data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True,p
     if evalJ0:
         f_list,g_list=wham.get_occ_mat_list(UU_K, efermi=Efermi, eig_K=E_K, occ_K=occ)
 
-    alpha=np.array([1,2,0])
-    beta =np.array([2,0,1])
     
-    
-    if evalJ1:
-        AA_K=wham.fourier_R_to_k( AA_R_dk,Data.iRvec, NK )
-    
-    if evalJ0:
-        OOmega=-1j* wham.fourier_R_to_k( 
-             AA_R_dk[:,:,:,alpha]*Data.cRvec[None,None,:,beta ] - 
-             AA_R_dk[:,:,:,beta ]*Data.cRvec[None,None,:,alpha]   , Data.iRvec, NK )
-
     AHC0=np.zeros(3)
     AHC1=np.zeros(3)
     AHC2=np.zeros(3)
-#    print (f_list.shape, OOmega.shape)
-    fac = -1.0e8*constants.elementary_charge**2/(constants.hbar*Data.cell_volume)/np.prod(NK)
-
+    fac = -1.0e8*constants.elementary_charge**2/(constants.hbar*data.cell_volume)/np.prod(data.NK)
 
     if evalJ0:
-        AHC0= fac*np.einsum("knm,kmna->a",f_list,OOmega).real
+        AHC0= fac*np.einsum("knm,kmna->a",f_list,data.get_OOmega_K()).real
         if printJ: print ("J0 term:",AHC0)
     if evalJ1:
-        AHC1=-2*fac*( np.einsum("knma,kmna ->a" , AA_K[:,:,:,alpha],JJp_list[:,:,:,beta]).imag +
-               np.einsum("knma,kmna ->a" , AA_K[:,:,:,beta],JJm_list[:,:,:,alpha]).imag )
+        AHC1=-2*fac*( np.einsum("knma,kmna ->a" , data.get_AA_K()[:,:,:,wham.alpha],JJp_list[:,:,:,wham.beta]).imag +
+               np.einsum("knma,kmna ->a" , data.get_AA_K()[:,:,:,wham.beta],JJm_list[:,:,:,wham.alpha]).imag )
         if printJ: print ("J1 term:",AHC1)
     if evalJ2:
-        AHC2=-2*fac*np.einsum("knma,kmna ->a" , JJm_list[:,:,:,alpha],JJp_list[:,:,:,beta]).imag 
+        AHC2=-2*fac*np.einsum("knma,kmna ->a" , JJm_list[:,:,:,wham.alpha],JJp_list[:,:,:,wham.beta]).imag 
         if printJ: print ("J2 term:",AHC2)
     AHC=(AHC0+AHC1+AHC2)
     
