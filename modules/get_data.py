@@ -216,6 +216,23 @@ class Data_dk(Data):
             self._get_eig_deleig()
             return self._UU_K
 
+
+    def get_UUC_K(self):
+        try:
+            return self._UUC_K
+        except AttributeError:
+            self._UUC_K=self.UU_K.conj()
+            return self._UUC_K
+
+
+    def get_UUU_K(self):
+        try:
+            return self._UUU_K
+        except AttributeError:
+            self._UUU_K=self.UU_K[:,:,None,:]*self.UU_K.conj()[:,None,:,:]
+            return self._UUU_K
+
+
     def get_HH_K(self):
         try:
             return self._HH_K
@@ -230,13 +247,25 @@ class Data_dk(Data):
             self._get_eig_deleig()
             return self._delHH_K
 
+    def get_delHH_dE_K(self):
+        try:
+            return self._delHH_dE_K
+        except AttributeError:
+            _delHH_K_=np.einsum("kml,kmna,knp->klpa",self.UU_K.conj(),self.delHH_K,self.UU_K)
+            dEig=self.E_K[:,:,None]-self.E_K[:,None,:]
+            self._delHH_dE_K=-1j*_delHH_K_/dEig[:,:,:,None]
+            return self._delHH_dE_K
+
 
     AA_K=property(get_AA_K)
     OOmega_K=property(get_OOmega_K)
     UU_K=property(get_UU_K)
+    UUC_K=property(get_UUC_K)
     HH_K=property(get_HH_K)
     delHH_K=property(get_delHH_K)
+    delHH_dE_K=property(get_delHH_dE_K)
     E_K=property(get_E_K)
     delE_K=property(get_delE_K)
+    UUU_K=property(get_UUU_K)
 
 
