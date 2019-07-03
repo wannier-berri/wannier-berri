@@ -12,7 +12,7 @@ My motivation was:
 2) to make it potentially easier to implement further features
 3) to make it faster.  And it IS already much Faster than the Fortran code of Wannier90, due to usage of fast Fourier transform (FFT). (Of course, I could do FFT in Fortran, but I did not want to. Maybe someone else will be encouraged to do that.)
 
-So far only AHC for one Fermi level is implemented and benchmarked. 
+So far only AHC  is implemented and benchmarked. 
 The usage of the code  is demonstrated by "exampleFe" in theexamples folder.
 AHC can also be calcualted for any tight-binding model, for which a "_tb.dat" file was generated in watever way.
 
