@@ -44,17 +44,16 @@ def  calcAHC(data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True,prin
     fac = -1.0e8*constants.elementary_charge**2/(constants.hbar*data.cell_volume)/np.prod(data.NKFFT)
 
     if evalJ0:
-        AHC0= fac*np.einsum("knm,kmna->a",f_list,data.OOmega_K).real
+        AHC0= fac* np.einsum("knm,kmna->a",f_list,data.OOmega_K).real
         if printJ: print ("J0 term:",AHC0)
     if evalJ1:
-        AHC1=-2*fac*( np.einsum("knma,kmna ->a" , data.AA_K[:,:,:,wham.alpha],JJp_list[:,:,:,wham.beta]).imag +
-               np.einsum("knma,kmna ->a" , data.AA_K[:,:,:,wham.beta],JJm_list[:,:,:,wham.alpha]).imag )
+        AHC1=-2*fac*( np.einsum("knma,kmna->a", data.AA_K[:,:,:,wham.alpha],JJp_list[:,:,:,wham.beta]) +
+                 np.einsum("knma,kmna->a", data.AA_K[:,:,:,wham.beta],JJm_list[:,:,:,wham.alpha]) ).imag
         if printJ: print ("J1 term:",AHC1)
     if evalJ2:
-        AHC2=-2*fac*np.einsum("knma,kmna ->a" , JJm_list[:,:,:,wham.alpha],JJp_list[:,:,:,wham.beta]).imag 
+        AHC2=-2*fac*np.einsum("knma,kmna->a", JJm_list[:,:,:,wham.alpha],JJp_list[:,:,:,wham.beta]).imag
         if printJ: print ("J2 term:",AHC2)
     AHC=(AHC0+AHC1+AHC2)
     
     if printJ: print ("Anomalous Hall conductivity: (in S/cm ) \n",AHC)
     return np.array([AHC0,AHC1,AHC2,AHC])
-    

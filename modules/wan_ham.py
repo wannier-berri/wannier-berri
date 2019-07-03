@@ -54,7 +54,8 @@ def get_occ(eig_K,efermi):
 def get_occ_mat_list(UUU_k, occ_K=None,efermi=None,eig_K=None):
     if occ_K is None:
         occ_K = get_occ(eig_K, efermi ) 
-    f_list=np.einsum("knmi,ki->knm",UUU_k,occ_K)#,UU_k.conj())
+#    f_list=np.einsum("knmi,ki->knm",UUU_k,occ_K)#,UU_k.conj())
+    f_list=np.array([uuu.dot(occ) for uuu,occ in zip(UUU_k,occ_K)] ) #,UU_k.conj())
     g_list=-f_list.copy()
     for ik in range(g_list.shape[0]):
         g_list[ik]+=np.eye(g_list.shape[1])
