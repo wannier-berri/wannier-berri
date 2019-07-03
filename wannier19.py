@@ -8,6 +8,12 @@ import berry
 import  multiprocessing 
 import functools
 
+
+
+parallel=True
+nparal=20
+
+
 def main():
     seedname="Fe"
     NK=np.array([10]*3)
@@ -15,18 +21,18 @@ def main():
     
     dk1=1./(NK*NKdiv)
     dk_list=[dk1*np.array([x,y,z]) for x in range(NKdiv[0]) for y in range(NKdiv[1]) for z in range(NKdiv[2]) ]
-
     
     Efermi=12.6
     Data=get_data.Data(seedname,getAA=True)
-    
-    
+
     paralfunc=functools.partial(
-            berry.calcAHC_dk, NK=NK,Data=Data,Efermi=Efermi )
-
-    p=multiprocessing.Pool(20)
-    AHC=sum(p.map(paralfunc,dk_list))/len(dk_list)
-
+        berry.calcAHC_dk, NK=NK,data=Data,Efermi=Efermi )
+    
+    if parallel:
+        p=multiprocessing.Pool(nparal)
+        AHC=sum(p.map(paralfunc,dk_list))/len(dk_list)
+    else:
+        AHC=sum(paralfunc(dk) for dk in dk_list)/len(dk_list)
     print "Anomalous Hall conductivity: (in S/cm ) :\n {0}  {1}  {2}".format(*tuple(AHC))
 
 
