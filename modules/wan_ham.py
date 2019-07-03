@@ -51,10 +51,10 @@ def get_occ(eig_K,efermi):
     occ[eig_K<efermi]=1
     return occ
 
-def get_occ_mat_list(UU_k, occ_K=None,efermi=None,eig_K=None):
+def get_occ_mat_list(UUU_k, occ_K=None,efermi=None,eig_K=None):
     if occ_K is None:
         occ_K = get_occ(eig_K, efermi ) 
-    f_list=np.einsum("kni,ki,kmi->knm",UU_k,occ_K,UU_k.conj())
+    f_list=np.einsum("knmi,ki->knm",UUU_k,occ_K)#,UU_k.conj())
     g_list=-f_list.copy()
     for ik in range(g_list.shape[0]):
         g_list[ik]+=np.eye(g_list.shape[1])
@@ -114,7 +114,7 @@ def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None):
     return E_K, delE_K, UU_K, HH_K, delHH_K 
 
 
-def get_JJp_JJm_list(delHH_K, UU_K, eig_K, occ_K=None,efermi=None):
+def get_JJp_JJm_list(delHH_dE_K, UU_K, UUC_K, eig_K, occ_K=None,efermi=None):
     #===============================================#
     #                                               #
     # Compute JJ^+_a and JJ^-_a (a=Cartesian index) #
@@ -122,38 +122,49 @@ def get_JJp_JJm_list(delHH_K, UU_K, eig_K, occ_K=None,efermi=None):
     #                                               #
     #===============================================#
 
-    nk=delHH_K.shape[0]
-    num_wann=delHH_K.shape[1]
-    delHH_K=np.einsum("kml,kmna,knp->klpa",UU_K.conj(),delHH_K,UU_K)
     
     if occ_K is None and efermi is None:
         raise RuntimeError("either occ or efermi should be specified")
     if not( (occ_K is None) or (efermi is None)):
         raise RuntimeError("either occ or efermi should be specified, NOT BOTH!")
     
-    JJp_list=np.zeros( (nk,num_wann,num_wann,3) , dtype=complex )
-    JJm_list=np.zeros( (nk,num_wann,num_wann,3) , dtype=complex )
-
-
     if efermi is None:
         selm=(occ_K<0.5)
         seln=(occ_K>0.5)
+        JJp_list=np.array( [np.einsum("lm,mna,pn->lpa",
+            UU_K[ik][:,seln[ik]],delHH_dE_K[ik][seln[ik],:,:][:,selm[ik],:]  , UU_K[ik][:,selm[ik]].conj() )
+                for ik in range(UU_K.shape[0]) ] )
+
+        JJm_list=np.array( [np.einsum("lm,mna,pn->lpa",
+            UU_K[ik][:,selm[ik]],delHH_dE_K[ik][selm[ik],:,:][:,seln[ik],:]  , UU_K[ik][:,seln[ik]].conj() )
+                for ik in range(UU_K.shape[0]) ] )
+
+        return JJp_list, JJm_list
+
+
     else:
-        selm=(eig_K<efermi)
-        seln=(eig_K>efermi)
-        
-    sel3d=selm[:,:,None]*seln[:,None,:]
-    sel3d1=sel3d.transpose( (0,2,1))
+        selm=np.sum(eig_K< efermi,axis=1)
+        seln=np.sum(eig_K<=efermi,axis=1)
 
-    dEig=eig_K[:,:,None]-eig_K[:,None,:]
-    JJp_list[sel3d1,:]  = -1j*delHH_K[sel3d1,:]/dEig[sel3d1][:,None]
-    JJm_list[sel3d,:]   = -1j*delHH_K[sel3d  ,:]/dEig[sel3d][:,None]
-
-    JJp_list=np.einsum("klm,kmna,kpn->klpa",UU_K,JJp_list,UU_K.conj())
-    JJm_list=np.einsum("klm,kmna,kpn->klpa",UU_K,JJm_list,UU_K.conj())
-
-    
-    return JJp_list, JJm_list
+        return __get_JJp_JJm_list(UU_K,UUC_K,delHH_dE_K,seln,selm)
 
 
+def __get_JJp_JJm_list(UU_K,UUC_K,delHH_dE_K,seln,selm):
+
+
+#        JJp_list=np.array( [np.einsum("lm,mna,pn->lpa",
+#            uu[:,n:],delhh[n:,:m,:]  , uu[:,:m].conj() )
+#                for uu,delhh,n,m in zip(UU_K,delHH_dE_K,seln,selm) ] )
+
+
+        JJp_list=np.array( [
+            uu[:,n:].dot(  uuc[:,:m].dot( delhh[n:,:m,:])) 
+                for uu,uuc,delhh,n,m in zip(UU_K,UUC_K,delHH_dE_K,seln,selm) ] )
+
+        JJm_list=np.array( [
+            uu[:,:m].dot( uuc[:,n:].dot(delhh[:m,n:,:])  )
+                for uu,uuc,delhh,n,m in zip(UU_K,UUC_K,delHH_dE_K,seln,selm) ] )
+
+
+        return JJp_list, JJm_list
 

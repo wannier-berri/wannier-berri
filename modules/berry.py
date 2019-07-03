@@ -33,10 +33,10 @@ def  calcAHC(data,Efermi=None,occ=None, evalJ0=True,evalJ1=True,evalJ2=True,prin
                  for Ef in Efermi])
 
     if evalJ1 or evalJ2:
-        JJp_list,JJm_list=wham.get_JJp_JJm_list(data.delHH_K, data.UU_K, data.E_K, efermi=Efermi,occ_K=occ)
+        JJp_list,JJm_list=wham.get_JJp_JJm_list(data.delHH_dE_K, data.UU_K, data.UUC_K, data.E_K, efermi=Efermi,occ_K=occ)
 
     if evalJ0:
-        f_list,g_list=wham.get_occ_mat_list(data.UU_K, efermi=Efermi, eig_K=data.E_K, occ_K=occ)
+        f_list,g_list=wham.get_occ_mat_list(data.UUU_K, efermi=Efermi, eig_K=data.E_K, occ_K=occ)
 
     AHC0=np.zeros(3)
     AHC1=np.zeros(3)
