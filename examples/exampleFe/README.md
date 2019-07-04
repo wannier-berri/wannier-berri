@@ -16,8 +16,9 @@ The example can be run by simply
 and one can compare results.  One can see, that the second option  gives exactly the same results, as postw90.x the results from the first option are slightly diferent (however within accuracy),  which is probably caused, that the _tb file is written by a different piece of code, then the AA_ matrices.
 
 In any case, 
-For a single Efermi wannier19 works 5 time faster, and I expect that the advantage will grow with the size of ab-initio mesh (not tested yet)
-For fermi-scan mode the advantage is less (because Fourier transform does not take majority of time anymore), but still a factor of 2
+For a single Efermi wannier19 works ~4 time faster, and I expect that the advantage will grow with the size of ab-initio mesh (not tested yet)
+For fermi-scan mode the advantage is even more. Im my realisation I avoided multiple calculation of the same matrices, hence 
+scan of 100 Fermi levels only doubles the computational time. While in Wannier90 the compuation time grows significantly with the number of Fermi levels.
 
 wannier19 can be run in parallel, just change the following line in python script:
      AHC=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,parallel=True,nproc=4)

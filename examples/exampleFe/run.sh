@@ -1,4 +1,4 @@
-wannier90_path="~/wannier90-2.1.0"
+wannier90_path="../../../wannier90"
 wannier90=$wannier90_path"/wannier90.x"
 postw90=$wannier90_path"/postw90.x"
 
@@ -7,38 +7,51 @@ tar -xvf input/Fe_wan_files.tar.gz
 
 
 NK_FFT=15
-NK_div=1
+NK_div=2
 NK_tot=$((NK_FFT*NK_div))
 
 echo "wanierizing"
 
 
 cp input/Fe.win0 Fe.win
-$wannier90 Fe
+#$wannier90 Fe
 
 rm Fe_wsvec.dat Fe_band* 
 
 echo
 echo "evaluating AHC using wannier19 from Fe_tb.dat"
-time ./calc_AHC.py tb $NK_FFT $NK_div 
+#time ./calc_AHC.py tb $NK_FFT $NK_div 
 
 echo
 echo "evaluating AHC using postw90"
 
+
+for EF in  # 12.6
+do
+echo "berry = true"> Fe.win 
+echo "fermi_energy = $EF" >> Fe.win 
+echo "berry_task = ahc">> Fe.win 
+echo "berry_kmesh =  $NK_tot $NK_tot $NK_tot" >> Fe.win
+cat input/Fe.win0 >> Fe.win
+
+time $postw90 Fe
+done
+
+
+for dEF in 0.1 0.025 0.01
+do
+
 echo "berry = true"> Fe.win 
 echo "fermi_energy_min = 12" >> Fe.win 
 echo "fermi_energy_max = 13" >> Fe.win 
-echo "fermi_energy_step = 0.1" >> Fe.win 
+echo "fermi_energy_step = $dEF" >> Fe.win 
 echo "berry_task = ahc">> Fe.win 
 echo "berry_kmesh =  $NK_tot $NK_tot $NK_tot" >> Fe.win
 cat input/Fe.win0 >> Fe.win
 
 time $postw90 Fe
 
-echo
-echo "The postw90 results:"
-
-tail -30 Fe.wpout
+done
 
 exit
 #### to run the following partone needs to compile postw90 from the following repository:

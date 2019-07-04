@@ -16,6 +16,7 @@ from scipy.io import FortranFile as FF
 from aux import str2bool
 import wan_ham as wham
 import copy
+import lazy_property
 
 
 class Data():
@@ -31,10 +32,8 @@ class Data():
         self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
         iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
         f.close()
-        self.cell_volume=np.linalg.det(self.real_lattice)
         self.Ndegen=iRvec[:,3]
         self.iRvec=iRvec[:,:3]
-        self.cRvec=self.iRvec.dot(self.real_lattice)
         if NKFFT is None:
             self.NKFFT=np.abs(self.iRvec).max(axis=0)*2+1
         else:
@@ -105,8 +104,6 @@ class Data():
         
         f.close()
 
-        self.cell_volume=np.linalg.det(self.real_lattice)
-        self.cRvec=self.iRvec.dot(self.real_lattice)
         if NKFFT is None:
             self.NKFFT=np.abs(self.iRvec).max(axis=0)*2+1
         else:
@@ -118,13 +115,19 @@ class Data():
         print ("Real-space lattice:\n",self.real_lattice)
         #print ("R - points and dege=neracies:\n",iRvec)
         
+    @lazy_property.LazyProperty
+    def cRvec(self):
+        return self.iRvec.dot(self.real_lattice)
 
 
-   
-    def get_nRvec(self):
+    @lazy_property.LazyProperty
+    def nRvec(self):
         return self.iRvec.shape[0]
-    
-    nRvec=property(get_nRvec)
+
+    @lazy_property.LazyProperty
+    def cell_volume(self):
+        return np.linalg.det(self.real_lattice)
+
 
     def __getMat(self,suffix):
 
@@ -143,183 +146,5 @@ class Data():
             print "reading 2d for ",suffix
             return MM_R.reshape(self.num_wann, self.num_wann, 3,3, self.nRvec).transpose(0,1,4,3,2)/self.Ndegen[None,None,:,None,None]
 
-
-
-class Data_dk(Data):
-    def __init__(self,data,dk=None,AA=None,BB=None,CC=None,SS=None,NKFFT=None):
-        self.num_wann=data.num_wann
-        self.spinors=data.spinors
-        self.iRvec=data.iRvec
-        self.cRvec=data.cRvec
-        self.cell_volume=data.cell_volume
-        self.NKFFT=data.NKFFT if NKFFT is None else NKFFT
-        
-        if dk is not None:
-            expdk=np.exp(2j*np.pi*self.iRvec.dot(dk))
-        else:
-            expdk=np.ones(self.nRvec)
-
-
-        self.HH_R=data.HH_R[:,:,:]*expdk[None,None,:]
-        
-        if AA in (None,True):
-            try:
-                self.AA_R=data.AA_R[:,:,:,:]*expdk[None,None,:,None]
-            except AttributeError:
-                if AA : raise AttributeError("AA_R is not defined")
-
-
-    def get_AA_K(self):
-        try:
-            return self._AA_K
-        except AttributeError:
-            print "running get_AA_K.."
-            self._AA_K=wham.fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT)
-            return self._AA_K
-
-
-    def get_AAUU_K(self):
-        try:
-            return self._AAUU_K
-        except AttributeError:
-            print "running get_AAUU_K.."
-            _AA_K=wham.fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT)
-            self._AAUU_K=np.einsum("kml,kmna,knp->klpa",self.UUC_K,_AA_K,self.UU_K)
-            return self._AAUU_K
-    
-            
-    def get_OOmega_K(self):
-        try:
-            return self._OOmega_K
-        except AttributeError:
-            print "running get_OOmega_K.."
-            self._OOmega_K=    -1j* wham.fourier_R_to_k( 
-                        self.AA_R[:,:,:,wham.alpha]*self.cRvec[None,None,:,wham.beta ] - 
-                        self.AA_R[:,:,:,wham.beta ]*self.cRvec[None,None,:,wham.alpha]   , self.iRvec, self.NKFFT )
-             
-            return self._OOmega_K
-
-
-    def get_OOmegaUU_K(self):
-        try:
-            return self._OOmegaUU_K
-        except AttributeError:
-            print "running get_OOmegaUU_K.."
-            _OOmega_K=    -1j* wham.fourier_R_to_k( 
-                        self.AA_R[:,:,:,wham.alpha]*self.cRvec[None,None,:,wham.beta ] - 
-                        self.AA_R[:,:,:,wham.beta ]*self.cRvec[None,None,:,wham.alpha]   , self.iRvec, self.NKFFT )
-            self._OOmegaUU_K=np.einsum("knmi,kmna->kia",self.UUU_K,_OOmega_K).real
-            return self._OOmegaUU_K
-
-
-    def _get_eig_deleig(self):
-        print "running get_eog_deleig.."
-        self._E_K,self._delE_K, self._UU_K, self._HH_K, self._delHH_K =   wham.get_eig_deleig(self.NKFFT,self.HH_R,self.iRvec,self.cRvec)
-
-    
-    def get_E_K(self):
-        try:
-            return self._E_K
-        except AttributeError:
-            self._get_eig_deleig()
-            return self._E_K
-
-    def get_delE_K(self):
-        try:
-            return self._delE_K
-        except AttributeError:
-            self._get_eig_deleig()
-            return self._delE_K
-
-    def get_UU_K(self):
-        try:
-            return self._UU_K
-        except AttributeError:
-            self._get_eig_deleig()
-            return self._UU_K
-
-
-    def get_UUC_K(self):
-        try:
-            return self._UUC_K
-        except AttributeError:
-            self._UUC_K=self.UU_K.conj()
-            return self._UUC_K
-
-
-    def get_UUU_K(self):
-        try:
-            return self._UUU_K
-        except AttributeError:
-            self._UUU_K=self.UU_K[:,:,None,:]*self.UU_K.conj()[:,None,:,:]
-            return self._UUU_K
-
-
-    def get_HH_K(self):
-        try:
-            return self._HH_K
-        except AttributeError:
-            self._get_eig_deleig()
-            return self._HH_K
-
-    def get_delHH_K(self):
-        try:
-            return self._delHH_K
-        except AttributeError:
-            self._get_eig_deleig()
-            return self._delHH_K
-
-    def get_delHH_dE_K(self):
-        try:
-            return self._delHH_dE_K
-        except AttributeError:
-            _delHH_K_=np.einsum("kml,kmna,knp->klpa",self.UU_K.conj(),self.delHH_K,self.UU_K)
-            dEig_threshold=1e-14
-            dEig=self.E_K[:,:,None]-self.E_K[:,None,:]
-            select=abs(dEig)<dEig_threshold
-            dEig[select]=dEig_threshold
-            _delHH_K_[select]=0
-            self._delHH_dE_K=-1j*_delHH_K_/dEig[:,:,:,None]
-            return self._delHH_dE_K
-
-
-    def get_delHH_dE_SQ_K(self):
-        try:
-            return self._delHH_dE_SQ_K
-        except AttributeError:
-            self._delHH_dE_SQ_K= (self.delHH_dE_K[:,:,:,wham.beta]
-                         *self.delHH_dE_K[:,:,:,wham.alpha].transpose((0,2,1,3))).imag
-            return self._delHH_dE_SQ_K
-
-#        AHC2=-2*fac*np.array([sum( (delhh[n:,:m,b]*delhh[:m,n:,a].T).imag.sum() 
-#           for delhh,n,m in zip(data.delHH_dE_K,seln,selm) ) for a,b in zip(alpha,beta)] )
-#        if printJ: print ("J2 term:",AHC2)
-
-
-            
-    def get_delHH_dE_AA_K(self):
-        try:
-            return self._delHH_dE_AA_K
-        except AttributeError:
-            self._delHH_dE_AA_K=(  
-               (self.delHH_dE_K[:,:,:,wham.beta]*self.AAUU_K.transpose((0,2,1,3))[:,:,:,wham.alpha]).imag+
-               (self.delHH_dE_K.transpose((0,2,1,3))[:,:,:,wham.alpha]*self.AAUU_K[:,:,:,wham.beta]).imag  )
-            return self._delHH_dE_AA_K
-            
-
-    AA_K=property(get_AA_K)
-    AAUU_K=property(get_AAUU_K)
-    OOmega_K=property(get_OOmega_K)
-    OOmegaUU_K=property(get_OOmegaUU_K)
-    UU_K=property(get_UU_K)
-    UUC_K=property(get_UUC_K)
-    HH_K=property(get_HH_K)
-    delHH_K=property(get_delHH_K)
-    delHH_dE_K=property(get_delHH_dE_K)
-    delHH_dE_SQ_K=property(get_delHH_dE_SQ_K)
-    delHH_dE_AA_K=property(get_delHH_dE_AA_K)
-    E_K=property(get_E_K)
-    delE_K=property(get_delE_K)
-    UUU_K=property(get_UUU_K)
 
 
