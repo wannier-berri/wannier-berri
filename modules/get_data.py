@@ -274,9 +274,11 @@ class Data_dk(Data):
             return self._delHH_dE_K
         except AttributeError:
             _delHH_K_=np.einsum("kml,kmna,knp->klpa",self.UU_K.conj(),self.delHH_K,self.UU_K)
-            dEig_threshold=1e-10
+            dEig_threshold=1e-14
             dEig=self.E_K[:,:,None]-self.E_K[:,None,:]
-            dEig[dEig<dEig_threshold]=dEig_threshold
+            select=abs(dEig)<dEig_threshold
+            dEig[select]=dEig_threshold
+            _delHH_K_[select]=0
             self._delHH_dE_K=-1j*_delHH_K_/dEig[:,:,:,None]
             return self._delHH_dE_K
 
@@ -299,7 +301,8 @@ class Data_dk(Data):
         try:
             return self._delHH_dE_AA_K
         except AttributeError:
-            self._delHH_dE_AA_K=(  (self.delHH_dE_K[:,:,:,wham.beta]*self.AAUU_K.transpose((0,2,1,3))[:,:,:,wham.alpha]).imag+
+            self._delHH_dE_AA_K=(  
+               (self.delHH_dE_K[:,:,:,wham.beta]*self.AAUU_K.transpose((0,2,1,3))[:,:,:,wham.alpha]).imag+
                (self.delHH_dE_K.transpose((0,2,1,3))[:,:,:,wham.alpha]*self.AAUU_K[:,:,:,wham.beta]).imag  )
             return self._delHH_dE_AA_K
             
