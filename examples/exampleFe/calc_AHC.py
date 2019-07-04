@@ -13,7 +13,7 @@ def main():
     seedname="Fe"
     NKFFT=np.array([int(sys.argv[2])]*3)
     NKdiv=np.array([int(sys.argv[3])]*3)
-    Efermi=np.linspace(12.,13.,201)
+    Efermi=np.linspace(12.,13.,1001)
     if sys.argv[1].lower()=="tb":
         Data=get_data.Data(tb_file='Fe_tb.dat',getAA=True)
     elif sys.argv[1].lower()=="aa":
