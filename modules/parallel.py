@@ -16,7 +16,7 @@
 import  multiprocessing 
 import functools
 import numpy as np
-import get_data
+from data_dk import Data_dk
 
 
 
@@ -47,6 +47,6 @@ As a result, the integration will be performed ove NKFFT x NKdiv
 
 
 def _eval_func_dk(dk,func,Data,NKFFT):
-    data_dk=get_data.Data_dk(Data,dk,NKFFT=NKFFT)
+    data_dk=Data_dk(Data,dk,NKFFT=NKFFT)
     return func(data_dk)
 

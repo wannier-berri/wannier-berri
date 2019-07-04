@@ -4,7 +4,7 @@
 # file `LICENSE' in the root directory of the Wannier19      #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
 #                                                            #
-# most part of this file is an adapted translation of        #
+# part of this file is an adapted translation of             #
 # Fortran90 code from  Wannier 90 project                    #
 # The Wannier19 code is hosted on GitHub:                    #
 # https://github.com/stepan-tsirkin/wannier19                #
@@ -46,20 +46,6 @@ def fourier_R_to_k(AAA_R,iRvec,NKPT):
     return AAA_K
 
 
-def get_occ(eig_K,efermi):
-    occ=np.zeros(eig_K.shape,dtype=float)
-    occ[eig_K<efermi]=1
-    return occ
-
-def get_occ_mat_list(UUU_k, occ_K=None,efermi=None,eig_K=None):
-    if occ_K is None:
-        occ_K = get_occ(eig_K, efermi ) 
-#    f_list=np.einsum("knmi,ki->knm",UUU_k,occ_K)#,UU_k.conj())
-    f_list=np.array([uuu.dot(occ) for uuu,occ in zip(UUU_k,occ_K)] ) #,UU_k.conj())
-    g_list=-f_list.copy()
-    for ik in range(g_list.shape[0]):
-        g_list[ik]+=np.eye(g_list.shape[1])
-    return f_list,g_list
 
 
 def get_eig_HH_UU(NK,HH_R,iRvec):
@@ -85,7 +71,7 @@ def get_eig_slow(NK,HH_R,iRvec):
     if check>1e-10 : raise RuntimeError ("Hermiticity of interpolated Hamiltonian is not good : {0}".format(check))
     return np.array([np.linalg.eigvalsh(Hk) for Hk in HH_K])
 
-def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None):
+def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None,calcdE=False):
     ## For all  k point on a NK grid this function returns eigenvalues E and
     ## derivatives of the eigenvalues dE/dk_a, using wham_get_deleig_a
     
@@ -106,11 +92,13 @@ def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None):
     delHH_R=1j*HH_R[:,:,:,None]*cRvec[None,None,:,:]
     delHH_K=fourier_R_to_k(delHH_R,iRvec,NK)
     
-    delE_K=np.einsum("kml,kmna,knl->kla",UU_K.conj(),delHH_K,UU_K)
-    
-    check=np.abs(delE_K).imag.max()
-    if check>1e-10: raiseruntimeError ("The band derivatives have considerable imaginary part: {0}".format(check))
-    delE_K=delE_K.real
+    if calcdE:
+        delE_K=np.einsum("kml,kmna,knl->kla",UU_K.conj(),delHH_K,UU_K)    
+        check=np.abs(delE_K).imag.max()
+        if check>1e-10: raiseruntimeError ("The band derivatives have considerable imaginary part: {0}".format(check))
+        delE_K=delE_K.real
+    else:
+        delE_K=None
     
     return E_K, delE_K, UU_K, HH_K, delHH_K 
 
@@ -118,6 +106,21 @@ def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None):
 
 
 not_used="""
+
+def get_occ(eig_K,efermi):
+    occ=np.zeros(eig_K.shape,dtype=float)
+    occ[eig_K<efermi]=1
+    return occ
+
+def get_occ_mat_list(UUU_k, occ_K=None,efermi=None,eig_K=None):
+    if occ_K is None:
+        occ_K = get_occ(eig_K, efermi ) 
+    f_list=np.array([uuu.dot(occ) for uuu,occ in zip(UUU_k,occ_K)] ) #,UU_k.conj())
+    g_list=-f_list.copy()
+    for ik in range(g_list.shape[0]):
+        g_list[ik]+=np.eye(g_list.shape[1])
+    return f_list,g_list
+
 
 def get_J2_term(delHH_dE_K, eig_K, efermi):
     selm=np.sum(eig_K< efermi,axis=1)
