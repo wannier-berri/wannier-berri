@@ -47,8 +47,8 @@ def  calcAHC(data,Efermi=None, evalJ0=True,evalJ1=True,evalJ2=True,printJ=False)
     fac = -1.0e8*constants.elementary_charge**2/(constants.hbar*data.cell_volume)/np.prod(data.NKFFT)
 
     if evalJ0:
-#        AHC0= fac* np.sum(OO[:m,:].sum(axis=0) for OO,m in zip(data.OOmegaUU_K,selm) )
-        AHC0= fac*data.OOmegaUU_K[occ].sum(axis=0) #np.sum(  OO[:m,:].sum(axis=0) for OO,m in zip(data.OOmegaUU_K,selm) )
+        AHC0= fac* np.sum(OO[:m,:].sum(axis=0) for OO,m in zip(data.OOmegaUU_K,selm) )
+#        AHC0= fac*data.OOmegaUU_K[occ].sum(axis=0) #np.sum(  OO[:m,:].sum(axis=0) for OO,m in zip(data.OOmegaUU_K,selm) )
         if printJ: print ("J0 term:",AHC0)
     if evalJ1:
 #        AHC1=-2*fac*sum( delhhaa[n:,:m,:].sum(axis=(0,1))
