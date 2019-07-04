@@ -1,4 +1,4 @@
-wannier90_path="../../../wannier90"
+wannier90_path="~/wannier90-2.1.0"
 wannier90=$wannier90_path"/wannier90.x"
 postw90=$wannier90_path"/postw90.x"
 
@@ -7,7 +7,7 @@ tar -xvf input/Fe_wan_files.tar.gz
 
 
 NK_FFT=15
-NK_div=2
+NK_div=1
 NK_tot=$((NK_FFT*NK_div))
 
 echo "wanierizing"
@@ -40,7 +40,7 @@ echo "The postw90 results:"
 
 tail -30 Fe.wpout
 
-
+exit
 #### to run the following partone needs to compile postw90 from the following repository:
 #### https://github.com/stepan-tsirkin/wannier90/tree/saveHH
 

@@ -169,3 +169,50 @@ def __get_JJp_JJm_list(UU_K,UUC_K,delHH_dE_K,seln,selm):
 
         return JJp_list, JJm_list
 
+
+
+def get_J2_term(delHH_dE_K, eig_K, efermi):
+    
+    selm=np.sum(eig_K< efermi,axis=1)
+    seln=np.sum(eig_K<=efermi,axis=1)
+    return sum( np.einsum("nma,mna->a",delhh[n:,:m,beta],delhh[:m,n:,alpha]) 
+           for delhh,n,m in zip(delHH_dE_K,seln,selm)  )
+
+
+def get_J1_term(delHH_dE_K, eig_K, AAUU_K,efermi):
+    
+    selm=np.sum(eig_K< efermi,axis=1)
+    seln=np.sum(eig_K<=efermi,axis=1)
+    return sum( np.einsum("nma,mna->a",delhh[n:,:m,beta],aa[:m,n:,alpha]).imag +
+                np.einsum("nma,mna->a",delhh[:m,n:,alpha],aa[n:,:m,beta]).imag  
+           for delhh,aa,n,m in zip(delHH_dE_K,AAUU_K,seln,selm)  )
+
+
+
+
+#( np.einsum("knma,kmna->a", data.AA_K[:,:,:,wham.alpha],JJp_list[:,:,:,wham.beta]) +
+#               einsum("knma,kmna->a", data.AA_K[:,:,:,wham.beta],JJm_list[:,:,:,wham.alpha]) ).imag
+
+
+def __get_JJp_JJm_list(UU_K,UUC_K,delHH_dE_K,seln,selm):
+
+
+#        JJp_list=np.array( [np.einsum("lm,mna,pn->lpa",
+#            uu[:,n:],delhh[n:,:m,:]  , uu[:,:m].conj() )
+#                for uu,delhh,n,m in zip(UU_K,delHH_dE_K,seln,selm) ] )
+
+
+        JJp_list=np.array( [
+            uu[:,n:].dot(  uuc[:,:m].dot( delhh[n:,:m,:])) 
+                for uu,uuc,delhh,n,m in zip(UU_K,UUC_K,delHH_dE_K,seln,selm) ] )
+
+        JJm_list=np.array( [
+            uu[:,:m].dot( uuc[:,n:].dot(delhh[:m,n:,:])  )
+                for uu,uuc,delhh,n,m in zip(UU_K,UUC_K,delHH_dE_K,seln,selm) ] )
+
+
+        return JJp_list, JJm_list
+
+
+
+

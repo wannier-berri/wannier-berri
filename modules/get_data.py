@@ -12,7 +12,7 @@
 #------------------------------------------------------------
 
 import numpy as np
-from scipy.io import FortranFile as FF
+#from scipy.io import FortranFile as FF
 from aux import str2bool
 import wan_ham as wham
 import copy
@@ -176,18 +176,40 @@ class Data_dk(Data):
             print "running get_AA_K.."
             self._AA_K=wham.fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT)
             return self._AA_K
+
+
+    def get_AAUU_K(self):
+        try:
+            return self._AAUU_K
+        except AttributeError:
+            print "running get_AAUU_K.."
+            _AA_K=wham.fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT)
+            self._AAUU_K=np.einsum("kml,kmna,knp->klpa",self.UUC_K,_AA_K,self.UU_K)
+            return self._AAUU_K
     
             
     def get_OOmega_K(self):
         try:
             return self._OOmega_K
         except AttributeError:
-            print "running get_OOmega.."
+            print "running get_OOmega_K.."
             self._OOmega_K=    -1j* wham.fourier_R_to_k( 
                         self.AA_R[:,:,:,wham.alpha]*self.cRvec[None,None,:,wham.beta ] - 
                         self.AA_R[:,:,:,wham.beta ]*self.cRvec[None,None,:,wham.alpha]   , self.iRvec, self.NKFFT )
              
             return self._OOmega_K
+
+
+    def get_OOmegaUU_K(self):
+        try:
+            return self._OOmegaUU_K
+        except AttributeError:
+            print "running get_OOmegaUU_K.."
+            _OOmega_K=    -1j* wham.fourier_R_to_k( 
+                        self.AA_R[:,:,:,wham.alpha]*self.cRvec[None,None,:,wham.beta ] - 
+                        self.AA_R[:,:,:,wham.beta ]*self.cRvec[None,None,:,wham.alpha]   , self.iRvec, self.NKFFT )
+            self._OOmegaUU_K=np.einsum("knmi,kmna->kia",self.UUU_K,_OOmega_K)
+            return self._OOmegaUU_K
 
 
     def _get_eig_deleig(self):
@@ -258,7 +280,9 @@ class Data_dk(Data):
 
 
     AA_K=property(get_AA_K)
+    AAUU_K=property(get_AAUU_K)
     OOmega_K=property(get_OOmega_K)
+    OOmegaUU_K=property(get_OOmegaUU_K)
     UU_K=property(get_UU_K)
     UUC_K=property(get_UUC_K)
     HH_K=property(get_HH_K)
