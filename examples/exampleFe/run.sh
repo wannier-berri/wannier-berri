@@ -14,10 +14,11 @@ echo "wanierizing"
 
 
 cp input/Fe.win0 Fe.win
-#$wannier90 Fe
+$wannier90 Fe
 
-rm Fe_wsvec.dat Fe_band* 
+rm Fe_band*  # Fe_wsvec.dat # 
 
+exit
 echo
 echo "evaluating AHC using wannier19 from Fe_tb.dat"
 #time ./calc_AHC.py tb $NK_FFT $NK_div 
