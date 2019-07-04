@@ -17,11 +17,11 @@ from aux import str2bool
 import wan_ham as wham
 import copy
 import lazy_property
-
+from ws_dist_map import ws_dist_map
 
 class Data():
 
-    def __init__(self,seedname="wannier90",tb_file=None,getAA=False,getBB=False,getCC=False,getSS=False,NKFFT=None):
+    def __init__(self,seedname="wannier90",tb_file=None,getAA=False,getBB=False,getCC=False,getSS=False,NKFFT=None,use_ws=True):
         if tb_file is not None:
             self.__from_tb_file(tb_file,getAA=getAA,NKFFT=NKFFT)
             return
@@ -45,20 +45,31 @@ class Data():
         print ("Real-space lattice:\n",self.real_lattice)
         #print ("R - points and dege=neracies:\n",iRvec)
         
+        if use_ws:
+            ws_map=ws_dist_map(self.iRvec,self.num_wann,seedname+"_wsvec.dat")
+        else:
+            ws_map=None
+
         self.HH_R=self.__getMat('HH')
+        if use_ws: self.HH_R=ws_map.mapmat(self.HH_R)
         
         if getAA:
             self.AA_R=self.__getMat('AA')
-            
+            if use_ws: self.AA_R=ws_map.mapmat(self.AA_R)
+
         if getBB:
             self.BB_R=self.__getMat('BB')
+            if use_ws: self.BB_R=ws_map.mapmat(self.BB_R)
 
         if getCC:
             self.CC_R=self.__getMat('CC')
+            if use_ws: self.CC_R=ws_map.mapmat(self.CC_R)
 
         if getSS:
             self.SS_R=self.__getMat('SS')
-
+            if use_ws: self.SS_R=ws_map.mapmat(self.SS_R)
+        
+        self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
 
     def __from_tb_file(self,tb_file=None,getAA=False,NKFFT=None):
         self.seedname=tb_file.split("/")[-1].split("_")[0]
@@ -120,9 +131,14 @@ class Data():
         return self.iRvec.dot(self.real_lattice)
 
 
-    @lazy_property.LazyProperty
+#    @lazy_property.LazyProperty
+#    def get_nRvec(self):
+#        return self.iRvec.shape[0]
+    
+    @property 
     def nRvec(self):
         return self.iRvec.shape[0]
+
 
     @lazy_property.LazyProperty
     def cell_volume(self):
@@ -145,6 +161,7 @@ class Data():
         elif ncomp==9:
             print "reading 2d for ",suffix
             return MM_R.reshape(self.num_wann, self.num_wann, 3,3, self.nRvec).transpose(0,1,4,3,2)/self.Ndegen[None,None,:,None,None]
+        
 
 
 
