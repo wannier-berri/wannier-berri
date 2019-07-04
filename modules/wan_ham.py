@@ -115,6 +115,24 @@ def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None):
     return E_K, delE_K, UU_K, HH_K, delHH_K 
 
 
+
+
+not_used="""
+
+def get_J2_term(delHH_dE_K, eig_K, efermi):
+    selm=np.sum(eig_K< efermi,axis=1)
+    seln=np.sum(eig_K<=efermi,axis=1)
+    return np.array([sum( (delhh[n:,:m,b]*delhh[:m,n:,a].T).imag.sum() 
+           for delhh,n,m in zip(delHH_dE_K,seln,selm) ) for a,b in zip(alpha,beta)] )
+
+
+def get_J1_term(delHH_dE_K, eig_K, AAUU_K,efermi):
+    selm=np.sum(eig_K< efermi,axis=1)
+    seln=np.sum(eig_K<=efermi,axis=1)
+    return np.array([sum( (delhh[n:,:m,b]*aa[:m,n:,a].T).imag.sum() +
+                (delhh[:m,n:,a]*aa[n:,:m,b].T).imag.sum()
+           for delhh,aa,n,m in zip(delHH_dE_K,AAUU_K,seln,selm)  ) for a,b in zip(alpha,beta)])
+
 def get_JJp_JJm_list(delHH_dE_K, UU_K, UUC_K, eig_K, occ_K=None,efermi=None):
     #===============================================#
     #                                               #
@@ -171,28 +189,6 @@ def __get_JJp_JJm_list(UU_K,UUC_K,delHH_dE_K,seln,selm):
 
 
 
-def get_J2_term(delHH_dE_K, eig_K, efermi):
-    
-    selm=np.sum(eig_K< efermi,axis=1)
-    seln=np.sum(eig_K<=efermi,axis=1)
-    return sum( np.einsum("nma,mna->a",delhh[n:,:m,beta],delhh[:m,n:,alpha]) 
-           for delhh,n,m in zip(delHH_dE_K,seln,selm)  )
-
-
-def get_J1_term(delHH_dE_K, eig_K, AAUU_K,efermi):
-    
-    selm=np.sum(eig_K< efermi,axis=1)
-    seln=np.sum(eig_K<=efermi,axis=1)
-    return sum( np.einsum("nma,mna->a",delhh[n:,:m,beta],aa[:m,n:,alpha]).imag +
-                np.einsum("nma,mna->a",delhh[:m,n:,alpha],aa[n:,:m,beta]).imag  
-           for delhh,aa,n,m in zip(delHH_dE_K,AAUU_K,seln,selm)  )
-
-
-
-
-#( np.einsum("knma,kmna->a", data.AA_K[:,:,:,wham.alpha],JJp_list[:,:,:,wham.beta]) +
-#               einsum("knma,kmna->a", data.AA_K[:,:,:,wham.beta],JJm_list[:,:,:,wham.alpha]) ).imag
-
 
 def __get_JJp_JJm_list(UU_K,UUC_K,delHH_dE_K,seln,selm):
 
@@ -216,3 +212,4 @@ def __get_JJp_JJm_list(UU_K,UUC_K,delHH_dE_K,seln,selm):
 
 
 
+"""

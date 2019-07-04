@@ -12,7 +12,7 @@
 #------------------------------------------------------------
 
 import numpy as np
-#from scipy.io import FortranFile as FF
+from scipy.io import FortranFile as FF
 from aux import str2bool
 import wan_ham as wham
 import copy
@@ -208,7 +208,7 @@ class Data_dk(Data):
             _OOmega_K=    -1j* wham.fourier_R_to_k( 
                         self.AA_R[:,:,:,wham.alpha]*self.cRvec[None,None,:,wham.beta ] - 
                         self.AA_R[:,:,:,wham.beta ]*self.cRvec[None,None,:,wham.alpha]   , self.iRvec, self.NKFFT )
-            self._OOmegaUU_K=np.einsum("knmi,kmna->kia",self.UUU_K,_OOmega_K)
+            self._OOmegaUU_K=np.einsum("knmi,kmna->kia",self.UUU_K,_OOmega_K).real
             return self._OOmegaUU_K
 
 
@@ -274,10 +274,35 @@ class Data_dk(Data):
             return self._delHH_dE_K
         except AttributeError:
             _delHH_K_=np.einsum("kml,kmna,knp->klpa",self.UU_K.conj(),self.delHH_K,self.UU_K)
+            dEig_threshold=1e-10
             dEig=self.E_K[:,:,None]-self.E_K[:,None,:]
+            dEig[dEig<dEig_threshold]=dEig_threshold
             self._delHH_dE_K=-1j*_delHH_K_/dEig[:,:,:,None]
             return self._delHH_dE_K
 
+
+    def get_delHH_dE_SQ_K(self):
+        try:
+            return self._delHH_dE_SQ_K
+        except AttributeError:
+            self._delHH_dE_SQ_K= (self.delHH_dE_K[:,:,:,wham.beta]
+                         *self.delHH_dE_K[:,:,:,wham.alpha].transpose((0,2,1,3))).imag
+            return self._delHH_dE_SQ_K
+
+#        AHC2=-2*fac*np.array([sum( (delhh[n:,:m,b]*delhh[:m,n:,a].T).imag.sum() 
+#           for delhh,n,m in zip(data.delHH_dE_K,seln,selm) ) for a,b in zip(alpha,beta)] )
+#        if printJ: print ("J2 term:",AHC2)
+
+
+            
+    def get_delHH_dE_AA_K(self):
+        try:
+            return self._delHH_dE_AA_K
+        except AttributeError:
+            self._delHH_dE_AA_K=(  (self.delHH_dE_K[:,:,:,wham.beta]*self.AAUU_K.transpose((0,2,1,3))[:,:,:,wham.alpha]).imag+
+               (self.delHH_dE_K.transpose((0,2,1,3))[:,:,:,wham.alpha]*self.AAUU_K[:,:,:,wham.beta]).imag  )
+            return self._delHH_dE_AA_K
+            
 
     AA_K=property(get_AA_K)
     AAUU_K=property(get_AAUU_K)
@@ -288,6 +313,8 @@ class Data_dk(Data):
     HH_K=property(get_HH_K)
     delHH_K=property(get_delHH_K)
     delHH_dE_K=property(get_delHH_dE_K)
+    delHH_dE_SQ_K=property(get_delHH_dE_SQ_K)
+    delHH_dE_AA_K=property(get_delHH_dE_AA_K)
     E_K=property(get_E_K)
     delE_K=property(get_delE_K)
     UUU_K=property(get_UUU_K)
