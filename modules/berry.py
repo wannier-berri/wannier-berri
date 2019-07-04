@@ -36,6 +36,10 @@ def  calcAHC(data,Efermi=None, evalJ0=True,evalJ1=True,evalJ2=True,printJ=False)
 
     selm=np.sum(data.E_K< Efermi,axis=1)
     seln=np.sum(data.E_K<=Efermi,axis=1)
+    
+    occ=(data.E_K< Efermi)
+    unocc=(data.E_K>Efermi)
+    unoccocc=unocc[:,:,None]*occ[:,None,:]
 
     AHC0=np.zeros(3)
     AHC1=np.zeros(3)
@@ -43,24 +47,20 @@ def  calcAHC(data,Efermi=None, evalJ0=True,evalJ1=True,evalJ2=True,printJ=False)
     fac = -1.0e8*constants.elementary_charge**2/(constants.hbar*data.cell_volume)/np.prod(data.NKFFT)
 
     if evalJ0:
-        AHC0= fac* np.sum(OO[:m,:].sum(axis=0) for OO,m in zip(data.OOmegaUU_K,selm) )
+#        AHC0= fac* np.sum(OO[:m,:].sum(axis=0) for OO,m in zip(data.OOmegaUU_K,selm) )
+        AHC0= fac*data.OOmegaUU_K[occ].sum(axis=0) #np.sum(  OO[:m,:].sum(axis=0) for OO,m in zip(data.OOmegaUU_K,selm) )
         if printJ: print ("J0 term:",AHC0)
     if evalJ1:
-#        AHC1=-2*fac*np.array([sum( (delhh[n:,:m,b]*aa[:m,n:,a].T).imag.sum() +
-#                (delhh[:m,n:,a]*aa[n:,:m,b].T).imag.sum()
-#                       for delhh,aa,n,m in zip(data.delHH_dE_K,data.AAUU_K,seln,selm)  ) 
-#                           for a,b in zip(alpha,beta)])
-#        AHC1=-2*fac*np.array([sum( (delhh[n:,:m,b]*aa[n:,:m,a]).imag.sum() +
-#                (delhh[:m,n:,a]*aa[:m,n:,b]).imag.sum()
-#                       for delhh,aa,n,m in zip(data.delHH_dE_K,data.AAUU_K.transpose((0,2,1,3)),seln,selm)  ) 
-#                           for a,b in zip(alpha,beta)])
-        AHC1=-2*fac*sum( delhhaa[n:,:m,:].sum(axis=(0,1))
-                    for delhhaa,n,m in zip(data.delHH_dE_AA_K,seln,selm)  ) 
-
+#        AHC1=-2*fac*sum( delhhaa[n:,:m,:].sum(axis=(0,1))
+#                    for delhhaa,n,m in zip(data.delHH_dE_AA_K,seln,selm)  ) 
+        AHC1=-2*fac*data.delHH_dE_AA_K[unoccocc].sum(axis=0)
+#        sum( delhhaa[n:,:m,:].sum(axis=(0,1))
+#                    for delhhaa,n,m in zip(data.delHH_dE_AA_K,seln,selm)  ) 
         if printJ: print ("J1 term:",AHC1)
     if evalJ2:
-        AHC2=-2*fac*sum( delhhsq[n:,:m,:].sum(axis=(0,1)) 
-           for delhhsq,n,m in zip(data.delHH_dE_SQ_K,seln,selm) ) # for a,b in zip(alpha,beta)] )
+#        AHC2=-2*fac*sum( delhhsq[n:,:m,:].sum(axis=(0,1)) 
+#           for delhhsq,n,m in zip(data.delHH_dE_SQ_K,seln,selm) ) # for a,b in zip(alpha,beta)] )
+        AHC2=-2*fac*data.delHH_dE_SQ_K[unoccocc].sum(axis=0)
         if printJ: print ("J2 term:",AHC2)
     AHC=(AHC0+AHC1+AHC2)
     
