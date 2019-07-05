@@ -15,17 +15,30 @@ class ws_dist_map():
             for ir in range(nRvec): 
                 for iw in range(num_wann):
                     for jw in range(num_wann):
-                        irvec_old=np.array(f.readline().split()[:3],dtype=int)
+                        l=np.array(f.readline().split(),dtype=int)
+                        assert(l[3]==iw+1)
+                        assert(l[4]==jw+1)
+                        irvec_old=l[:3]
 #                        print iRvec[ir],irvec_old
                         assert(  tuple(iRvec[ir])==tuple(irvec_old) )
-                        ndeg=int(f.readline().split()[0])
+                        ndeg=int(f.readline())
                         for ideg in range(ndeg):
-                            irvec_new=np.array(f.readline().split()[:3],dtype=int)+irvec_old
+                            irvec_new=np.array( f.readline().split(),dtype=int )+irvec_old
                             self._add(ir,irvec_new,iw,jw,ndeg)
         
         self._iRvec_ordered=sorted(self._iRvec_new)
-        print ir," old vectors read ",len(self._iRvec_new)," new vectors"
-        print "control sum: \n",sum(A for vecsold in self._iRvec_new.values() for A in vecsold.values())/nRvec
+        print len(self._iRvec_new)," new vectors"
+        for ir  in range(nRvec):
+            chsum=0
+#            print "old vector ",ir
+            for irnew in self._iRvec_new:
+                if ir in self._iRvec_new[irnew]:
+#                    print "irnew ",irnew,"\n",self._iRvec_new[irnew][ir]
+                    chsum+=self._iRvec_new[irnew][ir]
+            chsum=np.abs(chsum-np.ones( (num_wann,num_wann) )).sum() 
+            if chsum>1e-12: print "WARNING: Check sum for ",ir," : ",
+            print "control sum (ir): \n",sum( (vecsold[ir] if ir in vecsold else 0.) for vecsold  in self._iRvec_new.values() )
+#            print "control sum: \n",sum(A for vecsold in self._iRvec_new.values() for A in vecsold.values())/nRvec
 #        print self._iRvec_new
 
     def _add(self,ir,irvec_new,iw,jw,ndeg):
@@ -40,10 +53,24 @@ class ws_dist_map():
         ndim=len(matrix.shape)-3
         num_wann=matrix.shape[0]
         reshaper=(num_wann,num_wann)+(-1,)*ndim
-        return np.array([ sum(matrix[:,:,ir]*self._iRvec_new[irvecnew][ir].reshape(reshaper)
+        matrix_new=np.array([ sum(matrix[:,:,ir]*self._iRvec_new[irvecnew][ir].reshape(reshaper)
                                   for ir in self._iRvec_new[irvecnew] ) 
                                        for irvecnew in self._iRvec_ordered]).transpose( (1,2,0)+tuple(range(3,3+ndim)) )
+        assert ( np.abs(matrix_new.sum(axis=2)-matrix.sum(axis=2)).max()<1e-12)
+        return matrix_new
              
+
+    def mapmat0d(self,matrix):
+#        return self.mapmat(matrix)
+        matrix_new= np.array([ sum(matrix[:,:,ir]*self._iRvec_new[irvecnew][ir]
+                                  for ir in self._iRvec_new[irvecnew] ) 
+                                       for irvecnew in self._iRvec_ordered]).transpose( (1,2,0)  )        
+        assert ( np.abs(matrix_new.sum(axis=2)-matrix.sum(axis=2)).max()<1e-12)
+        return matrix_new
+#        num_wann=matrix.shape[0]
+#        return np.array([ sum(matrix[:,:,ir]*self._iRvec_new[irvecnew][ir]
+#                                  for ir in self._iRvec_new[irvecnew] ) 
+#                                       for irvecnew in self._iRvec_ordered]).transpose( (1,2,0)  )
 
 
 if __name__ == '__main__':

@@ -51,7 +51,7 @@ class Data():
             ws_map=None
 
         self.HH_R=self.__getMat('HH')
-        if use_ws: self.HH_R=ws_map.mapmat(self.HH_R)
+        if use_ws: self.HH_R=ws_map.mapmat0d(self.HH_R)
         
         if getAA:
             self.AA_R=self.__getMat('AA')
@@ -69,7 +69,9 @@ class Data():
             self.SS_R=self.__getMat('SS')
             if use_ws: self.SS_R=ws_map.mapmat(self.SS_R)
         
-        self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
+        iRvecnew=np.array(ws_map._iRvec_ordered,dtype=int)
+        print "Old and new vectors \n",np.hstack( (self.iRvec,iRvecnew))
+        if use_ws: self.iRvec=iRvecnew
 
     def __from_tb_file(self,tb_file=None,getAA=False,NKFFT=None):
         self.seedname=tb_file.split("/")[-1].split("_")[0]
@@ -126,7 +128,8 @@ class Data():
         print ("Real-space lattice:\n",self.real_lattice)
         #print ("R - points and dege=neracies:\n",iRvec)
         
-    @lazy_property.LazyProperty
+#    @lazy_property.LazyProperty
+    @property
     def cRvec(self):
         return self.iRvec.dot(self.real_lattice)
 
