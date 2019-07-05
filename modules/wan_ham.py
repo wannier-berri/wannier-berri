@@ -91,6 +91,8 @@ def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None,calcdE=False):
     
     delHH_R=1j*HH_R[:,:,:,None]*cRvec[None,None,:,:]
     delHH_K=fourier_R_to_k(delHH_R,iRvec,NK)
+    check=np.max( [np.abs(delH-delH.transpose((1,0,2)).conj()).max() for delH in delHH_K] )
+    if check>1e-10 : raise RuntimeError ("Hermiticity of interpolated Hamiltonian derivative is not good : {0}".format(check))
     
     if calcdE:
         delE_K=np.einsum("kml,kmna,knl->kla",UU_K.conj(),delHH_K,UU_K)    
