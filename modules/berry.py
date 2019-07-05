@@ -29,28 +29,54 @@ from collections import Iterable
 
 alpha=np.array([1,2,0])
 beta =np.array([2,0,1])
+fac_ahc = -1.0e8*constants.elementary_charge**2/constants.hbar
 
-def calcAHC(data,Efermi=None, evalJ0=True,evalJ1=True,evalJ2=True):
+
+def eval_J0(A,occ):
+    return A[occ].sum(axis=0)
+
+def eval_J12(B,unoccocc):
+    return -2*B[unoccocc].sum(axis=0)
+
+def get_occ(E_K,Efermi):
+    return (E_K< Efermi)
+        
+def calcAHC(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
+
+    if occ_old is None: 
+        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
 
     if isinstance(Efermi, Iterable):
-        return np.array( [calcAHC(data,Efermi=Ef, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
-                 for Ef in Efermi])
-
-    occ=(data.E_K< Efermi)
-    unocc=(data.E_K>Efermi)
-    unoccocc=unocc[:,:,None]*occ[:,None,:]
-
+        nFermi=len(Efermi)
+        AHC=np.zeros( ( nFermi,4,3) ,dtype=float )
+        for iFermi in range(nFermi):
+            AHC[iFermi]=calcAHC(data,Efermi=Efermi[iFermi],occ_old=occ_old, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
+        return np.cumsum(AHC,axis=0)
+    
+    # now code for a single Fermi level:
     AHC=np.zeros((4,3))
 
+    occ_new=get_occ(data.E_K,Efermi)
+    unocc_new=np.logical_not(occ_new)
+    unocc_old=np.logical_not(occ_old)
+    selectK=np.where(np.any(occ_old!=occ_new,axis=1))[0]
+    occ_old_selk=occ_old[selectK]
+    occ_new_selk=occ_new[selectK]
+    unocc_old_selk=unocc_old[selectK]
+    unocc_new_selk=unocc_new[selectK]
+    delocc=occ_new_selk!=occ_old_selk
+    unoccocc_plus=unocc_new_selk[:,:,None]*delocc[:,None,:]
+    unoccocc_minus=delocc[:,:,None]*occ_old_selk[:,None,:]
+
     if evalJ0:
-        AHC[0]= data.OOmegaUU_K[occ].sum(axis=0) 
+        AHC[0]= eval_J0(data.OOmegaUU_K[selectK], delocc)
     if evalJ1:
-        AHC[1]=-2*data.delHH_dE_AA_K[unoccocc].sum(axis=0)
+        B=data.delHH_dE_AA_K[selectK]
+        AHC[1]=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
     if evalJ2:
-        AHC[2]=-2*data.delHH_dE_SQ_K[unoccocc].sum(axis=0)
+        B=data.delHH_dE_SQ_K[selectK]
+        AHC[2]=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
+    AHC[3,:]=AHC[:3,:].sum(axis=0)
 
-    AHC[3]=AHC[:3,:].sum(axis=0)
-
-    fac = -1.0e8*constants.elementary_charge**2/(constants.hbar*data.cell_volume)/np.prod(data.NKFFT)
-    
-    return AHC*fac
+    occ_old[:,:]=occ_new[:,:]
+    return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)

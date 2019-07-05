@@ -18,7 +18,7 @@ and one can compare results.  One can see, that the second option  gives exactly
 In any case, 
 For a single Efermi wannier19 works ~4 time faster, and I expect that the advantage will grow with the size of ab-initio mesh (not tested yet)
 For fermi-scan mode the advantage is even more. Im my realisation I avoided multiple calculation of the same matrices, hence 
-scan of 100 Fermi levels only doubles the computational time. While in Wannier90 the compuation time grows significantly with the number of Fermi levels.
+scan of 1000 Fermi levels does not add any notable the computational time. While in Wannier90 the compuation time grows significantly with the number of Fermi levels.
 
 wannier19 can be run in parallel, just change the following line in python script:
      AHC=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,parallel=True,nproc=4)
