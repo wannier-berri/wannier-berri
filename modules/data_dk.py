@@ -44,6 +44,11 @@ class Data_dk(Data):
         self._E_K,self._delE_K, self._UU_K, self._HH_K, self._delHH_K =   wham.get_eig_deleig(self.NKFFT,self.HH_R,self.iRvec,self.cRvec)
 
     @lazy_property.LazyProperty
+    def NKFFT_tot(self):
+        return np.prod(self.NKFFT)
+
+
+    @lazy_property.LazyProperty
     def E_K(self):
         self._get_eig_deleig
         return self._E_K
