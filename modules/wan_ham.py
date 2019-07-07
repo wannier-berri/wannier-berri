@@ -46,6 +46,29 @@ def fourier_R_to_k(AAA_R,iRvec,NKPT):
     return AAA_K
 
 
+def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT):
+    #  AAA_R is an array of dimension ( num_wann x num_wann x nRpts X ... ) (any further dimensions allowed)
+    #  AAA_k is assumed Hermitian (in n,m) , so only half of it is calculated
+    NK=tuple(NKPT)
+    nRvec=iRvec.shape[0]
+    shapeA=AAA_R.shape
+    num_wann=shapeA[0]
+    assert(nRvec==shapeA[2])
+    M,N=np.triu_indices(num_wann)
+    ntriu=len(M)
+    AAA_R=AAA_R[M,N].transpose( (1,0)+tuple(range(2,len(shapeA)-1))  ).reshape(nRvec,-1)
+    AAA_K=np.zeros( NK+(AAA_R.shape[1],), dtype=complex )
+    for ir,irvec in enumerate(iRvec):
+            AAA_K[tuple(irvec)]=AAA_R[ir]
+    for m in range(AAA_K.shape[3]):
+            AAA_K[:,:,:,m]=np.fft.fftn(AAA_K[:,:,:,m])
+    AAA_K=AAA_K.reshape( (np.prod(NK),ntriu)+shapeA[3:])
+    result=np.zeros( (np.prod(NK),num_wann,num_wann)+shapeA[3:],dtype=complex)
+    result[:,M,N]=AAA_K
+    result[:,N,M]=AAA_K.conjugate()
+    diag=range(num_wann)
+    result[:,diag,diag]=result[:,diag,diag].real
+    return result
 
 
 def get_eig_HH_UU(NK,HH_R,iRvec):
@@ -76,7 +99,8 @@ def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None,calcdE=False):
     ## derivatives of the eigenvalues dE/dk_a, using wham_get_deleig_a
     
     num_wann=HH_R.shape[0]
-    HH_K=fourier_R_to_k(HH_R,iRvec,NK)
+    HH_K=fourier_R_to_k_hermitian(HH_R,iRvec,NK)
+#    HH_K=fourier_R_to_k(HH_R,iRvec,NK)
  
     check=np.max( [np.abs(H-H.T.conj()).max() for H in HH_K] )
     if check>1e-10 : raise RuntimeError ("Hermiticity of interpolated Hamiltonian is not good : {0}".format(check))
@@ -90,7 +114,7 @@ def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None,calcdE=False):
     if cRvec is None: return E_K, None, UU_K, HH_K, None 
     
     delHH_R=1j*HH_R[:,:,:,None]*cRvec[None,None,:,:]
-    delHH_K=fourier_R_to_k(delHH_R,iRvec,NK)
+    delHH_K=fourier_R_to_k_hermitian(delHH_R,iRvec,NK)
     
     if calcdE:
         delE_K=np.einsum("kml,kmna,knl->kla",UU_K.conj(),delHH_K,UU_K)    
