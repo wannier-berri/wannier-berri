@@ -46,7 +46,10 @@ def fourier_R_to_k(AAA_R,iRvec,NKPT):
     return AAA_K
 
 
-def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT):
+def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
+###  in practice use of hermiticity does not speed the calculation. 
+### probably, because FFT is faster then reshaping matrices
+#    return fourier_R_to_k(AAA_R,iRvec,NKPT)
     #  AAA_R is an array of dimension ( num_wann x num_wann x nRpts X ... ) (any further dimensions allowed)
     #  AAA_k is assumed Hermitian (in n,m) , so only half of it is calculated
     NK=tuple(NKPT)
@@ -65,9 +68,13 @@ def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT):
     AAA_K=AAA_K.reshape( (np.prod(NK),ntriu)+shapeA[3:])
     result=np.zeros( (np.prod(NK),num_wann,num_wann)+shapeA[3:],dtype=complex)
     result[:,M,N]=AAA_K
-    result[:,N,M]=AAA_K.conjugate()
-    diag=range(num_wann)
-    result[:,diag,diag]=result[:,diag,diag].real
+    diag=np.arange(num_wann)
+    if anti:
+        result[:,N,M]=-AAA_K.conjugate()
+        result[:,diag,diag]=result[:,diag,diag].imag
+    else:
+        result[:,N,M]=AAA_K.conjugate()
+        result[:,diag,diag]=result[:,diag,diag].real
     return result
 
 
