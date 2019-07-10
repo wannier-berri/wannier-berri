@@ -13,12 +13,12 @@ def main():
     seedname="Fe"
     NKFFT=np.array([int(sys.argv[2])]*3)
     NKdiv=np.array([int(sys.argv[3])]*3)
-    Efermi=np.linspace(12.,13.,5001)
+    Efermi=np.linspace(12.,13.,11)
 #    Efermi=[12.6,]
     if sys.argv[1].lower()=="tb":
         Data=get_data.Data(tb_file='Fe_tb.dat',getAA=True)
     elif sys.argv[1].lower()=="aa":
-        Data=get_data.Data(seedname,getAA=True)
+        Data=get_data.Data(seedname,getAA=True,use_ws=True)
     
     eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi )
     AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,parallel=False,nproc=4)
