@@ -17,7 +17,7 @@ from aux import str2bool
 import wan_ham as wham
 import copy
 import lazy_property
-from ws_dist_map import ws_dist_map
+from ws_dist_map2 import ws_dist_map
 
 class Data():
 
@@ -31,7 +31,7 @@ class Data():
         self.num_wann,nRvec,self.spinors=int(l[0]),int(l[1]),str2bool(l[2])
         self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
         iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
-        f.close()
+        
         self.Ndegen=iRvec[:,3]
         self.iRvec=iRvec[:,:3]
         if NKFFT is None:
@@ -44,12 +44,15 @@ class Data():
         print ("Number of K points:", self.NKFFT)
         print ("Real-space lattice:\n",self.real_lattice)
         #print ("R - points and dege=neracies:\n",iRvec)
+        has_ws=str2bool(f.readline().split("=")[1].strip())
         
-        if use_ws:
-            self.ws_map=ws_dist_map(self.iRvec,self.num_wann,seedname+"_wsvec.dat")
+        if has_ws and use_ws:
+            self.ws_map=ws_dist_map(self.iRvec,self.num_wann,f.readlines())
             self.iRvec=np.array(self.ws_map._iRvec_ordered,dtype=int)
         else:
             self.ws_map=None
+        
+        f.close()
 
         self.HH_R=self.__getMat('HH')
         

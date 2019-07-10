@@ -1,11 +1,14 @@
 import numpy as np
 
 
+from time import time
+
 class ws_dist_map():
     def __init__(self,iRvec,num_wann,file_ws=None):
         nRvec=iRvec.shape[0]
         self.num_wann=num_wann
         self._iRvec_new=dict()
+        t0=time()
         if file_ws is None:
             for ir in range(nRvec):
                 self._iRvec_new[tuple(iRvec[ir])]=dict({ir:np.ones((num_wann,num_wann))})
@@ -24,7 +27,7 @@ class ws_dist_map():
                         for ideg in range(ndeg):
                             irvec_new=np.array( f.readline().split(),dtype=int )+irvec_old
                             self._add(ir,irvec_new,iw,jw,ndeg)
-        
+        t1=time()
         self._iRvec_ordered=sorted(self._iRvec_new)
         for ir  in range(nRvec):
             chsum=0
@@ -32,7 +35,9 @@ class ws_dist_map():
                 if ir in self._iRvec_new[irnew]:
                     chsum+=self._iRvec_new[irnew][ir]
             chsum=np.abs(chsum-np.ones( (num_wann,num_wann) )).sum() 
-            if chsum>1e-12: print "WARNING: Check sum for ",ir," : ",
+            if chsum>1e-12: print "WARNING: Check sum for ",ir," : ",chsum
+        t2=time()
+        print ("time for reading wsvec: {0}, for chsum: {1}".format(t1-t0,t2-t1))
 
     def _add(self,ir,irvec_new,iw,jw,ndeg):
         irvec_new=tuple(irvec_new)

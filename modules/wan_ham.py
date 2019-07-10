@@ -27,8 +27,16 @@ alpha=np.array([1,2,0])
 beta =np.array([2,0,1])
 
 
-def fourier_R_to_k(AAA_R,iRvec,NKPT):
+def fourier_R_to_k(AAA_R,iRvec,NKPT,hermitian=False,antihermitian=False):
     #  AAA_R is an array of dimension ( num_wann x num_wann x nRpts X ... ) (any further dimensions allowed)
+    if  hermitian and antihermitian :
+        raise ValueError("A matrix cannot be bothe Haermitian and antihermitian, unless it is zero")
+    if hermitian:
+        return fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT)
+    if antihermitian:
+        return fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=True)
+
+    #now the generic case
     NK=tuple(NKPT)
     nRvec=iRvec.shape[0]
     shapeA=AAA_R.shape
@@ -47,7 +55,7 @@ def fourier_R_to_k(AAA_R,iRvec,NKPT):
 
 
 def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
-###  in practice use of hermiticity does not speed the calculation. 
+###  in practice (at least for the test example)  use of hermiticity does not speed the calculation. 
 ### probably, because FFT is faster then reshaping matrices
 #    return fourier_R_to_k(AAA_R,iRvec,NKPT)
     #  AAA_R is an array of dimension ( num_wann x num_wann x nRpts X ... ) (any further dimensions allowed)
@@ -80,48 +88,28 @@ def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
 
 def get_eig_HH_UU(NK,HH_R,iRvec):
     res=get_eig_deleig(NK,HH_R,iRvec)
-    return res[0],res[2],res[3]  # E_K,UU_K,HH_K
-
+    return res[0],res[2],res[3]  # E_K,UU_K,HH_
 
 
 def get_eig(NK,HH_R,iRvec):
     num_wann=HH_R.shape[0]
-    HH_K=fourier_R_to_k(HH_R,iRvec,NK)
-    check=np.max( [np.abs(H-H.T.conj()).max() for H in HH_K] )
-    if check>1e-10 : raise RuntimeError ("Hermiticity of interpolated Hamiltonian is not good : {0}".format(check))
+    HH_K=fourier_R_to_k(HH_R,iRvec,NK,hermitian=True)
     return np.array([np.linalg.eigvalsh(Hk) for Hk in HH_K])
 
 
-def get_eig_slow(NK,HH_R,iRvec):
-    num_wann=HH_R.shape[0]
-    dk=1./NK
-    kpt_list=[dk*np.array([x,y,z]) for x in range(NK[0]) for y in range(NK[1]) for z in range(NK[2]) ]
-    HH_K=[HH_R.dot(np.exp(2j*np.pi*iRvec.dot(kpt))) for kpt in kpt_list]
-    check=np.max( [np.abs(H-H.T.conj()).max() for H in HH_K] )
-    if check>1e-10 : raise RuntimeError ("Hermiticity of interpolated Hamiltonian is not good : {0}".format(check))
-    return np.array([np.linalg.eigvalsh(Hk) for Hk in HH_K])
-
-def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None,calcdE=False):
+def get_eig_deleig(NK,HH_R,iRvec,cRvec=None,calcdE=False):
     ## For all  k point on a NK grid this function returns eigenvalues E and
     ## derivatives of the eigenvalues dE/dk_a, using wham_get_deleig_a
-    
     num_wann=HH_R.shape[0]
-    HH_K=fourier_R_to_k_hermitian(HH_R,iRvec,NK)
-#    HH_K=fourier_R_to_k(HH_R,iRvec,NK)
- 
-    check=np.max( [np.abs(H-H.T.conj()).max() for H in HH_K] )
-    if check>1e-10 : raise RuntimeError ("Hermiticity of interpolated Hamiltonian is not good : {0}".format(check))
-
-
+    HH_K=fourier_R_to_k(HH_R,iRvec,NK,hermitian=True)
     EUU=[np.linalg.eigh(Hk) for Hk in HH_K]
     E_K=np.array([euu[0] for euu in EUU])
     UU_K =np.array([euu[1] for euu in EUU])
-#    print ("Energies calculated")
     
     if cRvec is None: return E_K, None, UU_K, HH_K, None 
     
     delHH_R=1j*HH_R[:,:,:,None]*cRvec[None,None,:,:]
-    delHH_K=fourier_R_to_k_hermitian(delHH_R,iRvec,NK)
+    delHH_K=fourier_R_to_k(delHH_R,iRvec,NK,hermitian=True)
     
     if calcdE:
         delE_K=np.einsum("kml,kmna,knl->kla",UU_K.conj(),delHH_K,UU_K)    
@@ -137,6 +125,20 @@ def  get_eig_deleig(NK,HH_R,iRvec,cRvec=None,calcdE=False):
 
 
 not_used="""
+
+    check=np.max( [np.abs(H-H.T.conj()).max() for H in HH_K] )
+    if check>1e-10 : raise RuntimeError ("Hermiticity of interpolated Hamiltonian is not good : {0}".format(check))
+
+
+def get_eig_slow(NK,HH_R,iRvec):
+    num_wann=HH_R.shape[0]
+    dk=1./NK
+    kpt_list=[dk*np.array([x,y,z]) for x in range(NK[0]) for y in range(NK[1]) for z in range(NK[2]) ]
+    HH_K=[HH_R.dot(np.exp(2j*np.pi*iRvec.dot(kpt))) for kpt in kpt_list]
+#    check=np.max( [np.abs(H-H.T.conj()).max() for H in HH_K] )
+#    if check>1e-10 : raise RuntimeError ("Hermiticity of interpolated Hamiltonian is not good : {0}".format(check))
+    return np.array([np.linalg.eigvalsh(Hk) for Hk in HH_K])
+
 
 def get_occ(eig_K,efermi):
     occ=np.zeros(eig_K.shape,dtype=float)
