@@ -103,9 +103,6 @@ class Data_dk(Data):
          return ( (self.delHH_dE_K[:,:,:,wham.alpha]*self.AAUU_K.transpose((0,2,1,3))[:,:,:,wham.beta]).imag+
                (self.delHH_dE_K.transpose((0,2,1,3))[:,:,:,wham.beta]*self.AAUU_K[:,:,:,wham.alpha]).imag  )
 
-    @lazy_property.LazyProperty
-    def UUU_K(self):
-        return self.UU_K[:,:,None,:]*self.UUC_K[:,None,:,:]
     
     @lazy_property.LazyProperty
     def AAUU_K(self):
@@ -119,10 +116,14 @@ class Data_dk(Data):
         _OOmega_K =  wham.fourier_R_to_k_hermitian( -1j*(
                         self.AA_R[:,:,:,wham.alpha]*self.cRvec[None,None,:,wham.beta ] - 
                         self.AA_R[:,:,:,wham.beta ]*self.cRvec[None,None,:,wham.alpha])   , self.iRvec, self.NKFFT )
-        return np.einsum("knmi,kmna->kia",self.UUU_K,_OOmega_K).real
+        return np.einsum("kmi,kmna,kni->kia",self.UUC_K,_OOmega_K,self.UU_K).real
 
 
 unused="""
+
+#    @lazy_property.LazyProperty
+#    def UUU_K(self):
+#        return self.UU_K[:,:,None,:]*self.UUC_K[:,None,:,:]
 
 
     def get_OOmega_K(self):
