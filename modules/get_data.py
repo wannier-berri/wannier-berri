@@ -46,32 +46,25 @@ class Data():
         #print ("R - points and dege=neracies:\n",iRvec)
         
         if use_ws:
-            ws_map=ws_dist_map(self.iRvec,self.num_wann,seedname+"_wsvec.dat")
+            self.ws_map=ws_dist_map(self.iRvec,self.num_wann,seedname+"_wsvec.dat")
+            self.iRvec=np.array(self.ws_map._iRvec_ordered,dtype=int)
         else:
-            ws_map=None
+            self.ws_map=None
 
         self.HH_R=self.__getMat('HH')
-        if use_ws: self.HH_R=ws_map.mapmat0d(self.HH_R)
         
         if getAA:
             self.AA_R=self.__getMat('AA')
-            if use_ws: self.AA_R=ws_map.mapmat(self.AA_R)
 
         if getBB:
             self.BB_R=self.__getMat('BB')
-            if use_ws: self.BB_R=ws_map.mapmat(self.BB_R)
 
         if getCC:
             self.CC_R=self.__getMat('CC')
-            if use_ws: self.CC_R=ws_map.mapmat(self.CC_R)
 
         if getSS:
             self.SS_R=self.__getMat('SS')
-            if use_ws: self.SS_R=ws_map.mapmat(self.SS_R)
         
-        iRvecnew=np.array(ws_map._iRvec_ordered,dtype=int)
-        print "Old and new vectors \n",np.hstack( (self.iRvec,iRvecnew))
-        if use_ws: self.iRvec=iRvecnew
 
     def __from_tb_file(self,tb_file=None,getAA=False,NKFFT=None):
         self.seedname=tb_file.split("/")[-1].split("_")[0]
@@ -157,13 +150,17 @@ class Data():
         ncomp=MM_R.shape[2]/self.nRvec
         if ncomp==1:
             print "reading 0d for ",suffix
-            return MM_R/self.Ndegen[None,None,:]
+            result=MM_R/self.Ndegen[None,None,:]
         elif ncomp==3:
             print "reading 1d for ",suffix
-            return MM_R.reshape(self.num_wann, self.num_wann, 3, self.nRvec).transpose(0,1,3,2)/self.Ndegen[None,None,:,None]
+            result= MM_R.reshape(self.num_wann, self.num_wann, 3, self.nRvec).transpose(0,1,3,2)/self.Ndegen[None,None,:,None]
         elif ncomp==9:
             print "reading 2d for ",suffix
-            return MM_R.reshape(self.num_wann, self.num_wann, 3,3, self.nRvec).transpose(0,1,4,3,2)/self.Ndegen[None,None,:,None,None]
+            result= MM_R.reshape(self.num_wann, self.num_wann, 3,3, self.nRvec).transpose(0,1,4,3,2)/self.Ndegen[None,None,:,None,None]
+        if self.ws_map is None:
+            return result
+        else:
+            return self.ws_map(result)
         
 
 
