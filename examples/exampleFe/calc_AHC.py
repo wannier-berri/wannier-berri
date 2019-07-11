@@ -19,7 +19,7 @@ def main():
     Data=get_data.Data(seedname,getAA=True)
     
     eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi )
-    AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,parallel=False,nproc=4)
+    AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=0,adpt_mesh=2)
 
 ## now write the result
     open(seedname+"_w19_ahc_fermi_scan.dat","w").write(
