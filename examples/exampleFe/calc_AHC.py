@@ -26,7 +26,7 @@ def main():
 #    Data=get_data.Data(tb_file='Fe_tb.dat',getAA=True)
     Data=get_data.Data(seedname,getAA=True)
     t1=time()
-    eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi ,evalJ1=False,evalJ2=False)
+    eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi )
     AHC_refined,AHC_nonrefined=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=32,adpt_mesh=2)
     t2=time()
 
