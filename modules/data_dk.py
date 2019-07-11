@@ -40,7 +40,7 @@ class Data_dk(Data):
 
     @lazy_property.LazyProperty
     def _get_eig_deleig(self):
-        print "running _get_eig_deleig"
+#        print "running _get_eig_deleig"
         self._E_K,self._delE_K, self._UU_K, self._HH_K, self._delHH_K =   wham.get_eig_deleig(self.NKFFT,self.HH_R,self.iRvec,self.cRvec)
 
     @lazy_property.LazyProperty
@@ -106,13 +106,13 @@ class Data_dk(Data):
     
     @lazy_property.LazyProperty
     def AAUU_K(self):
-        print "running get_AAUU_K.."
+#        print "running get_AAUU_K.."
         _AA_K=wham.fourier_R_to_k_hermitian( self.AA_R,self.iRvec,self.NKFFT)
         return np.einsum("kml,kmna,knp->klpa",self.UUC_K,_AA_K,self.UU_K)
 
     @lazy_property.LazyProperty
     def OOmegaUU_K(self):
-        print "running get_OOmegaUU_K.."
+#        print "running get_OOmegaUU_K.."
         _OOmega_K =  wham.fourier_R_to_k_hermitian( -1j*(
                         self.AA_R[:,:,:,wham.alpha]*self.cRvec[None,None,:,wham.beta ] - 
                         self.AA_R[:,:,:,wham.beta ]*self.cRvec[None,None,:,wham.alpha])   , self.iRvec, self.NKFFT )
