@@ -47,6 +47,7 @@ class Data():
         has_ws=str2bool(f.readline().split("=")[1].strip())
         
         if has_ws and use_ws:
+            print ("using ws_dist")
             self.ws_map=ws_dist_map(self.iRvec,self.num_wann,f.readlines())
             self.iRvec=np.array(self.ws_map._iRvec_ordered,dtype=int)
         else:
@@ -73,7 +74,7 @@ class Data():
         self.seedname=tb_file.split("/")[-1].split("_")[0]
         f=open(tb_file,"r")
         l=f.readline()
-        print "reading TB file {0} ( {1} )".format(tb_file,l)
+        print ("reading TB file {0} ( {1} )".format(tb_file,l))
         self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
         self.num_wann=int(f.readline())
         nRvec=int(f.readline())
@@ -152,13 +153,13 @@ class Data():
         f.close()
         ncomp=MM_R.shape[2]/self.nRvec
         if ncomp==1:
-            print "reading 0d for ",suffix
+#            print "reading 0d for ",suffix
             result=MM_R/self.Ndegen[None,None,:]
         elif ncomp==3:
-            print "reading 1d for ",suffix
+#            print "reading 1d for ",suffix
             result= MM_R.reshape(self.num_wann, self.num_wann, 3, self.nRvec).transpose(0,1,3,2)/self.Ndegen[None,None,:,None]
         elif ncomp==9:
-            print "reading 2d for ",suffix
+#            print "reading 2d for ",suffix
             result= MM_R.reshape(self.num_wann, self.num_wann, 3,3, self.nRvec).transpose(0,1,4,3,2)/self.Ndegen[None,None,:,None,None]
         if self.ws_map is None:
             return result
