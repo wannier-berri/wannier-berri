@@ -66,7 +66,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         adpt_percent=100./np.prod(adpt_mesh)
     result_nonrefined=[np.array(a) for a in result_nonrefined]
     NK_sel=int(round( len(result_nonrefined)*adpt_percent/100. ))
-    select_points=np.argsort([ np.abs(a).max() for a in result_nonrefined])[:NK_sel]
+    select_points=np.argsort([ np.abs(a).max() for a in result_nonrefined])[-NK_sel:]
     dk_list_refined=[]
     print ("dividing {0} points into {1} ".format(NK_sel,adpt_mesh))
 
