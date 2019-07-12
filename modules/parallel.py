@@ -22,19 +22,21 @@ from collections import Iterable
 
 
 
-def process(paralfunc,dk_list,nproc):
+def process(paralfunc,k_list,nproc):
+    print ("processing {0}  points".format(len(k_list)))
     if nproc<=0:
-        return [paralfunc(dk) for dk in dk_list]
+        return [paralfunc(k) for k in k_list]
     else:
         p=multiprocessing.Pool(nproc)
-        return p.map(paralfunc,dk_list)
+        return p.map(paralfunc,k_list)
 
 
 def eval_integral_BZ(func,Data,NKdiv=np.ones(3,dtype=int),nproc=0,NKFFT=None,
-            adpt_mesh=None,adpt_percent=None):
+            adpt_mesh=2,adpt_percent=50,adpt_num_iter=100,adpt_thresh=None,fout_name="result",fun_write=None):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
-of a function func, which whould receive only one argument of type Data_dk, and return whatever object,
-for which the '+' operation is defined.
+of a function func, which whould receive only one argument of type Data_dk, and return 
+a numpy.array of whatever dimensions
+(TODO: in future it might return whatever object, for which the '+','-',abs and max  operation are defined)
 
 the user has to provide 2 grids of K-points - FFT grid anf NKdiv
 
@@ -44,16 +46,28 @@ As a result, the integration will be performed ove NKFFT x NKdiv
 """
     NKFFT=Data.NKFFT if NKFFT is None else NKFFT
     dk1=1./(NKFFT*NKdiv)
-    dk_list=[dk1*np.array([x,y,z]) for x in range(NKdiv[0]) 
+    k_list=[dk1*np.array([x,y,z]) for x in range(NKdiv[0]) 
         for y in range(NKdiv[1]) for z in range(NKdiv[2]) ]
+    dk_list=[np.copy(dk1)  for i in range(len(k_list))]
+
+
+    print ("iteration {0} - {1} points, sum of weights = {2}".format(0,len(k_list),np.prod(NKFFT)*sum(dk.prod() for dk in dk_list))) 
+    print (" k_list : ", k_list)
+    print ("dk_list : ",dk_list)
+    
+
     paralfunc=functools.partial(
-        _eval_func_dk, func=func,Data=Data,NKFFT=NKFFT )
+        _eval_func_k, func=func,Data=Data,NKFFT=NKFFT )
 
-    result_nonrefined=process(paralfunc,dk_list,nproc)
+    result_K=process(paralfunc,k_list,nproc)
 
-    return_before_refinement=sum(result_nonrefined)/np.prod(NKdiv)
+    result_all=[sum(res*np.prod(dk) for res,dk in zip(result_K,dk_list))]
+    if not (fun_write is None):
+        fun_write(result_all[-1],fout_name+".dat")
+    
+    
     if (adpt_mesh is None) or adpt_mesh<=1:
-        return return_before_refinement,return_before_refinement
+        return result_all[-1]
     
 ##    now refining high-contribution points
     if not isinstance(adpt_mesh, Iterable):
@@ -61,37 +75,57 @@ As a result, the integration will be performed ove NKFFT x NKdiv
     adpt_mesh=np.array(adpt_mesh)
     include_original= np.all( adpt_mesh%2==1)
     weight=1./np.prod(adpt_mesh)
-## If percent of refined, choose it such, as to double the calculation time by refining
-    if adpt_percent is None:
-        adpt_percent=100./np.prod(adpt_mesh)
-    result_nonrefined=[np.array(a) for a in result_nonrefined]
-    NK_sel=int(round( len(result_nonrefined)*adpt_percent/100. ))
-    select_points=np.argsort([ np.abs(a).max() for a in result_nonrefined])[-NK_sel:]
-    dk_list_refined=[]
-    print ("dividing {0} points into {1} ".format(NK_sel,adpt_mesh))
+    #keep the number of refined points constant
+    NK_sel=int(round( len(result_K)*adpt_percent/np.prod(adpt_mesh)/100 ))
 
-#now form the list of additional k-points:
-    for ipoint in select_points:
-        if include_original:
-            result_nonrefined[ipoint]*=weight
-        else:
-            result_nonrefined[ipoint]*=0.
-        k0=dk_list[ipoint]
-        dk_adpt=dk1/adpt_mesh
-        adpt_shift=(-dk1+dk_adpt)/2.
-        dk_list_add=[k0+adpt_shift+dk_adpt*np.array([x,y,z])
+#Noe start refinement iterations:
+    for i_iter in range(adpt_num_iter):
+
+        select_points=np.argsort([ np.abs(a).max()*dk.prod() for a,dk in zip(result_K,dk_list)])[-NK_sel:]
+        print ("dividing {0} points into {1} : {2}".format(NK_sel,adpt_mesh,select_points))
+        k_list_refined=[]
+        dk_list_refined=[]
+        #now form the list of additional k-points:
+        for ipoint in select_points:
+                
+            k0=k_list[ipoint]
+            dk_adpt=dk_list[ipoint]/adpt_mesh
+            adpt_shift=(-dk_list[ipoint]+dk_adpt)/2.
+            k_list_add=[k0+adpt_shift+dk_adpt*np.array([x,y,z])
                                  for x in range(adpt_mesh[0]) 
                                   for y in range(adpt_mesh[1]) 
                                    for z in range(adpt_mesh[2])
                             if not (include_original and np.all(np.array([x,y,z])*2+1==adpt_mesh)) ]
-        dk_list_refined+=dk_list_add
-    result_refined=process(paralfunc,dk_list_refined,nproc)
-    return_after_refinement=(sum(result_nonrefined)+weight*sum(result_refined) )/np.prod(NKdiv)
-    return return_after_refinement,return_before_refinement
+
+            if include_original:
+                result_K[ipoint]*=weight
+                dk_list[ipoint][:]=dk_list[ipoint]/adpt_mesh
+            else:
+                result_K[ipoint]*=0.
+                dk_list[ipoint]*=0.
+
+            k_list_refined+=k_list_add
+            dk_list_refined+=[np.copy(dk_adpt) for i in range(len(k_list_add))]
+
+        result_K+=process(paralfunc,k_list_refined,nproc)
+        dk_list+=dk_list_refined
+        k_list+=k_list_refined
+        result_all.append(sum(res*np.prod(dk) for res,dk in zip(result_K,dk_list) ))
+        print ("iteration {0} - {1} points, sum of weights = {2}".format(i_iter+1,len(k_list),np.prod(NKFFT)*sum(dk.prod() for dk in dk_list))) 
+        print (" k_list : ", k_list)
+        print ("dk_list : ",dk_list)
+        if not (fun_write is None):
+            fun_write(result_all[-1],fout_name+"_iter-{0:04d}.dat".format(i_iter+1))
+        if not (adpt_thresh is None):
+            if adpt_thresh>0:
+                if adpt_thresh > np.max(np.abs(result_all[-1]-result_all[-2])):
+                   break
+
+    return result_all
 
 
 
-def _eval_func_dk(dk,func,Data,NKFFT):
-    data_dk=Data_dk(Data,dk,NKFFT=NKFFT)
+def _eval_func_k(k,func,Data,NKFFT):
+    data_dk=Data_dk(Data,k,NKFFT=NKFFT)
     return func(data_dk)
 
