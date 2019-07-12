@@ -79,4 +79,4 @@ def calcAHC(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
     AHC[3,:]=AHC[:3,:].sum(axis=0)
 
     occ_old[:,:]=occ_new[:,:]
-    return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
+    return AHC*fac_ahc/(data.cell_volume)
