@@ -29,6 +29,7 @@ class Data():
         l=f.readline().split()[:3]
         self.seedname=seedname
         self.num_wann,nRvec,self.spinors=int(l[0]),int(l[1]),str2bool(l[2])
+        self.nRvec0=nRvec
         self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
         iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
         
@@ -78,6 +79,7 @@ class Data():
         self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
         self.num_wann=int(f.readline())
         nRvec=int(f.readline())
+        self.nRvec0=nRvec
         self.spinors=None
         self.Ndegen=[]
         while len(self.Ndegen)<nRvec:
@@ -151,16 +153,18 @@ class Data():
         MM_R=np.array([[np.array(f.read_record('2f8'),dtype=float) for m in range(self.num_wann)] for n in range(self.num_wann)])
         MM_R=MM_R[:,:,:,0]+1j*MM_R[:,:,:,1]
         f.close()
-        ncomp=MM_R.shape[2]/self.nRvec
+        ncomp=MM_R.shape[2]/self.nRvec0
         if ncomp==1:
 #            print "reading 0d for ",suffix
             result=MM_R/self.Ndegen[None,None,:]
         elif ncomp==3:
 #            print "reading 1d for ",suffix
-            result= MM_R.reshape(self.num_wann, self.num_wann, 3, self.nRvec).transpose(0,1,3,2)/self.Ndegen[None,None,:,None]
+            result= MM_R.reshape(self.num_wann, self.num_wann, 3, self.nRvec0).transpose(0,1,3,2)/self.Ndegen[None,None,:,None]
         elif ncomp==9:
 #            print "reading 2d for ",suffix
-            result= MM_R.reshape(self.num_wann, self.num_wann, 3,3, self.nRvec).transpose(0,1,4,3,2)/self.Ndegen[None,None,:,None,None]
+            result= MM_R.reshape(self.num_wann, self.num_wann, 3,3, self.nRvec0).transpose(0,1,4,3,2)/self.Ndegen[None,None,:,None,None]
+        else:
+            raise RuntimeError("in __getMat: invalid ncomp : {0}".format(ncomp))
         if self.ws_map is None:
             return result
         else:
