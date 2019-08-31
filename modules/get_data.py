@@ -65,7 +65,8 @@ class Data():
             self.BB_R=self.__getMat('BB')
 
         if getCC:
-            self.CC_R=self.__getMat('CC')
+            _CC_R=self.__getMat('CC')
+            self.CC_R=1j*(_CC_R[:,:,:,wham.alpha,wham.beta]-_CC_R[:,:,:,wham.beta,wham.alpha])
 
         if getSS:
             self.SS_R=self.__getMat('SS')
