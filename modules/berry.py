@@ -92,6 +92,34 @@ def calcAHC(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
 
 
 
+
+def calcAHC_uIu(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
+
+    if occ_old is None: 
+        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
+
+    if isinstance(Efermi, Iterable):
+        nFermi=len(Efermi)
+        AHC=np.zeros( ( nFermi,4,3) ,dtype=float )
+        for iFermi in range(nFermi):
+            AHC[iFermi]=calcAHC(data,Efermi=Efermi[iFermi],occ_old=occ_old, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
+        return np.cumsum(AHC,axis=0)
+    
+    # now code for a single Fermi level:
+    AHC=np.zeros(3)
+
+    occ_new=get_occ(data.E_K,Efermi)
+    selectK=np.where(np.any(occ_old!=occ_new,axis=1))[0]
+    occ_old_selk=occ_old[selectK]
+    occ_new_selk=occ_new[selectK]
+    delocc=occ_new_selk!=occ_old_selk
+
+    AHC= eval_J0(data.FF[selectK], delocc)
+
+    return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
+
+
+
 def calcImfgh(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
 
     if occ_old is None: 

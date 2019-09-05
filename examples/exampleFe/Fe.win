@@ -2,7 +2,7 @@ get_oper_save=T
 get_oper_save_task=abc
 
 
-berry = T
+berry = F
 fermi_energy = 12.5
 #fermi_energy_max = 13 
 #fermi_energy_step = 0.1
@@ -20,9 +20,9 @@ begin kpoint_path
 G 0.0000 0.0000 0.0000   G 0. 0. 0.
 end kpoint_path
 
-iprint=3
+#iprint=3
 
-use_ws_distance=F
+use_ws_distance=T
 
 dis_win_min       = -8.0d0       
 dis_win_max       = 70.0d0
