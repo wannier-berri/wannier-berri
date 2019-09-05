@@ -128,8 +128,9 @@ class Data_dk(Data):
 
     @lazy_property.LazyProperty
     def delHH_dE_BB_K(self):
-         return ( (self.delHH_dE_K[:,:,:,wham.alpha].transpose((0,2,1,3)) * self.BBUU_K[:,:,:,wham.beta ]).imag-
-                  (self.delHH_dE_K[:,:,:,wham.beta ].transpose((0,2,1,3)) * self.BBUU_K[:,:,:,wham.alpha]).imag  )
+         tmp=self.delHH_dE_K.transpose((0,2,1,3))
+         return ( (tmp[:,:,:,wham.alpha] * self.BBUU_K[:,:,:,wham.beta ]).imag-
+                  (tmp[:,:,:,wham.beta ] * self.BBUU_K[:,:,:,wham.alpha]).imag  )
 
 #         return ( (self.delHH_dE_K[:,:,:,wham.alpha]*self.BBUU_K.transpose((0,2,1,3))[:,:,:,wham.beta]).imag-
 #               (self.delHH_dE_K.transpose((0,2,1,3))[:,:,:,wham.beta]*self.BBUU_K[:,:,:,wham.alpha]).imag  )
@@ -169,6 +170,14 @@ class Data_dk(Data):
         return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
 
 
+
+    def FF_K_rediag(self):
+#        print "running get_BBUU_K.."
+        _FF_K=wham.fourier_R_to_k( self.FF_R,self.iRvec,self.NKFFT)
+#        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
+        return np.einsum("kmm->km",_FF_K).imag
+
+
     @lazy_property.LazyProperty
     def OOmegaUU_K(self):
 #        print "running get_OOmegaUU_K.."
@@ -191,7 +200,7 @@ class Data_dk(Data):
 
     @lazy_property.LazyProperty
     def HHAAAAUU_K(self):
-        print ("shapes:",self.HHUU_K.shape,self.AAUU_K[:,:,:,wham.alpha].shape,self.AAUU_K[:,:,:,wham.beta].shape)
+#        print ("shapes:",self.HHUU_K.shape,self.AAUU_K[:,:,:,wham.alpha].shape,self.AAUU_K[:,:,:,wham.beta].shape)
         return np.einsum("kmi,kina,knma->knma",self.HHUU_K,self.AAUU_K[:,:,:,wham.alpha],self.AAUU_K[:,:,:,wham.beta]).imag
 
 
