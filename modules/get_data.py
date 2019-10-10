@@ -21,7 +21,7 @@ from ws_dist_map2 import ws_dist_map
 
 class Data():
 
-    def __init__(self,seedname="wannier90",tb_file=None,getAA=False,getBB=False,getCC=False,getSS=False,NKFFT=None,use_ws=True):
+    def __init__(self,seedname="wannier90",tb_file=None,getAA=False,getBB=False,getCC=False,getSS=False,getFF=False,NKFFT=None,use_ws=True):
         if tb_file is not None:
             self.__from_tb_file(tb_file,getAA=getAA,NKFFT=NKFFT)
             return
