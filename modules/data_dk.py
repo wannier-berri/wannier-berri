@@ -127,6 +127,15 @@ class Data_dk(Data):
 
 
     @lazy_property.LazyProperty
+    def delHH_dE_AA_delHH_dE_SQ_K(self):
+         return ( (self.delHH_dE_K[:,:,:,wham.alpha].transpose((0,2,1,3))*self.AAUU_K[:,:,:,wham.beta]).imag+
+               (self.delHH_dE_K[:,:,:,wham.beta]*self.AAUU_K[:,:,:,wham.alpha].transpose((0,2,1,3))).imag  +
+                 (self.delHH_dE_K[:,:,:,wham.beta]
+                         *self.delHH_dE_K[:,:,:,wham.alpha].transpose((0,2,1,3))).imag  )
+
+
+
+    @lazy_property.LazyProperty
     def delHH_dE_BB_K(self):
          tmp=self.delHH_dE_K.transpose((0,2,1,3))
          return ( (tmp[:,:,:,wham.alpha] * self.BBUU_K[:,:,:,wham.beta ]).imag-
