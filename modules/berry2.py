@@ -51,9 +51,57 @@ def eval_J3(B,UnoccUnoccOcc):
 
 def get_occ(E_K,Efermi):
     return (E_K< Efermi)
-        
-def calcAHC(data,Efermi=None,occ_old=None):
 
+
+def get_degen_bands(E_K,degen_thresh):
+    return [np.hstack( ([0],np.where(E[1:]-E[:1]>degen_thresh)[0]+1, [E.shape[0]]) ) for E in E_K ]
+
+
+def get_E_degen(E_K,degen_bands):
+    return [ np.array( [E[b1:b2].mean() for b1,b2 in zip(deg,deg[1:]) ]) for E,deg in zip(E_K,degen_bands)]
+
+
+def calcAHC_band(data,degen_thresh=None,Efermi=None):
+    if degen_thresh is None:
+        degen_thresh=-1
+    E_K=data.E_K
+    degen_bands=get_degen_bands(E_K,degen_thresh)
+    E_K_av= get_E_degen(E_K,degen_bands)
+#    Omega=calcOmega_band(data,degen_bands)
+
+    if isinstance(Efermi, Iterable):
+        print ("iterating over Fermi levels")
+        AHC=np.zeros( (len(Efermi),3))
+        for ik in range(data.NKFFT_tot) :
+            for e,O in zip(E_K_av[ik],calcOmega_band_K(data,degen_bands[ik],ik )):
+                AHC[Efermi>e] +=O
+        return np.array(AHC)*fac_ahc/(data.NKFFT_tot*data.cell_volume)
+    else :
+        return  sum( omega[eav<Efermi].sum(axis=0) for omega,eav in zip( Omega,E_K_av) )
+
+    return sum( omega[eav<Efermi].sum(axis=0) for omega,eav in zip( Omega,E_K_av) )*fac_ahc/(data.NKFFT_tot*data.cell_volume)
+
+
+#def calcOmega_band(data,degen_bands):
+#    A=data.OOmegaUU_K_rediag
+#    B=data.delHH_dE_AA_delHH_dE_SQ_K
+#    Omega=[]
+#    for ik in range(data.NKFFT_tot):
+#       Omega.append([])
+#       for ib1,ib2 in zip(degen_bands[ik],degen_bands[ik][1:]):
+#          Omega[-1].append( A[ik,ib1:ib2].sum(axis=(0))-2*B[ik,:ib1,ib1:ib2].sum(axis=(0,1)) -2*B[ik,ib2:,ib1:ib2].sum(axis=(0,1)) )
+#    return [np.array(omega) for omega in Omega]
+
+
+
+def calcOmega_band_K(data,degen_bands,ik):
+    A=data.OOmegaUU_K_rediag[ik]
+    B=data.delHH_dE_AA_delHH_dE_SQ_K[ik]
+    return np.array([A[ib1:ib2].sum(axis=(0))-2*B[:ib1,ib1:ib2].sum(axis=(0,1)) -2*B[ib2:,ib1:ib2].sum(axis=(0,1)) for ib1,ib2 in zip(degen_bands,degen_bands[1:])] )
+           
+
+
+def calcAHC(data,Efermi=None,occ_old=None):
     if occ_old is None: 
         occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
 
@@ -90,7 +138,6 @@ def calcAHC(data,Efermi=None,occ_old=None):
 #    print ("evaluating J12")
     AHC+=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
 #    print ("evaluating J12-done")
-
     occ_old[:,:]=occ_new[:,:]
     return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
 
