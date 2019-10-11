@@ -62,14 +62,14 @@ def calcAHC(data,Efermi=None,occ_old=None):
         nFermi=len(Efermi)
         AHC=np.zeros( ( nFermi,3) ,dtype=float )
         for iFermi in range(nFermi):
-            print ("iFermi={}".format(iFermi))
+#            print ("iFermi={}".format(iFermi))
             AHC[iFermi]=calcAHC(data,Efermi=Efermi[iFermi],occ_old=occ_old)
         return np.cumsum(AHC,axis=0)
     
     # now code for a single Fermi level:
     AHC=np.zeros(3)
 
-    print ("  calculating occ matrices")
+#    print ("  calculating occ matrices")
     occ_new=get_occ(data.E_K,Efermi)
     unocc_new=np.logical_not(occ_new)
     unocc_old=np.logical_not(occ_old)
@@ -81,15 +81,15 @@ def calcAHC(data,Efermi=None,occ_old=None):
     delocc=occ_new_selk!=occ_old_selk
     unoccocc_plus=unocc_new_selk[:,:,None]*delocc[:,None,:]
     unoccocc_minus=delocc[:,:,None]*occ_old_selk[:,None,:]
-    print ("  calculating occ matrices - done")
+#    print ("  calculating occ matrices - done")
 
-    print ("evaluating J0")
+#    print ("evaluating J0")
     AHC=eval_J0(data.OOmegaUU_K_rediag[selectK], delocc)
-    print ("evaluating B")
+#    print ("evaluating B")
     B=data.delHH_dE_AA_delHH_dE_SQ_K[selectK]
-    print ("evaluating J12")
+#    print ("evaluating J12")
     AHC+=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
-    print ("evaluating J12-done")
+#    print ("evaluating J12-done")
 
     occ_old[:,:]=occ_new[:,:]
     return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
