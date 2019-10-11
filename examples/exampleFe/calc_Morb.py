@@ -30,9 +30,9 @@ def main():
 #    for name,arr in zip(['imf','img','imh'],Morb_all):
       open(seedname+"_w19_Morb_{0}_NK={1}.dat".format(name,NKtot),"w").write(
        "    ".join("{0:^15s}".format(s) for s in ["EF",]+
-                [a+b for a in ["","J0_","J1_","J2_"] for b in "x","y","z"])+"\n"+
+                [a+b for a in ["M",] for b in "x","y","z"])+"\n"+
       "\n".join(
-       "    ".join("{0:15.6f}".format(x) for x in [ef]+[x for X in ahc[(3,0,1,2),:] for x in X]) 
+       "    ".join("{0:15.6f}".format(x) for x in [ef]+[x for x in ahc ]) 
                       for ef,ahc in zip (Efermi,arr) )
        +"\n")  
           

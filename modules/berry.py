@@ -27,6 +27,8 @@ import numpy as np
 from scipy import constants as constants
 from collections import Iterable
 
+from utility import  print_my_name_start,print_my_name_end
+
 alpha=np.array([1,2,0])
 beta =np.array([2,0,1])
 
@@ -35,6 +37,30 @@ fac_ahc  = -1.0e8*constants.elementary_charge**2/constants.hbar
 bohr= constants.physical_constants['Bohr radius'][0]/constants.angstrom
 eV_au=constants.physical_constants['electron volt-hartree relationship'][0] 
 fac_morb =  -eV_au/bohr**2
+
+
+
+def eval_Jo_deg(A,degen):
+#    print (degen)
+    return np.array([A[ib1:ib2].sum(axis=0) for ib1,ib2 in degen])
+
+
+def eval_Juo_deg(B,degen):
+    return np.array([B[:ib1,ib1:ib2].sum(axis=(0,1)) + B[ib2:,ib1:ib2].sum(axis=(0,1)) for ib1,ib2 in degen])
+
+def eval_Joo_deg(B,degen):
+    return np.array([B[ib1:ib2,ib1:ib2].sum(axis=(0,1))  for ib1,ib2 in degen])
+
+def eval_Juuo_deg(B,degen):
+    return np.array([   sum(C.sum(axis=(0,1,2)) 
+                          for C in  (B[:ib1,:ib1,ib1:ib2],B[:ib1,ib2:,ib1:ib2],B[ib2:,:ib1,ib1:ib2],B[ib2:,ib2:,ib1:ib2]) )  
+                                      for ib1,ib2 in degen])
+
+def eval_Juoo_deg(B,degen):
+    return np.array([   sum(C.sum(axis=(0,1,2)) 
+                          for C in ( B[:ib1,ib1:ib2,ib1:ib2],B[ib2:,ib1:ib2,ib1:ib2])  )  
+                                      for ib1,ib2 in degen])
+
 
 
 
@@ -49,22 +75,73 @@ def eval_J3(B,UnoccUnoccOcc):
 
 def get_occ(E_K,Efermi):
     return (E_K< Efermi)
-        
-def calcAHC(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
 
+
+def get_degen_bands(E_K,degen_thresh):
+    A=[np.hstack( ([0],np.where(E[1:]-E[:1]>degen_thresh)[0]+1, [E.shape[0]]) ) for E in E_K ]
+    deg= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:])] for a in A]
+    Eav= [ np.array( [E[b1:b2].mean() for b1,b2 in deg  ]) for E,deg in zip(E_K,deg)]
+    return deg,Eav
+
+
+
+def calcAHC_band(data,Efermi,degen_thresh=None):
+    def function(AHC,Efermi,data,degen,E_K_av,ik):
+        imf=calcImf_K(data,degen,ik )
+        for e,f in zip(E_K_av,imf):
+            AHC[Efermi>e]+=f
+    return calcSmth_band(data,Efermi,(3,) ,function,   degen_thresh=degen_thresh)*fac_ahc/(data.NKFFT_tot*data.cell_volume)
+
+
+def calcMorb_band(data,Efermi,degen_thresh=None):
+    def function(Morb,Efermi,data,degen,E_K_av,ik):
+        imf,img,imh=calcImfgh_K(data,degen,ik )
+        for e,f,g,h in zip(E_K_av,imf,img,imh):
+            sel= Efermi>e
+            Morb[sel]+=(g+h)
+            Morb[sel]+=-2*f[None,:]*Efermi[sel,None]
+    return calcSmth_band(data,Efermi,(3,) ,function,   degen_thresh=degen_thresh)*fac_morb/(data.NKFFT_tot)
+
+
+##  a general procedure to evaluate smth band-by-band in the Fermi sea
+def calcSmth_band(data,Efermi,shape,function, degen_thresh=None):
+    if degen_thresh is None:
+        degen_thresh=-1
+    E_K=data.E_K
+    degen_bands,E_K_av=get_degen_bands(E_K,degen_thresh)
+
+    if not(isinstance(Efermi, Iterable)): 
+        Efermi=np.array([Efermi])
+
+    RES=np.zeros( (len(Efermi),)+tuple(shape) )
+    for ik in range(data.NKFFT_tot) :
+        function(RES,Efermi,data,degen_bands[ik],E_K_av[ik],ik)
+    return RES 
+
+
+def calcImf_K(data,degen_bands,ik):
+    A=data.OOmegaUU_K_rediag[ik]
+    B=data.delHH_dE_AA_delHH_dE_SQ_K[ik]
+    return eval_Jo_deg(A,degen_bands)-2*eval_Juo_deg(B,degen_bands) 
+
+
+def calcAHC(data,Efermi=None,occ_old=None):
     if occ_old is None: 
         occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
 
     if isinstance(Efermi, Iterable):
+#        print ("iterating over Fermi levels")
         nFermi=len(Efermi)
-        AHC=np.zeros( ( nFermi,4,3) ,dtype=float )
+        AHC=np.zeros( ( nFermi,3) ,dtype=float )
         for iFermi in range(nFermi):
-            AHC[iFermi]=calcAHC(data,Efermi=Efermi[iFermi],occ_old=occ_old, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
+#            print ("iFermi={}".format(iFermi))
+            AHC[iFermi]=calcAHC(data,Efermi=Efermi[iFermi],occ_old=occ_old)
         return np.cumsum(AHC,axis=0)
     
     # now code for a single Fermi level:
-    AHC=np.zeros((4,3))
+    AHC=np.zeros(3)
 
+#    print ("  calculating occ matrices")
     occ_new=get_occ(data.E_K,Efermi)
     unocc_new=np.logical_not(occ_new)
     unocc_old=np.logical_not(occ_old)
@@ -76,17 +153,15 @@ def calcAHC(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
     delocc=occ_new_selk!=occ_old_selk
     unoccocc_plus=unocc_new_selk[:,:,None]*delocc[:,None,:]
     unoccocc_minus=delocc[:,:,None]*occ_old_selk[:,None,:]
+#    print ("  calculating occ matrices - done")
 
-    if evalJ0:
-        AHC[0]= eval_J0(data.OOmegaUU_K_rediag[selectK], delocc)
-    if evalJ1:
-        B=data.delHH_dE_AA_K[selectK]
-        AHC[1]=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
-    if evalJ2:
-        B=data.delHH_dE_SQ_K[selectK]
-        AHC[2]=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
-    AHC[3,:]=AHC[:3,:].sum(axis=0)
-
+#    print ("evaluating J0")
+    AHC=eval_J0(data.OOmegaUU_K_rediag[selectK], delocc)
+#    print ("evaluating B")
+    B=data.delHH_dE_AA_delHH_dE_SQ_K[selectK]
+#    print ("evaluating J12")
+    AHC+=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
+#    print ("evaluating J12-done")
     occ_old[:,:]=occ_new[:,:]
     return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
 
@@ -188,6 +263,34 @@ def calcImfgh(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True
 
     occ_old[:,:]=occ_new[:,:]
     return imfgh/(data.NKFFT_tot)
+
+
+
+
+def calcImfgh_K(data,degen,ik):
+    
+    imf= calcImf_K(data,degen,ik)
+
+    s=2*eval_Joo_deg(data.HHAAAAUU_K[ik],degen)   
+    img=eval_Jo_deg(data.CCUU_K_rediag[ik],degen)-s
+    imh=eval_Jo_deg(data.HHOOmegaUU_K[ik],degen)+s
+
+
+    C=data.delHH_dE_BB_K[ik]
+    D=data.delHH_dE_HH_AA_K[ik]
+    img+=-2*eval_Juo_deg(C,degen)
+    imh+=-2*eval_Juo_deg(D,degen)
+
+    C,D=data.delHH_dE_SQ_HH_K
+    img+=-2*eval_Juuo_deg(C[ik],degen) 
+    imh+=-2*eval_Juoo_deg(D[ik],degen)
+
+    return imf,img,imh
+
+
+
+
+
 
 
 def calcMorb(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
