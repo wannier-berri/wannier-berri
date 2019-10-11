@@ -220,7 +220,8 @@ class Data_dk(Data):
     def CCUU_K_rediag(self):
         print_my_name_start()
         _CC_K=wham.fourier_R_to_k( self.CC_R,self.iRvec,self.NKFFT)
-        return self._rotate_vec( _CC_K )
+        _CC_K=self._rotate_vec( _CC_K )
+        return np.einsum("klla->kla",_CC_K).real
 #        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
 
 

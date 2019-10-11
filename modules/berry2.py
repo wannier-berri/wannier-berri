@@ -40,6 +40,30 @@ fac_morb =  -eV_au/bohr**2
 
 
 
+def eval_Jo_deg(A,degen):
+#    print (degen)
+    return np.array([A[ib1:ib2].sum(axis=0) for ib1,ib2 in degen])
+
+
+def eval_Juo_deg(B,degen):
+    return np.array([B[:ib1,ib1:ib2].sum(axis=(0,1)) + B[ib2:,ib1:ib2].sum(axis=(0,1)) for ib1,ib2 in degen])
+
+def eval_Joo_deg(B,degen):
+    return np.array([B[ib1:ib2,ib1:ib2].sum(axis=(0,1))  for ib1,ib2 in degen])
+
+def eval_Juuo_deg(B,degen):
+    return np.array([   sum(C.sum(axis=(0,1,2)) 
+                          for C in  (B[:ib1,:ib1,ib1:ib2],B[:ib1,ib2:,ib1:ib2],B[ib2:,:ib1,ib1:ib2],B[ib2:,ib2:,ib1:ib2]) )  
+                                      for ib1,ib2 in degen])
+
+def eval_Juoo_deg(B,degen):
+    return np.array([   sum(C.sum(axis=(0,1,2)) 
+                          for C in ( B[:ib1,ib1:ib2,ib1:ib2],B[ib2:,ib1:ib2,ib1:ib2])  )  
+                                      for ib1,ib2 in degen])
+
+
+
+
 def eval_J0(A,occ):
     return A[occ].sum(axis=0)
 
@@ -54,26 +78,23 @@ def get_occ(E_K,Efermi):
 
 
 def get_degen_bands(E_K,degen_thresh):
-    return [np.hstack( ([0],np.where(E[1:]-E[:1]>degen_thresh)[0]+1, [E.shape[0]]) ) for E in E_K ]
-
-
-def get_E_degen(E_K,degen_bands):
-    return [ np.array( [E[b1:b2].mean() for b1,b2 in zip(deg,deg[1:]) ]) for E,deg in zip(E_K,degen_bands)]
+    A=[np.hstack( ([0],np.where(E[1:]-E[:1]>degen_thresh)[0]+1, [E.shape[0]]) ) for E in E_K ]
+    deg= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:])] for a in A]
+    Eav= [ np.array( [E[b1:b2].mean() for b1,b2 in deg  ]) for E,deg in zip(E_K,deg)]
+    return deg,Eav
 
 
 def calcAHC_band(data,degen_thresh=None,Efermi=None):
     if degen_thresh is None:
         degen_thresh=-1
     E_K=data.E_K
-    degen_bands=get_degen_bands(E_K,degen_thresh)
-    E_K_av= get_E_degen(E_K,degen_bands)
-#    Omega=calcOmega_band(data,degen_bands)
+    degen_bands,E_K_av=get_degen_bands(E_K,degen_thresh)
 
     if isinstance(Efermi, Iterable):
-        print ("iterating over Fermi levels")
+#        print ("iterating over Fermi levels")
         AHC=np.zeros( (len(Efermi),3))
         for ik in range(data.NKFFT_tot) :
-            for e,O in zip(E_K_av[ik],calcOmega_band_K(data,degen_bands[ik],ik )):
+            for e,O in zip(E_K_av[ik],calcImf_K(data,degen_bands[ik],ik )):
                 AHC[Efermi>e] +=O
         return np.array(AHC)*fac_ahc/(data.NKFFT_tot*data.cell_volume)
     else :
@@ -82,23 +103,13 @@ def calcAHC_band(data,degen_thresh=None,Efermi=None):
     return sum( omega[eav<Efermi].sum(axis=0) for omega,eav in zip( Omega,E_K_av) )*fac_ahc/(data.NKFFT_tot*data.cell_volume)
 
 
-#def calcOmega_band(data,degen_bands):
-#    A=data.OOmegaUU_K_rediag
-#    B=data.delHH_dE_AA_delHH_dE_SQ_K
-#    Omega=[]
-#    for ik in range(data.NKFFT_tot):
-#       Omega.append([])
-#       for ib1,ib2 in zip(degen_bands[ik],degen_bands[ik][1:]):
-#          Omega[-1].append( A[ik,ib1:ib2].sum(axis=(0))-2*B[ik,:ib1,ib1:ib2].sum(axis=(0,1)) -2*B[ik,ib2:,ib1:ib2].sum(axis=(0,1)) )
-#    return [np.array(omega) for omega in Omega]
 
 
 
-def calcOmega_band_K(data,degen_bands,ik):
+def calcImf_K(data,degen_bands,ik):
     A=data.OOmegaUU_K_rediag[ik]
     B=data.delHH_dE_AA_delHH_dE_SQ_K[ik]
-    return np.array([A[ib1:ib2].sum(axis=(0))-2*B[:ib1,ib1:ib2].sum(axis=(0,1)) -2*B[ib2:,ib1:ib2].sum(axis=(0,1)) for ib1,ib2 in zip(degen_bands,degen_bands[1:])] )
-           
+    return eval_Jo_deg(A,degen_bands)-2*eval_Juo_deg(B,degen_bands) 
 
 
 def calcAHC(data,Efermi=None,occ_old=None):
@@ -106,7 +117,7 @@ def calcAHC(data,Efermi=None,occ_old=None):
         occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
 
     if isinstance(Efermi, Iterable):
-        print ("iterating over Fermi levels")
+#        print ("iterating over Fermi levels")
         nFermi=len(Efermi)
         AHC=np.zeros( ( nFermi,3) ,dtype=float )
         for iFermi in range(nFermi):
@@ -239,6 +250,53 @@ def calcImfgh(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True
 
     occ_old[:,:]=occ_new[:,:]
     return imfgh/(data.NKFFT_tot)
+
+
+
+
+def calcImfgh_K(data,degen,ik):
+    
+    imf= calcImf_K(data,degen,ik)
+
+    s=2*eval_Joo_deg(data.HHAAAAUU_K[ik],degen)   
+    img=eval_Jo_deg(data.CCUU_K_rediag[ik],degen)-s
+    imh=eval_Jo_deg(data.HHOOmegaUU_K[ik],degen)+s
+
+
+    C=data.delHH_dE_BB_K[ik]
+    D=data.delHH_dE_HH_AA_K[ik]
+    img+=-2*eval_Juo_deg(C,degen)
+    imh+=-2*eval_Juo_deg(D,degen)
+
+    C,D=data.delHH_dE_SQ_HH_K
+    img+=-2*eval_Juuo_deg(C[ik],degen) 
+    imh+=-2*eval_Juoo_deg(D[ik],degen)
+
+    return imf,img,imh
+
+
+## TODO : think how to write a more general procedure to evaluate whatever without copypasting
+def calcMorb_band(data,degen_thresh=None,Efermi=None):
+    if degen_thresh is None:
+        degen_thresh=-1
+    E_K=data.E_K
+    degen_bands,E_K_av=get_degen_bands(E_K,degen_thresh)
+
+    if not(isinstance(Efermi, Iterable)): 
+        Efermi=np.array([Efermi])
+
+    Morb=np.zeros( (len(Efermi),3))
+    for ik in range(data.NKFFT_tot) :
+        imf,img,imh=calcImfgh_K(data,degen_bands[ik],ik )
+        for e,f,g,h in zip(E_K_av[ik],imf,img,imh):
+            sel= Efermi>e
+            Morb[sel]+=(g+h)
+            Morb[sel]+=-2*f[None,:]*Efermi[sel,None]
+
+    return np.array(Morb)*fac_morb/(data.NKFFT_tot)
+
+
+
 
 
 def calcMorb(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
