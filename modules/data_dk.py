@@ -17,7 +17,7 @@ import lazy_property
 from get_data import Data
 
 
-from utility import  print_my_name_start,print_my_name_end
+from utility import  print_my_name_start,print_my_name_end,einsumk
 
 class Data_dk(Data):
     def __init__(self,data,dk=None,AA=None,BB=None,CC=None,SS=None,NKFFT=None):
@@ -56,11 +56,33 @@ class Data_dk(Data):
 
 
 
+
+
+    def _rotate(self,mat):
+        print_my_name_start()
+        return  np.array([a.dot(b).dot(c) for a,b,c in zip(self.UUH_K,mat,self.UU_K)])
+
+
+    def _rotate_vec(self,mat):
+        print_my_name_start()
+        res=np.array(mat)
+        for i in range(res.shape[-1]):
+            res[:,:,:,i]=self._rotate(mat[:,:,:,i])
+        print_my_name_start()
+        return res
+#        return  np.array([a.dot(b).dot(c) for a,b,c in zip(self.UUH_K,mat,self.UU_K)])
+
+
+
     @lazy_property.LazyProperty
     def _get_eig_deleig(self):
         print_my_name_start()
         self._E_K,self._delE_K, self._UU_K, _HH_K, self._delHH_K =   wham.get_eig_deleig(self.NKFFT,self.HH_R,self.iRvec,self.cRvec)
-        self._HHUU_K=np.einsum("kmi,kmn,knj->kij",self.UUC_K,_HH_K,self.UU_K).real
+#        print("shapes:{},{},{}".format(_HH_K.shape,self.UUC_K.shape,self.UU_K.shape))
+        self._HHUU_K=self._rotate(_HH_K) #    einsumk("kmi,kmn,knj->kij",self.UUH_K,_HH_K,self.UU_K).real
+#        self._HHUU_K=np.array([uc.dot(hh).dot(u).real for uc,hh,u in zip(self.UUC_K,_HH_K,self.UU_K)])
+        print_my_name_end()
+#        exit()
 
     @lazy_property.LazyProperty
     def NKFFT_tot(self):
@@ -89,9 +111,9 @@ class Data_dk(Data):
 
 
     @lazy_property.LazyProperty
-    def UUC_K(self):
+    def UUH_K(self):
         print_my_name_start()
-        return self.UU_K.conj()
+        return self.UU_K.conj().transpose((0,2,1))
 
 
     @lazy_property.LazyProperty
@@ -109,7 +131,9 @@ class Data_dk(Data):
     @lazy_property.LazyProperty
     def delHH_dE_K(self):
             print_my_name_start()
-            _delHH_K_=np.einsum("kml,kmna,knp->klpa",self.UUC_K,self.delHH_K,self.UU_K)
+            _delHH_K_=self._rotate_vec(self.delHH_K)
+#            _delHH_K_=slef.rotate( np.array([np.einsum("ml,mna,np->lpa",uc,hh,u) for uc,hh,u in zip(self.UUC_K,self.delHH_K,self.UU_K)])
+
 #          The following is probalby faster:
 #            _delHH_K_=np.array([    uu.dot(uuc.dot(delhh))
 #                       for uu,delhh,uuc in 
@@ -163,8 +187,12 @@ class Data_dk(Data):
     @lazy_property.LazyProperty
     def delHH_dE_HH_AA_K(self):
          print_my_name_start()
-         return ( np.einsum(  "knl,klma,kmna->kmna",self.HHUU_K,self.AAUU_K[:,:,:,wham.alpha],self.delHH_dE_K[:,:,:,wham.beta ]).imag+
-                    np.einsum("kln,kmla,knma->kmna",self.HHUU_K,self.AAUU_K[:,:,:,wham.beta ],self.delHH_dE_K[:,:,:,wham.alpha]).imag )
+#         return ( np.einsum(  "knl,klma,kmna->kmna",self.HHUU_K,self.AAUU_K[:,:,:,wham.alpha],self.delHH_dE_K[:,:,:,wham.beta ]).imag+
+#                    np.einsum("kln,kmla,knma->kmna",self.HHUU_K,self.AAUU_K[:,:,:,wham.beta ],self.delHH_dE_K[:,:,:,wham.alpha]).imag )
+         return np.array([
+                  np.einsum("nl,lma,mna->mna",hh,aa[:,:,wham.alpha],delhh[:,:,wham.beta ]).imag+
+                  np.einsum("ln,mla,nma->mna",hh,aa[:,:,wham.beta ],delhh[:,:,wham.alpha]).imag 
+                    for hh,aa,delhh in zip(self.HHUU_K,self.AAUU_K,self.delHH_dE_K)])
          
     @lazy_property.LazyProperty
     def delHH_dE_SQ_HH_K(self):
@@ -172,29 +200,28 @@ class Data_dk(Data):
          return ( np.einsum("kml,knma,klna->klmna",self.HHUU_K,self.delHH_dE_K[:,:,:,wham.alpha],self.delHH_dE_K[:,:,:,wham.beta ]).imag ,
                   np.einsum("knm,kmla,klna->klmna",self.HHUU_K,self.delHH_dE_K[:,:,:,wham.alpha],self.delHH_dE_K[:,:,:,wham.beta ]).imag ) 
 
- 
-    
-    
     
     @lazy_property.LazyProperty
     def AAUU_K(self):
         print_my_name_start()
         _AA_K=wham.fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT,hermitian=True)
-        return np.einsum("kml,kmna,knp->klpa",self.UUC_K,_AA_K,self.UU_K)
+        return self._rotate_vec( _AA_K )
 
 
     @lazy_property.LazyProperty
     def BBUU_K(self):
         print_my_name_start()
         _BB_K=wham.fourier_R_to_k( self.BB_R,self.iRvec,self.NKFFT)
-        return np.einsum("kml,kmna,knp->klpa",self.UUC_K,_BB_K,self.UU_K)
+        return self._rotate_vec( _BB_K )
+#        return np.einsum("kml,kmna,knp->klpa",self.UUC_K,_BB_K,self.UU_K)
 
 
     @lazy_property.LazyProperty
     def CCUU_K_rediag(self):
         print_my_name_start()
         _CC_K=wham.fourier_R_to_k( self.CC_R,self.iRvec,self.NKFFT)
-        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
+        return self._rotate_vec( _CC_K )
+#        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
 
 
 
@@ -211,7 +238,8 @@ class Data_dk(Data):
         _OOmega_K =  wham.fourier_R_to_k_hermitian( -1j*(
                         self.AA_R[:,:,:,wham.alpha]*self.cRvec[None,None,:,wham.beta ] - 
                         self.AA_R[:,:,:,wham.beta ]*self.cRvec[None,None,:,wham.alpha])   , self.iRvec, self.NKFFT )
-        return np.einsum("kmi,kmna,knj->kija",self.UUC_K,_OOmega_K,self.UU_K)
+        return self._rotate_vec(_OOmega_K)
+#        return np.einsum("kmi,kmna,knj->kija",self.UUC_K,_OOmega_K,self.UU_K)
 
 
     @lazy_property.LazyProperty
