@@ -28,11 +28,12 @@ def process(paralfunc,k_list,nproc):
         return [paralfunc(k) for k in k_list]
     else:
         p=multiprocessing.Pool(nproc)
-        return p.map(paralfunc,k_list)
-
+        res= p.map(paralfunc,k_list)
+        p.close()
+        return res
 
 def eval_integral_BZ(func,Data,NKdiv=np.ones(3,dtype=int),nproc=0,NKFFT=None,
-            adpt_mesh=2,adpt_percent=50,adpt_num_iter=100,adpt_thresh=None,fout_name="result",fun_write=None):
+            adpt_mesh=2,adpt_num_iter=0,adpt_thresh=None,adpt_nk=1,fout_name="result",fun_write=None):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_dk, and return 
 a numpy.array of whatever dimensions
@@ -44,6 +45,8 @@ The parallelisation is done by NKdiv
 
 As a result, the integration will be performed ove NKFFT x NKdiv
 """
+        
+        
     NKFFT=Data.NKFFT if NKFFT is None else NKFFT
     dk1=1./(NKFFT*NKdiv)
     k_list=[dk1*np.array([x,y,z]) for x in range(NKdiv[0]) 
@@ -52,8 +55,8 @@ As a result, the integration will be performed ove NKFFT x NKdiv
 
 
     print ("iteration {0} - {1} points, sum of weights = {2}".format(0,len(k_list),np.prod(NKFFT)*sum(dk.prod() for dk in dk_list))) 
-    print (" k_list : ", k_list)
-    print ("dk_list : ",dk_list)
+#    print (" k_list : ", k_list)
+#    print ("dk_list : ",dk_list)
     
 
     paralfunc=functools.partial(
@@ -66,7 +69,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         fun_write(result_all[-1],fout_name+".dat")
     
     
-    if (adpt_mesh is None) or adpt_mesh<=1:
+    if (adpt_mesh is None) or np.max(adpt_mesh)<=1:
         return result_all[-1]
     
 ##    now refining high-contribution points
@@ -76,12 +79,19 @@ As a result, the integration will be performed ove NKFFT x NKdiv
     include_original= np.all( adpt_mesh%2==1)
     weight=1./np.prod(adpt_mesh)
     #keep the number of refined points constant
-    NK_sel=int(round( len(result_K)*adpt_percent/np.prod(adpt_mesh)/100 ))
+#    NK_sel=int(round( len(result_K)*adpt_percent/np.prod(adpt_mesh)/100 ))
+    NK_sel=adpt_nk
+    
+    if adpt_num_iter<0:
+        adpt_num_iter=-adpt_num_iter*np.prod(NKFFT)/np.prod(adpt_mesh)/NK_sel/2
 
 #Noe start refinement iterations:
-    for i_iter in range(adpt_num_iter):
+    for i_iter in range(int(round(adpt_num_iter))):
 
-        select_points=np.argsort([ np.abs(a).max()*dk.prod() for a,dk in zip(result_K,dk_list)])[-NK_sel:]
+        select_points=np.array( list(
+                    set(np.argsort([ np.abs(a).max()*dk.prod() for a,dk in zip(result_K,dk_list)])[-NK_sel:]).union(
+                    set(np.argsort([ np.abs(a).sum()*dk.prod() for a,dk in zip(result_K,dk_list)])[-NK_sel:]) )
+                                 )  )
         print ("dividing {0} points into {1} : {2}".format(NK_sel,adpt_mesh,select_points))
         k_list_refined=[]
         dk_list_refined=[]
@@ -112,15 +122,17 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         k_list+=k_list_refined
         result_all.append(sum(res*np.prod(dk) for res,dk in zip(result_K,dk_list) ))
         print ("iteration {0} - {1} points, sum of weights = {2}".format(i_iter+1,len(k_list),np.prod(NKFFT)*sum(dk.prod() for dk in dk_list))) 
-        print (" k_list : ", k_list)
-        print ("dk_list : ",dk_list)
+        print (" k_list : \n {0}\n".format("\n".join(
+              "{0:3d} :  {1:8.5f} {2:8.5f} {3:8.5f} :    {4:8.5f} {5:8.5f} {6:8.5f} : {7:15.8f}".format(
+                     i,k[0][0],k[0][1],k[0][2],k[1][0],k[1][1],k[1][2] ,np.linalg.norm(k[2]))
+                   for i,k in enumerate( zip(k_list,dk_list,result_K) ) )  ) )
         if not (fun_write is None):
             fun_write(result_all[-1],fout_name+"_iter-{0:04d}.dat".format(i_iter+1))
         if not (adpt_thresh is None):
             if adpt_thresh>0:
-                if adpt_thresh > np.max(np.abs(result_all[-1]-result_all[-2])):
+                if adpt_thresh > np.max(np.abs(result_all[-1]-result_all[-2]))/(np.max(np.abs(result_all[-1]))+np.max(np.abs(result_all[-2])))*2:
                    break
-
+    print ("Totally processed {0} k-points ".format(len(result_K)))
     return result_all
 
 
