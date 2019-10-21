@@ -47,10 +47,13 @@ def fourier_R_to_k(AAA_R,iRvec,NKPT,hermitian=False,antihermitian=False):
     AAA_K=np.zeros( NK+(AAA_R.shape[1],), dtype=complex )
 
     for ir,irvec in enumerate(iRvec):
+#            print ("ir {0} of {1}".format(ir,len(iRvec)))
             AAA_K[tuple(irvec)]=AAA_R[ir]
     for m in range(AAA_K.shape[3]):
+#            print ("Fourier {0} of {1}".format(m,AAA_K.shape[3]))
             AAA_K[:,:,:,m]=np.fft.fftn(AAA_K[:,:,:,m])
     AAA_K=AAA_K.reshape( (np.prod(NK),)+shapeA[0:2]+shapeA[3:])
+#    print ("finished fourier")
     return AAA_K
 
 
@@ -70,8 +73,10 @@ def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
     AAA_R=AAA_R[M,N].transpose( (1,0)+tuple(range(2,len(shapeA)-1))  ).reshape(nRvec,-1)
     AAA_K=np.zeros( NK+(AAA_R.shape[1],), dtype=complex )
     for ir,irvec in enumerate(iRvec):
+#            print ("ir {0} of {1}".format(ir,len(iRvec)))
             AAA_K[tuple(irvec)]=AAA_R[ir]
     for m in range(AAA_K.shape[3]):
+#            print ("Fourier {0} of {1}".format(m,AAA_K.shape[3]))
             AAA_K[:,:,:,m]=np.fft.fftn(AAA_K[:,:,:,m])
     AAA_K=AAA_K.reshape( (np.prod(NK),ntriu)+shapeA[3:])
     result=np.zeros( (np.prod(NK),num_wann,num_wann)+shapeA[3:],dtype=complex)
@@ -83,6 +88,7 @@ def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
     else:
         result[:,N,M]=AAA_K.conjugate()
         result[:,diag,diag]=result[:,diag,diag].real
+#    print ("finished fourier")
     return result
 
 
@@ -102,7 +108,9 @@ def get_eig_deleig(NK,HH_R,iRvec,cRvec=None,calcdE=False):
     ## derivatives of the eigenvalues dE/dk_a, using wham_get_deleig_a
     num_wann=HH_R.shape[0]
     HH_K=fourier_R_to_k(HH_R,iRvec,NK,hermitian=True)
+#    print ("finding eigenvalues")
     EUU=[np.linalg.eigh(Hk) for Hk in HH_K]
+#    print ("finding eigenvalues - done")
     E_K=np.array([euu[0] for euu in EUU])
     UU_K =np.array([euu[1] for euu in EUU])
     
@@ -118,7 +126,8 @@ def get_eig_deleig(NK,HH_R,iRvec,cRvec=None,calcdE=False):
         delE_K=delE_K.real
     else:
         delE_K=None
-    
+#    print ("get_eig_deleig - done")
+
     return E_K, delE_K, UU_K, HH_K, delHH_K 
 
 

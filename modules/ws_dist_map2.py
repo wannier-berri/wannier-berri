@@ -61,10 +61,18 @@ class ws_dist_map():
     def __call__(self,matrix):
         ndim=len(matrix.shape)-3
         num_wann=matrix.shape[0]
-        reshaper=(num_wann,num_wann)+(-1,)*ndim
+        reshaper=(num_wann,num_wann)+(1,)*ndim
+        print ("check:",matrix.shape,reshaper,ndim)
         matrix_new=np.array([ sum(matrix[:,:,ir]*self._iRvec_new[irvecnew][ir].reshape(reshaper)
                                   for ir in self._iRvec_new[irvecnew] ) 
                                        for irvecnew in self._iRvec_ordered]).transpose( (1,2,0)+tuple(range(3,3+ndim)) )
+#        matrix_new=np.zeros( (matrix.shape[1],matrix.shape[2] ),dtype=complex) 
+#        
+#        np.array([ sum(matrix[:,:,ir]*self._iRvec_new[irvecnew][ir].reshape(reshaper)
+#                                  for ir in self._iRvec_new[irvecnew] ) 
+#                                       for irvecnew in self._iRvec_ordered]).transpose( (1,2,0)+tuple(range(3,3+ndim)) )
+
+
         assert ( np.abs(matrix_new.sum(axis=2)-matrix.sum(axis=2)).max()<1e-12)
         return matrix_new
              
