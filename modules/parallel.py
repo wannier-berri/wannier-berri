@@ -64,7 +64,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
 
     result_K=process(paralfunc,k_list,nproc)
 
-    result_all=[sum(res*np.prod(dk) for res,dk in zip(result_K,dk_list))]
+    result_all=[sum(res*np.prod(dk) for res,dk in zip(result_K,dk_list))*np.prod(NKFFT)]
     if not (fun_write is None):
         fun_write(result_all[-1],fout_name+".dat")
     
@@ -83,7 +83,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
     NK_sel=adpt_nk
     
     if adpt_num_iter<0:
-        adpt_num_iter=-adpt_num_iter*np.prod(NKFFT)/np.prod(adpt_mesh)/NK_sel/2
+        adpt_num_iter=-adpt_num_iter*np.prod(NKdiv)/np.prod(adpt_mesh)/NK_sel/2
 
 #Noe start refinement iterations:
     for i_iter in range(int(round(adpt_num_iter))):
@@ -120,7 +120,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         result_K+=process(paralfunc,k_list_refined,nproc)
         dk_list+=dk_list_refined
         k_list+=k_list_refined
-        result_all.append(sum(res*np.prod(dk) for res,dk in zip(result_K,dk_list) ))
+        result_all.append(sum(res*np.prod(dk) for res,dk in zip(result_K,dk_list) )*np.prod(NKFFT))
         print ("iteration {0} - {1} points, sum of weights = {2}".format(i_iter+1,len(k_list),np.prod(NKFFT)*sum(dk.prod() for dk in dk_list))) 
         print (" k_list : \n {0}\n".format("\n".join(
               "{0:3d} :  {1:8.5f} {2:8.5f} {3:8.5f} :    {4:8.5f} {5:8.5f} {6:8.5f} : {7:15.8f}".format(
