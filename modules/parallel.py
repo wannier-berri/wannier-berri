@@ -19,11 +19,12 @@ import numpy as np
 from data_dk import Data_dk
 from collections import Iterable
 import lazy_property
+from copy import copy
+import symmetry as SYM
 
 
 
-
-def process(paralfunc,k_list,nproc):
+def process(paralfunc,k_list,nproc,symgroup=None):
     selK=[ik for ik,k in enumerate(k_list) if k.res is None]
     dk_list=[k_list[ik].kp_fullBZ for ik in selK]
     print ("processing {0}  points".format(len(dk_list)))
@@ -33,32 +34,26 @@ def process(paralfunc,k_list,nproc):
         p=multiprocessing.Pool(nproc)
         res= p.map(paralfunc,dk_list)
         p.close()
+    if not (symgroup is None):
+        res=[symgroup.symmetrize(r) for r in res]
     for i,ik in enumerate(selK):
         k_list[ik].set_res(res[i])
 
 
 
-
-class Symmetry():
-    def __init__(self):
-       pass
-       
-    def transform_data(self,res):
-       return res
-
-
 class  KpointBZ():
 
-    def __init__(self,k=np.zeros(3),dk=np.ones(3),NKFFT=np.ones(3),symmetries=[]):
+    def __init__(self,k=np.zeros(3),dk=np.ones(3),NKFFT=np.ones(3),factor=1,symgroup=None):
         self.k=np.copy(k)
         self.dk=np.copy(dk)    
-        self.symmetries=symmetries
+        self.factor=factor
         self.res=None
-        self.NKFFT=NKFFT
+        self.NKFFT=np.copy(NKFFT)
+        self.symgroup=symgroup
+        
        
     def set_res(self,res):
-        self.res=sum(sym.transform_data(res) for sym in self.symmetries)*np.prod(self.dk)
-
+        self.res=res # sum(sym.transform_data(res) for sym in self.symmetries)*np.prod(self.dk)
 
     @lazy_property.LazyProperty
     def kp_fullBZ(self):
@@ -66,23 +61,60 @@ class  KpointBZ():
         return self.k/self.NKFFT
 
     @lazy_property.LazyProperty
-    def max(self):
+    def _max(self):
         return np.max(self.res)
 
     @lazy_property.LazyProperty
-    def norm(self):
+    def _norm(self):
         return np.linalg.norm(self.res)
 
-
     @lazy_property.LazyProperty
-    def normder(self):
+    def _normder(self):
         return np.linalg.norm(self.res[1:]-self.res[:-1])
+    
+    @property
+    def evaluated(self):
+        return not (self.res is None)
+        
+    @property
+    def check_evaluated(self):
+        if not self.evaluated:
+            raise RuntimeError("result for a k-point is called, which is not evaluated")
+        
+    @property
+    def max(self):
+        self.check_evaluated
+        return self._max*self.factor
+
+    @property
+    def norm(self):
+        self.check_evaluated
+        return self._norm*self.factor
+
+    @property
+    def normder(self):
+        self.check_evaluated
+        return self._normder*self.factor
+
+    @property
+    def get_res(self):
+        self.check_evaluated
+        return self.res*self.factor
+
+
+    def absorb(self,other):
+        self.factor+=other.factor
+        if not (other.res is None):
+            if not (self.res is None):
+                raise RuntimeError("combining two k-points with calculated result should not happen")
+            self.res=other.res
+
 
     def fraction(self,ndiv):
         assert (ndiv.shape==(3,))
-        kp=KpointBZ(self.k,self.dk/ndiv,self.symmetries)
-        if self.res is not None:
-            kp.res=self.res/np.prod(ndiv)
+        kp=copy(self)
+        kp.dk=self.dk/ndiv
+        kp.factor=self.factor/np.prod(ndiv)
         return kp
         
     def divide(self,ndiv):
@@ -93,19 +125,32 @@ class  KpointBZ():
         k0=self.k
         dk_adpt=self.dk/ndiv
         adpt_shift=(-k0+dk_adpt)/2.
-        k_list_add=[KpointBZ(k=k0+adpt_shift+dk_adpt*np.array([x,y,z]),dk=dk_adpt,NKFFT=self.NKFFT,symmetries=self.symmetries)
+        newfac=self.factor/np.prod(ndiv)
+        k_list_add=[KpointBZ(k=k0+adpt_shift+dk_adpt*np.array([x,y,z]),dk=dk_adpt,NKFFT=self.NKFFT,factor=newfac,symgroup=self.symgroup)
                                  for x in range(ndiv[0]) 
                                   for y in range(ndiv[1]) 
                                    for z in range(ndiv[2])
                             if not (include_original and np.all(np.array([x,y,z])*2+1==adpt_mesh)) ]
         if include_original:
             k_list_add.append(self.fraction(ndiv))
+        
+        n=len(k_list_add)
+        
+        if not (self.symgroup is None):
+            print ("checking for equivalent points")
+            for i in range(n-1,-1,-1):
+               for j in range(i-1,-1,-1):
+                  if self.symgroup.equalK(k_list_add[i].k,k_list_add[j].k):
+                      k_list_add[j].absorb(k_list_add[i])
+                      del k_list_add[i]
+                      break
+              
         return k_list_add
 
 
 
 def eval_integral_BZ(func,Data,NKdiv=np.ones(3,dtype=int),nproc=0,NKFFT=None,
-            adpt_mesh=2,adpt_num_iter=0,adpt_thresh=None,adpt_nk=1,fout_name="result",fun_write=None,symmetry_gen=[]):
+            adpt_mesh=2,adpt_num_iter=0,adpt_thresh=None,adpt_nk=1,fout_name="result",fun_write=None,symmetry_gen=[SYM.Identity]):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_dk, and return 
 a numpy.array of whatever dimensions
@@ -120,14 +165,15 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         
         
     NKFFT=Data.NKFFT if NKFFT is None else NKFFT
+    
+    symgroup=SYM.Group(symmetry_gen,basis=Data.recip_lattice)
 
     paralfunc=functools.partial(
         _eval_func_k, func=func,Data=Data,NKFFT=NKFFT )
 
-    all_symmetries=[Symmetry()]
-    k_list=KpointBZ(symmetries=all_symmetries,NKFFT=NKFFT ).divide(NKdiv)
+    k_list=KpointBZ(NKFFT=NKFFT,symgroup=symgroup ).divide(NKdiv)
 
-        
+
     result_all=[]
     if adpt_num_iter<0:
         adpt_num_iter=-adpt_num_iter*np.prod(NKdiv)/np.prod(adpt_mesh)/adpt_nk/3
@@ -147,8 +193,8 @@ As a result, the integration will be performed ove NKFFT x NKdiv
 
     for i_iter in range(adpt_num_iter+1):
         print ("iteration {0} - {1} points".format(i_iter,len([k for k in  k_list if k.res is None])) ) #,np.prod(NKFFT)*sum(dk.prod() for dk in dk_list))) 
-        process(paralfunc,k_list,nproc)
-        result_all.append(sum(kp.res for kp in k_list))
+        process(paralfunc,k_list,nproc,symgroup=symgroup)
+        result_all.append(sum(kp.get_res for kp in k_list))
 
         if not (fun_write is None):
             fun_write(result_all[-1],fout_name+"_iter-{0:04d}.dat".format(i_iter))

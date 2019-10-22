@@ -14,7 +14,6 @@ def print_my_name_end():
 
 
 
-
 def einsumk(*args):
 #   self._HHUU_K=np.einsum("kmi,kmn,knj->kij",self.UUC_K,_HH_K,self.UU_K).real
     left,right=args[0].split("->")
