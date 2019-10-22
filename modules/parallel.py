@@ -73,6 +73,11 @@ class  KpointBZ():
     def norm(self):
         return np.linalg.norm(self.res)
 
+
+    @lazy_property.LazyProperty
+    def normder(self):
+        return np.linalg.norm(self.res[1:]-self.res[:-1])
+
     def fraction(self,ndiv):
         assert (ndiv.shape==(3,))
         kp=KpointBZ(self.k,self.dk/ndiv,self.symmetries)
@@ -125,7 +130,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         
     result_all=[]
     if adpt_num_iter<0:
-        adpt_num_iter=-adpt_num_iter*np.prod(NKdiv)/np.prod(adpt_mesh)/adpt_nk/2
+        adpt_num_iter=-adpt_num_iter*np.prod(NKdiv)/np.prod(adpt_mesh)/adpt_nk/3
     adpt_num_iter=int(round(adpt_num_iter))
 
 
@@ -154,7 +159,8 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         # Now add some more points
         select_points=np.sort( list(
                     set(np.argsort([ k.max  for k in k_list])[-adpt_nk:]).union(
-                    set(np.argsort([ k.norm for k in k_list])[-adpt_nk:])      )
+                    set(np.argsort([ k.norm for k in k_list])[-adpt_nk:])      ).union(
+                    set(np.argsort([ k.normder for k in k_list])[-adpt_nk:])             )
                                  )  )[-1::-1]
         
         cnt1=len(k_list)
