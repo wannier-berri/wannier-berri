@@ -4,9 +4,6 @@ from copy import deepcopy
 
 
 
-# check if a vector is close to integer
-def _vector_int(a):
-    return ( np.linalg.norm(np.round(a)-a)<1e-10 )
 
 
 class Symmetry():
@@ -39,9 +36,11 @@ class Symmetry():
     def transform_result(self,res):
         return np.dot(res,self.R.T)*np.linalg.det(self.R)
 
-    def transform_vector(self,vec,basis=np.eye(3)):
-        return basis.T.dot(vec).dot(self.R.T).dot(np.linalg.inv(basis))
+#    def transform_vector(self,vec,basis=np.eye(3)):
+#        return basis.T.dot(vec).dot(self.R.T).dot(np.linalg.inv(basis))
     
+    def transform_vector(self,vec,basis=np.eye(3)):
+        return np.dot(vec, basis.dot(self.R.T).dot(np.linalg.inv(basis)))
 
     
 Identity =Symmetry( np.eye(3))
@@ -109,12 +108,19 @@ class Group():
     def symmetrize(self,res):
         return sum(s.transform_result(res) for s in self.symmetries)/self.size
 
+    def star(self,k):
+        return np.array([S.transform_vector(k) for S in self.symmetries])
 
-    def equalK(self,k1,k2):
-        for S in self.symmetries:
-            if _vector_int(S.transform_vector(k1,self.basis)-k2):
-                return True
-        return False
+
+if __name__ == '__main__':
+    s=Rotation(3)
+    v=[1,1,0]
+    v=[[0,1,0],[1,0,0]]
+    basis=np.array([[0.5,np.sqrt(3)/2,0],[0.5,-np.sqrt(3)/2,0],[0,0,1]])
+#    print (s.transform_vector(v,basis))
+    print (s.transform_vector_2(v,basis))
+    
+    
 
 
 #for s in findAll([Inversion,Rotation(4),Rotation(3,[0,0,1])]):
