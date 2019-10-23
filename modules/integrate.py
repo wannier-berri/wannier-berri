@@ -21,24 +21,30 @@ from copy import copy
 import symmetry as SYM
 from  kpoint import KpointBZ,exclude_equiv_points
 import utility
+from time import time
 
 
 
 def process(paralfunc,k_list,nproc,symgroup=None,smooth=None):
+    t0=time()
     selK=[ik for ik,k in enumerate(k_list) if k.res is None]
     dk_list=[k_list[ik].kp_fullBZ for ik in selK]
     print ("processing {0}  points :".format(len(dk_list)) )#\n{1}".format(len(dk_list),"\n".join("{0} {1} {2}".format(tuple(dk)) for dk in dk_list )) )
 #    print (dk_list)
     if nproc<=0:
         res = [paralfunc(k) for k in dk_list]
+        nproc_=1
     else:
         p=multiprocessing.Pool(nproc)
         res= p.map(paralfunc,dk_list)
         p.close()
+        nproc_=nproc
     if not (symgroup is None):
         res=[symgroup.symmetrize(r) for r in res]
     for i,ik in enumerate(selK):
         k_list[ik].set_res(res[i],smooth)
+    t=time()-t0
+    print ("time for processing {0} k-points : {1} ; per point {2} ; proc-sec per point : {3}".format(len(selK),t,t/len(selK),t*nproc_/len(selK)) )
         
 
 
