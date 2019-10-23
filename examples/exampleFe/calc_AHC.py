@@ -41,7 +41,8 @@ def main():
     eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi )
     AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=4,
             adpt_num_iter=-4,adpt_thresh=0.05,
-                fout_name=name,fun_write=functools.partial(write_result,Efermi=Efermi),symmetry_gen=generators,smooth=smoother(Efermi,10),adpt_nk=2)
+                fout_name=name,fun_write=functools.partial(write_result,Efermi=Efermi),symmetry_gen=generators,smooth=smoother(Efermi,10),adpt_nk=2,
+                GammaCentered=True)
     t2=time()
 
           

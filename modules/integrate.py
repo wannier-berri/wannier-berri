@@ -27,7 +27,8 @@ import utility
 def process(paralfunc,k_list,nproc,symgroup=None,smooth=None):
     selK=[ik for ik,k in enumerate(k_list) if k.res is None]
     dk_list=[k_list[ik].kp_fullBZ for ik in selK]
-    print ("processing {0}  points".format(len(dk_list)))
+    print ("processing {0}  points :".format(len(dk_list)) )#\n{1}".format(len(dk_list),"\n".join("{0} {1} {2}".format(tuple(dk)) for dk in dk_list )) )
+#    print (dk_list)
     if nproc<=0:
         res = [paralfunc(k) for k in dk_list]
     else:
@@ -66,7 +67,13 @@ As a result, the integration will be performed ove NKFFT x NKdiv
     paralfunc=functools.partial(
         _eval_func_k, func=func,Data=Data,NKFFT=NKFFT )
 
-    k_list=KpointBZ(k=(0.5/NKdiv if GammaCentered else np.zeros(3)), NKFFT=NKFFT,symgroup=symgroup ).divide(NKdiv)
+    if GammaCentered :
+        shift=(NKdiv%2-1)/(2*NKdiv)
+    else :
+        shift=np.zeros(3)
+    print ("shift={}".format(shift))
+
+    k_list=KpointBZ(k=shift, NKFFT=NKFFT,symgroup=symgroup ).divide(NKdiv)
     print ("sum of eights:{}".format(sum(kp.factor for kp in k_list)))
 
 
