@@ -102,7 +102,7 @@ class  KpointBZ():
         
         k0=self.k
         dk_adpt=self.dk/ndiv
-        adpt_shift=(-k0+dk_adpt)/2.
+        adpt_shift=(-self.dk+dk_adpt)/2.
         newfac=self.factor/np.prod(ndiv)
         k_list_add=[KpointBZ(k=k0+adpt_shift+dk_adpt*np.array([x,y,z]),dk=dk_adpt,NKFFT=self.NKFFT,factor=newfac,symgroup=self.symgroup,refinement_level=self.refinement_level+1)
                                  for x in range(ndiv[0]) 
