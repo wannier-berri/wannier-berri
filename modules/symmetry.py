@@ -8,17 +8,18 @@ from copy import deepcopy
 
 class Symmetry():
 
-    def __init__(self,R):
+    def __init__(self,R,TR=False):
         self.R=R
+        self.TR=TR
         
     def show(self):
-        print (self.R)
+        print ("rotation: {0}, TR:{1}".format(self.R,self.TR))
 
     def dot(self,other):
-        return Symmetry(self.R.dot(other.R))
+        return Symmetry(self.R.dot(other.R),self.TR!=other.TR)
         
     def __eq__(self,other):
-        return np.linalg.norm(self.R-other.R)<1e-14
+        return np.linalg.norm(self.R-other.R)<1e-14 and self.TR==other.TR
         
     def copy(self):
         return deepcopy(self)
@@ -31,20 +32,21 @@ class Symmetry():
             a=a.dot(self)
             if a==Identity:
                 return i+2
-        raise RuntimeError("for symmetry {0} the power is greater than 100".format(self.R))
+        raise RuntimeError("for symmetry {0},{1} the power is greater than 100".format(self.R,self.TR))
         
     def transform_result(self,res):
-        return np.dot(res,self.R.T)*np.linalg.det(self.R)
+        return np.dot(res,self.R.T)*np.linalg.det(self.R)*(-1 if self.TR else 1)
 
 #    def transform_vector(self,vec,basis=np.eye(3)):
 #        return basis.T.dot(vec).dot(self.R.T).dot(np.linalg.inv(basis))
     
     def transform_vector(self,vec,basis=np.eye(3)):
-        return np.dot(vec, basis.dot(self.R.T).dot(np.linalg.inv(basis)))
+        return np.dot(vec, basis.dot(self.R.T).dot(np.linalg.inv(basis)))*(-1 if self.TR else 1)
 
     
 Identity =Symmetry( np.eye(3))
 Inversion=Symmetry(-np.eye(3))
+TimeReversal=Symmetry( np.eye(3),True)
 
 #class Identity(Symmetry):
 #    def __init__(self):

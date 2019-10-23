@@ -31,12 +31,12 @@ def main():
     NKFFT=np.array([int(sys.argv[1])]*3)
     NKdiv=np.array([int(sys.argv[2])]*3)
     
-    name1="NKFFT={0}_NKdiv={1}_adptmesh=2-sym-smooth10".format(*tuple(sys.argv[1:4]))
+    name1="NKFFT={0}_NKdiv={1}_adptmesh=2-sym-smooth10+TR".format(*tuple(sys.argv[1:4]))
     name=seedname+"_w19_ahc_"+name1
     Efermi=np.linspace(12.,13.,1001)
 #    Data=get_data.Data(tb_file='Fe_tb.dat',getAA=True)
     Data=get_data.Data(seedname,getAA=True)
-    generators=[SYM.Inversion,SYM.Rotation(4)]
+    generators=[SYM.Inversion,SYM.Rotation(4),SYM.TimeReversal.dot(SYM.Rotation(2,axis=[1,0,0]))]
     t1=time()
     eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi )
     AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=4,
