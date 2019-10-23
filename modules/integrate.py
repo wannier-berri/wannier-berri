@@ -94,6 +94,8 @@ As a result, the integration will be performed ove NKFFT x NKdiv
 
     for i_iter in range(adpt_num_iter+1):
         print ("iteration {0} - {1} points".format(i_iter,len([k for k in  k_list if k.res is None])) ) #,np.prod(NKFFT)*sum(dk.prod() for dk in dk_list))) 
+        for i,k in enumerate(k_list):
+            print ("{1} k-point : {0} \n star:{2}\n".format(k.k,i,k.star))
         process(paralfunc,k_list,nproc,symgroup=symgroup,smooth=smooth)
         result_all=sum(kp.get_res for kp in k_list)
 
