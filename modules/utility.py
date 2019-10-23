@@ -35,3 +35,40 @@ def einsumk(*args):
     else:
         raise RuntimeError("einsumk is not implemented for number of matrices {}".format(nmat))
     
+
+
+from scipy.constants import Boltzmann,elementary_charge,hbar
+
+class smoother():
+    def __init__(self,E,T=10):  # T in K
+        self.T=T*Boltzmann/elementary_charge  # now in eV
+        self.E=np.copy(E)
+        dE=E[1]-E[0]
+        maxdE=5
+        self.NE1=int(maxdE*T/dE)
+        self.NE=E.shape[0]
+        self.smt=self._broaden(np.arange(-self.NE1,self.NE1+1)*dE)*dE
+
+
+    def _broaden(self,E):
+        return 0.25/self.T/np.cosh(E/(2*self.T))**2
+
+    def __call__(self,A):
+        assert self.E.shape[0]==A.shape[0]
+        res=np.zeros(A.shape)
+        for i in range(self.NE):
+            start=max(0,i-self.NE1)
+            end=min(self.NE,i+self.NE1+1)
+            start1=self.NE1-(i-start)
+            end1=self.NE1+(end-i)
+            res[i]=A[start:end].transpose(tuple(range(1,len(A.shape)))+(0,)).dot(self.smt[start1:end1])+A[0]*self.smt[:start1].sum()+A[-1]*self.smt[end1:].sum()
+        return res
+
+
+class voidsmoother(smoother):
+    def __init__(self):
+        pass
+        
+    def __call__(self,A):
+        return A
+
