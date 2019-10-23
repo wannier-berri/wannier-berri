@@ -43,7 +43,9 @@ def process(paralfunc,k_list,nproc,symgroup=None,smooth=None):
 
 
 def eval_integral_BZ(func,Data,NKdiv=np.ones(3,dtype=int),nproc=0,NKFFT=None,
-            adpt_mesh=2,adpt_num_iter=0,adpt_thresh=None,adpt_nk=1,fout_name="result",fun_write=None,symmetry_gen=[SYM.Identity],smooth=utility.voidsmoother()):
+            adpt_mesh=2,adpt_num_iter=0,adpt_thresh=None,adpt_nk=1,fout_name="result",fun_write=None,
+             symmetry_gen=[SYM.Identity],smooth=utility.voidsmoother(),
+             GammaCentered=False):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_dk, and return 
 a numpy.array of whatever dimensions
@@ -64,11 +66,10 @@ As a result, the integration will be performed ove NKFFT x NKdiv
     paralfunc=functools.partial(
         _eval_func_k, func=func,Data=Data,NKFFT=NKFFT )
 
-    k_list=KpointBZ(NKFFT=NKFFT,symgroup=symgroup ).divide(NKdiv)
+    k_list=KpointBZ(k=(0.5/NKdiv if GammaCentered else np.zeros(3)), NKFFT=NKFFT,symgroup=symgroup ).divide(NKdiv)
     print ("sum of eights:{}".format(sum(kp.factor for kp in k_list)))
 
 
-    result_all=[]
     if adpt_num_iter<0:
         adpt_num_iter=-adpt_num_iter*np.prod(NKdiv)/np.prod(adpt_mesh)/adpt_nk/3
     adpt_num_iter=int(round(adpt_num_iter))
@@ -83,15 +84,16 @@ As a result, the integration will be performed ove NKFFT x NKdiv
     
     counter=len(k_list)
 
+
     for i_iter in range(adpt_num_iter+1):
         print ("iteration {0} - {1} points".format(i_iter,len([k for k in  k_list if k.res is None])) ) #,np.prod(NKFFT)*sum(dk.prod() for dk in dk_list))) 
         process(paralfunc,k_list,nproc,symgroup=symgroup,smooth=smooth)
-        result_all.append(sum(kp.get_res for kp in k_list))
+        result_all=sum(kp.get_res for kp in k_list)
 
         if not (fun_write is None):
-            fun_write(result_all[-1],fout_name+"_iter-{0:04d}.dat".format(i_iter))
+            fun_write(result_all,fout_name+"_iter-{0:04d}.dat".format(i_iter))
         
-        if i_iter == adpt_num_iter:
+        if i_iter >= adpt_num_iter:
             break
              
         # Now add some more points
@@ -116,7 +118,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         counter+=cnt2-cnt1
     
     print ("Totally processed {0} k-points ".format(counter))
-    return result_all[-1]
+    return result_all
        
 
 
