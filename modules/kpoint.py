@@ -1,5 +1,6 @@
 import numpy as np
 import lazy_property
+from copy import copy
 
 class  KpointBZ():
 
@@ -107,7 +108,7 @@ class  KpointBZ():
                                  for x in range(ndiv[0]) 
                                   for y in range(ndiv[1]) 
                                    for z in range(ndiv[2])
-                            if not (include_original and np.all(np.array([x,y,z])*2+1==adpt_mesh)) ]
+                            if not (include_original and np.all(np.array([x,y,z])*2+1==ndiv)) ]
         if include_original:
             k_list_add.append(self.fraction(ndiv))
         n=len(k_list_add)
