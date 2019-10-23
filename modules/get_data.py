@@ -31,7 +31,8 @@ class Data():
         self.num_wann,nRvec,self.spinors=int(l[0]),int(l[1]),str2bool(l[2])
         self.nRvec0=nRvec
         self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
-        self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice) 
+        self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
+        print ("real lattice=")
         iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
         
         self.Ndegen=iRvec[:,3]

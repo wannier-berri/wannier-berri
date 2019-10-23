@@ -100,6 +100,7 @@ class Group():
                 break
         self.symmetries=sym_list
         self.basis=basis
+        print ("BASIS={}".format(self.basis))
         
     @property
     def size(self):
@@ -109,16 +110,18 @@ class Group():
         return sum(s.transform_result(res) for s in self.symmetries)/self.size
 
     def star(self,k):
-        return np.array([S.transform_vector(k) for S in self.symmetries])
+        return np.array([S.transform_vector(k,self.basis) for S in self.symmetries])
 
 
 if __name__ == '__main__':
-    s=Rotation(3)
-    v=[1,1,0]
-    v=[[0,1,0],[1,0,0]]
-    basis=np.array([[0.5,np.sqrt(3)/2,0],[0.5,-np.sqrt(3)/2,0],[0,0,1]])
+    s=Rotation(4)
+    basis=np.array([[1,0,-0.3],[0,1,-0.3],[0,0,0.6]])
+    group=Group([s],basis)
+#    v=[[1,0,0],[0,1,0],[0,0,1]]    
+    v=[-0.375,-0.375,0.375]
+#    basis=np.array([[0.5,np.sqrt(3)/2,0],[0.5,-np.sqrt(3)/2,0],[0,0,1]])
 #    print (s.transform_vector(v,basis))
-    print (s.transform_vector_2(v,basis))
+    print (group.star(v))
     
     
 
