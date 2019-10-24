@@ -22,13 +22,17 @@ import symmetry as SYM
 from  kpoint import KpointBZ,exclude_equiv_points
 import utility
 from time import time
-
+import pickle
+import glob
 
 
 def process(paralfunc,k_list,nproc,symgroup=None,smooth=None):
     t0=time()
     selK=[ik for ik,k in enumerate(k_list) if k.res is None]
     dk_list=[k_list[ik].kp_fullBZ for ik in selK]
+    if len(dk_list)==0:
+        print ("nothing to process now")
+        return
     print ("processing {0}  points :".format(len(dk_list)) )#\n{1}".format(len(dk_list),"\n".join("{0} {1} {2}".format(tuple(dk)) for dk in dk_list )) )
 #    print (dk_list)
     if nproc<=0:
@@ -52,7 +56,7 @@ def process(paralfunc,k_list,nproc,symgroup=None,smooth=None):
 def eval_integral_BZ(func,Data,NKdiv=np.ones(3,dtype=int),nproc=0,NKFFT=None,
             adpt_mesh=2,adpt_num_iter=0,adpt_thresh=None,adpt_nk=1,fout_name="result",fun_write=None,
              symmetry_gen=[SYM.Identity],smooth=utility.voidsmoother(),
-             GammaCentered=False):
+             GammaCentered=False,file_klist="k_list.pickle",restart=False,start_iter=0):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_dk, and return 
 a numpy.array of whatever dimensions
@@ -64,7 +68,9 @@ The parallelisation is done by NKdiv
 
 As a result, the integration will be performed ove NKFFT x NKdiv
 """
-            
+    
+    
+    
     cnt_exclude=0
     NKFFT=Data.NKFFT if NKFFT is None else NKFFT
     
@@ -79,9 +85,29 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         shift=np.zeros(3)
     print ("shift={}".format(shift))
 
-    k_list=KpointBZ(k=shift, NKFFT=NKFFT,symgroup=symgroup ).divide(NKdiv)
-    print ("sum of eights:{}".format(sum(kp.factor for kp in k_list)))
+    if restart:
+        try:
+            k_list=pickle.load(open(file_klist,"rb"))
+            print ("{0} k-points were read from {1}".format(len(k_list),file_klist))
+            if len(k_list)==0:
+                print ("WARNING : {0} contains zero points starting from scrath".format(file_klist))
+                restart=False
+        except Exception as err:
+            restart=False
+            print ( err )
+            print ("WARNING : reading from {0} failed, starting from scrath".format(file_klist))
+            
+    if not restart:
+        k_list=KpointBZ(k=shift, NKFFT=NKFFT,symgroup=symgroup ).divide(NKdiv)
+        print ("sum of eights:{}".format(sum(kp.factor for kp in k_list)))
+        start_iter=0
 
+    if restart:
+        try:
+            start_iter=int(sorted(glob.glob(fout_name+"_iter-*.dat"))[-1].split("-")[-1].split(".")[0])
+        except Exception as err:
+            print ("WARNING : {0} : failed to read start_iter. Setting to zero".format(err))
+            start_iter=0
 
     if adpt_num_iter<0:
         adpt_num_iter=-adpt_num_iter*np.prod(NKdiv)/np.prod(adpt_mesh)/adpt_nk/3
@@ -103,10 +129,16 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         for i,k in enumerate(k_list):
             print ("{1} k-point : {0} \n star:{2}\n".format(k.k,i,k.star))
         process(paralfunc,k_list,nproc,symgroup=symgroup,smooth=smooth)
-        result_all=sum(kp.get_res for kp in k_list)
+        
+        try:
+            pickle.dump(k_list,open(file_klist,"wb"))
+        except Exception as err:
+            print ("Warning: {0} \n the k_list was not pickled".format(err))
 
-        if not (fun_write is None):
-            fun_write(result_all,fout_name+"_iter-{0:04d}.dat".format(i_iter))
+        result_all=sum(kp.get_res for kp in k_list)
+        
+        if not ((fun_write is None) or (restart and i_iter==0)):
+            fun_write(result_all,fout_name+"_iter-{0:04d}.dat".format(i_iter+start_iter))
         
         if i_iter >= adpt_num_iter:
             break
