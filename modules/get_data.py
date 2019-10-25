@@ -32,7 +32,6 @@ class Data():
         self.nRvec0=nRvec
         self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
         self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
-        print ("real lattice=")
         iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
         
         self.Ndegen=iRvec[:,3]
@@ -84,6 +83,7 @@ class Data():
         l=f.readline()
         print ("reading TB file {0} ( {1} )".format(tb_file,l))
         self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
+        self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
         self.num_wann=int(f.readline())
         nRvec=int(f.readline())
         self.nRvec0=nRvec
