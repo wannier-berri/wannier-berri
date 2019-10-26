@@ -1,3 +1,17 @@
+#------------------------------------------------------------#
+# This file is distributed as part of the Wannier19 code     #
+# under the terms of the GNU General Public License. See the #
+# file `LICENSE' in the root directory of the Wannier19      #
+# distribution, or http://www.gnu.org/copyleft/gpl.txt       #
+#                                                            #
+# The Wannier19 code is hosted on GitHub:                    #
+# https://github.com/stepan-tsirkin/wannier19                #
+#                     written by                             #
+#           Stepan Tsirkin, University ofZurich              #
+#                                                            #
+#------------------------------------------------------------#
+
+
 __debug = False
 
 import inspect
@@ -72,3 +86,13 @@ class voidsmoother(smoother):
     def __call__(self,A):
         return A
 
+
+
+
+def str2bool(v):
+    if v[0] in "fF" :
+        return False
+    elif v[0] in "tT":
+        return True
+    else :
+        raise RuntimeError(" unrecognized value of bool parameter :{0}".format(v) )
