@@ -153,7 +153,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         cnt1=len(k_list)
         for ik in select_points:
             k_list+=k_list[ik].divide(adpt_mesh)
-            del k_list[ik]
+#            del k_list[ik]
         
         print ("sum of eights:{}".format(sum(kp.factor for kp in k_list)))
         print ("checking for equivalent points in all points")

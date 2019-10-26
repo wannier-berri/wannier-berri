@@ -110,7 +110,13 @@ class  KpointBZ():
                                    for z in range(ndiv[2])
                             if not (include_original and np.all(np.array([x,y,z])*2+1==ndiv)) ]
         if include_original:
+            self.fractor=newfac
+            self.refinement_level+=1
             k_list_add.append(self.fraction(ndiv))
+        else:
+            self.factor=0  # the k-point is "dead" but can be used is starting calculation on a different grid grid"
+            
+            
         n=len(k_list_add)
 
         if not (self.symgroup is None):
