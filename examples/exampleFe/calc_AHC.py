@@ -36,13 +36,13 @@ def main():
     Efermi=np.linspace(12.,13.,1001)
 #    Data=get_data.Data(tb_file='Fe_tb.dat',getAA=True)
     Data=get_data.Data(seedname,getAA=True)
-    generators=[SYM.Inversion,SYM.Rotation(4),SYM.TimeReversal.dot(SYM.Rotation(2,axis=[1,0,0]))]
+    generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
     t1=time()
     eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi )
-    AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=4,
-            adpt_num_iter=-4,adpt_thresh=0.05,
+    AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=0,
+            adpt_num_iter=0,
                 fout_name=name,fun_write=functools.partial(write_result,Efermi=Efermi),symmetry_gen=generators,smooth=smoother(Efermi,10),adpt_nk=2,
-                GammaCentered=True,restart=True)
+                GammaCentered=True,restart=False)
     t2=time()
 
           
