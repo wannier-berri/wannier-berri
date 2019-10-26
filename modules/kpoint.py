@@ -1,3 +1,16 @@
+#------------------------------------------------------------#
+# This file is distributed as part of the Wannier19 code     #
+# under the terms of the GNU General Public License. See the #
+# file `LICENSE' in the root directory of the Wannier19      #
+# distribution, or http://www.gnu.org/copyleft/gpl.txt       #
+#                                                            #
+# The Wannier19 code is hosted on GitHub:                    #
+# https://github.com/stepan-tsirkin/wannier19                #
+#                     written by                             #
+#           Stepan Tsirkin, University ofZurich              #
+#                                                            #
+#------------------------------------------------------------#
+
 import numpy as np
 import lazy_property
 from copy import copy
@@ -13,9 +26,9 @@ class  KpointBZ():
         self.symgroup=symgroup
         self.refinement_level=refinement_level
 
-    def set_res(self,res,smooth):
+    def set_res(self,res):
         self.res=res # sum(sym.transform_data(res) for sym in self.symmetries)*np.prod(self.dk)
-        self.res_smooth=smooth(self.res)
+#        self.res_smooth=smooth(self.res)
         
     @lazy_property.LazyProperty
     def kp_fullBZ(self):
@@ -29,17 +42,16 @@ class  KpointBZ():
         else:
             return self.symgroup.star(self.k)
 
+    def __str__(self):
+        res="coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ] \n".format(self.k[0],self.k[1],self.k[2])
+        
+        if not (self.star is None):
+            res+="star : \n"+"".join(" [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ] \n".format(s[0],s[1],s[2]) for s in self.star)
+        return res
+
     @lazy_property.LazyProperty
     def _max(self):
-        return np.max(self.res_smooth)
-
-    @lazy_property.LazyProperty
-    def _norm(self):
-        return np.linalg.norm(self.res_smooth)
-
-    @lazy_property.LazyProperty
-    def _normder(self):
-        return np.linalg.norm(self.res_smooth[1:]-self.res_smooth[:-1])
+        return self.res.max() #np.max(self.res_smooth)
     
     @property
     def evaluated(self):
@@ -68,7 +80,8 @@ class  KpointBZ():
     @property
     def get_res(self):
         self.check_evaluated
-        return np.hstack((self.res,self.res_smooth))*self.factor
+        return self.res*self.factor
+#        return np.hstack((self.res,self.res_smooth))*self.factor
 
 
     def absorb(self,other):

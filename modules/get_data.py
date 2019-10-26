@@ -13,11 +13,11 @@
 
 import numpy as np
 from scipy.io import FortranFile as FF
-from aux import str2bool
+from utility import str2bool
 import wan_ham as wham
 import copy
 import lazy_property
-from ws_dist_map2 import ws_dist_map
+from ws_dist_map import ws_dist_map
 
 class Data():
 
@@ -32,7 +32,6 @@ class Data():
         self.nRvec0=nRvec
         self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
         self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
-        print ("real lattice=")
         iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
         
         self.Ndegen=iRvec[:,3]
@@ -84,6 +83,7 @@ class Data():
         l=f.readline()
         print ("reading TB file {0} ( {1} )".format(tb_file,l))
         self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
+        self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
         self.num_wann=int(f.readline())
         nRvec=int(f.readline())
         self.nRvec0=nRvec
@@ -106,18 +106,15 @@ class Data():
             self.HH_R[:,:,ir]=(hh[:,:,0]+1j*hh[:,:,1])/self.Ndegen[ir]
         
         self.iRvec=np.array(self.iRvec,dtype=int)
-#        print "iRvec=\n",self.iRvec
         
         if getAA:
           self.AA_R=np.zeros( (self.num_wann,self.num_wann,nRvec,3) ,dtype=complex)
           for ir in range(nRvec):
             f.readline()
-#            irvec=
             assert (np.array(f.readline().split(),dtype=int)==self.iRvec[ir]).all()
             aa=np.array( [[f.readline().split()[2:8] 
                              for n in range(self.num_wann)] 
                                 for m in range(self.num_wann)],dtype=float)
-#            print (aa.shape)
             self.AA_R[:,:,ir,:]=(aa[:,:,0::2]+1j*aa[:,:,1::2]).transpose( (1,0,2) ) /self.Ndegen[ir]
         
         
@@ -134,16 +131,11 @@ class Data():
         print ("Real-space lattice:\n",self.real_lattice)
         #print ("R - points and dege=neracies:\n",iRvec)
         
-#    @lazy_property.LazyProperty
     @property
     def cRvec(self):
         return self.iRvec.dot(self.real_lattice)
 
 
-#    @lazy_property.LazyProperty
-#    def get_nRvec(self):
-#        return self.iRvec.shape[0]
-    
     @property 
     def nRvec(self):
         return self.iRvec.shape[0]
@@ -162,13 +154,10 @@ class Data():
         f.close()
         ncomp=MM_R.shape[2]/self.nRvec0
         if ncomp==1:
-#            print "reading 0d for ",suffix
             result=MM_R/self.Ndegen[None,None,:]
         elif ncomp==3:
-#            print "reading 1d for ",suffix
             result= MM_R.reshape(self.num_wann, self.num_wann, 3, self.nRvec0).transpose(0,1,3,2)/self.Ndegen[None,None,:,None]
         elif ncomp==9:
-#            print "reading 2d for ",suffix
             result= MM_R.reshape(self.num_wann, self.num_wann, 3,3, self.nRvec0).transpose(0,1,4,3,2)/self.Ndegen[None,None,:,None,None]
         else:
             raise RuntimeError("in __getMat: invalid ncomp : {0}".format(ncomp))
