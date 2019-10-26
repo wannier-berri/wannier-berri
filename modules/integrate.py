@@ -43,7 +43,7 @@ def process(paralfunc,k_list,nproc,symgroup=None,smooth=None):
         p.close()
         nproc_=nproc
     if not (symgroup is None):
-        res=[symgroup.symmetrize_pseudovector(r) for r in res]
+        res=[symgroup.symmetrize_axial_vector(r) for r in res]
     for i,ik in enumerate(selK):
         k_list[ik].set_res(res[i],smooth)
     t=time()-t0
