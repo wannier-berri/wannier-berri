@@ -14,17 +14,6 @@ import symmetry as SYM
 from utility import smoother
 
 
-def write_result(AHC,name,Efermi):
-        open(name,"w").write(
-       "    ".join("{0:^15s}".format(s) for s in ["EF",]+
-                [b for b in ("x","y","z")*2])+"\n"+
-      "\n".join(
-       "    ".join("{0:15.6f}".format(x) for x in [ef]+[x for x in ahc]) 
-                      for ef,ahc in zip (Efermi,AHC) )
-       +"\n")
-
-
-
 def main():
     t0=time()
     seedname="Fe"
@@ -38,11 +27,11 @@ def main():
     Data=get_data.Data(seedname,getAA=True)
     generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
     t1=time()
-    eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi )
-    AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=0,
-            adpt_num_iter=0,
-                fout_name=name,fun_write=functools.partial(write_result,Efermi=Efermi),symmetry_gen=generators,smooth=smoother(Efermi,10),adpt_nk=2,
-                GammaCentered=True,restart=False)
+    eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi, smoother=smoother(Efermi,10) )
+    AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=4,
+            adpt_num_iter=10,adpt_nk=2,
+                fout_name=name,symmetry_gen=generators,
+                GammaCentered=False,restart=False)
     t2=time()
 
           

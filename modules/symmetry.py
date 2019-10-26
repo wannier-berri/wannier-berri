@@ -1,9 +1,20 @@
+#------------------------------------------------------------#
+# This file is distributed as part of the Wannier19 code     #
+# under the terms of the GNU General Public License. See the #
+# file `LICENSE' in the root directory of the Wannier19      #
+# distribution, or http://www.gnu.org/copyleft/gpl.txt       #
+#                                                            #
+# The Wannier19 code is hosted on GitHub:                    #
+# https://github.com/stepan-tsirkin/wannier19                #
+#                     written by                             #
+#           Stepan Tsirkin, University ofZurich              #
+#                                                            #
+#------------------------------------------------------------#
+
+
 import numpy as np
 from scipy.spatial.transform import Rotation as rotmat
 from copy import deepcopy
-
-
-
 
 
 class Symmetry():
@@ -123,6 +134,9 @@ class Group():
     def symmetrize_polar_vector(self,res):
         return sum(s.transform_polar_vector(res) for s in self.symmetries)/self.size
 
+    def symmetrize(self,result):
+        return sum(result.transform(s) for s in self.symmetries)/self.size
+    
     def star(self,k):
         st=[S.transform_k_vector(k,self.basis) for S in self.symmetries]
         for i in range(len(st)-1,0,-1):

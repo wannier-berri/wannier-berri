@@ -8,7 +8,7 @@
 # the corresponding Fortran90 code from  Wannier 90 project  #
 #                                                            #
 # with significant modifications for better performance      #
-#   it is nor a lot different                                #
+#   it is now a lot different                                #
 #                                                            #
 # The Wannier19 code is hosted on GitHub:                    #
 # https://github.com/stepan-tsirkin/wannier19                #
@@ -27,7 +27,61 @@ import numpy as np
 from scipy import constants as constants
 from collections import Iterable
 
-from utility import  print_my_name_start,print_my_name_end
+from utility import  print_my_name_start,print_my_name_end,voidsmoother
+import parent
+
+
+class AHCresult(parent.Result):
+
+    def __init__(self,Efermi,AHC,AHCsmooth=None,smoother=None):
+        assert (Efermi.shape[0]==AHC.shape[0])
+        assert(AHC.shape[-1]==3)
+        self.Efermi=Efermi
+        self.AHC=AHC
+        if not (AHCsmooth is None):
+            self.AHCsmooth=AHCsmooth
+        elif not (smoother is None):
+            self.AHCsmooth=smoother(self.AHC)
+        else:
+             raise ValueError("either  AHCsmooth or smoother should be defined")
+
+    def __mul__(self,other):
+        if isinstance(other,int) or isinstance(other,float) :
+            return AHCresult(self.Efermi,self.AHC*other,self.AHCsmooth*other)
+        else:
+            raise TypeError("result can only be multilied by a number")
+    
+    def __add__(self,other):
+        if other == 0:
+            return self
+        if np.linalg.norm(self.Efermi-other.Efermi)>1e-8:
+            raise RuntimeError ("Adding results with different Fermi energies - not allowed")
+        return AHCresult(self.Efermi,self.AHC+other.AHC,self.AHCsmooth+other.AHCsmooth)
+
+    def write(self,name):
+        open(name,"w").write(
+           "    ".join("{0:^15s}".format(s) for s in ["EF",]+
+                [b for b in ("x","y","z")*2])+"\n"+
+          "\n".join(
+           "    ".join("{0:15.6f}".format(x) for x in [ef]+[x for x in ahc]) 
+                      for ef,ahc in zip (self.Efermi,np.hstack( (self.AHC,self.AHCsmooth) ) ))
+               +"\n") 
+
+    def transform(self,sym):
+        return AHCresult(self.Efermi,sym.transform_axial_vector(self.AHC),sym.transform_axial_vector(self.AHCsmooth) )
+
+    def _maxval(self):
+        return self.AHCsmooth.max() 
+
+    def _norm(self):
+        return np.linalg.norm(self.AHCsmooth)
+
+    def _normder(self):
+        return np.linalg.norm(self.AHCsmooth[1:]-self.AHCsmooth[:-1])
+
+    def max(self):
+        return np.array([self._maxval(),self._norm(),self._normder()])
+
 
 alpha=np.array([1,2,0])
 beta =np.array([2,0,1])
@@ -61,8 +115,6 @@ def eval_Juoo_deg(B,degen):
                                       for ib1,ib2 in degen])
 
 
-
-
 def eval_J0(A,occ):
     return A[occ].sum(axis=0)
 
@@ -85,7 +137,7 @@ def calcImf_K(data,degen_bands,ik):
     return eval_Jo_deg(A,degen_bands)-2*eval_Juo_deg(B,degen_bands) 
 
 
-def calcAHC(data,Efermi=None,occ_old=None):
+def calcAHC(data,Efermi=None,occ_old=None,smoother=voidsmoother):
     if occ_old is None: 
         occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
 
@@ -96,7 +148,7 @@ def calcAHC(data,Efermi=None,occ_old=None):
         for iFermi in range(nFermi):
 #            print ("iFermi={}".format(iFermi))
             AHC[iFermi]=calcAHC(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        return np.cumsum(AHC,axis=0)
+        return AHCresult(Efermi,np.cumsum(AHC,axis=0),smoother=smoother)
     
     # now code for a single Fermi level:
     AHC=np.zeros(3)
