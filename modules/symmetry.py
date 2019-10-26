@@ -15,7 +15,7 @@ class Symmetry():
     def show(self):
         print ("rotation: {0}, TR:{1}".format(self.R,self.TR))
 
-    def dot(self,other):
+    def __mul__(self,other):
         return Symmetry(self.R.dot(other.R),self.TR!=other.TR)
         
     def __eq__(self,other):
@@ -23,30 +23,22 @@ class Symmetry():
         
     def copy(self):
         return deepcopy(self)
-    
-    def power(self):
-        if self==Identity:
-            return 1
-        a=self.copy()
-        for i in range(100):
-            a=a.dot(self)
-            if a==Identity:
-                return i+2
-        raise RuntimeError("for symmetry {0},{1} the power is greater than 100".format(self.R,self.TR))
-        
-    def transform_result(self,res):
+
+    def transform_axial_vector(self,res):
         return np.dot(res,self.R.T)*np.linalg.det(self.R)*(-1 if self.TR else 1)
 
-#    def transform_vector(self,vec,basis=np.eye(3)):
-#        return basis.T.dot(vec).dot(self.R.T).dot(np.linalg.inv(basis))
-    
-    def transform_vector(self,vec,basis=np.eye(3)):
+    def transform_polar_vector(self,res):
+        return np.dot(res,self.R.T)
+
+    def transform_k_vector(self,vec,basis=np.eye(3)):
         return np.dot(vec, basis.dot(self.R.T).dot(np.linalg.inv(basis)))*(-1 if self.TR else 1)
 
     
 Identity =Symmetry( np.eye(3))
 Inversion=Symmetry(-np.eye(3))
 TimeReversal=Symmetry( np.eye(3),True)
+
+
 
 #class Identity(Symmetry):
 #    def __init__(self):
@@ -71,9 +63,26 @@ class Rotation(Symmetry):
         R=rotmat.from_rotvec(2*np.pi/n*axis/np.linalg.norm(axis)).as_dcm()
         super(Rotation, self).__init__(R )
 
+
+
 class Mirror(Symmetry):
     def __init__(self,axis=[0,0,1]):
-         super(Mirror, self).__init__(Rotation(2,axis).dot(Inversion).R)
+         super(Mirror, self).__init__( (Rotation(2,axis)*Inversion).R )
+
+
+
+
+#some typically used symmetries
+Mx=Mirror([1,0,0])
+My=Mirror([0,1,0])
+Mz=Mirror([0,0,1])
+C2z=Rotation(2,[0,0,1])
+C3z=Rotation(3,[0,0,1])
+C4z=Rotation(4,[0,0,1])
+C6z=Rotation(6,[0,0,1])
+C2x=Rotation(2,[1,0,0])
+C2y=Rotation(2,[0,1,0])
+
 
 
 
@@ -89,7 +98,7 @@ class Group():
             lenold=len(sym_list)
             for s1 in sym_list:
               for s2 in sym_list:
-                s3=s1.dot(s2)
+                s3=s1*s2
                 new = True
                 for s4 in sym_list:
                    if s3==s4:
@@ -108,11 +117,19 @@ class Group():
     def size(self):
         return len(self.symmetries)
     
-    def symmetrize(self,res):
-        return sum(s.transform_result(res) for s in self.symmetries)/self.size
+    def symmetrize_axial_vector(self,res):
+        return sum(s.transform_axial_vector(res) for s in self.symmetries)/self.size
+
+    def symmetrize_polar_vector(self,res):
+        return sum(s.transform_polar_vector(res) for s in self.symmetries)/self.size
 
     def star(self,k):
-        return np.array([S.transform_vector(k,self.basis) for S in self.symmetries])
+        st=[S.transform_k_vector(k,self.basis) for S in self.symmetries]
+        for i in range(len(st)-1,0,-1):
+           diff=np.array(st[:i])-np.array(st[i])[None,:]
+           if np.linalg.norm (diff-diff.round() ,axis=-1).min()<1e-10:
+               del st[i]
+        return np.array(st)
 
 
 if __name__ == '__main__':
@@ -127,23 +144,3 @@ if __name__ == '__main__':
     
     
 
-
-#for s in findAll([Inversion,Rotation(4),Rotation(3,[0,0,1])]):
-#    s.show()
-
-
-#basis=np.array([[0.5,np.sqrt(3)/2,0],[0.5,-np.sqrt(3)/2,0],[0,0,1]])
-#print(basis.T.dot([1,0,0]))
-#print(Rotation(3).transform_vector([1,0,0],basis=basis) )
-
-
-
-#exit()
-
-#Inversion.show()
-#Identity.show()
-#Rotation(1).show()
-#Rotation(3).show()
-#Rotation(3,axis=[1e-5,0,0]).show()
-#print ( Mirror(axis=[1,0,0]).dot(Mirror(axis=[-1,np.sqrt(3),0])).power())
-#print ( Mirror([1,2,3])==Inversion.dot(Rotation(2,[-1,-2,-3])))

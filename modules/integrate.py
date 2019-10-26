@@ -33,8 +33,7 @@ def process(paralfunc,k_list,nproc,symgroup=None,smooth=None):
     if len(dk_list)==0:
         print ("nothing to process now")
         return
-    print ("processing {0}  points :".format(len(dk_list)) )#\n{1}".format(len(dk_list),"\n".join("{0} {1} {2}".format(tuple(dk)) for dk in dk_list )) )
-#    print (dk_list)
+    print ("processing {0}  points :".format(len(dk_list)) )
     if nproc<=0:
         res = [paralfunc(k) for k in dk_list]
         nproc_=1
@@ -44,7 +43,7 @@ def process(paralfunc,k_list,nproc,symgroup=None,smooth=None):
         p.close()
         nproc_=nproc
     if not (symgroup is None):
-        res=[symgroup.symmetrize(r) for r in res]
+        res=[symgroup.symmetrize_pseudovector(r) for r in res]
     for i,ik in enumerate(selK):
         k_list[ik].set_res(res[i],smooth)
     t=time()-t0
@@ -54,7 +53,7 @@ def process(paralfunc,k_list,nproc,symgroup=None,smooth=None):
 
 
 def eval_integral_BZ(func,Data,NKdiv=np.ones(3,dtype=int),nproc=0,NKFFT=None,
-            adpt_mesh=2,adpt_num_iter=0,adpt_thresh=None,adpt_nk=1,fout_name="result",fun_write=None,
+            adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",fun_write=None,
              symmetry_gen=[SYM.Identity],smooth=utility.voidsmoother(),
              GammaCentered=False,file_klist="k_list.pickle",restart=False,start_iter=0):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
@@ -127,7 +126,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
     for i_iter in range(adpt_num_iter+1):
         print ("iteration {0} - {1} points".format(i_iter,len([k for k in  k_list if k.res is None])) ) #,np.prod(NKFFT)*sum(dk.prod() for dk in dk_list))) 
         for i,k in enumerate(k_list):
-            print ("{1} k-point : {0} \n star:{2}\n".format(k.k,i,k.star))
+            print (" k-point {0} : {1} ".format(i,k))
         process(paralfunc,k_list,nproc,symgroup=symgroup,smooth=smooth)
         
         try:
