@@ -35,7 +35,7 @@ class AHCresult(parent.Result):
 
     def __init__(self,Efermi,AHC,AHCsmooth=None,smoother=None):
         assert (Efermi.shape[0]==AHC.shape[0])
-        assert(AHC.shape[-1]==3)
+        assert (AHC.shape[-1]==3)
         self.Efermi=Efermi
         self.AHC=AHC
         if not (AHCsmooth is None):
@@ -94,25 +94,6 @@ fac_morb =  -eV_au/bohr**2
 
 
 
-def eval_Jo_deg(A,degen):
-#    print (degen)
-    return np.array([A[ib1:ib2].sum(axis=0) for ib1,ib2 in degen])
-
-def eval_Juo_deg(B,degen):
-    return np.array([B[:ib1,ib1:ib2].sum(axis=(0,1)) + B[ib2:,ib1:ib2].sum(axis=(0,1)) for ib1,ib2 in degen])
-
-def eval_Joo_deg(B,degen):
-    return np.array([B[ib1:ib2,ib1:ib2].sum(axis=(0,1))  for ib1,ib2 in degen])
-
-def eval_Juuo_deg(B,degen):
-    return np.array([   sum(C.sum(axis=(0,1,2)) 
-                          for C in  (B[:ib1,:ib1,ib1:ib2],B[:ib1,ib2:,ib1:ib2],B[ib2:,:ib1,ib1:ib2],B[ib2:,ib2:,ib1:ib2]) )  
-                                      for ib1,ib2 in degen])
-
-def eval_Juoo_deg(B,degen):
-    return np.array([   sum(C.sum(axis=(0,1,2)) 
-                          for C in ( B[:ib1,ib1:ib2,ib1:ib2],B[ib2:,ib1:ib2,ib1:ib2])  )  
-                                      for ib1,ib2 in degen])
 
 
 def eval_J0(A,occ):
@@ -129,12 +110,6 @@ def get_occ(E_K,Efermi):
 
 
 
-
-
-def calcImf_K(data,degen_bands,ik):
-    A=data.OOmegaUU_K_rediag[ik]
-    B=data.delHH_dE_AA_delHH_dE_SQ_K[ik]
-    return eval_Jo_deg(A,degen_bands)-2*eval_Juo_deg(B,degen_bands) 
 
 
 def calcAHC(data,Efermi=None,occ_old=None,smoother=voidsmoother):
@@ -178,33 +153,49 @@ def calcAHC(data,Efermi=None,occ_old=None,smoother=voidsmoother):
     return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
 
 
+## Not working with the new "result" class yet
+def calcMorb(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
+    if not isinstance(Efermi, Iterable):
+        Efermi=np.array([Efermi])
+    imfgh=calcImfgh(data,Efermi=Efermi,occ_old=occ_old, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
+    imf=imfgh[:,0,:,:]
+    img=imfgh[:,1,:,:]
+    imh=imfgh[:,2,:,:]
+    LCtil=fac_morb*(img-Efermi[:,None,None]*imf)
+    ICtil=fac_morb*(imh-Efermi[:,None,None]*imf)
+    Morb = LCtil + ICtil
+    return np.array([Morb,LCtil,ICtil])
 
 
-def calcAHC_uIu(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
 
-    if occ_old is None: 
-        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
 
-    if isinstance(Efermi, Iterable):
-        nFermi=len(Efermi)
-        AHC=np.zeros( ( nFermi,4,3) ,dtype=float )
-        for iFermi in range(nFermi):
-            AHC[iFermi]=calcAHC(data,Efermi=Efermi[iFermi],occ_old=occ_old, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
-        return np.cumsum(AHC,axis=0)
-    
-    # now code for a single Fermi level:
-    AHC=np.zeros(3)
 
-    occ_new=get_occ(data.E_K,Efermi)
-    selectK=np.where(np.any(occ_old!=occ_new,axis=1))[0]
-    occ_old_selk=occ_old[selectK]
-    occ_new_selk=occ_new[selectK]
-    delocc=occ_new_selk!=occ_old_selk
+### routines for a band-resolved mode
 
-    AHC= eval_J0(data.FF[selectK], delocc)
+def eval_Jo_deg(A,degen):
+    return np.array([A[ib1:ib2].sum(axis=0) for ib1,ib2 in degen])
 
-    return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
+def eval_Juo_deg(B,degen):
+    return np.array([B[:ib1,ib1:ib2].sum(axis=(0,1)) + B[ib2:,ib1:ib2].sum(axis=(0,1)) for ib1,ib2 in degen])
 
+def eval_Joo_deg(B,degen):
+    return np.array([B[ib1:ib2,ib1:ib2].sum(axis=(0,1))  for ib1,ib2 in degen])
+
+def eval_Juuo_deg(B,degen):
+    return np.array([   sum(C.sum(axis=(0,1,2)) 
+                          for C in  (B[:ib1,:ib1,ib1:ib2],B[:ib1,ib2:,ib1:ib2],B[ib2:,:ib1,ib1:ib2],B[ib2:,ib2:,ib1:ib2]) )  
+                                      for ib1,ib2 in degen])
+
+def eval_Juoo_deg(B,degen):
+    return np.array([   sum(C.sum(axis=(0,1,2)) 
+                          for C in ( B[:ib1,ib1:ib2,ib1:ib2],B[ib2:,ib1:ib2,ib1:ib2])  )  
+                                      for ib1,ib2 in degen])
+
+
+def calcImf_K(data,degen_bands,ik):
+    A=data.OOmegaUU_K_rediag[ik]
+    B=data.delHH_dE_AA_delHH_dE_SQ_K[ik]
+    return eval_Jo_deg(A,degen_bands)-2*eval_Juo_deg(B,degen_bands) 
 
 
 def calcImfgh(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
@@ -277,8 +268,6 @@ def calcImfgh(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True
     return imfgh/(data.NKFFT_tot)
 
 
-
-
 def calcImfgh_K(data,degen,ik):
     
     imf= calcImf_K(data,degen,ik)
@@ -305,14 +294,30 @@ def calcImfgh_K(data,degen,ik):
 
 
 
-def calcMorb(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
-    if not isinstance(Efermi, Iterable):
-        Efermi=np.array([Efermi])
-    imfgh=calcImfgh(data,Efermi=Efermi,occ_old=occ_old, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
-    imf=imfgh[:,0,:,:]
-    img=imfgh[:,1,:,:]
-    imh=imfgh[:,2,:,:]
-    LCtil=fac_morb*(img-Efermi[:,None,None]*imf)
-    ICtil=fac_morb*(imh-Efermi[:,None,None]*imf)
-    Morb = LCtil + ICtil
-    return np.array([Morb,LCtil,ICtil])
+
+def calcAHC_uIu(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
+
+    raise NotImplementedError()
+    if occ_old is None: 
+        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
+
+    if isinstance(Efermi, Iterable):
+        nFermi=len(Efermi)
+        AHC=np.zeros( ( nFermi,4,3) ,dtype=float )
+        for iFermi in range(nFermi):
+            AHC[iFermi]=calcAHC_uIu(data,Efermi=Efermi[iFermi],occ_old=occ_old, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
+        return np.cumsum(AHC,axis=0)
+    
+    # now code for a single Fermi level:
+    AHC=np.zeros(3)
+
+    occ_new=get_occ(data.E_K,Efermi)
+    selectK=np.where(np.any(occ_old!=occ_new,axis=1))[0]
+    occ_old_selk=occ_old[selectK]
+    occ_new_selk=occ_new[selectK]
+    delocc=occ_new_selk!=occ_old_selk
+
+    AHC= eval_J0(data.FF[selectK], delocc)
+
+    return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
+
