@@ -78,11 +78,16 @@ class Data_dk(Data):
     def _get_eig_deleig(self):
         print_my_name_start()
         self._E_K,self._delE_K, self._UU_K, _HH_K, self._delHH_K =   wham.get_eig_deleig(self.NKFFT,self.HH_R,self.iRvec,self.cRvec)
-#        print("shapes:{},{},{}".format(_HH_K.shape,self.UUC_K.shape,self.UU_K.shape))
         self._HHUU_K=self._rotate(_HH_K) #    einsumk("kmi,kmn,knj->kij",self.UUH_K,_HH_K,self.UU_K).real
-#        self._HHUU_K=np.array([uc.dot(hh).dot(u).real for uc,hh,u in zip(self.UUC_K,_HH_K,self.UU_K)])
         print_my_name_end()
-#        exit()
+
+    @lazy_property.LazyProperty
+    def _get_eig(self):
+        print_my_name_start()
+        self._E_K,self._delE_K, self._UU_K, _HH_K, self._delHH_K =   wham.get_eig_deleig(self.NKFFT,self.HH_R,self.iRvec)
+#        self._HHUU_K=self._rotate(_HH_K) #    einsumk("kmi,kmn,knj->kij",self.UUH_K,_HH_K,self.UU_K).real
+        print_my_name_end()
+
 
     @lazy_property.LazyProperty
     def NKFFT_tot(self):
@@ -95,6 +100,12 @@ class Data_dk(Data):
         self._get_eig_deleig
         print_my_name_end()
         return self._E_K
+
+    @lazy_property.LazyProperty
+    def E_K_only(self):
+        self._get_eig
+        return self._E_K
+
 
     @lazy_property.LazyProperty
     def delE_K(self):
