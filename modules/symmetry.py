@@ -13,6 +13,10 @@
 
 
 import numpy as np
+import scipy
+import scipy.spatial
+import scipy.spatial.transform
+
 from scipy.spatial.transform import Rotation as rotmat
 from copy import deepcopy
 
