@@ -24,15 +24,17 @@ class Data_dk(Data):
         self.spinors=data.spinors
         self.iRvec=data.iRvec
         self.real_lattice=data.real_lattice
+        self.recip_lattice=data.recip_lattice
         self.NKFFT=data.NKFFT if NKFFT is None else NKFFT
         self.num_wann=data.num_wann
 
         if dk is not None:
             expdk=np.exp(2j*np.pi*self.iRvec.dot(dk))
+            self.dk=dk
         else:
             expdk=np.ones(self.nRvec)
-
-
+            self.dk=np.zeros(3)
+ 
         self.HH_R=data.HH_R[:,:,:]*expdk[None,None,:]
         
         if AA in (None,True):
