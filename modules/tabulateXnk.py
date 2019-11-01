@@ -21,16 +21,36 @@ from collections import Iterable
 from utility import  print_my_name_start,print_my_name_end,voidsmoother
 import parent
 from copy import deepcopy
+from berry import calcImf
 
 
-
-def tabEnk(data,ibands=None):
+def tabEnk(data,ibands):
     Enk=data.E_K_only
-    if ibands is None:
-        ibands=np.arange(Enk.shape[1])
-    dkx,dky,dkz=1./data.NKFFT
     kpoints=data.kpoints_all
     return TABresult(kpoints=kpoints,Enk=Enk[:,ibands],basis=data.recip_lattice )
+
+
+def tabXnk(data,quantities="",ibands=None):
+    if quantities=="":
+       return tabEnk(data,ibands)
+       
+    quantities=quantities.lower()
+    if ibands is None:
+        ibands=np.arange(data.nbands)
+
+    Enk=data.E_K[:,ibands]
+    if "v" in quantities:
+        dEnk=data.delE_K[:,ibands]
+    else:
+        dEnk=None
+        
+    if "o" in quantities:
+        berry=calcImf(data)[:,ibands]
+    else:
+        berry=None
+
+    kpoints=data.kpoints_all
+    return TABresult(kpoints=kpoints,Enk=Enk,dEnk=dEnk,berry=berry,basis=data.recip_lattice )
 
 def tabEVnk(data,ibands=None):
     Enk=data.E_K
@@ -151,21 +171,21 @@ class TABresult(parent.Result):
 #            for ik in k_map[-1]:
 #                print (self.Enk[ik])
 
-        weights=[]
-        print ("defining weights")
-        for ik,km in enumerate(k_map):
-            if len(km)==0: 
-                raise NotImplementedError(
-                   "Grid point {}=[{},{},{}] was not calculated. Interpolation needed, which is to be implemented".format(
-                     ik,ik//(grid[1]*grid[2])/grid[0], (ik//grid[2])%(grid[1])/grid[1] ,
-                        (ik%grid[2])/grid[2])        )
-            weights.append(np.array([1./len(km)]*len(km)))
+#        weights=[]
+#        print ("defining weights")
+#        for ik,km in enumerate(k_map):
+#            if len(km)==0: 
+#                raise NotImplementedError(
+#                   "Grid point {}=[{},{},{}] was not calculated. Interpolation needed, which is to be implemented".format(
+#                     ik,ik//(grid[1]*grid[2])/grid[0], (ik//grid[2])%(grid[1])/grid[1] ,
+#                        (ik%grid[2])/grid[2])        )
+#            weights.append(np.array([1./len(km)]*len(km)))
         def __collect(Xnk):
             if Xnk is None:
                 return None
             else:
-                return   np.array( [sum(w*Xnk[ik] for w,ik in zip(wei,km)) 
-                           for wei,km in zip(weights,k_map)])
+                return   np.array( [sum(Xnk[ik] for ik in km)/len(km) 
+                           for km in k_map])
         print ("collecting")
         res=TABresult( k_new,basis=self.basis,berry=__collect(self.berry) ,  
                     Enk=__collect(self.Enk),dEnk=__collect(self.dEnk))
@@ -189,6 +209,9 @@ class TABresult(parent.Result):
         
 #        return FSfile
         xyz={"x":0,"y":1,"z":2}
+        
+        if quantity=="":
+            return FSfile
 
         def _getComp(X,i):
             if X is None:
@@ -218,11 +241,5 @@ class TABresult(parent.Result):
             return [self.berry.max()]
         else:
             return [0]
-
-
-
-
-
-
 
 

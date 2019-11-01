@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-DO_profile=False
+DO_profile=True
 
 import sys
 sys.path.append('../../modules/')
@@ -29,27 +29,38 @@ def main():
 #    generators=[]
     t1=time()
     
-    eval_func=functools.partial( tab.tabEVnk, ibands=[0] )
+    
+    quant="o"
+    eval_func=functools.partial( tab.tabXnk, quantities=quant,ibands=(4,5,6,7,8,9) )
 
     res=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=0,
             adpt_num_iter=0,adpt_nk=2,
                 fout_name="",symmetry_gen=generators,
                 GammaCentered=True,restart=False)
+    t2=time()
+
     print ("V=",res.dEnk)
     res=res.to_grid(NKFFT*NKdiv)
     print ("V=",res.dEnk)
+    t3=time()
     
     
-    for comp in "xyzsn":
-        open("Fe_V{0}-{1}.frmsf".format(comp,NKdiv[0]),"w").write(
-           res.fermiSurfer(quantity="v"+comp,efermi=12.6)
+    open("Fe_E-{0}.frmsf".format(NKdiv[0]),"w").write(
+          res.fermiSurfer(quantity="",efermi=12.6) )
+    
+    for Q in quant:
+     for comp in "xyzsn":
+        open("Fe_{2}{0}-{1}.frmsf".format(comp,NKdiv[0],Q),"w").write(
+           res.fermiSurfer(quantity=Q+comp,efermi=12.6)
            )
-    t2=time()
+    t4=time()
 
           
     print ("time for reading     : {0} s ".format(t1-t0))
     print ("time for integration : {0} s ".format(t2-t1))
-    print ("total time           : {0} s ".format(t2-t0))
+    print ("for bringing to grid : {0} s ".format(t3-t2))
+    print ("time for printing    : {0} s ".format(t4-t3))
+    print ("total time           : {0} s ".format(t4-t0))
      
 
 
