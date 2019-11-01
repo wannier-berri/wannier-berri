@@ -192,6 +192,14 @@ def eval_Juoo_deg(B,degen):
                                       for ib1,ib2 in degen])
 
 
+def calcImf(data,degen_bands=None):
+    AA=data.OOmegaUU_K_rediag
+    BB=data.delHH_dE_AA_delHH_dE_SQ_K
+    if degen_bands is None:
+        degen_bands=[(b,b+1) for b in range(data.nbands)]
+    return np.array([eval_Jo_deg(A,degen_bands)-2*eval_Juo_deg(B,degen_bands)  for A,B in zip (AA,BB) ] )
+
+
 def calcImf_K(data,degen_bands,ik):
     A=data.OOmegaUU_K_rediag[ik]
     B=data.delHH_dE_AA_delHH_dE_SQ_K[ik]

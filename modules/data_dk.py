@@ -59,7 +59,6 @@ class Data_dk(Data):
 
 
 
-
     def _rotate(self,mat):
         print_my_name_start()
         return  np.array([a.dot(b).dot(c) for a,b,c in zip(self.UUH_K,mat,self.UU_K)])
@@ -73,6 +72,11 @@ class Data_dk(Data):
         print_my_name_start()
         return res
 #        return  np.array([a.dot(b).dot(c) for a,b,c in zip(self.UUH_K,mat,self.UU_K)])
+
+    @lazy_property.LazyProperty
+    def nbands(self):
+        return self.HH_R.shape[0]
+
 
 
     @lazy_property.LazyProperty
