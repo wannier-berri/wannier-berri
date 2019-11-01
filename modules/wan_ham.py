@@ -103,7 +103,7 @@ def get_eig(NK,HH_R,iRvec):
     return np.array([np.linalg.eigvalsh(Hk) for Hk in HH_K])
 
 
-def get_eig_deleig(NK,HH_R,iRvec,cRvec=None,calcdE=False):
+def get_eig_deleig(NK,HH_R,iRvec,cRvec=None,calcdE=True):
     ## For all  k point on a NK grid this function returns eigenvalues E and
     ## derivatives of the eigenvalues dE/dk_a, using wham_get_deleig_a
     num_wann=HH_R.shape[0]
