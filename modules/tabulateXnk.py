@@ -37,7 +37,7 @@ def tabEVnk(data,ibands=None):
     dEnk=data.delE_K
     if ibands is None:
         ibands=np.arange(Enk.shape[1])
-    print ("dEnk={}".format(dEnk))
+#    print ("dEnk={}".format(dEnk))
     dkx,dky,dkz=1./data.NKFFT
     kpoints=data.kpoints_all
     return TABresult(kpoints=kpoints,basis=data.recip_lattice,Enk=Enk[:,ibands],dEnk=dEnk[:,ibands] )
@@ -132,15 +132,19 @@ class TABresult(parent.Result):
 #        print ( np.meshgrid(grid1[0],grid1[1],grid1[2],indexing='ij') )
         print ("setting new kpoints")
         k_new=np.array(np.meshgrid(grid1[0],grid1[1],grid1[2],indexing='ij')).reshape((3,-1),order=order).T
-#        print (k_new[:45])
-#        exit()
-        #.T
-        k_map=[]
+        k_map=[[] for i in range(np.prod(grid))]
         print ("finding equivalent kpoints")
-        for k in k_new:
-            diff=k-self.kpoints
-            diff=np.linalg.norm(diff-diff.round(),axis=-1)
-            k_map.append(np.where(diff < 1e-8)[0])
+        for ik,k in enumerate(self.kpoints):
+            k1=k*grid
+            ik1=np.array(k1.round(),dtype=int)
+            if np.linalg.norm(k1-ik1)<1e-8 : 
+                ik1=ik1%grid
+                ik2=ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])
+#                print (ik,k,ik1,ik2)
+                k_map[ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])].append(ik)
+            else:
+                print ("WARNING: k-point {}={} is skipped".format(ik,k))
+
         
 #        print (np.array(k_map))
 #            print ("k_grid={}".format(k))
@@ -149,9 +153,12 @@ class TABresult(parent.Result):
 
         weights=[]
         print ("defining weights")
-        for k,km in zip(k_new,k_map):
+        for ik,km in enumerate(k_map):
             if len(km)==0: 
-                raise NotImplementedError("Grid point {0} was not calculated. Interpolation needed, which is to be implemented".format(k))
+                raise NotImplementedError(
+                   "Grid point {}=[{},{},{}] was not calculated. Interpolation needed, which is to be implemented".format(
+                     ik,ik//(grid[1]*grid[2])/grid[0], (ik//grid[2])%(grid[1])/grid[1] ,
+                        (ik%grid[2])/grid[2])        )
             weights.append(np.array([1./len(km)]*len(km)))
         def __collect(Xnk):
             if Xnk is None:
