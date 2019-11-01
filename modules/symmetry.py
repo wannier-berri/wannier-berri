@@ -42,6 +42,9 @@ class Symmetry():
     def transform_axial_vector(self,res):
         return np.dot(res,self.R.T)*np.linalg.det(self.R)*(-1 if self.TR else 1)
 
+    def transform_v_vector(self,res):
+        return np.dot(res,self.R.T)*(-1 if self.TR else 1)
+
     def transform_polar_vector(self,res):
         return np.dot(res,self.R.T)
 
@@ -103,8 +106,10 @@ C2y=Rotation(2,[0,1,0])
 
 class Group():
 
-    def __init__(self,generator_list=[Identity],basis=np.eye(3)):
+    def __init__(self,generator_list=[],basis=np.eye(3)):
         sym_list=generator_list
+        if len(sym_list)==0:
+            sym_list=[Identity]
         cnt=0
         while True:
             cnt+=1

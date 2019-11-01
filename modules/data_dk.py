@@ -75,6 +75,13 @@ class Data_dk(Data):
 #        return  np.array([a.dot(b).dot(c) for a,b,c in zip(self.UUH_K,mat,self.UU_K)])
 
 
+    @lazy_property.LazyProperty
+    def kpoints_all(self):
+        dkx,dky,dkz=1./self.NKFFT
+        return np.array([self.dk-np.array([ix*dkx,iy*dky,iz*dkz]) 
+          for ix in range(self.NKFFT[0])
+              for iy in range(self.NKFFT[1])
+                  for  iz in range(self.NKFFT[2])])%1
 
     @lazy_property.LazyProperty
     def _get_eig_deleig(self):

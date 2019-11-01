@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-DO_profile=True
+DO_profile=False
 
 import sys
 sys.path.append('../../modules/')
 import numpy as np
 import get_data
-import tabulate as tab
+import tabulateXnk as tab
 import functools
 from integrate import eval_integral_BZ
 from time import time
@@ -20,16 +20,30 @@ def main():
     NKFFT=np.array([int(sys.argv[1])]*3)
     NKdiv=np.array([int(sys.argv[2])]*3)
     
-#    name1="NKFFT={0}_NKdiv={1}_adptmesh=2-sym-smooth10+TR".format(*tuple(sys.argv[1:4]))
-#    name=seedname+"_w19_tab_"+name1
+    
+#    NKFFT=np.array([20,10,10])
+#    NKdiv=np.array([1,1,1])
+    
     Data=get_data.Data(tb_file='Fe_tb.dat',getAA=True)
-#    Data=get_data.Data(seedname,getAA=True)
     generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
+#    generators=[]
     t1=time()
-    eval_integral_BZ(tab.tabEnk,Data,NKdiv,NKFFT=NKFFT,nproc=0,
+    
+    eval_func=functools.partial( tab.tabEVnk, ibands=[0] )
+
+    res=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=0,
             adpt_num_iter=0,adpt_nk=2,
                 fout_name="",symmetry_gen=generators,
                 GammaCentered=True,restart=False)
+    print ("V=",res.dEnk)
+    res=res.to_grid(NKFFT*NKdiv)
+    print ("V=",res.dEnk)
+    
+    
+    for comp in "xyzsn":
+        open("Fe_V{0}-{1}.frmsf".format(comp,NKdiv[0]),"w").write(
+           res.fermiSurfer(quantity="v"+comp,efermi=12.6)
+           )
     t2=time()
 
           
