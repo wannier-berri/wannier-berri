@@ -66,11 +66,15 @@ class Data():
             self.BB_R=self.__getMat('BB')
 
         if getCC:
-            _CC_R=self.__getMat('CC')
-            self.CC_R=1j*(_CC_R[:,:,:,wham.alpha,wham.beta]-_CC_R[:,:,:,wham.beta,wham.alpha])
+            try:
+                _CCab_R=self.__getMat('CCab')
+                self.CC_R=1j*_CCab_R        
+            except:
+                _CC_R=self.__getMat('CC')
+                self.CC_R=1j*(_CC_R[:,:,:,wham.alpha,wham.beta]-_CC_R[:,:,:,wham.beta,wham.alpha])
 
         if getFF:
-            _FF_R=self.__getMat('CC')
+            _FF_R=self.__getMat('FF')
             self.FF_R=1j*(_FF_R[:,:,:,wham.alpha,wham.beta]-_FF_R[:,:,:,wham.beta,wham.alpha])
 
         if getSS:
