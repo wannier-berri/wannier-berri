@@ -31,21 +31,45 @@ def tabEnk(data,ibands):
 
 
 def tabXnk(data,quantities="",ibands=None):
-    if quantities=="":
-       return tabEnk(data,ibands)
-       
     quantities=quantities.lower()
     if ibands is None:
         ibands=np.arange(data.nbands)
 
+    if quantities=="":
+       return tabEnk(data,ibands)
+
+
     Enk=data.E_K[:,ibands]
+    print(Enk.shape)
+    print(data.E_K.shape,ibands)
+       
+    degen_thresh=1e-5
+    A=[np.hstack( ([0],np.where(E[1:]-E[:1]>degen_thresh)[0]+1, [E.shape[0]]) ) for E in Enk ]
+    deg= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:])] for a in A]
+       
+
+    
+    for i,D in enumerate(deg):
+       for ib1,ib2 in D:
+#          print (ib1,ib2)
+#          print(Enk[i,ib1:ib2])
+          Enk[i,ib1:ib2]=Enk[i,ib1:ib2].mean()
+    print(Enk.shape)
     if "v" in quantities:
         dEnk=data.delE_K[:,ibands]
+        for i,D in enumerate(deg):
+           for ib1,ib2 in D:
+              dEnk[i,ib1:ib2,:]=dEnk[i,ib1:ib2,:].mean(axis=0)
+        print(dEnk.shape)
     else:
         dEnk=None
         
     if "o" in quantities:
         berry=calcImf(data)[:,ibands]
+        for i,D in enumerate(deg):
+           for ib1,ib2 in D:
+              berry[i,ib1:ib2,:]=berry[i,ib1:ib2,:].mean(axis=0)
+        print(berry.shape)
     else:
         berry=None
 
