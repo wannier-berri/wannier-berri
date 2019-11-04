@@ -43,7 +43,6 @@ class Data_dk(Data):
             except AttributeError:
                 if AA : raise AttributeError("AA_R is not defined")
 
-
         if BB in (None,True):
             try:
                 self.BB_R=data.BB_R[:,:,:,:]*expdk[None,None,:,None]
@@ -55,6 +54,12 @@ class Data_dk(Data):
                 self.CC_R=data.CC_R[:,:,:,:]*expdk[None,None,:,None]
             except AttributeError:
                 if CC : raise AttributeError("CC_R is not defined")
+
+        if SS in (None,True):
+            try:
+                self.SS_R=data.SS_R[:,:,:,:]*expdk[None,None,:,None]
+            except AttributeError:
+                if SS : raise AttributeError("SS_R is not defined")
 
 
 
@@ -250,11 +255,20 @@ class Data_dk(Data):
 
 
 
+    @lazy_property.LazyProperty
     def FF_K_rediag(self):
         print_my_name_start()
         _FF_K=wham.fourier_R_to_k( self.FF_R,self.iRvec,self.NKFFT)
 #        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
         return np.einsum("kmm->km",_FF_K).imag
+
+    @lazy_property.LazyProperty
+    def SSUU_K_rediag(self):
+        print_my_name_start()
+        _SS_K=wham.fourier_R_to_k( self.SS_R,self.iRvec,self.NKFFT)
+        _SS_K=self._rotate_vec( _SS_K )
+#        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
+        return np.einsum("kmma->kma",_SS_K).real
 
 
     @lazy_property.LazyProperty
