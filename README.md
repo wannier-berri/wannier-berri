@@ -7,20 +7,22 @@ https://github.com/wannier-developers/wannier90
 
 The code is distributed under the terms of  GNU GENERAL PUBLIC LICENSE  Version 2, the same as Wannier90
 
-My motivation was:
-1) to have fun with python
-2) to make it potentially easier to implement further features
-3) to make it faster.  And it IS already much Faster than the Fortran code of Wannier90, due to usage of fast Fourier transform (FFT). (Of course, I could do FFT in Fortran, but I did not want to. Maybe someone else will be encouraged to do that.)
+At the moment the code calculates Anomalous Hall conductivity very fast (much faster then wannier90) with high precision over an 
+ultradense k-grid. This is achieved due to :
 
-So far only AHC  is implemented and benchmarked. 
-The usage of the code  is demonstrated by "exampleFe" in theexamples folder.
+1) Using Fast Fourier Transform
+2) account of symmetries, to reduce integration to irreducible part of the Brillouin zone
+3) recursive refinement algorithm
+4) optimizing the implementation of scan of Fermi level and 'use_ws_distance' parameter (see wannier90 documentation for details) 
+
+Object oriented structure also makes it potentially easier to implement further features. 
+
+The usage of the code  is demonstrated by "exampleFe" in the examples folder.
 AHC can also be calcualted for any tight-binding model, for which a "_tb.dat" file was generated in watever way.
 
 wannier19 can be run in parallel by means of multiprocessing module
 
-Note: benchmark works correctly only with use_ws_distance=F
-
-The project is in early stage, started on June, 25th 2019. Futher features and explanations will be added.
+The project started on June, 25th 2019. 
 Any interest from the community will be motivating for developing.
 
 
