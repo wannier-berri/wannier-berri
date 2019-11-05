@@ -147,6 +147,71 @@ def eval_Juoo_deg(B,degen):
                                       for ib1,ib2 in degen])
 
 
+
+def eval_Jo(A):
+    return A 
+
+def eval_Juo(B):
+    return np.array([B[:ib,ib].sum(axis=(0)) + B[ib+1:,ib].sum(axis=(0)) for ib in range(B.shape[0])])
+
+def eval_Joo(B):
+    return np.array([B[i,i] for i in range(B.shape[0])])
+
+def eval_Juuo(B):
+    return np.array([   sum(C.sum(axis=(0,1)) 
+                          for C in  (B[:ib,:ib,ib],B[:ib,ib+1:,ib],B[ib+1:,:ib,ib],B[ib+1:,ib+1:,ib]) )  
+                                      for ib in range(B.shape[0])])
+
+def eval_Juoo_deg(B,degen):
+    return np.array([   sum(C.sum(axis=(0)) 
+                          for C in ( B[:ib,ib,ib],B[ib+1:,ib,ib])  )  
+                                      for ib in range(B.shape[0])])
+
+
+def calcImf_band(data):
+    AA=data.OOmegaUU_K_rediag
+    BB=data.delHH_dE_AA_delHH_dE_SQ_K
+    return np.array([eval_Jo(A)-2*eval_Juo(B)  for A,B in zip (AA,BB) ] )
+
+#returns g-h
+def calcImgh_band(data):
+    
+    AA=data.HHAAAAUU_K
+    BB=data.CCUU_K_rediag-data.HHOOmegaUU_K
+    imgh=np.array([eval_Jo(B)-2*eval_Joo(A)  for A,B in zip (AA,BB) ] )
+    
+    AA=data.delHH_dE_BB_K-data.delHH_dE_HH_AA_K
+    imgh+=-2*np.array([eval_Juo(A) for A in AA])
+
+    C,D=data.delHH_dE_SQ_HH_K
+    AA=C-D
+    imgh+=-2*np.array([eval_Juuo(A) for A in AA])
+    return imgh
+
+
+
+def calcImfgh_K(data,degen,ik):
+    
+    imf= calcImf_K(data,degen,ik)
+
+    s=2*eval_Joo_deg(data.HHAAAAUU_K[ik],degen)   
+    img=eval_Jo_deg(data.CCUU_K_rediag[ik],degen)-s
+    imh=eval_Jo_deg(data.HHOOmegaUU_K[ik],degen)+s
+
+
+    C=data.delHH_dE_BB_K[ik]
+    D=data.delHH_dE_HH_AA_K[ik]
+    img+=-2*eval_Juo_deg(C,degen)
+    imh+=-2*eval_Juo_deg(D,degen)
+
+    C,D=data.delHH_dE_SQ_HH_K
+    img+=-2*eval_Juuo_deg(C[ik],degen) 
+    imh+=-2*eval_Juoo_deg(D[ik],degen)
+
+    return imf,img,imh
+
+
+
 def calcImf(data,degen_bands=None):
     AA=data.OOmegaUU_K_rediag
     BB=data.delHH_dE_AA_delHH_dE_SQ_K
@@ -231,25 +296,6 @@ def calcImfgh(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True
     return imfgh/(data.NKFFT_tot)
 
 
-def calcImfgh_K(data,degen,ik):
-    
-    imf= calcImf_K(data,degen,ik)
-
-    s=2*eval_Joo_deg(data.HHAAAAUU_K[ik],degen)   
-    img=eval_Jo_deg(data.CCUU_K_rediag[ik],degen)-s
-    imh=eval_Jo_deg(data.HHOOmegaUU_K[ik],degen)+s
-
-
-    C=data.delHH_dE_BB_K[ik]
-    D=data.delHH_dE_HH_AA_K[ik]
-    img+=-2*eval_Juo_deg(C,degen)
-    imh+=-2*eval_Juo_deg(D,degen)
-
-    C,D=data.delHH_dE_SQ_HH_K
-    img+=-2*eval_Juuo_deg(C[ik],degen) 
-    imh+=-2*eval_Juoo_deg(D[ik],degen)
-
-    return imf,img,imh
 
 
 

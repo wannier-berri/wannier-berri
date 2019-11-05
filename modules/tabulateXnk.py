@@ -21,22 +21,14 @@ from collections import Iterable
 from utility import  print_my_name_start,print_my_name_end,voidsmoother
 import result
 from copy import deepcopy
-from berry import calcImf
-
-
-def tabEnk(data,ibands):
-    Enk=data.E_K_only
-    kpoints=data.kpoints_all
-    return TABresult(kpoints=kpoints,Enk=Enk[:,ibands],basis=data.recip_lattice )
+from berry import calcImf_band,calcImgh_band
+from spin import calcSpin_band
 
 
 def tabXnk(data,quantities="",ibands=None):
     quantities=quantities.lower()
     if ibands is None:
         ibands=np.arange(data.nbands)
-
-    if quantities=="":
-       return tabEnk(data,ibands)
 
 
     Enk=data.E_K[:,ibands]
@@ -48,60 +40,51 @@ def tabXnk(data,quantities="",ibands=None):
     deg= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:])] for a in A]
        
 
+    dEnk=data.delE_K[:,ibands] if "v" in quantities else None
+    berry=calcImf_band (data)[:,ibands] if "o" in quantities else None
+    morb =calcImgh_band(data)[:,ibands] if "m" in quantities else None
+    spin =calcSpin_band(data)[:,ibands] if "m" in quantities else None
     
     for i,D in enumerate(deg):
        for ib1,ib2 in D:
-#          print (ib1,ib2)
-#          print(Enk[i,ib1:ib2])
-          Enk[i,ib1:ib2]=Enk[i,ib1:ib2].mean()
-    print(Enk.shape)
-    if "v" in quantities:
-        dEnk=data.delE_K[:,ibands]
-        for i,D in enumerate(deg):
-           for ib1,ib2 in D:
-              dEnk[i,ib1:ib2,:]=dEnk[i,ib1:ib2,:].mean(axis=0)
-        print(dEnk.shape)
-    else:
-        dEnk=None
-        
-    if "o" in quantities:
-        berry=calcImf(data)[:,ibands]
-        for i,D in enumerate(deg):
-           for ib1,ib2 in D:
-              berry[i,ib1:ib2,:]=berry[i,ib1:ib2,:].mean(axis=0)
-        print(berry.shape)
-    else:
-        berry=None
+          for quant in Enk,dEnk,berry,morb,spin:
+              if quant is not None:
+                  quant[i,ib1:ib2]=quant[i,ib1:ib2].mean(axis=0)
 
     kpoints=data.kpoints_all
-    return TABresult(kpoints=kpoints,Enk=Enk,dEnk=dEnk,berry=berry,basis=data.recip_lattice )
-
-def tabEVnk(data,ibands=None):
-    Enk=data.E_K
-    dEnk=data.delE_K
-    if ibands is None:
-        ibands=np.arange(Enk.shape[1])
-#    print ("dEnk={}".format(dEnk))
-    dkx,dky,dkz=1./data.NKFFT
-    kpoints=data.kpoints_all
-    return TABresult(kpoints=kpoints,basis=data.recip_lattice,Enk=Enk[:,ibands],dEnk=dEnk[:,ibands] )
+    return TABresult(kpoints=kpoints,Enk=Enk,dEnk=dEnk,berry=berry,morb=morb,spin=spin,basis=data.recip_lattice )
 
 
 
 class TABresult(result.Result):
 
-    def __init__(self,kpoints,basis,Enk=None,dEnk=None,berry=None):
+    def __init__(self,kpoints,basis,Enk=None,dEnk=None,berry=None,morb=None,spin=None):
         self.nband=None
         self.grid=None
         self.gridorder=None
         self.basis=basis
         self.kpoints=np.array(kpoints,dtype=float)%1
+
         if berry is not None:
             assert len(kpoints)==berry.shape[0]
             self.berry=berry
             self.nband=berry.shape[1]
         else: 
             self.berry=None
+
+        if morb is not None:
+            assert len(kpoints)==morb.shape[0]
+            self.morb=morb
+            self.nband=morb.shape[1]
+        else: 
+            self.morb=None
+
+        if spin is not None:
+            assert len(kpoints)==morb.shape[0]
+            self.spin=spin
+            self.nband=spin.shape[1]
+        else: 
+            self.spin=None
 
         if Enk is not None:
             assert len(kpoints)==Enk.shape[0]
@@ -140,6 +123,17 @@ class TABresult(result.Result):
         else:
             Berry=None
 
+        if not ((self.spin is None) or (other.spin is None)):
+            Spin=np.vstack( (self.spin,other.spin) )
+        else:
+            Spin=None
+
+        if not ((self.morb is None) or (other.morb is None)):
+            Morb=np.vstack( (self.morb,other.morb) )
+        else:
+            Morb=None
+
+
         if not ((self.Enk is None) or (other.Enk is None)):
             Enk=np.vstack( (self.Enk,other.Enk) )
         else:
@@ -151,7 +145,7 @@ class TABresult(result.Result):
             dEnk=None
 
 
-        return TABresult(np.vstack( (self.kpoints,other.kpoints) ), basis=self.basis,berry=Berry,Enk=Enk,dEnk=dEnk) 
+        return TABresult(np.vstack( (self.kpoints,other.kpoints) ), basis=self.basis,berry=Berry,morb=Morb,spin=Spin,Enk=Enk,dEnk=dEnk) 
 
 
     def write(self,name):
@@ -168,8 +162,10 @@ class TABresult(result.Result):
     def transform(self,sym):
         kpoints=[sym.transform_k_vector(k,self.basis) for k in self.kpoints]
         berry=None if self.berry is None else sym.transform_axial_vector(self.berry)
+        morb =None if self.morb  is None else sym.transform_axial_vector(self.morb )
+        spin =None if self.spin  is None else sym.transform_axial_vector(self.spin )
         dEnk =None if self.dEnk  is None else sym.transform_v_vector(self.dEnk)
-        return TABresult(kpoints=kpoints,basis=self.basis,berry=berry,Enk=self.Enk,dEnk=dEnk)
+        return TABresult(kpoints=kpoints,basis=self.basis,berry=berry,morb=morb,spin=spin,Enk=self.Enk,dEnk=dEnk)
 
     def to_grid(self,grid,order='C'):
         grid1=[np.linspace(0.,1.,g,False) for g in grid]
@@ -190,20 +186,6 @@ class TABresult(result.Result):
                 print ("WARNING: k-point {}={} is skipped".format(ik,k))
 
         
-#        print (np.array(k_map))
-#            print ("k_grid={}".format(k))
-#            for ik in k_map[-1]:
-#                print (self.Enk[ik])
-
-#        weights=[]
-#        print ("defining weights")
-#        for ik,km in enumerate(k_map):
-#            if len(km)==0: 
-#                raise NotImplementedError(
-#                   "Grid point {}=[{},{},{}] was not calculated. Interpolation needed, which is to be implemented".format(
-#                     ik,ik//(grid[1]*grid[2])/grid[0], (ik//grid[2])%(grid[1])/grid[1] ,
-#                        (ik%grid[2])/grid[2])        )
-#            weights.append(np.array([1./len(km)]*len(km)))
         def __collect(Xnk):
             if Xnk is None:
                 return None
@@ -211,7 +193,7 @@ class TABresult(result.Result):
                 return   np.array( [sum(Xnk[ik] for ik in km)/len(km) 
                            for km in k_map])
         print ("collecting")
-        res=TABresult( k_new,basis=self.basis,berry=__collect(self.berry) ,  
+        res=TABresult( k_new,basis=self.basis,berry=__collect(self.berry) ,  morb=__collect(self.morb) ,   spin=__collect(self.spin) ,  
                     Enk=__collect(self.Enk),dEnk=__collect(self.dEnk))
         res.grid=np.copy(grid)
         res.gridorder=order
@@ -252,6 +234,10 @@ class TABresult(result.Result):
             Xnk=_getComp(self.dEnk,quantity[1])
         elif quantity[0] == "o":
             Xnk=_getComp(self.berry,quantity[1])
+        elif quantity[0] == "m":
+            Xnk=_getComp(self.morb,quantity[1])
+        elif quantity[0] == "s":
+            Xnk=_getComp(self.spin,quantity[1])
         
         for iband in range(self.nband):
             FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )

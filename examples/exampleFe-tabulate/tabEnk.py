@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-DO_profile=True
+DO_profile=False
 
 import sys
 sys.path.append('../../modules/')
@@ -24,13 +24,14 @@ def main():
 #    NKFFT=np.array([20,10,10])
 #    NKdiv=np.array([1,1,1])
     
-    Data=get_data.Data(tb_file='Fe_tb.dat',getAA=True)
+#    Data=get_data.Data(tb_file='Fe_tb.dat',getAA=True)
+    Data=get_data.Data(seedname,getAA=True,getBB=True,getCC=True,getSS=True)
     generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 #    generators=[]
     t1=time()
     
     
-    quant="o"
+    quant="ovms"
     eval_func=functools.partial( tab.tabXnk, quantities=quant,ibands=(4,5,6,7,8,9) )
 
     res=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=0,
