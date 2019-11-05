@@ -19,7 +19,7 @@ from scipy import constants as constants
 from collections import Iterable
 
 from utility import  print_my_name_start,print_my_name_end,voidsmoother
-import parent
+import result
 from copy import deepcopy
 from berry import calcImf
 
@@ -88,7 +88,7 @@ def tabEVnk(data,ibands=None):
 
 
 
-class TABresult(parent.Result):
+class TABresult(result.Result):
 
     def __init__(self,kpoints,basis,Enk=None,dEnk=None,berry=None):
         self.nband=None

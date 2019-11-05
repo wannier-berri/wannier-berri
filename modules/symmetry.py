@@ -56,16 +56,6 @@ Identity =Symmetry( np.eye(3))
 Inversion=Symmetry(-np.eye(3))
 TimeReversal=Symmetry( np.eye(3),True)
 
-
-
-#class Identity(Symmetry):
-#    def __init__(self):
-#        super(Identity, self).__init__(np.eye(3))
-    
-        
-#class Inversion(Symmetry):
-#    def __init__(self):
-#        super(Inversion, self).__init__(-np.eye(3))
         
 
 class Rotation(Symmetry):

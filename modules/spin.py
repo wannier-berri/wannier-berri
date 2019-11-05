@@ -1,4 +1,4 @@
-import parent
+import result
 from utility import  print_my_name_start,print_my_name_end,voidsmoother
 import numpy as np
 from scipy import constants as constants
@@ -7,7 +7,7 @@ from collections import Iterable
 
 from berry import eval_J0,get_occ
 
-class SPNresult(parent.AxialVectorResult):
+class SPNresult(result.AxialVectorResult):
    pass
 
 def calcSpinTot(data,Efermi=None,occ_old=None,smoother=voidsmoother):

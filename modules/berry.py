@@ -28,12 +28,12 @@ from scipy import constants as constants
 from collections import Iterable
 
 from utility import  print_my_name_start,print_my_name_end,voidsmoother
-import parent
+import result
 
 
 
 
-class AHCresult(parent.AxialVectorResult):
+class AHCresult(result.AxialVectorResult):
    pass
 
 

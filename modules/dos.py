@@ -28,62 +28,13 @@ from scipy import constants as constants
 from collections import Iterable
 
 from utility import  print_my_name_start,print_my_name_end,voidsmoother
-import parent
+import result
 
 
-class DOSresult(parent.Result):
+class DOSresult(result.ScalarResult):
 
     def __init__(self,Efermi,cumDOS,cumDOSsmooth=None,smoother=None):
-        assert (Efermi.shape[0]==cumDOS.shape[0])
-        self.Efermi=Efermi
-        self.cumDOS=cumDOS
-        if not (cumDOSsmooth is None):
-            self.cumDOSsmooth=cumDOSsmooth
-        elif not (smoother is None):
-            self.cumDOSsmooth=smoother(self.cumDOS)
-        else:
-             raise ValueError("either  DOSsmooth or smoother should be defined")
-
-    def __mul__(self,other):
-        if isinstance(other,int) or isinstance(other,float) :
-            return DOSresult(self.Efermi,self.cumDOS*other,self.cumDOSsmooth*other)
-        else:
-            raise TypeError("result can only be multilied by a number")
-    
-    def __add__(self,other):
-        if other == 0:
-            return self
-        if np.linalg.norm(self.Efermi-other.Efermi)>1e-8:
-            raise RuntimeError ("Adding results with different Fermi energies - not allowed")
-        return DOSresult(self.Efermi,self.cumDOS+other.cumDOS,self.cumDOSsmooth+other.cumDOSsmooth)
-
-    def write(self,name):
-        DOS=np.zeros(self.cumDOSsmooth.shape)
-        dE=self.Efermi[1]-self.Efermi[0]
-        DOS[1:-1]=(self.cumDOSsmooth[2:]-self.cumDOSsmooth[:-2])/(2*dE)
-        DOS[0]=(self.cumDOSsmooth[1]-self.cumDOSsmooth[0])/dE
-        DOS[-1]=(self.cumDOSsmooth[-1]-self.cumDOSsmooth[-2])/dE
-        open(name,"w").write(
-           "    ".join("{0:^15s}".format(s) for s in ["EF","cumDOS","cumDOSsmooth","DOS"])+"\n"+
-          "\n".join(
-           "    ".join("{0:15.8f}".format(x) for x in line )
-                      for line  in np.array([self.Efermi,self.cumDOS,self.cumDOSsmooth,DOS] ).T )
-               +"\n")
-
-    def transform(self,sym=None):
-        return self
-
-    def _maxval(self):
-        return self.cumDOSsmooth.max()
-
-    def _norm(self):
-        return np.linalg.norm(self.cumDOSsmooth)
-
-    def _normder(self):
-        return np.linalg.norm(self.cumDOSsmooth[1:]-self.cumDOSsmooth[:-1])
-
-    def max(self):
-        return np.array([self._maxval(),self._norm(),self._normder()])
+        super(DOSresult,self).__init__(Efermi,data=cumDOS,dataSmooth=cumDOSsmooth,smoother=None)
 
 
 bohr= constants.physical_constants['Bohr radius'][0]/constants.angstrom
