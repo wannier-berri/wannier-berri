@@ -10,6 +10,12 @@ from berry import eval_J0,get_occ
 class SPNresult(result.AxialVectorResult):
    pass
 
+
+def calcSpin_band(data):
+    return data.SSUU_K_rediag
+    
+
+
 def calcSpinTot(data,Efermi=None,occ_old=None,smoother=voidsmoother):
 
     if occ_old is None: 
@@ -28,4 +34,5 @@ def calcSpinTot(data,Efermi=None,occ_old=None,smoother=voidsmoother):
     occ_new_selk=occ_new[selectK]
     delocc=occ_new_selk!=occ_old_selk
     occ_old[:,:]=occ_new[:,:]
-    return eval_J0(data.SSUU_K_rediag[selectK], delocc)/data.NKFFT_tot
+    return eval_J0(calcSpin_band(data)[selectK], delocc)/data.NKFFT_tot
+
