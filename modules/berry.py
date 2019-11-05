@@ -49,6 +49,9 @@ fac_morb =  -eV_au/bohr**2
 
 
 
+def calcV_band(data):
+    return data.delE_K
+
 
 
 def eval_J0(A,occ):
