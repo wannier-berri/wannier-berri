@@ -31,7 +31,7 @@ def main():
     t1=time()
     
     
-    quant="ovms"
+    quant=['V','berry','spin','morb']
     eval_func=functools.partial( tab.tabXnk, quantities=quant,ibands=(4,5,6,7,8,9) )
 
     res=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=0,
@@ -39,20 +39,16 @@ def main():
                 fout_name="",symmetry_gen=generators,
                 GammaCentered=True,restart=False)
     t2=time()
-
-    print ("V=",res.dEnk)
     res=res.to_grid(NKFFT*NKdiv)
-    print ("V=",res.dEnk)
     t3=time()
-    
-    
+        
     open("Fe_E-{0}.frmsf".format(NKdiv[0]),"w").write(
-          res.fermiSurfer(quantity="",efermi=12.6) )
+         res.fermiSurfer(quantity="",efermi=12.6) )
     
     for Q in quant:
      for comp in "xyzsn":
         open("Fe_{2}{0}-{1}.frmsf".format(comp,NKdiv[0],Q),"w").write(
-           res.fermiSurfer(quantity=Q+comp,efermi=12.6)
+           res.fermiSurfer(quantity=Q+'_'+comp,efermi=12.6)
            )
     t4=time()
 
