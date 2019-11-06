@@ -14,7 +14,7 @@
 import numpy as np
 from scipy.io import FortranFile as FF
 from utility import str2bool
-import wan_ham as wham
+import fourier
 import copy
 import lazy_property
 from ws_dist_map import ws_dist_map
@@ -70,14 +70,14 @@ class Data():
                 self.CC_R=1j*self.__getMat('CCab')
             except:
                 _CC_R=self.__getMat('CC')
-                self.CC_R=1j*(_CC_R[:,:,:,wham.alpha,wham.beta]-_CC_R[:,:,:,wham.beta,wham.alpha])
+                self.CC_R=1j*(_CC_R[:,:,:,fourier.alpha,fourier.beta]-_CC_R[:,:,:,fourier.beta,fourier.alpha])
 
         if getFF:
             try:
                 self.FF_R=1j*self.__getMat('FFab')
             except:
                 _FF_R=self.__getMat('FF')
-                self.FF_R=1j*(_FF_R[:,:,:,wham.alpha,wham.beta]-_FF_R[:,:,:,wham.beta,wham.alpha])
+                self.FF_R=1j*(_FF_R[:,:,:,fourier.alpha,fourier.beta]-_FF_R[:,:,:,fourier.beta,fourier.alpha])
 
         if getSS:
             self.SS_R=self.__getMat('SS')
