@@ -16,6 +16,7 @@ __debug = False
 
 import inspect
 import numpy as np
+from lazy_property import LazyProperty as Lazy
 
 def print_my_name_start():
     if __debug: 
@@ -64,6 +65,22 @@ class smoother():
         self.smt=self._broaden(np.arange(-self.NE1,self.NE1+1)*dE)*dE
 
 
+    @Lazy
+    def __str__(self):
+        return ("<Smoother T={}, NE={}, NE1={} , E={}..{} step {}>".format(self.T,self.NE,self.NE1,self.Emin,self.Emax,self.dE) )
+        
+    @Lazy 
+    def dE(self):
+        return self.E[1]-self.E[0]
+
+    @Lazy 
+    def Emin(self):
+        return self.E[0]
+
+    @Lazy 
+    def Emax(self):
+        return self.E[-1]
+
     def _broaden(self,E):
         return 0.25/self.T/np.cosh(E/(2*self.T))**2
 
@@ -79,13 +96,35 @@ class smoother():
         return res
 
 
+    def __eq__(self,other):
+        if isinstance(other,voidsmoother):
+            return False
+        elif not isinstance(other,smoother):
+            return False
+        else:
+            for var in ['T','dE','NE','NE1','Emin','Emax']:
+                if getattr(self,var)!=getattr(other,var):
+                    return False
+        return True
+#            return self.T==other.T and self.dE=other.E and self.NE==other.NE and self.
+
+
+
 class voidsmoother(smoother):
     def __init__(self):
         pass
-        
+    
+    def __eq__(self,other):
+        if isinstance(other,voidsmoother):
+            return True
+        else:
+            return False
+    
     def __call__(self,A):
         return A
 
+    def __str__(self):
+        return ("<Smoother - void " )
 
 
 

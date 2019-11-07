@@ -16,7 +16,8 @@
 #  child classes can be defined specifically in each module
 
 import numpy as np
-
+from lazy_property import LazyProperty as Lazy
+from utility import voidsmoother
 
 ## A class to contain results or a calculation:
 ## For any calculation there should be a class with the samemethods implemented
@@ -63,20 +64,19 @@ class Result():
 
 class EfermiResult(Result):
 
-    def __init__(self,Efermi,data,dataSmooth=None,smoother=None):
+    def __init__(self,Efermi,data,smoother=voidsmoother()):
         assert (Efermi.shape[0]==data.shape[0])
         self.Efermi=Efermi
         self.data=data
-        if not (dataSmooth is None):
-            self.dataSmooth=dataSmooth
-        elif not (smoother is None):
-            self.dataSmooth=smoother(self.data)
-        else:
-             raise ValueError("either  dataSmooth or smoother should be defined")
+        self.smoother=smoother
+
+    @Lazy
+    def dataSmooth(self):
+        return self.smoother(self.data)
 
     def __mul__(self,other):
         if isinstance(other,int) or isinstance(other,float) :
-            return EfermiResult(self.Efermi,self.data*other,self.dataSmooth*other)
+            return EfermiResult(self.Efermi,self.data*other,self.smoother)
         else:
             raise TypeError("result can only be multilied by a number")
 
@@ -85,7 +85,9 @@ class EfermiResult(Result):
             return self
         if np.linalg.norm(self.Efermi-other.Efermi)>1e-8:
             raise RuntimeError ("Adding results with different Fermi energies - not allowed")
-        return EfermiResult(self.Efermi,self.data+other.data,self.dataSmooth+other.dataSmooth)
+        if self.smoother != other.smoother:
+            raise RuntimeError ("Adding results with different smoothers ={} and {}".format(self.smoother,other.smoother))
+        return EfermiResult(self.Efermi,self.data+other.data,self.smoother)
 
     def write(self,name):
         # assule, that the dimensions starting from first - are cartesian coordinates       
@@ -125,11 +127,11 @@ class ScalarResult(EfermiResult):
 
 class AxialVectorResult(EfermiResult):
     def transform(self,sym):
-        return AxialVectorResult(self.Efermi,sym.transform_axial_vector(self.data),sym.transform_axial_vector(self.dataSmooth) )
+        return AxialVectorResult(self.Efermi,sym.transform_axial_vector(self.data),self.smoother )
 
 class PolarVectorResult(EfermiResult):
     def transform(self,sym):
-        return PolarVectorResult(self.Efermi,sym.transform_polar_vector(self.data),sym.transform_polar_vector(self.dataSmooth) )
+        return PolarVectorResult(self.Efermi,sym.transform_polar_vector(self.data),self.smoother )
 
 
 #a more general class. Scalar,polar and axial vectors may be derived as particular cases of the tensor class
@@ -139,7 +141,7 @@ class TensorResult(EfermiResult):
         shape=data.shape[1:]
         assert  len(shape)==len(trueVector)
         assert np.all(np.array(shape)==3)
-        super(TensorResult,self).__init__(Efermi,data,dataSmooth=dataSmooth,smoother=smoother)
+        super(TensorResult,self).__init__(Efermi,data,smoother=smoother)
         self.trueVector=np.copy(trueVector)
  
     def __transform(self,data,sym):
@@ -152,16 +154,14 @@ class TensorResult(EfermiResult):
         return res
 
     def transform(self,sym):
-        return TensorResult(self.Efermi,self.__transform(self.data,sym),self.__transform(self.dataSmooth,sym),trueVector=self.trueVector)
+        return TensorResult(self.Efermi,self.__transform(self.data,sym),self.smoother,trueVector=self.trueVector)
 
 
     def __mul__(self,other):
         res=super(TensorResult,self).__mul__(other)
-        return TensorResult(res.Efermi,res.data, res.dataSmooth ,trueVector=self.trueVector)
-        res.trueVector=np.copy(sef.trueVector)
-        return res
+        return TensorResult(res.Efermi,res.data, res.smoother ,trueVector=self.trueVector)
 
     def __add__(self,other):
         assert np.all(self.trueVector==other.trueVector)
         res=super(TensorResult,self).__add__(other)
-        return TensorResult(res.Efermi,res.data, res.dataSmooth ,trueVector=self.trueVector)
+        return TensorResult(res.Efermi,res.data, res.smoother ,trueVector=self.trueVector)

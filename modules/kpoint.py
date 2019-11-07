@@ -43,10 +43,10 @@ class  KpointBZ():
             return self.symgroup.star(self.k)
 
     def __str__(self):
-        res="coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ] \n".format(self.k[0],self.k[1],self.k[2])
+        res="coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ] ".format(self.k[0],self.k[1],self.k[2])
         
-        if not (self.star is None):
-            res+="star : \n"+"".join(" [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ] \n".format(s[0],s[1],s[2]) for s in self.star)
+#        if not (self.star is None):
+#            res+="star : \n"+"".join(" [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ] \n".format(s[0],s[1],s[2]) for s in self.star)
         return res
 
     @lazy_property.LazyProperty
