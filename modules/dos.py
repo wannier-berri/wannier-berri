@@ -34,7 +34,7 @@ import result
 class DOSresult(result.ScalarResult):
 
     def __init__(self,Efermi,cumDOS,cumDOSsmooth=None,smoother=None):
-        super(DOSresult,self).__init__(Efermi,data=cumDOS,dataSmooth=cumDOSsmooth,smoother=None)
+        super(DOSresult,self).__init__(Efermi,data=cumDOS,dataSmooth=cumDOSsmooth,smoother=smoother)
 
 
 bohr= constants.physical_constants['Bohr radius'][0]/constants.angstrom
@@ -47,7 +47,7 @@ def calcDOS(data,Efermi=None,smoother=voidsmoother):
 
     cumDOS=np.zeros(Efermi.shape,dtype=int)
 
-    for e in data.E_K_only.reshape(-1):
+    for e in data.E_K.reshape(-1):
         cumDOS[e<=Efermi]+=1
 
     cumDOS=np.array(cumDOS,dtype=float)/(data.NKFFT_tot)

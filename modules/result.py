@@ -65,7 +65,6 @@ class EfermiResult(Result):
 
     def __init__(self,Efermi,data,dataSmooth=None,smoother=None):
         assert (Efermi.shape[0]==data.shape[0])
-        assert (data.shape[-1]==3)
         self.Efermi=Efermi
         self.data=data
         if not (dataSmooth is None):
@@ -92,7 +91,7 @@ class EfermiResult(Result):
         # assule, that the dimensions starting from first - are cartesian coordinates       
         def getHead(n):
            if n<=0:
-              return ['']
+              return ['  ']
            else:
               return [a+b for a in 'xyz' for b in getHead(n-1)]
         rank=len(self.data.shape[1:])
@@ -101,8 +100,8 @@ class EfermiResult(Result):
            "    ".join("{0:^15s}".format(s) for s in ["EF",]+
                 [b for b in getHead(rank)*2])+"\n"+
           "\n".join(
-           "    ".join("{0:15.6f}".format(x) for x in [ef]+[x for x in data.reshape(-1)]) 
-                      for ef,data in zip (self.Efermi,np.hstack( (self.data,self.dataSmooth) ) ))
+           "    ".join("{0:15.6f}".format(x) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
+                      for ef,data,datasm in zip (self.Efermi,self.data,self.dataSmooth)  )
                +"\n") 
 
 
@@ -120,7 +119,7 @@ class EfermiResult(Result):
 
 
 
-class Scalaresult(EfermiResult):
+class ScalarResult(EfermiResult):
     def transform(self,sym):
         return self 
 
