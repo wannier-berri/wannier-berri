@@ -143,15 +143,15 @@ class Data_dk(Data):
 
 
     @lazy_property.LazyProperty
-    def delE_K(self):
+    def del2E_K(self):
         print_my_name_start()
-        del2HH=1j*self.delHH_R[:,:,:,:,None]*self.cRvec[None,None,:,None,:]
+        del2HH=1j*self.HH_R[:,:,:,None,None]*self.cRvec[None,None,:,None,:]*self.cRvec[None,None,:,:,None]
         del2HH = fourier.fourier_R_to_k(del2HH,self.iRvec,self.NKFFT,hermitian=True)
         del2HH=self._rotate_mat(del2HH)
-        del2E_K = np.einsum("klla->kla",del2HH)
+        del2E_K = np.array([del2HH[:,i,i,:,:] for i in range(del2HH.shape[1])]).transpose( (1,0,2,3) )
         check=np.abs(del2E_K).imag.max()
         if check>1e-10: raiseruntimeError( "The second band derivatives have considerable imaginary part: {0}".format(check) )
-        return delE_K.real
+        return delE2_K.real
 
 
     @lazy_property.LazyProperty

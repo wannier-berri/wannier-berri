@@ -29,7 +29,7 @@ def main():
     t1=time()
     smooth=smoother(Efermi,10)
     eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi, smoother=smooth )
-    AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=4,
+    AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=0,
             adpt_num_iter=10,adpt_nk=2,
                 fout_name=name,symmetry_gen=generators,
                 GammaCentered=False,restart=False)

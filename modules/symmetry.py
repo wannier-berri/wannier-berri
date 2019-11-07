@@ -19,23 +19,32 @@ import scipy.spatial.transform
 
 from scipy.spatial.transform import Rotation as rotmat
 from copy import deepcopy
-
+from lazy_property import LazyProperty as Lazy
 
 class Symmetry():
 
     def __init__(self,R,TR=False):
-        self.R=R
         self.TR=TR
-        
+        self.Inv=np.linalg.det(R)>0
+        self.R=R*(-1 if self.Inv else 1)
+            
     def show(self):
-        print ("rotation: {0}, TR:{1}".format(self.R,self.TR))
+        print ("rotation: {0}, TR:{1} , I:{1}".format(self.R,self.TR,self.Inv))
+
+    @Lazy
+    def iTR(self):
+        return -1 if self.TR else 1
+
+    @Lazy
+    def iInv(self):
+        return -1 if self.Inv else 1
 
     def __mul__(self,other):
-        return Symmetry(self.R.dot(other.R),self.TR!=other.TR)
-        
+        return Symmetry(self.R.dot(other.R)*(self.iInv*other.iInv),self.TR!=other.TR)
+
     def __eq__(self,other):
-        return np.linalg.norm(self.R-other.R)<1e-14 and self.TR==other.TR
-        
+        return np.linalg.norm(self.R-other.R)<1e-14 and self.TR==other.TR and self.Inv==other.Inv
+
     def copy(self):
         return deepcopy(self)
 
@@ -43,29 +52,39 @@ class Symmetry():
         return res
 
     def transform_axial_vector(self,res):
-        return np.dot(res,self.R.T)*np.linalg.det(self.R)*(-1 if self.TR else 1)
+        return np.dot(res,self.R.T)*self.iTR
 
     def transform_v_vector(self,res):
-        return np.dot(res,self.R.T)*(-1 if self.TR else 1)
+        return np.dot(res,self.R.T)*(self.iTR*self.iInv)
 
     def transform_polar_vector(self,res):
-        return np.dot(res,self.R.T)
+        return np.dot(res,self.R.T)*self.iInv 
 
     def transform_k_vector(self,vec,basis=np.eye(3)):
-        return np.dot(vec, basis.dot(self.R.T).dot(np.linalg.inv(basis)))*(-1 if self.TR else 1)
+        return np.dot(vec, basis.dot(self.R.T).dot(np.linalg.inv(basis)))*(self.iTR*self.iInv)
+
+    def transform_tensor(self,data,sym,rank,TRodd=False,Iodd=False):
+        res=np.copy(data)
+        assert   np.all( np.array(res.shape[-rank:])==3)
+        for i in range(-rank):
+            res=sym.transform_polar_vector(res.transpose( (0,)+tuple(range(1,i+1))+tuple(range(i+2,rank+1))+(i+1,) ) ).transpose( 
+                    (0,)+tuple(range(1,i+1))+(rank,)+tuple(range(i+1,rank))  )
+        if (self.TR and TRodd)!=(self.Inv and Iodd):
+            res=-res
+        return res
 
     def transform(self,typ,res):
         return { 'scalar'        : self.transform_scalar,
                  'axial_vector'  : self.transform_axial_vector,
                  'polar_vector'  : self.transform_polar_vector,
-                 'v_vector'  : self.transform_v_vector  }[typ](res) 
-                 
-        
-    
+                 'v_vector'      : self.transform_v_vector  }[typ](res) 
+
+
+
+
 Identity =Symmetry( np.eye(3))
 Inversion=Symmetry(-np.eye(3))
 TimeReversal=Symmetry( np.eye(3),True)
-
         
 
 class Rotation(Symmetry):
