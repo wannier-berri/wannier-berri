@@ -61,6 +61,15 @@ class Data_dk(Data):
         print_my_name_start()
         return res
 
+    def _rotate_vec(self,mat):
+        print_my_name_start()
+        res=np.array(mat)
+        for j in range(res.shape[-1]):
+            res[:,:,:,:,j]=self._rotate_vec(mat[:,:,:,:,j])
+        print_my_name_start()
+        return res
+
+
     @lazy_property.LazyProperty
     def nbands(self):
         return self.HH_R.shape[0]
@@ -114,9 +123,15 @@ class Data_dk(Data):
         delHH_R=1j*self.HH_R[:,:,:,None]*self.cRvec[None,None,:,:]
         return fourier.fourier_R_to_k(delHH_R,self.iRvec,self.NKFFT,hermitian=True)
 
+
+
     @lazy_property.LazyProperty
     def delHHUU_K(self):
         return self._rotate_vec(self.delHH_K)
+
+    @lazy_property.LazyProperty
+    def del2HHUU_K(self):
+        return self._rotate_vec(self.del2HH_K)
 
     @lazy_property.LazyProperty
     def delE_K(self):
@@ -125,6 +140,19 @@ class Data_dk(Data):
         check=np.abs(delE_K).imag.max()
         if check>1e-10: raiseruntimeError ("The band derivatives have considerable imaginary part: {0}".format(check))
         return delE_K.real
+
+
+    @lazy_property.LazyProperty
+    def delE_K(self):
+        print_my_name_start()
+        del2HH=1j*self.delHH_R[:,:,:,:,None]*self.cRvec[None,None,:,None,:]
+        del2HH = fourier.fourier_R_to_k(del2HH,self.iRvec,self.NKFFT,hermitian=True)
+        del2HH=self._rotate_mat(del2HH)
+        del2E_K = np.einsum("klla->kla",del2HH)
+        check=np.abs(del2E_K).imag.max()
+        if check>1e-10: raiseruntimeError( "The second band derivatives have considerable imaginary part: {0}".format(check) )
+        return delE_K.real
+
 
     @lazy_property.LazyProperty
     def UU_K(self):

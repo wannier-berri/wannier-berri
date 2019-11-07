@@ -26,6 +26,8 @@ from spin import calcSpin_band
 import symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
+
+#should be functions of only one parameter of class data_dk
 calculators={ 
          'spin'  : calcSpin_band, 
          'V'     : calcV_band  , 
@@ -66,7 +68,7 @@ def tabXnk(data,quantities=[],ibands=None):
                   A[i,ib1:ib2]=A[i,ib1:ib2].mean(axis=0)
 
     kpoints=data.kpoints_all
-    return TABresult(kpoints=kpoints,basis=data.recip_lattice,results=results )
+    return TABresult( kpoints=kpoints,basis=data.recip_lattice,results=results )
 
 
 
