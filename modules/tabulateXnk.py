@@ -83,7 +83,7 @@ class TABresult(result.Result):
 
         self.results=results
         for r in results:
-            print (r,self.nband,len(self.kpoints),results[r].shape)
+#            print (r,self.nband,len(self.kpoints),results[r].shape)
             assert len(kpoints)==results[r].shape[0]
             assert self.nband==results[r].shape[1]
             
@@ -139,7 +139,7 @@ class TABresult(result.Result):
         return res
             
     
-    def fermiSurfer(self,quantity="",efermi=0):
+    def fermiSurfer(self,quantity="",component="",efermi=0):
         if self.grid is None:
             raise RuntimeError("the data should be on a grid before generating FermiSurfer files. use to_grid() method")
         if self.gridorder!='C':
@@ -151,26 +151,63 @@ class TABresult(result.Result):
         for iband in range(self.nband):
             FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk[:,iband]-efermi )
         
-        
-        if quantity=="":
+        if quantity=='':
             return FSfile
-
-        quantity,comp=quantity.split("_")
-        if quantity not in self.results:
-            raise RuntimeError("requested quantity '{}' was not calculated".format(quantity))
         
-        xyz={"x":0,"y":1,"z":2}
-    
-        X=self.results[quantity]
-        if comp  in "xyz":
-            Xnk = X[:,:,xyz[comp]]
-        elif comp=='n':
-            Xnk =  np.linalg.norm(X,axis=-1)
-        elif comp=='s':
-            Xnk = np.linalg.norm(X,axis=-1)**2
+        try:
+            if quantity not in self.results:
+                raise RuntimeError("requested quantity '{}' was not calculated".format(quantity))
+        
+            xyz={"x":0,"y":1,"z":2}
+            dim=self.results[quantity].shape[2:]
+            if not  np.all(np.array(dim)==3):
+                raise RuntimeError("dimensions of all components should be 3, found {}".format(dim))
                 
-        for iband in range(self.nband):
-            FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
+            dim=len(dim)
+            X=self.results[quantity]
+            component=component.lower()
+            if dim==0:
+                Xnk=X
+            elif dim==1:
+                if component  in "xyz":
+                    Xnk = X[:,:,xyz[component]]
+                elif component=='norm':
+                    Xnk =  np.linalg.norm(X,axis=-1)
+                elif component=='sq':
+                    Xnk = np.linalg.norm(X,axis=-1)**2
+                else:
+                    raise RuntimeError("Unknown component {} for vectors".format(component))
+            elif dim==2:
+                if component=="trace":
+                    Xnk = sum([X[:,:,i,i] for i in range(3)])
+                else:
+                    try :
+                        Xnk = X[:,:,xyz[component[0]],xyz[component[1]]]
+                    except IndexError:
+                        raise RuntimeError("Unknown component {} for rank-2  tensors".format(component))
+            elif dim==3:
+                if component=="trace":
+                    Xnk = sum([X[:,:,i,i,i] for i in range(3)])
+                else:
+                    try :
+                        Xnk = X[:,:,xyz[component[0]],xyz[component[1]],xyz[component[2]]]
+                    except IndexError:
+                        raise RuntimeError("Unknown component {} for rank-3  tensors".format(component))
+            elif dim==4:
+                if component=="trace":
+                    Xnk = sum([X[:,:,i,i,i,i] for i in range(3)])
+                else:
+                    try :
+                        Xnk = X[:,:,xyz[component[0]],xyz[component[1]],xyz[component[2]],xyz[component[3]]]
+                    except IndexError:
+                        raise RuntimeError("Unknown component {} for rank-4  tensors".format(component))
+            else: 
+                raise RuntimeError("writing tensors with rank >4 is not implemented. But easy to do")
+
+            for iband in range(self.nband):
+                FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
+        except RuntimeError as err:
+            print ("WARNING: {} - printing only energies".format(err) )
 
         return FSfile
 

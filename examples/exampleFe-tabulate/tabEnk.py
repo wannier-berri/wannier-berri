@@ -46,9 +46,9 @@ def main():
          res.fermiSurfer(quantity="",efermi=12.6) )
     
     for Q in quant:
-     for comp in "xyzsn":
+     for comp in ["x","y","z","sq","norm"]:
         open("Fe_{2}{0}-{1}.frmsf".format(comp,NKdiv[0],Q),"w").write(
-           res.fermiSurfer(quantity=Q+'_'+comp,efermi=12.6)
+           res.fermiSurfer(quantity=Q,component=comp,efermi=12.6)
            )
     t4=time()
 

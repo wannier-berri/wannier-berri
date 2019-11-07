@@ -137,24 +137,17 @@ class PolarVectorResult(EfermiResult):
 #a more general class. Scalar,polar and axial vectors may be derived as particular cases of the tensor class
 class TensorResult(EfermiResult):
 
-    def __init__(self,Efermi,data,dataSmooth=None,smoother=None,trueVector=[]):
+    def __init__(self,Efermi,data,dataSmooth=None,smoother=None,TRodd=False,Iodd=False):
         shape=data.shape[1:]
         assert  len(shape)==len(trueVector)
         assert np.all(np.array(shape)==3)
         super(TensorResult,self).__init__(Efermi,data,smoother=smoother)
-        self.trueVector=np.copy(trueVector)
+        self.TRodd=TRodd
+        self.Iodd=Iodd
+        self.rank=len(data.shape[1:]) if rank is None else eank
  
-    def __transform(self,data,sym):
-        res=np.copy(data)
-        rank=len(self.trueVector)
-        for i,TV in enumerate(self.trueVector):
-            trans=sym.transform_polar_vector if TV else sym.transform_axial_vector
-            res=trans(res.transpose( (0,)+tuple(range(1,i+1))+tuple(range(i+2,rank+1))+(i+1,) ) ).transpose( 
-                    (0,)+tuple(range(1,i+1))+(rank,)+tuple(range(i+1,rank))  )
-        return res
-
     def transform(self,sym):
-        return TensorResult(self.Efermi,self.__transform(self.data,sym),self.smoother,trueVector=self.trueVector)
+        return TensorResult(self.Efermi,sym.transform(self.data,sym,TRodd=self.TRodd,Iodd=self.Iodd),self.smoother,trueVector=self.trueVector)
 
 
     def __mul__(self,other):
