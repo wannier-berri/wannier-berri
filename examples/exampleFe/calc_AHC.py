@@ -27,7 +27,8 @@ def main():
     Data=get_data.Data(seedname,getAA=True)
     generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
     t1=time()
-    eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi, smoother=smoother(Efermi,10) )
+    smooth=smoother(Efermi,10)
+    eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi, smoother=smooth )
     AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=4,
             adpt_num_iter=10,adpt_nk=2,
                 fout_name=name,symmetry_gen=generators,

@@ -61,7 +61,7 @@ class Data_dk(Data):
         print_my_name_start()
         return res
 
-    def _rotate_vec(self,mat):
+    def _rotate_mat(self,mat):
         print_my_name_start()
         res=np.array(mat)
         for j in range(res.shape[-1]):
