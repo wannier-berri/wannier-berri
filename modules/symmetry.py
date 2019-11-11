@@ -25,7 +25,7 @@ class Symmetry():
 
     def __init__(self,R,TR=False):
         self.TR=TR
-        self.Inv=np.linalg.det(R)>0
+        self.Inv=np.linalg.det(R)<0
         self.R=R*(-1 if self.Inv else 1)
             
     def show(self):
@@ -61,12 +61,13 @@ class Symmetry():
 
     def transform_tensor(self,data,rank,TRodd=False,Iodd=False):
         res=np.copy(data)
+        dim=len(res.shape)
         if rank>0:
-          if not  np.all( np.array(res.shape[-rank:])==3):
-            raise RuntimeError("all dimensions of rank-{} tensor should be 3, found: {}".format(rank,res.shape[-rank:]))
-        for i in range(-rank):
-            res=self.rotate(res.transpose( (0,)+tuple(range(1,i+1))+tuple(range(i+2,rank+1))+(i+1,) ) ).transpose( 
-                    (0,)+tuple(range(1,i+1))+(rank,)+tuple(range(i+1,rank))  )
+          if not  np.all( np.array(res.shape[dim-rank:dim])==3):
+            raise RuntimeError("all dimensions of rank-{} tensor should be 3, found: {}".format(rank,res.shape[dim-rank:dim]))
+        for i in range(dim-rank,dim):
+            res=self.rotate(res.transpose( tuple(range(i))+tuple(range(i+1,dim))+(i,) ) ).transpose( 
+                    tuple(range(i))+(dim-1,)+tuple(range(i+1,dim-1))  )
         if (self.TR and TRodd)!=(self.Inv and Iodd):
             res=-res
         return res
