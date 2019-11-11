@@ -33,11 +33,6 @@ import result
 
 
 
-class AHCresult(result.AxialVectorResult):
-   pass
-
-
-
 alpha=np.array([1,2,0])
 beta =np.array([2,0,1])
 
@@ -84,7 +79,7 @@ def calcAHC(data,Efermi=None,occ_old=None,smoother=voidsmoother):
         for iFermi in range(nFermi):
 #            print ("iFermi={}".format(iFermi))
             AHC[iFermi]=calcAHC(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        return AHCresult(Efermi,np.cumsum(AHC,axis=0),smoother=smoother)
+        return result.EnergyResultAxialV(Efermi,np.cumsum(AHC,axis=0),smoother=smoother)
     
     # now code for a single Fermi level:
     AHC=np.zeros(3)

@@ -48,9 +48,6 @@ class Symmetry():
     def copy(self):
         return deepcopy(self)
 
-    def transform_scalar(self,res):
-        return res
-
 
     def transform_k_vector(self,vec,basis=np.eye(3)):
         return np.dot(vec, basis.dot(self.R.T).dot(np.linalg.inv(basis)))*(self.iTR*self.iInv)
@@ -72,17 +69,6 @@ class Symmetry():
             res=-res
         return res
 
-    def transform_axial_vector(self,res):
-#        return np.dot(res,self.R.T)*self.iTR
-        return self.transform_tensor(res,1,TRodd=True,Iodd=False)
-
-    def transform_v_vector(self,res):
-#        return np.dot(res,self.R.T)*(self.iTR*self.iInv)
-        return self.transform_tensor(res,1,TRodd=True,Iodd=True)
-
-    def transform_polar_vector(self,res):
-#        return np.dot(res,self.R.T)*self.iInv 
-        return self.transform_tensor(res,1,TRodd=False,Iodd=True)
 
 
 
