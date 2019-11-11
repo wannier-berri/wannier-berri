@@ -51,33 +51,37 @@ class Symmetry():
     def transform_scalar(self,res):
         return res
 
-    def transform_axial_vector(self,res):
-        return np.dot(res,self.R.T)*self.iTR
-
-    def transform_v_vector(self,res):
-        return np.dot(res,self.R.T)*(self.iTR*self.iInv)
-
-    def transform_polar_vector(self,res):
-        return np.dot(res,self.R.T)*self.iInv 
 
     def transform_k_vector(self,vec,basis=np.eye(3)):
         return np.dot(vec, basis.dot(self.R.T).dot(np.linalg.inv(basis)))*(self.iTR*self.iInv)
 
-    def transform_tensor(self,data,sym,rank,TRodd=False,Iodd=False):
+    def rotate(self,res):
+        return np.dot(res,self.R.T)
+
+
+    def transform_tensor(self,data,rank,TRodd=False,Iodd=False):
         res=np.copy(data)
-        assert   np.all( np.array(res.shape[-rank:])==3)
+        if rank>0:
+          if not  np.all( np.array(res.shape[-rank:])==3):
+            raise RuntimeError("all dimensions of rank-{} tensor should be 3, found: {}".format(rank,res.shape[-rank:]))
         for i in range(-rank):
-            res=sym.transform_polar_vector(res.transpose( (0,)+tuple(range(1,i+1))+tuple(range(i+2,rank+1))+(i+1,) ) ).transpose( 
+            res=self.rotate(res.transpose( (0,)+tuple(range(1,i+1))+tuple(range(i+2,rank+1))+(i+1,) ) ).transpose( 
                     (0,)+tuple(range(1,i+1))+(rank,)+tuple(range(i+1,rank))  )
         if (self.TR and TRodd)!=(self.Inv and Iodd):
             res=-res
         return res
 
-    def transform(self,typ,res):
-        return { 'scalar'        : self.transform_scalar,
-                 'axial_vector'  : self.transform_axial_vector,
-                 'polar_vector'  : self.transform_polar_vector,
-                 'v_vector'      : self.transform_v_vector  }[typ](res) 
+    def transform_axial_vector(self,res):
+#        return np.dot(res,self.R.T)*self.iTR
+        return self.transform_tensor(res,1,TRodd=True,Iodd=False)
+
+    def transform_v_vector(self,res):
+#        return np.dot(res,self.R.T)*(self.iTR*self.iInv)
+        return self.transform_tensor(res,1,TRodd=True,Iodd=True)
+
+    def transform_polar_vector(self,res):
+#        return np.dot(res,self.R.T)*self.iInv 
+        return self.transform_tensor(res,1,TRodd=False,Iodd=True)
 
 
 

@@ -18,7 +18,7 @@
 import numpy as np
 from lazy_property import LazyProperty as Lazy
 from utility import voidsmoother
-
+from copy import deepcopy
 ## A class to contain results or a calculation:
 ## For any calculation there should be a class with the samemethods implemented
 
@@ -121,6 +121,7 @@ class EfermiResult(Result):
 
 
 
+
 class ScalarResult(EfermiResult):
     def transform(self,sym):
         return self 
@@ -147,14 +148,140 @@ class TensorResult(EfermiResult):
         self.rank=len(data.shape[1:]) if rank is None else eank
  
     def transform(self,sym):
-        return TensorResult(self.Efermi,sym.transform(self.data,sym,TRodd=self.TRodd,Iodd=self.Iodd),self.smoother,trueVector=self.trueVector)
+        return TensorResult(self.Efermi,sym.transform(self.data,sym,TRodd=self.TRodd,Iodd=self.Iodd),self.smoother,self.TRodd,self.Iodd)
 
 
     def __mul__(self,other):
         res=super(TensorResult,self).__mul__(other)
-        return TensorResult(res.Efermi,res.data, res.smoother ,trueVector=self.trueVector)
+        return TensorResult(res.Efermi,res.data, res.smoother ,self.TRodd,self.Iodd)
 
     def __add__(self,other):
-        assert np.all(self.trueVector==other.trueVector)
+        assert self.TRodd == other.TRodd
+        assert self.Iodd  == other.Iodd
         res=super(TensorResult,self).__add__(other)
-        return TensorResult(res.Efermi,res.data, res.smoother ,trueVector=self.trueVector)
+        return TensorResult(res.Efermi,res.data, res.smoother ,self.TRodd,self.Iodd)
+
+
+
+
+class KBandResult(Result):
+
+    def __init__(self,data,TRodd,Iodd):
+        self.data=data
+        self.TRodd=TRodd
+        self.Iodd=Iodd
+        
+    def fit(self,other):
+        for var in ['TRodd','Iodd','rank','nband']:
+            if getattr(self,var)!=getattr(other,var):
+                return False
+        return True
+
+    
+    @property
+    def rank(self):
+       return len(self.data.shape)-2
+
+    @property
+    def nband(self):
+       return self.data.shape[1]
+
+    @property
+    def nk(self):
+       return self.data.shape[0]
+
+    def __add__(self,other):
+        assert self.fit(other)
+        data=np.vstack( (self.data,other.data) )
+        return KBandResult(data,self.TRodd,self.Iodd) 
+
+    def to_grid(self,k_map):
+        data=np.array( [sum(self.data[ik] for ik in km)/len(km)   for km in k_map])
+        return KBandResult(data,self.TRodd,self.Iodd) 
+
+
+    def select_bands(self,ibands):
+        return KBandResult(self.data[:,ibands],self.TRodd,self.Iodd)
+
+
+    def average_deg(self,deg):
+        for i,D in enumerate(deg):
+           for ib1,ib2 in D:
+              self.data[i,ib1:ib2]=self.data[i,ib1:ib2].mean(axis=0)
+        return self
+
+
+    def transform(self,sym):
+        data=sym.transform_tensor(self.data,rank=self.rank,TRodd=self.TRodd,Iodd=self.Iodd)
+        return KBandResult(data,self.TRodd,self.Iodd)
+
+    def write(self,name):
+        # assule, that the dimensions starting from first - are cartesian coordinates       
+        def getHead(n):
+           if n<=0:
+              return ['  ']
+           else:
+              return [a+b for a in 'xyz' for b in getHead(n-1)]
+        rank=len(self.data.shape[1:])
+
+        open(name,"w").write(
+           "    ".join("{0:^15s}".format(s) for s in ["EF",]+
+                [b for b in getHead(rank)*2])+"\n"+
+          "\n".join(
+           "    ".join("{0:15.6f}".format(x) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
+                      for ef,data,datasm in zip (self.Efermi,self.data,self.dataSmooth)  )
+               +"\n") 
+
+
+    def get_component(self,component=None):
+        if component is None:
+            return None
+        xyz={"x":0,"y":1,"z":2}
+        dim=self.data.shape[2:]
+        try:
+            if not  np.all(np.array(dim)==3):
+                raise RuntimeError("dimensions of all components should be 3, found {}".format(dim))
+                
+            dim=len(dim)
+            component=component.lower()
+            if dim==0:
+                Xnk=self.data
+            elif dim==1:
+                if component  in "xyz":
+                    return self.data[:,:,xyz[component]]
+                elif component=='norm':
+                    return np.linalg.norm(self.data,axis=-1)
+                elif component=='sq':
+                    return np.linalg.norm(self.data,axis=-1)**2
+                else:
+                    raise RuntimeError("Unknown component {} for vectors".format(component))
+            elif dim==2:
+                if component=="trace":
+                    return sum([self.data[:,:,i,i] for i in range(3)])
+                else:
+                    try :
+                        return self.data[:,:,xyz[component[0]],xyz[component[1]]]
+                    except IndexError:
+                        raise RuntimeError("Unknown component {} for rank-2  tensors".format(component))
+            elif dim==3:
+                if component=="trace":
+                    Xnk = sum([self.data[:,:,i,i,i] for i in range(3)])
+                else:
+                    try :
+                        return self.data[:,:,xyz[component[0]],xyz[component[1]],xyz[component[2]]]
+                    except IndexError:
+                        raise RuntimeError("Unknown component {} for rank-3  tensors".format(component))
+            elif dim==4:
+                if component=="trace":
+                    return sum([self.data[:,:,i,i,i,i] for i in range(3)])
+                else:
+                    try :
+                        return self.data[:,:,xyz[component[0]],xyz[component[1]],xyz[component[2]],xyz[component[3]]]
+                    except IndexError:
+                        raise RuntimeError("Unknown component {} for rank-4  tensors".format(component))
+            else: 
+                raise RuntimeError("writing tensors with rank >4 is not implemented. But easy to do")
+        except RuntimeError as err:
+            print ("WARNING: {} - printing only energies".format(err) )
+            return None
+
