@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 
-DO_profile=True
+DO_profile=False
 
 import sys
 sys.path.append('../../modules/')
 import numpy as np
 import get_data
-import berry
 import functools
 from integrate import eval_integral_BZ
 from time import time
 import symmetry as SYM
 from utility import smoother
+from integrateXnk import intProperty
 
 
 def main():
@@ -21,15 +21,15 @@ def main():
     NKdiv=np.array([int(sys.argv[2])]*3)
     
     name1="NKFFT={0}_NKdiv={1}_adptmesh=2-sym-smooth10+TR".format(*tuple(sys.argv[1:4]))
-    name=seedname+"_w19_ahc_"+name1
+    name=seedname+"_w19_"+name1
     Efermi=np.linspace(12.,13.,1001)
-#    Data=get_data.Data(tb_file='Fe_tb.dat',getAA=True)
-    Data=get_data.Data(seedname,getAA=True)
+    Data=get_data.Data(tb_file='Fe_tb.dat',getAA=True)
+#    Data=get_data.Data(seedname,getAA=True)
     generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
     t1=time()
     smooth=smoother(Efermi,10)
-    eval_func=functools.partial(  berry.calcAHC, Efermi=Efermi, smoother=smooth )
-    AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=0,
+    eval_func=functools.partial(  intProperty, Efermi=Efermi, smootherEf=smooth,quantities=["ahc","dos"] )
+    AHC_all=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=4,
             adpt_num_iter=10,adpt_nk=2,
                 fout_name=name,symmetry_gen=generators,
                 GammaCentered=False,restart=False)

@@ -137,7 +137,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         result_all=sum(kp.get_res for kp in k_list)
         
         if not (restart and i_iter==0):
-            result_all.write(fout_name+"_iter-{0:04d}.dat".format(i_iter+start_iter))
+            result_all.write(fout_name+"-{}"+"_iter-{0:04d}.dat".format(i_iter+start_iter))
         
         if i_iter >= adpt_num_iter:
             break
@@ -150,7 +150,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
             k_list+=k_list[ik].divide(adpt_mesh)
 #            del k_list[ik]
         
-        print ("sum of eights:{}".format(sum(kp.factor for kp in k_list)))
+        print ("sum of weights:{}".format(sum(kp.factor for kp in k_list)))
         print ("checking for equivalent points in all points")
         nexcl=exclude_equiv_points(k_list)
         print (" excluded {0} points".format(nexcl))
