@@ -21,31 +21,22 @@ from collections import Iterable
 from utility import  print_my_name_start,print_my_name_end,voidsmoother
 import result
 from copy import deepcopy
-from berry import calcImf_band,calcImgh_band,calcV_band
-from spin import calcSpin_band
+import  berry,spin
 import symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
 #should be functions of only one parameter of class data_dk
 calculators={ 
-         'spin'  : calcSpin_band, 
-         'V'     : calcV_band  , 
-         'morb'  : calcImgh_band,
-         'berry' : calcImf_band }
+         'spin'       : spin.calcSpin_band_kn, 
+         'V'          : berry.calcV_band_kn  , 
+         'morb'       : berry.calcImgh_band_kn,
+         'berry'      : berry.calcImf_band_kn ,
+         'hall_spin'  : spin.calcHall_spin_kn,
+         'hall_orb'   : spin.calcHall_orb_kn
+         }
 
 
-transformators={ 
-         'E'     : 'scalar', 
-         'spin'  : 'axial_vector', 
-         'V'     : 'v_vector', 
-         'morb'  : 'axial_vector', 
-         'berry' : 'axial_vector'  }
-
-
-#the rest should work itself 
-# so far only for vector quantities
-#TODO : generalize to scalars and tensors
 
 def tabXnk(data,quantities=[],ibands=None):
 
@@ -59,13 +50,9 @@ def tabXnk(data,quantities=[],ibands=None):
     A=[np.hstack( ([0],np.where(E[1:]-E[:1]>degen_thresh)[0]+1, [E.shape[0]]) ) for E in Enk ]
     deg= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:])] for a in A]
 
-    results={'E':Enk}
+    results={'E':result.KBandResult(Enk,TRodd=False,Iodd=False)}
     for q in quantities:
-        A=calculators[q](data)[:,ibands]
-        results[q]=A
-        for i,D in enumerate(deg):
-           for ib1,ib2 in D:
-                  A[i,ib1:ib2]=A[i,ib1:ib2].mean(axis=0)
+        results[q]=calculators[q](data).select_bands(ibands).average_deg(deg)
 
     kpoints=data.kpoints_all
     return TABresult( kpoints=kpoints,basis=data.recip_lattice,results=results )
@@ -75,7 +62,7 @@ def tabXnk(data,quantities=[],ibands=None):
 class TABresult(result.Result):
 
     def __init__(self,kpoints,basis,results={}):
-        self.nband=results['E'].shape[1]
+        self.nband=results['E'].nband
         self.grid=None
         self.gridorder=None
         self.basis=basis
@@ -84,8 +71,8 @@ class TABresult(result.Result):
         self.results=results
         for r in results:
 #            print (r,self.nband,len(self.kpoints),results[r].shape)
-            assert len(kpoints)==results[r].shape[0]
-            assert self.nband==results[r].shape[1]
+            assert len(kpoints)==results[r].nk
+            assert self.nband==results[r].nband
             
     @property 
     def Enk(self):
@@ -102,14 +89,14 @@ class TABresult(result.Result):
         if self.nband!=other.nband:
             raise RuntimeError ("Adding results with different number of bands {} and {} - not allowed".format(
                 self.nband,other.nband) )
-        results={r: np.vstack( (self.results[r],other.results[r]) ) for r in self.results if r in other.results }
+        results={r: self.results[r]+other.results[r] for r in self.results if r in other.results }
         return TABresult(np.vstack( (self.kpoints,other.kpoints) ), basis=self.basis,results=results) 
 
     def write(self,name):
         return   # do nothing so far
 
     def transform(self,sym):
-        results={r:sym.transform(transformators[r],self.results[r]) for r in self.results}
+        results={r:self.results[r].transform(sym)  for r in self.results}
         kpoints=[sym.transform_k_vector(k,self.basis) for k in self.kpoints]
         return TABresult(kpoints=kpoints,basis=self.basis,results=results)
 
@@ -132,14 +119,14 @@ class TABresult(result.Result):
 
         
         print ("collecting")
-        results={r:np.array( [sum(self.results[r][ik] for ik in km)/len(km)   for km in k_map])  for r in self.results}
+        results={r:self.results[r].to_grid(k_map)  for r in self.results}
         res=TABresult( k_new,basis=self.basis,results=results)
         res.grid=np.copy(grid)
         res.gridorder=order
         return res
             
     
-    def fermiSurfer(self,quantity="",component="",efermi=0):
+    def fermiSurfer(self,quantity=None,component=None,efermi=0):
         if self.grid is None:
             raise RuntimeError("the data should be on a grid before generating FermiSurfer files. use to_grid() method")
         if self.gridorder!='C':
@@ -149,66 +136,19 @@ class TABresult(result.Result):
         FSfile+="{} \n".format(self.nband)
         FSfile+="".join( ["  ".join("{:14.8f}".format(x) for x in v) + "\n" for v in self.basis] )
         for iband in range(self.nband):
-            FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk[:,iband]-efermi )
+            FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk.data[:,iband]-efermi )
         
-        if quantity=='':
+        if quantity is None or quantity=='':
             return FSfile
         
-        try:
-            if quantity not in self.results:
-                raise RuntimeError("requested quantity '{}' was not calculated".format(quantity))
+        if quantity not in self.results:
+            raise RuntimeError("requested quantity '{}' was not calculated".format(quantity))
+            return FSfile
         
-            xyz={"x":0,"y":1,"z":2}
-            dim=self.results[quantity].shape[2:]
-            if not  np.all(np.array(dim)==3):
-                raise RuntimeError("dimensions of all components should be 3, found {}".format(dim))
-                
-            dim=len(dim)
-            X=self.results[quantity]
-            component=component.lower()
-            if dim==0:
-                Xnk=X
-            elif dim==1:
-                if component  in "xyz":
-                    Xnk = X[:,:,xyz[component]]
-                elif component=='norm':
-                    Xnk =  np.linalg.norm(X,axis=-1)
-                elif component=='sq':
-                    Xnk = np.linalg.norm(X,axis=-1)**2
-                else:
-                    raise RuntimeError("Unknown component {} for vectors".format(component))
-            elif dim==2:
-                if component=="trace":
-                    Xnk = sum([X[:,:,i,i] for i in range(3)])
-                else:
-                    try :
-                        Xnk = X[:,:,xyz[component[0]],xyz[component[1]]]
-                    except IndexError:
-                        raise RuntimeError("Unknown component {} for rank-2  tensors".format(component))
-            elif dim==3:
-                if component=="trace":
-                    Xnk = sum([X[:,:,i,i,i] for i in range(3)])
-                else:
-                    try :
-                        Xnk = X[:,:,xyz[component[0]],xyz[component[1]],xyz[component[2]]]
-                    except IndexError:
-                        raise RuntimeError("Unknown component {} for rank-3  tensors".format(component))
-            elif dim==4:
-                if component=="trace":
-                    Xnk = sum([X[:,:,i,i,i,i] for i in range(3)])
-                else:
-                    try :
-                        Xnk = X[:,:,xyz[component[0]],xyz[component[1]],xyz[component[2]],xyz[component[3]]]
-                    except IndexError:
-                        raise RuntimeError("Unknown component {} for rank-4  tensors".format(component))
-            else: 
-                raise RuntimeError("writing tensors with rank >4 is not implemented. But easy to do")
-
+        Xnk=self.results[quantity].get_component(component)
+        if Xnk is not None:
             for iband in range(self.nband):
                 FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
-        except RuntimeError as err:
-            print ("WARNING: {} - printing only energies".format(err) )
-
         return FSfile
 
 

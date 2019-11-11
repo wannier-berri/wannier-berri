@@ -93,7 +93,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
                 restart=False
         except Exception as err:
             restart=False
-            print ( err )
+            print ("WARNING: {}".format( err) )
             print ("WARNING : reading from {0} failed, starting from scrath".format(file_klist))
             
     if not restart:

@@ -3,9 +3,9 @@ from utility import  print_my_name_start,print_my_name_end,voidsmoother
 import numpy as np
 from scipy import constants as constants
 from collections import Iterable
+import result
 
-
-from berry import eval_J0,get_occ
+from berry import eval_J0,get_occ,calcImf_band,calcImgh_band
 
 class SPNresult(result.AxialVectorResult):
    pass
@@ -13,8 +13,21 @@ class SPNresult(result.AxialVectorResult):
 
 def calcSpin_band(data):
     return data.SSUU_K_rediag
+
+
+def calcSpin_band_kn(data):
+    return result.KBandResult(data=calcSpin_band(data),TRodd=True,Iodd=False)
     
 
+def calcHall_spin_kn(data):
+    imf=calcImf_band(data)
+    spn=calcSpin_band(data)
+    return result.KBandResult(data=imf[:,:,:,None]*spn[:,:,None,:],TRodd=False,Iodd=False)
+
+def calcHall_orb_kn(data):
+    imf=calcImf_band(data)
+    orb=calcImgh_band(data)
+    return result.KBandResult(data=imf[:,:,:,None]*orb[:,:,None,:],TRodd=False,Iodd=False)
 
 def calcSpinTot(data,Efermi=None,occ_old=None,smoother=voidsmoother):
 
@@ -35,4 +48,5 @@ def calcSpinTot(data,Efermi=None,occ_old=None,smoother=voidsmoother):
     delocc=occ_new_selk!=occ_old_selk
     occ_old[:,:]=occ_new[:,:]
     return eval_J0(calcSpin_band(data)[selectK], delocc)/data.NKFFT_tot
+
 

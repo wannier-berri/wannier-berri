@@ -32,9 +32,10 @@ def main():
     
     
     quant=['V','berry','spin','morb']
+    quant=['hall_spin','hall_orb']
     eval_func=functools.partial( tab.tabXnk, quantities=quant,ibands=(4,5,6,7,8,9) )
 
-    res=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=0,
+    res=eval_integral_BZ(eval_func,Data,NKdiv,NKFFT=NKFFT,nproc=4,
             adpt_num_iter=0,adpt_nk=2,
                 fout_name="",symmetry_gen=generators,
                 GammaCentered=True,restart=False)
@@ -46,7 +47,8 @@ def main():
          res.fermiSurfer(quantity="",efermi=12.6) )
     
     for Q in quant:
-     for comp in ["x","y","z","sq","norm"]:
+#     for comp in ["x","y","z","sq","norm"]:
+     for comp in ["xx","yy","zz","trace","xy","yx","xz","zx","yz","zy"]:
         open("Fe_{2}{0}-{1}.frmsf".format(comp,NKdiv[0],Q),"w").write(
            res.fermiSurfer(quantity=Q,component=comp,efermi=12.6)
            )

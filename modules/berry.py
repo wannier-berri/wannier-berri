@@ -52,6 +52,9 @@ fac_morb =  -eV_au/bohr**2
 def calcV_band(data):
     return data.delE_K
 
+def calcV_band_kn(data):
+    return result.KBandResult(data.delE_K,TRodd=True,Iodd=True)
+
 
 
 def eval_J0(A,occ):
@@ -175,6 +178,13 @@ def calcImf_band(data):
     AA=data.OOmegaUU_K_rediag
     BB=data.delHH_dE_AA_delHH_dE_SQ_K
     return np.array([eval_Jo(A)-2*eval_Juo(B)  for A,B in zip (AA,BB) ] )
+
+
+def calcImf_band_kn(data):
+    return KBandResult(calcImf_band(data),TRodd=True,Iodd=False)
+
+def calcImgh_band_kn(data):
+    return KBandResult(calcImhg_band(data),TRodd=True,Iodd=False)
 
 #returns g-h
 def calcImgh_band(data):
