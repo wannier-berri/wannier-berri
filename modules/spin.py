@@ -7,8 +7,6 @@ import result
 
 from berry import eval_J0,get_occ,calcImf_band,calcImgh_band
 
-class SPNresult(result.AxialVectorResult):
-   pass
 
 
 def calcSpin_band(data):
@@ -39,7 +37,7 @@ def calcSpinTot(data,Efermi=None,occ_old=None,smoother=voidsmoother):
         SPN=np.zeros( ( nFermi,3) ,dtype=float )
         for iFermi in range(nFermi):
             SPN[iFermi]=calcSpinTot(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        return SPNresult(Efermi,np.cumsum(SPN,axis=0),smoother=smoother)
+        return result.EnergyResultAxialV(Efermi,np.cumsum(SPN,axis=0),smoother=smoother)
 
     occ_new=get_occ(data.E_K,Efermi)
     selectK=np.where(np.any(occ_old!=occ_new,axis=1))[0]

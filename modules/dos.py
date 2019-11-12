@@ -28,13 +28,8 @@ from scipy import constants as constants
 from collections import Iterable
 
 from utility import  print_my_name_start,print_my_name_end,voidsmoother
-import result
+import result,utility
 
-
-class DOSresult(result.ScalarResult):
-
-    def __init__(self,Efermi,cumDOS,cumDOSsmooth=None,smoother=None):
-        super(DOSresult,self).__init__(Efermi,data=cumDOS,dataSmooth=cumDOSsmooth,smoother=smoother)
 
 
 bohr= constants.physical_constants['Bohr radius'][0]/constants.angstrom
@@ -52,6 +47,6 @@ def calcDOS(data,Efermi=None,smoother=voidsmoother):
 
     cumDOS=np.array(cumDOS,dtype=float)/(data.NKFFT_tot)
     
-    return DOSresult(Efermi,cumDOS,smoother=smoother )
+    return result.EnergyResultScalar(Efermi,cumDOS,smoother=smoother )
 
 

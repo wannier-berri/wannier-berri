@@ -44,6 +44,7 @@ class Result():
         raise NotImprementedError()
 
 # a list of numbers, by each of those the refinement points will be selected
+    @property
     def max(self):
         raise NotImprementedError()
 
@@ -62,13 +63,21 @@ class Result():
 # a class for data defined for a set of Fermi levels
 #Data is stored in an array data, where first dimension indexes the Fermi level
 
-class EfermiResult(Result):
+class EnergyResult(Result):
 
-    def __init__(self,Efermi,data,smoother=voidsmoother()):
-        assert (Efermi.shape[0]==data.shape[0])
-        self.Efermi=Efermi
+
+    def __init__(self,Energy,data,smoother=voidsmoother,TRodd=False,Iodd=False,rank=None):
+        self.rank=len(data.shape[1:]) if rank is None else rank
+        if self.rank>0:
+            shape=data.shape[-self.rank:]
+            assert np.all(np.array(shape)==3)
+        assert (Energy.shape[0]==data.shape[0])
+        self.Energy=Energy
         self.data=data
         self.smoother=smoother
+        self.TRodd=TRodd
+        self.Iodd=Iodd
+
 
     @Lazy
     def dataSmooth(self):
@@ -76,18 +85,22 @@ class EfermiResult(Result):
 
     def __mul__(self,other):
         if isinstance(other,int) or isinstance(other,float) :
-            return EfermiResult(self.Efermi,self.data*other,self.smoother)
+            return EnergyResult(self.Energy,self.data*other,self.smoother,self.TRodd,self.Iodd,self.rank)
         else:
             raise TypeError("result can only be multilied by a number")
 
     def __add__(self,other):
+        assert self.TRodd == other.TRodd
+        assert self.Iodd  == other.Iodd
         if other == 0:
             return self
-        if np.linalg.norm(self.Efermi-other.Efermi)>1e-8:
+        if np.linalg.norm(self.Energy-other.Energy)>1e-8:
             raise RuntimeError ("Adding results with different Fermi energies - not allowed")
         if self.smoother != other.smoother:
             raise RuntimeError ("Adding results with different smoothers ={} and {}".format(self.smoother,other.smoother))
-        return EfermiResult(self.Efermi,self.data+other.data,self.smoother)
+        return EnergyResult(self.Energy,self.data+other.data,self.smoother,self.TRodd,self.Iodd,self.rank)
+
+
 
     def write(self,name):
         # assule, that the dimensions starting from first - are cartesian coordinates       
@@ -103,63 +116,42 @@ class EfermiResult(Result):
                 [b for b in getHead(rank)*2])+"\n"+
           "\n".join(
            "    ".join("{0:15.6f}".format(x) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
-                      for ef,data,datasm in zip (self.Efermi,self.data,self.dataSmooth)  )
+                      for ef,data,datasm in zip (self.Energy,self.data,self.dataSmooth)  )
                +"\n") 
 
-
+    @property
     def _maxval(self):
         return self.dataSmooth.max() 
 
+    @property
     def _norm(self):
         return np.linalg.norm(self.dataSmooth)
 
+    @property
     def _normder(self):
         return np.linalg.norm(self.dataSmooth[1:]-self.dataSmooth[:-1])
-
+    
+    @property
     def max(self):
-        return np.array([self._maxval(),self._norm(),self._normder()])
+        return np.array([self._maxval,self._norm,self._normder])
 
 
-
-
-class ScalarResult(EfermiResult):
     def transform(self,sym):
-        return self 
-
-class AxialVectorResult(EfermiResult):
-    def transform(self,sym):
-        return AxialVectorResult(self.Efermi,sym.transform_axial_vector(self.data),self.smoother )
-
-class PolarVectorResult(EfermiResult):
-    def transform(self,sym):
-        return PolarVectorResult(self.Efermi,sym.transform_polar_vector(self.data),self.smoother )
+        return EnergyResult(self.Energy,sym.transform_tensor(self.data,self.rank,TRodd=self.TRodd,Iodd=self.Iodd),self.smoother,self.TRodd,self.Iodd,self.rank)
 
 
-#a more general class. Scalar,polar and axial vectors may be derived as particular cases of the tensor class
-class TensorResult(EfermiResult):
 
-    def __init__(self,Efermi,data,dataSmooth=None,smoother=None,TRodd=False,Iodd=False):
-        shape=data.shape[1:]
-        assert  len(shape)==len(trueVector)
-        assert np.all(np.array(shape)==3)
-        super(TensorResult,self).__init__(Efermi,data,smoother=smoother)
-        self.TRodd=TRodd
-        self.Iodd=Iodd
-        self.rank=len(data.shape[1:]) if rank is None else eank
- 
-    def transform(self,sym):
-        return TensorResult(self.Efermi,sym.transform(self.data,sym,TRodd=self.TRodd,Iodd=self.Iodd),self.smoother,self.TRodd,self.Iodd)
+class EnergyResultScalar(EnergyResult):
+    def __init__(self,Energy,data,smoother=voidsmoother):
+         super(EnergyResultScalar,self).__init__(Energy,data,smoother,TRodd=False,Iodd=False,rank=0)
 
+class EnergyResultAxialV(EnergyResult):
+    def __init__(self,Energy,data,smoother=voidsmoother):
+         super(EnergyResultAxialV,self).__init__(Energy,data,smoother,TRodd=True,Iodd=False,rank=1)
 
-    def __mul__(self,other):
-        res=super(TensorResult,self).__mul__(other)
-        return TensorResult(res.Efermi,res.data, res.smoother ,self.TRodd,self.Iodd)
-
-    def __add__(self,other):
-        assert self.TRodd == other.TRodd
-        assert self.Iodd  == other.Iodd
-        res=super(TensorResult,self).__add__(other)
-        return TensorResult(res.Efermi,res.data, res.smoother ,self.TRodd,self.Iodd)
+class EnergyResultPolarV(EnergyResult):
+    def __init__(self,Energy,data,smoother=voidsmoother):
+         super(EnergyResultpolarV,self).__init__(Energy,data,smoother,TRodd=False,Iodd=True,rank=1)
 
 
 

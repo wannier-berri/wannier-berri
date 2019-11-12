@@ -49,9 +49,9 @@ class  KpointBZ():
 #            res+="star : \n"+"".join(" [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ] \n".format(s[0],s[1],s[2]) for s in self.star)
         return res
 
-    @lazy_property.LazyProperty
+    @property
     def _max(self):
-        return self.res.max() #np.max(self.res_smooth)
+        return self.res.max #np.max(self.res_smooth)
     
     @property
     def evaluated(self):
