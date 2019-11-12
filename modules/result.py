@@ -215,22 +215,22 @@ class KBandResult(Result):
         data=sym.transform_tensor(self.data,rank=self.rank,TRodd=self.TRodd,Iodd=self.Iodd)
         return KBandResult(data,self.TRodd,self.Iodd)
 
-    def write(self,name):
-        # assule, that the dimensions starting from first - are cartesian coordinates       
-        def getHead(n):
-           if n<=0:
-              return ['  ']
-           else:
-              return [a+b for a in 'xyz' for b in getHead(n-1)]
-        rank=len(self.data.shape[1:])
-
-        open(name,"w").write(
-           "    ".join("{0:^15s}".format(s) for s in ["EF",]+
-                [b for b in getHead(rank)*2])+"\n"+
-          "\n".join(
-           "    ".join("{0:15.6f}".format(x) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
-                      for ef,data,datasm in zip (self.Efermi,self.data,self.dataSmooth)  )
-               +"\n") 
+#    def write(self,name):
+#        # assule, that the dimensions starting from first - are cartesian coordinates       
+#        def getHead(n):
+#           if n<=0:
+#              return ['  ']
+#           else:
+#              return [a+b for a in 'xyz' for b in getHead(n-1)]
+#        rank=len(self.data.shape[1:])
+#
+#        open(name,"w").write(
+#           "    ".join("{0:^15s}".format(s) for s in ["EF",]+
+#                [b for b in getHead(rank)*2])+"\n"+
+#          "\n".join(
+#           "    ".join("{0:15.6f}".format(x) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
+#                      for ef,data,datasm in zip (self.Efermi,self.data,self.dataSmooth)  )
+#               +"\n") 
 
 
     def get_component(self,component=None):
