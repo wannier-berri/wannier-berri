@@ -23,8 +23,8 @@ def main():
     name1="NKFFT={0}_NKdiv={1}_adptmesh=2-sym-smooth10+TR".format(*tuple(sys.argv[1:4]))
     name=seedname+"_w19_ahc_"+name1
     Efermi=np.linspace(12.,13.,1001)
-#    Data=get_data.Data(tb_file='Fe_tb.dat',getAA=True)
-    Data=get_data.Data(seedname,getAA=True)
+    Data=get_data.Data(tb_file='Fe_tb.dat',getAA=True)
+#    Data=get_data.Data(seedname,getAA=True)
     generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
     t1=time()
     smooth=smoother(Efermi,10)
