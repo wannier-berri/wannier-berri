@@ -176,10 +176,10 @@ def calcImf_band(data):
 
 
 def calcImf_band_kn(data):
-    return KBandResult(calcImf_band(data),TRodd=True,Iodd=False)
+    return result.KBandResult(calcImf_band(data),TRodd=True,Iodd=False)
 
 def calcImgh_band_kn(data):
-    return KBandResult(calcImhg_band(data),TRodd=True,Iodd=False)
+    return result.KBandResult(calcImhg_band(data),TRodd=True,Iodd=False)
 
 #returns g-h
 def calcImgh_band(data):
