@@ -2,14 +2,9 @@ import numpy as np
 from scipy import constants as constants
 from collections import Iterable
 
-try:
-    from .utility import  print_my_name_start,print_my_name_end,voidsmoother
-    from . import result
-    from .berry import eval_J0,get_occ,calcImf_band,calcImgh_band
-except ImportError:
-    from utility import  print_my_name_start,print_my_name_end,voidsmoother
-    import result
-    from berry import eval_J0,get_occ,calcImf_band,calcImgh_band
+from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
+from . import __result as result
+from .__berry import eval_J0,get_occ,calcImf_band,calcImgh_band
 
 
 

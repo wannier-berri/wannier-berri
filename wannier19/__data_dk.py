@@ -14,14 +14,9 @@
 import numpy as np
 import lazy_property
 
-try:
-    from . import fourier 
-    from .get_data import Data
-    from .utility import  print_my_name_start,print_my_name_end,einsumk
-except ImportError:
-    import fourier 
-    from get_data import Data
-    from utility import  print_my_name_start,print_my_name_end,einsumk
+from . import __fourier as fourier
+from .__get_data import Data 
+from .__utility import  print_my_name_start,print_my_name_end,einsumk
    
 class Data_dk(Data):
     def __init__(self,data,dk=None,AA=None,BB=None,CC=None,SS=None,NKFFT=None):

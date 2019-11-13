@@ -33,6 +33,15 @@ AHC can also be calcualted for any tight-binding model, for which a "_tb.dat" fi
 
 wannier19 can be run in parallel by means of multiprocessing module
 
+
+instllation is possible by pip
+
+pip install wannier19
+
+A simple exmple is contained in "tutorial/example.py" . That will produce AHC and tabulate the berry curvature and velocity of bcc iron
+more sofisticated features will be described soon.
+
+
 The project started on June, 25th 2019. 
 Any interest from the community will be motivating for developing.
 

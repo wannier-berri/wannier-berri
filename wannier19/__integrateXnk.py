@@ -19,18 +19,13 @@ from scipy import constants as constants
 from collections import Iterable
 from copy import copy,deepcopy
 
-try:
-    from .utility import  print_my_name_start,print_my_name_end,voidsmoother
-    from . import result
-    from . import  berry,spin,dos
-    from . import symmetry
-    from . import utility
-except ImportError:
-    from utility import  print_my_name_start,print_my_name_end,voidsmoother
-    import result
-    import  berry,spin,dos
-    import symmetry
-    import utility
+from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
+from . import __result as result
+from . import  __berry as berry
+from . import  __spin as spin
+from . import  __dos as dos
+from . import  __symmetry  as symmetry
+from . import  __utility   as utility
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 

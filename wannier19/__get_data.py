@@ -16,14 +16,9 @@ from scipy.io import FortranFile as FF
 import copy
 import lazy_property
 
-try:
-    from .utility import str2bool
-    from  . import fourier
-    from .ws_dist_map import ws_dist_map
-except ImportError:
-    from utility import str2bool
-    import fourier
-    from ws_dist_map import ws_dist_map
+from .__utility import str2bool
+from  . import __fourier as fourier
+from .__ws_dist_map import ws_dist_map
 
 class Data():
 
