@@ -17,12 +17,14 @@
 import numpy as np
 from scipy import constants as constants
 from collections import Iterable
-
-from utility import  print_my_name_start,print_my_name_end,voidsmoother
-import result
 from copy import deepcopy
-import  berry,spin
-import symmetry
+
+try:
+    from .utility import  print_my_name_start,print_my_name_end,voidsmoother
+    from . import result,berry,spin,symmetry
+except:
+    from utility import  print_my_name_start,print_my_name_end,voidsmoother
+    import result,berry,spin,symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 

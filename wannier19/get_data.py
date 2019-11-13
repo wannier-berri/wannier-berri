@@ -13,11 +13,17 @@
 
 import numpy as np
 from scipy.io import FortranFile as FF
-from utility import str2bool
-import fourier
 import copy
 import lazy_property
-from ws_dist_map import ws_dist_map
+
+try:
+    from .utility import str2bool
+    from  . import fourier
+    from .ws_dist_map import ws_dist_map
+except ImportError:
+    from utility import str2bool
+    import fourier
+    from ws_dist_map import ws_dist_map
 
 class Data():
 

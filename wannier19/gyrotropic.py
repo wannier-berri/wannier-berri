@@ -15,7 +15,7 @@
 import numpy as np
 from collections import Iterable
 
-from berry import fac_ahc, fac_morb, calcImf_K, calcImfgh_K
+from .berry import fac_ahc, fac_morb, calcImf_K, calcImfgh_K
 
 def calcAHC(data,Efermi,degen_thresh=None):
     def function(AHC,Efermi,data,degen,E_K_av,ik):

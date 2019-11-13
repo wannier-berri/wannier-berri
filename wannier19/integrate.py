@@ -11,20 +11,27 @@
 #                                                            #
 #------------------------------------------------------------#
 
-import  multiprocessing 
+import multiprocessing 
 import functools
 import numpy as np
-from data_dk import Data_dk
 from collections import Iterable
 import lazy_property
 from copy import copy
-import symmetry as SYM
-from  kpoint import KpointBZ,exclude_equiv_points
-import utility
 from time import time
 import pickle
 import glob
 
+try:
+    from .data_dk import Data_dk
+    from . import symmetry as SYM
+    from  .kpoint import KpointBZ,exclude_equiv_points
+    from . import utility
+except ImportError:
+    from data_dk import Data_dk
+    import symmetry as SYM
+    from  kpoint import KpointBZ,exclude_equiv_points
+    import utility
+   
 
 def process(paralfunc,k_list,nproc,symgroup=None):
     t0=time()
