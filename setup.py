@@ -6,9 +6,12 @@ import setuptools
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+
+from wannier19 import __version__ as version
+
 setuptools.setup(
      name='wannier19',  
-     version='0.0.2',
+     version=version,
      author="Stepan S. Tsirkin",
      author_email="stepan.tsirkin@uzh.ch",
      description="Advanced tool for Wannier interpolation",

@@ -19,12 +19,11 @@ from scipy import constants as constants
 from collections import Iterable
 from copy import deepcopy
 
-try:
-    from .utility import  print_my_name_start,print_my_name_end,voidsmoother
-    from . import result,berry,spin,symmetry
-except:
-    from utility import  print_my_name_start,print_my_name_end,voidsmoother
-    import result,berry,spin,symmetry
+from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
+from . import __result as result
+from . import  __berry as berry
+from . import  __spin as spin
+from . import  __symmetry  as symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
@@ -129,6 +128,9 @@ class TABresult(result.Result):
             
     
     def fermiSurfer(self,quantity=None,component=None,efermi=0):
+        if not (quantity is None):
+            Xnk=self.results[quantity].get_component(component)
+
         if self.grid is None:
             raise RuntimeError("the data should be on a grid before generating FermiSurfer files. use to_grid() method")
         if self.gridorder!='C':
@@ -140,17 +142,15 @@ class TABresult(result.Result):
         for iband in range(self.nband):
             FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk.data[:,iband]-efermi )
         
-        if quantity is None or quantity=='':
+        if quantity is None:
             return FSfile
         
         if quantity not in self.results:
             raise RuntimeError("requested quantity '{}' was not calculated".format(quantity))
             return FSfile
         
-        Xnk=self.results[quantity].get_component(component)
-        if Xnk is not None:
-            for iband in range(self.nband):
-                FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
+        for iband in range(self.nband):
+            FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
         return FSfile
 
 

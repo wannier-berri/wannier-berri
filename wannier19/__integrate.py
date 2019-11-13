@@ -21,16 +21,10 @@ from time import time
 import pickle
 import glob
 
-try:
-    from .data_dk import Data_dk
-    from . import symmetry as SYM
-    from  .kpoint import KpointBZ,exclude_equiv_points
-    from . import utility
-except ImportError:
-    from data_dk import Data_dk
-    import symmetry as SYM
-    from  kpoint import KpointBZ,exclude_equiv_points
-    import utility
+from .__data_dk import Data_dk
+from . import __symmetry as SYM
+from  .__kpoint import KpointBZ,exclude_equiv_points
+from . import __utility as utility
    
 
 def process(paralfunc,k_list,nproc,symgroup=None):
@@ -76,7 +70,8 @@ As a result, the integration will be performed ove NKFFT x NKdiv
 """
     
     
-    
+    if not file_klist.endswith(".pickle"):
+        file_klist+=".pickle"
     cnt_exclude=0
     NKFFT=Data.NKFFT if NKFFT is None else NKFFT
     

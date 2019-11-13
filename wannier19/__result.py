@@ -19,10 +19,7 @@ import numpy as np
 from lazy_property import LazyProperty as Lazy
 from copy import deepcopy
 
-try:
-    from .utility import voidsmoother
-except ImportError:
-    from utility import voidsmoother
+from .__utility import voidsmoother
 
 
 ## A class to contain results or a calculation:
@@ -159,7 +156,11 @@ class EnergyResultPolarV(EnergyResult):
     def __init__(self,Energy,data,smoother=voidsmoother):
          super(EnergyResultpolarV,self).__init__(Energy,data,smoother,TRodd=False,Iodd=True,rank=1)
 
+class NoComponentError(RuntimeError):
 
+    def __init__(self, comp,dim):
+        # Call the base class constructor with the parameters it needs
+        super().__init__("component {} does not exist for tensor with dimension {}".format(comp,dim))
 
 
 class KBandResult(Result):
@@ -213,46 +214,31 @@ class KBandResult(Result):
         data=sym.transform_tensor(self.data,rank=self.rank,TRodd=self.TRodd,Iodd=self.Iodd)
         return KBandResult(data,self.TRodd,self.Iodd)
 
-#    def write(self,name):
-#        # assule, that the dimensions starting from first - are cartesian coordinates       
-#        def getHead(n):
-#           if n<=0:
-#              return ['  ']
-#           else:
-#              return [a+b for a in 'xyz' for b in getHead(n-1)]
-#        rank=len(self.data.shape[1:])
-#
-#        open(name,"w").write(
-#           "    ".join("{0:^15s}".format(s) for s in ["EF",]+
-#                [b for b in getHead(rank)*2])+"\n"+
-#          "\n".join(
-#           "    ".join("{0:15.6f}".format(x) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
-#                      for ef,data,datasm in zip (self.Efermi,self.data,self.dataSmooth)  )
-#               +"\n") 
-
 
     def get_component(self,component=None):
-        if component is None:
-            return None
         xyz={"x":0,"y":1,"z":2}
         dim=self.data.shape[2:]
-        try:
+
+        if True:
             if not  np.all(np.array(dim)==3):
                 raise RuntimeError("dimensions of all components should be 3, found {}".format(dim))
                 
             dim=len(dim)
             component=component.lower()
             if dim==0:
-                Xnk=self.data
+                if component is None:
+                    return self.data
+                else:
+                    raise NoComponentError(component,0) 
             elif dim==1:
-                if component  in "xyz":
+                if component  in ["x","y","z"]:
                     return self.data[:,:,xyz[component]]
                 elif component=='norm':
                     return np.linalg.norm(self.data,axis=-1)
                 elif component=='sq':
                     return np.linalg.norm(self.data,axis=-1)**2
                 else:
-                    raise RuntimeError("Unknown component {} for vectors".format(component))
+                    raise NoComponentError(component,1) 
             elif dim==2:
                 if component=="trace":
                     return sum([self.data[:,:,i,i] for i in range(3)])
@@ -260,15 +246,15 @@ class KBandResult(Result):
                     try :
                         return self.data[:,:,xyz[component[0]],xyz[component[1]]]
                     except IndexError:
-                        raise RuntimeError("Unknown component {} for rank-2  tensors".format(component))
+                        raise NoComponentError(component,2) 
             elif dim==3:
                 if component=="trace":
-                    Xnk = sum([self.data[:,:,i,i,i] for i in range(3)])
+                    return sum([self.data[:,:,i,i,i] for i in range(3)])
                 else:
                     try :
                         return self.data[:,:,xyz[component[0]],xyz[component[1]],xyz[component[2]]]
                     except IndexError:
-                        raise RuntimeError("Unknown component {} for rank-3  tensors".format(component))
+                        raise NoComponentError(component,3) 
             elif dim==4:
                 if component=="trace":
                     return sum([self.data[:,:,i,i,i,i] for i in range(3)])
@@ -276,10 +262,8 @@ class KBandResult(Result):
                     try :
                         return self.data[:,:,xyz[component[0]],xyz[component[1]],xyz[component[2]],xyz[component[3]]]
                     except IndexError:
-                        raise RuntimeError("Unknown component {} for rank-4  tensors".format(component))
+#                        raise RuntimeError("Unknown component {} for rank-4  tensors".format(component))
+                        raise NoComponentError(component,4) 
             else: 
                 raise RuntimeError("writing tensors with rank >4 is not implemented. But easy to do")
-        except RuntimeError as err:
-            print ("WARNING: {} - printing only energies".format(err) )
-            return None
 
