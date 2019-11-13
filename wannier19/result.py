@@ -17,8 +17,14 @@
 
 import numpy as np
 from lazy_property import LazyProperty as Lazy
-from utility import voidsmoother
 from copy import deepcopy
+
+try:
+    from .utility import voidsmoother
+except ImportError:
+    from utility import voidsmoother
+
+
 ## A class to contain results or a calculation:
 ## For any calculation there should be a class with the samemethods implemented
 

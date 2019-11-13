@@ -12,13 +12,17 @@
 #------------------------------------------------------------
 
 import numpy as np
-import fourier 
 import lazy_property
-from get_data import Data
 
-
-from utility import  print_my_name_start,print_my_name_end,einsumk
-
+try:
+    from . import fourier 
+    from .get_data import Data
+    from .utility import  print_my_name_start,print_my_name_end,einsumk
+except ImportError:
+    import fourier 
+    from get_data import Data
+    from utility import  print_my_name_start,print_my_name_end,einsumk
+   
 class Data_dk(Data):
     def __init__(self,data,dk=None,AA=None,BB=None,CC=None,SS=None,NKFFT=None):
         self.spinors=data.spinors

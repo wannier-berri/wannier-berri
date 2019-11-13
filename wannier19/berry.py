@@ -27,8 +27,12 @@ import numpy as np
 from scipy import constants as constants
 from collections import Iterable
 
-from utility import  print_my_name_start,print_my_name_end,voidsmoother
-import result
+try:
+    from .utility import  print_my_name_start,print_my_name_end,voidsmoother
+    from . import result
+except:
+    from utility import  print_my_name_start,print_my_name_end,voidsmoother
+    import result
 
 
 
