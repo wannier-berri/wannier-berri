@@ -3,7 +3,7 @@
 DO_profile=False
 
 import sys
-sys.path.append('../../modules/')
+#sys.path.append('../../modules/')
 import numpy as np
 import wannier19 as w19
 from time import time
