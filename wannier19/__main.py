@@ -50,15 +50,23 @@ def figlet(text,font='cosmike',col='red'):
     cprint("\n".join(logo),col, attrs=['bold'])
 
 
+def print_options():
+    print "Options available to integrate:\n"+"\n".join("{0:10s}  :  {1} ".format(key,__integrate.descriptions[key]) for key in integrate_options)+"\n\n"
+    print "Options available to tabulate:\n"+"\n".join("{0:10s}  :  {1} ".format(key,__tabulate.descriptions[key]) for key in tabulate_options)+"\n\n"
+      
+
 
 figlet("Wannier 19",font='speed',col='yellow')
 figlet("    by Stepan Tsirkin",font='straight',col='green')
 
 cprint( "Version: {}".format( __version__),'cyan', attrs=['bold'])
+print_options()
 
 #for font in ['twopoint','contessa','tombstone','thin','straight','stampatello','slscript','short','pepper']:
 #    __figlet("by Stepan Tsirkin",font=font,col='green')
 
+
+    
 
 def check_option(quantities,avail,tp):
     for opt in quantities:
