@@ -114,7 +114,7 @@ class INTresult(result.Result):
     @property
     def max(self):
         r= np.array([x for v in self.results.values() for x in v.max])
-        print ("max=",r,"res=",self.results)
+#        print ("max=",r,"res=",self.results)
         return r
 
 
