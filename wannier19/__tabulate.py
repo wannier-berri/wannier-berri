@@ -38,6 +38,15 @@ calculators={
          }
 
 
+descriptions=defaultdict(lambda:"no description")
+descriptions['berry']="Berry curvature"
+descriptions['V']="velocity"
+descriptions['spin']="Spin"
+descriptions['morb']="orbital magnetic moment"
+descriptions['hall_spin']="spin contribution to low-field Hall effect"
+descriptions['hall_orb']="orbital contribution to low-field Hall effect"
+
+
 
 def tabXnk(data,quantities=[],ibands=None):
 

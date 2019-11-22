@@ -16,7 +16,7 @@
 
 import numpy as np
 from scipy import constants as constants
-from collections import Iterable
+from collections import Iterable,defaultdict
 from copy import copy,deepcopy
 
 from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
@@ -39,14 +39,21 @@ calculators_trans={
 
 
 
-
-
-
 calculators_opt={}
+
+
 
 
 calculators=copy(calculators_trans)
 calculators.update(calculators_opt)
+
+
+descriptions=defaultdict(lambda:"no description")
+descriptions['ahc']="Anomalous hall conductivity"
+descriptions['spin']="Total Spin polarization"
+descriptions['morb']="Total orbital magnetization"
+descriptions['dos']="Cumulative density of states"
+
 
 
 # omega - for optical properties of insulators
