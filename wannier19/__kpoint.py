@@ -10,6 +10,7 @@
 #           Stepan Tsirkin, University ofZurich              #
 #                                                            #
 #------------------------------------------------------------#
+# This is an auxilary class for the __evaluate.py  module
 
 import numpy as np
 import lazy_property

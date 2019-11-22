@@ -14,18 +14,17 @@
 import numpy as np
 import lazy_property
 
-from . import __fourier as fourier
-from .__get_data import Data 
-from .__utility import  print_my_name_start,print_my_name_end,einsumk
+from .__system import System
+from .__utility import  print_my_name_start,print_my_name_end,einsumk, fourier_R_to_k, alpha_A,beta_A
    
-class Data_dk(Data):
-    def __init__(self,data,dk=None,AA=None,BB=None,CC=None,SS=None,NKFFT=None):
-        self.spinors=data.spinors
-        self.iRvec=data.iRvec
-        self.real_lattice=data.real_lattice
-        self.recip_lattice=data.recip_lattice
-        self.NKFFT=data.NKFFT if NKFFT is None else NKFFT
-        self.num_wann=data.num_wann
+class Data_dk(System):
+    def __init__(self,system,dk=None,AA=None,BB=None,CC=None,SS=None,NKFFT=None):
+        self.spinors=system.spinors
+        self.iRvec=system.iRvec
+        self.real_lattice=system.real_lattice
+        self.recip_lattice=system.recip_lattice
+        self.NKFFT=system.NKFFT if NKFFT is None else NKFFT
+        self.num_wann=system.num_wann
 
         if dk is not None:
             expdk=np.exp(2j*np.pi*self.iRvec.dot(dk))
@@ -34,14 +33,14 @@ class Data_dk(Data):
             expdk=np.ones(self.nRvec)
             self.dk=np.zeros(3)
  
-        self.HH_R=data.HH_R[:,:,:]*expdk[None,None,:]
+        self.HH_R=system.HH_R[:,:,:]*expdk[None,None,:]
         
         for X in ['AA','BB','CC','SS']:
             XR=X+'_R'
             XX=vars()[X]
             if XX in (None,True):
                 try:
-                    vars(self)[XR]=vars(data)[XR]*expdk[None,None,:,None]
+                    vars(self)[XR]=vars(system)[XR]*expdk[None,None,:,None]
                 except KeyError:
                     if XX : raise AttributeError(XR+" is not defined")
 
@@ -91,7 +90,7 @@ class Data_dk(Data):
 
     @lazy_property.LazyProperty
     def HH_K(self):
-        return fourier.fourier_R_to_k(self.HH_R,self.iRvec,self.NKFFT,hermitian=True)
+        return fourier_R_to_k(self.HH_R,self.iRvec,self.NKFFT,hermitian=True)
 
 
     @lazy_property.LazyProperty
@@ -120,7 +119,7 @@ class Data_dk(Data):
         print_my_name_start()
         self.E_K
         delHH_R=1j*self.HH_R[:,:,:,None]*self.cRvec[None,None,:,:]
-        return fourier.fourier_R_to_k(delHH_R,self.iRvec,self.NKFFT,hermitian=True)
+        return fourier_R_to_k(delHH_R,self.iRvec,self.NKFFT,hermitian=True)
 
 
 
@@ -145,7 +144,7 @@ class Data_dk(Data):
     def del2E_K(self):
         print_my_name_start()
         del2HH=1j*self.HH_R[:,:,:,None,None]*self.cRvec[None,None,:,None,:]*self.cRvec[None,None,:,:,None]
-        del2HH = fourier.fourier_R_to_k(del2HH,self.iRvec,self.NKFFT,hermitian=True)
+        del2HH = fourier_R_to_k(del2HH,self.iRvec,self.NKFFT,hermitian=True)
         del2HH=self._rotate_mat(del2HH)
         del2E_K = np.array([del2HH[:,i,i,:,:] for i in range(del2HH.shape[1])]).transpose( (1,0,2,3) )
         check=np.abs(del2E_K).imag.max()
@@ -180,29 +179,29 @@ class Data_dk(Data):
     @lazy_property.LazyProperty
     def delHH_dE_SQ_K(self):
          print_my_name_start()
-         return  (self.delHH_dE_K[:,:,:,fourier.beta]
-                         *self.delHH_dE_K[:,:,:,fourier.alpha].transpose((0,2,1,3))).imag
+         return  (self.delHH_dE_K[:,:,:,beta_A]
+                         *self.delHH_dE_K[:,:,:,alpha_A].transpose((0,2,1,3))).imag
 
 #    @lazy_property.LazyProperty
 #    def delHH_dE_AA_K(self):
-#         return ( (self.delHH_dE_K[:,:,:,fourier.alpha]*self.AAUU_K.transpose((0,2,1,3))[:,:,:,fourier.beta]).imag+
-#               (self.delHH_dE_K.transpose((0,2,1,3))[:,:,:,fourier.beta]*self.AAUU_K[:,:,:,fourier.alpha]).imag  )
+#         return ( (self.delHH_dE_K[:,:,:,alpha_A]*self.AAUU_K.transpose((0,2,1,3))[:,:,:,beta_A]).imag+
+#               (self.delHH_dE_K.transpose((0,2,1,3))[:,:,:,beta_A]*self.AAUU_K[:,:,:,alpha_A]).imag  )
 
 
     @lazy_property.LazyProperty
     def delHH_dE_AA_K(self):
          print_my_name_start()
-         return ( (self.delHH_dE_K[:,:,:,fourier.alpha].transpose((0,2,1,3))*self.AAUU_K[:,:,:,fourier.beta]).imag+
-               (self.delHH_dE_K[:,:,:,fourier.beta]*self.AAUU_K[:,:,:,fourier.alpha].transpose((0,2,1,3))).imag  )
+         return ( (self.delHH_dE_K[:,:,:,alpha_A].transpose((0,2,1,3))*self.AAUU_K[:,:,:,beta_A]).imag+
+               (self.delHH_dE_K[:,:,:,beta_A]*self.AAUU_K[:,:,:,alpha_A].transpose((0,2,1,3))).imag  )
 
 
     @lazy_property.LazyProperty
     def delHH_dE_AA_delHH_dE_SQ_K(self):
          print_my_name_start()
-         return ( (self.delHH_dE_K[:,:,:,fourier.alpha].transpose((0,2,1,3))*self.AAUU_K[:,:,:,fourier.beta]).imag+
-               (self.delHH_dE_K[:,:,:,fourier.beta]*self.AAUU_K[:,:,:,fourier.alpha].transpose((0,2,1,3))).imag  +
-                 (self.delHH_dE_K[:,:,:,fourier.beta]
-                         *self.delHH_dE_K[:,:,:,fourier.alpha].transpose((0,2,1,3))).imag  )
+         return ( (self.delHH_dE_K[:,:,:,alpha_A].transpose((0,2,1,3))*self.AAUU_K[:,:,:,beta_A]).imag+
+               (self.delHH_dE_K[:,:,:,beta_A]*self.AAUU_K[:,:,:,alpha_A].transpose((0,2,1,3))).imag  +
+                 (self.delHH_dE_K[:,:,:,beta_A]
+                         *self.delHH_dE_K[:,:,:,alpha_A].transpose((0,2,1,3))).imag  )
 
 
 
@@ -210,40 +209,40 @@ class Data_dk(Data):
     def delHH_dE_BB_K(self):
          print_my_name_start()
          tmp=self.delHH_dE_K.transpose((0,2,1,3))
-         return ( (tmp[:,:,:,fourier.alpha] * self.BBUU_K[:,:,:,fourier.beta ]).imag-
-                  (tmp[:,:,:,fourier.beta ] * self.BBUU_K[:,:,:,fourier.alpha]).imag  )
+         return ( (tmp[:,:,:,alpha_A] * self.BBUU_K[:,:,:,beta_A ]).imag-
+                  (tmp[:,:,:,beta_A ] * self.BBUU_K[:,:,:,alpha_A]).imag  )
 
-#         return ( (self.delHH_dE_K[:,:,:,fourier.alpha]*self.BBUU_K.transpose((0,2,1,3))[:,:,:,fourier.beta]).imag-
-#               (self.delHH_dE_K.transpose((0,2,1,3))[:,:,:,fourier.beta]*self.BBUU_K[:,:,:,fourier.alpha]).imag  )
+#         return ( (self.delHH_dE_K[:,:,:,alpha_A]*self.BBUU_K.transpose((0,2,1,3))[:,:,:,beta_A]).imag-
+#               (self.delHH_dE_K.transpose((0,2,1,3))[:,:,:,beta_A]*self.BBUU_K[:,:,:,alpha_A]).imag  )
 
     @lazy_property.LazyProperty
     def delHH_dE_HH_AA_K(self):
          print_my_name_start()
-#         return ( np.einsum(  "knl,klma,kmna->kmna",self.HHUU_K,self.AAUU_K[:,:,:,fourier.alpha],self.delHH_dE_K[:,:,:,fourier.beta ]).imag+
-#                    np.einsum("kln,kmla,knma->kmna",self.HHUU_K,self.AAUU_K[:,:,:,fourier.beta ],self.delHH_dE_K[:,:,:,fourier.alpha]).imag )
+#         return ( np.einsum(  "knl,klma,kmna->kmna",self.HHUU_K,self.AAUU_K[:,:,:,alpha_A],self.delHH_dE_K[:,:,:,beta_A ]).imag+
+#                    np.einsum("kln,kmla,knma->kmna",self.HHUU_K,self.AAUU_K[:,:,:,beta_A ],self.delHH_dE_K[:,:,:,alpha_A]).imag )
          return np.array([
-                  np.einsum("nl,lma,mna->mna",hh,aa[:,:,fourier.alpha],delhh[:,:,fourier.beta ]).imag+
-                  np.einsum("ln,mla,nma->mna",hh,aa[:,:,fourier.beta ],delhh[:,:,fourier.alpha]).imag 
+                  np.einsum("nl,lma,mna->mna",hh,aa[:,:,alpha_A],delhh[:,:,beta_A ]).imag+
+                  np.einsum("ln,mla,nma->mna",hh,aa[:,:,beta_A ],delhh[:,:,alpha_A]).imag 
                     for hh,aa,delhh in zip(self.HHUU_K,self.AAUU_K,self.delHH_dE_K)])
          
     @lazy_property.LazyProperty
     def delHH_dE_SQ_HH_K(self):
          print_my_name_start()
-         return ( np.einsum("kml,knma,klna->klmna",self.HHUU_K,self.delHH_dE_K[:,:,:,fourier.alpha],self.delHH_dE_K[:,:,:,fourier.beta ]).imag ,
-                  np.einsum("knm,kmla,klna->klmna",self.HHUU_K,self.delHH_dE_K[:,:,:,fourier.alpha],self.delHH_dE_K[:,:,:,fourier.beta ]).imag ) 
+         return ( np.einsum("kml,knma,klna->klmna",self.HHUU_K,self.delHH_dE_K[:,:,:,alpha_A],self.delHH_dE_K[:,:,:,beta_A ]).imag ,
+                  np.einsum("knm,kmla,klna->klmna",self.HHUU_K,self.delHH_dE_K[:,:,:,alpha_A],self.delHH_dE_K[:,:,:,beta_A ]).imag ) 
 
     
     @lazy_property.LazyProperty
     def AAUU_K(self):
         print_my_name_start()
-        _AA_K=fourier.fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT,hermitian=True)
+        _AA_K=fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT,hermitian=True)
         return self._rotate_vec( _AA_K )
 
 
     @lazy_property.LazyProperty
     def BBUU_K(self):
         print_my_name_start()
-        _BB_K=fourier.fourier_R_to_k( self.BB_R,self.iRvec,self.NKFFT)
+        _BB_K=fourier_R_to_k( self.BB_R,self.iRvec,self.NKFFT)
         return self._rotate_vec( _BB_K )
 #        return np.einsum("kml,kmna,knp->klpa",self.UUC_K,_BB_K,self.UU_K)
 
@@ -251,7 +250,7 @@ class Data_dk(Data):
     @lazy_property.LazyProperty
     def CCUU_K_rediag(self):
         print_my_name_start()
-        _CC_K=fourier.fourier_R_to_k( self.CC_R,self.iRvec,self.NKFFT)
+        _CC_K=fourier_R_to_k( self.CC_R,self.iRvec,self.NKFFT)
         _CC_K=self._rotate_vec( _CC_K )
         return np.einsum("klla->kla",_CC_K).real
 #        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
@@ -261,14 +260,14 @@ class Data_dk(Data):
     @lazy_property.LazyProperty
     def FF_K_rediag(self):
         print_my_name_start()
-        _FF_K=fourier.fourier_R_to_k( self.FF_R,self.iRvec,self.NKFFT)
+        _FF_K=fourier_R_to_k( self.FF_R,self.iRvec,self.NKFFT)
 #        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
         return np.einsum("kmm->km",_FF_K).imag
 
     @lazy_property.LazyProperty
     def SSUU_K_rediag(self):
         print_my_name_start()
-        _SS_K=fourier.fourier_R_to_k( self.SS_R,self.iRvec,self.NKFFT)
+        _SS_K=fourier_R_to_k( self.SS_R,self.iRvec,self.NKFFT)
         _SS_K=self._rotate_vec( _SS_K )
 #        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
         return np.einsum("kmma->kma",_SS_K).real
@@ -277,9 +276,9 @@ class Data_dk(Data):
     @lazy_property.LazyProperty
     def OOmegaUU_K(self):
         print_my_name_start()
-        _OOmega_K =  fourier.fourier_R_to_k_hermitian( -1j*(
-                        self.AA_R[:,:,:,fourier.alpha]*self.cRvec[None,None,:,fourier.beta ] - 
-                        self.AA_R[:,:,:,fourier.beta ]*self.cRvec[None,None,:,fourier.alpha])   , self.iRvec, self.NKFFT )
+        _OOmega_K =  fourier_R_to_k( -1j*(
+                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] - 
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])   , self.iRvec, self.NKFFT,hermitian=True )
         return self._rotate_vec(_OOmega_K)
 #        return np.einsum("kmi,kmna,knj->kija",self.UUC_K,_OOmega_K,self.UU_K)
 
@@ -298,9 +297,9 @@ class Data_dk(Data):
 
     @lazy_property.LazyProperty
     def HHAAAAUU_K(self):
-#        print ("shapes:",self.HHUU_K.shape,self.AAUU_K[:,:,:,fourier.alpha].shape,self.AAUU_K[:,:,:,fourier.beta].shape)
+#        print ("shapes:",self.HHUU_K.shape,self.AAUU_K[:,:,:,alpha_A].shape,self.AAUU_K[:,:,:,beta_A].shape)
          print_my_name_start()
-         return np.einsum("kmi,kina,knma->knma",self.HHUU_K,self.AAUU_K[:,:,:,fourier.alpha],self.AAUU_K[:,:,:,fourier.beta]).imag
+         return np.einsum("kmi,kina,knma->knma",self.HHUU_K,self.AAUU_K[:,:,:,alpha_A],self.AAUU_K[:,:,:,beta_A]).imag
 
 
 
@@ -316,9 +315,9 @@ unused="""
             return self._OOmega_K
         except AttributeError:
             print "running get_OOmega_K.."
-            self._OOmega_K=    -1j* fourier.fourier_R_to_k( 
-                        self.AA_R[:,:,:,fourier.alpha]*self.cRvec[None,None,:,fourier.beta ] - 
-                        self.AA_R[:,:,:,fourier.beta ]*self.cRvec[None,None,:,fourier.alpha]   , self.iRvec, self.NKFFT )
+            self._OOmega_K=    -1j* fourier_R_to_k( 
+                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] - 
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A]   , self.iRvec, self.NKFFT )
              
             return self._OOmega_K
 
@@ -328,7 +327,7 @@ unused="""
             return self._AA_K
         except AttributeError:
             print "running get_AA_K.."
-            self._AA_K=fourier.fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT)
+            self._AA_K=fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT)
             return self._AA_K
 
 
