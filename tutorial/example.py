@@ -2,7 +2,7 @@
 
 
 ## these linesline if you want to use the git version of the code, instead of the one installed by pip
-local_code=False
+local_code=True
 
 
 import os
@@ -30,14 +30,14 @@ NKdiv=np.array([2]*3)
 
 name=seedname
 Efermi=np.linspace(12.,13.,1001)
-Data=w19.Data(tb_file='Fe_tb.dat',getAA=True)
+system=w19.System(tb_file='Fe_tb.dat',getAA=True)
 
 generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 
 
 
 
-w19.tabulate(Data,
+w19.tabulate(system,
              NKdiv=NKdiv,
              NKFFT=NKFFT,
              quantities=["V",'berry'],
@@ -47,13 +47,13 @@ w19.tabulate(Data,
              restart=False)
 
 
-w19.integrate(Data,
+w19.integrate(system,
     NKdiv=NKdiv,
     NKFFT=NKFFT,
     Efermi=Efermi, 
     smearEf=10,
     quantities=["ahc","dos"],
-    adpt_num_iter=10,
+    adpt_num_iter=1,
     fout_name=name,
     symmetry_gen=generators,
     restart=False)

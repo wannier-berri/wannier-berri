@@ -6,165 +6,108 @@
 #                                                            #
 # The Wannier19 code is hosted on GitHub:                    #
 # https://github.com/stepan-tsirkin/wannier19                #
-#                     written by                             #
+#                                                            #
+#------------------------------------------------------------#
+#                                                            #
+#  written  by                                               #
 #           Stepan Tsirkin, University ofZurich              #
 #                                                            #
 #------------------------------------------------------------#
 
-import multiprocessing 
-import functools
 import numpy as np
+from scipy import constants as constants
 from collections import Iterable
-import lazy_property
-from copy import copy
-from time import time
-import pickle
-import glob
+from copy import copy,deepcopy
 
-from .__data_dk import Data_dk
-from . import __symmetry as SYM
-from  .__kpoint import KpointBZ,exclude_equiv_points
-from . import __utility as utility
-   
+from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
+from . import __result as result
+from . import  __berry as berry
+from . import  __spin as spin
+from . import  __dos as dos
+from . import  __symmetry  as symmetry
+from . import  __utility   as utility
 
-def process(paralfunc,k_list,nproc,symgroup=None):
-    t0=time()
-    selK=[ik for ik,k in enumerate(k_list) if k.res is None]
-    dk_list=[k_list[ik].kp_fullBZ for ik in selK]
-    if len(dk_list)==0:
-        print ("nothing to process now")
-        return 0
-    print ("processing {0}  points :".format(len(dk_list)) )
-    if nproc<=0:
-        res = [paralfunc(k) for k in dk_list]
-        nproc_=1
-    else:
-        p=multiprocessing.Pool(nproc)
-        res= p.map(paralfunc,dk_list)
-        p.close()
-        nproc_=nproc
-    if not (symgroup is None):
-        res=[symgroup.symmetrize(r) for r in res]
-    for i,ik in enumerate(selK):
-        k_list[ik].set_res(res[i])
-    t=time()-t0
-    print ("time for processing {0} k-points : {1} ; per point {2} ; proc-sec per point : {3}".format(len(selK),t,t/len(selK),t*nproc_/len(selK)) )
-    return len(dk_list)
-        
+#If one whants to add  new quantities to tabulate, just modify the following dictionaries
+
+#should be functions of only one parameter of class data_dk
+calculators_trans={ 
+         'spin'       : spin.calcSpinTot,  
+         'morb'       : berry.calcMorb,
+         'ahc'        : berry.calcAHC ,
+         'dos'        : dos.calcDOS ,
+         }
 
 
 
-def eval_integral_BZ(func,Data,NKdiv=np.ones(3,dtype=int),nproc=0,NKFFT=None,
-            adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
-             symmetry_gen=[SYM.Identity],
-             GammaCentered=False,file_klist="k_list.pickle",restart=False,start_iter=0):
-    """This function evaluates in parallel or serial an integral over the Brillouin zone 
-of a function func, which whould receive only one argument of type Data_dk, and return 
-a numpy.array of whatever dimensions
 
-the user has to provide 2 grids of K-points - FFT grid anf NKdiv
 
-The parallelisation is done by NKdiv
 
-As a result, the integration will be performed ove NKFFT x NKdiv
-"""
+calculators_opt={}
+
+
+calculators=copy(calculators_trans)
+calculators.update(calculators_opt)
+
+
+# omega - for optical properties of insulators
+# Efrmi - for transport properties of (semi)conductors
+
+def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies={},smootherEf=utility.voidsmoother,smootherOmega=utility.voidsmoother):
+
+    def _energy(quant):
+        if quant in energies:
+            return energies[quant]
+        if quant in calculators_trans:
+            return Efermi
+        if quant in calculators_opt:
+            return omega
+        raise RuntimeError("quantity {} is neither optical nor transport, and energies are not defined".format(quant))
+
+    def _smoother(quant):
+        if quant in smoothers:
+            return smoothers[quant]
+        if quant in calculators_trans:
+            return smootherEf
+        if quant in calculators_opt:
+            return smootherOmega
+        return utility.voidsmoother()
     
-    
-    if not file_klist.endswith(".pickle"):
-        file_klist+=".pickle"
-    cnt_exclude=0
-    NKFFT=Data.NKFFT if NKFFT is None else NKFFT
-    
-    symgroup=SYM.Group(symmetry_gen,basis=Data.recip_lattice)
 
-    paralfunc=functools.partial(
-        _eval_func_k, func=func,Data=Data,NKFFT=NKFFT )
+    results={}
+    for q in quantities:
+        results[q]=calculators[q](data,_energy(q))
+        results[q].smoother=_smoother(q)
 
-    if GammaCentered :
-        shift=(NKdiv%2-1)/(2*NKdiv)
-    else :
-        shift=np.zeros(3)
-    print ("shift={}".format(shift))
+    return INTresult( results=results )
 
-    if restart:
-        try:
-            k_list=pickle.load(open(file_klist,"rb"))
-            print ("{0} k-points were read from {1}".format(len(k_list),file_klist))
-            if len(k_list)==0:
-                print ("WARNING : {0} contains zero points starting from scrath".format(file_klist))
-                restart=False
-        except Exception as err:
-            restart=False
-            print ("WARNING: {}".format( err) )
-            print ("WARNING : reading from {0} failed, starting from scrath".format(file_klist))
+
+
+class INTresult(result.Result):
+
+    def __init__(self,results={}):
+        self.results=results
             
-    if not restart:
-        k_list=KpointBZ(k=shift, NKFFT=NKFFT,symgroup=symgroup ).divide(NKdiv)
-        print ("sum of eights:{}".format(sum(kp.factor for kp in k_list)))
-        start_iter=0
-
-    if restart:
-        try:
-            start_iter=int(sorted(glob.glob(fout_name+"_iter-*.dat"))[-1].split("-")[-1].split(".")[0])
-        except Exception as err:
-            print ("WARNING : {0} : failed to read start_iter. Setting to zero".format(err))
-            start_iter=0
-
-    if adpt_num_iter<0:
-        adpt_num_iter=-adpt_num_iter*np.prod(NKdiv)/np.prod(adpt_mesh)/adpt_nk/3
-    adpt_num_iter=int(round(adpt_num_iter))
-
-
-    if (adpt_mesh is None) or np.max(adpt_mesh)<=1:
-        adpt_num_iter=0
-    else:
-        if not isinstance(adpt_mesh, Iterable):
-            adpt_mesh=[adpt_mesh]*3
-        adpt_mesh=np.array(adpt_mesh)
+    def __mul__(self,other):
+        return INTresult({q:v*other for q,v in self.results.items()})
     
-    counter=0
+    def __add__(self,other):
+        if other == 0:
+            return self
+        results={r: self.results[r]+other.results[r] for r in self.results if r in other.results }
+        return INTresult(results=results) 
 
+    def write(self,name):
+        for q,r in self.results.items():
+            r.write(name.format(q))
 
-    for i_iter in range(adpt_num_iter+1):
-        print ("iteration {0} - {1} points".format(i_iter,len([k for k in  k_list if k.res is None])) ) #,np.prod(NKFFT)*sum(dk.prod() for dk in dk_list))) 
-        for i,k in enumerate(k_list):
-            print (" k-point {0} : {1} ".format(i,k))
-        counter+=process(paralfunc,k_list,nproc,symgroup=symgroup)
-        
-        try:
-            pickle.dump(k_list,open(file_klist,"wb"))
-        except Exception as err:
-            print ("Warning: {0} \n the k_list was not pickled".format(err))
-            
-        result_all=sum(kp.get_res for kp in k_list)
-        
-        if not (restart and i_iter==0):
-            result_all.write(fout_name+"-{}"+"_iter-{0:04d}.dat".format(i_iter+start_iter))
-        
-        if i_iter >= adpt_num_iter:
-            break
-             
-        # Now add some more points
-        kmax=np.array([k.max for k in k_list]).T
-        select_points=set().union( *( np.argsort( km )[-adpt_nk:] for km in kmax )  )
+    def transform(self,sym):
+        results={r:self.results[r].transform(sym)  for r in self.results}
+        return INTresult(results=results)
 
-        for ik in select_points:
-            k_list+=k_list[ik].divide(adpt_mesh)
-#            del k_list[ik]
-        
-        print ("sum of weights:{}".format(sum(kp.factor for kp in k_list)))
-        print ("checking for equivalent points in all points")
-        nexcl=exclude_equiv_points(k_list)
-        print (" excluded {0} points".format(nexcl))
-        print ("sum of eights now :{}".format(sum(kp.factor for kp in k_list)))
-        
-    
-    print ("Totally processed {0} k-points ".format(counter))
-    return result_all
-       
+    @property
+    def max(self):
+        r= np.array([x for v in self.results.values() for x in v.max])
+        print ("max=",r,"res=",self.results)
+        return r
 
-
-def _eval_func_k(k,func,Data,NKFFT):
-    data_dk=Data_dk(Data,k,NKFFT=NKFFT)
-    return func(data_dk)
 
