@@ -17,13 +17,19 @@ import copy
 import lazy_property
 
 from .__utility import str2bool, alpha_A, beta_A
+from colorama import init
+from termcolor import cprint 
+
+
 
 class System():
 
-    def __init__(self,seedname="wannier90",tb_file=None,getAA=False,getBB=False,getCC=False,getSS=False,getFF=False,NKFFT=None,use_ws=True):
+    def __init__(self,seedname="wannier90",tb_file=None,getAA=False,getBB=False,getCC=False,getSS=False,getFF=False,use_ws=True):
         if tb_file is not None:
-            self.__from_tb_file(tb_file,getAA=getAA,NKFFT=NKFFT)
+            self.__from_tb_file(tb_file,getAA=getAA)
             return
+        cprint ("Reading from {}".format(seedname+"_HH_save.info"),'green', attrs=['bold'])
+
         f=open(seedname+"_HH_save.info","r")
         l=f.readline().split()[:3]
         self.seedname=seedname
@@ -35,14 +41,11 @@ class System():
         
         self.Ndegen=iRvec[:,3]
         self.iRvec=iRvec[:,:3]
-        if NKFFT is None:
-            self.NKFFT=np.abs(self.iRvec).max(axis=0)*2+1
-        else:
-            self.NKFFT=NKFFT
+        self.NKFFTmin=np.abs(self.iRvec).max(axis=0)*2
 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
-        print ("Number of K points:", self.NKFFT)
+        print ("Minimal Number of K points:", self.NKFFTmin)
         print ("Real-space lattice:\n",self.real_lattice)
         #print ("R - points and dege=neracies:\n",iRvec)
         has_ws=str2bool(f.readline().split("=")[1].strip())
@@ -80,13 +83,14 @@ class System():
 
         if getSS:
             self.SS_R=self.__getMat('SS')
+        cprint ("Reading the system finished successfully",'green', attrs=['bold'])
         
 
-    def __from_tb_file(self,tb_file=None,getAA=False,NKFFT=None):
+    def __from_tb_file(self,tb_file=None,getAA=False):
         self.seedname=tb_file.split("/")[-1].split("_")[0]
         f=open(tb_file,"r")
         l=f.readline()
-        print ("reading TB file {0} ( {1} )".format(tb_file,l))
+        cprint ("reading TB file {0} ( {1} )".format(tb_file,l.strip()),'green', attrs=['bold'])
         self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
         self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
         self.num_wann=int(f.readline())
@@ -125,15 +129,14 @@ class System():
         
         f.close()
 
-        if NKFFT is None:
-            self.NKFFT=np.abs(self.iRvec).max(axis=0)*2+1
-        else:
-            self.NKFFT=NKFFT
+        self.NKFFTmin=np.abs(self.iRvec).max(axis=0)*2
 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
-        print ("Number of K points:", self.NKFFT)
+        print ("Minimal Number of K points:", self.NKFFTmin)
         print ("Real-space lattice:\n",self.real_lattice)
+        cprint ("Reading the system finished successfully",'green', attrs=['bold'])
+
         #print ("R - points and dege=neracies:\n",iRvec)
         
     @property

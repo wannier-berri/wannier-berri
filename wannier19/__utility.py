@@ -66,7 +66,7 @@ class smoother():
         self.E=np.copy(E)
         dE=E[1]-E[0]
         maxdE=5
-        self.NE1=int(maxdE*T/dE)
+        self.NE1=int(maxdE*self.T/dE)
         self.NE=E.shape[0]
         self.smt=self._broaden(np.arange(-self.NE1,self.NE1+1)*dE)*dE
 

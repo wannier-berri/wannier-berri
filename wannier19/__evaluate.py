@@ -54,7 +54,43 @@ def process(paralfunc,k_list,nproc,symgroup=None):
 
 
 
-def evaluate_K(func,Data,NKdiv=np.ones(3,dtype=int),nproc=0,NKFFT=None,
+def one2three(nk):
+    if isinstance(nk, Iterable):
+        if len(nk)!=3 :
+            raise RuntimeError("nk should be specified either a on number or 3numbers. found {}".format(nk))
+        return nk
+    return (nk,)*3
+
+
+
+def autonk(nk,nkfftmin):
+    if nk<nkfftmin:
+        return 1,nkfftmin
+    else:
+        lst=[]
+        for i in range(nkfftmin,nkfftmin*2):
+            if nk%i==0:
+                return nk//i,i
+            j=nk//i
+            lst.append( min( abs( j*i-nk),abs(j*i+i-nk)))
+    i=nkfftmin+np.argmin(lst)
+    j=nk//i
+    j=[j,j+1][np.argmin([abs( j*i-nk),abs(j*i+i-nk)])]
+    return j,i
+#    return int(round(nk/nkfftmin)),nkfftmin)
+
+
+def determineNK(NKdiv,NKFFT,NK,NKFFTmin):
+    if ((NKdiv is None) or (NKFFT is None)) and ((NK is None) or (NKFFTmin is None)  ):
+        raise ValueError("you need to specify either  (NK,NKFFTmin) or a pair (NKdiv,NKFFT). found ({},{}) and ({},{}) ".format(NK,NKFFTmin,NKdiv,NKFFT))
+    if not ((NKdiv is None) or (NKFFT is None)):
+        return np.array(one2three(NKdiv)),np.array(one2three(NKFFT))
+    lst=[autonk(nk,nkfftmin) for nk,nkfftmin in zip(one2three(NK),one2three(NKFFTmin))]
+    return np.array([l[0] for l in lst]),np.array([l[1] for l in lst])
+
+
+
+def evaluate_K(func,system,NK=None,NKdiv=None,nproc=0,NKFFT=None,
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              symmetry_gen=[SYM.Identity],
              GammaCentered=True,file_klist="k_list.pickle",restart=False,start_iter=0):
@@ -73,12 +109,15 @@ As a result, the integration will be performed ove NKFFT x NKdiv
     if not file_klist.endswith(".pickle"):
         file_klist+=".pickle"
     cnt_exclude=0
-    NKFFT=Data.NKFFT if NKFFT is None else NKFFT
     
-    symgroup=SYM.Group(symmetry_gen,basis=Data.recip_lattice)
+    NKdiv,NKFFT=determineNK(NKdiv,NKFFT,NK,system.NKFFTmin)
+
+    print ("using NKdiv={}, NKFFT={}, NKtot={}".format( NKdiv,NKFFT,NKdiv*NKFFT))
+    
+    symgroup=SYM.Group(symmetry_gen,basis=system.recip_lattice)
 
     paralfunc=functools.partial(
-        _eval_func_k, func=func,Data=Data,NKFFT=NKFFT )
+        _eval_func_k, func=func,system=system,NKFFT=NKFFT )
 
     if GammaCentered :
         shift=(NKdiv%2-1)/(2*NKdiv)
@@ -100,7 +139,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
             
     if not restart:
         k_list=KpointBZ(k=shift, NKFFT=NKFFT,symgroup=symgroup ).divide(NKdiv)
-        print ("sum of eights:{}".format(sum(kp.factor for kp in k_list)))
+#        print ("sum of eights:{}".format(sum(kp.factor for kp in k_list)))
         start_iter=0
 
     if restart:
@@ -126,8 +165,9 @@ As a result, the integration will be performed ove NKFFT x NKdiv
 
 
     for i_iter in range(adpt_num_iter+1):
-        print ("iteration {0} - {1} points".format(i_iter,len([k for k in  k_list if k.res is None])) ) #,np.prod(NKFFT)*sum(dk.prod() for dk in dk_list))) 
+        print ("iteration {0} - {1} points. New points are:".format(i_iter,len([k for k in  k_list if k.res is None])) ) #,np.prod(NKFFT)*sum(dk.prod() for dk in dk_list))) 
         for i,k in enumerate(k_list):
+          if not k.evaluated:
             print (" k-point {0} : {1} ".format(i,k))
         counter+=process(paralfunc,k_list,nproc,symgroup=symgroup)
         
@@ -152,7 +192,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
             k_list+=k_list[ik].divide(adpt_mesh)
 #            del k_list[ik]
         
-        print ("sum of weights:{}".format(sum(kp.factor for kp in k_list)))
+#        print ("sum of weights:{}".format(sum(kp.factor for kp in k_list)))
         print ("checking for equivalent points in all points")
         nexcl=exclude_equiv_points(k_list)
         print (" excluded {0} points".format(nexcl))
@@ -164,7 +204,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
        
 
 
-def _eval_func_k(k,func,Data,NKFFT):
-    data_dk=Data_dk(Data,k,NKFFT=NKFFT)
+def _eval_func_k(k,func,system,NKFFT):
+    data_dk=Data_dk(system,k,NKFFT=NKFFT)
     return func(data_dk)
 

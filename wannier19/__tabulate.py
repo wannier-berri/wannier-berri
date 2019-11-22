@@ -16,7 +16,7 @@
 
 import numpy as np
 from scipy import constants as constants
-from collections import Iterable
+from collections import Iterable,defaultdict
 from copy import deepcopy
 
 from .__utility import  print_my_name_start,print_my_name_end,voidsmoother

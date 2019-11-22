@@ -25,8 +25,7 @@ import numpy as np
 SYM=w19.symmetry
 
 seedname="Fe"
-NKFFT=np.array([10]*3)
-NKdiv=np.array([2]*3)
+NK=25
 
 name=seedname
 Efermi=np.linspace(12.,13.,1001)
@@ -36,10 +35,8 @@ generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 
 
 
-
 w19.tabulate(system,
-             NKdiv=NKdiv,
-             NKFFT=NKFFT,
+             NK=NK,
              quantities=["V",'berry'],
              symmetry_gen=generators,
              fout_name=name,
@@ -48,8 +45,7 @@ w19.tabulate(system,
 
 
 w19.integrate(system,
-    NKdiv=NKdiv,
-    NKFFT=NKFFT,
+    NK=NK,
     Efermi=Efermi, 
     smearEf=10,
     quantities=["ahc","dos"],
