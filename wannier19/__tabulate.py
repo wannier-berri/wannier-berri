@@ -38,6 +38,10 @@ calculators={
          }
 
 
+additional_parameters=defaultdict(lambda: defaultdict(lambda:None )   )
+additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no description" )   )
+
+
 descriptions=defaultdict(lambda:"no description")
 descriptions['berry']="Berry curvature"
 descriptions['V']="velocity"
@@ -48,7 +52,7 @@ descriptions['hall_orb']="orbital contribution to low-field Hall effect"
 
 
 
-def tabXnk(data,quantities=[],ibands=None):
+def tabXnk(data,quantities=[],ibands=None,parameters={}):
 
     if ibands is None:
         ibands=np.arange(data.nbands)
@@ -62,7 +66,13 @@ def tabXnk(data,quantities=[],ibands=None):
 
     results={'E':result.KBandResult(Enk,TRodd=False,Iodd=False)}
     for q in quantities:
-        results[q]=calculators[q](data).select_bands(ibands).average_deg(deg)
+        __parameters={}
+        for param in additional_parameters[q]:
+            if param in parameters:
+                 __parameters[param]=parameters[param]
+            else :
+                 __parameters[param]=additional_parameters[q][param]
+        results[q]=calculators[q](data,**_parameters).select_bands(ibands).average_deg(deg)
 
     kpoints=data.kpoints_all
     return TABresult( kpoints=kpoints,basis=data.recip_lattice,results=results )

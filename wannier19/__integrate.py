@@ -22,6 +22,7 @@ from copy import copy,deepcopy
 from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
 from . import __result as result
 from . import  __berry as berry
+from . import  __gyrotropic as gyrotropic
 from . import  __spin as spin
 from . import  __dos as dos
 from . import  __symmetry  as symmetry
@@ -34,9 +35,16 @@ calculators_trans={
          'spin'       : spin.calcSpinTot,  
          'morb'       : berry.calcMorb,
          'ahc'        : berry.calcAHC ,
+         'ahc_band'   : gyrotropic.calcAHC ,
          'dos'        : dos.calcDOS ,
          }
 
+
+additional_parameters=defaultdict(lambda: defaultdict(lambda:None )   )
+additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no description" )   )
+
+additional_parameters            ['ahc_band']['degen_thresh']=0.001
+additional_parameters_description['ahc_band']['degen_thresh']='(eV) threshold to tread bands a degenerate'
 
 
 calculators_opt={}
@@ -59,7 +67,7 @@ descriptions['dos']="Cumulative density of states"
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
 
-def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies={},smootherEf=utility.voidsmoother,smootherOmega=utility.voidsmoother):
+def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies={},smootherEf=utility.voidsmoother,smootherOmega=utility.voidsmoother,parameters={}):
 
     def _energy(quant):
         if quant in energies:
@@ -82,7 +90,13 @@ def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies=
 
     results={}
     for q in quantities:
-        results[q]=calculators[q](data,_energy(q))
+        __parameters={}
+        for param in additional_parameters[q]:
+            if param in parameters:
+                 __parameters[param]=parameters[param]
+            else :
+                 __parameters[param]=additional_parameters[q][param]
+        results[q]=calculators[q](data,_energy(q),**__parameters)
         results[q].smoother=_smoother(q)
 
     return INTresult( results=results )

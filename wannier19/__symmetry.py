@@ -64,7 +64,7 @@ class Symmetry():
             raise RuntimeError("all dimensions of rank-{} tensor should be 3, found: {}".format(rank,res.shape[dim-rank:dim]))
         for i in range(dim-rank,dim):
             res=self.rotate(res.transpose( tuple(range(i))+tuple(range(i+1,dim))+(i,) ) ).transpose( 
-                    tuple(range(i))+(dim-1,)+tuple(range(i+1,dim-1))  )
+                    tuple(range(i))+(dim-1,)+tuple(range(i,dim-1))  )
         if (self.TR and TRodd)!=(self.Inv and Iodd):
             res=-res
         return res
