@@ -14,15 +14,20 @@
 
 import numpy as np
 from collections import Iterable
-
+from . import __result as result
 from .__berry import fac_ahc, fac_morb, calcImf_K, calcImfgh_K
 
 def calcAHC(data,Efermi,degen_thresh=None):
-    def function(AHC,Efermi,data,degen,E_K_av,ik):
-        imf=calcImf_K(data,degen,ik )
-        for e,f in zip(E_K_av,imf):
+    E_K=data.E_K
+    degen_bands,E_K_av=__get_degen_bands(E_K,degen_thresh)
+    AHC=np.zeros( (len(Efermi),3) )
+    for ik in range(data.NKFFT_tot):
+        imf=calcImf_K(data,degen_bands[ik],ik )
+        for e,f in zip(E_K_av[ik],imf):
+            sel= Efermi>e
             AHC[Efermi>e]+=f
-    return __calcSmth_band(data,Efermi,(3,) ,function,   degen_thresh=degen_thresh)*fac_ahc/(data.NKFFT_tot*data.cell_volume)
+    AHC*=fac_ahc/(data.NKFFT_tot*data.cell_volume)
+    return result.EnergyResultAxialV(Efermi,AHC)
 
 
 def calcMorb(data,Efermi,degen_thresh=None):

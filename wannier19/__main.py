@@ -49,11 +49,20 @@ def figlet(text,font='cosmike',col='red'):
     cprint("\n".join(logo),col, attrs=['bold'])
 
 
+
 def print_options():
-    cprint ("Options available to integrate:",'green', attrs=['bold'])
-    print("\n".join("{0:10s}  :  {1} ".format(key,__integrate.descriptions[key]) for key in integrate_options)+"\n\n")
-    cprint ("Options available to tabulate:",'green', attrs=['bold'])
-    print("\n".join("{0:10s}  :  {1} ".format(key,__tabulate.descriptions[key]) for key in tabulate_options)+"\n\n")
+    def addparam(param,param_des):
+        if len(param)>0:
+            return ". Additional parameters: \n"+ "\n".join( (" "*10+"{0:10s} [ default =  {1}] ---  {2}".format(k,param[k],param_des[k]) for k in param) )
+        else:
+             return ""
+    for modname,mod in ("integrate",__integrate),("tabulate",__tabulate):
+         cprint ("Options available to {}:".format(modname),'green', attrs=['bold'])
+         print("\n".join("{0:10s}  :  {1} {2}".format(key,
+                 mod.descriptions[key],addparam(mod.additional_parameters[key],mod.additional_parameters_description[key])
+                               ) for key in mod.calculators.keys())+"\n\n")
+#    cprint ("Options available to tabulate:",'green', attrs=['bold'])
+#    print("\n".join("{0:10s}  :  {1} ".format(key,__tabulate.descriptions[key]) for key in tabulate_options)+"\n\n")
       
 
 
@@ -77,12 +86,12 @@ def check_option(quantities,avail,tp):
 def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,
                         fout_name="w19",symmetry_gen=[],
-                GammaCentered=True,restart=False,numproc=0,file_klist="klist_int"):
+                GammaCentered=True,restart=False,numproc=0,file_klist="klist_int",parameters={}):
 
     cprint ("\nIntegrating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
     smooth=smoother(Efermi,10)
-    eval_func=functools.partial(  __integrate.intProperty, Efermi=Efermi, smootherEf=smooth,quantities=quantities )
+    eval_func=functools.partial(  __integrate.intProperty, Efermi=Efermi, smootherEf=smooth,quantities=quantities,parameters=parameters )
     res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,
             adpt_num_iter=adpt_num_iter,adpt_nk=1,
                 fout_name=fout_name,symmetry_gen=symmetry_gen,
@@ -94,7 +103,7 @@ def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0
 
 def tabulate(system,NK=None,NKdiv=None,NKFFT=None,omega=None, quantities=[],symmetry_gen=[],
                   fout_name="w19",ibands=None,file_klist="klist_tab",
-                      restart=False,numproc=0,Ef0=0):
+                      restart=False,numproc=0,Ef0=0,parameters={}):
 
     cprint ("\nTabulating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     NKdiv,NKFFT=determineNK(NKdiv,NKFFT,NK,system.NKFFTmin)
@@ -102,7 +111,7 @@ def tabulate(system,NK=None,NKdiv=None,NKFFT=None,omega=None, quantities=[],symm
     print ("swebwtbwt",NKdiv,NKFFT,NK,system.NKFFTmin)
 
     check_option(quantities,tabulate_options,"tabulate")
-    eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities )
+    eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
 
     res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,
             adpt_num_iter=0 ,symmetry_gen=symmetry_gen,  GammaCentered=True ,restart=restart,file_klist=file_klist)

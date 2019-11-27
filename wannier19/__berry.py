@@ -27,7 +27,7 @@ import numpy as np
 from scipy import constants as constants
 from collections import Iterable
 
-from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
+from .__utility import  print_my_name_start,print_my_name_end
 from . import __result as result
 
 
@@ -68,9 +68,10 @@ def get_occ(E_K,Efermi):
 
 
 
-def calcAHC(data,Efermi=None,occ_old=None,smoother=voidsmoother):
+def calcAHC(data,Efermi=None,occ_old=None):
     if occ_old is None: 
         occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
+
 
     if isinstance(Efermi, Iterable):
 #        print ("iterating over Fermi levels")
@@ -79,7 +80,7 @@ def calcAHC(data,Efermi=None,occ_old=None,smoother=voidsmoother):
         for iFermi in range(nFermi):
 #            print ("iFermi={}".format(iFermi))
             AHC[iFermi]=calcAHC(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        return result.EnergyResultAxialV(Efermi,np.cumsum(AHC,axis=0),smoother=smoother)
+        return result.EnergyResultAxialV(Efermi,np.cumsum(AHC,axis=0))
     
     # now code for a single Fermi level:
     AHC=np.zeros(3)
