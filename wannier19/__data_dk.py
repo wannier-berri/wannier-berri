@@ -168,7 +168,7 @@ class Data_dk(System):
     @lazy_property.LazyProperty
     def delHH_dE_K(self):
             print_my_name_start()
-            _delHH_K_=self.delHHUU_K
+            _delHH_K_=np.copy(self.delHHUU_K)
             dEig_threshold=1e-14
             dEig=self.E_K[:,:,None]-self.E_K[:,None,:]
             select=abs(dEig)<dEig_threshold
