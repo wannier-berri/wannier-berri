@@ -272,6 +272,15 @@ class Data_dk(System):
 #        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
         return np.einsum("kmma->kma",_SS_K).real
 
+    @lazy_property.LazyProperty
+    def SSUU_K(self):
+        print_my_name_start()
+        _SS_K=fourier_R_to_k( self.SS_R,self.iRvec,self.NKFFT)
+        return self._rotate_vec( _SS_K )
+#        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
+#        return np.einsum("kmma->kma",_SS_K).real
+
+
 
     @lazy_property.LazyProperty
     def OOmegaUU_K(self):

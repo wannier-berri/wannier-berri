@@ -202,7 +202,6 @@ class ws_dist_map():
         n_nonzero=np.array([l.split()[-1] for l in lines[:nRvec]],dtype=int)
         lines=lines[nRvec:]
         nonzero=[]
-        t0=time()
         for ir,nnz in enumerate(n_nonzero):
             map1r=map_1R(lines[:nnz],iRvec[ir])
             for iw in range(num_wann):

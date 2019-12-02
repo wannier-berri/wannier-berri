@@ -24,6 +24,7 @@ from . import __result as result
 from . import  __berry as berry
 from . import  __gyrotropic as gyrotropic
 from . import  __spin as spin
+from . import  __nonabelian as nonabelian
 from . import  __dos as dos
 from . import  __symmetry  as symmetry
 from . import  __utility   as utility
@@ -37,6 +38,9 @@ calculators_trans={
          'ahc'        : berry.calcAHC ,
          'ahc_band'   : gyrotropic.calcAHC ,
          'dos'        : dos.calcDOS ,
+         'nonabelian_spin' : nonabelian.spin , 
+         'nonabelian_spinspin' : nonabelian.spinspin , 
+         'nonabelian_spinvel' : nonabelian.spinvel , 
          }
 
 
@@ -45,6 +49,13 @@ additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no des
 
 additional_parameters            ['ahc_band']['degen_thresh']=0.001
 additional_parameters_description['ahc_band']['degen_thresh']='(eV) threshold to tread bands a degenerate'
+
+for q in calculators_trans:
+   if q.startswith('nonabelian'):
+      additional_parameters            [q]['degen_thresh']=0.001
+      additional_parameters_description[q]['degen_thresh']='(eV) threshold to tread bands a degenerate'
+
+
 
 
 calculators_opt={}
