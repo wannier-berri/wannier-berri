@@ -42,20 +42,23 @@ def spinspin(data,Efermi,degen_thresh):
     return calc_nonabelian(data,Efermi,['spin','spin'],degen_thresh=degen_thresh)
 
 def calc_nonabelian(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5):
-    t0=time()
+#    t0=time()
     E_K=data.E_K
     variables=vars(sys.modules[__name__])
     M0=[variables["__"+Q](data) for Q in quantities]
-    t1=time()
+#    t1=time()
 
+    dE=Efermi[1]-Efermi[0]
+    Emin=Efermi[0]-dE/2
+    Emax=Efermi[-1]+dE/2
     A=[ [0,] +list(np.where(E[1:]-E[:1]>degen_thresh)[0]+1)+ [E.shape[0],]  for E in E_K ]
-    t1a=time()
-    deg= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:])] for a in A]
-    t1b=time()
+#    t1a=time()
+    deg= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) if e[ib2-1]>=Emin and e[ib1]<=Emax] for a,e in zip(A,E_K)]
+#    t1b=time()
     Eav= [ np.array( [E[b1:b2].mean() for b1,b2 in deg  ]) for E,deg in zip(E_K,deg)]
-    t1c=time()
+#    t1c=time()
     M=[ [ np.array( [M2[b1:b2,b1:b2] for b1,b2 in deg  ]) for M2,deg in zip(M1,deg)] for M1 in M0]
-    t2=time()
+#    t2=time()
 
 
     if subscripts is None:
@@ -86,7 +89,6 @@ def calc_nonabelian(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5):
     einline=",".join(einleft)+"->"+right
 #    print ("using line '{}' for einsum".format(einline))
 
-    dE=Efermi[1]-Efermi[0]
 
     res=np.zeros(  (len(Efermi),)+(3,)*len(right)  )
 
@@ -97,8 +99,8 @@ def calc_nonabelian(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5):
         for ib,ie,it  in zip(range(len(indE)),indE,indEtrue):
             if it:
                 res[ie]+=np.einsum(einline,*(m[ik][ib] for m in M)).real
-    t3=time()
-    print ("times in  calc_nonabelian ",t1-t0,t1a-t1,t1b-t1a,t1c-t1b,t2-t1c,t3-t2," tot: ",t3-t0)
+#    t3=time()
+#    print ("times in  calc_nonabelian ",t1-t0,t1a-t1,t1b-t1a,t1c-t1b,t2-t1c,t3-t2," tot: ",t3-t0)
     return result.EnergyResult(Efermi,res/data.NKFFT_tot,TRodd=odd_prod_TR(quantities),Iodd=odd_prod_INV(quantities))
 
 
