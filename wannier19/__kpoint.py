@@ -12,6 +12,7 @@
 #------------------------------------------------------------#
 # This is an auxilary class for the __evaluate.py  module
 
+from time import time
 import numpy as np
 import lazy_property
 from copy import copy
@@ -140,11 +141,15 @@ class  KpointBZ():
 
 
 
-def exclude_equiv_points(k_list):
+def exclude_equiv_points(k_list,new_points=None):
     print ("Excluding symmetry-equivalent points")
+    t0=time()
     cnt=0
     n=len(k_list)
-    for i in range(n-1,-1,-1):
+#    print (n,new_points)
+#    print (-1 if new_points is None else max(-1,n-1-new_points))
+    for i in range(n-1,-1 if new_points is None else max(-1,n-1-new_points),-1):
+#        print (i)
         for j in range(i-1,-1,-1):
             ki=k_list[i]
             kj=k_list[j]
@@ -154,5 +159,5 @@ def exclude_equiv_points(k_list):
                     cnt+=1
                     del k_list[i]
                     break
-    print ("Done. Excluded  {} points".format(cnt))
+    print ("Done. Excluded  {} points in {} sec".format(cnt,time()-t0))
     return cnt
