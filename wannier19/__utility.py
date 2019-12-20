@@ -98,7 +98,7 @@ class smoother():
             end=min(self.NE,i+self.NE1+1)
             start1=self.NE1-(i-start)
             end1=self.NE1+(end-i)
-            res[i]=A[start:end].transpose(tuple(range(1,len(A.shape)))+(0,)).dot(self.smt[start1:end1])+A[0]*self.smt[:start1].sum()+A[-1]*self.smt[end1:].sum()
+            res[i]=A[start:end].transpose(tuple(range(1,len(A.shape)))+(0,)).dot(self.smt[start1:end1])/self.smt[start1:end1].sum()
         return res
 
 

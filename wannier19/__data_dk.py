@@ -248,6 +248,15 @@ class Data_dk(System):
 
 
     @lazy_property.LazyProperty
+    def CCUU_K(self):
+        print_my_name_start()
+        _CC_K=fourier_R_to_k( self.CC_R,self.iRvec,self.NKFFT)
+        return self._rotate_vec( _CC_K )
+#        return np.einsum("klla->kla",_CC_K).real
+#        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
+
+
+    @lazy_property.LazyProperty
     def CCUU_K_rediag(self):
         print_my_name_start()
         _CC_K=fourier_R_to_k( self.CC_R,self.iRvec,self.NKFFT)
@@ -290,6 +299,7 @@ class Data_dk(System):
                         self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])   , self.iRvec, self.NKFFT,hermitian=True )
         return self._rotate_vec(_OOmega_K)
 #        return np.einsum("kmi,kmna,knj->kija",self.UUC_K,_OOmega_K,self.UU_K)
+
 
 
     @lazy_property.LazyProperty

@@ -141,6 +141,7 @@ class  KpointBZ():
 
 
 def exclude_equiv_points(k_list):
+    print ("Excluding symmetry-equivalent points")
     cnt=0
     n=len(k_list)
     for i in range(n-1,-1,-1):
@@ -153,4 +154,5 @@ def exclude_equiv_points(k_list):
                     cnt+=1
                     del k_list[i]
                     break
+    print ("Done. Excluded  {} points".format(cnt))
     return cnt

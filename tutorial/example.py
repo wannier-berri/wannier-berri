@@ -2,8 +2,8 @@
 
 
 ## these linesline if you want to use the git version of the code, instead of the one installed by pip
-local_code=True
-num_proc=0
+local_code=False# True
+num_proc=2
 
 import os
 
@@ -25,7 +25,7 @@ import numpy as np
 SYM=w19.symmetry
 
 seedname="Fe"
-NK=25
+NK=96
 
 name=seedname
 Efermi=np.linspace(12.,13.,1001)
@@ -49,10 +49,11 @@ w19.integrate(system,
             NK=NK,
             Efermi=Efermi, 
             smearEf=10,
-            quantities=["ahc","dos","ahc_band"],
+            quantities=["ahc","dos"],#,"ahc_band"],
             numproc=num_proc,
-            adpt_num_iter=2,
+            adpt_num_iter=0,
             fout_name=name,
             symmetry_gen=generators,
             restart=False,
-             parameters={"degen_thresh":0.1})
+#             parameters={"degen_thresh":0.1}
+            )

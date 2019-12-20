@@ -14,67 +14,134 @@
 
 import numpy as np
 import sys
-from collections import Iterable
+from . import __berry
+from collections import Iterable, defaultdict
 from . import __result as result
 from time import time
+from .__utility import alpha_A,beta_A
+
+def __spin(data,degen):
+    return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(data.SSUU_K,degen)]
+
+def __vel(data,degen):
+    return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(data.delHHUU_K,degen)]
 
 
-def __spin(data):
-    return data.SSUU_K
+##  so far it is Abelian!
+def __curv(data,degen):
+    L=[]
+    for S,deg in zip(__berry.calcImf_band(data),degen):
+        l=[]
+        for ib1,ib2 in deg:
+            M=np.zeros( (ib2-ib1,ib2-ib1,3) )
+            for i in range(ib2-ib1):
+                M[i,i,:]=S[ib1:ib2].mean(axis=0)
+            l.append(M)
+        L.append(l)
+    return L
 
-def __vel(data):
-    return data.delHHUU_K
 
+def __morb(data,degen):
+    CC=data.CCUU_K
+    OO=data.OOmegaUU_K
+    AA=data.AAUU_K
+    dHH=data.delHHUU_K
+    EE=data.E_K
+    morb_klist=[]
+    for C,O,A,dH,E,deg in zip(CC,OO,AA,dHH,EE,degen):
+        morb_blist=[]
+        for ib1,ib2 in deg:
+            Ebar=np.mean(E[ib1:ib2])
+            dH1=np.hstack( (dH[ib1:ib2,:ib1,:],dH[ib1:ib2,ib2:,:] ) )
+            A1=np.hstack( (A[ib1:ib2,:ib1,:],A[ib1:ib2,ib2:,:] ) )
+            invE=1./(np.hstack( (E[:ib1],E[ib2:]) ) - Ebar)
+            M= np.einsum("mla,l,nla->mna", dH1[:,:,alpha_A],invE,dH1[:,:,beta_A].conj() )
+            M+=1j*( - np.einsum("mla,nla->mna",A1[:,:,alpha_A],dH1[:,:,beta_A].conj() ) 
+                      + np.einsum("mla,nla->mna",dH1[:,:,alpha_A],A1[:,:,beta_A].conj() ) ) 
+            M+=M.conj().transpose((1,0,2))
+            M+=C[ib1:ib2,ib1:ib2]-O[ib1:ib2,ib1:ib2]*Ebar
+            morb_blist.append(M)
+        morb_klist.append(morb_blist)
+    return morb_klist
+
+
+__dimensions=defaultdict(lambda : 1)
 
 #quantities that should be odd under TRS and inversion
-TRodd  = set(['spin','vel'])
+TRodd  = set(['spin','morb','vel','curv'])
 INVodd = set(['vel'])
 
 
 def spin(data,Efermi,degen_thresh):
     return calc_nonabelian(data,Efermi,['spin'],degen_thresh=degen_thresh)
 
+
+
 def spinvel(data,Efermi,degen_thresh):
     return calc_nonabelian(data,Efermi,['spin','vel'],degen_thresh=degen_thresh)
+
+def curvvel(data,Efermi,degen_thresh):
+    return calc_nonabelian(data,Efermi,['curv','vel'],degen_thresh=degen_thresh)
+
+def velvel(data,Efermi,degen_thresh):
+    return calc_nonabelian(data,Efermi,['vel','vel'],degen_thresh=degen_thresh)
+
+
+def morbvel(data,Efermi,degen_thresh):
+    return calc_nonabelian(data,Efermi,['morb','vel'],degen_thresh=degen_thresh)
 
 
 def spinspin(data,Efermi,degen_thresh):
     return calc_nonabelian(data,Efermi,['spin','spin'],degen_thresh=degen_thresh)
 
-def calc_nonabelian(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5):
-#    t0=time()
+
+def curv_tot(data,Efermi,degen_thresh):
+    return calc_nonabelian(data,Efermi,['curv'],degen_thresh=degen_thresh,mode='fermi-sea')
+
+
+def ahc(data,Efermi,degen_thresh):
+    return calc_nonabelian(data,Efermi,['curv'],degen_thresh=degen_thresh,mode='fermi-sea')*__berry.fac_ahc
+
+
+def morb_tot(data,Efermi,degen_thresh):
+    return calc_nonabelian(data,Efermi,['morb'],degen_thresh=degen_thresh,mode='fermi-sea')*__berry.fac_morb
+
+
+
+def calc_nonabelian(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5,mode='fermi-surface'):
     E_K=data.E_K
-    variables=vars(sys.modules[__name__])
-    M0=[variables["__"+Q](data) for Q in quantities]
-#    t1=time()
 
     dE=Efermi[1]-Efermi[0]
     Emin=Efermi[0]-dE/2
     Emax=Efermi[-1]+dE/2
     A=[ [0,] +list(np.where(E[1:]-E[:1]>degen_thresh)[0]+1)+ [E.shape[0],]  for E in E_K ]
-#    t1a=time()
-    deg= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) if e[ib2-1]>=Emin and e[ib1]<=Emax] for a,e in zip(A,E_K)]
-#    t1b=time()
-    Eav= [ np.array( [E[b1:b2].mean() for b1,b2 in deg  ]) for E,deg in zip(E_K,deg)]
-#    t1c=time()
-    M=[ [ np.array( [M2[b1:b2,b1:b2] for b1,b2 in deg  ]) for M2,deg in zip(M1,deg)] for M1 in M0]
-#    t2=time()
+    include_lower=(mode=='fermi-sea')
+    include_upper=False
+    degen= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) if (e[ib2-1]>=Emin or include_lower) and (e[ib1]<=Emax or include_upper)] for a,e in zip(A,E_K)]
+
+    print ("WARNING : for testing the degennerate bands are excluded")
+    degen= [[(ib1,ib2) for ib1,ib2 in deg if ib2-ib1==1] for deg in degen ]
+
+    Eav= [ np.array( [E[b1:b2].mean() for b1,b2 in deg  ]) for E,deg in zip(E_K,degen)]
+
+    variables=vars(sys.modules[__name__])
+    M=[variables["__"+Q](data,degen) for Q in quantities]
 
 
     if subscripts is None:
         ind_cart="abcdefghijk"
         left=[]
         right=""
-        for m in M:
-            d=len(m[0][0].shape)-2
+        for Q in quantities:
+            d=__dimensions[Q]
             left.append(ind_cart[:d])
             right+=ind_cart[:d]
             ind_cart=ind_cart[d:]
     else:
         left,right=subscripts.split("->")
         left=left.split(",")
-        for m,l,q in zip(M,left,quantities):
-            d=len(m[0][0].shape())-2
+        for Q,l,q in zip(quantities,left,quantities):
+            d=__dimensions[Q]
             if d!=len(left):
                 raise RuntimeError("The number of subscripts in '{}' does not correspond to dimention '{}' of quantity '{}' ".format(l,d,q))
 
@@ -92,16 +159,26 @@ def calc_nonabelian(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5):
 
     res=np.zeros(  (len(Efermi),)+(3,)*len(right)  )
 
-    for ik in range(data.NKFFT_tot):
-#        print ("shapes are:",(m[ik].shape for m in M)
+    if mode=='fermi-surface':
+      for ik in range(data.NKFFT_tot):
         indE=np.array(np.round( (Eav[ik]-Efermi[0])/dE ),dtype=int )
         indEtrue= (0<=indE)*(indE<len(Efermi))
         for ib,ie,it  in zip(range(len(indE)),indE,indEtrue):
             if it:
+#                print ("quantities: ",quantities,einline,[m[ik][ib] for m in M])
                 res[ie]+=np.einsum(einline,*(m[ik][ib] for m in M)).real
-#    t3=time()
-#    print ("times in  calc_nonabelian ",t1-t0,t1a-t1,t1b-t1a,t1c-t1b,t2-t1c,t3-t2," tot: ",t3-t0)
-    return result.EnergyResult(Efermi,res/data.NKFFT_tot,TRodd=odd_prod_TR(quantities),Iodd=odd_prod_INV(quantities))
+      res=res/dE
+    elif mode=='fermi-sea':
+      for ik in range(data.NKFFT_tot):
+        indE=np.array(np.round( (Eav[ik]-Efermi[0])/dE ),dtype=int )
+        indEtrue= (0<=indE)*(indE<len(Efermi))
+        for ib,eav  in zip(range(len(indE)),Eav[ik]):
+            if eav<Emax:
+                 res[eav<Efermi]+=np.einsum(einline,*(m[ik][ib] for m in M)).real
+    else:
+      raise ValueError('unknown mode in non-abelian: <{}>'.format(mode))
+
+    return result.EnergyResult(Efermi,res/(data.NKFFT_tot*data.cell_volume),TRodd=odd_prod_TR(quantities),Iodd=odd_prod_INV(quantities))
 
 
 

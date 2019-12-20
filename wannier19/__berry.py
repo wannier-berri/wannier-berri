@@ -43,7 +43,6 @@ eV_au=constants.physical_constants['electron volt-hartree relationship'][0]
 fac_morb =  -eV_au/bohr**2
 
 
-
 def calcV_band(data):
     return data.delE_K
 
@@ -127,6 +126,8 @@ def calcMorb(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True)
 
 
 
+
+
 ### routines for a band-resolved mode
 
 def eval_Jo_deg(A,degen):
@@ -184,6 +185,24 @@ def calcImgh_band_kn(data):
 
 #returns g-h
 def calcImgh_band(data):
+    
+    AA=data.HHAAAAUU_K
+    BB=data.CCUU_K_rediag-data.HHOOmegaUU_K
+    imgh=np.array([eval_Jo(B)-2*eval_Joo(A)  for A,B in zip (AA,BB) ] )
+    
+    AA=data.delHH_dE_BB_K-data.delHH_dE_HH_AA_K
+    imgh+=-2*np.array([eval_Juo(A) for A in AA])
+
+    C,D=data.delHH_dE_SQ_HH_K
+    AA=C-D
+    imgh+=-2*np.array([eval_Juuo(A) for A in AA])
+    return imgh
+
+
+
+
+
+def calcImg_band(data):
     
     AA=data.HHAAAAUU_K
     BB=data.CCUU_K_rediag-data.HHOOmegaUU_K

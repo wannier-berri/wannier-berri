@@ -92,7 +92,7 @@ def determineNK(NKdiv,NKFFT,NK,NKFFTmin):
 
 def evaluate_K(func,system,NK=None,NKdiv=None,nproc=0,NKFFT=None,
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
-             symmetry_gen=[SYM.Identity],
+             symmetry_gen=[SYM.Identity],suffix="",
              GammaCentered=True,file_klist="k_list.pickle",restart=False,start_iter=0):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_dk, and return 
@@ -138,13 +138,17 @@ As a result, the integration will be performed ove NKFFT x NKdiv
             print ("WARNING : reading from {0} failed, starting from scrath".format(file_klist))
             
     if not restart:
+        print ("generating k_list")
         k_list=KpointBZ(k=shift, NKFFT=NKFFT,symgroup=symgroup ).divide(NKdiv)
-#        print ("sum of eights:{}".format(sum(kp.factor for kp in k_list)))
+        print ("Done, sum of eights:{}".format(sum(kp.factor for kp in k_list)))
         start_iter=0
 
+    suffix="-"+suffix if len(suffix)>0 else ""
+
     if restart:
+        print ("searching for start_iter")
         try:
-            start_iter=int(sorted(glob.glob(fout_name+"_iter-*.dat"))[-1].split("-")[-1].split(".")[0])
+            start_iter=int(sorted(glob.glob(fout_name+"*"+suffix+"_iter-*.dat"))[-1].split("-")[-1].split(".")[0])
         except Exception as err:
             print ("WARNING : {0} : failed to read start_iter. Setting to zero".format(err))
             start_iter=0
@@ -179,7 +183,7 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         result_all=sum(kp.get_res for kp in k_list)
         
         if not (restart and i_iter==0):
-            result_all.write(fout_name+"-{}"+"_iter-{0:04d}.dat".format(i_iter+start_iter))
+            result_all.write(fout_name+"-{}"+suffix+"_iter-{0:04d}.dat".format(i_iter+start_iter))
         
         if i_iter >= adpt_num_iter:
             break

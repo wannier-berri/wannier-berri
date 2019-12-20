@@ -72,7 +72,7 @@ def tabXnk(data,quantities=[],ibands=None,parameters={}):
                  __parameters[param]=parameters[param]
             else :
                  __parameters[param]=additional_parameters[q][param]
-        results[q]=calculators[q](data,**_parameters).select_bands(ibands).average_deg(deg)
+        results[q]=calculators[q](data,**__parameters).select_bands(ibands).average_deg(deg)
 
     kpoints=data.kpoints_all
     return TABresult( kpoints=kpoints,basis=data.recip_lattice,results=results )

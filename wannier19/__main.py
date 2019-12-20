@@ -86,15 +86,15 @@ def check_option(quantities,avail,tp):
 def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,
                         fout_name="w19",symmetry_gen=[],
-                GammaCentered=True,restart=False,numproc=0,file_klist="klist_int",parameters={}):
+                GammaCentered=True,restart=False,numproc=0,suffix="",file_klist="klist_int",parameters={}):
 
     cprint ("\nIntegrating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
-    smooth=smoother(Efermi,10)
+    smooth=smoother(Efermi,smearEf)
     eval_func=functools.partial(  __integrate.intProperty, Efermi=Efermi, smootherEf=smooth,quantities=quantities,parameters=parameters )
     res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,
             adpt_num_iter=adpt_num_iter,adpt_nk=1,
-                fout_name=fout_name,symmetry_gen=symmetry_gen,
+                fout_name=fout_name,symmetry_gen=symmetry_gen,suffix=suffix,
                 GammaCentered=GammaCentered,restart=restart,file_klist=file_klist)
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
@@ -102,7 +102,7 @@ def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0
 
 
 def tabulate(system,NK=None,NKdiv=None,NKFFT=None,omega=None, quantities=[],symmetry_gen=[],
-                  fout_name="w19",ibands=None,file_klist="klist_tab",
+                  fout_name="w19",ibands=None,suffix="",file_klist="klist_tab",
                       restart=False,numproc=0,Ef0=0,parameters={}):
 
     cprint ("\nTabulating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
@@ -114,7 +114,7 @@ def tabulate(system,NK=None,NKdiv=None,NKFFT=None,omega=None, quantities=[],symm
     eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
 
     res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,
-            adpt_num_iter=0 ,symmetry_gen=symmetry_gen,  GammaCentered=True ,restart=restart,file_klist=file_klist)
+            adpt_num_iter=0 ,symmetry_gen=symmetry_gen,  GammaCentered=True ,restart=restart,suffix=suffix,file_klist=file_klist)
             
     res=res.to_grid(NKFFT*NKdiv)
         

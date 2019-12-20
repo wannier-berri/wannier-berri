@@ -37,10 +37,17 @@ calculators_trans={
          'morb'       : berry.calcMorb,
          'ahc'        : berry.calcAHC ,
          'ahc_band'   : gyrotropic.calcAHC ,
-         'dos'        : dos.calcDOS ,
+         'dos'        : dos.calc_DOS ,
+         'cumdos'        : dos.calc_cum_DOS ,
          'nonabelian_spin' : nonabelian.spin , 
+         'nonabelian_morb' : nonabelian.morb_tot , 
          'nonabelian_spinspin' : nonabelian.spinspin , 
          'nonabelian_spinvel' : nonabelian.spinvel , 
+         'nonabelian_morbvel' : nonabelian.morbvel , 
+         'nonabelian_curvvel' : nonabelian.curvvel , 
+         'nonabelian_curv_tot' : nonabelian.curv_tot , 
+         'nonabelian_ahc'     : nonabelian.ahc , 
+         'nonabelian_velvel' : nonabelian.velvel , 
          }
 
 
@@ -71,7 +78,8 @@ descriptions=defaultdict(lambda:"no description")
 descriptions['ahc']="Anomalous hall conductivity"
 descriptions['spin']="Total Spin polarization"
 descriptions['morb']="Total orbital magnetization"
-descriptions['dos']="Cumulative density of states"
+descriptions['cumdos']="Cumulative density of states"
+descriptions['dos']="density of states"
 
 
 
@@ -92,11 +100,12 @@ def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies=
     def _smoother(quant):
         if quant in smoothers:
             return smoothers[quant]
-        if quant in calculators_trans:
+        elif quant in calculators_trans:
             return smootherEf
-        if quant in calculators_opt:
+        elif quant in calculators_opt:
             return smootherOmega
-        return utility.voidsmoother()
+        else:
+            return utility.voidsmoother()
     
 
     results={}
