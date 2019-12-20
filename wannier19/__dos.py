@@ -38,7 +38,7 @@ eV_au=constants.physical_constants['electron volt-hartree relationship'][0]
 
 
 
-def calcDOS(data,Efermi=None,smoother=voidsmoother):
+def calc_cum_DOS(data,Efermi=None,smoother=voidsmoother):
 
     cumDOS=np.zeros(Efermi.shape,dtype=int)
 
@@ -48,5 +48,19 @@ def calcDOS(data,Efermi=None,smoother=voidsmoother):
     cumDOS=np.array(cumDOS,dtype=float)/(data.NKFFT_tot)
     
     return result.EnergyResultScalar(Efermi,cumDOS,smoother=smoother )
+
+
+def calc_DOS(data,Efermi=None,smoother=voidsmoother):
+
+    DOS=np.zeros(Efermi.shape,dtype=int)
+    E=data.E_K.reshape(-1)
+    dE=Efermi[1]-Efermi[0]
+    indE=np.array(np.round( (E-Efermi[0])/dE ),dtype=int )
+    for i in indE[ (0<=indE)*(indE<len(Efermi)) ]:
+        DOS[i]+=1
+
+    DOS=DOS/(dE*data.NKFFT_tot)
+
+    return result.EnergyResultScalar(Efermi,DOS,smoother=smoother )
 
 
