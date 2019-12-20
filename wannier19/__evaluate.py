@@ -191,14 +191,15 @@ As a result, the integration will be performed ove NKFFT x NKdiv
         # Now add some more points
         kmax=np.array([k.max for k in k_list]).T
         select_points=set().union( *( np.argsort( km )[-adpt_nk:] for km in kmax )  )
-
+        
+        l1=len(k_list)
         for ik in select_points:
             k_list+=k_list[ik].divide(adpt_mesh)
 #            del k_list[ik]
         
 #        print ("sum of weights:{}".format(sum(kp.factor for kp in k_list)))
         print ("checking for equivalent points in all points")
-        nexcl=exclude_equiv_points(k_list)
+        nexcl=exclude_equiv_points(k_list,new_points=len(k_list)-l1)
         print (" excluded {0} points".format(nexcl))
         print ("sum of eights now :{}".format(sum(kp.factor for kp in k_list)))
         
