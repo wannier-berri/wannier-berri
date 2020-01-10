@@ -7,10 +7,10 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 
-from wannier19 import __version__ as version
+from wannierberri import __version__ as version
 
 setuptools.setup(
-     name='wannier19',  
+     name='wannierberri',  
      version=version,
      author="Stepan S. Tsirkin",
      author_email="stepan.tsirkin@uzh.ch",
@@ -18,7 +18,7 @@ setuptools.setup(
      long_description=long_description,
      long_description_content_type="text/markdown",
      install_requires=['numpy', 'scipy >= 1.0', 'lazy_property','colorama','termcolor','pyfiglet','termcolor'],
-     url="https://github.com/stepan-tsirkin/wannier19",
+     url="https://github.com/stepan-tsirkin/wannier-berri",
      packages=setuptools.find_packages(),
      classifiers=[
          "Programming Language :: Python :: 3",
