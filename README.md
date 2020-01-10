@@ -1,15 +1,16 @@
-```
-___       __                        _____                      _____________ 
-__ |     / /______ ________ _______ ___(_)_____ ________       __<  /__  __ \
-__ | /| / / _  __ `/__  __ \__  __ \__  / _  _ \__  ___/       __  / _  /_/ /
-__ |/ |/ /  / /_/ / _  / / /_  / / /_  /  /  __/_  /           _  /  _\__, / 
-____/|__/   \__,_/  /_/ /_/ /_/ /_/ /_/   \___/ /_/            /_/   /____/  
+.::    .   .:::  :::.     :::.    :::.:::.    :::. :::.,::::::  :::::::..       :::::::.  .,::::::  :::::::..   :::::::..   :::
+';;,  ;;  ;;;'   ;;`;;    `;;;;,  `;;;`;;;;,  `;;; ;;;;;;;''''  ;;;;``;;;;       ;;;'';;' ;;;;''''  ;;;;``;;;;  ;;;;``;;;;  ;;;
+ '[[, [[, [['   ,[[ '[[,    [[[[[. '[[  [[[[[. '[[ [[[ [[cccc    [[[,/[[['       [[[__[[\. [[cccc    [[[,/[[['   [[[,/[[['  [[[
+   Y$c$$$c$P   c$$$cc$$$c   $$$ "Y$c$$  $$$ "Y$c$$ $$$ $$""""    $$$$$$c         $$""""Y$$ $$""""    $$$$$$c     $$$$$$c    $$$
+    "88"888     888   888,  888    Y88  888    Y88 888 888oo,__  888b "88bo,    _88o,,od8P 888oo,__  888b "88bo, 888b "88bo,888
+     "M "M"     YMM   ""`   MMM     YM  MMM     YM MMM """"YUMMM MMMM   "W"     ""YUMMMP"  """"YUMMM MMMM   "W"  MMMM   "W" MMM
 
+a.k.a. Wannier19
                   __                     ___                  
         |_       (_  |_  _  _   _   _     |   _ .  _ |  .  _  
         |_) \/   __) |_ (- |_) (_| | )    |  _) | |  |( | | ) 
-            /              |                                  
-```
+            /              |                                  ```
+
 
 I started this project by python realization of some of postw90 functional.
 Some parts of the code are an adapted translation of Wannier90 Fortran code:
@@ -31,12 +32,12 @@ Object oriented structure also makes it potentially easier to implement further 
 The usage of the code  is demonstrated by "exampleFe" in the examples folder.
 AHC can also be calcualted for any tight-binding model, for which a "_tb.dat" file was generated in watever way.
 
-wannier19 can be run in parallel by means of multiprocessing module
+WannierBerri can be run in parallel by means of multiprocessing module
 
 
 instllation is possible by pip
 
-pip install wannier19
+pip3 install wannierberri
 
 A simple exmple is contained in "tutorial/example.py" . That will produce AHC and tabulate the berry curvature and velocity of bcc iron
 more sofisticated features will be described soon.
