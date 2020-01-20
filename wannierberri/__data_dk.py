@@ -88,6 +88,45 @@ class Data_dk(System):
         return np.prod(self.NKFFT)
 
 
+#    defining sets of degenerate states.  
+# all states below Emin are considered "degenerate" - needed for fermi-sea integral of Berry curvature only (AHE)
+# all states above Emax are neglected 
+    def set_degen(self,degen_thresh=1e-10,Emin=-np.Inf,Emax=np.Inf,include_lower=True):
+        A=[np.where(E[1:]-E[:-1]>degen_thresh)[0]+1 for E in self.E_K ]
+        A=[a[:-1][E[a[1:]-1]>=Emin] for E,a in zip(self.E_K,A)]
+        A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
+        if not include_lower:
+            A=[ [ib for ib in a if E[ib[1]-1]>Emin] for ib,E in zip(A,E_K)]
+        self._degen= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) if e[ib1]<=Emax]    for a,e in zip(A,self.E_K)]
+        self._E_degen[np.array([np.mean(E[ib1:ib2]) for ib1,ib2 in deg]) for deg,E in zip(self._degen,self.E_K)]
+
+    @property 
+    def degen(self):
+        try:
+            return self._degen 
+        except AttributeError:
+            raise RuntimeError("Degeneracies were not set. use the set_degen method first")
+
+    @property 
+    def E_degen(self):
+        try:
+            return self._E_degen 
+        except AttributeError:
+            raise RuntimeError("Degenerate energies were not set. use the set_degen method first")
+
+
+##  TODO: When it works correctly - think how to optimize it
+    @property 
+    def Berry_nonabelian(self):
+        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
+        F=[ [ O[ib1:ib2,ib1:ib2,:]-1j*np.einsum("mla,lna->mna",sum(s*A[ib1:ib2,ib1:ib2,b]*A[ib1:ib2,ib1:ib2,b] for s,b,c in sbc)) 
+               +np.einsum("mla,lna->mna",sum(s*(-D[ib1:ib2,ibl1:ibl2,b]*A[ibl1:ibl2,ib1:ib2,c]+A[ib1:ib2,ibl1:ibl2,c]*D[ibl1:ibl2,ib1:ib2,b]-1j*D[ib1:ib2,ibl1:ibl2,b]*D[ibl1:ibl2,ib1:ib2,c])
+                         for s,b,c in sbc for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))  )   ) 
+                        for ib1,ib2 in deg]
+                     for O,A,D,deg in zip( self.Omega_Hbar_mat,self.A_Hbar,self.D_H,self.degen) ]
+        
+        
+
     @lazy_property.LazyProperty
     def HH_K(self):
         return fourier_R_to_k(self.HH_R,self.iRvec,self.NKFFT,hermitian=True)
@@ -166,7 +205,7 @@ class Data_dk(System):
 
 
     @lazy_property.LazyProperty
-    def delHH_dE_K(self):
+    def D_H(self):
             print_my_name_start()
             _delHH_K_=np.copy(self.delHHUU_K)
             dEig_threshold=1e-14
@@ -174,7 +213,8 @@ class Data_dk(System):
             select=abs(dEig)<dEig_threshold
             dEig[select]=dEig_threshold
             _delHH_K_[select]=0
-            return -1j*_delHH_K_/dEig[:,:,:,None]
+            return -_delHH_K_/dEig[:,:,:,None]
+
 
     @lazy_property.LazyProperty
     def delHH_dE_SQ_K(self):
@@ -233,7 +273,7 @@ class Data_dk(System):
 
     
     @lazy_property.LazyProperty
-    def AAUU_K(self):
+    def A_Hbar(self):
         print_my_name_start()
         _AA_K=fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT,hermitian=True)
         return self._rotate_vec( _AA_K )
@@ -286,24 +326,17 @@ class Data_dk(System):
         print_my_name_start()
         _SS_K=fourier_R_to_k( self.SS_R,self.iRvec,self.NKFFT)
         return self._rotate_vec( _SS_K )
-#        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
-#        return np.einsum("kmma->kma",_SS_K).real
-
-
 
     @lazy_property.LazyProperty
-    def OOmegaUU_K(self):
+    def Omega_Hbar_mat(self):
         print_my_name_start()
         _OOmega_K =  fourier_R_to_k( -1j*(
                         self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] - 
                         self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])   , self.iRvec, self.NKFFT,hermitian=True )
         return self._rotate_vec(_OOmega_K)
-#        return np.einsum("kmi,kmna,knj->kija",self.UUC_K,_OOmega_K,self.UU_K)
-
-
 
     @lazy_property.LazyProperty
-    def OOmegaUU_K_rediag(self):
+    def Omega_Hbar_diag(self):
         print_my_name_start()
         return  np.einsum("kiia->kia",self.OOmegaUU_K).real
 
@@ -320,6 +353,23 @@ class Data_dk(System):
          print_my_name_start()
          return np.einsum("kmi,kina,knma->knma",self.HHUU_K,self.AAUU_K[:,:,:,alpha_A],self.AAUU_K[:,:,:,beta_A]).imag
 
+
+
+
+
+### TODO: old names - to be wiped out from other routines
+    def OOmegaUU_K(self):
+        return self.Omega_Hbar_mat
+
+    def OOmegaUU_K_rediag(self):
+        return self.Imega_Hbar_diag
+         
+    def AAUU_K(self):
+        return self.A_Hbar
+
+    @lazy_property.LazyProperty
+    def delHH_dE_K(self):
+            return 1j*self.D_H
 
 
 unused="""
