@@ -28,17 +28,8 @@ def __vel(data,degen):
 
 
 ##  so far it is Abelian!
-def __curv(data,degen):
-    L=[]
-    for S,deg in zip(__berry.calcImf_band(data),degen):
-        l=[]
-        for ib1,ib2 in deg:
-            M=np.zeros( (ib2-ib1,ib2-ib1,3) )
-            for i in range(ib2-ib1):
-                M[i,i,:]=S[ib1:ib2].mean(axis=0)
-            l.append(M)
-        L.append(l)
-    return L
+def __curv(data):
+    return data.Berry_nonabelian
 
 
 def __morb(data,degen):
@@ -114,18 +105,11 @@ def calc_nonabelian(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5,mod
     dE=Efermi[1]-Efermi[0]
     Emin=Efermi[0]-dE/2
     Emax=Efermi[-1]+dE/2
-    A=[ [0,] +list(np.where(E[1:]-E[:1]>degen_thresh)[0]+1)+ [E.shape[0],]  for E in E_K ]
     include_lower=(mode=='fermi-sea')
-    include_upper=False
-    degen= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) if (e[ib2-1]>=Emin or include_lower) and (e[ib1]<=Emax or include_upper)] for a,e in zip(A,E_K)]
-
-    print ("WARNING : for testing the degennerate bands are excluded")
-    degen= [[(ib1,ib2) for ib1,ib2 in deg if ib2-ib1==1] for deg in degen ]
-
-    Eav= [ np.array( [E[b1:b2].mean() for b1,b2 in deg  ]) for E,deg in zip(E_K,degen)]
+    data.set_degen(Emin=Emin,Emax=Emax,include_lower=include_lower,degen_thresh=degen_thresh)
 
     variables=vars(sys.modules[__name__])
-    M=[variables["__"+Q](data,degen) for Q in quantities]
+    M=[variables["__"+Q](data) for Q in quantities]
 
 
     if subscripts is None:
@@ -161,7 +145,7 @@ def calc_nonabelian(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5,mod
 
     if mode=='fermi-surface':
       for ik in range(data.NKFFT_tot):
-        indE=np.array(np.round( (Eav[ik]-Efermi[0])/dE ),dtype=int )
+        indE=np.array(np.round( (data.E_K_degen[ik]-Efermi[0])/dE ),dtype=int )
         indEtrue= (0<=indE)*(indE<len(Efermi))
         for ib,ie,it  in zip(range(len(indE)),indE,indEtrue):
             if it:
@@ -170,9 +154,9 @@ def calc_nonabelian(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5,mod
       res=res/dE
     elif mode=='fermi-sea':
       for ik in range(data.NKFFT_tot):
-        indE=np.array(np.round( (Eav[ik]-Efermi[0])/dE ),dtype=int )
+        indE=np.array(np.round( (data.E_K_degen[ik]-Efermi[0])/dE ),dtype=int )
         indEtrue= (0<=indE)*(indE<len(Efermi))
-        for ib,eav  in zip(range(len(indE)),Eav[ik]):
+        for ib,eav  in zip(range(len(indE)),data.E_K_degen[ik]):
             if eav<Emax:
                  res[eav<Efermi]+=np.einsum(einline,*(m[ik][ib] for m in M)).real
     else:
