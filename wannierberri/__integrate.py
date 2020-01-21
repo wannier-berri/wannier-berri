@@ -45,6 +45,7 @@ calculators_trans={
          'nonabelian_spinvel' : nonabelian.spinvel , 
          'nonabelian_morbvel' : nonabelian.morbvel , 
          'nonabelian_curvvel' : nonabelian.curvvel , 
+         'nonabelian_curvmorb' : nonabelian.curvmorb , 
          'nonabelian_curv_tot' : nonabelian.curv_tot , 
          'nonabelian_ahc'     : nonabelian.ahc , 
          'nonabelian_velvel' : nonabelian.velvel , 
