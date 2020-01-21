@@ -98,7 +98,7 @@ class Data_dk(System):
         if not include_lower:
             A=[ [ib for ib in a if E[ib[1]-1]>Emin] for ib,E in zip(A,E_K)]
         self._degen= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) if e[ib1]<=Emax]    for a,e in zip(A,self.E_K)]
-        self._E_degen[np.array([np.mean(E[ib1:ib2]) for ib1,ib2 in deg]) for deg,E in zip(self._degen,self.E_K)]
+        self._E_K_degen=[np.array([np.mean(E[ib1:ib2]) for ib1,ib2 in deg]) for deg,E in zip(self._degen,self.E_K)]
 
     @property 
     def degen(self):
@@ -108,9 +108,9 @@ class Data_dk(System):
             raise RuntimeError("Degeneracies were not set. use the set_degen method first")
 
     @property 
-    def E_degen(self):
+    def E_K_degen(self):
         try:
-            return self._E_degen 
+            return self._E_K_degen 
         except AttributeError:
             raise RuntimeError("Degenerate energies were not set. use the set_degen method first")
 
@@ -119,11 +119,15 @@ class Data_dk(System):
     @property 
     def Berry_nonabelian(self):
         sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
-        F=[ [ O[ib1:ib2,ib1:ib2,:]-1j*np.einsum("mla,lna->mna",sum(s*A[ib1:ib2,ib1:ib2,b]*A[ib1:ib2,ib1:ib2,b] for s,b,c in sbc)) 
-               +np.einsum("mla,lna->mna",sum(s*(-D[ib1:ib2,ibl1:ibl2,b]*A[ibl1:ibl2,ib1:ib2,c]+A[ib1:ib2,ibl1:ibl2,c]*D[ibl1:ibl2,ib1:ib2,b]-1j*D[ib1:ib2,ibl1:ibl2,b]*D[ibl1:ibl2,ib1:ib2,c])
-                         for s,b,c in sbc for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))  )   ) 
+        F=[ [ O[ib1:ib2,ib1:ib2,:]-1j*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,b]) for s,b,c in sbc) 
+               +sum(s*np.einsum("mla,lna->mna",X,Y) 
+                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
+                     for s,b,c in sbc
+                    for X,Y in [(-D[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c]),(A[ib1:ib2,ibl1:ibl2,c],D[ibl1:ibl2,ib1:ib2,b]),(-1j*D[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])]
+                           )
                         for ib1,ib2 in deg]
                      for O,A,D,deg in zip( self.Omega_Hbar_mat,self.A_Hbar,self.D_H,self.degen) ]
+        return F
         
         
 
@@ -358,12 +362,15 @@ class Data_dk(System):
 
 
 ### TODO: old names - to be wiped out from other routines
+    @property
     def OOmegaUU_K(self):
         return self.Omega_Hbar_mat
 
+    @property
     def OOmegaUU_K_rediag(self):
-        return self.Imega_Hbar_diag
+        return self.Omega_Hbar_diag
          
+    @property
     def AAUU_K(self):
         return self.A_Hbar
 
