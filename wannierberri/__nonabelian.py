@@ -32,7 +32,10 @@ def __curv(data):
     return data.Berry_nonabelian
 
 
-def __morb(data,degen):
+def __morb(data):
+    return data.Morb_nonabelian
+
+def __morb_old(data,degen):
     CC=data.CCUU_K
     OO=data.OOmegaUU_K
     AA=data.AAUU_K
@@ -64,49 +67,53 @@ INVodd = set(['vel'])
 
 
 def spin(data,Efermi,degen_thresh):
-    return calc_nonabelian(data,Efermi,['spin'],degen_thresh=degen_thresh)
+    return nonabelian_general(data,Efermi,['spin'],degen_thresh=degen_thresh)
 
 
 
 def spinvel(data,Efermi,degen_thresh):
-    return calc_nonabelian(data,Efermi,['spin','vel'],degen_thresh=degen_thresh)
+    return nonabelian_general(data,Efermi,['spin','vel'],degen_thresh=degen_thresh)
 
 def curvvel(data,Efermi,degen_thresh):
-    return calc_nonabelian(data,Efermi,['curv','vel'],degen_thresh=degen_thresh)
+    return nonabelian_general(data,Efermi,['curv','vel'],degen_thresh=degen_thresh)
+
+def curvmorb(data,Efermi,degen_thresh):
+    return nonabelian_general(data,Efermi,['curv','morb'],degen_thresh=degen_thresh)
+
 
 def velvel(data,Efermi,degen_thresh):
-    return calc_nonabelian(data,Efermi,['vel','vel'],degen_thresh=degen_thresh)
+    return nonabelian_general(data,Efermi,['vel','vel'],degen_thresh=degen_thresh)
 
 
 def morbvel(data,Efermi,degen_thresh):
-    return calc_nonabelian(data,Efermi,['morb','vel'],degen_thresh=degen_thresh)
+    return nonabelian_general(data,Efermi,['morb','vel'],degen_thresh=degen_thresh)
 
 
 def spinspin(data,Efermi,degen_thresh):
-    return calc_nonabelian(data,Efermi,['spin','spin'],degen_thresh=degen_thresh)
+    return nonabelian_general(data,Efermi,['spin','spin'],degen_thresh=degen_thresh)
 
 
 def curv_tot(data,Efermi,degen_thresh):
-    return calc_nonabelian(data,Efermi,['curv'],degen_thresh=degen_thresh,mode='fermi-sea')
+    return nonabelian_general(data,Efermi,['curv'],degen_thresh=degen_thresh,mode='fermi-sea')
 
 
 def ahc(data,Efermi,degen_thresh):
-    return calc_nonabelian(data,Efermi,['curv'],degen_thresh=degen_thresh,mode='fermi-sea')*__berry.fac_ahc
+    return nonabelian_general(data,Efermi,['curv'],degen_thresh=degen_thresh,mode='fermi-sea',factor=__berry.fac_ahc)
 
 
 def morb_tot(data,Efermi,degen_thresh):
-    return calc_nonabelian(data,Efermi,['morb'],degen_thresh=degen_thresh,mode='fermi-sea')*__berry.fac_morb
+    return nonabelian_general(data,Efermi,['morb'],degen_thresh=degen_thresh,mode='fermi-sea',factor=__berry.fac_morb)
 
 
 
-def calc_nonabelian(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5,mode='fermi-surface'):
+def nonabelian_general(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5,mode='fermi-surface',factor=1):
     E_K=data.E_K
 
     dE=Efermi[1]-Efermi[0]
     Emin=Efermi[0]-dE/2
     Emax=Efermi[-1]+dE/2
-    include_lower=(mode=='fermi-sea')
-    data.set_degen(Emin=Emin,Emax=Emax,include_lower=include_lower,degen_thresh=degen_thresh)
+#    include_lower=(mode=='fermi-sea')
+    data.set_degen(Emin=Emin,Emax=Emax,degen_thresh=degen_thresh)
 
     variables=vars(sys.modules[__name__])
     M=[variables["__"+Q](data) for Q in quantities]
@@ -162,7 +169,7 @@ def calc_nonabelian(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5,mod
     else:
       raise ValueError('unknown mode in non-abelian: <{}>'.format(mode))
 
-    return result.EnergyResult(Efermi,res/(data.NKFFT_tot*data.cell_volume),TRodd=odd_prod_TR(quantities),Iodd=odd_prod_INV(quantities))
+    return result.EnergyResult(Efermi,res*(factor/(data.NKFFT_tot*data.cell_volume)),TRodd=odd_prod_TR(quantities),Iodd=odd_prod_INV(quantities))
 
 
 
