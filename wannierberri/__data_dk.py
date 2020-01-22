@@ -117,6 +117,14 @@ class Data_dk(System):
         except AttributeError:
             raise RuntimeError("Degenerate energies were not set. use the set_degen method first")
 
+    @lazy_property.LazyProperty
+    def vel_nonabelian(self):
+        return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(self.V_H,self.degen)]
+
+    @lazy_property.LazyProperty
+    def spin_nonabelian(self):
+        return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(self.S_H,self.degen)]
+
 
 ##  TODO: When it works correctly - think how to optimize it
     @lazy_property.LazyProperty
@@ -259,8 +267,26 @@ class Data_dk(System):
 
 
 
+    @lazy_property.LazyProperty
+    def S_H(self):
+        print_my_name_start()
+        _SS_K=fourier_R_to_k( self.SS_R,self.iRvec,self.NKFFT)
+        return self._rotate_vec( _SS_K )
 
 
+    @lazy_property.LazyProperty
+    def Omega_Hbar(self):
+        print_my_name_start()
+        _OOmega_K =  fourier_R_to_k( -1j*(
+                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] - 
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])   , self.iRvec, self.NKFFT,hermitian=True )
+        return self._rotate_vec(_OOmega_K)
+
+
+
+
+#### These are only needed for the "old" (abelian) routines:
+#### TODO : when the non-abelian works - may be removed
     @lazy_property.LazyProperty
     def FF_K_rediag(self):
         print_my_name_start()
@@ -276,25 +302,7 @@ class Data_dk(System):
 #        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
         return np.einsum("kmma->kma",_SS_K).real
 
-    @lazy_property.LazyProperty
-    def SSUU_K(self):
-        print_my_name_start()
-        _SS_K=fourier_R_to_k( self.SS_R,self.iRvec,self.NKFFT)
-        return self._rotate_vec( _SS_K )
 
-    @lazy_property.LazyProperty
-    def Omega_Hbar(self):
-        print_my_name_start()
-        _OOmega_K =  fourier_R_to_k( -1j*(
-                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] - 
-                        self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])   , self.iRvec, self.NKFFT,hermitian=True )
-        return self._rotate_vec(_OOmega_K)
-
-
-
-
-#### These are only needed for the "old" orbital moment:
-#### TODO : when the non-abelian works - may be removed
     @lazy_property.LazyProperty
     def HHOOmegaUU_K(self):
          print_my_name_start()
@@ -409,6 +417,13 @@ class Data_dk(System):
     @property
     def CCUU_K(self):
        return self.Morb_Hbar
+
+    @lazy_property.LazyProperty
+    def SSUU_K(self):
+        return self.S_H
+        print_my_name_start()
+        _SS_K=fourier_R_to_k( self.SS_R,self.iRvec,self.NKFFT)
+        return self._rotate_vec( _SS_K )
 
 
 

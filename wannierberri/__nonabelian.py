@@ -20,14 +20,13 @@ from . import __result as result
 from time import time
 from .__utility import alpha_A,beta_A
 
-def __spin(data,degen):
-    return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(data.SSUU_K,degen)]
+def __spin(data):
+    return data.spin_nonabelian
 
-def __vel(data,degen):
-    return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(data.delHHUU_K,degen)]
+def __vel(data):
+    return data.vel_nonabelian
 
 
-##  so far it is Abelian!
 def __curv(data):
     return data.Berry_nonabelian
 
@@ -79,6 +78,9 @@ def curvvel(data,Efermi,degen_thresh):
 
 def curvmorb(data,Efermi,degen_thresh):
     return nonabelian_general(data,Efermi,['curv','morb'],degen_thresh=degen_thresh)
+
+def curvspin(data,Efermi,degen_thresh):
+    return nonabelian_general(data,Efermi,['curv','spin'],degen_thresh=degen_thresh)
 
 
 def velvel(data,Efermi,degen_thresh):
