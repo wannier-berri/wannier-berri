@@ -1,7 +1,5 @@
 get_oper_save=T 
 get_oper_save_task=abc
-
-
 restart=plot
 
 berry = F

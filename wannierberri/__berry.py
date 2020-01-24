@@ -113,14 +113,16 @@ def calcAHC(data,Efermi=None,occ_old=None):
 def calcMorb(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
     if not isinstance(Efermi, Iterable):
         Efermi=np.array([Efermi])
-    imfgh=calcImfgh(data,Energy=Efermi,occ_old=occ_old, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
+    imfgh=calcImfgh(data,Efermi=Efermi,occ_old=occ_old, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
     imf=imfgh[:,0,:,:]
     img=imfgh[:,1,:,:]
     imh=imfgh[:,2,:,:]
     LCtil=fac_morb*(img-Efermi[:,None,None]*imf)
     ICtil=fac_morb*(imh-Efermi[:,None,None]*imf)
     Morb = LCtil + ICtil
-    return np.array([Morb,LCtil,ICtil])
+    return result.EnergyResultAxialV(Efermi,Morb[:,3,:])
+
+#    return np.array([Morb,LCtil,ICtil])
 
 
 
@@ -263,7 +265,7 @@ def calcImfgh(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True
         nFermi=len(Efermi)
         imfgh=np.zeros( ( nFermi,3,4,3) ,dtype=float )
         for iFermi in range(nFermi):
-            imfgh[iFermi]=calcImfgh(data,Energy=Efermi[iFermi],occ_old=occ_old, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
+            imfgh[iFermi]=calcImfgh(data,Efermi=Efermi[iFermi],occ_old=occ_old, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
         return np.cumsum(imfgh,axis=0)
     
     # now code for a single Fermi level:
