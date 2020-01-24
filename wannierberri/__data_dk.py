@@ -149,7 +149,7 @@ class Data_dk(System):
                +sum(s*np.einsum("mla,lna->mna",X,Y) 
                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
                      for s,b,c in sbc
-                    for X,Y in [(V[ib1:ib2,ibl1:ibl2,b],-D[ibl1:ibl2,ib1:ib2,c]),(-1j*A[ib1:ib2,ibl1:ibl2,b],V[ibl1:ibl2,ib1:ib2,c]),(1j*V[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c])]
+                    for X,Y in [(1j*D[ib1:ib2,ibl1:ibl2,b],V[ibl1:ibl2,ib1:ib2,c]),(A[ib1:ib2,ibl1:ibl2,b],V[ibl1:ibl2,ib1:ib2,c]),(-V[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c])]
                            )
                         for (ib1,ib2),e in zip(deg,E)]
                      for M,O,A,D,V,deg,E in zip( self.Morb_Hbar,self.Omega_Hbar,self.A_Hbar,self.D_H,self.V_H,self.degen,self.E_K_degen) ]

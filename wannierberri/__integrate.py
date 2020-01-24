@@ -34,13 +34,13 @@ from . import  __utility   as utility
 #should be functions of only one parameter of class data_dk
 calculators_trans={ 
          'spin'       : spin.calcSpinTot,  
-         'morb'       : berry.calcMorb,
+         'Morb'       : berry.calcMorb,
          'ahc'        : berry.calcAHC ,
          'ahc_band'   : gyrotropic.calcAHC ,
          'dos'        : dos.calc_DOS ,
          'cumdos'        : dos.calc_cum_DOS ,
          'nonabelian_spin' : nonabelian.spin , 
-         'nonabelian_morb' : nonabelian.morb_tot , 
+         'nonabelian_Morb' : nonabelian.Morb , 
          'nonabelian_spinspin' : nonabelian.spinspin , 
          'nonabelian_velvel' : nonabelian.velvel , 
          'nonabelian_spinvel' : nonabelian.spinvel , 
