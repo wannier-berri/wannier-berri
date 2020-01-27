@@ -115,7 +115,7 @@ class EnergyResult(Result):
         rank=len(self.data.shape[1:])
 
         open(name,"w").write(
-           "    ".join("{0:^15s}".format(s) for s in ["EF",]+
+           "    ".join("{0:^15s}".format(s) for s in ["# EF",]+
                 [b for b in getHead(rank)*2])+"\n"+
           "\n".join(
            "    ".join("{0:15.6e}".format(x) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
