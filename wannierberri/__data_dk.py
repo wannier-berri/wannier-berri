@@ -95,10 +95,11 @@ class Data_dk(System):
         try: 
             self._degen
             self._E_K_degen
+            print ("degeneracies were already set")
             return
         except AttributeError:
             A=[np.where(E[1:]-E[:-1]>degen_thresh)[0]+1 for E in self.E_K ]
-            A=[a[:-1][E[a[1:]-1]>=Emin] for E,a in zip(self.E_K,A)]
+    #        A=[a[:-1][E[a[1:]-1]>=Emin] for E,a in zip(self.E_K,A)]
             A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
             self._degen= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) if e[ib1]<=Emax]    for a,e in zip(A,self.E_K)]
             self._E_K_degen=[np.array([np.mean(E[ib1:ib2]) for ib1,ib2 in deg]) for deg,E in zip(self._degen,self.E_K)]
@@ -144,7 +145,7 @@ class Data_dk(System):
     @lazy_property.LazyProperty
     def Morb_nonabelian(self):
         sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]        
-        return [ [ M[ib1:ib2,ib1:ib2,:]-e*O[ib1:ib2,ib1:ib2,:]
+        Morb=[ [ M[ib1:ib2,ib1:ib2,:]-e*O[ib1:ib2,ib1:ib2,:]
     #         -1j*e*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,b]) for s,b,c in sbc)
                +sum(s*np.einsum("mla,lna->mna",X,Y) 
                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
@@ -152,11 +153,15 @@ class Data_dk(System):
                     for X,Y in [
                     (-D[ib1:ib2,ibl1:ibl2,b],-B[ibl1:ibl2,ib1:ib2,c]),
                     (B.transpose((1,0,2)).conj()[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
-                    (
-                        (-1j*V[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])]
+                        (-1j*0*V[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])]
                            )
                         for (ib1,ib2),e in zip(deg,E)]
-                     for M,O,A,B,D,V,deg,E,EK in zip( self.Morb_Hbar,self.Omega_Hbar,self.A_Hbar,self.B_Hbar,self.D_H,self.V_H,self.degen,self.E_K_degen,self.E_K) ]
+                     for M,O,A,B,D,V,deg,E,EK in zip( self.Morb_Hbar,self.Omega_Hbar,self.A_Hbar,self.B_Hbarbar,self.D_H,self.V_H,self.degen,self.E_K_degen,self.E_K) ]
+        for ik,M in enumerate(Morb):
+            for m,e,d in zip(M,self.E_K_degen[ik],self.degen[ik]):
+                if np.linalg.norm( m-m.transpose((1,0,2)).conj() ) > 1e-10: 
+                     raise RuntimeError("for ik={} e={} ({}-fold) the Morb is non-Hermitian:{} \n{}\n".format(ik,e,d[1]-d[0],np.linalg.norm( m-m.transpose((1,0,2)).conj() ),m)) 
+        return Morb
         
         
 

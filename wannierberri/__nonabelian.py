@@ -90,6 +90,7 @@ def Morb(data,Efermi,degen_thresh):
 
 
 def Morb2(data,Efermi,degen_thresh):
+    data.set_degen(degen_thresh=degen_thresh)
     res=np.zeros( (len(Efermi),3),dtype=float)
     for O,M,E in zip(data.Berry_nonabelian,data.Morb_nonabelian,data.E_K_degen):
         for m,o,e in zip(M,O,E):
@@ -116,7 +117,8 @@ def nonabelian_general(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5,
     Emin=Efermi[0]-dE/2
     Emax=Efermi[-1]+dE/2
 #    include_lower=(mode=='fermi-sea')
-    data.set_degen(Emin=Emin,Emax=Emax,degen_thresh=degen_thresh)
+#    data.set_degen(Emin=Emin,Emax=Emax,degen_thresh=degen_thresh)
+    data.set_degen(degen_thresh=degen_thresh)
 
     variables=vars(sys.modules[__name__])
     M=[variables["__"+Q](data) for Q in quantities]
