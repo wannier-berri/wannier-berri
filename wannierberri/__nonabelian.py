@@ -48,8 +48,6 @@ INVodd = set(['vel'])
 def spin(data,Efermi,degen_thresh):
     return nonabelian_general(data,Efermi,['spin'],degen_thresh=degen_thresh)
 
-
-
 def spinvel(data,Efermi,degen_thresh):
     return nonabelian_general(data,Efermi,['spin','vel'],degen_thresh=degen_thresh)
 
@@ -84,12 +82,30 @@ def ahc(data,Efermi,degen_thresh):
 
 
 def Morb(data,Efermi,degen_thresh):
-    r1=nonabelian_general(data,Efermi,['morb'],degen_thresh=degen_thresh,mode='fermi-sea',factor=__berry.fac_morb)
-    r2=nonabelian_general(data,Efermi,['curvE'],degen_thresh=degen_thresh,mode='fermi-sea',factor=__berry.fac_morb)
-    r3=nonabelian_general(data,Efermi,['curv'],degen_thresh=degen_thresh,mode='fermi-sea',factor=__berry.fac_morb)
-    r3.data[:,:]=r3.data[:,:]*Efermi[:,None]
-    return r1+2*r2+(-2)*r3
+    r1=nonabelian_general(data,Efermi,['morb'],degen_thresh=degen_thresh,mode='fermi-sea')
+    r2=nonabelian_general(data,Efermi,['curvE'],degen_thresh=degen_thresh,mode='fermi-sea')
+    r3=nonabelian_general(data,Efermi,['curv'],degen_thresh=degen_thresh,mode='fermi-sea')
+    r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
+    return (r1+2*(r2+r3))*__berry.fac_morb*data.cell_volume
+
+
+def Morb2(data,Efermi,degen_thresh):
+    res=np.zeros( (len(Efermi),3),dtype=float)
+    for O,M,E in zip(data.Berry_nonabelian,data.Morb_nonabelian,data.E_K_degen):
+        for m,o,e in zip(M,O,E):
+            for i,Ef in enumerate(Efermi):
+              if e<Ef:
+                res[i]+=np.einsum('nni->i',m+2*(e-Ef)*o).real
+             
+
+    res*=__berry.fac_morb*data.cell_volume
+
+    return result.EnergyResultAxialV(Efermi,res/(data.NKFFT_tot*data.cell_volume))
     
+
+def Morb_intr(data,Efermi,degen_thresh):
+    r1=nonabelian_general(data,Efermi,['morb'],degen_thresh=degen_thresh,mode='fermi-sea',factor=__berry.fac_morb*data.cell_volume)
+    return r1
 
 
 

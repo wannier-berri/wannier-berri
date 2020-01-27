@@ -140,19 +140,23 @@ class Data_dk(System):
                      for O,A,D,deg in zip( self.Omega_Hbar,self.A_Hbar,self.D_H,self.degen) ] 
 
 
-
 ##  TODO: When it works correctly - think how to optimize it
     @lazy_property.LazyProperty
     def Morb_nonabelian(self):
         sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]        
         return [ [ M[ib1:ib2,ib1:ib2,:]-e*O[ib1:ib2,ib1:ib2,:]
+    #         -1j*e*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,b]) for s,b,c in sbc)
                +sum(s*np.einsum("mla,lna->mna",X,Y) 
                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
                      for s,b,c in sbc
-                    for X,Y in [(1j*D[ib1:ib2,ibl1:ibl2,b],V[ibl1:ibl2,ib1:ib2,c]),(A[ib1:ib2,ibl1:ibl2,b],V[ibl1:ibl2,ib1:ib2,c]),(-V[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c])]
+                    for X,Y in [
+                    (-D[ib1:ib2,ibl1:ibl2,b],-B[ibl1:ibl2,ib1:ib2,c]),
+                    (B.transpose((1,0,2)).conj()[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
+                    (
+                        (-1j*V[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])]
                            )
                         for (ib1,ib2),e in zip(deg,E)]
-                     for M,O,A,D,V,deg,E in zip( self.Morb_Hbar,self.Omega_Hbar,self.A_Hbar,self.D_H,self.V_H,self.degen,self.E_K_degen) ]
+                     for M,O,A,B,D,V,deg,E,EK in zip( self.Morb_Hbar,self.Omega_Hbar,self.A_Hbar,self.B_Hbar,self.D_H,self.V_H,self.degen,self.E_K_degen,self.E_K) ]
         
         
 
@@ -250,8 +254,6 @@ class Data_dk(System):
         return self._rotate_vec( _CC_K )
 
 
-
-
     @lazy_property.LazyProperty
     def delHH_dE_SQ_K(self):
          print_my_name_start()
@@ -278,11 +280,21 @@ class Data_dk(System):
     def Omega_Hbar(self):
         print_my_name_start()
         _OOmega_K =  fourier_R_to_k( -1j*(
-                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] - 
+                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -     
                         self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])   , self.iRvec, self.NKFFT,hermitian=True )
         return self._rotate_vec(_OOmega_K)
 
 
+    @lazy_property.LazyProperty
+    def B_Hbar(self):
+        print_my_name_start()
+        _BB_K=fourier_R_to_k( self.BB_R,self.iRvec,self.NKFFT)
+        return self._rotate_vec( _BB_K )
+
+    @lazy_property.LazyProperty
+    def B_Hbarbar(self):
+        print_my_name_start()
+        return self.B_Hbar-self.A_Hbar[:,:,:,:]*self.E_K[:,None,:,None]
 
 
 #### These are only needed for the "old" (abelian) routines:
@@ -321,11 +333,11 @@ class Data_dk(System):
          return np.einsum("kmi,kina,knma->knma",self.HHUU_K,self.AAUU_K[:,:,:,alpha_A],self.AAUU_K[:,:,:,beta_A]).imag
 
 
-    @lazy_property.LazyProperty
+    @property
     def BBUU_K(self):
-        print_my_name_start()
-        _BB_K=fourier_R_to_k( self.BB_R,self.iRvec,self.NKFFT)
-        return self._rotate_vec( _BB_K )
+        return self.B_Hbar
+
+
 #        return np.einsum("kml,kmna,knp->klpa",self.UUC_K,_BB_K,self.UU_K)
 
 

@@ -41,7 +41,7 @@ fac_ahc  = -1.0e8*constants.elementary_charge**2/constants.hbar
 bohr= constants.physical_constants['Bohr radius'][0]/constants.angstrom
 eV_au=constants.physical_constants['electron volt-hartree relationship'][0] 
 fac_morb =  -eV_au/bohr**2
-
+print ("fac_morb=",fac_morb,1/fac_morb)
 
 def calcV_band(data):
     return data.delE_K
@@ -109,7 +109,6 @@ def calcAHC(data,Efermi=None,occ_old=None):
     return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
 
 
-## Not working with the new "result" class yet
 def calcMorb(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
     if not isinstance(Efermi, Iterable):
         Efermi=np.array([Efermi])
@@ -125,8 +124,29 @@ def calcMorb(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True)
 #    return np.array([Morb,LCtil,ICtil])
 
 
+def calcMorb_intr(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
+    if not isinstance(Efermi, Iterable):
+        Efermi=np.array([Efermi])
+    imgh=calcImgh_band(data)
+    EK=data.E_K
+    res=np.zeros( (len(Efermi),3),dtype=float)
+    res[0,:]=imgh[EK<=Efermi[0]].sum(axis=0)
+    for i in range(1,len(Efermi)):
+        res[i]=res[i-1]+imgh[(EK<=Efermi[i])*(EK>Efermi[i-1])].sum(axis=0)
+    return result.EnergyResultAxialV(Efermi,fac_morb*res/data.NKFFT_tot)
 
 
+def calcMorb2(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
+    imgh=calcImgh_band(data)
+    imf=calcImf_band(data)
+    dE=Efermi[1]-Efermi[0]
+    EK=data.E_K
+    imfE=imf*EK[:,:,None]
+    res=np.zeros( (len(Efermi),3),dtype=float)
+    res[0,:]=imgh[EK<=Efermi[0]].sum(axis=0)
+    for i,Ef in enumerate(Efermi):
+        res[i]= (imgh+2*(imfE-imf*Ef))[EK<=Ef].sum(axis=0)
+    return result.EnergyResultAxialV(Efermi,fac_morb*res/data.NKFFT_tot)
 
 
 
@@ -306,7 +326,7 @@ def calcImfgh(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True
         imfgh[2,0]= eval_J0(data.HHOOmegaUU_K[selectK] , delocc)+s
     if evalJ1:
         B=data.delHH_dE_AA_K[selectK]
-        C=data.delHH_dE_BB_K[selectK]
+        C=data.delHH_dE_BB_K[selectK]*0.
         D=data.delHH_dE_HH_AA_K[selectK]
         imfgh[0,1]=eval_J12(B,UnoccOcc_plus)-eval_J12(B,UnoccOcc_minus)
         imfgh[1,1]=eval_J12(C,UnoccOcc_plus)-eval_J12(C,UnoccOcc_minus)
