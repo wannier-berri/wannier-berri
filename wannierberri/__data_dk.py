@@ -131,7 +131,7 @@ class Data_dk(System):
     @lazy_property.LazyProperty
     def Berry_nonabelian(self):
         sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
-        return [ [ O[ib1:ib2,ib1:ib2,:]-1j*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,b]) for s,b,c in sbc) 
+        return [ [ O[ib1:ib2,ib1:ib2,:]-1j*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,c]) for s,b,c in sbc) 
                +sum(s*np.einsum("mla,lna->mna",X,Y) 
                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
                      for s,b,c in sbc
@@ -146,7 +146,7 @@ class Data_dk(System):
     def Morb_nonabelian(self):
         sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]        
         Morb=[ [ M[ib1:ib2,ib1:ib2,:]-e*O[ib1:ib2,ib1:ib2,:]
-    #         -1j*e*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,b]) for s,b,c in sbc)
+    #         -1j*e*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,c]) for s,b,c in sbc)
                +sum(s*np.einsum("mla,lna->mna",X,Y) 
                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
                      for s,b,c in sbc
