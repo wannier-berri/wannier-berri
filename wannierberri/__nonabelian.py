@@ -82,11 +82,41 @@ def ahc(data,Efermi,degen_thresh):
 
 
 def Morb(data,Efermi,degen_thresh):
+    r1=nonabelian_general(data,Efermi,['morb' ],degen_thresh=degen_thresh,mode='fermi-sea')
+    r2=nonabelian_general(data,Efermi,['curvE'],degen_thresh=degen_thresh,mode='fermi-sea')
+    r3=nonabelian_general(data,Efermi,['curv' ],degen_thresh=degen_thresh,mode='fermi-sea')
+    r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
+    return (r1+2*(r2+r3))*__berry.fac_morb*data.cell_volume
+
+
+def Morb_IC(data,Efermi,degen_thresh):
+    r2=nonabelian_general(data,Efermi,['curvE'],degen_thresh=degen_thresh,mode='fermi-sea')
+    r3=nonabelian_general(data,Efermi,['curv' ],degen_thresh=degen_thresh,mode='fermi-sea')
+    print (r3.data)
+    r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
+    print (r3.data)
+    return (r2+r3)*__berry.fac_morb*data.cell_volume
+
+def Morb_h(data,Efermi,degen_thresh):
+    r2=nonabelian_general(data,Efermi,['curvE'],degen_thresh=degen_thresh,mode='fermi-sea')
+#    r3=nonabelian_general(data,Efermi,['curv' ],degen_thresh=degen_thresh,mode='fermi-sea')
+#    r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
+    return r2*__berry.fac_morb*data.cell_volume
+
+def Morb_f(data,Efermi,degen_thresh):
+#    r2=nonabelian_general(data,Efermi,['curvE'],degen_thresh=degen_thresh,mode='fermi-sea')
+    r3=nonabelian_general(data,Efermi,['curv' ],degen_thresh=degen_thresh,mode='fermi-sea')
+    r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
+    return r3*__berry.fac_morb*data.cell_volume
+
+
+
+def Morb_LC(data,Efermi,degen_thresh):
     r1=nonabelian_general(data,Efermi,['morb'],degen_thresh=degen_thresh,mode='fermi-sea')
     r2=nonabelian_general(data,Efermi,['curvE'],degen_thresh=degen_thresh,mode='fermi-sea')
     r3=nonabelian_general(data,Efermi,['curv'],degen_thresh=degen_thresh,mode='fermi-sea')
     r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
-    return (r1+2*(r2+r3))*__berry.fac_morb*data.cell_volume
+    return (r1+r2+r3)*__berry.fac_morb*data.cell_volume
 
 
 def Morb2(data,Efermi,degen_thresh):
@@ -104,11 +134,10 @@ def Morb2(data,Efermi,degen_thresh):
     return result.EnergyResultAxialV(Efermi,res/(data.NKFFT_tot*data.cell_volume))
     
 
-def Morb_intr(data,Efermi,degen_thresh):
-    r1=nonabelian_general(data,Efermi,['morb'],degen_thresh=degen_thresh,mode='fermi-sea',factor=__berry.fac_morb*data.cell_volume)
-    return r1
 
-
+#def Morb_IC(data,Efermi,degen_thresh):
+#    r1=nonabelian_general(data,Efermi,['morb'],degen_thresh=degen_thresh,mode='fermi-sea',factor=__berry.fac_morb*data.cell_volume)
+#    return r1
 
 def nonabelian_general(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5,mode='fermi-surface',factor=1):
     E_K=data.E_K
