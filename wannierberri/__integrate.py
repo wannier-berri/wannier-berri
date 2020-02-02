@@ -35,6 +35,12 @@ from . import  __utility   as utility
 calculators_trans={ 
          'spin'       : spin.calcSpinTot,  
          'Morb'       : berry.calcMorb,
+         'Morb_LC_J0'       : berry.calcMorb_LC_J0,
+         'Morb_LC_J1'       : berry.calcMorb_LC_J1,
+         'Morb_LC_J2'       : berry.calcMorb_LC_J2,
+         'Morb_IC_J0'       : berry.calcMorb_IC_J0,
+         'Morb_IC_J1'       : berry.calcMorb_IC_J1,
+         'Morb_IC_J2'       : berry.calcMorb_IC_J2,
          'Morb2'       : berry.calcMorb2,
          'Morb_intr'       : berry.calcMorb_intr,
          'ahc'        : berry.calcAHC ,

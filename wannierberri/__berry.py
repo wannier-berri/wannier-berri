@@ -121,6 +121,35 @@ def calcMorb(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True)
     Morb = LCtil + ICtil
     return result.EnergyResultAxialV(Efermi,Morb[:,3,:])
 
+
+def calcMorb_term(data,Efermi=None,occ_old=None, J=3,LC=True,IC=True):
+    if not isinstance(Efermi, Iterable):
+        Efermi=np.array([Efermi])
+    imfgh=calcImfgh(data,Efermi=Efermi,occ_old=occ_old, evalJ0=(J in (0,3)),evalJ1=(J in (1,3)),evalJ2=(J in (2,3)))
+    imf=imfgh[:,0,J,:]
+    img=imfgh[:,1,J,:]
+    imh=imfgh[:,2,J,:]
+    LCtil=fac_morb*(img-Efermi[:,None]*imf)
+    ICtil=fac_morb*(imh-Efermi[:,None]*imf)
+    Morb = LCtil*(1 if LC else 0) + ICtil*(1 if IC else 0)
+    return result.EnergyResultAxialV(Efermi,Morb[:,:])
+
+def calcMorb_LC_J0(data,Efermi=None):
+   return calcMorb_term(data,Efermi, J=0,LC=True,IC=False)
+def calcMorb_IC_J0(data,Efermi=None):
+   return calcMorb_term(data,Efermi, J=0,LC=False,IC=True)
+
+def calcMorb_LC_J1(data,Efermi=None):
+   return calcMorb_term(data,Efermi, J=1,LC=True,IC=False)
+def calcMorb_IC_J1(data,Efermi=None):
+   return calcMorb_term(data,Efermi, J=1,LC=False,IC=True)
+
+def calcMorb_LC_J2(data,Efermi=None):
+   return calcMorb_term(data,Efermi, J=2,LC=True,IC=False)
+def calcMorb_IC_J2(data,Efermi=None):
+   return calcMorb_term(data,Efermi, J=2,LC=False,IC=True)
+
+
 #    return np.array([Morb,LCtil,ICtil])
 
 
@@ -326,7 +355,7 @@ def calcImfgh(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True
         imfgh[2,0]= eval_J0(data.HHOOmegaUU_K[selectK] , delocc)+s
     if evalJ1:
         B=data.delHH_dE_AA_K[selectK]
-        C=data.delHH_dE_BB_K[selectK]*0.
+        C=data.delHH_dE_BB_K[selectK]
         D=data.delHH_dE_HH_AA_K[selectK]
         imfgh[0,1]=eval_J12(B,UnoccOcc_plus)-eval_J12(B,UnoccOcc_minus)
         imfgh[1,1]=eval_J12(C,UnoccOcc_plus)-eval_J12(C,UnoccOcc_minus)
