@@ -1,18 +1,16 @@
-#
-# This file is distributed as part of the WannierBerri code     #
+#                                                            #
+# This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the Wannier19      #
+# file `LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
 #                                                            #
-# The Wannier19 code is hosted on GitHub:                    #
-# https://github.com/stepan-tsirkin/wannier-berri                #
+# The WannierBerri code is hosted on GitHub:                 #
+# https://github.com/stepan-tsirkin/wannier-berri            #
 #                     written by                             #
-#           Stepan Tsirkin, University of Zurich              #
+#           Stepan Tsirkin, University of Zurich             #
 #                                                            #
 #------------------------------------------------------------
-#
-#  This is the main file of the library, and the user is suposed 
-#  to import only it. 
+#  This is the main file of the module
 
 
 import functools 
