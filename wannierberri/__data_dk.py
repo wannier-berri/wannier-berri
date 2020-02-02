@@ -186,9 +186,9 @@ class Data_dk(System):
         return self._UU_K
 
 
-    @lazy_property.LazyProperty
-    def HHUU_K(self):
-        return np.array([np.diag(E) for E in self.E_K]) 
+#    @lazy_property.LazyProperty
+#    def HHUU_K(self):
+#        return np.array([np.diag(E) for E in self.E_K]) 
 #        return self._rotate(self.HH_K)
 
 
@@ -324,7 +324,7 @@ class Data_dk(System):
     @lazy_property.LazyProperty
     def HHOOmegaUU_K(self):
          print_my_name_start()
-         return np.einsum("kmn,knma->kma",self.HHUU_K,self.OOmegaUU_K).real
+         return np.einsum("km,kmma->kma",self.E_K,self.OOmegaUU_K).real
 
     @lazy_property.LazyProperty
     def Omega_Hbar_diag(self):
@@ -336,7 +336,7 @@ class Data_dk(System):
     def HHAAAAUU_K(self):
 #        print ("shapes:",self.HHUU_K.shape,self.AAUU_K[:,:,:,alpha_A].shape,self.AAUU_K[:,:,:,beta_A].shape)
          print_my_name_start()
-         return np.einsum("kmi,kina,knma->knma",self.HHUU_K,self.AAUU_K[:,:,:,alpha_A],self.AAUU_K[:,:,:,beta_A]).imag
+         return np.einsum("km,kmna,knma->knma",self.E_K,self.AAUU_K[:,:,:,alpha_A],self.AAUU_K[:,:,:,beta_A]).imag
 
 
     @property
@@ -397,15 +397,17 @@ class Data_dk(System):
 #         return ( np.einsum(  "knl,klma,kmna->kmna",self.HHUU_K,self.AAUU_K[:,:,:,alpha_A],self.delHH_dE_K[:,:,:,beta_A ]).imag+
 #                    np.einsum("kln,kmla,knma->kmna",self.HHUU_K,self.AAUU_K[:,:,:,beta_A ],self.delHH_dE_K[:,:,:,alpha_A]).imag )
          return np.array([
-                  np.einsum("nl,lma,mna->mna",hh,aa[:,:,alpha_A],delhh[:,:,beta_A ]).imag+
-                  np.einsum("ln,mla,nma->mna",hh,aa[:,:,beta_A ],delhh[:,:,alpha_A]).imag 
-                    for hh,aa,delhh in zip(self.HHUU_K,self.AAUU_K,self.delHH_dE_K)])
+                  np.einsum("n,nma,mna->mna",ee,aa[:,:,alpha_A],delhh[:,:,beta_A ]).imag+
+                  np.einsum("n,mna,nma->mna",ee,aa[:,:,beta_A ],delhh[:,:,alpha_A]).imag 
+                    for ee,aa,delhh in zip(self.E_K,self.AAUU_K,self.delHH_dE_K)])
          
     @lazy_property.LazyProperty
     def delHH_dE_SQ_HH_K(self):
          print_my_name_start()
-         return ( np.einsum("kml,knma,klna->klmna",self.HHUU_K,self.delHH_dE_K[:,:,:,alpha_A],self.delHH_dE_K[:,:,:,beta_A ]).imag ,
-                  np.einsum("knm,kmla,klna->klmna",self.HHUU_K,self.delHH_dE_K[:,:,:,alpha_A],self.delHH_dE_K[:,:,:,beta_A ]).imag ) 
+         return ( np.einsum("km,knma,kmna->kmna",self.E_K,self.delHH_dE_K[:,:,:,alpha_A],self.delHH_dE_K[:,:,:,beta_A ]).imag ,
+                  np.einsum("km,kmna,knma->knma",self.E_K,self.delHH_dE_K[:,:,:,alpha_A],self.delHH_dE_K[:,:,:,beta_A ]).imag ) 
+#         return ( np.einsum("kml,knma,klna->klmna",self.HHUU_K,self.delHH_dE_K[:,:,:,alpha_A],self.delHH_dE_K[:,:,:,beta_A ]).imag ,
+#                  np.einsum("knm,kmla,klna->klmna",self.HHUU_K,self.delHH_dE_K[:,:,:,alpha_A],self.delHH_dE_K[:,:,:,beta_A ]).imag ) 
 
 
 
