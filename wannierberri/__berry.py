@@ -99,7 +99,7 @@ def calcAHC(data,Efermi=None,occ_old=None):
 #    print ("  calculating occ matrices - done")
 
 #    print ("evaluating J0")
-    AHC=eval_J0(data.OOmegaUU_K_rediag[selectK], delocc)
+    AHC=eval_J0(data.Omega_Hbar_diag[selectK], delocc)
 #    print ("evaluating B")
     B=data.delHH_dE_AA_delHH_dE_SQ_K[selectK]
 #    print ("evaluating J12")
@@ -234,7 +234,7 @@ def eval_Juoo_deg(B,degen):
 
 
 def calcImf_band(data):
-    AA=data.OOmegaUU_K_rediag
+    AA=data.Omega_Hbar_rediag
     BB=data.delHH_dE_AA_delHH_dE_SQ_K
     return np.array([eval_Jo(A)-2*eval_Juo(B)  for A,B in zip (AA,BB) ] )
 
@@ -249,7 +249,7 @@ def calcImgh_band_kn(data):
 def calcImgh_band(data):
     
     AA=data.HHAAAAUU_K
-    BB=data.CCUU_K_rediag-data.HHOOmegaUU_K
+    BB=data.Morb_Hbar_diag-data.OmegaHbar
     imgh=np.array([eval_Jo(B)-2*eval_Joo(A)  for A,B in zip (AA,BB) ] )
     
     AA=data.delHH_dE_BB_K-data.delHH_dE_HH_AA_K
@@ -267,7 +267,7 @@ def calcImgh_band(data):
 def calcImg_band(data):
     
     AA=data.HHAAAAUU_K
-    BB=data.CCUU_K_rediag-data.HHOOmegaUU_K
+    BB=data.Morb_Hbar_diag-data.Omega_Hbar
     imgh=np.array([eval_Jo(B)-2*eval_Joo(A)  for A,B in zip (AA,BB) ] )
     
     AA=data.delHH_dE_BB_K-data.delHH_dE_HH_AA_K
@@ -285,7 +285,7 @@ def calcImfgh_K(data,degen,ik):
     imf= calcImf_K(data,degen,ik)
 
     s=2*eval_Joo_deg(data.HHAAAAUU_K[ik],degen)   
-    img=eval_Jo_deg(data.CCUU_K_rediag[ik],degen)-s
+    img=eval_Jo_deg(data.Morb_Hbar_diag[ik],degen)-s
     imh=eval_Jo_deg(data.HHOOmegaUU_K[ik],degen)+s
 
 
@@ -303,7 +303,7 @@ def calcImfgh_K(data,degen,ik):
 
 
 def calcImf(data,degen_bands=None):
-    AA=data.OOmegaUU_K_rediag
+    AA=data.Omega_Hbar_diag
     BB=data.delHH_dE_AA_delHH_dE_SQ_K
     if degen_bands is None:
         degen_bands=[(b,b+1) for b in range(data.nbands)]
@@ -311,7 +311,7 @@ def calcImf(data,degen_bands=None):
 
 
 def calcImf_K(data,degen_bands,ik):
-    A=data.OOmegaUU_K_rediag[ik]
+    A=data.Omega_Hbar_diag[ik]
     B=data.delHH_dE_AA_delHH_dE_SQ_K[ik]
     return eval_Jo_deg(A,degen_bands)-2*eval_Juo_deg(B,degen_bands) 
 
@@ -360,9 +360,9 @@ def calcImfgh(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True
     OccOcc_plus = OccOcc_new * np.logical_not(OccOcc_old)
     
     if evalJ0:
-        imfgh[0,0]= eval_J0(data.OOmegaUU_K_rediag[selectK], delocc)
+        imfgh[0,0]= eval_J0(data.Omega_Hbar_diag[selectK], delocc)
         s=-eval_J12(data.HHAAAAUU_K[selectK],OccOcc_plus)
-        imfgh[1,0]= eval_J0(data.CCUU_K_rediag[selectK], delocc)-s
+        imfgh[1,0]= eval_J0(data.Morb_Hbar_diag[selectK], delocc)-s
         imfgh[2,0]= eval_J0(data.HHOOmegaUU_K[selectK] , delocc)+s
     if evalJ1:
         B=data.delHH_dE_AA_K[selectK]
