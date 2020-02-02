@@ -1,8 +1,15 @@
-#------------------------------------------------------------#
-# This file is distributed as part of the Wannier19 code     #
+#                                                            #
+# This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the Wannier19      #
+# file `LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
+#                                                            #
+# The WannierBerri code is hosted on GitHub:                 #
+# https://github.com/stepan-tsirkin/wannier-berri            #
+#                     written by                             #
+#           Stepan Tsirkin, University of Zurich             #
+#                                                            #
+#------------------------------------------------------------
 #                                                            #
 # this file initially was  an adapted translation of         #
 # the corresponding Fortran90 code from  Wannier 90 project  #
@@ -10,17 +17,9 @@
 # with significant modifications for better performance      #
 #   it is now a lot different                                #
 #                                                            #
-# The Wannier19 code is hosted on GitHub:                    #
-# https://github.com/stepan-tsirkin/wannier19                #
-#                                                            #
 # The webpage of the Wannier90 code is www.wannier.org       #
 # The Wannier90 code is hosted on GitHub:                    #
 # https://github.com/wannier-developers/wannier90            #
-#------------------------------------------------------------#
-#                                                            #
-#  Translated to python and adapted for wannier19 project by #
-#           Stepan Tsirkin, University ofZurich              #
-#                                                            #
 #------------------------------------------------------------#
 
 import numpy as np
@@ -57,8 +56,8 @@ def eval_J0(A,occ):
 def eval_J12(B,UnoccOcc):
     return -2*B[UnoccOcc].sum(axis=0)
 
-def eval_J3(B,UnoccUnoccOcc):
-    return -2*B[UnoccUnoccOcc].sum(axis=0)
+#def eval_J3(B,UnoccUnoccOcc):
+#    return -2*B[UnoccUnoccOcc].sum(axis=0)
 
 def get_occ(E_K,Efermi):
     return (E_K< Efermi)
@@ -101,7 +100,7 @@ def calcAHC(data,Efermi=None,occ_old=None):
 #    print ("evaluating J0")
     AHC=eval_J0(data.Omega_Hbar_diag[selectK], delocc)
 #    print ("evaluating B")
-    B=data.delHH_dE_AA_delHH_dE_SQ_K[selectK]
+    B=(data.D_A_H+data.D_H_sq)[selectK]
 #    print ("evaluating J12")
     AHC+=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
 #    print ("evaluating J12-done")
@@ -235,7 +234,7 @@ def eval_Juoo_deg(B,degen):
 
 def calcImf_band(data):
     AA=data.Omega_Hbar_rediag
-    BB=data.delHH_dE_AA_delHH_dE_SQ_K
+    BB=data.D_A_H+data.D_H_sq
     return np.array([eval_Jo(A)-2*eval_Juo(B)  for A,B in zip (AA,BB) ] )
 
 
@@ -286,7 +285,7 @@ def calcImfgh_K(data,degen,ik):
 
     s=2*eval_Joo_deg(data.HHAAAAUU_K[ik],degen)   
     img=eval_Jo_deg(data.Morb_Hbar_diag[ik],degen)-s
-    imh=eval_Jo_deg(data.HHOOmegaUU_K[ik],degen)+s
+    imh=eval_Jo_deg(data.Omega_Hbar_E[ik],degen)+s
 
 
     C=data.delHH_dE_BB_K[ik]
@@ -304,7 +303,7 @@ def calcImfgh_K(data,degen,ik):
 
 def calcImf(data,degen_bands=None):
     AA=data.Omega_Hbar_diag
-    BB=data.delHH_dE_AA_delHH_dE_SQ_K
+    BB=data.D_A_H+data.D_H_sq
     if degen_bands is None:
         degen_bands=[(b,b+1) for b in range(data.nbands)]
     return np.array([eval_Jo_deg(A,degen_bands)-2*eval_Juo_deg(B,degen_bands)  for A,B in zip (AA,BB) ] )
@@ -343,18 +342,6 @@ def calcImfgh(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True
     UnoccOcc_plus=unocc_new_selk[:,:,None]*delocc[:,None,:]
     UnoccOcc_minus=delocc[:,:,None]*occ_old_selk[:,None,:]
 
-#    UnoccUnoccOcc_new=unocc_new_selk[:,:,None,None]*unocc_new_selk[:,None,:,None]*occ_new_selk[:,None,None,:]
-#    UnoccUnoccOcc_old=unocc_old_selk[:,:,None,None]*unocc_old_selk[:,None,:,None]*occ_old_selk[:,None,None,:]
-
-#    UnoccOccOcc_new=unocc_new_selk[:,:,None,None]*  occ_new_selk[:,None,:,None]*occ_new_selk[:,None,None,:]
-#    UnoccOccOcc_old=unocc_old_selk[:,:,None,None]*  occ_old_selk[:,None,:,None]*occ_old_selk[:,None,None,:]
-    
-#    UnoccUnoccOcc_plus =UnoccUnoccOcc_new*np.logical_not(UnoccUnoccOcc_old)
-#    UnoccUnoccOcc_minus=UnoccUnoccOcc_old*np.logical_not(UnoccUnoccOcc_new)
-
-#    UnoccOccOcc_plus =UnoccOccOcc_new*np.logical_not(UnoccOccOcc_old)
-#    UnoccOccOcc_minus=UnoccOccOcc_old*np.logical_not(UnoccOccOcc_new)
-
     OccOcc_new=occ_new_selk[:,:,None]*occ_new_selk[:,None,:]
     OccOcc_old=occ_old_selk[:,:,None]*occ_old_selk[:,None,:]
     OccOcc_plus = OccOcc_new * np.logical_not(OccOcc_old)
@@ -363,16 +350,16 @@ def calcImfgh(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True
         imfgh[0,0]= eval_J0(data.Omega_Hbar_diag[selectK], delocc)
         s=-eval_J12(data.HHAAAAUU_K[selectK],OccOcc_plus)
         imfgh[1,0]= eval_J0(data.Morb_Hbar_diag[selectK], delocc)-s
-        imfgh[2,0]= eval_J0(data.HHOOmegaUU_K[selectK] , delocc)+s
+        imfgh[2,0]= eval_J0(data.Omega_Hbar_E[selectK] , delocc)+s
     if evalJ1:
-        B=data.delHH_dE_AA_K[selectK]
+        B=data.D_A_H[selectK]
         C=data.delHH_dE_BB_K[selectK]
         D=data.delHH_dE_HH_AA_K[selectK]
         imfgh[0,1]=eval_J12(B,UnoccOcc_plus)-eval_J12(B,UnoccOcc_minus)
         imfgh[1,1]=eval_J12(C,UnoccOcc_plus)-eval_J12(C,UnoccOcc_minus)
         imfgh[2,1]=eval_J12(D,UnoccOcc_plus)-eval_J12(D,UnoccOcc_minus)
     if evalJ2:
-        B=data.delHH_dE_SQ_K[selectK]
+        B=data.D_H_sq[selectK]
         C,D=data.delHH_dE_SQ_HH_K
         C=C[selectK]
         D=D[selectK]

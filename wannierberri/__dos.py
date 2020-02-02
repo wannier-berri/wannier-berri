@@ -1,27 +1,16 @@
-#------------------------------------------------------------#
-# This file is distributed as part of the Wannier19 code     #
+#                                                            #
+# This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the Wannier19      #
+# file `LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
 #                                                            #
-# this file initially was  an adapted translation of         #
-# the corresponding Fortran90 code from  Wannier 90 project  #
+# The WannierBerri code is hosted on GitHub:                 #
+# https://github.com/stepan-tsirkin/wannier-berri            #
+#                     written by                             #
+#           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-# with significant modifications for better performance      #
-#   it is now a lot different                                #
-#                                                            #
-# The Wannier19 code is hosted on GitHub:                    #
-# https://github.com/stepan-tsirkin/wannier19                #
-#                                                            #
-# The webpage of the Wannier90 code is www.wannier.org       #
-# The Wannier90 code is hosted on GitHub:                    #
-# https://github.com/wannier-developers/wannier90            #
-#------------------------------------------------------------#
-#                                                            #
-#                   written  by                              #
-#           Stepan Tsirkin, University ofZurich              #
-#                                                            #
-#------------------------------------------------------------#
+#------------------------------------------------------------
+
 
 import numpy as np
 from scipy import constants as constants

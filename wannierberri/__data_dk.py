@@ -1,13 +1,13 @@
-#
-# This file is distributed as part of the Wannier19 code     #
+#                                                            #
+# This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the Wannier19      #
+# file `LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
 #                                                            #
-# The Wannier19 code is hosted on GitHub:                    #
-# https://github.com/stepan-tsirkin/wannier19                #
+# The WannierBerri code is hosted on GitHub:                 #
+# https://github.com/stepan-tsirkin/wannier-berri            #
 #                     written by                             #
-#           Stepan Tsirkin, University ofZurich              #
+#           Stepan Tsirkin, University of Zurich             #
 #                                                            #
 #------------------------------------------------------------
 
@@ -89,7 +89,6 @@ class Data_dk(System):
 
 
 #    defining sets of degenerate states.  
-# all states below Emin are considered "degenerate" - needed for fermi-sea integral of Berry curvature only (AHC)
 # all states above Emax are neglected 
     def set_degen(self,degen_thresh=1e-10,Emin=-np.Inf,Emax=np.Inf):
         try: 
@@ -163,12 +162,9 @@ class Data_dk(System):
                      raise RuntimeError("for ik={} e={} ({}-fold) the Morb is non-Hermitian:{} \n{}\n".format(ik,e,d[1]-d[0],np.linalg.norm( m-m.transpose((1,0,2)).conj() ),m)) 
         return Morb
         
-        
-
     @lazy_property.LazyProperty
     def HH_K(self):
         return fourier_R_to_k(self.HH_R,self.iRvec,self.NKFFT,hermitian=True)
-
 
     @lazy_property.LazyProperty
     def E_K(self):
@@ -179,18 +175,10 @@ class Data_dk(System):
         print_my_name_end()
         return E_K
 
-
     @lazy_property.LazyProperty
     def UU_K(self):
         self.E_K
         return self._UU_K
-
-
-#    @lazy_property.LazyProperty
-#    def HHUU_K(self):
-#        return np.array([np.diag(E) for E in self.E_K]) 
-#        return self._rotate(self.HH_K)
-
 
     @lazy_property.LazyProperty
     def delHH_K(self):
@@ -198,7 +186,6 @@ class Data_dk(System):
         self.E_K
         delHH_R=1j*self.HH_R[:,:,:,None]*self.cRvec[None,None,:,:]
         return fourier_R_to_k(delHH_R,self.iRvec,self.NKFFT,hermitian=True)
-
 
     @lazy_property.LazyProperty
     def del2HHUU_K(self):
@@ -267,11 +254,9 @@ class Data_dk(System):
 
 
     @lazy_property.LazyProperty
-    def delHH_dE_SQ_K(self):
+    def D_H_sq(self):
          print_my_name_start()
          return  (-self.D_H[:,:,:,beta_A]*self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))).imag
-#         return  (self.delHH_dE_K[:,:,:,beta_A]
-#                         *self.delHH_dE_K[:,:,:,alpha_A].transpose((0,2,1,3))).imag
 
     
     @lazy_property.LazyProperty
@@ -310,10 +295,8 @@ class Data_dk(System):
         return self.B_Hbar-self.A_Hbar[:,:,:,:]*self.E_K[:,None,:,None]
 
 
-
-
     @lazy_property.LazyProperty
-    def HHOOmegaUU_K(self):
+    def Omega_Hbar_E(self):
          print_my_name_start()
          return np.einsum("km,kmma->kma",self.E_K,self.Omega_Hbar).real
 
@@ -325,49 +308,19 @@ class Data_dk(System):
 
     @lazy_property.LazyProperty
     def HHAAAAUU_K(self):
-#        print ("shapes:",self.HHUU_K.shape,self.AAUU_K[:,:,:,alpha_A].shape,self.AAUU_K[:,:,:,beta_A].shape)
          print_my_name_start()
-         return np.einsum("km,kmna,knma->knma",self.E_K,self.A_Hbar[:,:,:,alpha_A],self.A_Hbar[:,:,:,beta_A]).imag
+         return np.einsum("kn,knma,kmna->kmna",self.E_K,self.A_Hbar[:,:,:,alpha_A],self.A_Hbar[:,:,:,beta_A]).imag
 
 
     @property
     def BBUU_K(self):
         return self.B_Hbar
 
-
-#        return np.einsum("kml,kmna,knp->klpa",self.UUC_K,_BB_K,self.UU_K)
-
-
-
-
-
-
-#    @lazy_property.LazyProperty
-#    def delHH_dE_AA_K(self):
-#         return ( (self.delHH_dE_K[:,:,:,alpha_A]*self.AAUU_K.transpose((0,2,1,3))[:,:,:,beta_A]).imag+
-#               (self.delHH_dE_K.transpose((0,2,1,3))[:,:,:,beta_A]*self.AAUU_K[:,:,:,alpha_A]).imag  )
-
-
     @lazy_property.LazyProperty
-    def delHH_dE_AA_K(self):
+    def D_A_H(self):
          print_my_name_start()
          return ( (self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))*self.A_Hbar[:,:,:,beta_A]).real+
                (self.D_H[:,:,:,beta_A]*self.A_Hbar[:,:,:,alpha_A].transpose((0,2,1,3))).real  )
-#         return ( (self.delHH_dE_K[:,:,:,alpha_A].transpose((0,2,1,3))*self.A_Hbar[:,:,:,beta_A]).imag+
-#               (self.delHH_dE_K[:,:,:,beta_A]*self.A_Hbar[:,:,:,alpha_A].transpose((0,2,1,3))).imag  )
-
-
-    @lazy_property.LazyProperty
-    def delHH_dE_AA_delHH_dE_SQ_K(self):
-         print_my_name_start()
-         return ( (self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))*self.A_Hbar[:,:,:,beta_A]).real+
-               (self.D_H[:,:,:,beta_A]*self.A_Hbar[:,:,:,alpha_A].transpose((0,2,1,3))).real  -
-                 (self.D_H[:,:,:,beta_A] *self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))).imag  )
-#         return ( (self.delHH_dE_K[:,:,:,alpha_A].transpose((0,2,1,3))*self.A_Hbar[:,:,:,beta_A]).imag+
-#               (self.delHH_dE_K[:,:,:,beta_A]*self.A_Hbar[:,:,:,alpha_A].transpose((0,2,1,3))).imag  +
-#                 (self.delHH_dE_K[:,:,:,beta_A]
-#                         *self.delHH_dE_K[:,:,:,alpha_A].transpose((0,2,1,3))).imag  )
-
 
 
     @lazy_property.LazyProperty
@@ -376,18 +329,10 @@ class Data_dk(System):
          tmp=self.D_H.transpose((0,2,1,3))
          return ( (tmp[:,:,:,alpha_A] * self.BBUU_K[:,:,:,beta_A ]).real-
                   (tmp[:,:,:,beta_A ] * self.BBUU_K[:,:,:,alpha_A]).real  )
-#         tmp=self.delHH_dE_K.transpose((0,2,1,3))
-#         return ( (tmp[:,:,:,alpha_A] * self.BBUU_K[:,:,:,beta_A ]).imag-
-#                  (tmp[:,:,:,beta_A ] * self.BBUU_K[:,:,:,alpha_A]).imag  )
-
-#         return ( (self.delHH_dE_K[:,:,:,alpha_A]*self.BBUU_K.transpose((0,2,1,3))[:,:,:,beta_A]).imag-
-#               (self.delHH_dE_K.transpose((0,2,1,3))[:,:,:,beta_A]*self.BBUU_K[:,:,:,alpha_A]).imag  )
 
     @lazy_property.LazyProperty
     def delHH_dE_HH_AA_K(self):
          print_my_name_start()
-#         return ( np.einsum(  "knl,klma,kmna->kmna",self.HHUU_K,self.AAUU_K[:,:,:,alpha_A],self.delHH_dE_K[:,:,:,beta_A ]).imag+
-#                    np.einsum("kln,kmla,knma->kmna",self.HHUU_K,self.AAUU_K[:,:,:,beta_A ],self.delHH_dE_K[:,:,:,alpha_A]).imag )
          return np.array([
                   np.einsum("n,nma,mna->mna",ee,aa[:,:,alpha_A],dh[:,:,beta_A ]).real+
                   np.einsum("n,mna,nma->mna",ee,aa[:,:,beta_A ],dh[:,:,alpha_A]).real 
@@ -398,38 +343,7 @@ class Data_dk(System):
          print_my_name_start()
          X=-np.einsum("km,knma,kmna->kmna",self.E_K,self.D_H[:,:,:,alpha_A],self.D_H[:,:,:,beta_A ]).imag
          return (   X,-X.transpose( (0,2,1,3) ) )    #-np.einsum("km,knma,kmna->kmna",self.E_K,self.D_H[:,:,:,alpha_A],self.D_H[:,:,:,beta_A ]).imag ,
-#                  -np.einsum("km,kmna,knma->knma",self.E_K,self.D_H[:,:,:,alpha_A],self.D_H[:,:,:,beta_A ]).imag ) 
 
-#         return ( -np.einsum("km,knma,kmna->kmna",self.E_K,self.D_H[:,:,:,alpha_A],self.D_H[:,:,:,beta_A ]).imag ,
-#                  -np.einsum("km,kmna,knma->knma",self.E_K,self.D_H[:,:,:,alpha_A],self.D_H[:,:,:,beta_A ]).imag ) 
-
-#         return ( np.einsum("kml,knma,klna->klmna",self.HHUU_K,self.delHH_dE_K[:,:,:,alpha_A],self.delHH_dE_K[:,:,:,beta_A ]).imag ,
-#                  np.einsum("knm,kmla,klna->klmna",self.HHUU_K,self.delHH_dE_K[:,:,:,alpha_A],self.delHH_dE_K[:,:,:,beta_A ]).imag ) 
-
-
-
-
-
-### TODO: old names - to be wiped out from other routines
-#    @property
-#    def OOmegaUU_K(self):
-#        return self.Omega_Hbar
-
-#    @property
-#    def OOmegaUU_K_rediag(self):
-#        return self.Omega_Hbar_diag
-         
-#    @property
-#    def AAUU_K(self):
-#        return self.A_Hbar
-
-#    @lazy_property.LazyProperty
-#    def delHH_dE_K(self):
-#            return 1j*self.D_H
-
-#    @property
-#    def delHHUU_K(self):
-#        return self.V_H
 
     @lazy_property.LazyProperty
     def SSUU_K(self):
@@ -440,7 +354,6 @@ class Data_dk(System):
     def FF_K_rediag(self):
         print_my_name_start()
         _FF_K=fourier_R_to_k( self.FF_R,self.iRvec,self.NKFFT)
-#        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
         return np.einsum("kmm->km",_FF_K).imag
 
     @lazy_property.LazyProperty
@@ -448,36 +361,5 @@ class Data_dk(System):
         print_my_name_start()
         _SS_K=fourier_R_to_k( self.SS_R,self.iRvec,self.NKFFT)
         _SS_K=self._rotate_vec( _SS_K )
-#        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
         return np.einsum("kmma->kma",_SS_K).real
 
-
-unused="""
-
-#    @lazy_property.LazyProperty
-#    def UUU_K(self):
-#        return self.UU_K[:,:,None,:]*self.UUC_K[:,None,:,:]
-
-
-    def get_OOmega_K(self):
-        try:
-            return self._OOmega_K
-        except AttributeError:
-            print "running get_OOmega_K.."
-            self._OOmega_K=    -1j* fourier_R_to_k( 
-                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] - 
-                        self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A]   , self.iRvec, self.NKFFT )
-             
-            return self._OOmega_K
-
-
-    def get_AA_K(self):
-        try:
-            return self._AA_K
-        except AttributeError:
-            print "running get_AA_K.."
-            self._AA_K=fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT)
-            return self._AA_K
-
-
-"""
