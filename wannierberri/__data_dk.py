@@ -188,7 +188,8 @@ class Data_dk(System):
 
     @lazy_property.LazyProperty
     def HHUU_K(self):
-        return self._rotate(self.HH_K)
+        return np.array([np.diag(E) for E in self.E_K]) 
+#        return self._rotate(self.HH_K)
 
 
     @lazy_property.LazyProperty
