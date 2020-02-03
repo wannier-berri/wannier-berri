@@ -100,7 +100,7 @@ def calcAHC(data,Efermi=None,occ_old=None):
 #    print ("evaluating J0")
     AHC=eval_J0(data.Omega_Hbar_diag[selectK], delocc)
 #    print ("evaluating B")
-    B=(data.D_A_H+data.D_H_sq)[selectK]
+    B=(data.D_A+data.D_H_sq)[selectK]
 #    print ("evaluating J12")
     AHC+=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
 #    print ("evaluating J12-done")
@@ -200,15 +200,15 @@ def eval_Juo_deg(B,degen):
 def eval_Joo_deg(B,degen):
     return np.array([B[ib1:ib2,ib1:ib2].sum(axis=(0,1))  for ib1,ib2 in degen])
 
-def eval_Juuo_deg(B,degen):
-    return np.array([   sum(C.sum(axis=(0,1,2)) 
-                          for C in  (B[:ib1,:ib1,ib1:ib2],B[:ib1,ib2:,ib1:ib2],B[ib2:,:ib1,ib1:ib2],B[ib2:,ib2:,ib1:ib2]) )  
-                                      for ib1,ib2 in degen])
+#def eval_Juuo_deg(B,degen):
+#    return np.array([   sum(C.sum(axis=(0,1,2)) 
+#                          for C in  (B[:ib1,:ib1,ib1:ib2],B[:ib1,ib2:,ib1:ib2],B[ib2:,:ib1,ib1:ib2],B[ib2:,ib2:,ib1:ib2]) )  
+#                                      for ib1,ib2 in degen])
 
-def eval_Juoo_deg(B,degen):
-    return np.array([   sum(C.sum(axis=(0,1,2)) 
-                          for C in ( B[:ib1,ib1:ib2,ib1:ib2],B[ib2:,ib1:ib2,ib1:ib2])  )  
-                                      for ib1,ib2 in degen])
+#def eval_Juoo_deg(B,degen):
+#    return np.array([   sum(C.sum(axis=(0,1,2)) 
+#                          for C in ( B[:ib1,ib1:ib2,ib1:ib2],B[ib2:,ib1:ib2,ib1:ib2])  )  
+#                                      for ib1,ib2 in degen])
 
 
 
@@ -221,20 +221,20 @@ def eval_Juo(B):
 def eval_Joo(B):
     return np.array([B[i,i] for i in range(B.shape[0])])
 
-def eval_Juuo(B):
-    return np.array([   sum(C.sum(axis=(0,1)) 
-                          for C in  (B[:ib,:ib,ib],B[:ib,ib+1:,ib],B[ib+1:,:ib,ib],B[ib+1:,ib+1:,ib]) )  
-                                      for ib in range(B.shape[0])])
+#def eval_Juuo(B):
+#    return np.array([   sum(C.sum(axis=(0,1)) 
+#                          for C in  (B[:ib,:ib,ib],B[:ib,ib+1:,ib],B[ib+1:,:ib,ib],B[ib+1:,ib+1:,ib]) )  
+#                                      for ib in range(B.shape[0])])
 
-def eval_Juoo_deg(B,degen):
-    return np.array([   sum(C.sum(axis=(0)) 
-                          for C in ( B[:ib,ib,ib],B[ib+1:,ib,ib])  )  
-                                      for ib in range(B.shape[0])])
+#def eval_Juoo_deg(B,degen):
+#    return np.array([   sum(C.sum(axis=(0)) 
+#                          for C in ( B[:ib,ib,ib],B[ib+1:,ib,ib])  )  
+#                                      for ib in range(B.shape[0])])
 
 
 def calcImf_band(data):
     AA=data.Omega_Hbar_rediag
-    BB=data.D_A_H+data.D_H_sq
+    BB=data.D_A+data.D_H_sq
     return np.array([eval_Jo(A)-2*eval_Juo(B)  for A,B in zip (AA,BB) ] )
 
 
@@ -247,16 +247,16 @@ def calcImgh_band_kn(data):
 #returns g-h
 def calcImgh_band(data):
     
-    AA=data.HHAAAAUU_K
+    AA=data.A_E_A
     BB=data.Morb_Hbar_diag-data.OmegaHbar
     imgh=np.array([eval_Jo(B)-2*eval_Joo(A)  for A,B in zip (AA,BB) ] )
     
-    AA=data.delHH_dE_BB_K-data.delHH_dE_HH_AA_K
+    AA=data.D_B-data.D_E_A
     imgh+=-2*np.array([eval_Juo(A) for A in AA])
 
-    C,D=data.delHH_dE_SQ_HH_K
+    C,D=data.D_E_D
     AA=C-D
-    imgh+=-2*np.array([eval_Juuo(A) for A in AA])
+    imgh+=-2*np.array([eval_Juo(A) for A in AA])
     return imgh
 
 
@@ -265,37 +265,40 @@ def calcImgh_band(data):
 
 def calcImg_band(data):
     
-    AA=data.HHAAAAUU_K
+    AA=data.A_E_A
     BB=data.Morb_Hbar_diag-data.Omega_Hbar
     imgh=np.array([eval_Jo(B)-2*eval_Joo(A)  for A,B in zip (AA,BB) ] )
     
-    AA=data.delHH_dE_BB_K-data.delHH_dE_HH_AA_K
+    AA=data.D_B-data.D_E_A
     imgh+=-2*np.array([eval_Juo(A) for A in AA])
 
-    C,D=data.delHH_dE_SQ_HH_K
+    C,D=data.D_E_D
     AA=C-D
-    imgh+=-2*np.array([eval_Juuo(A) for A in AA])
+    imgh+=-2*np.array([eval_Juo(A) for A in AA])
     return imgh
 
 
 
-def calcImfgh_K(data,degen,ik):
-    
+def calcImfgh_K(data,degen,ik,J=3):
+     
+    imf=np.zeros( (data.NKFFT_tot,data.num_wann,3))
+
+
     imf= calcImf_K(data,degen,ik)
 
-    s=2*eval_Joo_deg(data.HHAAAAUU_K[ik],degen)   
+    s=2*eval_Joo_deg(data.A_E_A[ik],degen)   
     img=eval_Jo_deg(data.Morb_Hbar_diag[ik],degen)-s
     imh=eval_Jo_deg(data.Omega_Hbar_E[ik],degen)+s
 
 
-    C=data.delHH_dE_BB_K[ik]
-    D=data.delHH_dE_HH_AA_K[ik]
+    C=data.D_B[ik]
+    D=data.D_E_A[ik]
     img+=-2*eval_Juo_deg(C,degen)
     imh+=-2*eval_Juo_deg(D,degen)
 
-    C,D=data.delHH_dE_SQ_HH_K
-    img+=-2*eval_Juuo_deg(C[ik],degen) 
-    imh+=-2*eval_Juoo_deg(D[ik],degen)
+    C,D=data.D_E_D
+    img+=-2*eval_Juo_deg(C[ik],degen) 
+    imh+=-2*eval_Juo_deg(D[ik],degen)
 
     return imf,img,imh
 
@@ -303,7 +306,7 @@ def calcImfgh_K(data,degen,ik):
 
 def calcImf(data,degen_bands=None):
     AA=data.Omega_Hbar_diag
-    BB=data.D_A_H+data.D_H_sq
+    BB=data.D_A+data.D_H_sq
     if degen_bands is None:
         degen_bands=[(b,b+1) for b in range(data.nbands)]
     return np.array([eval_Jo_deg(A,degen_bands)-2*eval_Juo_deg(B,degen_bands)  for A,B in zip (AA,BB) ] )
@@ -311,7 +314,7 @@ def calcImf(data,degen_bands=None):
 
 def calcImf_K(data,degen_bands,ik):
     A=data.Omega_Hbar_diag[ik]
-    B=data.delHH_dE_AA_delHH_dE_SQ_K[ik]
+    B=(data.D_A+data.D_H_sq)[ik]
     return eval_Jo_deg(A,degen_bands)-2*eval_Juo_deg(B,degen_bands) 
 
 
@@ -348,19 +351,19 @@ def calcImfgh(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True
     
     if evalJ0:
         imfgh[0,0]= eval_J0(data.Omega_Hbar_diag[selectK], delocc)
-        s=-eval_J12(data.HHAAAAUU_K[selectK],OccOcc_plus)
+        s=-eval_J12(data.A_E_A[selectK],OccOcc_plus)
         imfgh[1,0]= eval_J0(data.Morb_Hbar_diag[selectK], delocc)-s
         imfgh[2,0]= eval_J0(data.Omega_Hbar_E[selectK] , delocc)+s
     if evalJ1:
-        B=data.D_A_H[selectK]
-        C=data.delHH_dE_BB_K[selectK]
-        D=data.delHH_dE_HH_AA_K[selectK]
+        B=data.D_A[selectK]
+        C=data.D_B[selectK]
+        D=data.D_E_A[selectK]
         imfgh[0,1]=eval_J12(B,UnoccOcc_plus)-eval_J12(B,UnoccOcc_minus)
         imfgh[1,1]=eval_J12(C,UnoccOcc_plus)-eval_J12(C,UnoccOcc_minus)
         imfgh[2,1]=eval_J12(D,UnoccOcc_plus)-eval_J12(D,UnoccOcc_minus)
     if evalJ2:
         B=data.D_H_sq[selectK]
-        C,D=data.delHH_dE_SQ_HH_K
+        C,D=data.D_E_D
         C=C[selectK]
         D=D[selectK]
         imfgh[0,2]=eval_J12(B,UnoccOcc_plus)-eval_J12(B,UnoccOcc_minus)
