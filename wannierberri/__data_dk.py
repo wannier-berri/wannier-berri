@@ -152,15 +152,34 @@ class Data_dk(System):
                     for X,Y in [
                     (-D[ib1:ib2,ibl1:ibl2,b],-B[ibl1:ibl2,ib1:ib2,c]),
                     (B.transpose((1,0,2)).conj()[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
-                        (-1j*0*V[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])]
+                        (-1j*V[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])]
                            )
                         for (ib1,ib2),e in zip(deg,E)]
                      for M,O,A,B,D,V,deg,E,EK in zip( self.Morb_Hbar,self.Omega_Hbar,self.A_Hbar,self.B_Hbarbar,self.D_H,self.V_H,self.degen,self.E_K_degen,self.E_K) ]
-        for ik,M in enumerate(Morb):
-            for m,e,d in zip(M,self.E_K_degen[ik],self.degen[ik]):
-                if np.linalg.norm( m-m.transpose((1,0,2)).conj() ) > 1e-10: 
-                     raise RuntimeError("for ik={} e={} ({}-fold) the Morb is non-Hermitian:{} \n{}\n".format(ik,e,d[1]-d[0],np.linalg.norm( m-m.transpose((1,0,2)).conj() ),m)) 
+#        for ik,M in enumerate(Morb):
+#            for m,e,d in zip(M,self.E_K_degen[ik],self.degen[ik]):
+#                if np.linalg.norm( m-m.transpose((1,0,2)).conj() ) > 1e-10: 
+#                     raise RuntimeError("for ik={} e={} ({}-fold) the Morb is non-Hermitian:{} \n{}\n".format(ik,e,d[1]-d[0],np.linalg.norm( m-m.transpose((1,0,2)).conj() ),m)) 
         return Morb
+
+
+    @lazy_property.LazyProperty
+    def Morb_nonabelian_g(self):
+        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]        
+        Morb=[ [ M[ib1:ib2,ib1:ib2,:]
+              -1j*e*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,c]) for s,b,c in sbc)
+               +sum(s*np.einsum("mla,lna->mna",X,Y) 
+                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
+                     for s,b,c in sbc
+                    for X,Y in [
+                    (-D[ib1:ib2,ibl1:ibl2,b],-B[ibl1:ibl2,ib1:ib2,c]),
+                    (B.transpose((1,0,2)).conj()[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
+                        (-1j*D[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])]
+                           )
+                        for (ib1,ib2),e in zip(deg,E)]
+                     for M,A,B,D,V,deg,E,EK in zip( self.Morb_Hbar,self.A_Hbar,self.B_Hbar,self.D_H,self.V_H,self.degen,self.E_K_degen,self.E_K) ]
+        return Morb
+
         
     @lazy_property.LazyProperty
     def HH_K(self):
@@ -307,31 +326,28 @@ class Data_dk(System):
 
 
     @lazy_property.LazyProperty
-    def HHAAAAUU_K(self):
+    def A_E_A(self):
          print_my_name_start()
          return np.einsum("kn,knma,kmna->kmna",self.E_K,self.A_Hbar[:,:,:,alpha_A],self.A_Hbar[:,:,:,beta_A]).imag
 
 
-    @property
-    def BBUU_K(self):
-        return self.B_Hbar
 
     @lazy_property.LazyProperty
-    def D_A_H(self):
+    def D_A(self):
          print_my_name_start()
          return ( (self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))*self.A_Hbar[:,:,:,beta_A]).real+
                (self.D_H[:,:,:,beta_A]*self.A_Hbar[:,:,:,alpha_A].transpose((0,2,1,3))).real  )
 
 
     @lazy_property.LazyProperty
-    def delHH_dE_BB_K(self):
+    def D_B(self):
          print_my_name_start()
          tmp=self.D_H.transpose((0,2,1,3))
-         return ( (tmp[:,:,:,alpha_A] * self.BBUU_K[:,:,:,beta_A ]).real-
-                  (tmp[:,:,:,beta_A ] * self.BBUU_K[:,:,:,alpha_A]).real  )
+         return ( (tmp[:,:,:,alpha_A] * self.B_Hbar[:,:,:,beta_A ]).real-
+                  (tmp[:,:,:,beta_A ] * self.B_Hbar[:,:,:,alpha_A]).real  )
 
     @lazy_property.LazyProperty
-    def delHH_dE_HH_AA_K(self):
+    def D_E_A(self):
          print_my_name_start()
          return np.array([
                   np.einsum("n,nma,mna->mna",ee,aa[:,:,alpha_A],dh[:,:,beta_A ]).real+
@@ -339,7 +355,7 @@ class Data_dk(System):
                     for ee,aa,dh in zip(self.E_K,self.A_Hbar,self.D_H)])
          
     @lazy_property.LazyProperty
-    def delHH_dE_SQ_HH_K(self):
+    def D_E_D(self):
          print_my_name_start()
          X=-np.einsum("km,knma,kmna->kmna",self.E_K,self.D_H[:,:,:,alpha_A],self.D_H[:,:,:,beta_A ]).imag
          return (   X,-X.transpose( (0,2,1,3) ) )    #-np.einsum("km,knma,kmna->kmna",self.E_K,self.D_H[:,:,:,alpha_A],self.D_H[:,:,:,beta_A ]).imag ,

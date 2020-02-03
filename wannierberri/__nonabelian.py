@@ -39,10 +39,13 @@ def __curv(data):
 def __morb(data):
     return data.Morb_nonabelian
 
+def __morb(data):
+    return data.Morb_nonabelian_g
+
 __dimensions=defaultdict(lambda : 1)
 
 #quantities that should be odd under TRS and inversion
-TRodd  = set(['spin','morb','vel','curv','curvE'])
+TRodd  = set(['spin','morb','vel','curv','curvE','morbg'])
 INVodd = set(['vel'])
 
 
@@ -113,7 +116,7 @@ def Morb_f(data,Efermi,degen_thresh):
 
 
 def Morb_LC(data,Efermi,degen_thresh):
-    r1=nonabelian_general(data,Efermi,['morb'],degen_thresh=degen_thresh,mode='fermi-sea')
+    r1=nonabelian_general(data,Efermi,['morbg'],degen_thresh=degen_thresh,mode='fermi-sea')
     r2=nonabelian_general(data,Efermi,['curvE'],degen_thresh=degen_thresh,mode='fermi-sea')
     r3=nonabelian_general(data,Efermi,['curv'],degen_thresh=degen_thresh,mode='fermi-sea')
     r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]

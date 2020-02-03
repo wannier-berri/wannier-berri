@@ -30,15 +30,23 @@ def calcAHC(data,Efermi,degen_thresh=None):
     return result.EnergyResultAxialV(Efermi,AHC)
 
 
-def calcMorb(data,Efermi,degen_thresh=None):
-    def function(Morb,Efermi,data,degen,E_K_av,ik):
+def calcMorb(data,Efermi,degen_thresh=None,mf=-2,mg=1,mh=1,J=3):
+    E_K=data.E_K
+    degen_bands,E_K_av=__get_degen_bands(E_K,degen_thresh)
+    Morb=np.zeros( (len(Efermi),3) )
+    for ik in range(data.NKFFT_tot):
         imf,img,imh=calcImfgh_K(data,degen,ik )
         for e,f,g,h in zip(E_K_av,imf,img,imh):
             sel= Efermi>e
-            Morb[sel]+=(g+h)
-            Morb[sel]+=-2*f[None,:]*Efermi[sel,None]
-    return __calcSmth_band(data,Efermi,(3,) ,function,   degen_thresh=degen_thresh)*fac_morb/(data.NKFFT_tot)
+            Morb[sel]+=(g*mg+h*mh)
+            Morb[sel]+=mf*f[None,:]*Efermi[sel,None]
+    Morb*=fac_morb/(data.NKFFT_tot)
+    return result.EnergyResultAxialV(Efermi,Morb)
+#    return __calcSmth_band(data,Efermi,(3,) ,function,   degen_thresh=degen_thresh)*fac_morb/(data.NKFFT_tot)
 
+#def calcMorb_LC(data,Efermi,degen_thresh=None):
+   
+#def calcMorb_IC(data,Efermi,degen_thresh=None):
 
 
 ##  a general procedure to evaluate smth band-by-band in the Fermi sea

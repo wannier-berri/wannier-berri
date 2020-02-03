@@ -46,6 +46,8 @@ calculators_trans={
 #         'Morb_intr'       : berry.calcMorb_intr,
          'ahc'        : berry.calcAHC ,
          'ahc_band'   : gyrotropic.calcAHC ,
+#         'Morb_band_IC'   : gyrotropic.calcMorb_IC ,
+#         'Morb_band_LC'   : gyrotropic.calcMorb_LC ,
          'dos'        : dos.calc_DOS ,
          'cumdos'        : dos.calc_cum_DOS ,
          'nonabelian_spin' : nonabelian.spin , 
