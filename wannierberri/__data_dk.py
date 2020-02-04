@@ -134,16 +134,17 @@ class Data_dk(System):
                +sum(s*np.einsum("mla,lna->mna",X,Y) 
                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
                      for s,b,c in sbc
-                    for X,Y in [(-D[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c]),(A[ib1:ib2,ibl1:ibl2,c],D[ibl1:ibl2,ib1:ib2,b]),(-1j*D[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])]
+                    for X,Y in [(-D[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c]),(-A[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
+                                       (-1j*D[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])]
                            )
                         for ib1,ib2 in deg]
-                     for O,A,D,deg in zip( self.Omega_Hbar,self.A_Hbar,self.D_H,self.degen) ] 
+                     for O,A,D,deg in zip( self.Omega_Hbar,self.A_Hbar,self.D_H,self.degen ) ] 
 
 
 ##  TODO: When it works correctly - think how to optimize it
     @lazy_property.LazyProperty
     def Morb_nonabelian(self):
-        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]        
+        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
         Morb=[ [ M[ib1:ib2,ib1:ib2,:]-e*O[ib1:ib2,ib1:ib2,:]
     #         -1j*e*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,c]) for s,b,c in sbc)
                +sum(s*np.einsum("mla,lna->mna",X,Y) 
@@ -152,7 +153,9 @@ class Data_dk(System):
                     for X,Y in [
                     (-D[ib1:ib2,ibl1:ibl2,b],-B[ibl1:ibl2,ib1:ib2,c]),
                     (B.transpose((1,0,2)).conj()[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
-                        (-1j*V[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])]
+                         (-1j*V[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
+#                        (e*D[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c]),(e*A[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])  
+                              ]
                            )
                         for (ib1,ib2),e in zip(deg,E)]
                      for M,O,A,B,D,V,deg,E,EK in zip( self.Morb_Hbar,self.Omega_Hbar,self.A_Hbar,self.B_Hbarbar,self.D_H,self.V_H,self.degen,self.E_K_degen,self.E_K) ]
@@ -174,11 +177,17 @@ class Data_dk(System):
                     for X,Y in [
                     (-D[ib1:ib2,ibl1:ibl2,b],-B[ibl1:ibl2,ib1:ib2,c]),
                     (B.transpose((1,0,2)).conj()[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
-                        (-1j*D[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])]
+                        (-1j*D[ib1:ib2,ibl1:ibl2,b]*EK[None,ibl1:ibl2,None],D[ibl1:ibl2,ib1:ib2,c])]
                            )
                         for (ib1,ib2),e in zip(deg,E)]
                      for M,A,B,D,V,deg,E,EK in zip( self.Morb_Hbar,self.A_Hbar,self.B_Hbar,self.D_H,self.V_H,self.degen,self.E_K_degen,self.E_K) ]
         return Morb
+
+
+    @lazy_property.LazyProperty
+    def Morb_nonabelian_2(self):
+        return [[m-o*e for m,o,e in zip(M,O,E)]
+            for M,O,E in zip(self.Morb_nonabelian_g,self.Berry_nonabelian,self.E_K_degen)]
 
         
     @lazy_property.LazyProperty
@@ -311,7 +320,7 @@ class Data_dk(System):
     @lazy_property.LazyProperty
     def B_Hbarbar(self):
         print_my_name_start()
-        return self.B_Hbar-self.A_Hbar[:,:,:,:]*self.E_K[:,None,:,None]
+        return self.B_Hbar+self.A_Hbar[:,:,:,:]*self.E_K[:,None,:,None]
 
 
     @lazy_property.LazyProperty

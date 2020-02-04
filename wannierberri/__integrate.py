@@ -57,6 +57,8 @@ calculators_trans={
          'nonabelian_Morb_IC' : nonabelian.Morb_IC , 
          'nonabelian_Morb_LC' : nonabelian.Morb_LC , 
          'nonabelian_Morb2' : nonabelian.Morb2 , 
+         'nonabelian_Morb_loc' : nonabelian.Morb_loc , 
+         'nonabelian_Morb_loc2' : nonabelian.Morb_loc2 , 
 #         'nonabelian_Morb_intr' : nonabelian.Morb_intr , 
          'nonabelian_spinspin' : nonabelian.spinspin , 
          'nonabelian_velvel' : nonabelian.velvel , 
@@ -106,7 +108,11 @@ descriptions['dos']="density of states"
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
 
-def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies={},smootherEf=utility.voidsmoother,smootherOmega=utility.voidsmoother,parameters={}):
+def intProperty(data,quantities=[],Efermi=None,degen_thresh=None,omega=None,smoothers={},energies={},smootherEf=utility.voidsmoother,smootherOmega=utility.voidsmoother,parameters={}):
+
+    if degen_thresh is not None:
+        data.set_degen(degen_thresh=degen_thresh)
+
 
     def _energy(quant):
         if quant in energies:

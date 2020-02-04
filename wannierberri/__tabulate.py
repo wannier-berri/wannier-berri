@@ -49,7 +49,10 @@ descriptions['hall_orb']="orbital contribution to low-field Hall effect"
 
 
 
-def tabXnk(data,quantities=[],ibands=None,parameters={}):
+def tabXnk(data,quantities=[],degen_thresh=None,ibands=None,parameters={}):
+
+    if degen_thresh is not None:
+        data.set_degen(degen_thresh=degen_thresh)
 
     if ibands is None:
         ibands=np.arange(data.nbands)
