@@ -24,7 +24,7 @@ from termcolor import cprint
 
 class System():
 
-    def __init__(self,seedname="wannier90",tb_file=None,getAA=False,getBB=False,getCC=False,getSS=False,getFF=False,use_ws=True):
+    def __init__(self,seedname="wannier90",tb_file=None,getAA=False,getBB=False,getCC=False,getSS=False,getFF=False,use_ws=True,frozen_max=-np.Inf):
         if tb_file is not None:
             self.__from_tb_file(tb_file,getAA=getAA)
             return
@@ -35,6 +35,7 @@ class System():
         self.seedname=seedname
         self.num_wann,nRvec,self.spinors=int(l[0]),int(l[1]),str2bool(l[2])
         self.nRvec0=nRvec
+        self.frozen_max=frozen_max
         self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
         self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
         iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
