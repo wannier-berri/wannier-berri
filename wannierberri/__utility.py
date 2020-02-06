@@ -13,7 +13,7 @@
 
 
 
-__debug = False
+__debug = True
 
 import inspect
 import numpy as np
@@ -142,6 +142,7 @@ def str2bool(v):
 
 
 def fourier_R_to_k(AAA_R,iRvec,NKPT,hermitian=False,antihermitian=False):
+    print_my_name_start()
     #  AAA_R is an array of dimension ( num_wann x num_wann x nRpts X ... ) (any further dimensions allowed)
     if  hermitian and antihermitian :
         raise ValueError("A matrix cannot be bothe Haermitian and antihermitian, unless it is zero")
@@ -168,6 +169,7 @@ def fourier_R_to_k(AAA_R,iRvec,NKPT,hermitian=False,antihermitian=False):
             AAA_K[:,:,:,m]=np.fft.fftn(AAA_K[:,:,:,m])
     AAA_K=AAA_K.reshape( (np.prod(NK),)+shapeA[0:2]+shapeA[3:])
 #    print ("finished fourier")
+    print_my_name_end()
     return AAA_K
 
 
@@ -177,6 +179,7 @@ def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
 #    return fourier_R_to_k(AAA_R,iRvec,NKPT)
     #  AAA_R is an array of dimension ( num_wann x num_wann x nRpts X ... ) (any further dimensions allowed)
     #  AAA_k is assumed Hermitian (in n,m) , so only half of it is calculated
+    print_my_name_start()
     NK=tuple(NKPT)
     nRvec=iRvec.shape[0]
     shapeA=AAA_R.shape
@@ -203,6 +206,7 @@ def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
         result[:,N,M]=AAA_K.conjugate()
         result[:,diag,diag]=result[:,diag,diag].real
 #    print ("finished fourier")
+    print_my_name_end()
     return result
 
 

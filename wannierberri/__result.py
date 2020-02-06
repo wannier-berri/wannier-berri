@@ -38,6 +38,10 @@ class Result():
     def __add__(self,other):
         raise NotImprementedError()
 
+# -
+    def __sub__(self,other):
+        raise NotImprementedError()
+
 # writing to a file
     def write(self,name):
         raise NotImprementedError()
@@ -103,6 +107,8 @@ class EnergyResult(Result):
             raise RuntimeError ("Adding results with different smoothers ={} and {}".format(self.smoother,other.smoother))
         return EnergyResult(self.Energy,self.data+other.data,self.smoother,self.TRodd,self.Iodd,self.rank)
 
+    def __sub__(self,other):
+        return self+(-1)*other
 
 
     def write(self,name):

@@ -76,16 +76,6 @@ calculators_trans={
 additional_parameters=defaultdict(lambda: defaultdict(lambda:None )   )
 additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no description" )   )
 
-additional_parameters            ['ahc_band']['degen_thresh']=0.001
-additional_parameters_description['ahc_band']['degen_thresh']='(eV) threshold to tread bands a degenerate'
-
-for q in calculators_trans:
-   if q.startswith('nonabelian'):
-      additional_parameters            [q]['degen_thresh']=0.001
-      additional_parameters_description[q]['degen_thresh']='(eV) threshold to tread bands a degenerate'
-
-
-
 
 calculators_opt={}
 
@@ -112,6 +102,8 @@ def intProperty(data,quantities=[],Efermi=None,degen_thresh=None,omega=None,smoo
 
     if degen_thresh is not None:
         data.set_degen(degen_thresh=degen_thresh)
+
+   
 
 
     def _energy(quant):

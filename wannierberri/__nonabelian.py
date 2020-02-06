@@ -52,98 +52,97 @@ TRodd  = set(['spin','morb','vel','curv','curvE','morbg','morb2'])
 INVodd = set(['vel'])
 
 
-def spin(data,Efermi,degen_thresh):
-    return nonabelian_general(data,Efermi,['spin'],degen_thresh=degen_thresh)
+def spin(data,Efermi):
+    return nonabelian_general(data,Efermi,['spin'])
 
-def spinvel(data,Efermi,degen_thresh):
-    return nonabelian_general(data,Efermi,['spin','vel'],degen_thresh=degen_thresh)
+def spinvel(data,Efermi):
+    return nonabelian_general(data,Efermi,['spin','vel'])
 
-def curvvel(data,Efermi,degen_thresh):
-    return nonabelian_general(data,Efermi,['curv','vel'],degen_thresh=degen_thresh)
+def curvvel(data,Efermi):
+    return nonabelian_general(data,Efermi,['curv','vel'])
 
-def curvmorb(data,Efermi,degen_thresh):
-    return nonabelian_general(data,Efermi,['curv','morb'],degen_thresh=degen_thresh)
+def curvmorb(data,Efermi):
+    return nonabelian_general(data,Efermi,['curv','morb'])
 
-def curvspin(data,Efermi,degen_thresh):
-    return nonabelian_general(data,Efermi,['curv','spin'],degen_thresh=degen_thresh)
-
-
-def velvel(data,Efermi,degen_thresh):
-    return nonabelian_general(data,Efermi,['vel','vel'],degen_thresh=degen_thresh)
+def curvspin(data,Efermi):
+    return nonabelian_general(data,Efermi,['curv','spin'])
 
 
-def morbvel(data,Efermi,degen_thresh):
-    return nonabelian_general(data,Efermi,['morb','vel'],degen_thresh=degen_thresh)
+def velvel(data,Efermi):
+    return nonabelian_general(data,Efermi,['vel','vel'])
 
 
-def spinspin(data,Efermi,degen_thresh):
-    return nonabelian_general(data,Efermi,['spin','spin'],degen_thresh=degen_thresh)
+def morbvel(data,Efermi):
+    return nonabelian_general(data,Efermi,['morb','vel'])
 
 
-def curv_tot(data,Efermi,degen_thresh):
-    return nonabelian_general(data,Efermi,['curv'],degen_thresh=degen_thresh,mode='fermi-sea')
+def spinspin(data,Efermi):
+    return nonabelian_general(data,Efermi,['spin','spin'])
 
 
-def ahc(data,Efermi,degen_thresh):
-    return nonabelian_general(data,Efermi,['curv'],degen_thresh=degen_thresh,mode='fermi-sea',factor=__berry.fac_ahc)
+def curv_tot(data,Efermi):
+    return nonabelian_general(data,Efermi,['curv'],mode='fermi-sea')
+
+
+def ahc(data,Efermi):
+    return nonabelian_general(data,Efermi,['curv'],mode='fermi-sea',factor=__berry.fac_ahc)
 
 
 
-def Morb_loc(data,Efermi,degen_thresh):
-    return  (  nonabelian_general(data,Efermi,['morb' ],degen_thresh=degen_thresh) 
+def Morb_loc(data,Efermi):
+    return  (  nonabelian_general(data,Efermi,['morb' ],mode='fermi-sea') 
                 *__berry.fac_morb*data.cell_volume)
 
-def Morb_loc2(data,Efermi,degen_thresh):
-    return  (  nonabelian_general(data,Efermi,['morb2' ],degen_thresh=degen_thresh) 
+def Morb_loc2(data,Efermi):
+    return  (  nonabelian_general(data,Efermi,['morb2' ],mode='fermi-sea') 
                 *__berry.fac_morb*data.cell_volume)
 
 
-def Morb(data,Efermi,degen_thresh):
-    r1=nonabelian_general(data,Efermi,['morb' ],degen_thresh=degen_thresh,mode='fermi-sea')
-    r2=nonabelian_general(data,Efermi,['curvE'],degen_thresh=degen_thresh,mode='fermi-sea')
-    r3=nonabelian_general(data,Efermi,['curv' ],degen_thresh=degen_thresh,mode='fermi-sea')
-    r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
-    return (r1+2*(r2+r3))*__berry.fac_morb*data.cell_volume
+def Morb(data,Efermi):
+    r1=nonabelian_general(data,Efermi,['morbg' ],mode='fermi-sea')
+    r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea')
+    r3=nonabelian_general(data,Efermi,['curv' ],mode='fermi-sea')
+    r3.data[:,:]=r3.data[:,:]*Efermi[:,None]
+    return (r1+r2-2*r3)*__berry.fac_morb*data.cell_volume
+
+def Morb2(data,Efermi):
+    r1=nonabelian_general(data,Efermi,['morb' ],mode='fermi-sea')
+    r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea')
+    r3=nonabelian_general(data,Efermi,['curv' ],mode='fermi-sea')
+    r3.data[:,:]=r3.data[:,:]*Efermi[:,None]
+    return (r1+2*r2-2*r3)*__berry.fac_morb*data.cell_volume
 
 
-def Morb_IC(data,Efermi,degen_thresh):
-    r2=nonabelian_general(data,Efermi,['curvE'],degen_thresh=degen_thresh,mode='fermi-sea')
-    r3=nonabelian_general(data,Efermi,['curv' ],degen_thresh=degen_thresh,mode='fermi-sea')
+def Morb_IC(data,Efermi):
+    r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea')
+    r3=nonabelian_general(data,Efermi,['curv' ],mode='fermi-sea')
     print (r3.data)
     r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
     print (r3.data)
     return (r2+r3)*__berry.fac_morb*data.cell_volume
 
-def Morb_h(data,Efermi,degen_thresh):
-    r2=nonabelian_general(data,Efermi,['curvE'],degen_thresh=degen_thresh,mode='fermi-sea')
-#    r3=nonabelian_general(data,Efermi,['curv' ],degen_thresh=degen_thresh,mode='fermi-sea')
+def Morb_h(data,Efermi):
+    r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea')
+#    r3=nonabelian_general(data,Efermi,['curv' ],mode='fermi-sea')
 #    r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
     return r2*__berry.fac_morb*data.cell_volume
 
-def Morb_f(data,Efermi,degen_thresh):
-#    r2=nonabelian_general(data,Efermi,['curvE'],degen_thresh=degen_thresh,mode='fermi-sea')
-    r3=nonabelian_general(data,Efermi,['curv' ],degen_thresh=degen_thresh,mode='fermi-sea')
+def Morb_f(data,Efermi):
+#    r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea')
+    r3=nonabelian_general(data,Efermi,['curv' ],mode='fermi-sea')
     r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
     return r3*__berry.fac_morb*data.cell_volume
 
 
 
-def Morb_LC(data,Efermi,degen_thresh):
-    r1=nonabelian_general(data,Efermi,['morbg'],degen_thresh=degen_thresh,mode='fermi-sea')
-    r2=nonabelian_general(data,Efermi,['curvE'],degen_thresh=degen_thresh,mode='fermi-sea')
-    r3=nonabelian_general(data,Efermi,['curv'],degen_thresh=degen_thresh,mode='fermi-sea')
+def Morb_LC(data,Efermi):
+    r1=nonabelian_general(data,Efermi,['morbg'],mode='fermi-sea')
+#    r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea')
+    r3=nonabelian_general(data,Efermi,['curv'],mode='fermi-sea')
     r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
-    return (r1+r2+r3)*__berry.fac_morb*data.cell_volume
+    return (r1+r3)*__berry.fac_morb*data.cell_volume
 
 
-def Morb2(data,Efermi,degen_thresh):
-    data.set_degen(degen_thresh=degen_thresh)
-    res=np.zeros( (len(Efermi),3),dtype=float)
-    for O,M,E in zip(data.Berry_nonabelian,data.Morb_nonabelian,data.E_K_degen):
-        for m,o,e in zip(M,O,E):
-            for i,Ef in enumerate(Efermi):
-              if e<Ef:
-                res[i]+=np.einsum('nni->i',m+2*(e-Ef)*o).real
              
 
     res*=__berry.fac_morb*data.cell_volume
@@ -152,19 +151,19 @@ def Morb2(data,Efermi,degen_thresh):
     
 
 
-#def Morb_IC(data,Efermi,degen_thresh):
-#    r1=nonabelian_general(data,Efermi,['morb'],degen_thresh=degen_thresh,mode='fermi-sea',factor=__berry.fac_morb*data.cell_volume)
+#def Morb_IC(data,Efermi):
+#    r1=nonabelian_general(data,Efermi,['morb'],mode='fermi-sea',factor=__berry.fac_morb*data.cell_volume)
 #    return r1
 
-def nonabelian_general(data,Efermi,quantities,subscripts=None,degen_thresh=1e-5,mode='fermi-surface',factor=1):
+def nonabelian_general(data,Efermi,quantities,subscripts=None,mode='fermi-surface',factor=1):
     E_K=data.E_K
 
     dE=Efermi[1]-Efermi[0]
-    Emin=Efermi[0]-dE/2
+#    Emin=Efermi[0]-dE/2
     Emax=Efermi[-1]+dE/2
 #    include_lower=(mode=='fermi-sea')
-#    data.set_degen(Emin=Emin,Emax=Emax,degen_thresh=degen_thresh)
-    data.set_degen(degen_thresh=degen_thresh)
+#    data.set_degen(Emin=Emin,Emax=Emax)
+#    data.set_degen(degen_thresh)
 
     variables=vars(sys.modules[__name__])
     M=[variables["__"+Q](data) for Q in quantities]
