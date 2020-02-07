@@ -32,34 +32,20 @@ from . import  __utility   as utility
 calculators_trans={ 
          'spin'       : spin.calcSpinTot,  
          'Morb'       : berry.calcMorb,
-         'Morb_f'       : berry.calcMorb_f,
-         'Morb_h'       : berry.calcMorb_h,
          'Morb_LC'       : berry.calcMorb_LC,
          'Morb_IC'       : berry.calcMorb_IC,
-         'Morb_LC_J0'       : berry.calcMorb_LC_J0,
-         'Morb_LC_J1'       : berry.calcMorb_LC_J1,
-         'Morb_LC_J2'       : berry.calcMorb_LC_J2,
-         'Morb_IC_J0'       : berry.calcMorb_IC_J0,
-         'Morb_IC_J1'       : berry.calcMorb_IC_J1,
-         'Morb_IC_J2'       : berry.calcMorb_IC_J2,
-         'Morb2'       : berry.calcMorb2,
-#         'Morb_intr'       : berry.calcMorb_intr,
+#         'Morb_LC_J0'       : berry.calcMorb_LC_J0,
+#         'Morb_LC_J1'       : berry.calcMorb_LC_J1,
+#         'Morb_LC_J2'       : berry.calcMorb_LC_J2,
+#         'Morb_IC_J0'       : berry.calcMorb_IC_J0,
+#         'Morb_IC_J1'       : berry.calcMorb_IC_J1,
+#         'Morb_IC_J2'       : berry.calcMorb_IC_J2,
          'ahc'        : berry.calcAHC ,
-         'ahc_band'   : gyrotropic.calcAHC ,
-#         'Morb_band_IC'   : gyrotropic.calcMorb_IC ,
-#         'Morb_band_LC'   : gyrotropic.calcMorb_LC ,
          'dos'        : dos.calc_DOS ,
          'cumdos'        : dos.calc_cum_DOS ,
          'nonabelian_spin' : nonabelian.spin , 
+         'nonabelian_ahc'     : nonabelian.ahc , 
          'nonabelian_Morb' : nonabelian.Morb , 
-         'nonabelian_Morb_f' : nonabelian.Morb_f , 
-         'nonabelian_Morb_h' : nonabelian.Morb_h , 
-         'nonabelian_Morb_IC' : nonabelian.Morb_IC , 
-         'nonabelian_Morb_LC' : nonabelian.Morb_LC , 
-         'nonabelian_Morb2' : nonabelian.Morb2 , 
-         'nonabelian_Morb_loc' : nonabelian.Morb_loc , 
-         'nonabelian_Morb_loc2' : nonabelian.Morb_loc2 , 
-#         'nonabelian_Morb_intr' : nonabelian.Morb_intr , 
          'nonabelian_spinspin' : nonabelian.spinspin , 
          'nonabelian_velvel' : nonabelian.velvel , 
          'nonabelian_spinvel' : nonabelian.spinvel , 
@@ -68,7 +54,6 @@ calculators_trans={
          'nonabelian_curvmorb' : nonabelian.curvmorb , 
          'nonabelian_curvspin' : nonabelian.curvspin , 
          'nonabelian_curv_tot' : nonabelian.curv_tot , 
-         'nonabelian_ahc'     : nonabelian.ahc , 
          'nonabelian_velvel' : nonabelian.velvel , 
          }
 
@@ -98,13 +83,9 @@ descriptions['dos']="density of states"
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
 
-def intProperty(data,quantities=[],Efermi=None,degen_thresh=None,omega=None,smoothers={},energies={},smootherEf=utility.voidsmoother,smootherOmega=utility.voidsmoother,parameters={}):
+def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies={},smootherEf=utility.voidsmoother,smootherOmega=utility.voidsmoother,parameters={}):
 
-    if degen_thresh is not None:
-        data.set_degen(degen_thresh=degen_thresh)
-
-   
-
+  
 
     def _energy(quant):
         if quant in energies:

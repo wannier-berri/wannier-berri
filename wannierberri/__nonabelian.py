@@ -39,12 +39,6 @@ def __curv(data):
 def __morb(data):
     return data.Morb_nonabelian
 
-def __morbg(data):
-    return data.Morb_nonabelian_g
-
-def __morb2(data):
-    return data.Morb_nonabelian_2
-
 __dimensions=defaultdict(lambda : 1)
 
 #quantities that should be odd under TRS and inversion
@@ -88,24 +82,7 @@ def ahc(data,Efermi):
     return nonabelian_general(data,Efermi,['curv'],mode='fermi-sea',factor=__berry.fac_ahc)
 
 
-
-def Morb_loc(data,Efermi):
-    return  (  nonabelian_general(data,Efermi,['morb' ],mode='fermi-sea') 
-                *__berry.fac_morb*data.cell_volume)
-
-def Morb_loc2(data,Efermi):
-    return  (  nonabelian_general(data,Efermi,['morb2' ],mode='fermi-sea') 
-                *__berry.fac_morb*data.cell_volume)
-
-
 def Morb(data,Efermi):
-    r1=nonabelian_general(data,Efermi,['morbg' ],mode='fermi-sea')
-    r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea')
-    r3=nonabelian_general(data,Efermi,['curv' ],mode='fermi-sea')
-    r3.data[:,:]=r3.data[:,:]*Efermi[:,None]
-    return (r1+r2-2*r3)*__berry.fac_morb*data.cell_volume
-
-def Morb2(data,Efermi):
     r1=nonabelian_general(data,Efermi,['morb' ],mode='fermi-sea')
     r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea')
     r3=nonabelian_general(data,Efermi,['curv' ],mode='fermi-sea')
@@ -113,57 +90,11 @@ def Morb2(data,Efermi):
     return (r1+2*r2-2*r3)*__berry.fac_morb*data.cell_volume
 
 
-def Morb_IC(data,Efermi):
-    r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea')
-    r3=nonabelian_general(data,Efermi,['curv' ],mode='fermi-sea')
-    print (r3.data)
-    r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
-    print (r3.data)
-    return (r2+r3)*__berry.fac_morb*data.cell_volume
-
-def Morb_h(data,Efermi):
-    r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea')
-#    r3=nonabelian_general(data,Efermi,['curv' ],mode='fermi-sea')
-#    r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
-    return r2*__berry.fac_morb*data.cell_volume
-
-def Morb_f(data,Efermi):
-#    r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea')
-    r3=nonabelian_general(data,Efermi,['curv' ],mode='fermi-sea')
-    r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
-    return r3*__berry.fac_morb*data.cell_volume
-
-
-
-def Morb_LC(data,Efermi):
-    r1=nonabelian_general(data,Efermi,['morbg'],mode='fermi-sea')
-#    r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea')
-    r3=nonabelian_general(data,Efermi,['curv'],mode='fermi-sea')
-    r3.data[:,:]=-r3.data[:,:]*Efermi[:,None]
-    return (r1+r3)*__berry.fac_morb*data.cell_volume
-
-
-             
-
-    res*=__berry.fac_morb*data.cell_volume
-
-    return result.EnergyResultAxialV(Efermi,res/(data.NKFFT_tot*data.cell_volume))
-    
-
-
-#def Morb_IC(data,Efermi):
-#    r1=nonabelian_general(data,Efermi,['morb'],mode='fermi-sea',factor=__berry.fac_morb*data.cell_volume)
-#    return r1
-
 def nonabelian_general(data,Efermi,quantities,subscripts=None,mode='fermi-surface',factor=1):
     E_K=data.E_K
 
     dE=Efermi[1]-Efermi[0]
-#    Emin=Efermi[0]-dE/2
     Emax=Efermi[-1]+dE/2
-#    include_lower=(mode=='fermi-sea')
-#    data.set_degen(Emin=Emin,Emax=Emax)
-#    data.set_degen(degen_thresh)
 
     variables=vars(sys.modules[__name__])
     M=[variables["__"+Q](data) for Q in quantities]

@@ -26,7 +26,9 @@ class Data_dk(System):
         self.NKFFT=system.NKFFT if NKFFT is None else NKFFT
         self.num_wann=system.num_wann
         self.frozen_max=system.frozen_max
-
+        self.random_gauge=system.random_gauge
+        self.degen_thresh=system.degen_thresh
+        print ("random_gauge_dk:",self.random_gauge)
         if dk is not None:
             expdk=np.exp(2j*np.pi*self.iRvec.dot(dk))
             self.dk=dk
@@ -44,7 +46,6 @@ class Data_dk(System):
                     vars(self)[XR]=vars(system)[XR]*expdk[None,None,:,None]
                 except KeyError:
                     if XX : raise AttributeError(XR+" is not defined")
-
 
 
     def _rotate(self,mat):
@@ -90,33 +91,23 @@ class Data_dk(System):
 
 
 #    defining sets of degenerate states.  
-# all states above Emax are neglected 
-    def set_degen(self,degen_thresh=1e-10,Emin=-np.Inf,Emax=np.Inf):
-        try: 
-            self._degen
-            self._E_K_degen
-            print ("degeneracies were already set")
-            return
-        except AttributeError:
-            A=[np.where(E[1:]-E[:-1]>degen_thresh)[0]+1 for E in self.E_K ]
-    #        A=[a[:-1][E[a[1:]-1]>=Emin] for E,a in zip(self.E_K,A)]
-            A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
-            self._degen= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) if e[ib1]<=Emax]    for a,e in zip(A,self.E_K)]
-            self._E_K_degen=[np.array([np.mean(E[ib1:ib2]) for ib1,ib2 in deg]) for deg,E in zip(self._degen,self.E_K)]
-
-    @property 
+    @lazy_property.LazyProperty
     def degen(self):
-        try:
-            return self._degen 
-        except AttributeError:
-            raise RuntimeError("Degeneracies were not set. use the set_degen method first")
+            A=[np.where(E[1:]-E[:-1]>self.degen_thresh)[0]+1 for E in self.E_K ]
+            A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
+            return [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) ]    for a,e in zip(A,self.E_K)]
 
-    @property 
+
+    @lazy_property.LazyProperty
+    def true_degen(self):
+            A=[np.where(E[1:]-E[:-1]>self.degen_thresh)[0]+1 for E in self.E_K ]
+            A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
+            return [[(ib1,ib2) for ib1,ib2 in deg if ib2-ib1>1]  for deg in self.degen]
+
+
+    @lazy_property.LazyProperty
     def E_K_degen(self):
-        try:
-            return self._E_K_degen 
-        except AttributeError:
-            raise RuntimeError("Degenerate energies were not set. use the set_degen method first")
+        return [np.array([np.mean(E[ib1:ib2]) for ib1,ib2 in deg]) for deg,E in zip(self.degen,self.E_K)]
 
     @lazy_property.LazyProperty
     def vel_nonabelian(self):
@@ -151,7 +142,6 @@ class Data_dk(System):
         print_my_name_start()
         sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
         Morb=[ [ M[ib1:ib2,ib1:ib2,:]-e*O[ib1:ib2,ib1:ib2,:]
-    #         -1j*e*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,c]) for s,b,c in sbc)
                +sum(s*np.einsum("mla,lna->mna",X,Y) 
                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
                      for s,b,c in sbc
@@ -159,46 +149,13 @@ class Data_dk(System):
                     (-D[ib1:ib2,ibl1:ibl2,b],B[ibl1:ibl2,ib1:ib2,c]),
                     (-B.transpose((1,0,2)).conj()[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
                          (-1j*V[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
-#                        (e*D[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c]),(e*A[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])  
                               ]
                            )
                         for (ib1,ib2),e in zip(deg,E)]
                      for M,O,A,B,D,V,deg,E,EK in zip( self.Morb_Hbar,self.Omega_Hbar,self.A_Hbar,self.B_Hbarbar,self.D_H,self.V_H,self.degen,self.E_K_degen,self.E_K) ]
-#        for ik,M in enumerate(Morb):
-#            for m,e,d in zip(M,self.E_K_degen[ik],self.degen[ik]):
-#                if np.linalg.norm( m-m.transpose((1,0,2)).conj() ) > 1e-10: 
-#                     raise RuntimeError("for ik={} e={} ({}-fold) the Morb is non-Hermitian:{} \n{}\n".format(ik,e,d[1]-d[0],np.linalg.norm( m-m.transpose((1,0,2)).conj() ),m)) 
         print_my_name_end()
         return Morb
 
-
-    @lazy_property.LazyProperty
-    def Morb_nonabelian_g(self):
-        print_my_name_start()
-        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]        
-        Morb=[ [ M[ib1:ib2,ib1:ib2,:]
-              -1j*e*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,c]) for s,b,c in sbc)
-               +sum(s*np.einsum("mla,lna->mna",X,Y) 
-                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
-                     for s,b,c in sbc
-                    for X,Y in [
-                    (-D[ib1:ib2,ibl1:ibl2,b],B[ibl1:ibl2,ib1:ib2,c]),
-                    (-B.transpose((1,0,2)).conj()[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
-                        (-1j*D[ib1:ib2,ibl1:ibl2,b]*EK[None,ibl1:ibl2,None],D[ibl1:ibl2,ib1:ib2,c])]
-                           )
-                        for (ib1,ib2),e in zip(deg,E)]
-                     for M,A,B,D,V,deg,E,EK in zip( self.Morb_Hbar,self.A_Hbar,self.B_Hbar,self.D_H,self.V_H,self.degen,self.E_K_degen,self.E_K) ]
-        print_my_name_end()
-        return Morb
-
-
-    @lazy_property.LazyProperty
-    def Morb_nonabelian_2(self):
-        print_my_name_start()
-        res= [[m-o*e for m,o,e in zip(M,O,E)]
-            for M,O,E in zip(self.Morb_nonabelian_g,self.Berry_nonabelian,self.E_K_degen)]
-        print_my_name_end()
-        return res
         
     @lazy_property.LazyProperty
     def HH_K(self):
@@ -209,14 +166,27 @@ class Data_dk(System):
         print_my_name_start()
         EUU=[np.linalg.eigh(Hk) for Hk in self.HH_K]
         E_K=np.array([euu[0] for euu in EUU])
-        self._UU_K =np.array([euu[1] for euu in EUU])
+        self._UU =np.array([euu[1] for euu in EUU])
         print_my_name_end()
         return E_K
 
     @lazy_property.LazyProperty
+#    @property
     def UU_K(self):
+        print_my_name_start()
         self.E_K
-        return self._UU_K
+        if self.random_gauge:
+            from scipy.stats import unitary_group
+            cnt=0
+            s=0
+            for ik,deg in enumerate(self.true_degen):
+                for ib1,ib2 in deg:
+                    self._UU[ik,:,ib1:ib2]=self._UU[ik,:,ib1:ib2].dot( unitary_group.rvs(ib2-ib1) )
+                    cnt+=1
+                    s+=ib2-ib1
+            print ("applied random rotations {} times, average degeneracy is {}-fold".format(cnt,s/cnt))
+        print_my_name_end()
+        return self._UU
 
     @lazy_property.LazyProperty
     def delHH_K(self):
@@ -251,16 +221,11 @@ class Data_dk(System):
 
 
     @lazy_property.LazyProperty
-    def UU_K(self):
-        print_my_name_start()
-        self.E_K
-        return self._UU_K
-
-
-    @lazy_property.LazyProperty
     def UUH_K(self):
         print_my_name_start()
-        return self.UU_K.conj().transpose((0,2,1))
+        res=self.UU_K.conj().transpose((0,2,1))
+        print_my_name_end()
+        return res 
 
 
     @lazy_property.LazyProperty
@@ -288,7 +253,6 @@ class Data_dk(System):
     @lazy_property.LazyProperty
     def Morb_Hbar_diag(self):
         return np.einsum("klla->kla",self.Morb_Hbar).real
-#        return np.einsum("kml,kmna,knl->kla",self.UUC_K,_CC_K,self.UU_K).real
 
 
     @lazy_property.LazyProperty

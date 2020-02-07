@@ -36,7 +36,6 @@ def print_my_name_end():
 
 
 def einsumk(*args):
-#   self._HHUU_K=np.einsum("kmi,kmn,knj->kij",self.UUC_K,_HH_K,self.UU_K).real
     left,right=args[0].split("->")
     left=left.split(",")
     for s in left + [right]:
@@ -49,7 +48,6 @@ def einsumk(*args):
     if nmat==2:
         return np.array([np.einsum(string_new,a,b) for a,b in zip(args[1],args[2])])
     elif nmat==3:
-#        return np.array([np.einsum(string_new,a,b,c) for a,b,c in zip(args[1],args[2],args[3])])
         return np.array([a.dot(b).dot(c) for a,b,c in zip(args[1],args[2],args[3])])
     elif nmat==4:
         return np.array([np.einsum(string_new,a,b,c,d) for a,b,c,d in zip(args[1],args[2],args[3],args[4])])
