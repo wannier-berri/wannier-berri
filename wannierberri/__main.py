@@ -91,7 +91,7 @@ def check_option(quantities,avail,tp):
         raise RuntimeError("Quantity {} is not available for {}. Available options are : \n{}\n".format(opt,tp,avail) )
 
 
-def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,degen_thresh=None,omega=None, Ef0=0,
+def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,
                         fout_name="w19",symmetry_gen=[],
                 GammaCentered=True,restart=False,numproc=0,suffix="",file_klist="klist_int",parameters={}):
@@ -99,7 +99,7 @@ def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,degen_thresh=None
     cprint ("\nIntegrating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
     smooth=smoother(Efermi,smearEf)
-    eval_func=functools.partial(  __integrate.intProperty, Efermi=Efermi, degen_thresh=degen_thresh,smootherEf=smooth,quantities=quantities,parameters=parameters )
+    eval_func=functools.partial(  __integrate.intProperty, Efermi=Efermi, smootherEf=smooth,quantities=quantities,parameters=parameters )
     res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,
             adpt_num_iter=adpt_num_iter,adpt_nk=1,
                 fout_name=fout_name,symmetry_gen=symmetry_gen,suffix=suffix,
@@ -109,7 +109,7 @@ def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,degen_thresh=None
 
 
 
-def tabulate(system,NK=None,NKdiv=None,NKFFT=None,omega=None, degen_thresh=None,quantities=[],symmetry_gen=[],
+def tabulate(system,NK=None,NKdiv=None,NKFFT=None,omega=None, quantities=[],symmetry_gen=[],
                   fout_name="w19",ibands=None,suffix="",file_klist="klist_tab",
                       restart=False,numproc=0,Ef0=0,parameters={}):
 
@@ -119,7 +119,7 @@ def tabulate(system,NK=None,NKdiv=None,NKFFT=None,omega=None, degen_thresh=None,
     print ("swebwtbwt",NKdiv,NKFFT,NK,system.NKFFTmin)
 
     check_option(quantities,tabulate_options,"tabulate")
-    eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,degen_thresh=degen_thresh,parameters=parameters )
+    eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
 
     res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,
             adpt_num_iter=0 ,symmetry_gen=symmetry_gen,  GammaCentered=True ,restart=restart,suffix=suffix,file_klist=file_klist)
