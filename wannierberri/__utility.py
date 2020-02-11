@@ -13,11 +13,13 @@
 
 
 
-__debug = True
+__debug = False
 
 import inspect
 import numpy as np
 from lazy_property import LazyProperty as Lazy
+
+
 
 alpha_A=np.array([1,2,0])
 beta_A =np.array([2,0,1])

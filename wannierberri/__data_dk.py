@@ -114,8 +114,8 @@ class Data_dk(System):
         return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(self.V_H,self.degen)]
 
     @lazy_property.LazyProperty
-    def vel_nonabelian(self):
-        return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(self.V_H,self.degen)]
+    def mass_nonabelian(self):
+        return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(self.del2E_H,self.degen)]
 
 
     @lazy_property.LazyProperty
@@ -211,6 +211,14 @@ class Data_dk(System):
         check=np.abs(delE_K).imag.max()
         if check>1e-10: raiseruntimeError ("The band derivatives have considerable imaginary part: {0}".format(check))
         return delE_K.real
+
+
+    @lazy_property.LazyProperty
+    def del2E_H(self):
+        print_my_name_start()
+        del2HH=1j*self.HH_R[:,:,:,None,None]*self.cRvec[None,None,:,None,:]*self.cRvec[None,None,:,:,None]
+        del2HH = fourier_R_to_k(del2HH,self.iRvec,self.NKFFT,hermitian=True)
+        return self._rotate_mat(del2HH)
 
 
     @lazy_property.LazyProperty

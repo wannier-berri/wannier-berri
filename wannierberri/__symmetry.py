@@ -21,6 +21,8 @@ from scipy.spatial.transform import Rotation as rotmat
 from copy import deepcopy
 from lazy_property import LazyProperty as Lazy
 
+SYMMETRY_PRECISION=1e-6
+
 class Symmetry():
 
     def __init__(self,R,TR=False):
@@ -162,7 +164,7 @@ class Group():
         st=[S.transform_k_vector(k,self.basis) for S in self.symmetries]
         for i in range(len(st)-1,0,-1):
            diff=np.array(st[:i])-np.array(st[i])[None,:]
-           if np.linalg.norm (diff-diff.round() ,axis=-1).min()<1e-10:
+           if np.linalg.norm (diff-diff.round() ,axis=-1).min()<SYMMETRY_PRECISION:
                del st[i]
         return np.array(st)
 
