@@ -27,6 +27,8 @@ def __spin(data):
 def __vel(data):
     return data.vel_nonabelian
 
+def __mass(data):
+    return data.mass_nonabelian
 
 def __curvE(data):
     return [[o*e for o,e in zip(O,E)]
@@ -34,7 +36,6 @@ def __curvE(data):
 
 def __curv(data):
     return data.Berry_nonabelian
-
 
 def __morb(data):
     return data.Morb_nonabelian
