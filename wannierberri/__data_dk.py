@@ -114,6 +114,11 @@ class Data_dk(System):
         return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(self.V_H,self.degen)]
 
     @lazy_property.LazyProperty
+    def vel_nonabelian(self):
+        return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(self.V_H,self.degen)]
+
+
+    @lazy_property.LazyProperty
     def spin_nonabelian(self):
         return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(self.S_H,self.degen)]
 

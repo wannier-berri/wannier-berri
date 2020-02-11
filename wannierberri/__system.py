@@ -34,6 +34,12 @@ class System():
                     random_gauge=False,
                     degen_thresh=-1
                                 ):
+
+
+        self.frozen_max=frozen_max
+        self.random_gauge=random_gauge
+        self.degen_thresh=degen_thresh
+
         if tb_file is not None:
             self.__from_tb_file(tb_file,getAA=getAA)
             return
@@ -44,9 +50,6 @@ class System():
         self.seedname=seedname
         self.num_wann,nRvec,self.spinors=int(l[0]),int(l[1]),str2bool(l[2])
         self.nRvec0=nRvec
-        self.frozen_max=frozen_max
-        self.random_gauge=random_gauge
-        self.degen_thresh=degen_thresh
         self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
         self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
         iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)

@@ -233,7 +233,7 @@ def eval_Joo(B):
 
 
 def calcImf_band(data):
-    AA=data.Omega_Hbar_rediag
+    AA=data.Omega_Hbar_diag
     BB=data.D_A+data.D_H_sq
     return np.array([eval_Jo(A)-2*eval_Juo(B)  for A,B in zip (AA,BB) ] )
 
