@@ -73,6 +73,8 @@ class System():
             self.ws_map=None
         
         f.close()
+        if getCC:
+           getBB=True
 
         self.HH_R=self.__getMat('HH')
         

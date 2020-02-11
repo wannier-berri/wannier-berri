@@ -16,6 +16,7 @@ from time import time
 import numpy as np
 import lazy_property
 from copy import copy
+from .__symmetry import SYMMETRY_PRECISION
 
 class  KpointBZ():
 
@@ -97,7 +98,7 @@ class  KpointBZ():
         if self.refinement_level!=other.refinement_level: 
             return False
         dif=self.star[:,None,:]-other.star[None,:,:]
-        if np.linalg.norm((dif-np.round(dif)),axis=2).min() < 1e-10:
+        if np.linalg.norm((dif-np.round(dif)),axis=2).min() < SYMMETRY_PRECISION :
             return True
         return False
 

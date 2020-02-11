@@ -21,6 +21,13 @@ from . import __result as result
 from time import time
 from .__utility import alpha_A,beta_A
 
+from scipy.constants import Boltzmann,elementary_charge,hbar,electron_mass
+bohr_magneton=elementary_charge*hbar/(2*electron_mass)
+
+TAU_UNIT=1E-9 # tau in nanoseconds
+TAU_UNIT_TXT="ns"
+Ang_SI=1e-10
+
 def __spin(data):
     return data.spin_nonabelian
 
@@ -41,6 +48,7 @@ def __morb(data):
     return data.Morb_nonabelian
 
 __dimensions=defaultdict(lambda : 1)
+__dimensions['mass']=2
 
 #quantities that should be odd under TRS and inversion
 TRodd  = set(['spin','morb','vel','curv','curvE','morbg','morb2'])
@@ -82,6 +90,25 @@ def curv_tot(data,Efermi):
 def ahc(data,Efermi):
     return nonabelian_general(data,Efermi,['curv'],mode='fermi-sea',factor=__berry.fac_ahc)
 
+def berry_dipole(data,Efermi):
+    # _general yields integral(omega*v*fo'), which is dimensionlesss - what we want 
+    return nonabelian_general(data,Efermi,['curv','vel'],mode='fermi-surface',factor=1)
+
+
+def gyrotropic_Kspin(data,Efermi):
+    # _general yields integral(spin*v*fo'), which is in Ang^-2
+    # we want in Ampere
+    factor=-bohr_magneton/Ang_SI**2   ## that's it!
+    return nonabelian_general(data,Efermi,['vel','spin'],mode='fermi-surface',factor=factor)
+
+
+def gyrotropic_Korb(data,Efermi):
+    # _general yields integral(morb*v*fo'), which is in eV
+    # we want in Ampere
+    factor=-elementary_charge**2/(2*hbar)   ## that's it!
+    return nonabelian_general(data,Efermi,['vel','morb'],mode='fermi-surface',factor=factor)
+    
+
 
 def Morb(data,Efermi):
     r1=nonabelian_general(data,Efermi,['morb' ],mode='fermi-sea')
@@ -89,6 +116,47 @@ def Morb(data,Efermi):
     r3=nonabelian_general(data,Efermi,['curv' ],mode='fermi-sea')
     r3.data[:,:]=r3.data[:,:]*Efermi[:,None]
     return (r1+2*r2-2*r3)*__berry.fac_morb*data.cell_volume
+
+def Hall_morb(data,Efermi):
+    # _general yields integral(omega*morb*fo') in units Ang
+    # we want in S/(cm*T)
+    # S/T=A^3*s^5/(kg^2*m^2))
+    factor=-Ang_SI*elementary_charge/(2*hbar) # first, transform to SI, not forgettint e/2hbar multilier for morb - now in A*m/J ,restoring the sign of spin magnetic moment
+    factor*=elementary_charge**2/hbar  # multiply by a dimensional factor - now in S/(T*m)
+    factor*=1e-2   #  finally transform to S/(T*cm)
+    return nonabelian_general(data,Efermi,['curv','morb'],mode='fermi-surface',factor=factor)
+
+def Hall_spin(data,Efermi):
+    # _general yields integral(Omrga*s*fo') in units 1/(eV*Ang)
+    # we want in S/(cm*T)
+    # S/T=A^3*s^5/(kg^2*m^2))
+    factor=-bohr_magneton/(elementary_charge*Ang_SI) # first, transform to SI - now in 1/(m*T) ,restoring the sign of spin magnetic moment
+    factor*=elementary_charge**2/hbar  # multiply by a dimensional factor - now in S/(T*m)
+    factor*=1e-2   #  finally transform to S/(T*cm)
+    return nonabelian_general(data,Efermi,['curv','spin'],mode='fermi-surface',factor=factor)
+
+def Hall_classic(data,Efermi):
+    # _general yields integral(V*V*V'*f0') in units eV^2*Ang
+    # we want in S/(cm*T)/tau_unit^2
+    # S/T=A^3*s^5/(kg^2*m^2))
+    factor=elementary_charge**2*Ang_SI/hbar**3  # first, transform to SI, not forgeting hbar in velocities - now in  m/(J*s^3)
+    factor*=elementary_charge**3/hbar*TAU_UNIT**2  # multiply by a dimensional factor - now in A^3*s^5*cm/(J^2*tau_unit^2) = S/(T*m*tau_unit^2)
+    factor*=1e-2   #  finally transform to S/(T*cm*tau_unit^2)
+    r1= nonabelian_general(data,Efermi,['vel','mass','vel'],mode='fermi-surface',factor=factor)
+    print ("r1 - shape",r1.data.shape)
+    print (alpha_A,beta_A)
+    res=r1.data[:,:,:,beta_A,alpha_A]-r1.data[:,:,:,alpha_A,beta_A]
+    print ("res - shape",res.shape)
+    return result.EnergyResult(Efermi, res  ,TRodd=False,Iodd=False)
+
+def conductivity_ohmic(data,Efermi):
+    # _general yields integral(V*V*f0') in units eV/Ang
+    # we want in S/(cm)/tau_unit
+    factor=elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
+    factor*=elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
+    factor*=1e-2 # now in  S/(cm*tau_unit)
+    return nonabelian_general(data,Efermi,['vel','vel'],mode='fermi-surface',factor=factor)
+
 
 
 def nonabelian_general(data,Efermi,quantities,subscripts=None,mode='fermi-surface',factor=1):
