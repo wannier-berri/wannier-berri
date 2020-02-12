@@ -49,6 +49,8 @@ def __morb(data):
 
 __dimensions=defaultdict(lambda : 1)
 __dimensions['mass']=2
+__dimensions['mass1']=2
+__dimensions['mass2']=2
 
 #quantities that should be odd under TRS and inversion
 TRodd  = set(['spin','morb','vel','curv','curvE','morbg','morb2'])
@@ -146,6 +148,24 @@ def Hall_classic(data,Efermi):
     print ("r1 - shape",r1.data.shape)
     print (alpha_A,beta_A)
     res=r1.data[:,:,:,beta_A,alpha_A]-r1.data[:,:,:,alpha_A,beta_A]
+    res=0.5*(res[:,alpha_A,beta_A,:]-res[:,beta_A,alpha_A,:])
+    print ("res - shape",res.shape)
+    return result.EnergyResult(Efermi, res  ,TRodd=False,Iodd=False)
+
+
+def Hall_classic_sea(data,Efermi):
+    # _general yields integral(V*V*V'*f0') in units eV^2*Ang
+    # we want in S/(cm*T)/tau_unit^2
+    # S/T=A^3*s^5/(kg^2*m^2))
+    factor=elementary_charge**2*Ang_SI/hbar**3  # first, transform to SI, not forgeting hbar in velocities - now in  m/(J*s^3)
+    factor*=elementary_charge**3/hbar*TAU_UNIT**2  # multiply by a dimensional factor - now in A^3*s^5*cm/(J^2*tau_unit^2) = S/(T*m*tau_unit^2)
+    factor*=1e-2   #  finally transform to S/(T*cm*tau_unit^2)
+    r1= nonabelian_general(data,Efermi,['mass','mass'],mode='fermi-surface',factor=factor)
+    print ("r1 - shape",r1.data.shape)
+    print (alpha_A,beta_A)
+    res=r1.data.transpose((0,1,3,2,4))
+    res=res[:,:,:,alpha_A,beta_A]-res[:,:,:,beta_A,alpha_A]
+    res=res[:,alpha_A,beta_A,:]-res[:,beta_A,alpha_A,:]
     print ("res - shape",res.shape)
     return result.EnergyResult(Efermi, res  ,TRodd=False,Iodd=False)
 
@@ -156,6 +176,32 @@ def conductivity_ohmic(data,Efermi):
     factor*=elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
     factor*=1e-2 # now in  S/(cm*tau_unit)
     return nonabelian_general(data,Efermi,['vel','vel'],mode='fermi-surface',factor=factor)
+
+# an equivalent fermi-sea formulation - to test the effective mass tensor
+def conductivity_ohmic_sea(data,Efermi):
+    # _general yields integral(V*V*f0') in units eV/Ang
+    # we want in S/(cm)/tau_unit
+    factor=elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
+    factor*=-elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
+    factor*=1e-2 # now in  S/(cm*tau_unit)
+    return nonabelian_general(data,Efermi,['mass'],mode='fermi-sea',factor=factor)
+
+
+def conductivity_ohmic_sea_1(data,Efermi):
+    # _general yields integral(V*V*f0') in units eV/Ang
+    # we want in S/(cm)/tau_unit
+    factor=elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
+    factor*=-elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
+    factor*=1e-2 # now in  S/(cm*tau_unit)
+    return nonabelian_general(data,Efermi,['mass1'],mode='fermi-sea',factor=factor)
+
+def conductivity_ohmic_sea_2(data,Efermi):
+    # _general yields integral(V*V*f0') in units eV/Ang
+    # we want in S/(cm)/tau_unit
+    factor=elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
+    factor*=-elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
+    factor*=1e-2 # now in  S/(cm*tau_unit)
+    return nonabelian_general(data,Efermi,['mass2'],mode='fermi-sea',factor=factor)
 
 
 
