@@ -113,9 +113,18 @@ class Data_dk(System):
     def vel_nonabelian(self):
         return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(self.V_H,self.degen)]
 
+
+### TODO : check if it is really gaufge-covariant in case of isolated degeneracies
     @lazy_property.LazyProperty
     def mass_nonabelian(self):
-        return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(self.del2E_H,self.degen)]
+        return [ [S[ib1:ib2,ib1:ib2]
+                   +sum(np.einsum("mla,lnb->mnab",X,Y) 
+                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
+                     for X,Y in [
+                     (-D[ib1:ib2,ibl1:ibl2,:],V[ibl1:ibl2,ib1:ib2,:]),
+                     (+V[ib1:ib2,ibl1:ibl2,:],D[ibl1:ibl2,ib1:ib2,:]),
+                              ])       for ib1,ib2 in deg]
+                     for S,D,V,deg in zip( self.del2E_H,self.D_H,self.V_H,self.degen) ]
 
 
     @lazy_property.LazyProperty
@@ -216,7 +225,7 @@ class Data_dk(System):
     @lazy_property.LazyProperty
     def del2E_H(self):
         print_my_name_start()
-        del2HH=1j*self.HH_R[:,:,:,None,None]*self.cRvec[None,None,:,None,:]*self.cRvec[None,None,:,:,None]
+        del2HH= -self.HH_R[:,:,:,None,None]*self.cRvec[None,None,:,None,:]*self.cRvec[None,None,:,:,None]
         del2HH = fourier_R_to_k(del2HH,self.iRvec,self.NKFFT,hermitian=True)
         return self._rotate_mat(del2HH)
 
@@ -224,7 +233,7 @@ class Data_dk(System):
     @lazy_property.LazyProperty
     def del2E_K(self):
         print_my_name_start()
-        del2HH=1j*self.HH_R[:,:,:,None,None]*self.cRvec[None,None,:,None,:]*self.cRvec[None,None,:,:,None]
+        del2HH= -self.HH_R[:,:,:,None,None]*self.cRvec[None,None,:,None,:]*self.cRvec[None,None,:,:,None]
         del2HH = fourier_R_to_k(del2HH,self.iRvec,self.NKFFT,hermitian=True)
         del2HH=self._rotate_mat(del2HH)
         del2E_K = np.array([del2HH[:,i,i,:,:] for i in range(del2HH.shape[1])]).transpose( (1,0,2,3) )
