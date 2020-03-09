@@ -108,6 +108,64 @@ def calcAHC(data,Efermi=None,occ_old=None):
     return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
 
 
+def calc_dipole_D(data,Efermi=None,occ_old=None):
+
+    use_occ_old=True
+
+    if (occ_old is None)  or (not use_occ_old): 
+        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
+        print ("Efermi={}".format(Efermi))
+
+    if isinstance(Efermi, Iterable):
+        nFermi=len(Efermi)
+        dipole=np.zeros( ( nFermi,3,3) ,dtype=float )
+        for iFermi in range(nFermi):
+            dipole[iFermi]=calc_dipole_D(data,Efermi=Efermi[iFermi],occ_old=occ_old)
+        if use_occ_old:
+            dipole=np.cumsum(dipole,axis=0)
+        return result.EnergyResult(Efermi,dipole,TRodd=False,Iodd=True)
+    
+    # now code for a single Fermi level:
+
+#    print ("  calculating occ matrices")
+    occ_new=get_occ(data.E_K,Efermi)
+    unocc_new=np.logical_not(occ_new)
+    unocc_old=np.logical_not(occ_old)
+    selectK=np.where(np.any(occ_old!=occ_new,axis=1))[0]
+    occ_old_selk=occ_old[selectK]
+    occ_new_selk=occ_new[selectK]
+    unocc_old_selk=unocc_old[selectK]
+    unocc_new_selk=unocc_new[selectK]
+    delocc=occ_new_selk!=occ_old_selk
+    unoccocc_plus=unocc_new_selk[:,:,None]*delocc[:,None,:]
+    unoccocc_minus=delocc[:,:,None]*occ_old_selk[:,None,:]
+
+    OccOcc_new=occ_new_selk[:,:,None]*occ_new_selk[:,None,:]
+    OccOcc_old=occ_old_selk[:,:,None]*occ_old_selk[:,None,:]
+    OccOcc_plus = OccOcc_new * np.logical_not(OccOcc_old)
+
+    UnoccUnocc_new=unocc_new_selk[:,:,None]*unocc_new_selk[:,None,:]
+    UnoccUnocc_old=unocc_old_selk[:,:,None]*unocc_old_selk[:,None,:]
+    UnoccUnocc_minus = UnoccUnocc_old * np.logical_not(UnoccUnocc_new)
+
+
+    UnoccOccOcc_plus=unocc_new_selk[:,:,None,None]*OccOcc_plus[:,None,:,:]
+    UnoccOccOcc_minus=delocc[:,:,None,None]*OccOcc_old[:,None,:,:]
+
+    UnoccUnoccOcc_plus=UnoccUnocc_new[:,:,:,None]*delocc[:,None,None,:]
+    UnoccUnoccOcc_minus=UnoccUnocc_minus[:,:,:,None]*occ_old_selk[:,None,None,:]
+
+    B=data.D_gdD_1[selectK]
+    dipole=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
+    B=data.D_gdD_2[selectK]
+    dipole+=eval_J12(B,UnoccOccOcc_plus)-eval_J12(B,UnoccOccOcc_minus)
+    B=data.D_gdD_3[selectK]
+    dipole+=eval_J12(B,UnoccUnoccOcc_plus)-eval_J12(B,UnoccUnoccOcc_minus)
+
+    occ_old[:,:]=occ_new[:,:]
+    return dipole/(data.NKFFT_tot*data.cell_volume)
+
+
 def calcMorb(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
     if not isinstance(Efermi, Iterable):
         Efermi=np.array([Efermi])

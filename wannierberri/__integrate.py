@@ -64,6 +64,8 @@ calculators_trans={
          'conductivity_ohmic_sea_1': nonabelian.conductivity_ohmic_sea_1,
          'conductivity_ohmic_sea_2': nonabelian.conductivity_ohmic_sea_2,
          'berry_dipole'      : nonabelian.berry_dipole,
+         'berry_dipole_D'      : nonabelian.berry_dipole,
+         'berry_dipole_sea_D'        : berry.calc_dipole_D ,
          'gyrotropic_Korb'   : nonabelian.gyrotropic_Korb,
          'gyrotropic_Kspin'  : nonabelian.gyrotropic_Kspin,
          }
