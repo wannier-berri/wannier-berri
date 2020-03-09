@@ -111,7 +111,7 @@ class Data_dk(System):
 
     @lazy_property.LazyProperty
     def vel_nonabelian(self):
-        return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(self.V_H,self.degen)]
+        return [ [0.5*(S[ib1:ib2,ib1:ib2]+S[ib1:ib2,ib1:ib2].transpose((1,0,2)).conj()) for ib1,ib2 in deg] for S,deg in zip(self.V_H,self.degen)]
 
 
 ### TODO : check if it is really gaufge-covariant in case of isolated degeneracies
@@ -198,7 +198,7 @@ class Data_dk(System):
                     self._UU[ik,:,ib1:ib2]=self._UU[ik,:,ib1:ib2].dot( unitary_group.rvs(ib2-ib1) )
                     cnt+=1
                     s+=ib2-ib1
-            print ("applied random rotations {} times, average degeneracy is {}-fold".format(cnt,s/cnt))
+            print ("applied random rotations {} times, average degeneracy is {}-fold".format(cnt,s/max(cnt,1)))
         print_my_name_end()
         return self._UU
 
