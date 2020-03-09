@@ -168,7 +168,7 @@ class System():
 
     @lazy_property.LazyProperty
     def cell_volume(self):
-        return np.linalg.det(self.real_lattice)
+        return abs(np.linalg.det(self.real_lattice))
 
 
     def __getMat(self,suffix):
