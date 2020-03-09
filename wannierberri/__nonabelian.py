@@ -44,6 +44,9 @@ def __curvE(data):
 def __curv(data):
     return data.Berry_nonabelian
 
+def __curv_D(data):
+    return data.Berry_nonabelian_D
+
 def __morb(data):
     return data.Morb_nonabelian
 
@@ -95,6 +98,11 @@ def ahc(data,Efermi):
 def berry_dipole(data,Efermi):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
     return nonabelian_general(data,Efermi,['curv','vel'],mode='fermi-surface',factor=1)
+
+
+def berry_dipole_D(data,Efermi):
+    # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
+    return nonabelian_general(data,Efermi,['curv_D','vel'],mode='fermi-surface',factor=1)
 
 
 def gyrotropic_Kspin(data,Efermi):

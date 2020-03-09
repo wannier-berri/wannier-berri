@@ -150,6 +150,23 @@ class Data_dk(System):
         return res
 
 
+
+    @lazy_property.LazyProperty
+    def Berry_nonabelian_D(self):
+        print_my_name_start()
+        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
+        res= [ [ -1j*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,c]) for s,b,c in sbc) 
+               +sum(s*np.einsum("mla,lna->mna",X,Y) 
+                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
+                     for s,b,c in sbc
+                    for X,Y in [ (-1j*D[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]) , ]
+                           )
+                        for ib1,ib2 in deg]
+                     for A,D,deg in zip( self.A_Hbar,self.D_H,self.degen ) ] 
+        print_my_name_end()
+        return res
+
+
 ##  TODO: When it works correctly - think how to optimize it
     @lazy_property.LazyProperty
     def Morb_nonabelian(self):
@@ -202,16 +219,7 @@ class Data_dk(System):
         print_my_name_end()
         return self._UU
 
-    @lazy_property.LazyProperty
-    def delHH_K(self):
-        print_my_name_start()
-        self.E_K
-        delHH_R=1j*self.HH_R[:,:,:,None]*self.cRvec[None,None,:,:]
-        return fourier_R_to_k(delHH_R,self.iRvec,self.NKFFT,hermitian=True)
 
-    @lazy_property.LazyProperty
-    def del2HHUU_K(self):
-        return self._rotate_vec(self.del2HH_K)
 
     @lazy_property.LazyProperty
     def delE_K(self):
@@ -251,19 +259,28 @@ class Data_dk(System):
 
 
     @lazy_property.LazyProperty
+    def dEig_inv(self):
+        dEig_threshold=1e-14
+        dEig=self.E_K[:,:,None]-self.E_K[:,None,:]
+        select=abs(dEig)<dEig_threshold
+        dEig[select]=dEig_threshold
+        deig=1./dEig
+        dEig[select]=0.
+        return dEig
+
+
+    @lazy_property.LazyProperty
     def D_H(self):
-            print_my_name_start()
-            _delHH_K_=np.copy(self.V_H)
-            dEig_threshold=1e-14
-            dEig=self.E_K[:,:,None]-self.E_K[:,None,:]
-            select=abs(dEig)<dEig_threshold
-            dEig[select]=dEig_threshold
-            _delHH_K_[select]=0
-            return -_delHH_K_/dEig[:,:,:,None]
+            return -self.V_H*self.dEig_inv[:, :,:,None]
+
 
     @lazy_property.LazyProperty
     def V_H(self):
-        return self._rotate_vec(self.delHH_K)
+        print_my_name_start()
+        self.E_K
+        delHH_R=1j*self.HH_R[:,:,:,None]*self.cRvec[None,None,:,:]
+        delHH_K= fourier_R_to_k(delHH_R,self.iRvec,self.NKFFT,hermitian=True)
+        return self._rotate_vec(delHH_K)
 
     @lazy_property.LazyProperty
     def Morb_Hbar(self):
@@ -282,7 +299,38 @@ class Data_dk(System):
          print_my_name_start()
          return  (-self.D_H[:,:,:,beta_A]*self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))).imag
 
-    
+
+
+    @lazy_property.LazyProperty
+    #  unocc-occ
+    def D_gdD_1(self):
+         print_my_name_start()
+         gdD_H_1 =  -self.del2E_H*self.dEig_inv[:, :,:, None,None]
+         return  0.5*( self.D_H[:, :,:, alpha_A,None]*gdD_H_1[:, :,:, beta_A,:].transpose((0,2,1,3,4))-
+                   self.D_H[:, :,:, beta_A,None]*gdD_H_1[:, :,:, alpha_A,:].transpose((0,2,1,3,4))
+                           ).imag
+
+    @lazy_property.LazyProperty
+    #  unocc-occ-occ
+    def D_gdD_2(self):
+         print_my_name_start()
+         gdD_H_2 = -self.dEig_inv[:, :,None,:, None,None]*( self.V_H[:, :,:,None,:,None]*self.D_H[:, None,:,:,None,:] + self.V_H[:, :,:,None, None,:]*self.D_H[:, None,:,:, :,None] )
+#         self.D_H[:, :,:, alpha_A][:, :,None,:, :,None]
+#         gdD_H_2[:, :,:,:,  beta_A]
+#         gdD_H_2[:, :,:,: , beta_A].transpose((0,3,2,1,4,5))
+         return  0.5*( self.D_H[:, :,None,:, alpha_A,None]*gdD_H_2[:, :,:,: , beta_A,:].transpose((0,3,2,1,4,5)) - 
+                       self.D_H[:, :,None,:, beta_A,None]*gdD_H_2[:, :,:,: , alpha_A,:].transpose((0,3,2,1,4,5))
+                              ).imag
+
+    @lazy_property.LazyProperty
+    #  unocc-unocc-occ
+    def D_gdD_3(self):
+         print_my_name_start()
+         gdD_H_3 = self.dEig_inv[:, :,None,:, None,None]*( self.D_H[:, :,:,None,:,None]*self.V_H[:, None,:,:,None,:] + self.D_H[:, :,:,None, None,:]*self.V_H[:, None,:,:, :,None] )
+         return  0.5*(  self.D_H[:, :,None,:, alpha_A,None]*gdD_H_3[:, :,:,: , beta_A,:].transpose((0,3,2,1,4,5))  - 
+                          self.D_H[:, :,None,:, beta_A,None]*gdD_H_3[:, :,:,: , alpha_A,:].transpose((0,3,2,1,4,5))  
+                             ).imag
+
     @lazy_property.LazyProperty
     def A_Hbar(self):
         print_my_name_start()
