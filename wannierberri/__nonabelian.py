@@ -44,7 +44,7 @@ def __curvE(data):
 def __curv(data):
     return data.Berry_nonabelian
 
-def __curv_D(data):
+def __curvD(data):
     return data.Berry_nonabelian_D
 
 def __morb(data):
@@ -56,7 +56,7 @@ __dimensions['mass1']=2
 __dimensions['mass2']=2
 
 #quantities that should be odd under TRS and inversion
-TRodd  = set(['spin','morb','vel','curv','curvE','morbg','morb2'])
+TRodd  = set(['spin','morb','vel','curv','curvE','morbg','morb2','curvD'])
 INVodd = set(['vel'])
 
 
@@ -102,7 +102,7 @@ def berry_dipole(data,Efermi):
 
 def berry_dipole_D(data,Efermi):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curv_D','vel'],mode='fermi-surface',factor=1)
+    return nonabelian_general(data,Efermi,['curvD','vel'],mode='fermi-surface',factor=1)
 
 
 def gyrotropic_Kspin(data,Efermi):
