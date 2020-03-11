@@ -264,8 +264,8 @@ class Data_dk(System):
         dEig=self.E_K[:,:,None]-self.E_K[:,None,:]
         select=abs(dEig)<dEig_threshold
         dEig[select]=dEig_threshold
-        deig=1./dEig
-#        dEig[select]=0.
+        dEig=1./dEig
+        dEig[select]=0.
         return dEig
 
 
@@ -306,7 +306,7 @@ class Data_dk(System):
     def D_gdD_1(self):
          print_my_name_start()
          gdD_H_1 =  -self.del2E_H*self.dEig_inv[:, :,:, None,None]
-         return  0.5( self.D_H[:, :,:, alpha_A,None]*gdD_H_1[:, :,:, beta_A,:].transpose((0,2,1,3,4))-
+         return  ( self.D_H[:, :,:, alpha_A,None]*gdD_H_1[:, :,:, beta_A,:].transpose((0,2,1,3,4))-
                    self.D_H[:, :,:, beta_A,None]*gdD_H_1[:, :,:, alpha_A,:].transpose((0,2,1,3,4))
                            ).imag
 
@@ -318,7 +318,7 @@ class Data_dk(System):
 #         self.D_H[:, :,:, alpha_A][:, :,None,:, :,None]
 #         gdD_H_2[:, :,:,:,  beta_A]
 #         gdD_H_2[:, :,:,: , beta_A].transpose((0,3,2,1,4,5))
-         return  0.5*( self.D_H[:, :,None,:, alpha_A,None]*gdD_H_2[:, :,:,: , beta_A,:].transpose((0,3,2,1,4,5)) - 
+         return  ( self.D_H[:, :,None,:, alpha_A,None]*gdD_H_2[:, :,:,: , beta_A,:].transpose((0,3,2,1,4,5)) - 
                        self.D_H[:, :,None,:, beta_A,None]*gdD_H_2[:, :,:,: , alpha_A,:].transpose((0,3,2,1,4,5))
                               ).imag
 
@@ -327,7 +327,7 @@ class Data_dk(System):
     def D_gdD_3(self):
          print_my_name_start()
          gdD_H_3 = self.dEig_inv[:, :,None,:, None,None]*( self.D_H[:, :,:,None,:,None]*self.V_H[:, None,:,:,None,:] + self.D_H[:, :,:,None, None,:]*self.V_H[:, None,:,:, :,None] )
-         return  0.5*(  self.D_H[:, :,None,:, alpha_A,None]*gdD_H_3[:, :,:,: , beta_A,:].transpose((0,3,2,1,4,5))  - 
+         return  (  self.D_H[:, :,None,:, alpha_A,None]*gdD_H_3[:, :,:,: , beta_A,:].transpose((0,3,2,1,4,5))  - 
                           self.D_H[:, :,None,:, beta_A,None]*gdD_H_3[:, :,:,: , alpha_A,:].transpose((0,3,2,1,4,5))  
                              ).imag
 
@@ -377,6 +377,36 @@ class Data_dk(System):
         Vl1nb= Vln_[:, N,:,:,  b,N]
         Vl1nc= Vln_[:, N,:,:,  c,N]
         return -(self.dEig_inv**2)[:,:,None,:,None,None]*self.dEig_inv[:,None,:,:,None,None]*( Vnlb*(Vll1c*Vl1nd+Vll1d*Vl1nc)  -  Vnlc*(Vll1b*Vl1nd+Vll1d*Vl1nb) ).imag
+
+
+
+    @lazy_property.LazyProperty
+    def D_gdD(self):
+        Vln=self.V_H
+        Vnl=Vln.transpose(0,2,1,3)
+        W=self.del2E_H
+        b=alpha_A
+        c=beta_A
+        N=None
+
+# p= n' or l'
+        Vnlb = Vnl[:, :,N,:,  b,N]
+        Vnlc = Vnl[:, :,N,:,  c,N]
+        Vlpc = Vln[:, :,:,N,  c,N]
+        Vlpb = Vln[:, :,:,N,  b,N]
+        Vlpd = Vln[:, :,:,N,  N,:]
+        Vpnd = Vln[:, N,:,:,  N,:]
+        Vpnb = Vln[:, N,:,:,  b,N]
+        Vpnc = Vln[:, N,:,:,  c,N]
+
+        TMP=(self.dEig_inv**2)[:,:,None,:,None,None]*( Vnlb*(Vlpc*Vpnd+Vlpd*Vpnc) -  Vnlc*(Vlpb*Vpnd+Vlpd*Vpnb) ).imag
+
+        return ( self.dEig_inv[:,:,:,None,None]**2*
+                       (Vnl[:,:,:,b,None]*W[:,:,:,c,:] - Vnl[:,:,:,c,None]*W[:,:,:,b,:] ).imag , 
+                self.dEig_inv[:,:,:,None,None,None]*TMP, 
+               -self.dEig_inv[:,None,:,:,None,None]*TMP  )
+
+
 
 
 

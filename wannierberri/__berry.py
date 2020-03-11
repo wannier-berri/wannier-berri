@@ -43,8 +43,8 @@ print ("fac_morb=",fac_morb,1/fac_morb)
 class OccDelta():
  
     def __init__(self,occ_old,data,Efermi,triple=False):
-#        print ("number of occ old:{}".format(occ_old.sum()))
-        occ_new=(data.E_K< Efermi)  
+#        print ("EF={}, number of occ old:{}".format(Efermi,occ_old.sum()/data.NKFFT_tot))
+        occ_new=(data.E_K<Efermi)  
         unocc_new=np.logical_not(occ_new)
         unocc_old=np.logical_not(occ_old)
         selectK=np.where(np.any(occ_old!=occ_new,axis=1))[0]
@@ -118,17 +118,10 @@ def calcAHC(data,Efermi=None,occ_old=None):
 
     if isinstance(Efermi, Iterable):
         return IterateEf(data,Efermi,TRodd=True,Iodd=False)
-
     OCC=OccDelta(occ_old,data,Efermi)
-    AHC=np.zeros(3)
 
-#    print ("evaluating J0")
-    AHC=OCC.eval_O(data.Omega_Hbar_diag)
-#    print ("evaluating B")
-    B=(data.D_A+data.D_H_sq)
-#    print ("evaluating J12")
-    AHC+=-2*OCC.eval_UO(B)
-#    print ("evaluating J12-done")
+    AHC=OCC.eval_O(data.Omega_Hbar_diag) - 2* OCC.eval_UO( data.D_A+data.D_H_sq )
+
     return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
 
 
@@ -137,220 +130,36 @@ def calcAHC(data,Efermi=None,occ_old=None):
 
 
 def calc_dipole_D1(data,Efermi=None,occ_old=None):
-    if (occ_old is None)  or (not use_occ_old): 
-        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
-#        print ("Efermi={}".format(Efermi))
-
     if isinstance(Efermi, Iterable):
-        nFermi=len(Efermi)
-        dipole=np.zeros( ( nFermi,3,3) ,dtype=float )
-        for iFermi in range(nFermi):
-            dipole[iFermi]=calc_dipole_D1(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        if use_occ_old:
-            dipole=np.cumsum(dipole,axis=0)
-        return result.EnergyResult(Efermi,dipole,TRodd=False,Iodd=True)
-    
-    OCC=UnoccOcc(occ_old,data,Efermi,triple=True)
-    B=data.D_gdD_1[OCC.selectK]
-    dipole=eval_J12(B,OCC.unoccocc_plus)-eval_J12(B,OCC.unoccocc_minus)
-    B=data.D_gdD_2[OCC.selectK]
-    dipole+=eval_J12(B,OCC.UnoccOccOcc_plus)-eval_J12(B,OCC.UnoccOccOcc_minus)
-    B=data.D_gdD_3[OCC.selectK]
-    dipole+=eval_J12(B,OCC.UnoccUnoccOcc_plus)-eval_J12(B,OCC.UnoccUnoccOcc_minus)
-
-    occ_old[:,:]=OCC.occ_new[:,:]
+        return IterateEf(data,Efermi,TRodd=False,Iodd=True)
+    OCC=OccDelta(occ_old,data,Efermi,triple=True)
+    dipole= -2*( OCC.eval_UO(data.D_gdD_1) 
+            + OCC.eval_UOO(data.D_gdD_2 )
+            + OCC.eval_UUO(data.D_gdD_3 )  )
     return dipole/(data.NKFFT_tot*data.cell_volume)
-
-
-def calc_dipole_D11(data,Efermi=None,occ_old=None):
-    use_occ_old=True
-    if (occ_old is None)  or (not use_occ_old): 
-        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
-#        print ("Efermi={}".format(Efermi))
-
-    if isinstance(Efermi, Iterable):
-        nFermi=len(Efermi)
-        dipole=np.zeros( ( nFermi,3,3) ,dtype=float )
-        for iFermi in range(nFermi):
-            dipole[iFermi]=calc_dipole_D11(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        if use_occ_old:
-            dipole=np.cumsum(dipole,axis=0)
-        return result.EnergyResult(Efermi,dipole,TRodd=False,Iodd=True)
-    
-    OCC=UnoccOcc(occ_old,data,Efermi,triple=True)
-    B=data.D_gdD_1[OCC.selectK]
-    dipole=eval_J12(B,OCC.unoccocc_plus)-eval_J12(B,OCC.unoccocc_minus)
-
-    occ_old[:,:]=OCC.occ_new[:,:]
-    return dipole/(data.NKFFT_tot*data.cell_volume)
-
-
-def calc_dipole_D12(data,Efermi=None,occ_old=None):
-    use_occ_old=True
-    if (occ_old is None)  or (not use_occ_old): 
-        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
-#        print ("Efermi={}".format(Efermi))
-
-    if isinstance(Efermi, Iterable):
-        nFermi=len(Efermi)
-        dipole=np.zeros( ( nFermi,3,3) ,dtype=float )
-        for iFermi in range(nFermi):
-            dipole[iFermi]=calc_dipole_D12(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        if use_occ_old:
-            dipole=np.cumsum(dipole,axis=0)
-        return result.EnergyResult(Efermi,dipole,TRodd=False,Iodd=True)
-    
-    OCC=UnoccOcc(occ_old,data,Efermi,triple=True)
-    B=data.D_gdD_2[OCC.selectK]
-    dipole=eval_J12(B,OCC.UnoccOccOcc_plus)-eval_J12(B,OCC.UnoccOccOcc_minus)
-
-    occ_old[:,:]=OCC.occ_new[:,:]
-    return dipole/(data.NKFFT_tot*data.cell_volume)
-
-def calc_dipole_D13(data,Efermi=None,occ_old=None):
-    use_occ_old=True
-    if (occ_old is None)  or (not use_occ_old): 
-        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
-#        print ("Efermi={}".format(Efermi))
-
-    if isinstance(Efermi, Iterable):
-        nFermi=len(Efermi)
-        dipole=np.zeros( ( nFermi,3,3) ,dtype=float )
-        for iFermi in range(nFermi):
-            dipole[iFermi]=calc_dipole_D13(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        if use_occ_old:
-            dipole=np.cumsum(dipole,axis=0)
-        return result.EnergyResult(Efermi,dipole,TRodd=False,Iodd=True)
-    
-    OCC=UnoccOcc(occ_old,data,Efermi,triple=True)
-    B=data.D_gdD_3[OCC.selectK]
-    dipole=eval_J12(B,OCC.UnoccUnoccOcc_plus)-eval_J12(B,OCC.UnoccUnoccOcc_minus)
-
-    occ_old[:,:]=OCC.occ_new[:,:]
-    return dipole/(data.NKFFT_tot*data.cell_volume)
-
-
-
 
 def calc_dipole_D2(data,Efermi=None,occ_old=None):
-
-    use_occ_old=True
-
-    if (occ_old is None)  or (not use_occ_old): 
-        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
-#        print ("Efermi={}".format(Efermi))
-
     if isinstance(Efermi, Iterable):
-        nFermi=len(Efermi)
-        dipole=np.zeros( ( nFermi,3,3) ,dtype=float )
-        for iFermi in range(nFermi):
-            dipole[iFermi]=calc_dipole_D2(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        if use_occ_old:
-            dipole=np.cumsum(dipole,axis=0)
-        return result.EnergyResult(Efermi,dipole,TRodd=False,Iodd=True)
-    
-    # now code for a single Fermi level:
-    OCC=UnoccOcc(occ_old,data,Efermi,triple=True)
-
-#    print ("  calculating occ matrices")
-    B=data.D_gdD_1_[OCC.selectK]
-    dipole=eval_J12(B,OCC.unoccocc_plus)-eval_J12(B,OCC.unoccocc_minus)
-    B=data.D_gdD_2_[OCC.selectK]
-    dipole+=eval_J12(B,OCC.UnoccOccOcc_plus)-eval_J12(B,OCC.UnoccOccOcc_minus)
-    B=data.D_gdD_3_[OCC.selectK]
-    dipole+=eval_J12(B,OCC.UnoccUnoccOcc_plus)-eval_J12(B,OCC.UnoccUnoccOcc_minus)
-
-    occ_old[:,:]=OCC.occ_new[:,:]
+        return IterateEf(data,Efermi,TRodd=False,Iodd=True)
+    OCC=OccDelta(occ_old,data,Efermi,triple=True)
+    dipole= -2*( OCC.eval_UO(data.D_gdD_1_) 
+            + OCC.eval_UOO(data.D_gdD_2_ )
+            + OCC.eval_UUO(data.D_gdD_3_ )  )
     return dipole/(data.NKFFT_tot*data.cell_volume)
 
 
 
-def calc_dipole_D21(data,Efermi=None,occ_old=None):
-
-    use_occ_old=True
-
-    if (occ_old is None)  or (not use_occ_old): 
-        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
-#        print ("Efermi={}".format(Efermi))
-
+def calc_dipole_D3(data,Efermi=None,occ_old=None):
     if isinstance(Efermi, Iterable):
-        nFermi=len(Efermi)
-        dipole=np.zeros( ( nFermi,3,3) ,dtype=float )
-        for iFermi in range(nFermi):
-            dipole[iFermi]=calc_dipole_D21(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        if use_occ_old:
-            dipole=np.cumsum(dipole,axis=0)
-        return result.EnergyResult(Efermi,dipole,TRodd=False,Iodd=True)
-    
-    # now code for a single Fermi level:
-    OCC=UnoccOcc(occ_old,data,Efermi,triple=True)
-
-#    print ("  calculating occ matrices")
-    B=data.D_gdD_1_[OCC.selectK]
-    dipole=eval_J12(B,OCC.unoccocc_plus)-eval_J12(B,OCC.unoccocc_minus)
-
-    occ_old[:,:]=OCC.occ_new[:,:]
+        return IterateEf(data,Efermi,TRodd=False,Iodd=True)
+    OCC=OccDelta(occ_old,data,Efermi,triple=True)
+    A,B,C=data.D_gdD
+    dipole= -2*( OCC.eval_UO(A) 
+            + OCC.eval_UOO(B)
+            + OCC.eval_UUO(C)  )
     return dipole/(data.NKFFT_tot*data.cell_volume)
 
 
-
-
-
-def calc_dipole_D22(data,Efermi=None,occ_old=None):
-
-    use_occ_old=True
-
-    if (occ_old is None)  or (not use_occ_old): 
-        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
-#        print ("Efermi={}".format(Efermi))
-
-    if isinstance(Efermi, Iterable):
-        nFermi=len(Efermi)
-        dipole=np.zeros( ( nFermi,3,3) ,dtype=float )
-        for iFermi in range(nFermi):
-            dipole[iFermi]=calc_dipole_D22(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        if use_occ_old:
-            dipole=np.cumsum(dipole,axis=0)
-        return result.EnergyResult(Efermi,dipole,TRodd=False,Iodd=True)
-    
-    # now code for a single Fermi level:
-    OCC=UnoccOcc(occ_old,data,Efermi,triple=True)
-
-#    print ("  calculating occ matrices")
-    B=data.D_gdD_2_[OCC.selectK]
-    dipole=eval_J12(B,OCC.UnoccOccOcc_plus)-eval_J12(B,OCC.UnoccOccOcc_minus)
-
-    occ_old[:,:]=OCC.occ_new[:,:]
-    return dipole/(data.NKFFT_tot*data.cell_volume)
-
-
-
-def calc_dipole_D23(data,Efermi=None,occ_old=None):
-
-    use_occ_old=True
-
-    if (occ_old is None)  or (not use_occ_old): 
-        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
-#        print ("Efermi={}".format(Efermi))
-
-    if isinstance(Efermi, Iterable):
-        nFermi=len(Efermi)
-        dipole=np.zeros( ( nFermi,3,3) ,dtype=float )
-        for iFermi in range(nFermi):
-            dipole[iFermi]=calc_dipole_D23(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        if use_occ_old:
-            dipole=np.cumsum(dipole,axis=0)
-        return result.EnergyResult(Efermi,dipole,TRodd=False,Iodd=True)
-    
-    # now code for a single Fermi level:
-    OCC=UnoccOcc(occ_old,data,Efermi,triple=True)
-
-#    print ("  calculating occ matrices")
-    B=data.D_gdD_3_[OCC.selectK]
-    dipole=eval_J12(B,OCC.UnoccUnoccOcc_plus)-eval_J12(B,OCC.UnoccUnoccOcc_minus)
-
-    occ_old[:,:]=OCC.occ_new[:,:]
-    return dipole/(data.NKFFT_tot*data.cell_volume)
 
 
 
