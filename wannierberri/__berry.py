@@ -40,60 +40,6 @@ fac_morb =  -eV_au/bohr**2
 print ("fac_morb=",fac_morb,1/fac_morb)
 
 
-class OccDelta():
- 
-    def __init__(self,occ_old,data,Efermi,triple=False):
-#        print ("EF={}, number of occ old:{}".format(Efermi,occ_old.sum()/data.NKFFT_tot))
-        occ_new=(data.E_K<Efermi)  
-        unocc_new=np.logical_not(occ_new)
-        unocc_old=np.logical_not(occ_old)
-        selectK=np.where(np.any(occ_old!=occ_new,axis=1))[0]
-        occ_old_selk=occ_old[selectK]
-        occ_new_selk=occ_new[selectK]
-        unocc_old_selk=unocc_old[selectK]
-        unocc_new_selk=unocc_new[selectK]
-        self.delocc=occ_new_selk!=occ_old_selk
-        self.selectK=selectK
-        self.UnoccOcc_plus=unocc_new_selk[:,:,None]*self.delocc[:,None,:]
-        self.UnoccOcc_minus=self.delocc[:,:,None]*occ_old_selk[:,None,:]
-    
-        OccOcc_new=occ_new_selk[:,:,None]*occ_new_selk[:,None,:]
-        OccOcc_old=occ_old_selk[:,:,None]*occ_old_selk[:,None,:]
-        self.OccOcc_plus = OccOcc_new * np.logical_not(OccOcc_old)
-    
-        if triple:
-            UnoccUnocc_new=unocc_new_selk[:,:,None]*unocc_new_selk[:,None,:]
-            UnoccUnocc_old=unocc_old_selk[:,:,None]*unocc_old_selk[:,None,:]
-            UnoccUnocc_minus = UnoccUnocc_old * np.logical_not(UnoccUnocc_new)
-    
-            self.UnoccOccOcc_plus=unocc_new_selk[:,:,None,None]*self.OccOcc_plus[:,None,:,:]
-            self.UnoccOccOcc_minus=self.delocc[:,:,None,None]*OccOcc_old[:,None,:,:]
-        
-            self.UnoccUnoccOcc_plus=UnoccUnocc_new[:,:,:,None]*self.delocc[:,None,None,:]
-            self.UnoccUnoccOcc_minus=UnoccUnocc_minus[:,:,:,None]*occ_old_selk[:,None,None,:]
-        occ_old[:,:]=occ_new[:,:]
-
-
-    def eval_O(self,A):
-        return A[self.selectK][self.delocc].sum(axis=0)
-
-    def eval_UO(self,B):
-        B1=B[self.selectK]
-        return B1[self.UnoccOcc_plus].sum(axis=0)-B1[self.UnoccOcc_minus].sum(axis=0)
-
-    def eval_OO(self,B):
-        return B[self.selectK][self.OccOcc_plus].sum(axis=0)
-
-    def eval_UUO(self,B):
-        B1=B[self.selectK]
-        return B1[self.UnoccUnoccOcc_plus].sum(axis=0)-B1[self.UnoccUnoccOcc_minus].sum(axis=0)
-
-    def eval_UOO(self,B):
-        B1=B[self.selectK]
-        return B1[self.UnoccOccOcc_plus].sum(axis=0)-B1[self.UnoccOccOcc_minus].sum(axis=0)
-
-
-
 def calcV_band(data):
     return data.delE_K
 
@@ -101,67 +47,14 @@ def calcV_band_kn(data):
     return result.KBandResult(data.delE_K,TRodd=True,Iodd=True)
 
 
-def IterateEf(data,Efermi,TRodd,Iodd):
-    occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
-    funname=inspect.stack()[1][3]
-    print ("iterating function '{}' or Efermi={}".format(funname,Efermi))
-    RES=[] 
-    fun=vars(sys.modules[__name__])[funname]
-    for iFermim,Ef in enumerate(Efermi):
-#       print ("iFermi={}".format(iFermi))
-        RES.append(fun(data,Efermi=Ef,occ_old=occ_old))
-    return result.EnergyResult(Efermi,np.cumsum(RES,axis=0),TRodd=TRodd,Iodd=Iodd)
-    
+def get_occ(E_K,Efermi):
+    return (E_K< Efermi)
 
+def eval_J0(A,occ):
+    return A[occ].sum(axis=0)
 
-def calcAHC(data,Efermi=None,occ_old=None):
-
-    if isinstance(Efermi, Iterable):
-        return IterateEf(data,Efermi,TRodd=True,Iodd=False)
-    OCC=OccDelta(occ_old,data,Efermi)
-
-    AHC=OCC.eval_O(data.Omega_Hbar_diag) - 2* OCC.eval_UO( data.D_A+data.D_H_sq )
-
-    return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
-
-
-
-    
-
-
-def calc_dipole_D1(data,Efermi=None,occ_old=None):
-    if isinstance(Efermi, Iterable):
-        return IterateEf(data,Efermi,TRodd=False,Iodd=True)
-    OCC=OccDelta(occ_old,data,Efermi,triple=True)
-    dipole= -2*( OCC.eval_UO(data.D_gdD_1) 
-            + OCC.eval_UOO(data.D_gdD_2 )
-            + OCC.eval_UUO(data.D_gdD_3 )  )
-    return dipole/(data.NKFFT_tot*data.cell_volume)
-
-def calc_dipole_D2(data,Efermi=None,occ_old=None):
-    if isinstance(Efermi, Iterable):
-        return IterateEf(data,Efermi,TRodd=False,Iodd=True)
-    OCC=OccDelta(occ_old,data,Efermi,triple=True)
-    dipole= -2*( OCC.eval_UO(data.D_gdD_1_) 
-            + OCC.eval_UOO(data.D_gdD_2_ )
-            + OCC.eval_UUO(data.D_gdD_3_ )  )
-    return dipole/(data.NKFFT_tot*data.cell_volume)
-
-
-
-def calc_dipole_D3(data,Efermi=None,occ_old=None):
-    if isinstance(Efermi, Iterable):
-        return IterateEf(data,Efermi,TRodd=False,Iodd=True)
-    OCC=OccDelta(occ_old,data,Efermi,triple=True)
-    A,B,C=data.D_gdD
-    dipole= -2*( OCC.eval_UO(A) 
-            + OCC.eval_UOO(B)
-            + OCC.eval_UUO(C)  )
-    return dipole/(data.NKFFT_tot*data.cell_volume)
-
-
-
-
+def eval_J12(B,UnoccOcc):
+    return -2*B[UnoccOcc].sum(axis=0)
 
 
 
