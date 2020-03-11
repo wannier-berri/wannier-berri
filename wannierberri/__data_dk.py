@@ -265,7 +265,7 @@ class Data_dk(System):
         select=abs(dEig)<dEig_threshold
         dEig[select]=dEig_threshold
         deig=1./dEig
-        dEig[select]=0.
+#        dEig[select]=0.
         return dEig
 
 
@@ -306,7 +306,7 @@ class Data_dk(System):
     def D_gdD_1(self):
          print_my_name_start()
          gdD_H_1 =  -self.del2E_H*self.dEig_inv[:, :,:, None,None]
-         return  0.5*( self.D_H[:, :,:, alpha_A,None]*gdD_H_1[:, :,:, beta_A,:].transpose((0,2,1,3,4))-
+         return  0.5( self.D_H[:, :,:, alpha_A,None]*gdD_H_1[:, :,:, beta_A,:].transpose((0,2,1,3,4))-
                    self.D_H[:, :,:, beta_A,None]*gdD_H_1[:, :,:, alpha_A,:].transpose((0,2,1,3,4))
                            ).imag
 
@@ -330,6 +330,56 @@ class Data_dk(System):
          return  0.5*(  self.D_H[:, :,None,:, alpha_A,None]*gdD_H_3[:, :,:,: , beta_A,:].transpose((0,3,2,1,4,5))  - 
                           self.D_H[:, :,None,:, beta_A,None]*gdD_H_3[:, :,:,: , alpha_A,:].transpose((0,3,2,1,4,5))  
                              ).imag
+
+
+
+    @lazy_property.LazyProperty
+    def D_gdD_1_(self):
+        Vln=self.V_H
+        Vnl=Vln.transpose(0,2,1,3)
+        W=self.del2E_H
+        b=alpha_A
+        c=beta_A
+        return self.dEig_inv[:,:,:,None,None]**2*(Vnl[:,:,:,b,None]*W[:,:,:,c,:] - Vnl[:,:,:,c,None]*W[:,:,:,b,:] ).imag
+
+    @lazy_property.LazyProperty
+    def D_gdD_2_(self):
+        Vln_  = self.V_H
+        Vnl_  = Vln_.transpose(0,2,1,3)
+        b=alpha_A
+        c=beta_A
+        d=None
+        N=None
+        Vnlb = Vnl_[:, :,N,:,  b,N]
+        Vnlc = Vnl_[:, :,N,:,  c,N]
+        Vln1c= Vln_[:, :,:,N,  c,N]
+        Vln1b= Vln_[:, :,:,N,  b,N]
+        Vln1d= Vln_[:, :,:,N,  N,:]
+        Vn1nd= Vln_[:, N,:,:,  N,:]
+        Vn1nb= Vln_[:, N,:,:,  b,N]
+        Vn1nc= Vln_[:, N,:,:,  c,N]
+        return (self.dEig_inv**2)[:,:,None,:,None,None]*self.dEig_inv[:,:,:,None,None,None]*( Vnlb*(Vln1c*Vn1nd+Vln1d*Vn1nc) -  Vnlc*(Vln1b*Vn1nd+Vln1d*Vn1nb) ).imag
+
+    @lazy_property.LazyProperty
+    def D_gdD_3_(self):
+        Vln_  = self.V_H
+        Vnl_  = Vln_.transpose(0,2,1,3)
+        b=alpha_A
+        c=beta_A
+        d=None
+        N=None
+        Vnlb = Vnl_[:, :,N,:,  b,N]
+        Vnlc = Vnl_[:, :,N,:,  c,N]
+        Vll1c= Vln_[:, :,:,N,  c,N]
+        Vll1b= Vln_[:, :,:,N,  b,N]
+        Vll1d= Vln_[:, :,:,N,  N,:]
+        Vl1nd= Vln_[:, N,:,:,  N,:]
+        Vl1nb= Vln_[:, N,:,:,  b,N]
+        Vl1nc= Vln_[:, N,:,:,  c,N]
+        return -(self.dEig_inv**2)[:,:,None,:,None,None]*self.dEig_inv[:,None,:,:,None,None]*( Vnlb*(Vll1c*Vl1nd+Vll1d*Vl1nc)  -  Vnlc*(Vll1b*Vl1nd+Vll1d*Vl1nb) ).imag
+
+
+
 
     @lazy_property.LazyProperty
     def A_Hbar(self):
