@@ -112,7 +112,7 @@ class EnergyResult(Result):
 
 
     def write(self,name):
-        # assule, that the dimensions starting from first - are cartesian coordinates       
+        # assume, that the dimensions starting from first - are cartesian coordinates       
         def getHead(n):
            if n<=0:
               return ['  ']
