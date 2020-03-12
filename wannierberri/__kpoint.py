@@ -162,3 +162,25 @@ def exclude_equiv_points(k_list,new_points=None):
                     break
     print ("Done. Excluded  {} points in {} sec".format(cnt,time()-t0))
     return cnt
+
+# this should be a faster implementation
+def exclude_equiv_points_fast(k_list,new_points=None):
+    print ("Excluding symmetry-equivalent points")
+    t0=time()
+    cnt=0
+    n=len(k_list)
+#    print (n,new_points)
+#    print (-1 if new_points is None else max(-1,n-1-new_points))
+    for i in range(n-1,-1 if new_points is None else max(-1,n-1-new_points),-1):
+#        print (i)
+        for j in range(i-1,-1,-1):
+            ki=k_list[i]
+            kj=k_list[j]
+            if ki.equiv(kj):
+                if ki.equiv(kj):
+                    kj.absorb(ki)
+                    cnt+=1
+                    del k_list[i]
+                    break
+    print ("Done. Excluded  {} points in {} sec".format(cnt,time()-t0))
+    return cnt

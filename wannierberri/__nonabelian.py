@@ -19,13 +19,11 @@ from . import __berry
 from collections import Iterable, defaultdict
 from . import __result as result
 from time import time
-from .__utility import alpha_A,beta_A
+from .__utility import alpha_A,beta_A,TAU_UNIT,TAU_UNIT_TXT
 
 from scipy.constants import Boltzmann,elementary_charge,hbar,electron_mass
 bohr_magneton=elementary_charge*hbar/(2*electron_mass)
 
-TAU_UNIT=1E-9 # tau in nanoseconds
-TAU_UNIT_TXT="ns"
 Ang_SI=1e-10
 
 def __spin(data):
@@ -52,8 +50,6 @@ def __morb(data):
 
 __dimensions=defaultdict(lambda : 1)
 __dimensions['mass']=2
-__dimensions['mass1']=2
-__dimensions['mass2']=2
 
 #quantities that should be odd under TRS and inversion
 TRodd  = set(['spin','morb','vel','curv','curvE','morbg','morb2','curvD'])
@@ -204,23 +200,6 @@ def conductivity_ohmic_sea(data,Efermi):
     factor*=elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
     factor*=1e-2 # now in  S/(cm*tau_unit)
     return nonabelian_general(data,Efermi,['mass'],mode='fermi-sea',factor=factor)
-
-
-def conductivity_ohmic_sea_1(data,Efermi):
-    # _general yields integral(V*V*f0') in units eV/Ang
-    # we want in S/(cm)/tau_unit
-    factor=elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
-    factor*=-elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
-    factor*=1e-2 # now in  S/(cm*tau_unit)
-    return nonabelian_general(data,Efermi,['mass1'],mode='fermi-sea',factor=factor)
-
-def conductivity_ohmic_sea_2(data,Efermi):
-    # _general yields integral(V*V*f0') in units eV/Ang
-    # we want in S/(cm)/tau_unit
-    factor=elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
-    factor*=-elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
-    factor*=1e-2 # now in  S/(cm*tau_unit)
-    return nonabelian_general(data,Efermi,['mass2'],mode='fermi-sea',factor=factor)
 
 
 

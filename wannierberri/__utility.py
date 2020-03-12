@@ -23,6 +23,8 @@ from lazy_property import LazyProperty as Lazy
 
 alpha_A=np.array([1,2,0])
 beta_A =np.array([2,0,1])
+TAU_UNIT=1E-9 # tau in nanoseconds
+TAU_UNIT_TXT="ns"
 
 
 

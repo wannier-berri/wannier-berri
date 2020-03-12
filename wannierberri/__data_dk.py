@@ -237,6 +237,10 @@ class Data_dk(System):
         del2HH = fourier_R_to_k(del2HH,self.iRvec,self.NKFFT,hermitian=True)
         return self._rotate_mat(del2HH)
 
+    @lazy_property.LazyProperty
+    def del2E_H_diag(self):
+        return np.einsum("knnab->knab",self.del2E_H).real
+
 
     @lazy_property.LazyProperty
     def del2E_K(self):
@@ -345,6 +349,19 @@ class Data_dk(System):
         _SS_K=fourier_R_to_k( self.SS_R,self.iRvec,self.NKFFT)
         return self._rotate_vec( _SS_K )
 
+    @lazy_property.LazyProperty
+    def delS_H(self):
+#  d_b S_a
+        print_my_name_start()
+        delSS_R=1j*self.SS_R[:,:,:,:,None]*self.cRvec[None,None,:,None,:]
+        delSS_K= fourier_R_to_k(delSS_R,self.iRvec,self.NKFFT,hermitian=True)
+        return self._rotate_vec(delSS_K)
+
+    @lazy_property.LazyProperty
+    def delS_H_diag(self):
+#  d_b S_a
+        return np.einsum("knnab->knnab",self.delS_H)
+
 
     @lazy_property.LazyProperty
     def Omega_Hbar(self):
@@ -396,6 +413,23 @@ class Data_dk(System):
          print_my_name_start()
          return ( (self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))*self.A_Hbar[:,:,:,beta_A]).real+
                (self.D_H[:,:,:,beta_A]*self.A_Hbar[:,:,:,alpha_A].transpose((0,2,1,3))).real  )
+
+#  for effective mass
+    @lazy_property.LazyProperty
+    def Db_Va_re(self):
+         print_my_name_start()
+         return (self.D_H[:,:,:,None,:]*self.V_H.transpose(0,2,1,3)[:,:,:,:,None]  - 
+                   self.D_H.transpose(0,2,1,3)[:,:,:,None,:]  *self.V_H[:,:,:,:,None]
+                   ).real
+
+#  for spin derivative
+    @lazy_property.LazyProperty
+    def Db_Sa_re(self):
+         print_my_name_start()
+         return (self.D_H[:,:,:,None,:]*self.S_H.transpose(0,2,1,3)[:,:,:,:,None]  - 
+                   self.D_H.transpose(0,2,1,3)[:,:,:,None,:]  *self.S_H[:,:,:,:,None]
+                   ).real
+               
 
 
     @lazy_property.LazyProperty
