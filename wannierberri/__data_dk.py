@@ -355,7 +355,7 @@ class Data_dk(System):
         c=beta_A
         N=None
         
-        uo= (D[:, :,:,  b,N] * dDnl[:, :,:,     c,:]  -  D[:, :,:,  c,N] * dDnl [:, :,:,     b,:] ).imag
+        uo= (D[:, :,:,  b,N] * dDnl [:, :,:,    c,:]  -  D[:, :,:,  c,N] * dDnl [:, :,:,     b,:] ).imag
         uuo=(D[:, :,N,:,b,N] * dDnll[:, :,:,:,  c,:]  -  D[:, :,N,:,c,N] * dDnll[:, :,:,:,   b,:] ).imag
         uoo=(D[:, :,N,:,b,N] * dDnnl[:, :,:,:,  c,:]  -  D[:, :,N,:,c,N] * dDnnl[:, :,:,:,   b,:] ).imag
   
@@ -369,9 +369,9 @@ class Data_dk(System):
         c=beta_A
         N=None
         
-        uo= (A[:, :,:,  b,N] * dDnl[:, :,:,     c,:]  -  A[:, :,:,  c,N] * dDnl [:, :,:,     b,:] ).real
-        uuo=(A[:, :,N,:,b,N] * dDnll[:, :,:,:,  c,:]  -  A[:, :,N,:,c,N] * dDnll[:, :,:,:,   b,:] ).real
-        uoo=(A[:, :,N,:,b,N] * dDnnl[:, :,:,:,  c,:]  -  A[:, :,N,:,c,N] * dDnnl[:, :,:,:,   b,:] ).real
+        uo=  (A[:, :,:,  b,N] * dDnl [:, :,:,    c,:]  -  A[:, :,:,  c,N] * dDnl [:, :,:,     b,:] ).real
+        uuo= (A[:, :,N,:,b,N] * dDnll[:, :,:,:,  c,:]  -  A[:, :,N,:,c,N] * dDnll[:, :,:,:,   b,:] ).real
+        uoo= (A[:, :,N,:,b,N] * dDnnl[:, :,:,:,  c,:]  -  A[:, :,N,:,c,N] * dDnnl[:, :,:,:,   b,:] ).real
   
         return uo,uoo,uuo
 
@@ -386,9 +386,9 @@ class Data_dk(System):
         b=alpha_A
         c=beta_A
         N=None
-        uo= ( dA[:,:,:,b,:]*Dnl[:,:,:,c,N]-dA[:,:,:,c,:]*Dnl[:,:,:,b,N]).real 
-        uuo=  (( Dnl[:, :,N,:, c,N] * A[:, :,:,N,b,N]  - Dnl[:, :,N,:, b,N] * A[:, :,:,N,c,N] ) *  Dln[:, N,:,:, N,:]).real
-        uoo= -(( Dnl[:, :,N,:, c,N] * A[:, N,:,:,b,N]  - Dnl[:, :,N,:, b,N] * A[:, N,:,:,c,N] ) *  Dln[:, :,:,N, N,:]).real
+        uo  =  (   dA[:,:,:,b,:]*Dnl[:,:,:,c,N]  -  dA[:,:,:,c,:]*Dnl[:,:,:,b,N]).real 
+        uuo =  (( Dnl[:, :,N,:, c] * A[:, :,:,N,b]  - Dnl[:, :,N,:, b] * A[:, :,:,N,c] )[:, :,:,:, :,N] *  Dln[:, N,:,:, N,:]).real
+        uoo = -(( Dnl[:, :,N,:, c] * A[:, N,:,:,b]  - Dnl[:, :,N,:, b] * A[:, N,:,:,c] )[:, :,:,:, :,N] *  Dln[:, :,:,N, N,:]).real
         return uo,uoo,uuo
 
 
@@ -435,7 +435,7 @@ class Data_dk(System):
     def Omega_Hbar(self):
         print_my_name_start()
         _OOmega_K =  fourier_R_to_k( -1j*(
-                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -     
+                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -
                         self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])   , self.iRvec, self.NKFFT,hermitian=True )
         return self._rotate_vec(_OOmega_K)
 
