@@ -150,6 +150,33 @@ class Data_dk(System):
         return res
 
 
+    @lazy_property.LazyProperty
+    def Berry_nonabelian_ext1(self):
+        print_my_name_start()
+        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
+        res= [ [ O[ib1:ib2,ib1:ib2,:]-1j*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,c]) for s,b,c in sbc) 
+                        for ib1,ib2 in deg]
+                     for O,A,D,deg in zip( self.Omega_Hbar,self.A_Hbar,self.D_H,self.degen ) ] 
+        print_my_name_end()
+        return res
+
+    @lazy_property.LazyProperty
+    def Berry_nonabelian_ext2(self):
+        print_my_name_start()
+        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
+        res= [ [ 
+               +sum(s*np.einsum("mla,lna->mna",X,Y) 
+                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
+                     for s,b,c in sbc
+                    for X,Y in [(-D[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c]),(-A[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
+                                       ]
+                           )
+                        for ib1,ib2 in deg]
+                     for O,A,D,deg in zip( self.Omega_Hbar,self.A_Hbar,self.D_H,self.degen ) ] 
+        print_my_name_end()
+        return res
+
+
 
     @lazy_property.LazyProperty
     def Berry_nonabelian_D(self):
@@ -304,31 +331,65 @@ class Data_dk(System):
          return  (-self.D_H[:,:,:,beta_A]*self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))).imag
 
 
+
+    @lazy_property.LazyProperty
+    def gdD(self):
+# evaluates tildeD  as three terms : gdD1[k,n,l,a,b] , gdD1[k,n,n',l,a,b] ,  gdD2[k,n,l',l,a,b] 
+# which after summing over l',n' will give the generalized derivative
+
+        dDnl=-self.del2E_H*self.dEig_inv[:,:,:,None,None]
+        dDnnl= self.V_H[:, :,:,None, :,None]*self.D_H[:, None,:,:,None, :]
+        dDnll=-self.D_H[:, :,:,None, :,None]*self.V_H[:, None,:,:,None, :]
+        
+        dDnnl=-(dDnnl+dDnnl.transpose(0,1,2,3,5,4))*self.dEig_inv[:,:,None,:  ,None,None]
+        dDnll=-(dDnll+dDnll.transpose(0,1,2,3,5,4))*self.dEig_inv[:,:,None,:  ,None,None]
+       
+        return dDnl.transpose(0,2,1,3,4),dDnnl.transpose(0,3,2,1,4,5),dDnll.transpose(0,3,2,1,4,5)
+
+
     @lazy_property.LazyProperty
     def D_gdD(self):
-        Vln=self.V_H
-        Vnl=Vln.transpose(0,2,1,3)
-        W=self.del2E_H
+        dDnl,dDnnl,dDnll=self.gdD
+        D=self.D_H
         b=alpha_A
         c=beta_A
         N=None
+        
+        uo= (D[:, :,:,  b,N] * dDnl[:, :,:,     c,:]  -  D[:, :,:,  c,N] * dDnl [:, :,:,     b,:] ).imag
+        uuo=(D[:, :,N,:,b,N] * dDnll[:, :,:,:,  c,:]  -  D[:, :,N,:,c,N] * dDnll[:, :,:,:,   b,:] ).imag
+        uoo=(D[:, :,N,:,b,N] * dDnnl[:, :,:,:,  c,:]  -  D[:, :,N,:,c,N] * dDnnl[:, :,:,:,   b,:] ).imag
+  
+        return uo,uoo,uuo
 
-# p= n' or l'
-        Vnlb = Vnl[:, :,N,:,  b,N]
-        Vnlc = Vnl[:, :,N,:,  c,N]
-        Vlpc = Vln[:, :,:,N,  c,N]
-        Vlpb = Vln[:, :,:,N,  b,N]
-        Vlpd = Vln[:, :,:,N,  N,:]
-        Vpnd = Vln[:, N,:,:,  N,:]
-        Vpnb = Vln[:, N,:,:,  b,N]
-        Vpnc = Vln[:, N,:,:,  c,N]
+    @lazy_property.LazyProperty
+    def A_gdD(self):
+        dDnl,dDnnl,dDnll=self.gdD
+        A=self.A_Hbar
+        b=alpha_A
+        c=beta_A
+        N=None
+        
+        uo= (A[:, :,:,  b,N] * dDnl[:, :,:,     c,:]  -  A[:, :,:,  c,N] * dDnl [:, :,:,     b,:] ).real
+        uuo=(A[:, :,N,:,b,N] * dDnll[:, :,:,:,  c,:]  -  A[:, :,N,:,c,N] * dDnll[:, :,:,:,   b,:] ).real
+        uoo=(A[:, :,N,:,b,N] * dDnnl[:, :,:,:,  c,:]  -  A[:, :,N,:,c,N] * dDnnl[:, :,:,:,   b,:] ).real
+  
+        return uo,uoo,uuo
 
-        TMP=(self.dEig_inv**2)[:,:,None,:,None,None]*( Vnlb*(Vlpc*Vpnd+Vlpd*Vpnc) -  Vnlc*(Vlpb*Vpnd+Vlpd*Vpnb) ).imag
 
-        return ( self.dEig_inv[:,:,:,None,None]**2*
-                       (Vnl[:,:,:,b,None]*W[:,:,:,c,:] - Vnl[:,:,:,c,None]*W[:,:,:,b,:] ).imag , 
-                self.dEig_inv[:,:,:,None,None,None]*TMP, 
-               -self.dEig_inv[:,None,:,:,None,None]*TMP  )
+    @lazy_property.LazyProperty
+    def DdA_DAD_DDA(self):
+        print_my_name_start()
+        Dln=self.D_H
+        Dnl=Dln.transpose(0,2,1,3)
+        A=self.A_Hbar
+        dA=self.A_Hbar_der
+        b=alpha_A
+        c=beta_A
+        N=None
+        uo= ( dA[:,:,:,b,:]*Dnl[:,:,:,c,N]-dA[:,:,:,c,:]*Dnl[:,:,:,b,N]).real 
+        uuo=  (( Dnl[:, :,N,:, c,N] * A[:, :,:,N,b,N]  - Dnl[:, :,N,:, b,N] * A[:, :,:,N,c,N] ) *  Dln[:, N,:,:, N,:]).real
+        uoo= -(( Dnl[:, :,N,:, c,N] * A[:, N,:,:,b,N]  - Dnl[:, :,N,:, b,N] * A[:, N,:,:,c,N] ) *  Dln[:, :,:,N, N,:]).real
+        return uo,uoo,uuo
 
 
 
@@ -340,6 +401,13 @@ class Data_dk(System):
         print_my_name_start()
         _AA_K=fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT,hermitian=True)
         return self._rotate_vec( _AA_K )
+
+
+    @lazy_property.LazyProperty
+    def A_Hbar_der(self):
+        print_my_name_start()
+        _AA_K=fourier_R_to_k( 1j*self.AA_R[:,:,:,:,None]*self.cRvec[None,None,:,None,:],self.iRvec,self.NKFFT,hermitian=True)
+        return self._rotate_mat( _AA_K )
 
 
 
@@ -439,6 +507,9 @@ class Data_dk(System):
          return ( (tmp[:,:,:,alpha_A] * self.B_Hbar[:,:,:,beta_A ]).real-
                   (tmp[:,:,:,beta_A ] * self.B_Hbar[:,:,:,alpha_A]).real  )
 
+
+
+
     @lazy_property.LazyProperty
     def D_E_A(self):
          print_my_name_start()
@@ -472,3 +543,19 @@ class Data_dk(System):
         _SS_K=self._rotate_vec( _SS_K )
         return np.einsum("kmma->kma",_SS_K).real
 
+
+    @lazy_property.LazyProperty
+    def Omega_bar_der(self):
+        print_my_name_start()
+        _OOmega_K =  fourier_R_to_k( (
+                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -     
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])[:,:,:,:,None]*self.cRvec[None,None,:,None,:]   , self.iRvec, self.NKFFT,hermitian=True )
+        return self._rotate_mat(_OOmega_K)
+
+    @lazy_property.LazyProperty
+    def Omega_bar_der_rediag(self):
+        return np.einsum("knnad->knad",self.Omega_bar_der).real
+
+    @lazy_property.LazyProperty
+    def Omega_bar_D_re(self):
+        return (self.Omega_Hbar.transpose(0,2,1,3)[:,:,:,:,None]*self.D_H[:,:,:,None,:]).real
