@@ -253,7 +253,7 @@ class Data_dk(System):
         print_my_name_start()
         delE_K = np.einsum("klla->kla",self.V_H)
         check=np.abs(delE_K).imag.max()
-        if check>1e-10: raiseruntimeError ("The band derivatives have considerable imaginary part: {0}".format(check))
+        if check>1e-10: raiseruntimeError ( "The band derivatives have considerable imaginary part: {0}".format(check) )
         return delE_K.real
 
 
@@ -361,8 +361,39 @@ class Data_dk(System):
   
         return uo,uoo,uuo
 
+
+    @lazy_property.LazyProperty
+    def D_gdD_old(self):
+        Vln=self.V_H
+        Vnl=Vln.transpose(0,2,1,3)
+        W=self.del2E_H
+        b=alpha_A
+        c=beta_A
+        N=None
+
+# p= n' or l'
+        Vnlb = Vnl[:, :,N,:,  b,N]
+        Vnlc = Vnl[:, :,N,:,  c,N]
+        Vlpc = Vln[:, :,:,N,  c,N]
+        Vlpb = Vln[:, :,:,N,  b,N]
+        Vlpd = Vln[:, :,:,N,  N,:]
+        Vpnd = Vln[:, N,:,:,  N,:]
+        Vpnb = Vln[:, N,:,:,  b,N]
+        Vpnc = Vln[:, N,:,:,  c,N]
+
+        TMP=(self.dEig_inv**2)[:,:,None,:,None,None]*( Vnlb*(Vlpc*Vpnd+Vlpd*Vpnc) -  Vnlc*(Vlpb*Vpnd+Vlpd*Vpnb) ).imag
+
+        return ( self.dEig_inv[:,:,:,None,None]**2*
+                       (Vnl[:,:,:,b,None]*W[:,:,:,c,:] - Vnl[:,:,:,c,None]*W[:,:,:,b,:] ).imag , 
+                self.dEig_inv[:,:,:,None,None,None]*TMP, 
+               -self.dEig_inv[:,None,:,:,None,None]*TMP  )
+
+
+
+
     @lazy_property.LazyProperty
     def A_gdD(self):
+        print_my_name_start()
         dDnl,dDnnl,dDnll=self.gdD
         A=self.A_Hbar
         b=alpha_A
