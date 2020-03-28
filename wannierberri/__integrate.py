@@ -77,6 +77,7 @@ calculators_trans={
          'berry_dipole'      : nonabelian.berry_dipole,
          'berry_dipole_D'      : nonabelian.berry_dipole_D,
          'berry_dipole_sea_D'        : fermisea.calc_dipole_D ,
+         'berry_dipole_sea_D_old'        : fermisea.calc_dipole_D_old ,
          'gyrotropic_Korb'   : nonabelian.gyrotropic_Korb,
          'gyrotropic_Kspin'  : nonabelian.gyrotropic_Kspin,
 
@@ -85,6 +86,7 @@ calculators_trans={
 
          'berry_dipole_sea_ext1'        : fermisea.calc_dipole_ext_1 ,
          'berry_dipole_sea_ext2'        : fermisea.calc_dipole_ext_2 ,
+         'berry_dipole_sea_ext2_debug'        : fermisea.calc_dipole_ext_2_debug ,
 
          'berry_dipole_sea_ext1_1'        : fermisea.calc_dipole_ext_1_1 ,
          'berry_dipole_sea_ext1_2'        : fermisea.calc_dipole_ext_1_2 ,
