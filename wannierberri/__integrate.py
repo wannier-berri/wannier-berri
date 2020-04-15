@@ -16,9 +16,12 @@ from scipy import constants as constants
 from collections import Iterable,defaultdict
 from copy import copy,deepcopy
 
+from functools import partial
+
 from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
 from . import __result as result
 from . import  __berry as berry
+from . import  __fermisea as fermisea
 from . import  __gyrotropic as gyrotropic
 from . import  __spin as spin
 from . import  __nonabelian as nonabelian
@@ -32,15 +35,24 @@ from . import  __utility   as utility
 calculators_trans={ 
          'spin'       : spin.calcSpinTot,  
          'Morb'       : berry.calcMorb,
+         'Morb2'       : fermisea.calcMorb,
+         'Morb2_IC'       : partial(fermisea.calcMorb,evalLC=False,evalIC=True),
+         'Morb2_LC'       : partial(fermisea.calcMorb,evalIC=False,evalLC=True),
+         'Morb2_IC_J0'       : partial(fermisea.calcMorb,evalLC=False,evalIC=True,evalJ0=True,evalJ1=False,evalJ2=False),
+         'Morb2_LC_J0'       : partial(fermisea.calcMorb,evalIC=False,evalLC=True,evalJ0=True,evalJ1=False,evalJ2=False),
+         'Morb2_IC_J1'       : partial(fermisea.calcMorb,evalLC=False,evalIC=True,evalJ0=False,evalJ1=True,evalJ2=False),
+         'Morb2_LC_J1'       : partial(fermisea.calcMorb,evalIC=False,evalLC=True,evalJ0=False,evalJ1=True,evalJ2=False),
+         'Morb2_IC_J2'       : partial(fermisea.calcMorb,evalLC=False,evalIC=True,evalJ0=False,evalJ1=False,evalJ2=True),
+         'Morb2_LC_J2'       : partial(fermisea.calcMorb,evalIC=False,evalLC=True,evalJ0=False,evalJ1=False,evalJ2=True),
          'Morb_LC'       : berry.calcMorb_LC,
          'Morb_IC'       : berry.calcMorb_IC,
-#         'Morb_LC_J0'       : berry.calcMorb_LC_J0,
-#         'Morb_LC_J1'       : berry.calcMorb_LC_J1,
-#         'Morb_LC_J2'       : berry.calcMorb_LC_J2,
-#         'Morb_IC_J0'       : berry.calcMorb_IC_J0,
-#         'Morb_IC_J1'       : berry.calcMorb_IC_J1,
-#         'Morb_IC_J2'       : berry.calcMorb_IC_J2,
-         'ahc'        : berry.calcAHC ,
+         'Morb_LC_J0'       : berry.calcMorb_LC_J0,
+         'Morb_LC_J1'       : berry.calcMorb_LC_J1,
+         'Morb_LC_J2'       : berry.calcMorb_LC_J2,
+         'Morb_IC_J0'       : berry.calcMorb_IC_J0,
+         'Morb_IC_J1'       : berry.calcMorb_IC_J1,
+         'Morb_IC_J2'       : berry.calcMorb_IC_J2,
+         'ahc'        : fermisea.calcAHC ,
          'dos'        : dos.calc_DOS ,
          'cumdos'        : dos.calc_cum_DOS ,
 #         'nonabelian_spin' : nonabelian.spin , 
@@ -61,11 +73,30 @@ calculators_trans={
          'Hall_spin' :  nonabelian.Hall_spin,
          'conductivity_ohmic': nonabelian.conductivity_ohmic,
          'conductivity_ohmic_sea': nonabelian.conductivity_ohmic_sea,
-         'conductivity_ohmic_sea_1': nonabelian.conductivity_ohmic_sea_1,
-         'conductivity_ohmic_sea_2': nonabelian.conductivity_ohmic_sea_2,
+         'conductivity_ohmic_sea2': fermisea.conductivity_ohmic_sea,
          'berry_dipole'      : nonabelian.berry_dipole,
+         'berry_dipole_D'      : nonabelian.berry_dipole_D,
+         'berry_dipole_sea_D'        : fermisea.calc_dipole_D ,
+         'berry_dipole_sea_D_old'        : fermisea.calc_dipole_D_old ,
          'gyrotropic_Korb'   : nonabelian.gyrotropic_Korb,
          'gyrotropic_Kspin'  : nonabelian.gyrotropic_Kspin,
+
+         'berry_dipole_ext1'      : nonabelian.berry_dipole_ext1,
+         'berry_dipole_ext2'      : nonabelian.berry_dipole_ext2,
+
+         'berry_dipole_sea_ext1'        : fermisea.calc_dipole_ext_1 ,
+         'berry_dipole_sea_ext2'        : fermisea.calc_dipole_ext_2 ,
+         'berry_dipole_sea_ext2_debug'        : fermisea.calc_dipole_ext_2_debug ,
+
+         'berry_dipole_sea_ext1_1'        : fermisea.calc_dipole_ext_1_1 ,
+         'berry_dipole_sea_ext1_2'        : fermisea.calc_dipole_ext_1_2 ,
+         'berry_dipole_sea_ext2_3'        : fermisea.calc_dipole_ext_2_3 ,
+         'berry_dipole_sea_ext2_4'        : fermisea.calc_dipole_ext_2_4 ,
+         'berry_dipole_sea_ext2_5'        : fermisea.calc_dipole_ext_2_5 ,
+         'berry_dipole_sea_ext2_6'        : fermisea.calc_dipole_ext_2_6 ,
+         'orbital_mag_sea'                      : fermisea.calc_grd_orbital_mag,
+         'orbital_mag'                    : nonabelian.orbital_mag,                
+
          }
 
 
