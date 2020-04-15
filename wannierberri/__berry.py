@@ -25,15 +25,12 @@
 import numpy as np
 from scipy import constants as constants
 from collections import Iterable
-
+import inspect
+import sys
 from .__utility import  print_my_name_start,print_my_name_end
 from . import __result as result
 
-
-
-
-alpha=np.array([1,2,0])
-beta =np.array([2,0,1])
+use_occ_old=True
 
 #              -1.0e8_dp*elem_charge_SI**2/(hbar_SI*cell_volume)
 fac_ahc  = -1.0e8*constants.elementary_charge**2/constants.hbar
@@ -42,6 +39,7 @@ eV_au=constants.physical_constants['electron volt-hartree relationship'][0]
 fac_morb =  -eV_au/bohr**2
 print ("fac_morb=",fac_morb,1/fac_morb)
 
+
 def calcV_band(data):
     return data.delE_K
 
@@ -49,6 +47,8 @@ def calcV_band_kn(data):
     return result.KBandResult(data.delE_K,TRodd=True,Iodd=True)
 
 
+def get_occ(E_K,Efermi):
+    return (E_K< Efermi)
 
 def eval_J0(A,occ):
     return A[occ].sum(axis=0)
@@ -56,56 +56,6 @@ def eval_J0(A,occ):
 def eval_J12(B,UnoccOcc):
     return -2*B[UnoccOcc].sum(axis=0)
 
-#def eval_J3(B,UnoccUnoccOcc):
-#    return -2*B[UnoccUnoccOcc].sum(axis=0)
-
-def get_occ(E_K,Efermi):
-    return (E_K< Efermi)
-
-
-
-
-
-def calcAHC(data,Efermi=None,occ_old=None):
-    if occ_old is None: 
-        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
-
-
-    if isinstance(Efermi, Iterable):
-#        print ("iterating over Fermi levels")
-        nFermi=len(Efermi)
-        AHC=np.zeros( ( nFermi,3) ,dtype=float )
-        for iFermi in range(nFermi):
-#            print ("iFermi={}".format(iFermi))
-            AHC[iFermi]=calcAHC(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        return result.EnergyResultAxialV(Efermi,np.cumsum(AHC,axis=0))
-    
-    # now code for a single Fermi level:
-    AHC=np.zeros(3)
-
-#    print ("  calculating occ matrices")
-    occ_new=get_occ(data.E_K,Efermi)
-    unocc_new=np.logical_not(occ_new)
-    unocc_old=np.logical_not(occ_old)
-    selectK=np.where(np.any(occ_old!=occ_new,axis=1))[0]
-    occ_old_selk=occ_old[selectK]
-    occ_new_selk=occ_new[selectK]
-    unocc_old_selk=unocc_old[selectK]
-    unocc_new_selk=unocc_new[selectK]
-    delocc=occ_new_selk!=occ_old_selk
-    unoccocc_plus=unocc_new_selk[:,:,None]*delocc[:,None,:]
-    unoccocc_minus=delocc[:,:,None]*occ_old_selk[:,None,:]
-#    print ("  calculating occ matrices - done")
-
-#    print ("evaluating J0")
-    AHC=eval_J0(data.Omega_Hbar_diag[selectK], delocc)
-#    print ("evaluating B")
-    B=(data.D_A+data.D_H_sq)[selectK]
-#    print ("evaluating J12")
-    AHC+=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
-#    print ("evaluating J12-done")
-    occ_old[:,:]=occ_new[:,:]
-    return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
 
 
 def calcMorb(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):

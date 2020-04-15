@@ -102,7 +102,7 @@ def berry_dipole(data,Efermi):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
     return nonabelian_general(data,Efermi,['curv','vel'],mode='fermi-surface',factor=1)
 
-def orbital_mag(data,Efermi)
+def orbital_mag(data,Efermi):
     return nonabelian_general(data,Efermi,['curv','vel'],mode='fermi-surface',factor=1)
 
 def berry_dipole_D(data,Efermi):
