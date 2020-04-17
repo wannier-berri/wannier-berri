@@ -3,7 +3,7 @@
 ## python -m twine upload *
 import setuptools
 
-with open("README.md", "r") as fh:
+with open("README.txt", "r") as fh:
     long_description = fh.read()
 
 
