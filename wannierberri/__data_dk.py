@@ -28,7 +28,7 @@ class Data_dk(System):
         self.frozen_max=system.frozen_max
         self.random_gauge=system.random_gauge
         self.degen_thresh=system.degen_thresh
-        print ("random_gauge_dk:",self.random_gauge)
+#        print ("random_gauge_dk:",self.random_gauge)
         if dk is not None:
             expdk=np.exp(2j*np.pi*self.iRvec.dot(dk))
             self.dk=dk
