@@ -40,6 +40,12 @@ class System():
         self.random_gauge=random_gauge
         self.degen_thresh=degen_thresh
 
+        self.AA_R=None
+        self.BB_R=None
+        self.CC_R=None
+        self.FF_R=None
+        self.SS_R=None
+
         if tb_file is not None:
             self.__from_tb_file(tb_file,getAA=getAA)
             return
@@ -77,6 +83,8 @@ class System():
            getBB=True
 
         self.HH_R=self.__getMat('HH')
+
+
         
         if getAA:
             self.AA_R=self.__getMat('AA')
@@ -142,7 +150,8 @@ class System():
                              for n in range(self.num_wann)] 
                                 for m in range(self.num_wann)],dtype=float)
             self.AA_R[:,:,ir,:]=(aa[:,:,0::2]+1j*aa[:,:,1::2]).transpose( (1,0,2) ) /self.Ndegen[ir]
-        
+        else: 
+            self.AA_R = None
         
         f.close()
 

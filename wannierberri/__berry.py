@@ -70,11 +70,12 @@ def calcAHC(data,Efermi=None,occ_old=None):
     if occ_old is None: 
         occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
 
-
     if isinstance(Efermi, Iterable):
 #        print ("iterating over Fermi levels")
         nFermi=len(Efermi)
         AHC=np.zeros( ( nFermi,3) ,dtype=float )
+        if not data.has_AA_R:
+            print("WARNING : np AA_R. excluding 'external' terms of berry curature")
         for iFermi in range(nFermi):
 #            print ("iFermi={}".format(iFermi))
             AHC[iFermi]=calcAHC(data,Efermi=Efermi[iFermi],occ_old=occ_old)
@@ -83,7 +84,6 @@ def calcAHC(data,Efermi=None,occ_old=None):
     # now code for a single Fermi level:
     AHC=np.zeros(3)
 
-#    print ("  calculating occ matrices")
     occ_new=get_occ(data.E_K,Efermi)
     unocc_new=np.logical_not(occ_new)
     unocc_old=np.logical_not(occ_old)
@@ -95,15 +95,15 @@ def calcAHC(data,Efermi=None,occ_old=None):
     delocc=occ_new_selk!=occ_old_selk
     unoccocc_plus=unocc_new_selk[:,:,None]*delocc[:,None,:]
     unoccocc_minus=delocc[:,:,None]*occ_old_selk[:,None,:]
-#    print ("  calculating occ matrices - done")
 
-#    print ("evaluating J0")
-    AHC=eval_J0(data.Omega_Hbar_diag[selectK], delocc)
-#    print ("evaluating B")
-    B=(data.D_A+data.D_H_sq)[selectK]
-#    print ("evaluating J12")
-    AHC+=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
-#    print ("evaluating J12-done")
+    B=data.D_H_sq[selectK]
+    if data.has_AA_R:
+        B+=data.D_A[selectK]
+    AHC=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
+
+    if data.has_AA_R:
+        AHC+=eval_J0(data.Omega_Hbar_diag[selectK], delocc)
+
     occ_old[:,:]=occ_new[:,:]
     return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
 
@@ -233,9 +233,13 @@ def eval_Joo(B):
 
 
 def calcImf_band(data):
-    AA=data.Omega_Hbar_diag
-    BB=data.D_A+data.D_H_sq
-    return np.array([eval_Jo(A)-2*eval_Juo(B)  for A,B in zip (AA,BB) ] )
+    if data.has_AA_R:
+        AA=data.Omega_Hbar_diag
+        BB=data.D_A+data.D_H_sq
+        return np.array([eval_Jo(A)-2*eval_Juo(B)  for A,B in zip (AA,BB) ] )
+    else:
+        BB=data.D_H_sq
+        return np.array([-2*eval_Juo(B)  for B in BB ] )
 
 
 def calcImf_band_kn(data):
