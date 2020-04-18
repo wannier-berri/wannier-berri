@@ -18,7 +18,7 @@ from .__system import System
 from .__utility import  print_my_name_start,print_my_name_end,einsumk, fourier_R_to_k, alpha_A,beta_A
    
 class Data_dk(System):
-    def __init__(self,system,dk=None,AA=None,BB=None,CC=None,SS=None,NKFFT=None):
+    def __init__(self,system,dk=None,NKFFT=None):
         self.spinors=system.spinors
         self.iRvec=system.iRvec
         self.real_lattice=system.real_lattice
@@ -40,12 +40,13 @@ class Data_dk(System):
         
         for X in ['AA','BB','CC','SS']:
             XR=X+'_R'
-            XX=vars()[X]
-            if XX in (None,True):
-                try:
-                    vars(self)[XR]=vars(system)[XR]*expdk[None,None,:,None]
-                except KeyError:
-                    if XX : raise AttributeError(XR+" is not defined")
+            hasXR='has_'+X+'_R'
+            if vars(system)[XR] is None:
+                vars(self)[XR]=None
+                vars(self)[hasXR]=False
+            else:
+                vars(self)[XR]=vars(system)[XR]*expdk[None,None,:,None]
+                vars(self)[hasXR]=True
 
 
     def _rotate(self,mat):
