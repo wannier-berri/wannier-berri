@@ -35,7 +35,7 @@ AHC can also be calcualted for any tight-binding model, for which a "_tb.dat" fi
 WannierBerri can be run in parallel by means of multiprocessing module
 
 
-instllation is possible by pip
+installation is possible by pip
 
 pip3 install wannierberri
 

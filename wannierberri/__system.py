@@ -32,14 +32,15 @@ class System():
                     use_ws=True,
                     frozen_max=-np.Inf,
                     random_gauge=False,
-                    degen_thresh=-1
+                    degen_thresh=-1 ,
+                    old_format=False
                                 ):
 
 
         self.frozen_max=frozen_max
         self.random_gauge=random_gauge
         self.degen_thresh=degen_thresh
-
+        self.old_format=old_format
         self.AA_R=None
         self.BB_R=None
         self.CC_R=None
@@ -51,7 +52,7 @@ class System():
             return
         cprint ("Reading from {}".format(seedname+"_HH_save.info"),'green', attrs=['bold'])
 
-        f=open(seedname+"_HH_save.info","r")
+        f=open(seedname+"_HH_save.info" if self.old_format else seedname+"_R.info","r")
         l=f.readline().split()[:3]
         self.seedname=seedname
         self.num_wann,nRvec,self.spinors=int(l[0]),int(l[1]),str2bool(l[2])
@@ -182,7 +183,7 @@ class System():
 
     def __getMat(self,suffix):
 
-        f=FF(self.seedname+"_" + suffix+"_R.dat")
+        f=FF(self.seedname+"_" + suffix+"_R"+(".dat" if self.old_format else ""))
         MM_R=np.array([[np.array(f.read_record('2f8'),dtype=float) for m in range(self.num_wann)] for n in range(self.num_wann)])
         MM_R=MM_R[:,:,:,0]+1j*MM_R[:,:,:,1]
         f.close()
