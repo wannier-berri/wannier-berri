@@ -29,18 +29,17 @@ ultradense k-grid. This is achieved due to :
 
 Object oriented structure also makes it potentially easier to implement further features. 
 
-The usage of the code  is demonstrated by "exampleFe" in the examples folder.
+The usage of the code  is demonstrated by "tutorial/example.py". That will produce AHC and tabulate the berry curvature and velocity of bcc iron.
+
+The user manual is under construction, and can be viewed as a work in progress at https://www.overleaf.com/read/kbxxtfbnjvxx
+
 AHC can also be calcualted for any tight-binding model, for which a "_tb.dat" file was generated in watever way.
 
 WannierBerri can be run in parallel by means of multiprocessing module
 
-
 installation is possible by pip
 
 pip3 install wannierberri
-
-A simple exmple is contained in "tutorial/example.py" . That will produce AHC and tabulate the berry curvature and velocity of bcc iron
-more sofisticated features will be described soon.
 
 
 The project started on June, 25th 2019. 
