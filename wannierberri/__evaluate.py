@@ -139,7 +139,8 @@ As a result, the integration will be performed over NKFFT x NKdiv
             
     if not restart:
         print ("generating K_list")
-        K_list=KpointBZ(K=shift, NKFFT=NKFFT,symgroup=symgroup ).divide(NKdiv)
+        K_list=[KpointBZ(K=shift, NKFFT=NKFFT,symgroup=symgroup )]
+        K_list+=K_list[0].divide(NKdiv)
         print ("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
         start_iter=0
 
@@ -199,7 +200,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         print ("checking for equivalent points in all points (of new  {} points)".format(len(K_list)-l1))
         nexcl=exclude_equiv_points(K_list,new_points=len(K_list)-l1)
         print (" excluded {0} points".format(nexcl))
-        print ("sum of eights now :{}".format(sum(Kp.factor for Kp in K_list)))
+        print ("sum of weights now :{}".format(sum(Kp.factor for Kp in K_list)))
         
     
     print ("Totally processed {0} K-points ".format(counter))

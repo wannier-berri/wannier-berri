@@ -77,6 +77,29 @@ cprint(logo,'yellow')
 cprint("a.k.a. Wannier19",'red')
 figlet("    by Stepan Tsirkin",font='straight',col='green')
 
+
+
+cprint("""
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+June 4th 2020
+
+Tutorial at Electronic Structure Workshop  
+
+https://physics.ucmerced.edu/electronic-structure-workshop
+
+Please register by May 22
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+""", 'yellow', attrs=['bold'])
+
+
+cprint("""
+User manual under construction may be viewd here:
+https://www.overleaf.com/read/kbxxtfbnjvxx
+""",'magenta' )
+
+
 cprint( "\nVersion: {}\n".format( __version__),'cyan', attrs=['bold'])
 print_options()
 
