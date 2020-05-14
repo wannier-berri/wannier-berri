@@ -24,7 +24,7 @@ from . import  __symmetry  as symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
-#should be functions of only one parameter of class data_dk
+#should be functions of only one parameter of class Data_K
 calculators={ 
          'spin'       : spin.calcSpin_band_kn, 
          'V'          : berry.calcV_band_kn  , 
@@ -100,7 +100,7 @@ class TABresult(result.Result):
 
         
     def __mul__(self,other):
-    #k-point factors do not play arole in tabulating quantities
+    #K-point factors do not play arole in tabulating quantities
         return self
     
     def __add__(self,other):
