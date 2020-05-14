@@ -17,8 +17,8 @@ import lazy_property
 from .__system import System
 from .__utility import  print_my_name_start,print_my_name_end,einsumk, fourier_R_to_k, alpha_A,beta_A
    
-class Data_dk(System):
-    def __init__(self,system,dk=None,NKFFT=None):
+class Data_K(System):
+    def __init__(self,system,dK=None,NKFFT=None):
         self.spinors=system.spinors
         self.iRvec=system.iRvec
         self.real_lattice=system.real_lattice
@@ -29,14 +29,14 @@ class Data_dk(System):
         self.random_gauge=system.random_gauge
         self.degen_thresh=system.degen_thresh
 #        print ("random_gauge_dk:",self.random_gauge)
-        if dk is not None:
-            expdk=np.exp(2j*np.pi*self.iRvec.dot(dk))
-            self.dk=dk
+        if dK is not None:
+            expdK=np.exp(2j*np.pi*self.iRvec.dot(dK))
+            self.dK=dK
         else:
-            expdk=np.ones(self.nRvec)
-            self.dk=np.zeros(3)
+            expdK=np.ones(self.nRvec)
+            self.dK=np.zeros(3)
  
-        self.HH_R=system.HH_R[:,:,:]*expdk[None,None,:]
+        self.HH_R=system.HH_R[:,:,:]*expdK[None,None,:]
         
         for X in ['AA','BB','CC','SS']:
             XR=X+'_R'
@@ -45,7 +45,7 @@ class Data_dk(System):
                 vars(self)[XR]=None
                 vars(self)[hasXR]=False
             else:
-                vars(self)[XR]=vars(system)[XR]*expdk[None,None,:,None]
+                vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
                 vars(self)[hasXR]=True
 
 
@@ -80,7 +80,7 @@ class Data_dk(System):
     @lazy_property.LazyProperty
     def kpoints_all(self):
         dkx,dky,dkz=1./self.NKFFT
-        return np.array([self.dk-np.array([ix*dkx,iy*dky,iz*dkz]) 
+        return np.array([self.dK-np.array([ix*dkx,iy*dky,iz*dkz]) 
           for ix in range(self.NKFFT[0])
               for iy in range(self.NKFFT[1])
                   for  iz in range(self.NKFFT[2])])%1
