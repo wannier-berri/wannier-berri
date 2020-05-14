@@ -3,7 +3,7 @@
 
 ## these linesline if you want to use the git version of the code, instead of the one installed by pip
 local_code=True
-num_proc=0
+num_proc=16
 
 import os
 

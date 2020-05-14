@@ -20,7 +20,7 @@ from .__symmetry import SYMMETRY_PRECISION
 
 class  KpointBZ():
 
-    def __init__(self,K=np.zeros(3),dK=np.ones(3),NKFFT=np.ones(3),factor=1,symgroup=None,refinement_level=-1):
+    def __init__(self,K=np.zeros(3),dK=np.ones(3),NKFFT=np.ones(3),factor=1.,symgroup=None,refinement_level=-1):
         self.K=np.copy(K)
         self.dK=np.copy(dK)    
         self.factor=factor
@@ -86,8 +86,8 @@ class  KpointBZ():
 
     def absorb(self,other):
         self.factor+=other.factor
-        if not (other.res is None):
-            if not (self.res is None):
+        if other.res is not None:
+            if self.res is not None:
                 raise RuntimeError("combining two K-points :\n {} \n and\n  {}\n  with calculated result should not happen".format(self,other))
             self.res=other.res
 
@@ -119,16 +119,19 @@ class  KpointBZ():
                                   for y in range(ndiv[1]) 
                                    for z in range(ndiv[2])
                             if not (include_original and np.all(np.array([x,y,z])*2+1==ndiv)) ]
+        print ("ndiv={}, include_original={} ".format(ndiv,include_original))
+
         if include_original:
-            self.fractor=newfac
+            self.factor=newfac
             self.refinement_level+=1
             self.dK=dK_adpt
 
 #            K_list_add.append(self.fraction(ndiv))
         else:
             self.factor=0  # the K-point is "dead" but can be used for starting calculation on a different grid 
-            
-            
+
+        print ("ndiv={}, include_original={} ".format(ndiv,include_original))
+
         n=len(K_list_add)
 
         if not (self.symgroup is None):
