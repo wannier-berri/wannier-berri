@@ -289,6 +289,11 @@ class Data_dk(System):
         _AA_K=fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT,hermitian=True)
         return self._rotate_vec( _AA_K )
 
+    @lazy_property.LazyProperty
+    def A_H(self):
+        '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
+        print_my_name_start()
+        return self.A_Hbar + 1j*self.D_H
 
 
     @lazy_property.LazyProperty
