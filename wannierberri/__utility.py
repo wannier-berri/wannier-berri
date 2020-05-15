@@ -92,7 +92,7 @@ class smoother():
 
     def __call__(self,A):
         assert self.E.shape[0]==A.shape[0]
-        res=np.zeros(A.shape)
+        res=np.zeros(A.shape, dtype=A.dtype)
         for i in range(self.NE):
             start=max(0,i-self.NE1)
             end=min(self.NE,i+self.NE1+1)
