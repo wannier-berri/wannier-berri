@@ -1,6 +1,5 @@
-## python3 setup.py sdist
 ## python3 setup.py bdist_wheel
-## python -m twine upload *
+## python3 -m twine upload dist/* 
 import setuptools
 
 with open("README.txt", "r") as fh:
