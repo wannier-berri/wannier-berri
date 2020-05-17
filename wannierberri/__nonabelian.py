@@ -180,6 +180,7 @@ def Hall_classic(data,Efermi):
     return result.EnergyResult(Efermi, res  ,TRodd=False,Iodd=False)
 
 
+# this formulation is not correct in general
 def Hall_classic_sea(data,Efermi):
     # _general yields integral(W*W*f0) in units eV^2*Ang
     # we want in S/(cm*T)/tau_unit^2

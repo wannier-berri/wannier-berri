@@ -28,7 +28,7 @@ class Data_dk(System):
         self.frozen_max=system.frozen_max
         self.random_gauge=system.random_gauge
         self.degen_thresh=system.degen_thresh
-        print ("random_gauge_dk:",self.random_gauge)
+#        print ("random_gauge_dk:",self.random_gauge)
         if dk is not None:
             expdk=np.exp(2j*np.pi*self.iRvec.dot(dk))
             self.dk=dk
@@ -242,7 +242,7 @@ class Data_dk(System):
                     self._UU[ik,:,ib1:ib2]=self._UU[ik,:,ib1:ib2].dot( unitary_group.rvs(ib2-ib1) )
                     cnt+=1
                     s+=ib2-ib1
-            print ("applied random rotations {} times, average degeneracy is {}-fold".format(cnt,s/max(cnt,1)))
+#            print ("applied random rotations {} times, average degeneracy is {}-fold".format(cnt,s/max(cnt,1)))
         print_my_name_end()
         return self._UU
 
@@ -590,3 +590,42 @@ class Data_dk(System):
     @lazy_property.LazyProperty
     def Omega_bar_D_re(self):
         return (self.Omega_Hbar.transpose(0,2,1,3)[:,:,:,:,None]*self.D_H[:,:,:,None,:]).real
+
+    @lazy_property.LazyProperty
+    def Omega_gender(self):
+        "external term 1"
+        O=np.einsum("knnad->knad",self.Omega_bar_der).real
+        UO=2*self.Omega_bar_D_re
+
+        dDnl,dDnnl,dDnll=self.gdD
+        D=self.D_H
+        A=self.A_Hbar
+        b=alpha_A
+        c=beta_A
+        N=None
+        
+
+        "internal  term "
+        UO+=-2*(D[:, :,:,  b,N] * dDnl [:, :,:,    c,:]  -  D[:, :,:,  c,N] * dDnl [:, :,:,     b,:] ).imag
+        UOO=-2*(D[:, :,N,:,b,N] * dDnnl[:, :,:,:,  c,:]  -  D[:, :,N,:,c,N] * dDnnl[:, :,:,:,   b,:] ).imag
+        UUO=-2*(D[:, :,N,:,b,N] * dDnll[:, :,:,:,  c,:]  -  D[:, :,N,:,c,N] * dDnll[:, :,:,:,   b,:] ).imag
+
+        "external  term 2"
+        UO +=2*(A[:, :,:,  b,N] * dDnl [:, :,:,    c,:]  -  A[:, :,:,  c,N] * dDnl [:, :,:,     b,:] ).real
+        UOO+=2*(A[:, :,N,:,b,N] * dDnnl[:, :,:,:,  c,:]  -  A[:, :,N,:,c,N] * dDnnl[:, :,:,:,   b,:] ).real
+        UUO+=2*(A[:, :,N,:,b,N] * dDnll[:, :,:,:,  c,:]  -  A[:, :,N,:,c,N] * dDnll[:, :,:,:,   b,:] ).real
+
+
+        Dln=self.D_H
+        Dnl=Dln.transpose(0,2,1,3)
+        dA=self.A_Hbar_der
+
+        UO +=  2*(   dA[:,:,:,b,:]*Dnl[:,:,:,c,N]  -  dA[:,:,:,c,:]*Dnl[:,:,:,b,N]).real 
+        UOO+= -2*(( Dnl[:, :,N,:, c] * A[:, N,:,:,b]  - Dnl[:, :,N,:, b] * A[:, N,:,:,c] )[:, :,:,:, :,N] *  Dln[:, :,:,N, N,:]).real
+        UUO+=  2*(( Dnl[:, :,N,:, c] * A[:, :,:,N,b]  - Dnl[:, :,N,:, b] * A[:, :,:,N,c] )[:, :,:,:, :,N] *  Dln[:, N,:,:, N,:]).real
+
+
+        return O,UO,UOO,UUO
+
+
+
