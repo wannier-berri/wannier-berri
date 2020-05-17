@@ -117,11 +117,7 @@ def check_option(quantities,avail,tp):
 def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,
                         fout_name="wberri",symmetry_gen=[],
-<<<<<<< HEAD
-                GammaCentered=True,restart=False,numproc=0,suffix="",file_klist="klist_int",parameters={}):
-=======
                 GammaCentered=True,restart=False,numproc=0,suffix="",file_Klist="Klist",parameters={}):
->>>>>>> master
 
     cprint ("\nIntegrating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
@@ -137,12 +133,7 @@ def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0
 
 
 def tabulate(system,NK=None,NKdiv=None,NKFFT=None,omega=None, quantities=[],symmetry_gen=[],
-<<<<<<< HEAD
-                  fout_name="wberri",ibands=None,suffix="",file_klist="klist_tab",
-                      restart=False,numproc=0,Ef0=0,parameters={}):
-=======
                   fout_name="wberri",ibands=None,suffix="",numproc=0,Ef0=0.,parameters={}):
->>>>>>> master
 
     cprint ("\nTabulating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     NKdiv,NKFFT=determineNK(NKdiv,NKFFT,NK,system.NKFFTmin)
