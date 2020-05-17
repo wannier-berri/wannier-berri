@@ -93,7 +93,7 @@ def check_option(quantities,avail,tp):
 
 def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,
-                        fout_name="w19",symmetry_gen=[],
+                        fout_name="wberri",symmetry_gen=[],
                 GammaCentered=True,restart=False,numproc=0,suffix="",file_klist="klist_int",parameters={}):
 
     cprint ("\nIntegrating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
@@ -110,7 +110,7 @@ def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0
 
 
 def tabulate(system,NK=None,NKdiv=None,NKFFT=None,omega=None, quantities=[],symmetry_gen=[],
-                  fout_name="w19",ibands=None,suffix="",file_klist="klist_tab",
+                  fout_name="wberri",ibands=None,suffix="",file_klist="klist_tab",
                       restart=False,numproc=0,Ef0=0,parameters={}):
 
     cprint ("\nTabulating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
