@@ -53,7 +53,7 @@ class OccDelta():
         self.delocc=occ_new_selk!=occ_old_selk
         self.selectK=selectK
 
-        if double:
+        if double or triple:
             self.UnoccOcc_plus=unocc_new_selk[:,:,None]*self.delocc[:,None,:]
             self.UnoccOcc_minus=self.delocc[:,:,None]*occ_old_selk[:,None,:]
             OccOcc_new=occ_new_selk[:,:,None]*occ_new_selk[:,None,:]
