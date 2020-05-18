@@ -11,6 +11,8 @@
 #                                                            #
 #------------------------------------------------------------
 
+
+## TODO : maybe to make some lazy_property's not so lazy to save some memory
 import numpy as np
 import lazy_property
 
@@ -73,7 +75,6 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def nbands(self):
         return self.HH_R.shape[0]
-
 
 
     @lazy_property.LazyProperty
@@ -246,6 +247,13 @@ class Data_K(System):
         print_my_name_end()
         return self._UU
 
+    @lazy_property.LazyProperty
+    def UUH_K(self):
+        print_my_name_start()
+        res=self.UU_K.conj().transpose((0,2,1))
+        print_my_name_end()
+        return res 
+
 
 
     @lazy_property.LazyProperty
@@ -281,12 +289,6 @@ class Data_K(System):
         return delE2_K.real
 
 
-    @lazy_property.LazyProperty
-    def UUH_K(self):
-        print_my_name_start()
-        res=self.UU_K.conj().transpose((0,2,1))
-        print_my_name_end()
-        return res 
 
 
     @lazy_property.LazyProperty
@@ -624,8 +626,36 @@ class Data_K(System):
         UOO+= -2*(( Dnl[:, :,N,:, c] * A[:, N,:,:,b]  - Dnl[:, :,N,:, b] * A[:, N,:,:,c] )[:, :,:,:, :,N] *  Dln[:, :,:,N, N,:]).real
         UUO+=  2*(( Dnl[:, :,N,:, c] * A[:, :,:,N,b]  - Dnl[:, :,N,:, b] * A[:, :,:,N,c] )[:, :,:,:, :,N] *  Dln[:, N,:,:, N,:]).real
 
-
         return O,UO,UOO,UUO
 
+##  properties directly accessed by fermisea2 
 
+    @property
+    def gdOmega(self):
+        O,UO,UOO,UUO=self.Omega_gender
+        return {'i':O,'oi':UO,'oii':UOO,'ooi':UUO}
+
+    @property 
+    def Omega(self):
+        return {'i':self.Omega_Hbar_diag,'oi': - 2* (self.D_A+self.D_H_sq )}
+
+    @property
+    def Ohmic(self):
+        return {'i':self.del2E_H_diag,'oi':data.Db_Va_re}
+
+    @property
+    def gyroKspin(self):
+        return {'i':self.delS_H_diag,'oi':self.Db_Sa_re}
+
+    def Hplus(self,evalJ0=True,evalJ1=True,evalJ2=True):
+        from collections import defaultdict
+        res = defaultdict( lambda : 0)
+        if evalJ0:
+            res['i']+=self.Morb_Hbar_diag + self.Omega_Hbar_E
+        if evalJ1:
+            res['oi']+=-2*(self.D_B+self.D_E_A)
+        if evalJ2:
+            C,D=data.D_E_D
+            res['oi']+=-2*(C+D)
+        return  res
 
