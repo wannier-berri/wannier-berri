@@ -22,6 +22,7 @@ from .__utility import  print_my_name_start,print_my_name_end,voidsmoother,TAU_U
 from . import __result as result
 from . import  __berry as berry
 from . import  __fermisea as fermisea
+from . import  __fermisea2 as fermisea2
 from . import  __gyrotropic as gyrotropic
 from . import  __spin as spin
 from . import  __nonabelian as nonabelian
@@ -34,9 +35,12 @@ from . import  __utility   as utility
 #should be functions of only one variable of class Data_K
 calculators_trans={ 
          'spin'       : fermisea.calcSpinTot,  
+         'spin2'       : fermisea2.SpinTot,  
          'Morb'       : fermisea.calcMorb,
+         'Morb2'       : fermisea2.Morb,
 
          'ahc'        : fermisea.calcAHC ,
+         'ahc2'        : fermisea2.AHC ,
          'dos'        : dos.calc_DOS ,
          'cumdos'        : dos.calc_cum_DOS ,
          'Hall_classic' : nonabelian.Hall_classic , 
@@ -45,9 +49,14 @@ calculators_trans={
 
          'conductivity_ohmic_fsurf': nonabelian.conductivity_ohmic,
          'conductivity_ohmic': fermisea.conductivity_ohmic_sea,
+         'conductivity_ohmic2': fermisea2.conductivity_ohmic,
 
          'berry_dipole'        : fermisea.calc_dipole ,
+         'berry_dipole2'        : fermisea2.berry_dipole ,
          'berry_dipole_fsurf'      : nonabelian.berry_dipole,
+
+         'gyrotropic_Kspin_sea'  : fermisea.gyrotropic_Kspin_sea,
+         'gyrotropic_Kspin_sea2'  : fermisea2.gyrotropic_Kspin,
 
          'gyrotropic_Korb'   : nonabelian.gyrotropic_Korb,
          'gyrotropic_Kspin'  : nonabelian.gyrotropic_Kspin,
