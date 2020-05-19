@@ -28,7 +28,7 @@ from . import  __utility   as utility
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
-#should be functions of only one parameter of class data_dk
+#should be functions of only one variable of class Data_K
 calculators_trans={ 
          'spin'       : spin.calcSpinTot,  
          'Morb'       : berry.calcMorb,
