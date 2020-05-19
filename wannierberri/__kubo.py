@@ -42,8 +42,8 @@ def FermiDirac(E, mu, kBT):
         return 1.0/(np.exp((E-mu)/kBT) + 1)
 
 
-def calcKubo(data, hbaromega=0, mu=0, kBT=0, eta=0.1, smearing_type='Lorentzian', adpt_eta=False,
-                adpt_eta_fac=np.sqrt(2), adpt_eta_max=1.0):
+def calcKubo(data, hbaromega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
+                adpt_smr_fac=np.sqrt(2), adpt_smr_max=1.0):
     '''
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
     
@@ -52,9 +52,9 @@ def calcKubo(data, hbaromega=0, mu=0, kBT=0, eta=0.1, smearing_type='Lorentzian'
         hbaromega       value or list of frequencies in units of eV/hbar
         mu              chemical potential in units of eV/hbar
         kBT             temperature in units of eV/kB
-        eta             smearing paramters in units of eV
-        smearing_type   analytical form of broadened delta function ('Gaussian' or 'Lorentzian')
-        adaptive_eta    specifies whether to use an adaptive value for eta (for each pair of states)
+        smr_fixed_width smearing paramters in units of eV
+        smr_type        analytical form of broadened delta function ('Gaussian' or 'Lorentzian')
+        adpt_smr        specifies whether to use an adaptive smearing parameter (for each pair of states)
         
     Returns:    a list of (complex) optical conductivity 3 x 3 tensors (one for each frequency value).
                 The result is given in SI units.
@@ -94,25 +94,25 @@ def calcKubo(data, hbaromega=0, mu=0, kBT=0, eta=0.1, smearing_type='Lorentzian'
     # argument of delta function
     delta_arg = dE - hbaromega[:, np.newaxis, np.newaxis, np.newaxis] # [iw, ik, n, m]
     
-    # adaptive eta
-    if adpt_eta: # [iw, ik, n, m]
-        adeta = eta # TODO: implementation missing
+    # smearing
+    if adpt_smr: # [iw, ik, n, m]
+        eta = smr_fixed_width # TODO: implementation missing
         cprint("Not implemented. Fallback to fixed smearing parameter.", 'orange')
-        #adeta = np.minimum(adpt_eta_max, adpt_eta_fac * np.linalg.norm(ddelE, axis=3) * )[np.newaxis,:]
+        #eta = np.minimum(adpt_smr_max, adpt_smr_fac * np.linalg.norm(ddelE, axis=3) * )[np.newaxis,:]
     else:
-        adeta = eta # number
+        eta = smr_fixed_width # number
     
     # broadened delta function [iw, ik, n, m]
-    if smearing_type == 'Lorentzian':
-        delta = Lorentzian(delta_arg, adeta)
-    elif smearing_type == 'Gaussian':
-        delta = Gaussian(delta_arg, adeta)
+    if smr_type == 'Lorentzian':
+        delta = Lorentzian(delta_arg, eta)
+    elif smr_type == 'Gaussian':
+        delta = Gaussian(delta_arg, eta)
     else:
         cprint("Invalid smearing type. Fallback to Lorentzian", 'orange')
-        delta = Lorentzian(delta_arg, adeta)
+        delta = Lorentzian(delta_arg, eta)
     
     # real part of energy fraction
-    re_efrac = delta_arg/(delta_arg**2 + adeta**2) # [iw, ik, n, m]
+    re_efrac = delta_arg/(delta_arg**2 + eta**2) # [iw, ik, n, m]
 
     # Hermitian part of the conductivity tensor
     sigma_H = -1 * pi * np.einsum('knm,knm,knma,kmnb,wknm->wab', dfE, dE, A, A, delta) # [iw, a, b]
