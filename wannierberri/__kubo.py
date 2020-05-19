@@ -89,7 +89,7 @@ def calcKubo(data, hbaromega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lore
     # f(E_m(k)) - f(E_n(k))
     fE = FermiDirac(E, mu, kBT) # [ik, n, m]
     dfE = fE[:,np.newaxis,:] - fE[:, :, np.newaxis] # [ik, n, m]
-    # TODO: optimize for T = 0?
+    # TODO: optimize for T = 0? take only necessary elements
     
     # argument of delta function
     delta_arg = dE - hbaromega[:, np.newaxis, np.newaxis, np.newaxis] # [iw, ik, n, m]
