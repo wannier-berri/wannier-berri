@@ -1,9 +1,8 @@
-## python3 setup.py sdist
-## python3 setup.py sdist bdist_wheel
-## python -m twine upload *
+## python3 setup.py bdist_wheel
+## python3 -m twine upload dist/* 
 import setuptools
 
-with open("README.md", "r") as fh:
+with open("README.txt", "r") as fh:
     long_description = fh.read()
 
 

@@ -2,8 +2,8 @@
 
 
 ## these linesline if you want to use the git version of the code, instead of the one installed by pip
-local_code=False
-num_proc=0
+local_code=True
+num_proc=16
 
 import os
 
@@ -25,36 +25,30 @@ import numpy as np
 
 SYM=wberri.symmetry
 
-seedname="Fe"
-NK=24
-
-name=seedname
 Efermi=np.linspace(12.,13.,1001)
 system=wberri.System(tb_file='Fe_tb.dat',getAA=True)
 
 generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 
 
-if True:
-   wberri.tabulate(system,
-             NK=NK,
-             quantities=["V","berry"],
-             symmetry_gen=generators,
-             fout_name=name,
-             numproc=num_proc,
-             Ef0=0,
-             restart=False)
-
-
 wberri.integrate(system,
-            NK=NK,
+            NK=100,
             Efermi=Efermi, 
             smearEf=10,
-            quantities=["ahc","dos"],#,"ahc_band"],
+            quantities=["ahc","dos","cumdos"],
             numproc=num_proc,
-            adpt_num_iter=0,
-            fout_name=name,
+            adpt_num_iter=10,
+            fout_name='Fe',
             symmetry_gen=generators,
             restart=False,
-#             parameters={"degen_thresh":0.1}
             )
+
+
+wberri.tabulate(system,
+             NK=100,
+             quantities=["berry"],
+             symmetry_gen=generators,
+             fout_name='Fe',
+             numproc=num_proc,
+             ibands=np.arange(4,10),
+             Ef0=12.6)
