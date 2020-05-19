@@ -456,12 +456,12 @@ class Data_K(System):
         print_my_name_start()
         delSS_R=1j*self.SS_R[:,:,:,:,None]*self.cRvec[None,None,:,None,:]
         delSS_K= fourier_R_to_k(delSS_R,self.iRvec,self.NKFFT,hermitian=True)
-        return self._rotate_vec(delSS_K)
+        return self._rotate_mat(delSS_K)
 
     @lazy_property.LazyProperty
-    def delS_H_diag(self):
+    def delS_H_rediag(self):
 #  d_b S_a
-        return np.einsum("knnab->knnab",self.delS_H)
+        return np.einsum("knnab->knab",self.delS_H).real
 
 
     @lazy_property.LazyProperty
@@ -576,6 +576,8 @@ class Data_K(System):
         _SS_K=self._rotate_vec( _SS_K )
         return np.einsum("kmma->kma",_SS_K).real
 
+    
+
 
     @lazy_property.LazyProperty
     def Omega_bar_der(self):
@@ -641,11 +643,16 @@ class Data_K(System):
 
     @property
     def Ohmic(self):
-        return {'i':self.del2E_H_diag,'oi':data.Db_Va_re}
+        return {'i':self.del2E_H_diag,'oi':self.Db_Va_re}
 
     @property
     def gyroKspin(self):
-        return {'i':self.delS_H_diag,'oi':self.Db_Sa_re}
+        return {'i':self.delS_H_rediag,'oi':self.Db_Sa_re}
+
+    @property
+    def SpinTot(self):
+        return {'i':self.SSUU_K_rediag}
+
 
     def Hplus(self,evalJ0=True,evalJ1=True,evalJ2=True):
         from collections import defaultdict
@@ -655,7 +662,7 @@ class Data_K(System):
         if evalJ1:
             res['oi']+=-2*(self.D_B+self.D_E_A)
         if evalJ2:
-            C,D=data.D_E_D
+            C,D=self.D_E_D
             res['oi']+=-2*(C+D)
         return  res
 
