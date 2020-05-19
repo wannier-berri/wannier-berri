@@ -110,9 +110,9 @@ class EnergyResult(Result):
     def __sub__(self,other):
         return self+(-1)*other
 
-
-    def write(self,name):
-        # assule, that the dimensions starting from first - are cartesian coordinates       
+    def _write_complex(self, name):
+        '''Writes the result if data has complex entries.'''
+        # assume that the dimensions starting from first are cartesian coordinates       
         def getHead(n):
            if n<=0:
               return ['  ']
@@ -121,16 +121,39 @@ class EnergyResult(Result):
         rank=len(self.data.shape[1:])
 
         open(name,"w").write(
-           "    ".join("{0:^15s}".format(s) for s in ["# EF",]+
+           "    ".join("{0:^30s}".format(s) for s in ["# EF",]+
                 [b for b in getHead(rank)*2])+"\n"+
           "\n".join(
-           "    ".join("{0:15.6e}".format(x) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
+           "    ".join("{0:15.6e}{0:15.6e}".format(np.real(x),np.imag(x)) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
                       for ef,data,datasm in zip (self.Energy,self.data,self.dataSmooth)  )
                +"\n") 
 
+    def write(self,name):
+        if (self.data.dtype == np.dtype('complex')):
+            self._write_complex(name)
+        else:
+            # assule, that the dimensions starting from first - are cartesian coordinates       
+            def getHead(n):
+               if n<=0:
+                  return ['  ']
+               else:
+                  return [a+b for a in 'xyz' for b in getHead(n-1)]
+            rank=len(self.data.shape[1:])
+
+            open(name,"w").write(
+               "    ".join("{0:^15s}".format(s) for s in ["# EF",]+
+                    [b for b in getHead(rank)*2])+"\n"+
+              "\n".join(
+               "    ".join("{0:15.6e}".format(x) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
+                          for ef,data,datasm in zip (self.Energy,self.data,self.dataSmooth)  )
+                   +"\n") 
+
     @property
     def _maxval(self):
-        return self.dataSmooth.max() 
+        if self.dataSmooth.dtype == np.dtype('complex'):
+            return np.maximum(np.real(self.dataSmooth).max(), np.imag(self.dataSmooth).max())
+        else:
+            return self.dataSmooth.max() 
 
     @property
     def _norm(self):
