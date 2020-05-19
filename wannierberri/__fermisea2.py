@@ -49,7 +49,7 @@ def Omega_tot(data,Efermi):
     return IterateEf(data.Omega,data,Efermi,TRodd=True,Iodd=False)
 
 def SpinTot(data,Efermi):
-    return IterateEf({'i':data.SpinTot},data,Efermi,TRodd=True,Iodd=False)*data.cell_volume
+    return IterateEf(data.SpinTot,data,Efermi,TRodd=True,Iodd=False)*data.cell_volume
 
 def berry_dipole(data,Efermi):
     return IterateEf(data.gdOmega,data,Efermi,TRodd=False,Iodd=True)
@@ -68,9 +68,10 @@ def gyrotropic_Kspin(data,Efermi):
 
 def Morb(data,Efermi, evalJ0=True,evalJ1=True,evalJ2=True):
     fac_morb =  -eV_au/bohr**2
+#    return Omega_tot(data,Efermi).mul_array(Efermi)
     return  fac_morb*( 
-               IterateEf(data.Hplus,data,Efermi,TRodd=True,Iodd=False)
-                           -2*Efermi*Omega_tot(data,Efermi) )
+               IterateEf(data.Hplus(),data,Efermi,TRodd=True,Iodd=False) 
+                           -2*Omega_tot(data,Efermi).mul_array(Efermi) )*data.cell_volume
 
 
 

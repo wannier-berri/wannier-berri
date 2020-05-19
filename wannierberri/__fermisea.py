@@ -160,7 +160,7 @@ def gyrotropic_Kspin_sea(data,Efermi,occ_old=None):
     if isinstance(Efermi, Iterable):
         return IterateEf(data,Efermi,TRodd=False,Iodd=True)
     OCC=OccDelta(occ_old,data,Efermi,triple=False)
-    return (OCC.eval_O(data.delS_H_diag)+OCC.eval_UO(data.Db_Sa_re))*factor_Kspin
+    return (OCC.eval_O(data.delS_H_rediag)+OCC.eval_UO(data.Db_Sa_re))*factor_Kspin
 
 
 
