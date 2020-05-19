@@ -73,7 +73,9 @@ additional_parameters=defaultdict(lambda: defaultdict(lambda:None )   )
 additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no description" )   )
 
 
-calculators_opt={}
+calculators_opt={
+    'kubo' : berry.calcKubo
+}
 
 
 

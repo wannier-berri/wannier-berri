@@ -56,8 +56,7 @@ def calcKubo(data, hbaromega=0, mu=0, kBT=0, eta=0.1, smearing_type='Lorentzian'
         smearing_type   analytical form of broadened delta function ('Gaussian' or 'Lorentzian')
         adaptive_eta    specifies whether to use an adaptive value for eta (for each pair of states)
         
-    Returns:    a list of (complex) optical conductivity 3 x 3 tensors (one for each frequency value) with
-                each entry in the tensor being an array of two elements, the real and imaginary part.
+    Returns:    a list of (complex) optical conductivity 3 x 3 tensors (one for each frequency value).
                 The result is given in SI units.
     '''
     
@@ -98,6 +97,7 @@ def calcKubo(data, hbaromega=0, mu=0, kBT=0, eta=0.1, smearing_type='Lorentzian'
     # adaptive eta
     if adpt_eta: # [iw, ik, n, m]
         adeta = eta # TODO: implementation missing
+        cprint("Not implemented. Fallback to fixed smearing parameter.", 'orange')
         #adeta = np.minimum(adpt_eta_max, adpt_eta_fac * np.linalg.norm(ddelE, axis=3) * )[np.newaxis,:]
     else:
         adeta = eta # number
@@ -120,13 +120,9 @@ def calcKubo(data, hbaromega=0, mu=0, kBT=0, eta=0.1, smearing_type='Lorentzian'
     # anit-Hermitian part of the conductivity tensor
     sigma_AH = 1j * np.einsum('knm,knm,wknm,knma,kmnb->wab', dfE, dE, re_efrac, A, A) # [iw, a, b]
     
-    # 3x3 tensor result
-    sigma = e**2/(hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom) * (sigma_H + sigma_AH) # [iw, a, b]
-    
-    # get real and imaginary parts [iw, a, b, reim]
-    data = np.stack((np.real(sigma), np.imag(sigma)), axis=-1)
+    # 3x3 tensor result [iw, a, b]
+    sigma = e**2/(hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom) * (sigma_H + sigma_AH)
     
     # return result
-    return EnergyResult(hbaromega, data, TRodd=False, Iodd=True, rank=3) # the proper smoother is set later
-    
-    # alternative -> symmetric and antisymmetric components
+    # TODO: TR symmetry is wrong -> split into symmetric and antisymmetric components?
+    return EnergyResult(hbaromega, sigma, TRodd=False, Iodd=False, rank=2) # the proper smoother is set later
