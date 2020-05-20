@@ -84,7 +84,9 @@ class EnergyResult(Result):
         self.smoother=smoother
         self.TRodd=TRodd
         self.Iodd=Iodd
-
+    
+    def set_smoother(self, smoother):
+        self.smoother = smoother
 
     @Lazy
     def dataSmooth(self):
@@ -129,6 +131,7 @@ class EnergyResult(Result):
                +"\n") 
 
     def write(self,name):
+        name = name.format('')
         if (self.data.dtype == np.dtype('complex')):
             self._write_complex(name)
         else:
@@ -171,6 +174,49 @@ class EnergyResult(Result):
     def transform(self,sym):
         return EnergyResult(self.Energy,sym.transform_tensor(self.data,self.rank,TRodd=self.TRodd,Iodd=self.Iodd),self.smoother,self.TRodd,self.Iodd,self.rank)
 
+
+class EnergyResultDict(EnergyResult):
+    '''Stores a dictionary of instances of the class Result.'''
+    
+    def __init__(self, results):
+        '''
+        Initialize instance with a dictionary of results with string keys and values of type Result.
+        '''
+        self.results = results
+        
+    def set_smoother(self, smoother):
+        for v in self.results.values():
+            v.set_smoother(smoother)
+
+    #  multiplication by a number 
+    def __mul__(self, other):
+        return ResultDict({ k : v*other for k,v in self.results.items() })
+
+    # +
+    def __add__(self, other):
+        if other == 0:
+            return self
+        results = { k : self.results[k] + other.results[k] for k in self.results if k in other.results }
+        return ResultDict(results) 
+
+    # -
+    def __sub__(self, other):
+        return self + (-1)*other
+
+    # writing to a file
+    def write(self, name):
+        for k,v in self.results.items():
+            v.write(name.format('-'+q+'{}')) # TODO: check formatting
+
+    #  how result transforms under symmetry operations
+    def transform(self, sym):
+        results = { k : self.results[k].transform(sym)  for k in self.results}
+        return ResultDict(results)
+
+    # a list of numbers, by each of those the refinement points will be selected
+    @property
+    def max(self):
+        return np.array([x for v in self.results.values() for x in v.max])
 
 
 class EnergyResultScalar(EnergyResult):
