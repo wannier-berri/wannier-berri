@@ -1,33 +1,34 @@
-.::    .   .:::  :::.     :::.    :::.:::.    :::. :::.,::::::  :::::::..       :::::::.  .,::::::  :::::::..   :::::::..   :::
-';;,  ;;  ;;;'   ;;`;;    `;;;;,  `;;;`;;;;,  `;;; ;;;;;;;''''  ;;;;``;;;;       ;;;'';;' ;;;;''''  ;;;;``;;;;  ;;;;``;;;;  ;;;
- '[[, [[, [['   ,[[ '[[,    [[[[[. '[[  [[[[[. '[[ [[[ [[cccc    [[[,/[[['       [[[__[[\. [[cccc    [[[,/[[['   [[[,/[[['  [[[
-   Y$c$$$c$P   c$$$cc$$$c   $$$ "Y$c$$  $$$ "Y$c$$ $$$ $$""""    $$$$$$c         $$""""Y$$ $$""""    $$$$$$c     $$$$$$c    $$$
-    "88"888     888   888,  888    Y88  888    Y88 888 888oo,__  888b "88bo,    _88o,,od8P 888oo,__  888b "88bo, 888b "88bo,888
-     "M "M"     YMM   ""`   MMM     YM  MMM     YM MMM """"YUMMM MMMM   "W"     ""YUMMMP"  """"YUMMM MMMM   "W"  MMMM   "W" MMM
+=========
+Wannier Berri
+=========
+(a.k.a. Wannier19)
 
-a.k.a. Wannier19
-                  __                     ___                  
-        |_       (_  |_  _  _   _   _     |   _ .  _ |  .  _  
-        |_) \/   __) |_ (- |_) (_| | )    |  _) | |  |( | | ) 
-            /              |                                  ```
+A code for highly efficient Wannier interpolation. 
+----------------------------------------------------------
+Evaluation of k-space integrals of Berry curvature, orbital moment and derived quantities by means of MLWFs or tight-binding models.  Compared to postw90.x part of Wannier90 code, it has extended functional and improved performance
 
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-June 4th 2020
-
+=========
+New: Online tutorial on June 4th 2020
+=========
 Tutorial at Electronic Structure Workshop  
-
 https://physics.ucmerced.edu/electronic-structure-workshop
-
 Please register by May 22
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-User manual under construction may be viewd here:
-https://www.overleaf.com/read/kbxxtfbnjvxx
+User manual  
+-----------
+under construction may be viewed here: https://www.overleaf.com/read/kbxxtfbnjvxx
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Web page
+--------
+https://www.physik.uzh.ch/en/groups/neupert/Software/Wannier-Berri.html
+
+Mailing list:
+-------------
+To subscribe please send an email to  sympa@physik.lists.uzh.ch  with the subject
+**subscribe wannier-berri Firstname Lastname**
+or visit the list homepage https://physik.lists.uzh.ch/sympa/info/wannier-berri
+
 
 
 This code is intended for highly-efficient wannier interpolation.
@@ -44,12 +45,12 @@ ultradense k-grid. This is achieved due to :
 
 1) Using Fast Fourier Transform
 2) account of symmetries, to reduce integration to irreducible part of the Brillouin zone
-3) recursive refinement algorithm
+3) recursive adaptive refinement algorithm
 4) optimizing the implementation of scan of Fermi level and 'use_ws_distance' parameter (see wannier90 documentation for details) 
 
 
-Implemented features:
-
+Implemented functionality:
+---------------------__
 -Anomalous Hall conductivity
 -Orbital magnetization (modern theory)
 -Ohmic conductivity
@@ -68,14 +69,12 @@ Calculations may also be performed for any tight-binding model, for which a "_tb
 
 WannierBerri can be run in parallel by means of multiprocessing module
 
-installation is possible by pip
+Installation
+------------
+``pip3 install wannierberri``
 
-pip3 install wannierberri
-
-The project started on June, 25th 2019. 
-Any interest from the community will be motivating for developing.
-
-
+Author
+------
 Stepan Tsirkin, 
 University of Zurich
 stepan.tsirkin@physik.uzh.ch
