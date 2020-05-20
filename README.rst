@@ -34,40 +34,33 @@ or visit the list homepage https://physik.lists.uzh.ch/sympa/info/wannier-berri
 This code is intended for highly-efficient wannier interpolation.
 Being initially an analog of postw90.x part of Wannier90 code, it has extended functional and improved performance. 
 
-Some parts of the code are an adapted translation of Wannier90 Fortran code:
-http://www.wannier.org/
-https://github.com/wannier-developers/wannier90
 
-The code is distributed under the terms of  GNU GENERAL PUBLIC LICENSE  Version 2, the same as Wannier90
-
-For example, Wannier-Berri calculates Anomalous Hall conductivity very fast (much faster then wannier90) with high precision over an 
+Improved performance and accuracy:
+----------------------------------
+Wannier-Berri calculates Brillouin zone integrals very fast with high precision over an 
 ultradense k-grid. This is achieved due to :
 
-1) Using Fast Fourier Transform
-2) account of symmetries, to reduce integration to irreducible part of the Brillouin zone
-3) recursive adaptive refinement algorithm
-4) optimizing the implementation of scan of Fermi level and 'use_ws_distance' parameter (see wannier90 documentation for details) 
-
+* Using Fast Fourier Transform
+* account of symmetries, to reduce integration to irreducible part of the Brillouin zone
+* recursive adaptive refinement algorithm
+* optimized Fermi level scan
+* optimized minimal distanse replica method (``use_ws_distance``)
 
 Implemented functionality:
----------------------__
--Anomalous Hall conductivity
--Orbital magnetization (modern theory)
--Ohmic conductivity
--Berry curvature dipole
--gyrotropic magnetoelectric effect
--Hall effect
--Low-Field Hall effect
+---------------------
+* Anomalous Hall conductivity
+* Orbital magnetization (modern theory)
+* Ohmic conductivity
+* Berry curvature dipole
+* gyrotropic magnetoelectric effect
+* Hall effect
+* Low-Field Hall effect
 
-Object oriented structure also makes it potentially easier to implement further features. 
-
-The usage of the code  is demonstrated by "tutorial/example.py". That will produce AHC and tabulate the berry curvature and velocity of bcc iron.
-
-The user manual is under construction, and can be viewed as a work in progress at https://www.overleaf.com/read/kbxxtfbnjvxx
-
-Calculations may also be performed for any tight-binding model, for which a "_tb.dat" file was generated in watever way.
-
-WannierBerri can be run in parallel by means of multiprocessing module
+Other features:
+---------------
+* Object oriented structure also makes it potentially easier to implement further features. 
+* Calculations may also be performed for any tight-binding model, for which a "_tb.dat" file was generated in watever way.
+* WannierBerri can run in parallel by means of multiprocessing module
 
 Installation
 ------------
@@ -78,3 +71,16 @@ Author
 Stepan Tsirkin, 
 University of Zurich
 stepan.tsirkin@physik.uzh.ch
+
+
+License
+--------
+The code is distributed under the terms of  GNU GENERAL PUBLIC LICENSE  Version 2, the same as Wannier90
+
+Acknowledgements
+----------------
+The code was inspired by the Wannier90 Fortran code:
+http://www.wannier.org/ , https://github.com/wannier-developers/wannier90 . 
+Some parts of the code are an adapted translation of postw90 code. 
+
+I acknowledge Ivo Souza for a useful discussion.
