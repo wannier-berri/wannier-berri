@@ -143,7 +143,7 @@ def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies=
             else :
                  __parameters[param]=additional_parameters[q][param]
         results[q]=calculators[q](data,_energy(q),**__parameters)
-        results[q].smoother=_smoother(q)
+        results[q].set_smoother(_smoother(q))
 
     return INTresult( results=results )
 
@@ -165,7 +165,7 @@ class INTresult(result.Result):
 
     def write(self,name):
         for q,r in self.results.items():
-            r.write(name.format(q))
+            r.write(name.format(q+'{}'))
 
     def transform(self,sym):
         results={r:self.results[r].transform(sym)  for r in self.results}

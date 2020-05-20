@@ -68,6 +68,9 @@ def calcKubo(data, hbaromega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lore
     # iw = index enumerating the frequency values
     # ri = index for real and imaginary parts (0 -> real, 1 -> imaginary)
 
+    # prefactor
+    pre_fac = e**2/(hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom)
+
     # energy
     E = data.E_K # [ik, n] in eV
     delE = data.delE_K # [ik, n, a] in eV*angstrom
@@ -115,14 +118,18 @@ def calcKubo(data, hbaromega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lore
     re_efrac = delta_arg/(delta_arg**2 + eta**2) # [iw, ik, n, m]
 
     # Hermitian part of the conductivity tensor
-    sigma_H = -1 * pi * np.einsum('knm,knm,knma,kmnb,wknm->wab', dfE, dE, A, A, delta) # [iw, a, b]
+    sigma_H = -1 * pi * pre_fac * np.einsum('knm,knm,knma,kmnb,wknm->wab', dfE, dE, A, A, delta) # [iw, a, b]
     
     # anit-Hermitian part of the conductivity tensor
-    sigma_AH = 1j * np.einsum('knm,knm,wknm,knma,kmnb->wab', dfE, dE, re_efrac, A, A) # [iw, a, b]
+    sigma_AH = 1j * pre_fac * np.einsum('knm,knm,wknm,knma,kmnb->wab', dfE, dE, re_efrac, A, A) # [iw, a, b]
     
-    # 3x3 tensor result [iw, a, b]
-    sigma = e**2/(hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom) * (sigma_H + sigma_AH)
+    # TODO: optimize by just storing independent components or leave it like that?
+    # 3x3 tensors [iw, a, b]
+    sigma_sym = np.real(sigma_H) + 1j * np.imag(sigma_AH) # symmetric (TR-even, I-even)
+    sigma_asym = np.real(sigma_AH) + 1j * np.imag(sigma_H) # ansymmetric (TR-odd, I-even)
     
-    # return result
-    # TODO: TR symmetry is wrong -> split into symmetric and antisymmetric components?
-    return EnergyResult(hbaromega, sigma, TRodd=False, Iodd=False, rank=2) # the proper smoother is set later
+    # return result dictionary
+    return EnergyResultDict({
+        'sym':  EnergyResult(hbaromega, sigma_sym, TRodd=False, Iodd=False, rank=2),
+        'asym': EnergyResult(hbaromega, sigma_asym, TRodd=True, Iodd=False, rank=2)
+    }) # the proper smoother is set later for both elements
