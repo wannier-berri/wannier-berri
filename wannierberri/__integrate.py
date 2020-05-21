@@ -25,6 +25,7 @@ from . import  __nonabelian as nonabelian
 from . import  __dos as dos
 from . import  __symmetry  as symmetry
 from . import  __utility   as utility
+from . import  __kubo   as kubo
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
@@ -74,7 +75,7 @@ additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no des
 
 
 calculators_opt={
-    'kubo' : kubo.calcKubo
+    'opt_conductivity' : kubo.opt_conductivity
 }
 
 # additional parameters for calcKubo

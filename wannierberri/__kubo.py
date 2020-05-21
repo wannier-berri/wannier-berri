@@ -42,7 +42,7 @@ def FermiDirac(E, mu, kBT):
         return 1.0/(np.exp((E-mu)/kBT) + 1)
 
 
-def calcKubo(data, hbaromega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
+def opt_conductivity(data, hbaromega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=1.0):
     '''
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
