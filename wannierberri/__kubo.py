@@ -37,7 +37,7 @@ def Gaussian(x, width):
 # Fermi-Dirac distribution
 def FermiDirac(E, mu, kBT):
     if kBT == 0:
-        return 1 if E <= mu else 0
+        return 1.0*(E <= mu)
     else:
         return 1.0/(np.exp((E-mu)/kBT) + 1)
 
