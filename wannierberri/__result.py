@@ -190,14 +190,14 @@ class EnergyResultDict(EnergyResult):
 
     #  multiplication by a number 
     def __mul__(self, other):
-        return ResultDict({ k : v*other for k,v in self.results.items() })
+        return EnergyResultDict({ k : v*other for k,v in self.results.items() })
 
     # +
     def __add__(self, other):
         if other == 0:
             return self
         results = { k : self.results[k] + other.results[k] for k in self.results if k in other.results }
-        return ResultDict(results) 
+        return EnergyResultDict(results) 
 
     # -
     def __sub__(self, other):
@@ -211,7 +211,7 @@ class EnergyResultDict(EnergyResult):
     #  how result transforms under symmetry operations
     def transform(self, sym):
         results = { k : self.results[k].transform(sym)  for k in self.results}
-        return ResultDict(results)
+        return EnergyResultDict(results)
 
     # a list of numbers, by each of those the refinement points will be selected
     @property
