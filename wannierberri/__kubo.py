@@ -42,14 +42,14 @@ def FermiDirac(E, mu, kBT):
         return 1.0/(np.exp((E-mu)/kBT) + 1)
 
 
-def opt_conductivity(data, hbaromega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
+def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=1.0):
     '''
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
     
     Arguments:
         data            instance of __data_dk.Data_dk representing a single point in the BZ
-        hbaromega       value or list of frequencies in units of eV/hbar
+        omega       value or list of frequencies in units of eV/hbar
         mu              chemical potential in units of eV/hbar
         kBT             temperature in units of eV/kB
         smr_fixed_width smearing paramters in units of eV
@@ -77,10 +77,10 @@ def opt_conductivity(data, hbaromega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_ty
     
     # generalized Berry connection matrix
     A = data.A_H # [ik, n, m, a] in angstrom
-    
+
     # frequency
-    if not isinstance(hbaromega, Iterable):
-        hbaromega = np.array([hbaromega])
+    if not isinstance(omega, Iterable):
+        omega = np.array([omega])
     
     
     # E_m(k) - E_n(k)
@@ -93,10 +93,10 @@ def opt_conductivity(data, hbaromega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_ty
     fE = FermiDirac(E, mu, kBT) # [ik, n, m]
     dfE = fE[:,np.newaxis,:] - fE[:, :, np.newaxis] # [ik, n, m]
     # TODO: optimize for T = 0? take only necessary elements
-    
+
     # argument of delta function
-    delta_arg = dE - hbaromega[:, np.newaxis, np.newaxis, np.newaxis] # [iw, ik, n, m]
-    
+    delta_arg = dE - omega[:, np.newaxis, np.newaxis, np.newaxis] # [iw, ik, n, m]
+
     # smearing
     if adpt_smr: # [iw, ik, n, m]
         eta = smr_fixed_width # TODO: implementation missing
@@ -104,7 +104,7 @@ def opt_conductivity(data, hbaromega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_ty
         #eta = np.minimum(adpt_smr_max, adpt_smr_fac * np.linalg.norm(ddelE, axis=3) * )[np.newaxis,:]
     else:
         eta = smr_fixed_width # number
-    
+
     # broadened delta function [iw, ik, n, m]
     if smr_type == 'Lorentzian':
         delta = Lorentzian(delta_arg, eta)
@@ -116,7 +116,7 @@ def opt_conductivity(data, hbaromega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_ty
     
     # real part of energy fraction
     re_efrac = delta_arg/(delta_arg**2 + eta**2) # [iw, ik, n, m]
-
+    
     # Hermitian part of the conductivity tensor
     sigma_H = -1 * pi * pre_fac * np.einsum('knm,knm,knma,kmnb,wknm->wab', dfE, dE, A, A, delta) # [iw, a, b]
     
@@ -130,6 +130,6 @@ def opt_conductivity(data, hbaromega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_ty
     
     # return result dictionary
     return EnergyResultDict({
-        'sym':  EnergyResult(hbaromega, sigma_sym, TRodd=False, Iodd=False, rank=2),
-        'asym': EnergyResult(hbaromega, sigma_asym, TRodd=True, Iodd=False, rank=2)
+        'sym':  EnergyResult(omega, sigma_sym, TRodd=False, Iodd=False, rank=2),
+        'asym': EnergyResult(omega, sigma_asym, TRodd=True, Iodd=False, rank=2)
     }) # the proper smoother is set later for both elements
