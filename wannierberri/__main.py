@@ -121,9 +121,9 @@ def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0
 
     cprint ("\nIntegrating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
-    smoothEf=smoother(Efermi,smearEf) # smoother for functions of Fermi energy
-    smoothW= None if omega == None else smoother(omega,smearW) # smoother for functions of frequency
-    eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, smootherEf=smoothEf, smootherOmega=smoothW,
+    smoothEf = None if Efermi is None else smoother(Efermi,smearEf) # smoother for functions of Fermi energy
+    smoothW= None if omega is None else smoother(omega,smearW) # smoother for functions of frequency
+    eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, omega=omega, smootherEf=smoothEf, smootherOmega=smoothW,
             quantities=quantities, parameters=parameters )
     res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,
             adpt_num_iter=adpt_num_iter,adpt_nk=1,
