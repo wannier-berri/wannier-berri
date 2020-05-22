@@ -79,20 +79,20 @@ calculators_opt={
 }
 
 # additional parameters for calcKubo
-additional_parameters['kubo']['mu'] = 0
-additional_parameters_description['kubo']['mu'] = "chemical potential"
-additional_parameters['kubo']['kBT'] = 0
-additional_parameters_description['kubo']['kBT'] = "temperature in units of K/kB"
-additional_parameters['kubo']['smr_fixed_width'] = 0.1
-additional_parameters_description['kubo']['smr_fixed_width'] = "fixed smearing parameter"
-additional_parameters['kubo']['smr_type'] = 'Lorentzian'
-additional_parameters_description['kubo']['smr_type'] = "analyitcal form of the broadened delta function"
-additional_parameters['kubo']['adpt_smr'] = False
-additional_parameters_description['kubo']['adpt_smr'] = "use an adaptive smearing parameter"
-additional_parameters['kubo']['adpt_smr_fac'] = np.sqrt(2)
-additional_parameters_description['kubo']['adpt_smr_fac'] = "prefactor for the adaptive smearing parameter"
-additional_parameters['kubo']['adpt_smr_max'] = 1.0
-additional_parameters_description['kubo']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter"
+additional_parameters['opt_conductivity']['mu'] = 0
+additional_parameters_description['opt_conductivity']['mu'] = "chemical potential"
+additional_parameters['opt_conductivity']['kBT'] = 0
+additional_parameters_description['opt_conductivity']['kBT'] = "temperature in units of K/kB"
+additional_parameters['opt_conductivity']['smr_fixed_width'] = 0.1
+additional_parameters_description['opt_conductivity']['smr_fixed_width'] = "fixed smearing parameter"
+additional_parameters['opt_conductivity']['smr_type'] = 'Lorentzian'
+additional_parameters_description['opt_conductivity']['smr_type'] = "analyitcal form of the broadened delta function"
+additional_parameters['opt_conductivity']['adpt_smr'] = False
+additional_parameters_description['opt_conductivity']['adpt_smr'] = "use an adaptive smearing parameter"
+additional_parameters['opt_conductivity']['adpt_smr_fac'] = np.sqrt(2)
+additional_parameters_description['opt_conductivity']['adpt_smr_fac'] = "prefactor for the adaptive smearing parameter"
+additional_parameters['opt_conductivity']['adpt_smr_max'] = 1.0
+additional_parameters_description['opt_conductivity']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter"
 
 
 calculators=copy(calculators_trans)

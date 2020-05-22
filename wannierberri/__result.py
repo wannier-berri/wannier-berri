@@ -126,7 +126,7 @@ class EnergyResult(Result):
            "    ".join("{0:^30s}".format(s) for s in ["# EF",]+
                 [b for b in getHead(rank)*2])+"\n"+
           "\n".join(
-           "    ".join("{0:15.6e}{0:15.6e}".format(np.real(x),np.imag(x)) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
+           "    ".join("{0:15.6e}{1:15.6e}".format(np.real(x),np.imag(x)) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
                       for ef,data,datasm in zip (self.Energy,self.data,self.dataSmooth)  )
                +"\n") 
 
