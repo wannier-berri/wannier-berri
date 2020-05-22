@@ -67,44 +67,41 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
     # additionally the result will include
     # iw = index enumerating the frequency values
     # ri = index for real and imaginary parts (0 -> real, 1 -> imaginary)
-
+    
+    # TODO: optimize for T = 0? take only necessary elements
+    
     # prefactor
     pre_fac = e**2/(hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom)
-
-    # energy
-    E = data.E_K # [ik, n] in eV
-    delE = data.delE_K # [ik, n, a] in eV*angstrom
     
-    # generalized Berry connection matrix
-    A = data.A_H # [ik, n, m, a] in angstrom
-
     # frequency
     if not isinstance(omega, Iterable):
         omega = np.array([omega])
+
+    # energy
+    E = data.E_K # energies [ik, n] in eV
+    dE = E[:,np.newaxis,:] - E[:, :, np.newaxis] # E_m(k) - E_n(k) [ik, n, m]
     
-    
-    # E_m(k) - E_n(k)
-    dE = E[:,np.newaxis,:] - E[:, :, np.newaxis] # [ik, n, m]
-    
-    # delE_m(k) - delE_n(k)
-    ddelE = delE[:,np.newaxis,:] - delE[:, :, np.newaxis] # [ik, n, m]
-    
-    # f(E_m(k)) - f(E_n(k))
-    fE = FermiDirac(E, mu, kBT) # [ik, n, m]
+     # occupation
+    fE = FermiDirac(E, mu, kBT) # f(E_m(k)) - f(E_n(k)) [ik, n]
     dfE = fE[:,np.newaxis,:] - fE[:, :, np.newaxis] # [ik, n, m]
-    # TODO: optimize for T = 0? take only necessary elements
-
-    # argument of delta function
-    delta_arg = dE - omega[:, np.newaxis, np.newaxis, np.newaxis] # [iw, ik, n, m]
-
+    
+    # generalized Berry connection matrix
+    A = data.A_H # [ik, n, m, a] in angstrom
+   
+    # E - omega
+    delta_arg = dE - omega[:, np.newaxis, np.newaxis, np.newaxis] # argument of delta function [iw, ik, n, m]
+    
     # smearing
     if adpt_smr: # [iw, ik, n, m]
         eta = smr_fixed_width # TODO: implementation missing
         cprint("Not implemented. Fallback to fixed smearing parameter.", 'orange')
+        #delE = data.delE_K # energy derivatives [ik, n, a] in eV*angstrom
+        #ddelE = delE[:,np.newaxis,:] - delE[:, :, np.newaxis] # delE_m(k) - delE_n(k) [ik, n, m]
         #eta = np.minimum(adpt_smr_max, adpt_smr_fac * np.linalg.norm(ddelE, axis=3) * )[np.newaxis,:]
     else:
         eta = smr_fixed_width # number
 
+    # Hermitian part of the conductivity tensor
     # broadened delta function [iw, ik, n, m]
     if smr_type == 'Lorentzian':
         delta = Lorentzian(delta_arg, eta)
@@ -113,15 +110,22 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
     else:
         cprint("Invalid smearing type. Fallback to Lorentzian", 'orange')
         delta = Lorentzian(delta_arg, eta)
-    
-    # real part of energy fraction
-    re_efrac = delta_arg/(delta_arg**2 + eta**2) # [iw, ik, n, m]
-    
-    # Hermitian part of the conductivity tensor
+        
     sigma_H = -1 * pi * pre_fac * np.einsum('knm,knm,knma,kmnb,wknm->wab', dfE, dE, A, A, delta) # [iw, a, b]
     
-    # anit-Hermitian part of the conductivity tensor
+    # free memory
+    del delta
+    
+    
+    # anti-Hermitian part of the conductivity tensor
+    re_efrac = delta_arg/(delta_arg**2 + eta**2) # real part of energy fraction [iw, ik, n, m]
     sigma_AH = 1j * pre_fac * np.einsum('knm,knm,wknm,knma,kmnb->wab', dfE, dE, re_efrac, A, A) # [iw, a, b]
+    
+    # free memory
+    del re_efrac
+    del delta_arg
+    del dfE
+    del dE
     
     # TODO: optimize by just storing independent components or leave it like that?
     # 3x3 tensors [iw, a, b]
@@ -129,7 +133,7 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
     sigma_asym = np.real(sigma_AH) + 1j * np.imag(sigma_H) # ansymmetric (TR-odd, I-even)
     
     # return result dictionary
-    return EnergyResultDict({
-        'sym':  EnergyResult(omega, sigma_sym, TRodd=False, Iodd=False, rank=2),
-        'asym': EnergyResult(omega, sigma_asym, TRodd=True, Iodd=False, rank=2)
+    return result.EnergyResultDict({
+        'sym':  result.EnergyResult(omega, sigma_sym, TRodd=False, Iodd=False, rank=2),
+        'asym': result.EnergyResult(omega, sigma_asym, TRodd=True, Iodd=False, rank=2)
     }) # the proper smoother is set later for both elements
