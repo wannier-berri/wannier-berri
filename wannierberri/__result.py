@@ -206,7 +206,7 @@ class EnergyResultDict(EnergyResult):
     # writing to a file
     def write(self, name):
         for k,v in self.results.items():
-            v.write(name.format('-'+q+'{}')) # TODO: check formatting
+            v.write(name.format('-'+k+'{}')) # TODO: check formatting
 
     #  how result transforms under symmetry operations
     def transform(self, sym):
