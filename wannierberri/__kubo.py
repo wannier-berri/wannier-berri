@@ -76,57 +76,62 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
     # frequency
     if not isinstance(omega, Iterable):
         omega = np.array([omega])
-
-    # energy
-    E = data.E_K # energies [ik, n] in eV
-    dE = E[:,np.newaxis,:] - E[:, :, np.newaxis] # E_m(k) - E_n(k) [ik, n, m]
-    
-     # occupation
-    fE = FermiDirac(E, mu, kBT) # f(E_m(k)) - f(E_n(k)) [ik, n]
-    dfE = fE[:,np.newaxis,:] - fE[:, :, np.newaxis] # [ik, n, m]
-    
-    # generalized Berry connection matrix
-    A = data.A_H # [ik, n, m, a] in angstrom
-   
-    # E - omega
-    delta_arg = dE - omega[:, np.newaxis, np.newaxis, np.newaxis] # argument of delta function [iw, ik, n, m]
-    
-    # smearing
-    if adpt_smr: # [iw, ik, n, m]
-        eta = smr_fixed_width # TODO: implementation missing
-        cprint("Not implemented. Fallback to fixed smearing parameter.", 'orange')
-        #delE = data.delE_K # energy derivatives [ik, n, a] in eV*angstrom
-        #ddelE = delE[:,np.newaxis,:] - delE[:, :, np.newaxis] # delE_m(k) - delE_n(k) [ik, n, m]
-        #eta = np.minimum(adpt_smr_max, adpt_smr_fac * np.linalg.norm(ddelE, axis=3) * )[np.newaxis,:]
-    else:
-        eta = smr_fixed_width # number
-
-    # Hermitian part of the conductivity tensor
-    # broadened delta function [iw, ik, n, m]
-    if smr_type == 'Lorentzian':
-        delta = Lorentzian(delta_arg, eta)
-    elif smr_type == 'Gaussian':
-        delta = Gaussian(delta_arg, eta)
-    else:
-        cprint("Invalid smearing type. Fallback to Lorentzian", 'orange')
-        delta = Lorentzian(delta_arg, eta)
         
-    sigma_H = -1 * pi * pre_fac * np.einsum('knm,knm,knma,kmnb,wknm->wab', dfE, dE, A, A, delta) # [iw, a, b]
-    
-    # free memory
-    del delta
-    
-    
-    # anti-Hermitian part of the conductivity tensor
-    re_efrac = delta_arg/(delta_arg**2 + eta**2) # real part of energy fraction [iw, ik, n, m]
-    sigma_AH = 1j * pre_fac * np.einsum('knm,knm,wknm,knma,kmnb->wab', dfE, dE, re_efrac, A, A) # [iw, a, b]
-    
-    # free memory
-    del re_efrac
-    del delta_arg
-    del dfE
-    del dE
-    
+    sigma_H = np.zeros((omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
+    sigma_AH = np.zeros((omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
+        
+    # iterate over ik
+    for ik in range(data.NKFFT_tot):
+        # energy
+        E = data.E_K[ik] # energies [n] in eV
+        dE = E[np.newaxis,:] - E[:, np.newaxis] # E_m(k) - E_n(k) [n, m]
+        
+         # occupation
+        fE = FermiDirac(E, mu, kBT) # f(E_m(k)) - f(E_n(k)) [n]
+        dfE = fE[np.newaxis,:] - fE[:, np.newaxis] # [n, m]
+        
+        # generalized Berry connection matrix
+        A = data.A_H[ik] # [n, m, a] in angstrom
+       
+        # E - omega
+        delta_arg = dE - omega[:, np.newaxis, np.newaxis] # argument of delta function [iw, n, m]
+        
+        # smearing
+        if adpt_smr: # [iw, n, m]
+            eta = smr_fixed_width # TODO: implementation missing
+            cprint("Not implemented. Fallback to fixed smearing parameter.", 'orange')
+            #delE = data.delE_K[ik] # energy derivatives [n, a] in eV*angstrom
+            #ddelE = delE[np.newaxis,:] - delE[:, np.newaxis] # delE_m(k) - delE_n(k) [n, m]
+            #eta = np.minimum(adpt_smr_max, adpt_smr_fac * np.linalg.norm(ddelE, axis=3) * )[np.newaxis,:]
+        else:
+            eta = smr_fixed_width # number
+
+        # Hermitian part of the conductivity tensor
+        # broadened delta function [iw, n, m]
+        if smr_type == 'Lorentzian':
+            delta = Lorentzian(delta_arg, eta)
+        elif smr_type == 'Gaussian':
+            delta = Gaussian(delta_arg, eta)
+        else:
+            cprint("Invalid smearing type. Fallback to Lorentzian", 'orange')
+            delta = Lorentzian(delta_arg, eta)
+        
+        sigma_H += -1 * pi * pre_fac * np.einsum('nm,nm,nma,mnb,wnm->wab', dfE, dE, A, A, delta) # [iw, a, b]
+        
+        # free memory
+        del delta
+        
+        
+        # anti-Hermitian part of the conductivity tensor
+        re_efrac = delta_arg/(delta_arg**2 + eta**2) # real part of energy fraction [iw, n, m]
+        sigma_AH += 1j * pre_fac * np.einsum('nm,nm,wnm,nma,mnb->wab', dfE, dE, re_efrac, A, A) # [iw, a, b]
+        
+        # free memory
+        del re_efrac
+        del delta_arg
+        del dfE
+        del dE
+        
     # TODO: optimize by just storing independent components or leave it like that?
     # 3x3 tensors [iw, a, b]
     sigma_sym = np.real(sigma_H) + 1j * np.imag(sigma_AH) # symmetric (TR-even, I-even)
