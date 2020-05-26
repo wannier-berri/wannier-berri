@@ -57,7 +57,7 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         adpt_smr        specifies whether to use an adaptive smearing parameter (for each pair of states)
         
     Returns:    a list of (complex) optical conductivity 3 x 3 tensors (one for each frequency value).
-                The result is given in SI units.
+                The result is given in S/cm.
     '''
     
     # data gives results in terms of
@@ -71,7 +71,7 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
     # TODO: optimize for T = 0? take only necessary elements
     
     # prefactor
-    pre_fac = e**2/(hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom)
+    pre_fac = e**2/(100.0 * hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom)
     
     # frequency
     if not isinstance(omega, Iterable):
