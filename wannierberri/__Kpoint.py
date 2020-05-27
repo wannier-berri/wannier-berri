@@ -36,6 +36,9 @@ class  KpointBZ():
     def Kp_fullBZ(self):
         return self.K/self.NKFFT
 
+    @lazy_property.LazyProperty
+    def dK_fullBZ(self):
+        return self.dK/self.NKFFT
 
     @lazy_property.LazyProperty
     def star(self):

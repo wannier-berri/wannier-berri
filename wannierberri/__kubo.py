@@ -43,18 +43,21 @@ def FermiDirac(E, mu, kBT):
 
 
 def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
-                adpt_smr_fac=np.sqrt(2), adpt_smr_max=1.0):
+                adpt_smr_fac=np.sqrt(2), adpt_smr_max=1.0, adpt_smr_min=1e-5):
     '''
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
     
     Arguments:
         data            instance of __data_dk.Data_dk representing a single point in the BZ
-        omega       value or list of frequencies in units of eV/hbar
+        omega           value or list of frequencies in units of eV/hbar
         mu              chemical potential in units of eV/hbar
         kBT             temperature in units of eV/kB
         smr_fixed_width smearing paramters in units of eV
         smr_type        analytical form of broadened delta function ('Gaussian' or 'Lorentzian')
         adpt_smr        specifies whether to use an adaptive smearing parameter (for each pair of states)
+        adpt_smr_fac    prefactor for the adaptive smearing parameter
+        adpt_smr_max    maximal value of the adaptive smearing parameter
+        adpt_smr_min    minimal value of the adaptive smearing parameter
         
     Returns:    a list of (complex) optical conductivity 3 x 3 tensors (one for each frequency value).
                 The result is given in S/cm.
@@ -70,7 +73,7 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
     
     # TODO: optimize for T = 0? take only necessary elements
     
-    # prefactor
+    # prefactor for correct units of the result (S/cm)
     pre_fac = e**2/(100.0 * hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom)
     
     # frequency
@@ -98,11 +101,11 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         
         # smearing
         if adpt_smr: # [iw, n, m]
-            eta = smr_fixed_width # TODO: implementation missing
-            cprint("Not implemented. Fallback to fixed smearing parameter.", 'orange')
-            #delE = data.delE_K[ik] # energy derivatives [n, a] in eV*angstrom
-            #ddelE = delE[np.newaxis,:] - delE[:, np.newaxis] # delE_m(k) - delE_n(k) [n, m]
-            #eta = np.minimum(adpt_smr_max, adpt_smr_fac * np.linalg.norm(ddelE, axis=3) * )[np.newaxis,:]
+            eta = smr_fixed_width
+            delE = data.delE_K[ik] # energy derivatives [n, a] in eV*angstrom
+            ddelE = delE[np.newaxis,:] - delE[:, np.newaxis] # delE_m(k) - delE_n(k) [n, m, a]
+            eta = np.maximum(adpt_smr_min, np.minimum(adpt_smr_max,
+                adpt_smr_fac * np.linalg.norm(ddelE, axis=2) * np.max(data.Kpoint.dK_fullBZ)))[np.newaxis, :, :]
         else:
             eta = smr_fixed_width # number
 
