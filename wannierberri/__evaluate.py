@@ -30,17 +30,17 @@ from . import __utility as utility
 def process(paralfunc,K_list,nproc,symgroup=None):
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
-    dK_list=[K_list[ik].Kp_fullBZ for ik in selK]
+    dK_list=[(K_list[ik].Kp_fullBZ, K_list[ik]) for ik in selK]
     if len(dK_list)==0:
         print ("nothing to process now")
         return 0
     print ("processing {0}  points :".format(len(dK_list)) )
     if nproc<=0:
-        res = [paralfunc(k) for k in dK_list]
+        res = [paralfunc(k, Kp) for k, Kp in dK_list]
         nproc_=1
     else:
         p=multiprocessing.Pool(nproc)
-        res= p.map(paralfunc,dK_list)
+        res= p.starmap(paralfunc,dK_list)
         p.close()
         nproc_=nproc
     if not (symgroup is None):
@@ -208,7 +208,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
        
 
 
-def _eval_func_k(K,func,system,NKFFT):
-    data=Data_K(system,K,NKFFT=NKFFT)
+def _eval_func_k(K,Kpoint,func,system,NKFFT):
+    data=Data_K(system,K,NKFFT=NKFFT,Kpoint=Kpoint)
     return func(data)
 
