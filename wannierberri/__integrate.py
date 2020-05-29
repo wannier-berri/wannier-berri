@@ -91,9 +91,9 @@ additional_parameters['opt_conductivity']['adpt_smr'] = False
 additional_parameters_description['opt_conductivity']['adpt_smr'] = "use an adaptive smearing parameter"
 additional_parameters['opt_conductivity']['adpt_smr_fac'] = np.sqrt(2)
 additional_parameters_description['opt_conductivity']['adpt_smr_fac'] = "prefactor for the adaptive smearing parameter"
-additional_parameters['opt_conductivity']['adpt_smr_max'] = 1.0
+additional_parameters['opt_conductivity']['adpt_smr_max'] = 0.1
 additional_parameters_description['opt_conductivity']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter"
-additional_parameters['opt_conductivity']['adpt_smr_min'] = 1e-5
+additional_parameters['opt_conductivity']['adpt_smr_min'] = 1e-15
 additional_parameters_description['opt_conductivity']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter"
 
 
