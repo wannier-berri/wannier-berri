@@ -32,7 +32,8 @@ hbar = constants.hbar
 def Lorentzian(x, width):
     return 1.0/(pi*width) * width**2/(x**2 + width**2)
 def Gaussian(x, width):
-    return 1.0/(np.sqrt(pi) * width) * np.exp(-1*(x/width)**2)
+    arg = np.minimum(200.0, (x/width)**2)
+    return 1.0/(np.sqrt(pi) * width) * np.exp(-1*arg)
     
 # Fermi-Dirac distribution
 def FermiDirac(E, mu, kBT):
