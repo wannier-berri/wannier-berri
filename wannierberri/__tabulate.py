@@ -135,7 +135,8 @@ class TABresult(result.Result):
 #                print (ik,k,ik1,ik2)
                 k_map[ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])].append(ik)
             else:
-                print ("WARNING: k-point {}={} is skipped".format(ik,k))
+                if False:
+                    print ("WARNING: k-point {}={} is skipped".format(ik,k))
 
         
         print ("collecting")

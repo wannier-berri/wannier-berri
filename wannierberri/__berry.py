@@ -106,13 +106,13 @@ def calcImf_band_kn(data):
     return result.KBandResult(calcImf_band(data),TRodd=True,Iodd=False)
 
 def calcImgh_band_kn(data):
-    return result.KBandResult(calcImhg_band(data),TRodd=True,Iodd=False)
+    return result.KBandResult(calcImgh_band(data),TRodd=True,Iodd=False)
 
 #returns g-h
 def calcImgh_band(data):
     
     AA=data.A_E_A
-    BB=data.Morb_Hbar_diag-data.OmegaHbar
+    BB=data.Morb_Hbar_diag-data.Omega_Hbar_diag
     imgh=np.array([eval_Jo(B)-2*eval_Joo(A)  for A,B in zip (AA,BB) ] )
     
     AA=data.D_B-data.D_E_A
