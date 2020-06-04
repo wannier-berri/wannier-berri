@@ -170,7 +170,7 @@ class OccDelta():
                 tmp=V[selectK]
                 result+= tmp[UnoccOccOcc_plus].sum(axis=0)-tmp[UnoccOccOcc_minus].sum(axis=0)
 
-        if result is 0:
+        if result==0:
             raise RuntimeError("Nothing was evaluated for the Fermi sea")
 
         return result
