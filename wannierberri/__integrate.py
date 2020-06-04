@@ -21,7 +21,6 @@ from functools import partial
 from .__utility import  print_my_name_start,print_my_name_end,voidsmoother,TAU_UNIT
 from . import __result as result
 from . import  __berry as berry
-from . import  __fermisea as fermisea
 from . import  __fermisea2 as fermisea2
 from . import  __gyrotropic as gyrotropic
 from . import  __spin as spin
@@ -34,13 +33,9 @@ from . import  __utility   as utility
 
 #should be functions of only one variable of class Data_K
 calculators_trans={ 
-         'spin'       : fermisea.calcSpinTot,  
-         'spin2'       : fermisea2.SpinTot,  
-         'Morb'       : fermisea.calcMorb,
-         'Morb2'       : fermisea2.Morb,
-
-         'ahc'        : fermisea.calcAHC ,
-         'ahc2'        : fermisea2.AHC ,
+         'spin'       : fermisea2.SpinTot,  
+         'Morb'       : fermisea2.Morb,
+         'ahc'        : fermisea2.AHC ,
          'dos'        : dos.calc_DOS ,
          'cumdos'        : dos.calc_cum_DOS ,
          'Hall_classic' : nonabelian.Hall_classic , 
@@ -48,18 +43,14 @@ calculators_trans={
          'Hall_spin' :  nonabelian.Hall_spin,
 
          'conductivity_ohmic_fsurf': nonabelian.conductivity_ohmic,
-         'conductivity_ohmic': fermisea.conductivity_ohmic_sea,
-         'conductivity_ohmic2': fermisea2.conductivity_ohmic,
+         'conductivity_ohmic': fermisea2.conductivity_ohmic,
 
-         'berry_dipole'        : fermisea.calc_dipole ,
-         'berry_dipole2'        : fermisea2.berry_dipole ,
+         'berry_dipole'        : fermisea2.berry_dipole ,
          'berry_dipole_fsurf'      : nonabelian.berry_dipole,
 
-         'gyrotropic_Kspin_sea'  : fermisea.gyrotropic_Kspin_sea,
-         'gyrotropic_Kspin_sea2'  : fermisea2.gyrotropic_Kspin,
-
-         'gyrotropic_Korb'   : nonabelian.gyrotropic_Korb,
-         'gyrotropic_Kspin'  : nonabelian.gyrotropic_Kspin,
+         'gyrotropic_Kspin'  : fermisea2.gyrotropic_Kspin,
+         'gyrotropic_Korb_fsurf'   : nonabelian.gyrotropic_Korb,
+         'gyrotropic_Kspin_fsurf'  : nonabelian.gyrotropic_Kspin,
          }
 
 
@@ -84,12 +75,13 @@ descriptions['cumdos']="Cumulative density of states"
 descriptions['dos']="density of states"
 descriptions['conductivity_ohmic']="ohmic conductivity in S/cm for tau={} s . Fermi-sea formulation".format(TAU_UNIT)
 descriptions['conductivity_ohmic_fsurf']="ohmic conductivity in S/cm for tau={} s . Fermi-surface formulation".format(TAU_UNIT)
-descriptions['gyrotropic_Korb']="GME tensor, orbital part (Ampere) - fermi surface formula"
-descriptions['gyrotropic_Kspin']="GME tensor, spin part (Ampere)  - fermi surface formula"
+descriptions['gyrotropic_Korb_fsurf']="GME tensor, orbital part (Ampere) - fermi surface formula"
+descriptions['gyrotropic_Kspin']="GME tensor, spin part (Ampere)  - fermi sea formula"
+descriptions['gyrotropic_Kspin_fsurf']="GME tensor, spin part (Ampere)  - fermi surface formula"
 descriptions['berry_dipole']="berry curvature dipole (dimensionless) - fermi sea formula"
 descriptions['berry_dipole_fsurf']="berry curvature dipole (dimensionless)  - fermi surface formula"
 descriptions['Hall_classic'] =  "classical Hall coefficient, in S/(cm*T) for tau={} s".format(TAU_UNIT)
-descriptions['Hall_morb   '] = "Low field AHE, orbital part, in S/(cm*T)."
+descriptions['Hall_morb'   ] = "Low field AHE, orbital part, in S/(cm*T)."
 descriptions['Hall_spin'   ] = "Low field AHE, spin    part, in S/(cm*T)."
 
 

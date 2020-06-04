@@ -11,6 +11,9 @@
 #                                                            #
 #------------------------------------------------------------
 
-from .__main import integrate,tabulate,System,symmetry,integrate_options,tabulate_options
+from .__main import integrate,tabulate,System,symmetry,integrate_options,tabulate_options,welcome
 from .__version import __version__
+
+welcome()
+
 

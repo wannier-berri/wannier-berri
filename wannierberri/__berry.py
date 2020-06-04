@@ -37,7 +37,6 @@ fac_ahc  = -1.0e8*constants.elementary_charge**2/constants.hbar
 bohr= constants.physical_constants['Bohr radius'][0]/constants.angstrom
 eV_au=constants.physical_constants['electron volt-hartree relationship'][0] 
 fac_morb =  -eV_au/bohr**2
-print ("fac_morb=",fac_morb,1/fac_morb)
 
 
 def calcV_band(data):
