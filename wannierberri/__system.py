@@ -63,7 +63,6 @@ class System():
         
         self.Ndegen=iRvec[:,3]
         self.iRvec=iRvec[:,:3]
-        self.NKFFTmin=np.abs(self.iRvec).max(axis=0)*2
 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
@@ -111,6 +110,17 @@ class System():
             self.SS_R=self.__getMat('SS')
         cprint ("Reading the system finished successfully",'green', attrs=['bold'])
         
+    
+    @lazy_property.LazyProperty
+    def NKFFTmin(self):
+        NKFFTmin=np.ones(3,dtype=int)
+        for i in range(3):
+            R=self.iRvec[:,i]
+            if len(R[R>0])>0: 
+                NKFFTmin[i]+=R.max()
+            if len(R[R<0])>0: 
+                NKFFTmin[i]-=R.min()
+        return NKFFTmin
 
     def __from_tb_file(self,tb_file=None,getAA=False):
         self.seedname=tb_file.split("/")[-1].split("_")[0]
@@ -156,15 +166,12 @@ class System():
         
         f.close()
 
-        self.NKFFTmin=np.abs(self.iRvec).max(axis=0)*2
-
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
         print ("Minimal Number of K points:", self.NKFFTmin)
         print ("Real-space lattice:\n",self.real_lattice)
         cprint ("Reading the system finished successfully",'green', attrs=['bold'])
 
-        #print ("R - points and dege=neracies:\n",iRvec)
         
     @property
     def cRvec(self):
