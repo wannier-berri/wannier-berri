@@ -88,27 +88,13 @@ def welcome():
 
 
     cprint("""
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                    !!
-!!    WELCOME TO THE VIRTUAL          !!
-!!    Electronic Structure Workshop   !!
-!!                                    !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-All  materials are available at :
-
-https://www.dropbox.com/sh/8lt0rznh7zetagp/AABGrVWr6-1b9kMR3Wo8H92Na?dl=0
-
-and on the Cori 
-
-/project/projectdirs/m3034/vESW_2020/WannierBerri
-
+Tutorial at  Electronic Structure Workshop  was recorded.
+Video: https://uzh.zoom.us/rec/share/y84qFIzs8WlIY53g-UGYdfUCB6DUaaa80SUZ-fJZy-GyE37OpaVGSfwDqVj43hk
+Input files: https://www.dropbox.com/sh/8lt0rznh7zetagp/AABGrVWr6-1b9kMR3Wo8H92Na?dl=0
 """, 'yellow', attrs=['bold'])
 
-
     cprint("""
-User manual under construction may be viewd here:
-https://www.overleaf.com/read/kbxxtfbnjvxx
+User manual under construction may be viewed here: https://www.overleaf.com/read/kbxxtfbnjvxx
 """,'magenta' )
 
 
