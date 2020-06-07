@@ -21,7 +21,7 @@ from .__utility import  print_my_name_start,print_my_name_end,einsumk, fourier_R
    
 class Data_K(System):
     def __init__(self,system,dK=None,NKFFT=None):
-        self.spinors=system.spinors
+#        self.spinors=system.spinors
         self.iRvec=system.iRvec
         self.real_lattice=system.real_lattice
         self.recip_lattice=system.recip_lattice

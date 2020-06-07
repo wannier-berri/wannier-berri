@@ -20,6 +20,8 @@ from . import __integrate
 from . import __tabulate  
 from . import __symmetry as symmetry
 from .__system import System
+from .__system_w90 import System_w90
+
 from .__version import __version__
 from .__result import NoComponentError
 from collections import Iterable

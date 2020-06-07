@@ -143,6 +143,30 @@ def str2bool(v):
         raise RuntimeError(" unrecognized value of bool parameter :{0}".format(v) )
 
 
+def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,num_proc=2):
+    print_my_name_start()
+#    print ("input array has shape {}".format(AA_q.shape))
+    mp_grid=tuple(mp_grid)
+    shapeA=AA_q.shape[1:]  # remember the shapes after q
+    sizeA=np.prod(shapeA)
+    AA_q_mp=np.zeros(tuple(mp_grid)+(sizeA,),dtype=complex)
+    for i,k in enumerate(kpt_mp_grid):
+        AA_q_mp[k]=AA_q[i].reshape(-1)
+#    print ("AA_q_mp has shape {}".format(AA_q_mp.shape))
+    AA_q_mp=AA_q_mp.transpose( (3,0,1,2)  )
+    AA_q_mp=np.array([np.fft.ifftn(A) for A in AA_q_mp]).transpose( (1,2,3,0) )
+#    print ("AA_q_mp has shape {}".format(AA_q_mp.shape))
+#    print ("iRvec={}".format(iRvec))
+#    print (iRvec[0],ndegen[0],iRvec[0]%mp_grid,AA_q_mp[iRvec[0]%mp_grid].shape)
+    AA_R=np.array([AA_q_mp[tuple(iR%mp_grid)]/nd for iR,nd in zip(iRvec,ndegen)])
+#    print ("AA_R has shape {}".format(AA_R.shape))
+    AA_R=AA_R.reshape(iRvec.shape[:1]+shapeA)
+#   now return the the order convention  (m,n,R,...)  (TODO : change this stupid convention)
+    AA_R=AA_R.transpose( (1,2,0)+AA_R.shape[3:] )
+    print_my_name_end()
+    return AA_R
+
+
 def fourier_R_to_k(AAA_R,iRvec,NKPT,hermitian=False,antihermitian=False):
     print_my_name_start()
     #  AAA_R is an array of dimension ( num_wann x num_wann x nRpts X ... ) (any further dimensions allowed)
@@ -173,6 +197,8 @@ def fourier_R_to_k(AAA_R,iRvec,NKPT,hermitian=False,antihermitian=False):
 #    print ("finished fourier")
     print_my_name_end()
     return AAA_K
+
+
 
 
 def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
@@ -212,5 +238,15 @@ def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
     return result
 
 
+
+def iterate3dpm(size):
+    return ( np.array([i,j,k]) for i in range(-size[0],size[0]+1)
+                     for j in range(-size[1],size[1]+1)
+                     for k in range(-size[2],size[2]+1) )
+
+def iterate3d(size):
+    return ( np.array([i,j,k]) for i in range(0,size[0])
+                     for j in range(0,size[1])
+                     for k in range(0,size[2]) )
 
 
