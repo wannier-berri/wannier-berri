@@ -49,6 +49,11 @@ class Data_K(System):
                 vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
                 vars(self)[hasXR]=True
 
+###   For testing it is disabled now:
+#        print ("WARNING : for testing AA_Hbar is disabled !!!!")
+#        self.AA_R[:,:,:,:]*=0.
+
+
 
     def _rotate(self,mat):
         print_my_name_start()

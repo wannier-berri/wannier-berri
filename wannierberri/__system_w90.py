@@ -66,7 +66,7 @@ class System_w90(System):
         self.real_lattice=chk.real_lattice
         self.recip_lattice=chk.recip_lattice
         self.iRvec,self.Ndegen=wigner_seitz(chk.mp_grid,self.real_lattice)
-        print ("number of R-vectors: {} ; vectrors:\n {}".format(self.iRvec.shape[0], self.iRvec,self.Ndegen))
+#        print ("number of R-vectors: {} ; vectrors:\n {}".format(self.iRvec.shape[0], self.iRvec,self.Ndegen))
         self.nRvec0=len(self.iRvec)
         self.num_wann=chk.num_wann
 
@@ -75,12 +75,12 @@ class System_w90(System):
             mmn=MMN(seedname)
 
         kpt_mp_grid=[tuple(k) for k in np.array( np.round(chk.kpt_latt*np.array(chk.mp_grid)[None,:]),dtype=int)%chk.mp_grid]
-        print ("kpoints:",kpt_mp_grid)
+#        print ("kpoints:",kpt_mp_grid)
         fourier_q_to_R_loc=functools.partial(fourier_q_to_R, mp_grid=chk.mp_grid,kpt_mp_grid=kpt_mp_grid,iRvec=self.iRvec,ndegen=self.Ndegen,num_proc=num_proc)
 
         self.HH_R=fourier_q_to_R_loc( chk.get_HH_q(eig) )
-        for i in range(self.nRvec):
-            print (i,self.iRvec[i],"H(R)=",self.HH_R[0,0,i])
+#        for i in range(self.nRvec):
+#            print (i,self.iRvec[i],"H(R)=",self.HH_R[0,0,i])
 
         if getAA:
             self.AA_R=fourier_q_to_R_loc(chk.get_AA_q(mmn))
@@ -115,6 +115,73 @@ class System_w90(System):
     @lazy_property.LazyProperty
     def cell_volume(self):
         return abs(np.linalg.det(self.real_lattice))
+
+
+    def to_tb_file(self,tb_file=None):
+        if tb_file is None: 
+            tb_file=self.seedname+"_fromchk_tb.dat"
+        f=open(tb_file,"w")
+        f.write("written by wannier-berri form the chk file\n")
+#        cprint ("reading TB file {0} ( {1} )".format(tb_file,l.strip()),'green', attrs=['bold'])
+        np.savetxt(f,self.real_lattice)
+        f.write("{}\n".format(self.num_wann))
+        f.write("{}\n".format(self.nRvec))
+        for i in range(0,self.nRvec,15):
+            a=self.Ndegen[i:min(i+15,self.nRvec)]
+            f.write("  ".join("{:2d}".format(x) for x in a)+"\n")
+        for iR in range(self.nRvec):
+            f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
+            f.write("".join("{0:3d} {1:3d} {2:15.8e} {3:15.8e}\n".format(
+                         m+1,n+1,self.HH_R[m,n,iR].real*self.Ndegen[iR],self.HH_R[m,n,iR].imag*self.Ndegen[iR]) 
+                             for n in range(self.num_wann) for m in range(self.num_wann)) )
+        if hasattr(self,'AA_R'):
+          for iR in range(self.nRvec):
+            f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
+            f.write("".join("{0:3d} {1:3d} ".format(
+                         m+1,n+1) + " ".join("{:15.8e} {:15.8e}".format(a.real,a.imag) for a in self.AA_R[m,n,iR]*self.Ndegen[iR] )+"\n"
+                             for n in range(self.num_wann) for m in range(self.num_wann)) )
+
+
+        f.close()
+        return
+#        f.write("".join("  ".join("{0:16.12f}".format(x) for x in 
+#        self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
+#        self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
+#        self.num_wann=int(f.readline())
+#        nRvec=int(f.readline())
+#        self.nRvec0=nRvec
+        self.Ndegen=[]
+        while len(self.Ndegen)<nRvec:
+            self.Ndegen+=f.readline().split()
+        self.Ndegen=np.array(self.Ndegen,dtype=int)
+        
+        self.iRvec=[]
+        
+        self.HH_R=np.zeros( (self.num_wann,self.num_wann,nRvec) ,dtype=complex)
+        
+        for ir in range(nRvec):
+            f.readline()
+            self.iRvec.append(f.readline().split())
+            hh=np.array( [[f.readline().split()[2:4] 
+                             for n in range(self.num_wann)] 
+                                for m in range(self.num_wann)],dtype=float).transpose( (1,0,2) )
+            self.HH_R[:,:,ir]=(hh[:,:,0]+1j*hh[:,:,1])/self.Ndegen[ir]
+        
+        self.iRvec=np.array(self.iRvec,dtype=int)
+        
+        if getAA:
+          self.AA_R=np.zeros( (self.num_wann,self.num_wann,nRvec,3) ,dtype=complex)
+          for ir in range(nRvec):
+            f.readline()
+            assert (np.array(f.readline().split(),dtype=int)==self.iRvec[ir]).all()
+            aa=np.array( [[f.readline().split()[2:8] 
+                             for n in range(self.num_wann)] 
+                                for m in range(self.num_wann)],dtype=float)
+            self.AA_R[:,:,ir,:]=(aa[:,:,0::2]+1j*aa[:,:,1::2]).transpose( (1,0,2) ) /self.Ndegen[ir]
+        else: 
+            self.AA_R = None
+        
+        f.close()
 
 
 
@@ -177,22 +244,10 @@ class CheckPoint():
         self.wannier_spreads=readfloat().reshape((self.num_wann))
         self.win_min = np.array( [np.where(lwin)[0].min() for lwin in lwindow] )
         self.win_max = np.array( [wm+nd for wm,nd in zip(self.win_min,ndimwin)]) 
-#        print ("win_min : ",self.win_min)
-
-#        for i in range(10):
-#            print (FIN.read_record('i4')
-
 
 
     def get_HH_q(self,eig):
         assert (eig.NK,eig.NB)==(self.num_kpts,self.num_bands)
-#        eig_data=sum(np.cos(2*np.pi*self.kpt_latt[:,i]) for i in range(3))[:,None]*np.ones( self.num_bands)[None,:]
-#        eig_data=np.random.random( self.num_kpts)[:,None]*np.ones( self.num_bands)[None,:]
-#        for V,E,wmin,wmax in zip(self.v_matrix,eig_data,self.win_min,self.win_max):
-#           print("VEww",V.shape,E.shape,wmin,wmax,E)
-#        HH_q=np.array([ (V*E[None,wmin:wmax]).dot(V.T.conj()) 
-        # fake data
-#        print ("eig_data:",eig_data)
         HH_q=np.array([ V.conj().dot(np.diag(E[wmin:wmax])).dot(V.T) 
                         for V,E,wmin,wmax in zip(self.v_matrix,eig.data,self.win_min,self.win_max) ])
         print ('HH_q:\n',HH_q[:,0,0])
@@ -204,19 +259,18 @@ class CheckPoint():
         mmn.set_bk(self)
         AA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
         for ik in range(self.num_kpts):
+            if eig is not None:
+                data*=eig.data[ik,:,None]
+            v1=self.v_matrix[ik].conj()
             for ib in range(mmn.NNB):
                 iknb=mmn.neighbours[ik,ib]
                 data=mmn.data[ik,ib,self.win_min[ik]:self.win_max[ik],self.win_min[iknb]:self.win_max[iknb]]
-                if eig is not None:
-                    data*=eig.data[ik,:,None]
-                v1=self.v_matrix[ik]
                 v2=self.v_matrix[iknb]
-                AA_q[ik]+=1.j*v1.dot(data).dot(v2.T)[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
+                AA_q[ik]+=1.j*(v1.dot(data).dot(v2.T))[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
+            print ("iq=",ik,"Hermicity of Aq:",np.linalg.norm(AA_q[ik].transpose(1,0,2).conj()-AA_q[ik]))
         AA_q=0.5*(AA_q+AA_q.transpose( (0,2,1,3) ).conj())
         print ('AA_q:',AA_q.shape)
         return AA_q
-
-
 
 class MMN():
 
@@ -234,7 +288,7 @@ class MMN():
         block=1+self.NB*self.NB
         allmmn=( f_mmn_in[3+j*block:2+(j+1)*block]  for j in range(self.NNB*self.NK) )
         p=multiprocessing.Pool(num_proc)
-        self.data= np.array(p.map(str2arraymmn,allmmn)).reshape(self.NK,self.NNB,self.NB,self.NB)
+        self.data= np.array(p.map(str2arraymmn,allmmn)).reshape(self.NK,self.NNB,self.NB,self.NB).transpose((0,1,3,2))
 
     def set_bk(self,chk):
       try :
@@ -259,8 +313,8 @@ class MMN():
         s=1./s
         weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u)).reshape(-1)
         assert np.linalg.norm(sum(w*m for w,m in zip(weight_shell,shell_mat))-np.eye(3))<1e-7
-        weight=np.array([w/(b2-b1) for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
-        print ("weight=",weight)
+        weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
+        print ("weight=",weight,"shell_mat=",shell_mat)
         weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
         bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
         self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
