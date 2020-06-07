@@ -73,7 +73,7 @@ class System():
         
         if has_ws and use_ws:
             print ("using ws_dist")
-            self.ws_map=ws_dist_map(self.iRvec,self.num_wann,f.readlines())
+            self.ws_map=ws_dist_map_read(self.iRvec,self.num_wann,f.readlines())
             self.iRvec=np.array(self.ws_map._iRvec_ordered,dtype=int)
         else:
             self.ws_map=None
@@ -228,28 +228,17 @@ class map_1R():
           
 
 class ws_dist_map():
-    def __init__(self,iRvec,num_wann,lines):
-        nRvec=iRvec.shape[0]
-        self.num_wann=num_wann
-        self._iRvec_new=dict()
-        n_nonzero=np.array([l.split()[-1] for l in lines[:nRvec]],dtype=int)
-        lines=lines[nRvec:]
-        nonzero=[]
-        for ir,nnz in enumerate(n_nonzero):
-            map1r=map_1R(lines[:nnz],iRvec[ir])
-            for iw in range(num_wann):
-                for jw in range(num_wann):
-                    self._add_star(ir,map1r(iw,jw),iw,jw)
-            lines=lines[nnz:]
-        self._iRvec_ordered=sorted(self._iRvec_new)
-        for ir  in range(nRvec):
-            chsum=0
-            for irnew in self._iRvec_new:
-                if ir in self._iRvec_new[irnew]:
-                    chsum+=self._iRvec_new[irnew][ir]
-            chsum=np.abs(chsum-np.ones( (num_wann,num_wann) )).sum() 
-            if chsum>1e-12: print ("WARNING: Check sum for {0} : {1}".format(ir,chsum))
-
+        
+    def __call__(self,matrix):
+        ndim=len(matrix.shape)-3
+        num_wann=matrix.shape[0]
+        reshaper=(num_wann,num_wann)+(1,)*ndim
+#        print ("check:",matrix.shape,reshaper,ndim)
+        matrix_new=np.array([ sum(matrix[:,:,ir]*self._iRvec_new[irvecnew][ir].reshape(reshaper)
+                                  for ir in self._iRvec_new[irvecnew] ) 
+                                       for irvecnew in self._iRvec_ordered]).transpose( (1,2,0)+tuple(range(3,3+ndim)) )
+        assert ( np.abs(matrix_new.sum(axis=2)-matrix.sum(axis=2)).max()<1e-12)
+        return matrix_new
 
     def _add_star(self,ir,irvec_new,iw,jw):
         weight=1./irvec_new.shape[0]
@@ -264,18 +253,34 @@ class ws_dist_map():
         if not ir in self._iRvec_new[irvec_new]:
              self._iRvec_new[irvec_new][ir]=np.zeros((self.num_wann,self.num_wann),dtype=float)
         self._iRvec_new[irvec_new][ir][iw,jw]+=weight
-        
-    def __call__(self,matrix):
-        ndim=len(matrix.shape)-3
-        num_wann=matrix.shape[0]
-        reshaper=(num_wann,num_wann)+(1,)*ndim
-        print ("check:",matrix.shape,reshaper,ndim)
-        matrix_new=np.array([ sum(matrix[:,:,ir]*self._iRvec_new[irvecnew][ir].reshape(reshaper)
-                                  for ir in self._iRvec_new[irvecnew] ) 
-                                       for irvecnew in self._iRvec_ordered]).transpose( (1,2,0)+tuple(range(3,3+ndim)) )
 
-        assert ( np.abs(matrix_new.sum(axis=2)-matrix.sum(axis=2)).max()<1e-12)
-        return matrix_new
-             
+    def _init_end(self,nRvec):
+        self._iRvec_ordered=sorted(self._iRvec_new)
+        for ir  in range(nRvec):
+            chsum=0
+            for irnew in self._iRvec_new:
+                if ir in self._iRvec_new[irnew]:
+                    chsum+=self._iRvec_new[irnew][ir]
+            chsum=np.abs(chsum-np.ones( (self.num_wann,self.num_wann) )).sum() 
+            if chsum>1e-12: print ("WARNING: Check sum for {0} : {1}".format(ir,chsum))
+
+
+
+class ws_dist_map_read(ws_dist_map):
+    def __init__(self,iRvec,num_wann,lines):
+        nRvec=iRvec.shape[0]
+        self.num_wann=num_wann
+        self._iRvec_new=dict()
+        n_nonzero=np.array([l.split()[-1] for l in lines[:nRvec]],dtype=int)
+        lines=lines[nRvec:]
+        for ir,nnz in enumerate(n_nonzero):
+            map1r=map_1R(lines[:nnz],iRvec[ir])
+            for iw in range(num_wann):
+                for jw in range(num_wann):
+                    self._add_star(ir,map1r(iw,jw),iw,jw)
+            lines=lines[nnz:]
+        self._init_end(nRvec)
+
+        
 
 
