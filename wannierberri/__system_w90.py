@@ -74,10 +74,13 @@ class System_w90(System):
         if getAA or getBB:
             mmn=MMN(seedname)
 
-        kpt_mp_grid=np.array( np.round(chk.kpt_latt*np.array(chk.mp_grid)[None,:]),dtype=int)%chk.mp_grid
+        kpt_mp_grid=[tuple(k) for k in np.array( np.round(chk.kpt_latt*np.array(chk.mp_grid)[None,:]),dtype=int)%chk.mp_grid]
+        print ("kpoints:",kpt_mp_grid)
         fourier_q_to_R_loc=functools.partial(fourier_q_to_R, mp_grid=chk.mp_grid,kpt_mp_grid=kpt_mp_grid,iRvec=self.iRvec,ndegen=self.Ndegen,num_proc=num_proc)
 
         self.HH_R=fourier_q_to_R_loc( chk.get_HH_q(eig) )
+        for i in range(self.nRvec):
+            print (i,self.iRvec[i],"H(R)=",self.HH_R[0,0,i])
 
         if getAA:
             self.AA_R=fourier_q_to_R_loc(chk.get_AA_q(mmn))
@@ -183,11 +186,16 @@ class CheckPoint():
 
     def get_HH_q(self,eig):
         assert (eig.NK,eig.NB)==(self.num_kpts,self.num_bands)
-        for V,E,wmin,wmax in zip(self.v_matrix,eig.data,self.win_min,self.win_max):
-           print("VEww",V.shape,E.shape,wmin,wmax,E)
-        HH_q=np.array([ (V*E[None,wmin:wmax]).dot(V.T.conj()) 
+#        eig_data=sum(np.cos(2*np.pi*self.kpt_latt[:,i]) for i in range(3))[:,None]*np.ones( self.num_bands)[None,:]
+#        eig_data=np.random.random( self.num_kpts)[:,None]*np.ones( self.num_bands)[None,:]
+#        for V,E,wmin,wmax in zip(self.v_matrix,eig_data,self.win_min,self.win_max):
+#           print("VEww",V.shape,E.shape,wmin,wmax,E)
+#        HH_q=np.array([ (V*E[None,wmin:wmax]).dot(V.T.conj()) 
+        # fake data
+#        print ("eig_data:",eig_data)
+        HH_q=np.array([ V.conj().dot(np.diag(E[wmin:wmax])).dot(V.T) 
                         for V,E,wmin,wmax in zip(self.v_matrix,eig.data,self.win_min,self.win_max) ])
-        print ('HH_q:',HH_q.shape)
+        print ('HH_q:\n',HH_q[:,0,0])
         print(" check Haermicity of H: ",np.linalg.norm(HH_q-HH_q.transpose(0,2,1).conj()))
         return 0.5*(HH_q+HH_q.transpose(0,2,1).conj())
 
