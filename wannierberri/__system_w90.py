@@ -8,19 +8,20 @@
 # https://github.com/stepan-tsirkin/wannier-berri            #
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
-#                                                            #
-#------------------------------------------------------------
+#   some parts of this file are originate                    #
+# from the translation of Wannier90 code                     #
+#------------------------------------------------------------#
 
 import numpy as np
-from scipy.io import FortranFile as FF
+from scipy.io import FortranFile 
 import copy
 import lazy_property
 import functools
-
+import multiprocessing 
 from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, fourier_q_to_R
 from colorama import init
 from termcolor import cprint 
-from .__system import System
+from .__system import System, ws_dist_map
 
 class System_w90(System):
 
@@ -37,6 +38,12 @@ class System_w90(System):
         self.morb  = morb
         self.berry = berry
         self.spin  = spin
+
+        self.AA_R=None
+        self.BB_R=None
+        self.CC_R=None
+        self.FF_R=None
+        self.SS_R=None
 
 
         getAA = False
@@ -55,12 +62,6 @@ class System_w90(System):
         self.frozen_max=frozen_max
         self.random_gauge=random_gauge
         self.degen_thresh=degen_thresh
-
-        self.AA_R=None
-        self.BB_R=None
-        self.CC_R=None
-        self.FF_R=None
-        self.SS_R=None
 
         chk=CheckPoint(self.seedname)
         self.real_lattice=chk.real_lattice
@@ -85,6 +86,15 @@ class System_w90(System):
         if getAA:
             self.AA_R=fourier_q_to_R_loc(chk.get_AA_q(mmn))
 
+        if  use_ws:
+            print ("using ws_distance")
+            ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centres, chk.mp_grid,self.real_lattice)
+            for X in ['HH','AA','BB','CC','SS','FF']:
+                XR=X+'_R'
+                if vars(self)[XR] is not None:
+                    vars(self)[XR]=ws_map(vars(self)[XR])
+            self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
+
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
         print ("Minimal Number of K points:", self.NKFFTmin)
@@ -100,21 +110,6 @@ class System_w90(System):
             if len(R[R<0])>0: 
                 NKFFTmin[i]-=R.min()
         return NKFFTmin
-
-
-    @property
-    def cRvec(self):
-        return self.iRvec.dot(self.real_lattice)
-
-
-    @property 
-    def nRvec(self):
-        return self.iRvec.shape[0]
-
-
-    @lazy_property.LazyProperty
-    def cell_volume(self):
-        return abs(np.linalg.det(self.real_lattice))
 
 
     def to_tb_file(self,tb_file=None):
@@ -143,54 +138,6 @@ class System_w90(System):
 
 
         f.close()
-        return
-#        f.write("".join("  ".join("{0:16.12f}".format(x) for x in 
-#        self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
-#        self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
-#        self.num_wann=int(f.readline())
-#        nRvec=int(f.readline())
-#        self.nRvec0=nRvec
-        self.Ndegen=[]
-        while len(self.Ndegen)<nRvec:
-            self.Ndegen+=f.readline().split()
-        self.Ndegen=np.array(self.Ndegen,dtype=int)
-        
-        self.iRvec=[]
-        
-        self.HH_R=np.zeros( (self.num_wann,self.num_wann,nRvec) ,dtype=complex)
-        
-        for ir in range(nRvec):
-            f.readline()
-            self.iRvec.append(f.readline().split())
-            hh=np.array( [[f.readline().split()[2:4] 
-                             for n in range(self.num_wann)] 
-                                for m in range(self.num_wann)],dtype=float).transpose( (1,0,2) )
-            self.HH_R[:,:,ir]=(hh[:,:,0]+1j*hh[:,:,1])/self.Ndegen[ir]
-        
-        self.iRvec=np.array(self.iRvec,dtype=int)
-        
-        if getAA:
-          self.AA_R=np.zeros( (self.num_wann,self.num_wann,nRvec,3) ,dtype=complex)
-          for ir in range(nRvec):
-            f.readline()
-            assert (np.array(f.readline().split(),dtype=int)==self.iRvec[ir]).all()
-            aa=np.array( [[f.readline().split()[2:8] 
-                             for n in range(self.num_wann)] 
-                                for m in range(self.num_wann)],dtype=float)
-            self.AA_R[:,:,ir,:]=(aa[:,:,0::2]+1j*aa[:,:,1::2]).transpose( (1,0,2) ) /self.Ndegen[ir]
-        else: 
-            self.AA_R = None
-        
-        f.close()
-
-
-
-
-
-import numpy as np
-from scipy.io import FortranFile
-import multiprocessing 
-
 
 
 class CheckPoint():
@@ -205,18 +152,14 @@ class CheckPoint():
             return a[::2]+1j*a[1::2]
         readstr   = lambda : "".join(c.decode('ascii')  for c in FIN.read_record('c') ) 
 
-#        print ( 'Reading restart information from file '+seedname+'.chk :')
+        print ( 'Reading restart information from file '+seedname+'.chk :')
         self.comment=readstr() 
-#        print (self.comment)
         self.num_bands          = readint()[0]
         num_exclude_bands       = readint()[0]
         self.exclude_bands      = readint()
-#        print(self.exclude_bands,num_exclude_bands)
         assert  len(self.exclude_bands)==num_exclude_bands
         self.real_lattice=readfloat().reshape( (3 ,3),order='F')
-#        print ("real lattice:\n",self.real_lattice)
         self.recip_lattice=readfloat().reshape( (3 ,3),order='F')
-#        print ("reciprocal lattice:\n",self.recip_lattice)
         assert np.linalg.norm(self.real_lattice.dot(self.recip_lattice.T)/(2*np.pi)-np.eye(3)) < 1e-14
         self.num_kpts = readint()[0]
         self.mp_grid  = readint()
@@ -226,7 +169,6 @@ class CheckPoint():
         self.nntot    = readint()[0]
         self.num_wann = readint()[0]
         self.checkpoint=readstr().strip()
-#        print ("checkpoint:"+self.checkpoint)
         self.have_disentangled=bool(readint()[0])
         if self.have_disentangled:
             self.omega_invariant=readfloat()[0]
@@ -240,7 +182,7 @@ class CheckPoint():
                                     zip(u_matrix,u_matrix_opt,ndimwin)]
         else:
             self.v_matrix=[u  for u in u_matrix ] 
-        self.wannier_centers=readfloat().reshape((self.num_wann,3))
+        self.wannier_centres=readfloat().reshape((self.num_wann,3))
         self.wannier_spreads=readfloat().reshape((self.num_wann))
         self.win_min = np.array( [np.where(lwin)[0].min() for lwin in lwindow] )
         self.win_max = np.array( [wm+nd for wm,nd in zip(self.win_min,ndimwin)]) 
@@ -250,8 +192,6 @@ class CheckPoint():
         assert (eig.NK,eig.NB)==(self.num_kpts,self.num_bands)
         HH_q=np.array([ V.conj().dot(np.diag(E[wmin:wmax])).dot(V.T) 
                         for V,E,wmin,wmax in zip(self.v_matrix,eig.data,self.win_min,self.win_max) ])
-        print ('HH_q:\n',HH_q[:,0,0])
-        print(" check Haermicity of H: ",np.linalg.norm(HH_q-HH_q.transpose(0,2,1).conj()))
         return 0.5*(HH_q+HH_q.transpose(0,2,1).conj())
 
 
@@ -267,9 +207,9 @@ class CheckPoint():
                 data=mmn.data[ik,ib,self.win_min[ik]:self.win_max[ik],self.win_min[iknb]:self.win_max[iknb]]
                 v2=self.v_matrix[iknb]
                 AA_q[ik]+=1.j*(v1.dot(data).dot(v2.T))[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
-            print ("iq=",ik,"Hermicity of Aq:",np.linalg.norm(AA_q[ik].transpose(1,0,2).conj()-AA_q[ik]))
-        AA_q=0.5*(AA_q+AA_q.transpose( (0,2,1,3) ).conj())
-        print ('AA_q:',AA_q.shape)
+        if eig is None:
+            AA_q=0.5*(AA_q+AA_q.transpose( (0,2,1,3) ).conj())
+#        print ('AA_q:',AA_q.shape)
         return AA_q
 
 class MMN():
@@ -297,7 +237,6 @@ class MMN():
         return
       except:
         bk_latt=np.array(np.round( [(chk.kpt_latt[nbrs]-chk.kpt_latt+G)*chk.mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
-#        print (self.bk_latt)
         bk_latt_unique=np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1,3))],dtype=int)
         assert len(bk_latt_unique)==self.NNB
         bk_cart_unique=bk_latt_unique.dot(chk.recip_lattice/chk.mp_grid[:,None])
@@ -314,7 +253,6 @@ class MMN():
         weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u)).reshape(-1)
         assert np.linalg.norm(sum(w*m for w,m in zip(weight_shell,shell_mat))-np.eye(3))<1e-7
         weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
-        print ("weight=",weight,"shell_mat=",shell_mat)
         weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
         bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
         self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
@@ -337,7 +275,6 @@ class EIG():
         assert np.linalg.norm(data[:,:,0]-1-np.arange(NB)[None,:])<1e-15
         assert np.linalg.norm(data[:,:,1]-1-np.arange(NK)[:,None])<1e-15
         self.data=data[:,:,2]
-        print ("EIGENVALUES:\n",self.data)
 
     @property 
     def  NK(self):
@@ -368,31 +305,36 @@ def wigner_seitz(mp_grid,real_lattice):
     return np.array(irvec),np.array(ndegen)
 
 
+class ws_dist_map_gen(ws_dist_map):
 
-#mmn.set_bk(chk.mp_grid,chk.kpt_latt,chk.recip_lattice)
-#chk.get_HH_q(eig)
+    def __init__(self,iRvec,wannier_centres, mp_grid,real_lattice):
+    ## Find the supercell translation (i.e. the translation by a integer number of
+    ## supercell vectors, the supercell being defined by the mp_grid) that
+    ## minimizes the distance between two given Wannier functions, i and j,
+    ## the first in unit cell 0, the other in unit cell R.
+    ## I.e., we find the translation to put WF j in the Wigner-Seitz of WF i.
+    ## We also look for the number of equivalent translation, that happen when w_j,R
+    ## is on the edge of the WS of w_i,0. The results are stored 
+    ## a dictionary shifts_iR[(iR,i,j)]
+        ws_search_size=np.array([2]*3)
+        ws_distance_tol=1e-5
+        cRvec=iRvec.dot(real_lattice)
+        mp_grid=np.array(mp_grid)
+        shifts_int_all= np.array([ijk  for ijk in iterate3dpm(ws_search_size+1)])*np.array(mp_grid[None,:])
+        self.num_wann=wannier_centres.shape[0]
+        self._iRvec_new=dict()
 
-#mmn2=MMN('Fe')
+        for ir,iR in enumerate(iRvec):
+          for jw in range(self.num_wann):
+            for iw in range(self.num_wann):
+              # function JW translated in the Wigner-Seitz around function IW
+              # and also find its degeneracy, and the integer shifts needed
+              # to identify it
+              R_in=-wannier_centres[iw] +cRvec[ir] + wannier_centres[ jw]
+              dist=np.linalg.norm( R_in[None,:]+shifts_int_all.dot(real_lattice),axis=1)
+              irvec_new=iR+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
+              self._add_star(ir,irvec_new,iw,jw)
+        self._init_end(iRvec.shape[0])
 
-#eig=np.random.random( (chk.num_kpts,chk.num_bands) )
-#HH_q=chk.get_HH_q(eig)
-#print (HH_q.shape)
 
 
-
-#        ik2mp = lambda ik : ( 
-#                ik%(mp_grid[1]*mp_grid[2]) , (ik//mp_grid[0])%mp_grid[1] , 
-#                         ik//(mp_grid[0]*mp_grid[1]) )
-#        mp2ik = lambda mp: ik*
-
-#    def get_gauge_overlap_matrix( XX , k1,hermitian=False):
-#        k1=np.arange(self.num_kpts)
-#        if kk2 is None: k2=k1
-#        XXq=np.array([ V1.conj().dot(X[wmin1:wmax1,wmin2:wmax2]).dot(V2.T) 
-#                        for V1,wmin1,wmax1,X,V2,wmin2,wmax2 in zip(
-#                              self.v_matrix[k1],self.wmin[k1],self.wmax[k1],
-#                                  XX,
-#                              self.v_matrix[k2],self.wmin[k2],self.wmax[k2]) ])
-#        if hermitian:
-#            XXq=0.5*(XXq+XXq.transpose( (0,2,1) ).conj())
-#        return XXq

@@ -145,14 +145,11 @@ def str2bool(v):
 
 def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,num_proc=2):
     print_my_name_start()
-    print ("input array has shape {}".format(AA_q.shape))
-    print (AA_q[:,0,0])
     mp_grid=tuple(mp_grid)
     shapeA=AA_q.shape[1:]  # remember the shapes after q
     sizeA=np.prod(shapeA)
     AA_q_mp=np.zeros(tuple(mp_grid)+(sizeA,),dtype=complex)
     for i,k in enumerate(kpt_mp_grid):
-        print ("i,k=",i,k,AA_q[i].reshape(-1)[0])
         AA_q_mp[k]=AA_q[i].reshape(-1)
     AA_q_mp=AA_q_mp.transpose( (3,0,1,2)  )
     AA_q_mp=np.array([np.fft.fftn(A) for A in AA_q_mp]).transpose( (1,2,3,0) )
