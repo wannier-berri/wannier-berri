@@ -22,7 +22,6 @@ from .__utility import  print_my_name_start,print_my_name_end,voidsmoother,TAU_U
 from . import __result as result
 from . import  __berry as berry
 from . import  __fermisea2 as fermisea2
-from . import  __gyrotropic as gyrotropic
 from . import  __spin as spin
 from . import  __nonabelian as nonabelian
 from . import  __dos as dos
