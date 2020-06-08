@@ -37,6 +37,9 @@ class System():
                                 ):
 
 
+        if tb_file is not None:
+            raise ValueError("to start from a _tb.dat file now use the System_tb() class")
+
         self.frozen_max=frozen_max
         self.random_gauge=random_gauge
         self.degen_thresh=degen_thresh
@@ -47,9 +50,8 @@ class System():
         self.FF_R=None
         self.SS_R=None
 
-        if tb_file is not None:
-            self.__from_tb_file(tb_file,getAA=getAA)
-            return
+
+
         cprint ("Reading from {}".format(seedname+"_HH_save.info"),'green', attrs=['bold'])
 
         f=open(seedname+"_HH_save.info" if self.old_format else seedname+"_R.info","r")
@@ -122,56 +124,6 @@ class System():
                 NKFFTmin[i]-=R.min()
         return NKFFTmin
 
-    def __from_tb_file(self,tb_file=None,getAA=False):
-        self.seedname=tb_file.split("/")[-1].split("_")[0]
-        f=open(tb_file,"r")
-        l=f.readline()
-        cprint ("reading TB file {0} ( {1} )".format(tb_file,l.strip()),'green', attrs=['bold'])
-        self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
-        self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
-        self.num_wann=int(f.readline())
-        nRvec=int(f.readline())
-        self.nRvec0=nRvec
-        self.Ndegen=[]
-        while len(self.Ndegen)<nRvec:
-            self.Ndegen+=f.readline().split()
-        self.Ndegen=np.array(self.Ndegen,dtype=int)
-        
-        self.iRvec=[]
-        
-        self.HH_R=np.zeros( (self.num_wann,self.num_wann,nRvec) ,dtype=complex)
-        
-        for ir in range(nRvec):
-            f.readline()
-            self.iRvec.append(f.readline().split())
-            hh=np.array( [[f.readline().split()[2:4] 
-                             for n in range(self.num_wann)] 
-                                for m in range(self.num_wann)],dtype=float).transpose( (1,0,2) )
-            self.HH_R[:,:,ir]=(hh[:,:,0]+1j*hh[:,:,1])/self.Ndegen[ir]
-        
-        self.iRvec=np.array(self.iRvec,dtype=int)
-        
-        if getAA:
-          self.AA_R=np.zeros( (self.num_wann,self.num_wann,nRvec,3) ,dtype=complex)
-          for ir in range(nRvec):
-            f.readline()
-            assert (np.array(f.readline().split(),dtype=int)==self.iRvec[ir]).all()
-            aa=np.array( [[f.readline().split()[2:8] 
-                             for n in range(self.num_wann)] 
-                                for m in range(self.num_wann)],dtype=float)
-            self.AA_R[:,:,ir,:]=(aa[:,:,0::2]+1j*aa[:,:,1::2]).transpose( (1,0,2) ) /self.Ndegen[ir]
-        else: 
-            self.AA_R = None
-        
-        f.close()
-
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Minimal Number of K points:", self.NKFFTmin)
-        print ("Real-space lattice:\n",self.real_lattice)
-        cprint ("Reading the system finished successfully",'green', attrs=['bold'])
-
-        
     @property
     def cRvec(self):
         return self.iRvec.dot(self.real_lattice)

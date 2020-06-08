@@ -42,12 +42,13 @@ class Data_K(System):
         for X in ['AA','BB','CC','SS']:
             XR=X+'_R'
             hasXR='has_'+X+'_R'
-            if vars(system)[XR] is None:
-                vars(self)[XR]=None
-                vars(self)[hasXR]=False
-            else:
+            vars(self)[XR]=None
+            vars(self)[hasXR]=False
+            if XR in vars(system):
+              if vars(system)[XR] is not  None:
                 vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
                 vars(self)[hasXR]=True
+
 
 ###   For testing it is disabled now:
 #        print ("WARNING : for testing AA_Hbar is disabled !!!!")
