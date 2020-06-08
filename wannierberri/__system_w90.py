@@ -22,7 +22,7 @@ from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, fourier_q_to_R
 from colorama import init
 from termcolor import cprint 
 from .__system import System, ws_dist_map
-from .__w90_files import EIG,MMN,CheckPoint,SPN
+from .__w90_files import EIG,MMN,CheckPoint,SPN,UHU
 
 class System_w90(System):
 
@@ -86,6 +86,13 @@ class System_w90(System):
 
         if getAA:
             self.AA_R=fourier_q_to_R_loc(chk.get_AA_q(mmn))
+
+        if getBB:
+            self.BB_R=fourier_q_to_R_loc(chk.get_AA_q(mmn,eig))
+
+        if getCC:
+            uhu=UHU(seedname)
+            self.CC_R=fourier_q_to_R_loc(chk.get_CC_q(uhu,mmn))
 
         if getSS:
             spn=SPN(seedname)

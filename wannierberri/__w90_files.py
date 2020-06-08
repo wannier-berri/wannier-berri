@@ -22,6 +22,9 @@ from .__utility import str2bool, alpha_A, beta_A, iterate3dpm
 from colorama import init
 from termcolor import cprint 
 
+
+readstr  = lambda F : "".join(c.decode('ascii')  for c in F.read_record('c') ).strip() 
+
 class CheckPoint():
 
     def __init__(self,seedname):
@@ -32,10 +35,9 @@ class CheckPoint():
         def readcomplex():
             a=readfloat()
             return a[::2]+1j*a[1::2]
-        readstr   = lambda : "".join(c.decode('ascii')  for c in FIN.read_record('c') ) 
 
         print ( 'Reading restart information from file '+seedname+'.chk :')
-        self.comment=readstr() 
+        self.comment=readstr(FIN) 
         self.num_bands          = readint()[0]
         num_exclude_bands       = readint()[0]
         self.exclude_bands      = readint()
@@ -50,7 +52,7 @@ class CheckPoint():
         self.kpt_latt=readfloat().reshape( (self.num_kpts,3))
         self.nntot    = readint()[0]
         self.num_wann = readint()[0]
-        self.checkpoint=readstr().strip()
+        self.checkpoint=readstr(FIN)
         self.have_disentangled=bool(readint()[0])
         if self.have_disentangled:
             self.omega_invariant=readfloat()[0]
@@ -97,7 +99,6 @@ class CheckPoint():
         mmn.set_bk(self)
         AA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
         for ik in range(self.num_kpts):
-            v1=self.v_matrix[ik].conj()
             for ib in range(mmn.NNB):
                 iknb=mmn.neighbours[ik,ib]
                 data=mmn.data[ik,ib]
@@ -107,6 +108,24 @@ class CheckPoint():
         if eig is None:
             AA_q=0.5*(AA_q+AA_q.transpose( (0,2,1,3) ).conj())
         return AA_q
+
+    def get_CC_q(self,uhu,mmn):  # if eig is present - it is BB_q 
+        mmn.set_bk(self)
+        assert uhu.NNB==mmn.NNB
+        CC_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
+        for ik in range(self.num_kpts):
+          for ib1 in range(mmn.NNB):
+            iknb1=mmn.neighbours[ik,ib1]
+            for ib2 in range(mmn.NNB):
+              iknb2=mmn.neighbours[ik,ib2]
+              data=uhu.data[ik,ib1,ib2]
+              CC_q[ik]+=1.j*self.wannier_gauge(data,iknb1,iknb2)[:,:,None]* (
+                   mmn.wk[ik,ib1]*mmn.wk[ik,ib2]* (
+               mmn.bk_cart[ik,ib1,alpha_A]* mmn.bk_cart[ik,ib2,beta_A ] - 
+               mmn.bk_cart[ik,ib1,beta_A] * mmn.bk_cart[ik,ib2,alpha_A]  )  )[None,None,:]
+        CC_q=0.5*(CC_q+CC_q.transpose( (0,2,1,3) ).conj())
+        return CC_q
+
 
 class W90_data():
     @property
@@ -233,4 +252,44 @@ class SPN(W90_data):
                 raise RuntimeError ( "REAL DIAG CHECK FAILED : {0}".format(check) )
             self.data[ik]=A.transpose(1,2,0)
         print ("----------\n SPN OK  \n---------\n")
+
+
+class UXU(W90_data):  # uHu ar uIu 
+    @property
+    def n_neighb(self):
+        return 2
+
+    def __init__(self,seedname='wannier90',formatted=False,suffix='uHu'):
+        print ("----------\n  {0}   \n---------".format(suffix))
+
+        if formatted:
+            f_uXu_in = open(seedname+"."+suffix, 'r')
+            header=f_uXu_in.readline().strip() 
+            NB,NK,NNB =(int(x) for x in f_uXu_in.readline().split())
+        else:
+            f_uXu_in = FortranFile(seedname+"."+suffix, 'r')
+            header=readstr(f_uXu_in)
+            NB,NK,NNB=   f_uXu_in.read_record('i4')
+
+        print ("reading {}.{} : <{}>".format(seedname,suffix,header))
+
+        self.data=np.zeros( (NK,NNB,NNB,NB,NB),dtype=complex )
+
+        for ik in range(NK):
+#            print ("k-point {} of {}".format( ik+1,NK))
+            for ib2 in range(NNB):
+                for ib1 in range(NNB):
+                    tmp=f_uXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0) 
+                    self.data[ik,ib1,ib2]=tmp[:,:,0]+1j*tmp[:,:,1]
+        print ("----------\n {0} OK  \n---------\n".format(suffix))
+        f_uXu_in.close()
+
+
+class UHU(UXU):  
+    def __init__(self,seedname='wannier90',formatted=False):
+        super(UHU, self).__init__(seedname=seedname,formatted=formatted,suffix='uHu' )
+
+class UIU(UXU):  
+    def __init__(self,seedname='wannier90',formatted=False):
+        super(UIU, self).__init__(seedname=seedname,formatted=formatted,suffix='uIu' )
 
