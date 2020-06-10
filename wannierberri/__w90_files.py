@@ -59,6 +59,12 @@ class CheckPoint():
             lwindow=np.array( readint().reshape( (self.num_kpts,self.num_bands)),dtype=bool )
             ndimwin=readint()
             u_matrix_opt=readcomplex().reshape( (self.num_kpts,self.num_wann,self.num_bands) )
+            self.win_min = np.array( [np.where(lwin)[0].min() for lwin in lwindow] )
+            self.win_max = np.array( [wm+nd for wm,nd in zip(self.win_min,ndimwin)]) 
+        else:
+            self.win_min = np.array( [0]*self.num_kpts )
+            self.win_max = np.array( [self.num_wann]*self.num_kpts) 
+            
         u_matrix=readcomplex().reshape( (self.num_kpts,self.num_wann,self.num_wann) )
         m_matrix=readcomplex().reshape( (self.num_kpts,self.nntot,self.num_wann,self.num_wann) )
         if self.have_disentangled:
@@ -68,8 +74,6 @@ class CheckPoint():
             self.v_matrix=[u  for u in u_matrix ] 
         self.wannier_centres=readfloat().reshape((self.num_wann,3))
         self.wannier_spreads=readfloat().reshape((self.num_wann))
-        self.win_min = np.array( [np.where(lwin)[0].min() for lwin in lwindow] )
-        self.win_max = np.array( [wm+nd for wm,nd in zip(self.win_min,ndimwin)]) 
 
     def wannier_gauge(self,mat,ik1,ik2):
         # data should be of form NBxNBx ...   - any form later
