@@ -21,7 +21,7 @@ import multiprocessing
 from .__utility import str2bool, alpha_A, beta_A, iterate3dpm
 from colorama import init
 from termcolor import cprint 
-
+from scipy.constants import physical_constants
 
 readstr  = lambda F : "".join(c.decode('ascii')  for c in F.read_record('c') ).strip() 
 
@@ -82,7 +82,7 @@ class CheckPoint():
         assert mat.shape[:2]==(self.num_bands,)*2
         shape=mat.shape[2:]
         mat=mat.reshape(mat.shape[:2]+(-1,)).transpose(2,0,1)
-        mat=mat[self.win_min[ik1]:self.win_max[ik1],self.win_min[ik2]:self.win_max[ik2]]
+        mat=mat[:,self.win_min[ik1]:self.win_max[ik1],self.win_min[ik2]:self.win_max[ik2]]
         v1=self.v_matrix[ik1].conj()
         v2=self.v_matrix[ik2].T
         return np.array( [v1.dot(m).dot(v2) for m in mat]).transpose( (1,2,0) ).reshape( (self.num_wann,)*2+shape )
@@ -200,19 +200,19 @@ class MMN(W90_data):
         weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
         weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
         bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
-        self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
-        self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+        self.bk  = np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+        self.wk  = np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
         
 
 class AMN(W90_data):
 
     @property 
     def  NB(self):
-        return data.shape[1]
+        return self.data.shape[1]
 
     @property 
     def  NW(self):
-        return data.shape[2]
+        return self.data.shape[2]
 
 
     def __init__(self,seedname,num_proc=4):
@@ -221,7 +221,7 @@ class AMN(W90_data):
         s=f_mmn_in[1]
         NB,NK,NW=np.array(s.split(),dtype=int)
         self.data=np.zeros( (NK,NB,NW), dtype=complex )
-        block=slef.NW*self.NB
+        block=self.NW*self.NB
         allmmn=( f_mmn_in[2+j*block:2+(j+1)*block]  for j in range(self.NK) )
         p=multiprocessing.Pool(num_proc)
         self.data= np.array(p.map(str2arraymmn,allmmn)).reshape((self.NK,self.NW,self.NB)).transpose(0,2,1)
@@ -229,8 +229,10 @@ class AMN(W90_data):
 
 def str2arraymmn(A):
     a=np.array([l.split() for l in A],dtype=float)
-    n=int(round(np.sqrt(a.shape[0])))
-    return (a[:,0]+1j*a[:,1]).reshape((n,n))
+#    if shape is None:
+#        n=int(round(np.sqrt(a.shape[0])))
+#        shape=(n,n)
+    return (a[:,0]+1j*a[:,1])
 
 
 
@@ -322,18 +324,88 @@ class UIU(UXU):
 
 class WIN():
     def __init__(self,seedname='wannier90'):
+        self.name=seedname+".win"
         lines=[l.strip().lower() for l in open(seedname+".win").readlines()]
         for l in lines:
           for delim in '!','%' :  # put other valid delimiters here 
             l.replace(delim,'#')
         lines=[l.split('#')[0].strip() for l in lines] # drop comments
         self.lines=[l for l in lines if len(l)>0]      # blank lines
-        self.multiline=['real_lattice','kpoints']
-        self.has_unit=['real_lattice']
+        unit_length={'ang':1.,'bohr':physical_constants['Bohr radius'][0]*1e10}
+        self.units={'unit_cell_cart':unit_length}
 
     def print_clean(self):
-        print ("\n".join(self.lines))
+        print ("\n".join("{:3d}:{}".format(i,l) for i,l in enumerate(self.lines)) )
 
+    def findparam(self,param):
+        "returns the string corresponding to the parameter"
+        ll=[l for l in self.lines  if l.startswith(param)]
+        assert len(ll)<=1 , "Parameter {} was found {}>1 times in the '{}' file\n".format(param,l,self.name)
+        assert len(ll)>=0 , "Parameter {} was not found  in the '{}' file\n".format(param,l,self.name)
+        ll=ll[0].split("=")
+        assert len(ll)>=1 , "nothing was found on the right of '{} =' ".format(param)
+        assert len(ll)<=2 , " '=' is given {}>1 times for  '{} ' ".format(len(ll)-1, param)
+        assert len(ll)==2
+        return ll[1].strip()
+
+
+    def get_param(self,param,dtype=int,size=1):
+        try:
+            param=param.lower().strip()
+            assert size>=1
+            res=self.findparam(param)
+            if dtype==str:
+               return res
+            res=res.split()
+            assert len(res)>0  
+            if dtype==bool:
+                res=[str2bool(x) for x in res]
+            else:
+                res=[dtype(x) for x in res]
+            if len(res)==1:
+                if size==1:
+                    return res[0]
+                else:
+                    return np.array(res*size)
+            else : 
+                return np.array(res,dtype=dtype)
+        except Exception as err:
+            raise  RuntimeError("ERROR reading parameter {} from {} :\n {}".format(param,self.name,err))
+
+    def find_begin_end(self,begend,param):
+        "returns the line index where the corresponding begin/end parameter is found"
+        il=[i for i,l in enumerate (self.lines) if l.startswith(begend) and l.split()[1]==param]
+        assert len(il)<=1 , "{} {} was found {}>1 times in the '{}' file\n".format(begend,param,len(il),self.name)
+        assert len(il)>0 , "{} {} was not found  in the '{}' file\n".format(      begend,param,self.name)
+        return il[0]
+
+
+    def get_param_block(self,param,shape=None,dtype=float):
+        try:
+            begin = self.find_begin_end('begin' , param)+1
+            end   = self.find_begin_end('end'   , param)
+            try :
+                l=self.lines[begin].split()[0]
+#                print ("unit read is {}".format(l))
+                unit=self.units[param][l]
+                begin +=1
+#                print ("unit recognized as {}".format(unit))
+            except KeyError:
+                unit=None
+            print 
+            
+            if shape is None:
+                res = np.loadtxt(self.lines[begin:end],dtype=dtype)
+            else: 
+                assert len(shape)==2 , "shape is wrong : {}".format(shape)
+                assert end-begin==shape[0] , 'end={} , begin={} , shape={} '.format(end,begin,shape)
+                res=np.array( [l.split()[:shape[1]] for l in self.lines[begin:end]],dtype=dtype)
+            
+            if unit is not None:
+                res*=unit
+            return res
+        except Exception as err:
+            raise  RuntimeError("ERROR reading parameter block {} from {} :\n {}".format(param,self.name,err))
 
 
 

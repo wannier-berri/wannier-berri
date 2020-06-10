@@ -1,5 +1,6 @@
-from .__wannier_files inport MMN,EIG,AMN,WIN
+from .__w90_files import MMN,EIG,AMN,WIN
 from copy import deepcopy
+import numpy as np
 
 class WannierModel():
 # todo :  write the files
@@ -12,8 +13,14 @@ class WannierModel():
 #todo : read real_lattice and kpt_latt form .win
     def __init__(self,seedname="wannier90"):
         win=WIN(seedname)
-        win.print_clean()
-        exit()
+#        win.print_clean()
+        self.mp_grid=win.get_param("mp_grid",dtype=int,size=3)
+#        print ("mp_grid=",self.mp_grid)
+        self.kpt_latt=win.get_param_block("kpoints",dtype=float,shape=(np.prod(self.mp_grid),3))
+#        print ("kpoints=",self.kpt_latt)
+        self.real_lattice=win.get_param_block("unit_cell_cart",dtype=float,shape=(3,3))
+#        print ("real_lattice=",self.real_lattice)
+#        exit()
 #        real_lattice,mp_grid,kpt_latt=read_from_win(seedname,['real_lattice','mp_grid','kpoints'])
         eig=EIG(seedname)
         mmn=MMN(seedname)
@@ -21,12 +28,10 @@ class WannierModel():
         assert eig.NK==amn.NK==mmn.NK
         self.NK=eig.NK
         self.NW=amn.NW
-        self.real_lattice=real_lattice
         self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice)
-        mmn.set_bk(mp_grid,kpt_latt,recip_lattice)
+        mmn.set_bk(self.mp_grid,self.kpt_latt,self.recip_lattice)
         self.bk=mmn.bk
         self.wk=mmn.wk
-        self.mp_grid=mp_grid
         self.neighbours=mmn.neighbours
         self.Mmn=mmn.data
         self.Amn=amn.data
@@ -35,11 +40,11 @@ class WannierModel():
     # TODO : allow k-dependent window (can it be useful?)
     def apply_outer_window(self,
                      win_min=-np.Inf,
-                     win_max=np.Inf)
-        self.win_index=[np.where( ( E<=win_max)*(E>=win_min) )[0] for E in self.eig]
-        self.Eig=[E[ind] for E, ind in zip(self.Eig,self.ind_outer)]
-        self.Mmn=[[mmn[ik][ib][self.ind_outer[ik],:][:,self.ind_outer[ikb]] for ikb in self.neighbours[ik]] for ik in range(self.NK)]
-        self.Amn=[amn[ik][self.ind_outer[ik],:] for ik in range(self.NK)]
+                     win_max= np.Inf ):
+        self.win_index=[np.where( ( E<=win_max)*(E>=win_min) )[0] for E in self.Eig]
+        self.Eig=[E[ind] for E, ind in zip(self.Eig,self.win_index)]
+        self.Mmn=[[self.Mmn[ik][ib][self.win_index[ik],:][:,self.win_index[ikb]] for ib,ikb in enumerate(self.neighbours[ik])] for ik in range(self.NK)]
+        self.Amn=[self.Amn[ik][self.win_index[ik],:] for ik in range(self.NK)]
 
     # TODO : allow k-dependent window (can it be useful?)
     def disentangle(self,
@@ -56,8 +61,8 @@ class WannierModel():
         self.nBfree=[ np.sum(free) for free in self.free ]
         self.nWfree=[ self.NW-np.sum(frozen) for frozen in self.frozen]
         # initial guess : eq 27 of SMV2001
-        U_opt_free=self.get_max_eig(  [np.linalg.eigh(A[free,:].dot(A[free,:].T.conj)) 
-                        for A,free in zip(self.Amn,self.free)]  ,self.nfree) # nBfee x nWfree marrices
+        U_opt_free=self.get_max_eig(  [ A[free,:].dot(A[free,:].T.conj()) 
+                        for A,free in zip(self.Amn,self.free)]  ,self.nWfree) # nBfee x nWfree marrices
 
         def calc_Z(Mmn_loc,U=None):
             if U is None: 
@@ -80,7 +85,7 @@ class WannierModel():
             Z=[(z+zfr)  for z,zfr in zip(calc_Z(Mmn_free,U_opt_free),Z_frozen)]
             if i_iter>0 and mix_ratio<1:
                 Z=[ (mix_ratio*z + (1-mix_ratio)*zo) for z,zo in zip(Z,Z_old) ]
-            U_opt_free=self.get_max_eig(Z,self.nWfree))
+            U_opt_free=self.get_max_eig(Z,self.nWfree)
             Z_old=deepcopy(Z)
 
         U_opt_full=[]
@@ -96,11 +101,11 @@ class WannierModel():
 
        # now rotating to the optimized space
         for ik in range(self.NK):
-           U=U_opt_full[ik]
-           self.Eig[ik]=(Ud.dot(np.diag(self.Eig[ik])).dot(U)).real
-           self.Amn[ik]=Ud.dot(self.Amn[ik])
-           for ib,ikb in enumerate (self.neighbours[ik]):
-           self.Mmn[ik]=[Ud.dot(M).dot(U_opt_full[ibk]) for M,ibk in zip (self.Mmn[ik],self.neighbours[ik])]
+            U=U_opt_full[ik]
+            self.Eig[ik]=(Ud.dot(np.diag(self.Eig[ik])).dot(U)).real
+            self.Amn[ik]=Ud.dot(self.Amn[ik])
+            for ib,ikb in enumerate (self.neighbours[ik]):
+                self.Mmn[ik]=[Ud.dot(M).dot(U_opt_full[ibk]) for M,ibk in zip (self.Mmn[ik],self.neighbours[ik])]
            
     def rotate(self,mat,ik1,ik2):
         # data should be of form NBxNBx ...   - any form later
@@ -116,12 +121,13 @@ class WannierModel():
 
 
     def get_max_eig(self,matrix,nvec):
-    """ return the nvec column-eigenvectors of matrix with maximal eigenvalues. 
-    Both matrix and nvec are lists by k-points,s with arbitrary size of matrices"""
+        """ return the nvec column-eigenvectors of matrix with maximal eigenvalues. 
+        Both matrix and nvec are lists by k-points,s with arbitrary size of matrices"""
+        print ("getting maximal vectors of: \n {}".format(matrix))
         assert len(matrix)==len(nvec)==self.NK
         assert np.all([m.shape[0]==m.shape[1] for m in matrix])
         assert np.all([m.shape[0]<nv for m,nv in zip(matrix,nvec)])
-        EV=[np.linalg.eigh(M)) for M in matrix]
+        EV=[np.linalg.eigh(M) for M in matrix]
         return [ ev[1][:,np.argsort(ev[0])[-nv:]] for ev,nv  in zip(EV,nvec) ] # nBfee x nWfree marrices
 
 
