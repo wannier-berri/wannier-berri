@@ -96,7 +96,7 @@ class CheckPoint():
         return 0.5*(SS_q+SS_q.transpose(0,2,1,3).conj())
 
     def get_AA_q(self,mmn,eig=None):  # if eig is present - it is BB_q 
-        mmn.set_bk(self)
+        mmn.set_bk(mp_grid,kpt_latt,recip_lattice)
         AA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
@@ -157,7 +157,7 @@ class MMN(W90_data):
 
     def __init__(self,seedname,num_proc=4):
         f_mmn_in=open(seedname+".mmn","r").readlines()
-        print ("reading {}.mmn: ".format(seedname)+f_mmn_in[0])
+        print ("reading {}.mmn: ".format(seedname)+f_mmn_in[0].strip())
         s=f_mmn_in[1]
         NB,NK,NNB=np.array(s.split(),dtype=int)
         self.data=np.zeros( (NK,NNB,NB,NB), dtype=complex )
@@ -171,16 +171,16 @@ class MMN(W90_data):
         p=multiprocessing.Pool(num_proc)
         self.data= np.array(p.map(str2arraymmn,allmmn)).reshape(self.NK,self.NNB,self.NB,self.NB).transpose((0,1,3,2))
 
-    def set_bk(self,chk):
+    def set_bk(self,mp_grid,kpt_latt,recip_lattice):
       try :
         self.bk
         self.wk
         return
       except:
-        bk_latt=np.array(np.round( [(chk.kpt_latt[nbrs]-chk.kpt_latt+G)*chk.mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
+        bk_latt=np.array(np.round( [(kpt_latt[nbrs]-kpt_latt+G)*mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
         bk_latt_unique=np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1,3))],dtype=int)
         assert len(bk_latt_unique)==self.NNB
-        bk_cart_unique=bk_latt_unique.dot(chk.recip_lattice/chk.mp_grid[:,None])
+        bk_cart_unique=bk_latt_unique.dot(recip_lattice/mp_grid[:,None])
         bk_cart_unique_length=np.linalg.norm(bk_cart_unique,axis=1)
         srt=np.argsort(bk_cart_unique_length)
         bk_latt_unique=bk_latt_unique[srt]
@@ -199,6 +199,28 @@ class MMN(W90_data):
         self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
         self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
         
+
+class AMN(W90_data):
+
+    @property 
+    def  NB(self):
+        return data.shape[1]
+
+    @property 
+    def  NW(self):
+        return data.shape[2]
+
+
+    def __init__(self,seedname,num_proc=4):
+        f_mmn_in=open(seedname+".amn","r").readlines()
+        print ("reading {}.amn: ".format(seedname)+f_mmn_in[0].strip())
+        s=f_mmn_in[1]
+        NB,NK,NW=np.array(s.split(),dtype=int)
+        self.data=np.zeros( (NK,NB,NW), dtype=complex )
+        block=slef.NW*self.NB
+        allmmn=( f_mmn_in[2+j*block:2+(j+1)*block]  for j in range(self.NK) )
+        p=multiprocessing.Pool(num_proc)
+        self.data= np.array(p.map(str2arraymmn,allmmn)).reshape((self.NK,self.NW,self.NB)).transpose(0,2,1)
 
 
 def str2arraymmn(A):
