@@ -315,3 +315,21 @@ class UIU(UXU):
     def __init__(self,seedname='wannier90',formatted=False):
         super(UIU, self).__init__(seedname=seedname,formatted=formatted,suffix='uIu' )
 
+
+class WIN():
+    def __init__(self,seedname='wannier90'):
+        lines=[l.strip().lower() for l in open(seedname+".win").readlines()]
+        for l in lines:
+          for delim in '!','%' :  # put other valid delimiters here 
+            l.replace(delim,'#')
+        lines=[l.split('#')[0].strip() for l in lines] # drop comments
+        self.lines=[l for l in lines if len(l)>0]      # blank lines
+        self.multiline=['real_lattice','kpoints']
+        self.has_unit=['real_lattice']
+
+    def print_clean(self):
+        print ("\n".join(self.lines))
+
+
+
+

@@ -1,4 +1,4 @@
-from .__wannier_files inport MMN,EIG,AMN
+from .__wannier_files inport MMN,EIG,AMN,WIN
 from copy import deepcopy
 
 class WannierModel():
@@ -10,7 +10,11 @@ class WannierModel():
 
 #todo :  define mp_grid from kpt_latt
 #todo : read real_lattice and kpt_latt form .win
-    def __init__(self,seedname="wannier90",real_lattice,mp_grid,kpt_latt):
+    def __init__(self,seedname="wannier90"):
+        win=WIN(seedname)
+        win.print_clean()
+        exit()
+#        real_lattice,mp_grid,kpt_latt=read_from_win(seedname,['real_lattice','mp_grid','kpoints'])
         eig=EIG(seedname)
         mmn=MMN(seedname)
         amn=AMN(seedname)
