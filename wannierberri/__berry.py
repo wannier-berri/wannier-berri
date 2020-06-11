@@ -37,7 +37,6 @@ fac_ahc  = -1.0e8*constants.elementary_charge**2/constants.hbar
 bohr= constants.physical_constants['Bohr radius'][0]/constants.angstrom
 eV_au=constants.physical_constants['electron volt-hartree relationship'][0] 
 fac_morb =  -eV_au/bohr**2
-print ("fac_morb=",fac_morb,1/fac_morb)
 
 
 def calcV_band(data):
@@ -107,13 +106,13 @@ def calcImf_band_kn(data):
     return result.KBandResult(calcImf_band(data),TRodd=True,Iodd=False)
 
 def calcImgh_band_kn(data):
-    return result.KBandResult(calcImhg_band(data),TRodd=True,Iodd=False)
+    return result.KBandResult(calcImgh_band(data),TRodd=True,Iodd=False)
 
 #returns g-h
 def calcImgh_band(data):
     
     AA=data.A_E_A
-    BB=data.Morb_Hbar_diag-data.OmegaHbar
+    BB=data.Morb_Hbar_diag-data.Omega_Hbar_diag
     imgh=np.array([eval_Jo(B)-2*eval_Joo(A)  for A,B in zip (AA,BB) ] )
     
     AA=data.D_B-data.D_E_A

@@ -18,10 +18,10 @@ import lazy_property
 
 from .__system import System
 from .__utility import  print_my_name_start,print_my_name_end,einsumk, fourier_R_to_k, alpha_A,beta_A
-
+   
 class Data_K(System):
     def __init__(self,system,dK=None,NKFFT=None):
-        self.spinors=system.spinors
+#        self.spinors=system.spinors
         self.iRvec=system.iRvec
         self.real_lattice=system.real_lattice
         self.recip_lattice=system.recip_lattice
@@ -42,12 +42,18 @@ class Data_K(System):
         for X in ['AA','BB','CC','SS']:
             XR=X+'_R'
             hasXR='has_'+X+'_R'
-            if vars(system)[XR] is None:
-                vars(self)[XR]=None
-                vars(self)[hasXR]=False
-            else:
+            vars(self)[XR]=None
+            vars(self)[hasXR]=False
+            if XR in vars(system):
+              if vars(system)[XR] is not  None:
                 vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
                 vars(self)[hasXR]=True
+
+
+###   For testing it is disabled now:
+#        print ("WARNING : for testing AA_Hbar is disabled !!!!")
+#        self.AA_R[:,:,:,:]*=0.
+
 
 
     def _rotate(self,mat):
@@ -343,21 +349,6 @@ class Data_K(System):
          print_my_name_start()
          return  (-self.D_H[:,:,:,beta_A]*self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))).imag
 
-
-
-    @lazy_property.LazyProperty
-    def gdD_old(self):
-# evaluates tildeD  as three terms : gdD1[k,n,l,a,b] , gdD1[k,n,n',l,a,b] ,  gdD2[k,n,l',l,a,b] 
-# which after summing over l',n' will give the generalized derivative
-
-        dDnl=-self.del2E_H*self.dEig_inv[:,:,:,None,None]
-        dDnnl= self.V_H[:, :,:,None, :,None]*self.D_H[:, None,:,:,None, :]
-        dDnll=-self.D_H[:, :,:,None, :,None]*self.V_H[:, None,:,:,None, :]
-        
-        dDnnl=-(dDnnl+dDnnl.transpose(0,1,2,3,5,4))*self.dEig_inv[:,:,None,:  ,None,None]
-        dDnll=-(dDnll+dDnll.transpose(0,1,2,3,5,4))*self.dEig_inv[:,:,None,:  ,None,None]
-       
-        return dDnl.transpose(0,2,1,3,4),dDnnl.transpose(0,3,2,1,4,5),dDnll.transpose(0,3,2,1,4,5)
     
     @lazy_property.LazyProperty
     def gdD(self):
@@ -398,9 +389,6 @@ class Data_K(System):
         dBPln=  Bln + Aln*self.E_K[:,None,:,None,None] 
         dBPlln= Blln + Alln*self.E_K[:,None,None,:,None,None] 
         dBPlnn= Blnn + Alnn*self.E_K[:,None,None,:,None,None] + A[:,:,:,None,:,None]*V[:,None,:,:,None,:]
-       # dBPln= self.B_Hbar_der + self.A_Hbar_der*self.E_K[:,None,:,None,None]
-       # dBPlln= self.B_Hbarplus[:,:,:,None,:,None]*self.D_H[:,None,:,:,None,:]
-       # dBPlnn= -self.D_H[:,:,:,None,None,:]*self.B_Hbarplus[:,None,:,:,:,None]
 
         return dBPln,dBPlln,dBPlnn
 
@@ -616,6 +604,7 @@ class Data_K(System):
         select=(self.E_K<=self.frozen_max)
         _BB_K[select]=self.E_K[select][:,None,None]*self.A_Hbar[select]
         return _BB_K
+    
     @lazy_property.LazyProperty
     def B_Hbar_der(self):
         _BB_K=fourier_R_to_k(1j*self.BB_R[:,:,:,:,None]*self.cRvec[None,None,:,None,:],self.iRvec,self.NKFFT)

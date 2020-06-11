@@ -86,6 +86,11 @@ def tensor_K(data,Efermi):
     tensor_K = - elementary_charge**2/(2*hbar)*(Hp - 2*Efermi[:,None,None]*D  )
     return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
 
+#########################
+####  Private part ######
+#########################
+
+
 def IterateEf(dataIO,data,Efermi,TRodd,Iodd,rank=None,kwargs={}):
     """ this is a general function which accepts dataIO  -- a dictionary like {'i':i , 'io':io, ...}
 and sums for a series of Fermi levels"""
@@ -175,8 +180,8 @@ class OccDelta():
                 tmp=V[selectK]
                 result+= tmp[UnoccOccOcc_plus].sum(axis=0)-tmp[UnoccOccOcc_minus].sum(axis=0)
 
-        if result is 0:
-            raise RuntimeError("Nothing was evaluated for the Fermi sea")
+#        if result==0:
+#            raise RuntimeError("Nothing was evaluated for the Fermi sea")
 
         return result
             
