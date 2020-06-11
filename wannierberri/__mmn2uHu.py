@@ -19,15 +19,18 @@
 
 import numpy as np
 import os
-import datetime,sys
+import datetime
 from scipy.io import FortranFile
 
 
-if len(sys.argv)<2:
+
+def hlp():
+    from termcolor import cprint 
+    cprint ("mmn2uHu  (utility)",'green', attrs=['bold'])
     print ('''This utility calculates the matrices .uHu and/or .uIu from the .mmn matrices, and also reduces the number of bands in .amn, .mmn, .eig  and .spn files
          Example of usage:
           
-                mmn2uHu.py seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu
+                python3 -m wanierberri mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu
                 
          only the first parameter is mandatory.
                 NBout -- the number of bands in the output files. Default : all bands
@@ -37,32 +40,37 @@ if len(sys.argv)<2:
                 targets : files to write (amn,mmn,spn,uHu,uIu,eig) (default: amn,mmn,eig,uHu)
                 formatted : files to write as formatted: uHu,uIu,spn,spn_in,spn_out,all (default: none)
                 ''')
-    exit()
+
+
+def main(argv):
+  hlp()
+
+  if len(argv)<2 or argv[1]=="-h": exit()
     
     
-writeAMN=True
-writeMMN=True
-writeUHU=True
-writeEIG=True
-writeUIU=False
-writeSPN=False
+  writeAMN=True
+  writeMMN=True
+  writeUHU=True
+  writeEIG=True
+  writeUIU=False
+  writeSPN=False
 
-uHu_formatted     = False
-uIu_formatted     = False
-spn_formatted_out = False
-spn_formatted_in  = False
+  uHu_formatted     = False
+  uIu_formatted     = False
+  spn_formatted_out = False
+  spn_formatted_in  = False
 
-PREFIX=sys.argv[1]
+  PREFIX=argv[1]
 
-NB_out_list=[None]
-NB_sum_list=[None]
-INPUTDIR="./"
-OUTDIR="reduced"
-
-
+  NB_out_list=[None]
+  NB_sum_list=[None]
+  INPUTDIR="./"
+  OUTDIR="reduced"
 
 
-for arg in sys.argv[2:]:
+
+
+  for arg in argv[2:]:
     arg=arg.split("=")
     if arg[0]=="NBout": NB_out_list=[int(s) for s in arg[1].split(',')]
     if arg[0]=="NBsum": NB_sum_list=[int(s) for s in arg[1].split(',')]
@@ -86,16 +94,16 @@ for arg in sys.argv[2:]:
 
 
 
-AMNrd=False
-MMNrd=False
-EIGrd=False
+  AMNrd=False
+  MMNrd=False
+  EIGrd=False
 
-if not (writeEIG or writeUHU): EIGrd=True
+  if not (writeEIG or writeUHU): EIGrd=True
 
 
-print ("----------\n MMN  read\n---------\n")
+  print ("----------\n MMN  read\n---------\n")
 
-if not MMNrd:
+  if not MMNrd:
         f_mmn_in=open(os.path.join(INPUTDIR,PREFIX+".mmn"),"r")
         MMNhead=f_mmn_in.readline().strip()
         s=f_mmn_in.readline()
@@ -103,22 +111,22 @@ if not MMNrd:
         MMN=[]
         MMNheadstrings=[]
         if writeMMN or writeUHU or writeUIU:
-          for ik in xrange(NK):
+          for ik in range(NK):
             print ("k-point {} of {}".format( ik+1,NK))
             MMN.append([])
             MMNheadstrings.append([])
-            for ib in xrange(NNB):
+            for ib in range(NNB):
                 s=f_mmn_in.readline()
                 MMNheadstrings[ik].append(s)
                 ik1,ik2=(int(i)-1 for i in s.split()[:2])
-                tmp=np.array([[f_mmn_in.readline().split() for n in xrange(NB_in)] for m in xrange(NB_in) ],dtype=float)
+                tmp=np.array([[f_mmn_in.readline().split() for n in range(NB_in)] for m in range(NB_in) ],dtype=float)
                 tmp=(tmp[:,:,0]+1j*tmp[:,:,1])
                 MMN[ik].append(tmp)
         MMNrd=True
 
-print ("----------\n MMN  read - OK\n---------\n")
+  print ("----------\n MMN  read - OK\n---------\n")
 
-for NB_out in NB_out_list:
+  for NB_out in NB_out_list:
     if NB_out==None: NB_out=NB_in
     RESDIR="{0}_NB={1}".format(OUTDIR,NB_out)
     try:
@@ -131,12 +139,12 @@ for NB_out in NB_out_list:
         f_mmn_out=open(os.path.join(RESDIR,PREFIX+".mmn"),"w")
         f_mmn_out.write("{0}, reduced to {2} bands {1} \n".format(MMNhead,datetime.datetime.now().isoformat(),NB_out) )
         f_mmn_out.write("  {0:10d}  {1:10d}  {2:10d}\n".format(NB_out,NK,NNB) )
-        for ik in xrange(NK):
+        for ik in range(NK):
             print ("k-point {} of {}".format(ik,NK))
-            for ib in xrange(NNB):
+            for ib in range(NNB):
                 f_mmn_out.write(MMNheadstrings[ik][ib])
-                for m in xrange(NB_out): 
-                    for n in xrange(NB_out):
+                for m in range(NB_out): 
+                    for n in range(NB_out):
                         f_mmn_out.write( "  {0:16.12f}  {1:16.12f}\n".format(MMN[ik][ib][m,n].real,MMN[ik][ib][m,n].imag) )
         f_mmn_out.close()
     print ("----------\n MMN OK  \n---------\n")
@@ -147,8 +155,8 @@ for NB_out in NB_out_list:
     
     if writeEIG:
         feig_out=open(os.path.join(RESDIR,PREFIX+".eig"),"w")
-        for ik in xrange(NK):
-            for ib in xrange(NB_out):
+        for ik in range(NK):
+            for ib in range(NB_out):
                 feig_out.write(" {0:4d} {1:4d} {2:17.12f}\n".format(ib+1,ik+1,EIG[ik,ib]))
         feig_out.close()
 
@@ -175,12 +183,12 @@ for NB_out in NB_out_list:
         f_amn_out=open(os.path.join(RESDIR,PREFIX+".amn"),"w")
         f_amn_out.write("{0}, reduced to {2} bands {1} \n".format(head_AMN,datetime.datetime.now().isoformat(),NB_out) )
         f_amn_out.write("  {0:10d}  {1:10d}  {2:10d}\n".format(NB_out,NK,npr) )
-        for ik in xrange(nk):
+        for ik in range(nk):
             amn=AMN[:NB_out,:,ik]
-            for ipr in xrange(npr):
+            for ipr in range(npr):
                 f_amn_out.write(
                     "".join(" {0:4d} {1:4d} {2:4d}  {3:16.12f}  {4:16.12f}\n".format(ib+1,ipr+1,ik+1,amn[ib,ipr].real,amn[ib,ipr].imag)
-                        for ib in xrange(NB_out)))
+                        for ib in range(NB_out)))
         f_amn_out.close()
     print ("----------\n AMN  - OK \n---------\n")
 
@@ -193,40 +201,45 @@ for NB_out in NB_out_list:
       for NB_sum in NB_sum_list:
         if NB_sum==None: NB_sum=NB_in
         for UXU in UXUlist:
-
             print ("----------\n  {1}  NBsum={0} \n---------".format(NB_sum,UXU[0]))
             formatted =UXU[1]
 
-            header=[" "]*60
-            head="{3} from mmn red to {1} sum {2} bnd {0} ".format(datetime.datetime.now().isoformat(),NB_out,NB_sum,UXU[0]) 
-            header[:len(head)]=head
+            header="{3} from mmn red to {1} sum {2} bnd {0} ".format(datetime.datetime.now().isoformat(),NB_out,NB_sum,UXU[0]) 
             header=header[:60]
+            header+=" "*(60-len(header))
             print (header)
-            print (head)
             print (len(header))
-            print ("".join(header))
             if formatted:
                 f_uXu_out = open(os.path.join(RESDIR,PREFIX+"_nbs={0:d}.{1}".format(NB_sum,UXU[0])), 'w')
                 f_uXu_out.write("".join(header)+"\n")
                 f_uXu_out.write("{0}   {1}   {2} \n".format(NB_out,NK,NNB))
             else:
                 f_uXu_out = FortranFile(os.path.join(RESDIR,PREFIX+"_nbs={0:d}.{1}".format(NB_sum,UXU[0])), 'w')
-                f_uXu_out.write_record(header)
+                f_uXu_out.write_record( bytearray(header,encoding='ascii'))
                 f_uXu_out.write_record(np.array([NB_out,NK,NNB],dtype=np.int32))
 
-            for ik in xrange(NK):
-                for ib2 in xrange(NNB):
-                    for ib1 in xrange(NNB):
-                        eig_dum=None
-                        if UXU[0]=="uHu":
-                            eig_dum=EIG[ik]
-                        if UXU[0]=="uIu":
-                            eig_dum=np.ones(NB_sum)
-                        A=np.einsum('ml,nl,l->mn',MMN[ik][ib1][:NB_out,:NB_sum].conj(),MMN[ik][ib2][:NB_out,:NB_sum],eig_dum[:NB_sum]).reshape(-1,order='C')
-                        if(formatted):
-                            f_uXu_out.write("".join("{0:20.10e}   {1:20.10e}\n".format(a.real,a.imag)  for a in A) )
+            for ik in range(NK):
+                print ("k-point {} of {}".format( ik+1,NK))
+                if UXU[0]=="uHu":
+                    eig_dum=EIG[ik]
+                elif UXU[0]=="uIu":
+                    eig_dum=np.ones(NB_sum)
+                else:
+                    raise RuntimeError()
+                A=np.zeros( (NNB,NNB,NB_out,NB_out),dtype=complex )
+                for ib2 in range(NNB):
+                    for ib1 in range(ib2+1):
+                        A[ib2,ib1]=np.einsum('ml,nl,l->mn',MMN[ik][ib1][:NB_out,:NB_sum].conj(),MMN[ik][ib2][:NB_out,:NB_sum],eig_dum[:NB_sum])
+                        if ib1==ib2:
+                            A[ib2,ib1]=0.5*(A[ib2,ib1]+A[ib2,ib1].T.conj())
                         else:
-                            f_uXu_out.write_record(A)
+                            A[ib1,ib2]=A[ib2,ib1].T.conj()
+                if(formatted):
+                    f_uXu_out.write("".join("{0:20.10e}   {1:20.10e}\n".format(a.real,a.imag)  for a in A.reshape(-1,order='C')) )
+                else:
+                    for ib2 in range(NNB):
+                        for ib1 in range(NNB):
+                            f_uXu_out.write_record(A[ib1][ib2].reshape(-1,order='C'))
             print ("----------\n {0} OK  \n---------\n".format(UXU[0]))
             f_uXu_out.close()
 
@@ -241,9 +254,10 @@ for NB_out in NB_out_list:
             nbnd,NK=(int(x) for x in f_spn_in.readline().split())
         else:
             f_spn_in = FortranFile(os.path.join(INPUTDIR,PREFIX+".spn"), 'r')
-            SPNheader=f_spn_in.read_record(dtype='c')
+            SPNheader=(f_spn_in.read_record(dtype='c')) 
+#            print (SPNheader)
             nbnd,NK=f_spn_in.read_record(dtype=np.int32)
-            SPNheader="".join(SPNheader)
+            SPNheader="".join(a.decode('ascii') for a in SPNheader)
 
 
         print (SPNheader)
@@ -259,18 +273,18 @@ for NB_out in NB_out_list:
             f_spn_out.write("{0}  {1}\n".format(NB_out,NK))
         else:
             f_spn_out = FortranFile(os.path.join(RESDIR,PREFIX+".spn"), 'w')
-            f_spn_out.write_record(SPNheader)
+            f_spn_out.write_record(SPNheader.encode('ascii'))
             f_spn_out.write_record(np.array([NB_out,NK],dtype=np.int32))
 
 
-        for ik in xrange(NK):
+        for ik in range(NK):
             A=np.zeros((3,nbnd,nbnd),dtype=np.complex)
             if spn_formatted_in:
                 tmp=np.array( [f_spn_in.readline().split() for i in xrange (3*nbnd*(nbnd+1)/2)  ],dtype=float)
                 tmp=tmp[:,0]+1.j*tmp[:,1]
             else:
                 tmp=f_spn_in.read_record(dtype=np.complex)
-            A[:,indn,indm]=tmp.reshape(3,nbnd*(nbnd+1)/2,order='F')
+            A[:,indn,indm]=tmp.reshape(3,nbnd*(nbnd+1)//2,order='F')
             check=np.einsum('ijj->',np.abs(A.imag))
             A[:,indm,indn]=A[:,indn,indm].conj()
             A=A[:,:NB_in,:NB_in][:,indnQP,indmQP].reshape(-1,order='F')
@@ -283,3 +297,5 @@ for NB_out in NB_out_list:
         print ("----------\n SPN OK  \n---------\n")
 
 
+if __name__ == "__main__":
+    main()

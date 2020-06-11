@@ -25,22 +25,19 @@
 import numpy as np
 from scipy import constants as constants
 from collections import Iterable
-
+import inspect
+import sys
 from .__utility import  print_my_name_start,print_my_name_end
 from . import __result as result
 
-
-
-
-alpha=np.array([1,2,0])
-beta =np.array([2,0,1])
+use_occ_old=True
 
 #              -1.0e8_dp*elem_charge_SI**2/(hbar_SI*cell_volume)
 fac_ahc  = -1.0e8*constants.elementary_charge**2/constants.hbar
 bohr= constants.physical_constants['Bohr radius'][0]/constants.angstrom
 eV_au=constants.physical_constants['electron volt-hartree relationship'][0] 
 fac_morb =  -eV_au/bohr**2
-print ("fac_morb=",fac_morb,1/fac_morb)
+
 
 def calcV_band(data):
     return data.delE_K
@@ -49,6 +46,8 @@ def calcV_band_kn(data):
     return result.KBandResult(data.delE_K,TRodd=True,Iodd=True)
 
 
+def get_occ(E_K,Efermi):
+    return (E_K< Efermi)
 
 def eval_J0(A,occ):
     return A[occ].sum(axis=0)
@@ -56,136 +55,6 @@ def eval_J0(A,occ):
 def eval_J12(B,UnoccOcc):
     return -2*B[UnoccOcc].sum(axis=0)
 
-#def eval_J3(B,UnoccUnoccOcc):
-#    return -2*B[UnoccUnoccOcc].sum(axis=0)
-
-def get_occ(E_K,Efermi):
-    return (E_K< Efermi)
-
-
-
-
-
-def calcAHC(data,Efermi=None,occ_old=None):
-    if occ_old is None: 
-        occ_old=np.zeros((data.NKFFT_tot,data.num_wann),dtype=bool)
-
-    if isinstance(Efermi, Iterable):
-#        print ("iterating over Fermi levels")
-        nFermi=len(Efermi)
-        AHC=np.zeros( ( nFermi,3) ,dtype=float )
-        if not data.has_AA_R:
-            print("WARNING : np AA_R. excluding 'external' terms of berry curature")
-        for iFermi in range(nFermi):
-#            print ("iFermi={}".format(iFermi))
-            AHC[iFermi]=calcAHC(data,Efermi=Efermi[iFermi],occ_old=occ_old)
-        return result.EnergyResultAxialV(Efermi,np.cumsum(AHC,axis=0))
-    
-    # now code for a single Fermi level:
-    AHC=np.zeros(3)
-
-    occ_new=get_occ(data.E_K,Efermi)
-    unocc_new=np.logical_not(occ_new)
-    unocc_old=np.logical_not(occ_old)
-    selectK=np.where(np.any(occ_old!=occ_new,axis=1))[0]
-    occ_old_selk=occ_old[selectK]
-    occ_new_selk=occ_new[selectK]
-    unocc_old_selk=unocc_old[selectK]
-    unocc_new_selk=unocc_new[selectK]
-    delocc=occ_new_selk!=occ_old_selk
-    unoccocc_plus=unocc_new_selk[:,:,None]*delocc[:,None,:]
-    unoccocc_minus=delocc[:,:,None]*occ_old_selk[:,None,:]
-
-    B=data.D_H_sq[selectK]
-    if data.has_AA_R:
-        B+=data.D_A[selectK]
-    AHC=eval_J12(B,unoccocc_plus)-eval_J12(B,unoccocc_minus)
-
-    if data.has_AA_R:
-        AHC+=eval_J0(data.Omega_Hbar_diag[selectK], delocc)
-
-    occ_old[:,:]=occ_new[:,:]
-    return AHC*fac_ahc/(data.NKFFT_tot*data.cell_volume)
-
-
-def calcMorb(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
-    if not isinstance(Efermi, Iterable):
-        Efermi=np.array([Efermi])
-    imfgh=calcImfgh(data,Efermi=Efermi,occ_old=occ_old, evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
-    imf=imfgh[:,0,:,:]
-    img=imfgh[:,1,:,:]
-    imh=imfgh[:,2,:,:]
-    LCtil=fac_morb*(img-Efermi[:,None,None]*imf)
-    ICtil=fac_morb*(imh-Efermi[:,None,None]*imf)
-    Morb = LCtil + ICtil
-    return result.EnergyResultAxialV(Efermi,Morb[:,3,:])
-
-
-def calcMorb_term(data,Efermi=None,occ_old=None, J=3,LC=True,IC=True,EF=True,gh=True):
-    if not isinstance(Efermi, Iterable):
-        Efermi=np.array([Efermi])
-    imfgh=calcImfgh(data,Efermi=Efermi,occ_old=occ_old, evalJ0=(J in (0,3)),evalJ1=(J in (1,3)),evalJ2=(J in (2,3)))
-    imf=imfgh[:,0,J,:]
-    img=imfgh[:,1,J,:]
-    imh=imfgh[:,2,J,:]
-    LCtil=fac_morb*(img*(1 if gh else 0)-Efermi[:,None]*imf*(1 if EF else 0)  )
-    ICtil=fac_morb*(imh*(1 if gh else 0)-Efermi[:,None]*imf*(1 if EF else 0)  )
-    Morb = LCtil*(1 if LC else 0) + ICtil*(1 if IC else 0)
-    return result.EnergyResultAxialV(Efermi,Morb[:,:])
-
-def calcMorb_LC(data,Efermi=None):
-   return calcMorb_term(data,Efermi, J=3,LC=True,IC=False)
-def calcMorb_IC(data,Efermi=None):
-   return calcMorb_term(data,Efermi, J=3,LC=False,IC=True)
-
-def calcMorb_f(data,Efermi=None):
-   return calcMorb_term(data,Efermi, J=3,LC=False,IC=True,gh=False)
-
-def calcMorb_h(data,Efermi=None):
-   return calcMorb_term(data,Efermi, J=3,LC=False,IC=True,gh=True,EF=False)
-
-def calcMorb_LC_J0(data,Efermi=None):
-   return calcMorb_term(data,Efermi, J=0,LC=True,IC=False)
-def calcMorb_IC_J0(data,Efermi=None):
-   return calcMorb_term(data,Efermi, J=0,LC=False,IC=True)
-
-def calcMorb_LC_J1(data,Efermi=None):
-   return calcMorb_term(data,Efermi, J=1,LC=True,IC=False)
-def calcMorb_IC_J1(data,Efermi=None):
-   return calcMorb_term(data,Efermi, J=1,LC=False,IC=True)
-
-def calcMorb_LC_J2(data,Efermi=None):
-   return calcMorb_term(data,Efermi, J=2,LC=True,IC=False)
-def calcMorb_IC_J2(data,Efermi=None):
-   return calcMorb_term(data,Efermi, J=2,LC=False,IC=True)
-
-
-#    return np.array([Morb,LCtil,ICtil])
-
-
-def calcMorb_intr(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
-    if not isinstance(Efermi, Iterable):
-        Efermi=np.array([Efermi])
-    imgh=calcImgh_band(data)
-    EK=data.E_K
-    res=np.zeros( (len(Efermi),3),dtype=float)
-    res[0,:]=imgh[EK<=Efermi[0]].sum(axis=0)
-    for i in range(1,len(Efermi)):
-        res[i]=res[i-1]+imgh[(EK<=Efermi[i])*(EK>Efermi[i-1])].sum(axis=0)
-    return result.EnergyResultAxialV(Efermi,fac_morb*res/data.NKFFT_tot)
-
-
-def calcMorb2(data,Efermi=None,occ_old=None, evalJ0=True,evalJ1=True,evalJ2=True):
-    imgh=calcImgh_band(data)
-    imf=calcImf_band(data)
-    dE=Efermi[1]-Efermi[0]
-    EK=data.E_K
-    imfE=imf*EK[:,:,None]
-    res=np.zeros( (len(Efermi),3),dtype=float)
-    res[0,:]=imgh[EK<=Efermi[0]].sum(axis=0)
-    for i,Ef in enumerate(Efermi):
-        res[i]= (imgh+2*(imfE-imf*Ef))[EK<=Ef].sum(axis=0)
-    return result.EnergyResultAxialV(Efermi,fac_morb*res/data.NKFFT_tot)
 
 
 
@@ -200,15 +69,6 @@ def eval_Juo_deg(B,degen):
 def eval_Joo_deg(B,degen):
     return np.array([B[ib1:ib2,ib1:ib2].sum(axis=(0,1))  for ib1,ib2 in degen])
 
-#def eval_Juuo_deg(B,degen):
-#    return np.array([   sum(C.sum(axis=(0,1,2)) 
-#                          for C in  (B[:ib1,:ib1,ib1:ib2],B[:ib1,ib2:,ib1:ib2],B[ib2:,:ib1,ib1:ib2],B[ib2:,ib2:,ib1:ib2]) )  
-#                                      for ib1,ib2 in degen])
-
-#def eval_Juoo_deg(B,degen):
-#    return np.array([   sum(C.sum(axis=(0,1,2)) 
-#                          for C in ( B[:ib1,ib1:ib2,ib1:ib2],B[ib2:,ib1:ib2,ib1:ib2])  )  
-#                                      for ib1,ib2 in degen])
 
 
 
@@ -246,13 +106,13 @@ def calcImf_band_kn(data):
     return result.KBandResult(calcImf_band(data),TRodd=True,Iodd=False)
 
 def calcImgh_band_kn(data):
-    return result.KBandResult(calcImhg_band(data),TRodd=True,Iodd=False)
+    return result.KBandResult(calcImgh_band(data),TRodd=True,Iodd=False)
 
 #returns g-h
 def calcImgh_band(data):
     
     AA=data.A_E_A
-    BB=data.Morb_Hbar_diag-data.OmegaHbar
+    BB=data.Morb_Hbar_diag-data.Omega_Hbar_diag
     imgh=np.array([eval_Jo(B)-2*eval_Joo(A)  for A,B in zip (AA,BB) ] )
     
     AA=data.D_B-data.D_E_A
