@@ -92,8 +92,16 @@ class EnergyResult(Result):
     def dataSmooth(self):
         return self.smoother(self.data)
 
+    def mul_array(self,other):
+#        print ('multiplying result by array',other)
+        assert np.all(other.shape==self.data.shape[:len(other.shape)]), "shapes should match {} and {}".format(other.shape,self.data.shape)
+        reshape=other.shape+(1,)*(len(self.data.shape)-len(other.data.shape))
+        return EnergyResult(self.Energy,self.data*other.reshape(reshape),self.smoother,self.TRodd,self.Iodd,self.rank)
+
+
     def __mul__(self,other):
         if isinstance(other,int) or isinstance(other,float) :
+#            print ('multiplying result by number',other)
             return EnergyResult(self.Energy,self.data*other,self.smoother,self.TRodd,self.Iodd,self.rank)
         else:
             raise TypeError("result can only be multilied by a number")
@@ -135,7 +143,7 @@ class EnergyResult(Result):
         if (self.data.dtype == np.dtype('complex')):
             self._write_complex(name)
         else:
-            # assule, that the dimensions starting from first - are cartesian coordinates       
+            # assume that the dimensions starting from first are cartesian coordinates       
             def getHead(n):
                if n<=0:
                   return ['  ']

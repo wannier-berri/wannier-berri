@@ -19,12 +19,14 @@ from .__utility import smoother
 from . import __integrate 
 from . import __tabulate  
 from . import __symmetry as symmetry
-from .__system import System
+
 from .__version import __version__
 from .__result import NoComponentError
 from collections import Iterable
 integrate_options=__integrate.calculators.keys()
 tabulate_options =__tabulate.calculators.keys()
+from .__mmn2uHu import hlp as hlp_mmn
+from .__vaspspn import hlp as hlp_spn
 
 
 
@@ -59,13 +61,19 @@ def print_options():
          print("\n".join("{0:10s}  :  {1} {2}".format(key,
                  mod.descriptions[key],addparam(mod.additional_parameters[key],mod.additional_parameters_description[key])
                                ) for key in mod.calculators.keys())+"\n\n")
+    hlp_mmn()
+    hlp_spn()
+
+
 #    cprint ("Options available to tabulate:",'green', attrs=['bold'])
 #    print("\n".join("{0:10s}  :  {1} ".format(key,__tabulate.descriptions[key]) for key in tabulate_options)+"\n\n")
       
 
 
+
+def welcome():
 #figlet("WANN IER BERRI",font='cosmic',col='yellow')
-logo="""
+    logo="""
 .::    .   .:::  :::.     :::.    :::.:::.    :::. :::.,::::::  :::::::..       :::::::.  .,::::::  :::::::..   :::::::..   :::
 ';;,  ;;  ;;;'   ;;`;;    `;;;;,  `;;;`;;;;,  `;;; ;;;;;;;''''  ;;;;``;;;;       ;;;'';;' ;;;;''''  ;;;;``;;;;  ;;;;``;;;;  ;;;
  '[[, [[, [['   ,[[ '[[,    [[[[[. '[[  [[[[[. '[[ [[[ [[cccc    [[[,/[[['       [[[__[[\. [[cccc    [[[,/[[['   [[[,/[[['  [[[
@@ -73,35 +81,25 @@ logo="""
     "88"888     888   888,  888    Y88  888    Y88 888 888oo,__  888b "88bo,    _88o,,od8P 888oo,__  888b "88bo, 888b "88bo,888
      "M "M"     YMM   ""`   MMM     YM  MMM     YM MMM \"\"\"\"YUMMM MMMM   "W"     ""YUMMMP"  \"\"\"\"YUMMM MMMM   "W"  MMMM   "W" MMM
 """
-cprint(logo,'yellow')
-cprint("a.k.a. Wannier19",'red')
-figlet("    by Stepan Tsirkin",font='straight',col='green')
+    cprint(logo,'yellow')
+    cprint("a.k.a. Wannier19",'red')
+    figlet("    by Stepan Tsirkin",font='straight',col='green')
 
 
 
-cprint("""
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-June 4th 2020
-
-Tutorial at Electronic Structure Workshop  
-
-https://physics.ucmerced.edu/electronic-structure-workshop
-
-Please register by May 22
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    cprint("""
+Tutorial at  Electronic Structure Workshop  was recorded.
+Video: https://uzh.zoom.us/rec/share/y84qFIzs8WlIY53g-UGYdfUCB6DUaaa80SUZ-fJZy-GyE37OpaVGSfwDqVj43hk
+Input files: https://www.dropbox.com/sh/8lt0rznh7zetagp/AABGrVWr6-1b9kMR3Wo8H92Na?dl=0
 """, 'yellow', attrs=['bold'])
 
-
-cprint("""
-User manual under construction may be viewd here:
-https://www.overleaf.com/read/kbxxtfbnjvxx
+    cprint("""
+User manual under construction may be viewed here: https://www.overleaf.com/read/kbxxtfbnjvxx
 """,'magenta' )
 
 
-cprint( "\nVersion: {}\n".format( __version__),'cyan', attrs=['bold'])
-print_options()
+    cprint( "\nVersion: {}\n".format( __version__),'cyan', attrs=['bold'])
+#    print_options()
 
 #for font in ['twopoint','contessa','tombstone','thin','straight','stampatello','slscript','short','pepper']:
 #    __figlet("by Stepan Tsirkin",font=font,col='green')
