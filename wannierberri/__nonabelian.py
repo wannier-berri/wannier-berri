@@ -102,8 +102,6 @@ def berry_dipole(data,Efermi):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
     return nonabelian_general(data,Efermi,['curv','vel'],mode='fermi-surface',factor=1)
 
-def orbital_mag(data,Efermi):
-    return nonabelian_general(data,Efermi,['curv','vel'],mode='fermi-surface',factor=1)
 
 def berry_dipole_D(data,Efermi):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
@@ -182,6 +180,7 @@ def Hall_classic(data,Efermi):
     return result.EnergyResult(Efermi, res  ,TRodd=False,Iodd=False)
 
 
+# this formulation is not correct in general
 def Hall_classic_sea(data,Efermi):
     # _general yields integral(W*W*f0) in units eV^2*Ang
     # we want in S/(cm*T)/tau_unit^2
