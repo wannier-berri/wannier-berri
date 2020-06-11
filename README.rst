@@ -8,11 +8,15 @@ A code for highly efficient Wannier interpolation.
 Evaluation of k-space integrals of Berry curvature, orbital moment and derived quantities by means of MLWFs or tight-binding models.  Compared to postw90.x part of Wannier90 code, it has extended functional and improved performance
 
 =========
-New: Online tutorial on June 4th 2020
+Tutorial 
 =========
-Tutorial at Electronic Structure Workshop  
-https://physics.ucmerced.edu/electronic-structure-workshop
-Please register by May 22
+took place on  June 4th 2020 at Electronic Structure Workshop  https://physics.ucmerced.edu/electronic-structure-workshop
+
+The recording may be viewed at:
+https://uzh.zoom.us/rec/share/y84qFIzs8WlIY53g-UGYdfUCB6DUaaa80SUZ-fJZy-GyE37OpaVGSfwDqVj43hk
+
+And the presentation slides and input files for exercises are available 
+https://www.dropbox.com/sh/8lt0rznh7zetagp/AABGrVWr6-1b9kMR3Wo8H92Na?dl=0
 
 
 User manual  
