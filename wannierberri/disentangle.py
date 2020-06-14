@@ -99,7 +99,11 @@ class WannierModel():
            nband=self.Eig[ik].shape[0]
            U=np.zeros((nband,self.NW),dtype=complex)
            nfrozen=sum(self.frozen[ik])
+           nfree=sum(self.free[ik])
+#           print("ik={}, nfree={}, nfrozen={}, nband={}".format(ik,nfree,nfrozen,nband))
+           assert nfree+nfrozen==nband
            U[self.frozen[ik] , range( nfrozen) ] = 1.
+#           print(U[self.free[ik]   , nfrozen : ].shape, U_opt_free[ik].shape)
            U[self.free[ik]   , nfrozen : ] = U_opt_free[ik]
            Z,D,V=np.linalg.svd(U.T.conj().dot(self.Amn[ik]))
            U=U.dot(Z.dot(V))
@@ -135,7 +139,7 @@ class WannierModel():
         assert np.all([m.shape[0]==m.shape[1] for m in matrix])
         assert np.all([m.shape[0]>=nv for m,nv in zip(matrix,nvec)]), "nvec={}, m.shape={}".format(nvec,[m.shape for m in matrix])
         EV=[np.linalg.eigh(M) for M in matrix]
-        return [ ev[1][:,np.argsort(ev[0])[-nv:]] for ev,nv  in zip(EV,nvec) ] # nBfee x nWfree marrices
+        return [ ev[1][:,np.argsort(ev[0])[nf-nv:nf]] for ev,nv,nf  in zip(EV,nvec,self.nBfree) ] # nBfee x nWfree marrices
 
     class Mmn_Free_Frozen():
         def __init__(self,Mmn,free,frozen,neighbours,wb,NW):
