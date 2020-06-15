@@ -111,6 +111,32 @@ class System():
         if getSS:
             self.SS_R=self.__getMat('SS')
         cprint ("Reading the system finished successfully",'green', attrs=['bold'])
+
+
+    def to_tb_file(self,tb_file=None):
+        if tb_file is None: 
+            tb_file=self.seedname+"_fromchk_tb.dat"
+        f=open(tb_file,"w")
+        f.write("written by wannier-berri form the chk file\n")
+#        cprint ("reading TB file {0} ( {1} )".format(tb_file,l.strip()),'green', attrs=['bold'])
+        np.savetxt(f,self.real_lattice)
+        f.write("{}\n".format(self.num_wann))
+        f.write("{}\n".format(self.nRvec))
+        for i in range(0,self.nRvec,15):
+            a=self.Ndegen[i:min(i+15,self.nRvec)]
+            f.write("  ".join("{:2d}".format(x) for x in a)+"\n")
+        for iR in range(self.nRvec):
+            f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
+            f.write("".join("{0:3d} {1:3d} {2:15.8e} {3:15.8e}\n".format(
+                         m+1,n+1,self.HH_R[m,n,iR].real*self.Ndegen[iR],self.HH_R[m,n,iR].imag*self.Ndegen[iR]) 
+                             for n in range(self.num_wann) for m in range(self.num_wann)) )
+        if hasattr(self,'AA_R'):
+          for iR in range(self.nRvec):
+            f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
+            f.write("".join("{0:3d} {1:3d} ".format(
+                         m+1,n+1) + " ".join("{:15.8e} {:15.8e}".format(a.real,a.imag) for a in self.AA_R[m,n,iR]*self.Ndegen[iR] )+"\n"
+                             for n in range(self.num_wann) for m in range(self.num_wann)) )
+        f.close()
         
     
     @lazy_property.LazyProperty

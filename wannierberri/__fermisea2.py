@@ -51,10 +51,6 @@ def Omega_tot(data,Efermi):
 def SpinTot(data,Efermi):
     return IterateEf(data.SpinTot,data,Efermi,TRodd=True,Iodd=False)*data.cell_volume
 
-def berry_dipole(data,Efermi):
-    return IterateEf(data.gdOmega,data,Efermi,TRodd=False,Iodd=True)
-
-
 factor_ohmic=(elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
                  *elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
                    * 1e-2  ) # now in  S/(cm*tau_unit)
@@ -74,7 +70,17 @@ def Morb(data,Efermi, evalJ0=True,evalJ1=True,evalJ2=True):
                            -2*Omega_tot(data,Efermi).mul_array(Efermi) )*data.cell_volume
 
 
+def tensor_D(data,Efermi):
+    return IterateEf(data.derOmegaTr,data,Efermi,TRodd=False,Iodd=True)
 
+def Hplus(data,Efermi):
+    return IterateEf(data.derHplusTr,data,Efermi,TRodd=False,Iodd=True)
+
+def tensor_K(data,Efermi):
+    Hp = Hplus(data,Efermi).data
+    D = tensor_D(data,Efermi).data
+    tensor_K = - elementary_charge**2/(2*hbar)*(Hp - 2*Efermi[:,None,None]*D  )
+    return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
 
 #########################
 ####  Private part ######
@@ -155,7 +161,7 @@ class OccDelta():
                 tmp=V[selectK]
                 result += tmp[UnoccOcc_plus].sum(axis=0) - tmp[UnoccOcc_minus].sum(axis=0)
             if k=='ii' : 
-                result += V[selectK][OccOcc_plus]
+                result += V[selectK][OccOcc_plus].sum(axis=0)
             if k=='ooi':
                 UnoccUnocc_new=unocc_new[:,:,None]*unocc_new[:,None,:]
                 UnoccUnocc_old=unocc_old[:,:,None]*unocc_old[:,None,:]
