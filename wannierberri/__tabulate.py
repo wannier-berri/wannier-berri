@@ -129,14 +129,13 @@ class TABresult(result.Result):
         for ik,k in enumerate(self.kpoints):
             k1=k*grid
             ik1=np.array(k1.round(),dtype=int)
-            if np.linalg.norm(k1-ik1)<1e-8 : 
+            if np.linalg.norm(ik1/grid-k)<1e-5 : 
                 ik1=ik1%grid
                 ik2=ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])
 #                print (ik,k,ik1,ik2)
                 k_map[ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])].append(ik)
             else:
-                if False:
-                    print ("WARNING: k-point {}={} is skipped".format(ik,k))
+                print ("WARNING: k-point {}={} is skipped".format(ik,k))
 
         
         print ("collecting")
