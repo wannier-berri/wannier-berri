@@ -99,7 +99,9 @@ class CheckPoint():
         SS_q=np.array([ self.wannier_gauge(S,ik,ik)  for ik,S in enumerate(spn.data) ]) 
         return 0.5*(SS_q+SS_q.transpose(0,2,1,3).conj())
 
-    def get_AA_q(self,mmn,eig=None):  # if eig is present - it is BB_q 
+    def get_AA_q(self,mmn,eig=None,transl_inv=False):  # if eig is present - it is BB_q 
+        if transl_inv and (eig is not None):
+            raise RuntimeError("transl_inv cannot be used to obtain BB")
         mmn.set_bk(self)
         AA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
         for ik in range(self.num_kpts):
@@ -108,7 +110,11 @@ class CheckPoint():
                 data=mmn.data[ik,ib]
                 if eig is not None:
                     data*=eig.data[ik,:,None]
-                AA_q[ik]+=1.j*self.wannier_gauge(data,ik,iknb)[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
+                AAW=self.wannier_gauge(data,ik,iknb)
+                AA_q_ik=1.j*AAW[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
+                if transl_inv:
+                    AA_q_ik[range(self.num_wann),range(self.num_wann)]=-np.log(AAW.diagonal()).imag[:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,:]
+                AA_q[ik]+=AA_q_ik
         if eig is None:
             AA_q=0.5*(AA_q+AA_q.transpose( (0,2,1,3) ).conj())
         return AA_q

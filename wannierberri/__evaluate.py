@@ -141,6 +141,8 @@ As a result, the integration will be performed over NKFFT x NKdiv
         print ("generating K_list")
         K_list=[KpointBZ(K=shift, NKFFT=NKFFT,symgroup=symgroup )]
         K_list+=K_list[0].divide(NKdiv)
+        if not np.all( NKdiv%2==1):
+            del K_list[0]
         print ("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
         start_iter=0
 
