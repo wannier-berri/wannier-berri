@@ -45,8 +45,9 @@ calculators_trans={
          'conductivity_ohmic_fsurf': nonabelian.conductivity_ohmic,
          'conductivity_ohmic': fermisea2.conductivity_ohmic,
 
-         'berry_dipole'        : fermisea2.berry_dipole ,
+         'berry_dipole'        : fermisea2.tensor_D,
          'berry_dipole_fsurf'      : nonabelian.berry_dipole,
+         'gyrotropic_Korb'  : fermisea2.tensor_K,
 
          'gyrotropic_Kspin'  : fermisea2.gyrotropic_Kspin,
          'gyrotropic_Korb_fsurf'   : nonabelian.gyrotropic_Korb,
