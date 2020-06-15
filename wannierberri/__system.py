@@ -138,16 +138,62 @@ class System():
                              for n in range(self.num_wann) for m in range(self.num_wann)) )
         f.close()
         
-    
+
+    def _FFT_compatible(self,FFT,iRvec):
+        "check if FFT is enough to fit all R-vectors"
+        return np.unique(iRvec%FFT,axis=0).shape[0]==iRvec.shape[0]
+
+    def _iRvec_fill(self):
+        "fill the R vectors, which are abcent, but a rarger vector(in any direction) is present"
+        Rvec_start=set( tuple(iR) for iR in self.iRvec )
+        Rvec_full=set()
+        sgn=lambda x : 1 if x>=0 else -1
+        while len(Rvec_start)>0:
+            R=Rvec_start.pop()
+            for x in range(0,R[0]+sgn(R[0]),sgn(R[0])):
+                for y in range(0,R[1]+sgn(R[1]),sgn(R[1]))  :
+                    for z in range(0,R[2]+sgn(R[2]),sgn(R[2]))  :
+                        Rnew=(x,y,z)
+                        Rvec_start.discard(Rnew)
+                        Rvec_full.add(Rnew)
+
+        print ("after filling missing R-vectors {} vectros found while nRvec={}".format(len(Rvec_full),self.nRvec))
+        iRvec_full=np.array([R for R in Rvec_full])
+#        print (self.iRvec)
+#        print (iRvec_full)
+        return iRvec_full
+
+
     @lazy_property.LazyProperty
     def NKFFTmin(self):
+        "finds a minimal FFT grid on which different R-vectors do not overlap"
         NKFFTmin=np.ones(3,dtype=int)
+        # First get an overestimated NKFFT
         for i in range(3):
             R=self.iRvec[:,i]
             if len(R[R>0])>0: 
                 NKFFTmin[i]+=R.max()
             if len(R[R<0])>0: 
                 NKFFTmin[i]-=R.min()
+        assert self._FFT_compatible(NKFFTmin,self.iRvec)
+        # Now try to make it smaller
+        iRvec_full=self._iRvec_fill()
+#        iRvec_full=self.iRvec
+        assert self._FFT_compatible(NKFFTmin,iRvec_full)
+        notminimal=[True,True,True]
+        FFT=np.copy(NKFFTmin)
+        while np.any(notminimal):
+           for i in range(3):
+              if notminimal[i]:
+                 FFTdum=FFT.copy()
+                 FFTdum[i]-=1
+                 if self._FFT_compatible(FFTdum,iRvec_full):
+                     print (FFTdum,"is compatible")
+                     FFT[i]-=1
+                 else:
+                     notminimal[i]=False
+                     print (FFTdum,"is npt compatible")
+        NKFFTmin=FFT
         return NKFFTmin
 
     @property
