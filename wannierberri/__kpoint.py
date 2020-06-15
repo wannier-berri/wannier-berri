@@ -185,7 +185,7 @@ def exclude_equiv_points_fast(k_list,new_points=None):
     n=len(k_list)
     
     corners=np.array([[x,y,z] for x in (0,1) for y in (0,1) for z in (0,1)])
-    k_list_length=np.array([ np.linalg.norm(((k.k%1)[None,:]-corners).dot(k.symgroup.basis),axis=1).min()  for k in k_list])
+    k_list_length=np.array([ np.linalg.norm(((k.k%1)[None,:]-corners).dot(k.symgroup.real_lattice),axis=1).min()  for k in k_list])
     k_list_sort=np.argsort(k_list_length)
     k_list_length=k_list_length[k_list_sort]
     wall=[0]+list(np.where(k_list_length[1:]-k_list_length[:-1]>1e-4)[0]+1)+[len(k_list)]

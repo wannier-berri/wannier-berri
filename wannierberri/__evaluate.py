@@ -25,6 +25,7 @@ from .__Data_K import Data_K
 from . import __symmetry as SYM
 from  .__Kpoint import KpointBZ,exclude_equiv_points
 from . import __utility as utility
+from .__utility import MSG_not_symmetric
    
 
 def process(paralfunc,K_list,nproc,symgroup=None):
@@ -114,7 +115,12 @@ As a result, the integration will be performed over NKFFT x NKdiv
 
     print ("using NKdiv={}, NKFFT={}, NKtot={}".format( NKdiv,NKFFT,NKdiv*NKFFT))
     
-    symgroup=SYM.Group(symmetry_gen,basis=system.recip_lattice)
+    symgroup=SYM.Group(symmetry_gen,recip_lattice=system.recip_lattice)
+    
+    assert symgroup.check_basis_symmetry(system.real_lattice)  , "the real basis is not symmetric"+MSG_not_symmetric
+    assert symgroup.check_basis_symmetry(system.recip_lattice) , "the reciprocal basis is not symmetric"+MSG_not_symmetric
+    assert symgroup.check_basis_symmetry(system.recip_lattice/(NKdiv[:,None]),rel_tol=0.1) , " NKdiv={} is not consistent with the given symmetry ".format(NKdiv)
+    assert symgroup.check_basis_symmetry(system.recip_lattice/(NKFFT[:,None]),rel_tol=0.1) , " NKFFT={} is not consistent with the given symmetry ".format(NKFFT)
 
     paralfunc=functools.partial(
         _eval_func_k, func=func,system=system,NKFFT=NKFFT )

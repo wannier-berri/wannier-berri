@@ -26,6 +26,7 @@ beta_A =np.array([2,0,1])
 TAU_UNIT=1E-9 # tau in nanoseconds
 TAU_UNIT_TXT="ns"
 
+MSG_not_symmetric=" : please check if  the symmetries are consistent with the lattice vectors, and that  enough digits were written for the lattice vectors (at least 6-7 after coma)" 
 
 
 def print_my_name_start():
@@ -58,6 +59,21 @@ def einsumk(*args):
     else:
         raise RuntimeError("einsumk is not implemented for number of matrices {}".format(nmat))
     
+def conjugate_basis(basis):
+    return 2*np.pi*np.linalg.inv(basis).T
+
+
+def real_recip_lattice(real_lattice=None,recip_lattice=None):
+    if recip_lattice is None:
+        assert real_lattice is not None , "need to provide either with real or reciprocal lattice"
+        recip_lattice=conjugate_basis(real_lattice)
+    else: 
+        if real_lattice is not None:
+            assert np.linalg.norm(real_lattice.dot(recip_lattice.T)/(2*np.pi)-np.eye(3))<=1e-8 , "real and reciprocal lattice do not match"
+        else:
+            real_lattice=conjugate_basis(recip_lattice)
+    return real_lattice, recip_lattice
+
 
 
 from scipy.constants import Boltzmann,elementary_charge,hbar

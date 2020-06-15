@@ -16,7 +16,7 @@ from scipy.io import FortranFile as FF
 import copy
 import lazy_property
 
-from .__utility import str2bool, alpha_A, beta_A , fourier_q_to_R
+from .__utility import str2bool, alpha_A, beta_A , fourier_q_to_R , real_recip_lattice
 from colorama import init
 from termcolor import cprint 
 
@@ -59,8 +59,8 @@ class System():
         self.seedname=seedname
         self.num_wann,nRvec=int(l[0]),int(l[1])
         self.nRvec0=nRvec
-        self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
-        self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
+        real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
+        self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice=real_lattice)
         iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
         
         self.Ndegen=iRvec[:,3]

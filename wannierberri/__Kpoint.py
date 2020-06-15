@@ -45,7 +45,7 @@ class  KpointBZ():
             return self.symgroup.star(self.K)
 
     def __str__(self):
-        k_cart=self.K.dot(self.symgroup.basis)
+        k_cart=self.K.dot(self.symgroup.recip_lattice)
         return  ( "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ], refinement level:{3}, dK={4} ".format(self.K[0],self.K[1],self.K[2],self.refinement_level,self.dK) )  
 #                +   "         coord in cartesian = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ]".format(k_cart[0],k_cart[1],k_cart[2]) + "\n star = "+"\n      ".join(str(s) for s in self.star) )
 
@@ -146,7 +146,7 @@ class  KpointBZ():
     def distGamma(self):
         shift_corners=np.arange(-3,4)
         corners=np.array([[x,y,z] for x in shift_corners for y in shift_corners for z in shift_corners])
-        return np.linalg.norm(((self.K%1)[None,:]-corners).dot(self.symgroup.basis),axis=1).min() 
+        return np.linalg.norm(((self.K%1)[None,:]-corners).dot(self.symgroup.recip_lattice),axis=1).min() 
 
 
 def exclude_equiv_points(K_list,new_points=None):

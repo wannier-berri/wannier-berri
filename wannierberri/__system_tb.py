@@ -16,7 +16,7 @@ from scipy.io import FortranFile as FF
 import copy
 import lazy_property
 
-from .__utility import str2bool, alpha_A, beta_A , fourier_q_to_R
+from .__utility import str2bool, alpha_A, beta_A , fourier_q_to_R , real_recip_lattice
 from colorama import init
 from termcolor import cprint 
 from .__system import System
@@ -36,8 +36,8 @@ class System_tb(System):
         self.random_gauge=random_gauge
         self.degen_thresh=degen_thresh 
         cprint ("reading TB file {0} ( {1} )".format(tb_file,l.strip()),'green', attrs=['bold'])
-        self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
-        self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
+        real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
+        self.real_lattice,self.recip_lattice= real_recip_lattice(seal_lattice=real_lattice)
         self.num_wann=int(f.readline())
         nRvec=int(f.readline())
         self.nRvec0=nRvec
