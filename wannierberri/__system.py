@@ -144,7 +144,8 @@ class System():
         return np.unique(iRvec%FFT,axis=0).shape[0]==iRvec.shape[0]
 
 
-    @lazy_property.LazyProperty
+#    @lazy_property.LazyProperty
+    @property
     def NKFFTmin(self):
         "finds a minimal FFT grid on which different R-vectors do not overlap"
         NKFFTmin=np.ones(3,dtype=int)

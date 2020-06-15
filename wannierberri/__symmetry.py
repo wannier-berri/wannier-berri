@@ -161,7 +161,8 @@ class Group():
                return False
         return True
 
-
+    def symmetric_grid(self,nk):
+        return self.check_basis_symmetry(self.recip_lattice/np.array(nk)[:,None],rel_tol=10) 
         
     @property
     def size(self):

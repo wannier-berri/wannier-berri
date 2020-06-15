@@ -112,7 +112,7 @@ def check_option(quantities,avail,tp):
         raise RuntimeError("Quantity {} is not available for {}. Available options are : \n{}\n".format(opt,tp,avail) )
 
 
-def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0,
+def integrate(system,NK=None,NKdiv=None,NKFFT=None,minimalFFT=False,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,
                         fout_name="wberri",symmetry_gen=[],
                 GammaCentered=True,restart=False,numproc=0,suffix="",file_Klist="Klist",parameters={}):
@@ -121,7 +121,7 @@ def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0
     check_option(quantities,integrate_options,"integrate")
     smooth=smoother(Efermi,smearEf)
     eval_func=functools.partial(  __integrate.intProperty, Efermi=Efermi, smootherEf=smooth,quantities=quantities,parameters=parameters )
-    res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,
+    res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,minimalFFT=minimalFFT,
             adpt_num_iter=adpt_num_iter,adpt_nk=1,
                 fout_name=fout_name,symmetry_gen=symmetry_gen,suffix=suffix,
                 GammaCentered=GammaCentered,restart=restart,file_Klist=file_Klist)
@@ -130,7 +130,7 @@ def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0
 
 
 
-def tabulate(system,NK=None,NKdiv=None,NKFFT=None,omega=None, quantities=[],symmetry_gen=[],
+def tabulate(system,NK=None,NKdiv=None,NKFFT=None,minimalFFT=False,omega=None, quantities=[],symmetry_gen=[],
                   fout_name="wberri",ibands=None,suffix="",numproc=0,Ef0=0.,parameters={}):
 
     cprint ("\nTabulating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
@@ -139,7 +139,7 @@ def tabulate(system,NK=None,NKdiv=None,NKFFT=None,omega=None, quantities=[],symm
     check_option(quantities,tabulate_options,"tabulate")
     eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
 
-    res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,
+    res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,minimalFFT=minimalFFT,nproc=numproc,
             adpt_num_iter=0 ,symmetry_gen=symmetry_gen,  GammaCentered=True ,restart=False,suffix=suffix,file_Klist=None)
             
     res=res.to_grid(NKFFT*NKdiv)
