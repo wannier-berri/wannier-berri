@@ -102,6 +102,7 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         
         # smearing
         if adpt_smr: # [iw, n, m]
+            cprint("Adaptive smearing is an experimental feature and has not been extensively tested.", 'orange')
             eta = smr_fixed_width
             delE = data.delE_K[ik] # energy derivatives [n, a] in eV*angstrom
             ddelE = delE[np.newaxis,:] - delE[:, np.newaxis] # delE_m(k) - delE_n(k) [n, m, a]
