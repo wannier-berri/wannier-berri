@@ -40,7 +40,8 @@ def FermiDirac(E, mu, kBT):
     if kBT == 0:
         return 1.0*(E <= mu)
     else:
-        return 1.0/(np.exp((E-mu)/kBT) + 1)
+        arg = np.maximum(np.minimum((E-mu)/kBT, 700.0), -700.0)
+        return 1.0/(np.exp(arg) + 1)
 
 
 def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
