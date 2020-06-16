@@ -63,13 +63,13 @@ calculators_opt={
     'opt_conductivity' : kubo.opt_conductivity
 }
 
-# additional parameters for calcKubo
+# additional parameters for optical conductivity
 additional_parameters['opt_conductivity']['mu'] = 0
-additional_parameters_description['opt_conductivity']['mu'] = "chemical potential"
+additional_parameters_description['opt_conductivity']['mu'] = "chemical potential in units of eV"
 additional_parameters['opt_conductivity']['kBT'] = 0
-additional_parameters_description['opt_conductivity']['kBT'] = "temperature in units of K/kB"
+additional_parameters_description['opt_conductivity']['kBT'] = "temperature in units of eV/kB"
 additional_parameters['opt_conductivity']['smr_fixed_width'] = 0.1
-additional_parameters_description['opt_conductivity']['smr_fixed_width'] = "fixed smearing parameter"
+additional_parameters_description['opt_conductivity']['smr_fixed_width'] = "fixed smearing parameter in units of eV"
 additional_parameters['opt_conductivity']['smr_type'] = 'Lorentzian'
 additional_parameters_description['opt_conductivity']['smr_type'] = "analyitcal form of the broadened delta function"
 additional_parameters['opt_conductivity']['adpt_smr'] = False
@@ -77,9 +77,9 @@ additional_parameters_description['opt_conductivity']['adpt_smr'] = "use an adap
 additional_parameters['opt_conductivity']['adpt_smr_fac'] = np.sqrt(2)
 additional_parameters_description['opt_conductivity']['adpt_smr_fac'] = "prefactor for the adaptive smearing parameter"
 additional_parameters['opt_conductivity']['adpt_smr_max'] = 0.1
-additional_parameters_description['opt_conductivity']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter"
+additional_parameters_description['opt_conductivity']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter in eV"
 additional_parameters['opt_conductivity']['adpt_smr_min'] = 1e-15
-additional_parameters_description['opt_conductivity']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter"
+additional_parameters_description['opt_conductivity']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
 
 
 calculators=copy(calculators_trans)
@@ -102,6 +102,7 @@ descriptions['berry_dipole_fsurf']="berry curvature dipole (dimensionless)  - fe
 descriptions['Hall_classic'] =  "classical Hall coefficient, in S/(cm*T) for tau={} s".format(TAU_UNIT)
 descriptions['Hall_morb'   ] = "Low field AHE, orbital part, in S/(cm*T)."
 descriptions['Hall_spin'   ] = "Low field AHE, spin    part, in S/(cm*T)."
+descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
 
 
 # omega - for optical properties of insulators
