@@ -17,6 +17,7 @@ import copy
 import lazy_property
 
 from .__utility import str2bool, alpha_A, beta_A , fourier_q_to_R , real_recip_lattice
+from  .__symmetry import Group
 from colorama import init
 from termcolor import cprint 
 
@@ -157,6 +158,10 @@ class System():
                 NKFFTmin[i]-=R.min()
         assert self._FFT_compatible(NKFFTmin,self.iRvec)
         return NKFFTmin
+
+    def set_symmetry(self,symmetry_gen):
+        self.symgroup=Group(symmetry_gen,recip_lattice=self.recip_lattice,real_lattice=self.real_lattice)
+
 
     @property
     def cRvec(self):

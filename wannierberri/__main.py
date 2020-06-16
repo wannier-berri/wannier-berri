@@ -14,7 +14,7 @@
 
 
 import functools 
-from .__evaluate import evaluate_K, determineNK
+from .__evaluate import evaluate_K
 from .__utility import smoother 
 from . import __integrate 
 from . import __tabulate  
@@ -112,37 +112,37 @@ def check_option(quantities,avail,tp):
         raise RuntimeError("Quantity {} is not available for {}. Available options are : \n{}\n".format(opt,tp,avail) )
 
 
-def integrate(system,NK=None,NKdiv=None,NKFFT=None,minimalFFT=False,Efermi=None,omega=None, Ef0=0,
+## TODO: Unify the two methids, to do everything in one shot
+
+def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,
-                        fout_name="wberri",symmetry_gen=[],
-                GammaCentered=True,restart=False,numproc=0,suffix="",file_Klist="Klist",parameters={}):
+                        fout_name="wberri",restart=False,numproc=0,suffix="",file_Klist="Klist",parameters={}):
 
     cprint ("\nIntegrating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
     smooth=smoother(Efermi,smearEf)
     eval_func=functools.partial(  __integrate.intProperty, Efermi=Efermi, smootherEf=smooth,quantities=quantities,parameters=parameters )
-    res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,minimalFFT=minimalFFT,
+    res=evaluate_K(eval_func,system,grid,nproc=numproc,
             adpt_num_iter=adpt_num_iter,adpt_nk=1,
-                fout_name=fout_name,symmetry_gen=symmetry_gen,suffix=suffix,
-                GammaCentered=GammaCentered,restart=restart,file_Klist=file_Klist)
+                fout_name=fout_name,suffix=suffix,
+                restart=restart,file_Klist=file_Klist)
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
 
 
 
-def tabulate(system,NK=None,NKdiv=None,NKFFT=None,minimalFFT=False,omega=None, quantities=[],symmetry_gen=[],
+def tabulate(system,grid,omega=None, quantities=[],
                   fout_name="wberri",ibands=None,suffix="",numproc=0,Ef0=0.,parameters={}):
 
+    assert grid.GammaCentered , "only Gamma-centered grids are allowed for tabulation"
     cprint ("\nTabulating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
-    NKdiv,NKFFT=determineNK(NKdiv,NKFFT,NK,system.NKFFTmin)
-    NK=NKdiv*NKFFT
     check_option(quantities,tabulate_options,"tabulate")
     eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
 
-    res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,minimalFFT=minimalFFT,nproc=numproc,
-            adpt_num_iter=0 ,symmetry_gen=symmetry_gen,  GammaCentered=True ,restart=False,suffix=suffix,file_Klist=None)
+    res=evaluate_K(eval_func,system,grid,nproc=numproc,
+            adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None)
             
-    res=res.to_grid(NKFFT*NKdiv)
+    res=res.to_grid(grid.dense)
         
     open("{0}_E.frmsf".format(fout_name),"w").write(
          res.fermiSurfer(quantity=None,efermi=Ef0) )
