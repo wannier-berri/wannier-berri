@@ -23,10 +23,8 @@ import glob
 
 from .__Data_K import Data_K
 from . import __symmetry as SYM
-from  .__Kpoint import KpointBZ,exclude_equiv_points
+from  .__Kpoint import exclude_equiv_points
 from . import __utility as utility
-from .__utility import MSG_not_symmetric
-   
 
 def process(paralfunc,K_list,nproc,symgroup=None):
     t0=time()
@@ -51,82 +49,13 @@ def process(paralfunc,K_list,nproc,symgroup=None):
     t=time()-t0
     print ("time for processing {0:6d} K-points : {1:10.4f} ; per K-point {2:15.4f} ; proc-sec per K-point : {3:15.4f}".format(len(selK),t,t/len(selK),t*nproc_/len(selK)) )
     return len(dK_list)
-        
 
 
 
-def one2three(nk):
-    if nk is None:
-        return None
-    if isinstance(nk, Iterable):
-        if len(nk)!=3 :
-            raise RuntimeError("nk should be specified either as one  number or 3 numbers. found {}".format(nk))
-        return np.array(nk)
-    return np.array((nk,)*3)
-
-
-def iterate_vector(v1,v2):
-    return ((x,y,z) for x in range(v1[0],v2[0]) for y in range(v1[1],v2[2]) for z in range(v1[2],v2[2]) )
-
-
-def autoNK(NK,NKFFTmin,symgroup,minimalFFT):
-    # frist determine all symmetric sets between NKFFTmin and 2*NKFFTmin
-    FFT_symmetric=np.array([fft for fft in iterate_vector(NKFFTmin,NKFFTmin*3) if symgroup.symmetric_grid(fft) ])
-    NKFFTmin=FFT_symmetric[np.argmin(FFT_symmetric.prod(axis=1))]
-    print ("Minimal symmetric FFT grid : ",NKFFTmin)
-    if minimalFFT:
-        return NKFFTmin
-    else:
-        FFT_symmetric=np.array([fft for fft in iterate_vector(NKFFTmin,NKFFTmin*2) if symgroup.symmetric_grid(fft) ])
-        NKdiv_tmp=np.array(np.round(NK[None,:]/FFT_symmetric),dtype=int)
-        NKdiv_tmp[NKdiv_tmp<=0]=1
-        NKchange=NKdiv_tmp*FFT_symmetric/NK[None,:]
-        sel=(NKchange>1)
-        NKchange[sel]=1./NKchange[sel]
-        NKchange=NKchange.min(axis=1)
-        FFT=FFT_symmetric[np.argmax(NKchange)]
-    NKdiv=np.array(np.round(NK/FFT),dtype=int)
-    NKdiv[NKdiv<=0]=1
-    return NKdiv,FFT
-
-
-def determineNK(NKdiv,NKFFT,NK,NKFFTmin,symgroup,minimalFFT=False):
-    print ("determining grids from NK={} ({}), NKdiv={} ({}), NKFFT={} ({})".format(NK,type(NK),NKdiv,type(NKdiv),NKFFT,type(NKdiv)))
-    NKdiv=one2three(NKdiv)
-    NKFFT=one2three(NKFFT)
-    NK=one2three(NK)
-    for nkname in 'NKdiv','NK','NKFFT':
-        nk=locals()[nkname]
-        if nk is not None:
-            assert symgroup.symmetric_grid(nk) , " {}={} is not consistent with the given symmetry ".format(nkname,nk)
-
-    if (NKdiv is not None) and (NKFFT is not None):
-        assert np.all(NKFFT>=NKFFTmin) , "the given FFT grid {} is smaller then minimal allowed {} for this system. Increase the FFT grid".format(NKFFT,NKFFTmin)
-        if NK is not None:
-            print ("WARNING : NK is disregarded in presence of NKdiv,NKFFT")
-        pass
-    elif NK is not None:
-        if NKdiv is not None:
-            print ("WARNING : NKdiv is disregarded in presence of NK")
-        if NKFFT is not None: 
-            assert np.all(NKFFT>=NKFFTmin) , "the given FFT grid {} is smaller then minimal allowed {} for this system. Increase the FFT grid".format(NKFFT,NKFFTmin)
-            NKdiv=np.array(np.round(NK/NKFFT),dtype=int)
-            NKdiv[NKdiv<=0]=1
-        else: 
-            NKdiv,NKFFT=autoNK(NK,NKFFTmin,symgroup,minimalFFT)
-    else : 
-        raise ValueError("you need to specify either NK or a pair (NKdiv,NKFFT) or (NK,NKFFT) . found NK={}, NKdiv={}, NKFFT={} ".format(NK,NKdiv,NKFFT))
-    if NK is not None:
-        if not np.all(NK==NKFFT*NKdiv) :
-            print ( "WARNING : the requested k-grid {} was adjusted to {}. Hope that it is fine".format(NK,NKFFT*NKdiv))
-    return NKdiv,NKFFT
-
-
-
-def evaluate_K(func,system,NK=None,NKdiv=None,nproc=0,NKFFT=None,minimalFFT=False,
+def evaluate_K(func,system,grid,nproc=0,
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              symmetry_gen=[SYM.Identity],suffix="",
-             GammaCentered=True,file_Klist="K_list.pickle",restart=False,start_iter=0):
+             file_Klist="K_list.pickle",restart=False,start_iter=0):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
 a numpy.array of whatever dimensions
@@ -142,26 +71,11 @@ As a result, the integration will be performed over NKFFT x NKdiv
         if not file_Klist.endswith(".pickle"):
             file_Klist+=".pickle"
     cnt_exclude=0
-    
-    symgroup=SYM.Group(symmetry_gen,recip_lattice=system.recip_lattice)
-    assert symgroup.check_basis_symmetry(system.real_lattice)  , "the real basis is not symmetric"+MSG_not_symmetric
-    assert symgroup.check_basis_symmetry(system.recip_lattice) , "the reciprocal basis is not symmetric"+MSG_not_symmetric
 
-    NKdiv,NKFFT=determineNK(NKdiv,NKFFT,NK,system.NKFFTmin,symgroup,minimalFFT=minimalFFT)
-
-    print ("using NKdiv={}, NKFFT={}".format( NKdiv,NKFFT))
-    print ("using NKdiv={}, NKFFT={}, NKtot={}".format( NKdiv,NKFFT,NKdiv*NKFFT))
+    print ("using NKdiv={}, NKFFT={}, NKtot={}".format( grid.div,grid.FFT,grid.dense))
     
-    
-
     paralfunc=functools.partial(
-        _eval_func_k, func=func,system=system,NKFFT=NKFFT )
-
-    if GammaCentered :
-        shift=(NKdiv%2-1)/(2*NKdiv)
-    else :
-        shift=np.zeros(3)
-    print ("shift={}".format(shift))
+        _eval_func_k, func=func,system=system,NKFFT=grid.FFT )
 
     if restart:
         try:
@@ -174,13 +88,8 @@ As a result, the integration will be performed over NKFFT x NKdiv
             restart=False
             print ("WARNING: {}".format( err) )
             print ("WARNING : reading from {0} failed, starting from scrath".format(file_Klist))
-            
-    if not restart:
-        print ("generating K_list")
-        K_list=[KpointBZ(K=shift, NKFFT=NKFFT,symgroup=symgroup )]
-        K_list+=K_list[0].divide(NKdiv)
-        if not np.all( NKdiv%2==1):
-            del K_list[0]
+    else:
+        K_list=grid.get_K_list()
         print ("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
         start_iter=0
 
@@ -214,7 +123,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         for i,K in enumerate(K_list):
           if not K.evaluated:
             print (" K-point {0} : {1} ".format(i,K))
-        counter+=process(paralfunc,K_list,nproc,symgroup=symgroup)
+        counter+=process(paralfunc,K_list,nproc,symgroup=system.symgroup)
         
         try:
             if file_Klist is not None:

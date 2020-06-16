@@ -26,8 +26,6 @@ beta_A =np.array([2,0,1])
 TAU_UNIT=1E-9 # tau in nanoseconds
 TAU_UNIT_TXT="ns"
 
-MSG_not_symmetric=" : please check if  the symmetries are consistent with the lattice vectors, and that  enough digits were written for the lattice vectors (at least 6-7 after coma)" 
-
 
 def print_my_name_start():
     if __debug: 
