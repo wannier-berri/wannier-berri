@@ -84,7 +84,9 @@ class EnergyResult(Result):
         self.smoother=smoother
         self.TRodd=TRodd
         self.Iodd=Iodd
-
+    
+    def set_smoother(self, smoother):
+        self.smoother = smoother
 
     @Lazy
     def dataSmooth(self):
@@ -118,9 +120,9 @@ class EnergyResult(Result):
     def __sub__(self,other):
         return self+(-1)*other
 
-
-    def write(self,name):
-        # assume, that the dimensions starting from first - are cartesian coordinates       
+    def _write_complex(self, name):
+        '''Writes the result if data has complex entries.'''
+        # assume that the dimensions starting from first are cartesian coordinates       
         def getHead(n):
            if n<=0:
               return ['  ']
@@ -129,16 +131,40 @@ class EnergyResult(Result):
         rank=len(self.data.shape[1:])
 
         open(name,"w").write(
-           "    ".join("{0:^15s}".format(s) for s in ["# EF",]+
+           "    ".join("{0:^30s}".format(s) for s in ["# EF",]+
                 [b for b in getHead(rank)*2])+"\n"+
           "\n".join(
-           "    ".join("{0:15.6e}".format(x) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
+           "    ".join("{0:15.6e}{1:15.6e}".format(np.real(x),np.imag(x)) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
                       for ef,data,datasm in zip (self.Energy,self.data,self.dataSmooth)  )
                +"\n") 
 
+    def write(self,name):
+        name = name.format('')
+        if (self.data.dtype == np.dtype('complex')):
+            self._write_complex(name)
+        else:
+            # assume that the dimensions starting from first are cartesian coordinates       
+            def getHead(n):
+               if n<=0:
+                  return ['  ']
+               else:
+                  return [a+b for a in 'xyz' for b in getHead(n-1)]
+            rank=len(self.data.shape[1:])
+
+            open(name,"w").write(
+               "    ".join("{0:^15s}".format(s) for s in ["# EF",]+
+                    [b for b in getHead(rank)*2])+"\n"+
+              "\n".join(
+               "    ".join("{0:15.6e}".format(x) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
+                          for ef,data,datasm in zip (self.Energy,self.data,self.dataSmooth)  )
+                   +"\n") 
+
     @property
     def _maxval(self):
-        return self.dataSmooth.max() 
+        if self.dataSmooth.dtype == np.dtype('complex'):
+            return np.maximum(np.real(self.dataSmooth).max(), np.imag(self.dataSmooth).max())
+        else:
+            return self.dataSmooth.max() 
 
     @property
     def _norm(self):
@@ -156,6 +182,49 @@ class EnergyResult(Result):
     def transform(self,sym):
         return EnergyResult(self.Energy,sym.transform_tensor(self.data,self.rank,TRodd=self.TRodd,Iodd=self.Iodd),self.smoother,self.TRodd,self.Iodd,self.rank)
 
+
+class EnergyResultDict(EnergyResult):
+    '''Stores a dictionary of instances of the class Result.'''
+    
+    def __init__(self, results):
+        '''
+        Initialize instance with a dictionary of results with string keys and values of type Result.
+        '''
+        self.results = results
+        
+    def set_smoother(self, smoother):
+        for v in self.results.values():
+            v.set_smoother(smoother)
+
+    #  multiplication by a number 
+    def __mul__(self, other):
+        return EnergyResultDict({ k : v*other for k,v in self.results.items() })
+
+    # +
+    def __add__(self, other):
+        if other == 0:
+            return self
+        results = { k : self.results[k] + other.results[k] for k in self.results if k in other.results }
+        return EnergyResultDict(results) 
+
+    # -
+    def __sub__(self, other):
+        return self + (-1)*other
+
+    # writing to a file
+    def write(self, name):
+        for k,v in self.results.items():
+            v.write(name.format('-'+k+'{}')) # TODO: check formatting
+
+    #  how result transforms under symmetry operations
+    def transform(self, sym):
+        results = { k : self.results[k].transform(sym)  for k in self.results}
+        return EnergyResultDict(results)
+
+    # a list of numbers, by each of those the refinement points will be selected
+    @property
+    def max(self):
+        return np.array([x for v in self.results.values() for x in v.max])
 
 
 class EnergyResultScalar(EnergyResult):
