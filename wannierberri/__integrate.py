@@ -27,6 +27,7 @@ from . import  __nonabelian as nonabelian
 from . import  __dos as dos
 from . import  __symmetry  as symmetry
 from . import  __utility   as utility
+from . import  __kubo   as kubo
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
@@ -58,9 +59,27 @@ additional_parameters=defaultdict(lambda: defaultdict(lambda:None )   )
 additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no description" )   )
 
 
-calculators_opt={}
+calculators_opt={
+    'opt_conductivity' : kubo.opt_conductivity
+}
 
-
+# additional parameters for optical conductivity
+additional_parameters['opt_conductivity']['mu'] = 0
+additional_parameters_description['opt_conductivity']['mu'] = "chemical potential in units of eV"
+additional_parameters['opt_conductivity']['kBT'] = 0
+additional_parameters_description['opt_conductivity']['kBT'] = "temperature in units of eV/kB"
+additional_parameters['opt_conductivity']['smr_fixed_width'] = 0.1
+additional_parameters_description['opt_conductivity']['smr_fixed_width'] = "fixed smearing parameter in units of eV"
+additional_parameters['opt_conductivity']['smr_type'] = 'Lorentzian'
+additional_parameters_description['opt_conductivity']['smr_type'] = "analyitcal form of the broadened delta function"
+additional_parameters['opt_conductivity']['adpt_smr'] = False
+additional_parameters_description['opt_conductivity']['adpt_smr'] = "use an adaptive smearing parameter"
+additional_parameters['opt_conductivity']['adpt_smr_fac'] = np.sqrt(2)
+additional_parameters_description['opt_conductivity']['adpt_smr_fac'] = "prefactor for the adaptive smearing parameter"
+additional_parameters['opt_conductivity']['adpt_smr_max'] = 0.1
+additional_parameters_description['opt_conductivity']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter in eV"
+additional_parameters['opt_conductivity']['adpt_smr_min'] = 1e-15
+additional_parameters_description['opt_conductivity']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
 
 
 calculators=copy(calculators_trans)
@@ -83,6 +102,7 @@ descriptions['berry_dipole_fsurf']="berry curvature dipole (dimensionless)  - fe
 descriptions['Hall_classic'] =  "classical Hall coefficient, in S/(cm*T) for tau={} s".format(TAU_UNIT)
 descriptions['Hall_morb'   ] = "Low field AHE, orbital part, in S/(cm*T)."
 descriptions['Hall_spin'   ] = "Low field AHE, spin    part, in S/(cm*T)."
+descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
 
 
 # omega - for optical properties of insulators
@@ -121,7 +141,7 @@ def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies=
             else :
                  __parameters[param]=additional_parameters[q][param]
         results[q]=calculators[q](data,_energy(q),**__parameters)
-        results[q].smoother=_smoother(q)
+        results[q].set_smoother(_smoother(q))
 
     return INTresult( results=results )
 
@@ -143,7 +163,7 @@ class INTresult(result.Result):
 
     def write(self,name):
         for q,r in self.results.items():
-            r.write(name.format(q))
+            r.write(name.format(q+'{}'))
 
     def transform(self,sym):
         results={r:self.results[r].transform(sym)  for r in self.results}

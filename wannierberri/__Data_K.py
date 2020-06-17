@@ -20,12 +20,13 @@ from .__system import System
 from .__utility import  print_my_name_start,print_my_name_end,einsumk, fourier_R_to_k, alpha_A,beta_A
    
 class Data_K(System):
-    def __init__(self,system,dK=None,NKFFT=None):
+    def __init__(self,system,dK=None,NKFFT=None,Kpoint=None):
 #        self.spinors=system.spinors
         self.iRvec=system.iRvec
         self.real_lattice=system.real_lattice
         self.recip_lattice=system.recip_lattice
         self.NKFFT=system.NKFFT if NKFFT is None else NKFFT
+        self.Kpoint=Kpoint
         self.num_wann=system.num_wann
         self.frozen_max=system.frozen_max
         self.random_gauge=system.random_gauge
@@ -558,6 +559,11 @@ class Data_K(System):
         _AA_K=fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT,hermitian=True)
         return self._rotate_vec( _AA_K )
 
+    @lazy_property.LazyProperty
+    def A_H(self):
+        '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
+        print_my_name_start()
+        return self.A_Hbar + 1j*self.D_H
 
     @lazy_property.LazyProperty
     def A_Hbar_der(self):
