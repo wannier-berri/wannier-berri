@@ -33,7 +33,8 @@ class System():
                     frozen_max=-np.Inf,
                     random_gauge=False,
                     degen_thresh=-1 ,
-                    old_format=False
+                    old_format=False,
+                    delta_fz=1.,
                                 ):
 
 
@@ -49,7 +50,7 @@ class System():
         self.CC_R=None
         self.FF_R=None
         self.SS_R=None
-
+        self.delta_fz=delta_fz
 
 
         cprint ("Reading from {}".format(seedname+"_HH_save.info"),'green', attrs=['bold'])
