@@ -395,9 +395,10 @@ class Data_K(System):
         dBPlnn= Blnn + Alnn*self.E_K[:,None,None,:,None,None] + A[:,:,:,None,:,None]*V[:,None,:,:,None,:]
 
         return dBPln,dBPlln,dBPlnn
-
+    
     @property
     def f_E(self):
+        print("delta_fz = {}".format(self.delta_fz))
         res=1./(1.+ np.exp((self.E_K-self.frozen_max)/self.delta_fz))
         return res
 
@@ -418,22 +419,44 @@ class Data_K(System):
         res=-1./(4*np.cosh(0.5*(self.frozen_max - self.E_K)/self.delta_fz)**2)
         return res
 
+    @lazy_property.LazyProperty
+    def B_Hbar_fz(self):
+        print_my_name_start()
+        _BB_K=fourier_R_to_k( self.BB_R,self.iRvec,self.NKFFT)
+        _BB_K=self._rotate_vec( _BB_K )
+    #    select=(self.E_K<=self.frozen_max)
+    #    _BB_K[select]=self.E_K[select][:,None,None]*self.A_Hbar[select]
+        return _BB_K
 
-    @property
-    def B_fz(self):
-        N=None
-        B = self.f_E[:,:,N,N]*self.E_K[:,:,N,N]*self.A_Hbar + self.f_E_minus[:,:,N,N]*self.B_Hbar
-        return B
 
     @property
     def gdBbar_fz(self):
+        dBln= self.B_Hbar_der
+        dBlln= self.Btilde_fz[:,:,:,None,:,None]*self.D_H[:,None,:,:,None,:]
+        dBlnn= -self.D_H[:,:,:,None,None,:]*self.Btilde_fz[:,None,:,:,:,None]
+
+        return dBln,dBlln,dBlnn
+
+
+    @property
+    def Btilde_fz(self):
+        N=None
+        B = self.f_E[:,:,N,N]*self.E_K[:,:,N,N]*self.A_Hbar + self.f_E_minus[:,:,N,N]*self.B_Hbar_fz
+        return B
+
+    @property
+    def gdBtilde_fz(self):
+        N=None
         Aln,Alln,Alnn = self.gdAbar
-        Bln,Blln,Blnn = self.gdBbar
+        Bln,Blln,Blnn = self.gdBbar_fz
         V = self.V_H
         A = self.A_Hbar
         B = self.B_Hbar
         Bfln = self.f_E[:,:,N,N,N]*self.E_K[:,:,N,N,N]*Aln + self.f_E_minus[:,:,N,N,N]*Bln
-        Bflln = self.f_E[:,:,N,N,N,N]*self.E_K[:,:,N,N,N,N]*Alln + self.f_E_minus[:,:,N,N,N,N]*Blln + self.f_E[:,:,N,N,N,N]*V[:,:,:,N,N,:]*A[:,N,:,:,:,N] + self.gdf_E[:,:,N,N,N,N] * V[:,:,:,N,N,:] * self.E_K[:,N,:,N,N,N] * A[:,N,:,:,:,N] - self,gdf_E[:,:,N,N,N,N]*V[:,:,:,N,N,:]*B[:,N,:,:,:,N]
+        Bflln = self.f_E[:,:,N,N,N,N]*self.E_K[:,:,N,N,N,N]*Alln + self.f_E_minus[:,:,N,N,N,N]*Blln 
+        Bflln += self.f_E[:,:,N,N,N,N]*V[:,:,:,N,N,:]*A[:,N,:,:,:,N] 
+        Bflln += self.gdf_E[:,:,N,N,N,N] * V[:,:,:,N,N,:] * self.E_K[:,N,:,N,N,N] * A[:,N,:,:,:,N] 
+        Bflln += -self.gdf_E[:,:,N,N,N,N]*V[:,:,:,N,N,:]*B[:,N,:,:,:,N]
         Bflnn = self.f_E[:,:,N,N,N,N]*self.E_K[:,:,N,N,N,N]*Alnn + self.f_E_minus[:,:,N,N,N,N]*Blnn
 
         return Bfln,Bflln,Bflnn
@@ -441,7 +464,7 @@ class Data_K(System):
     @property
     def gdBbarplus_fz(self):
         Aln,Alln,Alnn = self.gdAbar 
-        Bln,Blln,Blnn = self.gdBbar_fz
+        Bln,Blln,Blnn = self.gdBtilde_fz
         A = self.A_Hbar
         V = self.V_H
         dBPln=  Bln + Aln*self.E_K[:,None,:,None,None] 
@@ -475,7 +498,7 @@ class Data_K(System):
 
     @property
     def B_Hbarplus_dagger_fz(self):
-        B = self.B_fz
+        B = self.Btilde_fz
         A = self.A_Hbar
         Bplus= (B+A*self.E_K[:,None,:,None]).conj()
         return Bplus
@@ -534,7 +557,7 @@ class Data_K(System):
 
 
     @lazy_property.LazyProperty
-    def derHplusTri_fz(self):
+    def derHplusTr_fz(self):
         b=alpha_A
         c=beta_A
         N=None

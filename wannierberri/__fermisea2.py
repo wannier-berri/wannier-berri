@@ -81,7 +81,7 @@ def Hplus(data,Efermi):
     return IterateEf(data.derHplusTr,data,Efermi,TRodd=False,Iodd=True)
 
 def Hplus_fz(data,Efermi):
-    return IterateEf(data.derHplusTr,data,Efermi,TRodd=False,Iodd=True)
+    return IterateEf(data.derHplusTr_fz,data,Efermi,TRodd=False,Iodd=True)
 
 def tensor_K(data,Efermi):
     Hp = Hplus(data,Efermi).data
