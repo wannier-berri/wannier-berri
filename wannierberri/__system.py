@@ -34,7 +34,7 @@ class System():
                     random_gauge=False,
                     degen_thresh=-1 ,
                     old_format=False,
-                    delta_fz=1.,
+                    delta_fz=2.51,
                                 ):
 
 
