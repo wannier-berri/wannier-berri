@@ -2,7 +2,6 @@ import matplotlib
 matplotlib.use('Agg')
 import numpy as np
 import pythtb as ptb
-
 import matplotlib.pyplot as plt
 
 import wannierberri as wb
