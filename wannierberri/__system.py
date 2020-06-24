@@ -24,7 +24,7 @@ from termcolor import cprint
 
 class System():
 
-    def __init__(self,seedname="wannier90",tb_file=None,ptb_model=None,
+    def __init__(self,seedname="wannier90",tb_file=None,
                     getAA=False,
                     getBB=False,getCC=False,
                     getSS=False,
@@ -39,8 +39,6 @@ class System():
 
         if tb_file is not None:
             raise ValueError("to start from a _tb.dat file now use the System_tb() class")
-        if ptb_model is not None:
-            raise ValueError("to start from a PythTB model now use the System_pythtb() class")
         self.frozen_max=frozen_max
         self.random_gauge=random_gauge
         self.degen_thresh=degen_thresh
