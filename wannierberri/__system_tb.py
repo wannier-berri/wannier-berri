@@ -37,7 +37,7 @@ class System_tb(System):
         self.degen_thresh=degen_thresh 
         cprint ("reading TB file {0} ( {1} )".format(tb_file,l.strip()),'green', attrs=['bold'])
         real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
-        self.real_lattice,self.recip_lattice= real_recip_lattice(seal_lattice=real_lattice)
+        self.real_lattice,self.recip_lattice= real_recip_lattice(real_lattice=real_lattice)
         self.num_wann=int(f.readline())
         nRvec=int(f.readline())
         self.nRvec0=nRvec

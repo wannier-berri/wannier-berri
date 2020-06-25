@@ -29,25 +29,24 @@ Efermi=np.linspace(12.,13.,1001)
 system=wberri.System(tb_file='Fe_tb.dat',getAA=True)
 
 generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
-
+system.set_symmetry(generators)
+grid=wberri.Grid(system,length=100)
 
 wberri.integrate(system,
-            NK=100,
+            grid=grid,
             Efermi=Efermi, 
             smearEf=10,
             quantities=["ahc","dos","cumdos"],
             numproc=num_proc,
             adpt_num_iter=10,
             fout_name='Fe',
-            symmetry_gen=generators,
             restart=False,
             )
 
 
 wberri.tabulate(system,
-             NK=100,
+             grid=grid,
              quantities=["berry"],
-             symmetry_gen=generators,
              fout_name='Fe',
              numproc=num_proc,
              ibands=np.arange(4,10),

@@ -86,7 +86,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def kpoints_all(self):
         dkx,dky,dkz=1./self.NKFFT
-        return np.array([self.dK-np.array([ix*dkx,iy*dky,iz*dkz]) 
+        return np.array([self.dK+np.array([ix*dkx,iy*dky,iz*dkz]) 
           for ix in range(self.NKFFT[0])
               for iy in range(self.NKFFT[1])
                   for  iz in range(self.NKFFT[2])])%1
