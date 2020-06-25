@@ -200,8 +200,8 @@ def fourier_R_to_k(AAA_R,iRvec,NKPT,hermitian=False,antihermitian=False):
             AAA_K[tuple(irvec)]=AAA_R[ir]
     for m in range(AAA_K.shape[3]):
 #            print ("Fourier {0} of {1}".format(m,AAA_K.shape[3]))
-            AAA_K[:,:,:,m]=np.fft.fftn(AAA_K[:,:,:,m])
-    AAA_K=AAA_K.reshape( (np.prod(NK),)+shapeA[0:2]+shapeA[3:])
+            AAA_K[:,:,:,m]=np.fft.ifftn(AAA_K[:,:,:,m])
+    AAA_K=AAA_K.reshape( (np.prod(NK),)+shapeA[0:2]+shapeA[3:])*np.prod(NK)
 #    print ("finished fourier")
     print_my_name_end()
     return AAA_K
@@ -230,8 +230,8 @@ def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
             AAA_K[tuple(irvec)]=AAA_R[ir]
     for m in range(AAA_K.shape[3]):
 #            print ("Fourier {0} of {1}".format(m,AAA_K.shape[3]))
-            AAA_K[:,:,:,m]=np.fft.fftn(AAA_K[:,:,:,m])
-    AAA_K=AAA_K.reshape( (np.prod(NK),ntriu)+shapeA[3:])
+            AAA_K[:,:,:,m]=np.fft.ifftn(AAA_K[:,:,:,m])
+    AAA_K=AAA_K.reshape( (np.prod(NK),ntriu)+shapeA[3:])*np.prod(NK)
     result=np.zeros( (np.prod(NK),num_wann,num_wann)+shapeA[3:],dtype=complex)
     result[:,M,N]=AAA_K
     diag=np.arange(num_wann)
