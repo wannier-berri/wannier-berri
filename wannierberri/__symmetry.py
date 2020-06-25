@@ -20,6 +20,8 @@ import scipy.spatial.transform
 from scipy.spatial.transform import Rotation as rotmat
 from copy import deepcopy
 from lazy_property import LazyProperty as Lazy
+from .__utility import real_recip_lattice
+from collections import Iterable
 
 SYMMETRY_PRECISION=1e-6
 
@@ -51,7 +53,7 @@ class Symmetry():
         return deepcopy(self)
 
 
-    def transform_k_vector(self,vec,basis=np.eye(3)):
+    def transform_reduced_vector(self,vec,basis):
         return np.dot(vec, basis.dot(self.R.T).dot(np.linalg.inv(basis)))*(self.iTR*self.iInv)
 
     def rotate(self,res):
@@ -75,9 +77,6 @@ class Symmetry():
 
 
 
-Identity =Symmetry( np.eye(3))
-Inversion=Symmetry(-np.eye(3))
-TimeReversal=Symmetry( np.eye(3),True)
         
 
 class Rotation(Symmetry):
@@ -103,6 +102,9 @@ class Mirror(Symmetry):
 
 
 #some typically used symmetries
+Identity =Symmetry( np.eye(3))
+Inversion=Symmetry(-np.eye(3))
+TimeReversal=Symmetry( np.eye(3),True)
 Mx=Mirror([1,0,0])
 My=Mirror([0,1,0])
 Mz=Mirror([0,0,1])
@@ -115,13 +117,36 @@ C6z=Rotation(6,[0,0,1])
 C2x=Rotation(2,[1,0,0])
 C2y=Rotation(2,[0,1,0])
 
+def product(lst):
+    assert isinstance(lst,Iterable) 
+    assert len(lst)>0
+    res=Identity
+    for op in lst[-1::-1]:
+        res=op*res
+    return res
+
+def from_string(string):
+    try:
+        res=globals()[string]
+        if not isinstance(res,Symmetry):
+           raise RuntimeError("string '{}' produced not a Symmetry, but {} of type {}".format(string,res,type(res)))
+        return res
+    except KeyError as err:
+        raise ValueError("The symmetry {} is not defined. Use classes Rotation(n,axis) or Mirror(axis) from wannierberri.symmetry ".format(string))
 
 
+def from_string_prod(string):
+    try:
+        return product([globals()[s] for s in string.split("*")])
+    except Exception as err:
+        raise ValueError("The symmetry {string} could not be recognuized : {}".format(err))
 
 class Group():
 
-    def __init__(self,generator_list=[],basis=np.eye(3)):
-        sym_list=generator_list
+    def __init__(self,generator_list=[],recip_lattice=None,real_lattice=None):
+        self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice=real_lattice,recip_lattice=recip_lattice)
+        sym_list=[(op if isinstance(op,Symmetry) else from_string_prod(op) )    for op in generator_list  ]
+        print (sym_list)
         if len(sym_list)==0:
             sym_list=[Identity]
         cnt=0
@@ -144,8 +169,25 @@ class Group():
             if lenold==lennew:
                 break
         self.symmetries=sym_list
-        self.basis=basis
-        print ("BASIS={}".format(self.basis))
+        MSG_not_symmetric=(" : please check if  the symmetries are consistent with the lattice vectors,"+
+                    " and that  enough digits were written for the lattice vectors (at least 6-7 after coma)" )
+        assert self.check_basis_symmetry(self.real_lattice) , "real_lattice is not symmetric" + MSG_not_symmetric
+        assert self.check_basis_symmetry(self.recip_lattice) , "recip_lattice is not symmetric" + MSG_not_symmetric
+#        print ("BASIS={}".format(self.basis))
+
+    def check_basis_symmetry(self,basis,tol=1e-6,rel_tol=None):
+        "returns True if the basis is symmetric"
+        if rel_tol is not None:
+            tol=rel_tol*tol
+        eye=np.eye(3)
+        for sym in self.symmetries:
+            basis_rot=sym.transform_reduced_vector(eye,basis)
+            if np.abs(np.round(basis_rot)-basis_rot).max()> tol :
+               return False
+        return True
+
+    def symmetric_grid(self,nk):
+        return self.check_basis_symmetry(self.recip_lattice/np.array(nk)[:,None],rel_tol=10) 
         
     @property
     def size(self):
@@ -161,7 +203,7 @@ class Group():
         return sum(result.transform(s) for s in self.symmetries)/self.size
     
     def star(self,k):
-        st=[S.transform_k_vector(k,self.basis) for S in self.symmetries]
+        st=[S.transform_reduced_vector(k,self.recip_lattice) for S in self.symmetries]
         for i in range(len(st)-1,0,-1):
            diff=np.array(st[:i])-np.array(st[i])[None,:]
            if np.linalg.norm (diff-diff.round() ,axis=-1).min()<SYMMETRY_PRECISION:

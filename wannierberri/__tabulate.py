@@ -75,17 +75,17 @@ def tabXnk(data,quantities=[],degen_thresh=None,ibands=None,parameters={}):
         results[q]=calculators[q](data,**__parameters).select_bands(ibands).average_deg(deg)
 
     kpoints=data.kpoints_all
-    return TABresult( kpoints=kpoints,basis=data.recip_lattice,results=results )
+    return TABresult( kpoints=kpoints,recip_lattice=data.recip_lattice,results=results )
 
 
 
 class TABresult(result.Result):
 
-    def __init__(self,kpoints,basis,results={}):
+    def __init__(self,kpoints,recip_lattice,results={}):
         self.nband=results['E'].nband
         self.grid=None
         self.gridorder=None
-        self.basis=basis
+        self.recip_lattice=recip_lattice
         self.kpoints=np.array(kpoints,dtype=float)%1
 
         self.results=results
@@ -110,15 +110,15 @@ class TABresult(result.Result):
             raise RuntimeError ("Adding results with different number of bands {} and {} - not allowed".format(
                 self.nband,other.nband) )
         results={r: self.results[r]+other.results[r] for r in self.results if r in other.results }
-        return TABresult(np.vstack( (self.kpoints,other.kpoints) ), basis=self.basis,results=results) 
+        return TABresult(np.vstack( (self.kpoints,other.kpoints) ), recip_lattice=self.recip_lattice,results=results) 
 
     def write(self,name):
         return   # do nothing so far
 
     def transform(self,sym):
         results={r:self.results[r].transform(sym)  for r in self.results}
-        kpoints=[sym.transform_k_vector(k,self.basis) for k in self.kpoints]
-        return TABresult(kpoints=kpoints,basis=self.basis,results=results)
+        kpoints=[sym.transform_reduced_vector(k,self.recip_lattice) for k in self.kpoints]
+        return TABresult(kpoints=kpoints,recip_lattice=self.recip_lattice,results=results)
 
     def to_grid(self,grid,order='C'):
         grid1=[np.linspace(0.,1.,g,False) for g in grid]
@@ -140,7 +140,7 @@ class TABresult(result.Result):
         
         print ("collecting")
         results={r:self.results[r].to_grid(k_map)  for r in self.results}
-        res=TABresult( k_new,basis=self.basis,results=results)
+        res=TABresult( k_new,recip_lattice=self.recip_lattice,results=results)
         res.grid=np.copy(grid)
         res.gridorder=order
         return res
@@ -157,7 +157,7 @@ class TABresult(result.Result):
         FSfile=" {0}  {1}  {2} \n".format(self.grid[0],self.grid[1],self.grid[2])
         FSfile+="1 \n"  # so far only this option of Fermisurfer is implemented
         FSfile+="{} \n".format(self.nband)
-        FSfile+="".join( ["  ".join("{:14.8f}".format(x) for x in v) + "\n" for v in self.basis] )
+        FSfile+="".join( ["  ".join("{:14.8f}".format(x) for x in v) + "\n" for v in self.recip_lattice] )
         for iband in range(self.nband):
             FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk.data[:,iband]-efermi )
         

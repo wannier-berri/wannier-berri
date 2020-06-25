@@ -93,14 +93,8 @@ def eval_Joo(B):
 
 
 def calcImf_band(data):
-    if data.has_AA_R:
-        AA=data.Omega_Hbar_diag
-        BB=data.D_A+data.D_H_sq
-        return np.array([eval_Jo(A)-2*eval_Juo(B)  for A,B in zip (AA,BB) ] )
-    else:
-        BB=data.D_H_sq
-        return np.array([-2*eval_Juo(B)  for B in BB ] )
-
+    AA=data.Omega
+    return np.array([eval_Jo(A)+eval_Juo(B)  for A,B in zip (AA['i'],AA['oi']) ] )
 
 def calcImf_band_kn(data):
     return result.KBandResult(calcImf_band(data),TRodd=True,Iodd=False)

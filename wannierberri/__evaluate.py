@@ -23,9 +23,8 @@ import glob
 
 from .__Data_K import Data_K
 from . import __symmetry as SYM
-from  .__Kpoint import KpointBZ,exclude_equiv_points
+from  .__Kpoint import exclude_equiv_points
 from . import __utility as utility
-   
 
 def process(paralfunc,K_list,nproc,symgroup=None):
     t0=time()
@@ -50,50 +49,13 @@ def process(paralfunc,K_list,nproc,symgroup=None):
     t=time()-t0
     print ("time for processing {0:6d} K-points : {1:10.4f} ; per K-point {2:15.4f} ; proc-sec per K-point : {3:15.4f}".format(len(selK),t,t/len(selK),t*nproc_/len(selK)) )
     return len(dK_list)
-        
 
 
 
-def one2three(nk):
-    if isinstance(nk, Iterable):
-        if len(nk)!=3 :
-            raise RuntimeError("nk should be specified either a on number or 3numbers. found {}".format(nk))
-        return nk
-    return (nk,)*3
-
-
-
-def autonk(nk,nkfftmin):
-    if nk<nkfftmin:
-        return 1,nkfftmin
-    else:
-        lst=[]
-        for i in range(nkfftmin,nkfftmin*2):
-            if nk%i==0:
-                return nk//i,i
-            j=nk//i
-            lst.append( min( abs( j*i-nk),abs(j*i+i-nk)))
-    i=nkfftmin+np.argmin(lst)
-    j=nk//i
-    j=[j,j+1][np.argmin([abs( j*i-nk),abs(j*i+i-nk)])]
-    return j,i
-#    return int(round(nk/nkfftmin)),nkfftmin)
-
-
-def determineNK(NKdiv,NKFFT,NK,NKFFTmin):
-    if ((NKdiv is None) or (NKFFT is None)) and ((NK is None) or (NKFFTmin is None)  ):
-        raise ValueError("you need to specify either  (NK,NKFFTmin) or a pair (NKdiv,NKFFT). found ({},{}) and ({},{}) ".format(NK,NKFFTmin,NKdiv,NKFFT))
-    if not ((NKdiv is None) or (NKFFT is None)):
-        return np.array(one2three(NKdiv)),np.array(one2three(NKFFT))
-    lst=[autonk(nk,nkfftmin) for nk,nkfftmin in zip(one2three(NK),one2three(NKFFTmin))]
-    return np.array([l[0] for l in lst]),np.array([l[1] for l in lst])
-
-
-
-def evaluate_K(func,system,NK=None,NKdiv=None,nproc=0,NKFFT=None,
+def evaluate_K(func,system,grid,nproc=0,
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              symmetry_gen=[SYM.Identity],suffix="",
-             GammaCentered=True,file_Klist="K_list.pickle",restart=False,start_iter=0):
+             file_Klist="K_list.pickle",restart=False,start_iter=0):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
 a numpy.array of whatever dimensions
@@ -109,21 +71,11 @@ As a result, the integration will be performed over NKFFT x NKdiv
         if not file_Klist.endswith(".pickle"):
             file_Klist+=".pickle"
     cnt_exclude=0
-    
-    NKdiv,NKFFT=determineNK(NKdiv,NKFFT,NK,system.NKFFTmin)
 
-    print ("using NKdiv={}, NKFFT={}, NKtot={}".format( NKdiv,NKFFT,NKdiv*NKFFT))
+    print ("using NKdiv={}, NKFFT={}, NKtot={}".format( grid.div,grid.FFT,grid.dense))
     
-    symgroup=SYM.Group(symmetry_gen,basis=system.recip_lattice)
-
     paralfunc=functools.partial(
-        _eval_func_k, func=func,system=system,NKFFT=NKFFT )
-
-    if GammaCentered :
-        shift=(NKdiv%2-1)/(2*NKdiv)
-    else :
-        shift=np.zeros(3)
-    print ("shift={}".format(shift))
+        _eval_func_k, func=func,system=system,NKFFT=grid.FFT )
 
     if restart:
         try:
@@ -136,13 +88,8 @@ As a result, the integration will be performed over NKFFT x NKdiv
             restart=False
             print ("WARNING: {}".format( err) )
             print ("WARNING : reading from {0} failed, starting from scrath".format(file_Klist))
-            
-    if not restart:
-        print ("generating K_list")
-        K_list=[KpointBZ(K=shift, NKFFT=NKFFT,symgroup=symgroup )]
-        K_list+=K_list[0].divide(NKdiv)
-        if not np.all( NKdiv%2==1):
-            del K_list[0]
+    else:
+        K_list=grid.get_K_list()
         print ("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
         start_iter=0
 
@@ -176,7 +123,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         for i,K in enumerate(K_list):
           if not K.evaluated:
             print (" K-point {0} : {1} ".format(i,K))
-        counter+=process(paralfunc,K_list,nproc,symgroup=symgroup)
+        counter+=process(paralfunc,K_list,nproc,symgroup=system.symgroup)
         
         try:
             if file_Klist is not None:

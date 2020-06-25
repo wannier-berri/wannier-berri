@@ -87,7 +87,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def kpoints_all(self):
         dkx,dky,dkz=1./self.NKFFT
-        return np.array([self.dK-np.array([ix*dkx,iy*dky,iz*dkz]) 
+        return np.array([self.dK+np.array([ix*dkx,iy*dky,iz*dkz]) 
           for ix in range(self.NKFFT[0])
               for iy in range(self.NKFFT[1])
                   for  iz in range(self.NKFFT[2])])%1
@@ -254,6 +254,7 @@ class Data_K(System):
         print_my_name_end()
         return self._UU
 
+#    @property 
     @lazy_property.LazyProperty
     def UUH_K(self):
         print_my_name_start()
@@ -345,10 +346,6 @@ class Data_K(System):
         return np.einsum("kllad->klad",self.Morb_Hbar_der).real
 
 
-    @lazy_property.LazyProperty
-    def D_H_sq(self):
-         print_my_name_start()
-         return  (-self.D_H[:,:,:,beta_A]*self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))).imag
 
     
    # @lazy_property.LazyProperty
@@ -633,10 +630,6 @@ class Data_K(System):
          print_my_name_start()
          return np.einsum("km,kmma->kma",self.E_K,self.Omega_Hbar).real
 
-    @lazy_property.LazyProperty
-    def Omega_Hbar_diag(self):
-        print_my_name_start()
-        return  np.einsum("kiia->kia",self.Omega_Hbar).real
 
 
     @lazy_property.LazyProperty
@@ -646,11 +639,6 @@ class Data_K(System):
 
 
 
-    @lazy_property.LazyProperty
-    def D_A(self):
-         print_my_name_start()
-         return ( (self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))*self.A_Hbar[:,:,:,beta_A]).real+
-               (self.D_H[:,:,:,beta_A]*self.A_Hbar[:,:,:,alpha_A].transpose((0,2,1,3))).real  )
 
 #  for effective mass
     @lazy_property.LazyProperty
@@ -734,10 +722,13 @@ class Data_K(System):
 
 
 ##  properties directly accessed by fermisea2 
-
     @property 
     def Omega(self):
-        return {'i':self.Omega_Hbar_diag,'oi': - 2* (self.D_A+self.D_H_sq )}
+        oi=( (self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))*self.A_Hbar[:,:,:,beta_A]).real+
+               (self.D_H[:,:,:,beta_A]*self.A_Hbar[:,:,:,alpha_A].transpose((0,2,1,3))).real  ) 
+        oi+=(-self.D_H[:,:,:,beta_A]*self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))).imag
+        i=np.einsum("kiia->kia",self.Omega_Hbar).real
+        return {'i':i,'oi': - 2*oi }
 
     @property
     def Ohmic(self):

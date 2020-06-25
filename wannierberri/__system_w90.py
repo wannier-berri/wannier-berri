@@ -18,7 +18,7 @@ import copy
 import lazy_property
 import functools
 import multiprocessing 
-from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, fourier_q_to_R
+from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, fourier_q_to_R,real_recip_lattice
 from colorama import init
 from termcolor import cprint 
 from .__system import System, ws_dist_map
@@ -66,8 +66,7 @@ class System_w90(System):
         self.degen_thresh=degen_thresh
 
         chk=CheckPoint(self.seedname)
-        self.real_lattice=chk.real_lattice
-        self.recip_lattice=chk.recip_lattice
+        self.real_lattice,self.recip_lattice=real_recip_lattice(chk.real_lattice,chk.recip_lattice)
         self.iRvec,self.Ndegen=self.wigner_seitz(chk.mp_grid)
 #        print ("number of R-vectors: {} ; vectrors:\n {}".format(self.iRvec.shape[0], self.iRvec,self.Ndegen))
         self.nRvec0=len(self.iRvec)
