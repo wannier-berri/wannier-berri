@@ -124,7 +124,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     smoothW= None if omega is None else smoother(omega,smearW) # smoother for functions of frequency
     eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, omega=omega, smootherEf=smoothEf, smootherOmega=smoothW,
             quantities=quantities, parameters=parameters )
-    res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,
+    res=evaluate_K(eval_func,system,grid,nproc=numproc,
             adpt_num_iter=adpt_num_iter,adpt_nk=1,
                 fout_name=fout_name,suffix=suffix,
                 restart=restart,file_Klist=file_Klist)
