@@ -27,7 +27,6 @@ TAU_UNIT=1E-9 # tau in nanoseconds
 TAU_UNIT_TXT="ns"
 
 
-
 def print_my_name_start():
     if __debug: 
         print("DEBUG: Running {} ..".format(inspect.stack()[1][3]))
@@ -58,6 +57,21 @@ def einsumk(*args):
     else:
         raise RuntimeError("einsumk is not implemented for number of matrices {}".format(nmat))
     
+def conjugate_basis(basis):
+    return 2*np.pi*np.linalg.inv(basis).T
+
+
+def real_recip_lattice(real_lattice=None,recip_lattice=None):
+    if recip_lattice is None:
+        assert real_lattice is not None , "need to provide either with real or reciprocal lattice"
+        recip_lattice=conjugate_basis(real_lattice)
+    else: 
+        if real_lattice is not None:
+            assert np.linalg.norm(real_lattice.dot(recip_lattice.T)/(2*np.pi)-np.eye(3))<=1e-8 , "real and reciprocal lattice do not match"
+        else:
+            real_lattice=conjugate_basis(recip_lattice)
+    return real_lattice, recip_lattice
+
 
 
 from scipy.constants import Boltzmann,elementary_charge,hbar
@@ -186,8 +200,8 @@ def fourier_R_to_k(AAA_R,iRvec,NKPT,hermitian=False,antihermitian=False):
             AAA_K[tuple(irvec)]=AAA_R[ir]
     for m in range(AAA_K.shape[3]):
 #            print ("Fourier {0} of {1}".format(m,AAA_K.shape[3]))
-            AAA_K[:,:,:,m]=np.fft.fftn(AAA_K[:,:,:,m])
-    AAA_K=AAA_K.reshape( (np.prod(NK),)+shapeA[0:2]+shapeA[3:])
+            AAA_K[:,:,:,m]=np.fft.ifftn(AAA_K[:,:,:,m])
+    AAA_K=AAA_K.reshape( (np.prod(NK),)+shapeA[0:2]+shapeA[3:])*np.prod(NK)
 #    print ("finished fourier")
     print_my_name_end()
     return AAA_K
@@ -216,8 +230,8 @@ def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
             AAA_K[tuple(irvec)]=AAA_R[ir]
     for m in range(AAA_K.shape[3]):
 #            print ("Fourier {0} of {1}".format(m,AAA_K.shape[3]))
-            AAA_K[:,:,:,m]=np.fft.fftn(AAA_K[:,:,:,m])
-    AAA_K=AAA_K.reshape( (np.prod(NK),ntriu)+shapeA[3:])
+            AAA_K[:,:,:,m]=np.fft.ifftn(AAA_K[:,:,:,m])
+    AAA_K=AAA_K.reshape( (np.prod(NK),ntriu)+shapeA[3:])*np.prod(NK)
     result=np.zeros( (np.prod(NK),num_wann,num_wann)+shapeA[3:],dtype=complex)
     result[:,M,N]=AAA_K
     diag=np.arange(num_wann)

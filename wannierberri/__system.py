@@ -16,7 +16,8 @@ from scipy.io import FortranFile as FF
 import copy
 import lazy_property
 
-from .__utility import str2bool, alpha_A, beta_A , fourier_q_to_R
+from .__utility import str2bool, alpha_A, beta_A , fourier_q_to_R , real_recip_lattice
+from  .__symmetry import Group
 from colorama import init
 from termcolor import cprint 
 
@@ -59,8 +60,8 @@ class System():
         self.seedname=seedname
         self.num_wann,nRvec=int(l[0]),int(l[1])
         self.nRvec0=nRvec
-        self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
-        self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
+        real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
+        self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice=real_lattice)
         iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
         
         self.Ndegen=iRvec[:,3]
@@ -138,9 +139,16 @@ class System():
                              for n in range(self.num_wann) for m in range(self.num_wann)) )
         f.close()
         
-    
-    @lazy_property.LazyProperty
+
+    def _FFT_compatible(self,FFT,iRvec):
+        "check if FFT is enough to fit all R-vectors"
+        return np.unique(iRvec%FFT,axis=0).shape[0]==iRvec.shape[0]
+
+
+#    @lazy_property.LazyProperty
+    @property
     def NKFFTmin(self):
+        "finds a minimal FFT grid on which different R-vectors do not overlap"
         NKFFTmin=np.ones(3,dtype=int)
         for i in range(3):
             R=self.iRvec[:,i]
@@ -148,7 +156,12 @@ class System():
                 NKFFTmin[i]+=R.max()
             if len(R[R<0])>0: 
                 NKFFTmin[i]-=R.min()
+        assert self._FFT_compatible(NKFFTmin,self.iRvec)
         return NKFFTmin
+
+    def set_symmetry(self,symmetry_gen):
+        self.symgroup=Group(symmetry_gen,recip_lattice=self.recip_lattice,real_lattice=self.real_lattice)
+
 
     @property
     def cRvec(self):
