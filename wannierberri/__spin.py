@@ -21,7 +21,7 @@ from .__berry import calcImf_band,calcImgh_band
 
 
 def calcSpin_band(data):
-    return data.SSUU_K_rediag
+    return data.S_H_rediag
 
 
 def calcSpin_band_kn(data):

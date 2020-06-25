@@ -51,32 +51,57 @@ class Data_K(System):
                 vars(self)[hasXR]=True
 
 
-###   For testing it is disabled now:
-#        print ("WARNING : for testing AA_Hbar is disabled !!!!")
-#        self.AA_R[:,:,:,:]*=0.
-
-
-
     def _rotate(self,mat):
         print_my_name_start()
-        return  np.array([a.dot(b).dot(c) for a,b,c in zip(self.UUH_K,mat,self.UU_K)])
-
+#        return  np.einsum('kml,kmn,knp->klp',self.UU_K.conj(),mat,self.UU_K)
+        return  np.array([a.dot(b).dot(c) for a,b,c in zip(self.UU_K.conj().transpose(0,2,1),mat,self.UU_K)])
 
     def _rotate_vec(self,mat):
         print_my_name_start()
-        res=np.array(mat)
-        for i in range(res.shape[-1]):
-            res[:,:,:,i]=self._rotate(mat[:,:,:,i])
-        print_my_name_start()
-        return res
+        for i in range(mat.shape[-1]):
+            mat[:,:,:,i]=self._rotate(mat[:,:,:,i])
+        return mat
 
     def _rotate_mat(self,mat):
         print_my_name_start()
-        res=np.array(mat)
-        for j in range(res.shape[-1]):
-            res[:,:,:,:,j]=self._rotate_vec(mat[:,:,:,:,j])
+        for j in range(mat.shape[-1]):
+            mat[:,:,:,:,j]=self._rotate_vec(mat[:,:,:,:,j])
         print_my_name_start()
-        return res
+        return mat
+
+    def _rotate_gen(self,mat):
+        if len(mat.shape)==3:
+            return self._rotate(mat)
+        elif len(mat.shape)==4:
+            return self._rotate_vec(mat)
+        if len(mat.shape)==5:
+            return self._rotate_mat(mat)
+        else: 
+            raise NotImplementedError()
+
+
+    def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False):
+        """ converts from real-space matrix elements in Wannier gauge to 
+            k-space quantities in k-space. 
+            der [=0] - defines the order of comma-derivative 
+            hermitian [=True] - consoder the matrix hermitian
+            asym_before = True -  takes the antisymmetrc part over the first two cartesian indices before differentiation
+            asym_after = True  - asymmetrize after  differentiation
+            WARNING: the input matrix is destroyed, use np.copy to preserve it"""
+
+        def asymmetrize(X,asym):
+            """auxilary function"""
+            if asym  :
+                assert len(X.shape)>=5 , "cannot antisymmetrize less then 2 indices"
+                return X[:,:,:,alpha_A,beta_A]-X[:,:,:,beta_A,alpha_A]
+            else:
+                return X
+
+        XX_R=asymmetrize(XX_R, asym_before)
+        for i in range(der):
+            XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) )*self.cRvec.reshape((1,1,self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
+        XX_R=asymmetrize(XX_R, asym_after)
+        return self._rotate_gen(fourier_R_to_k( XX_R, self.iRvec,self.NKFFT,hermitian=hermitian)  )
 
 
     @lazy_property.LazyProperty
@@ -223,9 +248,9 @@ class Data_K(System):
         return Morb
 
         
-    @lazy_property.LazyProperty
+    @property
     def HH_K(self):
-        return fourier_R_to_k(self.HH_R,self.iRvec,self.NKFFT,hermitian=True)
+        return fourier_R_to_k( self.HH_R, self.iRvec,self.NKFFT,hermitian=True) 
 
     @lazy_property.LazyProperty
     def E_K(self):
@@ -254,15 +279,6 @@ class Data_K(System):
         print_my_name_end()
         return self._UU
 
-#    @property 
-    @lazy_property.LazyProperty
-    def UUH_K(self):
-        print_my_name_start()
-        res=self.UU_K.conj().transpose((0,2,1))
-        print_my_name_end()
-        return res 
-
-
 
     @lazy_property.LazyProperty
     def delE_K(self):
@@ -275,29 +291,11 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def del2E_H(self):
-        print_my_name_start()
-        del2HH= -self.HH_R[:,:,:,None,None]*self.cRvec[None,None,:,None,:]*self.cRvec[None,None,:,:,None]
-        del2HH = fourier_R_to_k(del2HH,self.iRvec,self.NKFFT,hermitian=True)
-        return self._rotate_mat(del2HH)
+        return self._R_to_k_H( self.HH_R, der=2 )
 
-    @lazy_property.LazyProperty
+    @property
     def del2E_H_diag(self):
         return np.einsum("knnab->knab",self.del2E_H).real
-
-
-    @lazy_property.LazyProperty
-    def del2E_K(self):
-        print_my_name_start()
-        del2HH= -self.HH_R[:,:,:,None,None]*self.cRvec[None,None,:,None,:]*self.cRvec[None,None,:,:,None]
-        del2HH = fourier_R_to_k(del2HH,self.iRvec,self.NKFFT,hermitian=True)
-        del2HH=self._rotate_mat(del2HH)
-        del2E_K = np.array([del2HH[:,i,i,:,:] for i in range(del2HH.shape[1])]).transpose( (1,0,2,3) )
-        check=np.abs(del2E_K).imag.max()
-        if check>1e-10: raiseruntimeError( "The second band derivatives have considerable imaginary part: {0}".format(check) )
-        return delE2_K.real
-
-
-
 
     @lazy_property.LazyProperty
     def dEig_inv(self):
@@ -309,26 +307,18 @@ class Data_K(System):
         dEig[select]=0.
         return dEig
 
-
     @lazy_property.LazyProperty
     def D_H(self):
             return -self.V_H*self.dEig_inv[:, :,:,None]
 
-
     @lazy_property.LazyProperty
     def V_H(self):
-        print_my_name_start()
         self.E_K
-        delHH_R=1j*self.HH_R[:,:,:,None]*self.cRvec[None,None,:,:]
-        delHH_K= fourier_R_to_k(delHH_R,self.iRvec,self.NKFFT,hermitian=True)
-        return self._rotate_vec(delHH_K)
+        return self._R_to_k_H( self.HH_R, der=1 )
 
     @lazy_property.LazyProperty
     def Morb_Hbar(self):
-        print_my_name_start()
-        _CC_K=fourier_R_to_k( self.CC_R,self.iRvec,self.NKFFT,hermitian=True)
-        return self._rotate_vec( _CC_K )
-
+        return self._R_to_k_H( self.CC_R.copy() )
 
     @lazy_property.LazyProperty
     def Morb_Hbar_diag(self):
@@ -336,10 +326,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def Morb_Hbar_der(self):
-        print_my_name_start()
-        b= alpha_A
-        _CC_K=fourier_R_to_k(1j*self.CC_R[:,:,:,:,None]*self.cRvec[None,None,:,None,:],self.iRvec,self.NKFFT,hermitian=True)
-        return self._rotate_mat( _CC_K )
+        return self._R_to_k_H( self.CC_R, der=1 )
 
     @lazy_property.LazyProperty
     def Morb_Hbar_der_diag(self):
@@ -471,118 +458,30 @@ class Data_K(System):
 
 
     @lazy_property.LazyProperty
-    def D_gdD(self):
-        dDnl,dDnnl,dDnll=self.gdD
-        D=self.D_H
-        b=alpha_A
-        c=beta_A
-        N=None
-        
-        uo= (D[:, :,:,  b,N] * dDnl [:, :,:,    c,:]  -  D[:, :,:,  c,N] * dDnl [:, :,:,     b,:] ).imag
-        uuo=(D[:, :,N,:,b,N] * dDnll[:, :,:,:,  c,:]  -  D[:, :,N,:,c,N] * dDnll[:, :,:,:,   b,:] ).imag
-        uoo=(D[:, :,N,:,b,N] * dDnnl[:, :,:,:,  c,:]  -  D[:, :,N,:,c,N] * dDnnl[:, :,:,:,   b,:] ).imag
-  
-        return uo,uoo,uuo
-
-
-    @lazy_property.LazyProperty
-    def D_gdD_old(self):
-        Vln=self.V_H
-        Vnl=Vln.transpose(0,2,1,3)
-        W=self.del2E_H
-        b=alpha_A
-        c=beta_A
-        N=None
-
-# p= n' or l'
-        Vnlb = Vnl[:, :,N,:,  b,N]
-        Vnlc = Vnl[:, :,N,:,  c,N]
-        Vlpc = Vln[:, :,:,N,  c,N]
-        Vlpb = Vln[:, :,:,N,  b,N]
-        Vlpd = Vln[:, :,:,N,  N,:]
-        Vpnd = Vln[:, N,:,:,  N,:]
-        Vpnb = Vln[:, N,:,:,  b,N]
-        Vpnc = Vln[:, N,:,:,  c,N]
-
-        TMP=(self.dEig_inv**2)[:,:,None,:,None,None]*( Vnlb*(Vlpc*Vpnd+Vlpd*Vpnc) -  Vnlc*(Vlpb*Vpnd+Vlpd*Vpnb) ).imag
-
-        return ( self.dEig_inv[:,:,:,None,None]**2*
-                       (Vnl[:,:,:,b,None]*W[:,:,:,c,:] - Vnl[:,:,:,c,None]*W[:,:,:,b,:] ).imag , 
-                self.dEig_inv[:,:,:,None,None,None]*TMP, 
-               -self.dEig_inv[:,None,:,:,None,None]*TMP  )
-
-
-
-
-    @lazy_property.LazyProperty
-    def A_gdD(self):
-        print_my_name_start()
-        dDnl,dDnnl,dDnll=self.gdD
-        A=self.A_Hbar
-        b=alpha_A
-        c=beta_A
-        N=None
-        
-        uo=  (A[:, :,:,  b,N] * dDnl [:, :,:,    c,:]  -  A[:, :,:,  c,N] * dDnl [:, :,:,     b,:] ).real
-        uuo= (A[:, :,N,:,b,N] * dDnll[:, :,:,:,  c,:]  -  A[:, :,N,:,c,N] * dDnll[:, :,:,:,   b,:] ).real
-        uoo= (A[:, :,N,:,b,N] * dDnnl[:, :,:,:,  c,:]  -  A[:, :,N,:,c,N] * dDnnl[:, :,:,:,   b,:] ).real
-  
-        return uo,uoo,uuo
-
-
-    @lazy_property.LazyProperty
-    def DdA_DAD_DDA(self):
-        print_my_name_start()
-        Dln=self.D_H
-        Dnl=Dln.transpose(0,2,1,3)
-        A=self.A_Hbar
-        dA=self.A_Hbar_der
-        b=alpha_A
-        c=beta_A
-        N=None
-        uo  =  (   dA[:,:,:,b,:]*Dnl[:,:,:,c,N]  -  dA[:,:,:,c,:]*Dnl[:,:,:,b,N]).real 
-        uuo =  (( Dnl[:, :,N,:, c] * A[:, :,:,N,b]  - Dnl[:, :,N,:, b] * A[:, :,:,N,c] )[:, :,:,:, :,N] *  Dln[:, N,:,:, N,:]).real
-        uoo = -(( Dnl[:, :,N,:, c] * A[:, N,:,:,b]  - Dnl[:, :,N,:, b] * A[:, N,:,:,c] )[:, :,:,:, :,N] *  Dln[:, :,:,N, N,:]).real
-        return uo,uoo,uuo
-
-
-
-
-
-
-    @lazy_property.LazyProperty
     def A_Hbar(self):
-        print_my_name_start()
-        _AA_K=fourier_R_to_k( self.AA_R,self.iRvec,self.NKFFT,hermitian=True)
-        return self._rotate_vec( _AA_K )
+        return self._R_to_k_H(self.AA_R.copy())
 
     @lazy_property.LazyProperty
     def A_H(self):
         '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
-        print_my_name_start()
         return self.A_Hbar + 1j*self.D_H
 
     @lazy_property.LazyProperty
     def A_Hbar_der(self):
-        print_my_name_start()
-        _AA_K=fourier_R_to_k( 1j*self.AA_R[:,:,:,:,None]*self.cRvec[None,None,:,None,:],self.iRvec,self.NKFFT,hermitian=True)
-        return self._rotate_mat( _AA_K )
-
-
+        return  self._R_to_k_H(self.AA_R.copy(), der=1) 
 
     @lazy_property.LazyProperty
     def S_H(self):
-        print_my_name_start()
-        _SS_K=fourier_R_to_k( self.SS_R,self.iRvec,self.NKFFT)
-        return self._rotate_vec( _SS_K )
+        return  self._R_to_k_H( self.SS_R.copy() )
+
+    @lazy_property.LazyProperty
+    def S_H_rediag(self):
+        return np.einsum("knna->kna",self.delS_H).real
 
     @lazy_property.LazyProperty
     def delS_H(self):
-#  d_b S_a
-        print_my_name_start()
-        delSS_R=1j*self.SS_R[:,:,:,:,None]*self.cRvec[None,None,:,None,:]
-        delSS_K= fourier_R_to_k(delSS_R,self.iRvec,self.NKFFT,hermitian=True)
-        return self._rotate_mat(delSS_K)
+        """d_b S_a """
+        return  self._R_to_k_H( self.SS_R[:,:,:,:,None], der=1 )
 
     @lazy_property.LazyProperty
     def delS_H_rediag(self):
@@ -590,30 +489,25 @@ class Data_K(System):
         return np.einsum("knnab->knab",self.delS_H).real
 
 
+
     @lazy_property.LazyProperty
     def Omega_Hbar(self):
         print_my_name_start()
-        _OOmega_K =  fourier_R_to_k( -1j*(
-                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -
-                        self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])   , self.iRvec, self.NKFFT,hermitian=True )
+        _OOmega_K =  -self._R_to_k_H( self.AA_R, der=1, asym_after=True) 
         return self._rotate_vec(_OOmega_K)
 
 
     @lazy_property.LazyProperty
     def B_Hbar(self):
         print_my_name_start()
-        _BB_K=fourier_R_to_k( self.BB_R,self.iRvec,self.NKFFT)
-        _BB_K=self._rotate_vec( _BB_K )
+        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False)
         select=(self.E_K<=self.frozen_max)
         _BB_K[select]=self.E_K[select][:,None,None]*self.A_Hbar[select]
         return _BB_K
     
     @lazy_property.LazyProperty
     def B_Hbar_der(self):
-        _BB_K=fourier_R_to_k(1j*self.BB_R[:,:,:,:,None]*self.cRvec[None,None,:,None,:],self.iRvec,self.NKFFT)
-        _BB_K=self._rotate_mat( _BB_K )
-        # select=(self.E_K<=self.frozen_max)
-        # _BB_K[select]=self.E_K[select][:,None,None,None]*self.A_Hbar_der[select]
+        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitian=False)
         return _BB_K
 
     @lazy_property.LazyProperty
@@ -683,25 +577,14 @@ class Data_K(System):
          return (   X,-X.transpose( (0,2,1,3) ) )    #-np.einsum("km,knma,kmna->kmna",self.E_K,self.D_H[:,:,:,alpha_A],self.D_H[:,:,:,beta_A ]).imag ,
 
 
-    @lazy_property.LazyProperty
-    def SSUU_K(self):
-        return self.S_H
-
 
     @lazy_property.LazyProperty
-    def FF_K_rediag(self):
-        print_my_name_start()
-        _FF_K=fourier_R_to_k( self.FF_R,self.iRvec,self.NKFFT)
-        return np.einsum("kmm->km",_FF_K).imag
-
-    @lazy_property.LazyProperty
-    def SSUU_K_rediag(self):
+    def S_H_rediag(self):
         print_my_name_start()
         _SS_K=fourier_R_to_k( self.SS_R,self.iRvec,self.NKFFT)
         _SS_K=self._rotate_vec( _SS_K )
         return np.einsum("kmma->kma",_SS_K).real
 
-    
 
 
     @lazy_property.LazyProperty
@@ -740,7 +623,7 @@ class Data_K(System):
 
     @property
     def SpinTot(self):
-        return {'i':self.SSUU_K_rediag}
+        return {'i':self.S_H_rediag}
 
 
     def Hplus(self,evalJ0=True,evalJ1=True,evalJ2=True):
