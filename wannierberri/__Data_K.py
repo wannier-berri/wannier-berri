@@ -488,14 +488,10 @@ class Data_K(System):
 #  d_b S_a
         return np.einsum("knnab->knab",self.delS_H).real
 
-
-
     @lazy_property.LazyProperty
     def Omega_Hbar(self):
         print_my_name_start()
-        _OOmega_K =  -self._R_to_k_H( self.AA_R, der=1, asym_after=True) 
-        return self._rotate_vec(_OOmega_K)
-
+        return  -self._R_to_k_H( self.AA_R, der=1, asym_after=True) 
 
     @lazy_property.LazyProperty
     def B_Hbar(self):
