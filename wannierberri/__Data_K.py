@@ -622,16 +622,25 @@ class Data_K(System):
         return {'i':self.S_H_rediag}
 
 
-    def Hplus(self,evalJ0=True,evalJ1=True,evalJ2=True):
+
+
+    def Hplusminus(self,sign,evalJ0=True,evalJ1=True,evalJ2=True):
+        assert sign in (1,-1) , "sign should be +1 or -1"
         from collections import defaultdict
         res = defaultdict( lambda : 0)
         if evalJ0:
-            res['i']+=self.Morb_Hbar_diag + self.Omega_Hbar_E
+            if sign==1:
+                res['ii']=-2*data.A_E_A
+            res['i']+=self.Morb_Hbar_diag + sign*self.Omega_Hbar_E
         if evalJ1:
-            res['oi']+=-2*(self.D_B+self.D_E_A)
+            res['oi']+=-2*(self.D_B+sign*self.D_E_A)
         if evalJ2:
             C,D=self.D_E_D
-            res['oi']+=-2*(C+D)
+            res['oi']+=-2*(C+sign*D)
         return  res
 
+    def Hplus(self,evalJ0=True,evalJ1=True,evalJ2=True):
+        return self.Hplusminus(self,+1,evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
 
+    def Hminus(self,evalJ0=True,evalJ1=True,evalJ2=True):
+        return self.Hplusminus(self,-1,evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)

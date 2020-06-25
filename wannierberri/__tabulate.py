@@ -19,19 +19,18 @@ from copy import deepcopy
 from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
 from . import __result as result
 from . import  __berry as berry
-from . import  __spin as spin
 from . import  __symmetry  as symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
 #should be functions of only one parameter of class Data_K
 calculators={ 
-         'spin'       : spin.calcSpin_band_kn, 
+         'spin'       : berry.calcSpin_band_kn, 
          'V'          : berry.calcV_band_kn  , 
          'morb'       : berry.calcImgh_band_kn,
          'berry'      : berry.calcImf_band_kn ,
-         'hall_spin'  : spin.calcHall_spin_kn,
-         'hall_orb'   : spin.calcHall_orb_kn
+         'hall_spin'  : berry.calcHall_spin_kn,
+         'hall_orb'   : berry.calcHall_orb_kn
          }
 
 
