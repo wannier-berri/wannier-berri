@@ -17,7 +17,7 @@ import numpy as np
 import lazy_property
 import multiprocessing 
 from .__system import System
-from .__utility import  print_my_name_start,print_my_name_end,einsumk, fourier_R_to_k, alpha_A,beta_A
+from .__utility import  print_my_name_start,print_my_name_end,einsumk, FFT_R_to_k, alpha_A,beta_A
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -35,6 +35,9 @@ class Data_K(System):
         self.frozen_max=system.frozen_max
         self.random_gauge=system.random_gauge
         self.degen_thresh=system.degen_thresh
+        ## TODO : create the plans externally, one per process 
+        self.fft_R_to_k=FFT_R_to_k(system.iRvec,NKFFT,self.num_wann,numthreads=npar if npar>0 else 1)
+
         try:
             self.poolmap=multiprocessing.Pool(npar).map
             print ('created a pool of {} workers'.format(npar))
@@ -42,7 +45,7 @@ class Data_K(System):
             print ('failed to create a pool of {} workers : {}'.format(npar,err))
             self.poolmap=lambda fun,lst : [fun(x) for x in lst]
         if dK is not None:
-            expdK=np.exp(2j*np.pi*self.iRvec.dot(dK))
+            expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))
             self.dK=dK
         else:
             expdK=np.ones(self.nRvec)
@@ -93,7 +96,7 @@ class Data_K(System):
         for i in range(der):
             XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) )*self.cRvec.reshape((1,1,self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
         XX_R=asymmetrize(XX_R, asym_after)
-        return self._rotate(fourier_R_to_k( XX_R, self.iRvec,self.NKFFT,hermitian=hermitian,pool=self.poolmap)  )
+        return self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian)  )
 
 
     @lazy_property.LazyProperty
@@ -242,7 +245,7 @@ class Data_K(System):
         
     @property
     def HH_K(self):
-        return fourier_R_to_k( self.HH_R, self.iRvec,self.NKFFT,hermitian=True) 
+        return self.fft_R_to_k( self.HH_R, hermitian=True) 
 
     @lazy_property.LazyProperty
     def E_K(self):
@@ -468,7 +471,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def S_H_rediag(self):
-        return np.einsum("knna->kna",self.delS_H).real
+        return np.einsum("knna->kna",self.S_H).real
 
     @lazy_property.LazyProperty
     def delS_H(self):
@@ -567,21 +570,12 @@ class Data_K(System):
 
 
     @lazy_property.LazyProperty
-    def S_H_rediag(self):
-        print_my_name_start()
-        _SS_K=fourier_R_to_k( self.SS_R,self.iRvec,self.NKFFT)
-        _SS_K=self._rotate_vec( _SS_K )
-        return np.einsum("kmma->kma",_SS_K).real
-
-
-
-    @lazy_property.LazyProperty
     def Omega_bar_der(self):
         print_my_name_start()
-        _OOmega_K =  fourier_R_to_k( (
+        _OOmega_K =  self.FFT_R_to_k( (
                         self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -     
-                        self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])[:,:,:,:,None]*self.cRvec[None,None,:,None,:]   , self.iRvec, self.NKFFT,hermitian=True )
-        return self._rotate_mat(_OOmega_K)
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])[:,:,:,:,None]*self.cRvec[None,None,:,None,:]   , hermitian=True )
+        return self._rotate(_OOmega_K)
 
     @lazy_property.LazyProperty
     def Omega_bar_der_rediag(self):
