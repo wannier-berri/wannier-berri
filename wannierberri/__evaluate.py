@@ -29,17 +29,17 @@ from . import __utility as utility
 def process(paralfunc,K_list,nproc,symgroup=None):
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
-    dK_list=[(K_list[ik].Kp_fullBZ, K_list[ik]) for ik in selK]
+    dK_list=[K_list[ik] for ik in selK]
     if len(dK_list)==0:
         print ("nothing to process now")
         return 0
     print ("processing {0}  points :".format(len(dK_list)) )
     if nproc<=0:
-        res = [paralfunc(k, Kp) for k, Kp in dK_list]
+        res = [paralfunc(Kp) for Kp in dK_list]
         nproc_=1
     else:
         p=multiprocessing.Pool(nproc)
-        res= p.starmap(paralfunc,dK_list)
+        res= p.map(paralfunc,dK_list)
         p.close()
         nproc_=nproc
     if not (symgroup is None):
@@ -52,7 +52,7 @@ def process(paralfunc,K_list,nproc,symgroup=None):
 
 
 
-def evaluate_K(func,system,grid,nproc=0,
+def evaluate_K(func,system,grid,nparK,nparFFT,
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              symmetry_gen=[SYM.Identity],suffix="",
              file_Klist="K_list.pickle",restart=False,start_iter=0):
@@ -75,7 +75,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
     print ("using NKdiv={}, NKFFT={}, NKtot={}".format( grid.div,grid.FFT,grid.dense))
     
     paralfunc=functools.partial(
-        _eval_func_k, func=func,system=system,NKFFT=grid.FFT )
+        _eval_func_k, func=func,system=system,NKFFT=grid.FFT,nparFFT=nparFFT )
 
     if restart:
         try:
@@ -123,7 +123,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         for i,K in enumerate(K_list):
           if not K.evaluated:
             print (" K-point {0} : {1} ".format(i,K))
-        counter+=process(paralfunc,K_list,nproc,symgroup=system.symgroup)
+        counter+=process(paralfunc,K_list,nparK,symgroup=system.symgroup)
         
         try:
             if file_Klist is not None:
@@ -157,7 +157,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
        
 
 
-def _eval_func_k(K,Kpoint,func,system,NKFFT):
-    data=Data_K(system,K,NKFFT=NKFFT,Kpoint=Kpoint)
+def _eval_func_k(Kpoint,func,system,NKFFT,nparFFT):
+    data=Data_K(system,Kpoint.Kp_fullBZ,NKFFT=NKFFT,Kpoint=Kpoint,npar=nparFFT)
     return func(data)
 

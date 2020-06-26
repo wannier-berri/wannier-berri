@@ -15,12 +15,16 @@
 ## TODO : maybe to make some lazy_property's not so lazy to save some memory
 import numpy as np
 import lazy_property
-
+import multiprocessing 
 from .__system import System
 from .__utility import  print_my_name_start,print_my_name_end,einsumk, fourier_R_to_k, alpha_A,beta_A
+
+def _rotate_matrix(X):
+    return X[1].T.conj().dot(X[0]).dot(X[1])
+
    
 class Data_K(System):
-    def __init__(self,system,dK=None,NKFFT=None,Kpoint=None):
+    def __init__(self,system,dK=None,NKFFT=None,Kpoint=None,npar=0):
 #        self.spinors=system.spinors
         self.iRvec=system.iRvec
         self.real_lattice=system.real_lattice
@@ -31,6 +35,12 @@ class Data_K(System):
         self.frozen_max=system.frozen_max
         self.random_gauge=system.random_gauge
         self.degen_thresh=system.degen_thresh
+        try:
+            self.poolmap=multiprocessing.Pool(npar).map
+            print ('created a pool of {} workers'.format(npar))
+        except Exception as err:
+            print ('failed to create a pool of {} workers : {}'.format(npar,err))
+            self.poolmap=lambda fun,lst : [fun(x) for x in lst]
         if dK is not None:
             expdK=np.exp(2j*np.pi*self.iRvec.dot(dK))
             self.dK=dK
@@ -54,31 +64,13 @@ class Data_K(System):
     def _rotate(self,mat):
         print_my_name_start()
 #        return  np.einsum('kml,kmn,knp->klp',self.UU_K.conj(),mat,self.UU_K)
-        return  np.array([a.dot(b).dot(c) for a,b,c in zip(self.UU_K.conj().transpose(0,2,1),mat,self.UU_K)])
-
-    def _rotate_vec(self,mat):
-        print_my_name_start()
-        for i in range(mat.shape[-1]):
-            mat[:,:,:,i]=self._rotate(mat[:,:,:,i])
-        return mat
-
-    def _rotate_mat(self,mat):
-        print_my_name_start()
-        for j in range(mat.shape[-1]):
-            mat[:,:,:,:,j]=self._rotate_vec(mat[:,:,:,:,j])
-        print_my_name_start()
-        return mat
-
-    def _rotate_gen(self,mat):
-        if len(mat.shape)==3:
-            return self._rotate(mat)
-        elif len(mat.shape)==4:
-            return self._rotate_vec(mat)
-        if len(mat.shape)==5:
-            return self._rotate_mat(mat)
-        else: 
-            raise NotImplementedError()
-
+        assert mat.ndim>2
+        if mat.ndim==3:
+            return  np.array(self.poolmap( _rotate_matrix , zip(mat,self.UU_K)))
+        else:
+            for i in range(mat.shape[-1]):
+                mat[...,i]=self._rotate(mat[...,i])
+            return mat
 
     def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False):
         """ converts from real-space matrix elements in Wannier gauge to 
@@ -101,7 +93,7 @@ class Data_K(System):
         for i in range(der):
             XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) )*self.cRvec.reshape((1,1,self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
         XX_R=asymmetrize(XX_R, asym_after)
-        return self._rotate_gen(fourier_R_to_k( XX_R, self.iRvec,self.NKFFT,hermitian=hermitian)  )
+        return self._rotate(fourier_R_to_k( XX_R, self.iRvec,self.NKFFT,hermitian=hermitian,pool=self.poolmap)  )
 
 
     @lazy_property.LazyProperty
@@ -255,7 +247,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def E_K(self):
         print_my_name_start()
-        EUU=[np.linalg.eigh(Hk) for Hk in self.HH_K]
+        EUU=self.poolmap(np.linalg.eigh , self.HH_K)
         E_K=np.array([euu[0] for euu in EUU])
         self._UU =np.array([euu[1] for euu in EUU])
         print_my_name_end()
@@ -644,3 +636,5 @@ class Data_K(System):
 
     def Hminus(self,evalJ0=True,evalJ1=True,evalJ2=True):
         return self.Hplusminus(self,-1,evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
+
+

@@ -157,7 +157,7 @@ def str2bool(v):
         raise RuntimeError(" unrecognized value of bool parameter :{0}".format(v) )
 
 
-def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,num_proc=2):
+def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen):
     print_my_name_start()
     mp_grid=tuple(mp_grid)
     shapeA=AA_q.shape[1:]  # remember the shapes after q
@@ -175,15 +175,15 @@ def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,num_proc=2):
     return AA_R
 
 
-def fourier_R_to_k(AAA_R,iRvec,NKPT,hermitian=False,antihermitian=False):
+def fourier_R_to_k(AAA_R,iRvec,NKPT,hermitian=False,antihermitian=False,pool=None):
     print_my_name_start()
     #  AAA_R is an array of dimension ( num_wann x num_wann x nRpts X ... ) (any further dimensions allowed)
     if  hermitian and antihermitian :
         raise ValueError("A matrix cannot be bothe Haermitian and antihermitian, unless it is zero")
     if hermitian:
-        return fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT)
+        return fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,pool=None)
     if antihermitian:
-        return fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=True)
+        return fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=True,pool=None)
 
     #now the generic case
     NK=tuple(NKPT)
@@ -198,9 +198,11 @@ def fourier_R_to_k(AAA_R,iRvec,NKPT,hermitian=False,antihermitian=False):
     for ir,irvec in enumerate(iRvec):
 #            print ("ir {0} of {1}".format(ir,len(iRvec)))
             AAA_K[tuple(irvec)]=AAA_R[ir]
-    for m in range(AAA_K.shape[3]):
-#            print ("Fourier {0} of {1}".format(m,AAA_K.shape[3]))
+    if pool is None:
+        for m in range(AAA_K.shape[3]):
             AAA_K[:,:,:,m]=np.fft.ifftn(AAA_K[:,:,:,m])
+    else:
+        AAA_K=poolmap( np.fft.ifftn,AAA_K.reshape((3,0,1,2)) ).reshape((1,2,3,0))
     AAA_K=AAA_K.reshape( (np.prod(NK),)+shapeA[0:2]+shapeA[3:])*np.prod(NK)
 #    print ("finished fourier")
     print_my_name_end()
@@ -209,7 +211,7 @@ def fourier_R_to_k(AAA_R,iRvec,NKPT,hermitian=False,antihermitian=False):
 
 
 
-def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
+def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False,pool=None):
 ###  in practice (at least for the test example)  use of hermiticity does not speed the calculation. 
 ### probably, because FFT is faster then reshaping matrices
 #    return fourier_R_to_k(AAA_R,iRvec,NKPT)
@@ -228,9 +230,11 @@ def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
     for ir,irvec in enumerate(iRvec):
 #            print ("ir {0} of {1}".format(ir,len(iRvec)))
             AAA_K[tuple(irvec)]=AAA_R[ir]
-    for m in range(AAA_K.shape[3]):
-#            print ("Fourier {0} of {1}".format(m,AAA_K.shape[3]))
+    if pool is None:
+        for m in range(AAA_K.shape[3]):
             AAA_K[:,:,:,m]=np.fft.ifftn(AAA_K[:,:,:,m])
+    else:
+        AAA_K=poolmap( np.fft.ifftn,AAA_K.reshape((3,0,1,2)) ).reshape((1,2,3,0))
     AAA_K=AAA_K.reshape( (np.prod(NK),ntriu)+shapeA[3:])*np.prod(NK)
     result=np.zeros( (np.prod(NK),num_wann,num_wann)+shapeA[3:],dtype=complex)
     result[:,M,N]=AAA_K
@@ -256,5 +260,3 @@ def iterate3d(size):
     return ( np.array([i,j,k]) for i in range(0,size[0])
                      for j in range(0,size[1])
                      for k in range(0,size[2]) )
-
-
