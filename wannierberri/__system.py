@@ -16,7 +16,7 @@ from scipy.io import FortranFile as FF
 import copy
 import lazy_property
 
-from .__utility import str2bool, alpha_A, beta_A , fourier_q_to_R , real_recip_lattice
+from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice
 from  .__symmetry import Group
 from colorama import init
 from termcolor import cprint 
@@ -67,12 +67,16 @@ class System():
         self.Ndegen=iRvec[:,3]
         self.iRvec=iRvec[:,:3]
 
+        self.cRvec=self.iRvec.dot(self.real_lattice)
+
+
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
         print ("Minimal Number of K points:", self.NKFFTmin)
         print ("Real-space lattice:\n",self.real_lattice)
         #print ("R - points and dege=neracies:\n",iRvec)
         has_ws=str2bool(f.readline().split("=")[1].strip())
+
         
         if has_ws and use_ws:
             print ("using ws_dist")
@@ -163,10 +167,9 @@ class System():
         self.symgroup=Group(symmetry_gen,recip_lattice=self.recip_lattice,real_lattice=self.real_lattice)
 
 
-    @property
+    @lazy_property.LazyProperty
     def cRvec(self):
         return self.iRvec.dot(self.real_lattice)
-
 
     @property 
     def nRvec(self):
@@ -176,6 +179,7 @@ class System():
     @lazy_property.LazyProperty
     def cell_volume(self):
         return abs(np.linalg.det(self.real_lattice))
+
 
 
     def __getMat(self,suffix):

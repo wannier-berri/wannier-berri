@@ -18,11 +18,12 @@ import copy
 import lazy_property
 import functools
 import multiprocessing 
-from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, fourier_q_to_R,real_recip_lattice
+from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, real_recip_lattice,fourier_q_to_R
 from colorama import init
 from termcolor import cprint 
 from .__system import System, ws_dist_map
 from .__w90_files import EIG,MMN,CheckPoint,SPN,UHU
+from time import time
 
 class System_w90(System):
 
@@ -33,7 +34,8 @@ class System_w90(System):
                     frozen_max=-np.Inf,
                     random_gauge=False,
                     degen_thresh=-1 ,
-                    num_proc=2  ):
+                    fft='fftw',
+                    npar=multiprocessing.cpu_count()  ):
 
         self.seedname=seedname
 
@@ -78,25 +80,43 @@ class System_w90(System):
 
         kpt_mp_grid=[tuple(k) for k in np.array( np.round(chk.kpt_latt*np.array(chk.mp_grid)[None,:]),dtype=int)%chk.mp_grid]
 #        print ("kpoints:",kpt_mp_grid)
-        fourier_q_to_R_loc=functools.partial(fourier_q_to_R, mp_grid=chk.mp_grid,kpt_mp_grid=kpt_mp_grid,iRvec=self.iRvec,ndegen=self.Ndegen,num_proc=num_proc)
 
-        self.HH_R=fourier_q_to_R_loc( chk.get_HH_q(eig) )
+        fourier_q_to_R_loc=functools.partial(fourier_q_to_R, mp_grid=chk.mp_grid,kpt_mp_grid=kpt_mp_grid,iRvec=self.iRvec,ndegen=self.Ndegen,numthreads=npar,fft=fft)
+
+        timeFFT=0
+        HHq=chk.get_HH_q(eig)
+        t0=time()
+        self.HH_R=fourier_q_to_R_loc( HHq )
+        timeFFT+=time()-t0
 #        for i in range(self.nRvec):
 #            print (i,self.iRvec[i],"H(R)=",self.HH_R[0,0,i])
 
         if getAA:
-            self.AA_R=fourier_q_to_R_loc(chk.get_AA_q(mmn,transl_inv=transl_inv))
+            AAq=chk.get_AA_q(mmn,transl_inv=transl_inv)
+            t0=time()
+            self.AA_R=fourier_q_to_R_loc(AAq)
+            timeFFT+=time()-t0
 
         if getBB:
+            t0=time()
             self.BB_R=fourier_q_to_R_loc(chk.get_AA_q(mmn,eig))
+            timeFFT+=time()-t0
 
         if getCC:
             uhu=UHU(seedname)
+            t0=time()
             self.CC_R=fourier_q_to_R_loc(chk.get_CC_q(uhu,mmn))
+            timeFFT+=time()-t0
+            del uhu
 
         if getSS:
             spn=SPN(seedname)
+            t0=time()
             self.SS_R=fourier_q_to_R_loc(chk.get_SS_q(spn))
+            timeFFT+=time()-t0
+            del spn
+
+        print ("time for FFT_q_to_R : {} s".format(timeFFT))
 
         if  use_ws:
             print ("using ws_distance")

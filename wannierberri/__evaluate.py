@@ -73,9 +73,12 @@ As a result, the integration will be performed over NKFFT x NKdiv
     cnt_exclude=0
 
     print ("using NKdiv={}, NKFFT={}, NKtot={}".format( grid.div,grid.FFT,grid.dense))
+
     
     paralfunc=functools.partial(
         _eval_func_k, func=func,system=system,NKFFT=grid.FFT,nparFFT=nparFFT )
+
+
 
     if restart:
         try:

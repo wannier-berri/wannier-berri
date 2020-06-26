@@ -16,7 +16,7 @@ from scipy.io import FortranFile as FF
 import copy
 import lazy_property
 
-from .__utility import str2bool, alpha_A, beta_A , fourier_q_to_R , real_recip_lattice
+from .__utility import str2bool, alpha_A, beta_A ,real_recip_lattice
 from colorama import init
 from termcolor import cprint 
 from .__system import System
