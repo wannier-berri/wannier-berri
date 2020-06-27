@@ -18,6 +18,7 @@ import copy
 import lazy_property
 import functools
 import multiprocessing 
+#import billiard as multiprocessing 
 from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, real_recip_lattice,fourier_q_to_R
 from colorama import init
 from termcolor import cprint 

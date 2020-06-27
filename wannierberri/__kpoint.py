@@ -140,46 +140,8 @@ class  KpointBZ():
 
         return k_list_add
 
-
-
 def exclude_equiv_points(k_list,new_points=None):
-    k_list_copy=deepcopy(k_list)
-    # exclude_equiv_points_slow(k_list_copy,new_points)
-    return exclude_equiv_points_fast(k_list,new_points)
-#    return exclude_equiv_points_slow(k_list_copy,new_points)
-#    exit()
-#    return cnt
-
-
-def exclude_equiv_points_slow(k_list,new_points=None):
-    print ("Excluding symmetry-equivalent points-slow")
-#    print ("kpoints are : \n"+"\n".join(str(k.k) for k in k_list) )
-    t0=time()
-    cnt=0
-    n=len(k_list)
-#    print (n,new_points)
-#    print (-1 if new_points is None else max(-1,n-1-new_points))
-    exclude=[]
-    for i in range(n-1,-1 if new_points is None else max(-1,n-1-new_points),-1):
-#        print (i)
-        for j in range(i-1,-1,-1):
-            ki=k_list[i]
-            kj=k_list[j]
-            if ki.equiv(kj):
-                if ki.equiv(kj):
-                    kj.absorb(ki)
-                    exclude.append(j)
-                    cnt+=1
-                    del k_list[i]
-                    break
-#    print ("EXCLUDED ARE: ",sorted(exclude))
-    print ("Done. Excluded  {} points in {} sec".format(cnt,time()-t0))
-    return cnt
-
-# this should be a faster implementation
-def exclude_equiv_points_fast(k_list,new_points=None):
     print ("Excluding symmetry-equivalent points-fast")
-#    print ("kpoints are : \n"+"\n".join(str(k.k) for k in k_list) )
     t0=time()
     cnt=0
     n=len(k_list)

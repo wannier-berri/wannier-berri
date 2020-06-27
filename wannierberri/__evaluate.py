@@ -11,7 +11,8 @@
 #                                                            #
 #------------------------------------------------------------
 
-import multiprocessing 
+#import billiard as multiprocessing 
+import  multiprocessing 
 import functools
 import numpy as np
 from collections import Iterable
@@ -38,6 +39,7 @@ def process(paralfunc,K_list,nproc,symgroup=None):
         res = [paralfunc(Kp) for Kp in dK_list]
         nproc_=1
     else:
+        print ("using a pool of {} processes".format(nproc))
         p=multiprocessing.Pool(nproc)
         res= p.map(paralfunc,dK_list)
         p.close()
@@ -47,12 +49,12 @@ def process(paralfunc,K_list,nproc,symgroup=None):
     for i,ik in enumerate(selK):
         K_list[ik].set_res(res[i])
     t=time()-t0
-    print ("time for processing {0:6d} K-points : {1:10.4f} ; per K-point {2:15.4f} ; proc-sec per K-point : {3:15.4f}".format(len(selK),t,t/len(selK),t*nproc_/len(selK)) )
+    print ("time for processing {0:6d} K-points  on {4:3d} processes: {1:10.4f} ; per K-point {2:15.4f} ; proc-sec per K-point : {3:15.4f}".format(len(selK),t,t/len(selK),t*nproc_/len(selK),nproc) )
     return len(dK_list)
 
 
 
-def evaluate_K(func,system,grid,nparK,nparFFT,
+def evaluate_K(func,system,grid,nparK,nparFFT=0,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              symmetry_gen=[SYM.Identity],suffix="",
              file_Klist="K_list.pickle",restart=False,start_iter=0):
@@ -76,7 +78,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
 
     
     paralfunc=functools.partial(
-        _eval_func_k, func=func,system=system,NKFFT=grid.FFT,nparFFT=nparFFT )
+        _eval_func_k, func=func,system=system,NKFFT=grid.FFT,nparFFT=nparFFT,fftlib=fftlib )
 
 
 
@@ -160,7 +162,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
        
 
 
-def _eval_func_k(Kpoint,func,system,NKFFT,nparFFT):
-    data=Data_K(system,Kpoint.Kp_fullBZ,NKFFT=NKFFT,Kpoint=Kpoint,npar=nparFFT)
+def _eval_func_k(Kpoint,func,system,NKFFT,nparFFT,fftlib):
+    data=Data_K(system,Kpoint.Kp_fullBZ,NKFFT=NKFFT,Kpoint=Kpoint,npar=nparFFT,fftlib=fftlib)
     return func(data)
 
