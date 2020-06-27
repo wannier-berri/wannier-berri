@@ -30,7 +30,7 @@ class Grid():
         NKFFT - number of k-points in the FFT grid along each directions 
         NKdiv - number of k-points in the division (K-) grid along each directions 
         GammaCentered [= True ] - logical - wether grid is Gamma-Centered or shifted
-        minimalFFT    [= False] force the FFT grid to be equal to the minimal allowed for the system 
+        minimalFFT    [= True] force the FFT grid to be equal to the minimal allowed for the system 
         NK,NKdiv,NKFFT may be given as size-3 integer arrays or lists. Also may be just numbers -- in that case the number of kppoints is the same in all directions
 
         the following conbinations of (NK,NKFFT,NKdiv,length) parameters may be used:
@@ -43,12 +43,12 @@ class Grid():
         The others will be evaluated automatically
     """
 
-    def __init__(self,system,NKdiv=None,NKFFT=None,NK=None,minimalFFT=False,GammaCentered=True,length=None):
+    def __init__(self,system,NKdiv=None,NKFFT=None,NK=None,minimalFFT=True,GammaCentered=True,length=None):
 
         NKFFTmin=system.NKFFTmin 
         self.symgroup=system.symgroup
         self.GammaCentered=GammaCentered
-        self.div,self.FFT=determineNK(NKdiv,NKFFT,NK,NKFFTmin,self.symgroup,minimalFFT=False,length=length)
+        self.div,self.FFT=determineNK(NKdiv,NKFFT,NK,NKFFTmin,self.symgroup,minimalFFT=minimalFFT,length=length)
 
     @property
     def dense(self):
@@ -89,7 +89,7 @@ def autoNK(NK,NKFFTmin,symgroup,minimalFFT):
     NKFFTmin=FFT_symmetric[np.argmin(FFT_symmetric.prod(axis=1))]
     print ("Minimal symmetric FFT grid : ",NKFFTmin)
     if minimalFFT:
-        return NKFFTmin
+        FFT=NKFFTmin
     else:
         FFT_symmetric=np.array([fft for fft in iterate_vector(NKFFTmin,NKFFTmin*2) if symgroup.symmetric_grid(fft) ])
         NKdiv_tmp=np.array(np.round(NK[None,:]/FFT_symmetric),dtype=int)
