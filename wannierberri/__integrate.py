@@ -93,6 +93,7 @@ descriptions['cumdos']="Cumulative density of states"
 descriptions['dos']="density of states"
 descriptions['conductivity_ohmic']="ohmic conductivity in S/cm for tau={} s . Fermi-sea formulation".format(TAU_UNIT)
 descriptions['conductivity_ohmic_fsurf']="ohmic conductivity in S/cm for tau={} s . Fermi-surface formulation".format(TAU_UNIT)
+descriptions['gyrotropic_Korb']="GME tensor, orbital part (Ampere) - fermi sea formula"
 descriptions['gyrotropic_Korb_fsurf']="GME tensor, orbital part (Ampere) - fermi surface formula"
 descriptions['gyrotropic_Kspin']="GME tensor, spin part (Ampere)  - fermi sea formula"
 descriptions['gyrotropic_Kspin_fsurf']="GME tensor, spin part (Ampere)  - fermi surface formula"
