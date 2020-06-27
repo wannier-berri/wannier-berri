@@ -15,7 +15,8 @@
 ## TODO : maybe to make some lazy_property's not so lazy to save some memory
 import numpy as np
 import lazy_property
-import multiprocessing 
+#import billiard as multiprocessing 
+import  multiprocessing 
 from .__system import System
 from .__utility import  print_my_name_start,print_my_name_end,einsumk, FFT_R_to_k, alpha_A,beta_A
 
@@ -24,7 +25,7 @@ def _rotate_matrix(X):
 
    
 class Data_K(System):
-    def __init__(self,system,dK=None,NKFFT=None,Kpoint=None,npar=0):
+    def __init__(self,system,dK=None,NKFFT=None,Kpoint=None,npar=0,fftlib='fftw'):
 #        self.spinors=system.spinors
         self.iRvec=system.iRvec
         self.real_lattice=system.real_lattice
@@ -36,13 +37,13 @@ class Data_K(System):
         self.random_gauge=system.random_gauge
         self.degen_thresh=system.degen_thresh
         ## TODO : create the plans externally, one per process 
-        self.fft_R_to_k=FFT_R_to_k(system.iRvec,NKFFT,self.num_wann,numthreads=npar if npar>0 else 1)
+        self.fft_R_to_k=FFT_R_to_k(system.iRvec,NKFFT,self.num_wann,numthreads=npar if npar>0 else 1,lib=fftlib)
 
         try:
             self.poolmap=multiprocessing.Pool(npar).map
-            print ('created a pool of {} workers'.format(npar))
+#            print ('created a pool of {} workers'.format(npar))
         except Exception as err:
-            print ('failed to create a pool of {} workers : {}'.format(npar,err))
+#            print ('failed to create a pool of {} workers : {}'.format(npar,err))
             self.poolmap=lambda fun,lst : [fun(x) for x in lst]
         if dK is not None:
             expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))
@@ -250,9 +251,9 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def E_K(self):
         print_my_name_start()
-        EUU=self.poolmap(np.linalg.eigh , self.HH_K)
+        EUU=self.poolmap(np.linalg.eigh,self.HH_K)
         E_K=np.array([euu[0] for euu in EUU])
-        self._UU =np.array([euu[1] for euu in EUU])
+        self._UU=np.array([euu[1] for euu in EUU])
         print_my_name_end()
         return E_K
 
@@ -261,6 +262,7 @@ class Data_K(System):
     def UU_K(self):
         print_my_name_start()
         self.E_K
+        # the following is needed only for testing : 
         if self.random_gauge:
             from scipy.stats import unitary_group
             cnt=0

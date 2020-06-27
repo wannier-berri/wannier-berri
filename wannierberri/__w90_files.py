@@ -17,6 +17,7 @@ from scipy.io import FortranFile
 import copy
 import lazy_property
 import functools
+#import billiard as multiprocessing 
 import multiprocessing 
 from .__utility import str2bool, alpha_A, beta_A, iterate3dpm
 from colorama import init

@@ -116,7 +116,7 @@ def check_option(quantities,avail,tp):
 
 def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,
-                        fout_name="wberri",restart=False,nparK=0,nparFFT=0,suffix="",file_Klist="Klist",parameters={}):
+                        fout_name="wberri",restart=False,numproc=0,fftlib='fftw',suffix="",file_Klist="Klist",parameters={}):
 
     cprint ("\nIntegrating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
@@ -124,7 +124,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     smoothW= None if omega is None else smoother(omega,smearW) # smoother for functions of frequency
     eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, omega=omega, smootherEf=smoothEf, smootherOmega=smoothW,
             quantities=quantities, parameters=parameters )
-    res=evaluate_K(eval_func,system,grid,nparK,nparFFT=nparFFT,
+    res=evaluate_K(eval_func,system,grid,nparK=numproc,fftlib=fftlib,
             adpt_num_iter=adpt_num_iter,adpt_nk=1,
                 fout_name=fout_name,suffix=suffix,
                 restart=restart,file_Klist=file_Klist)
@@ -134,14 +134,14 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 
 
 def tabulate(system,grid,omega=None, quantities=[],
-                  fout_name="wberri",ibands=None,suffix="",nparK=0,Ef0=0.,parameters={}):
+                  fout_name="wberri",ibands=None,suffix="",numproc=0,Ef0=0.,parameters={}):
 
     assert grid.GammaCentered , "only Gamma-centered grids are allowed for tabulation"
     cprint ("\nTabulating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,tabulate_options,"tabulate")
     eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
 
-    res=evaluate_K(eval_func,system,grid,nparK,nparFFT=0,
+    res=evaluate_K(eval_func,system,grid,nparK=numproc,
             adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None)
             
     res=res.to_grid(grid.dense)

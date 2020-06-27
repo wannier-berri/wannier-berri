@@ -13,7 +13,7 @@
 
 
 
-__debug = True
+__debug = False
 
 import inspect
 import numpy as np
@@ -172,7 +172,7 @@ def fft_W(inp,axes,inverse=False,destroy=True,numthreads=1):
     t1=time()
     fft_object(inp)
     t2=time()
-    print ("time to plan {},{}, time to execute {}".format(t01-t0,t1-t01,t2-t1))
+#    print ("time to plan {},{}, time to execute {}".format(t01-t0,t1-t01,t2-t1))
     return fft_out
 
 
@@ -210,28 +210,38 @@ def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,numthreads=1,fft='fftw'
 
 class FFT_R_to_k():
     
-    def __init__(self,iRvec,NKFFT,num_wann,numthreads=1):
+    def __init__(self,iRvec,NKFFT,num_wann,numthreads=1,lib='fftw'):
         print_my_name_start()
         self.NKFFT=tuple(NKFFT)
         self.num_wann=num_wann
-        shape=self.NKFFT+(self.num_wann,self.num_wann)
-        fft_in  = pyfftw.empty_aligned(shape, dtype='complex128')
-        fft_out = pyfftw.empty_aligned(shape, dtype='complex128')
-        self.fft_plan = pyfftw.FFTW(fft_in, fft_out,axes=(0,1,2), 
-            flags=('FFTW_MEASURE','FFTW_DESTROY_INPUT'),
-            direction='FFTW_BACKWARD' ,
-            threads=numthreads)
+        assert lib in ('fftw','numpy')
+        self.lib = lib
+        if lib == 'fftw':
+            shape=self.NKFFT+(self.num_wann,self.num_wann)
+            fft_in  = pyfftw.empty_aligned(shape, dtype='complex128')
+            fft_out = pyfftw.empty_aligned(shape, dtype='complex128')
+            self.fft_plan = pyfftw.FFTW(fft_in, fft_out,axes=(0,1,2), 
+                flags=('FFTW_ESTIMATE','FFTW_DESTROY_INPUT'),
+                direction='FFTW_BACKWARD' ,
+                threads=numthreads  )
+#            print ("created fftw plan with {} threads".format(numthreads))
         self.iRvec=iRvec
         self.nRvec=iRvec.shape[0]
 
+    def execute_fft(self,A):
+        return self.fft_plan(A)
+
     def transform(self,AAA_K):
-        # do recursion is array has cartesian indices. The recursion shoild not be very deep
-        if AAA_K.ndim>5:
-            for i in range(AAA_K.shape[-1]):
-               AAA_K[...,i]=self.transform(AAA_K[...,i])
+        if self.lib=='numpy':
+            AAA_K[...] = np.fft.ifftn(AAA_K,axes=(0,1,2))
         else:
-            AAA_K[...]=self.fft_plan(AAA_K[...])
-        return AAA_K
+        # do recursion is array has cartesian indices. The recursion shoild not be very deep
+            if AAA_K.ndim>5:
+                for i in range(AAA_K.shape[-1]):
+                    AAA_K[...,i]=self.transform(AAA_K[...,i])
+            else:
+                AAA_K[...]=self.execute_fft(AAA_K[...])
+            return AAA_K
 
     def __call__(self,AAA_R,hermitian=False,antihermitian=False,reshapeKline=True):
     #  AAA_R is an array of dimension (  num_wann x num_wann x nRpts X... ) (any further dimensions allowed)

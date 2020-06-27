@@ -122,7 +122,7 @@ class  KpointBZ():
                                   for y in range(ndiv[1]) 
                                    for z in range(ndiv[2])
                             if not (include_original and np.all(np.array([x,y,z])*2+1==ndiv)) ]
-        print ("ndiv={}, include_original={} ".format(ndiv,include_original))
+#        print ("ndiv={}, include_original={} ".format(ndiv,include_original))
 
         if include_original:
             self.factor=newfac
@@ -131,9 +131,9 @@ class  KpointBZ():
 
 #            K_list_add.append(self.fraction(ndiv))
         else:
-            self.factor=0  # the K-point is "dead" but can be used for starting calculation on a different grid 
+            self.factor=0  # the K-point is "dead" but can be used for starting calculation on a different grid  - not implemented
 
-        print ("ndiv={}, include_original={} ".format(ndiv,include_original))
+#        print ("ndiv={}, include_original={} ".format(ndiv,include_original))
 
         n=len(K_list_add)
 
