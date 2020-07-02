@@ -115,6 +115,8 @@ class System():
 
         if getSS:
             self.SS_R=self.__getMat('SS')
+
+        self.set_symmetry()
         cprint ("Reading the system finished successfully",'green', attrs=['bold'])
 
 
@@ -163,7 +165,7 @@ class System():
         assert self._FFT_compatible(NKFFTmin,self.iRvec)
         return NKFFTmin
 
-    def set_symmetry(self,symmetry_gen):
+    def set_symmetry(self,symmetry_gen=[]):
         self.symgroup=Group(symmetry_gen,recip_lattice=self.recip_lattice,real_lattice=self.real_lattice)
 
 

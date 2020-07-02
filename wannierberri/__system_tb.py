@@ -73,6 +73,7 @@ class System_tb(System):
             self.AA_R = None
         
         f.close()
+        self.set_symmetry()
 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
