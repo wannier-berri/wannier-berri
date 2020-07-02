@@ -77,7 +77,7 @@ class System_w90(System):
 
         eig=EIG(seedname)
         if getAA or getBB:
-            mmn=MMN(seedname)
+            mmn=MMN(seedname,npar=npar)
 
         kpt_mp_grid=[tuple(k) for k in np.array( np.round(chk.kpt_latt*np.array(chk.mp_grid)[None,:]),dtype=int)%chk.mp_grid]
 #        print ("kpoints:",kpt_mp_grid)
@@ -121,13 +121,14 @@ class System_w90(System):
 
         if  use_ws:
             print ("using ws_distance")
-            ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centres, chk.mp_grid,self.real_lattice)
+            ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centres, chk.mp_grid,self.real_lattice,npar=npar)
             for X in ['HH','AA','BB','CC','SS','FF']:
                 XR=X+'_R'
                 if vars(self)[XR] is not None:
                     print ("using ws_dist for {}".format(XR))
                     vars(self)[XR]=ws_map(vars(self)[XR])
             self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
+        self.set_symmetry()
 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
@@ -156,7 +157,7 @@ class System_w90(System):
 
 class ws_dist_map_gen(ws_dist_map):
 
-    def __init__(self,iRvec,wannier_centres, mp_grid,real_lattice):
+    def __init__(self,iRvec,wannier_centres, mp_grid,real_lattice,npar=multiprocessing.cpu_count()):
     ## Find the supercell translation (i.e. the translation by a integer number of
     ## supercell vectors, the supercell being defined by the mp_grid) that
     ## minimizes the distance between two given Wannier functions, i and j,
@@ -165,6 +166,7 @@ class ws_dist_map_gen(ws_dist_map):
     ## We also look for the number of equivalent translation, that happen when w_j,R
     ## is on the edge of the WS of w_i,0. The results are stored 
     ## a dictionary shifts_iR[(iR,i,j)]
+        t0=time()
         ws_search_size=np.array([2]*3)
         ws_distance_tol=1e-5
         cRvec=iRvec.dot(real_lattice)
@@ -172,18 +174,32 @@ class ws_dist_map_gen(ws_dist_map):
         shifts_int_all= np.array([ijk  for ijk in iterate3dpm(ws_search_size+1)])*np.array(mp_grid[None,:])
         self.num_wann=wannier_centres.shape[0]
         self._iRvec_new=dict()
-
+        param=(shifts_int_all,wannier_centres,real_lattice, ws_distance_tol)
+        p=multiprocessing.Pool(npar)
+        t1=time()
+        irvec_new_all=p.starmap(functools.partial(ws_dist_stars,ws_map=self,param=param),zip(iRvec,cRvec))
+        t2=time()
         for ir,iR in enumerate(iRvec):
-          for jw in range(self.num_wann):
-            for iw in range(self.num_wann):
+          for ijw,irvec_new in irvec_new_all[ir].items():
+              self._add_star(ir,irvec_new,ijw[0],ijw[1])
+        t3=time()
+
+        self._init_end(iRvec.shape[0])
+        t4=time()
+        print ("time for ws_dist_map_gen : ",t4-t0, t1-t0,t2-t1,t3-t2,t4-t3)
+
+
+
+def ws_dist_stars(iRvec,cRvec,ws_map,param):
+          shifts_int_all,wannier_centres,real_lattice, ws_distance_tol = param
+          irvec_new={}
+          for jw in range(ws_map.num_wann):
+            for iw in range(ws_map.num_wann):
               # function JW translated in the Wigner-Seitz around function IW
               # and also find its degeneracy, and the integer shifts needed
               # to identify it
-              R_in=-wannier_centres[iw] +cRvec[ir] + wannier_centres[ jw]
+              R_in=-wannier_centres[iw] +cRvec + wannier_centres[ jw]
               dist=np.linalg.norm( R_in[None,:]+shifts_int_all.dot(real_lattice),axis=1)
-              irvec_new=iR+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
-              self._add_star(ir,irvec_new,iw,jw)
-        self._init_end(iRvec.shape[0])
-
-
+              irvec_new[(iw,jw)]=iRvec+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
+          return irvec_new
 

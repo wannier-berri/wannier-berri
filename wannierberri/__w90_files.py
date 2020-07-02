@@ -22,6 +22,9 @@ import multiprocessing
 from .__utility import str2bool, alpha_A, beta_A, iterate3dpm
 from colorama import init
 from termcolor import cprint 
+from time import time
+from itertools import islice
+
 
 
 readstr  = lambda F : "".join(c.decode('ascii')  for c in F.read_record('c') ).strip() 
@@ -29,6 +32,7 @@ readstr  = lambda F : "".join(c.decode('ascii')  for c in F.read_record('c') ).s
 class CheckPoint():
 
     def __init__(self,seedname):
+        t0=time()
         seedname=seedname.strip()
         FIN=FortranFile(seedname+'.chk','r')
         readint   = lambda : FIN.read_record('i4')
@@ -75,6 +79,7 @@ class CheckPoint():
             self.v_matrix=[u  for u in u_matrix ] 
         self.wannier_centres=readfloat().reshape((self.num_wann,3))
         self.wannier_spreads=readfloat().reshape((self.num_wann))
+        print ("Time to read .chk : {}".format(time()-t0))
 
     def wannier_gauge(self,mat,ik1,ik2):
         # data should be of form NBxNBx ...   - any form later
@@ -158,6 +163,8 @@ class W90_data():
         else:
             return 0
 
+def convert(A):
+    return np.array([l.split() for l in A],dtype=float)
 
 class MMN(W90_data):
 
@@ -166,21 +173,41 @@ class MMN(W90_data):
         return 1
 
 
-    def __init__(self,seedname,num_proc=4):
-        f_mmn_in=open(seedname+".mmn","r").readlines()
-        print ("reading {}.mmn: ".format(seedname)+f_mmn_in[0])
-        s=f_mmn_in[1]
-        NB,NK,NNB=np.array(s.split(),dtype=int)
+    def __init__(self,seedname,npar=multiprocessing.cpu_count()):
+        t0=time()
+        f_mmn_in=open(seedname+".mmn","r")
+        print ("reading {}.mmn: ".format(seedname)+f_mmn_in.readline())
+        NB,NK,NNB=np.array(f_mmn_in.readline().split(),dtype=int)
         self.data=np.zeros( (NK,NNB,NB,NB), dtype=complex )
-        headstring=np.array([s.split() for s in f_mmn_in[2::1+self.NB**2] ]
-                    ,dtype=int).reshape(self.NK,self.NNB,5)
-        self.G=headstring[:,:,2:]
-        self.neighbours=headstring[:,:,1]-1
-        assert np.all( headstring[:,:,0]-1==np.arange(self.NK)[:,None])
         block=1+self.NB*self.NB
-        allmmn=( f_mmn_in[3+j*block:2+(j+1)*block]  for j in range(self.NNB*self.NK) )
-        p=multiprocessing.Pool(num_proc)
-        self.data= np.array(p.map(str2arraymmn,allmmn)).reshape(self.NK,self.NNB,self.NB,self.NB).transpose((0,1,3,2))
+        data=[]
+        headstring=[]
+        mult=4
+        if npar>0 :
+            pool=multiprocessing.Pool(npar)
+        for j in range(0,NNB*NK,npar*mult):
+            x=list(islice(f_mmn_in, int(block*npar*mult)))
+            print ("mmn: read {} lines".format(len(x)))
+            if len(x)==0 : break
+            headstring+=x[::block]
+            y=[x[i*block+1:(i+1)*block] for i in range(npar*mult) if (i+1)*block<=len(x)]
+            if npar>0:
+                data+=pool.map(convert,y)
+            else:
+                data+=[convert(z) for z in y]
+        if npar>0 : 
+            pool.close()
+        f_mmn_in.close()
+        t1=time()
+        data=[d[:,0]+1j*d[:,1] for d in data]
+        self.data=np.array(data).reshape(self.NK,self.NNB,self.NB,self.NB).transpose((0,1,3,2))
+        headstring=np.array([s.split() for s in headstring  ] ,dtype=int).reshape(self.NK,self.NNB,5)
+        assert np.all( headstring[:,:,0]-1==np.arange(self.NK)[:,None])
+        self.neighbours=headstring[:,:,1]-1
+        self.G=headstring[:,:,2:]
+        t2=time()
+        print ("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2-t0,t1-t0,t2-t1))
+
 
     def set_bk(self,chk):
       try :
@@ -210,12 +237,6 @@ class MMN(W90_data):
         self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
         self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
         
-
-
-def str2arraymmn(A):
-    a=np.array([l.split() for l in A],dtype=float)
-    n=int(round(np.sqrt(a.shape[0])))
-    return (a[:,0]+1j*a[:,1]).reshape((n,n))
 
 
 
