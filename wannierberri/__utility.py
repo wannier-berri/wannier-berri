@@ -211,6 +211,7 @@ def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,numthreads=1,fft='fftw'
 class FFT_R_to_k():
     
     def __init__(self,iRvec,NKFFT,num_wann,numthreads=1,lib='fftw'):
+        t0=time()
         print_my_name_start()
         self.NKFFT=tuple(NKFFT)
         self.num_wann=num_wann
@@ -227,6 +228,9 @@ class FFT_R_to_k():
 #            print ("created fftw plan with {} threads".format(numthreads))
         self.iRvec=iRvec
         self.nRvec=iRvec.shape[0]
+        self.time_init=time()-t0
+        self.time_call=0
+        self.n_call=0
 
     def execute_fft(self,A):
         return self.fft_plan(A)
@@ -244,6 +248,7 @@ class FFT_R_to_k():
             return AAA_K
 
     def __call__(self,AAA_R,hermitian=False,antihermitian=False,reshapeKline=True):
+        t0=time()
     #  AAA_R is an array of dimension (  num_wann x num_wann x nRpts X... ) (any further dimensions allowed)
         if  hermitian and antihermitian :
             raise ValueError("A matrix cannot be both Hermitian and anti-Hermitian, unless it is zero")
@@ -266,8 +271,12 @@ class FFT_R_to_k():
 
         if reshapeKline:
             AAA_K=AAA_K.reshape( (np.prod(self.NKFFT),)+shapeA[1:])
+        self.time_call+=time()-t0
+        self.n_call+=1
         return AAA_K
 
+#    def __del__(self):
+#        print ("time for FFT via {} : {} (__init__:{} , {} callstotal {} ) ".format(self.lib,self.time_init+self.time_call , self.time_init,self.n_call, self.time_call))
 
 def iterate3dpm(size):
     return ( np.array([i,j,k]) for i in range(-size[0],size[0]+1)
