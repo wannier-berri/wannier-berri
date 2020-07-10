@@ -25,7 +25,7 @@ under construction may be viewed here: https://www.overleaf.com/read/kbxxtfbnjvx
 
 Web page
 --------
-https://www.physik.uzh.ch/en/groups/neupert/Software/Wannier-Berri.html
+http://wannier-berri.org
 
 Mailing list:
 -------------
