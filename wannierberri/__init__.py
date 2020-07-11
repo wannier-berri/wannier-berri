@@ -10,7 +10,9 @@
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
 #------------------------------------------------------------
-
+"""
+WannierBerri - a library for Wannier interpolation
+"""
 from .__main import integrate,tabulate,symmetry,integrate_options,tabulate_options,welcome
 from .__grid import Grid
 from .__version import __version__

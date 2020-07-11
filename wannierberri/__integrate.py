@@ -24,7 +24,7 @@ from . import  __berry as berry
 from . import  __fermisea2 as fermisea2
 from . import  __nonabelian as nonabelian
 from . import  __dos as dos
-from . import  __symmetry  as symmetry
+from . import  symmetry
 from . import  __utility   as utility
 from . import  __kubo   as kubo
 

@@ -16,7 +16,7 @@ from time import time
 import numpy as np
 import lazy_property
 from copy import copy,deepcopy
-from .__symmetry import SYMMETRY_PRECISION
+from .symmetry import SYMMETRY_PRECISION
 
 class  KpointBZ():
 
