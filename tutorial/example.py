@@ -42,7 +42,7 @@ wberri.integrate(system,
             quantities=["ahc","dos","cumdos"],
             numproc=num_proc,
             adpt_num_iter=10,
-            libfft='fftw', #default.  alternative  option - 'numpy'
+            fftlib='fftw', #default.  alternative  option - 'numpy'
             fout_name='Fe',
             restart=False,
             )
