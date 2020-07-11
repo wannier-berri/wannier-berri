@@ -23,7 +23,7 @@ import pickle
 import glob
 
 from .__Data_K import Data_K
-from . import __symmetry as SYM
+from . import symmetry as SYM
 from  .__Kpoint import exclude_equiv_points
 from . import __utility as utility
 

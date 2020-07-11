@@ -19,7 +19,7 @@ from copy import deepcopy
 from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
 from . import __result as result
 from . import  __berry as berry
-from . import  __symmetry  as symmetry
+from . import  symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 

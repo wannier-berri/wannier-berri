@@ -18,7 +18,7 @@ from .__evaluate import evaluate_K
 from .__utility import smoother 
 from . import __integrate 
 from . import __tabulate  
-from . import __symmetry as symmetry
+from . import symmetry
 
 from .__version import __version__
 from .__result import NoComponentError
@@ -117,7 +117,41 @@ def check_option(quantities,avail,tp):
 def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,
                         fout_name="wberri",restart=False,numproc=0,fftlib='fftw',suffix="",file_Klist="Klist",parameters={}):
+    """
+    Integrate 
 
+    Parameters
+    ----------
+    system : :class:`~wannierberri.System`
+        System under investigation
+    grid : :class:`~wannierberri.Grid`
+        initial grid for integration
+    Efermi : numpy.array
+        The list of Fermi levels to be scanned (for Fermi-sea or Fermi-surface properties)
+    omega : numpy.array
+        The list of ferequencies levels to be scanned (for optical properties)
+    Ef0 : float
+        a single  Fermi level for optical properties
+    smearEf : float
+        smearing over Fermi levels (in Kelvin)
+    smearW : float
+        smearing over frequencies (in Kelvin)
+    quantities : list of str
+        quantities to be integrated. See :ref:`sec-capabilities`
+    adpt_num_iter : int 
+        number of recursive adaptive refinement iterations. See :ref:`sec-refine`
+    num_proc : int 
+        number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
+   
+    Returns
+    --------
+    dictionary of  :class:`~wannierberri.EnergyResult` 
+
+    Notes
+    -----
+    Results are also printed to ASCII files
+
+    """
     cprint ("\nIntegrating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
     smoothEf = None if Efermi is None else smoother(Efermi,smearEf) # smoother for functions of Fermi energy
@@ -133,8 +167,33 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 
 
 
-def tabulate(system,grid,omega=None, quantities=[],
+def tabulate(system,grid, quantities=[],
                   fout_name="wberri",ibands=None,suffix="",numproc=0,Ef0=0.,parameters={}):
+    """
+    Tabulate quantities to be plotted
+
+    Parameters
+    ----------
+    system : :class:`~wannierberri.System`
+        System under investigation
+    grid : :class:`~wannierberri.Grid`
+        initial grid for integration
+    Ef0 : float
+        a single  Fermi level. all energies are given with respect to Ef0
+    quantities : list of str
+        quantities to be integrated. See :ref:`sec-capabilities`
+    num_proc : int 
+        number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
+   
+    Returns
+    --------
+    list of :class:`~wannierberri.__tabulate.TABresult`
+
+    Notes
+    -----
+    Results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
+
+    """
 
     assert grid.GammaCentered , "only Gamma-centered grids are allowed for tabulation"
     cprint ("\nTabulating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])

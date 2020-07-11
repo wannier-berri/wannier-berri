@@ -10,6 +10,37 @@
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
 #------------------------------------------------------------
+""" module to define the Symmetry operations. Contains a general class for Rotation, Mirror, and also some pre-defined shortcuts:
+
++ Identity =Symmetry( np.eye(3))
+
++ Inversion=Symmetry(-np.eye(3))
+
++ TimeReversal=Symmetry( np.eye(3),True)
+
++ Mx=Mirror([1,0,0])
+
++ My=Mirror([0,1,0])
+
++ Mz=Mirror([0,0,1])
+
++ C2z=Rotation(2,[0,0,1])
+
++ C3z=Rotation(3,[0,0,1])
+
++ C4x=Rotation(4,[1,0,0])
+
++ C4y=Rotation(4,[0,1,0])
+
++ C4z=Rotation(4,[0,0,1])
+
++ C6z=Rotation(6,[0,0,1])
+
++ C2x=Rotation(2,[1,0,0])
+
++ C2y=Rotation(2,[0,1,0])
+
+"""
 
 
 import numpy as np
@@ -33,7 +64,10 @@ class Symmetry():
         self.R=R*(-1 if self.Inv else 1)
             
     def show(self):
-        print ("rotation: {0}, TR:{1} , I:{1}".format(self.R,self.TR,self.Inv))
+        print (self)
+
+    def __str__(self):
+        return ("rotation: {0}, TR:{1} , I:{1}".format(self.R,self.TR,self.Inv))
 
     @Lazy
     def iTR(self):
@@ -80,6 +114,7 @@ class Symmetry():
         
 
 class Rotation(Symmetry):
+    """ n-fold rotatio around the axis """
     def __init__(self,n,axis=[0,0,1]):
         if not isinstance(n,int):
             raise ValueError("Only integer rotations are supported")
@@ -95,6 +130,7 @@ class Rotation(Symmetry):
 
 
 class Mirror(Symmetry):
+    """ mirror plane with normal 'axis'  """
     def __init__(self,axis=[0,0,1]):
          super(Mirror, self).__init__( (Rotation(2,axis)*Inversion).R )
 

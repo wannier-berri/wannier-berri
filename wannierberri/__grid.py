@@ -15,35 +15,46 @@ from collections import Iterable
 import numpy as np
 from  .__Kpoint import KpointBZ
 
-# TODO: enable automatic generation by dk
+
+
+
 class Grid():
-    """ A class containing information about the k-grid : 
-        div, FFT  - size-3 integer arrays
-        GammaCentered - logical
-        symgroup
+    """ A class containing information about the k-grid. 
 
-        input parameters are :
-        system - object of class Sysyem, for which the calculations will be made. The only mandatory parameter
+    Parameters
+    -----------
+    system : :class:`~wannierberri.System` 
+        which the calculations will be made
+    length :  float
+        (angstroms) -- in this case the grid is NK[i]=length*||B[i]||/2pi  B- reciprocal lattice
+    NK : int  or list or numpy.array(3) 
+        number of k-points along each directions 
+    NKFFT : int 
+        number of k-points in the FFT grid along each directions 
+    NKdiv : int 
+        number of k-points in the division (K-) grid along each directions 
+    GammaCentered : bool 
+        wether grid is Gamma-Centered or shifted
+    minimalFFT : bool
+        force the FFT grid to be equal to the minimal allowed for the system 
 
-        NK - number of k-points along each directions 
-        length (angstroms) -- in this case the grid is NK[i]=length*||B[i]||/2pi  B- reciprocal lattie
-        NKFFT - number of k-points in the FFT grid along each directions 
-        NKdiv - number of k-points in the division (K-) grid along each directions 
-        GammaCentered [= True ] - logical - wether grid is Gamma-Centered or shifted
-        minimalFFT    [= True] force the FFT grid to be equal to the minimal allowed for the system 
-        NK,NKdiv,NKFFT may be given as size-3 integer arrays or lists. Also may be just numbers -- in that case the number of kppoints is the same in all directions
+    Notes
+    -----
+    `NK`, `NKdiv`, `NKFFT`  may be given as size-3 integer arrays or lists. Also may be just numbers -- in that case the number of kppoints is the same in all directions
 
-        the following conbinations of (NK,NKFFT,NKdiv,length) parameters may be used:
+    the following conbinations of (NK,NKFFT,NKdiv,length) parameters may be used:
 
-        - length  (preferred)
-        - NK
-        - NK,NKFFT
-        - length,NKFFT
-        - NKdiv,NKFFT
-        The others will be evaluated automatically
+    - `length` (preferred)
+    - `NK`
+    - `NK`, `NKFFT`
+    - `length`, `NKFFT`
+    - `NKdiv`, `NKFFT`
+
+    The others will be evaluated automatically. 
+
     """
 
-    def __init__(self,system,NKdiv=None,NKFFT=None,NK=None,minimalFFT=True,GammaCentered=True,length=None):
+    def __init__(self,system,length=None,NKdiv=None,NKFFT=None,NK=None,minimalFFT=True,GammaCentered=True):
 
         NKFFTmin=system.NKFFTmin 
         self.symgroup=system.symgroup
