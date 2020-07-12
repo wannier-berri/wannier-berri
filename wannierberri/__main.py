@@ -86,16 +86,7 @@ def welcome():
     figlet("    by Stepan Tsirkin",font='straight',col='green')
 
 
-
-    cprint("""
-Tutorial at  Electronic Structure Workshop  was recorded.
-Video: https://uzh.zoom.us/rec/share/y84qFIzs8WlIY53g-UGYdfUCB6DUaaa80SUZ-fJZy-GyE37OpaVGSfwDqVj43hk
-Input files: https://www.dropbox.com/sh/8lt0rznh7zetagp/AABGrVWr6-1b9kMR3Wo8H92Na?dl=0
-""", 'yellow', attrs=['bold'])
-
-    cprint("""
-User manual under construction may be viewed here: https://www.overleaf.com/read/kbxxtfbnjvxx
-""",'magenta' )
+    cprint("""\n  The Web page is :  HTTP://WANNIER-BERRI.ORG  \n""",'yellow' )
 
 
     cprint( "\nVersion: {}\n".format( __version__),'cyan', attrs=['bold'])
