@@ -113,7 +113,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 
     Parameters
     ----------
-    system : :class:`~wannierberri.System`
+    system : :class:`~wannierberri.__system.System`
         System under investigation
     grid : :class:`~wannierberri.Grid`
         initial grid for integration
@@ -165,7 +165,7 @@ def tabulate(system,grid, quantities=[],
 
     Parameters
     ----------
-    system : :class:`~wannierberri.System`
+    system : :class:`~wannierberri.__system.System`
         System under investigation
     grid : :class:`~wannierberri.Grid`
         initial grid for integration

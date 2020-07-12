@@ -23,7 +23,7 @@ class Grid():
 
     Parameters
     -----------
-    system : :class:`~wannierberri.System` 
+    system : :class:`~wannierberri.__system.System` 
         which the calculations will be made
     length :  float
         (angstroms) -- in this case the grid is NK[i]=length*||B[i]||/2pi  B- reciprocal lattice
