@@ -173,7 +173,7 @@ class System():
 
     def set_symmetry(self,symmetry_gen=[]):
         """ 
-        Set the symmetry group of the :class:`~wannierberri.System` 
+        Set the symmetry group of the :class:`~wannierberri.__system.System` 
 
         Parameters
         ----------
