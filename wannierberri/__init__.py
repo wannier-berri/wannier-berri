@@ -11,7 +11,7 @@
 #                                                            #
 #------------------------------------------------------------
 """
-WannierBerri - a library for Wannier interpolation
+wannierberri - a module for Wannier interpolation
 """
 from .__main import integrate,tabulate,symmetry,integrate_options,tabulate_options,welcome
 from .__grid import Grid
