@@ -114,7 +114,14 @@ class Symmetry():
         
 
 class Rotation(Symmetry):
-    """ n-fold rotatio around the axis """
+    """ n-fold rotatio around the ``axis`` 
+    Parameters
+    ----------
+    n : int
+        order of rotation : 1,2,3,4 or 6
+    axis : Iterable of 3 float numbers
+        the rotation axis in Cartesian coordinates. Length of vector does not matter, but should not be zero.
+    """
     def __init__(self,n,axis=[0,0,1]):
         if not isinstance(n,int):
             raise ValueError("Only integer rotations are supported")
@@ -130,7 +137,12 @@ class Rotation(Symmetry):
 
 
 class Mirror(Symmetry):
-    """ mirror plane with normal 'axis'  """
+    """ mirror plane perpendicular to ``axis``  
+    Parameters
+    ----------
+    axis : Iterable of 3 float numbers
+        the normal of the mirror plane in Cartesian coordinates. Length of vector does not matter, but should not be zero
+    """
     def __init__(self,axis=[0,0,1]):
          super(Mirror, self).__init__( (Rotation(2,axis)*Inversion).R )
 

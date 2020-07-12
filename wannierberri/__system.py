@@ -24,6 +24,12 @@ from termcolor import cprint
 
 
 class System():
+    """
+    The base class for describing a system. Although it has its own constructor, it requires input binary files prepared by a special 
+    `branch <https://github.com/stepan-tsirkin/wannier90/tree/save4wberri>`_ of ``postw90.x`` .
+    Therefore this class by itself it is not recommended for a feneral user. Instead, 
+    please use the child classes, e.g  :class:`~wannierberri.System_w90` or :class:`~wannierberri.System_tb`
+    """
 
     def __init__(self,seedname="wannier90",tb_file=None,
                     getAA=False,
@@ -166,6 +172,24 @@ class System():
         return NKFFTmin
 
     def set_symmetry(self,symmetry_gen=[]):
+        """ 
+        Set the symmetry group of the :class:`~wannierberri.System` 
+
+        Parameters
+        ----------
+        symmetry_gen : list of :class:`~wannierberri.symmetry.Symmetry` or str
+            The generators of the symmetry group. 
+
+        Notes
+        -----
+        + Only the generators of the symmetry group are essential. However, no problem if more symmetries are provided. 
+          The code further evaluates all possible products of symmetry operations, until the full group is restored.
+        + Providing `Identity` is not needed. It is included by default
+        + Operations are given as objects of class:`~wannierberri.Symmetry.symmetry` or by name as `str`, e.g. ``'Inversion'`` , ``'C6z'``, or products like ``'TimeReversal*C2x'``.
+        + ``symetyry_gen=[]`` is equivalent to not calling this function at all
+        + Only the **point group** operations are important. Hence, for non-symmorphic operations, only the rotational part should be given, neglecting the translation.
+
+        """
         self.symgroup=Group(symmetry_gen,recip_lattice=self.recip_lattice,real_lattice=self.real_lattice)
 
 

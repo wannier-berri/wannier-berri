@@ -23,11 +23,30 @@ from .__system import System
 
 
 class System_tb(System):
+    """
+    System initialized from the `*_tb.dat` file, which can be written either by  `Wannier90 <http://wannier.org>`_ code, 
+    or composed by the user based on soe tight-binding model. 
+    See Wannier90 `code <https://github.com/wannier-developers/wannier90/blob/2f4aed6a35ab7e8b38dbe196aa4925ab3e9deb1b/src/hamiltonian.F90#L698-L799>`_
+    for details of the format. 
+    
+    Parameters
+    ----------
+    tb_file : str
+        name (and path) of file to be read
+    getAA : bool
+        if ``True`` the position matrix elements are read. Needed quantities derived from Berry connection or Berry curvature. 
+    frozen_max : float
+        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
+    degen_thresh : float
+        threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
+    random_gauge : bool
+        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
+    """
 
     def __init__(self,tb_file="wannier90_tb.dat",getAA=False,
                           frozen_max=-np.Inf,
-                          random_gauge=False,
                           degen_thresh=-1 ,
+                          random_gauge=False,
                     ):
         self.seedname=tb_file.split("/")[-1].split("_")[0]
         f=open(tb_file,"r")
