@@ -91,7 +91,7 @@ def one2three(nk):
 
 
 def iterate_vector(v1,v2):
-    return ((x,y,z) for x in range(v1[0],v2[0]) for y in range(v1[1],v2[2]) for z in range(v1[2],v2[2]) )
+    return ((x,y,z) for x in range(v1[0],v2[0]) for y in range(v1[1],v2[1]) for z in range(v1[2],v2[2]) )
 
 
 def autoNK(NK,NKFFTmin,symgroup,minimalFFT):

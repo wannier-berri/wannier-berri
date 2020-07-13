@@ -85,7 +85,9 @@ class System_TBmodels(System):
             
             for i in range(self.num_wann):
                 self.AA_R[i,i,index0,:self.dimr]=tbmodel.pos[i,:]
-                
+
+        self.set_symmetry()
+
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
         print ("Minimal Number of K points:", self.NKFFTmin)
