@@ -18,7 +18,8 @@ from .__system import System
 
 class System_PythTB(System):
     """This interface is an way to initialize the System class from a tight-binding 
-    model created with  `PythTB. <http://www.physics.rutgers.edu/pythtb/`_ It defines the Hamiltonian matrix HH_R (from hoppings matrix elements)
+    model created with  `PythTB. <http://www.physics.rutgers.edu/pythtb/`_ 
+    It defines the Hamiltonian matrix HH_R (from hoppings matrix elements)
     and the AA_R  matrix (from orbital coordinates) used to calculate 
     Berry related quantities.
 
