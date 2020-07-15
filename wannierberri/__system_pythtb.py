@@ -17,12 +17,25 @@ from .__system import System
 
 
 class System_PythTB(System):
-    r'''This interface is an way to initialize the System class from a tight-binding 
-    model created with PythTB (https://www.physics.rutgers.edu/pythtb/). 
-    It defines the Hamiltonian matrix HH_R (from hoppings matrix elementa)
-    and the AA_R  matrix (from orbital coordinates) used to calculate the 
-    anomalous Hall conductivity.
-    '''
+    """This interface is an way to initialize the System class from a tight-binding 
+    model created with  `PythTB. <http://www.physics.rutgers.edu/pythtb/>`_ 
+    It defines the Hamiltonian matrix HH_R (from hoppings matrix elements)
+    and the AA_R  matrix (from orbital coordinates) used to calculate 
+    Berry related quantities.
+
+    Parameters
+    ----------
+    ptb_model : class
+        name of the PythTB tight-binding model class.
+    getAA : bool
+        if ``True`` the position matrix elements are read from orbital coordinates. Needed quantities derived from Berry connection or Berry curvature. 
+    frozen_max : float
+        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
+    degen_thresh : float
+        threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
+    random_gauge : bool
+        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
+    """
     def __init__(self,ptb_model=None,getAA=False,
                           frozen_max=-np.Inf,
                           random_gauge=False,
@@ -96,8 +109,7 @@ class System_PythTB(System):
             
             for i in range(self.num_wann):
                 self.AA_R[i,i,index0,:self.dimr]=ptb_model._orb[i,:]
-        self.set_symmetry()
-
+        self.set_symmetry()  
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
         print ("Minimal Number of K points:", self.NKFFTmin)
