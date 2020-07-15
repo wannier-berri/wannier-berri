@@ -114,11 +114,12 @@ class Symmetry():
         
 
 class Rotation(Symmetry):
-    """ n-fold rotatio around the ``axis`` 
+    r""" n-fold rotatio around the ``axis`` 
+
     Parameters
     ----------
     n : int
-        order of rotation : 1,2,3,4 or 6
+        1,2,3,4 or 6. Defines the rotation angle :math:`2\pi/n` 
     axis : Iterable of 3 float numbers
         the rotation axis in Cartesian coordinates. Length of vector does not matter, but should not be zero.
     """
@@ -137,7 +138,8 @@ class Rotation(Symmetry):
 
 
 class Mirror(Symmetry):
-    """ mirror plane perpendicular to ``axis``  
+    r""" mirror plane perpendicular to ``axis``  
+
     Parameters
     ----------
     axis : Iterable of 3 float numbers
