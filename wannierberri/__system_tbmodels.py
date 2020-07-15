@@ -18,7 +18,7 @@ from .__system import System
 
 class System_TBmodels(System):
     """This interface initializes the System class from a tight-binding 
-    model created with `TBmodels <http://z2pack.ethz.ch/tbmodels/doc/1.3/index.html>`_
+    model created with `TBmodels. <http://z2pack.ethz.ch/tbmodels/doc/1.3/index.html>`_
     It defines the Hamiltonian matrix HH_R (from hoppings matrix elements)
     and the AA_R  matrix (from orbital coordinates) used to calculate Berry
     related quantities.
