@@ -25,7 +25,7 @@ from .__system import System
 class System_tb(System):
     """
     System initialized from the `*_tb.dat` file, which can be written either by  `Wannier90 <http://wannier.org>`_ code, 
-    or composed by the user based on soe tight-binding model. 
+    or composed by the user based on some tight-binding model. 
     See Wannier90 `code <https://github.com/wannier-developers/wannier90/blob/2f4aed6a35ab7e8b38dbe196aa4925ab3e9deb1b/src/hamiltonian.F90#L698-L799>`_
     for details of the format. 
     
@@ -34,7 +34,7 @@ class System_tb(System):
     tb_file : str
         name (and path) of file to be read
     getAA : bool
-        if ``True`` the position matrix elements are read. Needed quantities derived from Berry connection or Berry curvature. 
+        if ``True`` the position matrix elements are read. Needed for quantities derived from Berry connection or Berry curvature. 
     frozen_max : float
         position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
     degen_thresh : float

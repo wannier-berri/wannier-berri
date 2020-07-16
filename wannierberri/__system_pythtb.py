@@ -28,7 +28,7 @@ class System_PythTB(System):
     ptb_model : class
         name of the PythTB tight-binding model class.
     getAA : bool
-        if ``True`` the position matrix elements are read from orbital coordinates. Needed quantities derived from Berry connection or Berry curvature. 
+        if ``True`` the position matrix elements are read from orbital coordinates. Needed for quantities derived from Berry connection or Berry curvature. 
     frozen_max : float
         position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
     degen_thresh : float
