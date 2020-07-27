@@ -17,15 +17,15 @@ __debug = False
 
 import inspect
 import numpy as np
+import pyfftw
 from lazy_property import LazyProperty as Lazy
-
+from time import time
 
 
 alpha_A=np.array([1,2,0])
 beta_A =np.array([2,0,1])
 TAU_UNIT=1E-9 # tau in nanoseconds
 TAU_UNIT_TXT="ns"
-
 
 
 def print_my_name_start():
@@ -58,6 +58,21 @@ def einsumk(*args):
     else:
         raise RuntimeError("einsumk is not implemented for number of matrices {}".format(nmat))
     
+def conjugate_basis(basis):
+    return 2*np.pi*np.linalg.inv(basis).T
+
+
+def real_recip_lattice(real_lattice=None,recip_lattice=None):
+    if recip_lattice is None:
+        assert real_lattice is not None , "need to provide either with real or reciprocal lattice"
+        recip_lattice=conjugate_basis(real_lattice)
+    else: 
+        if real_lattice is not None:
+            assert np.linalg.norm(real_lattice.dot(recip_lattice.T)/(2*np.pi)-np.eye(3))<=1e-8 , "real and reciprocal lattice do not match"
+        else:
+            real_lattice=conjugate_basis(recip_lattice)
+    return real_lattice, recip_lattice
+
 
 
 from scipy.constants import Boltzmann,elementary_charge,hbar
@@ -94,7 +109,7 @@ class smoother():
 
     def __call__(self,A):
         assert self.E.shape[0]==A.shape[0]
-        res=np.zeros(A.shape)
+        res=np.zeros(A.shape, dtype=A.dtype)
         for i in range(self.NE):
             start=max(0,i-self.NE1)
             end=min(self.NE,i+self.NE1+1)
@@ -143,95 +158,125 @@ def str2bool(v):
         raise RuntimeError(" unrecognized value of bool parameter :{0}".format(v) )
 
 
-def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,num_proc=2):
+def fft_W(inp,axes,inverse=False,destroy=True,numthreads=1):
+    assert inp.dtype==complex
+    t0=time()
+    fft_in  = pyfftw.empty_aligned(inp.shape, dtype='complex128')
+    fft_out = pyfftw.empty_aligned(inp.shape, dtype='complex128')
+    t01=time()
+    fft_object = pyfftw.FFTW(fft_in, fft_out,axes=axes, 
+            flags=('FFTW_ESTIMATE',)+(('FFTW_DESTROY_INPUT',)  if destroy else () ), 
+#            flags=('FFTW_MEASURE',)+(('FFTW_DESTROY_INPUT',)  if destroy else () ), 
+            direction='FFTW_BACKWARD' if inverse else 'FFTW_FORWARD',
+            threads=numthreads)
+    t1=time()
+    fft_object(inp)
+    t2=time()
+#    print ("time to plan {},{}, time to execute {}".format(t01-t0,t1-t01,t2-t1))
+    return fft_out
+
+
+def fft_np(inp,axes,inverse=False):
+    assert inp.dtype==complex
+    if inverse:
+        return np.fft.ifftn(inp,axes=axes)
+    else:
+        return np.fft.fftn(inp,axes=axes)
+
+def FFT(inp,axes,inverse=False,destroy=True,numthreads=1,fft='fftw'):
+    if fft=='fftw':
+        return fft_W(inp,axes,inverse=inverse,destroy=destroy,numthreads=numthreads)
+    elif fft=='numpy':
+        return fft_np(inp,axes,inverse=inverse)
+    else:
+        raise ValueError("unknown type of fft : {}".format(fft))
+
+
+def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,numthreads=1,fft='fftw'):
     print_my_name_start()
     mp_grid=tuple(mp_grid)
     shapeA=AA_q.shape[1:]  # remember the shapes after q
-    sizeA=np.prod(shapeA)
-    AA_q_mp=np.zeros(tuple(mp_grid)+(sizeA,),dtype=complex)
+    AA_q_mp=np.zeros(tuple(mp_grid)+shapeA,dtype=complex)
     for i,k in enumerate(kpt_mp_grid):
-        AA_q_mp[k]=AA_q[i].reshape(-1)
-    AA_q_mp=AA_q_mp.transpose( (3,0,1,2)  )
-    AA_q_mp=np.array([np.fft.fftn(A) for A in AA_q_mp]).transpose( (1,2,3,0) )
-    AA_R=np.array([AA_q_mp[tuple(iR%mp_grid)]/nd for iR,nd in zip(iRvec,ndegen)])
-    AA_R=AA_R.reshape(iRvec.shape[:1]+shapeA) /np.prod(mp_grid)
-#   now return the the order convention  (m,n,R,...)  (TODO : change this stupid convention)
-    AA_R=AA_R.transpose( (1,2,0)+AA_R.shape[3:] )
+        AA_q_mp[k]=AA_q[i]
+    AA_q_mp = FFT(AA_q_mp,axes=(0,1,2),numthreads=numthreads,fft=fft,destroy=False)
+    AA_R=np.array([AA_q_mp[tuple(iR%mp_grid)]/nd for iR,nd in zip(iRvec,ndegen)])/np.prod(mp_grid)
+    AA_R=AA_R.transpose((1,2,0)+tuple(range(3,AA_R.ndim)))
     print_my_name_end()
     return AA_R
 
 
-def fourier_R_to_k(AAA_R,iRvec,NKPT,hermitian=False,antihermitian=False):
-    print_my_name_start()
-    #  AAA_R is an array of dimension ( num_wann x num_wann x nRpts X ... ) (any further dimensions allowed)
-    if  hermitian and antihermitian :
-        raise ValueError("A matrix cannot be bothe Haermitian and antihermitian, unless it is zero")
-    if hermitian:
-        return fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT)
-    if antihermitian:
-        return fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=True)
 
-    #now the generic case
-    NK=tuple(NKPT)
-    nRvec=iRvec.shape[0]
-    shapeA=AAA_R.shape
-    assert(nRvec==shapeA[2])
-    AAA_R=AAA_R.transpose( (2,0,1)+tuple(range(3,len(shapeA)))  )    
-    assert(nRvec==AAA_R.shape[0])
-    AAA_R=AAA_R.reshape(nRvec,-1)
-    AAA_K=np.zeros( NK+(AAA_R.shape[1],), dtype=complex )
 
-    for ir,irvec in enumerate(iRvec):
-#            print ("ir {0} of {1}".format(ir,len(iRvec)))
+class FFT_R_to_k():
+    
+    def __init__(self,iRvec,NKFFT,num_wann,numthreads=1,lib='fftw'):
+        t0=time()
+        print_my_name_start()
+        self.NKFFT=tuple(NKFFT)
+        self.num_wann=num_wann
+        assert lib in ('fftw','numpy')
+        self.lib = lib
+        if lib == 'fftw':
+            shape=self.NKFFT+(self.num_wann,self.num_wann)
+            fft_in  = pyfftw.empty_aligned(shape, dtype='complex128')
+            fft_out = pyfftw.empty_aligned(shape, dtype='complex128')
+            self.fft_plan = pyfftw.FFTW(fft_in, fft_out,axes=(0,1,2), 
+                flags=('FFTW_ESTIMATE','FFTW_DESTROY_INPUT'),
+                direction='FFTW_BACKWARD' ,
+                threads=numthreads  )
+#            print ("created fftw plan with {} threads".format(numthreads))
+        self.iRvec=iRvec
+        self.nRvec=iRvec.shape[0]
+        self.time_init=time()-t0
+        self.time_call=0
+        self.n_call=0
+
+    def execute_fft(self,A):
+        return self.fft_plan(A)
+
+    def transform(self,AAA_K):
+        if self.lib=='numpy':
+            AAA_K[...] = np.fft.ifftn(AAA_K,axes=(0,1,2))
+        else:
+        # do recursion is array has cartesian indices. The recursion shoild not be very deep
+            if AAA_K.ndim>5:
+                for i in range(AAA_K.shape[-1]):
+                    AAA_K[...,i]=self.transform(AAA_K[...,i])
+            else:
+                AAA_K[...]=self.execute_fft(AAA_K[...])
+            return AAA_K
+
+    def __call__(self,AAA_R,hermitian=False,antihermitian=False,reshapeKline=True):
+        t0=time()
+    #  AAA_R is an array of dimension (  num_wann x num_wann x nRpts X... ) (any further dimensions allowed)
+        if  hermitian and antihermitian :
+            raise ValueError("A matrix cannot be both Hermitian and anti-Hermitian, unless it is zero")
+        AAA_R=AAA_R.transpose((2,0,1)+tuple(range(3,AAA_R.ndim)))
+        shapeA=AAA_R.shape
+        assert  self.nRvec==shapeA[0]
+        assert  self.num_wann==shapeA[1]==shapeA[2]
+        AAA_K=np.zeros( self.NKFFT+shapeA[1:], dtype=complex )
+        ### TODO : place AAA_R to FFT grid from beginning, even before multiplying by exp(dkR)
+        for ir,irvec in enumerate(self.iRvec):
             AAA_K[tuple(irvec)]=AAA_R[ir]
-    for m in range(AAA_K.shape[3]):
-#            print ("Fourier {0} of {1}".format(m,AAA_K.shape[3]))
-            AAA_K[:,:,:,m]=np.fft.fftn(AAA_K[:,:,:,m])
-    AAA_K=AAA_K.reshape( (np.prod(NK),)+shapeA[0:2]+shapeA[3:])
-#    print ("finished fourier")
-    print_my_name_end()
-    return AAA_K
+        self.transform(AAA_K)
+        AAA_K*=np.prod(self.NKFFT)
 
+        ## TODO - think if fft transform of half of matrix makes sense
+        if hermitian:
+            AAA_K= 0.5*(AAA_K+AAA_K.transpose((0,1,2,4,3)+tuple(range(5,AAA_K.ndim))).conj())
+        elif antihermitian:
+            AAA_K=0.5*(AAA_K-AAA_K.transpose((0,1,2,4,3)+tuple(range(5,AAA_K.ndim))).conj())
 
+        if reshapeKline:
+            AAA_K=AAA_K.reshape( (np.prod(self.NKFFT),)+shapeA[1:])
+        self.time_call+=time()-t0
+        self.n_call+=1
+        return AAA_K
 
-
-def fourier_R_to_k_hermitian(AAA_R,iRvec,NKPT,anti=False):
-###  in practice (at least for the test example)  use of hermiticity does not speed the calculation. 
-### probably, because FFT is faster then reshaping matrices
-#    return fourier_R_to_k(AAA_R,iRvec,NKPT)
-    #  AAA_R is an array of dimension ( num_wann x num_wann x nRpts X ... ) (any further dimensions allowed)
-    #  AAA_k is assumed Hermitian (in n,m) , so only half of it is calculated
-    print_my_name_start()
-    NK=tuple(NKPT)
-    nRvec=iRvec.shape[0]
-    shapeA=AAA_R.shape
-    num_wann=shapeA[0]
-    assert(nRvec==shapeA[2])
-    M,N=np.triu_indices(num_wann)
-    ntriu=len(M)
-    AAA_R=AAA_R[M,N].transpose( (1,0)+tuple(range(2,len(shapeA)-1))  ).reshape(nRvec,-1)
-    AAA_K=np.zeros( NK+(AAA_R.shape[1],), dtype=complex )
-    for ir,irvec in enumerate(iRvec):
-#            print ("ir {0} of {1}".format(ir,len(iRvec)))
-            AAA_K[tuple(irvec)]=AAA_R[ir]
-    for m in range(AAA_K.shape[3]):
-#            print ("Fourier {0} of {1}".format(m,AAA_K.shape[3]))
-            AAA_K[:,:,:,m]=np.fft.fftn(AAA_K[:,:,:,m])
-    AAA_K=AAA_K.reshape( (np.prod(NK),ntriu)+shapeA[3:])
-    result=np.zeros( (np.prod(NK),num_wann,num_wann)+shapeA[3:],dtype=complex)
-    result[:,M,N]=AAA_K
-    diag=np.arange(num_wann)
-    if anti:
-        result[:,N,M]=-AAA_K.conjugate()
-        result[:,diag,diag]=result[:,diag,diag].imag
-    else:
-        result[:,N,M]=AAA_K.conjugate()
-        result[:,diag,diag]=result[:,diag,diag].real
-#    print ("finished fourier")
-    print_my_name_end()
-    return result
-
-
+#    def __del__(self):
+#        print ("time for FFT via {} : {} (__init__:{} , {} callstotal {} ) ".format(self.lib,self.time_init+self.time_call , self.time_init,self.n_call, self.time_call))
 
 def iterate3dpm(size):
     return ( np.array([i,j,k]) for i in range(-size[0],size[0]+1)
@@ -242,5 +287,3 @@ def iterate3d(size):
     return ( np.array([i,j,k]) for i in range(0,size[0])
                      for j in range(0,size[1])
                      for k in range(0,size[2]) )
-
-
