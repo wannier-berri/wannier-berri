@@ -574,7 +574,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def Omega_bar_der(self):
         print_my_name_start()
-        _OOmega_K =  self.FFT_R_to_k( (
+        _OOmega_K =  self.fft_R_to_k( (
                         self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -     
                         self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])[:,:,:,:,None]*self.cRvec[None,None,:,None,:]   , hermitian=True )
         return self._rotate(_OOmega_K)
