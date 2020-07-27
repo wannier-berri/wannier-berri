@@ -16,13 +16,20 @@ from scipy.io import FortranFile as FF
 import copy
 import lazy_property
 
-from .__utility import str2bool, alpha_A, beta_A , fourier_q_to_R
+from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice
+from  .symmetry import Group
 from colorama import init
 from termcolor import cprint 
 
 
 
 class System():
+    """
+    The base class for describing a system. Although it has its own constructor, it requires input binary files prepared by a special 
+    `branch <https://github.com/stepan-tsirkin/wannier90/tree/save4wberri>`_ of ``postw90.x`` .
+    Therefore this class by itself it is not recommended for a feneral user. Instead, 
+    please use the child classes, e.g  :class:`~wannierberri.System_w90` or :class:`~wannierberri.System_tb`
+    """
 
     def __init__(self,seedname="wannier90",tb_file=None,
                     getAA=False,
@@ -34,13 +41,14 @@ class System():
                     random_gauge=False,
                     degen_thresh=-1 ,
                     old_format=False,
-                    delta_fz=2.51,
+                    delta_fz=0.1,
+                    ksep = 50,
                                 ):
 
 
         if tb_file is not None:
             raise ValueError("to start from a _tb.dat file now use the System_tb() class")
-
+        self.ksep = ksep  
         self.frozen_max=frozen_max
         self.random_gauge=random_gauge
         self.degen_thresh=degen_thresh
@@ -60,12 +68,15 @@ class System():
         self.seedname=seedname
         self.num_wann,nRvec=int(l[0]),int(l[1])
         self.nRvec0=nRvec
-        self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
-        self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
+        real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
+        self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice=real_lattice)
         iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
         
         self.Ndegen=iRvec[:,3]
         self.iRvec=iRvec[:,:3]
+
+        self.cRvec=self.iRvec.dot(self.real_lattice)
+
 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
@@ -73,6 +84,7 @@ class System():
         print ("Real-space lattice:\n",self.real_lattice)
         #print ("R - points and dege=neracies:\n",iRvec)
         has_ws=str2bool(f.readline().split("=")[1].strip())
+
         
         if has_ws and use_ws:
             print ("using ws_dist")
@@ -111,11 +123,46 @@ class System():
 
         if getSS:
             self.SS_R=self.__getMat('SS')
+
+        self.set_symmetry()
         cprint ("Reading the system finished successfully",'green', attrs=['bold'])
+
+
+    def to_tb_file(self,tb_file=None):
+        if tb_file is None: 
+            tb_file=self.seedname+"_fromchk_tb.dat"
+        f=open(tb_file,"w")
+        f.write("written by wannier-berri form the chk file\n")
+#        cprint ("reading TB file {0} ( {1} )".format(tb_file,l.strip()),'green', attrs=['bold'])
+        np.savetxt(f,self.real_lattice)
+        f.write("{}\n".format(self.num_wann))
+        f.write("{}\n".format(self.nRvec))
+        for i in range(0,self.nRvec,15):
+            a=self.Ndegen[i:min(i+15,self.nRvec)]
+            f.write("  ".join("{:2d}".format(x) for x in a)+"\n")
+        for iR in range(self.nRvec):
+            f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
+            f.write("".join("{0:3d} {1:3d} {2:15.8e} {3:15.8e}\n".format(
+                         m+1,n+1,self.HH_R[m,n,iR].real*self.Ndegen[iR],self.HH_R[m,n,iR].imag*self.Ndegen[iR]) 
+                             for n in range(self.num_wann) for m in range(self.num_wann)) )
+        if hasattr(self,'AA_R'):
+          for iR in range(self.nRvec):
+            f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
+            f.write("".join("{0:3d} {1:3d} ".format(
+                         m+1,n+1) + " ".join("{:15.8e} {:15.8e}".format(a.real,a.imag) for a in self.AA_R[m,n,iR]*self.Ndegen[iR] )+"\n"
+                             for n in range(self.num_wann) for m in range(self.num_wann)) )
+        f.close()
         
-    
-    @lazy_property.LazyProperty
+
+    def _FFT_compatible(self,FFT,iRvec):
+        "check if FFT is enough to fit all R-vectors"
+        return np.unique(iRvec%FFT,axis=0).shape[0]==iRvec.shape[0]
+
+
+#    @lazy_property.LazyProperty
+    @property
     def NKFFTmin(self):
+        "finds a minimal FFT grid on which different R-vectors do not overlap"
         NKFFTmin=np.ones(3,dtype=int)
         for i in range(3):
             R=self.iRvec[:,i]
@@ -123,12 +170,34 @@ class System():
                 NKFFTmin[i]+=R.max()
             if len(R[R<0])>0: 
                 NKFFTmin[i]-=R.min()
+        assert self._FFT_compatible(NKFFTmin,self.iRvec)
         return NKFFTmin
 
-    @property
+    def set_symmetry(self,symmetry_gen=[]):
+        """ 
+        Set the symmetry group of the :class:`~wannierberri.__system.System` 
+
+        Parameters
+        ----------
+        symmetry_gen : list of :class:`~wannierberri.symmetry.Symmetry` or str
+            The generators of the symmetry group. 
+
+        Notes
+        -----
+        + Only the generators of the symmetry group are essential. However, no problem if more symmetries are provided. 
+          The code further evaluates all possible products of symmetry operations, until the full group is restored.
+        + Providing `Identity` is not needed. It is included by default
+        + Operations are given as objects of class:`~wannierberri.Symmetry.symmetry` or by name as `str`, e.g. ``'Inversion'`` , ``'C6z'``, or products like ``'TimeReversal*C2x'``.
+        + ``symetyry_gen=[]`` is equivalent to not calling this function at all
+        + Only the **point group** operations are important. Hence, for non-symmorphic operations, only the rotational part should be given, neglecting the translation.
+
+        """
+        self.symgroup=Group(symmetry_gen,recip_lattice=self.recip_lattice,real_lattice=self.real_lattice)
+
+
+    @lazy_property.LazyProperty
     def cRvec(self):
         return self.iRvec.dot(self.real_lattice)
-
 
     @property 
     def nRvec(self):
@@ -138,6 +207,7 @@ class System():
     @lazy_property.LazyProperty
     def cell_volume(self):
         return abs(np.linalg.det(self.real_lattice))
+
 
 
     def __getMat(self,suffix):

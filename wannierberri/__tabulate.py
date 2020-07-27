@@ -19,19 +19,18 @@ from copy import deepcopy
 from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
 from . import __result as result
 from . import  __berry as berry
-from . import  __spin as spin
-from . import  __symmetry  as symmetry
+from . import  symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
 #should be functions of only one parameter of class Data_K
 calculators={ 
-         'spin'       : spin.calcSpin_band_kn, 
+         'spin'       : berry.calcSpin_band_kn, 
          'V'          : berry.calcV_band_kn  , 
          'morb'       : berry.calcImgh_band_kn,
          'berry'      : berry.calcImf_band_kn ,
-         'hall_spin'  : spin.calcHall_spin_kn,
-         'hall_orb'   : spin.calcHall_orb_kn
+         'hall_spin'  : berry.calcHall_spin_kn,
+         'hall_orb'   : berry.calcHall_orb_kn
          }
 
 
@@ -75,17 +74,17 @@ def tabXnk(data,quantities=[],degen_thresh=None,ibands=None,parameters={}):
         results[q]=calculators[q](data,**__parameters).select_bands(ibands).average_deg(deg)
 
     kpoints=data.kpoints_all
-    return TABresult( kpoints=kpoints,basis=data.recip_lattice,results=results )
+    return TABresult( kpoints=kpoints,recip_lattice=data.recip_lattice,results=results )
 
 
 
 class TABresult(result.Result):
 
-    def __init__(self,kpoints,basis,results={}):
+    def __init__(self,kpoints,recip_lattice,results={}):
         self.nband=results['E'].nband
         self.grid=None
         self.gridorder=None
-        self.basis=basis
+        self.recip_lattice=recip_lattice
         self.kpoints=np.array(kpoints,dtype=float)%1
 
         self.results=results
@@ -110,15 +109,15 @@ class TABresult(result.Result):
             raise RuntimeError ("Adding results with different number of bands {} and {} - not allowed".format(
                 self.nband,other.nband) )
         results={r: self.results[r]+other.results[r] for r in self.results if r in other.results }
-        return TABresult(np.vstack( (self.kpoints,other.kpoints) ), basis=self.basis,results=results) 
+        return TABresult(np.vstack( (self.kpoints,other.kpoints) ), recip_lattice=self.recip_lattice,results=results) 
 
     def write(self,name):
         return   # do nothing so far
 
     def transform(self,sym):
         results={r:self.results[r].transform(sym)  for r in self.results}
-        kpoints=[sym.transform_k_vector(k,self.basis) for k in self.kpoints]
-        return TABresult(kpoints=kpoints,basis=self.basis,results=results)
+        kpoints=[sym.transform_reduced_vector(k,self.recip_lattice) for k in self.kpoints]
+        return TABresult(kpoints=kpoints,recip_lattice=self.recip_lattice,results=results)
 
     def to_grid(self,grid,order='C'):
         grid1=[np.linspace(0.,1.,g,False) for g in grid]
@@ -129,19 +128,18 @@ class TABresult(result.Result):
         for ik,k in enumerate(self.kpoints):
             k1=k*grid
             ik1=np.array(k1.round(),dtype=int)
-            if np.linalg.norm(k1-ik1)<1e-8 : 
+            if np.linalg.norm(ik1/grid-k)<1e-5 : 
                 ik1=ik1%grid
                 ik2=ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])
 #                print (ik,k,ik1,ik2)
                 k_map[ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])].append(ik)
             else:
-                if False:
-                    print ("WARNING: k-point {}={} is skipped".format(ik,k))
+                print ("WARNING: k-point {}={} is skipped".format(ik,k))
 
         
         print ("collecting")
         results={r:self.results[r].to_grid(k_map)  for r in self.results}
-        res=TABresult( k_new,basis=self.basis,results=results)
+        res=TABresult( k_new,recip_lattice=self.recip_lattice,results=results)
         res.grid=np.copy(grid)
         res.gridorder=order
         return res
@@ -158,7 +156,7 @@ class TABresult(result.Result):
         FSfile=" {0}  {1}  {2} \n".format(self.grid[0],self.grid[1],self.grid[2])
         FSfile+="1 \n"  # so far only this option of Fermisurfer is implemented
         FSfile+="{} \n".format(self.nband)
-        FSfile+="".join( ["  ".join("{:14.8f}".format(x) for x in v) + "\n" for v in self.basis] )
+        FSfile+="".join( ["  ".join("{:14.8f}".format(x) for x in v) + "\n" for v in self.recip_lattice] )
         for iband in range(self.nband):
             FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk.data[:,iband]-efermi )
         

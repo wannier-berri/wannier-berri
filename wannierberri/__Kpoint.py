@@ -16,7 +16,7 @@ from time import time
 import numpy as np
 import lazy_property
 from copy import copy,deepcopy
-from .__symmetry import SYMMETRY_PRECISION
+from .symmetry import SYMMETRY_PRECISION
 
 class  KpointBZ():
 
@@ -36,6 +36,9 @@ class  KpointBZ():
     def Kp_fullBZ(self):
         return self.K/self.NKFFT
 
+    @lazy_property.LazyProperty
+    def dK_fullBZ(self):
+        return self.dK/self.NKFFT
 
     @lazy_property.LazyProperty
     def star(self):
@@ -45,7 +48,7 @@ class  KpointBZ():
             return self.symgroup.star(self.K)
 
     def __str__(self):
-        k_cart=self.K.dot(self.symgroup.basis)
+        k_cart=self.K.dot(self.symgroup.recip_lattice)
         return  ( "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ], refinement level:{3}, dK={4} ".format(self.K[0],self.K[1],self.K[2],self.refinement_level,self.dK) )  
 #                +   "         coord in cartesian = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ]".format(k_cart[0],k_cart[1],k_cart[2]) + "\n star = "+"\n      ".join(str(s) for s in self.star) )
 
@@ -119,7 +122,7 @@ class  KpointBZ():
                                   for y in range(ndiv[1]) 
                                    for z in range(ndiv[2])
                             if not (include_original and np.all(np.array([x,y,z])*2+1==ndiv)) ]
-        print ("ndiv={}, include_original={} ".format(ndiv,include_original))
+#        print ("ndiv={}, include_original={} ".format(ndiv,include_original))
 
         if include_original:
             self.factor=newfac
@@ -128,9 +131,9 @@ class  KpointBZ():
 
 #            K_list_add.append(self.fraction(ndiv))
         else:
-            self.factor=0  # the K-point is "dead" but can be used for starting calculation on a different grid 
+            self.factor=0  # the K-point is "dead" but can be used for starting calculation on a different grid  - not implemented
 
-        print ("ndiv={}, include_original={} ".format(ndiv,include_original))
+#        print ("ndiv={}, include_original={} ".format(ndiv,include_original))
 
         n=len(K_list_add)
 
@@ -146,7 +149,7 @@ class  KpointBZ():
     def distGamma(self):
         shift_corners=np.arange(-3,4)
         corners=np.array([[x,y,z] for x in shift_corners for y in shift_corners for z in shift_corners])
-        return np.linalg.norm(((self.K%1)[None,:]-corners).dot(self.symgroup.basis),axis=1).min() 
+        return np.linalg.norm(((self.K%1)[None,:]-corners).dot(self.symgroup.recip_lattice),axis=1).min() 
 
 
 def exclude_equiv_points(K_list,new_points=None):

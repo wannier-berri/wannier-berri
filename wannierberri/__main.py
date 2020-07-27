@@ -14,11 +14,11 @@
 
 
 import functools 
-from .__evaluate import evaluate_K, determineNK
+from .__evaluate import evaluate_K
 from .__utility import smoother 
 from . import __integrate 
 from . import __tabulate  
-from . import __symmetry as symmetry
+from . import symmetry
 
 from .__version import __version__
 from .__result import NoComponentError
@@ -74,28 +74,19 @@ def print_options():
 def welcome():
 #figlet("WANN IER BERRI",font='cosmic',col='yellow')
     logo="""
-.::    .   .:::  :::.     :::.    :::.:::.    :::. :::.,::::::  :::::::..       :::::::.  .,::::::  :::::::..   :::::::..   :::
-';;,  ;;  ;;;'   ;;`;;    `;;;;,  `;;;`;;;;,  `;;; ;;;;;;;''''  ;;;;``;;;;       ;;;'';;' ;;;;''''  ;;;;``;;;;  ;;;;``;;;;  ;;;
- '[[, [[, [['   ,[[ '[[,    [[[[[. '[[  [[[[[. '[[ [[[ [[cccc    [[[,/[[['       [[[__[[\. [[cccc    [[[,/[[['   [[[,/[[['  [[[
-   Y$c$$$c$P   c$$$cc$$$c   $$$ "Y$c$$  $$$ "Y$c$$ $$$ $$\"\"\"\"    $$$$$$c         $$\"\"\"\"Y$$ $$\"\"\"\"    $$$$$$c     $$$$$$c    $$$
-    "88"888     888   888,  888    Y88  888    Y88 888 888oo,__  888b "88bo,    _88o,,od8P 888oo,__  888b "88bo, 888b "88bo,888
-     "M "M"     YMM   ""`   MMM     YM  MMM     YM MMM \"\"\"\"YUMMM MMMM   "W"     ""YUMMMP"  \"\"\"\"YUMMM MMMM   "W"  MMMM   "W" MMM
+.::    .   .::: .:::::::.  :::.    :::.:::.    :::. :::.,::::::  :::::::..       :::::::.  .,::::::  :::::::..   :::::::..   :::
+';;,  ;;  ;;;' '  ;;`;;  ` `;;;;,  `;;;`;;;;,  `;;; ;;;;;;;''''  ;;;;``;;;;       ;;;'';;' ;;;;''''  ;;;;``;;;;  ;;;;``;;;;  ;;;
+ '[[, [[, [['    ,[[ '[[,    [[[[[. '[[  [[[[[. '[[ [[[ [[cccc    [[[,/[[['       [[[__[[\. [[cccc    [[[,/[[['   [[[,/[[['  [[[
+   Y$c$$$c$P    c$$$cc$$$c   $$$ "Y$c$$  $$$ "Y$c$$ $$$ $$\"\"\"\"    $$$$$$c         $$\"\"\"\"Y$$ $$\"\"\"\"    $$$$$$c     $$$$$$c    $$$
+    "88"888      888   888,  888    Y88  888    Y88 888 888oo,__  888b "88bo,    _88o,,od8P 888oo,__  888b "88bo, 888b "88bo,888
+     "M "M"      YMM   ""`   MMM     YM  MMM     YM MMM \"\"\"\"YUMMM MMMM   "W"     ""YUMMMP"  \"\"\"\"YUMMM MMMM   "W"  MMMM   "W" MMM
 """
     cprint(logo,'yellow')
     cprint("a.k.a. Wannier19",'red')
     figlet("    by Stepan Tsirkin",font='straight',col='green')
 
 
-
-    cprint("""
-Tutorial at  Electronic Structure Workshop  was recorded.
-Video: https://uzh.zoom.us/rec/share/y84qFIzs8WlIY53g-UGYdfUCB6DUaaa80SUZ-fJZy-GyE37OpaVGSfwDqVj43hk
-Input files: https://www.dropbox.com/sh/8lt0rznh7zetagp/AABGrVWr6-1b9kMR3Wo8H92Na?dl=0
-""", 'yellow', attrs=['bold'])
-
-    cprint("""
-User manual under construction may be viewed here: https://www.overleaf.com/read/kbxxtfbnjvxx
-""",'magenta' )
+    cprint("""\n  The Web page is :  HTTP://WANNIER-BERRI.ORG  \n""",'yellow' )
 
 
     cprint( "\nVersion: {}\n".format( __version__),'cyan', attrs=['bold'])
@@ -112,37 +103,98 @@ def check_option(quantities,avail,tp):
         raise RuntimeError("Quantity {} is not available for {}. Available options are : \n{}\n".format(opt,tp,avail) )
 
 
-def integrate(system,NK=None,NKdiv=None,NKFFT=None,Efermi=None,omega=None, Ef0=0,
-                        smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,
-                        fout_name="wberri",symmetry_gen=[],
-                GammaCentered=True,restart=False,numproc=0,suffix="",file_Klist="Klist",parameters={}):
+## TODO: Unify the two methids, to do everything in one shot
 
+def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
+                        smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,
+                        fout_name="wberri",restart=False,numproc=0,fftlib='fftw',suffix="",file_Klist="Klist",parameters={}):
+    """
+    Integrate 
+
+    Parameters
+    ----------
+    system : :class:`~wannierberri.__system.System`
+        System under investigation
+    grid : :class:`~wannierberri.Grid`
+        initial grid for integration
+    Efermi : numpy.array
+        The list of Fermi levels to be scanned (for Fermi-sea or Fermi-surface properties)
+    omega : numpy.array
+        The list of ferequencies levels to be scanned (for optical properties)
+    Ef0 : float
+        a single  Fermi level for optical properties
+    smearEf : float
+        smearing over Fermi levels (in Kelvin)
+    smearW : float
+        smearing over frequencies (in Kelvin)
+    quantities : list of str
+        quantities to be integrated. See :ref:`sec-capabilities`
+    adpt_num_iter : int 
+        number of recursive adaptive refinement iterations. See :ref:`sec-refine`
+    num_proc : int 
+        number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
+   
+    Returns
+    --------
+    dictionary of  :class:`~wannierberri.EnergyResult` 
+
+    Notes
+    -----
+    Results are also printed to ASCII files
+
+    """
     cprint ("\nIntegrating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
-    smooth=smoother(Efermi,smearEf)
-    eval_func=functools.partial(  __integrate.intProperty, Efermi=Efermi, smootherEf=smooth,quantities=quantities,parameters=parameters )
-    res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,
+    smoothEf = None if Efermi is None else smoother(Efermi,smearEf) # smoother for functions of Fermi energy
+    smoothW= None if omega is None else smoother(omega,smearW) # smoother for functions of frequency
+    eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, omega=omega, smootherEf=smoothEf, smootherOmega=smoothW,
+            quantities=quantities, parameters=parameters )
+    res=evaluate_K(eval_func,system,grid,nparK=numproc,fftlib=fftlib,
             adpt_num_iter=adpt_num_iter,adpt_nk=1,
-                fout_name=fout_name,symmetry_gen=symmetry_gen,suffix=suffix,
-                GammaCentered=GammaCentered,restart=restart,file_Klist=file_Klist)
+                fout_name=fout_name,suffix=suffix,
+                restart=restart,file_Klist=file_Klist)
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
 
 
 
-def tabulate(system,NK=None,NKdiv=None,NKFFT=None,omega=None, quantities=[],symmetry_gen=[],
+def tabulate(system,grid, quantities=[],
                   fout_name="wberri",ibands=None,suffix="",numproc=0,Ef0=0.,parameters={}):
+    """
+    Tabulate quantities to be plotted
 
+    Parameters
+    ----------
+    system : :class:`~wannierberri.__system.System`
+        System under investigation
+    grid : :class:`~wannierberri.Grid`
+        initial grid for integration
+    Ef0 : float
+        a single  Fermi level. all energies are given with respect to Ef0
+    quantities : list of str
+        quantities to be integrated. See :ref:`sec-capabilities`
+    num_proc : int 
+        number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
+   
+    Returns
+    --------
+    list of :class:`~wannierberri.__tabulate.TABresult`
+
+    Notes
+    -----
+    Results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
+
+    """
+
+    assert grid.GammaCentered , "only Gamma-centered grids are allowed for tabulation"
     cprint ("\nTabulating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
-    NKdiv,NKFFT=determineNK(NKdiv,NKFFT,NK,system.NKFFTmin)
-    NK=NKdiv*NKFFT
     check_option(quantities,tabulate_options,"tabulate")
     eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
 
-    res=evaluate_K(eval_func,system,NK=NK,NKdiv=NKdiv,NKFFT=NKFFT,nproc=numproc,
-            adpt_num_iter=0 ,symmetry_gen=symmetry_gen,  GammaCentered=True ,restart=False,suffix=suffix,file_Klist=None)
+    res=evaluate_K(eval_func,system,grid,nparK=numproc,
+            adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None)
             
-    res=res.to_grid(NKFFT*NKdiv)
+    res=res.to_grid(grid.dense)
         
     open("{0}_E.frmsf".format(fout_name),"w").write(
          res.fermiSurfer(quantity=None,efermi=Ef0) )

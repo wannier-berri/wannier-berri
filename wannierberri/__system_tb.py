@@ -16,18 +16,39 @@ from scipy.io import FortranFile as FF
 import copy
 import lazy_property
 
-from .__utility import str2bool, alpha_A, beta_A , fourier_q_to_R
+from .__utility import str2bool, alpha_A, beta_A ,real_recip_lattice
 from colorama import init
 from termcolor import cprint 
 from .__system import System
 
 
 class System_tb(System):
+    """
+    System initialized from the `*_tb.dat` file, which can be written either by  `Wannier90 <http://wannier.org>`_ code, 
+    or composed by the user based on some tight-binding model. 
+    See Wannier90 `code <https://github.com/wannier-developers/wannier90/blob/2f4aed6a35ab7e8b38dbe196aa4925ab3e9deb1b/src/hamiltonian.F90#L698-L799>`_
+    for details of the format. 
+    
+    Parameters
+    ----------
+    tb_file : str
+        name (and path) of file to be read
+    getAA : bool
+        if ``True`` the position matrix elements are read. Needed for quantities derived from Berry connection or Berry curvature. 
+    frozen_max : float
+        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
+    degen_thresh : float
+        threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
+    random_gauge : bool
+        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
+    """
 
     def __init__(self,tb_file="wannier90_tb.dat",getAA=False,
                           frozen_max=-np.Inf,
-                          random_gauge=False,
                           degen_thresh=-1 ,
+                          random_gauge=False,
+                          ksep=50,
+                          delta_fz=0.1
                     ):
         self.seedname=tb_file.split("/")[-1].split("_")[0]
         f=open(tb_file,"r")
@@ -35,9 +56,11 @@ class System_tb(System):
         self.frozen_max=frozen_max
         self.random_gauge=random_gauge
         self.degen_thresh=degen_thresh 
+        self.ksep=ksep
+        self.delta_fz=delta_fz
         cprint ("reading TB file {0} ( {1} )".format(tb_file,l.strip()),'green', attrs=['bold'])
-        self.real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
-        self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
+        real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
+        self.real_lattice,self.recip_lattice= real_recip_lattice(real_lattice=real_lattice)
         self.num_wann=int(f.readline())
         nRvec=int(f.readline())
         self.nRvec0=nRvec
@@ -73,6 +96,7 @@ class System_tb(System):
             self.AA_R = None
         
         f.close()
+        self.set_symmetry()
 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
