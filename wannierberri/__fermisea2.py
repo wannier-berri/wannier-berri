@@ -111,10 +111,6 @@ def Morb(data,Efermi, evalJ0=True,evalJ1=True,evalJ2=True):
     res = fac_morb*( res -2*(Omega_tot(data,Efermi).mul_array(Efermi)).data )*data.cell_volume
     return result.EnergyResult(Efermi,res,TRodd=False,Iodd=True)
 
-
-def tensor_D(data,Efermi):
-    return IterateEf(data.derOmegaTr,data,Efermi,TRodd=False,Iodd=True)
-
 def Hplus(data,Efermi):
     res = 0.0
     nksep = data.nkptot//data.ksep
