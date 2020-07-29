@@ -64,7 +64,7 @@ class System_w90(System):
                     fft='fftw',
                     npar=multiprocessing.cpu_count()  ,
                     degen_thresh=-1 ,
-                    random_gauge=False
+                    random_gauge=False,
                     ksep=50,
                     delta_fz=0.1
                     ):

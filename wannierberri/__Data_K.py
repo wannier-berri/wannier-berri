@@ -349,15 +349,33 @@ class Data_K(System):
                                                                 
         return dDln,dDlln,dDlnn
 
-   # @lazy_property.LazyProperty
+    def gdD_save(self,op,ed):
+         # evaluates tildeD  as three terms : gdD1[k,n,l,a,b] , gdD1[k,n,n',l,a,b] ,  gdD2[k,n,l',l,a,b] 
+         # which after summing over l',n' will give the generalized derivative
+
+        dDln=-self.del2E_H[op:ed]*self.dEig_inv[op:ed,:,:,None,None]
+        dDlln= self.V_H[op:ed, :,:,None, :,None]*self.D_H[op:ed, None,:,:,None, :]
+        dDlnn= self.D_H[op:ed, :,:,None, :,None]*self.V_H[op:ed, None,:,:,None, :]
+                                 
+        dDlln=-(dDlln+dDlln.transpose(0,1,2,3,5,4))*self.dEig_inv[op:ed,:,None,:  ,None,None]
+        dDlnn=(dDlnn+dDlnn.transpose(0,1,2,3,5,4))*self.dEig_inv[op:ed,:,None,:  ,None,None]
+                                                                
+        return dDln,dDlln,dDlnn
+   
+    def gdAbar(self,op,ed):
+        dAln= self.A_Hbar_der[op:ed]
+        dAlln= self.A_Hbar[op:ed,:,:,None,:,None]*self.D_H[op:ed,None,:,:,None,:]
+        dAlnn= -self.D_H[op:ed,:,:,None,None,:]*self.A_Hbar[op:ed,None,:,:,:,None]
+
+        return dAln,dAlln,dAlnn
+    
     @property
-    def gdAbar(self):
+    def gdAbarold(self):
         dAln= self.A_Hbar_der
         dAlln= self.A_Hbar[:,:,:,None,:,None]*self.D_H[:,None,:,:,None,:]
         dAlnn= -self.D_H[:,:,:,None,None,:]*self.A_Hbar[:,None,:,:,:,None]
 
         return dAln,dAlln,dAlnn
-
 
     @property
     def f_E(self):
@@ -395,13 +413,12 @@ class Data_K(System):
                     deltares[k,b]=0.0
         return res,deltares
 
-    @property
+
+    @lazy_property.LazyProperty
     def B_Hbar_fz(self):
         print_my_name_start()
-        _BB_K=fourier_R_to_k( self.BB_R,self.iRvec,self.NKFFT)
-        _BB_K=self._rotate_vec( _BB_K )
+        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False)
         return _BB_K
-
 
     @property
     def gdBbar_fz(self):
@@ -423,7 +440,7 @@ class Data_K(System):
     @property
     def gdBtilde_fz(self):
         N=None
-        Aln,Alln,Alnn = self.gdAbar
+        Aln,Alln,Alnn = self.gdAbarold
         Bln,Blln,Blnn = self.gdBbar_fz
         V = self.V_H
         A = self.A_Hbar
@@ -442,7 +459,7 @@ class Data_K(System):
     
     @property
     def gdBbarplus_fz(self):
-        Aln,Alln,Alnn = self.gdAbar 
+        Aln,Alln,Alnn = self.gdAbarold 
         Bln,Blln,Blnn = self.gdBtilde_fz
         A = self.A_Hbar
         V = self.V_H
@@ -482,24 +499,15 @@ class Data_K(System):
         N=None
         Anl = self.A_Hbar.transpose(0,2,1,3)[op:ed]
         Dnl = self.D_H.transpose(0,2,1,3)[op:ed]
-        dDln, dDlln,dDlnn= self.gdD
-        dDln=dDln[op:ed]
-        dDlln=dDlln[op:ed]
-        dDlnn=dDlnn[op:ed]
-        dAln, dAlln,dAlnn= self.gdAbar
-        dAln=dAln[op:ed]
-        dAlln=dAlln[op:ed]
-        dAlnn=dAlnn[op:ed]
+        dDln,dDlln,dDlnn= self.gdD_save(op,ed)
+        dAln,dAlln,dAlnn= self.gdAbar(op,ed)
         dOn,dOln = self.gdOmegabar
-        dOn=dOn[op:ed]
-        dOln=dOln[op:ed]
+        dOn,dOln = dOn[op:ed],dOln[op:ed]
 
         o = dOn
         uo = dOln - 2*((Anl[:,:,:,b,N]*dDln[:,:,:,c,:] + Dnl[:,:,:,b,N]*dAln[:,:,:,c,:]) - (Anl[:,:,:,c,N]*dDln[:,:,:,b,:] + Dnl[:,:,:,c,N]*dAln[:,:,:,b,:]) ).real + 2*( Dnl[:,:,:,b,N]*dDln[:,:,:,c,:]  -  Dnl[:,:,:,c,N]*dDln[:,:,:,b,:]  ).imag
-
         uuo = -2*((Anl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlln[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlln[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:]  ).imag
         uoo = -2*((Anl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlnn[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlnn[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:]  ).imag
-
         return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo}
 
     def derHplusTr(self,op,ed):
@@ -522,10 +530,7 @@ class Data_K(System):
         dBPlln=dBPlln[op:ed]
         dBPlnn=dBPlnn[op:ed]
         Dnl = self.D_H.transpose(0,2,1,3)[op:ed]
-        dDln, dDlln,dDlnn= self.gdD
-        dDln=dDln[op:ed]
-        dDlln=dDlln[op:ed]
-        dDlnn=dDlnn[op:ed]
+        dDln,dDlln,dDlnn= self.gdD_save(op,ed)
         #term 1
         o =(dHn + dOn*E[:,:,N,N]).real
         oo =(Onn[:,:,:,:,N]*V[:,:,:,N,:]).real
@@ -539,7 +544,7 @@ class Data_K(System):
         uuo +=2*(E[:,:,N,N,N,N] + E[:,N,N,:,N,N])*( Dnl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:]  ).imag
         uoo +=2*(E[:,:,N,N,N,N] + E[:,N,N,:,N,N])*( Dnl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:]  ).imag
         #term 4
-        +uuo += (Dnl[:,:,N,:,b,N]*V[:,:,:,N,N,:]*Dln[:,N,:,:,c,N] - Dnl[:,:,N,:,c,N]*V[:,:,:,N,N,:]*Dln[:,N,:,:,b,N] ).imag
+        uuo += (Dnl[:,:,N,:,b,N]*V[:,:,:,N,N,:]*Dln[:,N,:,:,c,N] - Dnl[:,:,N,:,c,N]*V[:,:,:,N,N,:]*Dln[:,N,:,:,b,N] ).imag
         uoo += (Dnl[:,:,N,:,b,N]*Dln[:,:,:,N,c,N]*V[:,N,:,:,N,:] - Dnl[:,:,N,:,c,N]*Dln[:,:,:,N,b,N]*V[:,N,:,:,N,:]).imag
         
         return {'i':o,'ii':oo,'oi':uo,'oii':uoo,'ooi':uuo}
@@ -665,9 +670,9 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def Omega_bar_der(self):
         print_my_name_start()
-        _OOmega_K =  self.FFT_R_to_k( (
-                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -     
-                        self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])[:,:,:,:,None]*self.cRvec[None,None,:,None,:]   , hermitian=True )
+        _OOmega_K =  self.fft_R_to_k( (
+                    self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -     
+                    self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])[:,:,:,:,None]*self.cRvec[None,None,:,None,:] , hermitian=True )
         return self._rotate(_OOmega_K)
 
     @lazy_property.LazyProperty
@@ -680,7 +685,7 @@ class Data_K(System):
 
 
 ##  properties directly accessed by fermisea2 
-    def Omega(self,op:ed):
+    def Omega(self,op,ed):
         oi=( (self.D_H[op:ed,:,:,alpha_A].transpose((0,2,1,3))*self.A_Hbar[op:ed,:,:,beta_A]).real+
                 (self.D_H[op:ed,:,:,beta_A]*self.A_Hbar[op:ed,:,:,alpha_A].transpose((0,2,1,3))).real  ) 
         oi+=(-self.D_H[op:ed,:,:,beta_A]*self.D_H[op:ed,:,:,alpha_A].transpose((0,2,1,3))).imag
