@@ -119,4 +119,8 @@ class System_PythTB(System):
         print ("Minimal Number of K points:", self.NKFFTmin)
         print ("Real-space lattice:\n",self.real_lattice)
         cprint ("Reading the system from PythTB finished successfully",'green', attrs=['bold'])
+<<<<<<< HEAD
         
+=======
+        
+>>>>>>> upstream/master

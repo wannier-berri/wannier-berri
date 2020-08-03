@@ -7,32 +7,17 @@ A code for highly efficient Wannier interpolation.
 ----------------------------------------------------------
 Evaluation of k-space integrals of Berry curvature, orbital moment and derived quantities by means of MLWFs or tight-binding models.  Compared to postw90.x part of Wannier90 code, it has extended functional and improved performance
 
-=========
-Tutorial 
-=========
-took place on  June 4th 2020 at Electronic Structure Workshop  https://physics.ucmerced.edu/electronic-structure-workshop
-
-The recording may be viewed at:
-https://uzh.zoom.us/rec/share/y84qFIzs8WlIY53g-UGYdfUCB6DUaaa80SUZ-fJZy-GyE37OpaVGSfwDqVj43hk
-
-And the presentation slides and input files for exercises are available 
-https://www.dropbox.com/sh/8lt0rznh7zetagp/AABGrVWr6-1b9kMR3Wo8H92Na?dl=0
-
-
-User manual  
------------
-under construction may be viewed here: https://www.overleaf.com/read/kbxxtfbnjvxx
 
 Web page
 --------
-https://www.physik.uzh.ch/en/groups/neupert/Software/Wannier-Berri.html
+http://wannier-berri.org
+
 
 Mailing list:
 -------------
 To subscribe please send an email to  sympa@physik.lists.uzh.ch  with the subject
 **subscribe wannier-berri Firstname Lastname**
 or visit the list homepage https://physik.lists.uzh.ch/sympa/info/wannier-berri
-
 
 
 This code is intended for highly-efficient wannier interpolation.

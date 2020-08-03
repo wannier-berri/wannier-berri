@@ -671,8 +671,8 @@ class Data_K(System):
     def Omega_bar_der(self):
         print_my_name_start()
         _OOmega_K =  self.fft_R_to_k( (
-                    self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -     
-                    self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])[:,:,:,:,None]*self.cRvec[None,None,:,None,:] , hermitian=True )
+                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -     
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])[:,:,:,:,None]*self.cRvec[None,None,:,None,:]   , hermitian=True )
         return self._rotate(_OOmega_K)
 
     @lazy_property.LazyProperty
@@ -706,7 +706,7 @@ class Data_K(System):
     @property
     def SpinTot(self):
         return {'i':self.S_H_rediag}
-
+   
     def Hplusminus(self,sign,evalJ0=True,evalJ1=True,evalJ2=True):
         assert sign in (1,-1) , "sign should be +1 or -1"
         from collections import defaultdict

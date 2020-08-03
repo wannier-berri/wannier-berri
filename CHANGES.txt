@@ -1,1 +1,1 @@
-v<version>, <date> -- Initial release.
+v<version>, <date> -- updated docstrings
