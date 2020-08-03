@@ -574,7 +574,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def delS_H(self):
         """d_b S_a """
-        return  self._R_to_k_H( self.SS_R[:,:,:,:,None], der=1 )
+        return self._R_to_k_H( self.SS_R.copy()[:,:,:,:,None], der=1,hermitian=True )
 
     @lazy_property.LazyProperty
     def delS_H_rediag(self):

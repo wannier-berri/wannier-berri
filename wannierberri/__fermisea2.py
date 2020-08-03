@@ -46,18 +46,7 @@ def AHC(data,Efermi):
     return Omega_tot(data,Efermi)*fac_ahc
 
 def Omega_tot(data,Efermi):
-    res = 0.0
-    nksep = data.nkptot//data.ksep
-    if nksep != 0:
-        for i in range(nksep):
-            op=i*data.ksep
-            ed=(i+1)*data.ksep
-            res += IterateEf(data.Omega(op,ed),data,Efermi,TRodd=False,Iodd=True,op=op,ed=ed).data
-    if nksep*data.ksep != data.nkptot:
-        op=nksep*data.ksep
-        ed=data.nkptot
-        res += IterateEf(data.Omega(op,ed),data,Efermi,TRodd=False,Iodd=True,op=op,ed=ed).data
-    return result.EnergyResult(Efermi,res,TRodd=False,Iodd=True)
+    return IterateEf(data.Omega,data,Efermi,sep=True,TRodd=True,Iodd=False)
 
 def SpinTot(data,Efermi):
     return IterateEf(data.SpinTot,data,Efermi,TRodd=True,Iodd=False)*data.cell_volume
@@ -67,7 +56,7 @@ factor_ohmic=(elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not fo
                    * 1e-2  ) # now in  S/(cm*tau_unit)
 
 def conductivity_ohmic(data,Efermi):
-    return IterateEf(data.Ohmic,data,Efermi,TRodd=False,Iodd=True).data
+    return IterateEf(data.Ohmic,data,Efermi,TRodd=False,Iodd=False)*factor_ohmic
 
 def gyrotropic_Kspin(data,Efermi):
     factor_Kspin=-bohr_magneton/Ang_SI**2   ## that's it!
@@ -80,18 +69,7 @@ def Morb(data,Efermi, evalJ0=True,evalJ1=True,evalJ2=True):
             -2*Omega_tot(data,Efermi).mul_array(Efermi) )*data.cell_volume
 
 def HplusTr(data,Efermi):
-    res = 0.0
-    nksep = data.nkptot//data.ksep
-    if nksep != 0:
-        for i in range(nksep):
-            op=i*data.ksep
-            ed=(i+1)*data.ksep
-            res += IterateEf(data.derHplusTr(op,ed),data,Efermi,TRodd=False,Iodd=True,op=op,ed=ed).data
-    if nksep*data.ksep != data.nkptot:
-        op=nksep*data.ksep
-        ed=data.nkptot
-        res += IterateEf(data.derHplusTr(op,ed),data,Efermi,TRodd=False,Iodd=True,op=op,ed=ed).data
-    return result.EnergyResult(Efermi,res,TRodd=False,Iodd=True)
+    return IterateEf(data.derHplusTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
 
 def tensor_K(data,Efermi):
     Hp = HplusTr(data,Efermi).data
@@ -100,31 +78,41 @@ def tensor_K(data,Efermi):
     return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
 
 def tensor_D(data,Efermi):
-    res = 0.0
-    nksep = data.nkptot//data.ksep
-    if nksep != 0:
-        for i in range(nksep):
-            op=i*data.ksep
-            ed=(i+1)*data.ksep
-            res += IterateEf(data.derOmegaTr(op,ed),data,Efermi,TRodd=False,Iodd=True,op=op,ed=ed).data
-    if nksep*data.ksep != data.nkptot:
-        op=nksep*data.ksep
-        ed=data.nkptot
-        res += IterateEf(data.derOmegaTr(op,ed),data,Efermi,TRodd=False,Iodd=True,op=op,ed=ed).data
-    return result.EnergyResult(Efermi,res,TRodd=False,Iodd=True)
+        return IterateEf(data.derOmegaTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
 #########################
 ####  Private part ######
 #########################
 
 
-def IterateEf(dataIO,data,Efermi,TRodd,Iodd,op=None,ed=None,rank=None,kwargs={}):
+def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
     """ this is a general function which accepts dataIO  -- a dictionary like {'i':i , 'io':io, ...}
 and sums for a series of Fermi levels"""
 #    funname=inspect.stack()[1][3]
 #    print ("iterating function '{}' for Efermi={}".format(funname,Efermi))
-    OCC=OccDelta(data.E_K,dataIO,op,ed)
-    RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
-    return result.EnergyResult(Efermi,np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume),TRodd=TRodd,Iodd=Iodd,rank=rank)
+    if sep:
+        res = 0.0
+        nksep = data.nkptot//data.ksep
+        if nksep != 0:
+            for i in range(nksep):
+                op=i*data.ksep
+                ed=(i+1)*data.ksep
+                OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed)
+                RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
+                res+=np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume)
+        if nksep*data.ksep != data.nkptot:
+            op=nksep*data.ksep
+            ed=data.nkptot
+            OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed)
+            RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
+            res+=np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume)
+        return result.EnergyResult(Efermi,res,TRodd=False,Iodd=True)
+
+    else:
+        op=None
+        ed=None
+        OCC=OccDelta(data.E_K,dataIO,op,ed)
+        RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
+        return result.EnergyResult(Efermi,np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume),TRodd=TRodd,Iodd=Iodd,rank=rank)
 
 
 
