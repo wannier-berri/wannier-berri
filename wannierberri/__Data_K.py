@@ -54,14 +54,17 @@ class Data_K(System):
  
         self.HH_R=system.HH_R[:,:,:]*expdK[None,None,:]
         
-        for X in ['AA','BB','CC','SS']:
+        for X in ['AA','BB','CC','SS','SA','SHA']:
             XR=X+'_R'
             hasXR='has_'+X+'_R'
             vars(self)[XR]=None
             vars(self)[hasXR]=False
             if XR in vars(system):
               if vars(system)[XR] is not  None:
-                vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
+                if X in ['SA','SHA']:
+                  vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None,None]
+                else:
+                  vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
                 vars(self)[hasXR]=True
 
 
@@ -476,6 +479,14 @@ class Data_K(System):
         return np.einsum("knna->kna",self.S_H).real
 
     @lazy_property.LazyProperty
+    def SA_H(self):
+        return  self._R_to_k_H(self.SA_R.copy())
+    
+    @lazy_property.LazyProperty
+    def SHA_H(self):
+        return  self._R_to_k_H(self.SHA_R.copy())
+
+    @lazy_property.LazyProperty
     def delS_H(self):
         """d_b S_a """
         return  self._R_to_k_H( self.SS_R[:,:,:,:,None], der=1 )
@@ -574,7 +585,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def Omega_bar_der(self):
         print_my_name_start()
-        _OOmega_K =  self.fft_R_to_k( (
+        _OOmega_K =  self.FFT_R_to_k( (
                         self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -     
                         self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])[:,:,:,:,None]*self.cRvec[None,None,:,None,:]   , hermitian=True )
         return self._rotate(_OOmega_K)
