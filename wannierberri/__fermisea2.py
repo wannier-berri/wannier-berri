@@ -46,7 +46,7 @@ def AHC(data,Efermi):
     return Omega_tot(data,Efermi)*fac_ahc
 
 def Omega_tot(data,Efermi):
-    return IterateEf(data.Omega,data,Efermi,sep=True,TRodd=True,Iodd=False)
+    return IterateEf(data.Omega,data,Efermi,TRodd=True,Iodd=False)
 
 def SpinTot(data,Efermi):
     return IterateEf(data.SpinTot,data,Efermi,TRodd=True,Iodd=False)*data.cell_volume
@@ -64,9 +64,9 @@ def gyrotropic_Kspin(data,Efermi):
 
 def Morb(data,Efermi, evalJ0=True,evalJ1=True,evalJ2=True):
     fac_morb =  -eV_au/bohr**2
-    return  fac_morb*( 
-            IterateEf(data.Hplus(),data,Efermi,TRodd=True,Iodd=False) 
-            -2*Omega_tot(data,Efermi).mul_array(Efermi) )*data.cell_volume
+    return  fac_morb*(
+                    IterateEf(data.Hplus(),data,Efermi,TRodd=True,Iodd=False)
+                            -2*Omega_tot(data,Efermi).mul_array(Efermi) )*data.cell_volume
 
 def HplusTr(data,Efermi):
     return IterateEf(data.derHplusTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
@@ -89,6 +89,7 @@ def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
 and sums for a series of Fermi levels"""
 #    funname=inspect.stack()[1][3]
 #    print ("iterating function '{}' for Efermi={}".format(funname,Efermi))
+# parameter deltaIO can be a dictionary or a funciton. If needed use callable(dataIO) for judgment and run OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed) or OCC=OccDelta(data.E_K(op,ed),dataIO(op,ed),op,ed)
     if sep:
         res = 0.0
         nksep = data.nkptot//data.ksep
@@ -105,7 +106,7 @@ and sums for a series of Fermi levels"""
             OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed)
             RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
             res+=np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume)
-        return result.EnergyResult(Efermi,res,TRodd=False,Iodd=True)
+        return result.EnergyResult(Efermi,res,TRodd=TRodd,Iodd=Iodd)
 
     else:
         op=None

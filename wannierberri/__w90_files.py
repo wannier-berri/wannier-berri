@@ -230,7 +230,8 @@ class MMN(W90_data):
         u,s,v=np.linalg.svd(shell_mat_line,full_matrices=False)
         s=1./s
         weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u)).reshape(-1)
-        assert np.linalg.norm(sum(w*m for w,m in zip(weight_shell,shell_mat))-np.eye(3))<1e-7
+        tol=np.linalg.norm(sum(w*m for w,m in zip(weight_shell,shell_mat))-np.eye(3))
+        assert tol<1e-5, str(tol)
         weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
         weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
         bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }

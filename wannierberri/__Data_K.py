@@ -369,50 +369,32 @@ class Data_K(System):
 
         return dAln,dAlln,dAlnn
     
-    @property
-    def gdAbarold(self):
-        dAln= self.A_Hbar_der
-        dAlln= self.A_Hbar[:,:,:,None,:,None]*self.D_H[:,None,:,:,None,:]
-        dAlnn= -self.D_H[:,:,:,None,None,:]*self.A_Hbar[:,None,:,:,:,None]
 
-        return dAln,dAlln,dAlnn
-
-    @property
-    def f_E(self):
+    def f_E(self,sgn):
+        assert sgn in (1,-1) , "sgn should be 1 or -1"
         E = self.E_K
         res=0.0*E
         deltares=0.0*E
-        for k in range(len(E)):
-            for b in range(len(E[0])):
-                if E[k,b]<=(self.frozen_max-self.delta_fz):
-                    res[k,b]=1.0
-                    deltares[k,b]=0.0
-                if E[k,b]<self.frozen_max and E[k,b] >(self.frozen_max-self.delta_fz):
-                    res[k,b]=-np.cos((E[k,b]-self.frozen_max)*np.pi/self.delta_fz)/2.0 + 0.5
-                    deltares[k,b]=0.5*np.pi/self.delta_fz*np.sin((E[k,b]-self.frozen_max)*np.pi/self.delta_fz)
-                if E[k,b]>=self.frozen_max:
-                    res[k,b]=0.0
-                    deltares[k,b]=0.0
-        return res,deltares
+        sel1 = E<=(self.frozen_max-self.delta_fz)
+        sel2_1 = E>(self.frozen_max-self.delta_fz)
+        sel2_2 = E<self.frozen_max
+        sel2 = sel2_1 & sel2_2
+        sel3 = E>=self.frozen_max
+        if sgn==1:
+            res[sel1]=1.0
+            res[sel3]=0.0
+            res[sel2]=-np.cos((E[sel2]-self.frozen_max)*np.pi/self.delta_fz)/2.0 + 0.5
+            deltares[sel2]=0.5*np.pi/self.delta_fz*np.sin((E[sel2]-self.frozen_max)*np.pi/self.delta_fz)
+        if sgn==-1:
+            res[sel1]=0.0
+            res[sel3]=1.0
+            res[sel2]=np.cos((E[sel2]-self.frozen_max)*np.pi/self.delta_fz)/2.0 + 0.5
+            deltares[sel2]=-0.5*np.pi/self.delta_fz*np.sin((E[sel2]-self.frozen_max)*np.pi/self.delta_fz)
+        
+        deltares[sel1]=0.0
+        deltares[sel3]=0.0
 
-    @property
-    def f_E_minus(self):
-        E = self.E_K
-        res=0.0*E
-        deltares=0.0*E
-        for k in range(len(E)):
-            for b in range(len(E[0])):
-                if E[k,b]<=(self.frozen_max-self.delta_fz):
-                    res[k,b]=0.0
-                    deltares[k,b]=0.0
-                if E[k,b]<self.frozen_max and E[k,b] >(self.frozen_max-self.delta_fz):
-                    res[k,b]=np.cos((E[k,b]-self.frozen_max)*np.pi/self.delta_fz)/2.0 + 0.5
-                    deltares[k,b]=-0.5*np.pi/self.delta_fz*np.sin((E[k,b]-self.frozen_max)*np.pi/self.delta_fz)
-                if E[k,b]>=self.frozen_max:
-                    res[k,b]=1.0
-                    deltares[k,b]=0.0
         return res,deltares
-
 
     @lazy_property.LazyProperty
     def B_Hbar_fz(self):
@@ -431,8 +413,8 @@ class Data_K(System):
 
     @property
     def Btilde_fz(self):
-        f,df=self.f_E
-        f_m,df_m=self.f_E_minus
+        f,df=self.f_E(1)
+        f_m,df_m=self.f_E(-1)
         N=None
         B = f[:,:,N,N]*self.E_K[:,:,N,N]*self.A_Hbar + f_m[:,:,N,N]*self.B_Hbar_fz
         return B
@@ -440,13 +422,13 @@ class Data_K(System):
     @property
     def gdBtilde_fz(self):
         N=None
-        Aln,Alln,Alnn = self.gdAbarold
+        Aln,Alln,Alnn = self.gdAbar(None,None)
         Bln,Blln,Blnn = self.gdBbar_fz
         V = self.V_H
         A = self.A_Hbar
         B = self.B_Hbar_fz
-        f,df=self.f_E
-        f_m,df_m=self.f_E_minus
+        f,df=self.f_E(1)
+        f_m,df_m=self.f_E(-1)
 
         Bfln = f[:,:,N,N,N]*self.E_K[:,:,N,N,N]*Aln + f_m[:,:,N,N,N]*Bln
         Bflln = f[:,:,N,N,N,N]*self.E_K[:,:,N,N,N,N]*Alln + f_m[:,:,N,N,N,N]*Blln 
@@ -459,7 +441,7 @@ class Data_K(System):
     
     @property
     def gdBbarplus_fz(self):
-        Aln,Alln,Alnn = self.gdAbarold 
+        Aln,Alln,Alnn = self.gdAbar(None,None) 
         Bln,Blln,Blnn = self.gdBtilde_fz
         A = self.A_Hbar
         V = self.V_H
@@ -574,7 +556,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def delS_H(self):
         """d_b S_a """
-        return self._R_to_k_H( self.SS_R.copy()[:,:,:,:,None], der=1,hermitian=True )
+        return self._R_to_k_H( self.SS_R.copy(), der=1,hermitian=True )
 
     @lazy_property.LazyProperty
     def delS_H_rediag(self):
@@ -685,14 +667,12 @@ class Data_K(System):
 
 
 ##  properties directly accessed by fermisea2 
-    def Omega(self,op,ed):
-        oi=( (self.D_H[op:ed,:,:,alpha_A].transpose((0,2,1,3))*self.A_Hbar[op:ed,:,:,beta_A]).real+
-                (self.D_H[op:ed,:,:,beta_A]*self.A_Hbar[op:ed,:,:,alpha_A].transpose((0,2,1,3))).real  ) 
-        oi+=(-self.D_H[op:ed,:,:,beta_A]*self.D_H[op:ed,:,:,alpha_A].transpose((0,2,1,3))).imag
+    @property
+    def Omega(self):
+        oi=( (self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))*self.A_Hbar[:,:,:,beta_A]).real+
+                (self.D_H[:,:,:,beta_A]*self.A_Hbar[:,:,:,alpha_A].transpose((0,2,1,3))).real  ) 
+        oi+=(-self.D_H[:,:,:,beta_A]*self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))).imag
         i=np.einsum("kiia->kia",self.Omega_Hbar).real
-        i=i[op:ed]
-        print('shape')
-        print(i.shape)
         return {'i':i,'oi': - 2*oi }
 
     @property
@@ -713,7 +693,7 @@ class Data_K(System):
         res = defaultdict( lambda : 0)
         if evalJ0:
             if sign==1:
-                res['ii']=-2*data.A_E_A
+                res['ii']=-2*self.A_E_A
             res['i']+=self.Morb_Hbar_diag + sign*self.Omega_Hbar_E
         if evalJ1:
             res['oi']+=-2*(self.D_B+sign*self.D_E_A)
@@ -723,7 +703,7 @@ class Data_K(System):
         return  res
 
     def Hplus(self,evalJ0=True,evalJ1=True,evalJ2=True):
-        return self.Hplusminus(self,+1,evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
+        return self.Hplusminus(+1,evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
 
     def Hminus(self,evalJ0=True,evalJ1=True,evalJ2=True):
-        return self.Hplusminus(self,-1,evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
+        return self.Hplusminus(-1,evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
