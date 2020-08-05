@@ -89,7 +89,8 @@ def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
 and sums for a series of Fermi levels"""
 #    funname=inspect.stack()[1][3]
 #    print ("iterating function '{}' for Efermi={}".format(funname,Efermi))
-# parameter deltaIO can be a dictionary or a funciton. If needed use callable(dataIO) for judgment and run OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed) or OCC=OccDelta(data.E_K(op,ed),dataIO(op,ed),op,ed)
+# try to make sum better
+''' parameter dataIO can be a dictionary or a funciton. If needed use callable(dataIO) for judgment and run OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed) or OCC=OccDelta(data.E_K(op,ed),dataIO(op,ed),op,ed)'''
     if sep:
         res = 0.0
         nksep = data.nkptot//data.ksep
