@@ -86,11 +86,11 @@ def tensor_D(data,Efermi):
 
 def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
     """ this is a general function which accepts dataIO  -- a dictionary like {'i':i , 'io':io, ...}
-and sums for a series of Fermi levels"""
-#    funname=inspect.stack()[1][3]
-#    print ("iterating function '{}' for Efermi={}".format(funname,Efermi))
-# try to make sum better
-''' parameter dataIO can be a dictionary or a funciton. If needed use callable(dataIO) for judgment and run OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed) or OCC=OccDelta(data.E_K(op,ed),dataIO(op,ed),op,ed)'''
+    and sums for a series of Fermi levels"""
+    #    funname=inspect.stack()[1][3]
+    #    print ("iterating function '{}' for Efermi={}".format(funname,Efermi))
+    # try to make sum better
+    ''' parameter dataIO can be a dictionary or a funciton. If needed use callable(dataIO) for judgment and run OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed) or OCC=OccDelta(data.E_K(op,ed),dataIO(op,ed),op,ed)'''
     if sep:
         res = 0.0
         nksep = data.nkptot//data.ksep
