@@ -35,17 +35,25 @@ class System_PythTB(System):
         threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
     random_gauge : bool
         applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
+    ksep: int
+        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. 
+    delta_fz:float
+        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
     """
     def __init__(self,ptb_model=None,getAA=False,
                           frozen_max=-np.Inf,
                           random_gauge=False,
                           degen_thresh=-1 ,
+                          ksep=50,
+                          delta_fz=0.1
                     ):
         self.seedname='model_PythTB'
         self.frozen_max=frozen_max
         self.random_gauge=random_gauge
         self.degen_thresh=degen_thresh 
-        
+        self.ksep=ksep
+        self.delta_fz=delta_fz
+
         # Extract the parameters from the model
         real=ptb_model._lat
         self.dimr=real.shape[1]
@@ -115,4 +123,3 @@ class System_PythTB(System):
         print ("Minimal Number of K points:", self.NKFFTmin)
         print ("Real-space lattice:\n",self.real_lattice)
         cprint ("Reading the system from PythTB finished successfully",'green', attrs=['bold'])
-        
