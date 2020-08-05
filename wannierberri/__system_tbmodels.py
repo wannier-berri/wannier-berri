@@ -36,6 +36,10 @@ class System_TBmodels(System):
         threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
     random_gauge : bool
         applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
+    ksep: int
+        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. 
+    delta_fz:float
+        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
     """
     
     def __init__(self,tbmodel=None,getAA=False,
