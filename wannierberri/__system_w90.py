@@ -56,6 +56,10 @@ class System_w90(System):
         threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
     random_gauge : bool
         applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
+    ksep: int
+        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. 
+    delta_fz:float
+        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
     """
 
     def __init__(self,seedname="wannier90",
@@ -66,10 +70,14 @@ class System_w90(System):
                     fft='fftw',
                     npar=multiprocessing.cpu_count()  ,
                     degen_thresh=-1 ,
-                    random_gauge=False
+                    random_gauge=False,
+                    ksep=50,
+                    delta_fz=0.1
                     ):
 
         self.seedname=seedname
+        self.ksep=ksep
+        self.delta_fz=delta_fz
 
         self.morb  = morb
         self.berry = berry

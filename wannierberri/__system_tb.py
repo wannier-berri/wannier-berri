@@ -41,12 +41,18 @@ class System_tb(System):
         threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
     random_gauge : bool
         applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
+    ksep: int
+        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. 
+    delta_fz:float
+        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
     """
 
     def __init__(self,tb_file="wannier90_tb.dat",getAA=False,
                           frozen_max=-np.Inf,
                           degen_thresh=-1 ,
                           random_gauge=False,
+                          ksep=50,
+                          delta_fz=0.1
                     ):
         self.seedname=tb_file.split("/")[-1].split("_")[0]
         f=open(tb_file,"r")
@@ -54,6 +60,8 @@ class System_tb(System):
         self.frozen_max=frozen_max
         self.random_gauge=random_gauge
         self.degen_thresh=degen_thresh 
+        self.ksep=ksep
+        self.delta_fz=delta_fz
         cprint ("reading TB file {0} ( {1} )".format(tb_file,l.strip()),'green', attrs=['bold'])
         real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
         self.real_lattice,self.recip_lattice= real_recip_lattice(real_lattice=real_lattice)
