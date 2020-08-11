@@ -114,7 +114,7 @@ class Symmetry():
         
 
 class Rotation(Symmetry):
-    r""" n-fold rotatio around the ``axis`` 
+    r""" n-fold rotation around the ``axis`` 
 
     Parameters
     ----------
