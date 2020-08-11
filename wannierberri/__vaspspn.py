@@ -19,6 +19,7 @@ def hlp():
     -h   print this help message
     fin  inputfile  name. default: WAVECAR
     fout outputfile name. default: wannier90.spn
+    IBstart - the first band to be considered (counting starts from 1). default: 1
     NB   umber of bands in the output. If NB<=0 all bands are used. default: 0
         norm    how to normalize the eigenstates, if they are not perfectly orthonormal
         norm=norm  (D) -   normalize each state individually  
@@ -34,6 +35,7 @@ def main(argv):
   fin="WAVECAR"
   fout="wannier90.spn"
   NBout=0
+  IBstart=1
   normalize="norm"
   for arg in argv[1:]:
       if arg=="-h": 
@@ -44,8 +46,8 @@ def main(argv):
           if   k=="fin"  : fin=v
           elif k=="fout" : fout=v
           elif k=="NB"   : NBout=int(v)
+          elif k=="IBstart"   : IBstart=int(v)
           elif k=="norm"   : normalize=v
-  
   
   
   print ("reading {0}\n writing to {1}".format(fin,fout))
@@ -65,10 +67,14 @@ def main(argv):
   
   NK,NBin=[int(x) for x in record(1,2)]
   
-  if  NBout<=0 :NBout=NBin
-  if  NBout>NBin: print (' WARNING: NBout=',MNout,' exceeds the number of bands in WAVECAR NBin='+str(NBin)+'. We set NBout='+str(NBmin))
+  IBstart-=1
+  if IBstart<0 : IBstart=0
+  if  NBout <= 0 :NBout=NBin
+  if  NBout+IBstart >  NBin: 
+       print (' WARNING: NB+IBstart-1=',NBout+IBstart,' exceeds the number of bands in WAVECAR NBin='+str(NBin)+'. We set NBout='+str(NBin-IBstart))
+       NBout=NBin-IBstart
   
-  print ("WAVECAR contains {0} k-points and {1} bands.\n Writing {2} bands in the output".format(NK,NBin,NBout))
+  print ("WAVECAR contains {0} k-points and {1} bands.\n Writing {2} bands in the output starting from".format(NK,NBin,NBout))
   
   SPN=FortranFile(fout, 'w')
   header="Created from wavecar at {0}".format(datetime.datetime.now().isoformat())
@@ -85,7 +91,7 @@ def main(argv):
       print ("k-point {0:3d} : {1:6d} plane waves".format(ik,npw))
       WF=np.zeros((npw,NBout),dtype=complex)
       for ib in range(NBout):
-          WF[:,ib]=record(3+ik*(NBin+1)+ib,npw,np.complex64)
+          WF[:,ib]=record(3+ik*(NBin+1)+ib+IBstart,npw,np.complex64)
       overlap=WF.conj().T.dot(WF)
       assert np.max(np.abs(overlap-overlap.T.conj()))<1e-15
   
