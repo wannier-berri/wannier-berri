@@ -24,7 +24,7 @@ from . import  __berry as berry
 from . import  __fermisea2 as fermisea2
 from . import  __nonabelian as nonabelian
 from . import  __dos as dos
-from . import  __symmetry  as symmetry
+from . import  symmetry
 from . import  __utility   as utility
 from . import  __kubo   as kubo
 
@@ -59,12 +59,11 @@ additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no des
 
 
 calculators_opt={
-    'opt_conductivity' : kubo.opt_conductivity,
-    'opt_SHC' : kubo.opt_SHC
+    'opt_conductivity' : kubo.opt_conductivity
 }
 
 # additional parameters for optical conductivity
-additional_parameters['opt_conductivity']['mu'] = 12.8623
+additional_parameters['opt_conductivity']['mu'] = 0
 additional_parameters_description['opt_conductivity']['mu'] = "chemical potential in units of eV"
 additional_parameters['opt_conductivity']['kBT'] = 0
 additional_parameters_description['opt_conductivity']['kBT'] = "temperature in units of eV/kB"
@@ -81,23 +80,6 @@ additional_parameters_description['opt_conductivity']['adpt_smr_max'] = "maximal
 additional_parameters['opt_conductivity']['adpt_smr_min'] = 1e-15
 additional_parameters_description['opt_conductivity']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
 
-# additional parameters for optical spin Hall conductivity
-additional_parameters['opt_SHC']['mu'] = 12.8623 #18.1299 For platinum
-additional_parameters_description['opt_SHC']['mu'] = "chemical potential in units of eV"
-additional_parameters['opt_SHC']['kBT'] = 0
-additional_parameters_description['opt_SHC']['kBT'] = "temperature in units of eV/kB"
-additional_parameters['opt_SHC']['smr_fixed_width'] = 0.1
-additional_parameters_description['opt_SHC']['smr_fixed_width'] = "fixed smearing parameter in units of eV"
-additional_parameters['opt_SHC']['smr_type'] = 'Lorentzian'
-additional_parameters_description['opt_SHC']['smr_type'] = "analyitcal form of the broadened delta function"
-additional_parameters['opt_SHC']['adpt_smr'] = False
-additional_parameters_description['opt_SHC']['adpt_smr'] = "use an adaptive smearing parameter"
-additional_parameters['opt_SHC']['adpt_smr_fac'] = np.sqrt(2)
-additional_parameters_description['opt_SHC']['adpt_smr_fac'] = "prefactor for the adaptive smearing parameter"
-additional_parameters['opt_SHC']['adpt_smr_max'] = 0.1
-additional_parameters_description['opt_SHC']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter in eV"
-additional_parameters['opt_SHC']['adpt_smr_min'] = 1e-15
-additional_parameters_description['opt_SHC']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
 
 calculators=copy(calculators_trans)
 calculators.update(calculators_opt)
@@ -121,7 +103,7 @@ descriptions['Hall_classic'] =  "classical Hall coefficient, in S/(cm*T) for tau
 descriptions['Hall_morb'   ] = "Low field AHE, orbital part, in S/(cm*T)."
 descriptions['Hall_spin'   ] = "Low field AHE, spin    part, in S/(cm*T)."
 descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
-descriptions['opt_SHC'] = "Optical spin Hall conductivity in S/cm"
+
 
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
