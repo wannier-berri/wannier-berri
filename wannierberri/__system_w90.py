@@ -154,7 +154,7 @@ class System_w90(System):
         print ("Real-space lattice:\n",self.real_lattice)
 
     def wigner_seitz(self,mp_grid):
-        real_metric=self.real_lattice.T.dot(self.real_lattice)
+        real_metric=self.real_lattice.dot(self.real_lattice.T)
         mp_grid=np.array(mp_grid)
         irvec=[]
         ndegen=[]
