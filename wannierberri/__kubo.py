@@ -47,6 +47,16 @@ def FermiDirac(E, mu, kBT):
         arg = np.maximum(np.minimum((E-mu)/kBT, 700.0), -700.0)
         return 1.0/(np.exp(arg) + 1)
 
+def kubo_sum_elements(x, y, num_wann):
+    # Compute np.einsum('mnab,wnm->wab', x, y).
+    # This implementation is much faster than calling np.einsum.
+    assert x.shape == (num_wann, num_wann, 3, 3)
+    assert y.shape[1] == num_wann
+    assert y.shape[2] == num_wann
+    x_reshape = x.reshape((num_wann**2, 3 * 3))
+    y_reshape = y.reshape((-1, num_wann**2))
+    return (y_reshape @ x_reshape).reshape((-1, 3, 3))
+
 
 def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15):
@@ -134,9 +144,9 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         tmp3 = tmp1[:, :, np.newaxis, np.newaxis] * tmp2
 
         # Hermitian part of the conductivity tensor
-        sigma_H += -1 * pi * pre_fac * np.einsum('nmab,wnm->wab', tmp3, delta)
+        sigma_H += -1 * pi * pre_fac * kubo_sum_elements(tmp3, delta, data.num_wann)
         # anti-Hermitian part of the conductivity tensor
-        sigma_AH += 1j * pre_fac * np.einsum('nmab,wnm->wab', tmp3, re_efrac)
+        sigma_AH += 1j * pre_fac * kubo_sum_elements(tmp3, re_efrac, data.num_wann)
 
     # TODO: optimize by just storing independent components or leave it like that?
     # 3x3 tensors [iw, a, b]
