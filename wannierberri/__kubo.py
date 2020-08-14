@@ -31,12 +31,25 @@ hbar = constants.hbar
 # smearing functions
 def Lorentzian(x, width):
     return 1.0/(pi*width) * width**2/(x**2 + width**2)
-def Gaussian(x, width):
-    # Compute 1 / (np.sqrt(pi) * width) * exp(-(x / width) ** 2)
-    # If the exponent is less than -200, return 0.
+
+def Gaussian(x, width, adpt_smr):
+    '''
+    Compute 1 / (np.sqrt(pi) * width) * exp(-(x / width) ** 2)
+    If the exponent is less than -200, return 0.
+
+    An unoptimized version is the following.
+        def Gaussian(x, width, adpt_smr):
+            return 1 / (np.sqrt(pi) * width) * np.exp(-np.minimum(200.0, (x / width) ** 2))
+    '''
     inds = abs(x) < width * np.sqrt(200.0)
     output = np.zeros_like(x)
-    output[inds] = 1.0 / (np.sqrt(pi) * width) * np.exp(-(x[inds] / width)**2)
+    if adpt_smr:
+        # width is array
+        width_tile = np.tile(width, (x.shape[0], 1, 1))
+        output[inds] = 1.0 / (np.sqrt(pi) * width_tile[inds]) * np.exp(-(x[inds] / width_tile[inds])**2)
+    else:
+        # width is number
+        output[inds] = 1.0 / (np.sqrt(pi) * width) * np.exp(-(x[inds] / width)**2)
     return output
 
 # Fermi-Dirac distribution
@@ -46,6 +59,7 @@ def FermiDirac(E, mu, kBT):
     else:
         arg = np.maximum(np.minimum((E-mu)/kBT, 700.0), -700.0)
         return 1.0/(np.exp(arg) + 1)
+
 
 def kubo_sum_elements(x, y, num_wann):
     # Compute np.einsum('mnab,wnm->wab', x, y).
@@ -130,7 +144,7 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         if smr_type == 'Lorentzian':
             delta = Lorentzian(delta_arg, eta)
         elif smr_type == 'Gaussian':
-            delta = Gaussian(delta_arg, eta)
+            delta = Gaussian(delta_arg, eta, adpt_smr)
         else:
             cprint("Invalid smearing type. Fallback to Lorentzian", 'red')
             delta = Lorentzian(delta_arg, eta)
