@@ -112,7 +112,6 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         else:
             eta = smr_fixed_width # number
 
-        # Hermitian part of the conductivity tensor
         # broadened delta function [iw, n, m]
         if smr_type == 'Lorentzian':
             delta = Lorentzian(delta_arg, eta)
@@ -122,21 +121,18 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             cprint("Invalid smearing type. Fallback to Lorentzian", 'orange')
             delta = Lorentzian(delta_arg, eta)
 
-        sigma_H += -1 * pi * pre_fac * np.einsum('nm,nm,nma,mnb,wnm->wab', dfE, dE, A, A, delta) # [iw, a, b]
+        # real part of energy fraction [iw, n, m]
+        re_efrac = delta_arg / (delta_arg**2 + eta**2)
 
-        # free memory
-        del delta
+        # temporary variables for computing conductivity tensor
+        tmp1 = dfE * dE
+        tmp2 = np.einsum('nma,mnb->nmab', A, A)
+        tmp3 = tmp1[:, :, np.newaxis, np.newaxis] * tmp2
 
-
+        # Hermitian part of the conductivity tensor
+        sigma_H += -1 * pi * pre_fac * np.einsum('nmab,wnm->wab', tmp3, delta)
         # anti-Hermitian part of the conductivity tensor
-        re_efrac = delta_arg/(delta_arg**2 + eta**2) # real part of energy fraction [iw, n, m]
-        sigma_AH += 1j * pre_fac * np.einsum('nm,nm,wnm,nma,mnb->wab', dfE, dE, re_efrac, A, A) # [iw, a, b]
-
-        # free memory
-        del re_efrac
-        del delta_arg
-        del dfE
-        del dE
+        sigma_AH += 1j * pre_fac * np.einsum('nmab,wnm->wab', tmp3, re_efrac)
 
     # TODO: optimize by just storing independent components or leave it like that?
     # 3x3 tensors [iw, a, b]
