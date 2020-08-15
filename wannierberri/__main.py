@@ -25,8 +25,8 @@ from .__result import NoComponentError
 from collections import Iterable
 integrate_options=__integrate.calculators.keys()
 tabulate_options =__tabulate.calculators.keys()
-from .__mmn2uHu import hlp as hlp_mmn
-from .__vaspspn import hlp as hlp_spn
+from .mmn2uHu import hlp as hlp_mmn
+from .vaspspn import hlp as hlp_spn
 
 
 
@@ -83,7 +83,7 @@ def welcome():
 """
     cprint(logo,'yellow')
     cprint("a.k.a. Wannier19",'red')
-    figlet("    by Stepan Tsirkin",font='straight',col='green')
+    figlet("    by Stepan Tsirkin et al",font='straight',col='green')
 
 
     cprint("""\n  The Web page is :  HTTP://WANNIER-BERRI.ORG  \n""",'yellow' )
