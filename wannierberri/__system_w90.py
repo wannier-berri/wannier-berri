@@ -175,15 +175,16 @@ class System_w90(System):
         print ("Real-space lattice:\n",self.real_lattice)
 
     def wigner_seitz(self,mp_grid):
-        real_metric=self.real_lattice.T.dot(self.real_lattice)
+        ws_search_size=np.array([1]*3)
+        real_metric=self.real_lattice.dot(self.real_lattice.T)
         mp_grid=np.array(mp_grid)
         irvec=[]
         ndegen=[]
-        for n in iterate3dpm(mp_grid):
+        for n in iterate3dpm(mp_grid*ws_search_size):
             # Loop over the 125 points R. R=0 corresponds to i1=i2=i3=0,
             # or icnt=63  (62 starting from zero)
             dist=[]
-            for i in iterate3dpm((2,2,2)):
+            for i in iterate3dpm((1,1,1)+ws_search_size):
                 ndiff=n-i*mp_grid
                 dist.append(ndiff.dot(real_metric.dot(ndiff)))
             dist_min = np.min(dist)
