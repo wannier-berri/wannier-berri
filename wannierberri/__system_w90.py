@@ -176,6 +176,8 @@ class System_w90(System):
 
     def wigner_seitz(self,mp_grid):
         ws_search_size=np.array([1]*3)
+        dist_dim=np.prod((ws_search_size+1)*2+1)
+        origin=divmod((dist_dim+1),2)[0]-1
         real_metric=self.real_lattice.dot(self.real_lattice.T)
         mp_grid=np.array(mp_grid)
         irvec=[]
@@ -188,7 +190,7 @@ class System_w90(System):
                 ndiff=n-i*mp_grid
                 dist.append(ndiff.dot(real_metric.dot(ndiff)))
             dist_min = np.min(dist)
-            if  abs(dist[62] - dist_min) < 1.e-7 :
+            if  abs(dist[origin] - dist_min) < 1.e-7 :
                 irvec.append(n)
                 ndegen.append(np.sum( abs(dist - dist_min) < 1.e-7 ))
     
