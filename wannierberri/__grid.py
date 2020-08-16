@@ -154,5 +154,5 @@ def determineNK(NKdiv,NKFFT,NK,NKFFTmin,symgroup,minimalFFT=False,length=None):
         raise ValueError("you need to specify either NK or a pair (NKdiv,NKFFT) or (NK,NKFFT) . found NK={}, NKdiv={}, NKFFT={} ".format(NK,NKdiv,NKFFT))
     if NK is not None:
         if not np.all(NK==NKFFT*NKdiv) :
-            print ( "WARNING : the requested k-grid {} was adjusted to {}. Hope that it is fine".format(NK,NKFFT*NKdiv))
+            print ( "WARNING : the requested k-grid {} was adjusted to {}. If this is not fine, use minimalFFT=False".format(NK,NKFFT*NKdiv))
     return NKdiv,NKFFT
