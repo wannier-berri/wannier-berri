@@ -11,22 +11,38 @@
 #                                                            #
 #------------------------------------------------------------
 '''This utility calculates the matrices .uHu and/or .uIu from the .mmn matrices, and also reduces the number of bands in .amn, .mmn, .eig  and .spn files
-         Example of usage:
-          
+
+        Usage example:
                 python3 -m wanierberri.mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu
                 
-         only the first parameter is mandatory.
-                
-                -h - print the help message
-                IBstart    - the first band in the output file (counting starts from 1). default: 1
-                IBstartSum - the first band in the sum         (counting starts from 1). default: 1
-                NBout -- the number of bands in the output files. Default : all bands
-                NBsum -- the number of bands in the summation. (one may specify several numbers, usefull to test convergence with the number of bands). Default:all bands
-                input  -- path to the input files. Default: ./  
-                output -- path to the output files 
-                targets : files to write (amn,mmn,spn,uHu,uIu,eig) (default: amn,mmn,eig,uHu)
-                formatted : files to write as formatted: uHu,uIu,spn,spn_in,spn_out,all (default: none)
-                '''
+        Options
+            -h 
+                print the help message
+            IBstart    
+                |  the first band in the output file (counting starts from 1). 
+                |  default: 1
+            IBstartSum
+                |  the first band in the sum         (counting starts from 1). 
+                |  default: 1
+            NBout 
+                |  the number of bands in the output files. 
+                |  Default : all bands
+            NBsum 
+                |  the number of bands in the summation. (one may specify several numbers, usefull to test convergence with the number of bands). 
+                |  Default:all bands
+            input 
+                |  path to the input files. 
+                |  Default: ./  
+            output 
+                |  path to the output files 
+            targets 
+                |  files to write : ``amn``, ``mmn``, ``spn``, ``uHu``, ``uIu``, ``eig`` 
+                |  default: ``amn``, ``mmn``, ``eig``, ``uHu``
+            formatted 
+                |  files to write as formatted  ``uHu``, ``uIu``, ``spn``, ``spn_in``, ``spn_out``, ``all`` 
+                |  default: none
+
+'''
 
 import numpy as np
 import os
