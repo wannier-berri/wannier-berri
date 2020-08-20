@@ -37,7 +37,7 @@
                 |  path to the output files 
             targets 
                 |  files to write : ``amn``, ``mmn``, ``spn``, ``uHu``, ``uIu``, ``eig`` 
-                |  default: ``amn``, ``mmn``, ``eig``, ``uHu``
+                |  default: ``amn``,``mmn``,``eig``,``uHu``
             formatted 
                 |  files to write as formatted  ``uHu``, ``uIu``, ``spn``, ``spn_in``, ``spn_out``, ``all`` 
                 |  default: none
