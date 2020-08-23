@@ -163,8 +163,8 @@ def main():
             print ("k-point {} of {}".format(ik,NK))
             for ib in range(NNB):
                 f_mmn_out.write(MMNheadstrings[ik][ib])
-                for m in range(IBstart,NB_out): 
-                    for n in range(IBstart,NB_out):
+                for m in range(NB_out): 
+                    for n in range(NB_out):
                         f_mmn_out.write( "  {0:16.12f}  {1:16.12f}\n".format(MMN[ik][ib][m+IBstart,n+IBstart].real,MMN[ik][ib][m+IBstart,n+IBstart].imag) )
         f_mmn_out.close()
     print ("----------\n MMN OK  \n---------\n")
@@ -241,7 +241,7 @@ def main():
             for ik in range(NK):
                 print ("k-point {} of {}".format( ik+1,NK))
                 if UXU[0]=="uHu":
-                    eig_dum=EIG[ik]
+                    eig_dum=EIG[ik][IBstartSum:IBstartSum+NB_sum]
                 elif UXU[0]=="uIu":
                     eig_dum=np.ones(NB_sum)
                 else:
@@ -250,7 +250,7 @@ def main():
                 for ib2 in range(NNB):
                     for ib1 in range(ib2+1):
                         A[ib2,ib1]=np.einsum('ml,nl,l->mn',MMN[ik][ib1][IBstart:IBstart+NB_out,IBstartSum:NB_sum+IBstartSum].conj(),
-                                                           MMN[ik][ib2][IBstart:NB_out+IBstart,IBstartSum:NB_sum+IBstartSum], eig_dum[IBstartSum:IBstartSum+NB_sum])
+                                                           MMN[ik][ib2][IBstart:NB_out+IBstart,IBstartSum:NB_sum+IBstartSum], eig_dum)
                         if ib1==ib2:
                             A[ib2,ib1]=0.5*(A[ib2,ib1]+A[ib2,ib1].T.conj())
                         else:
@@ -260,7 +260,7 @@ def main():
                 else:
                     for ib2 in range(NNB):
                         for ib1 in range(NNB):
-                            f_uXu_out.write_record(A[ib1][ib2].reshape(-1,order='C'))
+                            f_uXu_out.write_record(A[ib2][ib1].reshape(-1,order='C'))
             print ("----------\n {0} OK  \n---------\n".format(UXU[0]))
             f_uXu_out.close()
 
