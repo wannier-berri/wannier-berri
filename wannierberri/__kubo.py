@@ -45,7 +45,7 @@ def FermiDirac(E, mu, kBT):
 
 
 def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
-                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15):
+                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, conductivity_type='kubo'):
     '''
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
     
@@ -75,35 +75,65 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
     
     # TODO: optimize for T = 0? take only necessary elements
     
-    # prefactor for correct units of the result (S/cm)
-    pre_fac = e**2/(100.0 * hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom)
+
     
     # frequency
     if not isinstance(omega, Iterable):
         omega = np.array([omega])
-        
-    sigma_H = np.zeros((omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
-    sigma_AH = np.zeros((omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
-        
-    # iterate over ik
+
+    if conductivity_type == 'kubo':    
+        sigma_H = np.zeros((omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
+        sigma_AH = np.zeros((omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
+        rank=2
+    elif conductivity_type == 'SHC':
+        sigma_H = np.zeros((omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
+        sigma_AH = np.zeros((omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
+        rank=3
+
+    # prefactor for correct units of the result (S/cm)
+    pre_fac = e**2/(100.0 * hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom)
+
+    # iterate over ik, simple summation
     for ik in range(data.NKFFT_tot):
         # energy
         E = data.E_K[ik] # energies [n] in eV
         dE = E[np.newaxis,:] - E[:, np.newaxis] # E_m(k) - E_n(k) [n, m]
-        
+
          # occupation
         fE = FermiDirac(E, mu, kBT) # f(E_m(k)) - f(E_n(k)) [n]
         dfE = fE[np.newaxis,:] - fE[:, np.newaxis] # [n, m]
         
-        # generalized Berry connection matrix
-        A = data.A_H[ik] # [n, m, a] in angstrom
-       
-        # E - omega
-        delta_arg = dE - omega[:, np.newaxis, np.newaxis] # argument of delta function [iw, n, m]
+        fEw= FermiDirac(E[np.newaxis,:],omega[:,np.newaxis],kBT) #[iw,n] for shifted Fermi energies
+        dfEw= fEw[:,np.newaxis,:] - fEw[:,:,np.newaxis] #[iw,n,m]
         
+        if conductivity_type == 'kubo':
+            # generalized Berry connection matrix
+            A = data.A_H[ik] # [n, m, a] in angstrom
+            B = data.A_H[ik]
+        elif conductivity_type == 'SHC':
+            B = - 1j*data.A_H[ik]
+            if False:
+                A = 0.5 * (data.B_H[ik] + data.B_H[ik].transpose(1,0,2,3))
+            else:
+                # PRB RPS19
+                VV = data.V_H[ik] # [n,m,a]
+                SS = data.S_H[ik]   # [n,m,b]
+                SA = data.SA_H[ik]  # [n,m,a,b]
+                SHA = data.SHA_H[ik]# [n,m,a,b]
+                A = np.einsum('nla,lmb->nmab',VV,SS)+np.einsum('nlb,lma->nmab',SS,VV)
+                #A = np.zeros((data.num_wann,data.num_wann,3,3),dtype=np.dtype('complex128'))
+                A += -1j * (E[np.newaxis,:,np.newaxis,np.newaxis]*SA - SHA)
+                SA_adj = SA.transpose(1,0,2,3).conj()
+                SHA_adj = SHA.transpose(1,0,2,3).conj()
+                A += 1j *  (E[:,np.newaxis,np.newaxis,np.newaxis]*SA_adj - SHA_adj)
+                A /= 2.0
+
+        # E - omega
+        delta_arg = dE[np.newaxis,:,:] - omega[:,np.newaxis,np.newaxis] # argument of delta function [iw, n, m]
+
         # smearing
         if adpt_smr: # [iw, n, m]
-            cprint("Adaptive smearing is an experimental feature and has not been extensively tested.", 'orange')
+            #cprint("Adaptive smearing is an experimental feature and has not been extensively tested.", 'orange')
             eta = smr_fixed_width
             delE = data.delE_K[ik] # energy derivatives [n, a] in eV*angstrom
             ddelE = delE[np.newaxis,:] - delE[:, np.newaxis] # delE_m(k) - delE_n(k) [n, m, a]
@@ -122,29 +152,53 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             cprint("Invalid smearing type. Fallback to Lorentzian", 'orange')
             delta = Lorentzian(delta_arg, eta)
         
-        sigma_H += -1 * pi * pre_fac * np.einsum('nm,nm,nma,mnb,wnm->wab', dfE, dE, A, A, delta) # [iw, a, b]
+
+        if conductivity_type == 'kubo':
+            # Hermitian part of the conductivity tensor
+            sigma_H += -1 * pi * pre_fac * np.einsum('nm,nm,nma,mnb,wnm->wab', dfE, dE, A, B, delta) # [iw, a, b]
+            # free memory
+            del delta
+            # anti-Hermitian part of the conductivity tensor
+            re_efrac = delta_arg/(delta_arg**2 + eta**2) # real part of energy fraction [iw, n, m]
+            sigma_AH += 1j * pre_fac * np.einsum('nm,nm,wnm,nma,mnb->wab', dfE, dE, re_efrac, A, B) # [iw, a, b]
+        elif conductivity_type == 'SHC':
+            cfac2=delta
+            delta_arg = dE[np.newaxis,:,:] + omega[:,np.newaxis,np.newaxis]
+            if smr_type == 'Lorentzian':
+                delta = Lorentzian(delta_arg, eta)
+            elif smr_type == 'Gaussian':
+                delta = Gaussian(delta_arg, eta)
+            else:
+                cprint("Invalid smearing type. Fallback to Lorentzian", 'orange')
+                delta = Lorentzian(delta_arg, eta)
+            cfac2+=-delta 
+            cfac1=np.real(-dE[np.newaxis,:,:]/(dE[np.newaxis,:,:]**2-(omega[:,np.newaxis,np.newaxis]+1j*eta)**2))
+            imAB=np.imag(np.einsum('nmac,mnb->nmabc',A,B))
+
+            sigma_H += 1j * pi * pre_fac * np.einsum('nm,wnm,nmabc->wabc',dfE,cfac2,imAB) / 4.0
+            sigma_AH += pre_fac * np.einsum('nm,wnm,nmabc->wabc',dfE,cfac1,imAB) / 2.0
+            del delta
         
+
         # free memory
-        del delta
-        
-        
-        # anti-Hermitian part of the conductivity tensor
-        re_efrac = delta_arg/(delta_arg**2 + eta**2) # real part of energy fraction [iw, n, m]
-        sigma_AH += 1j * pre_fac * np.einsum('nm,nm,wnm,nma,mnb->wab', dfE, dE, re_efrac, A, A) # [iw, a, b]
-        
-        # free memory
-        del re_efrac
+        #del re_efrac
         del delta_arg
         del dfE
         del dE
         
     # TODO: optimize by just storing independent components or leave it like that?
-    # 3x3 tensors [iw, a, b]
+    # 3x3 tensors [iw, a, b] or [iw,a,b,c]
     sigma_sym = np.real(sigma_H) + 1j * np.imag(sigma_AH) # symmetric (TR-even, I-even)
     sigma_asym = np.real(sigma_AH) + 1j * np.imag(sigma_H) # ansymmetric (TR-odd, I-even)
     
     # return result dictionary
     return result.EnergyResultDict({
-        'sym':  result.EnergyResult(omega, sigma_sym, TRodd=False, Iodd=False, rank=2),
-        'asym': result.EnergyResult(omega, sigma_asym, TRodd=True, Iodd=False, rank=2)
+        'sym':  result.EnergyResult(omega, sigma_sym, TRodd=False, Iodd=False, rank=rank),
+        'asym': result.EnergyResult(omega, sigma_asym, TRodd=False, Iodd=False, rank=rank)
     }) # the proper smoother is set later for both elements
+
+
+def opt_SHC(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
+                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15):
+    return opt_conductivity(data, omega, mu, kBT, smr_fixed_width, smr_type, adpt_smr,
+                adpt_smr_fac, adpt_smr_max, adpt_smr_min, conductivity_type='SHC')

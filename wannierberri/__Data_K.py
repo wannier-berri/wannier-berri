@@ -54,14 +54,17 @@ class Data_K(System):
  
         self.HH_R=system.HH_R[:,:,:]*expdK[None,None,:]
         
-        for X in ['AA','BB','CC','SS']:
+        for X in ['AA','BB','CC','SS','SA','SHA']:
             XR=X+'_R'
             hasXR='has_'+X+'_R'
             vars(self)[XR]=None
             vars(self)[hasXR]=False
             if XR in vars(system):
               if vars(system)[XR] is not  None:
-                vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
+                if X in ['SA','SHA']:
+                  vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None,None]
+                else:
+                  vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
                 vars(self)[hasXR]=True
 
 
@@ -474,6 +477,34 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def S_H_rediag(self):
         return np.einsum("knna->kna",self.S_H).real
+#PRB RPS19, Ryoo's way to calculate SHC
+
+    @lazy_property.LazyProperty
+    def SA_H(self):
+        return self._R_to_k_H(self.SA_R.copy())
+    
+    @lazy_property.LazyProperty
+    def SHA_H(self):
+        return self._R_to_k_H(self.SHA_R.copy())
+#PRB QZYZ18, Qiao's way to calculate SHC
+
+    @lazy_property.LazyProperty
+    def SH_H(self):
+        return self._R_to_k_H(self.SH_R.copy())
+
+    @lazy_property.LazyProperty
+    def K_H(self):
+        return -1j*self._R_to_k_H(self.SR_R.copy()) + np.einsum('knlc,klma->knmac',self.S_H,self.D_H)
+    
+    @lazy_property.LazyProperty
+    def L_H(self):
+        return -1j*self._R_to_k_H(self.SHR_R.copy()) + np.einsum('knlc,klma->knmac',self.SH_H,self.D_H)
+
+    @lazy_property.LazyProperty
+    def B_H(self):
+        return (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.S_H[:,:,:,np.newaxis,:] +
+            self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*self.K_H[:,:,:,:,:] - self.L_H)
+#end SHC
 
     @lazy_property.LazyProperty
     def delS_H(self):
