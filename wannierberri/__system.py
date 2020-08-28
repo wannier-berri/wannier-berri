@@ -17,25 +17,22 @@ import copy
 import lazy_property
 
 from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice
-from  .symmetry import Group
+from  .__symmetry import Group
 from colorama import init
 from termcolor import cprint 
 
 
 
 class System():
-    """
-    The base class for describing a system. Although it has its own constructor, it requires input binary files prepared by a special 
-    `branch <https://github.com/stepan-tsirkin/wannier90/tree/save4wberri>`_ of ``postw90.x`` .
-    Therefore this class by itself it is not recommended for a feneral user. Instead, 
-    please use the child classes, e.g  :class:`~wannierberri.System_w90` or :class:`~wannierberri.System_tb`
-    """
 
     def __init__(self,seedname="wannier90",tb_file=None,
                     getAA=False,
                     getBB=False,getCC=False,
                     getSS=False,
                     getFF=False,
+                    getSA=False,
+                    getSHA=False,
+                    getSHC=False,
                     use_ws=True,
                     frozen_max=-np.Inf,
                     random_gauge=False,
@@ -56,6 +53,11 @@ class System():
         self.CC_R=None
         self.FF_R=None
         self.SS_R=None
+        self.SA_R=None
+        self.SHA_R=None
+        self.SR_R=None
+        self.SH_R=None
+        self.SHR_R=None
 
 
 
@@ -122,7 +124,15 @@ class System():
         if getSS:
             self.SS_R=self.__getMat('SS')
 
+        if getSA:
+            self.SA_R=self.__getMat('SA')
+        if getSHA:
+            self.SHA_R=self.__getMat('SHA')
+        if getSHC:
+            self.SHA_R=self.__getMat('SHC')
+
         self.set_symmetry()
+
         cprint ("Reading the system finished successfully",'green', attrs=['bold'])
 
 

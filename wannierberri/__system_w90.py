@@ -23,7 +23,7 @@ from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, real_recip_lattic
 from colorama import init
 from termcolor import cprint 
 from .__system import System, ws_dist_map
-from .__w90_files import EIG,MMN,CheckPoint,SPN,UHU
+from .__w90_files import EIG,MMN,CheckPoint,SPN,UHU,SIU,SHU
 from time import time
 
 class System_w90(System):
@@ -57,27 +57,33 @@ class System_w90(System):
     """
 
     def __init__(self,seedname="wannier90",
-                    berry=False,spin=False,morb=False,
+                    berry=False,spin=False,morb=False,SHC=False,qiao=False,
                     use_ws=True,
                     transl_inv=True,
                     frozen_max=-np.Inf,
-                    fft='fftw',
-                    npar=multiprocessing.cpu_count()  ,
+                    random_gauge=False,
                     degen_thresh=-1 ,
-                    random_gauge=False
-                    ):
+                    fft='fftw',
+                    npar=multiprocessing.cpu_count()  ):
 
         self.seedname=seedname
 
         self.morb  = morb
         self.berry = berry
         self.spin  = spin
+        self.SHC   = SHC
+        self.qiao  = qiao
 
         self.AA_R=None
         self.BB_R=None
         self.CC_R=None
         self.FF_R=None
         self.SS_R=None
+        self.SA_R=None
+        self.SHA_R=None
+        self.SR_R=None
+        self.SH_R=None
+        self.SHR_R=None
 
 
         getAA = False
@@ -85,13 +91,21 @@ class System_w90(System):
         getCC = False
         getSS = False
         getFF = False
-        
+        getSA = False
+        getSHA = False
+        getSHC = False
+    
         if self.morb: 
             getAA=getBB=getCC=True
         if self.berry: 
             getAA=True
         if self.spin: 
             getSS=True
+        if self.SHC and self.qiao:
+            getAA=getSS=getSHC=True
+        if self.SHC and not self.qiao:
+            getAA=getSS=getSA=getSHA=True
+
 
         self.frozen_max=frozen_max
         self.random_gauge=random_gauge
@@ -118,8 +132,6 @@ class System_w90(System):
         t0=time()
         self.HH_R=fourier_q_to_R_loc( HHq )
         timeFFT+=time()-t0
-#        for i in range(self.nRvec):
-#            print (i,self.iRvec[i],"H(R)=",self.HH_R[0,0,i])
 
         if getAA:
             AAq=chk.get_AA_q(mmn,transl_inv=transl_inv)
@@ -146,23 +158,48 @@ class System_w90(System):
             timeFFT+=time()-t0
             del spn
 
+        if getSA:
+            siu=SIU(seedname)
+            t0=time()
+            self.SA_R=fourier_q_to_R_loc(chk.get_SA_q(siu,mmn))
+            timeFFT+=time()-t0
+            del siu
+        #for i in range(self.nRvec):
+        #    print (i,self.iRvec[i],"SA(R)=",np.real(self.SA_R[0,:,i,2,0]))
+        if getSHA:
+            shu=SHU(seedname)
+            t0=time()
+            self.SHA_R=fourier_q_to_R_loc(chk.get_SHA_q(shu,mmn))
+            timeFFT+=time()-t0
+            del shu
+        if getSHC:
+            spn=SPN(seedname)
+            t0=time()
+            self.SR_R=fourier_q_to_R_loc(chk.get_SR_q(spn,mmn))
+            self.SH_R=fourier_q_to_R_loc(chk.get_SH_q(spn))
+            self.SHR_R=fourier_q_to_R_loc(chk.get_SHR_q(spn,mmn))
+            timeFFT+=time()-t0
+            del spn
+
         print ("time for FFT_q_to_R : {} s".format(timeFFT))
 
         if  use_ws:
             print ("using ws_distance")
             ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centres, chk.mp_grid,self.real_lattice,npar=npar)
-            for X in ['HH','AA','BB','CC','SS','FF']:
+            for X in ['HH','AA','BB','CC','SS','FF','SA','SHA','SHC']:
                 XR=X+'_R'
                 if vars(self)[XR] is not None:
                     print ("using ws_dist for {}".format(XR))
                     vars(self)[XR]=ws_map(vars(self)[XR])
             self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
-        self.set_symmetry()
 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
         print ("Minimal Number of K points:", self.NKFFTmin)
         print ("Real-space lattice:\n",self.real_lattice)
+
+    def qiao(self):
+        return self.qiao
 
     def wigner_seitz(self,mp_grid):
         ws_search_size=np.array([1]*3)
@@ -227,11 +264,13 @@ def ws_dist_stars(iRvec,cRvec,ws_map,param):
           irvec_new={}
           for jw in range(ws_map.num_wann):
             for iw in range(ws_map.num_wann):
-              # function JW translated in the Wigner-Seitz around function IW
-              # and also find its degeneracy, and the integer shifts needed
-              # to identify it
-              R_in=-wannier_centres[iw] +cRvec + wannier_centres[ jw]
-              dist=np.linalg.norm( R_in[None,:]+shifts_int_all.dot(real_lattice),axis=1)
-              irvec_new[(iw,jw)]=iRvec+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
-          return irvec_new
+               # function JW translated in the Wigner-Seitz around function IW
+               # and also find its degeneracy, and the integer shifts needed
+               # to identify it
+               R_in=-wannier_centres[iw] +cRvec + wannier_centres[ jw]
+               dist=np.linalg.norm( R_in[None,:]+shifts_int_all.dot(real_lattice),axis=1)
+               irvec_new[(iw,jw)]=iRvec+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
+            return irvec_new=
+
+
 
