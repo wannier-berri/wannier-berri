@@ -32,6 +32,7 @@ class System():
                     getFF=False,
                     getSA=False,
                     getSHA=False,
+                    getSHC=False,
                     use_ws=True,
                     frozen_max=-np.Inf,
                     random_gauge=False,
@@ -54,6 +55,9 @@ class System():
         self.SS_R=None
         self.SA_R=None
         self.SHA_R=None
+        self.SR_R=None
+        self.SH_R=None
+        self.SHR_R=None
 
 
 
@@ -124,6 +128,12 @@ class System():
             self.SA_R=self.__getMat('SA')
         if getSHA:
             self.SHA_R=self.__getMat('SHA')
+        if getSHC:
+            self.SR_R=self.__getMat('SR')
+            self.SH_R=self.__getMat('SH')
+            self.SHR_R=self.__getMat('SHR')
+
+        self.set_symmetry()
 
         cprint ("Reading the system finished successfully",'green', attrs=['bold'])
 
@@ -174,6 +184,24 @@ class System():
         return NKFFTmin
 
     def set_symmetry(self,symmetry_gen):
+        """ 
+        Set the symmetry group of the :class:`~wannierberri.__system.System` 
+
+        Parameters
+        ----------
+        symmetry_gen : list of :class:`~wannierberri.symmetry.Symmetry` or str
+            The generators of the symmetry group. 
+
+        Notes
+        -----
+        + Only the generators of the symmetry group are essential. However, no problem if more symmetries are provided. 
+          The code further evaluates all possible products of symmetry operations, until the full group is restored.
+        + Providing `Identity` is not needed. It is included by default
+        + Operations are given as objects of class:`~wannierberri.Symmetry.symmetry` or by name as `str`, e.g. ``'Inversion'`` , ``'C6z'``, or products like ``'TimeReversal*C2x'``.
+        + ``symetyry_gen=[]`` is equivalent to not calling this function at all
+        + Only the **point group** operations are important. Hence, for non-symmorphic operations, only the rotational part should be given, neglecting the translation.
+
+        """
         self.symgroup=Group(symmetry_gen,recip_lattice=self.recip_lattice,real_lattice=self.real_lattice)
 
 
