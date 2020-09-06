@@ -54,14 +54,14 @@ class Data_K(System):
  
         self.HH_R=system.HH_R[:,:,:]*expdK[None,None,:]
         
-        for X in ['AA','BB','CC','SS','SA','SHA']:
+        for X in ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']:
             XR=X+'_R'
             hasXR='has_'+X+'_R'
             vars(self)[XR]=None
             vars(self)[hasXR]=False
             if XR in vars(system):
               if vars(system)[XR] is not  None:
-                if X in ['SA','SHA']:
+                if X in ['SA','SHA','SR','SHR']:
                   vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None,None]
                 else:
                   vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
@@ -309,12 +309,12 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def D_H(self):
-            return -self.V_H*self.dEig_inv[:, :,:,None]
+        return -self.V_H*self.dEig_inv[:, :,:,None]
 
     @lazy_property.LazyProperty
     def V_H(self):
         self.E_K
-        return self._R_to_k_H( self.HH_R, der=1 )
+        return self._R_to_k_H( self.HH_R.copy(), der=1)
 
     @lazy_property.LazyProperty
     def Morb_Hbar(self):
@@ -481,24 +481,24 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def SA_H(self):
-        return self._R_to_k_H(self.SA_R.copy())
+        return self._R_to_k_H(self.SA_R.copy(), hermitian=False)
     
     @lazy_property.LazyProperty
     def SHA_H(self):
-        return self._R_to_k_H(self.SHA_R.copy())
+        return self._R_to_k_H(self.SHA_R.copy(), hermitian=False)
 #PRB QZYZ18, Qiao's way to calculate SHC
 
     @lazy_property.LazyProperty
     def SH_H(self):
-        return self._R_to_k_H(self.SH_R.copy())
+        return self._R_to_k_H(self.SH_R.copy(), hermitian=False)
 
     @lazy_property.LazyProperty
     def K_H(self):
-        return -1j*self._R_to_k_H(self.SR_R.copy()) + np.einsum('knlc,klma->knmac',self.S_H,self.D_H)
+        return -1j*self._R_to_k_H(self.SR_R.copy(), hermitian=False) + np.einsum('knlc,klma->knmac',self.S_H,self.D_H)
     
     @lazy_property.LazyProperty
     def L_H(self):
-        return -1j*self._R_to_k_H(self.SHR_R.copy()) + np.einsum('knlc,klma->knmac',self.SH_H,self.D_H)
+        return -1j*self._R_to_k_H(self.SHR_R.copy(), hermitian=False) + np.einsum('knlc,klma->knmac',self.SH_H,self.D_H)
 
     @lazy_property.LazyProperty
     def B_H(self):

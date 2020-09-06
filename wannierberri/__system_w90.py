@@ -57,7 +57,7 @@ class System_w90(System):
     """
 
     def __init__(self,seedname="wannier90",
-                    berry=False,spin=False,morb=False,SHC=False,qiao=False,
+                    berry=False,spin=False,morb=False,SHC=False,qiao=True,
                     use_ws=True,
                     transl_inv=True,
                     frozen_max=-np.Inf,
@@ -118,13 +118,14 @@ class System_w90(System):
         self.nRvec0=len(self.iRvec)
         self.num_wann=chk.num_wann
 
+
         eig=EIG(seedname)
         if getAA or getBB:
             mmn=MMN(seedname,npar=npar)
 
         kpt_mp_grid=[tuple(k) for k in np.array( np.round(chk.kpt_latt*np.array(chk.mp_grid)[None,:]),dtype=int)%chk.mp_grid]
 #        print ("kpoints:",kpt_mp_grid)
-
+        
         fourier_q_to_R_loc=functools.partial(fourier_q_to_R, mp_grid=chk.mp_grid,kpt_mp_grid=kpt_mp_grid,iRvec=self.iRvec,ndegen=self.Ndegen,numthreads=npar,fft=fft)
 
         timeFFT=0
@@ -155,6 +156,10 @@ class System_w90(System):
             spn=SPN(seedname)
             t0=time()
             self.SS_R=fourier_q_to_R_loc(chk.get_SS_q(spn))
+            if getSHC:
+                self.SR_R=fourier_q_to_R_loc(chk.get_SR_q(spn,mmn))
+                self.SH_R=fourier_q_to_R_loc(chk.get_SH_q(spn,eig))
+                self.SHR_R=fourier_q_to_R_loc(chk.get_SHR_q(spn,mmn,eig))
             timeFFT+=time()-t0
             del spn
 
@@ -164,29 +169,20 @@ class System_w90(System):
             self.SA_R=fourier_q_to_R_loc(chk.get_SA_q(siu,mmn))
             timeFFT+=time()-t0
             del siu
-        #for i in range(self.nRvec):
-        #    print (i,self.iRvec[i],"SA(R)=",np.real(self.SA_R[0,:,i,2,0]))
+
         if getSHA:
             shu=SHU(seedname)
             t0=time()
             self.SHA_R=fourier_q_to_R_loc(chk.get_SHA_q(shu,mmn))
             timeFFT+=time()-t0
             del shu
-        if getSHC:
-            spn=SPN(seedname)
-            t0=time()
-            self.SR_R=fourier_q_to_R_loc(chk.get_SR_q(spn,mmn))
-            self.SH_R=fourier_q_to_R_loc(chk.get_SH_q(spn))
-            self.SHR_R=fourier_q_to_R_loc(chk.get_SHR_q(spn,mmn))
-            timeFFT+=time()-t0
-            del spn
 
         print ("time for FFT_q_to_R : {} s".format(timeFFT))
 
         if  use_ws:
             print ("using ws_distance")
             ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centres, chk.mp_grid,self.real_lattice,npar=npar)
-            for X in ['HH','AA','BB','CC','SS','FF','SA','SHA','SHC']:
+            for X in ['HH','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
                 XR=X+'_R'
                 if vars(self)[XR] is not None:
                     print ("using ws_dist for {}".format(XR))
@@ -270,7 +266,7 @@ def ws_dist_stars(iRvec,cRvec,ws_map,param):
                R_in=-wannier_centres[iw] +cRvec + wannier_centres[ jw]
                dist=np.linalg.norm( R_in[None,:]+shifts_int_all.dot(real_lattice),axis=1)
                irvec_new[(iw,jw)]=iRvec+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
-            return irvec_new=
+          return irvec_new
 
 
 
