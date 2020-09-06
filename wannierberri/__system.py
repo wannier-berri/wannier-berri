@@ -129,7 +129,9 @@ class System():
         if getSHA:
             self.SHA_R=self.__getMat('SHA')
         if getSHC:
-            self.SHA_R=self.__getMat('SHC')
+            self.SR_R=self.__getMat('SR')
+            self.SH_R=self.__getMat('SH')
+            self.SHR_R=self.__getMat('SHR')
 
         self.set_symmetry()
 

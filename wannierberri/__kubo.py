@@ -112,8 +112,8 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             B = data.A_H[ik]
         elif conductivity_type == 'SHC':
             B = - 1j*data.A_H[ik]
-            if False:
-                A = 0.5 * (data.B_H[ik] + data.B_H[ik].transpose(1,0,2,3))
+            if data.SH_R is not None:
+                A = 0.5 * (data.B_H[ik] + data.B_H[ik].transpose(1,0,2,3).conj())
             else:
                 # PRB RPS19
                 VV = data.V_H[ik] # [n,m,a]
@@ -121,7 +121,6 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
                 SA = data.SA_H[ik]  # [n,m,a,b]
                 SHA = data.SHA_H[ik]# [n,m,a,b]
                 A = np.einsum('nla,lmb->nmab',VV,SS)+np.einsum('nlb,lma->nmab',SS,VV)
-                #A = np.zeros((data.num_wann,data.num_wann,3,3),dtype=np.dtype('complex128'))
                 A += -1j * (E[np.newaxis,:,np.newaxis,np.newaxis]*SA - SHA)
                 SA_adj = SA.transpose(1,0,2,3).conj()
                 SHA_adj = SHA.transpose(1,0,2,3).conj()
@@ -141,7 +140,7 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
                 adpt_smr_fac * np.linalg.norm(ddelE, axis=2) * np.max(data.Kpoint.dK_fullBZ)))[np.newaxis, :, :]
         else:
             eta = smr_fixed_width # number
-
+        
         # Hermitian part of the conductivity tensor
         # broadened delta function [iw, n, m]
         if smr_type == 'Lorentzian':
@@ -154,13 +153,17 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         
 
         if conductivity_type == 'kubo':
+            tmp1 = dfE * dE
+            tmp2 = np.einsum('nma,mnb->nmab', A, A)
+            tmp3 = tmp1[:, :, np.newaxis, np.newaxis] * tmp2
             # Hermitian part of the conductivity tensor
-            sigma_H += -1 * pi * pre_fac * np.einsum('nm,nm,nma,mnb,wnm->wab', dfE, dE, A, B, delta) # [iw, a, b]
+            sigma_H += -1 * pi * pre_fac * np.einsum('nmab,wnm->wab', tmp3, delta)
             # free memory
             del delta
             # anti-Hermitian part of the conductivity tensor
             re_efrac = delta_arg/(delta_arg**2 + eta**2) # real part of energy fraction [iw, n, m]
-            sigma_AH += 1j * pre_fac * np.einsum('nm,nm,wnm,nma,mnb->wab', dfE, dE, re_efrac, A, B) # [iw, a, b]
+            sigma_AH += 1j * pre_fac * np.einsum('nmab,wnm->wab', tmp3, re_efrac)
+
         elif conductivity_type == 'SHC':
             cfac2=delta
             delta_arg = dE[np.newaxis,:,:] + omega[:,np.newaxis,np.newaxis]
@@ -171,14 +174,14 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             else:
                 cprint("Invalid smearing type. Fallback to Lorentzian", 'orange')
                 delta = Lorentzian(delta_arg, eta)
-            cfac2+=-delta 
+            cfac2+=-delta
             cfac1=np.real(-dE[np.newaxis,:,:]/(dE[np.newaxis,:,:]**2-(omega[:,np.newaxis,np.newaxis]+1j*eta)**2))
+            temp1=dfE[np.newaxis,:,:]*cfac1
+            temp2=dfE[np.newaxis,:,:]*cfac2
             imAB=np.imag(np.einsum('nmac,mnb->nmabc',A,B))
-
-            sigma_H += 1j * pi * pre_fac * np.einsum('nm,wnm,nmabc->wabc',dfE,cfac2,imAB) / 4.0
-            sigma_AH += pre_fac * np.einsum('nm,wnm,nmabc->wabc',dfE,cfac1,imAB) / 2.0
+            sigma_H += 1j * pi * pre_fac * np.einsum('wnm,nmabc->wabc',temp2,imAB) / 4.0
+            sigma_AH += pre_fac * np.einsum('wnm,nmabc->wabc',temp1,imAB) / 2.0
             del delta
-        
 
         # free memory
         #del re_efrac

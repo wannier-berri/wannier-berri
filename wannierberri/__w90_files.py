@@ -26,7 +26,6 @@ from time import time
 from itertools import islice
 
 
-
 readstr  = lambda F : "".join(c.decode('ascii')  for c in F.read_record('c') ).strip() 
 
 class CheckPoint():
@@ -149,28 +148,9 @@ class CheckPoint():
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb=mmn.neighbours[ik,ib]
-                if ik==1 and ib==2:
-                    print("before 1,1",siu.data[ik,ib,17,16,:])
                 SAW=self.wannier_gauge(siu.data[ik,ib],ik,iknb)
-                if ik==1 and ib==2:
-                    print(self.v_matrix[iknb][17,23],ik,ib,iknb)
-                    print("after 1,1", SAW[17,16,:])
                 SA_q_ik=1.j*SAW[:,:,None,:]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:,None]
                 SA_q[ik]+=SA_q_ik
-
-                #iknb=mmn.neighbours[ik,ib]
-                #for ipol in range(3):
-                #    if ik==1 and ib==2:
-                #        print("before 1,1",siu.data[ik,ib,17,16,ipol])
-                #    SAW=self.wannier_gauge(siu.data[ik,ib,:,:,ipol],ik,iknb)
-                #    if ik==1 and ib==2:
-                #        print(self.v_matrix[iknb][17,23],ik,ib,iknb)
-                #        print("after 1,1", SAW[17,16])
-                #    SA_q_ik=1.j*SAW[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
-                #    SA_q[ik,:,:,:,ipol]+=SA_q_ik
-        #SA_q=0.5*(SA_q+SA_q.transpose( (0,2,1,3,4) ).conj())
-        #for ik in range(self.num_kpts):
-        #    print(ik, SA_q[ik,17,16,0,1])
         return SA_q
 
     def get_SHA_q(self,shu,mmn):
@@ -192,18 +172,35 @@ class CheckPoint():
         mmn.set_bk(self)
         SR_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3,3) ,dtype=complex)
         assert (spn.NK,spn.NB)==(self.num_kpts,self.num_bands)
-        cprint("Qiao's SHC is still being prepared.", 'red')
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb=mmn.neighbours[ik,ib]
+                for i in range(3):
+                    SM_i=spn.data[ik,:,:,i].dot(mmn.data[ik,ib,:,:])
+                    SRW=self.wannier_gauge(SM_i,ik,iknb)-self.wannier_gauge(spn.data[ik,:,:,i],ik,ik)
+                    SR_q[ik,:,:,:,i]+=1.j*SRW[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
         return SR_q
     
-    def get_SH_q(self,spn):
+    def get_SH_q(self,spn,eig):
         SH_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
         assert (spn.NK,spn.NB)==(self.num_kpts,self.num_bands)
+        for ik in range(self.num_kpts):
+            for i in range(3):
+                SH_q[ik,:,:,i]=self.wannier_gauge(spn.data[ik,:,:,i]*eig.data[ik,None,:],ik,ik)
         return SH_q
         
-    def get_SHR_q(self,spn,mmn):
+    def get_SHR_q(self,spn,mmn,eig):
         mmn.set_bk(self)
         SHR_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3,3) ,dtype=complex)
         assert (spn.NK,spn.NB)==(self.num_kpts,self.num_bands)
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb=mmn.neighbours[ik,ib]
+                for i in range(3):
+                    SH_i=spn.data[ik,:,:,i]*eig.data[ik,None,:]
+                    SHM_i=SH_i.dot(mmn.data[ik,ib])
+                    SHRW=self.wannier_gauge(SHM_i,ik,iknb)-self.wannier_gauge(SH_i,ik,ik)
+                    SHR_q[ik,:,:,:,i]+=1.j*SHRW[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
         return SHR_q
 
 
@@ -271,7 +268,6 @@ class MMN(W90_data):
         self.G=headstring[:,:,2:]
         t2=time()
         print ("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2-t0,t1-t0,t2-t1))
-
 
     def set_bk(self,chk):
       try :
