@@ -17,17 +17,22 @@ from scipy.io import FortranFile
 import copy
 import lazy_property
 import functools
+#import billiard as multiprocessing 
 import multiprocessing 
 from .__utility import str2bool, alpha_A, beta_A, iterate3dpm
 from colorama import init
 from termcolor import cprint 
 from scipy.constants import physical_constants
+from time import time
+from itertools import islice
+
 
 readstr  = lambda F : "".join(c.decode('ascii')  for c in F.read_record('c') ).strip() 
 
 class CheckPoint():
 
     def __init__(self,seedname):
+        t0=time()
         seedname=seedname.strip()
         FIN=FortranFile(seedname+'.chk','r')
         readint   = lambda : FIN.read_record('i4')
@@ -74,6 +79,7 @@ class CheckPoint():
             self.v_matrix=[u  for u in u_matrix ] 
         self.wannier_centres=readfloat().reshape((self.num_wann,3))
         self.wannier_spreads=readfloat().reshape((self.num_wann))
+        print ("Time to read .chk : {}".format(time()-t0))
 
     def wannier_gauge(self,mat,ik1,ik2):
         # data should be of form NBxNBx ...   - any form later
@@ -99,8 +105,10 @@ class CheckPoint():
         SS_q=np.array([ self.wannier_gauge(S,ik,ik)  for ik,S in enumerate(spn.data) ]) 
         return 0.5*(SS_q+SS_q.transpose(0,2,1,3).conj())
 
-    def get_AA_q(self,mmn,eig=None):  # if eig is present - it is BB_q 
-        mmn.set_bk(mp_grid,kpt_latt,recip_lattice)
+    def get_AA_q(self,mmn,eig=None,transl_inv=False):  # if eig is present - it is BB_q 
+        if transl_inv and (eig is not None):
+            raise RuntimeError("transl_inv cannot be used to obtain BB")
+        mmn.set_bk(self)
         AA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
@@ -108,7 +116,11 @@ class CheckPoint():
                 data=mmn.data[ik,ib]
                 if eig is not None:
                     data*=eig.data[ik,:,None]
-                AA_q[ik]+=1.j*self.wannier_gauge(data,ik,iknb)[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
+                AAW=self.wannier_gauge(data,ik,iknb)
+                AA_q_ik=1.j*AAW[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
+                if transl_inv:
+                    AA_q_ik[range(self.num_wann),range(self.num_wann)]=-np.log(AAW.diagonal()).imag[:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,:]
+                AA_q[ik]+=AA_q_ik
         if eig is None:
             AA_q=0.5*(AA_q+AA_q.transpose( (0,2,1,3) ).conj())
         return AA_q
@@ -151,6 +163,8 @@ class W90_data():
         else:
             return 0
 
+def convert(A):
+    return np.array([l.split() for l in A],dtype=float)
 
 class MMN(W90_data):
 
@@ -159,21 +173,41 @@ class MMN(W90_data):
         return 1
 
 
-    def __init__(self,seedname,num_proc=4):
-        f_mmn_in=open(seedname+".mmn","r").readlines()
-        print ("reading {}.mmn: ".format(seedname)+f_mmn_in[0].strip())
-        s=f_mmn_in[1]
-        NB,NK,NNB=np.array(s.split(),dtype=int)
+    def __init__(self,seedname,npar=multiprocessing.cpu_count()):
+        t0=time()
+        f_mmn_in=open(seedname+".mmn","r")
+        print ("reading {}.mmn: ".format(seedname)+f_mmn_in.readline())
+        NB,NK,NNB=np.array(f_mmn_in.readline().split(),dtype=int)
         self.data=np.zeros( (NK,NNB,NB,NB), dtype=complex )
-        headstring=np.array([s.split() for s in f_mmn_in[2::1+self.NB**2] ]
-                    ,dtype=int).reshape(self.NK,self.NNB,5)
-        self.G=headstring[:,:,2:]
-        self.neighbours=headstring[:,:,1]-1
-        assert np.all( headstring[:,:,0]-1==np.arange(self.NK)[:,None])
         block=1+self.NB*self.NB
-        allmmn=( f_mmn_in[3+j*block:2+(j+1)*block]  for j in range(self.NNB*self.NK) )
-        p=multiprocessing.Pool(num_proc)
-        self.data= np.array(p.map(str2arraymmn,allmmn)).reshape(self.NK,self.NNB,self.NB,self.NB).transpose((0,1,3,2))
+        data=[]
+        headstring=[]
+        mult=4
+        if npar>0 :
+            pool=multiprocessing.Pool(npar)
+        for j in range(0,NNB*NK,npar*mult):
+            x=list(islice(f_mmn_in, int(block*npar*mult)))
+            print ("mmn: read {} lines".format(len(x)))
+            if len(x)==0 : break
+            headstring+=x[::block]
+            y=[x[i*block+1:(i+1)*block] for i in range(npar*mult) if (i+1)*block<=len(x)]
+            if npar>0:
+                data+=pool.map(convert,y)
+            else:
+                data+=[convert(z) for z in y]
+        if npar>0 : 
+            pool.close()
+        f_mmn_in.close()
+        t1=time()
+        data=[d[:,0]+1j*d[:,1] for d in data]
+        self.data=np.array(data).reshape(self.NK,self.NNB,self.NB,self.NB).transpose((0,1,3,2))
+        headstring=np.array([s.split() for s in headstring  ] ,dtype=int).reshape(self.NK,self.NNB,5)
+        assert np.all( headstring[:,:,0]-1==np.arange(self.NK)[:,None])
+        self.neighbours=headstring[:,:,1]-1
+        self.G=headstring[:,:,2:]
+        t2=time()
+        print ("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2-t0,t1-t0,t2-t1))
+
 
     def set_bk(self,mp_grid,kpt_latt,recip_lattice):
       try :
@@ -194,9 +228,15 @@ class MMN(W90_data):
         shell_mat=np.array([ bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2])  for b1,b2 in zip (brd,brd[1:])])
         shell_mat_line=shell_mat.reshape(-1,9)
         u,s,v=np.linalg.svd(shell_mat_line,full_matrices=False)
+#        print ("u,s,v=",u,s,v)
+#        print("check svd : ",u.dot(np.diag(s)).dot(v)-shell_mat_line)
         s=1./s
-        weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u)).reshape(-1)
-        assert np.linalg.norm(sum(w*m for w,m in zip(weight_shell,shell_mat))-np.eye(3))<1e-7
+        weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
+        check_eye=sum(w*m for w,m in zip(weight_shell,shell_mat))
+        tol=np.linalg.norm(check_eye-np.eye(3))
+        if tol>1e-5 :
+            raise RuntimeError("Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\weight_shell={}\n".format(
+                      check_eye,tol, bk_latt_unique,bk_cart_unique,bk_cart_unique_length,shell_mat,weight_shell))
         weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
         weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
         bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
@@ -222,6 +262,7 @@ class AMN(W90_data):
         NB,NK,NW=np.array(s.split(),dtype=int)
         self.data=np.zeros( (NK,NB,NW), dtype=complex )
         block=self.NW*self.NB
+        # TODO : prarallelize, if needed (like in MMN)
         allmmn=( f_mmn_in[2+j*block:2+(j+1)*block]  for j in range(self.NK) )
         p=multiprocessing.Pool(num_proc)
         self.data= np.array(p.map(str2arraymmn,allmmn)).reshape((self.NK,self.NW,self.NB)).transpose(0,2,1)
@@ -233,7 +274,6 @@ def str2arraymmn(A):
 #        n=int(round(np.sqrt(a.shape[0])))
 #        shape=(n,n)
     return (a[:,0]+1j*a[:,1])
-
 
 
 class EIG(W90_data):
