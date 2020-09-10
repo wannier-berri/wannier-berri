@@ -144,6 +144,7 @@ class CheckPoint():
 
 
 class W90_data():
+
     @property
     def n_neighb(self):
         return 0
@@ -163,6 +164,12 @@ class W90_data():
         else:
             return 0
 
+    def __init__(self,seedname="wannier90",data=None,**kwargs):
+        self.data=data
+        if self.data is None:
+            self.read(seedname,**kwargs)
+        self.data=np.array(self.data)
+
 def convert(A):
     return np.array([l.split() for l in A],dtype=float)
 
@@ -172,8 +179,22 @@ class MMN(W90_data):
     def n_neighb(self):
         return 1
 
+    def __init__(self,seedname="wannier90",data=None,bk=None,wk=None,G=None,neighbours=None,**kwargs):
+        self.data=data
+        if self.data is None:
+            self.read(seedname,**kwargs)
+        else:
+            self.data=np.array(self.data)
+            self.bk=bk
+            self.wk=wk
+            self.neighbours=neighbours
+            self.G=G
+            assert self.G  is not None
+            assert self.bk is not None
+            assert self.wk is not None
+            assert self.neighbours is not None
 
-    def __init__(self,seedname,npar=multiprocessing.cpu_count()):
+    def read(self,seedname,npar=multiprocessing.cpu_count()):
         t0=time()
         f_mmn_in=open(seedname+".mmn","r")
         print ("reading {}.mmn: ".format(seedname)+f_mmn_in.readline())
@@ -207,6 +228,21 @@ class MMN(W90_data):
         self.G=headstring[:,:,2:]
         t2=time()
         print ("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2-t0,t1-t0,t2-t1))
+
+
+    def write(self,seedname,comment="written by WannierBerri"):
+        t0=time()
+        comment=comment.strip()
+        f_mmn_out=open(seedname+".mmn","w")
+        print ("writing {}.mmn: ".format(seedname)+comment+"\n")
+        f_mmn_out.write("{}\n {}  {}  {}\n".format(comment,self.NB,self.NK,self.NNB))
+
+#        self.data=np.zeros( (NK,NNB,NB,NB), dtype=complex )
+        block=1+self.NB*self.NB
+        for ik in range(self.NK):
+            for ikb,neigh in enumerate(self.neighbours[ik]):
+                 f_mmn_out.write((" {:4d}"*5+"\n").format(ik+1,neigh+1,*tuple(self.G[ik,ikb])))
+                 f_mmn_out.write("".join( " {:17.12f} {:17.12f}\n".format(x.real,x.imag) for x in self.data[ik,ikb].reshape(-1,order='F')))
 
 
     def set_bk(self,mp_grid,kpt_latt,recip_lattice):
@@ -255,21 +291,31 @@ class AMN(W90_data):
         return self.data.shape[2]
 
 
-    def __init__(self,seedname,num_proc=4):
+    def read(self,seedname,num_proc=4):
         f_mmn_in=open(seedname+".amn","r").readlines()
         print ("reading {}.amn: ".format(seedname)+f_mmn_in[0].strip())
         s=f_mmn_in[1]
         NB,NK,NW=np.array(s.split(),dtype=int)
         self.data=np.zeros( (NK,NB,NW), dtype=complex )
         block=self.NW*self.NB
-        # TODO : prarallelize, if needed (like in MMN)
         allmmn=( f_mmn_in[2+j*block:2+(j+1)*block]  for j in range(self.NK) )
         p=multiprocessing.Pool(num_proc)
         self.data= np.array(p.map(str2arraymmn,allmmn)).reshape((self.NK,self.NW,self.NB)).transpose(0,2,1)
 
+    def write(self,seedname,comment="written by WannierBerri"):
+        comment=comment.strip()
+        f_mmn_out=open(seedname+".amn","w")
+        print ("writing {}.amn: ".format(seedname)+comment+"\n")
+        f_mmn_out.write(comment+"\n")
+        f_mmn_out.write("  {:3d} {:3d} {:3d}  \n".format(self.NB,self.NK,self.NW))
+        for ik in range(self.NK):
+            f_mmn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(ib+1,iw+1,ik+1,self.data[ik,ib,iw].real,self.data[ik,ib,iw].imag) for iw in range(self.NW) for ib in range(self.NB)))
+        f_mmn_out.close()
+
+
 
 def str2arraymmn(A):
-    a=np.array([l.split() for l in A],dtype=float)
+    a=np.array([l.split()[3:] for l in A],dtype=float)
 #    if shape is None:
 #        n=int(round(np.sqrt(a.shape[0])))
 #        shape=(n,n)
@@ -277,7 +323,7 @@ def str2arraymmn(A):
 
 
 class EIG(W90_data):
-    def __init__(self,seedname):
+    def read(self,seedname="wannier90"):
         data=np.loadtxt(seedname+".eig")
         NB=int(round(data[:,0].max()))
         NK=int(round(data[:,1].max()))
@@ -285,6 +331,13 @@ class EIG(W90_data):
         assert np.linalg.norm(data[:,:,0]-1-np.arange(NB)[None,:])<1e-15
         assert np.linalg.norm(data[:,:,1]-1-np.arange(NK)[:,None])<1e-15
         self.data=data[:,:,2]
+
+    def write(self,seedname="wannier90"):
+        fout=open(seedname+".eig","w")
+#        fout.write("{}  {}\n".format(self.NB,self.NK))
+        for ik in range(self.NK):
+            fout.write("".join(" {:4d} {:4d}  {:17.12f}\n".format(ib+1,ik+1,self.data[ik,ib]) for ib in range(self.NB)))
+        fout.close()
 
             
 class SPN(W90_data):
@@ -447,5 +500,13 @@ class WIN():
         except Exception as err:
             raise  RuntimeError("ERROR reading parameter block {} from {} :\n {}".format(param,self.name,err))
 
+
+class DMN():
+    
+    def __init__(self,seedname="wannier90"):
+        self.read(seedname)
+
+    def read(self,seedname="wannier90"):
+        fl=open(seedname+".dmn","r")
 
 

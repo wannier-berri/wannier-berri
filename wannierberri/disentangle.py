@@ -20,8 +20,11 @@ class WannierModel():
 #        exit()
 #        real_lattice,mp_grid,kpt_latt=read_from_win(seedname,['real_lattice','mp_grid','kpoints'])
         eig=EIG(seedname)
+        eig.write(seedname+"-copy")
         mmn=MMN(seedname)
+        mmn.write(seedname+"-copy")
         amn=AMN(seedname)
+        amn.write(seedname+"-copy")
         assert eig.NK==amn.NK==mmn.NK
         assert eig.NB>=amn.NB
         assert eig.NB>=mmn.NB
@@ -31,6 +34,7 @@ class WannierModel():
         mmn.set_bk(self.mp_grid,self.kpt_latt,self.recip_lattice)
         self.bk=mmn.bk
         self.wb=mmn.wk
+        self.G=mmn.G
         self.neighbours=mmn.neighbours
         self.Mmn=mmn.data
         self.Amn=amn.data
@@ -78,7 +82,6 @@ class WannierModel():
             return [sum(wb*mmn.dot(mmn.T.conj()) for wb,mmn in zip(wbk,Mmn)) for wbk,Mmn in zip(self.wb,Mmn_loc_opt) ]
 
         Z_frozen=calc_Z(Mmn_FF('free','frozen'))
-#        del Mmn_free_frozen  # we do not need it anymore, I think ))
         
 
 #        print ( '+---------------------------------------------------------------------+<-- DIS\n'+
@@ -100,23 +103,27 @@ class WannierModel():
            U=np.zeros((nband,self.NW),dtype=complex)
            nfrozen=sum(self.frozen[ik])
            nfree=sum(self.free[ik])
-#           print("ik={}, nfree={}, nfrozen={}, nband={}".format(ik,nfree,nfrozen,nband))
+#           print("ik={}, nfree={}, nfrozen={}, nband={}, \nfrozen={} \n".format(ik,nfree,nfrozen,nband,self.frozen[ik]))
            assert nfree+nfrozen==nband
+           assert nfrozen<=self.NW, "number of frozen bands {} at k-point {} is greater than number of wannier functions {}".format(nfrozen,ik+1,self.NW)
            U[self.frozen[ik] , range( nfrozen) ] = 1.
 #           print(U[self.free[ik]   , nfrozen : ].shape, U_opt_free[ik].shape)
            U[self.free[ik]   , nfrozen : ] = U_opt_free[ik]
+#           print ("ik={}, U=\n{}\n".format(ik+1,U))
            Z,D,V=np.linalg.svd(U.T.conj().dot(self.Amn[ik]))
-           U=U.dot(Z.dot(V))
-           U_opt_full.append(U)
+           U_opt_full.append(U.dot(Z.dot(V)))
 
        # now rotating to the optimized space
+        self.Hmn=[]
         for ik in range(self.NK):
             U=U_opt_full[ik]
             Ud=U.T.conj()
-            self.Eig[ik]=(Ud.dot(np.diag(self.Eig[ik])).dot(U)).real
+            # hamiltonian is not diagonal anymore
+            self.Hmn.append(Ud.dot(np.diag(self.Eig[ik])).dot(U))
             self.Amn[ik]=Ud.dot(self.Amn[ik])
-#            for ib,ikb in enumerate (self.neighbours[ik]):
             self.Mmn[ik]=[Ud.dot(M).dot(U_opt_full[ibk]) for M,ibk in zip (self.Mmn[ik],self.neighbours[ik])]
+
+
            
     def rotate(self,mat,ik1,ik2):
         # data should be of form NBxNBx ...   - any form later
@@ -130,6 +137,25 @@ class WannierModel():
         v2=self.v_matrix[ik2].T
         return np.array( [v1.dot(m).dot(v2) for m in mat]).transpose( (1,2,0) ).reshape( (self.num_wann,)*2+shape )
 
+
+    def write_files(self,seedname="wannier90"):
+        "Write the disentangled files , where num_wann==num_bands"
+        Eig=[]
+        Uham=[]
+        Amn=[]
+        Mmn=[]
+        for H in self.Hmn:
+            E,U=np.linalg.eigh(H)
+            Eig.append(E)
+            Uham.append(U)
+        EIG(data=Eig).write(seedname)
+        for ik in range(self.NK):
+            U=Uham[ik]
+            Ud=U.T.conj()
+            Amn.append(Ud.dot(self.Amn[ik]))
+            Mmn.append([Ud.dot(M).dot(Uham[ibk]) for M,ibk in zip (self.Mmn[ik],self.neighbours[ik])])
+        MMN(data=Mmn,G=self.G,bk=self.bk,wk=self.wb,neighbours=self.neighbours).write(seedname)
+        AMN(data=Amn).write(seedname)
 
     def get_max_eig(self,matrix,nvec):
         """ return the nvec column-eigenvectors of matrix with maximal eigenvalues. 
@@ -182,4 +208,6 @@ class WannierModel():
 
         def Omega_I(self,U_opt_free):
             return self.Omega_I_0,self.Omega_I_frozen,self.Omega_I_free_frozen(U_opt_free),self.Omega_I_free_free(U_opt_free)
+
+
 
