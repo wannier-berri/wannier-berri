@@ -298,8 +298,6 @@ class MMN(W90_data):
         self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
         
 
-
-
 class EIG(W90_data):
     def __init__(self,seedname):
         data=np.loadtxt(seedname+".eig")

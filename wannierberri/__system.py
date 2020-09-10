@@ -17,7 +17,7 @@ import copy
 import lazy_property
 
 from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice
-from  .__symmetry import Group
+from  .symmetry import Group
 from colorama import init
 from termcolor import cprint 
 
