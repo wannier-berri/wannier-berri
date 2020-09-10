@@ -48,16 +48,22 @@ def FermiDirac(E, mu, kBT):
         return 1.0/(np.exp(arg) + 1)
 
 def kubo_sum_elements(x, y, num_wann):
-    # Compute np.einsum('mnab,wnm->wab', x, y).
+    # Compute np.einsum('mnab(c),wnm->wab(c)', x, y).
     # This implementation is much faster than calling np.einsum.
-    assert x.shape == (num_wann, num_wann, 3, 3)
     assert y.shape[1] == num_wann
     assert y.shape[2] == num_wann
-    x_reshape = x.reshape((num_wann**2, 3 * 3))
     y_reshape = y.reshape((-1, num_wann**2))
-    return (y_reshape @ x_reshape).reshape((-1, 3, 3))
+
+    assert x.shape == (num_wann, num_wann, 3, 3) or x.shape == (num_wann, num_wann, 3, 3, 3)
+    if x.shape == (num_wann, num_wann, 3, 3):
+        x_reshape = x.reshape((num_wann**2, 3 * 3))
+        return (y_reshape @ x_reshape).reshape((-1, 3, 3))
+    else:
+        x_reshape = x.reshape((num_wann**2, 3 * 3 * 3))
+        return (y_reshape @ x_reshape).reshape((-1, 3, 3, 3))
 
 
+@profile
 def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, conductivity_type='kubo'):
     '''
@@ -192,8 +198,10 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             temp1 = dfE[np.newaxis,:,:]*cfac1
             temp2 = dfE[np.newaxis,:,:]*cfac2
             imAB = np.imag(np.einsum('nmac,mnb->nmabc',A,B))
-            sigma_H += 1j * pi * pre_fac * np.einsum('wnm,nmabc->wabc',temp2,imAB) / 4.0
-            sigma_AH += pre_fac * np.einsum('wnm,nmabc->wabc',temp1,imAB) / 2.0
+            #sigma_H += 1j * pi * pre_fac * np.einsum('nmabc,wnm->wabc',imAB,temp2) / 4.0
+            #sigma_AH += pre_fac * np.einsum('nmabc,wnm->wabc',imAB,temp1) / 2.0
+            sigma_H += 1j * pi * pre_fac * kubo_sum_elements(imAB, temp2, data.num_wann) / 4.0
+            sigma_AH += pre_fac * kubo_sum_elements(imAB, temp1, data.num_wann) / 2.0
 
     # TODO: optimize by just storing independent components or leave it like that?
     # 3x3 tensors [iw, a, b] or [iw,a,b,c]
