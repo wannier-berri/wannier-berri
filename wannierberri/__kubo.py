@@ -36,10 +36,6 @@ def Gaussian(x, width, adpt_smr):
     '''
     Compute 1 / (np.sqrt(pi) * width) * exp(-(x / width) ** 2)
     If the exponent is less than -200, return 0.
-<<<<<<< HEAD
-=======
-
->>>>>>> upstream/master
     An unoptimized version is the following.
         def Gaussian(x, width, adpt_smr):
             return 1 / (np.sqrt(pi) * width) * np.exp(-np.minimum(200.0, (x / width) ** 2))
