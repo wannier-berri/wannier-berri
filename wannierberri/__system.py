@@ -183,7 +183,11 @@ class System():
         assert self._FFT_compatible(NKFFTmin,self.iRvec)
         return NKFFTmin
 
+<<<<<<< HEAD
     def set_symmetry(self,symmetry_gen=[]):
+=======
+    def set_symmetry(self,symmetry_gen):
+>>>>>>> 665de7505c3c4b08a29f3d637df7a216996d1036
         """ 
         Set the symmetry group of the :class:`~wannierberri.__system.System` 
 
