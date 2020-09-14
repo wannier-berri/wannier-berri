@@ -54,6 +54,7 @@ def SpinTot(data,Efermi):
 factor_ohmic=(elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
                  *elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
                    * 1e-2  ) # now in  S/(cm*tau_unit)
+
 def conductivity_ohmic(data,Efermi):
     return IterateEf(data.Ohmic,data,Efermi,TRodd=False,Iodd=False)*factor_ohmic
 
@@ -61,48 +62,68 @@ def gyrotropic_Kspin(data,Efermi):
     factor_Kspin=-bohr_magneton/Ang_SI**2   ## that's it!
     return IterateEf(data.gyroKspin,data,Efermi,TRodd=False,Iodd=True)*factor_Kspin
 
-
 def Morb(data,Efermi, evalJ0=True,evalJ1=True,evalJ2=True):
     fac_morb =  -eV_au/bohr**2
-#    return Omega_tot(data,Efermi).mul_array(Efermi)
-    return  fac_morb*( 
-               IterateEf(data.Hplus(),data,Efermi,TRodd=True,Iodd=False) 
-                           -2*Omega_tot(data,Efermi).mul_array(Efermi) )*data.cell_volume
+    return  fac_morb*(
+                    IterateEf(data.Hplus(),data,Efermi,TRodd=True,Iodd=False)
+                            -2*Omega_tot(data,Efermi).mul_array(Efermi) )*data.cell_volume
 
-
-def tensor_D(data,Efermi):
-    return IterateEf(data.derOmegaTr,data,Efermi,TRodd=False,Iodd=True)
-
-def Hplus(data,Efermi):
-    return IterateEf(data.derHplusTr,data,Efermi,TRodd=False,Iodd=True)
+def HplusTr(data,Efermi):
+    return IterateEf(data.derHplusTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
 
 def tensor_K(data,Efermi):
-    Hp = Hplus(data,Efermi).data
+    Hp = HplusTr(data,Efermi).data
     D = tensor_D(data,Efermi).data
     tensor_K = - elementary_charge**2/(2*hbar)*(Hp - 2*Efermi[:,None,None]*D  )
     return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
 
+def tensor_D(data,Efermi):
+        return IterateEf(data.derOmegaTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
 #########################
 ####  Private part ######
 #########################
 
 
-def IterateEf(dataIO,data,Efermi,TRodd,Iodd,rank=None,kwargs={}):
+def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
     """ this is a general function which accepts dataIO  -- a dictionary like {'i':i , 'io':io, ...}
-and sums for a series of Fermi levels"""
+     and sums for a series of Fermi levels
+     parameter dataIO can be a dictionary or a funciton. If needed use callable(dataIO) for judgment and run OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed) or OCC=OccDelta(data.E_K(op,ed),dataIO(op,ed),op,ed)"""
 #    funname=inspect.stack()[1][3]
 #    print ("iterating function '{}' for Efermi={}".format(funname,Efermi))
-    OCC=OccDelta(data.E_K,dataIO)
-    RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
-    return result.EnergyResult(Efermi,np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume),TRodd=TRodd,Iodd=Iodd,rank=rank)
+# try to make sum better
+    if sep:
+        res = 0.0
+        nksep = data.nkptot//data.ksep
+        if nksep != 0:
+            for i in range(nksep):
+                op=i*data.ksep
+                ed=(i+1)*data.ksep
+                OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed)
+                RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
+                res+=np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume)
+        if nksep*data.ksep != data.nkptot:
+            op=nksep*data.ksep
+            ed=data.nkptot
+            OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed)
+            RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
+            res+=np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume)
+        return result.EnergyResult(Efermi,res,TRodd=TRodd,Iodd=Iodd)
+
+    else:
+        op=None
+        ed=None
+        OCC=OccDelta(data.E_K,dataIO,op,ed)
+        RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
+        return result.EnergyResult(Efermi,np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume),TRodd=TRodd,Iodd=Iodd,rank=rank)
 
 
 
 # an auxillary class for iteration 
 class OccDelta():
  
-    def __init__(self,E_K,dataIO):
-        self.occ_old=np.zeros(E_K.shape,dtype=bool)
+    def __init__(self,E_K,dataIO,op=None,ed=None):
+        self.occ_old=np.zeros(E_K[op:ed,:].shape,dtype=bool)
+        E_K=E_K[op:ed,:]
         self.E_K=E_K
         self.dataIO=dataIO
         self.Efermi=-np.Inf

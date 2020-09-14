@@ -10,6 +10,39 @@
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
 #------------------------------------------------------------
+'''This utility calculates the matrices .uHu and/or .uIu from the .mmn matrices, and also reduces the number of bands in .amn, .mmn, .eig  and .spn files
+
+        Usage example:
+                python3 -m wanierberri.mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu
+                
+        Options
+            -h 
+                print the help message
+            IBstart    
+                |  the first band in the output file (counting starts from 1). 
+                |  default: 1
+            IBstartSum
+                |  the first band in the sum         (counting starts from 1). 
+                |  default: 1
+            NBout 
+                |  the number of bands in the output files. 
+                |  Default : all bands
+            NBsum 
+                |  the number of bands in the summation. (one may specify several numbers, usefull to test convergence with the number of bands). 
+                |  Default:all bands
+            input 
+                |  path to the input files. 
+                |  Default: ./  
+            output 
+                |  path to the output files 
+            targets 
+                |  files to write : ``amn``, ``mmn``, ``spn``, ``uHu``, ``uIu``, ``eig`` 
+                |  default: ``amn``,``mmn``,``eig``,``uHu``
+            formatted 
+                |  files to write as formatted  ``uHu``, ``uIu``, ``spn``, ``spn_in``, ``spn_out``, ``all`` 
+                |  default: none
+
+'''
 
 import numpy as np
 import os
@@ -21,23 +54,12 @@ from scipy.io import FortranFile
 def hlp():
     from termcolor import cprint 
     cprint ("mmn2uHu  (utility)",'green', attrs=['bold'])
-    print ('''This utility calculates the matrices .uHu and/or .uIu from the .mmn matrices, and also reduces the number of bands in .amn, .mmn, .eig  and .spn files
-         Example of usage:
-          
-                python3 -m wanierberri mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu
-                
-         only the first parameter is mandatory.
-                NBout -- the number of bands in the output files. Default : all bands
-                NBsum -- the number of bands in the summation. (one may specify several numbers, usefull to test convergence with the number of bands). Default:all bands
-                input  -- path to the input files. Default: ./  
-                output -- path to the output files 
-                targets : files to write (amn,mmn,spn,uHu,uIu,eig) (default: amn,mmn,eig,uHu)
-                formatted : files to write as formatted: uHu,uIu,spn,spn_in,spn_out,all (default: none)
-                ''')
+    print (__doc__)
 
 
-def main(argv):
+def main():
   hlp()
+  from sys import argv
 
   if len(argv)<2 or argv[1]=="-h": exit()
     
@@ -62,12 +84,16 @@ def main(argv):
   OUTDIR="reduced"
 
 
+  IBstart=0
+  IBstartSum=0
 
 
   for arg in argv[2:]:
     arg=arg.split("=")
     if arg[0]=="NBout": NB_out_list=[int(s) for s in arg[1].split(',')]
     if arg[0]=="NBsum": NB_sum_list=[int(s) for s in arg[1].split(',')]
+    if arg[0]=="IBstart"    : IBstart=int(arg[1])-1
+    if arg[0]=="IBstartSum" : IBstartSum=int(arg[1])-1
     if arg[0]=="input": INPUTDIR=arg[1]
     if arg[0]=="output": OUTDIR=arg[1]
     if arg[0]=="targets":
@@ -139,7 +165,7 @@ def main(argv):
                 f_mmn_out.write(MMNheadstrings[ik][ib])
                 for m in range(NB_out): 
                     for n in range(NB_out):
-                        f_mmn_out.write( "  {0:16.12f}  {1:16.12f}\n".format(MMN[ik][ib][m,n].real,MMN[ik][ib][m,n].imag) )
+                        f_mmn_out.write( "  {0:16.12f}  {1:16.12f}\n".format(MMN[ik][ib][m+IBstart,n+IBstart].real,MMN[ik][ib][m+IBstart,n+IBstart].imag) )
         f_mmn_out.close()
     print ("----------\n MMN OK  \n---------\n")
 
@@ -151,7 +177,7 @@ def main(argv):
         feig_out=open(os.path.join(RESDIR,PREFIX+".eig"),"w")
         for ik in range(NK):
             for ib in range(NB_out):
-                feig_out.write(" {0:4d} {1:4d} {2:17.12f}\n".format(ib+1,ik+1,EIG[ik,ib]))
+                feig_out.write(" {0:4d} {1:4d} {2:17.12f}\n".format(ib+1,ik+1,EIG[ik,ib+IBstart]))
         feig_out.close()
 
 
@@ -178,7 +204,7 @@ def main(argv):
         f_amn_out.write("{0}, reduced to {2} bands {1} \n".format(head_AMN,datetime.datetime.now().isoformat(),NB_out) )
         f_amn_out.write("  {0:10d}  {1:10d}  {2:10d}\n".format(NB_out,NK,npr) )
         for ik in range(nk):
-            amn=AMN[:NB_out,:,ik]
+            amn=AMN[IBstart:IBstart+NB_out,:,ik]
             for ipr in range(npr):
                 f_amn_out.write(
                     "".join(" {0:4d} {1:4d} {2:4d}  {3:16.12f}  {4:16.12f}\n".format(ib+1,ipr+1,ik+1,amn[ib,ipr].real,amn[ib,ipr].imag)
@@ -215,7 +241,7 @@ def main(argv):
             for ik in range(NK):
                 print ("k-point {} of {}".format( ik+1,NK))
                 if UXU[0]=="uHu":
-                    eig_dum=EIG[ik]
+                    eig_dum=EIG[ik][IBstartSum:IBstartSum+NB_sum]
                 elif UXU[0]=="uIu":
                     eig_dum=np.ones(NB_sum)
                 else:
@@ -223,7 +249,8 @@ def main(argv):
                 A=np.zeros( (NNB,NNB,NB_out,NB_out),dtype=complex )
                 for ib2 in range(NNB):
                     for ib1 in range(ib2+1):
-                        A[ib2,ib1]=np.einsum('ml,nl,l->mn',MMN[ik][ib1][:NB_out,:NB_sum].conj(),MMN[ik][ib2][:NB_out,:NB_sum],eig_dum[:NB_sum])
+                        A[ib2,ib1]=np.einsum('ml,nl,l->mn',MMN[ik][ib1][IBstart:IBstart+NB_out,IBstartSum:NB_sum+IBstartSum].conj(),
+                                                           MMN[ik][ib2][IBstart:NB_out+IBstart,IBstartSum:NB_sum+IBstartSum], eig_dum)
                         if ib1==ib2:
                             A[ib2,ib1]=0.5*(A[ib2,ib1]+A[ib2,ib1].T.conj())
                         else:
@@ -233,7 +260,7 @@ def main(argv):
                 else:
                     for ib2 in range(NNB):
                         for ib1 in range(NNB):
-                            f_uXu_out.write_record(A[ib1][ib2].reshape(-1,order='C'))
+                            f_uXu_out.write_record(A[ib2][ib1].reshape(-1,order='C'))
             print ("----------\n {0} OK  \n---------\n".format(UXU[0]))
             f_uXu_out.close()
 
@@ -281,7 +308,7 @@ def main(argv):
             A[:,indn,indm]=tmp.reshape(3,nbnd*(nbnd+1)//2,order='F')
             check=np.einsum('ijj->',np.abs(A.imag))
             A[:,indm,indn]=A[:,indn,indm].conj()
-            A=A[:,:NB_in,:NB_in][:,indnQP,indmQP].reshape(-1,order='F')
+            A=A[:,indnQP+IBstart,indmQP+IBstart].reshape(-1,order='F')
             if check> 1e-10:
                 raise RuntimeError ( "REAL DIAG CHECK FAILED : {0}".format(check) )
             if spn_formatted_out:

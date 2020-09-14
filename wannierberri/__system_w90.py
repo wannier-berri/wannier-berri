@@ -43,6 +43,8 @@ class System_w90(System):
         set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file.
     use_ws : bool
         minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
+    transl_inv : bool
+        Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
     frozen_max : float
         position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
     fft : str
@@ -54,6 +56,10 @@ class System_w90(System):
         threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
     random_gauge : bool
         applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
+    ksep: int
+        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. 
+    delta_fz:float
+        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
     """
 
     def __init__(self,seedname="wannier90",
@@ -64,9 +70,14 @@ class System_w90(System):
                     random_gauge=False,
                     degen_thresh=-1 ,
                     fft='fftw',
-                    npar=multiprocessing.cpu_count()  ):
+                    npar=multiprocessing.cpu_count(),
+                    ksep=50,
+                    delta_fz=0.1
+                    ):
 
         self.seedname=seedname
+        self.ksep=ksep
+        self.delta_fz=delta_fz
 
         self.morb  = morb
         self.berry = berry
