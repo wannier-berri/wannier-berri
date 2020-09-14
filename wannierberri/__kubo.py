@@ -19,7 +19,7 @@ import numpy as np
 from scipy import constants as constants
 from collections import Iterable
 import functools
-from termcolor import cprint 
+from termcolor import cprint
 
 from . import __result as result
 
@@ -31,12 +31,24 @@ hbar = constants.hbar
 # smearing functions
 def Lorentzian(x, width):
     return 1.0/(pi*width) * width**2/(x**2 + width**2)
-def Gaussian(x, width):
-    # Compute 1 / (np.sqrt(pi) * width) * exp(-(x / width) ** 2)
-    # If the exponent is less than -200, return 0.
+
+def Gaussian(x, width, adpt_smr):
+    '''
+    Compute 1 / (np.sqrt(pi) * width) * exp(-(x / width) ** 2)
+    If the exponent is less than -200, return 0.
+    An unoptimized version is the following.
+        def Gaussian(x, width, adpt_smr):
+            return 1 / (np.sqrt(pi) * width) * np.exp(-np.minimum(200.0, (x / width) ** 2))
+    '''
     inds = abs(x) < width * np.sqrt(200.0)
     output = np.zeros_like(x)
-    output[inds] = 1.0 / (np.sqrt(pi) * width) * np.exp(-(x[inds] / width)**2)
+    if adpt_smr:
+        # width is array
+        width_tile = np.tile(width, (x.shape[0], 1, 1))
+        output[inds] = 1.0 / (np.sqrt(pi) * width_tile[inds]) * np.exp(-(x[inds] / width_tile[inds])**2)
+    else:
+        # width is number
+        output[inds] = 1.0 / (np.sqrt(pi) * width) * np.exp(-(x[inds] / width)**2)
     return output
 
 # Fermi-Dirac distribution
@@ -62,8 +74,6 @@ def kubo_sum_elements(x, y, num_wann):
         x_reshape = x.reshape((num_wann**2, 3 * 3 * 3))
         return (y_reshape @ x_reshape).reshape((-1, 3, 3, 3))
 
-
-@profile
 def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, conductivity_type='kubo'):
     '''
@@ -81,7 +91,7 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         adpt_smr_max    maximal value of the adaptive smearing parameter
         adpt_smr_min    minimal value of the adaptive smearing parameter
 
-    Returns:    a list of (complex) optical conductivity 3 x 3 tensors (one for each frequency value).
+    Returns:    a list of (complex) optical conductivity 3 x 3 (x 3) tensors (one for each frequency value).
                 The result is given in S/cm.
     '''
 
@@ -132,12 +142,13 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             if data.SH_R is not None:
                 A = 0.5 * (data.B_H[ik] + data.B_H[ik].transpose(1,0,2,3).conj())
             else:
-                # PRB RPS19
+                # PRB RPS19 Eqs. (21) and (26), j=(1/2)(VV*SS - i(E*SA - SHA) + adj. part)
                 VV = data.V_H[ik] # [n,m,a]
                 SS = data.S_H[ik]   # [n,m,b]
                 SA = data.SA_H[ik]  # [n,m,a,b]
                 SHA = data.SHA_H[ik]# [n,m,a,b]
-                A = np.einsum('nla,lmb->nmab',VV,SS)+np.einsum('nlb,lma->nmab',SS,VV)
+                A = (np.matmul(VV.transpose(2,0,1)[:,None,:,:],SS.transpose(2,0,1)[None,:,:,:])
+                    + np.matmul(SS.transpose(2,0,1)[None,:,:,:],VV.transpose(2,0,1)[:,None,:,:])).transpose(2,3,0,1)
                 A += -1j * (E[np.newaxis,:,np.newaxis,np.newaxis]*SA - SHA)
                 SA_adj = SA.transpose(1,0,2,3).conj()
                 SHA_adj = SHA.transpose(1,0,2,3).conj()
@@ -163,7 +174,7 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         if smr_type == 'Lorentzian':
             delta = Lorentzian(delta_arg, eta)
         elif smr_type == 'Gaussian':
-            delta = Gaussian(delta_arg, eta)
+            delta = Gaussian(delta_arg, eta, adpt_smr)
         else:
             cprint("Invalid smearing type. Fallback to Lorentzian", 'red')
             delta = Lorentzian(delta_arg, eta)
@@ -188,7 +199,7 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             if smr_type == 'Lorentzian':
                 delta = Lorentzian(delta_arg, eta)
             elif smr_type == 'Gaussian':
-                delta = Gaussian(delta_arg, eta)
+                delta = Gaussian(delta_arg, eta, adpt_smr)
             else:
                 cprint("Invalid smearing type. Fallback to Lorentzian", 'red')
                 delta = Lorentzian(delta_arg, eta)
@@ -198,10 +209,9 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             temp1 = dfE[np.newaxis,:,:]*cfac1
             temp2 = dfE[np.newaxis,:,:]*cfac2
             imAB = np.imag(np.einsum('nmac,mnb->nmabc',A,B))
-            #sigma_H += 1j * pi * pre_fac * np.einsum('nmabc,wnm->wabc',imAB,temp2) / 4.0
-            #sigma_AH += pre_fac * np.einsum('nmabc,wnm->wabc',imAB,temp1) / 2.0
             sigma_H += 1j * pi * pre_fac * kubo_sum_elements(imAB, temp2, data.num_wann) / 4.0
             sigma_AH += pre_fac * kubo_sum_elements(imAB, temp1, data.num_wann) / 2.0
+
 
     # TODO: optimize by just storing independent components or leave it like that?
     # 3x3 tensors [iw, a, b] or [iw,a,b,c]
