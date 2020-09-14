@@ -37,13 +37,15 @@ class System():
                     frozen_max=-np.Inf,
                     random_gauge=False,
                     degen_thresh=-1 ,
-                    old_format=False
+                    old_format=False,
+                    delta_fz=0.1,
+                    ksep = 50,
                                 ):
 
 
         if tb_file is not None:
             raise ValueError("to start from a _tb.dat file now use the System_tb() class")
-
+        self.ksep = ksep  
         self.frozen_max=frozen_max
         self.random_gauge=random_gauge
         self.degen_thresh=degen_thresh
@@ -59,6 +61,7 @@ class System():
         self.SH_R=None
         self.SHR_R=None
 
+        self.delta_fz=delta_fz
 
 
         cprint ("Reading from {}".format(seedname+"_HH_save.info"),'green', attrs=['bold'])

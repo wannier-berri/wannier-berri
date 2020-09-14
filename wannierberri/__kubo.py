@@ -36,6 +36,10 @@ def Gaussian(x, width, adpt_smr):
     '''
     Compute 1 / (np.sqrt(pi) * width) * exp(-(x / width) ** 2)
     If the exponent is less than -200, return 0.
+<<<<<<< HEAD
+=======
+
+>>>>>>> upstream/master
     An unoptimized version is the following.
         def Gaussian(x, width, adpt_smr):
             return 1 / (np.sqrt(pi) * width) * np.exp(-np.minimum(200.0, (x / width) ** 2))
@@ -74,6 +78,7 @@ def kubo_sum_elements(x, y, num_wann):
         x_reshape = x.reshape((num_wann**2, 3 * 3 * 3))
         return (y_reshape @ x_reshape).reshape((-1, 3, 3, 3))
 
+
 def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, conductivity_type='kubo'):
     '''
@@ -104,7 +109,6 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
     # ri = index for real and imaginary parts (0 -> real, 1 -> imaginary)
 
     # TODO: optimize for T = 0? take only necessary elements
-
 
 
     # frequency
@@ -168,7 +172,6 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         else:
             eta = smr_fixed_width # number
 
-        # Hermitian part of the conductivity tensor
         # broadened delta function [iw, n, m]
         if smr_type == 'Lorentzian':
             delta = Lorentzian(delta_arg, eta)
