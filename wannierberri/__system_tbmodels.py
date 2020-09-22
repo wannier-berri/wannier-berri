@@ -28,8 +28,10 @@ class System_TBmodels(System):
     ----------
     tbmodel : class
         name of the TBmodels tight-binding model class.
-    getAA : bool
-        if ``True`` the position matrix elements are read from orbital coordinates. Needed for quantities derived from Berry connection or Berry curvature. 
+    berry : bool
+        set ``True`` if quantities derived from Berry connection or Berry curvature will be used. Requires the ``.mmn`` file.
+    morb : bool
+        set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file.
     frozen_max : float
         position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
     degen_thresh : float
@@ -42,7 +44,7 @@ class System_TBmodels(System):
         size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
     """
     
-    def __init__(self,tbmodel=None,getAA=False,
+    def __init__(self,tbmodel=None,berry=False,morb=False,
                           frozen_max=-np.Inf,
                           random_gauge=False,
                           degen_thresh=-1 ,
@@ -55,6 +57,19 @@ class System_TBmodels(System):
         self.degen_thresh=degen_thresh
         self.ksep=ksep
         self.delta_fz=delta_fz
+        self.morb=morb
+        self.berry=berry
+
+        getAA = False
+        getBB = False
+        getCC = False
+        
+        if self.morb: 
+            getAA=getBB=getCC=True
+        if self.berry: 
+            getAA=True
+
+
         # Extract the parameters from the model
         real=tbmodel.uc
         self.dimr=real.shape[1]
@@ -103,12 +118,18 @@ class System_TBmodels(System):
             self.HH_R[:,:,inR]+=np.conjugate(hops.T)
         
         if getAA:
-            
             self.AA_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
-            
             for i in range(self.num_wann):
                 self.AA_R[i,i,index0,:self.dimr]=tbmodel.pos[i,:]
                 
+        if getBB:
+            self.BB_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
+            for i in range(self.num_wann):
+                self.BB_R[i,i,index0,:]=self.AA_R[i,i,index0,:]*self.HH_R[i,i,index0]
+
+        if getCC:
+            self.CC_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
+
         self.set_symmetry()
                 
         print ("Number of wannier functions:",self.num_wann)

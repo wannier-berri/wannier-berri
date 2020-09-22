@@ -33,7 +33,7 @@ class System_tb(System):
     ----------
     tb_file : str
         name (and path) of file to be read
-    getAA : bool
+    berry : bool
         if ``True`` the position matrix elements are read. Needed for quantities derived from Berry connection or Berry curvature. 
     frozen_max : float
         position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
@@ -47,13 +47,18 @@ class System_tb(System):
         size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
     """
 
-    def __init__(self,tb_file="wannier90_tb.dat",getAA=False,
+    def __init__(self,tb_file="wannier90_tb.dat",berry=False,morb=False,
                           frozen_max=-np.Inf,
                           degen_thresh=-1 ,
                           random_gauge=False,
                           ksep=50,
                           delta_fz=0.1
                     ):
+        self.morb=morb
+        self.berry=berry
+        if morb : raise ValueError("System_tb class cannot be used for evaluation of orbital magnetic moments")
+        if berry : getAA=True
+ 
         self.seedname=tb_file.split("/")[-1].split("_")[0]
         f=open(tb_file,"r")
         l=f.readline()
