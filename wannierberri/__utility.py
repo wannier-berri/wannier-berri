@@ -287,3 +287,12 @@ def iterate3d(size):
     return ( np.array([i,j,k]) for i in range(0,size[0])
                      for j in range(0,size[1])
                      for k in range(0,size[2]) )
+
+def read_numbers(fl,num_read,dtype=int):
+    assert dtype in (int,float), "intended only to read integers or floats"
+    n=np.prod(num_read)
+    read=[]
+    while len(read)<n:
+        read+=fl.readline().split()
+    if len(read)>n : print ( "more numbers ({}) read then expected ({})".format(len(read),n))
+    return np.array(read,dtype=dtype).reshape(num_read)

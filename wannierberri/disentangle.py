@@ -2,13 +2,16 @@ from .__w90_files import MMN,EIG,AMN,WIN
 from copy import deepcopy
 import numpy as np
 
+DEGEN_THRESH=1e-2  # for safity - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
+
 class WannierModel():
-# todo :  write the files
+    """A class to describe all input files of wannier90, and to construct the Wannier functions 
+     via disentanglement procedure"""
 # todo :  rotatre uHu and spn
 # todo : create a model from this
 # todo : symmetry
 
-    def __init__(self,seedname="wannier90"):
+    def __init__(self,seedname="wannier90",sitesym=False):
         win=WIN(seedname)
 #        win.print_clean()
         self.mp_grid=win.get_param("mp_grid",dtype=int,size=3)
@@ -40,6 +43,10 @@ class WannierModel():
         self.Amn=amn.data
         self.Eig=eig.data
         self.win_index=[np.arange(eig.NB)]*self.NK
+        if sitesym:
+            self.Dmn=DMN(seedname,num_wann=self.NW)
+        else:
+            self.Dmn=DMN(None,num_wann=self.NW,num_bands=self.NB,nkpt=self.NK)
 
 
 
@@ -48,10 +55,24 @@ class WannierModel():
     def apply_outer_window(self,
                      win_min=-np.Inf,
                      win_max= np.Inf ):
-        self.win_index=[ind[np.where( ( E<=win_max)*(E>=win_min) )[0]] for ind,E in zip (self.win_index,self.Eig)]
-        self.Eig=[E[ind] for E, ind in zip(self.Eig,self.win_index)]
-        self.Mmn=[[self.Mmn[ik][ib][self.win_index[ik],:][:,self.win_index[ikb]] for ib,ikb in enumerate(self.neighbours[ik])] for ik in range(self.NK)]
-        self.Amn=[self.Amn[ik][self.win_index[ik],:] for ik in range(self.NK)]
+        "Excludes the bands from outside the outer window"
+
+        def win_index_nondegen(ik,thresh=DEGEN_THRESH):
+            "define the indices of the selected bands, making sure that degenerate bands were not split"
+            E=self.Eig[ik]
+            ind=np.where( ( E<=win_max)*(E>=win_min) )[0]
+            while ind[0]>0 and E[ind[0]]-E[ind[0]-1]<thresh:
+                ind=[ind[0]-1]+ind
+            while ind[0]<len(E) and E[ind[-1]+1]-E[ind[-1]]<thresh:
+                ind=ind+[ind[-1]+1]
+            return ind
+
+        win_index_irr=[win_index_nondegen(ik) for ik in self.Dmn.kptirr]
+        self.Dmn.apply_outer_window(win_index_irr)
+        win_index=[win_index_irr[ik] for ik in self.Dmn.kpt2kptirr]
+        self.Eig=[E[ind] for E, ind in zip(self.Eig,win_index)]
+        self.Mmn=[[self.Mmn[ik][ib][win_index[ik],:][:,win_index[ikb]] for ib,ikb in enumerate(self.neighbours[ik])] for ik in range(self.NK)]
+        self.Amn=[self.Amn[ik][win_index[ik],:] for ik in range(self.NK)]
 
     # TODO : allow k-dependent window (can it be useful?)
     def disentangle(self,
@@ -63,25 +84,48 @@ class WannierModel():
                  ):
 
         assert 0<mix_ratio<=1
-        self.frozen=[ ( E<=froz_max)*(E>=froz_min) for E in self.Eig]
+        def frozen_nondegen(ik,thresh=DEGEN_THRESH):
+            """define the indices of the frozen bands, making sure that degenerate bands were not split 
+            (unfreeze the degenerate bands together) """
+            E=self.Eig[ik]
+            ind=np.where( ( E<=froz_max)*(E>=froz_min) )[0]
+            while len(ind)>0 and ind[0]>0 and E[ind[0]]-E[ind[0]-1]<thresh:
+                del(ind[0])  
+            while len(ind)>0 and ind[0]<len(E) and E[ind[-1]+1]-E[ind[-1]]<thresh:
+                del(ind[-1])
+            froz=np.zeros(Eig.shape,dtype=bool)
+            froz[ind]=True
+            return froz
+
+        frozen_irr=[frozen_nondegen(ik) for ik in self.Dmn.kptirr]
+        self.frozen=[ frozen_irr[ik] for ik in self.Dmn.kpt2kptirr ]
         self.free= [ np.logical_not(frozen) for frozen in self.frozen]
+        self.Dmn.set_free(frozen_irr)
         self.nBfree=[ np.sum(free) for free in self.free ]
         self.nWfree=[ self.NW-np.sum(frozen) for frozen in self.frozen]
         print ("Bfree:",self.nBfree)
         print ("Wfree:",self.nWfree)
         # initial guess : eq 27 of SMV2001
-        U_opt_free=self.get_max_eig(  [ A[free,:].dot(A[free,:].T.conj()) 
-                        for A,free in zip(self.Amn,self.free)]  ,self.nWfree) # nBfee x nWfree marrices
+        irr=self.Dmn.kptirr
+        U_opt_free_irr=self.get_max_eig(  [ self.Amn[ik][free,:].dot(self.Amn[ik][free,:].T.conj()) 
+                        for ik,free in zip(irr,self.free[irr])]  ,self.nWfree[irr],self.nBfree[irr]) # nBfee x nWfree marrices
+        # initial guess : eq 27 of SMV2001
+        U_opt_free=self.symmetrize_U_opt(U_opt_free_irr,free=True)
+
 
         Mmn_FF=self.Mmn_Free_Frozen(self.Mmn,self.free,self.frozen,self.neighbours,self.wb,self.NW)
+
         def calc_Z(Mmn_loc,U=None):
+        # TODO : symmetrize (if needed) 
             if U is None: 
-               Mmn_loc_opt=Mmn_loc
+               Mmn_loc_opt=[Mmn_loc[ik] for ik in self.Dmn.kptirr]
             else:
-               Mmn_loc_opt=[[Mmn[ib].dot(U[ikb]) for ib,ikb in enumerate(neigh)] for Mmn,neigh in zip(Mmn_FF('free','free'),self.neighbours)]
+               mmnff=Mmn_FF('free','free')
+               mmnff=[mmnff[ik] for ik in self.Dmn.kptirr]
+               Mmn_loc_opt=[[Mmn[ib].dot(U[ikb]) for ib,ikb in enumerate(neigh)] for Mmn,neigh in zip(mmnff,self.neighbours[irr])]
             return [sum(wb*mmn.dot(mmn.T.conj()) for wb,mmn in zip(wbk,Mmn)) for wbk,Mmn in zip(self.wb,Mmn_loc_opt) ]
 
-        Z_frozen=calc_Z(Mmn_FF('free','frozen'))
+        Z_frozen=calc_Z(Mmn_FF('free','frozen')) #  only for irreducible
         
 
 #        print ( '+---------------------------------------------------------------------+<-- DIS\n'+
@@ -89,16 +133,17 @@ class WannierModel():
 #                '+---------------------------------------------------------------------+<-- DIS'  )
 
         for i_iter in range(num_iter):
-            Z=[(z+zfr)  for z,zfr in zip(calc_Z(Mmn_FF('free','free'),U_opt_free),Z_frozen)]
+            Z=[(z+zfr)  for z,zfr in zip(calc_Z(Mmn_FF('free','free'),U_opt_free),Z_frozen) ]  # only for irreducible
             if i_iter>0 and mix_ratio<1:
-                Z=[ (mix_ratio*z + (1-mix_ratio)*zo) for z,zo in zip(Z,Z_old) ]
-            U_opt_free=self.get_max_eig(Z,self.nWfree)
+                Z=[ (mix_ratio*z + (1-mix_ratio)*zo) for z,zo in zip(Z,Z_old) ]  #  only for irreducible
+            U_opt_free_irr=self.get_max_eig(Z,self.nWfree[irr],self.nBfree[irr]) #  only for irreducible
+            U_opt_free=self.symmetrize_U_opt(U_opt_free_irr,free=True)
             Omega_I=Mmn_FF.Omega_I(U_opt_free)
             print ("iteration {:4d}".format(i_iter)+" Omega_I= "+"  ".join("{:15.10f}".format(x) for x in Omega_I)+" tot =","{:15.10f}".format(sum(Omega_I)))
             Z_old=deepcopy(Z)
 
-        U_opt_full=[]
-        for ik in range(self.NK):
+        U_opt_full_irr=[]
+        for ik in range(self.Dmn.kptirr):
            nband=self.Eig[ik].shape[0]
            U=np.zeros((nband,self.NW),dtype=complex)
            nfrozen=sum(self.frozen[ik])
@@ -111,7 +156,9 @@ class WannierModel():
            U[self.free[ik]   , nfrozen : ] = U_opt_free[ik]
 #           print ("ik={}, U=\n{}\n".format(ik+1,U))
            Z,D,V=np.linalg.svd(U.T.conj().dot(self.Amn[ik]))
-           U_opt_full.append(U.dot(Z.dot(V)))
+           U_opt_full_irr.append(U.dot(Z.dot(V)))
+        U_opt_full=self.symmetrize_U_opt(U_opt_full_irr,free=False)
+
 
        # now rotating to the optimized space
         self.Hmn=[]
@@ -123,6 +170,11 @@ class WannierModel():
             self.Amn[ik]=Ud.dot(self.Amn[ik])
             self.Mmn[ik]=[Ud.dot(M).dot(U_opt_full[ibk]) for M,ibk in zip (self.Mmn[ik],self.neighbours[ik])]
 
+    def symmetrize_U_opt_free(self,U_opt_free_irr,free=False):
+        # TODO : first symmetrize by the little group
+        # Now distribute to reducible points
+        d_band=self.Dmn.d_band_free if free else self.Dmn.d_band
+        U_opt_free=[d_band[isym][ikirr] @ U_opt_free_irr[ikirr] @ self.Dmn.D_wann_dag[isym][ikirr] for isym,ikirr in zip(self.Dmn.kpt2kptirr_sym,self.Dmn.kpt2kptirr)  ]
 
            
     def rotate(self,mat,ik1,ik2):
@@ -157,17 +209,19 @@ class WannierModel():
         MMN(data=Mmn,G=self.G,bk=self.bk,wk=self.wb,neighbours=self.neighbours).write(seedname)
         AMN(data=Amn).write(seedname)
 
-    def get_max_eig(self,matrix,nvec):
+    def get_max_eig(self,matrix,nvec,nBfree):
         """ return the nvec column-eigenvectors of matrix with maximal eigenvalues. 
         Both matrix and nvec are lists by k-points,s with arbitrary size of matrices"""
 #        print ("getting maximal vectors of: \n {}".format(matrix))
-        assert len(matrix)==len(nvec)==self.NK
+        assert len(matrix)==len(nvec)==len(nBfree)
         assert np.all([m.shape[0]==m.shape[1] for m in matrix])
         assert np.all([m.shape[0]>=nv for m,nv in zip(matrix,nvec)]), "nvec={}, m.shape={}".format(nvec,[m.shape for m in matrix])
         EV=[np.linalg.eigh(M) for M in matrix]
-        return [ ev[1][:,np.argsort(ev[0])[nf-nv:nf]] for ev,nv,nf  in zip(EV,nvec,self.nBfree) ] # nBfee x nWfree marrices
+        return [ ev[1][:,np.argsort(ev[0])[nf-nv:nf]] for ev,nv,nf  in zip(EV,nvec,nBfree) ] 
 
     class Mmn_Free_Frozen():
+        # TODO : make use of irreducible kpoints (maybe)
+        """ a class to store and call the Mmn matrix between/inside the free and frozen subspaces, as well as to calculate the streads"""
         def __init__(self,Mmn,free,frozen,neighbours,wb,NW):
            self.NK=len(Mmn)
            self.wb=wb

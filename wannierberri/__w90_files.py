@@ -15,13 +15,10 @@
 import numpy as np
 from scipy.io import FortranFile 
 import copy
-import lazy_property
 import functools
 #import billiard as multiprocessing 
 import multiprocessing 
-from .__utility import str2bool, alpha_A, beta_A, iterate3dpm
-from colorama import init
-from termcolor import cprint 
+from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, read_numbers
 from scipy.constants import physical_constants
 from time import time
 from itertools import islice
@@ -503,10 +500,62 @@ class WIN():
 
 class DMN():
     
-    def __init__(self,seedname="wannier90"):
-        self.read(seedname)
+    def __init__(self,seedname="wannier90",num_wann=0,num_bands=None,nkpt=None):
+        if seedname is not None:
+            self.read(seedname,num_wann)
+        else:
+            self.void(num_wann,num_bands,nkpt)
 
-    def read(self,seedname="wannier90"):
+    def read(self,seedname="wannier90",num_wann=0):
         fl=open(seedname+".dmn","r")
+        self.comment=fl.readline().strip()
+        self.NB,self.Nsym,self.nkptirr,self.nkpt = read_numbers(fl,4)
+        self.num_wann=num_wann
+        self.kpt2kptirr              = read_numbers(fl,self.nkpt)-1
+        self.kptirr                  = read_numbers(fl,self.nkptirr)-1
+        self.kptirr2kpt= read_numbers(fl,(self.Nsym,self.nkptirr))-1
+        # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
+        self.kpt2kptirr_sym           = np.array([np.where(self.kptirr2kpt[:,self.kpt2kptirr[ik]]==ik)[0][0] for ik in range(self.nkpt)])
+
+        # read the rest of lines and comvert to conplex array
+        data=[l.strip("() \n").split(",") for l in  fl.readlines()]
+        data=np.array([x for x in data if len(x)==2],dtype=float)
+        data=data[:,0]+1j*data[:,1]
+        n1=self.num_wann**2*self.Nsym*self.nkptirr
+        self.D_wann_dag=data[:n1].reshape(self.nkptirr,self.Nsym,self.num_wann,self.num_wann).transpose((0,1,3,2)).conj()
+        self.d_band=data[n1:].reshape(self.nkptirr,self.Nsym,self.NB,self.NB)
+
+    def void(self,num_wann,num_bands,nkpt):
+        self.comment="only identity"
+        self.NB,self.Nsym,self.nkptirr,self.nkpt = num_bands,1,nkpt,nkpt
+        self.num_wann=num_wann
+        self.kpt2kptirr              = np.arange(self.nkpt)
+        self.kptirr                  = self.kpt2kptirr
+        self.kptirr2kpt= np.array([self.kptirr])
+        self.kpt2kptirr_sym           = np.zeros(self.nkpt,dtype=int) 
+        # read the rest of lines and comvert to conplex array
+        self.d_band=np.ones((self.nkptirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.NB)[None,None,:,:]
+        self.D_wann_dag=np.ones((self.nkptirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.num_wann)[None,None,:,:]
+
+
+    def apply_outer_window(self,win_index_irr):
+        self.d_band=[ D[:,wi,:][:,:,wi] for D,wi in zip(self.d_band,win_index_irr) ]
+
+    def set_free(self,frozen_irr):
+        free=np.logical_not(frozen_irr)
+        self.d_band_free=[ d[:,f,:][:,:,f] for d,f in zip(self.d_band,free) ]
+
+    def write(self):
+        print (self.comment)
+        print (self.NB,self.Nsym,self.nkptirr,self.nkpt,self.num_wann)
+        for i in range(self.nkptirr):
+           for j in range(self.Nsym):
+               print()
+               for M in self.D_band[i][j],self.d_wann[i][j]:
+                   print("\n".join(" ".join("{}".format("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
+#                   print("\n".join(" ".join("{:4.2f}".format(abs(x)**2) for x in m) for m in M)+"\n")
+
+
+
 
 
