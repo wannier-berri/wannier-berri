@@ -104,7 +104,7 @@ class System_PythTB(System):
         index0=np.argwhere(np.all(([0,0,0]-R_all)==0, axis=1))
         # if there are no intracell hoppings, R=[000] is not present in R_all
         # add it manually
-        if index0==[]:
+        if index0.size==0:
             R_all=np.column_stack((np.array([0,0,0]),R_all.T)).T
             index0=0
         
