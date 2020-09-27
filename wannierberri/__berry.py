@@ -48,7 +48,7 @@ def calcImgh_band_kn(data):
 
 def calcImgh_band(data):
     "returns g-h"
-    return eval_J(data.Hminus)
+    return eval_J(data.Hminus())
 
 def calcSpin_band(data):
     return data.SpinTot['i']
