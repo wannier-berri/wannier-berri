@@ -210,17 +210,23 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             sigma_H += 1j * pi * pre_fac * kubo_sum_elements(imAB, temp2, data.num_wann) / 4.0
             sigma_AH += pre_fac * kubo_sum_elements(imAB, temp1, data.num_wann) / 2.0
 
+    if conductivity_type == 'kubo':
+        # TODO: optimize by just storing independent components or leave it like that?
+        # 3x3 tensors [iw, a, b]
+        sigma_sym = np.real(sigma_H) + 1j * np.imag(sigma_AH) # symmetric (TR-even, I-even)
+        sigma_asym = np.real(sigma_AH) + 1j * np.imag(sigma_H) # ansymmetric (TR-odd, I-even)
 
-    # TODO: optimize by just storing independent components or leave it like that?
-    # 3x3 tensors [iw, a, b] or [iw,a,b,c]
-    sigma_sym = np.real(sigma_H) + 1j * np.imag(sigma_AH) # symmetric (TR-even, I-even)
-    sigma_asym = np.real(sigma_AH) + 1j * np.imag(sigma_H) # ansymmetric (TR-odd, I-even)
+        # return result dictionary
+        return result.EnergyResultDict({
+            'sym':  result.EnergyResult(omega, sigma_sym, TRodd=False, Iodd=False, rank=rank),
+            'asym': result.EnergyResult(omega, sigma_asym, TRodd=True, Iodd=False, rank=rank)
+        }) # the proper smoother is set later for both elements
 
-    # return result dictionary
-    return result.EnergyResultDict({
-        'sym':  result.EnergyResult(omega, sigma_sym, TRodd=False, Iodd=False, rank=rank),
-        'asym': result.EnergyResult(omega, sigma_asym, TRodd=False, Iodd=False, rank=rank)
-    }) # the proper smoother is set later for both elements
+    elif conductivity_type == 'SHC':
+        sigma_SHC = np.real(sigma_AH) + 1j * np.imag(sigma_H)
+        return result.EnergyResultDict({
+            'freqscan': result.EnergyResult(omega, sigma_SHC, TRodd=True, Iodd=False, rank=rank)
+        })
 
 
 def opt_SHC(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
