@@ -20,6 +20,7 @@ import numpy as np
 import pyfftw
 from lazy_property import LazyProperty as Lazy
 from time import time
+from termcolor import cprint 
 
 
 alpha_A=np.array([1,2,0])
@@ -64,7 +65,9 @@ def conjugate_basis(basis):
 
 def real_recip_lattice(real_lattice=None,recip_lattice=None):
     if recip_lattice is None:
-        assert real_lattice is not None , "need to provide either with real or reciprocal lattice"
+        if real_lattice is None : 
+            cprint ("\n WARNING!!!!! usually need to provide either with real or reciprocal lattice. If you only want to generate a random symmetric tensor - that it fine \n","yellow")
+            return None,None
         recip_lattice=conjugate_basis(real_lattice)
     else: 
         if real_lattice is not None:
@@ -174,6 +177,15 @@ def fft_W(inp,axes,inverse=False,destroy=True,numthreads=1):
     t2=time()
 #    print ("time to plan {},{}, time to execute {}".format(t01-t0,t1-t01,t2-t1))
     return fft_out
+
+
+
+    def getHead(n):
+       if n<=0:
+          return ['  ']
+       else:
+          return [a+b for a in 'xyz' for b in getHead(n-1)]
+
 
 
 def fft_np(inp,axes,inverse=False):

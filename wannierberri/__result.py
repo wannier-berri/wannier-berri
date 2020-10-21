@@ -124,10 +124,10 @@ class EnergyResult(Result):
         '''Writes the result if data has complex entries.'''
         # assume that the dimensions starting from first are cartesian coordinates       
         def getHead(n):
-           if n<=0:
-              return ['  ']
-           else:
-              return [a+b for a in 'xyz' for b in getHead(n-1)]
+            if n<=0:
+                return ['  ']
+            else:
+                return [a+b for a in 'xyz' for b in getHead(n-1)]
         rank=len(self.data.shape[1:])
 
         open(name,"w").write(
