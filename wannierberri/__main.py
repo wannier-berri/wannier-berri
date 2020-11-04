@@ -20,6 +20,7 @@ from . import __integrate
 from . import __tabulate  
 from . import symmetry
 
+from scipy.io import FortranFile
 from .__version import __version__
 from .__result import NoComponentError
 from collections import Iterable
@@ -159,7 +160,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 
 
 def tabulate(system,grid, quantities=[],
-                  fout_name="wberri",ibands=None,suffix="",numproc=0,Ef0=0.,parameters={}):
+                  fout_name="wberri",ibands=None,suffix="",numproc=0,Ef0=0.,formatted=True,parameters={}):
     """
     Tabulate quantities to be plotted
 
@@ -195,16 +196,32 @@ def tabulate(system,grid, quantities=[],
             adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None)
             
     res=res.to_grid(grid.dense)
-        
-    open("{0}_E.frmsf".format(fout_name),"w").write(
-         res.fermiSurfer(quantity=None,efermi=Ef0) )
-    
+
+    if formatted:
+        open("{0}_E.frmsf".format(fout_name),"w").write(
+             res.fermiSurfer(quantity=None,efermi=Ef0) )
+    else:
+        eout = res.fermiSurfer(quantity=None,efermi=Ef0,formatted=False)
+        E_out = FortranFile("{0}_E".format(fout_name), 'w')
+        E_out.write_record(eout[0].encode('ascii'))
+        E_out.write_record(eout[1])
+        E_out.write_record(eout[2])
+
     for Q in quantities:
 #     for comp in ["x","y","z","sq","norm"]:
      for comp in ["x","y","z","xx","yy","zz","xy","yx","xz","zx","yz","zy"]:
         try:
-            txt=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0)
-            open("{2}_{1}-{0}.frmsf".format(comp,Q,fout_name),"w").write(txt)
+            if formatted:
+                txt=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0)
+                open("{2}_{1}-{0}.frmsf".format(comp,Q,fout_name),"w").write(txt)
+            else:
+                qout=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0,formatted=False)
+                Q_out = FortranFile("{0}_{1}-{2}".format(fout_name,Q,comp), 'w')
+                Q_out.write_record(qout[0].encode('ascii'))
+                Q_out.write_record(qout[1])
+                Q_out.write_record(qout[2])
+                Q_out.write_record(qout[3])
+
         except NoComponentError:
             pass
 
