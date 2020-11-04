@@ -19,6 +19,9 @@ def main():
       elif argv[1]=='mmn2uHu':
          from .__mmn2uHu import main as mmn2uHu
          mmn2uHu(argv[1:])
+      elif argv[1]=='tab_plot':
+         from .__tab_plot import main as tab_plot
+         tab_plot(argv[1:])
       exit()
     print_options()
 

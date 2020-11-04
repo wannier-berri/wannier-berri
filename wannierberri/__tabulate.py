@@ -145,7 +145,7 @@ class TABresult(result.Result):
         return res
             
     
-    def fermiSurfer(self,quantity=None,component=None,efermi=0):
+    def fermiSurfer(self,quantity=None,component=None,efermi=0,formatted=True):
         if not (quantity is None):
             Xnk=self.results[quantity].get_component(component)
 
@@ -156,20 +156,26 @@ class TABresult(result.Result):
         FSfile=" {0}  {1}  {2} \n".format(self.grid[0],self.grid[1],self.grid[2])
         FSfile+="1 \n"  # so far only this option of Fermisurfer is implemented
         FSfile+="{} \n".format(self.nband)
-        FSfile+="".join( ["  ".join("{:14.8f}".format(x) for x in v) + "\n" for v in self.recip_lattice] )
-        for iband in range(self.nband):
-            FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk.data[:,iband]-efermi )
-        
+        if formatted:
+            FSfile+="".join( ["  ".join("{:14.8f}".format(x) for x in v) + "\n" for v in self.recip_lattice] )
+            for iband in range(self.nband):
+                FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk.data[:,iband]-efermi )
+
         if quantity is None:
-            return FSfile
-        
+            if formatted:
+                return FSfile
+            else:
+                return (FSfile,self.recip_lattice,self.Enk.data-efermi)
+
         if quantity not in self.results:
             raise RuntimeError("requested quantity '{}' was not calculated".format(quantity))
             return FSfile
-        
-        for iband in range(self.nband):
-            FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
-        return FSfile
+        if formatted:
+            for iband in range(self.nband):
+                FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
+            return FSfile
+        else:
+            return (FSfile,self.recip_lattice,self.Enk.data-efermi,Xnk)
 
 
     def max(self):
