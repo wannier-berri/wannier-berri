@@ -492,6 +492,32 @@ class Data_K(System):
         uoo = -2*((Anl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlnn[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlnn[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:]  ).imag
         return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo}
 
+
+    def derOmegaTrW(self,op,ed,omega=0):
+        b=alpha_A
+        c=beta_A
+        N=None
+        Anl = (self.A_Hbar+1j*self.D_H).transpose(0,2,1,3)[op:ed]
+        dDln,dDlln,dDlnn= self.gdD_save(op,ed)
+        dAln,dAlln,dAlnn= self.gdAbar(op,ed)
+        Wmn2=(self.E_K[op:ed,:,N]-self.E_K[op:ed,N,:])**2
+        Vmn=self.V_H[op:ed,:,N,:]-self.V_H[op:ed,N,:,:]
+        frac    =  Wmn2/(Wmn2-omega**2)
+        delfrac = -Vmn*(Wmn2 +omega**2)/(Wmn2-omega**2)**2
+
+        dAln +=1j*dDln
+        dAlln+=1j*dDlln
+        dAlnn+=1j*dDlnn
+        del dDln,dDlln,dDlln
+
+
+        uo = dOln - 2*((Anl[:,:,:,b,N]*dDln[:,:,:,c,:] + Dnl[:,:,:,b,N]*dAln[:,:,:,c,:]) - (Anl[:,:,:,c,N]*dDln[:,:,:,b,:] + Dnl[:,:,:,c,N]*dAln[:,:,:,b,:]) ).real + 2*( Dnl[:,:,:,b,N]*dDln[:,:,:,c,:]  -  Dnl[:,:,:,c,N]*dDln[:,:,:,b,:]  ).imag
+        uuo = -2*((Anl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlln[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlln[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:]  ).imag
+        uoo = -2*((Anl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlnn[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlnn[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:]  ).imag
+        return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo}
+
+
+
     def derHplusTr(self,op,ed):
         b=alpha_A
         c=beta_A
