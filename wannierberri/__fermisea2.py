@@ -24,6 +24,7 @@
 # this is a generalized 
 
 import numpy as np
+import functools
 from scipy import constants as constants
 from collections import Iterable
 import inspect
@@ -79,6 +80,10 @@ def tensor_K(data,Efermi):
 
 def tensor_D(data,Efermi):
         return IterateEf(data.derOmegaTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
+
+def tensor_Dw(data,Efermi,omega0=0):
+        return IterateEf(partial(data.derOmegaWTr,omega=omega0),data,Efermi,sep=True,TRodd=False,Iodd=True)
+
 #########################
 ####  Private part ######
 #########################
@@ -87,43 +92,31 @@ def tensor_D(data,Efermi):
 def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
     """ this is a general function which accepts dataIO  -- a dictionary like {'i':i , 'io':io, ...}
      and sums for a series of Fermi levels
-     parameter dataIO can be a dictionary or a funciton. If needed use callable(dataIO) for judgment and run OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed) or OCC=OccDelta(data.E_K(op,ed),dataIO(op,ed),op,ed)"""
+     parameter dataIO can be a dictionary or a funciton. 
+     If needed use callable(dataIO) for judgment and run 
+     OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed) or OCC=OccDelta(data.E_K(op,ed),dataIO(op,ed),op,ed)"""
 #    funname=inspect.stack()[1][3]
 #    print ("iterating function '{}' for Efermi={}".format(funname,Efermi))
 # try to make sum better
     if sep:
         res = 0.0
-        nksep = data.nkptot//data.ksep
-        if nksep != 0:
-            for i in range(nksep):
-                op=i*data.ksep
-                ed=(i+1)*data.ksep
-                OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed)
-                RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
-                res+=np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume)
-        if nksep*data.ksep != data.nkptot:
-            op=nksep*data.ksep
-            ed=data.nkptot
-            OCC=OccDelta(data.E_K,dataIO(op,ed),op,ed)
+        for op in range(0,data.nkptot,data.ksep):
+            ed=min(op+data.ksep,data.nkptot)
+            OCC=OccDelta(data.E_K[op:ed],dataIO(op,ed))
             RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
             res+=np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume)
         return result.EnergyResult(Efermi,res,TRodd=TRodd,Iodd=Iodd)
-
     else:
-        op=None
-        ed=None
-        OCC=OccDelta(data.E_K,dataIO,op,ed)
+        OCC=OccDelta(data.E_K,dataIO)
         RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
         return result.EnergyResult(Efermi,np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume),TRodd=TRodd,Iodd=Iodd,rank=rank)
-
 
 
 # an auxillary class for iteration 
 class OccDelta():
  
-    def __init__(self,E_K,dataIO,op=None,ed=None):
-        self.occ_old=np.zeros(E_K[op:ed,:].shape,dtype=bool)
-        E_K=E_K[op:ed,:]
+    def __init__(self,E_K,dataIO):
+        self.occ_old=np.zeros(E_K.shape,dtype=bool)
         self.E_K=E_K
         self.dataIO=dataIO
         self.Efermi=-np.Inf
