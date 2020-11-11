@@ -44,6 +44,7 @@ calculators_trans={
 
          'berry_dipole'        : fermisea2.tensor_D,
          'berry_dipole_fsurf'      : nonabelian.berry_dipole,
+         'Faraday'      : nonabelian.Faraday,
          'gyrotropic_Korb'  : fermisea2.tensor_K,
 
          'gyrotropic_Kspin'  : fermisea2.gyrotropic_Kspin,
@@ -77,6 +78,8 @@ additional_parameters['opt_conductivity']['adpt_smr_max'] = 0.1
 additional_parameters_description['opt_conductivity']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter in eV"
 additional_parameters['opt_conductivity']['adpt_smr_min'] = 1e-15
 additional_parameters_description['opt_conductivity']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
+additional_parameters['Faraday']['homega'] = 0.0
+additional_parameters_description['Faraday']['homega'] = "frequency of light in eV (one frequency per calculation)"
 
 
 calculators=copy(calculators_trans)
@@ -101,6 +104,7 @@ descriptions['Hall_classic'] =  "classical Hall coefficient, in S/(cm*T) for tau
 descriptions['Hall_morb'   ] = "Low field AHE, orbital part, in S/(cm*T)."
 descriptions['Hall_spin'   ] = "Low field AHE, spin    part, in S/(cm*T)."
 descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
+descriptions['Faraday'] = "Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
 
 
 # omega - for optical properties of insulators

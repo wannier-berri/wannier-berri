@@ -17,6 +17,7 @@ import numpy as np
 import lazy_property
 #import billiard as multiprocessing 
 import  multiprocessing 
+from collections import defaultdict
 from .__system import System
 from .__utility import  print_my_name_start,print_my_name_end,einsumk, FFT_R_to_k, alpha_A,beta_A
 
@@ -180,6 +181,32 @@ class Data_K(System):
                      for O,A,D,deg in zip( self.Omega_Hbar,self.A_Hbar,self.D_H,self.degen ) ] 
         print_my_name_end()
         return res
+
+
+    def Berry_nonabelian_W(self,homega):
+        if not hasattr(self,'Berry_nonabelian_W_calculated'):
+            self.Berry_nonabelian_W_calculated= {}
+        if homega not in self.Berry_nonabelian_W_calculated:
+            self.Berry_nonabelian_W_calculated[homega]= self.calculate_Berry_nonabelian_W(homega)
+        return self.Berry_nonabelian_W_calculated[homega]
+
+### todo : check what is the correct "nonabelian" formulation
+    def calculate_Berry_nonabelian_W(self,homega):
+        print_my_name_start()
+        wnl2=(self.E_K[:,:,None]-self.E_K[:,None,:])**2
+        A_H_W=(wnl2/(wnl2-homega**2))[:,:,:,None]*self.A_H
+        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
+        res= [ [  0.5j*sum(s*np.einsum("mla,lna->mna",X,Y) 
+                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
+                     for s,b,c in sbc
+                    for X,Y in [(Aw[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c]),(A[ib1:ib2,ibl1:ibl2,b],Aw[ibl1:ibl2,ib1:ib2,c])]
+                           )
+                        for ib1,ib2 in deg]
+                     for Aw,A,deg in zip( A_H_W,self.A_H,self.degen ) ] 
+        print_my_name_end()
+        return res
+
+
 
 
     @lazy_property.LazyProperty

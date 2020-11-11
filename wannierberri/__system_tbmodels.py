@@ -120,7 +120,7 @@ class System_TBmodels(System):
         if getAA:
             self.AA_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
             for i in range(self.num_wann):
-                self.AA_R[i,i,index0,:self.dimr]=tbmodel.pos[i,:]
+                self.AA_R[i,i,index0,:self.dimr]=tbmodel.pos[i,:].dot(self.real_lattice[:tbmodel.dim])
                 
         if getBB:
             self.BB_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
