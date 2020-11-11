@@ -128,8 +128,7 @@ class System_PythTB(System):
         if getAA:
             self.AA_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
             for i in range(self.num_wann):
-                self.AA_R[i,i,index0,:self.dimr]=ptb_model._orb[i,:]
-
+                self.AA_R[i,i,index0,:]=ptb_model._orb[i,:].dot(self.real_lattice[:self.dimr])
         if getBB:
             self.BB_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
             for i in range(self.num_wann):
