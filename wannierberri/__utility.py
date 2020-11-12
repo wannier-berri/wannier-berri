@@ -227,7 +227,7 @@ class FFT_R_to_k():
         print_my_name_start()
         self.NKFFT=tuple(NKFFT)
         self.num_wann=num_wann
-        assert lib in ('fftw','numpy')
+        assert lib in ('fftw','numpy','slow') , "fft lib '{}' is not known/supported".format(lib)
         self.lib = lib
         if lib == 'fftw':
             shape=self.NKFFT+(self.num_wann,self.num_wann)
@@ -238,7 +238,7 @@ class FFT_R_to_k():
                 direction='FFTW_BACKWARD' ,
                 threads=numthreads  )
 #            print ("created fftw plan with {} threads".format(numthreads))
-        self.iRvec=iRvec
+        self.iRvec=iRvec%self.NKFFT
         self.nRvec=iRvec.shape[0]
         self.time_init=time()-t0
         self.time_call=0
@@ -250,14 +250,18 @@ class FFT_R_to_k():
     def transform(self,AAA_K):
         if self.lib=='numpy':
             AAA_K[...] = np.fft.ifftn(AAA_K,axes=(0,1,2))
-        else:
-        # do recursion is array has cartesian indices. The recursion shoild not be very deep
+        elif self.lib=='fftw':
+        # do recursion if array has cartesian indices. The recursion should not be very deep
             if AAA_K.ndim>5:
                 for i in range(AAA_K.shape[-1]):
                     AAA_K[...,i]=self.transform(AAA_K[...,i])
             else:
                 AAA_K[...]=self.execute_fft(AAA_K[...])
             return AAA_K
+        elif self.lib=='slow':
+            raise RuntimeError("FFT.transform should not be called for slow FT")
+        else :
+            raise ValueError("Unknown type of Fourier transform :''".format(self.lib)) 
 
     def __call__(self,AAA_R,hermitian=False,antihermitian=False,reshapeKline=True):
         t0=time()
@@ -266,14 +270,25 @@ class FFT_R_to_k():
             raise ValueError("A matrix cannot be both Hermitian and anti-Hermitian, unless it is zero")
         AAA_R=AAA_R.transpose((2,0,1)+tuple(range(3,AAA_R.ndim)))
         shapeA=AAA_R.shape
-        assert  self.nRvec==shapeA[0]
-        assert  self.num_wann==shapeA[1]==shapeA[2]
-        AAA_K=np.zeros( self.NKFFT+shapeA[1:], dtype=complex )
-        ### TODO : place AAA_R to FFT grid from beginning, even before multiplying by exp(dkR)
-        for ir,irvec in enumerate(self.iRvec):
-            AAA_K[tuple(irvec)]=AAA_R[ir]
-        self.transform(AAA_K)
-        AAA_K*=np.prod(self.NKFFT)
+        if self.lib=='slow':
+            print ("doing slow FT")
+            t0=time()
+            exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
+            k=np.zeros(3,dtype=int)
+            AAA_K=np.array([[[
+                     sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
+                        for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
+            t=time()-t0
+            print ("slow FT finished in {} sec for AAA_R {} and {} k-grid . {} per element".format(t,AAA_R.shape,self.NKFFT,t/np.prod(self.NKFFT )/np.prod(AAA_R.shape)))
+        else:
+            assert  self.nRvec==shapeA[0]
+            assert  self.num_wann==shapeA[1]==shapeA[2]
+            AAA_K=np.zeros( self.NKFFT+shapeA[1:], dtype=complex )
+            ### TODO : place AAA_R to FFT grid from beginning, even before multiplying by exp(dkR)
+            for ir,irvec in enumerate(self.iRvec):
+                AAA_K[tuple(irvec)]+=AAA_R[ir]
+            self.transform(AAA_K)
+            AAA_K*=np.prod(self.NKFFT)
 
         ## TODO - think if fft transform of half of matrix makes sense
         if hermitian:
