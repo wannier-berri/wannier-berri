@@ -37,6 +37,8 @@ class Grid():
         wether grid is Gamma-Centered or shifted
     minimalFFT : bool
         force the FFT grid to be equal to the minimal allowed for the system 
+    allow_smaller_FFT : bool 
+        allow the FFT grid to be smaller then the minimal FFT for the system 
 
     Notes
     -----
@@ -54,12 +56,12 @@ class Grid():
 
     """
 
-    def __init__(self,system,length=None,NKdiv=None,NKFFT=None,NK=None,minimalFFT=True,GammaCentered=True):
+    def __init__(self,system,length=None,NKdiv=None,NKFFT=None,NK=None,minimalFFT=True,GammaCentered=True,allow_smaller_FFT=False):
 
         NKFFTmin=system.NKFFTmin 
         self.symgroup=system.symgroup
         self.GammaCentered=GammaCentered
-        self.div,self.FFT=determineNK(NKdiv,NKFFT,NK,NKFFTmin,self.symgroup,minimalFFT=minimalFFT,length=length)
+        self.div,self.FFT=determineNK(NKdiv,NKFFT,NK,NKFFTmin,self.symgroup,minimalFFT=minimalFFT,length=length,allow_smaller_FFT=allow_smaller_FFT)
 
     @property
     def dense(self):
@@ -115,7 +117,7 @@ def autoNK(NK,NKFFTmin,symgroup,minimalFFT):
     return NKdiv,FFT
 
 
-def determineNK(NKdiv,NKFFT,NK,NKFFTmin,symgroup,minimalFFT=False,length=None):
+def determineNK(NKdiv,NKFFT,NK,NKFFTmin,symgroup,minimalFFT=False,length=None,length_FFT=None,allow_smaller_FFT=False):
     print ("determining grids from NK={} ({}), NKdiv={} ({}), NKFFT={} ({})".format(NK,type(NK),NKdiv,type(NKdiv),NKFFT,type(NKdiv)))
     NKdiv=one2three(NKdiv)
     NKFFT=one2three(NKFFT)
@@ -128,15 +130,23 @@ def determineNK(NKdiv,NKFFT,NK,NKFFTmin,symgroup,minimalFFT=False,length=None):
         else: 
             print ("WARNING : length is disregarded in presence of NK")
 
+
+    if length_FFT is not None:
+        if NKFFT is None: 
+            NKFFT=np.array(np.round(length_FFT/(2*np.pi)*np.linalg.norm(symgroup.recip_lattice,axis=1)),dtype=int)
+            print ("length_FFT={} was converted into NKFFT={}".format(length,NK))
+        else: 
+            print ("WARNING : length_FFT is disregarded in presence of NKFFT")
+
+
     for nkname in 'NKdiv','NK','NKFFT':
         nk=locals()[nkname]
         if nk is not None:
             assert symgroup.symmetric_grid(nk) , " {}={} is not consistent with the given symmetry ".format(nkname,nk)
 
 
-
     if (NKdiv is not None) and (NKFFT is not None):
-        assert np.all(NKFFT>=NKFFTmin) , "the given FFT grid {} is smaller then minimal allowed {} for this system. Increase the FFT grid".format(NKFFT,NKFFTmin)
+        assert  allow_smaller_FFT or np.all(NKFFT>=NKFFTmin) , "the given FFT grid {} is smaller then minimal allowed {} for this system. Increase the FFT grid".format(NKFFT,NKFFTmin)
         if length is not None:
             print ("WARNING : length is disregarded in presence of NKdiv,NKFFT")
         elif NK is not None:
@@ -145,7 +155,7 @@ def determineNK(NKdiv,NKFFT,NK,NKFFTmin,symgroup,minimalFFT=False,length=None):
         if NKdiv is not None:
             print ("WARNING : NKdiv is disregarded in presence of NK or length")
         if NKFFT is not None: 
-            assert np.all(NKFFT>=NKFFTmin) , "the given FFT grid {} is smaller then minimal allowed {} for this system. Increase the FFT grid".format(NKFFT,NKFFTmin)
+            assert allow_smaller_FFT or np.all(NKFFT>=NKFFTmin) , "the given FFT grid {} is smaller then minimal allowed {} for this system. Increase the FFT grid".format(NKFFT,NKFFTmin)
             NKdiv=np.array(np.round(NK/NKFFT),dtype=int)
             NKdiv[NKdiv<=0]=1
         else: 
