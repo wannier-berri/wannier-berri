@@ -35,87 +35,39 @@ class System_w90(System):
     ----------
     seedname : str
         the seedname used in Wannier90
-    berry : bool
-        set ``True`` if quantities derived from Berry connection or Berry curvature will be used. Requires the ``.mmn`` file.
-    spin : bool
-        set ``True`` if quantities derived from spin  will be used. Requires the ``.spn`` file.
-    morb : bool
-        set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file.
-    use_ws : bool
-        minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
     transl_inv : bool
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
-    frozen_max : float
-        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
-    fft : str
-        library used to perform the fast Fourier transform from **q** to **R**. ``fftw`` or ``numpy``. (practically does not affect performance, 
-        anyway mostly timeof the constructir is consumed by reading the input files)
     npar : int
         number of processes used in the constructor
-    degen_thresh : float
-        threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
-    random_gauge : bool
-        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
-    ksep: int
-        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. 
-    delta_fz:float
-        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
+    fft : str
+        library used to perform the fast Fourier transform from **q** to **R**. ``fftw`` or ``numpy``. (practically does not affect performance, 
+        anyway mostly time of the constructor is consumed by reading the input files)
+
+    Notes
+    -----
+    see also  parameters of the :class:`~wannierberri.System` 
     """
 
     def __init__(self,seedname="wannier90",
-                    berry=False,spin=False,morb=False,
-                    use_ws=True,
                     transl_inv=True,
-                    frozen_max=-np.Inf,
                     fft='fftw',
-                    npar=multiprocessing.cpu_count()  ,
-                    degen_thresh=-1 ,
-                    random_gauge=False,
-                    ksep=50,
-                    delta_fz=0.1
+                    npar=multiprocessing.cpu_count()  , 
+                    **parameters
                     ):
 
+        self.set_parameters(**parameters)
         self.seedname=seedname
-        self.ksep=ksep
-        self.delta_fz=delta_fz
-
-        self.morb  = morb
-        self.berry = berry
-        self.spin  = spin
-
-        self.AA_R=None
-        self.BB_R=None
-        self.CC_R=None
-        self.FF_R=None
-        self.SS_R=None
-
-
-        getAA = False
-        getBB = False
-        getCC = False
-        getSS = False
-        getFF = False
-        
-        if self.morb: 
-            getAA=getBB=getCC=True
-        if self.berry: 
-            getAA=True
-        if self.spin: 
-            getSS=True
-
-        self.frozen_max=frozen_max
-        self.random_gauge=random_gauge
-        self.degen_thresh=degen_thresh
 
         chk=CheckPoint(self.seedname)
         self.real_lattice,self.recip_lattice=real_recip_lattice(chk.real_lattice,chk.recip_lattice)
+        self.mp_grid=chk.mp_grid
         self.iRvec,self.Ndegen=self.wigner_seitz(chk.mp_grid)
 #        print ("number of R-vectors: {} ; vectrors:\n {}".format(self.iRvec.shape[0], self.iRvec,self.Ndegen))
         self.nRvec0=len(self.iRvec)
         self.num_wann=chk.num_wann
 
         eig=EIG(seedname)
-        if getAA or getBB:
+        if self.getAA or self.getBB:
             mmn=MMN(seedname,npar=npar)
 
         kpt_mp_grid=[tuple(k) for k in np.array( np.round(chk.kpt_latt*np.array(chk.mp_grid)[None,:]),dtype=int)%chk.mp_grid]
@@ -131,25 +83,25 @@ class System_w90(System):
 #        for i in range(self.nRvec):
 #            print (i,self.iRvec[i],"H(R)=",self.HH_R[0,0,i])
 
-        if getAA:
+        if self.getAA:
             AAq=chk.get_AA_q(mmn,transl_inv=transl_inv)
             t0=time()
             self.AA_R=fourier_q_to_R_loc(AAq)
             timeFFT+=time()-t0
 
-        if getBB:
+        if self.getBB:
             t0=time()
             self.BB_R=fourier_q_to_R_loc(chk.get_AA_q(mmn,eig))
             timeFFT+=time()-t0
 
-        if getCC:
+        if self.getCC:
             uhu=UHU(seedname)
             t0=time()
             self.CC_R=fourier_q_to_R_loc(chk.get_CC_q(uhu,mmn))
             timeFFT+=time()-t0
             del uhu
 
-        if getSS:
+        if self.getSS:
             spn=SPN(seedname)
             t0=time()
             self.SS_R=fourier_q_to_R_loc(chk.get_SS_q(spn))
@@ -158,12 +110,12 @@ class System_w90(System):
 
         print ("time for FFT_q_to_R : {} s".format(timeFFT))
 
-        if  use_ws:
+        if  self.use_ws:
             print ("using ws_distance")
             ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centres, chk.mp_grid,self.real_lattice,npar=npar)
             for X in ['HH','AA','BB','CC','SS','FF']:
                 XR=X+'_R'
-                if vars(self)[XR] is not None:
+                if hasattr(self,XR) :
                     print ("using ws_dist for {}".format(XR))
                     vars(self)[XR]=ws_map(vars(self)[XR])
             self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
@@ -171,8 +123,12 @@ class System_w90(System):
 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
-        print ("Minimal Number of K points:", self.NKFFTmin)
+        print ("Reommended size of FFT grid", self.NKFFT_recommended)
         print ("Real-space lattice:\n",self.real_lattice)
+
+    @property
+    def NKFFT_recommended(self):
+        return self.mp_grid
 
     def wigner_seitz(self,mp_grid):
         ws_search_size=np.array([1]*3)

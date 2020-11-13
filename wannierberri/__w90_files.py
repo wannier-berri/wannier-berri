@@ -86,13 +86,10 @@ class CheckPoint():
         if len(mat.shape)==1:
             mat=np.diag(mat)
         assert mat.shape[:2]==(self.num_bands,)*2
-        shape=mat.shape[2:]
-        mat=mat.reshape(mat.shape[:2]+(-1,)).transpose(2,0,1)
-        mat=mat[:,self.win_min[ik1]:self.win_max[ik1],self.win_min[ik2]:self.win_max[ik2]]
+        mat=mat[self.win_min[ik1]:self.win_max[ik1],self.win_min[ik2]:self.win_max[ik2]]
         v1=self.v_matrix[ik1].conj()
         v2=self.v_matrix[ik2].T
-        return np.array( [v1.dot(m).dot(v2) for m in mat]).transpose( (1,2,0) ).reshape( (self.num_wann,)*2+shape )
-
+        return  np.tensordot( np.tensordot(v1,mat,axes=(1,0)),v2,axes=(1,0)).transpose((0,-1,)+tuple(range(1,mat.ndim-1)))
 
     def get_HH_q(self,eig):
         assert (eig.NK,eig.NB)==(self.num_kpts,self.num_bands)
