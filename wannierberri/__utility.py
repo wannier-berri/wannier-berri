@@ -38,26 +38,6 @@ def print_my_name_end():
     if __debug: 
         print("DEBUG: Running {} - done ".format(inspect.stack()[1][3]))
 
-
-
-def einsumk(*args):
-    left,right=args[0].split("->")
-    left=left.split(",")
-    for s in left + [right]:
-        if s[0]!='k':
-            raise RuntimeError("the first index should be 'k', found '{1}".format(s[0]))
-    string_new=",".join(s[1:]for s in left)+"->"+right[1:]
-    print ("string_new"+"  ".join(str(a.shape) for a in args[1:]))
-    nmat=len(args)-1
-    assert(len(left)==nmat)
-    if nmat==2:
-        return np.array([np.einsum(string_new,a,b) for a,b in zip(args[1],args[2])])
-    elif nmat==3:
-        return np.array([a.dot(b).dot(c) for a,b,c in zip(args[1],args[2],args[3])])
-    elif nmat==4:
-        return np.array([np.einsum(string_new,a,b,c,d) for a,b,c,d in zip(args[1],args[2],args[3],args[4])])
-    else:
-        raise RuntimeError("einsumk is not implemented for number of matrices {}".format(nmat))
     
 def conjugate_basis(basis):
     return 2*np.pi*np.linalg.inv(basis).T
@@ -118,7 +98,7 @@ class smoother():
             end=min(self.NE,i+self.NE1+1)
             start1=self.NE1-(i-start)
             end1=self.NE1+(end-i)
-            res[i]=A[start:end].transpose(tuple(range(1,len(A.shape)))+(0,)).dot(self.smt[start1:end1])/self.smt[start1:end1].sum()
+            res[i]=np.tensordot(A[start:end],self.smt[start1:end1],axes=(0,0))/self.smt[start1:end1].sum()
         return res
 
 
@@ -271,7 +251,7 @@ class FFT_R_to_k():
         AAA_R=AAA_R.transpose((2,0,1)+tuple(range(3,AAA_R.ndim)))
         shapeA=AAA_R.shape
         if self.lib=='slow':
-            print ("doing slow FT")
+#            print ("doing slow FT")
             t0=time()
             exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
             k=np.zeros(3,dtype=int)
@@ -279,7 +259,7 @@ class FFT_R_to_k():
                      sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
                         for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
             t=time()-t0
-            print ("slow FT finished in {} sec for AAA_R {} and {} k-grid . {} per element".format(t,AAA_R.shape,self.NKFFT,t/np.prod(self.NKFFT )/np.prod(AAA_R.shape)))
+#            print ("slow FT finished in {} sec for AAA_R {} and {} k-grid . {} per element".format(t,AAA_R.shape,self.NKFFT,t/np.prod(self.NKFFT )/np.prod(AAA_R.shape)))
         else:
             assert  self.nRvec==shapeA[0]
             assert  self.num_wann==shapeA[1]==shapeA[2]

@@ -18,7 +18,7 @@ import lazy_property
 #import billiard as multiprocessing 
 import  multiprocessing 
 from .__system import System
-from .__utility import  print_my_name_start,print_my_name_end,einsumk, FFT_R_to_k, alpha_A,beta_A
+from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha_A,beta_A
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -41,6 +41,9 @@ class Data_K(System):
         self.ksep = system.ksep
         ## TODO : create the plans externally, one per process 
         self.fft_R_to_k=FFT_R_to_k(system.iRvec,NKFFT,self.num_wann,numthreads=npar if npar>0 else 1,lib=fftlib)
+        self.Emin=system.Emin
+        self.Emax=system.Emax
+
 
         try:
             self.poolmap=multiprocessing.Pool(npar).map
