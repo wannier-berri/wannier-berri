@@ -69,6 +69,7 @@ class Data_K(System):
               if vars(system)[XR] is not  None:
                 vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
                 vars(self)[hasXR]=True
+        print ("E_K=",self.E_K)
 
 
     def _rotate(self,mat):
@@ -103,7 +104,7 @@ class Data_K(System):
         for i in range(der):
             XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) )*self.cRvec.reshape((1,1,self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
         XX_R=asymmetrize(XX_R, asym_after)
-        return self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian)  )
+        return self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian)[self.select_K]  )
 
 
     @lazy_property.LazyProperty
@@ -154,7 +155,7 @@ class Data_K(System):
     def mass_nonabelian(self):
         return [ [S[ib1:ib2,ib1:ib2]
                    +sum(np.einsum("mla,lnb->mnab",X,Y) 
-                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
+                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
                      for X,Y in [
                      (-D[ib1:ib2,ibl1:ibl2,:],V[ibl1:ibl2,ib1:ib2,:]),
                      (+V[ib1:ib2,ibl1:ibl2,:],D[ibl1:ibl2,ib1:ib2,:]),
@@ -174,7 +175,7 @@ class Data_K(System):
         sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
         res= [ [ O[ib1:ib2,ib1:ib2,:]-1j*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,c]) for s,b,c in sbc) 
                +sum(s*np.einsum("mla,lna->mna",X,Y) 
-                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
+                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
                      for s,b,c in sbc
                     for X,Y in [(-D[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c]),(-A[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
                                        (-1j*D[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])]
@@ -201,7 +202,7 @@ class Data_K(System):
         sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
         res= [ [ 
                +sum(s*np.einsum("mla,lna->mna",X,Y) 
-                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
+                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
                      for s,b,c in sbc
                     for X,Y in [(-D[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c]),(-A[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
                                        ]
@@ -219,7 +220,7 @@ class Data_K(System):
         sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
         res= [ [ -1j*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,c]) for s,b,c in sbc) 
                +sum(s*np.einsum("mla,lna->mna",X,Y) 
-                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
+                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
                      for s,b,c in sbc
                     for X,Y in [ (-1j*D[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]) , ]
                            )
@@ -236,7 +237,7 @@ class Data_K(System):
         sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
         Morb=[ [ M[ib1:ib2,ib1:ib2,:]-e*O[ib1:ib2,ib1:ib2,:]
                +sum(s*np.einsum("mla,lna->mna",X,Y) 
-                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
+                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
                      for s,b,c in sbc
                     for X,Y in [
                     (-D[ib1:ib2,ibl1:ibl2,b],B[ibl1:ibl2,ib1:ib2,c]),
@@ -259,9 +260,18 @@ class Data_K(System):
         print_my_name_start()
         EUU=self.poolmap(np.linalg.eigh,self.HH_K)
         E_K=np.array([euu[0] for euu in EUU])
-        self._UU=np.array([euu[1] for euu in EUU])
+        select=(E_K>self.Emin)*(E_K<self.Emax)
+        self.select_K=np.all(select,axis=1)
+        self.select_B=np.all(select,axis=0)
+        self.nk_selected=self.select_K.sum()
+        self.nb_selected=self.select_B.sum()
+        print ("selected {} k-points, {} bands".format(self.nk_selected,self.nb_selected))
+        self._UU=np.array([euu[1] for euu in EUU])[self.select_K,:][:,self.select_B]
         print_my_name_end()
-        return E_K
+        print ("E_K({})={}".format(E_K.shape,E_K))
+        print ("select_K=",self.select_K)
+        print ("select_B=",self.select_B)
+        return E_K[self.select_K,:][:,self.select_B]
 
     @lazy_property.LazyProperty
 #    @property
