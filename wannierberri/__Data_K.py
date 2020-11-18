@@ -25,12 +25,13 @@ def _rotate_matrix(X):
 
    
 class Data_K(System):
-    def __init__(self,system,dK=None,NKFFT=None,Kpoint=None,npar=0,fftlib='fftw'):
+    def __init__(self,system,dK,grid,Kpoint=None,npar=0,fftlib='fftw'):
 #        self.spinors=system.spinors
         self.iRvec=system.iRvec
         self.real_lattice=system.real_lattice
         self.recip_lattice=system.recip_lattice
-        self.NKFFT=system.NKFFT if NKFFT is None else NKFFT
+        self.NKFFT=grid.FFT
+        self.findif=grid.findif
         self.Kpoint=Kpoint
         self.num_wann=system.num_wann
         self.frozen_max=system.frozen_max
@@ -40,7 +41,7 @@ class Data_K(System):
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
         self.ksep = system.ksep
         ## TODO : create the plans externally, one per process 
-        self.fft_R_to_k=FFT_R_to_k(system.iRvec,NKFFT,self.num_wann,numthreads=npar if npar>0 else 1,lib=fftlib)
+        self.fft_R_to_k=FFT_R_to_k(system.iRvec,self.NKFFT,self.num_wann,numthreads=npar if npar>0 else 1,lib=fftlib)
         self.Emin=system.Emin
         self.Emax=system.Emax
 
@@ -51,12 +52,8 @@ class Data_K(System):
         except Exception as err:
 #            print ('failed to create a pool of {} workers : {}'.format(npar,err))
             self.poolmap=lambda fun,lst : [fun(x) for x in lst]
-        if dK is not None:
-            expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))
-            self.dK=dK
-        else:
-            expdK=np.ones(self.nRvec)
-            self.dK=np.zeros(3)
+        expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))
+        self.dK=dK
  
         self.HH_R=system.HH_R[:,:,:]*expdK[None,None,:]
         
@@ -268,9 +265,9 @@ class Data_K(System):
         print ("selected {} k-points, {} bands".format(self.nk_selected,self.nb_selected))
         self._UU=np.array([euu[1] for euu in EUU])[self.select_K,:][:,self.select_B]
         print_my_name_end()
-        print ("E_K({})={}".format(E_K.shape,E_K))
-        print ("select_K=",self.select_K)
-        print ("select_B=",self.select_B)
+#        print ("E_K({})={}".format(E_K.shape,E_K))
+#        print ("select_K=",self.select_K)
+#        print ("select_B=",self.select_B)
         return E_K[self.select_K,:][:,self.select_B]
 
     @lazy_property.LazyProperty
@@ -503,7 +500,7 @@ class Data_K(System):
         uo = dOln - 2*((Anl[:,:,:,b,N]*dDln[:,:,:,c,:] + Dnl[:,:,:,b,N]*dAln[:,:,:,c,:]) - (Anl[:,:,:,c,N]*dDln[:,:,:,b,:] + Dnl[:,:,:,c,N]*dAln[:,:,:,b,:]) ).real + 2*( Dnl[:,:,:,b,N]*dDln[:,:,:,c,:]  -  Dnl[:,:,:,c,N]*dDln[:,:,:,b,:]  ).imag
         uuo = -2*((Anl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlln[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlln[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:]  ).imag
         uoo = -2*((Anl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlnn[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlnn[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:]  ).imag
-        return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo}
+        return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo,'E':self.E_K[op:ed]}
 
 
     def derOmegaTrW(self,op,ed,omega=0):
@@ -527,7 +524,7 @@ class Data_K(System):
         uo = dOln - 2*((Anl[:,:,:,b,N]*dDln[:,:,:,c,:] + Dnl[:,:,:,b,N]*dAln[:,:,:,c,:]) - (Anl[:,:,:,c,N]*dDln[:,:,:,b,:] + Dnl[:,:,:,c,N]*dAln[:,:,:,b,:]) ).real + 2*( Dnl[:,:,:,b,N]*dDln[:,:,:,c,:]  -  Dnl[:,:,:,c,N]*dDln[:,:,:,b,:]  ).imag
         uuo = -2*((Anl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlln[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlln[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:]  ).imag
         uoo = -2*((Anl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlnn[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlnn[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:]  ).imag
-        return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo}
+        return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo,'E':self.E_K[op:ed]}
 
 
 
@@ -568,7 +565,7 @@ class Data_K(System):
         uuo += (Dnl[:,:,N,:,b,N]*V[:,:,:,N,N,:]*Dln[:,N,:,:,c,N] - Dnl[:,:,N,:,c,N]*V[:,:,:,N,N,:]*Dln[:,N,:,:,b,N] ).imag
         uoo += (Dnl[:,:,N,:,b,N]*Dln[:,:,:,N,c,N]*V[:,N,:,:,N,:] - Dnl[:,:,N,:,c,N]*Dln[:,:,:,N,b,N]*V[:,N,:,:,N,:]).imag
         
-        return {'i':o,'ii':oo,'oi':uo,'oii':uoo,'ooi':uuo}
+        return {'i':o,'ii':oo,'oi':uo,'oii':uoo,'ooi':uuo,'E':self.E_K[op:ed]}
 
 
     @lazy_property.LazyProperty
@@ -704,32 +701,68 @@ class Data_K(System):
     def Omega_bar_D_re(self):
         return (self.Omega_Hbar.transpose(0,2,1,3)[:,:,:,:,None]*self.D_H[:,:,:,None,:]).real
 
+    def fermiSurface_findif(self, dataIO):
+        """returns a dataIO object containing data to besummed by fermisea2 module to get 
+           the fermi surface integral :  int [dk]  (  Q * (-\partial_k f) )
+           where dataIO is the data to evaluate the fermi-sea integral of quantity Q
+        """
+        result={}
+        for k,v in dataIO.items():
+            if k=='E':
+                result['E']=np.vstack([dataIO['E'][neigh] for neigh  in  self.findif.neighbours])
+            else:
+                result[k]=np.vstack([-wk*dataIO[k][...,None]*bk[...,:] for wk,bk in  zip(self.findif.wk,self.findif.bk_cart)])
+            print ("Shape of <{}> is {}".format(k,result[k].shape))
+        return result
+
+    @property
+    def berry_dipole_findif(self):
+        return self.fermiSurface_findif(self.Omega)
 
 ##  properties directly accessed by fermisea2 
+    @property
+    def berry_dipole_findif(self):
+        return self.fermiSurface_findif(self.Omega)
+
+    @property
+    def berry_dipole_findif2(self):
+        return self.fermiSurface_findif(self.Omega_sum)
+
+    @property
+    def Omega_sum(self):
+        res=self.Omega
+        i_new=np.array([res['i'][:,:n].sum(axis=1)+res['oi'][:,n+1:,:n].sum(axis=(1,2))  for n in range self.num_wann])
+        for ik in range():
+            pass
+        return {'i':i_new,'E':Enew}
+
+
+
     @property
     def Omega(self):
         oi=( (self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))*self.A_Hbar[:,:,:,beta_A]).real+
                 (self.D_H[:,:,:,beta_A]*self.A_Hbar[:,:,:,alpha_A].transpose((0,2,1,3))).real  ) 
         oi+=(-self.D_H[:,:,:,beta_A]*self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))).imag
         i=np.einsum("kiia->kia",self.Omega_Hbar).real
-        return {'i':i,'oi': - 2*oi }
+        return {'i':i,'oi': - 2*oi ,'E':self.E_K}
 
     @property
     def Ohmic(self):
-        return {'i':self.del2E_H_diag,'oi':self.Db_Va_re}
+        return {'i':self.del2E_H_diag,'oi':self.Db_Va_re,'E':self.E_K}
 
     @property
     def gyroKspin(self):
-        return {'i':self.delS_H_rediag,'oi':self.Db_Sa_re}
+        return {'i':self.delS_H_rediag,'oi':self.Db_Sa_re,'E':self.E_K}
 
     @property
     def SpinTot(self):
-        return {'i':self.S_H_rediag}
+        return {'i':self.S_H_rediag,'E':self.E_K}
    
     def Hplusminus(self,sign,evalJ0=True,evalJ1=True,evalJ2=True):
         assert sign in (1,-1) , "sign should be +1 or -1"
         from collections import defaultdict
         res = defaultdict( lambda : 0)
+        res['E']=self.E_K
         if evalJ0:
             if sign==1:
                 res['ii']=-2*self.A_E_A

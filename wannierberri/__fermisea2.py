@@ -81,6 +81,9 @@ def tensor_K(data,Efermi):
 def tensor_D(data,Efermi):
         return IterateEf(data.derOmegaTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
 
+def tensor_D_findif(data,Efermi):
+        return IterateEf(data.berry_dipole_findif,data,Efermi,sep=False,TRodd=False,Iodd=True)
+
 def tensor_Dw(data,Efermi,omega0=0):
         return IterateEf(partial(data.derOmegaWTr,omega=omega0),data,Efermi,sep=True,TRodd=False,Iodd=True)
 
@@ -102,12 +105,12 @@ def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
         res = 0.0
         for op in range(0,data.nkptot,data.ksep):
             ed=min(op+data.ksep,data.nkptot)
-            OCC=OccDelta(data.E_K[op:ed],dataIO(op,ed))
+            OCC=OccDelta(dataIO(op,ed))
             RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
             res+=np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume)
         return result.EnergyResult(Efermi,res,TRodd=TRodd,Iodd=Iodd)
     else:
-        OCC=OccDelta(data.E_K,dataIO)
+        OCC=OccDelta(dataIO)
         RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
         return result.EnergyResult(Efermi,np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume),TRodd=TRodd,Iodd=Iodd,rank=rank)
 
@@ -115,19 +118,21 @@ def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
 # an auxillary class for iteration 
 class OccDelta():
  
-    def __init__(self,E_K,dataIO):
-        self.occ_old=np.zeros(E_K.shape,dtype=bool)
-        self.E_K=E_K
+    def __init__(self,dataIO):
+        self.E_K=dataIO['E']
+        self.occ_old=np.zeros(self.E_K.shape,dtype=bool)
         self.dataIO=dataIO
         self.Efermi=-np.Inf
         self.keys=list(dataIO.keys())
         self.shape=None
         try:
           for k,v in dataIO.items():
-            if k not in ['i','ii','oi','ooi','oii']:
-               raise ValueError("Unknown type of fermi-sea summation : <{}>".format(k))
-            assert v.shape[0]==E_K.shape[0], "number of kpoints should match : {} and {}".format(v.shape[0],E_K.shape[0])
-            assert np.all( np.array(v.shape[1:len(k)+1])==E_K.shape[1]), "number of bands should match : {} and {}".format(
+            if k=='E': 
+                continue
+            if k not in ['i','ii','oi','ooi','oii','E']:
+                raise ValueError("Unknown type of fermi-sea summation : <{}>".format(k))
+            assert v.shape[0]==self.E_K.shape[0], "number of kpoints should match : {} and {}".format(v.shape[0],self.E_K.shape[0])
+            assert np.all( np.array(v.shape[1:len(k)+1])==self.E_K.shape[1]), "number of bands should match : {} and {}".format(
                               v.shape[1:len(k)+1],E_K.shape[1])
             vshape=v.shape[len(k)+1:]
             if self.shape is None:
@@ -136,7 +141,7 @@ class OccDelta():
                 assert self.shape == vshape
         except AssertionError as err:
             print (err) 
-            raise ValueError("shapes for fermi-sea summation do not match : EK:{} , ( {} )".format(E_K.shape,
+            raise ValueError("shapes for fermi-sea summation do not match : EK:{} , ( {} )".format(self.E_K.shape,
                       " , ".join("{}:{}".format(k,v.shape)  for  k,v in dataIO.items()  )  ) )
 
 
