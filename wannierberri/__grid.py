@@ -15,6 +15,7 @@ from collections import Iterable
 import numpy as np
 from time import time
 from  .__Kpoint import KpointBZ
+from .__finite_differences import FiniteDifferences
 
 
 
@@ -58,10 +59,17 @@ class Grid():
         NKFFT_recommended=system.NKFFT_recommended 
         self.symgroup=system.symgroup
         self.div,self.FFT=determineNK(NKdiv,NKFFT,NK,NKFFT_recommended,self.symgroup,length=length,length_FFT=length_FFT)
+        self.findif=FiniteDifferences(self.recip_lattice,self.FFT)
 
     @property
     def dense(self):
         return self.div*self.FFT
+
+   
+    @property 
+    def recip_lattice(self):
+            return self.symgroup.recip_lattice
+
 
     def get_K_list(self):
         """ returns the list of Symmetry-irreducible K-points"""
@@ -176,3 +184,7 @@ def determineNK(NKdiv,NKFFT,NK,NKFFT_recommended,symgroup,length=None,length_FFT
         if not np.all(NK==NKFFT*NKdiv) :
             print ( "WARNING : the requested k-grid {} was adjusted to {}. ".format(NK,NKFFT*NKdiv))
     return NKdiv,NKFFT
+
+
+
+

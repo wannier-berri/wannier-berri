@@ -294,3 +294,14 @@ def iterate3d(size):
     return ( np.array([i,j,k]) for i in range(0,size[0])
                      for j in range(0,size[1])
                      for k in range(0,size[2]) )
+
+def find_degen(arr,degen_thresh):
+    """ finds shells of 'almost same' values in array arr, and returns a list o[(b1,b2),...]"""
+    A=np.where(arr[1:]-arr[:-1]>degen_thresh)[0]+1 
+    A=[0,]+list(A)+[len(arr)] 
+    return [(ib1,ib2) for ib1,ib2 in zip(A,A[1:]) ] 
+
+
+def is_round(A,prec=1e-14):
+     """ returns true if all values in A are integers, at least within machine precision"""
+     return( np.linalg.norm(A-np.round(A))<prec )
