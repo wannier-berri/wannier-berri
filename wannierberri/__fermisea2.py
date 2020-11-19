@@ -46,8 +46,16 @@ def AHC(data,Efermi):
     fac_ahc  = -1.0e8*elementary_charge**2/hbar
     return Omega_tot(data,Efermi)*fac_ahc
 
+def AHC2(data,Efermi):
+    fac_ahc  = -1.0e8*elementary_charge**2/hbar
+    return Omega_tot2(data,Efermi)*fac_ahc
+
+
 def Omega_tot(data,Efermi):
     return IterateEf(data.Omega,data,Efermi,TRodd=True,Iodd=False)
+
+def Omega_tot2(data,Efermi):
+    return IterateEf(data.Omega2,data,Efermi,TRodd=True,Iodd=False)
 
 def SpinTot(data,Efermi):
     return IterateEf(data.SpinTot,data,Efermi,TRodd=True,Iodd=False)*data.cell_volume
@@ -81,6 +89,9 @@ def tensor_K(data,Efermi):
 def tensor_D(data,Efermi):
         return IterateEf(data.derOmegaTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
 
+def tensor_D_2(data,Efermi):
+        return IterateEf(data.derOmegaTr2,data,Efermi,sep=False,TRodd=False,Iodd=True)
+
 def tensor_D_findif(data,Efermi):
         return IterateEf(data.berry_dipole_findif,data,Efermi,sep=False,TRodd=False,Iodd=True)
 
@@ -109,10 +120,103 @@ def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
             RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
             res+=np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume)
         return result.EnergyResult(Efermi,res,TRodd=TRodd,Iodd=Iodd)
+    elif 'sea' in dataIO:
+        if 'EFmin' in dataIO and 'EFmax' in dataIO:
+            A,EFmin,EFmax=dataIO['sea'],dataIO['EFmin'],dataIO['EFmax']
+#            for ik in range(10):
+#                print (np.vstack((E[ik],EFmin[ik],EFmax[ik])).T)
+            RES=np.array([A[(EFmin<=Ef)*(EFmax>Ef)].sum(axis=(0))  for Ef in Efermi ])
+        else:
+            RES=np.array([sum(maxocc(E,Ef,A) for A,E in zip(dataIO['sea'],dataIO['E'])) for Ef in Efermi ])
+        return result.EnergyResult(Efermi,RES/(data.NKFFT_tot*data.cell_volume),TRodd=TRodd,Iodd=Iodd,rank=rank)
     else:
         OCC=OccDelta(dataIO)
         RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
         return result.EnergyResult(Efermi,np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume),TRodd=TRodd,Iodd=Iodd,rank=rank)
+
+
+def maxocc(E,Ef,A):
+    occ=(E<=Ef)
+    if True not in occ : 
+#        print ("no occ states for Ef={} and E={}".format(Ef,E)) 
+        return np.zeros(A.shape[1:])
+    else:
+#        i=
+#        print ("summing upto band {} for Ef={} E={}".format (i,Ef,E))
+        return A[max(np.where(occ)[0])]
+
+
+class DataIO(dict):
+
+
+    @property
+    def E(self):
+        return self['E']
+
+    @property
+    def nk(self):
+        return self.E.shape[0]
+
+    @property
+    def nb(self):
+        return self.E.shape[1]
+
+    def to_sea(self,degen_thresh=0):
+## TODO : Check if this routine takes muchtime for large systems. then optimize it with taking differences 
+##    between (n+1)th and n-th  step like in the OCC class
+        sea=0
+        for key,val in self.items():
+            if key=='E':
+                continue
+            elif key=='i':
+                sea=sea+ np.array([val[:,:n].sum(axis=1) for n in range(1,self.nb+1)])
+            elif key=='ii':
+                sea=sea+ np.array([val[:,:n,:n].sum(axis=(1,2)) for n in range(1,self.nb+1)])
+            elif key=='oi':
+                sea=sea+ np.array([val[:,n:,:n].sum(axis=(1,2)) for n in range(1,self.nb+1)])
+            elif key=='ooi':
+                sea=sea+ np.array([val[:,n:,n:,:n].sum(axis=(1,2,3)) for n in range(1,self.nb+1)])
+            elif key=='oii':
+                sea=sea+ np.array([val[:,n:,:n,:n].sum(axis=(1,2,3)) for n in range(1,self.nb+1)])
+            else :
+                raise RuntimeError("Unknown key in dataIO : '{}' ".formta(key))
+        sea=sea.transpose([1,0]+list(range(2,sea.ndim)))
+        EFmin_list=[]
+        EFmax_list=[]
+        sea_list=[]
+        for ik in range(self.nk):
+            select=np.hstack( ( (self.E[ik,1:]-self.E[ik,:-1])>degen_thresh,[True]) )
+            E=self.E[ik,select]
+            sea_list.append(sea[ik,select])
+            EFmin_list.append(E)
+            EFmax_list.append(E[1:])
+            EFmax_list.append([np.Inf])
+        res= DataIO({'sea':np.vstack(sea_list),
+                        'EFmin':np.hstack(EFmin_list), 
+                        'EFmax':np.hstack(EFmax_list) })
+#        print ("shapes of DataIO : ",res['sea'].shape,res['EFmin'].shape,res['EFmax'].shape)
+        return res
+
+
+
+def _stack(lst):
+    if lst[0].ndim>1:
+        return np.vstack(lst)
+    else:
+        return np.hstack(lst)
+
+
+def mergeDataIO(data_list):
+    keys=set([key for data in data_list for key in data.keys()])
+    for key in keys:
+        arrays=[data[key] for data in data_list]
+#        print ("key={}, shapes={}".format(key,[a.shape for a in arrays]))
+    res=DataIO({ key:_stack([data[key] for data in data_list ] ) for key in  
+                  set([key for data in data_list for key in data.keys()])  })
+#    for key in keys:
+#        print ("key={}, res_shape={}".format(key,res[key].shape))
+    return res
+
 
 
 # an auxillary class for iteration 
@@ -129,7 +233,7 @@ class OccDelta():
           for k,v in dataIO.items():
             if k=='E': 
                 continue
-            if k not in ['i','ii','oi','ooi','oii','E']:
+            if k not in ['i','ii','oi','ooi','oii','E','sea']:
                 raise ValueError("Unknown type of fermi-sea summation : <{}>".format(k))
             assert v.shape[0]==self.E_K.shape[0], "number of kpoints should match : {} and {}".format(v.shape[0],self.E_K.shape[0])
             assert np.all( np.array(v.shape[1:len(k)+1])==self.E_K.shape[1]), "number of bands should match : {} and {}".format(
