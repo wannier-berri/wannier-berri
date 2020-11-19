@@ -20,6 +20,8 @@ import  multiprocessing
 from .__system import System
 from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha_A,beta_A
 
+from .__fermisea2 import DataIO, mergeDataIO
+
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
 
@@ -31,6 +33,7 @@ class Data_K(System):
         self.real_lattice=system.real_lattice
         self.recip_lattice=system.recip_lattice
         self.NKFFT=grid.FFT
+        self.select_K=np.ones(self.NKFFT_tot,dtype=bool)
         self.findif=grid.findif
         self.Kpoint=Kpoint
         self.num_wann=system.num_wann
@@ -66,8 +69,12 @@ class Data_K(System):
               if vars(system)[XR] is not  None:
                 vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
                 vars(self)[hasXR]=True
-        print ("E_K=",self.E_K)
+#        print ("E_K=",self.E_K)
 
+    @lazy_property.LazyProperty
+    def iter_op_ed(self):
+        it=list(range(0,self.NKFFT_tot,self.ksep))+[self.NKFFT_tot]
+        return list(zip(it,it[1:]))
 
     def _rotate(self,mat):
         print_my_name_start()
@@ -495,12 +502,20 @@ class Data_K(System):
         dAln,dAlln,dAlnn= self.gdAbar(op,ed)
         dOn,dOln = self.gdOmegabar
         dOn,dOln = dOn[op:ed],dOln[op:ed]
-
         o = dOn
         uo = dOln - 2*((Anl[:,:,:,b,N]*dDln[:,:,:,c,:] + Dnl[:,:,:,b,N]*dAln[:,:,:,c,:]) - (Anl[:,:,:,c,N]*dDln[:,:,:,b,:] + Dnl[:,:,:,c,N]*dAln[:,:,:,b,:]) ).real + 2*( Dnl[:,:,:,b,N]*dDln[:,:,:,c,:]  -  Dnl[:,:,:,c,N]*dDln[:,:,:,b,:]  ).imag
         uuo = -2*((Anl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlln[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlln[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:]  ).imag
         uoo = -2*((Anl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlnn[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlnn[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:]  ).imag
         return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo,'E':self.E_K[op:ed]}
+
+
+    @property
+    def derOmegaTr2(self):
+        data_list=[]
+        for op,ed in self.iter_op_ed:
+            data_list.append(DataIO(self.derOmegaTr(op,ed)).to_sea(degen_thresh=self.degen_thresh))
+        return mergeDataIO(data_list)
+
 
 
     def derOmegaTrW(self,op,ed,omega=0):
@@ -726,16 +741,11 @@ class Data_K(System):
 
     @property
     def berry_dipole_findif2(self):
-        return self.fermiSurface_findif(self.Omega_sum)
+        return self.fermiSurface_findif(self.Omega2)
 
     @property
-    def Omega_sum(self):
-        res=self.Omega
-        i_new=np.array([res['i'][:,:n].sum(axis=1)+res['oi'][:,n+1:,:n].sum(axis=(1,2))  for n in range self.num_wann])
-        for ik in range():
-            pass
-        return {'i':i_new,'E':Enew}
-
+    def Omega2(self):
+        return DataIO(self.Omega).to_sea(degen_thresh=self.degen_thresh)
 
 
     @property
@@ -779,3 +789,10 @@ class Data_K(System):
 
     def Hminus(self,evalJ0=True,evalJ1=True,evalJ2=True):
         return self.Hplusminus(-1,evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
+
+
+def merge_dataIO(data_list):
+    return { key:np.stack([data[key] for key in data],axis=0) for key in  
+                  set([key for data in data_list for key in data.keys()])  }
+
+

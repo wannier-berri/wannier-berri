@@ -116,12 +116,12 @@ def iterate_vector(v1,v2):
     return ((x,y,z) for x in range(v1[0],v2[0]) for y in range(v1[1],v2[1]) for z in range(v1[2],v2[2]) )
 
 
-def autoNK(NK,NKFFTrec,symgroup,minimalFFT):
+def autoNK(NK,NKFFTrec,symgroup):
     # frist determine all symmetric sets between NKFFTmin and 2*NKFFTmin
     FFT_symmetric=np.array([fft for fft in iterate_vector(NKFFTrec,NKFFTrec*3) if symgroup.symmetric_grid(fft) ])
     NKFFTmin=FFT_symmetric[np.argmin(FFT_symmetric.prod(axis=1))]
     print ("Minimal symmetric FFT grid : ",NKFFTmin)
-    if minimalFFT:
+    if False:
         FFT=NKFFTmin
     else:
         FFT_symmetric=np.array([fft for fft in iterate_vector(NKFFTmin,NKFFTmin*2) if symgroup.symmetric_grid(fft) ])
@@ -154,7 +154,7 @@ def determineNK(NKdiv,NKFFT,NK,NKFFT_recommended,symgroup,length=None,length_FFT
     if length_FFT is not None:
         if NKFFT is None: 
             NKFFT=np.array(np.round(length_FFT/(2*np.pi)*np.linalg.norm(symgroup.recip_lattice,axis=1)),dtype=int)
-            print ("length_FFT={} was converted into NKFFT={}".format(length,NK))
+            print ("length_FFT={} was converted into NKFFT={}".format(length_FFT,NKFFT))
         else: 
             print ("WARNING : length_FFT is disregarded in presence of NKFFT")
 
@@ -177,12 +177,13 @@ def determineNK(NKdiv,NKFFT,NK,NKFFT_recommended,symgroup,length=None,length_FFT
             NKdiv=np.array(np.round(NK/NKFFT),dtype=int)
             NKdiv[NKdiv<=0]=1
         else: 
-            NKdiv,NKFFT=autoNK(NK,NKFFT_recommenred,symgroup)
+            NKdiv,NKFFT=autoNK(NK,NKFFT_recommended,symgroup)
     else : 
         raise ValueError("you need to specify either NK or a pair (NKdiv,NKFFT) or (NK,NKFFT) . found NK={}, NKdiv={}, NKFFT={} ".format(NK,NKdiv,NKFFT))
     if NK is not None:
         if not np.all(NK==NKFFT*NKdiv) :
             print ( "WARNING : the requested k-grid {} was adjusted to {}. ".format(NK,NKFFT*NKdiv))
+    print ("The grids wereset to NKdiv={}, NKFFT={}, NKtot={}".format(NKdiv,NKFFT,NKdiv*NKFFT))
     return NKdiv,NKFFT
 
 

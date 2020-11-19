@@ -135,7 +135,7 @@ class System():
                     'random_gauge':False,
                     'degen_thresh':-1 ,
                     'delta_fz':0.1,
-                    'ksep': 50 ,
+                    'ksep': 1 ,
                     'Emin': -np.Inf ,
                     'Emax': np.Inf ,
                     'use_ws':True,
