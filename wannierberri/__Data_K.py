@@ -19,6 +19,7 @@ import lazy_property
 import  multiprocessing 
 from .__system import System
 from .__utility import  print_my_name_start,print_my_name_end,einsumk, FFT_R_to_k, alpha_A,beta_A
+import time
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -95,13 +96,15 @@ class Data_K(System):
                 return X[:,:,:,alpha_A,beta_A]-X[:,:,:,beta_A,alpha_A]
             else:
                 return X
-
+        t0 = time.time()
         XX_R=asymmetrize(XX_R, asym_before)
         for i in range(der):
             XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) )*self.cRvec.reshape((1,1,self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
         XX_R=asymmetrize(XX_R, asym_after)
-        return self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian)  )
-
+        t1 = time.time()
+        res = self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian)  )
+        print('R to K time = ',t1-t0)
+        return res
 
     @lazy_property.LazyProperty
     def nbands(self):
@@ -476,20 +479,58 @@ class Data_K(System):
         return Bplus
     
     def derOmegaTr(self,op,ed):
+        try:
+            tt2
+        except:
+            tt1 = time.time()
+        else:
+            tt = time.time()
+            print('gap time = ',tt-tt2)
+            tt1=tt2
+        
         b=alpha_A
         c=beta_A
         N=None
         Anl = self.A_Hbar.transpose(0,2,1,3)[op:ed]
+        tt2 = time.time()
+        print('time1 = ',tt2-tt1)
+        tt1 = tt2
         Dnl = self.D_H.transpose(0,2,1,3)[op:ed]
+        tt2 = time.time()
+        print('time2 = ',tt2-tt1)
+        tt1 = tt2
         dDln,dDlln,dDlnn= self.gdD_save(op,ed)
+        tt2 = time.time()
+        print('time3 = ',tt2-tt1)
+        tt1 = tt2
         dAln,dAlln,dAlnn= self.gdAbar(op,ed)
+        tt2 = time.time()
+        print('time4 = ',tt2-tt1)
+        tt1 = tt2
         dOn,dOln = self.gdOmegabar
+        tt2 = time.time()
+        print('time5 = ',tt2-tt1)
+        tt1 = tt2
         dOn,dOln = dOn[op:ed],dOln[op:ed]
+        tt2 = time.time()
+        print('time6 = ',tt2-tt1)
+        tt1 = tt2
 
         o = dOn
+        tt2 = time.time()
+        print('time7 = ',tt2-tt1)
+        tt1 = tt2
         uo = dOln - 2*((Anl[:,:,:,b,N]*dDln[:,:,:,c,:] + Dnl[:,:,:,b,N]*dAln[:,:,:,c,:]) - (Anl[:,:,:,c,N]*dDln[:,:,:,b,:] + Dnl[:,:,:,c,N]*dAln[:,:,:,b,:]) ).real + 2*( Dnl[:,:,:,b,N]*dDln[:,:,:,c,:]  -  Dnl[:,:,:,c,N]*dDln[:,:,:,b,:]  ).imag
+        tt2 = time.time()
+        print('time8 = ',tt2-tt1)
+        tt1 = tt2
         uuo = -2*((Anl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlln[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlln[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:]  ).imag
+        tt2 = time.time()
+        print('time9 = ',tt2-tt1)
+        tt1 = tt2
         uoo = -2*((Anl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlnn[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlnn[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:]  ).imag
+        tt2 = time.time()
+        print('time10 = ',tt2-tt1)
         return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo}
 
     def derHplusTr(self,op,ed):

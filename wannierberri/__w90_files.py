@@ -297,9 +297,10 @@ class UXU(W90_data):  # uHu ar uIu
     def n_neighb(self):
         return 2
 
+    #def __init__(self,seedname='wannier90',formatted=False,suffix='uHu'):
     def __init__(self,seedname='wannier90',formatted=False,suffix='uHu'):
         print ("----------\n  {0}   \n---------".format(suffix))
-
+        print('formatted == {}'.format(formatted))
         if formatted:
             f_uXu_in = open(seedname+"."+suffix, 'r')
             header=f_uXu_in.readline().strip() 
@@ -307,18 +308,23 @@ class UXU(W90_data):  # uHu ar uIu
         else:
             f_uXu_in = FortranFile(seedname+"."+suffix, 'r')
             header=readstr(f_uXu_in)
-            NB,NK,NNB=   f_uXu_in.read_record('i4')
+            NB,NK,NNB=f_uXu_in.read_record('i4')
 
         print ("reading {}.{} : <{}>".format(seedname,suffix,header))
 
+        
         self.data=np.zeros( (NK,NNB,NNB,NB,NB),dtype=complex )
-
-        for ik in range(NK):
+        if formatted:
+            tmp=np.array( [f_uXu_in.readline().split() for i in range(NK*NNB*NNB*NB*NB)  ],dtype=float)
+            tmp_conj=tmp[:,0]+1.j*tmp[:,1]
+            self.data=tmp_conj.reshape(NK,NNB,NNB,NB,NB)
+        else:
+            for ik in range(NK):
 #            print ("k-point {} of {}".format( ik+1,NK))
-            for ib2 in range(NNB):
-                for ib1 in range(NNB):
-                    tmp=f_uXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0) 
-                    self.data[ik,ib1,ib2]=tmp[:,:,0]+1j*tmp[:,:,1]
+                for ib2 in range(NNB):
+                    for ib1 in range(NNB):
+                        tmp=f_uXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0) 
+                        self.data[ik,ib1,ib2]=tmp[:,:,0]+1j*tmp[:,:,1]
         print ("----------\n {0} OK  \n---------\n".format(suffix))
         f_uXu_in.close()
 
