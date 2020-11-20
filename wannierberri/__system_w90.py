@@ -72,6 +72,7 @@ class System_w90(System):
                     degen_thresh=-1 ,
                     random_gauge=False,
                     ksep=50,
+                    formatted=False,
                     delta_fz=0.1
                     ):
 
@@ -143,7 +144,7 @@ class System_w90(System):
             timeFFT+=time()-t0
 
         if getCC:
-            uhu=UHU(seedname)
+            uhu=UHU(seedname,formatted=formatted)
             t0=time()
             self.CC_R=fourier_q_to_R_loc(chk.get_CC_q(uhu,mmn))
             timeFFT+=time()-t0
