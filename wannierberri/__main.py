@@ -28,7 +28,7 @@ integrate_options=__integrate.calculators.keys()
 tabulate_options =__tabulate.calculators.keys()
 from .mmn2uHu import hlp as hlp_mmn
 from .vaspspn import hlp as hlp_spn
-
+from time import time
 
 
 
@@ -160,7 +160,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 
 
 def tabulate(system,grid, quantities=[],
-                  fout_name="wberri",ibands=None,suffix="",numproc=0,Ef0=0.,formatted=True,parameters={}):
+                  frmsf_name=None,ibands=None,suffix="",numproc=0,Ef0=0.,parameters={}):
     """
     Tabulate quantities to be plotted
 
@@ -187,45 +187,45 @@ def tabulate(system,grid, quantities=[],
 
     """
 
-    assert grid.GammaCentered , "only Gamma-centered grids are allowed for tabulation"
     cprint ("\nTabulating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,tabulate_options,"tabulate")
     eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
-
+    t0=time()
     res=evaluate_K(eval_func,system,grid,nparK=numproc,
             adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None)
-            
+    t1=time()
     res=res.to_grid(grid.dense)
-
-    if formatted:
-        open("{0}_E.frmsf".format(fout_name),"w").write(
-             res.fermiSurfer(quantity=None,efermi=Ef0) )
+    t2=time()
+    if frmsf_name is not None:
+        open("{0}_E.frmsf".format(frmsf_name),"w").write(
+             res.fermiSurfer(quantity=None,efermi=Ef0,npar=numproc) )
+        t3=time()
+        ttxt=0
+        twrite=0
+        for Q in quantities:
+    #     for comp in ["x","y","z","sq","norm"]:
+            for comp in ["x","y","z","xx","yy","zz","xy","yx","xz","zx","yz","zy"]:
+                try:
+                    t31=time()
+                    txt=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0,npar=numproc)
+                    t32=time()
+                    open("{2}_{1}-{0}.frmsf".format(comp,Q,fout_name),"w").write(txt)
+                    t33=time()
+                    ttxt  += t32-t31
+                    twrite+= t33-t32
+                except NoComponentError:
+                    pass
     else:
-        eout = res.fermiSurfer(quantity=None,efermi=Ef0,formatted=False)
-        E_out = FortranFile("{0}_E".format(fout_name), 'w')
-        E_out.write_record(eout[0].encode('ascii'))
-        E_out.write_record(eout[1])
-        E_out.write_record(eout[2])
-
-    for Q in quantities:
-#     for comp in ["x","y","z","sq","norm"]:
-     for comp in ["x","y","z","xx","yy","zz","xy","yx","xz","zx","yz","zy"]:
-        try:
-            if formatted:
-                txt=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0)
-                open("{2}_{1}-{0}.frmsf".format(comp,Q,fout_name),"w").write(txt)
-            else:
-                qout=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0,formatted=False)
-                Q_out = FortranFile("{0}_{1}-{2}".format(fout_name,Q,comp), 'w')
-                Q_out.write_record(qout[0].encode('ascii'))
-                Q_out.write_record(qout[1])
-                Q_out.write_record(qout[2])
-                Q_out.write_record(qout[3])
-
-        except NoComponentError:
-            pass
+        ttxt=0
+        twrite=0
+    t4=time()
 
     cprint ("Tabulating finished successfully",'green', attrs=['bold'])
+    print ( ("Time     : Total : {} s\n"+
+             "        evaluate : {} s\n"+
+             "         to_grid : {} s\n"+
+             "         txt     : {} s\n"+
+             "         write   : {} s\n").format(t4-t0,t1-t0,t2-t1,ttxt,twrite ) )
     return res
 
 

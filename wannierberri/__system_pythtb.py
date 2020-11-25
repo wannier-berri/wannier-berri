@@ -27,46 +27,16 @@ class System_PythTB(System):
     ----------
     ptb_model : class
         name of the PythTB tight-binding model class.
-    berry : bool
-        set ``True`` if quantities derived from Berry connection or Berry curvature will be used. Requires the ``.mmn`` file.
-    morb : bool
-        set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file.
-    frozen_max : float
-        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
-    degen_thresh : float
-        threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
-    random_gauge : bool
-        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
-    ksep: int
-        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. 
-    delta_fz:float
-        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
+
+
+    Notes
+    -----
+    see also  parameters of the :class:`~wannierberri.System` 
     """
-    def __init__(self,ptb_model=None,berry=False,morb=False,
-                          frozen_max=-np.Inf,
-                          random_gauge=False,
-                          degen_thresh=-1 ,
-                          ksep=50,
-                          delta_fz=0.1
-                    ):
-        self.seedname='model_PythTB'
-        self.frozen_max=frozen_max
-        self.random_gauge=random_gauge
-        self.degen_thresh=degen_thresh 
-        self.ksep=ksep
-        self.delta_fz=delta_fz
-        self.morb=morb
-        self.berry=berry
-
-
-        getAA = False
-        getBB = False
-        getCC = False
+    def __init__(self,ptb_model , **parameters):
         
-        if self.morb: 
-            getAA=getBB=getCC=True
-        if self.berry: 
-            getAA=True
+        self.set_parameters(**parameters)
+        self.seedname='model_PythTB'
 
         # Extract the parameters from the model
         real=ptb_model._lat
@@ -125,23 +95,22 @@ class System_PythTB(System):
         for i in range(ptb_model._norb):
             self.HH_R[i,i,index0]=ptb_model._site_energies[i]
         
-        if getAA:
+        if self.getAA:
             self.AA_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
             for i in range(self.num_wann):
-                self.AA_R[i,i,index0,:self.dimr]=ptb_model._orb[i,:]
-
-        if getBB:
+                self.AA_R[i,i,index0,:]=ptb_model._orb[i,:].dot(self.real_lattice[:self.dimr])
+        if self.getBB:
             self.BB_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
             for i in range(self.num_wann):
                 self.BB_R[i,i,index0,:]=self.AA_R[i,i,index0,:]*self.HH_R[i,i,index0]
 
-        if getCC:
+        if self.getCC:
             self.CC_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
 
 
         self.set_symmetry()  
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
-        print ("Minimal Number of K points:", self.NKFFTmin)
+        print ("Reommended size of FFT grid", self.NKFFT_recommended)
         print ("Real-space lattice:\n",self.real_lattice)
         cprint ("Reading the system from PythTB finished successfully",'green', attrs=['bold'])

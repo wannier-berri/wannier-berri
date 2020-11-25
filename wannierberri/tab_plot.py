@@ -23,8 +23,8 @@
 	      4. In order to ensure that more high symmetry points have k-grid points, you would better set NK as multiples of 12 when doing tabulate calculation. 
 
         Usage example:
-                line:  python3 -m wannierberri.tab_plot wannier90_spin-z type=Line quantity=True kpath=0,0,0,0,0,40 namelist=G,Z
-                plane: python3 -m wannierberri.tab_plot wannier90_spin-z type=Plane quantity=True Efermi=-0.5 vec1=1,0,0 vec2=0,1,0
+                line:  python3 -m wannierberri.tab_plot tab_result.pickle type=Line quantity=True kpath=0,0,0,0,0,40 namelist=G,Z qtype=berry component=z
+                plane: python3 -m wannierberri.tab_plot tab_result.pickle type=Plane quantity=True Efermi=-0.5 vec1=1,0,0 vec2=0,1,0 qtype=berry component=z
                 
         Options
             -h 
@@ -70,6 +70,14 @@
 	    E_max (float)
                 |  Energy window of plot. (type=Line) 
                 |  default: E_min=-2 Emax=2
+            qtype (str)
+                |  type of quantities (quantity=True)
+                |  spin,V,morb,berry,hall_spin,hall_orb
+                |  default: None
+            component (str)
+                |  Cartesian coordinate projection (quantity=True)
+                |  x,y,z
+                |  default: None
 
 '''
 
@@ -78,8 +86,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from sys import argv
-import math
-from scipy.io import FortranFile
+import pickle 
 
 def hlp():
 	from termcolor import cprint
@@ -106,6 +113,8 @@ def main():
 	E_min = -2    #E_min and E_max energy window for plot
 	E_max = 2
 	namelist=['A','B','C','D','E','F','G','H','I','J']
+	qtype=None
+	component=None
 	for arg in argv[2:]:
 		arg=arg.split("=")
 		if arg[0]=="type":
@@ -125,32 +134,26 @@ def main():
 		if arg[0]=='E_min': E_min=float(arg[1])
 		if arg[0]=='E_max': E_min=float(arg[1])
 		if arg[0]=='namelist': namelist=[x for x in arg[1]]
+		if arg[0]=='component': component = arg[1]
+		if arg[0]=='qtype': qtype = arg[1]
 
 	####################################
 	readstr  = lambda F : "".join(c.decode('ascii')  for c in F.read_record('c') ).strip()
 	print('Reading file ...')
-	if formatted:
-		filename=filename+".frmsf"
-		NK = np.loadtxt(filename,skiprows=0,max_rows=1,dtype=int)   # number of kpoint [k1,k2,k3]
-		NB = int(np.loadtxt(filename,skiprows=2,max_rows=1))        # number of band
-		LATTICE = np.loadtxt(filename,skiprows=3,max_rows=3)        # k vectors
-		num=NK[0]*NK[1]*NK[2]*NB
-		EIG = np.loadtxt(filename,skiprows=6,max_rows=num)#,max_rows=NK[0]*NK[1]*NK[2]*NB)    
-		EIGMAT = np.kron(np.ones((2,2,2)),EIG.reshape(NB,NK[0],NK[1],NK[2]))-Efermi            # eigenvalue matrix
+	tab_result=pickle.load(open(filename,"rb"))
+	LATTICE = tab_result.recip_lattice
+	NK=tab_result.grid
+	NB=tab_result.nband
+	EIGMAT = np.zeros((NB,NK[0],NK[1],NK[2]),dtype=float)
+	if quantity:
+ 		QMAT = np.zeros((NB,NK[0],NK[1],NK[2]),dtype=float)
+	for ib in range(NB):
+		EIGMAT[ib] = tab_result.get_data(iband=ib,quantity ='E')
 		if quantity:
-			Q = np.loadtxt(filename,skiprows=num+6)
-			QMAT = np.kron(np.ones((2,2,2)),Q.reshape(NB,NK[0],NK[1],NK[2]))            # quantities matrix
-	else:
-		read_f = FortranFile(filename, 'r')
-		header=readstr(read_f).replace('\n', ' ').split()
-		LATTICE = read_f.read_record('f8').reshape(3,3)
-		NK=np.array([header[0],header[1],header[2]],dtype=int)
-		NB=int(header[-1])
-		EIG = read_f.read_record('f8')
-		EIGMAT = np.kron(np.ones((2,2,2)),EIG.reshape(NK[0],NK[1],NK[2],NB).transpose(3,0,1,2))-Efermi
-		if quantity:
-			Q = read_f.read_record('f8')
-			QMAT = np.kron(np.ones((2,2,2)),Q.reshape(NK[0],NK[1],NK[2],NB).transpose(3,0,1,2))
+			QMAT[ib] = tab_result.get_data(iband=ib,quantity = qtype ,component = component)
+	EIGMAT=np.kron(np.ones((2,2,2)),EIGMAT)
+	if quantity:
+		QMAT=np.kron(np.ones((2,2,2)),QMAT)
 	print('Finished reading...')
 	
 	K1 = np.linspace(-NK[0],NK[0],2*NK[0],endpoint=False,dtype=int)

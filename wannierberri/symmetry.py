@@ -51,7 +51,7 @@ import scipy.spatial.transform
 from scipy.spatial.transform import Rotation as rotmat
 from copy import deepcopy
 from lazy_property import LazyProperty as Lazy
-from .__utility import real_recip_lattice
+from .__utility import real_recip_lattice, is_round
 from collections import Iterable
 
 SYMMETRY_PRECISION=1e-6
@@ -361,6 +361,15 @@ class Group():
            if np.linalg.norm (diff-diff.round() ,axis=-1).min()<SYMMETRY_PRECISION:
                del st[i]
         return np.array(st)
+
+
+#    def star_int(self,k):
+#        k=np.array(k)
+#        st=[S.transform_reduced_vector(k,self.recip_lattice) for S in self.symmetries]
+#        return  set([ tuple(np.array(np.round(k),dtype=int)) for k in st if is_round(k,prec=1e-6) ])
+
+#    def split_kpts_to_shells(self,kpts):
+#        kpts=tuple(k for k in kpts)
 
 
 if __name__ == '__main__':
