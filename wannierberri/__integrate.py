@@ -16,8 +16,6 @@ from scipy import constants as constants
 from collections import Iterable,defaultdict
 from copy import copy,deepcopy
 
-from functools import partial
-
 from .__utility import  print_my_name_start,print_my_name_end,voidsmoother,TAU_UNIT
 from . import __result as result
 from . import  __berry as berry
@@ -35,6 +33,7 @@ calculators_trans={
          'spin'       : fermisea2.SpinTot,  
          'Morb'       : fermisea2.Morb,
          'ahc'        : fermisea2.AHC ,
+         'ahc2'        : fermisea2.AHC2 ,
          'dos'        : dos.calc_DOS ,
          'cumdos'        : dos.calc_cum_DOS ,
          'Hall_classic' : nonabelian.Hall_classic , 
@@ -44,9 +43,12 @@ calculators_trans={
          'conductivity_ohmic_fsurf': nonabelian.conductivity_ohmic,
          'conductivity_ohmic': fermisea2.conductivity_ohmic,
 
-         'berry_dipole'        : fermisea2.tensor_D,
+         'berry_dipole'            : fermisea2.tensor_D,
+         'berry_dipole_2'            : fermisea2.tensor_D_2,
          'berry_dipole_fsurf'      : nonabelian.berry_dipole,
+         'berry_dipole_findif'     : fermisea2.tensor_D_findif,
          'gyrotropic_Korb'  : fermisea2.tensor_K,
+         'gyrotropic_Korb_2'  : fermisea2.tensor_K_2,
 
          'gyrotropic_Kspin'  : fermisea2.gyrotropic_Kspin,
          'gyrotropic_Korb_fsurf'   : nonabelian.gyrotropic_Korb,

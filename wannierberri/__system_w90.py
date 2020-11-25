@@ -18,13 +18,15 @@ import copy
 import lazy_property
 import functools
 import multiprocessing 
-#import billiard as multiprocessing 
+#from pathos.multiprocessing import ProcessingPool as Pool
 from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, real_recip_lattice,fourier_q_to_R
 from colorama import init
 from termcolor import cprint 
 from .__system import System, ws_dist_map
 from .__w90_files import EIG,MMN,CheckPoint,SPN,UHU
 from time import time
+import pickle
+from itertools import repeat
 
 class System_w90(System):
     """
@@ -35,88 +37,43 @@ class System_w90(System):
     ----------
     seedname : str
         the seedname used in Wannier90
-    berry : bool
-        set ``True`` if quantities derived from Berry connection or Berry curvature will be used. Requires the ``.mmn`` file.
-    spin : bool
-        set ``True`` if quantities derived from spin  will be used. Requires the ``.spn`` file.
-    morb : bool
-        set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file.
-    use_ws : bool
-        minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
     transl_inv : bool
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
-    frozen_max : float
-        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
-    fft : str
-        library used to perform the fast Fourier transform from **q** to **R**. ``fftw`` or ``numpy``. (practically does not affect performance, 
-        anyway mostly timeof the constructir is consumed by reading the input files)
     npar : int
         number of processes used in the constructor
-    degen_thresh : float
-        threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
-    random_gauge : bool
-        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
-    ksep: int
-        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. 
-    delta_fz:float
-        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
+    fft : str
+        library used to perform the fast Fourier transform from **q** to **R**. ``fftw`` or ``numpy``. (practically does not affect performance, 
+        anyway mostly time of the constructor is consumed by reading the input files)
+
+    Notes
+    -----
+    see also  parameters of the :class:`~wannierberri.System` 
     """
 
     def __init__(self,seedname="wannier90",
-                    berry=False,spin=False,morb=False,
-                    use_ws=True,
                     transl_inv=True,
-                    frozen_max=-np.Inf,
                     fft='fftw',
-                    npar=multiprocessing.cpu_count()  ,
-                    degen_thresh=-1 ,
-                    random_gauge=False,
-                    ksep=50,
-                    formatted=False,
-                    delta_fz=0.1
+                    npar=multiprocessing.cpu_count()  , 
+                    **parameters
                     ):
 
+        self.set_parameters(**parameters)
         self.seedname=seedname
-        self.ksep=ksep
-        self.delta_fz=delta_fz
-
-        self.morb  = morb
-        self.berry = berry
-        self.spin  = spin
-
-        self.AA_R=None
-        self.BB_R=None
-        self.CC_R=None
-        self.FF_R=None
-        self.SS_R=None
-
-
-        getAA = False
-        getBB = False
-        getCC = False
-        getSS = False
-        getFF = False
-        
-        if self.morb: 
-            getAA=getBB=getCC=True
-        if self.berry: 
-            getAA=True
-        if self.spin: 
-            getSS=True
-
-        self.frozen_max=frozen_max
-        self.random_gauge=random_gauge
-        self.degen_thresh=degen_thresh
 
         chk=CheckPoint(self.seedname)
         self.real_lattice,self.recip_lattice=real_recip_lattice(chk.real_lattice,chk.recip_lattice)
+        self.mp_grid=chk.mp_grid
         self.iRvec,self.Ndegen=self.wigner_seitz(chk.mp_grid)
 #        print ("number of R-vectors: {} ; vectrors:\n {}".format(self.iRvec.shape[0], self.iRvec,self.Ndegen))
         self.nRvec0=len(self.iRvec)
         self.num_wann=chk.num_wann
 
+        if  self.use_ws:
+            print ("using ws_distance")
+            ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centres, chk.mp_grid,self.real_lattice,npar=npar)
+        
         eig=EIG(seedname)
-        if getAA or getBB:
+        if self.getAA or self.getBB:
             mmn=MMN(seedname,npar=npar)
 
         kpt_mp_grid=[tuple(k) for k in np.array( np.round(chk.kpt_latt*np.array(chk.mp_grid)[None,:]),dtype=int)%chk.mp_grid]
@@ -132,48 +89,48 @@ class System_w90(System):
 #        for i in range(self.nRvec):
 #            print (i,self.iRvec[i],"H(R)=",self.HH_R[0,0,i])
 
-        if getAA:
+        if self.getAA:
             AAq=chk.get_AA_q(mmn,transl_inv=transl_inv)
             t0=time()
             self.AA_R=fourier_q_to_R_loc(AAq)
             timeFFT+=time()-t0
 
-        if getBB:
+        if self.getBB:
             t0=time()
             self.BB_R=fourier_q_to_R_loc(chk.get_AA_q(mmn,eig))
             timeFFT+=time()-t0
 
-        if getCC:
-            uhu=UHU(seedname,formatted=formatted)
+        if self.getCC:
+            uhu=UHU(seedname)
             t0=time()
             self.CC_R=fourier_q_to_R_loc(chk.get_CC_q(uhu,mmn))
             timeFFT+=time()-t0
             del uhu
 
-        if getSS:
+        if self.getSS:
             spn=SPN(seedname)
             t0=time()
             self.SS_R=fourier_q_to_R_loc(chk.get_SS_q(spn))
             timeFFT+=time()-t0
             del spn
-
-        print ("time for FFT_q_to_R : {} s".format(timeFFT))
-
-        if  use_ws:
-            print ("using ws_distance")
-            ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centres, chk.mp_grid,self.real_lattice,npar=npar)
+        
+        if  self.use_ws:
             for X in ['HH','AA','BB','CC','SS','FF']:
                 XR=X+'_R'
-                if vars(self)[XR] is not None:
+                if hasattr(self,XR) :
                     print ("using ws_dist for {}".format(XR))
                     vars(self)[XR]=ws_map(vars(self)[XR])
             self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
         self.set_symmetry()
-
+        print ("time for FFT_q_to_R : {} s".format(timeFFT))
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
-        print ("Minimal Number of K points:", self.NKFFTmin)
+        print ("Reommended size of FFT grid", self.NKFFT_recommended)
         print ("Real-space lattice:\n",self.real_lattice)
+
+    @property
+    def NKFFT_recommended(self):
+        return self.mp_grid
 
     def wigner_seitz(self,mp_grid):
         ws_search_size=np.array([1]*3)
@@ -210,39 +167,47 @@ class ws_dist_map_gen(ws_dist_map):
     ## is on the edge of the WS of w_i,0. The results are stored 
     ## a dictionary shifts_iR[(iR,i,j)]
         t0=time()
-        ws_search_size=np.array([2]*3)
+        #ws_search_size=np.array([2]*3)
+        ws_search_size=np.array([1]*3)
         ws_distance_tol=1e-5
         cRvec=iRvec.dot(real_lattice)
         mp_grid=np.array(mp_grid)
-        shifts_int_all= np.array([ijk  for ijk in iterate3dpm(ws_search_size+1)])*np.array(mp_grid[None,:])
+        shifts_int_all = np.array([ijk  for ijk in iterate3dpm(ws_search_size)])*np.array(mp_grid[None,:])
         self.num_wann=wannier_centres.shape[0]
         self._iRvec_new=dict()
-        param=(shifts_int_all,wannier_centres,real_lattice, ws_distance_tol)
+        param=(shifts_int_all,wannier_centres,real_lattice, ws_distance_tol,self.num_wann)
         p=multiprocessing.Pool(npar)
+        #p=multiprocessing.Pool(32)
         t1=time()
-        irvec_new_all=p.starmap(functools.partial(ws_dist_stars,ws_map=self,param=param),zip(iRvec,cRvec))
+        irvec_new_all=p.starmap(functools.partial(ws_dist_stars,param=param),zip(iRvec,cRvec))
+        #irvec_new_all=[p.apply(ws_dist_stars,args=(iRvec[i],cRvec[i],param)) for i in range(iRvec.shape[0])] 
+        #star_param = zip(iRvec,cRvec,repeat(param))
+        #index=np.linspace(0,iRvec.shape[0],num=iRvec.shape[0],endpoint=False,dtype=int)
+        #irvec_new_all=p.imap(ws_dist_stars,index,iRvec,cRvec,repeat(param))
+        print('irvec_new_all shape',np.shape(irvec_new_all))
         t2=time()
         for ir,iR in enumerate(iRvec):
           for ijw,irvec_new in irvec_new_all[ir].items():
               self._add_star(ir,irvec_new,ijw[0],ijw[1])
         t3=time()
-
         self._init_end(iRvec.shape[0])
         t4=time()
         print ("time for ws_dist_map_gen : ",t4-t0, t1-t0,t2-t1,t3-t2,t4-t3)
 
 
 
-def ws_dist_stars(iRvec,cRvec,ws_map,param):
-          shifts_int_all,wannier_centres,real_lattice, ws_distance_tol = param
+#def ws_dist_stars(index,iRvec,cRvec,param):
+def ws_dist_stars(iRvec,cRvec,param):
+          shifts_int_all,wannier_centres,real_lattice, ws_distance_tol, num_wann = param
           irvec_new={}
-          for jw in range(ws_map.num_wann):
-            for iw in range(ws_map.num_wann):
+          for jw in range(num_wann):
+            for iw in range(num_wann):
               # function JW translated in the Wigner-Seitz around function IW
               # and also find its degeneracy, and the integer shifts needed
               # to identify it
-              R_in=-wannier_centres[iw] +cRvec + wannier_centres[ jw]
+              R_in=-wannier_centres[iw] +cRvec + wannier_centres[jw]
               dist=np.linalg.norm( R_in[None,:]+shifts_int_all.dot(real_lattice),axis=1)
+              #irvec_new[(ir,iw,jw)]=iRvec+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
               irvec_new[(iw,jw)]=iRvec+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
           return irvec_new
 

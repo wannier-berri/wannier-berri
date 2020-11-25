@@ -88,6 +88,8 @@ class  KpointBZ():
 
 
     def absorb(self,other):
+        if other is None:
+            return
         self.factor+=other.factor
         if other.res is not None:
             if self.res is not None:
