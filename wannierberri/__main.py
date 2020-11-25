@@ -208,7 +208,7 @@ def tabulate(system,grid, quantities=[],
                     t31=time()
                     txt=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0,npar=numproc)
                     t32=time()
-                    open("{2}_{1}-{0}.frmsf".format(comp,Q,fout_name),"w").write(txt)
+                    open("{2}_{1}-{0}.frmsf".format(comp,Q,frmsf_name),"w").write(txt)
                     t33=time()
                     ttxt  += t32-t31
                     twrite+= t33-t32

@@ -166,7 +166,7 @@ class TABresult(result.Result):
  
 
 
-    def fermiSurfer(self,quantity=None,component=None,efermi=0,npar=0,iband=None):
+    def fermiSurfer(self,quantity=None,component=None,efermi=0,npar=0,iband=None,frmsf_name=None):
         if iband is None:
             iband=np.arange(self.nband)
         elif isinstance(iband, int):
@@ -199,6 +199,10 @@ class TABresult(result.Result):
 #        for iband in range(self.nband):
 #            np.savetxt(FSfile,Xnk[:,iband]-efermi,fmt="%.8f")
 #            FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
+        if frmsf_name is not None:
+            if not (frmsf_name.endswith(".pickle")):
+                frmsf_name+=".pickle"
+            open(frmsf_name,"w").write(FSfile)
         return FSfile
 
 
