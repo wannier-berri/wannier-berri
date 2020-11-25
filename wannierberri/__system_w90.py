@@ -64,13 +64,13 @@ class System_w90(System):
         self.real_lattice,self.recip_lattice=real_recip_lattice(chk.real_lattice,chk.recip_lattice)
         self.mp_grid=chk.mp_grid
         self.iRvec,self.Ndegen=self.wigner_seitz(chk.mp_grid)
-#        print ("number of R-vectors: {} ; vectrors:\n {}".format(self.iRvec.shape[0], self.iRvec,self.Ndegen))
         self.nRvec0=len(self.iRvec)
         self.num_wann=chk.num_wann
 
         if  self.use_ws:
             print ("using ws_distance")
-            ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centres, chk.mp_grid,self.real_lattice,npar=npar)
+            #ws_map=ws_dist_map_gen(np.copy(self.iRvec),np.copy(chk.wannier_centres), np.copy(chk.mp_grid),np.copy(self.real_lattice),npar=npar)
+            ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centres, chk.mp_grid,self.real_lattice, npar=npar)
         
         eig=EIG(seedname)
         if self.getAA or self.getBB:
@@ -113,7 +113,8 @@ class System_w90(System):
             self.SS_R=fourier_q_to_R_loc(chk.get_SS_q(spn))
             timeFFT+=time()-t0
             del spn
-        
+ 
+        print ("time for FFT_q_to_R : {} s".format(timeFFT))
         if  self.use_ws:
             for X in ['HH','AA','BB','CC','SS','FF']:
                 XR=X+'_R'
@@ -122,7 +123,7 @@ class System_w90(System):
                     vars(self)[XR]=ws_map(vars(self)[XR])
             self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
         self.set_symmetry()
-        print ("time for FFT_q_to_R : {} s".format(timeFFT))
+
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
         print ("Reommended size of FFT grid", self.NKFFT_recommended)
@@ -167,23 +168,18 @@ class ws_dist_map_gen(ws_dist_map):
     ## is on the edge of the WS of w_i,0. The results are stored 
     ## a dictionary shifts_iR[(iR,i,j)]
         t0=time()
-        #ws_search_size=np.array([2]*3)
-        ws_search_size=np.array([1]*3)
+        ws_search_size=np.array([2]*3)
         ws_distance_tol=1e-5
         cRvec=iRvec.dot(real_lattice)
         mp_grid=np.array(mp_grid)
-        shifts_int_all = np.array([ijk  for ijk in iterate3dpm(ws_search_size)])*np.array(mp_grid[None,:])
+        shifts_int_all = np.array([ijk  for ijk in iterate3dpm(ws_search_size+1)])*np.array(mp_grid[None,:])
         self.num_wann=wannier_centres.shape[0]
         self._iRvec_new=dict()
-        param=(shifts_int_all,wannier_centres,real_lattice, ws_distance_tol,self.num_wann)
+        param=(shifts_int_all,wannier_centres,real_lattice, ws_distance_tol, wannier_centres.shape[0])
+        #param=(np.copy(shifts_int_all),np.copy(wannier_centres),np.copy(real_lattice), np.copy(ws_distance_tol),np.copy(self.num_wann))
         p=multiprocessing.Pool(npar)
-        #p=multiprocessing.Pool(32)
         t1=time()
         irvec_new_all=p.starmap(functools.partial(ws_dist_stars,param=param),zip(iRvec,cRvec))
-        #irvec_new_all=[p.apply(ws_dist_stars,args=(iRvec[i],cRvec[i],param)) for i in range(iRvec.shape[0])] 
-        #star_param = zip(iRvec,cRvec,repeat(param))
-        #index=np.linspace(0,iRvec.shape[0],num=iRvec.shape[0],endpoint=False,dtype=int)
-        #irvec_new_all=p.imap(ws_dist_stars,index,iRvec,cRvec,repeat(param))
         print('irvec_new_all shape',np.shape(irvec_new_all))
         t2=time()
         for ir,iR in enumerate(iRvec):
