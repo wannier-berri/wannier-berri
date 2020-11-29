@@ -24,45 +24,47 @@ from termcolor import cprint
 
 
 class System():
-
-    def __init__(self,seedname="wannier90",tb_file=None,
-                    getAA=False,
-                    getBB=False,getCC=False,
-                    getSS=False,
-                    getFF=False,
-                    getSA=False,
-                    getSHA=False,
-                    getSHC=False,
-                    use_ws=True,
-                    frozen_max=-np.Inf,
-                    random_gauge=False,
-                    degen_thresh=-1 ,
-                    old_format=False,
-                    delta_fz=0.1,
-                    ksep = 50,
-                                ):
+    """
+    The base class for describing a system. Although it has its own constructor, it requires input binary files prepared by a special 
+    `branch <https://github.com/stepan-tsirkin/wannier90/tree/save4wberri>`_ of ``postw90.x`` .
+    Therefore this class by itself it is not recommended for a feneral user. Instead, 
+    please use the child classes, e.g  :class:`~wannierberri.System_w90` or :class:`~wannierberri.System_tb`
 
 
-        if tb_file is not None:
-            raise ValueError("to start from a _tb.dat file now use the System_tb() class")
-        self.ksep = ksep  
-        self.frozen_max=frozen_max
-        self.random_gauge=random_gauge
-        self.degen_thresh=degen_thresh
+    Parameters
+    -----------
+    seedname : str
+        the seedname used in Wannier90
+    berry : bool 
+        set ``True`` if quantities derived from Berry connection or Berry curvature will be used. Default: {}
+    spin : bool
+        set ``True`` if quantities derived from spin  will be used.
+    morb : bool
+        set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file.
+    SHC : bool 
+        set ``True`` if quantities derived from spin-current elements will be used. Default: {}
+    qiao : bool
+        set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018). Default: Ryoo's (RPS 2019)
+    use_ws : bool
+        minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
+    frozen_max : float
+        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
+    degen_thresh : float
+        threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
+    random_gauge : bool
+        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
+    ksep: int
+        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. 
+    delta_fz:float
+        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
+
+    """
+
+    def __init__(self, old_format=False,    **parameters ):
+
+
+        self.set_parameters(**parameters)
         self.old_format=old_format
-        self.AA_R=None
-        self.BB_R=None
-        self.CC_R=None
-        self.FF_R=None
-        self.SS_R=None
-        self.SA_R=None
-        self.SHA_R=None
-        self.SR_R=None
-        self.SH_R=None
-        self.SHR_R=None
-
-        self.delta_fz=delta_fz
-
 
         cprint ("Reading from {}".format(seedname+"_HH_save.info"),'green', attrs=['bold'])
 
@@ -80,16 +82,15 @@ class System():
 
         self.cRvec=self.iRvec.dot(self.real_lattice)
 
-
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
-        print ("Minimal Number of K points:", self.NKFFTmin)
+        print ("Reommended size of FFT grid", self.NKFFT_recommended)
         print ("Real-space lattice:\n",self.real_lattice)
         #print ("R - points and dege=neracies:\n",iRvec)
         has_ws=str2bool(f.readline().split("=")[1].strip())
 
         
-        if has_ws and use_ws:
+        if has_ws and self.use_ws:
             print ("using ws_dist")
             self.ws_map=ws_dist_map_read(self.iRvec,self.num_wann,f.readlines())
             self.iRvec=np.array(self.ws_map._iRvec_ordered,dtype=int)
@@ -97,34 +98,31 @@ class System():
             self.ws_map=None
         
         f.close()
-        if getCC:
-           getBB=True
 
         self.HH_R=self.__getMat('HH')
 
-
         
-        if getAA:
+        if self.getAA:
             self.AA_R=self.__getMat('AA')
 
-        if getBB:
+        if self.getBB:
             self.BB_R=self.__getMat('BB')
         
-        if getCC:
+        if self.getCC:
             try:
                 self.CC_R=1j*self.__getMat('CCab')
             except:
                 _CC_R=self.__getMat('CC')
                 self.CC_R=1j*(_CC_R[:,:,:,alpha_A,beta_A]-_CC_R[:,:,:,beta_A,alpha_A])
 
-        if getFF:
+        if self.getFF:
             try:
                 self.FF_R=1j*self.__getMat('FFab')
             except:
                 _FF_R=self.__getMat('FF')
                 self.FF_R=1j*(_FF_R[:,:,:,alpha_A,beta_A]-_FF_R[:,:,:,beta_A,alpha_A])
 
-        if getSS:
+        if self.getSS:
             self.SS_R=self.__getMat('SS')
 
         if getSA:
@@ -139,6 +137,65 @@ class System():
         self.set_symmetry()
 
         cprint ("Reading the system finished successfully",'green', attrs=['bold'])
+
+
+    def set_parameters(self,**parameters):
+        self.default_parameters={
+                    'seedname':'wannier',
+                    'frozen_max':np.Inf,
+                    'berry':False,
+                    'morb':False,
+                    'spin':False,
+                    'SHC':False,
+                    'qiao':False,
+                    'random_gauge':False,
+                    'degen_thresh':-1 ,
+                    'delta_fz':0.1,
+                    'ksep': 1 ,
+                    'Emin': -np.Inf ,
+                    'Emax': np.Inf ,
+                    'use_ws':True,
+                       }
+
+        for param in self.default_parameters:
+            if param in parameters:
+                vars(self)[param]=parameters[param]
+            else: 
+                vars(self)[param]=self.default_parameters[param]
+
+
+    @property
+    def getAA(self):
+        return self.morb or self.berry or self.SHC
+
+    @property
+    def getBB(self):
+        return self.morb
+
+    @property
+    def getCC(self):
+        return self.morb
+
+
+    @property
+    def getSS(self):
+        return self.spin or (self.SHC and self.qiao)
+
+    @property
+    def getFF(self):
+        return False
+
+    @property
+    def getSA(self):
+        return self.SHC
+
+    @property
+    def getSHA(self):
+        return self.SHC
+
+    @property
+    def getSHC(self):
+        return self.SHC and self.qiao
 
 
     def to_tb_file(self,tb_file=None):
@@ -174,17 +231,17 @@ class System():
 
 #    @lazy_property.LazyProperty
     @property
-    def NKFFTmin(self):
+    def NKFFT_recommended(self):
         "finds a minimal FFT grid on which different R-vectors do not overlap"
-        NKFFTmin=np.ones(3,dtype=int)
+        NKFFTrec=np.ones(3,dtype=int)
         for i in range(3):
             R=self.iRvec[:,i]
             if len(R[R>0])>0: 
-                NKFFTmin[i]+=R.max()
+                NKFFTrec[i]+=R.max()
             if len(R[R<0])>0: 
-                NKFFTmin[i]-=R.min()
-        assert self._FFT_compatible(NKFFTmin,self.iRvec)
-        return NKFFTmin
+                NKFFTrec[i]-=R.min()
+        assert self._FFT_compatible(NKFFTrec,self.iRvec)
+        return NKFFTrec
 
     def set_symmetry(self,symmetry_gen=[]):
         """ 

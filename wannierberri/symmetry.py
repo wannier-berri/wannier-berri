@@ -51,7 +51,7 @@ import scipy.spatial.transform
 from scipy.spatial.transform import Rotation as rotmat
 from copy import deepcopy
 from lazy_property import LazyProperty as Lazy
-from .__utility import real_recip_lattice
+from .__utility import real_recip_lattice, is_round
 from collections import Iterable
 
 SYMMETRY_PRECISION=1e-6
@@ -192,6 +192,24 @@ def from_string_prod(string):
         raise ValueError("The symmetry {string} could not be recognuized : {}".format(err))
 
 class Group():
+    r"""Class to store a symmetry point group.
+
+    Parameters
+    ----------
+    generator_list : list of :class:`~Symmetry` or str
+        The generators of the symmetry group. 
+    recip_lattice : `~numpy.array`
+        3x3 array with rows giving the reciprocal lattice basis
+    real_lattice : `~numpy.array`
+        3x3 array with rows giving the real lattice basis
+
+    Notes
+    ----------
+
+      + need to provide either `recip_lattice` or `real_latice`, not both
+
+      + if you only want to generate a symmetric tensor, or to find independent components,  `recip_lattice` and `real_latice`, are not needed
+    """
 
     def __init__(self,generator_list=[],recip_lattice=None,real_lattice=None):
         self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice=real_lattice,recip_lattice=recip_lattice)
@@ -221,8 +239,10 @@ class Group():
         self.symmetries=sym_list
         MSG_not_symmetric=(" : please check if  the symmetries are consistent with the lattice vectors,"+
                     " and that  enough digits were written for the lattice vectors (at least 6-7 after coma)" )
-        assert self.check_basis_symmetry(self.real_lattice) , "real_lattice is not symmetric" + MSG_not_symmetric
-        assert self.check_basis_symmetry(self.recip_lattice) , "recip_lattice is not symmetric" + MSG_not_symmetric
+        if real_lattice is not None:
+            assert self.check_basis_symmetry(self.real_lattice) , "real_lattice is not symmetric" + MSG_not_symmetric
+        if real_lattice is not None:
+            assert self.check_basis_symmetry(self.recip_lattice) , "recip_lattice is not symmetric" + MSG_not_symmetric
 #        print ("BASIS={}".format(self.basis))
 
     def check_basis_symmetry(self,basis,tol=1e-6,rel_tol=None):
@@ -251,6 +271,88 @@ class Group():
 
     def symmetrize(self,result):
         return sum(result.transform(s) for s in self.symmetries)/self.size
+
+    def gen_symmetric_tensor(self,rank,TRodd,Iodd):
+        r"""generates a random tensor, which respects the given symmetry pointgroup. May be used to get an idea, what components of the tensr are allowed by the symmetry.
+
+        Parameters
+        ----------
+        rank : int
+            rank of the tensor
+        TRodd : bool
+            True if the tensor is odd under time-reversal, False otherwise
+        Iodd : bool
+            True if the tensor is odd under inversion, False otherwise
+
+        Returns
+        --------  
+        `numpy.array(float)`
+             :math:`3 \times 3\times \ldots` array respecting the symmetry
+        """
+        A=self.symmetrize_tensor(np.random.random((3,)*rank),TRodd=TRodd,Iodd=Iodd)
+        A[abs(A)<1e-14]=0
+        return A
+
+
+
+    def get_symmetric_components(self,rank,TRodd,Iodd):
+        r"""writes which components of a tensor nonzero, and which are equal (or opposite) 
+
+        Parameters
+        ----------
+        rank : int
+            rank of the tensor
+        TRodd : bool
+            True if the tensor is odd under time-reversal, False otherwise
+        Iodd : bool
+            True if the tensor is odd under inversion, False otherwise
+
+        Returns
+        -------
+        a list of str
+            list of eualities, e.g. ['0=xxy=xxz=...', 'xxx=-xyy=-yxy=-yyx', 'xyz=-yxz', 'xzy=-yzx', 'zxy=-zyx']
+        """
+        assert rank>=0
+        A=self.gen_symmetric_tensor(rank,TRodd,Iodd)
+        indices=[ () ]
+        indices_xyz=[""]
+        for i in range(A.ndim):
+            indices=[ (j,)+ind for j in (0,1,2) for ind in indices ]
+            indices_xyz=[ a+ind for a in "xyz" for ind in indices_xyz ]
+#        print (indices)
+#        print (indices_xyz)
+        equalities={0:["0"]}
+        tol=1e-14
+        for ind,ind_xyz in zip(indices,indices_xyz):
+            value=A[ind]
+            found=False
+            for val,comp in equalities.items():
+                if abs(val-value)<tol:
+                    equalities[val].append(ind_xyz)
+                    found=True
+                    break
+            if not found:
+              for val,comp in equalities.items():
+                if abs(val+value)<tol:
+                    equalities[val].append('-'+ind_xyz)
+                    found=True
+                    break
+            if not found:
+              equalities[value]=[ind_xyz]
+        return ["=".join(val) for val in equalities.values()]
+
+
+
+
+
+
+    def symmetrize_tensor(self,data,TRodd,Iodd,rank=None):
+        dim=data.ndim
+        if rank is None:
+            rank=dim
+        shape=np.array(data.shape)
+        assert np.all(shape[dim-rank:dim]==3), "the last rank={} dimensions should be 3, found : {}".format(rank,shape)
+        return sum( s.transform_tensor(data,TRodd=TRodd,Iodd=Iodd,rank=rank)  for s in self.symmetries)/self.size
     
     def star(self,k):
         st=[S.transform_reduced_vector(k,self.recip_lattice) for S in self.symmetries]
@@ -259,6 +361,15 @@ class Group():
            if np.linalg.norm (diff-diff.round() ,axis=-1).min()<SYMMETRY_PRECISION:
                del st[i]
         return np.array(st)
+
+
+#    def star_int(self,k):
+#        k=np.array(k)
+#        st=[S.transform_reduced_vector(k,self.recip_lattice) for S in self.symmetries]
+#        return  set([ tuple(np.array(np.round(k),dtype=int)) for k in st if is_round(k,prec=1e-6) ])
+
+#    def split_kpts_to_shells(self,kpts):
+#        kpts=tuple(k for k in kpts)
 
 
 if __name__ == '__main__':

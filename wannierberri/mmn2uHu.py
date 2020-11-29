@@ -17,8 +17,8 @@
                 
         Options
             -h 
-                print the help message
-            IBstart    
+                | print the help message
+            IBstart
                 |  the first band in the output file (counting starts from 1). 
                 |  default: 1
             IBstartSum
