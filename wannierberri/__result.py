@@ -124,10 +124,10 @@ class EnergyResult(Result):
         '''Writes the result if data has complex entries.'''
         # assume that the dimensions starting from first are cartesian coordinates       
         def getHead(n):
-           if n<=0:
-              return ['  ']
-           else:
-              return [a+b for a in 'xyz' for b in getHead(n-1)]
+            if n<=0:
+                return ['  ']
+            else:
+                return [a+b for a in 'xyz' for b in getHead(n-1)]
         rank=len(self.data.shape[1:])
 
         open(name,"w").write(
@@ -249,7 +249,10 @@ class NoComponentError(RuntimeError):
 class KBandResult(Result):
 
     def __init__(self,data,TRodd,Iodd):
-        self.data=data
+        if isinstance(data,list):
+            self.data_list=data
+        else:
+            self.data_list=[data]
         self.TRodd=TRodd
         self.Iodd=Iodd
         
@@ -259,26 +262,32 @@ class KBandResult(Result):
                 return False
         return True
 
+    @property
+    def data(self):
+        if len(self.data_list)>1:
+            self.data_list=[np.vstack(self.data_list)]
+        return self.data_list[0]
+
     
     @property
     def rank(self):
-       return len(self.data.shape)-2
+       return len(self.data_list[0].shape)-2
 
     @property
     def nband(self):
-       return self.data.shape[1]
+       return self.data_list[0].shape[1]
 
     @property
     def nk(self):
-       return self.data.shape[0]
+       return sum(data.shape[0] for data in   self.data_list)
 
     def __add__(self,other):
         assert self.fit(other)
-        data=np.vstack( (self.data,other.data) )
-        return KBandResult(data,self.TRodd,self.Iodd) 
+        return KBandResult(self.data_list+other.data_list,self.TRodd,self.Iodd) 
 
     def to_grid(self,k_map):
-        data=np.array( [sum(self.data[ik] for ik in km)/len(km)   for km in k_map])
+        dataall=self.data
+        data=np.array( [sum(dataall[ik] for ik in km)/len(km)   for km in k_map])
         return KBandResult(data,self.TRodd,self.Iodd) 
 
 
@@ -289,12 +298,13 @@ class KBandResult(Result):
     def average_deg(self,deg):
         for i,D in enumerate(deg):
            for ib1,ib2 in D:
-              self.data[i,ib1:ib2]=self.data[i,ib1:ib2].mean(axis=0)
+             for j in range(len(self.data_list)):
+              self.data_list[j][i,ib1:ib2]=self.data_list[j][i,ib1:ib2].mean(axis=0)
         return self
 
 
     def transform(self,sym):
-        data=sym.transform_tensor(self.data,rank=self.rank,TRodd=self.TRodd,Iodd=self.Iodd)
+        data=[sym.transform_tensor(data,rank=self.rank,TRodd=self.TRodd,Iodd=self.Iodd) for data in self.data_list]
         return KBandResult(data,self.TRodd,self.Iodd)
 
 
