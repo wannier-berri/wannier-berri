@@ -225,7 +225,7 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
     elif conductivity_type == 'SHC':
         sigma_SHC = np.real(sigma_AH) + 1j * np.imag(sigma_H)
         return result.EnergyResultDict({
-            'freqscan': result.EnergyResult(omega, sigma_SHC, TRodd=True, Iodd=False, rank=rank)
+            'freqscan': result.EnergyResult(omega, sigma_SHC, TRodd=False, Iodd=False, rank=rank)
         })
 
 
