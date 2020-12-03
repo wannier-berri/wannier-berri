@@ -24,7 +24,7 @@ from colorama import init
 from termcolor import cprint 
 from time import time
 from itertools import islice
-
+import gc
 
 
 readstr  = lambda F : "".join(c.decode('ascii')  for c in F.read_record('c') ).strip() 
@@ -79,6 +79,8 @@ class CheckPoint():
             self.v_matrix=[u  for u in u_matrix ] 
         self.wannier_centres=readfloat().reshape((self.num_wann,3))
         self.wannier_spreads=readfloat().reshape((self.num_wann))
+        del u_matrix,m_matrix
+        gc.collect()
         print ("Time to read .chk : {}".format(time()-t0))
 
     def wannier_gauge(self,mat,ik1,ik2):
@@ -104,7 +106,7 @@ class CheckPoint():
 
     def get_AA_q(self,mmn,eig=None,transl_inv=False):  # if eig is present - it is BB_q 
         if transl_inv and (eig is not None):
-            raise RuntimeError("transl_inv cannot be used to obtain BB")
+           raise RuntimeError("transl_inv cannot be used to obtain BB")
         mmn.set_bk(self)
         AA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
         for ik in range(self.num_kpts):
@@ -120,6 +122,7 @@ class CheckPoint():
                 AA_q[ik]+=AA_q_ik
         if eig is None:
             AA_q=0.5*(AA_q+AA_q.transpose( (0,2,1,3) ).conj())
+        print('Shape of AA_q',np.shape(AA_q))
         return AA_q
 
     def get_CC_q(self,uhu,mmn):  # if eig is present - it is BB_q 
@@ -192,6 +195,7 @@ class MMN(W90_data):
                 data+=pool.map(convert,y)
             else:
                 data+=[convert(z) for z in y]
+
         if npar>0 : 
             pool.close()
         f_mmn_in.close()
@@ -294,9 +298,10 @@ class UXU(W90_data):  # uHu ar uIu
     def n_neighb(self):
         return 2
 
+    #def __init__(self,seedname='wannier90',formatted=False,suffix='uHu'):
     def __init__(self,seedname='wannier90',formatted=False,suffix='uHu'):
         print ("----------\n  {0}   \n---------".format(suffix))
-
+        print('formatted == {}'.format(formatted))
         if formatted:
             f_uXu_in = open(seedname+"."+suffix, 'r')
             header=f_uXu_in.readline().strip() 
@@ -304,18 +309,23 @@ class UXU(W90_data):  # uHu ar uIu
         else:
             f_uXu_in = FortranFile(seedname+"."+suffix, 'r')
             header=readstr(f_uXu_in)
-            NB,NK,NNB=   f_uXu_in.read_record('i4')
+            NB,NK,NNB=f_uXu_in.read_record('i4')
 
         print ("reading {}.{} : <{}>".format(seedname,suffix,header))
 
+        
         self.data=np.zeros( (NK,NNB,NNB,NB,NB),dtype=complex )
-
-        for ik in range(NK):
+        if formatted:
+            tmp=np.array( [f_uXu_in.readline().split() for i in range(NK*NNB*NNB*NB*NB)  ],dtype=float)
+            tmp_conj=tmp[:,0]+1.j*tmp[:,1]
+            self.data=tmp_conj.reshape(NK,NNB,NNB,NB,NB)
+        else:
+            for ik in range(NK):
 #            print ("k-point {} of {}".format( ik+1,NK))
-            for ib2 in range(NNB):
-                for ib1 in range(NNB):
-                    tmp=f_uXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0) 
-                    self.data[ik,ib1,ib2]=tmp[:,:,0]+1j*tmp[:,:,1]
+                for ib2 in range(NNB):
+                    for ib1 in range(NNB):
+                        tmp=f_uXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0) 
+                        self.data[ik,ib1,ib2]=tmp[:,:,0]+1j*tmp[:,:,1]
         print ("----------\n {0} OK  \n---------\n".format(suffix))
         f_uXu_in.close()
 

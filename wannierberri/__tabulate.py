@@ -154,6 +154,8 @@ class TABresult(result.Result):
         t3=time()
         print ("collecting - OK : {} ({})".format(t3-t0,t3-t2))
         return res
+            
+    
 
 
     def get_data(self,quantity,iband,component=None,efermi=None):
@@ -189,12 +191,14 @@ class TABresult(result.Result):
 #            FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk.data[:,iband]-efermi )
         
         if quantity is None:
-            return FSfile
-        
+            if formatted:
+                return FSfile
+            else:
+                return (FSfile,self.recip_lattice,self.Enk.data-efermi)
+
         if quantity not in self.results:
             raise RuntimeError("requested quantity '{}' was not calculated".format(quantity))
             return FSfile
-
         FSfile+=_savetxt(a=Xnk[:,iband].flatten(order='F'),npar=npar)
 #        for iband in range(self.nband):
 #            np.savetxt(FSfile,Xnk[:,iband]-efermi,fmt="%.8f")
