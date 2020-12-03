@@ -44,7 +44,8 @@ class Data_K(System):
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
         self.ksep = system.ksep
         ## TODO : create the plans externally, one per process 
-        self.fft_R_to_k=FFT_R_to_k(system.iRvec,self.NKFFT,self.num_wann,numthreads=npar if npar>0 else 1,lib=fftlib)
+#        print( "iRvec in data_K is :\n",self.iRvec)
+        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,numthreads=npar if npar>0 else 1,lib=fftlib)
         self.Emin=system.Emin
         self.Emax=system.Emax
 
@@ -269,7 +270,7 @@ class Data_K(System):
         self.select_B=np.all(select,axis=0)
         self.nk_selected=self.select_K.sum()
         self.nb_selected=self.select_B.sum()
-        print ("selected {} k-points, {} bands".format(self.nk_selected,self.nb_selected))
+#        print ("selected {} k-points, {} bands".format(self.nk_selected,self.nb_selected))
         self._UU=np.array([euu[1] for euu in EUU])[self.select_K,:][:,self.select_B]
         print_my_name_end()
 #        print ("E_K({})={}".format(E_K.shape,E_K))
