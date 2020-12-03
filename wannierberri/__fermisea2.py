@@ -77,6 +77,9 @@ def Morb(data,Efermi, evalJ0=True,evalJ1=True,evalJ2=True):
                     IterateEf(data.Hplus(),data,Efermi,TRodd=True,Iodd=False)
                             -2*Omega_tot(data,Efermi).mul_array(Efermi) )*data.cell_volume
 
+def HplusTr_2(data,Efermi):
+    return IterateEf(data.derHplusTr2,data,Efermi,sep=False,TRodd=False,Iodd=True)
+
 def HplusTr(data,Efermi):
     return IterateEf(data.derHplusTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
 
@@ -86,8 +89,15 @@ def tensor_K(data,Efermi):
     tensor_K = - elementary_charge**2/(2*hbar)*(Hp - 2*Efermi[:,None,None]*D  )
     return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
 
+def tensor_K_2(data,Efermi):
+    Hp = HplusTr_2(data,Efermi).data
+    D = tensor_D_2(data,Efermi).data
+    tensor_K = - elementary_charge**2/(2*hbar)*(Hp - 2*Efermi[:,None,None]*D  )
+    return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
+
 def tensor_D(data,Efermi):
-        return IterateEf(data.derOmegaTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
+    return IterateEf(data.derOmegaTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
+    #return data.derOmegaTr
 
 def tensor_D_2(data,Efermi):
         return IterateEf(data.derOmegaTr2,data,Efermi,sep=False,TRodd=False,Iodd=True)

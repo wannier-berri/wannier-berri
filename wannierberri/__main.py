@@ -20,6 +20,7 @@ from . import __integrate
 from . import __tabulate  
 from . import symmetry
 
+from scipy.io import FortranFile
 from .__version import __version__
 from .__result import NoComponentError
 from collections import Iterable

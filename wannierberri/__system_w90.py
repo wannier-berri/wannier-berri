@@ -18,13 +18,15 @@ import copy
 import lazy_property
 import functools
 import multiprocessing 
-#import billiard as multiprocessing 
+#from pathos.multiprocessing import ProcessingPool as Pool
 from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, real_recip_lattice,fourier_q_to_R
 from colorama import init
 from termcolor import cprint 
 from .__system import System, ws_dist_map
 from .__w90_files import EIG,MMN,CheckPoint,SPN,UHU
 from time import time
+import pickle
+from itertools import repeat
 
 class System_w90(System):
     """
@@ -62,10 +64,14 @@ class System_w90(System):
         self.real_lattice,self.recip_lattice=real_recip_lattice(chk.real_lattice,chk.recip_lattice)
         self.mp_grid=chk.mp_grid
         self.iRvec,self.Ndegen=self.wigner_seitz(chk.mp_grid)
-#        print ("number of R-vectors: {} ; vectrors:\n {}".format(self.iRvec.shape[0], self.iRvec,self.Ndegen))
         self.nRvec0=len(self.iRvec)
         self.num_wann=chk.num_wann
 
+        if  self.use_ws:
+            print ("using ws_distance")
+            #ws_map=ws_dist_map_gen(np.copy(self.iRvec),np.copy(chk.wannier_centres), np.copy(chk.mp_grid),np.copy(self.real_lattice),npar=npar)
+            ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centres, chk.mp_grid,self.real_lattice, npar=npar)
+        
         eig=EIG(seedname)
         if self.getAA or self.getBB:
             mmn=MMN(seedname,npar=npar)
@@ -107,12 +113,9 @@ class System_w90(System):
             self.SS_R=fourier_q_to_R_loc(chk.get_SS_q(spn))
             timeFFT+=time()-t0
             del spn
-
+ 
         print ("time for FFT_q_to_R : {} s".format(timeFFT))
-
         if  self.use_ws:
-            print ("using ws_distance")
-            ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centres, chk.mp_grid,self.real_lattice,npar=npar)
             for X in ['HH','AA','BB','CC','SS','FF']:
                 XR=X+'_R'
                 if hasattr(self,XR) :
@@ -169,35 +172,38 @@ class ws_dist_map_gen(ws_dist_map):
         ws_distance_tol=1e-5
         cRvec=iRvec.dot(real_lattice)
         mp_grid=np.array(mp_grid)
-        shifts_int_all= np.array([ijk  for ijk in iterate3dpm(ws_search_size+1)])*np.array(mp_grid[None,:])
+        shifts_int_all = np.array([ijk  for ijk in iterate3dpm(ws_search_size+1)])*np.array(mp_grid[None,:])
         self.num_wann=wannier_centres.shape[0]
         self._iRvec_new=dict()
-        param=(shifts_int_all,wannier_centres,real_lattice, ws_distance_tol)
+        param=(shifts_int_all,wannier_centres,real_lattice, ws_distance_tol, wannier_centres.shape[0])
+        #param=(np.copy(shifts_int_all),np.copy(wannier_centres),np.copy(real_lattice), np.copy(ws_distance_tol),np.copy(self.num_wann))
         p=multiprocessing.Pool(npar)
         t1=time()
-        irvec_new_all=p.starmap(functools.partial(ws_dist_stars,ws_map=self,param=param),zip(iRvec,cRvec))
+        irvec_new_all=p.starmap(functools.partial(ws_dist_stars,param=param),zip(iRvec,cRvec))
+        print('irvec_new_all shape',np.shape(irvec_new_all))
         t2=time()
         for ir,iR in enumerate(iRvec):
           for ijw,irvec_new in irvec_new_all[ir].items():
               self._add_star(ir,irvec_new,ijw[0],ijw[1])
         t3=time()
-
         self._init_end(iRvec.shape[0])
         t4=time()
         print ("time for ws_dist_map_gen : ",t4-t0, t1-t0,t2-t1,t3-t2,t4-t3)
 
 
 
-def ws_dist_stars(iRvec,cRvec,ws_map,param):
-          shifts_int_all,wannier_centres,real_lattice, ws_distance_tol = param
+#def ws_dist_stars(index,iRvec,cRvec,param):
+def ws_dist_stars(iRvec,cRvec,param):
+          shifts_int_all,wannier_centres,real_lattice, ws_distance_tol, num_wann = param
           irvec_new={}
-          for jw in range(ws_map.num_wann):
-            for iw in range(ws_map.num_wann):
+          for jw in range(num_wann):
+            for iw in range(num_wann):
               # function JW translated in the Wigner-Seitz around function IW
               # and also find its degeneracy, and the integer shifts needed
               # to identify it
-              R_in=-wannier_centres[iw] +cRvec + wannier_centres[ jw]
+              R_in=-wannier_centres[iw] +cRvec + wannier_centres[jw]
               dist=np.linalg.norm( R_in[None,:]+shifts_int_all.dot(real_lattice),axis=1)
+              #irvec_new[(ir,iw,jw)]=iRvec+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
               irvec_new[(iw,jw)]=iRvec+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
           return irvec_new
 
