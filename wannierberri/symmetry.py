@@ -146,7 +146,7 @@ class Mirror(Symmetry):
         the normal of the mirror plane in Cartesian coordinates. Length of vector does not matter, but should not be zero
     """
     def __init__(self,axis=[0,0,1]):
-         super(Mirror, self).__init__( (Rotation(2,axis)*Inversion).R )
+         super(Mirror, self).__init__( -Rotation(2,axis).R )
 
 
 
