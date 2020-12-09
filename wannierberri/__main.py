@@ -107,7 +107,7 @@ def check_option(quantities,avail,tp):
 ## TODO: Unify the two methids, to do everything in one shot
 
 def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
-                        smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,
+                        smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,adpt_fac=1,
                         fout_name="wberri",restart=False,numproc=0,fftlib='fftw',suffix="",file_Klist="Klist",parameters={}):
     """
     Integrate 
@@ -132,6 +132,8 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         quantities to be integrated. See :ref:`sec-capabilities`
     adpt_num_iter : int 
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
+    adpt_fac : int 
+        number of K-points to be refinedper quantity and criteria.
     num_proc : int 
         number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
    
@@ -151,7 +153,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, omega=omega, smootherEf=smoothEf, smootherOmega=smoothW,
             quantities=quantities, parameters=parameters )
     res=evaluate_K(eval_func,system,grid,nparK=numproc,fftlib=fftlib,
-            adpt_num_iter=adpt_num_iter,adpt_nk=1,
+            adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac,
                 fout_name=fout_name,suffix=suffix,
                 restart=restart,file_Klist=file_Klist)
     cprint ("Integrating finished successfully",'green', attrs=['bold'])

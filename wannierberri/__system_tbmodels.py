@@ -43,6 +43,8 @@ class System_TBmodels(System):
         real=tbmodel.uc
         self.dimr=real.shape[1]
         zeros_real=np.eye((3),dtype=float)
+        self.periodic[:self.dimr]=True
+        self.periodic[self.dimr:]=False
         zeros_real[:self.dimr,:self.dimr]=np.array(real)
         self.real_lattice=zeros_real
         recip=2*np.pi*np.linalg.inv(zeros_real).T
@@ -99,6 +101,7 @@ class System_TBmodels(System):
             self.CC_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
 
         self.set_symmetry()
+        self.check_periodic()
                 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)

@@ -123,6 +123,7 @@ class System_w90(System):
                     vars(self)[XR]=ws_map(vars(self)[XR])
             self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
         self.set_symmetry()
+        self.check_periodic()
 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
