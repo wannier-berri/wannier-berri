@@ -133,7 +133,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     adpt_num_iter : int 
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
     adpt_fac : int 
-        number of K-points to be refinedper quantity and criteria.
+        number of K-points to be refined per quantity and criteria.
     num_proc : int 
         number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
    

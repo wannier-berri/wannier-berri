@@ -41,8 +41,8 @@ class System():
         set ``True`` if quantities derived from spin  will be used.
     morb : bool
         set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file.
-    periodic : (bool,bool,bool)
-        set ''True'' for periodicdirections and ''False''for confined (e.g. slab direction for 2D systems). Not relevant for :class:`~wannierberri.System_TBmodels` and  :class:`~wannierberri.System_PythTB`
+    periodic : [bool,bool,bool]
+        set ''True'' for periodic directions and ''False''for confined (e.g. slab direction for 2D systems). Not relevant for :class:`~wannierberri.System_TBmodels` and  :class:`~wannierberri.System_PythTB`
     use_ws : bool
         minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
     frozen_max : float

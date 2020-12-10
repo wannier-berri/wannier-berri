@@ -61,6 +61,7 @@
             kpath (list like)
                 |  Starting points and ending points of k-path. (type=Plane)
 		|  6 elements are one group, the first three elements are k coordinate of starting point and the back three elements are k coordinate of ending point. It should have multiples of 6 elements.
+		|  coordinates are given as integers on the grid
 		|  Default: 0,0,0,0,0,40 
             Efermi (float) 
                 |  Fermi level when (type=Line)
