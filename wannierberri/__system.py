@@ -41,10 +41,10 @@ class System():
         set ``True`` if quantities derived from spin  will be used.
     morb : bool
         set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file.
-    SHC : bool 
-        set ``True`` if quantities derived from spin-current elements will be used. Default: {}
-    qiao : bool
-        set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018). Default: Ryoo's (RPS 2019)
+    SHCryoo : bool 
+        set ``True`` if quantities derived from Ryoo's spin-current elements will be used. (RPS 2019)
+    SHCqiao : bool
+        set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018).
     use_ws : bool
         minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
     frozen_max : float
@@ -125,15 +125,6 @@ class System():
         if self.getSS:
             self.SS_R=self.__getMat('SS')
 
-        if getSA:
-            self.SA_R=self.__getMat('SA')
-        if getSHA:
-            self.SHA_R=self.__getMat('SHA')
-        if getSHC:
-            self.SR_R=self.__getMat('SR')
-            self.SH_R=self.__getMat('SH')
-            self.SHR_R=self.__getMat('SHR')
-
         self.set_symmetry()
 
         cprint ("Reading the system finished successfully",'green', attrs=['bold'])
@@ -146,8 +137,8 @@ class System():
                     'berry':False,
                     'morb':False,
                     'spin':False,
-                    'SHC':False,
-                    'qiao':False,
+                    'SHCryoo':False,
+                    'SHCqiao':False,
                     'random_gauge':False,
                     'degen_thresh':-1 ,
                     'delta_fz':0.1,
@@ -166,7 +157,7 @@ class System():
 
     @property
     def getAA(self):
-        return self.morb or self.berry or self.SHC
+        return self.morb or self.berry or self.SHCryoo or self.SHCqiao
 
     @property
     def getBB(self):
@@ -179,7 +170,7 @@ class System():
 
     @property
     def getSS(self):
-        return self.spin or (self.SHC and self.qiao)
+        return self.spin or self.SHCryoo or self.SHCqiao
 
     @property
     def getFF(self):
@@ -187,15 +178,15 @@ class System():
 
     @property
     def getSA(self):
-        return self.SHC
+        return self.SHCryoo
 
     @property
     def getSHA(self):
-        return self.SHC
+        return self.SHCryoo
 
     @property
     def getSHC(self):
-        return self.SHC and self.qiao
+        return self.SHCqiao
 
 
     def to_tb_file(self,tb_file=None):
