@@ -74,9 +74,8 @@ def kubo_sum_elements(x, y, num_wann):
         x_reshape = x.reshape((num_wann**2, 3 * 3 * 3))
         return (y_reshape @ x_reshape).reshape((-1, 3, 3, 3))
 
-
 def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
-                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, conductivity_type='kubo'):
+                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, conductivity_type='kubo', SHC_type='ryoo'):
     '''
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
 
@@ -91,6 +90,8 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         adpt_smr_fac    prefactor for the adaptive smearing parameter
         adpt_smr_max    maximal value of the adaptive smearing parameter
         adpt_smr_min    minimal value of the adaptive smearing parameter
+        conductivity_type type of optical conductivity ('kubo', 'SHC'(spin Hall conductivity))
+        SHC_type        ryoo: PRB RPS19, qiao: PRB QZYZ18
 
     Returns:    a list of (complex) optical conductivity 3 x 3 (x 3) tensors (one for each frequency value).
                 The result is given in S/cm.
@@ -105,7 +106,6 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
     # ri = index for real and imaginary parts (0 -> real, 1 -> imaginary)
 
     # TODO: optimize for T = 0? take only necessary elements
-
 
     # frequency
     if not isinstance(omega, Iterable):
@@ -138,9 +138,9 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             B = data.A_H[ik]
         elif conductivity_type == 'SHC':
             B = - 1j*data.A_H[ik]
-            if data.SH_R is not None:
-                A = 0.5 * (data.B_H[ik] + data.B_H[ik].transpose(1,0,2,3).conj())
-            else:
+            if SHC_type == 'qiao':
+                A = 0.5 * (data.shc_B_H[ik] + data.shc_B_H[ik].transpose(1,0,2,3).conj())
+            elif SHC_type == 'ryoo':
                 # PRB RPS19 Eqs. (21) and (26), j=(1/2)(VV*SS - i(E*SA - SHA) + adj. part)
                 VV = data.V_H[ik] # [n,m,a]
                 SS = data.S_H[ik]   # [n,m,b]
@@ -153,13 +153,15 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
                 SHA_adj = SHA.transpose(1,0,2,3).conj()
                 A += 1j *  (E[:,np.newaxis,np.newaxis,np.newaxis]*SA_adj - SHA_adj)
                 A /= 2.0
+            else:
+                print("Invalid SHC type. ryoo or qiao.")
 
         # E - omega
         delta_arg = dE[np.newaxis,:,:] - omega[:,np.newaxis,np.newaxis] # argument of delta function [iw, n, m]
 
         # smearing
         if adpt_smr: # [iw, n, m]
-            #cprint("Adaptive smearing is an experimental feature and has not been extensively tested.", 'red')
+            cprint("Adaptive smearing is an experimental feature and has not been extensively tested.", 'red')
             eta = smr_fixed_width
             delE = data.delE_K[ik] # energy derivatives [n, a] in eV*angstrom
             ddelE = delE[np.newaxis,:] - delE[:, np.newaxis] # delE_m(k) - delE_n(k) [n, m, a]
@@ -229,7 +231,12 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         })
 
 
-def opt_SHC(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
+def opt_SHCqiao(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15):
     return opt_conductivity(data, omega, mu, kBT, smr_fixed_width, smr_type, adpt_smr,
-                adpt_smr_fac, adpt_smr_max, adpt_smr_min, conductivity_type='SHC')
+                adpt_smr_fac, adpt_smr_max, adpt_smr_min, conductivity_type='SHC', SHC_type='qiao')
+
+def opt_SHCryoo(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
+                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15):
+    return opt_conductivity(data, omega, mu, kBT, smr_fixed_width, smr_type, adpt_smr,
+                adpt_smr_fac, adpt_smr_max, adpt_smr_min, conductivity_type='SHC', SHC_type='ryoo')

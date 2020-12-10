@@ -685,21 +685,12 @@ class Data_K(System):
 #PRB QZYZ18, Qiao's way to calculate SHC
 
     @lazy_property.LazyProperty
-    def SH_H(self):
-        return self._R_to_k_H(self.SH_R.copy(), hermitian=False)
-
-    @lazy_property.LazyProperty
-    def K_H(self):
-        return -1j*self._R_to_k_H(self.SR_R.copy(), hermitian=False) + np.einsum('knlc,klma->knmac',self.S_H,self.D_H)
-    
-    @lazy_property.LazyProperty
-    def L_H(self):
-        return -1j*self._R_to_k_H(self.SHR_R.copy(), hermitian=False) + np.einsum('knlc,klma->knmac',self.SH_H,self.D_H)
-
-    @lazy_property.LazyProperty
-    def B_H(self):
+    def shc_B_H(self):
+        SH_H = self._R_to_k_H(self.SH_R.copy(), hermitian=False)
+        shc_K_H = -1j*self._R_to_k_H(self.SR_R.copy(), hermitian=False) + np.einsum('knlc,klma->knmac', self.S_H, self.D_H)
+        shc_L_H = -1j*self._R_to_k_H(self.SHR_R.copy(), hermitian=False) + np.einsum('knlc,klma->knmac', SH_H, self.D_H)
         return (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.S_H[:,:,:,np.newaxis,:] +
-            self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*self.K_H[:,:,:,:,:] - self.L_H)
+            self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*shc_K_H[:,:,:,:,:] - shc_L_H)
 #end SHC
 
     @lazy_property.LazyProperty
