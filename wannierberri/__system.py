@@ -43,6 +43,10 @@ class System():
         set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file.
     periodic : [bool,bool,bool]
         set ''True'' for periodic directions and ''False''for confined (e.g. slab direction for 2D systems). Not relevant for :class:`~wannierberri.System_TBmodels` and  :class:`~wannierberri.System_PythTB`
+    SHCryoo : bool 
+        set ``True`` if quantities derived from Ryoo's spin-current elements will be used. (RPS 2019)
+    SHCqiao : bool
+        set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018).
     use_ws : bool
         minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
     frozen_max : float
@@ -124,6 +128,7 @@ class System():
             self.SS_R=self.__getMat('SS')
 
         self.set_symmetry()
+
         cprint ("Reading the system finished successfully",'green', attrs=['bold'])
 
 
@@ -134,6 +139,8 @@ class System():
                     'berry':False,
                     'morb':False,
                     'spin':False,
+                    'SHCryoo':False,
+                    'SHCqiao':False,
                     'random_gauge':False,
                     'degen_thresh':-1 ,
                     'delta_fz':0.1,
@@ -171,7 +178,7 @@ class System():
 
     @property
     def getAA(self):
-        return self.morb or self.berry
+        return self.morb or self.berry or self.SHCryoo or self.SHCqiao
 
     @property
     def getBB(self):
@@ -184,11 +191,23 @@ class System():
 
     @property
     def getSS(self):
-        return self.spin
+        return self.spin or self.SHCryoo or self.SHCqiao
 
     @property
     def getFF(self):
         return False
+
+    @property
+    def getSA(self):
+        return self.SHCryoo
+
+    @property
+    def getSHA(self):
+        return self.SHCryoo
+
+    @property
+    def getSHC(self):
+        return self.SHCqiao
 
 
     def to_tb_file(self,tb_file=None):
