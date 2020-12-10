@@ -204,8 +204,8 @@ class TABresult(result.Result):
 #            np.savetxt(FSfile,Xnk[:,iband]-efermi,fmt="%.8f")
 #            FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
         if frmsf_name is not None:
-            if not (frmsf_name.endswith(".pickle")):
-                frmsf_name+=".pickle"
+            if not (frmsf_name.endswith(".frmsf")):
+                frmsf_name+=".frmsf"
             open(frmsf_name,"w").write(FSfile)
         return FSfile
 

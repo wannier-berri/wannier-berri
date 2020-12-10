@@ -150,7 +150,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         
         l1=len(K_list)
         for iK in select_points:
-            K_list+=K_list[iK].divide(adpt_mesh)
+            K_list+=K_list[iK].divide(adpt_mesh,system.periodic)
         print ("checking for equivalent points in all points (of new  {} points)".format(len(K_list)-l1))
         nexcl=exclude_equiv_points(K_list,new_points=len(K_list)-l1)
         print (" excluded {0} points".format(nexcl))
