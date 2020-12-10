@@ -15,7 +15,7 @@ import numpy as np
 from scipy.io import FortranFile as FF
 import copy
 import lazy_property
-
+from collections import Iterable
 from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice
 from  .symmetry import Group
 from colorama import init
@@ -45,6 +45,8 @@ class System():
         set ``True`` if quantities derived from Ryoo's spin-current elements will be used. (RPS 2019)
     SHCqiao : bool
         set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018).
+    periodic : (bool,bool,bool)
+        set ''True'' for periodicdirections and ''False''for confined (e.g. slab direction for 2D systems). Not relevant for :class:`~wannierberri.System_TBmodels` and  :class:`~wannierberri.System_PythTB`
     use_ws : bool
         minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
     frozen_max : float
@@ -146,6 +148,7 @@ class System():
                     'Emin': -np.Inf ,
                     'Emax': np.Inf ,
                     'use_ws':True,
+                    'periodic':(True,True,True)
                        }
 
         for param in self.default_parameters:
@@ -153,7 +156,25 @@ class System():
                 vars(self)[param]=parameters[param]
             else: 
                 vars(self)[param]=self.default_parameters[param]
+        self.periodic=np.array(self.periodic)
 
+
+    def check_periodic(self):
+        exclude=np.zeros(self.nRvec,dtype=bool)
+        for i,per in enumerate(self.periodic):
+            if not per:
+                sel=(self.iRvec[:,i]!=0)
+                if np.any(sel) :
+                    print ("""WARNING : you declared your ystemas non-periodic along direction {i}, but there are {nrexcl} of total {nr} R-vectors with R[{i}]!=0. 
+        They will be excluded, please make sure you know what you are doing """.format(i=i,nrexcl=sum(sel),nr=self.nRvec ) )
+                    exclude[sel]=True
+        if np.any(exclude):
+            notexclude=np.logical_not(exclude)
+            self.iRvec=self.iRvec[notexclude]
+            for X in ['HH','AA','BB','CC','SS','FF']:
+                XR=X+'_R'
+                if hasattr(self,XR) :
+                    vars(self)[XR]=vars(self)[XR][:,:,notexclude]
 
     @property
     def getAA(self):

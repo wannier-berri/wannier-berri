@@ -266,6 +266,7 @@ class FFT_R_to_k():
             AAA_K=np.zeros( self.NKFFT+shapeA[1:], dtype=complex )
             ### TODO : place AAA_R to FFT grid from beginning, even before multiplying by exp(dkR)
             for ir,irvec in enumerate(self.iRvec):
+#                print (ir,irvec,self.NKFFT)
                 AAA_K[tuple(irvec)]+=AAA_R[ir]
             self.transform(AAA_K)
             AAA_K*=np.prod(self.NKFFT)

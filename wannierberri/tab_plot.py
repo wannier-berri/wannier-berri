@@ -92,10 +92,12 @@ def hlp():
 	from termcolor import cprint
 	cprint ("tab_plot",'green', attrs=['bold'])
 	print (__doc__)
+	exit()
 
 
 def main():
-	hlp()
+	if "-h" in argv[1:]:
+		hlp()
 	#########  input #############
 	filename = argv[1] 
 	Line=False
