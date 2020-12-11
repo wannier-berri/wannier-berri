@@ -19,7 +19,7 @@ import numpy as np
 from lazy_property import LazyProperty as Lazy
 from copy import deepcopy
 
-from .__utility import voidsmoother
+from .__utility import VoidSmoother
 
 
 ## A class to contain results or a calculation:
@@ -70,39 +70,80 @@ class Result():
 # a class for data defined for a set of Fermi levels
 #Data is stored in an array data, where first dimension indexes the Fermi level
 
+
 class EnergyResult(Result):
+    """A class to store data dependent on several energies, e.g. Efermi and Omega
+      Energy may also be an empty list, then the quantity does not depend on any energy (does it work?)
+
+    Parameters
+    -----------
+    Energies  : 1D array or list of 1D arrays
+        |  The energies, on which the data depend
+        |  Energy may also be an empty list, then the quantity does not depend on any energy (does it work?)
+    data : array(float) or array(complex)
+        | the data. The first dimensions should match the sizes of the Energies arrays. The rest should be equal to 3
+    smoothers :  a list of :class:`~wannierberri._utility.Smoother`
+        | smoothers, one per each energy variable
 
 
-    def __init__(self,Energy,data,smoother=voidsmoother,TRodd=False,Iodd=False,rank=None):
-        self.rank=len(data.shape[1:]) if rank is None else rank
+     """
+
+
+    def __init__(self,Energies,data,smoothers=None,TRodd=False,Iodd=False,rank=None,E_titles=["Efermi","Omega"]):
+        if not isinstance (Energies,(list,tuple)) : 
+            Energies=[Energies]
+        if not isinstance (E_titles,(list,tuple)) :
+            E_titles=[E_titles]
+        E_titles=list(E_titles)
+
+        self.N_energies=len(Energies)
+        if self.N_energies<=len(E_titles):
+           self.E_titles=E_titles[:self.N_energies]
+        else:
+           self.E_titles=E_titles+["???"]*(self.N_energies-len(self.E_titles))
+        self.rank=data.ndim-self.N_energies if rank is None else rank
         if self.rank>0:
             shape=data.shape[-self.rank:]
             assert np.all(np.array(shape)==3)
-        assert (Energy.shape[0]==data.shape[0])
-        self.Energy=Energy
+        for i in range(self.N_energies):
+            assert (Energies[i].shape[0]==data.shape[i]) , "dimension of Energy[{}] = {} does not match do dimension of data {}".format(i,Energy[i].shape[0],data.shape[i])
+        self.Energies=Energies
         self.data=data
-        self.smoother=smoother
+        self.set_smoother(smoothers)
         self.TRodd=TRodd
         self.Iodd=Iodd
     
-    def set_smoother(self, smoother):
-        self.smoother = smoother
+    def set_smoother(self, smoothers):
+        if smoothers is None:
+            smoothers = (None,)*self.N_energies
+        if not isinstance (smoothers,(list,tuple)) :
+            smoothers=[smoothers]
+        assert len(smoothers)==self.N_energies
+        self.smoothers = [(VoidSmoother() if s is None else s) for s in  smoothers]
 
     @Lazy
     def dataSmooth(self):
-        return self.smoother(self.data)
+        data_tmp=self.data.copy()
+        for i in range(self.N_energies-1,-1,-1):
+            data_tmp=self.smoothers[i](self.data,axis=i)
+        return data_tmp
 
-    def mul_array(self,other):
+    def mul_array(self,other,axes=None):
+        if isinstance(axes,int): 
+            axes=(axes,)
+        if axes is None: 
+            axes = tuple(range(other.ndim))
 #        print ('multiplying result by array',other)
-        assert np.all(other.shape==self.data.shape[:len(other.shape)]), "shapes should match {} and {}".format(other.shape,self.data.shape)
-        reshape=other.shape+(1,)*(len(self.data.shape)-len(other.data.shape))
-        return EnergyResult(self.Energy,self.data*other.reshape(reshape),self.smoother,self.TRodd,self.Iodd,self.rank)
+        for i,d in enumerate(other.shape):
+            assert d==self.data.shape[axes[i]], "shapes  {} should match the axes {} of {}".format(other.shape,axes,self.data.shape)
+        reshape=tuple((self.data.shape[i] if i in axes else 1) for i in range(self.data.ndim))
+        return EnergyResult(self.Energies,self.data*other.reshape(reshape),self.smoothers,self.TRodd,self.Iodd,self.rank,self.E_titles)
 
 
     def __mul__(self,other):
         if isinstance(other,int) or isinstance(other,float) :
 #            print ('multiplying result by number',other)
-            return EnergyResult(self.Energy,self.data*other,self.smoother,self.TRodd,self.Iodd,self.rank)
+            return EnergyResult(self.Energies,self.data*other,self.smoothers,self.TRodd,self.Iodd,self.rank,self.E_titles)
         else:
             raise TypeError("result can only be multilied by a number")
 
@@ -111,60 +152,44 @@ class EnergyResult(Result):
         assert self.Iodd  == other.Iodd
         if other == 0:
             return self
-        if np.linalg.norm(self.Energy-other.Energy)>1e-8:
-            raise RuntimeError ("Adding results with different Fermi energies - not allowed")
-        if self.smoother != other.smoother:
-            raise RuntimeError ("Adding results with different smoothers ={} and {}".format(self.smoother,other.smoother))
-        return EnergyResult(self.Energy,self.data+other.data,self.smoother,self.TRodd,self.Iodd,self.rank)
+        for i in range(self.N_energies):
+            if np.linalg.norm(self.Energies[i]-other.Energies[i])>1e-8:
+                raise RuntimeError ("Adding results with different energies {} ({}) - not allowed".format(i,self.E_titles[i]))
+            if self.smoothers[i] != other.smoothers[i]:
+                raise RuntimeError ("Adding results with different smoothers [i]: {} and {}".format(i,self.smoothers[i],other.smoothers[i]))
+        return EnergyResult(self.Energies,self.data+other.data,self.smoothers,self.TRodd,self.Iodd,self.rank,self.E_titles)
 
     def __sub__(self,other):
         return self+(-1)*other
 
-    def _write_complex(self, name):
-        '''Writes the result if data has complex entries.'''
-        # assume that the dimensions starting from first are cartesian coordinates       
+    def __write(self,data,datasm,i):
+        if i>self.N_energies:
+            raise ValueError("not allowed value i={} > {}".format(i,self.N_energies))
+        elif i==self.N_energies:
+            data_tmp=list(data.reshape(-1))+list(datasm.reshape(-1))
+            if data.dtype == complex:
+                return ["    "+"    ".join("{0:15.6e} {0:15.6e}".format(x.real,x.imag) for x in data_tmp )]
+            elif data.dtype == float:
+                return ["    "+"    ".join("{0:15.6e}".format(x) for x in  data_tmp )  ]
+        else:
+            return ["{0:15.6e}    {1:s}".format(E,s) for j,E in enumerate(self.Energies[i]) for s in self.__write(data[j],datasm[j],i+1) ]
+
+    def write(self,name):
+        frmt="{0:^31s}" if self.data.dtype == complex else "{0:^15s}"
         def getHead(n):
             if n<=0:
                 return ['  ']
             else:
                 return [a+b for a in 'xyz' for b in getHead(n-1)]
-        rank=len(self.data.shape[1:])
 
-        open(name,"w").write(
-           "    ".join("{0:^30s}".format(s) for s in ["# EF",]+
-                [b for b in getHead(rank)*2])+"\n"+
-          "\n".join(
-           "    ".join("{0:15.6e}{1:15.6e}".format(np.real(x),np.imag(x)) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
-                      for ef,data,datasm in zip (self.Energy,self.data,self.dataSmooth)  )
-               +"\n") 
-
-    def write(self,name):
+        head="#"+"    ".join("{0:^15s}".format(s) for s in self.E_titles)+" "*8+"    ".join(frmt.format(b) for b in getHead(self.rank)*2)+"\n"
         name = name.format('')
-        if (self.data.dtype == np.dtype('complex')):
-            self._write_complex(name)
-        else:
-            # assume that the dimensions starting from first are cartesian coordinates       
-            def getHead(n):
-               if n<=0:
-                  return ['  ']
-               else:
-                  return [a+b for a in 'xyz' for b in getHead(n-1)]
-            rank=len(self.data.shape[1:])
 
-            open(name,"w").write(
-               "    ".join("{0:^15s}".format(s) for s in ["# EF",]+
-                    [b for b in getHead(rank)*2])+"\n"+
-              "\n".join(
-               "    ".join("{0:15.6e}".format(x) for x in [ef]+[x for x in data.reshape(-1)]+[x for x in datasm.reshape(-1)]) 
-                          for ef,data,datasm in zip (self.Energy,self.data,self.dataSmooth)  )
-                   +"\n") 
+        open(name,"w").write(head+"\n".join(self.__write(self.data,self.dataSmooth,i=0)))
 
     @property
     def _maxval(self):
-        if self.dataSmooth.dtype == np.dtype('complex'):
-            return np.maximum(np.real(self.dataSmooth).max(), np.imag(self.dataSmooth).max())
-        else:
-            return self.dataSmooth.max() 
+        return np.abs(self.dataSmooth).max()
 
     @property
     def _norm(self):
@@ -178,9 +203,12 @@ class EnergyResult(Result):
     def max(self):
         return np.array([self._maxval,self._norm,self._normder])
 
-
     def transform(self,sym):
-        return EnergyResult(self.Energy,sym.transform_tensor(self.data,self.rank,TRodd=self.TRodd,Iodd=self.Iodd),self.smoother,self.TRodd,self.Iodd,self.rank)
+        return EnergyResult(self.Energies,sym.transform_tensor(self.data,self.rank,TRodd=self.TRodd,Iodd=self.Iodd),self.smoothers,self.TRodd,self.Iodd,self.rank,self.E_titles)
+
+
+
+
 
 
 class EnergyResultDict(EnergyResult):
@@ -228,15 +256,15 @@ class EnergyResultDict(EnergyResult):
 
 
 class EnergyResultScalar(EnergyResult):
-    def __init__(self,Energy,data,smoother=voidsmoother):
+    def __init__(self,Energy,data,smoother=VoidSmoother()):
          super(EnergyResultScalar,self).__init__(Energy,data,smoother,TRodd=False,Iodd=False,rank=0)
 
 class EnergyResultAxialV(EnergyResult):
-    def __init__(self,Energy,data,smoother=voidsmoother):
+    def __init__(self,Energy,data,smoother=VoidSmoother()):
          super(EnergyResultAxialV,self).__init__(Energy,data,smoother,TRodd=True,Iodd=False,rank=1)
 
 class EnergyResultPolarV(EnergyResult):
-    def __init__(self,Energy,data,smoother=voidsmoother):
+    def __init__(self,Energy,data,smoother=VoidSmoother()):
          super(EnergyResultpolarV,self).__init__(Energy,data,smoother,TRodd=False,Iodd=True,rank=1)
 
 class NoComponentError(RuntimeError):

@@ -60,7 +60,7 @@ def real_recip_lattice(real_lattice=None,recip_lattice=None):
 
 from scipy.constants import Boltzmann,elementary_charge,hbar
 
-class smoother():
+class Smoother():
     def __init__(self,E,T=10):  # T in K
         self.T=T*Boltzmann/elementary_charge  # now in eV
         self.E=np.copy(E)
@@ -90,8 +90,9 @@ class smoother():
     def _broaden(self,E):
         return 0.25/self.T/np.cosh(E/(2*self.T))**2
 
-    def __call__(self,A):
-        assert self.E.shape[0]==A.shape[0]
+    def __call__(self,A,axis=0):
+        assert self.E.shape[0]==A.shape[axis]
+        A=A.transpose((axis,)+tuple(range(0,axis))+tuple(range(axis+1,A.ndim)))
         res=np.zeros(A.shape, dtype=A.dtype)
         for i in range(self.NE):
             start=max(0,i-self.NE1)
@@ -99,13 +100,13 @@ class smoother():
             start1=self.NE1-(i-start)
             end1=self.NE1+(end-i)
             res[i]=np.tensordot(A[start:end],self.smt[start1:end1],axes=(0,0))/self.smt[start1:end1].sum()
-        return res
+        return res.transpose( tuple(range(1,axis+1))+ (0,)+tuple(range(axis+1,A.ndim)) )
 
 
     def __eq__(self,other):
-        if isinstance(other,voidsmoother):
+        if isinstance(other,VoidSmoother):
             return False
-        elif not isinstance(other,smoother):
+        elif not isinstance(other,Smoother):
             return False
         else:
             for var in ['T','dE','NE','NE1','Emin','Emax']:
@@ -115,21 +116,31 @@ class smoother():
 #            return self.T==other.T and self.dE=other.E and self.NE==other.NE and self.
 
 
-class voidsmoother(smoother):
+class VoidSmoother(Smoother):
     def __init__(self):
         pass
     
     def __eq__(self,other):
-        if isinstance(other,voidsmoother):
+        if isinstance(other,VoidSmoother):
             return True
         else:
             return False
     
-    def __call__(self,A):
+    def __call__(self,A,axis=0):
         return A
 
     def __str__(self):
-        return ("<Smoother - void " )
+        return ("<VoidSmoother>" )
+
+
+def getSmoother(energy,smear):
+    if energy is None: 
+        return VoidSmoother()
+    if smear is None or smear<=0: 
+        return VoidSmoother()
+    if len(energy)<=1: 
+        return VoidSmoother()
+    return  Smoother(energy,smear) # smoother for functions of frequency
 
 
 def str2bool(v):
