@@ -16,7 +16,7 @@ import numpy as np
 from scipy import constants as constants
 from collections import Iterable
 
-from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
+from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother
 from . import __result as result
 
 
@@ -27,7 +27,7 @@ eV_au=constants.physical_constants['electron volt-hartree relationship'][0]
 
 
 
-def calc_cum_DOS(data,Efermi=None,smoother=voidsmoother):
+def calc_cum_DOS(data,Efermi=None,smoother=VoidSmoother()):
 
     cumDOS=np.zeros(Efermi.shape,dtype=int)
 
@@ -39,7 +39,7 @@ def calc_cum_DOS(data,Efermi=None,smoother=voidsmoother):
     return result.EnergyResultScalar(Efermi,cumDOS,smoother=smoother )
 
 
-def calc_DOS(data,Efermi=None,smoother=voidsmoother):
+def calc_DOS(data,Efermi=None,smoother=VoidSmoother()):
 
     DOS=np.zeros(Efermi.shape,dtype=int)
     E=data.E_K.reshape(-1)
