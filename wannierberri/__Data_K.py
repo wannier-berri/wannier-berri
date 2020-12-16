@@ -331,8 +331,24 @@ class Data_K(System):
         return dEig
 
     @lazy_property.LazyProperty
+    def dEig_inv_Pval(self):
+        dEig_threshold=1.e-7
+        dEig=self.E_K[:,:,None]-self.E_K[:,None,:]
+        select=abs(dEig)<dEig_threshold
+        dEig[select]=dEig_threshold
+        dEig=dEig/(dEig**(2)+0.04**(2))
+        dEig[select]=0.
+        return dEig
+
+
+
+    @lazy_property.LazyProperty
     def D_H(self):
         return -self.V_H*self.dEig_inv[:, :,:,None]
+
+    @lazy_property.LazyProperty
+    def D_H_Pval(self):
+        return -self.V_H*self.dEig_inv_Pval[:, :,:,None]
 
     @lazy_property.LazyProperty
     def V_H(self):

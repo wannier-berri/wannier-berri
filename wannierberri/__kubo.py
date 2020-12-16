@@ -27,6 +27,7 @@ from . import __result as result
 pi = constants.pi
 e = constants.e
 hbar = constants.hbar
+eV_seconds = 6.582119e-16
 
 # smearing functions
 def Lorentzian(x, width):
@@ -115,13 +116,20 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         sigma_H = np.zeros((omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
         sigma_AH = np.zeros((omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
         rank=2
+        # prefactor for correct units of the result (S/cm)
+        pre_fac = e**2/(100.0 * hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom)
     elif conductivity_type == 'SHC':
         sigma_H = np.zeros((omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
         sigma_AH = np.zeros((omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
         rank=3
+        # prefactor for correct units of the result (S/cm)
+        pre_fac = e**2/(100.0 * hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom)
+    elif conductivity_type == 'shiftcurrent':
+        sigma_abc = np.zeros((omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
+        rank=3
+        # JULEN change
+        pre_fac = eV_seconds*pi*e**3/(4.0 * hbar**(2) * data.NKFFT_tot * data.cell_volume)
 
-    # prefactor for correct units of the result (S/cm)
-    pre_fac = e**2/(100.0 * hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom)
 
     # iterate over ik, simple summation
     for ik in range(data.NKFFT_tot):
@@ -155,6 +163,52 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
                 A /= 2.0
             else:
                 print("Invalid SHC type. ryoo or qiao.")
+        elif conductivity_type == 'shiftcurrent':
+            B = data.A_H[ik]
+
+            A_Hbar = data.A_Hbar[ik]
+            D_H_Pval = data.D_H_Pval[ik]
+            V_H = data.V_H[ik]
+            A_Hbar_der = data.A_Hbar_der[ik]
+            del2E_H = data.del2E_H[ik]
+            dEig_inv = data.dEig_inv[ik]
+
+            # commutators
+            # ** the spatial index of D_H_Pval corresponds to generalized derivative direction 
+            # ** --> stored in the fourth column of output variables  
+#            sum_AD =  (np.einsum('nlc,lma->nmca', A_Hbar, D_H_Pval) - np.einsum('nnc,nma->nmca', A_Hbar, D_H_Pval))  \
+#                     -(np.einsum('nla,lmc->nmca', D_H_Pval, A_Hbar) - np.einsum('nma,mmc->nmca', D_H_Pval, A_Hbar))
+#            sum_HD =  (np.einsum('nlc,lma->nmca', V_H, D_H_Pval) - np.einsum('nnc,nma->nmca', V_H, D_H_Pval))  \
+#                     -(np.einsum('nla,lmc->nmca', D_H_Pval, V_H) - np.einsum('nma,mmc->nmca', D_H_Pval, V_H))
+#    
+#            
+#            # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction 
+#            # ** --> stored in the fourth column of output variables  
+#            AD_bit =     np.einsum('nnc,nma->nmac' , A_Hbar, D_H_Pval) - np.einsum('mmc,nma->nmac' , A_Hbar, D_H_Pval) \
+#                       + np.einsum('nna,nmc->nmac' , A_Hbar, D_H_Pval) - np.einsum('mma,nmc->nmac' , A_Hbar, D_H_Pval)
+            AA_bit =     np.einsum('nnb,nma->nmab' , A_Hbar, A_Hbar) - np.einsum('mmb,nma->nmab' , A_Hbar, A_Hbar)
+    
+#            # ** this one is invariant under a<-->c
+#            DV_bit =     np.einsum('nmc,nna->nmca' , D_H_Pval, V_H) - np.einsum('nmc,mma->nmca' , D_H_Pval, V_H) \
+#                       + np.einsum('nma,nnc->nmca' , D_H_Pval, V_H) - np.einsum('nma,mmc->nmca' , D_H_Pval, V_H) 
+
+
+
+#            A = data.A_Hbar_der[ik]
+#            A = 1j*data.del2E_H[ik]*dEig_inv[:,:, np.newaxis, np.newaxis]
+
+#            for ii in range(0,8):
+#              AA_bit[ii,ii,:,:] = 0.0
+
+            A = - 1j*AA_bit
+#            A = A_Hbar_der  \
+#                - 1j*AA_bit 
+
+#                   + AD_bit - 1j*AA_bit \
+#                   + sum_AD \
+#                   + 1j*(  del2E_H + sum_HD + DV_bit \
+#                        )*dEig_inv[:,:, np.newaxis, np.newaxis]
+
 
         # E - omega
         delta_arg = dE[np.newaxis,:,:] - omega[:,np.newaxis,np.newaxis] # argument of delta function [iw, n, m]
@@ -212,6 +266,30 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             sigma_H += 1j * pi * pre_fac * kubo_sum_elements(imAB, temp2, data.num_wann) / 4.0
             sigma_AH += pre_fac * kubo_sum_elements(imAB, temp1, data.num_wann) / 2.0
 
+        elif conductivity_type == 'shiftcurrent':
+            delta_mn = np.copy(delta)
+            dE2 = E[:,np.newaxis] - E[np.newaxis, :] # E_n(k) - E_m(k) [n, m]
+            delta_arg = dE2[np.newaxis,:,:] + omega[:,np.newaxis,np.newaxis]
+            if smr_type == 'Lorentzian':
+                delta = Lorentzian(delta_arg, eta)
+            elif smr_type == 'Gaussian':
+                delta = Gaussian(delta_arg, eta, adpt_smr)
+            else:
+                cprint("Invalid smearing type. Fallback to Lorentzian", 'red')
+                delta = Lorentzian(delta_arg, eta)
+
+            delta_nm = np.copy(delta)
+            cfac = delta_mn + delta_nm
+            temp = dfE[np.newaxis,:,:]*cfac
+
+
+
+#            Imn = np.imag(np.einsum('nmac,mnb->nmabc',A,B))
+            Imn = np.einsum('nmac,mnb->nmabc',A,B) + np.einsum('nmab,mnc->nmabc',A,B)
+
+            sigma_abc +=  pre_fac * kubo_sum_elements(Imn, temp, data.num_wann) 
+
+
     if conductivity_type == 'kubo':
         # TODO: optimize by just storing independent components or leave it like that?
         # 3x3 tensors [iw, a, b]
@@ -230,6 +308,12 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             'freqscan': result.EnergyResult(omega, sigma_SHC, TRodd=False, Iodd=False, rank=rank)
         })
 
+    elif conductivity_type == 'shiftcurrent':
+        sigma_shift = sigma_abc
+        return result.EnergyResultDict({
+            'freqscan': result.EnergyResult(omega, sigma_shift, TRodd=False, Iodd=False, rank=rank)
+        })
+
 
 def opt_SHCqiao(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15):
@@ -240,3 +324,9 @@ def opt_SHCryoo(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Loren
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15):
     return opt_conductivity(data, omega, mu, kBT, smr_fixed_width, smr_type, adpt_smr,
                 adpt_smr_fac, adpt_smr_max, adpt_smr_min, conductivity_type='SHC', SHC_type='ryoo')
+
+def opt_shiftcurrent(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
+                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15):
+    return opt_conductivity(data, omega, mu, kBT, smr_fixed_width, smr_type, adpt_smr,
+                adpt_smr_fac, adpt_smr_max, adpt_smr_min, conductivity_type='shiftcurrent')
+

@@ -63,7 +63,8 @@ additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no des
 calculators_opt={
     'opt_conductivity' : kubo.opt_conductivity,
     'opt_SHCryoo' : kubo.opt_SHCryoo,
-    'opt_SHCqiao' : kubo.opt_SHCqiao
+    'opt_SHCqiao' : kubo.opt_SHCqiao,
+    'opt_shiftcurrent' : kubo.opt_shiftcurrent
 }
 
 # additional parameters for optical conductivity
@@ -119,6 +120,24 @@ additional_parameters_description['opt_SHCqiao']['adpt_smr_max'] = "maximal valu
 additional_parameters['opt_SHCqiao']['adpt_smr_min'] = 1e-15
 additional_parameters_description['opt_SHCqiao']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
 
+# additional parameters for shift current       
+additional_parameters['opt_shiftcurrent']['mu'] = 12.8623
+additional_parameters_description['opt_shiftcurrent']['mu'] = "chemical potential in units of eV"
+additional_parameters['opt_shiftcurrent']['kBT'] = 0
+additional_parameters_description['opt_shiftcurrent']['kBT'] = "temperature in units of eV/kB"
+additional_parameters['opt_shiftcurrent']['smr_fixed_width'] = 0.1
+additional_parameters_description['opt_shiftcurrent']['smr_fixed_width'] = "fixed smearing parameter in units of eV"
+additional_parameters['opt_shiftcurrent']['smr_type'] = 'Lorentzian'
+additional_parameters_description['opt_shiftcurrent']['smr_type'] = "analyitcal form of the broadened delta function"
+additional_parameters['opt_shiftcurrent']['adpt_smr'] = False
+additional_parameters_description['opt_shiftcurrent']['adpt_smr'] = "use an adaptive smearing parameter"
+additional_parameters['opt_shiftcurrent']['adpt_smr_fac'] = np.sqrt(2)
+additional_parameters_description['opt_shiftcurrent']['adpt_smr_fac'] = "prefactor for the adaptive smearing parameter"
+additional_parameters['opt_shiftcurrent']['adpt_smr_max'] = 0.1
+additional_parameters_description['opt_shiftcurrent']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter in eV"
+additional_parameters['opt_shiftcurrent']['adpt_smr_min'] = 1e-15
+additional_parameters_description['opt_shiftcurrent']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
+
 
 calculators=copy(calculators_trans)
 calculators.update(calculators_opt)
@@ -144,7 +163,7 @@ descriptions['Hall_spin'   ] = "Low field AHE, spin    part, in S/(cm*T)."
 descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
 descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in S/cm (PRB RPS19)"
 descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in S/cm (PRB QZYZ18)"
-
+descriptions['opt_shiftcurrent'] = "Shift Current in ???"
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
 
