@@ -83,8 +83,8 @@ additional_parameters['opt_conductivity']['adpt_smr_min'] = 1e-15
 additional_parameters_description['opt_conductivity']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
 
 # additional parameters for optical spin Hall conductivity
-additional_parameters['opt_SHCryoo']['mu'] = 18.1299 #12.8623 for Fe #18.1299 For platinum
-additional_parameters_description['opt_SHCryoo']['mu'] = "chemical potential in units of eV"
+#additional_parameters['opt_SHCryoo']['mu'] = 18.1299 #12.8623 for Fe #18.1299 For platinum
+#additional_parameters_description['opt_SHCryoo']['mu'] = "chemical potential in units of eV"
 additional_parameters['opt_SHCryoo']['kBT'] = 0
 additional_parameters_description['opt_SHCryoo']['kBT'] = "temperature in units of eV/kB"
 additional_parameters['opt_SHCryoo']['smr_fixed_width'] = 0.1
@@ -100,8 +100,8 @@ additional_parameters_description['opt_SHCryoo']['adpt_smr_max'] = "maximal valu
 additional_parameters['opt_SHCryoo']['adpt_smr_min'] = 1e-15
 additional_parameters_description['opt_SHCryoo']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
 
-additional_parameters['opt_SHCqiao']['mu'] = 18.1299 #12.8623 for Fe #18.1299 For platinum
-additional_parameters_description['opt_SHCqiao']['mu'] = "chemical potential in units of eV"
+#additional_parameters['opt_SHCqiao']['mu'] = 18.1299 #12.8623 for Fe #18.1299 For platinum
+#additional_parameters_description['opt_SHCqiao']['mu'] = "chemical potential in units of eV"
 additional_parameters['opt_SHCqiao']['kBT'] = 0
 additional_parameters_description['opt_SHCqiao']['kBT'] = "temperature in units of eV/kB"
 additional_parameters['opt_SHCqiao']['smr_fixed_width'] = 0.1
