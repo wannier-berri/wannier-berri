@@ -1,5 +1,5 @@
 
-This example shows how to calculate dynamical spin Hall conductivity of Pt
+This example shows how to calculate spin Hall conductivity of Pt
 from .eig, .amn, .mmn, and .spn files. Run ./execute-example to plot the real parts.
 
 0) Files included
@@ -20,7 +20,7 @@ from .eig, .amn, .mmn, and .spn files. Run ./execute-example to plot the real pa
     generate the .chk file.
 
 3) WANNIERBERRI
-    make dynamical spin Hall conductivity data using Wannier interpolation.
+    make spin Hall conductivity data using Wannier interpolation.
     "opt_SHCqiao"(QZYZ 2018) and "opt_SHCryoo"(RPS 2019) are different
     in how to obtain spin-current matrix elements under the Wannier gauge.
     Also. opt_SHCqiao only requires .eig, .mmn, and .spn files while

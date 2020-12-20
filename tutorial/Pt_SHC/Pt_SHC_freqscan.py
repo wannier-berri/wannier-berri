@@ -7,7 +7,7 @@ import numpy as np
 
 SYM=wberri.symmetry
 
-Efermi=np.linspace(18.1299,18.1300,2)
+Efermi=np.linspace(18.1299,18.1299,1)
 omega=np.linspace(0.0125,7,560)
 
 system=wberri.System_w90(seedname='pt',SHCqiao=True,SHCryoo=True,use_ws=False,transl_inv=False)

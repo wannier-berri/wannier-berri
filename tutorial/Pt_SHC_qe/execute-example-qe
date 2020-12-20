@@ -8,7 +8,14 @@ echo "-> QUANTUM ESPRESSO pw2wannier90.x <-"
 pw2wannier90.x < pw2wan.in > pw2wan.out
 echo "-> WANNIER90 wannier90.x -pp <-"
 wannier90.x pt
+
 echo "-> WANNIERBERRI <-"
-python3 Pt_SHC.py
+python3 Pt_SHC_freqscan.py
+mv pt-opt_SHCryoo_iter-0000.dat pt-opt_SHCryoo_iter-0000_freqscan.dat
+mv pt-opt_SHCqiao_iter-0000.dat pt-opt_SHCqiao_iter-0000_freqscan.dat
+python3 Pt_SHC_fermiscan.py
+mv pt-opt_SHCryoo_iter-0000.dat pt-opt_SHCryoo_iter-0000_fermiscan.dat
+mv pt-opt_SHCqiao_iter-0000.dat pt-opt_SHCqiao_iter-0000_fermiscan.dat
+
 echo "-> Gnuplot <-"
 gnuplot plot.gnu

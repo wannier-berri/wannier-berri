@@ -5,7 +5,14 @@ mv ./pt_nbs=24.sHu ./pt.sHu
 mv ./pt_nbs=24.sIu ./pt.sIu
 echo "-> Wannier90 <-"
 wannier90.x pt
+
 echo "-> WANNIERBERRI <-"
-python3 Pt_SHC.py
+python3 Pt_SHC_freqscan.py
+mv pt-opt_SHCryoo_iter-0000.dat pt-opt_SHCryoo_iter-0000_freqscan.dat
+mv pt-opt_SHCqiao_iter-0000.dat pt-opt_SHCqiao_iter-0000_freqscan.dat
+python3 Pt_SHC_fermiscan.py
+mv pt-opt_SHCryoo_iter-0000.dat pt-opt_SHCryoo_iter-0000_fermiscan.dat
+mv pt-opt_SHCqiao_iter-0000.dat pt-opt_SHCqiao_iter-0000_fermiscan.dat
+
 echo "-> Gnuplot <-"
 gnuplot plot.gnu
