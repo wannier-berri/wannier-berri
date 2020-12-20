@@ -1,0 +1,30 @@
+
+This example shows how to calculate dynamical spin Hall conductivity of Pt
+from .eig, .amn, .mmn, and .spn files. Run ./execute-example to plot the real parts.
+
+0) Files included
+    pt.amn, pt.mmn, pt.spn: input data
+    pt.win: wannier90.x input description
+    Pt_SHC.py: Wannier Berri input description
+    plot.gnu: gnuplot input commands
+
+1) mmn2uHu.py
+    The module mmn2uHu is able to make .sHu and .sIu files used to calculate Ryoo's
+    spin Hall conductivity(RPS 2019), from .mmn and .spn.
+    For details, see http://wannier-berri.org/documentation.html#sec-mmn2uhu
+    This is less accurate than direct calculation of .sHu and .sIu by
+    pw2wannier90.x
+
+2) wannier90.x
+    To execute this, it is required first to have Wannier90 installed.
+    generate the .chk file.
+
+3) WANNIERBERRI
+    make dynamical spin Hall conductivity data using Wannier interpolation.
+    "opt_SHCqiao"(QZYZ 2018) and "opt_SHCryoo"(RPS 2019) are different
+    in how to obtain spin-current matrix elements under the Wannier gauge.
+    Also. opt_SHCqiao only requires .eig, .mmn, and .spn files while
+    opt_SHCryoo also requires .sHu and .sIu.
+
+4) gnuplot
+    plot the real parts of the two types of SHC.

@@ -1,0 +1,11 @@
+&inputpp
+   outdir='./tempdir/'
+   prefix = 'Pt'
+   seedname = 'pt'
+   write_mmn = .true.
+   write_spn = .true.
+   write_sIu = .true.
+   write_sHu = .true.
+!   sHu_formatted = .true.
+!   sIu_formatted = .true.
+/

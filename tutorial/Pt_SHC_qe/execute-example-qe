@@ -1,0 +1,14 @@
+echo "-> QUANTUM ESPRESSO pw.x scf <-"
+pw.x < pt.scf.in > pt.scf.out
+echo "-> QUANTUM ESPRESSO pw.x nscf <-"
+pw.x < pt.nscf.in > pt.nscf.out
+echo "-> WANNIER90 wannier90.x -pp <-"
+wannier90.x -pp pt
+echo "-> QUANTUM ESPRESSO pw2wannier90.x <-"
+pw2wannier90.x < pw2wan.in > pw2wan.out
+echo "-> WANNIER90 wannier90.x -pp <-"
+wannier90.x pt
+echo "-> WANNIERBERRI <-"
+python3 Pt_SHC.py
+echo "-> Gnuplot <-"
+gnuplot plot.gnu

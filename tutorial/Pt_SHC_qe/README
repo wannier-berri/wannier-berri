@@ -1,0 +1,31 @@
+
+This example shows how to calculate dynamical spin Hall conductivity of Pt
+from QUANTUM ESPRESSO. Run ./execute-example-qe to plot the real parts.
+
+0) Files included
+    pseudo/: pseudopotential
+    pt.scf.in: pw.x self-consistent input description
+    pt.nscf.in: pw.x non-self-consistent input description
+    pw2wannier90.x: interface between QUANTUM ESPRESSO and Wannier90
+    pt.win: wannier90.x input description
+    Pt_SHC.py: Wannier Berri input description
+    plot.gnu: gnuplot input commands
+
+1) scf -> nscf -> wannier90 pp -> pw2wannier90
+    These process make bloch wavefunctions and their velocity and
+    spin-current matrix elements. .eig, .mmn, .spn, .sHu, and .sIu are them.
+    They are used to initiallize the system(wannierberri.System_w90)
+    
+2) wannier90.x
+    To execute this, it is required first to have Wannier90 installed.
+    generate the .chk file.
+
+3) WANNIERBERRI
+    make dynamical spin Hall conductivity data using Wannier interpolation.
+    "opt_SHCqiao"(QZYZ 2018) and "opt_SHCryoo"(RPS 2019) are different
+    in how to obtain spin-current matrix elements under the Wannier gauge.
+    Also. opt_SHCqiao only requires .eig, .mmn, and .spn files while
+    opt_SHCryoo also requires .sHu and .sIu.
+
+4) gnuplot
+    plot the real parts of the two types of SHC.
