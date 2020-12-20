@@ -15,11 +15,12 @@
 
 import functools 
 from .__evaluate import evaluate_K
-from .__utility import smoother 
+from .__utility import getSmoother 
 from . import __integrate 
 from . import __tabulate  
 from . import symmetry
 
+import numpy as np
 from scipy.io import FortranFile
 from .__version import __version__
 from .__result import NoComponentError
@@ -122,18 +123,14 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         The list of Fermi levels to be scanned (for Fermi-sea or Fermi-surface properties)
     omega : numpy.array
         The list of ferequencies levels to be scanned (for optical properties)
-    Ef0 : float
-        a single  Fermi level for optical properties
     smearEf : float
         smearing over Fermi levels (in Kelvin)
-    smearW : float
-        smearing over frequencies (in Kelvin)
     quantities : list of str
         quantities to be integrated. See :ref:`sec-capabilities`
     adpt_num_iter : int 
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
     adpt_fac : int 
-        number of K-points to be refinedper quantity and criteria.
+        number of K-points to be refined per quantity and criteria.
     num_proc : int 
         number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
    
@@ -146,10 +143,30 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     Results are also printed to ASCII files
 
     """
+#    smearW : float
+#        smearing over frequencies (in Kelvin)
+#    Ef0 : float
+#        a single  Fermi level for optical properties
+
+
     cprint ("\nIntegrating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
-    smoothEf = None if Efermi is None else smoother(Efermi,smearEf) # smoother for functions of Fermi energy
-    smoothW= None if omega is None else smoother(omega,smearW) # smoother for functions of frequency
+    def to_array(energy):
+        if energy is not None: 
+            if not isinstance(energy, Iterable):
+                energy=[energy]
+            return np.array(energy)
+        else:
+            return None
+    omega=to_array(omega)
+    Efermi=to_array(Efermi)
+    # TODO : either remove smearW from here, or remove any smearing from inside kubo. This will not allow adaptive smearing though
+    if smearW is not None:
+        print( "WARNING : smearW parameteris neglected, smearing is currently done inside the kubo routine, use  kBT parameter")
+        smearW=None
+    smoothEf = getSmoother(Efermi,smearEf) # smoother for functions of Fermi energy
+    smoothW  = getSmoother(omega,smearW) # smoother for functions of frequency
+
     eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, omega=omega, smootherEf=smoothEf, smootherOmega=smoothW,
             quantities=quantities, parameters=parameters )
     res=evaluate_K(eval_func,system,grid,nparK=numproc,fftlib=fftlib,

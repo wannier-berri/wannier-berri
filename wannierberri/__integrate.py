@@ -16,7 +16,7 @@ from scipy import constants as constants
 from collections import Iterable,defaultdict
 from copy import copy,deepcopy
 
-from .__utility import  print_my_name_start,print_my_name_end,voidsmoother,TAU_UNIT
+from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother,TAU_UNIT
 from . import __result as result
 from . import  __berry as berry
 from . import  __fermisea2 as fermisea2
@@ -67,8 +67,6 @@ calculators_opt={
 }
 
 # additional parameters for optical conductivity
-additional_parameters['opt_conductivity']['mu'] = 12.8623
-additional_parameters_description['opt_conductivity']['mu'] = "chemical potential in units of eV"
 additional_parameters['opt_conductivity']['kBT'] = 0
 additional_parameters_description['opt_conductivity']['kBT'] = "temperature in units of eV/kB"
 additional_parameters['opt_conductivity']['smr_fixed_width'] = 0.1
@@ -85,8 +83,8 @@ additional_parameters['opt_conductivity']['adpt_smr_min'] = 1e-15
 additional_parameters_description['opt_conductivity']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
 
 # additional parameters for optical spin Hall conductivity
-additional_parameters['opt_SHCryoo']['mu'] = 18.1299 #12.8623 for Fe #18.1299 For platinum
-additional_parameters_description['opt_SHCryoo']['mu'] = "chemical potential in units of eV"
+#additional_parameters['opt_SHCryoo']['mu'] = 18.1299 #12.8623 for Fe #18.1299 For platinum
+#additional_parameters_description['opt_SHCryoo']['mu'] = "chemical potential in units of eV"
 additional_parameters['opt_SHCryoo']['kBT'] = 0
 additional_parameters_description['opt_SHCryoo']['kBT'] = "temperature in units of eV/kB"
 additional_parameters['opt_SHCryoo']['smr_fixed_width'] = 0.1
@@ -102,8 +100,8 @@ additional_parameters_description['opt_SHCryoo']['adpt_smr_max'] = "maximal valu
 additional_parameters['opt_SHCryoo']['adpt_smr_min'] = 1e-15
 additional_parameters_description['opt_SHCryoo']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
 
-additional_parameters['opt_SHCqiao']['mu'] = 18.1299 #12.8623 for Fe #18.1299 For platinum
-additional_parameters_description['opt_SHCqiao']['mu'] = "chemical potential in units of eV"
+#additional_parameters['opt_SHCqiao']['mu'] = 18.1299 #12.8623 for Fe #18.1299 For platinum
+#additional_parameters_description['opt_SHCqiao']['mu'] = "chemical potential in units of eV"
 additional_parameters['opt_SHCqiao']['kBT'] = 0
 additional_parameters_description['opt_SHCqiao']['kBT'] = "temperature in units of eV/kB"
 additional_parameters['opt_SHCqiao']['smr_fixed_width'] = 0.1
@@ -148,29 +146,15 @@ descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in S/cm (PR
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
 
-def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies={},smootherEf=utility.voidsmoother,smootherOmega=utility.voidsmoother,parameters={}):
-
-  
-
-    def _energy(quant):
-        if quant in energies:
-            return energies[quant]
-        if quant in calculators_trans:
-            return Efermi
-        if quant in calculators_opt:
-            return omega
-        raise RuntimeError("quantity {} is neither optical nor transport, and energies are not defined".format(quant))
+def intProperty(data,quantities=[],Efermi=None,omega=None,smootherEf=VoidSmoother(),smootherOmega=VoidSmoother(),parameters={}):
 
     def _smoother(quant):
-        if quant in smoothers:
-            return smoothers[quant]
-        elif quant in calculators_trans:
+        if quant in calculators_trans:
             return smootherEf
         elif quant in calculators_opt:
-            return smootherOmega
+            return [smootherEf,smootherOmega]
         else:
-            return utility.voidsmoother()
-    
+            return VoidSmoother()
 
     results={}
     for q in quantities:
@@ -180,7 +164,9 @@ def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies=
                  __parameters[param]=parameters[param]
             else :
                  __parameters[param]=additional_parameters[q][param]
-        results[q]=calculators[q](data,_energy(q),**__parameters)
+        if q in calculators_opt:
+            __parameters['omega']=omega
+        results[q]=calculators[q](data,Efermi,**__parameters)
         results[q].set_smoother(_smoother(q))
 
     return INTresult( results=results )
