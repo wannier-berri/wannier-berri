@@ -41,6 +41,8 @@ class System_PythTB(System):
         # Extract the parameters from the model
         real=ptb_model._lat
         self.dimr=real.shape[1]
+        self.periodic[:self.dimr]=True
+        self.periodic[self.dimr:]=False
         zeros_real=np.eye((3),dtype=float)
         zeros_real[:self.dimr,:self.dimr]=np.array(real)
         self.real_lattice=zeros_real
@@ -109,6 +111,7 @@ class System_PythTB(System):
 
 
         self.set_symmetry()  
+        self.check_periodic()
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
         print ("Reommended size of FFT grid", self.NKFFT_recommended)
