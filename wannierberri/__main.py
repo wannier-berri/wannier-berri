@@ -53,6 +53,9 @@ def figlet(text,font='cosmike',col='red'):
 
 
 def print_options():
+    """
+    Prints all options available for the moment.
+    """
     def addparam(param,param_des):
         if len(param)>0:
             return ". Additional parameters: \n"+ "\n".join( (" "*10+"{0:10s} [ default =  {1}] ---  {2}".format(k,param[k],param_des[k]) for k in param) )
@@ -193,16 +196,15 @@ def tabulate(system,grid, quantities=[],
         a single  Fermi level. all energies are given with respect to Ef0
     quantities : list of str
         quantities to be integrated. See :ref:`sec-capabilities`
+    frmsf_name :  str
+        if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
     num_proc : int 
         number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
    
     Returns
     --------
-    list of :class:`~wannierberri.__tabulate.TABresult`
+    :class:`~wannierberri.__tabulate.TABresult`
 
-    Notes
-    -----
-    Results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
 
     """
 
