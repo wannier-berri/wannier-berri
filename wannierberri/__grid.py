@@ -58,7 +58,7 @@ class Grid():
 
         NKFFT_recommended=system.NKFFT_recommended 
         self.symgroup=system.symgroup
-        self.div,self.FFT=determineNK(NKdiv,NKFFT,NK,NKFFT_recommended,self.symgroup,length=length,length_FFT=length_FFT)
+        self.div,self.FFT=determineNK(system.periodic,NKdiv,NKFFT,NK,NKFFT_recommended,self.symgroup,length=length,length_FFT=length_FFT)
         self.findif=FiniteDifferences(self.recip_lattice,self.FFT)
 
     @property
@@ -137,7 +137,7 @@ def autoNK(NK,NKFFTrec,symgroup):
     return NKdiv,FFT
 
 
-def determineNK(NKdiv,NKFFT,NK,NKFFT_recommended,symgroup,length=None,length_FFT=None):
+def determineNK(periodic,NKdiv,NKFFT,NK,NKFFT_recommended,symgroup,length=None,length_FFT=None):
     print ("determining grids from NK={} ({}), NKdiv={} ({}), NKFFT={} ({})".format(NK,type(NK),NKdiv,type(NKdiv),NKFFT,type(NKdiv)))
     NKdiv=one2three(NKdiv)
     NKFFT=one2three(NKFFT)
@@ -183,7 +183,11 @@ def determineNK(NKdiv,NKFFT,NK,NKFFT_recommended,symgroup,length=None,length_FFT
     if NK is not None:
         if not np.all(NK==NKFFT*NKdiv) :
             print ( "WARNING : the requested k-grid {} was adjusted to {}. ".format(NK,NKFFT*NKdiv))
-    print ("The grids wereset to NKdiv={}, NKFFT={}, NKtot={}".format(NKdiv,NKFFT,NKdiv*NKFFT))
+    
+    notperiodic=np.logical_not(periodic)
+    NKdiv[notperiodic]=1
+    NKFFT[notperiodic]=1
+    print ("The grids were set to NKdiv={}, NKFFT={}, NKtot={}".format(NKdiv,NKFFT,NKdiv*NKFFT))
     return NKdiv,NKFFT
 
 
