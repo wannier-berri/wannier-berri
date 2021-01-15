@@ -26,7 +26,6 @@ from time import time
 from itertools import islice
 import gc
 
-
 readstr  = lambda F : "".join(c.decode('ascii')  for c in F.read_record('c') ).strip() 
 
 class CheckPoint():
@@ -65,7 +64,7 @@ class CheckPoint():
             ndimwin=readint()
             u_matrix_opt=readcomplex().reshape( (self.num_kpts,self.num_wann,self.num_bands) )
             self.win_min = np.array( [np.where(lwin)[0].min() for lwin in lwindow] )
-            self.win_max = np.array( [wm+nd for wm,nd in zip(self.win_min,ndimwin)]) 
+            self.win_max = np.array( [wm+nd for wm,nd in zip(self.win_min,ndimwin)])
         else:
             self.win_min = np.array( [0]*self.num_kpts )
             self.win_max = np.array( [self.num_wann]*self.num_kpts) 
@@ -95,7 +94,7 @@ class CheckPoint():
 
     def get_HH_q(self,eig):
         assert (eig.NK,eig.NB)==(self.num_kpts,self.num_bands)
-        HH_q=np.array([ self.wannier_gauge(E,ik,ik)  for ik,E in enumerate(eig.data) ]) 
+        HH_q=np.array([ self.wannier_gauge(E,ik,ik)  for ik,E in enumerate(eig.data) ])
         return 0.5*(HH_q+HH_q.transpose(0,2,1).conj())
 
 
@@ -122,7 +121,6 @@ class CheckPoint():
                 AA_q[ik]+=AA_q_ik
         if eig is None:
             AA_q=0.5*(AA_q+AA_q.transpose( (0,2,1,3) ).conj())
-        print('Shape of AA_q',np.shape(AA_q))
         return AA_q
 
     def get_CC_q(self,uhu,mmn):  # if eig is present - it is BB_q 
@@ -141,6 +139,68 @@ class CheckPoint():
                mmn.bk_cart[ik,ib1,beta_A] * mmn.bk_cart[ik,ib2,alpha_A]  )  )[None,None,:]
         CC_q=0.5*(CC_q+CC_q.transpose( (0,2,1,3) ).conj())
         return CC_q
+
+    def get_SA_q(self,siu,mmn):
+        mmn.set_bk(self)
+        SA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3,3) ,dtype=complex)
+        assert siu.NNB==mmn.NNB 
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb=mmn.neighbours[ik,ib]
+                SAW=self.wannier_gauge(siu.data[ik,ib],ik,iknb)
+                SA_q_ik=1.j*SAW[:,:,None,:]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:,None]
+                SA_q[ik]+=SA_q_ik
+        return SA_q
+
+    def get_SHA_q(self,shu,mmn):
+        mmn.set_bk(self)
+        SHA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3,3) ,dtype=complex)
+        assert shu.NNB==mmn.NNB
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb=mmn.neighbours[ik,ib]
+                SHAW=self.wannier_gauge(shu.data[ik,ib],ik,iknb)
+                SHA_q_ik=1.j*SHAW[:,:,None,:]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:,None]
+                SHA_q[ik]+=SHA_q_ik
+        #SHA_q=0.5*(SHA_q+SHA_q.transpose( (0,2,1,3,4) ).conj())
+        #for ik in range(self.num_kpts):
+        #    print(ik, SHA_q[ik,17,16,2,0])
+        return SHA_q
+
+    def get_SR_q(self,spn,mmn):
+        mmn.set_bk(self)
+        SR_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3,3) ,dtype=complex)
+        assert (spn.NK,spn.NB)==(self.num_kpts,self.num_bands)
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb=mmn.neighbours[ik,ib]
+                for i in range(3):
+                    SM_i=spn.data[ik,:,:,i].dot(mmn.data[ik,ib,:,:])
+                    SRW=self.wannier_gauge(SM_i,ik,iknb)-self.wannier_gauge(spn.data[ik,:,:,i],ik,ik)
+                    SR_q[ik,:,:,:,i]+=1.j*SRW[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
+        return SR_q
+    
+    def get_SH_q(self,spn,eig):
+        SH_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
+        assert (spn.NK,spn.NB)==(self.num_kpts,self.num_bands)
+        for ik in range(self.num_kpts):
+            for i in range(3):
+                SH_q[ik,:,:,i]=self.wannier_gauge(spn.data[ik,:,:,i]*eig.data[ik,None,:],ik,ik)
+        return SH_q
+        
+    def get_SHR_q(self,spn,mmn,eig):
+        mmn.set_bk(self)
+        SHR_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3,3) ,dtype=complex)
+        assert (spn.NK,spn.NB)==(self.num_kpts,self.num_bands)
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb=mmn.neighbours[ik,ib]
+                for i in range(3):
+                    SH_i=spn.data[ik,:,:,i]*eig.data[ik,None,:]
+                    SHM_i=SH_i.dot(mmn.data[ik,ib])
+                    SHRW=self.wannier_gauge(SHM_i,ik,iknb)-self.wannier_gauge(SH_i,ik,ik)
+                    SHR_q[ik,:,:,:,i]+=1.j*SHRW[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
+        return SHR_q
 
 
 class W90_data():
@@ -209,7 +269,6 @@ class MMN(W90_data):
         t2=time()
         print ("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2-t0,t1-t0,t2-t1))
 
-
     def set_bk(self,chk):
       try :
         self.bk
@@ -244,8 +303,6 @@ class MMN(W90_data):
         self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
         self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
         
-
-
 
 class EIG(W90_data):
     def __init__(self,seedname):
@@ -293,7 +350,7 @@ class SPN(W90_data):
         print ("----------\n SPN OK  \n---------\n")
 
 
-class UXU(W90_data):  # uHu ar uIu 
+class UXU(W90_data):  # uHu or uIu
     @property
     def n_neighb(self):
         return 2
@@ -338,6 +395,45 @@ class UIU(UXU):
     def __init__(self,seedname='wannier90',formatted=False):
         super(UIU, self).__init__(seedname=seedname,formatted=formatted,suffix='uIu' )
 
+
+class SXU(W90_data):  # sHu or sIu
+    @property
+    def n_neighb(self):
+        return 1
+
+    def __init__(self,seedname='wannier90',formatted=False,suffix='sHu'):
+        print ("----------\n  {0}   \n---------".format(suffix))
+
+        if formatted:
+            f_sXu_in = open(seedname+"."+suffix, 'r')
+            header=f_sXu_in.readline().strip() 
+            NB,NK,NNB =(int(x) for x in f_sXu_in.readline().split())
+        else:
+            f_sXu_in = FortranFile(seedname+"."+suffix, 'r')
+            header=readstr(f_sXu_in)
+            NB,NK,NNB=   f_sXu_in.read_record('i4')
+
+        print ("reading {}.{} : <{}>".format(seedname,suffix,header))
+
+        self.data=np.zeros( (NK,NNB,NB,NB,3),dtype=complex )
+
+        for ik in range(NK):
+#            print ("k-point {} of {}".format( ik+1,NK))
+            for ib2 in range(NNB):
+                for ipol in range(3):
+                   tmp=f_sXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0)
+                   self.data[ik,ib2,:,:,ipol]=tmp[:,:,0]+1j*tmp[:,:,1]
+        print ("----------\n {0} OK  \n---------\n".format(suffix))
+        f_sXu_in.close()
+
+
+class SIU(SXU):
+    def __init__(self,seedname='wannier90',formatted=False):
+        super(SIU, self).__init__(seedname=seedname,formatted=formatted,suffix='sIu' )
+
+class SHU(SXU):
+    def __init__(self,seedname='wannier90',formatted=False):
+        super(SHU, self).__init__(seedname=seedname,formatted=formatted,suffix='sHu' )
 
 
 

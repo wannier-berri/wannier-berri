@@ -13,7 +13,8 @@
 """
 wannierberri - a module for Wannier interpolation
 """
-from .__main import integrate,tabulate,symmetry,integrate_options,tabulate_options,welcome
+from .__main import integrate,tabulate,symmetry,integrate_options,tabulate_options,welcome,print_options
+from .__tabulate import TABresult
 from .__grid import Grid
 from .__version import __version__
 from .__system import System

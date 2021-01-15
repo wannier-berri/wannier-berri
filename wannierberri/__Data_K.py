@@ -15,14 +15,12 @@
 ## TODO : maybe to make some lazy_property's not so lazy to save some memory
 import numpy as np
 import lazy_property
-#import billiard as multiprocessing 
 import  multiprocessing 
 from .__system import System
 import time
 from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha_A,beta_A
 from .__fermisea2 import DataIO, mergeDataIO
 import gc
-import psutil
 import os
 
 def _rotate_matrix(X):
@@ -47,7 +45,8 @@ class Data_K(System):
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
         self.ksep = system.ksep
         ## TODO : create the plans externally, one per process 
-        self.fft_R_to_k=FFT_R_to_k(system.iRvec,self.NKFFT,self.num_wann,numthreads=npar if npar>0 else 1,lib=fftlib)
+#        print( "iRvec in data_K is :\n",self.iRvec)
+        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,numthreads=npar if npar>0 else 1,lib=fftlib)
         self.Emin=system.Emin
         self.Emax=system.Emax
 
@@ -63,14 +62,17 @@ class Data_K(System):
  
         self.HH_R=system.HH_R[:,:,:]*expdK[None,None,:]
         
-        for X in ['AA','BB','CC','SS']:
+        for X in ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']:
             XR=X+'_R'
             hasXR='has_'+X+'_R'
             vars(self)[XR]=None
             vars(self)[hasXR]=False
             if XR in vars(system):
               if vars(system)[XR] is not  None:
-                vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
+                if X in ['SA','SHA','SR','SHR']:
+                  vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None,None]
+                else:
+                  vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
                 vars(self)[hasXR]=True
 #        print ("E_K=",self.E_K)
 
@@ -271,7 +273,7 @@ class Data_K(System):
         self.select_B=np.all(select,axis=0)
         self.nk_selected=self.select_K.sum()
         self.nb_selected=self.select_B.sum()
-        #print ("selected {} k-points, {} bands".format(self.nk_selected,self.nb_selected))
+#        print ("selected {} k-points, {} bands".format(self.nk_selected,self.nb_selected))
         self._UU=np.array([euu[1] for euu in EUU])[self.select_K,:][:,self.select_B]
         print_my_name_end()
 #        print ("E_K({})={}".format(E_K.shape,E_K))
@@ -318,7 +320,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def dEig_inv(self):
-        dEig_threshold=1e-14
+        dEig_threshold=1.e-7
         dEig=self.E_K[:,:,None]-self.E_K[:,None,:]
         select=abs(dEig)<dEig_threshold
         dEig[select]=dEig_threshold
@@ -328,12 +330,12 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def D_H(self):
-            return -self.V_H*self.dEig_inv[:, :,:,None]
+        return -self.V_H*self.dEig_inv[:, :,:,None]
 
     @lazy_property.LazyProperty
     def V_H(self):
         self.E_K
-        return self._R_to_k_H( self.HH_R, der=1 )
+        return self._R_to_k_H( self.HH_R.copy(), der=1)
 
     @lazy_property.LazyProperty
     def Morb_Hbar(self):
@@ -670,6 +672,25 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def S_H_rediag(self):
         return np.einsum("knna->kna",self.S_H).real
+#PRB RPS19, Ryoo's way to calculate SHC
+
+    @lazy_property.LazyProperty
+    def SA_H(self):
+        return self._R_to_k_H(self.SA_R.copy(), hermitian=False)
+    
+    @lazy_property.LazyProperty
+    def SHA_H(self):
+        return self._R_to_k_H(self.SHA_R.copy(), hermitian=False)
+#PRB QZYZ18, Qiao's way to calculate SHC
+
+    @lazy_property.LazyProperty
+    def shc_B_H(self):
+        SH_H = self._R_to_k_H(self.SH_R.copy(), hermitian=False)
+        shc_K_H = -1j*self._R_to_k_H(self.SR_R.copy(), hermitian=False) + np.einsum('knlc,klma->knmac', self.S_H, self.D_H)
+        shc_L_H = -1j*self._R_to_k_H(self.SHR_R.copy(), hermitian=False) + np.einsum('knlc,klma->knmac', SH_H, self.D_H)
+        return (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.S_H[:,:,:,np.newaxis,:] +
+            self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*shc_K_H[:,:,:,:,:] - shc_L_H)
+#end SHC
 
     @lazy_property.LazyProperty
     def delS_H(self):
