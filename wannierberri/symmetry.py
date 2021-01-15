@@ -47,6 +47,7 @@ import numpy as np
 import scipy
 import scipy.spatial
 import scipy.spatial.transform
+from packaging import version as pversion
 
 from scipy.spatial.transform import Rotation as rotmat
 from copy import deepcopy
@@ -132,7 +133,10 @@ class Rotation(Symmetry):
         if norm<1e-10:
             raise ValueError("the axis vector is too small : {0}. do you know what you are doing?".format(norm))
         axis=np.array(axis)/norm
-        R=rotmat.from_rotvec(2*np.pi/n*axis/np.linalg.norm(axis)).as_dcm()
+        if pversion.parse(scipy.__version__)<pversion.parse("1.6.0"):
+            R=rotmat.from_rotvec(2*np.pi/n*axis/np.linalg.norm(axis)).as_dcm()
+        else:
+            R=rotmat.from_rotvec(2*np.pi/n*axis/np.linalg.norm(axis)).as_matrix()
         super(Rotation, self).__init__(R )
 
 
