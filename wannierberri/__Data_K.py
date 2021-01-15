@@ -15,14 +15,12 @@
 ## TODO : maybe to make some lazy_property's not so lazy to save some memory
 import numpy as np
 import lazy_property
-#import billiard as multiprocessing 
 import  multiprocessing 
 from .__system import System
 import time
 from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha_A,beta_A
 from .__fermisea2 import DataIO, mergeDataIO
 import gc
-import psutil
 import os
 
 def _rotate_matrix(X):
