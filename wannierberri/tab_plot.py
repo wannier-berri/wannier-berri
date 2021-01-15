@@ -31,8 +31,8 @@
 
                 plane: ::
 
-                    python3 -m wannierberri.tab_plot tab_result.pickle type=Plane quantity=True Efermi=-0.5 vec1=1,0,0 vec2=0,1,0 qtype=berry component=z
-                
+    	              python3 -m wannierberri.tab_plot tab_result.pickle type=Plane quantity=True Efermi=-0.5 vec1=1,0,0 vec2=0,1,0 qtype=berry component=z
+
         Options
             -h 
                 | print the help message

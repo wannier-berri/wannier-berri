@@ -14,7 +14,8 @@
 
         Usage example: ::
 
-                python3 -m wanierberri.mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu
+                python3 -m wannierberri.mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu                
+
 
         Options
             -h 
