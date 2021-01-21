@@ -78,7 +78,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
 
     
     paralfunc=functools.partial(
-        _eval_func_k, func=func,system=system,NKFFT=grid.FFT,nparFFT=nparFFT,fftlib=fftlib )
+        _eval_func_k, func=func,system=system,grid=grid,nparFFT=nparFFT,fftlib=fftlib )
 
 
 
@@ -150,7 +150,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         
         l1=len(K_list)
         for iK in select_points:
-            K_list+=K_list[iK].divide(adpt_mesh)
+            K_list+=K_list[iK].divide(adpt_mesh,system.periodic)
         print ("checking for equivalent points in all points (of new  {} points)".format(len(K_list)-l1))
         nexcl=exclude_equiv_points(K_list,new_points=len(K_list)-l1)
         print (" excluded {0} points".format(nexcl))
@@ -162,7 +162,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
        
 
 
-def _eval_func_k(Kpoint,func,system,NKFFT,nparFFT,fftlib):
-    data=Data_K(system,Kpoint.Kp_fullBZ,NKFFT=NKFFT,Kpoint=Kpoint,npar=nparFFT,fftlib=fftlib)
+def _eval_func_k(Kpoint,func,system,grid,nparFFT,fftlib):
+    data=Data_K(system,Kpoint.Kp_fullBZ,grid=grid,Kpoint=Kpoint,npar=nparFFT,fftlib=fftlib)
     return func(data)
 

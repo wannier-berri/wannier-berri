@@ -16,7 +16,7 @@ from scipy import constants as constants
 from collections import Iterable,defaultdict
 from copy import copy,deepcopy
 
-from .__utility import  print_my_name_start,print_my_name_end,voidsmoother,TAU_UNIT
+from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother,TAU_UNIT
 from . import __result as result
 from . import  __berry as berry
 from . import  __fermisea2 as fermisea2
@@ -33,6 +33,7 @@ calculators_trans={
          'spin'       : fermisea2.SpinTot,  
          'Morb'       : fermisea2.Morb,
          'ahc'        : fermisea2.AHC ,
+         'ahc2'        : fermisea2.AHC2 ,
          'dos'        : dos.calc_DOS ,
          'cumdos'        : dos.calc_cum_DOS ,
          'Hall_classic' : nonabelian.Hall_classic , 
@@ -42,10 +43,13 @@ calculators_trans={
          'conductivity_ohmic_fsurf': nonabelian.conductivity_ohmic,
          'conductivity_ohmic': fermisea2.conductivity_ohmic,
 
-         'berry_dipole'        : fermisea2.tensor_D,
+         'berry_dipole'            : fermisea2.tensor_D,
+         'berry_dipole_2'            : fermisea2.tensor_D_2,
          'berry_dipole_fsurf'      : nonabelian.berry_dipole,
          'Faraday'      : nonabelian.Faraday,
+         'berry_dipole_findif'     : fermisea2.tensor_D_findif,
          'gyrotropic_Korb'  : fermisea2.tensor_K,
+         'gyrotropic_Korb_2'  : fermisea2.tensor_K_2,
 
          'gyrotropic_Kspin'  : fermisea2.gyrotropic_Kspin,
          'gyrotropic_Korb_fsurf'   : nonabelian.gyrotropic_Korb,
@@ -58,12 +62,12 @@ additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no des
 
 
 calculators_opt={
-    'opt_conductivity' : kubo.opt_conductivity
+    'opt_conductivity' : kubo.opt_conductivity,
+    'opt_SHCryoo' : kubo.opt_SHCryoo,
+    'opt_SHCqiao' : kubo.opt_SHCqiao
 }
 
 # additional parameters for optical conductivity
-additional_parameters['opt_conductivity']['mu'] = 0
-additional_parameters_description['opt_conductivity']['mu'] = "chemical potential in units of eV"
 additional_parameters['opt_conductivity']['kBT'] = 0
 additional_parameters_description['opt_conductivity']['kBT'] = "temperature in units of eV/kB"
 additional_parameters['opt_conductivity']['smr_fixed_width'] = 0.1
@@ -80,6 +84,41 @@ additional_parameters['opt_conductivity']['adpt_smr_min'] = 1e-15
 additional_parameters_description['opt_conductivity']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
 additional_parameters['Faraday']['homega'] = 0.0
 additional_parameters_description['Faraday']['homega'] = "frequency of light in eV (one frequency per calculation)"
+
+# additional parameters for optical spin Hall conductivity
+#additional_parameters['opt_SHCryoo']['mu'] = 18.1299 #12.8623 for Fe #18.1299 For platinum
+#additional_parameters_description['opt_SHCryoo']['mu'] = "chemical potential in units of eV"
+additional_parameters['opt_SHCryoo']['kBT'] = 0
+additional_parameters_description['opt_SHCryoo']['kBT'] = "temperature in units of eV/kB"
+additional_parameters['opt_SHCryoo']['smr_fixed_width'] = 0.1
+additional_parameters_description['opt_SHCryoo']['smr_fixed_width'] = "fixed smearing parameter in units of eV"
+additional_parameters['opt_SHCryoo']['smr_type'] = 'Lorentzian'
+additional_parameters_description['opt_SHCryoo']['smr_type'] = "analyitcal form of the broadened delta function"
+additional_parameters['opt_SHCryoo']['adpt_smr'] = False
+additional_parameters_description['opt_SHCryoo']['adpt_smr'] = "use an adaptive smearing parameter"
+additional_parameters['opt_SHCryoo']['adpt_smr_fac'] = np.sqrt(2)
+additional_parameters_description['opt_SHCryoo']['adpt_smr_fac'] = "prefactor for the adaptive smearing parameter"
+additional_parameters['opt_SHCryoo']['adpt_smr_max'] = 0.1
+additional_parameters_description['opt_SHCryoo']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter in eV"
+additional_parameters['opt_SHCryoo']['adpt_smr_min'] = 1e-15
+additional_parameters_description['opt_SHCryoo']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
+
+#additional_parameters['opt_SHCqiao']['mu'] = 18.1299 #12.8623 for Fe #18.1299 For platinum
+#additional_parameters_description['opt_SHCqiao']['mu'] = "chemical potential in units of eV"
+additional_parameters['opt_SHCqiao']['kBT'] = 0
+additional_parameters_description['opt_SHCqiao']['kBT'] = "temperature in units of eV/kB"
+additional_parameters['opt_SHCqiao']['smr_fixed_width'] = 0.1
+additional_parameters_description['opt_SHCqiao']['smr_fixed_width'] = "fixed smearing parameter in units of eV"
+additional_parameters['opt_SHCqiao']['smr_type'] = 'Lorentzian'
+additional_parameters_description['opt_SHCqiao']['smr_type'] = "analyitcal form of the broadened delta function"
+additional_parameters['opt_SHCqiao']['adpt_smr'] = False
+additional_parameters_description['opt_SHCqiao']['adpt_smr'] = "use an adaptive smearing parameter"
+additional_parameters['opt_SHCqiao']['adpt_smr_fac'] = np.sqrt(2)
+additional_parameters_description['opt_SHCqiao']['adpt_smr_fac'] = "prefactor for the adaptive smearing parameter"
+additional_parameters['opt_SHCqiao']['adpt_smr_max'] = 0.1
+additional_parameters_description['opt_SHCqiao']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter in eV"
+additional_parameters['opt_SHCqiao']['adpt_smr_min'] = 1e-15
+additional_parameters_description['opt_SHCqiao']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
 
 
 calculators=copy(calculators_trans)
@@ -104,35 +143,26 @@ descriptions['Hall_classic'] =  "classical Hall coefficient, in S/(cm*T) for tau
 descriptions['Hall_morb'   ] = "Low field AHE, orbital part, in S/(cm*T)."
 descriptions['Hall_spin'   ] = "Low field AHE, spin    part, in S/(cm*T)."
 descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
+<<<<<<< HEAD
 descriptions['Faraday'] = "Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
 
+=======
+descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in S/cm (PRB RPS19)"
+descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in S/cm (PRB QZYZ18)"
+>>>>>>> master
 
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
 
-def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies={},smootherEf=utility.voidsmoother,smootherOmega=utility.voidsmoother,parameters={}):
-
-  
-
-    def _energy(quant):
-        if quant in energies:
-            return energies[quant]
-        if quant in calculators_trans:
-            return Efermi
-        if quant in calculators_opt:
-            return omega
-        raise RuntimeError("quantity {} is neither optical nor transport, and energies are not defined".format(quant))
+def intProperty(data,quantities=[],Efermi=None,omega=None,smootherEf=VoidSmoother(),smootherOmega=VoidSmoother(),parameters={}):
 
     def _smoother(quant):
-        if quant in smoothers:
-            return smoothers[quant]
-        elif quant in calculators_trans:
+        if quant in calculators_trans:
             return smootherEf
         elif quant in calculators_opt:
-            return smootherOmega
+            return [smootherEf,smootherOmega]
         else:
-            return utility.voidsmoother()
-    
+            return VoidSmoother()
 
     results={}
     for q in quantities:
@@ -142,7 +172,9 @@ def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies=
                  __parameters[param]=parameters[param]
             else :
                  __parameters[param]=additional_parameters[q][param]
-        results[q]=calculators[q](data,_energy(q),**__parameters)
+        if q in calculators_opt:
+            __parameters['omega']=omega
+        results[q]=calculators[q](data,Efermi,**__parameters)
         results[q].set_smoother(_smoother(q))
 
     return INTresult( results=results )

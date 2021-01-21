@@ -232,7 +232,8 @@ def conductivity_ohmic_sea(data,Efermi):
 def nonabelian_general(data,Efermi,quantities,subscripts=None,mode='fermi-surface',factor=1,parameters={}):
     E_K=data.E_K
     __parameters=defaultdict(lambda : {}, parameters)
-
+    if Efermi.shape[0]==1:
+        raise ValueError("cannot evaluate transport properties for a single Femrmi level. please provide a grid of EF (better a dense one)")
     dE=Efermi[1]-Efermi[0]
     Emax=Efermi[-1]+dE/2
 

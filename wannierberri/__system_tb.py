@@ -24,7 +24,7 @@ from .__system import System
 
 class System_tb(System):
     """
-    System initialized from the `*_tb.dat` file, which can be written either by  `Wannier90 <http://wannier.org>`_ code, 
+    System initialized from the `*_tb.dat` file, which can be written either by  `Wannier90 <http://wannier.org>`__ code, 
     or composed by the user based on some tight-binding model. 
     See Wannier90 `code <https://github.com/wannier-developers/wannier90/blob/2f4aed6a35ab7e8b38dbe196aa4925ab3e9deb1b/src/hamiltonian.F90#L698-L799>`_
     for details of the format. 
@@ -33,40 +33,21 @@ class System_tb(System):
     ----------
     tb_file : str
         name (and path) of file to be read
-    berry : bool
-        if ``True`` the position matrix elements are read. Needed for quantities derived from Berry connection or Berry curvature. 
-    frozen_max : float
-        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
-    degen_thresh : float
-        threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
-    random_gauge : bool
-        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
-    ksep: int
-        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. 
-    delta_fz:float
-        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
+
+    Notes
+    -----
+    see also  parameters of the :class:`~wannierberri.System` 
     """
 
-    def __init__(self,tb_file="wannier90_tb.dat",berry=False,morb=False,
-                          frozen_max=-np.Inf,
-                          degen_thresh=-1 ,
-                          random_gauge=False,
-                          ksep=50,
-                          delta_fz=0.1
-                    ):
-        self.morb=morb
-        self.berry=berry
-        if morb : raise ValueError("System_tb class cannot be used for evaluation of orbital magnetic moments")
-        if berry : getAA=True
+    def __init__(self,tb_file="wannier90_tb.dat",**parameters):
+
+        self.set_parameters(**parameters)
+        if self.morb : raise ValueError("System_tb class cannot be used for evaluation of orbital magnetic moments")
+        if self.spin : raise ValueError("System_tb class cannot be used for evaluation of spin properties")
  
         self.seedname=tb_file.split("/")[-1].split("_")[0]
         f=open(tb_file,"r")
         l=f.readline()
-        self.frozen_max=frozen_max
-        self.random_gauge=random_gauge
-        self.degen_thresh=degen_thresh 
-        self.ksep=ksep
-        self.delta_fz=delta_fz
         cprint ("reading TB file {0} ( {1} )".format(tb_file,l.strip()),'green', attrs=['bold'])
         real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
         self.real_lattice,self.recip_lattice= real_recip_lattice(real_lattice=real_lattice)
@@ -92,7 +73,7 @@ class System_tb(System):
         
         self.iRvec=np.array(self.iRvec,dtype=int)
 
-        if getAA:
+        if self.getAA:
           self.AA_R=np.zeros( (self.num_wann,self.num_wann,nRvec,3) ,dtype=complex)
           for ir in range(nRvec):
             f.readline()
@@ -106,10 +87,11 @@ class System_tb(System):
         
         f.close()
         self.set_symmetry()
+        self.check_periodic()
 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
-        print ("Minimal Number of K points:", self.NKFFTmin)
+        print ("Reommended size of FFT grid", self.NKFFT_recommended)
         print ("Real-space lattice:\n",self.real_lattice)
         cprint ("Reading the system from {} finished successfully".format(tb_file),'green', attrs=['bold'])
 
