@@ -16,7 +16,7 @@ import numpy as np
 from scipy import constants as constants
 from collections import Iterable
 
-from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
+from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother
 from . import __result as result
 
 
@@ -27,7 +27,7 @@ eV_au=constants.physical_constants['electron volt-hartree relationship'][0]
 
 
 
-def calc_cum_DOS(data,Efermi=None,smoother=voidsmoother):
+def calc_cum_DOS(data,Efermi=None,smoother=VoidSmoother()):
 
     cumDOS=np.zeros(Efermi.shape,dtype=int)
 
@@ -39,16 +39,19 @@ def calc_cum_DOS(data,Efermi=None,smoother=voidsmoother):
     return result.EnergyResultScalar(Efermi,cumDOS,smoother=smoother )
 
 
-def calc_DOS(data,Efermi=None,smoother=voidsmoother):
+def calc_DOS(data,Efermi=None,smoother=VoidSmoother()):
+
 
     DOS=np.zeros(Efermi.shape,dtype=int)
-    E=data.E_K.reshape(-1)
-    dE=Efermi[1]-Efermi[0]
-    indE=np.array(np.round( (E-Efermi[0])/dE ),dtype=int )
-    for i in indE[ (0<=indE)*(indE<len(Efermi)) ]:
-        DOS[i]+=1
-
-    DOS=DOS/(dE*data.NKFFT_tot)
+    if Efermi.shape[0]==1:
+        print ("WARNING: DOS cannot be calculated for a single Fermi level. Returning zero")
+    else:
+        E=data.E_K.reshape(-1)
+        dE=Efermi[1]-Efermi[0]
+        indE=np.array(np.round( (E-Efermi[0])/dE ),dtype=int )
+        for i in indE[ (0<=indE)*(indE<len(Efermi)) ]:
+            DOS[i]+=1
+        DOS=DOS/(dE*data.NKFFT_tot)
 
     return result.EnergyResultScalar(Efermi,DOS,smoother=smoother )
 

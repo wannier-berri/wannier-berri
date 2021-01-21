@@ -10,14 +10,17 @@
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
 #------------------------------------------------------------
-'''This utility calculates the matrices .uHu and/or .uIu from the .mmn matrices, and also reduces the number of bands in .amn, .mmn, .eig  and .spn files
+'''This utility calculates the matrices .uHu, .uIu, .sHu, and/or .sIu from the .mmn, .spn matrices, and also reduces the number of bands in .amn, .mmn, .eig  and .spn files
 
-        Usage example:
-                python3 -m wanierberri.mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu
-                
+        Usage example: ::
+
+                python3 -m wannierberri.mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu                
+
+
         Options
             -h 
                 | print the help message
+
             IBstart
                 |  the first band in the output file (counting starts from 1). 
                 |  default: 1
@@ -35,12 +38,14 @@
                 |  Default: ./  
             output 
                 |  path to the output files 
+
             targets 
-                |  files to write : ``amn``, ``mmn``, ``spn``, ``uHu``, ``uIu``, ``eig`` 
+                |  files to write : ``amn``, ``mmn``, ``spn``, ``uHu``, ``uIu``,  ``sHu``, ``sIu``, ``eig``
                 |  default: ``amn``,``mmn``,``eig``,``uHu``
             formatted 
-                |  files to write as formatted  ``uHu``, ``uIu``, ``spn``, ``spn_in``, ``spn_out``, ``all`` 
+                |  files to write as formatted  ``uHu``, ``uIu`` , ``sHu``, ``sIu``, ``spn``, ``spn_in``, ``spn_out``, ``all`` 
                 |  default: none
+
 
 '''
 
@@ -70,9 +75,13 @@ def main():
   writeEIG=True
   writeUIU=False
   writeSPN=False
+  writeSHU=False
+  writeSIU=False
 
   uHu_formatted     = False
   uIu_formatted     = False
+  sHu_formatted     = False
+  sIu_formatted     = False
   spn_formatted_out = False
   spn_formatted_in  = False
 
@@ -104,10 +113,14 @@ def main():
         writeUHU="uHu" in tarlist
         writeUIU="uIu" in tarlist
         writeSPN="spn" in tarlist
+        writeSHU="sHu" in tarlist
+        writeSIU="sIu" in tarlist
     if arg[0]=="formatted":
         tarlist=arg[1].split(",")
         uHu_formatted     =any(x in tarlist for x in ("uHu","all"))
         uIu_formatted     =any(x in tarlist for x in ("uIu","all"))
+        sHu_formatted     =any(x in tarlist for x in ("sHu","all"))
+        sIu_formatted     =any(x in tarlist for x in ("sIu","all"))
         spn_formatted_out=any(x in tarlist for x in ("spn","spn_out","all"))
         spn_formatted_in =any(x in tarlist for x in ("spn","spn_in","all"))
 
@@ -118,7 +131,7 @@ def main():
   MMNrd=False
   EIGrd=False
 
-  if not (writeEIG or writeUHU): EIGrd=True
+  if not (writeEIG or writeUHU or writeSHU): EIGrd=True
 
 
   print ("----------\n MMN  read\n---------\n")
@@ -130,7 +143,7 @@ def main():
         NB_in,NK,NNB=np.array(s.split(),dtype=int)
         MMN=[]
         MMNheadstrings=[]
-        if writeMMN or writeUHU or writeUIU:
+        if writeMMN or writeUHU or writeUIU or writeSHU or writeSIU:
           for ik in range(NK):
             print ("k-point {} of {}".format( ik+1,NK))
             MMN.append([])
@@ -244,6 +257,8 @@ def main():
                     eig_dum=EIG[ik][IBstartSum:IBstartSum+NB_sum]
                 elif UXU[0]=="uIu":
                     eig_dum=np.ones(NB_sum)
+                #    if NB_sum > NB_in:
+                 #       eig_dum = np.ones(NB_in)
                 else:
                     raise RuntimeError()
                 A=np.zeros( (NNB,NNB,NB_out,NB_out),dtype=complex )
@@ -265,7 +280,7 @@ def main():
             f_uXu_out.close()
 
 
-    if writeSPN:
+    if writeSPN or writeSHU or writeSIU:
         
         print ("----------\n SPN  \n---------\n")
 
@@ -280,9 +295,8 @@ def main():
             nbnd,NK=f_spn_in.read_record(dtype=np.int32)
             SPNheader="".join(a.decode('ascii') for a in SPNheader)
 
-
         print (SPNheader)
-            
+  
         assert (nbnd==NB_in)
 
         indm,indn=np.tril_indices(NB_in)
@@ -297,9 +311,10 @@ def main():
             f_spn_out.write_record(SPNheader.encode('ascii'))
             f_spn_out.write_record(np.array([NB_out,NK],dtype=np.int32))
 
-
+        SPN=[]
         for ik in range(NK):
             A=np.zeros((3,nbnd,nbnd),dtype=np.complex)
+            SPN.append([])
             if spn_formatted_in:
                 tmp=np.array( [f_spn_in.readline().split() for i in xrange (3*nbnd*(nbnd+1)/2)  ],dtype=float)
                 tmp=tmp[:,0]+1.j*tmp[:,1]
@@ -308,14 +323,70 @@ def main():
             A[:,indn,indm]=tmp.reshape(3,nbnd*(nbnd+1)//2,order='F')
             check=np.einsum('ijj->',np.abs(A.imag))
             A[:,indm,indn]=A[:,indn,indm].conj()
-            A=A[:,indnQP+IBstart,indmQP+IBstart].reshape(-1,order='F')
             if check> 1e-10:
                 raise RuntimeError ( "REAL DIAG CHECK FAILED : {0}".format(check) )
-            if spn_formatted_out:
-                f_spn_out.write("".join("{0:26.16e}  {1:26.16e}\n".format(x.real,x.imag) for x in A) )
-            else:
-                f_spn_out.write_record(A)
+            if writeSHU or writeSIU:
+                SPN[ik] = A
+            if writeSPN:
+                A=A[:,indnQP+IBstart,indmQP+IBstart].reshape(-1,order='F')
+                if spn_formatted_out:
+                    f_spn_out.write("".join("{0:26.16e}  {1:26.16e}\n".format(x.real,x.imag) for x in A) )
+                else:
+                    f_spn_out.write_record(A)
+
         print ("----------\n SPN OK  \n---------\n")
+
+
+    SXUlist=[]
+    if writeSHU:SXUlist.append(("sHu",sHu_formatted))
+    if writeSIU:SXUlist.append(("sIu",sIu_formatted))
+    print (SXUlist)
+    if len(SXUlist)>0:
+      for NB_sum in NB_sum_list:
+        if NB_sum==None: NB_sum=NB_in
+        for SXU in SXUlist:
+            print ("----------\n  {1}  NBsum={0} \n---------".format(NB_sum,SXU[0]))
+            formatted =SXU[1]
+
+            header="{3} from mmn red to {1} sum {2} bnd {0} ".format(datetime.datetime.now().isoformat(),NB_out,NB_sum,SXU[0]) 
+            header=header[:60]
+            header+=" "*(60-len(header))
+            print (header)
+            print (len(header))
+            if formatted:
+                f_sXu_out = open(os.path.join(RESDIR,PREFIX+"_nbs={0:d}.{1}".format(NB_sum,SXU[0])), 'w')
+                f_sXu_out.write("".join(header)+"\n")
+                f_sXu_out.write("{0}   {1}   {2} \n".format(NB_out,NK,NNB))
+            else:
+                f_sXu_out = FortranFile(os.path.join(RESDIR,PREFIX+"_nbs={0:d}.{1}".format(NB_sum,SXU[0])), 'w')
+                f_sXu_out.write_record( bytearray(header,encoding='ascii'))
+                f_sXu_out.write_record(np.array([NB_out,NK,NNB],dtype=np.int32))
+
+            for ik in range(NK):
+                print ("k-point {} of {}".format( ik+1,NK))
+                if SPN[ik].shape[1] > NB_in:
+                    SPN[ik]=np.resize(SPN[ik],(3,NB_in))
+                if SXU[0]=="sHu":
+                    eig_dum=EIG[ik][IBstartSum:IBstartSum+NB_sum]
+                elif SXU[0]=="sIu":
+                    eig_dum=np.ones(NB_sum)
+                    if NB_sum > NB_in :
+                        eig_dum = np.ones(NB_in)
+                else:
+                    raise RuntimeError()
+                A=np.zeros( (NNB,NB_out,NB_out,3),dtype=complex )
+                for ib2 in range(NNB):
+                    for ipol in range(3):
+                        A[ib2,:,:,ipol]=np.einsum('nl,ml,l->mn',MMN[ik][ib2][IBstart:IBstart+NB_out,IBstartSum:NB_sum+IBstartSum],
+                                                           SPN[ik][ipol][IBstartSum:IBstartSum+NB_sum], eig_dum)
+                if(formatted):
+                    f_sXu_out.write("".join("{0:20.10e}   {1:20.10e}\n".format(a.real,a.imag)  for a in A.reshape(-1,order='C')) )
+                else:
+                    for ib2 in range(NNB):
+                        for ipol in range(3):
+                            f_sXu_out.write_record(A[ib2,:,:,ipol].reshape(-1,order='C'))
+            print ("----------\n {0} OK  \n---------\n".format(SXU[0]))
+            f_sXu_out.close()
 
 
 if __name__ == "__main__":

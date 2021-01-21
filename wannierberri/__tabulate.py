@@ -20,7 +20,7 @@ from io import StringIO
 import  multiprocessing 
 import functools
 
-from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
+from .__utility import  print_my_name_start,print_my_name_end
 from . import __result as result
 from . import  __berry as berry
 from . import  symmetry
@@ -154,6 +154,8 @@ class TABresult(result.Result):
         t3=time()
         print ("collecting - OK : {} ({})".format(t3-t0,t3-t2))
         return res
+            
+    
 
 
     def get_data(self,quantity,iband,component=None,efermi=None):
@@ -166,7 +168,7 @@ class TABresult(result.Result):
  
 
 
-    def fermiSurfer(self,quantity=None,component=None,efermi=0,npar=0,iband=None):
+    def fermiSurfer(self,quantity=None,component=None,efermi=0,npar=0,iband=None,frmsf_name=None):
         if iband is None:
             iband=np.arange(self.nband)
         elif isinstance(iband, int):
@@ -190,15 +192,18 @@ class TABresult(result.Result):
         
         if quantity is None:
             return FSfile
-        
+
         if quantity not in self.results:
             raise RuntimeError("requested quantity '{}' was not calculated".format(quantity))
             return FSfile
-
         FSfile+=_savetxt(a=Xnk[:,iband].flatten(order='F'),npar=npar)
 #        for iband in range(self.nband):
 #            np.savetxt(FSfile,Xnk[:,iband]-efermi,fmt="%.8f")
 #            FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
+        if frmsf_name is not None:
+            if not (frmsf_name.endswith(".frmsf")):
+                frmsf_name+=".frmsf"
+            open(frmsf_name,"w").write(FSfile)
         return FSfile
 
 
