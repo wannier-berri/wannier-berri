@@ -91,7 +91,7 @@ class System_tb(System):
 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
-        print ("Reommended size of FFT grid", self.NKFFT_recommended)
+        print ("Recommended size of FFT grid", self.NKFFT_recommended)
         print ("Real-space lattice:\n",self.real_lattice)
         cprint ("Reading the system from {} finished successfully".format(tb_file),'green', attrs=['bold'])
 
