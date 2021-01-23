@@ -27,8 +27,28 @@ from . import  __utility   as utility
 from . import  __kubo   as kubo
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
+#   1)  think of a name of your quantity
+#   2)  if it is 'transport (depends on EFermi only) or 'optical' (depends on Efermi and Omega)
+#   3)  implement the function somewhere (in one of the submodules, in another submodule, 
+#           or even in an external package which may be imported (in the latter case be careful 
+#            to keep it consistent with further versions of WannierBerri
+#   4)  add the calculator to 'calculators_trans' or 'calculators_opt' dictionaries
+#   5) if needed, define the additional_parameters and their descriptions (see below)
+#   6) add a short description of the implemented quantity ('descriptions') which will be printed
+#        by the 'print_options()'  function
 
-#should be functions of only one variable of class Data_K
+# a dictionary conaining 'transport' quantities , i.e. those which are tensors 
+#   depending on the Fermi level, but not on the frequency
+#   <quantity> : <function> , ... 
+# <quantity>   - name of the quantity to calculate (the same will be used in the call of 'integrate' function
+# <function> - the function to be called, 
+#    which will receive two input parameters : 
+#       data   - Data_K object  (see Data_K.py)
+#       Efermi - array of Fermi energies
+#    and return  an object of class 
+#        EnergyResult or  EnergyResultDict (see __result.py)
+# may have extra parameters, that should be described in the 'additional_parameters' dictionary (see below)
+
 calculators_trans={ 
          'spin'       : fermisea2.SpinTot,  
          'Morb'       : fermisea2.Morb,
@@ -59,6 +79,19 @@ calculators_trans={
 additional_parameters=defaultdict(lambda: defaultdict(lambda:None )   )
 additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no description" )   )
 
+
+# a dictionary conaining 'optical' quantities , i.e. those which are tensors 
+#   depending on the Fermi level  AND on the frequency
+#   <quantity> : <function> , ... 
+# <quantity>   - name of the quantity to calculate (the same will be used in the call of 'integrate' function
+# <function> - the function to be called, 
+#    which will receive three input parameters : 
+#       data   - Data_K object  (see Data_K.py)
+#       Efermi - array of Fermi energies
+#       omega - array of frequencies hbar*omega (in units eV)
+#    and return  an object of class 
+#        EnergyResult or  EnergyResultDict   (see __result.py) 
+# may have extra parameters, that should be described in the 'additional_parameters' dictionary (see below)
 
 calculators_opt={
     'opt_conductivity' : kubo.opt_conductivity,

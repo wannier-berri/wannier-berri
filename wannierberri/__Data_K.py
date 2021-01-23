@@ -551,6 +551,10 @@ class Data_K(System):
         gc.collect()
         
         return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo,'E':self.E_K[op:ed]}
+        # sorry for possible confusion. 'i'/'o' stand for inner/outer states 
+        # o/u in the variable names stand for occupied/unoccupied states .
+        # for fermi-sea properties they are the same, but this confusion should be remnoved
+        # by renaming the variables here, and in analogous functions
         #return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo}
 
 
