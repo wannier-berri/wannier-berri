@@ -158,7 +158,6 @@ def maxocc(E,Ef,A):
 
 class DataIO(dict):
 
-
     @property
     def E(self):
         return self['E']
