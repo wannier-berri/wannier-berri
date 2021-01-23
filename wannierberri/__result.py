@@ -83,13 +83,25 @@ class EnergyResult(Result):
     data : array(float) or array(complex)
         | the data. The first dimensions should match the sizes of the Energies arrays. The rest should be equal to 3
     smoothers :  a list of :class:`~wannierberri._utility.Smoother`
-        | smoothers, one per each energy variable
-
+        | smoothers, one per each energy variable (usually do not need to be set by the calculator function. 
+        | but are set automaticaly for Fermi levels and Omega's , and during the further * and + operations
+    TRodd : bool 
+        | True if the result is Odd under time-reversal operation (False if it is even) 
+        | relevant if system has TimeReversal, either alone or in combination with spatial symmetyries 
+    Iodd : bool 
+        | `True` if the result is Odd under spatial inversion (`False` if it is even) 
+        | relevant if system has Inversion, either alone or as part of other symmetyries (e.g. Mx=C2x*I)
+    rank : int 
+        | of the tensor, usually no need, to specify, it is set automatically to the number of dimensions
+        | of the `data` array minus number of energies
+    E_titles : list of str
+        | titles to be printed above the energy columns
 
      """
 
 
-    def __init__(self,Energies,data,smoothers=None,TRodd=False,Iodd=False,rank=None,E_titles=["Efermi","Omega"]):
+    def __init__(self,Energies,data, smoothers=None,
+                      TRodd=False,Iodd=False,rank=None,E_titles=["Efermi","Omega"]):
         if not isinstance (Energies,(list,tuple)) : 
             Energies=[Energies]
         if not isinstance (E_titles,(list,tuple)) :
