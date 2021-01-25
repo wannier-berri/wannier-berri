@@ -74,7 +74,7 @@ def fermiSurf(EF, E, kBT):   # returns arra [iF, n ]
         arg/=2*kBT
         sel= (arg<20)
         res=np.zeros( EF.shape+E.shape )
-        res[sel]=1./(4*kBT*np.cosh(arg)**2)
+        res[sel]=1./(4*kBT*np.cosh(arg[sel])**2)
         return res
 
 
@@ -207,12 +207,16 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             else:
                 print("Invalid SHC type. ryoo or qiao.")
         elif  conductivity_type == 'tildeD':
-            rfac=dE[None,:,:]/(dE[None,:,:]+omega[:None,None]+1j*eta)
+            rfac=dE[None,:,:]/(dE[None,:,:]+omega[:,None,None]+1j*eta)
             rfac=(rfac+rfac.transpose(0,2,1).conj()).real/2
             A = data.A_H[ik]
             AA =A[:,:,:,None]*A.transpose(1,0,2)[:,:,None,:]
             imAA=np.imag(AA[:,:,alpha_A,beta_A] - AA[:,:,beta_A,alpha_A] )
+            degen=np.zeros(E.shape,dtype=bool)
+            degen[:-1][(E[1:]-E[:-1])<data.degen_thresh]=True
+            degen[np.where(degen[:-1])[0]+1]=True
             tildeOmega= ( -rfac[:,:,:,None]*imAA[None,:,:,:]).sum(axis=2)    # [iw,n,c]
+            tildeOmega[:,degen,:]=0
 
         if conductivity_type == 'tildeD':
             V =  data.delE_K[ik] 
@@ -220,8 +224,11 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
 #            print("shapes",fs.shape,V.shape,tildeOmega.shape)
 #            print("shapes",fermiSurf(Efermi, E, kBT)[:,None,:,None,None].shape,V [None,None,:,:,None].shape,tildeOmega[None,:,:,None,:].shape,tildeD.shape)
 #            print("shapes",(fermiSurf(Efermi, E, kBT)[:,None,:,None,None]*V [None,None,:,:,None]*tildeOmega[None,:,:,None,:]).shape,tildeD.shape)
+#        degen= ( abs(dE)<=data.degen_thresh )
             
-            tildeD+= np.sum(fermiSurf(Efermi, E, kBT)[:,None,:,None,None]*V [None,None,:,:,None]*tildeOmega[None,:,:,None,:], axis=2)
+            tildeD+= np.sum(  fermiSurf(Efermi, E, kBT)[:,None,:,None,None]
+                                *V [None,None,:,:,None]
+                                  *tildeOmega[None,:,:,None,:], axis=2)
 
             delta_arg = dE[None,:,:] + omega[:,None,None]
 
@@ -275,7 +282,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
 
     elif conductivity_type == 'tildeD':
         pre_fac = 1./ (data.NKFFT_tot * data.cell_volume )
-        return result.EnergyResult([Efermi,omega], tildeD, TRodd=False, Iodd=True, rank=rank)
+        return result.EnergyResult([Efermi,omega], tildeD*pre_fac, TRodd=False, Iodd=True, rank=rank)
 
 
 def opt_SHCqiao(data, Efermi, omega=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
