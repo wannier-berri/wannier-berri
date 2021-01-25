@@ -61,16 +61,17 @@ calculators_trans={
          'Hall_spin' :  nonabelian.Hall_spin,
 
          'conductivity_ohmic_fsurf': nonabelian.conductivity_ohmic,
-         'conductivity_ohmic': fermisea2.conductivity_ohmic,
+         'conductivity_ohmic'      : fermisea2.conductivity_ohmic,
 
          'berry_dipole'            : fermisea2.tensor_D,
-         'berry_dipole_2'            : fermisea2.tensor_D_2,
+         'berry_dipole_2'          : fermisea2.tensor_D_2,
          'berry_dipole_fsurf'      : nonabelian.berry_dipole,
+#         'Faraday1w'                 : nonabelian.Faraday,
          'berry_dipole_findif'     : fermisea2.tensor_D_findif,
-         'gyrotropic_Korb'  : fermisea2.tensor_K,
-         'gyrotropic_Korb_2'  : fermisea2.tensor_K_2,
+         'gyrotropic_Korb'         : fermisea2.tensor_K,
+         'gyrotropic_Korb_2'       : fermisea2.tensor_K_2,
 
-         'gyrotropic_Kspin'  : fermisea2.gyrotropic_Kspin,
+         'gyrotropic_Kspin'        : fermisea2.gyrotropic_Kspin,
          'gyrotropic_Korb_fsurf'   : nonabelian.gyrotropic_Korb,
          'gyrotropic_Kspin_fsurf'  : nonabelian.gyrotropic_Kspin,
          }
@@ -96,59 +97,31 @@ additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no des
 calculators_opt={
     'opt_conductivity' : kubo.opt_conductivity,
     'opt_SHCryoo' : kubo.opt_SHCryoo,
-    'opt_SHCqiao' : kubo.opt_SHCqiao
+    'opt_SHCqiao' : kubo.opt_SHCqiao,
+    'tildeD'     : kubo.tildeD,
 }
 
-# additional parameters for optical conductivity
-additional_parameters['opt_conductivity']['kBT'] = 0
-additional_parameters_description['opt_conductivity']['kBT'] = "temperature in units of eV/kB"
-additional_parameters['opt_conductivity']['smr_fixed_width'] = 0.1
-additional_parameters_description['opt_conductivity']['smr_fixed_width'] = "fixed smearing parameter in units of eV"
-additional_parameters['opt_conductivity']['smr_type'] = 'Lorentzian'
-additional_parameters_description['opt_conductivity']['smr_type'] = "analyitcal form of the broadened delta function"
-additional_parameters['opt_conductivity']['adpt_smr'] = False
-additional_parameters_description['opt_conductivity']['adpt_smr'] = "use an adaptive smearing parameter"
-additional_parameters['opt_conductivity']['adpt_smr_fac'] = np.sqrt(2)
-additional_parameters_description['opt_conductivity']['adpt_smr_fac'] = "prefactor for the adaptive smearing parameter"
-additional_parameters['opt_conductivity']['adpt_smr_max'] = 0.1
-additional_parameters_description['opt_conductivity']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter in eV"
-additional_parameters['opt_conductivity']['adpt_smr_min'] = 1e-15
-additional_parameters_description['opt_conductivity']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
 
-# additional parameters for optical spin Hall conductivity
-#additional_parameters['opt_SHCryoo']['mu'] = 18.1299 #12.8623 for Fe #18.1299 For platinum
-#additional_parameters_description['opt_SHCryoo']['mu'] = "chemical potential in units of eV"
-additional_parameters['opt_SHCryoo']['kBT'] = 0
-additional_parameters_description['opt_SHCryoo']['kBT'] = "temperature in units of eV/kB"
-additional_parameters['opt_SHCryoo']['smr_fixed_width'] = 0.1
-additional_parameters_description['opt_SHCryoo']['smr_fixed_width'] = "fixed smearing parameter in units of eV"
-additional_parameters['opt_SHCryoo']['smr_type'] = 'Lorentzian'
-additional_parameters_description['opt_SHCryoo']['smr_type'] = "analyitcal form of the broadened delta function"
-additional_parameters['opt_SHCryoo']['adpt_smr'] = False
-additional_parameters_description['opt_SHCryoo']['adpt_smr'] = "use an adaptive smearing parameter"
-additional_parameters['opt_SHCryoo']['adpt_smr_fac'] = np.sqrt(2)
-additional_parameters_description['opt_SHCryoo']['adpt_smr_fac'] = "prefactor for the adaptive smearing parameter"
-additional_parameters['opt_SHCryoo']['adpt_smr_max'] = 0.1
-additional_parameters_description['opt_SHCryoo']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter in eV"
-additional_parameters['opt_SHCryoo']['adpt_smr_min'] = 1e-15
-additional_parameters_description['opt_SHCryoo']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
 
-#additional_parameters['opt_SHCqiao']['mu'] = 18.1299 #12.8623 for Fe #18.1299 For platinum
-#additional_parameters_description['opt_SHCqiao']['mu'] = "chemical potential in units of eV"
-additional_parameters['opt_SHCqiao']['kBT'] = 0
-additional_parameters_description['opt_SHCqiao']['kBT'] = "temperature in units of eV/kB"
-additional_parameters['opt_SHCqiao']['smr_fixed_width'] = 0.1
-additional_parameters_description['opt_SHCqiao']['smr_fixed_width'] = "fixed smearing parameter in units of eV"
-additional_parameters['opt_SHCqiao']['smr_type'] = 'Lorentzian'
-additional_parameters_description['opt_SHCqiao']['smr_type'] = "analyitcal form of the broadened delta function"
-additional_parameters['opt_SHCqiao']['adpt_smr'] = False
-additional_parameters_description['opt_SHCqiao']['adpt_smr'] = "use an adaptive smearing parameter"
-additional_parameters['opt_SHCqiao']['adpt_smr_fac'] = np.sqrt(2)
-additional_parameters_description['opt_SHCqiao']['adpt_smr_fac'] = "prefactor for the adaptive smearing parameter"
-additional_parameters['opt_SHCqiao']['adpt_smr_max'] = 0.1
-additional_parameters_description['opt_SHCqiao']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter in eV"
-additional_parameters['opt_SHCqiao']['adpt_smr_min'] = 1e-15
-additional_parameters_description['opt_SHCqiao']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
+parameters_optical={
+'kBT'             :  ( 0    ,  "temperature in units of eV/kB"          ),
+'smr_fixed_width' :  ( 0.1  ,  "fixed smearing parameter in units of eV"),
+'smr_type'        :  ('Lorentzian' ,  "analyitcal form of the broadened delta function" ),
+'adpt_smr'        :  (  False ,  "use an adaptive smearing parameter" ),
+'adpt_smr_fac'    :  ( np.sqrt(2) ,  "prefactor for the adaptive smearing parameter" ),
+'adpt_smr_max'    :  (  0.1 , "maximal value of the adaptive smearing parameter in eV" ),
+'adpt_smr_min'    :  ( 1e-15,  "minimal value of the adaptive smearing parameter in eV") }
+
+
+
+for key,val in parameters_optical.items(): 
+    for calc in calculators_opt: 
+        additional_parameters[calc][key] = val[0]
+        additional_parameters_description[calc][key] = val[1]
+
+
+additional_parameters['Faraday']['homega'] = 0.0
+additional_parameters_description['Faraday']['homega'] = "frequency of light in eV (one frequency per calculation)"
 
 
 calculators=copy(calculators_trans)
@@ -173,6 +146,7 @@ descriptions['Hall_classic'] =  "classical Hall coefficient, in S/(cm*T) for tau
 descriptions['Hall_morb'   ] = "Low field AHE, orbital part, in S/(cm*T)."
 descriptions['Hall_spin'   ] = "Low field AHE, spin    part, in S/(cm*T)."
 descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
+descriptions['Faraday'] = "Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
 descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in S/cm (PRB RPS19)"
 descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in S/cm (PRB QZYZ18)"
 

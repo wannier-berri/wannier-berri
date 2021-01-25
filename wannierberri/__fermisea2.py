@@ -157,7 +157,7 @@ def maxocc(E,Ef,A):
 
 
 class DataIO(dict):
-    """ a class to store a data, which are to be summed over inner 'i' or  outer 'o' states, 
+    """ a class to store data, which are to be summed over inner 'i' or  outer 'o' states, 
         or over fermi sea 'sea'
         the IO in the name doed NOT stand for input/output methods. 
     """

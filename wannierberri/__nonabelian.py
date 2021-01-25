@@ -42,6 +42,11 @@ def __curvE(data):
 def __curv(data):
     return data.Berry_nonabelian
 
+# so far it is just the berry curvature (w=0) just to make the machinery working
+def __curvW(data,homega):
+    print ("homega=",homega)
+    return data.Berry_nonabelian_W(homega)
+
 def __curvD(data):
     return data.Berry_nonabelian_D
 
@@ -59,7 +64,7 @@ __dimensions=defaultdict(lambda : 1)
 __dimensions['mass']=2
 
 #quantities that should be odd under TRS and inversion
-TRodd  = set(['spin','morb','vel','curv','curvE','morbg','morb2','curvD','curvExt1','curvExt2'])
+TRodd  = set(['spin','morb','vel','curv','curvE','curvW','morbg','morb2','curvD','curvExt1','curvExt2'])
 INVodd = set(['vel'])
 
 
@@ -99,8 +104,13 @@ def ahc(data,Efermi):
     return nonabelian_general(data,Efermi,['curv'],mode='fermi-sea',factor=__berry.fac_ahc)
 
 def berry_dipole(data,Efermi):
-    # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
+    # _general yields integral(Omega*v*(-fo')), which is dimensionlesss - what we want 
     return nonabelian_general(data,Efermi,['curv','vel'],mode='fermi-surface',factor=1)
+
+
+def Faraday(data,Efermi,homega):
+    # _general yields integral(Omega(w)*v*(-fo')), which is dimensionlesss - what we want 
+    return nonabelian_general(data,Efermi,['curvW','vel'],mode='fermi-surface',factor=1,parameters={'curvW':{'homega':homega}})
 
 
 def berry_dipole_D(data,Efermi):
@@ -219,15 +229,16 @@ def conductivity_ohmic_sea(data,Efermi):
 
 
 
-def nonabelian_general(data,Efermi,quantities,subscripts=None,mode='fermi-surface',factor=1):
+def nonabelian_general(data,Efermi,quantities,subscripts=None,mode='fermi-surface',factor=1,parameters={}):
     E_K=data.E_K
+    __parameters=defaultdict(lambda : {}, parameters)
     if Efermi.shape[0]==1:
         raise ValueError("cannot evaluate transport properties for a single Femrmi level. please provide a grid of EF (better a dense one)")
     dE=Efermi[1]-Efermi[0]
     Emax=Efermi[-1]+dE/2
 
     variables=vars(sys.modules[__name__])
-    M=[variables["__"+Q](data) for Q in quantities]
+    M=[variables["__"+Q](data,**__parameters[Q]) for Q in quantities]
 
 
     if subscripts is None:
