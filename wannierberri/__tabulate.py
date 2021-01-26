@@ -15,8 +15,12 @@ import numpy as np
 from scipy import constants as constants
 from collections import Iterable,defaultdict
 from copy import deepcopy
+from time import time
+from io import StringIO
+import  multiprocessing 
+import functools
 
-from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
+from .__utility import  print_my_name_start,print_my_name_end
 from . import __result as result
 from . import  __berry as berry
 from . import  symmetry
@@ -120,6 +124,7 @@ class TABresult(result.Result):
         return TABresult(kpoints=kpoints,recip_lattice=self.recip_lattice,results=results)
 
     def to_grid(self,grid,order='C'):
+        print ("settinng the grid")
         grid1=[np.linspace(0.,1.,g,False) for g in grid]
         print ("setting new kpoints")
         k_new=np.array(np.meshgrid(grid1[0],grid1[1],grid1[2],indexing='ij')).reshape((3,-1),order=order).T
@@ -136,43 +141,93 @@ class TABresult(result.Result):
             else:
                 print ("WARNING: k-point {}={} is skipped".format(ik,k))
 
-        
+        t0=time()
         print ("collecting")
         results={r:self.results[r].to_grid(k_map)  for r in self.results}
+        t1=time()
+        print ("collecting: to_grid  : {}".format(t1-t0))
         res=TABresult( k_new,recip_lattice=self.recip_lattice,results=results)
+        t2=time()
+        print ("collecting: TABresult  : {}".format(t2-t1))
         res.grid=np.copy(grid)
         res.gridorder=order
+        t3=time()
+        print ("collecting - OK : {} ({})".format(t3-t0,t3-t2))
         return res
             
     
-    def fermiSurfer(self,quantity=None,component=None,efermi=0):
+
+
+    def get_data(self,quantity,iband,component=None,efermi=None):
+        if quantity=='E':
+            return self.Enk.data[:,iband].reshape(self.grid)
+        elif component==None:
+            return self.results[quantity].data[:,iband].reshape(tuple(self.grid)+(3,)*self.results[quantity].rank)
+        else:
+            return self.results[quantity].get_component(component)[:,iband].reshape(self.grid)
+ 
+
+
+    def fermiSurfer(self,quantity=None,component=None,efermi=0,npar=0,iband=None,frmsf_name=None):
+        if iband is None:
+            iband=np.arange(self.nband)
+        elif isinstance(iband, int):
+            iband=[iband]
         if not (quantity is None):
             Xnk=self.results[quantity].get_component(component)
-
         if self.grid is None:
             raise RuntimeError("the data should be on a grid before generating FermiSurfer files. use to_grid() method")
         if self.gridorder!='C':
             raise RuntimeError("the data should be on a 'C'-ordered grid for generating FermiSurfer files")
-        FSfile=" {0}  {1}  {2} \n".format(self.grid[0],self.grid[1],self.grid[2])
-        FSfile+="1 \n"  # so far only this option of Fermisurfer is implemented
-        FSfile+="{} \n".format(self.nband)
-        FSfile+="".join( ["  ".join("{:14.8f}".format(x) for x in v) + "\n" for v in self.recip_lattice] )
-        for iband in range(self.nband):
-            FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk.data[:,iband]-efermi )
+        FSfile=""
+        FSfile+=(" {0}  {1}  {2} \n".format(self.grid[0],self.grid[1],self.grid[2]))
+        FSfile+=("1 \n" ) # so far only this option of Fermisurfer is implemented
+        FSfile+=("{} \n".format(len(iband)))
+        FSfile+=("".join( ["  ".join("{:14.8f}".format(x) for x in v) + "\n" for v in self.recip_lattice] ))
+
+        FSfile+=_savetxt(a=self.Enk.data[:,iband].flatten(order='F')-efermi,npar=npar)
+#        for iband in range(self.nband):
+#            np.savetxt(FSfile,self.Enk.data[:,iband]-efermi,fmt="%.8f")
+#            FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk.data[:,iband]-efermi )
         
         if quantity is None:
             return FSfile
-        
+
         if quantity not in self.results:
             raise RuntimeError("requested quantity '{}' was not calculated".format(quantity))
             return FSfile
-        
-        for iband in range(self.nband):
-            FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
+        FSfile+=_savetxt(a=Xnk[:,iband].flatten(order='F'),npar=npar)
+#        for iband in range(self.nband):
+#            np.savetxt(FSfile,Xnk[:,iband]-efermi,fmt="%.8f")
+#            FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
+        if frmsf_name is not None:
+            if not (frmsf_name.endswith(".frmsf")):
+                frmsf_name+=".frmsf"
+            open(frmsf_name,"w").write(FSfile)
         return FSfile
+
+
 
 
     def max(self):
         raise NotImplementedError("adaptive refinement cannot be used for tabulating")
 
+
+def _savetxt(limits=None,a=None,fmt=".8f",npar=0):
+    assert a.ndim==1 , "only 1D arrays are supported. found shape{}".format(a.shape)
+    if npar<=0:
+        if limits is None:
+            limits=(0,a.shape[0])
+        fmtstr="{0:"+fmt+"}\n"
+        return "".join(fmtstr.format(x) for x in a[limits[0]:limits[1]] )
+    else:
+        if limits is not None: 
+            raise ValueError("limits shpould not be used in parallel mode")
+        nppproc=a.shape[0]//npar+(1 if a.shape[0]%npar>0 else 0)
+        print ("using a pool of {} processes to write txt frmsf of {} points".format(npar,nppproc))
+        asplit=[(i,i+nppproc) for i in range(0,a.shape[0],nppproc)]
+        p=multiprocessing.Pool(npar)
+        res= p.map(functools.partial(_savetxt,a=a,fmt=fmt,npar=0)  , asplit)
+        p.close()
+        return "".join(res)
 

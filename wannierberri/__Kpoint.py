@@ -41,6 +41,10 @@ class  KpointBZ():
         return self.dK/self.NKFFT
 
     @lazy_property.LazyProperty
+    def dK_fullBZ_cart(self):
+         return self.dK_fullBZ[:,None]*self.symgroup.recip_lattice
+
+    @lazy_property.LazyProperty
     def star(self):
         if self.symgroup is None:
             return [self.K]
@@ -88,6 +92,8 @@ class  KpointBZ():
 
 
     def absorb(self,other):
+        if other is None:
+            return
         self.factor+=other.factor
         if other.res is not None:
             if self.res is not None:
@@ -108,9 +114,10 @@ class  KpointBZ():
 
 
         
-    def divide(self,ndiv):
+    def divide(self,ndiv,periodic):
         assert (ndiv.shape==(3,))
         assert (np.all(ndiv>0))
+        ndiv[np.logical_not(periodic)]=1   # divide only along periodic directions
         include_original= np.all( ndiv%2==1)
         
         K0=self.K

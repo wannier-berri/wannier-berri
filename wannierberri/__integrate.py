@@ -16,9 +16,7 @@ from scipy import constants as constants
 from collections import Iterable,defaultdict
 from copy import copy,deepcopy
 
-from functools import partial
-
-from .__utility import  print_my_name_start,print_my_name_end,voidsmoother,TAU_UNIT
+from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother,TAU_UNIT
 from . import __result as result
 from . import  __berry as berry
 from . import  __fermisea2 as fermisea2
@@ -29,12 +27,33 @@ from . import  __utility   as utility
 from . import  __kubo   as kubo
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
+#   1)  think of a name of your quantity
+#   2)  if it is 'transport (depends on EFermi only) or 'optical' (depends on Efermi and Omega)
+#   3)  implement the function somewhere (in one of the submodules, in another submodule, 
+#           or even in an external package which may be imported (in the latter case be careful 
+#            to keep it consistent with further versions of WannierBerri
+#   4)  add the calculator to 'calculators_trans' or 'calculators_opt' dictionaries
+#   5) if needed, define the additional_parameters and their descriptions (see below)
+#   6) add a short description of the implemented quantity ('descriptions') which will be printed
+#        by the 'print_options()'  function
 
-#should be functions of only one variable of class Data_K
+# a dictionary conaining 'transport' quantities , i.e. those which are tensors 
+#   depending on the Fermi level, but not on the frequency
+#   <quantity> : <function> , ... 
+# <quantity>   - name of the quantity to calculate (the same will be used in the call of 'integrate' function
+# <function> - the function to be called, 
+#    which will receive two input parameters : 
+#       data   - Data_K object  (see Data_K.py)
+#       Efermi - array of Fermi energies
+#    and return  an object of class 
+#        EnergyResult or  EnergyResultDict (see __result.py)
+# may have extra parameters, that should be described in the 'additional_parameters' dictionary (see below)
+
 calculators_trans={ 
          'spin'       : fermisea2.SpinTot,  
          'Morb'       : fermisea2.Morb,
          'ahc'        : fermisea2.AHC ,
+         'ahc2'        : fermisea2.AHC2 ,
          'dos'        : dos.calc_DOS ,
          'cumdos'        : dos.calc_cum_DOS ,
          'Hall_classic' : nonabelian.Hall_classic , 
@@ -42,13 +61,17 @@ calculators_trans={
          'Hall_spin' :  nonabelian.Hall_spin,
 
          'conductivity_ohmic_fsurf': nonabelian.conductivity_ohmic,
-         'conductivity_ohmic': fermisea2.conductivity_ohmic,
+         'conductivity_ohmic'      : fermisea2.conductivity_ohmic,
 
-         'berry_dipole'        : fermisea2.tensor_D,
+         'berry_dipole'            : fermisea2.tensor_D,
+         'berry_dipole_2'          : fermisea2.tensor_D_2,
          'berry_dipole_fsurf'      : nonabelian.berry_dipole,
-         'gyrotropic_Korb'  : fermisea2.tensor_K,
+#         'Faraday1w'                 : nonabelian.Faraday,
+         'berry_dipole_findif'     : fermisea2.tensor_D_findif,
+         'gyrotropic_Korb'         : fermisea2.tensor_K,
+         'gyrotropic_Korb_2'       : fermisea2.tensor_K_2,
 
-         'gyrotropic_Kspin'  : fermisea2.gyrotropic_Kspin,
+         'gyrotropic_Kspin'        : fermisea2.gyrotropic_Kspin,
          'gyrotropic_Korb_fsurf'   : nonabelian.gyrotropic_Korb,
          'gyrotropic_Kspin_fsurf'  : nonabelian.gyrotropic_Kspin,
          }
@@ -58,27 +81,47 @@ additional_parameters=defaultdict(lambda: defaultdict(lambda:None )   )
 additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no description" )   )
 
 
+# a dictionary conaining 'optical' quantities , i.e. those which are tensors 
+#   depending on the Fermi level  AND on the frequency
+#   <quantity> : <function> , ... 
+# <quantity>   - name of the quantity to calculate (the same will be used in the call of 'integrate' function
+# <function> - the function to be called, 
+#    which will receive three input parameters : 
+#       data   - Data_K object  (see Data_K.py)
+#       Efermi - array of Fermi energies
+#       omega - array of frequencies hbar*omega (in units eV)
+#    and return  an object of class 
+#        EnergyResult or  EnergyResultDict   (see __result.py) 
+# may have extra parameters, that should be described in the 'additional_parameters' dictionary (see below)
+
 calculators_opt={
-    'opt_conductivity' : kubo.opt_conductivity
+    'opt_conductivity' : kubo.opt_conductivity,
+    'opt_SHCryoo' : kubo.opt_SHCryoo,
+    'opt_SHCqiao' : kubo.opt_SHCqiao,
+    'tildeD'     : kubo.tildeD,
 }
 
-# additional parameters for optical conductivity
-additional_parameters['opt_conductivity']['mu'] = 0
-additional_parameters_description['opt_conductivity']['mu'] = "chemical potential in units of eV"
-additional_parameters['opt_conductivity']['kBT'] = 0
-additional_parameters_description['opt_conductivity']['kBT'] = "temperature in units of eV/kB"
-additional_parameters['opt_conductivity']['smr_fixed_width'] = 0.1
-additional_parameters_description['opt_conductivity']['smr_fixed_width'] = "fixed smearing parameter in units of eV"
-additional_parameters['opt_conductivity']['smr_type'] = 'Lorentzian'
-additional_parameters_description['opt_conductivity']['smr_type'] = "analyitcal form of the broadened delta function"
-additional_parameters['opt_conductivity']['adpt_smr'] = False
-additional_parameters_description['opt_conductivity']['adpt_smr'] = "use an adaptive smearing parameter"
-additional_parameters['opt_conductivity']['adpt_smr_fac'] = np.sqrt(2)
-additional_parameters_description['opt_conductivity']['adpt_smr_fac'] = "prefactor for the adaptive smearing parameter"
-additional_parameters['opt_conductivity']['adpt_smr_max'] = 0.1
-additional_parameters_description['opt_conductivity']['adpt_smr_max'] = "maximal value of the adaptive smearing parameter in eV"
-additional_parameters['opt_conductivity']['adpt_smr_min'] = 1e-15
-additional_parameters_description['opt_conductivity']['adpt_smr_min'] = "minimal value of the adaptive smearing parameter in eV"
+
+
+parameters_optical={
+'kBT'             :  ( 0    ,  "temperature in units of eV/kB"          ),
+'smr_fixed_width' :  ( 0.1  ,  "fixed smearing parameter in units of eV"),
+'smr_type'        :  ('Lorentzian' ,  "analyitcal form of the broadened delta function" ),
+'adpt_smr'        :  (  False ,  "use an adaptive smearing parameter" ),
+'adpt_smr_fac'    :  ( np.sqrt(2) ,  "prefactor for the adaptive smearing parameter" ),
+'adpt_smr_max'    :  (  0.1 , "maximal value of the adaptive smearing parameter in eV" ),
+'adpt_smr_min'    :  ( 1e-15,  "minimal value of the adaptive smearing parameter in eV") }
+
+
+
+for key,val in parameters_optical.items(): 
+    for calc in calculators_opt: 
+        additional_parameters[calc][key] = val[0]
+        additional_parameters_description[calc][key] = val[1]
+
+
+additional_parameters['Faraday']['homega'] = 0.0
+additional_parameters_description['Faraday']['homega'] = "frequency of light in eV (one frequency per calculation)"
 
 
 calculators=copy(calculators_trans)
@@ -103,34 +146,22 @@ descriptions['Hall_classic'] =  "classical Hall coefficient, in S/(cm*T) for tau
 descriptions['Hall_morb'   ] = "Low field AHE, orbital part, in S/(cm*T)."
 descriptions['Hall_spin'   ] = "Low field AHE, spin    part, in S/(cm*T)."
 descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
-
+descriptions['Faraday'] = "Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
+descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in S/cm (PRB RPS19)"
+descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in S/cm (PRB QZYZ18)"
 
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
 
-def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies={},smootherEf=utility.voidsmoother,smootherOmega=utility.voidsmoother,parameters={}):
-
-  
-
-    def _energy(quant):
-        if quant in energies:
-            return energies[quant]
-        if quant in calculators_trans:
-            return Efermi
-        if quant in calculators_opt:
-            return omega
-        raise RuntimeError("quantity {} is neither optical nor transport, and energies are not defined".format(quant))
+def intProperty(data,quantities=[],Efermi=None,omega=None,smootherEf=VoidSmoother(),smootherOmega=VoidSmoother(),parameters={}):
 
     def _smoother(quant):
-        if quant in smoothers:
-            return smoothers[quant]
-        elif quant in calculators_trans:
+        if quant in calculators_trans:
             return smootherEf
         elif quant in calculators_opt:
-            return smootherOmega
+            return [smootherEf,smootherOmega]
         else:
-            return utility.voidsmoother()
-    
+            return VoidSmoother()
 
     results={}
     for q in quantities:
@@ -140,7 +171,9 @@ def intProperty(data,quantities=[],Efermi=None,omega=None,smoothers={},energies=
                  __parameters[param]=parameters[param]
             else :
                  __parameters[param]=additional_parameters[q][param]
-        results[q]=calculators[q](data,_energy(q),**__parameters)
+        if q in calculators_opt:
+            __parameters['omega']=omega
+        results[q]=calculators[q](data,Efermi,**__parameters)
         results[q].set_smoother(_smoother(q))
 
     return INTresult( results=results )

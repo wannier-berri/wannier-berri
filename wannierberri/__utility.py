@@ -20,6 +20,7 @@ import numpy as np
 import pyfftw
 from lazy_property import LazyProperty as Lazy
 from time import time
+from termcolor import cprint 
 
 
 alpha_A=np.array([1,2,0])
@@ -37,26 +38,6 @@ def print_my_name_end():
     if __debug: 
         print("DEBUG: Running {} - done ".format(inspect.stack()[1][3]))
 
-
-
-def einsumk(*args):
-    left,right=args[0].split("->")
-    left=left.split(",")
-    for s in left + [right]:
-        if s[0]!='k':
-            raise RuntimeError("the first index should be 'k', found '{1}".format(s[0]))
-    string_new=",".join(s[1:]for s in left)+"->"+right[1:]
-    print ("string_new"+"  ".join(str(a.shape) for a in args[1:]))
-    nmat=len(args)-1
-    assert(len(left)==nmat)
-    if nmat==2:
-        return np.array([np.einsum(string_new,a,b) for a,b in zip(args[1],args[2])])
-    elif nmat==3:
-        return np.array([a.dot(b).dot(c) for a,b,c in zip(args[1],args[2],args[3])])
-    elif nmat==4:
-        return np.array([np.einsum(string_new,a,b,c,d) for a,b,c,d in zip(args[1],args[2],args[3],args[4])])
-    else:
-        raise RuntimeError("einsumk is not implemented for number of matrices {}".format(nmat))
     
 def conjugate_basis(basis):
     return 2*np.pi*np.linalg.inv(basis).T
@@ -64,7 +45,9 @@ def conjugate_basis(basis):
 
 def real_recip_lattice(real_lattice=None,recip_lattice=None):
     if recip_lattice is None:
-        assert real_lattice is not None , "need to provide either with real or reciprocal lattice"
+        if real_lattice is None : 
+            cprint ("\n WARNING!!!!! usually need to provide either with real or reciprocal lattice. If you only want to generate a random symmetric tensor - that it fine \n","yellow")
+            return None,None
         recip_lattice=conjugate_basis(real_lattice)
     else: 
         if real_lattice is not None:
@@ -77,7 +60,7 @@ def real_recip_lattice(real_lattice=None,recip_lattice=None):
 
 from scipy.constants import Boltzmann,elementary_charge,hbar
 
-class smoother():
+class Smoother():
     def __init__(self,E,T=10):  # T in K
         self.T=T*Boltzmann/elementary_charge  # now in eV
         self.E=np.copy(E)
@@ -107,22 +90,23 @@ class smoother():
     def _broaden(self,E):
         return 0.25/self.T/np.cosh(E/(2*self.T))**2
 
-    def __call__(self,A):
-        assert self.E.shape[0]==A.shape[0]
+    def __call__(self,A,axis=0):
+        assert self.E.shape[0]==A.shape[axis]
+        A=A.transpose((axis,)+tuple(range(0,axis))+tuple(range(axis+1,A.ndim)))
         res=np.zeros(A.shape, dtype=A.dtype)
         for i in range(self.NE):
             start=max(0,i-self.NE1)
             end=min(self.NE,i+self.NE1+1)
             start1=self.NE1-(i-start)
             end1=self.NE1+(end-i)
-            res[i]=A[start:end].transpose(tuple(range(1,len(A.shape)))+(0,)).dot(self.smt[start1:end1])/self.smt[start1:end1].sum()
-        return res
+            res[i]=np.tensordot(A[start:end],self.smt[start1:end1],axes=(0,0))/self.smt[start1:end1].sum()
+        return res.transpose( tuple(range(1,axis+1))+ (0,)+tuple(range(axis+1,A.ndim)) )
 
 
     def __eq__(self,other):
-        if isinstance(other,voidsmoother):
+        if isinstance(other,VoidSmoother):
             return False
-        elif not isinstance(other,smoother):
+        elif not isinstance(other,Smoother):
             return False
         else:
             for var in ['T','dE','NE','NE1','Emin','Emax']:
@@ -132,21 +116,31 @@ class smoother():
 #            return self.T==other.T and self.dE=other.E and self.NE==other.NE and self.
 
 
-class voidsmoother(smoother):
+class VoidSmoother(Smoother):
     def __init__(self):
         pass
     
     def __eq__(self,other):
-        if isinstance(other,voidsmoother):
+        if isinstance(other,VoidSmoother):
             return True
         else:
             return False
     
-    def __call__(self,A):
+    def __call__(self,A,axis=0):
         return A
 
     def __str__(self):
-        return ("<Smoother - void " )
+        return ("<VoidSmoother>" )
+
+
+def getSmoother(energy,smear):
+    if energy is None: 
+        return VoidSmoother()
+    if smear is None or smear<=0: 
+        return VoidSmoother()
+    if len(energy)<=1: 
+        return VoidSmoother()
+    return  Smoother(energy,smear) # smoother for functions of frequency
 
 
 def str2bool(v):
@@ -174,6 +168,15 @@ def fft_W(inp,axes,inverse=False,destroy=True,numthreads=1):
     t2=time()
 #    print ("time to plan {},{}, time to execute {}".format(t01-t0,t1-t01,t2-t1))
     return fft_out
+
+
+
+    def getHead(n):
+       if n<=0:
+          return ['  ']
+       else:
+          return [a+b for a in 'xyz' for b in getHead(n-1)]
+
 
 
 def fft_np(inp,axes,inverse=False):
@@ -215,7 +218,7 @@ class FFT_R_to_k():
         print_my_name_start()
         self.NKFFT=tuple(NKFFT)
         self.num_wann=num_wann
-        assert lib in ('fftw','numpy')
+        assert lib in ('fftw','numpy','slow') , "fft lib '{}' is not known/supported".format(lib)
         self.lib = lib
         if lib == 'fftw':
             shape=self.NKFFT+(self.num_wann,self.num_wann)
@@ -226,7 +229,7 @@ class FFT_R_to_k():
                 direction='FFTW_BACKWARD' ,
                 threads=numthreads  )
 #            print ("created fftw plan with {} threads".format(numthreads))
-        self.iRvec=iRvec
+        self.iRvec=iRvec%self.NKFFT
         self.nRvec=iRvec.shape[0]
         self.time_init=time()-t0
         self.time_call=0
@@ -238,14 +241,18 @@ class FFT_R_to_k():
     def transform(self,AAA_K):
         if self.lib=='numpy':
             AAA_K[...] = np.fft.ifftn(AAA_K,axes=(0,1,2))
-        else:
-        # do recursion is array has cartesian indices. The recursion shoild not be very deep
+        elif self.lib=='fftw':
+        # do recursion if array has cartesian indices. The recursion should not be very deep
             if AAA_K.ndim>5:
                 for i in range(AAA_K.shape[-1]):
                     AAA_K[...,i]=self.transform(AAA_K[...,i])
             else:
                 AAA_K[...]=self.execute_fft(AAA_K[...])
             return AAA_K
+        elif self.lib=='slow':
+            raise RuntimeError("FFT.transform should not be called for slow FT")
+        else :
+            raise ValueError("Unknown type of Fourier transform :''".format(self.lib)) 
 
     def __call__(self,AAA_R,hermitian=False,antihermitian=False,reshapeKline=True):
         t0=time()
@@ -254,14 +261,26 @@ class FFT_R_to_k():
             raise ValueError("A matrix cannot be both Hermitian and anti-Hermitian, unless it is zero")
         AAA_R=AAA_R.transpose((2,0,1)+tuple(range(3,AAA_R.ndim)))
         shapeA=AAA_R.shape
-        assert  self.nRvec==shapeA[0]
-        assert  self.num_wann==shapeA[1]==shapeA[2]
-        AAA_K=np.zeros( self.NKFFT+shapeA[1:], dtype=complex )
-        ### TODO : place AAA_R to FFT grid from beginning, even before multiplying by exp(dkR)
-        for ir,irvec in enumerate(self.iRvec):
-            AAA_K[tuple(irvec)]=AAA_R[ir]
-        self.transform(AAA_K)
-        AAA_K*=np.prod(self.NKFFT)
+        if self.lib=='slow':
+#            print ("doing slow FT")
+            t0=time()
+            exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
+            k=np.zeros(3,dtype=int)
+            AAA_K=np.array([[[
+                     sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
+                        for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
+            t=time()-t0
+#            print ("slow FT finished in {} sec for AAA_R {} and {} k-grid . {} per element".format(t,AAA_R.shape,self.NKFFT,t/np.prod(self.NKFFT )/np.prod(AAA_R.shape)))
+        else:
+            assert  self.nRvec==shapeA[0]
+            assert  self.num_wann==shapeA[1]==shapeA[2]
+            AAA_K=np.zeros( self.NKFFT+shapeA[1:], dtype=complex )
+            ### TODO : place AAA_R to FFT grid from beginning, even before multiplying by exp(dkR)
+            for ir,irvec in enumerate(self.iRvec):
+#                print (ir,irvec,self.NKFFT)
+                AAA_K[tuple(irvec)]+=AAA_R[ir]
+            self.transform(AAA_K)
+            AAA_K*=np.prod(self.NKFFT)
 
         ## TODO - think if fft transform of half of matrix makes sense
         if hermitian:
@@ -296,3 +315,14 @@ def read_numbers(fl,num_read,dtype=int):
         read+=fl.readline().split()
     if len(read)>n : print ( "more numbers ({}) read then expected ({})".format(len(read),n))
     return np.array(read,dtype=dtype).reshape(num_read)
+
+def find_degen(arr,degen_thresh):
+    """ finds shells of 'almost same' values in array arr, and returns a list o[(b1,b2),...]"""
+    A=np.where(arr[1:]-arr[:-1]>degen_thresh)[0]+1 
+    A=[0,]+list(A)+[len(arr)] 
+    return [(ib1,ib2) for ib1,ib2 in zip(A,A[1:]) ] 
+
+
+def is_round(A,prec=1e-14):
+     """ returns true if all values in A are integers, at least within machine precision"""
+     return( np.linalg.norm(A-np.round(A))<prec )

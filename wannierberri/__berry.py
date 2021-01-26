@@ -35,7 +35,7 @@ def eval_J(dic):
     _eval={ 'i' : lambda A :  A , 
             'ii': lambda B : B[:,range(B.shape[1]),range(B.shape[1])] , 
             'oi': lambda B : B.sum(axis=(1)) - B[:,range(B.shape[1]),range(B.shape[1])] }
-    return sum(_eval[k](v) for k,v in dic.items())
+    return sum(_eval[k](v) for k,v in dic.items() if k in ('i','ii','oi'))
 
 def calcImf_band(data):
     return eval_J(data.Omega)
@@ -48,7 +48,7 @@ def calcImgh_band_kn(data):
 
 def calcImgh_band(data):
     "returns g-h"
-    return eval_J(data.Hminus)
+    return eval_J(data.Hminus())
 
 def calcSpin_band(data):
     return data.SpinTot['i']

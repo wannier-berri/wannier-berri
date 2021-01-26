@@ -22,7 +22,7 @@ from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, read_numbers
 from scipy.constants import physical_constants
 from time import time
 from itertools import islice
-
+import gc
 
 readstr  = lambda F : "".join(c.decode('ascii')  for c in F.read_record('c') ).strip() 
 
@@ -62,7 +62,7 @@ class CheckPoint():
             ndimwin=readint()
             u_matrix_opt=readcomplex().reshape( (self.num_kpts,self.num_wann,self.num_bands) )
             self.win_min = np.array( [np.where(lwin)[0].min() for lwin in lwindow] )
-            self.win_max = np.array( [wm+nd for wm,nd in zip(self.win_min,ndimwin)]) 
+            self.win_max = np.array( [wm+nd for wm,nd in zip(self.win_min,ndimwin)])
         else:
             self.win_min = np.array( [0]*self.num_kpts )
             self.win_max = np.array( [self.num_wann]*self.num_kpts) 
@@ -76,6 +76,8 @@ class CheckPoint():
             self.v_matrix=[u  for u in u_matrix ] 
         self.wannier_centres=readfloat().reshape((self.num_wann,3))
         self.wannier_spreads=readfloat().reshape((self.num_wann))
+        del u_matrix,m_matrix
+        gc.collect()
         print ("Time to read .chk : {}".format(time()-t0))
 
     def wannier_gauge(self,mat,ik1,ik2):
@@ -83,17 +85,14 @@ class CheckPoint():
         if len(mat.shape)==1:
             mat=np.diag(mat)
         assert mat.shape[:2]==(self.num_bands,)*2
-        shape=mat.shape[2:]
-        mat=mat.reshape(mat.shape[:2]+(-1,)).transpose(2,0,1)
-        mat=mat[:,self.win_min[ik1]:self.win_max[ik1],self.win_min[ik2]:self.win_max[ik2]]
+        mat=mat[self.win_min[ik1]:self.win_max[ik1],self.win_min[ik2]:self.win_max[ik2]]
         v1=self.v_matrix[ik1].conj()
         v2=self.v_matrix[ik2].T
-        return np.array( [v1.dot(m).dot(v2) for m in mat]).transpose( (1,2,0) ).reshape( (self.num_wann,)*2+shape )
-
+        return  np.tensordot( np.tensordot(v1,mat,axes=(1,0)),v2,axes=(1,0)).transpose((0,-1,)+tuple(range(1,mat.ndim-1)))
 
     def get_HH_q(self,eig):
         assert (eig.NK,eig.NB)==(self.num_kpts,self.num_bands)
-        HH_q=np.array([ self.wannier_gauge(E,ik,ik)  for ik,E in enumerate(eig.data) ]) 
+        HH_q=np.array([ self.wannier_gauge(E,ik,ik)  for ik,E in enumerate(eig.data) ])
         return 0.5*(HH_q+HH_q.transpose(0,2,1).conj())
 
 
@@ -104,7 +103,7 @@ class CheckPoint():
 
     def get_AA_q(self,mmn,eig=None,transl_inv=False):  # if eig is present - it is BB_q 
         if transl_inv and (eig is not None):
-            raise RuntimeError("transl_inv cannot be used to obtain BB")
+           raise RuntimeError("transl_inv cannot be used to obtain BB")
         mmn.set_bk(self)
         AA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
         for ik in range(self.num_kpts):
@@ -138,6 +137,68 @@ class CheckPoint():
                mmn.bk_cart[ik,ib1,beta_A] * mmn.bk_cart[ik,ib2,alpha_A]  )  )[None,None,:]
         CC_q=0.5*(CC_q+CC_q.transpose( (0,2,1,3) ).conj())
         return CC_q
+
+    def get_SA_q(self,siu,mmn):
+        mmn.set_bk(self)
+        SA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3,3) ,dtype=complex)
+        assert siu.NNB==mmn.NNB 
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb=mmn.neighbours[ik,ib]
+                SAW=self.wannier_gauge(siu.data[ik,ib],ik,iknb)
+                SA_q_ik=1.j*SAW[:,:,None,:]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:,None]
+                SA_q[ik]+=SA_q_ik
+        return SA_q
+
+    def get_SHA_q(self,shu,mmn):
+        mmn.set_bk(self)
+        SHA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3,3) ,dtype=complex)
+        assert shu.NNB==mmn.NNB
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb=mmn.neighbours[ik,ib]
+                SHAW=self.wannier_gauge(shu.data[ik,ib],ik,iknb)
+                SHA_q_ik=1.j*SHAW[:,:,None,:]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:,None]
+                SHA_q[ik]+=SHA_q_ik
+        #SHA_q=0.5*(SHA_q+SHA_q.transpose( (0,2,1,3,4) ).conj())
+        #for ik in range(self.num_kpts):
+        #    print(ik, SHA_q[ik,17,16,2,0])
+        return SHA_q
+
+    def get_SR_q(self,spn,mmn):
+        mmn.set_bk(self)
+        SR_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3,3) ,dtype=complex)
+        assert (spn.NK,spn.NB)==(self.num_kpts,self.num_bands)
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb=mmn.neighbours[ik,ib]
+                for i in range(3):
+                    SM_i=spn.data[ik,:,:,i].dot(mmn.data[ik,ib,:,:])
+                    SRW=self.wannier_gauge(SM_i,ik,iknb)-self.wannier_gauge(spn.data[ik,:,:,i],ik,ik)
+                    SR_q[ik,:,:,:,i]+=1.j*SRW[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
+        return SR_q
+    
+    def get_SH_q(self,spn,eig):
+        SH_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
+        assert (spn.NK,spn.NB)==(self.num_kpts,self.num_bands)
+        for ik in range(self.num_kpts):
+            for i in range(3):
+                SH_q[ik,:,:,i]=self.wannier_gauge(spn.data[ik,:,:,i]*eig.data[ik,None,:],ik,ik)
+        return SH_q
+        
+    def get_SHR_q(self,spn,mmn,eig):
+        mmn.set_bk(self)
+        SHR_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3,3) ,dtype=complex)
+        assert (spn.NK,spn.NB)==(self.num_kpts,self.num_bands)
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb=mmn.neighbours[ik,ib]
+                for i in range(3):
+                    SH_i=spn.data[ik,:,:,i]*eig.data[ik,None,:]
+                    SHM_i=SH_i.dot(mmn.data[ik,ib])
+                    SHRW=self.wannier_gauge(SHM_i,ik,iknb)-self.wannier_gauge(SH_i,ik,ik)
+                    SHR_q[ik,:,:,:,i]+=1.j*SHRW[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
+        return SHR_q
 
 
 class W90_data():
@@ -213,6 +274,7 @@ class MMN(W90_data):
                 data+=pool.map(convert,y)
             else:
                 data+=[convert(z) for z in y]
+
         if npar>0 : 
             pool.close()
         f_mmn_in.close()
@@ -242,16 +304,17 @@ class MMN(W90_data):
                  f_mmn_out.write("".join( " {:17.12f} {:17.12f}\n".format(x.real,x.imag) for x in self.data[ik,ikb].reshape(-1,order='F')))
 
 
-    def set_bk(self,mp_grid,kpt_latt,recip_lattice):
+
+    def set_bk(self,chk):
       try :
         self.bk
         self.wk
         return
       except:
-        bk_latt=np.array(np.round( [(kpt_latt[nbrs]-kpt_latt+G)*mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
+        bk_latt=np.array(np.round( [(chk.kpt_latt[nbrs]-chk.kpt_latt+G)*chk.mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
         bk_latt_unique=np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1,3))],dtype=int)
         assert len(bk_latt_unique)==self.NNB
-        bk_cart_unique=bk_latt_unique.dot(recip_lattice/mp_grid[:,None])
+        bk_cart_unique=bk_latt_unique.dot(chk.recip_lattice/chk.mp_grid[:,None])
         bk_cart_unique_length=np.linalg.norm(bk_cart_unique,axis=1)
         srt=np.argsort(bk_cart_unique_length)
         bk_latt_unique=bk_latt_unique[srt]
@@ -273,9 +336,10 @@ class MMN(W90_data):
         weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
         weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
         bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
-        self.bk  = np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
-        self.wk  = np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
-        
+        self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+        self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+
+
 
 class AMN(W90_data):
 
@@ -372,14 +436,15 @@ class SPN(W90_data):
         print ("----------\n SPN OK  \n---------\n")
 
 
-class UXU(W90_data):  # uHu ar uIu 
+class UXU(W90_data):  # uHu or uIu
     @property
     def n_neighb(self):
         return 2
 
+    #def __init__(self,seedname='wannier90',formatted=False,suffix='uHu'):
     def __init__(self,seedname='wannier90',formatted=False,suffix='uHu'):
         print ("----------\n  {0}   \n---------".format(suffix))
-
+        print('formatted == {}'.format(formatted))
         if formatted:
             f_uXu_in = open(seedname+"."+suffix, 'r')
             header=f_uXu_in.readline().strip() 
@@ -387,18 +452,23 @@ class UXU(W90_data):  # uHu ar uIu
         else:
             f_uXu_in = FortranFile(seedname+"."+suffix, 'r')
             header=readstr(f_uXu_in)
-            NB,NK,NNB=   f_uXu_in.read_record('i4')
+            NB,NK,NNB=f_uXu_in.read_record('i4')
 
         print ("reading {}.{} : <{}>".format(seedname,suffix,header))
 
+        
         self.data=np.zeros( (NK,NNB,NNB,NB,NB),dtype=complex )
-
-        for ik in range(NK):
+        if formatted:
+            tmp=np.array( [f_uXu_in.readline().split() for i in range(NK*NNB*NNB*NB*NB)  ],dtype=float)
+            tmp_conj=tmp[:,0]+1.j*tmp[:,1]
+            self.data=tmp_conj.reshape(NK,NNB,NNB,NB,NB)
+        else:
+            for ik in range(NK):
 #            print ("k-point {} of {}".format( ik+1,NK))
-            for ib2 in range(NNB):
-                for ib1 in range(NNB):
-                    tmp=f_uXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0) 
-                    self.data[ik,ib1,ib2]=tmp[:,:,0]+1j*tmp[:,:,1]
+                for ib2 in range(NNB):
+                    for ib1 in range(NNB):
+                        tmp=f_uXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0) 
+                        self.data[ik,ib1,ib2]=tmp[:,:,0]+1j*tmp[:,:,1]
         print ("----------\n {0} OK  \n---------\n".format(suffix))
         f_uXu_in.close()
 
@@ -557,5 +627,72 @@ class DMN():
 
 
 
+class SXU(W90_data):  # sHu or sIu
+    @property
+    def n_neighb(self):
+        return 1
+
+    def __init__(self,seedname='wannier90',formatted=False,suffix='sHu'):
+        print ("----------\n  {0}   \n---------".format(suffix))
+
+        if formatted:
+            f_sXu_in = open(seedname+"."+suffix, 'r')
+            header=f_sXu_in.readline().strip() 
+            NB,NK,NNB =(int(x) for x in f_sXu_in.readline().split())
+        else:
+            f_sXu_in = FortranFile(seedname+"."+suffix, 'r')
+            header=readstr(f_sXu_in)
+            NB,NK,NNB=   f_sXu_in.read_record('i4')
+
+        print ("reading {}.{} : <{}>".format(seedname,suffix,header))
+
+        self.data=np.zeros( (NK,NNB,NB,NB,3),dtype=complex )
+
+        for ik in range(NK):
+#            print ("k-point {} of {}".format( ik+1,NK))
+            for ib2 in range(NNB):
+                for ipol in range(3):
+                   tmp=f_sXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0)
+                   self.data[ik,ib2,:,:,ipol]=tmp[:,:,0]+1j*tmp[:,:,1]
+        print ("----------\n {0} OK  \n---------\n".format(suffix))
+        f_sXu_in.close()
 
 
+class SIU(SXU):
+    def __init__(self,seedname='wannier90',formatted=False):
+        super(SIU, self).__init__(seedname=seedname,formatted=formatted,suffix='sIu' )
+
+class SHU(SXU):
+    def __init__(self,seedname='wannier90',formatted=False):
+        super(SHU, self).__init__(seedname=seedname,formatted=formatted,suffix='sHu' )
+
+
+
+def set_bk(neighbours,G,NNB):
+        bk_latt=np.array(np.round( [(chk.kpt_latt[nbrs]-chk.kpt_latt+G)*chk.mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
+        bk_latt_unique=np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1,3))],dtype=int)
+        assert len(bk_latt_unique)==self.NNB
+        bk_cart_unique=bk_latt_unique.dot(chk.recip_lattice/chk.mp_grid[:,None])
+        bk_cart_unique_length=np.linalg.norm(bk_cart_unique,axis=1)
+        srt=np.argsort(bk_cart_unique_length)
+        bk_latt_unique=bk_latt_unique[srt]
+        bk_cart_unique=bk_cart_unique[srt]
+        bk_cart_unique_length=bk_cart_unique_length[srt]
+        brd=[0,]+list(np.where(bk_cart_unique_length[1:]-bk_cart_unique_length[:-1]>1e-7)[0]+1)+[self.NNB,]
+        shell_mat=np.array([ bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2])  for b1,b2 in zip (brd,brd[1:])])
+        shell_mat_line=shell_mat.reshape(-1,9)
+        u,s,v=np.linalg.svd(shell_mat_line,full_matrices=False)
+#        print ("u,s,v=",u,s,v)
+#        print("check svd : ",u.dot(np.diag(s)).dot(v)-shell_mat_line)
+        s=1./s
+        weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
+        check_eye=sum(w*m for w,m in zip(weight_shell,shell_mat))
+        tol=np.linalg.norm(check_eye-np.eye(3))
+        if tol>1e-5 :
+            raise RuntimeError("Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\weight_shell={}\n".format(
+                      check_eye,tol, bk_latt_unique,bk_cart_unique,bk_cart_unique_length,shell_mat,weight_shell))
+        weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
+        weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
+        bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
+        self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+        self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])

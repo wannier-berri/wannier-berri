@@ -48,14 +48,14 @@ def HaldanePTB(delta,t1,hop2,phi):
 # Define the model for a fixed set of parameters
 haldane=HaldanePTB(2,1,1/3,np.pi/10)
 # Call the interface for TBmodels to define the system class
-syst=wb.System_PythTB(haldane,getAA=True)
+syst=wb.System_PythTB(haldane,berry=True,morb=True)
 Efermi=np.linspace(-4,6,1000)
 # Define some symmetries
 syst.set_symmetry(['C3z'])
 # After defining the symmetries, create the grid class
-grid=wb.Grid(syst,NK=(200,200,1))
+grid=wb.Grid(syst,NK=(200,200,1),NKFFT=(20,20,1))
 # Define which quantities are going to be integrated
-q_int=["dos","ahc"]
+q_int=["dos","ahc","Morb"]
 seedname="pythtb_Haldane"
 num_iter=10
 wb.integrate(syst,
