@@ -1,4 +1,4 @@
-from .__w90_files import MMN,EIG,AMN,WIN
+from .__w90_files import MMN,EIG,AMN,WIN,DMN
 from copy import deepcopy
 import numpy as np
 
@@ -23,19 +23,20 @@ class WannierModel():
 #        exit()
 #        real_lattice,mp_grid,kpt_latt=read_from_win(seedname,['real_lattice','mp_grid','kpoints'])
         eig=EIG(seedname)
-        eig.write(seedname+"-copy")
+#        eig.write(seedname+"-copy")
         mmn=MMN(seedname)
-        mmn.write(seedname+"-copy")
+#        mmn.write(seedname+"-copy")
         amn=AMN(seedname)
-        amn.write(seedname+"-copy")
+#        amn.write(seedname+"-copy")
         assert eig.NK==amn.NK==mmn.NK
         assert eig.NB>=amn.NB
         assert eig.NB>=mmn.NB
         self.NK=eig.NK
         self.NW=amn.NW
+        self.NB=mmn.NB
         self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice)
-        mmn.set_bk(self.mp_grid,self.kpt_latt,self.recip_lattice)
-        self.bk=mmn.bk
+        mmn.set_bk(mp_grid=self.mp_grid,kpt_latt=self.kpt_latt,recip_lattice=self.recip_lattice)
+        self.bk_cart=mmn.bk_cart
         self.wb=mmn.wk
         self.G=mmn.G
         self.neighbours=mmn.neighbours
@@ -93,20 +94,22 @@ class WannierModel():
                 del(ind[0])  
             while len(ind)>0 and ind[0]<len(E) and E[ind[-1]+1]-E[ind[-1]]<thresh:
                 del(ind[-1])
-            froz=np.zeros(Eig.shape,dtype=bool)
+            froz=np.zeros(E.shape,dtype=bool)
             froz[ind]=True
             return froz
 
         frozen_irr=[frozen_nondegen(ik) for ik in self.Dmn.kptirr]
-        self.frozen=[ frozen_irr[ik] for ik in self.Dmn.kpt2kptirr ]
-        self.free= [ np.logical_not(frozen) for frozen in self.frozen]
+        self.frozen=np.array([ frozen_irr[ik] for ik in self.Dmn.kpt2kptirr ])
+        self.free= np.array([ np.logical_not(frozen) for frozen in self.frozen])
         self.Dmn.set_free(frozen_irr)
-        self.nBfree=[ np.sum(free) for free in self.free ]
-        self.nWfree=[ self.NW-np.sum(frozen) for frozen in self.frozen]
-        print ("Bfree:",self.nBfree)
-        print ("Wfree:",self.nWfree)
+        self.nBfree=np.array([ np.sum(free) for free in self.free ])
+        self.nWfree=np.array([ self.NW-np.sum(frozen) for frozen in self.frozen])
+#        print ("Bfree:",self.nBfree)
+#        print ("Wfree:",self.nWfree)
         # initial guess : eq 27 of SMV2001
         irr=self.Dmn.kptirr
+#        print ('irr  = ',repr(irr),type(irr))
+#        print ('free = ',repr(self.free))
         U_opt_free_irr=self.get_max_eig(  [ self.Amn[ik][free,:].dot(self.Amn[ik][free,:].T.conj()) 
                         for ik,free in zip(irr,self.free[irr])]  ,self.nWfree[irr],self.nBfree[irr]) # nBfee x nWfree marrices
         # initial guess : eq 27 of SMV2001
@@ -170,7 +173,7 @@ class WannierModel():
             self.Amn[ik]=Ud.dot(self.Amn[ik])
             self.Mmn[ik]=[Ud.dot(M).dot(U_opt_full[ibk]) for M,ibk in zip (self.Mmn[ik],self.neighbours[ik])]
 
-    def symmetrize_U_opt_free(self,U_opt_free_irr,free=False):
+    def symmetrize_U_opt(self,U_opt_free_irr,free=False):
         # TODO : first symmetrize by the little group
         # Now distribute to reducible points
         d_band=self.Dmn.d_band_free if free else self.Dmn.d_band
@@ -206,12 +209,12 @@ class WannierModel():
             Ud=U.T.conj()
             Amn.append(Ud.dot(self.Amn[ik]))
             Mmn.append([Ud.dot(M).dot(Uham[ibk]) for M,ibk in zip (self.Mmn[ik],self.neighbours[ik])])
-        MMN(data=Mmn,G=self.G,bk=self.bk,wk=self.wb,neighbours=self.neighbours).write(seedname)
+        MMN(data=Mmn,G=self.G,bk=self.bk_cart,wk=self.wb,neighbours=self.neighbours).write(seedname)
         AMN(data=Amn).write(seedname)
 
     def get_max_eig(self,matrix,nvec,nBfree):
         """ return the nvec column-eigenvectors of matrix with maximal eigenvalues. 
-        Both matrix and nvec are lists by k-points,s with arbitrary size of matrices"""
+        Both matrix and nvec are lists by k-points with arbitrary size of matrices"""
 #        print ("getting maximal vectors of: \n {}".format(matrix))
         assert len(matrix)==len(nvec)==len(nBfree)
         assert np.all([m.shape[0]==m.shape[1] for m in matrix])

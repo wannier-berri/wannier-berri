@@ -237,18 +237,18 @@ class MMN(W90_data):
     def n_neighb(self):
         return 1
 
-    def __init__(self,seedname="wannier90",data=None,bk=None,wk=None,G=None,neighbours=None,**kwargs):
+    def __init__(self,seedname="wannier90",data=None,bk_cart=None,wk=None,G=None,neighbours=None,**kwargs):
         self.data=data
         if self.data is None:
             self.read(seedname,**kwargs)
         else:
             self.data=np.array(self.data)
-            self.bk=bk
+            self.bk_cart=bk_cart
             self.wk=wk
             self.neighbours=neighbours
             self.G=G
             assert self.G  is not None
-            assert self.bk is not None
+            assert self.bk_cart is not None
             assert self.wk is not None
             assert self.neighbours is not None
 
@@ -305,39 +305,46 @@ class MMN(W90_data):
 
 
 
-    def set_bk(self,chk):
-      try :
-        self.bk
-        self.wk
-        return
-      except:
-        bk_latt=np.array(np.round( [(chk.kpt_latt[nbrs]-chk.kpt_latt+G)*chk.mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
-        bk_latt_unique=np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1,3))],dtype=int)
-        assert len(bk_latt_unique)==self.NNB
-        bk_cart_unique=bk_latt_unique.dot(chk.recip_lattice/chk.mp_grid[:,None])
-        bk_cart_unique_length=np.linalg.norm(bk_cart_unique,axis=1)
-        srt=np.argsort(bk_cart_unique_length)
-        bk_latt_unique=bk_latt_unique[srt]
-        bk_cart_unique=bk_cart_unique[srt]
-        bk_cart_unique_length=bk_cart_unique_length[srt]
-        brd=[0,]+list(np.where(bk_cart_unique_length[1:]-bk_cart_unique_length[:-1]>1e-7)[0]+1)+[self.NNB,]
-        shell_mat=np.array([ bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2])  for b1,b2 in zip (brd,brd[1:])])
-        shell_mat_line=shell_mat.reshape(-1,9)
-        u,s,v=np.linalg.svd(shell_mat_line,full_matrices=False)
-#        print ("u,s,v=",u,s,v)
-#        print("check svd : ",u.dot(np.diag(s)).dot(v)-shell_mat_line)
-        s=1./s
-        weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
-        check_eye=sum(w*m for w,m in zip(weight_shell,shell_mat))
-        tol=np.linalg.norm(check_eye-np.eye(3))
-        if tol>1e-5 :
-            raise RuntimeError("Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\weight_shell={}\n".format(
-                      check_eye,tol, bk_latt_unique,bk_cart_unique,bk_cart_unique_length,shell_mat,weight_shell))
-        weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
-        weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
-        bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
-        self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
-        self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+    def set_bk(self,chk=None,mp_grid=None,kpt_latt=None,recip_lattice=None):
+        try :
+            self.bk_cart
+            self.wk
+            print ('set_bk was called earlier. skipping now')
+            return
+        except:
+            if chk is not None:
+                for varname in 'mp_grid','kpt_latt','recip_lattice':
+                    assert locals()[varname] is None, 'variable {} should not be dset together with chk'.format(varname)
+                self.set_bk(mp_grid=chk.mp_grid,kpt_latt=chk.kpt_latt,recip_lattice=chk.recip_lattice)
+            else:
+                bk_latt=np.array(np.round( [(kpt_latt[nbrs]-kpt_latt+G)*mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
+                bk_latt_unique=np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1,3))],dtype=int)
+                assert len(bk_latt_unique)==self.NNB
+                print (bk_latt_unique.shape,recip_lattice.shape,mp_grid[:,None].shape)
+                bk_cart_unique=bk_latt_unique.dot(recip_lattice/mp_grid[:,None])
+                bk_cart_unique_length=np.linalg.norm(bk_cart_unique,axis=1)
+                srt=np.argsort(bk_cart_unique_length)
+                bk_latt_unique=bk_latt_unique[srt]
+                bk_cart_unique=bk_cart_unique[srt]
+                bk_cart_unique_length=bk_cart_unique_length[srt]
+                brd=[0,]+list(np.where(bk_cart_unique_length[1:]-bk_cart_unique_length[:-1]>1e-7)[0]+1)+[self.NNB,]
+                shell_mat=np.array([ bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2])  for b1,b2 in zip (brd,brd[1:])])
+                shell_mat_line=shell_mat.reshape(-1,9)
+                u,s,v=np.linalg.svd(shell_mat_line,full_matrices=False)
+#   #        print ("u,s,v=",u,s,v)
+#   #        print("check svd : ",u.dot(np.diag(s)).dot(v)-shell_mat_line)
+                s=1./s
+                weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
+                check_eye=sum(w*m for w,m in zip(weight_shell,shell_mat))
+                tol=np.linalg.norm(check_eye-np.eye(3))
+                if tol>1e-5 :
+                    raise RuntimeError("Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\weight_shell={}\n".format(
+                        check_eye,tol, bk_latt_unique,bk_cart_unique,bk_cart_unique_length,shell_mat,weight_shell))
+                weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
+                weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
+                bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
+                self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+                self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
 
 
 
@@ -665,34 +672,3 @@ class SIU(SXU):
 class SHU(SXU):
     def __init__(self,seedname='wannier90',formatted=False):
         super(SHU, self).__init__(seedname=seedname,formatted=formatted,suffix='sHu' )
-
-
-
-def set_bk(neighbours,G,NNB):
-        bk_latt=np.array(np.round( [(chk.kpt_latt[nbrs]-chk.kpt_latt+G)*chk.mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
-        bk_latt_unique=np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1,3))],dtype=int)
-        assert len(bk_latt_unique)==self.NNB
-        bk_cart_unique=bk_latt_unique.dot(chk.recip_lattice/chk.mp_grid[:,None])
-        bk_cart_unique_length=np.linalg.norm(bk_cart_unique,axis=1)
-        srt=np.argsort(bk_cart_unique_length)
-        bk_latt_unique=bk_latt_unique[srt]
-        bk_cart_unique=bk_cart_unique[srt]
-        bk_cart_unique_length=bk_cart_unique_length[srt]
-        brd=[0,]+list(np.where(bk_cart_unique_length[1:]-bk_cart_unique_length[:-1]>1e-7)[0]+1)+[self.NNB,]
-        shell_mat=np.array([ bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2])  for b1,b2 in zip (brd,brd[1:])])
-        shell_mat_line=shell_mat.reshape(-1,9)
-        u,s,v=np.linalg.svd(shell_mat_line,full_matrices=False)
-#        print ("u,s,v=",u,s,v)
-#        print("check svd : ",u.dot(np.diag(s)).dot(v)-shell_mat_line)
-        s=1./s
-        weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
-        check_eye=sum(w*m for w,m in zip(weight_shell,shell_mat))
-        tol=np.linalg.norm(check_eye-np.eye(3))
-        if tol>1e-5 :
-            raise RuntimeError("Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\weight_shell={}\n".format(
-                      check_eye,tol, bk_latt_unique,bk_cart_unique,bk_cart_unique_length,shell_mat,weight_shell))
-        weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
-        weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
-        bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
-        self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
-        self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
