@@ -25,9 +25,11 @@ from . import __result as result
 
 # constants
 pi = constants.pi
-e = constants.e
+e = constants.e # positive
 hbar = constants.hbar
 eV_seconds = 6.582119e-16
+
+
 
 # smearing functions
 def Lorentzian(x, width):
@@ -167,6 +169,7 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             B = data.A_H[ik]
 
             A_Hbar = data.A_Hbar[ik]
+            D_H = data.D_H[ik]
             D_H_Pval = data.D_H_Pval[ik]
             V_H = data.V_H[ik]
             A_Hbar_der = data.A_Hbar_der[ik]
@@ -184,23 +187,38 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
 #            
 #            # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction 
 #            # ** --> stored in the fourth column of output variables  
-#            AD_bit =     np.einsum('nnc,nma->nmac' , A_Hbar, D_H_Pval) - np.einsum('mmc,nma->nmac' , A_Hbar, D_H_Pval) \
-#                       + np.einsum('nna,nmc->nmac' , A_Hbar, D_H_Pval) - np.einsum('mma,nmc->nmac' , A_Hbar, D_H_Pval)
-            AA_bit =     np.einsum('nnb,nma->nmab' , A_Hbar, A_Hbar) - np.einsum('mmb,nma->nmab' , A_Hbar, A_Hbar)
+#            AD_bit =     np.einsum('nnc,nma->nmac' , A_Hbar, D_H) - np.einsum('mmc,nma->nmac' , A_Hbar, D_H) \
+#                       + np.einsum('nna,nmc->nmac' , A_Hbar, D_H) - np.einsum('mma,nmc->nmac' , A_Hbar, D_H)
+
+
+            AA_bit =     np.einsum('nnb,nma->nmab' , A_Hbar, A_Hbar) - np.einsum('mmb,nma->nmab' , A_Hbar, A_Hbar) # ok in principle
+#            AA_bit =     np.einsum('nnb,nma->mnab' , A_Hbar, A_Hbar) - np.einsum('mmb,nma->mnab' , A_Hbar, A_Hbar) # wrong in principle
+
+#            AA_bit = np.zeros((8, 8, 3, 3), dtype=np.dtype('complex128'))
+#            for n in range(0,8):
+#              for m in range(0,8):
+#                for a in range(0,3):
+#                  for b in range(0,3):
+#                    AA_bit[n,m,a,b] += A_Hbar[n,n,b]*A_Hbar[n,m,a] - A_Hbar[m,m,b]*A_Hbar[n,m,a]
     
 #            # ** this one is invariant under a<-->c
-#            DV_bit =     np.einsum('nmc,nna->nmca' , D_H_Pval, V_H) - np.einsum('nmc,mma->nmca' , D_H_Pval, V_H) \
-#                       + np.einsum('nma,nnc->nmca' , D_H_Pval, V_H) - np.einsum('nma,mmc->nmca' , D_H_Pval, V_H) 
+#            DV_bit =     np.einsum('nmc,nna->nmca' , D_H, V_H) - np.einsum('nmc,mma->nmca' , D_H, V_H) \
+#                       + np.einsum('nma,nnc->nmca' , D_H, V_H) - np.einsum('nma,mmc->nmca' , D_H, V_H) 
+
 
 
 
 #            A = data.A_Hbar_der[ik]
+#            A = np.einsum('nmab->mnab' , A_Hbar_der)
+
 #            A = 1j*data.del2E_H[ik]*dEig_inv[:,:, np.newaxis, np.newaxis]
+            A = - 1j*AA_bit
+#            A = AD_bit 
 
 #            for ii in range(0,8):
 #              AA_bit[ii,ii,:,:] = 0.0
 
-            A = - 1j*AA_bit
+#            A = - 1j*AA_bit
 #            A = A_Hbar_der  \
 #                - 1j*AA_bit 
 
@@ -269,7 +287,7 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
         elif conductivity_type == 'shiftcurrent':
             delta_mn = np.copy(delta)
             dE2 = E[:,np.newaxis] - E[np.newaxis, :] # E_n(k) - E_m(k) [n, m]
-            delta_arg = dE2[np.newaxis,:,:] + omega[:,np.newaxis,np.newaxis]
+            delta_arg = dE2[np.newaxis,:,:] - omega[:,np.newaxis,np.newaxis]
             if smr_type == 'Lorentzian':
                 delta = Lorentzian(delta_arg, eta)
             elif smr_type == 'Gaussian':
@@ -283,9 +301,9 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
             temp = dfE[np.newaxis,:,:]*cfac
 
 
-
+            # generalized derivative is fourth index of A, we put it into third index of Imn
 #            Imn = np.imag(np.einsum('nmac,mnb->nmabc',A,B))
-            Imn = np.einsum('nmac,mnb->nmabc',A,B) + np.einsum('nmab,mnc->nmabc',A,B)
+            Imn = np.einsum('nmca,mnb->nmabc',A,B) + np.einsum('nmba,mnc->nmabc',A,B)
 
             sigma_abc +=  pre_fac * kubo_sum_elements(Imn, temp, data.num_wann) 
 
