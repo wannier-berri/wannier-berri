@@ -177,6 +177,19 @@ class WannierModel():
         # TODO : first symmetrize by the little group
         # Now distribute to reducible points
         d_band=self.Dmn.d_band_free if free else self.Dmn.d_band
+        print (self.Dmn.kpt2kptirr_sym.shape,self.Dmn.kpt2kptirr.shape)
+#        for isym  in  self.Dmn.kpt2kptirr_sym:
+#            print (isym,d_band[isym].shape,U_opt_free_irr.shape,self.Dmn.D_wann_dag.shape)
+
+        for isym,ikirr in zip(self.Dmn.kpt2kptirr_sym,self.Dmn.kpt2kptirr)  :
+            print (isym,ikirr)
+            print ("    ",d_band[isym].shape)
+            print ("    ",U_opt_free_irr[ikirr].shape)
+            print ("    ",self.Dmn.D_wann_dag[isym].shape)
+            print ("        ",d_band[isym][ikirr].shape)
+#            print ("        ",U_opt_free_irr[ikirr].shape)
+#            print ("        ",self.Dmn.D_wann_dag[isym][ikirr].shape)
+        exit()
         U_opt_free=[d_band[isym][ikirr] @ U_opt_free_irr[ikirr] @ self.Dmn.D_wann_dag[isym][ikirr] for isym,ikirr in zip(self.Dmn.kpt2kptirr_sym,self.Dmn.kpt2kptirr)  ]
 
            
