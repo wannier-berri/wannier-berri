@@ -15,13 +15,11 @@
 import numpy as np
 from scipy.io import FortranFile 
 import copy
-import lazy_property
 import functools
 #import billiard as multiprocessing 
 import multiprocessing 
-from .__utility import str2bool, alpha_A, beta_A, iterate3dpm
-from colorama import init
-from termcolor import cprint 
+from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, read_numbers
+from scipy.constants import physical_constants
 from time import time
 from itertools import islice
 import gc
@@ -204,6 +202,7 @@ class CheckPoint():
 
 
 class W90_data():
+
     @property
     def n_neighb(self):
         return 0
@@ -223,6 +222,12 @@ class W90_data():
         else:
             return 0
 
+    def __init__(self,seedname="wannier90",data=None,**kwargs):
+        self.data=data
+        if self.data is None:
+            self.read(seedname,**kwargs)
+        self.data=np.array(self.data)
+
 def convert(A):
     return np.array([l.split() for l in A],dtype=float)
 
@@ -232,8 +237,22 @@ class MMN(W90_data):
     def n_neighb(self):
         return 1
 
+    def __init__(self,seedname="wannier90",data=None,bk_cart=None,wk=None,G=None,neighbours=None,**kwargs):
+        self.data=data
+        if self.data is None:
+            self.read(seedname,**kwargs)
+        else:
+            self.data=np.array(self.data)
+            self.bk_cart=bk_cart
+            self.wk=wk
+            self.neighbours=neighbours
+            self.G=G
+            assert self.G  is not None
+            assert self.bk_cart is not None
+            assert self.wk is not None
+            assert self.neighbours is not None
 
-    def __init__(self,seedname,npar=multiprocessing.cpu_count()):
+    def read(self,seedname,npar=multiprocessing.cpu_count()):
         t0=time()
         f_mmn_in=open(seedname+".mmn","r")
         print ("reading {}.mmn: ".format(seedname)+f_mmn_in.readline())
@@ -269,43 +288,113 @@ class MMN(W90_data):
         t2=time()
         print ("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2-t0,t1-t0,t2-t1))
 
-    def set_bk(self,chk):
-      try :
-        self.bk
-        self.wk
-        return
-      except:
-        bk_latt=np.array(np.round( [(chk.kpt_latt[nbrs]-chk.kpt_latt+G)*chk.mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
-        bk_latt_unique=np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1,3))],dtype=int)
-        assert len(bk_latt_unique)==self.NNB
-        bk_cart_unique=bk_latt_unique.dot(chk.recip_lattice/chk.mp_grid[:,None])
-        bk_cart_unique_length=np.linalg.norm(bk_cart_unique,axis=1)
-        srt=np.argsort(bk_cart_unique_length)
-        bk_latt_unique=bk_latt_unique[srt]
-        bk_cart_unique=bk_cart_unique[srt]
-        bk_cart_unique_length=bk_cart_unique_length[srt]
-        brd=[0,]+list(np.where(bk_cart_unique_length[1:]-bk_cart_unique_length[:-1]>1e-7)[0]+1)+[self.NNB,]
-        shell_mat=np.array([ bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2])  for b1,b2 in zip (brd,brd[1:])])
-        shell_mat_line=shell_mat.reshape(-1,9)
-        u,s,v=np.linalg.svd(shell_mat_line,full_matrices=False)
-#        print ("u,s,v=",u,s,v)
-#        print("check svd : ",u.dot(np.diag(s)).dot(v)-shell_mat_line)
-        s=1./s
-        weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
-        check_eye=sum(w*m for w,m in zip(weight_shell,shell_mat))
-        tol=np.linalg.norm(check_eye-np.eye(3))
-        if tol>1e-5 :
-            raise RuntimeError("Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\weight_shell={}\n".format(
-                      check_eye,tol, bk_latt_unique,bk_cart_unique,bk_cart_unique_length,shell_mat,weight_shell))
-        weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
-        weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
-        bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
-        self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
-        self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
-        
+
+    def write(self,seedname,comment="written by WannierBerri"):
+        t0=time()
+        comment=comment.strip()
+        f_mmn_out=open(seedname+".mmn","w")
+        print ("writing {}.mmn: ".format(seedname)+comment+"\n")
+        f_mmn_out.write("{}\n {}  {}  {}\n".format(comment,self.NB,self.NK,self.NNB))
+
+#        self.data=np.zeros( (NK,NNB,NB,NB), dtype=complex )
+        block=1+self.NB*self.NB
+        for ik in range(self.NK):
+            for ikb,neigh in enumerate(self.neighbours[ik]):
+                 f_mmn_out.write((" {:4d}"*5+"\n").format(ik+1,neigh+1,*tuple(self.G[ik,ikb])))
+                 f_mmn_out.write("".join( " {:17.12f} {:17.12f}\n".format(x.real,x.imag) for x in self.data[ik,ikb].reshape(-1,order='F')))
+
+
+
+    def set_bk(self,chk=None,mp_grid=None,kpt_latt=None,recip_lattice=None):
+        try :
+            self.bk_cart
+            self.wk
+            print ('set_bk was called earlier. skipping now')
+            return
+        except:
+            if chk is not None:
+                for varname in 'mp_grid','kpt_latt','recip_lattice':
+                    assert locals()[varname] is None, 'variable {} should not be dset together with chk'.format(varname)
+                self.set_bk(mp_grid=chk.mp_grid,kpt_latt=chk.kpt_latt,recip_lattice=chk.recip_lattice)
+            else:
+                bk_latt=np.array(np.round( [(kpt_latt[nbrs]-kpt_latt+G)*mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
+                bk_latt_unique=np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1,3))],dtype=int)
+                print ("bk_latt",bk_latt_unique,)
+                assert len(bk_latt_unique)==self.NNB
+                print (bk_latt_unique.shape,recip_lattice.shape,mp_grid[:,None].shape)
+                print (recip_lattice,recip_lattice/mp_grid[:,None])
+                bk_cart_unique=bk_latt_unique.dot(recip_lattice/mp_grid[:,None])
+                bk_cart_unique_length=np.linalg.norm(bk_cart_unique,axis=1)
+                print ("bk_cart",bk_cart_unique, bk_cart_unique_length )
+                srt=np.argsort(bk_cart_unique_length)
+                bk_latt_unique=bk_latt_unique[srt]
+                bk_cart_unique=bk_cart_unique[srt]
+                bk_cart_unique_length=bk_cart_unique_length[srt]
+                brd=[0,]+list(np.where(bk_cart_unique_length[1:]-bk_cart_unique_length[:-1]>1e-7)[0]+1)+[self.NNB,]
+                shell_mat=np.array([ bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2])  for b1,b2 in zip (brd,brd[1:])])
+                shell_mat_line=shell_mat.reshape(-1,9)
+                u,s,v=np.linalg.svd(shell_mat_line,full_matrices=False)
+#   #        print ("u,s,v=",u,s,v)
+#   #        print("check svd : ",u.dot(np.diag(s)).dot(v)-shell_mat_line)
+                s=1./s
+                weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
+                check_eye=sum(w*m for w,m in zip(weight_shell,shell_mat))
+                tol=np.linalg.norm(check_eye-np.eye(3))
+                if tol>1e-5 :
+                    raise RuntimeError("Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\weight_shell={}\n".format(
+                        check_eye,tol, bk_latt_unique,bk_cart_unique,bk_cart_unique_length,shell_mat,weight_shell))
+                weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
+                weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
+                bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
+                self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+                self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+
+
+
+class AMN(W90_data):
+
+    @property 
+    def  NB(self):
+        return self.data.shape[1]
+
+    @property 
+    def  NW(self):
+        return self.data.shape[2]
+
+
+    def read(self,seedname,num_proc=4):
+        f_mmn_in=open(seedname+".amn","r").readlines()
+        print ("reading {}.amn: ".format(seedname)+f_mmn_in[0].strip())
+        s=f_mmn_in[1]
+        NB,NK,NW=np.array(s.split(),dtype=int)
+        self.data=np.zeros( (NK,NB,NW), dtype=complex )
+        block=self.NW*self.NB
+        allmmn=( f_mmn_in[2+j*block:2+(j+1)*block]  for j in range(self.NK) )
+        p=multiprocessing.Pool(num_proc)
+        self.data= np.array(p.map(str2arraymmn,allmmn)).reshape((self.NK,self.NW,self.NB)).transpose(0,2,1)
+
+    def write(self,seedname,comment="written by WannierBerri"):
+        comment=comment.strip()
+        f_mmn_out=open(seedname+".amn","w")
+        print ("writing {}.amn: ".format(seedname)+comment+"\n")
+        f_mmn_out.write(comment+"\n")
+        f_mmn_out.write("  {:3d} {:3d} {:3d}  \n".format(self.NB,self.NK,self.NW))
+        for ik in range(self.NK):
+            f_mmn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(ib+1,iw+1,ik+1,self.data[ik,ib,iw].real,self.data[ik,ib,iw].imag) for iw in range(self.NW) for ib in range(self.NB)))
+        f_mmn_out.close()
+
+
+
+def str2arraymmn(A):
+    a=np.array([l.split()[3:] for l in A],dtype=float)
+#    if shape is None:
+#        n=int(round(np.sqrt(a.shape[0])))
+#        shape=(n,n)
+    return (a[:,0]+1j*a[:,1])
+
 
 class EIG(W90_data):
-    def __init__(self,seedname):
+    def read(self,seedname="wannier90"):
         data=np.loadtxt(seedname+".eig")
         NB=int(round(data[:,0].max()))
         NK=int(round(data[:,1].max()))
@@ -313,6 +402,13 @@ class EIG(W90_data):
         assert np.linalg.norm(data[:,:,0]-1-np.arange(NB)[None,:])<1e-15
         assert np.linalg.norm(data[:,:,1]-1-np.arange(NK)[:,None])<1e-15
         self.data=data[:,:,2]
+
+    def write(self,seedname="wannier90"):
+        fout=open(seedname+".eig","w")
+#        fout.write("{}  {}\n".format(self.NB,self.NK))
+        for ik in range(self.NK):
+            fout.write("".join(" {:4d} {:4d}  {:17.12f}\n".format(ib+1,ik+1,self.data[ik,ib]) for ib in range(self.NB)))
+        fout.close()
 
             
 class SPN(W90_data):
@@ -394,6 +490,151 @@ class UHU(UXU):
 class UIU(UXU):  
     def __init__(self,seedname='wannier90',formatted=False):
         super(UIU, self).__init__(seedname=seedname,formatted=formatted,suffix='uIu' )
+
+
+class WIN():
+    def __init__(self,seedname='wannier90'):
+        self.name=seedname+".win"
+        lines=[l.strip().lower() for l in open(seedname+".win").readlines()]
+        for l in lines:
+          for delim in '!','%' :  # put other valid delimiters here 
+            l.replace(delim,'#')
+        lines=[l.split('#')[0].strip() for l in lines] # drop comments
+        self.lines=[l for l in lines if len(l)>0]      # blank lines
+        unit_length={'ang':1.,'bohr':physical_constants['Bohr radius'][0]*1e10}
+        self.units={'unit_cell_cart':unit_length}
+
+    def print_clean(self):
+        print ("\n".join("{:3d}:{}".format(i,l) for i,l in enumerate(self.lines)) )
+
+    def findparam(self,param):
+        "returns the string corresponding to the parameter"
+        ll=[l for l in self.lines  if l.startswith(param)]
+        assert len(ll)<=1 , "Parameter {} was found {}>1 times in the '{}' file\n".format(param,l,self.name)
+        assert len(ll)>=0 , "Parameter {} was not found  in the '{}' file\n".format(param,l,self.name)
+        ll=ll[0].split("=")
+        assert len(ll)>=1 , "nothing was found on the right of '{} =' ".format(param)
+        assert len(ll)<=2 , " '=' is given {}>1 times for  '{} ' ".format(len(ll)-1, param)
+        assert len(ll)==2
+        return ll[1].strip()
+
+
+    def get_param(self,param,dtype=int,size=1):
+        try:
+            param=param.lower().strip()
+            assert size>=1
+            res=self.findparam(param)
+            if dtype==str:
+               return res
+            res=res.split()
+            assert len(res)>0  
+            if dtype==bool:
+                res=[str2bool(x) for x in res]
+            else:
+                res=[dtype(x) for x in res]
+            if len(res)==1:
+                if size==1:
+                    return res[0]
+                else:
+                    return np.array(res*size)
+            else : 
+                return np.array(res,dtype=dtype)
+        except Exception as err:
+            raise  RuntimeError("ERROR reading parameter {} from {} :\n {}".format(param,self.name,err))
+
+    def find_begin_end(self,begend,param):
+        "returns the line index where the corresponding begin/end parameter is found"
+        il=[i for i,l in enumerate (self.lines) if l.startswith(begend) and l.split()[1]==param]
+        assert len(il)<=1 , "{} {} was found {}>1 times in the '{}' file\n".format(begend,param,len(il),self.name)
+        assert len(il)>0 , "{} {} was not found  in the '{}' file\n".format(      begend,param,self.name)
+        return il[0]
+
+
+    def get_param_block(self,param,shape=None,dtype=float):
+        try:
+            begin = self.find_begin_end('begin' , param)+1
+            end   = self.find_begin_end('end'   , param)
+            try :
+                l=self.lines[begin].split()[0]
+#                print ("unit read is {}".format(l))
+                unit=self.units[param][l]
+                begin +=1
+#                print ("unit recognized as {}".format(unit))
+            except KeyError:
+                unit=None
+            print 
+            
+            if shape is None:
+                res = np.loadtxt(self.lines[begin:end],dtype=dtype)
+            else: 
+                assert len(shape)==2 , "shape is wrong : {}".format(shape)
+                assert end-begin==shape[0] , 'end={} , begin={} , shape={} '.format(end,begin,shape)
+                res=np.array( [l.split()[:shape[1]] for l in self.lines[begin:end]],dtype=dtype)
+            
+            if unit is not None:
+                res*=unit
+            return res
+        except Exception as err:
+            raise  RuntimeError("ERROR reading parameter block {} from {} :\n {}".format(param,self.name,err))
+
+
+class DMN():
+    
+    def __init__(self,seedname="wannier90",num_wann=0,num_bands=None,nkpt=None):
+        if seedname is not None:
+            self.read(seedname,num_wann)
+        else:
+            self.void(num_wann,num_bands,nkpt)
+
+    def read(self,seedname="wannier90",num_wann=0):
+        fl=open(seedname+".dmn","r")
+        self.comment=fl.readline().strip()
+        self.NB,self.Nsym,self.nkptirr,self.nkpt = read_numbers(fl,4)
+        self.num_wann=num_wann
+        self.kpt2kptirr              = read_numbers(fl,self.nkpt)-1
+        self.kptirr                  = read_numbers(fl,self.nkptirr)-1
+        self.kptirr2kpt= read_numbers(fl,(self.Nsym,self.nkptirr))-1
+        # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
+        self.kpt2kptirr_sym           = np.array([np.where(self.kptirr2kpt[:,self.kpt2kptirr[ik]]==ik)[0][0] for ik in range(self.nkpt)])
+
+        # read the rest of lines and comvert to conplex array
+        data=[l.strip("() \n").split(",") for l in  fl.readlines()]
+        data=np.array([x for x in data if len(x)==2],dtype=float)
+        data=data[:,0]+1j*data[:,1]
+        n1=self.num_wann**2*self.Nsym*self.nkptirr
+        self.D_wann_dag=data[:n1].reshape(self.nkptirr,self.Nsym,self.num_wann,self.num_wann).transpose((0,1,3,2)).conj()
+        self.d_band=data[n1:].reshape(self.nkptirr,self.Nsym,self.NB,self.NB)
+
+    def void(self,num_wann,num_bands,nkpt):
+        self.comment="only identity"
+        self.NB,self.Nsym,self.nkptirr,self.nkpt = num_bands,1,nkpt,nkpt
+        self.num_wann=num_wann
+        self.kpt2kptirr              = np.arange(self.nkpt)
+        self.kptirr                  = self.kpt2kptirr
+        self.kptirr2kpt= np.array([self.kptirr])
+        self.kpt2kptirr_sym           = np.zeros(self.nkpt,dtype=int) 
+        # read the rest of lines and comvert to conplex array
+        self.d_band=np.ones((self.nkptirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.NB)[None,None,:,:]
+        self.D_wann_dag=np.ones((self.nkptirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.num_wann)[None,None,:,:]
+
+
+    def apply_outer_window(self,win_index_irr):
+        self.d_band=[ D[:,wi,:][:,:,wi] for D,wi in zip(self.d_band,win_index_irr) ]
+
+    def set_free(self,frozen_irr):
+        free=np.logical_not(frozen_irr)
+        self.d_band_free=[ d[:,f,:][:,:,f] for d,f in zip(self.d_band,free) ]
+
+    def write(self):
+        print (self.comment)
+        print (self.NB,self.Nsym,self.nkptirr,self.nkpt,self.num_wann)
+        for i in range(self.nkptirr):
+           for j in range(self.Nsym):
+               print()
+               for M in self.D_band[i][j],self.d_wann[i][j]:
+                   print("\n".join(" ".join("{}".format("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
+#                   print("\n".join(" ".join("{:4.2f}".format(abs(x)**2) for x in m) for m in M)+"\n")
+
 
 
 class SXU(W90_data):  # sHu or sIu

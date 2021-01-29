@@ -17,7 +17,6 @@ import copy
 import lazy_property
 
 from .__utility import str2bool, alpha_A, beta_A ,real_recip_lattice
-from colorama import init
 from termcolor import cprint 
 from .__system import System
 
@@ -84,15 +83,7 @@ class System_tb(System):
             self.AA_R[:,:,ir,:]=(aa[:,:,0::2]+1j*aa[:,:,1::2]).transpose( (1,0,2) ) /self.Ndegen[ir]
         else: 
             self.AA_R = None
-        
+
         f.close()
-        self.set_symmetry()
-        self.check_periodic()
+        self.finalise_init()
 
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Recommended size of FFT grid", self.NKFFT_recommended)
-        print ("Real-space lattice:\n",self.real_lattice)
-        cprint ("Reading the system from {} finished successfully".format(tb_file),'green', attrs=['bold'])
-
-        

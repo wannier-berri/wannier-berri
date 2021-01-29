@@ -15,7 +15,7 @@
 
 import functools 
 from .__evaluate import evaluate_K
-from .__utility import getSmoother 
+from .__utility import getSmoother, warning
 from . import __integrate 
 from . import __tabulate  
 from . import symmetry
@@ -37,12 +37,10 @@ from time import time
 import sys,glob
 
 
-from colorama import init
 from termcolor import cprint 
 from pyfiglet import figlet_format
 
 def figlet(text,font='cosmike',col='red'):
-    init(strip=not sys.stdout.isatty()) # strip colors if stdout is redirected
     letters=[figlet_format(X, font=font).rstrip("\n").split("\n") for X in text]
 #    print (letters)
     logo=[]
@@ -165,7 +163,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     Efermi=to_array(Efermi)
     # TODO : either remove smearW from here, or remove any smearing from inside kubo. This will not allow adaptive smearing though
     if smearW is not None:
-        print( "WARNING : smearW parameteris neglected, smearing is currently done inside the kubo routine, use  kBT parameter")
+        warning ( "smearW parameteris neglected, smearing is currently done inside the kubo routine, use  kBT parameter")
         smearW=None
     smoothEf = getSmoother(Efermi,smearEf) # smoother for functions of Fermi energy
     smoothW  = getSmoother(omega,smearW) # smoother for functions of frequency

@@ -12,10 +12,7 @@
 #------------------------------------------------------------
 
 import numpy as np
-from termcolor import cprint 
 from .__system import System
-
-
 
 
 class System_tb_py(System):
@@ -63,9 +60,7 @@ class System_tb_py(System):
             raise ValueError("unknown tight-binding module {}".format(module))
 
 
-
         self.dimr=real.shape[1]
-
 
         self.real_lattice=np.eye((3),dtype=float)
         self.real_lattice[:self.dimr,:self.dimr]=np.array(real)
@@ -138,14 +133,7 @@ class System_tb_py(System):
 
 #   TODO: generate the SS_R matrix        
 
-        self.set_symmetry()
-        self.check_periodic()
-                
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Recommended size of FFT grid", self.NKFFT_recommended)
-        print ("Real-space lattice:\n",self.real_lattice)
-        cprint ("Reading the system from {} finished successfully".format(names[module]),'green', attrs=['bold'])
+        self.finalise_init()        
         
 
 
@@ -156,7 +144,6 @@ class System_TBmodels(System_tb_py):
     It defines the Hamiltonian matrix HH_R (from hoppings matrix elements)
     and the AA_R  matrix (from orbital coordinates) used to calculate Berry
     related quantities.
-    
     
     Parameters
     ----------
@@ -184,7 +171,6 @@ class System_PythTB(System_tb_py):
     ----------
     ptb_model : class
         name of the PythTB tight-binding model class.
-
 
     Notes
     -----

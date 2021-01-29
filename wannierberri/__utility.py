@@ -42,11 +42,14 @@ def print_my_name_end():
 def conjugate_basis(basis):
     return 2*np.pi*np.linalg.inv(basis).T
 
+def warning(message,color="yellow"):
+    cprint ("\n WARNING!!!!! {} \n".format(message),color)
+
 
 def real_recip_lattice(real_lattice=None,recip_lattice=None):
     if recip_lattice is None:
         if real_lattice is None : 
-            cprint ("\n WARNING!!!!! usually need to provide either with real or reciprocal lattice. If you only want to generate a random symmetric tensor - that it fine \n","yellow")
+            warning(" usually need to provide either with real or reciprocal lattice. If you only want to generate a random symmetric tensor - that it fine ")
             return None,None
         recip_lattice=conjugate_basis(real_lattice)
     else: 
@@ -306,6 +309,15 @@ def iterate3d(size):
     return ( np.array([i,j,k]) for i in range(0,size[0])
                      for j in range(0,size[1])
                      for k in range(0,size[2]) )
+
+def read_numbers(fl,num_read,dtype=int):
+    assert dtype in (int,float), "intended only to read integers or floats"
+    n=np.prod(num_read)
+    read=[]
+    while len(read)<n:
+        read+=fl.readline().split()
+    if len(read)>n : print ( "more numbers ({}) read then expected ({})".format(len(read),n))
+    return np.array(read,dtype=dtype).reshape(num_read)
 
 def find_degen(arr,degen_thresh):
     """ finds shells of 'almost same' values in array arr, and returns a list o[(b1,b2),...]"""

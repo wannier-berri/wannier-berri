@@ -25,7 +25,7 @@ import glob
 from .__Data_K import Data_K
 from . import symmetry as SYM
 from  .__Kpoint import exclude_equiv_points
-from . import __utility as utility
+from .__utility import warning
 
 def process(paralfunc,K_list,nproc,symgroup=None):
     t0=time()
@@ -87,12 +87,12 @@ As a result, the integration will be performed over NKFFT x NKdiv
             K_list=pickle.load(open(file_Klist,"rb"))
             print ("{0} K-points were read from {1}".format(len(K_list),file_Klist))
             if len(K_list)==0:
-                print ("WARNING : {0} contains zero points starting from scrath".format(file_Klist))
+                warning ( " {0} contains zero points starting from scrath".format(file_Klist))
                 restart=False
         except Exception as err:
             restart=False
-            print ("WARNING: {}".format( err) )
-            print ("WARNING : reading from {0} failed, starting from scrath".format(file_Klist))
+            warning ( str(err) )
+            warning ( "reading from {0} failed, starting from scrath".format(file_Klist))
     else:
         K_list=grid.get_K_list()
         print ("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
@@ -105,7 +105,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         try:
             start_iter=int(sorted(glob.glob(fout_name+"*"+suffix+"_iter-*.dat"))[-1].split("-")[-1].split(".")[0])
         except Exception as err:
-            print ("WARNING : {0} : failed to read start_iter. Setting to zero".format(err))
+            warning (" {0} : failed to read start_iter. Setting to zero".format(err))
             start_iter=0
 
     if adpt_num_iter<0:
@@ -134,7 +134,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
             if file_Klist is not None:
                 pickle.dump(K_list,open(file_Klist,"wb"))
         except Exception as err:
-            print ("Warning: {0} \n the K_list was not pickled".format(err))
+            warning (" {0} \n the K_list was not pickled".format(err))
             
         result_all=sum(kp.get_res for kp in K_list)
         
