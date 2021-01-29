@@ -50,6 +50,8 @@ class Data_K(System):
         self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,numthreads=npar if npar>0 else 1,lib=fftlib)
         self.Emin=system.Emin
         self.Emax=system.Emax
+        self.Bfield=system.Bfield
+        self.Zeeman_orb=system.Zeeman_orb
 
 
         try:

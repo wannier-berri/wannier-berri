@@ -148,6 +148,9 @@ class System():
                     'Emin': -np.Inf ,
                     'Emax': np.Inf ,
                     'use_ws':True,
+                    'Bfield':0,
+                    'Zeeman_orb':True,
+                    'Zeeman_spin':True,
                     'periodic':(True,True,True)
                        }
 
