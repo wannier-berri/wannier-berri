@@ -83,6 +83,13 @@ class System():
                     'periodic':(True,True,True)
                        }
 
+        for param in self.default_parameters:
+            if param in parameters:
+                vars(self)[param]=parameters[param]
+            else: 
+                vars(self)[param]=self.default_parameters[param]
+        self.periodic=np.array(self.periodic)
+
     def finalise_init(self):
         self.set_symmetry()
         self.check_periodic()
@@ -91,15 +98,6 @@ class System():
         print ("Recommended size of FFT grid", self.NKFFT_recommended)
         print ("Real-space lattice:\n",self.real_lattice)
         cprint ("Reading the system from {} finished successfully".format(tb_file),'green', attrs=['bold'])
-
-
-
-        for param in self.default_parameters:
-            if param in parameters:
-                vars(self)[param]=parameters[param]
-            else: 
-                vars(self)[param]=self.default_parameters[param]
-        self.periodic=np.array(self.periodic)
 
 
     def check_periodic(self):
