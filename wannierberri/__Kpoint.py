@@ -41,6 +41,10 @@ class  KpointBZ():
         return self.dK/self.NKFFT
 
     @lazy_property.LazyProperty
+    def dK_fullBZ_cart(self):
+         return self.dK_fullBZ[:,None]*self.symgroup.recip_lattice
+
+    @lazy_property.LazyProperty
     def star(self):
         if self.symgroup is None:
             return [self.K]

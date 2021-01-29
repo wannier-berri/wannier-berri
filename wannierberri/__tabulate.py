@@ -20,7 +20,7 @@ from io import StringIO
 import  multiprocessing 
 import functools
 
-from .__utility import  print_my_name_start,print_my_name_end,voidsmoother
+from .__utility import  print_my_name_start,print_my_name_end
 from . import __result as result
 from . import  __berry as berry
 from . import  symmetry
@@ -191,10 +191,7 @@ class TABresult(result.Result):
 #            FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk.data[:,iband]-efermi )
         
         if quantity is None:
-            if formatted:
-                return FSfile
-            else:
-                return (FSfile,self.recip_lattice,self.Enk.data-efermi)
+            return FSfile
 
         if quantity not in self.results:
             raise RuntimeError("requested quantity '{}' was not calculated".format(quantity))

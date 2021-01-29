@@ -13,14 +13,14 @@
 """
 wannierberri - a module for Wannier interpolation
 """
-from .__main import integrate,tabulate,symmetry,integrate_options,tabulate_options,welcome
+from .__main import integrate,tabulate,symmetry,integrate_options,tabulate_options,welcome,print_options
+from .__tabulate import TABresult
 from .__grid import Grid
 from .__version import __version__
 from .__system import System
 from .__system_w90 import System_w90
 from .__system_tb  import System_tb
-from .__system_pythtb  import System_PythTB
-from .__system_tbmodels  import System_TBmodels
+from .__system_tb_py  import System_PythTB, System_TBmodels
 
 welcome()
 
