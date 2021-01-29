@@ -40,10 +40,11 @@ class WannierModel():
         self.wb=mmn.wk
         self.G=mmn.G
         self.neighbours=mmn.neighbours
-        self.Mmn=mmn.data
-        self.Amn=amn.data
+        self.Mmn=[m for m in mmn.data]
+        self.Amn=[a for a in amn.data]
         self.Eig=eig.data
         self.win_index=[np.arange(eig.NB)]*self.NK
+        self.disentangled=False
         if sitesym:
             self.Dmn=DMN(seedname,num_wann=self.NW)
         else:
@@ -146,7 +147,8 @@ class WannierModel():
             Z_old=deepcopy(Z)
 
         U_opt_full_irr=[]
-        for ik in range(self.Dmn.kptirr):
+#        print (self.Dmn.kptirr
+        for ik in self.Dmn.kptirr:
            nband=self.Eig[ik].shape[0]
            U=np.zeros((nband,self.NW),dtype=complex)
            nfrozen=sum(self.frozen[ik])
@@ -165,32 +167,37 @@ class WannierModel():
 
        # now rotating to the optimized space
         self.Hmn=[]
+#        print (self.Amn.shape)
         for ik in range(self.NK):
             U=U_opt_full[ik]
             Ud=U.T.conj()
             # hamiltonian is not diagonal anymore
             self.Hmn.append(Ud.dot(np.diag(self.Eig[ik])).dot(U))
+#            print (self.Amn[ik].shape,Ud.shape)
             self.Amn[ik]=Ud.dot(self.Amn[ik])
             self.Mmn[ik]=[Ud.dot(M).dot(U_opt_full[ibk]) for M,ibk in zip (self.Mmn[ik],self.neighbours[ik])]
+        self.disentangled=True
+
 
     def symmetrize_U_opt(self,U_opt_free_irr,free=False):
         # TODO : first symmetrize by the little group
         # Now distribute to reducible points
         d_band=self.Dmn.d_band_free if free else self.Dmn.d_band
-        print (self.Dmn.kpt2kptirr_sym.shape,self.Dmn.kpt2kptirr.shape)
+#        print (self.Dmn.kpt2kptirr_sym.shape,self.Dmn.kpt2kptirr.shape)
 #        for isym  in  self.Dmn.kpt2kptirr_sym:
 #            print (isym,d_band[isym].shape,U_opt_free_irr.shape,self.Dmn.D_wann_dag.shape)
 
-        for isym,ikirr in zip(self.Dmn.kpt2kptirr_sym,self.Dmn.kpt2kptirr)  :
-            print (isym,ikirr)
-            print ("    ",d_band[isym].shape)
-            print ("    ",U_opt_free_irr[ikirr].shape)
-            print ("    ",self.Dmn.D_wann_dag[isym].shape)
-            print ("        ",d_band[isym][ikirr].shape)
+#        for isym,ikirr in zip(self.Dmn.kpt2kptirr_sym,self.Dmn.kpt2kptirr)  :
+#            print (isym,ikirr)
+#            print ("    ",d_band[isym].shape)
+#            print ("    ",U_opt_free_irr[ikirr].shape)
+#            print ("    ",self.Dmn.D_wann_dag[isym].shape)
+#            print ("        ",d_band[isym][ikirr].shape)
 #            print ("        ",U_opt_free_irr[ikirr].shape)
 #            print ("        ",self.Dmn.D_wann_dag[isym][ikirr].shape)
-        exit()
-        U_opt_free=[d_band[isym][ikirr] @ U_opt_free_irr[ikirr] @ self.Dmn.D_wann_dag[isym][ikirr] for isym,ikirr in zip(self.Dmn.kpt2kptirr_sym,self.Dmn.kpt2kptirr)  ]
+#        exit()
+        U_opt_free=[d_band[ikirr][isym] @ U_opt_free_irr[ikirr] @ self.Dmn.D_wann_dag[ikirr][isym] for isym,ikirr in zip(self.Dmn.kpt2kptirr_sym,self.Dmn.kpt2kptirr)  ]
+        return U_opt_free
 
            
     def rotate(self,mat,ik1,ik2):
@@ -222,7 +229,7 @@ class WannierModel():
             Ud=U.T.conj()
             Amn.append(Ud.dot(self.Amn[ik]))
             Mmn.append([Ud.dot(M).dot(Uham[ibk]) for M,ibk in zip (self.Mmn[ik],self.neighbours[ik])])
-        MMN(data=Mmn,G=self.G,bk=self.bk_cart,wk=self.wb,neighbours=self.neighbours).write(seedname)
+        MMN(data=Mmn,G=self.G,bk_cart=self.bk_cart,wk=self.wb,neighbours=self.neighbours).write(seedname)
         AMN(data=Amn).write(seedname)
 
     def get_max_eig(self,matrix,nvec,nBfree):
@@ -267,6 +274,7 @@ class WannierModel():
         def Omega_I_free_frozen(self,U_opt_free):
             U=U_opt_free
             Mmn=self('free','frozen')
+#            print (U) #,Mmn,self.wb,self.neighbours)
             return -sum( self.wb[ik][ib]*np.sum(abs(   U[ik].T.conj().dot(Mmn[ib])  )**2) 
                         for ik,Mmn in enumerate(Mmn) for ib,ikb in enumerate(self.neighbours[ik])  )/self.NK*2
 
