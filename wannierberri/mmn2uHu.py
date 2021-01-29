@@ -12,13 +12,16 @@
 #------------------------------------------------------------
 '''This utility calculates the matrices .uHu, .uIu, .sHu, and/or .sIu from the .mmn, .spn matrices, and also reduces the number of bands in .amn, .mmn, .eig  and .spn files
 
-        Usage example:
-                python3 -m wanierberri.mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu
-                
+        Usage example: ::
+
+                python3 -m wannierberri.mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu                
+
+
         Options
             -h 
-                print the help message
-            IBstart    
+                | print the help message
+
+            IBstart
                 |  the first band in the output file (counting starts from 1). 
                 |  default: 1
             IBstartSum
@@ -35,12 +38,14 @@
                 |  Default: ./  
             output 
                 |  path to the output files 
+
             targets 
                 |  files to write : ``amn``, ``mmn``, ``spn``, ``uHu``, ``uIu``,  ``sHu``, ``sIu``, ``eig``
                 |  default: ``amn``,``mmn``,``eig``,``uHu``
             formatted 
                 |  files to write as formatted  ``uHu``, ``uIu`` , ``sHu``, ``sIu``, ``spn``, ``spn_in``, ``spn_out``, ``all`` 
                 |  default: none
+
 
 '''
 

@@ -16,19 +16,27 @@
 #------------------------------------------------------------#
 '''This is a script to plot the band with line path (High symmetry line) or plane cut using tabulate calculation result from Wannierberri. 
 
-	NOTE: 1. Please chose the line kpaths which are in the 1st BZ.
+	NOTE: 
+
+	      1. Please chose the line kpaths which are in the 1st BZ.
 	      2. The plane cut figure shows a plane cut of 2x2x2 reciprocal lattice. 
 	      3. All k coordinate values in list like parameters should be integer. (means which k point).
 		 eg. If k-grid is 12x12x12. kpoint (1/3,2/3,0.5) should be (4,8,6)
 	      4. In order to ensure that more high symmetry points have k-grid points, you would better set NK as multiples of 12 when doing tabulate calculation. 
 
         Usage example:
-                line:  python3 -m wannierberri.tab_plot tab_result.pickle type=Line quantity=True kpath=0,0,0,0,0,40 namelist=G,Z qtype=berry component=z
-                plane: python3 -m wannierberri.tab_plot tab_result.pickle type=Plane quantity=True Efermi=-0.5 vec1=1,0,0 vec2=0,1,0 qtype=berry component=z
-                
+                line: ::
+
+                    python3 -m wannierberri.tab_plot tab_result.pickle type=Line quantity=True kpath=0,0,0,0,0,40 namelist=G,Z qtype=berry component=z
+
+                plane: ::
+
+    	              python3 -m wannierberri.tab_plot tab_result.pickle type=Plane quantity=True Efermi=-0.5 vec1=1,0,0 vec2=0,1,0 qtype=berry component=z
+
         Options
             -h 
                 | print the help message
+
             type (String)
                 |  Type of plot. 
 		|  	Line: line cut
@@ -36,14 +44,8 @@
                 |  Default: None
             quantity (Boolean)
                 |  Plot quantity or not.
-		|  	False: Only plot energy of band.
+		|	False: Only plot energy of band.
 		|	True: Not only energy of band but also quantity(plot as color dot)  
-                |  Default: False
-            formatted (Boolean)
-                |  Format of input file.
-		|	False: binary
-		|	True: txt 
-		|  It should be same as parameter 'formatted' in tabulate.  
                 |  Default: False
             o_point (list like)
 		|  k coordinate of origin.(type=Plane)
@@ -67,8 +69,7 @@
                 |  Fermi level when (type=Line)
 		|  Plotting energy (when type=Plane) 
                 |  default: 0.0
-            E_min (float) 
-	    E_max (float)
+            E_min, E_max (float) 
                 |  Energy window of plot. (type=Line) 
                 |  default: E_min=-2 Emax=2
             qtype (str)
@@ -104,7 +105,6 @@ def main():
 	Line=False
 	Plane=False
 	quantity=False
-	formatted = False
 	o_point = np.array([0,0,0],dtype=int)    #original point  for kplane
 	vec1 = np.array([0,0,1],dtype=int)       #two vectors to determin a plane
 	vec2 = np.array([0,1,0],dtype=int)
@@ -125,8 +125,6 @@ def main():
 			elif arg[1]=="Plane": Plane=True
 		if arg[0]=="quantity": 
 			if arg[1]=="True": quantity=True
-		if arg[0]=="formatted": 
-			if arg[1]=="True": formatted=True
 		if arg[0]=='o_point': o_point=np.array([x for x in arg[1].split(',')],dtype=int)
 		if arg[0]=='vec1': vec1=np.array([x for x in arg[1].split(',')],dtype=int)
 		if arg[0]=='vec2': vec2=np.array([x for x in arg[1].split(',')],dtype=int)
@@ -135,7 +133,7 @@ def main():
 			kpath=tmp.reshape(len(tmp)//3,3)
 		if arg[0]=='Efermi': Efermi=float(arg[1])
 		if arg[0]=='E_min': E_min=float(arg[1])
-		if arg[0]=='E_max': E_min=float(arg[1])
+		if arg[0]=='E_max': E_max=float(arg[1])
 		if arg[0]=='namelist': namelist=[x for x in arg[1]]
 		if arg[0]=='component': component = arg[1]
 		if arg[0]=='qtype': qtype = arg[1]

@@ -130,7 +130,7 @@ def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
             RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
             res+=np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume)
         return result.EnergyResult(Efermi,res,TRodd=TRodd,Iodd=Iodd)
-    elif 'sea' in dataIO:
+    elif 'sea' in dataIO:  # !!! This is the preferred option for now 
         if 'EFmin' in dataIO and 'EFmax' in dataIO:
             A,EFmin,EFmax=dataIO['sea'],dataIO['EFmin'],dataIO['EFmax']
 #            for ik in range(10):
@@ -157,7 +157,10 @@ def maxocc(E,Ef,A):
 
 
 class DataIO(dict):
-
+    """ a class to store data, which are to be summed over inner 'i' or  outer 'o' states, 
+        or over fermi sea 'sea'
+        the IO in the name doed NOT stand for input/output methods. 
+    """
 
     @property
     def E(self):
@@ -172,6 +175,9 @@ class DataIO(dict):
         return self.E.shape[1]
 
     def to_sea(self,degen_thresh=0):
+        """replaces all keys, like 'ooi' , 'oi', etc by a single key 'sea' - the corresponding sum when
+           the n-th band is the highest occupied
+        """
 ## TODO : Check if this routine takes muchtime for large systems. then optimize it with taking differences 
 ##    between (n+1)th and n-th  step like in the OCC class
         sea=0

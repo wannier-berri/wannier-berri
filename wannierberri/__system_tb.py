@@ -24,7 +24,7 @@ from .__system import System
 
 class System_tb(System):
     """
-    System initialized from the `*_tb.dat` file, which can be written either by  `Wannier90 <http://wannier.org>`_ code, 
+    System initialized from the `*_tb.dat` file, which can be written either by  `Wannier90 <http://wannier.org>`__ code, 
     or composed by the user based on some tight-binding model. 
     See Wannier90 `code <https://github.com/wannier-developers/wannier90/blob/2f4aed6a35ab7e8b38dbe196aa4925ab3e9deb1b/src/hamiltonian.F90#L698-L799>`_
     for details of the format. 
@@ -91,7 +91,7 @@ class System_tb(System):
 
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
-        print ("Reommended size of FFT grid", self.NKFFT_recommended)
+        print ("Recommended size of FFT grid", self.NKFFT_recommended)
         print ("Real-space lattice:\n",self.real_lattice)
         cprint ("Reading the system from {} finished successfully".format(tb_file),'green', attrs=['bold'])
 

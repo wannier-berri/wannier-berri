@@ -187,12 +187,12 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
 #            
 #            # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction 
 #            # ** --> stored in the fourth column of output variables  
-#            AD_bit =     np.einsum('nnc,nma->nmac' , A_Hbar, D_H) - np.einsum('mmc,nma->nmac' , A_Hbar, D_H) \
-#                       + np.einsum('nna,nmc->nmac' , A_Hbar, D_H) - np.einsum('mma,nmc->nmac' , A_Hbar, D_H)
+            AD_bit =     np.einsum('nnc,nma->nmac' , A_Hbar, D_H) - np.einsum('mmc,nma->nmac' , A_Hbar, D_H) \
+                       + np.einsum('nna,nmc->nmac' , A_Hbar, D_H) - np.einsum('mma,nmc->nmac' , A_Hbar, D_H)
 
 
             AA_bit =     np.einsum('nnb,nma->nmab' , A_Hbar, A_Hbar) - np.einsum('mmb,nma->nmab' , A_Hbar, A_Hbar) # ok in principle
-#            AA_bit =     np.einsum('nnb,nma->mnab' , A_Hbar, A_Hbar) - np.einsum('mmb,nma->mnab' , A_Hbar, A_Hbar) # wrong in principle
+#            AA_bit =     np.einsum('nmb,nma->nmab' , A_Hbar, A_Hbar) - np.einsum('mnb,nma->nmab' , A_Hbar, A_Hbar) # wrong in principle
 
 #            AA_bit = np.zeros((8, 8, 3, 3), dtype=np.dtype('complex128'))
 #            for n in range(0,8):
@@ -202,8 +202,8 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
 #                    AA_bit[n,m,a,b] += A_Hbar[n,n,b]*A_Hbar[n,m,a] - A_Hbar[m,m,b]*A_Hbar[n,m,a]
     
 #            # ** this one is invariant under a<-->c
-#            DV_bit =     np.einsum('nmc,nna->nmca' , D_H, V_H) - np.einsum('nmc,mma->nmca' , D_H, V_H) \
-#                       + np.einsum('nma,nnc->nmca' , D_H, V_H) - np.einsum('nma,mmc->nmca' , D_H, V_H) 
+            DV_bit =     np.einsum('nmc,nna->nmca' , D_H, V_H) - np.einsum('nmc,mma->nmca' , D_H, V_H) \
+                       + np.einsum('nma,nnc->nmca' , D_H, V_H) - np.einsum('nma,mmc->nmca' , D_H, V_H) 
 
 
 
@@ -211,17 +211,23 @@ def opt_conductivity(data, omega=0, mu=0, kBT=0, smr_fixed_width=0.1, smr_type='
 #            A = data.A_Hbar_der[ik]
 #            A = np.einsum('nmab->mnab' , A_Hbar_der)
 
+#            A = 1j*DV_bit*dEig_inv[:,:, np.newaxis, np.newaxis]
+#            A = data.del2E_H[ik]
 #            A = 1j*data.del2E_H[ik]*dEig_inv[:,:, np.newaxis, np.newaxis]
-            A = - 1j*AA_bit
+#            A = - 1j*AA_bit
 #            A = AD_bit 
+
+            A =      A_Hbar_der \
+                   + AD_bit - 1j*AA_bit \
+                   + 1j*(  del2E_H + DV_bit \
+                        )*dEig_inv[:,:, np.newaxis, np.newaxis]
+
+
 
 #            for ii in range(0,8):
 #              AA_bit[ii,ii,:,:] = 0.0
 
 #            A = - 1j*AA_bit
-#            A = A_Hbar_der  \
-#                - 1j*AA_bit 
-
 #                   + AD_bit - 1j*AA_bit \
 #                   + sum_AD \
 #                   + 1j*(  del2E_H + sum_HD + DV_bit \
