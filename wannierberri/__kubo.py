@@ -19,8 +19,7 @@ import numpy as np
 from scipy import constants as constants
 from collections import Iterable
 import functools
-from termcolor import cprint
-from .__utility import alpha_A,beta_A
+from .__utility import alpha_A,beta_A,warning
 from . import __result as result
 
 # constants
@@ -149,7 +148,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
     pre_fac = e**2/(100.0 * hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom)
 
     if adpt_smr: 
-        cprint("WARNING: Adaptive smearing is an experimental feature and has not been extensively tested.", 'red')
+        warning("Adaptive smearing is an experimental feature and has not been extensively tested.")
 
 
     # iterate over ik, simple summation
@@ -179,7 +178,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         elif smr_type == 'Gaussian':
             delta = Gaussian(delta_arg, eta, adpt_smr)
         else:
-            cprint("Invalid smearing type. Fallback to Lorentzian", 'red')
+            warning("Invalid smearing type. Fallback to Lorentzian", 'red')
             delta = Lorentzian(delta_arg, eta)
 
 

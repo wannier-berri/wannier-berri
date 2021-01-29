@@ -319,10 +319,13 @@ class MMN(W90_data):
             else:
                 bk_latt=np.array(np.round( [(kpt_latt[nbrs]-kpt_latt+G)*mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
                 bk_latt_unique=np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1,3))],dtype=int)
+                print ("bk_latt",bk_latt_unique,)
                 assert len(bk_latt_unique)==self.NNB
                 print (bk_latt_unique.shape,recip_lattice.shape,mp_grid[:,None].shape)
+                print (recip_lattice,recip_lattice/mp_grid[:,None])
                 bk_cart_unique=bk_latt_unique.dot(recip_lattice/mp_grid[:,None])
                 bk_cart_unique_length=np.linalg.norm(bk_cart_unique,axis=1)
+                print ("bk_cart",bk_cart_unique, bk_cart_unique_length )
                 srt=np.argsort(bk_cart_unique_length)
                 bk_latt_unique=bk_latt_unique[srt]
                 bk_cart_unique=bk_cart_unique[srt]

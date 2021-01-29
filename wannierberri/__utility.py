@@ -42,11 +42,14 @@ def print_my_name_end():
 def conjugate_basis(basis):
     return 2*np.pi*np.linalg.inv(basis).T
 
+def warning(message,color="yellow"):
+    cprint ("\n WARNING!!!!! {} \n".format(message),color)
+
 
 def real_recip_lattice(real_lattice=None,recip_lattice=None):
     if recip_lattice is None:
         if real_lattice is None : 
-            cprint ("\n WARNING!!!!! usually need to provide either with real or reciprocal lattice. If you only want to generate a random symmetric tensor - that it fine \n","yellow")
+            warning(" usually need to provide either with real or reciprocal lattice. If you only want to generate a random symmetric tensor - that it fine ")
             return None,None
         recip_lattice=conjugate_basis(real_lattice)
     else: 

@@ -18,9 +18,7 @@ import copy
 import lazy_property
 import functools
 import multiprocessing 
-#from pathos.multiprocessing import ProcessingPool as Pool
 from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, real_recip_lattice,fourier_q_to_R
-from colorama import init
 from termcolor import cprint 
 from .__system import System, ws_dist_map
 from .__w90_files import EIG,MMN,CheckPoint,SPN,UHU,SIU,SHU
@@ -63,7 +61,7 @@ class System_w90(System):
         chk=CheckPoint(self.seedname)
         self.real_lattice,self.recip_lattice=real_recip_lattice(chk.real_lattice,chk.recip_lattice)
         self.mp_grid=chk.mp_grid
-        self.iRvec,self.Ndegen=self.wigner_seitz(chk.mp_grid)
+        self.iRvec,self.Ndegen=self.wigner_seitz()
         self.nRvec0=len(self.iRvec)
         self.num_wann=chk.num_wann
 
@@ -139,25 +137,18 @@ class System_w90(System):
                     vars(self)[XR]=ws_map(vars(self)[XR])
             self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
 
-        self.set_symmetry()
-        self.check_periodic()
-
-
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Recommended size of FFT grid", self.NKFFT_recommended)
-        print ("Real-space lattice:\n",self.real_lattice)
+        self.finalise_init()
 
     @property
     def NKFFT_recommended(self):
         return self.mp_grid
 
-    def wigner_seitz(self,mp_grid):
+    def wigner_seitz(self):
         ws_search_size=np.array([1]*3)
         dist_dim=np.prod((ws_search_size+1)*2+1)
         origin=divmod((dist_dim+1),2)[0]-1
         real_metric=self.real_lattice.dot(self.real_lattice.T)
-        mp_grid=np.array(mp_grid)
+        mp_grid=np.array(self.mp_grid)
         irvec=[]
         ndegen=[]
         for n in iterate3dpm(mp_grid*ws_search_size):

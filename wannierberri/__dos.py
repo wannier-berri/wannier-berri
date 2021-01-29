@@ -16,7 +16,7 @@ import numpy as np
 from scipy import constants as constants
 from collections import Iterable
 
-from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother
+from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother, warning
 from . import __result as result
 
 
@@ -44,7 +44,7 @@ def calc_DOS(data,Efermi=None,smoother=VoidSmoother()):
 
     DOS=np.zeros(Efermi.shape,dtype=int)
     if Efermi.shape[0]==1:
-        print ("WARNING: DOS cannot be calculated for a single Fermi level. Returning zero")
+        warning ("DOS cannot be calculated for a single Fermi level. Returning zero")
     else:
         E=data.E_K.reshape(-1)
         dE=Efermi[1]-Efermi[0]

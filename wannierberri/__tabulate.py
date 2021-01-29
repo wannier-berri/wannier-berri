@@ -20,7 +20,7 @@ from io import StringIO
 import  multiprocessing 
 import functools
 
-from .__utility import  print_my_name_start,print_my_name_end
+from .__utility import  print_my_name_start,print_my_name_end,warning
 from . import __result as result
 from . import  __berry as berry
 from . import  symmetry
@@ -139,7 +139,7 @@ class TABresult(result.Result):
 #                print (ik,k,ik1,ik2)
                 k_map[ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])].append(ik)
             else:
-                print ("WARNING: k-point {}={} is skipped".format(ik,k))
+                warning ("k-point {}={} is skipped".format(ik,k))
 
         t0=time()
         print ("collecting")

@@ -89,7 +89,8 @@ def main():
   if IBstart<0 : IBstart=0
   if  NBout <= 0 :NBout=NBin
   if  NBout+IBstart >  NBin: 
-       print (' WARNING: NB+IBstart-1=',NBout+IBstart,' exceeds the number of bands in WAVECAR NBin='+str(NBin)+'. We set NBout='+str(NBin-IBstart))
+       from .__utility import warning
+       warning(' NB+IBstart-1=',NBout+IBstart,' exceeds the number of bands in WAVECAR NBin='+str(NBin)+'. We set NBout='+str(NBin-IBstart))
        NBout=NBin-IBstart
   
   print ("WAVECAR contains {0} k-points and {1} bands.\n Writing {2} bands in the output starting from".format(NK,NBin,NBout))

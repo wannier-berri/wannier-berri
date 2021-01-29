@@ -16,20 +16,17 @@ from scipy.io import FortranFile as FF
 import copy
 import lazy_property
 from collections import Iterable
-from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice
+from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice, warning
 from  .symmetry import Group
-from colorama import init
 from termcolor import cprint 
 
 
 
 class System():
     """
-    The base class for describing a system. Although it has its own constructor, it requires input binary files prepared by a special 
-    `branch <https://github.com/stepan-tsirkin/wannier90/tree/save4wberri>`_ of ``postw90.x`` .
-    Therefore this class by itself it is not recommended for a feneral user. Instead, 
+    The base class for describing a system. Its constructor only set some basic parameters.
+    Therefore this class by itself cannot be used. Instead, 
     please use the child classes, e.g  :class:`~wannierberri.System_w90` or :class:`~wannierberri.System_tb`
-
 
     Parameters
     -----------
@@ -62,74 +59,9 @@ class System():
 
     """
 
-    def __init__(self, old_format=False,    **parameters ):
-
-
+    def __init__(self,   **parameters ):
         self.set_parameters(**parameters)
-        self.old_format=old_format
 
-        cprint ("Reading from {}".format(seedname+"_HH_save.info"),'green', attrs=['bold'])
-
-        f=open(seedname+"_HH_save.info" if self.old_format else seedname+"_R.info","r")
-        l=f.readline().split()[:3]
-        self.seedname=seedname
-        self.num_wann,nRvec=int(l[0]),int(l[1])
-        self.nRvec0=nRvec
-        real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
-        self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice=real_lattice)
-        iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
-        
-        self.Ndegen=iRvec[:,3]
-        self.iRvec=iRvec[:,:3]
-
-        self.cRvec=self.iRvec.dot(self.real_lattice)
-
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Recommended size of FFT grid", self.NKFFT_recommended)
-        print ("Real-space lattice:\n",self.real_lattice)
-        #print ("R - points and dege=neracies:\n",iRvec)
-        has_ws=str2bool(f.readline().split("=")[1].strip())
-
-        
-        if has_ws and self.use_ws:
-            print ("using ws_dist")
-            self.ws_map=ws_dist_map_read(self.iRvec,self.num_wann,f.readlines())
-            self.iRvec=np.array(self.ws_map._iRvec_ordered,dtype=int)
-        else:
-            self.ws_map=None
-        
-        f.close()
-
-        self.HH_R=self.__getMat('HH')
-
-        
-        if self.getAA:
-            self.AA_R=self.__getMat('AA')
-
-        if self.getBB:
-            self.BB_R=self.__getMat('BB')
-        
-        if self.getCC:
-            try:
-                self.CC_R=1j*self.__getMat('CCab')
-            except:
-                _CC_R=self.__getMat('CC')
-                self.CC_R=1j*(_CC_R[:,:,:,alpha_A,beta_A]-_CC_R[:,:,:,beta_A,alpha_A])
-
-        if self.getFF:
-            try:
-                self.FF_R=1j*self.__getMat('FFab')
-            except:
-                _FF_R=self.__getMat('FF')
-                self.FF_R=1j*(_FF_R[:,:,:,alpha_A,beta_A]-_FF_R[:,:,:,beta_A,alpha_A])
-
-        if self.getSS:
-            self.SS_R=self.__getMat('SS')
-
-        self.set_symmetry()
-
-        cprint ("Reading the system finished successfully",'green', attrs=['bold'])
 
 
     def set_parameters(self,**parameters):
@@ -151,6 +83,17 @@ class System():
                     'periodic':(True,True,True)
                        }
 
+    def finalise_init(self):
+        self.set_symmetry()
+        self.check_periodic()
+        print ("Number of wannier functions:",self.num_wann)
+        print ("Number of R points:", self.nRvec)
+        print ("Recommended size of FFT grid", self.NKFFT_recommended)
+        print ("Real-space lattice:\n",self.real_lattice)
+        cprint ("Reading the system from {} finished successfully".format(tb_file),'green', attrs=['bold'])
+
+
+
         for param in self.default_parameters:
             if param in parameters:
                 vars(self)[param]=parameters[param]
@@ -165,7 +108,7 @@ class System():
             if not per:
                 sel=(self.iRvec[:,i]!=0)
                 if np.any(sel) :
-                    print ("""WARNING : you declared your ystemas non-periodic along direction {i}, but there are {nrexcl} of total {nr} R-vectors with R[{i}]!=0. 
+                    warning ("""you declared your ystemas non-periodic along direction {i}, but there are {nrexcl} of total {nr} R-vectors with R[{i}]!=0. 
         They will be excluded, please make sure you know what you are doing """.format(i=i,nrexcl=sum(sel),nr=self.nRvec ) )
                     exclude[sel]=True
         if np.any(exclude):
@@ -215,7 +158,6 @@ class System():
             tb_file=self.seedname+"_fromchk_tb.dat"
         f=open(tb_file,"w")
         f.write("written by wannier-berri form the chk file\n")
-#        cprint ("reading TB file {0} ( {1} )".format(tb_file,l.strip()),'green', attrs=['bold'])
         np.savetxt(f,self.real_lattice)
         f.write("{}\n".format(self.num_wann))
         f.write("{}\n".format(self.nRvec))
@@ -292,27 +234,6 @@ class System():
 
 
 
-    def __getMat(self,suffix):
-
-        f=FF(self.seedname+"_" + suffix+"_R"+(".dat" if self.old_format else ""))
-        MM_R=np.array([[np.array(f.read_record('2f8'),dtype=float) for m in range(self.num_wann)] for n in range(self.num_wann)])
-        MM_R=MM_R[:,:,:,0]+1j*MM_R[:,:,:,1]
-        f.close()
-        ncomp=MM_R.shape[2]/self.nRvec0
-        if ncomp==1:
-            result=MM_R/self.Ndegen[None,None,:]
-        elif ncomp==3:
-            result= MM_R.reshape(self.num_wann, self.num_wann, 3, self.nRvec0).transpose(0,1,3,2)/self.Ndegen[None,None,:,None]
-        elif ncomp==9:
-            result= MM_R.reshape(self.num_wann, self.num_wann, 3,3, self.nRvec0).transpose(0,1,4,3,2)/self.Ndegen[None,None,:,None,None]
-        else:
-            raise RuntimeError("in __getMat: invalid ncomp : {0}".format(ncomp))
-        if self.ws_map is None:
-            return result
-        else:
-            return self.ws_map(result)
-        
-
 #
 # the following  implements the use_ws_distance = True  (see Wannier90 documentation for details)
 #
@@ -367,25 +288,7 @@ class ws_dist_map():
                 if ir in self._iRvec_new[irnew]:
                     chsum+=self._iRvec_new[irnew][ir]
             chsum=np.abs(chsum-np.ones( (self.num_wann,self.num_wann) )).sum() 
-            if chsum>1e-12: print ("WARNING: Check sum for {0} : {1}".format(ir,chsum))
+            if chsum>1e-12: warning ("Check sum for {0} : {1}".format(ir,chsum))
 
-
-
-class ws_dist_map_read(ws_dist_map):
-    def __init__(self,iRvec,num_wann,lines):
-        nRvec=iRvec.shape[0]
-        self.num_wann=num_wann
-        self._iRvec_new=dict()
-        n_nonzero=np.array([l.split()[-1] for l in lines[:nRvec]],dtype=int)
-        lines=lines[nRvec:]
-        for ir,nnz in enumerate(n_nonzero):
-            map1r=map_1R(lines[:nnz],iRvec[ir])
-            for iw in range(num_wann):
-                for jw in range(num_wann):
-                    self._add_star(ir,map1r(iw,jw),iw,jw)
-            lines=lines[nnz:]
-        self._init_end(nRvec)
-
-        
 
 
