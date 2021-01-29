@@ -3,8 +3,6 @@ python3 ../../wannierberri/mmn2uHu.py pt targets=sHu,sIu
 cp ./reduced_NB\=24/pt_* ./
 mv ./pt_nbs=24.sHu ./pt.sHu
 mv ./pt_nbs=24.sIu ./pt.sIu
-echo "-> Wannier90 <-"
-wannier90.x pt
 
 echo "-> WANNIERBERRI <-"
 python3 Pt_SHC_freqscan.py
