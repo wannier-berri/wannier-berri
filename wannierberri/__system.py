@@ -94,13 +94,15 @@ class System():
         self.periodic=np.array(self.periodic)
 
     def finalise_init(self):
+        if self.Bfield!=0 and self.Zeeman_spin:
+            self.HH_R+=self.Bfield*self.SS_R
         self.set_symmetry()
         self.check_periodic()
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
         print ("Recommended size of FFT grid", self.NKFFT_recommended)
         print ("Real-space lattice:\n",self.real_lattice)
-        cprint ("Reading the system from {} finished successfully".format(tb_file),'green', attrs=['bold'])
+        cprint ("initializing the system  finished successfully",'green', attrs=['bold'])
 
 
     def check_periodic(self):
