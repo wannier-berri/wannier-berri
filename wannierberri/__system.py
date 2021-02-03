@@ -19,7 +19,7 @@ from collections import Iterable
 from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice, warning
 from  .symmetry import Group
 from termcolor import cprint 
-
+from scipy.constants import elementary_charge,hbar,electron_mass
 
 
 class System():
@@ -95,7 +95,7 @@ class System():
 
     def finalise_init(self):
         if self.Bfield!=0 and self.Zeeman_spin:
-            self.HH_R+=self.Bfield*self.SS_R
+            self.HH_R+=self.SS_R*(self.Bfield*hbar/(2*electron_mass) )
         self.set_symmetry()
         self.check_periodic()
         print ("Number of wannier functions:",self.num_wann)
