@@ -180,7 +180,7 @@ class EnergyResult(Result):
         elif i==self.N_energies:
             data_tmp=list(data.reshape(-1))+list(datasm.reshape(-1))
             if data.dtype == complex:
-                return ["    "+"    ".join("{0:15.6e} {0:15.6e}".format(x.real,x.imag) for x in data_tmp )]
+                return ["    "+"    ".join("{0:15.6e} {1:15.6e}".format(x.real,x.imag) for x in data_tmp )]
             elif data.dtype == float:
                 return ["    "+"    ".join("{0:15.6e}".format(x) for x in  data_tmp )  ]
         else:
