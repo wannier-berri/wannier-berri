@@ -31,11 +31,12 @@ class Path(Grid):
 
     """
 
-    def __init__(self,system,k_list=None,k_nodes=None,length=None,dk=None,nk=None,labels=None):
+    def __init__(self,system,k_list=None,k_nodes=None,length=None,dk=None,nk=None,labels=None,breaks=[]):
 
         self.symgroup=system.symgroup
         self.FFT=np.array([1,1,1])
         self.findif=None
+        self.breaks=breaks
         if k_list is not None:
             self.K_list=np.array(k_list)
             assert  self.K_list.shape[1]==3, "k_list should contain 3-vectors"
@@ -44,6 +45,7 @@ class Path(Grid):
                 if locals()[var] is not None:
                     warning("k_list was entered manually, ignoring {}".format(var))
             self.labels={} if labels is None else labels
+            self.breaks=[] if breaks is None else breaks
         else:
             if k_nodes is None:
                 raise ValueError("need to specify either 'k_list' of 'k_nodes'")
@@ -69,6 +71,7 @@ class Path(Grid):
 
             self.K_list=np.zeros((0,3))
             self.labels={}
+            self.breaks=[]
             for start,end,l1,l2 in zip(k_nodes,k_nodes[1:],labels,labels[1:]) :
                 if None not in (start,end):
                     self.labels[self.K_list.shape[0]]=l1
@@ -82,6 +85,9 @@ class Path(Grid):
                         if _nk==1 : _nk=2
                     self.K_list=np.vstack( (self.K_list,start[None,:]+np.linspace(0,1.,_nk)[:,None]*(end-start)[None,:] ) )
                     self.labels[self.K_list.shape[0]-1]=l2
+                elif end is None:
+                    self.breaks.append(self.K_list.shape[0]-1)
+        self.breaks=np.array(self.breaks)
 
     @property 
     def recip_lattice(self):
@@ -91,6 +97,7 @@ class Path(Grid):
         return ("\n"+"\n".join(
                          "  ".join("{:10.6f}".format(x) for x in k) + 
                                     ((" <--- "+self.labels[i]) if i in self.labels else "" )
+                                     +   (("\n"+"-"*20) if i in self.breaks else "" )
                                 for i,k in enumerate(self.K_list)
                    )  )
 
@@ -103,3 +110,12 @@ class Path(Grid):
                     for K in self.K_list]
         print ("Done " )
         return K_list
+
+    def getKline(self,break_thresh=np.Inf):
+        KPcart = self.K_list.dot(self.recip_lattice)
+        K = np.zeros(KPcart.shape[0])
+        k = np.linalg.norm(KPcart[1:, :] - KPcart[:-1, :], axis=1)
+        k[k > break_thresh] = 0.0
+        k[self.breaks]=0.0
+        K[1:] = np.cumsum(k)
+        return K
