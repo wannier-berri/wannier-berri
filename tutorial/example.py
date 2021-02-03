@@ -5,7 +5,7 @@ os.environ['MKL_NUM_THREADS'] = '1'
 
 ## these linesline if you want to use the git version of the code, instead of the one installed by pip
 local_code=True
-num_proc=16
+num_proc=4
 
 
 import os
@@ -29,7 +29,7 @@ import numpy as np
 SYM=wberri.symmetry
 
 Efermi=np.linspace(12.,13.,1001)
-system=wberri.System_tb(tb_file='Fe_tb.dat',getAA=True)
+system=wberri.System_tb(tb_file='Fe_tb.dat',berry=True)
 
 generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 system.set_symmetry(generators)
@@ -51,7 +51,7 @@ wberri.integrate(system,
 wberri.tabulate(system,
              grid=grid,
              quantities=["berry"],
-             fout_name='Fe',
+             frmsf_name='Fe',
              numproc=num_proc,
              ibands=np.arange(4,10),
              Ef0=12.6)
