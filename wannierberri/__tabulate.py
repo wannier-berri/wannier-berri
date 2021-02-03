@@ -19,8 +19,8 @@ from time import time
 from io import StringIO
 import  multiprocessing 
 import functools
-
 from .__utility import  print_my_name_start,print_my_name_end,warning
+from collections import Iterable
 from . import __result as result
 from . import  __berry as berry
 from . import  symmetry
@@ -154,18 +154,30 @@ class TABresult(result.Result):
         t3=time()
         print ("collecting - OK : {} ({})".format(t3-t0,t3-t2))
         return res
-            
-    
 
 
-    def get_data(self,quantity,iband,component=None,efermi=None):
+    def __get_data_grid(self,quantity,iband,component=None,efermi=None):
         if quantity=='E':
             return self.Enk.data[:,iband].reshape(self.grid)
         elif component==None:
             return self.results[quantity].data[:,iband].reshape(tuple(self.grid)+(3,)*self.results[quantity].rank)
         else:
             return self.results[quantity].get_component(component)[:,iband].reshape(self.grid)
+
+
+    def __get_data_path(self,quantity,iband,component=None,efermi=None):
+        if quantity=='E':
+            return self.Enk.data[:,iband]
+        elif component==None:
+            return self.results[quantity].data[:,iband]
+        else:
+            return self.results[quantity].get_component(component)[:,iband]
  
+    def get_data(self,quantity,iband,component=None,efermi=None):
+        if self.grid is None:
+            return self.__get_data_path(quantity,iband,component=component,efermi=efermi)
+        else : 
+            return self.__get_data_grid(quantity,iband,component=component,efermi=efermi)
 
 
     def fermiSurfer(self,quantity=None,component=None,efermi=0,npar=0,iband=None,frmsf_name=None):
@@ -206,7 +218,91 @@ class TABresult(result.Result):
             open(frmsf_name,"w").write(FSfile)
         return FSfile
 
+    def plot_path_fat(self, 
+                  path,
+                  quantity=None,
+                  component=None,
+                  save_file=None,
+                  Eshift=0,
+                  Emin=None,  Emax=None,
+                  iband=None,
+                  mode="fatband",
+                  fatfactor=20,
+                  cut_k=True
+                  ):
+        """a routine to plot a result along the path"""
 
+        import matplotlib.pyplot as plt
+        if iband is None: 
+            iband=np.arange(self.nband)
+        elif isinstance(iband,int):
+            iband=np.array([iband])
+        elif isinstance(iband,Iterable):
+            iband=np.array(iband)
+            if iband.dtype!=int:
+                raise ValueError("iband should be integer")
+        else:
+            raise ValueError("iband should be either an integer, or array of intergers, or None")
+
+
+        kline=path.getKline()
+        E=self.get_data(quantity='E',iband=iband)-Eshift
+        print ("shape of E",E.shape)
+
+        plt.ylabel(r"$E$, eV")
+        if Emin is None:
+            Emin=E.min()-0.5
+        if Emax is None:
+            Emax=E.max()+0.5
+
+        klineall=[]
+        for ib in iband:
+            e=E[:,ib]
+            selE=(e<=Emax)*(e>=Emin)
+            klineselE=kline[selE]
+            klineall.append(klineselE)
+            plt.plot(klineselE,e[selE],color="gray")
+        if cut_k:
+            klineall=[k for kl in klineall for k in kl]
+            kmin=min(klineall)
+            kmax=max(klineall)
+        else:
+            kmin=kline.min()
+            kmax=kline.max()
+
+        if quantity is not None:
+            data=self.get_data(quantity='berry',iband=iband,component=component)
+            print ("shape of data",data.shape)
+            if mode=="fatband" :
+                for ib in iband:
+                    e=E[:,ib]
+                    selE=(e<=Emax)*(e>=Emin)
+                    klineselE=kline[selE]
+                    y=data[selE][:,ib]
+                    e1=e[selE]
+                    for col,sel in [("red",(y>0)),("blue",(y<0))]:
+#                        print (col,ib,kline.shape,e.shape,kline[sel].shape,e[sel].shape)
+                        plt.scatter(klineselE[sel],e1[sel],s=abs(y[sel])*fatfactor,color=col)
+            else :
+                raise ValueError("So far only fatband mode is implemented")
+
+
+
+        x_ticks_labels    = []  
+        x_ticks_positions = [] 
+        for k,v in path.labels.items():
+            x_ticks_labels.append(v) 
+            x_ticks_positions.append(kline[k]) 
+            plt.axvline(x=kline[k] )
+        plt.xticks(x_ticks_positions, x_ticks_labels )
+        plt.ylim([Emin,Emax])
+        plt.xlim([kmin,kmax])
+
+        if save_file is None:
+           plt.show()
+        else:
+           plt.savefig(save_file)
+        plt.close()
 
 
     def max(self):

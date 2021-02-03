@@ -56,8 +56,8 @@ def process(paralfunc,K_list,nproc,symgroup=None):
 
 def evaluate_K(func,system,grid,nparK,nparFFT=0,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
-             symmetry_gen=[SYM.Identity],suffix="",
-             file_Klist="K_list.pickle",restart=False,start_iter=0):
+             suffix="",
+             file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
 a numpy.array of whatever dimensions
@@ -74,7 +74,10 @@ As a result, the integration will be performed over NKFFT x NKdiv
             file_Klist+=".pickle"
     cnt_exclude=0
 
-    print ("using NKdiv={}, NKFFT={}, NKtot={}".format( grid.div,grid.FFT,grid.dense))
+    try:
+        print ("using NKdiv={}, NKFFT={}, NKtot={}".format( grid.div,grid.FFT,grid.dense))
+    except: 
+        pass
 
     
     paralfunc=functools.partial(
@@ -128,7 +131,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         for i,K in enumerate(K_list):
           if not K.evaluated:
             print (" K-point {0} : {1} ".format(i,K))
-        counter+=process(paralfunc,K_list,nparK,symgroup=system.symgroup)
+        counter+=process(paralfunc,K_list,nparK,symgroup=None if nosym else system.symgroup)
         
         try:
             if file_Klist is not None:
