@@ -165,6 +165,15 @@ class TABresult(result.Result):
             return self.results[quantity].data[:,iband].reshape(tuple(self.grid)+(3,)*self.results[quantity].rank)
         else:
             return self.results[quantity].get_component(component)[:,iband].reshape(self.grid)
+
+
+    def get_data_path(self,quantity,iband,component=None,efermi=None):
+        if quantity=='E':
+            return self.Enk.data[:,iband].reshape(self.grid)
+        elif component==None:
+            return self.results[quantity].data[:,iband].reshape(tuple(self.grid)+(3,)*self.results[quantity].rank)
+        else:
+            return self.results[quantity].get_component(component)[:,iband].reshape(self.grid)
  
 
 
