@@ -217,6 +217,20 @@ def tabulate(system,grid, quantities=[],
     t1=time()
     res=res.to_grid(grid.dense)
     t2=time()
+    ttxt,twrite=write_frmsf(frmsf_name,EF0,numproc,quantities,res)
+    t4=time()
+
+    cprint ("Tabulating finished successfully",'green', attrs=['bold'])
+    print ( ("Time     : Total : {} s\n"+
+             "        evaluate : {} s\n"+
+             "         to_grid : {} s\n"+
+             "         txt     : {} s\n"+
+             "         write   : {} s\n").format(t4-t0,t1-t0,t2-t1,ttxt,twrite ) )
+    return res
+
+
+
+def write_frmsf(frmsf_name):
     if frmsf_name is not None:
         open("{0}_E.frmsf".format(frmsf_name),"w").write(
              res.fermiSurfer(quantity=None,efermi=Ef0,npar=numproc) )
@@ -239,15 +253,5 @@ def tabulate(system,grid, quantities=[],
     else:
         ttxt=0
         twrite=0
-    t4=time()
-
-    cprint ("Tabulating finished successfully",'green', attrs=['bold'])
-    print ( ("Time     : Total : {} s\n"+
-             "        evaluate : {} s\n"+
-             "         to_grid : {} s\n"+
-             "         txt     : {} s\n"+
-             "         write   : {} s\n").format(t4-t0,t1-t0,t2-t1,ttxt,twrite ) )
-    return res
-
-
+    return ttxt,twrite
 
