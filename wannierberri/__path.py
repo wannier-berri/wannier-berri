@@ -1,4 +1,5 @@
 from .__grid import Grid
+from  .__Kpoint import KpointBZ
 from .__utility import warning
 from collections import Iterable
 import numpy as np
@@ -34,7 +35,7 @@ class Path(Grid):
 
         self.symgroup=system.symgroup
         self.FFT=np.array([1,1,1])
-
+        self.findif=None
         if k_list is not None:
             self.K_list=np.array(k_list)
             assert  self.K_list.shape[1]==3, "k_list should contain 3-vectors"
@@ -98,8 +99,7 @@ class Path(Grid):
         dK=np.array([1.,1.,1.])
         factor=1.
         print ("generating K_list")
-        t0=time()
         K_list =[KpointBZ(K=K,dK=dK,NKFFT=self.FFT,factor=factor,symgroup=self.symgroup,refinement_level=0) 
                     for K in self.K_list]
-        print ("Done in {} s ".format(time()-t0))
+        print ("Done " )
         return K_list
