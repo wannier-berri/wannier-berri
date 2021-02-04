@@ -19,7 +19,6 @@ from collections import Iterable
 from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice, warning
 from  .symmetry import Group
 from termcolor import cprint 
-from scipy.constants import elementary_charge,hbar,electron_mass
 
 
 class System():
@@ -81,8 +80,8 @@ class System():
                     'Emax': np.Inf ,
                     'use_ws':True,
                     'Bfield':0,
-                    'Zeeman_orb':True,
-                    'Zeeman_spin':True,
+                    'Zeeman_orb':False,
+                    'Zeeman_spin':False,
                     'periodic':(True,True,True)
                        }
 
@@ -94,15 +93,25 @@ class System():
         self.periodic=np.array(self.periodic)
 
     def finalise_init(self):
-        if self.Bfield!=0 and self.Zeeman_spin:
-            self.HH_R+=self.SS_R*(self.Bfield*hbar/(2*electron_mass) )
         self.set_symmetry()
+        self.set_Bfield()
         self.check_periodic()
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
         print ("Recommended size of FFT grid", self.NKFFT_recommended)
         print ("Real-space lattice:\n",self.real_lattice)
         cprint ("initializing the system  finished successfully",'green', attrs=['bold'])
+
+
+    def set_Bfield(self,B=[0,0,0],
+                      orb=False,
+                      spin=False):
+        self.Bfield=np.array(B)
+        self.Zeeman_orb  = orb
+        self.Zeeman_spin = spin
+        self.recalc_Zeeman = True
+
+
 
 
     def check_periodic(self):

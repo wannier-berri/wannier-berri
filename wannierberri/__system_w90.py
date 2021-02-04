@@ -25,6 +25,7 @@ from .__w90_files import EIG,MMN,CheckPoint,SPN,UHU,SIU,SHU
 from time import time
 import pickle
 from itertools import repeat
+from scipy.constants import elementary_charge,hbar,electron_mass
 
 class System_w90(System):
     """
@@ -82,7 +83,9 @@ class System_w90(System):
         timeFFT=0
         HHq=chk.get_HH_q(eig)
         t0=time()
-        self.HH_R=fourier_q_to_R_loc( HHq )
+        # note: for this system the _HH_R variable stores the Hamiltonin in absence of magnetic field
+        # the HH_R property returns the Hamiltonian modified by the spin Zeeman coupling
+        self._HH_R=fourier_q_to_R_loc( HHq )
         timeFFT+=time()-t0
 
         if self.getAA:
@@ -130,7 +133,7 @@ class System_w90(System):
 
         print ("time for FFT_q_to_R : {} s".format(timeFFT))
         if  self.use_ws:
-            for X in ['HH','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
+            for X in ['_HH','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
                 XR=X+'_R'
                 if hasattr(self,XR) :
                     print ("using ws_dist for {}".format(XR))
@@ -138,6 +141,17 @@ class System_w90(System):
             self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
 
         self.finalise_init()
+
+    @property
+    def HH_R(self):
+        if self.Zeeman_spin:
+            if self.recalc_Zeeman:
+                assert self.Bfield.shape==(3,)
+                assert self.SS_R.shape[-1]==3
+                self.HH_R_Zeeman = self._HH_R + (self.SS_R @ self.Bfield)*(hbar/(2*electron_mass) )
+            return self.HH_R_Zeeman
+        else : 
+            return self._HH_R
 
     @property
     def NKFFT_recommended(self):

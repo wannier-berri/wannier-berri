@@ -228,6 +228,7 @@ class TABresult(result.Result):
                   iband=None,
                   mode="fatband",
                   fatfactor=20,
+                  fatmax=100,
                   cut_k=True
                   ):
         """a routine to plot a result along the path"""
@@ -271,7 +272,7 @@ class TABresult(result.Result):
             kmax=kline.max()
 
         if quantity is not None:
-            data=self.get_data(quantity='berry',iband=iband,component=component)
+            data=self.get_data(quantity=quantity,iband=iband,component=component)
             print ("shape of data",data.shape)
             if mode=="fatband" :
                 for ib in iband:
@@ -282,7 +283,9 @@ class TABresult(result.Result):
                     e1=e[selE]
                     for col,sel in [("red",(y>0)),("blue",(y<0))]:
 #                        print (col,ib,kline.shape,e.shape,kline[sel].shape,e[sel].shape)
-                        plt.scatter(klineselE[sel],e1[sel],s=abs(y[sel])*fatfactor,color=col)
+                        sz=abs(y[sel])*fatfactor
+                        sz[sz>fatmax]=fatmax
+                        plt.scatter(klineselE[sel],e1[sel],s=sz,color=col)
             else :
                 raise ValueError("So far only fatband mode is implemented")
 
