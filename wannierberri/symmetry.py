@@ -158,7 +158,9 @@ class Mirror(Symmetry):
 #some typically used symmetries
 Identity =Symmetry( np.eye(3))
 Inversion=Symmetry(-np.eye(3))
+I=Inversion
 TimeReversal=Symmetry( np.eye(3),True)
+T=TimeReversal
 Mx=Mirror([1,0,0])
 My=Mirror([0,1,0])
 Mz=Mirror([0,0,1])

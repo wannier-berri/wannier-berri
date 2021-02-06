@@ -113,7 +113,6 @@ class System():
 
 
 
-
     def check_periodic(self):
         exclude=np.zeros(self.nRvec,dtype=bool)
         for i,per in enumerate(self.periodic):

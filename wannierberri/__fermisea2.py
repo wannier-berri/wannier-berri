@@ -24,7 +24,7 @@
 # this is a generalized 
 
 import numpy as np
-import functools
+from functools import partial
 from scipy import constants as constants
 from collections import Iterable
 import inspect
@@ -40,14 +40,13 @@ bohr= physical_constants['Bohr radius'][0]/angstrom
 eV_au=physical_constants['electron volt-hartree relationship'][0] 
 Ang_SI=angstrom
 
+fac_ahc  = -1.0e8*elementary_charge**2/hbar
 
 
 def AHC(data,Efermi):
-    fac_ahc  = -1.0e8*elementary_charge**2/hbar
     return Omega_tot(data,Efermi)*fac_ahc
 
 def AHC2(data,Efermi):
-    fac_ahc  = -1.0e8*elementary_charge**2/hbar
     return Omega_tot2(data,Efermi)*fac_ahc
 
 
@@ -107,6 +106,14 @@ def tensor_D_findif(data,Efermi):
 
 def tensor_Dw(data,Efermi,omega0=0):
         return IterateEf(partial(data.derOmegaWTr,omega=omega0),data,Efermi,sep=True,TRodd=False,Iodd=True)
+
+#def tensor_Dw(data,Efermi,omega0=0):
+#        return IterateEf(partial(data.derOmegaWTr,omega=omega0),data,Efermi,sep=True,TRodd=False,Iodd=True)
+
+def LFAHE_spin_fsea(data,Efermi,Bdirection=None):
+    factor = (hbar/(2*electron_mass) ) * fac_ahc
+    return IterateEf(data.perturbation_derOmegaTr_ZeemanSpin(Bdirection=Bdirection),data,Efermi,sep=False,TRodd=False,Iodd=False)*factor
+
 
 #########################
 ####  Private part ######

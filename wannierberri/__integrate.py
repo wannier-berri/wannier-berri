@@ -59,6 +59,7 @@ calculators_trans={
          'Hall_classic' : nonabelian.Hall_classic , 
          'Hall_morb' :  nonabelian.Hall_morb,
          'Hall_spin' :  nonabelian.Hall_spin,
+         'Hall_spin_fsea' : fermisea2.LFAHE_spin_fsea ,
 
          'conductivity_ohmic_fsurf': nonabelian.conductivity_ohmic,
          'conductivity_ohmic'      : fermisea2.conductivity_ohmic,
@@ -121,6 +122,7 @@ for key,val in parameters_optical.items():
 
 
 additional_parameters['Faraday']['homega'] = 0.0
+additional_parameters['Hall_spin_fsea']['Bdirection'] = None
 additional_parameters_description['Faraday']['homega'] = "frequency of light in eV (one frequency per calculation)"
 
 
@@ -145,6 +147,7 @@ descriptions['berry_dipole_fsurf']="berry curvature dipole (dimensionless)  - fe
 descriptions['Hall_classic'] =  "classical Hall coefficient, in S/(cm*T) for tau={} s".format(TAU_UNIT)
 descriptions['Hall_morb'   ] = "Low field AHE, orbital part, in S/(cm*T)."
 descriptions['Hall_spin'   ] = "Low field AHE, spin    part, in S/(cm*T)."
+descriptions['Hall_spin_fsea'   ] = "Fermi-sea contributino to Low field AHE, due to spin Zeeman coupling    part, in S/(cm*T)."
 descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
 descriptions['Faraday'] = "Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
 descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in S/cm (PRB RPS19)"

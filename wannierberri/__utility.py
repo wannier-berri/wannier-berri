@@ -329,3 +329,11 @@ def find_degen(arr,degen_thresh):
 def is_round(A,prec=1e-14):
      """ returns true if all values in A are integers, at least within machine precision"""
      return( np.linalg.norm(A-np.round(A))<prec )
+
+
+def multiply_arrays_pad_dimensions(A,B):
+    if B.ndim<A.ndim:
+        B=B.reshape(B.shape+(1,)*(A.ndim-B.ndim))
+    elif A.ndim<B.ndim:
+        A=A.reshape(A.shape+(1,)*(B.ndim-A.ndim))
+    return A*B
