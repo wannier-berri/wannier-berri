@@ -1,4 +1,4 @@
-#                                                            #
+#                                                         #
 # This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
 # file `LICENSE' in the root directory of the WannierBerri   #
@@ -21,7 +21,8 @@ from .__system import System
 import time
 from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha_A,beta_A
 from .__utility import multiply_arrays_pad_dimensions as mardm
-from .__fermisea2 import DataIO, mergeDataIO
+#from .__fermisea2 import DataIO, mergeDataIO
+from .__fermi_ocean import sea_from_matrix_product, FermiOcean
 import gc
 import os
 
@@ -613,10 +614,48 @@ class Data_K(System):
 
         return result
 
+
+    def perturbation_derOmegaTr_sea(self,pertT,pertS,pertScoma,op=0,ed=None,Emin=-np.Inf,Emax=np.Inf):
+        "an attempt for a faster implementation"
+
+        # first give our matrices short names and bring them to same number of dimensions
+        dimpert=pertS.ndim-3 # number of dimensions of the perturbation
+        NB=self.nbands
+        shape1=(ed-op, NB,NB,3)+(1,)*dimpert
+        shape2=(ed-op, NB,NB,1)+(3,)*dimpert
+        A = self.A_Hbar[op:ed]
+        D = self.D_H[op:ed]
+        AiDEE= -(A+1j*D)*self.dEig_inv[op:ed,:,:,None]
+        A=A.reshape(shape1)
+        D=D.reshape(shape1)
+        AiDEE=AiDEE.reshape(shape1)
+        O = self.Omega_Hbar[op:ed].reshape(shape1)
+        V=self.V_H[op:ed].reshape(shape1)
+        T=pertT.reshape(shape2)
+        S=pertS.reshape(shape2)
+        Sc=pertScoma
+
+        # now define the "alpha" and "beta" components
+        A_,V_,Sc_,D_,AiDEE_={},{},{},{},{}
+        for var in 'A','D','V','AiDEE','Sc':
+            for c in 'alpha','beta':
+                locals()[var+"_"][c]=locals()[var][:,:,:,globals()[c+'_A']]
+
+        # This is the formula from the notes:
+        mat_list= [  ('nl', 2*O , [ ('ln',T) ]  ) ]
+        for s,a,b in (+1,'alpha','beta'),(-1,'beta','alpha'):
+            mat_list+= [
+            ('nl', -2*s*AiDEE_[a] , [ ('ln',Sc_[b]) , ('lmn',-T,V_[b]),('lmn',-D_[b],S), ('lpn',S    ,D_[b]),('lpn',V_[b],T)]) ,
+            ('nl', -2*s*D_[a]     , [                 ('lmn',-T,A_[b]),                  ('lpn',A_[b],T)                    ]) , # 
+                       ]
+        return sea_from_matrix_product(mat_list,self.E_K[op:ed],Emin,Emax,ndim=dimpert+1,dtype=float)
+
+
+
     def perturbation_derOmegaTr_ZeemanSpin(self,Bdirection=None):
         data_list=[]
         if Bdirection is not None:
-            print ("Bdirection is {}".format(Bdirection))
+#            print ("Bdirection is {}".format(Bdirection))
             Bdirection=np.array(Bdirection,dtype=float)
             Bdirection/=np.linalg.norm(Bdirection)
         for op,ed in self.iter_op_ed:
@@ -626,9 +665,24 @@ class Data_K(System):
                 pertS =  pertS @ Bdirection
                 pertScoma =  pertScoma @ Bdirection
             pertT = -mardm( pertS , self.dEig_inv[op:ed,:,:] )
-            print ("op,ed",op,ed,ed-op)
+#            print ("op,ed",op,ed,ed-op)
             data_list.append(DataIO(self.perturbation_derOmegaTr(pertT,pertS,pertScoma,op,ed)).to_sea(degen_thresh=self.degen_thresh))
         return mergeDataIO(data_list)
+
+    def perturbation_derOmegaTr_ZeemanSpin_2(self,Bdirection=None,Emin=-np.Inf,Emax=np.Inf):
+        data_list=[]
+        if Bdirection is not None:
+            Bdirection=np.array(Bdirection,dtype=float)
+            Bdirection/=np.linalg.norm(Bdirection)
+        for op,ed in self.iter_op_ed:
+            pertS = self.S_H[op:ed]
+            pertScoma = self.delS_H[op:ed].transpose(0,1,2,4,3)
+            if Bdirection is not None:
+                pertS =  pertS @ Bdirection
+                pertScoma =  pertScoma @ Bdirection
+            pertT = -mardm( pertS , self.dEig_inv[op:ed,:,:] )
+            data_list+=self.perturbation_derOmegaTr_sea(pertT,pertS,pertScoma,op,ed,Emin,Emax) 
+        return FermiOcean(data_list)
 
 
 ####################################################
@@ -642,7 +696,6 @@ class Data_K(System):
         Hbar = self.Morb_Hbar
         dHn= self.Morb_Hbar_der_diag.real
         dHln= (Hbar[:,:,:,:,None].transpose(0,2,1,3,4)*self.D_H[:,:,:,None,:]-self.D_H[:,:,:,None,:].transpose(0,2,1,3,4)*Hbar[:,:,:,:,None]).real
-
         return dHn, dHln
 
 

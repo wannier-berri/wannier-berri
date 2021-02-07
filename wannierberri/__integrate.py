@@ -20,6 +20,7 @@ from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother,TAU_U
 from . import __result as result
 from . import  __berry as berry
 from . import  __fermisea2 as fermisea2
+from . import  __fermi_ocean as fermi_ocean
 from . import  __nonabelian as nonabelian
 from . import  __dos as dos
 from . import  symmetry
@@ -60,6 +61,7 @@ calculators_trans={
          'Hall_morb' :  nonabelian.Hall_morb,
          'Hall_spin' :  nonabelian.Hall_spin,
          'Hall_spin_fsea' : fermisea2.LFAHE_spin_fsea ,
+         'Hall_spin_fsea_2' : fermi_ocean.LFAHE_spin_fsea ,
 
          'conductivity_ohmic_fsurf': nonabelian.conductivity_ohmic,
          'conductivity_ohmic'      : fermisea2.conductivity_ohmic,
@@ -123,6 +125,7 @@ for key,val in parameters_optical.items():
 
 additional_parameters['Faraday']['homega'] = 0.0
 additional_parameters['Hall_spin_fsea']['Bdirection'] = None
+additional_parameters['Hall_spin_fsea_2']['Bdirection'] = None
 additional_parameters_description['Faraday']['homega'] = "frequency of light in eV (one frequency per calculation)"
 
 

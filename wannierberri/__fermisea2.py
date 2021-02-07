@@ -26,10 +26,10 @@
 import numpy as np
 from functools import partial
 from scipy import constants as constants
-from collections import Iterable
+from collections import Iterable,defaultdict
 import inspect
 import sys
-from .__utility import  print_my_name_start,print_my_name_end,TAU_UNIT,alpha_A,beta_A
+from .__utility import  print_my_name_start,print_my_name_end,TAU_UNIT,alpha_A,beta_A,warning
 from . import __result as result
 
 from scipy.constants import Boltzmann,elementary_charge,hbar,electron_mass,physical_constants,angstrom
@@ -222,11 +222,76 @@ class DataIO(dict):
 
 
 
+
+
+
+
+    @property
+    def E(self):
+        return self['E']
+
+    @property
+    def nk(self):
+        return self.E.shape[0]
+
+    @property
+    def nb(self):
+        return self.E.shape[1]
+
+    def to_sea(self,degen_thresh=0):
+        """replaces all keys, like 'ooi' , 'oi', etc by a single key 'sea' - the corresponding sum when
+           the n-th band is the highest occupied
+        """
+## TODO : Check if this routine takes muchtime for large systems. then optimize it with taking differences 
+##    between (n+1)th and n-th  step like in the OCC class
+        sea=0
+        for key,val in self.items():
+            if key=='E':
+                continue
+            elif key=='i':
+                sea=sea+ np.array([val[:,:n].sum(axis=1) for n in range(1,self.nb+1)])
+            elif key=='ii':
+                sea=sea+ np.array([val[:,:n,:n].sum(axis=(1,2)) for n in range(1,self.nb+1)])
+            elif key=='oi':
+                sea=sea+ np.array([val[:,n:,:n].sum(axis=(1,2)) for n in range(1,self.nb+1)])
+            elif key=='ooi':
+                sea=sea+ np.array([val[:,n:,n:,:n].sum(axis=(1,2,3)) for n in range(1,self.nb+1)])
+            elif key=='oii':
+                sea=sea+ np.array([val[:,n:,:n,:n].sum(axis=(1,2,3)) for n in range(1,self.nb+1)])
+            else :
+                raise RuntimeError("Unknown key in dataIO : '{}' ".formta(key))
+        sea=sea.transpose([1,0]+list(range(2,sea.ndim)))
+        EFmin_list=[]
+        EFmax_list=[]
+        sea_list=[]
+        for ik in range(self.nk):
+            select=np.hstack( ( (self.E[ik,1:]-self.E[ik,:-1])>degen_thresh,[True]) )
+            E=self.E[ik,select]
+            sea_list.append(sea[ik,select])
+            EFmin_list.append(E)
+            EFmax_list.append(E[1:])
+            EFmax_list.append([np.Inf])
+        res= DataIO({'sea':np.vstack(sea_list),
+                        'EFmin':np.hstack(EFmin_list), 
+                        'EFmax':np.hstack(EFmax_list) })
+#        print ("shapes of DataIO : ",res['sea'].shape,res['EFmin'].shape,res['EFmax'].shape)
+        return res
+
+
+
+
+
+
+
+
 def _stack(lst):
     if lst[0].ndim>1:
         return np.vstack(lst)
     else:
         return np.hstack(lst)
+
+
+
 
 
 def mergeDataIO(data_list):
@@ -239,6 +304,9 @@ def mergeDataIO(data_list):
 #    for key in keys:
 #        print ("key={}, res_shape={}".format(key,res[key].shape))
     return res
+
+
+
 
 
 
@@ -326,9 +394,6 @@ class OccDelta():
 #            raise RuntimeError("Nothing was evaluated for the Fermi sea")
 
         return result
-            
-
-
 
 
 
