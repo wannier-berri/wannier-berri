@@ -52,15 +52,14 @@ class FermiOcean:
     def __call__(self, Efermi):
         result = np.zeros(Efermi.shape + self.shape, self.dtype)
         for datak in self.data:
-            print('next k-point')
+#            print('next k-point')
             resk = np.zeros(Efermi.shape + self.shape, self.dtype)
             for E in sorted(datak.keys()):
-                print('E=', E)
+#                print('E=', E,datak[E])
                 resk[Efermi >= E] = datak[E][None]
             else:
-                print('finished k-point', resk[(-1)])
+#                print('finished k-point', resk[(-1)])
                 result += resk
-
         else:
             return result
 
@@ -83,8 +82,8 @@ def sea_from_matrix_product(mat_list, EK, Emin, Emax, ndim, dtype):
     EK[sel] = Emin - 1e-06
     bandmax = np.full(nk, 0)
     sel = EK < Emax
-    bandmax[sel[:, 0]] = [max(np.where(s)[0]) for s in sel[sel[:, 0]]]
-    print('bandmin: {} \n bandmax={} \n'.format(bandmin, bandmax))
+    bandmax[sel[:, 0]] = [max(np.where(s)[0])+1 for s in sel[sel[:, 0]]]
+#    print('bandmin: {} \n bandmax={} \n'.format(bandmin, bandmax))
     values = [defaultdict(lambda: np.zeros(((3, ) * ndim), dtype=dtype)) for ik in range(nk)]
     for ABC in mat_list:
         Aind = ABC[0]
@@ -100,36 +99,31 @@ def sea_from_matrix_product(mat_list, EK, Emin, Emax, ndim, dtype):
                     for BC in ABC[2]:
                         if BC[0] == 'ln':
                             bc += BC[1][ik, n + 1:, :n + 1]
+                        elif BC[0] == 'lpn':
+                            bc += np.einsum('lp...,pn...->ln...', BC[1][ik, n + 1:, n + 1:], BC[2][ik, n + 1:, :n + 1])
+                        elif BC[0] == 'lmn':
+                            bc += np.einsum('lm...,mn...->ln...', BC[1][ik, n + 1:, :n + 1], BC[2][ik, :n + 1, :n + 1])
                         else:
-                            if BC[0] == 'lpn':
-                                bc += np.einsum('lp...,pn...->ln...', BC[1][ik, n + 1:, n + 1:], BC[2][ik, n + 1:, :n + 1])
-                            else:
-                                if BC[0] == 'lmn':
-                                    bc += np.einsum('lm...,mn...->ln...', BC[1][ik, n + 1:, :n + 1], BC[2][ik, :n + 1, :n + 1])
-                                else:
-                                    raise ValueError('Wron index for B,C : {}'.format(BC[0]))
-                                values[ik][EK[(ik, n)]] += np.einsum('nl...,ln...->...', a, bc).real
-
-                if Aind == 'mn':
-                    if len(ABC[0] > 2):
-                        warning("only one matrix should be given for 'mn'")
-                    else:
-                        for ik in range(nk):
-                            for n in range(bandmin[ik], bandmax[ik]):
-                                values[ik][EK[(ik, n)]] += A[ik, :n + 1, :n + 1].sum(axis=(0,
-                                                                                           1))
-
-                else:
-                    if Aind == 'n':
-                        if len(ABC > 2):
-                            warning("only one matrix should be given for 'n'")
-                        else:
-                            for ik in range(nk):
-                                for n in range(bandmin[ik], bandmax[ik]):
-                                    values[ik][EK[(ik, n)]] += A[ik, :n + 1].sum(axis=0)
-
-                    else:
-                        raise RuntimeError('Wrong indexing for array A : {}'.format(Aind))
+                            raise ValueError('Wron index for B,C : {}'.format(BC[0]))
+                    values[ik][EK[(ik, n)]] = np.einsum('nl...,ln...->...', a, bc).real
+#                    if n==bandmax[ik]-1:
+#                        print ("last band E[{}]]{} , a.shape={}, bc.shape={}  val={} ".format(
+#                                   n,EK[(ik, n)], a.shape,bc.shape,values[ik][EK[(ik, n)]]))
+        elif Aind == 'mn':
+            if len(ABC[0] > 2):
+                warning("only one matrix should be given for 'mn'")
             else:
-                return values
+                for ik in range(nk):
+                    for n in range(bandmin[ik], bandmax[ik]):
+                        values[ik][EK[(ik, n)]] += A[ik, :n + 1, :n + 1].sum(axis=(0,1))
+        elif Aind == 'n':
+            if len(ABC > 2):
+                warning("only one matrix should be given for 'n'")
+            else:
+                for ik in range(nk):
+                    for n in range(bandmin[ik], bandmax[ik]):
+                        values[ik][EK[(ik, n)]] += A[ik, :n + 1].sum(axis=0)
+        else:
+            raise RuntimeError('Wrong indexing for array A : {}'.format(Aind))
+    return values
 # okay decompiling /home/stepan/tmp/__fermi_ocean.cpython-38.pyc

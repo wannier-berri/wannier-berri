@@ -21,7 +21,7 @@ from .__system import System
 import time
 from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha_A,beta_A
 from .__utility import multiply_arrays_pad_dimensions as mardm
-#from .__fermisea2 import DataIO, mergeDataIO
+from .__fermisea2 import DataIO, mergeDataIO
 from .__fermi_ocean import sea_from_matrix_product, FermiOcean
 import gc
 import os
