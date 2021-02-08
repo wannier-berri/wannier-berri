@@ -20,6 +20,7 @@ from collections import defaultdict
 from .__system import System
 import time
 from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha_A,beta_A
+from .__fermiocean import sea_from_matrix_product,FermiOcean
 from .__fermisea2 import DataIO, mergeDataIO
 import gc
 import os
@@ -873,7 +874,7 @@ class Data_K(System):
                 (self.D_H[:,:,:,beta_A]*self.A_Hbar[:,:,:,alpha_A].transpose((0,2,1,3))).real  ) 
         oi+=(-self.D_H[:,:,:,beta_A]*self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))).imag
         i=np.einsum("kiia->kia",self.Omega_Hbar).real
-        return {'i':i,'oi': - 2*oi ,'E':self.E_K}
+        return {'i':i ,'oi': - 2*oi ,'E':self.E_K}
 
     @property
     def Ohmic(self):
@@ -908,6 +909,44 @@ class Data_K(System):
 
     def Hminus(self,evalJ0=True,evalJ1=True,evalJ2=True):
         return self.Hplusminus(-1,evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
+
+
+
+#####################################################
+##### The new "ocean" implementation                #
+##### probablyy it will replace the old fermisea2   #
+#####################################################
+
+    def Omega_ocean(self,Emin=-np.Inf,Emax=np.Inf):
+        "an attempt for a faster implementation"
+
+        # first give our matrices short names
+        NB=self.nbands
+        A = self.A_Hbar
+        D = self.D_H
+        O = np.einsum('knna->kna',self.Omega_Hbar).real
+
+        # now define the "alpha" and "beta" components
+        A_,D_={},{}
+        for var in 'A','D':
+            for c in 'alpha','beta':
+                locals()[var+"_"][c]=locals()[var][:,:,:,globals()[c+'_A']]
+        # This is the formula from the notes:
+        mat_list= [  ('n', O )  ]
+#        for i in range(3):
+        for s,a,b in (-1.,'beta','alpha'),( +1.,'alpha','beta'),:
+            mat_list.append(
+#                   (  'nl', s*D_[a] , [  ('ln', -1j*D_[b] ) ] )  
+#                    (  'nl', s*D_[a] , [ ('ln', -2*A_[b] )  ] )  
+                    (  'nl', s*D_[a] , [ ('ln', -2*A_[b] ) , ('ln', -1j*D_[b] ) ] )  
+                           )
+        data_list =  sea_from_matrix_product(mat_list,self.E_K,Emin,Emax,ndim=1,dtype=float)
+        return FermiOcean(data_list)
+
+
+###################################################
+####  end of Fermi ocean        #############3
+###################################################
 
 
 def merge_dataIO(data_list):

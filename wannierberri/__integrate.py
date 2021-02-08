@@ -55,7 +55,7 @@ calculators_trans={
          'Morb'       : fermisea2.Morb,
          'ahc'        : fermisea2.AHC ,
          'ahc2'       : fermisea2.AHC2 ,
-         'ahc_ocean'  : fermisocean.AHC ,
+         'ahc_ocean'  : fermiocean.AHC ,
          'dos'        : dos.calc_DOS ,
          'cumdos'        : dos.calc_cum_DOS ,
          'Hall_classic' : nonabelian.Hall_classic , 
