@@ -37,8 +37,8 @@ def iterate_kpart(formula_fun,data_K,Efermi,kpart=None,dtype=float,**parameters)
     if n>0 :
         kpart += ceil( (data_K.NKFFT_tot % kpart)/n )
     borders=list(range(0,data_K.NKFFT_tot,kpart))+[data_K.NKFFT_tot]
-    print ("processing the {} FFT grid points in {} portions of {},  last portion is {}".format(
-               data_K.NKFFT_tot,len(borders),kpart,data_K.NKFFT_tot%kpart))
+#    print ("processing the {} FFT grid points in {} portions of {},  last portion is {}".format(
+#               data_K.NKFFT_tot,len(borders)-1,kpart,data_K.NKFFT_tot%kpart))
     Emin,Emax=Efermi[0],Efermi[-1]
     f0=formula_fun(data_K,0,0,**parameters)  # just to get the basic properties
     res= sum ( 
