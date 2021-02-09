@@ -887,7 +887,7 @@ class Data_K(System):
                 (self.D_H[:,:,:,beta_A]*self.A_Hbar[:,:,:,alpha_A].transpose((0,2,1,3))).real  ) 
         oi+=(-self.D_H[:,:,:,beta_A]*self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))).imag
         i=np.einsum("kiia->kia",self.Omega_Hbar).real
-        return {'i':i,'oi': - 2*oi ,'E':self.E_K}
+        return {'i':i ,'oi': - 2*oi ,'E':self.E_K}
 
     @property
     def Ohmic(self):

@@ -20,6 +20,7 @@ from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother,TAU_U
 from . import __result as result
 from . import  __berry as berry
 from . import  __fermisea2 as fermisea2
+from . import  __fermiocean as fermiocean
 from . import  __nonabelian as nonabelian
 from . import  __dos as dos
 from . import  symmetry
@@ -53,7 +54,8 @@ calculators_trans={
          'spin'       : fermisea2.SpinTot,  
          'Morb'       : fermisea2.Morb,
          'ahc'        : fermisea2.AHC ,
-         'ahc2'        : fermisea2.AHC2 ,
+         'ahc2'       : fermisea2.AHC2 ,
+         'ahc_ocean'  : fermiocean.AHC ,
          'dos'        : dos.calc_DOS ,
          'cumdos'        : dos.calc_cum_DOS ,
          'Hall_classic' : nonabelian.Hall_classic , 
@@ -64,6 +66,7 @@ calculators_trans={
          'conductivity_ohmic'      : fermisea2.conductivity_ohmic,
 
          'berry_dipole'            : fermisea2.tensor_D,
+         'berry_dipole_ocean'      : fermiocean.berry_dipole,
          'berry_dipole_2'          : fermisea2.tensor_D_2,
          'berry_dipole_fsurf'      : nonabelian.berry_dipole,
 #         'Faraday1w'                 : nonabelian.Faraday,
@@ -101,7 +104,9 @@ calculators_opt={
     'tildeD'     : kubo.tildeD,
 }
 
-
+#  The dictionary additional_parameters should list all extra parameters that can
+#     influence in the caslculation. 
+# Note : only tose parameters listed for PARTICULAR QUANTITY will take affect !!!
 
 parameters_optical={
 'kBT'             :  ( 0    ,  "temperature in units of eV/kB"          ),
@@ -113,11 +118,20 @@ parameters_optical={
 'adpt_smr_min'    :  ( 1e-15,  "minimal value of the adaptive smearing parameter in eV") }
 
 
-
 for key,val in parameters_optical.items(): 
     for calc in calculators_opt: 
         additional_parameters[calc][key] = val[0]
         additional_parameters_description[calc][key] = val[1]
+
+key='kpart'
+for calc in calculators_trans:
+    if calc.endswith('_ocean'):
+        additional_parameters[calc][key] = 500
+        additional_parameters_description[calc][key] = (
+             'Separate k-points of the FFT grid into portions ' + 
+             '(analog of ksep in the system class, but acts in different calculators)'  +
+             'decreasing this parameter helps to save memory in some cases' +
+                'while performance is usually unafected' )
 
 
 additional_parameters['Faraday']['homega'] = 0.0
