@@ -378,7 +378,7 @@ def main():
                 for ib2 in range(NNB):
                     for ipol in range(3):
                         A[ib2,:,:,ipol]=np.einsum('nl,ml,l->mn',MMN[ik][ib2][IBstart:IBstart+NB_out,IBstartSum:NB_sum+IBstartSum],
-                                                           SPN[ik][ipol][IBstartSum:IBstartSum+NB_sum], eig_dum)
+                                                           SPN[ik][ipol][IBstart:IBstart+NB_out,IBstartSum:IBstartSum+NB_sum], eig_dum)
                 if(formatted):
                     f_sXu_out.write("".join("{0:20.10e}   {1:20.10e}\n".format(a.real,a.imag)  for a in A.reshape(-1,order='C')) )
                 else:
