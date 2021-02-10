@@ -540,154 +540,6 @@ class Data_K(System):
 
 
 
-####################################################
-####  Start of perturbation theory block
-####################################################
-
-####### set of routines to compute change of Berry curvature with a small perturbation 
-####### (e.g. the spin Zeeman coupling) to 1st order in perturbation theory
-#     pertS - the perturbation matrix in Hamiltoian Gauge  
-#       with diminsions (ik,m,n,...) with arbitrary number of cartesian dimensions (3 for Zeeman coupling)
-#     pertT(ik,m,n)=pertS(ik,m,n)/(En-Em)   (for m!=n, otherwise zero )
-#     pertScoma - 'cooma'-derivative of pertS over k (derivative in wannier gauge rotated to Hamiltonian gauge)
-
-    def perturbation_gdOmegabar(self,pertT,op=0,ed=None):
-        """Generalised derivative with respect to perturbation pert given in Wannier gauge. 
-        returns a matrix Olm to be summed ove unocc-occ states"""
-        dOln= 2*mardm(self.Omega_Hbar[op:ed,:,:,:].transpose(0,2,1,3),pertT[:,:,:,None]).real
-        return dOln
-
-    def perturbation_gdAbar(self,pertT,indx=None,op=0,ed=None):
-        if indx=='ooi':
-            return mardm( self.A_Hbar[op:ed,:,:,None,:] , pertT[:,None,:,:,None] )
-        elif indx=='oii':
-            return - mardm( pertT[:,:,:,None,None] , self.A_Hbar[op:ed,None,:,:,:] )
-        else :
-            raise ValueError( "Wrong indx : {}".format(indx) )
-
-    def perturbation_gdD(self,pertT,pertS,pertScoma,indx=None,op=0,ed=None):
-        # indx = ln or lln or lnn
-        N=None
-        if indx=='oi':
-            return - mardm( pertScoma , self.dEig_inv[op:ed,:,:] )
-        elif indx=='ooi':
-            dDlln =  mardm( self.V_H[op:ed,:,:,N,:] , pertT   [  :  , N,:,:,N] )
-            dDlln += mardm( pertS   [  :  ,:,:,N,N] , self.D_H[op:ed, N,:,:,:] )
-            return  - mardm( dDlln   ,  self.dEig_inv[op:ed,:,N,:,N] )
-        elif indx=='oii':
-            dDlnn =  mardm( self.D_H[op:ed,:,:,N,:] , pertS   [  :  ,N,:,:,N] )
-            dDlnn += mardm( pertT   [  :  ,:,:,N,N] , self.V_H[op:ed,N,:,:,:] )
-            return   mardm( dDlnn,self.dEig_inv[op:ed,:,N,:,N]  )
-        else :
-            raise ValueError( "Wrong indx : {}".format(indx) )
-
-    def perturbation_derOmegaTr(self,pertT,pertS,pertScoma,op=0,ed=None):
-        b=alpha_A
-        c=beta_A
-        N=None
-        Anl    = self.A_H.transpose(0,2,1,3)[op:ed]
-        Dnl    = self.D_H.transpose(0,2,1,3)[op:ed]
-
-        result={}
-
-        dDln   = self.perturbation_gdD(pertT,pertS,pertScoma,'oi',op,ed)
-        dOln   = self.perturbation_gdOmegabar(pertT,op,ed)
-        result['oi'] = dOln - 2*( 
-                   mardm(Anl[:,:,:,b],dDln[:,:,:,c]).real + 
-                 + mardm(Anl[:,:,:,c],dDln[:,:,:,b]).real    ##   b<->c  
-                      )
-        del dDln,dOln
-        gc.collect()
-
-#        if False:
-        for indx in 'ooi','oii':
-            dDlxn   = self.perturbation_gdD(pertT,pertS,pertScoma,indx,op,ed)
-            dAlxn   = self.perturbation_gdAbar(pertT,indx,op,ed)
-            result[indx] = - 2*( 
-                (  mardm(Anl[:,:,N,:,b],dDlxn[:,:,:,:,c]).real + mardm(Dnl[:,:,N,:,b],dAlxn[:,:,:,:,c]).real ) 
-              + (  mardm(Anl[:,:,N,:,c],dDlxn[:,:,:,:,b]).real + mardm(Dnl[:,:,N,:,c],dAlxn[:,:,:,:,b]).real )  ##   b<->c  
-                   )
-            del dDlxn,dAlxn
-            gc.collect()
-
-        result['E']=self.E_K[op:ed]
-
-        return result
-
-
-    def perturbation_derOmegaTr_sea(self,pertT,pertS,pertScoma,op=0,ed=None,Emin=-np.Inf,Emax=np.Inf):
-        "an attempt for a faster implementation"
-
-        # first give our matrices short names and bring them to same number of dimensions
-        dimpert=pertS.ndim-3 # number of dimensions of the perturbation
-        NB=self.nbands
-        shape1=(ed-op, NB,NB,3)+(1,)*dimpert
-        shape2=(ed-op, NB,NB,1)+(3,)*dimpert
-        A = self.A_Hbar[op:ed]
-        D = self.D_H[op:ed]
-        AiDEE= -(A+1j*D)*self.dEig_inv[op:ed,:,:,None]
-        A=A.reshape(shape1)
-        D=D.reshape(shape1)
-        AiDEE=AiDEE.reshape(shape1)
-        O = self.Omega_Hbar[op:ed].reshape(shape1)
-        V=self.V_H[op:ed].reshape(shape1)
-        T=pertT.reshape(shape2)
-        S=pertS.reshape(shape2)
-        Sc=pertScoma
-
-        # now define the "alpha" and "beta" components
-        A_,V_,Sc_,D_,AiDEE_={},{},{},{},{}
-        for var in 'A','D','V','AiDEE','Sc':
-            for c in 'alpha','beta':
-                locals()[var+"_"][c]=locals()[var][:,:,:,globals()[c+'_A']]
-
-        # This is the formula from the notes:
-        mat_list= [  ('nl', 2*O , [ ('ln',T) ]  ) ]
-        for s,a,b in (+1,'alpha','beta'),(-1,'beta','alpha'):
-            mat_list+= [
-            ('nl', -2*s*AiDEE_[a] , [ ('ln',Sc_[b]) , ('lmn',-T,V_[b]),('lmn',-D_[b],S), ('lpn',S    ,D_[b]),('lpn',V_[b],T)]) ,
-            ('nl', -2*s*D_[a]     , [                 ('lmn',-T,A_[b]),                  ('lpn',A_[b],T)                    ]) , # 
-                       ]
-        return sea_from_matrix_product(mat_list,self.E_K[op:ed],Emin,Emax,ndim=dimpert+1,dtype=float)
-
-
-
-    def perturbation_derOmegaTr_ZeemanSpin(self,Bdirection=None):
-        data_list=[]
-        if Bdirection is not None:
-#            print ("Bdirection is {}".format(Bdirection))
-            Bdirection=np.array(Bdirection,dtype=float)
-            Bdirection/=np.linalg.norm(Bdirection)
-        for op,ed in self.iter_op_ed:
-            pertS = self.S_H[op:ed]
-            pertScoma = self.delS_H[op:ed].transpose(0,1,2,4,3)
-            if Bdirection is not None:
-                pertS =  pertS @ Bdirection
-                pertScoma =  pertScoma @ Bdirection
-            pertT = -mardm( pertS , self.dEig_inv[op:ed,:,:] )
-#            print ("op,ed",op,ed,ed-op)
-            data_list.append(DataIO(self.perturbation_derOmegaTr(pertT,pertS,pertScoma,op,ed)).to_sea(degen_thresh=self.degen_thresh))
-        return mergeDataIO(data_list)
-
-    def perturbation_derOmegaTr_ZeemanSpin_2(self,Bdirection=None,Emin=-np.Inf,Emax=np.Inf):
-        data_list=[]
-        if Bdirection is not None:
-            Bdirection=np.array(Bdirection,dtype=float)
-            Bdirection/=np.linalg.norm(Bdirection)
-        for op,ed in self.iter_op_ed:
-            pertS = self.S_H[op:ed]
-            pertScoma = self.delS_H[op:ed].transpose(0,1,2,4,3)
-            if Bdirection is not None:
-                pertS =  pertS @ Bdirection
-                pertScoma =  pertScoma @ Bdirection
-            pertT = -mardm( pertS , self.dEig_inv[op:ed,:,:] )
-            data_list+=self.perturbation_derOmegaTr_sea(pertT,pertS,pertScoma,op,ed,Emin,Emax) 
-        return FermiOcean(data_list)
-
-
-####################################################
-####  End of perturbation theory block
-####################################################
 
 
 
@@ -872,11 +724,25 @@ class Data_K(System):
         return self._R_to_k_H(self.SHA_R.copy(), hermitian=False)
 #PRB QZYZ18, Qiao's way to calculate SHC
 
+    def _shc_B_H_einsum_opt(self, C, A, B):
+        # Optimized version of C += np.einsum('knlc,klma->knmac', A, B). Used in shc_B_H.
+        nw = self.num_wann
+        for ik in range(self.nkptot):
+            # Performing C[ik] += np.einsum('nlc,lma->nmac', A[ik], B[ik])
+            tmp_a = np.swapaxes(A[ik], 1, 2) # nlc -> ncl
+            tmp_a = np.reshape(tmp_a, (nw*3, nw)) # ncl -> (nc)l
+            tmp_b = np.reshape(B[ik], (nw, nw*3)) # lma -> l(ma)
+            tmp_c = tmp_a @ tmp_b # (nc)l, l(ma) -> (nc)(ma)
+            tmp_c = np.reshape(tmp_c, (nw, 3, nw, 3)) # (nc)(ma) -> ncma
+            C[ik] += np.transpose(tmp_c, (0, 2, 3, 1)) # ncma -> nmac
+
     @lazy_property.LazyProperty
     def shc_B_H(self):
         SH_H = self._R_to_k_H(self.SH_R.copy(), hermitian=False)
-        shc_K_H = -1j*self._R_to_k_H(self.SR_R.copy(), hermitian=False) + np.einsum('knlc,klma->knmac', self.S_H, self.D_H)
-        shc_L_H = -1j*self._R_to_k_H(self.SHR_R.copy(), hermitian=False) + np.einsum('knlc,klma->knmac', SH_H, self.D_H)
+        shc_K_H = -1j*self._R_to_k_H(self.SR_R.copy(), hermitian=False)
+        self._shc_B_H_einsum_opt(shc_K_H, self.S_H, self.D_H)
+        shc_L_H = -1j*self._R_to_k_H(self.SHR_R.copy(), hermitian=False)
+        self._shc_B_H_einsum_opt(shc_L_H, SH_H, self.D_H)
         return (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.S_H[:,:,:,np.newaxis,:] +
             self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*shc_K_H[:,:,:,:,:] - shc_L_H)
 #end SHC
@@ -1031,7 +897,7 @@ class Data_K(System):
                 (self.D_H[:,:,:,beta_A]*self.A_Hbar[:,:,:,alpha_A].transpose((0,2,1,3))).real  ) 
         oi+=(-self.D_H[:,:,:,beta_A]*self.D_H[:,:,:,alpha_A].transpose((0,2,1,3))).imag
         i=np.einsum("kiia->kia",self.Omega_Hbar).real
-        return {'i':i,'oi': - 2*oi ,'E':self.E_K}
+        return {'i':i ,'oi': - 2*oi ,'E':self.E_K}
 
     @property
     def Ohmic(self):
