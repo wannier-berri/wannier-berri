@@ -89,7 +89,7 @@ def kubo_sum_elements(x, y, num_wann):
     assert x.shape == (num_wann, num_wann, 3, 3)
     x_reshape = x.reshape((num_wann**2, 3 * 3))
     return (y_reshape @ x_reshape).reshape((-1, 3, 3))
-@profile
+
 def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, shc_alpha=1, shc_beta=2, shc_gamma=3,
                 conductivity_type='kubo', SHC_type='ryoo',
