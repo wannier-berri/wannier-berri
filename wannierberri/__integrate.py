@@ -109,9 +109,10 @@ parameters_optical={
 'adpt_smr_fac'    :  ( np.sqrt(2) ,  "prefactor for the adaptive smearing parameter" ),
 'adpt_smr_max'    :  (  0.1 , "maximal value of the adaptive smearing parameter in eV" ),
 'adpt_smr_min'    :  ( 1e-15,  "minimal value of the adaptive smearing parameter in eV"),
-'shc_alpha'       :  ( 1    ,  "direction of spin current (1, 2, 3)"),
-'shc_beta'        :  ( 2    ,  "direction of applied electric field (1, 2, 3)"),
-'shc_gamma'       :  ( 3    ,  "direction of spin polarization (1, 2, 3)"),}
+'shc_alpha'       :  ( 0    ,  "direction of spin current (1, 2, 3)"),
+'shc_beta'        :  ( 0    ,  "direction of applied electric field (1, 2, 3)"),
+'shc_gamma'       :  ( 0    ,  "direction of spin polarization (1, 2, 3)"),
+'shc_specification' : ( False , "calculate all 27 components of SHC if false")}
 
 
 
@@ -174,6 +175,9 @@ def intProperty(data,quantities=[],Efermi=None,omega=None,smootherEf=VoidSmoothe
                  __parameters[param]=additional_parameters[q][param]
         if q in calculators_opt:
             __parameters['omega']=omega
+        if q is 'opt_SHCqiao' or q is 'opt_SHCryoo':
+            if 'shc_alpha' in parameters and 'shc_beta' in parameters and 'shc_gamma' in parameters:
+                __parameters['shc_specification']=True
         results[q]=calculators[q](data,Efermi,**__parameters)
         results[q].set_smoother(_smoother(q))
 
