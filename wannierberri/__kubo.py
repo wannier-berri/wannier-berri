@@ -201,43 +201,23 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             A = data.A_H[ik] # [n, m, a] in angstrom
 #            B = data.A_H[ik]
         elif conductivity_type == 'SHC':
-            if shc_specification:
-                B = - 1j*data.A_H[ik,:,:,shc_beta] # [n, m]
-                if SHC_type == 'qiao':
-                    A = 0.5 * (data.shc_B_H[ik,:,:,shc_alpha,shc_gamma]
-                        + data.shc_B_H[ik,:,:,shc_alpha,shc_gamma].transpose().conj())
-                elif SHC_type == 'ryoo':
-                    # PRB RPS19 Eqs. (21) and (26), j=(1/2)(VV*SS - i(E*SA - SHA) + adj. part)
-                    VV = data.V_H[ik,:,:,shc_alpha] #[n, m]
-                    SS = data.S_H[ik,:,:,shc_gamma] #[n, m]
-                    SA = data.SA_H[ik,:,:,shc_alpha,shc_gamma] #[n, m]
-                    SHA = data.SHA_H[ik,:,:,shc_alpha,shc_gamma] #[n, m]
-                    A = np.matmul(VV,SS) + np.matmul(SS,VV)
-                    A += -1j * (E[None,:]*SA - SHA)
-                    SA_adj = SA.transpose().conj()
-                    SHA_adj = SHA.transpose().conj()
-                    A += 1j *  (E[:,None]*SA_adj - SHA_adj)
-                    A /= 2.0
-                else:
-                    print("Invalid SHC type. ryoo or qiao.")
+            B = - 1j*data.A_H[ik]
+            if SHC_type == 'qiao':
+                A = 0.5 * (data.shc_B_H[ik] + data.shc_B_H[ik].transpose(1,0,2,3).conj())
+            elif SHC_type == 'ryoo':
+                VV = data.V_H[ik] # [n,m,a]
+                SS = data.S_H[ik]   # [n,m,b]
+                SA = data.SA_H[ik]  # [n,m,a,b]
+                SHA = data.SHA_H[ik]# [n,m,a,b]
+                A = (np.matmul(VV.transpose(2,0,1)[:,None,:,:],SS.transpose(2,0,1)[None,:,:,:])
+                    + np.matmul(SS.transpose(2,0,1)[None,:,:,:],VV.transpose(2,0,1)[:,None,:,:])).transpose(2,3,0,1)
+                A += -1j * (E[None,:,None,None]*SA - SHA)
+                SA_adj = SA.transpose(1,0,2,3).conj()
+                SHA_adj = SHA.transpose(1,0,2,3).conj()
+                A += 1j *  (E[:,None,None,None]*SA_adj - SHA_adj)
+                A /= 2.0
             else:
-                B = - 1j*data.A_H[ik]
-                if SHC_type == 'qiao':
-                    A = 0.5 * (data.shc_B_H[ik] + data.shc_B_H[ik].transpose(1,0,2,3).conj())
-                elif SHC_type == 'ryoo':
-                    VV = data.V_H[ik] # [n,m,a]
-                    SS = data.S_H[ik]   # [n,m,b]
-                    SA = data.SA_H[ik]  # [n,m,a,b]
-                    SHA = data.SHA_H[ik]# [n,m,a,b]
-                    A = (np.matmul(VV.transpose(2,0,1)[:,None,:,:],SS.transpose(2,0,1)[None,:,:,:])
-                        + np.matmul(SS.transpose(2,0,1)[None,:,:,:],VV.transpose(2,0,1)[:,None,:,:])).transpose(2,3,0,1)
-                    A += -1j * (E[None,:,None,None]*SA - SHA)
-                    SA_adj = SA.transpose(1,0,2,3).conj()
-                    SHA_adj = SHA.transpose(1,0,2,3).conj()
-                    A += 1j *  (E[:,None,None,None]*SA_adj - SHA_adj)
-                    A /= 2.0
-                else:
-                    print("Invalid SHC type. ryoo or qiao.")
+                print("Invalid SHC type. ryoo or qiao.")
         elif  conductivity_type == 'tildeD':
             rfac=dE[None,:,:]/(dE[None,:,:]+omega[:,None,None]+1j*eta)
             rfac=(rfac+rfac.transpose(0,2,1).conj()).real/2
@@ -291,7 +271,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
                 temp1 = dfE[np.newaxis,:,:]*cfac1
                 temp2 = dfE[np.newaxis,:,:]*cfac2
                 if shc_specification:
-                    imAB = np.imag(A * B.transpose())
+                    imAB = np.imag(np.einsum('nmac,mnb->nmabc',A,B))[:, :, shc_alpha, shc_beta, shc_gamma]
                     sigma_H [iEF] += 1j * pi * pre_fac * np.sum(imAB[:, :, np.newaxis] * temp2.transpose(1, 2, 0), axis = (0, 1)) / 4.0
                     sigma_AH[iEF] += pre_fac * np.sum(imAB[:, :, np.newaxis] * temp1.transpose(1, 2, 0), axis = (0, 1)) / 2.0
                 else:
