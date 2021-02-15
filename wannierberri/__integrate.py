@@ -149,8 +149,8 @@ descriptions['Hall_morb'   ] = "Low field AHE, orbital part, in S/(cm*T)."
 descriptions['Hall_spin'   ] = "Low field AHE, spin    part, in S/(cm*T)."
 descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
 descriptions['Faraday'] = "Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
-descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in S/cm (PRB RPS19)"
-descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in S/cm (PRB QZYZ18)"
+descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in hbar/e S/cm (PRB RPS19)"
+descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in hbar/e S/cm (PRB QZYZ18)"
 
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
