@@ -54,7 +54,7 @@ calculators_trans={
          'spin'       : fermisea2.SpinTot,  
          'Morb'       : fermisea2.Morb,
          'ahc'        : fermisea2.AHC ,
-         'ahc2'       : fermisea2.AHC2 ,
+         'ahc2'        : fermisea2.AHC2 ,
          'ahc_ocean'  : fermiocean.AHC ,
          'dos'        : dos.calc_DOS ,
          'cumdos'        : dos.calc_cum_DOS ,
@@ -104,10 +104,6 @@ calculators_opt={
     'tildeD'     : kubo.tildeD,
 }
 
-#  The dictionary additional_parameters should list all extra parameters that can
-#     influence in the caslculation. 
-# Note : only tose parameters listed for PARTICULAR QUANTITY will take affect !!!
-
 parameters_optical={
 'kBT'             :  ( 0    ,  "temperature in units of eV/kB"          ),
 'smr_fixed_width' :  ( 0.1  ,  "fixed smearing parameter in units of eV"),
@@ -115,23 +111,18 @@ parameters_optical={
 'adpt_smr'        :  (  False ,  "use an adaptive smearing parameter" ),
 'adpt_smr_fac'    :  ( np.sqrt(2) ,  "prefactor for the adaptive smearing parameter" ),
 'adpt_smr_max'    :  (  0.1 , "maximal value of the adaptive smearing parameter in eV" ),
-'adpt_smr_min'    :  ( 1e-15,  "minimal value of the adaptive smearing parameter in eV") }
+'adpt_smr_min'    :  ( 1e-15,  "minimal value of the adaptive smearing parameter in eV"),
+'shc_alpha'       :  ( 0    ,  "direction of spin current (1, 2, 3)"),
+'shc_beta'        :  ( 0    ,  "direction of applied electric field (1, 2, 3)"),
+'shc_gamma'       :  ( 0    ,  "direction of spin polarization (1, 2, 3)"),
+'shc_specification' : ( False , "calculate all 27 components of SHC if false")}
+
 
 
 for key,val in parameters_optical.items(): 
     for calc in calculators_opt: 
         additional_parameters[calc][key] = val[0]
         additional_parameters_description[calc][key] = val[1]
-
-key='kpart'
-for calc in calculators_trans:
-    if calc.endswith('_ocean'):
-        additional_parameters[calc][key] = 500
-        additional_parameters_description[calc][key] = (
-             'Separate k-points of the FFT grid into portions ' + 
-             '(analog of ksep in the system class, but acts in different calculators)'  +
-             'decreasing this parameter helps to save memory in some cases' +
-                'while performance is usually unafected' )
 
 
 additional_parameters['Faraday']['homega'] = 0.0
@@ -161,8 +152,8 @@ descriptions['Hall_morb'   ] = "Low field AHE, orbital part, in S/(cm*T)."
 descriptions['Hall_spin'   ] = "Low field AHE, spin    part, in S/(cm*T)."
 descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
 descriptions['Faraday'] = "Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
-descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in S/cm (PRB RPS19)"
-descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in S/cm (PRB QZYZ18)"
+descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in hbar/e S/cm (PRB RPS19)"
+descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in hbar/e S/cm (PRB QZYZ18)"
 
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
@@ -187,6 +178,9 @@ def intProperty(data,quantities=[],Efermi=None,omega=None,smootherEf=VoidSmoothe
                  __parameters[param]=additional_parameters[q][param]
         if q in calculators_opt:
             __parameters['omega']=omega
+        if q is 'opt_SHCqiao' or q is 'opt_SHCryoo':
+            if 'shc_alpha' in parameters and 'shc_beta' in parameters and 'shc_gamma' in parameters:
+                __parameters['shc_specification']=True
         results[q]=calculators[q](data,Efermi,**__parameters)
         results[q].set_smoother(_smoother(q))
 
@@ -221,5 +215,3 @@ class INTresult(result.Result):
         r= np.array([x for v in self.results.values() for x in v.max])
 #        print ("max=",r,"res=",self.results)
         return r
-
-

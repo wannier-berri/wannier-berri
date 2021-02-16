@@ -80,7 +80,7 @@ def fermiSurf(EF, E, kBT):   # returns arra [iF, n ]
 
 
 def kubo_sum_elements(x, y, num_wann):
-    # Compute np.einsum('mnab(c),wnm->wab(c)', x, y).
+    # Compute np.einsum('nmab(c),wnm->wab(c)', x, y).
     # This implementation is much faster than calling np.einsum.
     assert y.shape[1] == num_wann
     assert y.shape[2] == num_wann
@@ -95,9 +95,10 @@ def kubo_sum_elements(x, y, num_wann):
         return (y_reshape @ x_reshape).reshape((-1, 3, 3, 3))
 
 def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
-                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, conductivity_type='kubo', SHC_type='ryoo',
-               Hermitian = True, 
-               antiHermitian = True):
+                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, shc_alpha=1, shc_beta=2, shc_gamma=3,
+                shc_specification=False, conductivity_type='kubo', SHC_type='ryoo',
+                Hermitian = True, 
+                antiHermitian = True):
     '''
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
 
@@ -112,6 +113,10 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         adpt_smr_fac    prefactor for the adaptive smearing parameter
         adpt_smr_max    maximal value of the adaptive smearing parameter
         adpt_smr_min    minimal value of the adaptive smearing parameter
+        shc_alpha       direction of spin current (1, 2, or 3)
+        shc_beta        direction of applied electric field (1, 2, or 3)
+        shc_gamma       direction of spin polarization (1, 2, or 3)
+        shc_specification whether only a single component of SHC is calculated or not
         conductivity_type type of optical conductivity ('kubo', 'SHC'(spin Hall conductivity), 'tildeD' (finite-frequency Berry curvature dipole) )
         SHC_type        'ryoo': PRB RPS19, 'qiao': PRB QZYZ18
         Hermitian       evaluate the Hermitian part
@@ -137,9 +142,17 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         sigma_AH = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
         rank=2
     elif conductivity_type == 'SHC':
-        sigma_H  = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
-        sigma_AH = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
-        rank=3
+        if shc_specification:
+            sigma_H = np.zeros((Efermi.shape[0],omega.shape[0]), dtype=np.dtype('complex128'))
+            sigma_AH = np.zeros((Efermi.shape[0],omega.shape[0]), dtype=np.dtype('complex128'))
+            rank=0
+            shc_alpha = shc_alpha - 1 #In python, indices start from 0.
+            shc_beta = shc_beta - 1
+            shc_gamma = shc_gamma - 1
+        else:
+            sigma_H = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
+            sigma_AH = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
+            rank=3
     elif conductivity_type == 'tildeD' :
         tildeD  = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3), dtype=float)
         rank=2
@@ -192,7 +205,6 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             if SHC_type == 'qiao':
                 A = 0.5 * (data.shc_B_H[ik] + data.shc_B_H[ik].transpose(1,0,2,3).conj())
             elif SHC_type == 'ryoo':
-                # PRB RPS19 Eqs. (21) and (26), j=(1/2)(VV*SS - i(E*SA - SHA) + adj. part)
                 VV = data.V_H[ik] # [n,m,a]
                 SS = data.S_H[ik]   # [n,m,b]
                 SA = data.SA_H[ik]  # [n,m,a,b]
@@ -255,13 +267,17 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
                 delta_minus = delta
                 delta_plus  = delta.transpose( (0,2,1) )
                 cfac2 = delta_minus - delta_plus
-                cfac1 = np.real(-dE[None,:,:]/(dE[None,:,:]**2-(omega[:,None,None]+1j*eta)**2))
-                temp1 = dfE[None,:,:]*cfac1
-                temp2 = dfE[None,:,:]*cfac2
-                imAB = np.imag(np.einsum('nmac,mnb->nmabc',A,B))
-                sigma_H [iEF] += 1j * pi * pre_fac * kubo_sum_elements(imAB, temp2, data.num_wann) / 4.0
-                sigma_AH[iEF] += pre_fac * kubo_sum_elements(imAB, temp1, data.num_wann) / 2.0
-
+                cfac1 = np.real(-dE[np.newaxis,:,:]/(dE[np.newaxis,:,:]**2-(omega[:,np.newaxis,np.newaxis]+1j*eta)**2))
+                temp1 = dfE[np.newaxis,:,:]*cfac1
+                temp2 = dfE[np.newaxis,:,:]*cfac2
+                if shc_specification:
+                    imAB = np.imag(np.einsum('nmac,mnb->nmabc',A,B))[:, :, shc_alpha, shc_beta, shc_gamma]
+                    sigma_H [iEF] += 1j * pi * pre_fac * np.sum(imAB[:, :, np.newaxis] * temp2.transpose(1, 2, 0), axis = (0, 1)) / 4.0
+                    sigma_AH[iEF] += pre_fac * np.sum(imAB[:, :, np.newaxis] * temp1.transpose(1, 2, 0), axis = (0, 1)) / 2.0
+                else:
+                    imAB = np.imag(np.einsum('nmac,mnb->nmabc',A,B))
+                    sigma_H [iEF] += 1j * pi * pre_fac * kubo_sum_elements(imAB, temp2, data.num_wann) / 4.0
+                    sigma_AH[iEF] += pre_fac * kubo_sum_elements(imAB, temp1, data.num_wann) / 2.0
                 
 
     if conductivity_type == 'kubo':
@@ -286,17 +302,17 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
 
 
 def opt_SHCqiao(data, Efermi, omega=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
-                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15):
+                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, shc_alpha=1, shc_beta=2, shc_gamma=3, shc_specification=False):
     return opt_conductivity(data, Efermi, omega, kBT, smr_fixed_width, smr_type, adpt_smr,
-                adpt_smr_fac, adpt_smr_max, adpt_smr_min, conductivity_type='SHC', SHC_type='qiao')
+                adpt_smr_fac, adpt_smr_max, adpt_smr_min, shc_alpha, shc_beta, shc_gamma, shc_specification,
+                conductivity_type='SHC', SHC_type='qiao')
 
 def opt_SHCryoo(data, Efermi, omega=0,  kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
-                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15):
-    return opt_conductivity(data, Efermi, omega,  kBT, smr_fixed_width, smr_type, adpt_smr,
-                adpt_smr_fac, adpt_smr_max, adpt_smr_min, conductivity_type='SHC', SHC_type='ryoo')
+                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, shc_alpha=1, shc_beta=2, shc_gamma=3, shc_specification=False):
+    return opt_conductivity(data, Efermi, omega, kBT, smr_fixed_width, smr_type, adpt_smr,
+                adpt_smr_fac, adpt_smr_max, adpt_smr_min, shc_alpha, shc_beta, shc_gamma, shc_specification,
+                conductivity_type='SHC', SHC_type='ryoo')
 
 
 def tildeD(data, Efermi, omega=0,  **parameters ):
     return opt_conductivity(data, Efermi, omega,   conductivity_type='tildeD', **parameters )
-
-
