@@ -20,6 +20,7 @@ from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother,TAU_U
 from . import __result as result
 from . import  __berry as berry
 from . import  __fermisea2 as fermisea2
+from . import  __fermiocean as fermiocean
 from . import  __nonabelian as nonabelian
 from . import  __dos as dos
 from . import  symmetry
@@ -54,6 +55,7 @@ calculators_trans={
          'Morb'       : fermisea2.Morb,
          'ahc'        : fermisea2.AHC ,
          'ahc2'        : fermisea2.AHC2 ,
+         'ahc_ocean'  : fermiocean.AHC ,
          'dos'        : dos.calc_DOS ,
          'cumdos'        : dos.calc_cum_DOS ,
          'Hall_classic' : nonabelian.Hall_classic , 
@@ -64,6 +66,7 @@ calculators_trans={
          'conductivity_ohmic'      : fermisea2.conductivity_ohmic,
 
          'berry_dipole'            : fermisea2.tensor_D,
+         'berry_dipole_ocean'      : fermiocean.berry_dipole,
          'berry_dipole_2'          : fermisea2.tensor_D_2,
          'berry_dipole_fsurf'      : nonabelian.berry_dipole,
 #         'Faraday1w'                 : nonabelian.Faraday,
