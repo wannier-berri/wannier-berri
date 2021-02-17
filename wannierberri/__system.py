@@ -82,6 +82,7 @@ class System():
                     'Bfield':0,
                     'Zeeman_orb':False,
                     'Zeeman_spin':False,
+                    'recalc_Zeeman':True,
                     'periodic':(True,True,True)
                        }
 
@@ -109,7 +110,6 @@ class System():
         self.Bfield=np.array(B)
         self.Zeeman_orb  = orb
         self.Zeeman_spin = spin
-        self.recalc_Zeeman = True
 
 
 

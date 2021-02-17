@@ -31,8 +31,14 @@ def calcV_band(data):
 def calcV_band_kn(data):
     return result.KBandResult(data.delE_K,TRodd=True,Iodd=True)
 
+
+def delE_Zeeman(data,Bfield,spin=True,orb=True):  
+    return result.KBandResult(data.delE_K_Zeeman(Bfield=Bfield,spin=spin,orb=orb),TRodd=True,Iodd=False)
+
+
+
 def eval_J(dic):
-    _eval={ 'i' : lambda A :  A , 
+    _eval={ 'i' : lambda A : A , 
             'ii': lambda B : B[:,range(B.shape[1]),range(B.shape[1])] , 
             'oi': lambda B : B.sum(axis=(1)) - B[:,range(B.shape[1]),range(B.shape[1])] }
     return sum(_eval[k](v) for k,v in dic.items() if k in ('i','ii','oi'))

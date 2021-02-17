@@ -22,7 +22,13 @@ import time
 from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha_A,beta_A
 from .__utility import multiply_arrays_pad_dimensions as mardm
 from .__fermisea2 import DataIO, mergeDataIO
-from .__fermi_ocean import sea_from_matrix_product, FermiOcean
+
+from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
+from math import ceil
+bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
+bohr = physical_constants['Bohr radius'][0] / angstrom
+eV_au = physical_constants['electron volt-hartree relationship'][0]
+
 import gc
 import os
 
@@ -81,10 +87,6 @@ class Data_K(System):
                 vars(self)[hasXR]=True
 #        print ("E_K=",self.E_K)
 
-    @lazy_property.LazyProperty
-    def iter_op_ed(self):
-        it=list(range(0,self.NKFFT_tot,self.ksep))+[self.NKFFT_tot]
-        return list(zip(it,it[1:]))
 
     def _rotate(self,mat):
         print_my_name_start()
@@ -270,6 +272,7 @@ class Data_K(System):
 
 
 ##  TODO: When it works correctly - think how to optimize it
+#    @property  
     @lazy_property.LazyProperty
     def Morb_nonabelian(self):
         print_my_name_start()
@@ -289,12 +292,51 @@ class Data_K(System):
         print_my_name_end()
         return Morb
 
+
+    @lazy_property.LazyProperty
+    def Morb_nonabelian_nondegen(self):
+        print_my_name_start()
+        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
+        Morb=[ [ M[ib1:ib2,ib1:ib2,:]-0.5*(EK[ib1:ib2,None,None]+EK[None,ib1:ib2,None])*O[ib1:ib2,ib1:ib2,:]
+               +sum(s*np.einsum("mla,lna->mna",X,Y) 
+                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
+                     for s,b,c in sbc
+                    for X,Y in [
+                    (-D[ib1:ib2,ibl1:ibl2,b],B[ibl1:ibl2,ib1:ib2,c]),
+                    (-B.transpose((1,0,2)).conj()[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
+                         (-1j*V[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
+                              ]
+                           )
+                        for (ib1,ib2),e in zip(deg,E)]
+                     for M,O,A,B,D,V,deg,E,EK in zip( self.Morb_Hbar,self.Omega_Hbar,self.A_Hbar,self.B_Hbarbar,self.D_H,self.V_H,self.degen,self.E_K_degen,self.E_K) ]
+        print_my_name_end()
+        return Morb
+
         
     @property
     def HH_K(self):
-        return self.fft_R_to_k( self.HH_R, hermitian=True) 
+        return  self.fft_R_to_k( self.HH_R, hermitian=True)
 
-    @lazy_property.LazyProperty
+    def delE_K_Zeeman(self,Bfield,orb=True,spin=True):
+        print (Bfield,orb,spin)
+        factor_orb=elementary_charge*1e-20/(2*hbar)
+        factor_spin=(hbar/(2*electron_mass) )
+        Bfield_orb=np.array(Bfield)*factor_orb
+        Bfield_spin=np.array(Bfield)*factor_spin
+        H = np.array([np.diag(E) for E in self.E_K],dtype=complex)
+        if orb :  # so far only the energies are updated
+            for ik in range (self.NKFFT_tot):
+                for i,(ib1,ib2) in enumerate(self.degen[ik]):
+                    print (ik,i,ib1,ib2)
+                    H[ik,ib1:ib2,ib1:ib2]+=self.Morb_nonabelian_nondegen[ik][i] @ Bfield_orb
+        if spin:
+            print ("adding spin",self.S_H.shape,Bfield_spin)
+            print (np.linalg.norm( self.S_H @ Bfield_spin ) )
+            H = H + self.S_H @ Bfield_spin
+        return np.array(self.poolmap ( np.linalg.eigvalsh , H )) - self.E_K
+
+
+    @lazy_property.LazyWritableProperty
     def E_K(self):
         print_my_name_start()
         EUU=self.poolmap(np.linalg.eigh,self.HH_K)
@@ -428,7 +470,6 @@ class Data_K(System):
             dAlnn= -self.D_H[op:ed,:,:,None,None,:]*self.A_Hbar[op:ed,None,:,:,:,None]
             return dAlnn
 
-    
 
     def f_E(self,sgn):
         assert sgn in (1,-1) , "sgn should be 1 or -1"
@@ -462,6 +503,79 @@ class Data_K(System):
         _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False)
         return _BB_K
 
+
+
+
+    @lazy_property.LazyProperty
+    def A_Hbar(self):
+        return self._R_to_k_H(self.AA_R.copy())
+
+    @lazy_property.LazyProperty
+    def A_H(self):
+        '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
+        return self.A_Hbar + 1j*self.D_H
+
+    @lazy_property.LazyProperty
+    def A_Hbar_der(self):
+        return  self._R_to_k_H(self.AA_R.copy(), der=1) 
+
+    @lazy_property.LazyProperty
+    def S_H(self):
+        return  self._R_to_k_H( self.SS_R.copy() )
+
+    @lazy_property.LazyProperty
+    def S_H_rediag(self):
+        return np.einsum("knna->kna",self.S_H).real
+#PRB RPS19, Ryoo's way to calculate SHC
+
+    @lazy_property.LazyProperty
+    def SA_H(self):
+        return self._R_to_k_H(self.SA_R.copy(), hermitian=False)
+    
+    @lazy_property.LazyProperty
+    def SHA_H(self):
+        return self._R_to_k_H(self.SHA_R.copy(), hermitian=False)
+#PRB QZYZ18, Qiao's way to calculate SHC
+
+
+    @lazy_property.LazyProperty
+    def delS_H(self):
+        """d_b S_a """
+        return self._R_to_k_H( self.SS_R.copy(), der=1,hermitian=True )
+
+    @lazy_property.LazyProperty
+    def delS_H_rediag(self):
+#  d_b S_a
+        return np.einsum("knnab->knab",self.delS_H).real
+
+    @lazy_property.LazyProperty
+    def Omega_Hbar(self):
+        print_my_name_start()
+        return  -self._R_to_k_H( self.AA_R, der=1, asym_after=True) 
+
+    @lazy_property.LazyProperty
+    def B_Hbar(self):
+        print_my_name_start()
+        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False)
+        select=(self.E_K<=self.frozen_max)
+        _BB_K[select]=self.E_K[select][:,None,None]*self.A_Hbar[select]
+        return _BB_K
+    
+    @lazy_property.LazyProperty
+    def B_Hbar_der(self):
+        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitian=False)
+        return _BB_K
+
+    @lazy_property.LazyProperty
+    def B_Hbarbar(self):
+        print_my_name_start()
+        B= self.B_Hbar-self.A_Hbar[:,:,:,:]*self.E_K[:,None,:,None]
+        print_my_name_end()
+        return B
+
+## the routines below are not "fundamental", and should be eventually removed (replaced by 'ocean' implementation)
+## or be made as separate functions in other modules
+
     #@property
     def gdBbar_fz(self,op,ed,indx=None):
         if indx=='ln':
@@ -479,6 +593,8 @@ class Data_K(System):
         N=None
         B = f[:,:,N,N]*self.E_K[:,:,N,N]*self.A_Hbar + f_m[:,:,N,N]*self.B_Hbar_fz
         return B
+
+
 
     #@property
     def gdBtilde_fz(self,op,ed,indx=None):
@@ -539,16 +655,13 @@ class Data_K(System):
 
 
 
-
-
-
-
     @lazy_property.LazyProperty
     def gdHbar(self):
         Hbar = self.Morb_Hbar
         dHn= self.Morb_Hbar_der_diag.real
         dHln= (Hbar[:,:,:,:,None].transpose(0,2,1,3,4)*self.D_H[:,:,:,None,:]-self.D_H[:,:,:,None,:].transpose(0,2,1,3,4)*Hbar[:,:,:,:,None]).real
         return dHn, dHln
+
 
 
     @property
@@ -693,37 +806,6 @@ class Data_K(System):
 
 
 
-    @lazy_property.LazyProperty
-    def A_Hbar(self):
-        return self._R_to_k_H(self.AA_R.copy())
-
-    @lazy_property.LazyProperty
-    def A_H(self):
-        '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
-        return self.A_Hbar + 1j*self.D_H
-
-    @lazy_property.LazyProperty
-    def A_Hbar_der(self):
-        return  self._R_to_k_H(self.AA_R.copy(), der=1) 
-
-    @lazy_property.LazyProperty
-    def S_H(self):
-        return  self._R_to_k_H( self.SS_R.copy() )
-
-    @lazy_property.LazyProperty
-    def S_H_rediag(self):
-        return np.einsum("knna->kna",self.S_H).real
-#PRB RPS19, Ryoo's way to calculate SHC
-
-    @lazy_property.LazyProperty
-    def SA_H(self):
-        return self._R_to_k_H(self.SA_R.copy(), hermitian=False)
-    
-    @lazy_property.LazyProperty
-    def SHA_H(self):
-        return self._R_to_k_H(self.SHA_R.copy(), hermitian=False)
-#PRB QZYZ18, Qiao's way to calculate SHC
-
     def _shc_B_H_einsum_opt(self, C, A, B):
         # Optimized version of C += np.einsum('knlc,klma->knmac', A, B). Used in shc_B_H.
         nw = self.num_wann
@@ -747,41 +829,14 @@ class Data_K(System):
             self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*shc_K_H[:,:,:,:,:] - shc_L_H)
 #end SHC
 
-    @lazy_property.LazyProperty
-    def delS_H(self):
-        """d_b S_a """
-        return self._R_to_k_H( self.SS_R.copy(), der=1,hermitian=True )
+
+
 
     @lazy_property.LazyProperty
-    def delS_H_rediag(self):
-#  d_b S_a
-        return np.einsum("knnab->knab",self.delS_H).real
+    def iter_op_ed(self):
+        it=list(range(0,self.NKFFT_tot,self.ksep))+[self.NKFFT_tot]
+        return list(zip(it,it[1:]))
 
-    @lazy_property.LazyProperty
-    def Omega_Hbar(self):
-        print_my_name_start()
-        return  -self._R_to_k_H( self.AA_R, der=1, asym_after=True) 
-
-    @lazy_property.LazyProperty
-    def B_Hbar(self):
-        print_my_name_start()
-        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False)
-        select=(self.E_K<=self.frozen_max)
-        _BB_K[select]=self.E_K[select][:,None,None]*self.A_Hbar[select]
-        return _BB_K
-    
-    @lazy_property.LazyProperty
-    def B_Hbar_der(self):
-        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitian=False)
-        return _BB_K
-
-    @lazy_property.LazyProperty
-    def B_Hbarbar(self):
-        print_my_name_start()
-        B= self.B_Hbar-self.A_Hbar[:,:,:,:]*self.E_K[:,None,:,None]
-        print_my_name_end()
-        return B
-        
 
 
     @lazy_property.LazyProperty

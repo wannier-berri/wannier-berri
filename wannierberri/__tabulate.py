@@ -18,7 +18,7 @@ from copy import deepcopy
 from time import time
 from io import StringIO
 import  multiprocessing 
-import functools
+from functools import partial
 from .__utility import  print_my_name_start,print_my_name_end,warning
 from collections import Iterable
 from . import __result as result
@@ -29,12 +29,15 @@ from . import  symmetry
 
 #should be functions of only one parameter of class Data_K
 calculators={ 
-         'spin'       : berry.calcSpin_band_kn, 
-         'V'          : berry.calcV_band_kn  , 
-         'morb'       : berry.calcImgh_band_kn,
-         'berry'      : berry.calcImf_band_kn ,
-         'hall_spin'  : berry.calcHall_spin_kn,
-         'hall_orb'   : berry.calcHall_orb_kn
+         'spin'       : berry.calcSpin_band_kn , 
+         'V'          : berry.calcV_band_kn    , 
+         'morb'       : berry.calcImgh_band_kn ,
+         'berry'      : berry.calcImf_band_kn  ,
+         'hall_spin'  : berry.calcHall_spin_kn ,
+         'hall_orb'   : berry.calcHall_orb_kn  ,
+         'E_Zeeman_spin'     : partial(berry.delE_Zeeman,spin=True,orb=False)  ,
+         'E_Zeeman_orb'      : partial(berry.delE_Zeeman,spin=False,orb=True) ,
+         'E_Zeeman_tot'      : partial(berry.delE_Zeeman,spin=True,orb=True)
          }
 
 
@@ -50,7 +53,9 @@ descriptions['morb']="orbital magnetic moment"
 descriptions['hall_spin']="spin contribution to low-field Hall effect"
 descriptions['hall_orb']="orbital contribution to low-field Hall effect"
 
-
+for calc in calculators : 
+    if 'Zeeman' in calc:
+        additional_parameters[calc]['Bfield']=[0,0,0]
 
 def tabXnk(data,quantities=[],degen_thresh=None,ibands=None,parameters={}):
 
@@ -255,9 +260,10 @@ class TABresult(result.Result):
             Emin=E.min()-0.5
         if Emax is None:
             Emax=E.max()+0.5
+        nband=len(iband)
 
         klineall=[]
-        for ib in iband:
+        for ib in range(nband):
             e=E[:,ib]
             selE=(e<=Emax)*(e>=Emin)
             klineselE=kline[selE]
@@ -274,8 +280,8 @@ class TABresult(result.Result):
         if quantity is not None:
             data=self.get_data(quantity=quantity,iband=iband,component=component)
             print ("shape of data",data.shape)
-            if mode=="fatband" :
-                for ib in iband:
+            if mode in ("fatband" ,"arrows") :
+                for ib in range(nband):
                     e=E[:,ib]
                     selE=(e<=Emax)*(e>=Emin)
                     klineselE=kline[selE]
@@ -283,9 +289,16 @@ class TABresult(result.Result):
                     e1=e[selE]
                     for col,sel in [("red",(y>0)),("blue",(y<0))]:
 #                        print (col,ib,kline.shape,e.shape,kline[sel].shape,e[sel].shape)
-                        sz=abs(y[sel])*fatfactor
-                        sz[sz>fatmax]=fatmax
-                        plt.scatter(klineselE[sel],e1[sel],s=sz,color=col)
+                        if mode=="fatband" :
+                            sz=abs(y[sel])*fatfactor
+                            sz[sz>fatmax]=fatmax
+                            plt.scatter(klineselE[sel],e1[sel],s=sz,color=col)
+                        elif mode=="arrows" :
+                            sz=y[sel]*fatfactor
+                            sz[sz> fatmax]= fatmax
+                            sz[sz<-fatmax]=-fatmax
+                            for  k_,e_,s_ in zip(klineselE[sel],e1[sel],sz):
+                                plt.arrow(k_,e_,0,s_,color=col)
             else :
                 raise ValueError("So far only fatband mode is implemented")
 
@@ -326,7 +339,7 @@ def _savetxt(limits=None,a=None,fmt=".8f",npar=0):
         print ("using a pool of {} processes to write txt frmsf of {} points".format(npar,nppproc))
         asplit=[(i,i+nppproc) for i in range(0,a.shape[0],nppproc)]
         p=multiprocessing.Pool(npar)
-        res= p.map(functools.partial(_savetxt,a=a,fmt=fmt,npar=0)  , asplit)
+        res= p.map(partial(_savetxt,a=a,fmt=fmt,npar=0)  , asplit)
         p.close()
         return "".join(res)
 
