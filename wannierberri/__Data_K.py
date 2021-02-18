@@ -308,6 +308,27 @@ class Data_K(System):
 #        print ("select_B=",self.select_B)
         return E_K[self.select_K,:][:,self.select_B]
 
+
+    # evaluate the energies in the corners of the parallelepiped, in order to use tetrahedron method
+    @lazy_property.LazyProperty
+    def E_K_corners(self):
+        dK2=self.Kpoint.dK_fullBZ/2
+        expdK=np.exp(2j*np.pi*system.iRvec*dK2[None,:])
+        expdK=np.array([1./expdK,expdK])
+        Ecorners=np.zeros((self.nk_selected,2,2,2,self.nb_selected),dtype=float)
+        for ix in 0,1:
+            for iy in 0,1:
+               for iz in 0,1:
+                   _expdk=expdK[ix,:,0]*expdK[iy,:,1]*expdK[iz,:,2]
+                   _HH_R=self.HH_R[:,:,:]*_expdK[None,None,:]
+                   _HH_K=_self.fft_R_to_k( self.HH_R, hermitian=True)
+                   E=self.poolmap(np.linalg.eigvalsh,_HH_K)
+                   Ecorners[:,ix,iy,iz,:]=E[self.select_K,:][:,self.select_B]
+        print_my_name_end()
+        return E_K_corners
+
+
+
     @lazy_property.LazyProperty
 #    @property
     def UU_K(self):
