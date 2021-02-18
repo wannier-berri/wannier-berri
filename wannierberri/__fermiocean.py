@@ -27,7 +27,7 @@ def Omega_tot(data_K,Efermi,kpart=None):    return iterate_kpart(trF.Omega,data_
 ### The private part goes here  ##
 ##################################
 
-def iterate_kpart(formula_fun,data_K,Efermi,kpart=None,dtype=float,**parameters): 
+def iterate_kpart(formula_fun,data_K,Efermi,kpart=None,tetra=False,dtype=float,**parameters): 
     """ formula_fun should be callable eturning a TraceFormula object 
     with first three parameters as data_K,op,ed, and the rest
     and the rest will be arbitrary keyword arguments."""
@@ -46,6 +46,7 @@ def iterate_kpart(formula_fun,data_K,Efermi,kpart=None,dtype=float,**parameters)
                     data_K.E_K[op:ed],
                     Emin, Emax,
                     ndim=f0.ndim,
+                    Ecorners=data_K.E_K_corners if tetra else None,
                     dtype=dtype)(Efermi)
                    for op,ed in zip(borders,borders[1:]) 
                ) / (data_K.NKFFT_tot * data_K.cell_volume)
