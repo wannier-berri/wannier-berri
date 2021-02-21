@@ -124,15 +124,22 @@ for key,val in parameters_optical.items():
         additional_parameters[calc][key] = val[0]
         additional_parameters_description[calc][key] = val[1]
 
-key='kpart'
 for calc in calculators_trans:
     if calc.endswith('_ocean'):
+        key='kpart'
         additional_parameters[calc][key] = 500
         additional_parameters_description[calc][key] = (
              'Separate k-points of the FFT grid into portions ' + 
              '(analog of ksep in the system class, but acts in different calculators)'  +
              'decreasing this parameter helps to save memory in some cases' +
                 'while performance is usually unafected' )
+
+        key='tetra'
+        additional_parameters[calc][key] = False
+        additional_parameters_description[calc][key] = (
+             'use tetrahedron method for integration ')
+
+
 
 additional_parameters['Faraday']['homega'] = 0.0
 additional_parameters_description['Faraday']['homega'] = "frequency of light in eV (one frequency per calculation)"
