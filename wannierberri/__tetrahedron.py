@@ -93,38 +93,38 @@ def weights_1band_parallelepiped(efermi,Ecenter,Ecorner):
             Eface=np.reshape(_Eface,-1)
             for j in range(4):
                 eface =  np.roll(Eface,j)[:-1]
-                print (Eface.shape,eface.shape)
+#                print (Eface.shape,eface.shape)
                 occ   += weights_1band_vec_sea(efermi,Ecenter,eface)
     return occ/24.
 
 
 
+if __name__ == '__main__' : 
+    import matplotlib.pyplot as plt
 
-import matplotlib.pyplot as plt
-
-Efermi=np.linspace(-1,1,101)
-E=np.random.random(9)-0.5
-Ecenter=E[0]
-Ecorner=E[1:].reshape(2,2,2)
-#Ecorn=E[1:4]
-occ=weights_1band_parallelepiped(Efermi,Ecenter,Ecorner)
-print (Ecenter,Ecorner)
-#occ=weights_1band_vec_sea(Efermi,Ecenter,Ecorn)
-print (occ)
-
-
-plt.plot(Efermi,occ)
-for x in E[1:]:
-    plt.axvline(x,c='blue')
-plt.axvline(Ecenter,c='red')
-plt.xlim(-0.6,0.6)
-plt.show()
-exit()
+    Efermi=np.linspace(-1,1,101)
+    E=np.random.random(9)-0.5
+    Ecenter=E[0]
+    Ecorner=E[1:].reshape(2,2,2)
+    #Ecorn=E[1:4]
+    occ=weights_1band_parallelepiped(Efermi,Ecenter,Ecorner)
+    print (Ecenter,Ecorner)
+    #occ=weights_1band_vec_sea(Efermi,Ecenter,Ecorn)
+    print (occ)
+    
+    
+    plt.plot(Efermi,occ)
+    for x in E[1:]:
+        plt.axvline(x,c='blue')
+    plt.axvline(Ecenter,c='red')
+    plt.xlim(-0.6,0.6)
+    plt.show()
+    exit()
 
 
-for x in Ecorner:
-    plt.axvline(x,col='blue')
-plt.axvline(Ecenter,col='red')
+    for x in Ecorner:
+        plt.axvline(x,col='blue')
+    plt.axvline(Ecenter,col='red')
 
 
 

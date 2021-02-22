@@ -4,6 +4,16 @@ from .__utility import  alpha_A,beta_A
 #####################################################
 #####################################################
 
+def identity(data_K,op=None,ed=None):
+        "an identity operator (to compute DOS)"
+        # first give our matrices short names
+        NB= data_K.nbands
+        # This is the formula to be implemented:
+        ones=np.ones( (ed-op,NB),dtype=float )
+        formula =  TraceFormula ( [ ('n', ones ) ],ndim=0,TRodd=False,Iodd=False)
+        return formula
+
+
 def Omega(data_K,op=None,ed=None):
         "an attempt for a faster implementation"
         # first give our matrices short names
@@ -137,7 +147,7 @@ class TraceFormula():
             assert num_mat==len(inp)-1 , "the strig contains {} terms, but {} arrays are given".format(len(terms),len(inp)-1)
             for term,mat in zip(terms,inp[1:]):
                 assert mat.ndim==self.ndim+1+len(term) ,  ( 
-                          "shape of matrix {} does not correspond to index '{}' and dinetsion of the result {}".format(
+                          "shape of matrix {} does not correspond to index '{}' and dimension of the result {}".format(
                                mat.shape,term,self.ndim)  )
             if num_mat==1:
                 assert terms[0] in ('n','nn','mn') , (

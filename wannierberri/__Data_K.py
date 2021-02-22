@@ -58,7 +58,7 @@ class Data_K(System):
         except Exception as err:
 #            print ('failed to create a pool of {} workers : {}'.format(npar,err))
             self.poolmap=lambda fun,lst : [fun(x) for x in lst]
-        expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))
+        expdK=np.exp(2j*np.pi*self.iRvec.dot(dK))
         self.dK=dK
  
         self.HH_R=system.HH_R[:,:,:]*expdK[None,None,:]
@@ -313,19 +313,20 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def E_K_corners(self):
         dK2=self.Kpoint.dK_fullBZ/2
-        expdK=np.exp(2j*np.pi*system.iRvec*dK2[None,:])
+        print ("dK/2={}".format(dK2))
+        expdK=np.exp(2j*np.pi*self.iRvec*dK2[None,:])
         expdK=np.array([1./expdK,expdK])
         Ecorners=np.zeros((self.nk_selected,2,2,2,self.nb_selected),dtype=float)
         for ix in 0,1:
             for iy in 0,1:
                for iz in 0,1:
-                   _expdk=expdK[ix,:,0]*expdK[iy,:,1]*expdK[iz,:,2]
+                   _expdK=expdK[ix,:,0]*expdK[iy,:,1]*expdK[iz,:,2]
                    _HH_R=self.HH_R[:,:,:]*_expdK[None,None,:]
-                   _HH_K=_self.fft_R_to_k( self.HH_R, hermitian=True)
-                   E=self.poolmap(np.linalg.eigvalsh,_HH_K)
+                   _HH_K=self.fft_R_to_k( _HH_R, hermitian=True)
+                   E=np.array(self.poolmap(np.linalg.eigvalsh,_HH_K))
                    Ecorners[:,ix,iy,iz,:]=E[self.select_K,:][:,self.select_B]
         print_my_name_end()
-        return E_K_corners
+        return Ecorners
 
 
 
