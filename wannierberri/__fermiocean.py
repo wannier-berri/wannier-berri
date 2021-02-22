@@ -2,6 +2,7 @@ import numpy as np
 from scipy import constants
 from collections import defaultdict
 from .__utility import  warning
+from .__tetrahedron import weights_1band_parallelepiped  as weights_tetra  
 from . import __result as result
 from . import __trace_formula as trF
 from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
@@ -12,15 +13,21 @@ eV_au = physical_constants['electron volt-hartree relationship'][0]
 Ang_SI = angstrom
 fac_ahc = -100000000.0 * elementary_charge ** 2 / hbar
 
+degen_thresh=1e-5
 
-def AHC(data_K,Efermi,kpart=None):
+def AHC(data_K,Efermi,kpart=None,tetra=False):
     fac_ahc  = -1.0e8*elementary_charge**2/hbar
-    return Omega_tot(data_K,Efermi,kpart=kpart)*fac_ahc
+    return Omega_tot(data_K,Efermi,kpart=kpart,tetra=tetra)*fac_ahc
 
-def berry_dipole(data_K,Efermi,kpart=None):
-    return iterate_kpart(trF.derOmega,data_K,Efermi,kpart)
+def cumdos(data_K,Efermi,kpart=None,tetra=False):
+    return iterate_kpart(trF.identity,data_K,Efermi,kpart,tetra)*data_K.cell_volume
 
-def Omega_tot(data_K,Efermi,kpart=None):    return iterate_kpart(trF.Omega,data_K,Efermi,kpart)
+
+def berry_dipole(data_K,Efermi,kpart=None,tetra=False):
+    return iterate_kpart(trF.derOmega,data_K,Efermi,kpart,tetra)
+
+def Omega_tot(data_K,Efermi,kpart=None,tetra=False):
+    return iterate_kpart(trF.Omega,data_K,Efermi,kpart,tetra)
 
 
 ##################################
@@ -41,15 +48,26 @@ def iterate_kpart(formula_fun,data_K,Efermi,kpart=None,tetra=False,dtype=float,*
 #               data_K.NKFFT_tot,len(borders)-1,kpart,data_K.NKFFT_tot%kpart))
     Emin,Emax=Efermi[0],Efermi[-1]
     f0=formula_fun(data_K,0,0,**parameters)  # just to get the basic properties
-    res= sum ( 
-        FermiOcean( formula_fun(data_K,op,ed,**parameters),
+    if tetra:
+        res= sum ( 
+            FermiOcean_tetra( formula_fun(data_K,op,ed,**parameters),
                     data_K.E_K[op:ed],
+                    data_K.E_K_corners[op:ed],
                     Emin, Emax,
                     ndim=f0.ndim,
-                    Ecorners=data_K.E_K_corners if tetra else None,
                     dtype=dtype)(Efermi)
                    for op,ed in zip(borders,borders[1:]) 
                ) / (data_K.NKFFT_tot * data_K.cell_volume)
+    else:
+        res= sum ( 
+            FermiOcean( formula_fun(data_K,op,ed,**parameters),
+                    data_K.E_K[op:ed],
+                    Emin, Emax,
+                    ndim=f0.ndim,
+                    dtype=dtype)(Efermi)
+                   for op,ed in zip(borders,borders[1:]) 
+               ) / (data_K.NKFFT_tot * data_K.cell_volume)
+
     return result.EnergyResult(Efermi,res, TRodd=f0.TRodd, Iodd=f0.Iodd )
 
 
@@ -79,7 +97,7 @@ class FermiOcean:
 
         formula.group_terms()
         mat_list=formula.trace_list
-        self.shape = (3,)*ndim if ndim>0 else (1,)
+        self.shape = (3,)*ndim
         self.dtype = dtype 
         EK = np.copy(EK)
         assert Emax >= Emin
@@ -142,10 +160,135 @@ class FermiOcean:
             for ib in sorted(values[ik] ):
                 take=True
                 if ib+1 in values[ik]:
-                    if abs(EK[ik,ib+1]-EK[ik,ib])<1e-5:
+                    if abs(EK[ik,ib+1]-EK[ik,ib])<degen_thresh:
                         take=False
                 if take:
                     val_new[ EK[ik,ib] ] = values[ik][ib]
             values[ik]=val_new
 
+        self.data = values
+
+
+## TODO - there is no point to create an object and use it only once
+## the class may be treansformed into a function
+
+class FermiOcean_tetra:
+
+    def __call__(self, Efermi) :
+        result = np.zeros(Efermi.shape + self.shape, self.dtype)
+        if self.tetra:
+            shapeE=(len(Efermi),)+(1,)*len(self.shape)
+            for EK,EKcorn,datak in zip(self.EK,self.EK_corners,self.data):
+                for n in sorted(datak.keys()):
+                    result+=datak[n][None]*weights_tetra(Efermi,EK[n],EKcorn[:,:,:,n]).reshape(shapeE)
+        else:
+            for EK,datak in zip(self.EK,self.data):
+                for n in sorted(datak.keys()):
+                    result[Efermi >= EK[n]] += datak[n][None]
+        return result
+
+
+    def __init__(self , formula , EK, EK_corners, Emin, Emax, ndim, dtype):
+        """  
+        mat_list  list/tuple of type ( ('nl',A, [ ('ln',B1) , ('lpn',B2,C2) , ('lmn',B3,C3),...] )
+                               or  ( ('nm',A) )  or (('n',A) )
+        EK -  energies of bands
+        EK_corners -  energies of bands at corners of the parallelepiped
+        Emin,Emax  - minimal and maximal energies of interest
+        cartesian dimensiopns of A,B and C should match
+        returns an array (by k-point) of dictionaries {E:value}  
+        wheree E is the energy of a state, value - the returned array (result)
+        """
+        print ("using the tetrahedron version")
+        formula.group_terms()
+        self.tetra = EK_corners is not None
+        self.EK=EK
+        self.EK_corners=EK_corners
+        mat_list=formula.trace_list
+        self.shape = (3,)*ndim
+        self.dtype = dtype 
+        assert Emax >= Emin
+   #    print (mat_list)
+        nk, nb = EK.shape
+        bandmin = np.full(nk, 0)
+
+        if self.tetra:
+#            print ( EK[:,None,:].shape,EK_corners.reshape((nk,8,nb) ).shape )
+            EKall=np.concatenate( (EK[:,None,:],EK_corners.reshape((nk,8,nb))), axis=1)
+            EKmin=EKall.min(axis=1)
+            EKmax=EKall.max(axis=1)
+            del EKall
+        else:
+            EKmin=EK
+            EKmax=EK
+        spread=np.abs(EKmax-EKmin)
+        print ("dispersion of energies: min {} max: {}, mean: {}".format(spread.min(),spread.max(),spread.mean()))
+        sel = EKmax < Emin
+        bandmin[sel[:, 0]] = [max(np.where(s)[0]) for s in sel[sel[:, 0]]]
+        bandmax = np.full(nk, 0)
+        sel = EKmin < Emax
+        bandmax[sel[:, 0]] = [max(np.where(s)[0])+1 for s in sel[sel[:, 0]]]
+        del EKmin, EKmax
+        # a set of upper bands for summation
+        bandup=[
+                   [ ib for ib in range(bandmin[ik],bandmax[ik]) 
+                       if  (ib==nb-1 or EK[ik,ib+1]-EK[ik,ib]>degen_thresh)
+                   ]
+               for ik in range(nk) 
+               ]
+        lambdadic= lambda: np.zeros(((3, ) * ndim), dtype=dtype)
+        values = [defaultdict(lambdadic ) for ik in range(nk)]
+        for ABC in mat_list:
+            Aind = ABC[0]
+            A = ABC[1]
+            if Aind == 'nl':
+        #        for BC in ABC[2]:
+        #            print(Aind,BC[0],BC[1].sum(),A.sum())
+                Ashape = A.shape[3:]
+                if len(ABC[2]) == 0:
+                    raise ValueError("with 'nl' for A at least one B matrix shopuld be provided")
+                for ik in range(nk):
+                    for n in bandup[ik]:
+                        a = A[ik, :n + 1, n + 1:]
+                        bc = 0
+                        for BC in ABC[2]:
+   #                        print(Aind,BC[0])
+                            if BC[0] == 'ln':
+                                bc += BC[1][ik, n + 1:, :n + 1]
+                            elif BC[0] == 'lpn':
+                                bc += np.einsum('lp...,pn...->ln...', BC[1][ik, n + 1:, n + 1:], BC[2][ik, n + 1:, :n + 1],optimize=True)
+                            elif BC[0] == 'lmn':
+                                bc += np.einsum('lm...,mn...->ln...', BC[1][ik, n + 1:, :n + 1], BC[2][ik, :n + 1, :n + 1],optimize=True)
+                            else:
+                                raise ValueError('Wrong index for B,C : {}'.format(BC[0]))
+                        values[ik][n] += np.einsum('nl...,ln...->...', a, bc,optimize=True).real
+            elif Aind == 'mn':
+                if len(ABC[0] > 2):
+                    warning("only one matrix should be given for 'mn'")
+                else:
+                    for ik in range(nk):
+                        for n in bandup[ik] :
+                            values[ik][n] += A[ik, :n + 1, :n + 1].sum(axis=(0,1))
+            elif Aind == 'n':
+                if len(ABC) > 2:
+                    warning("only one matrix should be given for 'n'")
+                else:
+                    for ik in range(nk):
+                        for n in range(bandmin[ik], bandmax[ik]):
+                            values[ik][n] += A[ik, :n + 1].sum(axis=0)
+            else:
+                raise RuntimeError('Wrong indexing for array A : {}'.format(Aind))
+        # now the values of array will be the difference values[n]-values[n-1]
+        # here we need to check if there are degenerate states.
+        # if so - the magnitude of the value is divided between them
+        # the new array will have band indices as keys
+        for ik in range(nk):
+            val_new={}   # the dict now will contain only explicitly added elements
+            nn = sorted(values[ik] )
+            val_new[nn[0]] = values[ik][ nn[0] ]
+            for n1,n2 in zip(nn,nn[1:]):
+                res=(values[ik][ n2 ]-values[ik][n1])/(n2-n1)
+                for n in range(n1+1,n2+1):
+                    val_new[n]=res
+            values[ik]=val_new
         self.data = values
