@@ -179,8 +179,9 @@ class FermiOcean_tetra:
         if self.tetra:
             shapeE=(len(Efermi),)+(1,)*len(self.shape)
             for EK,EKcorn,datak in zip(self.EK,self.EK_corners,self.data):
-                for n in sorted(datak.keys()):
+                for n in sorted(datak.keys()):  
                     result+=datak[n][None]*weights_tetra(Efermi,EK[n],EKcorn[:,:,:,n]).reshape(shapeE)
+
         else:
             for EK,datak in zip(self.EK,self.data):
                 for n in sorted(datak.keys()):
