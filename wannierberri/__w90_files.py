@@ -236,7 +236,7 @@ class MMN(W90_data):
     def __init__(self,seedname,npar=multiprocessing.cpu_count()):
         t0=time()
         f_mmn_in=open(seedname+".mmn","r")
-        print ("reading {}.mmn: ".format(seedname)+f_mmn_in.readline())
+#        print ("reading {}.mmn: ".format(seedname)+f_mmn_in.readline())
         NB,NK,NNB=np.array(f_mmn_in.readline().split(),dtype=int)
         self.data=np.zeros( (NK,NNB,NB,NB), dtype=complex )
         block=1+self.NB*self.NB
