@@ -102,6 +102,7 @@ calculators_opt={
     'opt_SHCryoo' : kubo.opt_SHCryoo,
     'opt_SHCqiao' : kubo.opt_SHCqiao,
     'tildeD'     : kubo.tildeD,
+    'opt_shiftcurrent' : kubo.opt_shiftcurrent
 }
 
 parameters_optical={
@@ -163,6 +164,7 @@ descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
 descriptions['Faraday'] = "Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
 descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in hbar/e S/cm (PRB RPS19)"
 descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in hbar/e S/cm (PRB QZYZ18)"
+descriptions['opt_shiftcurrent'] = "shiftcurrent"
 
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
