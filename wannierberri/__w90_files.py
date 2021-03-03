@@ -236,7 +236,8 @@ class MMN(W90_data):
     def __init__(self,seedname,npar=multiprocessing.cpu_count()):
         t0=time()
         f_mmn_in=open(seedname+".mmn","r")
-        print ("reading {}.mmn: ".format(seedname)+f_mmn_in.readline())
+        _l=f_mmn_in.readline()
+        print ("reading {}.mmn: ".format(seedname)+_l)
         NB,NK,NNB=np.array(f_mmn_in.readline().split(),dtype=int)
         self.data=np.zeros( (NK,NNB,NB,NB), dtype=complex )
         block=1+self.NB*self.NB
@@ -247,7 +248,7 @@ class MMN(W90_data):
             pool=multiprocessing.Pool(npar)
         for j in range(0,NNB*NK,npar*mult):
             x=list(islice(f_mmn_in, int(block*npar*mult)))
-            print ("mmn: read {} lines".format(len(x)))
+#            print ("mmn: read {} lines".format(len(x)))
             if len(x)==0 : break
             headstring+=x[::block]
             y=[x[i*block+1:(i+1)*block] for i in range(npar*mult) if (i+1)*block<=len(x)]
