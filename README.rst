@@ -59,7 +59,6 @@ Author
 ------
 Stepan Tsirkin, 
 University of Zurich
-stepan.tsirkin@physik.uzh.ch
 
 
 License
