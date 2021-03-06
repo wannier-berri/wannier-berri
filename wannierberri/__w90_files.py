@@ -13,7 +13,7 @@
 #------------------------------------------------------------#
 
 import numpy as np
-from scipy.io import FortranFile 
+from .__utility import FortranFileR, FortranFileW
 import copy
 import lazy_property
 import functools
@@ -33,7 +33,7 @@ class CheckPoint():
     def __init__(self,seedname):
         t0=time()
         seedname=seedname.strip()
-        FIN=FortranFile(seedname+'.chk','r')
+        FIN=FortranFileR(seedname+'.chk')
         readint   = lambda : FIN.read_record('i4')
         readfloat = lambda : FIN.read_record('f8')
         def readcomplex():
@@ -325,7 +325,7 @@ class SPN(W90_data):
             SPNheader=f_spn_in.readline().strip()
             nbnd,NK=(int(x) for x in f_spn_in.readline().split())
         else:
-            f_spn_in = FortranFile(seedname+".spn", 'r')
+            f_spn_in = FortranFileR(seedname+".spn")
             SPNheader=(f_spn_in.read_record(dtype='c')) 
             nbnd,NK=f_spn_in.read_record(dtype=np.int32)
             SPNheader="".join(a.decode('ascii') for a in SPNheader)
@@ -365,7 +365,7 @@ class UXU(W90_data):  # uHu or uIu
             header=f_uXu_in.readline().strip() 
             NB,NK,NNB =(int(x) for x in f_uXu_in.readline().split())
         else:
-            f_uXu_in = FortranFile(seedname+"."+suffix, 'r')
+            f_uXu_in = FortranFileR(seedname+"."+suffix)
             header=readstr(f_uXu_in)
             NB,NK,NNB=f_uXu_in.read_record('i4')
 
@@ -410,7 +410,7 @@ class SXU(W90_data):  # sHu or sIu
             header=f_sXu_in.readline().strip() 
             NB,NK,NNB =(int(x) for x in f_sXu_in.readline().split())
         else:
-            f_sXu_in = FortranFile(seedname+"."+suffix, 'r')
+            f_sXu_in = FortranFileR(seedname+"."+suffix)
             header=readstr(f_sXu_in)
             NB,NK,NNB=   f_sXu_in.read_record('i4')
 

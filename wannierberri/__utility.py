@@ -21,6 +21,21 @@ import pyfftw
 from lazy_property import LazyProperty as Lazy
 from time import time
 from termcolor import cprint 
+import functools,fortio,scipy.io
+
+
+
+# inheriting just in order to have posibility to change default values, without changing the rest of the code
+class FortranFileR(fortio.FortranFile):
+    def __init__(self,filename):
+        print ( "using fortio to read" )
+        super(FortranFileR, self).__init__( filename, mode='r', auto_endian=True, check_file=True )
+
+
+class FortranFileW(scipy.io.FortranFile):
+    def __init__(self,filename):
+        print ( "using scipy.io to write" )
+        super(FortranFileW, self).__init__( filename, mode='w')
 
 
 alpha_A=np.array([1,2,0])
