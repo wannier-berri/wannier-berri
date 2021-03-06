@@ -52,7 +52,7 @@
 import numpy as np
 import os
 import datetime
-from scipy.io import FortranFile
+from .__utility import FortranFileR, FortranFileW
 
 
 
@@ -247,7 +247,7 @@ def main():
                 f_uXu_out.write("".join(header)+"\n")
                 f_uXu_out.write("{0}   {1}   {2} \n".format(NB_out,NK,NNB))
             else:
-                f_uXu_out = FortranFile(os.path.join(RESDIR,PREFIX+"_nbs={0:d}.{1}".format(NB_sum,UXU[0])), 'w')
+                f_uXu_out = FortranFileW(os.path.join(RESDIR,PREFIX+"_nbs={0:d}.{1}".format(NB_sum,UXU[0])) )
                 f_uXu_out.write_record( bytearray(header,encoding='ascii'))
                 f_uXu_out.write_record(np.array([NB_out,NK,NNB],dtype=np.int32))
 
@@ -289,7 +289,7 @@ def main():
             SPNheader=f_spn_in.readline().strip()
             nbnd,NK=(int(x) for x in f_spn_in.readline().split())
         else:
-            f_spn_in = FortranFile(os.path.join(INPUTDIR,PREFIX+".spn"), 'r')
+            f_spn_in = FortranFileR(os.path.join(INPUTDIR,PREFIX+".spn") )
             SPNheader=(f_spn_in.read_record(dtype='c')) 
 #            print (SPNheader)
             nbnd,NK=f_spn_in.read_record(dtype=np.int32)
@@ -307,7 +307,7 @@ def main():
             f_spn_out.write(SPNheader+"\n")
             f_spn_out.write("{0}  {1}\n".format(NB_out,NK))
         else:
-            f_spn_out = FortranFile(os.path.join(RESDIR,PREFIX+".spn"), 'w')
+            f_spn_out = FortranFileW(os.path.join(RESDIR,PREFIX+".spn") )
             f_spn_out.write_record(SPNheader.encode('ascii'))
             f_spn_out.write_record(np.array([NB_out,NK],dtype=np.int32))
 
@@ -358,7 +358,7 @@ def main():
                 f_sXu_out.write("".join(header)+"\n")
                 f_sXu_out.write("{0}   {1}   {2} \n".format(NB_out,NK,NNB))
             else:
-                f_sXu_out = FortranFile(os.path.join(RESDIR,PREFIX+"_nbs={0:d}.{1}".format(NB_sum,SXU[0])), 'w')
+                f_sXu_out = FortranFileW(os.path.join(RESDIR,PREFIX+"_nbs={0:d}.{1}".format(NB_sum,SXU[0])) )
                 f_sXu_out.write_record( bytearray(header,encoding='ascii'))
                 f_sXu_out.write_record(np.array([NB_out,NK,NNB],dtype=np.int32))
 
