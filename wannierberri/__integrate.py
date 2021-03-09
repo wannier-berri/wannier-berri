@@ -116,7 +116,9 @@ parameters_optical={
 'shc_alpha'       :  ( 0    ,  "direction of spin current (1, 2, 3)"),
 'shc_beta'        :  ( 0    ,  "direction of applied electric field (1, 2, 3)"),
 'shc_gamma'       :  ( 0    ,  "direction of spin polarization (1, 2, 3)"),
-'shc_specification' : ( False , "calculate all 27 components of SHC if false")}
+'shc_specification' : ( False , "calculate all 27 components of SHC if false"),
+'sc_eta'          :  ( 0.04    ,  "broadening parameter for shiftcurrent calculation, units of eV")
+}
 
 
 
@@ -164,7 +166,7 @@ descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
 descriptions['Faraday'] = "Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
 descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in hbar/e S/cm (PRB RPS19)"
 descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in hbar/e S/cm (PRB QZYZ18)"
-descriptions['opt_shiftcurrent'] = "shiftcurrent"
+descriptions['opt_shiftcurrent'] = "Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
 
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
