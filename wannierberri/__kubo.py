@@ -97,7 +97,7 @@ def kubo_sum_elements(x, y, num_wann):
 
 def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, shc_alpha=1, shc_beta=2, shc_gamma=3,
-                shc_specification=False, conductivity_type='kubo', SHC_type='ryoo',
+                shc_specification=False, conductivity_type='kubo', SHC_type='ryoo', sc_eta=0.04,
                 Hermitian = True, 
                 antiHermitian = True):
     '''
@@ -163,8 +163,8 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
     elif conductivity_type == 'shiftcurrent':
         sigma_abc = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
         rank=3
-        # JULEN change
-        pre_fac = eV_seconds*pi*e**3/(4.0 * hbar**(2) * data.NKFFT_tot * data.cell_volume)
+        # prefactor for the shift current
+        pre_fac = -1.j*eV_seconds*pi*e**3/(4.0 * hbar**(2) * data.NKFFT_tot * data.cell_volume)
 
 
     if adpt_smr: 
@@ -240,11 +240,16 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
 
             A_Hbar = data.A_Hbar[ik]
             D_H = data.D_H[ik]
-            D_H_Pval = data.D_H_Pval[ik]
             V_H = data.V_H[ik]
             A_Hbar_der = data.A_Hbar_der[ik]
             del2E_H = data.del2E_H[ik]
             dEig_inv = data.dEig_inv[ik].transpose(1,0)
+
+            # define D using broadening parameter
+            E_K  = data.E_K[ik] 
+            dEig = E_K[:,None]-E_K[None,:]
+            dEig_inv_Pval = dEig/(dEig**(2)+sc_eta**(2))
+            D_H_Pval = -V_H*dEig_inv_Pval[:,:,None]
 
             # commutators
             # ** the spatial index of D_H_Pval corresponds to generalized derivative direction 
@@ -254,24 +259,21 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             sum_HD =  (np.einsum('nlc,lma->nmca', V_H, D_H_Pval) - np.einsum('nnc,nma->nmca', V_H, D_H_Pval))  \
                      -(np.einsum('nla,lmc->nmca', D_H_Pval, V_H) - np.einsum('nma,mmc->nmca', D_H_Pval, V_H))
 
-
-
             # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction 
             # ** --> stored in the fourth column of output variables  
             AD_bit =     np.einsum('nnc,nma->nmac' , A_Hbar, D_H) - np.einsum('mmc,nma->nmac' , A_Hbar, D_H) \
                        + np.einsum('nna,nmc->nmac' , A_Hbar, D_H) - np.einsum('mma,nmc->nmac' , A_Hbar, D_H)
-            AA_bit =     np.einsum('nnb,nma->nmab' , A_Hbar, A_Hbar) - np.einsum('mmb,nma->nmab' , A_Hbar, A_Hbar) # ok in principle
-#            # ** this one is invariant under a<-->c
+            AA_bit =     np.einsum('nnb,nma->nmab' , A_Hbar, A_Hbar) - np.einsum('mmb,nma->nmab' , A_Hbar, A_Hbar) 
+            # ** this one is invariant under a<-->c
             DV_bit =     np.einsum('nmc,nna->nmca' , D_H, V_H) - np.einsum('nmc,mma->nmca' , D_H, V_H) \
                        + np.einsum('nma,nnc->nmca' , D_H, V_H) - np.einsum('nma,mmc->nmca' , D_H, V_H) 
 
+            # generalized derivative        
             A =    A_Hbar_der + \
                    + AD_bit - 1j*AA_bit \
                    + sum_AD \
                    + 1j*(  del2E_H + sum_HD + DV_bit \
                         )*dEig_inv[:,:, np.newaxis, np.newaxis]
-
-
 
         if conductivity_type == 'tildeD':
             V =  data.delE_K[ik] 
@@ -336,14 +338,10 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
     
                 delta_nm = np.copy(delta)
                 cfac = delta_mn + delta_nm
-                temp = dfE[np.newaxis,:,:]*cfac
-    
+                temp = -dfE[np.newaxis,:,:]*cfac
     
                 # generalized derivative is fourth index of A, we put it into third index of Imn
-    #            Imn = np.imag(np.einsum('nmac,mnb->nmabc',A,B))
-                Imn = np.einsum('nmca,mnb->nmabc',A,B) + np.einsum('nmba,mnc->nmabc',A,B) # usual way
-#                Imn = np.einsum('mnca,nmb->nmabc',A,B) + np.einsum('mnba,nmc->nmabc',A,B) # new way testing
-    
+                Imn = np.einsum('nmca,mnb->nmabc',A,B) + np.einsum('nmba,mnc->nmabc',A,B) 
                 sigma_abc[iEF] +=  pre_fac * kubo_sum_elements(Imn, temp, data.num_wann) 
 
 
