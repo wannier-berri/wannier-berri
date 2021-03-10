@@ -29,7 +29,11 @@ import functools,fortio,scipy.io
 class FortranFileR(fortio.FortranFile):
     def __init__(self,filename):
         print ( "using fortio to read" )
-        super(FortranFileR, self).__init__( filename, mode='r', auto_endian=True, check_file=True )
+        try: 
+            super(FortranFileR, self).__init__( filename, mode='r',  header_dtype='uint32'  , auto_endian=True, check_file=True )
+        except ValueError :
+            print ("File '{}' contains subrecords - using header_dtype='int32'".format(filename))
+            super(FortranFileR, self).__init__( filename, mode='r',  header_dtype='int32'  , auto_endian=True, check_file=True )
 
 
 class FortranFileW(scipy.io.FortranFile):
