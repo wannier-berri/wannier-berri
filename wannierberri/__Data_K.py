@@ -355,11 +355,9 @@ class Data_K(System):
         dEig[select]=0.
         return dEig
 
-
     @lazy_property.LazyProperty
     def D_H(self):
         return -self.V_H*self.dEig_inv[:, :,:,None]
-
 
     @lazy_property.LazyProperty
     def V_H(self):
