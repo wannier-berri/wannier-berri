@@ -13,7 +13,7 @@
 #------------------------------------------------------------#
 
 import numpy as np
-from scipy.io import FortranFile 
+from .__utility import FortranFileR, FortranFileW
 import copy
 import lazy_property
 import functools
@@ -33,7 +33,7 @@ class CheckPoint():
     def __init__(self,seedname):
         t0=time()
         seedname=seedname.strip()
-        FIN=FortranFile(seedname+'.chk','r')
+        FIN=FortranFileR(seedname+'.chk')
         readint   = lambda : FIN.read_record('i4')
         readfloat = lambda : FIN.read_record('f8')
         def readcomplex():
@@ -236,7 +236,8 @@ class MMN(W90_data):
     def __init__(self,seedname,npar=multiprocessing.cpu_count()):
         t0=time()
         f_mmn_in=open(seedname+".mmn","r")
-#        print ("reading {}.mmn: ".format(seedname)+f_mmn_in.readline())
+#        _l=f_mmn_in.readline()
+#        print ("reading {}.mmn: ".format(seedname)+_l)
         NB,NK,NNB=np.array(f_mmn_in.readline().split(),dtype=int)
         self.data=np.zeros( (NK,NNB,NB,NB), dtype=complex )
         block=1+self.NB*self.NB
@@ -247,7 +248,7 @@ class MMN(W90_data):
             pool=multiprocessing.Pool(npar)
         for j in range(0,NNB*NK,npar*mult):
             x=list(islice(f_mmn_in, int(block*npar*mult)))
-            print ("mmn: read {} lines".format(len(x)))
+#            print ("mmn: read {} lines".format(len(x)))
             if len(x)==0 : break
             headstring+=x[::block]
             y=[x[i*block+1:(i+1)*block] for i in range(npar*mult) if (i+1)*block<=len(x)]
@@ -324,7 +325,7 @@ class SPN(W90_data):
             SPNheader=f_spn_in.readline().strip()
             nbnd,NK=(int(x) for x in f_spn_in.readline().split())
         else:
-            f_spn_in = FortranFile(seedname+".spn", 'r')
+            f_spn_in = FortranFileR(seedname+".spn")
             SPNheader=(f_spn_in.read_record(dtype='c')) 
             nbnd,NK=f_spn_in.read_record(dtype=np.int32)
             SPNheader="".join(a.decode('ascii') for a in SPNheader)
@@ -364,7 +365,7 @@ class UXU(W90_data):  # uHu or uIu
             header=f_uXu_in.readline().strip() 
             NB,NK,NNB =(int(x) for x in f_uXu_in.readline().split())
         else:
-            f_uXu_in = FortranFile(seedname+"."+suffix, 'r')
+            f_uXu_in = FortranFileR(seedname+"."+suffix)
             header=readstr(f_uXu_in)
             NB,NK,NNB=f_uXu_in.read_record('i4')
 
@@ -409,7 +410,7 @@ class SXU(W90_data):  # sHu or sIu
             header=f_sXu_in.readline().strip() 
             NB,NK,NNB =(int(x) for x in f_sXu_in.readline().split())
         else:
-            f_sXu_in = FortranFile(seedname+"."+suffix, 'r')
+            f_sXu_in = FortranFileR(seedname+"."+suffix)
             header=readstr(f_sXu_in)
             NB,NK,NNB=   f_sXu_in.read_record('i4')
 
