@@ -23,6 +23,7 @@ from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha
 from .__fermisea2 import DataIO, mergeDataIO
 import gc
 import os
+from tetrahedron import TetraWeights
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -140,7 +141,7 @@ class Data_K(System):
     def degen(self):
             A=[np.where(E[1:]-E[:-1]>self.degen_thresh)[0]+1 for E in self.E_K ]
             A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
-            return [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) ]    for a,e in zip(A,self.E_K)]
+            degen= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) ]    for a,e in zip(A,self.E_K)]
 
 
     @lazy_property.LazyProperty
@@ -154,9 +155,19 @@ class Data_K(System):
     def E_K_degen(self):
         return [np.array([np.mean(E[ib1:ib2]) for ib1,ib2 in deg]) for deg,E in zip(self.degen,self.E_K)]
 
+
+    @lazy_property.LazyProperty
+    def degen_K_dic(self):
+        return [ {e:d for e,d in zip(E,deg)} for E,deg in self.E_K_degen,self.dgen]  
+
+    @lazy_property.LazyProperty
+    def degen_dic(self):
+        return [np.array([np.mean(E[ib1:ib2]) for ib1,ib2 in deg]) for deg,E in zip(self.degen,self.E_K)]
+
+
     @lazy_property.LazyProperty
     def vel_nonabelian(self):
-        return [ [0.5*(S[ib1:ib2,ib1:ib2]+S[ib1:ib2,ib1:ib2].transpose((1,0,2)).conj()) for ib1,ib2 in deg] for S,deg in zip(self.V_H,self.degen)]
+         return [ [0.5*(S[ib1:ib2,ib1:ib2]+S[ib1:ib2,ib1:ib2].transpose((1,0,2)).conj()) for ib1,ib2 in deg] for S,deg in zip(self.V_H,self.degen)]
 
 
 ### TODO : check if it is really gaufge-covariant in case of isolated degeneracies
@@ -170,6 +181,19 @@ class Data_K(System):
                      (+V[ib1:ib2,ibl1:ibl2,:],D[ibl1:ibl2,ib1:ib2,:]),
                               ])       for ib1,ib2 in deg]
                      for S,D,V,deg in zip( self.del2E_H,self.D_H,self.V_H,self.degen) ]
+
+
+    @lazy_property.LazyProperty
+    def mass_nonabelian_(self,ik,ib):
+        return [ [S[ib1:ib2,ib1:ib2]
+                   +sum(np.einsum("mla,lnb->mnab",X,Y) 
+                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
+                     for X,Y in [
+                     (-D[ib1:ib2,ibl1:ibl2,:],V[ibl1:ibl2,ib1:ib2,:]),
+                     (+V[ib1:ib2,ibl1:ibl2,:],D[ibl1:ibl2,ib1:ib2,:]),
+                              ])       for ib1,ib2 in deg]
+                     for S,D,V,deg in zip( self.del2E_H,self.D_H,self.V_H,self.degen) ]
+
 
 
     @lazy_property.LazyProperty
@@ -328,7 +352,9 @@ class Data_K(System):
         print_my_name_end()
         return Ecorners
 
-
+    @lazy_property.LazyProperty
+    def tetraWeights(self):
+        return TetraWeights(self.E_K,self.Ecorners)
 
     @lazy_property.LazyProperty
 #    @property

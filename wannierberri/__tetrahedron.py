@@ -1,22 +1,10 @@
 #------------------------------------------------------------#
-# This file is distributed as part of the Wannier19 code     #
+# This file is distributed as part of the WannierBerri code  # 
 # under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the Wannier19      #
+# file `LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
 #                                                            #
-# part of this file is based on                              #
-# the corresponding Fortran90 code from                      #
-#                                 Quantum Espresso  project  #
-#                                                            #                                                            #
-# The Wannier19 code is hosted on GitHub:                    #
-# https://github.com/stepan-tsirkin/wannier19                #
-#                                                            #
-# The webpage of the QuantumEspresso  code is                #
-#            https://www.quantum-espresso.org/               #
-#------------------------------------------------------------#
-#                                                            #
-#  Translated to python and adapted for wannier19 project by #
-#           Stepan Tsirkin, University ofZurich              #
+#           Stepan Tsirkin, University of Zurich             #
 #                                                            #
 #------------------------------------------------------------#
 
@@ -29,6 +17,7 @@
 #! or http://www.gnu.org/copyleft/gpl.txt .
 #!
 
+from collections import 
 
 import numpy as np
 
@@ -85,7 +74,8 @@ def weights_1band_vec_surf(efall,e0,etetra):
 
 
 
-def weights_1band_parallelepiped(efermi,Ecenter,Ecorner):
+def weights_1band_parallelepiped(efermi,Ecenter,Ecorner,tp="sea"):
+    weights_1band ={"sea": weights_1band_vec_sea,"surf":weights_1band_vec_surf}[tp]
     occ=np.zeros(efermi.shape,dtype=float)
     Ecorner=np.reshape(Ecorner,(2,2,2))
     triang1=np.array([[True,True],[True,False]])
@@ -93,7 +83,7 @@ def weights_1band_parallelepiped(efermi,Ecenter,Ecorner):
     for iface in 0,1:
         for _Eface in Ecorner[iface,:,:],Ecorner[:,iface,:],Ecorner[:,:,iface]:
             for eface in _Eface[triang1],_Eface[triang2]:
-                occ   += weights_1band_vec_sea(efermi,Ecenter,eface)
+                occ   += weights_1band(efermi,Ecenter,eface)
     return occ/12.
 
 
@@ -166,5 +156,34 @@ def get_occ(E,E_neigh,Ef):
     
     average_degen(E,weights)
     return weights/24.
+
+
+class TetraWeights():
+    """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib and particular Fermi level array"""
+    def __init__(self,eCenter,eCorners):
+        self.nk, self.nb = eCenter.shape
+        assert eCorners.shape==(self.nk,2,2,2,self.nb)
+        self.eCenter=eCenter
+        self.eCorners=eCorners
+        self.eFermi=[]
+        self.weights_1b=[]
+        self.weights_allb=[]
+
+    def __weight_1b(self,weights,eFermi,mode,ik,ib):
+        if ib not in weights[ik]:
+            weights[ik]=weights_1band_parallelepiped(eFermi,self.Ecenter,self.Ecorner,tp=mode):
+        return weights[ik][ib]
+
+
+    def __weight_allb(self,eFermi,mode,degen_K):
+        if eFermi not in self.eFermi:
+             print ("adding another eFermi array {}".format(eFermi))
+             self.eFermi.append(eFermi)
+             self.weights_1b.append(defaultdic(lambda : {})
+             self.weights_allb.append(defaultdic(lambda : {})
+        weights=self.weights_1b[self.eFermi.index(eFermi)][mode]
+        for ib1,ib2 in degen_K:
+            
+
 
     
