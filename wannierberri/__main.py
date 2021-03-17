@@ -21,7 +21,6 @@ from . import __tabulate
 from . import symmetry
 from .__path import Path
 import numpy as np
-from scipy.io import FortranFile
 from .__version import __version__
 from .__result import NoComponentError
 from collections import Iterable
