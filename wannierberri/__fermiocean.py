@@ -11,7 +11,7 @@ bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]
 Ang_SI = angstrom
-fac_ahc = -100000000.0 * elementary_charge ** 2 / hbar
+fac_ahc = -1e8 * elementary_charge ** 2 / hbar
 
 degen_thresh=1e-5
 

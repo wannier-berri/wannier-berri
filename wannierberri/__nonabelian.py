@@ -21,6 +21,10 @@ from . import __result as result
 from time import time
 from .__utility import alpha_A,beta_A,TAU_UNIT,TAU_UNIT_TXT
 
+TETRA_DEFAULT=False
+
+
+
 from scipy.constants import Boltzmann,elementary_charge,hbar,electron_mass
 bohr_magneton=elementary_charge*hbar/(2*electron_mass)
 
@@ -68,87 +72,87 @@ TRodd  = set(['spin','morb','vel','curv','curvE','curvW','morbg','morb2','curvD'
 INVodd = set(['vel'])
 
 
-def spin(data,Efermi):
-    return nonabelian_general(data,Efermi,['spin'])
+def spin(data,Efermi,tetra=TETRA_DEFAULT):
+    return nonabelian_general(data,Efermi,['spin'],tetra=tetra)
 
-def spinvel(data,Efermi):
-    return nonabelian_general(data,Efermi,['spin','vel'])
+def spinvel(data,Efermi,tetra=TETRA_DEFAULT):
+    return nonabelian_general(data,Efermi,['spin','vel'],tetra=tetra)
 
-def curvvel(data,Efermi):
-    return nonabelian_general(data,Efermi,['curv','vel'])
+def curvvel(data,Efermi,tetra=TETRA_DEFAULT):
+    return nonabelian_general(data,Efermi,['curv','vel'],tetra=tetra)
 
-def curvmorb(data,Efermi):
-    return nonabelian_general(data,Efermi,['curv','morb'])
+def curvmorb(data,Efermi,tetra=TETRA_DEFAULT):
+    return nonabelian_general(data,Efermi,['curv','morb'],tetra=tetra)
 
-def curvspin(data,Efermi):
-    return nonabelian_general(data,Efermi,['curv','spin'])
-
-
-def velvel(data,Efermi):
-    return nonabelian_general(data,Efermi,['vel','vel'])
+def curvspin(data,Efermi,tetra=TETRA_DEFAULT):
+    return nonabelian_general(data,Efermi,['curv','spin'],tetra=tetra)
 
 
-def morbvel(data,Efermi):
-    return nonabelian_general(data,Efermi,['morb','vel'])
+def velvel(data,Efermi,tetra=TETRA_DEFAULT):
+    return nonabelian_general(data,Efermi,['vel','vel'],tetra=tetra)
 
 
-def spinspin(data,Efermi):
-    return nonabelian_general(data,Efermi,['spin','spin'])
+def morbvel(data,Efermi,tetra=TETRA_DEFAULT):
+    return nonabelian_general(data,Efermi,['morb','vel'],tetra=tetra)
 
 
-def curv_tot(data,Efermi):
-    return nonabelian_general(data,Efermi,['curv'],mode='fermi-sea')
+def spinspin(data,Efermi,tetra=TETRA_DEFAULT):
+    return nonabelian_general(data,Efermi,['spin','spin'],tetra=tetra)
 
 
-def ahc(data,Efermi):
-    return nonabelian_general(data,Efermi,['curv'],mode='fermi-sea',factor=__berry.fac_ahc)
+def curv_tot(data,Efermi,tetra=TETRA_DEFAULT):
+    return nonabelian_general(data,Efermi,['curv'],mode='fermi-sea',tetra=tetra)
 
-def berry_dipole(data,Efermi):
+
+def ahc(data,Efermi,tetra=TETRA_DEFAULT):
+    return nonabelian_general(data,Efermi,['curv'],mode='fermi-sea',factor=__berry.fac_ahc,tetra=tetra)
+
+def berry_dipole(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(Omega*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curv','vel'],mode='fermi-surface',factor=1)
+    return nonabelian_general(data,Efermi,['curv','vel'],mode='fermi-surface',factor=1,tetra=tetra)
 
 
-def Faraday(data,Efermi,homega):
+def Faraday(data,Efermi,homega,tetra=TETRA_DEFAULT):
     # _general yields integral(Omega(w)*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curvW','vel'],mode='fermi-surface',factor=1,parameters={'curvW':{'homega':homega}})
+    return nonabelian_general(data,Efermi,['curvW','vel'],mode='fermi-surface',factor=1,parameters={'curvW':{'homega':homega}},tetra=tetra)
 
 
-def berry_dipole_D(data,Efermi):
+def berry_dipole_D(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curvD','vel'],mode='fermi-surface',factor=1)
+    return nonabelian_general(data,Efermi,['curvD','vel'],mode='fermi-surface',factor=1,tetra=tetra)
 
-def berry_dipole_ext1(data,Efermi):
+def berry_dipole_ext1(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curvExt1','vel'],mode='fermi-surface',factor=1)
+    return nonabelian_general(data,Efermi,['curvExt1','vel'],mode='fermi-surface',factor=1,tetra=tetra)
 
-def berry_dipole_ext2(data,Efermi):
+def berry_dipole_ext2(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curvExt2','vel'],mode='fermi-surface',factor=1)
+    return nonabelian_general(data,Efermi,['curvExt2','vel'],mode='fermi-surface',factor=1,tetra=tetra)
 
 
-def gyrotropic_Kspin(data,Efermi):
+def gyrotropic_Kspin(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(spin*v*(-fo')), which is in Ang^-2
     # we want in Ampere
     factor=-bohr_magneton/Ang_SI**2   ## that's it!
-    return nonabelian_general(data,Efermi,['vel','spin'],mode='fermi-surface',factor=factor)
+    return nonabelian_general(data,Efermi,['vel','spin'],mode='fermi-surface',factor=factor,tetra=tetra)
 
 
-def gyrotropic_Korb(data,Efermi):
+def gyrotropic_Korb(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(morb*v*(-fo')), which is in eV
     # we want in Ampere
     factor=-elementary_charge**2/(2*hbar)   ## that's it!
-    return nonabelian_general(data,Efermi,['vel','morb'],mode='fermi-surface',factor=factor)
+    return nonabelian_general(data,Efermi,['vel','morb'],mode='fermi-surface',factor=factor,tetra=tetra)
     
 
 
-def Morb(data,Efermi):
-    r1=nonabelian_general(data,Efermi,['morb' ],mode='fermi-sea')
-    r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea')
-    r3=nonabelian_general(data,Efermi,['curv' ],mode='fermi-sea')
+def Morb(data,Efermi,tetra=TETRA_DEFAULT):
+    r1=nonabelian_general(data,Efermi,['morb' ],mode='fermi-sea',tetra=tetra)
+    r2=nonabelian_general(data,Efermi,['curvE'],mode='fermi-sea',tetra=tetra)
+    r3=nonabelian_general(data,Efermi,['curv' ],mode='fermi-sea',tetra=tetra)
     r3.data[:,:]=r3.data[:,:]*Efermi[:,None]
     return (r1+2*r2-2*r3)*__berry.fac_morb*data.cell_volume
 
-def Hall_morb(data,Efermi):
+def Hall_morb(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(omega*morb*(-fo'_) in units Ang
     # we want in S/(cm*T)
     # S/T=A^3*s^5/(kg^2*m^2))
@@ -156,9 +160,9 @@ def Hall_morb(data,Efermi):
     factor*=elementary_charge**2/hbar  # multiply by a dimensional factor - now in S/(T*m)
     factor*=-1 
     factor*=1e-2   #  finally transform to S/(T*cm)
-    return nonabelian_general(data,Efermi,['curv','morb'],mode='fermi-surface',factor=factor)
+    return nonabelian_general(data,Efermi,['curv','morb'],mode='fermi-surface',factor=factor,tetra=tetra)
 
-def Hall_spin(data,Efermi):
+def Hall_spin(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(Omrga*s*(-fo')) in units 1/(eV*Ang)
     # we want in S/(cm*T)
     # S/T=A^3*s^5/(kg^2*m^2))
@@ -166,7 +170,7 @@ def Hall_spin(data,Efermi):
     factor*=-1 
     factor*=elementary_charge**2/hbar  # multiply by a dimensional factor - now in S/(T*m)
     factor*=1e-2   #  finally transform to S/(T*cm)
-    return nonabelian_general(data,Efermi,['curv','spin'],mode='fermi-surface',factor=factor)
+    return nonabelian_general(data,Efermi,['curv','spin'],mode='fermi-surface',factor=factor,tetra=tetra)
 
 
 factor=elementary_charge**2*Ang_SI/hbar**3  # first, transform to SI, not forgeting hbar in velocities - now in  m/(J*s^3)
@@ -174,14 +178,14 @@ factor*=elementary_charge**3/hbar*TAU_UNIT**2  # multiply by a dimensional facto
 factor*=1e-2   #  finally transform to S/(T*cm*tau_unit^2)
 #print ("factor_Hall_classic = {} ".format(factor))
 
-def Hall_classic(data,Efermi):
+def Hall_classic(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(V*V*V'*(-f0')) in units eV^2*Ang
     # we want in S/(cm*T)/tau_unit^2
     # S/T=A^3*s^5/(kg^2*m^2))
     factor=elementary_charge**2*Ang_SI/hbar**3  # first, transform to SI, not forgeting hbar in velocities - now in  m/(J*s^3)
     factor*=elementary_charge**3/hbar*TAU_UNIT**2  # multiply by a dimensional factor - now in A^3*s^5*cm/(J^2*tau_unit^2) = S/(T*m*tau_unit^2)
     factor*=1e-2   #  finally transform to S/(T*cm*tau_unit^2)
-    r1= nonabelian_general(data,Efermi,['vel','mass','vel'],mode='fermi-surface',factor=factor)
+    r1= nonabelian_general(data,Efermi,['vel','mass','vel'],mode='fermi-surface',factor=factor,tetra=tetra)
     print ("r1 - shape",r1.data.shape)
     print (alpha_A,beta_A)
     res=r1.data[:,:,:,beta_A,alpha_A]-r1.data[:,:,:,alpha_A,beta_A]
@@ -191,14 +195,14 @@ def Hall_classic(data,Efermi):
 
 
 # this formulation is not correct in general
-def Hall_classic_sea(data,Efermi):
+def Hall_classic_sea(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(W*W*f0) in units eV^2*Ang
     # we want in S/(cm*T)/tau_unit^2
     # S/T=A^3*s^5/(kg^2*m^2))
     factor=elementary_charge**2*Ang_SI/hbar**3  # first, transform to SI, not forgeting hbar in velocities - now in  m/(J*s^3)
     factor*=elementary_charge**3/hbar*TAU_UNIT**2  # multiply by a dimensional factor - now in A^3*s^5*cm/(J^2*tau_unit^2) = S/(T*m*tau_unit^2)
     factor*=1e-2   #  finally transform to S/(T*cm*tau_unit^2)
-    r1= nonabelian_general(data,Efermi,['mass','mass'],mode='fermi-sea',factor=factor)
+    r1= nonabelian_general(data,Efermi,['mass','mass'],mode='fermi-sea',factor=factor,tetra=tetra)
 #    print ("r1 - shape",r1.data.shape)
 #    print (alpha_A,beta_A)
     res=r1.data.transpose((0,1,3,2,4))
@@ -207,33 +211,33 @@ def Hall_classic_sea(data,Efermi):
 #    print ("res - shape",res.shape)
     return result.EnergyResult(Efermi, res  ,TRodd=False,Iodd=False)
 
-def conductivity_ohmic(data,Efermi):
+def conductivity_ohmic(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(V*V*f0') in units eV/Ang
     # we want in S/(cm)/tau_unit
     factor=elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
     factor*=elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
     factor*=1e-2 # now in  S/(cm*tau_unit)
-    res=nonabelian_general(data,Efermi,['vel','vel'],mode='fermi-surface',factor=factor)
+    res=nonabelian_general(data,Efermi,['vel','vel'],mode='fermi-surface',factor=factor,tetra=tetra)
 #    print ("factor=",factor)
 #    print ("res=",res.data.sum(axis=0))
     return res
 
 # an equivalent fermi-sea formulation - to test the effective mass tensor
-def conductivity_ohmic_sea(data,Efermi):
+def conductivity_ohmic_sea(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(V*V*f0') in units eV/Ang
     # we want in S/(cm)/tau_unit
     factor=elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
     factor*=elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
     factor*=1e-2 # now in  S/(cm*tau_unit)
-    return nonabelian_general(data,Efermi,['mass'],mode='fermi-sea',factor=factor)
+    return nonabelian_general(data,Efermi,['mass'],mode='fermi-sea',factor=factor,tetra=tetra)
 
 
 
-def nonabelian_general(data,Efermi,quantities,subscripts=None,mode='fermi-surface',factor=1,parameters={}):
+def nonabelian_general(data,Efermi,quantities,subscripts=None,mode='fermi-surface',factor=1,parameters={},tetra=TETRA_DEFAULT):
     E_K=data.E_K
     __parameters=defaultdict(lambda : {}, parameters)
     if Efermi.shape[0]==1:
-        raise ValueError("cannot evaluate transport properties for a single Femrmi level. please provide a grid of EF (better a dense one)")
+        raise ValueError("cannot evaluate transport properties for a single Fermi level. please provide a grid of EF (better a dense one)")
     dE=Efermi[1]-Efermi[0]
     Emax=Efermi[-1]+dE/2
 
@@ -272,24 +276,27 @@ def nonabelian_general(data,Efermi,quantities,subscripts=None,mode='fermi-surfac
 
     res=np.zeros(  (len(Efermi),)+(3,)*len(right)  )
 
-    if mode=='fermi-surface':
-      for ik in range(data.NKFFT_tot):
-        indE=np.array(np.round( (data.E_K_degen[ik]-Efermi[0])/dE ),dtype=int )
-        indEtrue= (0<=indE)*(indE<len(Efermi))
-        for ib,ie,it  in zip(range(len(indE)),indE,indEtrue):
-            if it:
-#                print ("quantities: ",quantities,einline,[m[ik][ib] for m in M])
-                res[ie]+=np.einsum(einline,*(m[ik][ib] for m in M)).real
-      res=res/dE
-    elif mode=='fermi-sea':
-      for ik in range(data.NKFFT_tot):
-        indE=np.array(np.round( (data.E_K_degen[ik]-Efermi[0])/dE ),dtype=int )
-        indEtrue= (0<=indE)*(indE<len(Efermi))
-        for ib,eav  in zip(range(len(indE)),data.E_K_degen[ik]):
-            if eav<Emax:
-                 res[eav<Efermi]+=np.einsum(einline,*(m[ik][ib] for m in M)).real
+    if tetra:
+        pass
     else:
-      raise ValueError('unknown mode in non-abelian: <{}>'.format(mode))
+        if mode=='fermi-surface':
+          for ik in range(data.NKFFT_tot):
+            indE=np.array(np.round( (data.E_K_degen[ik]-Efermi[0])/dE ),dtype=int )
+            indEtrue= (0<=indE)*(indE<len(Efermi))
+            for ib,ie,it  in zip(range(len(indE)),indE,indEtrue):
+                if it:
+#                    print ("quantities: ",quantities,einline,[m[ik][ib] for m in M])
+                    res[ie]+=np.einsum(einline,*(m[ik][ib] for m in M)).real
+          res=res/dE
+        elif mode=='fermi-sea':
+          for ik in range(data.NKFFT_tot):
+            indE=np.array(np.round( (data.E_K_degen[ik]-Efermi[0])/dE ),dtype=int )
+            indEtrue= (0<=indE)*(indE<len(Efermi))
+            for ib,eav  in zip(range(len(indE)),data.E_K_degen[ik]):
+                if eav<Emax:
+                     res[eav<Efermi]+=np.einsum(einline,*(m[ik][ib] for m in M)).real
+        else:
+          raise ValueError('unknown mode in non-abelian: <{}>'.format(mode))
     res*=(factor/(data.NKFFT_tot*data.cell_volume))
 #    print ("res=",res.sum(axis=0))
 #    print ("data.cell_volume",data.cell_volume)
