@@ -100,28 +100,28 @@ class TraceFormula():
     automatic grouping of terms by first matrix will be implemented, if it is the same and 
     has same type of indices. But onl;y if is really the same, not a copy ( `A1 is A2 ==True `)
     """
-    def __init__(self,trace_list,TRodd=False,Iodd=False,ndim=0):
+    def __init__(self,term_list,TRodd=False,Iodd=False,ndim=0):
         self.TRodd=TRodd
         self.Iodd=Iodd
         self.ndim=ndim
-        self.trace_list=[self.__input_to_inner(term) for term in trace_list]
+        self.term_list=[self.__input_to_inner(term) for term in term_list]
 
-    def add_term(self,trace):
-        self.trace_list.append(self.__input_to_inner(trace) )
+    def add_term(self,term):
+        self.term_list.append(self.__input_to_inner(term) )
 
     def __len__(self):
-        return len(self.trace_list)
+        return len(self.term_list)
 
     def group_terms(self):
 #        print ("grouping {} terms".format(len(self)))
         for i,a in enumerate(self.trace_list):
             if len(a)>2:
                 for j in range(len(self)-1,i,-1): 
-                    b=self.trace_list[j]
+                    b=self.term_list[j]
                     if a[0]==b[0]  and a[1] is b[1] :
                         for c in b[2]:
                             a[2].append(c)
-                        del self.trace_list[j]
+                        del self.term_list[j]
 #        print ("after grouping : {} terms".format(len(self)))
                 
 
