@@ -17,117 +17,109 @@
 #! or http://www.gnu.org/copyleft/gpl.txt .
 #!
 
-from collections import 
+#from collections import 
 
+
+import functools
 import numpy as np
+from numba import njit,jit
 
 ## TODO : optimize to process many tetrahedra in one shot
-def weights_1band_vec_sea(efall,e0,etetra):
+
+@njit
+def weights_tetra(efall,e0,e1,e2,e3,der=0):
     # energies will be sorted, remember which is at the corner of interest
-    etetra=np.hstack([[e0],etetra])
-    e1,e2,e3,e4=np.sort(etetra)
-    occ=np.zeros(len(efall),dtype=float)
-    occ[efall>=e4]=1.
- 
-    select= (efall>=e3)*(efall<e4)
-    ef=efall[select]
-    occ[select]=1. - (e4 - ef) **3 / ((e4 - e1) * (e4 - e2) * (e4 - e3))
+    e1,e2,e3,e4=sorted([e0,e1,e2,e3])
+    nEF=len(efall)
+#    efall2=efall * efall
+#    efall3=efall2* efall
+    occ=np.zeros((nEF))
+    denom3 = 1./ ((e4 - e1) * (e4 - e2) * (e4 - e3) )
+    denom2 = 1./ ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4-e2) )
+    denom1 = 1./ ((e2 - e1) * (e3 - e1) * (e4 - e1) )
 
-    select= (efall>=e1)*(efall<e2)
-    ef=efall[select]
-    occ[select]= (ef - e1) **3 / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+    if der==0:
+        c10 = -e1**3  *denom1
+        c30 = -e4**3  *denom3 +1.
+        c20 = ( e1**2 *  (e3 - e2) * (e4 - e2)  - (e2**2*e4 ) *    (e1 - e3) - e1*e2*e3  *    (e2 - e4)        ) *denom2
+    if der <=3:
+        c13 =          denom1
+        c33 =          denom3
+        c23 = denom2 * ( e1+e2-e3-e4  )
+    if der <=2:
+        c12 = -3*e1   *denom1
+        c22 = (( (e3 - e2) * (e4 - e2) ) - (e1 - e3) * ( 2*e2 + e4 ) - ( e3 + e1 + e2 ) * ( e2 - e4 )          ) * denom2
+        c32 = -3*e4   *denom3
+    if der <=1:
+        c11 = 3*e1**2 *denom1
+        c21 = ( -2*e1* ( (e3 - e2) * (e4 - e2) ) + (2*e2*e4+e2**2 )  *(e1 - e3) + (e1*e2+e2*e3+e1*e3) *(e2-e4) )*denom2
+        c31 = 3*e4**2 *denom3
 
-    select= (efall>=e2)*(efall<e3)
-    ef=efall[select]  
-    occ[select]= (
-                    (ef-e1)**2  *             ( (e3-e2) * (e4-e2) ) 
-                  + (ef-e2)**2  * (e4-ef)   * ( (e3-e1)           ) 
-#                  - (ef-e2)*(ef-e1)*(ef-e3) * (    (e4-e2)        )
-                   - (  ef**3  -ef**2*(e3+e1+e2) +ef*(e1*e2+e2*e3+e1*e3) - e1*e2*e3) * (    (e4-e2)        )
-                   )    / ( (e3-e1) * (e4-e1) * (e3-e2) * (e4-e2) )
+    if der==0:
+        for i in range(nEF):
+            ef  = efall [i]
+            if ef>=e4:
+                occ[i]= 1.
+            elif ef<e1:
+                occ[i]=0.
+            elif  ef>=e3:# c3
+                occ[i] = c30+ef*(c31+ef*(c32+c33*ef))
+            elif ef>=e2:   # c2
+                occ[i] = c20+ef*(c21+ef*(c22+c23*ef))
+            else :  #c1
+                occ[i] = c10+ef*(c11+ef*(c12+c13*ef))
+    elif der==1:
+        for i in range(nEF):
+            ef  = efall [i]
+            if ef>=e4:
+                occ[i] = 0.
+            elif ef<e1:
+                occ[i] = 0.
+            elif  ef>=e3:# c3
+                occ[i] = c31+ef*(2*c32+3*c33*ef)
+            elif ef>=e2:   # c2
+                occ[i] = c21+ef*(2*c22+3*c23*ef)
+            else :  #c1
+                occ[i] = c11+ef*(2*c12+3*c13*ef)
+    elif der==2:
+        for i in range(nEF):
+            ef  = efall [i]
+            if ef>=e4:
+                occ[i] = 0.
+            elif ef<e1:
+                occ[i] = 0.
+            elif  ef>=e3:# c3
+                occ[i] = 2*c32+6*c33*ef
+            elif ef>=e2:   # c2
+                occ[i] = 2*c22+6*c23*ef
+            else :  #c1
+                occ[i] = 2*c12+6*c13*ef
+    elif der==3:
+        for i in range(nEF):
+            ef  = efall[i]
+            if ef>=e4:
+                occ[i] = 0.
+            elif ef<e1:
+                occ[i] = 0.
+            elif  ef>=e3:# c3
+                occ[i] = 6*c33
+            elif ef>=e2:   # c2
+                occ[i] = 6*c23
+            else :  #c1
+                occ[i] = 6*c13
     return occ
 
-
-def weights_1band_vec_surf(efall,e0,etetra):
-    # energies will be sorted, remember which is at the corner of interest
-    etetra=np.hstack([[e0],etetra])
-    e1,e2,e3,e4=np.sort(etetra)
-    occ=np.zeros(len(efall),dtype=float)
- 
-    select= (efall>=e3)*(efall<e4)
-    ef=efall[select]
-    occ[select]=3*(e4 - ef) **2 / ((e4 - e1) * (e4 - e2) * (e4 - e3))
-
-    select= (efall>=e1)*(efall<e2)
-    ef=efall[select]
-    occ[select]= 3* (ef - e1) **2 / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-
-    select= (efall>=e2)*(efall<e3)
-    ef=efall[select]  
-    occ[select]= ( 
-                    2*(ef-e1)  *   ( (e3-e2) * (e4-e2) ) 
-                    + (ef-e2)* (2*e4+e2-3*ef )  * ( (e3-e1)  ) 
-                  -(ef*(3*ef-2*(e1+e2+e3))+(e1*e2+e2*e3+e1*e3)   )*         (    (e4-e2)        )
-                   )    / ( (e3-e1) * (e4-e1) * (e3-e2) * (e4-e2) )
-    return occ
-
-
-
-
-def weights_1band_parallelepiped(efermi,Ecenter,Ecorner,tp="sea"):
-    weights_1band ={"sea": weights_1band_vec_sea,"surf":weights_1band_vec_surf}[tp]
-    occ=np.zeros(efermi.shape,dtype=float)
+@njit
+def weights_parallelepiped(efermi,Ecenter,Ecorner,der=0):
+    occ=np.zeros((efermi.shape))
     Ecorner=np.reshape(Ecorner,(2,2,2))
     triang1=np.array([[True,True],[True,False]])
     triang2=np.array([[False,True],[True,True]])
     for iface in 0,1:
-        for _Eface in Ecorner[iface,:,:],Ecorner[:,iface,:],Ecorner[:,:,iface]:
-            for eface in _Eface[triang1],_Eface[triang2]:
-                occ   += weights_1band(efermi,Ecenter,eface)
+        for Eface in Ecorner[iface,:,:],Ecorner[:,iface,:],Ecorner[ :,:,iface]:
+            occ += weights_tetra(efermi,Ecenter,Eface[0,0],Eface[0,1],Eface[1,1],der=der)
+            occ += weights_tetra(efermi,Ecenter,Eface[0,0],Eface[1,0],Eface[1,1],der=der)
     return occ/12.
-
-
-
-
-
-if __name__ == '__main__' : 
-    import matplotlib.pyplot as plt
-
-    Efermi=np.linspace(-1,1,1001)
-    E=np.random.random(9)-0.5
-    Ecenter=E[0]
-    Ecorner=E[1:].reshape(2,2,2)
-    Ecorn=E[1:4]
-#    occ=weights_1band_parallelepiped(Efermi,Ecenter,Ecorner)
-    print (Ecenter,Ecorner)
-    occ=weights_1band_vec_surf(Efermi,Ecenter,Ecorn)
-    occ2=weights_1band_vec_sea(Efermi,Ecenter,Ecorn)
-    occ3=occ2*0
-    occ3[1:-1]=(occ2[2:]-occ2[:-2])/(Efermi[2]-Efermi[0])
-    print (occ)
-    
-    
-    plt.scatter(Efermi,occ3 ,c='green')
-    plt.plot(Efermi,occ , c='blue')
-    for x in E[1:4]:
-        plt.axvline(x,c='blue')
-    plt.axvline(Ecenter,c='red')
-    plt.xlim(-0.6,0.6)
-    plt.show()
-    exit()
-
-
-#    for x in Ecorn:
-#        plt.axvline(x,col='blue')
-#    plt.axvline(Ecenter,col='red')
-
-
-
-
-def weights_all_bands_parallelepiped(efermi,Ecenter,Ecorner):
-#    occ=np.array([weights_1band_parallelepiped(etetra,Ef)
-    return np.array([weights_1band(etetra,Ef) for etetra in Etetra])
-
 
 
 
@@ -137,25 +129,6 @@ def average_degen(E,weights):
     degengroups=[ (b1,b2) for b1,b2 in zip(borders,borders[1:]) if b2-b1>1]
     for b1,b2 in degengroups:
        weights[b1:b2]=weights[b1:b2].mean()
-
-def weights_all_bands_1tetra(Etetra,Ef):
-    return np.array([weights_1band(etetra,Ef) for etetra in Etetra])
-
-def get_occ(E,E_neigh,Ef):
-#  E_neigh is a dict (i,j,k):E 
-# where i,j,k = -1,0,+1 - are coordinates of a k-point, relative to the reference point
-    num_wann=E.shape[0]
-    occ=np.zeros(num_wann)
-    weights=np.zeros(num_wann)
-    Etetra=np.zeros( (num_wann,4),dtype=float)
-    Etetra[:,0]=E
-    for tetra in __TETRA_NEIGHBOURS:
-       for i,p in enumerate(tetra):
-          Etetra[:,i+1]=E_neigh[tuple(p)]
-          weights+=weights_all_bands_1tetra(Etetra,Ef)
-    
-    average_degen(E,weights)
-    return weights/24.
 
 
 class TetraWeights():
@@ -171,7 +144,7 @@ class TetraWeights():
 
     def __weight_1b(self,weights,eFermi,mode,ik,ib):
         if ib not in weights[ik]:
-            weights[ik]=weights_1band_parallelepiped(eFermi,self.Ecenter,self.Ecorner,tp=mode):
+            weights[ik]=weights_1band_parallelepiped(eFermi,self.Ecenter,self.Ecorner,tp=mode)
         return weights[ik][ib]
 
 
@@ -179,11 +152,69 @@ class TetraWeights():
         if eFermi not in self.eFermi:
              print ("adding another eFermi array {}".format(eFermi))
              self.eFermi.append(eFermi)
-             self.weights_1b.append(defaultdic(lambda : {})
-             self.weights_allb.append(defaultdic(lambda : {})
+             self.weights_1b.append(defaultdic(lambda : {}))
+             self.weights_allb.append(defaultdic(lambda : {}))
         weights=self.weights_1b[self.eFermi.index(eFermi)][mode]
         for ib1,ib2 in degen_K:
-            
+            pass
 
 
+if __name__ == '__main__' : 
+    import matplotlib.pyplot as plt
+
+
+    Efermi=np.linspace(-1,1,1001)
+    E=np.random.random(9)-0.5
+    Ecenter=E[0]
+    Ecorner=E[1:].reshape(2,2,2)
+    Ecorn=E[1:4]
+#    occ=weights_1band_parallelepiped(Efermi,Ecenter,Ecorner)
+    from time import time
+
+    Ncycl=100
+
+    t00=time()
+    weights_tetra (Efermi,Ecenter,Ecorn[0],Ecorn[1],Ecorn[2])
+    t0=time()
+    [weights_tetra (Efermi,Ecenter,Ecorn[0],Ecorn[1],Ecorn[2])  for i in range(Ncycl) ]
+    t1=time()
+    print ("time for {} is {} ms (compilation:{})".format("tetra",(t1-t0)/Ncycl*1000,(t0-t00)*1000))
+
+    t00=time()
+    weights_parallelepiped  (Efermi,Ecenter,Ecorner)
+    t0=time()
+    [weights_parallelepiped (Efermi,Ecenter,Ecorner)  for i in range(Ncycl) ]
+    t1=time()
+    print ("time for {} is {} ms (compilation:{})".format("paral",(t1-t0)/Ncycl*1000,(t0-t00)*1000))
+
+
+    t1=time()
+    print ("time for {} is {} ms".format("vec_sea",(t1-t0)/Ncycl*1000*12))
     
+    print (Ecenter,Ecorner)
+#    occ_sea_2    = weights_1band_vec_sea_2    (Efermi,Efermi2,Efermi3,Ecenter,Ecorn)
+    occ_sea      = weights_tetra (Efermi,Ecenter,Ecorn[0],Ecorn[1],Ecorn[2],der=0)
+    occ_surf     = weights_tetra (Efermi,Ecenter,Ecorn[0],Ecorn[1],Ecorn[2],der=1)
+    occ_surf_der = weights_tetra (Efermi,Ecenter,Ecorn[0],Ecorn[1],Ecorn[2],der=2)
+
+    occ_surf_fd=occ_sea*0
+    occ_surf_fd[1:-1]=(occ_sea[2:]-occ_sea[:-2])/(Efermi[2]-Efermi[0])
+
+    occ_surf_der_fd=occ_sea*0
+    occ_surf_der_fd[2:-2]=(occ_sea[4:]+occ_sea[:-4]-2*occ_sea[2:-2])/(Efermi[2]-Efermi[0])**2
+    
+    plt.plot(Efermi,occ_sea   ,c='blue')
+#    plt.plot(Efermi,occ_sea_2 ,c='red')
+#    plt.plot(Efermi,(occ_sea_2-occ_sea) , c='green' )
+
+    plt.scatter(Efermi,occ_surf_fd ,c='green')
+    plt.scatter(Efermi,occ_surf_der_fd ,c='red')
+    plt.plot(Efermi,occ_surf , c='yellow')
+    plt.plot(Efermi,occ_surf_der , c='cyan')
+
+    for x in E[1:4]:
+        plt.axvline(x,c='blue')
+    plt.axvline(Ecenter,c='red')
+    plt.xlim(-0.6,0.6)
+    plt.show()
+    exit()
