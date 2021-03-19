@@ -356,6 +356,11 @@ class Data_K(System):
     def tetraWeights(self):
         return TetraWeights(self.E_K,self.E_K_corners)
 
+    def get_bands_in_range(self,emin,emax,op=0,ed=None):
+        select = [ np.where((self.E_K[ik]>=emin)*(self.E_K[ik]<=emax))[0] for ik in range(op,ed) ]
+        return  [ {ib:self.E_K[ik+op,ib]  for ib in sel } for ik,sel in enumerate(select) ]
+
+
     @lazy_property.LazyProperty
 #    @property
     def UU_K(self):
