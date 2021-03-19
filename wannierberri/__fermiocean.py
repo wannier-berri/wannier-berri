@@ -2,7 +2,7 @@ import numpy as np
 from scipy import constants
 from collections import defaultdict
 from .__utility import  warning
-from .__tetrahedron import weights_1band_parallelepiped  as weights_tetra  
+from .__tetrahedron import weights_parallelepiped  as weights_tetra  
 from . import __result as result
 from . import __trace_formula as trF
 from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
@@ -205,7 +205,7 @@ class FermiOcean_tetra:
         self.tetra = EK_corners is not None
         self.EK=EK
         self.EK_corners=EK_corners
-        mat_list=formula.trace_list
+        mat_list=formula.term_list
         self.shape = (3,)*ndim
         self.dtype = dtype 
         assert Emax >= Emin

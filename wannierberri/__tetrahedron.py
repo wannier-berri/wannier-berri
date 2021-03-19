@@ -8,16 +8,7 @@
 #                                                            #
 #------------------------------------------------------------#
 
-
-#! Copyright message from Quantum Espresso:
-#! Copyright (C) 2016 Quantum ESPRESSO Foundation
-#! This file is distributed under the terms of the
-#! GNU General Public License. See the file `License'
-#! in the root directory of the present distribution,
-#! or http://www.gnu.org/copyleft/gpl.txt .
-#!
-
-#from collections import 
+from collections import defaultdict
 
 
 import functools
@@ -28,7 +19,6 @@ from numba import njit,jit
 
 @njit
 def weights_tetra(efall,e0,e1,e2,e3,der=0):
-    # energies will be sorted, remember which is at the corner of interest
     e1,e2,e3,e4=sorted([e0,e1,e2,e3])
     nEF=len(efall)
 #    efall2=efall * efall
@@ -109,7 +99,7 @@ def weights_tetra(efall,e0,e1,e2,e3,der=0):
                 occ[i] = 6*c13
     return occ
 
-@njit
+
 def weights_parallelepiped(efermi,Ecenter,Ecorner,der=0):
     occ=np.zeros((efermi.shape))
     Ecorner=np.reshape(Ecorner,(2,2,2))
@@ -132,31 +122,42 @@ def average_degen(E,weights):
 
 
 class TetraWeights():
-    """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib and particular Fermi level array"""
+    """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
+       the Fermi level list remains the same throughout calculation"""
     def __init__(self,eCenter,eCorners):
         self.nk, self.nb = eCenter.shape
         assert eCorners.shape==(self.nk,2,2,2,self.nb)
         self.eCenter=eCenter
         self.eCorners=eCorners
-        self.eFermi=[]
-        self.weights_1b=[]
-        self.weights_allb=[]
-
-    def __weight_1b(self,weights,eFermi,mode,ik,ib):
-        if ib not in weights[ik]:
-            weights[ik]=weights_1band_parallelepiped(eFermi,self.Ecenter,self.Ecorner,tp=mode)
-        return weights[ik][ib]
+        self.eFermis=[]
+        self.weights=defaultdict(lambda : defaultdict(lambda : {}))
+        Eall=np.concatenate( (self.eCenter[:,None,:] , self.eCorners.reshape(self.nk,8,self.nb) ),axis=1)
+        self.Emin=Eall.min(axis=1)
+        self.Emax=Eall.max(axis=1)
+        self.eFermi=None
 
 
-    def __weight_allb(self,eFermi,mode,degen_K):
-        if eFermi not in self.eFermi:
-             print ("adding another eFermi array {}".format(eFermi))
-             self.eFermi.append(eFermi)
-             self.weights_1b.append(defaultdic(lambda : {}))
-             self.weights_allb.append(defaultdic(lambda : {}))
-        weights=self.weights_1b[self.eFermi.index(eFermi)][mode]
-        for ib1,ib2 in degen_K:
-            pass
+    def __get_bands_in_range(self,emin,emax):
+        return [np.where((self.Emax[ik]>=emin)*(self.Emin[ik]<=emax))[0] for ik in range(self.nk)]
+
+    def __weight_1b(self,ik,ib,der):
+#        print (ib,ik,der)
+        if ib not in self.weights[der][ik]:
+            self.weights[der][ik][ib]=weights_parallelepiped(self.eFermi,self.eCenter[ik,ib],self.eCorners[ik,:,:,:,ib],der=der)
+        return self.weights[der][ik][ib]
+
+
+    def weights_allbands(self,eFermi,der):
+        if self.eFermi is None:
+            self.eFermi=eFermi
+        else :
+            assert self.eFermi is eFermi
+
+
+        bands_in_range=self.__get_bands_in_range(eFermi[0],eFermi[-1])
+
+        return [{ib:self.__weight_1b(ik,ib,der)  for ib in ibrg } for ik,ibrg in enumerate(bands_in_range)]
+
 
 
 if __name__ == '__main__' : 
