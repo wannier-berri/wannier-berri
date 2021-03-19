@@ -137,8 +137,8 @@ class TetraWeights():
         self.eFermi=None
 
 
-    def __get_bands_in_range(self,emin,emax):
-        return [np.where((self.Emax[ik]>=emin)*(self.Emin[ik]<=emax))[0] for ik in range(self.nk)]
+    def __get_bands_in_range(self,emin,emax,op,ed):
+        return [np.where((self.Emax[ik]>=emin)*(self.Emin[ik]<=emax))[0] for ik in range(op,ed)]
 
     def __weight_1b(self,ik,ib,der):
 #        print (ib,ik,der)
@@ -147,16 +147,15 @@ class TetraWeights():
         return self.weights[der][ik][ib]
 
 
-    def weights_allbands(self,eFermi,der):
+    def weights_allbands(self,eFermi,der,op=0,ed=None):
+        if ed is None: ed=self.nk
         if self.eFermi is None:
             self.eFermi=eFermi
         else :
             assert self.eFermi is eFermi
 
-
-        bands_in_range=self.__get_bands_in_range(eFermi[0],eFermi[-1])
-
-        return [{ib:self.__weight_1b(ik,ib,der)  for ib in ibrg } for ik,ibrg in enumerate(bands_in_range)]
+        bands_in_range=self.__get_bands_in_range(eFermi[0],eFermi[-1],op,ed)
+        return [{ib:self.__weight_1b(op+ik,ib,der)  for ib in ibrg } for ik,ibrg in enumerate(bands_in_range)]
 
 
 
