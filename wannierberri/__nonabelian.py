@@ -186,8 +186,8 @@ def Hall_classic(data,Efermi,tetra=TETRA_DEFAULT):
     factor*=elementary_charge**3/hbar*TAU_UNIT**2  # multiply by a dimensional factor - now in A^3*s^5*cm/(J^2*tau_unit^2) = S/(T*m*tau_unit^2)
     factor*=1e-2   #  finally transform to S/(T*cm*tau_unit^2)
     r1= nonabelian_general(data,Efermi,['vel','mass','vel'],mode='fermi-surface',factor=factor,tetra=tetra)
-    print ("r1 - shape",r1.data.shape)
-    print (alpha_A,beta_A)
+#    print ("r1 - shape",r1.data.shape)
+#    print (alpha_A,beta_A)
     res=r1.data[:,:,:,beta_A,alpha_A]-r1.data[:,:,:,alpha_A,beta_A]
     res=-0.5*(res[:,alpha_A,beta_A,:]-res[:,beta_A,alpha_A,:])
 #    print ("res - shape",res.shape)
@@ -235,6 +235,7 @@ def conductivity_ohmic_sea(data,Efermi,tetra=TETRA_DEFAULT):
 
 def nonabelian_general(data,Efermi,quantities,subscripts=None,mode='fermi-surface',factor=1,parameters={},tetra=TETRA_DEFAULT):
     E_K=data.E_K
+    print ("nonabelian_general , tetra={}".format(tetra))
     __parameters=defaultdict(lambda : {}, parameters)
     if Efermi.shape[0]==1:
         raise ValueError("cannot evaluate transport properties for a single Fermi level. please provide a grid of EF (better a dense one)")
@@ -277,7 +278,16 @@ def nonabelian_general(data,Efermi,quantities,subscripts=None,mode='fermi-surfac
     res=np.zeros(  (len(Efermi),)+(3,)*len(right)  )
 
     if tetra:
-        pass
+        if mode == 'fermi-surface':
+            weights=data.tetraWeights.weights_allbands(Efermi,der=1)
+            for ik in range(data.NKFFT_tot):
+                for ib,ibrange in  enumerate(data.degen[ik]):
+                    if all([ibr in weights[ik] for ibr in range(*ibrange) ]):
+                        weight=sum( weights[ik][ibr] for ibr in range(*ibrange) )/(ibrange[1]-ibrange[0])
+                        me=np.einsum(einline,*(m[ik][ib] for m in M)).real
+                        res+=np.einsum('e,...->e...',weight,me)
+        else:
+            raise NotImplementedError("with tetrahedra only the fermi-surface is implemented so far")
     else:
         if mode=='fermi-surface':
           for ik in range(data.NKFFT_tot):
@@ -299,7 +309,7 @@ def nonabelian_general(data,Efermi,quantities,subscripts=None,mode='fermi-surfac
           raise ValueError('unknown mode in non-abelian: <{}>'.format(mode))
     res*=(factor/(data.NKFFT_tot*data.cell_volume))
 #    print ("res=",res.sum(axis=0))
-#    print ("data.cell_volume",data.cell_volume)
+#    `ODprint ("data.cell_volume",data.cell_volume)
     return result.EnergyResult(Efermi,res,TRodd=odd_prod_TR(quantities),Iodd=odd_prod_INV(quantities))
 
 

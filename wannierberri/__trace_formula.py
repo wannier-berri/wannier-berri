@@ -114,7 +114,7 @@ class TraceFormula():
 
     def group_terms(self):
 #        print ("grouping {} terms".format(len(self)))
-        for i,a in enumerate(self.trace_list):
+        for i,a in enumerate(self.term_list):
             if len(a)>2:
                 for j in range(len(self)-1,i,-1): 
                     b=self.term_list[j]

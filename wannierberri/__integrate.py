@@ -144,6 +144,13 @@ for calc in calculators_trans:
              'use tetrahedron method for integration ')
 
 
+for calc in calculators_trans:
+    if calc.endswith('_fsurf'):
+        key='tetra'
+        additional_parameters[calc][key] = False
+        additional_parameters_description[calc][key] = (
+             'use tetrahedron method for integration ')
+
 
 additional_parameters['Faraday']['homega'] = 0.0
 additional_parameters_description['Faraday']['homega'] = "frequency of light in eV (one frequency per calculation)"
