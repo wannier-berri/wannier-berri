@@ -9,11 +9,13 @@
 #------------------------------------------------------------#
 
 from collections import defaultdict
+import lazy_property
 
 
 import functools
 import numpy as np
-from numba import njit,jit
+from numba import njit
+from copy import copy
 
 ## TODO : optimize to process many tetrahedra in one shot
 
@@ -137,8 +139,23 @@ class TetraWeights():
         self.eFermi=None
 
 
-    def __get_bands_in_range(self,emin,emax,op,ed):
-        return [np.where((self.Emax[ik]>=emin)*(self.Emin[ik]<=emax))[0] for ik in range(op,ed)]
+    @lazy_property.LazyProperty
+    def bands_in_range(self):
+        emin=self.eFermi[0]
+        emax=self.eFermi[-1]
+        return [list(np.where((Emax>=emin)*(Emin<=emax))[0]) for Emin,Emax in zip(self.Emin,self.Emax)]
+
+    @property
+    def bands_below_range(self):
+        emin=self.eFermi[0]
+        emax=self.eFermi[-1]
+        res=[np.where(Emax<emin)[0] for Emax in self.Emax]
+        return [[a.max()] if len(a)>0 else [] for a in res]
+
+    @lazy_property.LazyProperty
+    def bands_in_range_sea(self):
+        return [a+b for a,b in zip(self.bands_below_range,self.bands_in_range) ]
+
 
     def __weight_1b(self,ik,ib,der):
 #        print (ib,ik,der)
@@ -153,8 +170,7 @@ class TetraWeights():
             self.eFermi=eFermi
         else :
             assert self.eFermi is eFermi
-
-        bands_in_range=self.__get_bands_in_range(eFermi[0],eFermi[-1],op,ed)
+        bands_in_range=(self.bands_in_range if der>0 else self.bands_in_range_sea)[op:ed]
         return [{ib:self.__weight_1b(op+ik,ib,der)  for ib in ibrg } for ik,ibrg in enumerate(bands_in_range)]
 
 
