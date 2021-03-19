@@ -337,7 +337,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def E_K_corners(self):
         dK2=self.Kpoint.dK_fullBZ/2
-        print ("dK/2={}".format(dK2))
+#        print ("dK/2={}".format(dK2))
         expdK=np.exp(2j*np.pi*self.iRvec*dK2[None,:])
         expdK=np.array([1./expdK,expdK])
         Ecorners=np.zeros((self.nk_selected,2,2,2,self.nb_selected),dtype=float)
@@ -357,8 +357,24 @@ class Data_K(System):
         return TetraWeights(self.E_K,self.E_K_corners)
 
     def get_bands_in_range(self,emin,emax,op=0,ed=None):
+        if ed is None: ed=self.NKFFT_tot
         select = [ np.where((self.E_K[ik]>=emin)*(self.E_K[ik]<=emax))[0] for ik in range(op,ed) ]
         return  [ {ib:self.E_K[ik+op,ib]  for ib in sel } for ik,sel in enumerate(select) ]
+
+    def get_bands_below_range(self,emin,emax,op=0,ed=None):
+        if ed is None: ed=self.NKFFT_tot
+        res=[np.where((self.E_K[ik]<emin))[0] for ik in range(op,ed)]
+        return [{a.max():self.E_K[ik+op,a.max()]} if len(a)>0 else [] for ik,a in enumerate(res)]
+
+    def get_bands_in_range_sea(self,emin,emax,op=0,ed=None):
+        if ed is None: ed=self.NKFFT_tot
+        res=self.get_bands_in_range(emin,emax,op,ed)
+        for ik in range(op,ed):
+           add=np.where((self.E_K[ik]<emin))[0]
+#           print ("add : ",add," / ",self.E_K[ik])
+           if len(add)>0:
+               res[ik-op][add.max()]=self.E_K[ik,add.max()]
+        return res
 
 
     @lazy_property.LazyProperty

@@ -85,9 +85,15 @@ class  FermiOcean():
         self.nk=ed-op
         # get a list [{ib:W} for ik in op:ed]  
         if self.tetra:
-            self.weights=data_K.tetraWeights.weights_allbands(Efermi,der=0)   # here W is array of shape Efermi
+            self.weights=data_K.tetraWeights.weights_allbands(Efermi,op=op,ed=ed,der=0)   # here W is array of shape Efermi
+#            print ("in range",data_K.tetraWeights.bands_in_range[op:ed])
+#            print ("below range",data_K.tetraWeights.bands_below_range[op:ed])
         else:
-            self.weights=data_K.get_bands_in_range(Emin,Emax,op,ed) # here W is energy
+            self.weights=data_K.get_bands_in_range_sea(Emin,Emax,op,ed) # here W is energy
+
+#       print (self.weights)
+#        for ik,w in enumerate(self.weights):
+#            print ("bands [{}/{}] [{}]  ".format(ik,self.nk,tetra)+ "  ".join("{}:{}".format(ib,data_K.E_K[ik+op,ib]) for ib in w ) )
 
         self.__evaluate_traces(formula,[list(sorted(w.keys())) for w in self.weights], ndim, dtype)
 
@@ -129,8 +135,9 @@ class  FermiOcean():
                 if len(ABC[2]) == 0:
                     raise ValueError("with 'nl' for A at least one B matrix shopuld be provided")
                 for ik,bnd in enumerate(bands):
-                    if self.tetra and bnd[0]>0:
-                        bnd=[bnd[-1]]+list(bnd)
+                    if self.tetra:
+                        if bnd[0]>0:
+                            bnd=[bnd[-1]]+list(bnd)
                     for n in bnd :
                         a = A[ik, :n + 1, n + 1:]
                         bc = 0
@@ -174,14 +181,14 @@ class  FermiOcean():
                     ib0=ibndsrt[0]
                     ibm=ibndsrt[-1]
                     if ib0>0:
-                        resk+=np.einsum("e,...->e...",values[ib0-1],1.-weights[ib0])
-                    resk+=np.einsum("e,...->e...",values[ibm],weights[ibm])
-                    for ib in sorted(ibsrt[:-1]):
-                        resk+=np.einsum("e,...->e...",values[ib],weights[ib+1]-weight[ib])
+                        resk+=np.einsum( "e,...->e...",1.-weights[ib0],values[ib0-1] )
+                    resk+=np.einsum( "e,...->e...",weights[ibm],values[ibm])
+                    for ib in sorted(ibndsrt[:-1]):
+                        resk+=np.einsum( "e,...->e...",weights[ib+1]-weights[ib],values[ib] )
             else:
                 resk = np.zeros(self.Efermi.shape + self.shape, self.dtype)
                 for ib in sorted(weights):
-                    resk[Efermi >= weights[ib]] = self.values[ik][ib]
+                    resk[self.Efermi >= weights[ib]] = self.values[ik][ib]
             result += resk
         return result
 
