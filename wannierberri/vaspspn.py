@@ -46,7 +46,7 @@ def main():
   import sys
   argv=sys.argv
   writeTXT=False
-  from scipy.io import FortranFile
+  from .__utility import FortranFileR, FortranFileW
   import numpy as np
   import datetime
 
@@ -94,7 +94,7 @@ def main():
   
   print ("WAVECAR contains {0} k-points and {1} bands.\n Writing {2} bands in the output starting from".format(NK,NBin,NBout))
   
-  SPN=FortranFile(fout, 'w')
+  SPN=FortranFileW(fout)
   header="Created from wavecar at {0}".format(datetime.datetime.now().isoformat())
   header=header[:60]
   header+=" "*(60-len(header))

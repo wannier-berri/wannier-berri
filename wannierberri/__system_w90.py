@@ -13,7 +13,6 @@
 #------------------------------------------------------------#
 
 import numpy as np
-from scipy.io import FortranFile 
 import copy
 import lazy_property
 import functools
