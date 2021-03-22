@@ -372,18 +372,11 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         return result.EnergyResult([Efermi,omega], sigma_shift, TRodd=False, Iodd=False, rank=rank)
 
 
-def opt_SHCqiao(data, Efermi, omega=0, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
-                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, shc_alpha=1, shc_beta=2, shc_gamma=3, shc_specification=False):
-    return opt_conductivity(data, Efermi, omega, kBT, smr_fixed_width, smr_type, adpt_smr,
-                adpt_smr_fac, adpt_smr_max, adpt_smr_min, shc_alpha, shc_beta, shc_gamma, shc_specification,
-                conductivity_type='SHC', SHC_type='qiao')
+def opt_SHCqiao(data, Efermi, omega=0, **parameters):
+    return opt_conductivity(data, Efermi, omega, conductivity_type='SHC', SHC_type='qiao', **parameters )
 
-def opt_SHCryoo(data, Efermi, omega=0,  kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
-                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, shc_alpha=1, shc_beta=2, shc_gamma=3, shc_specification=False):
-    return opt_conductivity(data, Efermi, omega, kBT, smr_fixed_width, smr_type, adpt_smr,
-                adpt_smr_fac, adpt_smr_max, adpt_smr_min, shc_alpha, shc_beta, shc_gamma, shc_specification,
-                conductivity_type='SHC', SHC_type='ryoo')
-
+def opt_SHCryoo(data, Efermi, omega=0,  **parameters):
+    return opt_conductivity(data, Efermi, omega, conductivity_type='SHC', SHC_type='ryoo', **parameters )
 
 def tildeD(data, Efermi, omega=0,  **parameters ):
     return opt_conductivity(data, Efermi, omega,   conductivity_type='tildeD', **parameters )
