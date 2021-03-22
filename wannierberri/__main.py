@@ -21,7 +21,6 @@ from . import __tabulate
 from . import symmetry
 from .__path import Path
 import numpy as np
-from scipy.io import FortranFile
 from .__version import __version__
 from .__result import NoComponentError
 from collections import Iterable
@@ -221,7 +220,7 @@ def tabulate(system,grid, quantities=[],
     if mode=='3D':
         res=res.to_grid(grid.dense)
         t2=time()
-        ttxt,twrite=write_frmsf(frmsf_name,EF0,numproc,quantities,res)
+        ttxt,twrite=write_frmsf(frmsf_name,Ef0,numproc,quantities,res)
 
     t4=time()
 
@@ -237,7 +236,7 @@ def tabulate(system,grid, quantities=[],
 
 
 
-def write_frmsf(frmsf_name):
+def write_frmsf(frmsf_name,Ef0,numproc,quantities,res):
     if frmsf_name is not None:
         open("{0}_E.frmsf".format(frmsf_name),"w").write(
              res.fermiSurfer(quantity=None,efermi=Ef0,npar=numproc) )

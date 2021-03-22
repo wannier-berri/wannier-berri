@@ -102,6 +102,7 @@ calculators_opt={
     'opt_SHCryoo' : kubo.opt_SHCryoo,
     'opt_SHCqiao' : kubo.opt_SHCqiao,
     'tildeD'     : kubo.tildeD,
+    'opt_shiftcurrent' : kubo.opt_shiftcurrent
 }
 
 parameters_optical={
@@ -115,7 +116,9 @@ parameters_optical={
 'shc_alpha'       :  ( 0    ,  "direction of spin current (1, 2, 3)"),
 'shc_beta'        :  ( 0    ,  "direction of applied electric field (1, 2, 3)"),
 'shc_gamma'       :  ( 0    ,  "direction of spin polarization (1, 2, 3)"),
-'shc_specification' : ( False , "calculate all 27 components of SHC if false")}
+'shc_specification' : ( False , "calculate all 27 components of SHC if false"),
+'sc_eta'          :  ( 0.04    ,  "broadening parameter for shiftcurrent calculation, units of eV")
+}
 
 
 
@@ -124,6 +127,15 @@ for key,val in parameters_optical.items():
         additional_parameters[calc][key] = val[0]
         additional_parameters_description[calc][key] = val[1]
 
+key='kpart'
+for calc in calculators_trans:
+    if calc.endswith('_ocean'):
+        additional_parameters[calc][key] = 500
+        additional_parameters_description[calc][key] = (
+             'Separate k-points of the FFT grid into portions ' + 
+             '(analog of ksep in the system class, but acts in different calculators)'  +
+             'decreasing this parameter helps to save memory in some cases' +
+                'while performance is usually unafected' )
 
 additional_parameters['Faraday']['homega'] = 0.0
 additional_parameters_description['Faraday']['homega'] = "frequency of light in eV (one frequency per calculation)"
@@ -154,6 +166,7 @@ descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
 descriptions['Faraday'] = "Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
 descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in hbar/e S/cm (PRB RPS19)"
 descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in hbar/e S/cm (PRB QZYZ18)"
+descriptions['opt_shiftcurrent'] = "Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
 
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors

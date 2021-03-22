@@ -12,7 +12,6 @@
 #------------------------------------------------------------
 
 import numpy as np
-from scipy.io import FortranFile as FF
 import copy
 import lazy_property
 from collections import Iterable
