@@ -13,10 +13,12 @@
 """
 wannierberri - a module for Wannier interpolation
 """
+
+__version__ = "0.9.1.0"
+
 from .__main import integrate,tabulate,symmetry,integrate_options,tabulate_options,welcome,print_options
 from .__tabulate import TABresult
 from .__grid import Grid
-from .__version import __version__
 from .__system import System
 from .__system_w90 import System_w90
 from .__system_tb  import System_tb
