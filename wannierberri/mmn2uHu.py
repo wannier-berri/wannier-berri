@@ -57,75 +57,38 @@ from .__utility import FortranFileR, FortranFileW
 
 
 def hlp():
-    from termcolor import cprint 
+    from termcolor import cprint
     cprint ("mmn2uHu  (utility)",'green', attrs=['bold'])
     print (__doc__)
 
 
-def main():
-  hlp()
-  from sys import argv
+def run_mmn2uHu(PREFIX, **kwargs):
+  # Parse input arguments
+  writeAMN = kwargs.get("writeAMN", True)
+  writeMMN = kwargs.get("writeMMN", True)
+  writeUHU = kwargs.get("writeUHU", True)
+  writeEIG = kwargs.get("writeEIG", True)
+  writeUIU = kwargs.get("writeUIU", False)
+  writeSPN = kwargs.get("writeSPN", False)
+  writeSHU = kwargs.get("writeSHU", False)
+  writeSIU = kwargs.get("writeSIU", False)
 
-  if len(argv)<2 or argv[1]=="-h": exit()
-    
-    
-  writeAMN=True
-  writeMMN=True
-  writeUHU=True
-  writeEIG=True
-  writeUIU=False
-  writeSPN=False
-  writeSHU=False
-  writeSIU=False
+  uHu_formatted     = kwargs.get("uHu_formatted",     False)
+  uIu_formatted     = kwargs.get("uIu_formatted",     False)
+  sHu_formatted     = kwargs.get("sHu_formatted",     False)
+  sIu_formatted     = kwargs.get("sIu_formatted",     False)
+  spn_formatted_out = kwargs.get("spn_formatted_out", False)
+  spn_formatted_in  = kwargs.get("spn_formatted_in",  False)
 
-  uHu_formatted     = False
-  uIu_formatted     = False
-  sHu_formatted     = False
-  sIu_formatted     = False
-  spn_formatted_out = False
-  spn_formatted_in  = False
+  NB_out_list = kwargs.get("NB_out_list", [None])
+  NB_sum_list = kwargs.get("NB_sum_list", [None])
+  INPUTDIR = kwargs.get("INPUTDIR", "./")
+  OUTDIR = kwargs.get("OUTDIR", "reduced")
 
-  PREFIX=argv[1]
+  IBstart = kwargs.get("IBstart", 0)
+  IBstartSum = kwargs.get("IBstartSum", 0)
 
-  NB_out_list=[None]
-  NB_sum_list=[None]
-  INPUTDIR="./"
-  OUTDIR="reduced"
-
-
-  IBstart=0
-  IBstartSum=0
-
-
-  for arg in argv[2:]:
-    arg=arg.split("=")
-    if arg[0]=="NBout": NB_out_list=[int(s) for s in arg[1].split(',')]
-    if arg[0]=="NBsum": NB_sum_list=[int(s) for s in arg[1].split(',')]
-    if arg[0]=="IBstart"    : IBstart=int(arg[1])-1
-    if arg[0]=="IBstartSum" : IBstartSum=int(arg[1])-1
-    if arg[0]=="input": INPUTDIR=arg[1]
-    if arg[0]=="output": OUTDIR=arg[1]
-    if arg[0]=="targets":
-        tarlist=arg[1].split(",")
-        writeAMN="amn" in tarlist
-        writeEIG="eig" in tarlist
-        writeMMN="mmn" in tarlist
-        writeUHU="uHu" in tarlist
-        writeUIU="uIu" in tarlist
-        writeSPN="spn" in tarlist
-        writeSHU="sHu" in tarlist
-        writeSIU="sIu" in tarlist
-    if arg[0]=="formatted":
-        tarlist=arg[1].split(",")
-        uHu_formatted     =any(x in tarlist for x in ("uHu","all"))
-        uIu_formatted     =any(x in tarlist for x in ("uIu","all"))
-        sHu_formatted     =any(x in tarlist for x in ("sHu","all"))
-        sIu_formatted     =any(x in tarlist for x in ("sIu","all"))
-        spn_formatted_out=any(x in tarlist for x in ("spn","spn_out","all"))
-        spn_formatted_in =any(x in tarlist for x in ("spn","spn_in","all"))
-
-
-
+  # Begin calculation
 
   AMNrd=False
   MMNrd=False
@@ -159,8 +122,10 @@ def main():
 
   print ("----------\n MMN  read - OK\n---------\n")
 
+  if NB_out_list == [None]:
+    NB_out_list = [NB_in]
+
   for NB_out in NB_out_list:
-    if NB_out==None: NB_out=NB_in
     RESDIR="{0}_NB={1}".format(OUTDIR,NB_out)
     try:
         os.mkdir(RESDIR)
@@ -176,7 +141,7 @@ def main():
             print ("k-point {} of {}".format(ik,NK))
             for ib in range(NNB):
                 f_mmn_out.write(MMNheadstrings[ik][ib])
-                for m in range(NB_out): 
+                for m in range(NB_out):
                     for n in range(NB_out):
                         f_mmn_out.write( "  {0:16.12f}  {1:16.12f}\n".format(MMN[ik][ib][m+IBstart,n+IBstart].real,MMN[ik][ib][m+IBstart,n+IBstart].imag) )
         f_mmn_out.close()
@@ -185,7 +150,7 @@ def main():
     if not EIGrd:
         EIG=np.loadtxt(os.path.join(INPUTDIR,PREFIX+".eig"),usecols=(2,)).reshape((NK,NB_in),order='C')
         EIGrd=True
-    
+
     if writeEIG:
         feig_out=open(os.path.join(RESDIR,PREFIX+".eig"),"w")
         for ik in range(NK):
@@ -196,7 +161,7 @@ def main():
 
     print ("----------\n AMN   \n---------\n")
 
-    
+
     if writeAMN:
       if not AMNrd:
         f_amn_in=open(os.path.join(INPUTDIR,PREFIX+".amn"),"r")
@@ -211,8 +176,8 @@ def main():
         AMN=np.reshape(AMN[:,0]+AMN[:,1]*1j,(nb,npr,nk) ,order='F')
         AMNrd=True
         f_amn_in.close()
-        
-    
+
+
         f_amn_out=open(os.path.join(RESDIR,PREFIX+".amn"),"w")
         f_amn_out.write("{0}, reduced to {2} bands {1} \n".format(head_AMN,datetime.datetime.now().isoformat(),NB_out) )
         f_amn_out.write("  {0:10d}  {1:10d}  {2:10d}\n".format(NB_out,NK,npr) )
@@ -237,7 +202,7 @@ def main():
             print ("----------\n  {1}  NBsum={0} \n---------".format(NB_sum,UXU[0]))
             formatted =UXU[1]
 
-            header="{3} from mmn red to {1} sum {2} bnd {0} ".format(datetime.datetime.now().isoformat(),NB_out,NB_sum,UXU[0]) 
+            header="{3} from mmn red to {1} sum {2} bnd {0} ".format(datetime.datetime.now().isoformat(),NB_out,NB_sum,UXU[0])
             header=header[:60]
             header+=" "*(60-len(header))
             print (header)
@@ -281,7 +246,7 @@ def main():
 
 
     if writeSPN or writeSHU or writeSIU:
-        
+
         print ("----------\n SPN  \n---------\n")
 
         if spn_formatted_in:
@@ -290,13 +255,13 @@ def main():
             nbnd,NK=(int(x) for x in f_spn_in.readline().split())
         else:
             f_spn_in = FortranFileR(os.path.join(INPUTDIR,PREFIX+".spn") )
-            SPNheader=(f_spn_in.read_record(dtype='c')) 
+            SPNheader=(f_spn_in.read_record(dtype='c'))
 #            print (SPNheader)
             nbnd,NK=f_spn_in.read_record(dtype=np.int32)
             SPNheader="".join(a.decode('ascii') for a in SPNheader)
 
         print (SPNheader)
-  
+
         assert (nbnd==NB_in)
 
         indm,indn=np.tril_indices(NB_in)
@@ -348,7 +313,7 @@ def main():
             print ("----------\n  {1}  NBsum={0} \n---------".format(NB_sum,SXU[0]))
             formatted =SXU[1]
 
-            header="{3} from mmn red to {1} sum {2} bnd {0} ".format(datetime.datetime.now().isoformat(),NB_out,NB_sum,SXU[0]) 
+            header="{3} from mmn red to {1} sum {2} bnd {0} ".format(datetime.datetime.now().isoformat(),NB_out,NB_sum,SXU[0])
             header=header[:60]
             header+=" "*(60-len(header))
             print (header)
@@ -388,6 +353,46 @@ def main():
             print ("----------\n {0} OK  \n---------\n".format(SXU[0]))
             f_sXu_out.close()
 
+  return NB_out_list
+
+def main():
+    hlp()
+    from sys import argv
+
+    if len(argv)<2 or argv[1]=="-h": exit()
+
+    PREFIX = argv[1]
+
+    kwargs = {}
+
+    for arg in argv[2:]:
+        arg = arg.split("=")
+        if arg[0]=="NBout": kwargs["NB_out_list"] = [int(s) for s in arg[1].split(',')]
+        if arg[0]=="NBsum": kwargs["NB_sum_list"] = [int(s) for s in arg[1].split(',')]
+        if arg[0]=="IBstart"    : kwargs["IBstart"] = int(arg[1])-1
+        if arg[0]=="IBstartSum" : kwargs["IBstartSum"] = int(arg[1])-1
+        if arg[0]=="input": kwargs["INPUTDIR"] = arg[1]
+        if arg[0]=="output": kwargs["OUTDIR"] = arg[1]
+        if arg[0]=="targets":
+            tarlist = arg[1].split(",")
+            kwargs["writeAMN"] = "amn" in tarlist
+            kwargs["writeEIG"] = "eig" in tarlist
+            kwargs["writeMMN"] = "mmn" in tarlist
+            kwargs["writeUHU"] = "uHu" in tarlist
+            kwargs["writeUIU"] = "uIu" in tarlist
+            kwargs["writeSPN"] = "spn" in tarlist
+            kwargs["writeSHU"] = "sHu" in tarlist
+            kwargs["writeSIU"] = "sIu" in tarlist
+        if arg[0]=="formatted":
+            tarlist = arg[1].split(",")
+            kwargs["uHu_formatted"]     = any(x in tarlist for x in ("uHu","all"))
+            kwargs["uIu_formatted"]     = any(x in tarlist for x in ("uIu","all"))
+            kwargs["sHu_formatted"]     = any(x in tarlist for x in ("sHu","all"))
+            kwargs["sIu_formatted"]     = any(x in tarlist for x in ("sIu","all"))
+            kwargs["spn_formatted_out"] = any(x in tarlist for x in ("spn","spn_out","all"))
+            kwargs["spn_formatted_in"]  = any(x in tarlist for x in ("spn","spn_in","all"))
+
+    run_mmn2uHu(PREFIX, **kwargs)
 
 if __name__ == "__main__":
     main()

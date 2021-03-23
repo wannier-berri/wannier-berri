@@ -14,6 +14,7 @@
 
 
 import functools 
+from wannierberri import __version__
 from .__evaluate import evaluate_K
 from .__utility import getSmoother 
 from . import __integrate 
@@ -21,7 +22,6 @@ from . import __tabulate
 from . import symmetry
 from .__path import Path
 import numpy as np
-from .__version import __version__
 from .__result import NoComponentError
 from collections import Iterable
 integrate_options=__integrate.calculators.keys()

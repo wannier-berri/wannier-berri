@@ -133,7 +133,7 @@ class Rotation(Symmetry):
         if norm<1e-10:
             raise ValueError("the axis vector is too small : {0}. do you know what you are doing?".format(norm))
         axis=np.array(axis)/norm
-        if pversion.parse(scipy.__version__)<pversion.parse("1.6.0"):
+        if pversion.parse(scipy.__version__)<pversion.parse("1.4.0"):
             R=rotmat.from_rotvec(2*np.pi/n*axis/np.linalg.norm(axis)).as_dcm()
         else:
             R=rotmat.from_rotvec(2*np.pi/n*axis/np.linalg.norm(axis)).as_matrix()
