@@ -1,7 +1,10 @@
 =========
 Wannier Berri
 =========
-(a.k.a. Wannier19)
+
+.. image:: https://codecov.io/gh/stepan-tsirkin/wannier-berri/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/stepan-tsirkin/wannier-berri
+
 
 A code for highly efficient Wannier interpolation. 
 ----------------------------------------------------------
