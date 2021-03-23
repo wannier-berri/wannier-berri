@@ -311,7 +311,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             elif conductivity_type == 'SHC':
                 delta_minus = delta
                 delta_plus  = delta.transpose( (0,2,1) )
-                cfac2 = delta_minus - delta_plus
+                cfac2 = delta_plus - delta_minus
                 cfac1 = np.real(-dE[np.newaxis,:,:]/(dE[np.newaxis,:,:]**2-(omega[:,np.newaxis,np.newaxis]+1j*eta)**2))
                 temp1 = dfE[np.newaxis,:,:]*cfac1
                 temp2 = dfE[np.newaxis,:,:]*cfac2
