@@ -6,11 +6,8 @@ with open("README.rst", "r") as fh:
     long_description = fh.read()
 
 
-from wannierberri import __version__ as version
-
 setuptools.setup(
      name='wannierberri',  
-     version=version,
      author="Stepan S. Tsirkin",
      author_email="stepan.tsirkin@uzh.ch",
      description="Advanced tool for Wannier interpolation",

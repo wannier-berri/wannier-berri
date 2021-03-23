@@ -1,0 +1,31 @@
+ &control
+    calculation  = 'scf'
+    restart_mode = 'from_scratch'
+    pseudo_dir   = '.'
+    outdir       = './temp'
+    prefix       = 'Fe'
+ /
+ &system
+    ibrav        = 3
+    celldm(1)    = 5.4235
+    nat          = 1
+    ntyp         = 1
+    ecutwfc      = 120.d0
+    ecutrho      = 600.d0
+    lspinorb     = .true.
+    noncolin     = .true.
+    starting_magnetization(1) = -1.d0
+    occupations  = 'smearing'
+    smearing     = 'm-v'
+    degauss      = 0.02
+ /
+ &electrons
+    startingpot  = 'file'
+    conv_thr     = 1.0e-15
+ /
+ATOMIC_SPECIES
+ Fe 55.85 Fe.dojo.fr.ONCVv0.4.pbe.standard.upf
+ATOMIC_POSITIONS alat
+ Fe 0.0 0.0 0.0
+K_POINTS (automatic)
+16 16 16 0 0 0
