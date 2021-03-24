@@ -23,7 +23,7 @@ After running tests, many files are created.
 These output files should be listed in the ``tests/.gitignore`` file.
 
 These ignored files can be deleted by ``git clean -Xd -f``.
-Be careful because it will delete all ignored files, which are not related to tests.
+Be careful because it will delete all ignored files, including those not related to tests.
 Interactive cleaning can be used by ``git clean -Xd -i``.
 
 How to write a new test
