@@ -111,8 +111,8 @@ class  FermiOcean():
                 if len(ibndsrt)>0:
                     ib0=ibndsrt[0]
                     ibm=ibndsrt[-1]
-                    print ("ibndsrt = {}".format(ibndsrt))
-                    print ("values = {} ".format([values[ib] for ib in ibndsrt[:-1] ]) )
+#                    print ("ibndsrt = {}".format(ibndsrt))
+#                    print ("values = {} ".format([values[ib] for ib in ibndsrt[:-1] ]) )
                     if ib0>0:
                         resk+=np.einsum( "e,...->e...",1.-weights[ib0],values[ib0-1] )
                     resk+=np.einsum( "e,...->e...",weights[ibm],values[ibm])
