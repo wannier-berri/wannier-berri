@@ -133,11 +133,11 @@ class  FermiOcean():
         #            print(Aind,BC[0],BC[1].sum(),A.sum())
                 Ashape = A.shape[3:]
                 if len(ABC[2]) == 0:
-                    raise ValueError("with 'nl' for A at least one B matrix shopuld be provided")
+                    raise ValueError("with 'nl' for A at least one B matrix should be provided")
                 for ik,bnd in enumerate(bands):
                     if self.tetra:
                         if bnd[0]>0:
-                            bnd=[bnd[-1]]+list(bnd)
+                            bnd=[bnd[0]-1]+list(bnd)
                     for n in bnd :
                         a = A[ik, :n + 1, n + 1:]
                         bc = 0
