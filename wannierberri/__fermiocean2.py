@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import constants
 from collections import defaultdict
-from .__utility import  warning
+from .__utility import  warning, TAU_UNIT
 from .__tetrahedron import weights_parallelepiped  as weights_tetra  
 from . import __result as result
 from . import __formulak as frml
@@ -28,6 +28,12 @@ def berry_dipole(data_K,Efermi,kpart=None,tetra=False):
 def Omega_tot(data_K,Efermi,kpart=None,tetra=False):
     return iterate_kpart(frml.Omega,data_K,Efermi,kpart,tetra)
 
+factor_ohmic=(elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
+                 *elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
+                   * 1e-2  ) # now in  S/(cm*tau_unit)
+
+def ohmic(data_K,Efermi,kpart=None,tetra=False):
+    return iterate_kpart(frml.InverseMass,data_K,Efermi,kpart,tetra)*factor_ohmic
 
 ##################################
 ### The private part goes here  ##
@@ -111,7 +117,7 @@ class  FermiOcean():
                         resk+=np.einsum( "e,...->e...",1.-weights[ib0],values[ib0-1] )
                     resk+=np.einsum( "e,...->e...",weights[ibm],values[ibm])
                     for ib in ibndsrt[:-1]:
-                        resk+=np.einsum( "e,...->e...",-weights[ib+1]+weights[ib],values[ib] )
+                        resk+=np.einsum( "e,...->e...",weights[ib]-weights[ib+1],values[ib] )
             else:
                 resk = np.zeros(self.Efermi.shape + self.shape )
                 for ib in sorted(weights):

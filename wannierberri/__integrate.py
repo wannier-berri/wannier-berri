@@ -68,6 +68,7 @@ calculators_trans={
 
          'conductivity_ohmic_fsurf': nonabelian.conductivity_ohmic,
          'conductivity_ohmic'      : fermisea2.conductivity_ohmic,
+         'conductivity_ohmic2_ocean': fermiocean2.ohmic,
 
          'berry_dipole'            : fermisea2.tensor_D,
          'berry_dipole_ocean'      : fermiocean.berry_dipole,
@@ -89,7 +90,7 @@ additional_parameters=defaultdict(lambda: defaultdict(lambda:None )   )
 additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no description" )   )
 
 
-# a dictionary conaining 'optical' quantities , i.e. those which are tensors 
+# a dictionary containing 'optical' quantities , i.e. those which are tensors 
 #   depending on the Fermi level  AND on the frequency
 #   <quantity> : <function> , ... 
 # <quantity>   - name of the quantity to calculate (the same will be used in the call of 'integrate' function

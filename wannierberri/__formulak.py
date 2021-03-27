@@ -16,6 +16,21 @@ def Identity(data_K,op,ed):
         return formula
 
 
+
+def InverseMass(data_K,op,ed):
+        "inverse effective mass"
+        # first give our matrices short names
+        d2E = data_K.del2E_H[op:ed]
+        D   = data_K.D_H[op:ed]
+        V   = data_K.V_H[op:ed]
+        # This is the formula to be implemented:
+        formula =  Formula ( TRodd=False,Iodd=False,ndim=2 )
+        formula.add_term ( 'mn'   ,  d2E                           ,  1. )
+        formula.add_term ( 'mL,Ln',(V[:,:,:,:,None], D[:,:,:,None,:] ) ,  1. )
+        formula.add_term ( 'mL,Ln',(D[:,:,:,:,None], V[:,:,:,None,:] ) , -1. )
+        return formula
+
+
 def Omega(data_K,op=None,ed=None):
         "an attempt for a faster implementation"
         # first give our matrices short names

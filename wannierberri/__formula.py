@@ -60,6 +60,8 @@ class MatrixProductTerm():
     def __init__(self,ind_string ,mat_list,ndim,mult):
         self.ndim=ndim
         self.mult=mult
+        if type(mat_list) not in (list,tuple):
+            mat_list=(mat_list,)
 
         line=ind_string.replace(' ','')  # remove spaces if appear
         line=line.replace('.',',') # allow to use dot instead of comma
@@ -68,7 +70,7 @@ class MatrixProductTerm():
         allowed_symbols=INDICES+",. "
         forbidden_symbols=set(line)-set(allowed_symbols) # everything that is not allowed is forbidden
         if len(forbidden_symbols) > 0 :
-            raise FormulaIndicesError(ind_string,'any',"Unrecognized symbols ( {} ) ".format(
+            raise FormulaIndicesError(ind_string,"Unrecognized symbols ( {} ) ".format(
                         " , ".join("'{}'".format(s) for s in forbidden_symbols) )  )
 
         terms=line.split(',')
@@ -81,7 +83,7 @@ class MatrixProductTerm():
         if len(terms)==0: 
             raise FormulaIndicesError(ind_string,"does not contain any terms")
         if len(terms)!=len(mat_list) :
-            raise FormulaIndicesError(ind_string,"number of terms in the string {} is not equal to number of matrices supplied {}".format(len(line),len(mat_list)))
+            raise FormulaIndicesError(ind_string,"number of terms in the string {} is not equal to number of matrices supplied {}".format(len(terms),len(mat_list)))
         for ind1,ind2 in zip(terms,terms[1:]):
             if ind1[-1]!=ind2[0]:
                 raise FormulaIndicesError(ind_string,"matching indices {} and {} are different".format(ind1,ind2))
@@ -91,12 +93,12 @@ class MatrixProductTerm():
         for term,mat in zip(terms,mat_list):
             assert isinstance(mat,np.ndarray) , "inputs should be arrays"
             if len(term)>2 : 
-                raise FormulaIndicesError(ind_string,'any',"more then two indices in '{}' ".format(term))
+                raise FormulaIndicesError(ind_string,"more then two indices in '{}' ".format(term))
             assert mat.ndim==self.ndim+1+len(term) ,  ( 
                           "shape of matrix {} does not correspond to index '{}' and dimension of the result {}".format(
                                mat.shape,term,self.ndim)  )
             if len(term)==2:
-                if term[0]==tern[1]:
+                if term[0]==term[1]:
                     mat=mat[:,np.arange(mat.shape[1]),np.arange(mat.shape[1])]
             self.mat_list.append(mat)
             self.ind_list.append(term)
@@ -119,14 +121,15 @@ class MatrixProductTerm():
         for ind,m in zip(self.ind_list,self.mat_list):
             m1=m[ik][get_index(ind[0])]
             if len(ind)==2 :
-                m1=m1[get_index(inf[1])]
+#                print("ind = '{}', shape of m1 : {}".format(ind,m1.shape))
+                m1=m1[:,get_index(ind[1])]
             mat_list.append(m1)
             ind_list.append(ind)
         while len(mat_list)>1:
             ind1=ind_list[-2]
             ind2=ind_list[-1]
             ind_new=ind1[:-1]+ind2[1:]
-            mat_list_new[-2] = np.einsum(ind1+'...,'+ind2+'...->'+ind_new+'...', mat_list_new[-2],mat_list_new[-1],optimize=True)
+            mat_list[-2] = np.einsum(ind1+'...,'+ind2+'...->'+ind_new+'...', mat_list[-2],mat_list[-1],optimize=True)
             del mat_list[-1]
             del ind_list[-1]
             ind_list[-1]=ind_new
