@@ -6,13 +6,13 @@ from .__formula import Formula
 
 # Here we write some functions, that take a argument Data_K object, op and ed, and return a Formula
 
-def Identity(self,data_K,op,ed):
+def Identity(data_K,op,ed):
         "an identity operator (to compute DOS)"
         # first give our matrices short names
         NB= data_K.nbands
         # This is the formula to be implemented:
         formula =  Formula ( TRodd=False,Iodd=False,ndim=0 )
-        formula.add_term ('n', np.ones( (ed-op,NB),dtype=float ) )
+        formula.add_term ('n', (np.ones( (ed-op,NB),dtype=float ) ,) )
         return formula
 
 
@@ -31,9 +31,9 @@ def Omega(data_K,op=None,ed=None):
         # This is the formula to be implemented:
         formula =  Formula ( ndim=1,TRodd=True,Iodd=False)
         formula.add_term( 'mn', (O, ) )
-        formula.add_term( 'mL,Ln',(D_['alpha'], D_['beta' ] ) -2j )
-        formula.add_term( 'mL,Ln',(D_['alpha'], A_['beta' ] ), -2 )
-        formula.add_term( 'mL,Ln',(D_['beta' ], A_['alpha'] )   2 )
+        formula.add_term( 'mL,Ln',(D_['alpha'], D_['beta' ] ) ,-2j )
+        formula.add_term( 'mL,Ln',(D_['alpha'], A_['beta' ] ) , -2 )
+        formula.add_term( 'mL,Ln',(D_['beta' ], A_['alpha'] ) ,  2 )
         return formula
 
 def derOmega(data_K,op=None,ed=None):
