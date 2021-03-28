@@ -17,8 +17,6 @@ import numpy as np
 from numba import njit
 from copy import copy
 
-## TODO : optimize to process many tetrahedra in one shot
-
 @njit
 def weights_tetra(efall,e0,e1,e2,e3,der=0):
     e1,e2,e3,e4=sorted([e0,e1,e2,e3])
@@ -102,6 +100,23 @@ def weights_tetra(efall,e0,e1,e2,e3,der=0):
     return occ
 
 
+#@njit
+def get_borders(A,degen_thresh):
+    borders =  [0]+list(np.where( (A[1:]-A[:-1])>degen_thresh)[0]+1) + [len(A)]
+    return [[ib1,ib2] for ib1,ib2 in zip(borders,borders[1:]) ]
+
+#@njit
+def get_bands_in_range(emin,emax,Eband,degen_thresh=-1,Ebandmin=None,Ebandmax=None):
+    if Ebandmin is None:
+        Ebandmin=Eband
+    if Ebandmax is None:
+        Ebandmax=Eband
+    bands=[]
+    for ib1,ib2 in get_borders(Eband,degen_thresh):
+        if Ebandmax[ib1:ib2].max()>=emin and Ebandmax[ib1:ib2].min()<=emax:
+            bands.append( [ib1,ib2] )
+    return bands
+
 def weights_parallelepiped(efermi,Ecenter,Ecorner,der=0):
     occ=np.zeros((efermi.shape))
     Ecorner=np.reshape(Ecorner,(2,2,2))
@@ -138,6 +153,9 @@ class TetraWeights():
         self.Emax=Eall.max(axis=1)
         self.eFermi=None
 
+    @lazy_property.LazyProperty
+    def ones(self):
+        return np.ones(len(self.eFermi))
 
     @lazy_property.LazyProperty
     def bands_in_range(self):
@@ -172,6 +190,29 @@ class TetraWeights():
             assert self.eFermi is eFermi
         bands_in_range=(self.bands_in_range if der>0 else self.bands_in_range_sea)[op:ed]
         return [{ib:self.__weight_1b(op+ik,ib,der)  for ib in ibrg } for ik,ibrg in enumerate(bands_in_range)]
+
+
+    def weights_all_band_groups(self,eFermi,der,op=0,ed=None,degen_thresh=-1):
+        """
+             here  the key of the return dict is a pair of integers (ib1,ib2)
+        """
+        if ed is None: ed=self.nk
+        if self.eFermi is None:
+            self.eFermi=eFermi
+        else :
+            assert self.eFermi is eFermi
+        res=[]
+        for ik in range(op,ed):
+            bands_in_range=get_bands_in_range(self.eFermi[0],self.eFermi[-1],self.eCenter[ik],degen_thresh=degen_thresh,
+                    Ebandmin=self.Emin[ik],Ebandmax=self.Emax[ik])
+            weights= { (ib1,ib2):sum(self.__weight_1b(ik,ib,der) 
+                                          for ib in range(ib1,ib2))/(ib2-ib1) 
+                          for ib1,ib2 in bands_in_range  
+                     }
+            if der==0 and bands_in_range[0][0]>0:
+                weights[(0,bands_in_range[0][0])]=self.ones
+            res.append( weights )
+        return res
 
 
 

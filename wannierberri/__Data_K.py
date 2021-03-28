@@ -23,7 +23,7 @@ from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha
 from .__fermisea2 import DataIO, mergeDataIO
 import gc
 import os
-from .__tetrahedron import TetraWeights
+from .__tetrahedron import TetraWeights,get_bands_in_range
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -140,6 +140,12 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def degen(self):
             A=[np.where(E[1:]-E[:-1]>self.degen_thresh)[0]+1 for E in self.E_K ]
+            A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
+            return [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) ]    for a,e in zip(A,self.E_K)]
+
+
+    def degen_groups(self,ik,degen_thresh):
+            A=[np.where(E[1:]-E[:-1]>degen_thresh)[0]+1 for E in self.E_K ]
             A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
             return [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) ]    for a,e in zip(A,self.E_K)]
 
@@ -374,6 +380,23 @@ class Data_K(System):
 #           print ("add : ",add," / ",self.E_K[ik])
            if len(add)>0:
                res[ik-op][add.max()]=self.E_K[ik,add.max()]
+        return res
+
+
+     
+
+    def get_bands_in_range_groups(self,emin,emax,op=0,ed=None,degen_thresh=-1,sea=False):
+#        get_bands_in_range(emin,emax,Eband,degen_thresh=-1,Ebandmin=None,Ebandmax=None)
+        if ed is None: ed=self.NKFFT_tot
+        res=[]
+        for ik in range(op,ed):
+            bands_in_range=get_bands_in_range(emin,emax,self.E_K[ik],degen_thresh=degen_thresh)
+            weights= { (ib1,ib2):self.E_K[ik,ib1:ib2].mean() 
+                          for ib1,ib2 in bands_in_range  
+                     }
+            if sea and bands_in_range[0][0]>0:
+                weights[(0,bands_in_range[0][0])]=-np.Inf
+            res.append( weights )
         return res
 
 
@@ -996,5 +1019,4 @@ class Data_K(System):
 def merge_dataIO(data_list):
     return { key:np.stack([data[key] for key in data],axis=0) for key in  
                   set([key for data in data_list for key in data.keys()])  }
-
 
