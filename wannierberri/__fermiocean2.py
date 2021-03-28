@@ -39,10 +39,13 @@ def ohmic(data_K,Efermi,kpart=None,tetra=False):
 ### The private part goes here  ##
 ##################################
 
-def iterate_kpart(formula_fun,data_K,Efermi,kpart=None,tetra=False,dtype=float,**parameters): 
+def iterate_kpart(formula_fun,data_K,Efermi,kpart=None,tetra=False,fder=0,degen_thresh=1e-5,**parameters): 
     """ formula_fun should be callable returning a Formula object 
     with first three parameters as data_K,op,ed, and the rest
-    and the rest will be arbitrary keyword arguments."""
+    and the rest will be arbitrary keyword arguments.
+    fder derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''
+    """
+
     if kpart is None : 
         kpart=data_K.NKFFT_tot
     n=data_K.NKFFT_tot//kpart
@@ -51,14 +54,15 @@ def iterate_kpart(formula_fun,data_K,Efermi,kpart=None,tetra=False,dtype=float,*
     borders=list(range(0,data_K.NKFFT_tot,kpart))+[data_K.NKFFT_tot]
 #    print ("processing the {} FFT grid points in {} portions of {},  last portion is {}".format(
 #               data_K.NKFFT_tot,len(borders)-1,kpart,data_K.NKFFT_tot%kpart))
-    Emin,Emax=Efermi[0],Efermi[-1]
     f0=formula_fun(data_K,0,0,**parameters)  # just to get the basic properties
-    res= sum ( 
+    res= sum (
             FermiOcean( formula_fun(data_K,op,ed,**parameters),
                     data_K,op,ed,
                     Efermi,
                     ndim=f0.ndim,
-                    tetra=tetra ) ()
+                    tetra=tetra,
+                    fder=fder ,
+                    degen_thresh=degen_thresh ) ()
                    for op,ed in zip(borders,borders[1:]) 
                ) / (data_K.NKFFT_tot * data_K.cell_volume)
 
@@ -71,20 +75,20 @@ def iterate_kpart(formula_fun,data_K,Efermi,kpart=None,tetra=False,dtype=float,*
 
 class  FermiOcean():
 
-    def __init__(self , formula , data_K, op, ed, Efermi, ndim, tetra):
+    def __init__(self , formula , data_K, op, ed, Efermi, ndim, tetra,fder,degen_thresh):
 
         Emin=Efermi[ 0]
         Emax=Efermi[-1]
         self.Efermi=Efermi
+        self.fder=fder
         self.tetra=tetra
         self.nk=ed-op
-        # get a list [{ib:W} for ik in op:ed]  
+        # get a list [{(ib1,ib2):W} for ik in op:ed]  
         if self.tetra:
-            self.weights=data_K.tetraWeights.weights_allbands(Efermi,op=op,ed=ed,der=0)   # here W is array of shape Efermi
+            self.weights=data_K.tetraWeights.weights_all_band_groups(Efermi,op=op,ed=ed,der=self.fder,degen_thresh=degen_thresh)   # here W is array of shape Efermi
         else:
-            self.weights=data_K.get_bands_in_range_sea(Emin,Emax,op,ed) # here W is energy
-
-        self.__evaluate_traces(formula,[list(sorted(w.keys())) for w in self.weights], ndim)
+            self.weights=data_K.get_bands_in_range_groups(Emin,Emax,op,ed,degen_thresh=degen_thresh,sea=(self.fder==0)) # here W is energy
+        self.__evaluate_traces(formula, self.weights, ndim)
 
     def __evaluate_traces(self,formula,bands, ndim):
         """formula  - TraceFormula to evaluate 
@@ -95,11 +99,8 @@ class  FermiOcean():
         lambdadic= lambda: np.zeros(((3, ) * ndim), dtype=float)
         self.values = [defaultdict(lambdadic ) for ik in range(self.nk)]
         for ik,bnd in enumerate(bands):
-            if self.tetra:
-                if bnd[0]>0:
-                    bnd=[bnd[0]-1]+list(bnd)
             for n in bnd :
-                self.values[ik][n] = formula(ik,ib_in_start=0,ib_in_end=n+1,trace=True)
+                self.values[ik][n] = formula(ik,ib_in_start=n[0],ib_in_end=n[1],trace=True )   ## TODO  - change to trace of product of several formulae, to allow for nbonabelian stuff
 
     def __call__(self) :
         result = np.zeros(self.Efermi.shape + self.shape )
@@ -107,21 +108,15 @@ class  FermiOcean():
             resk = np.zeros(self.Efermi.shape + self.shape )
             values = self.values[ik]
             if self.tetra:
-                ibndsrt=sorted(weights.keys())
-                if len(ibndsrt)>0:
-                    ib0=ibndsrt[0]
-                    ibm=ibndsrt[-1]
-#                    print ("ibndsrt = {}".format(ibndsrt))
-#                    print ("values = {} ".format([values[ib] for ib in ibndsrt[:-1] ]) )
-                    if ib0>0:
-                        resk+=np.einsum( "e,...->e...",1.-weights[ib0],values[ib0-1] )
-                    resk+=np.einsum( "e,...->e...",weights[ibm],values[ibm])
-                    for ib in ibndsrt[:-1]:
-                        resk+=np.einsum( "e,...->e...",weights[ib]-weights[ib+1],values[ib] )
+                for n,w in weights.items():
+                    resk+=np.einsum( "e,...->e...",w,values[n] )
             else:
                 resk = np.zeros(self.Efermi.shape + self.shape )
-                for ib in sorted(weights):
-                    resk[self.Efermi >= weights[ib]] = self.values[ik][ib]
+                if self.fder==0:
+                    for n,E in weights.items():
+                        resk[self.Efermi >= E] += values[n]
+                else :
+                    raise NotImplementedError("fermi-surface properties in fermi-ocean are implemented only with tetrahedron method so far")
             result += resk
         return result
 
