@@ -22,7 +22,6 @@ def AHC(data_K,Efermi,kpart=None,tetra=False):
 def cumdos(data_K,Efermi,kpart=None,tetra=False):
     return iterate_kpart(trF.identity,data_K,Efermi,kpart,tetra)*data_K.cell_volume
 
-
 def berry_dipole(data_K,Efermi,kpart=None,tetra=False):
     return iterate_kpart(trF.derOmega,data_K,Efermi,kpart,tetra)
 

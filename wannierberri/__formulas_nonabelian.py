@@ -11,8 +11,18 @@ def Identity(data_K,op,ed):
         # first give our matrices short names
         NB= data_K.nbands
         # This is the formula to be implemented:
-        formula =  Formula ( TRodd=False,Iodd=False,ndim=0 )
+        formula =  Formula ( TRodd=False,Iodd=False,ndim=0,name='Identity' )
         formula.add_term ('n', (np.ones( (ed-op,NB),dtype=float ) ,) )
+        return formula
+
+
+def Velocity(data_K,op,ed):
+        "inverse effective mass"
+        # first give our matrices short names
+        V   = data_K.V_H[op:ed]
+        # This is the formula to be implemented:
+        formula =  Formula ( TRodd=True,Iodd=True,ndim=1,name="vbelocity" )
+        formula.add_term ( 'mn'   ,  V ,  1. )
         return formula
 
 
@@ -24,7 +34,7 @@ def InverseMass(data_K,op,ed):
         D   = data_K.D_H[op:ed]
         V   = data_K.V_H[op:ed]
         # This is the formula to be implemented:
-        formula =  Formula ( TRodd=False,Iodd=False,ndim=2 )
+        formula =  Formula ( TRodd=False,Iodd=False,ndim=2,name="Inverse Mass" )
         formula.add_term ( 'mn'   ,  d2E                           ,  1. )
         formula.add_term ( 'mL,Ln',(V[:,:,:,:,None], D[:,:,:,None,:] ) ,  1. )
         formula.add_term ( 'mL,Ln',(D[:,:,:,:,None], V[:,:,:,None,:] ) , -1. )
@@ -44,7 +54,7 @@ def Omega(data_K,op=None,ed=None):
             for c in 'alpha','beta':
                 locals()[var+"_"][c]=locals()[var][:,:,:,globals()[c+'_A']]
         # This is the formula to be implemented:
-        formula =  Formula ( ndim=1,TRodd=True,Iodd=False)
+        formula =  Formula ( ndim=1,TRodd=True,Iodd=False, name="Berry Curvature")
         formula.add_term( 'mn', (O, ) )
         formula.add_term( 'mL,Ln',(D_['alpha'], D_['beta' ] ) ,-2j )
         formula.add_term( 'mL,Ln',(D_['alpha'], A_['beta' ] ) , -2 )
@@ -81,7 +91,7 @@ def derOmega(data_K,op=None,ed=None):
                 locals()[var+"_"][c]=locals()[var][:,:,:,globals()[c+'_A']]
         # This is the formula to be implemented:
         # orange terms
-        formula =  Formula ( ndim=2,TRodd=False,Iodd=True)
+        formula =  Formula ( ndim=2,TRodd=False,Iodd=True, name="derivative of Berry curvature")
         formula.add_term  ('mn',(dO, ) )
         formula.add_term  ( 'mL,Ln',(Dd, O ), -2. )
         for s,a,b in ( +1.,'alpha','beta'),(-1.,'beta','alpha'):
@@ -96,6 +106,5 @@ def derOmega(data_K,op=None,ed=None):
             formula.add_term( 'mL,LP,Pn',  (  D_ [a] , A_[b] , Dd    ) , -2*s)
             formula.add_term( 'mL,Ll,ln',  (  D_ [a] , Dd    , A_[b] ) ,  2*s)
         return formula
-
 
 

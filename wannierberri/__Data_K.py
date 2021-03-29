@@ -23,7 +23,7 @@ from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha
 from .__fermisea2 import DataIO, mergeDataIO
 import gc
 import os
-from .__tetrahedron import TetraWeights,get_bands_in_range
+from .__tetrahedron import TetraWeights,get_bands_in_range,get_bands_below_range
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -394,8 +394,14 @@ class Data_K(System):
             weights= { (ib1,ib2):self.E_K[ik,ib1:ib2].mean() 
                           for ib1,ib2 in bands_in_range  
                      }
-            if sea and bands_in_range[0][0]>0:
-                weights[(0,bands_in_range[0][0])]=-np.Inf
+            if sea :
+                bandmax=get_bands_below_range(emin,self.E_K[ik])
+#                print ("bandmax=",bandmax)
+                if len(bands_in_range)>0 :
+                    bandmax=min(bandmax, bands_in_range[0][0])
+#                print ("now : bandmax=",bandmax ,self.E_K[ik][bandmax] )
+                if bandmax>0:
+                    weights[(0,bandmax)]=-np.Inf
             res.append( weights )
         return res
 

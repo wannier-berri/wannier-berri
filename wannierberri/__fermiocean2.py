@@ -4,7 +4,8 @@ from collections import defaultdict
 from .__utility import  warning, TAU_UNIT
 from .__tetrahedron import weights_parallelepiped  as weights_tetra  
 from . import __result as result
-from . import __formulak as frml
+from . import __formulas_nonabelian as frml
+from .__formula import FormulaProduct
 from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
 from math import ceil
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
@@ -15,25 +16,32 @@ fac_ahc = -1e8 * elementary_charge ** 2 / hbar
 
 degen_thresh=1e-5
 
-def AHC(data_K,Efermi,kpart=None,tetra=False):
+def AHC(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
     fac_ahc  = -1.0e8*elementary_charge**2/hbar
-    return Omega_tot(data_K,Efermi,kpart=kpart,tetra=tetra)*fac_ahc
+    return Omega_tot(data_K,Efermi,kpart=kpart,tetra=tetra,degen_thresh=degen_thresh)*fac_ahc
 
-def cumdos(data_K,Efermi,kpart=None,tetra=False):
-    return iterate_kpart(frml.Identity,data_K,Efermi,kpart,tetra)*data_K.cell_volume
+def cumdos(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
+    return iterate_kpart(frml.Identity,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)*data_K.cell_volume
 
-def berry_dipole(data_K,Efermi,kpart=None,tetra=False):
-    return iterate_kpart(frml.derOmega,data_K,Efermi,kpart,tetra)
+def berry_dipole(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
+    return iterate_kpart(frml.derOmega,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
 
-def Omega_tot(data_K,Efermi,kpart=None,tetra=False):
-    return iterate_kpart(frml.Omega,data_K,Efermi,kpart,tetra)
+def Omega_tot(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
+    return iterate_kpart(frml.Omega,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
 
 factor_ohmic=(elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
                  *elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
                    * 1e-2  ) # now in  S/(cm*tau_unit)
 
-def ohmic(data_K,Efermi,kpart=None,tetra=False):
-    return iterate_kpart(frml.InverseMass,data_K,Efermi,kpart,tetra)*factor_ohmic
+def ohmic(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
+    return iterate_kpart(frml.InverseMass,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)*factor_ohmic
+
+def ohmic_fsurf(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
+    def _formula(datak,op,ed):
+        _velocity=  frml.Velocity(datak,op,ed)
+        return  FormulaProduct ( [_velocity,_velocity], name='vel-vel')
+    return iterate_kpart(_formula,data_K,Efermi,kpart,tetra,fder=1,degen_thresh=degen_thresh)*factor_ohmic
+
 
 ##################################
 ### The private part goes here  ##
@@ -94,13 +102,12 @@ class  FermiOcean():
         """formula  - TraceFormula to evaluate 
            bands = a list of lists of k-points for every 
         """
-        mat_list=formula.term_list
         self.shape = (3,)*ndim
         lambdadic= lambda: np.zeros(((3, ) * ndim), dtype=float)
         self.values = [defaultdict(lambdadic ) for ik in range(self.nk)]
         for ik,bnd in enumerate(bands):
             for n in bnd :
-                self.values[ik][n] = formula(ik,ib_in_start=n[0],ib_in_end=n[1],trace=True )   ## TODO  - change to trace of product of several formulae, to allow for nbonabelian stuff
+                self.values[ik][n] = formula(ik,ib_in_start=n[0],ib_in_end=n[1],trace=True )
 
     def __call__(self) :
         result = np.zeros(self.Efermi.shape + self.shape )
