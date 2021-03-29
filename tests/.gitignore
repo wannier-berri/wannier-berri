@@ -6,3 +6,10 @@ __pycache__/
 # WannierBerri-specific files
 Klist.pickle
 /*.dat
+
+# Data files
+data/Fe_Wannier90/Fe.amn
+data/Fe_Wannier90/Fe.mmn
+data/Fe_Wannier90/Fe.sHu
+data/Fe_Wannier90/Fe.sIu
+data/Fe_Wannier90/reduced_*/
