@@ -117,6 +117,16 @@ def get_bands_in_range(emin,emax,Eband,degen_thresh=-1,Ebandmin=None,Ebandmax=No
             bands.append( [ib1,ib2] )
     return bands
 
+def get_bands_below_range(emin,Eband,Ebandmax=None):
+    if Ebandmax is None:
+        Ebandmax=Eband
+    add=np.where((Ebandmax<emin))[0]
+    if len(add)>0:
+        return add[-1]+1
+    else:
+        return 0
+
+
 def weights_parallelepiped(efermi,Ecenter,Ecorner,der=0):
     occ=np.zeros((efermi.shape))
     Ecorner=np.reshape(Ecorner,(2,2,2))
@@ -191,7 +201,7 @@ class TetraWeights():
         bands_in_range=(self.bands_in_range if der>0 else self.bands_in_range_sea)[op:ed]
         return [{ib:self.__weight_1b(op+ik,ib,der)  for ib in ibrg } for ik,ibrg in enumerate(bands_in_range)]
 
-
+# this is for fermiocean2
     def weights_all_band_groups(self,eFermi,der,op=0,ed=None,degen_thresh=-1):
         """
              here  the key of the return dict is a pair of integers (ib1,ib2)
@@ -209,8 +219,15 @@ class TetraWeights():
                                           for ib in range(ib1,ib2))/(ib2-ib1) 
                           for ib1,ib2 in bands_in_range  
                      }
-            if der==0 and bands_in_range[0][0]>0:
-                weights[(0,bands_in_range[0][0])]=self.ones
+
+            if der==0 :
+                bandmax=get_bands_below_range(self.eFermi[0],self.eCenter[ik],Ebandmax=self.Emax[ik])
+                print ("bandmax=",bandmax)
+                if len(bands_in_range)>0 :
+                    bandmax=min(bandmax, bands_in_range[0][0])
+                weights[(0,bandmax)]=self.ones
+                print ("now bandmax=",bandmax)
+
             res.append( weights )
         return res
 

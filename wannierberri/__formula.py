@@ -1,7 +1,7 @@
 import numpy as np
 import lazy_property
 from .__utility import  alpha_A,beta_A
-#from numba import njit
+from numba import njit
 
 #####################################################
 #####################################################
@@ -10,14 +10,74 @@ INNER_IND="lmnpqrsto"
 OUTER_IND="LMNPRRSTP"
 INDICES=INNER_IND+OUTER_IND
 
-
+@njit
 def inner_outer(ind,inner,outer):
     if   ind in INNER_IND:
        return inner
     elif ind in OUTER_IND:
        return outer
     else:
-       raise ValueError("unknown type of index : '{}'".formta(ind))
+       return None
+#       raise ValueError("unknown type of index : '{}'".formta(ind))
+
+class FormulaProduct():
+
+    """a class to store a product of several formulae"""
+    def __init__(self,formula_list,subscripts=None,hermitian=False,name='unknown'):
+        if type(formula_list) not in (list,tuple):
+            formula_list=[formula_list]
+        self.TRodd=bool(sum(f.TRodd for f in formula_list)%2)
+        self.Iodd =bool(sum(f.TRodd for f in formula_list)%2)
+        self.ndim = sum(f.ndim for f in formula_list)
+        self.name=name
+        self.formulae=formula_list
+        self.hermitian=hermitian # not sure if it will ever be needed
+        self.einline =  { tr:self.__einline(subscripts,trace=tr) for tr in (True,False) }
+
+    def __call__(self,ik,ib_in_start,ib_in_end,trace=True):
+        # not sure if we will ever use trace=False ?
+        res = np.einsum( self.einline[trace],*( frml(ik,ib_in_start,ib_in_end,trace=False) 
+                        for frml in self.formulae )  )
+        if trace: 
+            return res.real
+        else:
+            if self.hermitian:
+                res=0.5*(res+swapaxes(res,0,1).conj())
+            return np.array(res,dtype=complex)
+    
+
+    def __einline(self,subscripts,trace):
+        """to get the string for the einsum"""
+        if subscripts is None:
+            ind_cart="abcdefghijk"
+            left=[]
+            right=""
+            for frml in self.formulae:
+                d=frml.ndim
+                left.append ( ind_cart[ :d])
+                right   +=    ind_cart[ :d]
+                ind_cart =    ind_cart[d: ]
+        else:
+            left,right=subscripts.split("->")
+            left=left.split(",")
+
+        for frml,l in zip(self.formulae,left):
+            d=frml.ndim
+            if d!=len(l):
+                raise ValueError("The number of subscripts in '{}' does not correspond to dimention '{}' of formula '{}' ".format(l,d,frml.name))
+        ind_bands="lmnopqrstuvwxyz"[:len(self.formulae)]
+        ind_bands+= ind_bands[0]  if trace else "Z"
+        einleft=[]
+        if not trace:
+            right=ind_bands[0]+ind_bands[-1]+right
+        for l in left:
+            einleft.append(ind_bands[:2]+l)
+            ind_bands=ind_bands[1:]
+        return ",".join(einleft)+"->"+right
+
+#    print ("using line '{}' for einsum".format(einline))
+
+
 
 class Formula():
     """a class to write a formula as trace of matrix product,
@@ -29,7 +89,8 @@ class Formula():
     indices  of neighbouring matrices should match (i.e. 'mn,qn' is forbidden), 
     first and last index should be different, if more then one matrix is given.
     """
-    def __init__(self,TRodd=False,Iodd=False,ndim=0,hermitian=True):
+    def __init__(self,TRodd=False,Iodd=False,ndim=0,hermitian=True,name="unknown"):
+        self.name=name
         self.TRodd=TRodd
         self.Iodd=Iodd
         self.ndim=ndim
@@ -41,8 +102,8 @@ class Formula():
         if trace: 
             return np.einsum('nn...->...',res).real
         else:
-            if self.Hermitian:
-                res=0.5*(res+swapaxes(res,0,1).conj())
+            if self.hermitian:
+                res=0.5*(res+np.swapaxes(res,0,1).conj())
             return np.array(res,dtype=complex)
 
     def add_term(self,ind_string ,mat_list ,mult=1.):
@@ -113,23 +174,36 @@ class MatrixProductTerm():
 
 
     def __call__(self,ik,ib_in_start,ib_in_end):
-        inner=np.arange(ib_in_start,ib_in_end)
-        outer=np.concatenate( (np.arange(0,ib_in_start),np.arange(ib_in_end,self.nb)) )
-        get_index = lambda i : inner_outer(i,inner,outer)
+        return self.mult*MatrixProductTerm_call(ik,ib_in_start,ib_in_end,self.ind_list,self.mat_list,self.nb)
+
+#@njit
+def MatrixProductTerm_call(ik,ib_in_start,ib_in_end,self_ind_list,self_mat_list,self_nb):
+#        print ('running in njit')
+#        inner=np.arange(ib_in_start,ib_in_end)
+#        outer=np.concatenate( (np.arange(0,ib_in_start),np.arange(ib_in_end,self_nb)) )
+#        def get_index(i):
+#        get_index = lambda i : inner_outer(i,inner,outer)
         mat_list=[]
         ind_list=[]
-        for ind,m in zip(self.ind_list,self.mat_list):
-            m1=m[ik][get_index(ind[0])]
+        for ind,m in zip(self_ind_list,self_mat_list):
+            m1=m[ik]
+            if ind[0] in INNER_IND:
+                m1=m1[ib_in_start:ib_in_end]
+            else :
+                m1=np.concatenate((m1[0:ib_in_start],m1[ib_in_end:]),axis=0)
             if len(ind)==2 :
-#                print("ind = '{}', shape of m1 : {}".format(ind,m1.shape))
-                m1=m1[:,get_index(ind[1])]
+                if ind[1] in INNER_IND:
+                    m1=m1[:,ib_in_start:ib_in_end]
+                else :
+                    m1=np.concatenate((m1[:,0:ib_in_start],m1[:,ib_in_end:]),axis=1)
             mat_list.append(m1)
             ind_list.append(ind)
         while len(mat_list)>1:
             ind1=ind_list[-2]
             ind2=ind_list[-1]
             ind_new=ind1[:-1]+ind2[1:]
-            mat_list[-2] = np.einsum(ind1+'...,'+ind2+'...->'+ind_new+'...', mat_list[-2],mat_list[-1],optimize=True)
+#            mat_list[-2] = np.einsum(ind1+'...,'+ind2+'...->'+ind_new+'...', mat_list[-2],mat_list[-1])
+            mat_list[-2] = matrix_prod_cart(mat_list[-2],mat_list[-1],ind1,ind2)
             del mat_list[-1]
             del ind_list[-1]
             ind_list[-1]=ind_new
@@ -141,8 +215,25 @@ class MatrixProductTerm():
             for i in range(m.shape[0]):
                 m1[i,i]=m[i]
             m=m1
+        return m
 
-        return m*self.mult
+
+def matrix_prod_cart(m1,m2,ind1,ind2):
+    if len(ind1)==len(ind2)==2:
+        return sum(m1[:,i]*m2[i,:][None,:] for i in range(m1.shape[1]) )
+#    if len(ind1)==len(ind2)==2:
+#        shape1=m1.shape
+#        shape2=m2.shape
+#        shape=[shape1[0],shape2[1]]
+#        for i in range(len(shape1)): 
+#            shape.append(max(shape1[i],shape2[i]),)
+#        shapet=tuple(s for s in shape)
+#        result=np.zeros(shape,dtype=complex)
+#        for i in range(m1.shape[1]):
+#            result+=m1[:,i]*m2[i,:][None,:]
+    return m1
+#    else:
+#        return None  # not implemented yet
 
 
 class FormulaIndicesError(ValueError):

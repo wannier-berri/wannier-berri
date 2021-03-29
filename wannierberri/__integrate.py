@@ -57,7 +57,7 @@ calculators_trans={
          'ahc'        : fermisea2.AHC ,
          'ahc2'        : fermisea2.AHC2 ,
          'ahc_ocean'  : fermiocean.AHC ,
-         'ahc2_ocean'  : fermiocean.AHC ,
+         'ahc2_ocean'  : fermiocean2.AHC ,
          'dos'        : dos.calc_DOS ,
          'cumdos'         : dos.calc_cum_DOS ,
          'cumdos_ocean'   : fermiocean.cumdos ,
@@ -69,6 +69,7 @@ calculators_trans={
          'conductivity_ohmic_fsurf': nonabelian.conductivity_ohmic,
          'conductivity_ohmic'      : fermisea2.conductivity_ohmic,
          'conductivity_ohmic2_ocean': fermiocean2.ohmic,
+         'conductivity_ohmic_fsurf2_ocean': fermiocean2.ohmic_fsurf,
 
          'berry_dipole'            : fermisea2.tensor_D,
          'berry_dipole_ocean'      : fermiocean.berry_dipole,
@@ -147,6 +148,14 @@ for calc in calculators_trans:
         additional_parameters[calc][key] = False
         additional_parameters_description[calc][key] = (
              'use tetrahedron method for integration ')
+
+
+for calc in calculators_trans:
+    if calc.endswith('2_ocean'):
+        key='degen_thresh'
+        additional_parameters[calc][key] = -1
+        additional_parameters_description[calc][key] = (
+             'threshold (in eV) to consider bands as degenerate')
 
 
 for calc in calculators_trans:
