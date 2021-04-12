@@ -576,7 +576,7 @@ class Data_K(System):
         uoo = -2*((Anl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlnn[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlnn[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:]  ).imag
         del dDlnn,dAlnn
         gc.collect()
-        return {'i':o.transpose(0,1,3,2),'oi':uo.transpose(0,1,2,4,3),'oii':uoo.transpose(0,1,2,3,5,4),'ooi':uuo.transpose(0,1,2,3,5,4),'E':self.E_K[op:ed]}
+        return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo,'E':self.E_K[op:ed]}
         # sorry for possible confusion. 'i'/'o' stand for inner/outer states 
         # o/u in the variable names stand for occupied/unoccupied states .
         # for fermi-sea properties they are the same, but this confusion should be remnoved
@@ -627,7 +627,7 @@ class Data_K(System):
         uoo = -2*((Anl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlnn[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlnn[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:]  ).imag
         del dAlln
         gc.collect()
-        return {'i':o.transpose(0,1,3,2),'oi':uo.transpose(0,1,2,4,3),'oii':uoo.transpose(0,1,2,3,5,4),'ooi':uuo.transpose(0,1,2,3,5,4),'E':self.E_K[op:ed]}
+        return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo,'E':self.E_K[op:ed]}
 
     def derHplusTr(self,op,ed):
         b=alpha_A
@@ -668,7 +668,7 @@ class Data_K(System):
         del dBPlnn,dDlnn
         gc.collect()
 
-        return {'i':o.transpose(0,1,3,2),'oi':uo.transpose(0,1,2,4,3),'oii':uoo.transpose(0,1,2,3,5,4),'ooi':uuo.transpose(0,1,2,3,5,4),'E':self.E_K[op:ed]}
+        return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo,'E':self.E_K[op:ed]}
     
     
     

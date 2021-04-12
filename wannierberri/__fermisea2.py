@@ -129,6 +129,8 @@ def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
             OCC=OccDelta(dataIO(op,ed))
             RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
             res+=np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume)
+        print('1',np.shape(res))
+        res=res.transpose(0,2,1)
         return result.EnergyResult(Efermi,res,TRodd=TRodd,Iodd=Iodd)
     elif 'sea' in dataIO:  # !!! This is the preferred option for now 
         if 'EFmin' in dataIO and 'EFmax' in dataIO:
@@ -138,10 +140,14 @@ def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
             RES=np.array([A[(EFmin<=Ef)*(EFmax>Ef)].sum(axis=(0))  for Ef in Efermi ])
         else:
             RES=np.array([sum(maxocc(E,Ef,A) for A,E in zip(dataIO['sea'],dataIO['E'])) for Ef in Efermi ])
+        print('2',np.shape(RES))
+        RES=RES.transpose(0,2,1)
         return result.EnergyResult(Efermi,RES/(data.NKFFT_tot*data.cell_volume),TRodd=TRodd,Iodd=Iodd,rank=rank)
     else:
         OCC=OccDelta(dataIO)
         RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
+        print('3',np.shape(RES))
+        RES=np.array(RES).transpose(0,2,1).tolist()
         return result.EnergyResult(Efermi,np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume),TRodd=TRodd,Iodd=Iodd,rank=rank)
 
 
