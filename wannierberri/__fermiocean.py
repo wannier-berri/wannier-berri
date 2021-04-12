@@ -49,6 +49,7 @@ def iterate_kpart(formula_fun,data_K,Efermi,kpart=None,dtype=float,**parameters)
                     dtype=dtype)(Efermi)
                    for op,ed in zip(borders,borders[1:]) 
                ) / (data_K.NKFFT_tot * data_K.cell_volume)
+    res=res.transpose(0,2,1)
     return result.EnergyResult(Efermi,res, TRodd=f0.TRodd, Iodd=f0.Iodd )
 
 
