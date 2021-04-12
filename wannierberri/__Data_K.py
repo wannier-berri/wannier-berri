@@ -667,8 +667,7 @@ class Data_K(System):
         uoo += (Dnl[:,:,N,:,b,N]*Dln[:,:,:,N,c,N]*V[:,N,:,:,N,:] - Dnl[:,:,N,:,c,N]*Dln[:,:,:,N,b,N]*V[:,N,:,:,N,:]).imag
         del dBPlnn,dDlnn
         gc.collect()
-
-        return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo,'E':self.E_K[op:ed]}
+        return {'i':o,'ii':oo,'oi':uo,'oii':uoo,'ooi':uuo,'E':self.E_K[op:ed]}
     
     
     
