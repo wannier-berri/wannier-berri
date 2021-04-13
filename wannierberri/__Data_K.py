@@ -45,9 +45,10 @@ class Data_K(System):
         self.delta_fz=system.delta_fz
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
         self.ksep = system.ksep
+        self.wannier_centres=system.wannier_centres
         ## TODO : create the plans externally, one per process 
 #        print( "iRvec in data_K is :\n",self.iRvec)
-        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,numthreads=npar if npar>0 else 1,lib=fftlib)
+        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,numthreads=npar if npar>0 else 1,lib=fftlib)
         self.Emin=system.Emin
         self.Emax=system.Emax
 

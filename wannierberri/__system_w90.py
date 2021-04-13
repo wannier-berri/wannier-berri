@@ -65,6 +65,7 @@ class System_w90(System):
         self.iRvec,self.Ndegen=self.wigner_seitz(chk.mp_grid)
         self.nRvec0=len(self.iRvec)
         self.num_wann=chk.num_wann
+        self.wannier_centres = chk.wannier_centres
 
         if  self.use_ws:
             print ("using ws_distance")
