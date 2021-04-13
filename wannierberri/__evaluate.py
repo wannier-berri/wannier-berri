@@ -15,7 +15,7 @@
 import  multiprocessing 
 import functools
 import numpy as np
-from collections import Iterable
+from collections.abc import Iterable
 import lazy_property
 from copy import copy
 from time import time

@@ -14,7 +14,6 @@
 import numpy as np
 import copy
 import lazy_property
-from collections import Iterable
 from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice
 from  .symmetry import Group
 from colorama import init
