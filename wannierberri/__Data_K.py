@@ -576,7 +576,6 @@ class Data_K(System):
         uoo = -2*((Anl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlnn[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlnn[:,:,:,:,b,:]) ).real + 2*( Dnl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:]  ).imag
         del dDlnn,dAlnn
         gc.collect()
-        
         return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo,'E':self.E_K[op:ed]}
         # sorry for possible confusion. 'i'/'o' stand for inner/outer states 
         # o/u in the variable names stand for occupied/unoccupied states .
@@ -668,7 +667,6 @@ class Data_K(System):
         uoo += (Dnl[:,:,N,:,b,N]*Dln[:,:,:,N,c,N]*V[:,N,:,:,N,:] - Dnl[:,:,N,:,c,N]*Dln[:,:,:,N,b,N]*V[:,N,:,:,N,:]).imag
         del dBPlnn,dDlnn
         gc.collect()
-
         return {'i':o,'ii':oo,'oi':uo,'oii':uoo,'ooi':uuo,'E':self.E_K[op:ed]}
     
     
