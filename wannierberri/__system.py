@@ -147,7 +147,8 @@ class System():
                     'Emin': -np.Inf ,
                     'Emax': np.Inf ,
                     'use_ws':True,
-                    'periodic':(True,True,True)
+                    'periodic':(True,True,True),
+                    'convention':2
                        }
 
         for param in self.default_parameters:
