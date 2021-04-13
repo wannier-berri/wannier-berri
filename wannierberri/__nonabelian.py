@@ -105,25 +105,25 @@ def ahc(data,Efermi):
 
 def berry_dipole(data,Efermi):
     # _general yields integral(Omega*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curv','vel'],mode='fermi-surface',factor=1)
+    return nonabelian_general(data,Efermi,['vel','curv'],mode='fermi-surface',factor=1)
 
 
 def Faraday(data,Efermi,homega):
     # _general yields integral(Omega(w)*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curvW','vel'],mode='fermi-surface',factor=1,parameters={'curvW':{'homega':homega}})
+    return nonabelian_general(data,Efermi,['vel','curvW'],mode='fermi-surface',factor=1,parameters={'curvW':{'homega':homega}})
 
 
 def berry_dipole_D(data,Efermi):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curvD','vel'],mode='fermi-surface',factor=1)
+    return nonabelian_general(data,Efermi,['vel','curvD'],mode='fermi-surface',factor=1)
 
 def berry_dipole_ext1(data,Efermi):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curvExt1','vel'],mode='fermi-surface',factor=1)
+    return nonabelian_general(data,Efermi,['vel','curvExt1'],mode='fermi-surface',factor=1)
 
 def berry_dipole_ext2(data,Efermi):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curvExt2','vel'],mode='fermi-surface',factor=1)
+    return nonabelian_general(data,Efermi,['vel','curvExt2'],mode='fermi-surface',factor=1)
 
 
 def gyrotropic_Kspin(data,Efermi):
