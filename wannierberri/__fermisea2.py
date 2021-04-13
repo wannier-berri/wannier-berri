@@ -69,7 +69,9 @@ def conductivity_ohmic(data,Efermi):
 
 def gyrotropic_Kspin(data,Efermi):
     factor_Kspin=-bohr_magneton/Ang_SI**2   ## that's it!
-    return IterateEf(data.gyroKspin,data,Efermi,TRodd=False,Iodd=True)*factor_Kspin
+    res = IterateEf(data.gyroKspin,data,Efermi,TRodd=False,Iodd=True)*factor_Kspin
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    return res
 
 def Morb(data,Efermi, evalJ0=True,evalJ1=True,evalJ2=True):
     fac_morb =  -eV_au/bohr**2
@@ -78,10 +80,16 @@ def Morb(data,Efermi, evalJ0=True,evalJ1=True,evalJ2=True):
                             -2*Omega_tot(data,Efermi).mul_array(Efermi) )*data.cell_volume
 
 def HplusTr_2(data,Efermi):
-    return IterateEf(data.derHplusTr2,data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res = IterateEf(data.derHplusTr2,data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    #morb = Hplus - 2Ef*tensor_D
+    return res
 
 def HplusTr(data,Efermi):
-    return IterateEf(data.derHplusTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
+    res = IterateEf(data.derHplusTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    #morb = Hplus - 2Ef*tensor_D
+    return res
 
 def tensor_K(data,Efermi):
     Hp = HplusTr(data,Efermi).data
@@ -96,17 +104,24 @@ def tensor_K_2(data,Efermi):
     return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
 
 def tensor_D(data,Efermi):
-    return IterateEf(data.derOmegaTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
-    #return data.derOmegaTr
+    res = IterateEf(data.derOmegaTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
 
 def tensor_D_2(data,Efermi):
-        return IterateEf(data.derOmegaTr2,data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res = IterateEf(data.derOmegaTr2,data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
 
 def tensor_D_findif(data,Efermi):
-        return IterateEf(data.berry_dipole_findif,data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res = IterateEf(data.berry_dipole_findif,data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
 
 def tensor_Dw(data,Efermi,omega0=0):
-        return IterateEf(partial(data.derOmegaWTr,omega=omega0),data,Efermi,sep=True,TRodd=False,Iodd=True)
+    res = IterateEf(partial(data.derOmegaWTr,omega=omega0),data,Efermi,sep=True,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (12) of Phys. Rev. B 97, 035158
+    return res
 
 #########################
 ####  Private part ######
@@ -129,7 +144,6 @@ def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
             OCC=OccDelta(dataIO(op,ed))
             RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
             res+=np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume)
-        res=res.transpose(0,2,1)
         return result.EnergyResult(Efermi,res,TRodd=TRodd,Iodd=Iodd)
     elif 'sea' in dataIO:  # !!! This is the preferred option for now 
         if 'EFmin' in dataIO and 'EFmax' in dataIO:
@@ -139,12 +153,10 @@ def IterateEf(dataIO,data,Efermi,TRodd,Iodd,sep=False,rank=None,kwargs={}):
             RES=np.array([A[(EFmin<=Ef)*(EFmax>Ef)].sum(axis=(0))  for Ef in Efermi ])
         else:
             RES=np.array([sum(maxocc(E,Ef,A) for A,E in zip(dataIO['sea'],dataIO['E'])) for Ef in Efermi ])
-        RES=RES.transpose(0,2,1)
         return result.EnergyResult(Efermi,RES/(data.NKFFT_tot*data.cell_volume),TRodd=TRodd,Iodd=Iodd,rank=rank)
     else:
         OCC=OccDelta(dataIO)
         RES=[OCC.evaluate(Ef) for Ef in  Efermi ]
-        RES=np.array(RES).transpose(0,2,1).tolist()
         return result.EnergyResult(Efermi,np.cumsum(RES,axis=0)/(data.NKFFT_tot*data.cell_volume),TRodd=TRodd,Iodd=Iodd,rank=rank)
 
 
