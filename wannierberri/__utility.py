@@ -235,7 +235,7 @@ def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,numthreads=1,fft='fftw'
 
 class FFT_R_to_k():
     
-    def __init__(self,iRvec,NKFFT,num_wann,wannier_centres,numthreads=1,lib='fftw'):
+    def __init__(self,iRvec,NKFFT,num_wann,wannier_centres,numthreads=1,lib='fftw',convention=2):
         t0=time()
         print_my_name_start()
         self.NKFFT=tuple(NKFFT)
@@ -257,6 +257,7 @@ class FFT_R_to_k():
         self.time_call=0
         self.n_call=0
         self.wannier_centres=wannier_centres
+        self.convention=convention
 
     def execute_fft(self,A):
         return self.fft_plan(A)
@@ -285,22 +286,27 @@ class FFT_R_to_k():
         AAA_R=AAA_R.transpose((2,0,1)+tuple(range(3,AAA_R.ndim)))
         shapeA=AAA_R.shape
         if self.lib=='slow':
+            if self.convention==2:
 #            print ("doing slow FT")
-            t0=time()
-            #exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
-            #k=np.zeros(3,dtype=int)
-            #AAA_K=np.array([[[
-            #         sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
-            #            for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
-            w_centres = np.array([[j-i for j in self.wannier_centres] for i in self.wannier_centres])
-            exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
-            k=np.zeros(3,dtype=int)
-            AAA_K=np.array([[[
-                sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]]*exponent[i][k[i]]**w_centres[:,:,i] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
-                #sum( np.prod([exponent[i][k[i]]**w_centres[:,:,i] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
-                for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
-            t=time()-t0
-            print ("slow FT finished in {} sec for AAA_R {} and {} k-grid . {} per element".format(t,AAA_R.shape,self.NKFFT,t/np.prod(self.NKFFT )/np.prod(AAA_R.shape)))
+                t0=time()
+                exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
+                k=np.zeros(3,dtype=int)
+                AAA_K=np.array([[[
+                     sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
+                        for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
+                t=time()-t0
+            else:
+                t0=time()
+                w_centres = np.array([[j-i for j in self.wannier_centres] for i in self.wannier_centres])
+                exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
+                k=np.zeros(3,dtype=int)
+                AAA_K=np.array([[[
+                    sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)]) * np.prod([exponent[i][(k[i])%self.NKFFT[i]]**w_centres[:,:,i] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
+                    #sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)]) 
+                    #    * [np.prod(exponent[i][k[i]])**w_centres[:,:,i] for i in range(3)] * A    for R,A in zip( self.iRvec, AAA_R) )
+                    for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
+                t=time()-t0
+                print ("slow FT finished in {} sec for AAA_R {} and {} k-grid . {} per element".format(t,AAA_R.shape,self.NKFFT,t/np.prod(self.NKFFT )/np.prod(AAA_R.shape)))
         else:
             assert  self.nRvec==shapeA[0]
             assert  self.num_wann==shapeA[1]==shapeA[2]
