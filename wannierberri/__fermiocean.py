@@ -18,7 +18,9 @@ def AHC(data_K,Efermi,kpart=None):
     return Omega_tot(data_K,Efermi,kpart=kpart)*fac_ahc
 
 def berry_dipole(data_K,Efermi,kpart=None):
-    return iterate_kpart(trF.derOmega,data_K,Efermi,kpart)
+    res =  iterate_kpart(trF.derOmega,data_K,Efermi,kpart)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
 
 def Omega_tot(data_K,Efermi,kpart=None):    return iterate_kpart(trF.Omega,data_K,Efermi,kpart)
 
@@ -49,7 +51,6 @@ def iterate_kpart(formula_fun,data_K,Efermi,kpart=None,dtype=float,**parameters)
                     dtype=dtype)(Efermi)
                    for op,ed in zip(borders,borders[1:]) 
                ) / (data_K.NKFFT_tot * data_K.cell_volume)
-    res=res.transpose(0,2,1)
     return result.EnergyResult(Efermi,res, TRodd=f0.TRodd, Iodd=f0.Iodd )
 
 
