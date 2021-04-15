@@ -23,8 +23,12 @@ def AHC(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
 def cumdos(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
     return iterate_kpart(frml.Identity,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)*data_K.cell_volume
 
+def dos(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
+    return iterate_kpart(frml.Identity,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh,fder=1)*data_K.cell_volume
+
 def berry_dipole(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
     return iterate_kpart(frml.derOmega,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
+
 
 def Omega_tot(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
     return iterate_kpart(frml.Omega,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)

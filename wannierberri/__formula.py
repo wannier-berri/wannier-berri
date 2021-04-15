@@ -2,6 +2,7 @@ import numpy as np
 import lazy_property
 from .__utility import  alpha_A,beta_A
 from numba import njit
+from numba.typed import List as NumbaList
 
 #####################################################
 #####################################################
@@ -10,7 +11,7 @@ INNER_IND="lmnpqrsto"
 OUTER_IND="LMNPRRSTP"
 INDICES=INNER_IND+OUTER_IND
 
-@njit
+@njit(cache=True)
 def inner_outer(ind,inner,outer):
     if   ind in INNER_IND:
        return inner
@@ -123,6 +124,7 @@ class MatrixProductTerm():
         self.mult=mult
         if type(mat_list) not in (list,tuple):
             mat_list=(mat_list,)
+        self.num_mat = len(mat_list)
 
         line=ind_string.replace(' ','')  # remove spaces if appear
         line=line.replace('.',',') # allow to use dot instead of comma
@@ -160,6 +162,7 @@ class MatrixProductTerm():
                                mat.shape,term,self.ndim)  )
             if len(term)==2:
                 if term[0]==term[1]:
+                    raise NotImplementedError("use of a diagonal of a matrix is not implemented")
                     mat=mat[:,np.arange(mat.shape[1]),np.arange(mat.shape[1])]
             self.mat_list.append(mat)
             self.ind_list.append(term)
@@ -174,64 +177,80 @@ class MatrixProductTerm():
 
 
     def __call__(self,ik,ib_in_start,ib_in_end):
-        return self.mult*MatrixProductTerm_call(ik,ib_in_start,ib_in_end,self.ind_list,self.mat_list,self.nb)
+        result=MatrixProductTerm_select(self.mat_list[0][ik],self.ind_list[0],ib_in_start,ib_in_end)
+        for i in range(1,self.num_mat):
+            m1=MatrixProductTerm_select(self.mat_list[i][ik],self.ind_list[i],ib_in_start,ib_in_end)
+            result = matrix_prod_cart(result,m1)
+        return  self.mult*result
 
-#@njit
-def MatrixProductTerm_call(ik,ib_in_start,ib_in_end,self_ind_list,self_mat_list,self_nb):
-#        print ('running in njit')
-#        inner=np.arange(ib_in_start,ib_in_end)
-#        outer=np.concatenate( (np.arange(0,ib_in_start),np.arange(ib_in_end,self_nb)) )
-#        def get_index(i):
-#        get_index = lambda i : inner_outer(i,inner,outer)
-        mat_list=[]
-        ind_list=[]
-        for ind,m in zip(self_ind_list,self_mat_list):
-            m1=m[ik]
-            if ind[0] in INNER_IND:
-                m1=m1[ib_in_start:ib_in_end]
-            else :
-                m1=np.concatenate((m1[0:ib_in_start],m1[ib_in_end:]),axis=0)
-            if len(ind)==2 :
-                if ind[1] in INNER_IND:
-                    m1=m1[:,ib_in_start:ib_in_end]
-                else :
-                    m1=np.concatenate((m1[:,0:ib_in_start],m1[:,ib_in_end:]),axis=1)
-            mat_list.append(m1)
-            ind_list.append(ind)
-        while len(mat_list)>1:
-            ind1=ind_list[-2]
-            ind2=ind_list[-1]
-            ind_new=ind1[:-1]+ind2[1:]
-#            mat_list[-2] = np.einsum(ind1+'...,'+ind2+'...->'+ind_new+'...', mat_list[-2],mat_list[-1])
-            mat_list[-2] = matrix_prod_cart(mat_list[-2],mat_list[-1],ind1,ind2)
-            del mat_list[-1]
-            del ind_list[-1]
-            ind_list[-1]=ind_new
-        m = mat_list[0]
-# Note : this is an inefficient workaround, to maintain uniformity of the code (fermisea vs nonabelian)
-# probably it is not an problem anyway  . TODO : optimize if needed.
-        if len(ind_list[0])==1 :   
-            m1=np.zeros((m.shape[0],)+m.shape, dtype=complex )
-            for i in range(m.shape[0]):
-                m1[i,i]=m[i]
-            m=m1
-        return m
+#        return self.mult*MatrixProductTerm_call(ik,ib_in_start,ib_in_end,self.ind_list,self.mat_list,self.nb)
+
+#def MatrixProductTerm_call(ik,ib_in_start,ib_in_end,self_ind_list,self_mat_list,self_nb):
+#    for i, (ind,m) in enumerate(zip(self_ind_list,self_mat_list)):
+#        m1=MatrixProductTerm_select(m[ik],ind,ib_in_start,ib_in_end)
+#        result = m1 if i==0 else matrix_prod_cart(result,m1)
+#    return result
+
+@njit(cache=True)
+def MatrixProductTerm_select(mat,ind,ib_in_start,ib_in_end):
+    m1=np.copy(mat)
+    if ind[0] in INNER_IND:
+        m1=m1[ib_in_start:ib_in_end]
+    else :
+        m1=np.concatenate((m1[0:ib_in_start],m1[ib_in_end:]),axis=0)
+    if ind[1] in INNER_IND:
+        m1=m1[:,ib_in_start:ib_in_end]
+    else :
+        m1=np.concatenate((m1[:,0:ib_in_start],m1[:,ib_in_end:]),axis=1)
+    return m1
+    
+# take the product of two matrices in band indices (first indices)
+@njit(cache=True)
+def matrix_prod_cart(m1,m2):
+    m2=np.expand_dims(m2,1)
+    res=m1[:,0]*m2[0,:]
+    for i in range(1,m1.shape[1]) :
+        res+=m1[:,i]*m2[i,:]
+    return res
 
 
-def matrix_prod_cart(m1,m2,ind1,ind2):
+
+
+
+def _matrix_prod_cart(m1,m2,ind1,ind2):
     if len(ind1)==len(ind2)==2:
-        return sum(m1[:,i]*m2[i,:][None,:] for i in range(m1.shape[1]) )
+        return sum(m1[:,i]*m2[i,:]  for i in range(m1.shape[1]) )
+    else:
+        return None  # not implemented yet
+
+
+
+#def matrix_prod_cart(m1,m2,ind1,ind2):
+#    if len(ind1)==len(ind2)==2:
+#         m = np.zeros((m1.shape[0],m2.shape[1]),dtype=np.complex128)
+#         for i in range(m1.shape[0]):
+#          for j in range(m2.shape[1]):
+#           for k in range(m1.shape[1]):
+#             m_=m1[i,k]*m2[k,j]
+#             m[i,j]+=m_
+#         return m
 #    if len(ind1)==len(ind2)==2:
 #        shape1=m1.shape
 #        shape2=m2.shape
+#        print ("shapes : ",shape1,shape2)
 #        shape=[shape1[0],shape2[1]]
-#        for i in range(len(shape1)): 
-#            shape.append(max(shape1[i],shape2[i]),)
-#        shapet=tuple(s for s in shape)
+#        for d1,d2 in zip(shape1[2:],shape2[2:]):
+#            shape.append(max(d1,d2))
+#        shapet=tuple(shape)
 #        result=np.zeros(shape,dtype=complex)
+#        m2=np.expand_dims(m2,1)
 #        for i in range(m1.shape[1]):
-#            result+=m1[:,i]*m2[i,:][None,:]
-    return m1
+#            m_=m1[:,i]*m2[i,:]
+#            print (m_.shape,result.shape)
+#            result+=m_
+#        return sum(m1[:,i]*m2[i,:]  for i in range(m1.shape[1]) )
+#        return result
+#    return m1
 #    else:
 #        return None  # not implemented yet
 

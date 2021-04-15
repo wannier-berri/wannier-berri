@@ -62,6 +62,7 @@ calculators_trans={
          'cumdos'         : dos.calc_cum_DOS ,
          'cumdos_ocean'   : fermiocean.cumdos ,
          'cumdos2_ocean'   : fermiocean2.cumdos ,
+         'dos2_ocean'   : fermiocean2.dos ,
          'Hall_classic' : nonabelian.Hall_classic , 
          'Hall_morb' :  nonabelian.Hall_morb,
          'Hall_spin' :  nonabelian.Hall_spin,
