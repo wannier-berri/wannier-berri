@@ -22,7 +22,7 @@ from lazy_property import LazyProperty as Lazy
 from time import time
 from termcolor import cprint 
 import functools,fortio,scipy.io
-
+np.set_printoptions(precision=4,threshold=np.inf,linewidth=500)
 
 
 # inheriting just in order to have posibility to change default values, without changing the rest of the code
@@ -235,11 +235,12 @@ def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,numthreads=1,fft='fftw'
 
 class FFT_R_to_k():
     
-    def __init__(self,iRvec,NKFFT,num_wann,wannier_centres,numthreads=1,lib='fftw',convention=2):
+    def __init__(self,iRvec,NKFFT,num_wann,wannier_centres,numthreads=1,lib='fftw',convention=2,name=None):
         t0=time()
         print_my_name_start()
         self.NKFFT=tuple(NKFFT)
         self.num_wann=num_wann
+        self.name=name
         assert lib in ('fftw','numpy','slow') , "fft lib '{}' is not known/supported".format(lib)
         self.lib = lib
         if lib == 'fftw':
@@ -288,25 +289,49 @@ class FFT_R_to_k():
         if self.lib=='slow':
             if self.convention==2:
 #            print ("doing slow FT")
+                print('convention 2 slow FT')
                 t0=time()
                 exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
                 k=np.zeros(3,dtype=int)
                 AAA_K=np.array([[[
                      sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
                         for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
+                #print('AAA_K',np.shape(AAA_K))
                 t=time()-t0
             else:
+                print('convention 1 slow FT')
                 t0=time()
+                #print(np.round(self.wannier_centres,decimals=2))
                 w_centres = np.array([[j-i for j in self.wannier_centres] for i in self.wannier_centres])
                 exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
+                def exp_par(ii,jj,i):#k1 k2 k3 partial of exponent_wc
+                    return np.prod(np.exp(2j*np.pi*w_centres[ii,jj,i]/self.NKFFT[i])**np.arange(self.NKFFT[i]))
+                exponent_wc=np.array([[exp_par(ii,jj,0)*exp_par(ii,jj,1)*exp_par(ii,jj,2)
+                            for jj in range(self.num_wann)] for ii in range(self.num_wann)])
                 k=np.zeros(3,dtype=int)
+                dig_w_centres = 0.0
+                if len(np.shape(AAA_R)) == 4: ###TODO only for AA_R now. Change it suit every matrix later. 
+                    # A dig matrix delta_ij*tau_i
+                   # print(AAA_R[172,:,:,0].real)
+                    #print(np.shape(AAA_R))
+                    dig_w_centres = np.zeros((self.num_wann,self.num_wann,3))
+                    for i in range(self.num_wann):
+                        dig_w_centres[i,i,:] = self.wannier_centres[i,:]
+                    exponent_wc=exponent_wc[:,:,None]
+                    #print(np.round(AAA_R,decimals=2)[:,:,120,0].real)
+                    #print(np.round(dig_w_centres,decimals=2)[:,:,0])
+                if len(np.shape(AAA_R)) == 5:
+                    exponent_wc=exponent_wc[:,:,None,None]
+                #print('AAA_R',np.shape(AAA_R))
+                #print(np.shape(dig_w_centres))
                 AAA_K=np.array([[[
-                    sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)]) * np.prod([exponent[i][(k[i])%self.NKFFT[i]]**w_centres[:,:,i] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
+                    sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)]) * A   for R,A in zip( self.iRvec, AAA_R) )* exponent_wc - dig_w_centres 
                     #sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)]) 
                     #    * [np.prod(exponent[i][k[i]])**w_centres[:,:,i] for i in range(3)] * A    for R,A in zip( self.iRvec, AAA_R) )
                     for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
+                #print('AAA_K',np.shape(AAA_K))
                 t=time()-t0
-                print ("slow FT finished in {} sec for AAA_R {} and {} k-grid . {} per element".format(t,AAA_R.shape,self.NKFFT,t/np.prod(self.NKFFT )/np.prod(AAA_R.shape)))
+            #print ("slow FT finished in {} sec for AAA_R {} and {} k-grid . {} per element".format(t,AAA_R.shape,self.NKFFT,t/np.prod(self.NKFFT )/np.prod(AAA_R.shape)))
         else:
             assert  self.nRvec==shapeA[0]
             assert  self.num_wann==shapeA[1]==shapeA[2]

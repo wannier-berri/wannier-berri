@@ -112,6 +112,24 @@ def tensor_D_2(data,Efermi):
     res = IterateEf(data.derOmegaTr2,data,Efermi,sep=False,TRodd=False,Iodd=True)
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
+def tensor_D_term1_2(data,Efermi):
+    res = IterateEf(data.derOmegaTr_test2(1),data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
+def tensor_D_term2_2(data,Efermi):
+    res = IterateEf(data.derOmegaTr_test2(2),data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
+def tensor_D_term3_2(data,Efermi):
+    res = IterateEf(data.derOmegaTr_test2(3),data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
+def tensor_D_termtot_2(data,Efermi):
+    term1=tensor_D_term1_2(data,Efermi).data
+    term2=tensor_D_term2_2(data,Efermi).data
+    term3=tensor_D_term3_2(data,Efermi).data
+    termtot=term1+term2+term3
+    return result.EnergyResult(Efermi,termtot,TRodd=False,Iodd=True)
 
 def tensor_D_findif(data,Efermi):
     res = IterateEf(data.berry_dipole_findif,data,Efermi,sep=False,TRodd=False,Iodd=True)
