@@ -1,6 +1,7 @@
 import numpy as np
 from .__utility import  alpha_A,beta_A
 from .__formula import Formula
+from functools import partial
 #####################################################
 #####################################################
 
@@ -12,7 +13,10 @@ def Identity(data_K,op,ed):
         NB= data_K.nbands
         # This is the formula to be implemented:
         formula =  Formula ( TRodd=False,Iodd=False,ndim=0,name='Identity' )
-        formula.add_term ('n', (np.ones( (ed-op,NB),dtype=float ) ,) )
+        mat = np.zeros((ed-op,NB,NB),dtype=complex)
+        for i in range(NB): 
+           mat[:,i,i]=1.
+        formula.add_term ('mn', mat) 
         return formula
 
 
@@ -41,7 +45,7 @@ def InverseMass(data_K,op,ed):
         return formula
 
 
-def Omega(data_K,op=None,ed=None):
+def Omega(data_K,op=None,ed=None,onlytrace=False):
         "an attempt for a faster implementation"
         # first give our matrices short names
         NB= data_K.nbands
@@ -57,9 +61,15 @@ def Omega(data_K,op=None,ed=None):
         formula =  Formula ( ndim=1,TRodd=True,Iodd=False, name="Berry Curvature")
         formula.add_term( 'mn', (O, ) )
         formula.add_term( 'mL,Ln',(D_['alpha'], D_['beta' ] ) ,-2j )
-        formula.add_term( 'mL,Ln',(D_['alpha'], A_['beta' ] ) , -2 )
-        formula.add_term( 'mL,Ln',(D_['beta' ], A_['alpha'] ) ,  2 )
+        if onlytrace:
+            formula.add_term( 'mL,Ln',(D_['alpha'], A_['beta' ] ) , -4 )
+        else:
+            formula.add_term( 'mL,Ln',(D_['alpha'], A_['beta' ] ) , -2 )
+            formula.add_term( 'mL,Ln',(D_['beta' ], A_['alpha'] ) ,  2 )
         return formula
+
+Omega_onlytrace=partial(Omega,onlytrace=True)
+
 
 def derOmega(data_K,op=None,ed=None):
         "an attempt for a faster implementation"
