@@ -287,51 +287,15 @@ class FFT_R_to_k():
         AAA_R=AAA_R.transpose((2,0,1)+tuple(range(3,AAA_R.ndim)))
         shapeA=AAA_R.shape
         if self.lib=='slow':
-            if self.convention==2:
-#            print ("doing slow FT")
-                print('convention 2 slow FT')
-                t0=time()
-                exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
-                k=np.zeros(3,dtype=int)
-                AAA_K=np.array([[[
-                     sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
-                        for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
-                #print('AAA_K',np.shape(AAA_K))
-                t=time()-t0
-            else:
-                print('convention 1 slow FT')
-                t0=time()
-                #print(np.round(self.wannier_centres,decimals=2))
-                w_centres = np.array([[j-i for j in self.wannier_centres] for i in self.wannier_centres])
-                exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
-                def exp_par(ii,jj,i):#k1 k2 k3 partial of exponent_wc
-                    return np.prod(np.exp(2j*np.pi*w_centres[ii,jj,i]/self.NKFFT[i])**np.arange(self.NKFFT[i]))
-                exponent_wc=np.array([[exp_par(ii,jj,0)*exp_par(ii,jj,1)*exp_par(ii,jj,2)
-                            for jj in range(self.num_wann)] for ii in range(self.num_wann)])
-                k=np.zeros(3,dtype=int)
-                dig_w_centres = 0.0
-                if len(np.shape(AAA_R)) == 4: ###TODO only for AA_R now. Change it suit every matrix later. 
-                    # A dig matrix delta_ij*tau_i
-                   # print(AAA_R[172,:,:,0].real)
-                    #print(np.shape(AAA_R))
-                    dig_w_centres = np.zeros((self.num_wann,self.num_wann,3))
-                    for i in range(self.num_wann):
-                        dig_w_centres[i,i,:] = self.wannier_centres[i,:]
-                    exponent_wc=exponent_wc[:,:,None]
-                    #print(np.round(AAA_R,decimals=2)[:,:,120,0].real)
-                    #print(np.round(dig_w_centres,decimals=2)[:,:,0])
-                if len(np.shape(AAA_R)) == 5:
-                    exponent_wc=exponent_wc[:,:,None,None]
-                #print('AAA_R',np.shape(AAA_R))
-                #print(np.shape(dig_w_centres))
-                AAA_K=np.array([[[
-                    sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)]) * A   for R,A in zip( self.iRvec, AAA_R) )* exponent_wc - dig_w_centres 
-                    #sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)]) 
-                    #    * [np.prod(exponent[i][k[i]])**w_centres[:,:,i] for i in range(3)] * A    for R,A in zip( self.iRvec, AAA_R) )
+            #print ("doing slow FT")
+            t0=time()
+            exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
+            k=np.zeros(3,dtype=int)
+            AAA_K=np.array([[[
+                 sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
                     for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
-                #print('AAA_K',np.shape(AAA_K))
-                t=time()-t0
-            #print ("slow FT finished in {} sec for AAA_R {} and {} k-grid . {} per element".format(t,AAA_R.shape,self.NKFFT,t/np.prod(self.NKFFT )/np.prod(AAA_R.shape)))
+            #print('AAA_K',np.shape(AAA_K))
+            t=time()-t0
         else:
             assert  self.nRvec==shapeA[0]
             assert  self.num_wann==shapeA[1]==shapeA[2]
@@ -342,6 +306,32 @@ class FFT_R_to_k():
                 AAA_K[tuple(irvec)]+=AAA_R[ir]
             self.transform(AAA_K)
             AAA_K*=np.prod(self.NKFFT)
+        #print('located herer')
+        #print(AAA_K[1,1,1,:,:,0].real)
+        if self.convention == 1:
+            #print('convention 1 slow FT')
+            t0=time()
+            w_centres = np.array([[j-i for j in self.wannier_centres] for i in self.wannier_centres])
+            exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
+            def exp_par(ii,jj,i):#k1 k2 k3 partial of exponent_wc
+                return np.prod(np.exp(2j*np.pi*w_centres[ii,jj,i]/self.NKFFT[i])**np.arange(self.NKFFT[i]))
+            exponent_wc=np.array([[exp_par(ii,jj,0)*exp_par(ii,jj,1)*exp_par(ii,jj,2)
+                        for jj in range(self.num_wann)] for ii in range(self.num_wann)])
+            k=np.zeros(3,dtype=int)
+            dig_w_centres = 0.0
+            if len(np.shape(AAA_R)) == 4: ###TODO only for AA_R now. Change it suit every matrix later. 
+                dig_w_centres = np.zeros((self.num_wann,self.num_wann,3))
+                for i in range(self.num_wann):
+                    dig_w_centres[i,i,:] = self.wannier_centres[i,:]
+                exponent_wc=exponent_wc[None,None,None:,:,None]
+                dig_w_centres= dig_w_centres[None,None,None,:,:,:]
+            if len(np.shape(AAA_R)) == 5:
+                exponent_wc=exponent_wc[None,None,None:,:,None,None]
+            #print(np.shape(AAA_K),np.shape(dig_w_centres))
+            AAA_K=AAA_K * exponent_wc #- dig_w_centres 
+         #   print(AAA_K[1,1,1,:,:,0].real)
+         #   print((AAA_K-dig_w_centres)[1,1,1,:,:,0].real)
+            t=time()-t0
 
         ## TODO - think if fft transform of half of matrix makes sense
         if hermitian:
@@ -353,6 +343,8 @@ class FFT_R_to_k():
             AAA_K=AAA_K.reshape( (np.prod(self.NKFFT),)+shapeA[1:])
         self.time_call+=time()-t0
         self.n_call+=1
+        #print('final')
+        #print(AAA_K[3,:,:,0].real)
         return AAA_K
 
 #    def __del__(self):
