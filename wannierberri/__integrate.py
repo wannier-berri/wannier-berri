@@ -68,6 +68,11 @@ calculators_trans={
          'berry_dipole'            : fermisea2.tensor_D,
          'berry_dipole_ocean'      : fermiocean.berry_dipole,
          'berry_dipole_2'          : fermisea2.tensor_D_2,
+         'berry_dipole_term1'          : fermisea2.tensor_D_term1_2,
+         'berry_dipole_term2'          : fermisea2.tensor_D_term2_2,
+         'berry_dipole_term3'          : fermisea2.tensor_D_term3_2,
+         'berry_dipole_termtot'          : fermisea2.tensor_D_termtot_2,
+
          'berry_dipole_fsurf'      : nonabelian.berry_dipole,
 #         'Faraday1w'                 : nonabelian.Faraday,
          'berry_dipole_findif'     : fermisea2.tensor_D_findif,

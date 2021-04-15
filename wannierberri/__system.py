@@ -277,9 +277,22 @@ class System():
         self.symgroup=Group(symmetry_gen,recip_lattice=self.recip_lattice,real_lattice=self.real_lattice)
 
 
+    #@lazy_property.LazyProperty
+    #def cRvec(self):
+    #    return self.iRvec.dot(self.real_lattice)
+
     @lazy_property.LazyProperty
-    def cRvec(self):
-        return self.iRvec.dot(self.real_lattice)
+    def cRvec_wc(self):
+        """ 
+        With convention 1 it is R+tj-ti. With convention 2 it is R. [m,n,iRvec]
+        """
+        w_centres = np.array([[j-i for j in self.wannier_centres] for i in self.wannier_centres])
+        if self.convention == 1:
+            return self.iRvec.dot(self.real_lattice)[None,None,:,:]+w_centres[:,:,None,:]
+        elif self.convention == 2:
+            return self.iRvec.dot(self.real_lattice)[None,None,:,:]
+
+
 
     @property 
     def nRvec(self):
