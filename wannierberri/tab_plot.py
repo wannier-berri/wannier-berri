@@ -15,7 +15,7 @@
 # Email: xxliu@physik.uzh.ch                                 #
 #------------------------------------------------------------#
 '''This is a script to plot the band with line path (High symmetry line) or plane cut using tabulate calculation result from Wannierberri. 
-
+Tested
 	NOTE: 
 
 	      1. Please chose the line kpaths which are in the 1st BZ.
