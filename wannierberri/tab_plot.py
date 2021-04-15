@@ -269,7 +269,7 @@ def main():
 
         plt.figure()
         for b in range(NB):
-            plt.plot(kpatheig[b::NB,-1]-Efermi,kpatheig[b::NB,0],'0.5')	
+            plt.plot(kpatheig[b::NB,-1],kpatheig[b::NB,0]-Efermi,'0.5')	
         if quantity:
             bar=plt.scatter(kpatheig[:,-1],kpatheig[:,0]-Efermi,c=kpatheig[:,1],s=10,vmax=cmax,vmin=-cmax,cmap='seismic')
             plt.colorbar(bar)
