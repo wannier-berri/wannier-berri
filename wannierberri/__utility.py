@@ -17,12 +17,18 @@ __debug = False
 
 import inspect
 import numpy as np
-import pyfftw
+
 from lazy_property import LazyProperty as Lazy
 from time import time
 from termcolor import cprint 
 import functools,fortio,scipy.io
 
+try: 
+    import fftw
+    PYFFTW_IMPORTED=True
+except Exception as err:
+    PYFFTW_IMPORTED=False
+    print ("WARNING : error importing  `pyfftw` : {} \n will use numpy instead \n".format(err))
 
 
 # inheriting just in order to have posibility to change default values, without changing the rest of the code
@@ -87,7 +93,7 @@ class Smoother():
         self.T=T*Boltzmann/elementary_charge  # now in eV
         self.E=np.copy(E)
         dE=E[1]-E[0]
-        maxdE=7
+        maxdE=8
         self.NE1=int(maxdE*self.T/dE)
         self.NE=E.shape[0]
         self.smt=self._broaden(np.arange(-self.NE1,self.NE1+1)*dE)*dE
@@ -208,7 +214,9 @@ def fft_np(inp,axes,inverse=False):
     else:
         return np.fft.fftn(inp,axes=axes)
 
-def FFT(inp,axes,inverse=False,destroy=True,numthreads=1,fft='fftw'):
+def FFT(inp,axes,inverse=False,destroy=True,numthreads=1,fft='fftw' ):
+    if fft=='fftw' and not PYFFTW_IMPORTED:
+        fft='numpy'
     if fft=='fftw':
         return fft_W(inp,axes,inverse=inverse,destroy=destroy,numthreads=numthreads)
     elif fft=='numpy':
@@ -241,6 +249,8 @@ class FFT_R_to_k():
         self.NKFFT=tuple(NKFFT)
         self.num_wann=num_wann
         assert lib in ('fftw','numpy','slow') , "fft lib '{}' is not known/supported".format(lib)
+        if lib=='fftw' and not PYFFTW_IMPORTED:
+            lib='numpy'
         self.lib = lib
         if lib == 'fftw':
             shape=self.NKFFT+(self.num_wann,self.num_wann)
@@ -339,19 +349,3 @@ def find_degen(arr,degen_thresh):
 def is_round(A,prec=1e-14):
      """ returns true if all values in A are integers, at least within machine precision"""
      return( np.linalg.norm(A-np.round(A))<prec )
-
-
-if __name__ == '__main__' : 
-    import matplotlib.pyplot as plt
-    E=np.linspace(-1,1,301)
-    smoother=Smoother(E,300)
-#    A=np.exp(-E**2/0.005)
-    A=np.zeros_like(E)
-    A[len(A)//2]=1
-#    A[1]=1
-#    A[:]=1
-    B=smoother(A)
-    plt.plot (E,B)
-    plt.plot (E,B.max()/(np.cosh((E)/(2*0.025)))**2)
-    plt.show()
-
