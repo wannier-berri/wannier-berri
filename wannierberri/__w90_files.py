@@ -299,7 +299,7 @@ class MMN(W90_data):
         check_eye=sum(w*m for w,m in zip(weight_shell,shell_mat))
         tol=np.linalg.norm(check_eye-np.eye(3))
         if tol>1e-5 :
-            raise RuntimeError("Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\weight_shell={}\n".format(
+            raise RuntimeError("Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\nweight_shell={}\n".format(
                       check_eye,tol, bk_latt_unique,bk_cart_unique,bk_cart_unique_length,shell_mat,weight_shell))
         weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
         weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
@@ -386,7 +386,7 @@ class UXU(W90_data):
         if formatted:
             tmp=np.array( [f_uXu_in.readline().split() for i in range(NK*NNB*NNB*NB*NB)  ],dtype=float)
             tmp_conj=tmp[:,0]+1.j*tmp[:,1]
-            self.data=tmp_conj.reshape(NK,NNB,NNB,NB,NB)
+            self.data=tmp_conj.reshape(NK,NNB,NNB,NB,NB).transpose(0,2,1,3,4)
         else:
             for ik in range(NK):
 #            print ("k-point {} of {}".format( ik+1,NK))
