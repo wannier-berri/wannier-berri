@@ -372,7 +372,7 @@ class UXU(W90_data):
         print('formatted == {}'.format(formatted))
         if formatted:
             f_uXu_in = open(seedname+"."+suffix, 'r')
-            header=f_uXu_in.readline().strip() 
+            header=f_uXu_in.readline().strip()
             NB,NK,NNB =(int(x) for x in f_uXu_in.readline().split())
         else:
             f_uXu_in = FortranFileR(seedname+"."+suffix)
@@ -381,12 +381,11 @@ class UXU(W90_data):
 
         print ("reading {}.{} : <{}>".format(seedname,suffix,header))
 
-        
         self.data=np.zeros( (NK,NNB,NNB,NB,NB),dtype=complex )
         if formatted:
             tmp=np.array( [f_uXu_in.readline().split() for i in range(NK*NNB*NNB*NB*NB)  ],dtype=float)
-            tmp_conj=tmp[:,0]+1.j*tmp[:,1]
-            self.data=tmp_conj.reshape(NK,NNB,NNB,NB,NB).transpose(0,2,1,3,4)
+            tmp_cplx=tmp[:,0]+1.j*tmp[:,1]
+            self.data=tmp_cplx.reshape(NK,NNB,NNB,NB,NB).transpose(0,2,1,3,4)
         else:
             for ik in range(NK):
 #            print ("k-point {} of {}".format( ik+1,NK))
@@ -430,7 +429,7 @@ class SXU(W90_data):
 
         if formatted:
             f_sXu_in = open(seedname+"."+suffix, 'r')
-            header=f_sXu_in.readline().strip() 
+            header=f_sXu_in.readline().strip()
             NB,NK,NNB =(int(x) for x in f_sXu_in.readline().split())
         else:
             f_sXu_in = FortranFileR(seedname+"."+suffix)
@@ -441,13 +440,19 @@ class SXU(W90_data):
 
         self.data=np.zeros( (NK,NNB,NB,NB,3),dtype=complex )
 
-        for ik in range(NK):
-#            print ("k-point {} of {}".format( ik+1,NK))
-            for ib in range(NNB):
-                for ipol in range(3):
-                   tmp=f_sXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0)
-                   # tmp[m, n] = <u_{m,k}|S_ipol*X|u_{n,k+b}>
-                   self.data[ik,ib,:,:,ipol] = tmp[:,:,0] + 1j*tmp[:,:,1]
+        if formatted:
+            tmp = np.array([f_sXu_in.readline().split() for i in range(NK*NNB*3*NB*NB)], dtype=float)
+            tmp_cplx = tmp[:,0] + 1j * tmp[:,1]
+            # tmp_cplx[ik, ib, ipol, m, n] = <u_{m,k}|S_ipol * X|u_{n,k+b}>
+            self.data = tmp_cplx.reshape(NK,NNB,3,NB,NB).transpose(0,1,3,4,2)
+        else:
+            for ik in range(NK):
+    #            print ("k-point {} of {}".format( ik+1,NK))
+                for ib in range(NNB):
+                    for ipol in range(3):
+                       tmp=f_sXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0)
+                       # tmp[m, n] = <u_{m,k}|S_ipol*X|u_{n,k+b}>
+                       self.data[ik,ib,:,:,ipol] = tmp[:,:,0] + 1j*tmp[:,:,1]
 
         print ("----------\n {0} OK  \n---------\n".format(suffix))
         f_sXu_in.close()

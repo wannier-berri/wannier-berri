@@ -339,17 +339,17 @@ def run_mmn2uHu(PREFIX, **kwargs):
                         eig_dum = np.ones(NB_in)
                 else:
                     raise RuntimeError()
-                A=np.zeros( (NNB,NB_out,NB_out,3),dtype=complex )
+                A=np.zeros( (NNB,3,NB_out,NB_out),dtype=complex )
                 for ib2 in range(NNB):
                     for ipol in range(3):
-                        A[ib2,:,:,ipol]=np.einsum('nl,ml,l->mn',MMN[ik][ib2][IBstart:IBstart+NB_out,IBstartSum:NB_sum+IBstartSum],
+                        A[ib2,ipol,:,:] = np.einsum('nl,ml,l->mn',MMN[ik][ib2][IBstart:IBstart+NB_out,IBstartSum:NB_sum+IBstartSum],
                                                            SPN[ik][ipol][IBstart:IBstart+NB_out,IBstartSum:IBstartSum+NB_sum], eig_dum)
                 if(formatted):
                     f_sXu_out.write("".join("{0:20.10e}   {1:20.10e}\n".format(a.real,a.imag)  for a in A.reshape(-1,order='C')) )
                 else:
                     for ib2 in range(NNB):
                         for ipol in range(3):
-                            f_sXu_out.write_record(A[ib2,:,:,ipol].reshape(-1,order='C'))
+                            f_sXu_out.write_record(A[ib2,ipol,:,:].reshape(-1,order='C'))
             print ("----------\n {0} OK  \n---------\n".format(SXU[0]))
             f_sXu_out.close()
 
