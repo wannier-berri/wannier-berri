@@ -24,7 +24,7 @@ from termcolor import cprint
 import functools,fortio,scipy.io
 
 try: 
-    import fftw
+    import pyfftw
     PYFFTW_IMPORTED=True
 except Exception as err:
     PYFFTW_IMPORTED=False
