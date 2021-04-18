@@ -26,7 +26,7 @@ from time import time
 from itertools import islice
 import gc
 
-readstr  = lambda F : "".join(c.decode('ascii')  for c in F.read_record('c') ).strip() 
+readstr  = lambda F : "".join(c.decode('ascii')  for c in F.read_record('c') ).strip()
 
 class CheckPoint():
 
