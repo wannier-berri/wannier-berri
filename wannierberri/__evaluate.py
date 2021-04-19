@@ -27,29 +27,51 @@ from . import symmetry as SYM
 from  .__Kpoint import exclude_equiv_points
 from . import __utility as utility
 
+def print_progress(count, total, t0):
+    t = time() - t0
+    t_remain = t / count * (total - count)
+    print("{:20d}{:17.1f}{:22.1f}".format(count, t, t_remain), flush=True)
+
 def process(paralfunc,K_list,nproc,symgroup=None):
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
+    numK = len(selK)
+    nstep_print = max(1, nproc, numK // 100)
     dK_list=[K_list[ik] for ik in selK]
     if len(dK_list)==0:
         print ("nothing to process now")
         return 0
-    print ("processing {0}  points :".format(len(dK_list)) )
-    if nproc<=0:
-        res = [paralfunc(Kp) for Kp in dK_list]
-        nproc_=1
-    else:
+
+    print ("processing {0} K points :".format(len(dK_list)) )
+    if nproc > 0:
         print ("using a pool of {} processes".format(nproc))
-        p=multiprocessing.Pool(nproc)
-        res= p.map(paralfunc,dK_list)
+    print("# K-points calculated  Wall time (sec)  Est. remaining (sec)", flush=True)
+    res = []
+    if nproc <= 0:
+        for count, Kp in enumerate(dK_list):
+            res.append(paralfunc(Kp))
+            if (count + 1) % nstep_print == 0:
+                print_progress(count + 1, numK, t0)
+        nproc_ = 1
+    else:
+        p = multiprocessing.Pool(nproc)
+        # Method 1: map. Cannot print progress.
+        # res = p.map(paralfunc,dK_list)
+        # Method 2: imap
+        for count, res_K in enumerate(p.imap(paralfunc, dK_list)):
+            res.append(res_K)
+            if (count + 1) % nstep_print == 0:
+                print_progress(count + 1, numK, t0)
         p.close()
-        nproc_=nproc
+        nproc_ = nproc
+
     if not (symgroup is None):
         res=[symgroup.symmetrize(r) for r in res]
     for i,ik in enumerate(selK):
         K_list[ik].set_res(res[i])
     t=time()-t0
-    print ("time for processing {0:6d} K-points  on {4:3d} processes: {1:10.4f} ; per K-point {2:15.4f} ; proc-sec per K-point : {3:15.4f}".format(len(selK),t,t/len(selK),t*nproc_/len(selK),nproc) )
+    print ("time for processing {0:6d} K-points  on {1:3d} processes: {2:10.4f} ; per K-point {3:15.4f} ; proc-sec per K-point : {4:15.4f}".format(
+        numK, nproc, t, t/numK, t*nproc_/numK), flush=True)
     return len(dK_list)
 
 
