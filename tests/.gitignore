@@ -10,6 +10,15 @@ Klist.pickle
 # Data files
 data/Fe_Wannier90/Fe.amn
 data/Fe_Wannier90/Fe.mmn
-data/Fe_Wannier90/Fe.sHu
-data/Fe_Wannier90/Fe.sIu
+data/Fe_Wannier90/Fe.s?u
+data/Fe_Wannier90/Fe.u?u
+data/Fe_Wannier90/Fe_formatted.*
 data/Fe_Wannier90/reduced_*/
+data/Fe_Wannier90/reduced_formatted_*/
+data/GaAs_Wannier90/GaAs.amn
+data/GaAs_Wannier90/GaAs.mmn
+data/GaAs_Wannier90/GaAs.s?u
+data/GaAs_Wannier90/GaAs.u?u
+data/GaAs_Wannier90/GaAs_formatted.*
+data/GaAs_Wannier90/reduced_*/
+data/GaAs_Wannier90/reduced_formatted_*/
