@@ -50,7 +50,8 @@ class Data_K(System):
         ## TODO : create the plans externally, one per process 
 #        print( "iRvec in data_K is :\n",self.iRvec)
         #self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
-        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,numthreads=npar if npar>0 else 1,lib='slow',convention=system.convention)
+        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,self.real_lattice,self.cRvec_wc,
+                numthreads=npar if npar>0 else 1,lib='slow',convention=system.convention)
         self.Emin=system.Emin
         self.Emax=system.Emax
 
@@ -80,10 +81,10 @@ class Data_K(System):
                 vars(self)[hasXR]=True
         #print('before',self.AA_R[:8,:8,172,0])
         ###TODO cancel it after testing  TODO
-        aa_rr = self.AA_R*0.0
-        for i in range(self.num_wann):
-            aa_rr[i,i,:,:] = self.AA_R[i,i,:,:]
-        self.AA_R = aa_rr
+        #aa_rr = self.AA_R*0.0
+        #for i in range(self.num_wann):
+        #    aa_rr[i,i,:,:] = self.AA_R[i,i,:,:]
+        #self.AA_R = aa_rr
         #print('after',self.AA_R[:8,:8,172,0])
 
 #        print ("E_K=",self.E_K)
@@ -111,11 +112,6 @@ class Data_K(System):
             asym_before = True -  takes the antisymmetrc part over the first two cartesian indices before differentiation
             asym_after = True  - asymmetrize after  differentiation
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
-        #if pt == 'A_Hbar':
-        #    print(np.shape(XX_R))
-        #    print(XX_R[:,:,20,0].real)
-        if pt == None:
-             a = ssfweee*3
         def asymmetrize(X,asym):
             """auxilary function"""
             if asym  :
@@ -129,17 +125,19 @@ class Data_K(System):
             shape_cR = np.shape(self.cRvec_wc)
             XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec_wc.reshape((shape_cR[0],shape_cR[1],self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
         XX_R=asymmetrize(XX_R, asym_after)
-        if pt == 'A_Hbar':
+        print(pt,np.shape(XX_R))
+        res = self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian,pt=pt)[self.select_K]  )
+        #if pt == 'A_Hbar':
             #print(XX_R[:,:,20,0].real)
-            #res = self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian)[self.select_K]  )
-            res0 = self.fft_R_to_k( XX_R,hermitian=hermitian)[self.select_K]
-            print('res0')
-            print(res0[2,:,:,0].real)
-            print('res')
-            res = self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian)[self.select_K]  )
-            print(res[2,:,:,0].real)
-        else:
-            res = 0*XX_R.transpose(2,0,1,3)
+        #    res = self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian)[self.select_K]  )
+            #res0 = self.fft_R_to_k( XX_R,hermitian=hermitian)[self.select_K]
+            #print('res0')
+            #print(res0[2,:,:,0].real)
+            #print('res')
+        #    res = self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian)[self.select_K]  )
+            #print(res[2,:,:,0].real)
+        #else:
+        #    res = 0*XX_R.transpose(2,0,1,3)
         #print(pt,np.shape(res))
         #if pt == 'A_Hbar':
          #   print(res[20,:,:,0].real)
@@ -317,7 +315,7 @@ class Data_K(System):
         
     @property
     def HH_K(self):
-        return self.fft_R_to_k( self.HH_R, hermitian=True) 
+        return self.fft_R_to_k( self.HH_R, hermitian=True,pt='HH') 
 
     @lazy_property.LazyProperty
     def E_K(self):
@@ -368,7 +366,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def del2E_H(self):
-        return self._R_to_k_H( self.HH_R, der=2,pt='del2E_H' )
+        return self._R_to_k_H( self.HH_R, der=2,pt='HH' )
 
     @property
     def del2E_H_diag(self):
@@ -391,7 +389,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def V_H(self):
         self.E_K
-        return self._R_to_k_H( self.HH_R.copy(), der=1,pt='V_H')
+        return self._R_to_k_H( self.HH_R.copy(), der=1,pt='HH')
 
     @lazy_property.LazyProperty
     def Morb_Hbar(self):
@@ -750,7 +748,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def A_Hbar(self):
-        return self._R_to_k_H(self.AA_R.copy(),pt='A_Hbar')
+        return self._R_to_k_H(self.AA_R.copy(),pt='AA')
 
     @lazy_property.LazyProperty
     def A_H(self):
@@ -759,7 +757,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def A_Hbar_der(self):
-        return  self._R_to_k_H(self.AA_R.copy(), der=1,pt='A_Hbar_der') 
+        return  self._R_to_k_H(self.AA_R.copy(), der=1,pt='AA') 
 
     @lazy_property.LazyProperty
     def S_H(self):
@@ -815,7 +813,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def Omega_Hbar(self):
         print_my_name_start()
-        return  -self._R_to_k_H( self.AA_R, der=1, asym_after=True,pt='Omega_Hbar') 
+        return  -self._R_to_k_H( self.AA_R, der=1, asym_after=True,pt='AA') 
 
     @lazy_property.LazyProperty
     def B_Hbar(self):
@@ -905,7 +903,7 @@ class Data_K(System):
                         #self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -     
                         #self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])[:,:,:,:,None]*self.cRvec[None,None,:,None,:]   , hermitian=True )
                         self.AA_R[:,:,:,alpha_A]*self.cRvec_wc[:,:,:,beta_A ] -     
-                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wc[:,:,:,None,:]   , hermitian=True )
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wc[:,:,:,None,:]   , hermitian=True , pt='OO')
         return self._rotate(_OOmega_K)
 
     @lazy_property.LazyProperty

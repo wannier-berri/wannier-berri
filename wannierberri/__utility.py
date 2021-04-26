@@ -235,12 +235,14 @@ def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,numthreads=1,fft='fftw'
 
 class FFT_R_to_k():
     
-    def __init__(self,iRvec,NKFFT,num_wann,wannier_centres,numthreads=1,lib='fftw',convention=2,name=None):
+    def __init__(self,iRvec,NKFFT,num_wann,wannier_centres,real_lattice,cRvec_wc,numthreads=1,lib='fftw',convention=2,name=None):
         t0=time()
         print_my_name_start()
         self.NKFFT=tuple(NKFFT)
         self.num_wann=num_wann
         self.name=name
+        self.real_lattice = real_lattice
+        self.cRvec_wc = cRvec_wc.transpose(2,0,1,3)[0]
         assert lib in ('fftw','numpy','slow') , "fft lib '{}' is not known/supported".format(lib)
         self.lib = lib
         if lib == 'fftw':
@@ -279,7 +281,7 @@ class FFT_R_to_k():
         else :
             raise ValueError("Unknown type of Fourier transform :''".format(self.lib)) 
 
-    def __call__(self,AAA_R,hermitian=False,antihermitian=False,reshapeKline=True):
+    def __call__(self,AAA_R,hermitian=False,antihermitian=False,reshapeKline=True,pt=None):
         t0=time()
     #  AAA_R is an array of dimension (  num_wann x num_wann x nRpts X... ) (any further dimensions allowed)
         if  hermitian and antihermitian :
@@ -318,18 +320,29 @@ class FFT_R_to_k():
             exponent_wc=np.array([[exp_par(ii,jj,0)*exp_par(ii,jj,1)*exp_par(ii,jj,2)
                         for jj in range(self.num_wann)] for ii in range(self.num_wann)])
             k=np.zeros(3,dtype=int)
-            dig_w_centres = 0.0
-            if len(np.shape(AAA_R)) == 4: ###TODO only for AA_R now. Change it suit every matrix later. 
+            #dig_w_centres = 0.0
+            if pt=='HH' or pt == 'OO':
+                if len(np.shape(AAA_R)) == 4:
+                    exponent_wc=exponent_wc[None,None,None:,:,None]
+                elif len(np.shape(AAA_R)) == 5:
+                    exponent_wc=exponent_wc[None,None,None:,:,None,None]
+                AAA_K=AAA_K * exponent_wc 
+            elif pt=='AA':
                 dig_w_centres = np.zeros((self.num_wann,self.num_wann,3))
+                wannier_centres = self.wannier_centres.dot(self.real_lattice) 
                 for i in range(self.num_wann):
-                    dig_w_centres[i,i,:] = self.wannier_centres[i,:]
-                exponent_wc=exponent_wc[None,None,None:,:,None]
-                dig_w_centres= dig_w_centres[None,None,None,:,:,:]
-            if len(np.shape(AAA_R)) == 5:
-                exponent_wc=exponent_wc[None,None,None:,:,None,None]
-            #print(np.shape(AAA_K),np.shape(dig_w_centres))
-            AAA_K=AAA_K * exponent_wc #- dig_w_centres 
-         #   print(AAA_K[1,1,1,:,:,0].real)
+                    dig_w_centres[i,i,:] = wannier_centres[i,:]
+                if len(np.shape(AAA_R)) == 4:
+                    exponent_wc=exponent_wc[None,None,None:,:,None]
+                    dig_w_centres= dig_w_centres[None,None,None,:,:,:]
+                elif len(np.shape(AAA_R)) == 5:
+                    exponent_wc=exponent_wc[None,None,None:,:,None,None]
+                    dig_w_centres= dig_w_centres[None,None,None,:,:,:,None]
+                AAA_K=AAA_K * exponent_wc - dig_w_centres 
+            
+            #AAA_K=AAA_K - dig_w_centres 
+            #print("---------------------")
+            #print(AAA_K[1,1,1,:,:,0].real)
          #   print((AAA_K-dig_w_centres)[1,1,1,:,:,0].real)
             t=time()-t0
 
