@@ -16,7 +16,7 @@
 import numpy as np
 import sys
 from . import __berry
-from collections import Iterable, defaultdict
+from collections import defaultdict
 from . import __result as result
 from time import time
 from .__utility import alpha_A,beta_A,TAU_UNIT,TAU_UNIT_TXT

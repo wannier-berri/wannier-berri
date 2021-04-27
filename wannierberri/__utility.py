@@ -17,12 +17,18 @@ __debug = False
 
 import inspect
 import numpy as np
-import pyfftw
+
 from lazy_property import LazyProperty as Lazy
 from time import time
 from termcolor import cprint 
 import functools,fortio,scipy.io
-np.set_printoptions(precision=4,threshold=np.inf,linewidth=500)
+
+try: 
+    import pyfftw
+    PYFFTW_IMPORTED=True
+except Exception as err:
+    PYFFTW_IMPORTED=False
+    print ("WARNING : error importing  `pyfftw` : {} \n will use numpy instead \n".format(err))
 
 
 # inheriting just in order to have posibility to change default values, without changing the rest of the code
@@ -87,7 +93,7 @@ class Smoother():
         self.T=T*Boltzmann/elementary_charge  # now in eV
         self.E=np.copy(E)
         dE=E[1]-E[0]
-        maxdE=5
+        maxdE=8
         self.NE1=int(maxdE*self.T/dE)
         self.NE=E.shape[0]
         self.smt=self._broaden(np.arange(-self.NE1,self.NE1+1)*dE)*dE
@@ -208,7 +214,9 @@ def fft_np(inp,axes,inverse=False):
     else:
         return np.fft.fftn(inp,axes=axes)
 
-def FFT(inp,axes,inverse=False,destroy=True,numthreads=1,fft='fftw'):
+def FFT(inp,axes,inverse=False,destroy=True,numthreads=1,fft='fftw' ):
+    if fft=='fftw' and not PYFFTW_IMPORTED:
+        fft='numpy'
     if fft=='fftw':
         return fft_W(inp,axes,inverse=inverse,destroy=destroy,numthreads=numthreads)
     elif fft=='numpy':
@@ -243,6 +251,8 @@ class FFT_R_to_k():
         self.name=name
         self.real_lattice = real_lattice
         assert lib in ('fftw','numpy','slow') , "fft lib '{}' is not known/supported".format(lib)
+        if lib=='fftw' and not PYFFTW_IMPORTED:
+            lib='numpy'
         self.lib = lib
         if lib == 'fftw':
             shape=self.NKFFT+(self.num_wann,self.num_wann)

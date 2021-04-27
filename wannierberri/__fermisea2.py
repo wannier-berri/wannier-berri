@@ -26,7 +26,7 @@
 import numpy as np
 import functools
 from scipy import constants as constants
-from collections import Iterable
+from collections.abc import Iterable
 import inspect
 import sys
 from .__utility import  print_my_name_start,print_my_name_end,TAU_UNIT,alpha_A,beta_A
