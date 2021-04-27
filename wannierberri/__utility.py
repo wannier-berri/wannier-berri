@@ -295,7 +295,6 @@ class FFT_R_to_k():
             AAA_K=np.array([[[
                  sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
                     for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
-            #print('AAA_K',np.shape(AAA_K))
             t=time()-t0
         else:
             assert  self.nRvec==shapeA[0]
@@ -307,10 +306,7 @@ class FFT_R_to_k():
                 AAA_K[tuple(irvec)]+=AAA_R[ir]
             self.transform(AAA_K)
             AAA_K*=np.prod(self.NKFFT)
-        #print('located herer')
-        #print(AAA_K[1,1,1,:,:,0].real)
         if self.convention == 1:
-            #print('convention 1 slow FT')
             t0=time()
             w_centres = np.array([[j-i for j in self.wannier_centres] for i in self.wannier_centres])
             exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
@@ -320,22 +316,23 @@ class FFT_R_to_k():
                         for jj in range(self.num_wann)] for ii in range(self.num_wann)])
             k=np.zeros(3,dtype=int)
             if pt==None:
-                if len(np.shape(AAA_R)) == 4:
-                    exponent_wc=exponent_wc[None,None,None:,:,None]
-                elif len(np.shape(AAA_R)) == 5:
-                    exponent_wc=exponent_wc[None,None,None:,:,None,None]
+                #print(np.shape(exponent_wc))
+                #print(np.shape(AAA_K))
+                exponent_wc=exponent_wc[None,None,None,:,:]
+                for i in range(len(np.shape(AAA_K))-5): # make exponent_wc as same dimention with AAA_K
+                    exponent_wc = exponent_wc.reshape( (exponent_wc.shape)+(1,) )
+                #if len(np.shape(AAA_R)) == 4:
+                #    exponent_wc=exponent_wc[None,None,:,:,None]
+                #elif len(np.shape(AAA_R)) == 5:
+                #    exponent_wc=exponent_wc[None,None,:,:,None,None]
                 AAA_K=AAA_K * exponent_wc 
             elif pt=='AA':
                 dig_w_centres = np.zeros((self.num_wann,self.num_wann,3))
                 wannier_centres = self.wannier_centres.dot(self.real_lattice) 
                 for i in range(self.num_wann):
                     dig_w_centres[i,i,:] = wannier_centres[i,:]
-                #if len(np.shape(AAA_R)) == 4:
-                exponent_wc=exponent_wc[None,None,None:,:,None]
+                exponent_wc=exponent_wc[None,None,None,:,:,None]
                 dig_w_centres= dig_w_centres[None,None,None,:,:,:]
-                #elif len(np.shape(AAA_R)) == 5:
-                #    exponent_wc=exponent_wc[None,None,None:,:,None,None]
-                #    dig_w_centres= dig_w_centres[None,None,None,:,:,:,None]
                 AAA_K=AAA_K * exponent_wc - dig_w_centres 
             
             t=time()-t0
