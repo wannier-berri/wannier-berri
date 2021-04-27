@@ -79,15 +79,6 @@ class Data_K(System):
                 else:
                   vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
                 vars(self)[hasXR]=True
-        #print('before',self.AA_R[:8,:8,172,0])
-        ###TODO cancel it after testing  TODO
-        aa_rr = self.AA_R*0.0
-        for i in range(self.num_wann):
-            aa_rr[i,i,:,:] = self.AA_R[i,i,:,:]
-        self.AA_R = aa_rr
-        #print('after',self.AA_R[:8,:8,172,0])
-
-#        print ("E_K=",self.E_K)
 
 
     @lazy_property.LazyProperty
