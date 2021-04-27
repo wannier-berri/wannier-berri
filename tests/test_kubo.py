@@ -6,7 +6,7 @@ from pytest import approx
 
 import wannierberri as wberri
 
-from create_system import system_Fe_W90
+from create_system import create_files_Fe_W90, system_Fe_W90
 from compare_result import compare_energyresult
 
 @pytest.fixture(scope="module")

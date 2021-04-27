@@ -53,7 +53,7 @@ from scipy.spatial.transform import Rotation as rotmat
 from copy import deepcopy
 from lazy_property import LazyProperty as Lazy
 from .__utility import real_recip_lattice, is_round
-from collections import Iterable
+from collections.abc import Iterable
 
 SYMMETRY_PRECISION=1e-6
 

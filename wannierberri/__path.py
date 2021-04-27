@@ -1,7 +1,7 @@
 from .__grid import Grid
 from  .__Kpoint import KpointBZ
 from .__utility import warning
-from collections import Iterable
+from collections.abc import Iterable
 import numpy as np
 
 class Path(Grid):
