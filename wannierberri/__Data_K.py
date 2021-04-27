@@ -81,13 +81,23 @@ class Data_K(System):
                 vars(self)[hasXR]=True
         #print('before',self.AA_R[:8,:8,172,0])
         ###TODO cancel it after testing  TODO
-        #aa_rr = self.AA_R*0.0
-        #for i in range(self.num_wann):
-        #    aa_rr[i,i,:,:] = self.AA_R[i,i,:,:]
-        #self.AA_R = aa_rr
+       # aa_rr = self.AA_R*0.0
+       # for i in range(self.num_wann):
+       #     aa_rr[i,i,:,:] = self.AA_R[i,i,:,:]
+       # self.AA_R = aa_rr
         #print('after',self.AA_R[:8,:8,172,0])
 
 #        print ("E_K=",self.E_K)
+
+
+    def dig_w_centres(self): 
+        # a diagnal matrix of wannier centres \delta_ij*\tau_i. Using in FT of matrix AA_R under convention 1. 
+        dig = np.zeros((self.num_wann,self.num_wann,3))
+        wannier_centres = self.wannier_centres.dot(self.real_lattice)
+        for i in range(self.num_wann):
+            dig[i,i,:] = wannier_centres[i,:]
+        return dig
+    
     @lazy_property.LazyProperty
     def iter_op_ed(self):
         it=list(range(0,self.NKFFT_tot,self.ksep))+[self.NKFFT_tot]
@@ -111,7 +121,11 @@ class Data_K(System):
             hermitian [=True] - consoder the matrix hermitian
             asym_before = True -  takes the antisymmetrc part over the first two cartesian indices before differentiation
             asym_after = True  - asymmetrize after  differentiation
+            pt (personal tape) is a flag indicates if we need additional terms in self.fft_R_to_k under convention 1. 
+                'HH' means no adiditional terms.
+                'AA' means have an additional term delta_ij*tau_i.
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
+        
         def asymmetrize(X,asym):
             """auxilary function"""
             if asym  :
@@ -125,7 +139,7 @@ class Data_K(System):
             shape_cR = np.shape(self.cRvec_wc)
             XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec_wc.reshape((shape_cR[0],shape_cR[1],self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
         XX_R=asymmetrize(XX_R, asym_after)
-        print(pt,np.shape(XX_R))
+        #print(pt,np.shape(XX_R))
         res = self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian,pt=pt)[self.select_K]  )
         #if pt == 'A_Hbar':
             #print(XX_R[:,:,20,0].real)
@@ -757,7 +771,11 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def A_Hbar_der(self):
-        return  self._R_to_k_H(self.AA_R.copy(), der=1,pt='AA') 
+        if self.convention == 2:
+            return  self._R_to_k_H(self.AA_R.copy(), der=1,pt='AA') 
+        elif self.convention == 1:
+            return  self._R_to_k_H(1j*(self.AA_R.copy()[:,:,:,:,None]*self.cRvec_wc[:,:,:,None,:] - self.dig_w_centres()[:,:,None,:,None]*self.cRvec_wc[:,:,:,None,:]),pt='HH') 
+           # return  self._R_to_k_H(1j*(self.AA_R.copy()[:,:,:,:,None]*self.cRvec_wc[:,:,:,None,:]),pt='AA') 
 
     @lazy_property.LazyProperty
     def S_H(self):
@@ -813,7 +831,11 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def Omega_Hbar(self):
         print_my_name_start()
-        return  -self._R_to_k_H( self.AA_R, der=1, asym_after=True,pt='AA') 
+        if self.convention == 2:
+            return  -self._R_to_k_H( self.AA_R, der=1, asym_after=True,pt='AA') 
+        elif self.convention == 1:
+            return  -self._R_to_k_H(1j*(self.AA_R[:,:,:,:,None]*self.cRvec_wc[:,:,:,None,:] - self.dig_w_centres()[:,:,None,:,None]*self.cRvec_wc[:,:,:,None,:]),asym_after=True ,pt='HH') 
+            #return  -self._R_to_k_H(1j*(self.AA_R[:,:,:,:,None]*self.cRvec_wc[:,:,:,None,:]),asym_after=True ,pt='AA') 
 
     @lazy_property.LazyProperty
     def B_Hbar(self):
@@ -899,11 +921,19 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def Omega_bar_der(self):
         print_my_name_start()
-        _OOmega_K =  self.fft_R_to_k( (
+        if self.convention == 2: 
+            _OOmega_K =  self.fft_R_to_k( (
                         #self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -     
                         #self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])[:,:,:,:,None]*self.cRvec[None,None,:,None,:]   , hermitian=True )
                         self.AA_R[:,:,:,alpha_A]*self.cRvec_wc[:,:,:,beta_A ] -     
-                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wc[:,:,:,None,:]   , hermitian=True , pt='OO')
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wc[:,:,:,None,:]   , hermitian=True , pt='HH')
+        elif self.convention == 1:
+            _OOmega_K =  self.fft_R_to_k( 
+                        (self.AA_R[:,:,:,alpha_A]*self.cRvec_wc[:,:,:,beta_A ] -     
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wc[:,:,:,None,:]   
+                        -(self.dig_w_centres()[:,:,None,alpha_A]*self.cRvec_wc[:,:,:,beta_A ] -     
+                        self.dig_w_centres()[:,:,None,beta_A]*self.cRvec_wc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wc[:,:,:,None,:]   
+                        , hermitian=True , pt='HH')
         return self._rotate(_OOmega_K)
 
     @lazy_property.LazyProperty

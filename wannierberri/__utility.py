@@ -242,7 +242,7 @@ class FFT_R_to_k():
         self.num_wann=num_wann
         self.name=name
         self.real_lattice = real_lattice
-        self.cRvec_wc = cRvec_wc.transpose(2,0,1,3)[0]
+        self.cRvec_wc = cRvec_wc.transpose(2,0,1,3)
         assert lib in ('fftw','numpy','slow') , "fft lib '{}' is not known/supported".format(lib)
         self.lib = lib
         if lib == 'fftw':
