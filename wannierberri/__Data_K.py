@@ -45,13 +45,14 @@ class Data_K(System):
         self.delta_fz=system.delta_fz
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
         self.ksep = system.ksep
-        self.wannier_centres=system.wannier_centres
+        self.wannier_centres_reduced=system.wannier_centres_reduced
+        self.wannier_centres_cart=system.wannier_centres_cart
         self.convention=system.convention
         ## TODO : create the plans externally, one per process 
 #        print( "iRvec in data_K is :\n",self.iRvec)
         #self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
-        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,self.real_lattice,
-                numthreads=npar if npar>0 else 1,lib='slow',convention=system.convention)
+        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres_reduced,self.real_lattice,
+                numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
         self.Emin=system.Emin
         self.Emax=system.Emax
 
@@ -97,14 +98,14 @@ class Data_K(System):
                 mat[...,i]=self._rotate(mat[...,i])
             return mat
 
-    def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False,pt=None):
+    def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False,flag=None):
         """ converts from real-space matrix elements in Wannier gauge to 
             k-space quantities in k-space. 
             der [=0] - defines the order of comma-derivative 
             hermitian [=True] - consoder the matrix hermitian
             asym_before = True -  takes the antisymmetrc part over the first two cartesian indices before differentiation
             asym_after = True  - asymmetrize after  differentiation
-            pt (personal tape) is a flag indicates if we need additional terms in self.fft_R_to_k under convention 1. 
+            flag: is a flag indicates if we need additional terms in self.fft_R_to_k under convention 1. 
                 'None' means no adiditional terms.
                 'AA' means have an additional term delta_ij*tau_i.
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
@@ -123,7 +124,7 @@ class Data_K(System):
             XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec_wc.reshape((shape_cR[0],shape_cR[1],self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
         XX_R=asymmetrize(XX_R, asym_after)
         #print(pt,np.shape(XX_R))
-        res = self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian,pt=pt)[self.select_K]  )
+        res = self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian,flag=flag)[self.select_K]  )
         return res
 
     @lazy_property.LazyProperty
@@ -731,7 +732,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def A_Hbar(self):
-        return self._R_to_k_H(self.AA_R.copy(),pt='AA')
+        return self._R_to_k_H(self.AA_R.copy(),flag='AA')
 
     @lazy_property.LazyProperty
     def A_H(self):

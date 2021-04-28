@@ -243,12 +243,11 @@ def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,numthreads=1,fft='fftw'
 
 class FFT_R_to_k():
     
-    def __init__(self,iRvec,NKFFT,num_wann,wannier_centres,real_lattice,numthreads=1,lib='fftw',convention=2,name=None):
+    def __init__(self,iRvec,NKFFT,num_wann,wannier_centres_reduced,real_lattice,numthreads=1,lib='fftw',convention=2,name=None):
         t0=time()
         print_my_name_start()
         self.NKFFT=tuple(NKFFT)
         self.num_wann=num_wann
-        self.name=name
         self.real_lattice = real_lattice
         assert lib in ('fftw','numpy','slow') , "fft lib '{}' is not known/supported".format(lib)
         if lib=='fftw' and not PYFFTW_IMPORTED:
@@ -268,7 +267,8 @@ class FFT_R_to_k():
         self.time_init=time()-t0
         self.time_call=0
         self.n_call=0
-        self.wannier_centres=wannier_centres
+        self.wannier_centres_reduced=wannier_centres_reduced
+        self.wannier_centres_cart = self.wannier_centres_reduced.dot(self.real_lattice) 
         self.convention=convention
 
     def execute_fft(self,A):
@@ -289,8 +289,35 @@ class FFT_R_to_k():
             raise RuntimeError("FFT.transform should not be called for slow FT")
         else :
             raise ValueError("Unknown type of Fourier transform :''".format(self.lib)) 
+    
+    @Lazy
+    def exponent(self):
+        '''
+        exponent for Fourier transform exp(1j*k*R)
+        '''
+        return [np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
+    @Lazy
+    def exponent_wc(self): 
+        '''
+        additional exponent for Fourier transform under convention 1, exp(1j*k(tau_j - tau_i))
+        '''
+        w_centres_diff = np.array([[j-i for j in self.wannier_centres_reduced] for i in self.wannier_centres_reduced])
+        def exp_par(ii,jj,i):#k1 k2 k3 partial of exponent_wc
+            return np.prod(np.exp(2j*np.pi*w_centres_diff[ii,jj,i]/self.NKFFT[i])**np.arange(self.NKFFT[i]))
+        exponent_wc=np.array([[exp_par(ii,jj,0)*exp_par(ii,jj,1)*exp_par(ii,jj,2)
+                        for jj in range(self.num_wann)] for ii in range(self.num_wann)])
+        return exponent_wc[None,None,None,:,:]
+    @Lazy
+    def diag_w_centres(self):
+        '''
+        diagnal matrix of wannier centres delta_ij*tau_i (Cartesian)
+        '''
+        diag_w_centres = np.zeros((self.num_wann,self.num_wann,3))
+        for i in range(self.num_wann):
+            diag_w_centres[i,i,:] = self.wannier_centres_cart[i,:]
+        return diag_w_centres[None,None,None,:,:,:]
 
-    def __call__(self,AAA_R,hermitian=False,antihermitian=False,reshapeKline=True,pt=None):
+    def __call__(self,AAA_R,hermitian=False,antihermitian=False,reshapeKline=True,flag=None):
         t0=time()
     #  AAA_R is an array of dimension (  num_wann x num_wann x nRpts X... ) (any further dimensions allowed)
         if  hermitian and antihermitian :
@@ -298,12 +325,10 @@ class FFT_R_to_k():
         AAA_R=AAA_R.transpose((2,0,1)+tuple(range(3,AAA_R.ndim)))
         shapeA=AAA_R.shape
         if self.lib=='slow':
-            #print ("doing slow FT")
             t0=time()
-            exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
             k=np.zeros(3,dtype=int)
             AAA_K=np.array([[[
-                 sum( np.prod([exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
+                 sum( np.prod([self.exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
                     for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
             t=time()-t0
         else:
@@ -312,39 +337,16 @@ class FFT_R_to_k():
             AAA_K=np.zeros( self.NKFFT+shapeA[1:], dtype=complex )
             ### TODO : place AAA_R to FFT grid from beginning, even before multiplying by exp(dkR)
             for ir,irvec in enumerate(self.iRvec):
-#                print (ir,irvec,self.NKFFT)
                 AAA_K[tuple(irvec)]+=AAA_R[ir]
             self.transform(AAA_K)
             AAA_K*=np.prod(self.NKFFT)
         if self.convention == 1:
             t0=time()
-            w_centres = np.array([[j-i for j in self.wannier_centres] for i in self.wannier_centres])
-            exponent=[np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
-            def exp_par(ii,jj,i):#k1 k2 k3 partial of exponent_wc
-                return np.prod(np.exp(2j*np.pi*w_centres[ii,jj,i]/self.NKFFT[i])**np.arange(self.NKFFT[i]))
-            exponent_wc=np.array([[exp_par(ii,jj,0)*exp_par(ii,jj,1)*exp_par(ii,jj,2)
-                        for jj in range(self.num_wann)] for ii in range(self.num_wann)])
-            k=np.zeros(3,dtype=int)
-            if pt==None:
-                #print(np.shape(exponent_wc))
-                #print(np.shape(AAA_K))
-                exponent_wc=exponent_wc[None,None,None,:,:]
-                for i in range(len(np.shape(AAA_K))-5): # make exponent_wc as same dimention with AAA_K
-                    exponent_wc = exponent_wc.reshape( (exponent_wc.shape)+(1,) )
-                #if len(np.shape(AAA_R)) == 4:
-                #    exponent_wc=exponent_wc[None,None,:,:,None]
-                #elif len(np.shape(AAA_R)) == 5:
-                #    exponent_wc=exponent_wc[None,None,:,:,None,None]
-                AAA_K=AAA_K * exponent_wc 
-            elif pt=='AA':
-                dig_w_centres = np.zeros((self.num_wann,self.num_wann,3))
-                wannier_centres = self.wannier_centres.dot(self.real_lattice) 
-                for i in range(self.num_wann):
-                    dig_w_centres[i,i,:] = wannier_centres[i,:]
-                exponent_wc=exponent_wc[None,None,None,:,:,None]
-                dig_w_centres= dig_w_centres[None,None,None,:,:,:]
-                AAA_K=AAA_K * exponent_wc - dig_w_centres 
-            
+            exponent_wc = self.exponent_wc
+            exponent_wc = exponent_wc.reshape( (exponent_wc.shape)+(1,)*(AAA_K.ndim-5) )# make exponent_wc as same dimention with AAA_K
+            AAA_K=AAA_K * exponent_wc 
+            if flag=='AA':
+                AAA_K=AAA_K * exponent_wc - self.diag_w_centres
             t=time()-t0
 
         ## TODO - think if fft transform of half of matrix makes sense
@@ -357,8 +359,7 @@ class FFT_R_to_k():
             AAA_K=AAA_K.reshape( (np.prod(self.NKFFT),)+shapeA[1:])
         self.time_call+=time()-t0
         self.n_call+=1
-        #print('final')
-        #print(AAA_K[3,:,:,0].real)
+        
         return AAA_K
 
 #    def __del__(self):

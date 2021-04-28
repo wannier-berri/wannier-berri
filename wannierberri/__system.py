@@ -283,12 +283,10 @@ class System():
     @lazy_property.LazyProperty
     def cRvec_wc(self):
         """ 
-        With convention 1 it is R+tj-ti. With convention 2 it is R. [m,n,iRvec]
+        With convention 1 it is R+tj-ti. With convention 2 it is R. [m,n,iRvec] (Cartesian)
         """
-        wannier_centres = self.wannier_centres.dot(self.real_lattice)
+        wannier_centres = self.wannier_centres_cart.dot(self.real_lattice)
         w_centres = np.array([[j-i for j in wannier_centres] for i in wannier_centres])
-        #print('frac',w_centres.dot(self.real_lattice))
-        #print('xyz',w_centres.dot(self.real_lattice))
         if self.convention == 1:
             return self.iRvec.dot(self.real_lattice)[None,None,:,:]+ w_centres[:,:,None,:]
         elif self.convention == 2:
