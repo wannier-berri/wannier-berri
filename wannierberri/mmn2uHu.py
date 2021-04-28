@@ -14,36 +14,36 @@
 
         Usage example: ::
 
-                python3 -m wannierberri.mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu                
+                python3 -m wannierberri.mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu
 
 
         Options
-            -h 
+            -h
                 | print the help message
 
             IBstart
-                |  the first band in the output file (counting starts from 1). 
+                |  the first band in the output file (counting starts from 1).
                 |  default: 1
             IBstartSum
-                |  the first band in the sum         (counting starts from 1). 
+                |  the first band in the sum         (counting starts from 1).
                 |  default: 1
-            NBout 
-                |  the number of bands in the output files. 
+            NBout
+                |  the number of bands in the output files.
                 |  Default : all bands
-            NBsum 
-                |  the number of bands in the summation. (one may specify several numbers, usefull to test convergence with the number of bands). 
+            NBsum
+                |  the number of bands in the summation. (one may specify several numbers, usefull to test convergence with the number of bands).
                 |  Default:all bands
-            input 
-                |  path to the input files. 
-                |  Default: ./  
-            output 
-                |  path to the output files 
+            input
+                |  path to the input files.
+                |  Default: ./
+            output
+                |  path to the output files
 
-            targets 
+            targets
                 |  files to write : ``amn``, ``mmn``, ``spn``, ``uHu``, ``uIu``,  ``sHu``, ``sIu``, ``eig``
                 |  default: ``amn``,``mmn``,``eig``,``uHu``
-            formatted 
-                |  files to write as formatted  ``uHu``, ``uIu`` , ``sHu``, ``sIu``, ``spn``, ``spn_in``, ``spn_out``, ``all`` 
+            formatted
+                |  files to write as formatted  ``uHu``, ``uIu`` , ``sHu``, ``sIu``, ``spn``, ``spn_in``, ``spn_out``, ``all``
                 |  default: none
 
 
