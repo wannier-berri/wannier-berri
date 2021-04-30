@@ -14,10 +14,11 @@
 import numpy as np
 import copy
 import lazy_property
-from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice
+from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice,iterate3d,one2three
 from  .symmetry import Group
 from colorama import init
 from termcolor import cprint 
+from collections import defaultdict
 
 
 
@@ -60,74 +61,17 @@ class System():
 
     """
 
-    def __init__(self, old_format=False,    **parameters ):
+    def __init__(self,real_lattice,iRvec,HH_R,**parameters):
 
-
+        self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice,None)
+        self.iRvec = iRvec
+        assert iRvec.shape[0]==HH_R.shape[2]
+        assert HH_R.shape[0]==HH_R.shape[1]
+        self.num_wann=HH_R.shape[0]
+        self.HH_R=np.copy(HH_R)
+        self.iRvec=np.copy(iRvec)
         self.set_parameters(**parameters)
-        self.old_format=old_format
-
-        cprint ("Reading from {}".format(seedname+"_HH_save.info"),'green', attrs=['bold'])
-
-        f=open(seedname+"_HH_save.info" if self.old_format else seedname+"_R.info","r")
-        l=f.readline().split()[:3]
-        self.seedname=seedname
-        self.num_wann,nRvec=int(l[0]),int(l[1])
-        self.nRvec0=nRvec
-        real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
-        self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice=real_lattice)
-        iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
-        
-        self.Ndegen=iRvec[:,3]
-        self.iRvec=iRvec[:,:3]
-
-        self.cRvec=self.iRvec.dot(self.real_lattice)
-
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Recommended size of FFT grid", self.NKFFT_recommended)
-        print ("Real-space lattice:\n",self.real_lattice)
-        #print ("R - points and dege=neracies:\n",iRvec)
-        has_ws=str2bool(f.readline().split("=")[1].strip())
-
-        
-        if has_ws and self.use_ws:
-            print ("using ws_dist")
-            self.ws_map=ws_dist_map_read(self.iRvec,self.num_wann,f.readlines())
-            self.iRvec=np.array(self.ws_map._iRvec_ordered,dtype=int)
-        else:
-            self.ws_map=None
-        
-        f.close()
-
-        self.HH_R=self.__getMat('HH')
-
-        
-        if self.getAA:
-            self.AA_R=self.__getMat('AA')
-
-        if self.getBB:
-            self.BB_R=self.__getMat('BB')
-        
-        if self.getCC:
-            try:
-                self.CC_R=1j*self.__getMat('CCab')
-            except:
-                _CC_R=self.__getMat('CC')
-                self.CC_R=1j*(_CC_R[:,:,:,alpha_A,beta_A]-_CC_R[:,:,:,beta_A,alpha_A])
-
-        if self.getFF:
-            try:
-                self.FF_R=1j*self.__getMat('FFab')
-            except:
-                _FF_R=self.__getMat('FF')
-                self.FF_R=1j*(_FF_R[:,:,:,alpha_A,beta_A]-_FF_R[:,:,:,beta_A,alpha_A])
-
-        if self.getSS:
-            self.SS_R=self.__getMat('SS')
-
         self.set_symmetry()
-
-        cprint ("Reading the system finished successfully",'green', attrs=['bold'])
 
 
     def set_parameters(self,**parameters):
@@ -288,27 +232,24 @@ class System():
     def cell_volume(self):
         return abs(np.linalg.det(self.real_lattice))
 
-
-
-    def __getMat(self,suffix):
-
-        f=FF(self.seedname+"_" + suffix+"_R"+(".dat" if self.old_format else ""))
-        MM_R=np.array([[np.array(f.read_record('2f8'),dtype=float) for m in range(self.num_wann)] for n in range(self.num_wann)])
-        MM_R=MM_R[:,:,:,0]+1j*MM_R[:,:,:,1]
-        f.close()
-        ncomp=MM_R.shape[2]/self.nRvec0
-        if ncomp==1:
-            result=MM_R/self.Ndegen[None,None,:]
-        elif ncomp==3:
-            result= MM_R.reshape(self.num_wann, self.num_wann, 3, self.nRvec0).transpose(0,1,3,2)/self.Ndegen[None,None,:,None]
-        elif ncomp==9:
-            result= MM_R.reshape(self.num_wann, self.num_wann, 3,3, self.nRvec0).transpose(0,1,4,3,2)/self.Ndegen[None,None,:,None,None]
-        else:
-            raise RuntimeError("in __getMat: invalid ncomp : {0}".format(ncomp))
-        if self.ws_map is None:
-            return result
-        else:
-            return self.ws_map(result)
+    def supercell(self,size=1):
+        size=one2three(size)
+        num_wann=self.num_wann*np.prod(size)
+        real_lattice=self.real_lattice*size
+        HH_R_dict=defaultdict(lambda:np.zeros((num_wann,num_wann),dtype=complex) )
+        for i,iR in enumerate(self.iRvec):
+            for x,y,z in iterate3d(size):
+                iRnew=iR+np.array([x,y,z])
+                block1=x*size[1]*size[2]+y*size[2]+z	
+                iRrem=iRnew%size
+                iRdiv=tuple(iRnew//size)
+                block2=iRrem[0]*size[1]*size[2]+iRrem[1]*size[2]+iRrem[2]
+                HH_R_dict[iRdiv][block1*self.num_wann:(block1+1)*self.num_wann, block2*self.num_wann:(block2+1)*self.num_wann]+=self.HH_R[:,:,i]
+        iRvec=list(HH_R_dict.keys())
+        HH_R=np.zeros((num_wann,num_wann,len(iRvec)),dtype=complex) 
+        for i,iR in enumerate(iRvec):
+            HH_R[:,:,i]=HH_R_dict[iR]
+        return System(real_lattice,np.array(iRvec,dtype=int),HH_R)
         
 
 #
@@ -368,21 +309,6 @@ class ws_dist_map():
             if chsum>1e-12: print ("WARNING: Check sum for {0} : {1}".format(ir,chsum))
 
 
-
-class ws_dist_map_read(ws_dist_map):
-    def __init__(self,iRvec,num_wann,lines):
-        nRvec=iRvec.shape[0]
-        self.num_wann=num_wann
-        self._iRvec_new=dict()
-        n_nonzero=np.array([l.split()[-1] for l in lines[:nRvec]],dtype=int)
-        lines=lines[nRvec:]
-        for ir,nnz in enumerate(n_nonzero):
-            map1r=map_1R(lines[:nnz],iRvec[ir])
-            for iw in range(num_wann):
-                for jw in range(num_wann):
-                    self._add_star(ir,map1r(iw,jw),iw,jw)
-            lines=lines[nnz:]
-        self._init_end(nRvec)
 
         
 

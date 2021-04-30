@@ -11,7 +11,7 @@
 #                                                            #
 #------------------------------------------------------------
 
-from collections.abc import Iterable
+from .__utility import one2three
 import numpy as np
 from time import time
 from  .__Kpoint import KpointBZ
@@ -100,16 +100,6 @@ class Grid():
         print ("Done in {} s ".format(time()-t0))
         print ("K_list contains {} Irreducible points({}%%) out of initial {}x{}x{}={} grid".format(len(K_list),round(len(K_list)/np.prod(self.div)*100,2),self.div[0],self.div[1],self.div[2],np.prod(self.div)))
         return K_list
-
-
-def one2three(nk):
-    if nk is None:
-        return None
-    if isinstance(nk, Iterable):
-        if len(nk)!=3 :
-            raise RuntimeError("nk should be specified either as one  number or 3 numbers. found {}".format(nk))
-        return np.array(nk)
-    return np.array((nk,)*3)
 
 
 def iterate_vector(v1,v2):

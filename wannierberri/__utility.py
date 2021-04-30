@@ -18,6 +18,7 @@ __debug = False
 import inspect
 import numpy as np
 
+from collections.abc import Iterable
 from lazy_property import LazyProperty as Lazy
 from time import time
 from termcolor import cprint 
@@ -338,6 +339,16 @@ def iterate3d(size):
     return ( np.array([i,j,k]) for i in range(0,size[0])
                      for j in range(0,size[1])
                      for k in range(0,size[2]) )
+
+def one2three(nk):
+    if nk is None:
+        return None
+    if isinstance(nk, Iterable):
+        if len(nk)!=3 :
+            raise RuntimeError("nk should be specified either as one  number or 3 numbers. found {}".format(nk))
+        return np.array(nk)
+    return np.array((nk,)*3)
+
 
 def find_degen(arr,degen_thresh):
     """ finds shells of 'almost same' values in array arr, and returns a list o[(b1,b2),...]"""
