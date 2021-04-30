@@ -232,25 +232,40 @@ class System():
     def cell_volume(self):
         return abs(np.linalg.det(self.real_lattice))
 
-    def supercell(self,size=1):
+    def supercell(self,size=1,phi=None,theta=None):
         size=one2three(size)
         num_wann=self.num_wann*np.prod(size)
         real_lattice=self.real_lattice*size
         HH_R_dict=defaultdict(lambda:np.zeros((num_wann,num_wann),dtype=complex) )
         for i,iR in enumerate(self.iRvec):
             for x,y,z in iterate3d(size):
-                iRnew=iR+np.array([x,y,z])
+                xyz=np.array([x,y,z])
+                iRnew=iR+xyz
                 block1=x*size[1]*size[2]+y*size[2]+z	
                 iRrem=iRnew%size
                 iRdiv=tuple(iRnew//size)
                 block2=iRrem[0]*size[1]*size[2]+iRrem[1]*size[2]+iRrem[2]
-                HH_R_dict[iRdiv][block1*self.num_wann:(block1+1)*self.num_wann, block2*self.num_wann:(block2+1)*self.num_wann]+=self.HH_R[:,:,i]
+                if phi is not None and theta is not None:
+                    HH_R_new=np.zeros((self.num_wann,self.num_wann),dtype=complex)
+                    spin_rot_1=[spin_rotation(self.wannier_centres_red[iw1]+xyz   , phi,theta).conj().T for iw1 in range(self.num_wann//2) ]
+                    spin_rot_2=[spin_rotation(self.wannier_centres_red[iw1]+iRrem , phi,theta)          for iw1 in range(self.num_wann//2) ]
+                    for iw1 in range(self.num_wann//2):
+                        for iw2 in range(self.num_wann//2):
+                            HH_R_new[iw1::self.num_wann//2,iw2::self.num_wann//2] = spin_rot_1[iw1].dot(self.HH_R[iw1::self.num_wann//2,iw2::self.num_wann//2,i]).dot(spin_rot_2[iw2])
+                else:
+                    HH_R_new=self.HH_R[:,:,i]
+                HH_R_dict[iRdiv][block1*self.num_wann:(block1+1)*self.num_wann, block2*self.num_wann:(block2+1)*self.num_wann]+=HH_R_new
         iRvec=list(HH_R_dict.keys())
         HH_R=np.zeros((num_wann,num_wann,len(iRvec)),dtype=complex) 
         for i,iR in enumerate(iRvec):
             HH_R[:,:,i]=HH_R_dict[iR]
         return System(real_lattice,np.array(iRvec,dtype=int),HH_R)
         
+
+def spin_rotation(R,phi,theta):
+    p=phi(R)
+    t=theta(R)
+    return np.eye(2)  # so far a fake rotateion
 
 #
 # the following  implements the use_ws_distance = True  (see Wannier90 documentation for details)

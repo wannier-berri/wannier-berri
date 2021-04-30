@@ -60,6 +60,7 @@ class System_tb(System):
         self.iRvec=[]
         
         self.HH_R=np.zeros( (self.num_wann,self.num_wann,nRvec) ,dtype=complex)
+        self.wannier_centres_red=np.zeros(self.num_wann)
         
         for ir in range(nRvec):
             f.readline()
