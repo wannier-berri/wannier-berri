@@ -296,6 +296,7 @@ class FFT_R_to_k():
         exponent for Fourier transform exp(1j*k*R)
         '''
         return [np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
+
     @Lazy
     def exponent_wc(self): 
         '''
@@ -303,10 +304,11 @@ class FFT_R_to_k():
         '''
         w_centres_diff = np.array([[j-i for j in self.wannier_centres_reduced] for i in self.wannier_centres_reduced])
         def exp_par(ii,jj,i):#k1 k2 k3 partial of exponent_wc
-            return np.prod(np.exp(2j*np.pi*w_centres_diff[ii,jj,i]/self.NKFFT[i])**np.arange(self.NKFFT[i]))
-        exponent_wc=np.array([[exp_par(ii,jj,0)*exp_par(ii,jj,1)*exp_par(ii,jj,2)
+            return np.exp(2j*np.pi*w_centres_diff[ii,jj,i]/self.NKFFT[i])**np.arange(self.NKFFT[i])
+        exponent_wc=np.array([[exp_par(ii,jj,0)[:,None,None]*exp_par(ii,jj,1)[None,:,None]*exp_par(ii,jj,2)[None,None,:]
                         for jj in range(self.num_wann)] for ii in range(self.num_wann)])
-        return exponent_wc[None,None,None,:,:]
+        return exponent_wc.transpose((2,3,4,0,1))
+
     @Lazy
     def diag_w_centres(self):
         '''
@@ -332,6 +334,7 @@ class FFT_R_to_k():
                     for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
             t=time()-t0
         else:
+            t0=time()
             assert  self.nRvec==shapeA[0]
             assert  self.num_wann==shapeA[1]==shapeA[2]
             AAA_K=np.zeros( self.NKFFT+shapeA[1:], dtype=complex )
@@ -340,14 +343,13 @@ class FFT_R_to_k():
                 AAA_K[tuple(irvec)]+=AAA_R[ir]
             self.transform(AAA_K)
             AAA_K*=np.prod(self.NKFFT)
+            t=time()-t0
         if self.convention == 1:
-            t0=time()
             exponent_wc = self.exponent_wc
             exponent_wc = exponent_wc.reshape( (exponent_wc.shape)+(1,)*(AAA_K.ndim-5) )# make exponent_wc as same dimention with AAA_K
             AAA_K=AAA_K * exponent_wc 
             if flag=='AA':
-                AAA_K=AAA_K * exponent_wc - self.diag_w_centres
-            t=time()-t0
+                AAA_K=AAA_K  - self.diag_w_centres
 
         ## TODO - think if fft transform of half of matrix makes sense
         if hermitian:

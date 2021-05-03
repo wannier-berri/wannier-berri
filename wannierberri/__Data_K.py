@@ -52,7 +52,7 @@ class Data_K(System):
 #        print( "iRvec in data_K is :\n",self.iRvec)
         #self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
         self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres_reduced,self.real_lattice,
-                numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
+                numthreads=npar if npar>0 else 1,lib=fftlib,convention=self.convention)
         self.Emin=system.Emin
         self.Emax=system.Emax
 
