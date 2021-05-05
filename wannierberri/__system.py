@@ -40,7 +40,7 @@ class System():
     morb : bool
         set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file.
     periodic : [bool,bool,bool]
-        set ''True'' for periodic directions and ''False''for confined (e.g. slab direction for 2D systems). Not relevant for :class:`~wannierberri.System_TBmodels` and  :class:`~wannierberri.System_PythTB`
+        set ``True`` for periodic directions and ``False`` for confined (e.g. slab direction for 2D systems). If less then 3 values provided, the rest are treated as ``False``
     SHCryoo : bool 
         set ``True`` if quantities derived from Ryoo's spin-current elements will be used. (RPS 2019)
     SHCqiao : bool
@@ -154,7 +154,9 @@ class System():
                 vars(self)[param]=parameters[param]
             else: 
                 vars(self)[param]=self.default_parameters[param]
-        self.periodic=np.array(self.periodic)
+        periodic=np.zeros(3,dtype=bool)
+        periodic[:len(self.periodic)]=self.periodic
+        self.periodic=periodic
 
 
     def check_periodic(self):
