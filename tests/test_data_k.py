@@ -8,12 +8,13 @@ import wannierberri as wberri
 from wannierberri.__Kpoint import KpointBZ
 from wannierberri.__Data_K import Data_K
 
-from create_system import create_files_Fe_W90, system_Fe_W90
+from create_system import create_files_Fe_W90, system_Fe_W90, system_Fe_w90_wc
 
 
 def test_fourier(system_Fe_W90):
     """Compare slow FT and FFT."""
     system = system_Fe_W90
+    system_wc = system_Fe_w90_wc
 
     k = np.array([0.1, 0.2, -0.3])
 
@@ -30,9 +31,15 @@ def test_fourier(system_Fe_W90):
     data_fast = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='fftw')
     data_slow = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='slow')
 
-    test_fields = ["E_K", "D_H", "V_H", "shc_B_H"]
+    data_fast_wc = Data_K(system_wc, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='fftw')
+
+    test_fields = ["E_K", "D_H", "V_H", "shc_B_H", "Omega"]
 
     for field in test_fields:
         assert getattr(data_fast, field) == approx(getattr(data_slow, field)), "wrong {}".format(field)
+        assert getattr(data_fast, field) == approx(getattr(data_fast_wc, field)), "wrong {}".format(field)
 
     # TODO: Allow gauge degree of freedom
+
+
+
