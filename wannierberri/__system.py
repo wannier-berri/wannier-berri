@@ -147,7 +147,7 @@ class System():
                     'Emax': np.Inf ,
                     'use_ws':True,
                     'periodic':(True,True,True),
-                    'convention':2
+                    'use_wc_phase':False
                        }
 
         for param in self.default_parameters:
@@ -283,13 +283,13 @@ class System():
     @lazy_property.LazyProperty
     def cRvec_wc(self):
         """ 
-        With convention 1 it is R+tj-ti. With convention 2 it is R. [m,n,iRvec] (Cartesian)
+        With self.use_wc_phase=True it is R+tj-ti. With self.use_wc_phase=False it is R. [m,n,iRvec] (Cartesian)
         """
         wannier_centres = self.wannier_centres_cart
         w_centres = np.array([[j-i for j in wannier_centres] for i in wannier_centres])
-        if self.convention == 1:
+        if self.use_wc_phase:
             return self.iRvec.dot(self.real_lattice)[None,None,:,:]+ w_centres[:,:,None,:]
-        elif self.convention == 2:
+        else:
             return self.iRvec.dot(self.real_lattice)[None,None,:,:]
 
 

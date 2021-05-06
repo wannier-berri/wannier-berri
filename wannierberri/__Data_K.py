@@ -47,12 +47,12 @@ class Data_K(System):
         self.ksep = system.ksep
         self.wannier_centres_reduced=system.wannier_centres_reduced
         self.wannier_centres_cart=system.wannier_centres_cart
-        self.convention=system.convention
+        self.use_wc_phase=system.use_wc_phase
         ## TODO : create the plans externally, one per process 
 #        print( "iRvec in data_K is :\n",self.iRvec)
         #self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
         self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres_reduced,self.real_lattice,
-                numthreads=npar if npar>0 else 1,lib=fftlib,convention=self.convention)
+                numthreads=npar if npar>0 else 1,lib=fftlib,use_wc_phase=self.use_wc_phase)
         self.Emin=system.Emin
         self.Emax=system.Emax
 
@@ -63,10 +63,15 @@ class Data_K(System):
         except Exception as err:
 #            print ('failed to create a pool of {} workers : {}'.format(npar,err))
             self.poolmap=lambda fun,lst : [fun(x) for x in lst]
-        expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))
+        if self.use_wc_phase:
+            w_centres_diff = np.array([[j-i for j in self.wannier_centres_reduced] for i in self.wannier_centres_reduced])
+            expdK=np.exp(2j*np.pi*(system.iRvec[None,None,:,:]+w_centres_diff[:,:,None,:]).dot(dK))
+            self.HH_R=system.HH_R*expdK
+        else:
+            expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))
+            self.HH_R=system.HH_R[:,:,:]*expdK[None,None,:]
         self.dK=dK
  
-        self.HH_R=system.HH_R[:,:,:]*expdK[None,None,:]
         
         for X in ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']:
             XR=X+'_R'
@@ -76,9 +81,15 @@ class Data_K(System):
             if XR in vars(system):
               if vars(system)[XR] is not  None:
                 if X in ['SA','SHA','SR','SHR']:
-                  vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None,None]
+                    if self.use_wc_phase:
+                        vars(self)[XR]=vars(system)[XR]*expdK[:,:,:,None,None]
+                    else:
+                        vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None,None]
                 else:
-                  vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
+                    if self.use_wc_phase:
+                        vars(self)[XR]=vars(system)[XR]*expdK[:,:,:,None]
+                    else:
+                        vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
                 vars(self)[hasXR]=True
 
 
