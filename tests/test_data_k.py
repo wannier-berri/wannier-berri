@@ -8,7 +8,7 @@ import wannierberri as wberri
 from wannierberri.__Kpoint import KpointBZ
 from wannierberri.__Data_K import Data_K
 
-from create_system import create_files_Fe_W90, system_Fe_W90, system_Fe_w90_wc
+from create_system import create_files_Fe_W90, system_Fe_W90, system_Fe_W90_wc
 
 
 def test_fourier(system_Fe_W90):
