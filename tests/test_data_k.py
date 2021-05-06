@@ -14,7 +14,7 @@ from create_system import create_files_Fe_W90, system_Fe_W90, system_Fe_W90_wc
 def test_fourier(system_Fe_W90):
     """Compare slow FT and FFT."""
     system = system_Fe_W90
-    system_wc = system_Fe_w90_wc
+    system_wc = system_Fe_W90_wc
 
     k = np.array([0.1, 0.2, -0.3])
 
