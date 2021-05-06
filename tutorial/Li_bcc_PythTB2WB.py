@@ -33,7 +33,7 @@ for R in ([1,0,0],[0,1,0],[0,0,1],[1,1,1]):
     my_model.set_hop(t, 0, 0, R)
 
 
-system=wb.System_PythTB(my_model,getAA=True)
+system=wb.System_PythTB(my_model,berry=True)
 Efermi=np.linspace(-7,16,5000)
 # Define the generators of the point group of the crystal (Im-3m)
 # generators extracted from Bilbao Crystallographic Center
