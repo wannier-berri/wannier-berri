@@ -243,7 +243,7 @@ def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,numthreads=1,fft='fftw'
 
 class FFT_R_to_k():
     
-    def __init__(self,iRvec,NKFFT,num_wann,wannier_centres_reduced,real_lattice,numthreads=1,lib='fftw',convention=2,name=None):
+    def __init__(self,iRvec,NKFFT,num_wann,wannier_centres_reduced,real_lattice,numthreads=1,lib='fftw',use_wc_phase=False,name=None):
         t0=time()
         print_my_name_start()
         self.NKFFT=tuple(NKFFT)
@@ -269,7 +269,7 @@ class FFT_R_to_k():
         self.n_call=0
         self.wannier_centres_reduced=wannier_centres_reduced
         self.wannier_centres_cart = self.wannier_centres_reduced.dot(self.real_lattice) 
-        self.convention=convention
+        self.use_wc_phase=use_wc_phase
 
     def execute_fft(self,A):
         return self.fft_plan(A)
@@ -300,7 +300,7 @@ class FFT_R_to_k():
     @Lazy
     def exponent_wc(self): 
         '''
-        additional exponent for Fourier transform under convention 1, exp(1j*k(tau_j - tau_i))
+        additional exponent for Fourier transform under use_wc_phase=True, exp(1j*k(tau_j - tau_i))
         '''
         w_centres_diff = np.array([[j-i for j in self.wannier_centres_reduced] for i in self.wannier_centres_reduced])
         def exp_par(ii,jj,i):#k1 k2 k3 partial of exponent_wc
@@ -344,7 +344,7 @@ class FFT_R_to_k():
             self.transform(AAA_K)
             AAA_K*=np.prod(self.NKFFT)
             t=time()-t0
-        if self.convention == 1:
+        if self.use_wc_phase:
             exponent_wc = self.exponent_wc
             exponent_wc = exponent_wc.reshape( (exponent_wc.shape)+(1,)*(AAA_K.ndim-5) )# make exponent_wc as same dimention with AAA_K
             AAA_K=AAA_K * exponent_wc 
