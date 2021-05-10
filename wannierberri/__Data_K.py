@@ -109,6 +109,16 @@ class Data_K(System):
                 mat[...,i]=self._rotate(mat[...,i])
             return mat
 
+    @lazy_property.LazyProperty
+    def diag_w_centres(self):
+        '''
+        diagnal matrix of wannier centres delta_ij*tau_i (Cartesian)
+        '''
+        diag_w_centres = np.zeros((self.num_wann,self.num_wann,3))
+        for i in range(self.num_wann):
+            diag_w_centres[i,i,:] = self.wannier_centres_cart[i,:]
+        return diag_w_centres[None,:,:,:]
+    
     def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False,flag=None):
         """ converts from real-space matrix elements in Wannier gauge to 
             k-space quantities in k-space. 
@@ -116,9 +126,11 @@ class Data_K(System):
             hermitian [=True] - consoder the matrix hermitian
             asym_before = True -  takes the antisymmetrc part over the first two cartesian indices before differentiation
             asym_after = True  - asymmetrize after  differentiation
-            flag: is a flag indicates if we need additional terms in self.fft_R_to_k under convention 1. 
+            flag: is a flag indicates if we need additional terms in self.fft_R_to_k under use_wc_phase. 
                 'None' means no adiditional terms.
-                'AA' means have an additional term delta_ij*tau_i.
+                'AA' means, under use_wc_phase, FFT of AA_R have an additional term delta_ij*tau_i.
+                'BB' means, under use_wc_phase, FFT of BB_R have an additional term delta_ij*tau_i*HH_K .
+                'CC' means, under use_wc_phase, FFT of CC_R have an additional term  .
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
         
         def asymmetrize(X,asym):
@@ -136,6 +148,24 @@ class Data_K(System):
         XX_R=asymmetrize(XX_R, asym_after)
         #print(pt,np.shape(XX_R))
         res = self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian,flag=flag)[self.select_K]  )
+        if self.use_wc_phase:
+            if flag=='AA':
+                res = res-self.diag_w_centres
+            elif flag=='BB':
+                #res = res - self.diag_w_centres[:,:,:,:]*self.HH_K[:,:,:,None]
+                np.sum(self.diag_w_centres[:,None,:,:,:]*self.HH_K[:,:,:,None,None],axis=2)
+            elif flag=='CC':
+                res = res +  (
+                        np.sum(self.B_Hbar[:,:,:,None,beta_A]*self.diag_w_centres[:,None,:,:,alpha_A] 
+                        - self.B_Hbar[:,None,:,:,beta_A]*self.diag_w_centres[:,:,:,None,alpha_A]  
+                        + 1j*self.V_H[:,:,:,None,alpha_A]*self.diag_w_centres[:,None,:,:,beta_A],axis=2) 
+                        - np.sum(self.B_Hbar[:,:,:,None,alpha_A]*self.diag_w_centres[:,None,:,:,beta_A] 
+                        - self.B_Hbar[:,None,:,:,alpha_A]*self.diag_w_centres[:,:,:,None,beta_A]  
+                        + 1j*self.V_H[:,:,:,None,beta_A]*self.diag_w_centres[:,None,:,:,alpha_A],axis=2) 
+                       )
+            elif flag=='BB_der':
+                print('BB_der')
+                res = res - np.sum(self.diag_w_centres[:,None,:,:,:]*self.V_H[:,:,:,None,None],axis=2)
         return res
 
     @lazy_property.LazyProperty
@@ -388,7 +418,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def Morb_Hbar(self):
-        return self._R_to_k_H( self.CC_R.copy() )
+        return self._R_to_k_H( self.CC_R.copy(),flag='CC')
 
     @lazy_property.LazyProperty
     def Morb_Hbar_diag(self):
@@ -477,7 +507,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def B_Hbar_fz(self):
         print_my_name_start()
-        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False)
+        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False,flag='BB')
         return _BB_K
 
     #@property
@@ -651,6 +681,14 @@ class Data_K(System):
             data_list.append(DataIO(self.derOmegaTr(op,ed)).to_sea(degen_thresh=self.degen_thresh))
         return mergeDataIO(data_list)
 
+    @property
+    def derOmegaTr_tab(self):
+        data_list=[]
+        for op,ed in self.iter_op_ed:
+            data_list.append(DataIO(self.derOmegaTr(op,ed)))
+        return mergeDataIO(data_list)
+
+
 
     def derOmegaTrW(self,op,ed,omega=0):
         b=alpha_A
@@ -813,14 +851,14 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def B_Hbar(self):
         print_my_name_start()
-        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False)
+        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False,flag='BB')
         select=(self.E_K<=self.frozen_max)
         _BB_K[select]=self.E_K[select][:,None,None]*self.A_Hbar[select]
         return _BB_K
     
     @lazy_property.LazyProperty
     def B_Hbar_der(self):
-        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitian=False)
+        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitian=False,flag="BB_der")
         return _BB_K
 
     @lazy_property.LazyProperty
@@ -975,6 +1013,8 @@ class Data_K(System):
             res['oi']+=-2*(C+sign*D)
         return  res
 
+    #def Hplus(self,evalJ0=True,evalJ1=True,evalJ2=True):
+    #    return self.Hplusminus(+1,evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
     def Hplus(self,evalJ0=True,evalJ1=True,evalJ2=True):
         return self.Hplusminus(+1,evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
 
