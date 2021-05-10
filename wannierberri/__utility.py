@@ -348,8 +348,9 @@ class FFT_R_to_k():
             exponent_wc = self.exponent_wc
             exponent_wc = exponent_wc.reshape( (exponent_wc.shape)+(1,)*(AAA_K.ndim-5) )# make exponent_wc as same dimention with AAA_K
             AAA_K=AAA_K * exponent_wc 
-            if flag=='AA':
-                AAA_K=AAA_K  - self.diag_w_centres
+           # if flag=='AA':
+           #     AAA_K = AAA_K-self.diag_w_centres
+
 
         ## TODO - think if fft transform of half of matrix makes sense
         if hermitian:

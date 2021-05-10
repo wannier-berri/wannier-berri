@@ -34,7 +34,8 @@ calculators={
          'morb'       : berry.calcImgh_band_kn,
          'berry'      : berry.calcImf_band_kn ,
          'hall_spin'  : berry.calcHall_spin_kn,
-         'hall_orb'   : berry.calcHall_orb_kn
+         'hall_orb'   : berry.calcHall_orb_kn,
+         'berry_z_der'  : berry.calcBerry_z_der_kn
          }
 
 
@@ -49,6 +50,7 @@ descriptions['spin']="Spin"
 descriptions['morb']="orbital magnetic moment"
 descriptions['hall_spin']="spin contribution to low-field Hall effect"
 descriptions['hall_orb']="orbital contribution to low-field Hall effect"
+descriptions['berry_z_der']="derivative of Berry curvature z component.(Berry dipole)"
 
 
 
