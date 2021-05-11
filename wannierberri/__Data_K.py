@@ -63,13 +63,13 @@ class Data_K(System):
         except Exception as err:
 #            print ('failed to create a pool of {} workers : {}'.format(npar,err))
             self.poolmap=lambda fun,lst : [fun(x) for x in lst]
+        
         if self.use_wc_phase:
             w_centres_diff = np.array([[j-i for j in self.wannier_centres_reduced] for i in self.wannier_centres_reduced])
-            expdK=np.exp(2j*np.pi*(system.iRvec[None,None,:,:]+w_centres_diff[:,:,None,:]).dot(dK))
-            self.HH_R=system.HH_R*expdK
+            expdK=np.exp(2j*np.pi*(system.iRvec[None,None,:,:] +w_centres_diff[:,:,None,:]).dot(dK))
         else:
-            expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))
-            self.HH_R=system.HH_R[:,:,:]*expdK[None,None,:]
+            expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))[None,None,:]
+        self.HH_R=system.HH_R*expdK
         self.dK=dK
  
         
@@ -81,15 +81,9 @@ class Data_K(System):
             if XR in vars(system):
               if vars(system)[XR] is not  None:
                 if X in ['SA','SHA','SR','SHR']:
-                    if self.use_wc_phase:
-                        vars(self)[XR]=vars(system)[XR]*expdK[:,:,:,None,None]
-                    else:
-                        vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None,None]
+                    vars(self)[XR]=vars(system)[XR]*expdK[:,:,:,None,None]
                 else:
-                    if self.use_wc_phase:
-                        vars(self)[XR]=vars(system)[XR]*expdK[:,:,:,None]
-                    else:
-                        vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
+                    vars(self)[XR]=vars(system)[XR]*expdK[:,:,:,None]
                 vars(self)[hasXR]=True
 
 
@@ -100,7 +94,6 @@ class Data_K(System):
 
     def _rotate(self,mat):
         print_my_name_start()
-#        return  np.einsum('kml,kmn,knp->klp',self.UU_K.conj(),mat,self.UU_K)
         assert mat.ndim>2
         if mat.ndim==3:
             return  np.array(self.poolmap( _rotate_matrix , zip(mat,self.UU_K)))
@@ -112,13 +105,12 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def diag_w_centres(self):
         '''
+        After rotate. U^+ \tau U
         diagnal matrix of wannier centres delta_ij*tau_i (Cartesian)
         '''
-        diag_w_centres = np.zeros((self.num_wann,self.num_wann,3))
-        for i in range(self.num_wann):
-            diag_w_centres[i,i,:] = self.wannier_centres_cart[i,:]
-        return diag_w_centres[None,:,:,:]
-    
+        return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.wannier_centres_cart[None,:,None,None,:] , axis=1)
+        
+
     def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False,flag=None):
         """ converts from real-space matrix elements in Wannier gauge to 
             k-space quantities in k-space. 
@@ -128,9 +120,7 @@ class Data_K(System):
             asym_after = True  - asymmetrize after  differentiation
             flag: is a flag indicates if we need additional terms in self.fft_R_to_k under use_wc_phase. 
                 'None' means no adiditional terms.
-                'AA' means, under use_wc_phase, FFT of AA_R have an additional term delta_ij*tau_i.
-                'BB' means, under use_wc_phase, FFT of BB_R have an additional term delta_ij*tau_i*HH_K .
-                'CC' means, under use_wc_phase, FFT of CC_R have an additional term  .
+                'AA' means, under use_wc_phase, FFT of AA_R have an additional term -tau_i.
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
         
         def asymmetrize(X,asym):
@@ -142,30 +132,17 @@ class Data_K(System):
                 return X
         XX_R=asymmetrize(XX_R, asym_before)
         for i in range(der):
-            #XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec.reshape((1,1,self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
             shape_cR = np.shape(self.cRvec_wc)
             XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec_wc.reshape((shape_cR[0],shape_cR[1],self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
         XX_R=asymmetrize(XX_R, asym_after)
-        #print(pt,np.shape(XX_R))
-        res = self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian,flag=flag)[self.select_K]  )
+        
+        add_term = 0.0 # additional term under use_wc_phase=True
         if self.use_wc_phase:
             if flag=='AA':
-                res = res-self.diag_w_centres
-            elif flag=='BB':
-                #res = res - self.diag_w_centres[:,:,:,:]*self.HH_K[:,:,:,None]
-                np.sum(self.diag_w_centres[:,None,:,:,:]*self.HH_K[:,:,:,None,None],axis=2)
-            elif flag=='CC':
-                res = res +  (
-                        np.sum(self.B_Hbar[:,:,:,None,beta_A]*self.diag_w_centres[:,None,:,:,alpha_A] 
-                        - self.B_Hbar[:,None,:,:,beta_A]*self.diag_w_centres[:,:,:,None,alpha_A]  
-                        + 1j*self.V_H[:,:,:,None,alpha_A]*self.diag_w_centres[:,None,:,:,beta_A],axis=2) 
-                        - np.sum(self.B_Hbar[:,:,:,None,alpha_A]*self.diag_w_centres[:,None,:,:,beta_A] 
-                        - self.B_Hbar[:,None,:,:,alpha_A]*self.diag_w_centres[:,:,:,None,beta_A]  
-                        + 1j*self.V_H[:,:,:,None,beta_A]*self.diag_w_centres[:,None,:,:,alpha_A],axis=2) 
-                       )
-            elif flag=='BB_der':
-                print('BB_der')
-                res = res - np.sum(self.diag_w_centres[:,None,:,:,:]*self.V_H[:,:,:,None,None],axis=2)
+                add_term = - self.diag_w_centres
+
+        res = self._rotate((self.fft_R_to_k( XX_R,hermitian=hermitian))[self.select_K]  )
+        res = res + add_term
         return res
 
     @lazy_property.LazyProperty
@@ -414,7 +391,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def V_H(self):
         self.E_K
-        return self._R_to_k_H( self.HH_R.copy(), der=1)
+        return self._R_to_k_H( self.HH_R.copy(), der=1,flag='VV')
 
     @lazy_property.LazyProperty
     def Morb_Hbar(self):
@@ -635,44 +612,6 @@ class Data_K(System):
         # by renaming the variables here, and in analogous functions
         #return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo}
 
-    def derOmegaTr_test(self,term,op,ed):
-        b=alpha_A
-        c=beta_A
-        N=None
-        Anl = self.A_Hbar.transpose(0,2,1,3)[op:ed]
-        Dnl = self.D_H.transpose(0,2,1,3)[op:ed]
-        dDln = self.gdD_save(op,ed,index='ln')
-        dAln = self.gdAbar(op,ed,index='ln')
-        dDlln = self.gdD_save(op,ed,index='lln')
-        dDlnn= self.gdD_save(op,ed,index='lnn')
-        dAlnn= self.gdAbar(op,ed,index='lnn')
-        dAlln = self.gdAbar(op,ed,index='lln')
-        dOn,dOln = self.gdOmegabar
-        
-        o=np.zeros((ed-op,self.num_wann,3,3))
-        uo=np.zeros((ed-op,self.num_wann,self.num_wann,3,3))
-        uoo=np.zeros((ed-op,self.num_wann,self.num_wann,self.num_wann,3,3))
-        uuo=np.zeros((ed-op,self.num_wann,self.num_wann,self.num_wann,3,3))
-
-        if term==1:
-            o += dOn[op:ed]
-            uo += dOln[op:ed] 
-        if term==2:
-            uo += - 2*((Anl[:,:,:,b,N]*dDln[:,:,:,c,:] + Dnl[:,:,:,b,N]*dAln[:,:,:,c,:]) - (Anl[:,:,:,c,N]*dDln[:,:,:,b,:] + Dnl[:,:,:,c,N]*dAln[:,:,:,b,:]) ).real
-            uuo += -2*((Anl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlln[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlln[:,:,:,:,b,:]) ).real 
-            uoo += -2*((Anl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dAlnn[:,:,:,:,c,:]) - (Anl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dAlnn[:,:,:,:,b,:]) ).real
-
-        if term==3:    
-            uo += 2*( Dnl[:,:,:,b,N]*dDln[:,:,:,c,:]  -  Dnl[:,:,:,c,N]*dDln[:,:,:,b,:]  ).imag
-            uuo += 2*( Dnl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:]  ).imag
-            uoo += 2*( Dnl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:]  ).imag
-        return {'i':o,'oi':uo,'oii':uoo,'ooi':uuo,'E':self.E_K[op:ed]}
-
-    def derOmegaTr_test2(self,term):
-        data_list=[]
-        for op,ed in self.iter_op_ed:
-            data_list.append(DataIO(self.derOmegaTr_test(term,op,ed)).to_sea(degen_thresh=self.degen_thresh))
-        return mergeDataIO(data_list)
 
     @property
     def derOmegaTr2(self):

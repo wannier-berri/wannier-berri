@@ -57,7 +57,8 @@ class System():
         separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. 
     delta_fz:float
         size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
-
+    use_wc_phase: bool
+        using wannier centres in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package" 
     """
 
     def __init__(self, old_format=False,    **parameters ):

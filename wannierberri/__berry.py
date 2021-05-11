@@ -35,21 +35,6 @@ def eval_J(dic):
             'oi': lambda B : B.sum(axis=(1)) - B[:,range(B.shape[1]),range(B.shape[1])] }
     return sum(_eval[k](v) for k,v in dic.items() if k in ('i','ii','oi'))
 
-def eval_J_plus(dic):
-    _eval={ 'i' : lambda A :  A , 
-            'ii': lambda B : B[:,range(B.shape[1]),range(B.shape[1])] , 
-            'oi': lambda B : B.sum(axis=(1)) - B[:,range(B.shape[1]),range(B.shape[1])], 
-            'oii': lambda C: (
-                            C[:,:,range(C.shape[2]),range(C.shape[2])].sum(axis=1) -
-                            (C[:,:,range(C.shape[2]),range(C.shape[2])])[:,range(C.shape[1]),range(C.shape[1]) ]
-                            ),
-            'ooi': lambda C: (
-                            C[:,range(C.shape[1]),range(C.shape[1]),:].sum(axis=1) -
-                            (C[:,range(C.shape[1]),range(C.shape[2]),:])[:,range(C.shape[1]),range(C.shape[1]) ]
-                            )
-            }
-    return sum(_eval[k](v) for k,v in dic.items() if k in ('i','oi','oii','ooi'))
-
 def calcImf_band(data):
     return eval_J(data.Omega)
 
@@ -79,11 +64,6 @@ def calcHall_orb_kn(data):
     orb=calcImgh_band(data)
     return result.KBandResult(data=imf[:,:,:,None]*orb[:,:,None,:],TRodd=False,Iodd=False)
 
-def calcBerry_z_der_kn(data):
-    Berry_der =  eval_J_plus(data.derOmegaTr_tab)
-    #print("Dipole",Berry_der.shape)
-    Berry_der = Berry_der[:,:,2,:]
-    return result.KBandResult(Berry_der,TRodd=True,Iodd=False)
 
 ## routines that are not used now 
 
