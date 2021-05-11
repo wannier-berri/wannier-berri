@@ -309,17 +309,7 @@ class FFT_R_to_k():
                         for jj in range(self.num_wann)] for ii in range(self.num_wann)])
         return exponent_wc.transpose((2,3,4,0,1))
 
-    @Lazy
-    def diag_w_centres(self):
-        '''
-        diagnal matrix of wannier centres delta_ij*tau_i (Cartesian)
-        '''
-        diag_w_centres = np.zeros((self.num_wann,self.num_wann,3))
-        for i in range(self.num_wann):
-            diag_w_centres[i,i,:] = self.wannier_centres_cart[i,:]
-        return diag_w_centres[None,None,None,:,:,:]
-
-    def __call__(self,AAA_R,hermitian=False,antihermitian=False,reshapeKline=True,flag=None):
+    def __call__(self,AAA_R,hermitian=False,antihermitian=False,reshapeKline=True):
         t0=time()
     #  AAA_R is an array of dimension (  num_wann x num_wann x nRpts X... ) (any further dimensions allowed)
         if  hermitian and antihermitian :
@@ -347,9 +337,7 @@ class FFT_R_to_k():
         if self.use_wc_phase:
             exponent_wc = self.exponent_wc
             exponent_wc = exponent_wc.reshape( (exponent_wc.shape)+(1,)*(AAA_K.ndim-5) )# make exponent_wc as same dimention with AAA_K
-            AAA_K=AAA_K * exponent_wc 
-           # if flag=='AA':
-           #     AAA_K = AAA_K-self.diag_w_centres
+            AAA_K=AAA_K * exponent_wc
 
 
         ## TODO - think if fft transform of half of matrix makes sense
@@ -362,7 +350,7 @@ class FFT_R_to_k():
             AAA_K=AAA_K.reshape( (np.prod(self.NKFFT),)+shapeA[1:])
         self.time_call+=time()-t0
         self.n_call+=1
-        
+        print(np.shape(AAA_K)) 
         return AAA_K
 
 #    def __del__(self):
