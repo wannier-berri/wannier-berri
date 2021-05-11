@@ -21,8 +21,30 @@ from termcolor import cprint
 
 
 
+
+
+
 class System():
-    """
+
+    default_parameters =  {    'seedname':'wannier',
+                    'frozen_max': -np.Inf,
+                    'berry':False,
+                    'morb':False,
+                    'spin':False,
+                    'SHCryoo':False,
+                    'SHCqiao':False,
+                    'random_gauge':False,
+                    'degen_thresh':-1 ,
+                    'delta_fz':0.1,
+                    'ksep': 50 ,
+                    'Emin': -np.Inf ,
+                    'Emax': np.Inf ,
+                    'use_ws':True,
+                    'periodic':(True,True,True)
+                       }
+
+
+    __doc__ = """
     The base class for describing a system. Although it has its own constructor, it requires input binary files prepared by a special 
     `branch <https://github.com/stepan-tsirkin/wannier90/tree/save4wberri>`_ of ``postw90.x`` .
     Therefore this class by itself it is not recommended for a feneral user. Instead, 
@@ -32,34 +54,34 @@ class System():
     Parameters
     -----------
     seedname : str
-        the seedname used in Wannier90
+        the seedname used in Wannier90. Default: ``{seedname}``
     berry : bool 
-        set ``True`` if quantities derived from Berry connection or Berry curvature will be used. Default: {}
+        set ``True`` if quantities derived from Berry connection or Berry curvature will be used. Default: ``{berry}``
     spin : bool
-        set ``True`` if quantities derived from spin  will be used.
+        set ``True`` if quantities derived from spin  will be used. Default:``{spin}``
     morb : bool
-        set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file.
+        set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file. Default: ``{morb}``
     periodic : [bool,bool,bool]
-        set ''True'' for periodic directions and ''False''for confined (e.g. slab direction for 2D systems). Not relevant for :class:`~wannierberri.System_TBmodels` and  :class:`~wannierberri.System_PythTB`
+        set ``True`` for periodic directions and ``False`` for confined (e.g. slab direction for 2D systems). If less then 3 values provided, the rest are treated as ``False`` . Default : ``{periodic}``
     SHCryoo : bool 
-        set ``True`` if quantities derived from Ryoo's spin-current elements will be used. (RPS 2019)
+        set ``True`` if quantities derived from Ryoo's spin-current elements will be used. (RPS 2019) Default: ``{SHCryoo}``
     SHCqiao : bool
-        set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018).
+        set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018). Default: ``{SHCqiao}``
     use_ws : bool
-        minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
+        minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90. Default: ``{use_ws}``
     frozen_max : float
-        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
+        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary. Default: ``{frozen_max}``
     degen_thresh : float
-        threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals
+        threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals. Default: ``{degen_thresh}``
     random_gauge : bool
-        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved
+        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved. Default: ``{random_gauge}``
     ksep: int
-        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. 
+        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. Default: ``{ksep}``
     delta_fz:float
-        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. 
+        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
     use_wc_phase: bool
-        using wannier centres in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package" 
-    """
+        using wannier centres in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wc_phase}``
+    """ .format(**default_parameters)
 
     def __init__(self, old_format=False,    **parameters ):
 
@@ -132,6 +154,7 @@ class System():
 
 
     def set_parameters(self,**parameters):
+<<<<<<< HEAD
         self.default_parameters={
                     'seedname':'wannier',
                     'frozen_max':np.Inf,
@@ -150,13 +173,17 @@ class System():
                     'periodic':(True,True,True),
                     'use_wc_phase':False
                        }
+=======
+>>>>>>> master
 
         for param in self.default_parameters:
             if param in parameters:
                 vars(self)[param]=parameters[param]
             else: 
                 vars(self)[param]=self.default_parameters[param]
-        self.periodic=np.array(self.periodic)
+        periodic=np.zeros(3,dtype=bool)
+        periodic[:len(self.periodic)]=self.periodic
+        self.periodic=periodic
 
 
     def check_periodic(self):
