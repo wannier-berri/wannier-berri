@@ -69,7 +69,7 @@ class System_tb_py(System):
 
         self.real_lattice=np.eye((3),dtype=float)
         self.real_lattice[:self.dimr,:self.dimr]=np.array(real)
-        self.periodic[:self.dimr]=True
+#        self.periodic[:self.dimr]=True
         self.periodic[self.dimr:]=False
         self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
         
