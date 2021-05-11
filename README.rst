@@ -2,8 +2,8 @@
 Wannier Berri
 =========
 
-.. image:: https://codecov.io/gh/stepan-tsirkin/wannier-berri/branch/master/graph/badge.svg
-  :target: https://codecov.io/gh/stepan-tsirkin/wannier-berri
+.. image:: https://codecov.io/gh/wannier-berri/wannier-berri/branch/master/graph/badge.svg?token=S7CH32VXRP
+  :target: https://codecov.io/gh/wannier-berri/wannier-berri
 
 
 A code for highly efficient Wannier interpolation. 
