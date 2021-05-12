@@ -620,14 +620,6 @@ class Data_K(System):
             data_list.append(DataIO(self.derOmegaTr(op,ed)).to_sea(degen_thresh=self.degen_thresh))
         return mergeDataIO(data_list)
 
-    @property
-    def derOmegaTr_tab(self):
-        data_list=[]
-        for op,ed in self.iter_op_ed:
-            data_list.append(DataIO(self.derOmegaTr(op,ed)))
-        return mergeDataIO(data_list)
-
-
 
     def derOmegaTrW(self,op,ed,omega=0):
         b=alpha_A
