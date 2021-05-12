@@ -52,7 +52,6 @@ def process(paralfunc,K_list,nproc,symgroup=None):
             res.append(paralfunc(Kp))
             if (count + 1) % nstep_print == 0:
                 print_progress(count + 1, numK, t0)
-        nproc_ = 1
     else:
         p = multiprocessing.Pool(nproc)
         # Method 1: map. Cannot print progress.
@@ -63,15 +62,20 @@ def process(paralfunc,K_list,nproc,symgroup=None):
             if (count + 1) % nstep_print == 0:
                 print_progress(count + 1, numK, t0)
         p.close()
-        nproc_ = nproc
 
     if not (symgroup is None):
         res=[symgroup.symmetrize(r) for r in res]
     for i,ik in enumerate(selK):
         K_list[ik].set_res(res[i])
+
     t=time()-t0
-    print ("time for processing {0:6d} K-points  on {1:3d} processes: {2:10.4f} ; per K-point {3:15.4f} ; proc-sec per K-point : {4:15.4f}".format(
-        numK, nproc, t, t/numK, t*nproc_/numK), flush=True)
+    if nproc <= 0:
+        print("time for processing {0:6d} K-points in serial: ".format(numK), end="")
+        nproc_ = 1
+    else:
+        print("time for processing {0:6d} K-points on {1:3d} processes: ".format(numK, nproc), end="")
+        nproc_ = nproc
+    print("{0:10.4f} ; per K-point {1:15.4f} ; proc-sec per K-point {2:15.4f}".format(t, t/numK, t*nproc_/numK), flush=True)
     return len(dK_list)
 
 
