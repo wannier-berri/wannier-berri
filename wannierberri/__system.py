@@ -40,7 +40,8 @@ class System():
                     'Emin': -np.Inf ,
                     'Emax': np.Inf ,
                     'use_ws':True,
-                    'periodic':(True,True,True)
+                    'periodic':(True,True,True),
+                    'use_wc_phase':False
                        }
 
 
@@ -154,27 +155,6 @@ class System():
 
 
     def set_parameters(self,**parameters):
-<<<<<<< HEAD
-        self.default_parameters={
-                    'seedname':'wannier',
-                    'frozen_max':np.Inf,
-                    'berry':False,
-                    'morb':False,
-                    'spin':False,
-                    'SHCryoo':False,
-                    'SHCqiao':False,
-                    'random_gauge':False,
-                    'degen_thresh':-1 ,
-                    'delta_fz':0.1,
-                    'ksep': 1 ,
-                    'Emin': -np.Inf ,
-                    'Emax': np.Inf ,
-                    'use_ws':True,
-                    'periodic':(True,True,True),
-                    'use_wc_phase':False
-                       }
-=======
->>>>>>> master
 
         for param in self.default_parameters:
             if param in parameters:
