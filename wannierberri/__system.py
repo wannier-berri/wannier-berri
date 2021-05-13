@@ -26,7 +26,7 @@ from termcolor import cprint
 
 class System():
 
-    default_parameters =  {    'seedname':'wannier',
+    default_parameters =  {    'seedname':'wannier90',
                     'frozen_max': -np.Inf,
                     'berry':False,
                     'morb':False,
@@ -81,7 +81,7 @@ class System():
     delta_fz:float
         size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
     use_wcc_phase: bool
-        using wannier centres in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wc_phase}``
+        using wannier centres in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
     """ .format(**default_parameters)
 
     def __init__(self, old_format=False,    **parameters ):
