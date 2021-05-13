@@ -77,7 +77,28 @@ def Morb(data,Efermi, evalJ0=True,evalJ1=True,evalJ2=True):
     fac_morb =  -eV_au/bohr**2
     return  fac_morb*(
                     IterateEf(data.Hplus(),data,Efermi,TRodd=True,Iodd=False)
-                            -2*Omega_tot(data,Efermi).mul_array(Efermi) )*data.cell_volume
+                            -2*Omega_tot(data,Efermi).mul_array(Efermi) 
+                            )*data.cell_volume
+
+
+def Morb1(data,Efermi):
+    fac_morb =  -eV_au/bohr**2
+    return  fac_morb*(
+                    IterateEf(data.Hplus(evalJ0=True,evalJ1=False,evalJ2=False),data,Efermi,TRodd=True,Iodd=False)
+                            -2*Omega_tot(data,Efermi).mul_array(Efermi) 
+                            )*data.cell_volume
+def Morb2(data,Efermi):
+    fac_morb =  -eV_au/bohr**2
+    return  fac_morb*(
+                    IterateEf(data.Hplus(evalJ0=False,evalJ1=True,evalJ2=False),data,Efermi,TRodd=True,Iodd=False)
+                            -2*Omega_tot(data,Efermi).mul_array(Efermi) 
+                            )*data.cell_volume
+def Morb3(data,Efermi):
+    fac_morb =  -eV_au/bohr**2
+    return  fac_morb*(
+                    IterateEf(data.Hplus(evalJ0=False,evalJ1=False,evalJ2=True),data,Efermi,TRodd=True,Iodd=False)
+                            -2*Omega_tot(data,Efermi).mul_array(Efermi) 
+                            )*data.cell_volume
 
 def HplusTr_2(data,Efermi):
     res = IterateEf(data.derHplusTr2,data,Efermi,sep=False,TRodd=False,Iodd=True)

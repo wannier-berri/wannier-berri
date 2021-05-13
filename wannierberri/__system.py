@@ -26,7 +26,7 @@ from termcolor import cprint
 
 class System():
 
-    default_parameters =  {    'seedname':'wannier',
+    default_parameters =  {    'seedname':'wannier90',
                     'frozen_max': -np.Inf,
                     'berry':False,
                     'morb':False,
@@ -40,7 +40,8 @@ class System():
                     'Emin': -np.Inf ,
                     'Emax': np.Inf ,
                     'use_ws':True,
-                    'periodic':(True,True,True)
+                    'periodic':(True,True,True),
+                    'use_wcc_phase':False
                        }
 
 
@@ -79,7 +80,8 @@ class System():
         separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. Default: ``{ksep}``
     delta_fz:float
         size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
-
+    use_wcc_phase: bool
+        using wannier centres in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
     """ .format(**default_parameters)
 
     def __init__(self, old_format=False,    **parameters ):
@@ -282,9 +284,23 @@ class System():
         self.symgroup=Group(symmetry_gen,recip_lattice=self.recip_lattice,real_lattice=self.real_lattice)
 
 
+    #@lazy_property.LazyProperty
+    #def cRvec(self):
+    #    return self.iRvec.dot(self.real_lattice)
+
     @lazy_property.LazyProperty
-    def cRvec(self):
-        return self.iRvec.dot(self.real_lattice)
+    def cRvec_wcc(self):
+        """ 
+        With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [m,n,iRvec] (Cartesian)
+        """
+        wannier_centres = self.wannier_centres_cart
+        w_centres = np.array([[j-i for j in wannier_centres] for i in wannier_centres])
+        if self.use_wcc_phase:
+            return self.iRvec.dot(self.real_lattice)[None,None,:,:]+ w_centres[:,:,None,:]
+        else:
+            return self.iRvec.dot(self.real_lattice)[None,None,:,:]
+
+
 
     @property 
     def nRvec(self):
