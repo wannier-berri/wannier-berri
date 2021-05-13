@@ -45,9 +45,14 @@ class Data_K(System):
         self.delta_fz=system.delta_fz
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
         self.ksep = system.ksep
+        self.wannier_centres_reduced=system.wannier_centres_reduced
+        self.wannier_centres_cart=system.wannier_centres_cart
+        self.use_wcc_phase=system.use_wcc_phase
         ## TODO : create the plans externally, one per process 
 #        print( "iRvec in data_K is :\n",self.iRvec)
-        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,numthreads=npar if npar>0 else 1,lib=fftlib)
+        #self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
+        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres_reduced,self.real_lattice,
+                numthreads=npar if npar>0 else 1,lib=fftlib,use_wcc_phase=self.use_wcc_phase)
         self.Emin=system.Emin
         self.Emax=system.Emax
 
@@ -58,10 +63,15 @@ class Data_K(System):
         except Exception as err:
 #            print ('failed to create a pool of {} workers : {}'.format(npar,err))
             self.poolmap=lambda fun,lst : [fun(x) for x in lst]
-        expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))
+        
+        if self.use_wcc_phase:
+            w_centres_diff = np.array([[j-i for j in self.wannier_centres_reduced] for i in self.wannier_centres_reduced])
+            expdK=np.exp(2j*np.pi*(system.iRvec[None,None,:,:] +w_centres_diff[:,:,None,:]).dot(dK))
+        else:
+            expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))[None,None,:]
+        self.HH_R=system.HH_R*expdK
         self.dK=dK
  
-        self.HH_R=system.HH_R[:,:,:]*expdK[None,None,:]
         
         for X in ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']:
             XR=X+'_R'
@@ -71,11 +81,11 @@ class Data_K(System):
             if XR in vars(system):
               if vars(system)[XR] is not  None:
                 if X in ['SA','SHA','SR','SHR']:
-                  vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None,None]
+                    vars(self)[XR]=vars(system)[XR]*expdK[:,:,:,None,None]
                 else:
-                  vars(self)[XR]=vars(system)[XR]*expdK[None,None,:,None]
+                    vars(self)[XR]=vars(system)[XR]*expdK[:,:,:,None]
                 vars(self)[hasXR]=True
-#        print ("E_K=",self.E_K)
+
 
     @lazy_property.LazyProperty
     def iter_op_ed(self):
@@ -84,7 +94,6 @@ class Data_K(System):
 
     def _rotate(self,mat):
         print_my_name_start()
-#        return  np.einsum('kml,kmn,knp->klp',self.UU_K.conj(),mat,self.UU_K)
         assert mat.ndim>2
         if mat.ndim==3:
             return  np.array(self.poolmap( _rotate_matrix , zip(mat,self.UU_K)))
@@ -93,15 +102,27 @@ class Data_K(System):
                 mat[...,i]=self._rotate(mat[...,i])
             return mat
 
-    def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False):
+    @lazy_property.LazyProperty
+    def diag_w_centres(self):
+        '''
+        After rotate. U^+ \tau U
+        diagnal matrix of wannier centres delta_ij*tau_i (Cartesian)
+        '''
+        return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.wannier_centres_cart[None,:,None,None,:] , axis=1)
+        
+
+    def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False,flag=None):
         """ converts from real-space matrix elements in Wannier gauge to 
             k-space quantities in k-space. 
             der [=0] - defines the order of comma-derivative 
             hermitian [=True] - consoder the matrix hermitian
             asym_before = True -  takes the antisymmetrc part over the first two cartesian indices before differentiation
             asym_after = True  - asymmetrize after  differentiation
+            flag: is a flag indicates if we need additional terms in self.fft_R_to_k under use_wcc_phase. 
+                'None' means no adiditional terms.
+                'AA' means, under use_wcc_phase, FFT of AA_R have an additional term -tau_i.
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
-
+        
         def asymmetrize(X,asym):
             """auxilary function"""
             if asym  :
@@ -111,9 +132,17 @@ class Data_K(System):
                 return X
         XX_R=asymmetrize(XX_R, asym_before)
         for i in range(der):
-            XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) )*self.cRvec.reshape((1,1,self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
+            shape_cR = np.shape(self.cRvec_wcc)
+            XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec_wcc.reshape((shape_cR[0],shape_cR[1],self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
         XX_R=asymmetrize(XX_R, asym_after)
-        res = self._rotate(self.fft_R_to_k( XX_R,hermitian=hermitian)[self.select_K]  )
+        
+        add_term = 0.0 # additional term under use_wcc_phase=True
+        if self.use_wcc_phase:
+            if flag=='AA':
+                add_term = - self.diag_w_centres
+
+        res = self._rotate((self.fft_R_to_k( XX_R,hermitian=hermitian))[self.select_K]  )
+        res = res + add_term
         return res
 
     @lazy_property.LazyProperty
@@ -362,11 +391,11 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def V_H(self):
         self.E_K
-        return self._R_to_k_H( self.HH_R.copy(), der=1)
+        return self._R_to_k_H( self.HH_R.copy(), der=1,flag='VV')
 
     @lazy_property.LazyProperty
     def Morb_Hbar(self):
-        return self._R_to_k_H( self.CC_R.copy() )
+        return self._R_to_k_H( self.CC_R.copy(),flag='CC')
 
     @lazy_property.LazyProperty
     def Morb_Hbar_diag(self):
@@ -455,7 +484,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def B_Hbar_fz(self):
         print_my_name_start()
-        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False)
+        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False,flag='BB')
         return _BB_K
 
     #@property
@@ -683,7 +712,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def A_Hbar(self):
-        return self._R_to_k_H(self.AA_R.copy())
+        return self._R_to_k_H(self.AA_R.copy(),flag='AA')
 
     @lazy_property.LazyProperty
     def A_H(self):
@@ -753,14 +782,14 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def B_Hbar(self):
         print_my_name_start()
-        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False)
+        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False,flag='BB')
         select=(self.E_K<=self.frozen_max)
         _BB_K[select]=self.E_K[select][:,None,None]*self.A_Hbar[select]
         return _BB_K
     
     @lazy_property.LazyProperty
     def B_Hbar_der(self):
-        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitian=False)
+        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitian=False,flag="BB_der")
         return _BB_K
 
     @lazy_property.LazyProperty
@@ -835,8 +864,8 @@ class Data_K(System):
     def Omega_bar_der(self):
         print_my_name_start()
         _OOmega_K =  self.fft_R_to_k( (
-                        self.AA_R[:,:,:,alpha_A]*self.cRvec[None,None,:,beta_A ] -     
-                        self.AA_R[:,:,:,beta_A ]*self.cRvec[None,None,:,alpha_A])[:,:,:,:,None]*self.cRvec[None,None,:,None,:]   , hermitian=True )
+                        self.AA_R[:,:,:,alpha_A]*self.cRvec_wcc[:,:,:,beta_A ] -     
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wcc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wcc[:,:,:,None,:]   , hermitian=True)
         return self._rotate(_OOmega_K)
 
     @lazy_property.LazyProperty
@@ -915,6 +944,8 @@ class Data_K(System):
             res['oi']+=-2*(C+sign*D)
         return  res
 
+    #def Hplus(self,evalJ0=True,evalJ1=True,evalJ2=True):
+    #    return self.Hplusminus(+1,evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
     def Hplus(self,evalJ0=True,evalJ1=True,evalJ2=True):
         return self.Hplusminus(+1,evalJ0=evalJ0,evalJ1=evalJ1,evalJ2=evalJ2)
 
