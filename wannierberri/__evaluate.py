@@ -32,7 +32,7 @@ def print_progress(count, total, t0):
     t_remain = t / count * (total - count)
     print("{:20d}{:17.1f}{:22.1f}".format(count, t, t_remain), flush=True)
 
-def process(paralfunc,K_list,nproc,symgroup=None):
+def process(paralfunc,K_list,nproc,symgroup=None,chunksize=0):
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
     numK = len(selK)
@@ -42,9 +42,22 @@ def process(paralfunc,K_list,nproc,symgroup=None):
         print ("nothing to process now")
         return 0
 
-    print ("processing {0} K points :".format(len(dK_list)) )
+    # Set chunksize for multiprocessing
     if nproc > 0:
-        print ("using a pool of {} processes".format(nproc))
+        if chunksize <= 0:
+            chunksize = max(1, min(int(numK / nproc / 200), 10))
+        print("chunksize = {} used for parallelization.".format(chunksize), end=" ")
+        if chunksize > 1:
+            print("Smaller values recommended for large systems.", end=" ")
+        else:
+            print("Larger values may be used for small systems.", end=" ")
+        print("Read the docs for more info.")
+
+    print ("processing {0} K points :".format(len(dK_list)), end=" ")
+    if nproc > 0:
+        print("using a pool of {} processes.".format(nproc))
+    else:
+        print("in serial.")
     print("# K-points calculated  Wall time (sec)  Est. remaining (sec)", flush=True)
     res = []
     if nproc <= 0:
@@ -57,7 +70,7 @@ def process(paralfunc,K_list,nproc,symgroup=None):
         # Method 1: map. Cannot print progress.
         # res = p.map(paralfunc,dK_list)
         # Method 2: imap
-        for count, res_K in enumerate(p.imap(paralfunc, dK_list)):
+        for count, res_K in enumerate(p.imap(paralfunc, dK_list, chunksize=chunksize)):
             res.append(res_K)
             if (count + 1) % nstep_print == 0:
                 print_progress(count + 1, numK, t0)
@@ -83,7 +96,8 @@ def process(paralfunc,K_list,nproc,symgroup=None):
 def evaluate_K(func,system,grid,nparK,nparFFT=0,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              suffix="",
-             file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False):
+             file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False,
+             chunksize=0):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
 a numpy.array of whatever dimensions
@@ -157,7 +171,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         for i,K in enumerate(K_list):
           if not K.evaluated:
             print (" K-point {0} : {1} ".format(i,K))
-        counter+=process(paralfunc,K_list,nparK,symgroup=None if nosym else system.symgroup)
+        counter+=process(paralfunc,K_list,nparK,symgroup=None if nosym else system.symgroup, chunksize=chunksize)
         
         try:
             if file_Klist is not None:
