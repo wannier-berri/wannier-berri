@@ -54,7 +54,7 @@ def result_ahc_Fe_W90(system_Fe_W90,system_Fe_W90_wcc):
             numproc = num_proc,
             adpt_num_iter = adpt_num_iter,
             parameters = ahc_params,
-            suffix=suffix_wcc
+            suffix=suffix_wcc,
             fout_name = fout_name,
             restart = False,
     )
