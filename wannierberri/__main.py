@@ -111,7 +111,7 @@ def check_option(quantities,avail,tp):
 
 def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,adpt_fac=1,
-                        fout_name="wberri",restart=False,numproc=0,fftlib='fftw',suffix="",file_Klist="Klist",chunksize=0,parameters={}):
+                        fout_name="wberri",restart=False,numproc=0,fftlib='fftw',suffix="",file_Klist="Klist",chunksize=0,parallel_module='multiprocessing',parameters={}):
     """
     Integrate 
 
@@ -137,6 +137,8 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
     chunksize : int
         chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
+    parallel_module : str
+        a module to be used for parallelization 'multiprocessing' (default) or 'ray'
    
     Returns
     --------
@@ -176,7 +178,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     res=evaluate_K(eval_func,system,grid,nparK=numproc,fftlib=fftlib,
             adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac,
                 fout_name=fout_name,suffix=suffix,
-                restart=restart,file_Klist=file_Klist, chunksize=chunksize)
+                restart=restart,file_Klist=file_Klist, chunksize=chunksize,parallel_module=parallel_module)
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
 
@@ -184,7 +186,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 
 def tabulate(system,grid, quantities=[],
                   frmsf_name=None,ibands=None,suffix="",numproc=0,Ef0=0.,
-                  chunksize=0, parameters={}):
+                  chunksize=0, parallel_module='multiprocessing',parameters={}):
     """
     Tabulate quantities to be plotted
 
@@ -204,6 +206,8 @@ def tabulate(system,grid, quantities=[],
         number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
     chunksize : int
         chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
+    parallel_module : str
+        a module to be used for parallelization 'multiprocessing' (default) or 'ray'
    
     Returns
     --------
@@ -219,7 +223,7 @@ def tabulate(system,grid, quantities=[],
     eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
     t0=time()
     res=evaluate_K(eval_func,system,grid,nparK=numproc,
-            adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,nosym=(mode=='path'), chunksize=chunksize )
+            adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,nosym=(mode=='path'), chunksize=chunksize, parallel_module=parallel_module )
 
     t1=time()
     if mode=='3D':
