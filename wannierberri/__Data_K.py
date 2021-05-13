@@ -848,8 +848,8 @@ class Data_K(System):
         return (self.Omega_Hbar.transpose(0,2,1,3)[:,:,:,:,None]*self.D_H[:,:,:,None,:]).real
 
     def fermiSurface_findif(self, dataIO):
-        """returns a dataIO object containing data to besummed by fermisea2 module to get 
-           the fermi surface integral :  int [dk]  (  Q * (-\partial_k f) )
+        r"""returns a dataIO object containing data to besummed by fermisea2 module to get 
+           the fermi surface integral :  :math:` \int [dk]  (  Q * (-\partial_k f) )`
            where dataIO is the data to evaluate the fermi-sea integral of quantity Q
         """
         result={}
