@@ -47,12 +47,12 @@ class Data_K(System):
         self.ksep = system.ksep
         self.wannier_centres_reduced=system.wannier_centres_reduced
         self.wannier_centres_cart=system.wannier_centres_cart
-        self.use_wc_phase=system.use_wc_phase
+        self.use_wcc_phase=system.use_wcc_phase
         ## TODO : create the plans externally, one per process 
 #        print( "iRvec in data_K is :\n",self.iRvec)
         #self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
         self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres_reduced,self.real_lattice,
-                numthreads=npar if npar>0 else 1,lib=fftlib,use_wc_phase=self.use_wc_phase)
+                numthreads=npar if npar>0 else 1,lib=fftlib,use_wcc_phase=self.use_wcc_phase)
         self.Emin=system.Emin
         self.Emax=system.Emax
 
@@ -64,7 +64,7 @@ class Data_K(System):
 #            print ('failed to create a pool of {} workers : {}'.format(npar,err))
             self.poolmap=lambda fun,lst : [fun(x) for x in lst]
         
-        if self.use_wc_phase:
+        if self.use_wcc_phase:
             w_centres_diff = np.array([[j-i for j in self.wannier_centres_reduced] for i in self.wannier_centres_reduced])
             expdK=np.exp(2j*np.pi*(system.iRvec[None,None,:,:] +w_centres_diff[:,:,None,:]).dot(dK))
         else:
@@ -118,9 +118,9 @@ class Data_K(System):
             hermitian [=True] - consoder the matrix hermitian
             asym_before = True -  takes the antisymmetrc part over the first two cartesian indices before differentiation
             asym_after = True  - asymmetrize after  differentiation
-            flag: is a flag indicates if we need additional terms in self.fft_R_to_k under use_wc_phase. 
+            flag: is a flag indicates if we need additional terms in self.fft_R_to_k under use_wcc_phase. 
                 'None' means no adiditional terms.
-                'AA' means, under use_wc_phase, FFT of AA_R have an additional term -tau_i.
+                'AA' means, under use_wcc_phase, FFT of AA_R have an additional term -tau_i.
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
         
         def asymmetrize(X,asym):
@@ -132,12 +132,12 @@ class Data_K(System):
                 return X
         XX_R=asymmetrize(XX_R, asym_before)
         for i in range(der):
-            shape_cR = np.shape(self.cRvec_wc)
-            XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec_wc.reshape((shape_cR[0],shape_cR[1],self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
+            shape_cR = np.shape(self.cRvec_wcc)
+            XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec_wcc.reshape((shape_cR[0],shape_cR[1],self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
         XX_R=asymmetrize(XX_R, asym_after)
         
-        add_term = 0.0 # additional term under use_wc_phase=True
-        if self.use_wc_phase:
+        add_term = 0.0 # additional term under use_wcc_phase=True
+        if self.use_wcc_phase:
             if flag=='AA':
                 add_term = - self.diag_w_centres
 
@@ -864,8 +864,8 @@ class Data_K(System):
     def Omega_bar_der(self):
         print_my_name_start()
         _OOmega_K =  self.fft_R_to_k( (
-                        self.AA_R[:,:,:,alpha_A]*self.cRvec_wc[:,:,:,beta_A ] -     
-                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wc[:,:,:,None,:]   , hermitian=True)
+                        self.AA_R[:,:,:,alpha_A]*self.cRvec_wcc[:,:,:,beta_A ] -     
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wcc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wcc[:,:,:,None,:]   , hermitian=True)
         return self._rotate(_OOmega_K)
 
     @lazy_property.LazyProperty

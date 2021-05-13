@@ -77,13 +77,13 @@ def system_Fe_W90(create_files_Fe_W90):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
-           transl_inv=False, use_wc_phase=False)
+           transl_inv=False, use_wcc_phase=False)
 
     return system
 
 
 @pytest.fixture(scope="session")
-def system_Fe_W90_wc(create_files_Fe_W90):
+def system_Fe_W90_wcc(create_files_Fe_W90):
     """Create system for Fe using Wannier90 data"""
 
     data_dir = create_files_Fe_W90
@@ -91,6 +91,6 @@ def system_Fe_W90_wc(create_files_Fe_W90):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True, 
-            transl_inv=False, use_wc_phase=True)
+            transl_inv=False, use_wcc_phase=True)
 
     return system
