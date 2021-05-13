@@ -26,7 +26,7 @@
 import numpy as np
 import functools
 from scipy import constants as constants
-from collections import Iterable
+from collections.abc import Iterable
 import inspect
 import sys
 from .__utility import  print_my_name_start,print_my_name_end,TAU_UNIT,alpha_A,beta_A
@@ -69,19 +69,48 @@ def conductivity_ohmic(data,Efermi):
 
 def gyrotropic_Kspin(data,Efermi):
     factor_Kspin=-bohr_magneton/Ang_SI**2   ## that's it!
-    return IterateEf(data.gyroKspin,data,Efermi,TRodd=False,Iodd=True)*factor_Kspin
+    res = IterateEf(data.gyroKspin,data,Efermi,TRodd=False,Iodd=True)*factor_Kspin
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    return res
 
 def Morb(data,Efermi, evalJ0=True,evalJ1=True,evalJ2=True):
     fac_morb =  -eV_au/bohr**2
     return  fac_morb*(
                     IterateEf(data.Hplus(),data,Efermi,TRodd=True,Iodd=False)
-                            -2*Omega_tot(data,Efermi).mul_array(Efermi) )*data.cell_volume
+                            -2*Omega_tot(data,Efermi).mul_array(Efermi) 
+                            )*data.cell_volume
+
+
+def Morb1(data,Efermi):
+    fac_morb =  -eV_au/bohr**2
+    return  fac_morb*(
+                    IterateEf(data.Hplus(evalJ0=True,evalJ1=False,evalJ2=False),data,Efermi,TRodd=True,Iodd=False)
+                            -2*Omega_tot(data,Efermi).mul_array(Efermi) 
+                            )*data.cell_volume
+def Morb2(data,Efermi):
+    fac_morb =  -eV_au/bohr**2
+    return  fac_morb*(
+                    IterateEf(data.Hplus(evalJ0=False,evalJ1=True,evalJ2=False),data,Efermi,TRodd=True,Iodd=False)
+                            -2*Omega_tot(data,Efermi).mul_array(Efermi) 
+                            )*data.cell_volume
+def Morb3(data,Efermi):
+    fac_morb =  -eV_au/bohr**2
+    return  fac_morb*(
+                    IterateEf(data.Hplus(evalJ0=False,evalJ1=False,evalJ2=True),data,Efermi,TRodd=True,Iodd=False)
+                            -2*Omega_tot(data,Efermi).mul_array(Efermi) 
+                            )*data.cell_volume
 
 def HplusTr_2(data,Efermi):
-    return IterateEf(data.derHplusTr2,data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res = IterateEf(data.derHplusTr2,data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    #morb = Hplus - 2Ef*tensor_D
+    return res
 
 def HplusTr(data,Efermi):
-    return IterateEf(data.derHplusTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
+    res = IterateEf(data.derHplusTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    #morb = Hplus - 2Ef*tensor_D
+    return res
 
 def tensor_K(data,Efermi):
     Hp = HplusTr(data,Efermi).data
@@ -96,17 +125,24 @@ def tensor_K_2(data,Efermi):
     return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
 
 def tensor_D(data,Efermi):
-    return IterateEf(data.derOmegaTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
-    #return data.derOmegaTr
+    res = IterateEf(data.derOmegaTr,data,Efermi,sep=True,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
 
 def tensor_D_2(data,Efermi):
-        return IterateEf(data.derOmegaTr2,data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res = IterateEf(data.derOmegaTr2,data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
 
 def tensor_D_findif(data,Efermi):
-        return IterateEf(data.berry_dipole_findif,data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res = IterateEf(data.berry_dipole_findif,data,Efermi,sep=False,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
 
 def tensor_Dw(data,Efermi,omega0=0):
-        return IterateEf(partial(data.derOmegaWTr,omega=omega0),data,Efermi,sep=True,TRodd=False,Iodd=True)
+    res = IterateEf(partial(data.derOmegaWTr,omega=omega0),data,Efermi,sep=True,TRodd=False,Iodd=True)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (12) of Phys. Rev. B 97, 035158
+    return res
 
 #########################
 ####  Private part ######

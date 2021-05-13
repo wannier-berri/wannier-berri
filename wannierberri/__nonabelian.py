@@ -16,7 +16,7 @@
 import numpy as np
 import sys
 from . import __berry
-from collections import Iterable, defaultdict
+from collections import defaultdict
 from . import __result as result
 from time import time
 from .__utility import alpha_A,beta_A,TAU_UNIT,TAU_UNIT_TXT
@@ -109,25 +109,25 @@ def ahc(data,Efermi,tetra=TETRA_DEFAULT):
 
 def berry_dipole(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(Omega*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curv','vel'],mode='fermi-surface',factor=1,tetra=tetra)
+    return nonabelian_general(data,Efermi,['vel','curv'],mode='fermi-surface',factor=1,tetra=tetra)
 
 
 def Faraday(data,Efermi,homega,tetra=TETRA_DEFAULT):
     # _general yields integral(Omega(w)*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curvW','vel'],mode='fermi-surface',factor=1,parameters={'curvW':{'homega':homega}},tetra=tetra)
+    return nonabelian_general(data,Efermi,['vel','curvW'],mode='fermi-surface',factor=1,parameters={'curvW':{'homega':homega}},tetra=tetra)
 
 
 def berry_dipole_D(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curvD','vel'],mode='fermi-surface',factor=1,tetra=tetra)
+    return nonabelian_general(data,Efermi,['vel','curvD'],mode='fermi-surface',factor=1,tetra=tetra)
 
 def berry_dipole_ext1(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curvExt1','vel'],mode='fermi-surface',factor=1,tetra=tetra)
+    return nonabelian_general(data,Efermi,['vel','curvExt1'],mode='fermi-surface',factor=1,tetra=tetra)
 
 def berry_dipole_ext2(data,Efermi,tetra=TETRA_DEFAULT):
     # _general yields integral(omega*v*(-fo')), which is dimensionlesss - what we want 
-    return nonabelian_general(data,Efermi,['curvExt2','vel'],mode='fermi-surface',factor=1,tetra=tetra)
+    return nonabelian_general(data,Efermi,['vel','curvExt2'],mode='fermi-surface',factor=1,tetra=tetra)
 
 
 def gyrotropic_Kspin(data,Efermi,tetra=TETRA_DEFAULT):

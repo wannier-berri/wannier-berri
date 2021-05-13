@@ -14,6 +14,7 @@
 
 
 import functools 
+from . import __version__
 from .__evaluate import evaluate_K
 from .__utility import getSmoother 
 from . import __integrate 
@@ -21,9 +22,8 @@ from . import __tabulate
 from . import symmetry
 from .__path import Path
 import numpy as np
-from .__version import __version__
 from .__result import NoComponentError
-from collections import Iterable
+from collections.abc import Iterable
 integrate_options=__integrate.calculators.keys()
 tabulate_options =__tabulate.calculators.keys()
 from .mmn2uHu import hlp as hlp_mmn
@@ -80,13 +80,13 @@ def welcome():
     logo="""
 .::    .   .::: .:::::::.  :::.    :::.:::.    :::. :::.,::::::  :::::::..       :::::::.  .,::::::  :::::::..   :::::::..   :::
 ';;,  ;;  ;;;' '  ;;`;;  ` `;;;;,  `;;;`;;;;,  `;;; ;;;;;;;''''  ;;;;``;;;;       ;;;'';;' ;;;;''''  ;;;;``;;;;  ;;;;``;;;;  ;;;
- '[[, [[, [['    ,[[ '[[,    [[[[[. '[[  [[[[[. '[[ [[[ [[cccc    [[[,/[[['       [[[__[[\. [[cccc    [[[,/[[['   [[[,/[[['  [[[
+ '[[, [[, [['    ,[[ '[[,    [[[[[. '[[  [[[[[. '[[ [[[ [[cccc    [[[,/[[['       [[[__[[\\. [[cccc    [[[,/[[['   [[[,/[[['  [[[
    Y$c$$$c$P    c$$$cc$$$c   $$$ "Y$c$$  $$$ "Y$c$$ $$$ $$\"\"\"\"    $$$$$$c         $$\"\"\"\"Y$$ $$\"\"\"\"    $$$$$$c     $$$$$$c    $$$
     "88"888      888   888,  888    Y88  888    Y88 888 888oo,__  888b "88bo,    _88o,,od8P 888oo,__  888b "88bo, 888b "88bo,888
      "M "M"      YMM   ""`   MMM     YM  MMM     YM MMM \"\"\"\"YUMMM MMMM   "W"     ""YUMMMP"  \"\"\"\"YUMMM MMMM   "W"  MMMM   "W" MMM
 """
     cprint(logo,'yellow')
-    cprint("a.k.a. Wannier19",'red')
+#    cprint("a.k.a. Wannier19",'red')
     figlet("    by Stepan Tsirkin et al",font='straight',col='green')
 
 
@@ -111,7 +111,7 @@ def check_option(quantities,avail,tp):
 
 def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,adpt_fac=1,
-                        fout_name="wberri",restart=False,numproc=0,fftlib='fftw',suffix="",file_Klist="Klist",parameters={}):
+                        fout_name="wberri",restart=False,numproc=0,fftlib='fftw',suffix="",file_Klist="Klist",chunksize=0,parameters={}):
     """
     Integrate 
 
@@ -135,6 +135,8 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         number of K-points to be refined per quantity and criteria.
     num_proc : int 
         number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
+    chunksize : int
+        chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
    
     Returns
     --------
@@ -174,14 +176,15 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     res=evaluate_K(eval_func,system,grid,nparK=numproc,fftlib=fftlib,
             adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac,
                 fout_name=fout_name,suffix=suffix,
-                restart=restart,file_Klist=file_Klist)
+                restart=restart,file_Klist=file_Klist, chunksize=chunksize)
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
 
 
 
 def tabulate(system,grid, quantities=[],
-                  frmsf_name=None,ibands=None,suffix="",numproc=0,Ef0=0.,parameters={}):
+                  frmsf_name=None,ibands=None,suffix="",numproc=0,Ef0=0.,
+                  chunksize=0, parameters={}):
     """
     Tabulate quantities to be plotted
 
@@ -199,6 +202,8 @@ def tabulate(system,grid, quantities=[],
         if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
     num_proc : int 
         number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
+    chunksize : int
+        chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
    
     Returns
     --------
@@ -214,7 +219,7 @@ def tabulate(system,grid, quantities=[],
     eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
     t0=time()
     res=evaluate_K(eval_func,system,grid,nparK=numproc,
-            adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,nosym=(mode=='path') )
+            adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,nosym=(mode=='path'), chunksize=chunksize )
 
     t1=time()
     if mode=='3D':
