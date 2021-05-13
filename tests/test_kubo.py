@@ -61,8 +61,8 @@ def test_opt_conductivity(result_kubo_Fe_W90, compare_energyresult):
     assert data_sym == approx(np.swapaxes(data_sym, 2, 3), abs=1E-6)
     assert data_asym == approx(-np.swapaxes(data_asym, 2, 3), abs=1E-6)
 
-    compare_energyresult(fout_name, "opt_conductivity-sym", adpt_num_iter)
-    compare_energyresult(fout_name, "opt_conductivity-asym", adpt_num_iter)
+    compare_energyresult(fout_name, "opt_conductivity-sym", adpt_num_iter,cmplx=True)
+    compare_energyresult(fout_name, "opt_conductivity-asym", adpt_num_iter,cmplx=True)
 
 
 def test_SHCqiao(result_kubo_Fe_W90, compare_energyresult):
@@ -73,7 +73,7 @@ def test_SHCqiao(result_kubo_Fe_W90, compare_energyresult):
 
     assert data.shape == (len(Efermi), len(omega), 3, 3, 3)
 
-    compare_energyresult(fout_name, "opt_SHCqiao", adpt_num_iter)
+    compare_energyresult(fout_name, "opt_SHCqiao", adpt_num_iter,cmplx=True)
 
 
 def test_SHCryoo(result_kubo_Fe_W90, compare_energyresult):
@@ -84,4 +84,4 @@ def test_SHCryoo(result_kubo_Fe_W90, compare_energyresult):
 
     assert data.shape == (len(Efermi), len(omega), 3, 3, 3)
 
-    compare_energyresult(fout_name, "opt_SHCryoo", adpt_num_iter)
+    compare_energyresult(fout_name, "opt_SHCryoo", adpt_num_iter,cmplx=True)
