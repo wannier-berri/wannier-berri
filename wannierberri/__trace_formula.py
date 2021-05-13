@@ -88,7 +88,7 @@ def derOmega(data_K,op=None,ed=None):
 
 
 class TraceFormula():
-    """a class to write a formula as trace of matrix product,
+    r"""a class to write a formula as trace of matrix product,
      where inner summation is either over 'inner'/'occupied'  or 'outer'/'unoccupied' states
     as input takes a list of entriies like 
     ('nm,ml,ln',A,B,C)  

@@ -81,7 +81,7 @@ class FormulaProduct():
 
 
 class Formula():
-    """a class to write a formula as trace of matrix product,
+    r"""a class to write a formula as trace of matrix product,
      where inner summation is either over 'inner'/'occupied'  or 'outer'/'unoccupied' states
     as input takes a list of entriies like 
     ('nm,mL,L,Ln',A,B,C,D)  
