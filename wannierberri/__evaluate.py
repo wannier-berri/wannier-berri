@@ -12,7 +12,7 @@
 #------------------------------------------------------------
 
 #import billiard as multiprocessing 
-import  multiprocessing 
+import  multiprocessing, ray
 import functools
 import numpy as np
 from collections.abc import Iterable
@@ -32,7 +32,7 @@ def print_progress(count, total, t0):
     t_remain = t / count * (total - count)
     print("{:20d}{:17.1f}{:22.1f}".format(count, t, t_remain), flush=True)
 
-def process(paralfunc,K_list,nproc,symgroup=None,chunksize=0):
+def process(paralfunc,K_list,nproc,symgroup=None,chunksize=0,parallel_module='multiprocessing'):
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
     numK = len(selK)
@@ -42,8 +42,9 @@ def process(paralfunc,K_list,nproc,symgroup=None,chunksize=0):
         print ("nothing to process now")
         return 0
 
+    assert parallel_module in ('multiprocessing','ray','serial')
     # Set chunksize for multiprocessing
-    if nproc > 0:
+    if parallel_module=='multiprocessing':
         if chunksize <= 0:
             chunksize = max(1, min(int(numK / nproc / 200), 10))
         print("chunksize = {} used for parallelization.".format(chunksize), end=" ")
@@ -66,15 +67,23 @@ def process(paralfunc,K_list,nproc,symgroup=None,chunksize=0):
             if (count + 1) % nstep_print == 0:
                 print_progress(count + 1, numK, t0)
     else:
-        p = multiprocessing.Pool(nproc)
-        # Method 1: map. Cannot print progress.
-        # res = p.map(paralfunc,dK_list)
-        # Method 2: imap
-        for count, res_K in enumerate(p.imap(paralfunc, dK_list, chunksize=chunksize)):
-            res.append(res_K)
-            if (count + 1) % nstep_print == 0:
-                print_progress(count + 1, numK, t0)
-        p.close()
+        if parallel_module=='multiprocessing':
+            p = multiprocessing.Pool(nproc)
+            # Method 1: map. Cannot print progress.
+            # res = p.map(paralfunc,dK_list)
+            # Method 2: imap
+            for count, res_K in enumerate(p.imap(paralfunc, dK_list, chunksize=chunksize)):
+                res.append(res_K)
+                if (count + 1) % nstep_print == 0:
+                    print_progress(count + 1, numK, t0)
+            p.close()
+        elif parallel_module.startswith('ray'):
+            remotes=[paralfunc.remote(dK) for dK in dK_list]
+            for count, res_K in enumerate(ray.get(remotes)):
+                res.append(res_K)
+                if (count + 1) % nstep_print == 0:
+                    print_progress(count + 1, numK, t0)
+
 
     if not (symgroup is None):
         res=[symgroup.symmetrize(r) for r in res]
@@ -97,7 +106,7 @@ def evaluate_K(func,system,grid,nparK,nparFFT=0,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              suffix="",
              file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False,
-             chunksize=0):
+             chunksize=0,parallel_module='multiprocessing'):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
 a numpy.array of whatever dimensions
@@ -109,6 +118,13 @@ The parallelisation is done by K-points
 As a result, the integration will be performed over NKFFT x NKdiv
 """
     
+    if nparK<=0:
+        parallel_module='serial'
+    if parallel_module=='ray':
+        ray.init()
+    elif parallel_module=='ray-slurm':
+        ray.init(address='auto', _node_ip_address=os.environ["ip_head"].split(":")[0], _redis_password=os.environ["redis_password"])
+
     if file_Klist is not None:
         if not file_Klist.endswith(".pickle"):
             file_Klist+=".pickle"
@@ -119,9 +135,18 @@ As a result, the integration will be performed over NKFFT x NKdiv
     except: 
         pass
 
-    
-    paralfunc=functools.partial(
+
+    if parallel_module.startswith('ray'):
+        @ray.remote
+        def paralfunc(dK):
+            return _eval_func_k (dK,func=func,system=system,grid=grid,nparFFT=nparFFT,fftlib=fftlib )
+    else:
+            paralfunc=functools.partial(
         _eval_func_k, func=func,system=system,grid=grid,nparFFT=nparFFT,fftlib=fftlib )
+
+
+        
+
 
 
 
@@ -171,7 +196,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         for i,K in enumerate(K_list):
           if not K.evaluated:
             print (" K-point {0} : {1} ".format(i,K))
-        counter+=process(paralfunc,K_list,nparK,symgroup=None if nosym else system.symgroup, chunksize=chunksize)
+        counter+=process(paralfunc,K_list,nparK,symgroup=None if nosym else system.symgroup, chunksize=chunksize,parallel_module=parallel_module)
         
         try:
             if file_Klist is not None:
@@ -201,6 +226,10 @@ As a result, the integration will be performed over NKFFT x NKdiv
         
     
     print ("Totally processed {0} K-points ".format(counter))
+    
+    if parallel_module.startswith('ray'):
+        ray.shutdown() 
+
     return result_all
        
 
