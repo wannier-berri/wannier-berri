@@ -14,7 +14,6 @@
 
 import numpy as np
 from scipy import constants as constants
-from collections import Iterable
 
 from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother
 from . import __result as result

@@ -41,7 +41,7 @@ def Omega(data_K,op=None,ed=None):
 def derOmega(data_K,op=None,ed=None):
         "an attempt for a faster implementation"
         # first give our matrices short name
-        print ("using kpoint [{}:{}]".format(op,ed))
+        #print ("using kpoint [{}:{}]".format(op,ed))
         A  = data_K.A_Hbar[op:ed]
         dA = data_K.A_Hbar_der[op:ed]
 #        print ("dA=",dA)

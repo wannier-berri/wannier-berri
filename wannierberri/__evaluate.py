@@ -15,7 +15,7 @@
 import  multiprocessing 
 import functools
 import numpy as np
-from collections import Iterable
+from collections.abc import Iterable
 import lazy_property
 from copy import copy
 from time import time
@@ -27,29 +27,68 @@ from . import symmetry as SYM
 from  .__Kpoint import exclude_equiv_points
 from . import __utility as utility
 
-def process(paralfunc,K_list,nproc,symgroup=None):
+def print_progress(count, total, t0):
+    t = time() - t0
+    t_remain = t / count * (total - count)
+    print("{:20d}{:17.1f}{:22.1f}".format(count, t, t_remain), flush=True)
+
+def process(paralfunc,K_list,nproc,symgroup=None,chunksize=0):
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
+    numK = len(selK)
+    nstep_print = max(1, nproc, numK // 100)
     dK_list=[K_list[ik] for ik in selK]
     if len(dK_list)==0:
         print ("nothing to process now")
         return 0
-    print ("processing {0}  points :".format(len(dK_list)) )
-    if nproc<=0:
-        res = [paralfunc(Kp) for Kp in dK_list]
-        nproc_=1
+
+    # Set chunksize for multiprocessing
+    if nproc > 0:
+        if chunksize <= 0:
+            chunksize = max(1, min(int(numK / nproc / 200), 10))
+        print("chunksize = {} used for parallelization.".format(chunksize), end=" ")
+        if chunksize > 1:
+            print("Smaller values recommended for large systems.", end=" ")
+        else:
+            print("Larger values may be used for small systems.", end=" ")
+        print("Read the docs for more info.")
+
+    print ("processing {0} K points :".format(len(dK_list)), end=" ")
+    if nproc > 0:
+        print("using a pool of {} processes.".format(nproc))
     else:
-        print ("using a pool of {} processes".format(nproc))
-        p=multiprocessing.Pool(nproc)
-        res= p.map(paralfunc,dK_list)
+        print("in serial.")
+    print("# K-points calculated  Wall time (sec)  Est. remaining (sec)", flush=True)
+    res = []
+    if nproc <= 0:
+        for count, Kp in enumerate(dK_list):
+            res.append(paralfunc(Kp))
+            if (count + 1) % nstep_print == 0:
+                print_progress(count + 1, numK, t0)
+    else:
+        p = multiprocessing.Pool(nproc)
+        # Method 1: map. Cannot print progress.
+        # res = p.map(paralfunc,dK_list)
+        # Method 2: imap
+        for count, res_K in enumerate(p.imap(paralfunc, dK_list, chunksize=chunksize)):
+            res.append(res_K)
+            if (count + 1) % nstep_print == 0:
+                print_progress(count + 1, numK, t0)
         p.close()
-        nproc_=nproc
+
     if not (symgroup is None):
         res=[symgroup.symmetrize(r) for r in res]
     for i,ik in enumerate(selK):
         K_list[ik].set_res(res[i])
+
     t=time()-t0
-    print ("time for processing {0:6d} K-points  on {4:3d} processes: {1:10.4f} ; per K-point {2:15.4f} ; proc-sec per K-point : {3:15.4f}".format(len(selK),t,t/len(selK),t*nproc_/len(selK),nproc) )
+    if nproc <= 0:
+        print("time for processing {0:6d} K-points in serial: ".format(numK), end="")
+        nproc_ = 1
+    else:
+        print("time for processing {0:6d} K-points on {1:3d} processes: ".format(numK, nproc), end="")
+        nproc_ = nproc
+    print("{0:10.4f} ; per K-point {1:15.4f} ; proc-sec per K-point {2:15.4f}".format(t, t/numK, t*nproc_/numK), flush=True)
     return len(dK_list)
 
 
@@ -57,7 +96,8 @@ def process(paralfunc,K_list,nproc,symgroup=None):
 def evaluate_K(func,system,grid,nparK,nparFFT=0,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              suffix="",
-             file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False):
+             file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False,
+             chunksize=0):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
 a numpy.array of whatever dimensions
@@ -131,7 +171,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         for i,K in enumerate(K_list):
           if not K.evaluated:
             print (" K-point {0} : {1} ".format(i,K))
-        counter+=process(paralfunc,K_list,nparK,symgroup=None if nosym else system.symgroup)
+        counter+=process(paralfunc,K_list,nparK,symgroup=None if nosym else system.symgroup, chunksize=chunksize)
         
         try:
             if file_Klist is not None:

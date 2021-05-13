@@ -22,8 +22,10 @@ def AHC(data_K,Efermi,kpart=None,tetra=False):
 def cumdos(data_K,Efermi,kpart=None,tetra=False):
     return iterate_kpart(trF.identity,data_K,Efermi,kpart,tetra)*data_K.cell_volume
 
-def berry_dipole(data_K,Efermi,kpart=None,tetra=False):
-    return iterate_kpart(trF.derOmega,data_K,Efermi,kpart,tetra)
+def berry_dipole(data_K,Efermi,kpart=None):
+    res =  iterate_kpart(trF.derOmega,data_K,Efermi,kpart)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
 
 def Omega_tot(data_K,Efermi,kpart=None,tetra=False):
     return iterate_kpart(trF.Omega,data_K,Efermi,kpart,tetra)
@@ -33,7 +35,7 @@ def Omega_tot(data_K,Efermi,kpart=None,tetra=False):
 ### The private part goes here  ##
 ##################################
 
-def iterate_kpart(formula_fun,data_K,Efermi,kpart=None,tetra=False,dtype=float,**parameters): 
+def iterate_kpart(formula_fun,data_K,Efermi,kpart=None,tetra=False,dtype=float,**parameters):
     """ formula_fun should be callable eturning a TraceFormula object 
     with first three parameters as data_K,op,ed, and the rest
     and the rest will be arbitrary keyword arguments."""
@@ -168,7 +170,6 @@ class  FermiOcean():
             else:
                 raise RuntimeError('Wrong indexing for array A : {}'.format(Aind))
 
-
     def __call__(self) :
         result = np.zeros(self.Efermi.shape + self.shape, self.dtype)
         for ik,weights in enumerate(self.weights):
@@ -190,19 +191,4 @@ class  FermiOcean():
                     resk[self.Efermi >= weights[ib]] = self.values[ik][ib]
             result += resk
         return result
-
-""" nonabelian implementation: 
-
-    if tetra:
-        if mode == 'fermi-surface':
-            weights=data.tetraWeights.weights_allbands(Efermi,der=1)
-            for ik in range(data.NKFFT_tot):
-                for ib,ibrange in  enumerate(data.degen[ik]):
-                    if all([ibr in weights[ik] for ibr in range(*ibrange) ]):
-                        weight=sum( weights[ik][ibr] for ibr in range(*ibrange) )/(ibrange[1]-ibrange[0])
-                        me=np.einsum(einline,*(m[ik][ib] for m in M)).real
-                        res+=np.einsum('e,...->e...',weight,me)
-"""
-
-
 

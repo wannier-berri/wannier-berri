@@ -53,7 +53,7 @@ from scipy.spatial.transform import Rotation as rotmat
 from copy import deepcopy
 from lazy_property import LazyProperty as Lazy
 from .__utility import real_recip_lattice, is_round
-from collections import Iterable
+from collections.abc import Iterable
 
 SYMMETRY_PRECISION=1e-6
 
@@ -133,7 +133,7 @@ class Rotation(Symmetry):
         if norm<1e-10:
             raise ValueError("the axis vector is too small : {0}. do you know what you are doing?".format(norm))
         axis=np.array(axis)/norm
-        if pversion.parse(scipy.__version__)<pversion.parse("1.6.0"):
+        if pversion.parse(scipy.__version__)<pversion.parse("1.4.0"):
             R=rotmat.from_rotvec(2*np.pi/n*axis/np.linalg.norm(axis)).as_dcm()
         else:
             R=rotmat.from_rotvec(2*np.pi/n*axis/np.linalg.norm(axis)).as_matrix()

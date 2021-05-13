@@ -13,7 +13,7 @@
 
 import numpy as np
 from scipy import constants as constants
-from collections import Iterable,defaultdict
+from collections import defaultdict
 from copy import copy,deepcopy
 
 from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother,TAU_UNIT
@@ -54,6 +54,9 @@ from . import  __kubo   as kubo
 calculators_trans={ 
          'spin'       : fermisea2.SpinTot,  
          'Morb'       : fermisea2.Morb,
+         'Morb_1'       : fermisea2.Morb1,
+         'Morb_2'       : fermisea2.Morb2,
+         'Morb_3'       : fermisea2.Morb3,
          'ahc'        : fermisea2.AHC ,
          'ahc2'        : fermisea2.AHC2 ,
          'ahc_ocean'  : fermiocean.AHC ,
@@ -221,7 +224,7 @@ def intProperty(data,quantities=[],Efermi=None,omega=None,smootherEf=VoidSmoothe
                  __parameters[param]=additional_parameters[q][param]
         if q in calculators_opt:
             __parameters['omega']=omega
-        if q is 'opt_SHCqiao' or q is 'opt_SHCryoo':
+        if q == 'opt_SHCqiao' or q == 'opt_SHCryoo':
             if 'shc_alpha' in parameters and 'shc_beta' in parameters and 'shc_gamma' in parameters:
                 __parameters['shc_specification']=True
         results[q]=calculators[q](data,Efermi,**__parameters)
