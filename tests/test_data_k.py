@@ -36,3 +36,6 @@ def test_fourier(system_Fe_W90):
         assert getattr(data_fast, field) == approx(getattr(data_slow, field)), "wrong {}".format(field)
 
     # TODO: Allow gauge degree of freedom
+
+
+
