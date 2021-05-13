@@ -48,13 +48,12 @@ def result_ahc_Fe_W90(system_Fe_W90):
 
 
 def test_ahc(result_ahc_Fe_W90, compare_energyresult):
-    """Test optical conductivity"""
+    """Test anomalous Hall conductivity"""
     Efermi,  adpt_num_iter, fout_name, result = result_ahc_Fe_W90
 
     data = result.results.get("ahc").data
 
     assert data.shape == (len(Efermi), 3 )
 
-    compare_energyresult(fout_name, "ahc",       adpt_num_iter,cmplx=False)
-    compare_energyresult(fout_name, "ahc_ocean", adpt_num_iter,cmplx=False,suffix_ref="ahc")
-#    compare_energyresult(fout_name, "opt_conductivity-asym", adpt_num_iter)
+    compare_energyresult(fout_name, "ahc",       adpt_num_iter)
+    compare_energyresult(fout_name, "ahc_ocean", adpt_num_iter,suffix_ref="ahc")
