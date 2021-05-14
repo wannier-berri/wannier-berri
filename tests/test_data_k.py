@@ -27,13 +27,16 @@ def test_fourier(system_Fe_W90):
 
     assert kpoint.Kp_fullBZ == approx(k / grid.FFT)
 
-    data_fast = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='fftw')
-    data_slow = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='slow')
+    data_fftw  = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='fftw')
+    data_slow  = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='slow')
+    data_numpy = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='numpy')
 
     test_fields = ["E_K", "D_H", "V_H", "shc_B_H"]
 
     for field in test_fields:
-        assert getattr(data_fast, field) == approx(getattr(data_slow, field)), "wrong {}".format(field)
+        assert getattr(data_fftw,  field) == approx(getattr(data_slow, field)), "fftw  does not match slow for {} ".format(field)
+        assert getattr(data_numpy, field) == approx(getattr(data_slow, field)), "numpy does not match slow for {}".format(field)
+        assert getattr(data_numpy, field) == approx(getattr(data_slow, field)), "numpy does not match fftw for {}".format(field)
 
     # TODO: Allow gauge degree of freedom
 
