@@ -32,18 +32,18 @@ def read_energyresult_dat(filename):
 @pytest.fixture
 def compare_energyresult(rootdir):
     """Compare dat file output of EnergyResult with the file in reference folder"""
-    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None):
+    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,precision=1E-10):
         if suffix_ref is None :
             suffix_ref=suffix
         for i_iter in range(adpt_num_iter+1):
-            filename = fout_name + "-{}".format(suffix) + "_iter-{0:04d}.dat".format(i_iter)
+            filename     = fout_name + "-{}".format(suffix) + "_iter-{0:04d}.dat".format(i_iter)
             filename_ref = fout_name + "-{}".format(suffix_ref) + "_iter-{0:04d}.dat".format(i_iter)
             E_titles, data_energy, data, data_smooth = read_energyresult_dat(filename)
             path_filename_ref = os.path.join(rootdir, 'reference', filename_ref)
             E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref)
 
             assert E_titles == E_titles_ref
-            assert data_energy == approx(data_energy_ref, abs=1E-10)
-            assert data == approx(data_ref, abs=1E-10), "data at iteration {}".format(i_iter)
-            assert data_smooth == approx(data_smooth_ref, abs=1E-10), "smoothed data at iteration {}".format(i_iter)
+            assert data_energy == approx(data_energy_ref, abs=precision)
+            assert data == approx(data_ref, abs=precision), "data of {} {} at iteration {}. files {} and {}".format(fout_name,suffix,i_iter,filename,path_filename_ref)
+            assert data_smooth == approx(data_smooth_ref, abs=precision), "smoothed data of {} {} at iteration {}. . files {} and {}".format(fout_name,suffix,i_iter,filename,path_filename_ref)
     return _inner
