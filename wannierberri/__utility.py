@@ -350,7 +350,7 @@ class FFT_R_to_k():
             AAA_K=AAA_K.reshape( (np.prod(self.NKFFT),)+shapeA[1:])
         self.time_call+=time()-t0
         self.n_call+=1
-        print(np.shape(AAA_K)) 
+#        print(np.shape(AAA_K)) 
         return AAA_K
 
 #    def __del__(self):
