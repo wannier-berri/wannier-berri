@@ -4,9 +4,10 @@ import os
 import tarfile
 import shutil
 
-#import tbmodels
-#from pythtb import *
+import tbmodels
+from pythtb import *
 import pytest
+import pickle
 
 import wannierberri as wberri
 
@@ -131,10 +132,13 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
 def system_Fe_tb(rootdir):
     """Create system for Fe using _tb.dat data"""
 
-    data_dir = os.path.join(rootdir, "data", "Te_Wannier90")
+    data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "Fe_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "Fe_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
 
-    # Load system
-    seedname = 'Fe_tb.dat'
+    seedname = os.path.join(data_dir, "Fe_tb.dat")
     system = wberri.System_tb(seedname, berry=True, use_wcc_phase=False)
 
     return system
@@ -144,30 +148,23 @@ def system_Fe_tb_wcc(rootdir):
     """Create system for Fe using _tb_dat data"""
 
     data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
-
+    if not os.path.isfile(os.path.join(data_dir, "Fe_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "Fe_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
     # Load system
-    seedname = 'Fe_tb.dat'
+    seedname = os.path.join(data_dir, "Fe_tb.dat")
     system = wberri.System_tb(seedname, berry=True, use_wcc_phase=True)
 
     return system
 
 @pytest.fixture(scope="session")
-def system_Fe_Tbmodels(rootdir):
+def system_Fe_TBmodels(rootdir):
     """Create system for Fe using Tbmodels"""
-    seedname = 'Fe'
-
     data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
-    for tag in ['hr','wsvec']:
-        if not os.path.isfile(os.path.join(data_dir, "{}_{}.dat".format(seedname, tag))):
-            tar = tarfile.open(os.path.join(data_dir, "{}_{}.dat.tar.gz".format(seedname, tag)))
-            for tarinfo in tar:
-                    tar.extract(tarinfo, data_dir)
-    model_tbmodels = tbmodels.Model.from_wannier_files(
-                hr_file= data_dir+seedname+'_hr.dat',
-                wsvec_file= data_dir+seedname+'_wsvec.dat',
-                xyz_file= data_dir+seedname+'_centres.xyz',
-                win_file= data_dir+seedname+'.win'
-                )
+    seedname = os.path.join(data_dir, "Fe_tbmodels.pickle")
+
+    model_tbmodels = pickle.load(open(seedname,'rb'))
 
     # Load system
     system = wberri.System_TBmodels(model_tbmodels, berry=True, use_wcc_phase=False)
@@ -175,22 +172,12 @@ def system_Fe_Tbmodels(rootdir):
     return system
 
 @pytest.fixture(scope="session")
-def system_Fe_Tbmodels_wcc(rootdir):
+def system_Fe_TBmodels_wcc(rootdir):
     """Create system for Fe using Tbmodels"""
-    seedname = 'Fe'
-
     data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
-    for tag in ['hr','wsvec']:
-        if not os.path.isfile(os.path.join(data_dir, "{}_{}.dat".format(seedname, tag))):
-            tar = tarfile.open(os.path.join(data_dir, "{}_{}.dat.tar.gz".format(seedname, tag)))
-            for tarinfo in tar:
-                    tar.extract(tarinfo, data_dir)
-    model_tbmodels = tbmodels.Model.from_wannier_files(
-                hr_file= data_dir+seedname+'_hr.dat',
-                wsvec_file= data_dir+seedname+'_wsvec.dat',
-                xyz_file= data_dir+seedname+'_centres.xyz',
-                win_file= data_dir+seedname+'.win'
-                )
+    seedname = os.path.join(data_dir, "Fe_tbmodels.pickle")
+
+    model_tbmodels = pickle.load(open(seedname,'rb'))
 
     # Load system
     system = wberri.System_TBmodels(model_tbmodels, berry=True, use_wcc_phase=True)
@@ -202,15 +189,10 @@ def system_Fe_Tbmodels_wcc(rootdir):
 @pytest.fixture(scope="session")
 def system_Fe_PythTB(rootdir):
     """Create system for Fe using Tbmodels"""
-    seedname = 'Fe'
-
     data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "{}_tb.dat".format(seedname))):
-        tar = tarfile.open(os.path.join(data_dir, "{}_tb.dat.tar.gz".format(seedname)))
-        for tarinfo in tar:
-                tar.extract(tarinfo, data_dir)
-    Te =w90(data_dir,seedname)
-    model_pythtb=Te.model(min_hopping_norm=0.001)
+    seedname = os.path.join(data_dir, "Fe_pythtb.pickle")
+
+    model_pythtb = pickle.load(open(seedname,'rb'))
 
     # Load system
     system = wberri.System_PythTB(model_pythtb, berry=True, use_wcc_phase=False)
@@ -221,15 +203,10 @@ def system_Fe_PythTB(rootdir):
 @pytest.fixture(scope="session")
 def system_Fe_PythTB_wcc(rootdir):
     """Create system for Fe using Tbmodels"""
-    seedname = 'Fe'
-
     data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "{}_tb.dat".format(seedname))):
-        tar = tarfile.open(os.path.join(data_dir, "{}_tb.dat.tar.gz".format(seedname)))
-        for tarinfo in tar:
-                tar.extract(tarinfo, data_dir)
-    Te =w90(data_dir,seedname)
-    model_pythtb=Te.model(min_hopping_norm=0.001)
+    seedname = os.path.join(data_dir, "Fe_pythtb.pickle")
+
+    model_pythtb = pickle.load(open(seedname,'rb'))
 
     # Load system
     system = wberri.System_PythTB(model_pythtb, berry=True, use_wcc_phase=True)
