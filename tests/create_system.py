@@ -4,8 +4,8 @@ import os
 import tarfile
 import shutil
 
-#import tbmodels
-#from pythtb import *
+import tbmodels
+from pythtb import *
 import pytest
 import pickle
 
