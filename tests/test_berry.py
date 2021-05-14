@@ -9,7 +9,7 @@ import wannierberri as wberri
 from create_system import create_files_Fe_W90,  create_files_GaAs_W90,  system_Fe_W90, system_Fe_W90_wcc,system_GaAs_W90 ,system_GaAs_W90_wcc
 from compare_result import compare_energyresult
 
-def check_integrate(system,quantities,fout_name,Efermi,comparer,numproc=0,grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},additional_parameters={},adpt_num_iter=0,suffix="",precision=1e-10):
+def check_integrate(system,quantities,fout_name,Efermi,comparer,numproc=0,grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},additional_parameters={},adpt_num_iter=1,suffix="",precision=1e-10,parallel_module='multiprocessing'):
     grid = wberri.Grid(system, **grid_param)
     result = wberri.integrate(system,
             grid = grid,
@@ -80,3 +80,12 @@ def test_GaAs_wcc(system_GaAs_W90_wcc, compare_energyresult,quantities_GaAs,Efer
     """Test berry dipole with wcc_phase"""
     check_integrate(system_GaAs_W90_wcc , quantities_GaAs , fout_name="berry_GaAs_W90" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult , precision=1e-10)
 
+
+def test_Fe_parallel_multiprocessing(system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-mult-4" , Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4,parallel_module='multiprocessing' )
+
+
+def test_Fe_parallel_ray(system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-ray-4" , Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4,parallel_module='ray')
