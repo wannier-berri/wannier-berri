@@ -158,7 +158,7 @@ def system_Fe_Tbmodels():
     for tag in ['hr','wsvec']:
         if not os.path.isfile(os.path.join(data_dir, "{}_{}.dat".format(seedname, tag))):
             tar = tarfile.open(os.path.join(data_dir, "{}_{}.dat.tar.gz".format(seedname, tag)))
-                for tarinfo in tar:
+            for tarinfo in tar:
                     tar.extract(tarinfo, data_dir)
     model_tbmodels = tbmodels.Model.from_wannier_files(
                 hr_file= data_dir+seedname+'_hr.dat',
@@ -181,7 +181,7 @@ def system_Fe_Tbmodels_wcc():
     for tag in ['hr','wsvec']:
         if not os.path.isfile(os.path.join(data_dir, "{}_{}.dat".format(seedname, tag))):
             tar = tarfile.open(os.path.join(data_dir, "{}_{}.dat.tar.gz".format(seedname, tag)))
-                for tarinfo in tar:
+            for tarinfo in tar:
                     tar.extract(tarinfo, data_dir)
     model_tbmodels = tbmodels.Model.from_wannier_files(
                 hr_file= data_dir+seedname+'_hr.dat',
@@ -205,7 +205,7 @@ def system_Fe_PythTB():
     data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
     if not os.path.isfile(os.path.join(data_dir, "{}_tb.dat".format(seedname))):
         tar = tarfile.open(os.path.join(data_dir, "{}_tb.dat.tar.gz".format(seedname)))
-            for tarinfo in tar:
+        for tarinfo in tar:
                 tar.extract(tarinfo, data_dir)
     Te =w90(data_dir,seedname)
     model_pythtb=Te.model(min_hopping_norm=0.001)
@@ -224,7 +224,7 @@ def system_Fe_PythTB_wcc():
     data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
     if not os.path.isfile(os.path.join(data_dir, "{}_tb.dat".format(seedname))):
         tar = tarfile.open(os.path.join(data_dir, "{}_tb.dat.tar.gz".format(seedname)))
-            for tarinfo in tar:
+        for tarinfo in tar:
                 tar.extract(tarinfo, data_dir)
     Te =w90(data_dir,seedname)
     model_pythtb=Te.model(min_hopping_norm=0.001)
