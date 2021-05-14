@@ -124,3 +124,112 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
             transl_inv=False, use_wcc_phase=True)
 
     return system
+
+@pytest.fixture(scope="session")
+def system_Fe_tb():
+    """Create system for Fe using _tb.dat data"""
+
+    data_dir = os.path.join(rootdir, "data", "Te_Wannier90")
+
+    # Load system
+    seedname = 'Fe_tb.dat'
+    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=False)
+
+    return system
+
+@pytest.fixture(scope="session")
+def system_Fe_tb_wcc():
+    """Create system for Fe using _tb_dat data"""
+
+    data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
+
+    # Load system
+    seedname = 'Fe_tb.dat'
+    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=True)
+
+    return system
+
+@pytest.fixture(scope="session")
+def system_Fe_Tbmodels():
+    """Create system for Fe using Tbmodels"""
+    seedname = 'Fe'
+
+    data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
+    for tag in ['hr','wsvec']:
+        if not os.path.isfile(os.path.join(data_dir, "{}_{}.dat".format(seedname, tag))):
+            tar = tarfile.open(os.path.join(data_dir, "{}_{}.dat.tar.gz".format(seedname, tag)))
+                for tarinfo in tar:
+                    tar.extract(tarinfo, data_dir)
+    model_tbmodels = tbmodels.Model.from_wannier_files(
+                hr_file= data_dir+seedname+'_hr.dat',
+                wsvec_file= data_dir+seedname+'_wsvec.dat',
+                xyz_file= data_dir+seedname+'_centres.xyz',
+                win_file= data_dir+seedname+'.win'
+                )
+
+    # Load system
+    system = wberri.System_TBmodels(model_tbmodels, berry=True, use_wcc_phase=False)
+
+    return system
+
+@pytest.fixture(scope="session")
+def system_Fe_Tbmodels_wcc():
+    """Create system for Fe using Tbmodels"""
+    seedname = 'Fe'
+
+    data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
+    for tag in ['hr','wsvec']:
+        if not os.path.isfile(os.path.join(data_dir, "{}_{}.dat".format(seedname, tag))):
+            tar = tarfile.open(os.path.join(data_dir, "{}_{}.dat.tar.gz".format(seedname, tag)))
+                for tarinfo in tar:
+                    tar.extract(tarinfo, data_dir)
+    model_tbmodels = tbmodels.Model.from_wannier_files(
+                hr_file= data_dir+seedname+'_hr.dat',
+                wsvec_file= data_dir+seedname+'_wsvec.dat',
+                xyz_file= data_dir+seedname+'_centres.xyz',
+                win_file= data_dir+seedname+'.win'
+                )
+
+    # Load system
+    system = wberri.System_TBmodels(model_tbmodels, berry=True, use_wcc_phase=True)
+
+    return system
+
+
+
+@pytest.fixture(scope="session")
+def system_Fe_PythTB():
+    """Create system for Fe using Tbmodels"""
+    seedname = 'Fe'
+
+    data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "{}_tb.dat".format(seedname))):
+        tar = tarfile.open(os.path.join(data_dir, "{}_tb.dat.tar.gz".format(seedname)))
+            for tarinfo in tar:
+                tar.extract(tarinfo, data_dir)
+    Te =w90(data_dir,seedname)
+    model_pythtb=Te.model(min_hopping_norm=0.001)
+
+    # Load system
+    system = wberri.System_PythTB(model_pythtb, berry=True, use_wcc_phase=False)
+
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Fe_PythTB_wcc():
+    """Create system for Fe using Tbmodels"""
+    seedname = 'Fe'
+
+    data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "{}_tb.dat".format(seedname))):
+        tar = tarfile.open(os.path.join(data_dir, "{}_tb.dat.tar.gz".format(seedname)))
+            for tarinfo in tar:
+                tar.extract(tarinfo, data_dir)
+    Te =w90(data_dir,seedname)
+    model_pythtb=Te.model(min_hopping_norm=0.001)
+
+    # Load system
+    system = wberri.System_PythTB(model_pythtb, berry=True, use_wcc_phase=True)
+
+    return system
