@@ -6,7 +6,7 @@ from pytest import approx
 
 import wannierberri as wberri
 
-from create_system import create_files_Fe_W90,  create_files_GaAs_W90,  system_Fe_W90, system_Fe_W90_wcc,system_GaAs_W90 ,system_GaAs_W90_wcc
+from create_system import *
 from compare_result import compare_energyresult
 
 def check_integrate(system,quantities,fout_name,Efermi,comparer,numproc=0,grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},additional_parameters={},adpt_num_iter=1,suffix="",precision=1e-10,extra_precision={}):
@@ -66,6 +66,9 @@ def compare_quant(quant):
 def test_Fe(system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult )
+    check_integrate(system_Fe_tb , ['ahc'] , fout_name="berry_Fe_tb" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult )
+    check_integrate(system_Fe_TBmodels , ['ahc'] , fout_name="berry_Fe_tbmodels" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult )
+    check_integrate(system_Fe_PythTB , ['ahc'] , fout_name="berry_Fe_pythtb" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult )
 
 
 def test_Fe_wcc(system_Fe_W90_wcc, compare_energyresult,quantities_Fe,Efermi_Fe):
