@@ -91,7 +91,7 @@ def system_GaAs_W90(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
-           transl_inv=False, use_wcc_phase=False)
+           transl_inv=False, use_wcc_phase=False,degen_thresh=0.005)
 
     return system
 
@@ -106,7 +106,7 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
-           transl_inv=False, use_wcc_phase=True)
+           transl_inv=False, use_wcc_phase=True,degen_thresh=0.005)
 
     return system
 
