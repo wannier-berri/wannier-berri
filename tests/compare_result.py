@@ -44,6 +44,6 @@ def compare_energyresult(rootdir):
 
             assert E_titles == E_titles_ref
             assert data_energy == approx(data_energy_ref, abs=precision)
-            assert data == approx(data_ref, abs=precision), "data of {} {} at iteration {}. files {} and {}".format(fout_name,suffix,i_iter,filename,path_filename_ref)
-            assert data_smooth == approx(data_smooth_ref, abs=precision), "smoothed data of {} {} at iteration {}. . files {} and {}".format(fout_name,suffix,i_iter,filename,path_filename_ref)
+            assert data == approx(data_ref, abs=precision), "data of {} {} at iteration {} give a maximal; absolute difference of {}. files {} and {}".format(fout_name,suffix,i_iter,np.max(np.abs(data-data_ref)),filename,path_filename_ref)
+            assert data_smooth == approx(data_smooth_ref, abs=precision), "smoothed data of {} {} at iteration {} give a maximal; absolute difference of {}.  . files {} and {}".format(fout_name,suffix,i_iter,np.max(np.abs(data-data_ref)),filename,path_filename_ref)
     return _inner
