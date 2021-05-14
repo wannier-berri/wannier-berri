@@ -7,8 +7,8 @@ from pytest import approx
 import wannierberri as wberri
 
 #from create_system import system_Fe_W90,system_Fe_tb,system_Fe_TBmodels,system_Fe_PythTB,system_Fe_W90_wcc,system_Fe_tb_wcc,system_Fe_TBmodels_wcc,system_Fe_PythTB_wcc
-from create_system import system_Fe_tb,system_Fe_TBmodels,system_Fe_PythTB,system_Fe_tb_wcc,system_Fe_TBmodels_wcc,system_Fe_PythTB_wcc
-#from create_system import *
+from create_system import *
+
 from compare_result import compare_energyresult
 
 def check_integrate(system,quantities,fout_name,Efermi,comparer,numproc=0,grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},additional_parameters={},adpt_num_iter=1,suffix="",precision=1e-10,extra_precision={}):
