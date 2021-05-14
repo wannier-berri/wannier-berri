@@ -4,8 +4,8 @@ import os
 import tarfile
 import shutil
 
-import tbmodels
-from pythtb import *
+#import tbmodels
+#from pythtb import *
 import pytest
 
 import wannierberri as wberri
@@ -128,7 +128,7 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
     return system
 
 @pytest.fixture(scope="session")
-def system_Fe_tb():
+def system_Fe_tb(rootdir):
     """Create system for Fe using _tb.dat data"""
 
     data_dir = os.path.join(rootdir, "data", "Te_Wannier90")
@@ -140,7 +140,7 @@ def system_Fe_tb():
     return system
 
 @pytest.fixture(scope="session")
-def system_Fe_tb_wcc():
+def system_Fe_tb_wcc(rootdir):
     """Create system for Fe using _tb_dat data"""
 
     data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
@@ -152,7 +152,7 @@ def system_Fe_tb_wcc():
     return system
 
 @pytest.fixture(scope="session")
-def system_Fe_Tbmodels():
+def system_Fe_Tbmodels(rootdir):
     """Create system for Fe using Tbmodels"""
     seedname = 'Fe'
 
@@ -175,7 +175,7 @@ def system_Fe_Tbmodels():
     return system
 
 @pytest.fixture(scope="session")
-def system_Fe_Tbmodels_wcc():
+def system_Fe_Tbmodels_wcc(rootdir):
     """Create system for Fe using Tbmodels"""
     seedname = 'Fe'
 
@@ -200,7 +200,7 @@ def system_Fe_Tbmodels_wcc():
 
 
 @pytest.fixture(scope="session")
-def system_Fe_PythTB():
+def system_Fe_PythTB(rootdir):
     """Create system for Fe using Tbmodels"""
     seedname = 'Fe'
 
@@ -219,7 +219,7 @@ def system_Fe_PythTB():
 
 
 @pytest.fixture(scope="session")
-def system_Fe_PythTB_wcc():
+def system_Fe_PythTB_wcc(rootdir):
     """Create system for Fe using Tbmodels"""
     seedname = 'Fe'
 
