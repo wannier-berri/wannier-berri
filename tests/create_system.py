@@ -4,6 +4,8 @@ import os
 import tarfile
 import shutil
 
+import tbmodels
+from pythtb import *
 import pytest
 
 import wannierberri as wberri
