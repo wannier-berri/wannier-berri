@@ -75,7 +75,7 @@ def test_Fe_wcc(system_Fe_W90_wcc,system_Fe_tb_wcc,system_Fe_TBmodels_wcc,system
     check_integrate(system_Fe_W90_wcc , quantities_Fe , fout_name="berry_Fe_W90" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult )
     check_integrate(system_Fe_tb_wcc , quantities_Fe , fout_name="berry_Fe_tb" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult )
     check_integrate(system_Fe_TBmodels_wcc , quantities_Fe , fout_name="berry_Fe_tbmodels" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult )
-    check_integrate(system_Fe_PythTB_wcc , quantities_Fe[:5] , fout_name="berry_Fe_pythtb" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult )
+    check_integrate(system_Fe_PythTB_wcc , quantities_Fe , fout_name="berry_Fe_pythtb" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult )
 def test_GaAs(system_GaAs_W90, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test berry dipole"""
     check_integrate(system_GaAs_W90 , quantities_GaAs , fout_name="berry_GaAs_W90" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
