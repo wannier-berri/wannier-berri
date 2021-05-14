@@ -6,7 +6,9 @@ from pytest import approx
 
 import wannierberri as wberri
 
-from create_system import *
+#from create_system import system_Fe_W90,system_Fe_tb,system_Fe_TBmodels,system_Fe_PythTB,system_Fe_W90_wcc,system_Fe_tb_wcc,system_Fe_TBmodels_wcc,system_Fe_PythTB_wcc
+from create_system import system_Fe_tb,system_Fe_TBmodels,system_Fe_PythTB,system_Fe_tb_wcc,system_Fe_TBmodels_wcc,system_Fe_PythTB_wcc
+#from create_system import *
 from compare_result import compare_energyresult
 
 def check_integrate(system,quantities,fout_name,Efermi,comparer,numproc=0,grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},additional_parameters={},adpt_num_iter=1,suffix="",precision=1e-10,extra_precision={}):
@@ -70,13 +72,12 @@ def test_Fe(system_Fe_W90,system_Fe_tb,system_Fe_TBmodels,system_Fe_PythTB, comp
     check_integrate(system_Fe_TBmodels , quantities_Fe , fout_name="berry_Fe_tbmodels" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult )
     check_integrate(system_Fe_PythTB , quantities_Fe , fout_name="berry_Fe_pythtb" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult )
 
-def test_Fe_wcc(system_Fe_W90_wcc, compare_energyresult,quantities_Fe,Efermi_Fe):
+def test_Fe_wcc(system_Fe_W90_wcc,system_Fe_tb_wcc,system_Fe_TBmodels_wcc,system_Fe_PythTB_wcc, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90_wcc , quantities_Fe , fout_name="berry_Fe_W90" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult )
     check_integrate(system_Fe_tb_wcc , quantities_Fe , fout_name="berry_Fe_tb" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult )
     check_integrate(system_Fe_TBmodels_wcc , quantities_Fe , fout_name="berry_Fe_tbmodels" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult )
     check_integrate(system_Fe_PythTB_wcc , quantities_Fe , fout_name="berry_Fe_pythtb" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult )
-
 
 def test_GaAs(system_GaAs_W90, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test berry dipole"""
@@ -87,3 +88,5 @@ def test_GaAs_wcc(system_GaAs_W90_wcc, compare_energyresult,quantities_GaAs,Efer
     """Test berry dipole with wcc_phase"""
     check_integrate(system_GaAs_W90_wcc , quantities_GaAs , fout_name="berry_GaAs_W90" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                   precision=1e-10 ,extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
+
+
