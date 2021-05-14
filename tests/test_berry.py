@@ -66,24 +66,24 @@ def compare_quant(quant):
 def test_Fe(system_Fe_W90,system_Fe_tb,system_Fe_TBmodels,system_Fe_PythTB, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult,
-            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':'1e-6'}  )
+            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':1e-6}  )
     check_integrate(system_Fe_tb , quantities_Fe , fout_name="berry_Fe_tb" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult,
-            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':'1e-6'}  )
+            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':1e-6}  )
     check_integrate(system_Fe_TBmodels , quantities_Fe , fout_name="berry_Fe_tbmodels" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult,
-            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':'1e-6'}  )
+            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':1e-6}  )
     check_integrate(system_Fe_PythTB , quantities_Fe , fout_name="berry_Fe_pythtb" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult,
-            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':'1e-6'}  )
+            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':1e-6}  )
 
 def test_Fe_wcc(system_Fe_W90_wcc,system_Fe_tb_wcc,system_Fe_TBmodels_wcc,system_Fe_PythTB_wcc, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90_wcc , quantities_Fe , fout_name="berry_Fe_W90" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult,
-            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':'1e-6'}  )
+            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':1e-6}  )
     check_integrate(system_Fe_tb_wcc , quantities_Fe , fout_name="berry_Fe_tb" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult,
-            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':'1e-6'}  )
+            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':1e-6}  )
     check_integrate(system_Fe_TBmodels_wcc , quantities_Fe , fout_name="berry_Fe_tbmodels" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult,
-            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':'1e-6'}  )
+            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':1e-6}  )
     check_integrate(system_Fe_PythTB_wcc , quantities_Fe , fout_name="berry_Fe_pythtb" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult,
-            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':'1e-6'}  )
+            extra_precision={'conductivity_ohmic':1e-6,'conductivity_ohmic_fsurf':1e-6}  )
 
 def test_GaAs(system_GaAs_W90, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test berry dipole"""
