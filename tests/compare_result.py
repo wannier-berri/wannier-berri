@@ -42,8 +42,7 @@ def compare_energyresult(rootdir):
             E_titles, data_energy, data, data_smooth = read_energyresult_dat(filename)
             path_filename_ref = os.path.join(rootdir, 'reference', filename_ref)
             E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref)
-            print('data_dim = ',np.shape(data_smooth_ref))
-            precision = abs(sum(sum(data_smooth_ref))/float(prod(np.shape(data_smooth_ref))*1E12) ) 
+            precision = abs(sum(sum(data_smooth_ref))/float(np.prod(np.shape(data_smooth_ref))*1E12) ) 
             print('precision',precision) 
             assert E_titles == E_titles_ref
             assert data_energy == approx(data_energy_ref, abs=precision)
