@@ -41,7 +41,7 @@ def result_kubo_Fe_W90(system_Fe_W90):
             numproc = num_proc,
             adpt_num_iter = adpt_num_iter,
             parameters = kubo_params,
-            fout_name = fout_name,
+            fout_name = "_dat_files/" + fout_name,
             restart = False,
     )
 

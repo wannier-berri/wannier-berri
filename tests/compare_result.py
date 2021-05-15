@@ -28,22 +28,29 @@ def read_energyresult_dat(filename):
 
     return E_titles, data_energy, data, data_smooth
 
+def error_message(fout_name, suffix, i_iter, abs_err, filename, filename_ref):
+    return (f"data of {fout_name} {suffix} at iteration {i_iter} give a maximal "
+            f"absolute difference of {abs_err}. Files {filename} and {filename_ref}")
+
 
 @pytest.fixture
 def compare_energyresult(rootdir):
     """Compare dat file output of EnergyResult with the file in reference folder"""
-    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,precision=1E-10):
-        if suffix_ref is None :
-            suffix_ref=suffix
+    def _inner(fout_name, suffix, adpt_num_iter, suffix_ref=None, precision=1E-10):
+        if suffix_ref is None:
+            suffix_ref = suffix
         for i_iter in range(adpt_num_iter+1):
-            filename     = fout_name + "-{}".format(suffix) + "_iter-{0:04d}.dat".format(i_iter)
-            filename_ref = fout_name + "-{}".format(suffix_ref) + "_iter-{0:04d}.dat".format(i_iter)
-            E_titles, data_energy, data, data_smooth = read_energyresult_dat(filename)
+            filename     = fout_name + f"-{suffix}_iter-{i_iter:04d}.dat"
+            filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}.dat"
+            path_filename = os.path.join(rootdir, '_dat_files', filename)
+            E_titles, data_energy, data, data_smooth = read_energyresult_dat(path_filename)
             path_filename_ref = os.path.join(rootdir, 'reference', filename_ref)
             E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref)
 
             assert E_titles == E_titles_ref
-            assert data_energy == approx(data_energy_ref, abs=precision)
-            assert data == approx(data_ref, abs=precision), "data of {} {} at iteration {} give a maximal; absolute difference of {}. files {} and {}".format(fout_name,suffix,i_iter,np.max(np.abs(data-data_ref)),filename,path_filename_ref)
-            assert data_smooth == approx(data_smooth_ref, abs=precision), "smoothed data of {} {} at iteration {} give a maximal; absolute difference of {}.  . files {} and {}".format(fout_name,suffix,i_iter,np.max(np.abs(data-data_ref)),filename,path_filename_ref)
+            # assert data_energy == approx(data_energy_ref, abs=precision)
+            assert data == approx(data_ref, abs=precision), error_message(
+                fout_name, suffix, i_iter, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref)
+            assert data_smooth == approx(data_smooth_ref, abs=precision), "smoothed " + error_message(
+                fout_name, suffix, i_iter, np.max(np.abs(data_smooth-data_smooth_ref)), path_filename, path_filename_ref)
     return _inner
