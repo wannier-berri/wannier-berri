@@ -19,7 +19,7 @@ def check_integrate(system,quantities,fout_name,Efermi,comparer,numproc=0,grid_p
             numproc = numproc,
             adpt_num_iter = adpt_num_iter,
             parameters = additional_parameters,
-            fout_name = fout_name,
+            fout_name = "_dat_files/" + fout_name,
             suffix=suffix,
             restart = False,
             )
