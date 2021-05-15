@@ -85,4 +85,4 @@ def test_GaAs(system_GaAs_W90, compare_energyresult,quantities_GaAs,Efermi_GaAs)
 def test_GaAs_wcc(system_GaAs_W90_wcc, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test berry dipole with wcc_phase"""
     check_integrate(system_GaAs_W90_wcc , quantities_GaAs , fout_name="berry_GaAs_W90" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
-                  precision=1e-10 ,extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
+                  extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
