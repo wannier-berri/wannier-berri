@@ -14,6 +14,7 @@ def check_integrate(system,quantities,fout_name,Efermi,comparer,numproc=0,grid_p
     result = wberri.integrate(system,
             grid = grid,
             Efermi = Efermi,
+            smearEf = 600.0,
 #            omega = omega,
             quantities = quantities,
             numproc = numproc,
