@@ -32,8 +32,7 @@ def read_energyresult_dat(filename):
 @pytest.fixture
 def compare_energyresult(rootdir):
     """Compare dat file output of EnergyResult with the file in reference folder"""
-    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,precision=1E-10):
-    #def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None):
+    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,precision=None):
         if suffix_ref is None :
             suffix_ref=suffix
         for i_iter in range(adpt_num_iter+1):
@@ -42,8 +41,10 @@ def compare_energyresult(rootdir):
             E_titles, data_energy, data, data_smooth = read_energyresult_dat(filename)
             path_filename_ref = os.path.join(rootdir, 'reference', filename_ref)
             E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref)
-            precision = abs(sum(sum(data_smooth_ref))/float(np.prod(np.shape(data_smooth_ref))*1E12) ) 
-            print(suffix+'precision',precision) 
+            if precision == None:
+                precision = abs(sum(sum(data_smooth_ref))/float(np.prod(np.shape(data_smooth_ref))*1E12) ) 
+                if precision < 1E-11:
+                    precision = 1E-11
             assert E_titles == E_titles_ref
             assert data_energy == approx(data_energy_ref, abs=precision)
             assert data == approx(data_ref, abs=precision), "data of {} {} at iteration {} give a maximal; absolute difference of {}. files {} and {}".format(fout_name,suffix,i_iter,np.max(np.abs(data-data_ref)),filename,path_filename_ref)
