@@ -92,10 +92,20 @@ import abc
 class AbstractSmoother(abc.ABC):
     """ Smoother for smoothing an array by convolution.
     This is an abstract class which cannot by instantiated. Only the specific child classes
-    can be instantiated. Each child class should implement its own version of params and
-    _broaden.
+    can be instantiated. Each child class should implement its own version of _params,
+    __init__, and _broaden.
     - _params : list of parameters that uniquely define the smoother.
     - _broaden : function that defines the broadening method.
+    - __init__ : initialize Smoother parameters
+
+    Parameters
+    -----------
+    E : 1D array
+        The energies on which the data are calculated at.
+    smear : float
+        Smearing parameter in eV.
+    maxdE : int
+        Determines the width of the convoluting function as (-smear * maxdE, smear * maxdE).
     """
     @property
     @abc.abstractmethod
@@ -103,12 +113,20 @@ class AbstractSmoother(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def __init__(self, E, smear, maxdE):
+        self.smear = smear
+        self.E = np.copy(E)
+        self.maxdE = maxdE
+        self.dE = E[1] - E[0]
+        self.Emin = E[0]
+        self.Emax = E[-1]
+        self.NE1 = int(self.maxdE * self.smear / self.dE)
+        self.NE = E.shape[0]
+        self.smt = self._broaden(np.arange(-self.NE1,self.NE1+1)*self.dE)*self.dE
+
+    @abc.abstractmethod
     def _broaden(self, E):
         pass
-
-    @Lazy
-    def smt(self):
-        return self._broaden(np.arange(-self.NE1,self.NE1+1)*self.dE)*self.dE
 
     def __str__(self):
         return f"<{type(self).__name__}>"
@@ -136,40 +154,61 @@ class AbstractSmoother(abc.ABC):
 
 
 class FermiDiracSmoother(AbstractSmoother):
-    """ Smoother for Fermi-Dirac distribution.
-    When called, convolutes the input data with the derivative of the Fermi-Dirac function.
+    """ Smoother that uses the derivative of Fermi-Dirac function.
 
     Parameters
     -----------
     E : 1D array
         The energies on which the data are calculated at.
     T_Kelvin : float
-        Temperature in Kelvin. Transformed into self.T, which is in eV.
+        Temperature in Kelvin. Transformed into self.smear, which is in eV.
     maxdE : int
         Determines the width of the convoluting function as (-T * maxdE, T * maxdE)
     """
-    _params = ['T', 'E', 'maxdE', 'NE1']
+    _params = ['smear', 'E', 'maxdE', 'NE1']
 
     def __init__(self, E, T_Kelvin=10.0, maxdE=8):
-        self.T = T_Kelvin * Boltzmann / elementary_charge  # now in eV
-        self.E = np.copy(E)
-        self.maxdE = maxdE
-        self.dE = E[1] - E[0]
-        self.Emin = E[0]
-        self.Emax = E[-1]
-        self.NE1 = int(self.maxdE * self.T / self.dE)
-        self.NE = E.shape[0]
+        self.T_Kelvin = T_Kelvin
+        T_eV = T_Kelvin * Boltzmann / elementary_charge  # convert K to eV
+        super().__init__(E, T_eV, maxdE)
 
     def _broaden(self,E):
-        return 0.25 / self.T / np.cosh(E/(2*self.T))**2
+        return 0.25 / self.smear / np.cosh(E/(2*self.smear))**2
 
     def __str__(self):
-        return f"<FermiDiracSmoother T={self.T}, NE={self.NE}, NE1={self.NE1}, E={self.Emin}..{self.Emax}, step {self.dE}>"
+        return f"<FermiDiracSmoother T={self.smear}, NE={self.NE}, NE1={self.NE1}, E={self.Emin}..{self.Emax}, step {self.dE}>"
+
+
+class GaussianSmoother(AbstractSmoother):
+    """ Smoother that uses Gaussian function.
+
+    Parameters
+    -----------
+    E : 1D array
+        The energies on which the data are calculated at.
+    smear : float
+        Smearing parameter in eV.
+    maxdE : int
+        Determines the width of the convoluting function as (-smear * maxdE, smear * maxdE)
+    """
+    _params = ['smear', 'E', 'maxdE', 'NE1']
+
+    def __init__(self, E, smear, maxdE=8):
+        super().__init__(E, smear, maxdE)
+
+    def _broaden(self,E):
+        return np.exp(-(E / self.smear)**2) / self.smear / np.sqrt(np.pi)
+
+    def __str__(self):
+        return f"<GaussianSmoother smear={self.smear}, NE={self.NE}, NE1={self.NE1}, E={self.Emin}..{self.Emax}, step {self.dE}>"
 
 
 class VoidSmoother(AbstractSmoother):
     """ Void smoother. When called, do nothing and return the original array."""
     _params = []
+
+    def __init__(self):
+        pass
 
     def _broaden(self, E):
         pass
@@ -187,6 +226,8 @@ def getSmoother(energy, smear, mode=None):
         return VoidSmoother()
     if mode == "Fermi-Dirac":
         return FermiDiracSmoother(energy, smear)
+    elif mode == "Gaussian":
+        return GaussianSmoother(energy, smear)
     else:
         raise ValueError("mode must be Fermi-Dirac")
 
