@@ -61,28 +61,29 @@ def process(paralfunc,K_list,nproc,symgroup=None,chunksize=0,parallel_module='mu
         print("in serial.")
     print("# K-points calculated  Wall time (sec)  Est. remaining (sec)", flush=True)
     res = []
-    if nproc <= 0:
+    if parallel_module=='serial':
         for count, Kp in enumerate(dK_list):
             res.append(paralfunc(Kp))
             if (count + 1) % nstep_print == 0:
                 print_progress(count + 1, numK, t0)
+    elif  parallel_module=='multiprocessing':
+        p = multiprocessing.Pool(nproc)
+        # Method 1: map. Cannot print progress.
+        # res = p.map(paralfunc,dK_list)
+        # Method 2: imap
+        for count, res_K in enumerate(p.imap(paralfunc, dK_list, chunksize=chunksize)):
+            res.append(res_K)
+            if (count + 1) % nstep_print == 0:
+                print_progress(count + 1, numK, t0)
+        p.close()
+    elif parallel_module.startswith('ray'):
+        remotes=[paralfunc.remote(dK) for dK in dK_list]
+        for count, res_K in enumerate(ray.get(remotes)):
+            res.append(res_K)
+            if (count + 1) % nstep_print == 0:
+                print_progress(count + 1, numK, t0)
     else:
-        if parallel_module=='multiprocessing':
-            p = multiprocessing.Pool(nproc)
-            # Method 1: map. Cannot print progress.
-            # res = p.map(paralfunc,dK_list)
-            # Method 2: imap
-            for count, res_K in enumerate(p.imap(paralfunc, dK_list, chunksize=chunksize)):
-                res.append(res_K)
-                if (count + 1) % nstep_print == 0:
-                    print_progress(count + 1, numK, t0)
-            p.close()
-        elif parallel_module.startswith('ray'):
-            remotes=[paralfunc.remote(dK) for dK in dK_list]
-            for count, res_K in enumerate(ray.get(remotes)):
-                res.append(res_K)
-                if (count + 1) % nstep_print == 0:
-                    print_progress(count + 1, numK, t0)
+        raise RuntimeError (f"unknown parallel_module : '{parallel_module}'")
 
 
     if not (symgroup is None):
@@ -120,7 +121,9 @@ As a result, the integration will be performed over NKFFT x NKdiv
     
     if nparK<=0:
         parallel_module='serial'
-    if parallel_module=='ray':
+    if parallel_module=='serial':
+        nparK=0
+    elif parallel_module=='ray':
         ray.init()
     elif parallel_module=='ray-slurm':
         ray.init(address='auto', _node_ip_address=os.environ["ip_head"].split(":")[0], _redis_password=os.environ["redis_password"])
@@ -141,13 +144,8 @@ As a result, the integration will be performed over NKFFT x NKdiv
         def paralfunc(dK):
             return _eval_func_k (dK,func=func,system=system,grid=grid,nparFFT=nparFFT,fftlib=fftlib )
     else:
-            paralfunc=functools.partial(
-        _eval_func_k, func=func,system=system,grid=grid,nparFFT=nparFFT,fftlib=fftlib )
-
-
-        
-
-
+        paralfunc=functools.partial(
+            _eval_func_k, func=func,system=system,grid=grid,nparFFT=nparFFT,fftlib=fftlib )
 
 
     if restart:
