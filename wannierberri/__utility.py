@@ -87,38 +87,42 @@ def real_recip_lattice(real_lattice=None,recip_lattice=None):
 
 
 from scipy.constants import Boltzmann,elementary_charge,hbar
+import abc
 
-class Smoother():
-    def __init__(self,E,T=10):  # T in K
-        self.T=T*Boltzmann/elementary_charge  # now in eV
-        self.E=np.copy(E)
-        dE=E[1]-E[0]
-        maxdE=8
-        self.NE1=int(maxdE*self.T/dE)
-        self.NE=E.shape[0]
-        self.smt=self._broaden(np.arange(-self.NE1,self.NE1+1)*dE)*dE
+class AbstractSmoother(abc.ABC):
+    """ Smoother for smoothing an array by convolution.
+    This is an abstract class which cannot by instantiated. Only the specific child classes
+    can be instantiated. Each child class should implement its own version of params and
+    _broaden.
+    - _params : list of parameters that uniquely define the smoother.
+    - _broaden : function that defines the broadening method.
+    """
+    @property
+    @abc.abstractmethod
+    def _params(self):
+        pass
 
+    @abc.abstractmethod
+    def _broaden(self, E):
+        pass
 
     @Lazy
+    def smt(self):
+        return self._broaden(np.arange(-self.NE1,self.NE1+1)*self.dE)*self.dE
+
     def __str__(self):
-        return ("<Smoother T={}, NE={}, NE1={} , E={}..{} step {}>".format(self.T,self.NE,self.NE1,self.Emin,self.Emax,self.dE) )
-        
-    @Lazy 
-    def dE(self):
-        return self.E[1]-self.E[0]
+        return f"<{type(self).__name__}>"
 
-    @Lazy 
-    def Emin(self):
-        return self.E[0]
+    def __eq__(self,other):
+        if type(self) != type(other):
+            return False
+        else:
+            for param in self._params:
+                if not np.allclose(getattr(self, param), getattr(other, param)):
+                    return False
+        return True
 
-    @Lazy 
-    def Emax(self):
-        return self.E[-1]
-
-    def _broaden(self,E):
-        return 0.25/self.T/np.cosh(E/(2*self.T))**2
-
-    def __call__(self,A,axis=0):
+    def __call__(self, A, axis=0):
         assert self.E.shape[0]==A.shape[axis]
         A=A.transpose((axis,)+tuple(range(0,axis))+tuple(range(axis+1,A.ndim)))
         res=np.zeros(A.shape, dtype=A.dtype)
@@ -131,44 +135,60 @@ class Smoother():
         return res.transpose( tuple(range(1,axis+1))+ (0,)+tuple(range(axis+1,A.ndim)) )
 
 
-    def __eq__(self,other):
-        if isinstance(other,VoidSmoother):
-            return False
-        elif not isinstance(other,Smoother):
-            return False
-        else:
-            for var in ['T','dE','NE','NE1','Emin','Emax']:
-                if getattr(self,var)!=getattr(other,var):
-                    return False
-        return True
-#            return self.T==other.T and self.dE=other.E and self.NE==other.NE and self.
+class FermiDiracSmoother(AbstractSmoother):
+    """ Smoother for Fermi-Dirac distribution.
+    When called, convolutes the input data with the derivative of the Fermi-Dirac function.
 
+    Parameters
+    -----------
+    E : 1D array
+        The energies on which the data are calculated at.
+    T_Kelvin : float
+        Temperature in Kelvin. Transformed into self.T, which is in eV.
+    maxdE : int
+        Determines the width of the convoluting function as (-T * maxdE, T * maxdE)
+    """
+    _params = ['T', 'E', 'maxdE', 'NE1']
 
-class VoidSmoother(Smoother):
-    def __init__(self):
-        pass
-    
-    def __eq__(self,other):
-        if isinstance(other,VoidSmoother):
-            return True
-        else:
-            return False
-    
-    def __call__(self,A,axis=0):
-        return A
+    def __init__(self, E, T_Kelvin=10.0, maxdE=8):
+        self.T = T_Kelvin * Boltzmann / elementary_charge  # now in eV
+        self.E = np.copy(E)
+        self.maxdE = maxdE
+        self.dE = E[1] - E[0]
+        self.Emin = E[0]
+        self.Emax = E[-1]
+        self.NE1 = int(self.maxdE * self.T / self.dE)
+        self.NE = E.shape[0]
+
+    def _broaden(self,E):
+        return 0.25 / self.T / np.cosh(E/(2*self.T))**2
 
     def __str__(self):
-        return ("<VoidSmoother>" )
+        return f"<FermiDiracSmoother T={self.T}, NE={self.NE}, NE1={self.NE1}, E={self.Emin}..{self.Emax}, step {self.dE}>"
 
 
-def getSmoother(energy,smear):
-    if energy is None: 
+class VoidSmoother(AbstractSmoother):
+    """ Void smoother. When called, do nothing and return the original array."""
+    _params = []
+
+    def _broaden(self, E):
+        pass
+
+    def __call__(self, A, axis=0):
+        return A
+
+
+def getSmoother(energy, smear, mode=None):
+    if energy is None:
         return VoidSmoother()
-    if smear is None or smear<=0: 
+    if smear is None or smear<=0:
         return VoidSmoother()
-    if len(energy)<=1: 
+    if len(energy) <= 1:
         return VoidSmoother()
-    return  Smoother(energy,smear) # smoother for functions of frequency
+    if mode == "Fermi-Dirac":
+        return FermiDiracSmoother(energy, smear)
+    else:
+        raise ValueError("mode must be Fermi-Dirac")
 
 
 def str2bool(v):
