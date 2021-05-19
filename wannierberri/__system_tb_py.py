@@ -66,8 +66,6 @@ class System_tb_py(System):
 
         self.dimr=real.shape[1]
 
-        self.wannier_centres_cart = positions.dot(real)
-        self.wannier_centres_reduced = positions
 
         self.real_lattice=np.eye((3),dtype=float)
         self.real_lattice[:self.dimr,:self.dimr]=np.array(real)
@@ -86,6 +84,9 @@ class System_tb_py(System):
         Rvecsneg=np.array([-r for r in Rvecs])
         R_all=np.concatenate((Rvecs,Rvecsneg),axis=0)
         R_all=np.unique(R_all,axis=0)
+        
+        self.wannier_centres_cart = positions.dot(real)
+        self.wannier_centres_reduced = positions
         
         # Find the R=[000] index (used later)
         index0=np.argwhere(np.all(([0,0,0]-R_all)==0, axis=1))
