@@ -93,10 +93,10 @@ def test_GaAs_wcc(system_GaAs_W90_wcc,system_GaAs_tb_wcc , compare_energyresult,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 def test_Haldane(system_Haldane_PythTB,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
-    check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_pythtb" , suffix="" , Efermi=Efermi_Haldane , comparer=compare_energyresult )
-    check_integrate(system_Haldane_TBmodels , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="" , Efermi=Efermi_Haldane , comparer=compare_energyresult )
+    check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_pythtb" , suffix="" , Efermi=Efermi_Haldane , comparer=compare_energyresult,grid_param={'NK':[6,6,1],'NKFFT':[3,3,1]} )
+    check_integrate(system_Haldane_TBmodels , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="" , Efermi=Efermi_Haldane , comparer=compare_energyresult,grid_param={'NK':[6,6,1],'NKFFT':[3,3,1]} )
 
 def test_Haldane_wcc(system_Haldane_PythTB_wcc,system_Haldane_TBmodels_wcc,compare_energyresult,quantities_Haldane,Efermi_Haldane):
-    check_integrate(system_Haldane_PythTB_wcc , quantities_Haldane , fout_name="berry_Haldane_pythtb" , suffix="wcc" , Efermi=Efermi_Haldane , comparer=compare_energyresult )
-    check_integrate(system_Haldane_TBmodels_wcc , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="wcc" , Efermi=Efermi_Haldane , comparer=compare_energyresult )
+    check_integrate(system_Haldane_PythTB_wcc , quantities_Haldane , fout_name="berry_Haldane_pythtb" , suffix="wcc" , Efermi=Efermi_Haldane , comparer=compare_energyresult,grid_param={'NK':[6,6,1],'NKFFT':[3,3,1]} )
+    check_integrate(system_Haldane_TBmodels_wcc , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="wcc" , Efermi=Efermi_Haldane , comparer=compare_energyresult,grid_param={'NK':[6,6,1],'NKFFT':[3,3,1]} )
 
