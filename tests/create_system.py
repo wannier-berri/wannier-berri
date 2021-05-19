@@ -234,7 +234,7 @@ def system_Haldane_PythTB(rootdir):
     my_model.set_hop(t2c, 0, 0, [ 0, 1, 0])
 
     # Load system
-    system = wberri.System_PythTB(my_model, berry=True, use_wcc_phase=True,periodic=(True,True,False))
+    system = wberri.System_PythTB(my_model, berry=True, use_wcc_phase=False ,periodic=(True,True,False))
 
     return system
 
