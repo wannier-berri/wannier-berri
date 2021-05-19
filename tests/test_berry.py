@@ -5,7 +5,6 @@ import pytest
 from pytest import approx
 
 import wannierberri as wberri
-
 from create_system import *
 from compare_result import compare_energyresult
 
@@ -53,7 +52,7 @@ def quantities_Fe():
 
 @pytest.fixture(scope="module")
 def quantities_Haldane():
-    return  ['ahc','ahc_ocean','dos' ,'conductivity_ohmic']
+    return  ['ahc','dos','conductivity_ohmic']
 
 @pytest.fixture(scope="module")
 def quantities_GaAs():
@@ -67,7 +66,6 @@ def compare_quant(quant):
     else:
         return quant
 
-
 def test_Fe(system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult )
@@ -79,7 +77,6 @@ def test_Fe_wcc(system_Fe_W90_wcc, compare_energyresult,quantities_Fe,Efermi_Fe)
 
 
 def test_GaAs(system_GaAs_W90,system_GaAs_tb ,compare_energyresult,quantities_GaAs,Efermi_GaAs):
-#def test_GaAs(system_GaAs_tb ,compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test berry dipole"""
     check_integrate(system_GaAs_W90 , quantities_GaAs , fout_name="berry_GaAs_W90" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
@@ -87,18 +84,22 @@ def test_GaAs(system_GaAs_W90,system_GaAs_tb ,compare_energyresult,quantities_Ga
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 def test_GaAs_wcc(system_GaAs_W90_wcc,system_GaAs_tb_wcc , compare_energyresult,quantities_GaAs,Efermi_GaAs):
-#def test_GaAs_wcc(system_GaAs_tb_wcc , compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test berry dipole with wcc_phase"""
     check_integrate(system_GaAs_W90_wcc , quantities_GaAs , fout_name="berry_GaAs_W90" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
     check_integrate(system_GaAs_tb_wcc , quantities_GaAs , fout_name="berry_GaAs_tb" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
+    
 def test_Haldane(system_Haldane_PythTB,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
-    check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_pythtb" , suffix="" , Efermi=Efermi_Haldane , comparer=compare_energyresult,grid_param={'NK':[6,6,1],'NKFFT':[3,3,1]} )
-    check_integrate(system_Haldane_TBmodels , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="" , Efermi=Efermi_Haldane , comparer=compare_energyresult,grid_param={'NK':[6,6,1],'NKFFT':[3,3,1]} )
+    check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_pythtb" , suffix="" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
+            grid_param={'NK':[6,6,1],'NKFFT':[3,3,1]} )
+    check_integrate(system_Haldane_TBmodels , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
+            grid_param={'NK':[6,6,1],'NKFFT':[3,3,1]} )
 
 def test_Haldane_wcc(system_Haldane_PythTB_wcc,system_Haldane_TBmodels_wcc,compare_energyresult,quantities_Haldane,Efermi_Haldane):
-    check_integrate(system_Haldane_PythTB_wcc , quantities_Haldane , fout_name="berry_Haldane_pythtb" , suffix="wcc" , Efermi=Efermi_Haldane , comparer=compare_energyresult,grid_param={'NK':[6,6,1],'NKFFT':[3,3,1]} )
-    check_integrate(system_Haldane_TBmodels_wcc , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="wcc" , Efermi=Efermi_Haldane , comparer=compare_energyresult,grid_param={'NK':[6,6,1],'NKFFT':[3,3,1]} )
+    check_integrate(system_Haldane_PythTB_wcc , quantities_Haldane , fout_name="berry_Haldane_pythtb" , suffix="wcc" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
+            grid_param={'NK':[6,6,1],'NKFFT':[3,3,1]} )
+    check_integrate(system_Haldane_TBmodels_wcc , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="wcc" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
+            grid_param={'NK':[6,6,1],'NKFFT':[3,3,1]} )
 
