@@ -66,6 +66,8 @@ class System_tb_py(System):
 
         self.dimr=real.shape[1]
 
+        self.wannier_centres_cart = positions.dot(real)
+        self.wannier_centres_reduced = positions
 
         self.real_lattice=np.eye((3),dtype=float)
         self.real_lattice[:self.dimr,:self.dimr]=np.array(real)

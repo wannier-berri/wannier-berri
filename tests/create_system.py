@@ -4,6 +4,8 @@ import os
 import tarfile
 import shutil
 
+import tbmodels
+from pythtb import * 
 import pytest
 
 import wannierberri as wberri
@@ -124,3 +126,165 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
             transl_inv=False, use_wcc_phase=True)
 
     return system
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_tb(rootdir):
+    """Create system for GaAs using _tb.dat data"""
+
+    data_dir = os.path.join(rootdir, "data", "GaAs_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+
+    seedname = os.path.join(data_dir, "GaAs_tb.dat")
+    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=False)
+
+    return system
+
+@pytest.fixture(scope="session")
+def system_GaAs_tb_wcc(rootdir):
+    """Create system for GaAs using _tb_dat data"""
+
+    data_dir = os.path.join(rootdir, "data", "GaAs_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs_tb.dat")
+    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=True)
+
+    return system
+
+@pytest.fixture(scope="session")
+def system_Haldane_TBmodels(rootdir):
+
+    delta=0.2
+    t=-1.0
+    t2 =0.15*np.exp((1.j)*np.pi/2.)
+    t2c=t2.conjugate()
+    my_model = tbmodels.Model(
+            on_site=[delta, -delta],uc = [[1.0,0.0],[0.5,np.sqrt(3.0)/2.0]], dim=2, occ=1, pos=[[1./3.,1./3.],[2./3.,2./3.]]
+            )
+    my_model.add_hop(t, 0, 1, [ 0, 0])
+    my_model.add_hop(t, 1, 0, [ 1, 0])
+    my_model.add_hop(t, 1, 0, [ 0, 1])
+    my_model.add_hop(t2 , 0, 0, [ 1, 0])
+    my_model.add_hop(t2 , 1, 1, [ 1,-1])
+    my_model.add_hop(t2 , 1, 1, [ 0, 1])
+    my_model.add_hop(t2c, 1, 1, [ 1, 0])
+    my_model.add_hop(t2c, 0, 0, [ 1,-1])
+    my_model.add_hop(t2c, 0, 0, [ 0, 1])
+
+    # Load system
+    system = wberri.System_TBmodels(my_model, berry=True, use_wcc_phase=False)
+
+    return system
+
+@pytest.fixture(scope="session")
+def system_Haldane_TBmodels_wcc(rootdir):
+    """Create system for Fe using Tbmodels"""
+
+    delta=0.2
+    t=-1.0
+    t2 =0.15*np.exp((1.j)*np.pi/2.)
+    t2c=t2.conjugate()
+    my_model = tbmodels.Model(
+            on_site=[delta, -delta],uc = [[1.0,0.0],[0.5,np.sqrt(3.0)/2.0]], dim=2, occ=1, pos=[[1./3.,1./3.],[2./3.,2./3.]]
+            )
+    my_model.add_hop(t, 0, 1, [ 0, 0])
+    my_model.add_hop(t, 1, 0, [ 1, 0])
+    my_model.add_hop(t, 1, 0, [ 0, 1])
+    my_model.add_hop(t2 , 0, 0, [ 1, 0])
+    my_model.add_hop(t2 , 1, 1, [ 1,-1])
+    my_model.add_hop(t2 , 1, 1, [ 0, 1])
+    my_model.add_hop(t2c, 1, 1, [ 1, 0])
+    my_model.add_hop(t2c, 0, 0, [ 1,-1])
+    my_model.add_hop(t2c, 0, 0, [ 0, 1])
+    
+    # Load system
+    system = wberri.System_TBmodels(my_model, berry=True, use_wcc_phase=True)
+
+    return system
+
+
+
+@pytest.fixture(scope="session")
+def system_Haldane_PythTB(rootdir):
+    """Create system for Haldane model using PythTB"""
+    # define lattice vectors
+    lat=[[1.0,0.0],[0.5,np.sqrt(3.0)/2.0]]
+    # define coordinates of orbitals
+    orb=[[1./3.,1./3.],[2./3.,2./3.]]
+
+    # make two dimensional tight-binding Haldane model
+    my_model=tb_model(2,2,lat,orb)
+
+    # set model parameters
+    delta=0.2
+    t=-1.0
+    t2 =0.15*np.exp((1.j)*np.pi/2.)
+    t2c=t2.conjugate()
+
+    # set on-site energies
+    my_model.set_onsite([-delta,delta])
+    # set hoppings (one for each connected pair of orbitals)
+    # (amplitude, i, j, [lattice vector to cell containing j])
+    my_model.set_hop(t, 0, 1, [ 0, 0])
+    my_model.set_hop(t, 1, 0, [ 1, 0])
+    my_model.set_hop(t, 1, 0, [ 0, 1])
+    # add second neighbour complex hoppings
+    my_model.set_hop(t2 , 0, 0, [ 1, 0])
+    my_model.set_hop(t2 , 1, 1, [ 1,-1])
+    my_model.set_hop(t2 , 1, 1, [ 0, 1])
+    my_model.set_hop(t2c, 1, 1, [ 1, 0])
+    my_model.set_hop(t2c, 0, 0, [ 1,-1])
+    my_model.set_hop(t2c, 0, 0, [ 0, 1])
+
+    # Load system
+    system = wberri.System_PythTB(my_model, berry=True, use_wcc_phase=False)
+
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Haldane_PythTB_wcc(rootdir):
+    """Create system for Haldane model using PythTB"""
+    # define lattice vectors
+    lat=[[1.0,0.0],[0.5,np.sqrt(3.0)/2.0]]
+    # define coordinates of orbitals
+    orb=[[1./3.,1./3.],[2./3.,2./3.]]
+
+    # make two dimensional tight-binding Haldane model
+    my_model=tb_model(2,2,lat,orb)
+
+    # set model parameters
+    delta=0.2
+    t=-1.0
+    t2 =0.15*np.exp((1.j)*np.pi/2.)
+    t2c=t2.conjugate()
+
+    # set on-site energies
+    my_model.set_onsite([-delta,delta])
+    # set hoppings (one for each connected pair of orbitals)
+    # (amplitude, i, j, [lattice vector to cell containing j])
+    my_model.set_hop(t, 0, 1, [ 0, 0])
+    my_model.set_hop(t, 1, 0, [ 1, 0])
+    my_model.set_hop(t, 1, 0, [ 0, 1])
+    # add second neighbour complex hoppings
+    my_model.set_hop(t2 , 0, 0, [ 1, 0])
+    my_model.set_hop(t2 , 1, 1, [ 1,-1])
+    my_model.set_hop(t2 , 1, 1, [ 0, 1])
+    my_model.set_hop(t2c, 1, 1, [ 1, 0])
+    my_model.set_hop(t2c, 0, 0, [ 1,-1])
+    my_model.set_hop(t2c, 0, 0, [ 0, 1])
+    
+    # Load system
+    system = wberri.System_PythTB(my_model, berry=True, use_wcc_phase=True)
+
+    return system
+
+
+

@@ -32,7 +32,7 @@ def read_energyresult_dat(filename):
 @pytest.fixture
 def compare_energyresult(rootdir):
     """Compare dat file output of EnergyResult with the file in reference folder"""
-    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,precision=1E-10):
+    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,precision=None):
         if suffix_ref is None :
             suffix_ref=suffix
         for i_iter in range(adpt_num_iter+1):
@@ -41,6 +41,9 @@ def compare_energyresult(rootdir):
             E_titles, data_energy, data, data_smooth = read_energyresult_dat(filename)
             path_filename_ref = os.path.join(rootdir, 'reference', filename_ref)
             E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref)
+
+            if precision == None:
+                precision = max(abs(np.average(data_smooth_ref) / 1E12), 1E-11)
 
             assert E_titles == E_titles_ref
             assert data_energy == approx(data_energy_ref, abs=precision)
