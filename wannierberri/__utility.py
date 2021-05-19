@@ -167,16 +167,16 @@ class FermiDiracSmoother(AbstractSmoother):
     """
     _params = ['smear', 'E', 'maxdE', 'NE1']
 
-    def __init__(self, E, T_Kelvin=10.0, maxdE=8):
+    def __init__(self, E, T_Kelvin, maxdE=8):
         self.T_Kelvin = T_Kelvin
-        T_eV = T_Kelvin * Boltzmann / elementary_charge  # convert K to eV
-        super().__init__(E, T_eV, maxdE)
+        smear = T_Kelvin * Boltzmann / elementary_charge  # convert K to eV
+        super().__init__(E, smear, maxdE)
 
     def _broaden(self,E):
         return 0.25 / self.smear / np.cosh(E/(2*self.smear))**2
 
     def __str__(self):
-        return f"<FermiDiracSmoother T={self.smear}, NE={self.NE}, NE1={self.NE1}, E={self.Emin}..{self.Emax}, step {self.dE}>"
+        return f"<FermiDiracSmoother T={self.smear} ({self.T_Kelvin:.1f} K), NE={self.NE}, NE1={self.NE1}, E={self.Emin}..{self.Emax}, step {self.dE}>"
 
 
 class GaussianSmoother(AbstractSmoother):
@@ -229,7 +229,7 @@ def getSmoother(energy, smear, mode=None):
     elif mode == "Gaussian":
         return GaussianSmoother(energy, smear)
     else:
-        raise ValueError("mode must be Fermi-Dirac")
+        raise ValueError("Smoother mode not recognized.")
 
 
 def str2bool(v):
