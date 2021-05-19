@@ -1,4 +1,5 @@
 """Test the anomalous Hall conductivity."""
+import os
 
 import numpy as np
 import pytest
@@ -66,23 +67,38 @@ def compare_quant(quant):
     else:
         return quant
 
+<<<<<<< HEAD
 def test_Fe(system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
+=======
+
+
+def test_Fe(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
+>>>>>>> master
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult )
 
 
-def test_Fe_wcc(system_Fe_W90_wcc, compare_energyresult,quantities_Fe,Efermi_Fe):
+def test_Fe_wcc(check_integrate, system_Fe_W90_wcc, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90_wcc , quantities_Fe , fout_name="berry_Fe_W90" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult )
 
+<<<<<<< HEAD
 def test_GaAs(system_GaAs_W90,system_GaAs_tb ,compare_energyresult,quantities_GaAs,Efermi_GaAs):
+=======
+
+def test_GaAs(check_integrate, system_GaAs_W90, compare_energyresult,quantities_GaAs,Efermi_GaAs):
+>>>>>>> master
     """Test berry dipole"""
     check_integrate(system_GaAs_W90 , quantities_GaAs , fout_name="berry_GaAs_W90" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
     check_integrate(system_GaAs_tb , quantities_GaAs , fout_name="berry_GaAs_tb" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
+<<<<<<< HEAD
 def test_GaAs_wcc(system_GaAs_W90_wcc,system_GaAs_tb_wcc , compare_energyresult,quantities_GaAs,Efermi_GaAs):
+=======
+def test_GaAs_wcc(check_integrate, system_GaAs_W90_wcc, compare_energyresult,quantities_GaAs,Efermi_GaAs):
+>>>>>>> master
     """Test berry dipole with wcc_phase"""
     check_integrate(system_GaAs_W90_wcc , quantities_GaAs , fout_name="berry_GaAs_W90" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
