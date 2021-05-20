@@ -9,31 +9,33 @@ import wannierberri as wberri
 from create_system import *
 from compare_result import compare_energyresult
 
+
 @pytest.fixture
 def check_integrate(output_dir):
     def _inner(system,quantities,fout_name,Efermi,comparer,numproc=0,grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},additional_parameters={},adpt_num_iter=1,suffix="",extra_precision={}):
         grid = wberri.Grid(system, **grid_param)
         result = wberri.integrate(system,
-            grid = grid,
-            Efermi = Efermi,
-#            omega = omega,
-            quantities = quantities,
-            numproc = numproc,
-            adpt_num_iter = adpt_num_iter,
-            parameters = additional_parameters,
-            fout_name = os.path.join(output_dir, fout_name),
-            suffix=suffix,
-            restart = False,
-            )
-    if len(suffix)>0:
-        suffix="-"+suffix
+                grid = grid,
+                Efermi = Efermi,
+                smearEf = 600.0,
+    #            omega = omega,
+                quantities = quantities,
+                numproc = numproc,
+                adpt_num_iter = adpt_num_iter,
+                parameters = additional_parameters,
+                fout_name = os.path.join(output_dir, fout_name),
+                suffix=suffix,
+                restart = False,
+                )
+        if len(suffix)>0:
+            suffix="-"+suffix
 
-    for quant in quantities:
-        data=result.results.get(quant).data
-        assert data.shape[0] == len(Efermi)
-        assert np.all( np.array(data.shape[1:]) == 3)
-        prec=extra_precision[quant] if quant in extra_precision else None
-        comparer(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant) ,precision=prec )
+        for quant in quantities:
+            data=result.results.get(quant).data
+            assert data.shape[0] == len(Efermi)
+            assert np.all( np.array(data.shape[1:]) == 3)
+            prec=extra_precision[quant] if quant in extra_precision else None
+            comparer(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant) ,precision=prec )
 
 
 @pytest.fixture(scope="module")
