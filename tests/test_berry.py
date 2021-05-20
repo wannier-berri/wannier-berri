@@ -17,7 +17,7 @@ def check_integrate(output_dir):
         result = wberri.integrate(system,
                 grid = grid,
                 Efermi = Efermi,
-                smearEf = 600.0,
+    #            smearEf = 600.0,
     #            omega = omega,
                 quantities = quantities,
                 numproc = numproc,
