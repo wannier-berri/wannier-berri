@@ -36,7 +36,7 @@ def check_integrate(output_dir):
             assert np.all( np.array(data.shape[1:]) == 3)
             prec=extra_precision[quant] if quant in extra_precision else None
             comparer(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant) ,precision=prec )
-
+    return _inner
 
 @pytest.fixture(scope="module")
 def Efermi_Fe():
