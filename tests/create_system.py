@@ -215,7 +215,7 @@ def system_Haldane_PythTB(rootdir):
     lat=[[1.0,0.0,0.0],[0.5,np.sqrt(3.0)/2.0,0.0],[0.0,0.0,1.0]]
     orb=[[1./3.,1./3.,0.],[2./3.,2./3.,0.]]
 
-    my_model=tb_model(3,3,lat,orb)
+    my_model=tb_model(2,3,lat,orb,per=[0,1])
 
     delta=0.2
     t=-1.0
@@ -232,7 +232,6 @@ def system_Haldane_PythTB(rootdir):
     my_model.set_hop(t2c, 1, 1, [ 1, 0, 0])
     my_model.set_hop(t2c, 0, 0, [ 1,-1, 0])
     my_model.set_hop(t2c, 0, 0, [ 0, 1, 0])
-
     # Load system
     system = wberri.System_PythTB(my_model, berry=True, use_wcc_phase=False ,periodic=(True,True,False))
 
@@ -245,7 +244,7 @@ def system_Haldane_PythTB_wcc(rootdir):
     lat=[[1.0,0.0,0.0],[0.5,np.sqrt(3.0)/2.0,0.0],[0.0,0.0,1.0]]
     orb=[[1./3.,1./3.,0.],[2./3.,2./3.,0.]]
 
-    my_model=tb_model(3,3,lat,orb)
+    my_model=tb_model(2,3,lat,orb,per=[0,1])
 
     delta=0.2
     t=-1.0
