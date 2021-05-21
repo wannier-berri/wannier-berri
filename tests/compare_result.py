@@ -48,7 +48,7 @@ def compare_energyresult(output_dir, rootdir):
             E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref)
 
             assert E_titles == E_titles_ref
-            # assert data_energy == approx(data_energy_ref, abs=precision)
+            assert data_energy == approx(data_energy_ref, abs=precision)
             assert data == approx(data_ref, abs=precision), error_message(
                 fout_name, suffix, i_iter, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref)
             assert data_smooth == approx(data_smooth_ref, abs=precision), "smoothed " + error_message(
