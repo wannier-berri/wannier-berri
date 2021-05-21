@@ -6,7 +6,9 @@ import pytest
 from pytest import approx
 
 import wannierberri as wberri
-from create_system import system_Fe_W90,system_GaAs_W90,system_GaAs_tb,system_Haldane_PythTB,system_Haldane_TBmodels,system_Fe_W90_wcc,system_GaAs_W90_wcc,system_GaAs_tb_wcc,system_Haldane_PythTB_wcc,system_Haldane_TBmodels_wcc 
+from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
+from create_system import system_Fe_W90,system_GaAs_W90,system_GaAs_tb,system_Haldane_PythTB,system_Haldane_TBmodels
+from create_system import system_Fe_W90_wcc,system_GaAs_W90_wcc,system_GaAs_tb_wcc,system_Haldane_PythTB_wcc,system_Haldane_TBmodels_wcc 
 from compare_result import compare_energyresult
 
 
