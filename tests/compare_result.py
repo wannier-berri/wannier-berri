@@ -49,6 +49,8 @@ def compare_energyresult(output_dir, rootdir):
 
             if precision == None:
                 precision = max(abs(np.average(data_smooth_ref) / 1E12), 1E-11)
+            elif precision < 0:
+                precision = abs(precision)
 
             assert E_titles == E_titles_ref
             # assert data_energy == approx(data_energy_ref, abs=precision)
