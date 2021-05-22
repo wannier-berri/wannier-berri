@@ -121,6 +121,6 @@ def test_Haldane_wcc(check_integrate,system_Haldane_PythTB_wcc,system_Haldane_TB
 def test_Fe_parallel_multiprocessing(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with multiprocessing"""
 
-def _test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
+def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-ray-4" , Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4,parallel_module='ray')

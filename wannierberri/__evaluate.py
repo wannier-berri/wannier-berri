@@ -12,7 +12,7 @@
 #------------------------------------------------------------
 
 #import billiard as multiprocessing 
-import  multiprocessing, ray
+import  multiprocessing #, ray
 import functools
 import numpy as np
 from collections.abc import Iterable
@@ -124,6 +124,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
     if parallel_module=='serial':
         nparK=0
     elif parallel_module=='ray':
+        import ray
         ray.init()
     elif parallel_module=='ray-slurm':
         ray.init(address='auto', _node_ip_address=os.environ["ip_head"].split(":")[0], _redis_password=os.environ["redis_password"])
