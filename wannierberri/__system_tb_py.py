@@ -65,14 +65,15 @@ class System_tb_py(System):
 
 
         self.dimr=real.shape[1]
-
-
+        self.norb=positions.shape[0] 
+        self.wannier_centres_reduced=np.zeros((self.norb,3))
+        self.wannier_centres_reduced[:,:self.dimr]=positions
         self.real_lattice=np.eye((3),dtype=float)
         self.real_lattice[:self.dimr,:self.dimr]=np.array(real)
+        self.wannier_centres_cart = self.wannier_centres_reduced.dot(self.real_lattice)
 #        self.periodic[:self.dimr]=True
         self.periodic[self.dimr:]=False
         self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
-        
         Rvec = [tuple(row) for row in Rvec] 
         Rvecs=np.unique(Rvec,axis=0).astype('int32')   
         
@@ -84,7 +85,6 @@ class System_tb_py(System):
         Rvecsneg=np.array([-r for r in Rvecs])
         R_all=np.concatenate((Rvecs,Rvecsneg),axis=0)
         R_all=np.unique(R_all,axis=0)
-        
         # Find the R=[000] index (used later)
         index0=np.argwhere(np.all(([0,0,0]-R_all)==0, axis=1))
         # make sure it exists; otherwise, add it manually
@@ -135,7 +135,7 @@ class System_tb_py(System):
 
         if self.getCC:
             self.CC_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
-
+        print(self.AA_R)
 #   TODO: generate the SS_R matrix        
 
         self.set_symmetry()

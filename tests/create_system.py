@@ -4,7 +4,10 @@ import os
 import tarfile
 import shutil
 
+import tbmodels
+import pythtb 
 import pytest
+import numpy as np
 
 import wannierberri as wberri
 
@@ -138,3 +141,117 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
             transl_inv=False, use_wcc_phase=True)
 
     return system
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_tb(rootdir):
+    """Create system for GaAs using _tb.dat data"""
+
+    data_dir = os.path.join(rootdir, "data", "GaAs_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+
+    seedname = os.path.join(data_dir, "GaAs_tb.dat")
+    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=False)
+
+    return system
+
+@pytest.fixture(scope="session")
+def system_GaAs_tb_wcc(rootdir):
+    """Create system for GaAs using _tb_dat data"""
+
+    data_dir = os.path.join(rootdir, "data", "GaAs_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs_tb.dat")
+    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=True)
+
+    return system
+
+@pytest.fixture(scope="session")
+def tbmodels_Haldane():
+    delta=0.2
+    t=-1.0
+    t2 =0.15*np.exp((1.j)*np.pi/2.)
+    t2c=t2.conjugate()
+    my_model = tbmodels.Model(
+            on_site=[delta, -delta],uc = [[1.0,0.0],[0.5,np.sqrt(3.0)/2.0]], dim=2, occ=1, pos=[[1./3.,1./3.],[2./3.,2./3.]]
+            )
+    my_model.add_hop(t, 0, 1, [ 0, 0])
+    my_model.add_hop(t, 1, 0, [ 1, 0])
+    my_model.add_hop(t, 1, 0, [ 0, 1])
+    my_model.add_hop(t2 , 0, 0, [ 1, 0])
+    my_model.add_hop(t2 , 1, 1, [ 1,-1])
+    my_model.add_hop(t2 , 1, 1, [ 0, 1])
+    my_model.add_hop(t2c, 1, 1, [ 1, 0])
+    my_model.add_hop(t2c, 0, 0, [ 1,-1])
+    my_model.add_hop(t2c, 0, 0, [ 0, 1])
+    
+    return my_model
+
+@pytest.fixture(scope="session")
+def system_Haldane_TBmodels(tbmodels_Haldane):
+    
+    # Load system
+    system = wberri.System_TBmodels(tbmodels_Haldane, berry=True, use_wcc_phase=False,periodic=(True,True,False))
+
+    return system
+
+@pytest.fixture(scope="session")
+def system_Haldane_TBmodels_wcc(tbmodels_Haldane):
+    """Create system for Fe using Tbmodels"""
+    # Load system
+    system = wberri.System_TBmodels(tbmodels_Haldane, berry=True, use_wcc_phase=True,periodic=(True,True,False))
+
+    return system
+
+
+@pytest.fixture(scope="session")
+def pythtb_Haldane():
+    lat=[[1.0,0.0],[0.5,np.sqrt(3.0)/2.0]]
+    orb=[[1./3.,1./3.],[2./3.,2./3.]]
+
+    my_model=pythtb.tb_model(2,2,lat,orb)
+
+    delta=0.2
+    t=-1.0
+    t2 =0.15*np.exp((1.j)*np.pi/2.)
+    t2c=t2.conjugate()
+
+    my_model.set_onsite([-delta,delta])
+    my_model.set_hop(t, 0, 1, [ 0, 0])
+    my_model.set_hop(t, 1, 0, [ 1, 0])
+    my_model.set_hop(t, 1, 0, [ 0, 1])
+    my_model.set_hop(t2 , 0, 0, [ 1, 0])
+    my_model.set_hop(t2 , 1, 1, [ 1,-1])
+    my_model.set_hop(t2 , 1, 1, [ 0, 1])
+    my_model.set_hop(t2c, 1, 1, [ 1, 0])
+    my_model.set_hop(t2c, 0, 0, [ 1,-1])
+    my_model.set_hop(t2c, 0, 0, [ 0, 1])
+    
+    return my_model
+
+@pytest.fixture(scope="session")
+def system_Haldane_PythTB(pythtb_Haldane):
+    """Create system for Haldane model using PythTB"""
+    # Load system
+    system = wberri.System_PythTB(pythtb_Haldane, berry=True, use_wcc_phase=False ,periodic=(True,True,False))
+
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Haldane_PythTB_wcc(pythtb_Haldane):
+    """Create system for Haldane model using PythTB"""
+    # Load system
+    system = wberri.System_PythTB(pythtb_Haldane, berry=True, use_wcc_phase=True,periodic=(True,True,False))
+
+    return system
+
+
+
