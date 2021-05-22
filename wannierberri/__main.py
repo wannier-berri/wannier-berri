@@ -170,8 +170,9 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     if smearW is not None:
         print( "WARNING : smearW parameteris neglected, smearing is currently done inside the kubo routine, use  kBT parameter")
         smearW=None
-    smoothEf = getSmoother(Efermi,smearEf) # smoother for functions of Fermi energy
-    smoothW  = getSmoother(omega,smearW) # smoother for functions of frequency
+    smoothEf = getSmoother(Efermi, smearEf, "Fermi-Dirac") # smoother for functions of Fermi energy
+    smoothW  = getSmoother(omega,  smearW) # smoother for functions of frequency
+    # smoothW  = getSmoother(omega,  smearW,  "Gaussian") # smoother for functions of frequency
 
     eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, omega=omega, smootherEf=smoothEf, smootherOmega=smoothW,
             quantities=quantities, parameters=parameters )
