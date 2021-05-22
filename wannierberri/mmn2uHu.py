@@ -278,13 +278,13 @@ def run_mmn2uHu(PREFIX, **kwargs):
 
         SPN=[]
         for ik in range(NK):
-            A=np.zeros((3,nbnd,nbnd),dtype=np.complex)
+            A=np.zeros((3,nbnd,nbnd),dtype=np.complex128)
             SPN.append([])
             if spn_formatted_in:
                 tmp=np.array( [f_spn_in.readline().split() for i in xrange (3*nbnd*(nbnd+1)/2)  ],dtype=float)
                 tmp=tmp[:,0]+1.j*tmp[:,1]
             else:
-                tmp=f_spn_in.read_record(dtype=np.complex)
+                tmp=f_spn_in.read_record(dtype=np.complex128)
             A[:,indn,indm]=tmp.reshape(3,nbnd*(nbnd+1)//2,order='F')
             check=np.einsum('ijj->',np.abs(A.imag))
             A[:,indm,indn]=A[:,indn,indm].conj()

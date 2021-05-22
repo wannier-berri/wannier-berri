@@ -23,7 +23,7 @@ setuptools.setup(
                         'packaging>=20.8',
                         'matplotlib',
                         'fortio>=0.4',
-                        'ray>=1.3'
+                        'ray[default]'
                       ],
      url="https://wannier-berri.org",
      packages=setuptools.find_packages(),
