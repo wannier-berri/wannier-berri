@@ -23,7 +23,7 @@ def check_integrate(output_dir):
     #            omega = omega,
                 quantities = quantities,
                 numproc = numproc,
-                parallel_module=parallel_module,
+#                parallel_module=parallel_module,
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
                 fout_name = os.path.join(output_dir, fout_name),
@@ -41,7 +41,7 @@ def check_integrate(output_dir):
             comparer(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant) ,precision=prec )
     return _inner
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def Efermi_Fe():
     return np.linspace(17,18,11)
 
@@ -54,7 +54,7 @@ def Efermi_GaAs():
 def Efermi_Haldane():
     return np.linspace(-3,3,11)
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def quantities_Fe():
     return  ['ahc','ahc_ocean','dos','cumdos'  ,'conductivity_ohmic','conductivity_ohmic_fsurf']
 
@@ -83,7 +83,6 @@ def test_Fe(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Ef
 def test_Fe_wcc(check_integrate,system_Fe_W90_wcc, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90_wcc , quantities_Fe , fout_name="berry_Fe_W90" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult )
-
 
 def test_GaAs(check_integrate,system_GaAs_W90, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test berry dipole"""
@@ -120,15 +119,8 @@ def test_Haldane_wcc(check_integrate,system_Haldane_PythTB_wcc,system_Haldane_TB
 
 
 def test_Fe_parallel_multiprocessing(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
-    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
-    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-mult-4" , Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4,parallel_module='multiprocessing' )
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with multiprocessing"""
 
-def test_Fe_wcc_parallel_multiprocessing(check_integrate, system_Fe_W90_wcc, compare_energyresult,quantities_Fe,Efermi_Fe):
-    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
-    check_integrate(system_Fe_W90_wcc , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-mult-4" , Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4,parallel_module='multiprocessing' )
-
-
-
-def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
-    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+def _test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-ray-4" , Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4,parallel_module='ray')
