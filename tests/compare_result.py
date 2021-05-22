@@ -36,9 +36,9 @@ def error_message(fout_name, suffix, i_iter, abs_err, filename, filename_ref):
 @pytest.fixture
 def compare_energyresult(output_dir, rootdir):
     """Compare dat file output of EnergyResult with the file in reference folder"""
-    def _inner(fout_name, suffix, adpt_num_iter, suffix_ref=None, precision=1E-10):
-        if suffix_ref is None:
-            suffix_ref = suffix
+    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,precision=None):
+        if suffix_ref is None :
+            suffix_ref=suffix
         for i_iter in range(adpt_num_iter+1):
             filename     = fout_name + f"-{suffix}_iter-{i_iter:04d}.dat"
             filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}.dat"
@@ -46,6 +46,11 @@ def compare_energyresult(output_dir, rootdir):
             E_titles, data_energy, data, data_smooth = read_energyresult_dat(path_filename)
             path_filename_ref = os.path.join(rootdir, 'reference', filename_ref)
             E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref)
+
+            if precision is None:
+                precision = max(abs(np.average(data_smooth_ref) / 1E12), 1E-11)
+            elif precision < 0:
+                precision = max(abs(np.average(data_smooth_ref) * abs(precision) ), 1E-11)
 
             assert E_titles == E_titles_ref
             assert data_energy == approx(data_energy_ref, abs=precision)
