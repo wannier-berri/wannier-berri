@@ -1,4 +1,5 @@
 """Test the Kubo module."""
+import os
 
 import numpy as np
 import pytest
@@ -10,7 +11,7 @@ from create_system import create_files_Fe_W90, system_Fe_W90
 from compare_result import compare_energyresult
 
 @pytest.fixture(scope="module")
-def result_kubo_Fe_W90(system_Fe_W90):
+def result_kubo_Fe_W90(output_dir, system_Fe_W90):
     system = system_Fe_W90
 
     num_proc = 0
@@ -41,7 +42,7 @@ def result_kubo_Fe_W90(system_Fe_W90):
             numproc = num_proc,
             adpt_num_iter = adpt_num_iter,
             parameters = kubo_params,
-            fout_name = fout_name,
+            fout_name = os.path.join(output_dir, fout_name),
             restart = False,
     )
 
