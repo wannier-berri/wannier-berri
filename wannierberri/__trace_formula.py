@@ -27,6 +27,35 @@ def Omega(data_K,op=None,ed=None):
 #            formula.add_term( ('nl,ln',D_[a],-1j*D_[b]*s ) )
         return formula
 
+def Hplusminus(data_K,op=None,ed=None,sign=1):
+        "an attempt for a faster implementation"
+        assert sign in (1,-1) , "sign should be +1 or -1"
+        # first give our matrices short names
+        E = data_K.E_K[op:ed]
+        A = data_K.A_Hbar[op:ed]
+        B = data_K.B_Hbar[op:ed]
+        D = data_K.D_H[op:ed]
+        M = np.einsum("klla->kla",data_K.Morb_Hbar[op:ed]).real
+        OE = np.einsum("km,kmma->kma",E,data_K.Omega_Hbar[op:ed]).real 
+        AEA = data_K.A_E_A
+        # now define the "alpha" and "beta" components
+        A_,B_,D_={},{},{}
+        for var in 'A','B','D':
+            for c in 'alpha','beta':
+                locals()[var+"_"][c]=locals()[var][:,:,:,globals()[c+'_A']]
+        # This is the formula to be implemented:
+        formula =  TraceFormula ( [ ('n', sign*OE+M ) ],ndim=1,TRodd=True,Iodd=False)
+        if sign == 1:
+            #formula.add_term( ('nl,ln',A_['alpha'],-2j*E[:,None,:,None]*A_['beta']) )
+            formula.add_term( ('mn',-2*AEA) )
+        formula.add_term( ('nl,ln',D_['alpha'],-2 *B_['beta' ] ) )
+        formula.add_term( ('nl,ln',D_['beta'],2 *B_['alpha' ] ) )
+        formula.add_term( ('nl,ln',D_['alpha'],-2*sign*E[:,None,:,None]*A_['beta' ] ) )
+        formula.add_term( ('nl,ln',D_['beta'],2*sign*E[:,None,:,None] *A_['alpha' ] ) )
+        
+        formula.add_term( ('nl,ln',D_['alpha'],-2j*sign*E[:,:,None,None]*D_['beta'] ) )
+        formula.add_term( ('nl,ln',D_['alpha'],-2j*sign*E[:,None,:,None]*D_['beta'] ) )
+        return formula
 
 def derOmega(data_K,op=None,ed=None):
         "an attempt for a faster implementation"
@@ -131,16 +160,17 @@ class TraceFormula():
             if len(forbidden_symbols) > 0 :
                 raise ValueError("Unrecognized symbols ( {} ) were found in string {} ".format(
                         " , ".join("'{}'".format(s) for s in forbidden_symbols), line)  )
-            assert  line[0]==line[-1]=='n' , "string should start and end with 'n'"
             terms=line.split(',')
             num_mat=len(terms)
+            if num_mat > 1:
+                assert  line[0]==line[-1]=='n' , "string should start and end with 'n'"
             assert num_mat==len(inp)-1 , "the strig contains {} terms, but {} arrays are given".format(len(terms),len(inp)-1)
             for term,mat in zip(terms,inp[1:]):
                 assert mat.ndim==self.ndim+1+len(term) ,  ( 
                           "shape of matrix {} does not correspond to index '{}' and dinetsion of the result {}".format(
                                mat.shape,term,self.ndim)  )
             if num_mat==1:
-                assert terms[0] in ('n','nn','mn') , (
+                assert terms[0] in ('n','mn') , (
                         "a single term should be either trace('nn') or sum-over-states('n') "+
                         "or sum of the whole matrix ('mn' ) . found '{}'".format(terms[0])    )
                 return  (terms[0],inp[1])
