@@ -4,6 +4,16 @@ from .__utility import  alpha_A,beta_A
 #####################################################
 #####################################################
 
+def identity(data_K,op=None,ed=None):
+        "an identity operator (to compute DOS)"
+        # first give our matrices short names
+        NB= data_K.nbands
+        # This is the formula to be implemented:
+        ones=np.ones( (ed-op,NB),dtype=float )
+        formula =  TraceFormula ( [ ('n', ones ) ],ndim=0,TRodd=False,Iodd=False)
+        return formula
+
+
 def Omega(data_K,op=None,ed=None):
         "an attempt for a faster implementation"
         # first give our matrices short names
@@ -119,28 +129,29 @@ class TraceFormula():
     automatic grouping of terms by first matrix will be implemented, if it is the same and 
     has same type of indices. But onl;y if is really the same, not a copy ( `A1 is A2 ==True `)
     """
-    def __init__(self,trace_list,TRodd=False,Iodd=False,ndim=0):
+    def __init__(self,term_list,TRodd=False,Iodd=False,ndim=0,dtype=float):
         self.TRodd=TRodd
         self.Iodd=Iodd
         self.ndim=ndim
-        self.trace_list=[self.__input_to_inner(term) for term in trace_list]
+        self.dtype=dtype
+        self.term_list=[self.__input_to_inner(term) for term in term_list]
 
-    def add_term(self,trace):
-        self.trace_list.append(self.__input_to_inner(trace) )
+    def add_term(self,term):
+        self.term_list.append(self.__input_to_inner(term) )
 
     def __len__(self):
-        return len(self.trace_list)
+        return len(self.term_list)
 
     def group_terms(self):
 #        print ("grouping {} terms".format(len(self)))
-        for i,a in enumerate(self.trace_list):
+        for i,a in enumerate(self.term_list):
             if len(a)>2:
                 for j in range(len(self)-1,i,-1): 
-                    b=self.trace_list[j]
+                    b=self.term_list[j]
                     if a[0]==b[0]  and a[1] is b[1] :
                         for c in b[2]:
                             a[2].append(c)
-                        del self.trace_list[j]
+                        del self.term_list[j]
 #        print ("after grouping : {} terms".format(len(self)))
                 
 
@@ -167,7 +178,7 @@ class TraceFormula():
             assert num_mat==len(inp)-1 , "the strig contains {} terms, but {} arrays are given".format(len(terms),len(inp)-1)
             for term,mat in zip(terms,inp[1:]):
                 assert mat.ndim==self.ndim+1+len(term) ,  ( 
-                          "shape of matrix {} does not correspond to index '{}' and dinetsion of the result {}".format(
+                          "shape of matrix {} does not correspond to index '{}' and dimension of the result {}".format(
                                mat.shape,term,self.ndim)  )
             if num_mat==1:
                 assert terms[0] in ('n','mn') , (

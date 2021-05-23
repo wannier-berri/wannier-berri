@@ -21,6 +21,7 @@ from . import __result as result
 from . import  __berry as berry
 from . import  __fermisea2 as fermisea2
 from . import  __fermiocean as fermiocean
+from . import  __fermiocean2 as fermiocean2
 from . import  __nonabelian as nonabelian
 from . import  __dos as dos
 from . import  symmetry
@@ -59,17 +60,24 @@ calculators_trans={
          'ahc'        : fermisea2.AHC ,
          'ahc2'        : fermisea2.AHC2 ,
          'ahc_ocean'  : fermiocean.AHC ,
+         'ahc2_ocean'  : fermiocean2.AHC ,
          'dos'        : dos.calc_DOS ,
-         'cumdos'        : dos.calc_cum_DOS ,
+         'cumdos'         : dos.calc_cum_DOS ,
+         'cumdos_ocean'   : fermiocean.cumdos ,
+         'cumdos2_ocean'   : fermiocean2.cumdos ,
+         'dos2_ocean'   : fermiocean2.dos ,
          'Hall_classic' : nonabelian.Hall_classic , 
          'Hall_morb' :  nonabelian.Hall_morb,
          'Hall_spin' :  nonabelian.Hall_spin,
 
          'conductivity_ohmic_fsurf': nonabelian.conductivity_ohmic,
          'conductivity_ohmic'      : fermisea2.conductivity_ohmic,
+         'conductivity_ohmic2_ocean': fermiocean2.ohmic,
+         'conductivity_ohmic_fsurf2_ocean': fermiocean2.ohmic_fsurf,
 
          'berry_dipole'            : fermisea2.tensor_D,
          'berry_dipole_ocean'      : fermiocean.berry_dipole,
+         'berry_dipole2_ocean'      : fermiocean2.berry_dipole,
          'berry_dipole_2'          : fermisea2.tensor_D_2,
          'berry_dipole_fsurf'      : nonabelian.berry_dipole,
 #         'Faraday1w'                 : nonabelian.Faraday,
@@ -87,7 +95,7 @@ additional_parameters=defaultdict(lambda: defaultdict(lambda:None )   )
 additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no description" )   )
 
 
-# a dictionary conaining 'optical' quantities , i.e. those which are tensors 
+# a dictionary containing 'optical' quantities , i.e. those which are tensors 
 #   depending on the Fermi level  AND on the frequency
 #   <quantity> : <function> , ... 
 # <quantity>   - name of the quantity to calculate (the same will be used in the call of 'integrate' function
@@ -130,15 +138,37 @@ for key,val in parameters_optical.items():
         additional_parameters[calc][key] = val[0]
         additional_parameters_description[calc][key] = val[1]
 
-key='kpart'
 for calc in calculators_trans:
     if calc.endswith('_ocean'):
+        key='kpart'
         additional_parameters[calc][key] = 500
         additional_parameters_description[calc][key] = (
              'Separate k-points of the FFT grid into portions ' + 
              '(analog of ksep in the system class, but acts in different calculators)'  +
              'decreasing this parameter helps to save memory in some cases' +
                 'while performance is usually unafected' )
+
+        key='tetra'
+        additional_parameters[calc][key] = False
+        additional_parameters_description[calc][key] = (
+             'use tetrahedron method for integration ')
+
+
+for calc in calculators_trans:
+    if calc.endswith('2_ocean'):
+        key='degen_thresh'
+        additional_parameters[calc][key] = -1
+        additional_parameters_description[calc][key] = (
+             'threshold (in eV) to consider bands as degenerate')
+
+
+for calc in calculators_trans:
+    if calc.endswith('_fsurf'):
+        key='tetra'
+        additional_parameters[calc][key] = False
+        additional_parameters_description[calc][key] = (
+             'use tetrahedron method for integration ')
+
 
 additional_parameters['Faraday']['homega'] = 0.0
 additional_parameters_description['Faraday']['homega'] = "frequency of light in eV (one frequency per calculation)"

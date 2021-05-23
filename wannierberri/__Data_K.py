@@ -23,6 +23,7 @@ from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha
 from .__fermisea2 import DataIO, mergeDataIO
 import gc
 import os
+from .__tetrahedron import TetraWeights,get_bands_in_range,get_bands_below_range
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -186,6 +187,12 @@ class Data_K(System):
             return [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) ]    for a,e in zip(A,self.E_K)]
 
 
+    def degen_groups(self,ik,degen_thresh):
+            A=[np.where(E[1:]-E[:-1]>degen_thresh)[0]+1 for E in self.E_K ]
+            A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
+            return [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) ]    for a,e in zip(A,self.E_K)]
+
+
     @lazy_property.LazyProperty
     def true_degen(self):
             A=[np.where(E[1:]-E[:-1]>self.degen_thresh)[0]+1 for E in self.E_K ]
@@ -197,9 +204,19 @@ class Data_K(System):
     def E_K_degen(self):
         return [np.array([np.mean(E[ib1:ib2]) for ib1,ib2 in deg]) for deg,E in zip(self.degen,self.E_K)]
 
+
+#    @lazy_property.LazyProperty
+#    def degen_K_dic(self):
+#        return [ {e:d for e,d in zip(E,deg)} for E,deg in self.E_K_degen,self.degen]  
+
+    @lazy_property.LazyProperty
+    def degen_dic(self):
+        return [np.array([np.mean(E[ib1:ib2]) for ib1,ib2 in deg]) for deg,E in zip(self.degen,self.E_K)]
+
+
     @lazy_property.LazyProperty
     def vel_nonabelian(self):
-        return [ [0.5*(S[ib1:ib2,ib1:ib2]+S[ib1:ib2,ib1:ib2].transpose((1,0,2)).conj()) for ib1,ib2 in deg] for S,deg in zip(self.V_H,self.degen)]
+         return [ [0.5*(S[ib1:ib2,ib1:ib2]+S[ib1:ib2,ib1:ib2].transpose((1,0,2)).conj()) for ib1,ib2 in deg] for S,deg in zip(self.V_H,self.degen)]
 
 
 ### TODO : check if it is really gaufge-covariant in case of isolated degeneracies
@@ -213,6 +230,19 @@ class Data_K(System):
                      (+V[ib1:ib2,ibl1:ibl2,:],D[ibl1:ibl2,ib1:ib2,:]),
                               ])       for ib1,ib2 in deg]
                      for S,D,V,deg in zip( self.del2E_H,self.D_H,self.V_H,self.degen) ]
+
+
+    @lazy_property.LazyProperty
+    def mass_nonabelian_(self,ik,ib):
+        return [ [S[ib1:ib2,ib1:ib2]
+                   +sum(np.einsum("mla,lnb->mnab",X,Y) 
+                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
+                     for X,Y in [
+                     (-D[ib1:ib2,ibl1:ibl2,:],V[ibl1:ibl2,ib1:ib2,:]),
+                     (+V[ib1:ib2,ibl1:ibl2,:],D[ibl1:ibl2,ib1:ib2,:]),
+                              ])       for ib1,ib2 in deg]
+                     for S,D,V,deg in zip( self.del2E_H,self.D_H,self.V_H,self.degen) ]
+
 
 
     @lazy_property.LazyProperty
@@ -350,6 +380,74 @@ class Data_K(System):
 #        print ("select_K=",self.select_K)
 #        print ("select_B=",self.select_B)
         return E_K[self.select_K,:][:,self.select_B]
+
+
+    # evaluate the energies in the corners of the parallelepiped, in order to use tetrahedron method
+    @lazy_property.LazyProperty
+    def E_K_corners(self):
+        dK2=self.Kpoint.dK_fullBZ/2
+#        print ("dK/2={}".format(dK2))
+        expdK=np.exp(2j*np.pi*self.iRvec*dK2[None,:])
+        expdK=np.array([1./expdK,expdK])
+        Ecorners=np.zeros((self.nk_selected,2,2,2,self.nb_selected),dtype=float)
+        for ix in 0,1:
+            for iy in 0,1:
+               for iz in 0,1:
+                   _expdK=expdK[ix,:,0]*expdK[iy,:,1]*expdK[iz,:,2]
+                   _HH_R=self.HH_R[:,:,:]*_expdK[None,None,:]
+                   _HH_K=self.fft_R_to_k( _HH_R, hermitian=True)
+                   E=np.array(self.poolmap(np.linalg.eigvalsh,_HH_K))
+                   Ecorners[:,ix,iy,iz,:]=E[self.select_K,:][:,self.select_B]
+        print_my_name_end()
+        return Ecorners
+
+    @lazy_property.LazyProperty
+    def tetraWeights(self):
+        return TetraWeights(self.E_K,self.E_K_corners)
+
+    def get_bands_in_range(self,emin,emax,op=0,ed=None):
+        if ed is None: ed=self.NKFFT_tot
+        select = [ np.where((self.E_K[ik]>=emin)*(self.E_K[ik]<=emax))[0] for ik in range(op,ed) ]
+        return  [ {ib:self.E_K[ik+op,ib]  for ib in sel } for ik,sel in enumerate(select) ]
+
+    def get_bands_below_range(self,emin,emax,op=0,ed=None):
+        if ed is None: ed=self.NKFFT_tot
+        res=[np.where((self.E_K[ik]<emin))[0] for ik in range(op,ed)]
+        return [{a.max():self.E_K[ik+op,a.max()]} if len(a)>0 else [] for ik,a in enumerate(res)]
+
+    def get_bands_in_range_sea(self,emin,emax,op=0,ed=None):
+        if ed is None: ed=self.NKFFT_tot
+        res=self.get_bands_in_range(emin,emax,op,ed)
+        for ik in range(op,ed):
+           add=np.where((self.E_K[ik]<emin))[0]
+#           print ("add : ",add," / ",self.E_K[ik])
+           if len(add)>0:
+               res[ik-op][add.max()]=self.E_K[ik,add.max()]
+        return res
+
+
+     
+
+    def get_bands_in_range_groups(self,emin,emax,op=0,ed=None,degen_thresh=-1,sea=False):
+#        get_bands_in_range(emin,emax,Eband,degen_thresh=-1,Ebandmin=None,Ebandmax=None)
+        if ed is None: ed=self.NKFFT_tot
+        res=[]
+        for ik in range(op,ed):
+            bands_in_range=get_bands_in_range(emin,emax,self.E_K[ik],degen_thresh=degen_thresh)
+            weights= { (ib1,ib2):self.E_K[ik,ib1:ib2].mean() 
+                          for ib1,ib2 in bands_in_range  
+                     }
+            if sea :
+                bandmax=get_bands_below_range(emin,self.E_K[ik])
+#                print ("bandmax=",bandmax)
+                if len(bands_in_range)>0 :
+                    bandmax=min(bandmax, bands_in_range[0][0])
+#                print ("now : bandmax=",bandmax ,self.E_K[ik][bandmax] )
+                if bandmax>0:
+                    weights[(0,bandmax)]=-np.Inf
+            res.append( weights )
+        return res
+
 
     @lazy_property.LazyProperty
 #    @property
@@ -970,5 +1068,4 @@ class Data_K(System):
 def merge_dataIO(data_list):
     return { key:np.stack([data[key] for key in data],axis=0) for key in  
                   set([key for data in data_list for key in data.keys()])  }
-
 
