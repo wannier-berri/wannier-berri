@@ -240,7 +240,7 @@ class MMN(W90_data):
         t0=time()
         f_mmn_in=open(seedname+".mmn","r")
         _l=f_mmn_in.readline()
-        print ("reading {}.mmn: ".format(seedname)+_l)
+#        print ("reading {}.mmn: ".format(seedname)+_l)
         NB,NK,NNB=np.array(f_mmn_in.readline().split(),dtype=int)
         self.data=np.zeros( (NK,NNB,NB,NB), dtype=complex )
         block=1+self.NB*self.NB
