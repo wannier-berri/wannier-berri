@@ -22,17 +22,17 @@ def AHC(data_K,Efermi,kpart=None,tetra=False):
 def cumdos(data_K,Efermi,kpart=None,tetra=False):
     return iterate_kpart(trF.identity,data_K,Efermi,kpart,tetra)*data_K.cell_volume
 
-def berry_dipole(data_K,Efermi,kpart=None):
-    res =  iterate_kpart(trF.derOmega,data_K,Efermi,kpart)
+def berry_dipole(data_K,Efermi,kpart=None,tetra=False):
+    res =  iterate_kpart(trF.derOmega,data_K,Efermi,kpart,tetra)
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
 
 def Omega_tot(data_K,Efermi,kpart=None,tetra=False):
     return iterate_kpart(trF.Omega,data_K,Efermi,kpart,tetra)
 
-def Morb(data_K,Efermi,kpart=None):
+def Morb(data_K,Efermi,kpart=None,tetra=False):
     fac_morb =  -eV_au/bohr**2
-    return fac_morb*(iterate_kpart(trF.Hplusminus,data_K,Efermi,kpart) 
+    return fac_morb*(iterate_kpart(trF.Hplusminus,data_K,Efermi,kpart,tetra) 
             - 2*Omega_tot(data_K,Efermi,kpart).mul_array(Efermi) )*data_K.cell_volume
 
 ##################################
