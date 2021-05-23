@@ -106,6 +106,7 @@ class Data_K(System):
     def diag_w_centres(self):
         '''
         After rotate. U^+ \tau U
+        Wannier Gauge.
         diagnal matrix of wannier centres delta_ij*tau_i (Cartesian)
         '''
         return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.wannier_centres_cart[None,:,None,None,:] , axis=1)
@@ -121,6 +122,8 @@ class Data_K(System):
             flag: is a flag indicates if we need additional terms in self.fft_R_to_k under use_wcc_phase. 
                 'None' means no adiditional terms.
                 'AA' means, under use_wcc_phase, FFT of AA_R have an additional term -tau_i.
+                'BB' means, under use_wcc_phase, FFT of AA_R have an additional term -tau_i*HH_k.
+                'CC' means, under use_wcc_phase, FFT of AA_R have an additional term epsilon_{abc} ((tau_j^a - tau_i^a)*B_Hbar_fz^b + 1j*V_H^a*tau_j^b )
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
         
         def asymmetrize(X,asym):
@@ -140,7 +143,18 @@ class Data_K(System):
         if self.use_wcc_phase:
             if flag=='AA':
                 add_term = - self.diag_w_centres
-
+            elif flag=='BB':
+                add_term = - self.diag_w_centres*self.HH_K[:,:,:,None]
+            elif flag=='CC':
+                add_term = np.sum(
+                        self.B_Hbar_fz[:,:,:,None,beta_A]*self.diag_w_centres[:,None,:,:,alpha_A] 
+                        - self.B_Hbar_fz[:,None,:,:,beta_A]*self.diag_w_centres[:,:,:,None,alpha_A] 
+                        + 1j*self.V_H[:,:,:,None,alpha_A]*self.diag_w_centres[:,None,:,:,beta_A]
+                        ,axis=2) - np.sum(
+                        self.B_Hbar_fz[:,:,:,None,alpha_A]*self.diag_w_centres[:,None,:,:,beta_A] 
+                        - self.B_Hbar_fz[:,None,:,:,alpha_A]*self.diag_w_centres[:,:,:,None,beta_A] 
+                        + 1j*self.V_H[:,:,:,None,beta_A]*self.diag_w_centres[:,None,:,:,alpha_A]
+                        ,axis=2)
         res = self._rotate((self.fft_R_to_k( XX_R,hermitian=hermitian))[self.select_K]  )
         res = res + add_term
         return res
@@ -391,7 +405,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def V_H(self):
         self.E_K
-        return self._R_to_k_H( self.HH_R.copy(), der=1,flag='VV')
+        return self._R_to_k_H( self.HH_R.copy(), der=1)
 
     @lazy_property.LazyProperty
     def Morb_Hbar(self):
@@ -789,7 +803,7 @@ class Data_K(System):
     
     @lazy_property.LazyProperty
     def B_Hbar_der(self):
-        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitian=False,flag="BB_der")
+        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitian=False)
         return _BB_K
 
     @lazy_property.LazyProperty

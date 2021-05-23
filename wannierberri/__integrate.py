@@ -53,9 +53,9 @@ from . import  __kubo   as kubo
 calculators_trans={ 
          'spin'       : fermisea2.SpinTot,  
          'Morb'       : fermisea2.Morb,
-         'Morb_1'       : fermisea2.Morb1,
-         'Morb_2'       : fermisea2.Morb2,
-         'Morb_3'       : fermisea2.Morb3,
+         'Morb1'       : fermisea2.Morb1,
+         'Morb2'       : fermisea2.Morb2,
+         'Morb_ocean'       : fermiocean.Morb,
          'ahc'        : fermisea2.AHC ,
          'ahc2'        : fermisea2.AHC2 ,
          'ahc_ocean'  : fermiocean.AHC ,

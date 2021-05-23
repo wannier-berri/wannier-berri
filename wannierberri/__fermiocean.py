@@ -24,6 +24,10 @@ def berry_dipole(data_K,Efermi,kpart=None):
 
 def Omega_tot(data_K,Efermi,kpart=None):    return iterate_kpart(trF.Omega,data_K,Efermi,kpart)
 
+def Morb(data_K,Efermi,kpart=None):
+    fac_morb =  -eV_au/bohr**2
+    return fac_morb*(iterate_kpart(trF.Hplusminus,data_K,Efermi,kpart) 
+            - 2*Omega_tot(data_K,Efermi,kpart).mul_array(Efermi) )*data_K.cell_volume
 
 ##################################
 ### The private part goes here  ##
@@ -70,7 +74,7 @@ class FermiOcean:
     def __init__(self , formula , EK, Emin, Emax, ndim, dtype):
         """  
         mat_list  list/tuple of type ( ('nl',A, [ ('ln',B1) , ('lpn',B2,C2) , ('lmn',B3,C3),...] )
-                               or  ( ('nm',A) )  or (('n',A) )
+                               or  ( ('mn',A) )  or (('n',A) )
         EK-  energies of bands
         Emin,Emax  - minimal and maximal energies of interest
         cartesian dimensiopns of A,B and C should match
@@ -120,7 +124,7 @@ class FermiOcean:
                                 raise ValueError('Wrong index for B,C : {}'.format(BC[0]))
                         values[ik][n] += np.einsum('nl...,ln...->...', a, bc,optimize=True).real
             elif Aind == 'mn':
-                if len(ABC[0] > 2):
+                if len(ABC[0]) > 2:
                     warning("only one matrix should be given for 'mn'")
                 else:
                     for ik in range(nk):
