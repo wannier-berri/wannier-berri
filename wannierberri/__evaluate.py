@@ -11,8 +11,7 @@
 #                                                            #
 #------------------------------------------------------------
 
-#import billiard as multiprocessing 
-import  multiprocessing #, ray
+import  multiprocessing
 import functools
 import numpy as np
 from collections.abc import Iterable
@@ -21,6 +20,7 @@ from copy import copy
 from time import time
 import pickle
 import glob
+import os
 
 from .__Data_K import Data_K
 from . import symmetry as SYM
@@ -32,7 +32,8 @@ def print_progress(count, total, t0):
     t_remain = t / count * (total - count)
     print("{:20d}{:17.1f}{:22.1f}".format(count, t, t_remain), flush=True)
 
-def process(paralfunc,K_list,nproc,symgroup=None,chunksize=0,parallel_module='multiprocessing'):
+def process(paralfunc,K_list,nproc,symgroup=None,
+             chunksize=0,parallel_module='multiprocessing',ray=None):
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
     numK = len(selK)
@@ -41,6 +42,7 @@ def process(paralfunc,K_list,nproc,symgroup=None,chunksize=0,parallel_module='mu
     if len(dK_list)==0:
         print ("nothing to process now")
         return 0
+    print_progress = (parallel_module in ['multiprocessing','serial'] )
 
     assert parallel_module in ('multiprocessing','ray','serial')
     # Set chunksize for multiprocessing
@@ -59,7 +61,8 @@ def process(paralfunc,K_list,nproc,symgroup=None,chunksize=0,parallel_module='mu
         print("using a pool of {} processes.".format(nproc))
     else:
         print("in serial.")
-    print("# K-points calculated  Wall time (sec)  Est. remaining (sec)", flush=True)
+    if print_progress:
+        print("# K-points calculated  Wall time (sec)  Est. remaining (sec)", flush=True)
     res = []
     if parallel_module=='serial':
         for count, Kp in enumerate(dK_list):
@@ -76,12 +79,8 @@ def process(paralfunc,K_list,nproc,symgroup=None,chunksize=0,parallel_module='mu
             if (count + 1) % nstep_print == 0:
                 print_progress(count + 1, numK, t0)
         p.close()
-    elif parallel_module.startswith('ray'):
-        remotes=[paralfunc.remote(dK) for dK in dK_list]
-        for count, res_K in enumerate(ray.get(remotes)):
-            res.append(res_K)
-            if (count + 1) % nstep_print == 0:
-                print_progress(count + 1, numK, t0)
+    elif parallel_module == 'ray':
+        res=ray.get([paralfunc.remote(dK) for dK in dK_list])
     else:
         raise RuntimeError (f"unknown parallel_module : '{parallel_module}'")
 
@@ -119,15 +118,20 @@ The parallelisation is done by K-points
 As a result, the integration will be performed over NKFFT x NKdiv
 """
     
-    if nparK<=0:
+    ray=None
+    if parallel_module.startswith('ray'):
+        import ray
+        if parallel_module=='ray':
+            ray.init()
+        elif parallel_module.endswith('slurm'):
+            ray.init(address='auto', _node_ip_address=os.environ["ip_head"].split(":")[0], _redis_password=os.environ["redis_password"])
+            parallel_module='ray'
+        nparK=int(round(ray.available_resources()['CPU']))
+        print ("initialized ray . Available Resources: \n"+"\n".join(f"{k:10s} : {v}" for k,v in ray.available_resources()))
+    elif nparK<=0:
         parallel_module='serial'
     if parallel_module=='serial':
         nparK=0
-    elif parallel_module=='ray':
-        import ray
-        ray.init()
-    elif parallel_module=='ray-slurm':
-        ray.init(address='auto', _node_ip_address=os.environ["ip_head"].split(":")[0], _redis_password=os.environ["redis_password"])
 
     if file_Klist is not None:
         if not file_Klist.endswith(".pickle"):
@@ -195,7 +199,11 @@ As a result, the integration will be performed over NKFFT x NKdiv
         for i,K in enumerate(K_list):
           if not K.evaluated:
             print (" K-point {0} : {1} ".format(i,K))
-        counter+=process(paralfunc,K_list,nparK,symgroup=None if nosym else system.symgroup, chunksize=chunksize,parallel_module=parallel_module)
+        counter+=process(paralfunc,K_list,nparK,
+                     symgroup=None if nosym else system.symgroup,
+                     chunksize=chunksize,
+                     parallel_module=parallel_module,
+                     ray=ray)
         
         try:
             if file_Klist is not None:
@@ -226,7 +234,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
     
     print ("Totally processed {0} K-points ".format(counter))
     
-    if parallel_module.startswith('ray'):
+    if parallel_module == 'ray':
         ray.shutdown() 
 
     return result_all
