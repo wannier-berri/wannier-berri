@@ -1,14 +1,23 @@
-# launch.py
-# Usage: python launch.py --exp-name test --command "rllib train --run PPO --env CartPole-v0"
+"""
+ This script is copied from https://github.com/pengzhenghao/use-ray-with-slurm
+ by  PENG Zhenghao, Department of Information Engineering, the Chinese University of Hong Kong.
+ slightly modified by Stepan Tsirkin for WannierBerri project
+
+
+Usage: 
+   python -m wannierberri.slurm  --exp-name <Job name>  --num-nodes <number of nodes> --partition cmt --command "<comand to run>"
+
+
+"""
+
 
 import argparse
-import subprocess
 import sys
 import time
 import os
 from pathlib import Path
-
-template_file = os.path.dirname(os.path.abspath(__file__)) +'/sbatch_template.sh'
+import subprocess
+from .__sbatch_template import text
 
 JOB_NAME = "{{JOB_NAME}}"
 NUM_NODES = "{{NUM_NODES}}"
@@ -18,6 +27,9 @@ COMMAND_PLACEHOLDER = "{{COMMAND_PLACEHOLDER}}"
 GIVEN_NODE = "{{GIVEN_NODE}}"
 COMMAND_SUFFIX = "{{COMMAND_SUFFIX}}"
 LOAD_ENV = "{{LOAD_ENV}}"
+SLEEP_HEAD = "{{SLEEP_HEAD}}"
+SLEEP_WORKER = "{{SLEEP_WORKER}}"
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -49,6 +61,20 @@ if __name__ == '__main__':
         help="The command you wish to execute. For example: --command 'python "
              "test.py' Note that the command must be a string."
     )
+    parser.add_argument(
+        "--sleep-head", type=float, default=30.,
+        help="Time to wait (sleep) after starting ray on the head node (seconds, Default: 30.0)"
+    )
+    parser.add_argument(
+        "--sleep-worker", type=float, default=5.,
+        help="Time to wait (sleep) after starting ray on every worker node (deconds, Default: 5.0)"
+    )
+
+
+
+    parser.add_argument('--submit', dest='submit', action='store_true',help=" DO submit the generated script with sbatch")
+    parser.add_argument('--no-submit', dest='submit', action='store_false',help=" DO NOT submit the generated script with sbatch")
+    parser.set_defaults(submit=False)
     args = parser.parse_args()
 
     if args.node:
@@ -59,15 +85,13 @@ if __name__ == '__main__':
 
     job_name = "{}_{}".format(
         args.exp_name,
-        time.strftime("%m%d-%H%M", time.localtime())
+        time.strftime("%m%d-%H%M%S", time.localtime())
     )
 
-    # ===== Modified the template script =====
-    with open(template_file, "r") as f:
-        text = f.read()
     text = text.replace(JOB_NAME, job_name)
     text = text.replace(NUM_NODES, str(args.num_nodes))
-#    text = text.replace(NUM_GPUS_PER_NODE, str(args.num_gpus))
+    text = text.replace(NUM_GPUS_PER_NODE, 
+                 f"#SBATCH --gpus-per-task={args.num_gpus}" if args.num_gpus>0 else "")
     text = text.replace(PARTITION_NAME, str(args.partition))
     text = text.replace(COMMAND_PLACEHOLDER, str(args.command))
     text = text.replace(LOAD_ENV, str(args.load_env))
@@ -79,17 +103,22 @@ if __name__ == '__main__':
         "# THIS FILE IS MODIFIED AUTOMATICALLY FROM TEMPLATE AND SHOULD BE "
         "RUNNABLE!"
     )
+    text = text.replace(SLEEP_HEAD, str(args.sleep_head))
+    text = text.replace(SLEEP_WORKER, str(args.sleep_worker))
 
     # ===== Save the script =====
     script_file = "{}.sh".format(job_name)
     with open(script_file, "w") as f:
         f.write(text)
 
-    # ===== Submit the job =====
-    print("Start to submit job!")
-    subprocess.Popen(["sbatch", script_file])
-    print(
-        "Job submitted! Script file is at: <{}>. Log file is at: <{}>".format(
-            script_file, "{}.log".format(job_name))
-    )
+    print( f"Script file written to: <{script_file}>. Log file will be at: <{job_name}.log>" )
+
+    # ===== submit the job  =====
+    if args.submit:
+        print("Start to submit job!")
+        subprocess.Popen(["sbatch", script_file])
+        print("Job submitted!" )
+    else:
+        print( f"Now you may submit it to the queue with ' sbatch {script_file} '" )
+
     sys.exit(0)
