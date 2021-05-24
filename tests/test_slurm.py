@@ -1,7 +1,7 @@
 import subprocess
 import os
 
-def test_slurm():
+def test_slurm(rootdir):
     sp = subprocess.run(['python',
      '-m',
      'wannierberri.slurm',
@@ -24,7 +24,7 @@ def test_slurm():
     script_name=str(sp.stdout).split("'")[-2].split()[-1] 
     print (script_name)
     script_text = open(script_name,"r").readlines()
-    ref_text    = open(os.path.join("reference","my_first_job.sh"),"r").readlines()
+    ref_text    = open(os.path.join(rootdir,"reference","my_first_job.sh"),"r").readlines()
     variable_strings = ["#SBATCH --job-name=my_first_job_","#SBATCH --output=my_first_job_"]
     for l1,l2 in zip(script_text,ref_text):
         if l1 !=l2 :
