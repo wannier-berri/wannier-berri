@@ -136,12 +136,12 @@ def test_Haldane_TBmodels_wcc(check_integrate,system_Haldane_TBmodels_wcc,compar
 
 
 def test_Haldane_PythTB_sym(check_integrate,system_Haldane_PythTB_sym,compare_energyresult,quantities_Haldane,Efermi_Haldane):
-    check_integrate(system_Haldane_PythTB_sym , quantities_Haldane , fout_name="berry_Haldane_pythtb" , suffix="sym" , suffix_ref="sym",
+    check_integrate(system_Haldane_PythTB_sym , quantities_Haldane , fout_name="berry_Haldane_pythtb" , suffix="sym" , suffix_ref="",
             Efermi=Efermi_Haldane , comparer=compare_energyresult,
             grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
 def test_Haldane_TBmodels_sym(check_integrate,system_Haldane_TBmodels_sym,compare_energyresult,quantities_Haldane,Efermi_Haldane):
-    check_integrate(system_Haldane_TBmodels_sym , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="sym" , suffix_ref="sym",
+    check_integrate(system_Haldane_TBmodels_sym , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="sym" , suffix_ref="",
             Efermi=Efermi_Haldane , comparer=compare_energyresult,
             grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 

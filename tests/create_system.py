@@ -87,6 +87,7 @@ def system_Fe_W90(create_files_Fe_W90):
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_sym(create_files_Fe_W90):
+
     """Create system for Fe using Wannier90 data"""
 
     data_dir = create_files_Fe_W90
@@ -94,6 +95,22 @@ def system_Fe_W90_sym(create_files_Fe_W90):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
+           transl_inv=False, use_wcc_phase=False)
+    sym=wberri.symmetry
+    system.set_symmetry(["C4z",sym.C2x*sym.TimeReversal,"Inversion"])
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90(create_files_GaAs_W90):
+
+    """Create system for Fe using Wannier90 data"""
+
+    data_dir = create_files_Fe_W90
+
+    # Load system
+    seedname = os.path.join(data_dir, "Fe")
+    system = wberri.System_w90(seedname, berry=True, SHCqiao=False, SHCryoo=False,
            transl_inv=False, use_wcc_phase=False)
     sym=wberri.symmetry
     system.set_symmetry(["C4z",sym.C2x*sym.TimeReversal,"Inversion"])
