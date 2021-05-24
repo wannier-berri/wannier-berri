@@ -119,6 +119,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
 """
     
     ray=None
+    print (f"parallel_module='{parallel_module}'")
     if parallel_module.startswith('ray'):
         import ray
         if parallel_module=='ray':
@@ -138,10 +139,8 @@ As a result, the integration will be performed over NKFFT x NKdiv
             file_Klist+=".pickle"
     cnt_exclude=0
 
-    try:
-        print ("using NKdiv={}, NKFFT={}, NKtot={}".format( grid.div,grid.FFT,grid.dense))
-    except: 
-        pass
+    print ("using NKdiv={}, NKFFT={}, NKtot={}".format( grid.div,grid.FFT,grid.dense))
+
 
 
     if parallel_module.startswith('ray'):
