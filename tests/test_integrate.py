@@ -29,7 +29,7 @@ def check_integrate(output_dir):
     #            omega = omega,
                 quantities = quantities,
                 numproc = numproc,
-#                parallel_module=parallel_module,
+                parallel_module=parallel_module,
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
                 fout_name = os.path.join(output_dir, fout_name),

@@ -127,7 +127,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
             ray.init(address='auto', _node_ip_address=os.environ["ip_head"].split(":")[0], _redis_password=os.environ["redis_password"])
             parallel_module='ray'
         nparK=int(round(ray.available_resources()['CPU']))
-        print ("initialized ray . Available Resources: \n"+"\n".join(f"{k:10s} : {v}" for k,v in ray.available_resources()))
+        print ("initialized ray . Available Resources: \n"+"\n".join(f"{k:10s} : {v}" for k,v in ray.available_resources().items()))
     elif nparK<=0:
         parallel_module='serial'
     if parallel_module=='serial':
