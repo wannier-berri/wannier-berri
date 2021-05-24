@@ -42,7 +42,7 @@ def process(paralfunc,K_list,nproc,symgroup=None,
     if len(dK_list)==0:
         print ("nothing to process now")
         return 0
-    print_progress = (parallel_module in ['multiprocessing','serial'] )
+    do_print_progress = (parallel_module in ['multiprocessing','serial'] )
 
     assert parallel_module in ('multiprocessing','ray','serial')
     # Set chunksize for multiprocessing
@@ -61,7 +61,7 @@ def process(paralfunc,K_list,nproc,symgroup=None,
         print("using a pool of {} processes.".format(nproc))
     else:
         print("in serial.")
-    if print_progress:
+    if do_print_progress:
         print("# K-points calculated  Wall time (sec)  Est. remaining (sec)", flush=True)
     res = []
     if parallel_module=='serial':
