@@ -160,7 +160,7 @@ def test_Fe_sym_refine(check_integrate,system_Fe_W90_sym, compare_energyresult,q
 
 def test_Fe_parallel_multiprocessing(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with multiprocessing"""
-    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-mult-4" , suffix_ref="", Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4,parallel_module='ray')
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-mult-4" , suffix_ref="", Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4,parallel_module='multiprocessing')
 
 def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
