@@ -29,8 +29,11 @@ from . import __utility as utility
 
 def print_progress(count, total, t0):
     t = time() - t0
-    t_remain = t / count * (total - count)
-    print("{:20d}{:17.1f}{:22.1f}".format(count, t, t_remain), flush=True)
+    if count ==0 :
+        t_remain="unknown"
+    else:
+        t_remain = "{:22.1f}".format(t / count * (total - count))
+    print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
 
 def process(paralfunc,K_list,nproc,symgroup=None,
              chunksize=0,parallel_module='multiprocessing',ray=None):
@@ -42,7 +45,6 @@ def process(paralfunc,K_list,nproc,symgroup=None,
     if len(dK_list)==0:
         print ("nothing to process now")
         return 0
-    do_print_progress = (parallel_module in ['multiprocessing','serial'] )
 
     assert parallel_module in ('multiprocessing','ray','serial')
     # Set chunksize for multiprocessing
@@ -55,14 +57,16 @@ def process(paralfunc,K_list,nproc,symgroup=None,
         else:
             print("Larger values may be used for small systems.", end=" ")
         print("Read the docs for more info.")
+    elif parallel_module=='ray':
+        remotes=[paralfunc.remote(dK) for dK in dK_list]
 
     print ("processing {0} K points :".format(len(dK_list)), end=" ")
     if nproc > 0:
         print("using a pool of {} processes.".format(nproc))
     else:
         print("in serial.")
-    if do_print_progress:
-        print("# K-points calculated  Wall time (sec)  Est. remaining (sec)", flush=True)
+
+    print("# K-points calculated  Wall time (sec)  Est. remaining (sec)", flush=True)
     res = []
     if parallel_module=='serial':
         for count, Kp in enumerate(dK_list):
@@ -80,7 +84,18 @@ def process(paralfunc,K_list,nproc,symgroup=None,
                 print_progress(count + 1, numK, t0)
         p.close()
     elif parallel_module == 'ray':
-        res=ray.get([paralfunc.remote(dK) for dK in dK_list])
+        num_remotes=len(remotes)
+        num_remotes_calculated=0
+        while True:
+            remotes_calculated,_=ray.wait(remotes,
+                                          num_returns=min(num_remotes_calculated+nstep_print,num_remotes), 
+                                          timeout=60)  # even, if the required number of remotes had not finished, 
+                                                       # the progress will be printed every minute
+            num_remotes_calculated = len(remotes_calculated)
+            if num_remotes_calculated >=num_remotes:
+                break
+            print_progress(num_remotes_calculated , numK, t0)
+        res=ray.get(remotes)
     else:
         raise RuntimeError (f"unknown parallel_module : '{parallel_module}'")
 
