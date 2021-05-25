@@ -36,7 +36,7 @@ def print_progress(count, total, t0):
     print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
 
 def process(paralfunc,K_list,nproc,symgroup=None,
-             chunksize=0,parallel_module='multiprocessing',ray=None):
+             chunksize=0,parallel_module='multiprocessing',ray=None,remote_parameters={}):
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
     numK = len(selK)
@@ -58,7 +58,7 @@ def process(paralfunc,K_list,nproc,symgroup=None,
             print("Larger values may be used for small systems.", end=" ")
         print("Read the docs for more info.")
     elif parallel_module=='ray':
-        remotes=[paralfunc.remote(dK) for dK in dK_list]
+        remotes=[paralfunc.remote(dK,**remote_parameters) for dK in dK_list]
 
     print ("processing {0} K points :".format(len(dK_list)), end=" ")
     if nproc > 0:
@@ -134,6 +134,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
 """
     
     ray=None
+    remote_parameters={}
     print (f"parallel_module='{parallel_module}'")
     if parallel_module.startswith('ray'):
         import ray
@@ -159,9 +160,11 @@ As a result, the integration will be performed over NKFFT x NKdiv
 
 
     if parallel_module.startswith('ray'):
+        remote_parameters = {'system' : system , 'grid' : grid, 'nparFFT': nparFFT,'fftlib':fftlib}
         @ray.remote
-        def paralfunc(dK):
-            return _eval_func_k (dK,func=func,system=system,grid=grid,nparFFT=nparFFT,fftlib=fftlib )
+        def paralfunc(Kpoint,system,grid,nparFFT,fftlib):
+            data=Data_K(system,Kpoint.Kp_fullBZ,grid=grid,Kpoint=Kpoint,npar=nparFFT,fftlib=fftlib)
+            return func(data)
     else:
         paralfunc=functools.partial(
             _eval_func_k, func=func,system=system,grid=grid,nparFFT=nparFFT,fftlib=fftlib )
@@ -217,6 +220,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
                      symgroup=None if nosym else system.symgroup,
                      chunksize=chunksize,
                      parallel_module=parallel_module,
+                     remote_parameters=remote_parameters,
                      ray=ray)
         
         try:
