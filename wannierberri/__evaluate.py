@@ -40,7 +40,6 @@ def process(paralfunc,K_list,nproc,symgroup=None,
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
     numK = len(selK)
-    nstep_print = max(1, nproc, numK // 100)
     dK_list=[K_list[ik] for ik in selK]
     if len(dK_list)==0:
         print ("nothing to process now")
@@ -117,11 +116,11 @@ def process(paralfunc,K_list,nproc,symgroup=None,
 
 
 
-def evaluate_K(func,system,grid,nparK,nparFFT=0,fftlib='fftw',
+def evaluate_K(func,system,grid,nparFFT=0,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              suffix="",
              file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False,
-             chunksize=0,parallel_module='multiprocessing'):
+             ):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
 a numpy.array of whatever dimensions

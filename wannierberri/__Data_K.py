@@ -59,9 +59,9 @@ class Data_K(System):
 
         try:
             self.poolmap=multiprocessing.Pool(npar).map
-#            print ('created a pool of {} workers'.format(npar))
+            print ('created a pool of {} workers'.format(npar))
         except Exception as err:
-#            print ('failed to create a pool of {} workers : {}'.format(npar,err))
+            print ('failed to create a pool of {} workers : {}'.format(npar,err))
             self.poolmap=lambda fun,lst : [fun(x) for x in lst]
         
         if self.use_wcc_phase:
