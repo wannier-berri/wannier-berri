@@ -29,6 +29,7 @@ COMMAND_SUFFIX = "{{COMMAND_SUFFIX}}"
 LOAD_ENV = "{{LOAD_ENV}}"
 SLEEP_HEAD = "{{SLEEP_HEAD}}"
 SLEEP_WORKER = "{{SLEEP_WORKER}}"
+SPILLING = "{{SPILLING}}"
 
 
 if __name__ == '__main__':
@@ -69,6 +70,10 @@ if __name__ == '__main__':
         "--sleep-worker", type=float, default=5.,
         help="Time to wait (sleep) after starting ray on every worker node (deconds, Default: 5.0)"
     )
+    parser.add_argument(
+        "--spilling-directory", type=str, default="",
+        help="directory to spill objects in case of lack of memory"
+    )  #  see : https://docs.ray.io/en/master/memory-management.html#object-spilling
 
 
 
@@ -87,6 +92,15 @@ if __name__ == '__main__':
         args.exp_name,
         time.strftime("%m%d-%H%M%S", time.localtime())
     )
+
+
+    if args.spilling_directory == "":
+        text = text.replace(SPILLING, "")
+    else:
+    # Note that `object_spilling_config`'s value should be json format.
+        text = text.replace(SPILLING, 
+               """--system-config='{"object_spilling_config":"{\"type\":\"filesystem\",\"params\":{\"directory_path\":\""""+args.spilling_directory+"""\"}}"}'"""
+                           )
 
     text = text.replace(JOB_NAME, job_name)
     text = text.replace(NUM_NODES, str(args.num_nodes))
