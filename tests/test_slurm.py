@@ -14,7 +14,7 @@ def check_command_output():
     else:
         from subprocess import Popen,PIPE,STDOUT
         def _inner(command):
-            sp = Popen(["ls", "-l"], stdout=PIPE, stderr=STDOUT,encoding='UTF-8')
+            sp = Popen(command, stdout=PIPE, stderr=STDOUT,encoding='UTF-8')
             return sp.stdout.read()
     return _inner
     
