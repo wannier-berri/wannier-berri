@@ -1,27 +1,45 @@
-import subprocess
 import os
+import pytest
 
-def test_slurm(rootdir):
-    sp = subprocess.run(['python',
-     '-m',
-     'wannierberri.slurm',
-     '--exp-name',
-     'my_first_job',
-     '--num-nodes',
-     '4',
-     '--partition',
-     'express',
-     '--command',
-     "'python -u wb-example.py'",
-     '--num-gpus=3',
-     '--sleep-head',
-     '123.45',
-     '--sleep-worker=67',
-     '--no-submit']
-    , capture_output=True )
+
+@pytest.fixture(scope="module")
+def check_command_output():
+    from sys import version_info
+    assert version_info.major == 3
+    if version_info.minor>=7:
+        from subprocess import run
+        def _inner(command):
+            sp = run(command,capture_output=True)
+            return str(sp.stdout)
+    else:
+        from subprocess import run,PIPE,STDOUT
+        def _inner(command):
+            sp = Popen(["ls", "-l"], stdout=PIPE, stderr=STDOUT,encoding='UTF-8')
+            return sp.stdout.read()
+    return _inner
     
-    print (str(sp.stdout))
-    script_name=str(sp.stdout).split("'")[-2].split()[-1] 
+
+
+def test_slurm(rootdir,check_command_output):
+    command=['python',
+             '-m',
+             'wannierberri.slurm',
+             '--exp-name',
+             'my_first_job',
+             '--num-nodes',
+             '4',
+             '--partition',
+             'express',
+             '--command',
+             "'python -u wb-example.py'",
+             '--num-gpus=3',
+             '--sleep-head',
+             '123.45',
+             '--sleep-worker=67',
+             '--no-submit']
+    stdout=check_command_output(command)    
+    print (stdout)
+    script_name=stdout.split("'")[-2].split()[-1]
     print (script_name)
     script_text = open(script_name,"r").readlines()
     ref_text    = open(os.path.join(rootdir,"reference","my_first_job.sh"),"r").readlines()
