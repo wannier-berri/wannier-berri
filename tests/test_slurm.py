@@ -12,7 +12,7 @@ def check_command_output():
             sp = run(command,capture_output=True)
             return str(sp.stdout)
     else:
-        from subprocess import run,PIPE,STDOUT
+        from subprocess import Popen,PIPE,STDOUT
         def _inner(command):
             sp = Popen(["ls", "-l"], stdout=PIPE, stderr=STDOUT,encoding='UTF-8')
             return sp.stdout.read()
