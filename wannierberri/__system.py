@@ -104,8 +104,6 @@ class System():
         self.Ndegen=iRvec[:,3]
         self.iRvec=iRvec[:,:3]
 
-        self.cRvec=self.iRvec.dot(self.real_lattice)
-
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
         print ("Recommended size of FFT grid", self.NKFFT_recommended)
@@ -284,9 +282,9 @@ class System():
         self.symgroup=Group(symmetry_gen,recip_lattice=self.recip_lattice,real_lattice=self.real_lattice)
 
 
-    #@lazy_property.LazyProperty
-    #def cRvec(self):
-    #    return self.iRvec.dot(self.real_lattice)
+    @lazy_property.LazyProperty
+    def cRvec(self):
+        return self.iRvec.dot(self.real_lattice)
 
     @lazy_property.LazyProperty
     def cRvec_wcc(self):
