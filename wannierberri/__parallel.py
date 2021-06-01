@@ -2,7 +2,7 @@
 
 
 
-class Parallel()
+class Parallel():
     """ a class to store parameters of parallel evaluation
 
     Parameters
@@ -20,69 +20,75 @@ class Parallel()
                    num_cpus=0  ,
                    npar_k = 0 , 
                    ray_init={} ,     # add extra parameters for ray.init()
-                   ray_slurm=False , # add parameters for ray.init() for the slurm cluster
+                   cluster=False , # add parameters for ray.init() for the slurm cluster
                    chunksize=None  , # size of chunk in multiprocessing 
-                   progress_step_percent  = 1    ,  #
-                   progress_timeout = None,  # relevant only for ray, seconds
-                 )
+                   progress_step_percent  = 1  ,  #
+                   progress_timeout = None  # relevant only for ray, seconds
+                 ):
+        if method == 'multiprocessing':
+            method = 'multiprocessing-K'
 
         if method is None:
             if num_cpus <= 0:
                 method = "serial"
             else:
-                method = "multiprocessing-K"
+                method = "ray"
         self.method=method
         self.progress_step_percent  = progress_step_percent
+        self.chunksize=chunksize
+        if cluster:
+            if self.method == "ray" :
+                ray_init_loc['address']          = 'auto'
+                ray_init_loc['_node_ip_address'] = os.environ["ip_head"].split(":")[0]
+                ray_init_loc['_redis_password']  = os.environ["redis_password"]
+            else :
+                print ("WARNING: cluster (multinode) computation is possible only with 'ray' parallelization")
 
         if  self.method == "serial":
             self.num_cpus = 1
-            self.pool_k,self.npar_k=pool(0)
+            _,self.npar_k=pool(0)
             self.pool_K,self.npar_K=pool(0)
         elif self.method == "ray" : 
             ray_init_loc={}
             ray_init_loc.update(ray_init)
             if num_cpus>0:
-                ray_init[num_cpus]=num_cpus
+                ray_init_loc['num_cpus']=num_cpus
             import ray
-            ray.init()
+            ray.init(**ray_init_loc)
             self.num_cpus=int(round(ray.available_resources()['CPU']))
             self.ray=ray
-            self.pool_k,self.npar_k=pool(npark)
+            _,self.npar_k=pool(npar_k)
             self.npar_K=int(round(self.num_cpus/self.npar_k))
-        elif self.method == 'multiprocessing-k'
-            self.pool_k,self.npar_k=pool(self.num_cpus)
+        elif self.method == 'multiprocessing-k':  # this option is not supported yet ( abd provbably never will be )
+            self.num_cpus=num_cpus
+            _,self.npar_k=pool(self.num_cpus)
             self.pool_K,self.npar_K=pool(0)
-        elif self.method == 'multiprocessing-K'
-            self.pool_k,self.npar_k=pool(0)
+        elif self.method == 'multiprocessing-K':
+            self.num_cpus=num_cpus
+            _,self.npar_k=pool(0)
             self.pool_K,self.npar_K=pool(self.num_cpus)
         else :
             raise ValueError ("Unknown parallelization method:{}".format(self.method))
 
 
 
-
-
-
-    def progress_step(self,n_tasks,npar=None):
-        if npar is None: 
-            npar = self.num_cpus
-        return step_print = max ( 1, 
-                                  npar,
-                                  self.npar_progress, 
-                                  int(round(n_tasks*progress_step_procent / 100)) 
-                                )
+    def progress_step(self,n_tasks,npar):
+        return max ( 1,
+                      npar,
+                      int(round(n_tasks*self.progress_step_percent / 100)) 
+                    )
 
 
     def __del__(self):
         if self.method == "ray":
-            ray.shutdown()
+            self.ray.shutdown()
 
 
 def pool(npar):
-    if npar>0:
+    if npar>1:
         try:
             from  multiprocessing import Pool
-            pool = multiprocessing.Pool(npar).map
+            pool = Pool(npar).imap
             print ('created a pool of {} workers'.format(npar))
             return pool , npar
         except Exception as err:

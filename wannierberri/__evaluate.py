@@ -26,6 +26,7 @@ from .__Data_K import Data_K
 from . import symmetry as SYM
 from  .__Kpoint import exclude_equiv_points
 from . import __utility as utility
+from .__parallel import Parallel
 
 def print_progress(count, total, t0):
     t = time() - t0
@@ -35,8 +36,7 @@ def print_progress(count, total, t0):
         t_remain = "{:22.1f}".format(t / count * (total - count))
     print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
 
-def process(paralfunc,K_list,nproc,symgroup=None,
-             chunksize=0,parallel_module='multiprocessing',ray=None,remote_parameters={}):
+def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
     numK = len(selK)
@@ -45,48 +45,45 @@ def process(paralfunc,K_list,nproc,symgroup=None,
         print ("nothing to process now")
         return 0
 
-    assert parallel_module in ('multiprocessing','ray','serial')
-    # Set chunksize for multiprocessing
-    if parallel_module=='multiprocessing':
-        if chunksize <= 0:
-            chunksize = max(1, min(int(numK / nproc / 200), 10))
+    if parallel.method == 'multiprocessing-K':
+        if parallel.chunksize  is None :
+            chunksize = max(1, min(int(numK / parallel.npar_K / 200), 10))
+        else:
+            chunksize=parallel.chunksize
         print("chunksize = {} used for parallelization.".format(chunksize), end=" ")
         if chunksize > 1:
             print("Smaller values recommended for large systems.", end=" ")
         else:
             print("Larger values may be used for small systems.", end=" ")
         print("Read the docs for more info.")
-    elif parallel_module=='ray':
+    elif parallel.method == 'ray':
         remotes=[paralfunc.remote(dK,**remote_parameters) for dK in dK_list]
 
     print ("processing {0} K points :".format(len(dK_list)), end=" ")
-    if nproc > 0:
-        print("using a pool of {} processes.".format(nproc))
-    else:
+    if parallel.method == 'serial':
         print("in serial.")
+    else:
+        print("using a pool of {} processes.".format(parallel.npar_K))
 
     print("# K-points calculated  Wall time (sec)  Est. remaining (sec)", flush=True)
     res = []
-    if parallel_module=='serial':
+    nstep_print =  parallel.progress_step(numK,parallel.npar_K)
+    if parallel.method=='serial':
         for count, Kp in enumerate(dK_list):
             res.append(paralfunc(Kp))
             if (count + 1) % nstep_print == 0:
                 print_progress(count + 1, numK, t0)
-    elif  parallel_module=='multiprocessing':
-        p = multiprocessing.Pool(nproc)
-        # Method 1: map. Cannot print progress.
-        # res = p.map(paralfunc,dK_list)
-        # Method 2: imap
-        for count, res_K in enumerate(p.imap(paralfunc, dK_list, chunksize=chunksize)):
+    elif  parallel.method   == 'multiprocessing-K':
+        pmap = parallel.pool_K
+        for count, res_K in enumerate(pmap(paralfunc, dK_list, chunksize=chunksize)):
             res.append(res_K)
             if (count + 1) % nstep_print == 0:
                 print_progress(count + 1, numK, t0)
-        p.close()
-    elif parallel_module == 'ray':
+    elif parallel.method == 'ray':
         num_remotes=len(remotes)
         num_remotes_calculated=0
         while True:
-            remotes_calculated,_=ray.wait(remotes,
+            remotes_calculated,_=parallel.ray.wait(remotes,
                                           num_returns=min(num_remotes_calculated+nstep_print,num_remotes), 
                                           timeout=60)  # even, if the required number of remotes had not finished, 
                                                        # the progress will be printed every minute
@@ -94,9 +91,9 @@ def process(paralfunc,K_list,nproc,symgroup=None,
             if num_remotes_calculated >=num_remotes:
                 break
             print_progress(num_remotes_calculated , numK, t0)
-        res=ray.get(remotes)
+        res=parallel.ray.get(remotes)
     else:
-        raise RuntimeError (f"unknown parallel_module : '{parallel_module}'")
+        raise RuntimeError (f"unsupported parallel method : '{parallel.method}'")
 
 
     if not (symgroup is None):
@@ -105,21 +102,21 @@ def process(paralfunc,K_list,nproc,symgroup=None,
         K_list[ik].set_res(res[i])
 
     t=time()-t0
-    if nproc <= 0:
+    if parallel.method == 'serial':
         print("time for processing {0:6d} K-points in serial: ".format(numK), end="")
         nproc_ = 1
     else:
-        print("time for processing {0:6d} K-points on {1:3d} processes: ".format(numK, nproc), end="")
-        nproc_ = nproc
+        print("time for processing {0:6d} K-points on {1:3d} processes: ".format(numK, parallel.npar_K), end="")
+        nproc_ = parallel.npar_K
     print("{0:10.4f} ; per K-point {1:15.4f} ; proc-sec per K-point {2:15.4f}".format(t, t/numK, t*nproc_/numK), flush=True)
     return len(dK_list)
 
 
 
-def evaluate_K(func,system,grid,nparFFT=0,fftlib='fftw',
+def evaluate_K(func,system,grid,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              suffix="",
-             file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False,
+             file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False,parallel=None
              ):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
@@ -131,24 +128,8 @@ The parallelisation is done by K-points
 
 As a result, the integration will be performed over NKFFT x NKdiv
 """
-    
-    ray=None
-    remote_parameters={}
-    print (f"parallel_module='{parallel_module}'")
-    if parallel_module.startswith('ray'):
-        import ray
-        if parallel_module=='ray':
-            ray.init()
-            # ray.init(num_cpus=nparK)
-        elif parallel_module == 'ray-cluster':
-            ray.init(address='auto', _node_ip_address=os.environ["ip_head"].split(":")[0], _redis_password=os.environ["redis_password"])
-            parallel_module='ray'
-        nparK=int(round(ray.available_resources()['CPU']))
-        print ("initialized ray . Available Resources: \n"+"\n".join(f"{k:10s} : {v}" for k,v in ray.available_resources().items()))
-    elif nparK<=0:
-        parallel_module='serial'
-    if parallel_module=='serial':
-        nparK=0
+    if parallel is None:
+        parallel = Parallel()
 
     if file_Klist is not None:
         if not file_Klist.endswith(".pickle"):
@@ -158,17 +139,17 @@ As a result, the integration will be performed over NKFFT x NKdiv
     print ("using NKdiv={}, NKFFT={}, NKtot={}".format( grid.div,grid.FFT,grid.dense))
 
 
-
-    if parallel_module.startswith('ray'):
-        remote_parameters = {'_system' : ray.put(system) , '_grid' : ray.put(grid), 'nparFFT': nparFFT,'fftlib':fftlib}
+    if parallel.method=='ray':
+        ray=parallel.ray
+        remote_parameters = {'_system' : ray.put(system) , '_grid' : ray.put(grid), 'npar_k': parallel.npar_k,'fftlib':fftlib}
         @ray.remote
-        def paralfunc(Kpoint,_system,_grid,nparFFT,fftlib):
-            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,npar=nparFFT,fftlib=fftlib)
+        def paralfunc(Kpoint,_system,_grid,npar_k,fftlib):
+            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,npar_k=npar_k,fftlib=fftlib)
             return func(data)
     else:
+        remote_parameters = {}
         paralfunc=functools.partial(
-            _eval_func_k, func=func,system=system,grid=grid,nparFFT=nparFFT,fftlib=fftlib )
-
+            _eval_func_k, func=func,system=system,grid=grid,npar_k=parallel.npar_k,fftlib=fftlib )
 
     if restart:
         try:
@@ -210,18 +191,14 @@ As a result, the integration will be performed over NKFFT x NKdiv
     
     counter=0
 
-
     for i_iter in range(adpt_num_iter+1):
         print ("iteration {0} - {1} points. New points are:".format(i_iter,len([K for K in  K_list if K.res is None])) ) 
         for i,K in enumerate(K_list):
           if not K.evaluated:
             print (" K-point {0} : {1} ".format(i,K))
-        counter+=process(paralfunc,K_list,nparK,
+        counter+=process(paralfunc,K_list,parallel,
                      symgroup=None if nosym else system.symgroup,
-                     chunksize=chunksize,
-                     parallel_module=parallel_module,
-                     remote_parameters=remote_parameters,
-                     ray=ray)
+                     remote_parameters=remote_parameters)
         
         try:
             if file_Klist is not None:
@@ -252,14 +229,11 @@ As a result, the integration will be performed over NKFFT x NKdiv
     
     print ("Totally processed {0} K-points ".format(counter))
     
-    if parallel_module == 'ray':
-        ray.shutdown() 
-
     return result_all
        
 
 
-def _eval_func_k(Kpoint,func,system,grid,nparFFT,fftlib):
-    data=Data_K(system,Kpoint.Kp_fullBZ,grid=grid,Kpoint=Kpoint,npar=nparFFT,fftlib=fftlib)
+def _eval_func_k(Kpoint,func,system,grid,fftlib,npar_k):
+    data=Data_K(system,Kpoint.Kp_fullBZ,grid=grid,Kpoint=Kpoint,fftlib=fftlib,npar_k=npar_k)
     return func(data)
 

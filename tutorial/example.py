@@ -34,13 +34,14 @@ system=wberri.System_tb(tb_file='Fe_tb.dat',berry=True)
 generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 system.set_symmetry(generators)
 grid=wberri.Grid(system,length=100)
+parallel=wberri.Parallel(method="ray",num_cpus=num_proc)
 
 wberri.integrate(system,
             grid=grid,
             Efermi=Efermi, 
             smearEf=10,
             quantities=["ahc","dos","cumdos"],
-            numproc=num_proc,
+            parallel=parallel,
             adpt_num_iter=10,
             fftlib='fftw', #default.  alternative  option - 'numpy'
             fout_name='Fe',
@@ -52,6 +53,6 @@ wberri.tabulate(system,
              grid=grid,
              quantities=["berry"],
              frmsf_name='Fe',
-             numproc=num_proc,
+             parallel=parallel,
              ibands=np.arange(4,10),
              Ef0=12.6)
