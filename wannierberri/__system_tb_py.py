@@ -135,7 +135,7 @@ class System_tb_py(System):
 
         if self.getCC:
             self.CC_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
-        print(self.AA_R)
+#        print(self.AA_R)
 #   TODO: generate the SS_R matrix        
 
         self.set_symmetry()

@@ -56,6 +56,7 @@ Efermi=np.linspace(-4,6,1000)
 syst.set_symmetry(['C3z'])
 # After defining the symmetries, create the grid class
 grid=wb.Grid(syst,NK=(200,200,1),NKFFT=(20,20,1))
+parallel=wb.Parallel(num_cpus=8,method='multiprocessing')
 # Define which quantities are going to be integrated
 q_int=["dos","ahc","Morb"]
 seedname="tbmodels_Haldane"
@@ -65,7 +66,7 @@ wb.integrate(syst,
             Efermi=Efermi,
             smearEf=300, # 10K
             quantities=q_int,
-            numproc=8,
+            parallel=parallel,
             adpt_num_iter=num_iter,
             fout_name=seedname,
             restart=False )

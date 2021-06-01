@@ -8,9 +8,10 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [3.6, 3.7, 3.8]
         install-type: [dev]
 
     steps:
