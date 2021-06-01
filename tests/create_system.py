@@ -81,25 +81,9 @@ def system_Fe_W90(create_files_Fe_W90):
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
            transl_inv=False, use_wcc_phase=False)
-
-    return system
-
-
-@pytest.fixture(scope="session")
-def system_Fe_W90_sym(create_files_Fe_W90):
-
-    """Create system for Fe using Wannier90 data"""
-
-    data_dir = create_files_Fe_W90
-
-    # Load system
-    seedname = os.path.join(data_dir, "Fe")
-    system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
-           transl_inv=False, use_wcc_phase=False)
     sym=wberri.symmetry
     system.set_symmetry(["C4z",sym.C2x*sym.TimeReversal,"Inversion"])
     return system
-
 
 
 
@@ -174,16 +158,6 @@ def system_Haldane_TBmodels(tbmodels_Haldane):
     
     # Load system
     system = wberri.System_TBmodels(tbmodels_Haldane, berry=True)
-
-    return system
-
-
-
-@pytest.fixture(scope="session")
-def system_Haldane_TBmodels_sym(tbmodels_Haldane):
-    """Create system for Fe using Tbmodels"""
-    # Load system
-    system = wberri.System_TBmodels(tbmodels_Haldane, berry=True)
     system.set_symmetry(["C3z"])
     return system
 
@@ -213,17 +187,9 @@ def pythtb_Haldane():
     
     return my_model
 
+
 @pytest.fixture(scope="session")
 def system_Haldane_PythTB(pythtb_Haldane):
-    """Create system for Haldane model using PythTB"""
-    # Load system
-    system = wberri.System_PythTB(pythtb_Haldane, berry=True )
-
-    return system
-
-
-@pytest.fixture(scope="session")
-def system_Haldane_PythTB_sym(pythtb_Haldane):
     """Create system for Haldane model using PythTB"""
     # Load system
     system = wberri.System_PythTB(pythtb_Haldane, berry=True)

@@ -22,7 +22,6 @@ import glob
 import os
 
 from .__Data_K import Data_K
-from . import symmetry as SYM
 from  .__Kpoint import exclude_equiv_points
 from . import __utility as utility
 from .__parallel import Parallel
@@ -36,6 +35,7 @@ def print_progress(count, total, t0):
     print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
 
 def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
+    print (f"symgroup : {symgroup}")
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
     numK = len(selK)
@@ -98,7 +98,7 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
 def evaluate_K(func,system,grid,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              suffix="",
-             file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False,parallel=None,
+             file_Klist="K_list.pickle",restart=False,start_iter=0,parallel=None,
              global_parameters={}
              ):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
@@ -113,6 +113,11 @@ As a result, the integration will be performed over NKFFT x NKdiv
 """
     if parallel is None:
         parallel = Parallel()
+
+    try : 
+        use_symmetry = global_parameters["use_symmetry"]
+    except KeyError as err:
+        use_symmetry = True
 
     if file_Klist is not None:
         if not file_Klist.endswith(".pickle"):
@@ -147,7 +152,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
             print ("WARNING: {}".format( err) )
             print ("WARNING : reading from {0} failed, starting from scrath".format(file_Klist))
     else:
-        K_list=grid.get_K_list()
+        K_list=grid.get_K_list(use_symmetry=use_symmetry)
         print ("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
         start_iter=0
 
@@ -181,7 +186,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
           if not K.evaluated:
             print (" K-point {0} : {1} ".format(i,K))
         counter+=process(paralfunc,K_list,parallel,
-                     symgroup=None if nosym else system.symgroup,
+                     symgroup=system.symgroup if  use_symmetry else None,
                      remote_parameters=remote_parameters)
         
         try:
@@ -204,10 +209,11 @@ As a result, the integration will be performed over NKFFT x NKdiv
         
         l1=len(K_list)
         for iK in select_points:
-            K_list+=K_list[iK].divide(adpt_mesh,system.periodic)
-        print ("checking for equivalent points in all points (of new  {} points)".format(len(K_list)-l1))
-        nexcl=exclude_equiv_points(K_list,new_points=len(K_list)-l1)
-        print (" excluded {0} points".format(nexcl))
+            K_list+=K_list[iK].divide(adpt_mesh,system.periodic,use_symmetry=use_symmetry)
+        if use_symmetry:
+            print ("checking for equivalent points in all points (of new  {} points)".format(len(K_list)-l1))
+            nexcl=exclude_equiv_points(K_list,new_points=len(K_list)-l1)
+            print (" excluded {0} points".format(nexcl))
         print ("sum of weights now :{}".format(sum(Kp.factor for Kp in K_list)))
         
     
