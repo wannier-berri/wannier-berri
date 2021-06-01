@@ -17,7 +17,7 @@ def test_fourier(system_Fe_W90):
 
     k = np.array([0.1, 0.2, -0.3])
 
-    grid = wberri.Grid(system, NKFFT=[4, 3, 2], NKdiv=1)
+    grid = wberri.Grid(system, NKFFT=[4, 3, 2], NKdiv=1,use_symmetry = False)
 
     dK = 1. / grid.div
     NKFFT = grid.FFT
@@ -27,9 +27,9 @@ def test_fourier(system_Fe_W90):
 
     assert kpoint.Kp_fullBZ == approx(k / grid.FFT)
 
-    data_fftw  = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='fftw')
-    data_slow  = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='slow')
-    data_numpy = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='numpy')
+    data_fftw  = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='fftw',use_symmetry=False)
+    data_slow  = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='slow',use_symmetry=False)
+    data_numpy = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='numpy',use_symmetry=False)
 
     test_fields = ["E_K", "D_H", "V_H", "shc_B_H"]
 

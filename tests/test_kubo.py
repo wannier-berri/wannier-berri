@@ -43,6 +43,7 @@ def result_kubo_Fe_W90(output_dir, system_Fe_W90,parallel_serial):
             parallel=parallel_serial,
             adpt_num_iter = adpt_num_iter,
             parameters = kubo_params,
+            global_parameters = {"use_symmetry":False},
             fout_name = os.path.join(output_dir, fout_name),
             restart = False,
     )
