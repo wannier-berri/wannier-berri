@@ -6,7 +6,7 @@ import pytest
 from pytest import approx
 
 import wannierberri as wberri
-from conftest import parallel_serial, parallel_ray, parallel_multiprocessing
+from conftest import parallel_serial, parallel_ray 
 from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
 from create_system import system_Fe_W90,system_GaAs_W90,system_GaAs_tb,system_Haldane_PythTB,system_Haldane_TBmodels
 from create_system import system_Fe_W90_sym, system_Haldane_TBmodels_sym, system_Haldane_PythTB_sym
@@ -157,11 +157,6 @@ def test_Fe_sym_refine(check_integrate,system_Fe_W90_sym, compare_energyresult,q
                   adpt_num_iter=1,
                   suffix="sym" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult )
 
-
-def test_Fe_parallel_multiprocessing(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe,
-          parallel_multiprocessing):
-    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with multiprocessing"""
-    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-mult-4" , suffix_ref="", Efermi=Efermi_Fe , comparer=compare_energyresult,parallel=parallel_multiprocessing)
 
 def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe,
       parallel_ray):
