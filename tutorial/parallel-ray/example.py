@@ -40,7 +40,7 @@ wberri.integrate(system,
             smearEf=10,
             quantities=["ahc","dos","cumdos"],
             adpt_num_iter=0,
-            parallel_module='ray-slurm',
+            parallel_module='ray-cluster',
             numproc=1,
             fftlib='fftw', #default.  alternative  option - 'numpy'
             fout_name='Fe',
