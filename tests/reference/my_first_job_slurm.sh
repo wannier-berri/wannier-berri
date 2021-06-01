@@ -51,14 +51,14 @@ echo "IP Head: $ip_head"
 echo "STARTING HEAD at $node_1"
 # srun --nodes=1 --ntasks=1 -w $node_1 start-head.sh $ip $redis_password &
 srun --nodes=1 --ntasks=1 -w $node_1   ray start --head --node-ip-address=$ip --port=6379 --redis-password=$redis_password --block &
-sleep 123.45
+sleep 12.34
 
 worker_num=$(($SLURM_JOB_NUM_NODES - 1)) #number of nodes other than the head node
 for ((i = 1; i <= $worker_num; i++)); do
   node_i=${nodes_array[$i]}
   echo "STARTING WORKER $i at $node_i"
   srun --nodes=1 --ntasks=1 -w $node_i ray start --address $ip_head --redis-password=$redis_password --block &
-  sleep 67.0
+  sleep 5.0
 done
 
 ##############################################################################################
