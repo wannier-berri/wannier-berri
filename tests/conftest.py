@@ -15,3 +15,50 @@ def output_dir(rootdir):
     directory = os.path.join(rootdir, "_dat_files")
     Path(directory).mkdir(exist_ok=True)
     return directory
+
+
+@pytest.fixture(scope="session")
+def parallel_serial():
+    from wannierberri import Parallel
+    return Parallel(
+                   method="serial",
+                   num_cpus=0  ,
+                   npar_k = 0 , 
+#                   ray_init={} ,     # add extra parameters for ray.init()
+#                   cluster=False , # add parameters for ray.init() for the slurm cluster
+#                   chunksize=None  , # size of chunk in multiprocessing 
+                   progress_step_percent  = 1  ,  #
+                   progress_timeout = None  # relevant only for ray, seconds
+                 )
+
+
+
+@pytest.fixture(scope="session")
+def parallel_ray():
+    from wannierberri import Parallel
+    return Parallel(
+                   method="ray",
+                   num_cpus=4  ,
+                   npar_k = 0 , 
+                   ray_init={} ,     # add extra parameters for ray.init()
+                   cluster=False , # add parameters for ray.init() for the slurm cluster
+                   chunksize=None  , # size of chunk in multiprocessing 
+                   progress_step_percent  = 1  ,  #
+                   progress_timeout = None  # relevant only for ray, seconds
+                 )
+
+
+
+@pytest.fixture(scope="session")
+def parallel_multiprocessing():
+    from wannierberri import Parallel
+    return Parallel(
+                   method="multiprocessing-K",
+                   num_cpus=4  ,
+                   npar_k = 0 , 
+                   ray_init={} ,     # add extra parameters for ray.init()
+                   cluster=False , # add parameters for ray.init() for the slurm cluster
+                   chunksize=None  , # size of chunk in multiprocessing 
+                   progress_step_percent  = 1  ,  #
+                   progress_timeout = None  # relevant only for ray, seconds
+                 )

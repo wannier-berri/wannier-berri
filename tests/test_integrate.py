@@ -6,6 +6,7 @@ import pytest
 from pytest import approx
 
 import wannierberri as wberri
+from conftest import parallel_serial, parallel_ray, parallel_multiprocessing
 from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
 from create_system import system_Fe_W90,system_GaAs_W90,system_GaAs_tb,system_Haldane_PythTB,system_Haldane_TBmodels
 from create_system import system_Fe_W90_sym, system_Haldane_TBmodels_sym, system_Haldane_PythTB_sym
@@ -14,9 +15,9 @@ from compare_result import compare_energyresult
 
 
 @pytest.fixture
-def check_integrate(output_dir):
+def check_integrate(output_dir,parallel_serial):
     def _inner(system,quantities,fout_name,Efermi,comparer,
-               numproc=0, parallel_module='multiprocessing',
+               parallel=parallel_serial,
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},additional_parameters={},adpt_num_iter=0,
                suffix="", suffix_ref="",
                extra_precision={} ):
@@ -28,8 +29,7 @@ def check_integrate(output_dir):
                 smearEf = 600.0,
     #            omega = omega,
                 quantities = quantities,
-                numproc = numproc,
-                parallel_module=parallel_module,
+                parallel=parallel,
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
                 fout_name = os.path.join(output_dir, fout_name),
@@ -158,10 +158,12 @@ def test_Fe_sym_refine(check_integrate,system_Fe_W90_sym, compare_energyresult,q
                   suffix="sym" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult )
 
 
-def test_Fe_parallel_multiprocessing(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
+def test_Fe_parallel_multiprocessing(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe,
+          parallel_multiprocessing):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with multiprocessing"""
-    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-mult-4" , suffix_ref="", Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4,parallel_module='multiprocessing')
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-mult-4" , suffix_ref="", Efermi=Efermi_Fe , comparer=compare_energyresult,parallel=parallel_multiprocessing)
 
-def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
+def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe,
+      parallel_ray):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
-    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-ray-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4,parallel_module='ray')
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-ray-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,parallel=parallel_ray)

@@ -213,7 +213,7 @@ def tabulate(system,grid, quantities=[],
     check_option(quantities,tabulate_options,"tabulate")
     eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
     t0=time()
-    res=evaluate_K(eval_func,system,grid,,
+    res=evaluate_K(eval_func,system,grid,
             adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,nosym=(mode=='path'), 
             parallel=parallel )
 
