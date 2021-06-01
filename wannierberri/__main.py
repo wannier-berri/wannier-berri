@@ -113,7 +113,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,adpt_fac=1,
                         fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
                         parallel = None, 
-                        parameters={}):
+                        parameters={},global_parameters={} ):
     """
     Integrate 
 
@@ -175,14 +175,15 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     res=evaluate_K(eval_func,system,grid,fftlib=fftlib,
             adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac,
                 fout_name=fout_name,suffix=suffix,
-                restart=restart,file_Klist=file_Klist, parallel = parallel)
+                restart=restart,file_Klist=file_Klist, parallel = parallel,global_parameters=global_parameters )
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
 
 
 
 def tabulate(system,grid, quantities=[],
-                  frmsf_name=None,ibands=None,suffix="",Ef0=0.,parameters={},
+                  frmsf_name=None,ibands=None,suffix="",Ef0=0.,
+                  parameters={},global_parameters={},
                   parallel = None):
     """
     Tabulate quantities to be plotted
@@ -215,7 +216,7 @@ def tabulate(system,grid, quantities=[],
     t0=time()
     res=evaluate_K(eval_func,system,grid,
             adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,nosym=(mode=='path'), 
-            parallel=parallel )
+            parallel=parallel,global_parameters=global_parameters )
 
     t1=time()
     if mode=='3D':

@@ -101,18 +101,6 @@ def system_Fe_W90_sym(create_files_Fe_W90):
     return system
 
 
-@pytest.fixture(scope="session")
-def system_Fe_W90_wcc(create_files_Fe_W90):
-    """Create system for Fe using Wannier90 data"""
-
-    data_dir = create_files_Fe_W90
-
-    # Load system
-    seedname = os.path.join(data_dir, "Fe")
-    system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True, 
-            transl_inv=False, use_wcc_phase=True)
-
-    return system
 
 
 #@pytest.fixture(scope="session")
@@ -138,25 +126,10 @@ def system_GaAs_W90(create_files_GaAs_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.System_w90(seedname, berry=True, 
-           transl_inv=False, use_wcc_phase=False,degen_thresh=0.005)
+    system = wberri.System_w90(seedname, berry=True , transl_inv=False)
 
     return system
 
-
-
-@pytest.fixture(scope="session")
-def system_GaAs_W90_wcc(create_files_GaAs_W90):
-    """Create system for GaAs using Wannier90 data with wcc phases"""
-
-    data_dir = create_files_GaAs_W90
-
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.System_w90(seedname, berry=True, 
-           transl_inv=False, use_wcc_phase=True,degen_thresh=0.005)
-
-    return system
 
 
 @pytest.fixture(scope="session")
@@ -170,24 +143,10 @@ def system_GaAs_tb(rootdir):
             tar.extract(tarinfo, data_dir)
 
     seedname = os.path.join(data_dir, "GaAs_tb.dat")
-    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=False)
+    system = wberri.System_tb(seedname, berry=True)
 
     return system
 
-@pytest.fixture(scope="session")
-def system_GaAs_tb_wcc(rootdir):
-    """Create system for GaAs using _tb_dat data"""
-
-    data_dir = os.path.join(rootdir, "data", "GaAs_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
-        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
-        for tarinfo in tar:
-            tar.extract(tarinfo, data_dir)
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs_tb.dat")
-    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=True)
-
-    return system
 
 @pytest.fixture(scope="session")
 def tbmodels_Haldane():
@@ -214,24 +173,17 @@ def tbmodels_Haldane():
 def system_Haldane_TBmodels(tbmodels_Haldane):
     
     # Load system
-    system = wberri.System_TBmodels(tbmodels_Haldane, berry=True, use_wcc_phase=False)#,periodic=(True,True,False)) # with the 2D TBmodel, the periodicity is detected automatically
+    system = wberri.System_TBmodels(tbmodels_Haldane, berry=True)
 
     return system
 
-@pytest.fixture(scope="session")
-def system_Haldane_TBmodels_wcc(tbmodels_Haldane):
-    """Create system for Fe using Tbmodels"""
-    # Load system
-    system = wberri.System_TBmodels(tbmodels_Haldane, berry=True, use_wcc_phase=True)#,periodic=(True,True,False))
-
-    return system
 
 
 @pytest.fixture(scope="session")
 def system_Haldane_TBmodels_sym(tbmodels_Haldane):
     """Create system for Fe using Tbmodels"""
     # Load system
-    system = wberri.System_TBmodels(tbmodels_Haldane, berry=True, use_wcc_phase=True)#,periodic=(True,True,False))
+    system = wberri.System_TBmodels(tbmodels_Haldane, berry=True)
     system.set_symmetry(["C3z"])
     return system
 
@@ -265,16 +217,7 @@ def pythtb_Haldane():
 def system_Haldane_PythTB(pythtb_Haldane):
     """Create system for Haldane model using PythTB"""
     # Load system
-    system = wberri.System_PythTB(pythtb_Haldane, berry=True, use_wcc_phase=False )#,periodic=(True,True,False)) # with the 2D PythTB model, the periodicity is detected automatically
-
-    return system
-
-
-@pytest.fixture(scope="session")
-def system_Haldane_PythTB_wcc(pythtb_Haldane):
-    """Create system for Haldane model using PythTB"""
-    # Load system
-    system = wberri.System_PythTB(pythtb_Haldane, berry=True, use_wcc_phase=True)#,periodic=(True,True,False))
+    system = wberri.System_PythTB(pythtb_Haldane, berry=True )
 
     return system
 
@@ -283,7 +226,7 @@ def system_Haldane_PythTB_wcc(pythtb_Haldane):
 def system_Haldane_PythTB_sym(pythtb_Haldane):
     """Create system for Haldane model using PythTB"""
     # Load system
-    system = wberri.System_PythTB(pythtb_Haldane, berry=True, use_wcc_phase=False)# ,periodic=(True,True,False))
+    system = wberri.System_PythTB(pythtb_Haldane, berry=True)
     system.set_symmetry(["C3z"])
     return system
 
