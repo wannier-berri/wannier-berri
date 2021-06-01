@@ -11,7 +11,6 @@
 #                                                            #
 #------------------------------------------------------------
 
-import  multiprocessing
 import functools
 import numpy as np
 from collections.abc import Iterable
@@ -45,38 +44,21 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
         print ("nothing to process now")
         return 0
 
-    if parallel.method == 'multiprocessing-K':
-        if parallel.chunksize  is None :
-            chunksize = max(1, min(int(numK / parallel.npar_K / 200), 10))
-        else:
-            chunksize=parallel.chunksize
-        print("chunksize = {} used for parallelization.".format(chunksize), end=" ")
-        if chunksize > 1:
-            print("Smaller values recommended for large systems.", end=" ")
-        else:
-            print("Larger values may be used for small systems.", end=" ")
-        print("Read the docs for more info.")
-    elif parallel.method == 'ray':
+    if parallel.method == 'ray':
         remotes=[paralfunc.remote(dK,**remote_parameters) for dK in dK_list]
 
     print ("processing {0} K points :".format(len(dK_list)), end=" ")
     if parallel.method == 'serial':
         print("in serial.")
     else:
-        print("using a pool of {} processes.".format(parallel.npar_K))
+        print("using  {} processes.".format(parallel.npar_K))
 
     print("# K-points calculated  Wall time (sec)  Est. remaining (sec)", flush=True)
     res = []
     nstep_print =  parallel.progress_step(numK,parallel.npar_K)
     if parallel.method=='serial':
         for count, Kp in enumerate(dK_list):
-            res.append(paralfunc(Kp))
-            if (count + 1) % nstep_print == 0:
-                print_progress(count + 1, numK, t0)
-    elif  parallel.method   == 'multiprocessing-K':
-        pmap = parallel.pool_K
-        for count, res_K in enumerate(pmap(paralfunc, dK_list, chunksize=chunksize)):
-            res.append(res_K)
+            res.append(paralfunc(Kp,**remote_parameters))
             if (count + 1) % nstep_print == 0:
                 print_progress(count + 1, numK, t0)
     elif parallel.method == 'ray':
@@ -147,9 +129,10 @@ As a result, the integration will be performed over NKFFT x NKdiv
             data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,npar_k=npar_k,fftlib=fftlib)
             return func(data)
     else:
-        remote_parameters = {}
-        paralfunc=functools.partial(
-            _eval_func_k, func=func,system=system,grid=grid,npar_k=parallel.npar_k,fftlib=fftlib )
+        remote_parameters = {'_system' : system , '_grid' : grid, 'npar_k': parallel.npar_k,'fftlib':fftlib}
+        def paralfunc(Kpoint,_system,_grid,npar_k,fftlib):
+            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,npar_k=npar_k,fftlib=fftlib)
+            return func(data)
 
     if restart:
         try:
@@ -230,10 +213,3 @@ As a result, the integration will be performed over NKFFT x NKdiv
     print ("Totally processed {0} K-points ".format(counter))
     
     return result_all
-       
-
-
-def _eval_func_k(Kpoint,func,system,grid,fftlib,npar_k):
-    data=Data_K(system,Kpoint.Kp_fullBZ,grid=grid,Kpoint=Kpoint,fftlib=fftlib,npar_k=npar_k)
-    return func(data)
-
