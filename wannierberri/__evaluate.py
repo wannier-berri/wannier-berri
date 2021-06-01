@@ -98,7 +98,8 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
 def evaluate_K(func,system,grid,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              suffix="",
-             file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False,parallel=None
+             file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False,parallel=None,
+             global_parameters={}
              ):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
@@ -126,12 +127,12 @@ As a result, the integration will be performed over NKFFT x NKdiv
         remote_parameters = {'_system' : ray.put(system) , '_grid' : ray.put(grid), 'npar_k': parallel.npar_k,'fftlib':fftlib}
         @ray.remote
         def paralfunc(Kpoint,_system,_grid,npar_k,fftlib):
-            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,npar_k=npar_k,fftlib=fftlib)
+            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,**global_parameters)
             return func(data)
     else:
         remote_parameters = {'_system' : system , '_grid' : grid, 'npar_k': parallel.npar_k,'fftlib':fftlib}
         def paralfunc(Kpoint,_system,_grid,npar_k,fftlib):
-            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,npar_k=npar_k,fftlib=fftlib)
+            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,**global_parameters)
             return func(data)
 
     if restart:

@@ -33,15 +33,8 @@ class System():
                     'spin':False,
                     'SHCryoo':False,
                     'SHCqiao':False,
-                    'random_gauge':False,
-                    'degen_thresh':-1 ,
-                    'delta_fz':0.1,
-                    'ksep': 50 ,
-                    'Emin': -np.Inf ,
-                    'Emax': np.Inf ,
                     'use_ws':True,
                     'periodic':(True,True,True),
-                    'use_wcc_phase':False
                        }
 
 
@@ -72,16 +65,6 @@ class System():
         minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90. Default: ``{use_ws}``
     frozen_max : float
         position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary. Default: ``{frozen_max}``
-    degen_thresh : float
-        threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals. Default: ``{degen_thresh}``
-    random_gauge : bool
-        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved. Default: ``{random_gauge}``
-    ksep: int
-        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. Default: ``{ksep}``
-    delta_fz:float
-        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
-    use_wcc_phase: bool
-        using wannier centres in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
     """ .format(**default_parameters)
 
     def __init__(self, old_format=False,    **parameters ):
@@ -292,12 +275,8 @@ class System():
         With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [m,n,iRvec] (Cartesian)
         """
         wannier_centres = self.wannier_centres_cart
-        w_centres = np.array([[j-i for j in wannier_centres] for i in wannier_centres])
-        if self.use_wcc_phase:
-            return self.iRvec.dot(self.real_lattice)[None,None,:,:]+ w_centres[:,:,None,:]
-        else:
-            return self.iRvec.dot(self.real_lattice)[None,None,:,:]
-
+        w_centres_diff = np.array([[j-i for j in wannier_centres] for i in wannier_centres])
+        return self.iRvec.dot(self.real_lattice)[None,None,:,:]+ w_centres_diff[:,:,None,:]
 
 
     @property 

@@ -29,39 +29,80 @@ def _rotate_matrix(X):
 
    
 class Data_K():
-    def __init__(self,system,dK,grid,Kpoint=None,npar=0,fftlib='fftw',npar_k=1 ):
+    default_parameters =  {
+                    'frozen_max': -np.Inf,
+                    'random_gauge':False,
+                    'degen_thresh':-1 ,
+                    'delta_fz':0.1,
+                    'ksep': 50 ,
+                    'Emin': -np.Inf ,
+                    'Emax': np.Inf ,
+                    'use_wcc_phase':False,
+                    'fftlib' : 'fftw',
+                    'npar_k' : 1 
+                       }
+
+    __doc__ = """
+    class to store data of the FFT grid. Is destroyed after  everything is evaluated for the FFT grid
+
+    Parameters
+    -----------
+    frozen_max : float
+        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary. 
+        If not specified, attempts to read this value from system. Othewise set to  ``{frozen_max}``
+    degen_thresh : float
+        threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals. Default: ``{degen_thresh}``
+    random_gauge : bool
+        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved. Default: ``{random_gauge}``
+    ksep: int
+        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. Default: ``{ksep}``
+    delta_fz:float
+        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
+    use_wcc_phase: bool
+        using wannier centres in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
+    """ .format(**default_parameters)
+
+
+
+    def __init__(self,system,dK,grid,Kpoint=None,**parameters):
 #        self.spinors=system.spinors
         self.system=system
+        self.set_parameters(**parameters)
         self.NKFFT=grid.FFT
         self.select_K=np.ones(self.NKFFT_tot,dtype=bool)
         self.findif=grid.findif
         self.cell_volume=self.system.cell_volume
         self.num_wann=self.system.num_wann
         self.Kpoint=Kpoint
-        self.frozen_max=system.frozen_max
-        self.random_gauge=system.random_gauge
-        self.degen_thresh=system.degen_thresh
-        self.delta_fz=system.delta_fz
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
-        self.ksep = system.ksep
-        self.use_wcc_phase=system.use_wcc_phase
         self.fft_R_to_k=FFT_R_to_k(self.system.iRvec,self.NKFFT,self.system.num_wann,
                self.system.wannier_centres_reduced,self.system.real_lattice,
-                numthreads=npar if npar>0 else 1,lib=fftlib,use_wcc_phase=self.use_wcc_phase)
-        self.Emin=system.Emin
-        self.Emax=system.Emax
-        self.poolmap=pool(npar_k)[0]
+                numthreads=self.npar_k if self.npar_k>0 else 1,lib=self.fftlib,use_wcc_phase=self.use_wcc_phase)
+        self.poolmap=pool(self.npar_k)[0]
 
         
         if self.use_wcc_phase:
+            self.cRvec_wcc=self.system.cRvec_wcc
             w_centres_diff = np.array([[j-i for j in self.system.wannier_centres_reduced] for i in self.system.wannier_centres_reduced])
             self.expdK=np.exp(2j*np.pi*(self.system.iRvec[None,None,:,:] +w_centres_diff[:,:,None,:]).dot(dK))
         else:
+            self.cRvec_wcc=self.system.cRvec[None,None,:,:]
             self.expdK=np.exp(2j*np.pi*self.system.iRvec.dot(dK))[None,None,:]
         self.HH_R=system.HH_R*self.expdK
         self.dK=dK
 
- 
+    def set_parameters(self,**parameters):
+        for param in self.default_parameters:
+            if param in parameters:
+                vars(self)[param]=parameters[param]
+            else: 
+                vars(self)[param]=self.default_parameters[param]
+        if 'frozen_max' not in parameters:
+            try : 
+                self.frozen_max= self.system.frozen_max
+            except:
+                pass 
+
 
 
 ###########################################
@@ -154,8 +195,8 @@ class Data_K():
                 return X
         XX_R=asymmetrize(XX_R, asym_before)
         for i in range(der):
-            shape_cR = np.shape(self.system.cRvec_wcc)
-            XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.system.cRvec_wcc.reshape((shape_cR[0],shape_cR[1],self.system.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
+            shape_cR = np.shape(self.cRvec_wcc)
+            XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec_wcc.reshape((shape_cR[0],shape_cR[1],self.system.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
         XX_R=asymmetrize(XX_R, asym_after)
         
         add_term = 0.0 # additional term under use_wcc_phase=True
@@ -886,8 +927,8 @@ class Data_K():
     def Omega_bar_der(self):
         print_my_name_start()
         _OOmega_K =  self.fft_R_to_k( (
-                        self.AA_R[:,:,:,alpha_A]*self.system.cRvec_wcc[:,:,:,beta_A ] -     
-                        self.AA_R[:,:,:,beta_A ]*self.system.cRvec_wcc[:,:,:,alpha_A])[:,:,:,:,None]*self.system.cRvec_wcc[:,:,:,None,:]   , hermitian=True)
+                        self.AA_R[:,:,:,alpha_A]*self.cRvec_wcc[:,:,:,beta_A ] -     
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wcc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wcc[:,:,:,None,:]   , hermitian=True)
         return self._rotate(_OOmega_K)
 
     @lazy_property.LazyProperty
