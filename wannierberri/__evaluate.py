@@ -140,7 +140,8 @@ As a result, the integration will be performed over NKFFT x NKdiv
         import ray
         if parallel_module=='ray':
             ray.init()
-        elif parallel_module.endswith('slurm'):
+            # ray.init(num_cpus=nparK)
+        elif parallel_module == 'ray-cluster':
             ray.init(address='auto', _node_ip_address=os.environ["ip_head"].split(":")[0], _redis_password=os.environ["redis_password"])
             parallel_module='ray'
         nparK=int(round(ray.available_resources()['CPU']))

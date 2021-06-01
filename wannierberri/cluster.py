@@ -5,7 +5,7 @@
 
 
 Usage: 
-   python -m wannierberri.slurm  --exp-name <Job name>  --num-nodes <number of nodes> --partition cmt --command "<comand to run>"
+   python -m wannierberri.cluster --batch-system <slurm or pbs> --exp-name <Job name>  --num-nodes <number of nodes> --partition cmt --command "<comand to run>"
 
 
 """
@@ -17,7 +17,7 @@ import time
 import os
 from pathlib import Path
 import subprocess
-from .__sbatch_template import text
+from .__cluster_template import slurm_text, pbs_torque_text
 
 JOB_NAME = "{{JOB_NAME}}"
 NUM_NODES = "{{NUM_NODES}}"
@@ -34,6 +34,10 @@ SPILLING = "{{SPILLING}}"
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--batch-system", type=str, required=True,
+        help="The batch system to use. Only Slurm and PBS implemented.."
+    )
     parser.add_argument(
         "--exp-name", type=str, required=True,
         help="The job name and path to logging file (exp_name.log)."
@@ -94,6 +98,16 @@ if __name__ == '__main__':
     )
 
 
+    batch_system = args.batch_system.lower()
+    if batch_system == "slurm":
+        text = slurm_text
+        submit_command = "sbatch"
+    elif batch_system == "pbs":
+        text = pbs_torque_text
+        submit_command = "qsub"
+    else:
+        error("Batch system not identified. Only slurm or pbs are currently implemented.")
+
     if args.spilling_directory == "":
         text = text.replace(SPILLING, "")
     else:
@@ -104,8 +118,15 @@ if __name__ == '__main__':
 
     text = text.replace(JOB_NAME, job_name)
     text = text.replace(NUM_NODES, str(args.num_nodes))
-    text = text.replace(NUM_GPUS_PER_NODE, 
-                 f"#SBATCH --gpus-per-task={args.num_gpus}" if args.num_gpus>0 else "")
+
+    gpu_text = ""
+    if args.num_gpus > 0:
+        if batch_system == "slurm":
+            gpu_text = f"#SBATCH --gpus-per-task={args.num_gpus}"
+        elif batch_system == "pbs":
+            gpu_text = f":gpus={args.num_gpus}"
+    text = text.replace(NUM_GPUS_PER_NODE, gpu_text)
+
     text = text.replace(PARTITION_NAME, str(args.partition))
     text = text.replace(COMMAND_PLACEHOLDER, str(args.command))
     text = text.replace(LOAD_ENV, str(args.load_env))
@@ -130,9 +151,9 @@ if __name__ == '__main__':
     # ===== submit the job  =====
     if args.submit:
         print("Start to submit job!")
-        subprocess.Popen(["sbatch", script_file])
+        subprocess.Popen([submit_command, script_file])
         print("Job submitted!" )
     else:
-        print( f"Now you may submit it to the queue with ' sbatch {script_file} '" )
+        print( f"Now you may submit it to the queue with ' {submit_command} {script_file} '" )
 
     sys.exit(0)
