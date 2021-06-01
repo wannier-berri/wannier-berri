@@ -139,7 +139,8 @@ As a result, the integration will be performed over NKFFT x NKdiv
         import ray
         if parallel_module=='ray':
             ray.init()
-        elif parallel_module.endswith('slurm'):
+            # ray.init(num_cpus=nparK)
+        elif parallel_module == 'ray-cluster':
             ray.init(address='auto', _node_ip_address=os.environ["ip_head"].split(":")[0], _redis_password=os.environ["redis_password"])
             parallel_module='ray'
         nparK=int(round(ray.available_resources()['CPU']))
@@ -159,10 +160,10 @@ As a result, the integration will be performed over NKFFT x NKdiv
 
 
     if parallel_module.startswith('ray'):
-        remote_parameters = {'system' : system , 'grid' : grid, 'nparFFT': nparFFT,'fftlib':fftlib}
+        remote_parameters = {'_system' : ray.put(system) , '_grid' : ray.put(grid), 'nparFFT': nparFFT,'fftlib':fftlib}
         @ray.remote
-        def paralfunc(Kpoint,system,grid,nparFFT,fftlib):
-            data=Data_K(system,Kpoint.Kp_fullBZ,grid=grid,Kpoint=Kpoint,npar=nparFFT,fftlib=fftlib)
+        def paralfunc(Kpoint,_system,_grid,nparFFT,fftlib):
+            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,npar=nparFFT,fftlib=fftlib)
             return func(data)
     else:
         paralfunc=functools.partial(
