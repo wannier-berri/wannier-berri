@@ -13,8 +13,19 @@ setuptools.setup(
      description="Advanced tool for Wannier interpolation",
      long_description=long_description,
      long_description_content_type="text/markdown",
-     install_requires=['numpy', 'scipy >= 1.0', 'lazy_property','colorama','termcolor','pyfiglet','termcolor','pyFFTW>=0.12.0', 'packaging>=20.8','matplotlib','fortio>=0.4'],
-     url="https://github.com/stepan-tsirkin/wannier-berri",
+     python_requires='>=3.6',
+     install_requires=[
+                        'numpy', 
+                        'scipy >= 1.0', 
+                        'lazy_property',
+                        'colorama','termcolor','pyfiglet',
+                        'pyFFTW>=0.12.0', 
+                        'packaging>=20.8',
+                        'matplotlib',
+                        'fortio>=0.4',
+                        'ray[default]'
+                      ],
+     url="https://wannier-berri.org",
      packages=setuptools.find_packages(),
      classifiers=[
          "Programming Language :: Python :: 3",

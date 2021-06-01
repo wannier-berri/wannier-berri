@@ -7,11 +7,12 @@ from pytest import approx
 
 import wannierberri as wberri
 
+from conftest import parallel_serial
 from create_system import create_files_Fe_W90, system_Fe_W90
 from compare_result import compare_energyresult
 
 @pytest.fixture(scope="module")
-def result_kubo_Fe_W90(output_dir, system_Fe_W90):
+def result_kubo_Fe_W90(output_dir, system_Fe_W90,parallel_serial):
     system = system_Fe_W90
 
     num_proc = 0
@@ -39,7 +40,7 @@ def result_kubo_Fe_W90(output_dir, system_Fe_W90):
             Efermi = Efermi,
             omega = omega,
             quantities = ["opt_conductivity", "opt_SHCqiao", "opt_SHCryoo"],
-            numproc = num_proc,
+            parallel=parallel_serial,
             adpt_num_iter = adpt_num_iter,
             parameters = kubo_params,
             fout_name = os.path.join(output_dir, fout_name),
