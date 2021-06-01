@@ -38,14 +38,19 @@ def compare_texts(script_text, ref_text, variable_strings):
                 raise AssertionError(f"Lines \n<{l1}>\n and \n<{l2}>\n do not match")
 
 
-def test_slurm(rootdir, output_dir, check_command_output):
-    command=['python',
+@pytest.fixture(scope="module")
+def check_cluster_script(rootdir, output_dir, check_command_output):
+    variable_strings = {}
+    variable_strings ['slurm'] = ["#SBATCH --job-name=my_first_job_","#SBATCH --output=my_first_job_"]
+    variable_strings ['pbs']   = ["#PBS -N my_first_job_", "#PBS -o my_first_job_", "#PBS -e my_first_job_"]
+    def _inner(cluster_type):
+        command=['python',
              '-m',
              'wannierberri.cluster',
              '--batch-system',
-             'slurm',
+             cluster_type,
              '--exp-name',
-             'my_first_job_slurm',
+             'my_first_job_'+cluster_type,
              '--num-nodes',
              '4',
              '--partition',
@@ -57,41 +62,19 @@ def test_slurm(rootdir, output_dir, check_command_output):
              '12.34',
              '--sleep-worker=5',
              '--no-submit']
-    stdout=check_command_output(command)
-    print (stdout)
-    script_name=stdout.split("'")[-2].split()[-1]
-    print (script_name)
-    script_text = open(script_name,"r").readlines()
-    ref_text    = open(os.path.join(rootdir,"reference","my_first_job_slurm.sh"),"r").readlines()
-    variable_strings = ["#SBATCH --job-name=my_first_job_","#SBATCH --output=my_first_job_"]
-    compare_texts(script_text, ref_text, variable_strings)
-    os.replace(script_name, os.path.join(output_dir, script_name))
+        stdout=check_command_output(command)
+        print (stdout)
+        script_name=stdout.split("'")[-2].split()[-1]
+        print (script_name)
+        script_text = open(script_name,"r").readlines()
+        ref_text    = open(os.path.join(rootdir,"reference",f"my_first_job_{cluster_type}.sh"),"r").readlines()
+        compare_texts(script_text, ref_text, variable_strings[cluster_type])
+        os.replace(script_name, os.path.join(output_dir, script_name))
+    return _inner
 
-def test_pbs(rootdir, output_dir, check_command_output):
-    command=['python',
-             '-m',
-             'wannierberri.cluster',
-             '--batch-system',
-             'pbs',
-             '--exp-name',
-             'my_first_job_pbs',
-             '--num-nodes',
-             '4',
-             '--partition',
-             'express',
-             '--command',
-             "'python -u wb-example.py'",
-             '--num-gpus=3',
-             '--sleep-head',
-             '12.34',
-             '--sleep-worker=5',
-             '--no-submit']
-    stdout=check_command_output(command)
-    print (stdout)
-    script_name=stdout.split("'")[-2].split()[-1]
-    print (script_name)
-    script_text = open(script_name,"r").readlines()
-    ref_text    = open(os.path.join(rootdir,"reference","my_first_job_pbs.sh"),"r").readlines()
-    variable_strings = ["#PBS -N my_first_job_", "#PBS -o my_first_job_", "#PBS -e my_first_job_"]
-    compare_texts(script_text, ref_text, variable_strings)
-    os.replace(script_name, os.path.join(output_dir, script_name))
+def test_pbs(check_cluster_script):
+    check_cluster_script('pbs')
+
+
+def test_slurm(check_cluster_script):
+    check_cluster_script('slurm')
