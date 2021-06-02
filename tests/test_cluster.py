@@ -47,7 +47,7 @@ def test_cluster_script(cluster_type, rootdir, output_dir, check_command_output)
     else:
         raise ValueError("cluster_type not identified. Only slurm or pbs.")
 
-    command=['python3.8',
+    command=['python',
          '-m',
          'wannierberri.cluster',
          '--batch-system',
