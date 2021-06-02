@@ -166,18 +166,17 @@ def derOmega(data_K,op=None,ed=None):
         # orange terms
         formula =  TraceFormula ( [ ('n', dO ) ],ndim=2,TRodd=False,Iodd=True)
         formula.add_term  ( ('nl,ln',Dd, -2*O ) )
-        formula.add_term  ( ('mn',O*0 ) )
         for s,a,b in ( +1.,'alpha','beta'),(-1.,'beta','alpha'):
             #  blue terms
             formula.add_term( ('nl,ln',    Acal_ [a] ,  2*W_[b] *s ) )
             formula.add_term( ('nl,lp,pn', Acal_ [a] ,  2*V_[b] *s, Dd ) )
-#            formula.add_term( ('nl,lp,pn', Acal_ [a] ,  2*Vd    *s, D_[b] ) )
-#            formula.add_term( ('nl,lm,mn', Acal_ [a] , -2*D_[b] *s, Vd ) )
-#            formula.add_term( ('nl,lm,mn', Acal_ [a] , -2*Dd    *s, V_[b] ) )
+            formula.add_term( ('nl,lp,pn', Acal_ [a] ,  2*Vd    *s, D_[b] ) )
+            formula.add_term( ('nl,lm,mn', Acal_ [a] , -2*D_[b] *s, Vd ) )
+            formula.add_term( ('nl,lm,mn', Acal_ [a] , -2*Dd    *s, V_[b] ) )
             #  green terms
             formula.add_term( ('nl,ln',       D_ [a] , -2*dA_[b]*s ) )
-#            formula.add_term( ('nl,lp,pn',    D_ [a] , -2*A_[b] *s, Dd ) )
-#            formula.add_term( ('nl,lm,mn',    D_ [a] ,  2*Dd    *s, A_[b] ) )
+            formula.add_term( ('nl,lp,pn',    D_ [a] , -2*A_[b] *s, Dd ) )
+            formula.add_term( ('nl,lm,mn',    D_ [a] ,  2*Dd    *s, A_[b] ) )
         return formula
 
 
