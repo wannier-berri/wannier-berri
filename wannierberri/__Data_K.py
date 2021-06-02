@@ -820,8 +820,6 @@ class Data_K(System):
         return mergeDataIO(data_list)
 
 
-
-
     @lazy_property.LazyProperty
     def A_Hbar(self):
         return self._R_to_k_H(self.AA_R.copy(),flag='AA')

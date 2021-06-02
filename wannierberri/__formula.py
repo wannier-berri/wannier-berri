@@ -100,7 +100,7 @@ class Formula():
 
     def __call__(self,ik,ib_in_start,ib_in_end,trace):
         res = sum( term(ik,ib_in_start,ib_in_end) for term in self.term_list )
-        if trace: 
+        if trace:
             return np.einsum('nn...->...',res).real
         else:
             if self.hermitian:
@@ -174,14 +174,37 @@ class MatrixProductTerm():
     @lazy_property.LazyProperty
     def ibrange(self):
         return np.arange(self.nb)
-
-
+    #TODO think if there are more than 3 matrix. Can it be written in a another way for any num_mat.
     def __call__(self,ik,ib_in_start,ib_in_end):
         result=MatrixProductTerm_select(self.mat_list[0][ik],self.ind_list[0],ib_in_start,ib_in_end)
-        for i in range(1,self.num_mat):
-            m1=MatrixProductTerm_select(self.mat_list[i][ik],self.ind_list[i],ib_in_start,ib_in_end)
+        if self.num_mat==2:
+            m1=MatrixProductTerm_select(self.mat_list[1][ik],self.ind_list[1],ib_in_start,ib_in_end)
             result = matrix_prod_cart(result,m1)
+        elif self.num_mat==3:
+            for ind in self.ind_list:
+                if (int(ind[0] in INNER_IND)+int(ind[1] in INNER_IND))%2 ==0:
+                    mat_same_ind = self.ind_list.index(ind)
+                    same_l = False
+                    if ind[1] in OUTER_IND:
+                        same_l = True
+                    i_3 = int('012'.replace(str(mat_same_ind),'')[1])
+                    third_mat = MatrixProductTerm_select(self.mat_list[mat_same_ind][ik],
+                        self.ind_list[mat_same_ind],ib_in_start,ib_in_end)
+            m1=MatrixProductTerm_select(self.mat_list[i_3][ik],self.ind_list[i_3],ib_in_start,ib_in_end)
+            if same_l:
+                result = result.transpose(1,0,2,3)
+                m1 = m1.transpose(1,0,2,3)
+            result = matrix_prod_cart(result,m1)
+            result = matrix_prod_cart(third_mat,result)
         return  self.mult*result
+
+  #  def __call__(self,ik,ib_in_start,ib_in_end):
+  #      print(self.ind_list)
+  #      result=MatrixProductTerm_select(self.mat_list[0][ik],self.ind_list[0],ib_in_start,ib_in_end)
+  #      for i in range(1,self.num_mat):
+  #          m1=MatrixProductTerm_select(self.mat_list[i][ik],self.ind_list[i],ib_in_start,ib_in_end)
+  #          result = matrix_prod_cart(result,m1)
+  #      return  self.mult*result
 
 #        return self.mult*MatrixProductTerm_call(ik,ib_in_start,ib_in_end,self.ind_list,self.mat_list,self.nb)
 
