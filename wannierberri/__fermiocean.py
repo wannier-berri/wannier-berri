@@ -27,13 +27,24 @@ def berry_dipole(data_K,Efermi,kpart=None,tetra=False):
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
 
+def Hplus_der(data_K,Efermi,kpart=None,tetra=False):
+    res =  iterate_kpart(trF.derHplus,data_K,Efermi,kpart,tetra)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
+
+def tensor_K(data_K,Efermi,kpart=None,tetra=False):
+    Hp = Hplus_der(data_K,Efermi,kpart=None,tetra=False).data
+    D = berry_dipole(data_K,Efermi,kpart=None,tetra=False).data
+    tensor_K = - elementary_charge**2/(2*hbar)*(Hp - 2*Efermi[:,None,None]*D  )
+    return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
+
 def Omega_tot(data_K,Efermi,kpart=None,tetra=False):
     return iterate_kpart(trF.Omega,data_K,Efermi,kpart,tetra)
 
 def Morb(data_K,Efermi,kpart=None,tetra=False):
     fac_morb =  -eV_au/bohr**2
     return fac_morb*(iterate_kpart(trF.Hplusminus,data_K,Efermi,kpart,tetra) 
-            - 2*Omega_tot(data_K,Efermi,kpart).mul_array(Efermi) )*data_K.cell_volume
+            - 2*Omega_tot(data_K,Efermi,kpart,tetra).mul_array(Efermi) )*data_K.cell_volume
 
 ##################################
 ### The private part goes here  ##
@@ -163,14 +174,14 @@ class  FermiOcean():
                 else:
                     for ik,bnd in enumerate(bands):
                         for n in bnd :
-                            self.values[ik][n] += A[ik, :n + 1, :n + 1].sum(axis=(0,1))
+                            self.values[ik][n] += A[ik, :n + 1, :n + 1].sum(axis=(0,1)).real
             elif Aind == 'n':
                 if len(ABC) > 2:
                     warning("only one matrix should be given for 'n'")
                 else:
                     for ik,bnd in enumerate(bands):
                         for n in bnd :
-                            self.values[ik][n] += A[ik, :n + 1].sum(axis=0)
+                            self.values[ik][n] += A[ik, :n + 1].sum(axis=0).real
             else:
                 raise RuntimeError('Wrong indexing for array A : {}'.format(Aind))
 

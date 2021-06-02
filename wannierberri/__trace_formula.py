@@ -47,7 +47,7 @@ def Hplusminus(data_K,op=None,ed=None,sign=1):
         D = data_K.D_H[op:ed]
         M = np.einsum("klla->kla",data_K.Morb_Hbar[op:ed]).real
         OE = np.einsum("km,kmma->kma",E,data_K.Omega_Hbar[op:ed]).real 
-        AEA = data_K.A_E_A
+        AEA = data_K.A_E_A[op:ed]
         # now define the "alpha" and "beta" components
         A_,B_,D_={},{},{}
         for var in 'A','B','D':
@@ -56,7 +56,6 @@ def Hplusminus(data_K,op=None,ed=None,sign=1):
         # This is the formula to be implemented:
         formula =  TraceFormula ( [ ('n', sign*OE+M ) ],ndim=1,TRodd=True,Iodd=False)
         if sign == 1:
-            #formula.add_term( ('nl,ln',A_['alpha'],-2j*E[:,None,:,None]*A_['beta']) )
             formula.add_term( ('mn',-2*AEA) )
         formula.add_term( ('nl,ln',D_['alpha'],-2 *B_['beta' ] ) )
         formula.add_term( ('nl,ln',D_['beta'],2 *B_['alpha' ] ) )
@@ -65,6 +64,73 @@ def Hplusminus(data_K,op=None,ed=None,sign=1):
         
         formula.add_term( ('nl,ln',D_['alpha'],-2j*sign*E[:,:,None,None]*D_['beta'] ) )
         formula.add_term( ('nl,ln',D_['alpha'],-2j*sign*E[:,None,:,None]*D_['beta'] ) )
+        return formula
+
+def derHplus(data_K,op=None,ed=None):
+        "an attempt for a faster implementation"
+        # first give our matrices short names
+        E = data_K.E_K[op:ed]
+        W  = data_K.del2E_H[op:ed]
+        _V = data_K.V_H[op:ed]
+        _D = data_K.D_H[op:ed]
+        dOn = data_K.Omega_bar_der_rediag.real[op:ed]
+        dHn = data_K.Morb_Hbar_der_diag.real[op:ed]
+        Bplus = data_K.B_Hbarplus_dagger_fz[op:ed].transpose(0,2,1,3)
+        dBpln = data_K.gdBbarplus_fz(op,ed,index='ln')[op:ed]
+        B = data_K.B_Hbar_fz[op:ed,:,:,:,None]
+        A  = data_K.A_Hbar[op:ed,:,:,:,None]
+        f,df=data_K.f_E(1)
+        f_m,df_m=data_K.f_E(-1)
+        f,df,f_m,df_m=f[op:ed,:,None,None,None],df[op:ed,:,None,None,None],f_m[op:ed,:,None,None,None],df_m[op:ed,:,None,None,None]
+        O = data_K.Omega_Hbar[op:ed,:,:,:,None]
+        H = data_K.Morb_Hbar[op:ed,:,:,:,None]
+        El = E[:,:,None,None]
+        En2 = E[:,None,:,None,None]
+        El2 = E[:,:,None,None,None]
+        En = E[:,None,:,None]
+        Bpcal= ((-Bplus-1j*_D*(En+El))*data_K.dEig_inv[op:ed,:,:,None])[:,:,:,:,None]
+        
+        Bp  =  Bplus[:,:,:,:,None]
+        V = _V[:,:,:,:,None]
+        Vd = _V[:,:,:,None,:]
+        D = _D[:,:,:,:,None]
+        Dd = _D[:,:,:,None,:]
+
+        del _V,E,Bplus,_D
+        # now define the "alpha" and "beta" components
+        Bp_,D_,W_,V_,Bpcal_,dBpln_,B_,A_={},{},{},{},{},{},{},{}
+        for var in 'Bp','D','Bpcal','W','V','dBpln','B','A':
+            for c in 'alpha','beta':
+                locals()[var+"_"][c]=locals()[var][:,:,:,globals()[c+'_A']]
+        # This is the formula to be implemented:
+        formula =  TraceFormula ([('n',dHn+dOn*El)],ndim=2,TRodd=True,Iodd=False)
+        formula.add_term( ('mn', O.transpose(0,2,1,3,4)*Vd) )
+        formula.add_term( ('nl,ln', Dd, O*-2.*En2 ))
+        formula.add_term( ('nl,ln', Dd,-1*H ))
+        formula.add_term( ('nl,ln', H ,Dd ))
+        for s,a,b in ( +1.,'alpha','beta'),(-1.,'beta','alpha'):
+            #  blue terms
+            formula.add_term( ('nl,ln',    Bpcal_ [a] ,  2*W_[b] *s ) )
+            formula.add_term( ('nl,lp,pn', Bpcal_ [a] ,  2*V_[b] *s, Dd ) )
+            formula.add_term( ('nl,lp,pn', Bpcal_ [a] ,  2*Vd    *s, D_[b] ) )
+            formula.add_term( ('nl,lm,mn', Bpcal_ [a] , -2*D_[b] *s, Vd ) )
+            formula.add_term( ('nl,lm,mn', Bpcal_ [a] , -2*Dd    *s, V_[b] ) )
+            #  green terms
+            #  frozen window of B matrix
+            formula.add_term( ('nl,ln',       D_ [a] , -2*dBpln_[b]*s ) )
+            formula.add_term( ('nl,lp,pn',    D_ [a] , -2*A_[b]       *s, Dd*En2 ) )
+            formula.add_term( ('nl,lp,pn',    D_ [a] , -2*A_[b]*El2*f *s, Dd ) )
+            formula.add_term( ('nl,lp,pn',    D_ [a] , -2*B_[b]*f_m   *s, Dd ) )
+            formula.add_term( ('nl,lp,pn',    D_ [a] , -2*Vd*f        *s, A_[b] ) )
+            formula.add_term( ('nl,lp,pn',    D_ [a] , -2*Vd*df_m*En2 *s, A_[b] ) )
+            formula.add_term( ('nl,lp,pn',    D_ [a] ,  2*Vd*df_m     *s, B_[b] ) )
+            formula.add_term( ('nl,lm,mn',    D_ [a] ,  2*Dd       *s, A_[b]*En2 ) )
+            formula.add_term( ('nl,lm,mn',    D_ [a] ,  2*Dd*El2*f *s, A_[b] ) )
+            formula.add_term( ('nl,lm,mn',    D_ [a] ,  2*Dd*f_m   *s, B_[b] ) )
+            formula.add_term( ('nl,lm,mn',    D_ [a] , -2*A_[b]    *s, Vd ) )
+                              
+            formula.add_term(( 'nl,lp,pn',D_[a] , Vd*-1j*s   , D_[b] ))
+            formula.add_term(( 'nl,lm,mn',D_[a] , D_[b]*-1j*s , Vd   ))
         return formula
 
 def derOmega(data_K,op=None,ed=None):
@@ -100,17 +166,18 @@ def derOmega(data_K,op=None,ed=None):
         # orange terms
         formula =  TraceFormula ( [ ('n', dO ) ],ndim=2,TRodd=False,Iodd=True)
         formula.add_term  ( ('nl,ln',Dd, -2*O ) )
+        formula.add_term  ( ('mn',O*0 ) )
         for s,a,b in ( +1.,'alpha','beta'),(-1.,'beta','alpha'):
             #  blue terms
             formula.add_term( ('nl,ln',    Acal_ [a] ,  2*W_[b] *s ) )
             formula.add_term( ('nl,lp,pn', Acal_ [a] ,  2*V_[b] *s, Dd ) )
-            formula.add_term( ('nl,lp,pn', Acal_ [a] ,  2*Vd    *s, D_[b] ) )
-            formula.add_term( ('nl,lm,mn', Acal_ [a] , -2*D_[b] *s, Vd ) )
-            formula.add_term( ('nl,lm,mn', Acal_ [a] , -2*Dd    *s, V_[b] ) )
+#            formula.add_term( ('nl,lp,pn', Acal_ [a] ,  2*Vd    *s, D_[b] ) )
+#            formula.add_term( ('nl,lm,mn', Acal_ [a] , -2*D_[b] *s, Vd ) )
+#            formula.add_term( ('nl,lm,mn', Acal_ [a] , -2*Dd    *s, V_[b] ) )
             #  green terms
             formula.add_term( ('nl,ln',       D_ [a] , -2*dA_[b]*s ) )
-            formula.add_term( ('nl,lp,pn',    D_ [a] , -2*A_[b] *s, Dd ) )
-            formula.add_term( ('nl,lm,mn',    D_ [a] ,  2*Dd    *s, A_[b] ) )
+#            formula.add_term( ('nl,lp,pn',    D_ [a] , -2*A_[b] *s, Dd ) )
+#            formula.add_term( ('nl,lm,mn',    D_ [a] ,  2*Dd    *s, A_[b] ) )
         return formula
 
 
@@ -182,7 +249,7 @@ class TraceFormula():
                                mat.shape,term,self.ndim)  )
             if num_mat==1:
                 assert terms[0] in ('n','mn') , (
-                        "a single term should be either trace('nn') or sum-over-states('n') "+
+                        "a single term should be either trace('mn') or sum-over-states('n') "+
                         "or sum of the whole matrix ('mn' ) . found '{}'".format(terms[0])    )
                 return  (terms[0],inp[1])
             for i,t in enumerate(terms):

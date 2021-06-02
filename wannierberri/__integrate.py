@@ -57,6 +57,7 @@ calculators_trans={
          'Morb1'       : fermisea2.Morb1,
          'Morb2'       : fermisea2.Morb2,
          'Morb_ocean'       : fermiocean.Morb,
+         'Morb2_ocean'       : fermiocean2.Morb,
          'ahc'        : fermisea2.AHC ,
          'ahc2'        : fermisea2.AHC2 ,
          'ahc_ocean'  : fermiocean.AHC ,
@@ -84,6 +85,8 @@ calculators_trans={
          'berry_dipole_findif'     : fermisea2.tensor_D_findif,
          'gyrotropic_Korb'         : fermisea2.tensor_K,
          'gyrotropic_Korb_2'       : fermisea2.tensor_K_2,
+         'gyrotropic_Korb_ocean'         : fermiocean.tensor_K,
+         'gyrotropic_Korb2_ocean'       : fermiocean2.tensor_K,
 
          'gyrotropic_Kspin'        : fermisea2.gyrotropic_Kspin,
          'gyrotropic_Korb_fsurf'   : nonabelian.gyrotropic_Korb,

@@ -27,8 +27,25 @@ def dos(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
     return iterate_kpart(frml.Identity,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh,fder=1)*data_K.cell_volume
 
 def berry_dipole(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
-    return iterate_kpart(frml.derOmega,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
+    res = iterate_kpart(frml.derOmega,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
 
+def Hplus_der(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
+    res = iterate_kpart(frml.derHplus,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    return res
+
+def tensor_K(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
+    Hp = Hplus_der(data_K,Efermi,kpart=kpart,tetra=tetra,degen_thresh=-1).data
+    D = berry_dipole(data_K,Efermi,kpart=kpart,tetra=tetra,degen_thresh=-1).data
+    tensor_K = - elementary_charge**2/(2*hbar)*(Hp - 2*Efermi[:,None,None]*D  )
+    return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
+
+def Morb(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
+    fac_morb =  -eV_au/bohr**2
+    return fac_morb*(iterate_kpart(frml.Hplusminus,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
+            - 2*Omega_tot(data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh).mul_array(Efermi) )*data_K.cell_volume
 
 def Omega_tot(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
     return iterate_kpart(frml.Omega,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
