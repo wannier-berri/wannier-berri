@@ -107,9 +107,9 @@ class Formula():
                 res=0.5*(res+np.swapaxes(res,0,1).conj())
             return np.array(res,dtype=complex)
 
-    def add_term(self,ind_string ,mat_list ,mult=1.):
+    def add_term(self,ind_string ,mat_list ,mult=1.,M_mat=None):
         self.term_list.append( 
-                  MatrixProductTerm(ind_string , mat_list ,self.ndim , mult)
+                  MatrixProductTerm(ind_string , mat_list ,self.ndim , mult,M_mat)
                              )
 
 
@@ -119,9 +119,10 @@ class MatrixProductTerm():
         same index should appear only on neighbouring positions (or frst and last)
     """
 
-    def __init__(self,ind_string ,mat_list,ndim,mult):
+    def __init__(self,ind_string ,mat_list,ndim,mult,M_mat):
         self.ndim=ndim
         self.mult=mult
+        self.M_mat = M_mat
         if type(mat_list) not in (list,tuple):
             mat_list=(mat_list,)
         self.num_mat = len(mat_list)
@@ -160,10 +161,10 @@ class MatrixProductTerm():
             assert mat.ndim==self.ndim+1+len(term) ,  ( 
                           "shape of matrix {} does not correspond to index '{}' and dimension of the result {}".format(
                                mat.shape,term,self.ndim)  )
-            if len(term)==2:
-                if term[0]==term[1]:
-                    raise NotImplementedError("use of a diagonal of a matrix is not implemented")
-                    mat=mat[:,np.arange(mat.shape[1]),np.arange(mat.shape[1])]
+#            if len(term)==2:
+#                if term[0]==term[1]:
+#                    raise NotImplementedError("use of a diagonal of a matrix is not implemented")
+#                    mat=mat[:,np.arange(mat.shape[1]),np.arange(mat.shape[1])]
             self.mat_list.append(mat)
             self.ind_list.append(term)
             
@@ -174,39 +175,18 @@ class MatrixProductTerm():
     @lazy_property.LazyProperty
     def ibrange(self):
         return np.arange(self.nb)
-    #TODO think if there are more than 3 matrix. Can it be written in a another way for any num_mat.
+
+
     def __call__(self,ik,ib_in_start,ib_in_end):
         result=MatrixProductTerm_select(self.mat_list[0][ik],self.ind_list[0],ib_in_start,ib_in_end)
-        if self.num_mat==2:
-            m1=MatrixProductTerm_select(self.mat_list[1][ik],self.ind_list[1],ib_in_start,ib_in_end)
+        for i in range(1,self.num_mat):
+            #print('n',ib_in_start,ib_in_end)
+            #print('D',ib_in_end,self.ind_list[0],result)
+            m1=MatrixProductTerm_select(self.mat_list[i][ik],self.ind_list[i],ib_in_start,ib_in_end)
             result = matrix_prod_cart(result,m1)
-        elif self.num_mat==3:
-            for ind in self.ind_list:
-                if (int(ind[0] in INNER_IND)+int(ind[1] in INNER_IND))%2 ==0:
-                    mat_same_ind = self.ind_list.index(ind)
-                    same_l = False
-                    if ind[1] in OUTER_IND:
-                        same_l = True
-                    i_3 = int('012'.replace(str(mat_same_ind),'')[1])
-                    third_mat = MatrixProductTerm_select(self.mat_list[mat_same_ind][ik],
-                        self.ind_list[mat_same_ind],ib_in_start,ib_in_end)
-            m1=MatrixProductTerm_select(self.mat_list[i_3][ik],self.ind_list[i_3],ib_in_start,ib_in_end)
-            if same_l:
-                result = result.transpose(1,0,2,3)
-                m1 = m1.transpose(1,0,2,3)
-            result = matrix_prod_cart(result,m1)
-            result = matrix_prod_cart(third_mat,result)
+            #print('B',ib_in_end,self.ind_list[1],m1)
+        #print(ik,'cart',np.einsum('nn...->...',self.mult*result.real))
         return  self.mult*result
-
-  #  def __call__(self,ik,ib_in_start,ib_in_end):
-  #      print(self.ind_list)
-  #      result=MatrixProductTerm_select(self.mat_list[0][ik],self.ind_list[0],ib_in_start,ib_in_end)
-  #      for i in range(1,self.num_mat):
-  #          m1=MatrixProductTerm_select(self.mat_list[i][ik],self.ind_list[i],ib_in_start,ib_in_end)
-  #          result = matrix_prod_cart(result,m1)
-  #      return  self.mult*result
-
-#        return self.mult*MatrixProductTerm_call(ik,ib_in_start,ib_in_end,self.ind_list,self.mat_list,self.nb)
 
 #def MatrixProductTerm_call(ik,ib_in_start,ib_in_end,self_ind_list,self_mat_list,self_nb):
 #    for i, (ind,m) in enumerate(zip(self_ind_list,self_mat_list)):
@@ -228,16 +208,15 @@ def MatrixProductTerm_select(mat,ind,ib_in_start,ib_in_end):
     return m1
     
 # take the product of two matrices in band indices (first indices)
+
 @njit(cache=True)
 def matrix_prod_cart(m1,m2):
-    m2=np.expand_dims(m2,1)
-    res=m1[:,0]*m2[0,:]
+    m2=np.expand_dims(m2,0)
+    m1=np.expand_dims(m1,2)
+    res=m1[:,0]*m2[:,0]
     for i in range(1,m1.shape[1]) :
-        res+=m1[:,i]*m2[i,:]
+        res+=m1[:,i]*m2[:,i]
     return res
-
-
-
 
 
 def _matrix_prod_cart(m1,m2,ind1,ind2):

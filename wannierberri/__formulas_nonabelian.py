@@ -80,9 +80,6 @@ def Hplusminus(data_K,op=None,ed=None,sign=1):
         D = data_K.D_H[op:ed]
         M = data_K.Morb_Hbar[op:ed]
         O = data_K.Omega_Hbar[op:ed]
-        AEA = data_K.A_E_A[op:ed]
-        #M = np.einsum("klla->kla",data_K.Morb_Hbar[op:ed]).real
-        #OE = np.einsum("km,kmma->kma",E,data_K.Omega_Hbar[op:ed]).real
         # now define the "alpha" and "beta" components
         A_,B_,D_={},{},{}
         for var in 'A','B','D':
@@ -90,15 +87,16 @@ def Hplusminus(data_K,op=None,ed=None,sign=1):
                 locals()[var+"_"][c]=locals()[var][:,:,:,globals()[c+'_A']]
         # This is the formula to be implemented:
         formula =  Formula (ndim=1,TRodd=True,Iodd=False,name="Hplusminus")
-        formula.add_term( 'mn',(M+sign*O*E[:,:,None,None]))
-        if sign == 1:
-            formula.add_term( 'mn',(AEA),-2 )
+       # formula.add_term( 'mn',(M+sign*O*E[:,:,None,None]))
+       # if sign == 1:
+       #     formula.add_term( 'ml,ln',(A_['alpha'],E[:,None,:,None]*A_['beta']),2j )
         formula.add_term( 'mL,Ln',(D_['alpha'],B_['beta' ] ),-2 )
-        formula.add_term( 'mL,Ln',(D_['beta'],B_['alpha' ] ),2 )
-        formula.add_term( 'mL,Ln',(D_['alpha'],E[:,None,:,None]*A_['beta'] ),-2*sign )
-        formula.add_term( 'mL,Ln',(D_['beta'],E[:,None,:,None] *A_['alpha'] ),2*sign )
-        formula.add_term( 'mL,Ln',(D_['alpha'],E[:,:,None,None]*D_['beta'] ),-2j*sign )
-        formula.add_term( 'mL,Ln',(D_['alpha'],E[:,None,:,None]*D_['beta'] ),-2j*sign )
+       # formula.add_term( 'mL,Ln',(D_['beta'],B_['alpha' ] ),2 )
+        #formula.add_term( 'mL,Ln',(D_['alpha'],E[:,None,:,None]*A_['beta'] ),-2*sign )
+        #formula.add_term( 'mL,Ln',(D_['beta'],E[:,None,:,None] *A_['alpha'] ),2*sign )
+        
+        #formula.add_term( 'mL,Ln',(D_['alpha'],E[:,:,None,None]*D_['beta'] ),-2j*sign )
+        #formula.add_term( 'mL,Ln',(D_['alpha'],E[:,None,:,None]*D_['beta'] ),-2j*sign )
         return formula
 
 
@@ -193,13 +191,13 @@ def derOmega(data_K,op=None,ed=None):
         #    #  blue terms
             formula.add_term( 'mL,Ln',    (Acal_ [a] , W_[b]         ),  2*s )
             formula.add_term( 'mL,LP,Pn', (Acal_ [a] , V_[b] , Dd    ),  2*s )
-        #    formula.add_term( 'mL,LP,Pn', (Acal_ [a] , Vd    , D_[b] ),  2*s )
-        #    formula.add_term( 'mL,Ll,ln', (Acal_ [a] , D_[b] , Vd    ), -2*s )
-        #    formula.add_term( 'mL,Ll,ln', (Acal_ [a] , Dd    , V_[b] ), -2*s )
+            formula.add_term( 'mL,LP,Pn', (Acal_ [a] , Vd    , D_[b] ),  2*s )
+            formula.add_term( 'mL,Ll,ln', (Acal_ [a] , D_[b] , Vd    ), -2*s )
+            formula.add_term( 'mL,Ll,ln', (Acal_ [a] , Dd    , V_[b] ), -2*s )
             #  green terms
             formula.add_term( 'mL,Ln',     (  D_ [a] , dA_[b]        ) , -2*s)
-         #   formula.add_term( 'mL,LP,Pn',  (  D_ [a] , A_[b] , Dd    ) , -2*s)
-         #   formula.add_term( 'mL,Ll,ln',  (  D_ [a] , Dd    , A_[b] ) ,  2*s)
+            formula.add_term( 'mL,LP,Pn',  (  D_ [a] , A_[b] , Dd    ) , -2*s)
+            formula.add_term( 'mL,Ll,ln',  (  D_ [a] , Dd    , A_[b] ) ,  2*s)
         return formula
 
 
