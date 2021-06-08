@@ -44,8 +44,10 @@ def tensor_K(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
 
 def Morb(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
     fac_morb =  -eV_au/bohr**2
-    return fac_morb*(iterate_kpart(frml.Hplusminus,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
-            - 2*Omega_tot(data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh).mul_array(Efermi) )*data_K.cell_volume
+  #  return fac_morb*(iterate_kpart(frml.Hplusminus,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
+  #          - 2*Omega_tot(data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh).mul_array(Efermi) )*data_K.cell_volume
+    return fac_morb*data_K.cell_volume*iterate_kpart(frml.Hplusminus,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
+  #  return fac_morb*data_K.cell_volume*-2*Omega_tot(data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh).mul_array(Efermi)
 
 def Omega_tot(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
     return iterate_kpart(frml.Omega,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
