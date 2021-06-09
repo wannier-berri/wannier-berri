@@ -178,36 +178,54 @@ class MatrixProductTerm():
 
 
     def __call__(self,ik,ib_in_start,ib_in_end):
+        #print(self.mat_list[0][ik])
         result=MatrixProductTerm_select(self.mat_list[0][ik],self.ind_list[0],ib_in_start,ib_in_end)
         for i in range(1,self.num_mat):
+           # print(self.mat_list[1][ik])
             #print('n',ib_in_start,ib_in_end)
-            #print('D',ib_in_end,self.ind_list[0],result)
+           # print(ik,'D',ib_in_start,ib_in_end,self.ind_list[0],result.shape)
             m1=MatrixProductTerm_select(self.mat_list[i][ik],self.ind_list[i],ib_in_start,ib_in_end)
             result = matrix_prod_cart(result,m1)
-            #print('B',ib_in_end,self.ind_list[1],m1)
-        #print(ik,'cart',np.einsum('nn...->...',self.mult*result.real))
+           # print(ik,'B',ib_in_start,ib_in_end,self.ind_list[1],m1.shape)
+           # print(ik,'cart',np.einsum('nn...->...',self.mult*result.real))
         return  self.mult*result
 
-#def MatrixProductTerm_call(ik,ib_in_start,ib_in_end,self_ind_list,self_mat_list,self_nb):
-#    for i, (ind,m) in enumerate(zip(self_ind_list,self_mat_list)):
-#        m1=MatrixProductTerm_select(m[ik],ind,ib_in_start,ib_in_end)
-#        result = m1 if i==0 else matrix_prod_cart(result,m1)
-#    return result
 
+#TODO work with not anti-sym matrix
+#@njit(cache=True)
+#def MatrixProductTerm_select(mat,ind,ib_in_start,ib_in_end,mat_T):
+#    m1=np.copy(mat)
+#    m1_T=np.copy(-mat_T)
+#    if ind[0] in INNER_IND:
+#        m1=m1[ib_in_start:ib_in_end]
+#        m1_T=m1_T[ib_in_start:ib_in_end]
+#    else :
+#        if ib_in_end - ib_in_start == 1:
+#            #m1=np.concatenate((m1_T[0:ib_in_start],m1[ib_in_end:]),axis=0)
+#            m1=np.concatenate((m1_T[0:ib_in_start],m1_T[ib_in_end:]),axis=0)
+#        else:
+#            m1=np.concatenate((m1[0:ib_in_start],m1[ib_in_end:]),axis=0)
+#    if ind[1] in INNER_IND:
+#        m1=m1[:,ib_in_start:ib_in_end]
+#    else :
+#        if ib_in_end - ib_in_start == 1:
+#            m1=np.concatenate((m1_T[:,0:ib_in_start],m1_T[:,ib_in_end:]),axis=1)
+#        else:
+#            m1=np.concatenate((m1[:,0:ib_in_start],m1[:,ib_in_end:]),axis=1)
+#    return m1
+    
 @njit(cache=True)
 def MatrixProductTerm_select(mat,ind,ib_in_start,ib_in_end):
     m1=np.copy(mat)
     if ind[0] in INNER_IND:
-        m1=m1[ib_in_start:ib_in_end]
+        m1=m1[:ib_in_end]
     else :
-        m1=np.concatenate((m1[0:ib_in_start],m1[ib_in_end:]),axis=0)
+        m1=m1[ib_in_end:]
     if ind[1] in INNER_IND:
-        m1=m1[:,ib_in_start:ib_in_end]
+        m1=m1[:,:ib_in_end]
     else :
-        m1=np.concatenate((m1[:,0:ib_in_start],m1[:,ib_in_end:]),axis=1)
+        m1=m1[:,ib_in_end:]
     return m1
-    
-# take the product of two matrices in band indices (first indices)
 
 @njit(cache=True)
 def matrix_prod_cart(m1,m2):

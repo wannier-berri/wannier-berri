@@ -87,18 +87,17 @@ def Hplusminus(data_K,op=None,ed=None,sign=1):
                 locals()[var+"_"][c]=locals()[var][:,:,:,globals()[c+'_A']]
         # This is the formula to be implemented:
         formula =  Formula (ndim=1,TRodd=True,Iodd=False,name="Hplusminus")
-       # formula.add_term( 'mn',(M+sign*O*E[:,:,None,None]))
-       # if sign == 1:
-       #     formula.add_term( 'ml,ln',(A_['alpha'],E[:,None,:,None]*A_['beta']),2j )
+        formula.add_term( 'mn',(M+sign*O*E[:,:,None,None]))
+        if sign == 1:
+            formula.add_term( 'ml,ln',(A_['alpha'],E[:,None,:,None]*A_['beta']),2j )
         formula.add_term( 'mL,Ln',(D_['alpha'],B_['beta' ] ),-2 )
-       # formula.add_term( 'mL,Ln',(D_['beta'],B_['alpha' ] ),2 )
-        #formula.add_term( 'mL,Ln',(D_['alpha'],E[:,None,:,None]*A_['beta'] ),-2*sign )
-        #formula.add_term( 'mL,Ln',(D_['beta'],E[:,None,:,None] *A_['alpha'] ),2*sign )
+        formula.add_term( 'mL,Ln',(D_['beta'],B_['alpha' ] ),2 )
+        formula.add_term( 'mL,Ln',(D_['alpha'],E[:,None,:,None]*A_['beta'] ),-2*sign )
+        formula.add_term( 'mL,Ln',(D_['beta'],E[:,None,:,None] *A_['alpha'] ),2*sign )
         
-        #formula.add_term( 'mL,Ln',(D_['alpha'],E[:,:,None,None]*D_['beta'] ),-2j*sign )
-        #formula.add_term( 'mL,Ln',(D_['alpha'],E[:,None,:,None]*D_['beta'] ),-2j*sign )
+        formula.add_term( 'mL,Ln',(D_['alpha'],E[:,:,None,None]*D_['beta'] ),-2j*sign )
+        formula.add_term( 'mL,Ln',(D_['alpha'],E[:,None,:,None]*D_['beta'] ),-2j*sign )
         return formula
-
 
 def derHplus(data_K,op=None,ed=None):
         "an attempt for a faster implementation"
@@ -107,52 +106,68 @@ def derHplus(data_K,op=None,ed=None):
         W  = data_K.del2E_H[op:ed]
         _V = data_K.V_H[op:ed]
         _D = data_K.D_H[op:ed]
-        dOn = data_K.Omega_bar_der_rediag.real[op:ed]
-        dHn = data_K.Morb_Hbar_der_diag.real[op:ed]
-        Bp = data_K.B_Hbarplus_dagger_fz[op:ed]
-        dBp = data_K.gdBbarplus_fz(op,ed,index='ln')
-        O = data_K.Omega_Hbar[op:ed,:,:,:]
-        H = data_K.Morb_Hbar[op:ed,:,:,:]
-        En_1 = E[:,:,None,None]
-        El_1 = E[:,None,:,None]
-        En_2 = E[:,None,:,None,None]
-        El_2 = E[:,:,None,None,None]
-        Bpcal= (-(Bp+1j*_D*(En_1+El_1))*data_K.dEig_inv[op:ed,:,:,None])[:,:,:,:,None]
+        dOn = data_K.Omega_bar_der.real[op:ed]
+        dHn = data_K.Morb_Hbar_der.real[op:ed]
+        Bplus = data_K.B_Hbarplus_dagger_fz[op:ed].transpose(0,2,1,3)
+        dBpln = data_K.gdBbarplus_fz(op,ed,index='ln')[op:ed]
+        B = data_K.B_Hbar_fz[op:ed,:,:,:,None]
+        A  = data_K.A_Hbar[op:ed,:,:,:,None]
+        f,df=data_K.f_E(1)
+        f_m,df_m=data_K.f_E(-1)
+        f,df,f_m,df_m=f[op:ed,:,None,None,None],df[op:ed,:,None,None,None],f_m[op:ed,:,None,None,None],df_m[op:ed,:,None,None,None]
+        O = data_K.Omega_Hbar[op:ed,:,:,:,None]
+        H = data_K.Morb_Hbar[op:ed,:,:,:,None]
+        El = E[:,:,None,None]
+        En2 = E[:,None,:,None,None]
+        El2 = E[:,:,None,None,None]
+        En = E[:,None,:,None]
+        Bpcal= ((-Bplus-1j*_D*(En+El))*data_K.dEig_inv[op:ed,:,:,None])[:,:,:,:,None]
         
-        Bp  =  Bp[:,:,:,:,None]
+        Bp  =  Bplus[:,:,:,:,None]
         V = _V[:,:,:,:,None]
         Vd = _V[:,:,:,None,:]
         D = _D[:,:,:,:,None]
         Dd = _D[:,:,:,None,:]
 
-        del _V,E,_D
+        del _V,E,Bplus,_D
         # now define the "alpha" and "beta" components
-        Bp_,D_,W_,V_,Bpcal_,dBp_={},{},{},{},{},{}
-        for var in 'Bp','D','Bpcal','W','V','dBp':
+        Bp_,D_,W_,V_,Bpcal_,dBpln_,B_,A_={},{},{},{},{},{},{},{}
+        for var in 'Bp','D','Bpcal','W','V','dBpln','B','A':
             for c in 'alpha','beta':
                 locals()[var+"_"][c]=locals()[var][:,:,:,globals()[c+'_A']]
         # This is the formula to be implemented:
         formula =  Formula (ndim=2,TRodd=True,Iodd=False,name="derivative of Hplus" )
-        formula.add_term( 'n', (dHn+dOn*En_1,) )
-        formula.add_term( 'mn', (O.transpose(0,2,1,3)[:,:,:,:,None]*Vd,) )
-        formula.add_term  ( 'mL,Ln',(Dd, (O*El_1)[:,:,:,:,None] ), -2. )
-        formula.add_term  ( 'mL,Ln',(Dd, H[:,:,:,:,None] ), -2. )
-
+        formula.add_term('mn',(dHn+dOn*El2) )
+        formula.add_term( 'ml,ln', (O,Vd) )
+        formula.add_term( 'nL,Ln', (Dd, O*En2 ),-2)
+        formula.add_term( 'nL,Ln', (Dd,H ),-1)
+        formula.add_term( 'nL,Ln', (H ,Dd ))
         for s,a,b in ( +1.,'alpha','beta'),(-1.,'beta','alpha'):
-            formula.add_term( 'mL,Ln',    (Bpcal_ [a] , W_[b]         ),  2*s )
-            formula.add_term( 'mL,LP,Pn', (Bpcal_ [a] , V_[b] , Dd    ),  2*s )
-            formula.add_term( 'mL,LP,Pn', (Bpcal_ [a] , Vd    , D_[b] ),  2*s )
-            formula.add_term( 'mL,Ll,ln', (Bpcal_ [a] , D_[b] , Vd    ), -2*s )
-            formula.add_term( 'mL,Ll,ln', (Bpcal_ [a] , Dd    , V_[b] ), -2*s )
-
-            formula.add_term( 'mL,Ln',     (  D_ [a] , dBp_[b]        ) , -2*s)
-            formula.add_term( 'mL,LP,Pn',  (  D_ [a] , Bp_[b] , Dd    ) , -2*s)
-            formula.add_term( 'mL,Ll,ln',  (  D_ [a] , Dd    , Bp_[b] ) ,  2*s)
-            
-            formula.add_term( 'mL,Ll,ln',  (D_[a] , Vd   , D_[b]), -1j*s )
-            formula.add_term( 'mL,LM,Mn',  (D_[a] , D_[b], Vd   ), -1j*s )
-        
+            #  blue terms
+            formula.add_term( 'mL,Ln',   ( Bpcal_ [a] , W_[b]  ), 2*s )
+            formula.add_term( 'mL,LP,Pn',( Bpcal_ [a] , V_[b] , Dd    ),2*s )
+            formula.add_term( 'mL,LP,Pn',( Bpcal_ [a] , Vd    , D_[b] ),2*s )
+            formula.add_term( 'mL,Ll,ln',( Bpcal_ [a] , D_[b] , Vd    ),-2*s )
+            formula.add_term( 'mL,Ll,ln',( Bpcal_ [a] , Dd    , V_[b] ),-2*s )
+            #  green terms               
+            #  frozen window o B matrix  f
+            formula.add_term( 'mL,Ln',   ( D_ [a] , dBpln_[b] ) ,-2*s )
+            formula.add_term( 'mL,LP,Pn',( D_ [a] , A_[b]       , Dd*En2 ),-2*s )
+            formula.add_term( 'mL,LP,Pn',( D_ [a] , A_[b]*El2*f , Dd     ),-2*s )
+            formula.add_term( 'mL,LP,Pn',( D_ [a] , B_[b]*f_m   , Dd     ),-2*s )
+            formula.add_term( 'mL,LP,Pn',( D_ [a] , Vd*f        , A_[b]  ),-2*s )
+            formula.add_term( 'mL,LP,Pn',( D_ [a] , Vd*df_m*En2 , A_[b]  ),-2*s )
+            formula.add_term( 'mL,LP,Pn',( D_ [a] , Vd*df_m     , B_[b]  ),2*s )
+            formula.add_term( 'mL,Ll,ln',( D_ [a] , Dd       , A_[b]*En2 ),2*s )
+            formula.add_term( 'mL,Ll,ln',( D_ [a] , Dd*El2*f , A_[b]     ),2*s )
+            formula.add_term( 'mL,Ll,ln',( D_ [a] , Dd*f_m   , B_[b]     ),2*s )
+            formula.add_term( 'mL,Ll,ln',( D_ [a] , A_[b]    , Vd        ),-2*s )
+                              
+            formula.add_term( 'mL,LP,Pn',(D_[a] , Vd   , D_[b] ),-1j*s)
+            formula.add_term( 'mL,Ll,ln',(D_[a] , D_[b] , Vd   ),-1j*s)
         return formula
+
+
 
 def derOmega(data_K,op=None,ed=None):
         "an attempt for a faster implementation"
