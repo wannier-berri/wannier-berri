@@ -44,9 +44,9 @@ def tensor_K(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
 
 def Morb(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
     fac_morb =  -eV_au/bohr**2
-  #  return fac_morb*(iterate_kpart(frml.Hplusminus,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
-  #          - 2*Omega_tot(data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh).mul_array(Efermi) )*data_K.cell_volume
-    return fac_morb*data_K.cell_volume*iterate_kpart(frml.Hplusminus,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
+    return fac_morb*(iterate_kpart(frml.Hplusminus,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
+            - 2*Omega_tot(data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh).mul_array(Efermi) )*data_K.cell_volume
+  #  return fac_morb*data_K.cell_volume*iterate_kpart(frml.Hplusminus,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
   #  return fac_morb*data_K.cell_volume*-2*Omega_tot(data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh).mul_array(Efermi)
 
 def Omega_tot(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
@@ -110,6 +110,7 @@ class  FermiOcean():
 
         Emin=Efermi[ 0]
         Emax=Efermi[-1]
+        #print(Efermi)
         self.Efermi=Efermi
         self.fder=fder
         self.tetra=tetra
@@ -119,6 +120,7 @@ class  FermiOcean():
             self.weights=data_K.tetraWeights.weights_all_band_groups(Efermi,op=op,ed=ed,der=self.fder,degen_thresh=degen_thresh)   # here W is array of shape Efermi
         else:
             self.weights=data_K.get_bands_in_range_groups(Emin,Emax,op,ed,degen_thresh=degen_thresh,sea=(self.fder==0)) # here W is energy
+       # print(self.weights)
         self.__evaluate_traces(formula, self.weights, ndim)
 
     def __evaluate_traces(self,formula,bands, ndim):
@@ -143,8 +145,12 @@ class  FermiOcean():
             else:
                 resk = np.zeros(self.Efermi.shape + self.shape )
                 if self.fder==0:
-                    for n,E in weights.items():
-                        resk[self.Efermi >= E] += values[n]
+                #    print( sorted(weights.items()))
+                    for n,E in sorted(weights.items()):
+                        #print('n,E',n,E)
+                        #print('values',values)
+                        resk[self.Efermi >= E] = values[n]
+                        #resk[self.Efermi >= E] += values[n]
                 else :
                     raise NotImplementedError("fermi-surface properties in fermi-ocean are implemented only with tetrahedron method so far")
             result += resk
