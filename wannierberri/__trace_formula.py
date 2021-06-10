@@ -54,7 +54,6 @@ def Hplusminus(data_K,op=None,ed=None,sign=1):
             for c in 'alpha','beta':
                 locals()[var+"_"][c]=locals()[var][:,:,:,globals()[c+'_A']]
         # This is the formula to be implemented:
-        #formula =  TraceFormula ( [ ('n', (sign*OE+M)*0 ) ],ndim=1,TRodd=True,Iodd=False)
         formula =  TraceFormula ( [ ('n', sign*OE+M ) ],ndim=1,TRodd=True,Iodd=False)
         if sign == 1:
             formula.add_term( ('mn',-2*AEA) )

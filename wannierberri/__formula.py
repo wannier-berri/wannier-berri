@@ -98,8 +98,8 @@ class Formula():
         self.term_list=[]
         self.hermitian=hermitian
 
-    def __call__(self,ik,ib_in_start,ib_in_end,trace):
-        res = sum( term(ik,ib_in_start,ib_in_end) for term in self.term_list )
+    def __call__(self,ik,ib_in_start,ib_in_end,trace,Emax):#Emax is additional occupied energy in self.Weight dictionary
+        res = sum( term(ik,ib_in_start,ib_in_end,Emax) for term in self.term_list )
         if trace:
             return np.einsum('nn...->...',res).real
         else:
@@ -107,9 +107,9 @@ class Formula():
                 res=0.5*(res+np.swapaxes(res,0,1).conj())
             return np.array(res,dtype=complex)
 
-    def add_term(self,ind_string ,mat_list ,mult=1.,M_mat=None):
+    def add_term(self,ind_string ,mat_list ,mult=1.):
         self.term_list.append( 
-                  MatrixProductTerm(ind_string , mat_list ,self.ndim , mult,M_mat)
+                  MatrixProductTerm(ind_string , mat_list ,self.ndim , mult)
                              )
 
 
@@ -119,10 +119,9 @@ class MatrixProductTerm():
         same index should appear only on neighbouring positions (or frst and last)
     """
 
-    def __init__(self,ind_string ,mat_list,ndim,mult,M_mat):
+    def __init__(self,ind_string ,mat_list,ndim,mult):
         self.ndim=ndim
         self.mult=mult
-        self.M_mat = M_mat
         if type(mat_list) not in (list,tuple):
             mat_list=(mat_list,)
         self.num_mat = len(mat_list)
@@ -177,43 +176,64 @@ class MatrixProductTerm():
         return np.arange(self.nb)
 
 
-    def __call__(self,ik,ib_in_start,ib_in_end):
+    def __call__(self,ik,ib_in_start,ib_in_end,Emax):
+        add = False
+        if Emax > -np.inf:
+            add = True
         #print(self.mat_list[0][ik])
-        result=MatrixProductTerm_select(self.mat_list[0][ik],self.ind_list[0],ib_in_start,ib_in_end)
+        #result=MatrixProductTerm_select(self.mat_list[0][ik],self.ind_list[0],ib_in_start,ib_in_end)
+        result=MatrixProductTerm_select(self.mat_list[0][ik],self.ind_list[0],ib_in_start,ib_in_end,np.swapaxes(self.mat_list[0][ik],0,1),add)
         for i in range(1,self.num_mat):
            # print(self.mat_list[1][ik])
             #print('n',ib_in_start,ib_in_end)
-           # print(ik,'D',ib_in_start,ib_in_end,self.ind_list[0],result.shape)
-            m1=MatrixProductTerm_select(self.mat_list[i][ik],self.ind_list[i],ib_in_start,ib_in_end)
+            print(ik,'D',ib_in_start,ib_in_end,self.ind_list[0],result.shape)
+            #m1=MatrixProductTerm_select(self.mat_list[i][ik],self.ind_list[i],ib_in_start,ib_in_end)
+            m1=MatrixProductTerm_select(self.mat_list[i][ik],self.ind_list[i],ib_in_start,ib_in_end,np.swapaxes(self.mat_list[i][ik],0,1),add)
             result = matrix_prod_cart(result,m1)
-           # print(ik,'B',ib_in_start,ib_in_end,self.ind_list[1],m1.shape)
-           # print(ik,'cart',np.einsum('nn...->...',self.mult*result.real))
+            print(ik,'B',ib_in_start,ib_in_end,self.ind_list[1],m1.shape)
+            print(ik,'cart',np.einsum('nn...->...',self.mult*result.real))
+        assert result.shape[0] == result.shape[1], 'dim of result is not nn... ind_list= {}'.format(self.ind_list) 
         return  self.mult*result
 
 
 #TODO work with not anti-sym matrix
-#@njit(cache=True)
-#def MatrixProductTerm_select(mat,ind,ib_in_start,ib_in_end,mat_T):
-#    m1=np.copy(mat)
-#    m1_T=np.copy(-mat_T)
-#    if ind[0] in INNER_IND:
-#        m1=m1[ib_in_start:ib_in_end]
-#        m1_T=m1_T[ib_in_start:ib_in_end]
-#    else :
-#        if ib_in_end - ib_in_start == 1:
-#            #m1=np.concatenate((m1_T[0:ib_in_start],m1[ib_in_end:]),axis=0)
-#            m1=np.concatenate((m1_T[0:ib_in_start],m1_T[ib_in_end:]),axis=0)
-#        else:
-#            m1=np.concatenate((m1[0:ib_in_start],m1[ib_in_end:]),axis=0)
-#    if ind[1] in INNER_IND:
-#        m1=m1[:,ib_in_start:ib_in_end]
-#    else :
-#        if ib_in_end - ib_in_start == 1:
-#            m1=np.concatenate((m1_T[:,0:ib_in_start],m1_T[:,ib_in_end:]),axis=1)
-#        else:
-#            m1=np.concatenate((m1[:,0:ib_in_start],m1[:,ib_in_end:]),axis=1)
-#    return m1
-    
+'''
+@njit(cache=True)
+def MatrixProductTerm_select(mat,ind,ib_in_start,ib_in_end,mat_T):
+    m1=np.copy(mat)
+    if ind[0] in INNER_IND:
+        m1=m1[ib_in_start:ib_in_end]
+    else :
+        m1=np.concatenate((m1[0:ib_in_start],m1[ib_in_end:]),axis=0)
+    if ind[1] in INNER_IND:
+        m1=m1[:,ib_in_start:ib_in_end]
+    else :
+        m1=np.concatenate((m1[:,0:ib_in_start],m1[:,ib_in_end:]),axis=1)
+    return m1
+'''    
+@njit(cache=True)
+def MatrixProductTerm_select(mat,ind,ib_in_start,ib_in_end,mat_T,add):
+    m1=np.copy(mat)
+    if add:
+        m1_T=np.copy(1j*mat_T)
+    if ind[0] in INNER_IND:
+        m1=m1[ib_in_start:ib_in_end]
+        if add:
+            m1_T=m1_T[ib_in_start:ib_in_end]
+    else :
+        if add:
+            m1=np.concatenate((m1_T[0:ib_in_start],m1[ib_in_end:]),axis=0)
+        else:
+            m1=np.concatenate((m1[0:ib_in_start],m1[ib_in_end:]),axis=0)
+    if ind[1] in INNER_IND:
+        m1=m1[:,ib_in_start:ib_in_end]
+    else :
+        if add:
+            m1=np.concatenate((m1_T[:,0:ib_in_start],m1[:,ib_in_end:]),axis=1)
+        else:
+            m1=np.concatenate((m1[:,0:ib_in_start],m1[:,ib_in_end:]),axis=1)
+    return m1
+'''
 @njit(cache=True)
 def MatrixProductTerm_select(mat,ind,ib_in_start,ib_in_end):
     m1=np.copy(mat)
@@ -226,7 +246,7 @@ def MatrixProductTerm_select(mat,ind,ib_in_start,ib_in_end):
     else :
         m1=m1[:,ib_in_end:]
     return m1
-
+'''
 @njit(cache=True)
 def matrix_prod_cart(m1,m2):
     m2=np.expand_dims(m2,0)
