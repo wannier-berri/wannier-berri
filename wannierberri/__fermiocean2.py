@@ -46,7 +46,7 @@ def Morb(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
     fac_morb =  -eV_au/bohr**2
     return fac_morb*(iterate_kpart(frml.Hplusminus,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
             - 2*Omega_tot(data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh).mul_array(Efermi) )*data_K.cell_volume
-  #  return fac_morb*data_K.cell_volume*iterate_kpart(frml.Hplusminus,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
+#    return fac_morb*data_K.cell_volume*iterate_kpart(frml.Hplusminus,data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh)
   #  return fac_morb*data_K.cell_volume*-2*Omega_tot(data_K,Efermi,kpart,tetra,degen_thresh=degen_thresh).mul_array(Efermi)
 
 def Omega_tot(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
@@ -132,7 +132,7 @@ class  FermiOcean():
         self.values = [defaultdict(lambdadic ) for ik in range(self.nk)]
         for ik,bnd in enumerate(bands):
             for n in bnd :
-                self.values[ik][n] = formula(ik,ib_in_start=n[0],ib_in_end=n[1],trace=True )
+                self.values[ik][n] = formula(ik,ib_in_start=n[0],ib_in_end=n[1],trace=True,Emax=bands[ik][n] )
 
     def __call__(self) :
         result = np.zeros(self.Efermi.shape + self.shape )
@@ -147,10 +147,11 @@ class  FermiOcean():
                 if self.fder==0:
                 #    print( sorted(weights.items()))
                     for n,E in sorted(weights.items()):
+                    #for n,E in weights.items():
                         #print('n,E',n,E)
                         #print('values',values)
-                        resk[self.Efermi >= E] = values[n]
-                        #resk[self.Efermi >= E] += values[n]
+                    #   resk[self.Efermi >= E] = values[n]
+                        resk[self.Efermi >= E] += values[n]
                 else :
                     raise NotImplementedError("fermi-surface properties in fermi-ocean are implemented only with tetrahedron method so far")
             result += resk

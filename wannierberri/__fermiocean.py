@@ -45,7 +45,7 @@ def Morb(data_K,Efermi,kpart=None,tetra=False):
     fac_morb =  -eV_au/bohr**2
     return fac_morb*(iterate_kpart(trF.Hplusminus,data_K,Efermi,kpart,tetra) 
             - 2*Omega_tot(data_K,Efermi,kpart,tetra).mul_array(Efermi) )*data_K.cell_volume
-    #return fac_morb*data_K.cell_volume*iterate_kpart(trF.Hplusminus,data_K,Efermi,kpart,tetra) 
+#    return fac_morb*data_K.cell_volume*iterate_kpart(trF.Hplusminus,data_K,Efermi,kpart,tetra) 
     #return fac_morb*data_K.cell_volume*-2*Omega_tot(data_K,Efermi,kpart,tetra).mul_array(Efermi) 
 
 ##################################
@@ -170,9 +170,9 @@ class  FermiOcean():
                             else:
                                 raise ValueError('Wrong index for B,C : {}'.format(BC[0]))
                         self.values[ik][n] += np.einsum('nl...,ln...->...', a, bc,optimize=True).real
-#                        print(ik,'D',n+1,Aind,a.shape)
-#                        print(ik,'B',n+1,BC[0],bc.shape)
-#                        print(ik,'eins',np.einsum('nl...,ln...->...', a, bc,optimize=True).real)
+                        print(ik,'D',n+1,Aind,a.shape)
+                        print(ik,'B',n+1,BC[0],bc.shape)
+                        print(ik,'eins',np.einsum('nl...,ln...->...', a, bc,optimize=True).real)
             elif Aind == 'mn':
                 if len(ABC[0]) > 2:
                     warning("only one matrix should be given for 'mn'")
