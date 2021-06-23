@@ -19,7 +19,17 @@ from copy import copy
 
 @njit
 def weights_tetra(efall,e0,e1,e2,e3,der=0):
-    e1,e2,e3,e4=sorted([e0,e1,e2,e3])
+    
+    e=[e0,e1,e2,e3]
+            
+#    print (e0,e1,e2,e3,der)
+    e=np.array(sorted([e0,e1,e2,e3]))
+    # a dirty trick to avoid divisions by zero
+    for i in range(3):
+        if abs(e[i+1]-e[i])<1e-12:
+            e[i+1:]+=1e-10
+    e1,e2,e3,e4 = e
+
     nEF=len(efall)
 #    efall2=efall * efall
 #    efall3=efall2* efall
@@ -222,11 +232,11 @@ class TetraWeights():
 
             if der==0 :
                 bandmax=get_bands_below_range(self.eFermi[0],self.eCenter[ik],Ebandmax=self.Emax[ik])
-                print ("bandmax=",bandmax)
+#                print ("bandmax=",bandmax)
                 if len(bands_in_range)>0 :
                     bandmax=min(bandmax, bands_in_range[0][0])
                 weights[(0,bandmax)]=self.ones
-                print ("now bandmax=",bandmax)
+#                print ("now bandmax=",bandmax)
 
             res.append( weights )
         return res

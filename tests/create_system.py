@@ -272,3 +272,57 @@ def system_Haldane_PythTB_sym(pythtb_Haldane):
     system.set_symmetry(["C3z"])
     return system
 
+
+
+
+@pytest.fixture(scope="session")
+def ChiralModel():
+    """Create a chiral model that also breaks time-reversal
+       can be used to test almost any quantity"""
+    delta=2
+    t1=1
+    hop2=1./3
+    pfi=np.pi/10
+    hopz=0.2
+    lat=[[1.0,0.0,0.0],[0.5,np.sqrt(3.0)/2.0,0.0],[0.0,0.0,1.0]]
+    # define coordinates of orbitals
+    orb=[[1./3.,1./3.,0.0],[2./3.,2./3.,0.0]]
+
+    # make tree dimensional (stacked) tight-binding Haldane model
+    haldane=ptb.tb_model(3,3,lat,orb)
+
+    # set model parameters
+    t2=hop2*np.exp(1.j*phi)
+
+    # set on-site energies
+    haldane.set_onsite([-delta,delta])
+    # set hoppings (one for each connected pair of orbitals)
+    # from j in R to i in 0
+    # (amplitude, i, j, [lattice vector to cell containing j])
+    haldane.set_hop(t1, 0, 1, [ 0, 0,0])
+    haldane.set_hop(t1, 1, 0, [ 1, 0,0])
+    haldane.set_hop(t1, 1, 0, [ 0, 1,0])
+    # add second neighbour complex hoppings
+    haldane.set_hop(t2 , 0, 0, [  0,-1,0])
+    haldane.set_hop(t2 , 0, 0, [  1, 0,0])
+    haldane.set_hop(t2 , 0, 0, [ -1, 1,0])
+    haldane.set_hop(t2 , 1, 1, [ -1, 0,0])
+    haldane.set_hop(t2 , 1, 1, [  1,-1,0])
+    haldane.set_hop(t2 , 1, 1, [  0, 1,0])
+    # add chiral hoppings
+    haldane.set_hop(hopz  , 0, 0, [  0,-1,1])
+    haldane.set_hop(hopz  , 0, 0, [  1, 0,1])
+    haldane.set_hop(hopz  , 0, 0, [ -1, 1,1])
+    haldane.set_hop(hopz  , 1, 1, [ -1, 0,1])
+    haldane.set_hop(hopz  , 1, 1, [  1,-1,1])
+    haldane.set_hop(hopz  , 1, 1, [  0, 1,1])
+    return haldane
+
+
+@pytest.fixture(scope="session")
+def system_Chiral(ChiralModel):
+    """Create a chiral system that also breaks time-reversal
+       can be used to test almost any quantity"""
+    system = wberri.System_PythTB(ChiralModel, berry=True, use_wcc_phase=False)
+    system.set_symmetry(["C3z"])
+    return system
