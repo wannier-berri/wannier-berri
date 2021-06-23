@@ -12,7 +12,7 @@ def Identity(data_K,op,ed):
         # first give our matrices short names
         NB= data_K.nbands
         # This is the formula to be implemented:
-        formula =  Formula ( TRodd=False,Iodd=False,ndim=0,name='Identity' )
+        formula =  Formula ( TRodd=False,Iodd=False,ndim=0,name='Identity',nonabelian=True )
         mat = np.zeros((ed-op,NB,NB),dtype=complex)
         for i in range(NB): 
            mat[:,i,i]=1.
@@ -25,7 +25,7 @@ def Velocity(data_K,op,ed):
         # first give our matrices short names
         V   = data_K.V_H[op:ed]
         # This is the formula to be implemented:
-        formula =  Formula ( TRodd=True,Iodd=True,ndim=1,name="vbelocity" )
+        formula =  Formula ( TRodd=True,Iodd=True,ndim=1,name="vbelocity",nonabelian=True  )
         formula.add_term ( 'mn'   ,  V ,  1. )
         return formula
 
@@ -38,11 +38,28 @@ def InverseMass(data_K,op,ed):
         D   = data_K.D_H[op:ed]
         V   = data_K.V_H[op:ed]
         # This is the formula to be implemented:
+        formula =  Formula ( TRodd=False,Iodd=False,ndim=2,name="Inverse Mass",nonabelian=True  )
+        formula.add_term ( 'mn'   ,  d2E                           ,  1. )
+        formula.add_term ( 'mL,Ln',(V[:,:,:,:,None], D[:,:,:,None,:] ) ,  1. )
+        formula.add_term ( 'mL,Ln',(D[:,:,:,None,:], V[:,:,:,:,None] ) , -1. )
+        return formula
+
+
+def Der3E(data_K,op,ed):
+        "Third derivative of band energy - not completed"
+        raise NotImplementedError()
+        # first give our matrices short names
+        d2E = data_K.del2E_H[op:ed]
+        d3E = data_K.del3E_H[op:ed]
+        D   = data_K.D_H[op:ed]
+        V   = data_K.V_H[op:ed]
+        # This is the formula to be implemented:
         formula =  Formula ( TRodd=False,Iodd=False,ndim=2,name="Inverse Mass" )
         formula.add_term ( 'mn'   ,  d2E                           ,  1. )
         formula.add_term ( 'mL,Ln',(V[:,:,:,:,None], D[:,:,:,None,:] ) ,  1. )
-        formula.add_term ( 'mL,Ln',(D[:,:,:,:,None], V[:,:,:,None,:] ) , -1. )
+        formula.add_term ( 'mL,Ln',(D[:,:,:,None,:], V[:,:,:,:,None] ) , -1. )
         return formula
+
 
 
 def Omega(data_K,op=None,ed=None,onlytrace=False):

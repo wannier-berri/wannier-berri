@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import constants
 from collections import defaultdict
-from .__utility import  warning, TAU_UNIT
+from .__utility import  warning, TAU_UNIT, alpha_A,beta_A
 from .__tetrahedron import weights_parallelepiped  as weights_tetra  
 from . import __result as result
 from . import __formulas_nonabelian as frml
@@ -64,6 +64,39 @@ def ohmic_fsurf(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
         _velocity=  frml.Velocity(datak,op,ed)
         return  FormulaProduct ( [_velocity,_velocity], name='vel-vel')
     return iterate_kpart(_formula,data_K,Efermi,kpart,tetra,fder=1,degen_thresh=degen_thresh)*factor_ohmic
+
+
+# _general yields integral(V*V*V'*(-f0')) in units eV^2*Ang
+# we want in S/(cm*T)/tau_unit^2
+# S/T=A^3*s^5/(kg^2*m^2))
+factor_Hall_classic=elementary_charge**2*Ang_SI/hbar**3  # first, transform to SI, not forgeting hbar in velocities - now in  m/(J*s^3)
+factor_Hall_classic*=elementary_charge**3/hbar*TAU_UNIT**2  # multiply by a dimensional factor - now in A^3*s^5*cm/(J^2*tau_unit^2) = S/(T*m*tau_unit^2)
+factor_Hall_classic*=1e-2   #  finally transform to S/(T*cm*tau_unit^2)
+
+
+def Hall_classic(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
+    def _formula(datak,op,ed):
+        _velocity =  frml.Velocity   (datak,op,ed)
+        _mass     =  frml.InverseMass(datak,op,ed)
+        return  FormulaProduct ( [_velocity,_mass,_velocity], name='vel-mass-vel')
+    res =  iterate_kpart(_formula,data_K,Efermi,kpart,tetra,fder=1,degen_thresh=degen_thresh)*factor_Hall_classic
+    res.data=res.data[:,:,:,beta_A,alpha_A]-res.data[:,:,:,alpha_A,beta_A]
+    res.data=-0.5*(res.data[:,alpha_A,beta_A,:]-res.data[:,beta_A,alpha_A,:])
+    res.rank-=2
+    return res
+
+
+def Hall_classic_sea(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
+    def _formula(datak,op,ed):
+        _mass     =  frml.InverseMass(datak,op,ed)
+        return  FormulaProduct ( [_mass,_mass], name='mass-mass')
+    res =  iterate_kpart(_formula,data_K,Efermi,kpart,tetra,fder=0,degen_thresh=degen_thresh)*(factor_Hall_classic *-1)
+    res.data=res.data.swapaxes(2,3)
+    res.data=res.data[:,:,:,beta_A,alpha_A]-res.data[:,:,:,alpha_A,beta_A]
+    res.data=-0.5*(res.data[:,alpha_A,beta_A,:]-res.data[:,beta_A,alpha_A,:])
+    res.rank-=2
+    return res
+
 
 
 ##################################
@@ -132,7 +165,7 @@ class  FermiOcean():
         self.values = [defaultdict(lambdadic ) for ik in range(self.nk)]
         for ik,bnd in enumerate(bands):
             for n in bnd :
-                self.values[ik][n] = formula(ik,ib_in_start=n[0],ib_in_end=n[1],trace=True,Emax=bands[ik][n] )
+                self.values[ik][n] = formula(ik,ib_in_start=n[0],ib_in_end=n[1],trace=True)#,Emax=bands[ik][n] )
 
     def __call__(self) :
         result = np.zeros(self.Efermi.shape + self.shape )
