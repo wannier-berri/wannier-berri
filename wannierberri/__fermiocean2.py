@@ -8,6 +8,7 @@ from . import __formulas_nonabelian as frml
 from .__formula import FormulaProduct
 from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
 from math import ceil
+from itertools import permutations
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]
@@ -97,6 +98,34 @@ def Hall_classic_sea(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
     res.rank-=2
     return res
 
+
+
+def sigma21tau3_Ohmic(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
+    def _formula(datak,op,ed):
+        _velocity =  frml.Velocity   (datak,op,ed)
+        _mass     =  frml.InverseMass(datak,op,ed)
+        return  FormulaProduct ( [_mass,_mass,_velocity], name='mass-mass-vel') # v_{\alpha\rho} v_{\beta\gamma} v_{\xi} \varepsilon_{\rho\xi\mu}
+    res =  iterate_kpart(_formula,data_K,Efermi,kpart,tetra,fder=1,degen_thresh=degen_thresh)
+    res.data=res.data.transpose(0,1,3,4,2,5)
+    res.data=res.data[:,:,:,:,beta_A,alpha_A]-res.data[:,:,:,:,alpha_A,beta_A]
+    res.rank-=1
+    # now take the Ohmic part:
+    res.data=sum(res.data.transpose((0,)+p+(4,)) for p in permutations([1,2,3]))/6
+    return res
+
+
+def sigma21tau3_Hall(data_K,Efermi,kpart=None,tetra=False,degen_thresh=-1):
+    def _formula(datak,op,ed):
+        _velocity =  frml.Velocity   (datak,op,ed)
+        _mass     =  frml.InverseMass(datak,op,ed)
+        return  FormulaProduct ( [_mass,_mass,_velocity], name='mass-mass-vel') # v_{\alpha\rho} v_{\beta\xi} v_{\gamma} \varepsilon_{\rho\xi\mu}
+    res =  iterate_kpart(_formula,data_K,Efermi,kpart,tetra,fder=1,degen_thresh=degen_thresh)
+    res.data=res.data.transpose(0,1,4,5,2,3)
+    res.data=res.data[:,:,:,:,beta_A,alpha_A]-res.data[:,:,:,:,alpha_A,beta_A]
+    res.rank-=1
+    # now take the antisymmetric part in alpha-beta:
+    #res.data=sum(res.data.transpose((0,)+p+(4,)) for p in permutations([1,2,3]))/6
+    return res
 
 
 ##################################
