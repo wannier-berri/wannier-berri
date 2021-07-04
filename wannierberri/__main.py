@@ -18,7 +18,7 @@ from . import __version__
 from .__evaluate import evaluate_K
 from .__utility import getSmoother 
 from . import __integrate 
-from . import __tabulate  
+from . import __tabulate
 from . import symmetry
 from .__path import Path
 import numpy as np
