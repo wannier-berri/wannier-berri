@@ -482,6 +482,10 @@ class Data_K(System):
     def del2E_H(self):
         return self._R_to_k_H( self.HH_R, der=2 )
 
+    @lazy_property.LazyProperty
+    def del3E_H(self):
+        return self._R_to_k_H( self.HH_R, der=3 )
+
     @property
     def del2E_H_diag(self):
         return np.einsum("knnab->knab",self.del2E_H).real

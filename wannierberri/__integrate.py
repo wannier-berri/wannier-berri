@@ -22,6 +22,7 @@ from . import  __berry as berry
 from . import  __fermisea2 as fermisea2
 from . import  __fermiocean as fermiocean
 from . import  __fermiocean2 as fermiocean2
+from . import  __fermiocean3 as fermiocean3
 from . import  __nonabelian as nonabelian
 from . import  __dos as dos
 from . import  symmetry
@@ -62,11 +63,14 @@ calculators_trans={
          'ahc2'        : fermisea2.AHC2 ,
          'ahc_ocean'  : fermiocean.AHC ,
          'ahc2_ocean'  : fermiocean2.AHC ,
+         'ahc3_ocean'  : fermiocean3.AHC ,
          'dos'        : dos.calc_DOS ,
          'cumdos'         : dos.calc_cum_DOS ,
          'cumdos_ocean'   : fermiocean.cumdos ,
          'cumdos2_ocean'   : fermiocean2.cumdos ,
          'dos2_ocean'   : fermiocean2.dos ,
+         'cumdos3_ocean'   : fermiocean3.cumdos ,
+         'dos3_ocean'   : fermiocean3.dos ,
          'Hall_classic' : nonabelian.Hall_classic , 
          'Hall_classic_sea' : nonabelian.Hall_classic_sea, 
          'Hall_classic2_ocean' : fermiocean2.Hall_classic , 
@@ -82,6 +86,7 @@ calculators_trans={
          'berry_dipole'            : fermisea2.tensor_D,
          'berry_dipole_ocean'      : fermiocean.berry_dipole,
          'berry_dipole2_ocean'      : fermiocean2.berry_dipole,
+         'berry_dipole3_ocean'      : fermiocean3.berry_dipole,
          'berry_dipole_2'          : fermisea2.tensor_D_2,
          'berry_dipole_fsurf'      : nonabelian.berry_dipole,
 #         'Faraday1w'                 : nonabelian.Faraday,
@@ -147,7 +152,7 @@ for key,val in parameters_optical.items():
         additional_parameters_description[calc][key] = val[1]
 
 for calc in calculators_trans:
-    if calc.endswith('_ocean'):
+    if calc.endswith('_ocean') and not calc.endswith('3_ocean'):
         key='kpart'
         additional_parameters[calc][key] = 500
         additional_parameters_description[calc][key] = (
@@ -156,10 +161,22 @@ for calc in calculators_trans:
              'decreasing this parameter helps to save memory in some cases' +
                 'while performance is usually unafected' )
 
+    if calc.endswith('_ocean'):
         key='tetra'
         additional_parameters[calc][key] = False
         additional_parameters_description[calc][key] = (
              'use tetrahedron method for integration ')
+
+    if calc.endswith('3_ocean'):
+        key='internal_terms'
+        additional_parameters[calc][key] = True
+        additional_parameters_description[calc][key] = (
+             'evaluate internal terms of the Berry curvvaure')
+        key='external_terms'
+        additional_parameters[calc][key] = True
+        additional_parameters_description[calc][key] = (
+             'evaluate external terms of the Berry curvvaure')
+
 
 
 for calc in calculators_trans:
