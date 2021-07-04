@@ -22,19 +22,20 @@ import  multiprocessing
 import functools
 from .__utility import  print_my_name_start,print_my_name_end
 from . import __result as result
-from . import  __berry as berry
+#from . import  __berry as berry
+from . import __formulas_nonabelian_3 as frml
 from . import  symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
-#should be functions of only one parameter of class Data_K
+#should be classes Formula_ln 
 calculators={ 
-         'spin'       : berry.calcSpin_band_kn, 
-         'V'          : berry.calcV_band_kn  , 
-         'morb'       : berry.calcImgh_band_kn,
-         'berry'      : berry.calcImf_band_kn ,
-         'hall_spin'  : berry.calcHall_spin_kn,
-         'hall_orb'   : berry.calcHall_orb_kn
+         'spin'       : frml.Sln, 
+         'V'          : frml.Vln, 
+#         'morb'       : berry.calcImgh_band_kn,
+         'berry'      : frml.Omega, #berry.calcImf_band_kn ,
+#         'hall_spin'  : berry.calcHall_spin_kn,
+#         'hall_orb'   : berry.calcHall_orb_kn
          }
 
 
@@ -46,28 +47,21 @@ descriptions=defaultdict(lambda:"no description")
 descriptions['berry']="Berry curvature"
 descriptions['V']="velocity"
 descriptions['spin']="Spin"
-descriptions['morb']="orbital magnetic moment"
-descriptions['hall_spin']="spin contribution to low-field Hall effect"
-descriptions['hall_orb']="orbital contribution to low-field Hall effect"
+#descriptions['morb']="orbital magnetic moment"
+#descriptions['hall_spin']="spin contribution to low-field Hall effect"
+#descriptions['hall_orb']="orbital contribution to low-field Hall effect"
 
 
 
-def tabXnk(data,quantities=[],degen_thresh=None,ibands=None,parameters={}):
+def tabXnk(data_K,quantities=[],degen_thresh=-1,ibands=None,parameters={}):
 
-    if degen_thresh is not None:
-        data.set_degen(degen_thresh=degen_thresh)
 
     if ibands is None:
         ibands=np.arange(data.nbands)
 
+    tabulator = Tabulator(data_K,ibands,degen_thresh)
 
-    Enk=data.E_K[:,ibands]
-       
-    degen_thresh=1e-5
-    A=[np.hstack( ([0],np.where(E[1:]-E[:1]>degen_thresh)[0]+1, [E.shape[0]]) ) for E in Enk ]
-    deg= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:])] for a in A]
-
-    results={'E':result.KBandResult(Enk,TRodd=False,Iodd=False)}
+    results={'E':result.KBandResult(data_K.E_K[:,ibands],TRodd=False,Iodd=False)}
     for q in quantities:
         __parameters={}
         for param in additional_parameters[q]:
@@ -75,10 +69,49 @@ def tabXnk(data,quantities=[],degen_thresh=None,ibands=None,parameters={}):
                  __parameters[param]=parameters[param]
             else :
                  __parameters[param]=additional_parameters[q][param]
-        results[q]=calculators[q](data,**__parameters).select_bands(ibands).average_deg(deg)
+        results[q]=tabulator( calculators[q](data_K,**__parameters) )
 
-    kpoints=data.kpoints_all
-    return TABresult( kpoints=kpoints,recip_lattice=data.recip_lattice,results=results )
+    return TABresult( kpoints       = data_K.kpoints_all,
+                      recip_lattice = data_K.recip_lattice,
+                      results       = results )
+
+
+class  Tabulator():
+
+    def __init__(self ,  data_K,  ibands, degen_thresh=1e-4):
+
+        self.nk=data_K.NKFFT_tot
+        self.NB=data_K.num_wann
+        self.ibands = ibands
+
+        band_groups=data_K.get_bands_in_range_groups(-np.Inf,np.Inf,degen_thresh=degen_thresh,sea=False)
+        # bands_groups  is a digtionary (ib1,ib2):E
+        # now select only the needed groups
+        self.band_groups = [  [ n    for n in groups.keys() if np.any(  (ibands>=n[0])*(ibands<n[1]) )  ]
+              for groups in band_groups ]    # select only the needed groups
+        self.group = [[] for ik in range(self.nk)]
+        for ik in range(self.nk):
+            for ib in self.ibands:
+                for n in self.band_groups[ik]:
+                    if ib<n[1] and ib >=n[0]:
+                        self.group[ik].append(n)
+                        break
+
+    def __call__(self,formula):
+        """formula  - TraceFormula to evaluate 
+        """
+        rslt = np.zeros( (self.nk,len(self.ibands))+(3,)*formula.ndim )
+        for ik in range(self.nk):
+            values={}
+            for n in self.band_groups[ik]:
+                inn = np.arange(n[0],n[1])
+                out = np.concatenate( (np.arange(0,n[0]), np.arange(n[1],self.NB) ) )
+                values[n] = formula.trace(ik,inn,out)/(n[1]-n[0])
+            for ib,b in enumerate(self.ibands): 
+#                print(f"ik={ik}, ib={ib}, ibands={self.ibands}")
+                rslt[ik,ib] = values[self.group[ik][ib]]
+
+        return result.KBandResult(rslt,TRodd=formula.TRodd,Iodd=formula.Iodd)
 
 
 

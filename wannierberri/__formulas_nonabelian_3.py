@@ -32,6 +32,11 @@ class Aln(Matrix_ln):
     def __init__(self,data_K):
         super(Aln,self).__init__(data_K.A_Hbar)
 
+
+class Sln(Matrix_ln):
+    def __init__(self,data_K):
+        super(Sln,self).__init__(data_K.S_H)
+
 class dAln(Matrix_ln):
     def __init__(self,data_K):
         super(dAln,self).__init__(data_K.A_Hbar_der)

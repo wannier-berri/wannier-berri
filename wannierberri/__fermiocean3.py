@@ -32,6 +32,10 @@ def AHC(data_K,Efermi,tetra=False,**parameters):
     return  FermiOcean(frml.Omega(data_K,**parameters),data_K,Efermi,tetra,fder=0)()*fac_ahc
 
 
+def spin(data_K,Efermi,tetra=False,**parameters):
+    return  FermiOcean(frml.Sln(data_K),data_K,Efermi,tetra,fder=0)()
+
+
 def berry_dipole(data_K,Efermi,tetra=False,**parameters):
     res =  FermiOcean(frml.DerOmega(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
