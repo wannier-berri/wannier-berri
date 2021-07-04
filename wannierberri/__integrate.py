@@ -82,6 +82,8 @@ calculators_trans={
          'conductivity_ohmic'      : fermisea2.conductivity_ohmic,
          'conductivity_ohmic2_ocean': fermiocean2.ohmic,
          'conductivity_ohmic_fsurf2_ocean': fermiocean2.ohmic_fsurf,
+         'conductivity_ohmic3_ocean': fermiocean3.ohmic_fsea,
+         'conductivity_ohmic_fsurf3_ocean': fermiocean3.ohmic_fsurf,
 
          'berry_dipole'            : fermisea2.tensor_D,
          'berry_dipole_ocean'      : fermiocean.berry_dipole,

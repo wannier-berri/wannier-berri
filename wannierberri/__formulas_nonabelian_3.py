@@ -2,35 +2,11 @@ import numpy as np
 from .__utility import  alpha_A,beta_A
 import abc 
 
+from .__formula_3 import Formula_ln, Matrix_ln , Matrix_GenDer_ln
 #####################################################
 #####################################################
 
-# Here we write some functions, that take a argument Data_K object, op and ed, and return a Formula
 
-
-class Formula_ln(abc.ABC):
-
-    @abc.abstractmethod
-    def __init__(self,data_K,internal_terms=True,external_terms=True):
-        self.internal_terms = internal_terms
-        self.external_terms = external_terms
-
-    @abc.abstractmethod
-    def ln(self,ik,inn,out):
-        pass
-
-    @abc.abstractmethod
-    def nn(self,ik,inn,out):
-        pass
-
-    def nl(self,ik,inn,out):
-        return self.ln(ik,out,inn)
-
-    def ll(self,ik,inn,out):
-        return self.nn(ik,out,inn)
-
-    def trace(self,ik,inn,out):
-        return np.einsum("nn...->...",self.nn(ik,inn,out).real)
 
 
 class Identity(Formula_ln):
@@ -46,22 +22,11 @@ class Identity(Formula_ln):
         return np.zeros((len(out),len(inn)))
 
 
-class Matrix_ln(Formula_ln):
-    "anything that can be called just as elements of a matrix"
-    @abc.abstractmethod
-    def __init__(self,matrix):
-        self.matrix=matrix
-
-    def ln(self,ik,inn,out):
-        return self.matrix[ik][out][:,inn]
-
-    def nn(self,ik,inn,out):
-        return self.matrix[ik][inn][:,inn]
-
-
 class Vln(Matrix_ln):
     def __init__(self,data_K):
         super(Vln,self).__init__(data_K.V_H)
+        self.TRodd = True
+        self.Iodd  = True
 
 class Aln(Matrix_ln):
     def __init__(self,data_K):
@@ -120,41 +85,24 @@ class DerDln(Dln):
         return summ
 
 
-class DerOmega_Hbar_ln(Formula_ln):
-    """ :math:`\overline{\Omega}^{b:d}`"""
+class DerOmega_Hbar_ln(Matrix_GenDer_ln):
+    r""" :math:`\overline{\Omega}^{b:d}`"""
     def __init__(self,data_K):
-        self.O  = Oln(data_K)
-        self.dO = dOln(data_K)
-        self.D  = Dln(data_K)
-
-    def nn(self,ik,inn,out):
-        summ=self.dO.nn(ik,inn,out)
-        summ -= np.einsum( "mld,lnb->mnbd" , self.D.nl(ik,inn,out) , self.O.ln(ik,inn,out) )
-        summ += np.einsum( "mlb,lnd->mnbd" , self.O.nl(ik,inn,out) , self.D.ln(ik,inn,out) )
-        return summ
-
-    def ln(self,ik,inn,out):
-        raise NotImplementedError()
+        super(DerOmega_Hbar_ln,self).__init__(Oln(data_K),dOln(data_K),Dln(data_K))
 
 
-class DerA_Hbar_ln(Formula_ln):
-    """ :math:`\overline{A}^{b:d}`"""
+class DerA_Hbar_ln(Matrix_GenDer_ln):
+    r""" :math:`\overline{A}^{b:d}`"""
     def __init__(self,data_K):
-        self.A  =  Aln(data_K)
-        self.dA = dAln(data_K)
-        self.D  =  Dln(data_K)
+        super(DerA_Hbar_ln,self).__init__(Aln(data_K),dAln(data_K),Dln(data_K))
 
-    def nn(self,ik,inn,out):
-        summ=self.dA.nn(ik,inn,out)
-        summ -= np.einsum( "mld,lnb->mnbd" , self.D.nl(ik,inn,out) , self.A.ln(ik,inn,out) )
-        summ += np.einsum( "mlb,lnd->mnbd" , self.A.nl(ik,inn,out) , self.D.ln(ik,inn,out) )
-        return summ
 
-    def ln(self,ik,inn,out):
-        summ= self.dA.ln(ik,inn,out)
-        summ -= np.einsum( "mld,lnb->mnbd" , self.D.ln(ik,inn,out) , self.A.nn(ik,inn,out) )
-        summ += np.einsum( "mlb,lnd->mnbd" , self.A.ll(ik,inn,out) , self.D.ln(ik,inn,out) )
-        return summ
+class InvMass(Matrix_GenDer_ln):
+    r""" :math:`\overline{V}^{b:d}`"""
+    def __init__(self,data_K):
+        super(InvMass,self).__init__(Vln(data_K),Wln(data_K),Dln(data_K))
+        self.TRodd=False
+        self.Iodd=False
 
 
 class DerOmega(Formula_ln):
@@ -229,3 +177,5 @@ class Omega(Formula_ln):
 
     def ln(self,ik,inn,out):
         raise NotImplementedError()
+
+
