@@ -62,7 +62,7 @@ def Efermi_Haldane():
 
 @pytest.fixture(scope="module")
 def quantities_Fe():
-    return  ['ahc','ahc_ocean','dos','cumdos'  ,'conductivity_ohmic','conductivity_ohmic_fsurf']
+    return  ['ahc','ahc_ocean','dos','cumdos','ahc3_ocean','cumdos3_ocean'  ,'conductivity_ohmic','conductivity_ohmic_fsurf']
 
 @pytest.fixture(scope="module")
 def quantities_Haldane():
@@ -70,11 +70,11 @@ def quantities_Haldane():
 
 @pytest.fixture(scope="module")
 def quantities_GaAs():
-    return  ["berry_dipole","berry_dipole_ocean","berry_dipole_fsurf"]
+    return  ["berry_dipole","berry_dipole_ocean","berry_dipole_fsurf","berry_dipole3_ocean"]
 
 
 def compare_quant(quant):
-    compare= {'ahc_ocean':'ahc',"berry_dipole_ocean":"berry_dipole"}
+    compare= {'ahc_ocean':'ahc','ahc3_ocean':'ahc',"cumdos3_ocean":"cumdos","dos3_ocean":"dos","berry_dipole_ocean":"berry_dipole","berry_dipole3_ocean":"berry_dipole"}
     if quant in compare:
         return compare[quant]
     else:
@@ -99,16 +99,16 @@ def test_Fe_sym(check_integrate,system_Fe_W90_sym, compare_energyresult,quantiti
 def test_GaAs(check_integrate,system_GaAs_W90,system_GaAs_tb, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test berry dipole"""
     check_integrate(system_GaAs_W90 , quantities_GaAs , fout_name="berry_GaAs_W90" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
-                  extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
+                  extra_precision = {"berry_dipole_fsurf":1e-6,"berry_dipole3_ocean":1e-10} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
     check_integrate(system_GaAs_tb , quantities_GaAs , fout_name="berry_GaAs_tb" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
-                  extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
+                  extra_precision = {"berry_dipole_fsurf":1e-6,"berry_dipole3_ocean":1e-10} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 def test_GaAs_wcc(check_integrate,system_GaAs_W90_wcc,system_GaAs_tb_wcc, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test berry dipole with wcc_phase"""
     check_integrate(system_GaAs_W90_wcc , quantities_GaAs , fout_name="berry_GaAs_W90" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
-                  extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
+                  extra_precision = {"berry_dipole_fsurf":1e-6,"berry_dipole3_ocean":1e-10} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
     check_integrate(system_GaAs_tb_wcc , quantities_GaAs , fout_name="berry_GaAs_tb" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
-                  extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
+                  extra_precision = {"berry_dipole_fsurf":1e-6,"berry_dipole3_ocean":1e-10} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
     
 def test_Haldane_PythTB(check_integrate,system_Haldane_PythTB,compare_energyresult,quantities_Haldane,Efermi_Haldane):
