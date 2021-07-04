@@ -1,16 +1,25 @@
 import numpy as np
-from .__utility import  alpha_A,beta_A
+from .__utility import  alpha_A,beta_A, TAU_UNIT
 from collections import defaultdict
 from . import __result as result
 from math import ceil
 from . import __formulas_nonabelian_3 as frml
+from .__formula_3 import FormulaProduct
+
+
+
 
 from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]
 Ang_SI = angstrom
+
 fac_ahc = -1e8 * elementary_charge ** 2 / hbar
+factor_ohmic=(elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
+                 *elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
+                   * 1e-2  ) # now in  S/(cm*tau_unit)
+
 
 def cumdos(data_K,Efermi,tetra=False,**parameters):
     return FermiOcean(frml.Identity(),data_K,Efermi,tetra,fder=0)()*data_K.cell_volume
@@ -29,12 +38,24 @@ def berry_dipole(data_K,Efermi,tetra=False,**parameters):
     return res
 
 
+def ohmic_fsurf(data_K,Efermi,kpart=None,tetra=False,**parameters):
+    velocity =  frml.Vln(data_K)
+    formula  = FormulaProduct ( [velocity,velocity], name='vel-vel')
+    return FermiOcean(formula,data_K,Efermi,tetra,fder=1)()*factor_ohmic
+
+def ohmic_fsea(data_K,Efermi,kpart=None,tetra=False,**parameters):
+    formula =  frml.InvMass(data_K)
+    return FermiOcean(formula,data_K,Efermi,tetra,fder=0)()*factor_ohmic
+
 
 
 
 ##################################
 ### The private part goes here  ##
 ##################################
+
+
+
 
 class  FermiOcean():
     """ formula should have a trace(ik,inn,out) method 
