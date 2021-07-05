@@ -112,7 +112,7 @@ def Hplusminus(data_K,op=None,ed=None,sign=1):
         formula.add_term( 'mL,Ln',(D_['alpha'],E[:,None,:,None]*A_['beta'] ),-2*sign )
         formula.add_term( 'mL,Ln',(D_['beta'],E[:,None,:,None] *A_['alpha'] ),2*sign )
         
-        formula.add_term( 'mL,Ln',(D_['alpha'],E[:,:,None,None]*D_['beta'] ),-2j*sign )
+        formula.add_term( 'mL,Ln',(D_['alpha'],E[:,:,None,None]*D_['beta'] ),-2j )
         formula.add_term( 'mL,Ln',(D_['alpha'],E[:,None,:,None]*D_['beta'] ),-2j*sign )
         return formula
 

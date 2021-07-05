@@ -31,15 +31,38 @@ def dos(data_K,Efermi,tetra=False,**parameters):
 def AHC(data_K,Efermi,tetra=False,**parameters):
     return  FermiOcean(frml.Omega(data_K,**parameters),data_K,Efermi,tetra,fder=0)()*fac_ahc
 
-
 def spin(data_K,Efermi,tetra=False,**parameters):
     return  FermiOcean(frml.Sln(data_K),data_K,Efermi,tetra,fder=0)()
 
+def berry_dipole_fsurf(data_K,Efermi,tetra=False,**parameters):
+    formula  = FormulaProduct ( [frml.Omega(data_K,**parameters),frml.Vln(data_K)], name='berry-vel')
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0)()
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
 
 def berry_dipole(data_K,Efermi,tetra=False,**parameters):
     res =  FermiOcean(frml.DerOmega(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
+
+def gme_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
+    formula  = FormulaProduct ( [frml.Sln(data_K),frml.Vln(data_K)], name='spin-vel')
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0)()
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    return res
+
+def gme_spin(data_K,Efermi,tetra=False,**parameters):
+    formula  = FormulaProduct ( [frml.DerSln(data_K),frml.Vln(data_K)], name='spin-vel')
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0)()
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    return res
+
+def Morb(data_K,Efermi,tetra=False,**parameters):
+    fac_morb =  -eV_au/bohr**2
+    return    (
+                FermiOcean(frml.Morb_Hpm(data_K,sign=+1,**parameters),data_K,Efermi,tetra,fder=0)() 
+            - 2*FermiOcean(frml.Omega(data_K,**parameters),data_K,Efermi,tetra,fder=0)().mul_array(Efermi) 
+                   )  *  (data_K.cell_volume*fac_morb)
 
 
 def ohmic_fsurf(data_K,Efermi,kpart=None,tetra=False,**parameters):

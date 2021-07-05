@@ -22,6 +22,16 @@ class Identity(Formula_ln):
         return np.zeros((len(out),len(inn)))
 
 
+class Eavln(Matrix_ln):
+    def __init__(self,data_K):
+        super(Eavln,self).__init__(
+                       0.5* (data_K.E_K[:,:,None]+data_K.E_K[:,None,:])
+                                )
+        self.ndim=0
+        self.TRodd=False
+        self.Iodd=False
+
+
 class Vln(Matrix_ln):
     def __init__(self,data_K):
         super(Vln,self).__init__(data_K.V_H)
@@ -32,10 +42,13 @@ class Aln(Matrix_ln):
     def __init__(self,data_K):
         super(Aln,self).__init__(data_K.A_Hbar)
 
-
 class Sln(Matrix_ln):
     def __init__(self,data_K):
         super(Sln,self).__init__(data_K.S_H)
+
+class dSln(Matrix_ln):
+    def __init__(self,data_K):
+        super(dSln,self).__init__(data_K.delS_H)
 
 class dAln(Matrix_ln):
     def __init__(self,data_K):
@@ -52,6 +65,7 @@ class Oln(Matrix_ln):
 class dOln(Matrix_ln):
     def __init__(self,data_K):
         super(dOln,self).__init__(data_K.Omega_bar_der)
+
 
 
 class Dln(Matrix_ln):
@@ -102,12 +116,60 @@ class DerA_Hbar_ln(Matrix_GenDer_ln):
         super(DerA_Hbar_ln,self).__init__(Aln(data_K),dAln(data_K),Dln(data_K))
 
 
+class DerSln(Matrix_GenDer_ln):
+    r""" :math:`\overline{A}^{b:d}`"""
+    def __init__(self,data_K):
+        super(DerSln,self).__init__(Sln(data_K),dSln(data_K),Dln(data_K))
+
+
 class InvMass(Matrix_GenDer_ln):
     r""" :math:`\overline{V}^{b:d}`"""
     def __init__(self,data_K):
         super(InvMass,self).__init__(Vln(data_K),Wln(data_K),Dln(data_K))
         self.TRodd=False
         self.Iodd=False
+
+
+
+#############################
+###   Berry curvature    ####
+#############################
+
+class Omega(Formula_ln):
+
+    def __init__(self,data_K,**parameters):
+        super(Omega,self).__init__(data_K,**parameters)
+        self.A=Aln(data_K)
+        self.V=Vln(data_K)
+        self.D=Dln(data_K)
+        self.O=Oln(data_K)
+        self.ndim=1
+        self.Iodd=False
+        self.TRodd=True
+
+    def nn(self,ik,inn,out):
+        summ = np.zeros( (len(inn),len(inn),3),dtype=complex )
+
+        if self.internal_terms:
+            summ+= -1j*np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.D.ln(ik,inn,out)[:,:,beta_A])
+
+        if self.external_terms:
+            summ += 0.5 * self.O.nn(ik,inn,out)
+            summ +=  -1 * np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.A.ln(ik,inn,out)[:,:,beta_A])
+            summ +=  +1 * np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,beta_A] ,self.A.ln(ik,inn,out)[:,:,alpha_A])
+            summ+=  -1j * np.einsum("mlc,lnc->mnc",self.A.nn(ik,inn,out)[:,:,alpha_A],self.A.nn(ik,inn,out)[:,:,beta_A])
+
+        summ+=summ.swapaxes(0,1).conj()
+        return summ
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
+
+
+#############################
+###   derivative of      ####
+###   Berry curvature    ####
+#############################
 
 
 class DerOmega(Formula_ln):
@@ -151,15 +213,29 @@ class DerOmega(Formula_ln):
         raise NotImplementedError()
 
 
+#############################
+###   orbital moment     ####
+#############################
 
-class Omega(Formula_ln):
 
+class Bln(Matrix_ln):
+    def __init__(self,data_K):
+        super(Bln,self).__init__(data_K.B_Hbar)
+
+class Cln(Matrix_ln):
+    def __init__(self,data_K):
+        super(Cln,self).__init__(data_K.Morb_Hbar)
+
+class Morb_H(Formula_ln):
     def __init__(self,data_K,**parameters):
-        super(Omega,self).__init__(data_K,**parameters)
-        self.A=Aln(data_K)
-        self.V=Vln(data_K)
-        self.D=Dln(data_K)
-        self.O=Oln(data_K)
+        r"""  :math:`\varepcilon_{abc} \langle \partial_a u | H | \partial_b \rangle` """
+        super(Morb_H,self).__init__(data_K,**parameters)
+        if self.external_terms:
+            self.A = Aln(data_K)
+            self.B = Bln(data_K)
+            self.C = Cln(data_K)
+        self.D = Dln(data_K)
+        self.E = data_K.E_K
         self.ndim=1
         self.Iodd=False
         self.TRodd=True
@@ -169,14 +245,18 @@ class Omega(Formula_ln):
         summ = np.zeros( (len(inn),len(inn),3),dtype=complex )
 
         if self.internal_terms:
-            summ+= -1j*np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.D.ln(ik,inn,out)[:,:,beta_A])
+            summ+= -1j*np.einsum(  "mlc,lnc->mnc",
+                             self.D.nl(ik,inn,out)[:,:,alpha_A]*self.E[ik][out][None,:,None],
+                             self.D.ln(ik,inn,out)[:,:,beta_A]  )
 
         if self.external_terms:
-            summ += 0.5 * self.O.nn(ik,inn,out)
-            summ +=  -1 * np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.A.ln(ik,inn,out)[:,:,beta_A])
-            summ +=  +1 * np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,beta_A] ,self.A.ln(ik,inn,out)[:,:,alpha_A])
-            summ+=  -1j * np.einsum("mlc,lnc->mnc",self.A.nn(ik,inn,out)[:,:,alpha_A],self.A.nn(ik,inn,out)[:,:,beta_A])
-
+            summ += 0.5  * self.C.nn(ik,inn,out)
+            summ +=  -1  * np.einsum(  "mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.B.ln(ik,inn,out)[:,:,beta_A])
+            summ +=  +1  * np.einsum(  "mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,beta_A] ,self.B.ln(ik,inn,out)[:,:,alpha_A])
+            summ +=  -1j * np.einsum("mlc,lnc->mnc",
+                                    self.A.nn(ik,inn,out)[:,:,alpha_A]*self.E[ik][inn][None,:,None] ,
+                                    self.A.nn(ik,inn,out)[:,:,beta_A]  
+                                    )
         summ+=summ.swapaxes(0,1).conj()
         return summ
 
@@ -184,3 +264,20 @@ class Omega(Formula_ln):
         raise NotImplementedError()
 
 
+class Morb_Hpm(Formula_ln):
+    def __init__(self,data_K,sign=+1,**parameters):
+        r""" Morb_H  +- (En+Em)/2 * Omega """
+        super(Morb_Hpm,self).__init__(data_K,**parameters)
+        self.H = Morb_H(data_K,**parameters)
+        self.O = Omega (data_K,**parameters)
+        self.Eav = Eavln ( data_K )
+        self.s = sign
+        self.ndim=1
+        self.Iodd=False
+        self.TRodd=True
+
+    def nn(self,ik,inn,out):
+        return  self.H.nn(ik,inn,out)+self.s*self.Eav.nn(ik,inn,out)[:,:,None]*self.O.nn(ik,inn,out)
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()

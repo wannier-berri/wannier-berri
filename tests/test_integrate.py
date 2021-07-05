@@ -62,7 +62,9 @@ def Efermi_Haldane():
 
 @pytest.fixture(scope="module")
 def quantities_Fe():
-    return  ['ahc','ahc_ocean','dos','cumdos','ahc3_ocean','cumdos3_ocean'  ,'conductivity_ohmic','conductivity_ohmic_fsurf','conductivity_ohmic3_ocean']
+    return  ['ahc','ahc_ocean','dos','cumdos','ahc3_ocean',
+                'cumdos3_ocean'  
+               ,'conductivity_ohmic','conductivity_ohmic_fsurf','conductivity_ohmic3_ocean']
 
 @pytest.fixture(scope="module")
 def quantities_Haldane():
