@@ -60,6 +60,7 @@ calculators_trans={
          'Morb2'       : fermisea2.Morb2,
          'Morb_ocean'       : fermiocean.Morb,
          'Morb2_ocean'       : fermiocean2.Morb,
+         'Morb3_ocean'       : fermiocean3.Morb,
          'ahc'        : fermisea2.AHC ,
          'ahc2'        : fermisea2.AHC2 ,
          'ahc_ocean'  : fermiocean.AHC ,
