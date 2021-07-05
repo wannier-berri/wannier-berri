@@ -263,6 +263,10 @@ class Morb_H(Formula_ln):
     def ln(self,ik,inn,out):
         raise NotImplementedError()
 
+    @property
+    def additive(self):
+        return False
+
 
 class Morb_Hpm(Formula_ln):
     def __init__(self,data_K,sign=+1,**parameters):
@@ -275,6 +279,10 @@ class Morb_Hpm(Formula_ln):
         self.ndim=1
         self.Iodd=False
         self.TRodd=True
+
+    @property
+    def additive(self):
+        return False
 
     def nn(self,ik,inn,out):
         return  self.H.nn(ik,inn,out)+self.s*self.Eav.nn(ik,inn,out)[:,:,None]*self.O.nn(ik,inn,out)
