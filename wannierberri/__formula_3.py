@@ -26,6 +26,13 @@ class Formula_ln(abc.ABC):
     def ll(self,ik,inn,out):
         return self.nn(ik,out,inn)
 
+    @property
+    def additive(self):
+        """ if Trace_A+Trace_B = Trace_{A+B} holds. 
+        needs override for quantities that do not obey this rule (e.g. Orbital magnetization)
+        """
+        return True
+
     def trace(self,ik,inn,out):
         return np.einsum("nn...->...",self.nn(ik,inn,out).real)
 

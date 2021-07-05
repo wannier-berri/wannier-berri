@@ -120,13 +120,20 @@ class  FermiOcean():
         lambdadic= lambda: np.zeros(((3, ) * ndim), dtype=float)
         self.values = [defaultdict(lambdadic ) for ik in range(self.nk)]
         for ik,bnd in enumerate(bands):
-            for n in bnd :
-#                inn=np.zeros(self.NB,dtype=bool)
-#                inn[n[0]:n[1]] = True
-#                out = np.logical_not(inn)
-                inn=np.arange(n[0],n[1])
-                out=np.concatenate((np.arange(0,n[0]),np.arange(n[1],self.NB)))
-                self.values[ik][n] = formula.trace(ik,inn,out)
+            if formula.additive:
+                 for n in bnd :
+                     inn=np.arange(n[0],n[1])
+                     out=np.concatenate((np.arange(0,n[0]),np.arange(n[1],self.NB)))
+                     self.values[ik][n] = formula.trace(ik,inn,out)
+            else:
+                 nnall = set([_ for n in bnd for _ in n])
+                 _values={}
+                 for n in nnall :
+                     inn=np.arange(0,n)
+                     out=np.arange(n,self.NB)
+                     _values[n] = formula.trace(ik,inn,out)
+                 for n in bnd:
+                     self.values[ik][n] = _values[n[1]] - _values[n[0]]
 
     def __call__(self) :
         if self.tetra:
