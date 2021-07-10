@@ -75,21 +75,21 @@ def ohmic_fsea(data_K,Efermi,kpart=None,tetra=False,**parameters):
     return FermiOcean(formula,data_K,Efermi,tetra,fder=0)()*factor_ohmic
 
 
-def Der3E_0(data_K,Efermi,tetra=False,**parameters):
+def Der3E_fsea(data_K,Efermi,tetra=False,**parameters):
     r"""f0 """
     res =  FermiOcean(frml.Der3E(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
     return res
 
-def Der3E_1(data_K,Efermi,tetra=False,**parameters):
+def Der3E_fsurf(data_K,Efermi,tetra=False,**parameters):
     r"""first der f0 """
-    formula  = FormulaProduct ( [frml.InvMass(data_K),frml.Vln(data_K)], name='mass-vel')
+    formula  = FormulaProduct ([frml.InvMass(data_K),frml.Vln(data_K)], name='mass-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()
     return res
 
-def Der3E_2(data_K,Efermi,tetra=False,**parameters):
+def Der3E_fder2(data_K,Efermi,tetra=False,**parameters):
     r"""second der f0 """
     formula  = FormulaProduct ( [frml.Vln(data_K),frml.Vln(data_K),frml.Vln(data_K)], name='vel-vel-vel')
-    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=2)()
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=2)()*0.5
     return res
 
 
