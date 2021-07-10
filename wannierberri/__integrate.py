@@ -105,9 +105,9 @@ calculators_trans={
          'gyrotropic_Kspin_fsurf'  : nonabelian.gyrotropic_Kspin,
          'sigma21tau3_Ohmic2_ocean': fermiocean2.sigma21tau3_Ohmic,
          'sigma21tau3_Hall2_ocean': fermiocean2.sigma21tau3_Hall,
-         'Der3E_0': fermiocean3.Der3E_0,
-         'Der3E_1': fermiocean3.Der3E_1,
-         'Der3E_2': fermiocean3.Der3E_2
+         'Der3E_fsea3_ocean': fermiocean3.Der3E_fsea,
+         'Der3E_fsurf3_ocean': fermiocean3.Der3E_fsurf,
+         'Der3E_fder23_ocean': fermiocean3.Der3E_fder2
          
          }
 
