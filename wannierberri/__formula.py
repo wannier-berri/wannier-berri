@@ -37,9 +37,9 @@ class FormulaProduct():
         self.einline =  { tr:self.__einline(subscripts,trace=tr) for tr in (True,False) }
         print (f"einline for {self.name} : '{self.einline}'")
 
-    def __call__(self,ik,ib_in_start,ib_in_end,trace=True):#,Emax=None):
+    def __call__(self,ik,ib_in_start,ib_in_end,trace=True,Emax=None):
         # not sure if we will ever use trace=False ?
-        res = np.einsum( self.einline[trace],*( frml(ik,ib_in_start,ib_in_end,trace=False)# ,Emax=Emax) 
+        res = np.einsum( self.einline[trace],*( frml(ik,ib_in_start,ib_in_end,trace=False,Emax=Emax) 
                         for frml in self.formulae )  )
         if trace: 
             return res.real
@@ -102,15 +102,15 @@ class Formula():
         self.hermitian=hermitian
         self.nonabelian=nonabelian
 
-    def __call__(self,ik,ib_in_start,ib_in_end,trace):#,Emax):#Emax is additional occupied energy in self.Weight dictionary
-        res = sum( term(ik,ib_in_start,ib_in_end) for term in self.term_list )
+    def __call__(self,ik,ib_in_start,ib_in_end,trace,Emax):#Emax is additional occupied energy in self.Weight dictionary
+        res = sum( term(ik,ib_in_start,ib_in_end,Emax) for term in self.term_list )
         if trace:
-            return np.einsum('nn...->...',res).real
-            #return res.real
-        else:
-            if self.hermitian:
-                res=0.5*(res+np.swapaxes(res,0,1).conj())
-            return np.array(res,dtype=complex)
+            #return np.einsum('nn...->...',res).real
+            return res.real
+        #else:
+        #    if self.hermitian:
+        #        res=0.5*(res+np.swapaxes(res,0,1).conj())
+        #    return np.array(res,dtype=complex)
 
     def add_term(self,ind_string ,mat_list ,mult=1.):
         self.term_list.append( 
@@ -181,10 +181,7 @@ class MatrixProductTerm():
         return np.arange(self.nb)
 
 
-    def __call__(self,ik,ib_in_start,ib_in_end):#,Emax):
-        #add = False
-        #if Emax > -np.inf:
-        #    add = True
+    def __call__(self,ik,ib_in_start,ib_in_end,Emax):
         #print(self.mat_list[0][ik])
         #result=MatrixProductTerm_select(self.mat_list[0][ik],self.ind_list[0],ib_in_start,ib_in_end,np.swapaxes(self.mat_list[0][ik],0,1),add)
         #for i in range(1,self.num_mat):
@@ -197,11 +194,10 @@ class MatrixProductTerm():
                 m1=MatrixProductTerm_select(self.mat_list[i][ik],self.ind_list[i],ib_in_start,ib_in_end)
                 result = matrix_prod_cart(result,m1)
             return result*self.mult
-#        if Emax is not None:
-#            result = np.einsum("nn...->...",calculate_mats(0,ib_in_end) )- np.einsum("nn...->...",calculate_mats(0,ib_in_start) )
-#            result = calculate_mats(0,ib_in_end)  - calculate_mats(0,ib_in_start) 
-#        else:
-        result = calculate_mats(ib_in_start,ib_in_end)
+        if Emax > -np.inf:
+            result = np.einsum("nn...->...",calculate_mats(0,ib_in_end) )- np.einsum("nn...->...",calculate_mats(0,ib_in_start) )
+        else:
+            result = np.einsum("nn...->...",calculate_mats(ib_in_start,ib_in_end) )
         #print(result.shape)
         #assert result.shape[0] == result.shape[1], 'dim of result is not nn... ind_list= {}'.format(self.ind_list) 
         return  result
