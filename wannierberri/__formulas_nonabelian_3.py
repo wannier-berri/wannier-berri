@@ -1,7 +1,7 @@
 import numpy as np
 from .__utility import  alpha_A,beta_A
 import abc 
-
+from scipy.constants import Boltzmann,elementary_charge
 from .__formula_3 import Formula_ln, Matrix_ln , Matrix_GenDer_ln
 #####################################################
 #####################################################
@@ -129,6 +129,42 @@ class InvMass(Matrix_GenDer_ln):
         self.TRodd=False
         self.Iodd=False
 
+class del3E_H(Matrix_ln):
+    def __init__(self,data_K):
+        super(del3E_H,self).__init__(data_K.del3E_H)
+
+
+##################################
+###   Third derivative of  E  ####
+##################################
+
+
+class Der3E(Formula_ln):
+
+    def __init__(self,data_K,**parameters):
+        super(Der3E,self).__init__(data_K,**parameters)
+        self.V=Vln(data_K)
+        self.D=Dln(data_K)
+        self.dV=InvMass(data_K)
+        self.dD=DerDln(data_K)
+        self.del3E_H=del3E_H(data_K)
+        self.ndim=3
+        self.Iodd=True
+        self.TRodd=True
+
+    def nn(self,ik,inn,out):
+        summ = np.zeros( (len(inn),len(inn),3,3,3),dtype=complex )
+        summ += 1 * self.del3E_H.nn(ik,inn,out)
+        summ += 1 * np.einsum("mlac,lnb->mnabc",self.dV.nl(ik,inn,out),self.D.ln(ik,inn,out) )
+        summ += 1 * np.einsum("mla,lnbc->mnabc",self.V.nl(ik,inn,out),self.dD.ln(ik,inn,out) )
+        summ+=  -1 * np.einsum("mlbc,lna->mnabc",self.dD.nl(ik,inn,out),self.V.ln(ik,inn,out) )
+        summ+=  -1 * np.einsum("mlb,lnac->mnabc",self.D.nl(ik,inn,out),self.dV.ln(ik,inn,out) )
+
+        #summ+=summ.swapaxes(0,1).conj()
+        return summ
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
 
 
 #############################
@@ -289,3 +325,6 @@ class Morb_Hpm(Formula_ln):
 
     def ln(self,ik,inn,out):
         raise NotImplementedError()
+
+
+#class derMorb_H(Formula_ln):

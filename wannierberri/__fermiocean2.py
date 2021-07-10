@@ -194,7 +194,7 @@ class  FermiOcean():
         self.values = [defaultdict(lambdadic ) for ik in range(self.nk)]
         for ik,bnd in enumerate(bands):
             for n in bnd :
-                self.values[ik][n] = formula(ik,ib_in_start=n[0],ib_in_end=n[1],trace=True)#,Emax=bands[ik][n] )
+                self.values[ik][n] = formula(ik,ib_in_start=n[0],ib_in_end=n[1],trace=True,Emax=bands[ik][n] )
 
     def __call__(self) :
         result = np.zeros(self.Efermi.shape + self.shape )
