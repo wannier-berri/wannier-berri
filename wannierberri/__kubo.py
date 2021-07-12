@@ -325,21 +325,20 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
                     sigma_AH[iEF] += pre_fac * kubo_sum_elements(imAB, temp1, data.num_wann) / 2.0
                 
             elif conductivity_type == 'shiftcurrent':
-                delta_mn = np.copy(delta)
+                delta_mn = delta
                 dE2 = E[:,np.newaxis] - E[np.newaxis, :] # E_n(k) - E_m(k) [n, m]
                 delta_arg = dE2[np.newaxis,:,:] - omega[:,np.newaxis,np.newaxis]
                 if smr_type == 'Lorentzian':
-                    delta = Lorentzian(delta_arg, eta)
+                    delta_nm = Lorentzian(delta_arg, eta)
                 elif smr_type == 'Gaussian':
-                    delta = Gaussian(delta_arg, eta, adpt_smr)
+                    delta_nm = Gaussian(delta_arg, eta, adpt_smr)
                 else:
                     cprint("Invalid smearing type. Fallback to Lorentzian", 'red')
-                    delta = Lorentzian(delta_arg, eta)
+                    delta_nm = Lorentzian(delta_arg, eta)
     
-                delta_nm = np.copy(delta)
                 cfac = delta_mn + delta_nm
                 temp = -dfE[np.newaxis,:,:]*cfac
-    
+
                 # generalized derivative is fourth index of A, we put it into third index of Imn
                 Imn = np.einsum('nmca,mnb->nmabc',A,B) + np.einsum('nmba,mnc->nmabc',A,B) 
                 sigma_abc[iEF] +=  pre_fac * kubo_sum_elements(Imn, temp, data.num_wann) 
