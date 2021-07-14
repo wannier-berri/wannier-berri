@@ -98,6 +98,7 @@ def test_shiftcurrent(check_integrate_dynamical, system_GaAs_W90, compare_energy
     check_integrate_dynamical(system_GaAs_W90, quantities, fout_name="kubo_GaAs_W90",
         Efermi=Efermi, omega=omega, grid_param=grid_param,
         adpt_num_iter=adpt_num_iter, comparer=compare_energyresult,
-        additional_parameters=kubo_params)
+        additional_parameters=kubo_params,
+        extra_precision = {"opt_shiftcurrent":1e-9})
 
     # TODO: Add wcc test
