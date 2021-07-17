@@ -25,14 +25,12 @@ class Parallel():
                    progress_step_percent  = 1  ,  #
                    progress_timeout = None  # relevant only for ray, seconds
                  ):
+        if num_cpus <= 0:
+            method = "serial"
         if method == 'multiprocessing':
             method = 'multiprocessing-K'
-
         if method is None:
-            if num_cpus <= 0:
-                method = "serial"
-            else:
-                method = "ray"
+            method = "ray"
         self.method=method
         self.progress_step_percent  = progress_step_percent
         self.chunksize=chunksize
