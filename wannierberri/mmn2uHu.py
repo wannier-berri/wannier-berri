@@ -278,7 +278,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
 
         SPN=[]
         for ik in range(NK):
-            A=np.zeros((3,nbnd,nbnd),dtype=np.complex128)
+            A=np.zeros((3,nbnd,nbnd),dtype=complex)
             SPN.append([])
             if spn_formatted_in:
                 tmp=np.array( [f_spn_in.readline().split() for i in xrange (3*nbnd*(nbnd+1)/2)  ],dtype=float)

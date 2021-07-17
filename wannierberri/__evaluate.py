@@ -116,7 +116,8 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
 def evaluate_K(func,system,grid,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              suffix="",
-             file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False,parallel=None
+             file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False,
+             parallel=None,numproc=0,chunksize=0
              ):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
@@ -129,7 +130,7 @@ The parallelisation is done by K-points
 As a result, the integration will be performed over NKFFT x NKdiv
 """
     if parallel is None:
-        parallel = Parallel()
+        parallel = Parallel(num_cpus=numproc,chunksize=chunksize)
 
     if file_Klist is not None:
         if not file_Klist.endswith(".pickle"):
