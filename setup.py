@@ -25,7 +25,7 @@ setuptools.setup(
                         'pyFFTW>=0.12.0',
                         'packaging>=20.8',
                         'matplotlib',
-                        'fortio>=0.4'
+                        'fortio>=0.4',
                         'ray[default]'
                         ],
      url="https://wannier-berri.org",
