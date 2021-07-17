@@ -341,7 +341,7 @@ class SPN(W90_data):
         self.data=np.zeros( (NK,nbnd,nbnd,3),dtype=complex)
 
         for ik in range(NK):
-            A=np.zeros((3,nbnd,nbnd),dtype=np.complex128)
+            A=np.zeros((3,nbnd,nbnd),dtype=complex)
             if formatted:
                 tmp=np.array( [f_spn_in.readline().split() for i in range(3*nbnd*(nbnd+1)//2)  ],dtype=float)
                 tmp=tmp[:,0]+1.j*tmp[:,1]

@@ -45,9 +45,13 @@ class Data_K(System):
         self.delta_fz=system.delta_fz
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
         self.ksep = system.ksep
-        self.wannier_centres_reduced=system.wannier_centres_reduced
-        self.wannier_centres_cart=system.wannier_centres_cart
         self.use_wcc_phase=system.use_wcc_phase
+        if self.use_wcc_phase:
+            self.wannier_centres_reduced=system.wannier_centres_reduced
+            self.wannier_centres_cart=system.wannier_centres_cart
+        else:
+            self.wannier_centres_reduced=np.zeros((self.num_wann,3))
+            self.wannier_centres_cart=np.zeros((self.num_wann,3))
         ## TODO : create the plans externally, one per process 
 #        print( "iRvec in data_K is :\n",self.iRvec)
         #self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
