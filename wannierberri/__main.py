@@ -113,7 +113,9 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,adpt_fac=1,
                         fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
                         parallel = None, 
-                        parameters={}):
+                        parameters={},
+                        numproc=0,chunksize=0
+                        ):
     """
     Integrate 
 
@@ -135,7 +137,13 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
     adpt_fac : int 
         number of K-points to be refined per quantity and criteria.
-   
+    parallel : :class:`~wannierberri.Parallel`
+        object describing parallelization scheme
+    numproc : int 
+        (obsolete, use parallel instead) number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
+    chunksize : int
+        (obsolete, use parallel instead) chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
+ 
     Returns
     --------
     dictionary of  :class:`~wannierberri.EnergyResult` 
@@ -175,7 +183,8 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     res=evaluate_K(eval_func,system,grid,fftlib=fftlib,
             adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac,
                 fout_name=fout_name,suffix=suffix,
-                restart=restart,file_Klist=file_Klist, parallel = parallel)
+                restart=restart,file_Klist=file_Klist, parallel = parallel,
+                    numproc=numproc,chunksize=chunksize)
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
 
@@ -183,7 +192,8 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 
 def tabulate(system,grid, quantities=[],
                   frmsf_name=None,ibands=None,suffix="",Ef0=0.,parameters={},
-                  parallel = None):
+                  parallel = None,
+                        numproc=0,chunksize=0):
     """
     Tabulate quantities to be plotted
 
@@ -199,6 +209,12 @@ def tabulate(system,grid, quantities=[],
         quantities to be integrated. See :ref:`sec-capabilities`
     frmsf_name :  str
         if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
+    parallel : :class:`~wannierberri.Parallel`
+        object describing parallelization scheme
+    numproc : int 
+        (obsolete, use parallel instead) number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
+    chunksize : int
+        (obsolete, use parallel instead) chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
    
     Returns
     --------
@@ -215,7 +231,8 @@ def tabulate(system,grid, quantities=[],
     t0=time()
     res=evaluate_K(eval_func,system,grid,
             adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,nosym=(mode=='path'), 
-            parallel=parallel )
+            parallel=parallel,
+              numproc=numproc,chunksize=chunksize )
 
     t1=time()
     if mode=='3D':
