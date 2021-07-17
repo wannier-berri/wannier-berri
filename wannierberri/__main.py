@@ -114,7 +114,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
                         parallel = None, 
                         parameters={},
-                        numproc=0,chunksize=0
+                        numproc=0,chunksize=None
                         ):
     """
     Integrate 
@@ -193,7 +193,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 def tabulate(system,grid, quantities=[],
                   frmsf_name=None,ibands=None,suffix="",Ef0=0.,parameters={},
                   parallel = None,
-                        numproc=0,chunksize=0):
+                        numproc=0,chunksize=None):
     """
     Tabulate quantities to be plotted
 

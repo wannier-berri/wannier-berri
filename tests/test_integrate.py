@@ -17,7 +17,8 @@ from compare_result import compare_energyresult
 @pytest.fixture
 def check_integrate(output_dir,parallel_serial):
     def _inner(system,quantities,fout_name,Efermi,comparer,
-               parallel=parallel_serial,
+               parallel=None,
+               numproc=0,
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},additional_parameters={},adpt_num_iter=0,
                suffix="", suffix_ref="",
                extra_precision={} ):
@@ -30,6 +31,7 @@ def check_integrate(output_dir,parallel_serial):
     #            omega = omega,
                 quantities = quantities,
                 parallel=parallel,
+                numproc=numproc,
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
                 fout_name = os.path.join(output_dir, fout_name),
@@ -167,3 +169,8 @@ def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,qu
       parallel_ray):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-ray-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,parallel=parallel_ray)
+
+def test_Fe_parallel_old(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-old-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4)
+
