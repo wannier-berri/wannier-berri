@@ -24,6 +24,7 @@ from .__system_w90 import System_w90
 from .__system_tb  import System_tb
 from .__system_tb_py  import System_PythTB, System_TBmodels
 from .__path import Path
-welcome()
+from .__parallel import Parallel
+#welcome()
 
 

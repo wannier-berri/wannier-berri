@@ -111,7 +111,11 @@ def check_option(quantities,avail,tp):
 
 def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,adpt_fac=1,
-                        fout_name="wberri",restart=False,numproc=0,fftlib='fftw',suffix="",file_Klist="Klist",chunksize=0,parameters={}):
+                        fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
+                        parallel = None, 
+                        parameters={},
+                        numproc=0,chunksize=None
+                        ):
     """
     Integrate 
 
@@ -133,11 +137,13 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
     adpt_fac : int 
         number of K-points to be refined per quantity and criteria.
-    num_proc : int 
-        number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
+    parallel : :class:`~wannierberri.Parallel`
+        object describing parallelization scheme
+    numproc : int 
+        (obsolete, use parallel instead) number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
     chunksize : int
-        chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
-   
+        (obsolete, use parallel instead) chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
+ 
     Returns
     --------
     dictionary of  :class:`~wannierberri.EnergyResult` 
@@ -174,18 +180,20 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 
     eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, omega=omega, smootherEf=smoothEf, smootherOmega=smoothW,
             quantities=quantities, parameters=parameters )
-    res=evaluate_K(eval_func,system,grid,nparK=numproc,fftlib=fftlib,
+    res=evaluate_K(eval_func,system,grid,fftlib=fftlib,
             adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac,
                 fout_name=fout_name,suffix=suffix,
-                restart=restart,file_Klist=file_Klist, chunksize=chunksize)
+                restart=restart,file_Klist=file_Klist, parallel = parallel,
+                    numproc=numproc,chunksize=chunksize)
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
 
 
 
 def tabulate(system,grid, quantities=[],
-                  frmsf_name=None,ibands=None,suffix="",numproc=0,Ef0=0.,
-                  chunksize=0, parameters={}):
+                  frmsf_name=None,ibands=None,suffix="",Ef0=0.,parameters={},
+                  parallel = None,
+                        numproc=0,chunksize=None):
     """
     Tabulate quantities to be plotted
 
@@ -201,10 +209,12 @@ def tabulate(system,grid, quantities=[],
         quantities to be integrated. See :ref:`sec-capabilities`
     frmsf_name :  str
         if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
-    num_proc : int 
-        number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
+    parallel : :class:`~wannierberri.Parallel`
+        object describing parallelization scheme
+    numproc : int 
+        (obsolete, use parallel instead) number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
     chunksize : int
-        chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
+        (obsolete, use parallel instead) chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
    
     Returns
     --------
@@ -219,14 +229,16 @@ def tabulate(system,grid, quantities=[],
     check_option(quantities,tabulate_options,"tabulate")
     eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
     t0=time()
-    res=evaluate_K(eval_func,system,grid,nparK=numproc,
-            adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,nosym=(mode=='path'), chunksize=chunksize )
+    res=evaluate_K(eval_func,system,grid,
+            adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,nosym=(mode=='path'), 
+            parallel=parallel,
+              numproc=numproc,chunksize=chunksize )
 
     t1=time()
     if mode=='3D':
         res=res.to_grid(grid.dense)
         t2=time()
-        ttxt,twrite=write_frmsf(frmsf_name,Ef0,numproc,quantities,res)
+        ttxt,twrite=write_frmsf(frmsf_name,Ef0,parallel.num_cpus,quantities,res)
 
     t4=time()
 

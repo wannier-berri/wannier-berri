@@ -34,7 +34,7 @@ for R in ([1,0,0],[0,1,0],[0,0,1],[1,1,1]):
 
 
 system=wb.System_PythTB(my_model,berry=True)
-Efermi=np.linspace(-7,16,5000)
+Efermi=np.linspace(-7,16,1000)
 # Define the generators of the point group of the crystal (Im-3m)
 # generators extracted from Bilbao Crystallographic Center
 # (using same notation as https://www.cryst.ehu.es/cgi-bin/cryst/programs/nph-point_genpos?w2do=gens&num=32&what=)
@@ -47,15 +47,16 @@ generators=['C2z','C2y','Inversion',ITA3M111,ITA2xx0]
 system.set_symmetry(generators)
 seedname='pythtbLi'
 q_int=['dos','cumdos','conductivity_ohmic','conductivity_ohmic_fsurf']
-num_iter=30
-grid=wb.Grid(system,length=600,NKFFT=40)
+num_iter=1
+grid=wb.Grid(system,length=200,NKFFT=20)
+parallel=wb.Parallel(num_cpus=8,method='ray')
 start_int=time.time()
 wb.integrate(system,
             grid=grid,
             Efermi=Efermi,
             smearEf=300,
             quantities=q_int,
-            numproc=16,
+            parallel=parallel,
             adpt_num_iter=num_iter,
             fout_name=seedname,
             restart=False )
@@ -65,8 +66,8 @@ start_tab=time.time()
 wb.tabulate(system,
              grid=grid,
              quantities=q_tab,
-             fout_name=seedname,
-             numproc=16,
+             frmsf_name=seedname,
+             parallel=parallel,
              ibands=None,
              Ef0=0)
 end_tab=time.time()
