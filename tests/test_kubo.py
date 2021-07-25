@@ -7,6 +7,7 @@ from pytest import approx
 
 import wannierberri as wberri
 
+from conftest import parallel_serial
 from create_system import create_files_Fe_W90, system_Fe_W90, system_Fe_W90_wcc
 from create_system import create_files_GaAs_W90, system_GaAs_W90, system_GaAs_W90_wcc
 from compare_result import compare_energyresult
@@ -84,6 +85,9 @@ def test_optical(check_integrate_dynamical, system_Fe_W90, compare_energyresult)
         additional_parameters=kubo_params)
 
     # TODO: Add wcc test
+
+
+
 
 def test_shiftcurrent(check_integrate_dynamical, system_GaAs_W90, compare_energyresult):
     """Test shift current"""
