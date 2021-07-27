@@ -86,8 +86,9 @@ class System_tb(System):
         f.close()
 
         R0 = self.iRvec.tolist().index([0,0,0])
-        self.wannier_centres_cart = np.diagonal(self.AA_R[:,:,R0,:],axis1=0,axis2=1).transpose()
-        self.wannier_centres_reduced = self.wannier_centres_cart.dot(np.linalg.inv(self.real_lattice))
+        if self.use_wcc_phase:
+            self.wannier_centres_cart = np.diagonal(self.AA_R[:,:,R0,:],axis1=0,axis2=1).transpose()
+            self.wannier_centres_reduced = self.wannier_centres_cart.dot(np.linalg.inv(self.real_lattice))
         self.set_symmetry()
         self.check_periodic()
 
