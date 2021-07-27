@@ -87,6 +87,7 @@ def system_Fe_W90(create_files_Fe_W90):
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_sym(create_files_Fe_W90):
+
     """Create system for Fe using Wannier90 data"""
 
     data_dir = create_files_Fe_W90
@@ -101,36 +102,6 @@ def system_Fe_W90_sym(create_files_Fe_W90):
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_W90(create_files_GaAs_W90):
-    """Create system for Fe using Wannier90 data"""
-
-    data_dir = create_files_GaAs_W90
-
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
-           transl_inv=False, use_wcc_phase=False,degen_thresh=0.005)
-
-    return system
-
-
-
-@pytest.fixture(scope="session")
-def system_GaAs_W90_wcc(create_files_GaAs_W90):
-    """Create system for Fe using Wannier90 data"""
-
-    data_dir = create_files_GaAs_W90
-
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
-           transl_inv=False, use_wcc_phase=True,degen_thresh=0.005)
-
-    return system
-
-
-
-@pytest.fixture(scope="session")
 def system_Fe_W90_wcc(create_files_Fe_W90):
     """Create system for Fe using Wannier90 data"""
 
@@ -140,6 +111,50 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True, 
             transl_inv=False, use_wcc_phase=True)
+
+    return system
+
+
+#@pytest.fixture(scope="session")
+#def system_GaAs_W90_SHC(create_files_GaAs_W90):
+#    """Create system for GaAs using Wannier90 data, including SHC calculations """
+
+#    data_dir = create_files_GaAs_W90
+
+    # Load system
+#    seedname = os.path.join(data_dir, "GaAs")
+#    system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
+#           transl_inv=False, use_wcc_phase=False,degen_thresh=0.005)
+
+#    return system
+
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90(create_files_GaAs_W90):
+    """Create system for GaAs using Wannier90 data"""
+
+    data_dir = create_files_GaAs_W90
+
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs")
+    system = wberri.System_w90(seedname, berry=True, 
+           transl_inv=False, use_wcc_phase=False,degen_thresh=0.005)
+
+    return system
+
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90_wcc(create_files_GaAs_W90):
+    """Create system for GaAs using Wannier90 data with wcc phases"""
+
+    data_dir = create_files_GaAs_W90
+
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs")
+    system = wberri.System_w90(seedname, berry=True, 
+           transl_inv=False, use_wcc_phase=True,degen_thresh=0.005)
 
     return system
 

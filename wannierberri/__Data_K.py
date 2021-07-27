@@ -15,7 +15,7 @@
 ## TODO : maybe to make some lazy_property's not so lazy to save some memory
 import numpy as np
 import lazy_property
-import  multiprocessing 
+from .__parallel import pool
 from collections import defaultdict
 from .__system import System
 import time
@@ -30,7 +30,7 @@ def _rotate_matrix(X):
 
    
 class Data_K(System):
-    def __init__(self,system,dK,grid,Kpoint=None,npar=0,fftlib='fftw'):
+    def __init__(self,system,dK,grid,Kpoint=None,npar=0,fftlib='fftw',npar_k=1 ):
 #        self.spinors=system.spinors
         self.iRvec=system.iRvec
         self.real_lattice=system.real_lattice
@@ -46,9 +46,13 @@ class Data_K(System):
         self.delta_fz=system.delta_fz
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
         self.ksep = system.ksep
-        self.wannier_centres_reduced=system.wannier_centres_reduced
-        self.wannier_centres_cart=system.wannier_centres_cart
         self.use_wcc_phase=system.use_wcc_phase
+        if self.use_wcc_phase:
+            self.wannier_centres_reduced=system.wannier_centres_reduced
+            self.wannier_centres_cart=system.wannier_centres_cart
+        else:
+            self.wannier_centres_reduced=np.zeros((self.num_wann,3))
+            self.wannier_centres_cart=np.zeros((self.num_wann,3))
         ## TODO : create the plans externally, one per process 
 #        print( "iRvec in data_K is :\n",self.iRvec)
         #self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
@@ -56,14 +60,8 @@ class Data_K(System):
                 numthreads=npar if npar>0 else 1,lib=fftlib,use_wcc_phase=self.use_wcc_phase)
         self.Emin=system.Emin
         self.Emax=system.Emax
+        self.poolmap=pool(npar_k)[0]
 
-
-        try:
-            self.poolmap=multiprocessing.Pool(npar).map
-#            print ('created a pool of {} workers'.format(npar))
-        except Exception as err:
-#            print ('failed to create a pool of {} workers : {}'.format(npar,err))
-            self.poolmap=lambda fun,lst : [fun(x) for x in lst]
         
         if self.use_wcc_phase:
             w_centres_diff = np.array([[j-i for j in self.wannier_centres_reduced] for i in self.wannier_centres_reduced])
