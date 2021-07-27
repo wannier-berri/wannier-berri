@@ -99,6 +99,7 @@ calculators_trans={
          'gyrotropic_Korb_2'       : fermisea2.tensor_K_2,
          'gyrotropic_Korb_ocean'         : fermiocean.tensor_K,
          'gyrotropic_Korb2_ocean'       : fermiocean2.tensor_K,
+         'gyrotropic_Korb3_ocean'       : fermiocean3.tensor_K,
 
          'gyrotropic_Kspin'        : fermisea2.gyrotropic_Kspin,
          'gyrotropic_Korb_fsurf'   : nonabelian.gyrotropic_Korb,
@@ -107,7 +108,9 @@ calculators_trans={
          'sigma21tau3_Hall2_ocean': fermiocean2.sigma21tau3_Hall,
          'Der3E_fsea3_ocean': fermiocean3.Der3E_fsea,
          'Der3E_fsurf3_ocean': fermiocean3.Der3E_fsurf,
-         'Der3E_fder23_ocean': fermiocean3.Der3E_fder2
+         'Der3E_fder23_ocean': fermiocean3.Der3E_fder2,
+         'Hp3': fermiocean3.Hplus_der,
+         'Hp': fermisea2.HplusTr,
          
          }
 

@@ -62,14 +62,14 @@ class Matrix_GenDer_ln(Formula_ln):
 
     def nn(self,ik,inn,out):
         summ=self.dA.nn(ik,inn,out)
-        summ -= np.einsum( "mld,lnb->mnbd" , self.D.nl(ik,inn,out) , self.A.ln(ik,inn,out) )
-        summ += np.einsum( "mlb,lnd->mnbd" , self.A.nl(ik,inn,out) , self.D.ln(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...->mnb...d" , self.D.nl(ik,inn,out) , self.A.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnd->mnb...d" , self.A.nl(ik,inn,out) , self.D.ln(ik,inn,out) )
         return summ
 
     def ln(self,ik,inn,out):
         summ= self.dA.ln(ik,inn,out)
-        summ -= np.einsum( "mld,lnb->mnbd" , self.D.ln(ik,inn,out) , self.A.nn(ik,inn,out) )
-        summ += np.einsum( "mlb,lnd->mnbd" , self.A.ll(ik,inn,out) , self.D.ln(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...->mnb...d" , self.D.ln(ik,inn,out) , self.A.nn(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnd->mnb...d" , self.A.ll(ik,inn,out) , self.D.ln(ik,inn,out) )
         return summ
 
 

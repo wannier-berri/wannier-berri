@@ -788,18 +788,31 @@ class Data_K(System):
         Dln = self.D_H[op:ed]
         Dnl = self.D_H.transpose(0,2,1,3)[op:ed]
         
+        o = np.zeros((ed-op,self.num_wann,3,3),dtype=complex)
+        oo = np.zeros((ed-op,self.num_wann,self.num_wann,3,3),dtype=complex)
+        uo = np.zeros((ed-op,self.num_wann,self.num_wann,3,3),dtype=complex)
+        uuo = np.zeros((ed-op,self.num_wann,self.num_wann,self.num_wann,3,3),dtype=complex)
+        uoo = np.zeros((ed-op,self.num_wann,self.num_wann,self.num_wann,3,3),dtype=complex)
+
+
+
         
-        o =(dHn + dOn*E[:,:,N,N]).real
-        oo =(Onn[:,:,:,:,N]*V[:,:,:,N,:]).real
-        uo =(dHln + dOln*E[:,N,:,N,N]).real
+        o +=(dHn 
+               + dOn*E[:,:,N,N]
+                ).real
+        oo +=(Onn[:,:,:,:,N]*V[:,:,:,N,:]).real
+        uo +=(dHln 
+             + dOln*E[:,N,:,N,N]
+             ).real
         dBPln = self.gdBbarplus_fz(op,ed,index='ln')
         dDln = self.gdD_save(op,ed,index='ln')
+
         uo += -2*((Bplus[:,:,:,b,N]*dDln[:,:,:,c,:] + Dnl[:,:,:,b,N]*dBPln[:,:,:,c,:] ) - (Bplus[:,:,:,c,N]*dDln[:,:,:,b,:] + Dnl[:,:,:,c,N]*dBPln[:,:,:,b,:])).real
         uo += 2*(E[:,:,N,N,N] + E[:,N,:,N,N])*( Dnl[:,:,:,b,N]*dDln[:,:,:,c,:]  -  Dnl[:,:,:,c,N]*dDln[:,:,:,b,:]  ).imag
-        
+       
         dBPlln = self.gdBbarplus_fz(op,ed,index='lln')
         dDlln = self.gdD_save(op,ed,index='lln')
-        uuo = -2*((Bplus[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dBPlln[:,:,:,:,c,:]) - (Bplus[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dBPlln[:,:,:,:,b,:])).real
+        uuo += -2*((Bplus[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dBPlln[:,:,:,:,c,:]) - (Bplus[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dBPlln[:,:,:,:,b,:])).real
         uuo +=2*(E[:,:,N,N,N,N] + E[:,N,N,:,N,N])*( Dnl[:,:,N,:,b,N]*dDlln[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlln[:,:,:,:,b,:]  ).imag
         uuo += (Dnl[:,:,N,:,b,N]*V[:,:,:,N,N,:]*Dln[:,N,:,:,c,N] - Dnl[:,:,N,:,c,N]*V[:,:,:,N,N,:]*Dln[:,N,:,:,b,N] ).imag
         del dBPlln,dDlln
@@ -807,7 +820,7 @@ class Data_K(System):
 
         dBPlnn = self.gdBbarplus_fz(op,ed,index='lnn')
         dDlnn= self.gdD_save(op,ed,index='lnn')
-        uoo = -2*((Bplus[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dBPlnn[:,:,:,:,c,:]) - (Bplus[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dBPlnn[:,:,:,:,b,:])).real
+        uoo += -2*((Bplus[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:] + Dnl[:,:,N,:,b,N]*dBPlnn[:,:,:,:,c,:]) - (Bplus[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:] + Dnl[:,:,N,:,c,N]*dBPlnn[:,:,:,:,b,:])).real
         uoo +=2*(E[:,:,N,N,N,N] + E[:,N,N,:,N,N])*( Dnl[:,:,N,:,b,N]*dDlnn[:,:,:,:,c,:]  -  Dnl[:,:,N,:,c,N]*dDlnn[:,:,:,:,b,:]  ).imag
         uoo += (Dnl[:,:,N,:,b,N]*Dln[:,:,:,N,c,N]*V[:,N,:,:,N,:] - Dnl[:,:,N,:,c,N]*Dln[:,:,:,N,b,N]*V[:,N,:,:,N,:]).imag
         del dBPlnn,dDlnn

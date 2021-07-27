@@ -126,8 +126,10 @@ def derHplus(data_K,op=None,ed=None):
         dOn = data_K.Omega_bar_der.real[op:ed]
         dHn = data_K.Morb_Hbar_der.real[op:ed]
         Bplus = data_K.B_Hbarplus_dagger_fz[op:ed].transpose(0,2,1,3)
-        dBpln = data_K.gdBbarplus_fz(op,ed,index='ln')[op:ed]
+        #dBpln = data_K.gdBbarplus_fz(op,ed,index='ln')[op:ed]
+        dBpln = data_K.gdBtilde_fz(op,ed,index='ln')
         B = data_K.B_Hbar_fz[op:ed,:,:,:,None]
+        BB = data_K.B_Hbar_fz[op:ed,:,:,:]
         A  = data_K.A_Hbar[op:ed,:,:,:,None]
         f,df=data_K.f_E(1)
         f_m,df_m=data_K.f_E(-1)
@@ -138,9 +140,13 @@ def derHplus(data_K,op=None,ed=None):
         En2 = E[:,None,:,None,None]
         El2 = E[:,:,None,None,None]
         En = E[:,None,:,None]
-        Bpcal= ((-Bplus-1j*_D*(En+El))*data_K.dEig_inv[op:ed,:,:,None])[:,:,:,:,None]
+        #Bpcal= ((-Bplus)*data_K.dEig_inv[op:ed,:,:,None])[:,:,:,:,None]
+        #Bpcal= ((-Bplus-1j*_D*(En+El))*data_K.dEig_inv[op:ed,:,:,None])[:,:,:,:,None]
+        Bpcal= ((-BB-1j*_D*(En))*data_K.dEig_inv[op:ed,:,:,None])[:,:,:,:,None]
         
         Bp  =  Bplus[:,:,:,:,None]
+        dA = data_K.A_Hbar_der[op:ed]
+        dB = data_K.B_Hbar_der[op:ed]
         V = _V[:,:,:,:,None]
         Vd = _V[:,:,:,None,:]
         D = _D[:,:,:,:,None]
@@ -148,15 +154,15 @@ def derHplus(data_K,op=None,ed=None):
 
         del _V,E,Bplus,_D
         # now define the "alpha" and "beta" components
-        Bp_,D_,W_,V_,Bpcal_,dBpln_,B_,A_={},{},{},{},{},{},{},{}
-        for var in 'Bp','D','Bpcal','W','V','dBpln','B','A':
+        Bp_,D_,W_,V_,Bpcal_,dBpln_,B_,A_,dA_,dB_={},{},{},{},{},{},{},{},{},{}
+        for var in 'Bp','D','Bpcal','W','V','dBpln','B','A','dA','dB':
             for c in 'alpha','beta':
                 locals()[var+"_"][c]=locals()[var][:,:,:,globals()[c+'_A']]
         # This is the formula to be implemented:
         formula =  Formula (ndim=2,TRodd=True,Iodd=False,name="derivative of Hplus" )
-        formula.add_term('mn',(dHn+dOn*El2) )
-        formula.add_term( 'ml,ln', (O,Vd) )
-        formula.add_term( 'nL,Ln', (Dd, O*En2 ),-2)
+        formula.add_term('mn',(dHn))# +dOn*El2) )
+        #formula.add_term( 'ml,ln', (O,Vd) )
+        #formula.add_term( 'nL,Ln', (Dd, O*En2 ),-2)
         formula.add_term( 'nL,Ln', (Dd,H ),-1)
         formula.add_term( 'nL,Ln', (H ,Dd ))
         for s,a,b in ( +1.,'alpha','beta'),(-1.,'beta','alpha'):
@@ -168,17 +174,22 @@ def derHplus(data_K,op=None,ed=None):
             formula.add_term( 'mL,Ll,ln',( Bpcal_ [a] , Dd    , V_[b] ),-2*s )
             #  green terms               
             #  frozen window o B matrix  f
-            formula.add_term( 'mL,Ln',   ( D_ [a] , dBpln_[b] ) ,-2*s )
-            formula.add_term( 'mL,LP,Pn',( D_ [a] , A_[b]       , Dd*En2 ),-2*s )
-            formula.add_term( 'mL,LP,Pn',( D_ [a] , A_[b]*El2*f , Dd     ),-2*s )
-            formula.add_term( 'mL,LP,Pn',( D_ [a] , B_[b]*f_m   , Dd     ),-2*s )
-            formula.add_term( 'mL,LP,Pn',( D_ [a] , Vd*f        , A_[b]  ),-2*s )
-            formula.add_term( 'mL,LP,Pn',( D_ [a] , Vd*df_m*En2 , A_[b]  ),-2*s )
-            formula.add_term( 'mL,LP,Pn',( D_ [a] , Vd*df_m     , B_[b]  ),2*s )
-            formula.add_term( 'mL,Ll,ln',( D_ [a] , Dd       , A_[b]*En2 ),2*s )
-            formula.add_term( 'mL,Ll,ln',( D_ [a] , Dd*El2*f , A_[b]     ),2*s )
-            formula.add_term( 'mL,Ll,ln',( D_ [a] , Dd*f_m   , B_[b]     ),2*s )
-            formula.add_term( 'mL,Ll,ln',( D_ [a] , A_[b]    , Vd        ),-2*s )
+            formula.add_term( 'mL,Ln',     (  D_ [a] , dB_[b]        ) , -2*s)
+            formula.add_term( 'mL,LP,Pn',  (  D_ [a] , B_[b] , Dd    ) , -2*s)
+            formula.add_term( 'mL,Ll,ln',  (  D_ [a] , Dd    , B_[b] ) ,  2*s)
+        
+        
+#            formula.add_term( 'mL,Ln',   ( D_ [a] , dBpln_[b] ) ,-2*s )
+#            formula.add_term( 'mL,LP,Pn',( D_ [a] , A_[b]       , Dd*En2 ),-2*s )
+#            formula.add_term( 'mL,LP,Pn',( D_ [a] , A_[b]*El2*f , Dd     ),-2*s )
+#            formula.add_term( 'mL,LP,Pn',( D_ [a] , B_[b]*f_m   , Dd     ),-2*s )
+#            formula.add_term( 'mL,LP,Pn',( D_ [a] , Vd*f        , A_[b]  ),-2*s )
+#            formula.add_term( 'mL,LP,Pn',( D_ [a] , Vd*df_m*En2 , A_[b]  ),-2*s )
+#            formula.add_term( 'mL,LP,Pn',( D_ [a] , Vd*df_m     , B_[b]  ),2*s )
+#            formula.add_term( 'mL,Ll,ln',( D_ [a] , Dd       , A_[b]*En2 ),2*s )
+#            formula.add_term( 'mL,Ll,ln',( D_ [a] , Dd*El2*f , A_[b]     ),2*s )
+#            formula.add_term( 'mL,Ll,ln',( D_ [a] , Dd*f_m   , B_[b]     ),2*s )
+#            formula.add_term( 'mL,Ll,ln',( D_ [a] , A_[b]    , Vd        ),-2*s )
                               
             formula.add_term( 'mL,LP,Pn',(D_[a] , Vd   , D_[b] ),-1j*s)
             formula.add_term( 'mL,Ll,ln',(D_[a] , D_[b] , Vd   ),-1j*s)

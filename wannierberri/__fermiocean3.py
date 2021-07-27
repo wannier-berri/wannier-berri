@@ -45,6 +45,17 @@ def berry_dipole(data_K,Efermi,tetra=False,**parameters):
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
 
+def Hplus_der(data_K,Efermi, tetra=False,**parameters):
+    res =  FermiOcean(frml.DerMorb(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    return res
+
+def tensor_K(data_K,Efermi,tetra=False,**parameters):
+    Hp = Hplus_der(data_K,Efermi,tetra=tetra,**parameters).data
+    D = berry_dipole(data_K,Efermi,tetra=tetra,**parameters).data
+    tensor_K = - elementary_charge**2/(2*hbar)*(Hp - 2*Efermi[:,None,None]*D  )
+    return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
+
 def gme_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
     formula  = FormulaProduct ( [frml.Sln(data_K),frml.Vln(data_K)], name='spin-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0)()
