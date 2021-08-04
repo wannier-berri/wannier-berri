@@ -5,10 +5,7 @@ from . import __result as result
 from math import ceil
 from . import __formulas_nonabelian_3 as frml
 from .__formula_3 import FormulaProduct
-
-
-
-
+from itertools import permutations
 from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom
@@ -19,6 +16,9 @@ fac_ahc = -1e8 * elementary_charge ** 2 / hbar
 factor_ohmic=(elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
                  *elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
                    * 1e-2  ) # now in  S/(cm*tau_unit)
+factor_Hall_classic=elementary_charge**2*Ang_SI/hbar**3  # first, transform to SI, not forgeting hbar in velocities - now in  m/(J*s^3)
+factor_Hall_classic*=elementary_charge**3/hbar*TAU_UNIT**2  # multiply by a dimensional factor - now in A^3*s^5*cm/(J^2*tau_unit^2) = S/(T*m*tau_unit^2)
+factor_Hall_classic*=1e-2   #  finally transform to S/(T*cm*tau_unit^2)
 
 
 def cumdos(data_K,Efermi,tetra=False,**parameters):
@@ -27,6 +27,41 @@ def cumdos(data_K,Efermi,tetra=False,**parameters):
 def dos(data_K,Efermi,tetra=False,**parameters):
     return FermiOcean(frml.Identity(),data_K,Efermi,tetra,fder=1)()*data_K.cell_volume
 
+def Hall_classic_fsurf(data_K,Efermi,tetra=False,**parameters):
+    formula = FormulaProduct ( [frml.Vln(data_K),frml.InvMass(data_K),frml.Vln(data_K)], name='vel-mass-vel')
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()*factor_Hall_classic
+    res.data=res.data[:,:,:,beta_A,alpha_A]-res.data[:,:,:,alpha_A,beta_A]
+    res.data=-0.5*(res.data[:,alpha_A,beta_A,:]-res.data[:,beta_A,alpha_A,:])
+    res.rank-=2
+    return res
+
+def Hall_classic(data_K,Efermi,tetra=False,**parameters):
+    formula = FormulaProduct ( [frml.InvMass(data_K),frml.InvMass(data_K)], name='mass-mass')
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()*factor_Hall_classic*-1
+    res.data=res.data.swapaxes(2,3)
+    res.data=res.data[:,:,:,beta_A,alpha_A]-res.data[:,:,:,alpha_A,beta_A]
+    res.data=-0.5*(res.data[:,alpha_A,beta_A,:]-res.data[:,beta_A,alpha_A,:])
+    res.rank-=2
+    return res
+
+def Hall_morb_fsurf(data_K,Efermi,tetra=False,**parameters):
+    factor=-Ang_SI*elementary_charge/(2*hbar) # first, transform to SI, not forgettint e/2hbar multilier for morb - now in A*m/J ,restoring the sign of spin magnetic moment
+    factor*=elementary_charge**2/hbar  # multiply by a dimensional factor - now in S/(T*m)
+    factor*=-1
+    factor*=1e-2   #  finally transform to S/(T*cm)
+    formula_1  = FormulaProduct ( [frml.Omega(data_K,**parameters) ,frml.Morb_Hpm(data_K,sign=+1,**parameters)], name='berry-morb_Hpm')
+    formula_2  = FormulaProduct ( [frml.Omega(data_K,**parameters) ,frml.Omega(data_K,**parameters)], name='berry-berry')
+    res =  FermiOcean(formula_1,data_K,Efermi,tetra,fder=1)()
+    res += -2* FermiOcean(formula_2,data_K,Efermi,tetra,fder=1)().mul_array(Efermi)
+    return res*factor
+
+def Hall_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
+    factor=-bohr_magneton/(elementary_charge*Ang_SI) # first, transform to SI - now in 1/(m*T) ,restoring the sign of spin magnetic moment
+    factor*=-1
+    factor*=elementary_charge**2/hbar  # multiply by a dimensional factor - now in S/(T*m)
+    factor*=1e-2   #  finally transform to S/(T*cm)
+    formula = FormulaProduct ( [frml.Omega(data_K,**parameters),frml.Sln(data_K)], name='berry-spin')
+    return  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()*factor
 
 def AHC(data_K,Efermi,tetra=False,**parameters):
     return  FermiOcean(frml.Omega(data_K,**parameters),data_K,Efermi,tetra,fder=0)()*fac_ahc
@@ -50,7 +85,15 @@ def Hplus_der(data_K,Efermi, tetra=False,**parameters):
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
 
-def tensor_K(data_K,Efermi,tetra=False,**parameters):
+def gme_orb_fsurf(data_K,Efermi,tetra=False,**parameters):
+    formula_1  = FormulaProduct ( [frml.Morb_Hpm(data_K,sign=+1,**parameters) ,frml.Vln(data_K)], name='morb_Hpm-vel')
+    formula_2  = FormulaProduct ( [frml.Omega(data_K,**parameters) ,frml.Vln(data_K)], name='berry-vel')
+    res =  FermiOcean(formula_1,data_K,Efermi,tetra,fder=1)()
+    res += -2* FermiOcean(formula_2,data_K,Efermi,tetra,fder=1)().mul_array(Efermi)
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
+
+def gme_orb(data_K,Efermi,tetra=False,**parameters):
     Hp = Hplus_der(data_K,Efermi,tetra=tetra,**parameters).data
     D = berry_dipole(data_K,Efermi,tetra=tetra,**parameters).data
     tensor_K = - elementary_charge**2/(2*hbar)*(Hp - 2*Efermi[:,None,None]*D  )
@@ -58,12 +101,12 @@ def tensor_K(data_K,Efermi,tetra=False,**parameters):
 
 def gme_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
     formula  = FormulaProduct ( [frml.Sln(data_K),frml.Vln(data_K)], name='spin-vel')
-    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0)()
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
 
 def gme_spin(data_K,Efermi,tetra=False,**parameters):
-    formula  = FormulaProduct ( [frml.DerSln(data_K),frml.Vln(data_K)], name='spin-vel')
+    formula  = FormulaProduct ( [frml.DerSln(data_K),frml.Vln(data_K)], name='derspin-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
@@ -81,12 +124,12 @@ def ohmic_fsurf(data_K,Efermi,kpart=None,tetra=False,**parameters):
     formula  = FormulaProduct ( [velocity,velocity], name='vel-vel')
     return FermiOcean(formula,data_K,Efermi,tetra,fder=1)()*factor_ohmic
 
-def ohmic_fsea(data_K,Efermi,kpart=None,tetra=False,**parameters):
+def ohmic(data_K,Efermi,kpart=None,tetra=False,**parameters):
     formula =  frml.InvMass(data_K)
     return FermiOcean(formula,data_K,Efermi,tetra,fder=0)()*factor_ohmic
 
 
-def Der3E_fsea(data_K,Efermi,tetra=False,**parameters):
+def Der3E(data_K,Efermi,tetra=False,**parameters):
     r"""f0 """
     res =  FermiOcean(frml.Der3E(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
     return res
@@ -101,6 +144,27 @@ def Der3E_fder2(data_K,Efermi,tetra=False,**parameters):
     r"""second der f0 """
     formula  = FormulaProduct ( [frml.Vln(data_K),frml.Vln(data_K),frml.Vln(data_K)], name='vel-vel-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=2)()*0.5
+    return res
+
+def sigma21tau3_Ohmic_fsurf(data_K,Efermi,tetra=False,**parameters):
+    formula =   FormulaProduct ( [frml.InvMass(data_K),frml.InvMass(data_K),frml.Vln(data_K)], name='mass-mass-vel') # v_{\alpha\rho} v_{\beta\gamma} v_{\xi} \varepsilon_{\rho\xi\mu}
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()
+    res.data=res.data.transpose(0,1,3,4,2,5)
+    res.data=res.data[:,:,:,:,beta_A,alpha_A]-res.data[:,:,:,:,alpha_A,beta_A]
+    res.rank-=1
+    # now take the Ohmic part:
+    res.data=sum(res.data.transpose((0,)+p+(4,)) for p in permutations([1,2,3]))/6
+    return res
+
+
+def sigma21tau3_Hall_fsurf(data_K,Efermi,tetra=False,**parameters):
+    formula =   FormulaProduct ( [frml.InvMass(data_K),frml.InvMass(data_K),frml.Vln(data_K)], name='mass-mass-vel') # v_{\alpha\rho} v_{\beta\xi} v_{\gamma} \varepsilon_{\rho\xi\mu}
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()
+    res.data=res.data.transpose(0,1,4,5,2,3)
+    res.data=res.data[:,:,:,:,beta_A,alpha_A]-res.data[:,:,:,:,alpha_A,beta_A]
+    res.rank-=1
+    # now take the antisymmetric part in alpha-beta:
+    #res.data=sum(res.data.transpose((0,)+p+(4,)) for p in permutations([1,2,3]))/6
     return res
 
 

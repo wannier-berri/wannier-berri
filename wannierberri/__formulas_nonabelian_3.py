@@ -45,6 +45,8 @@ class Aln(Matrix_ln):
 class Sln(Matrix_ln):
     def __init__(self,data_K):
         super(Sln,self).__init__(data_K.S_H)
+        self.TRodd=True
+        self.Iodd=False
 
 class dSln(Matrix_ln):
     def __init__(self,data_K):
@@ -120,6 +122,8 @@ class DerSln(Matrix_GenDer_ln):
     r""" :math:`\overline{A}^{b:d}`"""
     def __init__(self,data_K):
         super(DerSln,self).__init__(Sln(data_K),dSln(data_K),Dln(data_K))
+        self.TRodd=True
+        self.Iodd=False
 
 
 class InvMass(Matrix_GenDer_ln):
@@ -333,6 +337,8 @@ class Morb_Hpm(Formula_ln):
 
     def ln(self,ik,inn,out):
         raise NotImplementedError()
+
+
 
 #############################
 ###   derivative of      ####
