@@ -66,8 +66,9 @@ def Hall_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
 def AHC(data_K,Efermi,tetra=False,**parameters):
     return  FermiOcean(frml.Omega(data_K,**parameters),data_K,Efermi,tetra,fder=0)()*fac_ahc
 
+#TODO not match the old one don't know why
 def spin(data_K,Efermi,tetra=False,**parameters):
-    return  FermiOcean(frml.Sln(data_K),data_K,Efermi,tetra,fder=0)()
+    return FermiOcean(frml.Sln(data_K),data_K,Efermi,tetra,fder=0)()
 
 def berry_dipole_fsurf(data_K,Efermi,tetra=False,**parameters):
     formula  = FormulaProduct ( [frml.Omega(data_K,**parameters),frml.Vln(data_K)], name='berry-vel')
@@ -90,7 +91,7 @@ def gme_orb_fsurf(data_K,Efermi,tetra=False,**parameters):
     formula_2  = FormulaProduct ( [frml.Omega(data_K,**parameters) ,frml.Vln(data_K)], name='berry-vel')
     res =  FermiOcean(formula_1,data_K,Efermi,tetra,fder=1)()
     res += -2* FermiOcean(formula_2,data_K,Efermi,tetra,fder=1)().mul_array(Efermi)
-    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    res.data= np.swapaxes(res.data,1,2)* -elementary_charge**2/(2*hbar)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
 
 def gme_orb(data_K,Efermi,tetra=False,**parameters):
@@ -102,13 +103,14 @@ def gme_orb(data_K,Efermi,tetra=False,**parameters):
 def gme_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
     formula  = FormulaProduct ( [frml.Sln(data_K),frml.Vln(data_K)], name='spin-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()
-    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    res.data= np.swapaxes(res.data,1,2)* -bohr_magneton/Ang_SI**2  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
 
+#TODO not match the old one don't know why
 def gme_spin(data_K,Efermi,tetra=False,**parameters):
     formula  = FormulaProduct ( [frml.DerSln(data_K),frml.Vln(data_K)], name='derspin-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0)()
-    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    res.data= np.swapaxes(res.data,1,2)* -bohr_magneton/Ang_SI**2  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
 
 def Morb(data_K,Efermi,tetra=False,**parameters):

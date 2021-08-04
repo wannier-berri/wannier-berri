@@ -119,7 +119,7 @@ class DerA_Hbar_ln(Matrix_GenDer_ln):
 
 
 class DerSln(Matrix_GenDer_ln):
-    r""" :math:`\overline{A}^{b:d}`"""
+    r""" :math:`\overline{S}^{b:d}`"""
     def __init__(self,data_K):
         super(DerSln,self).__init__(Sln(data_K),dSln(data_K),Dln(data_K))
         self.TRodd=True
@@ -197,14 +197,14 @@ class Omega(Formula_ln):
     def nn(self,ik,inn,out):
         summ = np.zeros( (len(inn),len(inn),3),dtype=complex )
 
-        if self.internal_terms:
-            summ+= -1j*np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.D.ln(ik,inn,out)[:,:,beta_A])
+     #   if self.internal_terms:
+        summ+= -1j*np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.D.ln(ik,inn,out)[:,:,beta_A])
 
-        if self.external_terms:
-            summ += 0.5 * self.O.nn(ik,inn,out)
-            summ +=  -1 * np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.A.ln(ik,inn,out)[:,:,beta_A])
-            summ +=  +1 * np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,beta_A] ,self.A.ln(ik,inn,out)[:,:,alpha_A])
-            summ+=  -1j * np.einsum("mlc,lnc->mnc",self.A.nn(ik,inn,out)[:,:,alpha_A],self.A.nn(ik,inn,out)[:,:,beta_A])
+     #   if self.external_terms:
+        summ += 0.5 * self.O.nn(ik,inn,out)
+        summ +=  -1 * np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.A.ln(ik,inn,out)[:,:,beta_A])
+        summ +=  +1 * np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,beta_A] ,self.A.ln(ik,inn,out)[:,:,alpha_A])
+        summ+=  -1j * np.einsum("mlc,lnc->mnc",self.A.nn(ik,inn,out)[:,:,alpha_A],self.A.nn(ik,inn,out)[:,:,beta_A])
 
         summ+=summ.swapaxes(0,1).conj()
         return summ
