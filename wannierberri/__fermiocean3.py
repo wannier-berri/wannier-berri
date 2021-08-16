@@ -4,7 +4,7 @@ from collections import defaultdict
 from . import __result as result
 from math import ceil
 from . import __formulas_nonabelian_3 as frml
-from .__formula_3 import FormulaProduct
+from .__formula_3 import FormulaProduct,FormulaProduct_2,ProductDelta
 from itertools import permutations
 from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
@@ -36,6 +36,7 @@ def Hall_classic_fsurf(data_K,Efermi,tetra=False,**parameters):
     return res
 
 def Hall_classic(data_K,Efermi,tetra=False,**parameters):
+    r"""sigma11tau2 """
     formula = FormulaProduct ( [frml.InvMass(data_K),frml.InvMass(data_K)], name='mass-mass')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()*factor_Hall_classic*-1
     res.data=res.data.swapaxes(2,3)
@@ -77,6 +78,7 @@ def berry_dipole_fsurf(data_K,Efermi,tetra=False,**parameters):
     return res
 
 def berry_dipole(data_K,Efermi,tetra=False,**parameters):
+    r""" sigma20tau1"""
     res =  FermiOcean(frml.DerOmega(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
@@ -127,26 +129,116 @@ def ohmic_fsurf(data_K,Efermi,kpart=None,tetra=False,**parameters):
     return FermiOcean(formula,data_K,Efermi,tetra,fder=1)()*factor_ohmic
 
 def ohmic(data_K,Efermi,kpart=None,tetra=False,**parameters):
+    r""" sigma10tau1"""
     formula =  frml.InvMass(data_K)
     return FermiOcean(formula,data_K,Efermi,tetra,fder=0)()*factor_ohmic
 
 
 def Der3E(data_K,Efermi,tetra=False,**parameters):
-    r"""f0 """
+    r"""sigma20tau2 f0 """
     res =  FermiOcean(frml.Der3E(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
     return res
 
 def Der3E_fsurf(data_K,Efermi,tetra=False,**parameters):
-    r"""first der f0 """
+    r"""sigma20tau2 first der f0 """
     formula  = FormulaProduct ([frml.InvMass(data_K),frml.Vln(data_K)], name='mass-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()
     return res
 
 def Der3E_fder2(data_K,Efermi,tetra=False,**parameters):
-    r"""second der f0 """
+    r"""sigma20tau2 second der f0 """
     formula  = FormulaProduct ( [frml.Vln(data_K),frml.Vln(data_K),frml.Vln(data_K)], name='vel-vel-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=2)()*0.5
     return res
+
+def sigma11tau1(data_K,Efermi,tetra=False,**parameters):
+    r"""linear magnetoresistance  (index abup)"""
+    t1  = FormulaProduct_2 ( [frml.DerOmega(data_K,**parameters),frml.Vln(data_K),frml.Vln(data_K),frml.Omega(data_K,**parameters)],
+            ["up","a","b","p"],name='derBerry-vel-vel-Berry')
+    t2  = FormulaProduct_2 ( [frml.Omega(data_K,**parameters),frml.Vln(data_K),frml.InvMass(data_K),frml.Omega(data_K,**parameters)],
+            ["a","b","cp","p"],name='Berry-vel-mass-Berry')
+    t3  = FormulaProduct_2 ( [ProductDelta(frml.InvMass(data_K),["ab","cd"]),frml.Omega(data_K,**parameters)],
+            ["abcp","p"],name='delta-mass-Berry')
+    res =  FermiOcean(t1,data_K,Efermi,tetra,fder=0)()
+    term2 =  FermiOcean(t2,data_K,Efermi,tetra,fder=0)()
+    term3 =  FermiOcean(t3,data_K,Efermi,tetra,fder=0)()
+    res.data =res.data.transpose(0,3,4,1,2) - term2.data.transpose(0,2,3,1,4) - term2.data.transpose(0,3,2,1,4) - term3.data.transpose(0,3,1,2,4) - term3.data.transpose(0,1,3,2,4)
+    return res
+
+def sigma21tau1(data_K,Efermi,tetra=False,**parameters):
+    r"""nonlinear Hall effect  (index rudp)"""
+    t1  = FormulaProduct_2 ( [ProductDelta(frml.Omega(data_K,**parameters),["ru","p"]),frml.DerOmega(data_K,**parameters)],
+          ["rup","dp"],name='delta-Berry-DerBerry')
+    t2  = FormulaProduct_2 ( [ProductDelta(frml.Omega(data_K,**parameters),["rp","u"]),frml.DerOmega(data_K,**parameters)],
+          ["rpu","dp"],name='delta-Berry-DerBerry')
+    t3  = FormulaProduct_2 ( [ProductDelta(frml.DerOmega(data_K,**parameters),["rp","up"]),frml.Omega(data_K,**parameters)],
+          ["rpu","d"],name='delta-DerBerry-Berry')
+    res =  FermiOcean(t1,data_K,Efermi,tetra,fder=0)()
+    term2 =  FermiOcean(t2,data_K,Efermi,tetra,fder=0)()
+    term3 =  FermiOcean(t3,data_K,Efermi,tetra,fder=0)()
+    res.data =res.data.transpose(0,1,2,4,3) - term2.data.transpose(0,1,3,4,2) - term3.data.transpose(0,1,3,4,2)
+    return res
+
+
+def sigma12tau1(data_K,Efermi,tetra=False,**parameters):
+    VdotOmega = FormulaProduct_2([frml.Vln(data_K),frml.Omega(data_K,**parameters)],["a","a"],name='vel-Berry',dot=True)
+    VdotOmega_2 = FormulaProduct_2([VdotOmega,VdotOmega],['',''],name='VdotOmega^2')
+    r"""magnetoresistance (index abuv)"""
+    t1  = FormulaProduct_2 ( [frml.Vln(data_K),frml.Vln(data_K),frml.Omega(data_K,**parameters),frml.Omega(data_K,**parameters)],
+          ["a","b","u","v"],name='vel-vel-Berry-Berry')
+    t2  = ProductDelta(ProductDelta(VdotOmega_2,["bv",""]),["au","bv"])
+    t3  = FormulaProduct_2 ( [ProductDelta(frml.Vln(data_K),["bu","a"]),VdotOmega,frml.Omega(data_K,**parameters)],
+          ["bua","","v"],name='delta-V-VdotOmega-Berry')
+    res =  FermiOcean(t1,data_K,Efermi,tetra,fder=1)()
+    term2 =  FermiOcean(t2,data_K,Efermi,tetra,fder=1)()
+    term3 =  FermiOcean(t3,data_K,Efermi,tetra,fder=1)()
+    print('ndim',np.shape(res.data),np.shape(term2.data),np.shape(term3.data))
+    res.data =res.data + term2.data.transpose(0,1,3,2,4) - term3.data.transpose(0,3,1,2,4) - term3.data.transpose(0,1,3,2,4)
+    return res
+
+#def sigma12tau2(data_K,Efermi,tetra=False,**parameters):
+#    r"""Don't know"""
+#    return 0
+
+def sigma21tau2(data_K,Efermi,tetra=False,**parameters):
+    r"""eMChA (index abrud)"""
+    VdotOmega = FormulaProduct_2([frml.Vln(data_K),frml.Omega(data_K,**parameters)],["a","a"],name='vel-Berry',dot=True)
+    t1  = FormulaProduct_2 ( [frml.Vln(data_K),frml.DerOmega(data_K,**parameters),frml.Vln(data_K)],
+          ["a","ub","r"],name='vel-DerBerry-vel')
+    t2  = FormulaProduct_2 ( [frml.InvMass(data_K),frml.Omega(data_K,**parameters),frml.Vln(data_K)],
+          ["ab","u","r"],name='mass-Berry')
+    t3  = FormulaProduct_2 ( [ProductDelta(frml.Omega(data_K,**parameters),["bu","d"]),frml.InvMass(data_K),frml.Vln(data_K)],
+          ["bud","ar","d"],name='delta-Berry-mass-vel')
+    t4  = FormulaProduct_2 ( [ProductDelta(frml.DerOmega(data_K,**parameters),["bu","dr"]),frml.Vln(data_K),frml.Vln(data_K)],
+          ["budr","a","d"],name='delta-DerBerry-vel-vel')
+    t5  = FormulaProduct_2 ( [frml.DerOmega(data_K,**parameters),frml.Vln(data_K),frml.Vln(data_K)],
+          ["ur","a","d"],name='DerBerry-vel-vel')
+    t6  = FormulaProduct_2 ( [ProductDelta(VdotOmega,["au",""]),frml.Vln(data_K),frml.Vln(data_K)],
+          ["au","b","r"],name='delta-VdotOmega-vel-vel')
+    t7  = FormulaProduct_2 ( [frml.Omega(data_K,**parameters),frml.Vln(data_K),frml.Vln(data_K),frml.Vln(data_K)],
+          ["x","t","p","r"],name='Berry-vel-vel-vel')
+    res =  FermiOcean(t1,data_K,Efermi,tetra,fder=1)()
+    term2 =  FermiOcean(t2,data_K,Efermi,tetra,fder=1)()
+    term3 =  FermiOcean(t3,data_K,Efermi,tetra,fder=1)()
+    term4 =  FermiOcean(t4,data_K,Efermi,tetra,fder=1)()
+    term5 =  FermiOcean(t5,data_K,Efermi,tetra,fder=1)()
+    term6 =  FermiOcean(t6,data_K,Efermi,tetra,fder=2)()
+    term7 =  FermiOcean(t7,data_K,Efermi,tetra,fder=2)()
+    res.data = (
+            -2*res.data.transpose(0,1,3,4,2)[:,:,:,:,:,None]
+            -2*term2.data.transpose(0,1,2,4,3)[:,:,:,:,:,None]
+            +2*term3.data.transpose(0,4,1,5,2,3)
+            +3*term4.data.transpose(0,5,1,4,2,3)
+            -term5.data.transpose(0,3,2,1,4)[:,:,None,:,:,:]
+            +term6.data.transpose(0,1,3,4,2)[:,:,:,:,:,None]
+            )
+    #TODO Think about what is the right way for term7
+
+    return res
+
+def sigma12tau3(data_K,Efermi,tetra=False,**parameters):
+    r""""""
+    return 0
 
 def sigma21tau3_Ohmic_fsurf(data_K,Efermi,tetra=False,**parameters):
     formula =   FormulaProduct ( [frml.InvMass(data_K),frml.InvMass(data_K),frml.Vln(data_K)], name='mass-mass-vel') # v_{\alpha\rho} v_{\beta\gamma} v_{\xi} \varepsilon_{\rho\xi\mu}
@@ -168,6 +260,8 @@ def sigma21tau3_Hall_fsurf(data_K,Efermi,tetra=False,**parameters):
     # now take the antisymmetric part in alpha-beta:
     #res.data=sum(res.data.transpose((0,)+p+(4,)) for p in permutations([1,2,3]))/6
     return res
+
+
 
 
 ##################################
