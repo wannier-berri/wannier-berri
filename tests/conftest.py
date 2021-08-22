@@ -36,6 +36,12 @@ def parallel_serial():
 @pytest.fixture(scope="session")
 def parallel_ray():
     from wannierberri import Parallel
+    # If multiple ray parallel setups are tested in a single session, the
+    # parallel object needs to be shutdown before changing the setup.
+    # To do so, one needs to change the scope to function, use yield instead
+    # of return, and add parallel.shutdown() after the yield statement.
+    # See https://docs.pytest.org/en/6.2.x/fixture.html#yield-fixtures-recommended
+    # Currently, only a single ray setup is used, so this is not a problem.
     return Parallel(
                    method="ray",
                    num_cpus=4  ,
