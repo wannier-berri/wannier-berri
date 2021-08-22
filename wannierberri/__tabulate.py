@@ -34,6 +34,7 @@ calculators={
          'V'          : frml.Vln, 
 #         'morb'       : berry.calcImgh_band_kn,
          'berry'      : frml.Omega, #berry.calcImf_band_kn ,
+         'derBerry'      : frml.DerOmega, #berry.calcImf_band_kn ,
 #         'hall_spin'  : berry.calcHall_spin_kn,
 #         'hall_orb'   : berry.calcHall_orb_kn
          }
@@ -45,6 +46,7 @@ additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no des
 
 descriptions=defaultdict(lambda:"no description")
 descriptions['berry']="Berry curvature"
+descriptions['derBerry']=r"""derivative of Berry curvature :math:`Omega^{a:b} = \partial_b \Omega^a`"""
 descriptions['V']="velocity"
 descriptions['spin']="Spin"
 #descriptions['morb']="orbital magnetic moment"
