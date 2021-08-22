@@ -6,7 +6,7 @@ import pytest
 from pytest import approx
 
 import wannierberri as wberri
-from conftest import parallel_serial, parallel_ray, parallel_multiprocessing
+from conftest import output_dir
 from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
 from create_system import system_Fe_W90,system_GaAs_W90,system_GaAs_tb,system_Haldane_PythTB,system_Haldane_TBmodels
 from create_system import system_Fe_W90_sym, system_Haldane_TBmodels_sym, system_Haldane_PythTB_sym
@@ -15,7 +15,7 @@ from compare_result import compare_energyresult
 
 
 @pytest.fixture
-def check_integrate(output_dir,parallel_serial):
+def check_integrate(parallel_serial):
     def _inner(system,quantities,fout_name,Efermi,comparer,
                parallel=None,
                numproc=0,
@@ -34,7 +34,7 @@ def check_integrate(output_dir,parallel_serial):
                 numproc=numproc,
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
-                fout_name = os.path.join(output_dir, fout_name),
+                fout_name = os.path.join(output_dir(), fout_name),
                 suffix=suffix,
                 restart = False,
                 )
