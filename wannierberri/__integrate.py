@@ -72,6 +72,10 @@ calculators_trans={
          'Der3E_fder2'              : fermiocean3.Der3E_fder2            ,
          'sigma21tau3_Ohmic'        : fermiocean3.sigma21tau3_Ohmic_fsurf,
          'sigma21tau3_Hall'         : fermiocean3.sigma21tau3_Hall_fsurf ,
+         'sigma11tau1'              : fermiocean3.sigma11tau1            ,
+         'sigma21tau1'              : fermiocean3.sigma21tau1            ,
+         'sigma12tau1'              : fermiocean3.sigma12tau1            ,
+         'sigma21tau2'              : fermiocean3.sigma21tau2            ,
          }
 
 
