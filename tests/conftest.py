@@ -12,7 +12,7 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(ROOT_DIR, "_dat_files")
 
 @pytest.fixture(scope="session", autouse=True)
-def create_OUTPUT_DIR():
+def create_output_dir():
     # Create folder OUTPUT_DIR
     from pathlib import Path
     Path(OUTPUT_DIR).mkdir(exist_ok=True)
