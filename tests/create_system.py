@@ -11,7 +11,7 @@ import numpy as np
 
 import wannierberri as wberri
 
-from conftest import rootdir
+from conftest import ROOT_DIR
 
 def create_W90_files(seedname, tags_needed, data_dir):
     """
@@ -53,7 +53,7 @@ def create_files_Fe_W90():
 
     seedname = "Fe"
     tags_needed = ["uHu", "uIu", "sHu", "sIu"] # Files to calculate if they do not exist
-    data_dir = os.path.join(rootdir(), "data", "Fe_Wannier90")
+    data_dir = os.path.join(ROOT_DIR, "data", "Fe_Wannier90")
 
     create_W90_files(seedname, tags_needed, data_dir)
 
@@ -66,7 +66,7 @@ def create_files_GaAs_W90():
 
     seedname = "GaAs"
     tags_needed = ["uHu", "uIu", "sHu", "sIu"] # Files to calculate if they do not exist
-    data_dir = os.path.join(rootdir(), "data", "GaAs_Wannier90")
+    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
 
     create_W90_files(seedname, tags_needed, data_dir)
 
@@ -165,7 +165,7 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
 def system_GaAs_tb():
     """Create system for GaAs using _tb.dat data"""
 
-    data_dir = os.path.join(rootdir(), "data", "GaAs_Wannier90")
+    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
     if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
         tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
         for tarinfo in tar:
@@ -180,7 +180,7 @@ def system_GaAs_tb():
 def system_GaAs_tb_wcc():
     """Create system for GaAs using _tb_dat data"""
 
-    data_dir = os.path.join(rootdir(), "data", "GaAs_Wannier90")
+    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
     if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
         tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
         for tarinfo in tar:
