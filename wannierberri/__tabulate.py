@@ -156,16 +156,27 @@ class TABresult(result.Result):
         return res
 
 
-    def __get_data_grid(self,quantity,iband,component=None,efermi=None):
+    def __shapeiband(self,iband):
+        if isinstance (iband,int):
+            return  tuple()
+        elif isinstance (iband,np.ndarray):
+            return (len(iband),)
+        else :
+            raise ValueError("iband should be int or np.ndarray. Found <{}> of type <{}>".format(iband,type(iband)))
+
+
+    def __get_data_grid(self,quantity,iband,component=None):
+        "returns the data for nand(s) iband"
+        shape = tuple(self.grid)+self.__shapeiband(iband)
         if quantity=='E':
-            return self.Enk.data[:,iband].reshape(self.grid)
+            return self.Enk.data[:,iband].reshape(shape)
         elif component==None:
-            return self.results[quantity].data[:,iband].reshape(tuple(self.grid)+(3,)*self.results[quantity].rank)
+            return self.results[quantity].data[:,iband].reshape(shape+(3,)*self.results[quantity].rank)
         else:
-            return self.results[quantity].get_component(component)[:,iband].reshape(self.grid)
+            return self.results[quantity].get_component(component)[:,iband].reshape(shape)
 
 
-    def __get_data_path(self,quantity,iband,component=None,efermi=None):
+    def __get_data_path(self,quantity,iband,component=None):
         if quantity=='E':
             return self.Enk.data[:,iband]
         elif component==None:
@@ -173,11 +184,37 @@ class TABresult(result.Result):
         else:
             return self.results[quantity].get_component(component)[:,iband]
  
-    def get_data(self,quantity,iband,component=None,efermi=None):
+    def get_data(self,quantity,iband=None,component=None,EFsum=None):
+        """:returns the data for the band(s) iband (iband - either int or array-like of int or None - all bands). 
+         If EFsum is provided, the result is returned summed over bands (within iband) 
+        the shape of the returned aray is either : 
+            [nkx,nky,nkz,iband,...] 
+          or
+            [nkx,nky,nkz,...] 
+          where ... denote the cartesian dimensions (if the component is not chosen)
+
+        Note : if ibands were used in the tabulate() functions, now the pre-selected 
+        bands are considered as numerated from zero again
+        """
+        if iband is None: 
+            iband = np.arange(self.nband)
+        elif isinstance(iband,Iterable):
+            iband = np.array(iband)
+
         if self.grid is None:
-            return self.__get_data_path(quantity,iband,component=component,efermi=efermi)
+            result =  self.__get_data_path(quantity,iband,component=component)
         else : 
-            return self.__get_data_grid(quantity,iband,component=component,efermi=efermi)
+            result =  self.__get_data_grid(quantity,iband,component=component)
+
+        if EFsum is not None: 
+            if self.grid is None:
+                E =  self.__get_data_path("E",iband,component=component)
+            else : 
+                E =  self.__get_data_grid("E",iband,component=component) 
+            print (result.shape,E.shape)
+            result = (result*np.array([E<EFsum]).reshape(E.shape+(1,)*(result.ndim-E.ndim))).sum(axis=1 if (self.grid is None) else 3)
+
+        return result
 
 
     def fermiSurfer(self,quantity=None,component=None,efermi=0,npar=0,iband=None,frmsf_name=None):
