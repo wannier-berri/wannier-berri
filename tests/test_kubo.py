@@ -7,7 +7,7 @@ from pytest import approx
 
 import wannierberri as wberri
 
-from conftest import output_dir
+from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90, system_Fe_W90, system_Fe_W90_wcc
 from create_system import create_files_GaAs_W90, system_GaAs_W90, system_GaAs_W90_wcc
 from compare_result import compare_energyresult
@@ -33,7 +33,7 @@ def check_integrate_dynamical():
                 numproc = numproc,
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
-                fout_name = os.path.join(output_dir(), fout_name),
+                fout_name = os.path.join(OUTPUT_DIR, fout_name),
                 suffix = suffix,
                 restart = False,
                 )

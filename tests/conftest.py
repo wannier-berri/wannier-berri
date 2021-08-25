@@ -5,15 +5,17 @@ import os
 import numpy
 import pytest
 
-def rootdir():
-    return os.path.dirname(os.path.abspath(__file__))
+# Root folder containing test scripts
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def output_dir():
+# Folder containing output dat files of tests
+OUTPUT_DIR = os.path.join(ROOT_DIR, "_dat_files")
+
+@pytest.fixture(scope="session", autouse=True)
+def create_OUTPUT_DIR():
+    # Create folder OUTPUT_DIR
     from pathlib import Path
-    directory = os.path.join(rootdir(), "_dat_files")
-    Path(directory).mkdir(exist_ok=True)
-    return directory
-
+    Path(OUTPUT_DIR).mkdir(exist_ok=True)
 
 @pytest.fixture(scope="session")
 def parallel_serial():
