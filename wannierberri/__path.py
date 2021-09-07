@@ -88,6 +88,9 @@ class Path(Grid):
                 elif end is None:
                     self.breaks.append(self.K_list.shape[0]-1)
         self.breaks=np.array(self.breaks)
+        self.div=np.array([len(self.K_list),1,1])
+
+
 
     @property 
     def recip_lattice(self):
@@ -116,6 +119,7 @@ class Path(Grid):
         K = np.zeros(KPcart.shape[0])
         k = np.linalg.norm(KPcart[1:, :] - KPcart[:-1, :], axis=1)
         k[k > break_thresh] = 0.0
-        k[self.breaks]=0.0
+        if len(self.breaks)>0:
+            k[self.breaks]=0.0
         K[1:] = np.cumsum(k)
         return K
