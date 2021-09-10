@@ -34,10 +34,10 @@ calc = GPAW("Te.gpw")
 print(calc.get_ibz_k_points())
 
 from ase.dft import Wannier
-wan = Wannier(nwannier=12, calc=calc, fixedstates=10)
+wan = Wannier(nwannier=3, calc=calc, fixedstates=3)
 
 wan.localize() # Optimize rotation to give maximal localization
-wan.save('wannier.pickle') # Save localization and rotation matrix
+wan.save('wannier-s.pickle') # Save localization and rotation matrix
 
 
 # Re-load using saved wannier data

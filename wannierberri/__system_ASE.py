@@ -16,8 +16,9 @@ import numpy as np
 import copy
 import functools
 import multiprocessing 
-from .__utility import iterate3dpm, real_recip_lattice,fourier_q_to_R
+from .__utility import iterate3dpm, real_recip_lattice,fourier_q_to_R,find_degen
 from .__system_w90 import ws_dist_map_gen, System_w90
+from .__w90_files import MMN
 from time import time
 
 np.set_printoptions(precision=4,threshold=np.inf,linewidth=500)
@@ -30,6 +31,8 @@ class System_ASE(System_w90):
     ----------
     ase_wannier : 
         An object of  `ASE Wannier <https://wiki.fysik.dtu.dk/ase/_modules/ase/dft/wannier.html#Wannier>`__ . 
+    ase_calc : ASE calculator (GPAW)
+        needed only when `berry=True`
     transl_inv : bool
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
     npar : int
@@ -43,47 +46,68 @@ class System_ASE(System_w90):
     see also  parameters of the :class:`~wannierberri.System` 
     """
 
-    def __init__(self,ase_wannier,
+    def __init__(self,ase_wannier,ase_calc=None,
                     transl_inv=True,
                     fft='fftw',
+                    ase_R_vectors = False ,  # for testing vs ASE
                     npar=multiprocessing.cpu_count()  , 
                     **parameters
                     ):
-
         self.set_parameters(**parameters)
         self.seedname="ASE"
-        self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice = ase_wannier.unitcell_cc)
+        ase_wannier.translate_all_to_cell()
+        self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice = np.array(ase_wannier.unitcell_cc))
         self.mp_grid=ase_wannier.kptgrid
-        self.iRvec,self.Ndegen=self.wigner_seitz(self.mp_grid)
+
+        if not ase_R_vectors:
+            self.iRvec,self.Ndegen=self.wigner_seitz(self.mp_grid)
+        else : # enable to do ase-like R-vectors
+            N1, N2, N3 =  (self.mp_grid - 1) // 2
+            self.iRvec = np.array( [ [n1, n2, n3]   
+                         for n1 in range(-N1, N1 + 1) 
+                            for n2 in range(-N2, N2 + 1) 
+                                for n3 in range(-N3, N3 + 1) ],dtype = int )
+            self.Ndegen = np.ones(self.iRvec.shape[0],dtype = int)
+
+        for i,R in enumerate(self.iRvec):
+            if np.all(R==[0,0,0]):
+                self.iRvec0 = i
+                break
+
         self.nRvec0=len(self.iRvec)
         self.num_wann=ase_wannier.nwannier
+        self.num_kpts = ase_wannier.Nk
         self.wannier_centres_cart = ase_wannier.get_centers()
         self.wannier_centres_reduced = self.wannier_centres_cart.dot(np.linalg.inv(self.real_lattice))
-        self.kpt_latt =  ase_wannier.kpt_kc
+        #  a minus sign to account for a weird Bloch phase convention of ase.dft.Wannier module
+        self.kpt_red =  ase_wannier.kpt_kc
 
         if  self.use_ws:
             print ("using ws_distance")
             ws_map=ws_dist_map_gen(self.iRvec,self.wannier_centres_cart, self.mp_grid,self.real_lattice, npar=npar)
         
-        if self.getAA or self.getBB:
-            self.Z_dkww = wannier_ase.Z_dkww
-            self.weight_d, self.Gdir_dc, self.Ndir = wannier_ase.weight_d, wannier_ase.Gdir_dc , wannier_ase.Ndir
-            raise NotImplementedError()
 
-        kpt_mp_grid=[tuple(k) for k in np.array( np.round(self.kpt_latt*np.array(self.mp_grid)[None,:]),dtype=int)%self.mp_grid]
+
+        kpt_mp_grid=[tuple(k) for k in np.array( np.round(self.kpt_red*np.array(self.mp_grid)[None,:]),dtype=int)  %self.mp_grid]
         if (0,0,0) not in kpt_mp_grid:
             raise ValueError("the grid of k-points read from .chk file is not Gamma-centrered. Please, use Gamma-centered grids in the ab initio calculation")
+
+
+        if self.getAA or self.getBB:
+            mmn = MMN_ASE(ase_calc,ase_wannier,self)
+            self.mmn = mmn
+            fourier_q_to_R_loc=functools.partial(fourier_q_to_R, mp_grid=self.mp_grid,kpt_mp_grid=kpt_mp_grid,iRvec=self.iRvec,ndegen=self.Ndegen,numthreads=npar,fft=fft)
 #        print ("kpoints:",kpt_mp_grid)
         
-        fourier_q_to_R_loc=functools.partial(fourier_q_to_R, mp_grid=self.mp_grid,kpt_mp_grid=kpt_mp_grid,iRvec=self.iRvec,ndegen=self.Ndegen,numthreads=npar,fft=fft)
 
         timeFFT=0
         t0=time()
-        self.HH_R=np.array([ase_wannier.get_hopping(R) for R in self.iRvec]).transpose((1,2,0))
+        print (self.iRvec, self.Ndegen, np.sum(1./self.Ndegen))
+        self.HH_R=np.array([ase_wannier.get_hopping(R)/nd for R,nd in zip(self.iRvec,self.Ndegen)]).transpose((1,2,0))
         timeFFT+=time()-t0
 
         if self.getAA:
-            AAq=chk.get_AA_q(mmn,transl_inv=transl_inv)
+            AAq=self.get_AA_q(mmn,ase_wannier,transl_inv=transl_inv)
             t0=time()
             self.AA_R=fourier_q_to_R_loc(AAq)
             timeFFT+=time()-t0
@@ -119,6 +143,143 @@ class System_ASE(System_w90):
         print ("Number of R points:", self.nRvec)
         print ("Recommended size of FFT grid", self.NKFFT_recommended)
         print ("Real-space lattice:\n",self.real_lattice)
+
+    def get_AA_q(self,mmn,wannier,transl_inv=False):  # if eig is present - it is BB_q 
+#        if transl_inv and (eig is not None):
+#           raise RuntimeError("transl_inv cannot be used to obtain BB")
+        AA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
+        AAW=np.zeros( (self.num_wann,self.num_wann,3) ,dtype=complex)
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb=mmn.neighbours[ik,ib]
+                data=mmn.data[ik,ib]
+#                if eig is not None:
+#                    data = data * eig.data[ik,:,None]
+                AAW= (wannier.V_knw[ik]).T.conj().dot(
+                         data.dot(wannier.V_knw[mmn.neighbours[ik,ib]]))
+                AA_q_ik=1.j*AAW[:,:,None]*mmn.wk[ib]*mmn.bk_cart[ib,None,None,:]
+                if transl_inv:
+                    AA_q_ik[range(self.num_wann),range(self.num_wann)]=-np.log(AAW.diagonal()).imag[:,None]*mmn.wk[ib]*mmn.bk_cart[ib,None,:]
+                AA_q[ik]+=AA_q_ik
+#        if eig is None:
+#        AA_q=0.5*(AA_q+AA_q.transpose( (0,2,1,3) ).conj())
+        return AA_q
+
+
+
+
+class MMN_ASE(MMN):
+    """
+    MMN.data[ik, ib, m, n] = <u_{m,k}|u_{n,k+b}>
+    """
+
+
+    def __init__(self,ase_calc,ase_wannier,system,npar=multiprocessing.cpu_count()):
+        t0=time()
+        self.set_bk(system.kpt_red,system.mp_grid,system.recip_lattice)
+        NNB = len(self.wk)
+        NB  = ase_wannier.nbands
+        NK  = ase_wannier.Nk
+        mp_grid = system.mp_grid
+        self.kpt_red =  system.kpt_red
+#        print ("kpoint = \n",self.kpt_red)
+        self.kpt_latt =   np.array(np.round( self.kpt_red*mp_grid[None,:]),dtype=int)
+        self.data=np.zeros( (NK,NNB,NB,NB), dtype=complex )
+        self.neighbours = np.zeros( (NK,NNB),dtype = int)
+        self.G = np.zeros( (NK,NNB,3),dtype = int)
+        k_index = { tuple(k%system.mp_grid):ik   for ik,k in enumerate(self.kpt_latt)}
+        for ik1,k1 in enumerate(self.kpt_latt):
+            for ibk,bk in enumerate(self.bk_red):
+                k2=k1+bk
+                ik2 = k_index[ tuple(k2%mp_grid) ]
+                self.neighbours[ik1,ibk]=ik2
+                self.G[ik1,ibk] = (k2-self.kpt_latt[ik2])//mp_grid
+#                self.data[ik1,ibk] = ase_calc.get_wannier_integrals(
+#                                       ase_wannier.spin, ik1,ik2, self.G[ik1,ibk], NB)
+                self.data[ik1,ibk] = ase_calc.get_wannier_localization_matrix(
+                        nbands=NB, dirG=bk, kpoint=ik1, nextkpoint=ik2,
+                        G_I=self.G[ik1,ibk], spin=ase_wannier.spin)
+
+
+    def set_bk(self,kpt_latt,mp_grid,recip_lattice,nsearchshells = 40):
+      try :
+        self.bk_cart
+        self.bk_red
+        self.wk
+        return
+      except:
+        bk_red, bk_cart = find_shells(recip_lattice/mp_grid[:,None],nsearchshells)
+        shell_mat=np.array([ bkc.T.dot(bkc)  for bkc in bk_cart])
+        shell_mat_line=shell_mat.reshape(-1,9)
+        u,s,v=np.linalg.svd(shell_mat_line,full_matrices=False)
+#        print ("u,s,v=",u,s,v)
+#        print("check svd : ",u.dot(np.diag(s)).dot(v)-shell_mat_line)
+        s=1./s
+        weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
+        check_eye=sum(w*m for w,m in zip(weight_shell,shell_mat))
+        tol=np.linalg.norm(check_eye-np.eye(3))
+        if tol>1e-5 :
+            raise RuntimeError("Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\nweight_shell={}\n".format(
+                      check_eye,tol, bk_latt_unique,bk_cart_unique,bk_cart_unique_length,shell_mat,weight_shell))
+        self.wk      = np.array([w for w,sh in zip(weight_shell,bk_red) for _ in sh])
+        self.bk_cart = np.vstack(bk_cart)
+        self.bk_red  = np.vstack(bk_red)
+        print (self.wk,"\n",np.linalg.norm(self.bk_cart,axis=1),"\n",self.bk_red,"\n",self.bk_cart)
+
+
+def find_shells(basis,nsearchshells = 10,ncell = 10):
+        """ finds the linear-independent shells
+        """
+        bk_red  = np.array([x for x in iterate3dpm([ncell]*3)])
+        bk_cart = bk_red.dot(basis)
+        bk_len = np.linalg.norm(bk_cart,axis=1)
+        srt = np.argsort(bk_len)[1:]
+        bk_cart = bk_cart[srt]
+        bk_red = bk_red[srt]
+        bk_len  = bk_len[srt]
+        borders = find_degen(bk_len, 1e-5)[:nsearchshells]
+        bk_red = [bk_red  [b1:b2]        for b1,b2 in  borders]
+        bk_cart= [bk_cart [b1:b2]        for b1,b2 in  borders]
+        bk_len = [np.mean(bk_len[b1:b2]) for b1,b2 in  borders]
+        bk_cart_unique,bk_len_unique,bk_red_unique = [] ,[], []
+        for bkc,bkr,bkl in zip(bk_cart,bk_red,bk_len):
+            if independent_from_all(bk_red_unique,bkr):
+                bk_red_unique.append(bkr)
+                bk_cart_unique.append(bkc)
+                bk_len_unique.append(bkl)
+#        print ("found the following linear-independent shells : \n  length (Ang^-1)   degeneracy \n" +
+#           "\n".join(  (f"  {bkl:10.6f}   {bkr.shape[0]:3d}   \n" +"\n".join(str(br)+" "+str(bc) for br,bc in zip(bkr,bkc)) +"\n")
+#                   for bkl,bkr,bkc in zip(bk_len_unique,bk_red_unique,bk_cart_unique)) )
+        return bk_red_unique,bk_cart_unique
+
+def independent_from_all(shells_old,shell_new):
+        if len (shells_old)==0: 
+            return True
+        else:
+            mat1 = np.vstack(shells_old)
+            mat2 = np.vstack((mat1,shell_new))
+            return  np.linalg.matrix_rank(mat1)!=np.linalg.matrix_rank(mat2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -228,9 +228,12 @@ class TABresult(result.Result):
                   iband=None,
                   mode="fatband",
                   fatfactor=20,
+                  fatmax = None,
                   cut_k=True
                   ):
         """a routine to plot a result along the path"""
+
+        if fatmax is None : fatmax = fatfactor*10
 
         import matplotlib.pyplot as plt
         if iband is None: 
@@ -282,7 +285,9 @@ class TABresult(result.Result):
                     e1=e[selE]
                     for col,sel in [("red",(y>0)),("blue",(y<0))]:
 #                        print (col,ib,kline.shape,e.shape,kline[sel].shape,e[sel].shape)
-                        plt.scatter(klineselE[sel],e1[sel],s=abs(y[sel])*fatfactor,color=col)
+                        sz = abs(y[sel])*fatfactor
+                        sz[sz>fatmax] = fatmax
+                        plt.scatter(klineselE[sel],e1[sel],s=sz,color=col)
             else :
                 raise ValueError("So far only fatband mode is implemented")
 
