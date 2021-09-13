@@ -159,7 +159,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 #        a single  Fermi level for optical properties
 
 
-    cprint ("\nIntegrating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
+    cprint ("\nIntegrating the following quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
     def to_array(energy):
         if energy is not None: 
@@ -227,7 +227,7 @@ def tabulate(system,grid, quantities=[],
 
     mode = '3D'
     if isinstance(grid,Path): mode = 'path'
-    cprint ("\nTabulating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
+    cprint ("\nTabulating the following quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,tabulate_options,"tabulate")
     eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
     t0=time()
