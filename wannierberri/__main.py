@@ -110,7 +110,7 @@ def check_option(quantities,avail,tp):
 ## TODO: Unify the two methids, to do everything in one shot
 
 def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
-                        smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,adpt_fac=1,
+                        smearEf=10,smearW=None,quantities=[],adpt_num_iter=0,adpt_fac=1,
                         fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
                         parallel = None, 
                         parameters={},
@@ -172,7 +172,9 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     Efermi=to_array(Efermi)
     # TODO : either remove smearW from here, or remove any smearing from inside kubo. This will not allow adaptive smearing though
     if smearW is not None:
-        print( "WARNING : smearW parameteris neglected, smearing is currently done inside the kubo routine, use  kBT parameter")
+        print("WARNING : smearW parameter is neglected, smearing of frequency is currently done inside the kubo routine.\n"
+              "          To specify smearing, pass smearing parameters to the variable 'parameters' as a dict.\n"
+              "          See parameters_optical for details.")
         smearW=None
     smoothEf = getSmoother(Efermi, smearEf, "Fermi-Dirac") # smoother for functions of Fermi energy
     smoothW  = getSmoother(omega,  smearW) # smoother for functions of frequency
