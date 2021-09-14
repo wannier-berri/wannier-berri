@@ -154,6 +154,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
 
     if restart:
         try:
+            print(file_Klist)
             fr = open(file_Klist,"rb")
             K_list = []
             
@@ -161,6 +162,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
                 try:
                     K_list +=pickle.load(fr)
                 except:
+                    print("Finished reading the file {0} by restart = TRUE".format(file_Klist))
                     break
             print ("{0} K-points were read from {1}".format(len(K_list),file_Klist))
             if len(K_list)==0:
@@ -210,14 +212,14 @@ As a result, the integration will be performed over NKFFT x NKdiv
         
         try:
             if file_Klist is not None:
-                
                 nk = len(K_list)
                 fw =  open(file_Klist,"wb")
-                nkpart = nk//10
+                Klist_part = 10
+                nkpart = nk//Klist_part
                 for ink in range(nkpart):
-                    pickle.dump(K_list[10*ink:10*(ink+1)],fw)
-                if nk%10 !=0:
-                    pickle.dump(K_list[10*nkpart:],fw)
+                    pickle.dump(K_list[Klist_part*ink:Klist_part*(ink+1)],fw)
+                if nk%Klist_part !=0:
+                    pickle.dump(K_list[Klist_part*nkpart:],fw)
         except Exception as err:
             print ("Warning: {0} \n the K_list was not pickled".format(err))
             
