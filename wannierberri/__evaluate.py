@@ -117,7 +117,7 @@ def evaluate_K(func,system,grid,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              suffix="",
              file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False,
-             parallel=None,numproc=0,chunksize=None
+             parallel=None,numproc=0,chunksize=None,Klist_part=10
              ):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
@@ -154,15 +154,13 @@ As a result, the integration will be performed over NKFFT x NKdiv
 
     if restart:
         try:
-            print(file_Klist)
             fr = open(file_Klist,"rb")
             K_list = []
-            
             while True:
                 try:
                     K_list +=pickle.load(fr)
                 except:
-                    print("Finished reading the file {0} by restart = TRUE".format(file_Klist))
+                    print("Finished reading Klist from file {0}".format(file_Klist))
                     break
             print ("{0} K-points were read from {1}".format(len(K_list),file_Klist))
             if len(K_list)==0:
@@ -214,7 +212,6 @@ As a result, the integration will be performed over NKFFT x NKdiv
             if file_Klist is not None:
                 nk = len(K_list)
                 fw =  open(file_Klist,"wb")
-                Klist_part = 10
                 nkpart = nk//Klist_part
                 for ink in range(nkpart):
                     pickle.dump(K_list[Klist_part*ink:Klist_part*(ink+1)],fw)
