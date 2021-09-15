@@ -56,3 +56,10 @@ wberri.tabulate(system,
              parallel=parallel,
              ibands=np.arange(4,10),
              Ef0=12.6)
+
+
+# Shutdown Parallel object.
+# This line is not actually needed here and is added just for illustrative purpose.
+# It is needed only when one wants to close and reopen a new parallel object.
+parallel.shutdown()
+
