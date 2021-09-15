@@ -77,7 +77,7 @@ class Parallel():
                     )
 
 
-    def __del__(self):
+    def shutdown(self):
         if self.method == "ray":
             self.ray.shutdown()
 
