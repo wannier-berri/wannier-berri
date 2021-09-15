@@ -28,7 +28,6 @@ from  .__Kpoint import exclude_equiv_points
 from . import __utility as utility
 from .__parallel import Parallel
 
-from memory_profiler import profile
 
 def print_progress(count, total, t0):
     t = time() - t0
@@ -38,7 +37,6 @@ def print_progress(count, total, t0):
         t_remain = "{:22.1f}".format(t / count * (total - count))
     print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
 
-#@profile(precision=4)
 def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
@@ -115,7 +113,6 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
     return len(dK_list)
 
 
-#@profile(precision=4)
 def evaluate_K(func,system,grid,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              suffix="",
