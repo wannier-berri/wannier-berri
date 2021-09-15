@@ -28,6 +28,8 @@ from  .__Kpoint import exclude_equiv_points
 from . import __utility as utility
 from .__parallel import Parallel
 
+from memory_profiler import profile
+
 def print_progress(count, total, t0):
     t = time() - t0
     if count ==0 :
@@ -36,6 +38,7 @@ def print_progress(count, total, t0):
         t_remain = "{:22.1f}".format(t / count * (total - count))
     print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
 
+#@profile(precision=4)
 def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
@@ -112,7 +115,7 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
     return len(dK_list)
 
 
-
+#@profile(precision=4)
 def evaluate_K(func,system,grid,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              suffix="",
@@ -154,7 +157,14 @@ As a result, the integration will be performed over NKFFT x NKdiv
 
     if restart:
         try:
-            K_list=pickle.load(open(file_Klist,"rb"))
+            fr = open(file_Klist,"rb")
+            K_list = []
+            time0 = time()
+            while True:
+                try:
+                    K_list +=pickle.load(fr)
+                except:
+                    break
             print ("{0} K-points were read from {1}".format(len(K_list),file_Klist))
             if len(K_list)==0:
                 print ("WARNING : {0} contains zero points starting from scrath".format(file_Klist))
@@ -203,12 +213,22 @@ As a result, the integration will be performed over NKFFT x NKdiv
         
         try:
             if file_Klist is not None:
-                pickle.dump(K_list,open(file_Klist,"wb"))
+                timeplk1 =time()
+                nk = len(K_list)
+                fw =  open(file_Klist,"wb")
+                nkpart = nk//10 
+                for ink in range(nkpart):
+                    pickle.dump(K_list[10*ink:10*(ink+1)],fw)
+                if nk%10 != 0:
+                    pickle.dump(K_list[10*nkpart:],fw)
+        
         except Exception as err:
             print ("Warning: {0} \n the K_list was not pickled".format(err))
-            
+        time0 =time()     
+        print(kp.get_res for kp in K_list)
         result_all=sum(kp.get_res for kp in K_list)
-        
+        time1 = time()
+        print("time1 = ",time1-time0)
         if not (restart and i_iter==0):
             result_all.write(fout_name+"-{}"+suffix+"_iter-{0:04d}.dat".format(i_iter+start_iter))
         
@@ -219,9 +239,13 @@ As a result, the integration will be performed over NKFFT x NKdiv
         Kmax=np.array([K.max for K in K_list]).T
         select_points=set().union( *( np.argsort( Km )[-adpt_nk:] for Km in Kmax )  )
         
+        time2 = time()
+        print("time2 = ",time2-time1)
         l1=len(K_list)
         for iK in select_points:
             K_list+=K_list[iK].divide(adpt_mesh,system.periodic)
+        time3 = time()
+        print("time3 = ",time3-time2)
         print ("checking for equivalent points in all points (of new  {} points)".format(len(K_list)-l1))
         nexcl=exclude_equiv_points(K_list,new_points=len(K_list)-l1)
         print (" excluded {0} points".format(nexcl))

@@ -34,6 +34,7 @@ calculators={
          'V'          : frml.Vln, 
 #         'morb'       : berry.calcImgh_band_kn,
          'berry'      : frml.Omega, #berry.calcImf_band_kn ,
+         'Der_berry'  : frml.DerOmega, #berry.calcImf_band_kn ,
 #         'hall_spin'  : berry.calcHall_spin_kn,
 #         'hall_orb'   : berry.calcHall_orb_kn
          }
@@ -45,6 +46,7 @@ additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no des
 
 descriptions=defaultdict(lambda:"no description")
 descriptions['berry']="Berry curvature"
+descriptions['Der_berry']="1st deravetive of Berry curvature"
 descriptions['V']="velocity"
 descriptions['spin']="Spin"
 #descriptions['morb']="orbital magnetic moment"
@@ -57,7 +59,7 @@ def tabXnk(data_K,quantities=[],degen_thresh=-1,ibands=None,parameters={}):
 
 
     if ibands is None:
-        ibands=np.arange(data.nbands)
+        ibands=np.arange(data_K.nbands)
 
     tabulator = Tabulator(data_K,ibands,degen_thresh)
 

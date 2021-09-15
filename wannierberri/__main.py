@@ -238,7 +238,10 @@ def tabulate(system,grid, quantities=[],
     if mode=='3D':
         res=res.to_grid(grid.dense)
         t2=time()
-        ttxt,twrite=write_frmsf(frmsf_name,Ef0,parallel.num_cpus,quantities,res)
+        if parallel is None:
+            numproc = 1
+        else: numproc = parallel.num_cpus
+        ttxt,twrite=write_frmsf(frmsf_name,Ef0,numproc,quantities,res)
 
     t4=time()
 

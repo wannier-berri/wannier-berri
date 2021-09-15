@@ -286,6 +286,10 @@ class  FermiOcean():
         self.NB=data_K.num_wann
         self.formula=formula
         self.final_factor=1./(data_K.NKFFT_tot * data_K.cell_volume)
+#        print('final_factor',self.final_factor)
+#        print('NKFFT_tot',data_K.NKFFT_tot)
+#        print('cell_volume',data_K.cell_volume)
+        
         # get a list [{(ib1,ib2):W} for ik in op:ed]  
         if self.tetra:
             self.weights=data_K.tetraWeights.weights_all_band_groups(Efermi,der=self.fder,degen_thresh=degen_thresh)   # here W is array of shape Efermi

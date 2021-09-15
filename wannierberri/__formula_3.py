@@ -130,8 +130,8 @@ class FormulaProduct_2(Formula_ln):
                 save_index = result_index
             self.ndim = len(save_index)
         matrices = [frml.nn(1,[1],[1]) for frml in self.formulae ]
-        for mat,line  in zip(matrices[1:],self.einsumlines):
-            print(mat.shape,line)
+      #  for mat,line  in zip(matrices[1:],self.einsumlines):
+      #      print(mat.shape,line)
     def nn(self,ik,inn,out):
         matrices = [frml.nn(ik,inn,out) for frml in self.formulae ]
         res=matrices[0]
