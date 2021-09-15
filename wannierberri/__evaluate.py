@@ -161,7 +161,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
                     K_list +=pickle.load(fr)
                 except EOFError:
                     print("Finished reading Klist from file {0}".format(file_Klist))
-                    pass
+                    break
             print ("{0} K-points were read from {1}".format(len(K_list),file_Klist))
             if len(K_list)==0:
                 print ("WARNING : {0} contains zero points starting from scrath".format(file_Klist))
@@ -212,9 +212,8 @@ As a result, the integration will be performed over NKFFT x NKdiv
             if file_Klist is not None:
                 nk = len(K_list)
                 fw =  open(file_Klist,"wb")
-                nkpart = nk//Klist_part
                 for ink in range(0,nk,Klist_part):
-                    pickle.dump(K_list[ink,ink+Klist_part],fw)
+                    pickle.dump(K_list[ink:ink+Klist_part],fw)
         except Exception as err:
             print ("Warning: {0} \n the K_list was not pickled".format(err))
             
