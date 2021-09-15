@@ -66,22 +66,22 @@ def Efermi_Haldane():
 
 @pytest.fixture(scope="session")
 def quantities_Fe():
-    return  ['ahc','ahc_ocean','dos','cumdos','ahc3_ocean',
-                'cumdos3_ocean'  
-               ,'conductivity_ohmic','conductivity_ohmic_fsurf','conductivity_ohmic3_ocean']
+    return  ['ahc','dos','cumdos',
+               'conductivity_ohmic','conductivity_ohmic_fsurf']
 
 @pytest.fixture(scope="module")
 def quantities_Haldane():
-    return  ['ahc','ahc_ocean','dos','conductivity_ohmic']
+    return  ['ahc','dos','conductivity_ohmic']
 
 @pytest.fixture(scope="module")
 def quantities_GaAs():
-    return  ["berry_dipole","berry_dipole_ocean","berry_dipole_fsurf","berry_dipole3_ocean"]
+    return  ["berry_dipole","berry_dipole_fsurf"]
 
 
 def compare_quant(quant):
-    compare= {'ahc_ocean':'ahc','ahc3_ocean':'ahc',"cumdos3_ocean":"cumdos","dos3_ocean":"dos","berry_dipole_ocean":"berry_dipole","berry_dipole3_ocean":"berry_dipole",
-            'conductivity_ohmic3_ocean':'conductivity_ohmic','conductivity_ohmic_fsurf3_ocean':'conductivity_ohmic_fsurf'}
+#    compare= {'ahc_ocean':'ahc','ahc3_ocean':'ahc',"cumdos3_ocean":"cumdos","dos3_ocean":"dos","berry_dipole_ocean":"berry_dipole","berry_dipole3_ocean":"berry_dipole",
+#            'conductivity_ohmic3_ocean':'conductivity_ohmic','conductivity_ohmic_fsurf3_ocean':'conductivity_ohmic_fsurf'}
+    compare = {}
     if quant in compare:
         return compare[quant]
     else:
