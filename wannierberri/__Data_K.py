@@ -48,26 +48,19 @@ class Data_K(System):
         self.ksep = system.ksep
         self.use_wcc_phase=system.use_wcc_phase
         if self.use_wcc_phase:
-            self.wannier_centers_reduced=system.wannier_centers_reduced
+            # if we consistently "ignore" the factor exp(ik*(tj-ti)) bothin the Wannier Hamiltonian, and in the  
+            # thransformation to Hamiltonian gauge, the result will be correct again.
+            # We only need wcc to evaluate "," derivatives (to be used in cRvec_wcc)
             self.wannier_centers_cart=system.wannier_centers_cart
         else:
-            self.wannier_centers_reduced=np.zeros((self.num_wann,3))
             self.wannier_centers_cart=np.zeros((self.num_wann,3))
         ## TODO : create the plans externally, one per process 
-#        print( "iRvec in data_K is :\n",self.iRvec)
-        #self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centers,numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
-        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centers_reduced,self.real_lattice,
-                numthreads=npar if npar>0 else 1,lib=fftlib,use_wcc_phase=self.use_wcc_phase)
+        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann, numthreads=npar if npar>0 else 1,lib=fftlib)
         self.Emin=system.Emin
         self.Emax=system.Emax
         self.poolmap=pool(npar_k)[0]
 
-        
-        if self.use_wcc_phase:
-            w_centers_diff = np.array([[j-i for j in self.wannier_centers_reduced] for i in self.wannier_centers_reduced])
-            expdK=np.exp(2j*np.pi*(system.iRvec[None,None,:,:] +w_centers_diff[:,:,None,:]).dot(dK))
-        else:
-            expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))[None,None,:]
+        expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))[None,None,:]
         self.HH_R=system.HH_R*expdK
         self.dK=dK
  

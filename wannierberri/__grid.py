@@ -61,10 +61,6 @@ class Grid():
         self.symgroup=system.symgroup
         self.div,self.FFT=determineNK(system.periodic,NKdiv,NKFFT,NK,NKFFT_recommended,self.symgroup,length=length,length_FFT=length_FFT)
         self.findif=FiniteDifferences(self.recip_lattice,self.FFT)
-        if system.use_wcc_phase:
-            self.exp_iktjti = np.exp(1j*np.einsum("ka,ija->kij",self.points_FFT,system.diff_wcc_red))
-        else:
-            self.exp_iktjti = 1
 
     @property
     def dense(self):
