@@ -333,9 +333,21 @@ class System():
         elif hasattr(self,"wannier_centers_cart_auto"):
                 self.wannier_centers_cart = self.wannier_centers_cart_auto
                 self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
-        if self.use_wcc_phase and (self.wannier_centers_cart is None):
-            raise ValueError("use_wcc_phase = True, but the wannier centers could not be detyermined")
+        print ("Wannier_centers\n",self.wannier_centers_cart,self.wannier_centers_reduced)
+        if self.use_wcc_phase: 
+            if self.wannier_centers_cart is None:
+                raise ValueError("use_wcc_phase = True, but the wannier centers could not be detyermined")
+            if hasattr(self,'AA_R'):
+                self.AA_R[np.arange(self.num_wann),np.arange(self.num_wann),self.iR0,:] -= self.wannier_centers_cart
+            for X in ['BB','CC','SA','SHA','SR','SH','SHR']:
+                if hasattr(self,X+'_R'):
+                    pass
+#                    raise NotImplementedError(f"use_wcc_phases=True is not implemented for {X}_R")
 
+
+    @property
+    def iR0(self):
+        return self.iRvec.tolist().index([0,0,0])
 
     @property 
     def nRvec(self):

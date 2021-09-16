@@ -72,16 +72,15 @@ class System_tb(System):
         self.iRvec=np.array(self.iRvec,dtype=int)
 
         if self.getAA:
-          self.AA_R=np.zeros( (self.num_wann,self.num_wann,nRvec,3) ,dtype=complex)
-          for ir in range(nRvec):
-            f.readline()
-            assert (np.array(f.readline().split(),dtype=int)==self.iRvec[ir]).all()
-            aa=np.array( [[f.readline().split()[2:8] 
+            self.AA_R=np.zeros( (self.num_wann,self.num_wann,nRvec,3) ,dtype=complex)
+            for ir in range(nRvec):
+                f.readline()
+                assert (np.array(f.readline().split(),dtype=int)==self.iRvec[ir]).all()
+                aa=np.array( [[f.readline().split()[2:8] 
                              for n in range(self.num_wann)] 
                                 for m in range(self.num_wann)],dtype=float)
-            self.AA_R[:,:,ir,:]=(aa[:,:,0::2]+1j*aa[:,:,1::2]).transpose( (1,0,2) ) /self.Ndegen[ir]
-          R0 = self.iRvec.tolist().index([0,0,0])
-          self.wannier_centers_cart_auto =  np.diagonal(self.AA_R[:,:,R0,:],axis1=0,axis2=1).transpose() 
+                self.AA_R[:,:,ir,:]=(aa[:,:,0::2]+1j*aa[:,:,1::2]).transpose( (1,0,2) ) /self.Ndegen[ir]
+            self.wannier_centers_cart_auto =  np.array( np.diagonal(self.AA_R[:,:,self.iR0,:],axis1=0,axis2=1).transpose() )
         else: 
             self.AA_R = None
         
