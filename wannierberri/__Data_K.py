@@ -101,25 +101,14 @@ class Data_K(System):
                 mat[...,i]=self._rotate(mat[...,i])
             return mat
 
-    @lazy_property.LazyProperty
-    def diag_w_centers(self):
-        '''
-        After rotate. U^+ \tau U
-        diagnal matrix of wannier centers delta_ij*tau_i (Cartesian)
-        '''
-        return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.wannier_centers_cart[None,:,None,None,:] , axis=1)
-        
 
-    def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False,flag=None):
+    def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False):
         """ converts from real-space matrix elements in Wannier gauge to 
             k-space quantities in k-space. 
             der [=0] - defines the order of comma-derivative 
             hermitian [=True] - consoder the matrix hermitian
             asym_before = True -  takes the antisymmetrc part over the first two cartesian indices before differentiation
             asym_after = True  - asymmetrize after  differentiation
-            flag: is a flag indicates if we need additional terms in self.fft_R_to_k under use_wcc_phase. 
-                'None' means no adiditional terms.
-                'AA' means, under use_wcc_phase, FFT of AA_R have an additional term -tau_i.
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
         
         def asymmetrize(X,asym):
@@ -135,13 +124,7 @@ class Data_K(System):
             XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec_wcc.reshape((shape_cR[0],shape_cR[1],self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
         XX_R=asymmetrize(XX_R, asym_after)
         
-        add_term = 0.0 # additional term under use_wcc_phase=True
-        if self.use_wcc_phase:
-            if flag=='AA':
-                add_term = - self.diag_w_centers
-
         res = self._rotate((self.fft_R_to_k( XX_R,hermitian=hermitian))[self.select_K]  )
-        res = res + add_term
         return res
 
     @lazy_property.LazyProperty
@@ -386,11 +369,11 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def V_H(self):
         self.E_K
-        return self._R_to_k_H( self.HH_R.copy(), der=1,flag='VV')
+        return self._R_to_k_H( self.HH_R.copy(), der=1)
 
     @lazy_property.LazyProperty
     def Morb_Hbar(self):
-        return self._R_to_k_H( self.CC_R.copy(),flag='CC')
+        return self._R_to_k_H( self.CC_R.copy())
 
     @lazy_property.LazyProperty
     def Morb_Hbar_diag(self):
@@ -479,7 +462,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def B_Hbar_fz(self):
         print_my_name_start()
-        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False,flag='BB')
+        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False)
         return _BB_K
 
     #@property
@@ -707,7 +690,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def A_Hbar(self):
-        return self._R_to_k_H(self.AA_R.copy(),flag='AA')
+        return self._R_to_k_H(self.AA_R.copy())
 
     @lazy_property.LazyProperty
     def A_H(self):
@@ -777,14 +760,14 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def B_Hbar(self):
         print_my_name_start()
-        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False,flag='BB')
+        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False)
         select=(self.E_K<=self.frozen_max)
         _BB_K[select]=self.E_K[select][:,None,None]*self.A_Hbar[select]
         return _BB_K
     
     @lazy_property.LazyProperty
     def B_Hbar_der(self):
-        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitian=False,flag="BB_der")
+        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitian=False)
         return _BB_K
 
     @lazy_property.LazyProperty
