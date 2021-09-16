@@ -34,6 +34,7 @@ class Data_K(System):
         self.iRvec=system.iRvec
         self.real_lattice=system.real_lattice
         self.recip_lattice=system.recip_lattice
+        self.grid=grid
         self.NKFFT=grid.FFT
         self.select_K=np.ones(self.NKFFT_tot,dtype=bool)
         self.findif=grid.findif
@@ -47,15 +48,15 @@ class Data_K(System):
         self.ksep = system.ksep
         self.use_wcc_phase=system.use_wcc_phase
         if self.use_wcc_phase:
-            self.wannier_centres_reduced=system.wannier_centres_reduced
-            self.wannier_centres_cart=system.wannier_centres_cart
+            self.wannier_centers_reduced=system.wannier_centers_reduced
+            self.wannier_centers_cart=system.wannier_centers_cart
         else:
-            self.wannier_centres_reduced=np.zeros((self.num_wann,3))
-            self.wannier_centres_cart=np.zeros((self.num_wann,3))
+            self.wannier_centers_reduced=np.zeros((self.num_wann,3))
+            self.wannier_centers_cart=np.zeros((self.num_wann,3))
         ## TODO : create the plans externally, one per process 
 #        print( "iRvec in data_K is :\n",self.iRvec)
-        #self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
-        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres_reduced,self.real_lattice,
+        #self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centers,numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
+        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centers_reduced,self.real_lattice,
                 numthreads=npar if npar>0 else 1,lib=fftlib,use_wcc_phase=self.use_wcc_phase)
         self.Emin=system.Emin
         self.Emax=system.Emax
@@ -63,8 +64,8 @@ class Data_K(System):
 
         
         if self.use_wcc_phase:
-            w_centres_diff = np.array([[j-i for j in self.wannier_centres_reduced] for i in self.wannier_centres_reduced])
-            expdK=np.exp(2j*np.pi*(system.iRvec[None,None,:,:] +w_centres_diff[:,:,None,:]).dot(dK))
+            w_centers_diff = np.array([[j-i for j in self.wannier_centers_reduced] for i in self.wannier_centers_reduced])
+            expdK=np.exp(2j*np.pi*(system.iRvec[None,None,:,:] +w_centers_diff[:,:,None,:]).dot(dK))
         else:
             expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))[None,None,:]
         self.HH_R=system.HH_R*expdK
@@ -101,12 +102,12 @@ class Data_K(System):
             return mat
 
     @lazy_property.LazyProperty
-    def diag_w_centres(self):
+    def diag_w_centers(self):
         '''
         After rotate. U^+ \tau U
-        diagnal matrix of wannier centres delta_ij*tau_i (Cartesian)
+        diagnal matrix of wannier centers delta_ij*tau_i (Cartesian)
         '''
-        return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.wannier_centres_cart[None,:,None,None,:] , axis=1)
+        return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.wannier_centers_cart[None,:,None,None,:] , axis=1)
         
 
     def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False,flag=None):
@@ -137,7 +138,7 @@ class Data_K(System):
         add_term = 0.0 # additional term under use_wcc_phase=True
         if self.use_wcc_phase:
             if flag=='AA':
-                add_term = - self.diag_w_centres
+                add_term = - self.diag_w_centers
 
         res = self._rotate((self.fft_R_to_k( XX_R,hermitian=hermitian))[self.select_K]  )
         res = res + add_term
@@ -150,11 +151,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def kpoints_all(self):
-        dkx,dky,dkz=1./self.NKFFT
-        return np.array([self.dK+np.array([ix*dkx,iy*dky,iz*dkz]) 
-          for ix in range(self.NKFFT[0])
-              for iy in range(self.NKFFT[1])
-                  for  iz in range(self.NKFFT[2])])%1
+        return (self.grid.points_FFT+self.dK[None])%1
 
 
     @lazy_property.LazyProperty

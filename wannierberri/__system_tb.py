@@ -80,15 +80,15 @@ class System_tb(System):
                              for n in range(self.num_wann)] 
                                 for m in range(self.num_wann)],dtype=float)
             self.AA_R[:,:,ir,:]=(aa[:,:,0::2]+1j*aa[:,:,1::2]).transpose( (1,0,2) ) /self.Ndegen[ir]
+          R0 = self.iRvec.tolist().index([0,0,0])
+          self.wannier_centers_cart_auto =  np.diagonal(self.AA_R[:,:,R0,:],axis1=0,axis2=1).transpose() 
         else: 
             self.AA_R = None
         
         f.close()
 
-        R0 = self.iRvec.tolist().index([0,0,0])
-        if self.use_wcc_phase:
-            self.wannier_centres_cart = np.diagonal(self.AA_R[:,:,R0,:],axis1=0,axis2=1).transpose()
-            self.wannier_centres_reduced = self.wannier_centres_cart.dot(np.linalg.inv(self.real_lattice))
+
+        self.set_wannier_centers()
         self.set_symmetry()
         self.check_periodic()
 
