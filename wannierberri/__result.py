@@ -269,15 +269,15 @@ class EnergyResultDict(EnergyResult):
 
 class EnergyResultScalar(EnergyResult):
     def __init__(self,Energy,data,smoother=VoidSmoother()):
-         super(EnergyResultScalar,self).__init__(Energy,data,smoother,TRodd=False,Iodd=False,rank=0)
+         super().__init__(Energy,data,smoother,TRodd=False,Iodd=False,rank=0)
 
 class EnergyResultAxialV(EnergyResult):
     def __init__(self,Energy,data,smoother=VoidSmoother()):
-         super(EnergyResultAxialV,self).__init__(Energy,data,smoother,TRodd=True,Iodd=False,rank=1)
+         super().__init__(Energy,data,smoother,TRodd=True,Iodd=False,rank=1)
 
 class EnergyResultPolarV(EnergyResult):
     def __init__(self,Energy,data,smoother=VoidSmoother()):
-         super(EnergyResultpolarV,self).__init__(Energy,data,smoother,TRodd=False,Iodd=True,rank=1)
+         super().__init__(Energy,data,smoother,TRodd=False,Iodd=True,rank=1)
 
 class NoComponentError(RuntimeError):
 
