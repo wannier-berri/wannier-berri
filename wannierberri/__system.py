@@ -23,7 +23,6 @@ from termcolor import cprint
 
 
 
-
 class System():
 
     default_parameters =  {    'seedname':'wannier90',
@@ -41,7 +40,9 @@ class System():
                     'Emax': np.Inf ,
                     'use_ws':True,
                     'periodic':(True,True,True),
-                    'use_wcc_phase':False
+                    'use_wcc_phase':False,
+                    'wannier_centers_cart':None,
+                    'wannier_centers_reduced' : None
                        }
 
 
@@ -81,11 +82,15 @@ class System():
     delta_fz:float
         size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
     use_wcc_phase: bool
-        using wannier centres in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
+        using wannier centers in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
+    wannier_centers_cart :  array-like(num_wann,3)
+        use the given wannier_centers (cartesian) instead of those determined automatically. Incompatible with `wannier_centers_reduced`
+    wannier_centers_reduced :  array-like(num_wann,3)
+        use the given wannier_centers (reduced) instead of those determined automatically. Incompatible with `wannier_centers_cart`
+
     """ .format(**default_parameters)
 
     def __init__(self, old_format=False,    **parameters ):
-
 
         self.set_parameters(**parameters)
         self.old_format=old_format
@@ -293,13 +298,43 @@ class System():
         """ 
         With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [m,n,iRvec] (Cartesian)
         """
-        wannier_centres = self.wannier_centres_cart
-        w_centres = np.array([[j-i for j in wannier_centres] for i in wannier_centres])
+        wannier_centers = self.wannier_centers_cart
+        w_centers = np.array([[j-i for j in wannier_centers] for i in wannier_centers])
         if self.use_wcc_phase:
-            return self.iRvec.dot(self.real_lattice)[None,None,:,:]+ w_centres[:,:,None,:]
+            return self.iRvec.dot(self.real_lattice)[None,None,:,:]+ w_centers[:,:,None,:]
         else:
             return self.iRvec.dot(self.real_lattice)[None,None,:,:]
 
+
+    @lazy_property.LazyProperty
+    def diff_wcc_cart(self):
+        """ 
+        With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [m,n,a] (Cartesian)
+        """
+        wannier_centers = self.wannier_centers_cart
+        return np.array([[j-i for j in wannier_centers] for i in wannier_centers])
+
+    @lazy_property.LazyProperty
+    def diff_wcc_red(self):
+        """ 
+        With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [m,n,a] (Reduced)
+        """
+        wannier_centers = self.wannier_centers_reduced
+        return np.array([[j-i for j in wannier_centers] for i in wannier_centers])
+
+    def set_wannier_centers(self):
+        if self.wannier_centers_cart is not None:
+            if self.wannier_centers_reduced is not None:
+                raise ValueError("one should not specify both wannier_centers_cart and wannier_centers_reduced")
+            else:
+                self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+        elif self.wannier_centers_reduced is not None:
+                self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
+        elif hasattr(self,"wannier_centers_cart_auto"):
+                self.wannier_centers_cart = self.wannier_centers_cart_auto
+                self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+        if self.use_wcc_phase and (self.wannier_centers_cart is None):
+            raise ValueError("use_wcc_phase = True, but the wannier centers could not be detyermined")
 
 
     @property 

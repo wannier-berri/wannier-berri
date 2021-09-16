@@ -76,7 +76,7 @@ class CheckPoint():
                                     zip(u_matrix,u_matrix_opt,ndimwin)]
         else:
             self.v_matrix=[u  for u in u_matrix ] 
-        self.wannier_centres=readfloat().reshape((self.num_wann,3))
+        self.wannier_centers=readfloat().reshape((self.num_wann,3))
         self.wannier_spreads=readfloat().reshape((self.num_wann))
         del u_matrix,m_matrix
         gc.collect()

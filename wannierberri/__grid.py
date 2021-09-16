@@ -14,6 +14,7 @@
 from collections.abc import Iterable
 import numpy as np
 from time import time
+import lazy_property
 from  .__Kpoint import KpointBZ
 from .__finite_differences import FiniteDifferences
 
@@ -60,10 +61,23 @@ class Grid():
         self.symgroup=system.symgroup
         self.div,self.FFT=determineNK(system.periodic,NKdiv,NKFFT,NK,NKFFT_recommended,self.symgroup,length=length,length_FFT=length_FFT)
         self.findif=FiniteDifferences(self.recip_lattice,self.FFT)
+        if system.use_wcc_phase:
+            self.exp_iktjti = np.exp(1j*np.einsum("ka,ija->kij",self.points_FFT,system.diff_wcc_red))
+        else:
+            self.exp_iktjti = 1
 
     @property
     def dense(self):
         return self.div*self.FFT
+
+    @lazy_property.LazyProperty
+    def points_FFT(self):
+        dkx,dky,dkz=1./self.FFT
+        return np.array([np.array([ix*dkx,iy*dky,iz*dkz]) 
+          for ix in range(self.FFT[0])
+              for iy in range(self.FFT[1])
+                  for  iz in range(self.FFT[2])])
+
 
    
     @property 

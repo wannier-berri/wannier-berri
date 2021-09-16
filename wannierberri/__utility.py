@@ -304,7 +304,7 @@ def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,numthreads=1,fft='fftw'
 
 class FFT_R_to_k():
     
-    def __init__(self,iRvec,NKFFT,num_wann,wannier_centres_reduced,real_lattice,numthreads=1,lib='fftw',use_wcc_phase=False,name=None):
+    def __init__(self,iRvec,NKFFT,num_wann,wannier_centers_reduced,real_lattice,numthreads=1,lib='fftw',use_wcc_phase=False,name=None):
         t0=time()
         print_my_name_start()
         self.NKFFT=tuple(NKFFT)
@@ -328,8 +328,8 @@ class FFT_R_to_k():
         self.time_init=time()-t0
         self.time_call=0
         self.n_call=0
-        self.wannier_centres_reduced=wannier_centres_reduced
-        self.wannier_centres_cart = self.wannier_centres_reduced.dot(self.real_lattice) 
+        self.wannier_centers_reduced=wannier_centers_reduced
+        self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice) 
         self.use_wcc_phase=use_wcc_phase
 
     def execute_fft(self,A):
@@ -363,9 +363,9 @@ class FFT_R_to_k():
         '''
         additional exponent for Fourier transform under use_wcc_phase=True, exp(1j*k(tau_j - tau_i))
         '''
-        w_centres_diff = np.array([[j-i for j in self.wannier_centres_reduced] for i in self.wannier_centres_reduced])
+        w_centers_diff = np.array([[j-i for j in self.wannier_centers_reduced] for i in self.wannier_centers_reduced])
         def exp_par(ii,jj,i):#k1 k2 k3 partial of exponent_wcc
-            return np.exp(2j*np.pi*w_centres_diff[ii,jj,i]/self.NKFFT[i])**np.arange(self.NKFFT[i])
+            return np.exp(2j*np.pi*w_centers_diff[ii,jj,i]/self.NKFFT[i])**np.arange(self.NKFFT[i])
         exponent_wcc=np.array([[exp_par(ii,jj,0)[:,None,None]*exp_par(ii,jj,1)[None,:,None]*exp_par(ii,jj,2)[None,None,:]
                         for jj in range(self.num_wann)] for ii in range(self.num_wann)])
         return exponent_wcc.transpose((2,3,4,0,1))
