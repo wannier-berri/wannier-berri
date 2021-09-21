@@ -11,6 +11,7 @@ from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Halda
 from create_system import system_Fe_W90,system_GaAs_W90,system_GaAs_tb,system_Haldane_PythTB,system_Haldane_TBmodels
 from create_system import system_Fe_W90_sym, system_Haldane_TBmodels_sym, system_Haldane_PythTB_sym
 from create_system import system_Fe_W90_wcc,system_GaAs_W90_wcc,system_GaAs_tb_wcc,system_Haldane_PythTB_wcc,system_Haldane_TBmodels_wcc 
+from create_system import system_Fe_W90_frozen_wcc , system_Fe_W90_frozen
 from compare_result import compare_energyresult
 
 
@@ -67,7 +68,12 @@ def Efermi_Haldane():
 
 @pytest.fixture(scope="session")
 def quantities_Fe():
-    return  ['ahc','ahc_ocean','dos','cumdos'  ,'conductivity_ohmic','conductivity_ohmic_fsurf']
+    return  ['ahc','ahc_ocean','dos','cumdos'  ,'conductivity_ohmic','conductivity_ohmic_fsurf','Morb']
+
+@pytest.fixture(scope="session")
+def quantities_Fe_frozen():
+    return  ['Morb',]
+
 
 @pytest.fixture(scope="module")
 def quantities_Haldane():
@@ -183,4 +189,14 @@ def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,qu
 def test_Fe_parallel_old(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-old-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4)
+
+
+
+def test_Fe_frozen(check_integrate,system_Fe_W90_frozen, compare_energyresult,quantities_Fe_frozen,Efermi_Fe):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    check_integrate(system_Fe_W90_frozen , quantities_Fe_frozen , fout_name="berry_Fe_W90" , suffix="frozen" ,suffix_ref = "frozen",  Efermi=Efermi_Fe , comparer=compare_energyresult )
+
+def test_Fe_frozen_wcc(check_integrate,system_Fe_W90_frozen_wcc, compare_energyresult,quantities_Fe_frozen,Efermi_Fe):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    check_integrate(system_Fe_W90_frozen_wcc , quantities_Fe_frozen , fout_name="berry_Fe_W90" , suffix="frozen_wcc" , suffix_ref = "frozen", Efermi=Efermi_Fe , comparer=compare_energyresult )
 
