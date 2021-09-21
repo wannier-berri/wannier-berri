@@ -403,14 +403,14 @@ class UHU(UXU):
     UHU.data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|H(k)|u_{n,k+b2}>
     """
     def __init__(self,seedname='wannier90',formatted=False):
-        super(UHU, self).__init__(seedname=seedname,formatted=formatted,suffix='uHu' )
+        super().__init__(seedname=seedname,formatted=formatted,suffix='uHu' )
 
 class UIU(UXU):
     """
     UIU.data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|u_{n,k+b2}>
     """
     def __init__(self,seedname='wannier90',formatted=False):
-        super(UIU, self).__init__(seedname=seedname,formatted=formatted,suffix='uIu' )
+        super().__init__(seedname=seedname,formatted=formatted,suffix='uIu' )
 
 
 class SXU(W90_data):
@@ -463,11 +463,11 @@ class SIU(SXU):
     SIU.data[ik, ib, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k+b}>
     """
     def __init__(self,seedname='wannier90',formatted=False):
-        super(SIU, self).__init__(seedname=seedname,formatted=formatted,suffix='sIu' )
+        super().__init__(seedname=seedname,formatted=formatted,suffix='sIu' )
 
 class SHU(SXU):
     """
     SHU.data[ik, ib, m, n, ipol] = <u_{m,k}|S_ipol*H(k)|u_{n,k+b}>
     """
     def __init__(self,seedname='wannier90',formatted=False):
-        super(SHU, self).__init__(seedname=seedname,formatted=formatted,suffix='sHu' )
+        super().__init__(seedname=seedname,formatted=formatted,suffix='sHu' )
