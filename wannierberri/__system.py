@@ -289,9 +289,9 @@ class System():
         self.symgroup=Group(symmetry_gen,recip_lattice=self.recip_lattice,real_lattice=self.real_lattice)
 
 
-    #@lazy_property.LazyProperty
-    #def cRvec(self):
-    #    return self.iRvec.dot(self.real_lattice)
+    @lazy_property.LazyProperty
+    def cRvec(self):
+        return self.iRvec.dot(self.real_lattice)
 
     @lazy_property.LazyProperty
     def cRvec_wcc(self):
@@ -333,13 +333,41 @@ class System():
         elif hasattr(self,"wannier_centers_cart_auto"):
                 self.wannier_centers_cart = self.wannier_centers_cart_auto
                 self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
-        print ("Wannier_centers\n",self.wannier_centers_cart,self.wannier_centers_reduced)
+#        self.wannier_centers_cart*=00.01
+#        self.wannier_centers_reduced*=00.01
+#        print ("Wannier_centers\n",self.wannier_centers_cart,self.wannier_centers_reduced)
         if self.use_wcc_phase: 
             if self.wannier_centers_cart is None:
                 raise ValueError("use_wcc_phase = True, but the wannier centers could not be detyermined")
             if hasattr(self,'AA_R'):
-                self.AA_R[np.arange(self.num_wann),np.arange(self.num_wann),self.iR0,:] -= self.wannier_centers_cart
-            for X in ['BB','CC','SA','SHA','SR','SH','SHR']:
+                AA_R_new = np.copy(self.AA_R)
+                AA_R_new[np.arange(self.num_wann),np.arange(self.num_wann),self.iR0,:] -= self.wannier_centers_cart
+            if hasattr(self,'BB_R'):
+                BB_R_new = self.BB_R.copy() - self.HH_R[:,:,:,None]*self.wannier_centers_cart[None,:,None,:]
+            if hasattr(self,'CC_R'):
+                assert hasattr(self,'BB_R') , "if you use CC_R, you need also BB_R"
+                CC_R_new  =  self.CC_R.copy() - sum(   
+                            s*( -self.wannier_centers_cart[:,None,None,a]*self.BB_R[:,:,:,b]   # -t_i^a * B_{ij}^b(R)
+                                -self.conj_XX_R(self.BB_R[:,:,:,a])*self.wannier_centers_cart[None,:,None,b]*   # - B_{ji}^a(-R)^*  * t_j^b 
+                                +self.wannier_centers_cart[:,None,None,a]*self.HH_R[:,:,:,None]*
+                                            self.wannier_centers_cart[None,:,None,b]  # + t_i^a*H_ij(R)t_j^b
+                            )
+                        for (s,a,b) in [(+1,alpha_A,beta_A) , (-1,beta_A,alpha_A)] )
+
+
+            # not sure if the following is correct (Stepan)
+            if hasattr(self,'SA_R'):
+                assert hasattr(self,'SS_R') , "if you use SA_R, you need also SS_R"
+                SA_R_new  =  self.SA_R.copy() - self.SS_R[:,:,:,:,None]*self.wannier_centers_cart[None,:,None,None,:]
+            if hasattr(self,'SHA_R'):
+                assert hasattr(self,'SH_R') , "if you use SA_R, you need also SH_R"
+                SHA_R_new  =  self.SHA_R.copy() - self.SS_R[:,:,:,:,None]*self.wannier_centers_cart[None,:,None,None,:]
+
+            for X in ['AA','BB','CC','SA','SHA']:
+                if hasattr(self,X+'_R'):
+                    vars(self)[X+'_R'] = locals()[X+'_R_new']
+
+            for X in ['SA','SHA','SR','SH','SHR']:
                 if hasattr(self,X+'_R'):
                     pass
 #                    raise NotImplementedError(f"use_wcc_phases=True is not implemented for {X}_R")
@@ -348,6 +376,36 @@ class System():
     @property
     def iR0(self):
         return self.iRvec.tolist().index([0,0,0])
+
+    @lazy_property.LazyProperty
+    def reverseR(self):
+        """maps the R vector -R"""
+        iRveclst= self.iRvec.tolist()
+        mapping = np.all( self.iRvec[:,None,:]+self.iRvec[None,:,:] == 0 , axis = 2 )
+        # check if some R-vectors do not have partners
+        notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
+        for ir in notfound:
+            print ("WARNING : R[{}] = {} does not have a -R partner".format(ir,self.iRvec[ir]) )
+        # check if some R-vectors have more then 1 partner 
+        morefound = np.where(np.sum(mapping,axis=1)>1)[0]
+        if len(morefound>0):
+            raise RuntimeError( "R vectors number {} have more then one negative partner : \n{} \n{}".format(
+                            morefound,self.iRvec[morefound],np.sum(mapping,axis=1) ) )
+        lst1,lst2=[],[]
+        for ir1 in range(self.nRvec):
+            ir2 = np.where(mapping[ir1])[0]
+            if len(ir2)==1:
+                lst1.append(ir1)
+                lst2.append(ir2[0])
+        return np.array(lst1),np.array(lst2)
+
+    def conj_XX_R(self,XX_R):
+        """ reverses the R-vector and takes the hermitian conjugate """
+        XX_R_new = np.zeros_like(XX_R)
+        lst1,lst2 = self.reverseR
+        print (XX_R.shape,XX_R_new.shape,lst1,lst2)
+        XX_R_new [:,:,lst1] = XX_R[:,:,lst2]
+        return XX_R_new.swapaxes(0,1).conj()
 
     @property 
     def nRvec(self):
