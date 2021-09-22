@@ -38,7 +38,7 @@ def error_message(fout_name, suffix, i_iter, abs_err, filename, filename_ref,req
 @pytest.fixture
 def compare_energyresult():
     """Compare dat file output of EnergyResult with the file in reference folder"""
-    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,precision=None,compare_smooth = False):
+    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,precision=None,compare_smooth = True):
         if suffix_ref is None :
             suffix_ref=suffix
         for i_iter in range(adpt_num_iter+1):
