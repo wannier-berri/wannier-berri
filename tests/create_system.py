@@ -117,32 +117,6 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
     return system
 
 
-@pytest.fixture(scope="session")
-def system_Fe_W90_frozen(create_files_Fe_W90):
-    """Create system for Fe using Wannier90 data"""
-
-    data_dir = create_files_Fe_W90
-
-    # Load system
-    seedname = os.path.join(data_dir, "Fe")
-    system = wberri.System_w90(seedname, berry=True, morb=True,
-           transl_inv=False, use_wcc_phase=False,frozen_max = np.Inf)
-
-    return system
-
-
-@pytest.fixture(scope="session")
-def system_Fe_W90_frozen_wcc(create_files_Fe_W90):
-    """Create system for Fe using Wannier90 data"""
-
-    data_dir = create_files_Fe_W90
-
-    # Load system
-    seedname = os.path.join(data_dir, "Fe")
-    system = wberri.System_w90(seedname, berry=True, morb=True,
-            transl_inv=False, use_wcc_phase=True,frozen_max = np.Inf)
-
-    return system
 
 #@pytest.fixture(scope="session")
 #def system_GaAs_W90_SHC(create_files_GaAs_W90):

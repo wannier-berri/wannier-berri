@@ -94,6 +94,14 @@ class Data_K(System):
                 mat[...,i]=self._rotate(mat[...,i])
             return mat
 
+    @lazy_property.LazyProperty
+    def diag_w_centers(self):
+        '''
+        After rotate. U^+ \tau U
+        diagnal matrix of wannier centres delta_ij*tau_i (Cartesian)
+        '''
+        return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.wannier_centers_cart[None,:,None,None,:] , axis=1)
+
 
     def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False):
         """ converts from real-space matrix elements in Wannier gauge to 
@@ -898,6 +906,15 @@ class Data_K(System):
     @property
     def SpinTot(self):
         return {'i':self.S_H_rediag,'E':self.E_K}
+
+
+    @lazy_property.LazyProperty
+    def T_BmEA(self):
+        print_my_name_start()
+        t = self.diag_w_centers
+        BEA = self.B_Hbar - self.E_K[:,:,None,None]*self.A_Hbar
+        return -(t[:,:,:,alpha_A]*BEA[:,:,:,beta_A].swapaxes(1,2) - t[:,:,:,beta_A]*BEA[:,:,:,alpha_A].swapaxes(1,2) ).imag
+
    
     def Hplusminus(self,sign,evalJ0=True,evalJ1=True,evalJ2=True):
         assert sign in (1,-1) , "sign should be +1 or -1"
@@ -906,13 +923,15 @@ class Data_K(System):
         res['E']=self.E_K
         if evalJ0:
             if sign==1:
-                res['ii']=-2*self.A_E_A
+                res['ii']+=-2*self.A_E_A
             res['i']+=self.Morb_Hbar_diag + sign*self.Omega_Hbar_E
         if evalJ1:
             res['oi']+=-2*(self.D_B+sign*self.D_E_A)
         if evalJ2:
             C,D=self.D_E_D
             res['oi']+=-2*(C+sign*D)
+        if self.use_wcc_phase:
+            res['ii']+=2*self.T_BmEA
         return  res
 
     #def Hplus(self,evalJ0=True,evalJ1=True,evalJ2=True):

@@ -177,7 +177,7 @@ class System():
             if not per:
                 sel=(self.iRvec[:,i]!=0)
                 if np.any(sel) :
-                    print ("""WARNING : you declared your ystemas non-periodic along direction {i}, but there are {nrexcl} of total {nr} R-vectors with R[{i}]!=0. 
+                    print ("""WARNING : you declared your system as non-periodic along direction {i}, but there are {nrexcl} of total {nr} R-vectors with R[{i}]!=0. 
         They will be excluded, please make sure you know what you are doing """.format(i=i,nrexcl=sum(sel),nr=self.nRvec ) )
                     exclude[sel]=True
         if np.any(exclude):
@@ -401,7 +401,7 @@ class System():
             if len(ir2)==1:
                 lst1.append(ir1)
                 lst2.append(ir2[0])
-                print (ir1,self.iRvec[ir1] , ir2,self.iRvec[ir2[0]])
+#                print (ir1,self.iRvec[ir1] , ir2,self.iRvec[ir2[0]])
         return np.array(lst1),np.array(lst2)
 
     def conj_XX_R(self,XX_R):
@@ -409,7 +409,7 @@ class System():
         XX_R_new = np.zeros_like(XX_R)
         lst1,lst2 = self.reverseR
         assert np.all(self.iRvec[lst1] + self.iRvec[lst2] ==0 )
-        print (XX_R.shape,XX_R_new.shape,lst1,lst2)
+#        print (XX_R.shape,XX_R_new.shape,lst1,lst2)
         XX_R_new [:,:,lst1] = np.copy(XX_R)[:,:,lst2]
         XX_R_new[:] = XX_R_new.swapaxes(0,1).conj()
         return np.copy(XX_R_new)
