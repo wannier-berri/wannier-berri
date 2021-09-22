@@ -22,6 +22,8 @@ def check_integrate(parallel_serial):
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},additional_parameters={},adpt_num_iter=0,
                suffix="", suffix_ref="",
                extra_precision={},
+               precision = -1e-8 ,
+               compare_smooth = False,
                restart = False):
 
         grid = wberri.Grid(system, **grid_param)
@@ -48,8 +50,8 @@ def check_integrate(parallel_serial):
             data=result.results.get(quant).data
             assert data.shape[0] == len(Efermi)
             assert np.all( np.array(data.shape[1:]) == 3)
-            prec=extra_precision[quant] if quant in extra_precision else None
-            comparer(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,precision=prec )
+            prec=extra_precision[quant] if quant in extra_precision else precision
+            comparer(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,precision=prec, compare_smooth = compare_smooth )
     return _inner
 
 @pytest.fixture(scope="session")
@@ -93,7 +95,7 @@ def compare_quant(quant):
 
 def test_Fe(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
-    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult )
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult,compare_smooth = False )
 
 
 def test_Fe_wcc(check_integrate,system_Fe_W90_wcc, compare_energyresult,quantities_Fe,Efermi_Fe):
@@ -187,5 +189,5 @@ def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,qu
 
 def test_Fe_parallel_old(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
-    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-old-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4)
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-old-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4,precision = -1e-6)
 
