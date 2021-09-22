@@ -352,7 +352,7 @@ class System():
                 CC_R_new  =  self.CC_R.copy() + 1.j*sum(   
                             s*( -T[:,:,:,a,b]   # -t_i^a * B_{ij}^b(R)
                                 -self.conj_XX_R(T[:,:,:,b,a])    # - B_{ji}^a(-R)^*  * t_j^b 
-                                +self.wannier_centers_cart[:,None,None,a]*self.HH_R[:,:,:,None]*    self.wannier_centers_cart[None,:,None,b]  # + t_i^a*H_ij(R)t_j^b
+                                +self.wannier_centers_cart[:,None,None,a]*self.HH_R[:,:,:,None] * self.wannier_centers_cart[None,:,None,b]  # + t_i^a*H_ij(R)t_j^b
                             )
                         for (s,a,b) in [(+1,alpha_A,beta_A) , (-1,beta_A,alpha_A)] )
                 norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
