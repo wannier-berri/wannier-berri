@@ -103,7 +103,7 @@ def test_Fe_wcc(check_integrate,system_Fe_W90_wcc, compare_energyresult,quantiti
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90_wcc , quantities_Fe , fout_name="berry_Fe_W90" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult,
             extra_precision = {"Morb":-5e-2})  # the wcc gives quite a notable error, do not know why yet
-    compare_energyresult(os.path.join(OUTPUT_DIR, "berry_Fe_W90"), "Morb-wcc",  0 , suffix_ref="Morb-wcc" ,precision=-1e-8, compare_smooth = False )
+    compare_energyresult( "berry_Fe_W90", "Morb-wcc",  0 , suffix_ref="Morb-wcc" ,precision=-1e-8, compare_smooth = False )
 
 def test_Fe_sym(check_integrate,system_Fe_W90_sym, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
