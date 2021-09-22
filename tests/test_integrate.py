@@ -193,10 +193,10 @@ def test_Fe_parallel_old(check_integrate, system_Fe_W90, compare_energyresult,qu
 
 
 def test_Fe_frozen(check_integrate,system_Fe_W90_frozen, compare_energyresult,quantities_Fe_frozen,Efermi_Fe):
-    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    """Test orbital Magnetization"""
     check_integrate(system_Fe_W90_frozen , quantities_Fe_frozen , fout_name="berry_Fe_W90" , suffix="frozen" ,suffix_ref = "frozen",  Efermi=Efermi_Fe , comparer=compare_energyresult )
 
 def test_Fe_frozen_wcc(check_integrate,system_Fe_W90_frozen_wcc, compare_energyresult,quantities_Fe_frozen,Efermi_Fe):
-    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    """Test orbital Magnetization"""
     check_integrate(system_Fe_W90_frozen_wcc , quantities_Fe_frozen , fout_name="berry_Fe_W90" , suffix="frozen_wcc" , suffix_ref = "frozen", Efermi=Efermi_Fe , comparer=compare_energyresult )
 

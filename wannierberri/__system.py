@@ -345,14 +345,18 @@ class System():
             if hasattr(self,'BB_R'):
                 BB_R_new = self.BB_R.copy() - self.HH_R[:,:,:,None]*self.wannier_centers_cart[None,:,None,:]
             if hasattr(self,'CC_R'):
+                norm = np.linalg.norm(self.CC_R - self.conj_XX_R(self.CC_R))
+                assert norm<1e-10 , f"norm={norm}"
                 assert hasattr(self,'BB_R') , "if you use CC_R, you need also BB_R"
-                CC_R_new  =  self.CC_R.copy() - sum(   
-                            s*( -self.wannier_centers_cart[:,None,None,a]*self.BB_R[:,:,:,b]   # -t_i^a * B_{ij}^b(R)
-                                -self.conj_XX_R(self.BB_R[:,:,:,a])*self.wannier_centers_cart[None,:,None,b]*   # - B_{ji}^a(-R)^*  * t_j^b 
-                                +self.wannier_centers_cart[:,None,None,a]*self.HH_R[:,:,:,None]*
-                                            self.wannier_centers_cart[None,:,None,b]  # + t_i^a*H_ij(R)t_j^b
+                T  =  self.wannier_centers_cart[:,None,None,:,None]*self.BB_R[:,:,:,None,:]
+                CC_R_new  =  self.CC_R.copy() + 1.j*sum(   
+                            s*( -T[:,:,:,a,b]   # -t_i^a * B_{ij}^b(R)
+                                -self.conj_XX_R(T[:,:,:,b,a])    # - B_{ji}^a(-R)^*  * t_j^b 
+                                +self.wannier_centers_cart[:,None,None,a]*self.HH_R[:,:,:,None]*    self.wannier_centers_cart[None,:,None,b]  # + t_i^a*H_ij(R)t_j^b
                             )
                         for (s,a,b) in [(+1,alpha_A,beta_A) , (-1,beta_A,alpha_A)] )
+                norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
+                assert norm<1e-10 , f"norm={norm}"
 
 
             # not sure if the following is correct (Stepan)
@@ -397,15 +401,18 @@ class System():
             if len(ir2)==1:
                 lst1.append(ir1)
                 lst2.append(ir2[0])
+                print (ir1,self.iRvec[ir1] , ir2,self.iRvec[ir2[0]])
         return np.array(lst1),np.array(lst2)
 
     def conj_XX_R(self,XX_R):
         """ reverses the R-vector and takes the hermitian conjugate """
         XX_R_new = np.zeros_like(XX_R)
         lst1,lst2 = self.reverseR
+        assert np.all(self.iRvec[lst1] + self.iRvec[lst2] ==0 )
         print (XX_R.shape,XX_R_new.shape,lst1,lst2)
-        XX_R_new [:,:,lst1] = XX_R[:,:,lst2]
-        return XX_R_new.swapaxes(0,1).conj()
+        XX_R_new [:,:,lst1] = np.copy(XX_R)[:,:,lst2]
+        XX_R_new[:] = XX_R_new.swapaxes(0,1).conj()
+        return np.copy(XX_R_new)
 
     @property 
     def nRvec(self):
