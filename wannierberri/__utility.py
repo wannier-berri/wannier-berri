@@ -36,16 +36,16 @@ class FortranFileR(fortio.FortranFile):
     def __init__(self,filename):
         print ( "using fortio to read" )
         try: 
-            super(FortranFileR, self).__init__( filename, mode='r',  header_dtype='uint32'  , auto_endian=True, check_file=True )
+            super().__init__( filename, mode='r',  header_dtype='uint32'  , auto_endian=True, check_file=True )
         except ValueError :
             print ("File '{}' contains subrecords - using header_dtype='int32'".format(filename))
-            super(FortranFileR, self).__init__( filename, mode='r',  header_dtype='int32'  , auto_endian=True, check_file=True )
+            super().__init__( filename, mode='r',  header_dtype='int32'  , auto_endian=True, check_file=True )
 
 
 class FortranFileW(scipy.io.FortranFile):
     def __init__(self,filename):
         print ( "using scipy.io to write" )
-        super(FortranFileW, self).__init__( filename, mode='w')
+        super().__init__( filename, mode='w')
 
 
 alpha_A=np.array([1,2,0])
