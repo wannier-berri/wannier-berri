@@ -9,7 +9,7 @@ class Parallel():
     -----------
     method : str
         a method to be used for parallelization 'serial' or 'ray'
-    num_cus : int 
+    num_cpus : int 
         number of parallel processes. If <=0  - serial execution 
     chunksize : int
         chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
@@ -69,7 +69,7 @@ class Parallel():
                     )
 
 
-    def __del__(self):
+    def shutdown(self):
         if self.method == "ray":
             self.ray.shutdown()
 

@@ -110,9 +110,9 @@ def check_option(quantities,avail,tp):
 ## TODO: Unify the two methids, to do everything in one shot
 
 def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
-                        smearEf=10,smearW=10,quantities=[],adpt_num_iter=0,adpt_fac=1,
+                        smearEf=10,smearW=None,quantities=[],adpt_num_iter=0,adpt_fac=1,
                         fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
-                        parallel = None, 
+                        parallel = None,
                         parameters={},global_parameters={} ):
     """
     Integrate 
@@ -135,7 +135,9 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
     adpt_fac : int 
         number of K-points to be refined per quantity and criteria.
-   
+    parallel : :class:`~wannierberri.Parallel`
+        object describing parallelization scheme
+ 
     Returns
     --------
     dictionary of  :class:`~wannierberri.EnergyResult` 
@@ -151,7 +153,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 #        a single  Fermi level for optical properties
 
 
-    cprint ("\nIntegrating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
+    cprint ("\nIntegrating the following quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
     def to_array(energy):
         if energy is not None: 
@@ -164,7 +166,9 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     Efermi=to_array(Efermi)
     # TODO : either remove smearW from here, or remove any smearing from inside kubo. This will not allow adaptive smearing though
     if smearW is not None:
-        print( "WARNING : smearW parameteris neglected, smearing is currently done inside the kubo routine, use  kBT parameter")
+        print("WARNING : smearW parameter is neglected, smearing of frequency is currently done inside the kubo routine.\n"
+              "          To specify smearing, pass smearing parameters to the variable 'parameters' as a dict.\n"
+              "          See parameters_optical for details.")
         smearW=None
     smoothEf = getSmoother(Efermi, smearEf, "Fermi-Dirac") # smoother for functions of Fermi energy
     smoothW  = getSmoother(omega,  smearW) # smoother for functions of frequency
@@ -184,7 +188,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 def tabulate(system,grid, quantities=[],
                   frmsf_name=None,ibands=None,suffix="",Ef0=0.,
                   parameters={},global_parameters={},
-                  parallel = None):
+                  parallel = None ):
     """
     Tabulate quantities to be plotted
 
@@ -200,6 +204,12 @@ def tabulate(system,grid, quantities=[],
         quantities to be integrated. See :ref:`sec-capabilities`
     frmsf_name :  str
         if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
+    parallel : :class:`~wannierberri.Parallel`
+        object describing parallelization scheme
+    numproc : int 
+        (obsolete, use parallel instead) number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
+    chunksize : int
+        (obsolete, use parallel instead) chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
    
     Returns
     --------
@@ -214,13 +224,13 @@ def tabulate(system,grid, quantities=[],
     if isinstance(grid,Path):
         mode = 'path'
         global_parameters_loc['use_symmetry'] = False
-    cprint ("\nTabulating the following qantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
+    cprint ("\nTabulating the following quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,tabulate_options,"tabulate")
     eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
     t0=time()
     res=evaluate_K(eval_func,system,grid,
             adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,
-            parallel=parallel,global_parameters=global_parameters )
+            parallel=parallel,global_parameters=global_parameters_loc )
 
     t1=time()
     if mode=='3D':

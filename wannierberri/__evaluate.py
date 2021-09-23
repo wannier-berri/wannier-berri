@@ -98,8 +98,9 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
 def evaluate_K(func,system,grid,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
              suffix="",
-             file_Klist="K_list.pickle",restart=False,start_iter=0,parallel=None,
-             global_parameters={}
+             global_parameters={},
+             file_Klist="K_list.pickle",restart=False,Klist_part = 10,
+             parallel=None  # serial by default
              ):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
@@ -111,13 +112,14 @@ The parallelisation is done by K-points
 
 As a result, the integration will be performed over NKFFT x NKdiv
 """
-    if parallel is None:
-        parallel = Parallel()
 
     try : 
         use_symmetry = global_parameters["use_symmetry"]
     except KeyError as err:
         use_symmetry = True
+
+    if parallel is None:
+        parallel = Parallel()
 
     if file_Klist is not None:
         if not file_Klist.endswith(".pickle"):
@@ -142,7 +144,14 @@ As a result, the integration will be performed over NKFFT x NKdiv
 
     if restart:
         try:
-            K_list=pickle.load(open(file_Klist,"rb"))
+            fr = open(file_Klist,"rb")
+            K_list = []
+            while True:
+                try:
+                    K_list +=pickle.load(fr)
+                except EOFError:
+                    print("Finished reading Klist from file {0}".format(file_Klist))
+                    break
             print ("{0} K-points were read from {1}".format(len(K_list),file_Klist))
             if len(K_list)==0:
                 print ("WARNING : {0} contains zero points starting from scrath".format(file_Klist))
@@ -191,7 +200,10 @@ As a result, the integration will be performed over NKFFT x NKdiv
         
         try:
             if file_Klist is not None:
-                pickle.dump(K_list,open(file_Klist,"wb"))
+                nk = len(K_list)
+                fw =  open(file_Klist,"wb")
+                for ink in range(0,nk,Klist_part):
+                    pickle.dump(K_list[ink:ink+Klist_part],fw)
         except Exception as err:
             print ("Warning: {0} \n the K_list was not pickled".format(err))
             

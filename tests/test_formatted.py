@@ -11,7 +11,7 @@ from wannierberri.__w90_files import UHU, UIU, SHU, SIU, SPN
 from create_system import create_files_GaAs_W90
 
 @pytest.fixture(scope="module")
-def generate_formatted_files(rootdir, create_files_GaAs_W90):
+def generate_formatted_files(create_files_GaAs_W90):
     """Create formatted files for Fe using mmn2uHu"""
 
     data_dir = create_files_GaAs_W90

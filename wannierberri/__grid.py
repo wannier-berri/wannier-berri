@@ -100,7 +100,8 @@ class Grid():
             print ("Done in {} s ".format(time()-t0))
 
         K_list=[K for Kyz in K_list for Kz in Kyz for K in Kz if K is not None]
-        print ("K_list contains {} Irreducible points({}%%) out of initial {}x{}x{}={} grid".format(len(K_list),round(len(K_list)/np.prod(self.div)*100,2),self.div[0],self.div[1],self.div[2],np.prod(self.div)))
+        print ("Done in {} s ".format(time()-t0))
+        print ("K_list contains {} Irreducible points({}%) out of initial {}x{}x{}={} grid".format(len(K_list),round(len(K_list)/np.prod(self.div)*100,2),self.div[0],self.div[1],self.div[2],np.prod(self.div)))
         return K_list
 
 

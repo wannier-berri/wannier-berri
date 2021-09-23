@@ -7,19 +7,22 @@ from pytest import approx
 
 import wannierberri as wberri
 from conftest import parallel_serial, parallel_ray 
+from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
 from create_system import system_Fe_W90,system_GaAs_W90,system_GaAs_tb,system_Haldane_PythTB,system_Haldane_TBmodels
 from compare_result import compare_energyresult
 
 
 @pytest.fixture
-def check_integrate(output_dir,parallel_serial):
+def check_integrate(parallel_serial):
     def _inner(system,quantities,fout_name,Efermi,comparer,
-               parallel=parallel_serial,
-               grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]}, adpt_num_iter=0,
+               parallel=None,
+               numproc=0,
+               grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},adpt_num_iter=0,
                additional_parameters={}, global_parameters={},
                suffix="", suffix_ref="",
-               extra_precision={} ):
+               extra_precision={},
+               restart = False):
 
         grid = wberri.Grid(system, **grid_param)
         result = wberri.integrate(system,
@@ -32,9 +35,9 @@ def check_integrate(output_dir,parallel_serial):
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
                 global_parameters = global_parameters,
-                fout_name = os.path.join(output_dir, fout_name),
+                fout_name = os.path.join(OUTPUT_DIR, fout_name),
                 suffix=suffix,
-                restart = False,
+                restart = restart,
                 )
         if len(suffix)>0:
             suffix="-"+suffix
@@ -172,10 +175,28 @@ def test_Fe_sym_refine(check_integrate,system_Fe_W90, compare_energyresult,quant
                   global_parameters = {'use_symmetry' : True} ,
                   suffix="sym" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult )
 
+def test_Fe_pickle_Klist(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , 
+                  adpt_num_iter=0,
+                  global_parameters = {'use_symmetry' : True} ,
+                  suffix="pickle" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult )
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , 
+                  adpt_num_iter=1,
+                  global_parameters = {'use_symmetry' : True} ,
+                  suffix="pickle" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult,restart=True )
+
 
 def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe,
       parallel_ray):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-ray-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,parallel=parallel_ray,
                               global_parameters = {'use_symmetry' : False} ,
-)
+                    )
+
+def test_Fe_parallel_old(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-old-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4 ,
+                              global_parameters = {'use_symmetry' : False} 
+                    )
+

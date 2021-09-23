@@ -1,6 +1,8 @@
 import os
 import pytest
 
+from conftest import ROOT_DIR, OUTPUT_DIR
+
 """
 Test creation of submission scripts for slurm and PBS batch systems.
 No jobs are submitted in the test.
@@ -39,7 +41,7 @@ def compare_texts(script_text, ref_text, variable_strings):
 
 
 @pytest.mark.parametrize("cluster_type", ["slurm", "pbs"])
-def test_cluster_script(cluster_type, rootdir, output_dir, check_command_output):
+def test_cluster_script(cluster_type, check_command_output):
     if cluster_type == "slurm":
         variable_strings = ["#SBATCH --job-name=my_first_job_","#SBATCH --output=my_first_job_"]
     elif cluster_type == "pbs":
@@ -70,6 +72,6 @@ def test_cluster_script(cluster_type, rootdir, output_dir, check_command_output)
     script_name=stdout.split("'")[-2].split()[-1]
     print (script_name)
     script_text = open(script_name,"r").readlines()
-    ref_text    = open(os.path.join(rootdir,"reference",f"my_first_job_{cluster_type}.sh"),"r").readlines()
+    ref_text    = open(os.path.join(ROOT_DIR,"reference",f"my_first_job_{cluster_type}.sh"),"r").readlines()
     compare_texts(script_text, ref_text, variable_strings)
-    os.replace(script_name, os.path.join(output_dir, script_name))
+    os.replace(script_name, os.path.join(OUTPUT_DIR, script_name))
