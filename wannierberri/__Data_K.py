@@ -36,7 +36,7 @@ class Data_K():
                     'Emax': np.Inf ,
                     'use_wcc_phase':False,
                     'fftlib' : 'fftw',
-                    'npar_k' : 1 
+                    'npar_k' : 1 ,
                     'random_gauge':False,
                     'degen_thresh_random_gauge':1e-4 ,
                        }
