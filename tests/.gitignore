@@ -22,3 +22,4 @@ data/GaAs_Wannier90/GaAs.u?u
 data/GaAs_Wannier90/GaAs_formatted.*
 data/GaAs_Wannier90/reduced_*/
 data/GaAs_Wannier90/reduced_formatted_*/
+data/GaAs_Wannier90/GaAs_tb.dat

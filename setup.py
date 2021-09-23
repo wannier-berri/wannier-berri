@@ -14,17 +14,20 @@ setuptools.setup(
      long_description=long_description,
      long_description_content_type="text/markdown",
      python_requires='>=3.6',
-     install_requires=[
-                        'numpy', 
+     install_requires = [
+                        'numpy',
                         'scipy >= 1.0', 
                         'lazy_property',
-                        'colorama','termcolor','pyfiglet',
-                        'pyFFTW>=0.12.0', 
+                        'colorama',
+                        'termcolor',
+                        'pyfiglet',
+                        'termcolor',
+                        'pyFFTW>=0.12.0',
                         'packaging>=20.8',
                         'matplotlib',
                         'fortio>=0.4',
                         'ray[default]'
-                      ],
+                        ],
      url="https://wannier-berri.org",
      packages=setuptools.find_packages(),
      classifiers=[

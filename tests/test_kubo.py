@@ -7,84 +7,105 @@ from pytest import approx
 
 import wannierberri as wberri
 
-from conftest import parallel_serial
-from create_system import create_files_Fe_W90, system_Fe_W90
+from conftest import OUTPUT_DIR
+from create_system import create_files_Fe_W90, system_Fe_W90, system_Fe_W90_wcc
+from create_system import create_files_GaAs_W90, system_GaAs_W90, system_GaAs_W90_wcc
 from compare_result import compare_energyresult
+from test_integrate import compare_quant
 
-@pytest.fixture(scope="module")
-def result_kubo_Fe_W90(output_dir, system_Fe_W90,parallel_serial):
-    system = system_Fe_W90
+@pytest.fixture
+def check_integrate_dynamical():
+    """
+    This function is similar to check_integrate, but the difference is 1) the shape of the
+    data are different for dynamical quantities (has omega index), and 2) opt_conductivity
+    requires a special treatment because of sym and asym data.
+    """
+    def _inner(system, quantities, fout_name, Efermi, omega, grid_param, comparer,
+               additional_parameters={}, 
+               global_parameters={},
+               adpt_num_iter=0,
+               suffix="", suffix_ref="", extra_precision={} ):
 
-    num_proc = 0
+        grid = wberri.Grid(system, **grid_param)
+        result = wberri.integrate(system,
+                grid = grid,
+                Efermi = Efermi,
+                omega = omega,
+                quantities = quantities,
+                adpt_num_iter = adpt_num_iter,
+                parameters = additional_parameters,
+                global_parameters = global_parameters,
+                fout_name = os.path.join(OUTPUT_DIR, fout_name),
+                suffix = suffix,
+                restart = False,
+                )
+        if len(suffix) > 0:
+            suffix = "-" + suffix
+        if len(suffix_ref) > 0:
+            suffix_ref = "-" + suffix_ref
 
-    # Set symmetry
-    SYM = wberri.symmetry
-    # generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal*SYM.C2x]
-    generators = []
-    system.set_symmetry(generators)
+        # Test results output
+        for quant in quantities:
+            if quant == "opt_conductivity":
+                data_list = [result.results.get(quant).results.get(s).data for s in ["sym", "asym"]]
+            else:
+                data_list = [result.results.get(quant).data]
 
-    # Set grid
-    grid = wberri.Grid(system, NK=[6, 6, 6], NKFFT=[3, 3, 3])
+            for data in data_list:
+                assert data.shape[0] == len(Efermi)
+                assert data.shape[1] == len(omega)
+                assert all(i == 3 for i in data.shape[2:])
 
-    # Set parameters
+        # Test file output
+        if comparer:
+            quantities_compare = quantities.copy()
+            if "opt_conductivity" in quantities:
+                quantities_compare += ["opt_conductivity-sym", "opt_conductivity-asym"]
+                quantities_compare.remove("opt_conductivity")
+
+            for quant in quantities_compare:
+                prec = extra_precision[quant] if quant in extra_precision else None
+                comparer(fout_name, quant+suffix, adpt_num_iter,
+                    suffix_ref=compare_quant(quant)+suffix_ref, precision=prec)
+
+    return _inner
+
+
+def test_optical(check_integrate_dynamical, system_Fe_W90, compare_energyresult):
+    """Test optical properties: optical conductivity and spin Hall conductivity"""
+    quantities = ["opt_conductivity", "opt_SHCqiao", "opt_SHCryoo"]
+
     Efermi = np.array([17.0, 18.0])
     omega = np.arange(0.0, 7.1, 1.0)
     kubo_params = dict(smr_fixed_width=0.20, smr_type="Gaussian")
+    grid_param = dict(NK=[6, 6, 6], NKFFT=[3, 3, 3])
     adpt_num_iter = 1
-    fout_name = "kubo_Fe_W90"
 
-    # output folder
+    check_integrate_dynamical(system_Fe_W90, quantities, fout_name="kubo_Fe_W90",
+        Efermi=Efermi, omega=omega, grid_param=grid_param,
+        adpt_num_iter=adpt_num_iter, comparer=compare_energyresult,
+        global_parameters = {'use_symmetry' : False} ,
+        additional_parameters=kubo_params)
 
-    result = wberri.integrate(system,
-            grid = grid,
-            Efermi = Efermi,
-            omega = omega,
-            quantities = ["opt_conductivity", "opt_SHCqiao", "opt_SHCryoo"],
-            parallel=parallel_serial,
-            adpt_num_iter = adpt_num_iter,
-            parameters = kubo_params,
-            global_parameters = {"use_symmetry":False},
-            fout_name = os.path.join(output_dir, fout_name),
-            restart = False,
-    )
-
-    return Efermi, omega, adpt_num_iter, fout_name, result
+    # TODO: Add wcc test
 
 
-def test_opt_conductivity(result_kubo_Fe_W90, compare_energyresult):
-    """Test optical conductivity"""
-    Efermi, omega, adpt_num_iter, fout_name, result = result_kubo_Fe_W90
-
-    data_sym = result.results.get("opt_conductivity").results["sym"].data
-    data_asym = result.results.get("opt_conductivity").results["asym"].data
-
-    assert data_sym.shape == (len(Efermi), len(omega), 3, 3)
-    assert data_asym.shape == (len(Efermi), len(omega), 3, 3)
-
-    assert data_sym == approx(np.swapaxes(data_sym, 2, 3), abs=1E-6)
-    assert data_asym == approx(-np.swapaxes(data_asym, 2, 3), abs=1E-6)
-
-    compare_energyresult(fout_name, "opt_conductivity-sym", adpt_num_iter)
-    compare_energyresult(fout_name, "opt_conductivity-asym", adpt_num_iter)
 
 
-def test_SHCqiao(result_kubo_Fe_W90, compare_energyresult):
-    """Test spin Hall conductivity using Qiao's method"""
-    Efermi, omega, adpt_num_iter, fout_name, result = result_kubo_Fe_W90
+def test_shiftcurrent(check_integrate_dynamical, system_GaAs_W90, compare_energyresult):
+    """Test shift current"""
+    quantities = ["opt_shiftcurrent"]
 
-    data = result.results.get("opt_SHCqiao").data
+    Efermi = np.linspace(7., 9., 5)
+    omega = np.arange(1.0, 5.1, 0.5)
+    kubo_params = dict(smr_fixed_width=0.20, smr_type="Gaussian", sc_eta=0.10)
+    grid_param = dict(NK=[6, 6, 6], NKFFT=[3, 3, 3])
+    adpt_num_iter = 1
 
-    assert data.shape == (len(Efermi), len(omega), 3, 3, 3)
+    check_integrate_dynamical(system_GaAs_W90, quantities, fout_name="kubo_GaAs_W90",
+        Efermi=Efermi, omega=omega, grid_param=grid_param,
+        adpt_num_iter=adpt_num_iter, comparer=compare_energyresult,
+        additional_parameters=kubo_params,
+        extra_precision = {"opt_shiftcurrent":1e-9})
 
-    compare_energyresult(fout_name, "opt_SHCqiao", adpt_num_iter)
-
-
-def test_SHCryoo(result_kubo_Fe_W90, compare_energyresult):
-    """Test spin Hall conductivity using Ryoo's method"""
-    Efermi, omega, adpt_num_iter, fout_name, result = result_kubo_Fe_W90
-
-    data = result.results.get("opt_SHCryoo").data
-
-    assert data.shape == (len(Efermi), len(omega), 3, 3, 3)
-
-    compare_energyresult(fout_name, "opt_SHCryoo", adpt_num_iter)
+    # TODO: Add wcc test

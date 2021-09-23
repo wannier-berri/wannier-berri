@@ -58,8 +58,6 @@ class Data_K():
         separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. Default: ``{ksep}``
     delta_fz:float
         size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
-    use_wcc_phase: bool
-        using wannier centres in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
     """ .format(**default_parameters)
 
 
@@ -75,10 +73,21 @@ class Data_K():
         self.num_wann=self.system.num_wann
         self.Kpoint=Kpoint
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
+
+#        self.use_wcc_phase=system.use_wcc_phase
+        if self.use_wcc_phase:
+            self.wannier_centres_reduced=system.wannier_centres_reduced
+            self.wannier_centres_cart=system.wannier_centres_cart
+        else:
+            self.wannier_centres_reduced=np.zeros((self.num_wann,3))
+            self.wannier_centres_cart=np.zeros((self.num_wann,3))
+
+
         self.fft_R_to_k=FFT_R_to_k(self.system.iRvec,self.NKFFT,self.system.num_wann,
                self.system.wannier_centres_reduced,self.system.real_lattice,
                 numthreads=self.npar_k if self.npar_k>0 else 1,lib=self.fftlib,use_wcc_phase=self.use_wcc_phase)
         self.poolmap=pool(self.npar_k)[0]
+
 
         
         if self.use_wcc_phase:

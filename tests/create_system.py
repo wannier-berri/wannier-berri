@@ -11,6 +11,8 @@ import numpy as np
 
 import wannierberri as wberri
 
+from conftest import ROOT_DIR
+
 def create_W90_files(seedname, tags_needed, data_dir):
     """
     Extract the compressed amn and mmn data files.
@@ -46,12 +48,12 @@ def create_W90_files(seedname, tags_needed, data_dir):
 
 
 @pytest.fixture(scope="session")
-def create_files_Fe_W90(rootdir):
+def create_files_Fe_W90():
     """Create data files for Fe: uHu, uIu, sHu, and sIu"""
 
     seedname = "Fe"
     tags_needed = ["uHu", "uIu", "sHu", "sIu"] # Files to calculate if they do not exist
-    data_dir = os.path.join(rootdir, "data", "Fe_Wannier90")
+    data_dir = os.path.join(ROOT_DIR, "data", "Fe_Wannier90")
 
     create_W90_files(seedname, tags_needed, data_dir)
 
@@ -59,12 +61,12 @@ def create_files_Fe_W90(rootdir):
 
 
 @pytest.fixture(scope="session")
-def create_files_GaAs_W90(rootdir):
+def create_files_GaAs_W90():
     """Create data files for Fe: uHu, uIu, sHu, and sIu"""
 
     seedname = "GaAs"
     tags_needed = ["uHu", "uIu", "sHu", "sIu"] # Files to calculate if they do not exist
-    data_dir = os.path.join(rootdir, "data", "GaAs_Wannier90")
+    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
 
     create_W90_files(seedname, tags_needed, data_dir)
 
@@ -81,6 +83,20 @@ def system_Fe_W90(create_files_Fe_W90):
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
            transl_inv=False, use_wcc_phase=False)
+    sym=wberri.symmetry
+    system.set_symmetry(["C4z",sym.C2x*sym.TimeReversal,"Inversion"])
+    return system
+
+@pytest.fixture(scope="session")
+def system_Fe_W90_wcc(create_files_Fe_W90):
+    """Create system for Fe using Wannier90 data"""
+
+    data_dir = create_files_Fe_W90
+
+    # Load system
+    seedname = os.path.join(data_dir, "Fe")
+    system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
+           transl_inv=False, use_wcc_phase=True)
     sym=wberri.symmetry
     system.set_symmetry(["C4z",sym.C2x*sym.TimeReversal,"Inversion"])
     return system
@@ -117,10 +133,24 @@ def system_GaAs_W90(create_files_GaAs_W90):
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_tb(rootdir):
+def system_GaAs_W90_wcc(create_files_GaAs_W90):
+    """Create system for GaAs using Wannier90 data with wcc phases"""
+
+    data_dir = create_files_GaAs_W90
+
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs")
+    system = wberri.System_w90(seedname, berry=True, 
+           transl_inv=False, use_wcc_phase=True,degen_thresh=0.005)
+
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_tb():
     """Create system for GaAs using _tb.dat data"""
 
-    data_dir = os.path.join(rootdir, "data", "GaAs_Wannier90")
+    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
     if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
         tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
         for tarinfo in tar:
@@ -131,6 +161,20 @@ def system_GaAs_tb(rootdir):
 
     return system
 
+@pytest.fixture(scope="session")
+def system_GaAs_tb_wcc():
+    """Create system for GaAs using _tb_dat data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs_tb.dat")
+    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=True)
+
+    return system
 
 @pytest.fixture(scope="session")
 def tbmodels_Haldane():
