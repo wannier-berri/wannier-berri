@@ -116,7 +116,7 @@ class EnergyResult(Result):
         self.rank=data.ndim-self.N_energies if rank is None else rank
         if self.rank>0:
             shape=data.shape[-self.rank:]
-            assert np.all(np.array(shape)==3)
+            assert np.all(np.array(shape)==3), "data.shape={}".format(data.shape)
         for i in range(self.N_energies):
             assert (Energies[i].shape[0]==data.shape[i]) , "dimension of Energy[{}] = {} does not match do dimension of data {}".format(i,Energy[i].shape[0],data.shape[i])
         self.Energies=Energies

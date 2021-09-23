@@ -18,7 +18,7 @@ from . import __version__
 from .__evaluate import evaluate_K
 from .__utility import getSmoother 
 from . import __integrate 
-from . import __tabulate  
+from . import __tabulate
 from . import symmetry
 from .__path import Path
 import numpy as np
@@ -236,7 +236,9 @@ def tabulate(system,grid, quantities=[],
     if mode=='3D':
         res=res.to_grid(grid.dense)
         t2=time()
-        ttxt,twrite=write_frmsf(frmsf_name,Ef0,parallel.num_cpus,quantities,res)
+        ttxt,twrite=write_frmsf(frmsf_name,Ef0,
+                    (parallel.num_cpus if parallel is not None else numproc),
+                                      quantities,res)
 
     t4=time()
 

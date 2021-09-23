@@ -26,6 +26,7 @@ from  .__Kpoint import exclude_equiv_points
 from . import __utility as utility
 from .__parallel import Parallel
 
+
 def print_progress(count, total, t0):
     t = time() - t0
     if count ==0 :
@@ -92,7 +93,6 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
         nproc_ = parallel.npar_K
     print("{0:10.4f} ; per K-point {1:15.4f} ; proc-sec per K-point {2:15.4f}".format(t, t/numK, t*nproc_/numK), flush=True)
     return len(dK_list)
-
 
 
 def evaluate_K(func,system,grid,fftlib='fftw',
@@ -206,9 +206,12 @@ As a result, the integration will be performed over NKFFT x NKdiv
                     pickle.dump(K_list[ink:ink+Klist_part],fw)
         except Exception as err:
             print ("Warning: {0} \n the K_list was not pickled".format(err))
-            
+
+        time0 =time()     
+        print(kp.get_res for kp in K_list)
         result_all=sum(kp.get_res for kp in K_list)
-        
+        time1 = time()
+        print("time1 = ",time1-time0)
         if not (restart and i_iter==0):
             result_all.write(fout_name+"-{}"+suffix+"_iter-{0:04d}.dat".format(i_iter+start_iter))
         
@@ -219,16 +222,18 @@ As a result, the integration will be performed over NKFFT x NKdiv
         Kmax=np.array([K.max for K in K_list]).T
         select_points=set().union( *( np.argsort( Km )[-adpt_nk:] for Km in Kmax )  )
         
+        time2 = time()
+        print("time2 = ",time2-time1)
         l1=len(K_list)
         for iK in select_points:
             K_list+=K_list[iK].divide(adpt_mesh,system.periodic,use_symmetry=use_symmetry)
+
         if use_symmetry:
             print ("checking for equivalent points in all points (of new  {} points)".format(len(K_list)-l1))
             nexcl=exclude_equiv_points(K_list,new_points=len(K_list)-l1)
             print (" excluded {0} points".format(nexcl))
         print ("sum of weights now :{}".format(sum(Kp.factor for Kp in K_list)))
         
-    
     print ("Totally processed {0} K-points ".format(counter))
     
     return result_all
