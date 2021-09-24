@@ -13,6 +13,18 @@ import wannierberri as wberri
 
 from conftest import ROOT_DIR
 
+@pytest.fixture(scope="session")
+def symmetries_Fe():
+    """ liust of symmetries for bcc iron"""
+    sym=wberri.symmetry
+    return ["C4z","C2x*TimeReversal","Inversion"]
+
+@pytest.fixture(scope="session")
+def symmetries_GaAs():
+    sym=wberri.symmetry
+    return ["C4z",sym.TimeReversal,sym.Rotation(3,[1,1,1])]
+
+
 def create_W90_files(seedname, tags_needed, data_dir):
     """
     Extract the compressed amn and mmn data files.
@@ -74,7 +86,7 @@ def create_files_GaAs_W90():
 
 
 @pytest.fixture(scope="session")
-def system_Fe_W90(create_files_Fe_W90):
+def system_Fe_W90(create_files_Fe_W90,symmetries_Fe):
     """Create system for Fe using Wannier90 data"""
 
     data_dir = create_files_Fe_W90
@@ -83,12 +95,11 @@ def system_Fe_W90(create_files_Fe_W90):
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
            transl_inv=False, use_wcc_phase=False)
-    sym=wberri.symmetry
-    system.set_symmetry(["C4z",sym.C2x*sym.TimeReversal,"Inversion"])
+    system.set_symmetry(symmetries_Fe)
     return system
 
 @pytest.fixture(scope="session")
-def system_Fe_W90_wcc(create_files_Fe_W90):
+def system_Fe_W90_wcc(create_files_Fe_W90,symmetries_Fe):
     """Create system for Fe using Wannier90 data"""
 
     data_dir = create_files_Fe_W90
@@ -97,8 +108,7 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
            transl_inv=False, use_wcc_phase=True)
-    sym=wberri.symmetry
-    system.set_symmetry(["C4z",sym.C2x*sym.TimeReversal,"Inversion"])
+    system.set_symmetry(symmetries_Fe)
     return system
 
 

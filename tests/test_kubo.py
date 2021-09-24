@@ -10,6 +10,7 @@ import wannierberri as wberri
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90, system_Fe_W90, system_Fe_W90_wcc
 from create_system import create_files_GaAs_W90, system_GaAs_W90, system_GaAs_W90_wcc
+from create_system import symmetries_Fe
 from compare_result import compare_energyresult
 from test_integrate import compare_quant
 

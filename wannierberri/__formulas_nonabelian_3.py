@@ -229,7 +229,7 @@ class DerOmega(Formula_ln):
         self.dD = DerDln(data_K)
         self.D  = Dln(data_K)
 
-        print (f"derOmega evaluating: internal({self.internal_terms}) and external({self.external_terms})")
+#        print (f"derOmega evaluating: internal({self.internal_terms}) and external({self.external_terms})")
 
         if self.external_terms:
             self.A  = Aln(data_K)
