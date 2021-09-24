@@ -309,7 +309,50 @@ class System():
             return result
         else:
             return self.ws_map(result)
-        
+
+    @property
+    def iR0(self):
+        return self.iRvec.tolist().index([0,0,0])
+
+    @lazy_property.LazyProperty
+    def reverseR(self):
+        """maps the R vector -R"""
+        iRveclst= self.iRvec.tolist()
+        mapping = np.all( self.iRvec[:,None,:]+self.iRvec[None,:,:] == 0 , axis = 2 )
+        # check if some R-vectors do not have partners
+        notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
+        for ir in notfound:
+            print ("WARNING : R[{}] = {} does not have a -R partner".format(ir,self.iRvec[ir]) )
+        # check if some R-vectors have more then 1 partner 
+        morefound = np.where(np.sum(mapping,axis=1)>1)[0]
+        if len(morefound>0):
+            raise RuntimeError( "R vectors number {} have more then one negative partner : \n{} \n{}".format(
+                            morefound,self.iRvec[morefound],np.sum(mapping,axis=1) ) )
+        lst1,lst2=[],[]
+        for ir1 in range(self.nRvec):
+            ir2 = np.where(mapping[ir1])[0]
+            if len(ir2)==1:
+                lst1.append(ir1)
+                lst2.append(ir2[0])
+#                print (ir1,self.iRvec[ir1] , ir2,self.iRvec[ir2[0]])
+        return np.array(lst1),np.array(lst2)
+
+    def conj_XX_R(self,XX_R):
+        """ reverses the R-vector and takes the hermitian conjugate """
+        XX_R_new = np.zeros_like(XX_R)
+        lst1,lst2 = self.reverseR
+        assert np.all(self.iRvec[lst1] + self.iRvec[lst2] ==0 )
+#        print (XX_R.shape,XX_R_new.shape,lst1,lst2)
+        XX_R_new [:,:,lst1] = np.copy(XX_R)[:,:,lst2]
+        XX_R_new[:] = XX_R_new.swapaxes(0,1).conj()
+        return np.copy(XX_R_new)
+
+    def check_hermitian(self,XX):
+        if hasattr(self,XX):
+            XX_R = np.copy(vars(self)[XR])
+            assert (np.max(abs(XX_R-self.conh_XX_R(XX_R)))<1e-8) , f"{XX} should obey X(-R) = X(R)^\dagger"
+        else:
+            print (f"{XX} is missing,nothing to check")
 
 #
 # the following  implements the use_ws_distance = True  (see Wannier90 documentation for details)

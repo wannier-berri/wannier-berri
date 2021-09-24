@@ -95,6 +95,10 @@ class System_w90(System):
             t0=time()
             self.AA_R=fourier_q_to_R_loc(AAq)
             timeFFT+=time()-t0
+            if transl_inv:
+                wannier_centres_cart_new = np.diagonal(self.AA_R[:,:,self.iR0,:],axis1=0,axis2=1).transpose()
+                assert( np.all(abs(wannier_centres_cart_new-self.wannier_centres_cart))<1e-6)
+
 
         if self.getBB:
             t0=time()

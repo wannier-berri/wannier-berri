@@ -50,4 +50,3 @@ def parallel_ray():
                  )
 
 
-

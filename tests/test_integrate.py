@@ -9,7 +9,9 @@ import wannierberri as wberri
 from conftest import parallel_serial, parallel_ray 
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
-from create_system import system_Fe_W90,system_GaAs_W90,system_GaAs_tb,system_Haldane_PythTB,system_Haldane_TBmodels
+from create_system import system_Fe_W90,system_GaAs_W90,system_GaAs_tb
+from create_system import system_Haldane_PythTB,system_Haldane_TBmodels
+from create_system import symmetries_Fe
 from compare_result import compare_energyresult
 
 
@@ -112,6 +114,7 @@ def test_GaAs(check_integrate,system_GaAs_W90, compare_energyresult,quantities_G
                global_parameters = {'use_wcc_phase':False,'degen_thresh':0.005,'use_symmetry' : False },
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
+
 def test_GaAs_tb(check_integrate,system_GaAs_tb, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test berry dipole"""
     check_integrate(system_GaAs_tb , quantities_GaAs , fout_name="berry_GaAs_tb" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
@@ -132,7 +135,7 @@ def test_GaAs_tb_wcc(check_integrate,system_GaAs_tb, compare_energyresult,quanti
 
     
 def test_Haldane_PythTB(check_integrate,system_Haldane_PythTB,compare_energyresult,quantities_Haldane,Efermi_Haldane):
-    check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_pythtb" , suffix="" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
+    check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="pythtb" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
                global_parameters = {'use_symmetry' : False} ,
             grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
@@ -142,7 +145,7 @@ def test_Haldane_TBmodels(check_integrate,system_Haldane_TBmodels,compare_energy
             grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
 def test_Haldane_PythTB_wcc(check_integrate,system_Haldane_PythTB,compare_energyresult,quantities_Haldane,Efermi_Haldane):
-    check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_pythtb" , suffix="wcc" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
+    check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="pythtb_wcc" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
                global_parameters = {'use_symmetry' : False} ,
             grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
@@ -153,7 +156,7 @@ def test_Haldane_TBmodels_wcc(check_integrate,system_Haldane_TBmodels,compare_en
 
 
 def test_Haldane_PythTB_sym(check_integrate,system_Haldane_PythTB,compare_energyresult,quantities_Haldane,Efermi_Haldane):
-    check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_pythtb" , suffix="sym" , suffix_ref="",
+    check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="pythtb_sym" , suffix_ref="",
             Efermi=Efermi_Haldane , comparer=compare_energyresult,
                global_parameters = {'use_symmetry' : True} ,
             grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
@@ -202,4 +205,3 @@ def test_Fe_parallel_old(check_integrate, system_Fe_W90, compare_energyresult,qu
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-old-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4 ,
                               global_parameters = {'use_symmetry' : False} 
                     )
-
