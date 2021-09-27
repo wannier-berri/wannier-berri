@@ -22,7 +22,6 @@ import  multiprocessing
 import functools
 from .__utility import  print_my_name_start,print_my_name_end
 from . import __result as result
-#from . import  __berry as berry
 from . import __formulas_nonabelian_3 as frml
 from . import  symmetry
 
@@ -45,13 +44,23 @@ additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no des
 
 
 descriptions=defaultdict(lambda:"no description")
-descriptions['berry']="Berry curvature"
-descriptions['Der_berry']="1st deravetive of Berry curvature"
-descriptions['V']="velocity"
+descriptions['berry']="Berry curvature (Ang^{-2})"
+descriptions['Der_berry']="1st deravetive of Berry curvature (Ang^{-3})"
+descriptions['V']="velocity (eV*Ang)"
 descriptions['spin']="Spin"
 #descriptions['morb']="orbital magnetic moment"
 #descriptions['hall_spin']="spin contribution to low-field Hall effect"
 #descriptions['hall_orb']="orbital contribution to low-field Hall effect"
+
+parameters_ocean = {
+'external_terms' : (True , "evaluate external terms"),
+'internal_terms' : (True,  "evaluate internal terms"),
+}
+
+for key,val in parameters_ocean.items(): 
+    for calc in ['berry','Der_berry']: 
+        additional_parameters[calc][key] = val[0]
+        additional_parameters_description[calc][key] = val[1]
 
 
 
@@ -60,6 +69,8 @@ def tabXnk(data_K,quantities=[],degen_thresh=-1,ibands=None,parameters={}):
 
     if ibands is None:
         ibands=np.arange(data_K.nbands)
+    else:
+        ibands = np.array(ibands)
 
     tabulator = Tabulator(data_K,ibands,degen_thresh)
 
@@ -74,7 +85,7 @@ def tabXnk(data_K,quantities=[],degen_thresh=-1,ibands=None,parameters={}):
         results[q]=tabulator( calculators[q](data_K,**__parameters) )
 
     return TABresult( kpoints       = data_K.kpoints_all,
-                      recip_lattice = data_K.recip_lattice,
+                      recip_lattice = data_K.system.recip_lattice,
                       results       = results )
 
 
