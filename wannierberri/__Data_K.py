@@ -311,7 +311,7 @@ class Data_K():
     @lazy_property.LazyProperty
     def E_K_corners(self):
         dK2=self.Kpoint.dK_fullBZ/2
-        expdK=np.exp(2j*np.pi*self.iRvec*dK2[None,:])
+        expdK=np.exp(2j*np.pi*self.system.iRvec*dK2[None,:])  # we omit the wcc phases here, because they do not affect hte energies
         expdK=np.array([1./expdK,expdK])
         Ecorners=np.zeros((self.nk_selected,2,2,2,self.nb_selected),dtype=float)
         for ix in 0,1:

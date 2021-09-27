@@ -12,6 +12,7 @@ from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Halda
 from create_system import system_Fe_W90,system_GaAs_W90,system_GaAs_tb
 from create_system import system_Haldane_PythTB,system_Haldane_TBmodels,system_Haldane_TBmodels_internal
 from create_system import symmetries_Fe
+from create_system import system_Chiral,ChiralModel
 from compare_result import compare_energyresult
 
 
@@ -67,10 +68,41 @@ def Efermi_GaAs():
 def Efermi_Haldane():
     return np.linspace(-3,3,11)
 
+
+@pytest.fixture(scope="session")
+def Efermi_Chiral():
+    return np.linspace(-5,8,27)
+
 @pytest.fixture(scope="session")
 def quantities_Fe():
     return  ['ahc','dos','cumdos',
                'conductivity_ohmic','conductivity_ohmic_fsurf']
+
+@pytest.fixture(scope="session")
+def quantities_Chiral():
+    return  [
+#         'spin'                     ,#: fermiocean3.spin                   ,
+#         'Morb'                     ,#: fermiocean3.Morb                   ,
+         'ahc'                      ,#: fermiocean3.AHC                    ,
+         'cumdos'                   ,#: fermiocean3.cumdos                 ,
+         'dos'                      ,#: fermiocean3.dos                    ,
+         'conductivity_ohmic'       ,#: fermiocean3.ohmic                  ,
+         'conductivity_ohmic_fsurf' ,#: fermiocean3.ohmic_fsurf            ,
+         'berry_dipole'             ,#: fermiocean3.berry_dipole           ,
+         'berry_dipole_fsurf'       ,#: fermiocean3.berry_dipole_fsurf     ,
+#         'gyrotropic_Korb'          ,#: fermiocean3.gme_orb                ,
+#         'gyrotropic_Korb_fsurf'    ,#: fermiocean3.gme_orb_fsurf          ,
+#         'gyrotropic_Kspin'         ,#: fermiocean3.gme_spin               ,
+#         'gyrotropic_Kspin_fsurf'   ,#: fermiocean3.gme_spin_fsurf         ,
+         'Hall_classic'             ,#: fermiocean3.Hall_classic           , 
+         'Hall_classic_fsurf'       ,#: fermiocean3.Hall_classic_fsurf     , 
+#         'Hall_morb_fsurf'          ,#: fermiocean3.Hall_morb_fsurf        ,
+#         'Hall_spin_fsurf'          ,#: fermiocean3.Hall_spin_fsurf        ,
+         'Der3E'                    ,#: fermiocean3.Der3E                  ,
+#         'Der3E_fsurf'              ,#: fermiocean3.Der3E_fsurf            ,
+#         'Der3E_fder2'              ,#: fermiocean3.Der3E_fder2            ,
+        ]
+
 
 @pytest.fixture(scope="module")
 def quantities_Haldane():
@@ -101,6 +133,7 @@ def test_Fe_wcc(check_integrate,system_Fe_W90, compare_energyresult,quantities_F
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult , 
                 global_parameters = {'use_wcc_phase':True, 'use_symmetry' : False})
+
 
 def test_Fe_sym(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
@@ -154,12 +187,12 @@ def test_Haldane_TBmodels_wcc(check_integrate,system_Haldane_TBmodels,compare_en
                global_parameters = {'use_symmetry' : False, 'use_wcc_phase':True} ,
                grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
-def test_Haldane_TBmodels_wcc_internal(check_integrate,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
-    check_integrate(system_Haldane_TBmodels , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="wcc_internal" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
+
+def test_Haldane_TBmodels_wcc_internal_2(check_integrate,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
+    check_integrate(system_Haldane_TBmodels_internal , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="wcc_internal_2" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
                global_parameters = {'use_symmetry' : False, 'use_wcc_phase':True},
                 additional_parameters = { 'external_terms':False} ,
                grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
-
 
 def test_Haldane_TBmodels_wcc_internal_2(check_integrate,system_Haldane_TBmodels_internal,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_TBmodels_internal , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="wcc_internal_2" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
@@ -226,3 +259,17 @@ def test_Fe_parallel_old(check_integrate, system_Fe_W90, compare_energyresult,qu
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-old-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4 ,
                               global_parameters = {'use_symmetry' : False} 
                     )
+
+
+def test_Chiral(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
+    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
+               global_parameters = {'use_symmetry' : True, 'use_wcc_phase':True},
+                additional_parameters = { 'external_terms':False} ,
+               grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
+
+
+def test_Chiral_tetra(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
+    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral_tetra" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
+               global_parameters = {'use_symmetry' : True, 'use_wcc_phase':True},
+                additional_parameters = { 'external_terms':False, 'tetra':True} ,
+               grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )

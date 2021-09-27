@@ -276,7 +276,7 @@ def ChiralModel():
     orb=[[1./3.,1./3.,0.0],[2./3.,2./3.,0.0]]
 
     # make tree dimensional (stacked) tight-binding Haldane model
-    haldane=ptb.tb_model(3,3,lat,orb)
+    haldane=pythtb.tb_model(3,3,lat,orb)
 
     # set model parameters
     t2=hop2*np.exp(1.j*phi)
@@ -310,6 +310,6 @@ def ChiralModel():
 def system_Chiral(ChiralModel):
     """Create a chiral system that also breaks time-reversal
        can be used to test almost any quantity"""
-    system = wberri.System_PythTB(ChiralModel, berry=True, use_wcc_phase=False)
+    system = wberri.System_PythTB(ChiralModel, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
     return system
