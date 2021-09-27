@@ -381,36 +381,38 @@ class DerMorb(Formula_ln):
         self.dD = DerDln(data_K)
         self.D  = Dln(data_K)
         self.V = Vln(data_K)
-        self.A = Aln(data_K)
-        self.dA = DerA_Hbar_ln(data_K)
-        self.B = Bln(data_K)
         self.E = data_K.E_K
-        self.dB = DerB_Hbar_ln(data_K)
-      #  self.dO  = DerOmega_Hbar_ln(data_K)
         self.dO  = DerOmega(data_K,**parameters)
-        self.dH  = DerMorb_Hbar_ln(data_K)
+        self.Omega = Omega(data_K,**parameters)
+        if self.external_terms:
+            self.A = Aln(data_K)
+            self.dA = DerA_Hbar_ln(data_K)
+            self.B = Bln(data_K)
+            self.dB = DerB_Hbar_ln(data_K)
+      #  self.dO  = DerOmega_Hbar_ln(data_K)
+            self.dH  = DerMorb_Hbar_ln(data_K)
       #  self.Omega = Oln(data_K)
-        self.Omega = Omega(data_K)
         self.ndim=2
         self.Iodd=True
         self.TRodd=False
 
     def nn(self,ik,inn,out):
         summ = np.zeros( (len(inn),len(inn),3,3),dtype=complex )
-        summ += 1 * self.dH.nn(ik,inn,out)
-        summ += 1 * self.E[ik][inn][:,None,None,None]*self.dO.nn(ik,inn,out)
-        summ += 1 * np.einsum("mlc,lnd->mncd",self.Omega.nn(ik,inn,out),self.V.nn(ik,inn,out) )
-        for s,a,b in (+1,alpha_A,beta_A),(-1,beta_A,alpha_A):
-            summ += -1j *s* np.einsum("mpc,pld,lnc->mncd",self.A.nn(ik,inn,out)[:,:,a],self.V.nn(ik,inn,out),self.A.nn(ik,inn,out)[:,:,b] )
-            summ += -1j *s* np.einsum("mpc,pld,lnc->mncd",self.D.nl(ik,inn,out)[:,:,a],self.V.ll(ik,inn,out),self.D.ln(ik,inn,out)[:,:,b] )
-        
-            summ+=  -2j *s* np.einsum("mlc,lncd->mncd",self.A.nn(ik,inn,out)[:,:,a]*self.E[ik][inn][None,:,None],self.dA.nn(ik,inn,out)[:,:,b,:])
-          
-            summ +=  -2 *s* np.einsum("mlc,lncd->mncd",self.D.nl (ik,inn,out)[:,:,a], self.dB.ln(ik,inn,out)[:,:,b,:])
-            summ +=  -2 *s* np.einsum("lmc,lncd->mncd",(self.B.ln(ik,inn,out)[:,:,a]).conj() , self.dD.ln (ik,inn,out)[:,:,b,:])
-        
-            summ+=  -2j *s* np.einsum("mlc,lncd->mncd",self.D.nl(ik,inn,out)[:,:,a],
+        if self.internal_terms:
+            for s,a,b in (+1,alpha_A,beta_A),(-1,beta_A,alpha_A):
+                summ += -1j *s* np.einsum("mpc,pld,lnc->mncd",self.D.nl(ik,inn,out)[:,:,a],self.V.ll(ik,inn,out),self.D.ln(ik,inn,out)[:,:,b] )
+                summ+=  -2j *s* np.einsum("mlc,lncd->mncd",self.D.nl(ik,inn,out)[:,:,a],
                     self.E[ik][out][:,None,None,None]*self.dD.ln(ik,inn,out)[:,:,b])
+        summ += 1 * np.einsum("mlc,lnd->mncd",self.Omega.nn(ik,inn,out),self.V.nn(ik,inn,out) )
+        if self.external_terms:
+            summ += 1 * self.dH.nn(ik,inn,out)
+            summ += 1 * self.E[ik][inn][:,None,None,None]*self.dO.nn(ik,inn,out)
+            for s,a,b in (+1,alpha_A,beta_A),(-1,beta_A,alpha_A):
+                summ +=  -1j *s* np.einsum("mpc,pld,lnc->mncd",self.A.nn(ik,inn,out)[:,:,a],self.V.nn(ik,inn,out),self.A.nn(ik,inn,out)[:,:,b] )
+                summ +=  -2j *s* np.einsum("mlc,lncd->mncd",self.A.nn(ik,inn,out)[:,:,a]*self.E[ik][inn][None,:,None],self.dA.nn(ik,inn,out)[:,:,b,:])
+                summ +=  -2 *s* np.einsum("mlc,lncd->mncd",self.D.nl (ik,inn,out)[:,:,a], self.dB.ln(ik,inn,out)[:,:,b,:])
+                summ +=  -2 *s* np.einsum("lmc,lncd->mncd",(self.B.ln(ik,inn,out)[:,:,a]).conj() , self.dD.ln (ik,inn,out)[:,:,b,:])
+        
             
 
         #summ+=summ.swapaxes(0,1).conj()
