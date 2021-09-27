@@ -6,7 +6,7 @@ import pytest
 from pytest import approx
 
 import wannierberri as wberri
-from conftest import parallel_serial, parallel_ray 
+from conftest import parallel_serial #, parallel_ray 
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90 #,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
 from create_system import system_Fe_W90 #,system_GaAs_W90,system_GaAs_tb
@@ -84,7 +84,8 @@ def compare_quant(quant):
 def test_Fe(check_tabulate,system_Fe_W90, compare_fermisurfer,quantities_tab):
     """Test Energies, Velocities, berry curvature, its derivative"""
     check_tabulate(system_Fe_W90 , quantities_tab , frmsf_name="tabulate_Fe_W90" , suffix="" ,  comparer=compare_fermisurfer,
-               global_parameters = {'use_symmetry' : False}, ibands = [5,6,7,8] )
+               global_parameters = {'use_symmetry' : False}, ibands = [5,6,7,8] , 
+                extra_precision={'berry':1e-3} )
 
 def test_Chiral(check_tabulate,system_Chiral, compare_fermisurfer,quantities_tab):
     """Test Energies, Velocities, berry curvature, its derivative"""
