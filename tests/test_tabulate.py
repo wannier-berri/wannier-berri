@@ -86,7 +86,7 @@ def test_Fe(check_tabulate,system_Fe_W90, compare_fermisurfer,quantities_tab):
     """Test Energies, Velocities, berry curvature, its derivative"""
     check_tabulate(system_Fe_W90 , quantities_tab , frmsf_name="tabulate_Fe_W90" , suffix="" ,  comparer=compare_fermisurfer,
                global_parameters = {'use_symmetry' : False}, ibands = [5,6,7,8] , 
-                extra_precision={'berry':1e-4} )
+                extra_precision={'berry':1e-4,"Der_berry":1e-4} )
 
 def test_Chiral(check_tabulate,system_Chiral, compare_fermisurfer,quantities_tab):
     """Test Energies, Velocities, berry curvature, its derivative"""
