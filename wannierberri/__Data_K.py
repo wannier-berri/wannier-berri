@@ -70,7 +70,6 @@ class Data_K():
         self.num_wann=self.system.num_wann
         self.Kpoint=Kpoint
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
-
 #        self.use_wcc_phase=system.use_wcc_phase
         if self.use_wcc_phase:
             self.wannier_centres_reduced=system.wannier_centres_reduced

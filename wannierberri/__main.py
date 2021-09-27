@@ -220,7 +220,7 @@ def tabulate(system,grid, quantities=[],
 
     mode = '3D'
     global_parameters_loc={}
-    global_parameters_loc.upodate(global_parameters)
+    global_parameters_loc.update(global_parameters)
     if isinstance(grid,Path):
         mode = 'path'
         global_parameters_loc['use_symmetry'] = False
@@ -237,8 +237,8 @@ def tabulate(system,grid, quantities=[],
         res=res.to_grid(grid.dense)
         t2=time()
         ttxt,twrite=write_frmsf(frmsf_name,Ef0,
-                parallel.num_cpus if parallel is not None else numproc,
-                    quantities,res)
+                parallel.num_cpus if parallel is not None else 1,
+                    quantities,res,suffix=suffix)
 
     t4=time()
 
@@ -254,9 +254,11 @@ def tabulate(system,grid, quantities=[],
 
 
 
-def write_frmsf(frmsf_name,Ef0,numproc,quantities,res):
+def write_frmsf(frmsf_name,Ef0,numproc,quantities,res,suffix=""):
+    if len(suffix)>0:
+        suffix="-"+suffix
     if frmsf_name is not None:
-        open("{0}_E.frmsf".format(frmsf_name),"w").write(
+        open(f"{frmsf_name}_E{suffix}.frmsf","w").write(
              res.fermiSurfer(quantity=None,efermi=Ef0,npar=numproc) )
         t3=time()
         ttxt=0
@@ -268,7 +270,7 @@ def write_frmsf(frmsf_name,Ef0,numproc,quantities,res):
                     t31=time()
                     txt=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0,npar=numproc)
                     t32=time()
-                    open("{2}_{1}-{0}.frmsf".format(comp,Q,frmsf_name),"w").write(txt)
+                    open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf","w").write(txt)
                     t33=time()
                     ttxt  += t32-t31
                     twrite+= t33-t32

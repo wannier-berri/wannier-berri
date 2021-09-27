@@ -35,6 +35,7 @@ class System():
                     'SHCqiao':False,
                     'use_ws':True,
                     'periodic':(True,True,True),
+#                    'use_wcc_phase':False
                        }
 
 
