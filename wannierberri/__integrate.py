@@ -75,6 +75,18 @@ additional_parameters=defaultdict(lambda: defaultdict(lambda:None )   )
 additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no description" )   )
 
 
+parameters_ocean = {
+'external_terms' : (True , "evaluate external terms"),
+'internal_terms' : (True,  "evaluate internal terms"),
+'tetra'          : (False, "use tetrahedron method")
+}
+
+for key,val in parameters_ocean.items(): 
+    for calc in calculators_trans: 
+        additional_parameters[calc][key] = val[0]
+        additional_parameters_description[calc][key] = val[1]
+
+
 # a dictionary containing 'optical' quantities , i.e. those which are tensors 
 #   depending on the Fermi level  AND on the frequency
 #   <quantity> : <function> , ... 

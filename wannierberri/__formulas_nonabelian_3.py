@@ -189,10 +189,14 @@ class Omega(Formula_ln):
 
     def __init__(self,data_K,**parameters):
         super(Omega,self).__init__(data_K,**parameters)
-        self.A=Aln(data_K)
-        self.V=Vln(data_K)
         self.D=Dln(data_K)
-        self.O=Oln(data_K)
+
+        print (f"Omega evaluating: internal({self.internal_terms}) and external({self.external_terms})")
+        if self.external_terms:
+            self.A=Aln(data_K)
+            self.V=Vln(data_K)
+            self.O=Oln(data_K)
+
         self.ndim=1
         self.Iodd=False
         self.TRodd=True
@@ -200,14 +204,14 @@ class Omega(Formula_ln):
     def nn(self,ik,inn,out):
         summ = np.zeros( (len(inn),len(inn),3),dtype=complex )
 
-     #   if self.internal_terms:
-        summ+= -1j*np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.D.ln(ik,inn,out)[:,:,beta_A])
+        if self.internal_terms:
+            summ+= -1j*np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.D.ln(ik,inn,out)[:,:,beta_A])
 
-     #   if self.external_terms:
-        summ += 0.5 * self.O.nn(ik,inn,out)
-        summ +=  -1 * np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.A.ln(ik,inn,out)[:,:,beta_A])
-        summ +=  +1 * np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,beta_A] ,self.A.ln(ik,inn,out)[:,:,alpha_A])
-        summ+=  -1j * np.einsum("mlc,lnc->mnc",self.A.nn(ik,inn,out)[:,:,alpha_A],self.A.nn(ik,inn,out)[:,:,beta_A])
+        if self.external_terms:
+            summ += 0.5 * self.O.nn(ik,inn,out)
+            summ +=  -1 * np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.A.ln(ik,inn,out)[:,:,beta_A])
+            summ +=  +1 * np.einsum("mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,beta_A] ,self.A.ln(ik,inn,out)[:,:,alpha_A])
+            summ+=  -1j * np.einsum("mlc,lnc->mnc",self.A.nn(ik,inn,out)[:,:,alpha_A],self.A.nn(ik,inn,out)[:,:,beta_A])
 
         summ+=summ.swapaxes(0,1).conj()
         return summ
@@ -324,9 +328,10 @@ class Morb_Hpm(Formula_ln):
         r""" Morb_H  +- (En+Em)/2 * Omega """
         super(Morb_Hpm,self).__init__(data_K,**parameters)
         self.H = Morb_H(data_K,**parameters)
-        self.O = Omega (data_K,**parameters)
-        self.Eav = Eavln ( data_K )
-        self.s = sign
+        self.sign = sign
+        if self.sign!=0:
+            self.O = Omega (data_K,**parameters)
+            self.Eav = Eavln ( data_K )
         self.ndim=1
         self.Iodd=False
         self.TRodd=True
@@ -336,7 +341,10 @@ class Morb_Hpm(Formula_ln):
         return False
 
     def nn(self,ik,inn,out):
-        return  self.H.nn(ik,inn,out)+self.s*self.Eav.nn(ik,inn,out)[:,:,None]*self.O.nn(ik,inn,out)
+        res = self.H.nn(ik,inn,out)
+        if self.sign!=0:
+            res+= self.sign*self.Eav.nn(ik,inn,out)[:,:,None]*self.O.nn(ik,inn,out)
+        return res
 
     def ln(self,ik,inn,out):
         raise NotImplementedError()
