@@ -188,6 +188,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 def tabulate(system,grid, quantities=[],
                   frmsf_name=None,ibands=None,suffix="",Ef0=0.,
                   parameters={},global_parameters={},
+                  degen_thresh = 1e-4,
                   parallel = None ):
     """
     Tabulate quantities to be plotted
@@ -206,10 +207,6 @@ def tabulate(system,grid, quantities=[],
         if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
     parallel : :class:`~wannierberri.Parallel`
         object describing parallelization scheme
-    numproc : int 
-        (obsolete, use parallel instead) number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
-    chunksize : int
-        (obsolete, use parallel instead) chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
    
     Returns
     --------
@@ -226,7 +223,8 @@ def tabulate(system,grid, quantities=[],
         global_parameters_loc['use_symmetry'] = False
     cprint ("\nTabulating the following quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,tabulate_options,"tabulate")
-    eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
+    eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters ,
+                degen_thresh = degen_thresh )
     t0=time()
     res=evaluate_K(eval_func,system,grid,
             adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,
