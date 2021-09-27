@@ -215,6 +215,15 @@ def system_Haldane_TBmodels(tbmodels_Haldane):
     system.set_symmetry(["C3z"])
     return system
 
+@pytest.fixture(scope="session")
+def system_Haldane_TBmodels_internal(tbmodels_Haldane):
+    
+    # Load system
+    system = wberri.System_TBmodels(tbmodels_Haldane, berry=False)
+    system.set_symmetry(["C3z"])
+    return system
+
+
 
 @pytest.fixture(scope="session")
 def pythtb_Haldane():

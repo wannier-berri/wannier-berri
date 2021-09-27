@@ -10,7 +10,7 @@ from conftest import parallel_serial, parallel_ray
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
 from create_system import system_Fe_W90,system_GaAs_W90,system_GaAs_tb
-from create_system import system_Haldane_PythTB,system_Haldane_TBmodels
+from create_system import system_Haldane_PythTB,system_Haldane_TBmodels,system_Haldane_TBmodels_internal
 from create_system import symmetries_Fe
 from compare_result import compare_energyresult
 
@@ -154,6 +154,25 @@ def test_Haldane_TBmodels_wcc(check_integrate,system_Haldane_TBmodels,compare_en
                global_parameters = {'use_symmetry' : False, 'use_wcc_phase':True} ,
                grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
+def test_Haldane_TBmodels_wcc_internal(check_integrate,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
+    check_integrate(system_Haldane_TBmodels , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="wcc_internal" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
+               global_parameters = {'use_symmetry' : False, 'use_wcc_phase':True},
+                additional_parameters = { 'external_terms':False} ,
+               grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
+
+
+def test_Haldane_TBmodels_wcc_internal_2(check_integrate,system_Haldane_TBmodels_internal,compare_energyresult,quantities_Haldane,Efermi_Haldane):
+    check_integrate(system_Haldane_TBmodels_internal , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="wcc_internal_2" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
+               global_parameters = {'use_symmetry' : False, 'use_wcc_phase':True},
+                additional_parameters = { 'external_terms':False} ,
+               grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
+
+def test_Haldane_TBmodels_wcc_external(check_integrate,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
+    check_integrate(system_Haldane_TBmodels , ["ahc"] , fout_name="berry_Haldane_tbmodels" , suffix="wcc_external" ,suffix_ref="wcc_external" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
+               global_parameters = {'use_symmetry' : False, 'use_wcc_phase':True},
+                additional_parameters = { 'internal_terms':False} ,
+               grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
+
 
 def test_Haldane_PythTB_sym(check_integrate,system_Haldane_PythTB,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="pythtb_sym" , suffix_ref="",
@@ -172,6 +191,8 @@ def test_Haldane_TBmodels_sym_refine(check_integrate,system_Haldane_TBmodels,com
             Efermi=Efermi_Haldane , comparer=compare_energyresult, adpt_num_iter=1,
                global_parameters = {'use_symmetry' : True} ,
             grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
+
+
 
 
 def test_Fe_sym_refine(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
