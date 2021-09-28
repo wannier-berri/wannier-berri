@@ -50,6 +50,7 @@ calculators_trans={
          'spin'                     : fermiocean3.spin                   ,
          'Morb'                     : fermiocean3.Morb                   ,
          'ahc'                      : fermiocean3.AHC                    ,
+         'ahc_test'                 : fermiocean3.AHC_test               ,
          'cumdos'                   : fermiocean3.cumdos                 ,
          'dos'                      : fermiocean3.dos                    ,
          'conductivity_ohmic'       : fermiocean3.ohmic                  ,

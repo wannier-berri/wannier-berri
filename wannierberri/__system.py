@@ -35,6 +35,7 @@ class System():
                     'SHCqiao':False,
                     'use_ws':True,
                     'periodic':(True,True,True),
+                    '_getFF' : False
 #                    'use_wcc_phase':False
                        }
 
@@ -66,74 +67,10 @@ class System():
         minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90. Default: ``{use_ws}``
     frozen_max : float
         position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary. Default: ``{frozen_max}``
+    _getFF : bool
+        generate the FF_R matrix based on the uIu file. May be used for only testing so far. Default : ``{_getFF}``
     """ .format(**default_parameters)
 
-    def __init__(self, old_format=False,    **parameters ):
-
-
-        self.set_parameters(**parameters)
-        self.old_format=old_format
-
-        cprint ("Reading from {}".format(seedname+"_HH_save.info"),'green', attrs=['bold'])
-
-        f=open(seedname+"_HH_save.info" if self.old_format else seedname+"_R.info","r")
-        l=f.readline().split()[:3]
-        self.seedname=seedname
-        self.num_wann,nRvec=int(l[0]),int(l[1])
-        self.nRvec0=nRvec
-        real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
-        self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice=real_lattice)
-        iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
-        
-        self.Ndegen=iRvec[:,3]
-        self.iRvec=iRvec[:,:3]
-
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Recommended size of FFT grid", self.NKFFT_recommended)
-        print ("Real-space lattice:\n",self.real_lattice)
-        #print ("R - points and dege=neracies:\n",iRvec)
-        has_ws=str2bool(f.readline().split("=")[1].strip())
-
-        
-        if has_ws and self.use_ws:
-            print ("using ws_dist")
-            self.ws_map=ws_dist_map_read(self.iRvec,self.num_wann,f.readlines())
-            self.iRvec=np.array(self.ws_map._iRvec_ordered,dtype=int)
-        else:
-            self.ws_map=None
-        
-        f.close()
-
-        self.HH_R=self.__getMat('HH')
-
-        
-        if self.getAA:
-            self.AA_R=self.__getMat('AA')
-
-        if self.getBB:
-            self.BB_R=self.__getMat('BB')
-        
-        if self.getCC:
-            try:
-                self.CC_R=1j*self.__getMat('CCab')
-            except:
-                _CC_R=self.__getMat('CC')
-                self.CC_R=1j*(_CC_R[:,:,:,alpha_A,beta_A]-_CC_R[:,:,:,beta_A,alpha_A])
-
-        if self.getFF:
-            try:
-                self.FF_R=1j*self.__getMat('FFab')
-            except:
-                _FF_R=self.__getMat('FF')
-                self.FF_R=1j*(_FF_R[:,:,:,alpha_A,beta_A]-_FF_R[:,:,:,beta_A,alpha_A])
-
-        if self.getSS:
-            self.SS_R=self.__getMat('SS')
-
-        self.set_symmetry()
-
-        cprint ("Reading the system finished successfully",'green', attrs=['bold'])
 
 
     def set_parameters(self,**parameters):
@@ -167,7 +104,7 @@ class System():
 
     @property
     def getAA(self):
-        return self.morb or self.berry or self.SHCryoo or self.SHCqiao
+        return self.morb or self.berry or self.SHCryoo or self.SHCqiao 
 
     @property
     def getBB(self):
@@ -177,14 +114,13 @@ class System():
     def getCC(self):
         return self.morb
 
-
     @property
     def getSS(self):
         return self.spin or self.SHCryoo or self.SHCqiao
 
     @property
     def getFF(self):
-        return False
+        return self._getFF
 
     @property
     def getSA(self):
@@ -197,6 +133,15 @@ class System():
     @property
     def getSHC(self):
         return self.SHCqiao
+
+
+    def do_at_end_of_init(self):
+        self.set_symmetry  ()
+        self.check_periodic()
+        print ("Number of wannier functions:",self.num_wann)
+        print ("Number of R points:", self.nRvec)
+        print ("Recommended size of FFT grid", self.NKFFT_recommended)
+
 
 
     def to_tb_file(self,tb_file=None):
@@ -271,9 +216,9 @@ class System():
         return self.iRvec.dot(self.real_lattice)
 
     @lazy_property.LazyProperty
-    def cRvec_wcc(self):
+    def cRvec_p_wcc(self):
         """ 
-        With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [m,n,iRvec] (Cartesian)
+        R+tj-ti 
         """
         wannier_centres = self.wannier_centres_cart
         w_centres_diff = np.array([[j-i for j in wannier_centres] for i in wannier_centres])
@@ -289,27 +234,6 @@ class System():
     def cell_volume(self):
         return abs(np.linalg.det(self.real_lattice))
 
-
-
-    def __getMat(self,suffix):
-
-        f=FF(self.seedname+"_" + suffix+"_R"+(".dat" if self.old_format else ""))
-        MM_R=np.array([[np.array(f.read_record('2f8'),dtype=float) for m in range(self.num_wann)] for n in range(self.num_wann)])
-        MM_R=MM_R[:,:,:,0]+1j*MM_R[:,:,:,1]
-        f.close()
-        ncomp=MM_R.shape[2]/self.nRvec0
-        if ncomp==1:
-            result=MM_R/self.Ndegen[None,None,:]
-        elif ncomp==3:
-            result= MM_R.reshape(self.num_wann, self.num_wann, 3, self.nRvec0).transpose(0,1,3,2)/self.Ndegen[None,None,:,None]
-        elif ncomp==9:
-            result= MM_R.reshape(self.num_wann, self.num_wann, 3,3, self.nRvec0).transpose(0,1,4,3,2)/self.Ndegen[None,None,:,None,None]
-        else:
-            raise RuntimeError("in __getMat: invalid ncomp : {0}".format(ncomp))
-        if self.ws_map is None:
-            return result
-        else:
-            return self.ws_map(result)
 
     @property
     def iR0(self):
@@ -354,80 +278,5 @@ class System():
             assert (np.max(abs(XX_R-self.conh_XX_R(XX_R)))<1e-8) , f"{XX} should obey X(-R) = X(R)^\dagger"
         else:
             print (f"{XX} is missing,nothing to check")
-
-#
-# the following  implements the use_ws_distance = True  (see Wannier90 documentation for details)
-#
-
-
-
-class map_1R():
-   def __init__(self,lines,irvec):
-       lines_split=[np.array(l.split(),dtype=int) for l in lines]
-       self.dict={(l[0]-1,l[1]-1):l[2:].reshape(-1,3) for l in lines_split}
-       self.irvec=np.array([irvec])
-       
-   def __call__(self,i,j):
-       try :
-           return self.dict[(i,j)]
-       except KeyError:
-           return self.irvec
-          
-
-class ws_dist_map():
-        
-    def __call__(self,matrix):
-        ndim=len(matrix.shape)-3
-        num_wann=matrix.shape[0]
-        reshaper=(num_wann,num_wann)+(1,)*ndim
-#        print ("check:",matrix.shape,reshaper,ndim)
-        matrix_new=np.array([ sum(matrix[:,:,ir]*self._iRvec_new[irvecnew][ir].reshape(reshaper)
-                                  for ir in self._iRvec_new[irvecnew] ) 
-                                       for irvecnew in self._iRvec_ordered]).transpose( (1,2,0)+tuple(range(3,3+ndim)) )
-        assert ( np.abs(matrix_new.sum(axis=2)-matrix.sum(axis=2)).max()<1e-12)
-        return matrix_new
-
-    def _add_star(self,ir,irvec_new,iw,jw):
-        weight=1./irvec_new.shape[0]
-        for irv in irvec_new:
-            self._add(ir,irv,iw,jw,weight)
-
-
-    def _add(self,ir,irvec_new,iw,jw,weight):
-        irvec_new=tuple(irvec_new)
-        if not (irvec_new in self._iRvec_new):
-             self._iRvec_new[irvec_new]=dict()
-        if not ir in self._iRvec_new[irvec_new]:
-             self._iRvec_new[irvec_new][ir]=np.zeros((self.num_wann,self.num_wann),dtype=float)
-        self._iRvec_new[irvec_new][ir][iw,jw]+=weight
-
-    def _init_end(self,nRvec):
-        self._iRvec_ordered=sorted(self._iRvec_new)
-        for ir  in range(nRvec):
-            chsum=0
-            for irnew in self._iRvec_new:
-                if ir in self._iRvec_new[irnew]:
-                    chsum+=self._iRvec_new[irnew][ir]
-            chsum=np.abs(chsum-np.ones( (self.num_wann,self.num_wann) )).sum() 
-            if chsum>1e-12: print ("WARNING: Check sum for {0} : {1}".format(ir,chsum))
-
-
-
-class ws_dist_map_read(ws_dist_map):
-    def __init__(self,iRvec,num_wann,lines):
-        nRvec=iRvec.shape[0]
-        self.num_wann=num_wann
-        self._iRvec_new=dict()
-        n_nonzero=np.array([l.split()[-1] for l in lines[:nRvec]],dtype=int)
-        lines=lines[nRvec:]
-        for ir,nnz in enumerate(n_nonzero):
-            map1r=map_1R(lines[:nnz],iRvec[ir])
-            for iw in range(num_wann):
-                for jw in range(num_wann):
-                    self._add_star(ir,map1r(iw,jw),iw,jw)
-            lines=lines[nnz:]
-        self._init_end(nRvec)
-
-        
 
 

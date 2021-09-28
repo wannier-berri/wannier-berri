@@ -28,7 +28,7 @@ def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
 
    
-class Data_K():
+class Data_K(System):
     default_parameters =  {
                     'frozen_max': -np.Inf,
                     'delta_fz':0.1,
@@ -39,6 +39,7 @@ class Data_K():
                     'npar_k' : 1 ,
                     'random_gauge':False,
                     'degen_thresh_random_gauge':1e-4 ,
+                    'fake_FF' : False
                        }
 
     __doc__ = """
@@ -66,7 +67,9 @@ class Data_K():
         self.NKFFT=grid.FFT
         self.select_K=np.ones(self.NKFFT_tot,dtype=bool)
         self.findif=grid.findif
-        self.cell_volume=self.system.cell_volume
+        self.real_lattice = system.real_lattice
+        self.iRvec = system.iRvec
+#        self.cell_volume=self.system.cell_volume
         self.num_wann=self.system.num_wann
         self.Kpoint=Kpoint
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
@@ -87,7 +90,7 @@ class Data_K():
 
         
         if self.use_wcc_phase:
-            self.cRvec_wcc=self.system.cRvec_wcc
+            self.cRvec_wcc=self.system.cRvec_p_wcc
             w_centres_diff = np.array([[j-i for j in self.system.wannier_centres_reduced] for i in self.system.wannier_centres_reduced])
             self.expdK=np.exp(2j*np.pi*(self.system.iRvec[None,None,:,:] +w_centres_diff[:,:,None,:]).dot(dK))
         else:
@@ -128,6 +131,13 @@ class Data_K():
     @lazy_property.LazyProperty
     def CC_R(self):
         return self.system.CC_R*self.expdK[:,:,:,None]
+
+    @lazy_property.LazyProperty
+    def FF_R(self):
+        if self.fake_FF:
+            return self.cRvec_wcc[:,:,:,:,None]* self.AA_R[:,:,:,None,:]
+        else :
+            return self.system.FF_R*self.expdK[:,:,:,None,None]
 
     @lazy_property.LazyProperty
     def SS_R(self):
@@ -182,7 +192,7 @@ class Data_K():
         """ converts from real-space matrix elements in Wannier gauge to 
             k-space quantities in k-space. 
             der [=0] - defines the order of comma-derivative 
-            hermitian [=True] - consoder the matrix hermitian
+            hermitian [=True] - consider the matrix hermitian
             asym_before = True -  takes the antisymmetrc part over the first two cartesian indices before differentiation
             asym_after = True  - asymmetrize after  differentiation
             flag: is a flag indicates if we need additional terms in self.fft_R_to_k under use_wcc_phase. 
@@ -395,6 +405,10 @@ class Data_K():
     @lazy_property.LazyProperty
     def A_Hbar(self):
         return self._R_to_k_H(self.AA_R.copy(),flag='AA')
+
+    @lazy_property.LazyProperty
+    def F_Hbar(self):
+        return  self._R_to_k_H(self.FF_R.copy(),hermitian=False)
 
     @lazy_property.LazyProperty
     def A_H(self):

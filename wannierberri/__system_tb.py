@@ -90,13 +90,9 @@ class System_tb(System):
         if True:
             self.wannier_centres_cart = np.diagonal(self.AA_R[:,:,R0,:],axis1=0,axis2=1).transpose()
             self.wannier_centres_reduced = self.wannier_centres_cart.dot(np.linalg.inv(self.real_lattice))
-        self.set_symmetry()
-        self.check_periodic()
 
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Recommended size of FFT grid", self.NKFFT_recommended)
-        print ("Real-space lattice:\n",self.real_lattice)
+        self.do_at_end_of_init()
+
         cprint ("Reading the system from {} finished successfully".format(tb_file),'green', attrs=['bold'])
 
         
