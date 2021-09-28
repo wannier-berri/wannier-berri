@@ -137,7 +137,7 @@ class Rotation(Symmetry):
             R=rotmat.from_rotvec(2*np.pi/n*axis/np.linalg.norm(axis)).as_dcm()
         else:
             R=rotmat.from_rotvec(2*np.pi/n*axis/np.linalg.norm(axis)).as_matrix()
-        super(Rotation, self).__init__(R )
+        super().__init__(R )
 
 
 
@@ -150,7 +150,7 @@ class Mirror(Symmetry):
         the normal of the mirror plane in Cartesian coordinates. Length of vector does not matter, but should not be zero
     """
     def __init__(self,axis=[0,0,1]):
-         super(Mirror, self).__init__( -Rotation(2,axis).R )
+         super().__init__( -Rotation(2,axis).R )
 
 
 
