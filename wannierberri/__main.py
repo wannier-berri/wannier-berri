@@ -114,7 +114,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
                         parallel = None, 
                         parameters={},
-                        numproc=0,chunksize=None
+                        numproc=0,chunksize=None,Klist_part=10
                         ):
     """
     Integrate 
@@ -186,7 +186,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
             adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac,
                 fout_name=fout_name,suffix=suffix,
                 restart=restart,file_Klist=file_Klist, parallel = parallel,
-                    numproc=numproc,chunksize=chunksize)
+                    numproc=numproc,chunksize=chunksize,Klist_part=Klist_part)
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
 
@@ -241,8 +241,8 @@ def tabulate(system,grid, quantities=[],
         res=res.to_grid(grid.dense)
         t2=time()
         ttxt,twrite=write_frmsf(frmsf_name,Ef0,
-                    (parallel.num_cpus if parallel is not None else numproc),
-                                      quantities,res)
+                parallel.num_cpus if parallel is not None else numproc,
+                    quantities,res)
 
     t4=time()
 

@@ -169,7 +169,7 @@ class System_TBmodels(System_tb_py):
     """
     
     def __init__(self,tbmodel,**parameters ):
-        super(System_TBmodels,self).__init__(tbmodel , module='tbmodels' , **parameters)
+        super().__init__(tbmodel , module='tbmodels' , **parameters)
 
 
 
@@ -191,4 +191,4 @@ class System_PythTB(System_tb_py):
     see also  parameters of the :class:`~wannierberri.System` 
     """
     def __init__(self,ptb_model, **parameters):
-        super(System_PythTB,self).__init__(ptb_model , module='pythtb' , **parameters)
+        super().__init__(ptb_model , module='pythtb' , **parameters)

@@ -21,7 +21,8 @@ def check_integrate(parallel_serial):
                numproc=0,
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},additional_parameters={},adpt_num_iter=0,
                suffix="", suffix_ref="",
-               extra_precision={} ):
+               extra_precision={},
+               restart = False):
 
         grid = wberri.Grid(system, **grid_param)
         result = wberri.integrate(system,
@@ -36,7 +37,7 @@ def check_integrate(parallel_serial):
                 parameters = additional_parameters,
                 fout_name = os.path.join(OUTPUT_DIR, fout_name),
                 suffix=suffix,
-                restart = False,
+                restart = restart,
                 )
         if len(suffix)>0:
             suffix="-"+suffix
@@ -161,6 +162,15 @@ def test_Fe_sym_refine(check_integrate,system_Fe_W90_sym, compare_energyresult,q
     check_integrate(system_Fe_W90_sym , quantities_Fe , fout_name="berry_Fe_W90" , 
                   adpt_num_iter=1,
                   suffix="sym" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult )
+
+def test_Fe_pickle_Klist(check_integrate,system_Fe_W90_sym, compare_energyresult,quantities_Fe,Efermi_Fe):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    check_integrate(system_Fe_W90_sym , quantities_Fe , fout_name="berry_Fe_W90" , 
+                  adpt_num_iter=0,
+                  suffix="pickle" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult )
+    check_integrate(system_Fe_W90_sym , quantities_Fe , fout_name="berry_Fe_W90" , 
+                  adpt_num_iter=1,
+                  suffix="pickle" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult,restart=True )
 
 
 def test_Fe_parallel_multiprocessing(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe,
