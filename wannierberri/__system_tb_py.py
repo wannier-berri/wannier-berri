@@ -138,13 +138,7 @@ class System_tb_py(System):
 #        print(self.AA_R)
 #   TODO: generate the SS_R matrix        
 
-        self.set_symmetry()
-        self.check_periodic()
-                
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Recommended size of FFT grid", self.NKFFT_recommended)
-        print ("Real-space lattice:\n",self.real_lattice)
+        self.do_at_end_of_init()
         cprint ("Reading the system from {} finished successfully".format(names[module]),'green', attrs=['bold'])
         
 

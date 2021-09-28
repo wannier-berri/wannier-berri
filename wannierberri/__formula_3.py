@@ -34,7 +34,7 @@ class Formula_ln(abc.ABC):
         return True
 
     def trace(self,ik,inn,out):
-        return np.einsum("nn...->...",self.nn(ik,inn,out).real)
+        return np.einsum("nn...->...",self.nn(ik,inn,out)).real
 
 
 

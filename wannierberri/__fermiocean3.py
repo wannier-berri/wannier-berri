@@ -5,6 +5,7 @@ from . import __result as result
 from math import ceil
 from . import __formulas_nonabelian_3 as frml
 from .__formula_3 import FormulaProduct,FormulaProduct_2,ProductDelta
+from . import __covariant as covariant
 from itertools import permutations
 from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
@@ -66,6 +67,11 @@ def Hall_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
 
 def AHC(data_K,Efermi,tetra=False,**parameters):
     return  FermiOcean(frml.Omega(data_K,**parameters),data_K,Efermi,tetra,fder=0)()*fac_ahc
+
+def AHC_test(data_K,Efermi,tetra=False,**parameters):
+    res =  FermiOcean(covariant.tildeFc(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
+    return res*fac_ahc
+
 
 def spin(data_K,Efermi,tetra=False,**parameters):
     return FermiOcean(frml.Sln(data_K),data_K,Efermi,tetra,fder=0)()
