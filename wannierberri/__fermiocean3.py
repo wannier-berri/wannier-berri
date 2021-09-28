@@ -88,6 +88,13 @@ def berry_dipole(data_K,Efermi,tetra=False,**parameters):
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
 
+def berry_dipole_test(data_K,Efermi,tetra=False,**parameters):
+    r""" sigma20tau1"""
+    res =  FermiOcean(covariant.tildeFc_d(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
+
+
 def Hplus_der(data_K,Efermi, tetra=False,**parameters):
     res =  FermiOcean(frml.DerMorb(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5

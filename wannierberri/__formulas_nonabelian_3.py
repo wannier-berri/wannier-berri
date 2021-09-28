@@ -74,6 +74,10 @@ class dOln(Matrix_ln):
     def __init__(self,data_K):
         super().__init__(data_K.Omega_bar_der)
 
+class dFln(Matrix_ln):
+    def __init__(self,data_K):
+        super().__init__(data_K.F_bar_der)
+
 
 
 class Dln(Matrix_ln):
@@ -201,7 +205,7 @@ class Omega(Formula_ln):
         super().__init__(data_K,**parameters)
         self.D=Dln(data_K)
 
-        print (f"Omega evaluating: internal({self.internal_terms}) and external({self.external_terms})")
+#        print (f"Omega evaluating: internal({self.internal_terms}) and external({self.external_terms})")
         if self.external_terms:
             self.A=Aln(data_K)
             self.V=Vln(data_K)

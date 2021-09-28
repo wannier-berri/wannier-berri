@@ -56,6 +56,7 @@ calculators_trans={
          'conductivity_ohmic'       : fermiocean3.ohmic                  ,
          'conductivity_ohmic_fsurf' : fermiocean3.ohmic_fsurf            ,
          'berry_dipole'             : fermiocean3.berry_dipole           ,
+         'berry_dipole_test'        : fermiocean3.berry_dipole_test      ,
          'berry_dipole_fsurf'       : fermiocean3.berry_dipole_fsurf     ,
          'gyrotropic_Korb'          : fermiocean3.gme_orb                ,
          'gyrotropic_Korb_fsurf'    : fermiocean3.gme_orb_fsurf          ,
