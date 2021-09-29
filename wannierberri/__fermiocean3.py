@@ -134,6 +134,14 @@ def Morb(data_K,Efermi,tetra=False,**parameters):
                    )  *  (data_K.cell_volume*fac_morb)
 
 
+def Morb_test(data_K,Efermi,tetra=False,**parameters):
+    fac_morb =  -eV_au/bohr**2
+    return    (
+                FermiOcean(covariant.tildeHGc(data_K,sign=+1,**parameters),data_K,Efermi,tetra,fder=0)() 
+            - 2*FermiOcean(covariant.tildeFc(data_K,**parameters),data_K,Efermi,tetra,fder=0)().mul_array(Efermi) 
+                   )  *  (data_K.cell_volume*fac_morb)
+
+
 def ohmic_fsurf(data_K,Efermi,kpart=None,tetra=False,**parameters):
     velocity =  frml.Vln(data_K)
     formula  = FormulaProduct ( [velocity,velocity], name='vel-vel')

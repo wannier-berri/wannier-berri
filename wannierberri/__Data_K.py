@@ -39,7 +39,8 @@ class Data_K(System):
                     'npar_k' : 1 ,
                     'random_gauge':False,
                     'degen_thresh_random_gauge':1e-4 ,
-                    'fake_FF' : False
+                    'fake_FF'   : False,
+                    'fake_CCab' : False
                        }
 
     __doc__ = """
@@ -133,6 +134,16 @@ class Data_K(System):
         return self.system.CC_R*self.expdK[:,:,:,None]
 
     @lazy_property.LazyProperty
+    def CCab_R(self):
+        if self.fake_CCab:
+            CCab = np.zeros( (self.num_wann,self.num_wann,self.nRvec,3,3),dtype = complex )
+            CCab[:,:,:,alpha_A,beta_A] =  -0.5j*self.CC_R
+            CCab[:,:,:,beta_A,alpha_A] =   0.5j*self.CC_R
+            return CCab
+        else :
+            return self.system.CCab_R*self.expdK[:,:,:,None,None]
+
+    @lazy_property.LazyProperty
     def FF_R(self):
         if self.fake_FF:
             return self.cRvec_wcc[:,:,:,:,None]* self.AA_R[:,:,:,None,:]
@@ -188,11 +199,11 @@ class Data_K(System):
         return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.system.wannier_centres_cart[None,:,None,None,:] , axis=1)
         
 
-    def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False,flag=None):
+    def _R_to_k_H(self,XX_R,der=0,hermitean=True,asym_before=False,asym_after=False,flag=None):
         """ converts from real-space matrix elements in Wannier gauge to 
             k-space quantities in k-space. 
             der [=0] - defines the order of comma-derivative 
-            hermitian [=True] - consider the matrix hermitian
+            hermitean [=True] - consider the matrix hermitean
             asym_before = True -  takes the antisymmetrc part over the first two cartesian indices before differentiation
             asym_after = True  - asymmetrize after  differentiation
             flag: is a flag indicates if we need additional terms in self.fft_R_to_k under use_wcc_phase. 
@@ -231,7 +242,7 @@ class Data_K(System):
                         - self.B_Hbar_fz[:,None,:,:,alpha_A]*self.diag_w_centres[:,:,:,None,beta_A] 
                         + 1j*self.V_H[:,:,:,None,beta_A]*self.diag_w_centres[:,None,:,:,alpha_A]
                         ,axis=2)
-        res = self._rotate((self.fft_R_to_k( XX_R,hermitian=hermitian))[self.select_K]  )
+        res = self._rotate((self.fft_R_to_k( XX_R,hermitean=hermitean))[self.select_K]  )
         res = res + add_term
         return res
 
@@ -328,7 +339,7 @@ class Data_K(System):
                for iz in 0,1:
                    _expdK=expdK[ix,:,0]*expdK[iy,:,1]*expdK[iz,:,2]
                    _HH_R=self.HH_R[:,:,:]*_expdK[None,None,:]
-                   _HH_K=self.fft_R_to_k( _HH_R, hermitian=True)
+                   _HH_K=self.fft_R_to_k( _HH_R, hermitean=True)
                    E=np.array(self.poolmap(np.linalg.eigvalsh,_HH_K))
                    Ecorners[:,ix,iy,iz,:]=E[self.select_K,:][:,self.select_B]
         print_my_name_end()
@@ -336,7 +347,7 @@ class Data_K(System):
 
     @property
     def HH_K(self):
-        return self.fft_R_to_k( self.HH_R, hermitian=True) 
+        return self.fft_R_to_k( self.HH_R, hermitean=True) 
 
     @lazy_property.LazyProperty
     def delE_K(self):
@@ -408,7 +419,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def F_Hbar(self):
-        return  self._R_to_k_H(self.FF_R.copy(),hermitian=False)
+        return  self._R_to_k_H(self.FF_R.copy(),hermitean=False)
 
     @lazy_property.LazyProperty
     def A_H(self):
@@ -422,14 +433,14 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def B_Hbar(self):
         print_my_name_start()
-        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False,flag='BB')
+        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitean=False,flag='BB')
         select=(self.E_K<=self.frozen_max)
         _BB_K[select]=self.E_K[select][:,None,None]*self.A_Hbar[select]
         return _BB_K
     
     @lazy_property.LazyProperty
     def B_Hbar_der(self):
-        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitian=False)
+        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitean=False)
         return _BB_K
 
     @lazy_property.LazyProperty
@@ -449,12 +460,16 @@ class Data_K(System):
         print_my_name_start()
         _OOmega_K =  self.fft_R_to_k( (
                         self.AA_R[:,:,:,alpha_A]*self.cRvec_wcc[:,:,:,beta_A ] -     
-                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wcc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wcc[:,:,:,None,:]   , hermitian=True)
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wcc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wcc[:,:,:,None,:]   , hermitean=True)
         return self._rotate(_OOmega_K)
 
     @lazy_property.LazyProperty
     def Morb_Hbar(self):
-        return self._R_to_k_H( self.CC_R.copy(),flag='CC')
+        return self._R_to_k_H( self.CC_R.copy(),flag='CC',hermitean=False)
+
+    @lazy_property.LazyProperty
+    def Morb_Hbar_ab(self):
+        return self._R_to_k_H( self.CCab_R.copy(),hermitean = False)
 
     @lazy_property.LazyProperty
     def Morb_Hbar_der(self):
@@ -462,7 +477,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def F_bar_der(self):
-        return self._R_to_k_H( self.FF_R, der=1,hermitian = False )
+        return self._R_to_k_H( self.FF_R, der=1,hermitean = False )
 
     @lazy_property.LazyProperty
     def S_H(self):
@@ -471,16 +486,16 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def delS_H(self):
         """d_b S_a """
-        return self._R_to_k_H( self.SS_R.copy(), der=1,hermitian=True )
+        return self._R_to_k_H( self.SS_R.copy(), der=1,hermitean=True )
 
 #PRB RPS19, Ryoo's way to calculate SHC
     @lazy_property.LazyProperty
     def SA_H(self):
-        return self._R_to_k_H(self.SA_R, hermitian=False)
+        return self._R_to_k_H(self.SA_R, hermitean=False)
     
     @lazy_property.LazyProperty
     def SHA_H(self):
-        return self._R_to_k_H(self.SHA_R, hermitian=False)
+        return self._R_to_k_H(self.SHA_R, hermitean=False)
 #PRB QZYZ18, Qiao's way to calculate SHC
 
     def _shc_B_H_einsum_opt(self, C, A, B):
@@ -497,10 +512,10 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def shc_B_H(self):
-        SH_H = self._R_to_k_H(self.SH_R, hermitian=False)
-        shc_K_H = -1j*self._R_to_k_H(self.SR_R, hermitian=False)
+        SH_H = self._R_to_k_H(self.SH_R, hermitean=False)
+        shc_K_H = -1j*self._R_to_k_H(self.SR_R, hermitean=False)
         self._shc_B_H_einsum_opt(shc_K_H, self.S_H, self.D_H)
-        shc_L_H = -1j*self._R_to_k_H(self.SHR_R, hermitian=False)
+        shc_L_H = -1j*self._R_to_k_H(self.SHR_R, hermitean=False)
         self._shc_B_H_einsum_opt(shc_L_H, SH_H, self.D_H)
         return (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.S_H[:,:,:,np.newaxis,:] +
             self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*shc_K_H[:,:,:,:,:] - shc_L_H)

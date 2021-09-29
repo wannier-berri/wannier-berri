@@ -1,7 +1,7 @@
 import numpy as np
 from .__utility import  alpha_A,beta_A
 from .__formula_3 import Formula_ln
-from .__formulas_nonabelian_3 import Aln,Vln,Dln,Fln, DerDln, DerA_Hbar_ln,DerF_Hbar_ln
+from .__formulas_nonabelian_3 import Aln,Bln,Vln,Dln,Fln, DerDln, DerA_Hbar_ln,DerF_Hbar_ln,Hbarln_ab,Eavln
 #####################################################
 #####################################################
 
@@ -43,7 +43,7 @@ class tildeFab(Formula_ln):
         if self.external_terms:
             summ += self.F.nn(ik,inn,out)
             summ += 2j * np.einsum("mla,lnb->mnab", Dnl,self.A.ln(ik,inn,out)    )  
-#            summ += 1j * np.einsum("mla,lnb->mnab", self.A.nl (ik,inn,out),Dln   )
+####            summ += 1j * np.einsum("mla,lnb->mnab", self.A.nl (ik,inn,out),Dln   )
             summ +=  -1* np.einsum("mla,lnb->mnab",self.A.nn(ik,inn,out),self.A.nn(ik,inn,out))
 
 #  Terms (a<->b, m<-n> )*   are accounted above by factor 2
@@ -100,6 +100,70 @@ class tildeFab_d(Formula_ln):
         raise NotImplementedError()
 
 
+##################################################################
+###  tildeHab = <\tilde\partial_a u | H |\tilde\partial_b u>    ####
+##################################################################
+
+class tildeHab(Formula_ln):
+
+    def __init__(self,data_K,**parameters):
+        super().__init__(data_K,**parameters)
+        if self.external_terms:
+            self.A = Aln(data_K)
+            self.B = Bln(data_K)
+            self.H = Hbarln_ab(data_K)
+        self.D = Dln(data_K)
+        self.E = data_K.E_K
+        self.ndim=2
+        self.Iodd=False
+        self.TRodd=True
+
+    @property
+    def additive(self):
+        return False
+
+
+    def nn(self,ik,inn,out):
+        summ = np.zeros( (len(inn),len(inn),3,3),dtype=complex )
+
+        if self.internal_terms:
+            summ+= -np.einsum(  "mla,lnb->mnab",
+                             self.D.nl(ik,inn,out)*self.E[ik][out][None,:,None],
+                             self.D.ln(ik,inn,out) )
+
+        if self.external_terms:
+            summ +=   self.H.nn(ik,inn,out)
+            summ +=  2j  * np.einsum("mla,lnb->mnab" ,self.D.nl(ik,inn,out),self.B.ln(ik,inn,out))
+#####            summ +=  +1  * np.einsum("mla,lnb->mnab" ,self.D.nl(ik,inn,out) ,self.B.ln(ik,inn,out))
+            summ +=  - np.einsum("mla,lnb->mnab" ,
+                                    self.A.nn(ik,inn,out)*self.E[ik][inn][None,:,None] ,self.A.nn(ik,inn,out)  
+                                )
+        summ = 0.5*(summ+summ.transpose((1,0,3,2)).conj())
+        return summ
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
+
+
+class tildeHGab(Formula_ln):
+    def __init__(self,data_K,sign,**parameters):
+        self.F = tildeFab(data_K,**parameters)
+        self.H = tildeHab(data_K,**parameters)
+        self.E = Eavln(data_K)
+        self.sign = sign
+        self.ndim = 2   
+
+    @property
+    def additive(self):
+        return False
+
+
+    def nn(self,ik,inn,out):
+        return self.H.nn(ik,inn,out)+self.sign*self.E.nn(ik,inn,out)[:,:,None,None]*self.F.nn(ik,inn,out)
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
+
 #####################################################
 ##   Now define their anitsymmetric combinations   ##
 #####################################################
@@ -139,10 +203,24 @@ class tildeFc(AntiSymmetric):
         self.Iodd=False
         self.TRodd=True
 
+class tildeHGc(AntiSymmetric):
+
+    def __init__(self,data_K,**parameters):
+        super().__init__(tildeHGab,data_K,**parameters)
+        self.Iodd=False
+        self.TRodd=True
+
+    @property
+    def additive(self):
+        return False
+
+
 class tildeFc_d(AntiSymmetric):
 
     def __init__(self,data_K,**parameters):
         super().__init__(tildeFab_d,data_K,**parameters)
         self.Iodd=True
         self.TRodd=False
+
+
 

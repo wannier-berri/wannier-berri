@@ -24,6 +24,7 @@ class Identity(Formula_ln):
 
 
 class Eavln(Matrix_ln):
+    """ be careful : this is not a covariant matrix"""
     def __init__(self,data_K):
         super().__init__(
                        0.5* (data_K.E_K[:,:,None]+data_K.E_K[:,None,:])
@@ -295,6 +296,16 @@ class Cln(Matrix_ln):
     def __init__(self,data_K):
         super().__init__(data_K.Morb_Hbar)
 
+class Hbarln_ab(Matrix_ln):
+    def __init__(self,data_K):
+        super().__init__(data_K.Morb_Hbar_ab)
+
+
+class Hbarln(Matrix_ln):
+    def __init__(self,data_K):
+        super().__init__(data_K.Morb_Hbar)
+
+
 class Morb_H(Formula_ln):
     def __init__(self,data_K,**parameters):
         r"""  :math:`\varepcilon_{abc} \langle \partial_a u | H | \partial_b \rangle` """
@@ -319,13 +330,12 @@ class Morb_H(Formula_ln):
                              self.D.ln(ik,inn,out)[:,:,beta_A]  )
 
         if self.external_terms:
-            summ += 0.5  * self.C.nn(ik,inn,out)
+            summ +=  0.5  * self.C.nn(ik,inn,out)
             summ +=  -1  * np.einsum(  "mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,alpha_A],self.B.ln(ik,inn,out)[:,:,beta_A])
             summ +=  +1  * np.einsum(  "mlc,lnc->mnc",self.D.nl(ik,inn,out)[:,:,beta_A] ,self.B.ln(ik,inn,out)[:,:,alpha_A])
             summ +=  -1j * np.einsum("mlc,lnc->mnc",
                                     self.A.nn(ik,inn,out)[:,:,alpha_A]*self.E[ik][inn][None,:,None] ,
-                                    self.A.nn(ik,inn,out)[:,:,beta_A]  
-                                    )
+                                    self.A.nn(ik,inn,out)[:,:,beta_A]  )
         summ+=summ.swapaxes(0,1).conj()
         return summ
 
