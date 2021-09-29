@@ -49,6 +49,7 @@ from . import  __kubo   as kubo
 calculators_trans={ 
          'spin'                     : fermiocean3.spin                   ,
          'Morb'                     : fermiocean3.Morb                   ,
+         'Morb_test'                : fermiocean3.Morb_test              ,
          'ahc'                      : fermiocean3.AHC                    ,
          'ahc_test'                 : fermiocean3.AHC_test               ,
          'cumdos'                   : fermiocean3.cumdos                 ,
