@@ -476,6 +476,11 @@ class Data_K(System):
         return self._R_to_k_H( self.CC_R, der=1 )
 
     @lazy_property.LazyProperty
+    def Morb_Hbar_ab_der(self):
+        return self._R_to_k_H( self.CCab_R.copy(), der=1 ,hermitean = False)
+
+
+    @lazy_property.LazyProperty
     def F_bar_der(self):
         return self._R_to_k_H( self.FF_R, der=1,hermitean = False )
 
