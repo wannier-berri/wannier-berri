@@ -38,10 +38,12 @@ def Hall_classic_fsurf(data_K,Efermi,tetra=False,**parameters):
 
 def Hall_classic(data_K,Efermi,tetra=False,**parameters):
     r"""sigma11tau2 """
-    formula = FormulaProduct ( [frml.InvMass(data_K),frml.InvMass(data_K)], name='mass-mass')
-    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()*factor_Hall_classic*-1
-    res.data=res.data.swapaxes(2,3)
-    res.data=res.data[:,:,:,beta_A,alpha_A]-res.data[:,:,:,alpha_A,beta_A]
+    formula1 = FormulaProduct ( [frml.InvMass(data_K),frml.InvMass(data_K)], name='mass-mass')
+    formula2 = FormulaProduct ( [frml.Vln(data_K),frml.Der3E(data_K)], name='vel-Der3E')
+    res =  FermiOcean(formula1,data_K,Efermi,tetra,fder=0)()*factor_Hall_classic
+    term2  =  FermiOcean(formula2,data_K,Efermi,tetra,fder=0)()*factor_Hall_classic
+    res.data = res.data.transpose(0,4,1,2,3) + term2.data.transpose(0,4,2,3,1)
+    res.data = res.data[:,:,:,beta_A,alpha_A]-res.data[:,:,:,alpha_A,beta_A]
     res.data=-0.5*(res.data[:,alpha_A,beta_A,:]-res.data[:,beta_A,alpha_A,:])
     res.rank-=2
     return res
@@ -135,7 +137,7 @@ def gme_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
     return res
 
 def gme_spin(data_K,Efermi,tetra=False,**parameters):
-    formula  = FormulaProduct ( [frml.DerSln(data_K),frml.Vln(data_K)], name='derspin-vel')
+    formula  = FormulaProduct ( [frml.DerSln(data_K)], name='derspin')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0)()
     res.data= np.swapaxes(res.data,1,2)* -bohr_magneton/Ang_SI**2  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
