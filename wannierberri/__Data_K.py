@@ -39,8 +39,8 @@ class Data_K(System):
                     'npar_k' : 1 ,
                     'random_gauge':False,
                     'degen_thresh_random_gauge':1e-4 ,
-                    'fake_FF'   : False,
-                    'fake_CCab' : False
+                    '_FF_antisym'   : False,
+                    '_CCab_antisym' : False
                        }
 
     __doc__ = """
@@ -135,7 +135,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def CCab_R(self):
-        if self.fake_CCab:
+        if self._CCab_antisym:
             CCab = np.zeros( (self.num_wann,self.num_wann,self.nRvec,3,3),dtype = complex )
             CCab[:,:,:,alpha_A,beta_A] =  -0.5j*self.CC_R
             CCab[:,:,:,beta_A,alpha_A] =   0.5j*self.CC_R
@@ -145,7 +145,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def FF_R(self):
-        if self.fake_FF:
+        if self._FF_antisym:
             return self.cRvec_wcc[:,:,:,:,None]* self.AA_R[:,:,:,None,:]
         else :
             return self.system.FF_R*self.expdK[:,:,:,None,None]
@@ -247,7 +247,7 @@ class Data_K(System):
         return res
 
 #####################
-#  Basis variables  #
+#  Basic variables  #
 #####################
     @lazy_property.LazyProperty
     def nbands(self):
@@ -311,7 +311,7 @@ class Data_K(System):
         return res
 
 ###################################################
-#  Basis variables and their standard derivatives #
+#  Basic variables and their standard derivatives #
 ###################################################
     @lazy_property.LazyProperty
     def E_K(self):
