@@ -18,10 +18,7 @@ from copy import copy,deepcopy
 
 from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother,TAU_UNIT
 from . import __result as result
-from . import  __berry as berry
 from . import  __fermiocean3 as fermiocean3
-from . import  __nonabelian as nonabelian
-from . import  __dos as dos
 from . import  symmetry
 from . import  __utility   as utility
 from . import  __kubo   as kubo
@@ -52,12 +49,15 @@ from . import  __kubo   as kubo
 calculators_trans={ 
          'spin'                     : fermiocean3.spin                   ,
          'Morb'                     : fermiocean3.Morb                   ,
+         'Morb_test'                : fermiocean3.Morb_test              ,
          'ahc'                      : fermiocean3.AHC                    ,
+         'ahc_test'                 : fermiocean3.AHC_test               ,
          'cumdos'                   : fermiocean3.cumdos                 ,
          'dos'                      : fermiocean3.dos                    ,
          'conductivity_ohmic'       : fermiocean3.ohmic                  ,
          'conductivity_ohmic_fsurf' : fermiocean3.ohmic_fsurf            ,
          'berry_dipole'             : fermiocean3.berry_dipole           ,
+         'berry_dipole_test'        : fermiocean3.berry_dipole_test      ,
          'berry_dipole_fsurf'       : fermiocean3.berry_dipole_fsurf     ,
          'gyrotropic_Korb'          : fermiocean3.gme_orb                ,
          'gyrotropic_Korb_fsurf'    : fermiocean3.gme_orb_fsurf          ,
@@ -75,6 +75,18 @@ calculators_trans={
 
 additional_parameters=defaultdict(lambda: defaultdict(lambda:None )   )
 additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no description" )   )
+
+
+parameters_ocean = {
+'external_terms' : (True , "evaluate external terms"),
+'internal_terms' : (True,  "evaluate internal terms"),
+'tetra'          : (False, "use tetrahedron method")
+}
+
+for key,val in parameters_ocean.items(): 
+    for calc in calculators_trans: 
+        additional_parameters[calc][key] = val[0]
+        additional_parameters_description[calc][key] = val[1]
 
 
 # a dictionary containing 'optical' quantities , i.e. those which are tensors 

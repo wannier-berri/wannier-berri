@@ -29,61 +29,152 @@ def _rotate_matrix(X):
 
    
 class Data_K(System):
-    def __init__(self,system,dK,grid,Kpoint=None,npar=0,fftlib='fftw',npar_k=1 ):
+    default_parameters =  {
+                    'frozen_max': -np.Inf,
+                    'delta_fz':0.1,
+                    'Emin': -np.Inf ,
+                    'Emax': np.Inf ,
+                    'use_wcc_phase':False,
+                    'fftlib' : 'fftw',
+                    'npar_k' : 1 ,
+                    'random_gauge':False,
+                    'degen_thresh_random_gauge':1e-4 ,
+                    'fake_FF'   : False,
+                    'fake_CCab' : False
+                       }
+
+    __doc__ = """
+    class to store data of the FFT grid. Is destroyed after  everything is evaluated for the FFT grid
+
+    Parameters
+    -----------
+    frozen_max : float
+        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary. 
+        If not specified, attempts to read this value from system. Othewise set to  ``{frozen_max}``
+    random_gauge : bool
+        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved. Default: ``{random_gauge}``
+    degen_thresh_random_gauge : float
+        threshold to consider bands as degenerate for random_gauge Default: ``{degen_thresh_random_gauge}``
+    delta_fz:float
+        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
+    """ .format(**default_parameters)
+
+
+
+    def __init__(self,system,dK,grid,Kpoint=None,**parameters):
 #        self.spinors=system.spinors
-        self.iRvec=system.iRvec
-        self.real_lattice=system.real_lattice
-        self.recip_lattice=system.recip_lattice
+        self.system=system
+        self.set_parameters(**parameters)
         self.NKFFT=grid.FFT
         self.select_K=np.ones(self.NKFFT_tot,dtype=bool)
         self.findif=grid.findif
+        self.real_lattice = system.real_lattice
+        self.iRvec = system.iRvec
+#        self.cell_volume=self.system.cell_volume
+        self.num_wann=self.system.num_wann
         self.Kpoint=Kpoint
-        self.num_wann=system.num_wann
-        self.frozen_max=system.frozen_max
-        self.random_gauge=system.random_gauge
-        self.degen_thresh=system.degen_thresh
-        self.delta_fz=system.delta_fz
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
-        self.ksep = system.ksep
-        self.use_wcc_phase=system.use_wcc_phase
+#        self.use_wcc_phase=system.use_wcc_phase
         if self.use_wcc_phase:
             self.wannier_centres_reduced=system.wannier_centres_reduced
             self.wannier_centres_cart=system.wannier_centres_cart
         else:
             self.wannier_centres_reduced=np.zeros((self.num_wann,3))
             self.wannier_centres_cart=np.zeros((self.num_wann,3))
-        ## TODO : create the plans externally, one per process 
-#        print( "iRvec in data_K is :\n",self.iRvec)
-        #self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres,numthreads=npar if npar>0 else 1,lib=fftlib,convention=system.convention)
-        self.fft_R_to_k=FFT_R_to_k(self.iRvec,self.NKFFT,self.num_wann,self.wannier_centres_reduced,self.real_lattice,
-                numthreads=npar if npar>0 else 1,lib=fftlib,use_wcc_phase=self.use_wcc_phase)
-        self.Emin=system.Emin
-        self.Emax=system.Emax
-        self.poolmap=pool(npar_k)[0]
+
+
+        self.fft_R_to_k=FFT_R_to_k(self.system.iRvec,self.NKFFT,self.system.num_wann,
+               self.system.wannier_centres_reduced,self.system.real_lattice,
+                numthreads=self.npar_k if self.npar_k>0 else 1,lib=self.fftlib,use_wcc_phase=self.use_wcc_phase)
+        self.poolmap=pool(self.npar_k)[0]
+
 
         
         if self.use_wcc_phase:
-            w_centres_diff = np.array([[j-i for j in self.wannier_centres_reduced] for i in self.wannier_centres_reduced])
-            expdK=np.exp(2j*np.pi*(system.iRvec[None,None,:,:] +w_centres_diff[:,:,None,:]).dot(dK))
+            self.cRvec_wcc=self.system.cRvec_p_wcc
+            w_centres_diff = np.array([[j-i for j in self.system.wannier_centres_reduced] for i in self.system.wannier_centres_reduced])
+            self.expdK=np.exp(2j*np.pi*(self.system.iRvec[None,None,:,:] +w_centres_diff[:,:,None,:]).dot(dK))
         else:
-            expdK=np.exp(2j*np.pi*system.iRvec.dot(dK))[None,None,:]
-        self.HH_R=system.HH_R*expdK
+            self.cRvec_wcc=self.system.cRvec[None,None,:,:]
+            self.expdK=np.exp(2j*np.pi*self.system.iRvec.dot(dK))[None,None,:]
+        self.HH_R=system.HH_R*self.expdK
         self.dK=dK
- 
-        
-        for X in ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']:
-            XR=X+'_R'
-            hasXR='has_'+X+'_R'
-            vars(self)[XR]=None
-            vars(self)[hasXR]=False
-            if XR in vars(system):
-              if vars(system)[XR] is not  None:
-                if X in ['SA','SHA','SR','SHR']:
-                    vars(self)[XR]=vars(system)[XR]*expdK[:,:,:,None,None]
-                else:
-                    vars(self)[XR]=vars(system)[XR]*expdK[:,:,:,None]
-                vars(self)[hasXR]=True
 
+    def set_parameters(self,**parameters):
+        for param in self.default_parameters:
+            if param in parameters:
+                vars(self)[param]=parameters[param]
+            else: 
+                vars(self)[param]=self.default_parameters[param]
+        if 'frozen_max' not in parameters:
+            try : 
+                self.frozen_max= self.system.frozen_max
+            except:
+                pass 
+
+
+
+###########################################
+###   Now the **_R objects are evaluated only on demand 
+### - as Lazy_property (if used more than once) 
+###   as property   - iif used only once
+###   let's write them explicitly, for better code readability
+###########################
+
+    @lazy_property.LazyProperty
+    def AA_R(self):
+        return self.system.AA_R*self.expdK[:,:,:,None]
+
+    @lazy_property.LazyProperty
+    def BB_R(self):
+        return self.system.BB_R*self.expdK[:,:,:,None]
+
+    @lazy_property.LazyProperty
+    def CC_R(self):
+        return self.system.CC_R*self.expdK[:,:,:,None]
+
+    @lazy_property.LazyProperty
+    def CCab_R(self):
+        if self.fake_CCab:
+            CCab = np.zeros( (self.num_wann,self.num_wann,self.nRvec,3,3),dtype = complex )
+            CCab[:,:,:,alpha_A,beta_A] =  -0.5j*self.CC_R
+            CCab[:,:,:,beta_A,alpha_A] =   0.5j*self.CC_R
+            return CCab
+        else :
+            return self.system.CCab_R*self.expdK[:,:,:,None,None]
+
+    @lazy_property.LazyProperty
+    def FF_R(self):
+        if self.fake_FF:
+            return self.cRvec_wcc[:,:,:,:,None]* self.AA_R[:,:,:,None,:]
+        else :
+            return self.system.FF_R*self.expdK[:,:,:,None,None]
+
+    @lazy_property.LazyProperty
+    def SS_R(self):
+        return self.system.SS_R*self.expdK[:,:,:,None]
+
+    @property
+    def SH_R(self):
+        return self.system.SH_R*self.expdK[:,:,:,None]
+
+    @property
+    def SR_R(self):
+        return self.system.SR_R*self.expdK[:,:,:,None,None]
+
+    @property
+    def SA_R(self):
+        return self.system.SA_R*self.expdK[:,:,:,None,None]
+
+    @property
+    def SHA_R(self):
+        return self.system.SHA_R*self.expdK[:,:,:,None,None]
+
+    @property
+    def SHR_R(self):
+        return self.system.SHR_R*self.expdK[:,:,:,None,None]
+
+###############################################################
 
 ###########
 #  TOOLS  #
@@ -99,12 +190,20 @@ class Data_K(System):
                 mat[...,i]=self._rotate(mat[...,i])
             return mat
 
+    @lazy_property.LazyProperty
+    def diag_w_centres(self):
+        '''
+        After rotate. U^+ \tau U
+        diagnal matrix of wannier centres delta_ij*tau_i (Cartesian)
+        '''
+        return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.system.wannier_centres_cart[None,:,None,None,:] , axis=1)
+        
 
-    def _R_to_k_H(self,XX_R,der=0,hermitian=True,asym_before=False,asym_after=False,flag=None):
+    def _R_to_k_H(self,XX_R,der=0,hermitean=True,asym_before=False,asym_after=False,flag=None):
         """ converts from real-space matrix elements in Wannier gauge to 
             k-space quantities in k-space. 
             der [=0] - defines the order of comma-derivative 
-            hermitian [=True] - consoder the matrix hermitian
+            hermitean [=True] - consider the matrix hermitean
             asym_before = True -  takes the antisymmetrc part over the first two cartesian indices before differentiation
             asym_after = True  - asymmetrize after  differentiation
             flag: is a flag indicates if we need additional terms in self.fft_R_to_k under use_wcc_phase. 
@@ -124,7 +223,7 @@ class Data_K(System):
         XX_R=asymmetrize(XX_R, asym_before)
         for i in range(der):
             shape_cR = np.shape(self.cRvec_wcc)
-            XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec_wcc.reshape((shape_cR[0],shape_cR[1],self.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
+            XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec_wcc.reshape((shape_cR[0],shape_cR[1],self.system.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
         XX_R=asymmetrize(XX_R, asym_after)
         
         add_term = 0.0 # additional term under use_wcc_phase=True
@@ -143,7 +242,7 @@ class Data_K(System):
                         - self.B_Hbar_fz[:,None,:,:,alpha_A]*self.diag_w_centres[:,:,:,None,beta_A] 
                         + 1j*self.V_H[:,:,:,None,beta_A]*self.diag_w_centres[:,None,:,:,alpha_A]
                         ,axis=2)
-        res = self._rotate((self.fft_R_to_k( XX_R,hermitian=hermitian))[self.select_K]  )
+        res = self._rotate((self.fft_R_to_k( XX_R,hermitean=hermitean))[self.select_K]  )
         res = res + add_term
         return res
 
@@ -165,32 +264,6 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def NKFFT_tot(self):
         return np.prod(self.NKFFT)
-
-#    defining sets of degenerate states.  
-    @lazy_property.LazyProperty
-    def degen(self):
-            A=[np.where(E[1:]-E[:-1]>self.degen_thresh)[0]+1 for E in self.E_K ]
-            A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
-            return [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) ]    for a,e in zip(A,self.E_K)]
-
-    def degen_groups(self,ik,degen_thresh):
-            A=[np.where(E[1:]-E[:-1]>degen_thresh)[0]+1 for E in self.E_K ]
-            A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
-            return [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) ]    for a,e in zip(A,self.E_K)]
-
-    @lazy_property.LazyProperty
-    def true_degen(self):
-            A=[np.where(E[1:]-E[:-1]>self.degen_thresh)[0]+1 for E in self.E_K ]
-            A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
-            return [[(ib1,ib2) for ib1,ib2 in deg if ib2-ib1>1]  for deg in self.degen]
-
-    @lazy_property.LazyProperty
-    def E_K_degen(self):
-        return [np.array([np.mean(E[ib1:ib2]) for ib1,ib2 in deg]) for deg,E in zip(self.degen,self.E_K)]
-
-    @lazy_property.LazyProperty
-    def degen_dic(self):
-        return [np.array([np.mean(E[ib1:ib2]) for ib1,ib2 in deg]) for deg,E in zip(self.degen,self.E_K)]
 
     @lazy_property.LazyProperty
     def tetraWeights(self):
@@ -216,6 +289,7 @@ class Data_K(System):
                res[ik-op][add.max()]=self.E_K[ik,add.max()]
         return res
 
+
     def get_bands_in_range_groups(self,emin,emax,op=0,ed=None,degen_thresh=-1,sea=False):
 #        get_bands_in_range(emin,emax,Eband,degen_thresh=-1,Ebandmin=None,Ebandmax=None)
         if ed is None: ed=self.NKFFT_tot
@@ -236,10 +310,6 @@ class Data_K(System):
             res.append( weights )
         return res
 
-    @lazy_property.LazyProperty
-    def iter_op_ed(self):
-        it=list(range(0,self.NKFFT_tot,self.ksep))+[self.NKFFT_tot]
-        return list(zip(it,it[1:]))
 ###################################################
 #  Basis variables and their standard derivatives #
 ###################################################
@@ -261,7 +331,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def E_K_corners(self):
         dK2=self.Kpoint.dK_fullBZ/2
-        expdK=np.exp(2j*np.pi*self.iRvec*dK2[None,:])
+        expdK=np.exp(2j*np.pi*self.system.iRvec*dK2[None,:])  # we omit the wcc phases here, because they do not affect hte energies
         expdK=np.array([1./expdK,expdK])
         Ecorners=np.zeros((self.nk_selected,2,2,2,self.nb_selected),dtype=float)
         for ix in 0,1:
@@ -269,7 +339,7 @@ class Data_K(System):
                for iz in 0,1:
                    _expdK=expdK[ix,:,0]*expdK[iy,:,1]*expdK[iz,:,2]
                    _HH_R=self.HH_R[:,:,:]*_expdK[None,None,:]
-                   _HH_K=self.fft_R_to_k( _HH_R, hermitian=True)
+                   _HH_K=self.fft_R_to_k( _HH_R, hermitean=True)
                    E=np.array(self.poolmap(np.linalg.eigvalsh,_HH_K))
                    Ecorners[:,ix,iy,iz,:]=E[self.select_K,:][:,self.select_B]
         print_my_name_end()
@@ -277,7 +347,7 @@ class Data_K(System):
 
     @property
     def HH_K(self):
-        return self.fft_R_to_k( self.HH_R, hermitian=True) 
+        return self.fft_R_to_k( self.HH_R, hermitean=True) 
 
     @lazy_property.LazyProperty
     def delE_K(self):
@@ -309,6 +379,13 @@ class Data_K(System):
         dEig[select]=0.
         return dEig
 
+#    defining sets of degenerate states - needed only for testing with random_gauge
+    @lazy_property.LazyProperty
+    def degen(self):
+            A=[np.where(E[1:]-E[:-1]>self.degen_thresh_random_gauge)[0]+1 for E in self.E_K ]
+            A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
+            return [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) if ib2-ib1>1 ]    for a in A ]
+
     @lazy_property.LazyProperty
     def UU_K(self):
         print_my_name_start()
@@ -318,7 +395,7 @@ class Data_K(System):
             from scipy.stats import unitary_group
             cnt=0
             s=0
-            for ik,deg in enumerate(self.true_degen):
+            for ik,deg in enumerate(self.true):
                 for ib1,ib2 in deg:
                     self._UU[ik,:,ib1:ib2]=self._UU[ik,:,ib1:ib2].dot( unitary_group.rvs(ib2-ib1) )
                     cnt+=1
@@ -341,6 +418,10 @@ class Data_K(System):
         return self._R_to_k_H(self.AA_R.copy(),flag='AA')
 
     @lazy_property.LazyProperty
+    def F_Hbar(self):
+        return  self._R_to_k_H(self.FF_R.copy(),hermitean=False)
+
+    @lazy_property.LazyProperty
     def A_H(self):
         '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
         return self.A_Hbar + 1j*self.D_H
@@ -352,14 +433,14 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def B_Hbar(self):
         print_my_name_start()
-        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitian=False,flag='BB')
+        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitean=False,flag='BB')
         select=(self.E_K<=self.frozen_max)
         _BB_K[select]=self.E_K[select][:,None,None]*self.A_Hbar[select]
         return _BB_K
     
     @lazy_property.LazyProperty
     def B_Hbar_der(self):
-        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitian=False)
+        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitean=False)
         return _BB_K
 
     @lazy_property.LazyProperty
@@ -372,23 +453,31 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def Omega_Hbar(self):
         print_my_name_start()
-        return  -self._R_to_k_H( self.AA_R, der=1, asym_after=True) 
+        return  -self._R_to_k_H( self.AA_R, der=1, asym_after=True)
 
     @lazy_property.LazyProperty
     def Omega_bar_der(self):
         print_my_name_start()
         _OOmega_K =  self.fft_R_to_k( (
                         self.AA_R[:,:,:,alpha_A]*self.cRvec_wcc[:,:,:,beta_A ] -     
-                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wcc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wcc[:,:,:,None,:]   , hermitian=True)
+                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wcc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wcc[:,:,:,None,:]   , hermitean=True)
         return self._rotate(_OOmega_K)
 
     @lazy_property.LazyProperty
     def Morb_Hbar(self):
-        return self._R_to_k_H( self.CC_R.copy(),flag='CC')
+        return self._R_to_k_H( self.CC_R.copy(),flag='CC',hermitean=False)
+
+    @lazy_property.LazyProperty
+    def Morb_Hbar_ab(self):
+        return self._R_to_k_H( self.CCab_R.copy(),hermitean = False)
 
     @lazy_property.LazyProperty
     def Morb_Hbar_der(self):
         return self._R_to_k_H( self.CC_R, der=1 )
+
+    @lazy_property.LazyProperty
+    def F_bar_der(self):
+        return self._R_to_k_H( self.FF_R, der=1,hermitean = False )
 
     @lazy_property.LazyProperty
     def S_H(self):
@@ -397,21 +486,21 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def delS_H(self):
         """d_b S_a """
-        return self._R_to_k_H( self.SS_R.copy(), der=1,hermitian=True )
+        return self._R_to_k_H( self.SS_R.copy(), der=1,hermitean=True )
 
 #PRB RPS19, Ryoo's way to calculate SHC
     @lazy_property.LazyProperty
     def SA_H(self):
-        return self._R_to_k_H(self.SA_R.copy(), hermitian=False)
+        return self._R_to_k_H(self.SA_R, hermitean=False)
     
     @lazy_property.LazyProperty
     def SHA_H(self):
-        return self._R_to_k_H(self.SHA_R.copy(), hermitian=False)
+        return self._R_to_k_H(self.SHA_R, hermitean=False)
 #PRB QZYZ18, Qiao's way to calculate SHC
 
     def _shc_B_H_einsum_opt(self, C, A, B):
         # Optimized version of C += np.einsum('knlc,klma->knmac', A, B). Used in shc_B_H.
-        nw = self.num_wann
+        nw = self.system.num_wann
         for ik in range(self.nkptot):
             # Performing C[ik] += np.einsum('nlc,lma->nmac', A[ik], B[ik])
             tmp_a = np.swapaxes(A[ik], 1, 2) # nlc -> ncl
@@ -423,168 +512,13 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def shc_B_H(self):
-        SH_H = self._R_to_k_H(self.SH_R.copy(), hermitian=False)
-        shc_K_H = -1j*self._R_to_k_H(self.SR_R.copy(), hermitian=False)
+        SH_H = self._R_to_k_H(self.SH_R, hermitean=False)
+        shc_K_H = -1j*self._R_to_k_H(self.SR_R, hermitean=False)
         self._shc_B_H_einsum_opt(shc_K_H, self.S_H, self.D_H)
-        shc_L_H = -1j*self._R_to_k_H(self.SHR_R.copy(), hermitian=False)
+        shc_L_H = -1j*self._R_to_k_H(self.SHR_R, hermitean=False)
         self._shc_B_H_einsum_opt(shc_L_H, SH_H, self.D_H)
         return (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.S_H[:,:,:,np.newaxis,:] +
             self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*shc_K_H[:,:,:,:,:] - shc_L_H)
 #end SHC
 
-    @lazy_property.LazyProperty
-    def diag_w_centres(self):
-        '''
-        After rotate. U^+ \tau U
-        Wannier Gauge.
-        diagnal matrix of wannier centres delta_ij*tau_i (Cartesian)
-        '''
-        return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.wannier_centres_cart[None,:,None,None,:] , axis=1)
-
-
-#############
-#  Abelian  #
-#############
-    @lazy_property.LazyProperty
-    def vel_nonabelian(self):
-         return [ [0.5*(S[ib1:ib2,ib1:ib2]+S[ib1:ib2,ib1:ib2].transpose((1,0,2)).conj()) for ib1,ib2 in deg] for S,deg in zip(self.V_H,self.degen)]
-
-
-### TODO : check if it is really gaufge-covariant in case of isolated degeneracies
-    @lazy_property.LazyProperty
-    def mass_nonabelian(self):
-        return [ [S[ib1:ib2,ib1:ib2]
-                   +sum(np.einsum("mla,lnb->mnab",X,Y) 
-                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
-                     for X,Y in [
-                     (-D[ib1:ib2,ibl1:ibl2,:],V[ibl1:ibl2,ib1:ib2,:]),
-                     (+V[ib1:ib2,ibl1:ibl2,:],D[ibl1:ibl2,ib1:ib2,:]),
-                              ])       for ib1,ib2 in deg]
-                     for S,D,V,deg in zip( self.del2E_H,self.D_H,self.V_H,self.degen) ]
-
-
-    @lazy_property.LazyProperty
-    def mass_nonabelian_(self,ik,ib):
-        return [ [S[ib1:ib2,ib1:ib2]
-                   +sum(np.einsum("mla,lnb->mnab",X,Y) 
-                    for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
-                     for X,Y in [
-                     (-D[ib1:ib2,ibl1:ibl2,:],V[ibl1:ibl2,ib1:ib2,:]),
-                     (+V[ib1:ib2,ibl1:ibl2,:],D[ibl1:ibl2,ib1:ib2,:]),
-                              ])       for ib1,ib2 in deg]
-                     for S,D,V,deg in zip( self.del2E_H,self.D_H,self.V_H,self.degen) ]
-
-
-
-    @lazy_property.LazyProperty
-    def spin_nonabelian(self):
-        return [ [S[ib1:ib2,ib1:ib2] for ib1,ib2 in deg] for S,deg in zip(self.S_H,self.degen)]
-
-
-##  TODO: When it works correctly - think how to optimize it
-    @lazy_property.LazyProperty
-    def Berry_nonabelian(self):
-        print_my_name_start()
-        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
-        res= [ [ O[ib1:ib2,ib1:ib2,:]-1j*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,c]) for s,b,c in sbc) 
-               +sum(s*np.einsum("mla,lna->mna",X,Y) 
-                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
-                     for s,b,c in sbc
-                    for X,Y in [(-D[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c]),(-A[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
-                                       (-1j*D[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c])]
-                           )
-                        for ib1,ib2 in deg]
-                     for O,A,D,deg in zip( self.Omega_Hbar,self.A_Hbar,self.D_H,self.degen ) ] 
-        print_my_name_end()
-        return res
-
-    def Berry_nonabelian_W(self,homega):
-        if not hasattr(self,'Berry_nonabelian_W_calculated'):
-            self.Berry_nonabelian_W_calculated= {}
-        if homega not in self.Berry_nonabelian_W_calculated:
-            self.Berry_nonabelian_W_calculated[homega]= self.calculate_Berry_nonabelian_W(homega)
-        return self.Berry_nonabelian_W_calculated[homega]
-
-### todo : check what is the correct "nonabelian" formulation
-    def calculate_Berry_nonabelian_W(self,homega):
-        print_my_name_start()
-        wnl2=(self.E_K[:,:,None]-self.E_K[:,None,:])**2
-        A_H_W=(wnl2/(wnl2-homega**2))[:,:,:,None]*self.A_H
-        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
-        res= [ [  0.5j*sum(s*np.einsum("mla,lna->mna",X,Y) 
-                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.num_wann)]  if ib2<self.num_wann else []))
-                     for s,b,c in sbc
-                    for X,Y in [(Aw[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c]),(A[ib1:ib2,ibl1:ibl2,b],Aw[ibl1:ibl2,ib1:ib2,c])]
-                           )
-                        for ib1,ib2 in deg]
-                     for Aw,A,deg in zip( A_H_W,self.A_H,self.degen ) ] 
-        print_my_name_end()
-        return res
-
-    @lazy_property.LazyProperty
-    def Berry_nonabelian_ext1(self):
-        print_my_name_start()
-        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
-        res= [ [ O[ib1:ib2,ib1:ib2,:]-1j*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,c]) for s,b,c in sbc) 
-                        for ib1,ib2 in deg]
-                     for O,A,D,deg in zip( self.Omega_Hbar,self.A_Hbar,self.D_H,self.degen ) ] 
-        print_my_name_end()
-        return res
-
-    @lazy_property.LazyProperty
-    def Berry_nonabelian_ext2(self):
-        print_my_name_start()
-        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
-        res= [ [ 
-               +sum(s*np.einsum("mla,lna->mna",X,Y) 
-                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
-                     for s,b,c in sbc
-                    for X,Y in [(-D[ib1:ib2,ibl1:ibl2,b],A[ibl1:ibl2,ib1:ib2,c]),(-A[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
-                                       ]
-                           )
-                        for ib1,ib2 in deg]
-                     for O,A,D,deg in zip( self.Omega_Hbar,self.A_Hbar,self.D_H,self.degen ) ] 
-        print_my_name_end()
-        return res
-
-    @lazy_property.LazyProperty
-    def Berry_nonabelian_D(self):
-        print_my_name_start()
-        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
-        res= [ [ -1j*sum(s*np.einsum("mla,lna->mna",A[ib1:ib2,ib1:ib2,b],A[ib1:ib2,ib1:ib2,c]) for s,b,c in sbc) 
-               +sum(s*np.einsum("mla,lna->mna",X,Y) 
-                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
-                     for s,b,c in sbc
-                    for X,Y in [ (-1j*D[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]) , ]
-                           )
-                        for ib1,ib2 in deg]
-                     for A,D,deg in zip( self.A_Hbar,self.D_H,self.degen ) ] 
-        print_my_name_end()
-        return res
-
-##  TODO: When it works correctly - think how to optimize it
-    @lazy_property.LazyProperty
-    def Morb_nonabelian(self):
-        print_my_name_start()
-        sbc=[(+1,alpha_A,beta_A),(-1,beta_A,alpha_A)]
-        Morb=[ [ M[ib1:ib2,ib1:ib2,:]-e*O[ib1:ib2,ib1:ib2,:]
-               +sum(s*np.einsum("mla,lna->mna",X,Y) 
-                   for ibl1,ibl2 in (([  (0,ib1)]  if ib1>0 else [])+ ([  (ib2,self.nb_selected)]  if ib2<self.nb_selected else []))
-                     for s,b,c in sbc
-                    for X,Y in [
-                    (-D[ib1:ib2,ibl1:ibl2,b],B[ibl1:ibl2,ib1:ib2,c]),
-                    (-B.transpose((1,0,2)).conj()[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
-                         (-1j*V[ib1:ib2,ibl1:ibl2,b],D[ibl1:ibl2,ib1:ib2,c]),
-                              ]
-                           )
-                        for (ib1,ib2),e in zip(deg,E)]
-                     for M,O,A,B,D,V,deg,E,EK in zip( self.Morb_Hbar,self.Omega_Hbar,self.A_Hbar,self.B_Hbarbar,self.D_H,self.V_H,self.degen,self.E_K_degen,self.E_K) ]
-        print_my_name_end()
-        return Morb
-
-
-################################################################
-#def merge_dataIO(data_list):
-#    return { key:np.stack([data[key] for key in data],axis=0) for key in  
-#                  set([key for data in data_list for key in data.keys()])  }
 

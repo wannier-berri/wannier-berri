@@ -13,6 +13,18 @@ import wannierberri as wberri
 
 from conftest import ROOT_DIR
 
+@pytest.fixture(scope="session")
+def symmetries_Fe():
+    """ liust of symmetries for bcc iron"""
+    sym=wberri.symmetry
+    return ["C4z","C2x*TimeReversal","Inversion"]
+
+@pytest.fixture(scope="session")
+def symmetries_GaAs():
+    sym=wberri.symmetry
+    return ["C4z",sym.TimeReversal,sym.Rotation(3,[1,1,1])]
+
+
 def create_W90_files(seedname, tags_needed, data_dir):
     """
     Extract the compressed amn and mmn data files.
@@ -74,7 +86,21 @@ def create_files_GaAs_W90():
 
 
 @pytest.fixture(scope="session")
-def system_Fe_W90(create_files_Fe_W90):
+def system_Fe_W90(create_files_Fe_W90,symmetries_Fe):
+    """Create system for Fe using Wannier90 data"""
+
+    data_dir = create_files_Fe_W90
+
+    # Load system
+    seedname = os.path.join(data_dir, "Fe")
+    system = wberri.System_w90(seedname, berry=True, morb=True, 
+            SHCqiao=True, SHCryoo=True,
+           transl_inv=False, use_wcc_phase=False )
+    system.set_symmetry(symmetries_Fe)
+    return system
+
+@pytest.fixture(scope="session")
+def system_Fe_W90_wcc(create_files_Fe_W90,symmetries_Fe):
     """Create system for Fe using Wannier90 data"""
 
     data_dir = create_files_Fe_W90
@@ -82,39 +108,10 @@ def system_Fe_W90(create_files_Fe_W90):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
-           transl_inv=False, use_wcc_phase=False)
-
+           transl_inv=False, use_wcc_phase=True , _fake_FF_R = True)
+    system.set_symmetry(symmetries_Fe)
     return system
 
-
-@pytest.fixture(scope="session")
-def system_Fe_W90_sym(create_files_Fe_W90):
-
-    """Create system for Fe using Wannier90 data"""
-
-    data_dir = create_files_Fe_W90
-
-    # Load system
-    seedname = os.path.join(data_dir, "Fe")
-    system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
-           transl_inv=False, use_wcc_phase=False)
-    sym=wberri.symmetry
-    system.set_symmetry(["C4z",sym.C2x*sym.TimeReversal,"Inversion"])
-    return system
-
-
-@pytest.fixture(scope="session")
-def system_Fe_W90_wcc(create_files_Fe_W90):
-    """Create system for Fe using Wannier90 data"""
-
-    data_dir = create_files_Fe_W90
-
-    # Load system
-    seedname = os.path.join(data_dir, "Fe")
-    system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True, 
-            transl_inv=False, use_wcc_phase=True)
-
-    return system
 
 
 #@pytest.fixture(scope="session")
@@ -140,8 +137,7 @@ def system_GaAs_W90(create_files_GaAs_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.System_w90(seedname, berry=True, 
-           transl_inv=False, use_wcc_phase=False,degen_thresh=0.005)
+    system = wberri.System_w90(seedname, berry=True , transl_inv=False)
 
     return system
 
@@ -172,7 +168,7 @@ def system_GaAs_tb():
             tar.extract(tarinfo, data_dir)
 
     seedname = os.path.join(data_dir, "GaAs_tb.dat")
-    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=False)
+    system = wberri.System_tb(seedname, berry=True)
 
     return system
 
@@ -216,26 +212,18 @@ def tbmodels_Haldane():
 def system_Haldane_TBmodels(tbmodels_Haldane):
     
     # Load system
-    system = wberri.System_TBmodels(tbmodels_Haldane, berry=True, use_wcc_phase=False)#,periodic=(True,True,False)) # with the 2D TBmodel, the periodicity is detected automatically
-
-    return system
-
-@pytest.fixture(scope="session")
-def system_Haldane_TBmodels_wcc(tbmodels_Haldane):
-    """Create system for Fe using Tbmodels"""
-    # Load system
-    system = wberri.System_TBmodels(tbmodels_Haldane, berry=True, use_wcc_phase=True)#,periodic=(True,True,False))
-
-    return system
-
-
-@pytest.fixture(scope="session")
-def system_Haldane_TBmodels_sym(tbmodels_Haldane):
-    """Create system for Fe using Tbmodels"""
-    # Load system
-    system = wberri.System_TBmodels(tbmodels_Haldane, berry=True, use_wcc_phase=True)#,periodic=(True,True,False))
+    system = wberri.System_TBmodels(tbmodels_Haldane, berry=True)
     system.set_symmetry(["C3z"])
     return system
+
+@pytest.fixture(scope="session")
+def system_Haldane_TBmodels_internal(tbmodels_Haldane):
+    
+    # Load system
+    system = wberri.System_TBmodels(tbmodels_Haldane, berry=False)
+    system.set_symmetry(["C3z"])
+    return system
+
 
 
 @pytest.fixture(scope="session")
@@ -263,29 +251,12 @@ def pythtb_Haldane():
     
     return my_model
 
+
 @pytest.fixture(scope="session")
 def system_Haldane_PythTB(pythtb_Haldane):
     """Create system for Haldane model using PythTB"""
     # Load system
-    system = wberri.System_PythTB(pythtb_Haldane, berry=True, use_wcc_phase=False )#,periodic=(True,True,False)) # with the 2D PythTB model, the periodicity is detected automatically
-
-    return system
-
-
-@pytest.fixture(scope="session")
-def system_Haldane_PythTB_wcc(pythtb_Haldane):
-    """Create system for Haldane model using PythTB"""
-    # Load system
-    system = wberri.System_PythTB(pythtb_Haldane, berry=True, use_wcc_phase=True)#,periodic=(True,True,False))
-
-    return system
-
-
-@pytest.fixture(scope="session")
-def system_Haldane_PythTB_sym(pythtb_Haldane):
-    """Create system for Haldane model using PythTB"""
-    # Load system
-    system = wberri.System_PythTB(pythtb_Haldane, berry=True, use_wcc_phase=False)# ,periodic=(True,True,False))
+    system = wberri.System_PythTB(pythtb_Haldane, berry=True)
     system.set_symmetry(["C3z"])
     return system
 
@@ -306,7 +277,7 @@ def ChiralModel():
     orb=[[1./3.,1./3.,0.0],[2./3.,2./3.,0.0]]
 
     # make tree dimensional (stacked) tight-binding Haldane model
-    haldane=ptb.tb_model(3,3,lat,orb)
+    haldane=pythtb.tb_model(3,3,lat,orb)
 
     # set model parameters
     t2=hop2*np.exp(1.j*phi)
@@ -340,6 +311,6 @@ def ChiralModel():
 def system_Chiral(ChiralModel):
     """Create a chiral system that also breaks time-reversal
        can be used to test almost any quantity"""
-    system = wberri.System_PythTB(ChiralModel, berry=True, use_wcc_phase=False)
+    system = wberri.System_PythTB(ChiralModel, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
     return system

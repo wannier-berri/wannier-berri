@@ -10,6 +10,7 @@ import wannierberri as wberri
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90, system_Fe_W90, system_Fe_W90_wcc
 from create_system import create_files_GaAs_W90, system_GaAs_W90, system_GaAs_W90_wcc
+from create_system import symmetries_Fe
 from compare_result import compare_energyresult
 from test_integrate import compare_quant
 
@@ -21,7 +22,9 @@ def check_integrate_dynamical():
     requires a special treatment because of sym and asym data.
     """
     def _inner(system, quantities, fout_name, Efermi, omega, grid_param, comparer,
-               numproc=0, additional_parameters={}, adpt_num_iter=0,
+               additional_parameters={}, 
+               global_parameters={},
+               adpt_num_iter=0,
                suffix="", suffix_ref="", extra_precision={} ):
 
         grid = wberri.Grid(system, **grid_param)
@@ -30,9 +33,9 @@ def check_integrate_dynamical():
                 Efermi = Efermi,
                 omega = omega,
                 quantities = quantities,
-                numproc = numproc,
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
+                global_parameters = global_parameters,
                 fout_name = os.path.join(OUTPUT_DIR, fout_name),
                 suffix = suffix,
                 restart = False,
@@ -82,6 +85,7 @@ def test_optical(check_integrate_dynamical, system_Fe_W90, compare_energyresult)
     check_integrate_dynamical(system_Fe_W90, quantities, fout_name="kubo_Fe_W90",
         Efermi=Efermi, omega=omega, grid_param=grid_param,
         adpt_num_iter=adpt_num_iter, comparer=compare_energyresult,
+        global_parameters = {'use_symmetry' : False} ,
         additional_parameters=kubo_params)
 
     # TODO: Add wcc test
