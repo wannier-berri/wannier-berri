@@ -159,7 +159,7 @@ class System():
         for iR in range(self.nRvec):
             f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
             f.write("".join("{0:3d} {1:3d} {2:15.8e} {3:15.8e}\n".format(
-                         m+1,n+1,self.HH_R[m,n,iR].real*self.Ndegen[iR],self.HH_R[m,n,iR].imag*self.Ndegen[iR]) 
+                         m+1,n+1,self.Ham_R[m,n,iR].real*self.Ndegen[iR],self.HH_R[m,n,iR].imag*self.Ndegen[iR]) 
                              for n in range(self.num_wann) for m in range(self.num_wann)) )
         if hasattr(self,'AA_R'):
           for iR in range(self.nRvec):

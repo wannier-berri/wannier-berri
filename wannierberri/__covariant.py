@@ -1,7 +1,7 @@
 import numpy as np
 from .__utility import  alpha_A,beta_A
 from .__formula_3 import Formula_ln
-from .__formulas_nonabelian_3 import Aln,Bln,Vln,Dln,Fln, DerDln, DerA_Hbar_ln,DerF_Hbar_ln,Hbarln_ab,Eavln,DerB_Hbar_ln,DerMorb_Hbar_ln_ab
+from .__formulas_nonabelian_3 import Aln,Bln,Dln,Fln, DerDln, DerA_Hbar_ln,DerF_Hbar_ln,Hbarln_ab,Eavln,DerB_Hbar_ln,DerMorb_Hbar_ln_ab
 #####################################################
 #####################################################
 
@@ -26,7 +26,7 @@ class tildeFab(Formula_ln):
 #        print (f"tildeFab evaluating: internal({self.internal_terms}) and external({self.external_terms})")
         if self.external_terms:
             self.A=Aln(data_K)
-            self.V=Vln(data_K)
+            self.V=data_K.covariant('Ham',commader=1)
             self.F=Fln(data_K)
         print ("Done")
         self.ndim=2
@@ -175,7 +175,7 @@ class tildeHab_d(Formula_ln):
         super().__init__(data_K,**parameters)
         self.dD = DerDln(data_K)
         self.D  = Dln(data_K)
-        self.V = Vln(data_K)
+        self.V = data_K.covariant('Ham',commader=1)
         self.E = data_K.E_K
         if self.external_terms:
             self.A = Aln(data_K)
@@ -221,7 +221,7 @@ class tildeHGab_d(Formula_ln):
         self.dF = tildeFab_d(data_K,**parameters)
         self.dH = tildeHab_d(data_K,**parameters)
         self.E  = Eavln(data_K)
-        self.V = Vln(data_K)
+        self.V = data_K.covariant('Ham',commader=1)
         self.sign = sign
         self.ndim = 3   
 

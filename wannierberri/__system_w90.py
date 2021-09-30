@@ -89,7 +89,7 @@ class System_w90(System):
         timeFFT=0
         HHq=chk.get_HH_q(eig)
         t0=time()
-        self.HH_R=fourier_q_to_R_loc( HHq )
+        self.Ham_R=fourier_q_to_R_loc( HHq )
         timeFFT+=time()-t0
 
         if self.getAA:
@@ -141,7 +141,7 @@ class System_w90(System):
 
         print ("time for FFT_q_to_R : {} s".format(timeFFT))
         if  self.use_ws:
-            for X in ['HH','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
+            for X in ['Ham','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
                 XR=X+'_R'
                 if hasattr(self,XR) :
                     print ("using ws_dist for {}".format(XR))

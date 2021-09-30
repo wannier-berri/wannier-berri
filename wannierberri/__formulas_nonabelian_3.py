@@ -34,12 +34,6 @@ class Eavln(Matrix_ln):
         self.Iodd=False
 
 
-class Vln(Matrix_ln):
-    def __init__(self,data_K):
-        super().__init__(data_K.V_H)
-        self.TRodd = True
-        self.Iodd  = True
-
 class Aln(Matrix_ln):
     def __init__(self,data_K):
         super().__init__(data_K.A_Hbar)
@@ -57,10 +51,6 @@ class dSln(Matrix_ln):
 class dAln(Matrix_ln):
     def __init__(self,data_K):
         super().__init__(data_K.A_Hbar_der)
-
-class Wln(Matrix_ln):
-    def __init__(self,data_K):
-        super().__init__(data_K.del2E_H)
 
 class Oln(Matrix_ln):
     def __init__(self,data_K):
@@ -102,8 +92,8 @@ class DEinv_ln(Matrix_ln):
 class DerDln(Dln):
 
     def __init__(self,data_K):
-        self.W=Wln(data_K)
-        self.V=Vln(data_K)
+        self.W=data_K.covariant('Ham',commader = 2)
+        self.V=data_K.covariant('Ham',commader = 1)
         self.D=Dln(data_K)
         self.dEinv=DEinv_ln(data_K)
 
@@ -145,21 +135,16 @@ class DerSln(Matrix_GenDer_ln):
 class InvMass(Matrix_GenDer_ln):
     r""" :math:`\overline{V}^{b:d}`"""
     def __init__(self,data_K):
-        super().__init__(Vln(data_K),Wln(data_K),Dln(data_K))
+        super().__init__(data_K.covariant('Ham',commader=1),data_K.covariant('Ham',commader=2),Dln(data_K))
         self.TRodd=False
         self.Iodd=False
 
 class DerWln(Matrix_GenDer_ln):
     r""" :math:`\overline{W}^{bc:d}`"""
     def __init__(self,data_K):
-        super().__init__(Wln(data_K),del3E_H(data_K),Dln(data_K))
+        super().__init__(data_K.covariant('Ham',2),data_K.covariant('Ham',3),Dln(data_K))
         self.TRodd=False
         self.Iodd=False
-
-
-class del3E_H(Matrix_ln):
-    def __init__(self,data_K):
-        super().__init__(data_K.del3E_H)
 
 
 
@@ -172,7 +157,7 @@ class Der3E(Formula_ln):
 
     def __init__(self,data_K,**parameters):
         super().__init__(data_K,**parameters)
-        self.V=Vln(data_K)
+        self.V=data_K.covariant('Ham',commader=1)
         self.D=Dln(data_K)
         self.dV=InvMass(data_K)
         self.dD=DerDln(data_K)
@@ -209,7 +194,7 @@ class Omega(Formula_ln):
 #        print (f"Omega evaluating: internal({self.internal_terms}) and external({self.external_terms})")
         if self.external_terms:
             self.A=Aln(data_K)
-            self.V=Vln(data_K)
+            self.V=data_K.covariant('Ham',commader=1)
             self.O=Oln(data_K)
 
         self.ndim=1
@@ -286,6 +271,9 @@ class DerOmega(Formula_ln):
 ###   orbital moment     ####
 #############################
 
+class Velocity(Matrix_ln):
+    def __init__(self,data_K):
+        self = data_K.covariant('Ham',commader = 1)
 
 class Bln(Matrix_ln):
     def __init__(self,data_K):
@@ -415,7 +403,7 @@ class DerMorb(Formula_ln):
         super().__init__(data_K,**parameters)
         self.dD = DerDln(data_K)
         self.D  = Dln(data_K)
-        self.V = Vln(data_K)
+        self.V = data_K.covariant('Ham',commader=1)
         self.E = data_K.E_K
         self.dO  = DerOmega(data_K,**parameters)
         self.Omega = Omega(data_K,**parameters)

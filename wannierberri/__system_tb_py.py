@@ -101,27 +101,27 @@ class System_tb_py(System):
         self.iRvec = R_all
         nRvec=self.iRvec.shape[0]
         self.nRvec0=nRvec
-        # Define HH_R matrix from hoppings
-        self.HH_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0),dtype=complex)
+        # Define Ham_R matrix from hoppings
+        self.Ham_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0),dtype=complex)
         if module=='tbmodels':
             for hop in model.hop.items():
                 R=np.array(hop[0],dtype=int)
                 hops=np.array(hop[1]).reshape((self.num_wann,self.num_wann))
                 iR=int(np.argwhere(np.all((R-R_all[:,:self.dimr])==0, axis=1)))
                 inR=int(np.argwhere(np.all((-R-R_all[:,:self.dimr])==0, axis=1)))
-                self.HH_R[:,:,iR]+=hops
-                self.HH_R[:,:,inR]+=np.conjugate(hops.T)
+                self.Ham_R[:,:,iR]+=hops
+                self.Ham_R[:,:,inR]+=np.conjugate(hops.T)
         elif module=='pythtb':
             for nhop in model._hoppings:
                 i=nhop[1]
                 j=nhop[2]
                 iR=np.argwhere(np.all((nhop[-1]-self.iRvec[:,:self.dimr])==0, axis=1))
                 inR=np.argwhere(np.all((-nhop[-1]-self.iRvec[:,:self.dimr])==0, axis=1))
-                self.HH_R[i,j,iR]+=nhop[0]
-                self.HH_R[j,i,inR]+=np.conjugate(nhop[0])
+                self.Ham_R[i,j,iR]+=nhop[0]
+                self.Ham_R[j,i,inR]+=np.conjugate(nhop[0])
             # Set the onsite energies at H(R=[000])
             for i in range(model._norb):
-                self.HH_R[i,i,index0]=model._site_energies[i]
+                self.Ham_R[i,i,index0]=model._site_energies[i]
 
         if self.getAA:
             self.AA_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
@@ -131,7 +131,7 @@ class System_tb_py(System):
         if self.getBB:
             self.BB_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
             for i in range(self.num_wann):
-                self.BB_R[i,i,index0,:]=self.AA_R[i,i,index0,:]*self.HH_R[i,i,index0]
+                self.BB_R[i,i,index0,:]=self.AA_R[i,i,index0,:]*self.Ham_R[i,i,index0]
 
         if self.getCC:
             self.CC_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
@@ -147,7 +147,7 @@ class System_tb_py(System):
 class System_TBmodels(System_tb_py):
     """This interface initializes the System class from a tight-binding 
     model created with `TBmodels. <http://z2pack.ethz.ch/tbmodels/doc/1.3/index.html>`_
-    It defines the Hamiltonian matrix HH_R (from hoppings matrix elements)
+    It defines the Hamiltonian matrix Ham_R (from hoppings matrix elements)
     and the AA_R  matrix (from orbital coordinates) used to calculate Berry
     related quantities.
     
@@ -170,7 +170,7 @@ class System_TBmodels(System_tb_py):
 class System_PythTB(System_tb_py):
     """This interface is an way to initialize the System class from a tight-binding 
     model created with  `PythTB. <http://www.physics.rutgers.edu/pythtb/>`_ 
-    It defines the Hamiltonian matrix HH_R (from hoppings matrix elements)
+    It defines the Hamiltonian matrix Ham_R (from hoppings matrix elements)
     and the AA_R  matrix (from orbital coordinates) used to calculate 
     Berry related quantities.
 
