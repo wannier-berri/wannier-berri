@@ -138,8 +138,8 @@ class DerSln(Matrix_GenDer_ln):
     r""" :math:`\overline{S}^{b:d}`"""
     def __init__(self,data_K):
         super().__init__(Sln(data_K),dSln(data_K),Dln(data_K))
-        self.TRodd=True
-        self.Iodd=False
+        self.TRodd=False
+        self.Iodd=True
 
 
 class InvMass(Matrix_GenDer_ln):
