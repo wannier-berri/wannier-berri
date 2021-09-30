@@ -1,7 +1,7 @@
 import numpy as np
 from .__utility import  alpha_A,beta_A
 from .__formula_3 import Formula_ln
-from .__formulas_nonabelian_3 import Aln,Bln,Vln,Dln,Fln, DerDln, DerA_Hbar_ln,DerF_Hbar_ln,Hbarln_ab,Eavln
+from .__formulas_nonabelian_3 import Aln,Bln,Vln,Dln,Fln, DerDln, DerA_Hbar_ln,DerF_Hbar_ln,Hbarln_ab,Eavln,DerB_Hbar_ln,DerMorb_Hbar_ln_ab
 #####################################################
 #####################################################
 
@@ -134,7 +134,7 @@ class tildeHab(Formula_ln):
         if self.external_terms:
             summ +=   self.H.nn(ik,inn,out)
             summ +=  2j  * np.einsum("mla,lnb->mnab" ,self.D.nl(ik,inn,out),self.B.ln(ik,inn,out))
-#####            summ +=  +1  * np.einsum("mla,lnb->mnab" ,self.D.nl(ik,inn,out) ,self.B.ln(ik,inn,out))
+#####            summ +=  +1  * np.einsum("mla,lnb->mnab" ,self.D.nl(ik,inn,out) ,self.B.ln(ik,inn,out)) # this term is accounted by a factor of 2 above, and due to symmetrisation below
             summ +=  - np.einsum("mla,lnb->mnab" ,
                                     self.A.nn(ik,inn,out)*self.E[ik][inn][None,:,None] ,self.A.nn(ik,inn,out)  
                                 )
@@ -163,6 +163,85 @@ class tildeHGab(Formula_ln):
 
     def ln(self,ik,inn,out):
         raise NotImplementedError()
+
+
+##################################################################
+###  tildeHab:d = \tilde\partial_d <\tilde\partial_a u | H |\tilde\partial_b u>    ####
+##################################################################
+
+class tildeHab_d(Formula_ln):
+
+    def __init__(self,data_K,**parameters):
+        super().__init__(data_K,**parameters)
+        self.dD = DerDln(data_K)
+        self.D  = Dln(data_K)
+        self.V = Vln(data_K)
+        self.E = data_K.E_K
+        if self.external_terms:
+            self.A = Aln(data_K)
+            self.dA = DerA_Hbar_ln(data_K)
+            self.B = Bln(data_K)
+            self.dB = DerB_Hbar_ln(data_K)
+      #  self.dO  = DerOmega_Hbar_ln(data_K)
+            self.dH  = DerMorb_Hbar_ln_ab(data_K)
+      #  self.Omega = Oln(data_K)
+        self.ndim=2
+        self.Iodd=True
+        self.TRodd=False
+
+    def nn(self,ik,inn,out):
+        summ = np.zeros( (len(inn),len(inn),3,3,3),dtype=complex )
+        if self.internal_terms:
+            summ += -1* np.einsum("mpa,pld,lnb->mnabd",self.D.nl(ik,inn,out),self.V.ll(ik,inn,out),self.D.ln(ik,inn,out) )
+            summ+=  -2* np.einsum("mla,lnbd->mnabd",self.D.nl(ik,inn,out)*
+                             self.E[ik][out][None,:,None],self.dD.ln(ik,inn,out))
+
+        if self.external_terms:
+            summ +=  self.dH.nn(ik,inn,out)
+            summ +=  -    np.einsum("mpa,pld,lnb->mnabd",self.A.nn(ik,inn,out),self.V.nn(ik,inn,out),self.A.nn(ik,inn,out) )
+            summ +=  -2 * np.einsum("mla,lnbd->mnabd",self.A.nn(ik,inn,out)*self.E[ik][inn][None,:,None],self.dA.nn(ik,inn,out))
+            summ +=  2j * np.einsum("mla,lnbd->mnabd",self.D.nl (ik,inn,out), self.dB.ln(ik,inn,out))
+            summ +=  2j * np.einsum("lma,lnbd->mnabd",(self.B.ln(ik,inn,out)).conj() , self.dD.ln (ik,inn,out))
+        
+            
+        summ = 0.5*(summ+summ.transpose((1,0,3,2,4)).conj())
+        return summ
+
+
+    @property
+    def additive(self):
+        return False
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
+
+
+class tildeHGab_d(Formula_ln):
+    def __init__(self,data_K,sign,**parameters):
+        self.F  = tildeFab(data_K,**parameters)
+        self.dF = tildeFab_d(data_K,**parameters)
+        self.dH = tildeHab_d(data_K,**parameters)
+        self.E  = Eavln(data_K)
+        self.V = Vln(data_K)
+        self.sign = sign
+        self.ndim = 3   
+
+    @property
+    def additive(self):
+        return False
+
+
+    def nn(self,ik,inn,out):
+        res =  self.dH.nn(ik,inn,out)
+        if self.sign!=0:
+            res+= self.sign*self.E.nn(ik,inn,out)[:,:,None,None,None]*self.dF.nn(ik,inn,out)
+            res+= 0.5*self.sign*np.einsum("mpab,pnd->mnabd",self.F.nn(ik,inn,out),self.V.nn(ik,inn,out) )
+            res+= 0.5*self.sign*np.einsum("mpd,pnab->mnabd",self.V.nn(ik,inn,out),self.F.nn(ik,inn,out) )
+
+        return res
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
+
 
 #####################################################
 ##   Now define their anitsymmetric combinations   ##
@@ -224,3 +303,13 @@ class tildeFc_d(AntiSymmetric):
 
 
 
+class tildeHGc_d(AntiSymmetric):
+
+    def __init__(self,data_K,**parameters):
+        super().__init__(tildeHGab_d,data_K,**parameters)
+        self.Iodd=True
+        self.TRodd=False
+
+    @property
+    def additive(self):
+        return False

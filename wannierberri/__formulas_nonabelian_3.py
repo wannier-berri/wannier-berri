@@ -380,6 +380,17 @@ class Morb_Hpm(Formula_ln):
 ###   orbital moment     ####
 #############################
 
+class dHbarln_ab(Matrix_ln):
+    def __init__(self,data_K):
+        super().__init__(data_K.Morb_Hbar_ab_der)
+
+class DerMorb_Hbar_ln_ab(Matrix_GenDer_ln):
+    r""" :math:`\overline{H}^{bc:d}`"""
+    def __init__(self,data_K):
+        super().__init__(Hbarln_ab(data_K),dHbarln_ab(data_K),Dln(data_K))
+
+
+
 class dHln(Matrix_ln):
     def __init__(self,data_K):
         super().__init__(data_K.Morb_Hbar_der)
@@ -427,15 +438,16 @@ class DerMorb(Formula_ln):
                 summ += -1j *s* np.einsum("mpc,pld,lnc->mncd",self.D.nl(ik,inn,out)[:,:,a],self.V.ll(ik,inn,out),self.D.ln(ik,inn,out)[:,:,b] )
                 summ+=  -2j *s* np.einsum("mlc,lncd->mncd",self.D.nl(ik,inn,out)[:,:,a],
                     self.E[ik][out][:,None,None,None]*self.dD.ln(ik,inn,out)[:,:,b])
-        summ += 1 * np.einsum("mlc,lnd->mncd",self.Omega.nn(ik,inn,out),self.V.nn(ik,inn,out) )
         if self.external_terms:
             summ += 1 * self.dH.nn(ik,inn,out)
-            summ += 1 * self.E[ik][inn][:,None,None,None]*self.dO.nn(ik,inn,out)
             for s,a,b in (+1,alpha_A,beta_A),(-1,beta_A,alpha_A):
                 summ +=  -1j *s* np.einsum("mpc,pld,lnc->mncd",self.A.nn(ik,inn,out)[:,:,a],self.V.nn(ik,inn,out),self.A.nn(ik,inn,out)[:,:,b] )
                 summ +=  -2j *s* np.einsum("mlc,lncd->mncd",self.A.nn(ik,inn,out)[:,:,a]*self.E[ik][inn][None,:,None],self.dA.nn(ik,inn,out)[:,:,b,:])
                 summ +=  -2 *s* np.einsum("mlc,lncd->mncd",self.D.nl (ik,inn,out)[:,:,a], self.dB.ln(ik,inn,out)[:,:,b,:])
                 summ +=  -2 *s* np.einsum("lmc,lncd->mncd",(self.B.ln(ik,inn,out)[:,:,a]).conj() , self.dD.ln (ik,inn,out)[:,:,b,:])
+
+        summ += 1 * np.einsum("mlc,lnd->mncd",self.Omega.nn(ik,inn,out),self.V.nn(ik,inn,out) )
+        summ += 1 * self.E[ik][inn][:,None,None,None]*self.dO.nn(ik,inn,out)
         
             
 
@@ -445,3 +457,9 @@ class DerMorb(Formula_ln):
 
     def ln(self,ik,inn,out):
         raise NotImplementedError()
+
+
+    @property
+    def additive(self):
+        return False
+

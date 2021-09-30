@@ -100,6 +100,13 @@ def Hplus_der(data_K,Efermi, tetra=False,**parameters):
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
 
+def Hplus_der_test(data_K,Efermi, tetra=False,**parameters):
+    res =  FermiOcean(covariant.tildeHGc_d(data_K,sign=+1,**parameters),data_K,Efermi,tetra,fder=0)()
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    return res
+
+
+
 def gme_orb_fsurf(data_K,Efermi,tetra=False,**parameters):
     formula_1  = FormulaProduct ( [frml.Morb_Hpm(data_K,sign=+1,**parameters) ,frml.Vln(data_K)], name='morb_Hpm-vel')
     formula_2  = FormulaProduct ( [frml.Omega(data_K,**parameters) ,frml.Vln(data_K)], name='berry-vel')
@@ -113,6 +120,13 @@ def gme_orb(data_K,Efermi,tetra=False,**parameters):
     D = berry_dipole(data_K,Efermi,tetra=tetra,**parameters).data
     tensor_K = - elementary_charge**2/(2*hbar)*(Hp - 2*Efermi[:,None,None]*D  )
     return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
+
+def gme_orb_test(data_K,Efermi,tetra=False,**parameters):
+    Hp = Hplus_der_test(data_K,Efermi,tetra=tetra,**parameters).data
+    D = berry_dipole_test(data_K,Efermi,tetra=tetra,**parameters).data
+    tensor_K = - elementary_charge**2/(2*hbar)*(Hp - 2*Efermi[:,None,None]*D  )
+    return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
+
 
 def gme_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
     formula  = FormulaProduct ( [frml.Sln(data_K),frml.Vln(data_K)], name='spin-vel')

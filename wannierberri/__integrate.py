@@ -60,6 +60,7 @@ calculators_trans={
          'berry_dipole_test'        : fermiocean3.berry_dipole_test      ,
          'berry_dipole_fsurf'       : fermiocean3.berry_dipole_fsurf     ,
          'gyrotropic_Korb'          : fermiocean3.gme_orb                ,
+         'gyrotropic_Korb_test'     : fermiocean3.gme_orb_test           ,
          'gyrotropic_Korb_fsurf'    : fermiocean3.gme_orb_fsurf          ,
          'gyrotropic_Kspin'         : fermiocean3.gme_spin               ,
          'gyrotropic_Kspin_fsurf'   : fermiocean3.gme_spin_fsurf         ,
@@ -70,6 +71,8 @@ calculators_trans={
          'Der3E'                    : fermiocean3.Der3E                  ,
          'Der3E_fsurf'              : fermiocean3.Der3E_fsurf            ,
          'Der3E_fder2'              : fermiocean3.Der3E_fder2            ,
+         'Hplus_der' : fermiocean3.Hplus_der,
+         'Hplus_der_test' : fermiocean3.Hplus_der_test,
          }
 
 

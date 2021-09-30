@@ -116,7 +116,7 @@ def quantities_GaAs():
 def compare_quant(quant):
 #    compare= {'ahc_ocean':'ahc','ahc3_ocean':'ahc',"cumdos3_ocean":"cumdos","dos3_ocean":"dos","berry_dipole_ocean":"berry_dipole","berry_dipole3_ocean":"berry_dipole",
 #            'conductivity_ohmic3_ocean':'conductivity_ohmic','conductivity_ohmic_fsurf3_ocean':'conductivity_ohmic_fsurf'}
-    compare = {'ahc_test':'ahc' , 'berry_dipole_test':'berry_dipole', 'Morb_test':'Morb'}  # it future reverse this - the test is fundamental
+    compare = {'ahc_test':'ahc' , 'berry_dipole_test':'berry_dipole', 'Morb_test':'Morb','gyrotropic_Korb_test':'gyrotropic_Korb'}  # it future reverse this - the test is fundamental
     if quant in compare:
         return compare[quant]
     else:
@@ -145,8 +145,9 @@ def test_Fe_sym(check_integrate,system_Fe_W90, compare_energyresult,quantities_F
 
 def test_GaAs(check_integrate,system_GaAs_W90, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test berry dipole"""
-    check_integrate(system_GaAs_W90 , quantities_GaAs+['berry_dipole_test'] , fout_name="berry_GaAs_W90" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
-               global_parameters = {'use_wcc_phase':False,'degen_thresh':0.005,'use_symmetry' : False ,'fake_FF':True},
+    check_integrate(system_GaAs_W90 , quantities_GaAs+['berry_dipole_test','gyrotropic_Korb','gyrotropic_Korb_test'] , 
+        fout_name="berry_GaAs_W90" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
+               global_parameters = {'use_wcc_phase':False,'degen_thresh':0.005,'use_symmetry' : False ,'fake_FF':True,'fake_CCab':True},
 #                additional_parameters = {"internal_terms":False },
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
