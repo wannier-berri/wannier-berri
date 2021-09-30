@@ -8,8 +8,8 @@ class Parallel():
     Parameters
     -----------
     method : str
-        a method to be used for parallelization 'serial', 'multiprocessing'  or 'ray'
-    num_cus : int 
+        a method to be used for parallelization 'serial' or 'ray'
+    num_cpus : int 
         number of parallel processes. If <=0  - serial execution 
     chunksize : int
         chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
@@ -21,19 +21,19 @@ class Parallel():
                    npar_k = 0 , 
                    ray_init={} ,     # add extra parameters for ray.init()
                    cluster=False , # add parameters for ray.init() for the slurm cluster
-                   chunksize=None  , # size of chunk in multiprocessing 
                    progress_step_percent  = 1  ,  #
                    progress_timeout = None  # relevant only for ray, seconds
                  ):
-        if num_cpus <= 0:
-            method = "serial"
-        if method == 'multiprocessing':
-            method = 'multiprocessing-K'
+
         if method is None:
-            method = "ray"
+            if num_cpus <= 0:
+                method = "serial"
+            else:
+                method = "ray"
+
         self.method=method
         self.progress_step_percent  = progress_step_percent
-        self.chunksize=chunksize
+
         if cluster:
             if self.method == "ray" :
                 ray_init_loc['address']          = 'auto'
@@ -57,14 +57,6 @@ class Parallel():
             self.ray=ray
             _,self.npar_k=pool(npar_k)
             self.npar_K=int(round(self.num_cpus/self.npar_k))
-        elif self.method == 'multiprocessing-k':  # this option is not supported yet ( abd provbably never will be )
-            self.num_cpus=num_cpus
-            _,self.npar_k=pool(self.num_cpus)
-            self.pool_K,self.npar_K=pool(0)
-        elif self.method == 'multiprocessing-K':
-            self.num_cpus=num_cpus
-            _,self.npar_k=pool(0)
-            self.pool_K,self.npar_K=pool(self.num_cpus)
         else :
             raise ValueError ("Unknown parallelization method:{}".format(self.method))
 

@@ -371,11 +371,11 @@ class FFT_R_to_k():
                         for jj in range(self.num_wann)] for ii in range(self.num_wann)])
         return exponent_wcc.transpose((2,3,4,0,1))
 
-    def __call__(self,AAA_R,hermitian=False,antihermitian=False,reshapeKline=True):
+    def __call__(self,AAA_R,hermitean=False,antihermitean=False,reshapeKline=True):
         t0=time()
     #  AAA_R is an array of dimension (  num_wann x num_wann x nRpts X... ) (any further dimensions allowed)
-        if  hermitian and antihermitian :
-            raise ValueError("A matrix cannot be both Hermitian and anti-Hermitian, unless it is zero")
+        if  hermitean and antihermitean :
+            raise ValueError("A matrix cannot be both hermitean and anti-hermitean, unless it is zero")
         AAA_R=AAA_R.transpose((2,0,1)+tuple(range(3,AAA_R.ndim)))
         shapeA=AAA_R.shape
         if self.lib=='slow':
@@ -403,9 +403,9 @@ class FFT_R_to_k():
 
 
         ## TODO - think if fft transform of half of matrix makes sense
-        if hermitian:
+        if hermitean:
             AAA_K= 0.5*(AAA_K+AAA_K.transpose((0,1,2,4,3)+tuple(range(5,AAA_K.ndim))).conj())
-        elif antihermitian:
+        elif antihermitean:
             AAA_K=0.5*(AAA_K-AAA_K.transpose((0,1,2,4,3)+tuple(range(5,AAA_K.ndim))).conj())
 
         if reshapeKline:

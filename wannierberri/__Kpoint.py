@@ -114,7 +114,7 @@ class  KpointBZ():
 
 
         
-    def divide(self,ndiv,periodic):
+    def divide(self,ndiv,periodic,use_symmetry = True):
         assert (ndiv.shape==(3,))
         assert (np.all(ndiv>0))
         ndiv[np.logical_not(periodic)]=1   # divide only along periodic directions
@@ -144,7 +144,7 @@ class  KpointBZ():
 
         n=len(K_list_add)
 
-        if not (self.symgroup is None):
+        if use_symmetry and  (self.symgroup is not None):
             exclude_equiv_points(K_list_add)
 
 #        print ("dividing {} into : \n".format(self)+"\n".join(str(K) for K in K_list_add))

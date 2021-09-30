@@ -112,10 +112,8 @@ def check_option(quantities,avail,tp):
 def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=None,quantities=[],adpt_num_iter=0,adpt_fac=1,
                         fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
-                        parallel = None, 
-                        parameters={},
-                        numproc=0,chunksize=None,Klist_part=10
-                        ):
+                        parallel = None,
+                        parameters={},global_parameters={} ):
     """
     Integrate 
 
@@ -139,10 +137,6 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         number of K-points to be refined per quantity and criteria.
     parallel : :class:`~wannierberri.Parallel`
         object describing parallelization scheme
-    numproc : int 
-        (obsolete, use parallel instead) number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
-    chunksize : int
-        (obsolete, use parallel instead) chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
  
     Returns
     --------
@@ -185,17 +179,17 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     res=evaluate_K(eval_func,system,grid,fftlib=fftlib,
             adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac,
                 fout_name=fout_name,suffix=suffix,
-                restart=restart,file_Klist=file_Klist, parallel = parallel,
-                    numproc=numproc,chunksize=chunksize,Klist_part=Klist_part)
+                restart=restart,file_Klist=file_Klist, parallel = parallel,global_parameters=global_parameters )
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
 
 
 
 def tabulate(system,grid, quantities=[],
-                  frmsf_name=None,ibands=None,suffix="",Ef0=0.,parameters={},
-                  parallel = None,
-                        numproc=0,chunksize=None):
+                  frmsf_name=None,ibands=None,suffix="",Ef0=0.,
+                  parameters={},global_parameters={},
+                  degen_thresh = 1e-4,
+                  parallel = None ):
     """
     Tabulate quantities to be plotted
 
@@ -213,10 +207,6 @@ def tabulate(system,grid, quantities=[],
         if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
     parallel : :class:`~wannierberri.Parallel`
         object describing parallelization scheme
-    numproc : int 
-        (obsolete, use parallel instead) number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
-    chunksize : int
-        (obsolete, use parallel instead) chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
    
     Returns
     --------
@@ -226,23 +216,27 @@ def tabulate(system,grid, quantities=[],
     """
 
     mode = '3D'
-    if isinstance(grid,Path): mode = 'path'
+    global_parameters_loc={}
+    global_parameters_loc.update(global_parameters)
+    if isinstance(grid,Path):
+        mode = 'path'
+        global_parameters_loc['use_symmetry'] = False
     cprint ("\nTabulating the following quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,tabulate_options,"tabulate")
-    eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
+    eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters ,
+                degen_thresh = degen_thresh )
     t0=time()
     res=evaluate_K(eval_func,system,grid,
-            adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,nosym=(mode=='path'), 
-            parallel=parallel,
-              numproc=numproc,chunksize=chunksize )
+            adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,
+            parallel=parallel,global_parameters=global_parameters_loc )
 
     t1=time()
     if mode=='3D':
         res=res.to_grid(grid.dense)
         t2=time()
         ttxt,twrite=write_frmsf(frmsf_name,Ef0,
-                parallel.num_cpus if parallel is not None else numproc,
-                    quantities,res)
+                parallel.num_cpus if parallel is not None else 1,
+                    quantities,res,suffix=suffix)
 
     t4=time()
 
@@ -258,9 +252,11 @@ def tabulate(system,grid, quantities=[],
 
 
 
-def write_frmsf(frmsf_name,Ef0,numproc,quantities,res):
+def write_frmsf(frmsf_name,Ef0,numproc,quantities,res,suffix=""):
+    if len(suffix)>0:
+        suffix="-"+suffix
     if frmsf_name is not None:
-        open("{0}_E.frmsf".format(frmsf_name),"w").write(
+        open(f"{frmsf_name}_E{suffix}.frmsf","w").write(
              res.fermiSurfer(quantity=None,efermi=Ef0,npar=numproc) )
         t3=time()
         ttxt=0
@@ -272,7 +268,7 @@ def write_frmsf(frmsf_name,Ef0,numproc,quantities,res):
                     t31=time()
                     txt=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0,npar=numproc)
                     t32=time()
-                    open("{2}_{1}-{0}.frmsf".format(comp,Q,frmsf_name),"w").write(txt)
+                    open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf","w").write(txt)
                     t33=time()
                     ttxt  += t32-t31
                     twrite+= t33-t32

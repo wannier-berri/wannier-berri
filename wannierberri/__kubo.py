@@ -294,10 +294,6 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         if conductivity_type == 'tildeD':
             V =  data.delE_K[ik] 
             fs=fermiSurf(Efermi, E, kBT)
-#            print("shapes",fs.shape,V.shape,tildeOmega.shape)
-#            print("shapes",fermiSurf(Efermi, E, kBT)[:,None,:,None,None].shape,V [None,None,:,:,None].shape,tildeOmega[None,:,:,None,:].shape,tildeD.shape)
-#            print("shapes",(fermiSurf(Efermi, E, kBT)[:,None,:,None,None]*V [None,None,:,:,None]*tildeOmega[None,:,:,None,:]).shape,tildeD.shape)
-#        degen= ( abs(dE)<=data.degen_thresh )
             
             tildeD+= np.sum(  fermiSurf(Efermi, E, kBT)[:,None,:,None,None]
                                 *V [None,None,:,:,None]

@@ -5,6 +5,7 @@ from . import __result as result
 from math import ceil
 from . import __formulas_nonabelian_3 as frml
 from .__formula_3 import FormulaProduct,FormulaProduct_2,ProductDelta
+from . import __covariant as covariant
 from itertools import permutations
 from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
@@ -69,6 +70,11 @@ def Hall_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
 def AHC(data_K,Efermi,tetra=False,**parameters):
     return  FermiOcean(frml.Omega(data_K,**parameters),data_K,Efermi,tetra,fder=0)()*fac_ahc
 
+def AHC_test(data_K,Efermi,tetra=False,**parameters):
+    res =  FermiOcean(covariant.tildeFc(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
+    return res*fac_ahc
+
+
 def spin(data_K,Efermi,tetra=False,**parameters):
     return FermiOcean(frml.Sln(data_K),data_K,Efermi,tetra,fder=0)()
 
@@ -83,6 +89,13 @@ def berry_dipole(data_K,Efermi,tetra=False,**parameters):
     res =  FermiOcean(frml.DerOmega(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
+
+def berry_dipole_test(data_K,Efermi,tetra=False,**parameters):
+    r""" sigma20tau1"""
+    res =  FermiOcean(covariant.tildeFc_d(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
+    res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
+
 
 def Hplus_der(data_K,Efermi, tetra=False,**parameters):
     res =  FermiOcean(frml.DerMorb(data_K,**parameters),data_K,Efermi,tetra,fder=0)()
@@ -120,6 +133,14 @@ def Morb(data_K,Efermi,tetra=False,**parameters):
     return    (
                 FermiOcean(frml.Morb_Hpm(data_K,sign=+1,**parameters),data_K,Efermi,tetra,fder=0)() 
             - 2*FermiOcean(frml.Omega(data_K,**parameters),data_K,Efermi,tetra,fder=0)().mul_array(Efermi) 
+                   )  *  (data_K.cell_volume*fac_morb)
+
+
+def Morb_test(data_K,Efermi,tetra=False,**parameters):
+    fac_morb =  -eV_au/bohr**2
+    return    (
+                FermiOcean(covariant.tildeHGc(data_K,sign=+1,**parameters),data_K,Efermi,tetra,fder=0)() 
+            - 2*FermiOcean(covariant.tildeFc(data_K,**parameters),data_K,Efermi,tetra,fder=0)().mul_array(Efermi) 
                    )  *  (data_K.cell_volume*fac_morb)
 
 
