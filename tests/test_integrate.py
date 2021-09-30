@@ -128,7 +128,7 @@ def test_Fe(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Ef
     check_integrate(system_Fe_W90 , quantities_Fe+['ahc_test','Morb_test','Morb'], 
             fout_name="berry_Fe_W90" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult,
 #                additional_parameters = { 'internal_terms':False} ,
-               global_parameters = {'use_symmetry' : False,'fake_FF':True,'fake_CCab':True } )
+               global_parameters = {'use_symmetry' : False,'_FF_antisym':True,'_CCab_antisym':True } )
 
 
 def test_Fe_wcc(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
@@ -147,7 +147,7 @@ def test_GaAs(check_integrate,system_GaAs_W90, compare_energyresult,quantities_G
     """Test berry dipole"""
     check_integrate(system_GaAs_W90 , quantities_GaAs+['berry_dipole_test','gyrotropic_Korb','gyrotropic_Korb_test'] , 
         fout_name="berry_GaAs_W90" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
-               global_parameters = {'use_wcc_phase':False,'degen_thresh':0.005,'use_symmetry' : False ,'fake_FF':True,'fake_CCab':True},
+               global_parameters = {'use_wcc_phase':False,'degen_thresh':0.005,'use_symmetry' : False ,'_FF_antisym':True,'_CCab_antisym':True},
 #                additional_parameters = {"internal_terms":False },
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
