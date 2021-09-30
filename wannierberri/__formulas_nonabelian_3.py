@@ -397,7 +397,7 @@ class DerMorb(Formula_ln):
             
             summ+=  -2j *s* np.einsum("mlc,lncd->mncd",self.A.nn(ik,inn,out)[:,:,a]*self.E[ik][inn][None,:,None],self.dA.nn(ik,inn,out)[:,:,b,:])
             summ +=  -2 *s* np.einsum("mlc,lncd->mncd",self.D.nl (ik,inn,out)[:,:,a], self.dB.ln(ik,inn,out)[:,:,b,:])
-            summ +=  -2 *s* np.einsum("mlc,lncd->mncd",(self.B.ln(ik,inn,out)[:,:,a]).conj() , self.dD.ln (ik,inn,out)[:,:,b,:])
+            summ +=  -2 *s* np.einsum("mlc,lncd->mncd",(self.B.ln(ik,inn,out)[:,:,a]).transpose(1,0,2).conj() , self.dD.ln (ik,inn,out)[:,:,b,:])
             #summ +=  -1 *s* np.einsum("mlcd,lnc->mncd",self.dD.nl (ik,inn,out)[:,:,a,:], self.B.ln(ik,inn,out)[:,:,b])
             #summ +=  -1 *s* np.einsum("mlcd,lnc->mncd",(self.dB.ln(ik,inn,out)[:,:,a,:]).conj() , self.D.ln (ik,inn,out)[:,:,b])
             
