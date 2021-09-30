@@ -29,7 +29,7 @@ def dos(data_K,Efermi,tetra=False,**parameters):
     return FermiOcean(frml.Identity(),data_K,Efermi,tetra,fder=1)()*data_K.cell_volume
 
 def Hall_classic_fsurf(data_K,Efermi,tetra=False,**parameters):
-    formula = FormulaProduct ( [frml.Vln(data_K),frml.InvMass(data_K),frml.Vln(data_K)], name='vel-mass-vel')
+    formula = FormulaProduct ( [data_K.covariant('Ham',commader=1),frml.InvMass(data_K),data_K.covariant('Ham',commader=1)], name='vel-mass-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()*factor_Hall_classic
     res.data=res.data[:,:,:,beta_A,alpha_A]-res.data[:,:,:,alpha_A,beta_A]
     res.data=-0.5*(res.data[:,alpha_A,beta_A,:]-res.data[:,beta_A,alpha_A,:])
@@ -39,7 +39,7 @@ def Hall_classic_fsurf(data_K,Efermi,tetra=False,**parameters):
 def Hall_classic(data_K,Efermi,tetra=False,**parameters):
     r"""sigma11tau2 """
     formula1 = FormulaProduct ( [frml.InvMass(data_K),frml.InvMass(data_K)], name='mass-mass')
-    formula2 = FormulaProduct ( [frml.Vln(data_K),frml.Der3E(data_K)], name='vel-Der3E')
+    formula2 = FormulaProduct ( [data_K.covariant('Ham',commader=1),frml.Der3E(data_K)], name='vel-Der3E')
     res =  FermiOcean(formula1,data_K,Efermi,tetra,fder=0)()*factor_Hall_classic
     term2  =  FermiOcean(formula2,data_K,Efermi,tetra,fder=0)()*factor_Hall_classic
     res.data = res.data.transpose(0,4,1,2,3) + term2.data.transpose(0,4,2,3,1)
@@ -79,7 +79,7 @@ def spin(data_K,Efermi,tetra=False,**parameters):
     return FermiOcean(frml.Sln(data_K),data_K,Efermi,tetra,fder=0)()
 
 def berry_dipole_fsurf(data_K,Efermi,tetra=False,**parameters):
-    formula  = FormulaProduct ( [frml.Omega(data_K,**parameters),frml.Vln(data_K)], name='berry-vel')
+    formula  = FormulaProduct ( [frml.Omega(data_K,**parameters),data_K.covariant('Ham',commader=1)], name='berry-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
@@ -110,8 +110,8 @@ def Hplus_der_test(data_K,Efermi, tetra=False,**parameters):
 
 
 def gme_orb_fsurf(data_K,Efermi,tetra=False,**parameters):
-    formula_1  = FormulaProduct ( [frml.Morb_Hpm(data_K,sign=+1,**parameters) ,frml.Vln(data_K)], name='morb_Hpm-vel')
-    formula_2  = FormulaProduct ( [frml.Omega(data_K,**parameters) ,frml.Vln(data_K)], name='berry-vel')
+    formula_1  = FormulaProduct ( [frml.Morb_Hpm(data_K,sign=+1,**parameters) ,data_K.covariant('Ham',commader=1)], name='morb_Hpm-vel')
+    formula_2  = FormulaProduct ( [frml.Omega(data_K,**parameters) ,data_K.covariant('Ham',commader=1)], name='berry-vel')
     res =  FermiOcean(formula_1,data_K,Efermi,tetra,fder=1)()
     res += -2* FermiOcean(formula_2,data_K,Efermi,tetra,fder=1)().mul_array(Efermi)
     res.data= np.swapaxes(res.data,1,2)* -elementary_charge**2/(2*hbar)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
@@ -131,7 +131,7 @@ def gme_orb_test(data_K,Efermi,tetra=False,**parameters):
 
 
 def gme_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
-    formula  = FormulaProduct ( [frml.Sln(data_K),frml.Vln(data_K)], name='spin-vel')
+    formula  = FormulaProduct ( [frml.Sln(data_K),data_K.covariant('Ham',commader=1)], name='spin-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()
     res.data= np.swapaxes(res.data,1,2)* -bohr_magneton/Ang_SI**2  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
@@ -159,7 +159,7 @@ def Morb_test(data_K,Efermi,tetra=False,**parameters):
 
 
 def ohmic_fsurf(data_K,Efermi,kpart=None,tetra=False,**parameters):
-    velocity =  frml.Vln(data_K)
+    velocity =  data_K.covariant('Ham',commader=1)
     formula  = FormulaProduct ( [velocity,velocity], name='vel-vel')
     return FermiOcean(formula,data_K,Efermi,tetra,fder=1)()*factor_ohmic
 
@@ -176,13 +176,13 @@ def Der3E(data_K,Efermi,tetra=False,**parameters):
 
 def Der3E_fsurf(data_K,Efermi,tetra=False,**parameters):
     r"""sigma20tau2 first der f0 """
-    formula  = FormulaProduct ([frml.InvMass(data_K),frml.Vln(data_K)], name='mass-vel')
+    formula  = FormulaProduct ([frml.InvMass(data_K),data_K.covariant('Ham',commader=1)], name='mass-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()
     return res
 
 def Der3E_fder2(data_K,Efermi,tetra=False,**parameters):
     r"""sigma20tau2 second der f0 """
-    formula  = FormulaProduct ( [frml.Vln(data_K),frml.Vln(data_K),frml.Vln(data_K)], name='vel-vel-vel')
+    formula  = FormulaProduct ( [data_K.covariant('Ham',commader=1),data_K.covariant('Ham',commader=1),data_K.covariant('Ham',commader=1)], name='vel-vel-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=2)()*0.5
     return res
 

@@ -23,9 +23,42 @@ from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha
 import gc
 import os
 from .__tetrahedron import TetraWeights,get_bands_in_range,get_bands_below_range
+from .__formula_3 import Matrix_ln, Matrix_GenDer_ln
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
+
+
+def parity_I(name,der=0):
+    """returns True if quantity is odd under inversion,(after a real trace is taken, if appropriate)
+     False otherwise  
+    raises for unknown quantities"""
+    if name in ['Ham']:  # even before derivative
+        p=0
+    elif name in []:     # odd before derivative
+        p=1
+    elif name in ['D','AA']:
+        return None
+    else :
+        raise ValueError(f"parity under inversion unknown for {name}")
+    return bool( (p+der)%2 )
+
+
+def parity_TR(name,der=0):
+    """returns True if quantity is odd under TR, ,(after a real trace is taken, if appropriate)
+    False otherwise
+    raises ValueError for unknown quantities"""
+    if name in ['Ham']:   # even before derivative
+        p=0 
+    elif name in []:      # odd before derivative
+        p=1
+    elif name in ['D','AA']:
+        return None
+    else :
+        raise ValueError(f"parity under TR unknown for {name}")
+    return bool( (p+der)%2 )
+
+
 
    
 class Data_K(System):
@@ -97,8 +130,11 @@ class Data_K(System):
         else:
             self.cRvec_wcc=self.system.cRvec[None,None,:,:]
             self.expdK=np.exp(2j*np.pi*self.system.iRvec.dot(dK))[None,None,:]
-        self.HH_R=system.HH_R*self.expdK
+            print("iRvec shape",self.iRvec.shape,self.system.iRvec.shape)
+        self.Ham_R=system.Ham_R*self.expdK
         self.dK=dK
+        self._bar_quantities = {}
+        self._covariant_quantities = {}
 
     def set_parameters(self,**parameters):
         for param in self.default_parameters:
@@ -236,11 +272,11 @@ class Data_K(System):
                 add_term = np.sum(
                         self.B_Hbar_fz[:,:,:,None,beta_A]*self.diag_w_centres[:,None,:,:,alpha_A] 
                         - self.B_Hbar_fz[:,None,:,:,beta_A]*self.diag_w_centres[:,:,:,None,alpha_A] 
-                        + 1j*self.V_H[:,:,:,None,alpha_A]*self.diag_w_centres[:,None,:,:,beta_A]
+                        + 1j*self.Xbar('Ham',1)[:,:,:,None,alpha_A]*self.diag_w_centres[:,None,:,:,beta_A]
                         ,axis=2) - np.sum(
                         self.B_Hbar_fz[:,:,:,None,alpha_A]*self.diag_w_centres[:,None,:,:,beta_A] 
                         - self.B_Hbar_fz[:,None,:,:,alpha_A]*self.diag_w_centres[:,:,:,None,beta_A] 
-                        + 1j*self.V_H[:,:,:,None,beta_A]*self.diag_w_centres[:,None,:,:,alpha_A]
+                        + 1j*self.Xbar('Ham',1)[:,:,:,None,beta_A]*self.diag_w_centres[:,None,:,:,alpha_A]
                         ,axis=2)
         res = self._rotate((self.fft_R_to_k( XX_R,hermitean=hermitean))[self.select_K]  )
         res = res + add_term
@@ -251,7 +287,7 @@ class Data_K(System):
 #####################
     @lazy_property.LazyProperty
     def nbands(self):
-        return self.HH_R.shape[0]
+        return self.Ham_R.shape[0]
 
     @lazy_property.LazyProperty
     def kpoints_all(self):
@@ -338,8 +374,8 @@ class Data_K(System):
             for iy in 0,1:
                for iz in 0,1:
                    _expdK=expdK[ix,:,0]*expdK[iy,:,1]*expdK[iz,:,2]
-                   _HH_R=self.HH_R[:,:,:]*_expdK[None,None,:]
-                   _HH_K=self.fft_R_to_k( _HH_R, hermitean=True)
+                   _Ham_R=self.Ham_R[:,:,:]*_expdK[None,None,:]
+                   _HH_K=self.fft_R_to_k( _Ham_R, hermitean=True)
                    E=np.array(self.poolmap(np.linalg.eigvalsh,_HH_K))
                    Ecorners[:,ix,iy,iz,:]=E[self.select_K,:][:,self.select_B]
         print_my_name_end()
@@ -347,27 +383,44 @@ class Data_K(System):
 
     @property
     def HH_K(self):
-        return self.fft_R_to_k( self.HH_R, hermitean=True) 
+        return self.fft_R_to_k( self.Ham_R, hermitean=True) 
 
     @lazy_property.LazyProperty
     def delE_K(self):
         print_my_name_start()
-        delE_K = np.einsum("klla->kla",self.V_H)
+        delE_K = np.einsum("klla->kla",self.Xbar('Ham',1))
         check=np.abs(delE_K).imag.max()
         if check>1e-10: raiseruntimeError ( "The band derivatives have considerable imaginary part: {0}".format(check) )
         return delE_K.real
 
-    @lazy_property.LazyProperty
-    def del2E_H(self):
-        return self._R_to_k_H( self.HH_R, der=2 )
+    def Xbar(self,name,der=0):
+        key = (name,der)
+        if key not in self._bar_quantities:
+            self._bar_quantities[key] = self._R_to_k_H( vars(self)[name+'_R'].copy() , der=der, hermitean = False )
+        return self._bar_quantities[key]
+
+
+
+
+    def covariant(self,name,commader=0,gender=0):
+        assert commader*gender==0 , "cannot mix comm and generalized derivatives"
+        key = (name,commader,gender)
+        if key not in self._covariant_quantities:
+            if gender == 0:
+                return Matrix_ln(self.Xbar(name,commader) ,Iodd = parity_I(name,commader),TRodd = parity_TR(name,commader))
+            else:
+                raise NotImplementedError()
+            self._covariant_quantities[key] = res 
+        return self._covariant_quantities[key]
+
 
     @lazy_property.LazyProperty
     def del3E_H(self):
-        return self._R_to_k_H( self.HH_R, der=3 )
+        return self._R_to_k_H( self.Ham_R, der=3 )
 
     @property
     def del2E_H_diag(self):
-        return np.einsum("knnab->knab",self.del2E_H).real
+        return np.einsum("knnab->knab",self.Xbar('Ham',2)).real
 
     @lazy_property.LazyProperty
     def dEig_inv(self):
@@ -404,18 +457,20 @@ class Data_K(System):
         print_my_name_end()
         return self._UU
 
-    @lazy_property.LazyProperty
-    def V_H(self):
-        self.E_K
-        return self._R_to_k_H( self.HH_R.copy(), der=1)
+#   substitute by Xbar('Ham',1)
+#    @property   
+#    def V_H(self):
+#        self.E_K
+#        return self.get_bar_quantity('HH', der=1)
 
     @lazy_property.LazyProperty
     def D_H(self):
-        return -self.V_H*self.dEig_inv[:, :,:,None]
+        return -self.Xbar('Ham',1)*self.dEig_inv[:, :,:,None]
 
     @lazy_property.LazyProperty
     def A_Hbar(self):
         return self._R_to_k_H(self.AA_R.copy(),flag='AA')
+
 
     @lazy_property.LazyProperty
     def F_Hbar(self):

@@ -40,10 +40,14 @@ class Formula_ln(abc.ABC):
 
 class Matrix_ln(Formula_ln):
     "anything that can be called just as elements of a matrix"
-    @abc.abstractmethod
-    def __init__(self,matrix):
+
+    def __init__(self,matrix,TRodd = None, Iodd = None):
         self.matrix=matrix
         self.ndim=len(matrix.shape)-3
+        if TRodd is not None:
+            self.TRodd = TRodd
+        if Iodd is not None:
+            self.Iodd = Iodd
 
     def ln(self,ik,inn,out):
         return self.matrix[ik][out][:,inn]

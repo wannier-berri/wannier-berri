@@ -30,7 +30,7 @@ from . import  symmetry
 #should be classes Formula_ln 
 calculators={ 
          'spin'       : frml.Sln, 
-         'V'          : frml.Vln, 
+         'V'          : frml.Velocity, 
 #         'morb'       : berry.calcImgh_band_kn,
          'berry'      : frml.Omega, #berry.calcImf_band_kn ,
          'Der_berry'  : frml.DerOmega, #berry.calcImf_band_kn ,

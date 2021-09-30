@@ -32,12 +32,20 @@ def test_fourier(system_Fe_W90):
     data_slow  = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='slow',use_symmetry=False)
     data_numpy = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='numpy',use_symmetry=False)
 
-    test_fields = ["E_K", "D_H", "V_H", "shc_B_H"]
+    test_fields = ["E_K", "D_H", "shc_B_H"]
 
     for field in test_fields:
         assert getattr(data_fftw,  field) == approx(getattr(data_slow, field)), "fftw  does not match slow for {} ".format(field)
         assert getattr(data_numpy, field) == approx(getattr(data_slow, field)), "numpy does not match slow for {}".format(field)
-        assert getattr(data_numpy, field) == approx(getattr(data_slow, field)), "numpy does not match fftw for {}".format(field)
+        assert getattr(data_numpy, field) == approx(getattr(data_fftw, field)), "numpy does not match fftw for {}".format(field)
+
+    test_fields = ['Ham']
+
+    for field in test_fields:
+        for der in 0,1,2:
+            assert data_fftw.Xbar (field,der) == approx(data_slow.Xbar(field,der)), "fftw  does not match slow for {}_bar_der{} ".format(field,der)
+            assert data_numpy.Xbar(field,der) == approx(data_slow.Xbar(field,der)), "numpy does not match slow for {}_bar_der{} ".format(field,der)
+            assert data_numpy.Xbar(field,der) == approx(data_fftw.Xbar(field,der)), "numpy does not match fftw for {}_bar_der{} ".format(field,der)
 
     # TODO: Allow gauge degree of freedom
 
