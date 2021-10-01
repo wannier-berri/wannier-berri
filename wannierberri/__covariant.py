@@ -1,7 +1,7 @@
 import numpy as np
 from .__utility import  alpha_A,beta_A
 from .__formula_3 import Formula_ln
-from .__formulas_nonabelian_3 import Aln,Bln,Dln,Fln, DerDln, DerA_Hbar_ln,DerF_Hbar_ln,Hbarln_ab,Eavln,DerB_Hbar_ln,DerMorb_Hbar_ln_ab
+from .__formulas_nonabelian_3 import  DerDcov, Eavln
 #####################################################
 #####################################################
 
@@ -21,13 +21,13 @@ class tildeFab(Formula_ln):
 
     def __init__(self,data_K,**parameters):
         super().__init__(data_K,**parameters)
-        self.D=Dln(data_K)
+        self.D=data_K.Dcov
 
 #        print (f"tildeFab evaluating: internal({self.internal_terms}) and external({self.external_terms})")
         if self.external_terms:
-            self.A=Aln(data_K)
+            self.A=data_K.covariant('AA')
             self.V=data_K.covariant('Ham',commader=1)
-            self.F=Fln(data_K)
+            self.F=data_K.covariant('FF')
         print ("Done")
         self.ndim=2
 #        self.Iodd=False
@@ -64,15 +64,15 @@ class tildeFab_d(Formula_ln):
 
     def __init__(self,data_K,**parameters):
         super().__init__(data_K,**parameters)
-        self.dD = DerDln(data_K)
-        self.D  = Dln(data_K)
+        self.dD = DerDcov(data_K)
+        self.D  = data_K.Dcov
 
 #        print (f"derOmega evaluating: internal({self.internal_terms}) and external({self.external_terms})")
 
         if self.external_terms:
-            self.A  = Aln(data_K)
-            self.dA = DerA_Hbar_ln(data_K)
-            self.dF  = DerF_Hbar_ln(data_K)
+            self.A  = data_K.covariant('AA')
+            self.dA = data_K.covariant('AA',gender=1)
+            self.dF  =data_K.covariant('FF',gender=1)
         self.ndim=3
 #        self.Iodd=True
 #        self.TRodd=False
@@ -109,10 +109,10 @@ class tildeHab(Formula_ln):
     def __init__(self,data_K,**parameters):
         super().__init__(data_K,**parameters)
         if self.external_terms:
-            self.A = Aln(data_K)
-            self.B = Bln(data_K)
-            self.H = Hbarln_ab(data_K)
-        self.D = Dln(data_K)
+            self.A = data_K.covariant('AA')
+            self.B = data_K.covariant('BB')
+            self.H = data_K.covariant('CCab')
+        self.D = data_K.Dcov
         self.E = data_K.E_K
         self.ndim=2
         self.Iodd=False
@@ -173,18 +173,16 @@ class tildeHab_d(Formula_ln):
 
     def __init__(self,data_K,**parameters):
         super().__init__(data_K,**parameters)
-        self.dD = DerDln(data_K)
-        self.D  = Dln(data_K)
+        self.dD = DerDcov(data_K)
+        self.D  = data_K.Dcov
         self.V = data_K.covariant('Ham',commader=1)
         self.E = data_K.E_K
         if self.external_terms:
-            self.A = Aln(data_K)
-            self.dA = DerA_Hbar_ln(data_K)
-            self.B = Bln(data_K)
-            self.dB = DerB_Hbar_ln(data_K)
-      #  self.dO  = DerOmega_Hbar_ln(data_K)
-            self.dH  = DerMorb_Hbar_ln_ab(data_K)
-      #  self.Omega = Oln(data_K)
+            self.A = data_K.covariant('AA')
+            self.dA = data_K.covariant('AA',gender=1)
+            self.B = data_K.covariant('BB')
+            self.dB = data_K.covariant('BB',gender=1)
+            self.dH  =data_K.covariant('CCab',gender=1)
         self.ndim=2
         self.Iodd=True
         self.TRodd=False
