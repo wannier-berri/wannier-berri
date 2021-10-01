@@ -169,6 +169,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def OO_R(self):
+        # We do not multiply by expdK, because it is already accounted in AA_R
         return  1j*(self.cRvec_wcc[:,:,:,alpha_A]* self.AA_R[:,:,:,beta_A] - self.cRvec_wcc[:,:,:,beta_A]* self.AA_R[:,:,:,alpha_A])
 
     @lazy_property.LazyProperty
