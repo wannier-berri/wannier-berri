@@ -23,7 +23,6 @@ from termcolor import cprint
 
 
 
-
 class System():
 
     default_parameters =  {    'seedname':'wannier90',
@@ -41,7 +40,9 @@ class System():
                     'Emax': np.Inf ,
                     'use_ws':True,
                     'periodic':(True,True,True),
-                    'use_wcc_phase':False
+                    'use_wcc_phase':False,
+                    'wannier_centers_cart':None,
+                    'wannier_centers_reduced' : None
                        }
 
 
@@ -81,11 +82,15 @@ class System():
     delta_fz:float
         size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
     use_wcc_phase: bool
-        using wannier centres in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
+        using wannier centers in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
+    wannier_centers_cart :  array-like(num_wann,3)
+        use the given wannier_centers (cartesian) instead of those determined automatically. Incompatible with `wannier_centers_reduced`
+    wannier_centers_reduced :  array-like(num_wann,3)
+        use the given wannier_centers (reduced) instead of those determined automatically. Incompatible with `wannier_centers_cart`
+
     """ .format(**default_parameters)
 
     def __init__(self, old_format=False,    **parameters ):
-
 
         self.set_parameters(**parameters)
         self.old_format=old_format
@@ -172,7 +177,7 @@ class System():
             if not per:
                 sel=(self.iRvec[:,i]!=0)
                 if np.any(sel) :
-                    print ("""WARNING : you declared your ystemas non-periodic along direction {i}, but there are {nrexcl} of total {nr} R-vectors with R[{i}]!=0. 
+                    print ("""WARNING : you declared your system as non-periodic along direction {i}, but there are {nrexcl} of total {nr} R-vectors with R[{i}]!=0. 
         They will be excluded, please make sure you know what you are doing """.format(i=i,nrexcl=sum(sel),nr=self.nRvec ) )
                     exclude[sel]=True
         if np.any(exclude):
@@ -284,23 +289,125 @@ class System():
         self.symgroup=Group(symmetry_gen,recip_lattice=self.recip_lattice,real_lattice=self.real_lattice)
 
 
-    #@lazy_property.LazyProperty
-    #def cRvec(self):
-    #    return self.iRvec.dot(self.real_lattice)
+    @lazy_property.LazyProperty
+    def cRvec(self):
+        return self.iRvec.dot(self.real_lattice)
 
     @lazy_property.LazyProperty
     def cRvec_wcc(self):
         """ 
-        With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [m,n,iRvec] (Cartesian)
+        With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [i,j,iRvec,a] (Cartesian)
         """
-        wannier_centres = self.wannier_centres_cart
-        w_centres = np.array([[j-i for j in wannier_centres] for i in wannier_centres])
         if self.use_wcc_phase:
-            return self.iRvec.dot(self.real_lattice)[None,None,:,:]+ w_centres[:,:,None,:]
+            return self.iRvec.dot(self.real_lattice)[None,None,:,:]+ self.diff_wcc_cart[:,:,None,:]
         else:
             return self.iRvec.dot(self.real_lattice)[None,None,:,:]
 
 
+    @lazy_property.LazyProperty
+    def diff_wcc_cart(self):
+        """ 
+        With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [i,j,a] (Cartesian)
+        """
+        wannier_centers = self.wannier_centers_cart
+        return np.array([[j-i for j in wannier_centers] for i in wannier_centers])
+
+    @lazy_property.LazyProperty
+    def diff_wcc_red(self):
+        """ 
+        With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [m,n,a] (Reduced)
+        """
+        wannier_centers = self.wannier_centers_reduced
+        return np.array([[j-i for j in wannier_centers] for i in wannier_centers])
+
+    def set_wannier_centers(self):
+        if self.wannier_centers_cart is not None:
+            if self.wannier_centers_reduced is not None:
+                raise ValueError("one should not specify both wannier_centers_cart and wannier_centers_reduced")
+            else:
+                self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+        elif self.wannier_centers_reduced is not None:
+                self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
+        elif hasattr(self,"wannier_centers_cart_auto"):
+                self.wannier_centers_cart = self.wannier_centers_cart_auto
+                self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+#        self.wannier_centers_cart*=00.01
+#        self.wannier_centers_reduced*=00.01
+#        print ("Wannier_centers\n",self.wannier_centers_cart,self.wannier_centers_reduced)
+        if self.use_wcc_phase: 
+            if self.wannier_centers_cart is None:
+                raise ValueError("use_wcc_phase = True, but the wannier centers could not be detyermined")
+            if hasattr(self,'AA_R'):
+                AA_R_new = np.copy(self.AA_R)
+                AA_R_new[np.arange(self.num_wann),np.arange(self.num_wann),self.iR0,:] -= self.wannier_centers_cart
+            if hasattr(self,'BB_R'):
+                BB_R_new = self.BB_R.copy() - self.HH_R[:,:,:,None]*self.wannier_centers_cart[None,:,None,:]
+            if hasattr(self,'CC_R'):
+                norm = np.linalg.norm(self.CC_R - self.conj_XX_R(self.CC_R))
+                assert norm<1e-10 , f"norm={norm}"
+                assert hasattr(self,'BB_R') , "if you use CC_R, you need also BB_R"
+                T  =  self.wannier_centers_cart[:,None,None,:,None]*self.BB_R[:,:,:,None,:]
+                CC_R_new  =  self.CC_R.copy() + 1.j*sum(   
+                            s*( -T[:,:,:,a,b]   # -t_i^a * B_{ij}^b(R)
+                                -self.conj_XX_R(T[:,:,:,b,a])    # - B_{ji}^a(-R)^*  * t_j^b 
+                                +self.wannier_centers_cart[:,None,None,a]*self.HH_R[:,:,:,None] * self.wannier_centers_cart[None,:,None,b]  # + t_i^a*H_ij(R)t_j^b
+                            )
+                        for (s,a,b) in [(+1,alpha_A,beta_A) , (-1,beta_A,alpha_A)] )
+                norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
+                assert norm<1e-10 , f"norm={norm}"
+
+
+            # not sure if the following is correct (Stepan)
+            if hasattr(self,'SA_R'):
+                assert hasattr(self,'SS_R') , "if you use SA_R, you need also SS_R"
+                SA_R_new  =  self.SA_R.copy() - self.SS_R[:,:,:,:,None]*self.wannier_centers_cart[None,:,None,None,:]
+            if hasattr(self,'SHA_R'):
+                assert hasattr(self,'SH_R') , "if you use SA_R, you need also SH_R"
+                SHA_R_new  =  self.SHA_R.copy() - self.SS_R[:,:,:,:,None]*self.wannier_centers_cart[None,:,None,None,:]
+
+            for X in ['AA','BB','CC','SA','SHA']:
+                if hasattr(self,X+'_R'):
+                    vars(self)[X+'_R'] = locals()[X+'_R_new']
+
+            for X in ['SA','SHA','SR','SH','SHR']:
+                if hasattr(self,X+'_R'):
+                    pass
+#                    raise NotImplementedError(f"use_wcc_phases=True is not implemented for {X}_R")
+
+
+    @property
+    def iR0(self):
+        return self.iRvec.tolist().index([0,0,0])
+
+    @lazy_property.LazyProperty
+    def reverseR(self):
+        """maps the R vector -R"""
+        iRveclst= self.iRvec.tolist()
+        mapping = np.all( self.iRvec[:,None,:]+self.iRvec[None,:,:] == 0 , axis = 2 )
+        # check if some R-vectors do not have partners
+        notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
+        for ir in notfound:
+            print ("WARNING : R[{}] = {} does not have a -R partner".format(ir,self.iRvec[ir]) )
+        # check if some R-vectors have more then 1 partner 
+        morefound = np.where(np.sum(mapping,axis=1)>1)[0]
+        if len(morefound>0):
+            raise RuntimeError( "R vectors number {} have more then one negative partner : \n{} \n{}".format(
+                            morefound,self.iRvec[morefound],np.sum(mapping,axis=1) ) )
+        lst1,lst2=[],[]
+        for ir1 in range(self.nRvec):
+            ir2 = np.where(mapping[ir1])[0]
+            if len(ir2)==1:
+                lst1.append(ir1)
+                lst2.append(ir2[0])
+        return np.array(lst1),np.array(lst2)
+
+    def conj_XX_R(self,XX_R):
+        """ reverses the R-vector and takes the hermitian conjugate """
+        XX_R_new = np.zeros_like(XX_R)
+        lst1,lst2 = self.reverseR
+        assert np.all(self.iRvec[lst1] + self.iRvec[lst2] ==0 )
+        XX_R_new [:,:,lst1] = XX_R[:,:,lst2]
+        return XX_R_new.swapaxes(0,1).conj()
 
     @property 
     def nRvec(self):

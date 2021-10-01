@@ -65,13 +65,12 @@ class System_w90(System):
         self.iRvec,self.Ndegen=self.wigner_seitz(chk.mp_grid)
         self.nRvec0=len(self.iRvec)
         self.num_wann=chk.num_wann
-        self.wannier_centres_cart = chk.wannier_centres 
-        self.wannier_centres_reduced = chk.wannier_centres.dot(np.linalg.inv(self.real_lattice))
+        self.wannier_centers_cart_auto = chk.wannier_centers
 
         if  self.use_ws:
             print ("using ws_distance")
-            #ws_map=ws_dist_map_gen(np.copy(self.iRvec),np.copy(chk.wannier_centres), np.copy(chk.mp_grid),np.copy(self.real_lattice),npar=npar)
-            ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centres, chk.mp_grid,self.real_lattice, npar=npar)
+            #ws_map=ws_dist_map_gen(np.copy(self.iRvec),np.copy(chk.wannier_centers), np.copy(chk.mp_grid),np.copy(self.real_lattice),npar=npar)
+            ws_map=ws_dist_map_gen(self.iRvec,chk.wannier_centers, chk.mp_grid,self.real_lattice, npar=npar)
         
         eig=EIG(seedname)
         if self.getAA or self.getBB:
@@ -79,7 +78,7 @@ class System_w90(System):
 
         kpt_mp_grid=[tuple(k) for k in np.array( np.round(chk.kpt_latt*np.array(chk.mp_grid)[None,:]),dtype=int)%chk.mp_grid]
         if (0,0,0) not in kpt_mp_grid:
-            raise ValueError("the grid of k-points read from .chk file is not Gamma-centrered. Please, use Gamma-centered grids in the ab initio calculation")
+            raise ValueError("the grid of k-points read from .chk file is not Gamma-centered. Please, use Gamma-centered grids in the ab initio calculation")
 #        print ("kpoints:",kpt_mp_grid)
         
         fourier_q_to_R_loc=functools.partial(fourier_q_to_R, mp_grid=chk.mp_grid,kpt_mp_grid=kpt_mp_grid,iRvec=self.iRvec,ndegen=self.Ndegen,numthreads=npar,fft=fft)
@@ -142,6 +141,7 @@ class System_w90(System):
                     vars(self)[XR]=ws_map(vars(self)[XR])
             self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
 
+        self.set_wannier_centers()
         self.set_symmetry()
         self.check_periodic()
 
@@ -179,7 +179,7 @@ class System_w90(System):
 
 class ws_dist_map_gen(ws_dist_map):
 
-    def __init__(self,iRvec,wannier_centres, mp_grid,real_lattice,npar=multiprocessing.cpu_count()):
+    def __init__(self,iRvec,wannier_centers, mp_grid,real_lattice,npar=multiprocessing.cpu_count()):
     ## Find the supercell translation (i.e. the translation by a integer number of
     ## supercell vectors, the supercell being defined by the mp_grid) that
     ## minimizes the distance between two given Wannier functions, i and j,
@@ -194,10 +194,10 @@ class ws_dist_map_gen(ws_dist_map):
         cRvec=iRvec.dot(real_lattice)
         mp_grid=np.array(mp_grid)
         shifts_int_all = np.array([ijk  for ijk in iterate3dpm(ws_search_size+1)])*np.array(mp_grid[None,:])
-        self.num_wann=wannier_centres.shape[0]
+        self.num_wann=wannier_centers.shape[0]
         self._iRvec_new=dict()
-        param=(shifts_int_all,wannier_centres,real_lattice, ws_distance_tol, wannier_centres.shape[0])
-        #param=(np.copy(shifts_int_all),np.copy(wannier_centres),np.copy(real_lattice), np.copy(ws_distance_tol),np.copy(self.num_wann))
+        param=(shifts_int_all,wannier_centers,real_lattice, ws_distance_tol, wannier_centers.shape[0])
+        #param=(np.copy(shifts_int_all),np.copy(wannier_centers),np.copy(real_lattice), np.copy(ws_distance_tol),np.copy(self.num_wann))
         p=multiprocessing.Pool(npar)
         t1=time()
         irvec_new_all=p.starmap(functools.partial(ws_dist_stars,param=param),zip(iRvec,cRvec))
@@ -215,14 +215,14 @@ class ws_dist_map_gen(ws_dist_map):
 
 #def ws_dist_stars(index,iRvec,cRvec,param):
 def ws_dist_stars(iRvec,cRvec,param):
-          shifts_int_all,wannier_centres,real_lattice, ws_distance_tol, num_wann = param
+          shifts_int_all,wannier_centers,real_lattice, ws_distance_tol, num_wann = param
           irvec_new={}
           for jw in range(num_wann):
             for iw in range(num_wann):
               # function JW translated in the Wigner-Seitz around function IW
               # and also find its degeneracy, and the integer shifts needed
               # to identify it
-              R_in=-wannier_centres[iw] +cRvec + wannier_centres[jw]
+              R_in=-wannier_centers[iw] +cRvec + wannier_centers[jw]
               dist=np.linalg.norm( R_in[None,:]+shifts_int_all.dot(real_lattice),axis=1)
               #irvec_new[(ir,iw,jw)]=iRvec+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
               irvec_new[(iw,jw)]=iRvec+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
