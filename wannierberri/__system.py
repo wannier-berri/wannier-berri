@@ -296,12 +296,10 @@ class System():
     @lazy_property.LazyProperty
     def cRvec_wcc(self):
         """ 
-        With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [m,n,iRvec] (Cartesian)
+        With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [i,j,iRvec,a] (Cartesian)
         """
-        wannier_centers = self.wannier_centers_cart
-        w_centers = np.array([[j-i for j in wannier_centers] for i in wannier_centers])
         if self.use_wcc_phase:
-            return self.iRvec.dot(self.real_lattice)[None,None,:,:]+ w_centers[:,:,None,:]
+            return self.iRvec.dot(self.real_lattice)[None,None,:,:]+ self.diff_wcc_cart[:,:,None,:]
         else:
             return self.iRvec.dot(self.real_lattice)[None,None,:,:]
 
@@ -309,7 +307,7 @@ class System():
     @lazy_property.LazyProperty
     def diff_wcc_cart(self):
         """ 
-        With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [m,n,a] (Cartesian)
+        With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [i,j,a] (Cartesian)
         """
         wannier_centers = self.wannier_centers_cart
         return np.array([[j-i for j in wannier_centers] for i in wannier_centers])
@@ -401,7 +399,6 @@ class System():
             if len(ir2)==1:
                 lst1.append(ir1)
                 lst2.append(ir2[0])
-#                print (ir1,self.iRvec[ir1] , ir2,self.iRvec[ir2[0]])
         return np.array(lst1),np.array(lst2)
 
     def conj_XX_R(self,XX_R):
@@ -409,10 +406,8 @@ class System():
         XX_R_new = np.zeros_like(XX_R)
         lst1,lst2 = self.reverseR
         assert np.all(self.iRvec[lst1] + self.iRvec[lst2] ==0 )
-#        print (XX_R.shape,XX_R_new.shape,lst1,lst2)
-        XX_R_new [:,:,lst1] = np.copy(XX_R)[:,:,lst2]
-        XX_R_new[:] = XX_R_new.swapaxes(0,1).conj()
-        return np.copy(XX_R_new)
+        XX_R_new [:,:,lst1] = XX_R[:,:,lst2]
+        return XX_R_new.swapaxes(0,1).conj()
 
     @property 
     def nRvec(self):

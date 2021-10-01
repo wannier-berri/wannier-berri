@@ -71,11 +71,6 @@ def Efermi_Haldane():
 def quantities_Fe():
     return  ['ahc','ahc_ocean','dos','cumdos'  ,'conductivity_ohmic','conductivity_ohmic_fsurf','Morb']
 
-@pytest.fixture(scope="session")
-def quantities_Fe_frozen():
-    return  ['Morb',]
-
-
 @pytest.fixture(scope="module")
 def quantities_Haldane():
     return  ['ahc','ahc_ocean','dos','conductivity_ohmic']
@@ -101,8 +96,10 @@ def test_Fe(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Ef
 
 def test_Fe_wcc(check_integrate,system_Fe_W90_wcc, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    # here we test against reference data obtained without wcc_phase. Low accuracy for Morb - this may be a bug
     check_integrate(system_Fe_W90_wcc , quantities_Fe , fout_name="berry_Fe_W90" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult,
             extra_precision = {"Morb":-5e-2})  # the wcc gives quite a notable error, do not know why yet
+    # here we test agaist reference data obtained with wcc_phase, should matcxh with high accuracy"
     compare_energyresult( "berry_Fe_W90", "Morb-wcc",  0 , suffix_ref="Morb-wcc" ,precision=-1e-8, compare_smooth = False )
 
 def test_Fe_sym(check_integrate,system_Fe_W90_sym, compare_energyresult,quantities_Fe,Efermi_Fe):
@@ -121,12 +118,12 @@ def test_GaAs_tb(check_integrate,system_GaAs_tb, compare_energyresult,quantities
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 def test_GaAs_wcc(check_integrate,system_GaAs_W90_wcc, compare_energyresult,quantities_GaAs,Efermi_GaAs):
-    """Test berry dipole with wcc_phase"""
+    """Test GaAs with wcc_phase, comparing with data obtained without it"""
     check_integrate(system_GaAs_W90_wcc , quantities_GaAs , fout_name="berry_GaAs_W90" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
 
 def test_GaAs_tb_wcc(check_integrate,system_GaAs_tb_wcc, compare_energyresult,quantities_GaAs,Efermi_GaAs):
-    """Test berry dipole with wcc_phase"""
+    """Test GaAs (from tb file) with wcc_phase, comparing with data obtained without it"""
     check_integrate(system_GaAs_tb_wcc , quantities_GaAs , fout_name="berry_GaAs_tb" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
