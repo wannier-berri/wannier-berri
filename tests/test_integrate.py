@@ -22,6 +22,8 @@ def check_integrate(parallel_serial):
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},additional_parameters={},adpt_num_iter=0,
                suffix="", suffix_ref="",
                extra_precision={},
+               precision = -1e-8 ,
+               compare_smooth = True,
                restart = False):
 
         grid = wberri.Grid(system, **grid_param)
@@ -48,8 +50,8 @@ def check_integrate(parallel_serial):
             data=result.results.get(quant).data
             assert data.shape[0] == len(Efermi)
             assert np.all( np.array(data.shape[1:]) == 3)
-            prec=extra_precision[quant] if quant in extra_precision else None
-            comparer(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,precision=prec )
+            prec=extra_precision[quant] if quant in extra_precision else precision
+            comparer(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,precision=prec, compare_smooth = compare_smooth )
     return _inner
 
 @pytest.fixture(scope="session")
@@ -67,7 +69,7 @@ def Efermi_Haldane():
 
 @pytest.fixture(scope="session")
 def quantities_Fe():
-    return  ['ahc','ahc_ocean','dos','cumdos'  ,'conductivity_ohmic','conductivity_ohmic_fsurf']
+    return  ['ahc','ahc_ocean','dos','cumdos'  ,'conductivity_ohmic','conductivity_ohmic_fsurf','Morb']
 
 @pytest.fixture(scope="module")
 def quantities_Haldane():
@@ -88,12 +90,17 @@ def compare_quant(quant):
 
 def test_Fe(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
-    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult )
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult,compare_smooth = True ,
+            extra_precision = {"Morb":-1e-6})
 
 
 def test_Fe_wcc(check_integrate,system_Fe_W90_wcc, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
-    check_integrate(system_Fe_W90_wcc , quantities_Fe , fout_name="berry_Fe_W90" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult )
+    # here we test against reference data obtained without wcc_phase. Low accuracy for Morb - this may be a bug
+    check_integrate(system_Fe_W90_wcc , quantities_Fe , fout_name="berry_Fe_W90" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult,
+            extra_precision = {"Morb":-5e-2})  # the wcc gives quite a notable error, do not know why yet
+    # here we test agaist reference data obtained with wcc_phase, should matcxh with high accuracy"
+    compare_energyresult( "berry_Fe_W90", "Morb-wcc",  0 , suffix_ref="Morb-wcc" ,precision=-1e-8, compare_smooth = True )
 
 def test_Fe_sym(check_integrate,system_Fe_W90_sym, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
@@ -111,12 +118,12 @@ def test_GaAs_tb(check_integrate,system_GaAs_tb, compare_energyresult,quantities
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 def test_GaAs_wcc(check_integrate,system_GaAs_W90_wcc, compare_energyresult,quantities_GaAs,Efermi_GaAs):
-    """Test berry dipole with wcc_phase"""
+    """Test GaAs with wcc_phase, comparing with data obtained without it"""
     check_integrate(system_GaAs_W90_wcc , quantities_GaAs , fout_name="berry_GaAs_W90" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
 
 def test_GaAs_tb_wcc(check_integrate,system_GaAs_tb_wcc, compare_energyresult,quantities_GaAs,Efermi_GaAs):
-    """Test berry dipole with wcc_phase"""
+    """Test GaAs (from tb file) with wcc_phase, comparing with data obtained without it"""
     check_integrate(system_GaAs_tb_wcc , quantities_GaAs , fout_name="berry_GaAs_tb" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
@@ -182,5 +189,5 @@ def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,qu
 
 def test_Fe_parallel_old(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
-    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-old-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4)
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-old-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4,precision = -1e-6)
 
