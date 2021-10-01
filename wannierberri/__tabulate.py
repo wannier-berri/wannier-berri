@@ -29,7 +29,7 @@ from . import  symmetry
 
 #should be classes Formula_ln 
 calculators={ 
-         'spin'       : frml.Sln, 
+         'spin'       : frml.Spin, 
          'V'          : frml.Velocity, 
 #         'morb'       : berry.calcImgh_band_kn,
          'berry'      : frml.Omega, #berry.calcImf_band_kn ,

@@ -58,11 +58,15 @@ class Matrix_ln(Formula_ln):
 
 class Matrix_GenDer_ln(Formula_ln):
     "generalized erivative of MAtrix_ln"
-    def __init__(self,matrix,matrix_comader,D):
+    def __init__(self,matrix,matrix_comader,D,TRodd = None, Iodd = None):
         self.A  = matrix
         self.dA = matrix_comader
         self.D  =  D
         self.ndim=matrix.ndim+1
+        if TRodd is not None:
+            self.TRodd = TRodd
+        if Iodd is not None:
+            self.Iodd = Iodd
 
     def nn(self,ik,inn,out):
         summ=self.dA.nn(ik,inn,out)

@@ -33,11 +33,11 @@ def parity_I(name,der=0):
     """returns True if quantity is odd under inversion,(after a real trace is taken, if appropriate)
      False otherwise  
     raises for unknown quantities"""
-    if name in ['Ham']:  # even before derivative
+    if name in ['Ham','CC','FF','OO']:  # even before derivative
         p=0
     elif name in []:     # odd before derivative
         p=1
-    elif name in ['D','AA']:
+    elif name in ['D','AA','BB','CCab']:
         return None
     else :
         raise ValueError(f"parity under inversion unknown for {name}")
@@ -50,14 +50,19 @@ def parity_TR(name,der=0):
     raises ValueError for unknown quantities"""
     if name in ['Ham']:   # even before derivative
         p=0 
-    elif name in []:      # odd before derivative
+    elif name in ['CC','FF','OO']:      # odd before derivative
         p=1
-    elif name in ['D','AA']:
+    elif name in ['D','AA','BB','CCab']:
         return None
     else :
         raise ValueError(f"parity under TR unknown for {name}")
     return bool( (p+der)%2 )
 
+class _Dcov(Matrix_ln):
+    def __init__(self,data_K):
+        super().__init__(data_K.D_H)
+    def nn(self,ik,inn,out):
+        raise ValueError("Dln should not be called within inner states")
 
 
    
@@ -157,9 +162,14 @@ class Data_K(System):
 ###   let's write them explicitly, for better code readability
 ###########################
 
+
     @lazy_property.LazyProperty
     def AA_R(self):
         return self.system.AA_R*self.expdK[:,:,:,None]
+
+    @lazy_property.LazyProperty
+    def OO_R(self):
+        return  1j*(self.cRvec_wcc[:,:,:,alpha_A]* self.AA_R[:,:,:,beta_A] - self.cRvec_wcc[:,:,:,beta_A]* self.AA_R[:,:,:,alpha_A])
 
     @lazy_property.LazyProperty
     def BB_R(self):
@@ -396,31 +406,42 @@ class Data_K(System):
     def Xbar(self,name,der=0):
         key = (name,der)
         if key not in self._bar_quantities:
-            self._bar_quantities[key] = self._R_to_k_H( vars(self)[name+'_R'].copy() , der=der, hermitean = False )
+            self._bar_quantities[key] = self._R_to_k_H( getattr(self,name+'_R').copy() , der=der, 
+                    hermitean = (name in ['AA',]) , 
+                    flag = name if der ==0 else None )
         return self._bar_quantities[key]
 
 
 
 
-    def covariant(self,name,commader=0,gender=0):
+    def covariant(self,name,commader=0,gender=0,save = True):
         assert commader*gender==0 , "cannot mix comm and generalized derivatives"
         key = (name,commader,gender)
         if key not in self._covariant_quantities:
             if gender == 0:
-                return Matrix_ln(self.Xbar(name,commader) ,Iodd = parity_I(name,commader),TRodd = parity_TR(name,commader))
+                res = Matrix_ln(self.Xbar(name,commader) ,
+                    Iodd = parity_I(name,commader),TRodd = parity_TR(name,commader)
+                        )
+            elif gender == 1:
+                res = Matrix_GenDer_ln(self.covariant(name),self.covariant(name,commader=1),
+                    self.Dcov ,
+                Iodd = parity_I(name,gender),TRodd = parity_TR(name,gender) 
+                        )
             else:
                 raise NotImplementedError()
-            self._covariant_quantities[key] = res 
+            if not save: 
+                return res
+            else:
+                self._covariant_quantities[key] = res 
         return self._covariant_quantities[key]
 
 
-    @lazy_property.LazyProperty
-    def del3E_H(self):
-        return self._R_to_k_H( self.Ham_R, der=3 )
 
-    @property
-    def del2E_H_diag(self):
-        return np.einsum("knnab->knab",self.Xbar('Ham',2)).real
+    @lazy_property.LazyProperty
+    def Dcov(self):
+        return  _Dcov(self)
+
+
 
     @lazy_property.LazyProperty
     def dEig_inv(self):
@@ -457,106 +478,32 @@ class Data_K(System):
         print_my_name_end()
         return self._UU
 
-#   substitute by Xbar('Ham',1)
-#    @property   
-#    def V_H(self):
-#        self.E_K
-#        return self.get_bar_quantity('HH', der=1)
-
     @lazy_property.LazyProperty
     def D_H(self):
         return -self.Xbar('Ham',1)*self.dEig_inv[:, :,:,None]
 
     @lazy_property.LazyProperty
-    def A_Hbar(self):
-        return self._R_to_k_H(self.AA_R.copy(),flag='AA')
-
-
-    @lazy_property.LazyProperty
-    def F_Hbar(self):
-        return  self._R_to_k_H(self.FF_R.copy(),hermitean=False)
-
-    @lazy_property.LazyProperty
     def A_H(self):
         '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
-        return self.A_Hbar + 1j*self.D_H
+        return self.Xbar('AA') + 1j*self.D_H
 
-    @lazy_property.LazyProperty
-    def A_Hbar_der(self):
-        return  self._R_to_k_H(self.AA_R.copy(), der=1) 
 
     @lazy_property.LazyProperty
     def B_Hbar(self):
         print_my_name_start()
         _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitean=False,flag='BB')
         select=(self.E_K<=self.frozen_max)
-        _BB_K[select]=self.E_K[select][:,None,None]*self.A_Hbar[select]
+        _BB_K[select]=self.E_K[select][:,None,None]*self.Xbar('AA')[select]
         return _BB_K
     
-    @lazy_property.LazyProperty
-    def B_Hbar_der(self):
-        _BB_K=self._R_to_k_H( self.BB_R.copy(), der=1,hermitean=False)
-        return _BB_K
 
     @lazy_property.LazyProperty
     def B_Hbarbar(self):
         print_my_name_start()
-        B= self.B_Hbar-self.A_Hbar[:,:,:,:]*self.E_K[:,None,:,None]
+        B= self.B_Hbar-self.Xbar('AA')[:,:,:,:]*self.E_K[:,None,:,None]
         print_my_name_end()
         return B
 
-    @lazy_property.LazyProperty
-    def Omega_Hbar(self):
-        print_my_name_start()
-        return  -self._R_to_k_H( self.AA_R, der=1, asym_after=True)
-
-    @lazy_property.LazyProperty
-    def Omega_bar_der(self):
-        print_my_name_start()
-        _OOmega_K =  self.fft_R_to_k( (
-                        self.AA_R[:,:,:,alpha_A]*self.cRvec_wcc[:,:,:,beta_A ] -     
-                        self.AA_R[:,:,:,beta_A ]*self.cRvec_wcc[:,:,:,alpha_A])[:,:,:,:,None]*self.cRvec_wcc[:,:,:,None,:]   , hermitean=True)
-        return self._rotate(_OOmega_K)
-
-    @lazy_property.LazyProperty
-    def Morb_Hbar(self):
-        return self._R_to_k_H( self.CC_R.copy(),flag='CC',hermitean=False)
-
-    @lazy_property.LazyProperty
-    def Morb_Hbar_ab(self):
-        return self._R_to_k_H( self.CCab_R.copy(),hermitean = False)
-
-    @lazy_property.LazyProperty
-    def Morb_Hbar_der(self):
-        return self._R_to_k_H( self.CC_R, der=1 )
-
-    @lazy_property.LazyProperty
-    def Morb_Hbar_ab_der(self):
-        return self._R_to_k_H( self.CCab_R.copy(), der=1 ,hermitean = False)
-
-
-    @lazy_property.LazyProperty
-    def F_bar_der(self):
-        return self._R_to_k_H( self.FF_R, der=1,hermitean = False )
-
-    @lazy_property.LazyProperty
-    def S_H(self):
-        return  self._R_to_k_H( self.SS_R.copy() )
-
-    @lazy_property.LazyProperty
-    def delS_H(self):
-        """d_b S_a """
-        return self._R_to_k_H( self.SS_R.copy(), der=1,hermitean=True )
-
-#PRB RPS19, Ryoo's way to calculate SHC
-    @lazy_property.LazyProperty
-    def SA_H(self):
-        return self._R_to_k_H(self.SA_R, hermitean=False)
-    
-    @lazy_property.LazyProperty
-    def SHA_H(self):
-        return self._R_to_k_H(self.SHA_R, hermitean=False)
-#PRB QZYZ18, Qiao's way to calculate SHC
 
     def _shc_B_H_einsum_opt(self, C, A, B):
         # Optimized version of C += np.einsum('knlc,klma->knmac', A, B). Used in shc_B_H.
@@ -574,10 +521,10 @@ class Data_K(System):
     def shc_B_H(self):
         SH_H = self._R_to_k_H(self.SH_R, hermitean=False)
         shc_K_H = -1j*self._R_to_k_H(self.SR_R, hermitean=False)
-        self._shc_B_H_einsum_opt(shc_K_H, self.S_H, self.D_H)
+        self._shc_B_H_einsum_opt(shc_K_H, self.Xbar('SS'), self.D_H)
         shc_L_H = -1j*self._R_to_k_H(self.SHR_R, hermitean=False)
         self._shc_B_H_einsum_opt(shc_L_H, SH_H, self.D_H)
-        return (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.S_H[:,:,:,np.newaxis,:] +
+        return (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.Xbar('SS')[:,:,:,np.newaxis,:] +
             self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*shc_K_H[:,:,:,:,:] - shc_L_H)
 #end SHC
 

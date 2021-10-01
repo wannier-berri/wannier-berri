@@ -212,9 +212,9 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
                 A = 0.5 * (data.shc_B_H[ik] + data.shc_B_H[ik].transpose(1,0,2,3).conj())
             elif SHC_type == 'ryoo':
                 VV = data.Xbar('Ham',1)[ik] # [n,m,a]
-                SS = data.S_H[ik]   # [n,m,b]
-                SA = data.SA_H[ik]  # [n,m,a,b]
-                SHA = data.SHA_H[ik]# [n,m,a,b]
+                SS = data.Xbar('SS')[ik]   # [n,m,b]
+                SA = data.Xbar('SA')[ik]  # [n,m,a,b]
+                SHA = data.Xbar('SHA')[ik]# [n,m,a,b]
                 A = (np.matmul(VV.transpose(2,0,1)[:,None,:,:],SS.transpose(2,0,1)[None,:,:,:])
                     + np.matmul(SS.transpose(2,0,1)[None,:,:,:],VV.transpose(2,0,1)[:,None,:,:])).transpose(2,3,0,1)
                 A += -1j * (E[None,:,None,None]*SA - SHA)
@@ -238,10 +238,10 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         elif conductivity_type == 'shiftcurrent':
             B = data.A_H[ik]
 
-            A_Hbar = data.A_Hbar[ik]
+            A_Hbar = data.Xbar('AA')[ik]
             D_H = data.D_H[ik]
             V_H = data.Xbar('Ham',1)[ik]
-            A_Hbar_der = data.A_Hbar_der[ik]
+            A_Hbar_der = data.Xbar('AA',1)[ik]
             del2E_H  = data.Xbar('Ham',2)[ik]
             dEig_inv = data.dEig_inv[ik].transpose(1,0)
 
