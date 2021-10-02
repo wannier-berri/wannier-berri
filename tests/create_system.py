@@ -107,26 +107,10 @@ def system_Fe_W90_wcc(create_files_Fe_W90,symmetries_Fe):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe")
-    system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
+    system = wberri.System_w90(seedname, morb=True, SHCqiao=True, SHCryoo=True,
            transl_inv=False, use_wcc_phase=True )
     system.set_symmetry(symmetries_Fe)
     return system
-
-
-
-#@pytest.fixture(scope="session")
-#def system_GaAs_W90_SHC(create_files_GaAs_W90):
-#    """Create system for GaAs using Wannier90 data, including SHC calculations """
-
-#    data_dir = create_files_GaAs_W90
-
-    # Load system
-#    seedname = os.path.join(data_dir, "GaAs")
-#    system = wberri.System_w90(seedname, berry=True, SHCqiao=True, SHCryoo=True,
-#           transl_inv=False, use_wcc_phase=False,degen_thresh=0.005)
-
-#    return system
-
 
 
 @pytest.fixture(scope="session")
@@ -151,8 +135,8 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.System_w90(seedname, berry=True, 
-           transl_inv=False, use_wcc_phase=True,degen_thresh=0.005)
+    system = wberri.System_w90(seedname, morb=True, 
+           transl_inv=False, use_wcc_phase=True)
 
     return system
 
