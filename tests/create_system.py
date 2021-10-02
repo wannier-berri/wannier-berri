@@ -111,7 +111,8 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe")
-    system = wberri.System_w90(seedname, berry=True, morb=True,SHCqiao=True, SHCryoo=True, 
+    # set SHCqiao and SHCryoo to False because use_wcc_phase=True is not implemented.
+    system = wberri.System_w90(seedname, berry=True, morb=True, SHCqiao=False, SHCryoo=False,
             transl_inv=False, use_wcc_phase=True)
 
     return system

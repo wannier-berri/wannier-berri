@@ -48,9 +48,10 @@ class Data_K(System):
         self.ksep = system.ksep
         self.use_wcc_phase=system.use_wcc_phase
         if self.use_wcc_phase:
-            # if we consistently "ignore" the factor exp(ik*(tj-ti)) bothin the Wannier Hamiltonian, and in the  
-            # thransformation to Hamiltonian gauge, the result will be correct again.
-            # We only need wcc to evaluate "," derivatives (to be used in cRvec_wcc)
+            # if we consistently "ignore" the factor exp(ik*(tj-ti)) both in the Wannier Hamiltonian
+            # and in the transformation to Hamiltonian gauge, the result will be correct again.
+            # We only need wcc to evaluate "," derivatives (to be used in cRvec_wcc):
+            # cRvec_wcc returns R if use_wcc_phase=False and R+tj-ti if use_wcc_phase=True.
             self.wannier_centers_cart=system.wannier_centers_cart
         else:
             self.wannier_centers_cart=np.zeros((self.num_wann,3))
@@ -98,7 +99,7 @@ class Data_K(System):
     def diag_w_centers(self):
         '''
         After rotate. U^+ \tau U
-        diagnal matrix of wannier centres delta_ij*tau_i (Cartesian)
+        diagnal matrix of wannier centres delta_ij*tau_i (Cartesian) [ik,m,n,a]
         '''
         return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.wannier_centers_cart[None,:,None,None,:] , axis=1)
 
@@ -910,6 +911,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def T_BmEA(self):
+        "correction term for orbital magnetization needed when use_wcc_phase=true"
         print_my_name_start()
         t = self.diag_w_centers
         BEA = self.B_Hbar - self.E_K[:,:,None,None]*self.A_Hbar
