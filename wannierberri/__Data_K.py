@@ -33,9 +33,9 @@ def parity_I(name,der=0):
     """returns True if quantity is odd under inversion,(after a real trace is taken, if appropriate)
      False otherwise  
     raises for unknown quantities"""
-    if name in ['Ham','CC','FF','OO']:  # even before derivative
+    if name in ['Ham','CC','FF','OO','SS']:  # even before derivative
         p=0
-    elif name in []:     # odd before derivative
+    elif name in ['T_wcc']:     # odd before derivative
         p=1
     elif name in ['D','AA','BB','CCab']:
         return None
@@ -48,7 +48,7 @@ def parity_TR(name,der=0):
     """returns True if quantity is odd under TR, ,(after a real trace is taken, if appropriate)
     False otherwise
     raises ValueError for unknown quantities"""
-    if name in ['Ham']:   # even before derivative
+    if name in ['Ham','T_wcc']:   # even before derivative
         p=0 
     elif name in ['CC','FF','OO']:      # odd before derivative
         p=1
@@ -151,6 +151,15 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def AA_R(self):
         return self.system.AA_R*self.expdK[None,None,:,None]
+
+    #  this is a bit ovberhead, but to maintain uniformity of the code let's use this
+    @lazy_property.LazyProperty
+    def T_wcc_R(self):
+        nw = self.num_wann
+        res = np.zeros((nw,nw,self.system.nRvec,3),dtype=complex)
+        res[np.arange(nw),np.arange(nw),self.system.iR0,:] = self.wannier_centers_cart
+        return res
+
 
     @lazy_property.LazyProperty
     def OO_R(self):
@@ -354,7 +363,7 @@ class Data_K(System):
         key = (name,der)
         if key not in self._bar_quantities:
             self._bar_quantities[key] = self._R_to_k_H( getattr(self,name+'_R').copy() , der=der, 
-                    hermitean = (name in ['AA',])  )
+                    hermitean = (name in ['AA','SS','FF',])  )
         return self._bar_quantities[key]
 
     def covariant(self,name,commader=0,gender=0,save = True):

@@ -78,7 +78,7 @@ def Efermi_Chiral():
 @pytest.fixture(scope="session")
 def quantities_Fe():
     return  ['ahc','ahc_test','dos','cumdos',
-               'conductivity_ohmic','conductivity_ohmic_fsurf']#,'Morb','Morb_test']
+               'conductivity_ohmic','conductivity_ohmic_fsurf','Morb','Morb_test']
 
 @pytest.fixture(scope="session")
 def quantities_Chiral():
@@ -128,6 +128,7 @@ def compare_quant(quant):
 def test_Fe(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult,compare_smooth = True ,
+                additional_parameters = { 'correction_Morb_wcc':True} ,
                global_parameters = {'use_symmetry' : False,'_FF_antisym':True,'_CCab_antisym':True } ,
             extra_precision = {"Morb":-1e-6})
 
@@ -137,7 +138,8 @@ def test_Fe_wcc(check_integrate,system_Fe_W90_wcc, compare_energyresult,quantiti
     # here we test against reference data obtained without wcc_phase. Low accuracy for Morb - this may be a bug
     check_integrate(system_Fe_W90_wcc , quantities_Fe , fout_name="berry_Fe_W90" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult,
                global_parameters = {'use_symmetry' : False,'_FF_antisym':True,'_CCab_antisym':True } ,
-            extra_precision = {"Morb":-1})  # the wcc gives quite big error, just checking that it runs
+                additional_parameters = { 'correction_Morb_wcc':True} ,
+            extra_precision = {"Morb":-1e-4})  # the wcc gives quite big error, just checking that it runs
     # here we test agaist reference data obtained with wcc_phase, should matcxh with high accuracy"
 #    compare_energyresult( "berry_Fe_W90", "Morb-wcc",  0 , suffix_ref="Morb-wcc" ,precision=-1e-8, compare_smooth = True )
 
