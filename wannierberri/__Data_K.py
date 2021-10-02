@@ -103,40 +103,22 @@ class Data_K(System):
 #        self.spinors=system.spinors
         self.system=system
         self.set_parameters(**parameters)
+
+        self.grid=grid
         self.NKFFT=grid.FFT
         self.select_K=np.ones(self.NKFFT_tot,dtype=bool)
         self.findif=grid.findif
         self.real_lattice = system.real_lattice
-        self.iRvec = system.iRvec
-#        self.cell_volume=self.system.cell_volume
         self.num_wann=self.system.num_wann
         self.Kpoint=Kpoint
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
-#        self.use_wcc_phase=system.use_wcc_phase
-        if self.use_wcc_phase:
-            self.wannier_centres_reduced=system.wannier_centres_reduced
-            self.wannier_centres_cart=system.wannier_centres_cart
-        else:
-            self.wannier_centres_reduced=np.zeros((self.num_wann,3))
-            self.wannier_centres_cart=np.zeros((self.num_wann,3))
+        self.wannier_centers_cart=system.wannier_centers_cart
+        self.cRvec_wcc=self.system.cRvec_p_wcc
 
-
-        self.fft_R_to_k=FFT_R_to_k(self.system.iRvec,self.NKFFT,self.system.num_wann,
-               self.system.wannier_centres_reduced,self.system.real_lattice,
-                numthreads=self.npar_k if self.npar_k>0 else 1,lib=self.fftlib,use_wcc_phase=self.use_wcc_phase)
+        self.fft_R_to_k=FFT_R_to_k(self.system.iRvec,self.NKFFT,self.num_wann, numthreads=self.npar_k if self.npar_k>0 else 1,lib=self.fftlib)
         self.poolmap=pool(self.npar_k)[0]
 
-
-        
-        if self.use_wcc_phase:
-            self.cRvec_wcc=self.system.cRvec_p_wcc
-            w_centres_diff = np.array([[j-i for j in self.system.wannier_centres_reduced] for i in self.system.wannier_centres_reduced])
-            self.expdK=np.exp(2j*np.pi*(self.system.iRvec[None,None,:,:] +w_centres_diff[:,:,None,:]).dot(dK))
-        else:
-            self.cRvec_wcc=self.system.cRvec[None,None,:,:]
-            self.expdK=np.exp(2j*np.pi*self.system.iRvec.dot(dK))[None,None,:]
-            print("iRvec shape",self.iRvec.shape,self.system.iRvec.shape)
-        self.Ham_R=system.Ham_R*self.expdK
+        self.expdK=np.exp(2j*np.pi*self.system.iRvec.dot(dK))
         self.dK=dK
         self._bar_quantities = {}
         self._covariant_quantities = {}
@@ -162,10 +144,13 @@ class Data_K(System):
 ###   let's write them explicitly, for better code readability
 ###########################
 
+    @lazy_property.LazyProperty
+    def Ham_R(self):
+        return self.system.Ham_R*self.expdK[None,None,:]
 
     @lazy_property.LazyProperty
     def AA_R(self):
-        return self.system.AA_R*self.expdK[:,:,:,None]
+        return self.system.AA_R*self.expdK[None,None,:,None]
 
     @lazy_property.LazyProperty
     def OO_R(self):
@@ -174,52 +159,52 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def BB_R(self):
-        return self.system.BB_R*self.expdK[:,:,:,None]
+        return self.system.BB_R*self.expdK[None,None,:,None]
 
     @lazy_property.LazyProperty
     def CC_R(self):
-        return self.system.CC_R*self.expdK[:,:,:,None]
+        return self.system.CC_R*self.expdK[None,None,:,None]
 
     @lazy_property.LazyProperty
     def CCab_R(self):
         if self._CCab_antisym:
-            CCab = np.zeros( (self.num_wann,self.num_wann,self.nRvec,3,3),dtype = complex )
+            CCab = np.zeros( (self.num_wann,self.num_wann,self.system.nRvec,3,3),dtype = complex )
             CCab[:,:,:,alpha_A,beta_A] =  -0.5j*self.CC_R
             CCab[:,:,:,beta_A,alpha_A] =   0.5j*self.CC_R
             return CCab
         else :
-            return self.system.CCab_R*self.expdK[:,:,:,None,None]
+            return self.system.CCab_R*self.expdK[None,None,:,None,None]
 
     @lazy_property.LazyProperty
     def FF_R(self):
         if self._FF_antisym:
             return self.cRvec_wcc[:,:,:,:,None]* self.AA_R[:,:,:,None,:]
         else :
-            return self.system.FF_R*self.expdK[:,:,:,None,None]
+            return self.system.FF_R*self.expdK[None,None,:,None,None]
 
     @lazy_property.LazyProperty
     def SS_R(self):
-        return self.system.SS_R*self.expdK[:,:,:,None]
+        return self.system.SS_R*self.expdK[None,None,:,None]
 
     @property
     def SH_R(self):
-        return self.system.SH_R*self.expdK[:,:,:,None]
+        return self.system.SH_R*self.expdK[None,None,:,None]
 
     @property
     def SR_R(self):
-        return self.system.SR_R*self.expdK[:,:,:,None,None]
+        return self.system.SR_R*self.expdK[None,None,:,None,None]
 
     @property
     def SA_R(self):
-        return self.system.SA_R*self.expdK[:,:,:,None,None]
+        return self.system.SA_R*self.expdK[None,None,:,None,None]
 
     @property
     def SHA_R(self):
-        return self.system.SHA_R*self.expdK[:,:,:,None,None]
+        return self.system.SHA_R*self.expdK[None,None,:,None,None]
 
     @property
     def SHR_R(self):
-        return self.system.SHR_R*self.expdK[:,:,:,None,None]
+        return self.system.SHR_R*self.expdK[None,None,:,None,None]
 
 ###############################################################
 
@@ -238,60 +223,25 @@ class Data_K(System):
             return mat
 
     @lazy_property.LazyProperty
-    def diag_w_centres(self):
+    def diag_w_centers(self):
         '''
         After rotate. U^+ \tau U
-        diagnal matrix of wannier centres delta_ij*tau_i (Cartesian)
+        diagnal matrix of wannier centers delta_ij*tau_i (Cartesian)
         '''
-        return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.system.wannier_centres_cart[None,:,None,None,:] , axis=1)
-        
+        return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.system.wannier_centers_cart[None,:,None,None,:] , axis=1)
 
-    def _R_to_k_H(self,XX_R,der=0,hermitean=True,asym_before=False,asym_after=False,flag=None):
+
+    def _R_to_k_H(self,XX_R,der=0,hermitean=True):
         """ converts from real-space matrix elements in Wannier gauge to 
             k-space quantities in k-space. 
             der [=0] - defines the order of comma-derivative 
             hermitean [=True] - consider the matrix hermitean
-            asym_before = True -  takes the antisymmetrc part over the first two cartesian indices before differentiation
-            asym_after = True  - asymmetrize after  differentiation
-            flag: is a flag indicates if we need additional terms in self.fft_R_to_k under use_wcc_phase. 
-                'None' means no adiditional terms.
-                'AA' means, under use_wcc_phase, FFT of AA_R have an additional term -tau_i.
-                'BB' means, under use_wcc_phase, FFT of AA_R have an additional term -tau_i*HH_k.
-                'CC' means, under use_wcc_phase, FFT of AA_R have an additional term epsilon_{abc} ((tau_j^a - tau_i^a)*B_Hbar_fz^b + 1j*V_H^a*tau_j^b )
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
         
-        def asymmetrize(X,asym):
-            """auxilary function"""
-            if asym  :
-                assert len(X.shape)>=5 , "cannot antisymmetrize less then 2 indices"
-                return X[:,:,:,alpha_A,beta_A]-X[:,:,:,beta_A,alpha_A]
-            else:
-                return X
-        XX_R=asymmetrize(XX_R, asym_before)
         for i in range(der):
             shape_cR = np.shape(self.cRvec_wcc)
             XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec_wcc.reshape((shape_cR[0],shape_cR[1],self.system.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
-        XX_R=asymmetrize(XX_R, asym_after)
-        
-        add_term = 0.0 # additional term under use_wcc_phase=True
-        if self.use_wcc_phase:
-            if flag=='AA':
-                add_term = - self.diag_w_centres
-            elif flag=='BB':
-                add_term = - self.diag_w_centres*self.HH_K[:,:,:,None]
-            elif flag=='CC':
-                add_term = np.sum(
-                        self.B_Hbar_fz[:,:,:,None,beta_A]*self.diag_w_centres[:,None,:,:,alpha_A] 
-                        - self.B_Hbar_fz[:,None,:,:,beta_A]*self.diag_w_centres[:,:,:,None,alpha_A] 
-                        + 1j*self.Xbar('Ham',1)[:,:,:,None,alpha_A]*self.diag_w_centres[:,None,:,:,beta_A]
-                        ,axis=2) - np.sum(
-                        self.B_Hbar_fz[:,:,:,None,alpha_A]*self.diag_w_centres[:,None,:,:,beta_A] 
-                        - self.B_Hbar_fz[:,None,:,:,alpha_A]*self.diag_w_centres[:,:,:,None,beta_A] 
-                        + 1j*self.Xbar('Ham',1)[:,:,:,None,beta_A]*self.diag_w_centres[:,None,:,:,alpha_A]
-                        ,axis=2)
-        res = self._rotate((self.fft_R_to_k( XX_R,hermitean=hermitean))[self.select_K]  )
-        res = res + add_term
-        return res
+        return  self._rotate((self.fft_R_to_k( XX_R,hermitean=hermitean))[self.select_K]  )
 
 #####################
 #  Basic variables  #
@@ -302,11 +252,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def kpoints_all(self):
-        dkx,dky,dkz=1./self.NKFFT
-        return np.array([self.dK+np.array([ix*dkx,iy*dky,iz*dkz]) 
-          for ix in range(self.NKFFT[0])
-              for iy in range(self.NKFFT[1])
-                  for  iz in range(self.NKFFT[2])])%1
+        return (self.grid.points_FFT+self.dK[None])%1
 
     @lazy_property.LazyProperty
     def NKFFT_tot(self):
@@ -408,12 +354,8 @@ class Data_K(System):
         key = (name,der)
         if key not in self._bar_quantities:
             self._bar_quantities[key] = self._R_to_k_H( getattr(self,name+'_R').copy() , der=der, 
-                    hermitean = (name in ['AA',]) , 
-                    flag = name if der ==0 else None )
+                    hermitean = (name in ['AA',])  )
         return self._bar_quantities[key]
-
-
-
 
     def covariant(self,name,commader=0,gender=0,save = True):
         assert commader*gender==0 , "cannot mix comm and generalized derivatives"
@@ -489,21 +431,6 @@ class Data_K(System):
         return self.Xbar('AA') + 1j*self.D_H
 
 
-    @lazy_property.LazyProperty
-    def B_Hbar(self):
-        print_my_name_start()
-        _BB_K=self._R_to_k_H( self.BB_R.copy(),hermitean=False,flag='BB')
-        select=(self.E_K<=self.frozen_max)
-        _BB_K[select]=self.E_K[select][:,None,None]*self.Xbar('AA')[select]
-        return _BB_K
-    
-
-    @lazy_property.LazyProperty
-    def B_Hbarbar(self):
-        print_my_name_start()
-        B= self.B_Hbar-self.Xbar('AA')[:,:,:,:]*self.E_K[:,None,:,None]
-        print_my_name_end()
-        return B
 
 
     def _shc_B_H_einsum_opt(self, C, A, B):
@@ -528,5 +455,4 @@ class Data_K(System):
         return (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.Xbar('SS')[:,:,:,np.newaxis,:] +
             self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*shc_K_H[:,:,:,:,:] - shc_L_H)
 #end SHC
-
 

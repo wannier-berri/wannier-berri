@@ -15,6 +15,7 @@ from collections.abc import Iterable
 import numpy as np
 from time import time
 from . import symmetry
+import lazy_property
 from  .__Kpoint import KpointBZ
 from .__finite_differences import FiniteDifferences
 
@@ -65,6 +66,15 @@ class Grid():
     @property
     def dense(self):
         return self.div*self.FFT
+
+    @lazy_property.LazyProperty
+    def points_FFT(self):
+        dkx,dky,dkz=1./self.FFT
+        return np.array([np.array([ix*dkx,iy*dky,iz*dkz]) 
+          for ix in range(self.FFT[0])
+              for iy in range(self.FFT[1])
+                  for  iz in range(self.FFT[2])])
+
 
    
     @property 

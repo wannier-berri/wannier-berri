@@ -30,15 +30,15 @@ def read_energyresult_dat(filename):
 
     return E_titles, data_energy, data, data_smooth
 
-def error_message(fout_name, suffix, i_iter, abs_err, filename, filename_ref):
+def error_message(fout_name, suffix, i_iter, abs_err, filename, filename_ref,required_precision):
     return (f"data of {fout_name} {suffix} at iteration {i_iter} give a maximal "
-            f"absolute difference of {abs_err}. Files {filename} and {filename_ref}")
+            f"absolute difference of {abs_err} greater than the required precision {required_precision}. Files {filename} and {filename_ref}")
 
 
 @pytest.fixture
 def compare_energyresult():
     """Compare dat file output of EnergyResult with the file in reference folder"""
-    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,precision=None):
+    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,precision=None,compare_smooth = True):
         if suffix_ref is None :
             suffix_ref=suffix
         for i_iter in range(adpt_num_iter+1):
@@ -57,9 +57,10 @@ def compare_energyresult():
             assert E_titles == E_titles_ref
             assert data_energy == approx(data_energy_ref, abs=precision)
             assert data == approx(data_ref, abs=precision), error_message(
-                fout_name, suffix, i_iter, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref)
-            assert data_smooth == approx(data_smooth_ref, abs=precision), "smoothed " + error_message(
-                fout_name, suffix, i_iter, np.max(np.abs(data_smooth-data_smooth_ref)), path_filename, path_filename_ref)
+                fout_name, suffix, i_iter, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref,precision)
+            if compare_smooth:
+                assert data_smooth == approx(data_smooth_ref, abs=precision), "smoothed " + error_message(
+                    fout_name, suffix, i_iter, np.max(np.abs(data_smooth-data_smooth_ref)), path_filename, path_filename_ref,precision)
     return _inner
 
 
