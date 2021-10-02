@@ -8,9 +8,14 @@ import abc
 class Formula_ln(abc.ABC):
 
     @abc.abstractmethod
-    def __init__(self,data_K,internal_terms=True,external_terms=True):
+    def __init__(self,data_K,
+                internal_terms      = True,
+                external_terms      = True,
+                correction_Morb_wcc = False
+                ):
         self.internal_terms = internal_terms
         self.external_terms = external_terms
+        self.correction_Morb_wcc = correction_Morb_wcc
 
     @abc.abstractmethod
     def ln(self,ik,inn,out):

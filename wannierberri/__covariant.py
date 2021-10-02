@@ -28,6 +28,13 @@ class tildeFab(Formula_ln):
             self.A=data_K.covariant('AA')
             self.V=data_K.covariant('Ham',commader=1)
             self.F=data_K.covariant('FF')
+
+        if self.correction_Morb_wcc:
+            if not self.external_terms:
+                raise ValueError("correction_Morb_wcc should be used with external terms")
+            self.T = data_K.covariant('T_wcc')
+
+
         print ("Done")
         self.ndim=2
 #        self.Iodd=False
@@ -47,6 +54,11 @@ class tildeFab(Formula_ln):
             summ +=  -1* np.einsum("mla,lnb->mnab",self.A.nn(ik,inn,out),self.A.nn(ik,inn,out))
 
 #  Terms (a<->b, m<-n> )*   are accounted above by factor 2
+        if self.correction_Morb_wcc:
+            summ -= 2*np.einsum("mla,lnb->mnab" ,self.T.nl(ik,inn,out),
+                                                 self.T.ln(ik,inn,out) )*0
+
+
         summ =  0.5*(summ+summ.transpose((1,0,3,2)).conj())
         return summ
 
@@ -112,6 +124,11 @@ class tildeHab(Formula_ln):
             self.A = data_K.covariant('AA')
             self.B = data_K.covariant('BB')
             self.H = data_K.covariant('CCab')
+        print (f"correction_Morb_wcc={self.correction_Morb_wcc} in tildeHab")
+        if self.correction_Morb_wcc:
+            if not self.external_terms:
+                raise ValueError("correction_Morb_wcc should be used with external terms")
+            self.T = data_K.covariant('T_wcc')
         self.D = data_K.Dcov
         self.E = data_K.E_K
         self.ndim=2
@@ -130,6 +147,13 @@ class tildeHab(Formula_ln):
             summ+= -np.einsum(  "mla,lnb->mnab",
                              self.D.nl(ik,inn,out)*self.E[ik][out][None,:,None],
                              self.D.ln(ik,inn,out) )
+
+        if self.correction_Morb_wcc:
+            summ += 2*np.einsum("mla,lnb->mnab" ,self.T.nn(ik,inn,out),
+                    self.B.nn(ik,inn,out) -self.E[ik][inn][:,None,None]*self.A.nn(ik,inn,out) )
+            summ -= 2*np.einsum("mla,lnb->mnab" ,self.T.nl(ik,inn,out),
+                         self.E[ik][out][:,None,None]*self.T.ln(ik,inn,out) )
+            
 
         if self.external_terms:
             summ +=   self.H.nn(ik,inn,out)
