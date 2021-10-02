@@ -78,7 +78,7 @@ def Efermi_Chiral():
 @pytest.fixture(scope="session")
 def quantities_Fe():
     return  ['ahc','ahc_test','dos','cumdos',
-               'conductivity_ohmic','conductivity_ohmic_fsurf','Morb','Morb_test']
+               'conductivity_ohmic','conductivity_ohmic_fsurf']#,'Morb','Morb_test']
 
 @pytest.fixture(scope="session")
 def quantities_Chiral():
@@ -139,7 +139,7 @@ def test_Fe_wcc(check_integrate,system_Fe_W90_wcc, compare_energyresult,quantiti
                global_parameters = {'use_symmetry' : False,'_FF_antisym':True,'_CCab_antisym':True } ,
             extra_precision = {"Morb":-1})  # the wcc gives quite big error, just checking that it runs
     # here we test agaist reference data obtained with wcc_phase, should matcxh with high accuracy"
-    compare_energyresult( "berry_Fe_W90", "Morb-wcc",  0 , suffix_ref="Morb-wcc" ,precision=-1e-8, compare_smooth = True )
+#    compare_energyresult( "berry_Fe_W90", "Morb-wcc",  0 , suffix_ref="Morb-wcc" ,precision=-1e-8, compare_smooth = True )
 
 def test_Fe_sym(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
@@ -164,7 +164,8 @@ def test_GaAs_tb(check_integrate,system_GaAs_tb, compare_energyresult,quantities
 
 def test_GaAs_wcc(check_integrate,system_GaAs_W90_wcc, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test GaAs with wcc_phase, comparing with data obtained without it"""
-    check_integrate(system_GaAs_W90_wcc , quantities_GaAs+['gyrotropic_Korb','gyrotropic_Korb_test'] , fout_name="berry_GaAs_W90" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
+    check_integrate(system_GaAs_W90_wcc , quantities_GaAs,#+['gyrotropic_Korb','gyrotropic_Korb_test'],
+         fout_name="berry_GaAs_W90" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                global_parameters = {'degen_thresh':0.005,'use_symmetry' : False ,'_FF_antisym':True,'_CCab_antisym':True},
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
 
