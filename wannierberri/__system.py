@@ -271,8 +271,10 @@ class System():
                 AA_R_new = np.copy(self.AA_R)
                 AA_R_new[np.arange(self.num_wann),np.arange(self.num_wann),self.iR0,:] -= self.wannier_centers_cart
             if hasattr(self,'BB_R'):
+                print ("WARNING: orbital moment does not work with wcc_phase so far")
                 BB_R_new = self.BB_R.copy() - self.Ham_R[:,:,:,None]*self.wannier_centers_cart[None,:,None,:]
             if hasattr(self,'CC_R'):
+                print ("WARNING: orbital moment does not work with wcc_phase so far")
                 norm = np.linalg.norm(self.CC_R - self.conj_XX_R(self.CC_R))
                 assert norm<1e-10 , f"norm={norm}"
                 assert hasattr(self,'BB_R') , "if you use CC_R, you need also BB_R"
