@@ -128,7 +128,6 @@ def compare_quant(quant):
 def test_Fe(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult,compare_smooth = True ,
-                additional_parameters = { 'correction_Morb_wcc':True} ,
                global_parameters = {'use_symmetry' : False,'_FF_antisym':True,'_CCab_antisym':True } ,
             extra_precision = {"Morb":-1e-6})
 
@@ -138,8 +137,8 @@ def test_Fe_wcc(check_integrate,system_Fe_W90_wcc, compare_energyresult,quantiti
     # here we test against reference data obtained without wcc_phase. Low accuracy for Morb - this may be a bug
     check_integrate(system_Fe_W90_wcc , quantities_Fe , fout_name="berry_Fe_W90" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult,
                global_parameters = {'use_symmetry' : False,'_FF_antisym':True,'_CCab_antisym':True } ,
-                additional_parameters = { 'correction_Morb_wcc':True} ,
-            extra_precision = {"Morb":-1e-4})  # the wcc gives quite big error, just checking that it runs
+                additional_parameters = { 'correction_wcc':True} ,
+            extra_precision = {"Morb":-1})  # the wcc gives quite big error, just checking that it runs
     # here we test agaist reference data obtained with wcc_phase, should matcxh with high accuracy"
 #    compare_energyresult( "berry_Fe_W90", "Morb-wcc",  0 , suffix_ref="Morb-wcc" ,precision=-1e-8, compare_smooth = True )
 
@@ -166,9 +165,10 @@ def test_GaAs_tb(check_integrate,system_GaAs_tb, compare_energyresult,quantities
 
 def test_GaAs_wcc(check_integrate,system_GaAs_W90_wcc, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test GaAs with wcc_phase, comparing with data obtained without it"""
-    check_integrate(system_GaAs_W90_wcc , quantities_GaAs,#+['gyrotropic_Korb','gyrotropic_Korb_test'],
+    check_integrate(system_GaAs_W90_wcc , quantities_GaAs,#+['gyrotropic_Korb_test'],
          fout_name="berry_GaAs_W90" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                global_parameters = {'degen_thresh':0.005,'use_symmetry' : False ,'_FF_antisym':True,'_CCab_antisym':True},
+                additional_parameters = { 'correction_Morb_wcc':True} ,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
 
 def test_GaAs_tb_wcc(check_integrate,system_GaAs_tb_wcc, compare_energyresult,quantities_GaAs,Efermi_GaAs):

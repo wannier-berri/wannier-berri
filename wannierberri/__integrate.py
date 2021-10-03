@@ -84,7 +84,7 @@ parameters_ocean = {
 'external_terms' : (True , "evaluate external terms"),
 'internal_terms' : (True,  "evaluate internal terms"),
 'tetra'          : (False, "use tetrahedron method"),
-'correction_Morb_wcc': (False,"include correction to make the results coincide with and withou wcc_phase for orbital moment")
+'correction_wcc': (False,"include corrections to make the results coincide with and without wcc_phase for orbital moment")
 }
 
 for key,val in parameters_ocean.items(): 

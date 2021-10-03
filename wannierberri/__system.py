@@ -250,6 +250,15 @@ class System():
         wannier_centers = self.wannier_centers_reduced
         return np.array([[j-i for j in wannier_centers] for i in wannier_centers])
 
+    @property
+    def wannier_centers_cart_wcc_phase(self):
+        "returns zero array if use_wcc_phase = False"
+        if self.use_wcc_phase:
+            return self.wannier_centers_cart
+        else:
+            return np.zeros_like(self.wannier_centers_cart)
+
+
     def set_wannier_centers(self):
         if self.wannier_centers_cart is not None:
             if self.wannier_centers_reduced is not None:
