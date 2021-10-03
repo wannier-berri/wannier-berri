@@ -112,7 +112,8 @@ class Data_K(System):
         self.num_wann=self.system.num_wann
         self.Kpoint=Kpoint
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
-        self.wannier_centers_cart=system.wannier_centers_cart
+        #self.wannier_centers_cart_wcc_phase=system.wannier_centers_wcc_phase
+#        print (f"wannier centers in Data_K : \n{self.system.wannier_centers_cart_wcc_phase}\n")
         self.cRvec_wcc=self.system.cRvec_p_wcc
 
         self.fft_R_to_k=FFT_R_to_k(self.system.iRvec,self.NKFFT,self.num_wann, numthreads=self.npar_k if self.npar_k>0 else 1,lib=self.fftlib)
@@ -157,7 +158,7 @@ class Data_K(System):
     def T_wcc_R(self):
         nw = self.num_wann
         res = np.zeros((nw,nw,self.system.nRvec,3),dtype=complex)
-        res[np.arange(nw),np.arange(nw),self.system.iR0,:] = self.wannier_centers_cart
+        res [np.arange(nw),np.arange(nw),self.system.iR0,:] = self.system.wannier_centers_cart_wcc_phase
         return res
 
 
@@ -230,14 +231,6 @@ class Data_K(System):
             for i in range(mat.shape[-1]):
                 mat[...,i]=self._rotate(mat[...,i])
             return mat
-
-    @lazy_property.LazyProperty
-    def diag_w_centers(self):
-        '''
-        After rotate. U^+ \tau U
-        diagnal matrix of wannier centers delta_ij*tau_i (Cartesian)
-        '''
-        return np.sum(self.UU_K.conj()[:,:,:,None,None] *self.UU_K[:,:,None,:,None]*self.system.wannier_centers_cart[None,:,None,None,:] , axis=1)
 
 
     def _R_to_k_H(self,XX_R,der=0,hermitean=True):
@@ -363,7 +356,7 @@ class Data_K(System):
         key = (name,der)
         if key not in self._bar_quantities:
             self._bar_quantities[key] = self._R_to_k_H( getattr(self,name+'_R').copy() , der=der, 
-                    hermitean = (name in ['AA','SS','FF',])  )
+                    hermitean = (name in ['AA','SS','OO'])  )
         return self._bar_quantities[key]
 
     def covariant(self,name,commader=0,gender=0,save = True):
