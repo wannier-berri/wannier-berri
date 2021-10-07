@@ -162,7 +162,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 
 
     cprint ("\nIntegrating the following  standard      quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
-    cprint ("\nIntegrating the following  user-defined  quantities: "+", ".join(user_quantities)+"\n",'green', attrs=['bold'])
+    cprint ("\nIntegrating the following  user-defined  quantities: "+", ".join(user_quantities.keys())+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
     def to_array(energy):
         if energy is not None: 
@@ -194,7 +194,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 
 
 
-def tabulate(system,grid, quantities=[],
+def tabulate(system,grid, quantities=[], user_quantities = {}, 
                   frmsf_name=None,ibands=None,suffix="",Ef0=0.,
                   parameters={},global_parameters={},
                   degen_thresh = 1e-4,
@@ -212,6 +212,10 @@ def tabulate(system,grid, quantities=[],
         a single  Fermi level. all energies are given with respect to Ef0
     quantities : list of str
         quantities to be integrated. See :ref:`sec-capabilities`
+    user_quantities : dict
+        a dictionary `{name:formula}`, where `name` is any string, and `formula` 
+        is a name of a child class of  :class:`~wannierberri.__formula_3.Formula_ln`
+        which should have defined attributes `nn` , `TRodd`, `Iodd`
     frmsf_name :  str
         if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
     parallel : :class:`~wannierberri.Parallel`
@@ -230,9 +234,13 @@ def tabulate(system,grid, quantities=[],
     if isinstance(grid,Path):
         mode = 'path'
         global_parameters_loc['use_symmetry'] = False
-    cprint ("\nTabulating the following quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
+    cprint ("\nTabulating the following standard     quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
+    cprint ("\nTabulating the following user-defined quantities: "+", ".join(user_quantities.keys())+"\n",'green', attrs=['bold'])
     check_option(quantities,tabulate_options,"tabulate")
-    eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters ,
+    eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,
+            quantities=quantities,
+            user_quantities=user_quantities,
+            parameters=parameters ,
                 degen_thresh = degen_thresh )
     t0=time()
     res=evaluate_K(eval_func,system,grid,
@@ -245,7 +253,7 @@ def tabulate(system,grid, quantities=[],
         t2=time()
         ttxt,twrite=write_frmsf(frmsf_name,Ef0,
                 parallel.num_cpus if parallel is not None else 1,
-                    quantities,res,suffix=suffix)
+                    quantities+list(user_quantities.keys()),res,suffix=suffix)
 
     t4=time()
 

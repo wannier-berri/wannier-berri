@@ -6,6 +6,7 @@ import pytest
 from pytest import approx
 
 import wannierberri as wberri
+from wannierberri import __fermiocean3 as fermiocean3
 from conftest import parallel_serial, parallel_ray 
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
@@ -18,7 +19,8 @@ from compare_result import compare_energyresult
 
 @pytest.fixture
 def check_integrate(parallel_serial):
-    def _inner(system,quantities,fout_name,Efermi,comparer,
+    def _inner(system,quantities=[],user_quantities={},
+                fout_name="berry",Efermi=np.linspace(-10,10,10),comparer=None,
                parallel=None,
                numproc=0,
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},adpt_num_iter=0,
@@ -36,6 +38,7 @@ def check_integrate(parallel_serial):
                 smearEf = 600.0,
     #            omega = omega,
                 quantities = quantities,
+                user_quantities = user_quantities,
                 parallel=parallel,
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
@@ -49,12 +52,13 @@ def check_integrate(parallel_serial):
         if len(suffix_ref)>0:
             suffix_ref="-"+suffix_ref
 
-        for quant in quantities:
+        for quant in quantities+list(user_quantities.keys()):
             data=result.results.get(quant).data
             assert data.shape[0] == len(Efermi)
             assert np.all( np.array(data.shape[1:]) == 3)
             prec=extra_precision[quant] if quant in extra_precision else precision
             comparer(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,precision=prec, compare_smooth = compare_smooth )
+
     return _inner
 
 @pytest.fixture(scope="session")
@@ -134,8 +138,6 @@ def test_Fe(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Ef
 
 def test_Fe_user(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
-    return  ['ahc','ahc_test','dos','cumdos',
-               'conductivity_ohmic','conductivity_ohmic_fsurf','Morb','Morb_test']
 
     calculators={ 
          'Morb'                     : fermiocean3.Morb                   ,
@@ -148,7 +150,7 @@ def test_Fe_user(check_integrate,system_Fe_W90, compare_energyresult,quantities_
          }
 
 
-    check_integrate(system_Fe_W90 , quantities_user=calculators , fout_name="berry_Fe_W90" , suffix="user" , Efermi=Efermi_Fe , comparer=compare_energyresult,compare_smooth = True ,
+    check_integrate(system_Fe_W90 , quantities = [], user_quantities=calculators , fout_name="berry_Fe_W90" , suffix="user" , Efermi=Efermi_Fe , comparer=compare_energyresult,compare_smooth = True ,
                global_parameters = {'use_symmetry' : False,'_FF_antisym':True,'_CCab_antisym':True } ,
             extra_precision = {"Morb":-1e-6})
 
