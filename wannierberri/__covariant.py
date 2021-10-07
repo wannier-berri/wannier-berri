@@ -26,7 +26,7 @@ class tildeFab(Formula_ln):
 #        print (f"tildeFab evaluating: internal({self.internal_terms}) and external({self.external_terms})")
         if self.external_terms:
             self.A=data_K.covariant('AA')
-            self.V=data_K.covariant('Ham',commader=1)
+            self.V=data_K.covariant('Ham',gender=1)
             self.F=data_K.covariant('FF')
 
         self.ndim=2
@@ -188,7 +188,7 @@ class tildeHab_d(Formula_ln):
         super().__init__(data_K,**parameters)
         self.dD = DerDcov(data_K)
         self.D  = data_K.Dcov
-        self.V = data_K.covariant('Ham',commader=1)
+        self.V = data_K.covariant('Ham',gender=1)
         self.E = data_K.E_K
         if self.external_terms:
             self.A = data_K.covariant('AA')
@@ -239,7 +239,7 @@ class tildeHGab_d(Formula_ln):
         self.dF = tildeFab_d(data_K,**parameters)
         self.dH = tildeHab_d(data_K,**parameters)
         self.E  = Eavln(data_K)
-        self.V = data_K.covariant('Ham',commader=1)
+        self.V = data_K.covariant('Ham',gender=1)
         self.sign = sign
         self.ndim = 3   
 

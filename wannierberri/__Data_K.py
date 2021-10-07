@@ -368,10 +368,13 @@ class Data_K(System):
                     Iodd = parity_I(name,commader),TRodd = parity_TR(name,commader)
                         )
             elif gender == 1:
-                res = Matrix_GenDer_ln(self.covariant(name),self.covariant(name,commader=1),
-                    self.Dcov ,
-                Iodd = parity_I(name,gender),TRodd = parity_TR(name,gender) 
-                        )
+                if name == 'Ham':
+                    res =  self.V_covariant
+                else:
+                    res = Matrix_GenDer_ln(self.covariant(name),self.covariant(name,commader=1),
+                        self.Dcov ,
+                    Iodd = parity_I(name,gender),TRodd = parity_TR(name,gender) 
+                            )
             else:
                 raise NotImplementedError()
             if not save: 
@@ -380,6 +383,15 @@ class Data_K(System):
                 self._covariant_quantities[key] = res 
         return self._covariant_quantities[key]
 
+    @property
+    def V_covariant(self):
+        class V(Matrix_ln):
+            def __init__(self,matrix):
+                super().__init__(matrix,TRodd = True, Iodd = True)
+
+            def ln(self,ik,inn,out):
+                return np.zeros((len(out),len(inn),3),dtype=complex)
+        return V(self.Xbar('Ham',der=1))
 
 
     @lazy_property.LazyProperty
