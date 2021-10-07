@@ -64,7 +64,7 @@ for key,val in parameters_ocean.items():
 
 
 
-def tabXnk(data_K,quantities=[],degen_thresh=-1,ibands=None,parameters={}):
+def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None,parameters={}):
 
 
     if ibands is None:
@@ -83,6 +83,10 @@ def tabXnk(data_K,quantities=[],degen_thresh=-1,ibands=None,parameters={}):
             else :
                  __parameters[param]=additional_parameters[q][param]
         results[q]=tabulator( calculators[q](data_K,**__parameters) )
+
+    for q,formula in user_quantities.items():
+        results[q]=tabulator( formula(data_K) )
+
 
     return TABresult( kpoints       = data_K.kpoints_all,
                       recip_lattice = data_K.system.recip_lattice,

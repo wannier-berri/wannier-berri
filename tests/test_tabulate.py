@@ -6,6 +6,7 @@ import pytest
 from pytest import approx
 
 import wannierberri as wberri
+from wannierberri import __formulas_nonabelian_3 as frml
 from conftest import parallel_serial #, parallel_ray 
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90 #,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
@@ -30,8 +31,9 @@ def get_component_list():
 
 
 @pytest.fixture
-def check_tabulate(parallel_serial,get_component_list):
-    def _inner(system,quantities,frmsf_name,comparer,
+def check_tabulate(parallel_serial,get_component_list,compare_fermisurfer):
+    def _inner(system,quantities=[],user_quantities={},
+                frmsf_name="tabulate",comparer=compare_fermisurfer,
                parallel=None,
                numproc=0,
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},
@@ -43,6 +45,7 @@ def check_tabulate(parallel_serial,get_component_list):
         result = wberri.tabulate(system,
                 grid = grid,
                 quantities = quantities,
+                user_quantities = user_quantities,
                 parallel=parallel,
                 parameters = additional_parameters,
                 ibands = ibands,
@@ -57,7 +60,7 @@ def check_tabulate(parallel_serial,get_component_list):
         if len(suffix_ref)>0:
             suffix_ref="-"+suffix_ref
 
-        for quant in ["E"]+quantities:
+        for quant in ["E"]+quantities+list(user_quantities.keys()):
           for comp in get_component_list(quant):
 #            data=result.results.get(quant).data
 #            assert data.shape[0] == len(Efermi)
@@ -87,6 +90,20 @@ def test_Fe(check_tabulate,system_Fe_W90, compare_fermisurfer,quantities_tab):
     check_tabulate(system_Fe_W90 , quantities_tab , frmsf_name="tabulate_Fe_W90" , suffix="" ,  comparer=compare_fermisurfer,
                global_parameters = {'use_symmetry' : False}, ibands = [5,6,7,8] , 
                 extra_precision={'berry':1e-4,"Der_berry":1e-4} )
+
+
+def test_Fe_user(check_tabulate,system_Fe_W90, compare_fermisurfer,quantities_tab):
+    """Test Energies, Velocities, berry curvature, its derivative"""
+    calculators={ 
+         'V'          : frml.Velocity, 
+         'berry'      : frml.Omega, #berry.calcImf_band_kn ,
+         'Der_berry'  : frml.DerOmega, #berry.calcImf_band_kn ,
+         }
+
+    check_tabulate(system_Fe_W90 , user_quantities = calculators , frmsf_name="tabulate_Fe_W90" , suffix="user" ,  comparer=compare_fermisurfer,
+               global_parameters = {'use_symmetry' : False}, ibands = [5,6,7,8] , 
+                extra_precision={'berry':1e-4,"Der_berry":1e-4} )
+
 
 def test_Chiral(check_tabulate,system_Chiral, compare_fermisurfer,quantities_tab):
     """Test Energies, Velocities, berry curvature, its derivative"""
