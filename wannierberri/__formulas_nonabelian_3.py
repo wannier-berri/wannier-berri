@@ -47,7 +47,7 @@ class DerDcov(_Dcov):
 
     def __init__(self,data_K):
         self.W=data_K.covariant('Ham',commader = 2)
-        self.V=data_K.covariant('Ham',commader = 1)
+        self.V=data_K.covariant('Ham',gender = 1)
         self.D=data_K.Dcov
         self.dEinv=DEinv_ln(data_K)
 
@@ -123,7 +123,6 @@ class Omega(Formula_ln):
 #        print (f"Omega evaluating: internal({self.internal_terms}) and external({self.external_terms})")
         if self.external_terms:
             self.A=data_K.covariant('AA')
-            self.V=data_K.covariant('Ham',commader=1)
             self.O=data_K.covariant('OO')
 
         self.ndim=1
@@ -202,7 +201,7 @@ class DerOmega(Formula_ln):
 
 class Velocity(Matrix_ln):
     def __init__(self,data_K):
-        v =  data_K.covariant('Ham',commader = 1)
+        v =  data_K.covariant('Ham',gender = 1)
         self.__dict__.update(v.__dict__)
 
 class Spin(Matrix_ln):
