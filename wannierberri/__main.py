@@ -110,7 +110,10 @@ def check_option(quantities,avail,tp):
 ## TODO: Unify the two methids, to do everything in one shot
 
 def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
-                        smearEf=10,smearW=None,quantities=[],adpt_num_iter=0,adpt_fac=1,
+                        smearEf=10,smearW=None,
+                        quantities=[],
+                        user_quantities = {}, 
+                        adpt_num_iter=0,adpt_fac=1,
                         fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
                         parallel = None,
                         parameters={},global_parameters={} ):
@@ -131,6 +134,11 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         smearing over Fermi levels (in Kelvin)
     quantities : list of str
         quantities to be integrated. See :ref:`sec-capabilities`
+    user_quantities : dict
+        a dictionary `{name:function}`, where `name` is any string, and `function(data_K,Efermi)` 
+        takes two arguments
+        `data_K` of  of type :class:`~wannierberri.__Data_K.Data_K`  and Efermi -  `np.array`
+        and returns an object  :class:`~wannierberri.__result.EnergyResult`
     adpt_num_iter : int 
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
     adpt_fac : int 
@@ -153,7 +161,8 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 #        a single  Fermi level for optical properties
 
 
-    cprint ("\nIntegrating the following quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
+    cprint ("\nIntegrating the following  standard      quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
+    cprint ("\nIntegrating the following  user-defined  quantities: "+", ".join(user_quantities)+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
     def to_array(energy):
         if energy is not None: 
@@ -175,7 +184,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     # smoothW  = getSmoother(omega,  smearW,  "Gaussian") # smoother for functions of frequency
 
     eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, omega=omega, smootherEf=smoothEf, smootherOmega=smoothW,
-            quantities=quantities, parameters=parameters )
+            quantities=quantities,user_quantities = user_quantities, parameters=parameters )
     res=evaluate_K(eval_func,system,grid,fftlib=fftlib,
             adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac,
                 fout_name=fout_name,suffix=suffix,

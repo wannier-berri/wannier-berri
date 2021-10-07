@@ -132,6 +132,27 @@ def test_Fe(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Ef
             extra_precision = {"Morb":-1e-6})
 
 
+def test_Fe_user(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    return  ['ahc','ahc_test','dos','cumdos',
+               'conductivity_ohmic','conductivity_ohmic_fsurf','Morb','Morb_test']
+
+    calculators={ 
+         'Morb'                     : fermiocean3.Morb                   ,
+         'ahc'                      : fermiocean3.AHC                    ,
+         'ahc_test'                 : fermiocean3.AHC_test               ,
+         'cumdos'                   : fermiocean3.cumdos                 ,
+         'dos'                      : fermiocean3.dos                    ,
+         'conductivity_ohmic'       : fermiocean3.ohmic                  ,
+         'conductivity_ohmic_fsurf' : fermiocean3.ohmic_fsurf            ,
+         }
+
+
+    check_integrate(system_Fe_W90 , quantities_user=calculators , fout_name="berry_Fe_W90" , suffix="user" , Efermi=Efermi_Fe , comparer=compare_energyresult,compare_smooth = True ,
+               global_parameters = {'use_symmetry' : False,'_FF_antisym':True,'_CCab_antisym':True } ,
+            extra_precision = {"Morb":-1e-6})
+
+
 def test_Fe_wcc(check_integrate,system_Fe_W90_wcc, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     # here we test against reference data obtained without wcc_phase. Low accuracy for Morb - this may be a bug
