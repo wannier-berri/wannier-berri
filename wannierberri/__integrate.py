@@ -187,7 +187,7 @@ descriptions['opt_shiftcurrent']            ="Nonlinear shiftcurrent in A/V^2 - 
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
 
-def intProperty(data,quantities=[],Efermi=None,omega=None,smootherEf=VoidSmoother(),smootherOmega=VoidSmoother(),parameters={}):
+def intProperty(data,quantities=[],user_quantities={},Efermi=None,omega=None,smootherEf=VoidSmoother(),smootherOmega=VoidSmoother(),parameters={}):
 
     def _smoother(quant):
         if quant in calculators_trans:
@@ -212,6 +212,9 @@ def intProperty(data,quantities=[],Efermi=None,omega=None,smootherEf=VoidSmoothe
                 __parameters['shc_specification']=True
         results[q]=calculators[q](data,Efermi,**__parameters)
         results[q].set_smoother(_smoother(q))
+    for q,func in user_quantities.items():
+        results[q]=func(data,Efermi)
+        results[q].set_smoother(smootherEf)
 
     return INTresult( results=results )
 
