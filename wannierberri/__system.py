@@ -42,9 +42,7 @@ class System():
 
 
     __doc__ = """
-    The base class for describing a system. Although it has its own constructor, it requires input binary files prepared by a special 
-    `branch <https://github.com/stepan-tsirkin/wannier90/tree/save4wberri>`_ of ``postw90.x`` .
-    Therefore this class by itself it is not recommended for a feneral user. Instead, 
+    The base class for describing a system. Does not have its own constructor, 
     please use the child classes, e.g  :class:`~wannierberri.System_w90` or :class:`~wannierberri.System_tb`
 
 
@@ -53,11 +51,13 @@ class System():
     seedname : str
         the seedname used in Wannier90. Default: ``{seedname}``
     berry : bool 
-        set ``True`` if quantities derived from Berry connection or Berry curvature will be used. Default: ``{berry}``
+        set ``True`` to enable evaluation of external term in  Berry connection or Berry curvature and their 
+        derivatives. Default: ``{berry}``
     spin : bool
         set ``True`` if quantities derived from spin  will be used. Default:``{spin}``
     morb : bool
-        set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file. Default: ``{morb}``
+        set ``True`` to enable calculation of external terms in orbital moment and its derivatives.
+        Requires the ``.uHu`` file. Default: ``{morb}``
     periodic : [bool,bool,bool]
         set ``True`` for periodic directions and ``False`` for confined (e.g. slab direction for 2D systems). If less then 3 values provided, the rest are treated as ``False`` . Default : ``{periodic}``
     SHCryoo : bool 
@@ -76,6 +76,11 @@ class System():
         use the given wannier_centers (cartesian) instead of those determined automatically. Incompatible with `wannier_centers_reduced`
     wannier_centers_reduced :  array-like(num_wann,3)
         use the given wannier_centers (reduced) instead of those determined automatically. Incompatible with `wannier_centers_cart`
+
+    Notes:
+    -------
+        for tight-binding models it is recommended to use `use_wcc_phase = True`. In this case the external terms vanish, and 
+        one can safely use `berry=False, morb=False`, and also set `'external_terms':True` in the parameters of the calculation
 
     """ .format(**default_parameters)
 

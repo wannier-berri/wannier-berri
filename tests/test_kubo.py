@@ -23,8 +23,8 @@ def check_integrate_dynamical():
     """
     def _inner(system, quantities, fout_name, Efermi, omega, grid_param, comparer,
                additional_parameters={}, 
-               global_parameters={},
-               adpt_num_iter=0,
+               parameters_K={},
+               adpt_num_iter=0,use_symmetry = False,
                suffix="", suffix_ref="", extra_precision={} ):
 
         grid = wberri.Grid(system, **grid_param)
@@ -33,9 +33,10 @@ def check_integrate_dynamical():
                 Efermi = Efermi,
                 omega = omega,
                 quantities = quantities,
+                irkpt = use_symmetry, symmetrize = use_symmetry,
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
-                global_parameters = global_parameters,
+                parameters_K = parameters_K,
                 fout_name = os.path.join(OUTPUT_DIR, fout_name),
                 suffix = suffix,
                 restart = False,
@@ -85,7 +86,6 @@ def test_optical(check_integrate_dynamical, system_Fe_W90, compare_energyresult)
     check_integrate_dynamical(system_Fe_W90, quantities, fout_name="kubo_Fe_W90",
         Efermi=Efermi, omega=omega, grid_param=grid_param,
         adpt_num_iter=adpt_num_iter, comparer=compare_energyresult,
-        global_parameters = {'use_symmetry' : False} ,
         additional_parameters=kubo_params)
 
     # TODO: Add wcc test

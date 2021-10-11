@@ -102,7 +102,8 @@ def welcome():
     
 
 def check_option(quantities,avail,tp):
-    for opt in quantities:
+    for opt_full in quantities:
+      opt = opt_full.split('^')[0]
       if opt not in avail:
         raise RuntimeError("Quantity {} is not available for {}. Available options are : \n{}\n".format(opt,tp,avail) )
 
@@ -114,9 +115,10 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         quantities=[],
                         user_quantities = {}, 
                         adpt_num_iter=0,adpt_fac=1,
+                        irkpt = True, symmetrize = True,
                         fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
                         parallel = None,
-                        parameters={},global_parameters={} ):
+                        parameters={},parameters_K={},specific_parameters={} ):
     """
     Integrate 
 
@@ -134,6 +136,8 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         smearing over Fermi levels (in Kelvin)
     quantities : list of str
         quantities to be integrated. See :ref:`sec-capabilities`
+        One can append any label after a '^' symbol. In this case same quantity 
+        may be calculated several times in one run, but with different parameters (see specifuc_parameters)
     user_quantities : dict
         a dictionary `{name:function}`, where `name` is any string, and `function(data_K,Efermi)` 
         takes two arguments
@@ -145,6 +149,19 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         number of K-points to be refined per quantity and criteria.
     parallel : :class:`~wannierberri.Parallel`
         object describing parallelization scheme
+    irkpt : bool
+        evaluate only symmetry-irreducible K-points
+    symmetrize : bool
+        symmetrize the result (always `True` if `irkpt == True`)
+    parameters : dict  
+        `{'name':value,...}` , Each quantity that 
+        recognizes a parameter with the given name will use it
+    specific_parameters : dict  
+        `'quantity^label':dict`, where dict is analogous to  `parameters`. This values will override 
+        for the instance of the quantity labeled by '^label'
+    parameters_K : dict
+        parameters to be passed to the :class:`~wannierberri.__data_K.Data_K`, 
+        so they are common for the calculation.
  
     Returns
     --------
@@ -160,7 +177,8 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 #    Ef0 : float
 #        a single  Fermi level for optical properties
 
-
+    if irkpt:
+        symmetrize = True
     cprint ("\nIntegrating the following  standard      quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     cprint ("\nIntegrating the following  user-defined  quantities: "+", ".join(user_quantities.keys())+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
@@ -183,12 +201,14 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     smoothW  = getSmoother(omega,  smearW) # smoother for functions of frequency
     # smoothW  = getSmoother(omega,  smearW,  "Gaussian") # smoother for functions of frequency
 
-    eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, omega=omega, smootherEf=smoothEf, smootherOmega=smoothW,
-            quantities=quantities,user_quantities = user_quantities, parameters=parameters )
+    eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, omega=omega, 
+            smootherEf=smoothEf, smootherOmega=smoothW,
+            quantities=quantities,user_quantities = user_quantities, 
+            parameters=parameters, specific_parameters = specific_parameters )
     res=evaluate_K(eval_func,system,grid,fftlib=fftlib,
-            adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac,
+            adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac, irkpt=irkpt,symmetrize=symmetrize,
                 fout_name=fout_name,suffix=suffix,
-                restart=restart,file_Klist=file_Klist, parallel = parallel,global_parameters=global_parameters )
+                restart=restart,file_Klist=file_Klist, parallel = parallel,parameters_K=parameters_K )
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
 
@@ -196,7 +216,8 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 
 def tabulate(system,grid, quantities=[], user_quantities = {}, 
                   frmsf_name=None,ibands=None,suffix="",Ef0=0.,
-                  parameters={},global_parameters={},
+                  irkpt = True, symmetrize = True,
+                  parameters={},parameters_K={},specific_parameters={},
                   degen_thresh = 1e-4,
                   parallel = None ):
     """
@@ -216,6 +237,10 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
         a dictionary `{name:formula}`, where `name` is any string, and `formula` 
         is a name of a child class of  :class:`~wannierberri.__formula_3.Formula_ln`
         which should have defined attributes `nn` , `TRodd`, `Iodd`
+    irkpt : bool
+        evaluate only symmetry-irreducible K-points
+    symmetrize : bool
+        symmetrize the result
     frmsf_name :  str
         if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
     parallel : :class:`~wannierberri.Parallel`
@@ -229,11 +254,10 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
     """
 
     mode = '3D'
-    global_parameters_loc={}
-    global_parameters_loc.update(global_parameters)
     if isinstance(grid,Path):
         mode = 'path'
-        global_parameters_loc['use_symmetry'] = False
+        irkpt      = False
+        symmetrize = False
     cprint ("\nTabulating the following standard     quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     cprint ("\nTabulating the following user-defined quantities: "+", ".join(user_quantities.keys())+"\n",'green', attrs=['bold'])
     check_option(quantities,tabulate_options,"tabulate")
@@ -245,7 +269,8 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
     t0=time()
     res=evaluate_K(eval_func,system,grid,
             adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,
-            parallel=parallel,global_parameters=global_parameters_loc )
+            irkpt=irkpt,symmetrize=symmetrize,
+            parallel=parallel,parameters_K=parameters_K )
 
     t1=time()
     if mode=='3D':

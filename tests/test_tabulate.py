@@ -37,7 +37,8 @@ def check_tabulate(parallel_serial,get_component_list,compare_fermisurfer):
                parallel=None,
                numproc=0,
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},
-               additional_parameters={}, global_parameters={},
+                use_symmetry = False,
+               additional_parameters={}, parameters_K={},
                suffix="", suffix_ref="",
                extra_precision={},ibands = None):
 
@@ -49,7 +50,8 @@ def check_tabulate(parallel_serial,get_component_list,compare_fermisurfer):
                 parallel=parallel,
                 parameters = additional_parameters,
                 ibands = ibands,
-                global_parameters = global_parameters,
+                irkpt = use_symmetry, symmetrize = use_symmetry,
+                parameters_K = parameters_K,
                 frmsf_name = os.path.join(OUTPUT_DIR, frmsf_name),
                 suffix=suffix,
                 degen_thresh = 5e-2
@@ -88,7 +90,7 @@ def compare_quant(quant):
 def test_Fe(check_tabulate,system_Fe_W90, compare_fermisurfer,quantities_tab):
     """Test Energies, Velocities, berry curvature, its derivative"""
     check_tabulate(system_Fe_W90 , quantities_tab , frmsf_name="tabulate_Fe_W90" , suffix="" ,  comparer=compare_fermisurfer,
-               global_parameters = {'use_symmetry' : False}, ibands = [5,6,7,8] , 
+                ibands = [5,6,7,8] , 
                 extra_precision={'berry':1e-4,"Der_berry":1e-4} )
 
 
@@ -101,18 +103,18 @@ def test_Fe_user(check_tabulate,system_Fe_W90, compare_fermisurfer,quantities_ta
          }
 
     check_tabulate(system_Fe_W90 , user_quantities = calculators , frmsf_name="tabulate_Fe_W90" , suffix="user" ,  comparer=compare_fermisurfer,
-               global_parameters = {'use_symmetry' : False}, ibands = [5,6,7,8] , 
+                 ibands = [5,6,7,8] , 
                 extra_precision={'berry':1e-4,"Der_berry":1e-4} )
 
 
 def test_Chiral(check_tabulate,system_Chiral, compare_fermisurfer,quantities_tab):
     """Test Energies, Velocities, berry curvature, its derivative"""
     check_tabulate(system_Chiral , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="" ,  comparer=compare_fermisurfer,
-               global_parameters = {'use_symmetry' : False ,"use_wcc_phase" : True } , additional_parameters = {'external_terms':False}, ibands = [0,1] )
+              additional_parameters = {'external_terms':False}, ibands = [0,1] )
 
 
 def test_Chiral_sym(check_tabulate,system_Chiral, compare_fermisurfer,quantities_tab):
     """Test Energies, Velocities, berry curvature, its derivative"""
     check_tabulate(system_Chiral , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="sym" ,  comparer=compare_fermisurfer,
-               global_parameters = {'use_symmetry' : True , "use_wcc_phase" : True } , additional_parameters = {'external_terms':False}, ibands = [0,1] )
+               use_symmetry =  True  , additional_parameters = {'external_terms':False}, ibands = [0,1] )
 
