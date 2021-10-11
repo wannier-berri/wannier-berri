@@ -95,10 +95,12 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
     return len(dK_list)
 
 
+
 def evaluate_K(func,system,grid,fftlib='fftw',
-            adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
-             suffix="",
-             global_parameters={},
+            adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,
+            irkpt=True,symmetrize=True, 
+            fout_name="result", suffix="",
+             parameters_K={},
              file_Klist="K_list.pickle",restart=False,Klist_part = 10,
              parallel=None  # serial by default
              ):
@@ -113,10 +115,6 @@ The parallelisation is done by K-points
 As a result, the integration will be performed over NKFFT x NKdiv
 """
 
-    try : 
-        use_symmetry = global_parameters["use_symmetry"]
-    except KeyError as err:
-        use_symmetry = True
 
     if parallel is None:
         parallel = Parallel()
@@ -134,12 +132,12 @@ As a result, the integration will be performed over NKFFT x NKdiv
         remote_parameters = {'_system' : ray.put(system) , '_grid' : ray.put(grid), 'npar_k': parallel.npar_k,'fftlib':fftlib}
         @ray.remote
         def paralfunc(Kpoint,_system,_grid,npar_k,fftlib):
-            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,**global_parameters)
+            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,**parameters_K)
             return func(data)
     else:
         remote_parameters = {'_system' : system , '_grid' : grid, 'npar_k': parallel.npar_k,'fftlib':fftlib}
         def paralfunc(Kpoint,_system,_grid,npar_k,fftlib):
-            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,**global_parameters)
+            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,**parameters_K)
             return func(data)
 
     if restart:
@@ -161,7 +159,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
             print ("WARNING: {}".format( err) )
             print ("WARNING : reading from {0} failed, starting from scrath".format(file_Klist))
     else:
-        K_list=grid.get_K_list(use_symmetry=use_symmetry)
+        K_list=grid.get_K_list(use_symmetry=irkpt)
         print ("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
         start_iter=0
 
@@ -195,7 +193,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
           if not K.evaluated:
             print (" K-point {0} : {1} ".format(i,K))
         counter+=process(paralfunc,K_list,parallel,
-                     symgroup=system.symgroup if  use_symmetry else None,
+                     symgroup=system.symgroup if  symmetrize else None,
                      remote_parameters=remote_parameters)
         
         try:
@@ -226,9 +224,9 @@ As a result, the integration will be performed over NKFFT x NKdiv
         print("time2 = ",time2-time1)
         l1=len(K_list)
         for iK in select_points:
-            K_list+=K_list[iK].divide(adpt_mesh,system.periodic,use_symmetry=use_symmetry)
+            K_list+=K_list[iK].divide(adpt_mesh,system.periodic,use_symmetry=irkpt)
 
-        if use_symmetry:
+        if  irkpt:
             print ("checking for equivalent points in all points (of new  {} points)".format(len(K_list)-l1))
             nexcl=exclude_equiv_points(K_list,new_points=len(K_list)-l1)
             print (" excluded {0} points".format(nexcl))

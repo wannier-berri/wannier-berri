@@ -75,17 +75,22 @@ def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None
     tabulator = Tabulator(data_K,ibands,degen_thresh)
 
     results={'E':result.KBandResult(data_K.E_K[:,ibands],TRodd=False,Iodd=False)}
-    for q in quantities:
+    for qfull in quantities:
+        q = qfull.split('^')[0]
         __parameters={}
         for param in additional_parameters[q]:
             if param in parameters:
                  __parameters[param]=parameters[param]
             else :
                  __parameters[param]=additional_parameters[q][param]
-        results[q]=tabulator( calculators[q](data_K,**__parameters) )
+        results[qfull]=tabulator( calculators[q](data_K,**__parameters) )
 
     for q,formula in user_quantities.items():
-        results[q]=tabulator( formula(data_K) )
+        if q in specific_parameters:
+            __parameters = specific_parameters[qfull]
+        else:
+            __parameters = {}
+        results[qfull]=tabulator( formula(data_K,**__parameters) )
 
 
     return TABresult( kpoints       = data_K.kpoints_all,

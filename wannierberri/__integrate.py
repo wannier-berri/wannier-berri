@@ -187,7 +187,10 @@ descriptions['opt_shiftcurrent']            ="Nonlinear shiftcurrent in A/V^2 - 
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
 
-def intProperty(data,quantities=[],user_quantities={},Efermi=None,omega=None,smootherEf=VoidSmoother(),smootherOmega=VoidSmoother(),parameters={}):
+def intProperty(data,quantities=[],user_quantities={},
+                Efermi=None,omega=None,
+                smootherEf=VoidSmoother(),smootherOmega=VoidSmoother(),
+                parameters={},specific_parameters = {}):
 
     def _smoother(quant):
         if quant in calculators_trans:
@@ -198,7 +201,8 @@ def intProperty(data,quantities=[],user_quantities={},Efermi=None,omega=None,smo
             return VoidSmoother()
 
     results={}
-    for q in quantities:
+    for qfull in quantities:
+        q=qfull.split('^')[0]
         __parameters={}
         for param in additional_parameters[q]:
             if param in parameters:
@@ -210,10 +214,16 @@ def intProperty(data,quantities=[],user_quantities={},Efermi=None,omega=None,smo
         if q == 'opt_SHCqiao' or q == 'opt_SHCryoo':
             if 'shc_alpha' in parameters and 'shc_beta' in parameters and 'shc_gamma' in parameters:
                 __parameters['shc_specification']=True
-        results[q]=calculators[q](data,Efermi,**__parameters)
-        results[q].set_smoother(_smoother(q))
+        if qfull in specific_parameters:
+            __parameters.update(specific_parameters[qfull])
+        results[qfull]=calculators[q](data,Efermi,**__parameters)
+        results[qfull].set_smoother(_smoother(q))
     for q,func in user_quantities.items():
-        results[q]=func(data,Efermi)
+        if q in specific_parameters:
+            __parameters = specific_parameters[qfull]
+        else:
+            __parameters = {}
+        results[q]=func(data,Efermi,**__parameters)
         results[q].set_smoother(smootherEf)
 
     return INTresult( results=results )

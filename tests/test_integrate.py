@@ -24,7 +24,7 @@ def check_integrate(parallel_serial):
                parallel=None,
                numproc=0,
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},adpt_num_iter=0,
-               additional_parameters={}, global_parameters={},
+               additional_parameters={}, parameters_K={},use_symmetry = False,
                suffix="", suffix_ref="",
                extra_precision={},
                precision = -1e-8 ,
@@ -41,8 +41,9 @@ def check_integrate(parallel_serial):
                 user_quantities = user_quantities,
                 parallel=parallel,
                 adpt_num_iter = adpt_num_iter,
+                irkpt = use_symmetry, symmetrize = use_symmetry,
                 parameters = additional_parameters,
-                global_parameters = global_parameters,
+                parameters_K = parameters_K,
                 fout_name = os.path.join(OUTPUT_DIR, fout_name),
                 suffix=suffix,
                 restart = restart,
@@ -132,7 +133,7 @@ def compare_quant(quant):
 def test_Fe(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="" , Efermi=Efermi_Fe , comparer=compare_energyresult,compare_smooth = True ,
-               global_parameters = {'use_symmetry' : False,'_FF_antisym':True,'_CCab_antisym':True } ,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
             extra_precision = {"Morb":-1e-6})
 
 
@@ -151,7 +152,7 @@ def test_Fe_user(check_integrate,system_Fe_W90, compare_energyresult,quantities_
 
 
     check_integrate(system_Fe_W90 , quantities = [], user_quantities=calculators , fout_name="berry_Fe_W90" , suffix="user" , Efermi=Efermi_Fe , comparer=compare_energyresult,compare_smooth = True ,
-               global_parameters = {'use_symmetry' : False,'_FF_antisym':True,'_CCab_antisym':True } ,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
             extra_precision = {"Morb":-1e-6})
 
 
@@ -159,7 +160,7 @@ def test_Fe_wcc(check_integrate,system_Fe_W90_wcc, compare_energyresult,quantiti
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     # here we test against reference data obtained without wcc_phase. Low accuracy for Morb - this may be a bug
     check_integrate(system_Fe_W90_wcc , quantities_Fe , fout_name="berry_Fe_W90" , suffix="wcc" , Efermi=Efermi_Fe , comparer=compare_energyresult,
-               global_parameters = {'use_symmetry' : False,'_FF_antisym':True,'_CCab_antisym':True } ,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                 additional_parameters = { 'correction_wcc':True} ,
             extra_precision = {"Morb":-1})  # the wcc gives quite big error, just checking that it runs
     # here we test agaist reference data obtained with wcc_phase, should matcxh with high accuracy"
@@ -167,15 +168,15 @@ def test_Fe_wcc(check_integrate,system_Fe_W90_wcc, compare_energyresult,quantiti
 
 def test_Fe_sym(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
-    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="sym" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult,
-               global_parameters = {'use_symmetry' : True,'_FF_antisym':True,'_CCab_antisym':True }  )
+    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , use_symmetry = True, suffix="sym" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True }  )
 
 
 def test_GaAs(check_integrate,system_GaAs_W90, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test berry dipole"""
     check_integrate(system_GaAs_W90 , quantities_GaAs+['gyrotropic_Korb','gyrotropic_Korb_test'] , 
         fout_name="berry_GaAs_W90" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
-               global_parameters = {'degen_thresh':0.005,'use_symmetry' : False ,'_FF_antisym':True,'_CCab_antisym':True},
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True},
 #                additional_parameters = {"internal_terms":False },
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
@@ -183,60 +184,53 @@ def test_GaAs(check_integrate,system_GaAs_W90, compare_energyresult,quantities_G
 def test_GaAs_tb(check_integrate,system_GaAs_tb, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test berry dipole"""
     check_integrate(system_GaAs_tb , quantities_GaAs , fout_name="berry_GaAs_tb" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
-               global_parameters = {'degen_thresh':0.005,'use_symmetry' : False ,'_FF_antisym':True,'_CCab_antisym':True},
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True},
                   extra_precision = {"berry_dipole_fsurf":1e-6}  )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 def test_GaAs_wcc(check_integrate,system_GaAs_W90_wcc, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test GaAs with wcc_phase, comparing with data obtained without it"""
     check_integrate(system_GaAs_W90_wcc , quantities_GaAs,#+['gyrotropic_Korb_test'],
          fout_name="berry_GaAs_W90" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
-               global_parameters = {'degen_thresh':0.005,'use_symmetry' : False ,'_FF_antisym':True,'_CCab_antisym':True},
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True},
                 additional_parameters = { 'correction_Morb_wcc':True} ,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
 
 def test_GaAs_tb_wcc(check_integrate,system_GaAs_tb_wcc, compare_energyresult,quantities_GaAs,Efermi_GaAs):
     """Test GaAs (from tb file) with wcc_phase, comparing with data obtained without it"""
     check_integrate(system_GaAs_tb_wcc , quantities_GaAs , fout_name="berry_GaAs_tb" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
-               global_parameters = {'degen_thresh':0.005,'use_symmetry' : False ,'_FF_antisym':True,'_CCab_antisym':True},
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True},
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 
 def test_Haldane_PythTB(check_integrate,system_Haldane_PythTB,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="pythtb" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
-               global_parameters = {'use_symmetry' : False} ,
             grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
 def test_Haldane_TBmodels(check_integrate,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_TBmodels , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
-               global_parameters = {'use_symmetry' : False} ,
             grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
 def test_Haldane_PythTB_wcc(check_integrate,system_Haldane_PythTB,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="pythtb_wcc" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
-               global_parameters = {'use_symmetry' : False} ,
             grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
 def test_Haldane_TBmodels_wcc(check_integrate,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_TBmodels , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="wcc" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
-               global_parameters = {'use_symmetry' : False, } ,
                grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
 
 def test_Haldane_TBmodels_wcc_internal_2(check_integrate,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_TBmodels_internal , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="wcc_internal_2" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
-               global_parameters = {'use_symmetry' : False, },
                 additional_parameters = { 'external_terms':False} ,
                grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
 def test_Haldane_TBmodels_wcc_internal_2(check_integrate,system_Haldane_TBmodels_internal,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_TBmodels_internal , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="wcc_internal_2" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
-               global_parameters = {'use_symmetry' : False, },
                 additional_parameters = { 'external_terms':False} ,
                grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
 def test_Haldane_TBmodels_wcc_external(check_integrate,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_TBmodels , ["ahc"] , fout_name="berry_Haldane_tbmodels" , suffix="wcc_external" ,suffix_ref="wcc_external" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
-               global_parameters = {'use_symmetry' : False, },
                 additional_parameters = { 'internal_terms':False} ,
                grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
@@ -244,19 +238,19 @@ def test_Haldane_TBmodels_wcc_external(check_integrate,system_Haldane_TBmodels,c
 def test_Haldane_PythTB_sym(check_integrate,system_Haldane_PythTB,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_PythTB , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="pythtb_sym" , suffix_ref="",
             Efermi=Efermi_Haldane , comparer=compare_energyresult,
-               global_parameters = {'use_symmetry' : True} ,
+               use_symmetry = True ,
             grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
 def test_Haldane_TBmodels_sym(check_integrate,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_TBmodels , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="sym" , suffix_ref="",
             Efermi=Efermi_Haldane , comparer=compare_energyresult,
-               global_parameters = {'use_symmetry' : True} ,
+               use_symmetry = True ,
             grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
 def test_Haldane_TBmodels_sym_refine(check_integrate,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_TBmodels , quantities_Haldane , fout_name="berry_Haldane_tbmodels" , suffix="sym" , suffix_ref="sym",
             Efermi=Efermi_Haldane , comparer=compare_energyresult, adpt_num_iter=1,
-               global_parameters = {'use_symmetry' : True} ,
+               use_symmetry =  True ,
             grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
 
@@ -265,8 +259,8 @@ def test_Haldane_TBmodels_sym_refine(check_integrate,system_Haldane_TBmodels,com
 def test_Fe_sym_refine(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , 
-                  adpt_num_iter=1,
-               global_parameters = {'use_symmetry' : True,'_FF_antisym':True,'_CCab_antisym':True } ,
+                  adpt_num_iter=1,use_symmetry = True,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                   suffix="sym" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult )
 
 def test_Fe_pickle_Klist(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
@@ -277,12 +271,12 @@ def test_Fe_pickle_Klist(check_integrate,system_Fe_W90, compare_energyresult,qua
     except FileNotFoundError:
         pass
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , 
-                  adpt_num_iter=0,
-               global_parameters = {'use_symmetry' : True,'_FF_antisym':True,'_CCab_antisym':True } ,
+                  adpt_num_iter=0, use_symmetry =  True,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                   suffix="pickle" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult )
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , 
-                  adpt_num_iter=1,
-               global_parameters = {'use_symmetry' : True,'_FF_antisym':True,'_CCab_antisym':True } ,
+                  adpt_num_iter=1, use_symmetry =  True,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                   suffix="pickle" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult,restart=True )
 
 
@@ -290,25 +284,25 @@ def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,qu
       parallel_ray):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-ray-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,parallel=parallel_ray,
-               global_parameters = {'use_symmetry' : False,'_FF_antisym':True,'_CCab_antisym':True } ,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                     )
 
 def test_Fe_parallel_old(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-old-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4 ,
-               global_parameters = {'use_symmetry' : False,'_FF_antisym':True,'_CCab_antisym':True } ,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                     )
 
 
 def test_Chiral(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
     check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
-               global_parameters = {'use_symmetry' : True },
+                use_symmetry =  True ,
                 additional_parameters = { 'external_terms':False} ,
                grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
 
 
 def test_Chiral_tetra(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
     check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral_tetra" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
-               global_parameters = {'use_symmetry' : True, },
+               use_symmetry =  True,
                 additional_parameters = { 'external_terms':False, 'tetra':True} ,
                grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
