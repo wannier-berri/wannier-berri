@@ -26,8 +26,8 @@ class sym_wann():
         eg: ['Te: s','Te:p']
     iRvec: array
         List of R vectors.
-    XX_R: array
-        Matrix before symmetrization.
+    XX_R: dic
+        Matrix before symmetrization. {'HH':self.HH_R,'AA':self.AA_R,......}
     Spin: boolean
         Spin orbital coupling.
     TR; boolean
@@ -39,13 +39,11 @@ class sym_wann():
     Updated list of R vectors.
     '''
     def __init__(self,num_wann=None,lattice=None,positions=None,atom_name=None,proj=None,iRvec=None,
-            HH_R=None,AA_R=None,BB_R=None,CC_R=None,SS_R=None,SA_R=None,SHA_R=None,SR_R=None,
-            SH_R=None,SHR_R=None,
-            spin=False,TR=False):
+            XX_R=None,spin=False,TR=False):
 
         self.spin=spin
         self.TR=TR
-        self.HH_R = HH_R
+        self.HH_R =XX_R['HH']
         self.iRvec = iRvec.tolist()
         self.nRvec = len(iRvec)
         self.num_wann = num_wann
@@ -56,12 +54,12 @@ class sym_wann():
         self.matrix_list = ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
         self.matrix_bool = {}
         for X in self.matrix_list:
-            vars(self)[X+'_R'] = vars()[X+'_R']
-            if vars(self)[X+'_R'] is None:
-                self.matrix_bool[X] = False
-            else:
+            try: 
+                vars(self)[X+'_R'] = XX_R[X]
                 self.matrix_bool[X] = True
-        
+            except :
+                self.matrix_bool[X] = False
+        print(self.matrix_bool) 
         self.orbital_dic = {"s":1,"p":3,"d":5,"f":7,"sp3":4,"sp2":3,"l=0":1,"l=1":3,"l=2":5,"l=3":7}	
         self.wann_atom_info = []
 

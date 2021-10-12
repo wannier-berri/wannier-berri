@@ -84,10 +84,12 @@ class System_tb(System):
         else: 
             self.AA_R = None
         f.close()
-        
+    
         if self.symmetrization: 
+            XX_R={'HH':self.HH_R}
+            XX_R['AA'] = self.AA_R
             symmetrize_wann = sym_wann(num_wann=self.num_wann,lattice=self.real_lattice,positions=self.positions,atom_name=self.atom_name,
-                proj=self.proj,iRvec=self.iRvec,HH_R=self.HH_R,AA_R=self.AA_R,spin=True,TR=True)
+                proj=self.proj,iRvec=self.iRvec,XX_R=XX_R,spin=True,TR=True)
             XX_R,self.iRvec = symmetrize_wann.symmetrize() 
             self.HH_R = XX_R['HH']
             self.AA_R = XX_R['AA']

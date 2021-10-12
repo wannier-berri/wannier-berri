@@ -18,7 +18,6 @@ from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice
 from  .symmetry import Group
 from colorama import init
 from termcolor import cprint 
-import pickle
 
 
 
@@ -91,7 +90,14 @@ class System():
         use the given wannier_centers (cartesian) instead of those determined automatically. Incompatible with `wannier_centers_reduced`
     wannier_centers_reduced :  array-like(num_wann,3)
         use the given wannier_centers (reduced) instead of those determined automatically. Incompatible with `wannier_centers_cart`
-
+    symmetrization:bool
+        set ``True`` if you want to symmetrize wannier Hamiltonian.
+    proj:list
+        symmetrization parameter. Should be the same with projections card in Wannier90.win.
+    positions: list
+        symmetrization parameter. Positions of each atom.
+    atom_name: list
+        symmetrization parameter. Name of each atom.
     """ .format(**default_parameters)
 
     def __init__(self, old_format=False,    **parameters ):
