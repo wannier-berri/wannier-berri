@@ -18,7 +18,7 @@ from .__utility import str2bool, alpha_A, beta_A ,real_recip_lattice
 from colorama import init
 from termcolor import cprint 
 from .__system import System
-
+from .__sym_wann import sym_wann
 
 class System_tb(System):
     """
@@ -83,9 +83,14 @@ class System_tb(System):
             self.wannier_centers_cart_auto =  np.diagonal(self.AA_R[:,:,self.iR0,:],axis1=0,axis2=1).T 
         else: 
             self.AA_R = None
-        
         f.close()
-
+        
+        if self.symmetrization: 
+            symmetrize_wann = sym_wann(num_wann=self.num_wann,lattice=self.real_lattice,positions=self.positions,atom_name=self.atom_name,
+                proj=self.proj,iRvec=self.iRvec,HH_R=self.HH_R,AA_R=self.AA_R,spin=True,TR=True)
+            XX_R,self.iRvec = symmetrize_wann.symmetrize() 
+            self.HH_R = XX_R['HH']
+            self.AA_R = XX_R['AA']
 
         self.set_wannier_centers()
         self.set_symmetry()

@@ -18,7 +18,7 @@ from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice
 from  .symmetry import Group
 from colorama import init
 from termcolor import cprint 
-
+import pickle
 
 
 
@@ -42,7 +42,11 @@ class System():
                     'periodic':(True,True,True),
                     'use_wcc_phase':False,
                     'wannier_centers_cart':None,
-                    'wannier_centers_reduced' : None
+                    'wannier_centers_reduced' : None,
+                    'symmetrization': False,
+                    'proj' : None,
+                    'positions': None,
+                    'atom_name': None,
                        }
 
 
@@ -153,7 +157,7 @@ class System():
 
         if self.getSS:
             self.SS_R=self.__getMat('SS')
-
+        
         self.set_symmetry()
 
         cprint ("Reading the system finished successfully",'green', attrs=['bold'])
