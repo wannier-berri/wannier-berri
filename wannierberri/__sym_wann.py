@@ -28,9 +28,9 @@ class sym_wann():
         List of R vectors.
     XX_R: dic
         Matrix before symmetrization. {'HH':self.HH_R,'AA':self.AA_R,......}
-    Spin: boolean
+    Spin: bool
         Spin orbital coupling.
-    TR; boolean
+    TR; bool
         Time reversal symmetry
 
     Return
@@ -59,12 +59,10 @@ class sym_wann():
                 self.matrix_bool[X] = True
             except KeyError:
                 self.matrix_bool[X] = False
-        print(self.matrix_bool) 
+        #print(self.matrix_bool) 
         self.orbital_dic = {"s":1,"p":3,"d":5,"f":7,"sp3":4,"sp2":3,"l=0":1,"l=1":3,"l=2":5,"l=3":7}	
         self.wann_atom_info = []
 
-        if self.spin: spin_band = 2
-        else:spin_band = 1
         num_atom = len(self.atom_name)
 
         #=============================================================
@@ -77,21 +75,17 @@ class sym_wann():
                 ending_orbital_index_of_each_orbital_quantum_number [list]  )
         Eg: (1, 'Te', array([0.274, 0.274, 0.   ]), 'sp', [0, 1, 6, 7, 8, 9, 10, 11], [0, 6], [2, 12])
 
-        H_select matrixex is boolean matrix which can select a subspace of Hamiltonian between one atom and it's 
+        H_select matrixex is bool matrix which can select a subspace of Hamiltonian between one atom and it's 
         equivalent atom after symmetry operation.  
         '''
         proj_dic = {}
         orbital_index = 0
         orbital_index_list = []
-        orb_op = []
-        orb_ed = []
         for i in range(num_atom):
             orbital_index_list.append([])
-            orb_op.append([])
-            orb_ed.append([])
         for iproj in self.proj:
             name_str = iproj.split(":")[0].split()[0]
-            orb_str = iproj.split(":")[1].strip('\n').strip()
+            orb_str = iproj.split(":")[1].strip('\n').strip().split(',')
             if name_str in proj_dic:
                 proj_dic[name_str]=proj_dic[name_str]+orb_str
             else:
@@ -99,37 +93,46 @@ class sym_wann():
             for iatom in range(num_atom):
                 if self.atom_name[iatom] == name_str:
                     for iorb in orb_str:
-                        num_orb = spin_band * self.orbital_dic[iorb]
-                        orbital_index_old = orbital_index
+                        num_orb =  self.orbital_dic[iorb]
+                        orb_list = [ orbital_index+i for i in range(num_orb)]
+                        if self.spin:
+                            orb_list += [ orbital_index+i+int(self.num_wann/2) for i in range(num_orb)]
                         orbital_index+= num_orb
-                        orb_op[iatom] += [orbital_index_old]
-                        orb_ed[iatom] += [orbital_index] 
-                        orbital_index_list[iatom] += [ i for i in range(orbital_index_old,orbital_index)]
+                        orbital_index_list[iatom].append(orb_list) 
+
         self.wann_atom_info = []
-        num_wann_atom = 0
+        self.num_wann_atom = 0
         for atom in range(num_atom):
             name = self.atom_name[atom]
             if name in proj_dic:
                 projection=proj_dic[name]	
-                num_wann_atom +=1
+                self.num_wann_atom +=1
+                orb_position_dic={}
+                for i in range(len(projection)):
+                    orb_select=np.zeros((self.num_wann,self.num_wann),dtype=bool)
+                    for oi in orbital_index_list[atom][i]: 
+                        for oj in orbital_index_list[atom][i]:
+                            orb_select[oi,oj] = True
+                    orb_position_dic[projection[i]] = orb_select
                 self.wann_atom_info.append((atom+1,self.atom_name[atom],self.positions[atom],projection,
-                    orbital_index_list[atom],orb_op[atom],orb_ed[atom]))
-        self.num_wann_atom = num_wann_atom
+                    orbital_index_list[atom],orb_position_dic))
+        
         self.H_select=np.zeros((self.num_wann_atom,self.num_wann_atom,self.num_wann,self.num_wann),dtype=bool)
         for atom_a in range(self.num_wann_atom):
             for atom_b in range(self.num_wann_atom):
-                orb_name_a = self.wann_atom_info[atom_a][3] #str of orbital type eg: 'sp'
+                orb_name_a = self.wann_atom_info[atom_a][3] #list of orbital type
                 orb_name_b = self.wann_atom_info[atom_b][3] #...
-                orb_op_a = self.wann_atom_info[atom_a][-2] #starting orbital index of corresponding orbital type
-                orb_op_b = self.wann_atom_info[atom_b][-2] #...
-                orb_ed_a = self.wann_atom_info[atom_a][-1] #ending orbital index of correspoinding orbital type
-                orb_ed_b = self.wann_atom_info[atom_b][-1] #...
-                for oa in range(len(orb_name_a)):
-                    for ob in range(len(orb_name_b)):
-                        self.H_select[atom_a,atom_b,orb_op_a[oa]:orb_ed_a[oa],orb_op_b[ob]:orb_ed_b[ob]]=True
+                orb_list_a = self.wann_atom_info[atom_a][4] #list of orbital index
+                orb_list_b = self.wann_atom_info[atom_b][4] #...
+                for oa_list in orb_list_a:
+                    for oia in oa_list:
+                        for ob_list in orb_list_b:
+                            for oib in ob_list:
+                                self.H_select[atom_a,atom_b,oia,oib]=True
+        
         print('Wannier atoms info')
         for item in self.wann_atom_info:
-            print(item)
+            print(item[:-1])
         
         #==============================
         #Find space group and symmetres
@@ -154,7 +157,64 @@ class sym_wann():
         self.symmetry = spglib.get_symmetry_dataset(cell)
         self.nsymm = self.symmetry['rotations'].shape[0]
         show_symmetry(self.symmetry)
-    
+
+    def write_hr(self):
+        name="Te_sym_hr.dat"
+        ndegen=list(np.ones((self.nRvec),dtype=int))
+        with open(name,"w") as f:
+            f.write("symmetrize wannier hr\n"+str(self.num_wann)+"\n"+str(self.nRvec)+"\n")
+            nl = np.int32(np.ceil(self.nRvec/15.0))
+            for l in range(nl):
+                line="    "+'    '.join([str(np.int32(i)) for i in ndegen[l*15:(l+1)*15]])
+                f.write(line+"\n")
+            whh_r = np.round(self.HH_R,decimals=6)
+            for ir in range(self.nRvec):
+                rx = int(self.iRvec[ir][0]);ry = int(self.iRvec[ir][1]);rz = int(self.iRvec[ir][2])
+                for n in range(self.num_wann):
+                    for m in range(self.num_wann):
+                        rp =whh_r[m,n,ir].real
+                        ip =whh_r[m,n,ir].imag
+                        line="{:5d}{:5d}{:5d}{:5d}{:5d}{:12.6f}{:12.6f}\n".format(rx,ry,rz,m+1,n+1,rp,ip)
+                        f.write(line)
+            f.close()
+    def write_tb(self):
+        name="Te_sym_tb.dat"
+        ndegen=list(np.ones((self.nRvec),dtype=int))
+        with open(name,"w") as f:
+            f.write("symmetrize wannier tb\n"
+                    +"{:12.6f}{:12.6f}{:12.6f}\n".format(self.lattice[0][0],self.lattice[0][1],self.lattice[0][2])
+                    +"{:12.6f}{:12.6f}{:12.6f}\n".format(self.lattice[1][0],self.lattice[1][1],self.lattice[1][2])
+                    +"{:12.6f}{:12.6f}{:12.6f}\n".format(self.lattice[2][0],self.lattice[2][1],self.lattice[2][2])
+                    +str(self.num_wann)+"\n"+str(self.nRvec)+"\n")
+            nl = np.int32(np.ceil(self.nRvec/15.0))
+            for l in range(nl):
+                line="    "+'    '.join([str(np.int32(i)) for i in ndegen[l*15:(l+1)*15]])
+                f.write(line+"\n")
+            whh_r = np.round(self.HH_R,decimals=10)
+            waa_r = np.round(self.AA_R,decimals=10)
+            for ir in range(self.nRvec):
+                rx = int(self.iRvec[ir][0]);ry = int(self.iRvec[ir][1]);rz = int(self.iRvec[ir][2])
+                f.write("\n{:5d}{:5d}{:5d}\n".format(rx,ry,rz))
+                for n in range(self.num_wann):
+                    for m in range(self.num_wann):
+                        rp =whh_r[m,n,ir].real
+                        ip =whh_r[m,n,ir].imag
+                        line="{:5d}{:5d}{:17.8E}{:17.8E}\n".format(m+1,n+1,rp,ip)
+                        f.write(line)
+            for ir in range(self.nRvec):
+                rx = int(self.iRvec[ir][0]);ry = int(self.iRvec[ir][1]);rz = int(self.iRvec[ir][2])
+                f.write("\n{:5d}{:5d}{:5d}\n".format(rx,ry,rz))
+                for n in range(self.num_wann):
+                    for m in range(self.num_wann):
+                        rp =waa_r[m,n,ir].real
+                        ip =waa_r[m,n,ir].imag
+                        line="{:5d}{:5d}{:18.8E}{:18.8E}{:18.8E}{:18.8E}{:18.8E}{:18.8E}\n".format(m+1,n+1,rp[0],ip[0],rp[1],ip[1],rp[2],ip[2])
+                        f.write(line)
+            f.close()
+
+
+
+
     def get_angle(self,sina,cosa):
         '''Get angle in radian from sin and cos.'''
         if abs(cosa) > 1.0:
@@ -275,7 +335,7 @@ class sym_wann():
             dmat[1,1] =  np.exp( (alpha+gamma)/2.0 * 1j) * np.cos(beta/2.0)
         rot_orbital = self.rot_orb(orb_symbol,rot_sym_glb)
         if self.spin:
-            rot_orbital = np.kron(rot_orbital,dmat)
+            rot_orbital = np.kron(dmat,rot_orbital)
             rot_imag = rot_orbital.imag
             rot_real = rot_orbital.real
             rot_orbital = np.array(rot_real + 1j*rot_imag,dtype=complex)
@@ -310,8 +370,7 @@ class sym_wann():
         Combianing rotation matrix of Hamiltonian per orbital_quantum_number into per atom.  (num_wann,num_wann)
         '''
         orbitals = self.wann_atom_info[atom_index][3]
-        op = self.wann_atom_info[atom_index][-2]
-        ed = self.wann_atom_info[atom_index][-1]
+        orb_position_dic = self.wann_atom_info[atom_index][5]
         p_mat = np.zeros((self.num_wann,self.num_wann),dtype = complex)
         p_mat_dagger = np.zeros((self.num_wann,self.num_wann),dtype = complex)
         rot_sym = self.symmetry['rotations'][rot]
@@ -319,35 +378,11 @@ class sym_wann():
         for orb in range(len(orbitals)):
             orb_name = orbitals[orb]
             tmp = self.Part_P(rot_sym_glb,orb_name)
-            p_mat[op[orb]:ed[orb],op[orb]:ed[orb]] = tmp 	
-            p_mat_dagger[op[orb]:ed[orb],op[orb]:ed[orb]] = np.conj(np.transpose(tmp)) 	
+            orb_position = orb_position_dic[orb_name]
+            p_mat[orb_position] = tmp.flatten() 	
+            p_mat_dagger[orb_position] = np.conj(np.transpose(tmp)).flatten()
         return p_mat,p_mat_dagger
 
-    def spin_range(self,Mat_in,inv=False):
-        #TODO It can be cancelled if we re_construct H_sellect and P matrix.
-        '''
-        re_construct the matrix (XX_R) when SOC is opened, to make two spin channal of same orbital located next to each other.
-        
-        inv = False:  
-            Mat_in [spin] bigotimes [orbital]
-            Mat_out [orbital] bigotimes [spin]
-        inv = True: (transpose back) 
-            Mat_in [orbital] bigotimes [spin]
-            Mat_out [spin] bigotimes [orbital]
-        '''
-        Mat_out = np.zeros(np.shape(Mat_in),dtype=complex)
-        if inv:
-            Mat_out[0:self.num_wann//2,0:self.num_wann//2,:]                         = Mat_in[0:self.num_wann:2,0:self.num_wann:2,:]
-            Mat_out[self.num_wann//2:self.num_wann,0:self.num_wann//2,:]             = Mat_in[1:self.num_wann:2,0:self.num_wann:2,:]
-            Mat_out[0:self.num_wann//2,self.num_wann//2:self.num_wann,:]             = Mat_in[0:self.num_wann:2,1:self.num_wann:2,:]
-            Mat_out[self.num_wann//2:self.num_wann,self.num_wann//2:self.num_wann,:] = Mat_in[1:self.num_wann:2,1:self.num_wann:2,:]
-            return Mat_out
-        else:
-            Mat_out[0:self.num_wann:2,0:self.num_wann:2,:] = Mat_in[0:self.num_wann//2,0:self.num_wann//2,:]
-            Mat_out[1:self.num_wann:2,0:self.num_wann:2,:] = Mat_in[self.num_wann//2:self.num_wann,0:self.num_wann//2,:]
-            Mat_out[0:self.num_wann:2,1:self.num_wann:2,:] = Mat_in[0:self.num_wann//2,self.num_wann//2:self.num_wann,:]
-            Mat_out[1:self.num_wann:2,1:self.num_wann:2,:] = Mat_in[self.num_wann//2:self.num_wann,self.num_wann//2:self.num_wann,:]
-            return Mat_out		
 
     def average_H(self,iRvec,keep_New_R=True):
         #TODO consider symmetrize HH_R, vector matrix, or tensor matrix respectively or like this finish in one loop.
@@ -441,15 +476,9 @@ class sym_wann():
             syr=np.array([[0.0,1.0],[-1.0,0.0]])
             ul=np.kron(syl,base_m)
             ur=np.kron(syr,base_m)
+            #print(ul)
             for ir in range(self.nRvec):
                 self.HH_R[:,:,ir]=(self.HH_R[:,:,ir] + np.dot(np.dot(ul,np.conj(self.HH_R[:,:,ir])),ur))/2.0
-        
-        if self.spin:
-            #TODO after reconstruction matrix it can be canceled
-            self.HH_R = self.spin_range(self.HH_R)
-            for X in self.matrix_list:
-                if self.matrix_bool[X]:
-                    vars(self)[X+'_R'] = self.spin_range(vars(self)[X+'_R']) 
         
         #========================================================
         #symmetrize exist R vectors and find additional R vectors 
@@ -483,17 +512,10 @@ class sym_wann():
                 if self.matrix_bool[X]:
                     vars()[X+'_R_final']= res_dic_1[X]
 
-        if self.spin:
-            #TODO after reconstruction matrix it can be canceled
-            self.HH_R = self.spin_range(HH_R_final,inv=True)
-            for X in self.matrix_list:
-                if self.matrix_bool[X]:
-                    vars(self)[X+'_R'] = self.spin_range(vars()[X+'_R_final'],inv=True) 
-        else:
-            self.HH_R = HH_R_final
-            for X in self.matrix_list:
-                if self.matrix_bool[X]:
-                    vars(self)[X+'_R'] = vars()[X+'_R_final'],inv=True 
+        self.HH_R = HH_R_final
+        for X in self.matrix_list:
+            if self.matrix_bool[X]:
+                vars(self)[X+'_R'] = vars()[X+'_R_final']
         
         return_dic = {}
         return_dic['HH'] = self.HH_R
