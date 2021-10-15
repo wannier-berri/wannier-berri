@@ -158,63 +158,6 @@ class sym_wann():
         self.nsymm = self.symmetry['rotations'].shape[0]
         show_symmetry(self.symmetry)
 
-    def write_hr(self):
-        name="Te_sym_hr.dat"
-        ndegen=list(np.ones((self.nRvec),dtype=int))
-        with open(name,"w") as f:
-            f.write("symmetrize wannier hr\n"+str(self.num_wann)+"\n"+str(self.nRvec)+"\n")
-            nl = np.int32(np.ceil(self.nRvec/15.0))
-            for l in range(nl):
-                line="    "+'    '.join([str(np.int32(i)) for i in ndegen[l*15:(l+1)*15]])
-                f.write(line+"\n")
-            whh_r = np.round(self.HH_R,decimals=6)
-            for ir in range(self.nRvec):
-                rx = int(self.iRvec[ir][0]);ry = int(self.iRvec[ir][1]);rz = int(self.iRvec[ir][2])
-                for n in range(self.num_wann):
-                    for m in range(self.num_wann):
-                        rp =whh_r[m,n,ir].real
-                        ip =whh_r[m,n,ir].imag
-                        line="{:5d}{:5d}{:5d}{:5d}{:5d}{:12.6f}{:12.6f}\n".format(rx,ry,rz,m+1,n+1,rp,ip)
-                        f.write(line)
-            f.close()
-    def write_tb(self):
-        name="Te_sym_tb.dat"
-        ndegen=list(np.ones((self.nRvec),dtype=int))
-        with open(name,"w") as f:
-            f.write("symmetrize wannier tb\n"
-                    +"{:12.6f}{:12.6f}{:12.6f}\n".format(self.lattice[0][0],self.lattice[0][1],self.lattice[0][2])
-                    +"{:12.6f}{:12.6f}{:12.6f}\n".format(self.lattice[1][0],self.lattice[1][1],self.lattice[1][2])
-                    +"{:12.6f}{:12.6f}{:12.6f}\n".format(self.lattice[2][0],self.lattice[2][1],self.lattice[2][2])
-                    +str(self.num_wann)+"\n"+str(self.nRvec)+"\n")
-            nl = np.int32(np.ceil(self.nRvec/15.0))
-            for l in range(nl):
-                line="    "+'    '.join([str(np.int32(i)) for i in ndegen[l*15:(l+1)*15]])
-                f.write(line+"\n")
-            whh_r = np.round(self.HH_R,decimals=10)
-            waa_r = np.round(self.AA_R,decimals=10)
-            for ir in range(self.nRvec):
-                rx = int(self.iRvec[ir][0]);ry = int(self.iRvec[ir][1]);rz = int(self.iRvec[ir][2])
-                f.write("\n{:5d}{:5d}{:5d}\n".format(rx,ry,rz))
-                for n in range(self.num_wann):
-                    for m in range(self.num_wann):
-                        rp =whh_r[m,n,ir].real
-                        ip =whh_r[m,n,ir].imag
-                        line="{:5d}{:5d}{:17.8E}{:17.8E}\n".format(m+1,n+1,rp,ip)
-                        f.write(line)
-            for ir in range(self.nRvec):
-                rx = int(self.iRvec[ir][0]);ry = int(self.iRvec[ir][1]);rz = int(self.iRvec[ir][2])
-                f.write("\n{:5d}{:5d}{:5d}\n".format(rx,ry,rz))
-                for n in range(self.num_wann):
-                    for m in range(self.num_wann):
-                        rp =waa_r[m,n,ir].real
-                        ip =waa_r[m,n,ir].imag
-                        line="{:5d}{:5d}{:18.8E}{:18.8E}{:18.8E}{:18.8E}{:18.8E}{:18.8E}\n".format(m+1,n+1,rp[0],ip[0],rp[1],ip[1],rp[2],ip[2])
-                        f.write(line)
-            f.close()
-
-
-
-
     def get_angle(self,sina,cosa):
         '''Get angle in radian from sin and cos.'''
         if abs(cosa) > 1.0:
