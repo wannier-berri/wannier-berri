@@ -26,6 +26,7 @@ from .__w90_files import EIG,MMN,CheckPoint,SPN,UHU,SIU,SHU
 from time import time
 import pickle
 from itertools import repeat
+from .__sym_wann import sym_wann
 np.set_printoptions(precision=4,threshold=np.inf,linewidth=500)
 class System_w90(System):
     """
@@ -94,7 +95,9 @@ class System_w90(System):
             t0=time()
             self.AA_R=fourier_q_to_R_loc(AAq)
             timeFFT+=time()-t0
-
+            pickle.dump(self.AA_R,open("AA_90.pickle","wb"))
+            pickle.dump(self.HH_R,open("HH_90.pickle","wb"))
+            pickle.dump(self.iRvec,open("iRvec_90.pickle","wb"))
         if self.getBB:
             t0=time()
             self.BB_R=fourier_q_to_R_loc(chk.get_AA_q(mmn,eig))
@@ -134,13 +137,29 @@ class System_w90(System):
 
         print ("time for FFT_q_to_R : {} s".format(timeFFT))
         if  self.use_ws:
+            print('use_ws === ', self.use_ws)
             for X in ['HH','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
                 XR=X+'_R'
                 if hasattr(self,XR) :
                     print ("using ws_dist for {}".format(XR))
                     vars(self)[XR]=ws_map(vars(self)[XR])
             self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
-
+        if self.symmetrization:
+            XX_R={'HH':self.HH_R}
+            for X in ['AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
+                try:
+                    XX_R[X] = vars(self)[X+'_R']
+                except KeyError:
+                    pass
+            symmetrize_wann = sym_wann(num_wann=self.num_wann,lattice=self.real_lattice,positions=self.positions,atom_name=self.atom_name,
+                proj=self.proj,iRvec=self.iRvec,XX_R=XX_R,spin=True,TR=True)
+            XX_R,self.iRvec = symmetrize_wann.symmetrize()
+            for X in ['HH','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
+                try:
+                    vars(self)[X+'_R'] = XX_R[X]
+                except KeyError:
+                    pass
+        
         self.set_wannier_centers()
         self.set_symmetry()
         self.check_periodic()

@@ -57,7 +57,7 @@ class sym_wann():
             try: 
                 vars(self)[X+'_R'] = XX_R[X]
                 self.matrix_bool[X] = True
-            except :
+            except KeyError:
                 self.matrix_bool[X] = False
         print(self.matrix_bool) 
         self.orbital_dic = {"s":1,"p":3,"d":5,"f":7,"sp3":4,"sp2":3,"l=0":1,"l=1":3,"l=2":5,"l=3":7}	
@@ -410,13 +410,14 @@ class sym_wann():
                                 vars()[X+'_res'] += tmpX.transpose(0,3,1,2)
                         
                         #if atom_a ==0 and atom_b == 0:
-                            #test_i = self.iRvec.index([1,1,0])	
+                         #   test_i = self.iRvec.index([1,1,0])	
                             #print(self.HH_R[self.H_select[atom_a,atom_b],test_i].reshape(8,8).real)
                             #print(self.AA_R[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8).real)
                             #print('======================')
                             #print(tmp.transpose(0,2,1)[self.H_select[atom_a,atom_b],test_i].reshape(8,8).real)
                             #print(tmp2.transpose(0,2,1)[self.H_select[atom_a,atom_b],test_i].reshape(8,8).real)
-                            #print(tmpA.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8).real)
+                            #print(self.AA_R[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8).real)
+                            #print(tmpX.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8).real)
                             #print('======================')
         res_dic = {}
         res_dic['HH'] = HH_res/self.nsymm

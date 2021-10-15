@@ -23,6 +23,7 @@ from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha
 from .__fermisea2 import DataIO, mergeDataIO
 import gc
 import os
+import pickle
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -78,7 +79,9 @@ class Data_K(System):
                 else:
                     vars(self)[XR]=vars(system)[XR]*expdK[:,:,:,None]
                 vars(self)[hasXR]=True
-
+#        pickle.dump(self.AA_R,open("AA.pickle","wb"))
+#        pickle.dump(self.HH_R,open("HH.pickle","wb"))
+#        pickle.dump(self.iRvec,open("iRvec.pickle","wb"))
 
     @lazy_property.LazyProperty
     def iter_op_ed(self):
