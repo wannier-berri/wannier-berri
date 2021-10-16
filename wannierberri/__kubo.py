@@ -104,7 +104,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
 
     Arguments:
-        data            instance of :class:~wannierberri.__Data_K.Data_K representing a single FFT grid in the BZ
+        data            instance of :class:~wannierberri.data_K.Data_K representing a single FFT grid in the BZ
         Efermi          list of chemical potentials in units of eV
         omega           list of frequencies in units of eV/hbar
         kBT             temperature in units of eV/kB

@@ -2,8 +2,8 @@ import numpy as np
 from .__utility import  alpha_A,beta_A
 import abc 
 from scipy.constants import Boltzmann,elementary_charge
-from .__formula_3 import Formula_ln, Matrix_ln , Matrix_GenDer_ln
-from .__Data_K import _Dcov
+from .formula import Formula_ln, Matrix_ln , Matrix_GenDer_ln
+from .data_K import _Dcov
 #####################################################
 #####################################################
 

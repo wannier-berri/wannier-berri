@@ -141,7 +141,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     user_quantities : dict
         a dictionary `{name:function}`, where `name` is any string, and `function(data_K,Efermi)` 
         takes two arguments
-        `data_K` of  of type :class:`~wannierberri.__Data_K.Data_K`  and Efermi -  `np.array`
+        `data_K` of  of type :class:`~wannierberri.data_K.Data_K`  and Efermi -  `np.array`
         and returns an object  :class:`~wannierberri.__result.EnergyResult`
     adpt_num_iter : int 
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
@@ -160,7 +160,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         `'quantity^label':dict`, where dict is analogous to  `parameters`. This values will override 
         for the instance of the quantity labeled by '^label'
     parameters_K : dict
-        parameters to be passed to the :class:`~wannierberri.__data_K.Data_K`, 
+        parameters to be passed to the :class:`~wannierberri.data_K.Data_K`, 
         so they are common for the calculation.
  
     Returns
@@ -235,7 +235,7 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
         quantities to be integrated. See :ref:`sec-capabilities`
     user_quantities : dict
         a dictionary `{name:formula}`, where `name` is any string, and `formula` 
-        is a name of a child class of  :class:`~wannierberri.__formula_3.Formula_ln`
+        is a name of a child class of  :class:`~wannierberri.formula.Formula_ln`
         which should have defined attributes `nn` , `TRodd`, `Iodd`
     irkpt : bool
         evaluate only symmetry-irreducible K-points

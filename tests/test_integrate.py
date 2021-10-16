@@ -6,7 +6,7 @@ import pytest
 from pytest import approx
 
 import wannierberri as wberri
-from wannierberri import __fermiocean3 as fermiocean3
+from wannierberri import fermiocean
 from conftest import parallel_serial, parallel_ray 
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
@@ -88,26 +88,26 @@ def quantities_Fe():
 @pytest.fixture(scope="session")
 def quantities_Chiral():
     return  [
-#         'spin'                     ,#: fermiocean3.spin                   ,
-#         'Morb'                     ,#: fermiocean3.Morb                   ,
-         'ahc'                      ,#: fermiocean3.AHC                    ,
-         'cumdos'                   ,#: fermiocean3.cumdos                 ,
-         'dos'                      ,#: fermiocean3.dos                    ,
-         'conductivity_ohmic'       ,#: fermiocean3.ohmic                  ,
-         'conductivity_ohmic_fsurf' ,#: fermiocean3.ohmic_fsurf            ,
-         'berry_dipole'             ,#: fermiocean3.berry_dipole           ,
-         'berry_dipole_fsurf'       ,#: fermiocean3.berry_dipole_fsurf     ,
-#         'gyrotropic_Korb'          ,#: fermiocean3.gme_orb                ,
-#         'gyrotropic_Korb_fsurf'    ,#: fermiocean3.gme_orb_fsurf          ,
-#         'gyrotropic_Kspin'         ,#: fermiocean3.gme_spin               ,
-#         'gyrotropic_Kspin_fsurf'   ,#: fermiocean3.gme_spin_fsurf         ,
-         'Hall_classic'             ,#: fermiocean3.Hall_classic           , 
-         'Hall_classic_fsurf'       ,#: fermiocean3.Hall_classic_fsurf     , 
-#         'Hall_morb_fsurf'          ,#: fermiocean3.Hall_morb_fsurf        ,
-#         'Hall_spin_fsurf'          ,#: fermiocean3.Hall_spin_fsurf        ,
-         'Der3E'                    ,#: fermiocean3.Der3E                  ,
-#         'Der3E_fsurf'              ,#: fermiocean3.Der3E_fsurf            ,
-#         'Der3E_fder2'              ,#: fermiocean3.Der3E_fder2            ,
+#         'spin'                     ,#: fermiocean.spin                   ,
+#         'Morb'                     ,#: fermiocean.Morb                   ,
+         'ahc'                      ,#: fermiocean.AHC                    ,
+         'cumdos'                   ,#: fermiocean.cumdos                 ,
+         'dos'                      ,#: fermiocean.dos                    ,
+         'conductivity_ohmic'       ,#: fermiocean.ohmic                  ,
+         'conductivity_ohmic_fsurf' ,#: fermiocean.ohmic_fsurf            ,
+         'berry_dipole'             ,#: fermiocean.berry_dipole           ,
+         'berry_dipole_fsurf'       ,#: fermiocean.berry_dipole_fsurf     ,
+#         'gyrotropic_Korb'          ,#: fermiocean.gme_orb                ,
+#         'gyrotropic_Korb_fsurf'    ,#: fermiocean.gme_orb_fsurf          ,
+#         'gyrotropic_Kspin'         ,#: fermiocean.gme_spin               ,
+#         'gyrotropic_Kspin_fsurf'   ,#: fermiocean.gme_spin_fsurf         ,
+         'Hall_classic'             ,#: fermiocean.Hall_classic           , 
+         'Hall_classic_fsurf'       ,#: fermiocean.Hall_classic_fsurf     , 
+#         'Hall_morb_fsurf'          ,#: fermiocean.Hall_morb_fsurf        ,
+#         'Hall_spin_fsurf'          ,#: fermiocean.Hall_spin_fsurf        ,
+         'Der3E'                    ,#: fermiocean.Der3E                  ,
+#         'Der3E_fsurf'              ,#: fermiocean.Der3E_fsurf            ,
+#         'Der3E_fder2'              ,#: fermiocean.Der3E_fder2            ,
         ]
 
 
@@ -141,13 +141,13 @@ def test_Fe_user(check_integrate,system_Fe_W90, compare_energyresult,quantities_
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
 
     calculators={ 
-         'Morb'                     : fermiocean3.Morb                   ,
-         'ahc'                      : fermiocean3.AHC                    ,
-         'ahc_test'                 : fermiocean3.AHC_test               ,
-         'cumdos'                   : fermiocean3.cumdos                 ,
-         'dos'                      : fermiocean3.dos                    ,
-         'conductivity_ohmic'       : fermiocean3.ohmic                  ,
-         'conductivity_ohmic_fsurf' : fermiocean3.ohmic_fsurf            ,
+         'Morb'                     : fermiocean.Morb                   ,
+         'ahc'                      : fermiocean.AHC                    ,
+         'ahc_test'                 : fermiocean.AHC_test               ,
+         'cumdos'                   : fermiocean.cumdos                 ,
+         'dos'                      : fermiocean.dos                    ,
+         'conductivity_ohmic'       : fermiocean.ohmic                  ,
+         'conductivity_ohmic_fsurf' : fermiocean.ohmic_fsurf            ,
          }
 
 

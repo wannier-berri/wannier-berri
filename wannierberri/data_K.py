@@ -23,7 +23,7 @@ from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha
 import gc
 import os
 from .__tetrahedron import TetraWeights,get_bands_in_range,get_bands_below_range
-from .__formula_3 import Matrix_ln, Matrix_GenDer_ln
+from .formula import Matrix_ln, Matrix_GenDer_ln
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -68,8 +68,8 @@ class _Dcov(Matrix_ln):
    
 class Data_K(System):
     default_parameters =  {
-                    'frozen_max': -np.Inf,
-                    'delta_fz':0.1,
+#                    'frozen_max': -np.Inf,
+#                    'delta_fz':0.1,
                     'Emin': -np.Inf ,
                     'Emax': np.Inf ,
                     'use_wcc_phase':False,
@@ -82,20 +82,27 @@ class Data_K(System):
                        }
 
     __doc__ = """
-    class to store data of the FFT grid. Is destroyed after  everything is evaluated for the FFT grid
+    class to store many data calculated on a specific FFT grid.  
+    The stored data can be used to evaluate many quantities.
+    Is destroyed after  everything is evaluated for the FFT grid
 
     Parameters
     -----------
-    frozen_max : float
-        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary. 
-        If not specified, attempts to read this value from system. Othewise set to  ``{frozen_max}``
     random_gauge : bool
         applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved. Default: ``{random_gauge}``
     degen_thresh_random_gauge : float
         threshold to consider bands as degenerate for random_gauge Default: ``{degen_thresh_random_gauge}``
-    delta_fz:float
-        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
+    fftlib :  str
+        library used to perform fft : 'fftw' (defgault) or 'numpy' or 'slow'
     """ .format(**default_parameters)
+
+
+#Those are not used at the moment:
+#    frozen_max : float
+#        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary. 
+#        If not specified, attempts to read this value from system. Othewise set to  ``{frozen_max}``
+#    delta_fz:float
+#        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
 
 
 
@@ -130,11 +137,11 @@ class Data_K(System):
                 vars(self)[param]=parameters[param]
             else: 
                 vars(self)[param]=self.default_parameters[param]
-        if 'frozen_max' not in parameters:
-            try : 
-                self.frozen_max= self.system.frozen_max
-            except:
-                pass 
+#        if 'frozen_max' not in parameters:
+#            try : 
+#                self.frozen_max= self.system.frozen_max
+#            except:
+#                pass 
 
 
 

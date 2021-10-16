@@ -22,7 +22,7 @@ import  multiprocessing
 import functools
 from .__utility import  print_my_name_start,print_my_name_end
 from . import __result as result
-from . import __formulas_nonabelian_3 as frml
+from . import covariant_formulak as frml
 from . import  symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
@@ -64,7 +64,8 @@ for key,val in parameters_ocean.items():
 
 
 
-def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None,parameters={}):
+def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None,
+            parameters={},specific_parameters = {}):
 
 
     if ibands is None:
@@ -90,7 +91,7 @@ def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None
             __parameters = specific_parameters[qfull]
         else:
             __parameters = {}
-        results[qfull]=tabulator( formula(data_K,**__parameters) )
+        results[q]=tabulator( formula(data_K,**__parameters) )
 
 
     return TABresult( kpoints       = data_K.kpoints_all,

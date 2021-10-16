@@ -1,7 +1,7 @@
 import numpy as np
 from .__utility import  alpha_A,beta_A
-from .__formula_3 import Formula_ln
-from .__formulas_nonabelian_3 import  DerDcov, Eavln
+from .formula import Formula_ln
+from .covariant_formulak import  DerDcov, Eavln
 #####################################################
 #####################################################
 
