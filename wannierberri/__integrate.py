@@ -18,7 +18,7 @@ from copy import copy,deepcopy
 
 from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother,TAU_UNIT
 from . import __result as result
-from . import  __fermiocean3 as fermiocean3
+from . import  fermiocean as fermiocean
 from . import  symmetry
 from . import  __utility   as utility
 from . import  __kubo   as kubo
@@ -47,32 +47,32 @@ from . import  __kubo   as kubo
 # may have extra parameters, that should be described in the 'additional_parameters' dictionary (see below)
 
 calculators_trans={ 
-         'spin'                     : fermiocean3.spin                   ,
-         'Morb'                     : fermiocean3.Morb                   ,
-         'Morb_test'                : fermiocean3.Morb_test              ,
-         'ahc'                      : fermiocean3.AHC                    ,
-         'ahc_test'                 : fermiocean3.AHC_test               ,
-         'cumdos'                   : fermiocean3.cumdos                 ,
-         'dos'                      : fermiocean3.dos                    ,
-         'conductivity_ohmic'       : fermiocean3.ohmic                  ,
-         'conductivity_ohmic_fsurf' : fermiocean3.ohmic_fsurf            ,
-         'berry_dipole'             : fermiocean3.berry_dipole           ,
-         'berry_dipole_test'        : fermiocean3.berry_dipole_test      ,
-         'berry_dipole_fsurf'       : fermiocean3.berry_dipole_fsurf     ,
-         'gyrotropic_Korb'          : fermiocean3.gme_orb                ,
-         'gyrotropic_Korb_test'     : fermiocean3.gme_orb_test           ,
-         'gyrotropic_Korb_fsurf'    : fermiocean3.gme_orb_fsurf          ,
-         'gyrotropic_Kspin'         : fermiocean3.gme_spin               ,
-         'gyrotropic_Kspin_fsurf'   : fermiocean3.gme_spin_fsurf         ,
-         'Hall_classic'             : fermiocean3.Hall_classic           , 
-         'Hall_classic_fsurf'       : fermiocean3.Hall_classic_fsurf     , 
-         'Hall_morb_fsurf'          : fermiocean3.Hall_morb_fsurf        ,
-         'Hall_spin_fsurf'          : fermiocean3.Hall_spin_fsurf        ,
-         'Der3E'                    : fermiocean3.Der3E                  ,
-         'Der3E_fsurf'              : fermiocean3.Der3E_fsurf            ,
-         'Der3E_fder2'              : fermiocean3.Der3E_fder2            ,
-         'Hplus_der' : fermiocean3.Hplus_der,
-         'Hplus_der_test' : fermiocean3.Hplus_der_test,
+         'spin'                     : fermiocean.spin                   ,
+         'Morb'                     : fermiocean.Morb                   ,
+         'Morb_test'                : fermiocean.Morb_test              ,
+         'ahc'                      : fermiocean.AHC                    ,
+         'ahc_test'                 : fermiocean.AHC_test               ,
+         'cumdos'                   : fermiocean.cumdos                 ,
+         'dos'                      : fermiocean.dos                    ,
+         'conductivity_ohmic'       : fermiocean.ohmic                  ,
+         'conductivity_ohmic_fsurf' : fermiocean.ohmic_fsurf            ,
+         'berry_dipole'             : fermiocean.berry_dipole           ,
+         'berry_dipole_test'        : fermiocean.berry_dipole_test      ,
+         'berry_dipole_fsurf'       : fermiocean.berry_dipole_fsurf     ,
+         'gyrotropic_Korb'          : fermiocean.gme_orb                ,
+         'gyrotropic_Korb_test'     : fermiocean.gme_orb_test           ,
+         'gyrotropic_Korb_fsurf'    : fermiocean.gme_orb_fsurf          ,
+         'gyrotropic_Kspin'         : fermiocean.gme_spin               ,
+         'gyrotropic_Kspin_fsurf'   : fermiocean.gme_spin_fsurf         ,
+         'Hall_classic'             : fermiocean.Hall_classic           , 
+         'Hall_classic_fsurf'       : fermiocean.Hall_classic_fsurf     , 
+         'Hall_morb_fsurf'          : fermiocean.Hall_morb_fsurf        ,
+         'Hall_spin_fsurf'          : fermiocean.Hall_spin_fsurf        ,
+         'Der3E'                    : fermiocean.Der3E                  ,
+         'Der3E_fsurf'              : fermiocean.Der3E_fsurf            ,
+         'Der3E_fder2'              : fermiocean.Der3E_fder2            ,
+         'Hplus_der' : fermiocean.Hplus_der,
+         'Hplus_der_test' : fermiocean.Hplus_der_test,
          }
 
 
