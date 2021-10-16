@@ -106,7 +106,7 @@ def system_Fe_W90_wcc(create_files_Fe_W90,symmetries_Fe):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe")
-    system = wberri.System_w90(seedname, morb=True, SHCqiao=True, SHCryoo=True,
+    system = wberri.System_w90(seedname, morb=True, SHCqiao=False, SHCryoo=False,
            transl_inv=False, use_wcc_phase=True )
     system.set_symmetry(symmetries_Fe)
     return system
