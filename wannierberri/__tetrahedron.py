@@ -31,8 +31,6 @@ def weights_tetra(efall,e0,e1,e2,e3,der=0):
     e1,e2,e3,e4 = e
 
     nEF=len(efall)
-#    efall2=efall * efall
-#    efall3=efall2* efall
     occ=np.zeros((nEF))
     denom3 = 1./ ((e4 - e1) * (e4 - e2) * (e4 - e3) )
     denom2 = 1./ ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4-e2) )
@@ -196,7 +194,6 @@ class TetraWeights():
 
 
     def __weight_1b(self,ik,ib,der):
-#        print (ib,ik,der)
         if ib not in self.weights[der][ik]:
             self.weights[der][ik][ib]=weights_parallelepiped(self.eFermi,self.eCenter[ik,ib],self.eCorners[ik,:,:,:,ib],der=der)
         return self.weights[der][ik][ib]
@@ -232,11 +229,9 @@ class TetraWeights():
 
             if der==0 :
                 bandmax=get_bands_below_range(self.eFermi[0],self.eCenter[ik],Ebandmax=self.Emax[ik])
-#                print ("bandmax=",bandmax)
                 if len(bands_in_range)>0 :
                     bandmax=min(bandmax, bands_in_range[0][0])
                 weights[(0,bandmax)]=self.ones
-#                print ("now bandmax=",bandmax)
 
             res.append( weights )
         return res

@@ -43,7 +43,6 @@ from pyfiglet import figlet_format
 def figlet(text,font='cosmike',col='red'):
     init(strip=not sys.stdout.isatty()) # strip colors if stdout is redirected
     letters=[figlet_format(X, font=font).rstrip("\n").split("\n") for X in text]
-#    print (letters)
     logo=[]
     for i in range(len(letters[0])):
         logo.append("".join(L[i] for L in letters))
@@ -76,7 +75,9 @@ def print_options():
 
 
 def welcome():
-#figlet("WANN IER BERRI",font='cosmic',col='yellow')
+# ogiginally obtained by 
+# figlet("WANN IER BERRI",font='cosmic',col='yellow')
+# with small modifications
     logo="""
 .::    .   .::: .:::::::.  :::.    :::.:::.    :::. :::.,::::::  :::::::..       :::::::.  .,::::::  :::::::..   :::::::..   :::
 ';;,  ;;  ;;;' '  ;;`;;  ` `;;;;,  `;;;`;;;;,  `;;; ;;;;;;;''''  ;;;;``;;;;       ;;;'';;' ;;;;''''  ;;;;``;;;;  ;;;;``;;;;  ;;;
@@ -86,7 +87,6 @@ def welcome():
      "M "M"      YMM   ""`   MMM     YM  MMM     YM MMM \"\"\"\"YUMMM MMMM   "W"     ""YUMMMP"  \"\"\"\"YUMMM MMMM   "W"  MMMM   "W" MMM
 """
     cprint(logo,'yellow')
-#    cprint("a.k.a. Wannier19",'red')
     figlet("    by Stepan Tsirkin et al",font='straight',col='green')
 
 
@@ -94,12 +94,7 @@ def welcome():
 
 
     cprint( "\nVersion: {}\n".format( __version__),'cyan', attrs=['bold'])
-#    print_options()
 
-#for font in ['twopoint','contessa','tombstone','thin','straight','stampatello','slscript','short','pepper']:
-#    __figlet("by Stepan Tsirkin",font=font,col='green')
-
-    
 
 def check_option(quantities,avail,tp):
     for opt_full in quantities:
@@ -108,7 +103,8 @@ def check_option(quantities,avail,tp):
         raise RuntimeError("Quantity {} is not available for {}. Available options are : \n{}\n".format(opt,tp,avail) )
 
 
-## TODO: Unify the two methids, to do everything in one shot
+## TODO: Unify the two methods, to do make possible doing 
+# integration and tabulating everything in one shot
 
 def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=None,
@@ -304,7 +300,6 @@ def write_frmsf(frmsf_name,Ef0,numproc,quantities,res,suffix=""):
         ttxt=0
         twrite=0
         for Q in quantities:
-    #     for comp in ["x","y","z","sq","norm"]:
             for comp in ["x","y","z","xx","yy","zz","xy","yx","xz","zx","yz","zy"]:
                 try:
                     t31=time()

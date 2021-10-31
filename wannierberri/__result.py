@@ -145,7 +145,6 @@ class EnergyResult(Result):
             axes=(axes,)
         if axes is None: 
             axes = tuple(range(other.ndim))
-#        print ('multiplying result by array',other)
         for i,d in enumerate(other.shape):
             assert d==self.data.shape[axes[i]], "shapes  {} should match the axes {} of {}".format(other.shape,axes,self.data.shape)
         reshape=tuple((self.data.shape[i] if i in axes else 1) for i in range(self.data.ndim))
@@ -154,7 +153,6 @@ class EnergyResult(Result):
 
     def __mul__(self,other):
         if isinstance(other,int) or isinstance(other,float) :
-#            print ('multiplying result by number',other)
             return EnergyResult(self.Energies,self.data*other,self.smoothers,self.TRodd,self.Iodd,self.rank,self.E_titles)
         else:
             raise TypeError("result can only be multilied by a number")

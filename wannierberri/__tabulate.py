@@ -31,11 +31,8 @@ from . import  symmetry
 calculators={ 
          'spin'       : frml.Spin, 
          'V'          : frml.Velocity, 
-#         'morb'       : berry.calcImgh_band_kn,
          'berry'      : frml.Omega, #berry.calcImf_band_kn ,
          'Der_berry'  : frml.DerOmega, #berry.calcImf_band_kn ,
-#         'hall_spin'  : berry.calcHall_spin_kn,
-#         'hall_orb'   : berry.calcHall_orb_kn
          }
 
 
@@ -48,9 +45,6 @@ descriptions['berry']="Berry curvature (Ang^{-2})"
 descriptions['Der_berry']="1st deravetive of Berry curvature (Ang^{-3})"
 descriptions['V']="velocity (eV*Ang)"
 descriptions['spin']="Spin"
-#descriptions['morb']="orbital magnetic moment"
-#descriptions['hall_spin']="spin contribution to low-field Hall effect"
-#descriptions['hall_orb']="orbital contribution to low-field Hall effect"
 
 parameters_ocean = {
 'external_terms' : (True , "evaluate external terms"),
@@ -131,7 +125,6 @@ class  Tabulator():
                 out = np.concatenate( (np.arange(0,n[0]), np.arange(n[1],self.NB) ) )
                 values[n] = formula.trace(ik,inn,out)/(n[1]-n[0])
             for ib,b in enumerate(self.ibands): 
-#                print(f"ik={ik}, ib={ib}, ibands={self.ibands}")
                 rslt[ik,ib] = values[self.group[ik][ib]]
 
         return result.KBandResult(rslt,TRodd=formula.TRodd,Iodd=formula.Iodd)
@@ -149,7 +142,6 @@ class TABresult(result.Result):
 
         self.results=results
         for r in results:
-#            print (r,self.nband,len(self.kpoints),results[r].shape)
             assert len(kpoints)==results[r].nk
             assert self.nband==results[r].nband
             
@@ -192,7 +184,6 @@ class TABresult(result.Result):
             if np.linalg.norm(ik1/grid-k)<1e-5 : 
                 ik1=ik1%grid
                 ik2=ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])
-#                print (ik,k,ik1,ik2)
                 k_map[ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])].append(ik)
             else:
                 print ("WARNING: k-point {}={} is skipped".format(ik,k))
@@ -254,9 +245,6 @@ class TABresult(result.Result):
         FSfile+=("".join( ["  ".join("{:14.8f}".format(x) for x in v) + "\n" for v in self.recip_lattice] ))
 
         FSfile+=_savetxt(a=self.Enk.data[:,iband].flatten(order='F')-efermi,npar=npar)
-#        for iband in range(self.nband):
-#            np.savetxt(FSfile,self.Enk.data[:,iband]-efermi,fmt="%.8f")
-#            FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk.data[:,iband]-efermi )
         
         if quantity is None:
             return FSfile
@@ -265,9 +253,6 @@ class TABresult(result.Result):
             raise RuntimeError("requested quantity '{}' was not calculated".format(quantity))
             return FSfile
         FSfile+=_savetxt(a=Xnk[:,iband].flatten(order='F'),npar=npar)
-#        for iband in range(self.nband):
-#            np.savetxt(FSfile,Xnk[:,iband]-efermi,fmt="%.8f")
-#            FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
         if frmsf_name is not None:
             if not (frmsf_name.endswith(".frmsf")):
                 frmsf_name+=".frmsf"
@@ -337,7 +322,6 @@ class TABresult(result.Result):
                     y=data[selE][:,ib]
                     e1=e[selE]
                     for col,sel in [("red",(y>0)),("blue",(y<0))]:
-#                        print (col,ib,kline.shape,e.shape,kline[sel].shape,e[sel].shape)
                         plt.scatter(klineselE[sel],e1[sel],s=abs(y[sel])*fatfactor,color=col)
             else :
                 raise ValueError("So far only fatband mode is implemented")
