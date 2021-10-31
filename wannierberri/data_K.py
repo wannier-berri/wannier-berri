@@ -50,7 +50,7 @@ def parity_TR(name,der=0):
     raises ValueError for unknown quantities"""
     if name in ['Ham','T_wcc']:   # even before derivative
         p=0 
-    elif name in ['CC','FF','OO']:      # odd before derivative
+    elif name in ['CC','FF','OO','SS']:      # odd before derivative
         p=1
     elif name in ['D','AA','BB','CCab']:
         return None

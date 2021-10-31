@@ -1,4 +1,4 @@
-import numpy as npOD
+import numpy as np
 from .__utility import  alpha_A,beta_A, TAU_UNIT
 from collections import defaultdict
 from . import __result as result
