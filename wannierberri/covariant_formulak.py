@@ -209,6 +209,11 @@ class Spin(Matrix_ln):
         s =  data_K.covariant('SS')
         self.__dict__.update(s.__dict__)
 
+class DerSpin(Matrix_GenDer_ln):
+    def __init__(self,data_K):
+        s =  data_K.covariant('SS',gender=1)
+        self.__dict__.update(s.__dict__)
+
 
 class Morb_H(Formula_ln):
     def __init__(self,data_K,**parameters):
