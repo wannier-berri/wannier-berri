@@ -183,12 +183,8 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             eta = smr_fixed_width
             delE = data.delE_K[ik] # energy derivatives [n, a] in eV*angstrom
             ddelE = delE[None,:] - delE[:, None] # delE_m(k) - delE_n(k) [n, m, a]
-            # Stepan :
             eta = np.maximum(adpt_smr_min, np.minimum(adpt_smr_max,
                 adpt_smr_fac * np.abs(ddelE.dot(data.Kpoint.dK_fullBZ_cart.T)).max(axis=-1) ))[None, :, :]
-            # Patrick's version: 
-            # eta = np.maximum(adpt_smr_min, np.minimum(adpt_smr_max,
-            #     adpt_smr_fac * np.linalg.norm(ddelE, axis=2) * np.max(data.Kpoint.dK_fullBZ)))[None, :, :]
         else:
             eta = smr_fixed_width # number
 
@@ -205,7 +201,6 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         if conductivity_type == 'kubo':
             # generalized Berry connection matrix
             A = data.A_H[ik] # [n, m, a] in angstrom
-#            B = data.A_H[ik]
         elif conductivity_type == 'SHC':
             B = - 1j*data.A_H[ik]
             if SHC_type == 'qiao':
