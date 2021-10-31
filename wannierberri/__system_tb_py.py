@@ -71,7 +71,6 @@ class System_tb_py(System):
         self.real_lattice=np.eye((3),dtype=float)
         self.real_lattice[:self.dimr,:self.dimr]=np.array(real)
         self.wannier_centers_cart_auto = wannier_centers_reduced.dot(self.real_lattice)
-#        self.periodic[:self.dimr]=True
         self.periodic[self.dimr:]=False
         self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
         Rvec = [tuple(row) for row in Rvec] 
@@ -135,8 +134,8 @@ class System_tb_py(System):
 
         if self.getCC:
             self.CC_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
-#        print(self.AA_R)
-#   TODO: generate the SS_R matrix        
+
+#   TODO: generate the SS_R matrix from input
 
         self.do_at_end_of_init()
         cprint ("Reading the system from {} finished successfully".format(names[module]),'green', attrs=['bold'])

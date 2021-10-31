@@ -25,14 +25,12 @@ def find_shells(basis,isearch=3):
             raise RuntimeError('Failed to sattisfy (B1) criteria of PRB 56, 12847 (1997) upto {} cells . Must be smth wrong'.format(6))
         search=np.arange(-isearch,isearch+1)
         bki=np.array(np.meshgrid(search,search,search)).reshape(3,-1,order='F').T
-#        print (bki.shape,basis.shape)
         bk=bki.dot(basis)
         leng=np.linalg.norm(bk,axis=1)
         srt=np.argsort(leng)
         bk=bk[srt]
         bki=bki[srt]
         leng=leng[srt]
-#        print ("leng=",leng[:50])
         shells=find_degen(leng,1e-8)[1:]   # omit the first "0" shell
         shell_mat=np.array([ bk[b1:b2].T.dot(bk[b1:b2])  for b1,b2 in shells])
         
@@ -63,13 +61,11 @@ def check_parallel(bk,selected_shells,shell_try):
 
 def check_B1(shell_mat,selected_shells):
     "returns accept,B1true,weights "
-#    print ("selected shells try: ",selected_shells)
     selected_shells=np.array(selected_shells)
     shell_mat=shell_mat[np.array(selected_shells)]
     shell_mat_line=shell_mat.reshape(-1,9)
     u,s,v=np.linalg.svd(shell_mat_line,full_matrices=False)
     if np.any(abs(s)<1e-7):
-#        print ("rejecting last shell of {} due to small singular value(s) {}".format(selected_shells,s))
         return False,False,None
     else:
         s=1./s
@@ -77,8 +73,6 @@ def check_B1(shell_mat,selected_shells):
         check_eye=sum(w*m for w,m in zip(weight_shell,shell_mat))
         tol=np.linalg.norm(check_eye-np.eye(3))
         if tol>1e-5 :
-#            print("The following matrix :\n {} \n from shells {} is not identity identity by an error of {}. Searchong for more shells\n ".format( #   Further debug informstion :  \n bk={} \n bki={} \n leng={}\nshells={}\nshell_mat={}\weight_shell={}\n".format(
-#                              check_eye,selected_shells,tol)) #, bk,bki,leng,shells,shell_mat,weight_shell) )
             return True,False,None
         else : 
             return True,True,weight_shell
@@ -91,7 +85,6 @@ def get_neighbours_FFT(recip_lattice,FFT):
         ki=np.array([ kindex//(FFT[1]*FFT[2]),
                       (kindex//FFT[2])%FFT[1],
                       kindex%FFT[2]]).T
-#        print ("kpoint indices are :",(ki[:,0]*FFT[1]     + ki[:,1]  )*FFT[2]  +   ki[:,2] )
         neigh=np.array([ (ki+b[None,:])%FFT  for b in bki])
         neighbours=(neigh[:,:,0]*FFT[1]     + neigh[:,:,1]  )*FFT[2]  +   neigh[:,:,2]
 #        print ("neigh=",neigh)

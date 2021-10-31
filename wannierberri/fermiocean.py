@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as npOD
 from .__utility import  alpha_A,beta_A, TAU_UNIT
 from collections import defaultdict
 from . import __result as result
@@ -64,7 +64,7 @@ def Hall_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
     factor*=-1
     factor*=elementary_charge**2/hbar  # multiply by a dimensional factor - now in S/(T*m)
     factor*=1e-2   #  finally transform to S/(T*cm)
-    formula = FormulaProduct ( [frml.Omega(data_K,**parameters),frml.Sln(data_K)], name='berry-spin')
+    formula = FormulaProduct ( [frml.Omega(data_K,**parameters),frml.Spin(data_K)], name='berry-spin')
     return  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()*factor
 
 def AHC(data_K,Efermi,tetra=False,**parameters):
@@ -76,7 +76,7 @@ def AHC_test(data_K,Efermi,tetra=False,**parameters):
 
 
 def spin(data_K,Efermi,tetra=False,**parameters):
-    return FermiOcean(frml.Sln(data_K),data_K,Efermi,tetra,fder=0)()
+    return FermiOcean(frml.Spin(data_K),data_K,Efermi,tetra,fder=0)()
 
 def berry_dipole_fsurf(data_K,Efermi,tetra=False,**parameters):
     formula  = FormulaProduct ( [frml.Omega(data_K,**parameters),data_K.covariant('Ham',commader=1)], name='berry-vel')
@@ -131,13 +131,13 @@ def gme_orb_test(data_K,Efermi,tetra=False,**parameters):
 
 
 def gme_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
-    formula  = FormulaProduct ( [frml.Sln(data_K),data_K.covariant('Ham',commader=1)], name='spin-vel')
+    formula  = FormulaProduct ( [frml.Spin(data_K),data_K.covariant('Ham',commader=1)], name='spin-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()
     res.data= np.swapaxes(res.data,1,2)* -bohr_magneton/Ang_SI**2  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
 
 def gme_spin(data_K,Efermi,tetra=False,**parameters):
-    formula  = FormulaProduct ( [frml.DerSln(data_K)], name='derspin')
+    formula  = FormulaProduct ( [frml.DerSpin(data_K)], name='derspin')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0)()
     res.data= np.swapaxes(res.data,1,2)* -bohr_magneton/Ang_SI**2  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
