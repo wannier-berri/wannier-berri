@@ -76,7 +76,7 @@ def AHC_test(data_K,Efermi,tetra=False,**parameters):
 
 
 def spin(data_K,Efermi,tetra=False,**parameters):
-    return FermiOcean(frml.Sln(data_K),data_K,Efermi,tetra,fder=0)()
+    return FermiOcean(frml.Spin(data_K),data_K,Efermi,tetra,fder=0)()
 
 def berry_dipole_fsurf(data_K,Efermi,tetra=False,**parameters):
     formula  = FormulaProduct ( [frml.Omega(data_K,**parameters),data_K.covariant('Ham',commader=1)], name='berry-vel')
