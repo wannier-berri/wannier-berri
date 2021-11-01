@@ -80,7 +80,9 @@ def Chiral(
     phi=np.pi/10,
     hopz=0.2
     ):
-    """Create a chiral model  - a chirally stached haldane model.
+    """Create a chiral model  - a chirally stacked haldane model.
+       Following the article by 
+       `Yoda,Yokoyama & Murakami 2018 <https://doi.org/10.1021/acs.nanolett.7b04300>`__
        this model breaks  time-reversal and inversion, so it 
        can be used to test almost any quantity. 
        Has a symmetry C3z
