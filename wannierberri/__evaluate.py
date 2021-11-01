@@ -98,7 +98,7 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
 
 def evaluate_K(func,system,grid,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,
-            irkpt=True,symmetrize=True, 
+            irred_kpt=True,symmetrize=True, 
             fout_name="result", suffix="",
              parameters_K={},
              file_Klist="K_list.pickle",restart=False,Klist_part = 10,
@@ -159,7 +159,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
             print ("WARNING: {}".format( err) )
             print ("WARNING : reading from {0} failed, starting from scrath".format(file_Klist))
     else:
-        K_list=grid.get_K_list(use_symmetry=irkpt)
+        K_list=grid.get_K_list(use_symmetry=irred_kpt)
         print ("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
         start_iter=0
 
@@ -224,9 +224,9 @@ As a result, the integration will be performed over NKFFT x NKdiv
         print("time2 = ",time2-time1)
         l1=len(K_list)
         for iK in select_points:
-            K_list+=K_list[iK].divide(adpt_mesh,system.periodic,use_symmetry=irkpt)
+            K_list+=K_list[iK].divide(adpt_mesh,system.periodic,use_symmetry=irred_kpt)
 
-        if  irkpt:
+        if  irred_kpt:
             print ("checking for equivalent points in all points (of new  {} points)".format(len(K_list)-l1))
             nexcl=exclude_equiv_points(K_list,new_points=len(K_list)-l1)
             print (" excluded {0} points".format(nexcl))
