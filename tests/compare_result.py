@@ -50,9 +50,9 @@ def compare_energyresult():
             E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref)
 
             if precision is None:
-                precision = max(abs(np.average(data_smooth_ref) / 1E11), 1E-10)
+                precision = max(abs(np.average(data_smooth_ref) / 1E12), 1E-11)
             elif precision < 0:
-                precision = max(abs(np.average(data_smooth_ref) * abs(precision) ), 1E-10)
+                precision = max(abs(np.average(data_smooth_ref) * abs(precision) ), 1E-11)
 
             assert E_titles == E_titles_ref
             assert data_energy == approx(data_energy_ref, abs=precision)
