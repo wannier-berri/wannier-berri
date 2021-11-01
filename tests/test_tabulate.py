@@ -50,7 +50,7 @@ def check_tabulate(parallel_serial,get_component_list,compare_fermisurfer):
                 parallel=parallel,
                 parameters = additional_parameters,
                 ibands = ibands,
-                irkpt = use_symmetry, symmetrize = use_symmetry,
+                use_irred_kpt = use_symmetry, symmetrize = use_symmetry,
                 parameters_K = parameters_K,
                 frmsf_name = os.path.join(OUTPUT_DIR, frmsf_name),
                 suffix=suffix,

@@ -41,7 +41,7 @@ def check_integrate(parallel_serial):
                 user_quantities = user_quantities,
                 parallel=parallel,
                 adpt_num_iter = adpt_num_iter,
-                irkpt = use_symmetry, symmetrize = use_symmetry,
+                use_irred_kpt = use_symmetry, symmetrize = use_symmetry,
                 parameters = additional_parameters,
                 parameters_K = parameters_K,
                 fout_name = os.path.join(OUTPUT_DIR, fout_name),
