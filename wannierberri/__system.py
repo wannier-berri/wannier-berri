@@ -80,7 +80,7 @@ class System():
     Notes:
     -------
         for tight-binding models it is recommended to use `use_wcc_phase = True`. In this case the external terms vanish, and 
-        one can safely use `berry=False, morb=False`, and also set `'external_terms':True` in the parameters of the calculation
+        one can safely use `berry=False, morb=False`, and also set `'external_terms':False` in the parameters of the calculation
 
     """ .format(**default_parameters)
 
