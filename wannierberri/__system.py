@@ -398,7 +398,7 @@ class System():
     def check_hermitian(self,XX):
         if hasattr(self,XX):
             XX_R = np.copy(vars(self)[XR])
-            assert (np.max(abs(XX_R-self.conh_XX_R(XX_R)))<1e-8) , f"{XX} should obey X(-R) = X(R)^\dagger"
+            assert (np.max(abs(XX_R-self.conh_XX_R(XX_R)))<1e-8) , f"{XX} should obey X(-R) = X(R)^+"
         else:
             print (f"{XX} is missing,nothing to check")
 
