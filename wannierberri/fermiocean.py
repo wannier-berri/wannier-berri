@@ -209,9 +209,6 @@ class  FermiOcean():
         self.NB=data_K.num_wann
         self.formula=formula
         self.final_factor=1./(data_K.NKFFT_tot * data_K.cell_volume)
-#        print('final_factor',self.final_factor)
-#        print('NKFFT_tot',data_K.NKFFT_tot)
-#        print('cell_volume',data_K.cell_volume)
         
         # get a list [{(ib1,ib2):W} for ik in op:ed]  
         if self.tetra:
@@ -223,7 +220,6 @@ class  FermiOcean():
             self.EFmax=Efermi[-1]+self.extraEf*self.dEF
             self.nEF_extra=Efermi.shape[0]+2*self.extraEf
             self.weights=data_K.get_bands_in_range_groups(self.EFmin,self.EFmax,degen_thresh=degen_thresh,sea=(self.fder==0)) # here W is energy
-       # print(self.weights)
         self.__evaluate_traces(formula, self.weights, ndim )
 
     def __evaluate_traces(self,formula,bands, ndim):
