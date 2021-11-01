@@ -35,7 +35,6 @@
             |  norm=none      -   do not normalize WFs, take as they are.
 
 """
-#"""
 
 def hlp():
     from termcolor import cprint 
@@ -114,7 +113,6 @@ def main():
       assert np.max(np.abs(overlap-overlap.T.conj()))<1e-15
   
       if normalize=="norm":
-#          print ("normalizing")
           WF=WF/np.sqrt(np.abs(overlap.diagonal()))
   
       SIGMA=np.array([[
@@ -124,8 +122,6 @@ def main():
       SY=-1.j*(SIGMA[0,1]-SIGMA[1,0])
       SZ=SIGMA[0,0]-SIGMA[1,1]
       A=np.array([s[n,m] for m in range(NBout) for n in range(m+1) for s in (SX,SY,SZ)],dtype=np.complex128)
-  #    print A.shape
-#      print (np.real(np.vstack(  (SX.diagonal(),SY.diagonal(),SZ.diagonal()) )))
       SPN.write_record(A)
       SS=[overlap,SX,SY,SZ]
   

@@ -288,10 +288,8 @@ def main():
         if quantity:
             bar=ax.scatter(kplaneeig[psel,-2],kplaneeig[psel,-1],c=kplaneeig[psel,1],s=1,vmax=cmax,vmin=-cmax,cmap='seismic')
             plt.colorbar(bar)
-	#plt.scatter(kplaneeig[psel,-2],kplaneeig[psel,-1],c='k',s=2)
         plt.savefig('Plane_eig'+str(component)+'.png')
 
-	
 if __name__ == "__main__":
 	main()		 
 
