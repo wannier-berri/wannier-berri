@@ -80,7 +80,7 @@ class System():
     Notes:
     -------
         for tight-binding models it is recommended to use `use_wcc_phase = True`. In this case the external terms vanish, and 
-        one can safely use `berry=False, morb=False`, and also set `'external_terms':True` in the parameters of the calculation
+        one can safely use `berry=False, morb=False`, and also set `'external_terms':False` in the parameters of the calculation
 
     """ .format(**default_parameters)
 
@@ -163,7 +163,7 @@ class System():
             tb_file=self.seedname+"_fromchk_tb.dat"
         f=open(tb_file,"w")
         f.write("written by wannier-berri form the chk file\n")
-#        cprint ("reading TB file {0} ( {1} )".format(tb_file,l.strip()),'green', attrs=['bold'])
+        cprint (f"writing TB file {tb_file}", 'green', attrs=['bold'])
         np.savetxt(f,self.real_lattice)
         f.write("{}\n".format(self.num_wann))
         f.write("{}\n".format(self.nRvec))
@@ -189,7 +189,6 @@ class System():
         return np.unique(iRvec%FFT,axis=0).shape[0]==iRvec.shape[0]
 
 
-#    @lazy_property.LazyProperty
     @property
     def NKFFT_recommended(self):
         "finds a minimal FFT grid on which different R-vectors do not overlap"
@@ -385,7 +384,6 @@ class System():
             if len(ir2)==1:
                 lst1.append(ir1)
                 lst2.append(ir2[0])
-#                print (ir1,self.iRvec[ir1] , ir2,self.iRvec[ir2[0]])
         return np.array(lst1),np.array(lst2)
 
     def conj_XX_R(self,XX_R):
@@ -393,7 +391,6 @@ class System():
         XX_R_new = np.zeros_like(XX_R)
         lst1,lst2 = self.reverseR
         assert np.all(self.iRvec[lst1] + self.iRvec[lst2] ==0 )
-#        print (XX_R.shape,XX_R_new.shape,lst1,lst2)
         XX_R_new [:,:,lst1] = np.copy(XX_R)[:,:,lst2]
         XX_R_new[:] = XX_R_new.swapaxes(0,1).conj()
         return np.copy(XX_R_new)
@@ -401,7 +398,7 @@ class System():
     def check_hermitian(self,XX):
         if hasattr(self,XX):
             XX_R = np.copy(vars(self)[XR])
-            assert (np.max(abs(XX_R-self.conh_XX_R(XX_R)))<1e-8) , f"{XX} should obey X(-R) = X(R)^\dagger"
+            assert (np.max(abs(XX_R-self.conh_XX_R(XX_R)))<1e-8) , f"{XX} should obey X(-R) = X(R)^+"
         else:
             print (f"{XX} is missing,nothing to check")
 

@@ -31,8 +31,6 @@ def weights_tetra(efall,e0,e1,e2,e3,der=0):
     e1,e2,e3,e4 = e
 
     nEF=len(efall)
-#    efall2=efall * efall
-#    efall3=efall2* efall
     occ=np.zeros((nEF))
     denom3 = 1./ ((e4 - e1) * (e4 - e2) * (e4 - e3) )
     denom2 = 1./ ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4-e2) )
@@ -196,7 +194,6 @@ class TetraWeights():
 
 
     def __weight_1b(self,ik,ib,der):
-#        print (ib,ik,der)
         if ib not in self.weights[der][ik]:
             self.weights[der][ik][ib]=weights_parallelepiped(self.eFermi,self.eCenter[ik,ib],self.eCorners[ik,:,:,:,ib],der=der)
         return self.weights[der][ik][ib]
@@ -232,73 +229,12 @@ class TetraWeights():
 
             if der==0 :
                 bandmax=get_bands_below_range(self.eFermi[0],self.eCenter[ik],Ebandmax=self.Emax[ik])
-#                print ("bandmax=",bandmax)
                 if len(bands_in_range)>0 :
                     bandmax=min(bandmax, bands_in_range[0][0])
                 weights[(0,bandmax)]=self.ones
-#                print ("now bandmax=",bandmax)
 
             res.append( weights )
         return res
 
 
 
-if __name__ == '__main__' : 
-    import matplotlib.pyplot as plt
-
-
-    Efermi=np.linspace(-1,1,1001)
-    E=np.random.random(9)-0.5
-    Ecenter=E[0]
-    Ecorner=E[1:].reshape(2,2,2)
-    Ecorn=E[1:4]
-#    occ=weights_1band_parallelepiped(Efermi,Ecenter,Ecorner)
-    from time import time
-
-    Ncycl=100
-
-    t00=time()
-    weights_tetra (Efermi,Ecenter,Ecorn[0],Ecorn[1],Ecorn[2])
-    t0=time()
-    [weights_tetra (Efermi,Ecenter,Ecorn[0],Ecorn[1],Ecorn[2])  for i in range(Ncycl) ]
-    t1=time()
-    print ("time for {} is {} ms (compilation:{})".format("tetra",(t1-t0)/Ncycl*1000,(t0-t00)*1000))
-
-    t00=time()
-    weights_parallelepiped  (Efermi,Ecenter,Ecorner)
-    t0=time()
-    [weights_parallelepiped (Efermi,Ecenter,Ecorner)  for i in range(Ncycl) ]
-    t1=time()
-    print ("time for {} is {} ms (compilation:{})".format("paral",(t1-t0)/Ncycl*1000,(t0-t00)*1000))
-
-
-    t1=time()
-    print ("time for {} is {} ms".format("vec_sea",(t1-t0)/Ncycl*1000*12))
-    
-    print (Ecenter,Ecorner)
-#    occ_sea_2    = weights_1band_vec_sea_2    (Efermi,Efermi2,Efermi3,Ecenter,Ecorn)
-    occ_sea      = weights_tetra (Efermi,Ecenter,Ecorn[0],Ecorn[1],Ecorn[2],der=0)
-    occ_surf     = weights_tetra (Efermi,Ecenter,Ecorn[0],Ecorn[1],Ecorn[2],der=1)
-    occ_surf_der = weights_tetra (Efermi,Ecenter,Ecorn[0],Ecorn[1],Ecorn[2],der=2)
-
-    occ_surf_fd=occ_sea*0
-    occ_surf_fd[1:-1]=(occ_sea[2:]-occ_sea[:-2])/(Efermi[2]-Efermi[0])
-
-    occ_surf_der_fd=occ_sea*0
-    occ_surf_der_fd[2:-2]=(occ_sea[4:]+occ_sea[:-4]-2*occ_sea[2:-2])/(Efermi[2]-Efermi[0])**2
-    
-    plt.plot(Efermi,occ_sea   ,c='blue')
-#    plt.plot(Efermi,occ_sea_2 ,c='red')
-#    plt.plot(Efermi,(occ_sea_2-occ_sea) , c='green' )
-
-    plt.scatter(Efermi,occ_surf_fd ,c='green')
-    plt.scatter(Efermi,occ_surf_der_fd ,c='red')
-    plt.plot(Efermi,occ_surf , c='yellow')
-    plt.plot(Efermi,occ_surf_der , c='cyan')
-
-    for x in E[1:4]:
-        plt.axvline(x,c='blue')
-    plt.axvline(Ecenter,c='red')
-    plt.xlim(-0.6,0.6)
-    plt.show()
-    exit()

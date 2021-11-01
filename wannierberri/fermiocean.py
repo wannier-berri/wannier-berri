@@ -64,7 +64,7 @@ def Hall_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
     factor*=-1
     factor*=elementary_charge**2/hbar  # multiply by a dimensional factor - now in S/(T*m)
     factor*=1e-2   #  finally transform to S/(T*cm)
-    formula = FormulaProduct ( [frml.Omega(data_K,**parameters),frml.Sln(data_K)], name='berry-spin')
+    formula = FormulaProduct ( [frml.Omega(data_K,**parameters),frml.Spin(data_K)], name='berry-spin')
     return  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()*factor
 
 def AHC(data_K,Efermi,tetra=False,**parameters):
@@ -76,7 +76,7 @@ def AHC_test(data_K,Efermi,tetra=False,**parameters):
 
 
 def spin(data_K,Efermi,tetra=False,**parameters):
-    return FermiOcean(frml.Sln(data_K),data_K,Efermi,tetra,fder=0)()
+    return FermiOcean(frml.Spin(data_K),data_K,Efermi,tetra,fder=0)()
 
 def berry_dipole_fsurf(data_K,Efermi,tetra=False,**parameters):
     formula  = FormulaProduct ( [frml.Omega(data_K,**parameters),data_K.covariant('Ham',commader=1)], name='berry-vel')
@@ -131,13 +131,13 @@ def gme_orb_test(data_K,Efermi,tetra=False,**parameters):
 
 
 def gme_spin_fsurf(data_K,Efermi,tetra=False,**parameters):
-    formula  = FormulaProduct ( [frml.Sln(data_K),data_K.covariant('Ham',commader=1)], name='spin-vel')
+    formula  = FormulaProduct ( [frml.Spin(data_K),data_K.covariant('Ham',commader=1)], name='spin-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1)()
     res.data= np.swapaxes(res.data,1,2)* -bohr_magneton/Ang_SI**2  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
 
 def gme_spin(data_K,Efermi,tetra=False,**parameters):
-    formula  = FormulaProduct ( [frml.DerSln(data_K)], name='derspin')
+    formula  = FormulaProduct ( [frml.DerSpin(data_K)], name='derspin')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0)()
     res.data= np.swapaxes(res.data,1,2)* -bohr_magneton/Ang_SI**2  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
@@ -209,9 +209,6 @@ class  FermiOcean():
         self.NB=data_K.num_wann
         self.formula=formula
         self.final_factor=1./(data_K.NKFFT_tot * data_K.cell_volume)
-#        print('final_factor',self.final_factor)
-#        print('NKFFT_tot',data_K.NKFFT_tot)
-#        print('cell_volume',data_K.cell_volume)
         
         # get a list [{(ib1,ib2):W} for ik in op:ed]  
         if self.tetra:
@@ -223,7 +220,6 @@ class  FermiOcean():
             self.EFmax=Efermi[-1]+self.extraEf*self.dEF
             self.nEF_extra=Efermi.shape[0]+2*self.extraEf
             self.weights=data_K.get_bands_in_range_groups(self.EFmin,self.EFmax,degen_thresh=degen_thresh,sea=(self.fder==0)) # here W is energy
-       # print(self.weights)
         self.__evaluate_traces(formula, self.weights, ndim )
 
     def __evaluate_traces(self,formula,bands, ndim):

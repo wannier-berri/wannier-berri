@@ -222,8 +222,6 @@ def run_mmn2uHu(PREFIX, **kwargs):
                     eig_dum=EIG[ik][IBstartSum:IBstartSum+NB_sum]
                 elif UXU[0]=="uIu":
                     eig_dum=np.ones(NB_sum)
-                #    if NB_sum > NB_in:
-                 #       eig_dum = np.ones(NB_in)
                 else:
                     raise RuntimeError()
                 A=np.zeros( (NNB,NNB,NB_out,NB_out),dtype=complex )
@@ -256,7 +254,6 @@ def run_mmn2uHu(PREFIX, **kwargs):
         else:
             f_spn_in = FortranFileR(os.path.join(INPUTDIR,PREFIX+".spn") )
             SPNheader=(f_spn_in.read_record(dtype='c'))
-#            print (SPNheader)
             nbnd,NK=f_spn_in.read_record(dtype=np.int32)
             SPNheader="".join(a.decode('ascii') for a in SPNheader)
 

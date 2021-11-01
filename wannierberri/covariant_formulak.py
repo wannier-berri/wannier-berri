@@ -103,7 +103,9 @@ class Der3E(Formula_ln):
         summ+=  -1 * np.einsum("mlbc,lna->mnabc",self.dD.nl(ik,inn,out),self.V.ln(ik,inn,out) )
         summ+=  -1 * np.einsum("mlb,lnac->mnabc",self.D.nl(ik,inn,out),self.dV.ln(ik,inn,out) )
 
-        #summ+=summ.swapaxes(0,1).conj()
+        # TODO: alternatively: add factor 0.5 to first term, remove 4th and 5th, and ad line below. 
+        # Should give the same, I think, but needs to be tested
+        # summ+=summ.swapaxes(0,1).conj()
         return summ
 
     def ln(self,ik,inn,out):
@@ -120,7 +122,6 @@ class Omega(Formula_ln):
         super().__init__(data_K,**parameters)
         self.D=data_K.Dcov
 
-#        print (f"Omega evaluating: internal({self.internal_terms}) and external({self.external_terms})")
         if self.external_terms:
             self.A=data_K.covariant('AA')
             self.O=data_K.covariant('OO')
@@ -160,8 +161,6 @@ class DerOmega(Formula_ln):
         super().__init__(data_K,**parameters)
         self.dD = DerDcov(data_K)
         self.D  = data_K.Dcov
-
-#        print (f"derOmega evaluating: internal({self.internal_terms}) and external({self.external_terms})")
 
         if self.external_terms:
             self.A  = data_K.covariant('AA')
@@ -207,6 +206,11 @@ class Velocity(Matrix_ln):
 class Spin(Matrix_ln):
     def __init__(self,data_K):
         s =  data_K.covariant('SS')
+        self.__dict__.update(s.__dict__)
+
+class DerSpin(Matrix_GenDer_ln):
+    def __init__(self,data_K):
+        s =  data_K.covariant('SS',gender=1)
         self.__dict__.update(s.__dict__)
 
 
@@ -322,9 +326,9 @@ class DerMorb(Formula_ln):
 
         summ += 1 * np.einsum("mlc,lnd->mncd",self.Omega.nn(ik,inn,out),self.V.nn(ik,inn,out) )
         summ += 1 * self.E[ik][inn][:,None,None,None]*self.dO.nn(ik,inn,out)
-        
-            
 
+        # Stepan: Shopuldn't we use the line below? 
+        # TODO: check this formula
         #summ+=summ.swapaxes(0,1).conj()
         return summ
 

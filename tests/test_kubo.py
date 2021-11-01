@@ -33,7 +33,7 @@ def check_integrate_dynamical():
                 Efermi = Efermi,
                 omega = omega,
                 quantities = quantities,
-                irkpt = use_symmetry, symmetrize = use_symmetry,
+                use_irred_kpt = use_symmetry, symmetrize = use_symmetry,
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
                 parameters_K = parameters_K,
