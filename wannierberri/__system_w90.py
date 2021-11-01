@@ -80,7 +80,6 @@ class System_w90(System):
         kpt_mp_grid=[tuple(k) for k in np.array( np.round(chk.kpt_latt*np.array(chk.mp_grid)[None,:]),dtype=int)%chk.mp_grid]
         if (0,0,0) not in kpt_mp_grid:
             raise ValueError("the grid of k-points read from .chk file is not Gamma-centered. Please, use Gamma-centered grids in the ab initio calculation")
-#        print ("kpoints:",kpt_mp_grid)
         
         fourier_q_to_R_loc=functools.partial(fourier_q_to_R, mp_grid=chk.mp_grid,kpt_mp_grid=kpt_mp_grid,iRvec=self.iRvec,ndegen=self.Ndegen,numthreads=npar,fft=fft)
 
@@ -162,8 +161,6 @@ class System_w90(System):
         irvec=[]
         ndegen=[]
         for n in iterate3dpm(mp_grid*ws_search_size):
-            # Loop over the 125 points R. R=0 corresponds to i1=i2=i3=0,
-            # or icnt=63  (62 starting from zero)
             dist=[]
             for i in iterate3dpm((1,1,1)+ws_search_size):
                 ndiff=n-i*mp_grid
@@ -196,7 +193,6 @@ class ws_dist_map():
         self.num_wann=wannier_centers.shape[0]
         self._iRvec_new=dict()
         param=(shifts_int_all,wannier_centers,real_lattice, ws_distance_tol, wannier_centers.shape[0])
-        #param=(np.copy(shifts_int_all),np.copy(wannier_centers),np.copy(real_lattice), np.copy(ws_distance_tol),np.copy(self.num_wann))
         p=multiprocessing.Pool(npar)
         t1=time()
         irvec_new_all=p.starmap(functools.partial(ws_dist_stars,param=param),zip(iRvec,cRvec))
@@ -222,7 +218,6 @@ class ws_dist_map():
         ndim=len(matrix.shape)-3
         num_wann=matrix.shape[0]
         reshaper=(num_wann,num_wann)+(1,)*ndim
-#        print ("check:",matrix.shape,reshaper,ndim)
         matrix_new=np.array([ sum(matrix[:,:,ir]*self._iRvec_new[irvecnew][ir].reshape(reshaper)
                                   for ir in self._iRvec_new[irvecnew] ) 
                                        for irvecnew in self._iRvec_ordered]).transpose( (1,2,0)+tuple(range(3,3+ndim)) )
@@ -245,7 +240,6 @@ class ws_dist_map():
 
 
 
-#def ws_dist_stars(index,iRvec,cRvec,param):
 def ws_dist_stars(iRvec,cRvec,param):
           shifts_int_all,wannier_centers,real_lattice, ws_distance_tol, num_wann = param
           irvec_new={}
@@ -256,7 +250,6 @@ def ws_dist_stars(iRvec,cRvec,param):
               # to identify it
               R_in=-wannier_centers[iw] +cRvec + wannier_centers[jw]
               dist=np.linalg.norm( R_in[None,:]+shifts_int_all.dot(real_lattice),axis=1)
-              #irvec_new[(ir,iw,jw)]=iRvec+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
               irvec_new[(iw,jw)]=iRvec+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
           return irvec_new
 

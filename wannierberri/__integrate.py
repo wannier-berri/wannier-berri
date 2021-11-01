@@ -138,21 +138,6 @@ for key,val in parameters_optical.items():
         additional_parameters[calc][key] = val[0]
         additional_parameters_description[calc][key] = val[1]
 
-#for calc in calculators_trans:
-#    key='tetra'
-#    if additional_parameters[calc][key] == True:
-#        additional_parameters_description[calc][key] = (
-#             'use tetrahedron method for integration ')
-
-#    key='internal_terms'
-#    if additional_parameters[calc][key] == True:
-#        additional_parameters_description[calc][key] = (
-#             'evaluate internal terms of the Berry curvvaure')
-#    key='external_terms'
-#    if additional_parameters[calc][key] == True:
-#        additional_parameters_description[calc][key] = (
-#             'evaluate external terms of the Berry curvvaure')
-
 additional_parameters['Faraday']['homega'] = 0.0
 additional_parameters_description['Faraday']['homega'] = "frequency of light in eV (one frequency per calculation)"
 

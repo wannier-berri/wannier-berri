@@ -50,7 +50,7 @@ def parity_TR(name,der=0):
     raises ValueError for unknown quantities"""
     if name in ['Ham','T_wcc']:   # even before derivative
         p=0 
-    elif name in ['CC','FF','OO']:      # odd before derivative
+    elif name in ['CC','FF','OO','SS']:      # odd before derivative
         p=1
     elif name in ['D','AA','BB','CCab']:
         return None
@@ -68,6 +68,7 @@ class _Dcov(Matrix_ln):
    
 class Data_K(System):
     default_parameters =  {
+#Those are not used at the moment , but will be restored (TODO):
 #                    'frozen_max': -np.Inf,
 #                    'delta_fz':0.1,
                     'Emin': -np.Inf ,
@@ -97,7 +98,7 @@ class Data_K(System):
     """ .format(**default_parameters)
 
 
-#Those are not used at the moment:
+#Those are not used at the moment , but will be restored (TODO):
 #    frozen_max : float
 #        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary. 
 #        If not specified, attempts to read this value from system. Othewise set to  ``{frozen_max}``
@@ -107,7 +108,6 @@ class Data_K(System):
 
 
     def __init__(self,system,dK,grid,Kpoint=None,**parameters):
-#        self.spinors=system.spinors
         self.system=system
         self.set_parameters(**parameters)
 
@@ -119,8 +119,6 @@ class Data_K(System):
         self.num_wann=self.system.num_wann
         self.Kpoint=Kpoint
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
-        #self.wannier_centers_cart_wcc_phase=system.wannier_centers_wcc_phase
-#        print (f"wannier centers in Data_K : \n{self.system.wannier_centers_cart_wcc_phase}\n")
         self.cRvec_wcc=self.system.cRvec_p_wcc
 
         self.fft_R_to_k=FFT_R_to_k(self.system.iRvec,self.NKFFT,self.num_wann, numthreads=self.npar_k if self.npar_k>0 else 1,lib=self.fftlib)
@@ -137,12 +135,6 @@ class Data_K(System):
                 vars(self)[param]=parameters[param]
             else: 
                 vars(self)[param]=self.default_parameters[param]
-#        if 'frozen_max' not in parameters:
-#            try : 
-#                self.frozen_max= self.system.frozen_max
-#            except:
-#                pass 
-
 
 
 ###########################################
@@ -286,14 +278,12 @@ class Data_K(System):
         res=self.get_bands_in_range(emin,emax,op,ed)
         for ik in range(op,ed):
            add=np.where((self.E_K[ik]<emin))[0]
-#           print ("add : ",add," / ",self.E_K[ik])
            if len(add)>0:
                res[ik-op][add.max()]=self.E_K[ik,add.max()]
         return res
 
 
     def get_bands_in_range_groups(self,emin,emax,op=0,ed=None,degen_thresh=-1,sea=False):
-#        get_bands_in_range(emin,emax,Eband,degen_thresh=-1,Ebandmin=None,Ebandmax=None)
         if ed is None: ed=self.NKFFT_tot
         res=[]
         for ik in range(op,ed):
@@ -303,10 +293,8 @@ class Data_K(System):
                      }
             if sea :
                 bandmax=get_bands_below_range(emin,self.E_K[ik])
-#                print ("bandmax=",bandmax)
                 if len(bands_in_range)>0 :
                     bandmax=min(bandmax, bands_in_range[0][0])
-#                print ("now : bandmax=",bandmax ,self.E_K[ik][bandmax] )
                 if bandmax>0:
                     weights[(0,bandmax)]=-np.Inf
             res.append( weights )
@@ -438,7 +426,6 @@ class Data_K(System):
                     self._UU[ik,:,ib1:ib2]=self._UU[ik,:,ib1:ib2].dot( unitary_group.rvs(ib2-ib1) )
                     cnt+=1
                     s+=ib2-ib1
-#            print ("applied random rotations {} times, average degeneracy is {}-fold".format(cnt,s/max(cnt,1)))
         print_my_name_end()
         return self._UU
 

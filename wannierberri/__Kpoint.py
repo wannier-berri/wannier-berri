@@ -54,7 +54,6 @@ class  KpointBZ():
     def __str__(self):
         k_cart=self.K.dot(self.symgroup.recip_lattice)
         return  ( "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ], refinement level:{3}, dK={4} ".format(self.K[0],self.K[1],self.K[2],self.refinement_level,self.dK) )  
-#                +   "         coord in cartesian = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ]".format(k_cart[0],k_cart[1],k_cart[2]) + "\n star = "+"\n      ".join(str(s) for s in self.star) )
 
     @property
     def _max(self):
@@ -88,7 +87,6 @@ class  KpointBZ():
     def get_res(self):
         self.check_evaluated
         return self.res*self.factor
-#        return np.hstack((self.res,self.res_smooth))*self.factor
 
 
     def absorb(self,other):
@@ -107,9 +105,6 @@ class  KpointBZ():
         res=False
         if np.linalg.norm((dif-np.round(dif)),axis=2).min() < SYMMETRY_PRECISION :
             res=True
-#        print(str(self))
-#        print(str(other))
-#        print ("dif=\n {} \n equiv={}".format(dif,res))
         return res
 
 
@@ -129,26 +124,16 @@ class  KpointBZ():
                                   for y in range(ndiv[1]) 
                                    for z in range(ndiv[2])
                             if not (include_original and np.all(np.array([x,y,z])*2+1==ndiv)) ]
-#        print ("ndiv={}, include_original={} ".format(ndiv,include_original))
 
         if include_original:
             self.factor=newfac
             self.refinement_level+=1
             self.dK=dK_adpt
-
-#            K_list_add.append(self.fraction(ndiv))
         else:
             self.factor=0  # the K-point is "dead" but can be used for starting calculation on a different grid  - not implemented
-
-#        print ("ndiv={}, include_original={} ".format(ndiv,include_original))
-
         n=len(K_list_add)
-
         if use_symmetry and  (self.symgroup is not None):
             exclude_equiv_points(K_list_add)
-
-#        print ("dividing {} into : \n".format(self)+"\n".join(str(K) for K in K_list_add))
-
         return K_list_add
 
 
@@ -160,7 +145,6 @@ class  KpointBZ():
 
 
 def exclude_equiv_points(K_list,new_points=None):
-    print ("Excluding symmetry-equivalent K-points")
     t0=time()
     cnt=0
     n=len(K_list)
@@ -187,5 +171,4 @@ def exclude_equiv_points(K_list,new_points=None):
                              K_list[i].absorb(K_list[j])
     for i in sorted(exclude)[-1::-1]:
         del K_list[i]
-    print ("Done. Excluded  {} K-points in {} sec".format(len(exclude),time()-t0))
     return cnt

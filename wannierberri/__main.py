@@ -43,7 +43,6 @@ from pyfiglet import figlet_format
 def figlet(text,font='cosmike',col='red'):
     init(strip=not sys.stdout.isatty()) # strip colors if stdout is redirected
     letters=[figlet_format(X, font=font).rstrip("\n").split("\n") for X in text]
-#    print (letters)
     logo=[]
     for i in range(len(letters[0])):
         logo.append("".join(L[i] for L in letters))
@@ -76,7 +75,9 @@ def print_options():
 
 
 def welcome():
-#figlet("WANN IER BERRI",font='cosmic',col='yellow')
+# ogiginally obtained by 
+# figlet("WANN IER BERRI",font='cosmic',col='yellow')
+# with small modifications
     logo="""
 .::    .   .::: .:::::::.  :::.    :::.:::.    :::. :::.,::::::  :::::::..       :::::::.  .,::::::  :::::::..   :::::::..   :::
 ';;,  ;;  ;;;' '  ;;`;;  ` `;;;;,  `;;;`;;;;,  `;;; ;;;;;;;''''  ;;;;``;;;;       ;;;'';;' ;;;;''''  ;;;;``;;;;  ;;;;``;;;;  ;;;
@@ -86,7 +87,6 @@ def welcome():
      "M "M"      YMM   ""`   MMM     YM  MMM     YM MMM \"\"\"\"YUMMM MMMM   "W"     ""YUMMMP"  \"\"\"\"YUMMM MMMM   "W"  MMMM   "W" MMM
 """
     cprint(logo,'yellow')
-#    cprint("a.k.a. Wannier19",'red')
     figlet("    by Stepan Tsirkin et al",font='straight',col='green')
 
 
@@ -94,12 +94,7 @@ def welcome():
 
 
     cprint( "\nVersion: {}\n".format( __version__),'cyan', attrs=['bold'])
-#    print_options()
 
-#for font in ['twopoint','contessa','tombstone','thin','straight','stampatello','slscript','short','pepper']:
-#    __figlet("by Stepan Tsirkin",font=font,col='green')
-
-    
 
 def check_option(quantities,avail,tp):
     for opt_full in quantities:
@@ -108,14 +103,15 @@ def check_option(quantities,avail,tp):
         raise RuntimeError("Quantity {} is not available for {}. Available options are : \n{}\n".format(opt,tp,avail) )
 
 
-## TODO: Unify the two methids, to do everything in one shot
+## TODO: Unify the two methods, to do make possible doing 
+# integration and tabulating everything in one shot
 
 def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         smearEf=10,smearW=None,
                         quantities=[],
                         user_quantities = {}, 
                         adpt_num_iter=0,adpt_fac=1,
-                        irkpt = True, symmetrize = True,
+                        use_irred_kpt = True, symmetrize = True,
                         fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
                         parallel = None,
                         parameters={},parameters_K={},specific_parameters={} ):
@@ -149,10 +145,10 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         number of K-points to be refined per quantity and criteria.
     parallel : :class:`~wannierberri.Parallel`
         object describing parallelization scheme
-    irkpt : bool
+    use_irred_kpt : bool
         evaluate only symmetry-irreducible K-points
     symmetrize : bool
-        symmetrize the result (always `True` if `irkpt == True`)
+        symmetrize the result (always `True` if `use_irred_kpt == True`)
     parameters : dict  
         `{'name':value,...}` , Each quantity that 
         recognizes a parameter with the given name will use it
@@ -177,7 +173,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 #    Ef0 : float
 #        a single  Fermi level for optical properties
 
-    if irkpt:
+    if use_irred_kpt:
         symmetrize = True
     cprint ("\nIntegrating the following  standard      quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     cprint ("\nIntegrating the following  user-defined  quantities: "+", ".join(user_quantities.keys())+"\n",'green', attrs=['bold'])
@@ -206,7 +202,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
             quantities=quantities,user_quantities = user_quantities, 
             parameters=parameters, specific_parameters = specific_parameters )
     res=evaluate_K(eval_func,system,grid,fftlib=fftlib,
-            adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac, irkpt=irkpt,symmetrize=symmetrize,
+            adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac, use_irred_kpt=use_irred_kpt,symmetrize=symmetrize,
                 fout_name=fout_name,suffix=suffix,
                 restart=restart,file_Klist=file_Klist, parallel = parallel,parameters_K=parameters_K )
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
@@ -216,7 +212,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 
 def tabulate(system,grid, quantities=[], user_quantities = {}, 
                   frmsf_name=None,ibands=None,suffix="",Ef0=0.,
-                  irkpt = True, symmetrize = True,
+                  use_irred_kpt = True, symmetrize = True,
                   parameters={},parameters_K={},specific_parameters={},
                   degen_thresh = 1e-4,
                   parallel = None ):
@@ -237,7 +233,7 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
         a dictionary `{name:formula}`, where `name` is any string, and `formula` 
         is a name of a child class of  :class:`~wannierberri.formula.Formula_ln`
         which should have defined attributes `nn` , `TRodd`, `Iodd`
-    irkpt : bool
+    use_irred_kpt : bool
         evaluate only symmetry-irreducible K-points
     symmetrize : bool
         symmetrize the result
@@ -256,7 +252,7 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
     mode = '3D'
     if isinstance(grid,Path):
         mode = 'path'
-        irkpt      = False
+        use_irred_kpt      = False
         symmetrize = False
     cprint ("\nTabulating the following standard     quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
     cprint ("\nTabulating the following user-defined quantities: "+", ".join(user_quantities.keys())+"\n",'green', attrs=['bold'])
@@ -269,7 +265,7 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
     t0=time()
     res=evaluate_K(eval_func,system,grid,
             adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,
-            irkpt=irkpt,symmetrize=symmetrize,
+            use_irred_kpt=use_irred_kpt,symmetrize=symmetrize,
             parallel=parallel,parameters_K=parameters_K )
 
     t1=time()
@@ -304,7 +300,6 @@ def write_frmsf(frmsf_name,Ef0,numproc,quantities,res,suffix=""):
         ttxt=0
         twrite=0
         for Q in quantities:
-    #     for comp in ["x","y","z","sq","norm"]:
             for comp in ["x","y","z","xx","yy","zz","xy","yx","xz","zx","yz","zy"]:
                 try:
                     t31=time()
