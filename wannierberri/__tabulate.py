@@ -22,19 +22,17 @@ import  multiprocessing
 import functools
 from .__utility import  print_my_name_start,print_my_name_end
 from . import __result as result
-from . import  __berry as berry
+from . import covariant_formulak as frml
 from . import  symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
-#should be functions of only one parameter of class Data_K
+#should be classes Formula_ln 
 calculators={ 
-         'spin'       : berry.calcSpin_band_kn, 
-         'V'          : berry.calcV_band_kn  , 
-         'morb'       : berry.calcImgh_band_kn,
-         'berry'      : berry.calcImf_band_kn ,
-         'hall_spin'  : berry.calcHall_spin_kn,
-         'hall_orb'   : berry.calcHall_orb_kn
+         'spin'       : frml.Spin, 
+         'V'          : frml.Velocity, 
+         'berry'      : frml.Omega, #berry.calcImf_band_kn ,
+         'Der_berry'  : frml.DerOmega, #berry.calcImf_band_kn ,
          }
 
 
@@ -43,42 +41,93 @@ additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no des
 
 
 descriptions=defaultdict(lambda:"no description")
-descriptions['berry']="Berry curvature"
-descriptions['V']="velocity"
+descriptions['berry']="Berry curvature (Ang^{-2})"
+descriptions['Der_berry']="1st deravetive of Berry curvature (Ang^{-3})"
+descriptions['V']="velocity (eV*Ang)"
 descriptions['spin']="Spin"
-descriptions['morb']="orbital magnetic moment"
-descriptions['hall_spin']="spin contribution to low-field Hall effect"
-descriptions['hall_orb']="orbital contribution to low-field Hall effect"
+
+parameters_ocean = {
+'external_terms' : (True , "evaluate external terms"),
+'internal_terms' : (True,  "evaluate internal terms"),
+}
+
+for key,val in parameters_ocean.items(): 
+    for calc in ['berry','Der_berry']: 
+        additional_parameters[calc][key] = val[0]
+        additional_parameters_description[calc][key] = val[1]
 
 
 
-def tabXnk(data,quantities=[],degen_thresh=None,ibands=None,parameters={}):
+def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None,
+            parameters={},specific_parameters = {}):
 
-    if degen_thresh is not None:
-        data.set_degen(degen_thresh=degen_thresh)
 
     if ibands is None:
-        ibands=np.arange(data.nbands)
+        ibands=np.arange(data_K.nbands)
+    else:
+        ibands = np.array(ibands)
 
+    tabulator = Tabulator(data_K,ibands,degen_thresh)
 
-    Enk=data.E_K[:,ibands]
-       
-    degen_thresh=1e-5
-    A=[np.hstack( ([0],np.where(E[1:]-E[:1]>degen_thresh)[0]+1, [E.shape[0]]) ) for E in Enk ]
-    deg= [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:])] for a in A]
-
-    results={'E':result.KBandResult(Enk,TRodd=False,Iodd=False)}
-    for q in quantities:
+    results={'E':result.KBandResult(data_K.E_K[:,ibands],TRodd=False,Iodd=False)}
+    for qfull in quantities:
+        q = qfull.split('^')[0]
         __parameters={}
         for param in additional_parameters[q]:
             if param in parameters:
                  __parameters[param]=parameters[param]
             else :
                  __parameters[param]=additional_parameters[q][param]
-        results[q]=calculators[q](data,**__parameters).select_bands(ibands).average_deg(deg)
+        results[qfull]=tabulator( calculators[q](data_K,**__parameters) )
 
-    kpoints=data.kpoints_all
-    return TABresult( kpoints=kpoints,recip_lattice=data.recip_lattice,results=results )
+    for q,formula in user_quantities.items():
+        if q in specific_parameters:
+            __parameters = specific_parameters[qfull]
+        else:
+            __parameters = {}
+        results[q]=tabulator( formula(data_K,**__parameters) )
+
+
+    return TABresult( kpoints       = data_K.kpoints_all,
+                      recip_lattice = data_K.system.recip_lattice,
+                      results       = results )
+
+
+class  Tabulator():
+
+    def __init__(self ,  data_K,  ibands, degen_thresh=1e-4):
+
+        self.nk=data_K.NKFFT_tot
+        self.NB=data_K.num_wann
+        self.ibands = ibands
+
+        band_groups=data_K.get_bands_in_range_groups(-np.Inf,np.Inf,degen_thresh=degen_thresh,sea=False)
+        # bands_groups  is a digtionary (ib1,ib2):E
+        # now select only the needed groups
+        self.band_groups = [  [ n    for n in groups.keys() if np.any(  (ibands>=n[0])*(ibands<n[1]) )  ]
+              for groups in band_groups ]    # select only the needed groups
+        self.group = [[] for ik in range(self.nk)]
+        for ik in range(self.nk):
+            for ib in self.ibands:
+                for n in self.band_groups[ik]:
+                    if ib<n[1] and ib >=n[0]:
+                        self.group[ik].append(n)
+                        break
+
+    def __call__(self,formula):
+        """formula  - TraceFormula to evaluate 
+        """
+        rslt = np.zeros( (self.nk,len(self.ibands))+(3,)*formula.ndim )
+        for ik in range(self.nk):
+            values={}
+            for n in self.band_groups[ik]:
+                inn = np.arange(n[0],n[1])
+                out = np.concatenate( (np.arange(0,n[0]), np.arange(n[1],self.NB) ) )
+                values[n] = formula.trace(ik,inn,out)/(n[1]-n[0])
+            for ib,b in enumerate(self.ibands): 
+                rslt[ik,ib] = values[self.group[ik][ib]]
+
+        return result.KBandResult(rslt,TRodd=formula.TRodd,Iodd=formula.Iodd)
 
 
 
@@ -93,7 +142,6 @@ class TABresult(result.Result):
 
         self.results=results
         for r in results:
-#            print (r,self.nband,len(self.kpoints),results[r].shape)
             assert len(kpoints)==results[r].nk
             assert self.nband==results[r].nband
             
@@ -136,7 +184,6 @@ class TABresult(result.Result):
             if np.linalg.norm(ik1/grid-k)<1e-5 : 
                 ik1=ik1%grid
                 ik2=ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])
-#                print (ik,k,ik1,ik2)
                 k_map[ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])].append(ik)
             else:
                 print ("WARNING: k-point {}={} is skipped".format(ik,k))
@@ -198,9 +245,6 @@ class TABresult(result.Result):
         FSfile+=("".join( ["  ".join("{:14.8f}".format(x) for x in v) + "\n" for v in self.recip_lattice] ))
 
         FSfile+=_savetxt(a=self.Enk.data[:,iband].flatten(order='F')-efermi,npar=npar)
-#        for iband in range(self.nband):
-#            np.savetxt(FSfile,self.Enk.data[:,iband]-efermi,fmt="%.8f")
-#            FSfile+="".join("{0:.8f}\n".format(x) for x in self.Enk.data[:,iband]-efermi )
         
         if quantity is None:
             return FSfile
@@ -209,9 +253,6 @@ class TABresult(result.Result):
             raise RuntimeError("requested quantity '{}' was not calculated".format(quantity))
             return FSfile
         FSfile+=_savetxt(a=Xnk[:,iband].flatten(order='F'),npar=npar)
-#        for iband in range(self.nband):
-#            np.savetxt(FSfile,Xnk[:,iband]-efermi,fmt="%.8f")
-#            FSfile+="".join("{0:.8f}\n".format(x) for x in Xnk[:,iband] )
         if frmsf_name is not None:
             if not (frmsf_name.endswith(".frmsf")):
                 frmsf_name+=".frmsf"
@@ -281,7 +322,6 @@ class TABresult(result.Result):
                     y=data[selE][:,ib]
                     e1=e[selE]
                     for col,sel in [("red",(y>0)),("blue",(y<0))]:
-#                        print (col,ib,kline.shape,e.shape,kline[sel].shape,e[sel].shape)
                         plt.scatter(klineselE[sel],e1[sel],s=abs(y[sel])*fatfactor,color=col)
             else :
                 raise ValueError("So far only fatband mode is implemented")
