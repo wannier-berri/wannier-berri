@@ -10,6 +10,7 @@ import wannierberri as wberri
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90, system_Fe_W90, system_Fe_W90_wcc
 from create_system import create_files_GaAs_W90, system_GaAs_W90, system_GaAs_W90_wcc
+from create_system import symmetries_Fe
 from compare_result import compare_energyresult
 from test_integrate import compare_quant
 
@@ -21,7 +22,9 @@ def check_integrate_dynamical():
     requires a special treatment because of sym and asym data.
     """
     def _inner(system, quantities, fout_name, Efermi, omega, grid_param, comparer,
-               numproc=0, additional_parameters={}, adpt_num_iter=0,
+               additional_parameters={}, 
+               parameters_K={},
+               adpt_num_iter=0,use_symmetry = False,
                suffix="", suffix_ref="", extra_precision={} ):
 
         grid = wberri.Grid(system, **grid_param)
@@ -30,9 +33,10 @@ def check_integrate_dynamical():
                 Efermi = Efermi,
                 omega = omega,
                 quantities = quantities,
-                numproc = numproc,
+                use_irred_kpt = use_symmetry, symmetrize = use_symmetry,
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
+                parameters_K = parameters_K,
                 fout_name = os.path.join(OUTPUT_DIR, fout_name),
                 suffix = suffix,
                 restart = False,

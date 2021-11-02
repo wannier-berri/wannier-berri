@@ -14,6 +14,7 @@
 from collections.abc import Iterable
 import numpy as np
 from time import time
+from . import symmetry
 import lazy_property
 from  .__Kpoint import KpointBZ
 from .__finite_differences import FiniteDifferences
@@ -55,10 +56,10 @@ class Grid():
 
     """
 
-    def __init__(self,system,length=None,NKdiv=None,NKFFT=None,NK=None,length_FFT=None):
+    def __init__(self,system,length=None,NKdiv=None,NKFFT=None,NK=None,length_FFT=None,use_symmetry = True):
 
         NKFFT_recommended=system.NKFFT_recommended 
-        self.symgroup=system.symgroup
+        self.symgroup=system.symgroup if use_symmetry else symmetry.Group(real_lattice=system.real_lattice)
         self.div,self.FFT=determineNK(system.periodic,NKdiv,NKFFT,NK,NKFFT_recommended,self.symgroup,length=length,length_FFT=length_FFT)
         self.findif=FiniteDifferences(self.recip_lattice,self.FFT)
 
@@ -81,7 +82,7 @@ class Grid():
             return self.symgroup.recip_lattice
 
 
-    def get_K_list(self):
+    def get_K_list(self,use_symmetry=True):
         """ returns the list of Symmetry-irreducible K-points"""
         dK=1./self.div
         factor=1./np.prod(self.div)
@@ -92,20 +93,22 @@ class Grid():
                       for y in range(self.div[1]) ]
                         for x in range(self.div[0]) ]
         print ("Done in {} s ".format(time()-t0))
-        t0=time()
-        print ("excluding symmetry-equivalent K-points from initial grid")
+        if use_symmetry:
+            t0=time()
+            print ("excluding symmetry-equivalent K-points from initial grid")
+            for z in range(self.div[2]) :
+                for y in range(self.div[1]) :
+                    for x in range(self.div[0]) : 
+                        KP=K_list[x][y][z]
+                        if KP is not None:
+                            star=KP.star
+                            star=[tuple(k) for k in np.array(np.round(KP.star*self.div),dtype=int)%self.div]
+                            for k in star:
+                                if k!=(x,y,z) :
+                                    KP.absorb(K_list[k[0]][k[1]][k[2]])
+                                    K_list[k[0]][k[1]][k[2]]=None
+            print ("Done in {} s ".format(time()-t0))
 
-        for z in range(self.div[2]) :
-            for y in range(self.div[1]) :
-                for x in range(self.div[0]) : 
-                    KP=K_list[x][y][z]
-                    if KP is not None:
-                        star=KP.star
-                        star=[tuple(k) for k in np.array(np.round(KP.star*self.div),dtype=int)%self.div]
-                        for k in star:
-                            if k!=(x,y,z) :
-                                KP.absorb(K_list[k[0]][k[1]][k[2]])
-                                K_list[k[0]][k[1]][k[2]]=None
         K_list=[K for Kyz in K_list for Kz in Kyz for K in Kz if K is not None]
         print ("Done in {} s ".format(time()-t0))
         print ("K_list contains {} Irreducible points({}%) out of initial {}x{}x{}={} grid".format(len(K_list),round(len(K_list)/np.prod(self.div)*100,2),self.div[0],self.div[1],self.div[2],np.prod(self.div)))
