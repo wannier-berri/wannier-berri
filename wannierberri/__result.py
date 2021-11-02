@@ -116,7 +116,7 @@ class EnergyResult(Result):
         self.rank=data.ndim-self.N_energies if rank is None else rank
         if self.rank>0:
             shape=data.shape[-self.rank:]
-            assert np.all(np.array(shape)==3)
+            assert np.all(np.array(shape)==3), "data.shape={}".format(data.shape)
         for i in range(self.N_energies):
             assert (Energies[i].shape[0]==data.shape[i]) , "dimension of Energy[{}] = {} does not match do dimension of data {}".format(i,Energy[i].shape[0],data.shape[i])
         self.Energies=Energies
@@ -145,7 +145,6 @@ class EnergyResult(Result):
             axes=(axes,)
         if axes is None: 
             axes = tuple(range(other.ndim))
-#        print ('multiplying result by array',other)
         for i,d in enumerate(other.shape):
             assert d==self.data.shape[axes[i]], "shapes  {} should match the axes {} of {}".format(other.shape,axes,self.data.shape)
         reshape=tuple((self.data.shape[i] if i in axes else 1) for i in range(self.data.ndim))
@@ -154,7 +153,6 @@ class EnergyResult(Result):
 
     def __mul__(self,other):
         if isinstance(other,int) or isinstance(other,float) :
-#            print ('multiplying result by number',other)
             return EnergyResult(self.Energies,self.data*other,self.smoothers,self.TRodd,self.Iodd,self.rank,self.E_titles)
         else:
             raise TypeError("result can only be multilied by a number")
