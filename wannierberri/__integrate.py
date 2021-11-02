@@ -18,11 +18,7 @@ from copy import copy,deepcopy
 
 from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother,TAU_UNIT
 from . import __result as result
-from . import  __berry as berry
-from . import  __fermisea2 as fermisea2
-from . import  __fermiocean as fermiocean
-from . import  __nonabelian as nonabelian
-from . import  __dos as dos
+from . import  fermiocean as fermiocean
 from . import  symmetry
 from . import  __utility   as utility
 from . import  __kubo   as kubo
@@ -51,35 +47,32 @@ from . import  __kubo   as kubo
 # may have extra parameters, that should be described in the 'additional_parameters' dictionary (see below)
 
 calculators_trans={ 
-         'spin'       : fermisea2.SpinTot,  
-         'Morb'       : fermisea2.Morb,
-         'Morb_1'       : fermisea2.Morb1,
-         'Morb_2'       : fermisea2.Morb2,
-         'Morb_3'       : fermisea2.Morb3,
-         'ahc'        : fermisea2.AHC ,
-         'ahc2'        : fermisea2.AHC2 ,
-         'ahc_ocean'  : fermiocean.AHC ,
-         'dos'        : dos.calc_DOS ,
-         'cumdos'        : dos.calc_cum_DOS ,
-         'Hall_classic' : nonabelian.Hall_classic , 
-         'Hall_morb' :  nonabelian.Hall_morb,
-         'Hall_spin' :  nonabelian.Hall_spin,
-
-         'conductivity_ohmic_fsurf': nonabelian.conductivity_ohmic,
-         'conductivity_ohmic'      : fermisea2.conductivity_ohmic,
-
-         'berry_dipole'            : fermisea2.tensor_D,
-         'berry_dipole_ocean'      : fermiocean.berry_dipole,
-         'berry_dipole_2'          : fermisea2.tensor_D_2,
-         'berry_dipole_fsurf'      : nonabelian.berry_dipole,
-#         'Faraday1w'                 : nonabelian.Faraday,
-         'berry_dipole_findif'     : fermisea2.tensor_D_findif,
-         'gyrotropic_Korb'         : fermisea2.tensor_K,
-         'gyrotropic_Korb_2'       : fermisea2.tensor_K_2,
-
-         'gyrotropic_Kspin'        : fermisea2.gyrotropic_Kspin,
-         'gyrotropic_Korb_fsurf'   : nonabelian.gyrotropic_Korb,
-         'gyrotropic_Kspin_fsurf'  : nonabelian.gyrotropic_Kspin,
+         'spin'                     : fermiocean.spin                   ,
+         'Morb'                     : fermiocean.Morb                   ,
+         'Morb_test'                : fermiocean.Morb_test              ,
+         'ahc'                      : fermiocean.AHC                    ,
+         'ahc_test'                 : fermiocean.AHC_test               ,
+         'cumdos'                   : fermiocean.cumdos                 ,
+         'dos'                      : fermiocean.dos                    ,
+         'conductivity_ohmic'       : fermiocean.ohmic                  ,
+         'conductivity_ohmic_fsurf' : fermiocean.ohmic_fsurf            ,
+         'berry_dipole'             : fermiocean.berry_dipole           ,
+         'berry_dipole_test'        : fermiocean.berry_dipole_test      ,
+         'berry_dipole_fsurf'       : fermiocean.berry_dipole_fsurf     ,
+         'gyrotropic_Korb'          : fermiocean.gme_orb                ,
+         'gyrotropic_Korb_test'     : fermiocean.gme_orb_test           ,
+         'gyrotropic_Korb_fsurf'    : fermiocean.gme_orb_fsurf          ,
+         'gyrotropic_Kspin'         : fermiocean.gme_spin               ,
+         'gyrotropic_Kspin_fsurf'   : fermiocean.gme_spin_fsurf         ,
+         'Hall_classic'             : fermiocean.Hall_classic           , 
+         'Hall_classic_fsurf'       : fermiocean.Hall_classic_fsurf     , 
+         'Hall_morb_fsurf'          : fermiocean.Hall_morb_fsurf        ,
+         'Hall_spin_fsurf'          : fermiocean.Hall_spin_fsurf        ,
+         'Der3E'                    : fermiocean.Der3E                  ,
+         'Der3E_fsurf'              : fermiocean.Der3E_fsurf            ,
+         'Der3E_fder2'              : fermiocean.Der3E_fder2            ,
+         'Hplus_der' : fermiocean.Hplus_der,
+         'Hplus_der_test' : fermiocean.Hplus_der_test,
          }
 
 
@@ -87,7 +80,22 @@ additional_parameters=defaultdict(lambda: defaultdict(lambda:None )   )
 additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no description" )   )
 
 
-# a dictionary conaining 'optical' quantities , i.e. those which are tensors 
+parameters_ocean = {
+'external_terms' : (True , "evaluate external terms"),
+'internal_terms' : (True,  "evaluate internal terms"),
+'tetra'          : (False, "use tetrahedron method"),
+'correction_wcc': (False,"include corrections to make the results coincide with and without wcc_phase for orbital moment")
+}
+
+for key,val in parameters_ocean.items(): 
+    for calc in calculators_trans: 
+        additional_parameters[calc][key] = val[0]
+        additional_parameters_description[calc][key] = val[1]
+
+
+
+
+# a dictionary containing 'optical' quantities , i.e. those which are tensors 
 #   depending on the Fermi level  AND on the frequency
 #   <quantity> : <function> , ... 
 # <quantity>   - name of the quantity to calculate (the same will be used in the call of 'integrate' function
@@ -130,16 +138,6 @@ for key,val in parameters_optical.items():
         additional_parameters[calc][key] = val[0]
         additional_parameters_description[calc][key] = val[1]
 
-key='kpart'
-for calc in calculators_trans:
-    if calc.endswith('_ocean'):
-        additional_parameters[calc][key] = 500
-        additional_parameters_description[calc][key] = (
-             'Separate k-points of the FFT grid into portions ' + 
-             '(analog of ksep in the system class, but acts in different calculators)'  +
-             'decreasing this parameter helps to save memory in some cases' +
-                'while performance is usually unafected' )
-
 additional_parameters['Faraday']['homega'] = 0.0
 additional_parameters_description['Faraday']['homega'] = "frequency of light in eV (one frequency per calculation)"
 
@@ -149,32 +147,35 @@ calculators.update(calculators_opt)
 
 
 descriptions=defaultdict(lambda:"no description")
-descriptions['ahc']="Anomalous hall conductivity (S/cm)"
-descriptions['spin']="Total Spin polarization per unit cell"
-descriptions['Morb']="Total orbital magnetization, mu_B per unit cell"
-descriptions['cumdos']="Cumulative density of states"
-descriptions['dos']="density of states"
-descriptions['conductivity_ohmic']="ohmic conductivity in S/cm for tau={} s . Fermi-sea formulation".format(TAU_UNIT)
-descriptions['conductivity_ohmic_fsurf']="ohmic conductivity in S/cm for tau={} s . Fermi-surface formulation".format(TAU_UNIT)
-descriptions['gyrotropic_Korb']="GME tensor, orbital part (Ampere) - fermi sea formula"
-descriptions['gyrotropic_Korb_fsurf']="GME tensor, orbital part (Ampere) - fermi surface formula"
-descriptions['gyrotropic_Kspin']="GME tensor, spin part (Ampere)  - fermi sea formula"
-descriptions['gyrotropic_Kspin_fsurf']="GME tensor, spin part (Ampere)  - fermi surface formula"
-descriptions['berry_dipole']="berry curvature dipole (dimensionless) - fermi sea formula"
-descriptions['berry_dipole_fsurf']="berry curvature dipole (dimensionless)  - fermi surface formula"
-descriptions['Hall_classic'] =  "classical Hall coefficient, in S/(cm*T) for tau={} s".format(TAU_UNIT)
-descriptions['Hall_morb'   ] = "Low field AHE, orbital part, in S/(cm*T)."
-descriptions['Hall_spin'   ] = "Low field AHE, spin    part, in S/(cm*T)."
-descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
-descriptions['Faraday'] = "Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
-descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in hbar/e S/cm (PRB RPS19)"
-descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in hbar/e S/cm (PRB QZYZ18)"
-descriptions['opt_shiftcurrent'] = "Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+descriptions['spin']                        ="Total Spin polarization per unit cell"
+descriptions['Morb']                        ="Total orbital magnetization, mu_B per unit cell"
+descriptions['ahc']                         ="Anomalous hall conductivity (S/cm)"
+descriptions['cumdos']                      ="Cumulative density of states"
+descriptions['dos']                         ="density of states"
+descriptions['conductivity_ohmic']          ="ohmic conductivity in S/cm for tau={} s . Fermi-sea formula".format(TAU_UNIT)
+descriptions['conductivity_ohmic_fsurf']    ="ohmic conductivity in S/cm for tau={} s . Fermi-surface formula".format(TAU_UNIT)
+descriptions['berry_dipole']                ="berry curvature dipole (dimensionless) - Fermi-sea formula"
+descriptions['berry_dipole_fsurf']          ="berry curvature dipole (dimensionless)  - Fermi-surface formula"
+descriptions['gyrotropic_Korb']             ="GME tensor, orbital part (Ampere) - Fermi-sea formula"
+descriptions['gyrotropic_Korb_fsurf']       ="GME tensor, orbital part (Ampere) - Fermi-surface formula"
+descriptions['gyrotropic_Kspin']            ="GME tensor, spin part (Ampere)  - Fermi-sea formula"
+descriptions['gyrotropic_Kspin_fsurf']      ="GME tensor, spin part (Ampere)  - Fermi-surface formula"
+descriptions['Hall_classic_fsurf']          ="classical Hall coefficient, in S/(cm*T) for tau={} s. - Fermi-surface formula".format(TAU_UNIT)
+descriptions['Hall_morb_fsurf']             ="Low field AHE, orbital part, in S/(cm*T). - Fermi-surface formula"
+descriptions['Hall_spin_fsurf']             ="Low field AHE, spin    part, in S/(cm*T). - Fermi_surface formula"
+descriptions['opt_conductivity']            ="Optical conductivity in S/cm"
+descriptions['Faraday']                     ="Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
+descriptions['opt_SHCryoo']                 ="Ryoo's Optical spin Hall conductivity in hbar/e S/cm (PRB RPS19)"
+descriptions['opt_SHCqiao']                 ="Qiao's Optical spin Hall conductivity in hbar/e S/cm (PRB QZYZ18)"
+descriptions['opt_shiftcurrent']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
 
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
 
-def intProperty(data,quantities=[],Efermi=None,omega=None,smootherEf=VoidSmoother(),smootherOmega=VoidSmoother(),parameters={}):
+def intProperty(data,quantities=[],user_quantities={},
+                Efermi=None,omega=None,
+                smootherEf=VoidSmoother(),smootherOmega=VoidSmoother(),
+                parameters={},specific_parameters = {}):
 
     def _smoother(quant):
         if quant in calculators_trans:
@@ -185,7 +186,8 @@ def intProperty(data,quantities=[],Efermi=None,omega=None,smootherEf=VoidSmoothe
             return VoidSmoother()
 
     results={}
-    for q in quantities:
+    for qfull in quantities:
+        q=qfull.split('^')[0]
         __parameters={}
         for param in additional_parameters[q]:
             if param in parameters:
@@ -197,8 +199,17 @@ def intProperty(data,quantities=[],Efermi=None,omega=None,smootherEf=VoidSmoothe
         if q == 'opt_SHCqiao' or q == 'opt_SHCryoo':
             if 'shc_alpha' in parameters and 'shc_beta' in parameters and 'shc_gamma' in parameters:
                 __parameters['shc_specification']=True
-        results[q]=calculators[q](data,Efermi,**__parameters)
-        results[q].set_smoother(_smoother(q))
+        if qfull in specific_parameters:
+            __parameters.update(specific_parameters[qfull])
+        results[qfull]=calculators[q](data,Efermi,**__parameters)
+        results[qfull].set_smoother(_smoother(q))
+    for q,func in user_quantities.items():
+        if q in specific_parameters:
+            __parameters = specific_parameters[qfull]
+        else:
+            __parameters = {}
+        results[q]=func(data,Efermi,**__parameters)
+        results[q].set_smoother(smootherEf)
 
     return INTresult( results=results )
 
