@@ -438,9 +438,6 @@ class Data_K(System):
         '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
         return self.Xbar('AA') + 1j*self.D_H
 
-
-
-
     def _shc_B_H_einsum_opt(self, C, A, B):
         # Optimized version of C += np.einsum('knlc,klma->knmac', A, B). Used in shc_B_H.
         nw = self.system.num_wann
@@ -454,13 +451,25 @@ class Data_K(System):
             C[ik] += np.transpose(tmp_c, (0, 2, 3, 1)) # ncma -> nmac
 
     @lazy_property.LazyProperty
-    def shc_B_H(self):
+    def J_H_qiao(self):
+        # Spin current operator, J. Qiao et al PRB (2019)
+        # J_H_ryoo[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
         SH_H = self._R_to_k_H(self.SH_R, hermitean=False)
         shc_K_H = -1j*self._R_to_k_H(self.SR_R, hermitean=False)
         self._shc_B_H_einsum_opt(shc_K_H, self.Xbar('SS'), self.D_H)
         shc_L_H = -1j*self._R_to_k_H(self.SHR_R, hermitean=False)
         self._shc_B_H_einsum_opt(shc_L_H, SH_H, self.D_H)
-        return (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.Xbar('SS')[:,:,:,np.newaxis,:] +
+        J = (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.Xbar('SS')[:,:,:,np.newaxis,:] +
             self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*shc_K_H[:,:,:,:,:] - shc_L_H)
-#end SHC
+        return (J + J.swapaxes(1, 2).conj()) / 2
+
+    @lazy_property.LazyProperty
+    def J_H_ryoo(self):
+        # Spin current operator, J. H. Ryoo et al PRB (2019)
+        # J_H_ryoo[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
+        SA_H = self._R_to_k_H(self.SA_R, hermitean=False)
+        SHA_H = self._R_to_k_H(self.SHA_R, hermitean=False)
+        J = -1j * (self.E_K[:,None,:,None,None] * SA_H - SHA_H)
+        self._shc_B_H_einsum_opt(J, self.Xbar('SS'), self.Xbar('Ham',1))
+        return (J + J.swapaxes(1, 2).conj()) / 2
 

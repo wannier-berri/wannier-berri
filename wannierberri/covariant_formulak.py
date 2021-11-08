@@ -351,11 +351,10 @@ class SpinVelocity(Matrix_ln):
     def __init__(self, data_K, spin_current_type):
         if spin_current_type == "qiao":
             # J. Qiao et al PRB (2018)
-            B = data_K.shc_B_H
-            super().__init__((B + B.swapaxes(1, 2).conj()) / 2)
+            super().__init__(data_K.J_H_qiao)
         elif spin_current_type == "ryoo":
             # J. H. Ryoo et al PRB (2019)
-            raise NotImplementedError()
+            super().__init__(data_K.J_H_ryoo)
         else:
             raise ValueError(f"spin_current_type must be qiao or ryoo, not {spin_current_type}")
         self.TRodd = False
