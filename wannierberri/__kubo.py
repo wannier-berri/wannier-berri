@@ -204,7 +204,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         elif conductivity_type == 'SHC':
             B = - 1j*data.A_H[ik]
             if SHC_type == 'qiao':
-                A = 0.5 * (data.shc_B_H[ik] + data.shc_B_H[ik].transpose(1,0,2,3).conj())
+                A = data.J_H_qiao[ik]
             elif SHC_type == 'ryoo':
                 VV = data.Xbar('Ham',1)[ik] # [n,m,a]
                 SS = data.Xbar('SS')[ik]   # [n,m,b]
