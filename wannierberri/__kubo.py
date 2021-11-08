@@ -206,17 +206,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             if SHC_type == 'qiao':
                 A = data.J_H_qiao[ik]
             elif SHC_type == 'ryoo':
-                VV = data.Xbar('Ham',1)[ik] # [n,m,a]
-                SS = data.Xbar('SS')[ik]   # [n,m,b]
-                SA = data.Xbar('SA')[ik]  # [n,m,a,b]
-                SHA = data.Xbar('SHA')[ik]# [n,m,a,b]
-                A = (np.matmul(VV.transpose(2,0,1)[:,None,:,:],SS.transpose(2,0,1)[None,:,:,:])
-                    + np.matmul(SS.transpose(2,0,1)[None,:,:,:],VV.transpose(2,0,1)[:,None,:,:])).transpose(2,3,0,1)
-                A += -1j * (E[None,:,None,None]*SA - SHA)
-                SA_adj = SA.transpose(1,0,2,3).conj()
-                SHA_adj = SHA.transpose(1,0,2,3).conj()
-                A += 1j *  (E[:,None,None,None]*SA_adj - SHA_adj)
-                A /= 2.0
+                A = data.J_H_ryoo[ik]
             else:
                 print("Invalid SHC type. ryoo or qiao.")
         elif  conductivity_type == 'tildeD':
