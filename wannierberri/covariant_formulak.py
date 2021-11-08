@@ -34,9 +34,9 @@ class Eavln(Matrix_ln):
 
 
 class DEinv_ln(Matrix_ln):
-
+    "DEinv_ln.matrix[ik, m, n] = 1 / (E_mk - E_nk)"
     def __init__(self,data_K):
-        super(DEinv_ln,self).__init__(data_K.dEig_inv)
+        super().__init__(data_K.dEig_inv)
 
     def nn(self,ik,inn,out):
         raise NotImplementedError("dEinv_ln should not be called within inner states")
@@ -341,3 +341,50 @@ class DerMorb(Formula_ln):
     def additive(self):
         return False
 
+
+#############################
+###   spin transport     ####
+#############################
+
+class SpinVelocity(Matrix_ln):
+    "spin current matrix elements. Jln.matrix[ik, m, n, a, s] = <u_mk|{v^a S^s}|u_nk> / 2"
+    def __init__(self, data_K, spin_current_type):
+        if spin_current_type == "qiao":
+            # J. Qiao et al PRB (2018)
+            B = data_K.shc_B_H
+            super().__init__((B + B.swapaxes(1, 2).conj()) / 2)
+        elif spin_current_type == "ryoo":
+            # J. H. Ryoo et al PRB (2019)
+            raise NotImplementedError()
+        else:
+            raise ValueError(f"spin_current_type must be qiao or ryoo, not {spin_current_type}")
+        self.TRodd = False
+        self.Iodd = True
+
+
+class SpinOmega(Formula_ln):
+    "spin Berry curvature"
+    def __init__(self, data_K, spin_current_type, **parameters):
+        super().__init__(data_K, **parameters)
+        self.A = data_K.covariant('AA')
+        self.D = data_K.Dcov
+        self.J = SpinVelocity(data_K, spin_current_type)
+        self.dEinv = DEinv_ln(data_K)
+        self.ndim = 3
+        self.TRodd = False
+        self.Iodd = False
+    def nn(self,ik,inn,out):
+        summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
+
+        # v_over_de = v_ln / (e_n - e_l) = D_ln - 1j * A_ln
+        v_over_de = self.D.ln(ik,inn,out) - 1j * self.A.ln(ik,inn,out)
+
+        # j_over_de = j_ml / (e_m - e_l)
+        j_over_de = self.J.nl(ik,inn,out) * self.dEinv.nl(ik,inn,out)[:, :, None, None]
+
+        summ += -2 * np.einsum("mlas,lnb->mnabs", j_over_de, v_over_de).imag
+
+        return summ
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
