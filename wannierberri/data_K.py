@@ -438,27 +438,31 @@ class Data_K(System):
         '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
         return self.Xbar('AA') + 1j*self.D_H
 
-    def _shc_B_H_einsum_opt(self, C, A, B):
-        # Optimized version of C += np.einsum('knlc,klma->knmac', A, B). Used in shc_B_H.
+
+    # =====================================================================================
+    # Spin velocity matrix
+
+    def _spin_velocity_einsum_opt(self, C, A, B):
+        # Optimized version of C += np.einsum('knls,klma->knmas', A, B). Used in shc_B_H.
         nw = self.system.num_wann
         for ik in range(self.nkptot):
-            # Performing C[ik] += np.einsum('nlc,lma->nmac', A[ik], B[ik])
-            tmp_a = np.swapaxes(A[ik], 1, 2) # nlc -> ncl
-            tmp_a = np.reshape(tmp_a, (nw*3, nw)) # ncl -> (nc)l
+            # Performing C[ik] += np.einsum('nls,lma->nmas', A[ik], B[ik])
+            tmp_a = np.swapaxes(A[ik], 1, 2) # nls -> nsl
+            tmp_a = np.reshape(tmp_a, (nw*3, nw)) # nsl -> (ns)l
             tmp_b = np.reshape(B[ik], (nw, nw*3)) # lma -> l(ma)
-            tmp_c = tmp_a @ tmp_b # (nc)l, l(ma) -> (nc)(ma)
-            tmp_c = np.reshape(tmp_c, (nw, 3, nw, 3)) # (nc)(ma) -> ncma
-            C[ik] += np.transpose(tmp_c, (0, 2, 3, 1)) # ncma -> nmac
+            tmp_c = tmp_a @ tmp_b # (ns)l, l(ma) -> (ns)(ma)
+            tmp_c = np.reshape(tmp_c, (nw, 3, nw, 3)) # (ns)(ma) -> nsma
+            C[ik] += np.transpose(tmp_c, (0, 2, 3, 1)) # nsma -> nmas
 
     @lazy_property.LazyProperty
     def J_H_qiao(self):
         # Spin current operator, J. Qiao et al PRB (2019)
-        # J_H_ryoo[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
+        # J_H_qiao[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
         SH_H = self._R_to_k_H(self.SH_R, hermitean=False)
         shc_K_H = -1j*self._R_to_k_H(self.SR_R, hermitean=False)
-        self._shc_B_H_einsum_opt(shc_K_H, self.Xbar('SS'), self.D_H)
+        self._spin_velocity_einsum_opt(shc_K_H, self.Xbar('SS'), self.D_H)
         shc_L_H = -1j*self._R_to_k_H(self.SHR_R, hermitean=False)
-        self._shc_B_H_einsum_opt(shc_L_H, SH_H, self.D_H)
+        self._spin_velocity_einsum_opt(shc_L_H, SH_H, self.D_H)
         J = (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.Xbar('SS')[:,:,:,np.newaxis,:] +
             self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*shc_K_H[:,:,:,:,:] - shc_L_H)
         return (J + J.swapaxes(1, 2).conj()) / 2
@@ -470,6 +474,6 @@ class Data_K(System):
         SA_H = self._R_to_k_H(self.SA_R, hermitean=False)
         SHA_H = self._R_to_k_H(self.SHA_R, hermitean=False)
         J = -1j * (self.E_K[:,None,:,None,None] * SA_H - SHA_H)
-        self._shc_B_H_einsum_opt(J, self.Xbar('SS'), self.Xbar('Ham',1))
+        self._spin_velocity_einsum_opt(J, self.Xbar('SS'), self.Xbar('Ham',1))
         return (J + J.swapaxes(1, 2).conj()) / 2
 
