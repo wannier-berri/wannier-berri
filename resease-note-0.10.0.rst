@@ -22,6 +22,8 @@ This PR implements a number of changes, which include
   * more quantities to tabulate
 
   * pre-defined TB models for illustration
+  
+  * deprecation of the parallelization using multiprocessing module (ray is now the only option)
 
 
 New Reference data are added for the Chiral model
