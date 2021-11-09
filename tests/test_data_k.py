@@ -32,7 +32,7 @@ def test_fourier(system_Fe_W90):
     data_slow  = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='slow',use_symmetry=False)
     data_numpy = Data_K(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='numpy',use_symmetry=False)
 
-    test_fields = ["E_K", "D_H", "J_H_qiao", "J_H_ryoo"]
+    test_fields = ["E_K", "D_H", "A_H", "dEig_inv"]
 
     for field in test_fields:
         assert getattr(data_fftw,  field) == approx(getattr(data_slow, field)), "fftw  does not match slow for {} ".format(field)

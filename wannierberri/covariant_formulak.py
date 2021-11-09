@@ -346,15 +346,51 @@ class DerMorb(Formula_ln):
 ###   spin transport     ####
 #############################
 
+def _spin_velocity_einsum_opt(C, A, B):
+    # Optimized version of C += np.einsum('knls,klma->knmas', A, B). Used in shc_B_H.
+    nk = C.shape[0]
+    nw = C.shape[1]
+    for ik in range(nk):
+        # Performing C[ik] += np.einsum('nls,lma->nmas', A[ik], B[ik])
+        tmp_a = np.swapaxes(A[ik], 1, 2) # nls -> nsl
+        tmp_a = np.reshape(tmp_a, (nw*3, nw)) # nsl -> (ns)l
+        tmp_b = np.reshape(B[ik], (nw, nw*3)) # lma -> l(ma)
+        tmp_c = tmp_a @ tmp_b # (ns)l, l(ma) -> (ns)(ma)
+        tmp_c = np.reshape(tmp_c, (nw, 3, nw, 3)) # (ns)(ma) -> nsma
+        C[ik] += np.transpose(tmp_c, (0, 2, 3, 1)) # nsma -> nmas
+
+def _J_H_qiao(data_K):
+    # Spin current operator, J. Qiao et al PRB (2019)
+    # J_H_qiao[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
+    SS_H = data_K.Xbar('SS')
+    SH_H = data_K.Xbar("SH")
+    shc_K_H = -1j * data_K.Xbar("SR")
+    _spin_velocity_einsum_opt(shc_K_H, SS_H, data_K.D_H)
+    shc_L_H = -1j*data_K._R_to_k_H(data_K.SHR_R, hermitean=False)
+    _spin_velocity_einsum_opt(shc_L_H, SH_H, data_K.D_H)
+    J = ( data_K.delE_K[:,None,:,:,None] * SS_H[:,:,:,None,:]
+        + data_K.E_K[:,None,:,None,None] * shc_K_H[:,:,:,:,:]
+        - shc_L_H )
+    return (J + J.swapaxes(1, 2).conj()) / 2
+
+def _J_H_ryoo(data_K):
+    # Spin current operator, J. H. Ryoo et al PRB (2019)
+    # J_H_ryoo[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
+    SA_H = data_K.Xbar("SA")
+    SHA_H = data_K.Xbar("SHA")
+    J = -1j * (data_K.E_K[:,None,:,None,None] * SA_H - SHA_H)
+    _spin_velocity_einsum_opt(J, data_K.Xbar('SS'), data_K.Xbar('Ham',1))
+    return (J + J.swapaxes(1, 2).conj()) / 2
+
 class SpinVelocity(Matrix_ln):
-    "spin current matrix elements. Jln.matrix[ik, m, n, a, s] = <u_mk|{v^a S^s}|u_nk> / 2"
+    "spin current matrix elements. SpinVelocity.matrix[ik, m, n, a, s] = <u_mk|{v^a S^s}|u_nk> / 2"
     def __init__(self, data_K, spin_current_type):
         if spin_current_type == "qiao":
             # J. Qiao et al PRB (2018)
-            super().__init__(data_K.J_H_qiao)
+            super().__init__(_J_H_qiao(data_K))
         elif spin_current_type == "ryoo":
             # J. H. Ryoo et al PRB (2019)
-            super().__init__(data_K.J_H_ryoo)
+            super().__init__(_J_H_ryoo(data_K))
         else:
             raise ValueError(f"spin_current_type must be qiao or ryoo, not {spin_current_type}")
         self.TRodd = False
