@@ -22,6 +22,7 @@ import functools
 from termcolor import cprint
 from .__utility import alpha_A,beta_A
 from . import __result as result
+from .covariant_formulak import SpinVelocity
 
 # constants
 pi = constants.pi
@@ -157,6 +158,8 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             sigma_H = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
             sigma_AH = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
             rank=3
+        # Calculate spin-velocity matrix
+        spin_velocity = SpinVelocity(data, SHC_type)
     elif conductivity_type == 'tildeD' :
         tildeD  = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3), dtype=float)
         rank=2
@@ -202,13 +205,8 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             # generalized Berry connection matrix
             A = data.A_H[ik] # [n, m, a] in angstrom
         elif conductivity_type == 'SHC':
+            A = spin_velocity.matrix[ik]
             B = - 1j*data.A_H[ik]
-            if SHC_type == 'qiao':
-                A = data.J_H_qiao[ik]
-            elif SHC_type == 'ryoo':
-                A = data.J_H_ryoo[ik]
-            else:
-                print("Invalid SHC type. ryoo or qiao.")
         elif  conductivity_type == 'tildeD':
             rfac=dE[None,:,:]/(dE[None,:,:]+omega[:,None,None]+1j*eta)
             rfac=(rfac+rfac.transpose(0,2,1).conj()).real/2
