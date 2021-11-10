@@ -22,6 +22,7 @@ import functools
 from termcolor import cprint
 from .__utility import alpha_A,beta_A
 from . import __result as result
+from .covariant_formulak import SpinVelocity
 
 # constants
 pi = constants.pi
@@ -157,6 +158,8 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             sigma_H = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
             sigma_AH = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
             rank=3
+        # Calculate spin-velocity matrix
+        spin_velocity = SpinVelocity(data, SHC_type)
     elif conductivity_type == 'tildeD' :
         tildeD  = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3), dtype=float)
         rank=2
@@ -202,23 +205,8 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             # generalized Berry connection matrix
             A = data.A_H[ik] # [n, m, a] in angstrom
         elif conductivity_type == 'SHC':
+            A = spin_velocity.matrix[ik]
             B = - 1j*data.A_H[ik]
-            if SHC_type == 'qiao':
-                A = 0.5 * (data.shc_B_H[ik] + data.shc_B_H[ik].transpose(1,0,2,3).conj())
-            elif SHC_type == 'ryoo':
-                VV = data.Xbar('Ham',1)[ik] # [n,m,a]
-                SS = data.Xbar('SS')[ik]   # [n,m,b]
-                SA = data.Xbar('SA')[ik]  # [n,m,a,b]
-                SHA = data.Xbar('SHA')[ik]# [n,m,a,b]
-                A = (np.matmul(VV.transpose(2,0,1)[:,None,:,:],SS.transpose(2,0,1)[None,:,:,:])
-                    + np.matmul(SS.transpose(2,0,1)[None,:,:,:],VV.transpose(2,0,1)[:,None,:,:])).transpose(2,3,0,1)
-                A += -1j * (E[None,:,None,None]*SA - SHA)
-                SA_adj = SA.transpose(1,0,2,3).conj()
-                SHA_adj = SHA.transpose(1,0,2,3).conj()
-                A += 1j *  (E[:,None,None,None]*SA_adj - SHA_adj)
-                A /= 2.0
-            else:
-                print("Invalid SHC type. ryoo or qiao.")
         elif  conductivity_type == 'tildeD':
             rfac=dE[None,:,:]/(dE[None,:,:]+omega[:,None,None]+1j*eta)
             rfac=(rfac+rfac.transpose(0,2,1).conj()).real/2
