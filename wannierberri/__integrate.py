@@ -73,8 +73,8 @@ calculators_trans={
          'Der3E_fder2'              : fermiocean.Der3E_fder2            ,
          'Hplus_der'                : fermiocean.Hplus_der              ,
          'Hplus_der_test'           : fermiocean.Hplus_der_test         ,
-         'shc_qiao'                 : fermiocean.spin_hall_qiao         ,
-         'shc_ryoo'                 : fermiocean.spin_hall_ryoo         ,
+         'shc_static_qiao'          : fermiocean.spin_hall_qiao         ,
+         'shc_static_ryoo'          : fermiocean.spin_hall_ryoo         ,
          }
 
 
