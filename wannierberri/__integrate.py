@@ -207,7 +207,7 @@ def intProperty(data,quantities=[],user_quantities={},
         results[qfull].set_smoother(_smoother(q))
     for q,func in user_quantities.items():
         if q in specific_parameters:
-            __parameters = specific_parameters[qfull]
+            __parameters = specific_parameters[q]
         else:
             __parameters = {}
         results[q]=func(data,Efermi,**__parameters)
