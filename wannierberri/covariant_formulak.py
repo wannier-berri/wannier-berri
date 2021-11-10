@@ -282,6 +282,11 @@ class Morb_Hpm(Formula_ln):
         raise NotImplementedError()
 
 
+class morb(Morb_Hpm):
+    
+    def __init__(self,data_K,**parameters):
+        super().__init__(data_K,sign=-1,**parameters)
+
 
 #############################
 ###   derivative of      ####
