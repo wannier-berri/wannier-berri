@@ -60,7 +60,7 @@ class System_tb(System):
         
         self.iRvec=[]
         
-        self.HH_R=np.zeros( (self.num_wann,self.num_wann,nRvec) ,dtype=complex)
+        self.Ham_R=np.zeros( (self.num_wann,self.num_wann,nRvec) ,dtype=complex)
         
         for ir in range(nRvec):
             f.readline()
@@ -68,7 +68,7 @@ class System_tb(System):
             hh=np.array( [[f.readline().split()[2:4] 
                              for n in range(self.num_wann)] 
                                 for m in range(self.num_wann)],dtype=float).transpose( (1,0,2) )
-            self.HH_R[:,:,ir]=(hh[:,:,0]+1j*hh[:,:,1])/self.Ndegen[ir]
+            self.Ham_R[:,:,ir]=(hh[:,:,0]+1j*hh[:,:,1])/self.Ndegen[ir]
         
         self.iRvec=np.array(self.iRvec,dtype=int)
 
@@ -97,15 +97,8 @@ class System_tb(System):
             XX_R,self.iRvec = symmetrize_wann.symmetrize() 
             self.HH_R = XX_R['HH']
             self.AA_R = XX_R['AA']
+        self.do_at_end_of_init()
 
-        self.set_wannier_centers()
-        self.set_symmetry()
-        self.check_periodic()
-
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Recommended size of FFT grid", self.NKFFT_recommended)
-        print ("Real-space lattice:\n",self.real_lattice)
         cprint ("Reading the system from {} finished successfully".format(tb_file),'green', attrs=['bold'])
 
         

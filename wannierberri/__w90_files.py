@@ -17,7 +17,6 @@ from .__utility import FortranFileR, FortranFileW
 import copy
 import lazy_property
 import functools
-#import billiard as multiprocessing 
 import multiprocessing 
 from .__utility import str2bool, alpha_A, beta_A, iterate3dpm
 from colorama import init
@@ -162,9 +161,6 @@ class CheckPoint():
                 SHAW=self.wannier_gauge(shu.data[ik,ib],ik,iknb)
                 SHA_q_ik=1.j*SHAW[:,:,None,:]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:,None]
                 SHA_q[ik]+=SHA_q_ik
-        #SHA_q=0.5*(SHA_q+SHA_q.transpose( (0,2,1,3,4) ).conj())
-        #for ik in range(self.num_kpts):
-        #    print(ik, SHA_q[ik,17,16,2,0])
         return SHA_q
 
     def get_SR_q(self,spn,mmn):
@@ -240,7 +236,6 @@ class MMN(W90_data):
         t0=time()
         f_mmn_in=open(seedname+".mmn","r")
         _l=f_mmn_in.readline()
-        print ("reading {}.mmn: ".format(seedname)+_l)
         NB,NK,NNB=np.array(f_mmn_in.readline().split(),dtype=int)
         self.data=np.zeros( (NK,NNB,NB,NB), dtype=complex )
         block=1+self.NB*self.NB
@@ -251,7 +246,6 @@ class MMN(W90_data):
             pool=multiprocessing.Pool(npar)
         for j in range(0,NNB*NK,npar*mult):
             x=list(islice(f_mmn_in, int(block*npar*mult)))
-#            print ("mmn: read {} lines".format(len(x)))
             if len(x)==0 : break
             headstring+=x[::block]
             y=[x[i*block+1:(i+1)*block] for i in range(npar*mult) if (i+1)*block<=len(x)]
@@ -292,8 +286,6 @@ class MMN(W90_data):
         shell_mat=np.array([ bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2])  for b1,b2 in zip (brd,brd[1:])])
         shell_mat_line=shell_mat.reshape(-1,9)
         u,s,v=np.linalg.svd(shell_mat_line,full_matrices=False)
-#        print ("u,s,v=",u,s,v)
-#        print("check svd : ",u.dot(np.diag(s)).dot(v)-shell_mat_line)
         s=1./s
         weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
         check_eye=sum(w*m for w,m in zip(weight_shell,shell_mat))
@@ -388,11 +380,9 @@ class UXU(W90_data):
             self.data=tmp_cplx.reshape(NK,NNB,NNB,NB,NB).transpose(0,2,1,3,4)
         else:
             for ik in range(NK):
-#            print ("k-point {} of {}".format( ik+1,NK))
                 for ib2 in range(NNB):
                     for ib1 in range(NNB):
                         tmp=f_uXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0)
-                        # tmp[m, n] = <u_{m,k+b1}|X|u_{n,k+b2}>
                         self.data[ik,ib1,ib2]=tmp[:,:,0]+1j*tmp[:,:,1]
         print ("----------\n {0} OK  \n---------\n".format(suffix))
         f_uXu_in.close()
@@ -443,11 +433,9 @@ class SXU(W90_data):
         if formatted:
             tmp = np.array([f_sXu_in.readline().split() for i in range(NK*NNB*3*NB*NB)], dtype=float)
             tmp_cplx = tmp[:,0] + 1j * tmp[:,1]
-            # tmp_cplx[ik, ib, ipol, m, n] = <u_{m,k}|S_ipol * X|u_{n,k+b}>
             self.data = tmp_cplx.reshape(NK,NNB,3,NB,NB).transpose(0,1,3,4,2)
         else:
             for ik in range(NK):
-    #            print ("k-point {} of {}".format( ik+1,NK))
                 for ib in range(NNB):
                     for ipol in range(3):
                        tmp=f_sXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0)

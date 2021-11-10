@@ -9,7 +9,7 @@ np.set_printoptions(suppress=True,precision=4,threshold=np.inf,linewidth=500)
 
 class sym_wann():
     '''
-    Symmetrize wannier matrixes in real space: HH_R, AA_R, BB_R, SS_R,...  
+    Symmetrize wannier matrixes in real space: Ham_R, AA_R, BB_R, SS_R,...  
     
     Parameters
     ----------
@@ -27,7 +27,7 @@ class sym_wann():
     iRvec: array
         List of R vectors.
     XX_R: dic
-        Matrix before symmetrization. {'HH':self.HH_R,'AA':self.AA_R,......}
+        Matrix before symmetrization. {'Ham':self.Ham_R,'AA':self.AA_R,......}
     Spin: bool
         Spin orbital coupling.
     TR; bool
@@ -43,7 +43,7 @@ class sym_wann():
 
         self.spin=spin
         self.TR=TR
-        self.HH_R =XX_R['HH']
+        self.HH_R =XX_R['Ham']
         self.iRvec = iRvec.tolist()
         self.nRvec = len(iRvec)
         self.num_wann = num_wann

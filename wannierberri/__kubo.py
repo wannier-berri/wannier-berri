@@ -22,6 +22,7 @@ import functools
 from termcolor import cprint
 from .__utility import alpha_A,beta_A
 from . import __result as result
+from .covariant_formulak import SpinVelocity
 
 # constants
 pi = constants.pi
@@ -104,7 +105,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
 
     Arguments:
-        data            instance of :class:~wannierberri.__Data_K.Data_K representing a single FFT grid in the BZ
+        data            instance of :class:~wannierberri.data_K.Data_K representing a single FFT grid in the BZ
         Efermi          list of chemical potentials in units of eV
         omega           list of frequencies in units of eV/hbar
         kBT             temperature in units of eV/kB
@@ -157,6 +158,8 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             sigma_H = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
             sigma_AH = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
             rank=3
+        # Calculate spin-velocity matrix
+        spin_velocity = SpinVelocity(data, SHC_type)
     elif conductivity_type == 'tildeD' :
         tildeD  = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3), dtype=float)
         rank=2
@@ -183,12 +186,8 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             eta = smr_fixed_width
             delE = data.delE_K[ik] # energy derivatives [n, a] in eV*angstrom
             ddelE = delE[None,:] - delE[:, None] # delE_m(k) - delE_n(k) [n, m, a]
-            # Stepan :
             eta = np.maximum(adpt_smr_min, np.minimum(adpt_smr_max,
                 adpt_smr_fac * np.abs(ddelE.dot(data.Kpoint.dK_fullBZ_cart.T)).max(axis=-1) ))[None, :, :]
-            # Patrick's version: 
-            # eta = np.maximum(adpt_smr_min, np.minimum(adpt_smr_max,
-            #     adpt_smr_fac * np.linalg.norm(ddelE, axis=2) * np.max(data.Kpoint.dK_fullBZ)))[None, :, :]
         else:
             eta = smr_fixed_width # number
 
@@ -205,25 +204,9 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         if conductivity_type == 'kubo':
             # generalized Berry connection matrix
             A = data.A_H[ik] # [n, m, a] in angstrom
-#            B = data.A_H[ik]
         elif conductivity_type == 'SHC':
+            A = spin_velocity.matrix[ik]
             B = - 1j*data.A_H[ik]
-            if SHC_type == 'qiao':
-                A = 0.5 * (data.shc_B_H[ik] + data.shc_B_H[ik].transpose(1,0,2,3).conj())
-            elif SHC_type == 'ryoo':
-                VV = data.V_H[ik] # [n,m,a]
-                SS = data.S_H[ik]   # [n,m,b]
-                SA = data.SA_H[ik]  # [n,m,a,b]
-                SHA = data.SHA_H[ik]# [n,m,a,b]
-                A = (np.matmul(VV.transpose(2,0,1)[:,None,:,:],SS.transpose(2,0,1)[None,:,:,:])
-                    + np.matmul(SS.transpose(2,0,1)[None,:,:,:],VV.transpose(2,0,1)[:,None,:,:])).transpose(2,3,0,1)
-                A += -1j * (E[None,:,None,None]*SA - SHA)
-                SA_adj = SA.transpose(1,0,2,3).conj()
-                SHA_adj = SHA.transpose(1,0,2,3).conj()
-                A += 1j *  (E[:,None,None,None]*SA_adj - SHA_adj)
-                A /= 2.0
-            else:
-                print("Invalid SHC type. ryoo or qiao.")
         elif  conductivity_type == 'tildeD':
             rfac=dE[None,:,:]/(dE[None,:,:]+omega[:,None,None]+1j*eta)
             rfac=(rfac+rfac.transpose(0,2,1).conj()).real/2
@@ -238,11 +221,11 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         elif conductivity_type == 'shiftcurrent':
             B = data.A_H[ik]
 
-            A_Hbar = data.A_Hbar[ik]
+            A_Hbar = data.Xbar('AA')[ik]
             D_H = data.D_H[ik]
-            V_H = data.V_H[ik]
-            A_Hbar_der = data.A_Hbar_der[ik]
-            del2E_H = data.del2E_H[ik]
+            V_H = data.Xbar('Ham',1)[ik]
+            A_Hbar_der = data.Xbar('AA',1)[ik]
+            del2E_H  = data.Xbar('Ham',2)[ik]
             dEig_inv = data.dEig_inv[ik].transpose(1,0)
 
             # define D using broadening parameter
@@ -272,7 +255,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
             A =    A_Hbar_der + \
                    + AD_bit - 1j*AA_bit \
                    + sum_AD \
-                   + 1j*(  del2E_H + sum_HD + DV_bit \
+                   + 1j*( del2E_H + sum_HD + DV_bit \
                         )*dEig_inv[:,:, np.newaxis, np.newaxis]
 
             # generalized derivative is fourth index of A, we put it into third index of Imn
@@ -294,10 +277,6 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         if conductivity_type == 'tildeD':
             V =  data.delE_K[ik] 
             fs=fermiSurf(Efermi, E, kBT)
-#            print("shapes",fs.shape,V.shape,tildeOmega.shape)
-#            print("shapes",fermiSurf(Efermi, E, kBT)[:,None,:,None,None].shape,V [None,None,:,:,None].shape,tildeOmega[None,:,:,None,:].shape,tildeD.shape)
-#            print("shapes",(fermiSurf(Efermi, E, kBT)[:,None,:,None,None]*V [None,None,:,:,None]*tildeOmega[None,:,:,None,:]).shape,tildeD.shape)
-#        degen= ( abs(dE)<=data.degen_thresh )
             
             tildeD+= np.sum(  fermiSurf(Efermi, E, kBT)[:,None,:,None,None]
                                 *V [None,None,:,:,None]

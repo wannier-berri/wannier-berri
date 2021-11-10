@@ -10,6 +10,7 @@ import wannierberri as wberri
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90, system_Fe_W90, system_Fe_W90_wcc
 from create_system import create_files_GaAs_W90, system_GaAs_W90, system_GaAs_W90_wcc
+from create_system import symmetries_Fe
 from compare_result import compare_energyresult
 from test_integrate import compare_quant
 
@@ -21,7 +22,9 @@ def check_integrate_dynamical():
     requires a special treatment because of sym and asym data.
     """
     def _inner(system, quantities, fout_name, Efermi, omega, grid_param, comparer,
-               numproc=0, additional_parameters={}, adpt_num_iter=0,
+               additional_parameters={}, 
+               parameters_K={},
+               adpt_num_iter=0,use_symmetry = False,
                suffix="", suffix_ref="", extra_precision={} ):
 
         grid = wberri.Grid(system, **grid_param)
@@ -30,9 +33,10 @@ def check_integrate_dynamical():
                 Efermi = Efermi,
                 omega = omega,
                 quantities = quantities,
-                numproc = numproc,
+                use_irred_kpt = use_symmetry, symmetrize = use_symmetry,
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
+                parameters_K = parameters_K,
                 fout_name = os.path.join(OUTPUT_DIR, fout_name),
                 suffix = suffix,
                 restart = False,
@@ -86,9 +90,6 @@ def test_optical(check_integrate_dynamical, system_Fe_W90, compare_energyresult)
 
     # TODO: Add wcc test
 
-
-
-
 def test_shiftcurrent(check_integrate_dynamical, system_GaAs_W90, compare_energyresult):
     """Test shift current"""
     quantities = ["opt_shiftcurrent"]
@@ -104,5 +105,42 @@ def test_shiftcurrent(check_integrate_dynamical, system_GaAs_W90, compare_energy
         adpt_num_iter=adpt_num_iter, comparer=compare_energyresult,
         additional_parameters=kubo_params,
         extra_precision = {"opt_shiftcurrent":1e-9})
+
+    # TODO: Add wcc test
+
+def test_shc(system_Fe_W90):
+    "Test whether SHC from kubo.py and FermiOcean3 are the same"
+    quantities = ["opt_SHCqiao", "opt_SHCryoo", "shc_static_qiao", "shc_static_ryoo"]
+
+    Efermi = np.linspace(16.0, 18.0, 21)
+    omega = np.array([0.0])
+    kubo_params = dict(smr_fixed_width=1e-10, smr_type="Gaussian", kBT=0)
+    grid_param = dict(NK=[6, 6, 6], NKFFT=[3, 3, 3])
+    adpt_num_iter = 0
+
+    system = system_Fe_W90
+
+    grid = wberri.Grid(system, **grid_param)
+    additional_parameters = kubo_params
+    fout_name = "shc_Fe_W90"
+
+    result = wberri.integrate(system,
+            grid = grid,
+            Efermi = Efermi,
+            omega = omega,
+            quantities = quantities,
+            adpt_num_iter = adpt_num_iter,
+            parameters = additional_parameters,
+            fout_name = os.path.join(OUTPUT_DIR, fout_name),
+            restart = False,
+    )
+
+    for mode in ["qiao", "ryoo"]:
+        data_fermiocean = result.results[f"shc_static_{mode}"].data
+        data_kubo = result.results[f"opt_SHC{mode}"].data[:, 0, ...].real
+        precision = max(np.average(abs(data_fermiocean) / 1E10), 1E-8)
+        assert data_fermiocean == approx(data_kubo, abs=precision), (f"data of"
+            f"SHC {mode} from FermiOcean and kubo give a maximal absolute"
+            f"difference of {np.max(np.abs(data_kubo - data_fermiocean))}.")
 
     # TODO: Add wcc test

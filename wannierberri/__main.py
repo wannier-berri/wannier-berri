@@ -18,7 +18,7 @@ from . import __version__
 from .__evaluate import evaluate_K
 from .__utility import getSmoother 
 from . import __integrate 
-from . import __tabulate  
+from . import __tabulate
 from . import symmetry
 from .__path import Path
 import numpy as np
@@ -43,7 +43,6 @@ from pyfiglet import figlet_format
 def figlet(text,font='cosmike',col='red'):
     init(strip=not sys.stdout.isatty()) # strip colors if stdout is redirected
     letters=[figlet_format(X, font=font).rstrip("\n").split("\n") for X in text]
-#    print (letters)
     logo=[]
     for i in range(len(letters[0])):
         logo.append("".join(L[i] for L in letters))
@@ -76,7 +75,9 @@ def print_options():
 
 
 def welcome():
-#figlet("WANN IER BERRI",font='cosmic',col='yellow')
+# ogiginally obtained by 
+# figlet("WANN IER BERRI",font='cosmic',col='yellow')
+# with small modifications
     logo="""
 .::    .   .::: .:::::::.  :::.    :::.:::.    :::. :::.,::::::  :::::::..       :::::::.  .,::::::  :::::::..   :::::::..   :::
 ';;,  ;;  ;;;' '  ;;`;;  ` `;;;;,  `;;;`;;;;,  `;;; ;;;;;;;''''  ;;;;``;;;;       ;;;'';;' ;;;;''''  ;;;;``;;;;  ;;;;``;;;;  ;;;
@@ -86,7 +87,6 @@ def welcome():
      "M "M"      YMM   ""`   MMM     YM  MMM     YM MMM \"\"\"\"YUMMM MMMM   "W"     ""YUMMMP"  \"\"\"\"YUMMM MMMM   "W"  MMMM   "W" MMM
 """
     cprint(logo,'yellow')
-#    cprint("a.k.a. Wannier19",'red')
     figlet("    by Stepan Tsirkin et al",font='straight',col='green')
 
 
@@ -94,28 +94,27 @@ def welcome():
 
 
     cprint( "\nVersion: {}\n".format( __version__),'cyan', attrs=['bold'])
-#    print_options()
 
-#for font in ['twopoint','contessa','tombstone','thin','straight','stampatello','slscript','short','pepper']:
-#    __figlet("by Stepan Tsirkin",font=font,col='green')
-
-    
 
 def check_option(quantities,avail,tp):
-    for opt in quantities:
+    for opt_full in quantities:
+      opt = opt_full.split('^')[0]
       if opt not in avail:
         raise RuntimeError("Quantity {} is not available for {}. Available options are : \n{}\n".format(opt,tp,avail) )
 
 
-## TODO: Unify the two methids, to do everything in one shot
+## TODO: Unify the two methods, to do make possible doing 
+# integration and tabulating everything in one shot
 
 def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
-                        smearEf=10,smearW=None,quantities=[],adpt_num_iter=0,adpt_fac=1,
+                        smearEf=10,smearW=None,
+                        quantities=[],
+                        user_quantities = {}, 
+                        adpt_num_iter=0,adpt_fac=1,
+                        use_irred_kpt = True, symmetrize = True,
                         fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
-                        parallel = None, 
-                        parameters={},
-                        numproc=0,chunksize=None,Klist_part=10
-                        ):
+                        parallel = None,
+                        parameters={},parameters_K={},specific_parameters={} ):
     """
     Integrate 
 
@@ -133,16 +132,32 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         smearing over Fermi levels (in Kelvin)
     quantities : list of str
         quantities to be integrated. See :ref:`sec-capabilities`
+        One can append any label after a '^' symbol. In this case same quantity 
+        may be calculated several times in one run, but with different parameters (see specifuc_parameters)
+    user_quantities : dict
+        a dictionary `{name:function}`, where `name` is any string, and `function(data_K,Efermi)` 
+        takes two arguments
+        `data_K` of  of type :class:`~wannierberri.data_K.Data_K`  and Efermi -  `np.array`
+        and returns an object  :class:`~wannierberri.__result.EnergyResult`
     adpt_num_iter : int 
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
     adpt_fac : int 
         number of K-points to be refined per quantity and criteria.
     parallel : :class:`~wannierberri.Parallel`
         object describing parallelization scheme
-    numproc : int 
-        (obsolete, use parallel instead) number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
-    chunksize : int
-        (obsolete, use parallel instead) chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
+    use_irred_kpt : bool
+        evaluate only symmetry-irreducible K-points
+    symmetrize : bool
+        symmetrize the result (always `True` if `use_irred_kpt == True`)
+    parameters : dict  
+        `{'name':value,...}` , Each quantity that 
+        recognizes a parameter with the given name will use it
+    specific_parameters : dict  
+        `'quantity^label':dict`, where dict is analogous to  `parameters`. This values will override 
+        for the instance of the quantity labeled by '^label'
+    parameters_K : dict
+        parameters to be passed to the :class:`~wannierberri.data_K.Data_K`, 
+        so they are common for the calculation.
  
     Returns
     --------
@@ -158,8 +173,10 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
 #    Ef0 : float
 #        a single  Fermi level for optical properties
 
-
-    cprint ("\nIntegrating the following quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
+    if use_irred_kpt:
+        symmetrize = True
+    cprint ("\nIntegrating the following  standard      quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
+    cprint ("\nIntegrating the following  user-defined  quantities: "+", ".join(user_quantities.keys())+"\n",'green', attrs=['bold'])
     check_option(quantities,integrate_options,"integrate")
     def to_array(energy):
         if energy is not None: 
@@ -180,22 +197,25 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     smoothW  = getSmoother(omega,  smearW) # smoother for functions of frequency
     # smoothW  = getSmoother(omega,  smearW,  "Gaussian") # smoother for functions of frequency
 
-    eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, omega=omega, smootherEf=smoothEf, smootherOmega=smoothW,
-            quantities=quantities, parameters=parameters )
+    eval_func=functools.partial( __integrate.intProperty, Efermi=Efermi, omega=omega, 
+            smootherEf=smoothEf, smootherOmega=smoothW,
+            quantities=quantities,user_quantities = user_quantities, 
+            parameters=parameters, specific_parameters = specific_parameters )
     res=evaluate_K(eval_func,system,grid,fftlib=fftlib,
-            adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac,
+            adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac, use_irred_kpt=use_irred_kpt,symmetrize=symmetrize,
                 fout_name=fout_name,suffix=suffix,
-                restart=restart,file_Klist=file_Klist, parallel = parallel,
-                    numproc=numproc,chunksize=chunksize,Klist_part=Klist_part)
+                restart=restart,file_Klist=file_Klist, parallel = parallel,parameters_K=parameters_K )
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
 
 
 
-def tabulate(system,grid, quantities=[],
-                  frmsf_name=None,ibands=None,suffix="",Ef0=0.,parameters={},
-                  parallel = None,
-                        numproc=0,chunksize=None):
+def tabulate(system,grid, quantities=[], user_quantities = {}, 
+                  frmsf_name=None,ibands=None,suffix="",Ef0=0.,
+                  use_irred_kpt = True, symmetrize = True,
+                  parameters={},parameters_K={},specific_parameters={},
+                  degen_thresh = 1e-4,
+                  parallel = None ):
     """
     Tabulate quantities to be plotted
 
@@ -209,14 +229,18 @@ def tabulate(system,grid, quantities=[],
         a single  Fermi level. all energies are given with respect to Ef0
     quantities : list of str
         quantities to be integrated. See :ref:`sec-capabilities`
+    user_quantities : dict
+        a dictionary `{name:formula}`, where `name` is any string, and `formula` 
+        is a name of a child class of  :class:`~wannierberri.formula.Formula_ln`
+        which should have defined attributes `nn` , `TRodd`, `Iodd`
+    use_irred_kpt : bool
+        evaluate only symmetry-irreducible K-points
+    symmetrize : bool
+        symmetrize the result
     frmsf_name :  str
         if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
     parallel : :class:`~wannierberri.Parallel`
         object describing parallelization scheme
-    numproc : int 
-        (obsolete, use parallel instead) number of parallel processes. If <=0  - serial execution without `multiprocessing` module.
-    chunksize : int
-        (obsolete, use parallel instead) chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
    
     Returns
     --------
@@ -226,23 +250,31 @@ def tabulate(system,grid, quantities=[],
     """
 
     mode = '3D'
-    if isinstance(grid,Path): mode = 'path'
-    cprint ("\nTabulating the following quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
+    if isinstance(grid,Path):
+        mode = 'path'
+        use_irred_kpt      = False
+        symmetrize = False
+    cprint ("\nTabulating the following standard     quantities: "+", ".join(quantities)+"\n",'green', attrs=['bold'])
+    cprint ("\nTabulating the following user-defined quantities: "+", ".join(user_quantities.keys())+"\n",'green', attrs=['bold'])
     check_option(quantities,tabulate_options,"tabulate")
-    eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,quantities=quantities,parameters=parameters )
+    eval_func=functools.partial(  __tabulate.tabXnk, ibands=ibands,
+            quantities=quantities,
+            user_quantities=user_quantities,
+            parameters=parameters ,
+                degen_thresh = degen_thresh )
     t0=time()
     res=evaluate_K(eval_func,system,grid,
-            adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,nosym=(mode=='path'), 
-            parallel=parallel,
-              numproc=numproc,chunksize=chunksize )
+            adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,
+            use_irred_kpt=use_irred_kpt,symmetrize=symmetrize,
+            parallel=parallel,parameters_K=parameters_K )
 
     t1=time()
     if mode=='3D':
         res=res.to_grid(grid.dense)
         t2=time()
         ttxt,twrite=write_frmsf(frmsf_name,Ef0,
-                parallel.num_cpus if parallel is not None else numproc,
-                    quantities,res)
+                parallel.num_cpus if parallel is not None else 1,
+                    quantities+list(user_quantities.keys()),res,suffix=suffix)
 
     t4=time()
 
@@ -258,21 +290,22 @@ def tabulate(system,grid, quantities=[],
 
 
 
-def write_frmsf(frmsf_name,Ef0,numproc,quantities,res):
+def write_frmsf(frmsf_name,Ef0,numproc,quantities,res,suffix=""):
+    if len(suffix)>0:
+        suffix="-"+suffix
     if frmsf_name is not None:
-        open("{0}_E.frmsf".format(frmsf_name),"w").write(
+        open(f"{frmsf_name}_E{suffix}.frmsf","w").write(
              res.fermiSurfer(quantity=None,efermi=Ef0,npar=numproc) )
         t3=time()
         ttxt=0
         twrite=0
         for Q in quantities:
-    #     for comp in ["x","y","z","sq","norm"]:
             for comp in ["x","y","z","xx","yy","zz","xy","yx","xz","zx","yz","zy"]:
                 try:
                     t31=time()
                     txt=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0,npar=numproc)
                     t32=time()
-                    open("{2}_{1}-{0}.frmsf".format(comp,Q,frmsf_name),"w").write(txt)
+                    open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf","w").write(txt)
                     t33=time()
                     ttxt  += t32-t31
                     twrite+= t33-t32
