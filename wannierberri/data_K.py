@@ -437,30 +437,3 @@ class Data_K(System):
     def A_H(self):
         '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
         return self.Xbar('AA') + 1j*self.D_H
-
-
-
-
-    def _shc_B_H_einsum_opt(self, C, A, B):
-        # Optimized version of C += np.einsum('knlc,klma->knmac', A, B). Used in shc_B_H.
-        nw = self.system.num_wann
-        for ik in range(self.nkptot):
-            # Performing C[ik] += np.einsum('nlc,lma->nmac', A[ik], B[ik])
-            tmp_a = np.swapaxes(A[ik], 1, 2) # nlc -> ncl
-            tmp_a = np.reshape(tmp_a, (nw*3, nw)) # ncl -> (nc)l
-            tmp_b = np.reshape(B[ik], (nw, nw*3)) # lma -> l(ma)
-            tmp_c = tmp_a @ tmp_b # (nc)l, l(ma) -> (nc)(ma)
-            tmp_c = np.reshape(tmp_c, (nw, 3, nw, 3)) # (nc)(ma) -> ncma
-            C[ik] += np.transpose(tmp_c, (0, 2, 3, 1)) # ncma -> nmac
-
-    @lazy_property.LazyProperty
-    def shc_B_H(self):
-        SH_H = self._R_to_k_H(self.SH_R, hermitean=False)
-        shc_K_H = -1j*self._R_to_k_H(self.SR_R, hermitean=False)
-        self._shc_B_H_einsum_opt(shc_K_H, self.Xbar('SS'), self.D_H)
-        shc_L_H = -1j*self._R_to_k_H(self.SHR_R, hermitean=False)
-        self._shc_B_H_einsum_opt(shc_L_H, SH_H, self.D_H)
-        return (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.Xbar('SS')[:,:,:,np.newaxis,:] +
-            self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*shc_K_H[:,:,:,:,:] - shc_L_H)
-#end SHC
-
