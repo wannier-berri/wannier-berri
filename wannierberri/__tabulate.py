@@ -35,7 +35,7 @@ calculators={
          'V'          : frml.Velocity, 
          'berry'      : frml.Omega, 
          'Der_berry'  : frml.DerOmega,
-         'morb'       : frml.morb
+         'morb'       : frml.morb,
          'Der_morb'   : frml_basic.Der_morb
          }
 
@@ -58,7 +58,7 @@ parameters_ocean = {
 }
 
 for key,val in parameters_ocean.items(): 
-    for calc in ['berry','Der_berry']: 
+    for calc in ['berry','Der_berry','morb','Der_morb']: 
         additional_parameters[calc][key] = val[0]
         additional_parameters_description[calc][key] = val[1]
 
