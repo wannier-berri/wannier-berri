@@ -172,7 +172,7 @@ def system_GaAs_tb_wcc():
 
 @pytest.fixture(scope="session")
 def tbmodels_Haldane():
-    return wb_models.Haldane_tbm(delta=0.2,t=-1.0,t2 =0.15)
+    return wb_models.Haldane_tbm(delta=0.2,hop1=-1.0,hop2 =0.15)
 
 @pytest.fixture(scope="session")
 def system_Haldane_TBmodels(tbmodels_Haldane):
@@ -194,7 +194,7 @@ def system_Haldane_TBmodels_internal(tbmodels_Haldane):
 
 @pytest.fixture(scope="session")
 def pythtb_Haldane():
-    return wb_models.Haldane_ptb(delta=0.2,t=-1.0,t2 =0.15)
+    return wb_models.Haldane_ptb(delta=0.2,hop1=-1.0,hop2 =0.15)
 
 
 @pytest.fixture(scope="session")
@@ -210,7 +210,7 @@ def system_Haldane_PythTB(pythtb_Haldane):
 
 @pytest.fixture(scope="session")
 def ChiralModel():
-    return wb_models.Chiral(delta=2, t1=1, hop2=1./3,  phi=np.pi/10, hopz=0.2)
+    return wb_models.Chiral(delta=2, hop1=1, hop2=1./3,  phi=np.pi/10, hopz=0.2)
 
 
 
