@@ -408,13 +408,14 @@ class SpinOmega(Formula_ln):
         self.ndim = 3
         self.TRodd = False
         self.Iodd = False
+
     def nn(self,ik,inn,out):
         summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
 
-        # v_over_de = v_ln / (e_n - e_l) = D_ln - 1j * A_ln
+        # v_over_de[l,n,b] = v[l,n,b] / (e[n] - e[l]) = D[l,n,b] - 1j * A[l,n,b]
         v_over_de = self.D.ln(ik,inn,out) - 1j * self.A.ln(ik,inn,out)
 
-        # j_over_de = j_ml / (e_m - e_l)
+        # j_over_de[m,l,a,s] = j[m,l,a,s] / (e[m] - e[l])
         j_over_de = self.J.nl(ik,inn,out) * self.dEinv.nl(ik,inn,out)[:, :, None, None]
 
         summ += -2 * np.einsum("mlas,lnb->mnabs", j_over_de, v_over_de).imag

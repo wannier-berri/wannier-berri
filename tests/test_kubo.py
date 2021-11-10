@@ -110,7 +110,7 @@ def test_shiftcurrent(check_integrate_dynamical, system_GaAs_W90, compare_energy
 
 def test_shc(system_Fe_W90):
     "Test whether SHC from kubo.py and FermiOcean3 are the same"
-    quantities = ["opt_SHCqiao", "opt_SHCryoo", "shc_qiao", "shc_ryoo"]
+    quantities = ["opt_SHCqiao", "opt_SHCryoo", "shc_static_qiao", "shc_static_ryoo"]
 
     Efermi = np.linspace(16.0, 18.0, 21)
     omega = np.array([0.0])
@@ -136,7 +136,7 @@ def test_shc(system_Fe_W90):
     )
 
     for mode in ["qiao", "ryoo"]:
-        data_fermiocean = result.results[f"shc_{mode}"].data
+        data_fermiocean = result.results[f"shc_static_{mode}"].data
         data_kubo = result.results[f"opt_SHC{mode}"].data[:, 0, ...].real
         precision = max(np.average(abs(data_fermiocean) / 1E10), 1E-8)
         assert data_fermiocean == approx(data_kubo, abs=precision), (f"data of"
