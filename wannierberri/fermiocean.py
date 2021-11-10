@@ -14,6 +14,7 @@ eV_au = physical_constants['electron volt-hartree relationship'][0]
 Ang_SI = angstrom
 
 fac_ahc = -1e8 * elementary_charge ** 2 / hbar
+fac_spin_hall = fac_ahc * -0.5
 factor_ohmic=(elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
                  *elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
                    * 1e-2  ) # now in  S/(cm*tau_unit)
@@ -185,6 +186,15 @@ def Der3E_fder2(data_K,Efermi,tetra=False,**parameters):
     formula  = FormulaProduct ( [data_K.covariant('Ham',commader=1),data_K.covariant('Ham',commader=1),data_K.covariant('Ham',commader=1)], name='vel-vel-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=2)()*0.5
     return res
+
+def spin_hall(data_K,Efermi,spin_current_type,tetra=False,**parameters):
+    return FermiOcean(frml.SpinOmega(data_K,spin_current_type,**parameters),data_K,Efermi,tetra,fder=0)() * fac_spin_hall
+
+def spin_hall_qiao(data_K,Efermi,tetra=False,**parameters):
+    return spin_hall(data_K,Efermi,"qiao",tetra=tetra,**parameters)
+
+def spin_hall_ryoo(data_K,Efermi,tetra=False,**parameters):
+    return spin_hall(data_K,Efermi,"ryoo",tetra=tetra,**parameters)
 
 
 ##################################
