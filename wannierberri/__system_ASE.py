@@ -17,7 +17,7 @@ import copy
 import functools
 import multiprocessing 
 from .__utility import iterate3dpm, real_recip_lattice,fourier_q_to_R,find_degen
-from .__system_w90 import ws_dist_map_gen, System_w90
+from .__system_w90 import ws_dist_map, System_w90
 from .__w90_files import MMN
 from time import time
 
@@ -84,7 +84,7 @@ class System_ASE(System_w90):
 
         if  self.use_ws:
             print ("using ws_distance")
-            ws_map=ws_dist_map_gen(self.iRvec,self.wannier_centres_cart, self.mp_grid,self.real_lattice, npar=npar)
+            ws_map=ws_dist_map(self.iRvec,self.wannier_centres_cart, self.mp_grid,self.real_lattice, npar=npar)
         
 
 
@@ -103,14 +103,15 @@ class System_ASE(System_w90):
         timeFFT=0
         t0=time()
         print (self.iRvec, self.Ndegen, np.sum(1./self.Ndegen))
-        self.HH_R=np.array([ase_wannier.get_hopping(R)/nd for R,nd in zip(self.iRvec,self.Ndegen)]).transpose((1,2,0))
+        self.Ham_R=np.array([ase_wannier.get_hopping(R)/nd for R,nd in zip(self.iRvec,self.Ndegen)]).transpose((1,2,0))
         timeFFT+=time()-t0
 
         if self.getAA:
-            AAq=self.get_AA_q(mmn,ase_wannier,transl_inv=transl_inv)
-            t0=time()
-            self.AA_R=fourier_q_to_R_loc(AAq)
-            timeFFT+=time()-t0
+            raise NotImplementedError()
+#            AAq=self.get_AA_q(mmn,ase_wannier,transl_inv=transl_inv)
+#            t0=time()
+#            self.AA_R=fourier_q_to_R_loc(AAq)
+#            timeFFT+=time()-t0
 
         if self.getBB:
             raise NotImplementedError()
@@ -129,7 +130,7 @@ class System_ASE(System_w90):
 
         print ("time for FFT_q_to_R : {} s".format(timeFFT))
         if  self.use_ws:
-            for X in ['HH','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
+            for X in ['Ham','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
                 XR=X+'_R'
                 if hasattr(self,XR) :
                     print ("using ws_dist for {}".format(XR))

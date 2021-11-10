@@ -104,8 +104,8 @@ class Path(Grid):
                                 for i,k in enumerate(self.K_list)
                    )  )
 
-    def get_K_list(self):
-        """ returns the list of Symmetry-irreducible K-points"""
+    def get_K_list(self,use_symmetry=False):
+        """ returns the list of K-points """
         dK=np.array([1.,1.,1.])
         factor=1.
         print ("generating K_list")
