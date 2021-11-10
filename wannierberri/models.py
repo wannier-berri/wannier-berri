@@ -1,7 +1,5 @@
 """Here we define some models, that can be used to test the code, or just to play around"""
 
-import tbmodels
-import pythtb 
 import numpy as np
 
 def Haldane_tbm(
@@ -25,6 +23,8 @@ def Haldane_tbm(
         phase of next nearest-neighbour hopping 
 
     """
+    import tbmodels
+
     t2 =hop2*np.exp(1.j*phi)
     t2c=t2.conjugate()
     my_model = tbmodels.Model(
@@ -49,6 +49,7 @@ def Haldane_ptb(
     hop2=0.15,
     phi = np.pi/2.):
     """same as Haldane_tbm, but uses pythTB"""
+    import pythtb 
     lat=[[1.0,0.0],[0.5,np.sqrt(3.0)/2.0]]
     orb=[[1./3.,1./3.],[2./3.,2./3.]]
 
@@ -102,6 +103,7 @@ def Chiral(
 
     """
 
+    import pythtb 
 
     lat=[[1.0,0.0,0.0],[0.5,np.sqrt(3.0)/2.0,0.0],[0.0,0.0,1.0]]
     # define coordinates of orbitals
