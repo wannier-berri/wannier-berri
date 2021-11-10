@@ -11,7 +11,6 @@
 #                                                            #
 #------------------------------------------------------------
 
-import  multiprocessing
 import functools
 import numpy as np
 from collections.abc import Iterable
@@ -22,11 +21,11 @@ import pickle
 import glob
 import os
 
-from .__Data_K import Data_K
-from . import symmetry as SYM
+from .data_K import Data_K
 from  .__Kpoint import exclude_equiv_points
 from . import __utility as utility
 from .__parallel import Parallel
+
 
 def print_progress(count, total, t0):
     t = time() - t0
@@ -37,6 +36,7 @@ def print_progress(count, total, t0):
     print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
 
 def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
+    print (f"symgroup : {symgroup}")
     t0=time()
     selK=[ik for ik,k in enumerate(K_list) if k.res is None]
     numK = len(selK)
@@ -45,38 +45,21 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
         print ("nothing to process now")
         return 0
 
-    if parallel.method == 'multiprocessing-K':
-        if parallel.chunksize  is None :
-            chunksize = max(1, min(int(numK / parallel.npar_K / 200), 10))
-        else:
-            chunksize=parallel.chunksize
-        print("chunksize = {} used for parallelization.".format(chunksize), end=" ")
-        if chunksize > 1:
-            print("Smaller values recommended for large systems.", end=" ")
-        else:
-            print("Larger values may be used for small systems.", end=" ")
-        print("Read the docs for more info.")
-    elif parallel.method == 'ray':
+    if parallel.method == 'ray':
         remotes=[paralfunc.remote(dK,**remote_parameters) for dK in dK_list]
 
     print ("processing {0} K points :".format(len(dK_list)), end=" ")
     if parallel.method == 'serial':
         print("in serial.")
     else:
-        print("using a pool of {} processes.".format(parallel.npar_K))
+        print("using  {} processes.".format(parallel.npar_K))
 
     print("# K-points calculated  Wall time (sec)  Est. remaining (sec)", flush=True)
     res = []
     nstep_print =  parallel.progress_step(numK,parallel.npar_K)
     if parallel.method=='serial':
         for count, Kp in enumerate(dK_list):
-            res.append(paralfunc(Kp))
-            if (count + 1) % nstep_print == 0:
-                print_progress(count + 1, numK, t0)
-    elif  parallel.method   == 'multiprocessing-K':
-        pmap = parallel.pool_K
-        for count, res_K in enumerate(pmap(paralfunc, dK_list, chunksize=chunksize)):
-            res.append(res_K)
+            res.append(paralfunc(Kp,**remote_parameters))
             if (count + 1) % nstep_print == 0:
                 print_progress(count + 1, numK, t0)
     elif parallel.method == 'ray':
@@ -114,10 +97,12 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
 
 
 def evaluate_K(func,system,grid,fftlib='fftw',
-            adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,fout_name="result",
-             suffix="",
-             file_Klist="K_list.pickle",restart=False,start_iter=0,nosym=False,
-             parallel=None,numproc=0,chunksize=None
+            adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,
+            use_irred_kpt=True,symmetrize=True, 
+            fout_name="result", suffix="",
+             parameters_K={},
+             file_Klist="K_list.pickle",restart=False,Klist_part = 10,
+             parallel=None  # serial by default
              ):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
@@ -129,8 +114,10 @@ The parallelisation is done by K-points
 
 As a result, the integration will be performed over NKFFT x NKdiv
 """
+
+
     if parallel is None:
-        parallel = Parallel(num_cpus=numproc,chunksize=chunksize,method='multiprocessing')
+        parallel = Parallel()
 
     if file_Klist is not None:
         if not file_Klist.endswith(".pickle"):
@@ -145,16 +132,24 @@ As a result, the integration will be performed over NKFFT x NKdiv
         remote_parameters = {'_system' : ray.put(system) , '_grid' : ray.put(grid), 'npar_k': parallel.npar_k,'fftlib':fftlib}
         @ray.remote
         def paralfunc(Kpoint,_system,_grid,npar_k,fftlib):
-            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,npar_k=npar_k,fftlib=fftlib)
+            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,**parameters_K)
             return func(data)
     else:
-        remote_parameters = {}
-        paralfunc=functools.partial(
-            _eval_func_k, func=func,system=system,grid=grid,npar_k=parallel.npar_k,fftlib=fftlib )
+        remote_parameters = {'_system' : system , '_grid' : grid, 'npar_k': parallel.npar_k,'fftlib':fftlib}
+        def paralfunc(Kpoint,_system,_grid,npar_k,fftlib):
+            data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,**parameters_K)
+            return func(data)
 
     if restart:
         try:
-            K_list=pickle.load(open(file_Klist,"rb"))
+            fr = open(file_Klist,"rb")
+            K_list = []
+            while True:
+                try:
+                    K_list +=pickle.load(fr)
+                except EOFError:
+                    print("Finished reading Klist from file {0}".format(file_Klist))
+                    break
             print ("{0} K-points were read from {1}".format(len(K_list),file_Klist))
             if len(K_list)==0:
                 print ("WARNING : {0} contains zero points starting from scrath".format(file_Klist))
@@ -164,7 +159,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
             print ("WARNING: {}".format( err) )
             print ("WARNING : reading from {0} failed, starting from scrath".format(file_Klist))
     else:
-        K_list=grid.get_K_list()
+        K_list=grid.get_K_list(use_symmetry=use_irred_kpt)
         print ("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
         start_iter=0
 
@@ -198,17 +193,23 @@ As a result, the integration will be performed over NKFFT x NKdiv
           if not K.evaluated:
             print (" K-point {0} : {1} ".format(i,K))
         counter+=process(paralfunc,K_list,parallel,
-                     symgroup=None if nosym else system.symgroup,
+                     symgroup=system.symgroup if  symmetrize else None,
                      remote_parameters=remote_parameters)
         
         try:
             if file_Klist is not None:
-                pickle.dump(K_list,open(file_Klist,"wb"))
+                nk = len(K_list)
+                fw =  open(file_Klist,"wb")
+                for ink in range(0,nk,Klist_part):
+                    pickle.dump(K_list[ink:ink+Klist_part],fw)
         except Exception as err:
             print ("Warning: {0} \n the K_list was not pickled".format(err))
-            
+
+        time0 =time()     
+        print(kp.get_res for kp in K_list)
         result_all=sum(kp.get_res for kp in K_list)
-        
+        time1 = time()
+        print("time1 = ",time1-time0)
         if not (restart and i_iter==0):
             result_all.write(fout_name+"-{}"+suffix+"_iter-{0:04d}.dat".format(i_iter+start_iter))
         
@@ -219,22 +220,18 @@ As a result, the integration will be performed over NKFFT x NKdiv
         Kmax=np.array([K.max for K in K_list]).T
         select_points=set().union( *( np.argsort( Km )[-adpt_nk:] for Km in Kmax )  )
         
+        time2 = time()
+        print("time2 = ",time2-time1)
         l1=len(K_list)
         for iK in select_points:
-            K_list+=K_list[iK].divide(adpt_mesh,system.periodic)
-        print ("checking for equivalent points in all points (of new  {} points)".format(len(K_list)-l1))
-        nexcl=exclude_equiv_points(K_list,new_points=len(K_list)-l1)
-        print (" excluded {0} points".format(nexcl))
+            K_list+=K_list[iK].divide(adpt_mesh,system.periodic,use_symmetry=use_irred_kpt)
+
+        if  use_irred_kpt:
+            print ("checking for equivalent points in all points (of new  {} points)".format(len(K_list)-l1))
+            nexcl=exclude_equiv_points(K_list,new_points=len(K_list)-l1)
+            print (" excluded {0} points".format(nexcl))
         print ("sum of weights now :{}".format(sum(Kp.factor for Kp in K_list)))
         
-    
     print ("Totally processed {0} K-points ".format(counter))
     
     return result_all
-       
-
-
-def _eval_func_k(Kpoint,func,system,grid,fftlib,npar_k):
-    data=Data_K(system,Kpoint.Kp_fullBZ,grid=grid,Kpoint=Kpoint,fftlib=fftlib,npar_k=npar_k)
-    return func(data)
-

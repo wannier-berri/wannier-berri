@@ -24,9 +24,6 @@ def parallel_serial():
                    method="serial",
                    num_cpus=0  ,
                    npar_k = 0 , 
-#                   ray_init={} ,     # add extra parameters for ray.init()
-#                   cluster=False , # add parameters for ray.init() for the slurm cluster
-#                   chunksize=None  , # size of chunk in multiprocessing 
                    progress_step_percent  = 1  ,  #
                    progress_timeout = None  # relevant only for ray, seconds
                  )
@@ -48,23 +45,8 @@ def parallel_ray():
                    npar_k = 0 , 
                    ray_init={} ,     # add extra parameters for ray.init()
                    cluster=False , # add parameters for ray.init() for the slurm cluster
-                   chunksize=None  , # size of chunk in multiprocessing 
                    progress_step_percent  = 1  ,  #
                    progress_timeout = None  # relevant only for ray, seconds
                  )
 
 
-
-@pytest.fixture(scope="session")
-def parallel_multiprocessing():
-    from wannierberri import Parallel
-    return Parallel(
-                   method="multiprocessing-K",
-                   num_cpus=4  ,
-                   npar_k = 0 , 
-                   ray_init={} ,     # add extra parameters for ray.init()
-                   cluster=False , # add parameters for ray.init() for the slurm cluster
-                   chunksize=None  , # size of chunk in multiprocessing 
-                   progress_step_percent  = 1  ,  #
-                   progress_timeout = None  # relevant only for ray, seconds
-                 )

@@ -59,7 +59,7 @@ class System_tb(System):
         
         self.iRvec=[]
         
-        self.HH_R=np.zeros( (self.num_wann,self.num_wann,nRvec) ,dtype=complex)
+        self.Ham_R=np.zeros( (self.num_wann,self.num_wann,nRvec) ,dtype=complex)
         
         for ir in range(nRvec):
             f.readline()
@@ -67,35 +67,27 @@ class System_tb(System):
             hh=np.array( [[f.readline().split()[2:4] 
                              for n in range(self.num_wann)] 
                                 for m in range(self.num_wann)],dtype=float).transpose( (1,0,2) )
-            self.HH_R[:,:,ir]=(hh[:,:,0]+1j*hh[:,:,1])/self.Ndegen[ir]
+            self.Ham_R[:,:,ir]=(hh[:,:,0]+1j*hh[:,:,1])/self.Ndegen[ir]
         
         self.iRvec=np.array(self.iRvec,dtype=int)
 
         if self.getAA:
-          self.AA_R=np.zeros( (self.num_wann,self.num_wann,nRvec,3) ,dtype=complex)
-          for ir in range(nRvec):
-            f.readline()
-            assert (np.array(f.readline().split(),dtype=int)==self.iRvec[ir]).all()
-            aa=np.array( [[f.readline().split()[2:8] 
+            self.AA_R=np.zeros( (self.num_wann,self.num_wann,nRvec,3) ,dtype=complex)
+            for ir in range(nRvec):
+                f.readline()
+                assert (np.array(f.readline().split(),dtype=int)==self.iRvec[ir]).all()
+                aa=np.array( [[f.readline().split()[2:8] 
                              for n in range(self.num_wann)] 
                                 for m in range(self.num_wann)],dtype=float)
-            self.AA_R[:,:,ir,:]=(aa[:,:,0::2]+1j*aa[:,:,1::2]).transpose( (1,0,2) ) /self.Ndegen[ir]
+                self.AA_R[:,:,ir,:]=(aa[:,:,0::2]+1j*aa[:,:,1::2]).transpose( (1,0,2) ) /self.Ndegen[ir]
+            self.wannier_centers_cart_auto =  np.diagonal(self.AA_R[:,:,self.iR0,:],axis1=0,axis2=1).T 
         else: 
             self.AA_R = None
         
         f.close()
 
-        R0 = self.iRvec.tolist().index([0,0,0])
-        if self.use_wcc_phase:
-            self.wannier_centres_cart = np.diagonal(self.AA_R[:,:,R0,:],axis1=0,axis2=1).transpose()
-            self.wannier_centres_reduced = self.wannier_centres_cart.dot(np.linalg.inv(self.real_lattice))
-        self.set_symmetry()
-        self.check_periodic()
+        self.do_at_end_of_init()
 
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Recommended size of FFT grid", self.NKFFT_recommended)
-        print ("Real-space lattice:\n",self.real_lattice)
         cprint ("Reading the system from {} finished successfully".format(tb_file),'green', attrs=['bold'])
 
         

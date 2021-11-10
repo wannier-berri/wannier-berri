@@ -36,16 +36,16 @@ class FortranFileR(fortio.FortranFile):
     def __init__(self,filename):
         print ( "using fortio to read" )
         try: 
-            super(FortranFileR, self).__init__( filename, mode='r',  header_dtype='uint32'  , auto_endian=True, check_file=True )
+            super().__init__( filename, mode='r',  header_dtype='uint32'  , auto_endian=True, check_file=True )
         except ValueError :
             print ("File '{}' contains subrecords - using header_dtype='int32'".format(filename))
-            super(FortranFileR, self).__init__( filename, mode='r',  header_dtype='int32'  , auto_endian=True, check_file=True )
+            super().__init__( filename, mode='r',  header_dtype='int32'  , auto_endian=True, check_file=True )
 
 
 class FortranFileW(scipy.io.FortranFile):
     def __init__(self,filename):
         print ( "using scipy.io to write" )
-        super(FortranFileW, self).__init__( filename, mode='w')
+        super().__init__( filename, mode='w')
 
 
 alpha_A=np.array([1,2,0])
@@ -144,6 +144,7 @@ class AbstractSmoother(abc.ABC):
         assert self.E.shape[0]==A.shape[axis]
         A=A.transpose((axis,)+tuple(range(0,axis))+tuple(range(axis+1,A.ndim)))
         res=np.zeros(A.shape, dtype=A.dtype)
+        #TODO maybe change tensordot to numba
         for i in range(self.NE):
             start=max(0,i-self.NE1)
             end=min(self.NE,i+self.NE1+1)
@@ -249,13 +250,11 @@ def fft_W(inp,axes,inverse=False,destroy=True,numthreads=1):
     t01=time()
     fft_object = pyfftw.FFTW(fft_in, fft_out,axes=axes, 
             flags=('FFTW_ESTIMATE',)+(('FFTW_DESTROY_INPUT',)  if destroy else () ), 
-#            flags=('FFTW_MEASURE',)+(('FFTW_DESTROY_INPUT',)  if destroy else () ), 
             direction='FFTW_BACKWARD' if inverse else 'FFTW_FORWARD',
             threads=numthreads)
     t1=time()
     fft_object(inp)
     t2=time()
-#    print ("time to plan {},{}, time to execute {}".format(t01-t0,t1-t01,t2-t1))
     return fft_out
 
 
@@ -304,12 +303,11 @@ def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,numthreads=1,fft='fftw'
 
 class FFT_R_to_k():
     
-    def __init__(self,iRvec,NKFFT,num_wann,wannier_centres_reduced,real_lattice,numthreads=1,lib='fftw',use_wcc_phase=False,name=None):
+    def __init__(self,iRvec,NKFFT,num_wann,numthreads=1,lib='fftw',name=None):
         t0=time()
         print_my_name_start()
         self.NKFFT=tuple(NKFFT)
         self.num_wann=num_wann
-        self.real_lattice = real_lattice
         assert lib in ('fftw','numpy','slow') , "fft lib '{}' is not known/supported".format(lib)
         if lib=='fftw' and not PYFFTW_IMPORTED:
             lib='numpy'
@@ -322,15 +320,11 @@ class FFT_R_to_k():
                 flags=('FFTW_ESTIMATE','FFTW_DESTROY_INPUT'),
                 direction='FFTW_BACKWARD' ,
                 threads=numthreads  )
-#            print ("created fftw plan with {} threads".format(numthreads))
         self.iRvec=iRvec%self.NKFFT
         self.nRvec=iRvec.shape[0]
         self.time_init=time()-t0
         self.time_call=0
         self.n_call=0
-        self.wannier_centres_reduced=wannier_centres_reduced
-        self.wannier_centres_cart = self.wannier_centres_reduced.dot(self.real_lattice) 
-        self.use_wcc_phase=use_wcc_phase
 
     def execute_fft(self,A):
         return self.fft_plan(A)
@@ -358,23 +352,12 @@ class FFT_R_to_k():
         '''
         return [np.exp(2j*np.pi/self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
 
-    @Lazy
-    def exponent_wcc(self): 
-        '''
-        additional exponent for Fourier transform under use_wcc_phase=True, exp(1j*k(tau_j - tau_i))
-        '''
-        w_centres_diff = np.array([[j-i for j in self.wannier_centres_reduced] for i in self.wannier_centres_reduced])
-        def exp_par(ii,jj,i):#k1 k2 k3 partial of exponent_wcc
-            return np.exp(2j*np.pi*w_centres_diff[ii,jj,i]/self.NKFFT[i])**np.arange(self.NKFFT[i])
-        exponent_wcc=np.array([[exp_par(ii,jj,0)[:,None,None]*exp_par(ii,jj,1)[None,:,None]*exp_par(ii,jj,2)[None,None,:]
-                        for jj in range(self.num_wann)] for ii in range(self.num_wann)])
-        return exponent_wcc.transpose((2,3,4,0,1))
 
-    def __call__(self,AAA_R,hermitian=False,antihermitian=False,reshapeKline=True):
+    def __call__(self,AAA_R,hermitean=False,antihermitean=False,reshapeKline=True):
         t0=time()
     #  AAA_R is an array of dimension (  num_wann x num_wann x nRpts X... ) (any further dimensions allowed)
-        if  hermitian and antihermitian :
-            raise ValueError("A matrix cannot be both Hermitian and anti-Hermitian, unless it is zero")
+        if  hermitean and antihermitean :
+            raise ValueError("A matrix cannot be both hermitean and anti-hermitean, unless it is zero")
         AAA_R=AAA_R.transpose((2,0,1)+tuple(range(3,AAA_R.ndim)))
         shapeA=AAA_R.shape
         if self.lib=='slow':
@@ -395,27 +378,19 @@ class FFT_R_to_k():
             self.transform(AAA_K)
             AAA_K*=np.prod(self.NKFFT)
             t=time()-t0
-        if self.use_wcc_phase:
-            exponent_wcc = self.exponent_wcc
-            exponent_wcc = exponent_wcc.reshape( (exponent_wcc.shape)+(1,)*(AAA_K.ndim-5) )# make exponent_wcc as same dimention with AAA_K
-            AAA_K=AAA_K * exponent_wcc
 
 
         ## TODO - think if fft transform of half of matrix makes sense
-        if hermitian:
+        if hermitean:
             AAA_K= 0.5*(AAA_K+AAA_K.transpose((0,1,2,4,3)+tuple(range(5,AAA_K.ndim))).conj())
-        elif antihermitian:
+        elif antihermitean:
             AAA_K=0.5*(AAA_K-AAA_K.transpose((0,1,2,4,3)+tuple(range(5,AAA_K.ndim))).conj())
 
         if reshapeKline:
             AAA_K=AAA_K.reshape( (np.prod(self.NKFFT),)+shapeA[1:])
         self.time_call+=time()-t0
         self.n_call+=1
-#        print(np.shape(AAA_K)) 
         return AAA_K
-
-#    def __del__(self):
-#        print ("time for FFT via {} : {} (__init__:{} , {} callstotal {} ) ".format(self.lib,self.time_init+self.time_call , self.time_init,self.n_call, self.time_call))
 
 def iterate3dpm(size):
     return ( np.array([i,j,k]) for i in range(-size[0],size[0]+1)

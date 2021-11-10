@@ -23,7 +23,6 @@ from termcolor import cprint
 
 
 
-
 class System():
 
     default_parameters =  {    'seedname':'wannier90',
@@ -33,22 +32,17 @@ class System():
                     'spin':False,
                     'SHCryoo':False,
                     'SHCqiao':False,
-                    'random_gauge':False,
-                    'degen_thresh':-1 ,
-                    'delta_fz':0.1,
-                    'ksep': 50 ,
-                    'Emin': -np.Inf ,
-                    'Emax': np.Inf ,
                     'use_ws':True,
                     'periodic':(True,True,True),
-                    'use_wcc_phase':False
+                    'use_wcc_phase':False,
+                    'wannier_centers_cart':None,
+                    'wannier_centers_reduced' : None,
+                    '_getFF' : False,
                        }
 
 
     __doc__ = """
-    The base class for describing a system. Although it has its own constructor, it requires input binary files prepared by a special 
-    `branch <https://github.com/stepan-tsirkin/wannier90/tree/save4wberri>`_ of ``postw90.x`` .
-    Therefore this class by itself it is not recommended for a feneral user. Instead, 
+    The base class for describing a system. Does not have its own constructor, 
     please use the child classes, e.g  :class:`~wannierberri.System_w90` or :class:`~wannierberri.System_tb`
 
 
@@ -57,11 +51,13 @@ class System():
     seedname : str
         the seedname used in Wannier90. Default: ``{seedname}``
     berry : bool 
-        set ``True`` if quantities derived from Berry connection or Berry curvature will be used. Default: ``{berry}``
+        set ``True`` to enable evaluation of external term in  Berry connection or Berry curvature and their 
+        derivatives. Default: ``{berry}``
     spin : bool
         set ``True`` if quantities derived from spin  will be used. Default:``{spin}``
     morb : bool
-        set ``True`` if quantities derived from orbital moment  will be used. Requires the ``.uHu`` file. Default: ``{morb}``
+        set ``True`` to enable calculation of external terms in orbital moment and its derivatives.
+        Requires the ``.uHu`` file. Default: ``{morb}``
     periodic : [bool,bool,bool]
         set ``True`` for periodic directions and ``False`` for confined (e.g. slab direction for 2D systems). If less then 3 values provided, the rest are treated as ``False`` . Default : ``{periodic}``
     SHCryoo : bool 
@@ -72,86 +68,22 @@ class System():
         minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90. Default: ``{use_ws}``
     frozen_max : float
         position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary. Default: ``{frozen_max}``
-    degen_thresh : float
-        threshold to consider bands as degenerate. Used in calculation of Fermi-surface integrals. Default: ``{degen_thresh}``
-    random_gauge : bool
-        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved. Default: ``{random_gauge}``
-    ksep: int
-        separate k-point into blocks with size ksep to save memory when summing internal bands matrix. Working on gyotropic_Korb and berry_dipole. Default: ``{ksep}``
-    delta_fz:float
-        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
+    _getFF : bool
+        generate the FF_R matrix based on the uIu file. May be used for only testing so far. Default : ``{_getFF}``
     use_wcc_phase: bool
-        using wannier centres in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
+        using wannier centers in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
+    wannier_centers_cart :  array-like(num_wann,3)
+        use the given wannier_centers (cartesian) instead of those determined automatically. Incompatible with `wannier_centers_reduced`
+    wannier_centers_reduced :  array-like(num_wann,3)
+        use the given wannier_centers (reduced) instead of those determined automatically. Incompatible with `wannier_centers_cart`
+
+    Notes:
+    -------
+        for tight-binding models it is recommended to use `use_wcc_phase = True`. In this case the external terms vanish, and 
+        one can safely use `berry=False, morb=False`, and also set `'external_terms':False` in the parameters of the calculation
+
     """ .format(**default_parameters)
 
-    def __init__(self, old_format=False,    **parameters ):
-
-
-        self.set_parameters(**parameters)
-        self.old_format=old_format
-
-        cprint ("Reading from {}".format(seedname+"_HH_save.info"),'green', attrs=['bold'])
-
-        f=open(seedname+"_HH_save.info" if self.old_format else seedname+"_R.info","r")
-        l=f.readline().split()[:3]
-        self.seedname=seedname
-        self.num_wann,nRvec=int(l[0]),int(l[1])
-        self.nRvec0=nRvec
-        real_lattice=np.array([f.readline().split()[:3] for i in range(3)],dtype=float)
-        self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice=real_lattice)
-        iRvec=np.array([f.readline().split()[:4] for i in range(nRvec)],dtype=int)
-        
-        self.Ndegen=iRvec[:,3]
-        self.iRvec=iRvec[:,:3]
-
-        self.cRvec=self.iRvec.dot(self.real_lattice)
-
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Recommended size of FFT grid", self.NKFFT_recommended)
-        print ("Real-space lattice:\n",self.real_lattice)
-        #print ("R - points and dege=neracies:\n",iRvec)
-        has_ws=str2bool(f.readline().split("=")[1].strip())
-
-        
-        if has_ws and self.use_ws:
-            print ("using ws_dist")
-            self.ws_map=ws_dist_map_read(self.iRvec,self.num_wann,f.readlines())
-            self.iRvec=np.array(self.ws_map._iRvec_ordered,dtype=int)
-        else:
-            self.ws_map=None
-        
-        f.close()
-
-        self.HH_R=self.__getMat('HH')
-
-        
-        if self.getAA:
-            self.AA_R=self.__getMat('AA')
-
-        if self.getBB:
-            self.BB_R=self.__getMat('BB')
-        
-        if self.getCC:
-            try:
-                self.CC_R=1j*self.__getMat('CCab')
-            except:
-                _CC_R=self.__getMat('CC')
-                self.CC_R=1j*(_CC_R[:,:,:,alpha_A,beta_A]-_CC_R[:,:,:,beta_A,alpha_A])
-
-        if self.getFF:
-            try:
-                self.FF_R=1j*self.__getMat('FFab')
-            except:
-                _FF_R=self.__getMat('FF')
-                self.FF_R=1j*(_FF_R[:,:,:,alpha_A,beta_A]-_FF_R[:,:,:,beta_A,alpha_A])
-
-        if self.getSS:
-            self.SS_R=self.__getMat('SS')
-
-        self.set_symmetry()
-
-        cprint ("Reading the system finished successfully",'green', attrs=['bold'])
 
 
     def set_parameters(self,**parameters):
@@ -172,7 +104,7 @@ class System():
             if not per:
                 sel=(self.iRvec[:,i]!=0)
                 if np.any(sel) :
-                    print ("""WARNING : you declared your ystemas non-periodic along direction {i}, but there are {nrexcl} of total {nr} R-vectors with R[{i}]!=0. 
+                    print ("""WARNING : you declared your system as non-periodic along direction {i}, but there are {nrexcl} of total {nr} R-vectors with R[{i}]!=0. 
         They will be excluded, please make sure you know what you are doing """.format(i=i,nrexcl=sum(sel),nr=self.nRvec ) )
                     exclude[sel]=True
         if np.any(exclude):
@@ -185,7 +117,7 @@ class System():
 
     @property
     def getAA(self):
-        return self.morb or self.berry or self.SHCryoo or self.SHCqiao
+        return self.morb or self.berry or self.SHCryoo or self.SHCqiao 
 
     @property
     def getBB(self):
@@ -195,14 +127,13 @@ class System():
     def getCC(self):
         return self.morb
 
-
     @property
     def getSS(self):
         return self.spin or self.SHCryoo or self.SHCqiao
 
     @property
     def getFF(self):
-        return False
+        return self._getFF
 
     @property
     def getSA(self):
@@ -217,12 +148,22 @@ class System():
         return self.SHCqiao
 
 
+    def do_at_end_of_init(self):
+        self.set_symmetry  ()
+        self.check_periodic()
+        self.set_wannier_centers  ()
+        print ("Number of wannier functions:",self.num_wann)
+        print ("Number of R points:", self.nRvec)
+        print ("Recommended size of FFT grid", self.NKFFT_recommended)
+
+
+
     def to_tb_file(self,tb_file=None):
         if tb_file is None: 
             tb_file=self.seedname+"_fromchk_tb.dat"
         f=open(tb_file,"w")
         f.write("written by wannier-berri form the chk file\n")
-#        cprint ("reading TB file {0} ( {1} )".format(tb_file,l.strip()),'green', attrs=['bold'])
+        cprint (f"writing TB file {tb_file}", 'green', attrs=['bold'])
         np.savetxt(f,self.real_lattice)
         f.write("{}\n".format(self.num_wann))
         f.write("{}\n".format(self.nRvec))
@@ -232,7 +173,7 @@ class System():
         for iR in range(self.nRvec):
             f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
             f.write("".join("{0:3d} {1:3d} {2:15.8e} {3:15.8e}\n".format(
-                         m+1,n+1,self.HH_R[m,n,iR].real*self.Ndegen[iR],self.HH_R[m,n,iR].imag*self.Ndegen[iR]) 
+                         m+1,n+1,self.Ham_R[m,n,iR].real*self.Ndegen[iR],self.Ham_R[m,n,iR].imag*self.Ndegen[iR]) 
                              for n in range(self.num_wann) for m in range(self.num_wann)) )
         if hasattr(self,'AA_R'):
           for iR in range(self.nRvec):
@@ -248,7 +189,6 @@ class System():
         return np.unique(iRvec%FFT,axis=0).shape[0]==iRvec.shape[0]
 
 
-#    @lazy_property.LazyProperty
     @property
     def NKFFT_recommended(self):
         "finds a minimal FFT grid on which different R-vectors do not overlap"
@@ -284,23 +224,131 @@ class System():
         self.symgroup=Group(symmetry_gen,recip_lattice=self.recip_lattice,real_lattice=self.real_lattice)
 
 
-    #@lazy_property.LazyProperty
-    #def cRvec(self):
-    #    return self.iRvec.dot(self.real_lattice)
+    @lazy_property.LazyProperty
+    def cRvec(self):
+        return self.iRvec.dot(self.real_lattice)
 
     @lazy_property.LazyProperty
-    def cRvec_wcc(self):
+
+    def cRvec_p_wcc(self):
         """ 
-        With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [m,n,iRvec] (Cartesian)
+        With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [i,j,iRvec,a] (Cartesian)
         """
-        wannier_centres = self.wannier_centres_cart
-        w_centres = np.array([[j-i for j in wannier_centres] for i in wannier_centres])
         if self.use_wcc_phase:
-            return self.iRvec.dot(self.real_lattice)[None,None,:,:]+ w_centres[:,:,None,:]
+            return self.cRvec[None,None,:,:]+ self.diff_wcc_cart[:,:,None,:]
         else:
-            return self.iRvec.dot(self.real_lattice)[None,None,:,:]
+            return self.cRvec[None,None,:,:]
+
+    @lazy_property.LazyProperty
+    def diff_wcc_cart(self):
+        """
+        With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [i,j,a] (Cartesian)
+        """
+        wannier_centers = self.wannier_centers_cart
+        return wannier_centers[None, :, :] - wannier_centers[:, None, :]
+
+    @lazy_property.LazyProperty
+    def diff_wcc_red(self):
+        """
+        With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [i,j,a] (Reduced)
+        """
+        wannier_centers = self.wannier_centers_reduced
+        return wannier_centers[None, :, :] - wannier_centers[:, None, :]
+
+    @property
+    def wannier_centers_cart_wcc_phase(self):
+        "returns zero array if use_wcc_phase = False"
+        if self.use_wcc_phase:
+            return self.wannier_centers_cart
+        else:
+            return np.zeros_like(self.wannier_centers_cart)
 
 
+    def set_wannier_centers(self):
+        """
+        set self.wannier_centers_cart and self.wannier_centers_reduced. Also, if
+        use_wcc_phase=True, modify the relevant real-space matrix elements .
+        """
+        if self.wannier_centers_cart is not None:
+            if self.wannier_centers_reduced is not None:
+                raise ValueError("one should not specify both wannier_centers_cart and wannier_centers_reduced,"
+                    "or, set_wannier_centers should not be called twice")
+            else:
+                self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+        elif self.wannier_centers_reduced is not None:
+                self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
+        elif hasattr(self,"wannier_centers_cart_auto"):
+                self.wannier_centers_cart = self.wannier_centers_cart_auto
+                self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+        if self.use_wcc_phase: 
+            if self.wannier_centers_cart is None:
+                raise ValueError("use_wcc_phase = True, but the wannier centers could not be determined")
+            if hasattr(self,'AA_R'):
+                AA_R_new = np.copy(self.AA_R)
+                AA_R_new[np.arange(self.num_wann),np.arange(self.num_wann),self.iR0,:] -= self.wannier_centers_cart
+            if hasattr(self,'BB_R'):
+                print ("WARNING: orbital moment does not work with wcc_phase so far")
+                BB_R_new = self.BB_R.copy() - self.Ham_R[:,:,:,None]*self.wannier_centers_cart[None,:,None,:]
+            if hasattr(self,'CC_R'):
+                print ("WARNING: orbital moment does not work with wcc_phase so far")
+                norm = np.linalg.norm(self.CC_R - self.conj_XX_R(self.CC_R))
+                assert norm<1e-10 , f"CC_R is not Hermitian, norm={norm}"
+                assert hasattr(self,'BB_R') , "if you use CC_R and use_wcc_phase=True, you need also BB_R"
+                T  =  self.wannier_centers_cart[:,None,None,:,None]*self.BB_R[:,:,:,None,:]
+                CC_R_new  =  self.CC_R.copy() + 1.j*sum(   
+                            s*( -T[:,:,:,a,b]   # -t_i^a * B_{ij}^b(R)
+                                -self.conj_XX_R(T[:,:,:,b,a])    # - B_{ji}^a(-R)^*  * t_j^b 
+                                +self.wannier_centers_cart[:,None,None,a]*self.Ham_R[:,:,:,None] 
+                                    * self.wannier_centers_cart[None,:,None,b]  # + t_i^a*H_ij(R)t_j^b
+                            )
+                        for (s,a,b) in [(+1,alpha_A,beta_A) , (-1,beta_A,alpha_A)] )
+                norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
+                assert norm<1e-10 , f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
+
+            if (hasattr(self, "SA_R") or hasattr(self, "SHA_R") or hasattr(self, "SR_R")
+                or hasattr(self, "SH") or hasattr(self, "SHR_R")):
+                raise NotImplementedError("use_wcc_phase=True for spin current matrix elements not implemented")
+
+            for X in ['AA','BB','CC']:
+                if hasattr(self,X+'_R'):
+                    vars(self)[X+'_R'] = locals()[X+'_R_new']
+
+    @property
+    def iR0(self):
+        return self.iRvec.tolist().index([0,0,0])
+
+    @lazy_property.LazyProperty
+    def reverseR(self):
+        """indices of R vectors that has -R in irvec, and the indices of the corresponding -R vectors."""
+        iRveclst= self.iRvec.tolist()
+        mapping = np.all( self.iRvec[:,None,:]+self.iRvec[None,:,:] == 0 , axis = 2 )
+        # check if some R-vectors do not have partners
+        notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
+        for ir in notfound:
+            print(f"WARNING : R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
+        # check if some R-vectors have more then 1 partner 
+        morefound = np.where(np.sum(mapping,axis=1)>1)[0]
+        if len(morefound>0):
+            raise RuntimeError(f"R vectors number {morefound} have more then one negative partner : "
+                f"\n{self.iRvec[morefound]} \n{np.sum(mapping,axis=1)}")
+        lst_R, lst_mR = [], []
+        for ir1 in range(self.nRvec):
+            ir2 = np.where(mapping[ir1])[0]
+            if len(ir2)==1:
+                lst_R.append(ir1)
+                lst_mR.append(ir2[0])
+        lst_R = np.array(lst_R)
+        lst_mR = np.array(lst_mR)
+        # Check whether the result is correct
+        assert np.all(self.iRvec[lst_R] + self.iRvec[lst_mR] == 0)
+        return lst_R, lst_mR
+
+    def conj_XX_R(self,XX_R):
+        """ reverses the R-vector and takes the hermitian conjugate """
+        XX_R_new = np.zeros_like(XX_R)
+        lst_R, lst_mR = self.reverseR
+        XX_R_new[:,:,lst_R] = XX_R[:,:,lst_mR]
+        return XX_R_new.swapaxes(0,1).conj()
 
     @property 
     def nRvec(self):
@@ -312,101 +360,46 @@ class System():
         return abs(np.linalg.det(self.real_lattice))
 
 
+    @property
+    def iR0(self):
+        return self.iRvec.tolist().index([0,0,0])
 
-    def __getMat(self,suffix):
+    @lazy_property.LazyProperty
+    def reverseR(self):
+        """maps the R vector -R"""
+        iRveclst= self.iRvec.tolist()
+        mapping = np.all( self.iRvec[:,None,:]+self.iRvec[None,:,:] == 0 , axis = 2 )
+        # check if some R-vectors do not have partners
+        notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
+        for ir in notfound:
+            print ("WARNING : R[{}] = {} does not have a -R partner".format(ir,self.iRvec[ir]) )
+        # check if some R-vectors have more then 1 partner 
+        morefound = np.where(np.sum(mapping,axis=1)>1)[0]
+        if len(morefound>0):
+            raise RuntimeError( "R vectors number {} have more then one negative partner : \n{} \n{}".format(
+                            morefound,self.iRvec[morefound],np.sum(mapping,axis=1) ) )
+        lst1,lst2=[],[]
+        for ir1 in range(self.nRvec):
+            ir2 = np.where(mapping[ir1])[0]
+            if len(ir2)==1:
+                lst1.append(ir1)
+                lst2.append(ir2[0])
+        return np.array(lst1),np.array(lst2)
 
-        f=FF(self.seedname+"_" + suffix+"_R"+(".dat" if self.old_format else ""))
-        MM_R=np.array([[np.array(f.read_record('2f8'),dtype=float) for m in range(self.num_wann)] for n in range(self.num_wann)])
-        MM_R=MM_R[:,:,:,0]+1j*MM_R[:,:,:,1]
-        f.close()
-        ncomp=MM_R.shape[2]/self.nRvec0
-        if ncomp==1:
-            result=MM_R/self.Ndegen[None,None,:]
-        elif ncomp==3:
-            result= MM_R.reshape(self.num_wann, self.num_wann, 3, self.nRvec0).transpose(0,1,3,2)/self.Ndegen[None,None,:,None]
-        elif ncomp==9:
-            result= MM_R.reshape(self.num_wann, self.num_wann, 3,3, self.nRvec0).transpose(0,1,4,3,2)/self.Ndegen[None,None,:,None,None]
+    def conj_XX_R(self,XX_R):
+        """ reverses the R-vector and takes the hermitian conjugate """
+        XX_R_new = np.zeros_like(XX_R)
+        lst1,lst2 = self.reverseR
+        assert np.all(self.iRvec[lst1] + self.iRvec[lst2] ==0 )
+        XX_R_new [:,:,lst1] = np.copy(XX_R)[:,:,lst2]
+        XX_R_new[:] = XX_R_new.swapaxes(0,1).conj()
+        return np.copy(XX_R_new)
+
+    def check_hermitian(self,XX):
+        if hasattr(self,XX):
+            XX_R = np.copy(vars(self)[XR])
+            assert (np.max(abs(XX_R-self.conh_XX_R(XX_R)))<1e-8) , f"{XX} should obey X(-R) = X(R)^+"
         else:
-            raise RuntimeError("in __getMat: invalid ncomp : {0}".format(ncomp))
-        if self.ws_map is None:
-            return result
-        else:
-            return self.ws_map(result)
-        
-
-#
-# the following  implements the use_ws_distance = True  (see Wannier90 documentation for details)
-#
-
-
-
-class map_1R():
-   def __init__(self,lines,irvec):
-       lines_split=[np.array(l.split(),dtype=int) for l in lines]
-       self.dict={(l[0]-1,l[1]-1):l[2:].reshape(-1,3) for l in lines_split}
-       self.irvec=np.array([irvec])
-       
-   def __call__(self,i,j):
-       try :
-           return self.dict[(i,j)]
-       except KeyError:
-           return self.irvec
-          
-
-class ws_dist_map():
-        
-    def __call__(self,matrix):
-        ndim=len(matrix.shape)-3
-        num_wann=matrix.shape[0]
-        reshaper=(num_wann,num_wann)+(1,)*ndim
-#        print ("check:",matrix.shape,reshaper,ndim)
-        matrix_new=np.array([ sum(matrix[:,:,ir]*self._iRvec_new[irvecnew][ir].reshape(reshaper)
-                                  for ir in self._iRvec_new[irvecnew] ) 
-                                       for irvecnew in self._iRvec_ordered]).transpose( (1,2,0)+tuple(range(3,3+ndim)) )
-        assert ( np.abs(matrix_new.sum(axis=2)-matrix.sum(axis=2)).max()<1e-12)
-        return matrix_new
-
-    def _add_star(self,ir,irvec_new,iw,jw):
-        weight=1./irvec_new.shape[0]
-        for irv in irvec_new:
-            self._add(ir,irv,iw,jw,weight)
-
-
-    def _add(self,ir,irvec_new,iw,jw,weight):
-        irvec_new=tuple(irvec_new)
-        if not (irvec_new in self._iRvec_new):
-             self._iRvec_new[irvec_new]=dict()
-        if not ir in self._iRvec_new[irvec_new]:
-             self._iRvec_new[irvec_new][ir]=np.zeros((self.num_wann,self.num_wann),dtype=float)
-        self._iRvec_new[irvec_new][ir][iw,jw]+=weight
-
-    def _init_end(self,nRvec):
-        self._iRvec_ordered=sorted(self._iRvec_new)
-        for ir  in range(nRvec):
-            chsum=0
-            for irnew in self._iRvec_new:
-                if ir in self._iRvec_new[irnew]:
-                    chsum+=self._iRvec_new[irnew][ir]
-            chsum=np.abs(chsum-np.ones( (self.num_wann,self.num_wann) )).sum() 
-            if chsum>1e-12: print ("WARNING: Check sum for {0} : {1}".format(ir,chsum))
-
-
-
-class ws_dist_map_read(ws_dist_map):
-    def __init__(self,iRvec,num_wann,lines):
-        nRvec=iRvec.shape[0]
-        self.num_wann=num_wann
-        self._iRvec_new=dict()
-        n_nonzero=np.array([l.split()[-1] for l in lines[:nRvec]],dtype=int)
-        lines=lines[nRvec:]
-        for ir,nnz in enumerate(n_nonzero):
-            map1r=map_1R(lines[:nnz],iRvec[ir])
-            for iw in range(num_wann):
-                for jw in range(num_wann):
-                    self._add_star(ir,map1r(iw,jw),iw,jw)
-            lines=lines[nnz:]
-        self._init_end(nRvec)
-
-        
+            print (f"{XX} is missing,nothing to check")
 
 

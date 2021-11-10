@@ -21,6 +21,7 @@ setuptools.setup(
                         'colorama',
                         'termcolor',
                         'pyfiglet',
+                        'numba',
                         'termcolor',
                         'pyFFTW>=0.12.0',
                         'packaging>=20.8',

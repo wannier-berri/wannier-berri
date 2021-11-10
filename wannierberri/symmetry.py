@@ -137,7 +137,7 @@ class Rotation(Symmetry):
             R=rotmat.from_rotvec(2*np.pi/n*axis/np.linalg.norm(axis)).as_dcm()
         else:
             R=rotmat.from_rotvec(2*np.pi/n*axis/np.linalg.norm(axis)).as_matrix()
-        super(Rotation, self).__init__(R )
+        super().__init__(R )
 
 
 
@@ -150,7 +150,7 @@ class Mirror(Symmetry):
         the normal of the mirror plane in Cartesian coordinates. Length of vector does not matter, but should not be zero
     """
     def __init__(self,axis=[0,0,1]):
-         super(Mirror, self).__init__( -Rotation(2,axis).R )
+         super().__init__( -Rotation(2,axis).R )
 
 
 
@@ -247,7 +247,6 @@ class Group():
             assert self.check_basis_symmetry(self.real_lattice) , "real_lattice is not symmetric" + MSG_not_symmetric
         if real_lattice is not None:
             assert self.check_basis_symmetry(self.recip_lattice) , "recip_lattice is not symmetric" + MSG_not_symmetric
-#        print ("BASIS={}".format(self.basis))
 
     def check_basis_symmetry(self,basis,tol=1e-6,rel_tol=None):
         "returns True if the basis is symmetric"
@@ -323,8 +322,6 @@ class Group():
         for i in range(A.ndim):
             indices=[ (j,)+ind for j in (0,1,2) for ind in indices ]
             indices_xyz=[ a+ind for a in "xyz" for ind in indices_xyz ]
-#        print (indices)
-#        print (indices_xyz)
         equalities={0:["0"]}
         tol=1e-14
         for ind,ind_xyz in zip(indices,indices_xyz):
@@ -367,23 +364,11 @@ class Group():
         return np.array(st)
 
 
-#    def star_int(self,k):
-#        k=np.array(k)
-#        st=[S.transform_reduced_vector(k,self.recip_lattice) for S in self.symmetries]
-#        return  set([ tuple(np.array(np.round(k),dtype=int)) for k in st if is_round(k,prec=1e-6) ])
-
-#    def split_kpts_to_shells(self,kpts):
-#        kpts=tuple(k for k in kpts)
-
-
 if __name__ == '__main__':
     s=Rotation(4)
     basis=np.array([[1,0,-0.3],[0,1,-0.3],[0,0,0.6]])
     group=Group([s],basis)
-#    v=[[1,0,0],[0,1,0],[0,0,1]]    
     v=[-0.375,-0.375,0.375]
-#    basis=np.array([[0.5,np.sqrt(3)/2,0],[0.5,-np.sqrt(3)/2,0],[0,0,1]])
-#    print (s.transform_vector(v,basis))
     print (group.star(v))
     
     

@@ -66,12 +66,11 @@ class System_tb_py(System):
 
         self.dimr=real.shape[1]
         self.norb=positions.shape[0] 
-        self.wannier_centres_reduced=np.zeros((self.norb,3))
-        self.wannier_centres_reduced[:,:self.dimr]=positions
+        wannier_centers_reduced=np.zeros((self.norb,3))
+        wannier_centers_reduced[:,:self.dimr]=positions
         self.real_lattice=np.eye((3),dtype=float)
         self.real_lattice[:self.dimr,:self.dimr]=np.array(real)
-        self.wannier_centres_cart = self.wannier_centres_reduced.dot(self.real_lattice)
-#        self.periodic[:self.dimr]=True
+        self.wannier_centers_cart_auto = wannier_centers_reduced.dot(self.real_lattice)
         self.periodic[self.dimr:]=False
         self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
         Rvec = [tuple(row) for row in Rvec] 
@@ -101,27 +100,27 @@ class System_tb_py(System):
         self.iRvec = R_all
         nRvec=self.iRvec.shape[0]
         self.nRvec0=nRvec
-        # Define HH_R matrix from hoppings
-        self.HH_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0),dtype=complex)
+        # Define Ham_R matrix from hoppings
+        self.Ham_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0),dtype=complex)
         if module=='tbmodels':
             for hop in model.hop.items():
                 R=np.array(hop[0],dtype=int)
                 hops=np.array(hop[1]).reshape((self.num_wann,self.num_wann))
                 iR=int(np.argwhere(np.all((R-R_all[:,:self.dimr])==0, axis=1)))
                 inR=int(np.argwhere(np.all((-R-R_all[:,:self.dimr])==0, axis=1)))
-                self.HH_R[:,:,iR]+=hops
-                self.HH_R[:,:,inR]+=np.conjugate(hops.T)
+                self.Ham_R[:,:,iR]+=hops
+                self.Ham_R[:,:,inR]+=np.conjugate(hops.T)
         elif module=='pythtb':
             for nhop in model._hoppings:
                 i=nhop[1]
                 j=nhop[2]
                 iR=np.argwhere(np.all((nhop[-1]-self.iRvec[:,:self.dimr])==0, axis=1))
                 inR=np.argwhere(np.all((-nhop[-1]-self.iRvec[:,:self.dimr])==0, axis=1))
-                self.HH_R[i,j,iR]+=nhop[0]
-                self.HH_R[j,i,inR]+=np.conjugate(nhop[0])
+                self.Ham_R[i,j,iR]+=nhop[0]
+                self.Ham_R[j,i,inR]+=np.conjugate(nhop[0])
             # Set the onsite energies at H(R=[000])
             for i in range(model._norb):
-                self.HH_R[i,i,index0]=model._site_energies[i]
+                self.Ham_R[i,i,index0]=model._site_energies[i]
 
         if self.getAA:
             self.AA_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
@@ -131,20 +130,14 @@ class System_tb_py(System):
         if self.getBB:
             self.BB_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
             for i in range(self.num_wann):
-                self.BB_R[i,i,index0,:]=self.AA_R[i,i,index0,:]*self.HH_R[i,i,index0]
+                self.BB_R[i,i,index0,:]=self.AA_R[i,i,index0,:]*self.Ham_R[i,i,index0]
 
         if self.getCC:
             self.CC_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
-#        print(self.AA_R)
-#   TODO: generate the SS_R matrix        
 
-        self.set_symmetry()
-        self.check_periodic()
-                
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Recommended size of FFT grid", self.NKFFT_recommended)
-        print ("Real-space lattice:\n",self.real_lattice)
+#   TODO: generate the SS_R matrix from input
+
+        self.do_at_end_of_init()
         cprint ("Reading the system from {} finished successfully".format(names[module]),'green', attrs=['bold'])
         
 
@@ -153,7 +146,7 @@ class System_tb_py(System):
 class System_TBmodels(System_tb_py):
     """This interface initializes the System class from a tight-binding 
     model created with `TBmodels. <http://z2pack.ethz.ch/tbmodels/doc/1.3/index.html>`_
-    It defines the Hamiltonian matrix HH_R (from hoppings matrix elements)
+    It defines the Hamiltonian matrix Ham_R (from hoppings matrix elements)
     and the AA_R  matrix (from orbital coordinates) used to calculate Berry
     related quantities.
     
@@ -169,14 +162,14 @@ class System_TBmodels(System_tb_py):
     """
     
     def __init__(self,tbmodel,**parameters ):
-        super(System_TBmodels,self).__init__(tbmodel , module='tbmodels' , **parameters)
+        super().__init__(tbmodel , module='tbmodels' , **parameters)
 
 
 
 class System_PythTB(System_tb_py):
     """This interface is an way to initialize the System class from a tight-binding 
     model created with  `PythTB. <http://www.physics.rutgers.edu/pythtb/>`_ 
-    It defines the Hamiltonian matrix HH_R (from hoppings matrix elements)
+    It defines the Hamiltonian matrix Ham_R (from hoppings matrix elements)
     and the AA_R  matrix (from orbital coordinates) used to calculate 
     Berry related quantities.
 
@@ -191,4 +184,4 @@ class System_PythTB(System_tb_py):
     see also  parameters of the :class:`~wannierberri.System` 
     """
     def __init__(self,ptb_model, **parameters):
-        super(System_PythTB,self).__init__(ptb_model , module='pythtb' , **parameters)
+        super().__init__(ptb_model , module='pythtb' , **parameters)
