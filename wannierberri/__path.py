@@ -31,22 +31,19 @@ class Path(Grid):
 
     """
 
-    def __init__(self,system,k_list=None,k_nodes=None,length=None,dk=None,nk=None,labels=None,breaks=[]):
+    def __init__(self,system,k_list=None,k_nodes=None,length=None,dk=None,nk=None,labels=None,breaks=[],r1=None,r2=None,ntheta=None,nphi=None,origin=None):
 
         self.symgroup=system.symgroup
         self.FFT=np.array([1,1,1])
         self.findif=None
         self.breaks=breaks
-        if k_list is not None:
-            self.K_list=np.array(k_list)
-            assert  self.K_list.shape[1]==3, "k_list should contain 3-vectors"
-            assert  self.K_list.shape[0]>0, "k_list should not be empty"
-            for var in 'k_nodes','length','nk','dk':
-                if locals()[var] is not None:
-                    warning("k_list was entered manually, ignoring {}".format(var))
-            self.labels={} if labels is None else labels
-            self.breaks=[] if breaks is None else breaks
-        else:
+        
+        if k_list == 'sphere':
+            self.K_list,self.K_list_cart=self.sphere(r1,ntheta,nphi,origin) 
+        #TODO to be implemented
+        #elif k_list == 'ellipsoid':
+        #    self.K_list,self.K_list_cart=self.sphere(r1,r2,ntheta,nphi,origin) 
+        elif k_list is None:
             if k_nodes is None:
                 raise ValueError("need to specify either 'k_list' of 'k_nodes'")
 
@@ -87,7 +84,29 @@ class Path(Grid):
                     self.labels[self.K_list.shape[0]-1]=l2
                 elif end is None:
                     self.breaks.append(self.K_list.shape[0]-1)
+        else:
+            self.K_list=np.array(k_list)
+            assert  self.K_list.shape[1]==3, "k_list should contain 3-vectors"
+            assert  self.K_list.shape[0]>0, "k_list should not be empty"
+            for var in 'k_nodes','length','nk','dk':
+                if locals()[var] is not None:
+                    warning("k_list was entered manually, ignoring {}".format(var))
+            self.labels={} if labels is None else labels
+            self.breaks=[] if breaks is None else breaks
         self.breaks=np.array(self.breaks)
+        self.div = np.shape(self.K_list)[0]
+    
+    def sphere(self,r,ntheta,nphi,origin):
+        theta = np.linspace(0,np.pi,ntheta,endpoint=True)
+        phi = np.linspace(0,2*np.pi,nphi,endpoint=True)
+        theta_grid,phi_grid = np.meshgrid(theta,phi)
+        sphere = [r*np.cos(phi_grid)*np.sin(theta_grid),
+                r*np.sin(phi_grid)*np.sin(theta_grid),
+                r*np.cos(theta_grid)]
+        sphere_cart_k = np.array(sphere).reshape(3,ntheta*nphi).transpose(1,0)
+        sphere_k = sphere_cart_k.dot(np.linalg.inv(self.recip_lattice))-origin[None,:]
+        return sphere_k,sphere_cart_k
+
 
     @property 
     def recip_lattice(self):
@@ -101,7 +120,7 @@ class Path(Grid):
                                 for i,k in enumerate(self.K_list)
                    )  )
 
-    def get_K_list(self):
+    def get_K_list(self,use_symmetry=None):
         """ returns the list of Symmetry-irreducible K-points"""
         dK=np.array([1.,1.,1.])
         factor=1.
