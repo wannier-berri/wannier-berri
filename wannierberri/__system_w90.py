@@ -146,8 +146,9 @@ class System_w90(System):
                     print ("using ws_dist for {}".format(XR))
                     vars(self)[XR]=ws_map(vars(self)[XR])
             self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
+        
         if self.symmetrization:
-            XX_R={'Ham':self.HH_R}
+            XX_R={'Ham':self.Ham_R}
             for X in ['AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
                 try:
                     XX_R[X] = vars(self)[X+'_R']

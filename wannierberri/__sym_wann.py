@@ -43,7 +43,7 @@ class sym_wann():
 
         self.spin=spin
         self.TR=TR
-        self.HH_R =XX_R['Ham']
+        self.Ham_R =XX_R['Ham']
         self.iRvec = iRvec.tolist()
         self.nRvec = len(iRvec)
         self.num_wann = num_wann
@@ -381,14 +381,14 @@ class sym_wann():
 
 
     def average_H(self,iRvec,keep_New_R=True):
-        #TODO consider symmetrize HH_R, vector matrix, or tensor matrix respectively or like this finish in one loop.
+        #TODO consider symmetrize Ham_R, vector matrix, or tensor matrix respectively or like this finish in one loop.
         #If we can make if faster, respectively is the better choice. Because XX_all matrix are supper large.(eat memory)  
         
         R_list = np.array(iRvec,dtype=int)
         nRvec=len(R_list)
         tmp_R_list = []
         #print(self.matrix_bool)
-        HH_res = np.zeros((self.num_wann,self.num_wann,nRvec),dtype=complex)
+        Ham_res = np.zeros((self.num_wann,self.num_wann,nRvec),dtype=complex)
         for X in self.matrix_list:
             if self.matrix_bool[X]:
                 vars()[X+'_res'] = np.zeros((self.num_wann,self.num_wann,nRvec,3),dtype=complex)
@@ -401,7 +401,7 @@ class sym_wann():
             rot_map,vec_shift = self.atom_rot_map(rot)
             R_map = np.dot(R_list,np.transpose(self.symmetry['rotations'][rot]))
             atom_R_map = R_map[:,None,None,:] - vec_shift[None,:,None,:] + vec_shift[None,None,:,:]
-            HH_all = np.zeros((nRvec,self.num_wann_atom,self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
+            Ham_all = np.zeros((nRvec,self.num_wann_atom,self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
             for X in self.matrix_list:
                 if self.matrix_bool[X]:
                     vars()[X+'_all'] = np.zeros((nRvec,self.num_wann_atom,self.num_wann_atom,self.num_wann,self.num_wann,3),dtype=complex)
@@ -413,7 +413,7 @@ class sym_wann():
                         new_Rvec=list(atom_R_map[iR,atom_a,atom_b])
                         if new_Rvec in self.iRvec:
                             new_Rvec_index = self.iRvec.index(new_Rvec)
-                            HH_all[iR,atom_a,atom_b,self.H_select[atom_a,atom_b]] = self.HH_R[self.H_select[rot_map[atom_a],
+                            Ham_all[iR,atom_a,atom_b,self.H_select[atom_a,atom_b]] = self.Ham_R[self.H_select[rot_map[atom_a],
                                 rot_map[atom_b]],new_Rvec_index]
                             for X in self.matrix_list:
                                 if self.matrix_bool[X]:
@@ -431,8 +431,8 @@ class sym_wann():
                         '''
                         H_ab_sym = P_dagger_a * H_ab * P_b
                         '''
-                        tmp = np.dot(np.dot(p_map_dagger[atom_a],HH_all[:,atom_a,atom_b]),p_map[atom_b])
-                        HH_res += tmp.transpose(0,2,1)
+                        tmp = np.dot(np.dot(p_map_dagger[atom_a],Ham_all[:,atom_a,atom_b]),p_map[atom_b])
+                        Ham_res += tmp.transpose(0,2,1)
                         
                         for X in self.matrix_list:  # vector matrix
                             if self.matrix_bool[X]:
@@ -451,7 +451,7 @@ class sym_wann():
                             #print(tmpX.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8).real)
                             #print('======================')
         res_dic = {}
-        res_dic['HH'] = HH_res/self.nsymm
+        res_dic['Ham'] = Ham_res/self.nsymm
         for X in self.matrix_list:
             if self.matrix_bool[X]:
                 X_res = X+'_res'
@@ -474,7 +474,7 @@ class sym_wann():
             ur=np.kron(syr,base_m)
             #print(ul)
             for ir in range(self.nRvec):
-                self.HH_R[:,:,ir]=(self.HH_R[:,:,ir] + np.dot(np.dot(ul,np.conj(self.HH_R[:,:,ir])),ur))/2.0
+                self.Ham_R[:,:,ir]=(self.Ham_R[:,:,ir] + np.dot(np.dot(ul,np.conj(self.Ham_R[:,:,ir])),ur))/2.0
         
         #========================================================
         #symmetrize exist R vectors and find additional R vectors 
@@ -492,9 +492,9 @@ class sym_wann():
             print('Additional Block')
             res_dic_2  =  self.average_H(iRvec_add,keep_New_R=False)
             
-            HH_R_final = np.zeros((self.num_wann,self.num_wann,nRvec_add+self.nRvec),dtype=complex)
-            HH_R_final[:,:,:self.nRvec]=res_dic_1['HH']
-            HH_R_final[:,:,self.nRvec:]=res_dic_2['HH']
+            Ham_R_final = np.zeros((self.num_wann,self.num_wann,nRvec_add+self.nRvec),dtype=complex)
+            Ham_R_final[:,:,:self.nRvec]=res_dic_1['Ham']
+            Ham_R_final[:,:,self.nRvec:]=res_dic_2['Ham']
             for X in self.matrix_list:
                 if self.matrix_bool[X]:
                     vars()[X+'_R_final'] = np.zeros((self.num_wann,self.num_wann,nRvec_add+self.nRvec,3),dtype=complex)
@@ -503,18 +503,18 @@ class sym_wann():
             self.nRvec += nRvec_add
             self.iRvec += iRvec_add
         else:
-            HH_R_final = HH_R_re1
+            Ham_R_final = Ham_R_re1
             for X in self.matrix_list:
                 if self.matrix_bool[X]:
                     vars()[X+'_R_final']= res_dic_1[X]
 
-        self.HH_R = HH_R_final
+        self.Ham_R = Ham_R_final
         for X in self.matrix_list:
             if self.matrix_bool[X]:
                 vars(self)[X+'_R'] = vars()[X+'_R_final']
         
         return_dic = {}
-        return_dic['HH'] = self.HH_R
+        return_dic['Ham'] = self.Ham_R
         for X in self.matrix_list:
                 if self.matrix_bool[X]:
                     return_dic[X] = vars(self)[X+'_R']

@@ -19,7 +19,6 @@ from colorama import init
 from termcolor import cprint 
 from .__system import System
 from .__sym_wann import sym_wann
-import pickle
 
 class System_tb(System):
     """
@@ -85,17 +84,14 @@ class System_tb(System):
         else: 
             self.AA_R = None
         f.close()
-        pickle.dump(self.AA_R,open("AA.pickle","wb"))
-        pickle.dump(self.HH_R,open("HH.pickle","wb"))
-        pickle.dump(self.iRvec,open("iRvec.pickle","wb"))
 
         if self.symmetrization: 
-            XX_R={'HH':self.HH_R}
+            XX_R={'Ham':self.Ham_R}
             XX_R['AA'] = self.AA_R
             symmetrize_wann = sym_wann(num_wann=self.num_wann,lattice=self.real_lattice,positions=self.positions,atom_name=self.atom_name,
                 proj=self.proj,iRvec=self.iRvec,XX_R=XX_R,spin=True,TR=True)
             XX_R,self.iRvec = symmetrize_wann.symmetrize() 
-            self.HH_R = XX_R['HH']
+            self.Ham_R = XX_R['Ham']
             self.AA_R = XX_R['AA']
         self.do_at_end_of_init()
 
