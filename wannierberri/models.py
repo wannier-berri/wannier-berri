@@ -152,3 +152,107 @@ def Chiral(
     my_model.set_hop(hopz  , 1, 1, [  1,-1,1])
     my_model.set_hop(hopz  , 1, 1, [  0, 1,1])
     return my_model
+
+def CuMnAs_2d(
+    nx=0,
+    ny=1,
+    nz=0,
+    t=1,
+    t1=0.08,
+    l=0.8,
+    J=0.6,
+    dt=0.0,
+    ):
+    """Create a 2D model of antiferromagnetic CuMnAs
+       using `PythTB <http://www.physics.rutgers.edu/pythtb/>`__
+       Following the article by 
+       `Šmejkal, Železný, Sinova & Jungwirth 2017 <https://doi.org/10.1103/PhysRevLett.118.106402>`__
+       this model breaks time-reversal and inversion, but it
+       preserves the combination of both (P*T).
+
+    Parameters
+    -----------
+    nx : float
+        x-component of the Néel vector
+    ny : float
+        y-component of the Néel vector
+    nz : float
+        z-component of the Néel vector
+    t : float
+        magnitude of nearest-neighbour hopping (A-A)
+    t1 : float
+        magnitude of next nearest-neighbour hopping (A-B)
+    l : float
+        second nearest-neighbor spin-orbit coupling
+    J : float
+        magnitude of the Néel vector
+    dt : float
+        PT-breaking term making the A-A and B-B hoppings different
+
+    Note:
+    --------
+    PythTB should be installed to use this (`pip install pythtb`)
+
+    """
+
+    import pythtb 
+
+    # initialize the CuMnAs model
+    lat=[[1.0,0.0],[0.0,1.0]]
+    orb=[[0.,0.],[0.,0.],[0.5,0.5],[0.5,0.5]]
+    
+    
+    # Neel vector orientation
+    nabs = np.sqrt(nx**2 + ny**2 + nz**2)
+    nx = nx/nabs
+    ny = ny/nabs
+    nz = nz/nabs
+
+    my_model=pythtb.tb_model(2,2,lat,orb)
+    
+    # set hoppings (one for each connected pair of orbitals)
+    # (amplitude, i, j, [lattice vector to cell containing j])
+    # nearest-neighbor (A-B hopping)
+    my_model.set_hop(-0.5*t, 0, 2, [ 0, 0]) 
+    my_model.set_hop(-0.5*t, 0, 2, [-1, 0]) 
+    my_model.set_hop(-0.5*t, 0, 2, [ 0,-1]) 
+    my_model.set_hop(-0.5*t, 0, 2, [-1,-1]) 
+    my_model.set_hop(-0.5*t, 1, 3, [ 0, 0]) 
+    my_model.set_hop(-0.5*t, 1, 3, [-1, 0]) 
+    my_model.set_hop(-0.5*t, 1, 3, [ 0,-1]) 
+    my_model.set_hop(-0.5*t, 1, 3, [-1,-1]) 
+    # second nearest-neighbor (A-A hopping)
+    my_model.set_hop(-0.5*t1, 0, 0, [ 1, 0]) 
+    my_model.set_hop(-0.5*t1, 0, 0, [ 0, 1]) 
+    my_model.set_hop(-0.5*t1, 1, 1, [ 1, 0]) 
+    my_model.set_hop(-0.5*t1, 1, 1, [ 0, 1]) 
+    my_model.set_hop(-0.5*t1, 2, 2, [ 1, 0]) 
+    my_model.set_hop(-0.5*t1, 2, 2, [ 0, 1]) 
+    my_model.set_hop(-0.5*t1, 3, 3, [ 1, 0]) 
+    my_model.set_hop(-0.5*t1, 3, 3, [ 0, 1]) 
+    # second neighbor SOC
+    my_model.set_hop(-0.5*l, 0, 1, [ 1, 0]) 
+    my_model.set_hop(0.5*l, 0, 1, [-1, 0]) 
+    my_model.set_hop(0.5*l*1j, 0, 1, [ 0, 1]) 
+    my_model.set_hop(-0.5*l*1j, 0, 1, [ 0,-1]) 
+    my_model.set_hop(0.5*l, 2, 3, [ 1, 0]) 
+    my_model.set_hop(-0.5*l, 2, 3, [-1, 0]) 
+    my_model.set_hop(-0.5*l*1j, 2, 3, [ 0, 1]) 
+    my_model.set_hop(0.5*l*1j, 2, 3, [ 0,-1]) 
+    # AF exchange coupling
+    my_model.set_hop(J*(nx-1j*ny), 0, 1, [ 0, 0])              
+    my_model.set_hop(J*(-nx+1j*ny), 2, 3, [0, 0])
+    # set on-site energies
+    my_model.set_onsite([J*nz,-J*nz,-J*nz,J*nz])
+
+    # break PT by making sublattices different
+    my_model.set_hop(-0.5*dt, 0, 0, [ 1, 0], mode='add') 
+    my_model.set_hop(-0.5*dt, 0, 0, [ 0, 1], mode='add') 
+    my_model.set_hop(-0.5*dt, 1, 1, [ 1, 0], mode='add') 
+    my_model.set_hop(-0.5*dt, 1, 1, [ 0, 1], mode='add') 
+    my_model.set_hop(0.5*dt, 2, 2, [ 1, 0], mode='add') 
+    my_model.set_hop(0.5*dt, 2, 2, [ 0, 1], mode='add') 
+    my_model.set_hop(0.5*dt, 3, 3, [ 1, 0], mode='add') 
+    my_model.set_hop(0.5*dt, 3, 3, [ 0, 1], mode='add') 
+ 
+    return my_model
