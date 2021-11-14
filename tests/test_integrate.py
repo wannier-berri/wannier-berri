@@ -10,7 +10,7 @@ from wannierberri import fermiocean
 from conftest import parallel_serial, parallel_ray 
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
-from create_system import system_Fe_W90,system_Fe_W90_wcc,system_GaAs_W90,system_GaAs_W90_wcc,system_GaAs_tb,system_GaAs_tb_wcc
+from create_system import system_Fe_W90,system_Fe_W90_wcc,system_Fe_FPLO_wcc,system_GaAs_W90,system_GaAs_W90_wcc,system_GaAs_tb,system_GaAs_tb_wcc
 from create_system import system_Haldane_PythTB,system_Haldane_TBmodels,system_Haldane_TBmodels_internal
 from create_system import symmetries_Fe
 from create_system import system_Chiral,ChiralModel
@@ -65,6 +65,11 @@ def check_integrate(parallel_serial):
 @pytest.fixture(scope="session")
 def Efermi_Fe():
     return np.linspace(17,18,11)
+
+@pytest.fixture(scope="session")
+def Efermi_Fe_FPLO():
+    return np.linspace(-0.5,0.5,11)
+
 
 
 @pytest.fixture(scope="module")
@@ -170,6 +175,13 @@ def test_Fe_sym(check_integrate,system_Fe_W90, compare_energyresult,quantities_F
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , use_symmetry = True, suffix="sym" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True }  )
+
+
+def test_Fe_FPLO_wcc(check_integrate,system_Fe_FPLO_wcc, compare_energyresult,quantities_Fe,Efermi_Fe_FPLO):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    check_integrate(system_Fe_FPLO_wcc , quantities_Fe , fout_name="berry_Fe_FPLO" , Efermi=Efermi_Fe_FPLO , comparer=compare_energyresult,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
+                additional_parameters = { "external_terms":False } )
 
 
 def test_GaAs(check_integrate,system_GaAs_W90, compare_energyresult,quantities_GaAs,Efermi_GaAs):

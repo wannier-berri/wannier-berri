@@ -50,7 +50,6 @@ class System_fplo(System):
         allread = False
         while not allread:
             l = next(f)
-            print (l)
             if l.startswith("end spin:"):
                 break
             elif l.startswith("lattice_vectors:"):
@@ -80,7 +79,6 @@ class System_fplo(System):
                         break
                     if l.startswith("Tij, Hij"):
                         iw,jw = [int(x) for x in next(f).split()]
-                        print (f"reading matrix elements between WFs {iw} and {jw}")
                         iw-=1 ; jw-=1
                         arread = []
                         while True:
@@ -90,9 +88,7 @@ class System_fplo(System):
                             arread.append(l.split())
                         if len(arread)==0:
                             continue
-#                        print (arread)
                         arread = np.array(arread,dtype = float)
-#                        print (arread.shape)
                         Rvec = arread[:,:3] + ( self.wannier_centers_cart_auto[None,jw] 
                                                 -  self.wannier_centers_cart_auto[None,jw])
                         Rvec = Rvec.dot(inv_real_lattice)  # should be integer now 
