@@ -29,8 +29,8 @@ class System_fplo(System):
     
     Parameters
     ----------
-    file : str
-        name (and path) of file to be read
+    hamdata : str
+        name (and path) of the "+hamdata" file to be read
 
     Notes
     -----
