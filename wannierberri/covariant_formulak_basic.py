@@ -140,6 +140,8 @@ class tildeHab(Formula_ln):
         if self.correction_wcc:
             summ += 2*np.einsum("mla,lnb->mnab" ,self.T_wcc.nn(ik,inn,out),
                     self.B.nn(ik,inn,out) -self.E[ik][inn][:,None,None]*self.A.nn(ik,inn,out) )
+#            Stepan: I do noot remember, what this line meant, but correction_wcc is not fully working yet
+#            maybe we need to restore it
 #            summ -= 2*np.einsum("mla,lnb->mnab" ,self.T.nl(ik,inn,out),
 #                         self.E[ik][out][:,None,None]*self.T.ln(ik,inn,out) )
             
@@ -147,7 +149,6 @@ class tildeHab(Formula_ln):
         if self.external_terms:
             summ +=   self.H.nn(ik,inn,out)
             summ +=  2j  * np.einsum("mla,lnb->mnab" ,self.D.nl(ik,inn,out),self.B.ln(ik,inn,out))
-#####            summ +=  +1  * np.einsum("mla,lnb->mnab" ,self.D.nl(ik,inn,out) ,self.B.ln(ik,inn,out)) # this term is accounted by a factor of 2 above, and due to symmetrisation below
             summ +=  - np.einsum("mla,lnb->mnab" ,
                                     self.A.nn(ik,inn,out)*self.E[ik][inn][None,:,None] ,self.A.nn(ik,inn,out)  
                                 )
@@ -331,3 +332,10 @@ class tildeHGc_d(AntiSymmetric):
     @property
     def additive(self):
         return False
+
+# derivative of band orbital moment
+class Der_morb(tildeHGc_d):
+    def __init__(self,data_K,**parameters):
+        super().__init__(data_K,sign=-1,**parameters)
+        
+    

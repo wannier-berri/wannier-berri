@@ -96,7 +96,9 @@ class System_w90(System):
             timeFFT+=time()-t0
             if transl_inv:
                 wannier_centers_cart_new = np.diagonal(self.AA_R[:,:,self.iR0,:],axis1=0,axis2=1).transpose()
-                assert( np.all(abs(wannier_centers_cart_new-self.wannier_centers_cart))<1e-6)
+                assert np.all(abs(wannier_centers_cart_new-self.wannier_centers_cart_auto)<1e-6), (
+                  "the difference between read\n{}\n and evluated \n{}\n wannier centers is \n{}\n".format(self.wannier_centers_cart_auto,
+                        wannier_centers_cart_new,self.wannier_centers_cart_auto-wannier_centers_cart_new))
 
 
         if self.getBB:

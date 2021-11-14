@@ -14,7 +14,7 @@
 wannierberri - a module for Wannier interpolation
 """
 
-__version__ = "1.0.0a0"
+__version__ = "0.10.0"
 
 from .__main import integrate,tabulate,symmetry,integrate_options,tabulate_options,welcome,print_options
 from .__tabulate import TABresult

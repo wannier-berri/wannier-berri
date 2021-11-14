@@ -22,9 +22,9 @@ def get_component_list():
     def _inner(quantity):
         if quantity in ["E"]:
             return [""]
-        if quantity in ["berry","V"]:
+        if quantity in ["berry","V","morb"]:
             return ["-"+a for a in "z"]
-        if quantity in ["Der_berry"]:
+        if quantity in ["Der_berry","Der_morb"]:
             return  ["-"+a+b for a in "xyz" for b in "xyz"]
         raise ValueError(f"unknown quantity {quantity}")
     return _inner
@@ -50,7 +50,7 @@ def check_tabulate(parallel_serial,get_component_list,compare_fermisurfer):
                 parallel=parallel,
                 parameters = additional_parameters,
                 ibands = ibands,
-                irkpt = use_symmetry, symmetrize = use_symmetry,
+                use_irred_kpt = use_symmetry, symmetrize = use_symmetry,
                 parameters_K = parameters_K,
                 frmsf_name = os.path.join(OUTPUT_DIR, frmsf_name),
                 suffix=suffix,
@@ -74,7 +74,7 @@ def check_tabulate(parallel_serial,get_component_list,compare_fermisurfer):
 
 @pytest.fixture(scope="session")
 def quantities_tab():
-    return  ['V','berry','Der_berry']
+    return  ['V','berry','Der_berry','morb','Der_morb']
 
 
 def compare_quant(quant):
@@ -90,8 +90,9 @@ def compare_quant(quant):
 def test_Fe(check_tabulate,system_Fe_W90, compare_fermisurfer,quantities_tab):
     """Test Energies, Velocities, berry curvature, its derivative"""
     check_tabulate(system_Fe_W90 , quantities_tab , frmsf_name="tabulate_Fe_W90" , suffix="" ,  comparer=compare_fermisurfer,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                 ibands = [5,6,7,8] , 
-                extra_precision={'berry':1e-4,"Der_berry":1e-4} )
+                extra_precision={'berry':1e-4,"Der_berry":1e-4,'morb':1e-4,"Der_morb":1e-4} )
 
 
 def test_Fe_user(check_tabulate,system_Fe_W90, compare_fermisurfer,quantities_tab):
@@ -103,6 +104,7 @@ def test_Fe_user(check_tabulate,system_Fe_W90, compare_fermisurfer,quantities_ta
          }
 
     check_tabulate(system_Fe_W90 , user_quantities = calculators , frmsf_name="tabulate_Fe_W90" , suffix="user" ,  comparer=compare_fermisurfer,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                  ibands = [5,6,7,8] , 
                 extra_precision={'berry':1e-4,"Der_berry":1e-4} )
 

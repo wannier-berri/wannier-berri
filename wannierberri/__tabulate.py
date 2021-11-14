@@ -23,16 +23,20 @@ import functools
 from .__utility import  print_my_name_start,print_my_name_end
 from . import __result as result
 from . import covariant_formulak as frml
+from . import covariant_formulak_basic as frml_basic
 from . import  symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
 #should be classes Formula_ln 
+# TODO : add factors to the calculation
 calculators={ 
          'spin'       : frml.Spin, 
          'V'          : frml.Velocity, 
-         'berry'      : frml.Omega, #berry.calcImf_band_kn ,
-         'Der_berry'  : frml.DerOmega, #berry.calcImf_band_kn ,
+         'berry'      : frml.Omega, 
+         'Der_berry'  : frml.DerOmega,
+         'morb'       : frml.morb,
+         'Der_morb'   : frml_basic.Der_morb
          }
 
 
@@ -41,10 +45,12 @@ additional_parameters_description=defaultdict(lambda: defaultdict(lambda:"no des
 
 
 descriptions=defaultdict(lambda:"no description")
-descriptions['berry']="Berry curvature (Ang^{-2})"
-descriptions['Der_berry']="1st deravetive of Berry curvature (Ang^{-3})"
+descriptions['berry']="Berry curvature (Ang^{2})"
+descriptions['Der_berry']="1st deravetive of Berry curvature (Ang^{3})"
 descriptions['V']="velocity (eV*Ang)"
 descriptions['spin']="Spin"
+descriptions['morb']="orbital moment of Bloch states <nabla_k u_n| X(H-E_n) | nabla_k u_n> (eV*Ang**2)"
+descriptions['Der_morb']="1st derivative orbital moment of Bloch states <nabla_k u_n| X(H-E_n) | nabla_k u_n> (eV*Ang**2)"
 
 parameters_ocean = {
 'external_terms' : (True , "evaluate external terms"),
@@ -52,7 +58,7 @@ parameters_ocean = {
 }
 
 for key,val in parameters_ocean.items(): 
-    for calc in ['berry','Der_berry']: 
+    for calc in ['berry','Der_berry','morb','Der_morb']: 
         additional_parameters[calc][key] = val[0]
         additional_parameters_description[calc][key] = val[1]
 
