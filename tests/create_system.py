@@ -229,7 +229,7 @@ def system_Fe_FPLO(symmetries_Fe):
 
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO","+hamdata")
 
-    system = wberri.System_fplo(path, use_wcc_phase=False,morb=True )
+    system = wberri.System_fplo(path, use_wcc_phase=False,morb=True,spin=True )
     system.set_symmetry(symmetries_Fe)
     return system
 
@@ -240,6 +240,6 @@ def system_Fe_FPLO_wcc(symmetries_Fe):
 
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO","+hamdata")
 
-    system = wberri.System_fplo(path, use_wcc_phase=True,morb=True )
+    system = wberri.System_fplo(path, use_wcc_phase=True,morb=True,spin=True )
     system.set_symmetry(symmetries_Fe)
     return system

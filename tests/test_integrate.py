@@ -188,13 +188,13 @@ def test_Fe_sym(check_integrate,system_Fe_W90, compare_energyresult,quantities_F
 
 def test_Fe_FPLO(check_integrate,system_Fe_FPLO, compare_energyresult,quantities_Fe,Efermi_Fe_FPLO):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
-    check_integrate(system_Fe_FPLO , quantities_Fe , fout_name="berry_Fe_FPLO" , Efermi=Efermi_Fe_FPLO , comparer=compare_energyresult,
+    check_integrate(system_Fe_FPLO , quantities_Fe+["spin"] , fout_name="berry_Fe_FPLO" , Efermi=Efermi_Fe_FPLO , comparer=compare_energyresult,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                 additional_parameters = { "external_terms":True } )
 
 def test_Fe_FPLO_wcc(check_integrate,system_Fe_FPLO_wcc, compare_energyresult,quantities_Fe,Efermi_Fe_FPLO):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
-    check_integrate(system_Fe_FPLO_wcc , quantities_Fe , fout_name="berry_Fe_FPLO" , suffix="wcc",suffix_ref="", Efermi=Efermi_Fe_FPLO , comparer=compare_energyresult,
+    check_integrate(system_Fe_FPLO_wcc , quantities_Fe+["spin"] , fout_name="berry_Fe_FPLO" , suffix="wcc",suffix_ref="", Efermi=Efermi_Fe_FPLO , comparer=compare_energyresult,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                 additional_parameters = { "external_terms":False } )
 
@@ -209,7 +209,7 @@ def test_Fe_FPLO_wcc_ext(check_integrate,system_Fe_FPLO_wcc, compare_energyresul
 
 def test_Fe_FPLO_wcc_sym(check_integrate,system_Fe_FPLO_wcc, compare_energyresult,quantities_Fe,Efermi_Fe_FPLO):
     """Check that the system is reallysymmetric"""
-    check_integrate(system_Fe_FPLO_wcc , quantities_Fe , fout_name="berry_Fe_FPLO" , suffix="wcc-sym",suffix_ref="", 
+    check_integrate(system_Fe_FPLO_wcc , quantities_Fe+["spin"] , fout_name="berry_Fe_FPLO" , suffix="wcc-sym",suffix_ref="", 
                 Efermi=Efermi_Fe_FPLO , comparer=compare_energyresult,
                 use_symmetry=True,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
