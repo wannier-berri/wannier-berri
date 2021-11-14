@@ -22,7 +22,6 @@ def check_integrate(parallel_serial):
     def _inner(system,quantities=[],user_quantities={},
                 fout_name="berry",Efermi=np.linspace(-10,10,10),comparer=None,
                parallel=None,
-               numproc=0,
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},adpt_num_iter=0,
                additional_parameters={}, parameters_K={},use_symmetry = False,
                suffix="", suffix_ref="",
@@ -286,13 +285,6 @@ def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,qu
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-ray-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,parallel=parallel_ray,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                     )
-
-def test_Fe_parallel_old(check_integrate, system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
-    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos in parallel with ray"""
-    check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-old-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,numproc=4 ,
-               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
-                    )
-
 
 def test_Chiral(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
     check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
