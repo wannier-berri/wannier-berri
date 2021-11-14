@@ -68,6 +68,7 @@ class _Dcov(Matrix_ln):
    
 class Data_K(System):
     default_parameters =  {
+#Those are not used at the moment , but will be restored (TODO):
 #                    'frozen_max': -np.Inf,
 #                    'delta_fz':0.1,
                     'Emin': -np.Inf ,
@@ -97,7 +98,7 @@ class Data_K(System):
     """ .format(**default_parameters)
 
 
-#Those are not used at the moment:
+#Those are not used at the moment , but will be restored (TODO):
 #    frozen_max : float
 #        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary. 
 #        If not specified, attempts to read this value from system. Othewise set to  ``{frozen_max}``
@@ -107,7 +108,6 @@ class Data_K(System):
 
 
     def __init__(self,system,dK,grid,Kpoint=None,**parameters):
-#        self.spinors=system.spinors
         self.system=system
         self.set_parameters(**parameters)
 
@@ -119,8 +119,6 @@ class Data_K(System):
         self.num_wann=self.system.num_wann
         self.Kpoint=Kpoint
         self.nkptot = self.NKFFT[0]*self.NKFFT[1]*self.NKFFT[2]
-        #self.wannier_centers_cart_wcc_phase=system.wannier_centers_wcc_phase
-#        print (f"wannier centers in Data_K : \n{self.system.wannier_centers_cart_wcc_phase}\n")
         self.cRvec_wcc=self.system.cRvec_p_wcc
 
         self.fft_R_to_k=FFT_R_to_k(self.system.iRvec,self.NKFFT,self.num_wann, numthreads=self.npar_k if self.npar_k>0 else 1,lib=self.fftlib)
@@ -137,12 +135,6 @@ class Data_K(System):
                 vars(self)[param]=parameters[param]
             else: 
                 vars(self)[param]=self.default_parameters[param]
-#        if 'frozen_max' not in parameters:
-#            try : 
-#                self.frozen_max= self.system.frozen_max
-#            except:
-#                pass 
-
 
 
 ###########################################
@@ -286,14 +278,12 @@ class Data_K(System):
         res=self.get_bands_in_range(emin,emax,op,ed)
         for ik in range(op,ed):
            add=np.where((self.E_K[ik]<emin))[0]
-#           print ("add : ",add," / ",self.E_K[ik])
            if len(add)>0:
                res[ik-op][add.max()]=self.E_K[ik,add.max()]
         return res
 
 
     def get_bands_in_range_groups(self,emin,emax,op=0,ed=None,degen_thresh=-1,sea=False):
-#        get_bands_in_range(emin,emax,Eband,degen_thresh=-1,Ebandmin=None,Ebandmax=None)
         if ed is None: ed=self.NKFFT_tot
         res=[]
         for ik in range(op,ed):
@@ -303,10 +293,8 @@ class Data_K(System):
                      }
             if sea :
                 bandmax=get_bands_below_range(emin,self.E_K[ik])
-#                print ("bandmax=",bandmax)
                 if len(bands_in_range)>0 :
                     bandmax=min(bandmax, bands_in_range[0][0])
-#                print ("now : bandmax=",bandmax ,self.E_K[ik][bandmax] )
                 if bandmax>0:
                     weights[(0,bandmax)]=-np.Inf
             res.append( weights )
@@ -438,7 +426,6 @@ class Data_K(System):
                     self._UU[ik,:,ib1:ib2]=self._UU[ik,:,ib1:ib2].dot( unitary_group.rvs(ib2-ib1) )
                     cnt+=1
                     s+=ib2-ib1
-#            print ("applied random rotations {} times, average degeneracy is {}-fold".format(cnt,s/max(cnt,1)))
         print_my_name_end()
         return self._UU
 
@@ -450,30 +437,3 @@ class Data_K(System):
     def A_H(self):
         '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
         return self.Xbar('AA') + 1j*self.D_H
-
-
-
-
-    def _shc_B_H_einsum_opt(self, C, A, B):
-        # Optimized version of C += np.einsum('knlc,klma->knmac', A, B). Used in shc_B_H.
-        nw = self.system.num_wann
-        for ik in range(self.nkptot):
-            # Performing C[ik] += np.einsum('nlc,lma->nmac', A[ik], B[ik])
-            tmp_a = np.swapaxes(A[ik], 1, 2) # nlc -> ncl
-            tmp_a = np.reshape(tmp_a, (nw*3, nw)) # ncl -> (nc)l
-            tmp_b = np.reshape(B[ik], (nw, nw*3)) # lma -> l(ma)
-            tmp_c = tmp_a @ tmp_b # (nc)l, l(ma) -> (nc)(ma)
-            tmp_c = np.reshape(tmp_c, (nw, 3, nw, 3)) # (nc)(ma) -> ncma
-            C[ik] += np.transpose(tmp_c, (0, 2, 3, 1)) # ncma -> nmac
-
-    @lazy_property.LazyProperty
-    def shc_B_H(self):
-        SH_H = self._R_to_k_H(self.SH_R, hermitean=False)
-        shc_K_H = -1j*self._R_to_k_H(self.SR_R, hermitean=False)
-        self._shc_B_H_einsum_opt(shc_K_H, self.Xbar('SS'), self.D_H)
-        shc_L_H = -1j*self._R_to_k_H(self.SHR_R, hermitean=False)
-        self._shc_B_H_einsum_opt(shc_L_H, SH_H, self.D_H)
-        return (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.Xbar('SS')[:,:,:,np.newaxis,:] +
-            self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*shc_K_H[:,:,:,:,:] - shc_L_H)
-#end SHC
-

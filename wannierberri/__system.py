@@ -80,7 +80,7 @@ class System():
     Notes:
     -------
         for tight-binding models it is recommended to use `use_wcc_phase = True`. In this case the external terms vanish, and 
-        one can safely use `berry=False, morb=False`, and also set `'external_terms':True` in the parameters of the calculation
+        one can safely use `berry=False, morb=False`, and also set `'external_terms':False` in the parameters of the calculation
 
     """ .format(**default_parameters)
 
@@ -398,7 +398,7 @@ class System():
     def check_hermitian(self,XX):
         if hasattr(self,XX):
             XX_R = np.copy(vars(self)[XR])
-            assert (np.max(abs(XX_R-self.conh_XX_R(XX_R)))<1e-8) , f"{XX} should obey X(-R) = X(R)^\dagger"
+            assert (np.max(abs(XX_R-self.conh_XX_R(XX_R)))<1e-8) , f"{XX} should obey X(-R) = X(R)^+"
         else:
             print (f"{XX} is missing,nothing to check")
 

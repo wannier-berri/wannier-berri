@@ -14,6 +14,7 @@ eV_au = physical_constants['electron volt-hartree relationship'][0]
 Ang_SI = angstrom
 
 fac_ahc = -1e8 * elementary_charge ** 2 / hbar
+fac_spin_hall = fac_ahc * -0.5
 factor_ohmic=(elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
                  *elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
                    * 1e-2  ) # now in  S/(cm*tau_unit)
@@ -186,6 +187,15 @@ def Der3E_fder2(data_K,Efermi,tetra=False,**parameters):
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=2)()*0.5
     return res
 
+def spin_hall(data_K,Efermi,spin_current_type,tetra=False,**parameters):
+    return FermiOcean(frml.SpinOmega(data_K,spin_current_type,**parameters),data_K,Efermi,tetra,fder=0)() * fac_spin_hall
+
+def spin_hall_qiao(data_K,Efermi,tetra=False,**parameters):
+    return spin_hall(data_K,Efermi,"qiao",tetra=tetra,**parameters)
+
+def spin_hall_ryoo(data_K,Efermi,tetra=False,**parameters):
+    return spin_hall(data_K,Efermi,"ryoo",tetra=tetra,**parameters)
+
 
 ##################################
 ### The private part goes here  ##
@@ -209,9 +219,6 @@ class  FermiOcean():
         self.NB=data_K.num_wann
         self.formula=formula
         self.final_factor=1./(data_K.NKFFT_tot * data_K.cell_volume)
-#        print('final_factor',self.final_factor)
-#        print('NKFFT_tot',data_K.NKFFT_tot)
-#        print('cell_volume',data_K.cell_volume)
         
         # get a list [{(ib1,ib2):W} for ik in op:ed]  
         if self.tetra:
@@ -223,7 +230,6 @@ class  FermiOcean():
             self.EFmax=Efermi[-1]+self.extraEf*self.dEF
             self.nEF_extra=Efermi.shape[0]+2*self.extraEf
             self.weights=data_K.get_bands_in_range_groups(self.EFmin,self.EFmax,degen_thresh=degen_thresh,sea=(self.fder==0)) # here W is energy
-       # print(self.weights)
         self.__evaluate_traces(formula, self.weights, ndim )
 
     def __evaluate_traces(self,formula,bands, ndim):

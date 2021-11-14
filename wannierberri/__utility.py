@@ -250,13 +250,11 @@ def fft_W(inp,axes,inverse=False,destroy=True,numthreads=1):
     t01=time()
     fft_object = pyfftw.FFTW(fft_in, fft_out,axes=axes, 
             flags=('FFTW_ESTIMATE',)+(('FFTW_DESTROY_INPUT',)  if destroy else () ), 
-#            flags=('FFTW_MEASURE',)+(('FFTW_DESTROY_INPUT',)  if destroy else () ), 
             direction='FFTW_BACKWARD' if inverse else 'FFTW_FORWARD',
             threads=numthreads)
     t1=time()
     fft_object(inp)
     t2=time()
-#    print ("time to plan {},{}, time to execute {}".format(t01-t0,t1-t01,t2-t1))
     return fft_out
 
 
@@ -322,7 +320,6 @@ class FFT_R_to_k():
                 flags=('FFTW_ESTIMATE','FFTW_DESTROY_INPUT'),
                 direction='FFTW_BACKWARD' ,
                 threads=numthreads  )
-#            print ("created fftw plan with {} threads".format(numthreads))
         self.iRvec=iRvec%self.NKFFT
         self.nRvec=iRvec.shape[0]
         self.time_init=time()-t0
@@ -393,11 +390,7 @@ class FFT_R_to_k():
             AAA_K=AAA_K.reshape( (np.prod(self.NKFFT),)+shapeA[1:])
         self.time_call+=time()-t0
         self.n_call+=1
-#        print(np.shape(AAA_K)) 
         return AAA_K
-
-#    def __del__(self):
-#        print ("time for FFT via {} : {} (__init__:{} , {} callstotal {} ) ".format(self.lib,self.time_init+self.time_call , self.time_init,self.n_call, self.time_call))
 
 def iterate3dpm(size):
     return ( np.array([i,j,k]) for i in range(-size[0],size[0]+1)
