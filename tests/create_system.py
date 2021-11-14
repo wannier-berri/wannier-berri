@@ -224,11 +224,22 @@ def system_Chiral(ChiralModel):
 
 
 @pytest.fixture(scope="session")
+def system_Fe_FPLO(symmetries_Fe):
+    """Create system for Fe using  FPLO  data"""
+
+    path = os.path.join(ROOT_DIR, "data", "Fe_FPLO","+hamdata")
+
+    system = wberri.System_fplo(path, use_wcc_phase=False,morb=True )
+    system.set_symmetry(symmetries_Fe)
+    return system
+
+
+@pytest.fixture(scope="session")
 def system_Fe_FPLO_wcc(symmetries_Fe):
     """Create system for Fe using  FPLO  data"""
 
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO","+hamdata")
 
-    system = wberri.System_fplo(path, use_wcc_phase=True )
+    system = wberri.System_fplo(path, use_wcc_phase=True,morb=True )
     system.set_symmetry(symmetries_Fe)
     return system

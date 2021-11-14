@@ -40,11 +40,12 @@ class System_fplo(System):
     def __init__(self,hamdata="+hamdata",**parameters):
 
         self.set_parameters(**parameters)
-        if self.morb : raise ValueError("System_fplo class cannot be used for evaluation of external terms in orbital magnetic moments")
-        if self.berry : raise ValueError("System_fplo class cannot be used for evaluation of external terms of berry curavture")
- 
+        if not self.use_wcc_phase: 
+            print ("""WARNING: It is highly recommended to use `use_wcc_phase=True` with System_fplo"""
+                """, and further set parameters={`external_terms':False}"""
+                """in any case, the external terms are evaluated using the diagonal approximation for position matrix elements (Tight-binding-like)""")
+
         self.seedname=hamdata.split("/")[-1].split("_")[0]
-                
         f =  open(hamdata,"r")
         allread = False
         while not allread:
@@ -108,6 +109,22 @@ class System_fplo(System):
             self.SS_R = np.array([SS_R[iR] for iR in iRvec]).transpose((1,2,0,3))
         self.nRvec0 = len(iRvec)
         self.iRvec = np.array(iRvec, dtype = int)
+
+        index0=self.iR0
+        if self.getAA:
+            self.AA_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
+            if not self.use_wcc_phase:
+                for i in range(self.num_wann):
+                    self.AA_R[i,i,index0,:]=self.wannier_centers_cart_auto[i].dot(self.real_lattice)
+
+        if self.getBB:
+            self.BB_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
+            if not self.use_wcc_phase:
+                for i in range(self.num_wann):
+                    self.BB_R[i,i,index0,:]=self.AA_R[i,i,index0,:]*self.Ham_R[i,i,index0]
+
+        if self.getCC:
+            self.CC_R=np.zeros((self.num_wann,self.num_wann,self.nRvec0,3),dtype=complex)
 
 
         self.do_at_end_of_init()

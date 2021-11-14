@@ -38,24 +38,29 @@ def error_message(fout_name, suffix, i_iter, abs_err, filename, filename_ref,req
 @pytest.fixture
 def compare_energyresult():
     """Compare dat file output of EnergyResult with the file in reference folder"""
-    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,precision=None,compare_smooth = True):
+    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,compare_zero=False,precision=None,compare_smooth = True):
         if suffix_ref is None :
             suffix_ref=suffix
         for i_iter in range(adpt_num_iter+1):
             filename     = fout_name + f"-{suffix}_iter-{i_iter:04d}.dat"
-            filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}.dat"
             path_filename = os.path.join(OUTPUT_DIR, filename)
             E_titles, data_energy, data, data_smooth = read_energyresult_dat(path_filename)
-            path_filename_ref = os.path.join(ROOT_DIR, 'reference', filename_ref)
-            E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref)
 
-            if precision is None:
-                precision = max(abs(np.average(data_smooth_ref) / 1E12), 1E-11)
-            elif precision < 0:
-                precision = max(abs(np.average(data_smooth_ref) * abs(precision) ), 1E-11)
-
-            assert E_titles == E_titles_ref
-            assert data_energy == approx(data_energy_ref, abs=precision)
+            if compare_zero:
+                precision = 1e-11 if precision is None else abs(precision)
+                data_ref    = np.zeros_like(data)
+                data_smooth_ref = np.zeros_like(data)
+                path_filename_ref = "ZERO"
+            else:
+                filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}.dat"
+                path_filename_ref = os.path.join(ROOT_DIR, 'reference', filename_ref)
+                E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref)
+                if precision is None:
+                    precision = max(abs(np.average(data_smooth_ref) / 1E12), 1E-11)
+                elif precision < 0:
+                    precision = max(abs(np.average(data_smooth_ref) * abs(precision) ), 1E-11)
+                assert E_titles == E_titles_ref
+                assert data_energy == approx(data_energy_ref, abs=precision)
             assert data == approx(data_ref, abs=precision), error_message(
                 fout_name, suffix, i_iter, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref,precision)
             if compare_smooth:
