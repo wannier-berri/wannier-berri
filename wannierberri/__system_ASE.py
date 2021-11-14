@@ -77,15 +77,9 @@ class System_ASE(System_w90):
         self.nRvec0=len(self.iRvec)
         self.num_wann=ase_wannier.nwannier
         self.num_kpts = ase_wannier.Nk
-        self.wannier_centres_cart = ase_wannier.get_centers()
-        self.wannier_centres_reduced = self.wannier_centres_cart.dot(np.linalg.inv(self.real_lattice))
+        self.wannier_centres_cart_auto = ase_wannier.get_centers()
         #  a minus sign to account for a weird Bloch phase convention of ase.dft.Wannier module
         self.kpt_red =  ase_wannier.kpt_kc
-
-        if  self.use_ws:
-            print ("using ws_distance")
-            ws_map=ws_dist_map(self.iRvec,self.wannier_centres_cart, self.mp_grid,self.real_lattice, npar=npar)
-        
 
 
         kpt_mp_grid=[tuple(k) for k in np.array( np.round(self.kpt_red*np.array(self.mp_grid)[None,:]),dtype=int)  %self.mp_grid]
@@ -93,18 +87,14 @@ class System_ASE(System_w90):
             raise ValueError("the grid of k-points read from .chk file is not Gamma-centrered. Please, use Gamma-centered grids in the ab initio calculation")
 
 
-        if self.getAA or self.getBB:
-            mmn = MMN_ASE(ase_calc,ase_wannier,self)
-            self.mmn = mmn
-            fourier_q_to_R_loc=functools.partial(fourier_q_to_R, mp_grid=self.mp_grid,kpt_mp_grid=kpt_mp_grid,iRvec=self.iRvec,ndegen=self.Ndegen,numthreads=npar,fft=fft)
+#        if self.getAA or self.getBB:
+#`           raise NotImplementedError()
+#            mmn = MMN_ASE(ase_calc,ase_wannier,self)
+#            self.mmn = mmn
+#            fourier_q_to_R_loc=functools.partial(fourier_q_to_R, mp_grid=self.mp_grid,kpt_mp_grid=kpt_mp_grid,iRvec=self.iRvec,ndegen=self.Ndegen,numthreads=npar,fft=fft)
 #        print ("kpoints:",kpt_mp_grid)
         
-
-        timeFFT=0
-        t0=time()
-        print (self.iRvec, self.Ndegen, np.sum(1./self.Ndegen))
         self.Ham_R=np.array([ase_wannier.get_hopping(R)/nd for R,nd in zip(self.iRvec,self.Ndegen)]).transpose((1,2,0))
-        timeFFT+=time()-t0
 
         if self.getAA:
             raise NotImplementedError()
@@ -130,6 +120,7 @@ class System_ASE(System_w90):
 
         print ("time for FFT_q_to_R : {} s".format(timeFFT))
         if  self.use_ws:
+            ws_map=ws_dist_map(self.iRvec,self.wannier_centres_cart, self.mp_grid,self.real_lattice, npar=npar)
             for X in ['Ham','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
                 XR=X+'_R'
                 if hasattr(self,XR) :
