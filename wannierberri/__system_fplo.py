@@ -40,9 +40,8 @@ class System_fplo(System):
     def __init__(self,hamdata="+hamdata",**parameters):
 
         self.set_parameters(**parameters)
-        if self.morb : raise ValueError("System_tb class cannot be used for evaluation of external terms in orbital magnetic moments")
-        if self.berry : raise ValueError("System_tb class cannot be used for evaluation of external terms of berry curavture")
-#        if self.spin : raise ValueError("System_tb class cannot be used for evaluation of spin properties")
+        if self.morb : raise ValueError("System_fplo class cannot be used for evaluation of external terms in orbital magnetic moments")
+        if self.berry : raise ValueError("System_fplo class cannot be used for evaluation of external terms of berry curavture")
  
         self.seedname=hamdata.split("/")[-1].split("_")[0]
                 
