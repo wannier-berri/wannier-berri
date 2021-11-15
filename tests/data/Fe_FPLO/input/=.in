@@ -1,0 +1,410 @@
+########################################################################
+# this file is part of the FPLO bandstructure package
+# it was created automatically
+# please dont delete this file nor
+# edit it directly, unless you really know what you are doing
+# Use FEDIT to change its content
+#
+########################################################################
+section header{
+
+    struct {char[*] mainversion;char[*] subversion;} version
+    ={"18.00","M-CPA"};
+
+
+    struct {char[*] hostname;char[*] date;char[*] by;} last_changes
+    ={"fullen","Wed Nov 10 10:02:23 2021","fedit (18.00-57-x86_64)"};
+
+    char[*] compound="bcc Fe";
+};
+
+
+section structure_information{
+
+    struct {int type;char[*] description;} structure_type
+    ={1,"Crystal   "};
+
+
+    struct {char[*] number;char[*] setting;char[*] symbol;} spacegroup
+    ={"229","default","I m -3 m (unique)"};
+
+    int subgroupgenerators[*]={
+    };
+
+    struct {int type;char[*] description;} lengthunit
+    ={1,"Bohr radii"};
+
+    real lattice_constants[3]={5.4,5.4,5.4
+    };
+    real axis_angles[3]={90.,90.,90.
+    };
+
+    struct {logical active;real newx[3];real newz[3];} cellrotation
+    ={f,{1,0,0},{0,0,1}};
+
+    int max_L=4;
+    int nsort=1;
+
+    struct {char[2] element;real tau[3];} wyckoff_positions[nsort]
+    ={
+        {"Fe",{0.,0.,0.}}
+    };
+
+};
+
+
+section structure_dependend{
+
+    struct {char[2] atom;real concentration;} concentrations[nsort]
+    ={
+        {"Fe",1}
+    };
+
+
+    struct {char[2] element;real split;} initial_spin_split[nsort]
+    ={
+        {"Fe",2.0}
+    };
+
+
+    struct {int sort;char[2] state;real spinup[7];real spindn[7];} core_occupation[*]
+    ={
+    };
+
+
+    struct {char[20] label;real kpoint[3];} special_sympoints[*]
+    ={
+        {"$~G",{0,0,0}}
+        ,{"H",{0,1,0}}
+        ,{"N",{1/2,1/2,0}}
+        ,{"$~G",{0,0,0}}
+        ,{"P",{1/2,1/2,1/2}}
+        ,{"H",{0,1,0}}
+        ,{"<BREAK>",{0,0,0}}
+        ,{"P",{1/2,1/2,1/2}}
+        ,{"N",{1/2,1/2,0}}
+    };
+
+};
+
+
+section mesh{
+
+    struct {int nr;real rmin;real rmax;real rmax_factor;} radial_mesh
+    ={200,1.0e-5,0.0,1.0};
+
+
+    struct {int nr;real rmin;real rmax;} atom_radial_mesh
+    ={2000,1.0e-7,0.0};
+
+};
+
+
+section brillouin{
+
+    struct {logical metal;int nkxyz[3];} bzone_integration
+    ={t,{2,2,2}};
+
+
+    struct {int ne;real range;real width;int norder;} mp_bzone_integration
+    ={1001,5.0,0.005,0};
+
+
+    struct {int type;char[*] description;} bzone_method
+    ={1,"tetrahedron method"};
+
+    real bzone_kT=100.0;
+    int nband=-1;
+};
+
+
+section bandstructure_plot{
+
+    struct {logical bandplot;logical read_sympoints;int ndivisions;real emin;real emax;int nptdos;logical plot_idos;logical plot_ndos;logical restrict_bands_to_window;logical coeffout;} bandplot_control
+    ={f,t,50,-20.0,20.0,1000,f,f,f,f};
+
+
+    struct {logical bandweights;logical bweight_rot;real z_axis[3];real x_axis[3];char[*] bwdfilename;
+        struct {int type;char[*] description;} frelprojection;
+    } bandweight_control
+    ={t,f,{0.0,0.0,1.0},{1.0,0.0,0.0},""
+        ,{1,"jmu"}
+    };
+
+};
+
+
+section iteration_control{
+
+    struct {int steps;real tolerance;real mixing;int maxdim;real progress;} iteration_control
+    ={100,1.e-6,0.4,5,0.1};
+
+
+    struct {int scheme;char[*] description;} iteration_version
+    ={2,"Iterat   : Hyperspace interpolation"};
+
+
+    struct {int type;char[*] description;} iteration_convergence_condition
+    ={2,"Density"};
+
+    real etot_tolerance=1.e-8;
+    # ratio of things put into iteration vector compared 
+    # to density 
+
+    struct {real U;} iterationvector_ratio
+    ={1.0};
+
+};
+
+
+section forces{
+
+    struct {int steps;real tolerance;int maxdim;} force_iteration_control
+    ={100,1.0e-3,0};
+
+
+    struct {int scheme;char[*] description;} force_iteration_version
+    ={6,"MinIterat: Find minimum with iterat"};
+
+    logical force_in_each_step=f;
+    logical approx_nodndL_ewald=f;
+
+    struct {int mode;char[*] description;} force_mode
+    ={1,"No forces"};
+
+    int geomopt_sites[*]={
+    };
+};
+
+
+section options{
+
+    struct {int mspin;logical initial_spin_split;} spin
+    ={2,f};
+
+
+    struct {int type;char[*] description;} xc_potential
+    ={9,"Perdew Wang 92               (LSDA)"};
+
+    real ex_field_strength=1.0;
+
+    struct {int type;char[*] description;} relativistic
+    ={3,"full relativistic"};
+
+
+    struct {int type;char[*] description;} nuclear_model
+    ={1,"Point charge"};
+
+
+    struct {
+        struct {int type;char[*] description;} chargemode;
+        real ionicity;logical make_vca;
+        struct {int sort;real Z;} vca[*];
+    } charges
+    ={
+         {1,"None"}
+        ,0.0,f
+        ,{
+        }
+    };
+
+
+    struct {int type;char[*] description;} spin_pop_type
+    ={3,"exact expression (expensive)"};
+
+    real quantization_axis[3]={0,0,1
+    };
+    flag options[*]={CALC_DOS(-),NOT_USED(-),FULLBZ(-),CALC_PLASMON_FREQ(-)
+    ,EMPTY_LATTICE_TEST(-),NO_DOS(-),PLOT_REALFUNC(-),PLOT_BASIS(-)
+    ,TEST_LOI(-),TEST_DIAGNO(-),TEST_SYMMETRIZATION(-),TEST_HS_SYM(-)
+    ,PROT_PRINT_BASIS(-),PROT_MAKELATTICE(-),PROT_STRUCTURE_PRNT(-),PROT_TCI(-)
+    ,NOT_USED(-),NOT_USED(-),NOT_USED(-),NO_SYMMETRYTEST(+)
+    ,NO_POTENTIAL(-),NOT_USED(-),NO_CORE(-),NOT_USED(-)
+    ,NO_POPANALYSIS(-),NO_LOI(-),NO_BASIS(-),NO_EFCH(-)
+    ,NOT_USED(-),NOT_USED(-),NOT_USED(-)
+    };
+
+    struct {int type;char[*] description;} verbosity_level
+    ={200,"more information"};
+
+
+    struct {real moment;logical fsm;} fsmoment
+    ={1.0,f};
+
+    logical calc_etot=t;
+    logical usedatadirectories=t;
+};
+
+
+section cpa{
+
+    struct {real emin0;real emax0;int nec;int max_se_loops;real eimag;} cpa_control
+    ={-1.60,0.4,30,10,1.0e-5};
+
+
+    struct {real efermi0;real slop_0;real slop_min;int max_ef_loops;} cpa_fermi_control
+    ={0.08,30.0,0.3,10};
+
+
+    struct {int type;char[*] description;} cpa_fermi_method
+    ={1,"secant method"};
+
+
+    struct {int ne;real eimag;} cpa_dos
+    ={1000,1.e-3};
+
+
+    struct {int ne;real eimag;} cpa_bloch_spectral_density
+    ={100,1.e-3};
+
+};
+
+
+section numerics{
+
+    struct {int degree;} interpolation
+    ={8};
+
+
+    struct {int nr;} one_center_integrals
+    ={200};
+
+
+    struct {int nxi;int neta;} coulomb_energy_calc
+    ={26,46};
+
+
+    struct {int nr;int neta;} overlap_density_calc
+    ={50,20};
+
+
+    struct {real dens;real pot;real orbital;} cutoff_tolerances
+    ={1.e-9,1.e-12,1.e-8};
+
+    #WARNING: cutoff is obsolete now
+
+    struct {real cutoff;real eps_r;real eps_g;} ewald_parameter
+    ={2.0,1.0e-5,1.0e-5};
+
+
+    struct {real tol;} symtest
+    ={5.0e-13};
+
+    # WARNING: nfft_ewp_per_site is obsolete now  
+    int nfft_ewp_per_site=-500;
+};
+
+
+section LSDA_U{
+    logical make_lsdau=f;
+
+    struct {int type;char[*] description;} lsdau_projection
+    ={1,"orthogonal"};
+
+
+    struct {int type;char[*] description;} lsdau_functional
+    ={1,"LSDA+U Around mean field (AMF/OP)"};
+
+
+    struct {int type;char[*] description;} lsdau_dmat_mode
+    ={1,"self consistent"};
+
+    real lsdau_dmat_deviation=1.e-2;
+
+    struct {int sort;char[2] state;real f_slater[4];} lsdau_defs[*]
+    ={
+    };
+
+};
+
+
+section OPC{
+    logical make_opc=f;
+
+    struct {int type;char[*] description;} opc_projection
+    ={1,"orthogonal"};
+
+
+    struct {int type;char[*] description;} opc_functional
+    ={1,"Spin dependend (Nordstroem, Brooks, Johansson, JPhysC 4, 3261 (1992))"};
+
+
+    struct {int sort;char[2] state;} opc_defs[*]
+    ={
+    };
+
+};
+
+
+section Advanced_output{
+    int ldossites[*]={
+    };
+    logical grids_active=f;
+    logical grids_stop_after=f;
+
+    struct {
+        struct {int type;char[*] description;} basis;
+        real direction1[3];real direction2[3];real direction3[3];real origin[3];int subdivision[3];char[*] file;logical InclPeriodicPoints;logical createOpenDX;
+        struct {int type;char[*] description;} quantities[*];
+        struct {int type;char[*] description;} outputdata[*];
+        real scfwavefnctwindow[2];
+        struct {char[*] name;
+            struct {real emin;real emax;real de;
+                struct {int type;char[*] description;} spin;
+            } sections[*];
+        } energywindows[*];
+        struct {char[*] name;real kpoint[3];int bandindices[*];real energywindow[2];} kresolved[*];
+    } grids[*]
+    ={
+    };
+
+
+    struct {logical active;logical forceusewanniercenters;int homooffset;
+        struct {int nint;int nky;} wanniercenters;
+    } topological_insulator
+    ={f,f,4
+        ,{40,100}
+    };
+
+
+    struct {logical active;logical jointdos;logical bandoutput;logical stopafter;
+        struct {int ne;real emin;real emax;} energy;
+    } optics
+    ={f,f,f,f
+        ,{1000,0,10}
+    };
+
+};
+
+
+section dHvA{
+
+    struct {logical active;int bandsup[*];int bandsdown[*];real isovalue;int subdiv[3];int bisections;char[*] wandata;logical deleteoldfiles;logical needbandweights;char[*] statefile;
+        struct {int weightindex;real coef;} energyshift[*];
+    } isosurface
+    ={f,{},{},0.,{12,12,12},0,"",t,f,""
+        ,{
+        }
+    };
+
+
+    struct {
+        struct {char[*] label;real field[3];} fields[*];
+        int bands[*];int parts[*];
+        struct {int type;char[*] description;} spin;
+        int nphi;int phifrom;int phito;int nplane;int planefrom;int planeto;real areachainthreshold;real orbitcomparisonsearchoffset;real orbitsampleportion;real arearadiusfactor;real smoothnessthreshold;flag outputoptions[*];flag debugoptions[*];
+    } dhva
+    ={
+         {
+            {"[010]",{0.,1.,0.}}
+            ,{"[001]",{0.,0.,1.}}
+        }
+        ,{},{}
+        ,{0,"both"}
+        ,30,-1,-2,100,-1,-2,0.1,0.2,0.1,1.,1.,{show_non_closed(-),output_orbits(-),output_extremal_orbits(+)},{determine_area_chain_extrema(-),sort_area_chains(-),sort_extrema_chains(-),extend_periodic_area_chains(-)
+        ,collect_orbits(-),calc_orbit(-),run(+)}
+    };
+
+};
+
+

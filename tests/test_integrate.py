@@ -10,7 +10,8 @@ from wannierberri import fermiocean
 from conftest import parallel_serial, parallel_ray 
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
-from create_system import system_Fe_W90,system_Fe_W90_wcc,system_GaAs_W90,system_GaAs_W90_wcc,system_GaAs_tb,system_GaAs_tb_wcc
+from create_system import system_Fe_W90,system_Fe_W90_wcc,system_Fe_FPLO,system_Fe_FPLO_wcc
+from create_system import system_GaAs_W90,system_GaAs_W90_wcc,system_GaAs_tb,system_GaAs_tb_wcc
 from create_system import system_Haldane_PythTB,system_Haldane_TBmodels,system_Haldane_TBmodels_internal
 from create_system import symmetries_Fe
 from create_system import system_Chiral,ChiralModel
@@ -20,7 +21,7 @@ from compare_result import compare_energyresult
 @pytest.fixture
 def check_integrate(parallel_serial):
     def _inner(system,quantities=[],user_quantities={},
-                fout_name="berry",Efermi=np.linspace(-10,10,10),comparer=None,
+                fout_name="berry",Efermi=np.linspace(-10,10,10),comparer=None,compare_zero=False,
                parallel=None,
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},adpt_num_iter=0,
                additional_parameters={}, parameters_K={},use_symmetry = False,
@@ -57,13 +58,19 @@ def check_integrate(parallel_serial):
             assert data.shape[0] == len(Efermi)
             assert np.all( np.array(data.shape[1:]) == 3)
             prec=extra_precision[quant] if quant in extra_precision else precision
-            comparer(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,precision=prec, compare_smooth = compare_smooth )
+            comparer(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,
+                compare_zero=compare_zero,precision=prec, compare_smooth = compare_smooth )
 
     return _inner
 
 @pytest.fixture(scope="session")
 def Efermi_Fe():
     return np.linspace(17,18,11)
+
+@pytest.fixture(scope="session")
+def Efermi_Fe_FPLO():
+    return np.linspace(-0.5,0.5,11)
+
 
 
 @pytest.fixture(scope="module")
@@ -83,6 +90,14 @@ def Efermi_Chiral():
 def quantities_Fe():
     return  ['ahc','ahc_test','dos','cumdos',
                'conductivity_ohmic','conductivity_ohmic_fsurf','Morb','Morb_test']
+
+
+# quantities containing external terms
+@pytest.fixture(scope="session")
+def quantities_Fe_ext():
+    return  ['ahc','ahc_test','Morb','Morb_test']
+
+
 
 @pytest.fixture(scope="session")
 def quantities_Chiral():
@@ -169,6 +184,37 @@ def test_Fe_sym(check_integrate,system_Fe_W90, compare_energyresult,quantities_F
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , use_symmetry = True, suffix="sym" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True }  )
+
+
+def test_Fe_FPLO(check_integrate,system_Fe_FPLO, compare_energyresult,quantities_Fe,Efermi_Fe_FPLO):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    check_integrate(system_Fe_FPLO , quantities_Fe+["spin"] , fout_name="berry_Fe_FPLO" , Efermi=Efermi_Fe_FPLO , comparer=compare_energyresult,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
+                additional_parameters = { "external_terms":True } )
+
+def test_Fe_FPLO_wcc(check_integrate,system_Fe_FPLO_wcc, compare_energyresult,quantities_Fe,Efermi_Fe_FPLO):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    check_integrate(system_Fe_FPLO_wcc , quantities_Fe+["spin"] , fout_name="berry_Fe_FPLO" , suffix="wcc",suffix_ref="", Efermi=Efermi_Fe_FPLO , comparer=compare_energyresult,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
+                additional_parameters = { "external_terms":False } )
+
+
+def test_Fe_FPLO_wcc_ext(check_integrate,system_Fe_FPLO_wcc, compare_energyresult,quantities_Fe_ext,Efermi_Fe_FPLO):
+    "Now check that external terms are really zero"
+    check_integrate(system_Fe_FPLO_wcc , quantities_Fe_ext , fout_name="berry_Fe_FPLO" , suffix="wcc_ext", Efermi=Efermi_Fe_FPLO , comparer=compare_energyresult,
+            compare_zero=True,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
+                additional_parameters = { "internal_terms":False, "external_terms":True } )
+
+
+def test_Fe_FPLO_wcc_sym(check_integrate,system_Fe_FPLO_wcc, compare_energyresult,quantities_Fe,Efermi_Fe_FPLO):
+    """Check that the system is reallysymmetric"""
+    check_integrate(system_Fe_FPLO_wcc , quantities_Fe+["spin"] , fout_name="berry_Fe_FPLO" , suffix="wcc-sym",suffix_ref="", 
+                Efermi=Efermi_Fe_FPLO , comparer=compare_energyresult,
+                use_symmetry=True,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
+                additional_parameters = { "external_terms":False } )
+
 
 
 def test_GaAs(check_integrate,system_GaAs_W90, compare_energyresult,quantities_GaAs,Efermi_GaAs):

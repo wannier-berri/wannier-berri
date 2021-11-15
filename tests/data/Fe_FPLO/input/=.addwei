@@ -1,0 +1,15 @@
+weightinfile +bweightslms
+weightoutfile +bwsum
+
+
+name Fe3dup
+    atom Fe sites 1 orbitals 3d spin up
+
+name Fe3ddn
+    atom Fe sites 1 orbitals 3d spin dn
+
+name Fe4s
+    atom Fe sites 1 orbitals 4s spin both
+    
+name Fe4p
+    atom Fe sites 1 orbitals 4p spin both
