@@ -1,0 +1,466 @@
+
+doit
+
+coefficients_format bin
+
+save_spin_info
+
+#opendx_interface
+
+keeprunning on
+
+---- real space grid for pictures of WFs ---------------------
+
+WF_grid_basis conv
+WF_grid_directions 2 0 0
+                   0 2 0
+                   0 0 2
+
+
+
+WF_grid_subdivision  1 1 1
+
+#WF_grid_origin    -0.5 -0.5 -0.5
+
+
+
+
+
+-------------------------------------------------
+
+do_WF_in_real_space on
+
+ham_cutoff 5
+WF_ham_threshold 0.001
+
+WF_coeff_threshold 0.001
+
+WF_write_coeff_stats on
+ham_write_t_stats on
+
+
+----- ham export grid --------
+
+k_grid_basis prim
+k_grid_directions       1 0 0 
+                        0 1 0
+                        0 0 1
+k_grid_subdivision  1 1 1
+k_grid_incl_periodic_points off
+
+
+------------------------------------------------------------------------
+--------------------------------------------------
+wandef
+    on
+    name Fe1 3d-2up
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 3d-2up
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 3d-2dn
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 3d-2dn
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 3d-1up
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 3d-1up
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 3d-1dn
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 3d-1dn
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 3d+0up
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 3d+0up
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 3d+0dn
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 3d+0dn
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 3d+1up
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 3d+1up
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 3d+1dn
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 3d+1dn
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 3d+2up
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 3d+2up
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 3d+2dn
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 3d+2dn
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 4s+0up
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 4s+0up
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 4s+0dn
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 4s+0dn
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 4p-1up
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 4p-1up
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 4p-1dn
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 4p-1dn
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 4p+0up
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 4p+0up
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 4p+0dn
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 4p+0dn
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 4p+1up
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 4p+1up
+        fac 1.0 0.0
+
+--------------------------------------------------
+wandef
+    on
+    name Fe1 4p+1dn
+    emin -9 -9
+    emax -1 -1
+    de 1 1
+    delower 1 1
+    deupper 12 12
+    fmin -100 -100
+    fmax 100 100
+    fdelower 1 1
+    fdeupper 1 1
+    fheight 0 0
+    contrib
+        site 1
+        difvec 0.0 0.0 0.0
+        xaxis 1 0 0
+        zaxis 0 0 1
+        sxaxis qua
+        orb 4p+1dn
+        fac 1.0 0.0
+
