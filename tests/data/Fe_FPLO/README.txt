@@ -1,0 +1,2 @@
+file +hamdata contains information on the Wannier model for bcc Fe with magnetization along 001,
+obtained from the 2x2x2 abinitio grid. Input files are attached in the "./input" directory for reference
