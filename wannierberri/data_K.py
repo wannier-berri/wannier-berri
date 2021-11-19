@@ -74,7 +74,6 @@ class Data_K(System):
                     'Emin': -np.Inf ,
                     'Emax': np.Inf ,
                     'use_wcc_phase':False,
-                    'use_Kramers_degen':False,
                     'fftlib' : 'fftw',
                     'npar_k' : 1 ,
                     'random_gauge':False,
@@ -90,8 +89,6 @@ class Data_K(System):
 
     Parameters
     -----------
-    use_Kramers_degen : bool
-        Enforce kramers degeneracy on bands (2i) and (2i+1) (counting of bands starts from zero). Recommended to use for spinor systems with P*T symmetry.
     random_gauge : bool
         applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved. Default: ``{random_gauge}``
     degen_thresh_random_gauge : float
@@ -138,6 +135,9 @@ class Data_K(System):
                 vars(self)[param]=parameters[param]
             else: 
                 vars(self)[param]=self.default_parameters[param]
+        for param in parameters:
+            if param not in self.default_parameters:
+                print (f"WARNING: parameter {param} was passed to data_K, which is not recognised")
 
 
 ###########################################
@@ -286,11 +286,11 @@ class Data_K(System):
         return res
 
 
-    def get_bands_in_range_groups(self,emin,emax,op=0,ed=None,degen_thresh=-1,sea=False):
+    def get_bands_in_range_groups(self,emin,emax,op=0,ed=None,degen_thresh=-1,degen_Kramers=False,sea=False):
         if ed is None: ed=self.NKFFT_tot
         res=[]
         for ik in range(op,ed):
-            bands_in_range=get_bands_in_range(emin,emax,self.E_K[ik],degen_thresh=degen_thresh)
+            bands_in_range=get_bands_in_range(emin,emax,self.E_K[ik],degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)
             weights= { (ib1,ib2):self.E_K[ik,ib1:ib2].mean() 
                           for ib1,ib2 in bands_in_range  
                      }
@@ -303,17 +303,6 @@ class Data_K(System):
             res.append( weights )
         return res
 
-    def enforce_Kramers(self,E):
-        if self.use_Kramers_degen:
-            assert self.num_wann%2==0, "Kramers degeneracy cannot be enforced with odd number of WFs"
-            Eav = 0.5*(E[:,0::2]+E[:,1::2])
-            Enew=np.zeros_like(E)
-            Enew[:,0::2] = Eav
-            Enew[:,1::2] = Eav
-            return Enew
-        else:
-            return E
-
 ###################################################
 #  Basic variables and their standard derivatives #
 ###################################################
@@ -322,7 +311,6 @@ class Data_K(System):
         print_my_name_start()
         EUU=self.poolmap(np.linalg.eigh,self.HH_K)
         E_K=np.array([euu[0] for euu in EUU])
-        E_K=self.enforce_Kramers(E_K)
         select=(E_K>self.Emin)*(E_K<self.Emax)
         self.select_K=np.all(select,axis=1)
         self.select_B=np.all(select,axis=0)
@@ -346,7 +334,7 @@ class Data_K(System):
                    _Ham_R=self.Ham_R[:,:,:]*_expdK[None,None,:]
                    _HH_K=self.fft_R_to_k( _Ham_R, hermitean=True)
                    E=np.array(self.poolmap(np.linalg.eigvalsh,_HH_K))
-                   Ecorners[:,ix,iy,iz,:]=self.enforce_Kramers(E)[self.select_K,:][:,self.select_B]
+                   Ecorners[:,ix,iy,iz,:]=E[self.select_K,:][:,self.select_B]
         print_my_name_end()
         return Ecorners
 
