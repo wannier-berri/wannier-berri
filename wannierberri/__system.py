@@ -71,10 +71,10 @@ class System():
     use_ws : bool
         minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90. Default: ``{use_ws}``
     mp_grid : [nk1,nk2,nk3]
-        size of Monkhorst-Pak frid used in ab initio calculation. Needed when `use_ws=True`, and only if it cannot be read from input file, i.e.
-        like :class:`~wannierberri.System_tb`, :class:`~wannierberri.System_PythTB`, :class:`~wannierberri.System_PythTB` ,:class:`~wannierberri.System_fplo`, but only if 
+        size of Monkhorst-Pack frid used in ab initio calculation. Needed when `use_ws=True`, and only if it cannot be read from input file, i.e.
+        like :class:`~wannierberri.System_tb`, :class:`~wannierberri.System_PythTB`, :class:`~wannierberri.System_TBmodels` ,:class:`~wannierberri.System_fplo`, but only if 
         the data originate from ab initio data, not from toy models.
-        In contrast, for :class:`~wannierberri.System_w90` and :class:`~wannierberri.System_ase` it is not needed,  but can be provided and will override the original bvalue 
+        In contrast, for :class:`~wannierberri.System_w90` and :class:`~wannierberri.System_ase` it is not needed,  but can be provided and will override the original value 
         (if you know what and why you are doing)
         Default: ``{mp_grid}``
     frozen_max : float
@@ -184,7 +184,7 @@ class System():
                     vars(self)[XR]=ws_map(vars(self)[XR])
             self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
         else:
-            print ("NOT using wws_dist",self.use_ws,self.use_ws)
+            print ("NOT using ws_dist",self.use_ws,self.use_ws)
 
     @property
     def wannier_centers_cart_ws(self):
