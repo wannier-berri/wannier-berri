@@ -184,7 +184,7 @@ class System():
                     vars(self)[XR]=ws_map(vars(self)[XR])
             self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
         else:
-            print ("NOT using ws_dist",self.use_ws,self.use_ws)
+            print ("NOT using ws_dist")
 
     @property
     def wannier_centers_cart_ws(self):
