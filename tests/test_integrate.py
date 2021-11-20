@@ -389,12 +389,11 @@ def test_CuMnAs_PT(check_integrate,system_CuMnAs_2d_broken,compare_energyresult,
             degen = degen_param[1]
             qfull2 = f"{quant}^tetra={tetra}_{degen[0]}={degen[1]}"
             data1=result.results.get(qfull1).data
-            data2=result.results.get(qfull1).data
+            data2=result.results.get(qfull2).data
             assert data1.shape == data2.shape
             assert np.all( np.array(data1.shape[1:]) == 3)
             assert np.all( np.array(data2.shape[1:]) == 3)
             precision = 1e-14*np.max(abs(data1))
-            print (qfull1,qfull2)
             assert data1 == approx(data2, abs=precision) ,    (f"calcuylated data of {qfull1}  and {qfull2} give a maximal "+
                "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(abs_err=np.max(abs(data1-data2)),required_precision=precision))
 
