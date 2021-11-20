@@ -217,7 +217,7 @@ def ChiralModel():
 def model_CuMnAs_2d_broken():
     """these parameters provide ~0.4eV gap between conduction and valence bands
     and splitting into subbands is within 0.04 eV"""
-    return  wb_models.CuMnAs_2d(nx=0,ny=1,nz=0,t=1,t1=0.08,l=0.8,J=1,dt=0.01)
+    return  wb_models.CuMnAs_2d(nx=0,ny=1,nz=0,hop1=1,hop2=0.08,l=0.8,J=1,dt=0.01)
 
 
 @pytest.fixture(scope="session")

@@ -157,8 +157,8 @@ def CuMnAs_2d(
     nx=0,
     ny=1,
     nz=0,
-    t=1,
-    t1=0.08,
+    hop1=1,
+    hop2=0.08,
     l=0.8,
     J=0.6,
     dt=0.0,
@@ -178,9 +178,9 @@ def CuMnAs_2d(
         y-component of the Néel vector
     nz : float
         z-component of the Néel vector
-    t : float
+    hop1 : float
         magnitude of nearest-neighbour hopping (A-A)
-    t1 : float
+    hop2 : float
         magnitude of next nearest-neighbour hopping (A-B)
     l : float
         second nearest-neighbor spin-orbit coupling
@@ -213,23 +213,23 @@ def CuMnAs_2d(
     # set hoppings (one for each connected pair of orbitals)
     # (amplitude, i, j, [lattice vector to cell containing j])
     # nearest-neighbor (A-B hopping)
-    my_model.set_hop(-0.5*t, 0, 2, [ 0, 0]) 
-    my_model.set_hop(-0.5*t, 0, 2, [-1, 0]) 
-    my_model.set_hop(-0.5*t, 0, 2, [ 0,-1]) 
-    my_model.set_hop(-0.5*t, 0, 2, [-1,-1]) 
-    my_model.set_hop(-0.5*t, 1, 3, [ 0, 0]) 
-    my_model.set_hop(-0.5*t, 1, 3, [-1, 0]) 
-    my_model.set_hop(-0.5*t, 1, 3, [ 0,-1]) 
-    my_model.set_hop(-0.5*t, 1, 3, [-1,-1]) 
+    my_model.set_hop(-0.5*hop1, 0, 2, [ 0, 0]) 
+    my_model.set_hop(-0.5*hop1, 0, 2, [-1, 0]) 
+    my_model.set_hop(-0.5*hop1, 0, 2, [ 0,-1]) 
+    my_model.set_hop(-0.5*hop1, 0, 2, [-1,-1]) 
+    my_model.set_hop(-0.5*hop1, 1, 3, [ 0, 0]) 
+    my_model.set_hop(-0.5*hop1, 1, 3, [-1, 0]) 
+    my_model.set_hop(-0.5*hop1, 1, 3, [ 0,-1]) 
+    my_model.set_hop(-0.5*hop1, 1, 3, [-1,-1]) 
     # second nearest-neighbor (A-A hopping)
-    my_model.set_hop(-0.5*t1, 0, 0, [ 1, 0]) 
-    my_model.set_hop(-0.5*t1, 0, 0, [ 0, 1]) 
-    my_model.set_hop(-0.5*t1, 1, 1, [ 1, 0]) 
-    my_model.set_hop(-0.5*t1, 1, 1, [ 0, 1]) 
-    my_model.set_hop(-0.5*t1, 2, 2, [ 1, 0]) 
-    my_model.set_hop(-0.5*t1, 2, 2, [ 0, 1]) 
-    my_model.set_hop(-0.5*t1, 3, 3, [ 1, 0]) 
-    my_model.set_hop(-0.5*t1, 3, 3, [ 0, 1]) 
+    my_model.set_hop(-0.5*hop2, 0, 0, [ 1, 0]) 
+    my_model.set_hop(-0.5*hop2, 0, 0, [ 0, 1]) 
+    my_model.set_hop(-0.5*hop2, 1, 1, [ 1, 0]) 
+    my_model.set_hop(-0.5*hop2, 1, 1, [ 0, 1]) 
+    my_model.set_hop(-0.5*hop2, 2, 2, [ 1, 0]) 
+    my_model.set_hop(-0.5*hop2, 2, 2, [ 0, 1]) 
+    my_model.set_hop(-0.5*hop2, 3, 3, [ 1, 0]) 
+    my_model.set_hop(-0.5*hop2, 3, 3, [ 0, 1]) 
     # second neighbor SOC
     my_model.set_hop(-0.5*l, 0, 1, [ 1, 0]) 
     my_model.set_hop(0.5*l, 0, 1, [-1, 0]) 

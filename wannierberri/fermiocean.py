@@ -23,13 +23,13 @@ factor_Hall_classic*=elementary_charge**3/hbar*TAU_UNIT**2  # multiply by a dime
 factor_Hall_classic*=1e-2   #  finally transform to S/(T*cm*tau_unit^2)
 
 
-def cumdos(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def cumdos(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     return FermiOcean(frml.Identity(),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*data_K.cell_volume
 
-def dos(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def dos(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     return FermiOcean(frml.Identity(),data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*data_K.cell_volume
 
-def Hall_classic_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def Hall_classic_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     formula = FormulaProduct ( [data_K.covariant('Ham',commader=1),frml.InvMass(data_K),data_K.covariant('Ham',commader=1)], name='vel-mass-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*factor_Hall_classic
     res.data=res.data[:,:,:,beta_A,alpha_A]-res.data[:,:,:,alpha_A,beta_A]
@@ -37,7 +37,7 @@ def Hall_classic_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers
     res.rank-=2
     return res
 
-def Hall_classic(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def Hall_classic(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r"""sigma11tau2 """
     formula1 = FormulaProduct ( [frml.InvMass(data_K),frml.InvMass(data_K)], name='mass-mass')
     formula2 = FormulaProduct ( [data_K.covariant('Ham',commader=1),frml.Der3E(data_K)], name='vel-Der3E')
@@ -49,152 +49,152 @@ def Hall_classic(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False
     res.rank-=2
     return res
 
-def Hall_morb_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def Hall_morb_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     factor=-Ang_SI*elementary_charge/(2*hbar) # first, transform to SI, not forgettint e/2hbar multilier for morb - now in A*m/J ,restoring the sign of spin magnetic moment
     factor*=elementary_charge**2/hbar  # multiply by a dimensional factor - now in S/(T*m)
     factor*=-1
     factor*=1e-2   #  finally transform to S/(T*cm)
-    formula_1  = FormulaProduct ( [frml.Omega(data_K,**parameters) ,frml.Morb_Hpm(data_K,sign=+1,**parameters)], name='berry-morb_Hpm')
-    formula_2  = FormulaProduct ( [frml.Omega(data_K,**parameters) ,frml.Omega(data_K,**parameters)], name='berry-berry')
+    formula_1  = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula) ,frml.Morb_Hpm(data_K,sign=+1,**kwargs_formula)], name='berry-morb_Hpm')
+    formula_2  = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula) ,frml.Omega(data_K,**kwargs_formula)], name='berry-berry')
     res =  FermiOcean(formula_1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res += -2* FermiOcean(formula_2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi)
     return res*factor
 
-def Hall_spin_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def Hall_spin_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     factor=-bohr_magneton/(elementary_charge*Ang_SI) # first, transform to SI - now in 1/(m*T) ,restoring the sign of spin magnetic moment
     factor*=-1
     factor*=elementary_charge**2/hbar  # multiply by a dimensional factor - now in S/(T*m)
     factor*=1e-2   #  finally transform to S/(T*cm)
-    formula = FormulaProduct ( [frml.Omega(data_K,**parameters),frml.Spin(data_K)], name='berry-spin')
+    formula = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula),frml.Spin(data_K)], name='berry-spin')
     return  FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*factor
 
-def AHC(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
-    return  FermiOcean(frml.Omega(data_K,**parameters),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*fac_ahc
+def AHC(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    return  FermiOcean(frml.Omega(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*fac_ahc
 
-def AHC_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
-    res =  FermiOcean(frml_basic.tildeFc(data_K,**parameters),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+def AHC_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    res =  FermiOcean(frml_basic.tildeFc(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     return res*fac_ahc
 
 
-def spin(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def spin(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     return FermiOcean(frml.Spin(data_K),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
 
-def berry_dipole_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
-    formula  = FormulaProduct ( [frml.Omega(data_K,**parameters),data_K.covariant('Ham',commader=1)], name='berry-vel')
+def berry_dipole_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    formula  = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula),data_K.covariant('Ham',commader=1)], name='berry-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
 
-def berry_dipole(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def berry_dipole(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r""" sigma20tau1"""
-    res =  FermiOcean(frml.DerOmega(data_K,**parameters),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res =  FermiOcean(frml.DerOmega(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
 
-def berry_dipole_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def berry_dipole_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r""" sigma20tau1"""
-    res =  FermiOcean(frml_basic.tildeFc_d(data_K,**parameters),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res =  FermiOcean(frml_basic.tildeFc_d(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
 
 
-def Hplus_der(data_K,Efermi, tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
-    res =  FermiOcean(frml.DerMorb(data_K,**parameters),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+def Hplus_der(data_K,Efermi, tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    res =  FermiOcean(frml.DerMorb(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
 
-def Hplus_der_test(data_K,Efermi, tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
-    res =  FermiOcean(frml_basic.tildeHGc_d(data_K,sign=+1,**parameters),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+def Hplus_der_test(data_K,Efermi, tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    res =  FermiOcean(frml_basic.tildeHGc_d(data_K,sign=+1,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
 
 
 
-def gme_orb_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
-    formula_1  = FormulaProduct ( [frml.Morb_Hpm(data_K,sign=+1,**parameters) ,data_K.covariant('Ham',commader=1)], name='morb_Hpm-vel')
-    formula_2  = FormulaProduct ( [frml.Omega(data_K,**parameters) ,data_K.covariant('Ham',commader=1)], name='berry-vel')
+def gme_orb_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    formula_1  = FormulaProduct ( [frml.Morb_Hpm(data_K,sign=+1,**kwargs_formula) ,data_K.covariant('Ham',commader=1)], name='morb_Hpm-vel')
+    formula_2  = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula) ,data_K.covariant('Ham',commader=1)], name='berry-vel')
     res =  FermiOcean(formula_1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res += -2* FermiOcean(formula_2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi)
     res.data= np.swapaxes(res.data,1,2)* -elementary_charge**2/(2*hbar)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
 
-def gme_orb(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
-    Hp = Hplus_der(data_K,Efermi,tetra=tetra,**parameters).data
-    D = berry_dipole(data_K,Efermi,tetra=tetra,**parameters).data
+def gme_orb(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    Hp = Hplus_der(data_K,Efermi,tetra=tetra,**kwargs_formula).data
+    D = berry_dipole(data_K,Efermi,tetra=tetra,**kwargs_formula).data
     tensor_K = - elementary_charge**2/(2*hbar)*(Hp - 2*Efermi[:,None,None]*D  )
     return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
 
-def gme_orb_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
-    Hp = Hplus_der_test(data_K,Efermi,tetra=tetra,**parameters).data
-    D = berry_dipole_test(data_K,Efermi,tetra=tetra,**parameters).data
+def gme_orb_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    Hp = Hplus_der_test(data_K,Efermi,tetra=tetra,**kwargs_formula).data
+    D = berry_dipole_test(data_K,Efermi,tetra=tetra,**kwargs_formula).data
     tensor_K = - elementary_charge**2/(2*hbar)*(Hp - 2*Efermi[:,None,None]*D  )
     return result.EnergyResult(Efermi,tensor_K,TRodd=False,Iodd=True)
 
 
-def gme_spin_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def gme_spin_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     formula  = FormulaProduct ( [frml.Spin(data_K),data_K.covariant('Ham',commader=1)], name='spin-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res.data= np.swapaxes(res.data,1,2)* -bohr_magneton/Ang_SI**2  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
 
-def gme_spin(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def gme_spin(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     formula  = FormulaProduct ( [frml.DerSpin(data_K)], name='derspin')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res.data= np.swapaxes(res.data,1,2)* -bohr_magneton/Ang_SI**2  # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
     return res
 
-def Morb(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def Morb(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     fac_morb =  -eV_au/bohr**2
     return    (
-                FermiOcean(frml.Morb_Hpm(data_K,sign=+1,**parameters),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)() 
-            - 2*FermiOcean(frml.Omega(data_K,**parameters),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi) 
+                FermiOcean(frml.Morb_Hpm(data_K,sign=+1,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)() 
+            - 2*FermiOcean(frml.Omega(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi) 
                    )  *  (data_K.cell_volume*fac_morb)
 
 
-def Morb_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def Morb_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     fac_morb =  -eV_au/bohr**2
     return    (
-                FermiOcean(frml_basic.tildeHGc(data_K,sign=+1,**parameters),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)() 
-            - 2*FermiOcean(frml_basic.tildeFc(data_K,**parameters),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi) 
+                FermiOcean(frml_basic.tildeHGc(data_K,sign=+1,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)() 
+            - 2*FermiOcean(frml_basic.tildeFc(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi) 
                    )  *  (data_K.cell_volume*fac_morb)
 
 
-def ohmic_fsurf(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def ohmic_fsurf(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     velocity =  data_K.covariant('Ham',commader=1)
     formula  = FormulaProduct ( [velocity,velocity], name='vel-vel')
     return FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*factor_ohmic
 
-def ohmic(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def ohmic(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r""" sigma10tau1"""
     formula =  frml.InvMass(data_K)
     return FermiOcean(formula,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*factor_ohmic
 
 
-def Der3E(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def Der3E(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r"""sigma20tau2 f0 """
-    res =  FermiOcean(frml.Der3E(data_K,**parameters),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res =  FermiOcean(frml.Der3E(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     return res
 
-def Der3E_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def Der3E_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r"""sigma20tau2 first der f0 """
     formula  = FormulaProduct ([frml.InvMass(data_K),data_K.covariant('Ham',commader=1)], name='mass-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     return res
 
-def Der3E_fder2(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
+def Der3E_fder2(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r"""sigma20tau2 second der f0 """
     formula  = FormulaProduct ( [data_K.covariant('Ham',commader=1),data_K.covariant('Ham',commader=1),data_K.covariant('Ham',commader=1)], name='vel-vel-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=2,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*0.5
     return res
 
-def spin_hall(data_K,Efermi,spin_current_type,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
-    return FermiOcean(frml.SpinOmega(data_K,spin_current_type,**parameters),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)() * fac_spin_hall
+def spin_hall(data_K,Efermi,spin_current_type,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    return FermiOcean(frml.SpinOmega(data_K,spin_current_type,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)() * fac_spin_hall
 
-def spin_hall_qiao(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
-    return spin_hall(data_K,Efermi,"qiao",tetra=tetra,**parameters)
+def spin_hall_qiao(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    return spin_hall(data_K,Efermi,"qiao",tetra=tetra,**kwargs_formula)
 
-def spin_hall_ryoo(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**parameters):
-    return spin_hall(data_K,Efermi,"ryoo",tetra=tetra,**parameters)
+def spin_hall_ryoo(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    return spin_hall(data_K,Efermi,"ryoo",tetra=tetra,**kwargs_formula)
 
 
 ##################################
