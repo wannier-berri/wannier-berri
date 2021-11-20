@@ -11,7 +11,7 @@ from conftest import parallel_serial, parallel_ray
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
 from create_system import system_Fe_W90,system_Fe_W90_wcc,system_Fe_FPLO,system_Fe_FPLO_wcc
-from create_system import system_GaAs_W90,system_GaAs_W90_wcc,system_GaAs_tb,system_GaAs_tb_wcc
+from create_system import system_GaAs_W90,system_GaAs_W90_wcc,system_GaAs_tb,system_GaAs_tb_wcc,system_GaAs_tb_wcc_ws
 from create_system import system_Haldane_PythTB,system_Haldane_TBmodels,system_Haldane_TBmodels_internal
 from create_system import symmetries_Fe
 from create_system import system_Chiral,ChiralModel
@@ -150,6 +150,11 @@ def quantities_Haldane():
 def quantities_GaAs():
     return  ["berry_dipole","berry_dipole_test","berry_dipole_fsurf"]
 
+@pytest.fixture(scope="module")
+def quantities_GaAs_internal():
+    "quantities containing only internal terms"
+    return  ["dos","cumdos","conductivity_ohmic"]
+
 
 def compare_quant(quant):
 #    compare= {'ahc_ocean':'ahc','ahc3_ocean':'ahc',"cumdos3_ocean":"cumdos","dos3_ocean":"dos","berry_dipole_ocean":"berry_dipole","berry_dipole3_ocean":"berry_dipole",
@@ -203,6 +208,7 @@ def test_Fe_sym(check_integrate,system_Fe_W90, compare_energyresult,quantities_F
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True }  )
 
 
+
 def test_Fe_FPLO(check_integrate,system_Fe_FPLO, compare_energyresult,quantities_Fe,Efermi_Fe_FPLO):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     check_integrate(system_Fe_FPLO , quantities_Fe+["spin"] , fout_name="berry_Fe_FPLO" , Efermi=Efermi_Fe_FPLO , comparer=compare_energyresult,
@@ -232,9 +238,7 @@ def test_Fe_FPLO_wcc_sym(check_integrate,system_Fe_FPLO_wcc, compare_energyresul
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                 additional_parameters = { "external_terms":False } )
 
-
-
-def test_GaAs(check_integrate,system_GaAs_W90, compare_energyresult,quantities_GaAs,Efermi_GaAs):
+def test_GaAs(check_integrate,system_GaAs_W90, compare_energyresult,quantities_GaAs,quantities_GaAs_internal,Efermi_GaAs):
     """Test berry dipole"""
     check_integrate(system_GaAs_W90 , quantities_GaAs+['gyrotropic_Korb','gyrotropic_Korb_test'] , 
         fout_name="berry_GaAs_W90" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
@@ -249,9 +253,9 @@ def test_GaAs_tb(check_integrate,system_GaAs_tb, compare_energyresult,quantities
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True},
                   extra_precision = {"berry_dipole_fsurf":1e-6}  )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
-def test_GaAs_wcc(check_integrate,system_GaAs_W90_wcc, compare_energyresult,quantities_GaAs,Efermi_GaAs):
+def test_GaAs_wcc(check_integrate,system_GaAs_W90_wcc, compare_energyresult,quantities_GaAs,quantities_GaAs_internal,Efermi_GaAs):
     """Test GaAs with wcc_phase, comparing with data obtained without it"""
-    check_integrate(system_GaAs_W90_wcc , quantities_GaAs,#+['gyrotropic_Korb_test'],
+    check_integrate(system_GaAs_W90_wcc, quantities_GaAs+quantities_GaAs_internal,#+['gyrotropic_Korb_test'],
          fout_name="berry_GaAs_W90" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True},
                 additional_parameters = { 'correction_Morb_wcc':True} ,
@@ -262,6 +266,12 @@ def test_GaAs_tb_wcc(check_integrate,system_GaAs_tb_wcc, compare_energyresult,qu
     check_integrate(system_GaAs_tb_wcc , quantities_GaAs , fout_name="berry_GaAs_tb" , suffix="wcc" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True},
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
+
+
+def test_GaAs_tb_wcc_ws(check_integrate,system_GaAs_tb_wcc_ws, compare_energyresult,quantities_GaAs_internal,Efermi_GaAs):
+    """Test GaAs (from tb file) with wcc_phase and use_ws=True, comparing with data obtained from .chk file"""
+    check_integrate(system_GaAs_tb_wcc_ws , quantities_GaAs_internal, fout_name="berry_GaAs_W90" , suffix="tb_wcc_ws",suffix_ref="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
+                  extra_precision = {"conductivity_ohmic":-2e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 
 def test_Haldane_PythTB(check_integrate,system_Haldane_PythTB,compare_energyresult,quantities_Haldane,Efermi_Haldane):
