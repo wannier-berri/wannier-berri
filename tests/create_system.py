@@ -170,6 +170,22 @@ def system_GaAs_tb_wcc():
 
     return system
 
+
+@pytest.fixture(scope="session")
+def system_GaAs_tb_wcc_ws():
+    """Create system for GaAs using _tb_dat data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs_tb.dat")
+    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=True,use_ws=True,mp_grid=(2,2,2))
+
+    return system
+
 @pytest.fixture(scope="session")
 def tbmodels_Haldane():
     return wb_models.Haldane_tbm(delta=0.2,hop1=-1.0,hop2 =0.15)
