@@ -97,7 +97,6 @@ class System():
     """ .format(**default_parameters)
 
 
-
     def set_parameters(self,**parameters):
 
         for param in self.default_parameters:
@@ -105,10 +104,17 @@ class System():
                 vars(self)[param]=parameters[param]
             else: 
                 vars(self)[param]=self.default_parameters[param]
+
+        for param in parameters:
+            if param not in self.default_parameters:
+                print (f"WARNING: parameter {param} was passed to data_K, which is not recognised")
+
+
         if self.npar is None:
             self.npar=multiprocessing.cpu_count()
         if self.mp_grid is not None:
             self.mp_grip=np.array(self.mp_grid)
+
         periodic=np.zeros(3,dtype=bool)
         periodic[:len(self.periodic)]=self.periodic
         self.periodic=periodic
