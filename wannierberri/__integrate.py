@@ -71,8 +71,10 @@ calculators_trans={
          'Der3E'                    : fermiocean.Der3E                  ,
          'Der3E_fsurf'              : fermiocean.Der3E_fsurf            ,
          'Der3E_fder2'              : fermiocean.Der3E_fder2            ,
-         'Hplus_der' : fermiocean.Hplus_der,
-         'Hplus_der_test' : fermiocean.Hplus_der_test,
+         'Hplus_der'                : fermiocean.Hplus_der              ,
+         'Hplus_der_test'           : fermiocean.Hplus_der_test         ,
+         'shc_static_qiao'          : fermiocean.spin_hall_qiao         ,
+         'shc_static_ryoo'          : fermiocean.spin_hall_ryoo         ,
          }
 
 
@@ -84,7 +86,9 @@ parameters_ocean = {
 'external_terms' : (True , "evaluate external terms"),
 'internal_terms' : (True,  "evaluate internal terms"),
 'tetra'          : (False, "use tetrahedron method"),
-'correction_wcc': (False,"include corrections to make the results coincide with and without wcc_phase for orbital moment")
+'correction_wcc': (False,"include corrections to make the results coincide with and without wcc_phase for orbital moment"),
+'degen_thresh':   (1e-4,"bands with energy difference smaller than this threshold will be considered as degenerate"),
+'degen_Kramers':   (False,"consider bands (2i) and (2i+1) as degenerate (counting from zero)")
 }
 
 for key,val in parameters_ocean.items(): 
@@ -205,7 +209,7 @@ def intProperty(data,quantities=[],user_quantities={},
         results[qfull].set_smoother(_smoother(q))
     for q,func in user_quantities.items():
         if q in specific_parameters:
-            __parameters = specific_parameters[qfull]
+            __parameters = specific_parameters[q]
         else:
             __parameters = {}
         results[q]=func(data,Efermi,**__parameters)

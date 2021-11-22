@@ -332,3 +332,10 @@ class tildeHGc_d(AntiSymmetric):
     @property
     def additive(self):
         return False
+
+# derivative of band orbital moment
+class Der_morb(tildeHGc_d):
+    def __init__(self,data_K,**parameters):
+        super().__init__(data_K,sign=-1,**parameters)
+        
+    

@@ -170,9 +170,25 @@ def system_GaAs_tb_wcc():
 
     return system
 
+
+@pytest.fixture(scope="session")
+def system_GaAs_tb_wcc_ws():
+    """Create system for GaAs using _tb_dat data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs_tb.dat")
+    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=True,use_ws=True,mp_grid=(2,2,2))
+
+    return system
+
 @pytest.fixture(scope="session")
 def tbmodels_Haldane():
-    return wb_models.Haldane_tbm(delta=0.2,t=-1.0,t2 =0.15)
+    return wb_models.Haldane_tbm(delta=0.2,hop1=-1.0,hop2 =0.15)
 
 @pytest.fixture(scope="session")
 def system_Haldane_TBmodels(tbmodels_Haldane):
@@ -194,7 +210,7 @@ def system_Haldane_TBmodels_internal(tbmodels_Haldane):
 
 @pytest.fixture(scope="session")
 def pythtb_Haldane():
-    return wb_models.Haldane_ptb(delta=0.2,t=-1.0,t2 =0.15)
+    return wb_models.Haldane_ptb(delta=0.2,hop1=-1.0,hop2 =0.15)
 
 
 @pytest.fixture(scope="session")
@@ -210,8 +226,14 @@ def system_Haldane_PythTB(pythtb_Haldane):
 
 @pytest.fixture(scope="session")
 def ChiralModel():
-    return wb_models.Chiral(delta=2, t1=1, hop2=1./3,  phi=np.pi/10, hopz=0.2)
+    return wb_models.Chiral(delta=2, hop1=1, hop2=1./3,  phi=np.pi/10, hopz=0.2)
 
+
+@pytest.fixture(scope="session")
+def model_CuMnAs_2d_broken():
+    """these parameters provide ~0.4eV gap between conduction and valence bands
+    and splitting into subbands is within 0.04 eV"""
+    return  wb_models.CuMnAs_2d(nx=0,ny=1,nz=0,hop1=1,hop2=0.08,l=0.8,J=1,dt=0.01)
 
 
 @pytest.fixture(scope="session")
@@ -220,4 +242,31 @@ def system_Chiral(ChiralModel):
        can be used to test almost any quantity"""
     system = wberri.System_PythTB(ChiralModel, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Fe_FPLO(symmetries_Fe):
+    """Create system for Fe using  FPLO  data"""
+
+    path = os.path.join(ROOT_DIR, "data", "Fe_FPLO","+hamdata")
+
+    system = wberri.System_fplo(path, use_wcc_phase=False,morb=True,spin=True )
+    system.set_symmetry(symmetries_Fe)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Fe_FPLO_wcc(symmetries_Fe):
+    """Create system for Fe using  FPLO  data"""
+
+    path = os.path.join(ROOT_DIR, "data", "Fe_FPLO","+hamdata")
+
+    system = wberri.System_fplo(path, use_wcc_phase=True,morb=True,spin=True )
+    system.set_symmetry(symmetries_Fe)
+    return system
+
+@pytest.fixture(scope="session")
+def system_CuMnAs_2d_broken(model_CuMnAs_2d_broken):
+    system = wberri.System_PythTB(model_CuMnAs_2d_broken, use_wcc_phase=True)
     return system
