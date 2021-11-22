@@ -51,7 +51,7 @@ class Path(Grid):
                 raise ValueError("need to specify either 'k_list' of 'k_nodes'")
 
             if labels is None:
-                labels=[str(i+1) for i,k in enumerate([k for k in self.nodes if k is not None])]
+                labels=[str(i+1) for i,k in enumerate([k for k in k_nodes if k is not None])]
             labels=(l for l in labels)
             labels=[None if k is None else next(labels)  for k in k_nodes]
 
@@ -79,7 +79,7 @@ class Path(Grid):
                     end=np.array(end)
                     assert start.shape==end.shape==(3,)
                     if nk is not None:
-                        _nk=nkgen
+                        _nk=next(nkgen)
                     else: 
                         _nk=round( np.linalg.norm((start-end).dot(self.recip_lattice))/dk )+1
                         if _nk==1 : _nk=2
