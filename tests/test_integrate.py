@@ -408,3 +408,5 @@ def test_CuMnAs_PT(check_integrate,system_CuMnAs_2d_broken,compare_energyresult,
                "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(abs_err=np.max(abs(data1-data2)),required_precision=precision))
 
 
+
+
