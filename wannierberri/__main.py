@@ -214,7 +214,7 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
                   frmsf_name=None,ibands=None,suffix="",Ef0=0.,
                   use_irred_kpt = True, symmetrize = True,
                   parameters={},parameters_K={},specific_parameters={},
-                  degen_thresh = 1e-4,
+                  degen_thresh = 1e-4, degen_Kramers = False,
                   parallel = None ):
     """
     Tabulate quantities to be plotted
@@ -241,6 +241,15 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
         if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
     parallel : :class:`~wannierberri.Parallel`
         object describing parallelization scheme
+    parameters : dict  
+        `{'name':value,...}` , Each quantity that 
+        recognizes a parameter with the given name will use it
+    specific_parameters : dict  
+        `'quantity^label':dict`, where dict is analogous to  `parameters`. This values will override 
+        for the instance of the quantity labeled by '^label'
+    parameters_K : dict
+        parameters to be passed to the :class:`~wannierberri.data_K.Data_K`, 
+        so they are common for the calculation.
    
     Returns
     --------
@@ -261,7 +270,8 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
             quantities=quantities,
             user_quantities=user_quantities,
             parameters=parameters ,
-                degen_thresh = degen_thresh )
+            specific_parameters = specific_parameters,
+                degen_thresh = degen_thresh, degen_Kramers = degen_Kramers )
     t0=time()
     res=evaluate_K(eval_func,system,grid,
             adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,
