@@ -197,6 +197,8 @@ def spin_hall_ryoo(data_K,Efermi,tetra=False,**parameters):
     return spin_hall(data_K,Efermi,"ryoo",tetra=tetra,**parameters)
 
 
+
+
 ##################################
 ### The private part goes here  ##
 ##################################

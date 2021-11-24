@@ -40,6 +40,7 @@ class System():
                     'proj' : None,
                     'positions': None,
                     'atom_name': None,
+                    'magmom' : None,
                     '_getFF' : False,
                        }
 

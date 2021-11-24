@@ -39,7 +39,7 @@ class sym_wann():
     Updated list of R vectors.
     '''
     def __init__(self,num_wann=None,lattice=None,positions=None,atom_name=None,proj=None,iRvec=None,
-            XX_R=None,spin=False,TR=False):
+            XX_R=None,spin=False,TR=False,magmom=None):
 
         self.spin=spin
         self.TR=TR
@@ -53,6 +53,7 @@ class sym_wann():
         self.proj = proj
         self.matrix_list = ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
         self.matrix_bool = {}
+        self.magmom=magmom
         for X in self.matrix_list:
             try: 
                 vars(self)[X+'_R'] = XX_R[X]
@@ -114,8 +115,12 @@ class sym_wann():
                         for oj in orbital_index_list[atom][i]:
                             orb_select[oi,oj] = True
                     orb_position_dic[projection[i]] = orb_select
-                self.wann_atom_info.append((atom+1,self.atom_name[atom],self.positions[atom],projection,
-                    orbital_index_list[atom],orb_position_dic))
+                if self.magmom is None:
+                    self.wann_atom_info.append((atom+1,self.atom_name[atom],self.positions[atom],projection,
+                        orbital_index_list[atom],orb_position_dic))
+                else:
+                    self.wann_atom_info.append((atom+1,self.atom_name[atom],self.positions[atom],projection,
+                        orbital_index_list[atom],self.magmom[atom],orb_position_dic))
         
         self.H_select=np.zeros((self.num_wann_atom,self.num_wann_atom,self.num_wann,self.num_wann),dtype=bool)
         for atom_a in range(self.num_wann_atom):
@@ -173,7 +178,7 @@ class sym_wann():
         x = sym.Symbol('x')
         y = sym.Symbol('y')
         z = sym.Symbol('z')
-        ss = lambda x,y,z : 1+0*(x+y+z)
+        ss = lambda x,y,z : 1+0*x
         px = lambda x,y,z : x
         py = lambda x,y,z : y
         pz = lambda x,y,z : z
@@ -228,7 +233,7 @@ class sym_wann():
                          'py':[y],
                          'pz':[z],
                       }
-        orb_chara_dic={'s':[1],'p':[z,x,y],'d':[z*z,x*z,y*z,x*x,x*y,y*y],
+        orb_chara_dic={'s':[x],'p':[z,x,y],'d':[z*z,x*z,y*z,x*x,x*y,y*y],
                 'f':[z*z*z,x*z*z,y*z*z,z*x*x,x*y*z,x*x*x,y*y*y  ,z*y*y,x*y*y,y*x*x],
                 'sp':[x],'sp2':[x,y],'sp3':[x,y,z],'sp3d2':[x,y,z,z*z,x*x,y*y],
                 'px':[x],'py':[y],'pz':[z]
@@ -359,14 +364,30 @@ class sym_wann():
                         assert atom_index != 0,'Error!!!!: no atom can match the new one Rvec = {}, atom_index = {}'.format(self.iRvec[ir],atom_index)
             rot_map.append(match_index)
             vec_shift_map.append(vec_shift)
-        return np.array(rot_map,dtype=int),np.array(vec_shift_map,dtype=int)
+        #Check if the symmetry operator respect to magnetic moment.
+        #TODO opt magnet code
+        rot_sym = self.symmetry['rotations'][sym]
+        rot_sym_glb = np.dot(np.dot(np.transpose(self.lattice),rot_sym),np.linalg.inv(np.transpose(self.lattice)) )
+        if self.magmom is not None:
+            for i in range(self.num_wann_atom):
+                magmom = np.round(self.wann_atom_info[i][5],decimals=4)
+                new_magmom =np.round( np.dot(rot_sym_glb,magmom),decimals=4)
+                if abs(np.linalg.norm(magmom-new_magmom)) > 0.0005:
+                    magsym_break = True
+                    print('Symmetry operator {} is not respect to magnetic moment'.format(sym+1) )
+                    break
+                else:
+                    magsym_break = False
+        else:
+            magsym_break=False
+        return np.array(rot_map,dtype=int),np.array(vec_shift_map,dtype=int),magsym_break
 
     def full_p_mat(self,atom_index,rot):
         '''
         Combianing rotation matrix of Hamiltonian per orbital_quantum_number into per atom.  (num_wann,num_wann)
         '''
         orbitals = self.wann_atom_info[atom_index][3]
-        orb_position_dic = self.wann_atom_info[atom_index][5]
+        orb_position_dic = self.wann_atom_info[atom_index][-1]
         p_mat = np.zeros((self.num_wann,self.num_wann),dtype = complex)
         p_mat_dagger = np.zeros((self.num_wann,self.num_wann),dtype = complex)
         rot_sym = self.symmetry['rotations'][rot]
@@ -383,7 +404,7 @@ class sym_wann():
     def average_H(self,iRvec,keep_New_R=True):
         #TODO consider symmetrize Ham_R, vector matrix, or tensor matrix respectively or like this finish in one loop.
         #If we can make if faster, respectively is the better choice. Because XX_all matrix are supper large.(eat memory)  
-        
+        nrot = self.nsymm 
         R_list = np.array(iRvec,dtype=int)
         nRvec=len(R_list)
         tmp_R_list = []
@@ -398,35 +419,38 @@ class sym_wann():
             p_map_dagger = np.zeros((self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
             for atom in range(self.num_wann_atom):
                 p_map[atom],p_map_dagger[atom] = self.full_p_mat(atom,rot)
-            rot_map,vec_shift = self.atom_rot_map(rot)
-            R_map = np.dot(R_list,np.transpose(self.symmetry['rotations'][rot]))
-            atom_R_map = R_map[:,None,None,:] - vec_shift[None,:,None,:] + vec_shift[None,None,:,:]
-            Ham_all = np.zeros((nRvec,self.num_wann_atom,self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
-            for X in self.matrix_list:
-                if self.matrix_bool[X]:
-                    vars()[X+'_all'] = np.zeros((nRvec,self.num_wann_atom,self.num_wann_atom,self.num_wann,self.num_wann,3),dtype=complex)
+            rot_map,vec_shift,magsym_break = self.atom_rot_map(rot)
+            if magsym_break:
+                nrot -= 1 
+            else:
+                R_map = np.dot(R_list,np.transpose(self.symmetry['rotations'][rot]))
+                atom_R_map = R_map[:,None,None,:] - vec_shift[None,:,None,:] + vec_shift[None,None,:,:]
+                Ham_all = np.zeros((nRvec,self.num_wann_atom,self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
+                for X in self.matrix_list:
+                    if self.matrix_bool[X]:
+                        vars()[X+'_all'] = np.zeros((nRvec,self.num_wann_atom,self.num_wann_atom,self.num_wann,self.num_wann,3),dtype=complex)
             
-            #TODO try numba
-            for iR in range(nRvec):
-                for atom_a in range(self.num_wann_atom):
-                    for atom_b in range(self.num_wann_atom):
-                        new_Rvec=list(atom_R_map[iR,atom_a,atom_b])
-                        if new_Rvec in self.iRvec:
-                            new_Rvec_index = self.iRvec.index(new_Rvec)
-                            Ham_all[iR,atom_a,atom_b,self.H_select[atom_a,atom_b]] = self.Ham_R[self.H_select[rot_map[atom_a],
-                                rot_map[atom_b]],new_Rvec_index]
-                            for X in self.matrix_list:
-                                if self.matrix_bool[X]:
-                                    vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = vars(self)[X+'_R'][
-                                        self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index,:].dot(np.transpose(
-                                        self.symmetry['rotations'][rot]) )
-                        else:
-                            if new_Rvec in tmp_R_list:
-                                pass
+                #TODO try numba
+                for iR in range(nRvec):
+                    for atom_a in range(self.num_wann_atom):
+                        for atom_b in range(self.num_wann_atom):
+                            new_Rvec=list(atom_R_map[iR,atom_a,atom_b])
+                            if new_Rvec in self.iRvec:
+                                new_Rvec_index = self.iRvec.index(new_Rvec)
+                                Ham_all[iR,atom_a,atom_b,self.H_select[atom_a,atom_b]] = self.Ham_R[self.H_select[rot_map[atom_a],
+                                    rot_map[atom_b]],new_Rvec_index]
+                                for X in self.matrix_list:
+                                    if self.matrix_bool[X]:
+                                        vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = vars(self)[X+'_R'][
+                                            self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index,:].dot(np.transpose(
+                                            self.symmetry['rotations'][rot]) )
                             else:
-                                tmp_R_list.append(new_Rvec)
+                                if new_Rvec in tmp_R_list:
+                                    pass
+                                else:
+                                    tmp_R_list.append(new_Rvec)
 
-            for atom_a in range(self.num_wann_atom):
+                for atom_a in range(self.num_wann_atom):
                     for atom_b in range(self.num_wann_atom):
                         '''
                         H_ab_sym = P_dagger_a * H_ab * P_b
@@ -451,12 +475,12 @@ class sym_wann():
                             #print(tmpX.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8).real)
                             #print('======================')
         res_dic = {}
-        res_dic['Ham'] = Ham_res/self.nsymm
+        res_dic['Ham'] = Ham_res/nrot
         for X in self.matrix_list:
             if self.matrix_bool[X]:
                 X_res = X+'_res'
-                res_dic[X] = vars()[X_res]/self.nsymm
-
+                res_dic[X] = vars()[X_res]/nrot
+        print('number of symmetry oprator == ',nrot)
         if keep_New_R:
                 return res_dic , tmp_R_list
         else:
