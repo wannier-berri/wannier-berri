@@ -110,5 +110,5 @@ def compare_fermisurfer():
         assert basis == approx(basis_ref, abs = 1e-8) , f"basis  vectors differ :\n {basis} \n and \n {basis_ref}"
 
         assert data == approx(data_ref, abs=precision), error_message(
-                fout_name, suffix, None, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref)
+                fout_name, suffix, None, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref,precision)
     return _inner
