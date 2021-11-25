@@ -137,13 +137,6 @@ class System_w90(System):
             del shu
 
         print ("time for FFT_q_to_R : {} s".format(timeFFT))
-        if  self.use_ws:
-            for X in ['Ham','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
-                XR=X+'_R'
-                if hasattr(self,XR) :
-                    print ("using ws_dist for {}".format(XR))
-                    vars(self)[XR]=ws_map(vars(self)[XR])
-            self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
         
         if self.symmetrization:
             XX_R={'Ham':self.Ham_R}
