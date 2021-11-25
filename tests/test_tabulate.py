@@ -128,7 +128,8 @@ def test_Chiral_sym(check_tabulate,system_Chiral, compare_fermisurfer,quantities
 
 
 def test_CuMnAs_PT(check_tabulate,system_CuMnAs_2d_broken,compare_fermisurfer):
-    """here no additional data is needed, we just check that degen_thresh=0.05 and degen_Kramers=True give the same result"""
+    """Test tabulation of user-defined quantities
+    Also test Kramers degen, by comparing  degen_thresh=0.05 and degen_Kramers=True (they should give the same result)"""
     quantities=[]
     specific_parameters = {}
     degen_param=[('degen_thresh',0.05),('degen_Kramers',True)]
