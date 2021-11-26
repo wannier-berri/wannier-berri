@@ -87,7 +87,7 @@ class Path(Grid):
                     self.labels[self.K_list.shape[0]-1]=l2
                 elif end is None:
                     self.breaks.append(self.K_list.shape[0]-1)
-        self.breaks=np.array(self.breaks)
+        self.breaks=np.array(self.breaks,dtype=int)
 
     @property 
     def recip_lattice(self):
@@ -101,8 +101,10 @@ class Path(Grid):
                                 for i,k in enumerate(self.K_list)
                    )  )
 
-    def get_K_list(self):
-        """ returns the list of Symmetry-irreducible K-points"""
+    def get_K_list(self,use_symmetry=False):
+        """ returns the list of K-points"""
+        if use_symmetry:
+            print ("WARNING : symmetry is not used for a tabulation along path")
         dK=np.array([1.,1.,1.])
         factor=1.
         print ("generating K_list")
@@ -116,6 +118,7 @@ class Path(Grid):
         K = np.zeros(KPcart.shape[0])
         k = np.linalg.norm(KPcart[1:, :] - KPcart[:-1, :], axis=1)
         k[k > break_thresh] = 0.0
+        print ("breaks:",repr(self.breaks))
         k[self.breaks]=0.0
         K[1:] = np.cumsum(k)
         return K
