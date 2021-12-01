@@ -30,9 +30,8 @@ class sym_wann():
         Matrix before symmetrization. {'Ham':self.Ham_R,'AA':self.AA_R,......}
     Spin: bool
         Spin orbital coupling.
-    TR; bool
-        Time reversal symmetry
-
+    magmom: 2D array
+        Magnetic momentom of each atoms.
     Return
     ------
     Dictionary of matrix after symmetrization.
@@ -370,17 +369,27 @@ class sym_wann():
         rot_sym_glb = np.dot(np.dot(np.transpose(self.lattice),rot_sym),np.linalg.inv(np.transpose(self.lattice)) )
         if self.magmom is not None:
             for i in range(self.num_wann_atom):
-                magmom = np.round(self.wann_atom_info[i][5],decimals=4)
+                magmom = np.round(self.wann_atom_info[i][-1],decimals=4)
                 new_magmom =np.round( np.dot(rot_sym_glb,magmom),decimals=4)
-                if abs(np.linalg.norm(magmom-new_magmom)) > 0.0005:
-                    magsym_break = True
-                    print('Symmetry operator {} is not respect to magnetic moment'.format(sym+1) )
-                    break
+                if abs(np.linalg.norm(magmom - np.linalg.det(rot_sym_glb)*new_magmom)) > 0.0005:
+                    sym_only = False
+                    print('Symmetry operator {} is not respect to magnetic moment'.format(sym) )
                 else:
-                    magsym_break = False
+                    sym_only = True
+                    print('Symmetry operator {} is respect to magnetic moment'.format(sym) )
+                if abs(np.linalg.norm(magmom + np.linalg.det(rot_sym_glb)*new_magmom)) > 0.0005:
+                    sym_T = False
+                    print('Symmetry operator {}*T is not respect to magnetic moment'.format(sym) )
+                else:
+                    sym_T = True
+                    print('Symmetry operator {}*T is respect to magnetic moment'.format(sym) )
+                if sym_T+sym_only == 0:
+                    break
+
         else:
-            magsym_break=False
-        return np.array(rot_map,dtype=int),np.array(vec_shift_map,dtype=int),magsym_break
+            sym_only = True
+            sym_T = True
+        return np.array(rot_map,dtype=int),np.array(vec_shift_map,dtype=int),sym_only,sym_T
 
     def full_p_mat(self,atom_index,rot):
         '''
@@ -404,7 +413,7 @@ class sym_wann():
     def average_H(self,iRvec,keep_New_R=True):
         #TODO consider symmetrize Ham_R, vector matrix, or tensor matrix respectively or like this finish in one loop.
         #If we can make if faster, respectively is the better choice. Because XX_all matrix are supper large.(eat memory)  
-        nrot = self.nsymm 
+        nrot = 0 
         R_list = np.array(iRvec,dtype=int)
         nRvec=len(R_list)
         tmp_R_list = []
@@ -419,10 +428,12 @@ class sym_wann():
             p_map_dagger = np.zeros((self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
             for atom in range(self.num_wann_atom):
                 p_map[atom],p_map_dagger[atom] = self.full_p_mat(atom,rot)
-            rot_map,vec_shift,magsym_break = self.atom_rot_map(rot)
-            if magsym_break:
-                nrot -= 1 
+            rot_map,vec_shift,sym_only,sym_T = self.atom_rot_map(rot)
+            if sym_only+sym_T == 0:
+                print('skip this symmetry')
             else:
+                if sym_only: nrot+= 1
+                if sym_T: nrot+= 1
                 R_map = np.dot(R_list,np.transpose(self.symmetry['rotations'][rot]))
                 atom_R_map = R_map[:,None,None,:] - vec_shift[None,:,None,:] + vec_shift[None,None,:,:]
                 Ham_all = np.zeros((nRvec,self.num_wann_atom,self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
@@ -453,27 +464,27 @@ class sym_wann():
                 for atom_a in range(self.num_wann_atom):
                     for atom_b in range(self.num_wann_atom):
                         '''
-                        H_ab_sym = P_dagger_a * H_ab * P_b
+                        H_ab_sym = P_dagger_a dot H_ab dot P_b
+                        H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
                         '''
                         tmp = np.dot(np.dot(p_map_dagger[atom_a],Ham_all[:,atom_a,atom_b]),p_map[atom_b])
-                        Ham_res += tmp.transpose(0,2,1)
-                        
+                        if sym_only: 
+                            Ham_res += tmp.transpose(0,2,1)
+                        if sym_T:
+                            tmp_T = self.ul.dot(tmp.transpose(1,0,2)).dot(self.ur).conj()
+                            Ham_res += tmp_T.transpose(0,2,1)
+
                         for X in self.matrix_list:  # vector matrix
                             if self.matrix_bool[X]:
                                 vars()[X+'_shift'] = vars()[X+'_all'].transpose(0,1,2,5,3,4)
                                 tmpX= np.dot(np.dot(p_map_dagger[atom_a],vars()[X+'_shift'][:,atom_a,atom_b]),p_map[atom_b])
-                                vars()[X+'_res'] += tmpX.transpose(0,3,1,2)
-                        
-                        #if atom_a ==0 and atom_b == 0:
-                         #   test_i = self.iRvec.index([1,1,0])	
-                            #print(self.HH_R[self.H_select[atom_a,atom_b],test_i].reshape(8,8).real)
-                            #print(self.AA_R[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8).real)
-                            #print('======================')
-                            #print(tmp.transpose(0,2,1)[self.H_select[atom_a,atom_b],test_i].reshape(8,8).real)
-                            #print(tmp2.transpose(0,2,1)[self.H_select[atom_a,atom_b],test_i].reshape(8,8).real)
-                            #print(self.AA_R[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8).real)
-                            #print(tmpX.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8).real)
-                            #print('======================')
+                                if sym_only:
+                                    vars()[X+'_res'] += tmpX.transpose(0,3,1,2)
+                                if sym_T:
+                                    tmp_T = self.ul.dot(tmpX.transpose(1,2,0,3)).dot(self.ur).conj()
+                                    vars()[X+'_res'] += tmpX_T.transpose(0,3,1,2)
+
+
         res_dic = {}
         res_dic['Ham'] = Ham_res/nrot
         for X in self.matrix_list:
@@ -489,16 +500,12 @@ class sym_wann():
     def symmetrize(self):
         #====Time Reversal====
         #syl: (sigma_y)^T *1j, syr: sigma_y*1j
-        #TODO T for other matrix. (but looks like opening or closing TR not change much)
-        if self.spin and self.TR:
+        if self.spin:
             base_m = np.eye(self.num_wann//2)
             syl=np.array([[0.0,-1.0],[1.0,0.0]])
             syr=np.array([[0.0,1.0],[-1.0,0.0]])
-            ul=np.kron(syl,base_m)
-            ur=np.kron(syr,base_m)
-            #print(ul)
-            for ir in range(self.nRvec):
-                self.Ham_R[:,:,ir]=(self.Ham_R[:,:,ir] + np.dot(np.dot(ul,np.conj(self.Ham_R[:,:,ir])),ur))/2.0
+            self.ul=np.kron(syl,base_m)
+            self.ur=np.kron(syr,base_m)
         
         #========================================================
         #symmetrize exist R vectors and find additional R vectors 

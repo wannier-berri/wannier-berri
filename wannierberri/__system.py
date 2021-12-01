@@ -44,6 +44,7 @@ class System():
                     'positions': None,
                     'atom_name': None,
                     'magmom' : None,
+                    'soc':True,
                     'npar':None,
                     '_getFF' : False,
                        }
