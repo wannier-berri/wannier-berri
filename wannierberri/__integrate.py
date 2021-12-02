@@ -75,6 +75,19 @@ calculators_trans={
          'Hplus_der_test'           : fermiocean.Hplus_der_test         ,
          'shc_static_qiao'          : fermiocean.spin_hall_qiao         ,
          'shc_static_ryoo'          : fermiocean.spin_hall_ryoo         ,
+         'linear_magnetoresistance_fsurf'   : fermiocean.linear_magnetoresistance_fsurf         ,
+         'linear_magnetoresistance'   : fermiocean.linear_magnetoresistance         ,
+         'quadra_magnetoresistance_fsurf'   : fermiocean.quadra_magnetoresistance_fsurf         ,
+         'quadra_magnetoresistance'   : fermiocean.quadra_magnetoresistance         ,
+         'Nonlinear_Hall_fsurf'   : fermiocean.Nonlinear_Hall_fsurf         ,
+         'Nonlinear_Hall'   : fermiocean.Nonlinear_Hall         ,
+         'eMChA_fsurf_term1'   : fermiocean.eMChA_fsurf_term1         ,
+         'eMChA_fder2_term1'   : fermiocean.eMChA_fder2_term1         ,
+         'eMChA_term1'   : fermiocean.eMChA_term1         ,
+         'ddO_test'   : fermiocean.ddO_test       ,
+         'ddO_test_fsurf'   : fermiocean.ddO_test_fsurf       ,
+         'eMChA_term2_fsurf'   : fermiocean.eMChA_term2_fsurf       ,
+         'eMChA_term2'   : fermiocean.eMChA_term2       ,
          }
 
 
@@ -172,6 +185,14 @@ descriptions['Faraday']                     ="Tensor tildeD(omega) describing th
 descriptions['opt_SHCryoo']                 ="Ryoo's Optical spin Hall conductivity in hbar/e S/cm (PRB RPS19)"
 descriptions['opt_SHCqiao']                 ="Qiao's Optical spin Hall conductivity in hbar/e S/cm (PRB QZYZ18)"
 descriptions['opt_shiftcurrent']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+descriptions['linear_magnetoresistance_fsurf']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+descriptions['linear_magnetoresistance']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+descriptions['quadra_magnetoresistance_fsurf']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+descriptions['quadra_magnetoresistance']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+descriptions['Nonlinear_Hall_fsurf']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+descriptions['Nonlinear_Hall']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+descriptions['eMChA_fsurf_term1']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+descriptions['eMChA_fder2_term1']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
 
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors
