@@ -99,7 +99,6 @@ class System_w90(System):
             if transl_inv:
                 wannier_centers_cart_new = np.diagonal(self.AA_R[:,:,self.iR0,:],axis1=0,axis2=1).transpose()
                 if not np.all(abs(wannier_centers_cart_new-self.wannier_centers_cart_auto)<1e-6):
-                    print(f"{guiding_centers=}")
                     if guiding_centers:
                         print(f"The read Wannier centers\n{self.wannier_centers_cart_auto}\n"
                               f"are different from the evaluated Wannier centers\n{wannier_centers_cart_new}\n"
