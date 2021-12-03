@@ -178,22 +178,26 @@ class TABresult(result.Result):
         return TABresult(kpoints=kpoints,recip_lattice=self.recip_lattice,results=results)
 
     def to_grid(self,grid,order='C'):
-        print ("settinng the grid")
+        print ("setting the grid")
         grid1=[np.linspace(0.,1.,g,False) for g in grid]
         print ("setting new kpoints")
         k_new=np.array(np.meshgrid(grid1[0],grid1[1],grid1[2],indexing='ij')).reshape((3,-1),order=order).T
-        k_map=[[] for i in range(np.prod(grid))]
         print ("finding equivalent kpoints")
-        for ik,k in enumerate(self.kpoints):
-            k1=k*grid
-            ik1=np.array(k1.round(),dtype=int)
-            if np.linalg.norm(ik1/grid-k)<1e-5 : 
-                ik1=ik1%grid
-                ik2=ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])
-                k_map[ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])].append(ik)
-            else:
-                print ("WARNING: k-point {}={} is skipped".format(ik,k))
+        # check if each k point is on the regular grid
+        kpoints_int = np.rint(self.kpoints * grid[None, :]).astype(int)
+        on_grid = np.all(abs(kpoints_int / grid[None, :] - self.kpoints) < 1e-5, axis=1)
 
+        # compute the index of each k point on the grid
+        kpoints_int = kpoints_int % grid[None, :]
+        ind_grid = kpoints_int[:, 2] + grid[2] * (kpoints_int[:, 1] + grid[1] * kpoints_int[:, 0])
+
+        # construct the map from the grid indices to the k-point indices
+        k_map = [[] for i in range(np.prod(grid))]
+        for ik in range(len(self.kpoints)):
+            if on_grid[ik]:
+                k_map[ind_grid[ik]].append(ik)
+            else:
+                print(f"WARNING: k-point {ik}={self.kpoints[ik]} is not on the grid, skipping.")
         t0=time()
         print ("collecting")
         results={r:self.results[r].to_grid(k_map)  for r in self.results}
