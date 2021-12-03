@@ -1,4 +1,4 @@
-#                                                            #
+#                                                            #l
 # This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
 # file `LICENSE' in the root directory of the WannierBerri   #
@@ -64,7 +64,7 @@ for key,val in parameters_ocean.items():
 
 
 
-def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None,
+def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,degen_Kramers=False,ibands=None,
             parameters={},specific_parameters = {}):
 
 
@@ -73,7 +73,7 @@ def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None
     else:
         ibands = np.array(ibands)
 
-    tabulator = Tabulator(data_K,ibands,degen_thresh)
+    tabulator = Tabulator(data_K,ibands,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)
 
     results={'E':result.KBandResult(data_K.E_K[:,ibands],TRodd=False,Iodd=False)}
     for qfull in quantities:
@@ -88,7 +88,7 @@ def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None
 
     for q,formula in user_quantities.items():
         if q in specific_parameters:
-            __parameters = specific_parameters[qfull]
+            __parameters = specific_parameters[q]
         else:
             __parameters = {}
         results[q]=tabulator( formula(data_K,**__parameters) )
@@ -101,13 +101,13 @@ def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None
 
 class  Tabulator():
 
-    def __init__(self ,  data_K,  ibands, degen_thresh=1e-4):
+    def __init__(self ,  data_K,  ibands, degen_thresh=1e-4,degen_Kramers=False):
 
         self.nk=data_K.NKFFT_tot
         self.NB=data_K.num_wann
         self.ibands = ibands
 
-        band_groups=data_K.get_bands_in_range_groups(-np.Inf,np.Inf,degen_thresh=degen_thresh,sea=False)
+        band_groups=data_K.get_bands_in_range_groups(-np.Inf,np.Inf,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers,sea=False)
         # bands_groups  is a digtionary (ib1,ib2):E
         # now select only the needed groups
         self.band_groups = [  [ n    for n in groups.keys() if np.any(  (ibands>=n[0])*(ibands<n[1]) )  ]
