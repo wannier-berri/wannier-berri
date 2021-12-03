@@ -135,6 +135,9 @@ class Data_K(System):
                 vars(self)[param]=parameters[param]
             else: 
                 vars(self)[param]=self.default_parameters[param]
+        for param in parameters:
+            if param not in self.default_parameters:
+                print (f"WARNING: parameter {param} was passed to data_K, which is not recognised")
 
 
 ###########################################
@@ -283,11 +286,11 @@ class Data_K(System):
         return res
 
 
-    def get_bands_in_range_groups(self,emin,emax,op=0,ed=None,degen_thresh=-1,sea=False):
+    def get_bands_in_range_groups(self,emin,emax,op=0,ed=None,degen_thresh=-1,degen_Kramers=False,sea=False):
         if ed is None: ed=self.NKFFT_tot
         res=[]
         for ik in range(op,ed):
-            bands_in_range=get_bands_in_range(emin,emax,self.E_K[ik],degen_thresh=degen_thresh)
+            bands_in_range=get_bands_in_range(emin,emax,self.E_K[ik],degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)
             weights= { (ib1,ib2):self.E_K[ik,ib1:ib2].mean() 
                           for ib1,ib2 in bands_in_range  
                      }

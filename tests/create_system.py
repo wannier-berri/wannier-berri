@@ -229,6 +229,12 @@ def ChiralModel():
     return wb_models.Chiral(delta=2, hop1=1, hop2=1./3,  phi=np.pi/10, hopz=0.2)
 
 
+@pytest.fixture(scope="session")
+def model_CuMnAs_2d_broken():
+    """these parameters provide ~0.4eV gap between conduction and valence bands
+    and splitting into subbands is within 0.04 eV"""
+    return  wb_models.CuMnAs_2d(nx=0,ny=1,nz=0,hop1=1,hop2=0.08,l=0.8,J=1,dt=0.01)
+
 
 @pytest.fixture(scope="session")
 def system_Chiral(ChiralModel):
@@ -258,4 +264,9 @@ def system_Fe_FPLO_wcc(symmetries_Fe):
 
     system = wberri.System_fplo(path, use_wcc_phase=True,morb=True,spin=True )
     system.set_symmetry(symmetries_Fe)
+    return system
+
+@pytest.fixture(scope="session")
+def system_CuMnAs_2d_broken(model_CuMnAs_2d_broken):
+    system = wberri.System_PythTB(model_CuMnAs_2d_broken, use_wcc_phase=True)
     return system

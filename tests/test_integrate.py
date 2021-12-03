@@ -15,6 +15,7 @@ from create_system import system_GaAs_W90,system_GaAs_W90_wcc,system_GaAs_tb,sys
 from create_system import system_Haldane_PythTB,system_Haldane_TBmodels,system_Haldane_TBmodels_internal
 from create_system import symmetries_Fe
 from create_system import system_Chiral,ChiralModel
+from create_system import system_CuMnAs_2d_broken , model_CuMnAs_2d_broken
 from compare_result import compare_energyresult
 
 
@@ -24,7 +25,8 @@ def check_integrate(parallel_serial):
                 fout_name="berry",Efermi=np.linspace(-10,10,10),comparer=None,compare_zero=False,
                parallel=None,
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},adpt_num_iter=0,
-               additional_parameters={}, parameters_K={},use_symmetry = False,
+               additional_parameters={}, parameters_K={},specific_parameters = {},
+                use_symmetry = False,
                suffix="", suffix_ref="",
                extra_precision={},
                precision = -1e-8 ,
@@ -43,6 +45,7 @@ def check_integrate(parallel_serial):
                 adpt_num_iter = adpt_num_iter,
                 use_irred_kpt = use_symmetry, symmetrize = use_symmetry,
                 parameters = additional_parameters,
+                specific_parameters = specific_parameters,
                 parameters_K = parameters_K,
                 fout_name = os.path.join(OUTPUT_DIR, fout_name),
                 suffix=suffix,
@@ -52,6 +55,10 @@ def check_integrate(parallel_serial):
             suffix="-"+suffix
         if len(suffix_ref)>0:
             suffix_ref="-"+suffix_ref
+
+        # compare results externally
+        if comparer is None:
+            return result
 
         for quant in quantities+list(user_quantities.keys()):
             data=result.results.get(quant).data
@@ -81,6 +88,10 @@ def Efermi_GaAs():
 def Efermi_Haldane():
     return np.linspace(-3,3,11)
 
+@pytest.fixture(scope="module")
+def Efermi_CuMnAs_2d():
+    return np.linspace(-2,2,11)
+
 
 @pytest.fixture(scope="session")
 def Efermi_Chiral():
@@ -96,6 +107,12 @@ def quantities_Fe():
 @pytest.fixture(scope="session")
 def quantities_Fe_ext():
     return  ['ahc','ahc_test','Morb','Morb_test']
+
+
+# quantities containing external terms
+@pytest.fixture(scope="session")
+def quantities_CuMnAs_2d():
+    return  ['dos', 'cumdos','conductivity_ohmic','Hall_morb_fsurf','Hall_classic_fsurf']
 
 
 
@@ -354,3 +371,42 @@ def test_Chiral_tetra(check_integrate,system_Chiral,compare_energyresult,quantit
                use_symmetry =  True,
                 additional_parameters = { 'external_terms':False, 'tetra':True} ,
                grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
+
+
+
+def test_CuMnAs_PT(check_integrate,system_CuMnAs_2d_broken,compare_energyresult,quantities_CuMnAs_2d,Efermi_CuMnAs_2d):
+    """here no additional data is needed, we just check that degen_thresh=0.05 and degen_Kramers=True give the same result"""
+    quantities=[]
+    specific_parameters = {}
+    degen_param=[('degen_thresh',0.05),('degen_Kramers',True)]
+    for quant in quantities_CuMnAs_2d:
+        for tetra in True,False:
+            for degen in degen_param:
+                qfull = f"{quant}^tetra={tetra}_{degen[0]}={degen[1]}"
+                quantities.append(qfull)
+                specific_parameters[qfull] = {'tetra':tetra, degen[0]:degen[1]}
+
+    result = check_integrate(system_CuMnAs_2d_broken , quantities , fout_name="berry_CuMnAs_2d" ,Efermi=Efermi_CuMnAs_2d , comparer=None,
+               use_symmetry =  True,
+                additional_parameters = { 'external_terms':False } ,
+                specific_parameters = specific_parameters,
+               grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
+
+    for quant in quantities_CuMnAs_2d:
+        for tetra in True,False:
+            degen = degen_param[0]
+            qfull1 = f"{quant}^tetra={tetra}_{degen[0]}={degen[1]}"
+            degen = degen_param[1]
+            qfull2 = f"{quant}^tetra={tetra}_{degen[0]}={degen[1]}"
+            data1=result.results.get(qfull1).data
+            data2=result.results.get(qfull2).data
+            assert data1.shape == data2.shape
+            assert np.all( np.array(data1.shape[1:]) == 3)
+            assert np.all( np.array(data2.shape[1:]) == 3)
+            precision = 1e-14*np.max(abs(data1))
+            assert data1 == approx(data2, abs=precision) ,    (f"calcuylated data of {qfull1}  and {qfull2} give a maximal "+
+               "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(abs_err=np.max(abs(data1-data2)),required_precision=precision))
+
+
+
+
