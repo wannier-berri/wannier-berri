@@ -102,7 +102,8 @@ def evaluate_K(func,system,grid,fftlib='fftw',
             fout_name="result", suffix="",
              parameters_K={},
              file_Klist="K_list.pickle",restart=False,Klist_part = 10,
-             parallel=None  # serial by default
+            parallel=None,  # serial by default
+            print_Kpoints=True,
              ):
     """This function evaluates in parallel or serial an integral over the Brillouin zone 
 of a function func, which whould receive only one argument of type Data_K, and return 
@@ -188,10 +189,11 @@ As a result, the integration will be performed over NKFFT x NKdiv
     counter=0
 
     for i_iter in range(adpt_num_iter+1):
-        print ("iteration {0} - {1} points. New points are:".format(i_iter,len([K for K in  K_list if K.res is None])) ) 
-        for i,K in enumerate(K_list):
-          if not K.evaluated:
-            print (" K-point {0} : {1} ".format(i,K))
+        if print_Kpoints:
+            print ("iteration {0} - {1} points. New points are:".format(i_iter,len([K for K in  K_list if K.res is None])) )
+            for i,K in enumerate(K_list):
+              if not K.evaluated:
+                print (" K-point {0} : {1} ".format(i,K))
         counter+=process(paralfunc,K_list,parallel,
                      symgroup=system.symgroup if  symmetrize else None,
                      remote_parameters=remote_parameters)
