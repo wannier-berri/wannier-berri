@@ -83,11 +83,13 @@ calculators_trans={
          'Nonlinear_Hall'   : fermiocean.Nonlinear_Hall         ,
          'eMChA_fsurf_term1'   : fermiocean.eMChA_fsurf_term1         ,
          'eMChA_fder2_term1'   : fermiocean.eMChA_fder2_term1         ,
-         'eMChA_term1'   : fermiocean.eMChA_term1         ,
+         #'eMChA_term1'   : fermiocean.eMChA_term1         ,
          'ddO_test'   : fermiocean.ddO_test       ,
          'ddO_test_fsurf'   : fermiocean.ddO_test_fsurf       ,
-         'eMChA_term2_fsurf'   : fermiocean.eMChA_term2_fsurf       ,
-         'eMChA_term2'   : fermiocean.eMChA_term2       ,
+         #'eMChA_term2_fsurf'   : fermiocean.eMChA_term2_fsurf       ,
+         #'eMChA_term2'   : fermiocean.eMChA_term2       ,
+         'dO_test'   : fermiocean.dO_test       ,
+         'dO_test_fsurf'   : fermiocean.dO_test_fsurf       ,
          }
 
 

@@ -20,6 +20,17 @@ class Identity(Formula_ln):
     def ln(self,ik,inn,out):
         return np.zeros((len(out),len(inn)))
 
+class delta_f(Formula_ln):
+    def __init__(self):
+        self.ndim=2
+        self.TRodd=False
+        self.Iodd=False
+
+    def nn(self,ik,inn,out):
+        return np.tensordot(np.ones((len(inn),len(inn))),np.eye(3),axes = 0)
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
 
 
 class Eavln(Matrix_ln):

@@ -186,7 +186,7 @@ def quadra_magnetoresistance_fsurf(data_K,Efermi,kpart=None,tetra=False,degen_th
     formula  = FormulaProduct ( [velocity,velocity,frml.Omega(data_K,**kwargs_formula),frml.Omega(data_K,**kwargs_formula)],
             name='vel-vel-berry-berry (abuv)')
     res = FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res.data = res.data*(delta_f[None,None,:,:,None] - 1 - delta_f[None,:,None,:,None]*delta_f[None,None,:,None,:]
+    res.data = res.data*(delta_f[None,None,:,None,:] - 1 - delta_f[None,:,None,:,None]*delta_f[None,None,:,None,:]
             +delta_f[None,:,None,:,None]) 
     return res
 
@@ -200,7 +200,7 @@ def quadra_magnetoresistance(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1
     res = FermiOcean(formula1,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res2 = FermiOcean(formula2,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res.data = res.data + res2.data.transpose(0,1,3,2,4) + res2.data.transpose(0,1,3,4,2)
-    res.data = res.data*(delta_f[None,None,:,:,None] - 1 - delta_f[None,:,None,:,None]*delta_f[None,None,:,None,:]
+    res.data = res.data*(delta_f[None,None,:,None,:] - 1 - delta_f[None,:,None,:,None]*delta_f[None,None,:,None,:]
             +delta_f[None,:,None,:,None]) 
     return res
 
@@ -260,95 +260,106 @@ def Nonlinear_Hall(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=Fal
     res2 =  FermiOcean(formula2,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res.data = (delta_f[None,None,:,:] - 1)*(res.data.transpose(0,2,3,1) +res2.data.transpose(0,3,2,1))
     return res
-   
-def eMChA_fsurf_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
-    r"""sigma21tau2 fermi sea (aspu)"""
-    N = None
-    velocity =  data_K.covariant('Ham',commader=1)
-    formula1  = FormulaProduct ( [velocity,frml.DerOmega(data_K,**kwargs_formula),velocity],
-            name='vel-der_berry-vel (aups)')
-    formula2 = FormulaProduct ( [frml.InvMass(data_K),frml.Omega(data_K,**kwargs_formula),velocity],
-            name='mass-berry-vel (apus)')
-    res =  FermiOcean(formula1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res2 =  FermiOcean(formula2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-
-    term1 = res.data.transpose(0,1,4,3,2)+res2.data.transpose(0,1,4,2,3) 
-    term1 = (2*delta_f[N,N,:,N,:] - 2 + delta_f[N,:,N,N,:])*term1
-
-    term2 = res.data.transpose(0,1,4,3,2)+res2.data.transpose(0,1,4,2,3) 
-    term2 = term2[:,:,:,beta_A,alpha_A] - term2[:,:,:,alpha_A,beta_A] #asa
-    term2 = np.einsum('nasa->nas',term2) #as
-
-    res.data = term1 + term2[:,:,:,N,N]
-    return res
-
-def eMChA_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
-    r"""sigma21tau2 fermi sea (aspu)"""
-    N = None
-    velocity =  data_K.covariant('Ham',commader=1)
-    formula1  = FormulaProduct ( [frml.InvMass(data_K),frml.DerOmega(data_K,**kwargs_formula)],
-            name='mass-der_berry (asup)(apus)')
-    formula2 = FormulaProduct ( [frml.Der3E(data_K,**kwargs_formula),frml.Omega(data_K,**kwargs_formula)],
-            name='der3E-berry (aspu)')
-    formula3 = FormulaProduct ( [velocity,frml.Der2Omega(data_K,**kwargs_formula)],
-            name='vel-der2_berry (ausp)')
-    res =  FermiOcean(formula1,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res2 =  FermiOcean(formula2,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res3=  FermiOcean(formula3,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-
-    term1 = res.data.transpose(0,1,2,4,3)+res.data.transpose(0,1,4,2,3)+res2.data+res3.data.transpose(0,1,3,4,2)
-    term1 = (2*delta_f[N,N,:,N,:] - 2 + delta_f[N,:,N,N,:])*term1
-
-    term2 = res.data.transpose(0,1,2,4,3)+res.data.transpose(0,1,4,2,3)+res2.data+res3.data.transpose(0,1,3,4,2)
-    term2 = term2[:,:,:,beta_A,alpha_A] - term2[:,:,:,alpha_A,beta_A] #asa
-    term2 = np.einsum('nasa->nas',term2) #as
-
-    res.data = term1 + term2[:,:,:,N,N]
-    return res
+  
 
 def eMChA_fder2_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
-    r"""sigma21tau2 fermi sea (aspu)"""
+    r"""sigma21tau2 fder2 (daspu)"""
     N = None
     velocity =  data_K.covariant('Ham',commader=1)
-    formula1  = FormulaProduct ( [velocity,frml.Omega(data_K,**kwargs_formula),velocity,velocity],
-            name='vel-berry-vel-vel (ausp)')
-    formula2 = FormulaProduct ( [velocity,frml.Omega(data_K,**kwargs_formula),frml.InvMass(data_K)],
-            name='vel-berry-mass (ausp)')
-    res =  FermiOcean(formula1,data_K,Efermi,tetra,fder=2,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res2 =  FermiOcean(formula2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    formula1_1  = FormulaProduct ( [velocity,frml.Omega(data_K,**kwargs_formula),velocity,velocity],
+            name='vel-berry-vel-vel (aups)')
+    formula1_2 = FormulaProduct ( [velocity,frml.Omega(data_K,**kwargs_formula),frml.InvMass(data_K)],
+            name='vel-berry-mass (aups)')
+    res =  FermiOcean(formula1_1,data_K,Efermi,tetra,fder=2,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res1_2 =  FermiOcean(formula1_2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res.data = -2*(res.data + res1_2.data)
 
-    term1 = (res.data+res2.data).transpose(0,1,3,4,2) 
-    term1 = (2*delta_f[N,N,:,N,:] - 2 + delta_f[N,:,N,N,:])*term1
+    formula2_1  = FormulaProduct( [frml.delta_f(),velocity,frml.Omega(data_K,**kwargs_formula),velocity,velocity],
+            name='delta-vel-berry-vel-vel (aubbps)')
+    formula2_2  = FormulaProduct( [frml.delta_f(),velocity,frml.Omega(data_K,**kwargs_formula),frml.InvMass(data_K)],
+            name='delta-vel-berry-mass (aubbps)')
+    res2_1 =  FermiOcean(formula2_1,data_K,Efermi,tetra,fder=2,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res2_2 =  FermiOcean(formula2_2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    term2 = (res2_1.data + res2_2.data)
+    res.data += np.einsum('naubbps->naups',term2)
 
-    term2 = (res.data+res2.data).transpose(0,1,3,4,2)
-    term2 = term2[:,:,:,beta_A,alpha_A] - term2[:,:,:,alpha_A,beta_A] #asa
-    term2 = np.einsum('nasa->nas',term2) #as
+    term3 = 2*(res2_1.data + res2_2.data).transpose(0,3,1,4,5,6,2) #from usabbp
+    res.data += np.einsum('naubbps->naups',term3)
 
-    res.data = term1 + term2[:,:,:,N,N]
+
+    formula5  = FormulaProduct( [frml.delta_f(),velocity,frml.DerOmega(data_K,**kwargs_formula),velocity],
+            name='delta-vel-derberry-vel (usabpb)')
+    res5 =  FermiOcean(formula5,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    term5 = res5.data.transpose(0,3,1,4,6,5,2) # to aubbps 
+    res.data += np.einsum('naubbps->naups',term5)
+
+    formula6  = FormulaProduct( [velocity,frml.DerOmega(data_K,**kwargs_formula),velocity],
+            name='vel-derberry-vel (aups)')
+    res6 =  FermiOcean(formula6,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res.data += res6.data
+
+    #cross product
+    formula4_1  = FormulaProduct( [velocity,frml.Omega(data_K,**kwargs_formula),velocity,velocity],
+            name='vel-berry-vel-vel (tdxs)') #Civita: pda  tux 
+    formula4_2 = FormulaProduct( [velocity,frml.Omega(data_K,**kwargs_formula),frml.InvMass(data_K)],
+            name='vel-berry-mass (tdxs)') #Civita: pda  tux 
+    res4_1 =  FermiOcean(formula4_1,data_K,Efermi,tetra,fder=2,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res4_2 =  FermiOcean(formula4_1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    term4 = (res4_1.data + res4_2.data).transpose(0,2,1,3,4) # to dtxs
+    term4 = term4[:,:,beta_A,alpha_A,:]-term4[:,:,alpha_A,beta_A,:] # to dus
+
+    res.data = res.data[:,N,:,:,:,:] + term4[:,:,N,:,N,:]
+    res.rank +=1
     return res
 
-def eMChA_term2_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
-    r"""sigma21tau2 fermi fermi surface (aspu)"""
-    N=None
+def eMChA_fsurf_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    r"""sigma21tau2 fermi surface (daspu)"""
+    N = None
     velocity =  data_K.covariant('Ham',commader=1)
-    formula  = FormulaProduct ( [velocity,frml.DerOmega(data_K,**kwargs_formula),velocity],
+    formula1_1  = FormulaProduct ( [velocity,frml.DerOmega(data_K,**kwargs_formula),velocity],
             name='vel-der_berry-vel (aups)')
-    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res.data = res.data.transpose(0,1,4,3,2)*(delta_f[N,N,:,N,:] - 1)
-    return res
+    formula1_2 = FormulaProduct ( [velocity,frml.Omega(data_K,**kwargs_formula),frml.InvMass(data_K)],
+            name='vel-berry-mass (suap)')
+    res =  FermiOcean(formula1_1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res1_2 =  FermiOcean(formula1_2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res.data = -2*(res.data + res1_2.data.transpose(0,3,2,4,1))
+
+    formula2_1  = FormulaProduct( [frml.delta_f(),velocity,frml.DerOmega(data_K,**kwargs_formula),velocity],
+            name='delta-vel-der_berry-vel (aubbps)')
+    formula2_2  = FormulaProduct( [frml.delta_f(),velocity,frml.Omega(data_K,**kwargs_formula),frml.InvMass(data_K)],
+            name='delta-vel-berry-mass (subbap)')
+    res2_1 =  FermiOcean(formula2_1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res2_2 =  FermiOcean(formula2_2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    term2 = (res2_1.data + res2_2.data.transpose(0,5,2,3,4,6,1))
+    res.data += np.einsum('naubbps->naups',term2)
+
+    term3 = 2*(res2_1.data + res2_2.data.transpose(0,5,2,3,4,6,1)).transpose(0,3,1,4,5,6,2) #from usabbp
+    res.data += np.einsum('naubbps->naups',term3)
 
 
-def eMChA_term2(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
-    r"""sigma21tau2 fermi fermi sea (aspu)"""
-    N=None
-    velocity =  data_K.covariant('Ham',commader=1)
-    formula1  = FormulaProduct ( [velocity,frml.Der2Omega(data_K,**kwargs_formula)],
-            name='vel-derder_berry(aups)')
-    formula2  = FormulaProduct ( [frml.InvMass(data_K),frml.DerOmega(data_K,**kwargs_formula)],
-            name='mass-der_berry(asup)')
-    res =  FermiOcean(formula1,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res2 =  FermiOcean(formula2,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res.data = (res.data.transpose(0,1,4,3,2) + res2.data.transpose(0,1,2,4,3) )*(delta_f[N,N,:,N,:] - 1)
+    formula5  = FormulaProduct( [frml.delta_f(),velocity,frml.DerOmega(data_K,**kwargs_formula),velocity],
+            name='delta-vel-derberry-vel (usabpb)')
+    res5 =  FermiOcean(formula5,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    term5 = res5.data.transpose(0,3,1,4,6,5,2) # to aubbps 
+    res.data += np.einsum('naubbps->naups',term5)
+
+    formula6  = FormulaProduct( [velocity,frml.DerOmega(data_K,**kwargs_formula),velocity],
+            name='vel-derberry-vel (aups)')
+    res6 =  FermiOcean(formula6,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res.data += res6.data
+
+    #cross product
+    formula4_1  = FormulaProduct( [velocity,frml.DerOmega(data_K,**kwargs_formula),velocity],
+            name='vel-der_berry-vel (tdxs)') #Civita: pda  tux 
+    formula4_2 = FormulaProduct( [velocity,frml.Omega(data_K,**kwargs_formula),frml.InvMass(data_K)],
+            name='vel-berry-mass (xdts)') #Civita: pda  tux 
+    res4_1 =  FermiOcean(formula4_1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res4_2 =  FermiOcean(formula4_1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    term4 = (res4_1.data + res4_2.data.transpose(0,3,2,1,4)).transpose(0,2,1,3,4) # to dtxs
+    term4 = term4[:,:,beta_A,alpha_A,:]-term4[:,:,alpha_A,beta_A,:] # to dus
+
+    res.data = res.data[:,N,:,:,:,:] + term4[:,:,N,:,N,:]
+    res.rank +=1
     return res
 
 def ddO_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
@@ -362,6 +373,21 @@ def ddO_test_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=Fal
     return res
 
 
+def dO_test_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    formula1  = FormulaProduct ( [ data_K.covariant('Ham',commader=1),frml.Omega(data_K,**kwargs_formula),data_K.covariant('Ham',commader=1)],
+            name='vel-berry-vel')
+    res =  FermiOcean(formula1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    return res
+
+def dO_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    formula1  = FormulaProduct ( [frml.InvMass(data_K),frml.Omega(data_K,**kwargs_formula)],
+            name='mass-berry')
+    formula2  = FormulaProduct ( [data_K.covariant('Ham',commader=1),frml.DerOmega(data_K,**kwargs_formula)],
+            name='vel-der_berry')
+    res =  FermiOcean(formula1,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res2 =  FermiOcean(formula2,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res.data=res.data.transpose(0,1,3,2) +res2.data
+    return res
 
 
 ##################################
