@@ -264,9 +264,9 @@ def Nonlinear_Hall(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=Fal
     r"""sigma21tau1 fermi sea (dpu)"""
     velocity =  data_K.covariant('Ham',commader=1)
     formula = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula),frml.DerOmega(data_K,**kwargs_formula)],
-            name='berry-der_berry ([pu]dbb) (udp) (dup)')
+            name='berry-der_berry ([pu]bdb) (udp) (dup)')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    term1 = np.einsum('pu,ndbb->ndpu',delta_f,res.data)
+    term1 = np.einsum('pu,nbdb->ndpu',delta_f,res.data)
     #term2 = np.einsum('pb,ndbu->ndpu',delta_f,res.data) + np.einsum('pb,ndub->ndpu',delta_f,res.data)
     term2 = res.data.transpose(0,2,3,1) + res.data.transpose(0,1,3,2)
     res.data = term1 - term2
