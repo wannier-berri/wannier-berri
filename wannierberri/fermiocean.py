@@ -144,28 +144,26 @@ def ohmic(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=F
 def linear_magnetoresistance_fsurf(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r""" sigma11tau1 fermi surface"""
     velocity =  data_K.covariant('Ham',commader=1)
-    formula  = FormulaProduct ( [velocity,frml.Omega(data_K,**kwargs_formula),velocity], name='vel-vel-berry (aup)')
-    formula1  = FormulaProduct ( [frml.delta_f(),velocity,frml.Omega(data_K,**kwargs_formula),velocity], name='vel-vel-berry (puabb,aupbb)')
+    formula  = FormulaProduct ( [velocity,frml.Omega(data_K,**kwargs_formula),velocity], name='vel-vel-berry (aup) ([pu]abb) ([au]pbb)')
     res = FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res1 = FermiOcean(formula1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res.data -= np.einsum('naupbb->naup',res1.data)
-    res.data -= np.einsum('naupbb->naup',res1.data.transpose(0,3,2,1,4,5))
+    term2 = np.einsum('au,npbb->naup',delta_f,res.data)
+    term3 = np.einsum('pu,nabb->naup',delta_f,res.data)
+    res.data -= term2 + term3 
     res.data = res.data.transpose(0,1,3,2)
     return res
 
 def linear_magnetoresistance(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r""" sigma11tau1 fermi sea (abu) """
     velocity =  data_K.covariant('Ham',commader=1)
-    formula  = FormulaProduct ( [velocity,frml.DerOmega(data_K,**kwargs_formula)], name='vel-derberry (aup)')
-    formula1  = FormulaProduct ( [frml.InvMass(data_K),frml.Omega(data_K,**kwargs_formula)], name='mass-berry (apu)')
-
-    formula2  = FormulaProduct ( [frml.delta_f(),frml.InvMass(data_K),frml.Omega(data_K,**kwargs_formula)], name='delta-mass-berry (puabb,aupbb)')
-    res = FermiOcean(formula,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res1 = FermiOcean(formula1,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    formula1  = FormulaProduct ( [velocity,frml.DerOmega(data_K,**kwargs_formula)], name='vel-derberry (aup)')
+    formula2  = FormulaProduct ( [frml.InvMass(data_K),frml.Omega(data_K,**kwargs_formula)], name='mass-berry (apu)([pu]abb)([au]pbb)')
+    #formula2  = FormulaProduct ( [frml.delta_f(),frml.InvMass(data_K),frml.Omega(data_K,**kwargs_formula)], name='delta-mass-berry (puabb,aupbb)')
+    res = FermiOcean(formula1,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res2 = FermiOcean(formula2,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res.data += res1.data.transpose(0,1,3,2)
-    res.data -= np.einsum('naupbb->naup',res2.data)
-    res.data -= np.einsum('naupbb->naup',res2.data.transpose(0,3,2,1,4,5))
+    term1 = res.data + res2.data.transpose(0,1,3,2)
+    term2 = np.einsum('au,npbb->naup',delta_f,res2.data)
+    term3 = np.einsum('pu,nabb->naup',delta_f,res2.data)
+    res.data = term1 - term2 - term3
     res.data = res.data.transpose(0,1,3,2)
     return res
 
@@ -181,8 +179,8 @@ def Hall_classic_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers
 
 def Hall_classic(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r"""sigma11tau2 fermi sea"""
-    formula1 = FormulaProduct ( [frml.InvMass(data_K),frml.InvMass(data_K)], name='mass-mass')
-    res =  FermiOcean(formula1,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*factor_Hall_classic
+    formula = FormulaProduct ( [frml.InvMass(data_K),frml.InvMass(data_K)], name='mass-mass')
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*factor_Hall_classic
     res.data = res.data.transpose(0,4,1,2,3)
     res.data = res.data[:,:,:,beta_A,alpha_A]-res.data[:,:,:,alpha_A,beta_A]
     res.data=-0.5*(res.data[:,alpha_A,beta_A,:]-res.data[:,beta_A,alpha_A,:])
@@ -190,27 +188,31 @@ def Hall_classic(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False
     return res
 
 def quadra_magnetoresistance_fsurf(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
-    r""" sigma12au1 fermi surf (abuv) """
+    r""" sigma12au1 fermi surf (apuv) """
     velocity =  data_K.covariant('Ham',commader=1)
     formula  = FormulaProduct ( [velocity,velocity,frml.Omega(data_K,**kwargs_formula),frml.Omega(data_K,**kwargs_formula)],
-            name='vel-vel-berry-berry (abuv)')
+            name='vel-vel-berry-berry (apuv)([pv]abub)([au]pbvb)([au][pv]bcbc) ')
     res = FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res.data = res.data*(delta_f[None,None,:,None,:] - 1 - delta_f[None,:,None,:,None]*delta_f[None,None,:,None,:]
-            +delta_f[None,:,None,:,None]) 
+    term2 = np.einsum('pv,nabub->napuv',delta_f,res.data)
+    term3 = np.einsum('au,npbvb->napuv',delta_f,res.data)
+    term4 = np.einsum('au,pv,nbcbc->napuv',delta_f,delta_f,res.data)
+    res.data += - term2 - term3 + term4
     return res
 
 def quadra_magnetoresistance(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
-    r""" sigma12au1 fermi sea (abuv) """
+    r""" sigma12au1 fermi sea (apuv) """
     velocity =  data_K.covariant('Ham',commader=1)
     formula1  = FormulaProduct ( [frml.InvMass(data_K),frml.Omega(data_K,**kwargs_formula),frml.Omega(data_K,**kwargs_formula)],
-            name='mass-berry-berry (abuv)')
-    formula2 = FormulaProduct ( [velocity,frml.DerOmega(data_K,**kwargs_formula),frml.Omega(data_K,**kwargs_formula)],
-            name='vel-der_berry-berry (aubv)(avbu)')
+            name='mass-berry-berry (apuv) (ab[pv]ub) (pb[au]vb) ([au][pv]bcbc)')
+    formula2  = FormulaProduct ( [velocity,frml.DerOmega(data_K,**kwargs_formula),frml.Omega(data_K,**kwargs_formula)],
+            name='vel-derberry-berry (aupv) (avpu) (a[pv]ubb) (p[au]vbb) ([au][pv]bbcc)')
     res = FermiOcean(formula1,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res2 = FermiOcean(formula2,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res.data = res.data + res2.data.transpose(0,1,3,2,4) + res2.data.transpose(0,1,3,4,2)
-    res.data = res.data*(delta_f[None,None,:,None,:] - 1 - delta_f[None,:,None,:,None]*delta_f[None,None,:,None,:]
-            +delta_f[None,:,None,:,None]) 
+    term1 = res.data + res2.data.transpose(0,1,3,2,4)+res2.data.transpose(0,1,3,4,2)
+    term2 = np.einsum('pv,nabub->napuv',delta_f,res.data) + np.einsum('pv,naubb->napuv',delta_f,res2.data)
+    term3 = np.einsum('au,npbvb->napuv',delta_f,res.data) + np.einsum('au,npvbb->napuv',delta_f,res2.data)
+    term4 = np.einsum('au,pv,nbcbc->napuv',delta_f,delta_f,res.data) + np.einsum('au,pv,nbbcc->napuv',delta_f,delta_f,res2.data)
+    res.data = term1 - term2  - term3 + term4
     return res
 
 def berry_dipole_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
