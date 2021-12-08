@@ -89,6 +89,10 @@ class Path(Grid):
                     self.breaks.append(self.K_list.shape[0]-1)
         self.breaks=np.array(self.breaks,dtype=int)
 
+    def __str__(self):
+        return "Path() with {} points and labels {}".format( len(self.K_list) , self.labels)
+
+
     @property 
     def recip_lattice(self):
         return self.symgroup.recip_lattice

@@ -307,7 +307,7 @@ class TABresult(result.Result):
             Emax=E.max()+0.5
 
         klineall=[]
-        for ib in iband:
+        for ib in range(E.shape[1]):
             e=E[:,ib]
             selE=(e<=Emax)*(e>=Emin)
             klineselE=kline[selE]
@@ -322,10 +322,10 @@ class TABresult(result.Result):
             kmax=kline.max()
 
         if quantity is not None:
-            data=self.get_data(quantity='berry',iband=iband,component=component)
+            data=self.get_data(quantity=quantity,iband=iband,component=component)
             print ("shape of data",data.shape)
             if mode=="fatband" :
-                for ib in iband:
+                for ib in range(E.shape[1]):
                     e=E[:,ib]
                     selE=(e<=Emax)*(e>=Emin)
                     klineselE=kline[selE]
