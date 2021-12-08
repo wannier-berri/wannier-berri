@@ -124,12 +124,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
             file_Klist+=".pickle"
     cnt_exclude=0
 
-    # TODO : implement and use the repr() or str() method of grid/path
-    try:
-        print ("using NKdiv={}, NKFFT={}, NKtot={}".format( grid.div,grid.FFT,grid.dense))
-    except:
-        pass
-
+    print (f"The set of k points is a {grid}")
 
     if parallel.method=='ray':
         ray=parallel.ray

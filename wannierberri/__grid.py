@@ -63,6 +63,9 @@ class Grid():
         self.div,self.FFT=determineNK(system.periodic,NKdiv,NKFFT,NK,NKFFT_recommended,self.symgroup,length=length,length_FFT=length_FFT)
         self.findif=FiniteDifferences(self.recip_lattice,self.FFT)
 
+    def __str__(self):
+        return "Grid() with NKdiv={}, NKFFT={}, NKtot={}".format( self.div,self.FFT,self.dense)
+
     @property
     def dense(self):
         return self.div*self.FFT
