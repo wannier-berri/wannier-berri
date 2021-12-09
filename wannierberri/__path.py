@@ -90,7 +90,8 @@ class Path(Grid):
             self.labels[self.K_list.shape[0]-1] = labels[-1]
         self.breaks=np.array(self.breaks,dtype=int)
 
-    def __str__(self):
+    @property
+    def str_short(self):
         return "Path() with {} points and labels {}".format( len(self.K_list) , self.labels)
 
 
