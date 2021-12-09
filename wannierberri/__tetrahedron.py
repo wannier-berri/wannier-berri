@@ -149,15 +149,6 @@ def weights_parallelepiped(efermi,Ecenter,Ecorner,der=0):
     return occ/12.
 
 
-
-def average_degen(E,weights):
-    # make sure that degenerate bands have same weights
-    borders=np.hstack( ( [0], np.where( (E[1:]-E[:-1])>1e-5)[0]+1, [len(E)]) )
-    degengroups=[ (b1,b2) for b1,b2 in zip(borders,borders[1:]) if b2-b1>1]
-    for b1,b2 in degengroups:
-       weights[b1:b2]=weights[b1:b2].mean()
-
-
 class TetraWeights():
     """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
        the Fermi level list remains the same throughout calculation"""
