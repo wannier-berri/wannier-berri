@@ -83,10 +83,11 @@ class Path(Grid):
                     else: 
                         _nk=round( np.linalg.norm((start-end).dot(self.recip_lattice))/dk )+1
                         if _nk==1 : _nk=2
-                    self.K_list=np.vstack( (self.K_list,start[None,:]+np.linspace(0,1.,_nk)[:,None]*(end-start)[None,:] ) )
-                    self.labels[self.K_list.shape[0]-1]=l2
+                    self.K_list=np.vstack( (self.K_list,start[None,:]+np.linspace(0,1.,_nk-1, endpoint=False)[:,None]*(end-start)[None,:] ) )
                 elif end is None:
                     self.breaks.append(self.K_list.shape[0]-1)
+            self.K_list = np.vstack( (self.K_list, k_nodes[-1]) )
+            self.labels[self.K_list.shape[0]-1] = labels[-1]
         self.breaks=np.array(self.breaks,dtype=int)
 
     def __str__(self):
