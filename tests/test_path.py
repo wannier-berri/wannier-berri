@@ -70,8 +70,16 @@ def test_path(system_Haldane_PythTB,quantities_tab,get_component_list):
             data_ref = tab_result_ref.results.get(quant).get_component(comp)
             assert data == approx(data_ref), (f"tabulation along path gave a wrong result for quantity {quant} component {comp} "+
                 "with a maximal difference {}".format(max(abs(data-data_ref)))   )
-#            assert np.all( np.array(data.shape[1:]) == 3)
-#            prec=extra_precision[quant] if quant in extra_precision else None
-#            comparer(frmsf_name, quant+comp+suffix,  suffix_ref=compare_quant(quant)+comp+suffix_ref)
 
-
+    ## only checks that the plot runs without errors, not checkoing the result of the plot
+    tab_result.plot_path_fat( path,
+              quantity='berry',
+              component='z',
+              save_file=os.path.join(OUTPUT_DIR,"Haldane-berry-VB.pdf"),
+              Eshift=0,
+              Emin=-2,  Emax=2,
+              iband=None,
+              mode="fatband",
+              fatfactor=20,
+              cut_k=True
+              )

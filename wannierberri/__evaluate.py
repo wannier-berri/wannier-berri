@@ -125,7 +125,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
             file_Klist+=".pickle"
     cnt_exclude=0
 
-    print (f"The set of k points is a {grid}")
+    print (f"The set of k points is a {grid.str_short}")
 
     if parallel.method=='ray':
         ray=parallel.ray
