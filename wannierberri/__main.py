@@ -151,7 +151,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     symmetrize : bool
         symmetrize the result (always `True` if `use_irred_kpt == True`)
     print_Kpoints : bool
-        print the list of K points (default: True)
+        print the list of K points
     parameters : dict  
         `{'name':value,...}` , Each quantity that 
         recognizes a parameter with the given name will use it
@@ -247,7 +247,7 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
     parallel : :class:`~wannierberri.Parallel`
         object describing parallelization scheme
     print_Kpoints : bool
-        print the list of K points (default: True)
+        print the list of K points
     parameters : dict  
         `{'name':value,...}` , Each quantity that 
         recognizes a parameter with the given name will use it
