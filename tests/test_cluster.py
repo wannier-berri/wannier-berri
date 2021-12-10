@@ -77,21 +77,3 @@ def test_cluster_script(cluster_type, check_command_output):
     os.replace(script_name, os.path.join(OUTPUT_DIR, script_name))
 
 
-def test_ray_cluster():
-    "here we justcheck that the initialization works with some dummy ray_init parameters"
-    from wannierberri import Parallel
-    ray_init = {}
-    ray_init['address'] = ''
-    ray_init['_node_ip_address']  =  "0.0.0.0"
-    ray_init['_redis_password']   = 'some_password'
-
-    parallel = Parallel(
-                   method="ray",
-                   num_cpus=4  ,
-                   npar_k = 0 , 
-                   ray_init=ray_init ,     # add extra parameters for ray.init()
-                   cluster=True , # add parameters for ray.init() for the slurm cluster
-                   progress_step_percent  = 1  ,  #
-                 )
-
-
