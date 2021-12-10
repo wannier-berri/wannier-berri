@@ -11,8 +11,12 @@ class Parallel():
         a method to be used for parallelization 'serial' or 'ray'
     num_cpus : int 
         number of parallel processes. If <=0  - serial execution 
-    chunksize : int
-        chunksize for distributing K points among processes. If not set or if <=0, set to max(1, min(int(numK / num_proc / 200), 10)). Relevant only if num_proc > 0.
+    cluster : bool
+        set to `True` to use a multi-node ray cluster ( see also `wannierberri.cluster <file:///home/stepan/github/wannier-berri-org/html/docs/parallel.html#multi-node-mode>`__  module)
+    ray_init : dict
+        parameters to be passed to `ray.init()`. Use only if you know wwhat you are doing.
+    progress_step_percent : int or float
+        progress (and estimated time to end) will be printed after each percent is completed
 """
 
     def __init__(self,
@@ -21,8 +25,7 @@ class Parallel():
                    npar_k = 0 , 
                    ray_init={} ,     # add extra parameters for ray.init()
                    cluster=False , # add parameters for ray.init() for the slurm cluster
-                   progress_step_percent  = 1  ,  #
-                   progress_timeout = None  # relevant only for ray, seconds
+                   progress_step_percent  = 1 
                  ):
 
         if method is None:
