@@ -25,8 +25,7 @@ def parallel_serial():
                    num_cpus=0  ,
                    npar_k = 0 , 
                    progress_step_percent  = 1  ,  #
-                   progress_timeout = None  # relevant only for ray, seconds
-                 )
+             )
 
 
 
@@ -46,7 +45,6 @@ def parallel_ray():
                    ray_init={} ,     # add extra parameters for ray.init()
                    cluster=False , # add parameters for ray.init() for the slurm cluster
                    progress_step_percent  = 1  ,  #
-                   progress_timeout = None  # relevant only for ray, seconds
                  )
 
 
