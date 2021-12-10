@@ -48,14 +48,17 @@ class Parallel():
         elif self.method == "ray" : 
             ray_init_loc={}
             if cluster:
-                ray_init_loc['address']          = 'auto'
-                ray_init_loc['_node_ip_address'] = os.environ["ip_head"].split(":")[0]
-                ray_init_loc['_redis_password']  = os.environ["redis_password"]
-                for option in 'address','_node_ip_address','_redis_password':
-                    if option in ray_init:
-                        if ray_init_loc[option]!=ray_init[option]:
-                            print (f"WARNING: value of parameter {option} taken from environment `{ray_init_loc[option]}`"+
-                                   f" will be overwritten by the vaue provided in ray_init : {ray_init[option]}. Proceed if you know what you are doing.") 
+
+                def set_opt(opt,def_val):
+                    if opt not in ray_init:
+                        ray_init_loc[opt] = def_val()
+                    else:
+                        print (f"WARNING: the ray cluster will use '{ray_init[opt]}' provided in ray_init")
+
+                set_opt('address'          , lambda : 'auto')
+                set_opt('_node_ip_address' , lambda : os.environ["ip_head"].split(":")[0])
+                set_opt('_redis_password'  , lambda : os.environ["redis_password"])
+
             ray_init_loc.update(ray_init)
             if num_cpus>0:
                 ray_init_loc['num_cpus']=num_cpus
