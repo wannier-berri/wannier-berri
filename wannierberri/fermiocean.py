@@ -211,7 +211,6 @@ class FermiOcean():
 
     def __init__(self , formula , data_K,  Efermi, tetra,fder,degen_thresh=1e-4,degen_Kramers=False):
 
-        print (f"fermiocean using degen_thresh = {degen_thresh}")
         ndim=formula.ndim
         self.Efermi=Efermi
         self.fder=fder
