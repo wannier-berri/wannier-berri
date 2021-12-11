@@ -47,49 +47,43 @@ from . import  __kubo   as kubo
 # may have extra parameters, that should be described in the 'additional_parameters' dictionary (see below)
 
 calculators_trans={ 
-         'spin'                     : fermiocean.spin                   ,
-         'Morb'                     : fermiocean.Morb                   ,
-         'Morb_test'                : fermiocean.Morb_test              ,
-         'ahc'                      : fermiocean.AHC                    ,
-         'ahc_test'                 : fermiocean.AHC_test               ,
-         'cumdos'                   : fermiocean.cumdos                 ,
-         'dos'                      : fermiocean.dos                    ,
-         'conductivity_ohmic'       : fermiocean.ohmic                  ,
-         'conductivity_ohmic_fsurf' : fermiocean.ohmic_fsurf            ,
-         'berry_dipole'             : fermiocean.berry_dipole           ,
-         'berry_dipole_test'        : fermiocean.berry_dipole_test      ,
-         'berry_dipole_fsurf'       : fermiocean.berry_dipole_fsurf     ,
-         'gyrotropic_Korb'          : fermiocean.gme_orb                ,
-         'gyrotropic_Korb_test'     : fermiocean.gme_orb_test           ,
-         'gyrotropic_Korb_fsurf'    : fermiocean.gme_orb_fsurf          ,
-         'gyrotropic_Kspin'         : fermiocean.gme_spin               ,
-         'gyrotropic_Kspin_fsurf'   : fermiocean.gme_spin_fsurf         ,
-         'Hall_classic'             : fermiocean.Hall_classic           , 
-         'Hall_classic_fsurf'       : fermiocean.Hall_classic_fsurf     , 
-         'Hall_morb_fsurf'          : fermiocean.Hall_morb_fsurf        ,
-         'Hall_spin_fsurf'          : fermiocean.Hall_spin_fsurf        ,
-         'Der3E'                    : fermiocean.Der3E                  ,
-         'Der3E_fsurf'              : fermiocean.Der3E_fsurf            ,
-         'Der3E_fder2'              : fermiocean.Der3E_fder2            ,
-         'Hplus_der'                : fermiocean.Hplus_der              ,
-         'Hplus_der_test'           : fermiocean.Hplus_der_test         ,
-         'shc_static_qiao'          : fermiocean.spin_hall_qiao         ,
-         'shc_static_ryoo'          : fermiocean.spin_hall_ryoo         ,
-         'linear_magnetoresistance_fsurf'   : fermiocean.linear_magnetoresistance_fsurf         ,
-         'linear_magnetoresistance'   : fermiocean.linear_magnetoresistance         ,
-         'quadra_magnetoresistance_fsurf'   : fermiocean.quadra_magnetoresistance_fsurf         ,
-         'quadra_magnetoresistance'   : fermiocean.quadra_magnetoresistance         ,
-         'Nonlinear_Hall_fsurf'   : fermiocean.Nonlinear_Hall_fsurf         ,
-         'Nonlinear_Hall'   : fermiocean.Nonlinear_Hall         ,
-         'eMChA_fsurf_term1'   : fermiocean.eMChA_fsurf_term1         ,
-         'eMChA_fder2_term1'   : fermiocean.eMChA_fder2_term1         ,
-         'eMChA_term1'   : fermiocean.eMChA_term1         ,
-         'ddO_test'   : fermiocean.ddO_test       ,
-         'ddO_test_fsurf'   : fermiocean.ddO_test_fsurf       ,
-         #'eMChA_term2_fsurf'   : fermiocean.eMChA_term2_fsurf       ,
-         #'eMChA_term2'   : fermiocean.eMChA_term2       ,
-         'dO_test'   : fermiocean.dO_test       ,
-         'dO_test_fsurf'   : fermiocean.dO_test_fsurf       ,
+         'spin'                            : fermiocean.spin                          ,
+         'Morb'                            : fermiocean.Morb                          ,
+         'Morb_test'                       : fermiocean.Morb_test                     ,
+         'ahc'                             : fermiocean.AHC                           ,
+         'ahc_test'                        : fermiocean.AHC_test                      ,
+         'cumdos'                          : fermiocean.cumdos                        ,
+         'dos'                             : fermiocean.dos                           ,
+         'conductivity_ohmic'              : fermiocean.ohmic                         ,
+         'conductivity_ohmic_fsurf'        : fermiocean.ohmic_fsurf                   ,
+         'berry_dipole'                    : fermiocean.berry_dipole                  ,
+         'berry_dipole_test'               : fermiocean.berry_dipole_test             ,
+         'berry_dipole_fsurf'              : fermiocean.berry_dipole_fsurf            ,
+         'gyrotropic_Korb'                 : fermiocean.gme_orb                       ,
+         'gyrotropic_Korb_test'            : fermiocean.gme_orb_test                  ,
+         'gyrotropic_Korb_fsurf'           : fermiocean.gme_orb_fsurf                 ,
+         'gyrotropic_Kspin'                : fermiocean.gme_spin                      ,
+         'gyrotropic_Kspin_fsurf'          : fermiocean.gme_spin_fsurf                ,
+         'Hall_classic'                    : fermiocean.Hall_classic                  , 
+         'Hall_classic_fsurf'              : fermiocean.Hall_classic_fsurf            , 
+         'Hall_morb_fsurf'                 : fermiocean.Hall_morb_fsurf               ,
+         'Hall_spin_fsurf'                 : fermiocean.Hall_spin_fsurf               ,
+         'Der3E'                           : fermiocean.Der3E                         ,
+         'Der3E_fsurf'                     : fermiocean.Der3E_fsurf                   ,
+         'Der3E_fder2'                     : fermiocean.Der3E_fder2                   ,
+         'Hplus_der'                       : fermiocean.Hplus_der                     ,
+         'Hplus_der_test'                  : fermiocean.Hplus_der_test                ,
+         'shc_static_qiao'                 : fermiocean.spin_hall_qiao                ,
+         'shc_static_ryoo'                 : fermiocean.spin_hall_ryoo                ,
+         'linear_magnetoresistance_fsurf'  : fermiocean.linear_magnetoresistance_fsurf,
+         'linear_magnetoresistance'        : fermiocean.linear_magnetoresistance      ,
+         'quadra_magnetoresistance_fsurf'  : fermiocean.quadra_magnetoresistance_fsurf,
+         'quadra_magnetoresistance'        : fermiocean.quadra_magnetoresistance      ,
+         'Nonlinear_Hall_fsurf'            : fermiocean.Nonlinear_Hall_fsurf          ,
+         'Nonlinear_Hall'                  : fermiocean.Nonlinear_Hall                ,
+         'eMChA_fsurf'                     : fermiocean.eMChA_fsurf                   ,
+         'eMChA_fder2'                     : fermiocean.eMChA_fder2                   ,
+         'eMChA'                           : fermiocean.eMChA                         ,
          }
 
 
@@ -166,35 +160,36 @@ calculators.update(calculators_opt)
 
 
 descriptions=defaultdict(lambda:"no description")
-descriptions['spin']                        ="Total Spin polarization per unit cell"
-descriptions['Morb']                        ="Total orbital magnetization, mu_B per unit cell"
-descriptions['ahc']                         ="Anomalous hall conductivity (S/cm)"
-descriptions['cumdos']                      ="Cumulative density of states"
-descriptions['dos']                         ="density of states"
-descriptions['conductivity_ohmic']          ="ohmic conductivity in S/cm for tau={} s . Fermi-sea formula".format(TAU_UNIT)
-descriptions['conductivity_ohmic_fsurf']    ="ohmic conductivity in S/cm for tau={} s . Fermi-surface formula".format(TAU_UNIT)
-descriptions['berry_dipole']                ="berry curvature dipole (dimensionless) - Fermi-sea formula"
-descriptions['berry_dipole_fsurf']          ="berry curvature dipole (dimensionless)  - Fermi-surface formula"
-descriptions['gyrotropic_Korb']             ="GME tensor, orbital part (Ampere) - Fermi-sea formula"
-descriptions['gyrotropic_Korb_fsurf']       ="GME tensor, orbital part (Ampere) - Fermi-surface formula"
-descriptions['gyrotropic_Kspin']            ="GME tensor, spin part (Ampere)  - Fermi-sea formula"
-descriptions['gyrotropic_Kspin_fsurf']      ="GME tensor, spin part (Ampere)  - Fermi-surface formula"
-descriptions['Hall_classic_fsurf']          ="classical Hall coefficient, in S/(cm*T) for tau={} s. - Fermi-surface formula".format(TAU_UNIT)
-descriptions['Hall_morb_fsurf']             ="Low field AHE, orbital part, in S/(cm*T). - Fermi-surface formula"
-descriptions['Hall_spin_fsurf']             ="Low field AHE, spin    part, in S/(cm*T). - Fermi_surface formula"
-descriptions['opt_conductivity']            ="Optical conductivity in S/cm"
-descriptions['Faraday']                     ="Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
-descriptions['opt_SHCryoo']                 ="Ryoo's Optical spin Hall conductivity in hbar/e S/cm (PRB RPS19)"
-descriptions['opt_SHCqiao']                 ="Qiao's Optical spin Hall conductivity in hbar/e S/cm (PRB QZYZ18)"
-descriptions['opt_shiftcurrent']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
-descriptions['linear_magnetoresistance_fsurf']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
-descriptions['linear_magnetoresistance']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
-descriptions['quadra_magnetoresistance_fsurf']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
-descriptions['quadra_magnetoresistance']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
-descriptions['Nonlinear_Hall_fsurf']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
-descriptions['Nonlinear_Hall']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
-descriptions['eMChA_fsurf_term1']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
-descriptions['eMChA_fder2_term1']            ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+descriptions['spin']                           ="Total Spin polarization per unit cell"
+descriptions['Morb']                           ="Total orbital magnetization, mu_B per unit cell"
+descriptions['ahc']                            ="Anomalous hall conductivity (S/cm)"
+descriptions['cumdos']                         ="Cumulative density of states"
+descriptions['dos']                            ="density of states"
+descriptions['conductivity_ohmic']             ="ohmic conductivity in S/cm for tau={} s . Fermi-sea formula".format(TAU_UNIT)
+descriptions['conductivity_ohmic_fsurf']       ="ohmic conductivity in S/cm for tau={} s . Fermi-surface formula".format(TAU_UNIT)
+descriptions['berry_dipole']                   ="berry curvature dipole (dimensionless) - Fermi-sea formula"
+descriptions['berry_dipole_fsurf']             ="berry curvature dipole (dimensionless)  - Fermi-surface formula"
+descriptions['gyrotropic_Korb']                ="GME tensor, orbital part (Ampere) - Fermi-sea formula"
+descriptions['gyrotropic_Korb_fsurf']          ="GME tensor, orbital part (Ampere) - Fermi-surface formula"
+descriptions['gyrotropic_Kspin']               ="GME tensor, spin part (Ampere)  - Fermi-sea formula"
+descriptions['gyrotropic_Kspin_fsurf']         ="GME tensor, spin part (Ampere)  - Fermi-surface formula"
+descriptions['Hall_classic_fsurf']             ="classical Hall coefficient, in S/(cm*T) for tau={} s. - Fermi-surface formula".format(TAU_UNIT)
+descriptions['Hall_morb_fsurf']                ="Low field AHE, orbital part, in S/(cm*T). - Fermi-surface formula"
+descriptions['Hall_spin_fsurf']                ="Low field AHE, spin    part, in S/(cm*T). - Fermi_surface formula"
+descriptions['opt_conductivity']               ="Optical conductivity in S/cm"
+descriptions['Faraday']                        ="Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
+descriptions['opt_SHCryoo']                    ="Ryoo's Optical spin Hall conductivity in hbar/e S/cm (PRB RPS19)"
+descriptions['opt_SHCqiao']                    ="Qiao's Optical spin Hall conductivity in hbar/e S/cm (PRB QZYZ18)"
+descriptions['opt_shiftcurrent']               ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+#descriptions['linear_magnetoresistance_fsurf'] ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+#descriptions['linear_magnetoresistance']       ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+#descriptions['quadra_magnetoresistance_fsurf'] ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+#descriptions['quadra_magnetoresistance']       ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+#descriptions['Nonlinear_Hall_fsurf']           ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+#descriptions['Nonlinear_Hall']                 ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+#descriptions['eMChA_fsurf']                    ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+#descriptions['eMChA_fder2']                    ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+#descriptions['eMChA']                          ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
 
 # omega - for optical properties of insulators
 # Efrmi - for transport properties of (semi)conductors

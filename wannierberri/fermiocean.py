@@ -1,5 +1,5 @@
 import numpy as np
-from .__utility import  alpha_A,beta_A, TAU_UNIT
+from .__utility import  alpha_A,beta_A, TAU_UNIT,delta_f,Levi_Civita
 from collections import defaultdict
 from . import __result as result
 from math import ceil
@@ -29,18 +29,6 @@ factor_Hall_classic=elementary_charge**2*Ang_SI/hbar**3  # first, transform to S
 factor_Hall_classic*=elementary_charge**3/hbar*TAU_UNIT**2  # multiply by a dimensional factor - now in A^3*s^5*cm/(J^2*tau_unit^2) = S/(T*m*tau_unit^2)
 factor_Hall_classic*=1e-2   #  finally transform to S/(T*cm*tau_unit^2)
 
-#########
-# tools #
-#########
-delta_f =  np.eye(3)
-
-Levi_Civita = np.zeros((3,3,3))
-Levi_Civita[1,2,0] = 1
-Levi_Civita[2,1,0] = -1
-Levi_Civita[2,0,1] = 1
-Levi_Civita[0,2,1] = -1
-Levi_Civita[0,1,2] = 1
-Levi_Civita[1,0,2] = -1
 
 #############
 # functions #
@@ -165,11 +153,11 @@ def ohmic(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=F
 def linear_magnetoresistance_fsurf(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r""" sigma11tau1 fermi surface"""
     velocity =  data_K.covariant('Ham',commader=1)
-    formula  = FormulaProduct ( [velocity,frml.Omega(data_K,**kwargs_formula),velocity], name='vel-vel-berry (aup) ([pu]abb) ([au]pbb)')
+    formula  = FormulaProduct ( [velocity,frml.Omega(data_K,**kwargs_formula),velocity], name='vel-berry-vel (aup) ([pu]abb) ([au]pbb)')
     res = FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    term2 = np.einsum('au,npbb->naup',delta_f,res.data)
-    term3 = np.einsum('pu,nabb->naup',delta_f,res.data)
-    res.data -= term2 + term3 
+    term2 = np.einsum('pu,nabb->naup',delta_f,res.data)
+    term3 = np.einsum('au,npbb->naup',delta_f,res.data)
+    res.data = -res.data + term2 + term3 
     res.data = res.data.transpose(0,1,3,2)
     return res
 
@@ -182,9 +170,9 @@ def linear_magnetoresistance(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1
     res = FermiOcean(formula1,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res2 = FermiOcean(formula2,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     term1 = res.data + res2.data.transpose(0,1,3,2)
-    term2 = np.einsum('au,npbb->naup',delta_f,res2.data)
-    term3 = np.einsum('pu,nabb->naup',delta_f,res2.data)
-    res.data = term1 - term2 - term3
+    term2 = np.einsum('pu,nabb->naup',delta_f,res2.data)
+    term3 = np.einsum('au,npbb->naup',delta_f,res2.data)
+    res.data = -term1 + term2 + term3
     res.data = res.data.transpose(0,1,3,2)
     return res
 
@@ -214,9 +202,9 @@ def quadra_magnetoresistance_fsurf(data_K,Efermi,kpart=None,tetra=False,degen_th
             name='vel-vel-berry-berry (apuv)([pv]abub)([au]pbvb)([au][pv]bcbc) ')
     res = FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     term2 = np.einsum('pv,nabub->napuv',delta_f,res.data)
-    term3 = np.einsum('au,npbvb->napuv',delta_f,res.data)
-    term4 = np.einsum('au,pv,nbcbc->napuv',delta_f,delta_f,res.data)
-    res.data += - term2 - term3 + term4
+    term3 = np.einsum('au,pv,nbcbc->napuv',delta_f,delta_f,res.data)
+    term4 = np.einsum('au,npbvb->napuv',delta_f,res.data)
+    res.data += - term2 + term3 - term4
     return res
 
 def quadra_magnetoresistance(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
@@ -230,9 +218,9 @@ def quadra_magnetoresistance(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1
     res2 = FermiOcean(formula2,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     term1 = res.data + res2.data.transpose(0,1,3,2,4)+res2.data.transpose(0,1,3,4,2)
     term2 = np.einsum('pv,nabub->napuv',delta_f,res.data) + np.einsum('pv,naubb->napuv',delta_f,res2.data)
-    term3 = np.einsum('au,npbvb->napuv',delta_f,res.data) + np.einsum('au,npvbb->napuv',delta_f,res2.data)
-    term4 = np.einsum('au,pv,nbcbc->napuv',delta_f,delta_f,res.data) + np.einsum('au,pv,nbbcc->napuv',delta_f,delta_f,res2.data)
-    res.data = term1 - term2  - term3 + term4
+    term3 = np.einsum('au,pv,nbcbc->napuv',delta_f,delta_f,res.data) + np.einsum('au,pv,nbbcc->napuv',delta_f,delta_f,res2.data)
+    term4 = np.einsum('au,npbvb->napuv',delta_f,res.data) + np.einsum('au,npvbb->napuv',delta_f,res2.data)
+    res.data = term1 - term2  + term3 - term4
     return res
 
 def berry_dipole_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
@@ -293,7 +281,7 @@ def Nonlinear_Hall(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=Fal
     return res
   
 
-def eMChA_fder2_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+def eMChA_fder2(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r"""sigma21tau2 fder2 (daups)"""
     velocity =  data_K.covariant('Ham',commader=1)
     formula1  = FormulaProduct ( [velocity,frml.Omega(data_K,**kwargs_formula),velocity,velocity],
@@ -304,21 +292,20 @@ def eMChA_fder2_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=
     res2 =  FermiOcean(formula2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     tmp = (res.data - res2.data)
     term1 = 2*tmp
-    term2 = np.einsum('au,nbbps->naups',delta_f,tmp)
-    term3 = 2*np.einsum('us,nabbp->naups',delta_f,tmp)
+    term2 = 2*np.einsum('us,nabbp->naups',delta_f,tmp)
+    term3 = np.einsum('au,nbbps->naups',delta_f,tmp)
     formula3  = FormulaProduct ( [velocity,frml.DerOmega(data_K,**kwargs_formula),velocity],
             name='vel-derberry-vel (aups) ([us]abpb)')
     res3 =  FermiOcean(formula3,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    term4 = res3.data
-    term5 = np.einsum('us,nabpb->naups',delta_f,res3.data)
+    term4 = np.einsum('us,nabpb->naups',delta_f,res3.data)
+    term5 = res3.data
     
     # cross product term [xub][pta]xtbs
-    termcross = np.einsum('xub,nxtbs->nuts',Levi_Civita,tmp) 
-    termcross = np.einsum('pta,nuts->naups',Levi_Civita,termcross) 
-    res.data = -term1 + term2 + term3 - term4 + term5 + termcross
+    termcross = np.einsum('xub,pta,nxtbs->naups',Levi_Civita,Levi_Civita,tmp) 
+    res.data = -(-term1 + term2 + term3 + term4 - term5 + termcross)
     return res
 
-def eMChA_fsurf_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+def eMChA_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r"""sigma21tau2 fermi surface (daups)"""
     velocity =  data_K.covariant('Ham',commader=1)
     formula1  = FormulaProduct ( [frml.InvMass(data_K),frml.Omega(data_K,**kwargs_formula),velocity],
@@ -329,18 +316,17 @@ def eMChA_fsurf_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=
     res2 =  FermiOcean(formula2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     tmp = res.data.transpose(0,1,3,2,4) + res2.data 
     term1 = 2*tmp
-    term2 = np.einsum('au,nbbps->naups',delta_f,tmp)
-    term3 = 2*np.einsum('us,nabbp->naups',delta_f,res.data)
-    term4 = res2.data
-    term5 = np.einsum('us,nabpb->naups',delta_f,res2.data)
+    term2 = 2*np.einsum('us,nabbp->naups',delta_f,res.data)
+    term3 = np.einsum('au,nbbps->naups',delta_f,tmp)
+    term4 = np.einsum('us,nabpb->naups',delta_f,res2.data)
+    term5 = res2.data
     
     # cross product term [xub][pta]xtbs
-    termcross = np.einsum('xub,nxtbs->nuts',Levi_Civita,tmp) 
-    termcross = np.einsum('pta,nuts->naups',Levi_Civita,termcross) 
-    res.data = -term1 + term2 + term3 - term4 + term5 + termcross
+    termcross = np.einsum('xub,pta,nxtbs->naups',Levi_Civita,Levi_Civita,tmp) 
+    res.data = -(-term1 + term2 + term3 + term4 - term5 + termcross)
     return res
 
-def eMChA_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+def eMChA(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r"""sigma21tau2 fermi sea (daups)"""
     velocity =  data_K.covariant('Ham',commader=1)
     formula1  = FormulaProduct ( [frml.Der3E(data_K),frml.Omega(data_K,**kwargs_formula)],
@@ -354,42 +340,14 @@ def eMChA_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,
     res3 =  FermiOcean(formula3,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     tmp = (res.data.transpose(0,1,4,2,3)+res2.data.transpose(0,1,3,2,4)+res2.data.transpose(0,1,3,4,2) +res3.data) 
     term1 = 2*tmp
-    term2 = np.einsum('au,nbbps->naups',delta_f,tmp)
-    term3 = 2*np.einsum('us,nabbp->naups',delta_f,res2.data + res.data.transpose(0,1,2,4,3))
-    term4 = res2.data.transpose(0,1,3,4,2) + res3.data 
-    term5 = np.einsum('us,nabbp->naups',delta_f,res2.data)
+    term2 = 2*np.einsum('us,nabbp->naups',delta_f,res2.data + res.data.transpose(0,1,2,4,3))
+    term3 = np.einsum('au,nbbps->naups',delta_f,tmp)
+    term4 = np.einsum('us,nabbp->naups',delta_f,res2.data)
+    term5 = res2.data.transpose(0,1,3,4,2) + res3.data 
     
     # cross product term [xub][pta]xtbs
-    termcross = np.einsum('xub,nxtbs->nuts',Levi_Civita,tmp) 
-    termcross = np.einsum('pta,nuts->naups',Levi_Civita,termcross) 
-    res.data = -term1 + term2 + term3 - term4 + term5 + termcross
-    return res
-
-def ddO_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
-    res =  FermiOcean(frml.Der2Omega(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    return res
-
-def ddO_test_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
-    formula1  = FormulaProduct ( [frml.DerOmega(data_K,**kwargs_formula),data_K.covariant('Ham',commader=1)],
-            name='vel-derder_berry')
-    res =  FermiOcean(formula1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    return res
-
-
-def dO_test_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
-    formula1  = FormulaProduct ( [ data_K.covariant('Ham',commader=1),frml.Omega(data_K,**kwargs_formula),data_K.covariant('Ham',commader=1)],
-            name='vel-berry-vel')
-    res =  FermiOcean(formula1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    return res
-
-def dO_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
-    formula1  = FormulaProduct ( [frml.InvMass(data_K),frml.Omega(data_K,**kwargs_formula)],
-            name='mass-berry')
-    formula2  = FormulaProduct ( [data_K.covariant('Ham',commader=1),frml.DerOmega(data_K,**kwargs_formula)],
-            name='vel-der_berry')
-    res =  FermiOcean(formula1,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res2 =  FermiOcean(formula2,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
-    res.data=res.data.transpose(0,1,3,2) +res2.data
+    termcross = np.einsum('xub,pta,nxtbs->naups',Levi_Civita,Levi_Civita,tmp) 
+    res.data = -(-term1 + term2 + term3 + term4 - term5 + termcross)
     return res
 
 
