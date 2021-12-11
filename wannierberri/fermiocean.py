@@ -229,7 +229,7 @@ def berry_dipole_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
     return res
-
+    
 def berry_dipole(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r""" sigma20tau1 fermi sea"""
     res =  FermiOcean(frml.DerOmega(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
@@ -240,6 +240,21 @@ def berry_dipole_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=
     r""" sigma20tau1 fermi sea"""
     res =  FermiOcean(frml_basic.tildeFc_d(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res.data= np.swapaxes(res.data,1,2)  # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+    return res
+
+def berry_dipole_field_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    r""" sigma20tau1 fermi surface"""
+    formula  = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula),data_K.covariant('Ham',commader=1)], name='berry-vel')
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res.data = np.einsum('sda,ndp->naps',Levi_Civita,res.data) 
+    res.rank +=1
+    return res
+
+def berry_dipole_field(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    r""" sigma20tau1 fermi sea"""
+    res =  FermiOcean(frml.DerOmega(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res.data = np.einsum('sda,ndp->naps',Levi_Civita,res.data) 
+    res.rank +=1
     return res
 
 def Der3E(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
@@ -266,6 +281,8 @@ def Nonlinear_Hall_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Krame
             name='berry-berry-vel ([pu]dbb) (dup)')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     res.data = np.einsum('pu,ndbb->ndpu',delta_f,res.data) - res.data.transpose(0,1,3,2)#np.einsum('pb,ndub->ndpu',delta_f,res.data) 
+    res.data = np.einsum('sda,ndpu->napsu',Levi_Civita,res.data) 
+    res.rank +=1
     return res
 
 def Nonlinear_Hall(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
@@ -278,6 +295,8 @@ def Nonlinear_Hall(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=Fal
     #term2 = np.einsum('pb,ndbu->ndpu',delta_f,res.data) + np.einsum('pb,ndub->ndpu',delta_f,res.data)
     term2 = res.data.transpose(0,2,3,1) + res.data.transpose(0,1,3,2)
     res.data = term1 - term2
+    res.data = np.einsum('sda,ndpu->napsu',Levi_Civita,res.data) 
+    res.rank +=1
     return res
   
 
