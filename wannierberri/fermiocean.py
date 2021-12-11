@@ -8,11 +8,18 @@ from .formula import FormulaProduct
 from . import covariant_formulak_basic as frml_basic
 from itertools import permutations
 from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
+
+######################
+# physical constants #
+######################
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]
 Ang_SI = angstrom
 
+###########
+# factors #
+###########
 fac_ahc = -1e8 * elementary_charge ** 2 / hbar
 fac_spin_hall = fac_ahc * -0.5
 factor_ohmic=(elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
@@ -22,8 +29,22 @@ factor_Hall_classic=elementary_charge**2*Ang_SI/hbar**3  # first, transform to S
 factor_Hall_classic*=elementary_charge**3/hbar*TAU_UNIT**2  # multiply by a dimensional factor - now in A^3*s^5*cm/(J^2*tau_unit^2) = S/(T*m*tau_unit^2)
 factor_Hall_classic*=1e-2   #  finally transform to S/(T*cm*tau_unit^2)
 
+#########
+# tools #
+#########
 delta_f =  np.eye(3)
 
+Levi_Civita = np.zeros((3,3,3))
+Levi_Civita[1,2,0] = 1
+Levi_Civita[2,1,0] = -1
+Levi_Civita[2,0,1] = 1
+Levi_Civita[0,2,1] = -1
+Levi_Civita[0,1,2] = 1
+Levi_Civita[1,0,2] = -1
+
+#############
+# functions #
+#############
 def cumdos(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     return FermiOcean(frml.Identity(),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*data_K.cell_volume
 
@@ -290,10 +311,11 @@ def eMChA_fder2_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=
     res3 =  FermiOcean(formula3,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     term4 = res3.data
     term5 = np.einsum('us,nabpb->naups',delta_f,res3.data)
-    #termcross = tmp #[xtb][pta]xtbs
-    #[xtb]
-    #cross_1 = termcross[] 
-    res.data = -term1 + term2 + term3 - term4 + term5
+    
+    # cross product term [xub][pta]xtbs
+    termcross = np.einsum('xub,nxtbs->nuts',Levi_Civita,tmp) 
+    termcross = np.einsum('pta,nuts->naups',Levi_Civita,termcross) 
+    res.data = -term1 + term2 + term3 - term4 + term5 + termcross
     return res
 
 def eMChA_fsurf_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
@@ -311,7 +333,11 @@ def eMChA_fsurf_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=
     term3 = 2*np.einsum('us,nabbp->naups',delta_f,res.data)
     term4 = res2.data
     term5 = np.einsum('us,nabpb->naups',delta_f,res2.data)
-    res.data = -term1 + term2 + term3 - term4 + term5
+    
+    # cross product term [xub][pta]xtbs
+    termcross = np.einsum('xub,nxtbs->nuts',Levi_Civita,tmp) 
+    termcross = np.einsum('pta,nuts->naups',Levi_Civita,termcross) 
+    res.data = -term1 + term2 + term3 - term4 + term5 + termcross
     return res
 
 def eMChA_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
@@ -332,7 +358,11 @@ def eMChA_term1(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,
     term3 = 2*np.einsum('us,nabbp->naups',delta_f,res2.data + res.data.transpose(0,1,2,4,3))
     term4 = res2.data.transpose(0,1,3,4,2) + res3.data 
     term5 = np.einsum('us,nabbp->naups',delta_f,res2.data)
-    res.data = -term1 + term2 + term3 - term4 + term5
+    
+    # cross product term [xub][pta]xtbs
+    termcross = np.einsum('xub,nxtbs->nuts',Levi_Civita,tmp) 
+    termcross = np.einsum('pta,nuts->naups',Levi_Civita,termcross) 
+    res.data = -term1 + term2 + term3 - term4 + term5 + termcross
     return res
 
 def ddO_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
