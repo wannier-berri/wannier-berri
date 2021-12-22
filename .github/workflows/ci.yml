@@ -30,7 +30,7 @@ jobs:
     - name: Install the python project
       env:
         INSTALL_TYPE: ${{ matrix.install-type }}
-      run: .ci/install_script.sh
+      run: .github/install_script.sh
     - name: Test with pytest, generate coverage report
       run: |
         pytest --cov=./ --cov-report=xml
