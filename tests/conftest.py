@@ -10,6 +10,7 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Folder containing output dat files of tests
 OUTPUT_DIR = os.path.join(ROOT_DIR, "_dat_files")
+REF_DIR    = os.path.join(ROOT_DIR, 'reference')
 
 @pytest.fixture(scope="session", autouse=True)
 def create_output_dir():
