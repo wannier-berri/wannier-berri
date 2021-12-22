@@ -19,23 +19,20 @@ from compare_result import compare_fermisurfer
 from create_system import system_Chiral,ChiralModel
 
 
-@pytest.fixture
-def get_component_list():
-    def _inner(quantity):
+def get_component_list(quantity):
         if quantity in ["E"]:
-            return [""]
+            return [None]
         if quantity in ["berry","V","morb"]:
-            return ["-"+a for a in "z"]
+            return [a for a in "xyz"]
         if quantity in ["Der_berry","Der_morb"]:
-            return  ["-"+a+b for a in "xyz" for b in "xyz"]
+            return  [a+b for a in "xyz" for b in "xyz"]
         if quantity == "omega2" :
-    	    return ["-zz"]
+    	    return ["zz"]
         raise ValueError(f"unknown quantity {quantity}")
-    return _inner
 
 
 @pytest.fixture
-def check_tabulate(parallel_serial,get_component_list,compare_fermisurfer):
+def check_tabulate(parallel_serial,compare_fermisurfer):
     def _inner(system,quantities=[],user_quantities={},
                 frmsf_name="tabulate",comparer=compare_fermisurfer,
                parallel=None,
@@ -70,11 +67,12 @@ def check_tabulate(parallel_serial,get_component_list,compare_fermisurfer):
 
         for quant in ["E"]+quantities+list(user_quantities.keys()):
           for comp in get_component_list(quant):
+            _comp = "-" +comp if comp is not None else ""
 #            data=result.results.get(quant).data
 #            assert data.shape[0] == len(Efermi)
 #            assert np.all( np.array(data.shape[1:]) == 3)
             prec=extra_precision[quant] if quant in extra_precision else None
-            comparer(frmsf_name, quant+comp+suffix,  suffix_ref=compare_quant(quant)+comp+suffix_ref ,precision=prec )
+            comparer(frmsf_name, quant+_comp+suffix,  suffix_ref=compare_quant(quant)+_comp+suffix_ref ,precision=prec )
     return _inner
 
 
