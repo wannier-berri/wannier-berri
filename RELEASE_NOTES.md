@@ -1,3 +1,22 @@
+Version 0.11.1
+++++++++++++++++++
+
+
+## What's Changed
+* update for releasing v0.11.0 by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/103
+* Optimize to_grid in tabulate by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/107
+* Add guiding_centers argument to System_w90 by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/108
+* Remove node duplication in Path by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/110
+* Add option to disable printing of K points by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/111
+* removed duplicate methods reverseR and conj_XX_R in System() by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/112
+* Move install_script.sh from ci to github folder by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/119
+* fixes for tabulation along path by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/104
+* Fix ray cluster by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/113
+
+
+**Full Changelog**: https://github.com/wannier-berri/wannier-berri/compare/v0.11.0...v0.11.1
+
+
 Version 0.11.0
 ++++++++++++++++++
 
