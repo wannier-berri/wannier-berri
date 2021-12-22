@@ -75,3 +75,5 @@ def test_cluster_script(cluster_type, check_command_output):
     ref_text    = open(os.path.join(REF_DIR,f"my_first_job_{cluster_type}.sh"),"r").readlines()
     compare_texts(script_text, ref_text, variable_strings)
     os.replace(script_name, os.path.join(OUTPUT_DIR, script_name))
+
+
