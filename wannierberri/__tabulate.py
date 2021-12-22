@@ -307,7 +307,7 @@ class TABresult(result.Result):
             Emax=E.max()+0.5
 
         klineall=[]
-        for ib in range(E.shape[1]):
+        for ib in range(len(iband)):
             e=E[:,ib]
             selE=(e<=Emax)*(e>=Emin)
             klineselE=kline[selE]
