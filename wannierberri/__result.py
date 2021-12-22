@@ -355,7 +355,10 @@ class KBandResult(Result):
                 raise RuntimeError("dimensions of all components should be 3, found {}".format(dim))
                 
             dim=len(dim)
-            component=component.lower()
+            if component is not None:
+                component=component.lower()
+            if component == "" :
+                component = None
             if dim==0:
                 if component is None:
                     return self.data
