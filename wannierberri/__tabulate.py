@@ -325,7 +325,7 @@ class TABresult(result.Result):
             data=self.get_data(quantity=quantity,iband=iband,component=component)
             print ("shape of data",data.shape)
             if mode=="fatband" :
-                for ib in range(E.shape[1]):
+                for ib in range(len(iband)):
                     e=E[:,ib]
                     selE=(e<=Emax)*(e>=Emin)
                     klineselE=kline[selE]
