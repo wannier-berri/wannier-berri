@@ -69,14 +69,21 @@ def test_tabulate_path(path_test,quantities_tab,system_Haldane_PythTB):
 
     filename = "path_tab.pickle"
     fout = open(os.path.join(OUTPUT_DIR, filename),"wb")
-    pickle.dump(tab_result,fout)
-    tab_result_ref = pickle.load(open(os.path.join(REF_DIR, filename),"rb") )
+    
+    
+    data = {}
+    for quant in ["E"]+quantities:
+        for comp in get_component_list(quant):
+            data[(quant,comp)] = tab_result.results.get(quant).get_component(comp)
+    pickle.dump(data, fout)
+
+    data_ref = pickle.load(open(os.path.join(REF_DIR, filename),"rb") )
 
     for quant in ["E"]+quantities:
         for comp in get_component_list(quant):
-            data     =     tab_result.results.get(quant).get_component(comp)
-            data_ref = tab_result_ref.results.get(quant).get_component(comp)
-            assert data == approx(data_ref), (f"tabulation along path gave a wrong result for quantity {quant} component {comp} "+
+            _data     = data[(quant,comp)]
+            _data_ref = data_ref[(quant,comp)]
+            assert _data == approx(_data_ref), (f"tabulation along path gave a wrong result for quantity {quant} component {comp} "+
                 "with a maximal difference {}".format(max(abs(data-data_ref)))   )
 
     ## only checks that the plot runs without errors, not checking the result of the plot
