@@ -38,7 +38,8 @@ def parallel_ray():
     # of return, and add parallel.shutdown() after the yield statement.
     # See https://docs.pytest.org/en/6.2.x/fixture.html#yield-fixtures-recommended
     # Currently, only a single ray setup is used, so this is not a problem.
-    "first we just check that the initialization works with some dummy ray_init parameters"
+
+    # first we just check that the initialization works with cluster=True and some dummy ray_init parameters
     ray_init = {}
     ray_init['address'] = ''
     ray_init['_node_ip_address']  =  "0.0.0.0"
@@ -56,8 +57,7 @@ def parallel_ray():
     parallel.shutdown()
 
 
-
-
+    # Now create a proper parallel environment to be used
     return Parallel(
                    method="ray",
                    num_cpus=4  ,
