@@ -19,23 +19,20 @@ from compare_result import compare_fermisurfer
 from create_system import system_Chiral,ChiralModel
 
 
-@pytest.fixture(scope="session")
-def get_component_list():
-    def _inner(quantity):
+def get_component_list(quantity):
         if quantity in ["E"]:
             return [None]
         if quantity in ["berry","V","morb"]:
-            return [a for a in "z"]
+            return [a for a in "xyz"]
         if quantity in ["Der_berry","Der_morb"]:
             return  [a+b for a in "xyz" for b in "xyz"]
         if quantity == "omega2" :
     	    return ["zz"]
         raise ValueError(f"unknown quantity {quantity}")
-    return _inner
 
 
 @pytest.fixture
-def check_tabulate(parallel_serial,get_component_list,compare_fermisurfer):
+def check_tabulate(parallel_serial,compare_fermisurfer):
     def _inner(system,quantities=[],user_quantities={},
                 frmsf_name="tabulate",comparer=compare_fermisurfer,
                parallel=None,

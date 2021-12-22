@@ -1,5 +1,6 @@
 import wannierberri as wberri
 import os,pickle
+import pytest
 from conftest import OUTPUT_DIR, REF_DIR
 from create_system import pythtb_Haldane, system_Haldane_PythTB
 from test_tabulate import quantities_tab,get_component_list
@@ -7,7 +8,8 @@ from test_tabulate import quantities_tab,get_component_list
 import numpy as np
 from pytest import approx
 
-def test_path(system_Haldane_PythTB,quantities_tab,get_component_list):
+@pytest.fixture(scope="module")
+def path_test(system_Haldane_PythTB):
     k_nodes = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
     path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, nk=3)
     assert path.labels == {0: '1', 2: '2'}, "path.labels is wrong"
@@ -41,10 +43,16 @@ def test_path(system_Haldane_PythTB,quantities_tab,get_component_list):
                                                   [3, 3, 3],
                                                   [4, 4, 4],
                                                   [5, 5, 5],]) / 10), "path.K_list is wrong"
+    return path
 
 
+def test_path(system_Haldane_PythTB):
+    """ just check the construction of the path"""
+    path = path_test
+
+def test_tabulate_path(path_test,quantities_tab,system_Haldane_PythTB):
     quantities = quantities_tab
-
+    path = path_test
     tab_result = wberri.tabulate(system = system_Haldane_PythTB,
                     grid = path,
                     quantities = quantities,
@@ -71,7 +79,7 @@ def test_path(system_Haldane_PythTB,quantities_tab,get_component_list):
             assert data == approx(data_ref), (f"tabulation along path gave a wrong result for quantity {quant} component {comp} "+
                 "with a maximal difference {}".format(max(abs(data-data_ref)))   )
 
-    ## only checks that the plot runs without errors, not checkoing the result of the plot
+    ## only checks that the plot runs without errors, not checking the result of the plot
     tab_result.plot_path_fat( path,
               quantity='berry',
               component='z',
