@@ -67,9 +67,9 @@ def compare_energyresult():
                 E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
                 # just to determine precision automatically
                 if compare_smooth:
-                    maxval = max(abs(data_smooth_ref))
+                    maxval = np.max(abs(data_smooth_ref))
                 else:
-                    maxval = max(abs(data_smooth))
+                    maxval = np.max(abs(data_ref))
                 if precision is None:
                     precision = max(maxval / 1E12, 1E-11)
                 elif precision < 0:
