@@ -66,12 +66,14 @@ def compare_energyresult():
                 path_filename_ref = os.path.join(REF_DIR, filename_ref)
                 E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
                 # just to determine precision automatically
-                if not compare_smooth:
-                    data_smooth_ref = data_ref 
+                if compare_smooth:
+                    maxval = max(abs(data_smooth_ref))
+                else:
+                    maxval = max(abs(data_smooth))
                 if precision is None:
-                    precision = max(abs(np.average(data_smooth_ref) / 1E12), 1E-11)
+                    precision = max(maxval / 1E12, 1E-11)
                 elif precision < 0:
-                    precision = max(abs(np.average(data_smooth_ref) * abs(precision) ), 1E-11)
+                    precision = max(maxval * abs(precision) , 1E-11)
                 assert E_titles == E_titles_ref
                 assert data_energy == approx(data_energy_ref, abs=precision)
             assert data == approx(data_ref, abs=precision), error_message(
