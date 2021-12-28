@@ -27,7 +27,7 @@ def check_integrate(parallel_serial):
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},adpt_num_iter=0,
                additional_parameters={}, parameters_K={},specific_parameters = {},
                 use_symmetry = False,
-               suffix="", suffix_ref="",mode="txt",
+               suffix="", suffix_ref="",mode="bin",
                extra_precision={},
                precision = -1e-8 ,
                compare_smooth = True,
@@ -363,8 +363,14 @@ def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,qu
                     )
 
 def test_Chiral(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
-    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,mode = "bin",
+    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
                 use_symmetry =  True ,
+                additional_parameters = { 'external_terms':False} ,
+               grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
+
+def test_Chiral_txt(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
+    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,mode = "txt",
+                use_symmetry =  True , precision = -1e-5,
                 additional_parameters = { 'external_terms':False} ,
                grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
 
