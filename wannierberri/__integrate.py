@@ -237,6 +237,11 @@ class INTresult(result.Result):
         for q,r in self.results.items():
             r.write(name.format(q+'{}'))
 
+    # writing to a binary file
+    def save(self, name):
+        for q,r in self.results.items():
+            r.save(name.format(q+'{}'))
+
     def transform(self,sym):
         results={r:self.results[r].transform(sym)  for r in self.results}
         return INTresult(results=results)

@@ -45,6 +45,11 @@ class Result():
 # writing to a file
     def write(self,name):
         raise NotImprementedError()
+        
+# saving as binary
+    def save(self,name):
+        raise NotImprementedError()
+    
 
 #  how result transforms under symmetry operations
     def transform(self,sym):
@@ -197,6 +202,13 @@ class EnergyResult(Result):
 
         open(name,"w").write(head+"\n".join(self.__write(self.data,self.dataSmooth,i=0)))
 
+
+    def save(self,name):
+        name = name.format('')
+        f=open(name+".npz","wb")
+        np.savez_compressed(f,E_titles=self.E_titles,Energies=self.Energies,data=self.data)
+        f.close()
+
     @property
     def _maxval(self):
         return np.abs(self.dataSmooth).max()
@@ -249,10 +261,16 @@ class EnergyResultDict(EnergyResult):
     def __sub__(self, other):
         return self + (-1)*other
 
-    # writing to a file
+    # writing to a text file
     def write(self, name):
         for k,v in self.results.items():
             v.write(name.format('-'+k+'{}')) # TODO: check formatting
+
+    # writing to a binary file
+    def save(self, name):
+        for k,v in self.results.items():
+            v.save(name.format('-'+k+'{}'))
+            
 
     #  how result transforms under symmetry operations
     def transform(self, sym):

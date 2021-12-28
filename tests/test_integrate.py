@@ -27,7 +27,7 @@ def check_integrate(parallel_serial):
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},adpt_num_iter=0,
                additional_parameters={}, parameters_K={},specific_parameters = {},
                 use_symmetry = False,
-               suffix="", suffix_ref="",
+               suffix="", suffix_ref="",mode="txt",
                extra_precision={},
                precision = -1e-8 ,
                compare_smooth = True,
@@ -49,6 +49,8 @@ def check_integrate(parallel_serial):
                 parameters_K = parameters_K,
                 fout_name = os.path.join(OUTPUT_DIR, fout_name),
                 suffix=suffix,
+                write_txt = ( mode == "txt" ),
+                write_bin = ( mode == "bin" ),
                 restart = restart,
                 )
         if len(suffix)>0:
@@ -66,6 +68,7 @@ def check_integrate(parallel_serial):
             assert np.all( np.array(data.shape[1:]) == 3)
             prec=extra_precision[quant] if quant in extra_precision else precision
             comparer(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,
+                mode = mode,
                 compare_zero=compare_zero,precision=prec, compare_smooth = compare_smooth )
 
     return _inner
@@ -360,7 +363,7 @@ def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,qu
                     )
 
 def test_Chiral(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
-    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
+    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,mode = "bin",
                 use_symmetry =  True ,
                 additional_parameters = { 'external_terms':False} ,
                grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )

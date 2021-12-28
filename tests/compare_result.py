@@ -8,8 +8,12 @@ from pytest import approx
 
 from conftest import REF_DIR, OUTPUT_DIR
 
-def read_energyresult_dat(filename):
-    """Read .dat file output of EnergyResult."""
+def read_energyresult_dat(filename,mode="txt"):
+    """Read .dat of .npz file output of EnergyResult."""
+    if mode == "bin":
+        res = np.load(open(filename,"rb"))
+        return res['E_titles'], res['Energies'], res['data'], None # we do not check smoothing in the binary mode
+    ##### Now the txt mode
     data_raw = np.loadtxt(filename)
     with open(filename, 'r') as f:
         firstline = f.readline().split()
@@ -38,13 +42,19 @@ def error_message(fout_name, suffix, i_iter, abs_err, filename, filename_ref,req
 @pytest.fixture
 def compare_energyresult():
     """Compare dat file output of EnergyResult with the file in reference folder"""
-    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,compare_zero=False,precision=None,compare_smooth = True):
+    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,compare_zero=False,precision=None,compare_smooth = True,mode="txt"):
+        assert mode in ["txt","bin"]
+        if mode == "bin" :
+            compare_smooth = False
+            ext = ".npz"
+        elif mode == "txt":
+            ext = ".dat"
         if suffix_ref is None :
             suffix_ref=suffix
         for i_iter in range(adpt_num_iter+1):
-            filename     = fout_name + f"-{suffix}_iter-{i_iter:04d}.dat"
+            filename     = fout_name + f"-{suffix}_iter-{i_iter:04d}"+ext
             path_filename = os.path.join(OUTPUT_DIR, filename)
-            E_titles, data_energy, data, data_smooth = read_energyresult_dat(path_filename)
+            E_titles, data_energy, data, data_smooth = read_energyresult_dat(path_filename,mode=mode)
 
             if compare_zero:
                 precision = 1e-11 if precision is None else abs(precision)
@@ -52,9 +62,12 @@ def compare_energyresult():
                 data_smooth_ref = np.zeros_like(data)
                 path_filename_ref = "ZERO"
             else:
-                filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}.dat"
+                filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}"+ext
                 path_filename_ref = os.path.join(REF_DIR, filename_ref)
-                E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref)
+                E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
+                # just to determine precision automatically
+                if not compare_smooth:
+                    data_smooth_ref = data_ref 
                 if precision is None:
                     precision = max(abs(np.average(data_smooth_ref) / 1E12), 1E-11)
                 elif precision < 0:

@@ -100,6 +100,7 @@ def evaluate_K(func,system,grid,fftlib='fftw',
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,
             use_irred_kpt=True,symmetrize=True, 
             fout_name="result", suffix="",
+            write_txt=True,write_bin=False,
              parameters_K={},
              file_Klist="K_list.pickle",restart=False,Klist_part = 10,
             parallel=None,  # serial by default
@@ -212,7 +213,12 @@ As a result, the integration will be performed over NKFFT x NKdiv
         time1 = time()
         print("time1 = ",time1-time0)
         if not (restart and i_iter==0):
-            result_all.write(fout_name+"-{}"+suffix+"_iter-{0:04d}.dat".format(i_iter+start_iter))
+            _name = fout_name+"-{}"+suffix+"_iter-{0:04d}".format(i_iter+start_iter)
+            if write_txt:
+                result_all.write(_name+".dat")
+            if write_bin:
+                result_all.save(_name)
+                
         
         if i_iter >= adpt_num_iter:
             break
