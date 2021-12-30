@@ -7,38 +7,40 @@ from pytest import approx
 
 import wannierberri as wberri
 from wannierberri import covariant_formulak as frml
+from wannierberri import formula
 from conftest import parallel_serial #, parallel_ray 
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90 #,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
 from create_system import system_Fe_W90 #,system_GaAs_W90,system_GaAs_tb
 #from create_system import system_Haldane_PythTB,system_Haldane_TBmodels,system_Haldane_TBmodels_internal
+from create_system import system_CuMnAs_2d_broken , model_CuMnAs_2d_broken
 from create_system import symmetries_Fe
 from compare_result import compare_fermisurfer
 from create_system import system_Chiral,ChiralModel
 
 
-@pytest.fixture
-def get_component_list():
-    def _inner(quantity):
+def get_component_list(quantity):
         if quantity in ["E"]:
-            return [""]
+            return [None]
         if quantity in ["berry","V","morb"]:
-            return ["-"+a for a in "z"]
+            return [a for a in "xyz"]
         if quantity in ["Der_berry","Der_morb"]:
-            return  ["-"+a+b for a in "xyz" for b in "xyz"]
+            return  [a+b for a in "xyz" for b in "xyz"]
+        if quantity == "omega2" :
+    	    return ["zz"]
         raise ValueError(f"unknown quantity {quantity}")
-    return _inner
 
 
 @pytest.fixture
-def check_tabulate(parallel_serial,get_component_list,compare_fermisurfer):
+def check_tabulate(parallel_serial,compare_fermisurfer):
     def _inner(system,quantities=[],user_quantities={},
                 frmsf_name="tabulate",comparer=compare_fermisurfer,
                parallel=None,
                numproc=0,
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},
+               degen_thresh = 5e-2 , degen_Kramers = False,
                 use_symmetry = False,
-               additional_parameters={}, parameters_K={},
+               parameters={}, parameters_K={}, specific_parameters = {},
                suffix="", suffix_ref="",
                extra_precision={},ibands = None):
 
@@ -48,13 +50,14 @@ def check_tabulate(parallel_serial,get_component_list,compare_fermisurfer):
                 quantities = quantities,
                 user_quantities = user_quantities,
                 parallel=parallel,
-                parameters = additional_parameters,
+                parameters = parameters,
+                specific_parameters = specific_parameters,
                 ibands = ibands,
                 use_irred_kpt = use_symmetry, symmetrize = use_symmetry,
                 parameters_K = parameters_K,
                 frmsf_name = os.path.join(OUTPUT_DIR, frmsf_name),
                 suffix=suffix,
-                degen_thresh = 5e-2
+                degen_thresh = degen_thresh, degen_Kramers = degen_Kramers
                 )
 
         if len(suffix)>0:
@@ -64,11 +67,12 @@ def check_tabulate(parallel_serial,get_component_list,compare_fermisurfer):
 
         for quant in ["E"]+quantities+list(user_quantities.keys()):
           for comp in get_component_list(quant):
+            _comp = "-" +comp if comp is not None else ""
 #            data=result.results.get(quant).data
 #            assert data.shape[0] == len(Efermi)
 #            assert np.all( np.array(data.shape[1:]) == 3)
             prec=extra_precision[quant] if quant in extra_precision else None
-            comparer(frmsf_name, quant+comp+suffix,  suffix_ref=compare_quant(quant)+comp+suffix_ref ,precision=prec )
+            comparer(frmsf_name, quant+_comp+suffix,  suffix_ref=compare_quant(quant)+_comp+suffix_ref ,precision=prec )
     return _inner
 
 
@@ -112,11 +116,44 @@ def test_Fe_user(check_tabulate,system_Fe_W90, compare_fermisurfer,quantities_ta
 def test_Chiral(check_tabulate,system_Chiral, compare_fermisurfer,quantities_tab):
     """Test Energies, Velocities, berry curvature, its derivative"""
     check_tabulate(system_Chiral , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="" ,  comparer=compare_fermisurfer,
-              additional_parameters = {'external_terms':False}, ibands = [0,1] )
+              parameters = {'external_terms':False}, ibands = [0,1] )
 
 
 def test_Chiral_sym(check_tabulate,system_Chiral, compare_fermisurfer,quantities_tab):
     """Test Energies, Velocities, berry curvature, its derivative"""
     check_tabulate(system_Chiral , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="sym" ,  comparer=compare_fermisurfer,
-               use_symmetry =  True  , additional_parameters = {'external_terms':False}, ibands = [0,1] )
+               use_symmetry =  True  , parameters = {'external_terms':False}, ibands = [0,1] )
 
+
+def test_CuMnAs_PT(check_tabulate,system_CuMnAs_2d_broken,compare_fermisurfer):
+    """Test tabulation of user-defined quantities
+    Also test Kramers degen, by comparing  degen_thresh=0.05 and degen_Kramers=True (they should give the same result)"""
+    quantities=[]
+    specific_parameters = {}
+    degen_param=[('degen_thresh',0.05),('degen_Kramers',True)]
+    
+    class Omega2(formula.FormulaProduct):
+        def __init__(self,data_K,**parameters):
+            print ("parameters of omega2",parameters)
+            omega = frml.Omega(data_K,**parameters)
+            omega2 = formula.FormulaProduct([omega,omega])
+            self.__dict__.update(omega2.__dict__)
+
+
+    check_tabulate(system_CuMnAs_2d_broken , 
+               user_quantities = {"omega2":Omega2} ,
+               frmsf_name="tabulate_CuMnAs" , suffix = "thresh" ,  comparer=compare_fermisurfer,
+		specific_parameters = {"omega2":{"external_terms":False}},
+                degen_thresh=0.05, degen_Kramers=False,
+                ibands = [0,1,2,3] , 
+                extra_precision={'omega2':1e-8} )
+
+
+    check_tabulate(system_CuMnAs_2d_broken , 
+               user_quantities = {"omega2":Omega2} ,
+               frmsf_name="tabulate_CuMnAs" , suffix = "Kramers" ,  comparer=compare_fermisurfer,
+#               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
+		specific_parameters = {"omega2":{"external_terms":False}},
+                degen_thresh=-1, degen_Kramers=True,
+                ibands = [0,1,2,3] , 
+                extra_precision={'omega2':1e-8} )

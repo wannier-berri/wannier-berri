@@ -14,10 +14,12 @@
 import numpy as np
 import copy
 import lazy_property
-from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice
+from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice,iterate3dpm
 from  .symmetry import Group
 from colorama import init
 from termcolor import cprint 
+import functools
+import multiprocessing 
 
 
 
@@ -33,10 +35,12 @@ class System():
                     'SHCryoo':False,
                     'SHCqiao':False,
                     'use_ws':True,
+                    'mp_grid':None,
                     'periodic':(True,True,True),
                     'use_wcc_phase':False,
                     'wannier_centers_cart':None,
                     'wannier_centers_reduced' : None,
+                    'npar':None,
                     '_getFF' : False,
                        }
 
@@ -66,6 +70,13 @@ class System():
         set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018). Default: ``{SHCqiao}``
     use_ws : bool
         minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90. Default: ``{use_ws}``
+    mp_grid : [nk1,nk2,nk3]
+        size of Monkhorst-Pack frid used in ab initio calculation. Needed when `use_ws=True`, and only if it cannot be read from input file, i.e.
+        like :class:`~wannierberri.System_tb`, :class:`~wannierberri.System_PythTB`, :class:`~wannierberri.System_TBmodels` ,:class:`~wannierberri.System_fplo`, but only if 
+        the data originate from ab initio data, not from toy models.
+        In contrast, for :class:`~wannierberri.System_w90` and :class:`~wannierberri.System_ase` it is not needed,  but can be provided and will override the original value 
+        (if you know what and why you are doing)
+        Default: ``{mp_grid}``
     frozen_max : float
         position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary. Default: ``{frozen_max}``
     _getFF : bool
@@ -76,14 +87,14 @@ class System():
         use the given wannier_centers (cartesian) instead of those determined automatically. Incompatible with `wannier_centers_reduced`
     wannier_centers_reduced :  array-like(num_wann,3)
         use the given wannier_centers (reduced) instead of those determined automatically. Incompatible with `wannier_centers_cart`
-
+    npar : int
+        number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
     Notes:
     -------
         for tight-binding models it is recommended to use `use_wcc_phase = True`. In this case the external terms vanish, and 
         one can safely use `berry=False, morb=False`, and also set `'external_terms':False` in the parameters of the calculation
 
     """ .format(**default_parameters)
-
 
 
     def set_parameters(self,**parameters):
@@ -93,6 +104,17 @@ class System():
                 vars(self)[param]=parameters[param]
             else: 
                 vars(self)[param]=self.default_parameters[param]
+
+        for param in parameters:
+            if param not in self.default_parameters:
+                print (f"WARNING: parameter {param} was passed to data_K, which is not recognised")
+
+
+        if self.npar is None:
+            self.npar=multiprocessing.cpu_count()
+        if self.mp_grid is not None:
+            self.mp_grip=np.array(self.mp_grid)
+
         periodic=np.zeros(3,dtype=bool)
         periodic[:len(self.periodic)]=self.periodic
         self.periodic=periodic
@@ -151,11 +173,33 @@ class System():
     def do_at_end_of_init(self):
         self.set_symmetry  ()
         self.check_periodic()
-        self.set_wannier_centers  ()
+        self.set_wannier_centers ()
+        self.do_ws_dist()
         print ("Number of wannier functions:",self.num_wann)
         print ("Number of R points:", self.nRvec)
         print ("Recommended size of FFT grid", self.NKFFT_recommended)
 
+    def do_ws_dist(self):
+        if  self.use_ws and (self.mp_grid is not None):
+            print ("using ws_distance")
+            ws_map=ws_dist_map(self.iRvec,self.wannier_centers_cart_ws, self.mp_grid,self.real_lattice, npar=self.npar)
+            for X in ['Ham','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
+                XR=X+'_R'
+                if hasattr(self,XR) :
+                    print ("using ws_dist for {}".format(XR))
+                    vars(self)[XR]=ws_map(vars(self)[XR])
+            self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
+        else:
+            print ("NOT using ws_dist")
+
+    @property
+    def wannier_centers_cart_ws(self):
+        "to prefer the values read from .chk over the values provided in the input"
+        if hasattr(self,"wannier_centers_cart_auto"):
+            return self.wannier_centers_cart_auto
+        else:
+            return self.wannier_centers_cart
+        
 
 
     def to_tb_file(self,tb_file=None):
@@ -192,6 +236,8 @@ class System():
     @property
     def NKFFT_recommended(self):
         "finds a minimal FFT grid on which different R-vectors do not overlap"
+        if self.mp_grid is not None:
+            return self.mp_grid
         NKFFTrec=np.ones(3,dtype=int)
         for i in range(3):
             R=self.iRvec[:,i]
@@ -229,7 +275,6 @@ class System():
         return self.iRvec.dot(self.real_lattice)
 
     @lazy_property.LazyProperty
-
     def cRvec_p_wcc(self):
         """ 
         With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [i,j,iRvec,a] (Cartesian)
@@ -359,47 +404,87 @@ class System():
     def cell_volume(self):
         return abs(np.linalg.det(self.real_lattice))
 
-
-    @property
-    def iR0(self):
-        return self.iRvec.tolist().index([0,0,0])
-
-    @lazy_property.LazyProperty
-    def reverseR(self):
-        """maps the R vector -R"""
-        iRveclst= self.iRvec.tolist()
-        mapping = np.all( self.iRvec[:,None,:]+self.iRvec[None,:,:] == 0 , axis = 2 )
-        # check if some R-vectors do not have partners
-        notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
-        for ir in notfound:
-            print ("WARNING : R[{}] = {} does not have a -R partner".format(ir,self.iRvec[ir]) )
-        # check if some R-vectors have more then 1 partner 
-        morefound = np.where(np.sum(mapping,axis=1)>1)[0]
-        if len(morefound>0):
-            raise RuntimeError( "R vectors number {} have more then one negative partner : \n{} \n{}".format(
-                            morefound,self.iRvec[morefound],np.sum(mapping,axis=1) ) )
-        lst1,lst2=[],[]
-        for ir1 in range(self.nRvec):
-            ir2 = np.where(mapping[ir1])[0]
-            if len(ir2)==1:
-                lst1.append(ir1)
-                lst2.append(ir2[0])
-        return np.array(lst1),np.array(lst2)
-
-    def conj_XX_R(self,XX_R):
-        """ reverses the R-vector and takes the hermitian conjugate """
-        XX_R_new = np.zeros_like(XX_R)
-        lst1,lst2 = self.reverseR
-        assert np.all(self.iRvec[lst1] + self.iRvec[lst2] ==0 )
-        XX_R_new [:,:,lst1] = np.copy(XX_R)[:,:,lst2]
-        XX_R_new[:] = XX_R_new.swapaxes(0,1).conj()
-        return np.copy(XX_R_new)
-
     def check_hermitian(self,XX):
         if hasattr(self,XX):
             XX_R = np.copy(vars(self)[XR])
             assert (np.max(abs(XX_R-self.conh_XX_R(XX_R)))<1e-8) , f"{XX} should obey X(-R) = X(R)^+"
         else:
             print (f"{XX} is missing,nothing to check")
+
+
+class ws_dist_map():
+
+    def __init__(self,iRvec,wannier_centers, mp_grid,real_lattice,npar=multiprocessing.cpu_count()):
+    ## Find the supercell translation (i.e. the translation by a integer number of
+    ## supercell vectors, the supercell being defined by the mp_grid) that
+    ## minimizes the distance between two given Wannier functions, i and j,
+    ## the first in unit cell 0, the other in unit cell R.
+    ## I.e., we find the translation to put WF j in the Wigner-Seitz of WF i.
+    ## We also look for the number of equivalent translation, that happen when w_j,R
+    ## is on the edge of the WS of w_i,0. The results are stored 
+    ## a dictionary shifts_iR[(iR,i,j)]
+        ws_search_size=np.array([2]*3)
+        ws_distance_tol=1e-5
+        cRvec=iRvec.dot(real_lattice)
+        mp_grid=np.array(mp_grid)
+        shifts_int_all = np.array([ijk  for ijk in iterate3dpm(ws_search_size+1)])*np.array(mp_grid[None,:])
+        self.num_wann=wannier_centers.shape[0]
+        self._iRvec_new=dict()
+        param=(shifts_int_all,wannier_centers,real_lattice, ws_distance_tol, wannier_centers.shape[0])
+        p=multiprocessing.Pool(npar)
+        irvec_new_all=p.starmap(functools.partial(ws_dist_stars,param=param),zip(iRvec,cRvec))
+        print('irvec_new_all shape',np.shape(irvec_new_all))
+        for ir,iR in enumerate(iRvec):
+          for ijw,irvec_new in irvec_new_all[ir].items():
+              self._add_star(ir,irvec_new,ijw[0],ijw[1])
+        self._iRvec_ordered=sorted(self._iRvec_new)
+        for ir,R  in enumerate(iRvec):
+            chsum=0
+            for irnew in self._iRvec_new:
+                if ir in self._iRvec_new[irnew]:
+                    chsum+=self._iRvec_new[irnew][ir]
+            chsum=np.abs(chsum-np.ones( (self.num_wann,self.num_wann) )).sum() 
+            if chsum>1e-12: print ("WARNING: Check sum for {0} : {1}".format(ir,chsum))
+
+
+    def __call__(self,matrix):
+        ndim=len(matrix.shape)-3
+        num_wann=matrix.shape[0]
+        reshaper=(num_wann,num_wann)+(1,)*ndim
+        matrix_new=np.array([ sum(matrix[:,:,ir]*self._iRvec_new[irvecnew][ir].reshape(reshaper)
+                                  for ir in self._iRvec_new[irvecnew] ) 
+                                       for irvecnew in self._iRvec_ordered]).transpose( (1,2,0)+tuple(range(3,3+ndim)) )
+        assert ( np.abs(matrix_new.sum(axis=2)-matrix.sum(axis=2)).max()<1e-12)
+        return matrix_new
+
+    def _add_star(self,ir,irvec_new,iw,jw):
+        weight=1./irvec_new.shape[0]
+        for irv in irvec_new:
+            self._add(ir,irv,iw,jw,weight)
+
+
+    def _add(self,ir,irvec_new,iw,jw,weight):
+        irvec_new=tuple(irvec_new)
+        if not (irvec_new in self._iRvec_new):
+             self._iRvec_new[irvec_new]=dict()
+        if not ir in self._iRvec_new[irvec_new]:
+             self._iRvec_new[irvec_new][ir]=np.zeros((self.num_wann,self.num_wann),dtype=float)
+        self._iRvec_new[irvec_new][ir][iw,jw]+=weight
+
+
+
+def ws_dist_stars(iRvec,cRvec,param):
+          shifts_int_all,wannier_centers,real_lattice, ws_distance_tol, num_wann = param
+          irvec_new={}
+          for jw in range(num_wann):
+            for iw in range(num_wann):
+              # function JW translated in the Wigner-Seitz around function IW
+              # and also find its degeneracy, and the integer shifts needed
+              # to identify it
+              R_in=-wannier_centers[iw] +cRvec + wannier_centers[jw]
+              dist=np.linalg.norm( R_in[None,:]+shifts_int_all.dot(real_lattice),axis=1)
+              irvec_new[(iw,jw)]=iRvec+shifts_int_all[ dist-dist.min() < ws_distance_tol ].copy()
+          return irvec_new
+
 
 
