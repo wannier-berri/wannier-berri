@@ -243,7 +243,7 @@ def test_Fe_FPLO_wcc_sym(check_integrate,system_Fe_FPLO_wcc, compare_energyresul
 
 def test_GaAs(check_integrate,system_GaAs_W90, compare_energyresult,quantities_GaAs,quantities_GaAs_internal,Efermi_GaAs):
     """Test berry dipole"""
-    check_integrate(system_GaAs_W90 , quantities_GaAs+['gyrotropic_Korb','gyrotropic_Korb_test'] , 
+    check_integrate(system_GaAs_W90 , quantities_GaAs_internal+quantities_GaAs+['gyrotropic_Korb','gyrotropic_Korb_test'] , 
         fout_name="berry_GaAs_W90" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True},
 #                additional_parameters = {"internal_terms":False },
@@ -306,7 +306,7 @@ def test_Haldane_TBmodels_wcc_internal_2(check_integrate,system_Haldane_TBmodels
 
 def test_Haldane_TBmodels_wcc_external(check_integrate,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_TBmodels , ["ahc"] , fout_name="berry_Haldane_tbmodels" , suffix="wcc_external" ,suffix_ref="wcc_external" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
-                additional_parameters = { 'internal_terms':False} ,
+                compare_zero = True, additional_parameters = { 'internal_terms':False} ,
                grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
 
