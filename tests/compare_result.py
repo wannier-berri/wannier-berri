@@ -12,7 +12,9 @@ def read_energyresult_dat(filename,mode="txt"):
     """Read .dat of .npz file output of EnergyResult."""
     if mode == "bin":
         res = np.load(open(filename,"rb"))
-        return res['E_titles'], res['Energies'], res['data'], None # we do not check smoothing in the binary mode
+        energ = [res[f'Energies_{i}'] for i,_ in enumerate(res['E_titles'])]  # in bunary mode energies are just two arrays
+                                                                            # while in txt mode it is a direct product
+        return list(res['E_titles']), energ , res['data'], None # we do not check smoothing in the binary mode
     ##### Now the txt mode
     data_raw = np.loadtxt(filename)
     with open(filename, 'r') as f:
@@ -75,7 +77,11 @@ def compare_energyresult():
                 elif precision < 0:
                     precision = max(maxval * abs(precision) , 1E-11)
                 assert E_titles == E_titles_ref
-                assert data_energy == approx(data_energy_ref, abs=precision)
+                if isinstance(data_energy,list):
+                    for i,E in enumerate(zip(data_energy,data_energy_ref)):
+                        assert E[0] == approx (E[1]) , f"energy array {i} with title {E_titles[i]} differ by {np.max(abs(E[0]-E[1]))}"
+                else:
+                    assert data_energy == approx(data_energy_ref, abs=precision)
             assert data == approx(data_ref, abs=precision), error_message(
                 fout_name, suffix, i_iter, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref,precision)
             if compare_smooth:

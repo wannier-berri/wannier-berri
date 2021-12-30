@@ -206,7 +206,8 @@ class EnergyResult(Result):
     def save(self,name):
         name = name.format('')
         f=open(name+".npz","wb")
-        np.savez_compressed(f,E_titles=self.E_titles,Energies=self.Energies,data=self.data)
+        energ = {f'Energies_{i}':E for i,E in enumerate(self.Energies)}
+        np.savez_compressed(f,E_titles=self.E_titles,data=self.data,**energ)
         f.close()
 
     @property
