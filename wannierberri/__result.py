@@ -28,37 +28,37 @@ from .__utility import VoidSmoother
 class Result():
 
     def __init__(self):
-        raise NotImprementedError()
+        raise NotImplementedError()
 
 #  multiplication by a number 
     def __mul__(self,other):
-        raise NotImprementedError()
+        raise NotImplementedError()
 
 # +
     def __add__(self,other):
-        raise NotImprementedError()
+        raise NotImplementedError()
 
 # -
     def __sub__(self,other):
-        raise NotImprementedError()
+        raise NotImplementedError()
 
 # writing to a file
     def write(self,name):
-        raise NotImprementedError()
+        raise NotImplementedError()
         
 # saving as binary
     def save(self,name):
-        raise NotImprementedError()
+        raise NotImplementedError()
     
 
 #  how result transforms under symmetry operations
     def transform(self,sym):
-        raise NotImprementedError()
+        raise NotImplementedError()
 
 # a list of numbers, by each of those the refinement points will be selected
     @property
     def max(self):
-        raise NotImprementedError()
+        raise NotImplementedError()
 
 
 ### these methods do no need re-implementation: 
