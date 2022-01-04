@@ -114,6 +114,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         use_irred_kpt = True, symmetrize = True,
                         fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
                         parallel = None,
+                        print_Kpoints = True,
                         parameters={},parameters_K={},specific_parameters={} ):
     """
     Integrate 
@@ -149,6 +150,8 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         evaluate only symmetry-irreducible K-points
     symmetrize : bool
         symmetrize the result (always `True` if `use_irred_kpt == True`)
+    print_Kpoints : bool
+        print the list of K points
     parameters : dict  
         `{'name':value,...}` , Each quantity that 
         recognizes a parameter with the given name will use it
@@ -204,7 +207,8 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     res=evaluate_K(eval_func,system,grid,fftlib=fftlib,
             adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac, use_irred_kpt=use_irred_kpt,symmetrize=symmetrize,
                 fout_name=fout_name,suffix=suffix,
-                restart=restart,file_Klist=file_Klist, parallel = parallel,parameters_K=parameters_K )
+                restart=restart,file_Klist=file_Klist, parallel = parallel,parameters_K=parameters_K,
+                print_Kpoints=print_Kpoints,)
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
 
@@ -214,8 +218,9 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
                   frmsf_name=None,ibands=None,suffix="",Ef0=0.,
                   use_irred_kpt = True, symmetrize = True,
                   parameters={},parameters_K={},specific_parameters={},
-                  degen_thresh = 1e-4,
-                  parallel = None ):
+                  degen_thresh = 1e-4, degen_Kramers = False,
+                  parallel = None,
+                  print_Kpoints = True, ):
     """
     Tabulate quantities to be plotted
 
@@ -241,6 +246,17 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
         if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
     parallel : :class:`~wannierberri.Parallel`
         object describing parallelization scheme
+    print_Kpoints : bool
+        print the list of K points
+    parameters : dict  
+        `{'name':value,...}` , Each quantity that 
+        recognizes a parameter with the given name will use it
+    specific_parameters : dict  
+        `'quantity^label':dict`, where dict is analogous to  `parameters`. This values will override 
+        for the instance of the quantity labeled by '^label'
+    parameters_K : dict
+        parameters to be passed to the :class:`~wannierberri.data_K.Data_K`, 
+        so they are common for the calculation.
    
     Returns
     --------
@@ -261,12 +277,13 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
             quantities=quantities,
             user_quantities=user_quantities,
             parameters=parameters ,
-                degen_thresh = degen_thresh )
+            specific_parameters = specific_parameters,
+                degen_thresh = degen_thresh, degen_Kramers = degen_Kramers )
     t0=time()
     res=evaluate_K(eval_func,system,grid,
             adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,
             use_irred_kpt=use_irred_kpt,symmetrize=symmetrize,
-            parallel=parallel,parameters_K=parameters_K )
+            parallel=parallel,parameters_K=parameters_K, print_Kpoints=print_Kpoints )
 
     t1=time()
     if mode=='3D':

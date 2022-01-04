@@ -34,7 +34,7 @@ generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 system.set_symmetry(generators)
 grid=wberri.Grid(system,NKdiv=16,NKFFT=16)
 
-parallel = wberri.Parallel(method='ray',ray_cluster=True)
+parallel = wberri.Parallel(method='ray',cluster=True)
 
 wberri.integrate(system,
             grid=grid,

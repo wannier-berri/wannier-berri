@@ -1,4 +1,4 @@
-#                                                            #
+#                                                            #l
 # This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
 # file `LICENSE' in the root directory of the WannierBerri   #
@@ -64,7 +64,7 @@ for key,val in parameters_ocean.items():
 
 
 
-def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None,
+def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,degen_Kramers=False,ibands=None,
             parameters={},specific_parameters = {}):
 
 
@@ -73,7 +73,7 @@ def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None
     else:
         ibands = np.array(ibands)
 
-    tabulator = Tabulator(data_K,ibands,degen_thresh)
+    tabulator = Tabulator(data_K,ibands,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)
 
     results={'E':result.KBandResult(data_K.E_K[:,ibands],TRodd=False,Iodd=False)}
     for qfull in quantities:
@@ -88,7 +88,7 @@ def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None
 
     for q,formula in user_quantities.items():
         if q in specific_parameters:
-            __parameters = specific_parameters[qfull]
+            __parameters = specific_parameters[q]
         else:
             __parameters = {}
         results[q]=tabulator( formula(data_K,**__parameters) )
@@ -101,13 +101,13 @@ def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,ibands=None
 
 class  Tabulator():
 
-    def __init__(self ,  data_K,  ibands, degen_thresh=1e-4):
+    def __init__(self ,  data_K,  ibands, degen_thresh=1e-4,degen_Kramers=False):
 
         self.nk=data_K.NKFFT_tot
         self.NB=data_K.num_wann
         self.ibands = ibands
 
-        band_groups=data_K.get_bands_in_range_groups(-np.Inf,np.Inf,degen_thresh=degen_thresh,sea=False)
+        band_groups=data_K.get_bands_in_range_groups(-np.Inf,np.Inf,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers,sea=False)
         # bands_groups  is a digtionary (ib1,ib2):E
         # now select only the needed groups
         self.band_groups = [  [ n    for n in groups.keys() if np.any(  (ibands>=n[0])*(ibands<n[1]) )  ]
@@ -178,22 +178,26 @@ class TABresult(result.Result):
         return TABresult(kpoints=kpoints,recip_lattice=self.recip_lattice,results=results)
 
     def to_grid(self,grid,order='C'):
-        print ("settinng the grid")
+        print ("setting the grid")
         grid1=[np.linspace(0.,1.,g,False) for g in grid]
         print ("setting new kpoints")
         k_new=np.array(np.meshgrid(grid1[0],grid1[1],grid1[2],indexing='ij')).reshape((3,-1),order=order).T
-        k_map=[[] for i in range(np.prod(grid))]
         print ("finding equivalent kpoints")
-        for ik,k in enumerate(self.kpoints):
-            k1=k*grid
-            ik1=np.array(k1.round(),dtype=int)
-            if np.linalg.norm(ik1/grid-k)<1e-5 : 
-                ik1=ik1%grid
-                ik2=ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])
-                k_map[ik1[2]+grid[2]*(ik1[1] + grid[1]*ik1[0])].append(ik)
-            else:
-                print ("WARNING: k-point {}={} is skipped".format(ik,k))
+        # check if each k point is on the regular grid
+        kpoints_int = np.rint(self.kpoints * grid[None, :]).astype(int)
+        on_grid = np.all(abs(kpoints_int / grid[None, :] - self.kpoints) < 1e-5, axis=1)
 
+        # compute the index of each k point on the grid
+        kpoints_int = kpoints_int % grid[None, :]
+        ind_grid = kpoints_int[:, 2] + grid[2] * (kpoints_int[:, 1] + grid[1] * kpoints_int[:, 0])
+
+        # construct the map from the grid indices to the k-point indices
+        k_map = [[] for i in range(np.prod(grid))]
+        for ik in range(len(self.kpoints)):
+            if on_grid[ik]:
+                k_map[ind_grid[ik]].append(ik)
+            else:
+                print(f"WARNING: k-point {ik}={self.kpoints[ik]} is not on the grid, skipping.")
         t0=time()
         print ("collecting")
         results={r:self.results[r].to_grid(k_map)  for r in self.results}
@@ -303,7 +307,7 @@ class TABresult(result.Result):
             Emax=E.max()+0.5
 
         klineall=[]
-        for ib in iband:
+        for ib in range(len(iband)):
             e=E[:,ib]
             selE=(e<=Emax)*(e>=Emin)
             klineselE=kline[selE]
@@ -318,10 +322,10 @@ class TABresult(result.Result):
             kmax=kline.max()
 
         if quantity is not None:
-            data=self.get_data(quantity='berry',iband=iband,component=component)
+            data=self.get_data(quantity=quantity,iband=iband,component=component)
             print ("shape of data",data.shape)
             if mode=="fatband" :
-                for ib in iband:
+                for ib in range(len(iband)):
                     e=E[:,ib]
                     selE=(e<=Emax)*(e>=Emin)
                     klineselE=kline[selE]

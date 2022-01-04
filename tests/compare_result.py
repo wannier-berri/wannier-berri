@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from pytest import approx
 
-from conftest import ROOT_DIR, OUTPUT_DIR
+from conftest import REF_DIR, OUTPUT_DIR
 
 def read_energyresult_dat(filename):
     """Read .dat file output of EnergyResult."""
@@ -53,7 +53,7 @@ def compare_energyresult():
                 path_filename_ref = "ZERO"
             else:
                 filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}.dat"
-                path_filename_ref = os.path.join(ROOT_DIR, 'reference', filename_ref)
+                path_filename_ref = os.path.join(REF_DIR, filename_ref)
                 E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref)
                 if precision is None:
                     precision = max(abs(np.average(data_smooth_ref) / 1E12), 1E-11)
@@ -95,7 +95,7 @@ def compare_fermisurfer():
         filename     = fout_name + f"_{suffix}.frmsf"
         filename_ref = fout_name + f"_{suffix_ref}.frmsf"
         path_filename     = os.path.join(OUTPUT_DIR, filename)
-        path_filename_ref = os.path.join(ROOT_DIR, 'reference','frmsf', filename_ref)
+        path_filename_ref = os.path.join(REF_DIR, 'frmsf', filename_ref)
         grid     , nband     , basis     , ndata     , data      = read_frmsf(path_filename)
         grid_ref , nband_ref , basis_ref , ndata_ref , data_ref  = read_frmsf(path_filename_ref)
 
@@ -110,5 +110,5 @@ def compare_fermisurfer():
         assert basis == approx(basis_ref, abs = 1e-8) , f"basis  vectors differ :\n {basis} \n and \n {basis_ref}"
 
         assert data == approx(data_ref, abs=precision), error_message(
-                fout_name, suffix, None, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref)
+                fout_name, suffix, None, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref,precision)
     return _inner

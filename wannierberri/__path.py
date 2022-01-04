@@ -80,10 +80,11 @@ class Path(Grid):
                     else: 
                         _nk=round( np.linalg.norm((start-end).dot(self.recip_lattice))/dk )+1
                         if _nk==1 : _nk=2
-                    self.K_list=np.vstack( (self.K_list,start[None,:]+np.linspace(0,1.,_nk)[:,None]*(end-start)[None,:] ) )
-                    self.labels[self.K_list.shape[0]-1]=l2
+                    self.K_list=np.vstack( (self.K_list,start[None,:]+np.linspace(0,1.,_nk-1, endpoint=False)[:,None]*(end-start)[None,:] ) )
                 elif end is None:
                     self.breaks.append(self.K_list.shape[0]-1)
+            self.K_list = np.vstack( (self.K_list, k_nodes[-1]) )
+            self.labels[self.K_list.shape[0]-1] = labels[-1]
         else:
             self.K_list=np.array(k_list)
             assert  self.K_list.shape[1]==3, "k_list should contain 3-vectors"
@@ -93,9 +94,9 @@ class Path(Grid):
                     warning("k_list was entered manually, ignoring {}".format(var))
             self.labels={} if labels is None else labels
             self.breaks=[] if breaks is None else breaks
-        self.breaks=np.array(self.breaks)
         self.div = np.shape(self.K_list)[0]
-    
+        self.breaks=np.array(self.breaks,dtype=int)
+  
     def sphere(self,r,ntheta,nphi,origin):
         theta = np.linspace(0,np.pi,ntheta,endpoint=True)
         phi = np.linspace(0,2*np.pi,nphi,endpoint=True)
@@ -106,6 +107,10 @@ class Path(Grid):
         sphere_cart_k = np.array(sphere).reshape(3,ntheta*nphi).transpose(1,0)
         sphere_k = sphere_cart_k.dot(np.linalg.inv(self.recip_lattice))-origin[None,:]
         return sphere_k,sphere_cart_k
+
+    @property
+    def str_short(self):
+        return "Path() with {} points and labels {}".format( len(self.K_list) , self.labels)
 
 
     @property 
@@ -120,8 +125,10 @@ class Path(Grid):
                                 for i,k in enumerate(self.K_list)
                    )  )
 
-    def get_K_list(self,use_symmetry=None):
-        """ returns the list of Symmetry-irreducible K-points"""
+    def get_K_list(self,use_symmetry=False):
+        """ returns the list of K-points"""
+        if use_symmetry:
+            print ("WARNING : symmetry is not used for a tabulation along path")
         dK=np.array([1.,1.,1.])
         factor=1.
         print ("generating K_list")
@@ -135,6 +142,7 @@ class Path(Grid):
         K = np.zeros(KPcart.shape[0])
         k = np.linalg.norm(KPcart[1:, :] - KPcart[:-1, :], axis=1)
         k[k > break_thresh] = 0.0
+        print ("breaks:",repr(self.breaks))
         k[self.breaks]=0.0
         K[1:] = np.cumsum(k)
         return K

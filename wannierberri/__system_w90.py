@@ -40,6 +40,9 @@ class System_w90(System):
         the seedname used in Wannier90
     transl_inv : bool
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
+    guiding_centers : bool
+        If True, enable overwriting the diagonal elements of the AA_R matrix at R=0 with the
+        Wannier centers calculated from Wannier90.
     npar : int
         number of processes used in the constructor
     fft : str
@@ -53,6 +56,7 @@ class System_w90(System):
 
     def __init__(self,seedname="wannier90",
                     transl_inv=True,
+                    guiding_centers=False,
                     fft='fftw',
                     npar=multiprocessing.cpu_count()  , 
                     **parameters
@@ -94,9 +98,20 @@ class System_w90(System):
             timeFFT+=time()-t0
             if transl_inv:
                 wannier_centers_cart_new = np.diagonal(self.AA_R[:,:,self.iR0,:],axis1=0,axis2=1).transpose()
-                assert np.all(abs(wannier_centers_cart_new-self.wannier_centers_cart_auto)<1e-6), (
-                  "the difference between read\n{}\n and evluated \n{}\n wannier centers is \n{}\n".format(self.wannier_centers_cart_auto,
-                        wannier_centers_cart_new,self.wannier_centers_cart_auto-wannier_centers_cart_new))
+                if not np.all(abs(wannier_centers_cart_new-self.wannier_centers_cart_auto)<1e-6):
+                    if guiding_centers:
+                        print(f"The read Wannier centers\n{self.wannier_centers_cart_auto}\n"
+                              f"are different from the evaluated Wannier centers\n{wannier_centers_cart_new}\n"
+                              "This can happen if guiding_centres was set to true in Wannier90.\n"
+                              "Overwrite the evaluated centers using the read centers.")
+                        for iw in range(self.num_wann):
+                            self.AA_R[iw, iw, self.iR0, :] = self.wannier_centers_cart_auto[iw, :]
+                    else:
+                        raise ValueError(
+                            f"the difference between read\n{self.wannier_centers_cart_auto}\n"
+                            f"and evluated \n{wannier_centers_cart_new}\n wannier centers is\n"
+                            f"{self.wannier_centers_cart_auto-wannier_centers_cart_new}\n"
+                            "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90.")
 
         if self.getBB:
             t0=time()
