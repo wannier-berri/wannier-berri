@@ -15,6 +15,7 @@ import numpy as np
 import copy
 import lazy_property
 from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice,iterate3dpm
+from .__sym_wann import sym_wann
 from  .symmetry import Group
 from colorama import init
 from termcolor import cprint 
@@ -39,12 +40,6 @@ class System():
                     'use_wcc_phase':False,
                     'wannier_centers_cart':None,
                     'wannier_centers_reduced' : None,
-                    'symmetrization': False,
-                    'proj' : None,
-                    'positions': None,
-                    'atom_name': None,
-                    'magmom' : None,
-                    'soc':True,
                     'npar':None,
                     '_getFF' : False,
                        }
@@ -92,16 +87,6 @@ class System():
         use the given wannier_centers (cartesian) instead of those determined automatically. Incompatible with `wannier_centers_reduced`
     wannier_centers_reduced :  array-like(num_wann,3)
         use the given wannier_centers (reduced) instead of those determined automatically. Incompatible with `wannier_centers_cart`
-    symmetrization:bool
-        set ``True`` if you want to symmetrize wannier Hamiltonian.
-    proj:list
-        symmetrization parameter. Should be the same with projections card in Wannier90.win.
-    positions: list
-        symmetrization parameter. Positions of each atom.
-    atom_name: list
-        symmetrization parameter. Name of each atom.
-    magmom: array
-        symmetrization parameter. Magnetic moment of each atom.
     npar : int
         number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
     Notes:
@@ -133,6 +118,33 @@ class System():
         periodic=np.zeros(3,dtype=bool)
         periodic[:len(self.periodic)]=self.periodic
         self.periodic=periodic
+
+
+    def symmetrize(self,proj,positions,atom_name,soc=False,magmom=None):
+        """
+        proj:
+            Should be the same with projections card in Wannier90.win.
+        positions: list
+            Positions of each atom.
+        atom_name: list
+            Name of each atom.
+        magmom: array
+            Magnetic moment of each atom.
+        """
+        XX_R={'Ham':self.Ham_R}
+        for X in ['AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
+            try:
+                XX_R[X] = vars(self)[X+'_R']
+            except KeyError:
+                pass
+        symmetrize_wann = sym_wann(num_wann=self.num_wann,lattice=self.real_lattice,positions=positions,atom_name=atom_name,
+            proj=proj,iRvec=self.iRvec,XX_R=XX_R,spin=soc,magmom=magmom)
+        XX_R,self.iRvec = symmetrize_wann.symmetrize()
+        for X in ['Ham','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
+            try:
+                vars(self)[X+'_R'] = XX_R[X]
+            except KeyError:
+                pass
 
 
     def check_periodic(self):

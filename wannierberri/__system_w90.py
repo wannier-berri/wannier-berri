@@ -26,7 +26,6 @@ from .__w90_files import EIG,MMN,CheckPoint,SPN,UHU,SIU,SHU
 from time import time
 import pickle
 from itertools import repeat
-from .__sym_wann import sym_wann
 np.set_printoptions(precision=4,threshold=np.inf,linewidth=500)
 
 
@@ -138,22 +137,6 @@ class System_w90(System):
 
         print ("time for FFT_q_to_R : {} s".format(timeFFT))
         
-        if self.symmetrization:
-            XX_R={'Ham':self.Ham_R}
-            for X in ['AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
-                try:
-                    XX_R[X] = vars(self)[X+'_R']
-                except KeyError:
-                    pass
-            symmetrize_wann = sym_wann(num_wann=self.num_wann,lattice=self.real_lattice,positions=self.positions,atom_name=self.atom_name,
-                proj=self.proj,iRvec=self.iRvec,XX_R=XX_R,spin=self.soc,magmom=self.magmom)
-            XX_R,self.iRvec = symmetrize_wann.symmetrize()
-            for X in ['Ham','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
-                try:
-                    vars(self)[X+'_R'] = XX_R[X]
-                except KeyError:
-                    pass
-
         self.do_at_end_of_init()
         print ("Real-space lattice:\n",self.real_lattice)
 
