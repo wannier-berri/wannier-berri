@@ -369,7 +369,7 @@ class sym_wann():
         rot_sym_glb = np.dot(np.dot(np.transpose(self.lattice),rot_sym),np.linalg.inv(np.transpose(self.lattice)) )
         if self.magmom is not None:
             for i in range(self.num_wann_atom):
-                magmom = np.round(self.wann_atom_info[i][-1],decimals=4)
+                magmom = np.round(self.wann_atom_info[i][-2],decimals=4)
                 new_magmom =np.round( np.dot(rot_sym_glb,magmom),decimals=4)
                 if abs(np.linalg.norm(magmom - np.linalg.det(rot_sym_glb)*new_magmom)) > 0.0005:
                     sym_only = False
@@ -481,7 +481,7 @@ class sym_wann():
                                 if sym_only:
                                     vars()[X+'_res'] += tmpX.transpose(0,3,1,2)
                                 if sym_T:
-                                    tmp_T = self.ul.dot(tmpX.transpose(1,2,0,3)).dot(self.ur).conj()
+                                    tmpX_T = self.ul.dot(tmpX.transpose(1,2,0,3)).dot(self.ur).conj()
                                     vars()[X+'_res'] += tmpX_T.transpose(0,3,1,2)
 
 
@@ -534,7 +534,7 @@ class sym_wann():
             self.nRvec += nRvec_add
             self.iRvec += iRvec_add
         else:
-            Ham_R_final = Ham_R_re1
+            Ham_R_final =res_dic_1['Ham']
             for X in self.matrix_list:
                 if self.matrix_bool[X]:
                     vars()[X+'_R_final']= res_dic_1[X]
