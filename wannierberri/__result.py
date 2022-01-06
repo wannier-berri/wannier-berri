@@ -211,10 +211,9 @@ class EnergyResult(Result):
         - data : array of shape (len(Energies_0), [ len(Energies_1), ...] , [3  ,[ 3, ... ]] )
         """
         name = name.format('')
-        f=open(name+".npz","wb")
         energ = {f'Energies_{i}':E for i,E in enumerate(self.Energies)}
-        np.savez_compressed(f,E_titles=self.E_titles,data=self.data,**energ)
-        f.close()
+        with open(name+".npz","wb") as f:
+            np.savez_compressed(f,E_titles=self.E_titles,data=self.data,**energ)
 
     @property
     def _maxval(self):
