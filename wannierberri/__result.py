@@ -205,10 +205,9 @@ class EnergyResult(Result):
 
     def save(self,name):
         name = name.format('')
-        f=open(name+".npz","wb")
         energ = {f'Energies_{i}':E for i,E in enumerate(self.Energies)}
-        np.savez_compressed(f,E_titles=self.E_titles,data=self.data,**energ)
-        f.close()
+        with open(name+".npz","wb") as f:
+            np.savez_compressed(f,E_titles=self.E_titles,data=self.data,**energ)
 
     @property
     def _maxval(self):
