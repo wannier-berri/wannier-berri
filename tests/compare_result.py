@@ -12,29 +12,32 @@ def read_energyresult_dat(filename,mode="txt"):
     """Read .dat of .npz file output of EnergyResult."""
     if mode == "bin":
         res = np.load(open(filename,"rb"))
-        energ = [res[f'Energies_{i}'] for i,_ in enumerate(res['E_titles'])]  # in bunary mode energies are just two arrays
+        energ = [res[f'Energies_{i}'] for i,_ in enumerate(res['E_titles'])]  # in binary mode energies are just two arrays
                                                                             # while in txt mode it is a direct product
         return list(res['E_titles']), energ , res['data'], None # we do not check smoothing in the binary mode
-    ##### Now the txt mode
-    data_raw = np.loadtxt(filename)
-    with open(filename, 'r') as f:
-        firstline = f.readline().split()
+    elif mode == "txt":
+        ##### Now the txt mode
+        data_raw = np.loadtxt(filename)
+        with open(filename, 'r') as f:
+            firstline = f.readline().split()
 
-    # energy titles: before 'x' or 'xx' or 'xxx' or ... occurs.
-    E_titles = []
-    for title in firstline[1:]:
-        if title in ['x' * n for n in range(1, 10)]:
-            break
-        E_titles.append(title)
-    N_energies = len(E_titles)
+        # energy titles: before 'x' or 'xx' or 'xxx' or ... occurs.
+        E_titles = []
+        for title in firstline[1:]:
+            if title in ['x' * n for n in range(1, 10)]:
+                break
+            E_titles.append(title)
+        N_energies = len(E_titles)
 
-    data_energy = data_raw[:, :N_energies]
+        data_energy = data_raw[:, :N_energies]
 
-    n_data = (data_raw.shape[1] - N_energies) // 2
-    data = data_raw[:, N_energies:N_energies+n_data]
-    data_smooth = data_raw[:, N_energies+n_data:]
+        n_data = (data_raw.shape[1] - N_energies) // 2
+        data = data_raw[:, N_energies:N_energies+n_data]
+        data_smooth = data_raw[:, N_energies+n_data:]
 
-    return E_titles, data_energy, data, data_smooth
+        return E_titles, data_energy, data, data_smooth
+    else:
+        raise ValueError(f"Supported modes are `txt` and `bin`, found {mode}")
 
 def error_message(fout_name, suffix, i_iter, abs_err, filename, filename_ref,required_precision):
     return (f"data of {fout_name} {suffix} at iteration {i_iter} give a maximal "

@@ -153,6 +153,13 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         evaluate only symmetry-irreducible K-points
     symmetrize : bool
         symmetrize the result (always `True` if `use_irred_kpt == True`)
+    fout_name : str
+        beginning of the output files for each quantity after each iteration
+    write_txt : bool
+        write results after each iteration as text files (".dat")
+    write_bin : bool
+        write results after each iteration as binary files (".npz"). 
+        See :ref:`wannierberri.__result.EnergyResult.save` for file format
     print_Kpoints : bool
         print the list of K points
     parameters : dict  

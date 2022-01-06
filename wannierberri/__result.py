@@ -43,7 +43,7 @@ class Result():
         raise NotImplementedError()
 
 # writing to a file
-    def write(self,name):
+    def savetxt(self,name):
         raise NotImplementedError()
         
 # saving as binary
@@ -189,7 +189,7 @@ class EnergyResult(Result):
         else:
             return ["{0:15.6e}    {1:s}".format(E,s) for j,E in enumerate(self.Energies[i]) for s in self.__write(data[j],datasm[j],i+1) ]
 
-    def write(self,name):
+    def savetxt(self,name):
         frmt="{0:^31s}" if self.data.dtype == complex else "{0:^15s}"
         def getHead(n):
             if n<=0:
@@ -204,6 +204,12 @@ class EnergyResult(Result):
 
 
     def save(self,name):
+        """
+        writes a dictionary-like objectto file called `name`  with the folloing keys:
+        - 'E_titles' : list of str - titles of the energies on which the result depends
+        - 'Energies_0', ['Energies_1', ... ] - corresponding arrays of energies
+        - data : array of shape (len(Energies_0), [ len(Energies_1), ...] , [3  ,[ 3, ... ]] )
+        """
         name = name.format('')
         f=open(name+".npz","wb")
         energ = {f'Energies_{i}':E for i,E in enumerate(self.Energies)}
@@ -263,9 +269,9 @@ class EnergyResultDict(EnergyResult):
         return self + (-1)*other
 
     # writing to a text file
-    def write(self, name):
+    def savetxt(self, name):
         for k,v in self.results.items():
-            v.write(name.format('-'+k+'{}')) # TODO: check formatting
+            v.savetxt(name.format('-'+k+'{}')) # TODO: check formatting
 
     # writing to a binary file
     def save(self, name):

@@ -215,7 +215,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         if not (restart and i_iter==0):
             _name = fout_name+"-{}"+suffix+"_iter-{0:04d}".format(i_iter+start_iter)
             if write_txt:
-                result_all.write(_name+".dat")
+                result_all.savetxt(_name+".dat")
             if write_bin:
                 result_all.save(_name)
                 
