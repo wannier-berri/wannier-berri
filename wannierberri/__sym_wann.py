@@ -50,7 +50,9 @@ class sym_wann():
         self.positions = positions
         self.atom_name = atom_name
         self.proj = proj
-        self.matrix_list = ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
+        self.matrix_list = ['AA','SS','BB','CC']#['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
+        self.parity_I =  {'AA':1,'BB':1,'CC':1,'SS':-1}#{'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1} 
+        self.parity_TR =  {'AA':1,'BB':1,'CC':1,'SS':-1}#{'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
         self.matrix_bool = {}
         self.magmom=magmom
         for X in self.matrix_list:
@@ -143,14 +145,20 @@ class sym_wann():
         #==============================
         def show_symmetry(symmetry):
             for i in range(symmetry['rotations'].shape[0]):
-                print("  --------------- %4d ---------------" % (i + 1))
                 rot = symmetry['rotations'][i]
                 trans = symmetry['translations'][i]
-                print("  rotation:")
-                for x in rot:
-                    print("     [%2d %2d %2d]" % (x[0], x[1], x[2]))
+                rot_cart = np.dot(np.dot(np.transpose(self.lattice),rot),np.linalg.inv(np.transpose(self.lattice)) )
+                trans_cart = np.dot(np.dot(np.transpose(self.lattice),trans),np.linalg.inv(np.transpose(self.lattice)) )
+                det = np.linalg.det(rot_cart)
+                print("  --------------- %4d ---------------" % (i + 1))
+                print(" det = ",det)
+                print("  rotation:                    cart:")
+                for x in range(3):
+                    print("     [%2d %2d %2d]                    [%3.2f %3.2f %3.2f]" % (rot[x,0], rot[x,1], rot[x,2], 
+                        rot_cart[x,0], rot_cart[x,1], rot_cart[x,2]))
                 print("  translation:")
-                print("     (%8.5f %8.5f %8.5f)" % (trans[0], trans[1], trans[2]))
+                print("     (%8.5f %8.5f %8.5f)  (%8.5f %8.5f %8.5f)" % (trans[0], trans[1], trans[2],
+                    trans_cart[0], trans_cart[1], trans_cart[2]))
         numbers = []
         names = list(set(self.atom_name))
         for name in self.atom_name:
@@ -161,6 +169,8 @@ class sym_wann():
         self.symmetry = spglib.get_symmetry_dataset(cell)
         self.nsymm = self.symmetry['rotations'].shape[0]
         show_symmetry(self.symmetry)
+        self.Inv = (self.symmetry['rotations'][1] == -1*np.eye(3)).all() #inversion or not
+        if self.Inv: print('====================\nSystem have inversion symmetry\n====================')
 
     def get_angle(self,sina,cosa):
         '''Get angle in radian from sin and cos.'''
@@ -373,16 +383,14 @@ class sym_wann():
                 new_magmom =np.round( np.dot(rot_sym_glb,magmom),decimals=4)
                 if abs(np.linalg.norm(magmom - np.linalg.det(rot_sym_glb)*new_magmom)) > 0.0005:
                     sym_only = False
-                    print('Symmetry operator {} is not respect to magnetic moment'.format(sym) )
                 else:
                     sym_only = True
-                    print('Symmetry operator {} is respect to magnetic moment'.format(sym) )
+                    print('Symmetry operator {} is respect to magnetic moment'.format(sym+1) )
                 if abs(np.linalg.norm(magmom + np.linalg.det(rot_sym_glb)*new_magmom)) > 0.0005:
                     sym_T = False
-                    print('Symmetry operator {}*T is not respect to magnetic moment'.format(sym) )
                 else:
                     sym_T = True
-                    print('Symmetry operator {}*T is respect to magnetic moment'.format(sym) )
+                    print('Symmetry operator {}*T is respect to magnetic moment'.format(sym+1) )
                 if sym_T+sym_only == 0:
                     break
 
@@ -423,15 +431,16 @@ class sym_wann():
             if self.matrix_bool[X]:
                 vars()[X+'_res'] = np.zeros((self.num_wann,self.num_wann,nRvec,3),dtype=complex)
         for rot in range(self.nsymm):
-            print('rot = ',rot+1)
+            #print('rot = ',rot+1)
             p_map = np.zeros((self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
             p_map_dagger = np.zeros((self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
             for atom in range(self.num_wann_atom):
                 p_map[atom],p_map_dagger[atom] = self.full_p_mat(atom,rot)
             rot_map,vec_shift,sym_only,sym_T = self.atom_rot_map(rot)
             if sym_only+sym_T == 0:
-                print('skip this symmetry')
+                pass
             else:
+                print('rot = ',rot+1)
                 if sym_only: nrot+= 1
                 if sym_T: nrot+= 1
                 R_map = np.dot(R_list,np.transpose(self.symmetry['rotations'][rot]))
@@ -452,9 +461,14 @@ class sym_wann():
                                     rot_map[atom_b]],new_Rvec_index]
                                 for X in self.matrix_list:
                                     if self.matrix_bool[X]:
-                                        vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = vars(self)[X+'_R'][
+                                        if X in ['SS']:
+                                            vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = vars(self)[X+'_R'][
                                             self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index,:].dot(np.transpose(
                                             self.symmetry['rotations'][rot]) )
+                                        if X in ['AA','BB','CC']:
+                                            vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = vars(self)[X+'_R'][
+                                            self.H_select[atom_a,atom_b],new_Rvec_index,:]
+                                       
                             else:
                                 if new_Rvec in tmp_R_list:
                                     pass
@@ -468,6 +482,9 @@ class sym_wann():
                         H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
                         '''
                         tmp = np.dot(np.dot(p_map_dagger[atom_a],Ham_all[:,atom_a,atom_b]),p_map[atom_b])
+                      #  if atom_a == 0 and atom_b == 0:
+                      #      print(p_map_dagger[atom_a].real)
+                      #      print(p_map[atom_b].real)
                         if sym_only: 
                             Ham_res += tmp.transpose(0,2,1)
                         if sym_T:
@@ -478,19 +495,74 @@ class sym_wann():
                             if self.matrix_bool[X]:
                                 vars()[X+'_shift'] = vars()[X+'_all'].transpose(0,1,2,5,3,4)
                                 tmpX= np.dot(np.dot(p_map_dagger[atom_a],vars()[X+'_shift'][:,atom_a,atom_b]),p_map[atom_b])
+                                if np.linalg.det(self.symmetry['rotations'][rot]) < 0:
+                                        parity_I = self.parity_I[X]
+                                else: parity_I = 1
+                               # print('parity_I = ',parity_I)    
+                                test_i = self.iRvec.index([0,0,0]) 
+                            #    print(X,'!!!!!!!!!!!!!!!!!!!!!!!')
                                 if sym_only:
-                                    vars()[X+'_res'] += tmpX.transpose(0,3,1,2)
+                                    vars()[X+'_res'] += tmpX.transpose(0,3,1,2)*parity_I
+                                    if X == 'AA' and atom_a == 1 and atom_b == 1:
+                                        print('comp +++++++++++++')
+                                        print('parity_I = ',parity_I)    
+                                        
+                                        #print(vars(self)[X+'_R'][:,:,test_i,0].real)#.real)#imag)
+                                        print(np.diag(vars(self)[X+'_R'][:,:,test_i,0].real))#.real)#imag)
+                                        #print('rot +++++++++++++')
+                                        #print(vars()[X+'_shift'][test_i,atom_a,atom_b,0].real)#.real)#imag)
+                                        #print(np.diag(vars()[X+'_shift'][test_i,atom_a,atom_b,0].real))#.real)#imag)
+                                        #print(np.diag( vars(self)[X+'_R'][self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)))#.real)#imag)
+                                        print('======================')
+                                        #print(self.H_select[atom_a,atom_b])
+                                        #print(parity_I*tmpX.transpose(0,3,1,2)[:,:,test_i,0].real)#.real)#imag)
+                                        print(np.diag( parity_I*tmpX.transpose(0,3,1,2)[:,:,test_i,0].real))#.real)#imag)
+                                        #print(np.diag( parity_I*tmpX.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)))#.real)#imag)
                                 if sym_T:
                                     tmpX_T = self.ul.dot(tmpX.transpose(1,2,0,3)).dot(self.ur).conj()
-                                    vars()[X+'_res'] += tmpX_T.transpose(0,3,1,2)
-
+                                    vars()[X+'_res'] += tmpX_T.transpose(0,3,1,2)*parity_I*self.parity_TR[X]
+                                    '''
+                                    if X == 'AA' and atom_a == 0 and atom_b == 0:
+                                        print('comp  T +++++++++++++')
+                                        #print(vars(self)[X+'_R'][:,:,test_i,0].real)#.real)#imag)
+                                        print(np.diag(vars(self)[X+'_R'][:,:,test_i,0].real))#.real)#imag)
+                                        #print('rot +++++++++++++')
+                                        #print(vars()[X+'_shift'][test_i,atom_a,atom_b,0].real)#.real)#imag)
+                                        #print(np.diag(vars()[X+'_shift'][test_i,atom_a,atom_b,0].real))#.real)#imag)
+                                        #print(np.diag( vars(self)[X+'_R'][self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)))#.real)#imag)
+                                        print('========== T ============')
+                                        #print(self.H_select[atom_a,atom_b])
+                                        #print(parity_I*tmpX_T.transpose(0,3,1,2)[:,:,test_i,0].real)#.real)#imag)
+                                        print(np.diag( parity_I*tmpX.transpose(0,3,1,2)[:,:,test_i,0].real))#.real)#imag)
+                                        #print(np.diag( parity_I*tmpX.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)))#.real)#imag)
+                                    '''
+                                    #if X == 'AA' and  atom_a == 0 and atom_b == 0:
+                                    #    print(np.diag( vars(self)[X+'_R'][self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)[:,:]))#.real)#imag)
+                                    #    print('======================')
+                                    #    print(np.diag( parity_I*self.parity_TR[X]*tmpX_T.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)))#.real)#imag)
 
         res_dic = {}
         res_dic['Ham'] = Ham_res/nrot
+        print('++++++++++++++++++++++')
+        print('Ham')
+        print('++++++++++++++++++++++')
+        test_i = self.iRvec.index([0,0,0]) 
+        print(np.diag(vars(self)['Ham_R'][:,:,test_i].real))
+        print('======================')
+        print(np.diag(res_dic['Ham'][:,:,test_i].real))
         for X in self.matrix_list:
             if self.matrix_bool[X]:
                 X_res = X+'_res'
                 res_dic[X] = vars()[X_res]/nrot
+                print('++++++++++++++++++++++')
+                print(X)
+                print('++++++++++++++++++++++')
+                #print(np.diag(vars(self)[X+'_R'][:,:,test_i,2].real))
+                print(vars(self)[X+'_R'][:,:,test_i,2].real)
+                print('======================')
+                #print(np.diag(res_dic[X][:,:,test_i,2].real))
+                print(res_dic[X][:,:,test_i,2].real)
+        
         print('number of symmetry oprator == ',nrot)
         if keep_New_R:
                 return res_dic , tmp_R_list
@@ -517,7 +589,8 @@ class sym_wann():
         #===============================
         #symmetrize additional R vectors
         #===============================
-        if nRvec_add > 0:
+        if False:
+        #if nRvec_add > 0:
             H_res_add=np.zeros((self.num_wann,self.num_wann,nRvec_add),dtype=complex)
             print('##########################')
             print('Additional Block')
