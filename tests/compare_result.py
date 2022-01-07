@@ -5,16 +5,18 @@ import os
 import numpy as np
 import pytest
 from pytest import approx
+from wannierberri.__result import EnergyResult
 
 from conftest import REF_DIR, OUTPUT_DIR
 
 def read_energyresult_dat(filename,mode="txt"):
     """Read .dat of .npz file output of EnergyResult."""
     if mode == "bin":
-        res = np.load(open(filename,"rb"))
-        energ = [res[f'Energies_{i}'] for i,_ in enumerate(res['E_titles'])]  # in binary mode energies are just two arrays
+        res = EnergyResult(file_npz = filename)
+#        energ = [res[f'Energies_{i}'] for i,_ in enumerate(res['E_titles'])]  # in binary mode energies are just two arrays
                                                                             # while in txt mode it is a direct product
-        return list(res['E_titles']), energ , res['data'], None # we do not check smoothing in the binary mode
+#        return res['E_titles']), energ , res['data'], None # we do not check smoothing in the binary mode
+        return res.E_titles, res.Energies , res.data, None # we do not check smoothing in the binary mode
     elif mode == "txt":
         ##### Now the txt mode
         data_raw = np.loadtxt(filename)
@@ -48,7 +50,7 @@ def error_message(fout_name, suffix, i_iter, abs_err, filename, filename_ref,req
 def compare_energyresult():
     """Compare dat file output of EnergyResult with the file in reference folder"""
     def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,compare_zero=False,precision=None,compare_smooth = True,mode="txt"):
-        assert mode in ["txt","bin"]
+        assert mode in ["txt","bin","inner"]
         if mode == "bin" :
             compare_smooth = False
             ext = ".npz"
@@ -79,7 +81,8 @@ def compare_energyresult():
                     precision = max(maxval / 1E12, 1E-11)
                 elif precision < 0:
                     precision = max(maxval * abs(precision) , 1E-11)
-                assert E_titles == E_titles_ref
+                print (f"E_titles : <{E_titles}> vs <{E_titles_ref}>")
+                assert np.all(E_titles == E_titles_ref), f"E_titles mismatch : <{E_itles}> != <{E_titles_ref}>"
                 if isinstance(data_energy,list):
                     for i,E in enumerate(zip(data_energy,data_energy_ref)):
                         assert E[0] == approx (E[1]) , f"energy array {i} with title {E_titles[i]} differ by {np.max(abs(E[0]-E[1]))}"

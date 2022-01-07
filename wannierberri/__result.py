@@ -101,34 +101,43 @@ class EnergyResult(Result):
         | of the `data` array minus number of energies
     E_titles : list of str
         | titles to be printed above the energy columns
+    file_npz : str 
+        | path to a np file (if provided, the parameters `Enegries`, `data`, `TRodd`, `Iodd`, `rank` and 
+        | `E_titles` are neglected)
 
      """
-
-
-    def __init__(self,Energies,data, smoothers=None,
-                      TRodd=False,Iodd=False,rank=None,E_titles=["Efermi","Omega"]):
-        if not isinstance (Energies,(list,tuple)) : 
-            Energies=[Energies]
-        if not isinstance (E_titles,(list,tuple)) :
-            E_titles=[E_titles]
-        E_titles=list(E_titles)
-
-        self.N_energies=len(Energies)
-        if self.N_energies<=len(E_titles):
-           self.E_titles=E_titles[:self.N_energies]
+                      
+    def __init__(self,Energies=None,data=None, smoothers=None,
+                      TRodd=False,Iodd=False,rank=None,E_titles=["Efermi","Omega"],
+                      file_npz = None):
+        if file_npz is not None:
+            res = np.load(open(file_npz,"rb"))
+            energ = [res[f'Energies_{i}'] for i,_ in enumerate(res['E_titles'])]  # in binary mode energies are just two arrays
+            self.__init__(Energies=energ,data=res['data'],smoothers=smoothers,TRodd=res['TRodd'],Iodd=res['Iodd'],rank=res['rank'],E_titles=list(res['E_titles']))
         else:
-           self.E_titles=E_titles+["???"]*(self.N_energies-len(self.E_titles))
-        self.rank=data.ndim-self.N_energies if rank is None else rank
-        if self.rank>0:
-            shape=data.shape[-self.rank:]
-            assert np.all(np.array(shape)==3), "data.shape={}".format(data.shape)
-        for i in range(self.N_energies):
-            assert (Energies[i].shape[0]==data.shape[i]) , "dimension of Energy[{}] = {} does not match do dimension of data {}".format(i,Energy[i].shape[0],data.shape[i])
-        self.Energies=Energies
-        self.data=data
-        self.set_smoother(smoothers)
-        self.TRodd=TRodd
-        self.Iodd=Iodd
+            if not isinstance (Energies,(list,tuple)) : 
+                Energies=[Energies]
+            if not isinstance (E_titles,(list,tuple)) :
+                E_titles=[E_titles]
+            E_titles=list(E_titles)
+    
+            self.N_energies=len(Energies)
+            if self.N_energies<=len(E_titles):
+               self.E_titles=E_titles[:self.N_energies]
+            else:
+               self.E_titles=E_titles+["???"]*(self.N_energies-len(E_titles))
+            self.rank=data.ndim-self.N_energies if rank is None else rank
+            if self.rank>0:
+                shape=data.shape[-self.rank:]
+                assert np.all(np.array(shape)==3), "data.shape={}".format(data.shape)
+            for i in range(self.N_energies):
+                assert (Energies[i].shape[0]==data.shape[i]) , "dimension of Energy[{}] = {} does not match do dimension of data {}".format(i,Energy[i].shape[0],data.shape[i])
+            self.Energies=Energies
+            self.data=data
+            self.set_smoother(smoothers)
+            self.TRodd=TRodd
+            self.Iodd=Iodd
+        
     
     def set_smoother(self, smoothers):
         if smoothers is None:
@@ -213,7 +222,7 @@ class EnergyResult(Result):
         name = name.format('')
         energ = {f'Energies_{i}':E for i,E in enumerate(self.Energies)}
         with open(name+".npz","wb") as f:
-            np.savez_compressed(f,E_titles=self.E_titles,data=self.data,**energ)
+            np.savez_compressed(f,E_titles=self.E_titles,data=self.data,rank=self.rank,TRodd=self.TRodd,Iodd=self.Iodd,**energ)
 
     @property
     def _maxval(self):
