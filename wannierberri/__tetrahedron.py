@@ -168,37 +168,11 @@ class TetraWeights():
     def ones(self):
         return np.ones(len(self.eFermi))
 
-    @lazy_property.LazyProperty
-    def bands_in_range(self):
-        emin=self.eFermi[0]
-        emax=self.eFermi[-1]
-        return [list(np.where((Emax>=emin)*(Emin<=emax))[0]) for Emin,Emax in zip(self.Emin,self.Emax)]
-
-    @property
-    def bands_below_range(self):
-        emin=self.eFermi[0]
-        emax=self.eFermi[-1]
-        res=[np.where(Emax<emin)[0] for Emax in self.Emax]
-        return [[a.max()] if len(a)>0 else [] for a in res]
-
-    @lazy_property.LazyProperty
-    def bands_in_range_sea(self):
-        return [a+b for a,b in zip(self.bands_below_range,self.bands_in_range) ]
-
 
     def __weight_1b(self,ik,ib,der):
         if ib not in self.weights[der][ik]:
             self.weights[der][ik][ib]=weights_parallelepiped(self.eFermi,self.eCenter[ik,ib],self.eCorners[ik,:,:,:,ib],der=der)
         return self.weights[der][ik][ib]
-
-
-    def weights_allbands(self,eFermi,der):
-        if self.eFermi is None:
-            self.eFermi=eFermi
-        else :
-            assert self.eFermi is eFermi
-        bands_in_range=(self.bands_in_range if der>0 else self.bands_in_range_sea)
-        return [{ib:self.__weight_1b(ik,ib,der)  for ib in ibrg } for ik,ibrg in enumerate(bands_in_range)]
 
 # this is for fermiocean
     def weights_all_band_groups(self,eFermi,der,degen_thresh=-1,degen_Kramers=False):
