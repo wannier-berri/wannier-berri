@@ -169,7 +169,10 @@ class TABresult(result.Result):
         results={r: self.results[r]+other.results[r] for r in self.results if r in other.results }
         return TABresult(np.vstack( (self.kpoints,other.kpoints) ), recip_lattice=self.recip_lattice,results=results) 
 
-    def write(self,name):
+    def save(self,name):
+        return   # do nothing so far
+
+    def savetxt(self,name):
         return   # do nothing so far
 
     def transform(self,sym):

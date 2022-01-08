@@ -233,9 +233,14 @@ class INTresult(result.Result):
         results={r: self.results[r]+other.results[r] for r in self.results if r in other.results }
         return INTresult(results=results) 
 
-    def write(self,name):
+    def savetxt(self,name):
         for q,r in self.results.items():
-            r.write(name.format(q+'{}'))
+            r.savetxt(name.format(q+'{}'))
+
+    # writing to a binary file
+    def save(self, name):
+        for q,r in self.results.items():
+            r.save(name.format(q+'{}'))
 
     def transform(self,sym):
         results={r:self.results[r].transform(sym)  for r in self.results}
