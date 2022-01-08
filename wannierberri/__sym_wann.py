@@ -461,11 +461,13 @@ class sym_wann():
                                     rot_map[atom_b]],new_Rvec_index]
                                 for X in self.matrix_list:
                                     if self.matrix_bool[X]:
+                                        #if X in ['SS','AA','BB','CC']:
                                         if X in ['SS']:
                                             vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = vars(self)[X+'_R'][
                                             self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index,:].dot(np.transpose(
                                             self.symmetry['rotations'][rot]) )
-                                        if X in ['AA','BB','CC']:
+                                        if X in ['AA']:
+                                        #if X in ['BB','CC']:
                                             vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = vars(self)[X+'_R'][
                                             self.H_select[atom_a,atom_b],new_Rvec_index,:]
                                        
@@ -507,16 +509,16 @@ class sym_wann():
                                         print('comp +++++++++++++')
                                         print('parity_I = ',parity_I)    
                                         
-                                        #print(vars(self)[X+'_R'][:,:,test_i,0].real)#.real)#imag)
-                                        print(np.diag(vars(self)[X+'_R'][:,:,test_i,0].real))#.real)#imag)
+                                        print(vars(self)[X+'_R'][:,:,test_i,0].real)#.real)#imag)
+                                        #print(np.diag(vars(self)[X+'_R'][:,:,test_i,0].real))#.real)#imag)
                                         #print('rot +++++++++++++')
                                         #print(vars()[X+'_shift'][test_i,atom_a,atom_b,0].real)#.real)#imag)
                                         #print(np.diag(vars()[X+'_shift'][test_i,atom_a,atom_b,0].real))#.real)#imag)
                                         #print(np.diag( vars(self)[X+'_R'][self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)))#.real)#imag)
                                         print('======================')
                                         #print(self.H_select[atom_a,atom_b])
-                                        #print(parity_I*tmpX.transpose(0,3,1,2)[:,:,test_i,0].real)#.real)#imag)
-                                        print(np.diag( parity_I*tmpX.transpose(0,3,1,2)[:,:,test_i,0].real))#.real)#imag)
+                                        print(parity_I*tmpX.transpose(0,3,1,2)[:,:,test_i,0].real)#.real)#imag)
+                                        #print(np.diag( parity_I*tmpX.transpose(0,3,1,2)[:,:,test_i,0].real))#.real)#imag)
                                         #print(np.diag( parity_I*tmpX.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)))#.real)#imag)
                                 if sym_T:
                                     tmpX_T = self.ul.dot(tmpX.transpose(1,2,0,3)).dot(self.ur).conj()
@@ -554,14 +556,18 @@ class sym_wann():
             if self.matrix_bool[X]:
                 X_res = X+'_res'
                 res_dic[X] = vars()[X_res]/nrot
-                print('++++++++++++++++++++++')
-                print(X)
-                print('++++++++++++++++++++++')
-                #print(np.diag(vars(self)[X+'_R'][:,:,test_i,2].real))
-                print(vars(self)[X+'_R'][:,:,test_i,2].real)
-                print('======================')
-                #print(np.diag(res_dic[X][:,:,test_i,2].real))
-                print(res_dic[X][:,:,test_i,2].real)
+                if X == 'AA':
+                    print('++++++++++++++++++++++')
+                    print(X)
+                    print('++++++++++++++++++++++')
+                    #print(np.diag(vars(self)[X+'_R'][:,:,test_i,2].real))
+                    print(vars(self)[X+'_R'][:,:,test_i,0].real)
+                    print(vars(self)[X+'_R'][:4,:4,test_i,0].real)
+                    print(vars(self)[X+'_R'][4:8,4:8,test_i,0].real)
+                    print(vars(self)[X+'_R'][8:12,8:12,test_i,0].real)
+                    print('======================')
+                    #print(np.diag(res_dic[X][:,:,test_i,2].real))
+                    print(res_dic[X][:,:,test_i,0].real)
         
         print('number of symmetry oprator == ',nrot)
         if keep_New_R:
