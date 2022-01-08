@@ -112,7 +112,10 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         user_quantities = {}, 
                         adpt_num_iter=0,adpt_fac=1,
                         use_irred_kpt = True, symmetrize = True,
-                        fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
+                        fout_name="wberri",
+                        write_txt=True,
+                        write_bin=False,
+                        restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
                         parallel = None,
                         print_Kpoints = True,
                         parameters={},parameters_K={},specific_parameters={} ):
@@ -150,6 +153,13 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         evaluate only symmetry-irreducible K-points
     symmetrize : bool
         symmetrize the result (always `True` if `use_irred_kpt == True`)
+    fout_name : str
+        beginning of the output files for each quantity after each iteration
+    write_txt : bool
+        write results after each iteration as text files (".dat")
+    write_bin : bool
+        write results after each iteration as binary files (".npz"). 
+        See :ref:`wannierberri.__result.EnergyResult.save` for file format
     print_Kpoints : bool
         print the list of K points
     parameters : dict  
@@ -207,6 +217,7 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
     res=evaluate_K(eval_func,system,grid,fftlib=fftlib,
             adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac, use_irred_kpt=use_irred_kpt,symmetrize=symmetrize,
                 fout_name=fout_name,suffix=suffix,
+                write_txt=write_txt, write_bin=write_bin,
                 restart=restart,file_Klist=file_Klist, parallel = parallel,parameters_K=parameters_K,
                 print_Kpoints=print_Kpoints,)
     cprint ("Integrating finished successfully",'green', attrs=['bold'])

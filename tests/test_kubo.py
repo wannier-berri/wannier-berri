@@ -25,7 +25,9 @@ def check_integrate_dynamical():
                additional_parameters={}, 
                parameters_K={},
                adpt_num_iter=0,use_symmetry = False,
-               suffix="", suffix_ref="", extra_precision={} ):
+               suffix="", suffix_ref="",
+               mode = "bin",
+               extra_precision={} ):
 
         grid = wberri.Grid(system, **grid_param)
         result = wberri.integrate(system,
@@ -38,6 +40,8 @@ def check_integrate_dynamical():
                 parameters = additional_parameters,
                 parameters_K = parameters_K,
                 fout_name = os.path.join(OUTPUT_DIR, fout_name),
+                write_txt = (mode == "txt"),
+                write_bin = (mode == "bin"),
                 suffix = suffix,
                 restart = False,
                 )
@@ -68,7 +72,7 @@ def check_integrate_dynamical():
             for quant in quantities_compare:
                 prec = extra_precision[quant] if quant in extra_precision else None
                 comparer(fout_name, quant+suffix, adpt_num_iter,
-                    suffix_ref=compare_quant(quant)+suffix_ref, precision=prec)
+                    suffix_ref=compare_quant(quant)+suffix_ref, precision=prec, mode = mode)
 
     return _inner
 

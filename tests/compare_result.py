@@ -5,30 +5,41 @@ import os
 import numpy as np
 import pytest
 from pytest import approx
+from wannierberri.__result import EnergyResult
 
 from conftest import REF_DIR, OUTPUT_DIR
 
-def read_energyresult_dat(filename):
-    """Read .dat file output of EnergyResult."""
-    data_raw = np.loadtxt(filename)
-    with open(filename, 'r') as f:
-        firstline = f.readline().split()
+def read_energyresult_dat(filename,mode="txt"):
+    """Read .dat of .npz file output of EnergyResult."""
+    if mode == "bin":
+        res = EnergyResult(file_npz = filename)
+#        energ = [res[f'Energies_{i}'] for i,_ in enumerate(res['E_titles'])]  # in binary mode energies are just two arrays
+                                                                            # while in txt mode it is a direct product
+#        return res['E_titles']), energ , res['data'], None # we do not check smoothing in the binary mode
+        return res.E_titles, res.Energies , res.data, None # we do not check smoothing in the binary mode
+    elif mode == "txt":
+        ##### Now the txt mode
+        data_raw = np.loadtxt(filename)
+        with open(filename, 'r') as f:
+            firstline = f.readline().split()
 
-    # energy titles: before 'x' or 'xx' or 'xxx' or ... occurs.
-    E_titles = []
-    for title in firstline[1:]:
-        if title in ['x' * n for n in range(1, 10)]:
-            break
-        E_titles.append(title)
-    N_energies = len(E_titles)
+        # energy titles: before 'x' or 'xx' or 'xxx' or ... occurs.
+        E_titles = []
+        for title in firstline[1:]:
+            if title in ['x' * n for n in range(1, 10)]:
+                break
+            E_titles.append(title)
+        N_energies = len(E_titles)
 
-    data_energy = data_raw[:, :N_energies]
+        data_energy = data_raw[:, :N_energies]
 
-    n_data = (data_raw.shape[1] - N_energies) // 2
-    data = data_raw[:, N_energies:N_energies+n_data]
-    data_smooth = data_raw[:, N_energies+n_data:]
+        n_data = (data_raw.shape[1] - N_energies) // 2
+        data = data_raw[:, N_energies:N_energies+n_data]
+        data_smooth = data_raw[:, N_energies+n_data:]
 
-    return E_titles, data_energy, data, data_smooth
+        return E_titles, data_energy, data, data_smooth
+    else:
+        raise ValueError(f"Supported modes are `txt` and `bin`, found {mode}")
 
 def error_message(fout_name, suffix, i_iter, abs_err, filename, filename_ref,required_precision):
     return (f"data of {fout_name} {suffix} at iteration {i_iter} give a maximal "
@@ -38,13 +49,19 @@ def error_message(fout_name, suffix, i_iter, abs_err, filename, filename_ref,req
 @pytest.fixture
 def compare_energyresult():
     """Compare dat file output of EnergyResult with the file in reference folder"""
-    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,compare_zero=False,precision=None,compare_smooth = True):
+    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,compare_zero=False,precision=None,compare_smooth = True,mode="txt"):
+        assert mode in ["txt","bin","inner"]
+        if mode == "bin" :
+            compare_smooth = False
+            ext = ".npz"
+        elif mode == "txt":
+            ext = ".dat"
         if suffix_ref is None :
             suffix_ref=suffix
         for i_iter in range(adpt_num_iter+1):
-            filename     = fout_name + f"-{suffix}_iter-{i_iter:04d}.dat"
+            filename     = fout_name + f"-{suffix}_iter-{i_iter:04d}"+ext
             path_filename = os.path.join(OUTPUT_DIR, filename)
-            E_titles, data_energy, data, data_smooth = read_energyresult_dat(path_filename)
+            E_titles, data_energy, data, data_smooth = read_energyresult_dat(path_filename,mode=mode)
 
             if compare_zero:
                 precision = 1e-11 if precision is None else abs(precision)
@@ -52,15 +69,25 @@ def compare_energyresult():
                 data_smooth_ref = np.zeros_like(data)
                 path_filename_ref = "ZERO"
             else:
-                filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}.dat"
+                filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}"+ext
                 path_filename_ref = os.path.join(REF_DIR, filename_ref)
-                E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref)
+                E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
+                # just to determine precision automatically
+                if compare_smooth:
+                    maxval = np.max(abs(data_smooth_ref))
+                else:
+                    maxval = np.max(abs(data_ref))
                 if precision is None:
-                    precision = max(abs(np.average(data_smooth_ref) / 1E12), 1E-11)
+                    precision = max(maxval / 1E12, 1E-11)
                 elif precision < 0:
-                    precision = max(abs(np.average(data_smooth_ref) * abs(precision) ), 1E-11)
-                assert E_titles == E_titles_ref
-                assert data_energy == approx(data_energy_ref, abs=precision)
+                    precision = max(maxval * abs(precision) , 1E-11)
+                print (f"E_titles : <{E_titles}> vs <{E_titles_ref}>")
+                assert np.all(E_titles == E_titles_ref), f"E_titles mismatch : <{E_itles}> != <{E_titles_ref}>"
+                if isinstance(data_energy,list):
+                    for i,E in enumerate(zip(data_energy,data_energy_ref)):
+                        assert E[0] == approx (E[1]) , f"energy array {i} with title {E_titles[i]} differ by {np.max(abs(E[0]-E[1]))}"
+                else:
+                    assert data_energy == approx(data_energy_ref, abs=precision)
             assert data == approx(data_ref, abs=precision), error_message(
                 fout_name, suffix, i_iter, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref,precision)
             if compare_smooth:
