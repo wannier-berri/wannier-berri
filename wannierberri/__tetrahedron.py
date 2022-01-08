@@ -192,27 +192,25 @@ class TetraWeights():
         return self.weights[der][ik][ib]
 
 
-    def weights_allbands(self,eFermi,der,op=0,ed=None):
-        if ed is None: ed=self.nk
+    def weights_allbands(self,eFermi,der):
         if self.eFermi is None:
             self.eFermi=eFermi
         else :
             assert self.eFermi is eFermi
-        bands_in_range=(self.bands_in_range if der>0 else self.bands_in_range_sea)[op:ed]
-        return [{ib:self.__weight_1b(op+ik,ib,der)  for ib in ibrg } for ik,ibrg in enumerate(bands_in_range)]
+        bands_in_range=(self.bands_in_range if der>0 else self.bands_in_range_sea)
+        return [{ib:self.__weight_1b(ik,ib,der)  for ib in ibrg } for ik,ibrg in enumerate(bands_in_range)]
 
 # this is for fermiocean
-    def weights_all_band_groups(self,eFermi,der,op=0,ed=None,degen_thresh=-1,degen_Kramers=False):
+    def weights_all_band_groups(self,eFermi,der,degen_thresh=-1,degen_Kramers=False):
         """
              here  the key of the return dict is a pair of integers (ib1,ib2)
         """
-        if ed is None: ed=self.nk
         if self.eFermi is None:
             self.eFermi=eFermi
         else :
             assert self.eFermi is eFermi
         res=[]
-        for ik in range(op,ed):
+        for ik in range(self.nk):
             bands_in_range=get_bands_in_range(self.eFermi[0],self.eFermi[-1],self.eCenter[ik],degen_thresh=degen_thresh,degen_Kramers=degen_Kramers,
                     Ebandmin=self.Emin[ik],Ebandmax=self.Emax[ik])
             weights= { (ib1,ib2):sum(self.__weight_1b(ik,ib,der) 

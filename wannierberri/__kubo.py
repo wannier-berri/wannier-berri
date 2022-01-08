@@ -140,7 +140,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
 
 
     # prefactor for correct units of the result (S/cm)
-    pre_fac = e**2/(100.0 * hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom)
+    pre_fac = e**2/(100.0 * hbar * data.nk * data.cell_volume * constants.angstrom)
 
     if conductivity_type == 'kubo' :
         sigma_H  = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
@@ -167,7 +167,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         sigma_shift = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3, 3), dtype=complex)
         rank=3
         # prefactor for the shift current
-        pre_fac = -1.j*eV_seconds*pi*e**3/(4.0 * hbar**(2) * data.NKFFT_tot * data.cell_volume)
+        pre_fac = -1.j*eV_seconds*pi*e**3/(4.0 * hbar**(2) * data.nk * data.cell_volume)
 
 
     if adpt_smr: 
@@ -175,7 +175,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
 
 
     # iterate over ik, simple summation
-    for ik in range(data.NKFFT_tot):
+    for ik in range(data.nk):
         # E - omega
         E  = data.E_K[ik] # energies [n] in eV
         dE = E[None,:] - E[:, None] # E_m(k) - E_n(k) [n, m]
@@ -344,7 +344,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         return result.EnergyResult([Efermi,omega], sigma_SHC, TRodd=False, Iodd=False, rank=rank)
 
     elif conductivity_type == 'tildeD':
-        pre_fac = 1./ (data.NKFFT_tot * data.cell_volume )
+        pre_fac = 1./ (data.nk * data.cell_volume )
         return result.EnergyResult([Efermi,omega], tildeD*pre_fac, TRodd=False, Iodd=True, rank=rank)
 
     elif conductivity_type == 'shiftcurrent':
