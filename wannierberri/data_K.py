@@ -266,23 +266,6 @@ class Data_K(System):
     def tetraWeights(self):
         return TetraWeights(self.E_K,self.E_K_corners)
 
-    def get_bands_in_range(self,emin,emax):
-        select = [ np.where((self.E_K[ik]>=emin)*(self.E_K[ik]<=emax))[0] for ik in range(self.nk) ]
-        return  [ {ib:self.E_K[ik,ib]  for ib in sel } for ik,sel in enumerate(select) ]
-
-    def get_bands_below_range(self,emin,emax):
-        res=[np.where((self.E_K[ik]<emin))[0] for ik in range(self.nk)]
-        return [{a.max():self.E_K[ik,a.max()]} if len(a)>0 else [] for ik,a in enumerate(res)]
-
-    def get_bands_in_range_sea(self,emin,emax):
-        res=self.get_bands_in_range(emin,emax)
-        for ik in range(self.nk):
-           add=np.where((self.E_K[ik]<emin))[0]
-           if len(add)>0:
-               res[ik][add.max()]=self.E_K[ik,add.max()]
-        return res
-
-
     def get_bands_in_range_groups(self,emin,emax,degen_thresh=-1,degen_Kramers=False,sea=False):
         res=[]
         for ik in range(self.nk):
