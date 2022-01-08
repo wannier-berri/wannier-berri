@@ -27,7 +27,7 @@ def check_integrate(parallel_serial):
                grid_param={'NK':[6,6,6],'NKFFT':[3,3,3]},adpt_num_iter=0,
                additional_parameters={}, parameters_K={},specific_parameters = {},
                 use_symmetry = False,
-               suffix="", suffix_ref="",
+               suffix="", suffix_ref="",mode="bin",
                extra_precision={},
                precision = -1e-8 ,
                compare_smooth = True,
@@ -49,6 +49,8 @@ def check_integrate(parallel_serial):
                 parameters_K = parameters_K,
                 fout_name = os.path.join(OUTPUT_DIR, fout_name),
                 suffix=suffix,
+                write_txt = ( mode == "txt" ),
+                write_bin = ( mode == "bin" ),
                 restart = restart,
                 )
         if len(suffix)>0:
@@ -66,6 +68,7 @@ def check_integrate(parallel_serial):
             assert np.all( np.array(data.shape[1:]) == 3)
             prec=extra_precision[quant] if quant in extra_precision else precision
             comparer(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,
+                mode = mode,
                 compare_zero=compare_zero,precision=prec, compare_smooth = compare_smooth )
 
     return _inner
@@ -240,7 +243,7 @@ def test_Fe_FPLO_wcc_sym(check_integrate,system_Fe_FPLO_wcc, compare_energyresul
 
 def test_GaAs(check_integrate,system_GaAs_W90, compare_energyresult,quantities_GaAs,quantities_GaAs_internal,Efermi_GaAs):
     """Test berry dipole"""
-    check_integrate(system_GaAs_W90 , quantities_GaAs+['gyrotropic_Korb','gyrotropic_Korb_test'] , 
+    check_integrate(system_GaAs_W90 , quantities_GaAs_internal+quantities_GaAs+['gyrotropic_Korb','gyrotropic_Korb_test'] , 
         fout_name="berry_GaAs_W90" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True},
 #                additional_parameters = {"internal_terms":False },
@@ -303,7 +306,7 @@ def test_Haldane_TBmodels_wcc_internal_2(check_integrate,system_Haldane_TBmodels
 
 def test_Haldane_TBmodels_wcc_external(check_integrate,system_Haldane_TBmodels,compare_energyresult,quantities_Haldane,Efermi_Haldane):
     check_integrate(system_Haldane_TBmodels , ["ahc"] , fout_name="berry_Haldane_tbmodels" , suffix="wcc_external" ,suffix_ref="wcc_external" , Efermi=Efermi_Haldane , comparer=compare_energyresult,
-                additional_parameters = { 'internal_terms':False} ,
+                compare_zero = True, additional_parameters = { 'internal_terms':False} ,
                grid_param={'NK':[10,10,1], 'NKFFT':[5,5,1]} )
 
 
@@ -362,6 +365,12 @@ def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,qu
 def test_Chiral(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
     check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
                 use_symmetry =  True ,
+                additional_parameters = { 'external_terms':False} ,
+               grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
+
+def test_Chiral_txt(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
+    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,mode = "txt",
+                use_symmetry =  True , precision = -1e-5,
                 additional_parameters = { 'external_terms':False} ,
                grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
 
