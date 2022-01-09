@@ -96,7 +96,7 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
 
 
 
-def evaluate_K(func,system,grid,fftlib='fftw',
+def evaluate_K(func,system,grid,
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,
             use_irred_kpt=True,symmetrize=True, 
             fout_name="result", suffix="",
@@ -130,14 +130,14 @@ As a result, the integration will be performed over NKFFT x NKdiv
 
     if parallel.method=='ray':
         ray=parallel.ray
-        remote_parameters = {'_system' : ray.put(system) , '_grid' : ray.put(grid), 'npar_k': parallel.npar_k,'fftlib':fftlib}
+        remote_parameters = {'_system' : ray.put(system) , '_grid' : ray.put(grid), 'npar_k': parallel.npar_k}
         @ray.remote
-        def paralfunc(Kpoint,_system,_grid,npar_k,fftlib):
+        def paralfunc(Kpoint,_system,_grid,npar_k):
             data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,**parameters_K)
             return func(data)
     else:
-        remote_parameters = {'_system' : system , '_grid' : grid, 'npar_k': parallel.npar_k,'fftlib':fftlib}
-        def paralfunc(Kpoint,_system,_grid,npar_k,fftlib):
+        remote_parameters = {'_system' : system , '_grid' : grid, 'npar_k': parallel.npar_k}
+        def paralfunc(Kpoint,_system,_grid,npar_k):
             data=Data_K(_system,Kpoint.Kp_fullBZ,grid=_grid,Kpoint=Kpoint,**parameters_K)
             return func(data)
 

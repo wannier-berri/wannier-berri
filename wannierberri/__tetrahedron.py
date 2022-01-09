@@ -168,51 +168,23 @@ class TetraWeights():
     def ones(self):
         return np.ones(len(self.eFermi))
 
-    @lazy_property.LazyProperty
-    def bands_in_range(self):
-        emin=self.eFermi[0]
-        emax=self.eFermi[-1]
-        return [list(np.where((Emax>=emin)*(Emin<=emax))[0]) for Emin,Emax in zip(self.Emin,self.Emax)]
-
-    @property
-    def bands_below_range(self):
-        emin=self.eFermi[0]
-        emax=self.eFermi[-1]
-        res=[np.where(Emax<emin)[0] for Emax in self.Emax]
-        return [[a.max()] if len(a)>0 else [] for a in res]
-
-    @lazy_property.LazyProperty
-    def bands_in_range_sea(self):
-        return [a+b for a,b in zip(self.bands_below_range,self.bands_in_range) ]
-
 
     def __weight_1b(self,ik,ib,der):
         if ib not in self.weights[der][ik]:
             self.weights[der][ik][ib]=weights_parallelepiped(self.eFermi,self.eCenter[ik,ib],self.eCorners[ik,:,:,:,ib],der=der)
         return self.weights[der][ik][ib]
 
-
-    def weights_allbands(self,eFermi,der,op=0,ed=None):
-        if ed is None: ed=self.nk
-        if self.eFermi is None:
-            self.eFermi=eFermi
-        else :
-            assert self.eFermi is eFermi
-        bands_in_range=(self.bands_in_range if der>0 else self.bands_in_range_sea)[op:ed]
-        return [{ib:self.__weight_1b(op+ik,ib,der)  for ib in ibrg } for ik,ibrg in enumerate(bands_in_range)]
-
 # this is for fermiocean
-    def weights_all_band_groups(self,eFermi,der,op=0,ed=None,degen_thresh=-1,degen_Kramers=False):
+    def weights_all_band_groups(self,eFermi,der,degen_thresh=-1,degen_Kramers=False):
         """
              here  the key of the return dict is a pair of integers (ib1,ib2)
         """
-        if ed is None: ed=self.nk
         if self.eFermi is None:
             self.eFermi=eFermi
         else :
             assert self.eFermi is eFermi
         res=[]
-        for ik in range(op,ed):
+        for ik in range(self.nk):
             bands_in_range=get_bands_in_range(self.eFermi[0],self.eFermi[-1],self.eCenter[ik],degen_thresh=degen_thresh,degen_Kramers=degen_Kramers,
                     Ebandmin=self.Emin[ik],Ebandmax=self.Emax[ik])
             weights= { (ib1,ib2):sum(self.__weight_1b(ik,ib,der) 

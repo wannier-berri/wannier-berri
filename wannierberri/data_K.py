@@ -113,7 +113,7 @@ class Data_K(System):
 
         self.grid=grid
         self.NKFFT=grid.FFT
-        self.select_K=np.ones(self.NKFFT_tot,dtype=bool)
+        self.select_K=np.ones(self.nk,dtype=bool)
         self.findif=grid.findif
         self.real_lattice = system.real_lattice
         self.num_wann=self.system.num_wann
@@ -259,37 +259,16 @@ class Data_K(System):
         return (self.grid.points_FFT+self.dK[None])%1
 
     @lazy_property.LazyProperty
-    def NKFFT_tot(self):
+    def nk(self):
         return np.prod(self.NKFFT)
 
     @lazy_property.LazyProperty
     def tetraWeights(self):
         return TetraWeights(self.E_K,self.E_K_corners)
 
-    def get_bands_in_range(self,emin,emax,op=0,ed=None):
-        if ed is None: ed=self.NKFFT_tot
-        select = [ np.where((self.E_K[ik]>=emin)*(self.E_K[ik]<=emax))[0] for ik in range(op,ed) ]
-        return  [ {ib:self.E_K[ik+op,ib]  for ib in sel } for ik,sel in enumerate(select) ]
-
-    def get_bands_below_range(self,emin,emax,op=0,ed=None):
-        if ed is None: ed=self.NKFFT_tot
-        res=[np.where((self.E_K[ik]<emin))[0] for ik in range(op,ed)]
-        return [{a.max():self.E_K[ik+op,a.max()]} if len(a)>0 else [] for ik,a in enumerate(res)]
-
-    def get_bands_in_range_sea(self,emin,emax,op=0,ed=None):
-        if ed is None: ed=self.NKFFT_tot
-        res=self.get_bands_in_range(emin,emax,op,ed)
-        for ik in range(op,ed):
-           add=np.where((self.E_K[ik]<emin))[0]
-           if len(add)>0:
-               res[ik-op][add.max()]=self.E_K[ik,add.max()]
-        return res
-
-
-    def get_bands_in_range_groups(self,emin,emax,op=0,ed=None,degen_thresh=-1,degen_Kramers=False,sea=False):
-        if ed is None: ed=self.NKFFT_tot
+    def get_bands_in_range_groups(self,emin,emax,degen_thresh=-1,degen_Kramers=False,sea=False):
         res=[]
-        for ik in range(op,ed):
+        for ik in range(self.nk):
             bands_in_range=get_bands_in_range(emin,emax,self.E_K[ik],degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)
             weights= { (ib1,ib2):self.E_K[ik,ib1:ib2].mean() 
                           for ib1,ib2 in bands_in_range  
