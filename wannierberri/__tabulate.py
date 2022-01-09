@@ -103,7 +103,7 @@ class  Tabulator():
 
     def __init__(self ,  data_K,  ibands, degen_thresh=1e-4,degen_Kramers=False):
 
-        self.nk=data_K.NKFFT_tot
+        self.nk=data_K.nk
         self.NB=data_K.num_wann
         self.ibands = ibands
 
