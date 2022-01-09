@@ -175,6 +175,16 @@ class TABresult(result.Result):
     def savetxt(self,name):
         return   # do nothing so far
 
+    def savedata(self,name,prefix,suffix,i_iter):
+        suffix = "-"+suffix if len(suffix)>0 else ""
+        prefix = prefix+"-" if len(prefix)>0 else ""
+        filename = prefix+name+suffix+f"_iter-{i_iter:04d}"
+        if "bin" in self.save_modes:
+            self.save(filename)
+        if "txt" in self.save_modes:
+            self.savetxt(filename+".dat")
+
+
     def transform(self,sym):
         results={r:self.results[r].transform(sym)  for r in self.results}
         kpoints=[sym.transform_reduced_vector(k,self.recip_lattice) for k in self.kpoints]

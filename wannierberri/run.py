@@ -156,7 +156,7 @@ def run(system,grid,calculators,
         print ("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
         start_iter=0
 
-    suffix="-"+suffix if len(suffix)>0 else ""
+#    suffix="-"+suffix if len(suffix)>0 else ""
 
     if restart:
         print ("searching for start_iter")
