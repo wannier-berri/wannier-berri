@@ -97,6 +97,36 @@ def compare_energyresult():
 
 
 
+@pytest.fixture
+def compare_any_result():
+    """Compare dat file output of EnergyResult with the file in reference folder"""
+    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,compare_zero=False,precision=None,result_type=None):
+        if suffix_ref is None :
+            suffix_ref=suffix
+        ext = ".npz"
+        for i_iter in range(adpt_num_iter+1):
+            filename     = fout_name + f"-{suffix}_iter-{i_iter:04d}"+ext
+            path_filename = os.path.join(OUTPUT_DIR, filename)
+            result = result_type(file_npz = path_filename)
+
+            if compare_zero:
+                result_ref = result*0.
+                assert precision >0 , "comparing with zero is possible only with absolute precision"
+            else:
+                filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}"+ext
+                path_filename_ref = os.path.join(REF_DIR, filename_ref)
+                result_ref = result_type(file_npz = path_filename_ref)
+                maxval = result_ref._maxval
+                if precision is None:
+                    precision = max(maxval / 1E12, 1E-11)
+                elif precision < 0:
+                    precision = max(maxval * abs(precision) , 1E-11)
+            err = (result-result_ref)._maxval
+            assert err < precision , error_message(
+                fout_name, suffix, i_iter, err, path_filename, path_filename_ref,precision)
+    return _inner
+
+
 def read_frmsf(filename):
     """read a frmsf file"""
     f=open(filename,"r")
