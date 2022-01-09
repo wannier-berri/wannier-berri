@@ -159,12 +159,12 @@ def Morb_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**
                    )  *  (data_K.cell_volume*fac_morb)
 
 
-def ohmic_fsurf(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+def ohmic_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     velocity =  data_K.covariant('Ham',commader=1)
     formula  = FormulaProduct ( [velocity,velocity], name='vel-vel')
     return FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*factor_ohmic
 
-def ohmic(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+def ohmic(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r""" sigma10tau1"""
     formula =  frml.InvMass(data_K)
     return FermiOcean(formula,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*factor_ohmic
@@ -215,10 +215,10 @@ class FermiOcean():
         self.Efermi=Efermi
         self.fder=fder
         self.tetra=tetra
-        self.nk=data_K.NKFFT_tot
+        self.nk=data_K.nk
         self.NB=data_K.num_wann
         self.formula=formula
-        self.final_factor=1./(data_K.NKFFT_tot * data_K.cell_volume)
+        self.final_factor=1./(data_K.nk * data_K.cell_volume)
         
         # get a list [{(ib1,ib2):W} for ik in op:ed]  
         if self.tetra:

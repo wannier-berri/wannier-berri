@@ -46,7 +46,6 @@ wberri.integrate(system,
             parallel=parallel,
             adpt_num_iter=10,
             parameters = {'tetra':False,"external_terms":False},
-            fftlib='fftw', #default.  alternative  option - 'numpy'
             fout_name='Fe_fplo',
             restart=False,
             )
