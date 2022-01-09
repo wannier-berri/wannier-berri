@@ -92,6 +92,7 @@ def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result,calculator
                parallel=parallel_ray,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
             )
+    parallel_ray.shutdown()
 
 
 def test_Fe_sym(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe):
