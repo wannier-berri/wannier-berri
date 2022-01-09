@@ -21,7 +21,7 @@ from compare_result import compare_any_result
 from test_integrate import Efermi_Fe,compare_quant
 
 @pytest.fixture
-def check_run_integrate(parallel_serial,compare_any_result):
+def check_run(parallel_serial,compare_any_result):
     def _inner(system,calculators = {},
                 fout_name="berry",compare_zero=False,
                parallel=None,
@@ -76,12 +76,55 @@ def resultType(quant):
     else:
         raise ValueError(f"Unknown which result type to expect for {quant}")
 
-def test_Fe(check_run_integrate,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe):
-    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+def test_Fe(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe):
     param  = {'Efermi':Efermi_Fe}
     calculators = {k:v(**param) for k,v in calculators_Fe.items()}
-    check_run_integrate(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="cal" ,
+    check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="run" ,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
             extra_precision = {"Morb":-1e-6})
 
+
+def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe,
+      parallel_ray):
+    param  = {'Efermi':Efermi_Fe}
+    calculators = {k:v(**param) for k,v in calculators_Fe.items()}
+    check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="paral-ray-4-run" ,
+               parallel=parallel_ray,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
+            )
+
+
+def test_Fe_sym(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe):
+    param  = {'Efermi':Efermi_Fe}
+    calculators = {k:v(**param) for k,v in calculators_Fe.items()}
+    check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="sym-run" , suffix_ref= "sym",
+               use_symmetry = True,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
+            )
+
+def test_Fe_sym_refine(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe):
+    param  = {'Efermi':Efermi_Fe}
+    calculators = {k:v(**param) for k,v in calculators_Fe.items()}
+    check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="sym-run" , suffix_ref= "sym",
+                  adpt_num_iter=1,use_symmetry = True,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
+            )
+
+def test_Fe_pickle_Klist(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    #  First, remove the 
+    try:
+        os.remove("Klist.pickle")
+    except FileNotFoundError:
+        pass
+    param  = {'Efermi':Efermi_Fe}
+    calculators = {k:v(**param) for k,v in calculators_Fe.items()}
+    check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="pickle-run" , suffix_ref= "sym",
+                  adpt_num_iter=0,use_symmetry = True,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
+            )
+    check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="pickle-run" , suffix_ref= "sym",
+                  adpt_num_iter=1,use_symmetry = True,restart = True,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
+            )
 
