@@ -18,7 +18,9 @@ from create_system import symmetries_Fe
 from create_system import system_Chiral,ChiralModel
 from create_system import system_CuMnAs_2d_broken , model_CuMnAs_2d_broken
 from compare_result import compare_any_result
+from compare_result import compare_fermisurfer
 from test_integrate import Efermi_Fe,compare_quant
+from test_tabulate import get_component_list
 
 @pytest.fixture
 def check_run(parallel_serial,compare_any_result):
@@ -31,8 +33,10 @@ def check_run(parallel_serial,compare_any_result):
                suffix="", suffix_ref="",
                extra_precision={},
                precision = -1e-8 ,
-               restart = False,
-               do_not_compare = False):
+               restart = False,file_Klist = None,
+               do_not_compare = False,
+               skip_compare=[]
+               ):
 
         grid = wberri.Grid(system, **grid_param)
         result = wberri.run(system,
@@ -44,7 +48,7 @@ def check_run(parallel_serial,compare_any_result):
                 parameters_K = parameters_K,
                 fout_name = os.path.join(OUTPUT_DIR, fout_name),
                 suffix=suffix,
-                restart = restart,
+                restart = restart,file_Klist = file_Klist,
                 )
         
         if do_not_compare:
@@ -56,9 +60,10 @@ def check_run(parallel_serial,compare_any_result):
             suffix_ref="-"+suffix_ref
 
         for quant in calculators.keys():
-            prec=extra_precision[quant] if quant in extra_precision else precision
-            compare_any_result(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,
-                compare_zero=compare_zero,precision=prec, result_type = resultType(quant) )
+            if quant not in skip_compare:
+                prec=extra_precision[quant] if quant in extra_precision else precision
+                compare_any_result(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,
+                    compare_zero=compare_zero,precision=prec, result_type = resultType(quant) )
 
     return _inner
 
@@ -76,12 +81,39 @@ def resultType(quant):
     else:
         raise ValueError(f"Unknown which result type to expect for {quant}")
 
-def test_Fe(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe):
+def test_Fe(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe,compare_fermisurfer):
     param  = {'Efermi':Efermi_Fe}
+    param_tab = {'degen_thresh':5e-2}
     calculators = {k:v(**param) for k,v in calculators_Fe.items()}
+    calculators["tabulate"]=wberri.calculators.TabulatorAll({
+                                    "Energy":wberri.calculators.Energy(), # yes, in old implementation degen_thresh was applied to qunatities, 
+                                    # but not to energies 
+                                    "berry":wberri.calculators.BerryCurvature(**param_tab),
+                                          }, 
+                                               ibands = [5,6,7,8]
+                                                   )
     check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="run" ,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
-            extra_precision = {"Morb":-1e-6})
+            extra_precision = {"Morb":-1e-6},
+            skip_compare = 'tabulate')
+    
+    extra_precision = {'berry':1e-6}
+    for quant in ["E","berry"]:
+#        quant_ref = 'E' if quant == "Energy" else quant
+        for comp in get_component_list(quant):
+            quant_ref = quant
+            _comp = "-" +comp if comp is not None else ""
+#            data=result.results.get(quant).data
+#            assert data.shape[0] == len(Efermi)
+#            assert np.all( np.array(data.shape[1:]) == 3)
+            prec=extra_precision[quant] if quant in extra_precision else 1e-8
+#            comparer(frmsf_name, quant+_comp+suffix,  suffix_ref=compare_quant(quant)+_comp+suffix_ref ,precision=prec )
+            compare_fermisurfer(fout_name="berry_Fe_W90-tabulate", 
+                 suffix = quant+_comp+"-run",
+                 suffix_ref = quant_ref+_comp,
+                 fout_name_ref="tabulate_Fe_W90",precision=prec)
+
+
 
 
 def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe,
@@ -121,11 +153,11 @@ def test_Fe_pickle_Klist(check_run,system_Fe_W90, compare_any_result,calculators
     param  = {'Efermi':Efermi_Fe}
     calculators = {k:v(**param) for k,v in calculators_Fe.items()}
     check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="pickle-run" , suffix_ref= "sym",
-                  adpt_num_iter=0,use_symmetry = True,
+                  adpt_num_iter=0,use_symmetry = True,file_Klist = "Klist.pickle", 
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
             )
     check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="pickle-run" , suffix_ref= "sym",
-                  adpt_num_iter=1,use_symmetry = True,restart = True,
+                  adpt_num_iter=1,use_symmetry = True,file_Klist = "Klist.pickle" ,restart = True,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
             )
 

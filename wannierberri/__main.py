@@ -22,7 +22,6 @@ from . import __tabulate
 from . import symmetry
 from .__path import Path
 import numpy as np
-from .__result import NoComponentError
 from collections.abc import Iterable
 integrate_options=__integrate.calculators.keys()
 tabulate_options =__tabulate.calculators.keys()
@@ -300,7 +299,7 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
     if mode=='3D':
         res=res.to_grid(grid.dense)
         t2=time()
-        ttxt,twrite=write_frmsf(frmsf_name,Ef0,
+        ttxt,twrite=__tabulate.write_frmsf(frmsf_name,Ef0,
                 parallel.num_cpus if parallel is not None else 1,
                     quantities+list(user_quantities.keys()),res,suffix=suffix)
 
@@ -317,30 +316,4 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
     return res
 
 
-
-def write_frmsf(frmsf_name,Ef0,numproc,quantities,res,suffix=""):
-    if len(suffix)>0:
-        suffix="-"+suffix
-    if frmsf_name is not None:
-        open(f"{frmsf_name}_E{suffix}.frmsf","w").write(
-             res.fermiSurfer(quantity=None,efermi=Ef0,npar=numproc) )
-        t3=time()
-        ttxt=0
-        twrite=0
-        for Q in quantities:
-            for comp in ["x","y","z","xx","yy","zz","xy","yx","xz","zx","yz","zy"]:
-                try:
-                    t31=time()
-                    txt=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0,npar=numproc)
-                    t32=time()
-                    open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf","w").write(txt)
-                    t33=time()
-                    ttxt  += t32-t31
-                    twrite+= t33-t32
-                except NoComponentError:
-                    pass
-    else:
-        ttxt=0
-        twrite=0
-    return ttxt,twrite
 

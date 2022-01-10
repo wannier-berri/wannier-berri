@@ -62,6 +62,9 @@ class Result():
     def max(self):
         raise NotImplementedError()
 
+    def __truediv__(self,number):
+        # not that result/x amd result*(1/x) is not the same thing for tabulation
+        raise NotImplementedError()
 
 ### these methods do no need re-implementation: 
     def __rmul__(self,other):
@@ -70,8 +73,6 @@ class Result():
     def __radd__(self,other):
         return self+other
         
-    def __truediv__(self,number):
-        return self*(1./number)
 
 
 # a class for data defined for a set of Fermi levels
@@ -88,8 +89,11 @@ class ResultDict(Result):
         self.results = results
         
     #  multiplication by a number 
-    def __mul__(self, other):
-        return ResultDict({ k : v*other for k,v in self.results.items() })
+    def __mul__(self, number):
+        return ResultDict({ k : v*number for k,v in self.results.items() })
+
+    def __truediv__(self,number):
+        return ResultDict({ k : v/number for k,v in self.results.items() })
 
     # +
     def __add__(self, other):
@@ -215,6 +219,10 @@ class EnergyResult(Result):
             return EnergyResult(self.Energies,self.data*other,self.smoothers,self.TRodd,self.Iodd,self.rank,self.E_titles)
         else:
             raise TypeError("result can only be multilied by a number")
+
+    def __truediv__(self,number):
+        return self*(1./number)
+
 
     def __add__(self,other):
         assert self.TRodd == other.TRodd
@@ -409,6 +417,14 @@ class KBandResult(Result):
     def __add__(self,other):
         assert self.fit(other)
         return KBandResult(self.data_list+other.data_list,self.TRodd,self.Iodd) 
+
+
+    def __mul__(self,number):
+        return KBandResult([d*number for d in self.data_list],self.TRodd,self.Iodd) 
+
+    def __truediv__(self,number):
+        return self*1 # actually a copy
+
 
     def to_grid(self,k_map):
         dataall=self.data

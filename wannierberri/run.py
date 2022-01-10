@@ -102,7 +102,7 @@ def run(system,grid,calculators,
             use_irred_kpt=True,symmetrize=True, 
             fout_name="result", suffix="",
              parameters_K={},
-             file_Klist="K_list.pickle",restart=False,Klist_part = 10,
+             file_Klist=None,restart=False,Klist_part = 10,
             parallel=None,  # serial by default
             print_Kpoints=True,
              ):

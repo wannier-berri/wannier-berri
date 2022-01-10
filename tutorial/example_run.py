@@ -20,33 +20,41 @@ else:
 if 'Fe_tb.dat' not in os.listdir():
     os.system('tar -xvf ../data/Fe_tb.dat.tar.gz') 
 
+if __name__ == '__main__':
 
-import wannierberri as wberri
+    import wannierberri as wberri
 
-import numpy as np
+    import numpy as np
 
 
-SYM=wberri.symmetry
+    SYM=wberri.symmetry
 
-Efermi=np.linspace(12.,13.,1001)
-system=wberri.System_tb(tb_file='Fe_tb.dat',berry=True)
+    Efermi=np.linspace(12.,13.,1001)
+    system=wberri.System_tb(tb_file='Fe_tb.dat',berry=True)
 
-generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
-system.set_symmetry(generators)
-grid=wberri.Grid(system,length=30,length_FFT=15)
+    generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
+    system.set_symmetry(generators)
+    grid=wberri.Grid(system,length=30,length_FFT=15)
 #parallel=wberri.Parallel(method="ray",num_cpus=num_proc)
-parallel=wberri.Parallel() # serial execution
 
-wberri.run(system,
+#    parallel=wberri.Parallel() # serial execution
+    parallel=wberri.Parallel(method="ray",num_cpus=num_proc)
+    param_tabulate = {'ibands':np.arange(4,10)}
+    wberri.run(system,
             grid=grid,
             calculators = {
-                "ahc_calc":wberri.calculators.AHC(Efermi,tetra=True)
+                "ahc_calc":wberri.calculators.AHC(Efermi,tetra=True),
+                 "tabulate":wberri.calculators.TabulatorAll({
+                            "Energy":wberri.calculators.Energy(),
+                            "berry":wberri.calculators.BerryCurvature(),
+                                  }, 
+                                       ibands = np.arange(4,10))
                           }, 
             parallel=parallel,
-            adpt_num_iter=10,
+            adpt_num_iter=0,
             fout_name='Fe',
             restart=False,
             )
 
-parallel.shutdown()
+    parallel.shutdown()
 
