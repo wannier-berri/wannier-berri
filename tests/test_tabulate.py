@@ -20,7 +20,7 @@ from create_system import system_Chiral,ChiralModel
 
 
 def get_component_list(quantity):
-        if quantity in ["E"]:
+        if quantity in ["E","Energy"]:
             return [None]
         if quantity in ["berry","V","morb"]:
             return [a for a in "xyz"]

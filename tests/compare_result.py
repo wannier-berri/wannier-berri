@@ -145,12 +145,14 @@ def read_frmsf(filename):
 @pytest.fixture
 def compare_fermisurfer():
     """Compare fermisurfer output with the file in reference folder"""
-    def _inner(fout_name, suffix, suffix_ref=None,precision=None):
+    def _inner(fout_name, suffix="", fout_name_ref=None,suffix_ref=None,precision=None):
         if suffix_ref is None :
             suffix_ref=suffix
+        if fout_name_ref is None :
+            fout_name_ref=fout_name
 
         filename     = fout_name + f"_{suffix}.frmsf"
-        filename_ref = fout_name + f"_{suffix_ref}.frmsf"
+        filename_ref = fout_name_ref + f"_{suffix_ref}.frmsf"
         path_filename     = os.path.join(OUTPUT_DIR, filename)
         path_filename_ref = os.path.join(REF_DIR, 'frmsf', filename_ref)
         grid     , nband     , basis     , ndata     , data      = read_frmsf(path_filename)
