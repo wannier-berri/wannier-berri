@@ -4,7 +4,6 @@ import os
 import numpy as np
 import pytest
 from pytest import approx
-
 import wannierberri as wberri
 from wannierberri import covariant_formulak as frml
 from wannierberri import formula
