@@ -29,7 +29,8 @@ if __name__ == '__main__':
 
     SYM=wberri.symmetry
 
-    Efermi=np.linspace(12.,13.,1001)
+    Efermi=np.linspace(12.,13.,101)
+    omega = np.linspace(0,1.,11)
     system=wberri.System_tb(tb_file='Fe_tb.dat',berry=True)
 
     generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
@@ -43,12 +44,13 @@ if __name__ == '__main__':
     wberri.run(system,
             grid=grid,
             calculators = {
-                "ahc_calc":wberri.calculators.AHC(Efermi,tetra=True),
-                 "tabulate":wberri.calculators.TabulatorAll({
-                            "Energy":wberri.calculators.Energy(),
-                            "berry":wberri.calculators.BerryCurvature(),
-                                  }, 
-                                       ibands = np.arange(4,10))
+#                "ahc_calc":wberri.calculators.AHC(Efermi,tetra=True),
+#                 "tabulate":wberri.calculators.TabulatorAll({
+#                            "Energy":wberri.calculators.Energy(),
+#                            "berry":wberri.calculators.BerryCurvature(),
+#                                  }, 
+#                                       ibands = np.arange(4,10))
+                 "kubo" : wberri.calculators.OpticalConductivity(Efermi=Efermi,omega=omega)
                           }, 
             parallel=parallel,
             adpt_num_iter=0,

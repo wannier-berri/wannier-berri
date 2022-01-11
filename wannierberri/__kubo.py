@@ -99,8 +99,7 @@ def kubo_sum_elements(x, y, num_wann):
 def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, shc_alpha=1, shc_beta=2, shc_gamma=3,
                 shc_specification=False, conductivity_type='kubo', SHC_type='ryoo', sc_eta=0.04,
-                Hermitian = True, 
-                antiHermitian = True):
+                ):
     '''
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
 
@@ -121,8 +120,6 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         shc_specification whether only a single component of SHC is calculated or not
         conductivity_type type of optical conductivity ('kubo', 'SHC'(spin Hall conductivity), 'tildeD' (finite-frequency Berry curvature dipole) )
         SHC_type        'ryoo': PRB RPS19, 'qiao': PRB QZYZ18
-        Hermitian       evaluate the Hermitian part
-        antiHermitian   evaluate anti-Hermitian part 
 
     Returns:    a list of (complex) optical conductivity 3 x 3 (x 3) tensors (one for each frequency value).
                 The result is given in S/cm.

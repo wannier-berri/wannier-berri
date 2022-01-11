@@ -334,6 +334,14 @@ class EnergyResultDict(EnergyResult):
         results = { k : self.results[k] + other.results[k] for k in self.results if k in other.results }
         return EnergyResultDict(results) 
 
+    # writing to a text file
+    def savedata(self, name,prefix,suffix,i_iter):
+        for k,v in self.results.items():
+            if not hasattr(v,'save_modes'):
+                v.set_save_modes(self.save_modes)
+            v.savedata(name+"-"+k,prefix,suffix,i_iter)
+
+
     # -
     def __sub__(self, other):
         return self + (-1)*other

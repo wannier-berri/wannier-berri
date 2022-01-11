@@ -7,6 +7,7 @@ from pytest import approx
 
 import wannierberri as wberri
 from wannierberri import fermiocean
+from wannierberri import calculators as calc
 from wannierberri.__result import EnergyResult
 from conftest import parallel_serial, parallel_ray 
 from conftest import OUTPUT_DIR
@@ -60,6 +61,7 @@ def check_run(parallel_serial,compare_any_result):
             suffix_ref="-"+suffix_ref
 
         for quant in calculators.keys():
+            print (quant,skip_compare)
             if quant not in skip_compare:
                 prec=extra_precision[quant] if quant in extra_precision else precision
                 compare_any_result(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,
@@ -70,7 +72,7 @@ def check_run(parallel_serial,compare_any_result):
 
 @pytest.fixture(scope="session")
 def calculators_Fe():
-    return  {'ahc':wberri.calculators.AHC}
+    return  {'ahc':calc.AHC}
     #,'ahc_test','dos','cumdos',
     #           'conductivity_ohmic','conductivity_ohmic_fsurf','Morb','Morb_test']
 
@@ -85,17 +87,32 @@ def test_Fe(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe
     param  = {'Efermi':Efermi_Fe}
     param_tab = {'degen_thresh':5e-2}
     calculators = {k:v(**param) for k,v in calculators_Fe.items()}
-    calculators["tabulate"]=wberri.calculators.TabulatorAll({
-                                    "Energy":wberri.calculators.Energy(), # yes, in old implementation degen_thresh was applied to qunatities, 
+    calculators["tabulate"]=calc.TabulatorAll({
+                    "Energy":calc.Energy(), # yes, in old implementation degen_thresh was applied to qunatities, 
                                     # but not to energies 
-                                    "berry":wberri.calculators.BerryCurvature(**param_tab),
-                                          }, 
+                    "berry" :calc.BerryCurvature(**param_tab),
+                                              }, 
                                                ibands = [5,6,7,8]
-                                                   )
+                                              )
+    
+    grid_param = dict(NK=[6, 6, 6], NKFFT=[3, 3, 3])
+
+    parameters_optical = dict(Efermi = np.array([17.0, 18.0]),omega = np.arange(0.0, 7.1, 1.0),
+                    smr_fixed_width=0.20, smr_type="Gaussian")
+    calculators['opt_conductivity'] = wberri.calculators.OpticalConductivity(**parameters_optical)
+    calculators['opt_SHCqiao']      = wberri.calculators.SHCqiao(**parameters_optical)
+    calculators['opt_SHCryoo']      = wberri.calculators.SHCryoo(**parameters_optical)
+    
     check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="run" ,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
             extra_precision = {"Morb":-1e-6},
-            skip_compare = 'tabulate')
+            skip_compare = ['tabulate','opt_conductivity','opt_SHCqiao','opt_SHCryoo'])
+
+    for quant in 'opt_conductivity-asym','opt_conductivity-sym','opt_SHCryoo','opt_SHCryoo':
+        compare_any_result("berry_Fe_W90", quant+"-run",  0 , 
+            fout_name_ref = "kubo_Fe_W90",suffix_ref=quant ,
+            precision=1e-8, result_type = EnergyResult )
+
     
     extra_precision = {'berry':1e-6}
     for quant in ["E","berry"]:

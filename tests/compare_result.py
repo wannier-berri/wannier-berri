@@ -100,9 +100,11 @@ def compare_energyresult():
 @pytest.fixture
 def compare_any_result():
     """Compare dat file output of EnergyResult with the file in reference folder"""
-    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,compare_zero=False,precision=None,result_type=None):
+    def _inner(fout_name, suffix, adpt_num_iter,fout_name_ref = None,suffix_ref=None,compare_zero=False,precision=None,result_type=None):
         if suffix_ref is None :
             suffix_ref=suffix
+        if fout_name_ref is None :
+            fout_name_ref=fout_name
         ext = ".npz"
         for i_iter in range(adpt_num_iter+1):
             filename     = fout_name + f"-{suffix}_iter-{i_iter:04d}"+ext
@@ -113,7 +115,7 @@ def compare_any_result():
                 result_ref = result*0.
                 assert precision >0 , "comparing with zero is possible only with absolute precision"
             else:
-                filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}"+ext
+                filename_ref = fout_name_ref + f"-{suffix_ref}_iter-{i_iter:04d}"+ext
                 path_filename_ref = os.path.join(REF_DIR, filename_ref)
                 result_ref = result_type(file_npz = path_filename_ref)
                 maxval = result_ref._maxval
