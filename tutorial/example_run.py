@@ -38,8 +38,8 @@ if __name__ == '__main__':
     grid=wberri.Grid(system,length=30,length_FFT=15)
 #parallel=wberri.Parallel(method="ray",num_cpus=num_proc)
 
-#    parallel=wberri.Parallel() # serial execution
-    parallel=wberri.Parallel(method="ray",num_cpus=num_proc)
+    parallel=wberri.Parallel() # serial execution
+#    parallel=wberri.Parallel(method="ray",num_cpus=num_proc)
     param_tabulate = {'ibands':np.arange(4,10)}
     wberri.run(system,
             grid=grid,
@@ -50,7 +50,8 @@ if __name__ == '__main__':
 #                            "berry":wberri.calculators.BerryCurvature(),
 #                                  }, 
 #                                       ibands = np.arange(4,10))
-                 "kubo" : wberri.calculators.OpticalConductivity(Efermi=Efermi,omega=omega)
+#                 "kubo" : wberri.calculators.OpticalConductivity(Efermi=Efermi,omega=omega)
+                  "jdos": wberri.fermiocean_dynamic.SHC(Efermi=Efermi,omega=omega,SHC_type="qiao")
                           }, 
             parallel=parallel,
             adpt_num_iter=0,
