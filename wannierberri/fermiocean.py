@@ -29,6 +29,28 @@ factor_Hall_classic=elementary_charge**2*Ang_SI/hbar**3  # first, transform to S
 factor_Hall_classic*=elementary_charge**3/hbar*TAU_UNIT**2  # multiply by a dimensional factor - now in A^3*s^5*cm/(J^2*tau_unit^2) = S/(T*m*tau_unit^2)
 factor_Hall_classic*=1e-2   #  finally transform to S/(T*cm*tau_unit^2)
 
+factor_t0_1_0 = -(elementary_charge**2 / hbar / Ang_SI 
+                * 1e-2)  # m to cm
+factor_t1_1_0 = (elementary_charge**2 / hbar / Ang_SI * TAU_UNIT
+                * elementary_charge / hbar # change velocity unit (red) 
+                * 1e-2)  # m to cm 
+factor_t1_1_1 = (elementary_charge**3 /hbar**2 * Ang_SI * TAU_UNIT
+                * elementary_charge / hbar # change velocity unit (red) 
+                / 1e-2)  # m to cm 
+factor_t1_1_2 = (elementary_charge**4 /hbar**3 * Ang_SI**3 * TAU_UNIT
+                * elementary_charge / hbar # change velocity unit (red) 
+                / 1e-6)  # m to cm 
+factor_t1_1_2 = elementary_charge**3 /hbar**2 * TAU_UNIT
+factor_t1_2_1 = (elementary_charge**4 /hbar**3 * Ang_SI**2 * TAU_UNIT
+                / 1e-4)  # m to cm 
+factor_t2_1_1 = -(elementary_charge**3 /hbar**2 * Ang_SI * TAU_UNIT**2
+                * elementary_charge**2 / hbar**2 # change velocity unit (red) 
+                / 1e-2)  # m to cm 
+factor_t2_2_0 = -(elementary_charge**3 /hbar**2 * TAU_UNIT**2
+                * elementary_charge / hbar) # change velocity unit (red)  
+factor_t2_2_1 = -(elementary_charge**4 /hbar**3 * Ang_SI**2 * TAU_UNIT**2
+                * elementary_charge / hbar # change velocity unit (red) 
+                / 1e-4)  # m to cm 
 
 #############
 # functions #
