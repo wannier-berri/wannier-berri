@@ -7,11 +7,11 @@ from pytest import approx
 
 import wannierberri as wberri
 
-from conftest import OUTPUT_DIR
+from conftest import OUTPUT_DIR,REF_DIR
 from create_system import create_files_Fe_W90, system_Fe_W90, system_Fe_W90_wcc
 from create_system import create_files_GaAs_W90, system_GaAs_W90, system_GaAs_W90_wcc
 from create_system import symmetries_Fe
-from compare_result import compare_energyresult
+from compare_result import compare_energyresult,read_energyresult_dat
 from test_integrate import compare_quant
 
 @pytest.fixture
@@ -23,6 +23,7 @@ def check_integrate_dynamical():
     """
     def _inner(system, quantities, fout_name, Efermi, omega, grid_param, comparer,
                additional_parameters={}, 
+               specific_parameters = {},
                parameters_K={},
                adpt_num_iter=0,use_symmetry = False,
                suffix="", suffix_ref="",
@@ -38,6 +39,7 @@ def check_integrate_dynamical():
                 use_irred_kpt = use_symmetry, symmetrize = use_symmetry,
                 adpt_num_iter = adpt_num_iter,
                 parameters = additional_parameters,
+                specific_parameters = specific_parameters,
                 parameters_K = parameters_K,
                 fout_name = os.path.join(OUTPUT_DIR, fout_name),
                 write_txt = (mode == "txt"),
@@ -52,45 +54,95 @@ def check_integrate_dynamical():
 
         # Test results output
         for quant in quantities:
-            if quant == "opt_conductivity":
-                data_list = [result.results.get(quant).results.get(s).data for s in ["sym", "asym"]]
+            if quant == "opt_conductivity^sep":
+                data_list = [result.results[quant].results[s].data for s in ["sym", "asym"]]
             else:
-                data_list = [result.results.get(quant).data]
-
+                data_list = [result.results[quant].data]
             for data in data_list:
                 assert data.shape[0] == len(Efermi)
                 assert data.shape[1] == len(omega)
                 assert all(i == 3 for i in data.shape[2:])
 
         # Test file output
+        quantities_compare = quantities.copy()
+        if "opt_conductivity^sep" in quantities:
+            quantities_compare += ["opt_conductivity^sep-sym", "opt_conductivity^sep-asym"]
+            quantities_compare.remove("opt_conductivity^sep")
         if comparer:
-            quantities_compare = quantities.copy()
-            if "opt_conductivity" in quantities:
-                quantities_compare += ["opt_conductivity-sym", "opt_conductivity-asym"]
-                quantities_compare.remove("opt_conductivity")
-
             for quant in quantities_compare:
                 prec = extra_precision[quant] if quant in extra_precision else None
                 comparer(fout_name, quant+suffix, adpt_num_iter,
                     suffix_ref=compare_quant(quant)+suffix_ref, precision=prec, mode = mode)
+        
 
     return _inner
 
 
-def test_optical(check_integrate_dynamical, system_Fe_W90, compare_energyresult):
+
+
+@pytest.fixture
+def compare_sym_asym():
+    " to comapre the results separated by symmetric-antisymmetric part"
+
+    def _inner(fout_name,adpt_num_iter = 0,quantity = "opt_conductivity"):
+        mode = "bin"
+        name = fout_name+"-"+quantity
+        for i_iter in range(adpt_num_iter+1):
+            filename_ref = name+"^sep-sym"+f"_iter-{i_iter:04d}.npz"
+            path_filename_ref = os.path.join(REF_DIR, filename_ref)
+            E_titles_ref, data_energy_ref, data_ref_sym, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
+            filename_ref = name+"^sep-asym"+f"_iter-{i_iter:04d}.npz"
+            path_filename_ref = os.path.join(REF_DIR, filename_ref)
+            E_titles_ref, data_energy_ref, data_ref_asym, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
+            filename_ref = name+f"_iter-{i_iter:04d}.npz"
+            path_filename_ref = os.path.join(REF_DIR, filename_ref)
+            E_titles_ref, data_energy_ref, data_new, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
+            assert data_new == approx(data_ref_sym+data_ref_asym, abs=1e-8)
+
+    return _inner
+
+
+def test_optical(check_integrate_dynamical, system_Fe_W90, compare_energyresult,compare_sym_asym):
     """Test optical properties: optical conductivity and spin Hall conductivity"""
-    quantities = ["opt_conductivity", "opt_SHCqiao", "opt_SHCryoo"]
+    quantities = ["opt_conductivity", "opt_conductivity^sep","opt_SHCqiao", "opt_SHCryoo"]
+
+    Efermi = np.array([17.0, 18.0])
+    omega = np.arange(0.0, 7.1, 1.0)
+    kubo_params = dict(smr_fixed_width=0.20, smr_type="Gaussian")
+    grid_param = dict(NK=[6, 6, 6], NKFFT=[3, 3, 3])
+    adpt_num_iter = 0
+    specific_parameters = {"opt_conductivity^sep" : {"sep_sym_asym":True}}
+
+    check_integrate_dynamical(system_Fe_W90, quantities, fout_name="kubo_Fe_W90",
+        Efermi=Efermi, omega=omega, grid_param=grid_param,
+        adpt_num_iter=adpt_num_iter, comparer=compare_energyresult,
+        additional_parameters=kubo_params,
+        specific_parameters = specific_parameters)
+    
+    compare_sym_asym("kubo_Fe_W90")
+
+
+def test_optical_sym(check_integrate_dynamical, system_Fe_W90, compare_energyresult,compare_sym_asym):
+    """Test optical properties: optical conductivity and spin Hall conductivity"""
+    quantities = ["opt_conductivity", "opt_conductivity^sep","opt_SHCqiao", "opt_SHCryoo"]
 
     Efermi = np.array([17.0, 18.0])
     omega = np.arange(0.0, 7.1, 1.0)
     kubo_params = dict(smr_fixed_width=0.20, smr_type="Gaussian")
     grid_param = dict(NK=[6, 6, 6], NKFFT=[3, 3, 3])
     adpt_num_iter = 1
+    specific_parameters = {"opt_conductivity^sep" : {"sep_sym_asym":True}}
 
-    check_integrate_dynamical(system_Fe_W90, quantities, fout_name="kubo_Fe_W90",
+    check_integrate_dynamical(system_Fe_W90, quantities, fout_name="kubo_Fe_W90_sym",
         Efermi=Efermi, omega=omega, grid_param=grid_param,
         adpt_num_iter=adpt_num_iter, comparer=compare_energyresult,
-        additional_parameters=kubo_params)
+        additional_parameters=kubo_params, use_symmetry = True,
+        specific_parameters = specific_parameters)
+    
+    compare_sym_asym("kubo_Fe_W90_sym",1)
+
+
+
 
     # TODO: Add wcc test
 
