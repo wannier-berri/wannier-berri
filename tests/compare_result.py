@@ -49,7 +49,7 @@ def error_message(fout_name, suffix, i_iter, abs_err, filename, filename_ref,req
 @pytest.fixture
 def compare_energyresult():
     """Compare dat file output of EnergyResult with the file in reference folder"""
-    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,compare_zero=False,precision=None,compare_smooth = True,mode="txt"):
+    def _inner(fout_name, suffix, adpt_num_iter,suffix_ref=None,compare_zero=False,precision=None,compare_smooth = True,mode="txt",data_reference=None):
         assert mode in ["txt","bin","inner"]
         if mode == "bin" :
             compare_smooth = False
@@ -69,9 +69,13 @@ def compare_energyresult():
                 data_smooth_ref = np.zeros_like(data)
                 path_filename_ref = "ZERO"
             else:
-                filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}"+ext
-                path_filename_ref = os.path.join(REF_DIR, filename_ref)
-                E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
+                if data_reference is None:
+                    filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}"+ext
+                    path_filename_ref = os.path.join(REF_DIR, filename_ref)
+                    E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
+                else:
+                    E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = data_reference[i_iter]
+
                 # just to determine precision automatically
                 if compare_smooth:
                     maxval = np.max(abs(data_smooth_ref))
