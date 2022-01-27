@@ -343,7 +343,7 @@ def eMChA_fder2(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,
     
     # cross product term [xub][pta]xtbs
     termcross = np.einsum('xub,pta,nxtbs->naups',Levi_Civita,Levi_Civita,tmp) 
-    res.data = -(-term1 + term2 + term3 + term4 - term5 + termcross)
+    res.data = -(-term1 + term2 + term3 + term4 - term5 + termcross)*factor_t2_2_1
     return res
 
 def eMChA_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
@@ -364,7 +364,7 @@ def eMChA_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,
     
     # cross product term [xub][pta]xtbs
     termcross = np.einsum('xub,pta,nxtbs->naups',Levi_Civita,Levi_Civita,tmp) 
-    res.data = -(-term1 + term2 + term3 + term4 - term5 + termcross)
+    res.data = -(-term1 + term2 + term3 + term4 - term5 + termcross)*factor_t2_2_1
     return res
 
 def eMChA(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
@@ -388,7 +388,7 @@ def eMChA(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwar
     
     # cross product term [xub][pta]xtbs
     termcross = np.einsum('xub,pta,nxtbs->naups',Levi_Civita,Levi_Civita,tmp) 
-    res.data = -(-term1 + term2 + term3 + term4 - term5 + termcross)
+    res.data = -(-term1 + term2 + term3 + term4 - term5 + termcross)*factor_t2_2_1
     return res
 
 
