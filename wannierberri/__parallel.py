@@ -9,8 +9,8 @@ class Parallel():
     -----------
     method : str
         a method to be used for parallelization 'serial' or 'ray'
-    num_cpus : int 
-        number of parallel processes. If <=0  - serial execution 
+    num_cpus : int
+        number of parallel processes. If <=0  - serial execution
     cluster : bool
         set to `True` to use a multi-node ray cluster ( see also `wannierberri.cluster <file:///home/stepan/github/wannier-berri-org/html/docs/parallel.html#multi-node-mode>`__  module)
     ray_init : dict
@@ -22,10 +22,10 @@ class Parallel():
     def __init__(self,
                    method=None ,
                    num_cpus=0  ,
-                   npar_k = 0 , 
+                   npar_k = 0 ,
                    ray_init={} ,     # add extra parameters for ray.init()
                    cluster=False , # add parameters for ray.init() for the slurm cluster
-                   progress_step_percent  = 1 
+                   progress_step_percent  = 1
                  ):
 
         if method is None:
@@ -41,11 +41,11 @@ class Parallel():
             if self.method != "ray" :
                 print ("WARNING: cluster (multinode) computation is possible only with 'ray' parallelization")
 
-        if  self.method == "serial":
+        if self.method == "serial":
             self.num_cpus = 1
             _,self.npar_k=pool(0)
             self.pool_K,self.npar_K=pool(0)
-        elif self.method == "ray" : 
+        elif self.method == "ray" :
             ray_init_loc={}
             if cluster:
                 # The follwoing is done for testing, when __init__ is called with `cluster = True`,
@@ -76,7 +76,7 @@ class Parallel():
     def progress_step(self,n_tasks,npar):
         return max ( 1,
                       npar,
-                      int(round(n_tasks*self.progress_step_percent / 100)) 
+                      int(round(n_tasks*self.progress_step_percent / 100))
                     )
 
 
@@ -88,10 +88,10 @@ class Parallel():
 def pool(npar):
     if npar>1:
         try:
-            from  multiprocessing import Pool
+            from multiprocessing import Pool
             pool = Pool(npar).imap
             print ('created a pool of {} workers'.format(npar))
             return pool , npar
         except Exception as err:
             print ('failed to create a pool of {} workers : {}\n doing in serial'.format(npar,err))
-    return   (lambda fun,lst : [fun(x) for x in lst]) , 1
+    return (lambda fun,lst : [fun(x) for x in lst]) , 1
