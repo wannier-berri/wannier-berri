@@ -242,6 +242,7 @@ class MMN(W90_data):
         data=[]
         headstring=[]
         mult=4
+        # FIXME: npar = 0 does not work
         if npar>0 :
             pool=multiprocessing.Pool(npar)
         for j in range(0,NNB*NK,npar*mult):
@@ -256,6 +257,7 @@ class MMN(W90_data):
 
         if npar>0 : 
             pool.close()
+            pool.join()
         f_mmn_in.close()
         t1=time()
         data=[d[:,0]+1j*d[:,1] for d in data]
