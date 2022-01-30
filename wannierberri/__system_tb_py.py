@@ -95,7 +95,7 @@ class System_tb_py(System):
             print ("R=0 found at position(s) {}".format(index0))
             index0=index0[0][0]
         else :
-            raise RuntimeError("wrong value of index0={}, with R_all={}".format(index0,R-all))
+            raise RuntimeError(f"wrong value of index0={index0}, with R_all={R_all}")
 
         self.iRvec = R_all
         nRvec=self.iRvec.shape[0]

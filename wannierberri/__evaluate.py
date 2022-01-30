@@ -174,7 +174,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
             start_iter=0
 
     if adpt_num_iter<0:
-        adpt_num_iter=-adpt_num_iter*np.prod(NKdiv)/np.prod(adpt_mesh)/adpt_nk/3
+        adpt_num_iter=-adpt_num_iter*np.prod(grid.div)/np.prod(adpt_mesh)/adpt_nk/3
     adpt_num_iter=int(round(adpt_num_iter))
 
 

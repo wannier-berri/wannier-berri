@@ -343,8 +343,8 @@ class FFT_R_to_k():
         elif self.lib=='slow':
             raise RuntimeError("FFT.transform should not be called for slow FT")
         else :
-            raise ValueError("Unknown type of Fourier transform :''".format(self.lib)) 
-    
+            raise ValueError(f"Unknown type of Fourier transform :'{self.lib}'")
+
     @Lazy
     def exponent(self):
         '''

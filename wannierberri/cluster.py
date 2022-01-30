@@ -106,7 +106,7 @@ if __name__ == '__main__':
         text = pbs_torque_text
         submit_command = "qsub"
     else:
-        error("Batch system not identified. Only slurm or pbs are currently implemented.")
+        raise ValueError("Batch system not identified. Only slurm or pbs are currently implemented.")
 
     if args.spilling_directory == "":
         text = text.replace(SPILLING, "")
