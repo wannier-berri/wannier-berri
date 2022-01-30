@@ -433,6 +433,8 @@ class ws_dist_map():
         param=(shifts_int_all,wannier_centers,real_lattice, ws_distance_tol, wannier_centers.shape[0])
         p=multiprocessing.Pool(npar)
         irvec_new_all=p.starmap(functools.partial(ws_dist_stars,param=param),zip(iRvec,cRvec))
+        p.close()
+        p.join()
         print('irvec_new_all shape',np.shape(irvec_new_all))
         for ir,iR in enumerate(iRvec):
           for ijw,irvec_new in irvec_new_all[ir].items():
