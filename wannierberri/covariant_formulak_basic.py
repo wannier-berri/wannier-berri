@@ -273,25 +273,26 @@ class AntiSymmetric(Formula_ln):
 
     def nn(self,ik,inn,out):
         fab =self.full.nn(ik,inn,out)
-        return 1j*(fab[:,:,alpha_A,beta_A] -  fab[:,:,beta_A,alpha_A]) 
+        return 1j*(fab[:,:,alpha_A,beta_A] -  fab[:,:,beta_A,alpha_A])
 
     def ln(self,ik,inn,out):
         fab =self.full.ln(ik,inn,out)
-        return 1j*(fab[:,:,alpha_A,beta_A] -  fab[:,:,beta_A,alpha_A]) 
+        return 1j*(fab[:,:,alpha_A,beta_A] -  fab[:,:,beta_A,alpha_A])
 
 
 class Symmetric(Formula_ln):
     def __init__(self,full,data_K,axes=[0,1],**parameters):
         self.full = full(data_K,**parameters)
         self.ndim=self.full.ndim
+        self.axes = axes
 
     def nn(self,ik,inn,out):
         fab =self.full.nn(ik,inn,out)
-        return fab+fab.swapaxes(axes[0]+2,axes[1]+2) 
+        return fab + fab.swapaxes(self.axes[0]+2, self.axes[1]+2)
 
     def ln(self,ik,inn,out):
         fab =self.full.nn(ik,inn,out)
-        return fab+fab.swapaxes(axes[0]+2,axes[1]+2) 
+        return fab + fab.swapaxes(self.axes[0]+2, self.axes[1]+2)
 
 
 class tildeFc(AntiSymmetric):
