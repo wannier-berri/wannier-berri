@@ -16,7 +16,7 @@ import copy
 
 from .__utility import str2bool, alpha_A, beta_A ,real_recip_lattice
 from colorama import init
-from termcolor import cprint 
+from termcolor import cprint
 from .__system import System
 from collections import defaultdict
 from scipy.constants import physical_constants, angstrom
@@ -25,8 +25,8 @@ bohr = physical_constants['Bohr radius'][0] / angstrom
 
 class System_fplo(System):
     """
-    System initialized from the `+hamdata` file written by `FPLO <https://www.fplo.de/>`__ code, 
-    
+    System initialized from the `+hamdata` file written by `FPLO <https://www.fplo.de/>`__ code,
+
     Parameters
     ----------
     hamdata : str
@@ -34,13 +34,13 @@ class System_fplo(System):
 
     Notes
     -----
-    see also  parameters of the :class:`~wannierberri.System` 
+    see also  parameters of the :class:`~wannierberri.System`
     """
 
     def __init__(self,hamdata="+hamdata",**parameters):
 
         self.set_parameters(**parameters)
-        if not self.use_wcc_phase: 
+        if not self.use_wcc_phase:
             print ("""WARNING: It is highly recommended to use `use_wcc_phase=True` with System_fplo"""
                 """, and further set parameters={`external_terms':False}"""
                 """in any case, the external terms are evaluated using the diagonal approximation for position matrix elements (Tight-binding-like)""")
@@ -68,18 +68,19 @@ class System_fplo(System):
                 self.wannier_centers_cart_auto =  np.array([next(f).split() for i in range(self.num_wann)],dtype=float)
             elif l.startswith("spin:"):
                 ispin = int(next(f))
-                assert ispin==1, f"spin = 1 expected, got {ispin}" 
+                assert ispin==1, f"spin = 1 expected, got {ispin}"
                 Ham_R = defaultdict(lambda : np.zeros((self.num_wann,self.num_wann),dtype=complex))
-                if self.spin: 
+                if self.spin:
                     SS_R = defaultdict(lambda : np.zeros((self.num_wann,self.num_wann,3),dtype=complex))
-                while  True:
+                while True:
                     l = next(f)
                     if l.startswith("end spin:"):
                         allread = True
                         break
                     if l.startswith("Tij, Hij"):
                         iw,jw = [int(x) for x in next(f).split()]
-                        iw-=1 ; jw-=1
+                        iw-=1
+                        jw-=1
                         arread = []
                         while True:
                             l = next(f)
@@ -89,23 +90,23 @@ class System_fplo(System):
                         if len(arread)==0:
                             continue
                         arread = np.array(arread,dtype = float)
-                        Rvec = arread[:,:3] + ( self.wannier_centers_cart_auto[None,jw] 
+                        Rvec = arread[:,:3] + ( self.wannier_centers_cart_auto[None,jw]
                                                 -  self.wannier_centers_cart_auto[None,jw])
-                        Rvec = Rvec.dot(inv_real_lattice)  # should be integer now 
+                        Rvec = Rvec.dot(inv_real_lattice)  # should be integer now
                         iRvec = np.array( np.round(Rvec),dtype =  int)
                         assert (abs(iRvec - Rvec).max() < 1e-8)
                         iRvec = [tuple(ir) for ir in iRvec]
                         for iR,a in zip(iRvec,arread):
                             Ham_R[iR][iw,jw] = a[3]+1j*a[4]
-                            if self.spin : 
+                            if self.spin :
                                 SS_R[iR][iw,jw,:] = a[5:11:2]+1j*a[6:11:2]
         f.close()
         # Reading of file finished
-        
+
         self.real_lattice,self.recip_lattice= real_recip_lattice(real_lattice=real_lattice_bohr*bohr)
         iRvec  = list(Ham_R.keys())
         self.Ham_R = np.array([Ham_R[iR] for iR in iRvec]).transpose((1,2,0))
-        if self.spin : 
+        if self.spin :
             self.SS_R = np.array([SS_R[iR] for iR in iRvec]).transpose((1,2,0,3))
         self.nRvec0 = len(iRvec)
         self.iRvec = np.array(iRvec, dtype = int)
@@ -131,4 +132,4 @@ class System_fplo(System):
 
         cprint ("Reading the FPLO Wannier system from {} finished successfully".format(hamdata),'green', attrs=['bold'])
 
-        
+

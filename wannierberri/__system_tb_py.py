@@ -12,27 +12,27 @@
 #------------------------------------------------------------
 
 import numpy as np
-from termcolor import cprint 
+from termcolor import cprint
 from .__system import System
 
 
 
 
 class System_tb_py(System):
-    """This interface initializes the System class from a tight-binding 
+    """This interface initializes the System class from a tight-binding
     model packewd by one of the available python modules (see below)
-    
-    
+
+
     Parameters
     ----------
-    tbmodel : 
+    tbmodel :
         name of the tight-binding model object.
     module : str
         name of the module 'pythtb' or 'tbmodels'
 
     Notes
     -----
-    see also  parameters of the :class:`~wannierberri.System` 
+    see also  parameters of the :class:`~wannierberri.System`
     """
 
     def __init__(self,model,module,**parameters ):
@@ -59,13 +59,13 @@ class System_tb_py(System):
                 raise Exception("\n\nWrong value of nspin!")
             positions = model._orb
             Rvec=np.array([R[-1] for R in model._hoppings],dtype=int)
-        else : 
+        else :
             raise ValueError("unknown tight-binding module {}".format(module))
 
 
 
         self.dimr=real.shape[1]
-        self.norb=positions.shape[0] 
+        self.norb=positions.shape[0]
         wannier_centers_reduced=np.zeros((self.norb,3))
         wannier_centers_reduced[:,:self.dimr]=positions
         self.real_lattice=np.eye((3),dtype=float)
@@ -73,14 +73,14 @@ class System_tb_py(System):
         self.wannier_centers_cart_auto = wannier_centers_reduced.dot(self.real_lattice)
         self.periodic[self.dimr:]=False
         self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
-        Rvec = [tuple(row) for row in Rvec] 
-        Rvecs=np.unique(Rvec,axis=0).astype('int32')   
-        
+        Rvec = [tuple(row) for row in Rvec]
+        Rvecs=np.unique(Rvec,axis=0).astype('int32')
+
         nR=Rvecs.shape[0]
         for i in range(3-self.dimr):
             column=np.zeros((nR),dtype='int32')
             Rvecs=np.column_stack((Rvecs,column))
-            
+
         Rvecsneg=np.array([-r for r in Rvecs])
         R_all=np.concatenate((Rvecs,Rvecsneg),axis=0)
         R_all=np.unique(R_all,axis=0)
@@ -94,9 +94,9 @@ class System_tb_py(System):
         elif index0.size==1:
             print ("R=0 found at position(s) {}".format(index0))
             index0=index0[0][0]
-        else : 
+        else :
             raise RuntimeError("wrong value of index0={}, with R_all={}".format(index0,R-all))
-        
+
         self.iRvec = R_all
         nRvec=self.iRvec.shape[0]
         self.nRvec0=nRvec
@@ -139,38 +139,38 @@ class System_tb_py(System):
 
         self.do_at_end_of_init()
         cprint ("Reading the system from {} finished successfully".format(names[module]),'green', attrs=['bold'])
-        
+
 
 
 
 class System_TBmodels(System_tb_py):
-    """This interface initializes the System class from a tight-binding 
+    """This interface initializes the System class from a tight-binding
     model created with `TBmodels. <http://z2pack.ethz.ch/tbmodels/doc/1.3/index.html>`_
     It defines the Hamiltonian matrix Ham_R (from hoppings matrix elements)
     and the AA_R  matrix (from orbital coordinates) used to calculate Berry
     related quantities.
-    
-    
+
+
     Parameters
     ----------
-    tbmodel : 
+    tbmodel :
         name of the TBmodels tight-binding model object.
 
     Notes
     -----
-    see also  parameters of the :class:`~wannierberri.System` 
+    see also  parameters of the :class:`~wannierberri.System`
     """
-    
+
     def __init__(self,tbmodel,**parameters ):
         super().__init__(tbmodel , module='tbmodels' , **parameters)
 
 
 
 class System_PythTB(System_tb_py):
-    """This interface is an way to initialize the System class from a tight-binding 
-    model created with  `PythTB. <http://www.physics.rutgers.edu/pythtb/>`_ 
+    """This interface is an way to initialize the System class from a tight-binding
+    model created with  `PythTB. <http://www.physics.rutgers.edu/pythtb/>`_
     It defines the Hamiltonian matrix Ham_R (from hoppings matrix elements)
-    and the AA_R  matrix (from orbital coordinates) used to calculate 
+    and the AA_R  matrix (from orbital coordinates) used to calculate
     Berry related quantities.
 
     Parameters
@@ -181,7 +181,7 @@ class System_PythTB(System_tb_py):
 
     Notes
     -----
-    see also  parameters of the :class:`~wannierberri.System` 
+    see also  parameters of the :class:`~wannierberri.System`
     """
     def __init__(self,ptb_model, **parameters):
         super().__init__(ptb_model , module='pythtb' , **parameters)
