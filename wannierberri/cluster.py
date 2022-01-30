@@ -4,7 +4,7 @@
  slightly modified by Stepan Tsirkin for WannierBerri project
 
 
-Usage: 
+Usage:
    python -m wannierberri.cluster --batch-system <slurm or pbs> --exp-name <Job name>  --num-nodes <number of nodes> --partition cmt --command "<comand to run>"
 
 
@@ -111,10 +111,11 @@ if __name__ == '__main__':
     if args.spilling_directory == "":
         text = text.replace(SPILLING, "")
     else:
-    # Note that `object_spilling_config`'s value should be json format.
-        text = text.replace(SPILLING, 
-               """--system-config='{"object_spilling_config":"{\"type\":\"filesystem\",\"params\":{\"directory_path\":\""""+args.spilling_directory+"""\"}}"}'"""
-                           )
+        # Note that `object_spilling_config`'s value should be json format.
+        text = text.replace(SPILLING,
+                            '--system-config=\'{"object_spilling_config":"{"type":"filesystem",'
+                            '"params":{"directory_path":"' + args.spilling_directory + '"}}"}\''
+                            )
 
     text = text.replace(JOB_NAME, job_name)
     text = text.replace(NUM_NODES, str(args.num_nodes))
