@@ -1,6 +1,6 @@
 import numpy as np
-from .__utility import  alpha_A,beta_A
-import abc 
+from .__utility import alpha_A, beta_A
+import abc
 from scipy.constants import Boltzmann,elementary_charge
 from .formula import Formula_ln, Matrix_ln , Matrix_GenDer_ln
 from .data_K import _Dcov
@@ -103,7 +103,7 @@ class Der3E(Formula_ln):
         summ+=  -1 * np.einsum("mlbc,lna->mnabc",self.dD.nl(ik,inn,out),self.V.ln(ik,inn,out) )
         summ+=  -1 * np.einsum("mlb,lnac->mnabc",self.D.nl(ik,inn,out),self.dV.ln(ik,inn,out) )
 
-        # TODO: alternatively: add factor 0.5 to first term, remove 4th and 5th, and ad line below. 
+        # TODO: alternatively: add factor 0.5 to first term, remove 4th and 5th, and ad line below.
         # Should give the same, I think, but needs to be tested
         # summ+=summ.swapaxes(0,1).conj()
         return summ
@@ -283,7 +283,7 @@ class Morb_Hpm(Formula_ln):
 
 
 class morb(Morb_Hpm):
-    
+
     def __init__(self,data_K,**parameters):
         super().__init__(data_K,sign=-1,**parameters)
 
@@ -332,7 +332,7 @@ class DerMorb(Formula_ln):
         summ += 1 * np.einsum("mlc,lnd->mncd",self.Omega.nn(ik,inn,out),self.V.nn(ik,inn,out) )
         summ += 1 * self.E[ik][inn][:,None,None,None]*self.dO.nn(ik,inn,out)
 
-        # Stepan: Shopuldn't we use the line below? 
+        # Stepan: Shopuldn't we use the line below?
         # TODO: check this formula
         #summ+=summ.swapaxes(0,1).conj()
         return summ
