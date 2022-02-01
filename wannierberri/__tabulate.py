@@ -405,6 +405,7 @@ def _savetxt(limits=None,a=None,fmt=".8f",npar=0):
         p=multiprocessing.Pool(npar)
         res= p.map(functools.partial(_savetxt,a=a,fmt=fmt,npar=0)  , asplit)
         p.close()
+        p.join()
         return "".join(res)
 
 def write_frmsf(frmsf_name,Ef0,numproc,quantities,res,suffix=""):

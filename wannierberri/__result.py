@@ -139,7 +139,12 @@ class EnergyResult(Result):
         | smoothers, one per each energy variable (usually do not need to be set by the calculator function. 
         | but are set automaticaly for Fermi levels and Omega's , and during the further * and + operations
     TRodd : bool 
-        | True if the result is Odd under time-reversal operation (False if it is even) 
+        | True if the symmetric part of the result is Odd under time-reversal operation (False if it is even) 
+        | relevant if system has TimeReversal, either alone or in combination with spatial symmetyries 
+    TRtrans : bool 
+        | True if the result is should be transposed under time-reversal operation. (i.e. the symmetric and 
+        | antisymmetric parts have different parity under TR)
+        | allowed only for rank-2 tensors
         | relevant if system has TimeReversal, either alone or in combination with spatial symmetyries 
     Iodd : bool 
         | `True` if the result is Odd under spatial inversion (`False` if it is even) 
@@ -156,13 +161,17 @@ class EnergyResult(Result):
      """
                       
     def __init__(self,Energies=None,data=None, smoothers=None,
-                      TRodd=False,Iodd=False,rank=None,E_titles=["Efermi","Omega"],
+                      TRodd=False,Iodd=False,TRtrans=False,rank=None,E_titles=["Efermi","Omega"],
                       save_mode = "txt+bin",
                       file_npz = None):
         if file_npz is not None:
             res = np.load(open(file_npz,"rb"))
             energ = [res[f'Energies_{i}'] for i,_ in enumerate(res['E_titles'])]  # in binary mode energies are just two arrays
-            self.__init__(Energies=energ,data=res['data'],smoothers=smoothers,TRodd=res['TRodd'],Iodd=res['Iodd'],rank=res['rank'],E_titles=list(res['E_titles']))
+            try:
+                TRtrans = res['TRtrans']
+            except KeyError:
+                pass
+            self.__init__(Energies=energ,data=res['data'],smoothers=smoothers,TRodd=res['TRodd'],Iodd=res['Iodd'],rank=res['rank'],E_titles=list(res['E_titles']),TRtrans=TRtrans)
         else:
             if not isinstance (Energies,(list,tuple)) : 
                 Energies=[Energies]
@@ -185,8 +194,11 @@ class EnergyResult(Result):
             self.data=data
             self.set_smoother(smoothers)
             self.TRodd=TRodd
+            self.TRtrans=TRtrans
             self.Iodd=Iodd
             self.set_save_mode(save_mode)
+            if self.TRtrans :
+                assert self.rank == 2
         
     def set_smoother(self, smoothers):
         if smoothers is None:
@@ -211,12 +223,12 @@ class EnergyResult(Result):
         for i,d in enumerate(other.shape):
             assert d==self.data.shape[axes[i]], "shapes  {} should match the axes {} of {}".format(other.shape,axes,self.data.shape)
         reshape=tuple((self.data.shape[i] if i in axes else 1) for i in range(self.data.ndim))
-        return EnergyResult(self.Energies,self.data*other.reshape(reshape),self.smoothers,self.TRodd,self.Iodd,self.rank,self.E_titles)
+        return EnergyResult(Energies = self.Energies,data = self.data*other.reshape(reshape),smoothers = self.smoothers,TRodd = self.TRodd,TRtrans = self.TRtrans, Iodd = self.Iodd,rank = self.rank,E_titles = self.E_titles)
 
 
     def __mul__(self,other):
         if isinstance(other,int) or isinstance(other,float) :
-            return EnergyResult(self.Energies,self.data*other,self.smoothers,self.TRodd,self.Iodd,self.rank,self.E_titles)
+            return EnergyResult(Energies = self.Energies,data = self.data*other,smoothers = self.smoothers,TRodd = self.TRodd, TRtrans = self.TRtrans, Iodd = self.Iodd,rank = self.rank,E_titles = self.E_titles)
         else:
             raise TypeError("result can only be multilied by a number")
 
@@ -226,6 +238,7 @@ class EnergyResult(Result):
 
     def __add__(self,other):
         assert self.TRodd == other.TRodd
+        assert self.TRtrans == other.TRtrans
         assert self.Iodd  == other.Iodd
         if other == 0:
             return self
@@ -234,7 +247,7 @@ class EnergyResult(Result):
                 raise RuntimeError ("Adding results with different energies {} ({}) - not allowed".format(i,self.E_titles[i]))
             if self.smoothers[i] != other.smoothers[i]:
                 raise RuntimeError ("Adding results with different smoothers [i]: {} and {}".format(i,self.smoothers[i],other.smoothers[i]))
-        return EnergyResult(self.Energies,self.data+other.data,self.smoothers,self.TRodd,self.Iodd,self.rank,self.E_titles)
+        return EnergyResult(Energies = self.Energies, data = self.data+other.data, smoothers = self.smoothers, TRodd = self.TRodd, TRtrans = self.TRtrans, Iodd = self.Iodd,rank = self.rank, E_titles = self.E_titles)
 
     def __sub__(self,other):
         return self+(-1)*other
@@ -275,7 +288,7 @@ class EnergyResult(Result):
         name = name.format('')
         energ = {f'Energies_{i}':E for i,E in enumerate(self.Energies)}
         with open(name+".npz","wb") as f:
-            np.savez_compressed(f,E_titles=self.E_titles,data=self.data,rank=self.rank,TRodd=self.TRodd,Iodd=self.Iodd,**energ)
+            np.savez_compressed(f,E_titles=self.E_titles,data=self.data,rank=self.rank,TRodd=self.TRodd,TRtrans = self.TRtrans,Iodd=self.Iodd,**energ)
             
     def savedata(self,name,prefix,suffix,i_iter):
         suffix = "-"+suffix if len(suffix)>0 else ""
@@ -303,9 +316,11 @@ class EnergyResult(Result):
         return np.array([self._maxval,self._norm,self._normder])
 
     def transform(self,sym):
-        return EnergyResult(self.Energies,sym.transform_tensor(self.data,self.rank,TRodd=self.TRodd,Iodd=self.Iodd),self.smoothers,self.TRodd,self.Iodd,self.rank,self.E_titles)
-
-
+        return EnergyResult(Energies = self.Energies ,
+                            data     = sym.transform_tensor(self.data,self.rank,TRodd=self.TRodd,Iodd=self.Iodd,TRtrans = self.TRtrans),
+                            smoothers = self.smoothers, 
+                            TRodd = self.TRodd, TRtrans = self.TRtrans, Iodd = self.Iodd,
+                            rank = self.rank, E_titles = self.E_titles)
 
 
 
