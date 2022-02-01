@@ -95,7 +95,7 @@ class Symmetry():
         return np.dot(res,self.R.T)
 
 
-    def transform_tensor(self,data,rank,TRodd=False,Iodd=False):
+    def transform_tensor(self,data,rank,TRodd=False,Iodd=False,TRtrans = False):
         res=np.copy(data)
         dim=len(res.shape)
         if rank>0:
@@ -106,6 +106,8 @@ class Symmetry():
                     tuple(range(i))+(dim-1,)+tuple(range(i,dim-1))  )
         if (self.TR and TRodd)!=(self.Inv and Iodd):
             res=-res
+        if self.TR and TRtrans:
+            res = res.swapaxes(dim-rank,dim-rank+1)
         return res
 
 
