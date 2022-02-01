@@ -44,7 +44,7 @@ from .__kubo import opt_conductivity
 class Optical(Calculator):
 
     def __init__(self,Efermi=None,omega=None,  kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
-                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15 , **kwargs):
+                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15 , sep_sym_asym = False, **kwargs):
         for k,v in locals().items(): # is it safe to do so?
             if k not in ['self','kwargs']:
                 vars(self)[k]=v
@@ -57,8 +57,7 @@ class Optical(Calculator):
         res = opt_conductivity(data_K, **kwargs)
         res.set_save_mode(self.save_mode)
         return res
-        
-                
+
 
 class OpticalConductivity(Optical):
 
