@@ -64,8 +64,8 @@ class Optical2(calc.Optical,abc.ABC):
 
     def nonzero(self,E1,E2):
         """determines if 2 energies give nonzero contribution.
-        may be re-defined in a more efficient way"""
-        return  np.any(abs(self.energy_factor(E1,E2) ) > 1e-10)
+        may be re-defined for better efficiency """
+        return  True # np.any(abs(self.energy_factor(E1,E2) ) > 1e-10)
 
     def __call__(self,data_K):
         formula  = self.Formula(data_K,**self.formula_kwargs)
