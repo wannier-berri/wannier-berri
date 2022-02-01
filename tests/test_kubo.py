@@ -103,7 +103,8 @@ def compare_sym_asym():
 
 
 def test_optical(check_integrate_dynamical, system_Fe_W90, compare_energyresult,compare_sym_asym):
-    """Test optical properties: optical conductivity and spin Hall conductivity"""
+    """Test optical properties: optical conductivity and spin Hall conductivity
+    without use of symmetries and withou adaptive refinement"""
     quantities = ["opt_conductivity", "opt_conductivity^sep","opt_SHCqiao", "opt_SHCryoo"]
 
     Efermi = np.array([17.0, 18.0])
@@ -123,7 +124,8 @@ def test_optical(check_integrate_dynamical, system_Fe_W90, compare_energyresult,
 
 
 def test_optical_sym(check_integrate_dynamical, system_Fe_W90, compare_energyresult,compare_sym_asym):
-    """Test optical properties: optical conductivity and spin Hall conductivity"""
+    """Test optical properties: optical conductivity and spin Hall conductivity 
+    using symmetry (irreducible Kpoints) and 1 adaptive refinement"""
     quantities = ["opt_conductivity", "opt_conductivity^sep","opt_SHCqiao", "opt_SHCryoo"]
 
     Efermi = np.array([17.0, 18.0])
