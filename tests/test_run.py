@@ -108,7 +108,7 @@ def test_Fe(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe
             extra_precision = {"Morb":-1e-6},
             skip_compare = ['tabulate','opt_conductivity','opt_SHCqiao','opt_SHCryoo'])
 
-    for quant in 'opt_conductivity-asym','opt_conductivity-sym','opt_SHCryoo','opt_SHCryoo':
+    for quant in 'opt_conductivity','opt_SHCryoo','opt_SHCryoo':
         compare_any_result("berry_Fe_W90", quant+"-run",  0 , 
             fout_name_ref = "kubo_Fe_W90",suffix_ref=quant ,
             precision=1e-8, result_type = EnergyResult )
