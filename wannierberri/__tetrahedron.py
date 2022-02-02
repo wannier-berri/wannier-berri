@@ -1,5 +1,5 @@
 #------------------------------------------------------------#
-# This file is distributed as part of the WannierBerri code  # 
+# This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
 # file `LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
@@ -19,9 +19,9 @@ from copy import copy
 
 @njit
 def weights_tetra(efall,e0,e1,e2,e3,der=0):
-    
+
     e=[e0,e1,e2,e3]
-            
+
 #    print (e0,e1,e2,e3,der)
     e=np.array(sorted([e0,e1,e2,e3]))
     # a dirty trick to avoid divisions by zero
@@ -60,11 +60,11 @@ def weights_tetra(efall,e0,e1,e2,e3,der=0):
                 occ[i]= 1.
             elif ef<e1:
                 occ[i]=0.
-            elif  ef>=e3:# c3
+            elif ef>=e3: # c3
                 occ[i] = c30+ef*(c31+ef*(c32+c33*ef))
-            elif ef>=e2:   # c2
+            elif ef>=e2: # c2
                 occ[i] = c20+ef*(c21+ef*(c22+c23*ef))
-            else :  #c1
+            else: # c1
                 occ[i] = c10+ef*(c11+ef*(c12+c13*ef))
     elif der==1:
         for i in range(nEF):
@@ -73,11 +73,11 @@ def weights_tetra(efall,e0,e1,e2,e3,der=0):
                 occ[i] = 0.
             elif ef<e1:
                 occ[i] = 0.
-            elif  ef>=e3:# c3
+            elif ef>=e3: # c3
                 occ[i] = c31+ef*(2*c32+3*c33*ef)
-            elif ef>=e2:   # c2
+            elif ef>=e2: # c2
                 occ[i] = c21+ef*(2*c22+3*c23*ef)
-            else :  #c1
+            else: # c1
                 occ[i] = c11+ef*(2*c12+3*c13*ef)
     elif der==2:
         for i in range(nEF):
@@ -86,11 +86,11 @@ def weights_tetra(efall,e0,e1,e2,e3,der=0):
                 occ[i] = 0.
             elif ef<e1:
                 occ[i] = 0.
-            elif  ef>=e3:# c3
+            elif ef>=e3: # c3
                 occ[i] = 2*c32+6*c33*ef
-            elif ef>=e2:   # c2
+            elif ef>=e2: # c2
                 occ[i] = 2*c22+6*c23*ef
-            else :  #c1
+            else: # c1
                 occ[i] = 2*c12+6*c13*ef
     elif der==3:
         for i in range(nEF):
@@ -99,11 +99,11 @@ def weights_tetra(efall,e0,e1,e2,e3,der=0):
                 occ[i] = 0.
             elif ef<e1:
                 occ[i] = 0.
-            elif  ef>=e3:# c3
+            elif ef>=e3: # c3
                 occ[i] = 6*c33
-            elif ef>=e2:   # c2
+            elif ef>=e2: # c2
                 occ[i] = 6*c23
-            else :  #c1
+            else: # c1
                 occ[i] = 6*c13
     return occ
 
@@ -140,8 +140,6 @@ def get_bands_below_range(emin,Eband,Ebandmax=None):
 def weights_parallelepiped(efermi,Ecenter,Ecorner,der=0):
     occ=np.zeros((efermi.shape))
     Ecorner=np.reshape(Ecorner,(2,2,2))
-    triang1=np.array([[True,True],[True,False]])
-    triang2=np.array([[False,True],[True,True]])
     for iface in 0,1:
         for Eface in Ecorner[iface,:,:],Ecorner[:,iface,:],Ecorner[ :,:,iface]:
             occ += weights_tetra(efermi,Ecenter,Eface[0,0],Eface[0,1],Eface[1,1],der=der)
@@ -187,9 +185,9 @@ class TetraWeights():
         for ik in range(self.nk):
             bands_in_range=get_bands_in_range(self.eFermi[0],self.eFermi[-1],self.eCenter[ik],degen_thresh=degen_thresh,degen_Kramers=degen_Kramers,
                     Ebandmin=self.Emin[ik],Ebandmax=self.Emax[ik])
-            weights= { (ib1,ib2):sum(self.__weight_1b(ik,ib,der) 
-                                          for ib in range(ib1,ib2))/(ib2-ib1) 
-                          for ib1,ib2 in bands_in_range  
+            weights= { (ib1,ib2):sum(self.__weight_1b(ik,ib,der)
+                                          for ib in range(ib1,ib2))/(ib2-ib1)
+                          for ib1,ib2 in bands_in_range
                      }
 
             if der==0 :
