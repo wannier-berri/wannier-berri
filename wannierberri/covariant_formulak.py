@@ -1,7 +1,5 @@
 import numpy as np
 from .__utility import alpha_A, beta_A
-import abc
-from scipy.constants import Boltzmann,elementary_charge
 from .formula import Formula_ln, Matrix_ln , Matrix_GenDer_ln
 from .data_K import _Dcov
 #####################################################

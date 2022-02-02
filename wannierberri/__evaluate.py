@@ -11,19 +11,14 @@
 #                                                            #
 #------------------------------------------------------------
 
-import functools
 import numpy as np
 from collections.abc import Iterable
-import lazy_property
-from copy import copy
 from time import time
 import pickle
 import glob
-import os
 
 from .data_K import Data_K
 from .__Kpoint import exclude_equiv_points
-from . import __utility as utility
 from .__parallel import Parallel
 
 

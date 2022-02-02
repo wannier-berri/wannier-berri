@@ -13,14 +13,9 @@
 #------------------------------------------------------------#
 
 import numpy as np
-from .__utility import FortranFileR, FortranFileW
-import copy
-import lazy_property
-import functools
+from .__utility import FortranFileR
 import multiprocessing
-from .__utility import str2bool, alpha_A, beta_A, iterate3dpm
-from colorama import init
-from termcolor import cprint
+from .__utility import alpha_A, beta_A
 from time import time
 from itertools import islice
 import gc

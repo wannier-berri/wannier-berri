@@ -17,7 +17,6 @@
 
 import numpy as np
 from lazy_property import LazyProperty as Lazy
-from copy import deepcopy
 
 from .__utility import VoidSmoother
 
