@@ -99,8 +99,8 @@ def kubo_sum_elements(x, y, num_wann):
 def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, shc_alpha=1, shc_beta=2, shc_gamma=3,
                 shc_specification=False, conductivity_type='kubo', SHC_type='ryoo', sc_eta=0.04,
-                Hermitian = True, 
-                antiHermitian = True):
+                sep_sym_asym = False
+                ):
     '''
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
 
@@ -121,8 +121,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         shc_specification whether only a single component of SHC is calculated or not
         conductivity_type type of optical conductivity ('kubo', 'SHC'(spin Hall conductivity), 'tildeD' (finite-frequency Berry curvature dipole) )
         SHC_type        'ryoo': PRB RPS19, 'qiao': PRB QZYZ18
-        Hermitian       evaluate the Hermitian part
-        antiHermitian   evaluate anti-Hermitian part 
+        sep_sym_asym    separate the optical conductivity into symmetric and antisymmetric parts
 
     Returns:    a list of (complex) optical conductivity 3 x 3 (x 3) tensors (one for each frequency value).
                 The result is given in S/cm.
@@ -328,16 +327,19 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
 
 
     if conductivity_type == 'kubo':
-        # TODO: optimize by just storing independent components or leave it like that?
-        # 3x3 tensors [iw, a, b]
-        sigma_sym = np.real(sigma_H) + 1j * np.imag(sigma_AH) # symmetric (TR-even, I-even)
-        sigma_asym = np.real(sigma_AH) + 1j * np.imag(sigma_H) # ansymmetric (TR-odd, I-even)
 
-        # return result dictionary
-        return result.EnergyResultDict({
+        if sep_sym_asym:
+            # TODO: optimize by just storing independent components or leave it like that?
+            # 3x3 tensors [iw, a, b]
+            sigma_sym = np.real(sigma_H) + 1j * np.imag(sigma_AH) # symmetric (TR-even, I-even)
+            sigma_asym = np.real(sigma_AH) + 1j * np.imag(sigma_H) # ansymmetric (TR-odd, I-even)
+            # return result dictionary
+            return result.EnergyResultDict({
             'sym':  result.EnergyResult([Efermi,omega], sigma_sym, TRodd=False, Iodd=False, rank=rank),
             'asym': result.EnergyResult([Efermi,omega], sigma_asym, TRodd=True, Iodd=False, rank=rank)
-        }) # the proper smoother is set later for both elements
+            }) # the proper smoother is set later for both elements
+        else:
+            return result.EnergyResult([Efermi,omega], sigma_H+sigma_AH, TRodd=False, Iodd=False, TRtrans = True, rank=rank)
 
     elif conductivity_type == 'SHC':
         sigma_SHC = np.real(sigma_AH) + 1j * np.imag(sigma_H)
