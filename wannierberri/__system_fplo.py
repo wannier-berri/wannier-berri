@@ -12,10 +12,8 @@
 #------------------------------------------------------------
 
 import numpy as np
-import copy
 
-from .__utility import str2bool, alpha_A, beta_A ,real_recip_lattice
-from colorama import init
+from .__utility import str2bool, real_recip_lattice
 from termcolor import cprint
 from .__system import System
 from collections import defaultdict

@@ -19,7 +19,6 @@ from .__evaluate import evaluate_K
 from .__utility import getSmoother 
 from . import __integrate 
 from . import __tabulate
-from . import symmetry
 from .__path import Path
 import numpy as np
 from collections.abc import Iterable
@@ -28,11 +27,7 @@ tabulate_options =__tabulate.calculators.keys()
 from .mmn2uHu import hlp as hlp_mmn
 from .vaspspn import hlp as hlp_spn
 from time import time
-
-
-
-
-import sys,glob
+import sys
 
 
 from colorama import init
