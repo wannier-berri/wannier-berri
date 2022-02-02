@@ -17,8 +17,6 @@
 
 import numpy as np
 from scipy import constants as constants
-from collections.abc import Iterable
-import functools
 from termcolor import cprint
 from .__utility import alpha_A,beta_A
 from . import __result as result

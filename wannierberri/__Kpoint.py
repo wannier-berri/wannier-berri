@@ -12,10 +12,8 @@
 #------------------------------------------------------------
 # This is an auxilary class for the __evaluate.py  module
 
-from time import time
 import numpy as np
 import lazy_property
-from copy import copy,deepcopy
 from .symmetry import SYMMETRY_PRECISION
 
 class KpointBZ():

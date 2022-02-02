@@ -21,7 +21,7 @@ import numpy as np
 from lazy_property import LazyProperty as Lazy
 from time import time
 from termcolor import cprint
-import functools,fortio,scipy.io
+import fortio,scipy.io
 
 try:
     import pyfftw
@@ -86,7 +86,7 @@ def real_recip_lattice(real_lattice=None,recip_lattice=None):
 
 
 
-from scipy.constants import Boltzmann,elementary_charge,hbar
+from scipy.constants import Boltzmann,elementary_charge
 import abc
 
 class AbstractSmoother(abc.ABC):

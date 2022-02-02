@@ -43,7 +43,7 @@ def hlp():
 
 def main():
     import sys
-    from .__utility import FortranFileR, FortranFileW
+    from .__utility import FortranFileW
     import numpy as np
     import datetime
 
