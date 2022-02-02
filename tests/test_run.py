@@ -102,20 +102,21 @@ def test_Fe(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe
     calculators['opt_conductivity'] = wberri.calculators.OpticalConductivity(**parameters_optical)
     calculators['opt_SHCqiao']      = wberri.calculators.SHCqiao(**parameters_optical)
     calculators['opt_SHCryoo']      = wberri.calculators.SHCryoo(**parameters_optical)
-    calculators['opt_SHCryoo_fod']      = wberri.fermiocean_dynamic.SHC(SHC_type="ryoo",**parameters_optical)
-    calculators['opt_SHCqiao_fod']      = wberri.fermiocean_dynamic.SHC(SHC_type="qiao",**parameters_optical)
+    calculators['opt_SHCryoo_fod']      = wberri.fermiocean_dynamic.SHC2(SHC_type="ryoo",**parameters_optical)
+    calculators['opt_SHCqiao_fod']      = wberri.fermiocean_dynamic.SHC2(SHC_type="qiao",**parameters_optical)
+    calculators['opt_conductivity_fod']      = wberri.fermiocean_dynamic.OpticalConductivity(**parameters_optical)
     
     check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="run" ,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
             extra_precision = {"Morb":-1e-6},
-            skip_compare = ['tabulate','opt_conductivity','opt_SHCqiao','opt_SHCryoo','opt_SHCryoo_fod','opt_SHCqiao_fod'])
+            skip_compare = ['tabulate','opt_conductivity','opt_SHCqiao','opt_SHCryoo','opt_SHCryoo_fod','opt_SHCqiao_fod','opt_conductivity_fod'])
 
     for quant in 'opt_conductivity','opt_SHCryoo','opt_SHCryoo':
         compare_any_result("berry_Fe_W90", quant+"-run",  0 , 
             fout_name_ref = "kubo_Fe_W90",suffix_ref=quant ,
             precision=1e-8, result_type = EnergyResult )
 
-    for quant in 'opt_SHCryoo','opt_SHCqiao',:
+    for quant in 'opt_conductivity','opt_SHCryoo','opt_SHCqiao',:
         compare_any_result("berry_Fe_W90", quant+"_fod-run",  0 , 
             fout_name_ref = "kubo_Fe_W90",suffix_ref=quant ,
             precision=1e-8, result_type = EnergyResult )
