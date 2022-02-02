@@ -60,12 +60,15 @@ class Optical2(calc.Optical,abc.ABC):
     def energy_factor(self,E1,E2):
         pass
 
-
-
     def nonzero(self,E1,E2):
-        """determines if 2 energies give nonzero contribution.
-        may be re-defined for better efficiency """
-        return  True # np.any(abs(self.energy_factor(E1,E2) ) > 1e-10)
+        emin = self.EFmin-30*self.kBT
+        if E1<emin and E2<emin:
+            return False
+        emax = self.EFmax+30*self.kBT
+        if E1>emax and E2>emax:
+            return False
+        return True
+
 
     def __call__(self,data_K):
         formula  = self.Formula(data_K,**self.formula_kwargs)
@@ -87,7 +90,7 @@ class Optical2(calc.Optical,abc.ABC):
 #                restot+=np.einsum( "ew,...->ew...",factor,matrix_element )
                 restot+=factor.reshape(factor.shape+(1,)*formula.ndim)*matrix_element[None,None]
         restot *= self.final_factor / (data_K.nk*data_K.cell_volume)
-        return result.EnergyResult([self.Efermi,self.omega],restot, TRodd=formula.TRodd, Iodd=formula.Iodd )
+        return result.EnergyResult([self.Efermi,self.omega],restot, TRodd=formula.TRodd, Iodd=formula.Iodd, TRtrans = formula.TRtrans )
 
 
 ##################################
@@ -99,6 +102,7 @@ class Formula_dyn_ident():
     def __init__(self,data_K):
         self.TRodd = False
         self.Iodd =False
+        self.TRtrans = False
         self.ndim = 0
         
     def trace_ln(self,ik,inn1,inn2):
@@ -124,6 +128,42 @@ class JDOS(Optical2):
 
 
 
+
+##################################
+##    Optical Conductivity      ##
+##################################
+
+
+class Formula_OptCond():
+
+    def __init__(self,data_K):
+        A =  data_K.A_H
+        self.AA = 1j*A[:,:,:,:,None]* A.swapaxes(1,2)[:,:,:,None,:]
+        self.ndim = 2
+        self.TRodd = False
+        self.Iodd = False
+        self.TRtrans = True
+        
+    def trace_ln(self,ik,inn1,inn2):
+        return self.AA[ik,inn1].sum(axis=0)[inn2].sum(axis=0)
+
+class  OpticalConductivity(Optical2):
+
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
+        self.Formula = Formula_OptCond
+        self.final_factor = elementary_charge**2/(100.0 * hbar * angstrom)
+
+    
+    def energy_factor(self,E1,E2):
+        delta_arg_12 = E2 - E1 - self.omega # argument of delta function [iw, n, m]
+        cfac = 1./(delta_arg_12-1j*self.smr_fixed_width) 
+        if self.smr_type!='Lorentzian':
+            cfac.imag = np.pi*self.smear(delta_arg_12)
+        dfE = self.FermiDirac(E2)-self.FermiDirac(E1)  # [n, m]
+        return dfE[:,None]*(E2-E1)*cfac[None,:]
+
+
 ##################################
 ###          SHC                ##
 ##################################
@@ -134,7 +174,6 @@ class Formula_SHC():
     def __init__(self,data_K,SHC_type='ryoo',shc_abc = None):
         A =  SpinVelocity(data_K, SHC_type).matrix
         B = - 1j*data_K.A_H
-#        self.imAB = np.imag(np.einsum('knmac,kmnb->knmabc',A,B))
         self.imAB = np.imag( A[:,:,:,:,None,:]* B.swapaxes(1,2)[:,:,:,None,:,None])
         self.ndim = 3
         if shc_abc is not None:
@@ -144,6 +183,7 @@ class Formula_SHC():
             self.ndim = 0
         self.TRodd = False
         self.Iodd = False
+        self.TRtrans = False
         
     def trace_ln(self,ik,inn1,inn2):
         return self.imAB[ik,inn1].sum(axis=0)[inn2].sum(axis=0)
@@ -156,9 +196,6 @@ class SHC(Optical2):
         self.Formula = Formula_SHC
         self.final_factor = elementary_charge**2/(100.0 * hbar * angstrom)
 
-    
-#    def nonzero(self,E1,E2):    
-#        return (E1<self.Efermi.max()) and (E2>self.Efermi.min()) and (self.omega.min()-5*self.smr_fixed_width<E2-E1<self.omega.max()+5*self.smr_fixed_width)
 
     def energy_factor(self,E1,E2):
         delta_arg = E2 - E1 - self.omega # argument of delta function [iw, n, m]
@@ -170,11 +207,15 @@ class SHC(Optical2):
         dfE = self.FermiDirac(E2)-self.FermiDirac(E1)  # [n, m]
         return dfE[:,None]*cfac[None,:]
 
-    def nonzero(self,E1,E2):
-        emin = self.EFmin-30*self.kBT
-        if E1<emin and E2<emin:
-            return False
-        emax = self.EFmax+30*self.kBT
-        if E1>emax and E2>emax:
-            return False
-        return True
+
+
+class SHC2(SHC):
+    "a more laconic implementation of the energy factor"
+
+    def energy_factor(self,E1,E2):
+        delta_arg_12 = E1 - E2 - self.omega # argument of delta function [iw, n, m]
+        cfac = 1./(delta_arg_12-1j*self.smr_fixed_width) 
+        if self.smr_type!='Lorentzian':
+            cfac.imag = np.pi*self.smear(delta_arg_12)
+        dfE = self.FermiDirac(E2)-self.FermiDirac(E1)  # [n, m]
+        return dfE[:,None]*cfac[None,:]/2
