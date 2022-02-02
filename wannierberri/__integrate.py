@@ -12,15 +12,12 @@
 #------------------------------------------------------------
 
 import numpy as np
-from scipy import constants as constants
 from collections import defaultdict
-from copy import copy,deepcopy
+from copy import copy
 
-from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother,TAU_UNIT
+from .__utility import  VoidSmoother,TAU_UNIT
 from . import __result as result
 from . import  fermiocean as fermiocean
-from . import  symmetry
-from . import  __utility   as utility
 from . import  __kubo   as kubo
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries

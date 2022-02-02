@@ -14,8 +14,6 @@ Usage:
 import argparse
 import sys
 import time
-import os
-from pathlib import Path
 import subprocess
 from .__cluster_template import slurm_text, pbs_torque_text
 

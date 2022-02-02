@@ -12,19 +12,14 @@
 #------------------------------------------------------------
 
 import numpy as np
-from scipy import constants as constants
 from collections.abc import Iterable
 from collections import defaultdict
-from copy import deepcopy
 from time import time
-from io import StringIO
 import  multiprocessing 
 import functools
-from .__utility import  print_my_name_start,print_my_name_end
 from . import __result as result
 from . import covariant_formulak as frml
 from . import covariant_formulak_basic as frml_basic
-from . import  symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 

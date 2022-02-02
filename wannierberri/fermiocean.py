@@ -4,10 +4,9 @@ from collections import defaultdict
 from . import __result as result
 from math import ceil
 from . import covariant_formulak as frml
-from .formula import FormulaProduct,FormulaProduct_2,ProductDelta
+from .formula import FormulaProduct
 from . import covariant_formulak_basic as frml_basic
-from itertools import permutations
-from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
+from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom #, Boltzmann
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]

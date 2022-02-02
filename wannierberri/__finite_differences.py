@@ -1,6 +1,5 @@
 from .__utility import find_degen
 
-import itertools
 import numpy as np
 from lazy_property import LazyProperty
 
