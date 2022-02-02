@@ -19,7 +19,7 @@ from .__parallel import pool
 from collections import defaultdict
 from .__system import System
 import time
-from .__utility import  print_my_name_start,print_my_name_end, FFT_R_to_k, alpha_A,beta_A
+from .__utility import print_my_name_start,print_my_name_end, FFT_R_to_k, alpha_A, beta_A
 import gc
 import os
 from .__tetrahedron import TetraWeights,get_bands_in_range,get_bands_below_range
@@ -31,7 +31,7 @@ def _rotate_matrix(X):
 
 def parity_I(name,der=0):
     """returns True if quantity is odd under inversion,(after a real trace is taken, if appropriate)
-     False otherwise  
+     False otherwise
     raises for unknown quantities"""
     if name in ['Ham','CC','FF','OO','SS']:  # even before derivative
         p=0
@@ -49,7 +49,7 @@ def parity_TR(name,der=0):
     False otherwise
     raises ValueError for unknown quantities"""
     if name in ['Ham','T_wcc']:   # even before derivative
-        p=0 
+        p=0
     elif name in ['CC','FF','OO','SS']:      # odd before derivative
         p=1
     elif name in ['D','AA','BB','CCab']:
@@ -65,12 +65,12 @@ class _Dcov(Matrix_ln):
         raise ValueError("Dln should not be called within inner states")
 
 
-   
+
 class Data_K(System):
     default_parameters =  {
-#Those are not used at the moment , but will be restored (TODO):
-#                    'frozen_max': -np.Inf,
-#                    'delta_fz':0.1,
+                    # Those are not used at the moment, but will be restored (TODO):
+                    # 'frozen_max': -np.Inf,
+                    # 'delta_fz':0.1,
                     'Emin': -np.Inf ,
                     'Emax': np.Inf ,
                     'use_wcc_phase':False,
@@ -83,7 +83,7 @@ class Data_K(System):
                        }
 
     __doc__ = """
-    class to store many data calculated on a specific FFT grid.  
+    class to store many data calculated on a specific FFT grid.
     The stored data can be used to evaluate many quantities.
     Is destroyed after  everything is evaluated for the FFT grid
 
@@ -100,7 +100,7 @@ class Data_K(System):
 
 #Those are not used at the moment , but will be restored (TODO):
 #    frozen_max : float
-#        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary. 
+#        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
 #        If not specified, attempts to read this value from system. Othewise set to  ``{frozen_max}``
 #    delta_fz:float
 #        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
@@ -133,7 +133,7 @@ class Data_K(System):
         for param in self.default_parameters:
             if param in parameters:
                 vars(self)[param]=parameters[param]
-            else: 
+            else:
                 vars(self)[param]=self.default_parameters[param]
         for param in parameters:
             if param not in self.default_parameters:
@@ -141,8 +141,8 @@ class Data_K(System):
 
 
 ###########################################
-###   Now the **_R objects are evaluated only on demand 
-### - as Lazy_property (if used more than once) 
+###   Now the **_R objects are evaluated only on demand
+### - as Lazy_property (if used more than once)
 ###   as property   - iif used only once
 ###   let's write them explicitly, for better code readability
 ###########################
@@ -167,7 +167,7 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def OO_R(self):
         # We do not multiply by expdK, because it is already accounted in AA_R
-        return  1j*(self.cRvec_wcc[:,:,:,alpha_A]* self.AA_R[:,:,:,beta_A] - self.cRvec_wcc[:,:,:,beta_A]* self.AA_R[:,:,:,alpha_A])
+        return 1j*(self.cRvec_wcc[:,:,:,alpha_A]* self.AA_R[:,:,:,beta_A] - self.cRvec_wcc[:,:,:,beta_A]* self.AA_R[:,:,:,alpha_A])
 
     @lazy_property.LazyProperty
     def BB_R(self):
@@ -228,7 +228,7 @@ class Data_K(System):
         print_my_name_start()
         assert mat.ndim>2
         if mat.ndim==3:
-            return  np.array(self.poolmap( _rotate_matrix , zip(mat,self.UU_K)))
+            return np.array(self.poolmap( _rotate_matrix , zip(mat,self.UU_K)))
         else:
             for i in range(mat.shape[-1]):
                 mat[...,i]=self._rotate(mat[...,i])
@@ -236,16 +236,16 @@ class Data_K(System):
 
 
     def _R_to_k_H(self,XX_R,der=0,hermitean=True):
-        """ converts from real-space matrix elements in Wannier gauge to 
-            k-space quantities in k-space. 
-            der [=0] - defines the order of comma-derivative 
+        """ converts from real-space matrix elements in Wannier gauge to
+            k-space quantities in k-space.
+            der [=0] - defines the order of comma-derivative
             hermitean [=True] - consider the matrix hermitean
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
-        
+
         for i in range(der):
             shape_cR = np.shape(self.cRvec_wcc)
             XX_R=1j*XX_R.reshape( (XX_R.shape)+(1,) ) * self.cRvec_wcc.reshape((shape_cR[0],shape_cR[1],self.system.nRvec)+(1,)*len(XX_R.shape[3:])+(3,))
-        return  self._rotate((self.fft_R_to_k( XX_R,hermitean=hermitean))[self.select_K]  )
+        return self._rotate((self.fft_R_to_k( XX_R,hermitean=hermitean))[self.select_K]  )
 
 #####################
 #  Basic variables  #
@@ -270,9 +270,7 @@ class Data_K(System):
         res=[]
         for ik in range(self.nk):
             bands_in_range=get_bands_in_range(emin,emax,self.E_K[ik],degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)
-            weights= { (ib1,ib2):self.E_K[ik,ib1:ib2].mean() 
-                          for ib1,ib2 in bands_in_range  
-                     }
+            weights= { (ib1,ib2):self.E_K[ik,ib1:ib2].mean() for ib1,ib2 in bands_in_range }
             if sea :
                 bandmax=get_bands_below_range(emin,self.E_K[ik])
                 if len(bands_in_range)>0 :
@@ -298,7 +296,7 @@ class Data_K(System):
         self._UU=np.array([euu[1] for euu in EUU])[self.select_K,:][:,self.select_B]
         print_my_name_end()
         return E_K[self.select_K,:][:,self.select_B]
-    
+
     # evaluate the energies in the corners of the parallelepiped, in order to use tetrahedron method
     @lazy_property.LazyProperty
     def E_K_corners(self):
@@ -308,31 +306,31 @@ class Data_K(System):
         Ecorners=np.zeros((self.nk_selected,2,2,2,self.nb_selected),dtype=float)
         for ix in 0,1:
             for iy in 0,1:
-               for iz in 0,1:
-                   _expdK=expdK[ix,:,0]*expdK[iy,:,1]*expdK[iz,:,2]
-                   _Ham_R=self.Ham_R[:,:,:]*_expdK[None,None,:]
-                   _HH_K=self.fft_R_to_k( _Ham_R, hermitean=True)
-                   E=np.array(self.poolmap(np.linalg.eigvalsh,_HH_K))
-                   Ecorners[:,ix,iy,iz,:]=E[self.select_K,:][:,self.select_B]
+                for iz in 0,1:
+                    _expdK=expdK[ix,:,0]*expdK[iy,:,1]*expdK[iz,:,2]
+                    _Ham_R=self.Ham_R[:,:,:]*_expdK[None,None,:]
+                    _HH_K=self.fft_R_to_k( _Ham_R, hermitean=True)
+                    E=np.array(self.poolmap(np.linalg.eigvalsh,_HH_K))
+                    Ecorners[:,ix,iy,iz,:]=E[self.select_K,:][:,self.select_B]
         print_my_name_end()
         return Ecorners
 
     @property
     def HH_K(self):
-        return self.fft_R_to_k( self.Ham_R, hermitean=True) 
+        return self.fft_R_to_k( self.Ham_R, hermitean=True)
 
     @lazy_property.LazyProperty
     def delE_K(self):
         print_my_name_start()
         delE_K = np.einsum("klla->kla",self.Xbar('Ham',1))
         check=np.abs(delE_K).imag.max()
-        if check>1e-10: raiseruntimeError ( "The band derivatives have considerable imaginary part: {0}".format(check) )
+        if check>1e-10: raise RuntimeError(f"The band derivatives have considerable imaginary part: {check}")
         return delE_K.real
 
     def Xbar(self,name,der=0):
         key = (name,der)
         if key not in self._bar_quantities:
-            self._bar_quantities[key] = self._R_to_k_H( getattr(self,name+'_R').copy() , der=der, 
+            self._bar_quantities[key] = self._R_to_k_H( getattr(self,name+'_R').copy() , der=der,
                     hermitean = (name in ['AA','SS','OO'])  )
         return self._bar_quantities[key]
 
@@ -342,22 +340,22 @@ class Data_K(System):
         if key not in self._covariant_quantities:
             if gender == 0:
                 res = Matrix_ln(self.Xbar(name,commader) ,
-                    Iodd = parity_I(name,commader),TRodd = parity_TR(name,commader)
-                        )
+                                Iodd = parity_I(name,commader),TRodd = parity_TR(name,commader)
+                                )
             elif gender == 1:
                 if name == 'Ham':
                     res =  self.V_covariant
                 else:
                     res = Matrix_GenDer_ln(self.covariant(name),self.covariant(name,commader=1),
                         self.Dcov ,
-                    Iodd = parity_I(name,gender),TRodd = parity_TR(name,gender) 
+                    Iodd = parity_I(name,gender),TRodd = parity_TR(name,gender)
                             )
             else:
                 raise NotImplementedError()
-            if not save: 
+            if not save:
                 return res
             else:
-                self._covariant_quantities[key] = res 
+                self._covariant_quantities[key] = res
         return self._covariant_quantities[key]
 
     @property
@@ -373,7 +371,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def Dcov(self):
-        return  _Dcov(self)
+        return _Dcov(self)
 
 
 
@@ -390,15 +388,15 @@ class Data_K(System):
 #    defining sets of degenerate states - needed only for testing with random_gauge
     @lazy_property.LazyProperty
     def degen(self):
-            A=[np.where(E[1:]-E[:-1]>self.degen_thresh_random_gauge)[0]+1 for E in self.E_K ]
-            A=[ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
-            return [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) if ib2-ib1>1 ]    for a in A ]
+        A = [np.where(E[1:]-E[:-1]>self.degen_thresh_random_gauge)[0]+1 for E in self.E_K ]
+        A = [ [0,]+list(a)+[len(E)] for a,E in zip(A,self.E_K) ]
+        return [[(ib1,ib2) for ib1,ib2 in zip(a,a[1:]) if ib2-ib1>1 ] for a in A ]
 
     @lazy_property.LazyProperty
     def UU_K(self):
         print_my_name_start()
         self.E_K
-        # the following is needed only for testing : 
+        # the following is needed only for testing :
         if self.random_gauge:
             from scipy.stats import unitary_group
             cnt=0

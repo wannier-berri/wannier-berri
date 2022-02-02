@@ -22,7 +22,7 @@ import glob
 import os
 
 from .data_K import Data_K
-from  .__Kpoint import exclude_equiv_points
+from .__Kpoint import exclude_equiv_points
 from . import __utility as utility
 from .__parallel import Parallel
 
@@ -66,10 +66,10 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
         num_remotes=len(remotes)
         num_remotes_calculated=0
         while True:
+            # even if the required number of remotes had not finished, the progress will be printed every minute
             remotes_calculated,_=parallel.ray.wait(remotes,
-                                          num_returns=min(num_remotes_calculated+nstep_print,num_remotes), 
-                                          timeout=60)  # even, if the required number of remotes had not finished, 
-                                                       # the progress will be printed every minute
+                                          num_returns=min(num_remotes_calculated+nstep_print,num_remotes),
+                                          timeout=60)
             num_remotes_calculated = len(remotes_calculated)
             if num_remotes_calculated >=num_remotes:
                 break
@@ -98,16 +98,16 @@ def process(paralfunc,K_list,parallel,symgroup=None,remote_parameters={}):
 
 def evaluate_K(func,system,grid,
             adpt_mesh=2,adpt_num_iter=0,adpt_nk=1,
-            use_irred_kpt=True,symmetrize=True, 
+            use_irred_kpt=True,symmetrize=True,
             fout_name="result", suffix="",
             write_txt=True,write_bin=False,
              parameters_K={},
              file_Klist="K_list.pickle",restart=False,Klist_part = 10,
             parallel=None,  # serial by default
             print_Kpoints=True,
-             ):
-    """This function evaluates in parallel or serial an integral over the Brillouin zone 
-of a function func, which whould receive only one argument of type Data_K, and return 
+               ):
+    """This function evaluates in parallel or serial an integral over the Brillouin zone
+of a function func, which whould receive only one argument of type Data_K, and return
 a numpy.array of whatever dimensions
 
 the user has to provide 2 grids:  of K-points - NKdiv and FFT grid (k-points) NKFFT
@@ -124,7 +124,6 @@ As a result, the integration will be performed over NKFFT x NKdiv
     if file_Klist is not None:
         if not file_Klist.endswith(".pickle"):
             file_Klist+=".pickle"
-    cnt_exclude=0
 
     print (f"The set of k points is a {grid.str_short}")
 
@@ -175,7 +174,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
             start_iter=0
 
     if adpt_num_iter<0:
-        adpt_num_iter=-adpt_num_iter*np.prod(NKdiv)/np.prod(adpt_mesh)/adpt_nk/3
+        adpt_num_iter=-adpt_num_iter*np.prod(grid.div)/np.prod(adpt_mesh)/adpt_nk/3
     adpt_num_iter=int(round(adpt_num_iter))
 
 
@@ -185,19 +184,20 @@ As a result, the integration will be performed over NKFFT x NKdiv
         if not isinstance(adpt_mesh, Iterable):
             adpt_mesh=[adpt_mesh]*3
         adpt_mesh=np.array(adpt_mesh)
-    
+
     counter=0
 
     for i_iter in range(adpt_num_iter+1):
         if print_Kpoints:
-            print ("iteration {0} - {1} points. New points are:".format(i_iter,len([K for K in  K_list if K.res is None])) )
+            nk = len([K for K in K_list if K.res is None])
+            print(f"iteration {i_iter} - {nk} points. New points are:")
             for i,K in enumerate(K_list):
-              if not K.evaluated:
-                print (" K-point {0} : {1} ".format(i,K))
+                if not K.evaluated:
+                    print (" K-point {0} : {1} ".format(i,K))
         counter+=process(paralfunc,K_list,parallel,
-                     symgroup=system.symgroup if  symmetrize else None,
+                     symgroup=system.symgroup if symmetrize else None,
                      remote_parameters=remote_parameters)
-        
+
         try:
             if file_Klist is not None:
                 nk = len(K_list)
@@ -207,7 +207,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         except Exception as err:
             print ("Warning: {0} \n the K_list was not pickled".format(err))
 
-        time0 =time()     
+        time0 =time()
         print(kp.get_res for kp in K_list)
         result_all=sum(kp.get_res for kp in K_list)
         time1 = time()
@@ -218,27 +218,27 @@ As a result, the integration will be performed over NKFFT x NKdiv
                 result_all.savetxt(_name+".dat")
             if write_bin:
                 result_all.save(_name)
-                
-        
+
+
         if i_iter >= adpt_num_iter:
             break
-             
+
         # Now add some more points
         Kmax=np.array([K.max for K in K_list]).T
         select_points=set().union( *( np.argsort( Km )[-adpt_nk:] for Km in Kmax )  )
-        
+
         time2 = time()
         print("time2 = ",time2-time1)
         l1=len(K_list)
         for iK in select_points:
             K_list+=K_list[iK].divide(adpt_mesh,system.periodic,use_symmetry=use_irred_kpt)
 
-        if  use_irred_kpt:
+        if use_irred_kpt:
             print ("checking for equivalent points in all points (of new  {} points)".format(len(K_list)-l1))
             nexcl=exclude_equiv_points(K_list,new_points=len(K_list)-l1)
             print (" excluded {0} points".format(nexcl))
         print ("sum of weights now :{}".format(sum(Kp.factor for Kp in K_list)))
-        
+
     print ("Totally processed {0} K-points ".format(counter))
-    
+
     return result_all

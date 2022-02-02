@@ -1,5 +1,5 @@
 import numpy as np
-import abc 
+import abc
 
 
 
@@ -20,8 +20,8 @@ class Formula_ln(abc.ABC):
         if self.correction_wcc:
             if not (self.external_terms and self.internal_terms):
                 raise ValueError(f"correction_wcc makes sense only with all terms, but called with "
-                    "internal:{self.internal_terms}"
-                    "external:{self.external_terms}"
+                    f"internal:{self.internal_terms}"
+                    f"external:{self.external_terms}"
                     )
             self.T_wcc = data_K.covariant('T_wcc')
             if dT_wcc:
@@ -43,7 +43,7 @@ class Formula_ln(abc.ABC):
 
     @property
     def additive(self):
-        """ if Trace_A+Trace_B = Trace_{A+B} holds. 
+        """ if Trace_A+Trace_B = Trace_{A+B} holds.
         needs override for quantities that do not obey this rule (e.g. Orbital magnetization)
         """
         return True
@@ -120,7 +120,7 @@ class FormulaProduct(Formula_ln):
     def nn(self,ik,inn,out):
         matrices = [frml.nn(ik,inn,out) for frml in self.formulae ]
         res=matrices[0]
-        for mat,line  in zip(matrices[1:],self.einsumlines):
+        for mat,line in zip(matrices[1:],self.einsumlines):
             res=np.einsum(line,res,mat)
         if self.hermitian:
             res=0.5*(res+res.swapaxes(0,1).conj())
@@ -151,7 +151,7 @@ class FormulaProduct_2(Formula_ln):
                 self.einsumlines.append( "LM"+save_index+",MN"+self.index[i+1]+"->LN"+result_index )
                 save_index = result_index
             self.ndim = len(save_index)
-        matrices = [frml.nn(1,[1],[1]) for frml in self.formulae ]
+
     def nn(self,ik,inn,out):
         matrices = [frml.nn(ik,inn,out) for frml in self.formulae ]
         res=matrices[0]
@@ -178,7 +178,7 @@ class ProductDelta(Formula_ln):
         matrix = self.matrix.nn(ik,inn,out)
         res = np.einsum(""+self.index[0]+",ML"+self.index[1]+"->ML"+"".join(dict.fromkeys(self.index[0]+self.index[1])),self.delta,matrix)
         return np.array(res,dtype=complex)
-    
+
     def ln(self,ik,inn,out):
         matrix = self.matrix.ln(ik,inn,out)
         res = np.einsum(""+self.index[0]+",ML"+self.index[1]+"->ML"+"".join(dict.fromkeys(self.index[0]+self.index[1])),self.delta,matrix)
