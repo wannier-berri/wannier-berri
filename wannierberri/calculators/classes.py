@@ -1,18 +1,19 @@
-from . import fermiocean
-from . import covariant_formulak as frml
-from . import __result as result
-from .__tabulate import TABresult
+from wannierberri import fermiocean
+from wannierberri import covariant_formulak as frml
+from wannierberri.formula import FormulaProduct
+from wannierberri import __result as result
+from wannierberri.__tabulate import TABresult
 import numpy as np
+import abc,functools
+from wannierberri.__kubo import Gaussian, Lorentzian
+
 
 class Calculator():
+
     def __init__(self,degen_thresh=1e-4,degen_Kramers=False,save_mode="bin+txt"):
         self.degen_thresh = degen_thresh
         self.degen_Kramers = degen_Kramers
         self.save_mode = save_mode
-
-
-
-#TODO : split to different files ?
 
 ##################################################
 ######                                     #######
@@ -20,18 +21,22 @@ class Calculator():
 ######                                     #######
 ##################################################
 
-class AHC(Calculator):
+class StaticCalculator(Calculator):
+
     def __init__(self,Efermi,tetra=False,kwargs_formula={},**kwargs):
         self.Efermi = Efermi
         self.tetra  = tetra
         self.kwargs_formula = kwargs_formula
+        assert hasattr(self,'factor')
+        assert hasattr(self,'fder')
+        assert hasattr(self,'Formula') , "Formula should be a Formula or a list of Formula (in the latter case a product is taken"
         super().__init__(**kwargs)
-    
-    def __call__(self,data_K):
-        res =  fermiocean.AHC(data_K,self.Efermi,tetra=self.tetra,degen_thresh=self.degen_thresh,degen_Kramers=self.degen_Kramers,**self.kwargs_formula)
+
+    def  __call__(self,data_K):
+        res = fermiocean.FermiOcean(self.Formula(data_K,**self.kwargs_formula),data_K,self.Efermi,self.tetra,fder=self.fder,degen_thresh=self.degen_thresh,degen_Kramers=self.degen_Kramers)()
+        res*= self.factor
         res.set_save_mode(self.save_mode)
         return res
-
 
 
 ##################################################
@@ -40,48 +45,85 @@ class AHC(Calculator):
 ######                                     #######
 ##################################################
 
-from .__kubo import opt_conductivity
-class Optical(Calculator):
-
-    def __init__(self,Efermi=None,omega=None,  kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
-                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15 , sep_sym_asym = False, **kwargs):
-        for k,v in locals().items(): # is it safe to do so?
-            if k not in ['self','kwargs']:
-                vars(self)[k]=v
-        super().__init__(**kwargs)
-
-    def __call__(self,data_K):
-        # this is not a nice construction, but it is a temporary wrapper of old routines,
-        # which should be soon substituted by newer ones (fermiocean-like)
-        kwargs = {k:v for k,v in vars(self).items() if k not in ["save_mode","degen_thresh","degen_Kramers","__class__"]} 
-        res = opt_conductivity(data_K, **kwargs)
-        res.set_save_mode(self.save_mode)
+def FermiDirac(E, mu, kBT):
+    "here E is a number, mu is an array"
+    if kBT == 0:
+        return 1.0*(E <= mu)
+    else:
+        res = np.zeros_like(mu)
+        res[mu>E+30*kBT] = 1.0
+        res[mu<E-30*kBT] = 0.0
+        sel = abs(mu-E)<=30*kBT
+        res[sel]=1.0/(np.exp((E-mu[sel])/kBT) + 1)
         return res
 
 
-class OpticalConductivity(Optical):
 
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-        self.conductivity_type='kubo'
+class DynamicCalculator(Calculator,abc.ABC):
 
-class SHC(Optical):
-    def __init__(self,shc_alpha=1, shc_beta=2, shc_gamma=3,
-                shc_specification=False, SHC_type='ryoo', sc_eta=0.04,**kwargs):
+    def __init__(self,Efermi=None,omega=None,  kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
+                adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15 , sep_sym_asym = False, **kwargs):
+
         for k,v in locals().items(): # is it safe to do so?
             if k not in ['self','kwargs']:
                 vars(self)[k]=v
         super().__init__(**kwargs)
-        self.conductivity_type='SHC'
+
+        self.formula_kwargs = {}
+        self.Formula  = None 
+        self.final_factor = 1.
+        self.dtype = complex
+        self.EFmin=self.Efermi.min()
+        self.EFmax=self.Efermi.max()
+        self.omegamin=self.omega.min()
+        self.omegamax=self.omega.max()
         
-class SHCryoo(SHC):
-    def __init__(self,**kwargs):
-        super().__init__(SHC_type='ryoo',**kwargs)
+        if self.smr_type == 'Lorentzian':
+            self.smear = functools.partial(Lorentzian,width = self.smr_fixed_width)
+        elif self.smr_type == 'Gaussian':
+            self.smear = functools.partial(Gaussian,width = self.smr_fixed_width,adpt_smr = False)
+        else:
+            cprint("Invalid smearing type. Fallback to Lorentzian", 'red')
+        self.FermiDirac = functools.partial(FermiDirac,mu = self.Efermi,kBT = self.kBT) 
         
-class SHCqiao(SHC):
-    def __init__(self,**kwargs):
-        super().__init__(SHC_type='qiao',**kwargs)
-        
+
+
+    @abc.abstractmethod
+    def energy_factor(self,E1,E2):
+        pass
+
+    def nonzero(self,E1,E2):
+        emin = self.EFmin-30*self.kBT
+        if E1<emin and E2<emin:
+            return False
+        emax = self.EFmax+30*self.kBT
+        if E1>emax and E2>emax:
+            return False
+        return True
+
+
+    def __call__(self,data_K):
+        formula  = self.Formula(data_K,**self.formula_kwargs)
+        restot_shape = (len(self.Efermi),len(self.omega))+(3,)*formula.ndim
+        restot  = np.zeros(restot_shape,self.dtype)
+    
+        for ik in range(data_K.nk):
+            degen_groups = data_K.get_bands_in_range_groups_ik(ik,-np.Inf,np.Inf,degen_thresh=self.degen_thresh,degen_Kramers=self.degen_Kramers)
+            #now find needed pairs:
+            # as a dictionary {((ibm1,ibm2),(ibn1,ibn2)):(Em,En)} 
+            degen_group_pairs= { (ibm,ibn):(Em,En) 
+                                     for ibm,Em in degen_groups.items()
+                                         for ibn,En in degen_groups.items()
+                                             if self.nonzero(Em,En) }
+#        matrix_elements = {(inn1,inn2):self.formula.trace_ln(ik,inn1,inn2) for (inn1,inn2) in self.energy_factor().keys()}
+            for pair,EE in degen_group_pairs.items():
+                factor = self.energy_factor(EE[0],EE[1])
+                matrix_element = formula.trace_ln(ik,np.arange(*pair[0]),np.arange(*pair[1]))
+#                restot+=np.einsum( "ew,...->ew...",factor,matrix_element )
+                restot+=factor.reshape(factor.shape+(1,)*formula.ndim)*matrix_element[None,None]
+        restot *= self.final_factor / (data_K.nk*data_K.cell_volume)
+        return result.EnergyResult([self.Efermi,self.omega],restot, TRodd=formula.TRodd, Iodd=formula.Iodd, TRtrans = formula.TRtrans )
+
 
 
 ##################################################
@@ -131,15 +173,6 @@ class  Tabulator(Calculator):
             for ib,b in enumerate(ibands): 
                 rslt[ik,ib] = values[group[ik][ib]]
         return result.KBandResult(rslt,TRodd=formula.TRodd,Iodd=formula.Iodd)
-
-
-class BerryCurvature(Tabulator):
-    def __init__(self,**kwargs):
-        super().__init__(frml.Omega,**kwargs)
-
-class Energy(Tabulator):
-    def __init__(self,**kwargs):
-        super().__init__(frml.Eavln,**kwargs)
 
 
 class TabulatorAll(Calculator):

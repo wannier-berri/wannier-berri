@@ -29,6 +29,5 @@ from .__system_tb_py import System_PythTB, System_TBmodels
 from .__path import Path
 from .__parallel import Parallel
 from . import calculators
-from . import fermiocean_dynamic
 
 

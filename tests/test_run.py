@@ -20,7 +20,7 @@ from create_system import system_Chiral,ChiralModel
 from create_system import system_CuMnAs_2d_broken , model_CuMnAs_2d_broken
 from compare_result import compare_any_result
 from compare_result import compare_fermisurfer
-from test_integrate import Efermi_Fe,compare_quant
+from test_integrate import Efermi_Fe,compare_quant,Efermi_GaAs
 from test_tabulate import get_component_list
 
 @pytest.fixture
@@ -72,25 +72,32 @@ def check_run(parallel_serial,compare_any_result):
 
 @pytest.fixture(scope="session")
 def calculators_Fe():
-    return  {'ahc':calc.AHC}
+    return  {'ahc':calc.static.AHC}
     #,'ahc_test','dos','cumdos',
     #           'conductivity_ohmic','conductivity_ohmic_fsurf','Morb','Morb_test']
 
+@pytest.fixture(scope="session")
+def calculators_GaAs():
+    return  {
+                'berry_dipole':calc.static.BerryDipole_FermiSea,
+                'berry_dipole_fsurf':calc.static.BerryDipole_FermiSurf,
+            }
+
 
 def resultType(quant):
-    if quant in ['ahc',]:
-        return EnergyResult
+    if quant in []:  # in future - add other options (tabulateresult)
+        pass
     else:
-        raise ValueError(f"Unknown which result type to expect for {quant}")
+        return EnergyResult
 
 def test_Fe(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe,compare_fermisurfer):
     param  = {'Efermi':Efermi_Fe}
     param_tab = {'degen_thresh':5e-2}
     calculators = {k:v(**param) for k,v in calculators_Fe.items()}
     calculators["tabulate"]=calc.TabulatorAll({
-                    "Energy":calc.Energy(), # yes, in old implementation degen_thresh was applied to qunatities, 
+                    "Energy":calc.tabulate.Energy(), # yes, in old implementation degen_thresh was applied to qunatities, 
                                     # but not to energies 
-                    "berry" :calc.BerryCurvature(**param_tab),
+                    "berry" :calc.tabulate.BerryCurvature(**param_tab),
                                               }, 
                                                ibands = [5,6,7,8]
                                               )
@@ -99,27 +106,20 @@ def test_Fe(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe
 
     parameters_optical = dict(Efermi = np.array([17.0, 18.0]),omega = np.arange(0.0, 7.1, 1.0),
                     smr_fixed_width=0.20, smr_type="Gaussian")
-    calculators['opt_conductivity'] = wberri.calculators.OpticalConductivity(**parameters_optical)
-    calculators['opt_SHCqiao']      = wberri.calculators.SHCqiao(**parameters_optical)
-    calculators['opt_SHCryoo']      = wberri.calculators.SHCryoo(**parameters_optical)
-    calculators['opt_SHCryoo_fod']      = wberri.fermiocean_dynamic.SHC2(SHC_type="ryoo",**parameters_optical)
-    calculators['opt_SHCqiao_fod']      = wberri.fermiocean_dynamic.SHC2(SHC_type="qiao",**parameters_optical)
-    calculators['opt_conductivity_fod']      = wberri.fermiocean_dynamic.OpticalConductivity(**parameters_optical)
+    calculators['opt_conductivity'] = wberri.calculators.dynamic.OpticalConductivity(**parameters_optical)
+    calculators['opt_SHCqiao']      = wberri.calculators.dynamic.SHC(SHC_type="qiao",**parameters_optical)
+    calculators['opt_SHCryoo']      = wberri.calculators.dynamic.SHC(SHC_type="ryoo",**parameters_optical)
     
     check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="run" ,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
             extra_precision = {"Morb":-1e-6},
-            skip_compare = ['tabulate','opt_conductivity','opt_SHCqiao','opt_SHCryoo','opt_SHCryoo_fod','opt_SHCqiao_fod','opt_conductivity_fod'])
+            skip_compare = ['tabulate','opt_conductivity','opt_SHCqiao','opt_SHCryoo'])
 
     for quant in 'opt_conductivity','opt_SHCryoo','opt_SHCryoo':
         compare_any_result("berry_Fe_W90", quant+"-run",  0 , 
             fout_name_ref = "kubo_Fe_W90",suffix_ref=quant ,
             precision=1e-8, result_type = EnergyResult )
 
-    for quant in 'opt_conductivity','opt_SHCryoo','opt_SHCqiao',:
-        compare_any_result("berry_Fe_W90", quant+"_fod-run",  0 , 
-            fout_name_ref = "kubo_Fe_W90",suffix_ref=quant ,
-            precision=1e-8, result_type = EnergyResult )
     
     extra_precision = {'berry':1e-6}
     for quant in ["E","berry"]:
@@ -184,4 +184,16 @@ def test_Fe_pickle_Klist(check_run,system_Fe_W90, compare_any_result,calculators
                   adpt_num_iter=1,use_symmetry = True,file_Klist = "Klist.pickle" ,restart = True,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
             )
+
+
+def test_GaAs(check_run,system_GaAs_W90, compare_any_result,calculators_GaAs,Efermi_GaAs,compare_fermisurfer):
+    param  = {'Efermi':Efermi_GaAs}
+    param_tab = {'degen_thresh':5e-2}
+    calculators = {k:v(**param) for k,v in calculators_GaAs.items()}
+    
+    grid_param = dict(NK=[6, 6, 6], NKFFT=[3, 3, 3])
+
+    check_run(system_GaAs_W90 , calculators , fout_name="berry_GaAs_W90" , suffix="run" ,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
+                  extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
