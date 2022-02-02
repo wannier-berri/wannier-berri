@@ -12,11 +12,9 @@
 #------------------------------------------------------------
 
 import numpy as np
-import copy
 import lazy_property
-from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice,iterate3dpm
+from .__utility import alpha_A, beta_A , iterate3dpm
 from  .symmetry import Group
-from colorama import init
 from termcolor import cprint 
 import functools
 import multiprocessing 
