@@ -10,12 +10,8 @@
 
 from collections import defaultdict
 import lazy_property
-
-
-import functools
 import numpy as np
 from numba import njit
-from copy import copy
 
 @njit
 def weights_tetra(efall,e0,e1,e2,e3,der=0):
