@@ -164,6 +164,7 @@ As a result, the integration will be performed over NKFFT x NKdiv
         print ("searching for start_iter")
         try:
             start_iter=int(sorted(glob.glob(fout_name+"*"+suffix+"_iter-*.dat"))[-1].split("-")[-1].split(".")[0])
+            print (f"start_iter = {start_iter}")
         except Exception as err:
             print ("WARNING : {0} : failed to read start_iter. Setting to zero".format(err))
             start_iter=0
