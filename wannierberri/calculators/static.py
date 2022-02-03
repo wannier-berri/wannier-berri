@@ -8,6 +8,10 @@ from wannierberri import fermiocean
 ######                                     #######
 ##################################################
 
+#  TODO: Ideally, a docstring of every calculator should contain the equation that it implements
+#        and references (with urls) to the relevant papers"""
+
+
 class AHC(StaticCalculator):
 
     def __init__(self,**kwargs):
