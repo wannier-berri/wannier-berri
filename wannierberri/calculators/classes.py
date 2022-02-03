@@ -1,6 +1,4 @@
 from wannierberri import fermiocean
-from wannierberri import covariant_formulak as frml
-from wannierberri.formula import FormulaProduct
 from wannierberri import __result as result
 from wannierberri.__tabulate import TABresult
 import numpy as np
@@ -83,7 +81,7 @@ class DynamicCalculator(Calculator,abc.ABC):
         elif self.smr_type == 'Gaussian':
             self.smear = functools.partial(Gaussian,width = self.smr_fixed_width,adpt_smr = False)
         else:
-            cprint("Invalid smearing type. Fallback to Lorentzian", 'red')
+            raise ValueError("Invalid smearing type {self.smr_type}")
         self.FermiDirac = functools.partial(FermiDirac,mu = self.Efermi,kBT = self.kBT) 
         
 

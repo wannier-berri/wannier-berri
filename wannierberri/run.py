@@ -11,19 +11,14 @@
 #                                                            #
 #------------------------------------------------------------
 
-import functools
 import numpy as np
 from collections.abc import Iterable
-import lazy_property
-from copy import copy
 from time import time
 import pickle
 import glob
-import os
 
 from .data_K import Data_K
 from  .__Kpoint import exclude_equiv_points
-from . import __utility as utility
 from .__parallel import Parallel
 from .__result import ResultDict
 
@@ -162,12 +157,13 @@ def run(system,grid,calculators,
         print ("searching for start_iter")
         try:
             start_iter=int(sorted(glob.glob(fout_name+"*"+suffix+"_iter-*.dat"))[-1].split("-")[-1].split(".")[0])
+            print (f"start_iter = {start_iter}")
         except Exception as err:
             print ("WARNING : {0} : failed to read start_iter. Setting to zero".format(err))
             start_iter=0
 
     if adpt_num_iter<0:
-        adpt_num_iter=-adpt_num_iter*np.prod(NKdiv)/np.prod(adpt_mesh)/adpt_nk/3
+        adpt_num_iter=-adpt_num_iter*np.prod(grid.div)/np.prod(adpt_mesh)/adpt_nk/3
     adpt_num_iter=int(round(adpt_num_iter))
 
 
@@ -205,7 +201,7 @@ def run(system,grid,calculators,
         time1 = time()
         print("time1 = ",time1-time0)
         if not (restart and i_iter==0):
-            result_all.savedata(prefix = fout_name, suffix = suffix, i_iter = i_iter)
+            result_all.savedata(prefix = fout_name, suffix = suffix, i_iter = i_iter+start_iter)
 
         if i_iter >= adpt_num_iter:
             break

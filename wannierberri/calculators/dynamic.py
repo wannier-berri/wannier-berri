@@ -1,21 +1,9 @@
 import numpy as np
-from wannierberri.__utility import  alpha_A,beta_A, TAU_UNIT
-from collections import defaultdict
-from wannierberri import __result as result
-from math import ceil
-from wannierberri import covariant_formulak as frml
-from wannierberri.formula import FormulaProduct,FormulaProduct_2,ProductDelta
-from wannierberri import covariant_formulak_basic as frml_basic
-from itertools import permutations
-from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
+from scipy.constants import  elementary_charge, hbar, electron_mass, physical_constants, angstrom
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]
 Ang_SI = angstrom
-from wannierberri.__kubo import Gaussian, Lorentzian
-import abc
-import functools
-
 
 from .classes import DynamicCalculator
 
@@ -124,7 +112,6 @@ class _SHC(DynamicCalculator):
 
 
     def energy_factor(self,E1,E2):
-        delta_arg = E2 - E1 - self.omega # argument of delta function [iw, n, m]
         delta_minus = self.smear(E2 - E1 - self.omega)
         delta_plus  = self.smear(E1 - E2 - self.omega)
         cfac2 = delta_plus - delta_minus   # TODO : for Lorentzian do the real and imaginary parts together
