@@ -162,7 +162,7 @@ def quantities_GaAs_internal():
 def compare_quant(quant):
 #    compare= {'ahc_ocean':'ahc','ahc3_ocean':'ahc',"cumdos3_ocean":"cumdos","dos3_ocean":"dos","berry_dipole_ocean":"berry_dipole","berry_dipole3_ocean":"berry_dipole",
 #            'conductivity_ohmic3_ocean':'conductivity_ohmic','conductivity_ohmic_fsurf3_ocean':'conductivity_ohmic_fsurf'}
-    compare = {'ahc_test':'ahc' , 'berry_dipole_test':'berry_dipole', 'Morb_test':'Morb','gyrotropic_Korb_test':'gyrotropic_Korb'}  # it future reverse this - the test is fundamental
+    compare = {'ahc_test':'ahc' , 'berry_dipole_test':'berry_dipole', 'Morb_test':'Morb','gyrotropic_Korb_test':'gyrotropic_Korb','Energy':'E'}  # it future reverse this - the test is fundamental
     if quant in compare:
         return compare[quant]
     else:
@@ -361,6 +361,7 @@ def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,qu
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , suffix="paral-ray-4" , suffix_ref="",  Efermi=Efermi_Fe , comparer=compare_energyresult,parallel=parallel_ray,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                     )
+    parallel_ray.shutdown()
 
 def test_Chiral(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
     check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,

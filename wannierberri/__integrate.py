@@ -224,6 +224,9 @@ class INTresult(result.Result):
             
     def __mul__(self,other):
         return INTresult({q:v*other for q,v in self.results.items()})
+
+    def __truediv__(self,number):
+        return self*(1./number)
     
     def __add__(self,other):
         if other == 0:
