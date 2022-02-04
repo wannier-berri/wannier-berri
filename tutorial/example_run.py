@@ -55,6 +55,7 @@ wberri.run(system,
 #                                  }, 
 #                                       ibands = np.arange(4,10))
                  "opt_conductivity" : wberri.calculators.dynamic.OpticalConductivity(Efermi=Efermi,omega=omega),
+#                 "shc_ryoo" : wberri.calculators.dynamic.SHC(Efermi=Efermi,omega=omega),
 #                  "SHC": wberri.fermiocean_dynamic.SHC(Efermi=Efermi,omega=omega,SHC_type="qiao")
                           }, 
             parallel=parallel,
