@@ -69,13 +69,12 @@ class  OpticalConductivity(DynamicCalculator):
         self.final_factor = elementary_charge**2/(100.0 * hbar * angstrom)
 
     
-    def energy_factor(self,E1,E2):
+    def factor_omega(self,E1,E2):
         delta_arg_12 = E2 - E1 - self.omega # argument of delta function [iw, n, m]
         cfac = 1./(delta_arg_12-1j*self.smr_fixed_width) 
         if self.smr_type!='Lorentzian':
             cfac.imag = np.pi*self.smear(delta_arg_12)
-        dfE = self.FermiDirac(E2)-self.FermiDirac(E1)  # [n, m]
-        return dfE[:,None]*(E2-E1)*cfac[None,:]
+        return (E2-E1)*cfac
 
 
 ##################################
@@ -111,24 +110,22 @@ class _SHC(DynamicCalculator):
         self.final_factor = elementary_charge**2/(100.0 * hbar * angstrom)
 
 
-    def energy_factor(self,E1,E2):
+    def factor_omega(self,E1,E2):
         delta_minus = self.smear(E2 - E1 - self.omega)
         delta_plus  = self.smear(E1 - E2 - self.omega)
         cfac2 = delta_plus - delta_minus   # TODO : for Lorentzian do the real and imaginary parts together
         cfac1 = np.real( (E1-E2)/((E1-E2)**2-(self.omega+1j*self.smr_fixed_width)**2) )
         cfac = (2*cfac1 + 1j*np.pi*cfac2)/4.
-        dfE = self.FermiDirac(E2)-self.FermiDirac(E1)  # [n, m]
-        return dfE[:,None]*cfac[None,:]
+        return cfac
 
 
 
 class SHC(_SHC):
     "a more laconic implementation of the energy factor"
 
-    def energy_factor(self,E1,E2):
+    def factor_omega(self,E1,E2):
         delta_arg_12 = E1 - E2 - self.omega # argument of delta function [iw, n, m]
         cfac = 1./(delta_arg_12-1j*self.smr_fixed_width) 
         if self.smr_type!='Lorentzian':
             cfac.imag = np.pi*self.smear(delta_arg_12)
-        dfE = self.FermiDirac(E2)-self.FermiDirac(E1)  # [n, m]
-        return dfE[:,None]*cfac[None,:]/2
+        return cfac/2
