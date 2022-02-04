@@ -6,7 +6,7 @@ import abc,functools
 from wannierberri.__kubo import Gaussian, Lorentzian
 from collections import defaultdict
 from math import ceil
-
+from numba import njit
 
 class Calculator():
 
@@ -157,6 +157,8 @@ class DynamicCalculator(Calculator,abc.ABC):
         self.EFmax=self.Efermi.max()
         self.omegamin=self.omega.min()
         self.omegamax=self.omega.max()
+        self.eocc1max = self.EFmin-30*self.kBT
+        self.eocc0min = self.EFmax+30*self.kBT
         
         if self.smr_type == 'Lorentzian':
             self.smear = functools.partial(Lorentzian,width = self.smr_fixed_width)
@@ -169,39 +171,41 @@ class DynamicCalculator(Calculator,abc.ABC):
 
 
     @abc.abstractmethod
-    def energy_factor(self,E1,E2):
+    def factor_omega(self,E1,E2):
         pass
 
+    def factor_Efermi(self,E1,E2):
+        return self.FermiDirac(E2)-self.FermiDirac(E1)
+
     def nonzero(self,E1,E2):
-        emin = self.EFmin-30*self.kBT
-        if E1<emin and E2<emin:
+        if (E1<self.eocc1max and E2<self.eocc1max) or (E1>self.eocc0min and E2>self.eocc0min):
             return False
-        emax = self.EFmax+30*self.kBT
-        if E1>emax and E2>emax:
-            return False
-        return True
+        else:
+            return True
 
 
     def __call__(self,data_K):
         formula  = self.Formula(data_K,**self.formula_kwargs)
-        restot_shape = (len(self.Efermi),len(self.omega))+(3,)*formula.ndim
-        restot  = np.zeros(restot_shape,self.dtype)
-    
+        restot_shape = (len(self.omega),len(self.Efermi))+(3,)*formula.ndim
+        restot_shape_tmp = (len(self.omega),len(self.Efermi)*3**formula.ndim)  # we will first get it in this shape, then transpose
+
+        restot  = np.zeros(restot_shape_tmp,self.dtype)
+
         for ik in range(data_K.nk):
             degen_groups = data_K.get_bands_in_range_groups_ik(ik,-np.Inf,np.Inf,degen_thresh=self.degen_thresh,degen_Kramers=self.degen_Kramers)
             #now find needed pairs:
             # as a dictionary {((ibm1,ibm2),(ibn1,ibn2)):(Em,En)} 
-            degen_group_pairs= { (ibm,ibn):(Em,En) 
+            degen_group_pairs= [ (ibm,ibn,Em,En) 
                                      for ibm,Em in degen_groups.items()
                                          for ibn,En in degen_groups.items()
-                                             if self.nonzero(Em,En) }
-#        matrix_elements = {(inn1,inn2):self.formula.trace_ln(ik,inn1,inn2) for (inn1,inn2) in self.energy_factor().keys()}
-            for pair,EE in degen_group_pairs.items():
-                factor = self.energy_factor(EE[0],EE[1])
-                matrix_element = formula.trace_ln(ik,np.arange(*pair[0]),np.arange(*pair[1]))
-#                restot+=np.einsum( "ew,...->ew...",factor,matrix_element )
-                restot+=factor.reshape(factor.shape+(1,)*formula.ndim)*matrix_element[None,None]
-        restot *= self.final_factor / (data_K.nk*data_K.cell_volume)
+                                             if self.nonzero(Em,En) ]
+            npair = len(degen_group_pairs)
+            matrix_elements = np.array([ formula.trace_ln(ik,np.arange(*pair[0]),np.arange(*pair[1])) for pair in degen_group_pairs ])
+            factor_Efermi   = np.array([ self.factor_Efermi(pair[2],pair[3])                          for pair in degen_group_pairs ])
+            factor_omega    = np.array([ self.factor_omega (pair[2],pair[3])                          for pair in degen_group_pairs ]).T
+            restot +=  factor_omega @ (factor_Efermi[:,:,None]*matrix_elements.reshape(npair,-1)[:,None,:]).reshape(npair,-1)
+        restot = restot.reshape(restot_shape).swapaxes(0,1) # swap the axes to get EF,omega,a,b,...
+        restot [:]*= self.final_factor / (data_K.nk*data_K.cell_volume)
         return result.EnergyResult([self.Efermi,self.omega],restot, TRodd=formula.TRodd, Iodd=formula.Iodd, TRtrans = formula.TRtrans )
 
 
