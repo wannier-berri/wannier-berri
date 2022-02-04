@@ -1,6 +1,6 @@
 import numpy as np
 from .__utility import alpha_A, beta_A
-from .formula import Formula_ln, Matrix_ln , Matrix_GenDer_ln
+from .formula import Formula_ln, Matrix_ln , Matrix_GenDer_ln, FormulaProduct
 from .data_K import _Dcov
 #####################################################
 #####################################################
@@ -108,7 +108,6 @@ class Der3E(Formula_ln):
 
     def ln(self,ik,inn,out):
         raise NotImplementedError()
-
 
 #############################
 ###   Berry curvature    ####
@@ -427,3 +426,21 @@ class SpinOmega(Formula_ln):
 
     def ln(self,ik,inn,out):
         raise NotImplementedError()
+
+
+########################################
+###                                  ###
+###    Some Prooducts                ###
+###                                  ###
+########################################
+
+
+class VelOmega(FormulaProduct):
+
+    def __init__(self,data_K,**kwargs_formula):
+        super().__init__( [data_K.covariant('Ham',commader=1),Omega(data_K,**kwargs_formula)], name='VelOmega')
+
+
+
+
+

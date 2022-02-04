@@ -262,18 +262,25 @@ class Data_K(System):
     def tetraWeights(self):
         return TetraWeights(self.E_K,self.E_K_corners)
 
-    def get_bands_in_range_groups(self,emin,emax,degen_thresh=-1,degen_Kramers=False,sea=False):
-        res=[]
-        for ik in range(self.nk):
-            bands_in_range=get_bands_in_range(emin,emax,self.E_K[ik],degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)
-            weights= { (ib1,ib2):self.E_K[ik,ib1:ib2].mean() for ib1,ib2 in bands_in_range }
-            if sea :
+
+    def get_bands_in_range_groups_ik(self,ik,emin,emax,degen_thresh=-1,degen_Kramers=False,sea=False):
+        bands_in_range=get_bands_in_range(emin,emax,self.E_K[ik],degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)
+        weights= { (ib1,ib2):self.E_K[ik,ib1:ib2].mean() 
+                          for ib1,ib2 in bands_in_range  
+                     }
+        if sea :
                 bandmax=get_bands_below_range(emin,self.E_K[ik])
                 if len(bands_in_range)>0 :
                     bandmax=min(bandmax, bands_in_range[0][0])
                 if bandmax>0:
                     weights[(0,bandmax)]=-np.Inf
-            res.append( weights )
+        return weights
+
+
+    def get_bands_in_range_groups(self,emin,emax,degen_thresh=-1,degen_Kramers=False,sea=False):
+        res=[]
+        for ik in range(self.nk):
+            res.append( self.get_bands_in_range_groups_ik(ik,emin,emax,degen_thresh,degen_Kramers,sea) )
         return res
 
 ###################################################
