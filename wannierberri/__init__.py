@@ -27,5 +27,5 @@ from .__system_tb    import System_tb
 from .__system_tb_py import System_PythTB, System_TBmodels
 from .__path import Path
 from .__parallel import Parallel
-
+from . import boltzmann_grid
 

@@ -17,6 +17,16 @@ class FiniteDifferences():
     def basis(self):
         return np.array(self.recip_lattice)/np.array(self.FFT)
 
+    def gradient(self,field):
+        grad = np.zeros( (3,) + field.shape , field.dtype )
+        for w,bc,bi in zip(self.wk,self.bk_cart,self.bki):
+#            print (w,bc,bi)
+#            print (grad.shape,w.shape,bc.shape,field.shape,np.roll(field,-bi).shape)
+            add = w*np.roll(field,-bi)
+            for i in range(3):
+                grad [i] += add*bc[i]
+        return grad
+
 
 def find_shells(basis,isearch=3):
     """returns the weights of the bk vectors, and the bk vectors to the corresponding neighbour points"""

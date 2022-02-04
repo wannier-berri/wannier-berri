@@ -212,15 +212,25 @@ class TABresult(result.Result):
 
 
     def __get_data_grid(self,quantity,iband,component=None,efermi=None):
-        if quantity=='E':
-            return self.Enk.data[:,iband].reshape(self.grid)
-        elif component==None:
-            return self.results[quantity].data[:,iband].reshape(tuple(self.grid)+(3,)*self.results[quantity].rank)
+        if isinstance(iband,Iterable):
+            iband = np.array(iband)
+            shape = iband.shape+tuple(self.grid)
         else:
-            return self.results[quantity].get_component(component)[:,iband].reshape(self.grid)
+            shape = tuple(self.grid)
+        if quantity=='E':
+            return self.Enk.data[:,iband].reshape(shape)
+        elif component==None:
+            return self.results[quantity].data[:,iband].reshape(shape+(3,)*self.results[quantity].rank)
+        else:
+            return self.results[quantity].get_component(component)[:,iband].reshape(shape)
 
 
     def __get_data_path(self,quantity,iband,component=None,efermi=None):
+        if isinstance(iband,Iterable):
+            iband = np.array(iband)
+            shape = iband.shape+tuple(self.grid)
+        else:
+            shape = tuple(self.grid)
         if quantity=='E':
             return self.Enk.data[:,iband]
         elif component==None:
@@ -228,7 +238,9 @@ class TABresult(result.Result):
         else:
             return self.results[quantity].get_component(component)[:,iband]
  
-    def get_data(self,quantity,iband,component=None,efermi=None):
+    def get_data(self,quantity,iband=None,component=None,efermi=None):
+        if iband is None:
+            iband = np.arange(self.nband)
         if self.grid is None:
             return self.__get_data_path(quantity,iband,component=component,efermi=efermi)
         else : 
