@@ -49,6 +49,8 @@ class Result():
     def save(self,name):
         raise NotImplementedError()
     
+    def set_save_mode(self,set_mode):
+        self.save_modes = set_mode.split('+')
 
 #  how result transforms under symmetry operations
     def transform(self,sym):
@@ -59,6 +61,9 @@ class Result():
     def max(self):
         raise NotImplementedError()
 
+    def __truediv__(self,number):
+        # not that result/x amd result*(1/x) is not the same thing for tabulation
+        raise NotImplementedError()
 
 ### these methods do no need re-implementation: 
     def __rmul__(self,other):
@@ -67,12 +72,55 @@ class Result():
     def __radd__(self,other):
         return self+other
         
-    def __truediv__(self,number):
-        return self*(1./number)
 
 
 # a class for data defined for a set of Fermi levels
 #Data is stored in an array data, where first dimension indexes the Fermi level
+
+
+class ResultDict(Result):
+    '''Stores a dictionary of instances of the class Result.'''
+    
+    def __init__(self, results):
+        '''
+        Initialize instance with a dictionary of results with string keys and values of type Result.
+        '''
+        self.results = results
+        
+    #  multiplication by a number 
+    def __mul__(self, number):
+        return ResultDict({ k : v*number for k,v in self.results.items() })
+
+    def __truediv__(self,number):
+        return ResultDict({ k : v/number for k,v in self.results.items() })
+
+    # +
+    def __add__(self, other):
+        if other == 0:
+            return self
+        results = { k : self.results[k] + other.results[k] for k in self.results if k in other.results }
+        return ResultDict(results) 
+
+    # -
+    def __sub__(self, other):
+        return self + (-1)*other
+
+    # writing to a text file
+    def savedata(self, prefix,suffix,i_iter):
+        for k,v in self.results.items():
+            v.savedata(k,prefix,suffix,i_iter)
+
+
+    #  how result transforms under symmetry operations
+    def transform(self, sym):
+        results = { k : self.results[k].transform(sym)  for k in self.results}
+        return ResultDict(results)
+
+    # a list of numbers, by each of those the refinement points will be selected
+    @property
+    def max(self):
+        return np.array([x for v in self.results.values() for x in v.max])
+
 
 
 class EnergyResult(Result):
@@ -113,6 +161,7 @@ class EnergyResult(Result):
                       
     def __init__(self,Energies=None,data=None, smoothers=None,
                       TRodd=False,Iodd=False,TRtrans=False,rank=None,E_titles=["Efermi","Omega"],
+                      save_mode = "txt+bin",
                       file_npz = None):
         if file_npz is not None:
             res = np.load(open(file_npz,"rb"))
@@ -146,10 +195,10 @@ class EnergyResult(Result):
             self.TRodd=TRodd
             self.TRtrans=TRtrans
             self.Iodd=Iodd
+            self.set_save_mode(save_mode)
             if self.TRtrans :
                 assert self.rank == 2
         
-    
     def set_smoother(self, smoothers):
         if smoothers is None:
             smoothers = (None,)*self.N_energies
@@ -181,6 +230,10 @@ class EnergyResult(Result):
             return EnergyResult(Energies = self.Energies,data = self.data*other,smoothers = self.smoothers,TRodd = self.TRodd, TRtrans = self.TRtrans, Iodd = self.Iodd,rank = self.rank,E_titles = self.E_titles)
         else:
             raise TypeError("result can only be multilied by a number")
+
+    def __truediv__(self,number):
+        return self*(1./number)
+
 
     def __add__(self,other):
         assert self.TRodd == other.TRodd
@@ -235,6 +288,15 @@ class EnergyResult(Result):
         energ = {f'Energies_{i}':E for i,E in enumerate(self.Energies)}
         with open(name+".npz","wb") as f:
             np.savez_compressed(f,E_titles=self.E_titles,data=self.data,rank=self.rank,TRodd=self.TRodd,TRtrans = self.TRtrans,Iodd=self.Iodd,**energ)
+            
+    def savedata(self,name,prefix,suffix,i_iter):
+        suffix = "-"+suffix if len(suffix)>0 else ""
+        prefix = prefix+"-" if len(prefix)>0 else ""
+        filename = prefix+name+suffix+f"_iter-{i_iter:04d}"
+        if "bin" in self.save_modes:
+            self.save(filename)
+        if "txt" in self.save_modes:
+            self.savetxt(filename+".dat")
 
     @property
     def _maxval(self):
@@ -285,6 +347,14 @@ class EnergyResultDict(EnergyResult):
             return self
         results = { k : self.results[k] + other.results[k] for k in self.results if k in other.results }
         return EnergyResultDict(results) 
+
+    # writing to a text file
+    def savedata(self, name,prefix,suffix,i_iter):
+        for k,v in self.results.items():
+            if not hasattr(v,'save_modes'):
+                v.set_save_modes(self.save_modes)
+            v.savedata(name+"-"+k,prefix,suffix,i_iter)
+
 
     # -
     def __sub__(self, other):
@@ -369,6 +439,14 @@ class KBandResult(Result):
     def __add__(self,other):
         assert self.fit(other)
         return KBandResult(self.data_list+other.data_list,self.TRodd,self.Iodd) 
+
+
+    def __mul__(self,number):
+        return KBandResult([d*number for d in self.data_list],self.TRodd,self.Iodd) 
+
+    def __truediv__(self,number):
+        return self*1 # actually a copy
+
 
     def to_grid(self,k_map):
         dataall=self.data

@@ -4,7 +4,6 @@ import os
 import numpy as np
 import pytest
 from pytest import approx
-
 import wannierberri as wberri
 from wannierberri import covariant_formulak as frml
 from wannierberri import formula
@@ -20,7 +19,7 @@ from create_system import system_Chiral,ChiralModel
 
 
 def get_component_list(quantity):
-        if quantity in ["E"]:
+        if quantity in ["E","Energy"]:
             return [None]
         if quantity in ["berry","V","morb"]:
             return [a for a in "xyz"]

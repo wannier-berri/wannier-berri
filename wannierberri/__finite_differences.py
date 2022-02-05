@@ -22,9 +22,11 @@ class FiniteDifferences():
         for w,bc,bi in zip(self.wk,self.bk_cart,self.bki):
 #            print (w,bc,bi)
 #            print (grad.shape,w.shape,bc.shape,field.shape,np.roll(field,-bi).shape)
-            add = w*np.roll(field,-bi)
-            for i in range(3):
-                grad [i] += add*bc[i]
+            add = np.roll(field,-bi,(0,1,2))
+#            print (add.shape)
+#            print (field[0,0,0],add[0,0,0])
+            for i,b in enumerate(bc*w):
+                grad [i] += add*b
         return grad
 
 
