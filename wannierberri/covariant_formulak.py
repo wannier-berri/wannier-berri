@@ -285,6 +285,18 @@ class morb(Morb_Hpm):
         super().__init__(data_K,sign=-1,**parameters)
 
 
+from .covariant_formulak_basic import factor_morb
+
+class morb_bohr(morb):
+    "same, but returns in units of Bohr magneton"
+
+    def nn(self,ik,inn,out):
+        return super().nn(ik,inn,out)*factor_morb
+
+    def ln(self,ik,inn,out):
+        return super().ln(ik,inn,out)*factor_morb
+
+
 #############################
 ###   derivative of      ####
 ###   orbital moment     ####

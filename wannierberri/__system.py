@@ -410,6 +410,31 @@ class System():
             print (f"{XX} is missing,nothing to check")
 
 
+    def set_spin(self,spin,axis=[0,0,1]):
+        """
+        sets the SS_R matrix, with only the R=0 element being nonzero
+        useful for models, i.e. :class:`~wannierberri.__system.System_PythTB`, :class:`~wannierberri.__system.System_TBmodels`, :class:`~wannierberri.__system.System_tb`
+        spin is either a (numwann x num_wann x 3) matrix - the values for R=0
+        or an array of length num_wann  - the spin values +1 or -1 . In the latter case
+        a spin axis should be specified - only direction matters
+        """
+        self.SS_R=np.zeros((self.num_wann,self.num_wann,self.nRvec,3),dtype=complex)
+        spin = np.array(spin)
+        if spin.shape == (self.num_wann,):
+            axis = np.array(axis)
+            axis = axis/np.linalg.norm(axis)
+            spin = np.array(np.round(spin),dtype = int)
+            assert set(list(spin)) == set ([-1,1])
+            for i in range(self.num_wann):
+                self.SS_R[i,i,self.iR0,:] = spin[i]*axis
+        elif spin.shape == (self.num_wann,self.num_wann,3):
+            self.SS_R[:,:,self.iR0,:] = spin
+        else:
+            raise ValueError(f"wrong shape of spin matrix/array")
+        print (f"the SS(R=0) was set to \nSX = {self.SS_R[:,:,self.iR0,0]}\nSY = {self.SS_R[:,:,self.iR0,1]}\nSZ = {self.SS_R[:,:,self.iR0,2]}\n")
+
+
+
 class ws_dist_map():
 
     def __init__(self,iRvec,wannier_centers, mp_grid,real_lattice,npar=multiprocessing.cpu_count()):
@@ -470,6 +495,8 @@ class ws_dist_map():
         if not ir in self._iRvec_new[irvec_new]:
              self._iRvec_new[irvec_new][ir]=np.zeros((self.num_wann,self.num_wann),dtype=float)
         self._iRvec_new[irvec_new][ir][iw,jw]+=weight
+
+
 
 
 

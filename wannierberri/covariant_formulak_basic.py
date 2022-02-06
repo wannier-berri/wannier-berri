@@ -2,6 +2,8 @@ import numpy as np
 from .__utility import alpha_A, beta_A
 from .formula import Formula_ln
 from .covariant_formulak import DerDcov, Eavln
+from scipy.constants import elementary_charge, hbar, electron_mass
+
 #####################################################
 #####################################################
 
@@ -336,6 +338,19 @@ class tildeHGc_d(AntiSymmetric):
 
 # derivative of band orbital moment
 class Der_morb(tildeHGc_d):
+    "returns :math:`m^{a:b} = \partial_b m^a` in units eV*Ang^2"
     def __init__(self,data_K,**parameters):
         super().__init__(data_K,sign=-1,**parameters)
 
+
+factor_morb = elementary_charge * 1e-20 * electron_mass/hbar**2 # e*1e-20 is to transfer from eV*Ang^2 to Si, then multiply by (e/2hbar) and finally divide by the Bohr magneton in SI: (e*hbar/2m_e)
+print (f"factor_morb={factor_morb}")
+
+class Der_morb_bohr(Der_morb):
+    "same, but returns in units of Bohr magneton * Ang"
+
+    def nn(self,ik,inn,out):
+        return super().nn(ik,inn,out)*factor_morb
+
+    def ln(self,ik,inn,out):
+        return super().ln(ik,inn,out)*factor_morb

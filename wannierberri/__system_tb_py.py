@@ -141,8 +141,6 @@ class System_tb_py(System):
         cprint ("Reading the system from {} finished successfully".format(names[module]),'green', attrs=['bold'])
 
 
-
-
 class System_TBmodels(System_tb_py):
     """This interface initializes the System class from a tight-binding
     model created with `TBmodels. <http://z2pack.ethz.ch/tbmodels/doc/1.3/index.html>`_

@@ -30,5 +30,6 @@ from .__path import Path
 from .__parallel import Parallel
 from . import boltzmann_grid
 from . import calculators
+from . import models
 
 
