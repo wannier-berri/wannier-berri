@@ -47,7 +47,7 @@ descriptions['V']="velocity (eV*Ang)"
 descriptions['spin']="Spin"
 descriptions['morb']="orbital moment of Bloch states <nabla_k u_n| X(H-E_n) | nabla_k u_n> (eV*Ang**2)"
 descriptions['Der_morb']="1st derivative orbital moment of Bloch states <nabla_k u_n| X(H-E_n) | nabla_k u_n> (eV*Ang**2)"
-descriptions['spin_berry'] = "Spin Berry curvature (hbar/e * Ang^{2})"
+descriptions['spin_berry'] = "Spin Berry curvature (hbar * Ang^{2})"
 
 parameters_ocean = {
 'external_terms' : (True , "evaluate external terms"),
