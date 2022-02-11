@@ -15,6 +15,7 @@
 #  different types of  calculations. 
 #  child classes can be defined specifically in each module
 
+import itertools
 import numpy as np
 from lazy_property import LazyProperty as Lazy
 
@@ -470,6 +471,9 @@ class KBandResult(Result):
         data=[sym.transform_tensor(data,rank=self.rank,TRodd=self.TRodd,Iodd=self.Iodd) for data in self.data_list]
         return KBandResult(data,self.TRodd,self.Iodd)
 
+    def get_component_list(self):
+        dim = len(self.data.shape[2:])
+        return ["".join(s) for s in itertools.product(*[("x", "y", "z")] * dim)]
 
     def get_component(self,component=None):
         xyz={"x":0,"y":1,"z":2}
