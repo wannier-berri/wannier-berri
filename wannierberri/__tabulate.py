@@ -134,12 +134,15 @@ class  Tabulator():
 
 class TABresult(result.Result):
 
-    def __init__(self,kpoints,recip_lattice,results={}):
+    def __init__(self,kpoints,recip_lattice,results={},
+            do_write_frmsf=True,
+                ):
         self.nband=results['Energy'].nband
         self.grid=None
         self.gridorder=None
         self.recip_lattice=recip_lattice
         self.kpoints=np.array(kpoints,dtype=float)%1
+        self.do_write_frmsf = do_write_frmsf
 
         self.results=results
         for r in results:
@@ -166,7 +169,7 @@ class TABresult(result.Result):
             raise RuntimeError ("Adding results with different number of bands {} and {} - not allowed".format(
                 self.nband,other.nband) )
         results={r: self.results[r]+other.results[r] for r in self.results if r in other.results }
-        return TABresult(np.vstack( (self.kpoints,other.kpoints) ), recip_lattice=self.recip_lattice,results=results) 
+        return TABresult(np.vstack( (self.kpoints,other.kpoints) ), recip_lattice=self.recip_lattice,results=results, do_write_frmsf = self.do_write_frmsf) 
 
     def save(self,name):
         return   # do nothing so far
@@ -179,7 +182,9 @@ class TABresult(result.Result):
             pass  # so far do nothing on iterations, chang in future
         else:
             self.self_to_grid()
-            write_frmsf(prefix+"-"+name,Ef0=0.,numproc=None,quantities=self.results.keys(),res=self,suffix=suffix)  # so far let it be the only mode, implement other modes in future    
+            if self.do_write_frmsf:
+                print ("will write frmsf now")
+                write_frmsf(prefix+"-"+name,Ef0=0.,numproc=None,quantities=self.results.keys(),res=self,suffix=suffix)  # so far let it be the only mode, implement other modes in future    
             # TODO : remove this messy call to external routine, which calls back an internal one    
 
     @property
@@ -197,7 +202,7 @@ class TABresult(result.Result):
     def transform(self,sym):
         results={r:self.results[r].transform(sym)  for r in self.results}
         kpoints=[sym.transform_reduced_vector(k,self.recip_lattice) for k in self.kpoints]
-        return TABresult(kpoints=kpoints,recip_lattice=self.recip_lattice,results=results)
+        return TABresult(kpoints=kpoints,recip_lattice=self.recip_lattice,results=results, do_write_frmsf = self.do_write_frmsf)
 
     def to_grid(self,grid,order='C'):
         print ("setting the grid")
@@ -225,7 +230,7 @@ class TABresult(result.Result):
         results={r:self.results[r].to_grid(k_map)  for r in self.results}
         t1=time()
         print ("collecting: to_grid  : {}".format(t1-t0))
-        res=TABresult( k_new,recip_lattice=self.recip_lattice,results=results)
+        res=TABresult( k_new,recip_lattice=self.recip_lattice,results=results, do_write_frmsf = self.do_write_frmsf)
         t2=time()
         print ("collecting: TABresult  : {}".format(t2-t1))
         res.grid=np.copy(grid)

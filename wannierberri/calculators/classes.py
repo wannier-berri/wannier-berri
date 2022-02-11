@@ -260,10 +260,11 @@ class  Tabulator(Calculator):
 
 class TabulatorAll(Calculator):
 
-    def __init__(self,tabulators,ibands=None):
+    def __init__(self,tabulators,ibands=None,do_write_frmsf = True):
         """ tabulators - dict 'key':tabulator
         one of them should be "Energy" """
         self.tabulators = tabulators
+        self.do_write_frmsf = do_write_frmsf
         if "Energy" not in self.tabulators.keys():
             raise ValueError("Energy is not included in tabulators")
         if ibands is not None:
@@ -277,6 +278,7 @@ class TabulatorAll(Calculator):
     def __call__(self,data_K):
         return TABresult( kpoints       = data_K.kpoints_all,
                       recip_lattice = data_K.system.recip_lattice,
-                      results       =  {k:v(data_K) for k,v in self.tabulators.items()}
+                      results       =  {k:v(data_K) for k,v in self.tabulators.items()},
+                      do_write_frmsf = self.do_write_frmsf
                           )
 

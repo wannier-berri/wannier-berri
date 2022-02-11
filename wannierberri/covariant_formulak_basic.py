@@ -344,7 +344,6 @@ class Der_morb(tildeHGc_d):
 
 
 factor_morb = elementary_charge * 1e-20 * electron_mass/hbar**2 # e*1e-20 is to transfer from eV*Ang^2 to Si, then multiply by (e/2hbar) and finally divide by the Bohr magneton in SI: (e*hbar/2m_e)
-print (f"factor_morb={factor_morb}")
 
 class Der_morb_bohr(Der_morb):
     "same, but returns in units of Bohr magneton * Ang"

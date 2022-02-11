@@ -61,7 +61,7 @@ class Boltzmann_grid():
         if self.zeeman_spin:
             self.spin    = -tab_result.get_data('spin')   * BOHR_MAGNETON_SI/elementary_charge
             self.derspin = -tab_result.get_data('derspin')* BOHR_MAGNETON_SI*1e-10/hbar
-        if self.anomalous_velocity or self.fhase_factor_kdot or self.last_term_kdot or self.last_term_rdot:
+        if self.anomalous_velocity or self.phase_space_kdot or self.last_term_kdot or self.last_term_rdot:
             self.berry = tab_result.get_data('berry')* (1e-20*elementary_charge/hbar)  # curvature in m^2 , multiplied by e/hbar (in SI) , thus resulting A*s^2/kg = 1/Tesla
 
 
@@ -80,7 +80,7 @@ class Boltzmann_grid():
 #        TODO : correct Berry curvature and orbital moment with positional shift?
 
         factor = elementary_charge*self.tau/hbar * 1e-10
-        print (f"factor =  {factor}")
+#        print (f"factor =  {factor}")
         kdot =  np.zeros( self.energ.shape+(3,) )
         for i in range(3):
             kdot[:,:,:,:,i] = E[i]
@@ -104,9 +104,9 @@ class Boltzmann_grid():
 
         current = -np.einsum("abcn,abcnd->d",f_old,rdot)*(self.inv_cell_vollume*elementary_charge / self.nk)
         for n in range(n_iter):
-            print (rdot.shape,kdot.shape,f_old.shape,f_new.shape)
+#            print (rdot.shape,kdot.shape,f_old.shape,f_new.shape)
             f_new = f0 - np.einsum("...a,a...->...",kdottau,self.fd.gradient(f_old))
             current = -np.einsum("abcn,abcnd->d",f_new,rdot)*(self.inv_cell_vollume*elementary_charge / self.nk)
-            print (f"iteration {n}  f changed by {np.linalg.norm(f_new-f_old)}  current = {current}")
+#            print (f"iteration {n}  f changed by {np.linalg.norm(f_new-f_old)}  current = {current}")
             f_old = f_new
         return current
