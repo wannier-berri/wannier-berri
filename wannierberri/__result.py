@@ -475,58 +475,56 @@ class KBandResult(Result):
         dim = len(self.data.shape[2:])
         return ["".join(s) for s in itertools.product(*[("x", "y", "z")] * dim)]
 
-    def get_component(self,component=None):
-        xyz={"x":0,"y":1,"z":2}
-        dim=self.data.shape[2:]
+    def get_component(self, component=None):
+        xyz = {"x": 0, "y": 1, "z": 2}
+        dims = np.array(self.data.shape[2:])
+        if not np.all(dims == 3):
+            raise RuntimeError(f"dimensions of all components should be 3, found {dims}")
 
-        if True:
-            if not  np.all(np.array(dim)==3):
-                raise RuntimeError("dimensions of all components should be 3, found {}".format(dim))
-                
-            dim=len(dim)
-            if component is not None:
-                component=component.lower()
-            if component == "" :
-                component = None
-            if dim==0:
-                if component is None:
-                    return self.data
-                else:
-                    raise NoComponentError(component,0) 
-            elif dim==1:
-                if component  in ["x","y","z"]:
-                    return self.data[:,:,xyz[component]]
-                elif component=='norm':
-                    return np.linalg.norm(self.data,axis=-1)
-                elif component=='sq':
-                    return np.linalg.norm(self.data,axis=-1)**2
-                else:
-                    raise NoComponentError(component,1) 
-            elif dim==2:
-                if component=="trace":
-                    return sum([self.data[:,:,i,i] for i in range(3)])
-                else:
-                    try :
-                        return self.data[:,:,xyz[component[0]],xyz[component[1]]]
-                    except IndexError:
-                        raise NoComponentError(component,2) 
-            elif dim==3:
-                if component=="trace":
-                    return sum([self.data[:,:,i,i,i] for i in range(3)])
-                else:
-                    try :
-                        return self.data[:,:,xyz[component[0]],xyz[component[1]],xyz[component[2]]]
-                    except IndexError:
-                        raise NoComponentError(component,3) 
-            elif dim==4:
-                if component=="trace":
-                    return sum([self.data[:,:,i,i,i,i] for i in range(3)])
-                else:
-                    try :
-                        return self.data[:,:,xyz[component[0]],xyz[component[1]],xyz[component[2]],xyz[component[3]]]
-                    except IndexError:
-#                        raise RuntimeError("Unknown component {} for rank-4  tensors".format(component))
-                        raise NoComponentError(component,4) 
-            else: 
-                raise RuntimeError("writing tensors with rank >4 is not implemented. But easy to do")
+        ndim = len(dims)
+
+        if component is not None:
+            component = component.lower()
+        if component == "":
+            component = None
+        if ndim == 0:
+            if component is None:
+                return self.data
+            else:
+                raise NoComponentError(component, 0)
+        elif ndim == 1:
+            if component in ["x","y","z"]:
+                return self.data[:,:,xyz[component]]
+            elif component == 'norm':
+                return np.linalg.norm(self.data, axis=-1)
+            elif component == 'sq':
+                return np.linalg.norm(self.data, axis=-1)**2
+            else:
+                raise NoComponentError(component, 1)
+        elif ndim == 2:
+            if component == "trace":
+                return sum([self.data[:,:,i,i] for i in range(3)])
+            else:
+                try:
+                    return self.data[:,:,xyz[component[0]],xyz[component[1]]]
+                except IndexError:
+                    raise NoComponentError(component, 2)
+        elif ndim == 3:
+            if component == "trace":
+                return sum([self.data[:,:,i,i,i] for i in range(3)])
+            else:
+                try:
+                    return self.data[:,:,xyz[component[0]],xyz[component[1]],xyz[component[2]]]
+                except IndexError:
+                    raise NoComponentError(component, 3)
+        elif ndim == 4:
+            if component == "trace":
+                return sum([self.data[:,:,i,i,i,i] for i in range(3)])
+            else:
+                try:
+                    return self.data[:,:,xyz[component[0]],xyz[component[1]],xyz[component[2]],xyz[component[3]]]
+                except IndexError:
+                    raise NoComponentError(component, 4)
+        else:
+            raise NotImplementedError("writing tensors with rank >4 is not implemented. But easy to do")
 
