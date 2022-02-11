@@ -98,7 +98,8 @@ def test_Fe(check_tabulate,system_Fe_W90, compare_fermisurfer):
                             frmsf_name="tabulate_Fe_W90", suffix="", comparer=compare_fermisurfer,
                             parameters_K={'_FF_antisym': True, '_CCab_antisym': True},
                             ibands=[5,6,7,8],
-                            extra_precision={'berry': 1e-4, "Der_berry": 1e-4, 'morb': 1e-4, "Der_morb": 1e-4} )
+                            extra_precision={'berry': 1e-4, "Der_berry": 1e-4, 'morb': 1e-4,
+                                             "Der_morb": 1e-4, "spin_berry": 1e-4} )
 
     xyz = ["x", "y", "z"]
     print(result.results.keys())
