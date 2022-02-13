@@ -1,6 +1,5 @@
 """pytest configuration file for WannierBerri tests."""
 
-import numpy
 import pytest
 
 from common import ROOT_DIR, OUTPUT_DIR, REF_DIR

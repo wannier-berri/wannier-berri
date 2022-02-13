@@ -1,7 +1,6 @@
 """Test the Data_K object."""
 
 import numpy as np
-import pytest
 from pytest import approx
 
 import wannierberri as wberri
