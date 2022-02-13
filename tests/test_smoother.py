@@ -4,8 +4,9 @@ import numpy as np
 import pytest
 from pytest import approx
 
-import wannierberri as wberri
-from wannierberri.__utility import *
+from wannierberri.__utility import (
+    AbstractSmoother, VoidSmoother, FermiDiracSmoother, GaussianSmoother, getSmoother,
+)
 
 def test_smoother():
     np.random.seed(123)

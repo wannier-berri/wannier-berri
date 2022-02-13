@@ -2,7 +2,6 @@
 
 import os
 import tarfile
-import shutil
 
 import pytest
 import numpy as np

@@ -1,12 +1,10 @@
-"""Test the anomalous Hall conductivity."""
+"""Test wberri.run function"""
 import os
 
 import numpy as np
 import pytest
-from pytest import approx
 
 import wannierberri as wberri
-from wannierberri import fermiocean
 from wannierberri import calculators as calc
 from wannierberri.__result import EnergyResult
 

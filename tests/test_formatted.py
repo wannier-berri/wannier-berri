@@ -3,7 +3,6 @@
 import os
 import numpy as np
 import pytest
-from pytest import approx
 
 import wannierberri as wberri
 from wannierberri.__w90_files import UHU, UIU, SHU, SIU, SPN

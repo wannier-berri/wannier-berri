@@ -7,7 +7,7 @@ from pytest import approx
 
 import wannierberri as wberri
 
-from common import OUTPUT_DIR,REF_DIR
+from common import OUTPUT_DIR
 from common_comparers import compare_quant
 
 @pytest.fixture
