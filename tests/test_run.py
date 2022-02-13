@@ -12,7 +12,7 @@ from wannierberri.__result import EnergyResult
 
 from common import OUTPUT_DIR
 from common_comparers import compare_quant
-from test_integrate import Efermi_Fe,Efermi_GaAs
+from common_systems import Efermi_Fe, Efermi_GaAs
 
 
 @pytest.fixture
@@ -84,7 +84,7 @@ def resultType(quant):
     else:
         return EnergyResult
 
-def test_Fe(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe,compare_fermisurfer):
+def test_Fe(check_run,system_Fe_W90, compare_any_result,calculators_Fe,compare_fermisurfer):
     param  = {'Efermi':Efermi_Fe}
     param_tab = {'degen_thresh':5e-2}
     calculators = {k:v(**param) for k,v in calculators_Fe.items()}
@@ -133,8 +133,7 @@ def test_Fe(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe
 
 
 
-def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe,
-      parallel_ray):
+def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result,calculators_Fe, parallel_ray):
     param  = {'Efermi':Efermi_Fe}
     calculators = {k:v(**param) for k,v in calculators_Fe.items()}
     check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="paral-ray-4-run" ,
@@ -144,7 +143,7 @@ def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result,calculator
     parallel_ray.shutdown()
 
 
-def test_Fe_sym(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe):
+def test_Fe_sym(check_run,system_Fe_W90, compare_any_result,calculators_Fe):
     param  = {'Efermi':Efermi_Fe}
     calculators = {k:v(**param) for k,v in calculators_Fe.items()}
     check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="sym-run" , suffix_ref= "sym",
@@ -152,7 +151,7 @@ def test_Fe_sym(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Eferm
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
             )
 
-def test_Fe_sym_refine(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe):
+def test_Fe_sym_refine(check_run,system_Fe_W90, compare_any_result,calculators_Fe):
     param  = {'Efermi':Efermi_Fe}
     calculators = {k:v(**param) for k,v in calculators_Fe.items()}
     check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="sym-run" , suffix_ref= "sym",
@@ -160,7 +159,7 @@ def test_Fe_sym_refine(check_run,system_Fe_W90, compare_any_result,calculators_F
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
             )
 
-def test_Fe_pickle_Klist(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe):
+def test_Fe_pickle_Klist(check_run,system_Fe_W90, compare_any_result,calculators_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     #  First, remove the 
     try:
@@ -179,7 +178,7 @@ def test_Fe_pickle_Klist(check_run,system_Fe_W90, compare_any_result,calculators
             )
 
 
-def test_GaAs(check_run,system_GaAs_W90, compare_any_result,calculators_GaAs,Efermi_GaAs,compare_fermisurfer):
+def test_GaAs(check_run,system_GaAs_W90, compare_any_result,calculators_GaAs, compare_fermisurfer):
     param  = {'Efermi':Efermi_GaAs}
     param_tab = {'degen_thresh':5e-2}
     calculators = {k:v(**param) for k,v in calculators_GaAs.items()}
