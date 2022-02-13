@@ -15,6 +15,9 @@ from common_systems import (
     system_Chiral, system_CuMnAs_2d_broken,
 )
 
+# Comparers for tests
+from common_comparers import compare_any_result, compare_energyresult, compare_fermisurfer
+
 @pytest.fixture(scope="session", autouse=True)
 def create_output_dir():
     # Create folder OUTPUT_DIR

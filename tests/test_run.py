@@ -11,8 +11,6 @@ from wannierberri import calculators as calc
 from wannierberri.__result import EnergyResult
 
 from common import OUTPUT_DIR
-from compare_result import compare_any_result
-from compare_result import compare_fermisurfer
 from test_integrate import Efermi_Fe,compare_quant,Efermi_GaAs
 from test_tabulate import get_component_list
 

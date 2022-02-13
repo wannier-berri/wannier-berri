@@ -9,7 +9,6 @@ from wannierberri import covariant_formulak as frml
 from wannierberri import formula
 
 from common import OUTPUT_DIR
-from compare_result import compare_fermisurfer
 
 
 def get_component_list(quantity):

@@ -9,7 +9,6 @@ import wannierberri as wberri
 from wannierberri import fermiocean
 
 from common import OUTPUT_DIR
-from compare_result import compare_energyresult
 
 
 @pytest.fixture
