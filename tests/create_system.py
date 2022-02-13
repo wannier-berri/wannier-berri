@@ -10,7 +10,7 @@ import numpy as np
 import wannierberri as wberri
 from wannierberri import models as wb_models
 
-from conftest import ROOT_DIR
+from common import ROOT_DIR
 
 @pytest.fixture(scope="session")
 def symmetries_Fe():

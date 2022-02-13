@@ -1,12 +1,14 @@
-import wannierberri as wberri
-import os,pickle
-import pytest
-from conftest import OUTPUT_DIR, REF_DIR
-from create_system import pythtb_Haldane, system_Haldane_PythTB
-from test_tabulate import get_component_list
-
+import os
+import pickle
 import numpy as np
 from pytest import approx
+import pytest
+
+import wannierberri as wberri
+
+from common import OUTPUT_DIR, REF_DIR
+from test_tabulate import quantities_tab,get_component_list
+
 
 @pytest.fixture(scope="module")
 def path_test(system_Haldane_PythTB):
