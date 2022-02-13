@@ -8,9 +8,6 @@ import wannierberri as wberri
 from wannierberri.__Kpoint import KpointBZ
 from wannierberri.data_K import Data_K
 
-from create_system import create_files_Fe_W90, system_Fe_W90
-from create_system import symmetries_Fe
-
 
 def test_fourier(system_Fe_W90):
     """Compare slow FT and FFT."""

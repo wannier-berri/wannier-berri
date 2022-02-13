@@ -1,16 +1,16 @@
 """pytest configuration file for WannierBerri tests."""
 
-import os
-
 import numpy
 import pytest
 
-# Root folder containing test scripts
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Folder containing output dat files of tests
-OUTPUT_DIR = os.path.join(ROOT_DIR, "_dat_files")
-REF_DIR    = os.path.join(ROOT_DIR, 'reference')
+from common import ROOT_DIR, OUTPUT_DIR, REF_DIR
+from create_system import (
+    create_files_Fe_W90, create_files_GaAs_W90, pythtb_Haldane, tbmodels_Haldane, system_Fe_W90,
+    system_Fe_W90_wcc, system_Fe_FPLO, system_Fe_FPLO_wcc, system_GaAs_W90, system_GaAs_W90_wcc,
+    system_GaAs_tb, system_GaAs_tb_wcc, system_GaAs_tb_wcc_ws, system_Haldane_PythTB,
+    system_Haldane_TBmodels, system_Haldane_TBmodels_internal, symmetries_Fe, system_Chiral,
+    ChiralModel, system_CuMnAs_2d_broken, model_CuMnAs_2d_broken
+)
 
 @pytest.fixture(scope="session", autouse=True)
 def create_output_dir():

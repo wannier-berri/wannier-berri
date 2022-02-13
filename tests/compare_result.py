@@ -7,7 +7,7 @@ import pytest
 from pytest import approx
 from wannierberri.__result import EnergyResult
 
-from conftest import REF_DIR, OUTPUT_DIR
+from common import REF_DIR, OUTPUT_DIR
 
 def read_energyresult_dat(filename,mode="txt"):
     """Read .dat of .npz file output of EnergyResult."""

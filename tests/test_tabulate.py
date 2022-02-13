@@ -7,14 +7,9 @@ from pytest import approx
 import wannierberri as wberri
 from wannierberri import covariant_formulak as frml
 from wannierberri import formula
-from conftest import OUTPUT_DIR
-from create_system import create_files_Fe_W90 #,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
-from create_system import system_Fe_W90 #,system_GaAs_W90,system_GaAs_tb
-#from create_system import system_Haldane_PythTB,system_Haldane_TBmodels,system_Haldane_TBmodels_internal
-from create_system import system_CuMnAs_2d_broken , model_CuMnAs_2d_broken
-from create_system import symmetries_Fe
+
+from common import OUTPUT_DIR
 from compare_result import compare_fermisurfer
-from create_system import system_Chiral,ChiralModel
 
 
 def get_component_list(quantity):
