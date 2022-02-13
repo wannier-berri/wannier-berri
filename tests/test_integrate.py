@@ -7,7 +7,6 @@ from pytest import approx
 
 import wannierberri as wberri
 from wannierberri import fermiocean
-from conftest import parallel_serial, parallel_ray 
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
 from create_system import system_Fe_W90,system_Fe_W90_wcc,system_Fe_FPLO,system_Fe_FPLO_wcc
