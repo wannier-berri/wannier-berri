@@ -8,21 +8,13 @@ import pytest
 import numpy as np
 
 import wannierberri as wberri
+import wannierberri.symmetry as SYM
 from wannierberri import models as wb_models
 
 from common import ROOT_DIR
 
-@pytest.fixture(scope="session")
-def symmetries_Fe():
-    """ liust of symmetries for bcc iron"""
-    sym=wberri.symmetry
-    return ["C4z","C2x*TimeReversal","Inversion"]
-
-@pytest.fixture(scope="session")
-def symmetries_GaAs():
-    sym=wberri.symmetry
-    return ["C4z",sym.TimeReversal,sym.Rotation(3,[1,1,1])]
-
+symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
+symmetries_GaAs = [SYM.C4z, SYM.TimeReversal, SYM.Rotation(3, [1,1,1])]
 
 def create_W90_files(seedname, tags_needed, data_dir):
     """
@@ -85,7 +77,7 @@ def create_files_GaAs_W90():
 
 
 @pytest.fixture(scope="session")
-def system_Fe_W90(create_files_Fe_W90,symmetries_Fe):
+def system_Fe_W90(create_files_Fe_W90):
     """Create system for Fe using Wannier90 data"""
 
     data_dir = create_files_Fe_W90
@@ -99,7 +91,7 @@ def system_Fe_W90(create_files_Fe_W90,symmetries_Fe):
     return system
 
 @pytest.fixture(scope="session")
-def system_Fe_W90_wcc(create_files_Fe_W90,symmetries_Fe):
+def system_Fe_W90_wcc(create_files_Fe_W90):
     """Create system for Fe using Wannier90 data"""
 
     data_dir = create_files_Fe_W90
@@ -246,7 +238,7 @@ def system_Chiral(ChiralModel):
 
 
 @pytest.fixture(scope="session")
-def system_Fe_FPLO(symmetries_Fe):
+def system_Fe_FPLO():
     """Create system for Fe using  FPLO  data"""
 
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO","+hamdata")
@@ -257,7 +249,7 @@ def system_Fe_FPLO(symmetries_Fe):
 
 
 @pytest.fixture(scope="session")
-def system_Fe_FPLO_wcc(symmetries_Fe):
+def system_Fe_FPLO_wcc():
     """Create system for Fe using  FPLO  data"""
 
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO","+hamdata")
