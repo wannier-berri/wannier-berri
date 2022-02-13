@@ -8,7 +8,7 @@ from pytest import approx
 import wannierberri as wberri
 
 from common import OUTPUT_DIR,REF_DIR
-from compare_result import compare_energyresult,read_energyresult_dat
+from common_comparers import read_energyresult_dat
 from test_integrate import compare_quant
 
 @pytest.fixture
