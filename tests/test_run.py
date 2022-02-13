@@ -13,7 +13,7 @@ from wannierberri.__result import EnergyResult
 from common import OUTPUT_DIR
 from common_comparers import compare_quant
 from test_integrate import Efermi_Fe,Efermi_GaAs
-from test_tabulate import get_component_list
+
 
 @pytest.fixture
 def check_run(parallel_serial,compare_any_result):
@@ -59,6 +59,8 @@ def check_run(parallel_serial,compare_any_result):
                 compare_any_result(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,
                     compare_zero=compare_zero,precision=prec, result_type = resultType(quant) )
 
+        return result
+
     return _inner
 
 
@@ -102,7 +104,7 @@ def test_Fe(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe
     calculators['opt_SHCqiao']      = wberri.calculators.dynamic.SHC(SHC_type="qiao",**parameters_optical)
     calculators['opt_SHCryoo']      = wberri.calculators.dynamic.SHC(SHC_type="ryoo",**parameters_optical)
     
-    check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="run" ,
+    result = check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="run" ,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
             extra_precision = {"Morb":-1e-6},
             skip_compare = ['tabulate','opt_conductivity','opt_SHCqiao','opt_SHCryoo'])
@@ -114,19 +116,18 @@ def test_Fe(check_run,system_Fe_W90, compare_any_result,calculators_Fe,Efermi_Fe
 
     
     extra_precision = {'berry':1e-6}
-    for quant in ["E","berry"]:
-#        quant_ref = 'E' if quant == "Energy" else quant
-        for comp in get_component_list(quant):
-            quant_ref = quant
-            _comp = "-" +comp if comp is not None else ""
+    for quant in ["Energy", "berry"]:
+        for comp in result.results.get("tabulate").results.get(quant).get_component_list():
+            _quant = "E" if quant == "Energy" else quant
+            _comp = "-" + comp if comp != "" else ""
 #            data=result.results.get(quant).data
 #            assert data.shape[0] == len(Efermi)
 #            assert np.all( np.array(data.shape[1:]) == 3)
             prec=extra_precision[quant] if quant in extra_precision else 1e-8
 #            comparer(frmsf_name, quant+_comp+suffix,  suffix_ref=compare_quant(quant)+_comp+suffix_ref ,precision=prec )
             compare_fermisurfer(fout_name="berry_Fe_W90-tabulate", 
-                 suffix = quant+_comp+"-run",
-                 suffix_ref = quant_ref+_comp,
+                 suffix = _quant + _comp + "-run",
+                 suffix_ref = _quant + _comp,
                  fout_name_ref="tabulate_Fe_W90",precision=prec)
 
 
