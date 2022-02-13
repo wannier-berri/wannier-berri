@@ -11,7 +11,8 @@ from wannierberri import calculators as calc
 from wannierberri.__result import EnergyResult
 
 from common import OUTPUT_DIR
-from test_integrate import Efermi_Fe,compare_quant,Efermi_GaAs
+from common_comparers import compare_quant
+from test_integrate import Efermi_Fe,Efermi_GaAs
 from test_tabulate import get_component_list
 
 @pytest.fixture

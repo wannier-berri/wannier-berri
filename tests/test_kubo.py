@@ -8,8 +8,7 @@ from pytest import approx
 import wannierberri as wberri
 
 from common import OUTPUT_DIR,REF_DIR
-from common_comparers import read_energyresult_dat
-from test_integrate import compare_quant
+from common_comparers import compare_quant
 
 @pytest.fixture
 def check_integrate_dynamical():
@@ -71,30 +70,6 @@ def check_integrate_dynamical():
                 comparer(fout_name, quant+suffix, adpt_num_iter,
                     suffix_ref=compare_quant(quant)+suffix_ref, precision=prec, mode = mode)
         
-
-    return _inner
-
-
-
-
-@pytest.fixture
-def compare_sym_asym():
-    " to comapre the results separated by symmetric-antisymmetric part"
-
-    def _inner(fout_name,adpt_num_iter = 0,quantity = "opt_conductivity"):
-        mode = "bin"
-        name = fout_name+"-"+quantity
-        for i_iter in range(adpt_num_iter+1):
-            filename_ref = name+"^sep-sym"+f"_iter-{i_iter:04d}.npz"
-            path_filename_ref = os.path.join(REF_DIR, filename_ref)
-            E_titles_ref, data_energy_ref, data_ref_sym, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
-            filename_ref = name+"^sep-asym"+f"_iter-{i_iter:04d}.npz"
-            path_filename_ref = os.path.join(REF_DIR, filename_ref)
-            E_titles_ref, data_energy_ref, data_ref_asym, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
-            filename_ref = name+f"_iter-{i_iter:04d}.npz"
-            path_filename_ref = os.path.join(REF_DIR, filename_ref)
-            E_titles_ref, data_energy_ref, data_new, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
-            assert data_new == approx(data_ref_sym+data_ref_asym, abs=1e-8)
 
     return _inner
 
