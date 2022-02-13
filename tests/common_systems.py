@@ -16,6 +16,13 @@ from common import ROOT_DIR
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
 symmetries_GaAs = [SYM.C4z, SYM.TimeReversal, SYM.Rotation(3, [1,1,1])]
 
+Efermi_Fe = np.linspace(17, 18, 11)
+Efermi_Fe_FPLO = np.linspace(-0.5, 0.5, 11)
+Efermi_GaAs = np.linspace(7, 9, 11)
+Efermi_Haldane = np.linspace(-3, 3, 11)
+Efermi_CuMnAs_2d = np.linspace(-2, 2, 11)
+Efermi_Chiral = np.linspace(-5, 8, 27)
+
 def create_W90_files(seedname, tags_needed, data_dir):
     """
     Extract the compressed amn and mmn data files.
