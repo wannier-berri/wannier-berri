@@ -9,6 +9,7 @@ import wannierberri as wberri
 from wannierberri import fermiocean
 
 from common import OUTPUT_DIR
+from common_comparers import compare_quant
 
 
 @pytest.fixture
@@ -149,17 +150,6 @@ def quantities_GaAs():
 def quantities_GaAs_internal():
     "quantities containing only internal terms"
     return  ["dos","cumdos","conductivity_ohmic"]
-
-
-def compare_quant(quant):
-#    compare= {'ahc_ocean':'ahc','ahc3_ocean':'ahc',"cumdos3_ocean":"cumdos","dos3_ocean":"dos","berry_dipole_ocean":"berry_dipole","berry_dipole3_ocean":"berry_dipole",
-#            'conductivity_ohmic3_ocean':'conductivity_ohmic','conductivity_ohmic_fsurf3_ocean':'conductivity_ohmic_fsurf'}
-    compare = {'ahc_test':'ahc' , 'berry_dipole_test':'berry_dipole', 'Morb_test':'Morb','gyrotropic_Korb_test':'gyrotropic_Korb','Energy':'E'}  # it future reverse this - the test is fundamental
-    if quant in compare:
-        return compare[quant]
-    else:
-        return quant
-
 
 def test_Fe(check_integrate,system_Fe_W90, compare_energyresult,quantities_Fe,Efermi_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""

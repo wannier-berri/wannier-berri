@@ -16,7 +16,9 @@ from common_systems import (
 )
 
 # Comparers for tests
-from common_comparers import compare_any_result, compare_energyresult, compare_fermisurfer
+from common_comparers import (
+    compare_any_result, compare_energyresult, compare_fermisurfer, compare_sym_asym,
+)
 
 @pytest.fixture(scope="session", autouse=True)
 def create_output_dir():
