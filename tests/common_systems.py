@@ -179,37 +179,37 @@ def system_GaAs_tb_wcc_ws():
     return system
 
 @pytest.fixture(scope="session")
-def tbmodels_Haldane():
+def model_tbmodels_Haldane():
     return wb_models.Haldane_tbm(delta=0.2,hop1=-1.0,hop2 =0.15)
 
 @pytest.fixture(scope="session")
-def system_Haldane_TBmodels(tbmodels_Haldane):
+def system_Haldane_TBmodels(model_tbmodels_Haldane):
     
     # Load system
-    system = wberri.System_TBmodels(tbmodels_Haldane, berry=True)
+    system = wberri.System_TBmodels(model_tbmodels_Haldane, berry=True)
     system.set_symmetry(["C3z"])
     return system
 
 @pytest.fixture(scope="session")
-def system_Haldane_TBmodels_internal(tbmodels_Haldane):
+def system_Haldane_TBmodels_internal(model_tbmodels_Haldane):
     
     # Load system
-    system = wberri.System_TBmodels(tbmodels_Haldane, berry=False)
+    system = wberri.System_TBmodels(model_tbmodels_Haldane, berry=False)
     system.set_symmetry(["C3z"])
     return system
 
 
 
 @pytest.fixture(scope="session")
-def pythtb_Haldane():
+def model_pythtb_Haldane():
     return wb_models.Haldane_ptb(delta=0.2,hop1=-1.0,hop2 =0.15)
 
 
 @pytest.fixture(scope="session")
-def system_Haldane_PythTB(pythtb_Haldane):
+def system_Haldane_PythTB(model_pythtb_Haldane):
     """Create system for Haldane model using PythTB"""
     # Load system
-    system = wberri.System_PythTB(pythtb_Haldane, berry=True)
+    system = wberri.System_PythTB(model_pythtb_Haldane, berry=True)
     system.set_symmetry(["C3z"])
     return system
 
@@ -217,7 +217,7 @@ def system_Haldane_PythTB(pythtb_Haldane):
 
 
 @pytest.fixture(scope="session")
-def ChiralModel():
+def model_chiral():
     return wb_models.Chiral(delta=2, hop1=1, hop2=1./3,  phi=np.pi/10, hopz=0.2)
 
 
@@ -229,10 +229,10 @@ def model_CuMnAs_2d_broken():
 
 
 @pytest.fixture(scope="session")
-def system_Chiral(ChiralModel):
+def system_Chiral(model_chiral):
     """Create a chiral system that also breaks time-reversal
        can be used to test almost any quantity"""
-    system = wberri.System_PythTB(ChiralModel, use_wcc_phase=True)
+    system = wberri.System_PythTB(model_chiral, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
     return system
 
