@@ -73,9 +73,9 @@ if True:
     with open("tab_result_50.pickle","rb") as f:
         result = pickle.load(f)
         tab_result = result.results['tabulate']
-        bgrid = wberri.boltzmann_grid.Boltzmann_grid(tab_result,tau = 1e-12,mu=2.0,kBT=0.5,
-                    anomalous_velocity = False,
-                    lorentz_force = True , 
+        bgrid = wberri.boltzmann_grid.Boltzmann_grid(tab_result,tau = 1e-6,mu=2.0,kBT=0.5,
+                    anomalous_velocity = True,
+                    lorentz_force = False , 
                     phase_space_kdot = False,
                     last_term_kdot = False,
                     last_term_rdot = False,
@@ -96,11 +96,17 @@ if True:
         print (f"E={E} V/m, j = {c}  A/m^2 , sigma_xy = {c[0]/E[1]/100:.5e} S/cm")
 
     # test classical Hall effect
-    for Ey in 0.,0.01,0.1,1.0,2.0:
+    for Ey in []: #0.,0.01,0.1,1.0,2.0:
         E = [0,Ey,0]
         for Bz in 0.,0.01,0.1,1.0,2.0:
             B = [0,0,Bz]
             c = bgrid.current(E=E,B=B,n_iter = 5)
             print (f"E={E} V/m , B={B} T , j = {c}  A/m^2 , sigma_xy,z = {c[0]/Ey/Bz/100:.5e} S/cm/T")
 
-
+    # test nonlinear anomalous Hall effect
+    # j_a = - e^3*tau / hbar^2 * epsilon_adc D_bd   E_b E_c
+    for Ey in 0.,0.01,0.1,1.0,2.0:
+        for Ez in 0.,0.01,0.1,1.0,2.0:
+            E = [0,Ey,Ez]
+            c = bgrid.current(E=E,n_iter = 1)
+            print (f"E={E} V/m j = {c}  A/m^2 , sigma_xy,z = {c[0]/Ey/Ez:.5e} S/V")
