@@ -16,11 +16,11 @@ from create_system import system_Fe_W90,system_Fe_W90_wcc,system_Fe_FPLO,system_
 from create_system import system_GaAs_W90,system_GaAs_W90_wcc,system_GaAs_tb,system_GaAs_tb_wcc,system_GaAs_tb_wcc_ws
 from create_system import system_Haldane_PythTB,system_Haldane_TBmodels,system_Haldane_TBmodels_internal
 from create_system import symmetries_Fe
-from create_system import system_Chiral,ChiralModel
+from create_system import system_Chiral_left,ChiralModelLeft,system_Chiral_left_TR,ChiralModelLeftTR,system_Chiral_right,ChiralModelRight
 from create_system import system_CuMnAs_2d_broken , model_CuMnAs_2d_broken
 from compare_result import compare_any_result
 from compare_result import compare_fermisurfer
-from test_integrate import Efermi_Fe,compare_quant,Efermi_GaAs
+from test_integrate import Efermi_Fe,compare_quant,Efermi_GaAs, Efermi_Chiral
 from test_tabulate import get_component_list
 
 @pytest.fixture
@@ -36,7 +36,8 @@ def check_run(parallel_serial,compare_any_result):
                precision = -1e-8 ,
                restart = False,file_Klist = None,
                do_not_compare = False,
-               skip_compare=[]
+               skip_compare=[],
+                flip_sign = []
                ):
 
         grid = wberri.Grid(system, **grid_param)
@@ -65,16 +66,20 @@ def check_run(parallel_serial,compare_any_result):
             if quant not in skip_compare:
                 prec=extra_precision[quant] if quant in extra_precision else precision
                 compare_any_result(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,
-                    compare_zero=compare_zero,precision=prec, result_type = resultType(quant) )
+                    compare_zero=compare_zero,precision=prec, result_type = resultType(quant) ,flip_sign = (quant in flip_sign) )
 
     return _inner
 
 
 @pytest.fixture(scope="session")
 def calculators_Fe():
-    return  {'ahc':calc.static.AHC}
+    return  {'ahc':calc.static.AHC,
+                'conductivity_ohmic':calc.static.Ohmic,
+            }
     #,'ahc_test','dos','cumdos',
     #           'conductivity_ohmic','conductivity_ohmic_fsurf','Morb','Morb_test']
+
+
 
 @pytest.fixture(scope="session")
 def calculators_GaAs():
@@ -183,7 +188,7 @@ def test_Fe_pickle_Klist(check_run,system_Fe_W90, compare_any_result,calculators
     check_run(system_Fe_W90 , calculators , fout_name="berry_Fe_W90" , suffix="pickle-run" , suffix_ref= "sym",
                   adpt_num_iter=1,use_symmetry = True,file_Klist = "Klist.pickle" ,restart = True,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
-            )
+             )
 
 
 def test_GaAs(check_run,system_GaAs_W90, compare_any_result,calculators_GaAs,Efermi_GaAs,compare_fermisurfer):
@@ -197,3 +202,46 @@ def test_GaAs(check_run,system_GaAs_W90, compare_any_result,calculators_GaAs,Efe
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
                   extra_precision = {"berry_dipole_fsurf":1e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
+
+
+
+@pytest.fixture(scope="session")
+def calculators_Chiral(Efermi_Chiral):
+    calculators  = {}
+    calculators['conductivity_ohmic'] = calc.static.Ohmic(Efermi=Efermi_Chiral)
+    calculators['berry_dipole']       = calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral,kwargs_formula={"external_terms":False} )
+    calculators['ahc']       = calc.static.AHC(Efermi=Efermi_Chiral,kwargs_formula={"external_terms":False} )
+    return calculators
+
+def test_Chiral_left(check_run,system_Chiral_left, compare_any_result,Efermi_Chiral,compare_fermisurfer,calculators_Chiral):
+
+    grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} 
+    check_run(system_Chiral_left , calculators_Chiral , fout_name="berry_Chiral" , suffix="left-run" ,
+                grid_param = grid_param,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } , use_symmetry = True,
+            extra_precision = {"Morb":-1e-6},)
+
+
+def test_Chiral_leftTR(check_run,system_Chiral_left_TR, compare_any_result,Efermi_Chiral,compare_fermisurfer,calculators_Chiral):
+    "check that for time-revrsed model the ohmic conductivity is the same, but the AHC is opposite"
+    grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} 
+    check_run(system_Chiral_left_TR ,calculators_Chiral , fout_name="berry_Chiral" , suffix="left-run" ,
+                grid_param = grid_param,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } , use_symmetry = True,
+            extra_precision = {"Morb":-1e-6},
+            flip_sign = ['ahc']
+            )
+
+
+def test_Chiral_right(check_run,system_Chiral_right, compare_any_result,Efermi_Chiral,compare_fermisurfer,calculators_Chiral):
+    "check that for flipped chirality the ohmic conductivity is the same, but hte Berry dipole is opposite"
+    grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} 
+    check_run(system_Chiral_right , calculators_Chiral , fout_name="berry_Chiral" , suffix="right-run" ,
+                grid_param = grid_param,
+               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } , use_symmetry = True,
+            extra_precision = {"Morb":-1e-6},
+            flip_sign = ['berry_dipole'],
+        )
+
+
+    

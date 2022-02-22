@@ -225,8 +225,18 @@ def system_Haldane_PythTB(pythtb_Haldane):
 
 
 @pytest.fixture(scope="session")
-def ChiralModel():
-    return wb_models.Chiral(delta=2, hop1=1, hop2=1./3,  phi=np.pi/10, hopz=0.2)
+def ChiralModelLeft():
+    return wb_models.Chiral(delta=2, hop1=1, hop2=1./3,  phi=np.pi/10, hopz_left=0.2, hopz_right = 0.0 , hopz_vert = 0)
+
+@pytest.fixture(scope="session")
+def ChiralModelLeftTR():
+    "the time-reversed model"
+    return wb_models.Chiral(delta=2, hop1=1, hop2=1./3,  phi=-np.pi/10, hopz_left=0.2, hopz_right = 0.0 , hopz_vert = 0)
+
+
+@pytest.fixture(scope="session")
+def ChiralModelRight():
+    return wb_models.Chiral(delta=2, hop1=1, hop2=1./3,  phi=np.pi/10, hopz_left=0.0, hopz_right = 0.2, hopz_vert = 0)
 
 
 @pytest.fixture(scope="session")
@@ -237,10 +247,26 @@ def model_CuMnAs_2d_broken():
 
 
 @pytest.fixture(scope="session")
-def system_Chiral(ChiralModel):
+def system_Chiral_left(ChiralModelLeft):
     """Create a chiral system that also breaks time-reversal
        can be used to test almost any quantity"""
-    system = wberri.System_PythTB(ChiralModel, use_wcc_phase=True)
+    system = wberri.System_PythTB(ChiralModelLeft, use_wcc_phase=True)
+    system.set_symmetry(["C3z"])
+    return system
+
+@pytest.fixture(scope="session")
+def system_Chiral_left_TR(ChiralModelLeftTR):
+    """Create a chiral system that also breaks time-reversal
+       can be used to test almost any quantity"""
+    system = wberri.System_PythTB(ChiralModelLeftTR, use_wcc_phase=True)
+    system.set_symmetry(["C3z"])
+    return system
+
+@pytest.fixture(scope="session")
+def system_Chiral_right(ChiralModelRight):
+    """Create a chiral system that also breaks time-reversal
+       can be used to test almost any quantity"""
+    system = wberri.System_PythTB(ChiralModelRight, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
     return system
 

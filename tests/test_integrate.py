@@ -14,7 +14,7 @@ from create_system import system_Fe_W90,system_Fe_W90_wcc,system_Fe_FPLO,system_
 from create_system import system_GaAs_W90,system_GaAs_W90_wcc,system_GaAs_tb,system_GaAs_tb_wcc,system_GaAs_tb_wcc_ws
 from create_system import system_Haldane_PythTB,system_Haldane_TBmodels,system_Haldane_TBmodels_internal
 from create_system import symmetries_Fe
-from create_system import system_Chiral,ChiralModel
+from create_system import system_Chiral_left,ChiralModelLeft
 from create_system import system_CuMnAs_2d_broken , model_CuMnAs_2d_broken
 from compare_result import compare_energyresult
 
@@ -363,21 +363,21 @@ def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,qu
                     )
     parallel_ray.shutdown()
 
-def test_Chiral(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
-    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
+def test_Chiral(check_integrate,system_Chiral_left,compare_energyresult,quantities_Chiral,Efermi_Chiral):
+    check_integrate(system_Chiral_left , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
                 use_symmetry =  True ,
                 additional_parameters = { 'external_terms':False} ,
                grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
 
-def test_Chiral_txt(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
-    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,mode = "txt",
+def test_Chiral_txt(check_integrate,system_Chiral_left,compare_energyresult,quantities_Chiral,Efermi_Chiral):
+    check_integrate(system_Chiral_left , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,mode = "txt",
                 use_symmetry =  True , precision = -1e-5,
                 additional_parameters = { 'external_terms':False} ,
                grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
 
 
-def test_Chiral_tetra(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral,Efermi_Chiral):
-    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral_tetra" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
+def test_Chiral_tetra(check_integrate,system_Chiral_left,compare_energyresult,quantities_Chiral,Efermi_Chiral):
+    check_integrate(system_Chiral_left , quantities_Chiral , fout_name="berry_Chiral_tetra" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
                use_symmetry =  True,
                 additional_parameters = { 'external_terms':False, 'tetra':True} ,
                grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
