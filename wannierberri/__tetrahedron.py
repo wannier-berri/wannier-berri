@@ -178,6 +178,7 @@ class TetraWeights():
         else :
             assert self.eFermi is eFermi
         res=[]
+
         for ik in range(self.nk):
             bands_in_range=get_bands_in_range(self.eFermi[0],self.eFermi[-1],self.eCenter[ik],degen_thresh=degen_thresh,degen_Kramers=degen_Kramers,
                     Ebandmin=self.Emin[ik],Ebandmax=self.Emax[ik])

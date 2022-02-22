@@ -68,7 +68,7 @@ if False:
             )
     
 
-if True:
+if False:
 
     with open("tab_result_50.pickle","rb") as f:
         result = pickle.load(f)

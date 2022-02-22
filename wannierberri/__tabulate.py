@@ -196,7 +196,10 @@ class TABresult(result.Result):
         for i in range(3):
             k = np.sort(kp[:,i])
             dk = np.max(k[1:]-k[:-1])
-            grid[i]=int(np.round(1./dk))
+            if dk >0 :
+                grid[i]=int(np.round(1./dk))
+            else:
+                grid[i]=1
         return grid
 
     def transform(self,sym):

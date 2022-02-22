@@ -54,7 +54,7 @@ class StaticCalculator(Calculator):
         
         # get a list [{(ib1,ib2):W} for ik in op:ed]  
         if self.tetra:
-            weights=data_K.tetraWeights.weights_all_band_groups(Efermi,der=self.fder,degen_thresh=self.degen_thresh,degen_Kramers=self.degen_Kramers)   # here W is array of shape Efermi
+            weights=data_K.tetraWeights.weights_all_band_groups(self.Efermi,der=self.fder,degen_thresh=self.degen_thresh,degen_Kramers=self.degen_Kramers)   # here W is array of shape Efermi
         else:
             weights=data_K.get_bands_in_range_groups(self.EFmin,self.EFmax,degen_thresh=self.degen_thresh,degen_Kramers=self.degen_Kramers,sea=(self.fder==0)) # here W is energy
 
