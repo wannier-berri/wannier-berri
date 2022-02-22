@@ -23,6 +23,16 @@ class AHC(StaticCalculator):
         self.fder = 0
         super().__init__(**kwargs)
 
+class Ohmic(StaticCalculator):
+
+    def __init__(self,**kwargs):
+        self.Formula = frml.InvMass
+        self.factor =  fermiocean.factor_ohmic
+        self.fder = 0
+        super().__init__(**kwargs)
+
+
+
 class BerryDipole_FermiSurf(StaticCalculator):
 
     def __init__(self,**kwargs):

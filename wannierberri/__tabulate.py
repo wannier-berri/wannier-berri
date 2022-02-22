@@ -32,6 +32,7 @@ calculators={
          'Der_berry'  : frml.DerOmega,
          'morb'       : frml.morb_bohr,
          'Der_morb'   : frml_basic.Der_morb_bohr
+         'spin_berry' : frml.SpinOmega,
          }
 
 
@@ -46,6 +47,7 @@ descriptions['V']="velocity (eV*Ang)"
 descriptions['spin']="Spin"
 descriptions['morb']="orbital moment of Bloch states <nabla_k u_n| X(H-E_n) | nabla_k u_n> (eV*Ang**2)"
 descriptions['Der_morb']="1st derivative orbital moment of Bloch states <nabla_k u_n| X(H-E_n) | nabla_k u_n> (eV*Ang**2)"
+descriptions['spin_berry'] = "Spin Berry curvature (hbar * Ang^{2})"
 
 parameters_ocean = {
 'external_terms' : (True , "evaluate external terms"),
@@ -57,7 +59,8 @@ for key,val in parameters_ocean.items():
         additional_parameters[calc][key] = val[0]
         additional_parameters_description[calc][key] = val[1]
 
-
+additional_parameters['spin_berry']['spin_current_type'] = 'ryoo'
+additional_parameters_description['spin_berry']['spin_current_type'] = 'type of the spin current'
 
 def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,degen_Kramers=False,ibands=None,
             parameters={},specific_parameters = {}):
@@ -430,7 +433,7 @@ def write_frmsf(frmsf_name,Ef0,numproc,quantities,res,suffix=""):
         ttxt=0
         twrite=0
         for Q in quantities:
-            for comp in ["x","y","z","xx","yy","zz","xy","yx","xz","zx","yz","zy"]:
+            for comp in res.results[Q].get_component_list():
                 try:
                     t31=time()
                     txt=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0,npar=numproc)
