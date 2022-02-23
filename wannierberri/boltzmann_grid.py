@@ -21,11 +21,13 @@ class Boltzmann_grid():
 
 
     def __init__(self,tab_result , mu=0, kBT=0.1, tau =1e-12 ,iband = None, 
-                    anomalous_velocity = True,
-                    lorentz_force = True , 
-                    phase_space_kdot = True,
-                    last_term_kdot = True,
-                    last_term_rdot = True,
+                    rdot_bandgrad = True,
+                    rdot_anomalous = True,
+                    rdot_last_term = True,
+                    kdot_E = True .
+                    kdot_lorentz = True , 
+                    kdot_phase_space = True,
+                    kdot_last_term = True,
                     zeeman_orb  = True,
                     zeeman_spin = True
                 ):
@@ -35,14 +37,15 @@ class Boltzmann_grid():
         tau in seconds
             
         """
-        self.anomalous_velocity = anomalous_velocity
-        self.lorentz_force      = lorentz_force
-        self.phase_space_kdot   = phase_space_kdot
-        self.last_term_kdot     = last_term_kdot
-        self.last_term_rdot     = last_term_kdot
+        self.rdot_bandgrad      = rdot_bandgrad
+        self.rdot_anomalous     = rdot_anomalous
+        self.rdot_last_term     = rdot_last_term
+        self.kdot_E             = kdot_E
+        self.kdot_lorentz       = kdot_lorentz
+        self.kdot_phase_space   = kdot_phase_space
+        self.kdot_last_term     = kdot_last_term
         self.zeeman_orb         = zeeman_orb
         self.zeeman_spin        = zeeman_spin
-
 
         self.grid = tab_result.grid
         self.nk = np.prod(self.grid)
@@ -61,7 +64,7 @@ class Boltzmann_grid():
         if self.zeeman_spin:
             self.spin    = -tab_result.get_data('spin')   * BOHR_MAGNETON_SI/elementary_charge
             self.derspin = -tab_result.get_data('derspin')* BOHR_MAGNETON_SI*1e-10/hbar
-        if self.anomalous_velocity or self.phase_space_kdot or self.last_term_kdot or self.last_term_rdot:
+        if self.rdot_anomalous or self.kdot_phase_space or self.kdot_last_term or self.rdot_last_term:
             self.berry = tab_result.get_data('berry')* (1e-20*elementary_charge/hbar)  # curvature in m^2 , multiplied by e/hbar (in SI) , thus resulting A*s^2/kg = 1/Tesla
 
 
@@ -82,21 +85,24 @@ class Boltzmann_grid():
         factor = elementary_charge*self.tau/hbar * 1e-10
 #        print (f"factor =  {factor}")
         kdot =  np.zeros( self.energ.shape+(3,) )
-        for i in range(3):
-            kdot[:,:,:,:,i] = E[i]
+        if self.kdot_E:
+            for i in range(3):
+                kdot[:,:,:,:,i] = E[i]
 
-        if self.lorentz_force:
+        if self.kdot_lorentz:
             kdot +=  np.cross( velocity, B, axisa=-1) 
-        if self.last_term_kdot:
+        if self.kdot_last_term:
             kdot+=   np.dot(E,B)*self.berry
-        if self.phase_space_kdot :
+        if self.kdot_phase_space :
             kdot /=  (1+np.dot(self.berry,B))[:,:,:,:,None]
         kdottau = -kdot*factor # should be in Ang^-1
 
-        rdot = velocity
-        if self.anomalous_velocity:
+        rdot =  np.zeros( self.energ.shape+(3,) )
+        if self.rdot_bandgrad:
+            rdot += velocity
+        if self.rdot_anomalous:
             rdot +=  np.cross( E, self.berry , axisb=-1 )
-        if self.last_term_rdot:
+        if self.rdot_last_term:
             rdot+=   np.einsum('xyzna,xyzna,b->xyznb',self.berry, velocity,B)
         f0 = FermiDirac(E=energ, mu=self.mu, kBT=self.kBT)
         f_old = f0.copy()

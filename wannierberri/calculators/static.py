@@ -56,16 +56,30 @@ class BerryDipole_FermiSea(StaticCalculator):
         return res
 
 
+class DOS(StaticCalculator):
+
+    def __init__(self,**kwargs):
+        self.Formula = frml.Identity
+        self.factor =  1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+    def __call__(self,data_K):
+        return super().__call__(data_K)*data_K.cell_volume
+
+class CumDOS(DOS):
+
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
+        self.fder = 0
+
+
+
 
 class Frml_VVO(FormulaProduct):
 
     def __init__(self,data_K,**kwargs_formula):
-#        V = data_K.covariant('Ham',commader=1),
-#        super().__init__( [V,frml.Omega(data_K,**kwargs_formula)], name='VelVelOmega')
-
         super().__init__( [data_K.covariant('Ham',commader=1),data_K.covariant('Ham',commader=1),frml.Omega(data_K,**kwargs_formula)], name='VelVelOmega')
-
-
 
 class VelVelOmega_f1(StaticCalculator):
 
@@ -84,14 +98,12 @@ class VelVelOmega_f1(StaticCalculator):
 
 
 
+
 class Frml_OM(FormulaProduct):
         def __init__(self,data_K,**kwargs_formula):
             super().__init__( [frml.Omega(data_K,**kwargs_formula),frml.morb(data_K,**kwargs_formula)], name='Omega-morb')
 
-
-
 class FieldInducedAHC1_orb(StaticCalculator):
-
 
     def __init__(self,**kwargs):
         self.Formula = Frml_OM

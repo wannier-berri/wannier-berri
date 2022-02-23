@@ -31,7 +31,7 @@ calculators={
          'berry'      : frml.Omega, 
          'Der_berry'  : frml.DerOmega,
          'morb'       : frml.morb_bohr,
-         'Der_morb'   : frml_basic.Der_morb_bohr
+         'Der_morb'   : frml_basic.Der_morb_bohr,
          'spin_berry' : frml.SpinOmega,
          }
 
