@@ -24,7 +24,7 @@ class Boltzmann_grid():
                     rdot_bandgrad = True,
                     rdot_anomalous = True,
                     rdot_last_term = True,
-                    kdot_E = True .
+                    kdot_E = True ,
                     kdot_lorentz = True , 
                     kdot_phase_space = True,
                     kdot_last_term = True,

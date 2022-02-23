@@ -129,6 +129,35 @@ class FormulaProduct(Formula_ln):
     def ln(self,ik,inn,out):
         raise NotImplementedError()
 
+
+
+class FormulaSum(Formula_ln):
+
+    """a class to store a sum of several formulae"""
+    def __init__(self,formula_list,name="unknown",hermitian=False):
+        if type(formula_list) not in (list,tuple):
+            formula_list=[formula_list]
+        self.TRodd=formula_list[0].TRodd  
+        assert np.all([f.TRodd==self.TRodd for f in formula_list]) 
+        self.Iodd=formula_list[0].Iodd  
+        assert np.all([f.Iodd==self.Iodd for f in formula_list]) 
+        self.ndim=formula_list[0].ndim
+        assert np.all([f.ndim==self.ndim for f in formula_list]) 
+        self.name=name
+        self.formulae=formula_list
+        self.hermitian = hermitian
+
+
+    def nn(self,ik,inn,out):
+        res = sum(frml.nn(ik,inn,out) for frml in self.formulae)
+        if self.hermitian:
+            res=0.5*(res+res.swapaxes(0,1).conj())
+        return np.array(res,dtype=complex)
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
+
+
 class FormulaProduct_2(Formula_ln):
     """a class to store a product of several formulae (when have same index)"""
     def __init__(self,formula_list,index_list,name="unknown",hermitian=False,dot = False):

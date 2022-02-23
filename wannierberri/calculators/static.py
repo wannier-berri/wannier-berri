@@ -1,9 +1,10 @@
 from .classes import StaticCalculator
 from wannierberri import covariant_formulak as frml
 from wannierberri import fermiocean
-from wannierberri.formula import FormulaProduct
+from wannierberri.formula import FormulaProduct, FormulaSum
 from scipy.constants import  elementary_charge, hbar, electron_mass, physical_constants, angstrom
 from wannierberri.__utility import  TAU_UNIT
+import numpy as np
 
 ##################################################
 ######                                     #######
@@ -113,3 +114,36 @@ class FieldInducedAHC1_orb(StaticCalculator):
         self.factor =  elementary_charge**3*angstrom/(2*hbar**2)
         self.fder = 1
         super().__init__(**kwargs)
+
+
+##################################################
+### Magnetoresistance (linear in B and E)   ######
+##################################################
+
+
+class _formula_t1E1B1_fsurf(FormulaProduct):
+
+    def __init__(self,data_K,**kwargs_formula):
+        O = frml.Omega(data_K,**kwargs_formula)
+        v = data_K.covariant('Ham',commader=1)
+        super().__init__( [ v,v,O] )
+
+    def nn(self,ik,inn,out):
+        vvo=super().nn(ik,inn,out)
+        res = vvo
+        i = np.arange(3)
+        vvo1 = np.einsum('mnabb->mna',vvo)
+        res[:,:,i,:,i] -= vvo1
+        res[:,:,:,i,i] -= vvo1
+        return res
+
+class MagnetoResistanceBerryFermiSurface(StaticCalculator):
+
+    def __init__(self,**kwargs):
+        self.Formula = _formula_t1E1B1_fsurf
+        # we get the integral in eV*ang. first convert to SI (J*m), : e*1e-10
+        # then multiply by tau*e^3/hbar^3
+        self.factor =  elementary_charge**4*angstrom/(hbar**3)
+        self.fder = 1
+        super().__init__(**kwargs)
+
