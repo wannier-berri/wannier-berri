@@ -102,8 +102,9 @@ def Efermi_Chiral():
 
 @pytest.fixture(scope="session")
 def quantities_Fe():
-    return  ['ahc','ahc_test','dos','cumdos',
-               'conductivity_ohmic','conductivity_ohmic_fsurf','Morb','Morb_test']
+    return  [ 'ahc','ahc_test','dos','cumdos',
+               'conductivity_ohmic','conductivity_ohmic_fsurf','Morb','Morb_test'
+            ]
 
 
 # quantities containing external terms

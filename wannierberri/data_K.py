@@ -15,11 +15,14 @@
 ## TODO : maybe to make some lazy_property's not so lazy to save some memory
 import numpy as np
 import lazy_property
+from functools import lru_cache
 from .__parallel import pool
 from .__system import System
 from .__utility import print_my_name_start,print_my_name_end, FFT_R_to_k, alpha_A, beta_A
 from .__tetrahedron import TetraWeights,get_bands_in_range,get_bands_below_range
 from .formula import Matrix_ln, Matrix_GenDer_ln
+from . import covariant_formulak as frmlcov
+from . import covariant_formulak_basic as frmlcov_bas
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -53,12 +56,6 @@ def parity_TR(name,der=0):
     else :
         raise ValueError(f"parity under TR unknown for {name}")
     return bool( (p+der)%2 )
-
-class _Dcov(Matrix_ln):
-    def __init__(self,data_K):
-        super().__init__(data_K.D_H)
-    def nn(self,ik,inn,out):
-        raise ValueError("Dln should not be called within inner states")
 
 
 
@@ -123,7 +120,6 @@ class Data_K(System):
         self.expdK=np.exp(2j*np.pi*self.system.iRvec.dot(dK))
         self.dK=dK
         self._bar_quantities = {}
-        self._covariant_quantities = {}
 
     def set_parameters(self,**parameters):
         for param in self.default_parameters:
@@ -330,33 +326,48 @@ class Data_K(System):
         if check>1e-10: raise RuntimeError(f"The band derivatives have considerable imaginary part: {check}")
         return delE_K.real
 
+    @lru_cache(maxsize=None)
     def Xbar(self,name,der=0):
         key = (name,der)
-        if key not in self._bar_quantities:
-            self._bar_quantities[key] = self._R_to_k_H( getattr(self,name+'_R').copy() , der=der,
+        print ("-",key)
+        return self._R_to_k_H( getattr(self,name+'_R').copy() , der=der,
                     hermitean = (name in ['AA','SS','OO'])  )
-        return self._bar_quantities[key]
 
-    def covariant(self,name,commader=0,gender=0,save = True):
+    @lru_cache(maxsize=None)
+    def covariant(self,name,commader=0,gender=0,**kwargs_formula):
         assert commader*gender==0 , "cannot mix comm and generalized derivatives"
         key = (name,commader,gender)
-        if key not in self._covariant_quantities:
-            if gender == 0:
-                res = Matrix_ln(self.Xbar(name,commader) ,
+        print ("+",key,kwargs_formula)
+        if commader ==0:
+            if name == 'Ham':
+                if gender == 1 :
+                    return self.V_covariant
+                elif gender == 2:
+                    return frmlcov.InvMass(self)
+                elif gender == 3 :
+                    return frmlcov.Der3E(self)
+            if name == "Omega":
+                if gender == 0:
+                    return frmlcov.Omega(self,**kwargs_formula)
+                elif gender == 1:
+                    return frmlcov.DerOmega(self,**kwargs_formula)
+            elif name == "spin":
+                if gender == 0:
+                    return frmlcov.Spin(self)
+                elif gender == 1:
+                    return frmlcov.DerSpin(self)
+            elif name == "morb":
+                if gender == 0:
+                    return frmlcov.morb(self,**kwargs_formula)
+                elif gender == 1:
+                    return frmlcov_bas.Der_morb(self,**kwargs_formula)
+            elif gender == 0:
+                pass
+        return Matrix_ln(self.Xbar(name,commader) ,
                                 Iodd = parity_I(name,commader),TRodd = parity_TR(name,commader)
                                 )
-            elif (gender == 1 and  name == 'Ham'):
-                    res =  self.V_covariant
-            else:
-                res = Matrix_GenDer_ln(self.covariant(name,commader = commader-1),self.covariant(name,commader=commader),
-                        self.Dcov ,
-                Iodd = parity_I(name,gender),TRodd = parity_TR(name,gender)
-                            )
-            if not save:
-                return res
-            else:
-                self._covariant_quantities[key] = res
-        return self._covariant_quantities[key]
+
+#        raise NotImplementedError(f"Cannot find a covariant quantity {name}^(,{commader};{gender})")
 
     @property
     def V_covariant(self):
@@ -371,8 +382,11 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def Dcov(self):
-        return _Dcov(self)
+        return frmlcov.Dcov(self)
 
+    @lazy_property.LazyProperty
+    def DerDcov(self):
+        return frmlcov.DerDcov(self)
 
 
     @lazy_property.LazyProperty

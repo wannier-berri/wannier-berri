@@ -1,7 +1,6 @@
 import numpy as np
 from .__utility import alpha_A, beta_A
 from .formula import Formula_ln, Matrix_ln , Matrix_GenDer_ln, FormulaProduct
-from .data_K import _Dcov
 #####################################################
 #####################################################
 
@@ -39,9 +38,15 @@ class DEinv_ln(Matrix_ln):
     def nn(self,ik,inn,out):
         raise NotImplementedError("dEinv_ln should not be called within inner states")
 
+class Dcov(Matrix_ln):
+    def __init__(self,data_K):
+        super().__init__(data_K.D_H)
+    def nn(self,ik,inn,out):
+        raise ValueError("Dln should not be called within inner states")
 
 
-class DerDcov(_Dcov):
+
+class DerDcov(Dcov):
 
     def __init__(self,data_K):
         self.W=data_K.covariant('Ham',commader = 2)
@@ -69,7 +74,7 @@ class InvMass(Matrix_GenDer_ln):
 class DerWln(Matrix_GenDer_ln):
     r""" :math:`\overline{W}^{bc:d}`"""
     def __init__(self,data_K):
-        super().__init__(data_K.covariant('Ham',2),data_K.covariant('Ham',3),data_K.Dcov)
+        super().__init__(data_K.covariant('Ham',commader = 2),data_K.covariant('Ham',commader = 3),data_K.Dcov)
         self.TRodd=False
         self.Iodd=False
 
@@ -86,8 +91,8 @@ class Der3E(Formula_ln):
         super().__init__(data_K,**parameters)
         self.V=data_K.covariant('Ham',commader=1)
         self.D=data_K.Dcov
-        self.dV=InvMass(data_K)
-        self.dD=DerDcov(data_K)
+        self.dV=data_K.covariant('Ham',gender=2)
+        self.dD=data_K.DerDcov
         self.dW=DerWln(data_K)
         self.ndim=3
         self.Iodd=True
@@ -156,7 +161,7 @@ class DerOmega(Formula_ln):
 
     def __init__(self,data_K,**parameters):
         super().__init__(data_K,**parameters)
-        self.dD = DerDcov(data_K)
+        self.dD = data_K.DerDcov
         self.D  = data_K.Dcov
 
         if self.external_terms:
