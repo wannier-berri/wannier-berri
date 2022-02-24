@@ -147,3 +147,37 @@ class MagnetoResistanceBerryFermiSurface(StaticCalculator):
         self.fder = 1
         super().__init__(**kwargs)
 
+
+
+class _formula_t1E1B1_zee_orb_fsurf(FormulaSum):
+
+    def __init__(self,data_K,spin=True,orb=True,**kwargs_formula):
+        o = frml.Omega(data_K,**kwargs_formula)
+        v = data_K.covariant('Ham',commader=1)
+        vv = data_K.covariant('Ham', gender=2)
+        morb = frml.morb(data_K,**kwargs_formula)
+        dermorb = frml.dermorb(data_K,**kwargs_formula)
+        term1 = FormulaProduct([vv,morb])
+        term2 = FormulaProduct([])
+            
+        super().__init__( [ v,v,O] )
+
+    def nn(self,ik,inn,out):
+        vvo=super().nn(ik,inn,out)
+        res = vvo
+        i = np.arange(3)
+        vvo1 = np.einsum('mnabb->mna',vvo)
+        res[:,:,i,:,i] -= vvo1
+        res[:,:,:,i,i] -= vvo1
+        return res
+
+
+class MagnetoResistanceZeemannFermiSurface(StaticCalculator):
+
+    def __init__(self,**kwargs):
+        self.Formula = _formula_t1E1B1_zee_fsurf
+        # we get the integral in eV*ang. first convert to SI (J*m), : e*1e-10
+        # then multiply by tau*e^3/hbar^3
+        self.factor =  elementary_charge**4*angstrom/(hbar**3)
+        self.fder = 1
+        super().__init__(**kwargs)
