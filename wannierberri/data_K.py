@@ -15,7 +15,7 @@
 ## TODO : maybe to make some lazy_property's not so lazy to save some memory
 import numpy as np
 import lazy_property
-from functools import lru_cache
+from functools import  lru_cache
 from .__parallel import pool
 from .__system import System
 from .__utility import print_my_name_start,print_my_name_end, FFT_R_to_k, alpha_A, beta_A
@@ -328,16 +328,12 @@ class Data_K(System):
 
     @lru_cache(maxsize=None)
     def Xbar(self,name,der=0):
-        key = (name,der)
-        print ("-",key)
         return self._R_to_k_H( getattr(self,name+'_R').copy() , der=der,
                     hermitean = (name in ['AA','SS','OO'])  )
 
     @lru_cache(maxsize=None)
     def covariant(self,name,commader=0,gender=0,**kwargs_formula):
         assert commader*gender==0 , "cannot mix comm and generalized derivatives"
-        key = (name,commader,gender)
-        print ("+",key,kwargs_formula)
         if commader ==0:
             if name == 'Ham':
                 if gender == 1 :

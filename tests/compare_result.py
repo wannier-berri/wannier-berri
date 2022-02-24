@@ -85,7 +85,6 @@ def compare_energyresult():
                     precision = max(maxval / 1E12, 1E-11)
                 elif precision < 0:
                     precision = max(maxval * abs(precision) , 1E-11)
-                print (f"E_titles : <{E_titles}> vs <{E_titles_ref}>")
                 assert np.all(E_titles == E_titles_ref), f"E_titles mismatch : <{E_itles}> != <{E_titles_ref}>"
                 if isinstance(data_energy,list):
                     for i,E in enumerate(zip(data_energy,data_energy_ref)):
