@@ -345,16 +345,13 @@ class Data_K(System):
                 res = Matrix_ln(self.Xbar(name,commader) ,
                                 Iodd = parity_I(name,commader),TRodd = parity_TR(name,commader)
                                 )
-            elif gender == 1:
-                if name == 'Ham':
+            elif (gender == 1 and  name == 'Ham'):
                     res =  self.V_covariant
-                else:
-                    res = Matrix_GenDer_ln(self.covariant(name),self.covariant(name,commader=1),
-                        self.Dcov ,
-                    Iodd = parity_I(name,gender),TRodd = parity_TR(name,gender)
-                            )
             else:
-                raise NotImplementedError()
+                res = Matrix_GenDer_ln(self.covariant(name,commader = commader-1),self.covariant(name,commader=commader),
+                        self.Dcov ,
+                Iodd = parity_I(name,gender),TRodd = parity_TR(name,gender)
+                            )
             if not save:
                 return res
             else:

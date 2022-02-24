@@ -165,7 +165,8 @@ def ohmic_fsurf(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,
 
 def ohmic(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r""" sigma10tau1"""
-    formula =  frml.InvMass(data_K)
+#    formula =  frml.InvMass(data_K)
+    formula =  data_K.covariant('Ham',gender=2)
     return FermiOcean(formula,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()*factor_ohmic
 
 
