@@ -3,6 +3,7 @@ from wannierberri import covariant_formulak as frml
 from wannierberri import fermiocean
 from wannierberri.formula import FormulaProduct, FormulaSum
 from scipy.constants import  elementary_charge, hbar, electron_mass, physical_constants, angstrom
+from wannierberri.covariant_fomulak_bassic import factor_morb
 from wannierberri.__utility import  TAU_UNIT
 import numpy as np
 
@@ -149,35 +150,34 @@ class MagnetoResistanceBerryFermiSurface(StaticCalculator):
 
 
 
-class _formula_t1E1B1_zee_orb_fsurf(FormulaSum):
+
+
+
+
+
+
+
+class _formula_t1E1B1_zee_fsurf(FormulaSum):
 
     def __init__(self,data_K,spin=True,orb=True,**kwargs_formula):
         o = frml.Omega(data_K,**kwargs_formula)
-        v = data_K.covariant('Ham',commader=1)
-        vv = data_K.covariant('Ham', gender=2)
-        morb = frml.morb(data_K,**kwargs_formula)
-        dermorb = frml.dermorb(data_K,**kwargs_formula)
-        term1 = FormulaProduct([vv,morb])
-        term2 = FormulaProduct([])
-            
-        super().__init__( [ v,v,O] )
-
-    def nn(self,ik,inn,out):
-        vvo=super().nn(ik,inn,out)
-        res = vvo
-        i = np.arange(3)
-        vvo1 = np.einsum('mnabb->mna',vvo)
-        res[:,:,i,:,i] -= vvo1
-        res[:,:,:,i,i] -= vvo1
-        return res
+        v = data_K.covariant('Ham', gender=1)
+        w = data_K.covariant('Ham', gender=2)
+        m=  data_K.covariant('magmom',gender=0,spin=spin,orb=orb,**kwargs_formula)
+        dm=  data_K.covariant('magmom',gender=1,spin=spin,orb=orb,**kwargs_formula)
+                
+        term1 = FormulaProduct([vv,m])
+        term2 = FormulaProduct([v,dm],transpose=(0,2,1))
+        term3 = FormulaProduct([v,dm],transpose=(2,0,1))
+        super().__init__( [term1,term2,term3],[1,-0.5,-0.5])
 
 
 class MagnetoResistanceZeemannFermiSurface(StaticCalculator):
 
-    def __init__(self,**kwargs):
+    def __init__(self,**kwargs_formula):
         self.Formula = _formula_t1E1B1_zee_fsurf
-        # we get the integral in eV*ang. first convert to SI (J*m), : e*1e-10
+        # we get the integral in magneton per Angstrom
         # then multiply by tau*e^3/hbar^3
-        self.factor =  elementary_charge**4*angstrom/(hbar**3)
+        self.factor =  elementary_charge**4*angstrom/(hbar**3) # to be clarified
         self.fder = 1
         super().__init__(**kwargs)
