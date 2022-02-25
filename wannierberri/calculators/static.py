@@ -3,7 +3,7 @@ from wannierberri import covariant_formulak as frml
 from wannierberri import fermiocean
 from wannierberri.formula import FormulaProduct, FormulaSum
 from scipy.constants import  elementary_charge, hbar, electron_mass, physical_constants, angstrom
-from wannierberri.covariant_fomulak_bassic import factor_morb
+from wannierberri.covariant_formulak_basic import factor_morb
 from wannierberri.__utility import  TAU_UNIT
 import numpy as np
 
@@ -166,7 +166,7 @@ class _formula_t1E1B1_zee_fsurf(FormulaSum):
         m=  data_K.covariant('magmom',gender=0,spin=spin,orb=orb,**kwargs_formula)
         dm=  data_K.covariant('magmom',gender=1,spin=spin,orb=orb,**kwargs_formula)
                 
-        term1 = FormulaProduct([vv,m])
+        term1 = FormulaProduct([w,m])
         term2 = FormulaProduct([v,dm],transpose=(0,2,1))
         term3 = FormulaProduct([v,dm],transpose=(2,0,1))
         super().__init__( [term1,term2,term3],[1,-0.5,-0.5])
@@ -174,7 +174,7 @@ class _formula_t1E1B1_zee_fsurf(FormulaSum):
 
 class MagnetoResistanceZeemannFermiSurface(StaticCalculator):
 
-    def __init__(self,**kwargs_formula):
+    def __init__(self,**kwargs):
         self.Formula = _formula_t1E1B1_zee_fsurf
         # we get the integral in magneton per Angstrom
         # then multiply by tau*e^3/hbar^3

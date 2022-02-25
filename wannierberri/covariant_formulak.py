@@ -471,7 +471,7 @@ class MagMom(FormulaSum):
         if spin:
             spin = data_K.covariant('spin',gender = gender,**kwargs_formula)
             coefs.append(-1)
-        super().init(formulae_list,coefs)
+        super().__init__(formulae,coefs)
 
 
 

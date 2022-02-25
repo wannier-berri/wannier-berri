@@ -108,7 +108,7 @@ class FormulaProduct(Formula_ln):
         self.name=name
         self.formulae=formula_list
         self.hermitian = hermitian
-        self.transpose = (0,1)+(i+2 for i in transpose) if transpose is not None else None
+        self.transpose = (0,1)+tuple(i+2 for i in transpose) if transpose is not None else None
         ndim_list = [f.ndim for f in formula_list]
         self.ndim = sum(ndim_list)
         self.einsumlines=[]
