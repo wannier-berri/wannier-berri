@@ -131,10 +131,10 @@ class _formula_t1E1B1_fsurf(FormulaProduct):
     def nn(self,ik,inn,out):
         vvo=super().nn(ik,inn,out)
         res = vvo
-        i = np.arange(3)
         vvo1 = np.einsum('mnabb->mna',vvo)
-        res[:,:,i,:,i] -= vvo1
-        res[:,:,:,i,i] -= vvo1
+        for i in range(3):
+            res[:,:,i,:,i] -= vvo1
+            res[:,:,:,i,i] -= vvo1
         return res
 
 class MagnetoResistanceBerryFermiSurface(StaticCalculator):
@@ -147,3 +147,4 @@ class MagnetoResistanceBerryFermiSurface(StaticCalculator):
         self.fder = 1
         super().__init__(**kwargs)
 
+    
