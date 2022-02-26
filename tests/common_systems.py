@@ -216,11 +216,11 @@ def system_Haldane_PythTB():
 
 # Chiral model
 # A chiral system that also breaks time-reversal. It can be used to test almost any quantity.
-model_chiral = wb_models.Chiral(delta=2, hop1=1, hop2=1./3,  phi=np.pi/10, hopz=0.2)
+model_Chiral = wb_models.Chiral(delta=2, hop1=1, hop2=1./3,  phi=np.pi/10, hopz=0.2)
 
 @pytest.fixture(scope="session")
 def system_Chiral():
-    system = wberri.System_PythTB(model_chiral, use_wcc_phase=True)
+    system = wberri.System_PythTB(model_Chiral, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
     return system
 
