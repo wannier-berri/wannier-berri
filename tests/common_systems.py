@@ -184,13 +184,14 @@ def system_GaAs_tb_wcc_ws():
 
     return system
 
+# Haldane model from TBmodels
+
 @pytest.fixture(scope="session")
 def model_tbmodels_Haldane():
     return wb_models.Haldane_tbm(delta=0.2,hop1=-1.0,hop2 =0.15)
 
 @pytest.fixture(scope="session")
 def system_Haldane_TBmodels(model_tbmodels_Haldane):
-    
     # Load system
     system = wberri.System_TBmodels(model_tbmodels_Haldane, berry=True)
     system.set_symmetry(["C3z"])
@@ -198,18 +199,17 @@ def system_Haldane_TBmodels(model_tbmodels_Haldane):
 
 @pytest.fixture(scope="session")
 def system_Haldane_TBmodels_internal(model_tbmodels_Haldane):
-    
     # Load system
     system = wberri.System_TBmodels(model_tbmodels_Haldane, berry=False)
     system.set_symmetry(["C3z"])
     return system
 
 
+# Haldane model from PythTB
 
 @pytest.fixture(scope="session")
 def model_pythtb_Haldane():
     return wb_models.Haldane_ptb(delta=0.2,hop1=-1.0,hop2 =0.15)
-
 
 @pytest.fixture(scope="session")
 def system_Haldane_PythTB(model_pythtb_Haldane):
@@ -220,19 +220,11 @@ def system_Haldane_PythTB(model_pythtb_Haldane):
     return system
 
 
-
+# Chiral model
 
 @pytest.fixture(scope="session")
 def model_chiral():
     return wb_models.Chiral(delta=2, hop1=1, hop2=1./3,  phi=np.pi/10, hopz=0.2)
-
-
-@pytest.fixture(scope="session")
-def model_CuMnAs_2d_broken():
-    """these parameters provide ~0.4eV gap between conduction and valence bands
-    and splitting into subbands is within 0.04 eV"""
-    return  wb_models.CuMnAs_2d(nx=0,ny=1,nz=0,hop1=1,hop2=0.08,l=0.8,J=1,dt=0.01)
-
 
 @pytest.fixture(scope="session")
 def system_Chiral(model_chiral):
@@ -242,6 +234,8 @@ def system_Chiral(model_chiral):
     system.set_symmetry(["C3z"])
     return system
 
+
+# System from FPLO code interface
 
 @pytest.fixture(scope="session")
 def system_Fe_FPLO():
@@ -253,7 +247,6 @@ def system_Fe_FPLO():
     system.set_symmetry(symmetries_Fe)
     return system
 
-
 @pytest.fixture(scope="session")
 def system_Fe_FPLO_wcc():
     """Create system for Fe using  FPLO  data"""
@@ -263,6 +256,15 @@ def system_Fe_FPLO_wcc():
     system = wberri.System_fplo(path, use_wcc_phase=True,morb=True,spin=True )
     system.set_symmetry(symmetries_Fe)
     return system
+
+
+# CuMnAs 2D model
+
+@pytest.fixture(scope="session")
+def model_CuMnAs_2d_broken():
+    """these parameters provide ~0.4eV gap between conduction and valence bands
+    and splitting into subbands is within 0.04 eV"""
+    return  wb_models.CuMnAs_2d(nx=0,ny=1,nz=0,hop1=1,hop2=0.08,l=0.8,J=1,dt=0.01)
 
 @pytest.fixture(scope="session")
 def system_CuMnAs_2d_broken(model_CuMnAs_2d_broken):
