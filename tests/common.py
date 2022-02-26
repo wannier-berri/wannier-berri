@@ -1,6 +1,7 @@
 """Common constants shared by all tests"""
 
 import os
+import pytest
 
 # Root folder containing test scripts
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
