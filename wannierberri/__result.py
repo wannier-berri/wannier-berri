@@ -189,7 +189,7 @@ class EnergyResult(Result):
                 shape=data.shape[-self.rank:]
                 assert np.all(np.array(shape)==3), "data.shape={}".format(data.shape)
             for i in range(self.N_energies):
-                assert (Energies[i].shape[0]==data.shape[i]) , "dimension of Energy[{}] = {} does not match do dimension of data {}".format(i,Energy[i].shape[0],data.shape[i])
+                assert (Energies[i].shape[0]==data.shape[i]) , "dimension of Energy[{}] = {} does not match do dimension of data {}".format(i,Energies[i].shape[0],data.shape[i])
             self.Energies=Energies
             self.data=data
             self.set_smoother(smoothers)

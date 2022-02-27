@@ -71,8 +71,10 @@ class DOS(StaticCalculator):
 class CumDOS(DOS):
 
     def __init__(self,**kwargs):
-        super().__init__(**kwargs)
+        self.Formula = frml.Identity
+        self.factor =  1
         self.fder = 0
+        super().__init__(**kwargs)
 
 
 

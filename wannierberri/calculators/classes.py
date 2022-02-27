@@ -109,6 +109,7 @@ class StaticCalculator(Calculator):
             else:
                 raise NotImplementedError(f"Derivatives  d^{self.fder}f/dE^{self.fder} is not implemented")
 
+
         restot *= self.factor/(data_K.nk * data_K.cell_volume)
 
         res =  result.EnergyResult(self.Efermi,restot, TRodd=formula.TRodd, Iodd=formula.Iodd )
