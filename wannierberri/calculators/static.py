@@ -68,7 +68,7 @@ class DOS(StaticCalculator):
     def __call__(self,data_K):
         return super().__call__(data_K)*data_K.cell_volume
 
-class CumDOS(DOS):
+class CumDOS(StaticCalculator):
 
     def __init__(self,**kwargs):
         self.Formula = frml.Identity
@@ -76,6 +76,8 @@ class CumDOS(DOS):
         self.fder = 0
         super().__init__(**kwargs)
 
+    def __call__(self,data_K):
+        return super().__call__(data_K)*data_K.cell_volume
 
 
 
