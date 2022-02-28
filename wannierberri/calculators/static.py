@@ -147,7 +147,7 @@ class MagnetoResistanceBerryFermiSurface(StaticCalculator):
         self.Formula = _formula_t1E1B1_fsurf
         # we get the integral in eV*ang. first convert to SI (J*m), : e*1e-10
         # then multiply by tau*e^3/hbar^3
-        self.factor =  elementary_charge**4*angstrom/(hbar**3)
+        self.factor =  TAU_UNIT*elementary_charge**4*angstrom/(hbar**3)
         self.fder = 1
         super().__init__(**kwargs)
 
