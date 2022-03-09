@@ -8,7 +8,6 @@ from wannierberri import formula
 
 from common import OUTPUT_DIR
 
-
 def get_component_list(quantity):
         if quantity in ["E", "Energy"]:
             return [None]
@@ -114,15 +113,15 @@ def test_Fe_user(check_tabulate,system_Fe_W90, compare_fermisurfer):
                 extra_precision={'berry':1e-4,"Der_berry":1e-4} )
 
 
-def test_Chiral(check_tabulate,system_Chiral, compare_fermisurfer):
+def test_Chiral(check_tabulate,system_Chiral_left, compare_fermisurfer):
     """Test Energies, Velocities, berry curvature, its derivative"""
-    check_tabulate(system_Chiral , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="" ,  comparer=compare_fermisurfer,
+    check_tabulate(system_Chiral_left , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="" ,  comparer=compare_fermisurfer,
               parameters = {'external_terms':False}, ibands = [0,1] )
 
 
-def test_Chiral_sym(check_tabulate,system_Chiral, compare_fermisurfer):
+def test_Chiral_sym(check_tabulate,system_Chiral_left, compare_fermisurfer):
     """Test Energies, Velocities, berry curvature, its derivative"""
-    check_tabulate(system_Chiral , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="sym" ,  comparer=compare_fermisurfer,
+    check_tabulate(system_Chiral_left , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="sym" ,  comparer=compare_fermisurfer,
                use_symmetry =  True  , parameters = {'external_terms':False}, ibands = [0,1] )
 
 

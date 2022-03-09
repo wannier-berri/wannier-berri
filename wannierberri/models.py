@@ -87,7 +87,10 @@ def Chiral(
         hop1=1,
         hop2=1./3,
         phi=np.pi/10,
-        hopz=0.2):
+        hopz_right= 0.0,
+        hopz_left = 0.2,
+        hopz_vert = 0.0 
+        ):
     """Create a chiral model  - a chirally stacked haldane model -
        using `PythTB <http://www.physics.rutgers.edu/pythtb/>`__
        Following the article by
@@ -106,8 +109,12 @@ def Chiral(
         magnitude of next nearest-neighbour in-plane hopping
     phi : float
         phase of next nearest-neighbour in-plane hopping
-    hopz : float or complex
-        chiral (real) hopping in the z direction
+    hopz_vert : float or complex
+        interlayer vertical hopping 
+    hopz_right : float or complex
+        chiral right-handed  hopping in the z direction
+    hopz_left : float or complex
+        chiral left-handed  hopping in the z direction
 
     Note:
     --------
@@ -143,13 +150,26 @@ def Chiral(
     my_model.set_hop(t2 , 1, 1, [  1,-1,0])
     my_model.set_hop(t2 , 1, 1, [  0, 1,0])
 
-    # add chiral hoppings
-    my_model.set_hop(hopz  , 0, 0, [  0,-1,1])
-    my_model.set_hop(hopz  , 0, 0, [  1, 0,1])
-    my_model.set_hop(hopz  , 0, 0, [ -1, 1,1])
-    my_model.set_hop(hopz  , 1, 1, [ -1, 0,1])
-    my_model.set_hop(hopz  , 1, 1, [  1,-1,1])
-    my_model.set_hop(hopz  , 1, 1, [  0, 1,1])
+    # add vertical hoppings
+    my_model.set_hop(hopz_vert  , 0, 0, [  0, 0, 1])
+    my_model.set_hop(hopz_vert  , 1, 1, [  0, 0, 1])
+
+    # add chiral hoppings (left-handed)
+    my_model.set_hop(hopz_left  , 0, 0, [  0,-1,1])
+    my_model.set_hop(hopz_left  , 0, 0, [  1, 0,1])
+    my_model.set_hop(hopz_left  , 0, 0, [ -1, 1,1])
+    my_model.set_hop(hopz_left  , 1, 1, [ -1, 0,1])
+    my_model.set_hop(hopz_left  , 1, 1, [  1,-1,1])
+    my_model.set_hop(hopz_left  , 1, 1, [  0, 1,1])
+
+    # add chiral hoppings (right-handed)
+    my_model.set_hop(hopz_right  , 0, 0, [  0,-1,-1])
+    my_model.set_hop(hopz_right  , 0, 0, [  1, 0,-1])
+    my_model.set_hop(hopz_right  , 0, 0, [ -1, 1,-1])
+    my_model.set_hop(hopz_right  , 1, 1, [ -1, 0,-1])
+    my_model.set_hop(hopz_right  , 1, 1, [  1,-1,-1])
+    my_model.set_hop(hopz_right  , 1, 1, [  0, 1,-1])
+
     return my_model
 
 def CuMnAs_2d(

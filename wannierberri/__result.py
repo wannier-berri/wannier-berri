@@ -304,6 +304,10 @@ class EnergyResult(Result):
         return np.abs(self.dataSmooth).max()
 
     @property
+    def _maxval_raw(self):
+        return np.abs(self.data).max()
+
+    @property
     def _norm(self):
         return np.linalg.norm(self.dataSmooth)
 

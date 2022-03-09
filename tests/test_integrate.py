@@ -322,21 +322,21 @@ def test_Fe_parallel_ray(check_integrate, system_Fe_W90, compare_energyresult,qu
                     )
     parallel_ray.shutdown()
 
-def test_Chiral(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral):
-    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
+def test_Chiral(check_integrate,system_Chiral_left,compare_energyresult,quantities_Chiral):
+    check_integrate(system_Chiral_left, quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
                 use_symmetry =  True ,
                 additional_parameters = { 'external_terms':False} ,
                grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
 
-def test_Chiral_txt(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral):
-    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,mode = "txt",
+def test_Chiral_txt(check_integrate,system_Chiral_left,compare_energyresult,quantities_Chiral):
+    check_integrate(system_Chiral_left , quantities_Chiral , fout_name="berry_Chiral" , Efermi=Efermi_Chiral , comparer=compare_energyresult,mode = "txt",
                 use_symmetry =  True , precision = -1e-5,
                 additional_parameters = { 'external_terms':False} ,
                grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
 
 
-def test_Chiral_tetra(check_integrate,system_Chiral,compare_energyresult,quantities_Chiral):
-    check_integrate(system_Chiral , quantities_Chiral , fout_name="berry_Chiral_tetra" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
+def test_Chiral_tetra(check_integrate, system_Chiral_left,compare_energyresult,quantities_Chiral):
+    check_integrate(system_Chiral_left, quantities_Chiral , fout_name="berry_Chiral_tetra" , Efermi=Efermi_Chiral , comparer=compare_energyresult,
                use_symmetry =  True,
                 additional_parameters = { 'external_terms':False, 'tetra':True} ,
                grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]} )
