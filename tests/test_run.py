@@ -37,7 +37,6 @@ def check_run(parallel_serial,compare_any_result):
                restart = False,file_Klist = None,
                do_not_compare = False,
                skip_compare=[],
-                flip_sign = []
                ):
 
         grid = wberri.Grid(system, **grid_param)
@@ -66,7 +65,8 @@ def check_run(parallel_serial,compare_any_result):
             if quant not in skip_compare:
                 prec=extra_precision[quant] if quant in extra_precision else precision
                 compare_any_result(fout_name, quant+suffix,  adpt_num_iter , suffix_ref=compare_quant(quant)+suffix_ref ,
-                    compare_zero=compare_zero,precision=prec, result_type = resultType(quant) ,flip_sign = (quant in flip_sign) )
+                    compare_zero=compare_zero,precision=prec, result_type = resultType(quant) ,
+                )
 
     return _inner
 
@@ -222,23 +222,45 @@ def test_Chiral_left(check_run,system_Chiral_left, compare_any_result,Efermi_Chi
             extra_precision = {"Morb":-1e-6},)
 
 
-def test_Chiral_leftTR(check_run,system_Chiral_left_TR, compare_any_result,Efermi_Chiral,compare_fermisurfer,calculators_Chiral):
+def test_Chiral_leftTR(check_run,system_Chiral_left,system_Chiral_left_TR, compare_any_result,Efermi_Chiral,compare_fermisurfer,calculators_Chiral):
     "check that for time-reversed model the ohmic conductivity is the same, but the AHC is opposite"
     grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]}
-    check_run(system_Chiral_left_TR ,calculators_Chiral , fout_name="berry_Chiral" , suffix="left-run" ,
-                grid_param = grid_param,
-               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } , use_symmetry = True,
-            extra_precision = {"Morb":-1e-6},
-            flip_sign = ['ahc']
-            )
+    results = [check_run(system, calculators_Chiral,
+                         fout_name = "berry_Chiral",
+                         suffix = "right-run",
+                         grid_param = grid_param,
+                         parameters_K = {'_FF_antisym':True,'_CCab_antisym':True },
+                         use_symmetry = True,
+                         do_not_compare = True
+                         )
+               for system in [system_Chiral_left, system_Chiral_left_TR]
+    ]
+
+    for key in ["conductivity_ohmic", "berry_dipole", "ahc"]:
+        sign = -1 if key == "ahc" else 1
+        data1 = results[0].results[key].dataSmooth
+        data2 = results[1].results[key].dataSmooth
+        precision = max(np.max(abs(data1)) / 1E12, 1E-11)
+        assert data1 == approx(sign * data2, abs=precision), key
 
 
-def test_Chiral_right(check_run,system_Chiral_right, compare_any_result,Efermi_Chiral,compare_fermisurfer,calculators_Chiral):
+def test_Chiral_right(check_run, system_Chiral_left, system_Chiral_right, compare_any_result,Efermi_Chiral,compare_fermisurfer,calculators_Chiral):
     "check that for flipped chirality the ohmic conductivity is the same, but the Berry dipole is opposite"
     grid_param={'NK':[10,10,4], 'NKFFT':[5,5,2]}
-    check_run(system_Chiral_right , calculators_Chiral , fout_name="berry_Chiral" , suffix="right-run" ,
-                grid_param = grid_param,
-               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } , use_symmetry = True,
-            extra_precision = {"Morb":-1e-6},
-            flip_sign = ['berry_dipole'],
-        )
+    results = [check_run(system, calculators_Chiral,
+                         fout_name = "berry_Chiral",
+                         suffix = "right-run",
+                         grid_param = grid_param,
+                         parameters_K = {'_FF_antisym':True,'_CCab_antisym':True },
+                         use_symmetry = True,
+                         do_not_compare = True
+                         )
+               for system in [system_Chiral_left, system_Chiral_right]
+    ]
+
+    for key in ["conductivity_ohmic", "berry_dipole", "ahc"]:
+        sign = -1 if key == "berry_dipole" else 1
+        data1 = results[0].results[key].dataSmooth
+        data2 = results[1].results[key].dataSmooth
+        precision = max(np.max(abs(data1)) / 1E12, 1E-11)
+        assert data1 == approx(sign * data2, abs=precision), key
