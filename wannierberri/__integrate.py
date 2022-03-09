@@ -170,6 +170,7 @@ descriptions['dos']                            ="density of states"
 descriptions['conductivity_ohmic']             ="ohmic conductivity in S/cm for tau={} s . Fermi-sea formula".format(TAU_UNIT)
 descriptions['conductivity_ohmic_fsurf']       ="ohmic conductivity in S/cm for tau={} s . Fermi-surface formula".format(TAU_UNIT)
 descriptions['berry_dipole']                   ="berry curvature dipole (dimensionless) - Fermi-sea formula"
+descriptions['berry_dipole_feild']                   ="berry curvature dipole (dimensionless) - Fermi-sea formula"
 descriptions['berry_dipole_fsurf']             ="berry curvature dipole (dimensionless)  - Fermi-surface formula"
 descriptions['gyrotropic_Korb']                ="GME tensor, orbital part (Ampere) - Fermi-sea formula"
 descriptions['gyrotropic_Korb_fsurf']          ="GME tensor, orbital part (Ampere) - Fermi-surface formula"
