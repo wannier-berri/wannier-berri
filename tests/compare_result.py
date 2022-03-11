@@ -122,12 +122,12 @@ def compare_any_result():
                 filename_ref = fout_name_ref + f"-{suffix_ref}_iter-{i_iter:04d}"+ext
                 path_filename_ref = os.path.join(REF_DIR, filename_ref)
                 result_ref = result_type(file_npz = path_filename_ref)
-                maxval = result_ref._maxval
+                maxval = result_ref._maxval_raw
                 if precision is None:
                     precision = max(maxval / 1E12, 1E-11)
                 elif precision < 0:
                     precision = max(maxval * abs(precision) , 1E-11)
-            err = (result-result_ref)._maxval
+            err = (result-result_ref)._maxval_raw
             assert err < precision , error_message(
                 fout_name, suffix, i_iter, err, path_filename, path_filename_ref,precision)
     return _inner

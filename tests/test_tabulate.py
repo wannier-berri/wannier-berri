@@ -15,7 +15,7 @@ from create_system import system_Fe_W90 #,system_GaAs_W90,system_GaAs_tb
 from create_system import system_CuMnAs_2d_broken , model_CuMnAs_2d_broken
 from create_system import symmetries_Fe
 from compare_result import compare_fermisurfer
-from create_system import system_Chiral,ChiralModel
+from create_system import system_Chiral_left,ChiralModelLeft
 
 
 def get_component_list(quantity):
@@ -123,15 +123,15 @@ def test_Fe_user(check_tabulate,system_Fe_W90, compare_fermisurfer):
                 extra_precision={'berry':1e-4,"Der_berry":1e-4} )
 
 
-def test_Chiral(check_tabulate,system_Chiral, compare_fermisurfer):
+def test_Chiral(check_tabulate,system_Chiral_left, compare_fermisurfer):
     """Test Energies, Velocities, berry curvature, its derivative"""
-    check_tabulate(system_Chiral , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="" ,  comparer=compare_fermisurfer,
+    check_tabulate(system_Chiral_left , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="" ,  comparer=compare_fermisurfer,
               parameters = {'external_terms':False}, ibands = [0,1] )
 
 
-def test_Chiral_sym(check_tabulate,system_Chiral, compare_fermisurfer):
+def test_Chiral_sym(check_tabulate,system_Chiral_left, compare_fermisurfer):
     """Test Energies, Velocities, berry curvature, its derivative"""
-    check_tabulate(system_Chiral , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="sym" ,  comparer=compare_fermisurfer,
+    check_tabulate(system_Chiral_left , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="sym" ,  comparer=compare_fermisurfer,
                use_symmetry =  True  , parameters = {'external_terms':False}, ibands = [0,1] )
 
 
