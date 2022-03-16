@@ -38,9 +38,9 @@ class sym_wann():
     Updated list of R vectors.
     '''
     def __init__(self,num_wann=None,lattice=None,positions=None,atom_name=None,proj=None,iRvec=None,
-            XX_R=None,spin=False,TR=False,magmom=None):
+            XX_R=None,soc=False,TR=False,magmom=None):
 
-        self.spin=spin
+        self.soc=soc
         self.TR=TR
         self.Ham_R =XX_R['Ham']
         self.iRvec = iRvec.tolist()
@@ -61,8 +61,9 @@ class sym_wann():
                 self.matrix_bool[X] = True
             except KeyError:
                 self.matrix_bool[X] = False
-        #print(self.matrix_bool) 
-        self.orbital_dic = {"s":1,"p":3,"d":5,"f":7,"sp3":4,"sp2":3}	
+        
+        self.orbital_dic = {"s":1,"p":3,"d":5,"f":7,"sp3":4,"sp2":3,"sp3d":5,"sp3d2":6,
+                "pz":1,'t2g':3, 'dx2-y2':1, 'eg':2}
         self.wann_atom_info = []
 
         num_atom = len(self.atom_name)
@@ -87,7 +88,9 @@ class sym_wann():
             orbital_index_list.append([])
         for iproj in self.proj:
             name_str = iproj.split(":")[0].split()[0]
-            orb_str = iproj.split(":")[1].strip('\n').strip().split(',')
+            print(name_str)
+            orb_str = iproj.split(":")[1].strip('\n').strip().split(';')
+            print(orb_str)
             if name_str in proj_dic:
                 proj_dic[name_str]=proj_dic[name_str]+orb_str
             else:
@@ -97,7 +100,7 @@ class sym_wann():
                     for iorb in orb_str:
                         num_orb =  self.orbital_dic[iorb]
                         orb_list = [ orbital_index+i for i in range(num_orb)]
-                        if self.spin:
+                        if self.soc:
                             orb_list += [ orbital_index+i+int(self.num_wann/2) for i in range(num_orb)]
                         orbital_index+= num_orb
                         orbital_index_list[iatom].append(orb_list) 
@@ -192,6 +195,7 @@ class sym_wann():
         py = lambda x,y,z : y
         pz = lambda x,y,z : z
         dz2 = lambda x,y,z : (2*z*z-x*x-y*y)/(2*sym.sqrt(3.0))
+        #dz2 = lambda x,y,z : (3*z*z-1)/sym.sqrt(3)/2
         dxz = lambda x,y,z : x*z
         dyz = lambda x,y,z : y*z
         dx2_y2 = lambda x,y,z : (x*x-y*y)/2
@@ -204,57 +208,70 @@ class sym_wann():
         fx3_3xy2 = lambda x,y,z : x*(x*x-3*y*y)/(2*sym.sqrt(6.0))
         f3yx2_y3 = lambda x,y,z : y*(3*x*x-y*y)/(2*sym.sqrt(6.0))
         
-        #def sp_1(x,y,z): return 1/sym.sqrt(2) * (1 + x)
-        #def sp_2(x,y,z): return 1/sym.sqrt(2) * (1 - x)
+        sp_1 = lambda x,y,z: 1/sym.sqrt(2) * x
+        sp_2 = lambda x,y,z: -1/sym.sqrt(2) * x
 
-        #def sp2_1(x,y,z): return 1/sym.sqrt(3) - 1/sym.sqrt(6)*x + 1/sym.sqrt(2)*y
-        #def sp2_2(x,y,z): return 1/sym.sqrt(3) - 1/sym.sqrt(6)*x - 1/sym.sqrt(2)*y
-        #def sp2_3(x,y,z): return 1/sym.sqrt(3) + 2/sym.sqrt(6)*x
+        sp2_1 = lambda x,y,z: - 1/sym.sqrt(6)*x + 1/sym.sqrt(2)*y
+        sp2_2 = lambda x,y,z: - 1/sym.sqrt(6)*x - 1/sym.sqrt(2)*y
+        sp2_3 = lambda x,y,z: 2/sym.sqrt(6)*x
 
-        sp3_1 = lambda x,y,z : 0.5*(1 + x + y + z)
-        sp3_2 = lambda x,y,z : 0.5*(1 + x - y - z)
-        sp3_3 = lambda x,y,z : 0.5*(1 - x + y - z)
-        sp3_4 = lambda x,y,z : 0.5*(1 - x - y + z)
+        sp3_1 = lambda x,y,z : 0.5*(x + y + z)
+        sp3_2 = lambda x,y,z : 0.5*(x - y - z)
+        sp3_3 = lambda x,y,z : 0.5*(- x + y - z)
+        sp3_4 = lambda x,y,z : 0.5*(- x - y + z)
 
-        #def sp3d_1(x,y,z): return 1/sqrt(3)*ss -1/sqrt(6)*px +1/sqrt(2)*py
-        #def sp3d_2(x,y,z): return 1/sqrt(3)*ss -1/sqrt(6)*px -1/sqrt(2)*py
-        #def sp3d_3(x,y,z): return 1/sqrt(3)*ss +2/sqrt(6)*px
-        #def sp3d_4(x,y,z): return 1/sqrt(2)*(pz + dz2)
-        #def sp3d_5(x,y,z): return 1/sqrt(2)*(pz + dz2)
-
-        #def sp3d2_1(x,y,z): return 1/sqrt(6)*ss -1/sqrt(2)*px - 1/sqrt(12)*dz2 + 0.5*dx2_y2
-        #def sp3d2_2(x,y,z): return 1/sqrt(6)*ss +1/sqrt(2)*px - 1/sqrt(12)*dz2 + 0.5*dx2_y2
-        #def sp3d2_3(x,y,z): return 1/sqrt(6)*ss -1/sqrt(2)*py - 1/sqrt(12)*dz2 - 0.5*dx2_y2
-        #def sp3d2_4(x,y,z): return 1/sqrt(6)*ss +1/sqrt(2)*py - 1/sqrt(12)*dz2 - 0.5*dx2_y2
-        #def sp3d2_5(x,y,z): return 1/sqrt(6)*ss -1/sqrt(2)*pz + 1/sqrt(3)*dz2
-        #def sp3d2_6(x,y,z): return 1/sqrt(6)*ss +1/sqrt(2)*pz + 1/sqrt(3)*dz2
+        sp3d2_1 = lambda x,y,z: -1/sym.sqrt(2)*x 
+        sp3d2_2 = lambda x,y,z: 1/sym.sqrt(2)*x 
+        sp3d2_3 = lambda x,y,z: -1/sym.sqrt(2)*y 
+        sp3d2_4 = lambda x,y,z: 1/sym.sqrt(2)*y 
+        sp3d2_5 = lambda x,y,z: -1/sym.sqrt(2)*z 
+        sp3d2_6 = lambda x,y,z: 1/sym.sqrt(2)*z 
+        
+        #sp3d2_plus_1 = lambda x,y,z: - 1/sym.sqrt(12)*(2*z*z-x*x-y*y)/sym.sqrt(3)/2 + 0.5*(x*x-y*y)/2
+        #sp3d2_plus_2 = lambda x,y,z: - 1/sym.sqrt(12)*(2*z*z-x*x-y*y)/sym.sqrt(3)/2 + 0.5*(x*x-y*y)/2
+        #sp3d2_plus_3 = lambda x,y,z: - 1/sym.sqrt(12)*(2*z*z-x*x-y*y)/sym.sqrt(3)/2 - 0.5*(x*x-y*y)/2
+        #sp3d2_plus_4 = lambda x,y,z: - 1/sym.sqrt(12)*(2*z*z-x*x-y*y)/sym.sqrt(3)/2 - 0.5*(x*x-y*y)/2
+        #sp3d2_plus_5 = lambda x,y,z: + 1/sym.sqrt(3)*(2*z*z-x*x-y*y)/sym.sqrt(3)/2
+        #sp3d2_plus_6 = lambda x,y,z: + 1/sym.sqrt(3)*(2*z*z-x*x-y*y)/sym.sqrt(3)/2
+        
+        sp3d2_plus_1 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 + 0.5*(x*x-y*y)/2
+        sp3d2_plus_2 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 + 0.5*(x*x-y*y)/2
+        sp3d2_plus_3 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 - 0.5*(x*x-y*y)/2
+        sp3d2_plus_4 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 - 0.5*(x*x-y*y)/2
+        sp3d2_plus_5 = lambda x,y,z: + 1/sym.sqrt(3)*(3*z*z-1)/sym.sqrt(3)/2
+        sp3d2_plus_6 = lambda x,y,z: + 1/sym.sqrt(3)*(3*z*z-1)/sym.sqrt(3)/2
 
         orb_function_dic={'s':[ss],
                           'p': [pz,px,py],
                           'd':[dz2,dxz,dyz,dx2_y2,dxy],
                           'f': [fz3,fxz2,fyz2,fzx2_zy2,fxyz,fx3_3xy2,f3yx2_y3],
-                   #      'sp':[sp_1,sp_2],
-                   #     'sp2':[sp2_1,sp2_2,sp2_3],
+                        'sp2':[sp2_1,sp2_2,sp2_3],
                         'sp3':[sp3_1,sp3_2,sp3_3,sp3_4],
-                   #    'sp3d':[sp3d_1,sp3d_2,sp3d_3,sp3d_4,sp3d_5],
-                   #   'sp3d2':[sp3d2_1,sp3d2_2,sp3d2_3,sp3d2_4,sp3d2_5,sp3d2_6],
-                         'px':[x],
-                         'py':[y],
-                         'pz':[z],
+                      'sp3d2':[sp3d2_1,sp3d2_2,sp3d2_3,sp3d2_4,sp3d2_5,sp3d2_6],
+                      'sp3d2_plus':[sp3d2_plus_1,sp3d2_plus_2,sp3d2_plus_3,sp3d2_plus_4,sp3d2_plus_5,sp3d2_plus_6],
+                         'pz':[pz],
+                         't2g':[dxz,dyz,dxy],
                       }
         orb_chara_dic={'s':[x],'p':[z,x,y],'d':[z*z,x*z,y*z,x*x,x*y,y*y],
                 'f':[z*z*z,x*z*z,y*z*z,z*x*x,x*y*z,x*x*x,y*y*y  ,z*y*y,x*y*y,y*x*x],
-                'sp':[x],'sp2':[x,y],'sp3':[x,y,z],'sp3d2':[x,y,z,z*z,x*x,y*y],
-                'px':[x],'py':[y],'pz':[z]
+                'sp2':[x,y,z],'sp3':[x,y,z],
+                'sp3d2':[x,y,z],
+                'sp3d2_plus':[z*z,x*x,y*y,x*y,x*z,y*z],
+                'pz':[z,x,y],
+                't2g':[x*z,y*z,x*y,z*z,x*x,y*y], 
                 }
         orb_dim = self.orbital_dic[orb_symbol]
         orb_rot_mat = np.zeros((orb_dim,orb_dim),dtype=float)
         xp = np.dot(np.linalg.inv(rot_glb)[0],np.transpose([x,y,z]))
         yp = np.dot(np.linalg.inv(rot_glb)[1],np.transpose([x,y,z]))
         zp = np.dot(np.linalg.inv(rot_glb)[2],np.transpose([x,y,z]))
-        rot_glb=np.array(list(rot_glb))
+        #print('xp=',xp,'yp=',yp,'zp=',zp)
+        #rot_glb=np.array(list(rot_glb))
         OC = orb_chara_dic[orb_symbol]
         OC_len = len(OC)
+        if orb_symbol == 'sp3d2':
+            OC_plus = orb_chara_dic[orb_symbol+'_plus']
+            OC_plus_len = len(OC_plus)
         for i in range(orb_dim):
             subs = []
             equation = (orb_function_dic[orb_symbol][i](xp,yp,zp)).expand()
@@ -265,18 +282,29 @@ class sym_wann():
                     else:
                         eq_tmp = eq_tmp.subs(OC[(j+j_add)%OC_len],0)
                 subs.append(eq_tmp)
-           # if orb_symbol == 'sp':print(subs)
-            if orb_symbol in ['s','px','py','pz']:
+            if orb_symbol == 'sp3d2':
+                subs_plus = []
+                equation_plus = (orb_function_dic[orb_symbol+'_plus'][i](xp,yp,zp)).expand()
+                for k in range(OC_plus_len):
+                    for k_add in range(OC_plus_len):
+                        if k_add == 0:
+                            eq_tmp = equation_plus.subs(OC_plus[k],1)
+                        else:
+                            eq_tmp = eq_tmp.subs(OC_plus[(k+k_add)%OC_plus_len],0)
+                    subs_plus.append(eq_tmp)
+                #print(subs_plus)
+            
+            if orb_symbol in ['s','pz']:
                 orb_rot_mat[0,0] = subs[0].evalf()
             elif orb_symbol == 'p':
                 orb_rot_mat[0,i] = subs[0].evalf()
                 orb_rot_mat[1,i] = subs[1].evalf()
                 orb_rot_mat[2,i] = subs[2].evalf()
             elif orb_symbol == 'd':
-                orb_rot_mat[0,i] = (subs[0]*sym.sqrt(3)).evalf()
+                orb_rot_mat[0,i] = (2*subs[0]-subs[3]-subs[5])/sym.sqrt(3.0)
                 orb_rot_mat[1,i] = subs[1].evalf()
                 orb_rot_mat[2,i] = subs[2].evalf()
-                orb_rot_mat[3,i] = (2*subs[3]+subs[0]).evalf()
+                orb_rot_mat[3,i] =  (subs[3]-subs[5]).evalf()
                 orb_rot_mat[4,i] = subs[4].evalf()
             elif orb_symbol == 'f':
                 orb_rot_mat[0,i] = (subs[0]*sym.sqrt(15.0)).evalf()
@@ -286,23 +314,39 @@ class sym_wann():
                 orb_rot_mat[4,i] = subs[4].evalf()
                 orb_rot_mat[5,i] = ((2*subs[5]+subs[1]/2)*sym.sqrt(6.0)).evalf()
                 orb_rot_mat[6,i] = ((-2*subs[6]-subs[2]/2)*sym.sqrt(6.0)).evalf()
-            #elif orb_symbol == 'sp':
-            #    if i == 0:
-            #        orb_rot_mat[0,0] = 1/sym.sqrt(2)*(subs[0])
-            #    if i == 1:
-            #        orb_rot_mat[1,1] = 1/sym.sqrt(2)*(subs[0])
-            #elif orb_symbol == 'sp2':
-            #    orb_rot_mat[0,i] = 1/sym.sqrt(3)-1/sym.sqrt(6)*sub[0]+1/sym.sqrt(2)*sub[1]
-            #    orb_rot_mat[1,i] = 1/sym.sqrt(3)-1/sym.sqrt(6)*sub[0]-1/sym.sqrt(2)*sub[1]
-            #    orb_rot_mat[2,i] = 1/sym.sqrt(3)+2/sym.sqrt(6)*sub[0]
+            elif orb_symbol == 'sp2':
+                orb_rot_mat[0,i] = 1/3-1/sym.sqrt(6)*subs[0] +1/sym.sqrt(2)*subs[1]
+                orb_rot_mat[1,i] = 1/3-1/sym.sqrt(6)*subs[0] -1/sym.sqrt(2)*subs[1]
+                orb_rot_mat[2,i] = 1/3+2/sym.sqrt(6)*subs[0]
             elif orb_symbol == 'sp3':
-                orb_rot_mat[0,i] = 0.5*(subs[0]+subs[1]+subs[2] - 1)
-                orb_rot_mat[1,i] = 0.5*(subs[0]-subs[1]-subs[2] + 1)
-                orb_rot_mat[2,i] = 0.5*(subs[1]-subs[0]-subs[2] + 1)
-                orb_rot_mat[3,i] = 0.5*(subs[2]-subs[1]-subs[0] + 1)
-            #elif orb_symbol == 'sp3d':
-            #elif orb_symbol == 'sp3d2':
-
+                orb_rot_mat[0,i] = 0.5*(subs[0]+subs[1]+subs[2] + 0.5)
+                orb_rot_mat[1,i] = 0.5*(subs[0]-subs[1]-subs[2] + 0.5)
+                orb_rot_mat[2,i] = 0.5*(subs[1]-subs[0]-subs[2] + 0.5)
+                orb_rot_mat[3,i] = 0.5*(subs[2]-subs[1]-subs[0] + 0.5)
+            elif orb_symbol == 'sp3d2':
+                orb_rot_mat[0,i] = 1/6 -1/sym.sqrt(2)*subs[0] #- 1/sym.sqrt(12)*subs[0]*sym.sqrt(3.0) + 0.5*(subs[1]-subs[2])
+                orb_rot_mat[1,i] = 1/6 +1/sym.sqrt(2)*subs[0] #- 1/sym.sqrt(12)*subs[0]*sym.sqrt(3.0) + 0.5*(subs[1]-subs[2])
+                orb_rot_mat[2,i] = 1/6 -1/sym.sqrt(2)*subs[1] #- 1/sym.sqrt(12)*subs[0]*sym.sqrt(3.0) - 0.5*(subs[1]-subs[2])
+                orb_rot_mat[3,i] = 1/6 +1/sym.sqrt(2)*subs[1] #- 1/sym.sqrt(12)*subs[0]*sym.sqrt(3.0) - 0.5*(subs[1]-subs[2])
+                orb_rot_mat[4,i] = 1/6 -1/sym.sqrt(2)*subs[2] #+ 1/sym.sqrt(3)*subs[0]*sym.sqrt(3.0)
+                orb_rot_mat[5,i] = 1/6 +1/sym.sqrt(2)*subs[2] #+ 1/sym.sqrt(3)*subs[0]*sym.sqrt(3.0)
+                
+                orb_rot_mat[0,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  + 0.5*(subs_plus[1]-subs_plus[2])
+                orb_rot_mat[1,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  + 0.5*(subs_plus[1]-subs_plus[2])
+                orb_rot_mat[2,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  - 0.5*(subs_plus[1]-subs_plus[2])
+                orb_rot_mat[3,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  - 0.5*(subs_plus[1]-subs_plus[2])
+                orb_rot_mat[4,i] +=  + 1/sym.sqrt(3)*subs_plus[0]*sym.sqrt(3.0)
+                orb_rot_mat[5,i] +=  + 1/sym.sqrt(3)*subs_plus[0]*sym.sqrt(3.0)
+            elif orb_symbol == 't2g':
+                orb_rot_mat[0,i] = subs[0].evalf()
+                orb_rot_mat[1,i] = subs[1].evalf()
+                orb_rot_mat[2,i] = subs[2].evalf()
+                
+        
+        if orb_symbol in ['sp','p2','sp3d2','sp3']:
+            print(orb_symbol)
+            print(orb_rot_mat)
+            #print(orb_rot_mat[0,1])
         return orb_rot_mat
 
 	
@@ -322,7 +366,7 @@ class sym_wann():
         rmat[select] = 1.0 
         select = rmat < -0.99 
         rmat[select] = -1.0 
-        if self.spin:
+        if self.soc:
             if np.abs(rmat[2,2]) < 1.0:
                 beta = np.arccos(rmat[2,2])
                 cos_gamma = -rmat[2,0] / np.sin(beta)
@@ -344,7 +388,7 @@ class sym_wann():
             dmat[1,0] =  np.exp( (alpha-gamma)/2.0 * 1j) * np.sin(beta/2.0)
             dmat[1,1] =  np.exp( (alpha+gamma)/2.0 * 1j) * np.cos(beta/2.0)
         rot_orbital = self.rot_orb(orb_symbol,rot_sym_glb)
-        if self.spin:
+        if self.soc:
             rot_orbital = np.kron(dmat,rot_orbital)
             rot_imag = rot_orbital.imag
             rot_real = rot_orbital.real
@@ -377,26 +421,31 @@ class sym_wann():
         #TODO opt magnet code
         rot_sym = self.symmetry['rotations'][sym]
         rot_sym_glb = np.dot(np.dot(np.transpose(self.lattice),rot_sym),np.linalg.inv(np.transpose(self.lattice)) )
-        if self.magmom is not None:
-            for i in range(self.num_wann_atom):
-                magmom = np.round(self.wann_atom_info[i][-2],decimals=4)
-                new_magmom =np.round( np.dot(rot_sym_glb,magmom),decimals=4)
-                if abs(np.linalg.norm(magmom - np.linalg.det(rot_sym_glb)*new_magmom)) > 0.0005:
-                    sym_only = False
-                else:
-                    sym_only = True
-                    print('Symmetry operator {} is respect to magnetic moment'.format(sym+1) )
-                if abs(np.linalg.norm(magmom + np.linalg.det(rot_sym_glb)*new_magmom)) > 0.0005:
-                    sym_T = False
-                else:
-                    sym_T = True
-                    print('Symmetry operator {}*T is respect to magnetic moment'.format(sym+1) )
-                if sym_T+sym_only == 0:
-                    break
+        if self.soc:
+            if self.magmom is not None:
+                for i in range(self.num_wann_atom):
+                    magmom = np.round(self.wann_atom_info[i][-2],decimals=4)
+                    new_magmom =np.round( np.dot(rot_sym_glb,magmom),decimals=4)
+                    if abs(np.linalg.norm(magmom - np.linalg.det(rot_sym_glb)*new_magmom)) > 0.0005:
+                        sym_only = False
+                    else:
+                        sym_only = True
+                        print('Symmetry operator {} is respect to magnetic moment'.format(sym+1) )
+                    if abs(np.linalg.norm(magmom + np.linalg.det(rot_sym_glb)*new_magmom)) > 0.0005:
+                        sym_T = False
+                    else:
+                        sym_T = True
+                        print('Symmetry operator {}*T is respect to magnetic moment'.format(sym+1) )
+                    if sym_T+sym_only == 0:
+                        break
 
+            else:
+                sym_only = True
+                sym_T = True
         else:
             sym_only = True
-            sym_T = True
+            sym_T = False
+
         return np.array(rot_map,dtype=int),np.array(vec_shift_map,dtype=int),sym_only,sym_T
 
     def full_p_mat(self,atom_index,rot):
@@ -419,19 +468,19 @@ class sym_wann():
 
 
     def average_H(self,iRvec,keep_New_R=True):
-        #TODO consider symmetrize Ham_R, vector matrix, or tensor matrix respectively or like this finish in one loop.
         #If we can make if faster, respectively is the better choice. Because XX_all matrix are supper large.(eat memory)  
         nrot = 0 
         R_list = np.array(iRvec,dtype=int)
         nRvec=len(R_list)
         tmp_R_list = []
-        #print(self.matrix_bool)
         Ham_res = np.zeros((self.num_wann,self.num_wann,nRvec),dtype=complex)
         for X in self.matrix_list:
             if self.matrix_bool[X]:
                 vars()[X+'_res'] = np.zeros((self.num_wann,self.num_wann,nRvec,3),dtype=complex)
         for rot in range(self.nsymm):
-            #print('rot = ',rot+1)
+            
+            rot_cart = np.dot(np.dot(np.transpose(self.lattice), self.symmetry['rotations'][rot]),np.linalg.inv(np.transpose(self.lattice)) )
+
             p_map = np.zeros((self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
             p_map_dagger = np.zeros((self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
             for atom in range(self.num_wann_atom):
@@ -449,7 +498,7 @@ class sym_wann():
                 for X in self.matrix_list:
                     if self.matrix_bool[X]:
                         vars()[X+'_all'] = np.zeros((nRvec,self.num_wann_atom,self.num_wann_atom,self.num_wann,self.num_wann,3),dtype=complex)
-            
+                
                 #TODO try numba
                 for iR in range(nRvec):
                     for atom_a in range(self.num_wann_atom):
@@ -465,17 +514,28 @@ class sym_wann():
                                         if X in ['SS']:
                                             vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = vars(self)[X+'_R'][
                                             self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index,:].dot(np.transpose(
-                                            self.symmetry['rotations'][rot]) )
+                                            np.linalg.inv(rot_cart)))
                                         if X in ['AA']:
-                                        #if X in ['BB','CC']:
-                                            vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = vars(self)[X+'_R'][
-                                            self.H_select[atom_a,atom_b],new_Rvec_index,:]
+                                            if iR == self.iRvec.index([0,0,0]) and atom_a == atom_b:
+                                                cR_shift =np.einsum('i,ij->j',vec_shift[atom_a],self.lattice)
+                                                cR_m = np.zeros((self.num_wann,self.num_wann,3))
+                                                for i in self.wann_atom_info[atom_a][4]: 
+                                                    cR_m[i,i,:] += cR_shift
+                                                vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = (
+                                                        vars(self)[X+'_R'][self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index,:] 
+                                                        + cR_m[self.H_select[atom_a,atom_b],:]
+                                                        ).dot(np.transpose(np.linalg.inv(rot_cart) ) )#
+                                            else:
+                                                vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = vars(self)[X+'_R'][
+                                                self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index,:].dot(np.transpose(
+                                                    np.linalg.inv(rot_cart) ) )
                                        
                             else:
                                 if new_Rvec in tmp_R_list:
                                     pass
                                 else:
                                     tmp_R_list.append(new_Rvec)
+                                
 
                 for atom_a in range(self.num_wann_atom):
                     for atom_b in range(self.num_wann_atom):
@@ -484,11 +544,13 @@ class sym_wann():
                         H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
                         '''
                         tmp = np.dot(np.dot(p_map_dagger[atom_a],Ham_all[:,atom_a,atom_b]),p_map[atom_b])
-                      #  if atom_a == 0 and atom_b == 0:
-                      #      print(p_map_dagger[atom_a].real)
-                      #      print(p_map[atom_b].real)
                         if sym_only: 
                             Ham_res += tmp.transpose(0,2,1)
+                           # test_i = self.iRvec.index([0,0,0])
+                           # print('======================================')
+                           # print((self.Ham_R[:12,:12,test_i].real))
+                           # print((tmp.transpose(0,2,1)[:12,:12,test_i].real))
+                        
                         if sym_T:
                             tmp_T = self.ul.dot(tmp.transpose(1,0,2)).dot(self.ur).conj()
                             Ham_res += tmp_T.transpose(0,2,1)
@@ -500,76 +562,26 @@ class sym_wann():
                                 if np.linalg.det(self.symmetry['rotations'][rot]) < 0:
                                         parity_I = self.parity_I[X]
                                 else: parity_I = 1
-                               # print('parity_I = ',parity_I)    
-                                test_i = self.iRvec.index([0,0,0]) 
-                            #    print(X,'!!!!!!!!!!!!!!!!!!!!!!!')
+
                                 if sym_only:
                                     vars()[X+'_res'] += tmpX.transpose(0,3,1,2)*parity_I
-                                    if X == 'AA' and atom_a == 1 and atom_b == 1:
-                                        print('comp +++++++++++++')
-                                        print('parity_I = ',parity_I)    
-                                        
-                                        print(vars(self)[X+'_R'][:,:,test_i,0].real)#.real)#imag)
-                                        #print(np.diag(vars(self)[X+'_R'][:,:,test_i,0].real))#.real)#imag)
-                                        #print('rot +++++++++++++')
-                                        #print(vars()[X+'_shift'][test_i,atom_a,atom_b,0].real)#.real)#imag)
-                                        #print(np.diag(vars()[X+'_shift'][test_i,atom_a,atom_b,0].real))#.real)#imag)
-                                        #print(np.diag( vars(self)[X+'_R'][self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)))#.real)#imag)
-                                        print('======================')
-                                        #print(self.H_select[atom_a,atom_b])
-                                        print(parity_I*tmpX.transpose(0,3,1,2)[:,:,test_i,0].real)#.real)#imag)
-                                        #print(np.diag( parity_I*tmpX.transpose(0,3,1,2)[:,:,test_i,0].real))#.real)#imag)
-                                        #print(np.diag( parity_I*tmpX.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)))#.real)#imag)
                                 if sym_T:
                                     tmpX_T = self.ul.dot(tmpX.transpose(1,2,0,3)).dot(self.ur).conj()
                                     vars()[X+'_res'] += tmpX_T.transpose(0,3,1,2)*parity_I*self.parity_TR[X]
-                                    '''
-                                    if X == 'AA' and atom_a == 0 and atom_b == 0:
-                                        print('comp  T +++++++++++++')
-                                        #print(vars(self)[X+'_R'][:,:,test_i,0].real)#.real)#imag)
-                                        print(np.diag(vars(self)[X+'_R'][:,:,test_i,0].real))#.real)#imag)
-                                        #print('rot +++++++++++++')
-                                        #print(vars()[X+'_shift'][test_i,atom_a,atom_b,0].real)#.real)#imag)
-                                        #print(np.diag(vars()[X+'_shift'][test_i,atom_a,atom_b,0].real))#.real)#imag)
-                                        #print(np.diag( vars(self)[X+'_R'][self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)))#.real)#imag)
-                                        print('========== T ============')
-                                        #print(self.H_select[atom_a,atom_b])
-                                        #print(parity_I*tmpX_T.transpose(0,3,1,2)[:,:,test_i,0].real)#.real)#imag)
-                                        print(np.diag( parity_I*tmpX.transpose(0,3,1,2)[:,:,test_i,0].real))#.real)#imag)
-                                        #print(np.diag( parity_I*tmpX.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)))#.real)#imag)
-                                    '''
-                                    #if X == 'AA' and  atom_a == 0 and atom_b == 0:
-                                    #    print(np.diag( vars(self)[X+'_R'][self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)[:,:]))#.real)#imag)
-                                    #    print('======================')
-                                    #    print(np.diag( parity_I*self.parity_TR[X]*tmpX_T.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,2].reshape(8,8)))#.real)#imag)
+
 
         res_dic = {}
         res_dic['Ham'] = Ham_res/nrot
-        print('++++++++++++++++++++++')
-        print('Ham')
-        print('++++++++++++++++++++++')
-        test_i = self.iRvec.index([0,0,0]) 
-        print(np.diag(vars(self)['Ham_R'][:,:,test_i].real))
-        print('======================')
-        print(np.diag(res_dic['Ham'][:,:,test_i].real))
+        
+
         for X in self.matrix_list:
             if self.matrix_bool[X]:
                 X_res = X+'_res'
                 res_dic[X] = vars()[X_res]/nrot
-                if X == 'AA':
-                    print('++++++++++++++++++++++')
-                    print(X)
-                    print('++++++++++++++++++++++')
-                    #print(np.diag(vars(self)[X+'_R'][:,:,test_i,2].real))
-                    print(vars(self)[X+'_R'][:,:,test_i,0].real)
-                    print(vars(self)[X+'_R'][:4,:4,test_i,0].real)
-                    print(vars(self)[X+'_R'][4:8,4:8,test_i,0].real)
-                    print(vars(self)[X+'_R'][8:12,8:12,test_i,0].real)
-                    print('======================')
-                    #print(np.diag(res_dic[X][:,:,test_i,2].real))
-                    print(res_dic[X][:,:,test_i,0].real)
         
         print('number of symmetry oprator == ',nrot)
+        
+
         if keep_New_R:
                 return res_dic , tmp_R_list
         else:
@@ -578,7 +590,7 @@ class sym_wann():
     def symmetrize(self):
         #====Time Reversal====
         #syl: (sigma_y)^T *1j, syr: sigma_y*1j
-        if self.spin:
+        if self.soc:
             base_m = np.eye(self.num_wann//2)
             syl=np.array([[0.0,-1.0],[1.0,0.0]])
             syr=np.array([[0.0,1.0],[-1.0,0.0]])

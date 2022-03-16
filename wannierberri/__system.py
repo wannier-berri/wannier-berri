@@ -138,7 +138,7 @@ class System():
             except KeyError:
                 pass
         symmetrize_wann = sym_wann(num_wann=self.num_wann,lattice=self.real_lattice,positions=positions,atom_name=atom_name,
-            proj=proj,iRvec=self.iRvec,XX_R=XX_R,spin=soc,magmom=magmom)
+            proj=proj,iRvec=self.iRvec,XX_R=XX_R,soc=soc,magmom=magmom)
         XX_R,self.iRvec = symmetrize_wann.symmetrize()
         for X in ['Ham','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
             try:
