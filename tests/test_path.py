@@ -8,13 +8,14 @@ from test_tabulate import get_component_list
 import numpy as np
 from pytest import approx
 
-@pytest.fixture(scope="module")
-def path_test(system_Haldane_PythTB):
+"""Test the construction of the path"""
+def test_path_1(system_Haldane_PythTB):
     k_nodes = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
     path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, nk=3)
     assert path.labels == {0: '1', 2: '2'}, "path.labels is wrong"
     assert path.K_list == approx(np.array([[0,  0., 0.], [0.25, 0.25 ,0.25], [0.5, 0.5, 0.5]])), "path.K_list is wrong"
 
+def test_path_2(system_Haldane_PythTB):
     k_nodes = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5], [0.5, 0.0, 0.0]]
     k_labels = ["A", "B", "C"]
     path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, labels=k_labels, nk=4)
@@ -27,11 +28,9 @@ def path_test(system_Haldane_PythTB):
                                            [3, 1, 1],
                                            [3, 0, 0],]) / 6), "path.K_list is wrong"
 
-
+def test_path_3(system_Haldane_PythTB):
     k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
     path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
-    print(path.labels)
-    print(path.K_list)
     assert path.labels == {0: '1', 3: '2', 8:'3'}, "path.labels is wrong"
     assert path.K_list[:4, :] == approx(np.array([[0, 0, 3],
                                                   [0, 0, 2],
@@ -43,16 +42,22 @@ def path_test(system_Haldane_PythTB):
                                                   [3, 3, 3],
                                                   [4, 4, 4],
                                                   [5, 5, 5],]) / 10), "path.K_list is wrong"
-    return path
 
+def test_path_4(system_Haldane_PythTB):
+    # Test where k_nodes is a list of numpy arrays
+    k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
+    k_nodes_npy = [np.array(k) for k in k_nodes]
+    path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
+    path_npy = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes_npy, dk=1.0)
+    assert path_npy.labels == path.labels, "path.labels is wrong"
+    assert path_npy.K_list == approx(path.K_list), "path.K_list is wrong"
 
-def test_path(system_Haldane_PythTB):
-    """ just check the construction of the path"""
-    path = path_test
-
-def test_tabulate_path(path_test, system_Haldane_PythTB):
+def test_tabulate_path(system_Haldane_PythTB):
     quantities = ['V', 'berry', 'Der_berry', 'morb', 'Der_morb']
-    path = path_test
+
+    k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
+    path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
+
     tab_result = wberri.tabulate(system = system_Haldane_PythTB,
                     grid = path,
                     quantities = quantities,
