@@ -12,12 +12,10 @@
 #------------------------------------------------------------
 
 import numpy as np
-import copy
 import lazy_property
-from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice,iterate3dpm
 from .__sym_wann import sym_wann
+from .__utility import alpha_A, beta_A , iterate3dpm
 from  .symmetry import Group
-from colorama import init
 from termcolor import cprint 
 import functools
 import multiprocessing 
@@ -460,6 +458,8 @@ class ws_dist_map():
         param=(shifts_int_all,wannier_centers,real_lattice, ws_distance_tol, wannier_centers.shape[0])
         p=multiprocessing.Pool(npar)
         irvec_new_all=p.starmap(functools.partial(ws_dist_stars,param=param),zip(iRvec,cRvec))
+        p.close()
+        p.join()
         print('irvec_new_all shape',np.shape(irvec_new_all))
         for ir,iR in enumerate(iRvec):
           for ijw,irvec_new in irvec_new_all[ir].items():

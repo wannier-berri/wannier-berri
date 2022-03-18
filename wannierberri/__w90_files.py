@@ -13,14 +13,9 @@
 #------------------------------------------------------------#
 
 import numpy as np
-from .__utility import FortranFileR, FortranFileW
-import copy
-import lazy_property
-import functools
-import multiprocessing 
-from .__utility import str2bool, alpha_A, beta_A, iterate3dpm
-from colorama import init
-from termcolor import cprint 
+from .__utility import FortranFileR
+import multiprocessing
+from .__utility import alpha_A, beta_A
 from time import time
 from itertools import islice
 import gc
@@ -40,11 +35,11 @@ class CheckPoint():
             return a[::2]+1j*a[1::2]
 
         print ( 'Reading restart information from file '+seedname+'.chk :')
-        self.comment=readstr(FIN) 
+        self.comment=readstr(FIN)
         self.num_bands          = readint()[0]
         num_exclude_bands       = readint()[0]
         self.exclude_bands      = readint()
-        assert  len(self.exclude_bands)==num_exclude_bands
+        assert len(self.exclude_bands)==num_exclude_bands
         self.real_lattice=readfloat().reshape( (3 ,3),order='F')
         self.recip_lattice=readfloat().reshape( (3 ,3),order='F')
         assert np.linalg.norm(self.real_lattice.dot(self.recip_lattice.T)/(2*np.pi)-np.eye(3)) < 1e-14
@@ -66,15 +61,15 @@ class CheckPoint():
             self.win_max = np.array( [wm+nd for wm,nd in zip(self.win_min,ndimwin)])
         else:
             self.win_min = np.array( [0]*self.num_kpts )
-            self.win_max = np.array( [self.num_wann]*self.num_kpts) 
-            
+            self.win_max = np.array( [self.num_wann]*self.num_kpts)
+
         u_matrix=readcomplex().reshape( (self.num_kpts,self.num_wann,self.num_wann) )
         m_matrix=readcomplex().reshape( (self.num_kpts,self.nntot,self.num_wann,self.num_wann) )
         if self.have_disentangled:
-            self.v_matrix=[u.dot(u_opt[:,:nd]) for u,u_opt,nd in 
+            self.v_matrix=[u.dot(u_opt[:,:nd]) for u,u_opt,nd in
                                     zip(u_matrix,u_matrix_opt,ndimwin)]
         else:
-            self.v_matrix=[u  for u in u_matrix ] 
+            self.v_matrix=[u  for u in u_matrix ]
         self.wannier_centers=readfloat().reshape((self.num_wann,3))
         self.wannier_spreads=readfloat().reshape((self.num_wann))
         del u_matrix,m_matrix
@@ -89,7 +84,7 @@ class CheckPoint():
         mat=mat[self.win_min[ik1]:self.win_max[ik1],self.win_min[ik2]:self.win_max[ik2]]
         v1=self.v_matrix[ik1].conj()
         v2=self.v_matrix[ik2].T
-        return  np.tensordot( np.tensordot(v1,mat,axes=(1,0)),v2,axes=(1,0)).transpose((0,-1,)+tuple(range(1,mat.ndim-1)))
+        return np.tensordot( np.tensordot(v1,mat,axes=(1,0)),v2,axes=(1,0)).transpose((0,-1,)+tuple(range(1,mat.ndim-1)))
 
     def get_HH_q(self,eig):
         assert (eig.NK,eig.NB)==(self.num_kpts,self.num_bands)
@@ -99,12 +94,12 @@ class CheckPoint():
 
     def get_SS_q(self,spn):
         assert (spn.NK,spn.NB)==(self.num_kpts,self.num_bands)
-        SS_q=np.array([ self.wannier_gauge(S,ik,ik)  for ik,S in enumerate(spn.data) ]) 
+        SS_q=np.array([ self.wannier_gauge(S,ik,ik)  for ik,S in enumerate(spn.data) ])
         return 0.5*(SS_q+SS_q.transpose(0,2,1,3).conj())
 
-    def get_AA_q(self,mmn,eig=None,transl_inv=False):  # if eig is present - it is BB_q 
+    def get_AA_q(self,mmn,eig=None,transl_inv=False):  # if eig is present - it is BB_q
         if transl_inv and (eig is not None):
-           raise RuntimeError("transl_inv cannot be used to obtain BB")
+            raise RuntimeError("transl_inv cannot be used to obtain BB")
         mmn.set_bk(self)
         AA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
         for ik in range(self.num_kpts):
@@ -122,27 +117,27 @@ class CheckPoint():
             AA_q=0.5*(AA_q+AA_q.transpose( (0,2,1,3) ).conj())
         return AA_q
 
-    def get_CC_q(self,uhu,mmn):  # if eig is present - it is BB_q 
+    def get_CC_q(self,uhu,mmn):  # if eig is present - it is BB_q
         mmn.set_bk(self)
         assert uhu.NNB==mmn.NNB
         CC_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
         for ik in range(self.num_kpts):
-          for ib1 in range(mmn.NNB):
-            iknb1=mmn.neighbours[ik,ib1]
-            for ib2 in range(mmn.NNB):
-              iknb2=mmn.neighbours[ik,ib2]
-              data=uhu.data[ik,ib1,ib2]
-              CC_q[ik]+=1.j*self.wannier_gauge(data,iknb1,iknb2)[:,:,None]* (
-                   mmn.wk[ik,ib1]*mmn.wk[ik,ib2]* (
-               mmn.bk_cart[ik,ib1,alpha_A]* mmn.bk_cart[ik,ib2,beta_A ] - 
-               mmn.bk_cart[ik,ib1,beta_A] * mmn.bk_cart[ik,ib2,alpha_A]  )  )[None,None,:]
+            for ib1 in range(mmn.NNB):
+                iknb1=mmn.neighbours[ik,ib1]
+                for ib2 in range(mmn.NNB):
+                    iknb2=mmn.neighbours[ik,ib2]
+                    data=uhu.data[ik,ib1,ib2]
+                    CC_q[ik]+=1.j*self.wannier_gauge(data,iknb1,iknb2)[:,:,None]* (
+                            mmn.wk[ik,ib1]*mmn.wk[ik,ib2]* (
+                                mmn.bk_cart[ik,ib1,alpha_A]* mmn.bk_cart[ik,ib2,beta_A ] -
+                                mmn.bk_cart[ik,ib1,beta_A] * mmn.bk_cart[ik,ib2,alpha_A]  )  )[None,None,:]
         CC_q=0.5*(CC_q+CC_q.transpose( (0,2,1,3) ).conj())
         return CC_q
 
     def get_SA_q(self,siu,mmn):
         mmn.set_bk(self)
         SA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3,3) ,dtype=complex)
-        assert siu.NNB==mmn.NNB 
+        assert siu.NNB==mmn.NNB
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb=mmn.neighbours[ik,ib]
@@ -175,7 +170,7 @@ class CheckPoint():
                     SRW=self.wannier_gauge(SM_i,ik,iknb)-self.wannier_gauge(spn.data[ik,:,:,i],ik,ik)
                     SR_q[ik,:,:,:,i]+=1.j*SRW[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
         return SR_q
-    
+
     def get_SH_q(self,spn,eig):
         SH_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
         assert (spn.NK,spn.NB)==(self.num_kpts,self.num_bands)
@@ -183,7 +178,7 @@ class CheckPoint():
             for i in range(3):
                 SH_q[ik,:,:,i]=self.wannier_gauge(spn.data[ik,:,:,i]*eig.data[ik,None,:],ik,ik)
         return SH_q
-        
+
     def get_SHR_q(self,spn,mmn,eig):
         mmn.set_bk(self)
         SHR_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3,3) ,dtype=complex)
@@ -204,16 +199,16 @@ class W90_data():
     def n_neighb(self):
         return 0
 
-    @property 
-    def  NK(self):
+    @property
+    def NK(self):
         return self.data.shape[0]
 
-    @property 
-    def  NB(self):
+    @property
+    def NB(self):
         return self.data.shape[1+self.n_neighb]
 
-    @property 
-    def  NNB(self):
+    @property
+    def NNB(self):
         if self.n_neighb>0:
             return self.data.shape[1]
         else:
@@ -235,13 +230,14 @@ class MMN(W90_data):
     def __init__(self,seedname,npar=multiprocessing.cpu_count()):
         t0=time()
         f_mmn_in=open(seedname+".mmn","r")
-        _l=f_mmn_in.readline()
+        f_mmn_in.readline()
         NB,NK,NNB=np.array(f_mmn_in.readline().split(),dtype=int)
         self.data=np.zeros( (NK,NNB,NB,NB), dtype=complex )
         block=1+self.NB*self.NB
         data=[]
         headstring=[]
         mult=4
+        # FIXME: npar = 0 does not work
         if npar>0 :
             pool=multiprocessing.Pool(npar)
         for j in range(0,NNB*NK,npar*mult):
@@ -254,8 +250,9 @@ class MMN(W90_data):
             else:
                 data+=[convert(z) for z in y]
 
-        if npar>0 : 
+        if npar>0 :
             pool.close()
+            pool.join()
         f_mmn_in.close()
         t1=time()
         data=[d[:,0]+1j*d[:,1] for d in data]
@@ -268,37 +265,37 @@ class MMN(W90_data):
         print ("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2-t0,t1-t0,t2-t1))
 
     def set_bk(self,chk):
-      try :
-        self.bk
-        self.wk
-        return
-      except:
-        bk_latt=np.array(np.round( [(chk.kpt_latt[nbrs]-chk.kpt_latt+G)*chk.mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
-        bk_latt_unique=np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1,3))],dtype=int)
-        assert len(bk_latt_unique)==self.NNB
-        bk_cart_unique=bk_latt_unique.dot(chk.recip_lattice/chk.mp_grid[:,None])
-        bk_cart_unique_length=np.linalg.norm(bk_cart_unique,axis=1)
-        srt=np.argsort(bk_cart_unique_length)
-        bk_latt_unique=bk_latt_unique[srt]
-        bk_cart_unique=bk_cart_unique[srt]
-        bk_cart_unique_length=bk_cart_unique_length[srt]
-        brd=[0,]+list(np.where(bk_cart_unique_length[1:]-bk_cart_unique_length[:-1]>1e-7)[0]+1)+[self.NNB,]
-        shell_mat=np.array([ bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2])  for b1,b2 in zip (brd,brd[1:])])
-        shell_mat_line=shell_mat.reshape(-1,9)
-        u,s,v=np.linalg.svd(shell_mat_line,full_matrices=False)
-        s=1./s
-        weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
-        check_eye=sum(w*m for w,m in zip(weight_shell,shell_mat))
-        tol=np.linalg.norm(check_eye-np.eye(3))
-        if tol>1e-5 :
-            raise RuntimeError("Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\nweight_shell={}\n".format(
-                      check_eye,tol, bk_latt_unique,bk_cart_unique,bk_cart_unique_length,shell_mat,weight_shell))
-        weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
-        weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
-        bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
-        self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
-        self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
-        
+        try :
+            self.bk
+            self.wk
+            return
+        except AttributeError:
+            bk_latt=np.array(np.round( [(chk.kpt_latt[nbrs]-chk.kpt_latt+G)*chk.mp_grid[None,:] for nbrs,G in zip(self.neighbours.T,self.G.transpose(1,0,2))] ).transpose(1,0,2),dtype=int)
+            bk_latt_unique=np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1,3))],dtype=int)
+            assert len(bk_latt_unique)==self.NNB
+            bk_cart_unique=bk_latt_unique.dot(chk.recip_lattice/chk.mp_grid[:,None])
+            bk_cart_unique_length=np.linalg.norm(bk_cart_unique,axis=1)
+            srt=np.argsort(bk_cart_unique_length)
+            bk_latt_unique=bk_latt_unique[srt]
+            bk_cart_unique=bk_cart_unique[srt]
+            bk_cart_unique_length=bk_cart_unique_length[srt]
+            brd=[0,]+list(np.where(bk_cart_unique_length[1:]-bk_cart_unique_length[:-1]>1e-7)[0]+1)+[self.NNB,]
+            shell_mat=np.array([ bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2])  for b1,b2 in zip (brd,brd[1:])])
+            shell_mat_line=shell_mat.reshape(-1,9)
+            u,s,v=np.linalg.svd(shell_mat_line,full_matrices=False)
+            s=1./s
+            weight_shell=np.eye(3).reshape(1,-1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
+            check_eye=sum(w*m for w,m in zip(weight_shell,shell_mat))
+            tol=np.linalg.norm(check_eye-np.eye(3))
+            if tol>1e-5 :
+                raise RuntimeError("Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\nweight_shell={}\n".format(
+                          check_eye,tol, bk_latt_unique,bk_cart_unique,bk_cart_unique_length,shell_mat,weight_shell))
+            weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
+            weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
+            bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
+            self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+            self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+
 
 class EIG(W90_data):
     def __init__(self,seedname):
@@ -310,7 +307,7 @@ class EIG(W90_data):
         assert np.linalg.norm(data[:,:,1]-1-np.arange(NK)[:,None])<1e-15
         self.data=data[:,:,2]
 
-            
+
 class SPN(W90_data):
     """
     SPN.data[ik, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k}>
@@ -323,7 +320,7 @@ class SPN(W90_data):
             nbnd,NK=(int(x) for x in f_spn_in.readline().split())
         else:
             f_spn_in = FortranFileR(seedname+".spn")
-            SPNheader=(f_spn_in.read_record(dtype='c')) 
+            SPNheader=(f_spn_in.read_record(dtype='c'))
             nbnd,NK=f_spn_in.read_record(dtype=np.int32)
             SPNheader="".join(a.decode('ascii') for a in SPNheader)
 
@@ -438,9 +435,9 @@ class SXU(W90_data):
             for ik in range(NK):
                 for ib in range(NNB):
                     for ipol in range(3):
-                       tmp=f_sXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0)
-                       # tmp[m, n] = <u_{m,k}|S_ipol*X|u_{n,k+b}>
-                       self.data[ik,ib,:,:,ipol] = tmp[:,:,0] + 1j*tmp[:,:,1]
+                        tmp=f_sXu_in.read_record('f8').reshape((2,NB,NB),order='F').transpose(2,1,0)
+                        # tmp[m, n] = <u_{m,k}|S_ipol*X|u_{n,k+b}>
+                        self.data[ik,ib,:,:,ipol] = tmp[:,:,0] + 1j*tmp[:,:,1]
 
         print ("----------\n {0} OK  \n---------\n".format(suffix))
         f_sXu_in.close()

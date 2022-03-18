@@ -3,7 +3,7 @@ import os,pickle
 import pytest
 from conftest import OUTPUT_DIR, REF_DIR
 from create_system import pythtb_Haldane, system_Haldane_PythTB
-from test_tabulate import quantities_tab,get_component_list
+from test_tabulate import get_component_list
 
 import numpy as np
 from pytest import approx
@@ -50,8 +50,8 @@ def test_path(system_Haldane_PythTB):
     """ just check the construction of the path"""
     path = path_test
 
-def test_tabulate_path(path_test,quantities_tab,system_Haldane_PythTB):
-    quantities = quantities_tab
+def test_tabulate_path(path_test, system_Haldane_PythTB):
+    quantities = ['V', 'berry', 'Der_berry', 'morb', 'Der_morb']
     path = path_test
     tab_result = wberri.tabulate(system = system_Haldane_PythTB,
                     grid = path,
@@ -72,17 +72,18 @@ def test_tabulate_path(path_test,quantities_tab,system_Haldane_PythTB):
     
     
     data = {}
-    for quant in ["E"]+quantities:
+    for quant in ["Energy"]+quantities:
         for comp in get_component_list(quant):
             data[(quant,comp)] = tab_result.results.get(quant).get_component(comp)
     pickle.dump(data, fout)
 
     data_ref = pickle.load(open(os.path.join(REF_DIR, filename),"rb") )
 
-    for quant in ["E"]+quantities:
+    for quant in ["Energy"]+quantities:
         for comp in get_component_list(quant):
             _data     = data[(quant,comp)]
-            _data_ref = data_ref[(quant,comp)]
+            quant_ref = "E" if quant == "Energy" else quant
+            _data_ref = data_ref[(quant_ref,comp)]
             assert _data == approx(_data_ref), (f"tabulation along path gave a wrong result for quantity {quant} component {comp} "+
                 "with a maximal difference {}".format(max(abs(data-data_ref)))   )
 

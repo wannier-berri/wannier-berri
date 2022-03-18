@@ -4,7 +4,6 @@ import os
 import numpy as np
 import pytest
 from pytest import approx
-
 import wannierberri as wberri
 from wannierberri import covariant_formulak as frml
 from wannierberri import formula
@@ -16,19 +15,22 @@ from create_system import system_Fe_W90 #,system_GaAs_W90,system_GaAs_tb
 from create_system import system_CuMnAs_2d_broken , model_CuMnAs_2d_broken
 from create_system import symmetries_Fe
 from compare_result import compare_fermisurfer
-from create_system import system_Chiral,ChiralModel
+from create_system import system_Chiral_left,ChiralModelLeft
 
 
 def get_component_list(quantity):
-        if quantity in ["E"]:
+        if quantity in ["E", "Energy"]:
             return [None]
-        if quantity in ["berry","V","morb"]:
+        elif quantity in ["berry", "V", "morb"]:
             return [a for a in "xyz"]
-        if quantity in ["Der_berry","Der_morb"]:
+        elif quantity in ["Der_berry", "Der_morb"]:
             return  [a+b for a in "xyz" for b in "xyz"]
-        if quantity == "omega2" :
+        elif quantity in ["spin_berry"]:
+            return  [a+b+c for a in "xyz" for b in "xyz" for c in "xyz"]
+        elif quantity == "omega2":
     	    return ["zz"]
-        raise ValueError(f"unknown quantity {quantity}")
+        else:
+            raise ValueError(f"unknown quantity {quantity}")
 
 
 @pytest.fixture
@@ -73,12 +75,11 @@ def check_tabulate(parallel_serial,compare_fermisurfer):
 #            assert np.all( np.array(data.shape[1:]) == 3)
             prec=extra_precision[quant] if quant in extra_precision else None
             comparer(frmsf_name, quant+_comp+suffix,  suffix_ref=compare_quant(quant)+_comp+suffix_ref ,precision=prec )
+        return result
     return _inner
 
 
-@pytest.fixture(scope="session")
-def quantities_tab():
-    return  ['V','berry','Der_berry','morb','Der_morb']
+quantities_tab = ['V', 'berry', 'Der_berry', 'morb', 'Der_morb']
 
 
 def compare_quant(quant):
@@ -91,15 +92,24 @@ def compare_quant(quant):
         return quant
 
 
-def test_Fe(check_tabulate,system_Fe_W90, compare_fermisurfer,quantities_tab):
+def test_Fe(check_tabulate,system_Fe_W90, compare_fermisurfer):
     """Test Energies, Velocities, berry curvature, its derivative"""
-    check_tabulate(system_Fe_W90 , quantities_tab , frmsf_name="tabulate_Fe_W90" , suffix="" ,  comparer=compare_fermisurfer,
-               parameters_K = {'_FF_antisym':True,'_CCab_antisym':True } ,
-                ibands = [5,6,7,8] , 
-                extra_precision={'berry':1e-4,"Der_berry":1e-4,'morb':1e-4,"Der_morb":1e-4} )
+    result = check_tabulate(system_Fe_W90 , quantities_tab + ["spin_berry"],
+                            frmsf_name="tabulate_Fe_W90", suffix="", comparer=compare_fermisurfer,
+                            parameters_K={'_FF_antisym': True, '_CCab_antisym': True},
+                            ibands=[5,6,7,8],
+                            extra_precision={'berry': 1e-4, "Der_berry": 1e-4, 'morb': 1e-4,
+                                             "Der_morb": 1e-4, "spin_berry": 1e-4} )
+
+    xyz = ["x", "y", "z"]
+    print(result.results.keys())
+    assert result.results["Energy"].get_component_list() == [""]
+    assert result.results["berry"].get_component_list() == xyz
+    assert result.results["Der_berry"].get_component_list() == [a + b for a in xyz for b in xyz]
+    assert result.results["spin_berry"].get_component_list() == [a + b + c for a in xyz for b in xyz for c in xyz]
 
 
-def test_Fe_user(check_tabulate,system_Fe_W90, compare_fermisurfer,quantities_tab):
+def test_Fe_user(check_tabulate,system_Fe_W90, compare_fermisurfer):
     """Test Energies, Velocities, berry curvature, its derivative"""
     calculators={ 
          'V'          : frml.Velocity, 
@@ -113,15 +123,15 @@ def test_Fe_user(check_tabulate,system_Fe_W90, compare_fermisurfer,quantities_ta
                 extra_precision={'berry':1e-4,"Der_berry":1e-4} )
 
 
-def test_Chiral(check_tabulate,system_Chiral, compare_fermisurfer,quantities_tab):
+def test_Chiral(check_tabulate,system_Chiral_left, compare_fermisurfer):
     """Test Energies, Velocities, berry curvature, its derivative"""
-    check_tabulate(system_Chiral , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="" ,  comparer=compare_fermisurfer,
+    check_tabulate(system_Chiral_left , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="" ,  comparer=compare_fermisurfer,
               parameters = {'external_terms':False}, ibands = [0,1] )
 
 
-def test_Chiral_sym(check_tabulate,system_Chiral, compare_fermisurfer,quantities_tab):
+def test_Chiral_sym(check_tabulate,system_Chiral_left, compare_fermisurfer):
     """Test Energies, Velocities, berry curvature, its derivative"""
-    check_tabulate(system_Chiral , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="sym" ,  comparer=compare_fermisurfer,
+    check_tabulate(system_Chiral_left , quantities_tab , frmsf_name="tabulate_Chiral" , suffix="sym" ,  comparer=compare_fermisurfer,
                use_symmetry =  True  , parameters = {'external_terms':False}, ibands = [0,1] )
 
 

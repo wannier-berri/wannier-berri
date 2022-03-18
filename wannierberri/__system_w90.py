@@ -13,19 +13,12 @@
 #------------------------------------------------------------#
 
 import numpy as np
-import copy
-import lazy_property
 import functools
 import multiprocessing 
-#from pathos.multiprocessing import ProcessingPool as Pool
-from .__utility import str2bool, alpha_A, beta_A, iterate3dpm, real_recip_lattice,fourier_q_to_R
-from colorama import init
-from termcolor import cprint 
+from .__utility import iterate3dpm, real_recip_lattice,fourier_q_to_R
 from .__system import System
 from .__w90_files import EIG,MMN,CheckPoint,SPN,UHU,SIU,SHU
 from time import time
-import pickle
-from itertools import repeat
 np.set_printoptions(precision=4,threshold=np.inf,linewidth=500)
 
 
@@ -63,6 +56,7 @@ class System_w90(System):
                     ):
 
         self.set_parameters(**parameters)
+        self.npar = npar
         self.seedname=seedname
 
         chk=CheckPoint(self.seedname)

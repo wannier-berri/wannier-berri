@@ -20,10 +20,10 @@ import numpy as np
 
 from lazy_property import LazyProperty as Lazy
 from time import time
-from termcolor import cprint 
-import functools,fortio,scipy.io
+from termcolor import cprint
+import fortio,scipy.io
 
-try: 
+try:
     import pyfftw
     PYFFTW_IMPORTED=True
 except Exception as err:
@@ -35,7 +35,7 @@ except Exception as err:
 class FortranFileR(fortio.FortranFile):
     def __init__(self,filename):
         print ( "using fortio to read" )
-        try: 
+        try:
             super().__init__( filename, mode='r',  header_dtype='uint32'  , auto_endian=True, check_file=True )
         except ValueError :
             print ("File '{}' contains subrecords - using header_dtype='int32'".format(filename))
@@ -55,15 +55,15 @@ TAU_UNIT_TXT="ns"
 
 
 def print_my_name_start():
-    if __debug: 
+    if __debug:
         print("DEBUG: Running {} ..".format(inspect.stack()[1][3]))
 
 
 def print_my_name_end():
-    if __debug: 
+    if __debug:
         print("DEBUG: Running {} - done ".format(inspect.stack()[1][3]))
 
-    
+
 def conjugate_basis(basis):
     return 2*np.pi*np.linalg.inv(basis).T
 
@@ -73,11 +73,11 @@ def warning(message,color="yellow"):
 
 def real_recip_lattice(real_lattice=None,recip_lattice=None):
     if recip_lattice is None:
-        if real_lattice is None : 
+        if real_lattice is None :
             cprint ("\n WARNING!!!!! usually need to provide either with real or reciprocal lattice. If you only want to generate a random symmetric tensor - that it fine \n","yellow")
             return None,None
         recip_lattice=conjugate_basis(real_lattice)
-    else: 
+    else:
         if real_lattice is not None:
             assert np.linalg.norm(real_lattice.dot(recip_lattice.T)/(2*np.pi)-np.eye(3))<=1e-8 , "real and reciprocal lattice do not match"
         else:
@@ -86,7 +86,7 @@ def real_recip_lattice(real_lattice=None,recip_lattice=None):
 
 
 
-from scipy.constants import Boltzmann,elementary_charge,hbar
+from scipy.constants import Boltzmann,elementary_charge
 import abc
 
 class AbstractSmoother(abc.ABC):
@@ -244,26 +244,26 @@ def str2bool(v):
 
 def fft_W(inp,axes,inverse=False,destroy=True,numthreads=1):
     assert inp.dtype==complex
-    t0=time()
+    # t0=time()
     fft_in  = pyfftw.empty_aligned(inp.shape, dtype='complex128')
     fft_out = pyfftw.empty_aligned(inp.shape, dtype='complex128')
-    t01=time()
-    fft_object = pyfftw.FFTW(fft_in, fft_out,axes=axes, 
-            flags=('FFTW_ESTIMATE',)+(('FFTW_DESTROY_INPUT',)  if destroy else () ), 
+    # t01=time()
+    fft_object = pyfftw.FFTW(fft_in, fft_out,axes=axes,
+            flags=('FFTW_ESTIMATE',)+(('FFTW_DESTROY_INPUT',)  if destroy else () ),
             direction='FFTW_BACKWARD' if inverse else 'FFTW_FORWARD',
             threads=numthreads)
-    t1=time()
+    # t1=time()
     fft_object(inp)
-    t2=time()
+    # t2=time()
     return fft_out
 
 
 
     def getHead(n):
-       if n<=0:
-          return ['  ']
-       else:
-          return [a+b for a in 'xyz' for b in getHead(n-1)]
+        if n<=0:
+            return ['  ']
+        else:
+            return [a+b for a in 'xyz' for b in getHead(n-1)]
 
 
 
@@ -302,7 +302,7 @@ def fourier_q_to_R(AA_q,mp_grid,kpt_mp_grid,iRvec,ndegen,numthreads=1,fft='fftw'
 
 
 class FFT_R_to_k():
-    
+
     def __init__(self,iRvec,NKFFT,num_wann,numthreads=1,lib='fftw',name=None):
         t0=time()
         print_my_name_start()
@@ -316,7 +316,7 @@ class FFT_R_to_k():
             shape=self.NKFFT+(self.num_wann,self.num_wann)
             fft_in  = pyfftw.empty_aligned(shape, dtype='complex128')
             fft_out = pyfftw.empty_aligned(shape, dtype='complex128')
-            self.fft_plan = pyfftw.FFTW(fft_in, fft_out,axes=(0,1,2), 
+            self.fft_plan = pyfftw.FFTW(fft_in, fft_out,axes=(0,1,2),
                 flags=('FFTW_ESTIMATE','FFTW_DESTROY_INPUT'),
                 direction='FFTW_BACKWARD' ,
                 threads=numthreads  )
@@ -333,7 +333,7 @@ class FFT_R_to_k():
         if self.lib=='numpy':
             AAA_K[...] = np.fft.ifftn(AAA_K,axes=(0,1,2))
         elif self.lib=='fftw':
-        # do recursion if array has cartesian indices. The recursion should not be very deep
+            # do recursion if array has cartesian indices. The recursion should not be very deep
             if AAA_K.ndim>5:
                 for i in range(AAA_K.shape[-1]):
                     AAA_K[...,i]=self.transform(AAA_K[...,i])
@@ -343,8 +343,8 @@ class FFT_R_to_k():
         elif self.lib=='slow':
             raise RuntimeError("FFT.transform should not be called for slow FT")
         else :
-            raise ValueError("Unknown type of Fourier transform :''".format(self.lib)) 
-    
+            raise ValueError(f"Unknown type of Fourier transform :'{self.lib}'")
+
     @Lazy
     def exponent(self):
         '''
@@ -355,8 +355,8 @@ class FFT_R_to_k():
 
     def __call__(self,AAA_R,hermitean=False,antihermitean=False,reshapeKline=True):
         t0=time()
-    #  AAA_R is an array of dimension (  num_wann x num_wann x nRpts X... ) (any further dimensions allowed)
-        if  hermitean and antihermitean :
+        # AAA_R is an array of dimension (  num_wann x num_wann x nRpts X... ) (any further dimensions allowed)
+        if hermitean and antihermitean :
             raise ValueError("A matrix cannot be both hermitean and anti-hermitean, unless it is zero")
         AAA_R=AAA_R.transpose((2,0,1)+tuple(range(3,AAA_R.ndim)))
         shapeA=AAA_R.shape
@@ -364,20 +364,20 @@ class FFT_R_to_k():
             t0=time()
             k=np.zeros(3,dtype=int)
             AAA_K=np.array([[[
-                 sum( np.prod([self.exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)])  *  A    for R,A in zip( self.iRvec, AAA_R) )
-                    for k[2] in range(self.NKFFT[2]) ] for k[1] in range(self.NKFFT[1]) ] for k[0] in range(self.NKFFT[0])  ] )
-            t=time()-t0
+                    sum( np.prod([self.exponent[i][(k[i]*R[i])%self.NKFFT[i]] for i in range(3)])  *  A for R,A in zip( self.iRvec, AAA_R) )
+                    for k[2] in range(self.NKFFT[2]) ]
+                    for k[1] in range(self.NKFFT[1]) ]
+                    for k[0] in range(self.NKFFT[0]) ] )
         else:
             t0=time()
-            assert  self.nRvec==shapeA[0]
-            assert  self.num_wann==shapeA[1]==shapeA[2]
+            assert self.nRvec==shapeA[0]
+            assert self.num_wann==shapeA[1]==shapeA[2]
             AAA_K=np.zeros( self.NKFFT+shapeA[1:], dtype=complex )
             ### TODO : place AAA_R to FFT grid from beginning, even before multiplying by exp(dkR)
             for ir,irvec in enumerate(self.iRvec):
                 AAA_K[tuple(irvec)]+=AAA_R[ir]
             self.transform(AAA_K)
             AAA_K*=np.prod(self.NKFFT)
-            t=time()-t0
 
 
         ## TODO - think if fft transform of half of matrix makes sense
@@ -404,11 +404,11 @@ def iterate3d(size):
 
 def find_degen(arr,degen_thresh):
     """ finds shells of 'almost same' values in array arr, and returns a list o[(b1,b2),...]"""
-    A=np.where(arr[1:]-arr[:-1]>degen_thresh)[0]+1 
-    A=[0,]+list(A)+[len(arr)] 
-    return [(ib1,ib2) for ib1,ib2 in zip(A,A[1:]) ] 
+    A=np.where(arr[1:]-arr[:-1]>degen_thresh)[0]+1
+    A=[0,]+list(A)+[len(arr)]
+    return [(ib1,ib2) for ib1,ib2 in zip(A,A[1:]) ]
 
 
 def is_round(A,prec=1e-14):
-     """ returns true if all values in A are integers, at least within machine precision"""
-     return( np.linalg.norm(A-np.round(A))<prec )
+    # returns true if all values in A are integers, at least within machine precision
+    return( np.linalg.norm(A-np.round(A))<prec )

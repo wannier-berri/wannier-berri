@@ -45,7 +45,7 @@ wberri.integrate(system,
             adpt_num_iter=10,
             parameters = {'tetra':True},
             specific_parameters = {'dos^2':{'tetra':False}},
-            fftlib='fftw', #default.  alternative  option - 'numpy'
+            parameters_K = {'fftlib':'fftw'}, #default.  alternative  option - 'numpy'
             fout_name='Fe',
             restart=False,
             )
