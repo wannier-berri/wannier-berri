@@ -20,11 +20,21 @@ class Path(Grid):
         | No labels or nk's should be assigned to None nodes
     nk : int  or list or numpy.array(3) 
         number of k-points along each directions 
-    k_list : array-like
-        coordinatres of all k-points in the reduced coordinates
+    k_list : list or str
+        |if k_list is a list  - Coordinatres of all k-points in the reduced coordinates
+        |if k_list = 'sphere' - Automatically generate k-points on a sqhere (request r1 r2 origin ntheta nphi)
+        |if k_list = 'spheroid' - Automatically generate k-points on a spheroid (request r1 r2 origin ntheta nphi)
     labels : list  of dict
-        | if k_list is set - it is a dict {i:lab} with i - index of k-point, lab - corresponding label (not alll kpoints need to be labeled
+        | if k_list is set - it is a dict {i:lab} with i - index of k-point, lab - corresponding label (not all kpoints need to be labeled
         | if k_nodes is set - it is a list of labels, one for every node
+    r1,r2 : float
+        radius.
+        sphere: x^2+y^2+z^2 = r1^2
+        spheroid: (x^2+y^2)/r1^2+z^2/r2^2 = 1
+    origin : array
+        origin of sphere or spheroid in k-space
+    nphi,ntheta: int
+        number of k-points along each angle in polar coordinates
     Notes
     -----
     user needs to specify either `k_list` or (`k_nodes` + (`length` or `nk` or dk))
@@ -39,10 +49,12 @@ class Path(Grid):
         self.breaks=breaks
         
         if k_list == 'sphere':
-            self.K_list,self.K_list_cart=self.sphere(r1,ntheta,nphi,origin) 
-        #TODO to be implemented
-        #elif k_list == 'ellipsoid':
-        #    self.K_list,self.K_list_cart=self.sphere(r1,r2,ntheta,nphi,origin) 
+            self.K_list =self.sphere('sphere',r1,r2,ntheta,nphi,origin) 
+            self.labels=['sphere'] 
+        elif k_list == 'spheroid':
+            self.K_list =self.sphere('spheroid',r1,r2,ntheta,nphi,origin) 
+            self.labels=['spheroid'] 
+        
         elif k_list is None:
             if k_nodes is None:
                 raise ValueError("need to specify either 'k_list' of 'k_nodes'")
@@ -97,16 +109,25 @@ class Path(Grid):
         self.div = np.shape(self.K_list)[0]
         self.breaks=np.array(self.breaks,dtype=int)
   
-    def sphere(self,r,ntheta,nphi,origin):
+    def sphere(self,type_sphere,r1,r2,ntheta,nphi,origin):
         theta = np.linspace(0,np.pi,ntheta,endpoint=True)
         phi = np.linspace(0,2*np.pi,nphi,endpoint=True)
         theta_grid,phi_grid = np.meshgrid(theta,phi)
-        sphere = [r*np.cos(phi_grid)*np.sin(theta_grid),
-                r*np.sin(phi_grid)*np.sin(theta_grid),
-                r*np.cos(theta_grid)]
-        sphere_cart_k = np.array(sphere).reshape(3,ntheta*nphi).transpose(1,0)
-        sphere_k = sphere_cart_k.dot(np.linalg.inv(self.recip_lattice))-origin[None,:]
-        return sphere_k,sphere_cart_k
+        if type_sphere is 'sphere':
+            sphere = [r1*np.cos(phi_grid)*np.sin(theta_grid),
+                    r1*np.sin(phi_grid)*np.sin(theta_grid),
+                    r1*np.cos(theta_grid)]
+        elif type_sphere is 'spheroid':
+            sphere = [r1*np.cos(phi_grid)*np.sin(theta_grid),
+                    r1*np.sin(phi_grid)*np.sin(theta_grid),
+                    r2*np.cos(theta_grid)]
+        cart_k_list = np.array(sphere).reshape(3,ntheta*nphi).transpose(1,0)
+        list_k = cart_k_list.dot(np.linalg.inv(self.recip_lattice))-origin[None,:]
+        ff = open(f"{type_sphere}_klist_cart","w")
+        for i in range(ntheta*nphi):
+            ff.write("{:12.6f}{:12.6f}{:12.6f}\n".format(cart_k_list[i,0],cart_k_list[i,1],cart_k_list[i,2] ) )
+        ff.close()
+        return list_k
 
     @property
     def str_short(self):

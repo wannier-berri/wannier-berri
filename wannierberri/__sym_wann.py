@@ -24,11 +24,14 @@ class sym_wann():
     proj: list
         Should be the same with projections card in relative Wannier90.win.
         eg: ['Te: s','Te:p']
+        If there is hybrid orbital, grouping the other orbitals.
+        eg: ['Fe':sp3d2;t2g] Plese don't use ['Fe':sp3d2;dxz,dyz,dxy]
+            ['X':sp;p2] Plese don't use ['X':sp;pz,py]
     iRvec: array
         List of R vectors.
     XX_R: dic
         Matrix before symmetrization. {'Ham':self.Ham_R,'AA':self.AA_R,......}
-    Spin: bool
+    soc: bool
         Spin orbital coupling.
     magmom: 2D array
         Magnetic momentom of each atoms.
@@ -62,8 +65,8 @@ class sym_wann():
             except KeyError:
                 self.matrix_bool[X] = False
         
-        self.orbital_dic = {"s":1,"p":3,"d":5,"f":7,"sp3":4,"sp2":3,"sp3d":5,"sp3d2":6,
-                "pz":1,'t2g':3, 'dx2-y2':1, 'eg':2}
+        self.orbital_dic = {"s":1,"p":3,"d":5,"f":7,"sp3":4,"sp2":3,"pz":1,"sp":2,"p2":2,
+                "sp3d":5,"sp3d2":6,'t2g':3, 'dx2-y2':1, 'eg':2}
         self.wann_atom_info = []
 
         num_atom = len(self.atom_name)
@@ -167,6 +170,7 @@ class sym_wann():
         for name in self.atom_name:
             numbers.append(names.index(name)+1)
         cell = (self.lattice,self.positions,numbers)
+        #print(cell)
         print("[get_spacegroup]")
         print("  Spacegroup is %s." %spglib.get_spacegroup(cell))
         self.symmetry = spglib.get_symmetry_dataset(cell)
@@ -186,7 +190,6 @@ class sym_wann():
 
     def rot_orb(self,orb_symbol,rot_glb):
         ''' Get rotation matrix of orbitals in each orbital quantum number '''
-        #TODO more orbital types
         x = sym.Symbol('x')
         y = sym.Symbol('y')
         z = sym.Symbol('z')
@@ -242,31 +245,38 @@ class sym_wann():
         sp3d2_plus_6 = lambda x,y,z: + 1/sym.sqrt(3)*(3*z*z-1)/sym.sqrt(3)/2
 
         orb_function_dic={'s':[ss],
-                          'p': [pz,px,py],
+                          'p':[pz,px,py],
                           'd':[dz2,dxz,dyz,dx2_y2,dxy],
-                          'f': [fz3,fxz2,fyz2,fzx2_zy2,fxyz,fx3_3xy2,f3yx2_y3],
+                          'f':[fz3,fxz2,fyz2,fzx2_zy2,fxyz,fx3_3xy2,f3yx2_y3],
+                         'sp':[sp_1,sp_2],
+                         'p2':[pz,py],
                         'sp2':[sp2_1,sp2_2,sp2_3],
+                         'pz':[pz],
                         'sp3':[sp3_1,sp3_2,sp3_3,sp3_4],
                       'sp3d2':[sp3d2_1,sp3d2_2,sp3d2_3,sp3d2_4,sp3d2_5,sp3d2_6],
-                      'sp3d2_plus':[sp3d2_plus_1,sp3d2_plus_2,sp3d2_plus_3,sp3d2_plus_4,sp3d2_plus_5,sp3d2_plus_6],
-                         'pz':[pz],
-                         't2g':[dxz,dyz,dxy],
+                 'sp3d2_plus':[sp3d2_plus_1,sp3d2_plus_2,sp3d2_plus_3,sp3d2_plus_4,sp3d2_plus_5,sp3d2_plus_6],
+                        't2g':[dxz,dyz,dxy],
+                         'eg':[dxz,dyz,dxy],
                       }
-        orb_chara_dic={'s':[x],'p':[z,x,y],'d':[z*z,x*z,y*z,x*x,x*y,y*y],
-                'f':[z*z*z,x*z*z,y*z*z,z*x*x,x*y*z,x*x*x,y*y*y  ,z*y*y,x*y*y,y*x*x],
-                'sp2':[x,y,z],'sp3':[x,y,z],
-                'sp3d2':[x,y,z],
-                'sp3d2_plus':[z*z,x*x,y*y,x*y,x*z,y*z],
-                'pz':[z,x,y],
-                't2g':[x*z,y*z,x*y,z*z,x*x,y*y], 
+        orb_chara_dic={'s':[x],
+                       'p':[z,x,y],
+                       'd':[z*z,x*z,y*z,x*x,x*y,y*y],
+                       'f':[z*z*z,x*z*z,y*z*z,z*x*x,x*y*z,x*x*x,y*y*y  ,z*y*y,x*y*y,y*x*x],
+                      'sp':[x,y,z],
+                      'p2':[z,y,x],
+                     'sp2':[x,y,z],
+                      'pz':[z,x,y],
+                     'sp3':[x,y,z],
+                   'sp3d2':[x,y,z],
+              'sp3d2_plus':[z*z,x*x,y*y,x*y,x*z,y*z],
+                     't2g':[x*z,y*z,x*y,z*z,x*x,y*y], 
+                      'eg':[z*z,x*x,y*y,x*z,y*z,x*y], 
                 }
         orb_dim = self.orbital_dic[orb_symbol]
         orb_rot_mat = np.zeros((orb_dim,orb_dim),dtype=float)
         xp = np.dot(np.linalg.inv(rot_glb)[0],np.transpose([x,y,z]))
         yp = np.dot(np.linalg.inv(rot_glb)[1],np.transpose([x,y,z]))
         zp = np.dot(np.linalg.inv(rot_glb)[2],np.transpose([x,y,z]))
-        #print('xp=',xp,'yp=',yp,'zp=',zp)
-        #rot_glb=np.array(list(rot_glb))
         OC = orb_chara_dic[orb_symbol]
         OC_len = len(OC)
         if orb_symbol == 'sp3d2':
@@ -282,7 +292,7 @@ class sym_wann():
                     else:
                         eq_tmp = eq_tmp.subs(OC[(j+j_add)%OC_len],0)
                 subs.append(eq_tmp)
-            if orb_symbol == 'sp3d2':
+            if orb_symbol in ['sp3d2']:
                 subs_plus = []
                 equation_plus = (orb_function_dic[orb_symbol+'_plus'][i](xp,yp,zp)).expand()
                 for k in range(OC_plus_len):
@@ -292,7 +302,6 @@ class sym_wann():
                         else:
                             eq_tmp = eq_tmp.subs(OC_plus[(k+k_add)%OC_plus_len],0)
                     subs_plus.append(eq_tmp)
-                #print(subs_plus)
             
             if orb_symbol in ['s','pz']:
                 orb_rot_mat[0,0] = subs[0].evalf()
@@ -314,6 +323,12 @@ class sym_wann():
                 orb_rot_mat[4,i] = subs[4].evalf()
                 orb_rot_mat[5,i] = ((2*subs[5]+subs[1]/2)*sym.sqrt(6.0)).evalf()
                 orb_rot_mat[6,i] = ((-2*subs[6]-subs[2]/2)*sym.sqrt(6.0)).evalf()
+            elif orb_symbol == 'sp':
+                orb_rot_mat[0,i] = 1/2-1/sym.sqrt(2)*subs[0]
+                orb_rot_mat[1,i] = 1/2-1/sym.sqrt(2)*subs[0]
+            elif orb_symbol == 'p2':
+                orb_rot_mat[0,i] = subs[0]
+                orb_rot_mat[1,i] = subs[1]
             elif orb_symbol == 'sp2':
                 orb_rot_mat[0,i] = 1/3-1/sym.sqrt(6)*subs[0] +1/sym.sqrt(2)*subs[1]
                 orb_rot_mat[1,i] = 1/3-1/sym.sqrt(6)*subs[0] -1/sym.sqrt(2)*subs[1]
@@ -341,12 +356,12 @@ class sym_wann():
                 orb_rot_mat[0,i] = subs[0].evalf()
                 orb_rot_mat[1,i] = subs[1].evalf()
                 orb_rot_mat[2,i] = subs[2].evalf()
+            elif orb_symbol == 'eg':
+                orb_rot_mat[0,i] = (2*subs[0]-subs[1]-subs[2])/sym.sqrt(3.0)
+                orb_rot_mat[2,i] =  (subs[1]-subs[2]).evalf()
                 
+        assert  np.abs(np.linalg.det(orb_rot_mat)) > 0.99,'ERROR!!!!: Your crystal symmetry does not allow {} orbital exist.'.format(orb_symbol)
         
-        if orb_symbol in ['sp','p2','sp3d2','sp3']:
-            print(orb_symbol)
-            print(orb_rot_mat)
-            #print(orb_rot_mat[0,1])
         return orb_rot_mat
 
 	
@@ -478,13 +493,7 @@ class sym_wann():
             if self.matrix_bool[X]:
                 vars()[X+'_res'] = np.zeros((self.num_wann,self.num_wann,nRvec,3),dtype=complex)
         for rot in range(self.nsymm):
-            
             rot_cart = np.dot(np.dot(np.transpose(self.lattice), self.symmetry['rotations'][rot]),np.linalg.inv(np.transpose(self.lattice)) )
-
-            p_map = np.zeros((self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
-            p_map_dagger = np.zeros((self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
-            for atom in range(self.num_wann_atom):
-                p_map[atom],p_map_dagger[atom] = self.full_p_mat(atom,rot)
             rot_map,vec_shift,sym_only,sym_T = self.atom_rot_map(rot)
             if sym_only+sym_T == 0:
                 pass
@@ -492,6 +501,10 @@ class sym_wann():
                 print('rot = ',rot+1)
                 if sym_only: nrot+= 1
                 if sym_T: nrot+= 1
+                p_map = np.zeros((self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
+                p_map_dagger = np.zeros((self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
+                for atom in range(self.num_wann_atom):
+                    p_map[atom],p_map_dagger[atom] = self.full_p_mat(atom,rot)
                 R_map = np.dot(R_list,np.transpose(self.symmetry['rotations'][rot]))
                 atom_R_map = R_map[:,None,None,:] - vec_shift[None,:,None,:] + vec_shift[None,None,:,:]
                 Ham_all = np.zeros((nRvec,self.num_wann_atom,self.num_wann_atom,self.num_wann,self.num_wann),dtype=complex)
@@ -546,10 +559,6 @@ class sym_wann():
                         tmp = np.dot(np.dot(p_map_dagger[atom_a],Ham_all[:,atom_a,atom_b]),p_map[atom_b])
                         if sym_only: 
                             Ham_res += tmp.transpose(0,2,1)
-                           # test_i = self.iRvec.index([0,0,0])
-                           # print('======================================')
-                           # print((self.Ham_R[:12,:12,test_i].real))
-                           # print((tmp.transpose(0,2,1)[:12,:12,test_i].real))
                         
                         if sym_T:
                             tmp_T = self.ul.dot(tmp.transpose(1,0,2)).dot(self.ur).conj()
@@ -601,45 +610,16 @@ class sym_wann():
         #symmetrize exist R vectors and find additional R vectors 
         #========================================================
         print('##########################')
-        print('Existing Block')
+        print('Symmetrizing Start')
         res_dic_1, iRvec_add =  self.average_H(self.iRvec,keep_New_R=True)
         nRvec_add = len(iRvec_add)
-        #===============================
-        #symmetrize additional R vectors
-        #===============================
-        if False:
-        #if nRvec_add > 0:
-            H_res_add=np.zeros((self.num_wann,self.num_wann,nRvec_add),dtype=complex)
-            print('##########################')
-            print('Additional Block')
-            res_dic_2  =  self.average_H(iRvec_add,keep_New_R=False)
-            
-            Ham_R_final = np.zeros((self.num_wann,self.num_wann,nRvec_add+self.nRvec),dtype=complex)
-            Ham_R_final[:,:,:self.nRvec]=res_dic_1['Ham']
-            Ham_R_final[:,:,self.nRvec:]=res_dic_2['Ham']
-            for X in self.matrix_list:
-                if self.matrix_bool[X]:
-                    vars()[X+'_R_final'] = np.zeros((self.num_wann,self.num_wann,nRvec_add+self.nRvec,3),dtype=complex)
-                    vars()[X+'_R_final'][:,:,:self.nRvec]= res_dic_1[X]
-                    vars()[X+'_R_final'][:,:,self.nRvec:]= res_dic_2[X]
-            self.nRvec += nRvec_add
-            self.iRvec += iRvec_add
-        else:
-            Ham_R_final =res_dic_1['Ham']
-            for X in self.matrix_list:
-                if self.matrix_bool[X]:
-                    vars()[X+'_R_final']= res_dic_1[X]
-
-        self.Ham_R = Ham_R_final
-        for X in self.matrix_list:
-            if self.matrix_bool[X]:
-                vars(self)[X+'_R'] = vars()[X+'_R_final']
+        print('Symmetrizing Finish')
         
         return_dic = {}
-        return_dic['Ham'] = self.Ham_R
+        return_dic['Ham'] = res_dic_1['Ham']
         for X in self.matrix_list:
                 if self.matrix_bool[X]:
-                    return_dic[X] = vars(self)[X+'_R']
+                    return_dic[X] = vars()[X+'_R_final']= res_dic_1[X]
         return  return_dic, np.array(self.iRvec)
 
 
