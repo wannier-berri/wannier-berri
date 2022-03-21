@@ -420,11 +420,11 @@ class sym_wann():
         vec_shift_map=[]
         for atomran in range(self.num_wann_atom):
             atom_position=np.array(wann_atom_positions[atomran])
-            new_atom =np.round( np.dot(self.symmetry['rotations'][sym],atom_position) + self.symmetry['translations'][sym],decimals=5)
+            new_atom = np.dot(self.symmetry['rotations'][sym],atom_position) + self.symmetry['translations'][sym]
             for atom_index in range(self.num_wann_atom):
-                old_atom= np.round(np.array(wann_atom_positions[atom_index]),decimals=5)
-                diff = np.array(np.round(new_atom-old_atom,decimals=8))
-                if abs(diff[0]%1)+abs(diff[1]%1)+abs(diff[2]%1)<10E-5:
+                old_atom= np.array(wann_atom_positions[atom_index])
+                diff = np.array(new_atom-old_atom)
+                if np.all( abs((diff+0.5)%1-0.5)<1e-5 ):
                     match_index=atom_index
                     vec_shift= np.array(np.round(new_atom-np.array(wann_atom_positions[match_index]),decimals=2),dtype=int)
                 else:
