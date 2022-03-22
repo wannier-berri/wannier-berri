@@ -358,8 +358,9 @@ class TABresult(result.Result):
                     selE=(e<=Emax)*(e>=Emin)
                     klineselE=kline[selE]
                     y=data[selE][:,ib]
-                    select = np.abs(y) > 1
-                    y[select] = np.log10(y[select])
+                    select = np.abs(y) > 2
+                    y[select] = np.log2(y[select])
+                    y[~select] *= 0.5
                     e1=e[selE]
                     for col,sel in [("red",(y>0)),("blue",(y<0))]:
                         plt.scatter(klineselE[sel],e1[sel],s=abs(y[sel])*fatfactor,color=col)
