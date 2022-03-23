@@ -107,6 +107,7 @@ class System_w90(System):
                             f"{self.wannier_centers_cart_auto-wannier_centers_cart_new}\n"
                             "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90.")
 
+
         if self.getBB:
             t0=time()
             self.BB_R=fourier_q_to_R_loc(chk.get_AA_q(mmn,eig))
@@ -145,7 +146,7 @@ class System_w90(System):
             del shu
 
         print ("time for FFT_q_to_R : {} s".format(timeFFT))
-        
+
         self.do_at_end_of_init()
         print ("Real-space lattice:\n",self.real_lattice)
 

@@ -198,7 +198,6 @@ class SymWann():
         py = lambda x,y,z : y
         pz = lambda x,y,z : z
         dz2 = lambda x,y,z : (2*z*z-x*x-y*y)/(2*sym.sqrt(3.0))
-        #dz2 = lambda x,y,z : (3*z*z-1)/sym.sqrt(3)/2
         dxz = lambda x,y,z : x*z
         dyz = lambda x,y,z : y*z
         dx2_y2 = lambda x,y,z : (x*x-y*y)/2
@@ -229,13 +228,6 @@ class SymWann():
         sp3d2_4 = lambda x,y,z: 1/sym.sqrt(2)*y 
         sp3d2_5 = lambda x,y,z: -1/sym.sqrt(2)*z 
         sp3d2_6 = lambda x,y,z: 1/sym.sqrt(2)*z 
-        
-        #sp3d2_plus_1 = lambda x,y,z: - 1/sym.sqrt(12)*(2*z*z-x*x-y*y)/sym.sqrt(3)/2 + 0.5*(x*x-y*y)/2
-        #sp3d2_plus_2 = lambda x,y,z: - 1/sym.sqrt(12)*(2*z*z-x*x-y*y)/sym.sqrt(3)/2 + 0.5*(x*x-y*y)/2
-        #sp3d2_plus_3 = lambda x,y,z: - 1/sym.sqrt(12)*(2*z*z-x*x-y*y)/sym.sqrt(3)/2 - 0.5*(x*x-y*y)/2
-        #sp3d2_plus_4 = lambda x,y,z: - 1/sym.sqrt(12)*(2*z*z-x*x-y*y)/sym.sqrt(3)/2 - 0.5*(x*x-y*y)/2
-        #sp3d2_plus_5 = lambda x,y,z: + 1/sym.sqrt(3)*(2*z*z-x*x-y*y)/sym.sqrt(3)/2
-        #sp3d2_plus_6 = lambda x,y,z: + 1/sym.sqrt(3)*(2*z*z-x*x-y*y)/sym.sqrt(3)/2
         
         sp3d2_plus_1 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 + 0.5*(x*x-y*y)/2
         sp3d2_plus_2 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 + 0.5*(x*x-y*y)/2
@@ -339,12 +331,12 @@ class SymWann():
                 orb_rot_mat[2,i] = 0.5*(subs[1]-subs[0]-subs[2] + 0.5)
                 orb_rot_mat[3,i] = 0.5*(subs[2]-subs[1]-subs[0] + 0.5)
             elif orb_symbol == 'sp3d2':
-                orb_rot_mat[0,i] = 1/6 -1/sym.sqrt(2)*subs[0] #- 1/sym.sqrt(12)*subs[0]*sym.sqrt(3.0) + 0.5*(subs[1]-subs[2])
-                orb_rot_mat[1,i] = 1/6 +1/sym.sqrt(2)*subs[0] #- 1/sym.sqrt(12)*subs[0]*sym.sqrt(3.0) + 0.5*(subs[1]-subs[2])
-                orb_rot_mat[2,i] = 1/6 -1/sym.sqrt(2)*subs[1] #- 1/sym.sqrt(12)*subs[0]*sym.sqrt(3.0) - 0.5*(subs[1]-subs[2])
-                orb_rot_mat[3,i] = 1/6 +1/sym.sqrt(2)*subs[1] #- 1/sym.sqrt(12)*subs[0]*sym.sqrt(3.0) - 0.5*(subs[1]-subs[2])
-                orb_rot_mat[4,i] = 1/6 -1/sym.sqrt(2)*subs[2] #+ 1/sym.sqrt(3)*subs[0]*sym.sqrt(3.0)
-                orb_rot_mat[5,i] = 1/6 +1/sym.sqrt(2)*subs[2] #+ 1/sym.sqrt(3)*subs[0]*sym.sqrt(3.0)
+                orb_rot_mat[0,i] = 1/6 -1/sym.sqrt(2)*subs[0] 
+                orb_rot_mat[1,i] = 1/6 +1/sym.sqrt(2)*subs[0] 
+                orb_rot_mat[2,i] = 1/6 -1/sym.sqrt(2)*subs[1] 
+                orb_rot_mat[3,i] = 1/6 +1/sym.sqrt(2)*subs[1] 
+                orb_rot_mat[4,i] = 1/6 -1/sym.sqrt(2)*subs[2] 
+                orb_rot_mat[5,i] = 1/6 +1/sym.sqrt(2)*subs[2] 
                 
                 orb_rot_mat[0,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  + 0.5*(subs_plus[1]-subs_plus[2])
                 orb_rot_mat[1,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  + 0.5*(subs_plus[1]-subs_plus[2])
