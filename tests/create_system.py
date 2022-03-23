@@ -157,7 +157,7 @@ def system_GaAs_tb():
 
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb():
-    """Create system for GaAs using _tb.dat data"""
+    """Create system for GaAs using sym_tb.dat data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
     if not os.path.isfile(os.path.join(data_dir, "GaAs_sym_tb.dat")):
@@ -167,7 +167,11 @@ def system_GaAs_sym_tb():
 
     seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
     system = wberri.System_tb(seedname, berry=True)
-
+    system.symmetrize(positions = np.array([[0.0, 0.0, 0.0],
+                [0.25, 0.25, 0.25]]),
+                atom_name = ['Ga','As'],
+                proj = ['Ga:sp3','As:sp3'],
+                soc=True)
     return system
 
 @pytest.fixture(scope="session")
