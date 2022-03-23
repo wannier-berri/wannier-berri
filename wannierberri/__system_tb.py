@@ -80,7 +80,7 @@ class System_tb(System):
             self.wannier_centers_cart_auto =  np.diagonal(self.AA_R[:,:,self.iR0,:],axis1=0,axis2=1).T 
         else: 
             self.AA_R = None
-
+        
         f.close()
 
         self.do_at_end_of_init()
