@@ -16,6 +16,7 @@ from termcolor import cprint
 from .__utility import real_recip_lattice
 from .__system import System
 
+
 class System_tb(System):
     """
     System initialized from the `*_tb.dat` file, which can be written either by  `Wannier90 <http://wannier.org>`__ code, 
@@ -79,6 +80,7 @@ class System_tb(System):
             self.wannier_centers_cart_auto =  np.diagonal(self.AA_R[:,:,self.iR0,:],axis1=0,axis2=1).T 
         else: 
             self.AA_R = None
+
         f.close()
 
         self.do_at_end_of_init()
