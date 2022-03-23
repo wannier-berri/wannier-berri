@@ -156,6 +156,21 @@ def system_GaAs_tb():
     return system
 
 @pytest.fixture(scope="session")
+def system_GaAs_sym_tb():
+    """Create system for GaAs using _tb.dat data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "GaAs_sym_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "GaAs_sym_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+
+    seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
+    system = wberri.System_tb(seedname, berry=True)
+
+    return system
+
+@pytest.fixture(scope="session")
 def system_GaAs_tb_wcc():
     """Create system for GaAs using _tb_dat data"""
 
