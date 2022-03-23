@@ -260,11 +260,6 @@ def test_GaAs_tb(check_integrate,system_GaAs_tb, compare_energyresult,quantities
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True},
                   extra_precision = {"berry_dipole_fsurf":1e-6}  )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
-def test_GaAs_sym_tb(check_integrate,system_GaAs_sym_tb, compare_energyresult,quantities_sym_GaAs,Efermi_GaAs):
-    """Test ahc with sym_wann method"""
-    check_integrate(system_GaAs_sym_tb , quantities_sym_GaAs, fout_name="ahc_GaAs_sym_tb" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult,compare_zero=True)
-                  #extra_precision = {"berry_dipole_fsurf":1e-6}  )  
-
 def test_GaAs_wcc(check_integrate,system_GaAs_W90_wcc, compare_energyresult,quantities_GaAs,quantities_GaAs_internal,Efermi_GaAs):
     """Test GaAs with wcc_phase, comparing with data obtained without it"""
     check_integrate(system_GaAs_W90_wcc, quantities_GaAs+quantities_GaAs_internal,#+['gyrotropic_Korb_test'],
@@ -284,6 +279,11 @@ def test_GaAs_tb_wcc_ws(check_integrate,system_GaAs_tb_wcc_ws, compare_energyres
     """Test GaAs (from tb file) with wcc_phase and use_ws=True, comparing with data obtained from .chk file"""
     check_integrate(system_GaAs_tb_wcc_ws , quantities_GaAs_internal, fout_name="berry_GaAs_W90" , suffix="tb_wcc_ws",suffix_ref="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                   extra_precision = {"conductivity_ohmic":-2e-6} )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
+
+def test_GaAs_sym_tb(check_integrate,system_GaAs_sym_tb, compare_energyresult,quantities_sym_GaAs,Efermi_GaAs):
+    """Test ahc with sym_wann method"""
+    check_integrate(system_GaAs_sym_tb , quantities_sym_GaAs, fout_name="ahc_GaAs_sym_tb" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult,compare_zero=True)
+                  #extra_precision = {"berry_dipole_fsurf":1e-6}  )  
 
 
 def test_Haldane_PythTB(check_integrate,system_Haldane_PythTB,compare_energyresult,quantities_Haldane,Efermi_Haldane):
