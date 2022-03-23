@@ -256,7 +256,7 @@ def test_GaAs_tb(check_integrate,system_GaAs_tb, compare_energyresult,quantities
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True},
                   extra_precision = {"berry_dipole_fsurf":1e-6}  )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
-def test_GaAs_sym_tb(check_integrate,system_GaAs_sym_tb, compare_energyresult,quantities_GaAs,Efermi_GaAs):
+def test_GaAs_sym_tb(check_integrate,system_GaAs_sym_tb, compare_energyresult,['ahc'],Efermi_GaAs):
     """Test ahc with sym_wann method"""
     check_integrate(system_GaAs_tb , quantities_GaAs , fout_name="ahc_GaAs_sym_tb" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult,compare_zero=True)
                   #extra_precision = {"berry_dipole_fsurf":1e-6}  )  
