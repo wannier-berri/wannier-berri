@@ -182,7 +182,11 @@ def system_GaAs_tb_wcc():
     # Load system
     seedname = os.path.join(data_dir, "GaAs_tb.dat")
     system = wberri.System_tb(seedname, berry=True, use_wcc_phase=True)
-
+    system.symmetrize(positions = np.array([[0.0, 0.0, 0.0],
+                [0.25, 0.25, 0.25]]),
+                atom_name = ['Ga','As'],
+                proj = ['Ga:sp3','As:sp3'],
+                soc=True)
     return system
 
 
