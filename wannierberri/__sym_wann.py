@@ -7,9 +7,9 @@ import sympy as sym
 np.set_printoptions(suppress=True,precision=4,threshold=np.inf,linewidth=500)
 
 
-class sym_wann():
+class SymWann():
     '''
-    Symmetrize wannier matrixes in real space: Ham_R, AA_R, BB_R, SS_R,...  
+    Symmetrize wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...  
     
     Parameters
     ----------

@@ -13,7 +13,7 @@
 
 import numpy as np
 import lazy_property
-from .__sym_wann import sym_wann
+from .__sym_wann import SymWann
 from .__utility import alpha_A, beta_A , iterate3dpm
 from  .symmetry import Group
 from termcolor import cprint 
@@ -135,7 +135,7 @@ class System():
                 XX_R[X] = vars(self)[X+'_R']
             except KeyError:
                 pass
-        symmetrize_wann = sym_wann(num_wann=self.num_wann,lattice=self.real_lattice,positions=positions,atom_name=atom_name,
+        symmetrize_wann = SymWann(num_wann=self.num_wann,lattice=self.real_lattice,positions=positions,atom_name=atom_name,
             proj=proj,iRvec=self.iRvec,XX_R=XX_R,soc=soc,magmom=magmom)
         XX_R,self.iRvec = symmetrize_wann.symmetrize()
         for X in ['Ham','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
