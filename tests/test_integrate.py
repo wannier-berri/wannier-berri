@@ -11,7 +11,7 @@ from conftest import parallel_serial, parallel_ray
 from conftest import OUTPUT_DIR
 from create_system import create_files_Fe_W90,create_files_GaAs_W90,pythtb_Haldane,tbmodels_Haldane
 from create_system import system_Fe_W90,system_Fe_W90_wcc,system_Fe_FPLO,system_Fe_FPLO_wcc
-from create_system import system_GaAs_W90,system_GaAs_W90_wcc,system_GaAs_tb,system_GaAs_tb_wcc,system_GaAs_tb_wcc_ws
+from create_system import system_GaAs_W90,system_GaAs_W90_wcc,system_GaAs_tb,system_GaAs_sym_tb,system_GaAs_tb_wcc,system_GaAs_tb_wcc_ws
 from create_system import system_Haldane_PythTB,system_Haldane_TBmodels,system_Haldane_TBmodels_internal
 from create_system import symmetries_Fe
 from create_system import system_Chiral_left,ChiralModelLeft
@@ -255,6 +255,11 @@ def test_GaAs_tb(check_integrate,system_GaAs_tb, compare_energyresult,quantities
     check_integrate(system_GaAs_tb , quantities_GaAs , fout_name="berry_GaAs_tb" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult ,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True},
                   extra_precision = {"berry_dipole_fsurf":1e-6}  )   # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
+
+def test_GaAs_sym_tb(check_integrate,system_GaAs_sym_tb, compare_energyresult,quantities_GaAs,Efermi_GaAs):
+    """Test ahc with sym_wann method"""
+    check_integrate(system_GaAs_tb , quantities_GaAs , fout_name="ahc_GaAs_sym_tb" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult,compare_zero=True)
+                  #extra_precision = {"berry_dipole_fsurf":1e-6}  )  
 
 def test_GaAs_wcc(check_integrate,system_GaAs_W90_wcc, compare_energyresult,quantities_GaAs,quantities_GaAs_internal,Efermi_GaAs):
     """Test GaAs with wcc_phase, comparing with data obtained without it"""
