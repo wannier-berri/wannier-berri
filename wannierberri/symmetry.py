@@ -58,42 +58,40 @@ from collections.abc import Iterable
 SYMMETRY_PRECISION=1e-6
 
 class Symmetry():
+    """
+    Symmetries that acts on the reciprocal space objects, in Cartesian coordinates.
+    R always contains a proper rotation (det(R) = +1). The inversion is contained in
+    the variable Inv.
+    A k point transform as self.iTR * self.iInv * (sym.R @ k).
+    """
 
-    def __init__(self,R,TR=False):
-        self.TR=TR
-        self.Inv=np.linalg.det(R)<0
-        self.R=R*(-1 if self.Inv else 1)
-            
+    def __init__(self, R, TR=False):
+        self.TR = TR
+        self.Inv = np.linalg.det(R)<0
+        self.R = R * (-1 if self.Inv else 1)
+        self.iTR = -1 if self.TR else 1
+        self.iInv = -1 if self.Inv else 1
+
     def show(self):
-        print (self)
+        print(self)
 
     def __str__(self):
-        return ("rotation: {0}, TR:{1} , I:{1}".format(self.R,self.TR,self.Inv))
+        return f"rotation: {self.R} , TR: {self.TR} , I: {self.Inv}"
 
-    @Lazy
-    def iTR(self):
-        return -1 if self.TR else 1
+    def __mul__(self, other):
+        return Symmetry((self.R @ other.R) * (self.iInv * other.iInv), self.TR != other.TR)
 
-    @Lazy
-    def iInv(self):
-        return -1 if self.Inv else 1
-
-    def __mul__(self,other):
-        return Symmetry(self.R.dot(other.R)*(self.iInv*other.iInv),self.TR!=other.TR)
-
-    def __eq__(self,other):
-        return np.linalg.norm(self.R-other.R)<1e-14 and self.TR==other.TR and self.Inv==other.Inv
+    def __eq__(self, other):
+        return np.linalg.norm(self.R - other.R) < 1e-14 and self.TR == other.TR and self.Inv == other.Inv
 
     def copy(self):
         return deepcopy(self)
 
-
-    def transform_reduced_vector(self,vec,basis):
-        return np.dot(vec, basis.dot(self.R.T).dot(np.linalg.inv(basis)))*(self.iTR*self.iInv)
+    def transform_reduced_vector(self, vec, basis):
+        return vec @ (basis @ self.R.T @ np.linalg.inv(basis)) * (self.iTR * self.iInv)
 
     def rotate(self,res):
-        return np.dot(res,self.R.T)
-
+        return res @ self.R.T
 
     def transform_tensor(self,data,rank,TRodd=False,Iodd=False,TRtrans = False):
         res=np.copy(data)
