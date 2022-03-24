@@ -14,7 +14,7 @@
 import numpy as np
 import lazy_property
 from .__utility import alpha_A, beta_A , iterate3dpm
-from  .symmetry import Group
+from  .symmetry import Symmetry, Group, TimeReversal
 from termcolor import cprint 
 import functools
 import multiprocessing 
@@ -408,6 +408,62 @@ class System():
             assert (np.max(abs(XX_R-self.conh_XX_R(XX_R)))<1e-8) , f"{XX} should obey X(-R) = X(R)^+"
         else:
             print (f"{XX} is missing,nothing to check")
+
+    def set_structure(self, positions, atom_numbers, magnetic_moments=None):
+        """
+        Set atomic structure of the system.
+
+        Parameters
+        ----------
+        positions : (num_atom, 3) array_like of float
+            Atomic positions in fractional coordinates.
+        atom_numbers: (num_atom,) list of int
+            Integer numbers to distinguish species.
+        magnetic_moments: (num_atom, 3) array_like of float (optional)
+            Magnetic moment vector of each atom.
+        """
+        if len(positions) != len(atom_numbers):
+            raise ValueError("length of positions and atom_numbers must be the same")
+        if magnetic_moments is not None and len(positions) != len(magnetic_moments):
+            raise ValueError("length of positions and magnetic_moments must be the same")
+        self.positions = positions
+        self.atom_numbers = atom_numbers
+        self.magnetic_moments = magnetic_moments
+
+    def get_spglib_cell(self):
+        """Returns the atomic structure as a cell tuple in spglib format"""
+        try:
+            if self.magnetic_moments is None:
+                return (self.real_lattice, self.positions, self.atom_numbers)
+            else:
+                return (self.real_lattice, self.positions, self.atom_numbers, self.magnetic_moments)
+        except AttributeError:
+            raise AttributeError("set_structure must be called before get_spglib_cell")
+
+    def set_symmetry_from_structure(self):
+        """
+        Set the symmetry group of the :class:`System`. Requires spglib to be installed.
+        :meth:`System.set_structure` must be called in advance.
+        """
+        import spglib
+        spglib_symmetry = spglib.get_symmetry(self.get_spglib_cell())
+        symmetry_gen = []
+        for isym in range(spglib_symmetry["rotations"].shape[0]):
+            # spglib gives real-space rotations in reduced coordinates. Here,
+            # 1) convert to Cartesian coordinates, and
+            # 2) take transpose to go to reciprocal space.
+            W = spglib_symmetry["rotations"][isym]
+            Wcart = self.real_lattice.T @ W @ np.linalg.inv(self.real_lattice).T
+            R = Wcart.T
+            # TODO: Time reversal information
+            symmetry_gen.append(Symmetry(R))
+
+        if self.magnetic_moments is None:
+            symmetry_gen.append(TimeReversal)
+        else:
+            print("Warning: spglib does not ")
+
+        self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
 
 class ws_dist_map():
