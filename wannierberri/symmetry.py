@@ -52,7 +52,7 @@ from packaging import version as pversion
 from scipy.spatial.transform import Rotation as rotmat
 from copy import deepcopy
 from lazy_property import LazyProperty as Lazy
-from .__utility import real_recip_lattice, is_round
+from .__utility import real_recip_lattice
 from collections.abc import Iterable
 
 SYMMETRY_PRECISION=1e-6
@@ -95,7 +95,7 @@ class Symmetry():
         return np.dot(res,self.R.T)
 
 
-    def transform_tensor(self,data,rank,TRodd=False,Iodd=False):
+    def transform_tensor(self,data,rank,TRodd=False,Iodd=False,TRtrans = False):
         res=np.copy(data)
         dim=len(res.shape)
         if rank>0:
@@ -106,6 +106,8 @@ class Symmetry():
                     tuple(range(i))+(dim-1,)+tuple(range(i,dim-1))  )
         if (self.TR and TRodd)!=(self.Inv and Iodd):
             res=-res
+        if self.TR and TRtrans:
+            res = res.swapaxes(dim-rank,dim-rank+1)
         return res
 
 

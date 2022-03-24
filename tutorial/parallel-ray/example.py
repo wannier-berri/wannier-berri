@@ -34,7 +34,7 @@ generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 system.set_symmetry(generators)
 grid=wberri.Grid(system,NKdiv=16,NKFFT=16)
 
-parallel = wberri.Parallel(method='ray',ray_cluster=True)
+parallel = wberri.Parallel(method='ray',cluster=True)
 
 wberri.integrate(system,
             grid=grid,
@@ -43,7 +43,6 @@ wberri.integrate(system,
             quantities=["ahc","dos","cumdos"],
             adpt_num_iter=0,
             parallel=parallel,
-            fftlib='fftw', #default.  alternative  option - 'numpy'
             fout_name='Fe',
             suffix=sys.argv[1],
             restart=False,

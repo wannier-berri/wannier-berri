@@ -64,6 +64,10 @@ class Grid():
         self.findif=FiniteDifferences(self.recip_lattice,self.FFT)
 
     @property
+    def str_short(self):
+        return "Grid() with NKdiv={}, NKFFT={}, NKtot={}".format( self.div,self.FFT,self.dense)
+
+    @property
     def dense(self):
         return self.div*self.FFT
 

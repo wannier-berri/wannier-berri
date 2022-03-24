@@ -12,11 +12,9 @@
 #------------------------------------------------------------
 
 import numpy as np
-import copy
 import lazy_property
-from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice,iterate3dpm
+from .__utility import alpha_A, beta_A , iterate3dpm
 from  .symmetry import Group
-from colorama import init
 from termcolor import cprint 
 import functools
 import multiprocessing 
@@ -404,42 +402,6 @@ class System():
     def cell_volume(self):
         return abs(np.linalg.det(self.real_lattice))
 
-
-    @property
-    def iR0(self):
-        return self.iRvec.tolist().index([0,0,0])
-
-    @lazy_property.LazyProperty
-    def reverseR(self):
-        """maps the R vector -R"""
-        iRveclst= self.iRvec.tolist()
-        mapping = np.all( self.iRvec[:,None,:]+self.iRvec[None,:,:] == 0 , axis = 2 )
-        # check if some R-vectors do not have partners
-        notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
-        for ir in notfound:
-            print ("WARNING : R[{}] = {} does not have a -R partner".format(ir,self.iRvec[ir]) )
-        # check if some R-vectors have more then 1 partner 
-        morefound = np.where(np.sum(mapping,axis=1)>1)[0]
-        if len(morefound>0):
-            raise RuntimeError( "R vectors number {} have more then one negative partner : \n{} \n{}".format(
-                            morefound,self.iRvec[morefound],np.sum(mapping,axis=1) ) )
-        lst1,lst2=[],[]
-        for ir1 in range(self.nRvec):
-            ir2 = np.where(mapping[ir1])[0]
-            if len(ir2)==1:
-                lst1.append(ir1)
-                lst2.append(ir2[0])
-        return np.array(lst1),np.array(lst2)
-
-    def conj_XX_R(self,XX_R):
-        """ reverses the R-vector and takes the hermitian conjugate """
-        XX_R_new = np.zeros_like(XX_R)
-        lst1,lst2 = self.reverseR
-        assert np.all(self.iRvec[lst1] + self.iRvec[lst2] ==0 )
-        XX_R_new [:,:,lst1] = np.copy(XX_R)[:,:,lst2]
-        XX_R_new[:] = XX_R_new.swapaxes(0,1).conj()
-        return np.copy(XX_R_new)
-
     def check_hermitian(self,XX):
         if hasattr(self,XX):
             XX_R = np.copy(vars(self)[XR])
@@ -469,6 +431,8 @@ class ws_dist_map():
         param=(shifts_int_all,wannier_centers,real_lattice, ws_distance_tol, wannier_centers.shape[0])
         p=multiprocessing.Pool(npar)
         irvec_new_all=p.starmap(functools.partial(ws_dist_stars,param=param),zip(iRvec,cRvec))
+        p.close()
+        p.join()
         print('irvec_new_all shape',np.shape(irvec_new_all))
         for ir,iR in enumerate(iRvec):
           for ijw,irvec_new in irvec_new_all[ir].items():

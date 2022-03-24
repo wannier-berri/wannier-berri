@@ -12,15 +12,12 @@
 #------------------------------------------------------------
 
 import numpy as np
-from scipy import constants as constants
 from collections import defaultdict
-from copy import copy,deepcopy
+from copy import copy
 
-from .__utility import  print_my_name_start,print_my_name_end,VoidSmoother,TAU_UNIT
+from .__utility import  VoidSmoother,TAU_UNIT
 from . import __result as result
 from . import  fermiocean as fermiocean
-from . import  symmetry
-from . import  __utility   as utility
 from . import  __kubo   as kubo
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
@@ -143,7 +140,8 @@ parameters_optical={
 'shc_beta'        :  ( 0    ,  "direction of applied electric field (1, 2, 3)"),
 'shc_gamma'       :  ( 0    ,  "direction of spin polarization (1, 2, 3)"),
 'shc_specification' : ( False , "calculate all 27 components of SHC if false"),
-'sc_eta'          :  ( 0.04    ,  "broadening parameter for shiftcurrent calculation, units of eV")
+'sc_eta'          :  ( 0.04    ,  "broadening parameter for shiftcurrent calculation, units of eV"),
+'sep_sym_asym'    : (False, "separate symmetric and antisymmetric parts in optical conductivity")
 }
 
 
@@ -247,6 +245,9 @@ class INTresult(result.Result):
             
     def __mul__(self,other):
         return INTresult({q:v*other for q,v in self.results.items()})
+
+    def __truediv__(self,number):
+        return self*(1./number)
     
     def __add__(self,other):
         if other == 0:
@@ -254,9 +255,14 @@ class INTresult(result.Result):
         results={r: self.results[r]+other.results[r] for r in self.results if r in other.results }
         return INTresult(results=results) 
 
-    def write(self,name):
+    def savetxt(self,name):
         for q,r in self.results.items():
-            r.write(name.format(q+'{}'))
+            r.savetxt(name.format(q+'{}'))
+
+    # writing to a binary file
+    def save(self, name):
+        for q,r in self.results.items():
+            r.save(name.format(q+'{}'))
 
     def transform(self,sym):
         results={r:self.results[r].transform(sym)  for r in self.results}

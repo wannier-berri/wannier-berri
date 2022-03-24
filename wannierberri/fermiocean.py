@@ -6,8 +6,7 @@ from math import ceil
 from . import covariant_formulak as frml
 from .formula import FormulaProduct
 from . import covariant_formulak_basic as frml_basic
-from itertools import permutations
-from scipy.constants import Boltzmann, elementary_charge, hbar, electron_mass, physical_constants, angstrom
+from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom #, Boltzmann
 
 ######################
 # physical constants #
@@ -406,15 +405,14 @@ class FermiOcean():
 
     def __init__(self , formula , data_K,  Efermi, tetra,fder,degen_thresh=1e-4,degen_Kramers=False):
 
-        #print (f"fermiocean using degen_thresh = {degen_thresh}")
         ndim=formula.ndim
         self.Efermi=Efermi
         self.fder=fder
         self.tetra=tetra
-        self.nk=data_K.NKFFT_tot
+        self.nk=data_K.nk
         self.NB=data_K.num_wann
         self.formula=formula
-        self.final_factor=1./(data_K.NKFFT_tot * data_K.cell_volume)
+        self.final_factor=1./(data_K.nk * data_K.cell_volume)
         
         # get a list [{(ib1,ib2):W} for ik in op:ed]  
         if self.tetra:

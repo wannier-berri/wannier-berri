@@ -19,21 +19,15 @@ from .__evaluate import evaluate_K
 from .__utility import getSmoother 
 from . import __integrate 
 from . import __tabulate
-from . import symmetry
 from .__path import Path
 import numpy as np
-from .__result import NoComponentError
 from collections.abc import Iterable
 integrate_options=__integrate.calculators.keys()
 tabulate_options =__tabulate.calculators.keys()
 from .mmn2uHu import hlp as hlp_mmn
 from .vaspspn import hlp as hlp_spn
 from time import time
-
-
-
-
-import sys,glob
+import sys
 
 
 from colorama import init
@@ -112,8 +106,12 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
                         user_quantities = {}, 
                         adpt_num_iter=0,adpt_fac=1,
                         use_irred_kpt = True, symmetrize = True,
-                        fout_name="wberri",restart=False,fftlib='fftw',suffix="",file_Klist="Klist",
+                        fout_name="wberri",
+                        write_txt=True,
+                        write_bin=False,
+                        restart=False,suffix="",file_Klist="Klist",
                         parallel = None,
+                        print_Kpoints = True,
                         parameters={},parameters_K={},specific_parameters={} ):
     """
     Integrate 
@@ -149,6 +147,15 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
         evaluate only symmetry-irreducible K-points
     symmetrize : bool
         symmetrize the result (always `True` if `use_irred_kpt == True`)
+    fout_name : str
+        beginning of the output files for each quantity after each iteration
+    write_txt : bool
+        write results after each iteration as text files (".dat")
+    write_bin : bool
+        write results after each iteration as binary files (".npz"). 
+        See :ref:`wannierberri.__result.EnergyResult.save` for file format
+    print_Kpoints : bool
+        print the list of K points
     parameters : dict  
         `{'name':value,...}` , Each quantity that 
         recognizes a parameter with the given name will use it
@@ -201,10 +208,12 @@ def integrate(system,grid,Efermi=None,omega=None, Ef0=0,
             smootherEf=smoothEf, smootherOmega=smoothW,
             quantities=quantities,user_quantities = user_quantities, 
             parameters=parameters, specific_parameters = specific_parameters )
-    res=evaluate_K(eval_func,system,grid,fftlib=fftlib,
+    res=evaluate_K(eval_func,system,grid,
             adpt_num_iter=adpt_num_iter,adpt_nk=adpt_fac, use_irred_kpt=use_irred_kpt,symmetrize=symmetrize,
                 fout_name=fout_name,suffix=suffix,
-                restart=restart,file_Klist=file_Klist, parallel = parallel,parameters_K=parameters_K )
+                write_txt=write_txt, write_bin=write_bin,
+                restart=restart,file_Klist=file_Klist, parallel = parallel,parameters_K=parameters_K,
+                print_Kpoints=print_Kpoints,)
     cprint ("Integrating finished successfully",'green', attrs=['bold'])
     return res
 
@@ -215,7 +224,8 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
                   use_irred_kpt = True, symmetrize = True,
                   parameters={},parameters_K={},specific_parameters={},
                   degen_thresh = 1e-4, degen_Kramers = False,
-                  parallel = None ):
+                  parallel = None,
+                  print_Kpoints = True, ):
     """
     Tabulate quantities to be plotted
 
@@ -241,6 +251,8 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
         if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
     parallel : :class:`~wannierberri.Parallel`
         object describing parallelization scheme
+    print_Kpoints : bool
+        print the list of K points
     parameters : dict  
         `{'name':value,...}` , Each quantity that 
         recognizes a parameter with the given name will use it
@@ -276,13 +288,13 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
     res=evaluate_K(eval_func,system,grid,
             adpt_num_iter=0 , restart=False,suffix=suffix,file_Klist=None,
             use_irred_kpt=use_irred_kpt,symmetrize=symmetrize,
-            parallel=parallel,parameters_K=parameters_K )
+            parallel=parallel,parameters_K=parameters_K, print_Kpoints=print_Kpoints )
 
     t1=time()
     if mode=='3D':
         res=res.to_grid(grid.dense)
         t2=time()
-        ttxt,twrite=write_frmsf(frmsf_name,Ef0,
+        ttxt,twrite=__tabulate.write_frmsf(frmsf_name,Ef0,
                 parallel.num_cpus if parallel is not None else 1,
                     quantities+list(user_quantities.keys()),res,suffix=suffix)
 
@@ -299,30 +311,4 @@ def tabulate(system,grid, quantities=[], user_quantities = {},
     return res
 
 
-
-def write_frmsf(frmsf_name,Ef0,numproc,quantities,res,suffix=""):
-    if len(suffix)>0:
-        suffix="-"+suffix
-    if frmsf_name is not None:
-        open(f"{frmsf_name}_E{suffix}.frmsf","w").write(
-             res.fermiSurfer(quantity=None,efermi=Ef0,npar=numproc) )
-        t3=time()
-        ttxt=0
-        twrite=0
-        for Q in quantities:
-            for comp in ["x","y","z","xx","yy","zz","xy","yx","xz","zx","yz","zy"]:
-                try:
-                    t31=time()
-                    txt=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0,npar=numproc)
-                    t32=time()
-                    open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf","w").write(txt)
-                    t33=time()
-                    ttxt  += t32-t31
-                    twrite+= t33-t32
-                except NoComponentError:
-                    pass
-    else:
-        ttxt=0
-        twrite=0
-    return ttxt,twrite
 
