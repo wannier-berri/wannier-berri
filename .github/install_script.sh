@@ -9,6 +9,9 @@ set -ev
 pip install codecov
 pip install -U pip setuptools wheel
 
+# install optional dependencies
+pip install tbmodels, pythtb, spglib
+
 case "$INSTALL_TYPE" in
     dev)
         pip install -e .
