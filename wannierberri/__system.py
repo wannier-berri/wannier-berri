@@ -45,7 +45,7 @@ class System():
 
     __doc__ = """
     The base class for describing a system. Does not have its own constructor, 
-    please use the child classes, e.g  :class:`~wannierberri.System_w90` or :class:`~wannierberri.System_tb`
+    please use the child classes, e.g  :class:`System_w90` or :class:`System_tb`
 
 
     Parameters
@@ -70,9 +70,9 @@ class System():
         minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90. Default: ``{use_ws}``
     mp_grid : [nk1,nk2,nk3]
         size of Monkhorst-Pack frid used in ab initio calculation. Needed when `use_ws=True`, and only if it cannot be read from input file, i.e.
-        like :class:`~wannierberri.System_tb`, :class:`~wannierberri.System_PythTB`, :class:`~wannierberri.System_TBmodels` ,:class:`~wannierberri.System_fplo`, but only if 
+        like :class:`.System_tb`, :class:`.System_PythTB`, :class:`.System_TBmodels` ,:class:`.System_fplo`, but only if
         the data originate from ab initio data, not from toy models.
-        In contrast, for :class:`~wannierberri.System_w90` and :class:`~wannierberri.System_ase` it is not needed,  but can be provided and will override the original value 
+        In contrast, for :class:`.System_w90` and :class:`.System_ase` it is not needed,  but can be provided and will override the original value
         (if you know what and why you are doing)
         Default: ``{mp_grid}``
     frozen_max : float
@@ -248,19 +248,19 @@ class System():
 
     def set_symmetry(self,symmetry_gen=[]):
         """ 
-        Set the symmetry group of the :class:`~wannierberri.__system.System` 
+        Set the symmetry group of the :class:`System`
 
         Parameters
         ----------
-        symmetry_gen : list of :class:`~wannierberri.symmetry.Symmetry` or str
-            The generators of the symmetry group. 
+        symmetry_gen : list of :class:`symmetry.Symmetry` or str
+            The generators of the symmetry group.
 
         Notes
         -----
         + Only the generators of the symmetry group are essential. However, no problem if more symmetries are provided. 
           The code further evaluates all possible products of symmetry operations, until the full group is restored.
         + Providing `Identity` is not needed. It is included by default
-        + Operations are given as objects of class:`~wannierberri.Symmetry.symmetry` or by name as `str`, e.g. ``'Inversion'`` , ``'C6z'``, or products like ``'TimeReversal*C2x'``.
+        + Operations are given as objects of :class:`symmetry.Symmetry` or by name as `str`, e.g. ``'Inversion'`` , ``'C6z'``, or products like ``'TimeReversal*C2x'``.
         + ``symetyry_gen=[]`` is equivalent to not calling this function at all
         + Only the **point group** operations are important. Hence, for non-symmorphic operations, only the rotational part should be given, neglecting the translation.
 

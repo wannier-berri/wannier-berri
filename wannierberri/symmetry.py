@@ -59,10 +59,17 @@ SYMMETRY_PRECISION=1e-6
 
 class Symmetry():
     """
-    Symmetries that acts on the reciprocal space objects, in Cartesian coordinates.
-    R always contains a proper rotation (det(R) = +1). The inversion is contained in
-    the variable Inv.
-    A k point transform as self.iTR * self.iInv * (sym.R @ k).
+    Symmetries that acts on reciprocal space objects, in Cartesian coordinates.
+    A k-point vector ``k`` transform as ``self.iTR * self.iInv * (sym.R @ k)``.
+
+    Attributes
+    ----------
+    R : (3, 3) ndarray
+        Proper rotation matrix. Always satisfy ``det(R) = 1``.
+    TR : bool
+        True if symmetry involves time reversal.
+    Inv : bool
+        True if symmetry involves spatial inversion.
     """
 
     def __init__(self, R, TR=False):
