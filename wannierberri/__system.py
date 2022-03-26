@@ -446,6 +446,11 @@ class System():
         :meth:`System.set_structure` must be called in advance.
         """
         import spglib
+        if self.magnetic_moments is not None:
+            # Magnetic symmetry not implemented
+            # https://github.com/spglib/spglib/issues/150
+            raise NotImplementedError
+
         spglib_symmetry = spglib.get_symmetry(self.get_spglib_cell())
         symmetry_gen = []
         for isym in range(spglib_symmetry["rotations"].shape[0]):
