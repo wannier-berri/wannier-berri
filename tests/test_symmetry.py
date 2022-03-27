@@ -7,7 +7,7 @@ import pytest
 import wannierberri as wberri
 import wannierberri.symmetry as sym
 
-from common_systems import symmetries_GaAs
+from common_systems import symmetries_GaAs, symmetries_Fe
 
 @pytest.fixture
 def check_symgroup_equal():
@@ -30,7 +30,7 @@ def test_symmetry_group_failure():
         s = np.sin(0.1)
         y = sym.Group([sym.Symmetry(np.array([[1, 0, 0], [0, c, s], [0, -s, c]]))])
 
-def test_symmetry_spglib(system_GaAs_W90, check_symgroup_equal):
+def test_symmetry_spglib_GaAs(system_GaAs_W90, check_symgroup_equal):
     system_explicit = deepcopy(system_GaAs_W90)
     system_explicit.set_symmetry(symmetries_GaAs)
 
@@ -38,6 +38,23 @@ def test_symmetry_spglib(system_GaAs_W90, check_symgroup_equal):
     positions = [[0., 0., 0.], [0.25, 0.25, 0.25]]
     numbers = [1, 2]
     system_spglib.set_structure(positions, numbers)
+    system_spglib.set_symmetry_from_structure()
+
+    check_symgroup_equal(system_explicit.symgroup, system_spglib.symgroup)
+
+def test_symmetry_spglib_Fe(system_Fe_W90, check_symgroup_equal):
+    system_explicit = deepcopy(system_Fe_W90)
+
+    # Magnetic symmetries involving time-reversal is not implemented in spglib.
+    # So, we exclude symmetries involving time reversal from the generators.
+    symmetries_Fe_except_TR = [sym for sym in symmetries_Fe if not sym.TR]
+    system_explicit.set_symmetry(symmetries_Fe_except_TR)
+
+    system_spglib = deepcopy(system_Fe_W90)
+    positions = [[0., 0., 0.]]
+    numbers = [1]
+    magnetic_moments = [[0., 0., 1.]]
+    system_spglib.set_structure(positions, numbers, magnetic_moments)
     system_spglib.set_symmetry_from_structure()
 
     check_symgroup_equal(system_explicit.symgroup, system_spglib.symgroup)

@@ -444,12 +444,11 @@ class System():
         """
         Set the symmetry group of the :class:`System`. Requires spglib to be installed.
         :meth:`System.set_structure` must be called in advance.
+
+        For magnetic systems, symmetries involving time reversal are not detected because
+        spglib does not support time reversal symmetry for noncollinear systems.
         """
         import spglib
-        if self.magnetic_moments is not None:
-            # Magnetic symmetry not implemented
-            # https://github.com/spglib/spglib/issues/150
-            raise NotImplementedError
 
         spglib_symmetry = spglib.get_symmetry(self.get_spglib_cell())
         symmetry_gen = []
@@ -460,13 +459,13 @@ class System():
             W = spglib_symmetry["rotations"][isym]
             Wcart = self.real_lattice.T @ W @ np.linalg.inv(self.real_lattice).T
             R = Wcart.T
-            # TODO: Time reversal information
             symmetry_gen.append(Symmetry(R))
 
         if self.magnetic_moments is None:
             symmetry_gen.append(TimeReversal)
         else:
-            print("Warning: spglib does not ")
+            print("Warning: spglib does not support time reversal symmetry for noncollinear "
+                  "systems.\nTo include such symmetries, use set_symmetry.")
 
         self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
