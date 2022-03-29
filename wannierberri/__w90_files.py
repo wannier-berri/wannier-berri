@@ -97,7 +97,7 @@ class CheckPoint():
         SS_q=np.array([ self.wannier_gauge(S,ik,ik)  for ik,S in enumerate(spn.data) ])
         return 0.5*(SS_q+SS_q.transpose(0,2,1,3).conj())
 
-    def get_AA_q(self,mmn,eig=None,transl_inv=False):  # if eig is present - it is BB_q
+    def get_AA_q(self,mmn,eig=None,transl_inv=False, centers=None, transl_inv_offdiag=False):  # if eig is present - it is BB_q
         if transl_inv and (eig is not None):
             raise RuntimeError("transl_inv cannot be used to obtain BB")
         mmn.set_bk(self)
@@ -110,6 +110,12 @@ class CheckPoint():
                     data = data * eig.data[ik,:,None]
                 AAW=self.wannier_gauge(data,ik,iknb)
                 AA_q_ik=1.j*AAW[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
+
+                # Translationally-invariant off-diagonal part
+                if transl_inv_offdiag:
+                    for iw in range(self.num_wann):
+                        AA_q_ik[iw, :, :] *= np.exp(1j * np.dot(mmn.bk_cart[ik, ib, :], centers[iw, :]))
+
                 if transl_inv:
                     AA_q_ik[range(self.num_wann),range(self.num_wann)]=-np.log(AAW.diagonal()).imag[:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,:]
                 AA_q[ik]+=AA_q_ik

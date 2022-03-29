@@ -33,6 +33,8 @@ class System_w90(System):
         the seedname used in Wannier90
     transl_inv : bool
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
+    transl_inv_offdiag : bool
+        Use translationally invariant form of off-diagonal position matrix elements[JML TODO: Add reference]
     guiding_centers : bool
         If True, enable overwriting the diagonal elements of the AA_R matrix at R=0 with the
         Wannier centers calculated from Wannier90.
@@ -50,6 +52,7 @@ class System_w90(System):
     def __init__(self,seedname="wannier90",
                     transl_inv=True,
                     guiding_centers=False,
+                    transl_inv_offdiag = False,
                     fft='fftw',
                     npar=multiprocessing.cpu_count()  , 
                     **parameters
@@ -86,7 +89,7 @@ class System_w90(System):
         timeFFT+=time()-t0
 
         if self.getAA:
-            AAq=chk.get_AA_q(mmn,transl_inv=transl_inv)
+            AAq=chk.get_AA_q(mmn,transl_inv=transl_inv, centers=chk.wannier_centers, transl_inv_offdiag=transl_inv_offdiag)
             t0=time()
             self.AA_R=fourier_q_to_R_loc(AAq)
             timeFFT+=time()-t0
