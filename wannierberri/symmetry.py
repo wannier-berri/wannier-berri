@@ -89,7 +89,7 @@ class Symmetry():
         return Symmetry((self.R @ other.R) * (self.iInv * other.iInv), self.TR != other.TR)
 
     def __eq__(self, other):
-        return np.linalg.norm(self.R - other.R) < 1e-14 and self.TR == other.TR and self.Inv == other.Inv
+        return np.linalg.norm(self.R - other.R) < 1e-12 and self.TR == other.TR and self.Inv == other.Inv
 
     def copy(self):
         return deepcopy(self)
