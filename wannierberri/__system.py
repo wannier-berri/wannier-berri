@@ -138,11 +138,8 @@ class System():
         symmetrize_wann = SymWann(num_wann=self.num_wann,lattice=self.real_lattice,positions=positions,atom_name=atom_name,
             proj=proj,iRvec=self.iRvec,XX_R=XX_R,soc=soc,magmom=magmom)
         XX_R,self.iRvec = symmetrize_wann.symmetrize()
-        for X in ['Ham','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
-            try:
-                vars(self)[X+'_R'] = XX_R[X]
-            except KeyError:
-                pass
+        for X in XX_R.keys():
+            vars(self)[X+'_R'] = XX_R[X]
 
 
     def check_periodic(self):

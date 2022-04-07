@@ -196,8 +196,6 @@ def spin_hall_ryoo(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=Fal
     return spin_hall(data_K,Efermi,"ryoo",tetra=tetra,**kwargs_formula)
 
 
-
-
 ##################################
 ### The private part goes here  ##
 ##################################

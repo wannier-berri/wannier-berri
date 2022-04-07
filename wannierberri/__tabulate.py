@@ -309,7 +309,10 @@ class TABresult(result.Result):
                   fatfactor=20,
                   cut_k=True
                   ):
-        """a routine to plot a result along the path"""
+        """
+        a routine to plot a result along the path
+        The circle size (size of quantity) changes linearly below 2 and logarithmically above 2.
+        """
 
         import matplotlib.pyplot as plt
         if iband is None: 
