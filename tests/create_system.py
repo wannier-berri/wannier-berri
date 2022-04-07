@@ -186,6 +186,7 @@ def system_GaAs_tb_wcc():
     # Load system
     seedname = os.path.join(data_dir, "GaAs_tb.dat")
     system = wberri.System_tb(seedname, berry=True, use_wcc_phase=True)
+    
     return system
 
 
