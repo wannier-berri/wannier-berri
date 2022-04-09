@@ -46,9 +46,9 @@ Recommended styles
 -----------------------------
 * Objects that can be shared by multiple tests should be implemented in ``common_*.py``. Then, import the object in ``conftest.py``. The objects does not need to be imported in individual ``test_*.py`` files.
 
-* Do not use fixtures for simple constants such as ``Efermi_*`` or ``symmetries_*``.
+* Do not use fixtures for simple constants such as ``Efermi_*`` or ``symmetries_*``. Use fixtures if some tests change the values of the variable, so it should be reset every time.
 
-* Use fixtures only if 1) it takes a long time or should not be run multiple times, or 2) test error (assert) can be raised during the execution of that part, or 3) to parametrize tests.
+* Use fixtures only if 1) it takes a long time or should not be run multiple times, or 2) test error (assert) can be raised during the execution of that part, or 3) to parametrize tests, or 4) some tests change the value of the variable so the variable should be reset each time.
 
 How to write a test
 -----------------------------
