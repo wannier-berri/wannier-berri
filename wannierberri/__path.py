@@ -73,7 +73,7 @@ class Path(Grid):
             self.labels={}
             self.breaks=[]
             for start,end,l1,l2 in zip(k_nodes,k_nodes[1:],labels,labels[1:]) :
-                if None not in (start,end):
+                if start is not None and end is not None:
                     self.labels[self.K_list.shape[0]]=l1
                     start=np.array(start)
                     end=np.array(end)
