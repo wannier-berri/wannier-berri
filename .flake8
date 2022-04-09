@@ -10,4 +10,4 @@ ignore = E126, E127, E129, E201, E202, E203, E211, E221, E222, E225, E226, \
 exclude = .git, __pycache__, build, dist, __init__.py .eggs, *.egg
 max-line-length = 120
 
-#per-file-ignores =
+per-file-ignores = conftest.py:F401

@@ -1,12 +1,13 @@
-import wannierberri as wberri
-import os,pickle
-import pytest
-from conftest import OUTPUT_DIR, REF_DIR
-from create_system import pythtb_Haldane, system_Haldane_PythTB
-from test_tabulate import get_component_list
-
+import os
+import pickle
 import numpy as np
 from pytest import approx
+import pytest
+
+import wannierberri as wberri
+
+from common import OUTPUT_DIR, REF_DIR
+
 
 """Test the construction of the path"""
 def test_path_1(system_Haldane_PythTB):
@@ -78,17 +79,17 @@ def test_tabulate_path(system_Haldane_PythTB):
     
     data = {}
     for quant in ["Energy"]+quantities:
-        for comp in get_component_list(quant):
-            data[(quant,comp)] = tab_result.results.get(quant).get_component(comp)
+        result_quant = tab_result.results.get(quant)
+        for comp in result_quant.get_component_list():
+            data[(quant,comp)] = result_quant.get_component(comp)
     pickle.dump(data, fout)
 
     data_ref = pickle.load(open(os.path.join(REF_DIR, filename),"rb") )
 
     for quant in ["Energy"]+quantities:
-        for comp in get_component_list(quant):
+        for comp in tab_result.results.get(quant).get_component_list():
             _data     = data[(quant,comp)]
-            quant_ref = "E" if quant == "Energy" else quant
-            _data_ref = data_ref[(quant_ref,comp)]
+            _data_ref = data_ref[(quant,comp)]
             assert _data == approx(_data_ref), (f"tabulation along path gave a wrong result for quantity {quant} component {comp} "+
                 "with a maximal difference {}".format(max(abs(data-data_ref)))   )
 
