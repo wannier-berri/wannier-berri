@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from conftest import REF_DIR, OUTPUT_DIR
+from common import REF_DIR, OUTPUT_DIR
 
 """
 Test creation of submission scripts for slurm and PBS batch systems.

@@ -7,7 +7,17 @@ import pytest
 from pytest import approx
 from wannierberri.__result import EnergyResult
 
-from conftest import REF_DIR, OUTPUT_DIR
+from common import REF_DIR, OUTPUT_DIR
+
+def compare_quant(quantity):
+    """Return quantitiy name to be compared with the input quantity"""
+    # it future reverse this - the test is fundamental
+    compare = {'ahc_test': 'ahc', 'berry_dipole_test': 'berry_dipole', 'Morb_test': 'Morb',
+               'gyrotropic_Korb_test': 'gyrotropic_Korb', 'Energy':'E'}
+    if quantity in compare:
+        return compare[quantity]
+    else:
+        return quantity
 
 def read_energyresult_dat(filename,mode="txt"):
     """Read .dat of .npz file output of EnergyResult."""
@@ -176,4 +186,26 @@ def compare_fermisurfer():
 
         assert data == approx(data_ref, abs=precision), error_message(
                 fout_name, suffix, None, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref,precision)
+    return _inner
+
+
+@pytest.fixture
+def compare_sym_asym():
+    " to comapre the results separated by symmetric-antisymmetric part"
+
+    def _inner(fout_name,adpt_num_iter = 0,quantity = "opt_conductivity"):
+        mode = "bin"
+        name = fout_name+"-"+quantity
+        for i_iter in range(adpt_num_iter+1):
+            filename_ref = name+"^sep-sym"+f"_iter-{i_iter:04d}.npz"
+            path_filename_ref = os.path.join(REF_DIR, filename_ref)
+            E_titles_ref, data_energy_ref, data_ref_sym, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
+            filename_ref = name+"^sep-asym"+f"_iter-{i_iter:04d}.npz"
+            path_filename_ref = os.path.join(REF_DIR, filename_ref)
+            E_titles_ref, data_energy_ref, data_ref_asym, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
+            filename_ref = name+f"_iter-{i_iter:04d}.npz"
+            path_filename_ref = os.path.join(REF_DIR, filename_ref)
+            E_titles_ref, data_energy_ref, data_new, data_smooth_ref = read_energyresult_dat(path_filename_ref,mode=mode)
+            assert data_new == approx(data_ref_sym+data_ref_asym, abs=1e-8)
+
     return _inner
