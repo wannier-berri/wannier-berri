@@ -220,28 +220,21 @@ class Group():
     def __init__(self,generator_list=[],recip_lattice=None,real_lattice=None):
         self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice=real_lattice,recip_lattice=recip_lattice)
         sym_list=[(op if isinstance(op,Symmetry) else from_string_prod(op) )    for op in generator_list  ]
-        print (sym_list)
         if len(sym_list)==0:
             sym_list=[Identity]
-        cnt=0
+
         while True:
-            cnt+=1
-            if cnt>1000:
-                raise RuntimeError("Cannot define a finite group")
-            lenold=len(sym_list)
+            lenold = len(sym_list)
             for s1 in sym_list:
-              for s2 in sym_list:
-                s3=s1*s2
-                new = True
-                for s4 in sym_list:
-                   if s3==s4:
-                      new=False
-                      break
-                if new:
-                    sym_list.append(s3)
-            lennew=len(sym_list)
-            if lenold==lennew:
+                for s2 in sym_list:
+                    s3 = s1 * s2
+                    if s3 not in sym_list:
+                        sym_list.append(s3)
+                        if len(sym_list) > 1000:
+                            raise RuntimeError("Cannot define a finite group")
+            if len(sym_list) == lenold:
                 break
+
         self.symmetries=sym_list
         MSG_not_symmetric=(" : please check if  the symmetries are consistent with the lattice vectors,"+
                     " and that  enough digits were written for the lattice vectors (at least 6-7 after coma)" )
