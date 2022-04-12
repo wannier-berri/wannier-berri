@@ -42,6 +42,14 @@ Brief introduction to pytest
     Tests are written as functions. The name of each test function should start with ``test_``.
     Variables can be tested using the ``assert`` statement.
 
+Recommended styles
+-----------------------------
+* Objects that can be shared by multiple tests should be implemented in ``common_*.py``. Then, import the object in ``conftest.py``. The objects does not need to be imported in individual ``test_*.py`` files.
+
+* Do not use fixtures for simple constants such as ``Efermi_*`` or ``symmetries_*``. Use fixtures if some tests change the values of the variable, so it should be reset every time.
+
+* Use fixtures only if 1) it takes a long time or should not be run multiple times, or 2) test error (assert) can be raised during the execution of that part, or 3) to parametrize tests, or 4) some tests change the value of the variable so the variable should be reset each time.
+
 How to write a test
 -----------------------------
 1. Create/choose a system
@@ -49,6 +57,8 @@ How to write a test
     If you need to create a new ``System`` object, you need to write a new fixture.
 
     * **Creating a new ab initio data:** If you add an additional dataset for the test computed using an external program (such as Quantum ESPRESSO), create a new folder in ``tests/data`` and include all the input and pseudopotential files to regenerate the data. Also, compress large text files such as the ``*.mmn`` and ``*.amn`` files. If possible, do not add large data files such as the ``uHu``, ``sHu``, and ``sIu`` files to the repository; they can be created inside the system fixture using the ``mmn2uHu`` utility.
+
+    * **Creating a new System from Model:** Models (created through the ``wb_models`` interface) should be listed in ``common_systems.py``, and named ``model_*``. Models should be an ordinary variable rather than a fixture because they are never modified. Then, create a ``system_*`` fixture.
 
 2. Create/choose a parser
     When comparing the ``*.dat`` files written from an ``EnergyResult`` object, you can use the ``compare_energyresult`` fixture.
