@@ -19,6 +19,7 @@ Ang_SI = angstrom
 ###########
 # factors #
 ###########
+fac_morb = -elementary_charge/2/hbar*Ang_SI**2 # change unit of m.B to (eV).
 fac_ahc = -1e10 * elementary_charge ** 2 / hbar
 fac_spin_hall = fac_ahc * -0.5
 factor_ohmic=(elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
@@ -142,7 +143,6 @@ def Morb(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwarg
                 FermiOcean(frml.Morb_Hpm(data_K,sign=+1,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)() 
             - 2*FermiOcean(frml.Omega(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi) 
                    )  *  (data_K.cell_volume*fac_morb)
-
 
 def Morb_test(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     fac_morb =  -eV_au/bohr**2
@@ -392,6 +392,32 @@ def eMChA(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwar
     res.data = -(-term1 + term2 + term3 + term4 - term5 + termcross)*factor_t2_2_1
     return res
 
+### Zeeman terms  ###
+
+
+def ohmic_Z(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    r""" sigma10Ztau1 fermi sea"""
+    #TODO need real fermi-sea to make der2Morb work.(XXLiu)
+    formula_1  = FormulaProduct ( [frml.Morb_Hpm(data_K,sign=+1,**kwargs_formula) ,frml.InvMass(data_K)], name='morb_Hpm-mass')
+    formula_2  = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula) ,frml.InvMass(data_K)], name='berry-mass')
+    res =  FermiOcean(formula_1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res -= 2* FermiOcean(formula_2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi)
+    res +=  FermiOcean(frml.Der2Morb(data_K),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res -= 2* FermiOcean(frml.Der2Omega(data_K),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi)
+    return res
+
+def ohmic_Z_2(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    r""" sigma10Ztau1 fermi sea"""
+    formula_1  = FormulaProduct ( [frml.Morb_Hpm(data_K,sign=+1,**kwargs_formula) ,frml.InvMass(data_K)], name='morb_Hpm-mass')
+    formula_2  = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula) ,frml.InvMass(data_K)], name='berry-mass')
+    res =  FermiOcean(formula_1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res -= 2* FermiOcean(formula_2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi)
+    formula_3  = FormulaProduct ( [frml.DerMorb(data_K,**kwargs_formula) ,data_K.covariant('Ham',commader=1)], name='der_morb_Hpm-vel')
+    formula_4  = FormulaProduct ( [frml.DerOmega(data_K,**kwargs_formula) ,data_K.covariant('Ham',commader=1)], name='der_berry-vel')
+    res -=  FermiOcean(formula_3,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res += 2* FermiOcean(formula_4,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi)
+    res.data = res.data.transpose(0,2,3,1)*fac_morb*factor_t1_1_0
+    return res
 
 ##################################
 ### The private part goes here  ##

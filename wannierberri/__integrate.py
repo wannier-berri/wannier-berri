@@ -83,6 +83,8 @@ calculators_trans={
          'eMChA_fsurf'                     : fermiocean.eMChA_fsurf                   ,
          'eMChA_fder2'                     : fermiocean.eMChA_fder2                   ,
          'eMChA'                           : fermiocean.eMChA                         ,
+         'ohmic_Z'                           : fermiocean.ohmic_Z                         ,
+         'ohmic_Z_fsurf'                           : fermiocean.ohmic_Z_2                         ,
          }
 
 
@@ -182,7 +184,9 @@ descriptions['Faraday']                        ="Tensor tildeD(omega) describing
 descriptions['opt_SHCryoo']                    ="Ryoo's Optical spin Hall conductivity in hbar/e S/cm (PRB RPS19)"
 descriptions['opt_SHCqiao']                    ="Qiao's Optical spin Hall conductivity in hbar/e S/cm (PRB QZYZ18)"
 descriptions['opt_shiftcurrent']               ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
-#descriptions['linear_magnetoresistance_fsurf'] ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+descriptions['ohmic_Z']               ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+descriptions['ohmic_Z_fsurf']               ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
+descriptions['linear_magnetoresistance_fsurf'] ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
 #descriptions['linear_magnetoresistance']       ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
 #descriptions['quadra_magnetoresistance_fsurf'] ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
 #descriptions['quadra_magnetoresistance']       ="Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"

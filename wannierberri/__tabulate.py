@@ -30,8 +30,12 @@ calculators={
          'V'          : frml.Velocity, 
          'berry'      : frml.Omega, 
          'Der_berry'  : frml.DerOmega,
+         'Der2_berry'  : frml.Der2Omega,
          'morb'       : frml.morb,
          'Der_morb'   : frml_basic.Der_morb,
+         'Der0_morb'  : frml.Morb_Hpm,
+         'Der1_morb'   : frml.DerMorb,
+         'Der2_morb'   : frml.Der2Morb,
          'spin_berry' : frml.SpinOmega,
          }
 
