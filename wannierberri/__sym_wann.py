@@ -150,12 +150,14 @@ class SymWann():
         #Find space group and symmetres
         #==============================
         def show_symmetry(symmetry):
+            rot_c = []
             for i in range(symmetry['rotations'].shape[0]):
                 rot = symmetry['rotations'][i]
                 trans = symmetry['translations'][i]
                 rot_cart = np.dot(np.dot(np.transpose(self.lattice),rot),np.linalg.inv(np.transpose(self.lattice)) )
                 trans_cart = np.dot(np.dot(np.transpose(self.lattice),trans),np.linalg.inv(np.transpose(self.lattice)) )
                 det = np.linalg.det(rot_cart)
+                rot_c.append(rot_cart)
                 print("  --------------- %4d ---------------" % (i + 1))
                 print(" det = ",det)
                 print("  rotation:                    cart:")
@@ -165,6 +167,7 @@ class SymWann():
                 print("  translation:")
                 print("     (%8.5f %8.5f %8.5f)  (%8.5f %8.5f %8.5f)" % (trans[0], trans[1], trans[2],
                     trans_cart[0], trans_cart[1], trans_cart[2]))
+            return rot_c
         numbers = []
         names = list(set(self.atom_name))
         for name in self.atom_name:
@@ -175,7 +178,7 @@ class SymWann():
         print("  Spacegroup is %s." %spglib.get_spacegroup(cell))
         self.symmetry = spglib.get_symmetry_dataset(cell)
         self.nsymm = self.symmetry['rotations'].shape[0]
-        show_symmetry(self.symmetry)
+        self.rot_c = show_symmetry(self.symmetry)
         self.Inv = (self.symmetry['rotations'][1] == -1*np.eye(3)).all() #inversion or not
         if self.Inv: print('====================\nSystem have inversion symmetry\n====================')
 
@@ -513,28 +516,17 @@ class SymWann():
                                 new_Rvec_index = self.iRvec.index(new_Rvec)
                                 Ham_all[iR,atom_a,atom_b,self.H_select[atom_a,atom_b]] = self.Ham_R[self.H_select[rot_map[atom_a],
                                     rot_map[atom_b]],new_Rvec_index]
-                                for X in self.matrix_list:
-                                    if self.matrix_bool[X]:
-                                        #if X in ['SS','AA','BB','CC']:
-                                        if X in ['SS']:
-                                            vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = vars(self)[X+'_R'][
-                                            self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index,:].dot(np.transpose(
-                                            np.linalg.inv(rot_cart)))
-                                        if X in ['AA']:
-                                            if iR == self.iRvec.index([0,0,0]) and atom_a == atom_b:
-                                                cR_shift =np.einsum('i,ij->j',vec_shift[atom_a],self.lattice)
-                                                cR_m = np.zeros((self.num_wann,self.num_wann,3))
-                                                for i in self.wann_atom_info[atom_a][4]: 
-                                                    cR_m[i,i,:] += cR_shift
-                                                vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = (
-                                                        vars(self)[X+'_R'][self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index,:] 
-                                                        + cR_m[self.H_select[atom_a,atom_b],:]
-                                                        ).dot(np.transpose(np.linalg.inv(rot_cart) ) )#
-                                            else:
-                                                vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = vars(self)[X+'_R'][
-                                                self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index,:].dot(np.transpose(
-                                                    np.linalg.inv(rot_cart) ) )
-                                       
+                                for X in [matrix for matrix,TF in self.matrix_bool.items() if TF == True]:
+                                    if X == ['AA','SS']:
+                                        num_w_a = len(sum(self.wann_atom_info[atom_a][4], [])) #number of orbitals of atom_a
+                                        #X_L: only rotation wannier centres from L to L' before rotating orbitals.
+                                        XX_L = vars(self)[X+'_R'][self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index,:].reshape(num_w_a,num_w_a,3)
+                                        #special even with R == [0,0,0] diagonal terms.
+                                        if iR == self.iRvec.index([0,0,0]) and atom_a == atom_b:
+                                            if X == 'AA':
+                                                XX_L += np.einsum( 'mn,p->mnp',np.eye(num_w_a),(vec_shift[atom_a]-self.symmetry['translations'][rot]).dot(self.lattice))
+                                        #X_all: rotating vector.
+                                        vars()[X+'_all'][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = np.einsum('ij,nmi->nmj',self.rot_c[rot],XX_L).reshape(-1,3)
                             else:
                                 if new_Rvec in tmp_R_list:
                                     pass
@@ -582,6 +574,24 @@ class SymWann():
         
         print('number of symmetry oprator == ',nrot)
         
+        test_i = self.iRvec.index([0,0,0])
+        for i in range(3):
+            print( np.diag(res_dic['AA'][:,:,test_i,i].real) )
+            print( np.diag(self.AA_R[:,:,test_i,i].real) )
+        test_i = self.iRvec.index([1,0,0])
+        for i in range(3):
+            print( np.diag(res_dic['AA'][:,:,test_i,i].real) )
+            print( np.diag(self.AA_R[:,:,test_i,i].real) )
+        test_i = self.iRvec.index([0,1,0])
+        for i in range(3):
+            print( np.diag(res_dic['AA'][:,:,test_i,i].real) )
+            print( np.diag(self.AA_R[:,:,test_i,i].real) )
+        test_i = self.iRvec.index([0,0,1])
+        for i in range(3):
+            print( np.diag(res_dic['AA'][:,:,test_i,i].real) )
+            print( np.diag(self.AA_R[:,:,test_i,i].real) )
+
+ 
 
         if keep_New_R:
                 return res_dic , tmp_R_list
