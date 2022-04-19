@@ -48,10 +48,10 @@ class Path(Grid):
         self.findif=None
         self.breaks=breaks
         
-        if k_list is 'sphere':
+        if k_list == 'sphere':
             self.K_list =self.sphere(r1,r1,ntheta,nphi,origin) 
             self.labels=['sphere'] 
-        elif k_list is 'spheroid':
+        elif k_list == 'spheroid':
             self.K_list =self.sphere(r1,r2,ntheta,nphi,origin) 
             self.labels=['spheroid'] 
         

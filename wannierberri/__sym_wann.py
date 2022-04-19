@@ -1,8 +1,8 @@
 import numpy as np
 import spglib
 import numpy.linalg as la
-import sympy as sym
-
+from . import __sym_wann_orbitals as orbitals
+from .__utility import get_angle
 #np.set_printoptions(threshold=np.inf,linewidth=500)
 np.set_printoptions(suppress=True,precision=4,threshold=np.inf,linewidth=500)
 
@@ -65,8 +65,8 @@ class SymWann():
             except KeyError:
                 self.matrix_bool[X] = False
         
-        self.orbital_dic = {"s":1,"p":3,"d":5,"f":7,"sp3":4,"sp2":3,"pz":1,"sp":2,"p2":2,
-                "sp3d":5,"sp3d2":6,'t2g':3, 'dx2-y2':1, 'eg':2}
+        # number of orbitals in each shell
+
         self.wann_atom_info = []
 
         num_atom = len(self.atom_name)
@@ -101,7 +101,7 @@ class SymWann():
             for iatom in range(num_atom):
                 if self.atom_name[iatom] == name_str:
                     for iorb in orb_str:
-                        num_orb =  self.orbital_dic[iorb]
+                        num_orb =  orbitals.num_orbitals[iorb]
                         orb_list = [ orbital_index+i for i in range(num_orb)]
                         if self.soc:
                             orb_list += [ orbital_index+i+int(self.num_wann/2) for i in range(num_orb)]
@@ -146,28 +146,6 @@ class SymWann():
         for item in self.wann_atom_info:
             print(item[:-1])
         
-        #==============================
-        #Find space group and symmetres
-        #==============================
-        def show_symmetry(symmetry):
-            rot_c = []
-            for i in range(symmetry['rotations'].shape[0]):
-                rot = symmetry['rotations'][i]
-                trans = symmetry['translations'][i]
-                rot_cart = np.dot(np.dot(np.transpose(self.lattice),rot),np.linalg.inv(np.transpose(self.lattice)) )
-                trans_cart = np.dot(np.dot(np.transpose(self.lattice),trans),np.linalg.inv(np.transpose(self.lattice)) )
-                det = np.linalg.det(rot_cart)
-                rot_c.append(rot_cart)
-                print("  --------------- %4d ---------------" % (i + 1))
-                print(" det = ",det)
-                print("  rotation:                    cart:")
-                for x in range(3):
-                    print("     [%2d %2d %2d]                    [%3.2f %3.2f %3.2f]" % (rot[x,0], rot[x,1], rot[x,2], 
-                        rot_cart[x,0], rot_cart[x,1], rot_cart[x,2]))
-                print("  translation:")
-                print("     (%8.5f %8.5f %8.5f)  (%8.5f %8.5f %8.5f)" % (trans[0], trans[1], trans[2],
-                    trans_cart[0], trans_cart[1], trans_cart[2]))
-            return rot_c
         numbers = []
         names = list(set(self.atom_name))
         for name in self.atom_name:
@@ -178,186 +156,30 @@ class SymWann():
         print("  Spacegroup is %s." %spglib.get_spacegroup(cell))
         self.symmetry = spglib.get_symmetry_dataset(cell)
         self.nsymm = self.symmetry['rotations'].shape[0]
-        self.rot_c = show_symmetry(self.symmetry)
+        self.rot_c = self.show_symmetry()
         self.Inv = (self.symmetry['rotations'][1] == -1*np.eye(3)).all() #inversion or not
         if self.Inv: print('====================\nSystem have inversion symmetry\n====================')
 
-    def get_angle(self,sina,cosa):
-        '''Get angle in radian from sin and cos.'''
-        if abs(cosa) > 1.0:
-            cosa = np.round(cosa,decimals=1)
-        alpha = np.arccos(cosa)
-        if sina < 0.0:
-            alpha = 2.0 * np.pi - alpha
-        return alpha
-
-    def rot_orb(self,orb_symbol,rot_glb):
-        ''' Get rotation matrix of orbitals in each orbital quantum number '''
-        x = sym.Symbol('x')
-        y = sym.Symbol('y')
-        z = sym.Symbol('z')
-        ss = lambda x,y,z : 1+0*x
-        px = lambda x,y,z : x
-        py = lambda x,y,z : y
-        pz = lambda x,y,z : z
-        dz2 = lambda x,y,z : (2*z*z-x*x-y*y)/(2*sym.sqrt(3.0))
-        dxz = lambda x,y,z : x*z
-        dyz = lambda x,y,z : y*z
-        dx2_y2 = lambda x,y,z : (x*x-y*y)/2
-        dxy = lambda x,y,z : x*y
-        fz3 = lambda x,y,z : z*(2*z*z-3*x*x-3*y*y)/(2*sym.sqrt(15.0))
-        fxz2 = lambda x,y,z : x*(4*z*z-x*x-y*y)/(2*sym.sqrt(10.0))
-        fyz2 = lambda x,y,z : y*(4*z*z-x*x-y*y)/(2*sym.sqrt(10.0))
-        fzx2_zy2 = lambda x,y,z : z*(x*x-y*y)/2
-        fxyz = lambda x,y,z : x*y*z
-        fx3_3xy2 = lambda x,y,z : x*(x*x-3*y*y)/(2*sym.sqrt(6.0))
-        f3yx2_y3 = lambda x,y,z : y*(3*x*x-y*y)/(2*sym.sqrt(6.0))
-        
-        sp_1 = lambda x,y,z: 1/sym.sqrt(2) * x
-        sp_2 = lambda x,y,z: -1/sym.sqrt(2) * x
-
-        sp2_1 = lambda x,y,z: - 1/sym.sqrt(6)*x + 1/sym.sqrt(2)*y
-        sp2_2 = lambda x,y,z: - 1/sym.sqrt(6)*x - 1/sym.sqrt(2)*y
-        sp2_3 = lambda x,y,z: 2/sym.sqrt(6)*x
-
-        sp3_1 = lambda x,y,z : 0.5*(x + y + z)
-        sp3_2 = lambda x,y,z : 0.5*(x - y - z)
-        sp3_3 = lambda x,y,z : 0.5*(- x + y - z)
-        sp3_4 = lambda x,y,z : 0.5*(- x - y + z)
-
-        sp3d2_1 = lambda x,y,z: -1/sym.sqrt(2)*x 
-        sp3d2_2 = lambda x,y,z: 1/sym.sqrt(2)*x 
-        sp3d2_3 = lambda x,y,z: -1/sym.sqrt(2)*y 
-        sp3d2_4 = lambda x,y,z: 1/sym.sqrt(2)*y 
-        sp3d2_5 = lambda x,y,z: -1/sym.sqrt(2)*z 
-        sp3d2_6 = lambda x,y,z: 1/sym.sqrt(2)*z 
-        
-        sp3d2_plus_1 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 + 0.5*(x*x-y*y)/2
-        sp3d2_plus_2 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 + 0.5*(x*x-y*y)/2
-        sp3d2_plus_3 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 - 0.5*(x*x-y*y)/2
-        sp3d2_plus_4 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 - 0.5*(x*x-y*y)/2
-        sp3d2_plus_5 = lambda x,y,z: + 1/sym.sqrt(3)*(3*z*z-1)/sym.sqrt(3)/2
-        sp3d2_plus_6 = lambda x,y,z: + 1/sym.sqrt(3)*(3*z*z-1)/sym.sqrt(3)/2
-
-        orb_function_dic={'s':[ss],
-                          'p':[pz,px,py],
-                          'd':[dz2,dxz,dyz,dx2_y2,dxy],
-                          'f':[fz3,fxz2,fyz2,fzx2_zy2,fxyz,fx3_3xy2,f3yx2_y3],
-                         'sp':[sp_1,sp_2],
-                         'p2':[pz,py],
-                        'sp2':[sp2_1,sp2_2,sp2_3],
-                         'pz':[pz],
-                        'sp3':[sp3_1,sp3_2,sp3_3,sp3_4],
-                      'sp3d2':[sp3d2_1,sp3d2_2,sp3d2_3,sp3d2_4,sp3d2_5,sp3d2_6],
-                 'sp3d2_plus':[sp3d2_plus_1,sp3d2_plus_2,sp3d2_plus_3,sp3d2_plus_4,sp3d2_plus_5,sp3d2_plus_6],
-                        't2g':[dxz,dyz,dxy],
-                         'eg':[dxz,dyz,dxy],
-                      }
-        orb_chara_dic={'s':[x],
-                       'p':[z,x,y],
-                       'd':[z*z,x*z,y*z,x*x,x*y,y*y],
-                       'f':[z*z*z,x*z*z,y*z*z,z*x*x,x*y*z,x*x*x,y*y*y  ,z*y*y,x*y*y,y*x*x],
-                      'sp':[x,y,z],
-                      'p2':[z,y,x],
-                     'sp2':[x,y,z],
-                      'pz':[z,x,y],
-                     'sp3':[x,y,z],
-                   'sp3d2':[x,y,z],
-              'sp3d2_plus':[z*z,x*x,y*y,x*y,x*z,y*z],
-                     't2g':[x*z,y*z,x*y,z*z,x*x,y*y], 
-                      'eg':[z*z,x*x,y*y,x*z,y*z,x*y], 
-                }
-        orb_dim = self.orbital_dic[orb_symbol]
-        orb_rot_mat = np.zeros((orb_dim,orb_dim),dtype=float)
-        xp = np.dot(np.linalg.inv(rot_glb)[0],np.transpose([x,y,z]))
-        yp = np.dot(np.linalg.inv(rot_glb)[1],np.transpose([x,y,z]))
-        zp = np.dot(np.linalg.inv(rot_glb)[2],np.transpose([x,y,z]))
-        OC = orb_chara_dic[orb_symbol]
-        OC_len = len(OC)
-        if orb_symbol == 'sp3d2':
-            OC_plus = orb_chara_dic[orb_symbol+'_plus']
-            OC_plus_len = len(OC_plus)
-        for i in range(orb_dim):
-            subs = []
-            equation = (orb_function_dic[orb_symbol][i](xp,yp,zp)).expand()
-            for j in range(OC_len):
-                for j_add in range(OC_len):
-                    if j_add == 0:
-                        eq_tmp = equation.subs(OC[j],1)
-                    else:
-                        eq_tmp = eq_tmp.subs(OC[(j+j_add)%OC_len],0)
-                subs.append(eq_tmp)
-            if orb_symbol in ['sp3d2']:
-                subs_plus = []
-                equation_plus = (orb_function_dic[orb_symbol+'_plus'][i](xp,yp,zp)).expand()
-                for k in range(OC_plus_len):
-                    for k_add in range(OC_plus_len):
-                        if k_add == 0:
-                            eq_tmp = equation_plus.subs(OC_plus[k],1)
-                        else:
-                            eq_tmp = eq_tmp.subs(OC_plus[(k+k_add)%OC_plus_len],0)
-                    subs_plus.append(eq_tmp)
-            
-            if orb_symbol in ['s','pz']:
-                orb_rot_mat[0,0] = subs[0].evalf()
-            elif orb_symbol == 'p':
-                orb_rot_mat[0,i] = subs[0].evalf()
-                orb_rot_mat[1,i] = subs[1].evalf()
-                orb_rot_mat[2,i] = subs[2].evalf()
-            elif orb_symbol == 'd':
-                orb_rot_mat[0,i] = (2*subs[0]-subs[3]-subs[5])/sym.sqrt(3.0)
-                orb_rot_mat[1,i] = subs[1].evalf()
-                orb_rot_mat[2,i] = subs[2].evalf()
-                orb_rot_mat[3,i] =  (subs[3]-subs[5]).evalf()
-                orb_rot_mat[4,i] = subs[4].evalf()
-            elif orb_symbol == 'f':
-                orb_rot_mat[0,i] = (subs[0]*sym.sqrt(15.0)).evalf()
-                orb_rot_mat[1,i] = (subs[1]*sym.sqrt(10.0)/2).evalf()
-                orb_rot_mat[2,i] = (subs[2]*sym.sqrt(10.0)/2).evalf()
-                orb_rot_mat[3,i] = (2*subs[3]+3*subs[0]).evalf()
-                orb_rot_mat[4,i] = subs[4].evalf()
-                orb_rot_mat[5,i] = ((2*subs[5]+subs[1]/2)*sym.sqrt(6.0)).evalf()
-                orb_rot_mat[6,i] = ((-2*subs[6]-subs[2]/2)*sym.sqrt(6.0)).evalf()
-            elif orb_symbol == 'sp':
-                orb_rot_mat[0,i] = 1/2-1/sym.sqrt(2)*subs[0]
-                orb_rot_mat[1,i] = 1/2-1/sym.sqrt(2)*subs[0]
-            elif orb_symbol == 'p2':
-                orb_rot_mat[0,i] = subs[0]
-                orb_rot_mat[1,i] = subs[1]
-            elif orb_symbol == 'sp2':
-                orb_rot_mat[0,i] = 1/3-1/sym.sqrt(6)*subs[0] +1/sym.sqrt(2)*subs[1]
-                orb_rot_mat[1,i] = 1/3-1/sym.sqrt(6)*subs[0] -1/sym.sqrt(2)*subs[1]
-                orb_rot_mat[2,i] = 1/3+2/sym.sqrt(6)*subs[0]
-            elif orb_symbol == 'sp3':
-                orb_rot_mat[0,i] = 0.5*(subs[0]+subs[1]+subs[2] + 0.5)
-                orb_rot_mat[1,i] = 0.5*(subs[0]-subs[1]-subs[2] + 0.5)
-                orb_rot_mat[2,i] = 0.5*(subs[1]-subs[0]-subs[2] + 0.5)
-                orb_rot_mat[3,i] = 0.5*(subs[2]-subs[1]-subs[0] + 0.5)
-            elif orb_symbol == 'sp3d2':
-                orb_rot_mat[0,i] = 1/6 -1/sym.sqrt(2)*subs[0] 
-                orb_rot_mat[1,i] = 1/6 +1/sym.sqrt(2)*subs[0] 
-                orb_rot_mat[2,i] = 1/6 -1/sym.sqrt(2)*subs[1] 
-                orb_rot_mat[3,i] = 1/6 +1/sym.sqrt(2)*subs[1] 
-                orb_rot_mat[4,i] = 1/6 -1/sym.sqrt(2)*subs[2] 
-                orb_rot_mat[5,i] = 1/6 +1/sym.sqrt(2)*subs[2] 
-                
-                orb_rot_mat[0,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  + 0.5*(subs_plus[1]-subs_plus[2])
-                orb_rot_mat[1,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  + 0.5*(subs_plus[1]-subs_plus[2])
-                orb_rot_mat[2,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  - 0.5*(subs_plus[1]-subs_plus[2])
-                orb_rot_mat[3,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  - 0.5*(subs_plus[1]-subs_plus[2])
-                orb_rot_mat[4,i] +=  + 1/sym.sqrt(3)*subs_plus[0]*sym.sqrt(3.0)
-                orb_rot_mat[5,i] +=  + 1/sym.sqrt(3)*subs_plus[0]*sym.sqrt(3.0)
-            elif orb_symbol == 't2g':
-                orb_rot_mat[0,i] = subs[0].evalf()
-                orb_rot_mat[1,i] = subs[1].evalf()
-                orb_rot_mat[2,i] = subs[2].evalf()
-            elif orb_symbol == 'eg':
-                orb_rot_mat[0,i] = (2*subs[0]-subs[1]-subs[2])/sym.sqrt(3.0)
-                orb_rot_mat[2,i] =  (subs[1]-subs[2]).evalf()
-                
-        assert  np.abs(np.linalg.det(orb_rot_mat)) > 0.99,'ERROR!!!!: Your crystal symmetry does not allow {} orbital exist.'.format(orb_symbol)
-        
-        return orb_rot_mat
+    #==============================
+    #Find space group and symmetres
+    #==============================
+    def show_symmetry(self):
+        rot_c = []
+        for i,(rot,trans) in enumerate(zip(self.symmetry['rotations'], self.symmetry['translations'])):
+            rot_cart   = np.dot(np.dot(np.transpose(self.lattice),rot  ),np.linalg.inv(np.transpose(self.lattice)) )
+            trans_cart = np.dot(np.dot(np.transpose(self.lattice),trans),np.linalg.inv(np.transpose(self.lattice)) )
+            det = np.linalg.det(rot_cart)
+            rot_c.append(rot_cart)
+            print("  --------------- %4d ---------------" % (i + 1))
+            print(" det = ",det)
+            print("  rotation:                    cart:")
+            for x in range(3):
+                print("     [%2d %2d %2d]                    [%3.2f %3.2f %3.2f]" % (rot[x,0], rot[x,1], rot[x,2], 
+                    rot_cart[x,0], rot_cart[x,1], rot_cart[x,2]))
+            print("  translation:")
+            print("     (%8.5f %8.5f %8.5f)  (%8.5f %8.5f %8.5f)" % (trans[0], trans[1], trans[2],
+                trans_cart[0], trans_cart[1], trans_cart[2]))
+        return rot_c
 
 	
     def Part_P(self,rot_sym_glb,orb_symbol):
@@ -381,10 +203,10 @@ class SymWann():
                 beta = np.arccos(rmat[2,2])
                 cos_gamma = -rmat[2,0] / np.sin(beta)
                 sin_gamma =  rmat[2,1] / np.sin(beta)
-                gamma = self.get_angle(sin_gamma, cos_gamma)
+                gamma = get_angle(sin_gamma, cos_gamma)
                 cos_alpha = rmat[0,2] / np.sin(beta)
                 sin_alpha = rmat[1,2] / np.sin(beta)
-                alpha = self.get_angle(sin_alpha, cos_alpha)
+                alpha = get_angle(sin_alpha, cos_alpha)
             else:
                 beta = 0.0
                 if rmat[2,2] == -1. :beta = np.pi
@@ -397,7 +219,7 @@ class SymWann():
             dmat[0,1] = -np.exp(-(alpha-gamma)/2.0 * 1j) * np.sin(beta/2.0)
             dmat[1,0] =  np.exp( (alpha-gamma)/2.0 * 1j) * np.sin(beta/2.0)
             dmat[1,1] =  np.exp( (alpha+gamma)/2.0 * 1j) * np.cos(beta/2.0)
-        rot_orbital = self.rot_orb(orb_symbol,rot_sym_glb)
+        rot_orbital = orbitals.rot_orb(orb_symbol,rot_sym_glb)
         if self.soc:
             rot_orbital = np.kron(dmat,rot_orbital)
             rot_imag = rot_orbital.imag
