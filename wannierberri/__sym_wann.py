@@ -66,7 +66,7 @@ class SymWann():
         num_atom = len(self.atom_name)
 
         #=============================================================
-        #Generate wannier_atoms_information list and H_select matrixes
+        #Generate wannier_atoms_information list and H_select matrices
         #=============================================================
         '''
         Wannier_atoms_information is a list of informations about atoms which contribute projections orbitals. 
@@ -75,7 +75,7 @@ class SymWann():
                 ending_orbital_index_of_each_orbital_quantum_number [list]  )
         Eg: (1, 'Te', array([0.274, 0.274, 0.   ]), 'sp', [0, 1, 6, 7, 8, 9, 10, 11], [0, 6], [2, 12])
 
-        H_select matrixex is bool matrix which can select a subspace of Hamiltonian between one atom and it's 
+        H_select matrices is bool matrix which can select a subspace of Hamiltonian between one atom and it's 
         equivalent atom after symmetry operation.  
         '''
         proj_dic = {}
@@ -303,6 +303,8 @@ class SymWann():
 
         matrix_list_res = {k:np.zeros((self.num_wann,self.num_wann,nRvec,3),dtype=complex) for k in self.matrix_list}
 
+        print (f"iRvec ({nRvec}):\n  {self.iRvec}")
+
         for rot in range(self.nsymm):
             rot_cart = np.dot(np.dot(np.transpose(self.lattice), self.symmetry['rotations'][rot]),np.linalg.inv(np.transpose(self.lattice)) )
             rot_map,vec_shift,sym_only,sym_T = self.atom_rot_map(rot)
@@ -322,6 +324,8 @@ class SymWann():
                 matrix_list_all = {X:np.zeros((nRvec,self.num_wann_atom,self.num_wann_atom,self.num_wann,self.num_wann,3),dtype=complex) 
                             for X in self.matrix_list}
                 
+
+
                 #TODO try numba
                 for iR in range(nRvec):
                     for atom_a in range(self.num_wann_atom):
@@ -345,11 +349,12 @@ class SymWann():
                                     else: 
                                         print (f"WARNING: I do not know how to symmetrize  {X}")
                             else:
-                                if new_Rvec in tmp_R_list:
-                                    pass
-                                else:
+                                norm = np.linalg.norm(self.Ham_R[self.H_select[rot_map[atom_a],rot_map[atom_b]],iR])
+                                if norm > 1e-8:
+                                    print (f"WARNING : after symmetry transformation got a new Rvec: {new_Rvec} for iR = {iR}, Rvec = {self.iRvec[iR]} and atoms {atom_a} and {atom_b}"+
+                                            f"the Hamiltonian at original Rvec had norm {norm}. maybe use `use_ws = True` in system initialization")
+                                if new_Rvec not in tmp_R_list:
                                     tmp_R_list.append(new_Rvec)
-                                
 
                 for atom_a in range(self.num_wann_atom):
                     for atom_b in range(self.num_wann_atom):
