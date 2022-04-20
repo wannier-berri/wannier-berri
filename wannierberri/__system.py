@@ -136,7 +136,7 @@ class System():
             except KeyError:
                 pass
         symmetrize_wann = SymWann(num_wann=self.num_wann,lattice=self.real_lattice,positions=positions,atom_name=atom_name,
-            proj=proj,iRvec=self.iRvec,XX_R=XX_R,soc=soc,magmom=magmom)
+            proj=proj,iRvec=self.iRvec,XX_R=XX_R,soc=soc,magmom=magmom,cRvec=self.cRvec[None,None,:,:]+ self.diff_wcc_cart[:,:,None,:])
         XX_R,self.iRvec = symmetrize_wann.symmetrize()
         for X in XX_R.keys():
             vars(self)[X+'_R'] = XX_R[X]
@@ -174,10 +174,6 @@ class System():
     @property
     def getSS(self):
         return self.spin or self.SHCryoo or self.SHCqiao
-
-    @property
-    def getFF(self):
-        return self._getFF
 
     @property
     def getSA(self):
