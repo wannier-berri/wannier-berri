@@ -164,7 +164,7 @@ def system_GaAs_sym_tb():
             tar.extract(tarinfo, data_dir)
 
     seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
-    system = wberri.System_tb(seedname, berry=True )
+    system = wberri.System_tb(seedname, berry=True, use_ws = False )
 #    system = wberri.System_tb(seedname, berry=True, mp_grid = [2,2,2], use_ws = True )
     system.symmetrize(positions = np.array([[0.0, 0.0, 0.0],
                 [0.25, 0.25, 0.25]]),
