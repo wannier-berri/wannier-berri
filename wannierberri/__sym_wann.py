@@ -291,7 +291,7 @@ class SymWann():
         return p_mat,p_mat_dagger
 
 
-    def average_H(self,iRvec,keep_New_R=True):
+    def average_H(self,iRvec):
         #If we can make if faster, respectively is the better choice. Because XX_all matrix are supper large.(eat memory)  
         nrot = 0 
         R_list = np.array(iRvec,dtype=int)
@@ -341,16 +341,18 @@ class SymWann():
                                         if iR == self.iRvec.index([0,0,0]) and atom_a == atom_b:
                                             if X == 'AA':
                                                 XX_L += np.einsum( 'mn,p->mnp',np.eye(num_w_a),(vec_shift[atom_a]-self.symmetry['translations'][rot]).dot(self.lattice))
+                                           # elif X == 'BB':
+                                           #      XX_L += (np.einsum( 'mn,p->mnp',np.eye(num_w_a),(vec_shift[atom_a]-self.symmetry['translations'][rot]).dot(self.lattice))
+                                           #           *self.Ham_R[self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index].reshape(num_w_a,num_w_a)[:,:,None]
+                                           #           )
                                         #X_all: rotating vector.
                                         matrix_list_all[X][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = np.einsum('ij,nmi->nmj',self.rot_c[rot],XX_L).reshape(-1,3)
                                     else: 
-                                        print (f"WARNING: I do not know how to symmetrize  {X}")
+                                        print (f"WARNING: Symmetrization of {X} is not implemented")
                             else:
-                                norm = np.linalg.norm(self.Ham_R[self.H_select[rot_map[atom_a],rot_map[atom_b]],iR])
-                             #   if norm > 1e-8:
-                             #       print (f"WARNING : after symmetry transformation got a new Rvec: {new_Rvec} for iR = {iR}, Rvec = {self.iRvec[iR]} and atoms {atom_a} and {atom_b}"+
-                             #               f"the Hamiltonian at original Rvec had norm {norm}. maybe use `use_ws = True` in system initialization")
-                                if new_Rvec not in tmp_R_list:
+                                if new_Rvec in tmp_R_list:
+                                    pass
+                                else:
                                     tmp_R_list.append(new_Rvec)
 
                 for atom_a in range(self.num_wann_atom):
@@ -388,75 +390,7 @@ class SymWann():
                 
         print('number of symmetry oprations == ',nrot)
         
-        X = 'AA'
-        diag = False
-        test_i = self.iRvec.index([0,0,0])
-        '''
-        for j in range(3): 
-            for i in range(3):
-                print( np.diag(res_dic[X][:,:,test_i,i,j].real) )
-                print( np.diag(vars(self)[X+'_R'][:,:,test_i,i,j].real) )
-                print( res_dic[X][:,:,test_i,i,j].real )
-                print( vars(self)[X+'_R'][:,:,test_i,i,j].real )
-                print('==============================================')
-            test_i = self.iRvec.index([1,0,0])
-            for i in range(3):
-                print( np.diag(res_dic[X][:,:,test_i,i,j].real) )
-                print( np.diag(vars(self)[X+'_R'][:,:,test_i,i,j].real) )
-                print( res_dic[X][:,:,test_i,i,j].real )
-                print( vars(self)[X+'_R'][:,:,test_i,i,j].real )
-                print('==============================================')
-            test_i = self.iRvec.index([0,1,0])
-            for i in range(3):
-                print( np.diag(res_dic[X][:,:,test_i,i,j].real) )
-                print( np.diag(vars(self)[X+'_R'][:,:,test_i,i,j].real) )
-                print( res_dic[X][:,:,test_i,i,j].real )
-                print( vars(self)[X+'_R'][:,:,test_i,i,j].real )
-                print('==============================================')
-            test_i = self.iRvec.index([0,0,1])
-            for i in range(3):
-                print( np.diag(res_dic[X][:,:,test_i,i,j].real) )
-                print( np.diag(vars(self)[X+'_R'][:,:,test_i,i,j].real) )
-                print( res_dic[X][:,:,test_i,i,j].real )
-                print( vars(self)[X+'_R'][:,:,test_i,i,j].real )
-                print('==============================================')
-        '''
-        for i in range(3):
-            print( np.diag(res_dic[X][:,:,test_i,i].real) )
-            if diag:
-                print( np.diag(self.matrix_list['AA'][:,:,test_i,i].real) )
-            else:
-                print( (self.matrix_list['AA'][:,:,test_i,i].real) )
-            print('==============================================')
-        test_i = self.iRvec.index([1,0,0])
-        for i in range(3):
-            print( np.diag(res_dic[X][:,:,test_i,i].real) )
-            if diag:
-                print( np.diag(self.matrix_list['AA'][:,:,test_i,i].real) )
-            else:
-                print( (self.matrix_list['AA'][:,:,test_i,i].real) )
-            print('==============================================')
-        test_i = self.iRvec.index([0,1,0])
-        for i in range(3):
-            print( np.diag(res_dic[X][:,:,test_i,i].real) )
-            if diag:
-                print( np.diag(self.matrix_list['AA'][:,:,test_i,i].real) )
-            else:
-                print( (self.matrix_list['AA'][:,:,test_i,i].real) )
-            print('==============================================')
-        test_i = self.iRvec.index([0,0,1])
-        for i in range(3):
-            print( np.diag(res_dic[X][:,:,test_i,i].real) )
-            if diag:
-                print( np.diag(self.matrix_list['AA'][:,:,test_i,i].real) )
-            else:
-                print( (self.matrix_list['AA'][:,:,test_i,i].real) )
-            print('==============================================')
-        
-        if keep_New_R:
-                return res_dic , tmp_R_list
-        else:
-                return res_dic
+        return res_dic , tmp_R_list
 
     def symmetrize(self):
         #====Time Reversal====
@@ -473,9 +407,92 @@ class SymWann():
         #========================================================
         print('##########################')
         print('Symmetrizing Start')
-        return_dic, iRvec_add =  self.average_H(self.iRvec,keep_New_R=True)
-#        nRvec_add = len(iRvec_add)
+        return_dic, iRvec_add =  self.average_H(self.iRvec)
+        nRvec_add = len(iRvec_add)
+        print('nRvec_add =',nRvec_add)
+        if nRvec_add > 0:
+            return_dic_add, iRvec_add_0 =  self.average_H(iRvec_add)
+            for X in return_dic_add.keys():
+                return_dic[X] = np.concatenate((return_dic[X],return_dic_add[X]),axis=2,dtype=complex)
         print('Symmetrizing Finished')
-        return  return_dic, np.array(self.iRvec)
+        
+        X = 'SS'
+        diag = False
+        '''
+        test_i = self.iRvec.index([0,0,0])
+        for i in range(3):
+            if diag:
+                print( np.diag(return_dic[X][:,:,test_i,i].imag) )
+                print( np.diag(self.matrix_list[X][:,:,test_i,i].imag) )
+            else:
+                print( (return_dic[X][:,:,test_i,i].imag) )
+                print( (self.matrix_list[X][:,:,test_i,i].imag) )
+            print('==============================================')
+        test_i = self.iRvec.index([1,0,0])
+        for i in range(3):
+            if diag:
+                print( np.diag(return_dic[X][:,:,test_i,i].imag) )
+                print( np.diag(self.matrix_list[X][:,:,test_i,i].imag) )
+            else:
+                print( (return_dic[X][:,:,test_i,i].imag) )
+                print( (self.matrix_list[X][:,:,test_i,i].imag) )
+            print('==============================================')
+        test_i = self.iRvec.index([0,1,0])
+        for i in range(3):
+            if diag:
+                print( np.diag(return_dic[X][:,:,test_i,i].imag) )
+                print( np.diag(self.matrix_list[X][:,:,test_i,i].imag) )
+            else:
+                print( (return_dic[X][:,:,test_i,i].imag) )
+                print( (self.matrix_list[X][:,:,test_i,i].imag) )
+            print('==============================================')
+        test_i = self.iRvec.index([0,0,1])
+        for i in range(3):
+            if diag:
+                print( np.diag(return_dic[X][:,:,test_i,i].imag) )
+                print( np.diag(self.matrix_list[X][:,:,test_i,i].imag) )
+            else:
+                print( (return_dic[X][:,:,test_i,i].imag) )
+                print( (self.matrix_list[X][:,:,test_i,i].imag) )
+            print('==============================================')
+        '''
+        test_i = self.iRvec.index([0,0,0])
+        for i in range(3):
+            if diag:
+                print( np.diag(return_dic[X][:,:,test_i,i].real) )
+                print( np.diag(self.matrix_list[X][:,:,test_i,i].real) )
+            else:
+                print( (return_dic[X][:,:,test_i,i].real) )
+                print( (self.matrix_list[X][:,:,test_i,i].real) )
+            print('==============================================')
+        test_i = self.iRvec.index([1,0,0])
+        for i in range(3):
+            if diag:
+                print( np.diag(return_dic[X][:,:,test_i,i].real) )
+                print( np.diag(self.matrix_list[X][:,:,test_i,i].real) )
+            else:
+                print( (return_dic[X][:,:,test_i,i].real) )
+                print( (self.matrix_list[X][:,:,test_i,i].real) )
+            print('==============================================')
+        test_i = self.iRvec.index([0,1,0])
+        for i in range(3):
+            if diag:
+                print( np.diag(return_dic[X][:,:,test_i,i].real) )
+                print( np.diag(self.matrix_list[X][:,:,test_i,i].real) )
+            else:
+                print( (return_dic[X][:,:,test_i,i].real) )
+                print( (self.matrix_list[X][:,:,test_i,i].real) )
+            print('==============================================')
+        test_i = self.iRvec.index([0,0,1])
+        for i in range(3):
+            if diag:
+                print( np.diag(return_dic[X][:,:,test_i,i].real) )
+                print( np.diag(self.matrix_list[X][:,:,test_i,i].real) )
+            else:
+                print( (return_dic[X][:,:,test_i,i].real) )
+                print( (self.matrix_list[X][:,:,test_i,i].real) )
+            print('==============================================')
+
+        return  return_dic, np.array(self.iRvec+iRvec_add)
 
 
