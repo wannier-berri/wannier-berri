@@ -413,7 +413,7 @@ class SymWann():
         if nRvec_add > 0:
             return_dic_add, iRvec_add_0 =  self.average_H(iRvec_add)
             for X in return_dic_add.keys():
-                return_dic[X] = np.concatenate((return_dic[X],return_dic_add[X]),axis=2,dtype=complex)
+                return_dic[X] = np.concatenate((return_dic[X],return_dic_add[X]),axis=2)
         print('Symmetrizing Finished')
         
         X = 'AA'
