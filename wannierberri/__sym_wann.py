@@ -416,46 +416,8 @@ class SymWann():
                 return_dic[X] = np.concatenate((return_dic[X],return_dic_add[X]),axis=2,dtype=complex)
         print('Symmetrizing Finished')
         
-        X = 'SS'
-        diag = False
-        '''
-        test_i = self.iRvec.index([0,0,0])
-        for i in range(3):
-            if diag:
-                print( np.diag(return_dic[X][:,:,test_i,i].imag) )
-                print( np.diag(self.matrix_list[X][:,:,test_i,i].imag) )
-            else:
-                print( (return_dic[X][:,:,test_i,i].imag) )
-                print( (self.matrix_list[X][:,:,test_i,i].imag) )
-            print('==============================================')
-        test_i = self.iRvec.index([1,0,0])
-        for i in range(3):
-            if diag:
-                print( np.diag(return_dic[X][:,:,test_i,i].imag) )
-                print( np.diag(self.matrix_list[X][:,:,test_i,i].imag) )
-            else:
-                print( (return_dic[X][:,:,test_i,i].imag) )
-                print( (self.matrix_list[X][:,:,test_i,i].imag) )
-            print('==============================================')
-        test_i = self.iRvec.index([0,1,0])
-        for i in range(3):
-            if diag:
-                print( np.diag(return_dic[X][:,:,test_i,i].imag) )
-                print( np.diag(self.matrix_list[X][:,:,test_i,i].imag) )
-            else:
-                print( (return_dic[X][:,:,test_i,i].imag) )
-                print( (self.matrix_list[X][:,:,test_i,i].imag) )
-            print('==============================================')
-        test_i = self.iRvec.index([0,0,1])
-        for i in range(3):
-            if diag:
-                print( np.diag(return_dic[X][:,:,test_i,i].imag) )
-                print( np.diag(self.matrix_list[X][:,:,test_i,i].imag) )
-            else:
-                print( (return_dic[X][:,:,test_i,i].imag) )
-                print( (self.matrix_list[X][:,:,test_i,i].imag) )
-            print('==============================================')
-        '''
+        X = 'AA'
+        diag = True #False
         test_i = self.iRvec.index([0,0,0])
         for i in range(3):
             if diag:
