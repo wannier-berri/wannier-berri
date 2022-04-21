@@ -13,7 +13,7 @@ from wannierberri import models as wb_models
 from common import ROOT_DIR
 
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
-symmetries_GaAs = [SYM.C4z, SYM.TimeReversal, SYM.Rotation(3, [1,1,1])]
+symmetries_GaAs = [SYM.C4z * SYM.Inversion, SYM.TimeReversal, SYM.Rotation(3, [1,1,1])]
 
 Efermi_Fe = np.linspace(17, 18, 11)
 Efermi_Fe_FPLO = np.linspace(-0.5, 0.5, 11)
