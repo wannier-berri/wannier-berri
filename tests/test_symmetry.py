@@ -36,8 +36,8 @@ def test_symmetry_spglib_GaAs(system_GaAs_W90, check_symgroup_equal):
 
     system_spglib = deepcopy(system_GaAs_W90)
     positions = [[0., 0., 0.], [0.25, 0.25, 0.25]]
-    numbers = [1, 2]
-    system_spglib.set_structure(positions, numbers)
+    labels = ["Ga", "As"]
+    system_spglib.set_structure(positions, labels)
     system_spglib.set_symmetry_from_structure()
 
     check_symgroup_equal(system_explicit.symgroup, system_spglib.symgroup)
@@ -52,9 +52,13 @@ def test_symmetry_spglib_Fe(system_Fe_W90, check_symgroup_equal):
 
     system_spglib = deepcopy(system_Fe_W90)
     positions = [[0., 0., 0.]]
-    numbers = [1]
+    labels = ["Fe"]
     magnetic_moments = [[0., 0., 1.]]
-    system_spglib.set_structure(positions, numbers, magnetic_moments)
+    system_spglib.set_structure(positions, labels, magnetic_moments)
     system_spglib.set_symmetry_from_structure()
 
     check_symgroup_equal(system_explicit.symgroup, system_spglib.symgroup)
+
+    # Raise error if magnetic_moments is set to a number, not a 3d vector
+    with pytest.raises(Exception):
+        system_spglib.set_structure(positions, labels, [1.])
