@@ -409,7 +409,7 @@ class System():
         else:
             print (f"{XX} is missing,nothing to check")
 
-    def set_structure(self, positions, atom_numbers, magnetic_moments=None):
+    def set_structure(self, positions, atom_labels, magnetic_moments=None):
         """
         Set atomic structure of the system.
 
@@ -417,26 +417,32 @@ class System():
         ----------
         positions : (num_atom, 3) array_like of float
             Atomic positions in fractional coordinates.
-        atom_numbers: (num_atom,) list of int
-            Integer numbers to distinguish species.
+        atom_labels: (num_atom,) list
+            labels (integer, string, etc.) to distinguish species.
         magnetic_moments: (num_atom, 3) array_like of float (optional)
             Magnetic moment vector of each atom.
         """
-        if len(positions) != len(atom_numbers):
-            raise ValueError("length of positions and atom_numbers must be the same")
-        if magnetic_moments is not None and len(positions) != len(magnetic_moments):
-            raise ValueError("length of positions and magnetic_moments must be the same")
+        if len(positions) != len(atom_labels):
+            raise ValueError("length of positions and atom_labels must be the same")
+        if magnetic_moments is not None:
+            if len(magnetic_moments) != len(positions):
+                raise ValueError("length of positions and magnetic_moments must be the same")
+            if not all([len(x) for x in magnetic_moments]):
+                raise ValueError("magnetic_moments must be a list of 3d vector")
         self.positions = positions
-        self.atom_numbers = atom_numbers
+        self.atom_labels = atom_labels
         self.magnetic_moments = magnetic_moments
 
     def get_spglib_cell(self):
         """Returns the atomic structure as a cell tuple in spglib format"""
         try:
+            # assign integer to self.atom_labels
+            atom_labels_unique = list(set(self.atom_labels))
+            atom_numbers = [atom_labels_unique.index(label) for label in self.atom_labels]
             if self.magnetic_moments is None:
-                return (self.real_lattice, self.positions, self.atom_numbers)
+                return (self.real_lattice, self.positions, atom_numbers)
             else:
-                return (self.real_lattice, self.positions, self.atom_numbers, self.magnetic_moments)
+                return (self.real_lattice, self.positions, atom_numbers, self.magnetic_moments)
         except AttributeError:
             raise AttributeError("set_structure must be called before get_spglib_cell")
 
@@ -464,8 +470,10 @@ class System():
         if self.magnetic_moments is None:
             symmetry_gen.append(TimeReversal)
         else:
-            print("Warning: spglib does not support time reversal symmetry for noncollinear "
-                  "systems.\nTo include such symmetries, use set_symmetry.")
+            if not all([len(x) for x in self.magnetic_moments]):
+                raise ValueError("magnetic_moments must be a list of 3d vector")
+            print("Warning: spglib does not find symmetries including time reversal "
+                "operation.\nTo include such symmetries, use set_symmetry.")
 
         self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
