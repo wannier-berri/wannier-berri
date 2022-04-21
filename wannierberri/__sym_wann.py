@@ -34,13 +34,17 @@ class SymWann():
         Spin orbital coupling.
     magmom: 2D array
         Magnetic momentom of each atoms.
+    DFT_code: str
+        'vasp' or 'qe'
+        default: vasp
+        vasp and qe have different orbitals arrangement with SOC.
     Return
     ------
     Dictionary of matrix after symmetrization.
     Updated list of R vectors.
     '''
     def __init__(self,num_wann=None,lattice=None,positions=None,atom_name=None,proj=None,iRvec=None,
-            XX_R=None,soc=False,TR=False,magmom=None,cRvec=None):
+            XX_R=None,soc=False,TR=False,magmom=None,cRvec=None,DFT_code = None):
 
         self.soc=soc
         self.TR=TR
@@ -151,6 +155,23 @@ class SymWann():
         self.rot_c = self.show_symmetry()
         self.Inv = (self.symmetry['rotations'][1] == -1*np.eye(3)).all() #inversion or not
         if self.Inv: print('====================\nSystem have inversion symmetry\n====================')
+
+        if self.soc:
+            if DFT_code in ['VASP','vasp','Vasp']:
+                pass
+            elif DFT_code in ['QE','qe','quantum_espresso','Quantum_Espresso','Espresso','espresso']:
+                def spin_range(Mat_in):
+                    Mat_out = np.zeros(np.shape(Mat_in),dtype=complex)
+                    Mat_out[0:self.num_wann//2,0:self.num_wann//2,:]                         = Mat_in[0:self.num_wann:2,0:self.num_wann:2,:]
+                    Mat_out[self.num_wann//2:self.num_wann,0:self.num_wann//2,:]             = Mat_in[1:self.num_wann:2,0:self.num_wann:2,:]
+                    Mat_out[0:self.num_wann//2,self.num_wann//2:self.num_wann,:]             = Mat_in[0:self.num_wann:2,1:self.num_wann:2,:]
+                    Mat_out[self.num_wann//2:self.num_wann,self.num_wann//2:self.num_wann,:] = Mat_in[1:self.num_wann:2,1:self.num_wann:2,:]
+                    return Mat_out
+
+                self.Ham_R = spin_range(self.Ham_R)
+                for X in self.matrix_list:
+                    self.matrix_list[X] = spin_range(self.matrix_list[X])
+
 
     #==============================
     #Find space group and symmetres
@@ -368,20 +389,39 @@ class SymWann():
                         if sym_T:
                             tmp_T = self.ul.dot(tmp.transpose(1,0,2)).dot(self.ur).conj()
                             Ham_res += tmp_T.transpose(0,2,1)
+                        
+                       # if atom_a == atom_b: 
+                       #         test_i =self.iRvec.index([0,0,0])
+                       #         print(self.Ham_R[self.H_select[atom_a,atom_b],test_i].reshape(18,18).real)
+                       #         print('++++++++++++++++++++++++++++++++++++')
+                       #         if sym_only:
+                       #             print(tmp.transpose(0,2,1)[self.H_select[atom_a,atom_b],test_i].reshape(18,18).real)
+                       #         if sym_T:
+                       #             print(tmp_T.transpose(0,2,1)[self.H_select[atom_a,atom_b],test_i].reshape(18,18).real)
+                       #         print('=====================================')
 
                         for X in self.matrix_list:  # vector matrix
-                                X_shift = matrix_list_all[X].transpose(0,1,2,5,3,4)
-                                tmpX= np.dot(np.dot(p_map_dagger[atom_a],X_shift[:,atom_a,atom_b]),p_map[atom_b])
-                                if np.linalg.det(self.symmetry['rotations'][rot]) < 0:
-                                    parity_I = self.parity_I[X]
-                                else: 
-                                    parity_I = 1
-
-                                if sym_only:
-                                    matrix_list_res[X] += tmpX.transpose(0,3,1,2)*parity_I
-                                if sym_T:
-                                    tmpX_T = self.ul.dot(tmpX.transpose(1,2,0,3)).dot(self.ur).conj()
-                                    matrix_list_res[X] += tmpX_T.transpose(0,3,1,2)*parity_I*self.parity_TR[X]
+                            X_shift = matrix_list_all[X].transpose(0,1,2,5,3,4)
+                            tmpX= np.dot(np.dot(p_map_dagger[atom_a],X_shift[:,atom_a,atom_b]),p_map[atom_b])
+                            if np.linalg.det(self.symmetry['rotations'][rot]) < 0:
+                                 parity_I = self.parity_I[X]
+                            else: 
+                                parity_I = 1
+                            if sym_only:
+                                matrix_list_res[X] += tmpX.transpose(0,3,1,2)*parity_I
+                            if sym_T:
+                                tmpX_T = self.ul.dot(tmpX.transpose(1,2,0,3)).dot(self.ur).conj()
+                                matrix_list_res[X] += tmpX_T.transpose(0,3,1,2)*parity_I*self.parity_TR[X]
+                            
+                        #    if atom_a == atom_b: 
+                        #        test_i =self.iRvec.index([0,0,0])
+                        #        print(self.matrix_list[X][self.H_select[atom_a,atom_b],test_i,0].reshape(18,18).real)
+                        #        print('++++++++++++++++++++++++++++++++++++')
+                        #        if sym_only:
+                        #            print(tmpX.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,0].reshape(18,18).real*parity_I)
+                        #        if sym_T:
+                        #            print(tmpX_T.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,0].reshape(18,18).real*parity_I*self.parity_TR[X])
+                        #        print('=====================================')
 
         for k in matrix_list_res:
             matrix_list_res[k] /= nrot
@@ -416,9 +456,15 @@ class SymWann():
                 return_dic[X] = np.concatenate((return_dic[X],return_dic_add[X]),axis=2)
         print('Symmetrizing Finished')
         
+        
+        #=================================
+        #   for  test
+        #=================================
+
         X = 'AA'
         diag = True #False
         test_i = self.iRvec.index([0,0,0])
+        print('[0,0,0]')
         for i in range(3):
             if diag:
                 print( np.diag(return_dic[X][:,:,test_i,i].real) )
@@ -428,6 +474,7 @@ class SymWann():
                 print( (self.matrix_list[X][:,:,test_i,i].real) )
             print('==============================================')
         test_i = self.iRvec.index([1,0,0])
+        print('[1,0,0]')
         for i in range(3):
             if diag:
                 print( np.diag(return_dic[X][:,:,test_i,i].real) )
@@ -437,6 +484,7 @@ class SymWann():
                 print( (self.matrix_list[X][:,:,test_i,i].real) )
             print('==============================================')
         test_i = self.iRvec.index([0,1,0])
+        print('[0,1,0]')
         for i in range(3):
             if diag:
                 print( np.diag(return_dic[X][:,:,test_i,i].real) )
@@ -446,6 +494,7 @@ class SymWann():
                 print( (self.matrix_list[X][:,:,test_i,i].real) )
             print('==============================================')
         test_i = self.iRvec.index([0,0,1])
+        print('[0,0,1]')
         for i in range(3):
             if diag:
                 print( np.diag(return_dic[X][:,:,test_i,i].real) )
