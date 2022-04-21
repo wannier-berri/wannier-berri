@@ -176,8 +176,8 @@ class System():
         return self.spin or self.SHCryoo or self.SHCqiao
 
     @property
-     def getFF(self):
-         return self._getFF
+    def getFF(self):
+        return self._getFF
 
     @property
     def getSA(self):
