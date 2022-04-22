@@ -47,12 +47,12 @@ class Orbitals():
          sp3d2_5 = lambda x,y,z: -1/sym.sqrt(2)*z 
          sp3d2_6 = lambda x,y,z: 1/sym.sqrt(2)*z 
 
-         sp3d2_plus_1 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 + 0.5*(x*x-y*y)/2
-         sp3d2_plus_2 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 + 0.5*(x*x-y*y)/2
-         sp3d2_plus_3 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 - 0.5*(x*x-y*y)/2
-         sp3d2_plus_4 = lambda x,y,z: - 1/sym.sqrt(12)*(3*z*z-1)/sym.sqrt(3)/2 - 0.5*(x*x-y*y)/2
-         sp3d2_plus_5 = lambda x,y,z: + 1/sym.sqrt(3)*(3*z*z-1)/sym.sqrt(3)/2
-         sp3d2_plus_6 = lambda x,y,z: + 1/sym.sqrt(3)*(3*z*z-1)/sym.sqrt(3)/2
+         sp3d2_plus_1 = lambda x,y,z: - 1/sym.sqrt(12)*(2*z*z-x*x-y*y)/(2*sym.sqrt(3.0)) + 0.5*(x*x-y*y)/2
+         sp3d2_plus_2 = lambda x,y,z: - 1/sym.sqrt(12)*(2*z*z-x*x-y*y)/(2*sym.sqrt(3.0)) + 0.5*(x*x-y*y)/2
+         sp3d2_plus_3 = lambda x,y,z: - 1/sym.sqrt(12)*(2*z*z-x*x-y*y)/(2*sym.sqrt(3.0)) - 0.5*(x*x-y*y)/2
+         sp3d2_plus_4 = lambda x,y,z: - 1/sym.sqrt(12)*(2*z*z-x*x-y*y)/(2*sym.sqrt(3.0)) - 0.5*(x*x-y*y)/2
+         sp3d2_plus_5 = lambda x,y,z: + 1/sym.sqrt(3)*(2*z*z-x*x-y*y)/(2*sym.sqrt(3.0))
+         sp3d2_plus_6 = lambda x,y,z: + 1/sym.sqrt(3)*(2*z*z-x*x-y*y)/(2*sym.sqrt(3.0))
 
          orb_function_dic={'s':[ss],
                            'p':[pz,px,py],
@@ -156,12 +156,12 @@ class Orbitals():
                  orb_rot_mat[4,i] = 1/6 -1/sym.sqrt(2)*subs[2] 
                  orb_rot_mat[5,i] = 1/6 +1/sym.sqrt(2)*subs[2] 
 
-                 orb_rot_mat[0,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  + 0.5*(subs_plus[1]-subs_plus[2])
-                 orb_rot_mat[1,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  + 0.5*(subs_plus[1]-subs_plus[2])
-                 orb_rot_mat[2,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  - 0.5*(subs_plus[1]-subs_plus[2])
-                 orb_rot_mat[3,i] +=  - 1/sym.sqrt(12)*subs_plus[0]*sym.sqrt(3.0)  - 0.5*(subs_plus[1]-subs_plus[2])
-                 orb_rot_mat[4,i] +=  + 1/sym.sqrt(3)*subs_plus[0]*sym.sqrt(3.0)
-                 orb_rot_mat[5,i] +=  + 1/sym.sqrt(3)*subs_plus[0]*sym.sqrt(3.0)
+                 orb_rot_mat[0,i] += - 1/sym.sqrt(12)*(2*subs_plus[0]-subs_plus[1]-subs_plus[2])/sym.sqrt(3.0)  + 0.5*(subs_plus[1]-subs_plus[2])
+                 orb_rot_mat[1,i] += - 1/sym.sqrt(12)*(2*subs_plus[0]-subs_plus[1]-subs_plus[2])/sym.sqrt(3.0)  + 0.5*(subs_plus[1]-subs_plus[2])
+                 orb_rot_mat[2,i] += - 1/sym.sqrt(12)*(2*subs_plus[0]-subs_plus[1]-subs_plus[2])/sym.sqrt(3.0)  - 0.5*(subs_plus[1]-subs_plus[2])
+                 orb_rot_mat[3,i] += - 1/sym.sqrt(12)*(2*subs_plus[0]-subs_plus[1]-subs_plus[2])/sym.sqrt(3.0)  - 0.5*(subs_plus[1]-subs_plus[2])
+                 orb_rot_mat[4,i] += 1/sym.sqrt(3)*(2*subs_plus[0]-subs_plus[1]-subs_plus[2])/sym.sqrt(3.0)
+                 orb_rot_mat[5,i] += 1/sym.sqrt(3)*(2*subs_plus[0]-subs_plus[1]-subs_plus[2])/sym.sqrt(3.0)
              elif orb_symbol == 't2g':
                  orb_rot_mat[0,i] = subs[0].evalf()
                  orb_rot_mat[1,i] = subs[1].evalf()
@@ -170,6 +170,6 @@ class Orbitals():
                  orb_rot_mat[0,i] = (2*subs[0]-subs[1]-subs[2])/sym.sqrt(3.0)
                  orb_rot_mat[2,i] =  (subs[1]-subs[2]).evalf()
 
-         assert  np.abs(np.linalg.det(orb_rot_mat)) > 0.99,'ERROR!!!!: Your crystal symmetry does not allow {} orbital exist.'.format(orb_symbol)
-
+         assert  np.abs(np.linalg.det(orb_rot_mat)) > 0.99,'ERROR!!!!: Your crystal symmetry does not allow {} orbital exist. {}'.format(orb_symbol,np.abs(np.linalg.det(orb_rot_mat)) )
+         
          return orb_rot_mat

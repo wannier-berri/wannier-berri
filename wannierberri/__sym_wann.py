@@ -35,8 +35,8 @@ class SymWann():
     magmom: 2D array
         Magnetic momentom of each atoms.
     DFT_code: str
-        'vasp' or 'qe'
-        default: vasp
+        'qe' or 'vasp'
+        default: 'qe'
         vasp and qe have different orbitals arrangement with SOC.
     Return
     ------
@@ -462,8 +462,9 @@ class SymWann():
         #=================================
 
         X = 'AA'
-        diag = True #False
+        diag = False
         test_i = self.iRvec.index([0,0,0])
+        print('Testing {X} with diag = {diag}')
         print('[0,0,0]')
         for i in range(3):
             if diag:

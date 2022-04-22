@@ -119,7 +119,7 @@ class System():
         self.periodic=periodic
 
 
-    def symmetrize(self,proj,positions,atom_name,soc=False,magmom=None):
+    def symmetrize(self,proj,positions,atom_name,soc=False,magmom=None,DFT_code='qe'):
         """
         proj:
             Should be the same with projections card in Wannier90.win.
@@ -137,7 +137,7 @@ class System():
             except KeyError:
                 pass
         symmetrize_wann = SymWann(num_wann=self.num_wann,lattice=self.real_lattice,positions=positions,atom_name=atom_name,
-            proj=proj,iRvec=self.iRvec,XX_R=XX_R,soc=soc,magmom=magmom,cRvec=self.iRvec.dot(self.real_lattice)[None,None,:,:]+ self.diff_wcc_cart[:,:,None,:])
+            proj=proj,iRvec=self.iRvec,XX_R=XX_R,soc=soc,magmom=magmom,cRvec=self.iRvec.dot(self.real_lattice)[None,None,:,:]+ self.diff_wcc_cart[:,:,None,:],DFT_code=DFT_code)
         XX_R,self.iRvec = symmetrize_wann.symmetrize()
         for X in XX_R.keys():
             vars(self)[X+'_R'] = XX_R[X]
