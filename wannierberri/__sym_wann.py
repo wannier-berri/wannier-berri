@@ -464,7 +464,7 @@ class SymWann():
         X = 'AA'
         diag = True
         test_i = self.iRvec.index([0,0,0])
-        print('Testing {X} with diag = {diag}')
+        print(f'Testing {X} with diag = {diag}')
         print('[0,0,0]')
         for i in range(3):
             if diag:
