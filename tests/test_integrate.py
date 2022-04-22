@@ -169,6 +169,12 @@ def test_Fe_sym(check_integrate,system_Fe_W90, compare_energyresult,quantities_F
     check_integrate(system_Fe_W90 , quantities_Fe , fout_name="berry_Fe_W90" , use_symmetry = True, suffix="sym" , suffix_ref="sym", Efermi=Efermi_Fe , comparer=compare_energyresult,
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True }  )
 
+def test_Fe_sym_W90(check_integrate,system_Fe_sym_W90, compare_energyresult):
+    """Test anomalous Hall conductivity , spin"""
+    check_integrate(system_Fe_sym_W90 , ['ahc','spin'], fout_name="berry_Fe_sym_W90" , use_symmetry = False,
+            Efermi=Efermi_Fe , comparer=compare_energyresult)
+    check_integrate(system_Fe_sym_W90 , ["gyrotropic_Kspin","berry_dipole"], fout_name="berry_Fe_sym_W90" , use_symmetry = False, 
+            Efermi=Efermi_Fe , comparer=compare_energyresult, compare_zero=True)
 
 
 def test_Fe_FPLO(check_integrate,system_Fe_FPLO, compare_energyresult,quantities_Fe):
@@ -237,7 +243,7 @@ def test_GaAs_tb_wcc_ws(check_integrate,system_GaAs_tb_wcc_ws, compare_energyres
 
 def test_GaAs_sym_tb(check_integrate, system_GaAs_sym_tb, compare_energyresult):
     """Test ahc with sym_wann method"""
-    check_integrate(system_GaAs_sym_tb , ["ahc"], fout_name="ahc_GaAs_tb" , suffix="sym" , Efermi=Efermi_GaAs , comparer=compare_energyresult,compare_zero=True)
+    check_integrate(system_GaAs_sym_tb , ["ahc"], fout_name="ahc_GaAs_sym_tb" , suffix="" , Efermi=Efermi_GaAs , comparer=compare_energyresult,compare_zero=True)
 
 
 def test_Haldane_PythTB(check_integrate,system_Haldane_PythTB,compare_energyresult,quantities_Haldane):
