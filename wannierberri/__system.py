@@ -13,6 +13,7 @@
 
 import numpy as np
 import lazy_property
+from .__sym_wann import SymWann
 from .__utility import alpha_A, beta_A , iterate3dpm
 from  .symmetry import Symmetry, Group, TimeReversal
 from termcolor import cprint 
@@ -118,6 +119,30 @@ class System():
         self.periodic=periodic
 
 
+    def symmetrize(self,proj,positions,atom_name,soc=False,magmom=None,DFT_code='qe'):
+        """
+        proj:
+            Should be the same with projections card in Wannier90.win.
+        positions: list
+            Positions of each atom.
+        atom_name: list
+            Name of each atom.
+        magmom: array
+            Magnetic moment of each atom.
+        """
+        XX_R={'Ham':self.Ham_R}
+        for X in ['AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
+            try:
+                XX_R[X] = vars(self)[X+'_R']
+            except KeyError:
+                pass
+        symmetrize_wann = SymWann(num_wann=self.num_wann,lattice=self.real_lattice,positions=positions,atom_name=atom_name,
+            proj=proj,iRvec=self.iRvec,XX_R=XX_R,soc=soc,magmom=magmom,cRvec=self.iRvec.dot(self.real_lattice)[None,None,:,:]+ self.diff_wcc_cart[:,:,None,:],DFT_code=DFT_code)
+        XX_R,self.iRvec = symmetrize_wann.symmetrize()
+        for X in XX_R.keys():
+            vars(self)[X+'_R'] = XX_R[X]
+
+
     def check_periodic(self):
         exclude=np.zeros(self.nRvec,dtype=bool)
         for i,per in enumerate(self.periodic):
@@ -130,7 +155,7 @@ class System():
         if np.any(exclude):
             notexclude=np.logical_not(exclude)
             self.iRvec=self.iRvec[notexclude]
-            for X in ['HH','AA','BB','CC','SS','FF']:
+            for X in ['Ham','AA','BB','CC','SS','FF']:
                 XR=X+'_R'
                 if hasattr(self,XR) :
                     vars(self)[XR]=vars(self)[XR][:,:,notexclude]
