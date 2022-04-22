@@ -170,11 +170,21 @@ def test_Fe_sym(check_integrate,system_Fe_W90, compare_energyresult,quantities_F
                parameters_K = {'_FF_antisym':True,'_CCab_antisym':True }  )
 
 def test_Fe_sym_W90(check_integrate,system_Fe_sym_W90, compare_energyresult):
-    """Test anomalous Hall conductivity , spin"""
+    """Test anomalous Hall conductivity , spin
+        using symmetrized model, without further summetrization"""
     check_integrate(system_Fe_sym_W90 , ['ahc','spin'], fout_name="berry_Fe_sym_W90" , use_symmetry = False,
             Efermi=Efermi_Fe , comparer=compare_energyresult)
     check_integrate(system_Fe_sym_W90 , ["gyrotropic_Kspin","berry_dipole"], fout_name="berry_Fe_sym_W90" , use_symmetry = False, 
             Efermi=Efermi_Fe , comparer=compare_energyresult, compare_zero=True)
+
+def test_Fe_sym_W90_sym(check_integrate,system_Fe_sym_W90, compare_energyresult):
+    """Test anomalous Hall conductivity , spin 
+        using symmetrized model and further symmetrization ( which should not have effect )"""
+    check_integrate(system_Fe_sym_W90 , ['ahc','spin'], fout_name="berry_Fe_sym_W90" , suffix = "sym", use_symmetry = True,
+            Efermi=Efermi_Fe , comparer=compare_energyresult)
+    check_integrate(system_Fe_sym_W90 , ["gyrotropic_Kspin","berry_dipole"], fout_name="berry_Fe_sym_W90" , suffix = "sym", use_symmetry = True, 
+            Efermi=Efermi_Fe , comparer=compare_energyresult, compare_zero=True)
+
 
 
 def test_Fe_FPLO(check_integrate,system_Fe_FPLO, compare_energyresult,quantities_Fe):

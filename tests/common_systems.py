@@ -120,6 +120,7 @@ def system_Fe_sym_W90(create_files_Fe_W90):
     seedname = os.path.join(data_dir, "Fe_sym")
     system = wberri.System_w90(seedname, berry=True, morb=False,
            spin = True, use_ws = False )
+    system.set_symmetry(symmetries_Fe)
     system.symmetrize(
              proj = ['Fe:sp3d2;t2g'],
              atom_name = ['Fe'],
