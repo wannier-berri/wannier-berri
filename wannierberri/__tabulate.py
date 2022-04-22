@@ -309,7 +309,10 @@ class TABresult(result.Result):
                   fatfactor=20,
                   cut_k=True
                   ):
-        """a routine to plot a result along the path"""
+        """
+        a routine to plot a result along the path
+        The circle size (size of quantity) changes linearly below 2 and logarithmically above 2.
+        """
 
         import matplotlib.pyplot as plt
         if iband is None: 
@@ -358,6 +361,9 @@ class TABresult(result.Result):
                     selE=(e<=Emax)*(e>=Emin)
                     klineselE=kline[selE]
                     y=data[selE][:,ib]
+                    select = np.abs(y) > 2
+                    y[select] = np.log2(y[select])
+                    y[~select] *= 0.5
                     e1=e[selE]
                     for col,sel in [("red",(y>0)),("blue",(y<0))]:
                         plt.scatter(klineselE[sel],e1[sel],s=abs(y[sel])*fatfactor,color=col)
