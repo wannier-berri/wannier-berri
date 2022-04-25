@@ -97,31 +97,54 @@ class CheckPoint():
         SS_q=np.array([ self.wannier_gauge(S,ik,ik)  for ik,S in enumerate(spn.data) ])
         return 0.5*(SS_q+SS_q.transpose(0,2,1,3).conj())
 
-    def get_AA_q(self,mmn,eig=None,transl_inv=False, centers=None, transl_inv_offdiag=False):  # if eig is present - it is BB_q
-        if transl_inv and (eig is not None):
-            raise RuntimeError("transl_inv cannot be used to obtain BB")
+    def get_AA_q(self, mmn, transl_inv=False, centers=None, transl_inv_offdiag=False):
         mmn.set_bk(self)
-        AA_q=np.zeros( (self.num_kpts,self.num_wann,self.num_wann,3) ,dtype=complex)
+
+        # Unify the b vector indices
+        bk_latt = np.rint((mmn.bk_cart @ np.linalg.inv(self.recip_lattice)) * self.mp_grid[None, None, :]).astype(int)
+        bk_latt_unique = np.unique(bk_latt.reshape(-1, 3), axis=0)
+        bk_cart_unique = bk_latt_unique @ self.recip_lattice / self.mp_grid[None, :]
+        assert bk_latt_unique.shape == (mmn.NNB, 3)
+        bk_latt_unique = [tuple(b) for b in bk_latt_unique]
+
+        AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
-                iknb=mmn.neighbours[ik,ib]
-                data=mmn.data[ik,ib]
-                if eig is not None:
-                    data = data * eig.data[ik,:,None]
-                AAW=self.wannier_gauge(data,ik,iknb)
-                AA_q_ik=1.j*AAW[:,:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,None,:]
+                iknb = mmn.neighbours[ik, ib]
+                data = mmn.data[ik, ib]
+                AAW=self.wannier_gauge(data, ik, iknb)
+                AA_q_ik_ib = 1j * AAW[:,:,None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+
+                if transl_inv:
+                    AA_q_ik_ib[range(self.num_wann),range(self.num_wann)]=-np.log(AAW.diagonal()).imag[:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,:]
 
                 # Translationally-invariant off-diagonal part
                 if transl_inv_offdiag:
                     for iw in range(self.num_wann):
-                        AA_q_ik[iw, :, :] *= np.exp(1j * np.dot(mmn.bk_cart[ik, ib, :], centers[iw, :]))
+                        for jw in range(self.num_wann):
+                            AA_q_ik_ib[iw, jw, :] *= np.exp(1j * np.dot(mmn.bk_cart[ik, ib, :], (centers[iw, :] + centers[jw, :]) / 2))
 
-                if transl_inv:
-                    AA_q_ik[range(self.num_wann),range(self.num_wann)]=-np.log(AAW.diagonal()).imag[:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,:]
-                AA_q[ik]+=AA_q_ik
-        if eig is None:
-            AA_q=0.5*(AA_q+AA_q.transpose( (0,2,1,3) ).conj())
-        return AA_q
+                # Find unique b index
+                b_latt = np.rint((mmn.bk_cart[ik, ib, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
+                ib_unique = bk_latt_unique.index(tuple(b_latt))
+                assert np.allclose(bk_cart_unique[ib_unique, :], mmn.bk_cart[ik, ib, :])
+                AA_qb[ik, :, :, ib_unique, :] = AA_q_ik_ib
+
+        if not transl_inv_offdiag:
+            AA_qb = (AA_qb + AA_qb.swapaxes(1, 2).conj()) / 2
+        return AA_qb, np.array(bk_latt_unique) / self.mp_grid[None, :]
+
+    def get_BB_q(self, mmn, eig):
+        mmn.set_bk(self)
+        BB_q = np.zeros((self.num_kpts, self.num_wann,self.num_wann,3) ,dtype=complex)
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb = mmn.neighbours[ik,ib]
+                data = mmn.data[ik,ib] * eig.data[ik, :, None]
+                BBW = self.wannier_gauge(data, ik, iknb)
+                BB_q_ik_ib = 1j * BBW[:,:,None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+                BB_q[ik] += BB_q_ik_ib
+        return BB_q
 
     def get_CC_q(self,uhu,mmn):  # if eig is present - it is BB_q
         mmn.set_bk(self)

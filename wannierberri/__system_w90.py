@@ -89,10 +89,23 @@ class System_w90(System):
         timeFFT+=time()-t0
 
         if self.getAA:
-            AAq=chk.get_AA_q(mmn,transl_inv=transl_inv, centers=chk.wannier_centers, transl_inv_offdiag=transl_inv_offdiag)
+            AA_qb, bk_latt_unique = chk.get_AA_q(mmn,transl_inv=transl_inv, centers=chk.wannier_centers, transl_inv_offdiag=transl_inv_offdiag)
             t0=time()
-            self.AA_R=fourier_q_to_R_loc(AAq)
+            if transl_inv_offdiag:
+                AA_Rb = fourier_q_to_R_loc(AA_qb)
+                self.AA_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
+                # Sum over b vectors considering the phase factors
+                for iR in range(self.nRvec0):
+                    for ib in range(mmn.NNB):
+                        phase = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib, :], self.iRvec[iR, :]) / 2)
+                        self.AA_R[:, :, iR, :] += AA_Rb[:, :, iR, ib, :] * phase
+                # Set diagonal parts
+                for iw in range(self.num_wann):
+                    self.AA_R[iw, iw, self.iR0, :] = self.wannier_centers_cart_auto[iw, :]
+            else:
+                self.AA_R = np.sum(fourier_q_to_R_loc(AA_qb), axis=3)
             timeFFT+=time()-t0
+
             if transl_inv:
                 wannier_centers_cart_new = np.diagonal(self.AA_R[:,:,self.iR0,:],axis1=0,axis2=1).transpose()
                 if not np.all(abs(wannier_centers_cart_new-self.wannier_centers_cart_auto)<1e-6):
@@ -113,7 +126,7 @@ class System_w90(System):
 
         if self.getBB:
             t0=time()
-            self.BB_R=fourier_q_to_R_loc(chk.get_AA_q(mmn,eig))
+            self.BB_R=fourier_q_to_R_loc(chk.get_BB_q(mmn,eig))
             timeFFT+=time()-t0
 
         if self.getCC:
