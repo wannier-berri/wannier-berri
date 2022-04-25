@@ -427,12 +427,13 @@ class System():
     def cell_volume(self):
         return abs(np.linalg.det(self.real_lattice))
 
-    def check_hermitian(self,XX):
-        if hasattr(self,XX):
-            XX_R = np.copy(vars(self)[XR])
-            assert (np.max(abs(XX_R-self.conh_XX_R(XX_R)))<1e-8) , f"{XX} should obey X(-R) = X(R)^+"
-        else:
-            print (f"{XX} is missing,nothing to check")
+    def check_hermitian(self, XX):
+        try:
+            XX_R = getattr(self, XX)
+            err = np.max(abs(XX_R - self.conj_XX_R(XX_R)))
+            assert err < 1e-8, f"{XX} should obey X(-R) = X(R)^+, but got maximum error = {err}"
+        except AttributeError:
+            print(f"{XX} is missing, nothing to check")
 
     def set_structure(self, positions, atom_labels, magnetic_moments=None):
         """
