@@ -21,6 +21,7 @@ from .__system_w90 import System_w90
 from .__system import ws_dist_map
 from .__w90_files import MMN
 from time import time
+from termcolor import cprint
 
 np.set_printoptions(precision=4,threshold=np.inf,linewidth=500)
 
@@ -78,14 +79,15 @@ class System_ASE(System_w90):
         self.nRvec0=len(self.iRvec)
         self.num_wann=ase_wannier.nwannier
         self.num_kpts = ase_wannier.Nk
-        self.wannier_centres_cart_auto = ase_wannier.get_centers()
+        self.wannier_centers_cart_auto = ase_wannier.get_centers()
+        print (f"got the Wanier centers : {self.wannier_centers_cart_auto}")
         #  a minus sign to account for a weird Bloch phase convention of ase.dft.Wannier module
         self.kpt_red =  ase_wannier.kpt_kc
 
 
         kpt_mp_grid=[tuple(k) for k in np.array( np.round(self.kpt_red*np.array(self.mp_grid)[None,:]),dtype=int)  %self.mp_grid]
         if (0,0,0) not in kpt_mp_grid:
-            raise ValueError("the grid of k-points read from .chk file is not Gamma-centrered. Please, use Gamma-centered grids in the ab initio calculation")
+            raise ValueError("the grid of k-points read from .chk file is not Gamma-centerred. Please, use Gamma-centered grids in the ab initio calculation")
 
 
 #        if self.getAA or self.getBB:
@@ -99,10 +101,6 @@ class System_ASE(System_w90):
 
         if self.getAA:
             raise NotImplementedError()
-#            AAq=self.get_AA_q(mmn,ase_wannier,transl_inv=transl_inv)
-#            t0=time()
-#            self.AA_R=fourier_q_to_R_loc(AAq)
-#            timeFFT+=time()-t0
 
         if self.getBB:
             raise NotImplementedError()
@@ -119,23 +117,10 @@ class System_ASE(System_w90):
         if self.getSHA:
             raise NotImplementedError()
 
-        print ("time for FFT_q_to_R : {} s".format(timeFFT))
-        if  self.use_ws:
-            ws_map=ws_dist_map(self.iRvec,self.wannier_centres_cart, self.mp_grid,self.real_lattice, npar=npar)
-            for X in ['Ham','AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
-                XR=X+'_R'
-                if hasattr(self,XR) :
-                    print ("using ws_dist for {}".format(XR))
-                    vars(self)[XR]=ws_map(vars(self)[XR])
-            self.iRvec=np.array(ws_map._iRvec_ordered,dtype=int)
+        self.do_at_end_of_init()
 
-        self.set_symmetry()
-        self.check_periodic()
+        cprint ("Reading the ASE system finished successfully",'green', attrs=['bold'])
 
-        print ("Number of wannier functions:",self.num_wann)
-        print ("Number of R points:", self.nRvec)
-        print ("Recommended size of FFT grid", self.NKFFT_recommended)
-        print ("Real-space lattice:\n",self.real_lattice)
 
     def get_AA_q(self,mmn,wannier,transl_inv=False):  # if eig is present - it is BB_q 
 #        if transl_inv and (eig is not None):
