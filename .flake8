@@ -1,0 +1,13 @@
+[flake8]
+ignore = E126, E127, E129, E201, E202, E203, E211, E221, E222, E225, E226, \
+         E228, E231, E241, E261, E262, E265, E301, E302, E303, E305, E306, \
+         E401, E402, E701, E731, E741, W391, W503, W504, C901, \
+         E501, \ # line too long
+         E272, \ # multiple spaces before keyword
+         E124, \ # closing bracket does not match visual indentation
+         E128    # continuation line under-indented for visual indent
+
+exclude = .git, __pycache__, build, dist, __init__.py .eggs, *.egg
+max-line-length = 120
+
+per-file-ignores = conftest.py:F401

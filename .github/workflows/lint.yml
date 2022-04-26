@@ -1,0 +1,23 @@
+name: Lint
+
+on: [push, pull_request]
+
+jobs:
+  flake:
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - uses: actions/checkout@v2
+      - name: Install flake8
+        run: pip install flake8
+      - name: Static analysis
+        run: flake8 --config .flake8 wannierberri
+      - name: Static analysis for tests folder
+        if: always()
+        run: flake8 --config .flake8 tests

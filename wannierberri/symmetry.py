@@ -52,50 +52,55 @@ from packaging import version as pversion
 from scipy.spatial.transform import Rotation as rotmat
 from copy import deepcopy
 from lazy_property import LazyProperty as Lazy
-from .__utility import real_recip_lattice, is_round
+from .__utility import real_recip_lattice
 from collections.abc import Iterable
 
 SYMMETRY_PRECISION=1e-6
 
 class Symmetry():
+    """
+    Symmetries that acts on reciprocal space objects, in Cartesian coordinates.
+    A k-point vector ``k`` transform as ``self.iTR * self.iInv * (sym.R @ k)``.
 
-    def __init__(self,R,TR=False):
-        self.TR=TR
-        self.Inv=np.linalg.det(R)<0
-        self.R=R*(-1 if self.Inv else 1)
-            
+    Attributes
+    ----------
+    R : (3, 3) ndarray
+        Proper rotation matrix. Always satisfy ``det(R) = 1``.
+    TR : bool
+        True if symmetry involves time reversal.
+    Inv : bool
+        True if symmetry involves spatial inversion.
+    """
+
+    def __init__(self, R, TR=False):
+        self.TR = TR
+        self.Inv = np.linalg.det(R)<0
+        self.R = R * (-1 if self.Inv else 1)
+        self.iTR = -1 if self.TR else 1
+        self.iInv = -1 if self.Inv else 1
+
     def show(self):
-        print (self)
+        print(self)
 
     def __str__(self):
-        return ("rotation: {0}, TR:{1} , I:{1}".format(self.R,self.TR,self.Inv))
+        return f"rotation: {self.R} , TR: {self.TR} , I: {self.Inv}"
 
-    @Lazy
-    def iTR(self):
-        return -1 if self.TR else 1
+    def __mul__(self, other):
+        return Symmetry((self.R @ other.R) * (self.iInv * other.iInv), self.TR != other.TR)
 
-    @Lazy
-    def iInv(self):
-        return -1 if self.Inv else 1
-
-    def __mul__(self,other):
-        return Symmetry(self.R.dot(other.R)*(self.iInv*other.iInv),self.TR!=other.TR)
-
-    def __eq__(self,other):
-        return np.linalg.norm(self.R-other.R)<1e-14 and self.TR==other.TR and self.Inv==other.Inv
+    def __eq__(self, other):
+        return np.linalg.norm(self.R - other.R) < 1e-12 and self.TR == other.TR and self.Inv == other.Inv
 
     def copy(self):
         return deepcopy(self)
 
-
-    def transform_reduced_vector(self,vec,basis):
-        return np.dot(vec, basis.dot(self.R.T).dot(np.linalg.inv(basis)))*(self.iTR*self.iInv)
+    def transform_reduced_vector(self, vec, basis):
+        return vec @ (basis @ self.R.T @ np.linalg.inv(basis)) * (self.iTR * self.iInv)
 
     def rotate(self,res):
-        return np.dot(res,self.R.T)
+        return res @ self.R.T
 
-
-    def transform_tensor(self,data,rank,TRodd=False,Iodd=False):
+    def transform_tensor(self,data,rank,TRodd=False,Iodd=False,TRtrans = False):
         res=np.copy(data)
         dim=len(res.shape)
         if rank>0:
@@ -106,6 +111,8 @@ class Symmetry():
                     tuple(range(i))+(dim-1,)+tuple(range(i,dim-1))  )
         if (self.TR and TRodd)!=(self.Inv and Iodd):
             res=-res
+        if self.TR and TRtrans:
+            res = res.swapaxes(dim-rank,dim-rank+1)
         return res
 
 
@@ -218,28 +225,21 @@ class Group():
     def __init__(self,generator_list=[],recip_lattice=None,real_lattice=None):
         self.real_lattice,self.recip_lattice=real_recip_lattice(real_lattice=real_lattice,recip_lattice=recip_lattice)
         sym_list=[(op if isinstance(op,Symmetry) else from_string_prod(op) )    for op in generator_list  ]
-        print (sym_list)
         if len(sym_list)==0:
             sym_list=[Identity]
-        cnt=0
+
         while True:
-            cnt+=1
-            if cnt>1000:
-                raise RuntimeError("Cannot define a finite group")
-            lenold=len(sym_list)
+            lenold = len(sym_list)
             for s1 in sym_list:
-              for s2 in sym_list:
-                s3=s1*s2
-                new = True
-                for s4 in sym_list:
-                   if s3==s4:
-                      new=False
-                      break
-                if new:
-                    sym_list.append(s3)
-            lennew=len(sym_list)
-            if lenold==lennew:
+                for s2 in sym_list:
+                    s3 = s1 * s2
+                    if s3 not in sym_list:
+                        sym_list.append(s3)
+                        if len(sym_list) > 1000:
+                            raise RuntimeError("Cannot define a finite group")
+            if len(sym_list) == lenold:
                 break
+
         self.symmetries=sym_list
         MSG_not_symmetric=(" : please check if  the symmetries are consistent with the lattice vectors,"+
                     " and that  enough digits were written for the lattice vectors (at least 6-7 after coma)" )

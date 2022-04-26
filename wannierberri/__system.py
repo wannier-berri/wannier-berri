@@ -12,11 +12,10 @@
 #------------------------------------------------------------
 
 import numpy as np
-import copy
 import lazy_property
-from .__utility import str2bool, alpha_A, beta_A , real_recip_lattice,iterate3dpm
-from  .symmetry import Group
-from colorama import init
+from .__sym_wann import SymWann
+from .__utility import alpha_A, beta_A , iterate3dpm
+from  .symmetry import Symmetry, Group, TimeReversal
 from termcolor import cprint 
 import functools
 import multiprocessing 
@@ -47,7 +46,7 @@ class System():
 
     __doc__ = """
     The base class for describing a system. Does not have its own constructor, 
-    please use the child classes, e.g  :class:`~wannierberri.System_w90` or :class:`~wannierberri.System_tb`
+    please use the child classes, e.g  :class:`System_w90` or :class:`System_tb`
 
 
     Parameters
@@ -72,9 +71,9 @@ class System():
         minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90. Default: ``{use_ws}``
     mp_grid : [nk1,nk2,nk3]
         size of Monkhorst-Pack frid used in ab initio calculation. Needed when `use_ws=True`, and only if it cannot be read from input file, i.e.
-        like :class:`~wannierberri.System_tb`, :class:`~wannierberri.System_PythTB`, :class:`~wannierberri.System_TBmodels` ,:class:`~wannierberri.System_fplo`, but only if 
+        like :class:`.System_tb`, :class:`.System_PythTB`, :class:`.System_TBmodels` ,:class:`.System_fplo`, but only if
         the data originate from ab initio data, not from toy models.
-        In contrast, for :class:`~wannierberri.System_w90` and :class:`~wannierberri.System_ase` it is not needed,  but can be provided and will override the original value 
+        In contrast, for :class:`.System_w90` and :class:`.System_ase` it is not needed,  but can be provided and will override the original value
         (if you know what and why you are doing)
         Default: ``{mp_grid}``
     frozen_max : float
@@ -120,6 +119,30 @@ class System():
         self.periodic=periodic
 
 
+    def symmetrize(self,proj,positions,atom_name,soc=False,magmom=None,DFT_code='qe'):
+        """
+        proj:
+            Should be the same with projections card in Wannier90.win.
+        positions: list
+            Positions of each atom.
+        atom_name: list
+            Name of each atom.
+        magmom: array
+            Magnetic moment of each atom.
+        """
+        XX_R={'Ham':self.Ham_R}
+        for X in ['AA','BB','CC','SS','FF','SA','SHA','SR','SH','SHR']:
+            try:
+                XX_R[X] = vars(self)[X+'_R']
+            except KeyError:
+                pass
+        symmetrize_wann = SymWann(num_wann=self.num_wann,lattice=self.real_lattice,positions=positions,atom_name=atom_name,
+            proj=proj,iRvec=self.iRvec,XX_R=XX_R,soc=soc,magmom=magmom,cRvec=self.iRvec.dot(self.real_lattice)[None,None,:,:]+ self.diff_wcc_cart[:,:,None,:],DFT_code=DFT_code)
+        XX_R,self.iRvec = symmetrize_wann.symmetrize()
+        for X in XX_R.keys():
+            vars(self)[X+'_R'] = XX_R[X]
+
+
     def check_periodic(self):
         exclude=np.zeros(self.nRvec,dtype=bool)
         for i,per in enumerate(self.periodic):
@@ -132,7 +155,7 @@ class System():
         if np.any(exclude):
             notexclude=np.logical_not(exclude)
             self.iRvec=self.iRvec[notexclude]
-            for X in ['HH','AA','BB','CC','SS','FF']:
+            for X in ['Ham','AA','BB','CC','SS','FF']:
                 XR=X+'_R'
                 if hasattr(self,XR) :
                     vars(self)[XR]=vars(self)[XR][:,:,notexclude]
@@ -250,19 +273,19 @@ class System():
 
     def set_symmetry(self,symmetry_gen=[]):
         """ 
-        Set the symmetry group of the :class:`~wannierberri.__system.System` 
+        Set the symmetry group of the :class:`System`
 
         Parameters
         ----------
-        symmetry_gen : list of :class:`~wannierberri.symmetry.Symmetry` or str
-            The generators of the symmetry group. 
+        symmetry_gen : list of :class:`symmetry.Symmetry` or str
+            The generators of the symmetry group.
 
         Notes
         -----
         + Only the generators of the symmetry group are essential. However, no problem if more symmetries are provided. 
           The code further evaluates all possible products of symmetry operations, until the full group is restored.
         + Providing `Identity` is not needed. It is included by default
-        + Operations are given as objects of class:`~wannierberri.Symmetry.symmetry` or by name as `str`, e.g. ``'Inversion'`` , ``'C6z'``, or products like ``'TimeReversal*C2x'``.
+        + Operations are given as objects of :class:`symmetry.Symmetry` or by name as `str`, e.g. ``'Inversion'`` , ``'C6z'``, or products like ``'TimeReversal*C2x'``.
         + ``symetyry_gen=[]`` is equivalent to not calling this function at all
         + Only the **point group** operations are important. Hence, for non-symmorphic operations, only the rotational part should be given, neglecting the translation.
 
@@ -411,6 +434,74 @@ class System():
         else:
             print (f"{XX} is missing,nothing to check")
 
+    def set_structure(self, positions, atom_labels, magnetic_moments=None):
+        """
+        Set atomic structure of the system.
+
+        Parameters
+        ----------
+        positions : (num_atom, 3) array_like of float
+            Atomic positions in fractional coordinates.
+        atom_labels: (num_atom,) list
+            labels (integer, string, etc.) to distinguish species.
+        magnetic_moments: (num_atom, 3) array_like of float (optional)
+            Magnetic moment vector of each atom.
+        """
+        if len(positions) != len(atom_labels):
+            raise ValueError("length of positions and atom_labels must be the same")
+        if magnetic_moments is not None:
+            if len(magnetic_moments) != len(positions):
+                raise ValueError("length of positions and magnetic_moments must be the same")
+            if not all([len(x) for x in magnetic_moments]):
+                raise ValueError("magnetic_moments must be a list of 3d vector")
+        self.positions = positions
+        self.atom_labels = atom_labels
+        self.magnetic_moments = magnetic_moments
+
+    def get_spglib_cell(self):
+        """Returns the atomic structure as a cell tuple in spglib format"""
+        try:
+            # assign integer to self.atom_labels
+            atom_labels_unique = list(set(self.atom_labels))
+            atom_numbers = [atom_labels_unique.index(label) for label in self.atom_labels]
+            if self.magnetic_moments is None:
+                return (self.real_lattice, self.positions, atom_numbers)
+            else:
+                return (self.real_lattice, self.positions, atom_numbers, self.magnetic_moments)
+        except AttributeError:
+            raise AttributeError("set_structure must be called before get_spglib_cell")
+
+    def set_symmetry_from_structure(self):
+        """
+        Set the symmetry group of the :class:`System`. Requires spglib to be installed.
+        :meth:`System.set_structure` must be called in advance.
+
+        For magnetic systems, symmetries involving time reversal are not detected because
+        spglib does not support time reversal symmetry for noncollinear systems.
+        """
+        import spglib
+
+        spglib_symmetry = spglib.get_symmetry(self.get_spglib_cell())
+        symmetry_gen = []
+        for isym in range(spglib_symmetry["rotations"].shape[0]):
+            # spglib gives real-space rotations in reduced coordinates. Here,
+            # 1) convert to Cartesian coordinates, and
+            # 2) take transpose to go to reciprocal space.
+            W = spglib_symmetry["rotations"][isym]
+            Wcart = self.real_lattice.T @ W @ np.linalg.inv(self.real_lattice).T
+            R = Wcart.T
+            symmetry_gen.append(Symmetry(R))
+
+        if self.magnetic_moments is None:
+            symmetry_gen.append(TimeReversal)
+        else:
+            if not all([len(x) for x in self.magnetic_moments]):
+                raise ValueError("magnetic_moments must be a list of 3d vector")
+            print("Warning: spglib does not find symmetries including time reversal "
+                "operation.\nTo include such symmetries, use set_symmetry.")
+
+        self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
+
 
 class ws_dist_map():
 
@@ -433,6 +524,8 @@ class ws_dist_map():
         param=(shifts_int_all,wannier_centers,real_lattice, ws_distance_tol, wannier_centers.shape[0])
         p=multiprocessing.Pool(npar)
         irvec_new_all=p.starmap(functools.partial(ws_dist_stars,param=param),zip(iRvec,cRvec))
+        p.close()
+        p.join()
         print('irvec_new_all shape',np.shape(irvec_new_all))
         for ir,iR in enumerate(iRvec):
           for ijw,irvec_new in irvec_new_all[ir].items():

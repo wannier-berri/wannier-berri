@@ -17,8 +17,6 @@
 
 import numpy as np
 from scipy import constants as constants
-from collections.abc import Iterable
-import functools
 from termcolor import cprint
 from .__utility import alpha_A,beta_A
 from . import __result as result
@@ -99,8 +97,8 @@ def kubo_sum_elements(x, y, num_wann):
 def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, shc_alpha=1, shc_beta=2, shc_gamma=3,
                 shc_specification=False, conductivity_type='kubo', SHC_type='ryoo', sc_eta=0.04,
-                Hermitian = True, 
-                antiHermitian = True):
+                sep_sym_asym = False
+                ):
     '''
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
 
@@ -121,8 +119,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         shc_specification whether only a single component of SHC is calculated or not
         conductivity_type type of optical conductivity ('kubo', 'SHC'(spin Hall conductivity), 'tildeD' (finite-frequency Berry curvature dipole) )
         SHC_type        'ryoo': PRB RPS19, 'qiao': PRB QZYZ18
-        Hermitian       evaluate the Hermitian part
-        antiHermitian   evaluate anti-Hermitian part 
+        sep_sym_asym    separate the optical conductivity into symmetric and antisymmetric parts
 
     Returns:    a list of (complex) optical conductivity 3 x 3 (x 3) tensors (one for each frequency value).
                 The result is given in S/cm.
@@ -140,7 +137,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
 
 
     # prefactor for correct units of the result (S/cm)
-    pre_fac = e**2/(100.0 * hbar * data.NKFFT_tot * data.cell_volume * constants.angstrom)
+    pre_fac = e**2/(100.0 * hbar * data.nk * data.cell_volume * constants.angstrom)
 
     if conductivity_type == 'kubo' :
         sigma_H  = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
@@ -167,7 +164,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
         sigma_shift = np.zeros((Efermi.shape[0],omega.shape[0], 3, 3, 3), dtype=complex)
         rank=3
         # prefactor for the shift current
-        pre_fac = -1.j*eV_seconds*pi*e**3/(4.0 * hbar**(2) * data.NKFFT_tot * data.cell_volume)
+        pre_fac = -1.j*eV_seconds*pi*e**3/(4.0 * hbar**(2) * data.nk * data.cell_volume)
 
 
     if adpt_smr: 
@@ -175,7 +172,7 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
 
 
     # iterate over ik, simple summation
-    for ik in range(data.NKFFT_tot):
+    for ik in range(data.nk):
         # E - omega
         E  = data.E_K[ik] # energies [n] in eV
         dE = E[None,:] - E[:, None] # E_m(k) - E_n(k) [n, m]
@@ -328,23 +325,26 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
 
 
     if conductivity_type == 'kubo':
-        # TODO: optimize by just storing independent components or leave it like that?
-        # 3x3 tensors [iw, a, b]
-        sigma_sym = np.real(sigma_H) + 1j * np.imag(sigma_AH) # symmetric (TR-even, I-even)
-        sigma_asym = np.real(sigma_AH) + 1j * np.imag(sigma_H) # ansymmetric (TR-odd, I-even)
 
-        # return result dictionary
-        return result.EnergyResultDict({
+        if sep_sym_asym:
+            # TODO: optimize by just storing independent components or leave it like that?
+            # 3x3 tensors [iw, a, b]
+            sigma_sym = np.real(sigma_H) + 1j * np.imag(sigma_AH) # symmetric (TR-even, I-even)
+            sigma_asym = np.real(sigma_AH) + 1j * np.imag(sigma_H) # ansymmetric (TR-odd, I-even)
+            # return result dictionary
+            return result.EnergyResultDict({
             'sym':  result.EnergyResult([Efermi,omega], sigma_sym, TRodd=False, Iodd=False, rank=rank),
             'asym': result.EnergyResult([Efermi,omega], sigma_asym, TRodd=True, Iodd=False, rank=rank)
-        }) # the proper smoother is set later for both elements
+            }) # the proper smoother is set later for both elements
+        else:
+            return result.EnergyResult([Efermi,omega], sigma_H+sigma_AH, TRodd=False, Iodd=False, TRtrans = True, rank=rank)
 
     elif conductivity_type == 'SHC':
         sigma_SHC = np.real(sigma_AH) + 1j * np.imag(sigma_H)
         return result.EnergyResult([Efermi,omega], sigma_SHC, TRodd=False, Iodd=False, rank=rank)
 
     elif conductivity_type == 'tildeD':
-        pre_fac = 1./ (data.NKFFT_tot * data.cell_volume )
+        pre_fac = 1./ (data.nk * data.cell_volume )
         return result.EnergyResult([Efermi,omega], tildeD*pre_fac, TRodd=False, Iodd=True, rank=rank)
 
     elif conductivity_type == 'shiftcurrent':

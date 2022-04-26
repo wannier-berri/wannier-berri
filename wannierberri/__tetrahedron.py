@@ -1,5 +1,5 @@
 #------------------------------------------------------------#
-# This file is distributed as part of the WannierBerri code  # 
+# This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
 # file `LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
@@ -10,18 +10,14 @@
 
 from collections import defaultdict
 import lazy_property
-
-
-import functools
 import numpy as np
 from numba import njit
-from copy import copy
 
 @njit
 def weights_tetra(efall,e0,e1,e2,e3,der=0):
-    
+
     e=[e0,e1,e2,e3]
-            
+
 #    print (e0,e1,e2,e3,der)
     e=np.array(sorted([e0,e1,e2,e3]))
     # a dirty trick to avoid divisions by zero
@@ -60,11 +56,11 @@ def weights_tetra(efall,e0,e1,e2,e3,der=0):
                 occ[i]= 1.
             elif ef<e1:
                 occ[i]=0.
-            elif  ef>=e3:# c3
+            elif ef>=e3: # c3
                 occ[i] = c30+ef*(c31+ef*(c32+c33*ef))
-            elif ef>=e2:   # c2
+            elif ef>=e2: # c2
                 occ[i] = c20+ef*(c21+ef*(c22+c23*ef))
-            else :  #c1
+            else: # c1
                 occ[i] = c10+ef*(c11+ef*(c12+c13*ef))
     elif der==1:
         for i in range(nEF):
@@ -73,11 +69,11 @@ def weights_tetra(efall,e0,e1,e2,e3,der=0):
                 occ[i] = 0.
             elif ef<e1:
                 occ[i] = 0.
-            elif  ef>=e3:# c3
+            elif ef>=e3: # c3
                 occ[i] = c31+ef*(2*c32+3*c33*ef)
-            elif ef>=e2:   # c2
+            elif ef>=e2: # c2
                 occ[i] = c21+ef*(2*c22+3*c23*ef)
-            else :  #c1
+            else: # c1
                 occ[i] = c11+ef*(2*c12+3*c13*ef)
     elif der==2:
         for i in range(nEF):
@@ -86,11 +82,11 @@ def weights_tetra(efall,e0,e1,e2,e3,der=0):
                 occ[i] = 0.
             elif ef<e1:
                 occ[i] = 0.
-            elif  ef>=e3:# c3
+            elif ef>=e3: # c3
                 occ[i] = 2*c32+6*c33*ef
-            elif ef>=e2:   # c2
+            elif ef>=e2: # c2
                 occ[i] = 2*c22+6*c23*ef
-            else :  #c1
+            else: # c1
                 occ[i] = 2*c12+6*c13*ef
     elif der==3:
         for i in range(nEF):
@@ -99,11 +95,11 @@ def weights_tetra(efall,e0,e1,e2,e3,der=0):
                 occ[i] = 0.
             elif ef<e1:
                 occ[i] = 0.
-            elif  ef>=e3:# c3
+            elif ef>=e3: # c3
                 occ[i] = 6*c33
-            elif ef>=e2:   # c2
+            elif ef>=e2: # c2
                 occ[i] = 6*c23
-            else :  #c1
+            else: # c1
                 occ[i] = 6*c13
     return occ
 
@@ -140,8 +136,6 @@ def get_bands_below_range(emin,Eband,Ebandmax=None):
 def weights_parallelepiped(efermi,Ecenter,Ecorner,der=0):
     occ=np.zeros((efermi.shape))
     Ecorner=np.reshape(Ecorner,(2,2,2))
-    triang1=np.array([[True,True],[True,False]])
-    triang2=np.array([[False,True],[True,True]])
     for iface in 0,1:
         for Eface in Ecorner[iface,:,:],Ecorner[:,iface,:],Ecorner[ :,:,iface]:
             occ += weights_tetra(efermi,Ecenter,Eface[0,0],Eface[0,1],Eface[1,1],der=der)
@@ -168,56 +162,28 @@ class TetraWeights():
     def ones(self):
         return np.ones(len(self.eFermi))
 
-    @lazy_property.LazyProperty
-    def bands_in_range(self):
-        emin=self.eFermi[0]
-        emax=self.eFermi[-1]
-        return [list(np.where((Emax>=emin)*(Emin<=emax))[0]) for Emin,Emax in zip(self.Emin,self.Emax)]
-
-    @property
-    def bands_below_range(self):
-        emin=self.eFermi[0]
-        emax=self.eFermi[-1]
-        res=[np.where(Emax<emin)[0] for Emax in self.Emax]
-        return [[a.max()] if len(a)>0 else [] for a in res]
-
-    @lazy_property.LazyProperty
-    def bands_in_range_sea(self):
-        return [a+b for a,b in zip(self.bands_below_range,self.bands_in_range) ]
-
 
     def __weight_1b(self,ik,ib,der):
         if ib not in self.weights[der][ik]:
             self.weights[der][ik][ib]=weights_parallelepiped(self.eFermi,self.eCenter[ik,ib],self.eCorners[ik,:,:,:,ib],der=der)
         return self.weights[der][ik][ib]
 
-
-    def weights_allbands(self,eFermi,der,op=0,ed=None):
-        if ed is None: ed=self.nk
-        if self.eFermi is None:
-            self.eFermi=eFermi
-        else :
-            assert self.eFermi is eFermi
-        bands_in_range=(self.bands_in_range if der>0 else self.bands_in_range_sea)[op:ed]
-        return [{ib:self.__weight_1b(op+ik,ib,der)  for ib in ibrg } for ik,ibrg in enumerate(bands_in_range)]
-
 # this is for fermiocean
-    def weights_all_band_groups(self,eFermi,der,op=0,ed=None,degen_thresh=-1,degen_Kramers=False):
+    def weights_all_band_groups(self,eFermi,der,degen_thresh=-1,degen_Kramers=False):
         """
              here  the key of the return dict is a pair of integers (ib1,ib2)
         """
-        if ed is None: ed=self.nk
         if self.eFermi is None:
             self.eFermi=eFermi
         else :
             assert self.eFermi is eFermi
         res=[]
-        for ik in range(op,ed):
+        for ik in range(self.nk):
             bands_in_range=get_bands_in_range(self.eFermi[0],self.eFermi[-1],self.eCenter[ik],degen_thresh=degen_thresh,degen_Kramers=degen_Kramers,
                     Ebandmin=self.Emin[ik],Ebandmax=self.Emax[ik])
-            weights= { (ib1,ib2):sum(self.__weight_1b(ik,ib,der) 
-                                          for ib in range(ib1,ib2))/(ib2-ib1) 
-                          for ib1,ib2 in bands_in_range  
+            weights= { (ib1,ib2):sum(self.__weight_1b(ik,ib,der)
+                                          for ib in range(ib1,ib2))/(ib2-ib1)
+                          for ib1,ib2 in bands_in_range
                      }
 
             if der==0 :

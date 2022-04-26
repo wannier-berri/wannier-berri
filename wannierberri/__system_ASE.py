@@ -17,7 +17,8 @@ import copy
 import functools
 import multiprocessing 
 from .__utility import iterate3dpm, real_recip_lattice,fourier_q_to_R,find_degen
-from .__system_w90 import ws_dist_map, System_w90
+from .__system_w90 import System_w90
+from .__system import ws_dist_map
 from .__w90_files import MMN
 from time import time
 

@@ -16,7 +16,9 @@ wannierberri - a module for Wannier interpolation
 
 __version__ = "0.11.1"
 
-from .__main import integrate,tabulate,symmetry,integrate_options,tabulate_options,welcome,print_options
+from .run import run
+from .__main import integrate,tabulate,integrate_options,tabulate_options,welcome,print_options
+from . import symmetry
 from .__tabulate import TABresult
 from .__grid import Grid
 from .__system       import System
@@ -27,5 +29,6 @@ from .__system_tb_py import System_PythTB, System_TBmodels
 from .__system_ASE import System_ASE
 from .__path import Path
 from .__parallel import Parallel
+from . import calculators
 
 

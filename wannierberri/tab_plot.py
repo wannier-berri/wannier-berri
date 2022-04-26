@@ -14,15 +14,15 @@
 # Xiaoxiong Liu, University of Zurich                        #
 # Email: xxliu@physik.uzh.ch                                 #
 #------------------------------------------------------------#
-'''This is a script to plot the band with line path (High symmetry line) or plane cut using tabulate calculation result from Wannierberri. 
+'''This is a script to plot the band with line path (High symmetry line) or plane cut using tabulate calculation result from Wannierberri.
 Tested
-	NOTE: 
+    NOTE:
 
-	      1. Please chose the line kpaths which are in the 1st BZ.
-	      2. The plane cut figure shows a plane cut of 2x2x2 reciprocal lattice. 
-	      3. All k coordinate values in list like parameters should be integer. (means which k point).
-		 eg. If k-grid is 12x12x12. kpoint (1/3,2/3,0.5) should be (4,8,6)
-	      4. In order to ensure that more high symmetry points have k-grid points, you would better set NK as multiples of 12 when doing tabulate calculation. 
+          1. Please chose the line kpaths which are in the 1st BZ.
+          2. The plane cut figure shows a plane cut of 2x2x2 reciprocal lattice.
+          3. All k coordinate values in list like parameters should be integer. (means which k point).
+         eg. If k-grid is 12x12x12. kpoint (1/3,2/3,0.5) should be (4,8,6)
+          4. In order to ensure that more high symmetry points have k-grid points, you would better set NK as multiples of 12 when doing tabulate calculation.
 
         Usage example:
                 line: ::
@@ -31,46 +31,46 @@ Tested
 
                 plane: ::
 
-    	            python3 -m wannierberri.tab_plot tab_result.pickle type=Plane quantity=True Efermi=-0.5 vec1=1,0,0 vec2=0,1,0 qtype=berry component=z
+                    python3 -m wannierberri.tab_plot tab_result.pickle type=Plane quantity=True Efermi=-0.5 vec1=1,0,0 vec2=0,1,0 qtype=berry component=z
 
         Options
-            -h 
+            -h
                 | print the help message
 
             type (String)
-                |  Type of plot. 
-		|  	Line: line cut
-		|  	Plane: plane cut 
+                |  Type of plot.
+        |   Line: line cut
+        |   Plane: plane cut
                 |  Default: None
             quantity (Boolean)
                 |  Plot quantity or not.
-		|	False: Only plot energy of band.
-		|	True: Not only energy of band but also quantity(plot as color dot)  
+        |   False: Only plot energy of band.
+        |   True: Not only energy of band but also quantity(plot as color dot)
                 |  Default: False
             o_point (list like)
-		|  k coordinate of origin.(type=Plane)
-		|  Two vectors and one origin can define a plane. 
+        |  k coordinate of origin.(type=Plane)
+        |  Two vectors and one origin can define a plane.
                 |  Default: 0,0,0
-            vec1 (list like) 
+            vec1 (list like)
                 |  k coordinate of one of the two vectors. (type=Plane)
-		|  Only direction of vector work. (0,0,1) == (0,0,6)
-		|  And it is the horizontal axis of plot.  
-                |  Default: 0,0,1  
-            vec2 (list like) 
+        |  Only direction of vector work. (0,0,1) == (0,0,6)
+        |  And it is the horizontal axis of plot.
+                |  Default: 0,0,1
+            vec2 (list like)
                 |  k coordinate of one of the two vectors. (type=Plane)
-		|  Only direction of vector work. (0,1,0) == (0,6,0)
-                |  Default: 0,1,0  
+        |  Only direction of vector work. (0,1,0) == (0,6,0)
+                |  Default: 0,1,0
             kpath (list like)
                 |  Starting points and ending points of k-path. (type=Plane)
-		|  6 elements are one group, the first three elements are k coordinate of starting point and the back three elements are k coordinate of ending point. It should have multiples of 6 elements.
-		|  coordinates are given as integers on the grid
-		|  Default: 0,0,0,0,0,40 
-            Efermi (float) 
+        |  6 elements are one group, the first three elements are k coordinate of starting point and the back three elements are k coordinate of ending point. It should have multiples of 6 elements.
+        |  coordinates are given as integers on the grid
+        |  Default: 0,0,0,0,0,40
+            Efermi (float)
                 |  Fermi level when (type=Line)
-		|  Plotting energy (when type=Plane) 
+        |  Plotting energy (when type=Plane)
                 |  default: 0.0
-            E_min, E_max (float) 
-                |  Energy window of plot. (type=Line) 
+            E_min, E_max (float)
+                |  Energy window of plot. (type=Line)
                 |  default: E_min=-2 Emax=2
             qtype (str)
                 |  type of quantities (quantity=True)
@@ -92,7 +92,7 @@ Tested
 import numpy as np
 import matplotlib.pyplot as plt
 from sys import argv
-import pickle 
+import pickle
 
 def hlp():
     from termcolor import cprint
@@ -104,17 +104,14 @@ def main():
     if "-h" in argv[1:]:
         hlp()
     #########  input #############
-    filename = argv[1] 
+    filename = argv[1]
     Line=False
     Plane=False
     quantity=False
     o_point = np.array([0,0,0],dtype=int)    #original point  for kplane
     vec1 = np.array([0,0,1],dtype=int)       #two vectors to determin a plane
     vec2 = np.array([0,1,0],dtype=int)
-    kpath=np.array(              #for kline
-    [[0,0,0], 	             #path1 start
-    [0,0,40]		     #path1 end
-    ],dtype=int)
+    kpath=np.array([[0,0,0], [0,0,40]], dtype=int) #for kline (path1 start, end)
     Efermi = 0.0
     E_min = -2    #E_min and E_max energy window for plot
     E_max = 2
@@ -127,12 +124,12 @@ def main():
         if arg[0]=="type":
             if arg[1]=="Line": Line=True
             elif arg[1]=="Plane": Plane=True
-        if arg[0]=="quantity": 
+        if arg[0]=="quantity":
             if arg[1]=="True": quantity=True
         if arg[0]=='o_point': o_point=np.array([x for x in arg[1].split(',')],dtype=int)
         if arg[0]=='vec1': vec1=np.array([x for x in arg[1].split(',')],dtype=int)
         if arg[0]=='vec2': vec2=np.array([x for x in arg[1].split(',')],dtype=int)
-        if arg[0]=='kpath': 
+        if arg[0]=='kpath':
             tmp=np.array([x for x in arg[1].split(',')],dtype=int)
             kpath=tmp.reshape(len(tmp)//3,3)
         if arg[0]=='Efermi': Efermi=float(arg[1])
@@ -165,7 +162,7 @@ def main():
     K2 = np.linspace(-NK[1],NK[1],2*NK[1],endpoint=False,dtype=int)
     K3 = np.linspace(-NK[2],NK[2],2*NK[2],endpoint=False,dtype=int)
     K = np.array(np.meshgrid(K2,K1,K3))
-    
+
     print('Efermi = ',Efermi)
     print('kgrid = ' ,NK)
     print('number of bands = ',NB)
@@ -210,7 +207,7 @@ def main():
     def kplane():
         cross_p = np.array([vec1[1] * vec2[2] - vec1[2] * vec2[1], vec1[0] * vec2[2] - vec1[2] * vec2[0] ,vec1[0] * vec2[1] - vec1[1] * vec2[0]])[:,None,None,None]
         Kvec = (K-o_point[:,None,None,None])[:,:,:,:]
-        dot_p = Kvec[0,:,:,:]*cross_p[0] + Kvec[1,:,:,:]*cross_p[1] + Kvec[2,:,:,:]*cross_p[2] 
+        dot_p = Kvec[0,:,:,:]*cross_p[0] + Kvec[1,:,:,:]*cross_p[1] + Kvec[2,:,:,:]*cross_p[2]
         select_p = dot_p==0
         positions_p = K[:,select_p]
         eig_p = EIGMAT[:,select_p]
@@ -250,7 +247,7 @@ def main():
         NKP = len(kpath)//2  #number of kpath
         KPOP = []
         op=0.
-        KPOP.append(op)  #starting point of each path when ploting 
+        KPOP.append(op)  #starting point of each path when ploting
         for i in range(NKP):
             path=kpath[2*i+1]-kpath[2*i]
             op+=module(np.dot(path,LATTICE))
@@ -269,7 +266,7 @@ def main():
 
         plt.figure()
         for b in range(NB):
-            plt.plot(kpatheig[b::NB,-1],kpatheig[b::NB,0]-Efermi,'0.5')	
+            plt.plot(kpatheig[b::NB,-1],kpatheig[b::NB,0]-Efermi,'0.5')
         if quantity:
             bar=plt.scatter(kpatheig[:,-1],kpatheig[:,0]-Efermi,c=kpatheig[:,1],s=10,vmax=cmax,vmin=-cmax,cmap='seismic')
             plt.colorbar(bar)
@@ -291,6 +288,6 @@ def main():
         plt.savefig('Plane_eig'+str(component)+'.png')
 
 if __name__ == "__main__":
-	main()		 
+    main()
 
 

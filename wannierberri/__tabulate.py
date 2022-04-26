@@ -12,19 +12,14 @@
 #------------------------------------------------------------
 
 import numpy as np
-from scipy import constants as constants
 from collections.abc import Iterable
 from collections import defaultdict
-from copy import deepcopy
 from time import time
-from io import StringIO
 import  multiprocessing 
 import functools
-from .__utility import  print_my_name_start,print_my_name_end
 from . import __result as result
 from . import covariant_formulak as frml
 from . import covariant_formulak_basic as frml_basic
-from . import  symmetry
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
@@ -36,7 +31,8 @@ calculators={
          'berry'      : frml.Omega, 
          'Der_berry'  : frml.DerOmega,
          'morb'       : frml.morb,
-         'Der_morb'   : frml_basic.Der_morb
+         'Der_morb'   : frml_basic.Der_morb,
+         'spin_berry' : frml.SpinOmega,
          }
 
 
@@ -51,6 +47,7 @@ descriptions['V']="velocity (eV*Ang)"
 descriptions['spin']="Spin"
 descriptions['morb']="orbital moment of Bloch states <nabla_k u_n| X(H-E_n) | nabla_k u_n> (eV*Ang**2)"
 descriptions['Der_morb']="1st derivative orbital moment of Bloch states <nabla_k u_n| X(H-E_n) | nabla_k u_n> (eV*Ang**2)"
+descriptions['spin_berry'] = "Spin Berry curvature (hbar * Ang^{2})"
 
 parameters_ocean = {
 'external_terms' : (True , "evaluate external terms"),
@@ -62,7 +59,8 @@ for key,val in parameters_ocean.items():
         additional_parameters[calc][key] = val[0]
         additional_parameters_description[calc][key] = val[1]
 
-
+additional_parameters['spin_berry']['spin_current_type'] = 'ryoo'
+additional_parameters_description['spin_berry']['spin_current_type'] = 'type of the spin current'
 
 def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,degen_Kramers=False,ibands=None,
             parameters={},specific_parameters = {}):
@@ -75,7 +73,7 @@ def tabXnk(data_K,quantities=[],user_quantities = {},degen_thresh=-1,degen_Krame
 
     tabulator = Tabulator(data_K,ibands,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)
 
-    results={'E':result.KBandResult(data_K.E_K[:,ibands],TRodd=False,Iodd=False)}
+    results={'Energy':result.KBandResult(data_K.E_K[:,ibands],TRodd=False,Iodd=False)}
     for qfull in quantities:
         q = qfull.split('^')[0]
         __parameters={}
@@ -103,7 +101,7 @@ class  Tabulator():
 
     def __init__(self ,  data_K,  ibands, degen_thresh=1e-4,degen_Kramers=False):
 
-        self.nk=data_K.NKFFT_tot
+        self.nk=data_K.nk
         self.NB=data_K.num_wann
         self.ibands = ibands
 
@@ -140,7 +138,7 @@ class  Tabulator():
 class TABresult(result.Result):
 
     def __init__(self,kpoints,recip_lattice,results={}):
-        self.nband=results['E'].nband
+        self.nband=results['Energy'].nband
         self.grid=None
         self.gridorder=None
         self.recip_lattice=recip_lattice
@@ -153,13 +151,17 @@ class TABresult(result.Result):
             
     @property 
     def Enk(self):
-        return self.results['E']
+        return self.results['Energy']
 
         
     def __mul__(self,other):
     #K-point factors do not play arole in tabulating quantities
         return self
     
+    def __truediv__(self,other):
+    #K-point factors do not play arole in tabulating quantities
+        return self
+
     def __add__(self,other):
         if other == 0:
             return self
@@ -169,8 +171,31 @@ class TABresult(result.Result):
         results={r: self.results[r]+other.results[r] for r in self.results if r in other.results }
         return TABresult(np.vstack( (self.kpoints,other.kpoints) ), recip_lattice=self.recip_lattice,results=results) 
 
-    def write(self,name):
+    def save(self,name):
         return   # do nothing so far
+
+    def savetxt(self,name):
+        return   # do nothing so far
+
+    def savedata(self,name,prefix,suffix,i_iter):
+        if i_iter>0 :
+            pass  # so far do nothing on iterations, chang in future
+        else:
+            self.self_to_grid()
+            write_frmsf(prefix+"-"+name,Ef0=0.,numproc=None,quantities=self.results.keys(),res=self,suffix=suffix)  # so far let it be the only mode, implement other modes in future    
+            # TODO : remove this messy call to external routine, which calls back an internal one    
+
+    @property
+    def find_grid(self):
+        """ Find the full grid.""" 
+        #TODO: make it cleaner, to work with iterations
+        grid = np.zeros(3,dtype=int)
+        kp = np.array(self.kpoints)
+        for i in range(3):
+            k = np.sort(kp[:,i])
+            dk = np.max(k[1:]-k[:-1])
+            grid[i]=int(np.round(1./dk))
+        return grid
 
     def transform(self,sym):
         results={r:self.results[r].transform(sym)  for r in self.results}
@@ -212,9 +237,12 @@ class TABresult(result.Result):
         print ("collecting - OK : {} ({})".format(t3-t0,t3-t2))
         return res
 
+    def self_to_grid(self):
+        res = self.to_grid(self.find_grid,order='C')
+        self.__dict__.update(res.__dict__) # another dirty trick, TODO : clean it
 
     def __get_data_grid(self,quantity,iband,component=None,efermi=None):
-        if quantity=='E':
+        if quantity=='Energy':
             return self.Enk.data[:,iband].reshape(self.grid)
         elif component==None:
             return self.results[quantity].data[:,iband].reshape(tuple(self.grid)+(3,)*self.results[quantity].rank)
@@ -223,7 +251,7 @@ class TABresult(result.Result):
 
 
     def __get_data_path(self,quantity,iband,component=None,efermi=None):
-        if quantity=='E':
+        if quantity=='Energy':
             return self.Enk.data[:,iband]
         elif component==None:
             return self.results[quantity].data[:,iband]
@@ -282,7 +310,10 @@ class TABresult(result.Result):
                   fatmax = None,
                   cut_k=True
                   ):
-        """a routine to plot a result along the path"""
+        """
+        a routine to plot a result along the path
+        The circle size (size of quantity) changes linearly below 2 and logarithmically above 2.
+        """
 
         if fatmax is None : fatmax = fatfactor*10
 
@@ -300,8 +331,8 @@ class TABresult(result.Result):
 
 
         kline=path.getKline()
-        E=self.get_data(quantity='E',iband=iband)-Eshift
-        print ("shape of E",E.shape)
+        E=self.get_data(quantity='Energy',iband=iband)-Eshift
+        print ("shape of Energy",E.shape)
 
         plt.ylabel(r"$E$, eV")
         if Emin is None:
@@ -333,6 +364,9 @@ class TABresult(result.Result):
                     selE=(e<=Emax)*(e>=Emin)
                     klineselE=kline[selE]
                     y=data[selE][:,ib]
+                    select = np.abs(y) > 2
+                    y[select] = np.log2(y[select])
+                    y[~select] *= 0.5
                     e1=e[selE]
                     for col,sel in [("red",(y>0)),("blue",(y<0))]:
                         sz = abs(y[sel])*fatfactor
@@ -359,13 +393,13 @@ class TABresult(result.Result):
            plt.savefig(save_file)
         plt.close()
 
-
     def max(self):
-        raise NotImplementedError("adaptive refinement cannot be used for tabulating")
-
+        return -1 # tabulating does not contribute to adaptive refinement
 
 def _savetxt(limits=None,a=None,fmt=".8f",npar=0):
     assert a.ndim==1 , "only 1D arrays are supported. found shape{}".format(a.shape)
+    if npar is None:
+        npar = multiprocessing.cpu_count()
     if npar<=0:
         if limits is None:
             limits=(0,a.shape[0])
@@ -375,10 +409,37 @@ def _savetxt(limits=None,a=None,fmt=".8f",npar=0):
         if limits is not None: 
             raise ValueError("limits shpould not be used in parallel mode")
         nppproc=a.shape[0]//npar+(1 if a.shape[0]%npar>0 else 0)
-        print ("using a pool of {} processes to write txt frmsf of {} points".format(npar,nppproc))
+        print ("using a pool of {} processes to write txt frmsf of {} points per process".format(npar,nppproc))
         asplit=[(i,i+nppproc) for i in range(0,a.shape[0],nppproc)]
         p=multiprocessing.Pool(npar)
         res= p.map(functools.partial(_savetxt,a=a,fmt=fmt,npar=0)  , asplit)
         p.close()
+        p.join()
         return "".join(res)
+
+def write_frmsf(frmsf_name,Ef0,numproc,quantities,res,suffix=""):
+    if len(suffix)>0:
+        suffix="-"+suffix
+    if frmsf_name is not None:
+        open(f"{frmsf_name}_E{suffix}.frmsf","w").write(
+             res.fermiSurfer(quantity=None,efermi=Ef0,npar=numproc) )
+        t3=time()
+        ttxt=0
+        twrite=0
+        for Q in quantities:
+            for comp in res.results[Q].get_component_list():
+                try:
+                    t31=time()
+                    txt=res.fermiSurfer(quantity=Q,component=comp,efermi=Ef0,npar=numproc)
+                    t32=time()
+                    open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf","w").write(txt)
+                    t33=time()
+                    ttxt  += t32-t31
+                    twrite+= t33-t32
+                except result.NoComponentError:
+                    pass
+    else:
+        ttxt=0
+        twrite=0
+    return ttxt,twrite
 
