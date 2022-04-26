@@ -51,7 +51,7 @@ class Path(Grid):
                 raise ValueError("need to specify either 'k_list' of 'k_nodes'")
 
             if labels is None:
-                labels=[str(i+1) for i,k in enumerate([k for k in self.nodes if k is not None])]
+                labels=[str(i+1) for i,k in enumerate([k for k in k_nodes if k is not None])]
             labels=(l for l in labels)
             labels=[None if k is None else next(labels)  for k in k_nodes]
 
@@ -79,17 +79,20 @@ class Path(Grid):
                     end=np.array(end)
                     assert start.shape==end.shape==(3,)
                     if nk is not None:
-                        _nk=nkgen
+                        _nk=next(nkgen)
                     else: 
                         _nk=round( np.linalg.norm((start-end).dot(self.recip_lattice))/dk )+1
                         if _nk==1 : _nk=2
-                    self.K_list=np.vstack( (self.K_list,start[None,:]+np.linspace(0,1.,_nk)[:,None]*(end-start)[None,:] ) )
-                    self.labels[self.K_list.shape[0]-1]=l2
+                    self.K_list=np.vstack( (self.K_list,start[None,:]+np.linspace(0,1.,_nk-1, endpoint=False)[:,None]*(end-start)[None,:] ) )
                 elif end is None:
                     self.breaks.append(self.K_list.shape[0]-1)
-        self.breaks=np.array(self.breaks)
-        self.div=np.array([len(self.K_list),1,1])
+            self.K_list = np.vstack( (self.K_list, k_nodes[-1]) )
+            self.labels[self.K_list.shape[0]-1] = labels[-1]
+        self.breaks=np.array(self.breaks,dtype=int)
 
+    @property
+    def str_short(self):
+        return "Path() with {} points and labels {}".format( len(self.K_list) , self.labels)
 
 
     @property 
@@ -105,7 +108,9 @@ class Path(Grid):
                    )  )
 
     def get_K_list(self,use_symmetry=False):
-        """ returns the list of K-points """
+        """ returns the list of K-points"""
+        if use_symmetry:
+            print ("WARNING : symmetry is not used for a tabulation along path")
         dK=np.array([1.,1.,1.])
         factor=1.
         print ("generating K_list")
