@@ -682,11 +682,22 @@ class SpinOmega(Formula_ln):
 
 
 class VelOmega(FormulaProduct):
-
+    '''velocity * berry curvature'''
     def __init__(self,data_K,**kwargs_formula):
         super().__init__( [data_K.covariant('Ham',commader=1),Omega(data_K,**kwargs_formula)], name='VelOmega')
 
 
+class OmegaOmega(FormulaProduct):
+    '''berry curvature * berry curvature'''
+    def __init__(self,data_K,**kwargs_formula):
+        super().__init__( [Omega(data_K,**kwargs_formula),Omega(data_K,**kwargs_formula)], name='OmegaOmega')
 
+class OmegaHplus(FormulaProduct):
+    '''berry curvature * Morb H_plus'''
+    def __init__(self,data_K,sign=+1,**kwargs_formula):
+        super().__init__( [Omega(data_K,**kwargs_formula),Morb_Hpm(data_K,sign=+1,**kwargs_formula)], name='OmegaHplus')
 
-
+class HplusHplus(FormulaProduct):
+    '''Morb H_plus * Morb H_plus'''
+    def __init__(self,data_K,sign=+1,**kwargs_formula):
+        super().__init__( [Morb_Hpm(data_K,sign=+1,**kwargs_formula), Morb_Hpm(data_K,sign=+1,**kwargs_formula)], name='HplusHplus')
