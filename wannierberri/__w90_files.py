@@ -103,7 +103,7 @@ class CheckPoint():
         # Unify the b vector indices
         bk_latt = np.rint((mmn.bk_cart @ np.linalg.inv(self.recip_lattice)) * self.mp_grid[None, None, :]).astype(int)
         bk_latt_unique = np.unique(bk_latt.reshape(-1, 3), axis=0)
-        bk_cart_unique = bk_latt_unique @ self.recip_lattice / self.mp_grid[None, :]
+        bk_cart_unique = (bk_latt_unique / self.mp_grid[None, :]) @ self.recip_lattice
         assert bk_latt_unique.shape == (mmn.NNB, 3)
         bk_latt_unique = [tuple(b) for b in bk_latt_unique]
 
