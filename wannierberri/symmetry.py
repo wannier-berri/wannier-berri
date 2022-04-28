@@ -195,7 +195,7 @@ def from_string(string):
 def from_string_prod(string):
     try:
         return product([globals()[s] for s in string.split("*")])
-    except Exception as err:
+    except Exception:
         raise ValueError(f"The symmetry {string} could not be recognized")
 
 

@@ -83,7 +83,7 @@ if __name__ == '__main__':
     else:
         node_info = ""
 
-    job_name = f"{args.exp_name}_{time.strftime("%m%d-%H%M%S", time.localtime())}"
+    job_name = args.exp_name + "_" + time.strftime("%m%d-%H%M%S", time.localtime())
 
     batch_system = args.batch_system.lower()
     if batch_system == "slurm":

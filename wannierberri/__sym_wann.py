@@ -1,9 +1,7 @@
 import numpy as np
 import spglib
-import numpy.linalg as la
 from .__sym_wann_orbitals import Orbitals
 from .__utility import get_angle
-
 
 
 class SymWann():
@@ -154,8 +152,8 @@ class SymWann():
         self.H_select = np.zeros((self.num_wann_atom, self.num_wann_atom, self.num_wann, self.num_wann), dtype=bool)
         for atom_a in range(self.num_wann_atom):
             for atom_b in range(self.num_wann_atom):
-                orb_name_a = self.wann_atom_info[atom_a][3]  #list of orbital type
-                orb_name_b = self.wann_atom_info[atom_b][3]  #...
+                # orb_name_a = self.wann_atom_info[atom_a][3]  #list of orbital type
+                # orb_name_b = self.wann_atom_info[atom_b][3]  #...
                 orb_list_a = self.wann_atom_info[atom_a][4]  #list of orbital index
                 orb_list_b = self.wann_atom_info[atom_b][4]  #...
                 for oa_list in orb_list_a:
@@ -258,7 +256,7 @@ class SymWann():
                 gamma = 0.0
                 alpha = np.arccos(rmat[1, 1])
                 if rmat[0, 1] > 0.0: alpha = -1.0 * alpha
-            euler_angle = np.array([alpha, beta, gamma])
+            # euler_angle = np.array([alpha, beta, gamma])
             dmat = np.zeros((2, 2), dtype=complex)
             dmat[0, 0] = np.exp(-(alpha + gamma) / 2.0 * 1j) * np.cos(beta / 2.0)
             dmat[0, 1] = -np.exp(-(alpha - gamma) / 2.0 * 1j) * np.sin(beta / 2.0)
@@ -292,8 +290,9 @@ class SymWann():
                         np.round(new_atom - np.array(wann_atom_positions[match_index]), decimals=2), dtype=int)
                 else:
                     if atom_index == self.num_wann_atom - 1:
-                        assert atom_index != 0, 'Error!!!!: no atom can match the new one Rvec = {}, atom_index = {}'.format(
-                            self.iRvec[ir], atom_index)
+                        assert atom_index != 0
+                        # 'Error!!!!: no atom can match the new one Rvec = {}, atom_index = {}'.format(
+                        #     self.iRvec[ir], atom_index)
             rot_map.append(match_index)
             vec_shift_map.append(vec_shift)
         #Check if the symmetry operator respect to magnetic moment.
@@ -360,9 +359,9 @@ class SymWann():
         # print (f"iRvec ({nRvec}):\n  {self.iRvec}")
 
         for rot in range(self.nsymm):
-            rot_cart = np.dot(
-                np.dot(np.transpose(self.lattice), self.symmetry['rotations'][rot]),
-                np.linalg.inv(np.transpose(self.lattice)))
+            # rot_cart = np.dot(
+            #     np.dot(np.transpose(self.lattice), self.symmetry['rotations'][rot]),
+            #     np.linalg.inv(np.transpose(self.lattice)))
             rot_map, vec_shift, sym_only, sym_T = self.atom_rot_map(rot)
             if sym_only + sym_T == 0:
                 pass
