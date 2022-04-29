@@ -419,3 +419,13 @@ def find_degen(arr,degen_thresh):
 def is_round(A,prec=1e-14):
     # returns true if all values in A are integers, at least within machine precision
     return( np.linalg.norm(A-np.round(A))<prec )
+
+
+def get_angle(sina,cosa):
+    '''Get angle in radian from sin and cos.'''
+    if abs(cosa) > 1.0:
+        cosa = np.round(cosa,decimals=1)
+    alpha = np.arccos(cosa)
+    if sina < 0.0:
+        alpha = 2.0 * np.pi - alpha
+    return alpha
