@@ -69,7 +69,7 @@ class DerDcov(_Dcov):
         summ*=-self.dEinv.ln(ik,inn,out)[:,:,None,None]
         return summ
 
-class Der2Dcov(_Dcov):
+class Der2Dcov_(_Dcov):
     def __init__(self,data_K):
         self.dD = DerDcov(data_K)
         self.WV = DerWln(data_K)
@@ -93,6 +93,31 @@ class Der2Dcov(_Dcov):
         tmp -= np.einsum( "lmbd,mne->lnbde" , self.dD.ln(ik,inn,out) , self.V.nn(ik,inn,out) )
         tmp *= -self.dEinv.ln(ik,inn,out)[:,:,None,None,None]
         summ += tmp
+        return summ 
+
+
+
+class Der2Dcov(_Dcov):
+    def __init__(self,data_K):
+        self.dD = DerDcov(data_K)
+        self.WV = DerWln(data_K)
+        self.dV= InvMass(data_K)
+        self.V=data_K.covariant('Ham',gender = 1)
+        self.D=data_K.Dcov
+        self.dEinv=DEinv_ln(data_K)
+    def ln(self,ik,inn,out):
+        summ = self.WV.ln(ik,inn,out)
+        summ += np.einsum( "lpbe,pnd->lnbde" , self.dV.ll(ik,inn,out) , self.D.ln(ik,inn,out) )
+        summ += np.einsum( "lpde,pnb->lnbde" , self.dV.ll(ik,inn,out) , self.D.ln(ik,inn,out) )
+        summ += np.einsum( "lpe,pnbd->lnbde" , self.V.ll(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "lpd,pnbe->lnbde" , self.V.ll(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "lpb,pnde->lnbde" , self.V.ll(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += -np.einsum( "lmde,mnb->lnbde" , self.dD.ln(ik,inn,out) , self.V.nn(ik,inn,out) )
+        summ += -np.einsum( "lmbd,mne->lnbde" , self.dD.ln(ik,inn,out) , self.V.nn(ik,inn,out) )
+        summ += -np.einsum( "lmbe,mnd->lnbde" , self.dD.ln(ik,inn,out) , self.V.nn(ik,inn,out) )
+        summ += -np.einsum( "lmb,mnde->lnbde" , self.D.ln(ik,inn,out) , self.dV.nn(ik,inn,out) )
+        summ += -np.einsum( "lmd,mnbe->lnbde" , self.D.ln(ik,inn,out) , self.dV.nn(ik,inn,out) )
+        summ *= -self.dEinv.ln(ik,inn,out)[:,:,None,None,None]
         return summ
 
 
@@ -345,7 +370,7 @@ class Der2Omega(Formula_ln):
         for s,a,b in (+1,alpha_A,beta_A),(-1,beta_A,alpha_A):
             if self.internal_terms:
                 summ+= -1j*s*np.einsum("mlce,lncd->mncde",self.dD.nl(ik,inn,out)[:,:,a],self.dD.ln(ik,inn,out)[:,:,b])
-                summ+= -1j*s*np.einsum("mlc,lncde->mncde",self.D.nl(ik,inn,out)[:,:,a],self.ddD.ln(ik,inn,out)[:,:,b,])
+                summ+= -1j*s*np.einsum("mlc,lncde->mncde",self.D.nl(ik,inn,out)[:,:,a],self.ddD.ln(ik,inn,out)[:,:,b])
                 pass
 
             if self.external_terms:

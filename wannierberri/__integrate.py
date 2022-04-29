@@ -91,6 +91,8 @@ calculators_trans={
          'berry_dipole_Z2'                 : fermiocean.berry_dipole_Z2                         ,
          'Nonlinear_Hall_Z'                : fermiocean.Nonlinear_Hall_Z              ,
          'Drude_Z'                         : fermiocean.Drude_Z              ,
+         'dO'                         : fermiocean.dO              ,
+         'ddO'                         : fermiocean.ddO              ,
          }
 
 

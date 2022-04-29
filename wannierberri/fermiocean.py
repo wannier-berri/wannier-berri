@@ -395,6 +395,17 @@ def eMChA(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwar
 #####################
 ### Zeeman terms  ###
 #####################
+def ddO(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    r""" sigma20tau1 fermi sea"""
+    res =  FermiOcean(frml.Der2Omega(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    return res
+def dO(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    r""" sigma20tau1 fermi sea"""
+    formula = FormulaProduct ( [frml.DerOmega(data_K,**kwargs_formula),data_K.covariant('Ham',commader=1)],name='DerOmega-vel')
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    return res
+
+
 
 #TODO How to use one matrix for Morb. Not morb_Hpm and berry*mul_array(Efermi).(Efemri only work after FermiOcean.)
 
