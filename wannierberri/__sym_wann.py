@@ -289,10 +289,13 @@ class SymWann():
                     vec_shift = np.array(
                         np.round(new_atom - np.array(wann_atom_positions[match_index]), decimals=2), dtype=int)
                 else:
-                    if atom_index == self.num_wann_atom - 1:
-                        assert atom_index != 0
-                        # 'Error!!!!: no atom can match the new one Rvec = {}, atom_index = {}'.format(
-                        #     self.iRvec[ir], atom_index)
+                    if atom_index==self.num_wann_atom-1:
+                        assert atom_index != 0,(
+                            f'Error!!!!: no atom can match the new atom after symmetry operation {sym+1},\n'
+                            +f'Before operation: atom {atomran} = {atom_position},\n'
+                            +f'After operation: {atom_position},\n'
+                            +f'All wann_atom: {wann_atom_positions}'
+                            )
             rot_map.append(match_index)
             vec_shift_map.append(vec_shift)
         #Check if the symmetry operator respect to magnetic moment.
