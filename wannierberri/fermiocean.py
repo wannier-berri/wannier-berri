@@ -404,6 +404,18 @@ def dO(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_
     formula = FormulaProduct ( [frml.DerOmega(data_K,**kwargs_formula),data_K.covariant('Ham',commader=1)],name='DerOmega-vel')
     res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
     return res
+def dM(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    formula2 = FormulaProduct ( [frml.DerOmega(data_K,**kwargs_formula),data_K.covariant('Ham',commader=1)],name='DerOmega-vel')
+    formula1 = FormulaProduct ( [frml.DerMorb(data_K,**kwargs_formula),data_K.covariant('Ham',commader=1)],name='Hplus-vel')
+    return    (
+                FermiOcean(formula1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)() 
+      #      - 2*FermiOcean(formula2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi) 
+                   ) 
+def ddM(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    return    (
+                FermiOcean(frml.Der2Morb(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)() 
+      #      - 2*FermiOcean(frml.Der2Omega(data_K,**kwargs_formula),data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi) 
+                   )
 
 
 
@@ -432,9 +444,8 @@ def ahc_Z2(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=
     res1.data = 0.5*(res1.data + 4*res2.data - 2*res3.data -2*res3.data.transpose(0,1,3,2))*fac_morb_Z*fac_morb_Z*factor_t0_1_0
     return res1
 
-def ohmic_Z_(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+def ohmic_Z(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r""" sigma10Ztau1 fermi sea+surface"""
-    #TODO need real fermi-sea to make der2Morb/der2Omega work for multi-bands.(XXLiu)
     formula_1  = FormulaProduct ( [frml.Morb_Hpm(data_K,sign=+1,**kwargs_formula) ,frml.InvMass(data_K)], name='morb_Hpm-mass')
     formula_2  = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula) ,frml.InvMass(data_K)], name='berry-mass')
     res =  FermiOcean(formula_1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
@@ -444,7 +455,7 @@ def ohmic_Z_(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramer
     res.data = res.data.transpose(0,2,3,1)*fac_morb_Z*factor_t1_1_0
     return res
 
-def ohmic_Z_fsurf(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+def ohmic_Z_V2(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r""" sigma10Ztau1 fermi surface"""
     formula_1  = FormulaProduct ( [frml.Morb_Hpm(data_K,sign=+1,**kwargs_formula) ,frml.InvMass(data_K)], name='morb_Hpm-mass')
     formula_2  = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula) ,frml.InvMass(data_K)], name='berry-mass')
@@ -457,9 +468,8 @@ def ohmic_Z_fsurf(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_K
     res.data = res.data.transpose(0,2,3,1)*fac_morb_Z*factor_t1_1_0
     return res
 
-def ohmic_Z2_(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+def ohmic_Z2(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r""" sigma10ZZtau1 fermi """
-    #TODO need real fermi-sea to make der2Morb/der2Omega work for multi-bands.
     formula_1  = FormulaProduct ( [frml.HplusHplus(data_K,sign=+1,**kwargs_formula) ,frml.InvMass(data_K)], name='HplusHplus-mass')
     formula_2  = FormulaProduct ( [frml.OmegaOmega(data_K,**kwargs_formula) ,frml.InvMass(data_K)], name='berryberry-mass')
     formula_3  = FormulaProduct ( [frml.OmegaHplus(data_K,sign=+1,**kwargs_formula) ,frml.InvMass(data_K)], name='berryHplus-mass')
@@ -481,7 +491,7 @@ def ohmic_Z2_(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Krame
     res1.data = (res1.data + res4.data)*fac_morb_Z*fac_morb_Z*factor_t1_1_0
     return res1
 
-def ohmic_Z2(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+def ohmic_Z2_V2(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
     r""" sigma10ZZtau1 fermi """
     formula_1  = FormulaProduct ( [frml.HplusHplus(data_K,sign=+1,**kwargs_formula) ,frml.InvMass(data_K)], name='HplusHplus-mass')
     formula_2  = FormulaProduct ( [frml.OmegaOmega(data_K,**kwargs_formula) ,frml.InvMass(data_K)], name='berryberry-mass')

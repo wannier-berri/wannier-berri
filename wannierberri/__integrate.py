@@ -85,7 +85,7 @@ calculators_trans={
          'eMChA'                           : fermiocean.eMChA                         ,
          'ahc_Z'                           : fermiocean.ahc_Z                         ,
          'ahc_Z2'                          : fermiocean.ahc_Z2                         ,
-         'ohmic_Z_fsurf'                   : fermiocean.ohmic_Z_fsurf                         ,
+         'ohmic_Z_V2'                   : fermiocean.ohmic_Z_V2                         ,
          'Ohmic_Z2'                        : fermiocean.ohmic_Z2                         ,
          'berry_dipole_Z'                  : fermiocean.berry_dipole_Z                         ,
          'berry_dipole_Z2'                 : fermiocean.berry_dipole_Z2                         ,
@@ -93,6 +93,8 @@ calculators_trans={
          'Drude_Z'                         : fermiocean.Drude_Z              ,
          'dO'                         : fermiocean.dO              ,
          'ddO'                         : fermiocean.ddO              ,
+         'dM'                         : fermiocean.dM            ,
+         'ddM'                         : fermiocean.ddM              ,
          }
 
 
