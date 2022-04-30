@@ -22,6 +22,7 @@ from common_systems import (
 
 @pytest.fixture
 def check_integrate(parallel_serial):
+
     def _inner(
             system,
             quantities=[],

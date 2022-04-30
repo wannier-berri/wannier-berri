@@ -69,6 +69,7 @@ def error_message(fout_name, suffix, i_iter, abs_err, filename, filename_ref, re
 @pytest.fixture
 def compare_energyresult():
     """Compare dat file output of EnergyResult with the file in reference folder"""
+
     def _inner(
             fout_name,
             suffix,
@@ -139,6 +140,7 @@ def compare_energyresult():
 @pytest.fixture
 def compare_any_result():
     """Compare dat file output of EnergyResult with the file in reference folder"""
+
     def _inner(
             fout_name,
             suffix,
@@ -196,6 +198,7 @@ def read_frmsf(filename):
 @pytest.fixture
 def compare_fermisurfer():
     """Compare fermisurfer output with the file in reference folder"""
+
     def _inner(fout_name, suffix="", fout_name_ref=None, suffix_ref=None, precision=None):
         if suffix_ref is None:
             suffix_ref = suffix

@@ -19,6 +19,7 @@ def check_integrate_dynamical():
     data are different for dynamical quantities (has omega index), and 2) opt_conductivity
     requires a special treatment because of sym and asym data.
     """
+
     def _inner(
             system,
             quantities,

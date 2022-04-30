@@ -15,6 +15,7 @@ from common_systems import Efermi_Fe, Efermi_GaAs, Efermi_Chiral
 
 @pytest.fixture
 def check_run(parallel_serial, compare_any_result):
+
     def _inner(
         system,
         calculators={},
