@@ -13,6 +13,7 @@ from wannierberri import fermiocean
 
 
 class AHC(StaticCalculator):
+
     def __init__(self, **kwargs):
         self.Formula = frml.Omega
         self.factor = fermiocean.fac_ahc
@@ -21,6 +22,7 @@ class AHC(StaticCalculator):
 
 
 class Ohmic(StaticCalculator):
+
     def __init__(self, **kwargs):
         self.Formula = frml.InvMass
         self.factor = fermiocean.factor_ohmic
@@ -29,6 +31,7 @@ class Ohmic(StaticCalculator):
 
 
 class BerryDipole_FermiSurf(StaticCalculator):
+
     def __init__(self, **kwargs):
         self.Formula = frml.VelOmega
         self.factor = 1
@@ -37,6 +40,7 @@ class BerryDipole_FermiSurf(StaticCalculator):
 
 
 class BerryDipole_FermiSea(StaticCalculator):
+
     def __init__(self, **kwargs):
         self.Formula = frml.DerOmega
         self.factor = 1

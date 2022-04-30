@@ -45,6 +45,7 @@ class System_w90(System):
     -----
     see also  parameters of the :class:`~wannierberri.System`
     """
+
     def __init__(
             self,
             seedname="wannier90",

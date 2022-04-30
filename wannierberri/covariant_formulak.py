@@ -5,6 +5,7 @@ from .data_K import _Dcov
 
 
 class Identity(Formula_ln):
+
     def __init__(self):
         self.ndim = 0
         self.TRodd = False
@@ -19,6 +20,7 @@ class Identity(Formula_ln):
 
 class Eavln(Matrix_ln):
     """ be careful : this is not a covariant matrix"""
+
     def __init__(self, data_K):
         super().__init__(0.5 * (data_K.E_K[:, :, None] + data_K.E_K[:, None, :]))
         self.ndim = 0
@@ -37,6 +39,7 @@ class DEinv_ln(Matrix_ln):
 
 
 class DerDcov(_Dcov):
+
     def __init__(self, data_K):
         self.W = data_K.covariant('Ham', commader=2)
         self.V = data_K.covariant('Ham', gender=1)
@@ -55,6 +58,7 @@ class DerDcov(_Dcov):
 
 class InvMass(Matrix_GenDer_ln):
     r""" :math:`\overline{V}^{b:d}`"""
+
     def __init__(self, data_K):
         super().__init__(data_K.covariant('Ham', commader=1), data_K.covariant('Ham', commader=2), data_K.Dcov)
         self.TRodd = False
@@ -63,6 +67,7 @@ class InvMass(Matrix_GenDer_ln):
 
 class DerWln(Matrix_GenDer_ln):
     r""" :math:`\overline{W}^{bc:d}`"""
+
     def __init__(self, data_K):
         super().__init__(data_K.covariant('Ham', 2), data_K.covariant('Ham', 3), data_K.Dcov)
         self.TRodd = False
@@ -75,6 +80,7 @@ class DerWln(Matrix_GenDer_ln):
 
 
 class Der3E(Formula_ln):
+
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
         self.V = data_K.covariant('Ham', commader=1)
@@ -109,6 +115,7 @@ class Der3E(Formula_ln):
 
 
 class Omega(Formula_ln):
+
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
         self.D = data_K.Dcov
@@ -159,6 +166,7 @@ class Omega(Formula_ln):
 
 
 class DerOmega(Formula_ln):
+
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
         self.dD = DerDcov(data_K)
@@ -213,24 +221,28 @@ class DerOmega(Formula_ln):
 
 
 class Velocity(Matrix_ln):
+
     def __init__(self, data_K):
         v = data_K.covariant('Ham', gender=1)
         self.__dict__.update(v.__dict__)
 
 
 class Spin(Matrix_ln):
+
     def __init__(self, data_K):
         s = data_K.covariant('SS')
         self.__dict__.update(s.__dict__)
 
 
 class DerSpin(Matrix_GenDer_ln):
+
     def __init__(self, data_K):
         s = data_K.covariant('SS', gender=1)
         self.__dict__.update(s.__dict__)
 
 
 class Morb_H(Formula_ln):
+
     def __init__(self, data_K, **parameters):
         r"""  :math:`\varepcilon_{abc} \langle \partial_a u | H | \partial_b \rangle` """
         super().__init__(data_K, **parameters)
@@ -279,6 +291,7 @@ class Morb_H(Formula_ln):
 
 
 class Morb_Hpm(Formula_ln):
+
     def __init__(self, data_K, sign=+1, **parameters):
         r""" Morb_H  +- (En+Em)/2 * Omega """
         super().__init__(data_K, **parameters)
@@ -306,6 +319,7 @@ class Morb_Hpm(Formula_ln):
 
 
 class morb(Morb_Hpm):
+
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, sign=-1, **parameters)
 
@@ -317,6 +331,7 @@ class morb(Morb_Hpm):
 
 
 class DerMorb(Formula_ln):
+
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
         self.dD = DerDcov(data_K)
@@ -480,5 +495,6 @@ class SpinOmega(Formula_ln):
 
 
 class VelOmega(FormulaProduct):
+
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([data_K.covariant('Ham', commader=1), Omega(data_K, **kwargs_formula)], name='VelOmega')

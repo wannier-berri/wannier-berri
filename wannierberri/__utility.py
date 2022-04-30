@@ -31,6 +31,7 @@ except Exception as err:
 
 # inheriting just in order to have posibility to change default values, without changing the rest of the code
 class FortranFileR(fortio.FortranFile):
+
     def __init__(self, filename):
         print("using fortio to read")
         try:
@@ -41,6 +42,7 @@ class FortranFileR(fortio.FortranFile):
 
 
 class FortranFileW(scipy.io.FortranFile):
+
     def __init__(self, filename):
         print("using scipy.io to write")
         super().__init__(filename, mode='w')
@@ -110,6 +112,7 @@ class AbstractSmoother(abc.ABC):
     maxdE : int
         Determines the width of the convoluting function as (-smear * maxdE, smear * maxdE).
     """
+
     @property
     @abc.abstractmethod
     def _params(self):
@@ -304,6 +307,7 @@ def fourier_q_to_R(AA_q, mp_grid, kpt_mp_grid, iRvec, ndegen, numthreads=1, fft=
 
 
 class FFT_R_to_k():
+
     def __init__(self, iRvec, NKFFT, num_wann, numthreads=1, lib='fftw', name=None):
         t0 = time()
         print_my_name_start()

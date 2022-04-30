@@ -26,6 +26,7 @@ from .__utility import VoidSmoother
 
 
 class Result():
+
     def __init__(self):
         raise NotImplementedError()
 
@@ -79,6 +80,7 @@ class Result():
 
 class ResultDict(Result):
     '''Stores a dictionary of instances of the class Result.'''
+
     def __init__(self, results):
         '''
         Initialize instance with a dictionary of results with string keys and values of type Result.
@@ -154,6 +156,7 @@ class EnergyResult(Result):
         | `E_titles` are neglected)
 
      """
+
     def __init__(
             self,
             Energies=None,
@@ -383,6 +386,7 @@ class EnergyResult(Result):
 
 class EnergyResultDict(EnergyResult):
     '''Stores a dictionary of instances of the class Result.'''
+
     def __init__(self, results):
         '''
         Initialize instance with a dictionary of results with string keys and values of type Result.
@@ -437,27 +441,32 @@ class EnergyResultDict(EnergyResult):
 
 
 class EnergyResultScalar(EnergyResult):
+
     def __init__(self, Energy, data, smoother=VoidSmoother()):
         super().__init__(Energy, data, smoother, TRodd=False, Iodd=False, rank=0)
 
 
 class EnergyResultAxialV(EnergyResult):
+
     def __init__(self, Energy, data, smoother=VoidSmoother()):
         super().__init__(Energy, data, smoother, TRodd=True, Iodd=False, rank=1)
 
 
 class EnergyResultPolarV(EnergyResult):
+
     def __init__(self, Energy, data, smoother=VoidSmoother()):
         super().__init__(Energy, data, smoother, TRodd=False, Iodd=True, rank=1)
 
 
 class NoComponentError(RuntimeError):
+
     def __init__(self, comp, dim):
         # Call the base class constructor with the parameters it needs
         super().__init__("component {} does not exist for tensor with dimension {}".format(comp, dim))
 
 
 class KBandResult(Result):
+
     def __init__(self, data, TRodd, Iodd):
         if isinstance(data, list):
             self.data_list = data

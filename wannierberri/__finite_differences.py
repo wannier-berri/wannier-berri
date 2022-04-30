@@ -5,6 +5,7 @@ from lazy_property import LazyProperty
 
 
 class FiniteDifferences():
+
     def __init__(self, recip_lattice, FFT):
         self.FFT = FFT
         self.recip_lattice = recip_lattice

@@ -33,6 +33,7 @@ class System_tb(System):
     -----
     see also  parameters of the :class:`~wannierberri.System`
     """
+
     def __init__(self, tb_file="wannier90_tb.dat", **parameters):
 
         self.set_parameters(**parameters)

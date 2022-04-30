@@ -26,6 +26,7 @@ def get_component_list(quantity):
 
 @pytest.fixture
 def check_tabulate(parallel_serial, compare_fermisurfer):
+
     def _inner(
             system,
             quantities=[],
@@ -184,7 +185,9 @@ def test_Chiral_sym(check_tabulate, system_Chiral_left, compare_fermisurfer):
 def test_CuMnAs_PT(check_tabulate, system_CuMnAs_2d_broken, compare_fermisurfer):
     """Test tabulation of user-defined quantities
     Also test Kramers degen, by comparing  degen_thresh=0.05 and degen_Kramers=True (they should give the same result)"""
+
     class Omega2(formula.FormulaProduct):
+
         def __init__(self, data_K, **parameters):
             print("parameters of omega2", parameters)
             omega = frml.Omega(data_K, **parameters)

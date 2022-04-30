@@ -14,6 +14,7 @@ from .classes import DynamicCalculator
 
 
 class Formula_dyn_ident():
+
     def __init__(self, data_K):
         self.TRodd = False
         self.Iodd = False
@@ -25,6 +26,7 @@ class Formula_dyn_ident():
 
 
 class JDOS(DynamicCalculator):
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.sigma = self.smr_fixed_width
@@ -48,6 +50,7 @@ class JDOS(DynamicCalculator):
 
 
 class Formula_OptCond():
+
     def __init__(self, data_K):
         A = data_K.A_H
         self.AA = 1j * A[:, :, :, :, None] * A.swapaxes(1, 2)[:, :, :, None, :]
@@ -61,6 +64,7 @@ class Formula_OptCond():
 
 
 class OpticalConductivity(DynamicCalculator):
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_OptCond
@@ -81,6 +85,7 @@ from wannierberri.covariant_formulak import SpinVelocity
 
 
 class Formula_SHC():
+
     def __init__(self, data_K, SHC_type='ryoo', shc_abc=None):
         A = SpinVelocity(data_K, SHC_type).matrix
         B = -1j * data_K.A_H
@@ -100,6 +105,7 @@ class Formula_SHC():
 
 
 class _SHC(DynamicCalculator):
+
     def __init__(self, SHC_type="ryoo", shc_abc=None, **kwargs):
         super().__init__(**kwargs)
         self.formula_kwargs = dict(SHC_type=SHC_type, shc_abc=shc_abc)

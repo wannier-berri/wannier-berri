@@ -151,6 +151,7 @@ def weights_parallelepiped(efermi, Ecenter, Ecorner, der=0):
 class TetraWeights():
     """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
        the Fermi level list remains the same throughout calculation"""
+
     def __init__(self, eCenter, eCorners):
         self.nk, self.nb = eCenter.shape
         assert eCorners.shape == (self.nk, 2, 2, 2, self.nb)

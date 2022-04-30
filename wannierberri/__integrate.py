@@ -180,6 +180,7 @@ def intProperty(
         smootherOmega=VoidSmoother(),
         parameters={},
         specific_parameters={}):
+
     def _smoother(quant):
         if quant in calculators_trans:
             return smootherEf
@@ -218,6 +219,7 @@ def intProperty(
 
 
 class INTresult(result.Result):
+
     def __init__(self, results={}):
         self.results = results
 

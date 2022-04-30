@@ -9,6 +9,7 @@ from math import ceil
 
 
 class Calculator():
+
     def __init__(self, degen_thresh=1e-4, degen_Kramers=False, save_mode="bin+txt"):
         self.degen_thresh = degen_thresh
         self.degen_Kramers = degen_Kramers
@@ -23,6 +24,7 @@ class Calculator():
 
 
 class StaticCalculator(Calculator):
+
     def __init__(self, Efermi, tetra=False, kwargs_formula={}, **kwargs):
         self.Efermi = Efermi
         self.tetra = tetra
@@ -139,6 +141,7 @@ def FermiDirac(E, mu, kBT):
 
 
 class DynamicCalculator(Calculator, abc.ABC):
+
     def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', **kwargs):
 
         for k, v in locals().items():  # is it safe to do so?
@@ -216,6 +219,7 @@ class DynamicCalculator(Calculator, abc.ABC):
 
 
 class Tabulator(Calculator):
+
     def __init__(self, Formula, kwargs_formula={}, **kwargs):
         self.Formula = Formula
         self.ibands = None
@@ -257,6 +261,7 @@ class Tabulator(Calculator):
 
 
 class TabulatorAll(Calculator):
+
     def __init__(self, tabulators, ibands=None):
         """ tabulators - dict 'key':tabulator
         one of them should be "Energy" """

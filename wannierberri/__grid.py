@@ -53,6 +53,7 @@ class Grid():
     The others will be evaluated automatically.
 
     """
+
     def __init__(self, system, length=None, NKdiv=None, NKFFT=None, NK=None, length_FFT=None, use_symmetry=True):
 
         NKFFT_recommended = system.NKFFT_recommended

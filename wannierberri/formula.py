@@ -4,6 +4,7 @@ import abc
 
 
 class Formula_ln(abc.ABC):
+
     @abc.abstractmethod
     def __init__(self, data_K, internal_terms=True, external_terms=True, correction_wcc=False, dT_wcc=False):
         self.internal_terms = internal_terms
@@ -90,6 +91,7 @@ class Matrix_GenDer_ln(Formula_ln):
 
 class FormulaProduct(Formula_ln):
     """a class to store a product of several formulae"""
+
     def __init__(self, formula_list, name="unknown", hermitian=False):
         if type(formula_list) not in (list, tuple):
             formula_list = [formula_list]
@@ -122,6 +124,7 @@ class FormulaProduct(Formula_ln):
 
 class FormulaProduct_2(Formula_ln):
     """a class to store a product of several formulae (when have same index)"""
+
     def __init__(self, formula_list, index_list, name="unknown", hermitian=False, dot=False):
         if type(formula_list) not in (list, tuple):
             formula_list = [formula_list]
@@ -158,6 +161,7 @@ class FormulaProduct_2(Formula_ln):
 
 class ProductDelta(Formula_ln):
     """ """
+
     def __init__(self, matrix, index_list):
         self.delta = np.eye(3)
         self.TRodd = matrix.TRodd

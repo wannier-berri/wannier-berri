@@ -101,6 +101,7 @@ def tabXnk(
 
 
 class Tabulator():
+
     def __init__(self, data_K, ibands, degen_thresh=1e-4, degen_Kramers=False):
 
         self.nk = data_K.nk
@@ -138,6 +139,7 @@ class Tabulator():
 
 
 class TABresult(result.Result):
+
     def __init__(self, kpoints, recip_lattice, results={}):
         self.nband = results['Energy'].nband
         self.grid = None

@@ -357,6 +357,7 @@ class FermiOcean():
     """ formula should have a trace(ik,inn,out) method
     fder derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''
     """
+
     def __init__(self, formula, data_K, Efermi, tetra, fder, degen_thresh=1e-4, degen_Kramers=False):
 
         ndim = formula.ndim

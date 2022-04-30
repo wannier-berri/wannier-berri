@@ -17,6 +17,7 @@ class Parallel():
     progress_step_percent : int or float
         progress (and estimated time to end) will be printed after each percent is completed
 """
+
     def __init__(
             self,
             method=None,

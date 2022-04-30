@@ -3,6 +3,7 @@ import sympy as sym
 
 
 class Orbitals():
+
     def __init__(self):
         self.num_orbitals = {
             "s": 1,

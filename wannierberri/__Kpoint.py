@@ -18,6 +18,7 @@ from .symmetry import SYMMETRY_PRECISION
 
 
 class KpointBZ():
+
     def __init__(self, K=np.zeros(3), dK=np.ones(3), NKFFT=np.ones(3), factor=1., symgroup=None, refinement_level=-1):
         self.K = np.copy(K)
         self.dK = np.copy(dK)

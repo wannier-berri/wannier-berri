@@ -35,6 +35,7 @@ class System_fplo(System):
     -----
     see also  parameters of the :class:`~wannierberri.System`
     """
+
     def __init__(self, hamdata="+hamdata", **parameters):
 
         self.set_parameters(**parameters)

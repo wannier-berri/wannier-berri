@@ -47,6 +47,7 @@ def print_options():
     """
     Prints all options available for the moment.
     """
+
     def addparam(param, param_des):
         if len(param) > 0:
             return ". Additional parameters: \n" + "\n".join(

@@ -70,6 +70,7 @@ class Symmetry():
     Inv : bool
         True if symmetry involves spatial inversion.
     """
+
     def __init__(self, R, TR=False):
         self.TR = TR
         self.Inv = np.linalg.det(R) < 0
@@ -126,6 +127,7 @@ class Rotation(Symmetry):
     axis : Iterable of 3 float numbers
         the rotation axis in Cartesian coordinates. Length of vector does not matter, but should not be zero.
     """
+
     def __init__(self, n, axis=[0, 0, 1]):
         if not isinstance(n, int):
             raise ValueError("Only integer rotations are supported")
@@ -150,6 +152,7 @@ class Mirror(Symmetry):
     axis : Iterable of 3 float numbers
         the normal of the mirror plane in Cartesian coordinates. Length of vector does not matter, but should not be zero
     """
+
     def __init__(self, axis=[0, 0, 1]):
         super().__init__(-Rotation(2, axis).R)
 
@@ -218,6 +221,7 @@ class Group():
 
       + if you only want to generate a symmetric tensor, or to find independent components,  `recip_lattice` and `real_latice`, are not needed
     """
+
     def __init__(self, generator_list=[], recip_lattice=None, real_lattice=None):
         self.real_lattice, self.recip_lattice = real_recip_lattice(
             real_lattice=real_lattice, recip_lattice=recip_lattice)

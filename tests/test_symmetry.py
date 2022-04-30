@@ -11,6 +11,7 @@ from common_systems import symmetries_GaAs, symmetries_Fe
 
 @pytest.fixture
 def check_symgroup_equal():
+
     def _inner(g1, g2):
         assert g1.size == g2.size, "Symmetry group size is different"
         for s in g1.symmetries:

@@ -24,6 +24,7 @@ readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip
 
 
 class CheckPoint():
+
     def __init__(self, seedname):
         t0 = time()
         seedname = seedname.strip()
@@ -200,6 +201,7 @@ class CheckPoint():
 
 
 class W90_data():
+
     @property
     def n_neighb(self):
         return 0
@@ -228,6 +230,7 @@ class MMN(W90_data):
     """
     MMN.data[ik, ib, m, n] = <u_{m,k}|u_{n,k+b}>
     """
+
     @property
     def n_neighb(self):
         return 1
@@ -315,6 +318,7 @@ class MMN(W90_data):
 
 
 class EIG(W90_data):
+
     def __init__(self, seedname):
         data = np.loadtxt(seedname + ".eig")
         NB = int(round(data[:, 0].max()))
@@ -329,6 +333,7 @@ class SPN(W90_data):
     """
     SPN.data[ik, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k}>
     """
+
     def __init__(self, seedname='wannier90', formatted=False):
         print("----------\n SPN  \n---------\n")
         if formatted:
@@ -369,6 +374,7 @@ class UXU(W90_data):
     in column-major order. (X = H for UHU, X = I for UIU.)
     Here, we read to have data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|X|u_{n,k+b2}>.
     """
+
     @property
     def n_neighb(self):
         return 2
@@ -406,6 +412,7 @@ class UHU(UXU):
     """
     UHU.data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|H(k)|u_{n,k+b2}>
     """
+
     def __init__(self, seedname='wannier90', formatted=False):
         super().__init__(seedname=seedname, formatted=formatted, suffix='uHu')
 
@@ -414,6 +421,7 @@ class UIU(UXU):
     """
     UIU.data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|u_{n,k+b2}>
     """
+
     def __init__(self, seedname='wannier90', formatted=False):
         super().__init__(seedname=seedname, formatted=formatted, suffix='uIu')
 
@@ -425,6 +433,7 @@ class SXU(W90_data):
     in column-major order. (X = H for SHU, X = I for SIU.)
     Here, we read to have data[ik, ib, m, n, ipol] = <u_{m,k}|S_ipol * X|u_{n,k+b}>.
     """
+
     @property
     def n_neighb(self):
         return 1
@@ -465,6 +474,7 @@ class SIU(SXU):
     """
     SIU.data[ik, ib, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k+b}>
     """
+
     def __init__(self, seedname='wannier90', formatted=False):
         super().__init__(seedname=seedname, formatted=formatted, suffix='sIu')
 
@@ -473,5 +483,6 @@ class SHU(SXU):
     """
     SHU.data[ik, ib, m, n, ipol] = <u_{m,k}|S_ipol*H(k)|u_{n,k+b}>
     """
+
     def __init__(self, seedname='wannier90', formatted=False):
         super().__init__(seedname=seedname, formatted=formatted, suffix='sHu')

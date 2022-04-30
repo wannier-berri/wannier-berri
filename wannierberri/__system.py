@@ -509,6 +509,7 @@ class System():
 
 
 class ws_dist_map():
+
     def __init__(self, iRvec, wannier_centers, mp_grid, real_lattice, npar=multiprocessing.cpu_count()):
         # Find the supercell translation (i.e. the translation by a integer number of
         # supercell vectors, the supercell being defined by the mp_grid) that

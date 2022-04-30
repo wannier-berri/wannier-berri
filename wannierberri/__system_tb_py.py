@@ -32,6 +32,7 @@ class System_tb_py(System):
     -----
     see also  parameters of the :class:`~wannierberri.System`
     """
+
     def __init__(self, model, module, **parameters):
         self.set_parameters(**parameters)
         names = {'tbmodels': 'TBmodels', 'pythtb': 'PythTB'}
@@ -156,6 +157,7 @@ class System_TBmodels(System_tb_py):
     -----
     see also  parameters of the :class:`~wannierberri.System`
     """
+
     def __init__(self, tbmodel, **parameters):
         super().__init__(tbmodel, module='tbmodels', **parameters)
 
@@ -177,5 +179,6 @@ class System_PythTB(System_tb_py):
     -----
     see also  parameters of the :class:`~wannierberri.System`
     """
+
     def __init__(self, ptb_model, **parameters):
         super().__init__(ptb_model, module='pythtb', **parameters)

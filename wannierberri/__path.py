@@ -41,6 +41,7 @@ class Path(Grid):
     user needs to specify either `k_list` or (`k_nodes` + (`length` or `nk` or dk))
 
     """
+
     def __init__(
             self,
             system,
