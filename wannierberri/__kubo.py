@@ -360,7 +360,7 @@ def opt_conductivity(
         return result.EnergyResult([Efermi, omega], tildeD * pre_fac, TRodd=False, Iodd=True, rank=rank)
 
     elif conductivity_type == 'shiftcurrent':
-        return result.EnergyResult([Efermi, omega], sigma_shift, TRodd=False, Iodd=False, rank=rank)
+        return result.EnergyResult([Efermi, omega], sigma_shift, TRodd=False, Iodd=True, rank=rank)
 
 
 def opt_SHCqiao(data, Efermi, omega=0, **parameters):

@@ -1,14 +1,16 @@
 import pytest
 from wannierberri import Parallel
 
+
 @pytest.fixture(scope="session")
 def parallel_serial():
     return Parallel(
-        method = "serial",
-        num_cpus = 0,
-        npar_k = 0,
-        progress_step_percent = 1,
+        method="serial",
+        num_cpus=0,
+        npar_k=0,
+        progress_step_percent=1,
     )
+
 
 @pytest.fixture(scope="session")
 def parallel_ray():
@@ -26,12 +28,12 @@ def parallel_ray():
     ray_init['_redis_password'] = 'some_password'
 
     parallel = Parallel(
-        method = "ray",
-        num_cpus = 4,
-        npar_k = 0,
-        ray_init = ray_init,  # add extra parameters for ray.init()
-        cluster = True ,  # add parameters for ray.init() for the slurm cluster
-        progress_step_percent = 1,
+        method="ray",
+        num_cpus=4,
+        npar_k=0,
+        ray_init=ray_init,  # add extra parameters for ray.init()
+        cluster=True,  # add parameters for ray.init() for the slurm cluster
+        progress_step_percent=1,
     )
 
     parallel.shutdown()
@@ -39,12 +41,10 @@ def parallel_ray():
     # Now create a proper parallel environment to be used
 
     return Parallel(
-        method = "ray",
-        num_cpus = 4,
-        npar_k = 0,
-        ray_init = {},  # add extra parameters for ray.init()
-        cluster = False,  # add parameters for ray.init() for the slurm cluster
-        progress_step_percent = 1,
+        method="ray",
+        num_cpus=4,
+        npar_k=0,
+        ray_init={},  # add extra parameters for ray.init()
+        cluster=False,  # add parameters for ray.init() for the slurm cluster
+        progress_step_percent=1,
     )
-
-
