@@ -5,15 +5,20 @@ import pytest
 from pytest import approx
 
 from wannierberri.__utility import (
-    AbstractSmoother, VoidSmoother, FermiDiracSmoother, GaussianSmoother, getSmoother,
+    AbstractSmoother,
+    VoidSmoother,
+    FermiDiracSmoother,
+    GaussianSmoother,
+    getSmoother,
 )
+
 
 def test_smoother():
     np.random.seed(123)
 
     # Instantiation of an abstract class should fail
     with pytest.raises(TypeError):
-        sm_abstract = AbstractSmoother()
+        AbstractSmoother()
 
     # Test VoidSmoother. A do-nothing smoother
     sm_void = VoidSmoother()
@@ -22,15 +27,15 @@ def test_smoother():
 
     # Test nontrivial smoothers
     e = np.arange(-1.0, 1.1, 0.1)
-    data = np.zeros((len(e),))
+    data = np.zeros((len(e), ))
     data[10] = 1.0
     for smoother, param in [(GaussianSmoother, 0.1), (FermiDiracSmoother, 1000.0)]:
         sm = smoother(e, param)
-        target = sm._broaden(e)* sm.dE
-        target /= np.sum(target[10-sm.NE1:10+sm.NE1+1])
+        target = sm._broaden(e) * sm.dE
+        target /= np.sum(target[10 - sm.NE1:10 + sm.NE1 + 1])
         assert sm(data)[9:12] == approx(target[9:12], abs=1E-10)
-        assert np.all(sm(data)[:10-sm.NE1] == 0.0)
-        assert np.all(sm(data)[10+sm.NE1+1:] == 0.0)
+        assert np.all(sm(data)[:10 - sm.NE1] == 0.0)
+        assert np.all(sm(data)[10 + sm.NE1 + 1:] == 0.0)
 
     # Test nontrivial smoothers for high-dimensional data
     e = np.arange(-1.0, 1.1, 0.1)
