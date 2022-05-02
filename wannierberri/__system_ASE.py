@@ -14,10 +14,8 @@
 
 import numpy as np
 import multiprocessing
-from .__utility import iterate3dpm, real_recip_lattice, find_degen
+from .__utility import real_recip_lattice
 from .__system_w90 import System_w90
-from .__w90_files import MMN
-from time import time
 from termcolor import cprint
 
 np.set_printoptions(precision=4, threshold=np.inf, linewidth=500)
