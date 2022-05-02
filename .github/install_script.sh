@@ -8,12 +8,12 @@ set -ev
 sudo apt-get install libxc-dev
 pip install codecov
 pip install -U pip setuptools wheel 
-pip install -U numpy
+pip install -U numba   # here numba will fix a (not latest) version of numpy
+pip install ray
 
 # install optional dependencies
 pip install tbmodels pythtb spglib
 pip install gpaw ase
-pip install -U numpy
 
 case "$INSTALL_TYPE" in
     dev)
@@ -28,4 +28,3 @@ case "$INSTALL_TYPE" in
     #     ls -1 dist/ | xargs -I % pip install dist/%[dev]
     #     ;;
 esac
-pip install -U numpy
