@@ -14,6 +14,7 @@ pip install ray
 # install optional dependencies
 pip install tbmodels pythtb spglib
 pip install gpaw ase
+sudo gpaw install-data /usr/share/gpaw-setups
 
 case "$INSTALL_TYPE" in
     dev)
