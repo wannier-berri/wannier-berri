@@ -98,25 +98,3 @@ class System_ASE(System_w90):
 
         cprint("Reading the ASE system finished successfully", 'green', attrs=['bold'])
 
-    def get_AA_q(self, mmn, wannier, transl_inv=False):  # if eig is present - it is BB_q
-        #        if transl_inv and (eig is not None):
-        #           raise RuntimeError("transl_inv cannot be used to obtain BB")
-        AA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
-        AAW = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
-        for ik in range(self.num_kpts):
-            for ib in range(mmn.NNB):
-                data = mmn.data[ik, ib]
-                AAW = (wannier.V_knw[ik]).T.conj().dot(data.dot(wannier.V_knw[mmn.neighbours[ik, ib]]))
-                AA_q_ik = 1.j * AAW[:, :, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :]
-                if transl_inv:
-                    AA_q_ik[range(self.num_wann),
-                            range(self.num_wann
-                                  )] = -np.log(AAW.diagonal()).imag[:, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, :]
-                AA_q[ik] += AA_q_ik
-
-
-#        if eig is None:
-#        AA_q=0.5*(AA_q+AA_q.transpose( (0,2,1,3) ).conj())
-        return AA_q
-
-
