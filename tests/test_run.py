@@ -15,7 +15,6 @@ from common_systems import Efermi_Fe, Efermi_GaAs, Efermi_Chiral, Efermi_Te_gpaw
 
 @pytest.fixture
 def check_run(parallel_serial, compare_any_result):
-
     def _inner(
         system,
         calculators={},
@@ -99,7 +98,6 @@ calculators_Te = {
     'cumdos': calc.static.CumDOS,
     'berry_dipole': calc.static.BerryDipole_FermiSea,
 }
-
 
 calculators_Chiral = {
     'conductivity_ohmic': calc.static.Ohmic(Efermi=Efermi_Chiral),
@@ -282,7 +280,6 @@ def test_GaAs(check_run, system_GaAs_W90, compare_any_result, compare_fermisurfe
     )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 
-
 def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_fermisurfer):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
     check_run(
@@ -353,7 +350,7 @@ def test_Chiral_right(check_run, system_Chiral_left, system_Chiral_right, compar
 
 
 def test_Te_ASE(check_run, system_Te_ASE, compare_any_result):
-    param = {'Efermi': Efermi_Te_gpaw,"tetra":True}
+    param = {'Efermi': Efermi_Te_gpaw, "tetra": True}
     calculators = {k: v(**param) for k, v in calculators_Te.items()}
     check_run(
         system_Te_ASE,
@@ -368,14 +365,15 @@ def test_Te_ASE(check_run, system_Te_ASE, compare_any_result):
         },
     )
 
+
 def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, compare_any_result):
-    param = {'Efermi': Efermi_Te_gpaw,"tetra":True}
-    calculators = {} 
+    param = {'Efermi': Efermi_Te_gpaw, "tetra": True}
+    calculators = {}
     for k, v in calculators_Te.items():
         par = {}
         par.update(param)
-        if k not in ["dos","cumdos"]:
-            par["kwargs_formula"] = {"external_terms":False}
+        if k not in ["dos", "cumdos"]:
+            par["kwargs_formula"] = {"external_terms": False}
         calculators[k] = v(**par)
 
     check_run(
@@ -390,5 +388,3 @@ def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, compare_any_result):
             '_CCab_antisym': True
         },
     )
-
-

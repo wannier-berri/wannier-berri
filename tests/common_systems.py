@@ -16,7 +16,7 @@ import ase.dft.wannier
 from common import ROOT_DIR
 
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
-symmetries_Te = ["C3z", "C2x" , "TimeReversal"]
+symmetries_Te = ["C3z", "C2x", "TimeReversal"]
 symmetries_GaAs = [SYM.C4z * SYM.Inversion, SYM.TimeReversal, SYM.Rotation(3, [1, 1, 1])]
 
 Efermi_Fe = np.linspace(17, 18, 11)
@@ -318,7 +318,6 @@ def system_Fe_FPLO_wcc():
     return system
 
 
-
 # CuMnAs 2D model
 # These parameters provide ~0.4eV gap between conduction and valence bands
 # and splitting into subbands is within 0.04 eV
@@ -333,14 +332,14 @@ def system_CuMnAs_2d_broken():
 
 # Systems from ASE+gpaw code interface
 
+
 @pytest.fixture(scope="session")
 def system_Te_ASE():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Te_ASE")
-    calc = gpaw.GPAW(os.path.join(path,"Te.gpw"))
-    wan =  ase.dft.wannier.Wannier( nwannier=12,calc = calc,
-                                file=os.path.join(path,'wannier-12.json'))
-    system = wberri.System_ASE(wan,ase_calc=calc,use_wcc_phase=False,berry = True)
+    calc = gpaw.GPAW(os.path.join(path, "Te.gpw"))
+    wan = ase.dft.wannier.Wannier(nwannier=12, calc=calc, file=os.path.join(path, 'wannier-12.json'))
+    system = wberri.System_ASE(wan, ase_calc=calc, use_wcc_phase=False, berry=True)
     system.set_symmetry(symmetries_Te)
     return system
 
@@ -349,9 +348,8 @@ def system_Te_ASE():
 def system_Te_ASE_wcc():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Te_ASE")
-    calc = gpaw.GPAW(os.path.join(path,"Te.gpw"))
-    wan =  ase.dft.wannier.Wannier( nwannier=12,calc = calc,
-                                file=os.path.join(path,'wannier-12.json'))
-    system = wberri.System_ASE(wan,ase_calc=calc,use_wcc_phase=True,berry = False)
+    calc = gpaw.GPAW(os.path.join(path, "Te.gpw"))
+    wan = ase.dft.wannier.Wannier(nwannier=12, calc=calc, file=os.path.join(path, 'wannier-12.json'))
+    system = wberri.System_ASE(wan, ase_calc=calc, use_wcc_phase=True, berry=False)
     system.set_symmetry(symmetries_Te)
     return system
