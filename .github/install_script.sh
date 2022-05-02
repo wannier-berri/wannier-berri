@@ -11,6 +11,7 @@ pip install -U pip setuptools wheel
 
 # install optional dependencies
 pip install tbmodels pythtb spglib
+pip install gpaw ase
 
 case "$INSTALL_TYPE" in
     dev)
