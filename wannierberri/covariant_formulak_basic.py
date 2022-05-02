@@ -78,7 +78,7 @@ class tildeFab_d(Formula_ln):
         if self.external_terms:
             self.A  = data_K.covariant('AA')
             self.dA = data_K.covariant('AA',gender=1)
-            self.dF  =data_K.covariant('FF',gender=1)
+            self.dF  =data_K.covariant('FFab',gender=1)
         self.ndim=3
 #        self.Iodd=True
 #        self.TRodd=False

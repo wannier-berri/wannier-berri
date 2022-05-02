@@ -33,7 +33,7 @@ def parity_I(name,der=0):
         p=0
     elif name in ['T_wcc']:     # odd before derivative
         p=1
-    elif name in ['D','AA','BB','CCab']:
+    elif name in ['D','AA','BB','CCab','FFab']:
         return None
     else :
         raise ValueError(f"parity under inversion unknown for {name}")
@@ -75,7 +75,9 @@ class Data_K(System):
                     'random_gauge':False,
                     'degen_thresh_random_gauge':1e-4 ,
                     '_FF_antisym'   : False,
-                    '_CCab_antisym' : False
+                    '_CC_antisym'   : False,
+                    '_CCab_antisym' : False,
+                    '_FFab_antisym' : False,
                        }
 
     __doc__ = """
@@ -188,7 +190,17 @@ class Data_K(System):
         if self._FF_antisym:
             return self.cRvec_wcc[:,:,:,:,None]* self.AA_R[:,:,:,None,:]
         else :
-            return self.system.FF_R*self.expdK[None,None,:,None,None]
+            return self.system.FF_R*self.expdK[None,None,:,None]
+    
+    @lazy_property.LazyProperty
+    def FFab_R(self):
+        if self._FFab_antisym:
+            FFab = np.zeros( (self.num_wann,self.num_wann,self.system.nRvec,3,3),dtype = complex )
+            FFab[:,:,:,alpha_A,beta_A] =  -0.5j*self.FF_R
+            FFab[:,:,:,beta_A,alpha_A] =   0.5j*self.FF_R
+            return CCab
+        else :
+            return self.system.FFab_R*self.expdK[None,None,:,None,None]
 
     @lazy_property.LazyProperty
     def SS_R(self):

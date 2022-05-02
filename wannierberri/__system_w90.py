@@ -17,7 +17,7 @@ import functools
 import multiprocessing 
 from .__utility import iterate3dpm, real_recip_lattice,fourier_q_to_R
 from .__system import System
-from .__w90_files import EIG,MMN,CheckPoint,SPN,UHU,SIU,SHU
+from .__w90_files import EIG,MMN,CheckPoint,SPN,UHU,SIU,SHU,UIU
 from time import time
 np.set_printoptions(precision=4,threshold=np.inf,linewidth=500)
 
@@ -119,6 +119,13 @@ class System_w90(System):
             self.CC_R=fourier_q_to_R_loc(chk.get_CC_q(uhu,mmn))
             timeFFT+=time()-t0
             del uhu
+        
+        if self.getFF:
+            uiu=UIU(seedname)
+            t0=time()
+            self.FF_R=fourier_q_to_R_loc(chk.get_CC_q(uiu,mmn))
+            timeFFT+=time()-t0
+            del uiu
 
         if self.getSS:
             spn=SPN(seedname)

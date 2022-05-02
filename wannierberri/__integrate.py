@@ -46,6 +46,7 @@ from . import  __kubo   as kubo
 calculators_trans={ 
          'spin'                            : fermiocean.spin                          ,
          'Morb'                            : fermiocean.Morb                          ,
+         'Morb_IC'                            : fermiocean.Morb_IC                          ,
          'Morb_test'                       : fermiocean.Morb_test                     ,
          'ahc'                             : fermiocean.AHC                           ,
          'ahc_test'                        : fermiocean.AHC_test                      ,
@@ -91,6 +92,8 @@ calculators_trans={
          'berry_dipole_Z2'                 : fermiocean.berry_dipole_Z2                         ,
          'Nonlinear_Hall_Z'                : fermiocean.Nonlinear_Hall_Z              ,
          'Drude_Z'                         : fermiocean.Drude_Z              ,
+         'H'                         : fermiocean.H              ,
+         'dH'                         : fermiocean.dH              ,
          'dO'                         : fermiocean.dO              ,
          'ddO'                         : fermiocean.ddO              ,
          'dM'                         : fermiocean.dM            ,
