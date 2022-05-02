@@ -107,26 +107,13 @@ class System_fplo(System):
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=real_lattice_bohr * bohr)
         iRvec = list(Ham_R.keys())
         self.Ham_R = np.array([Ham_R[iR] for iR in iRvec]).transpose((1, 2, 0))
-        if self.spin:
+        if self.getSS:
             self.SS_R = np.array([SS_R[iR] for iR in iRvec]).transpose((1, 2, 0, 3))
+
         self.nRvec0 = len(iRvec)
         self.iRvec = np.array(iRvec, dtype=int)
 
-        index0 = self.iR0
-        if self.getAA:
-            self.AA_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
-            if not self.use_wcc_phase:
-                for i in range(self.num_wann):
-                    self.AA_R[i, i, index0, :] = self.wannier_centers_cart_auto[i].dot(self.real_lattice)
-
-        if self.getBB:
-            self.BB_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
-            if not self.use_wcc_phase:
-                for i in range(self.num_wann):
-                    self.BB_R[i, i, index0, :] = self.AA_R[i, i, index0, :] * self.Ham_R[i, i, index0]
-
-        if self.getCC:
-            self.CC_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
+        self.getXX_wan_cent(getSS = False)
 
         self.do_at_end_of_init()
 

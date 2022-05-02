@@ -311,6 +311,8 @@ class TABresult(result.Result):
             iband=None,
             mode="fatband",
             fatfactor=20,
+            kwargs_line = {},
+            label = None,
             fatmax = None,
             cut_k=True):
         """
@@ -348,7 +350,10 @@ class TABresult(result.Result):
             selE = (e <= Emax) * (e >= Emin)
             klineselE = kline[selE]
             klineall.append(klineselE)
-            plt.plot(klineselE, e[selE], color="gray")
+            _line, = plt.plot(klineselE, e[selE], **kwargs_line)
+        if label is not None:
+            _line.set_label(label)
+            plt.legend()
         if cut_k:
             klineall = [k for kl in klineall for k in kl]
             kmin = min(klineall)
@@ -366,8 +371,8 @@ class TABresult(result.Result):
                     selE = (e <= Emax) * (e >= Emin)
                     klineselE = kline[selE]
                     y = data[selE][:, ib]
-                    select = np.abs(y) > 2
-                    y[select] = np.log2(y[select])
+                    select = abs(y) > 2
+                    y[select] = np.log2(abs(y[select]))*np.sign(y[select])
                     y[~select] *= 0.5
                     e1=e[selE]
                     for col,sel in [("red",(y>0)),("blue",(y<0))]:
@@ -389,9 +394,12 @@ class TABresult(result.Result):
 
         if save_file is None:
             plt.show()
+            plt.close()
+        elif save_file == "":
+            pass
         else:
             plt.savefig(save_file)
-        plt.close()
+            plt.close()
 
     def max(self):
         return -1  # tabulating does not contribute to adaptive refinement

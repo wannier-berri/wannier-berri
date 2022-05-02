@@ -99,23 +99,7 @@ class System_ASE(System_w90):
         
         self.Ham_R=np.array([ase_wannier.get_hopping(R)/nd for R,nd in zip(self.iRvec,self.Ndegen)]).transpose((1,2,0))
 
-        if self.getAA:
-            raise NotImplementedError()
-
-        if self.getBB:
-            raise NotImplementedError()
-
-        if self.getCC:
-            raise NotImplementedError()
-
-        if self.getSS:
-            raise NotImplementedError()
-
-        if self.getSA:
-            raise NotImplementedError()
-
-        if self.getSHA:
-            raise NotImplementedError()
+        self.getXX_wan_cent()
 
         self.do_at_end_of_init()
 

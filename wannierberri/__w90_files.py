@@ -271,7 +271,7 @@ class MMN(W90_data):
         t2 = time()
         print("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2 - t0, t1 - t0, t2 - t1))
 
-    def set_bk(self, chk):
+    def set_bk(self, kpt_latt,mp_grid,recip_lattice):
         try:
             self.bk
             self.wk
@@ -280,13 +280,13 @@ class MMN(W90_data):
             bk_latt = np.array(
                 np.round(
                     [
-                        (chk.kpt_latt[nbrs] - chk.kpt_latt + G) * chk.mp_grid[None, :]
+                        (kpt_latt[nbrs] - kpt_latt + G) * mp_grid[None, :]
                         for nbrs, G in zip(self.neighbours.T, self.G.transpose(1, 0, 2))
                     ]).transpose(1, 0, 2),
                 dtype=int)
             bk_latt_unique = np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1, 3))], dtype=int)
             assert len(bk_latt_unique) == self.NNB
-            bk_cart_unique = bk_latt_unique.dot(chk.recip_lattice / chk.mp_grid[:, None])
+            bk_cart_unique = bk_latt_unique.dot(recip_lattice / mp_grid[:, None])
             bk_cart_unique_length = np.linalg.norm(bk_cart_unique, axis=1)
             srt = np.argsort(bk_cart_unique_length)
             bk_latt_unique = bk_latt_unique[srt]
