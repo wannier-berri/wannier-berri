@@ -10,7 +10,7 @@ from wannierberri.__result import EnergyResult
 
 from common import OUTPUT_DIR
 from common_comparers import compare_quant
-from common_systems import Efermi_Fe, Efermi_GaAs, Efermi_Chiral
+from common_systems import Efermi_Fe, Efermi_GaAs, Efermi_Chiral, Efermi_Te_gpaw
 
 
 @pytest.fixture
@@ -93,6 +93,13 @@ calculators_GaAs = {
     'berry_dipole': calc.static.BerryDipole_FermiSea,
     'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf,
 }
+
+calculators_Te = {
+    'dos': calc.static.DOS,
+    'cumdos': calc.static.CumDOS,
+    'berry_dipole': calc.static.BerryDipole_FermiSea,
+}
+
 
 calculators_Chiral = {
     'conductivity_ohmic': calc.static.Ohmic(Efermi=Efermi_Chiral),
@@ -275,6 +282,7 @@ def test_GaAs(check_run, system_GaAs_W90, compare_any_result, compare_fermisurfe
     )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 
+
 def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_fermisurfer):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
     check_run(
@@ -342,3 +350,45 @@ def test_Chiral_right(check_run, system_Chiral_left, system_Chiral_right, compar
         data2 = results[1].results[key].dataSmooth
         precision = max(np.max(abs(data1)) / 1E12, 1E-11)
         assert data1 == pytest.approx(sign * data2, abs=precision), key
+
+
+def test_Te_ASE(check_run, system_Te_ASE, compare_any_result):
+    param = {'Efermi': Efermi_Te_gpaw,"tetra":True}
+    calculators = {k: v(**param) for k, v in calculators_Te.items()}
+    check_run(
+        system_Te_ASE,
+        calculators,
+        fout_name="berry_Te_ASE",
+        suffix="",
+        suffix_ref="",
+        use_symmetry=True,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, compare_any_result):
+    param = {'Efermi': Efermi_Te_gpaw,"tetra":True}
+    calculators = {} 
+    for k, v in calculators_Te.items():
+        par = {}
+        par.update(param)
+        if k not in ["dos","cumdos"]:
+            par["kwargs_formula"] = {"external_terms":False}
+        calculators[k] = v(**par)
+
+    check_run(
+        system_Te_ASE_wcc,
+        calculators,
+        fout_name="berry_Te_ASE",
+        suffix="wcc",
+        suffix_ref="",
+        use_symmetry=True,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+
