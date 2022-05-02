@@ -6,7 +6,7 @@ from .data_K import _Dcov
 
 class Identity(Formula_ln):
 
-    def __init__(self,data_K = None):
+    def __init__(self,data_K=None):
         self.ndim = 0
         self.TRodd = False
         self.Iodd = False

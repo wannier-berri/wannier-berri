@@ -197,10 +197,10 @@ class System():
     def getSHC(self):
         return self.SHCqiao
 
-    def getXX_wan_cent(self,getSS = False):
-        """return AA_R, BB_R, CC_R containing only the diagonal matrix elements, evaluated from 
-        the wannier_centers_cart_auto cariable (tight-binding approximation). 
-        In practice, it is yseless because corresponding terms vanish with use_wcc_phase = True. 
+    def getXX_wan_cent(self, getSS=False):
+        """return AA_R, BB_R, CC_R containing only the diagonal matrix elements, evaluated from
+        the wannier_centers_cart_auto cariable (tight-binding approximation).
+        In practice, it is yseless because corresponding terms vanish with use_wcc_phase = True.
         but for testing may be used
         Used with pythtb, tbmodels, and also fplo, ASE until proper evaluation of matrix elements is implemented for them.
         """

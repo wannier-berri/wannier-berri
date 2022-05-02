@@ -311,9 +311,9 @@ class TABresult(result.Result):
             iband=None,
             mode="fatband",
             fatfactor=20,
-            kwargs_line = {},
-            label = None,
-            fatmax = None,
+            kwargs_line={},
+            label=None,
+            fatmax=None,
             cut_k=True):
         """
         a routine to plot a result along the path
