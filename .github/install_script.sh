@@ -7,7 +7,8 @@
 set -ev
 sudo apt-get install libxc-dev
 pip install codecov
-pip install -U pip setuptools wheel
+pip install -U pip setuptools wheel 
+pip install -U numpy
 
 # install optional dependencies
 pip install tbmodels pythtb spglib
