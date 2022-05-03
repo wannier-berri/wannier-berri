@@ -14,7 +14,6 @@ class Identity(Formula_ln):
     def nn(self, ik, inn, out):
         return np.eye(len(inn))
 
-<<<<<<< HEAD
     def ln(self,ik,inn,out):
         return np.zeros((len(out),len(inn)))
 
@@ -29,11 +28,6 @@ class delta_f(Formula_ln):
 
     def ln(self,ik,inn,out):
         raise NotImplementedError()
-=======
-    def ln(self, ik, inn, out):
-        return np.zeros((len(out), len(inn)))
->>>>>>> origin/master
-
 
 class Eavln(Matrix_ln):
     """ be careful : this is not a covariant matrix"""
