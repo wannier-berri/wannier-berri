@@ -56,10 +56,10 @@ class SymWann():
         self.positions = positions
         self.atom_name = atom_name
         self.proj = proj
-        self.possible_matrix_list = ['AA','SS','BB','CC']#['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
+        self.possible_matrix_list = ['AA','SS','BB','CC','FF']#['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
         self.matrix_list = {k:v for k,v in XX_R.items() if k in self.possible_matrix_list}
-        self.parity_I =  {'AA':1,'BB':1,'CC':1,'SS':-1}#{'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1} 
-        self.parity_TR =  {'AA':1,'BB':1,'CC':1,'SS':-1}#{'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
+        self.parity_I =  {'AA':1,'BB':1,'CC':1,'FF':1,'SS':-1}#{'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1} 
+        self.parity_TR =  {'AA':1,'BB':1,'CC':1,'FF':1,'SS':-1}#{'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
         self.magmom=magmom
         self.orbitals=Orbitals()
         
@@ -357,7 +357,7 @@ class SymWann():
                                     rot_map[atom_b]],new_Rvec_index]
                                 
                                 for X in self.matrix_list: 
-                                    if X in ['AA','SS']:
+                                    if X in ['AA','BB','SS']:
                                         num_w_a = len(sum(self.wann_atom_info[atom_a][4], [])) #number of orbitals of atom_a
                                         #X_L: only rotation wannier centres from L to L' before rotating orbitals.
                                         XX_L = self.matrix_list[X][self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index,:].reshape(num_w_a,num_w_a,3)
@@ -365,12 +365,14 @@ class SymWann():
                                         if iR == self.iRvec.index([0,0,0]) and atom_a == atom_b:
                                             if X == 'AA':
                                                 XX_L += np.einsum( 'mn,p->mnp',np.eye(num_w_a),(vec_shift[atom_a]-self.symmetry['translations'][rot]).dot(self.lattice))
-                                           # elif X == 'BB':
-                                           #      XX_L += (np.einsum( 'mn,p->mnp',np.eye(num_w_a),(vec_shift[atom_a]-self.symmetry['translations'][rot]).dot(self.lattice))
-                                           #           *self.Ham_R[self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index].reshape(num_w_a,num_w_a)[:,:,None]
-                                           #           )
+                                            elif X == 'BB':
+                                                 XX_L += (np.einsum( 'mn,p->mnp',np.eye(num_w_a),(vec_shift[atom_a]-self.symmetry['translations'][rot]).dot(self.lattice))
+                                                      *self.Ham_R[self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index].reshape(num_w_a,num_w_a)[:,:,None]
+                                                      )
                                         #X_all: rotating vector.
                                         matrix_list_all[X][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = np.einsum('ij,nmi->nmj',self.rot_c[rot],XX_L).reshape(-1,3)
+                                    elif X in ['CC','FF']:
+                                        matrix_list_all[X][iR,atom_a,atom_b,self.H_select[atom_a,atom_b],:] = self.matrix_list[X][self.H_select[rot_map[atom_a],rot_map[atom_b]],new_Rvec_index,:]
                                     else: 
                                         print (f"WARNING: Symmetrization of {X} is not implemented")
                             else:
@@ -392,16 +394,6 @@ class SymWann():
                         if sym_T:
                             tmp_T = self.ul.dot(tmp.transpose(1,0,2)).dot(self.ur).conj()
                             Ham_res += tmp_T.transpose(0,2,1)
-                        
-                       # if atom_a == atom_b: 
-                       #         test_i =self.iRvec.index([0,0,0])
-                       #         print(self.Ham_R[self.H_select[atom_a,atom_b],test_i].reshape(18,18).real)
-                       #         print('++++++++++++++++++++++++++++++++++++')
-                       #         if sym_only:
-                       #             print(tmp.transpose(0,2,1)[self.H_select[atom_a,atom_b],test_i].reshape(18,18).real)
-                       #         if sym_T:
-                       #             print(tmp_T.transpose(0,2,1)[self.H_select[atom_a,atom_b],test_i].reshape(18,18).real)
-                       #         print('=====================================')
 
                         for X in self.matrix_list:  # vector matrix
                             X_shift = matrix_list_all[X].transpose(0,1,2,5,3,4)
@@ -416,15 +408,6 @@ class SymWann():
                                 tmpX_T = self.ul.dot(tmpX.transpose(1,2,0,3)).dot(self.ur).conj()
                                 matrix_list_res[X] += tmpX_T.transpose(0,3,1,2)*parity_I*self.parity_TR[X]
                             
-                        #    if atom_a == atom_b: 
-                        #        test_i =self.iRvec.index([0,0,0])
-                        #        print(self.matrix_list[X][self.H_select[atom_a,atom_b],test_i,0].reshape(18,18).real)
-                        #        print('++++++++++++++++++++++++++++++++++++')
-                        #        if sym_only:
-                        #            print(tmpX.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,0].reshape(18,18).real*parity_I)
-                        #        if sym_T:
-                        #            print(tmpX_T.transpose(0,3,1,2)[self.H_select[atom_a,atom_b],test_i,0].reshape(18,18).real*parity_I*self.parity_TR[X])
-                        #        print('=====================================')
 
         for k in matrix_list_res:
             matrix_list_res[k] /= nrot
