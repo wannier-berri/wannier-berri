@@ -116,11 +116,11 @@ def system_Fe_sym_W90(create_files_Fe_W90):
     """Create system for Fe symmetrization using Wannier90 data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
-    create_W90_files('Fe_sym', [], data_dir)
+    create_W90_files('Fe_sym', ['uHu'], data_dir)
 
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.System_w90(seedname, berry=True, morb=False, spin=True, use_ws=False)
+    system = wberri.System_w90(seedname, berry=True, morb=True, spin=True, use_ws=False)
     system.set_symmetry(symmetries_Fe)
     system.symmetrize(
         proj=['Fe:sp3d2;t2g'],
