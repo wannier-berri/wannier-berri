@@ -130,6 +130,8 @@ class SymWann():
         for atom in range(num_atom):
             name = self.atom_name[atom]
             if name in proj_dic:
+                projection = proj_dic[name]
+                self.num_wann_atom += 1
                 orb_position_dic = {}
                 for i in range(len(projection)):
                     orb_select = np.zeros((self.num_wann, self.num_wann), dtype=bool)

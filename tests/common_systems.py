@@ -132,26 +132,6 @@ def system_Fe_sym_W90(create_files_Fe_W90):
 
     return system
 
-@pytest.fixture(scope="session")
-def system_Fe_sym_W90(create_files_Fe_W90):
-    """Create system for Fe symmetrization using Wannier90 data"""
-    
-    data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
-    create_W90_files('Fe_sym', [], data_dir)
-    
-    # Load system
-    seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.System_w90(seedname, berry=True, morb=False,
-           spin = True, use_ws = False )
-    system.set_symmetry(symmetries_Fe)
-    system.symmetrize(
-             proj = ['Fe:sp3d2;t2g'],
-             atom_name = ['Fe'],
-             positions = [[0,0,0]],
-             magmom = [[0.,0.,-2.31]],soc=True,
-             DFT_code = 'qe')
-    
-    return system
 
 @pytest.fixture(scope="session")
 def system_GaAs_W90(create_files_GaAs_W90):
@@ -215,26 +195,6 @@ def system_GaAs_sym_tb():
         DFT_code='vasp')
     return system
 
-
-@pytest.fixture(scope="session")
-def system_GaAs_sym_tb():
-    """Create system for GaAs using sym_tb.dat data"""
-
-    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "GaAs_sym_tb.dat")):
-        tar = tarfile.open(os.path.join(data_dir, "GaAs_sym_tb.dat.tar.gz"))
-        for tarinfo in tar:
-            tar.extract(tarinfo, data_dir)
-
-    seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
-    system = wberri.System_tb(seedname, berry=True, use_ws = False )
-    system.symmetrize(positions = np.array([[0.0, 0.0, 0.0],
-                [0.25, 0.25, 0.25]]),
-                atom_name = ['Ga','As'],
-                proj = ['Ga:sp3','As:sp3'],
-                soc=True,
-                DFT_code = 'vasp')
-    return system
 
 @pytest.fixture(scope="session")
 def system_GaAs_tb_wcc():
