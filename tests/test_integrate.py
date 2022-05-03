@@ -269,7 +269,8 @@ def test_Fe_sym_W90_sym(check_integrate, system_Fe_sym_W90, compare_energyresult
         suffix="sym",
         use_symmetry=True,
         Efermi=Efermi_Fe,
-        comparer=compare_energyresult)
+        comparer=compare_energyresult,
+        extra_precision={"Morb": -1e-7})
     check_integrate(
         system_Fe_sym_W90, ["gyrotropic_Kspin", "berry_dipole", "gyrotropic_Korb"],
         fout_name="berry_Fe_sym_W90",
