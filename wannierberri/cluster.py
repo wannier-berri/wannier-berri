@@ -10,7 +10,6 @@ Usage:
 
 """
 
-
 import argparse
 import sys
 import time
@@ -29,72 +28,62 @@ SLEEP_HEAD = "{{SLEEP_HEAD}}"
 SLEEP_WORKER = "{{SLEEP_WORKER}}"
 SPILLING = "{{SPILLING}}"
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--batch-system", type=str, required=True,
-        help="The batch system to use. Only Slurm and PBS implemented.."
+        "--batch-system", type=str, required=True, help="The batch system to use. Only Slurm and PBS implemented..")
+    parser.add_argument(
+        "--exp-name", type=str, required=True, help="The job name and path to logging file (exp_name.log).")
+    parser.add_argument("--num-nodes", "-n", type=int, default=1, help="Number of nodes to use.")
+    parser.add_argument(
+        "--node",
+        "-w",
+        type=str,
+        default="",
+        help="The specified nodes to use. Same format as the return of 'sinfo'. Default: ''.")
+    parser.add_argument("--num-gpus", type=int, default=0, help="Number of GPUs to use in each node. (Default: 0)")
+    parser.add_argument(
+        "--partition",
+        "-p",
+        type=str,
+        default="chpc",
     )
     parser.add_argument(
-        "--exp-name", type=str, required=True,
-        help="The job name and path to logging file (exp_name.log)."
-    )
+        "--load-env", type=str, default="", help="The script to load your environment, e.g. 'module load cuda/10.1'")
     parser.add_argument(
-        "--num-nodes", "-n", type=int, default=1,
-        help="Number of nodes to use."
-    )
-    parser.add_argument(
-        "--node", "-w", type=str, default="",
-        help="The specified nodes to use. Same format as the return of 'sinfo'. Default: ''."
-    )
-    parser.add_argument(
-        "--num-gpus", type=int, default=0,
-        help="Number of GPUs to use in each node. (Default: 0)"
-    )
-    parser.add_argument(
-        "--partition", "-p", type=str, default="chpc",
-    )
-    parser.add_argument(
-        "--load-env", type=str, default="",
-        help="The script to load your environment, e.g. 'module load cuda/10.1'"
-    )
-    parser.add_argument(
-        "--command", type=str, required=True,
+        "--command",
+        type=str,
+        required=True,
         help="The command you wish to execute. For example: --command 'python "
-             "test.py' Note that the command must be a string."
-    )
+        "test.py' Note that the command must be a string.")
     parser.add_argument(
-        "--sleep-head", type=float, default=30.,
-        help="Time to wait (sleep) after starting ray on the head node (seconds, Default: 30.0)"
-    )
+        "--sleep-head",
+        type=float,
+        default=30.,
+        help="Time to wait (sleep) after starting ray on the head node (seconds, Default: 30.0)")
     parser.add_argument(
-        "--sleep-worker", type=float, default=5.,
-        help="Time to wait (sleep) after starting ray on every worker node (deconds, Default: 5.0)"
-    )
+        "--sleep-worker",
+        type=float,
+        default=5.,
+        help="Time to wait (sleep) after starting ray on every worker node (deconds, Default: 5.0)")
     parser.add_argument(
-        "--spilling-directory", type=str, default="",
-        help="directory to spill objects in case of lack of memory"
+        "--spilling-directory", type=str, default="", help="directory to spill objects in case of lack of memory"
     )  #  see : https://docs.ray.io/en/master/memory-management.html#object-spilling
 
-
-
-    parser.add_argument('--submit', dest='submit', action='store_true',help=" DO submit the generated script with sbatch")
-    parser.add_argument('--no-submit', dest='submit', action='store_false',help=" DO NOT submit the generated script with sbatch")
+    parser.add_argument(
+        '--submit', dest='submit', action='store_true', help=" DO submit the generated script with sbatch")
+    parser.add_argument(
+        '--no-submit', dest='submit', action='store_false', help=" DO NOT submit the generated script with sbatch")
     parser.set_defaults(submit=False)
     args = parser.parse_args()
 
     if args.node:
         # assert args.num_nodes == 1
-        node_info = "#SBATCH -w {}".format(args.node)
+        node_info = f"#SBATCH -w {args.node}"
     else:
         node_info = ""
 
-    job_name = "{}_{}".format(
-        args.exp_name,
-        time.strftime("%m%d-%H%M%S", time.localtime())
-    )
-
+    job_name = args.exp_name + "_" + time.strftime("%m%d-%H%M%S", time.localtime())
 
     batch_system = args.batch_system.lower()
     if batch_system == "slurm":
@@ -110,10 +99,9 @@ if __name__ == '__main__':
         text = text.replace(SPILLING, "")
     else:
         # Note that `object_spilling_config`'s value should be json format.
-        text = text.replace(SPILLING,
-                            '--system-config=\'{"object_spilling_config":"{"type":"filesystem",'
-                            '"params":{"directory_path":"' + args.spilling_directory + '"}}"}\''
-                            )
+        text = text.replace(
+            SPILLING, '--system-config=\'{"object_spilling_config":"{"type":"filesystem",'
+            '"params":{"directory_path":"' + args.spilling_directory + '"}}"}\'')
 
     text = text.replace(JOB_NAME, job_name)
     text = text.replace(NUM_NODES, str(args.num_nodes))
@@ -133,26 +121,24 @@ if __name__ == '__main__':
     text = text.replace(COMMAND_SUFFIX, "")
     text = text.replace(
         "# THIS FILE IS A TEMPLATE AND IT SHOULD NOT BE DEPLOYED TO "
-        "PRODUCTION!",
-        "# THIS FILE IS MODIFIED AUTOMATICALLY FROM TEMPLATE AND SHOULD BE "
-        "RUNNABLE!"
-    )
+        "PRODUCTION!", "# THIS FILE IS MODIFIED AUTOMATICALLY FROM TEMPLATE AND SHOULD BE "
+        "RUNNABLE!")
     text = text.replace(SLEEP_HEAD, str(args.sleep_head))
     text = text.replace(SLEEP_WORKER, str(args.sleep_worker))
 
     # ===== Save the script =====
-    script_file = "{}.sh".format(job_name)
+    script_file = f"{job_name}.sh"
     with open(script_file, "w") as f:
         f.write(text)
 
-    print( f"Script file written to: <{script_file}>. Log file will be at: <{job_name}.log>" )
+    print(f"Script file written to: <{script_file}>. Log file will be at: <{job_name}.log>")
 
     # ===== submit the job  =====
     if args.submit:
         print("Start to submit job!")
         subprocess.Popen([submit_command, script_file])
-        print("Job submitted!" )
+        print("Job submitted!")
     else:
-        print( f"Now you may submit it to the queue with ' {submit_command} {script_file} '" )
+        print(f"Now you may submit it to the queue with ' {submit_command} {script_file} '")
 
     sys.exit(0)
