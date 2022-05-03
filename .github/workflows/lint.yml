@@ -17,7 +17,7 @@ jobs:
       - name: Install flake8
         run: pip install flake8
       - name: Static analysis
-        run: flake8 --config .flake8 wannierberri
+        run: flake8 wannierberri
       - name: Static analysis for tests folder
         if: always()
-        run: flake8 --config .flake8 tests
+        run: flake8 tests
