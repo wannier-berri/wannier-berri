@@ -317,7 +317,7 @@ class TABresult(result.Result):
             cut_k=True,
             close_fig=False,
             show_fig=True
-            ):
+                    ):
         """
         a routine to plot a result along the path
         The circle size (size of quantity) changes linearly below 2 and logarithmically above 2.
