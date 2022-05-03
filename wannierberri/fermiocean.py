@@ -207,6 +207,12 @@ def gme_spin_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers
     res.data = np.swapaxes(res.data, 1, 2) * -bohr_magneton / Ang_SI**2
     return res
 
+def gme_spin(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    formula  = FormulaProduct ( [frml.DerSpin(data_K)], name='derspin')
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=0,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
+    res.data= np.swapaxes(res.data,1,2)* -bohr_magneton/Ang_SI**2  
+    return res
 
 ####################
 #  cunductivities  #
