@@ -86,8 +86,8 @@ def Morb(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **
         - 2 * FermiOcean(
             frml.Omega(
                 data_K, **kwargs_formula),data_K,Efermi,tetra,fder=0,
-                degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi)) 
-        * (data_K.cell_volume * fac_morb)
+                degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi)
+        ) * (data_K.cell_volume * fac_morb)
 
 
 def Morb_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
@@ -100,8 +100,8 @@ def Morb_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=Fals
         - 2 * FermiOcean(
             frml_basic.tildeFc(
                 data_K, **kwargs_formula),data_K,Efermi,tetra,fder=0,
-                degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi)) 
-        * (data_K.cell_volume * fac_morb)
+                degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)().mul_array(Efermi)
+        ) * (data_K.cell_volume * fac_morb)
 
 
 def berry_dipole_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
