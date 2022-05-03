@@ -18,8 +18,6 @@ from .__utility import real_recip_lattice
 from .__system_w90 import System_w90
 from termcolor import cprint
 
-np.set_printoptions(precision=4, threshold=np.inf, linewidth=500)
-
 
 class System_ASE(System_w90):
     """
@@ -77,7 +75,6 @@ class System_ASE(System_w90):
         self.num_kpts = ase_wannier.Nk
         self.wannier_centers_cart_auto = ase_wannier.get_centers()
         print(f"got the Wanier centers : {self.wannier_centers_cart_auto}")
-        #  a minus sign to account for a weird Bloch phase convention of ase.dft.Wannier module
         self.kpt_red = ase_wannier.kpt_kc
 
         kpt_mp_grid = [
@@ -92,7 +89,7 @@ class System_ASE(System_w90):
         self.Ham_R = np.array([ase_wannier.get_hopping(R) / nd for R, nd in zip(self.iRvec, self.Ndegen)]).transpose(
             (1, 2, 0))
 
-        self.getXX_wan_cent()
+        self.getXX_only_wannier_centers()
 
         self.do_at_end_of_init()
 

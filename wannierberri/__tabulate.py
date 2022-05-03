@@ -314,7 +314,10 @@ class TABresult(result.Result):
             kwargs_line={},
             label=None,
             fatmax=None,
-            cut_k=True):
+            cut_k=True,
+            close_fig=False,
+            show_fig=True
+            ):
         """
         a routine to plot a result along the path
         The circle size (size of quantity) changes linearly below 2 and logarithmically above 2.
@@ -392,14 +395,19 @@ class TABresult(result.Result):
         plt.ylim([Emin, Emax])
         plt.xlim([kmin, kmax])
 
-        if save_file is None:
+        fig = plt.gcf()
+
+        if save_file is not None:
+            fig.savefig(save_file)
+
+        if show_fig:
             plt.show()
-            plt.close()
-        elif save_file == "":
-            pass
+
+        if close_fig:
+            fig.close()
+
         else:
-            plt.savefig(save_file)
-            plt.close()
+            return fig
 
     def max(self):
         return -1  # tabulating does not contribute to adaptive refinement

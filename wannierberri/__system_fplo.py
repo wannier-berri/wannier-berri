@@ -113,7 +113,7 @@ class System_fplo(System):
         self.nRvec0 = len(iRvec)
         self.iRvec = np.array(iRvec, dtype=int)
 
-        self.getXX_wan_cent(getSS=False)
+        self.getXX_only_wannier_centers(getSS=False)
 
         self.do_at_end_of_init()
 

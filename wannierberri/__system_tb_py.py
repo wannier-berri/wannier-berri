@@ -120,15 +120,8 @@ class System_tb_py(System):
             for i in range(model._norb):
                 self.Ham_R[i, i, index0] = model._site_energies[i]
 
-#   TODO: generate the SS_R matrix from input
-#        if self.getAA:
-#            self.AA_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
-#            for i in range(self.num_wann):
-#                self.AA_R[i, i, index0, :] = positions[i, :].dot(self.real_lattice[:positions.shape[1]])
-#
 
-
-        self.getXX_wan_cent()
+        self.getXX_only_wannier_centers()
         self.do_at_end_of_init()
         cprint("Reading the system from {} finished successfully".format(names[module]), 'green', attrs=['bold'])
 

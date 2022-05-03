@@ -197,26 +197,26 @@ class System():
     def getSHC(self):
         return self.SHCqiao
 
-    def getXX_wan_cent(self, getSS=False):
+    def getXX_only_wannier_centers(self, getSS=False):
         """return AA_R, BB_R, CC_R containing only the diagonal matrix elements, evaluated from
         the wannier_centers_cart_auto cariable (tight-binding approximation).
-        In practice, it is yseless because corresponding terms vanish with use_wcc_phase = True.
+        In practice, it is useless because corresponding terms vanish with use_wcc_phase = True.
         but for testing may be used
         Used with pythtb, tbmodels, and also fplo, ASE until proper evaluation of matrix elements is implemented for them.
         """
 
-        index0 = self.iR0
+        iR0 = self.iR0
         if self.getAA:
             self.AA_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
             if not self.use_wcc_phase:
                 for i in range(self.num_wann):
-                    self.AA_R[i, i, index0, :] = self.wannier_centers_cart_auto[i]
+                    self.AA_R[i, i, iR0, :] = self.wannier_centers_cart_auto[i]
 
         if self.getBB:
             self.BB_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
             if not self.use_wcc_phase:
                 for i in range(self.num_wann):
-                    self.BB_R[i, i, index0, :] = self.AA_R[i, i, index0, :] * self.Ham_R[i, i, index0]
+                    self.BB_R[i, i, iR0, :] = self.AA_R[i, i, iR0, :] * self.Ham_R[i, i, iR0]
 
         if self.getCC:
             self.CC_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)

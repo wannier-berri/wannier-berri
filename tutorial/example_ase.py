@@ -11,11 +11,11 @@ import numpy as np
 
 
 # you may set some of those flags to False to speed-up further runs
-do_gpaw = True
-do_localize =True
-do_wberri = True
+do_gpaw = True*0
+do_localize =True*0
+do_wberri = True*0
 do_ase_plot = True
-do_integrate = True
+do_integrate = True*0
 
 if do_gpaw:
     a = 4.4570000
@@ -69,7 +69,7 @@ if do_wberri:
 
 
     path_result.plot_path_fat( path,
-              save_file="",
+              save_file=None,
                 quantity = "berry",
                 component = "z",
               Eshift=0,
@@ -80,7 +80,9 @@ if do_wberri:
             label = "WanniewrBerri",
               fatfactor=5,
               fatmax = 200,
-              cut_k=True
+              cut_k=True,
+            close_fig = False,
+            show_fig = False
               )
 
     if do_ase_plot:
