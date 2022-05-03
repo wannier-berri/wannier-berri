@@ -78,7 +78,7 @@ class Data_K(System):
         'degen_thresh_random_gauge': 1e-4,
         '_FF_antisym': False,
         '_CCab_antisym': False
-
+        }
     __doc__ = """
     class to store many data calculated on a specific FFT grid.
     The stored data can be used to evaluate many quantities.
