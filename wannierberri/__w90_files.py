@@ -257,6 +257,7 @@ class MMN(W90_data):
 
 
     def __init__(self,seedname,npar=multiprocessing.cpu_count()):
+        self.seedname = seedname
         t0=time()
         f_mmn_in=open(seedname+".mmn","r")
         f_mmn_in.readline()
@@ -308,6 +309,27 @@ class MMN(W90_data):
             bk_latt_unique=bk_latt_unique[srt]
             bk_cart_unique=bk_cart_unique[srt]
             bk_cart_unique_length=bk_cart_unique_length[srt]
+            bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
+            self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+
+            # For higher order: read weights from seedname.bvec file
+            import os
+            if os.path.isfile(self.seedname + ".bvec"):
+                bvec_data = np.loadtxt(self.seedname + ".bvec", skiprows=2).reshape((self.bk_cart.shape[0], self.bk_cart.shape[1], 4))
+                self.wk = np.zeros(self.bk_cart.shape[:2])
+                for ik in range(self.bk_cart.shape[0]):
+                    for ib in range(self.bk_cart.shape[1]):
+                        bvec = self.bk_cart[ik, ib, :]
+                        found = False
+                        for jb in range(self.bk_cart.shape[1]):
+                            if np.allclose(bvec, bvec_data[ik, jb, :3]):
+                                found = True
+                                self.wk[ik, ib] = bvec_data[ik, jb, 3]
+                                break
+                        if not found:
+                            raise ValueError(f"{ik = }, {ib = }, {bvec = }")
+                return
+
             brd=[0,]+list(np.where(bk_cart_unique_length[1:]-bk_cart_unique_length[:-1]>1e-7)[0]+1)+[self.NNB,]
             shell_mat=np.array([ bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2])  for b1,b2 in zip (brd,brd[1:])])
             shell_mat_line=shell_mat.reshape(-1,9)
@@ -321,8 +343,6 @@ class MMN(W90_data):
                           check_eye,tol, bk_latt_unique,bk_cart_unique,bk_cart_unique_length,shell_mat,weight_shell))
             weight=np.array([w for w,b1,b2 in zip(weight_shell,brd,brd[1:]) for i in range(b1,b2)])
             weight_dict  = {tuple(bk):w for bk,w in zip(bk_latt_unique,weight) }
-            bk_cart_dict = {tuple(bk):bkcart for bk,bkcart in zip(bk_latt_unique,bk_cart_unique) }
-            self.bk_cart=np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
             self.wk     =np.array([[ weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
 
 
