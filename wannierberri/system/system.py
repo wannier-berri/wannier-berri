@@ -13,9 +13,9 @@
 
 import numpy as np
 import lazy_property
-from .__sym_wann import SymWann
-from .__utility import alpha_A, beta_A, iterate3dpm
-from .symmetry import Symmetry, Group, TimeReversal
+from .sym_wann import SymWann
+from wannierberri.__utility import alpha_A, beta_A, iterate3dpm
+from wannierberri.symmetry import Symmetry, Group, TimeReversal
 from termcolor import cprint
 import functools
 import multiprocessing
