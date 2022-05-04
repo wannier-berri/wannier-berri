@@ -425,7 +425,8 @@ class SymWann():
                                         XX_L = self.matrix_list[X][self.H_select[rot_map[atom_a], rot_map[atom_b]],
                                                                    new_Rvec_index, :]
                                         matrix_list_all[X][iR, atom_a, atom_b,
-                                                           self.H_select[atom_a, atom_b], :] = XX_L
+                                                           self.H_select[atom_a, atom_b], :] = np.einsum(
+                                                               'ij,ij,mi->mj', self.rot_c[rot], self.rot_c[rot], XX_L)
                                     else:
                                         print(f"WARNING: Symmetrization of {X} is not implemented")
                             else:
@@ -499,8 +500,8 @@ class SymWann():
         #=================================
 
         with np.printoptions(suppress=True, precision=4, threshold=np.inf, linewidth=500):
-            X = 'AA'
-            diag = True
+            X = 'CC'
+            diag = False
             test_i = self.iRvec.index([0, 0, 0])
             print(f'Testing {X} with diag = {diag}')
             print('[0,0,0]')
