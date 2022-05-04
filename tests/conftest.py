@@ -13,6 +13,8 @@ from common_systems import (
     system_Fe_sym_W90,
     system_Fe_FPLO,
     system_Fe_FPLO_wcc,
+    system_Te_ASE,
+    system_Te_ASE_wcc,
     system_GaAs_W90,
     system_GaAs_W90_wcc,
     system_GaAs_tb,
