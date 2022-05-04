@@ -427,8 +427,8 @@ class SymWann():
                                         #vector back to tensor
                                         shape = np.shape(XX_L)
                                         XXab_L = np.zeros((shape[0],3,3),dtype=complex)
-                                        XXab_L[:, alpha_A, beta_A] = -0.5j * XX_L 
-                                        XXab_L[:, beta_A, alpha_A] = 0.5j * XX_L 
+                                        XXab_L[:, alpha_A, beta_A] = -0.5j * XX_L
+                                        XXab_L[:, beta_A, alpha_A] = 0.5j * XX_L
                                         XXab_rot = np.einsum('ai,bj,mab->mij', self.rot_c[rot], self.rot_c[rot], XXab_L)
                                         #antisymetric part
                                         XX_rot = 1j * (XXab_rot[:, alpha_A, beta_A] - XXab_rot[:, beta_A, alpha_A])
