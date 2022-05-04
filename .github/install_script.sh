@@ -5,12 +5,18 @@
 
 # Be verbose, and stop with error as soon there's one
 set -ev
-
+sudo apt-get install libxc-dev
 pip install codecov
-pip install -U pip setuptools wheel
+pip install -U pip setuptools wheel 
+pip install -U numba   # here numba will fix a (not latest) version of numpy
+pip install ray
 
 # install optional dependencies
 pip install tbmodels pythtb spglib
+pip install ase
+pip install gpaw
+gpaw info
+gpaw install-data --register ~/gpaw-data
 
 case "$INSTALL_TYPE" in
     dev)

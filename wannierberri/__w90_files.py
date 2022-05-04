@@ -104,7 +104,7 @@ class CheckPoint():
     def get_AA_q(self, mmn, eig=None, transl_inv=False):  # if eig is present - it is BB_q
         if transl_inv and (eig is not None):
             raise RuntimeError("transl_inv cannot be used to obtain BB")
-        mmn.set_bk(self)
+        mmn.set_bk_chk(self)
         AA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
@@ -123,7 +123,7 @@ class CheckPoint():
         return AA_q
 
     def get_CC_q(self, uhu, mmn):  # if eig is present - it is BB_q
-        mmn.set_bk(self)
+        mmn.set_bk_chk(self)
         assert uhu.NNB == mmn.NNB
         CC_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
         for ik in range(self.num_kpts):
@@ -138,9 +138,8 @@ class CheckPoint():
                             - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
         CC_q = 0.5 * (CC_q + CC_q.transpose((0, 2, 1, 3)).conj())
         return CC_q
-
     def get_SA_q(self, siu, mmn):
-        mmn.set_bk(self)
+        mmn.set_bk_chk(self)
         SA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert siu.NNB == mmn.NNB
         for ik in range(self.num_kpts):
@@ -152,7 +151,7 @@ class CheckPoint():
         return SA_q
 
     def get_SHA_q(self, shu, mmn):
-        mmn.set_bk(self)
+        mmn.set_bk_chk(self)
         SHA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert shu.NNB == mmn.NNB
         for ik in range(self.num_kpts):
@@ -164,7 +163,7 @@ class CheckPoint():
         return SHA_q
 
     def get_SR_q(self, spn, mmn):
-        mmn.set_bk(self)
+        mmn.set_bk_chk(self)
         SR_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
         for ik in range(self.num_kpts):
@@ -185,7 +184,7 @@ class CheckPoint():
         return SH_q
 
     def get_SHR_q(self, spn, mmn, eig):
-        mmn.set_bk(self)
+        mmn.set_bk_chk(self)
         SHR_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
         for ik in range(self.num_kpts):
@@ -272,7 +271,7 @@ class MMN(W90_data):
         t2 = time()
         print("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2 - t0, t1 - t0, t2 - t1))
 
-    def set_bk(self, chk):
+    def set_bk(self, kpt_latt,mp_grid,recip_lattice):
         try:
             self.bk
             self.wk
@@ -281,13 +280,13 @@ class MMN(W90_data):
             bk_latt = np.array(
                 np.round(
                     [
-                        (chk.kpt_latt[nbrs] - chk.kpt_latt + G) * chk.mp_grid[None, :]
+                        (kpt_latt[nbrs] - kpt_latt + G) * mp_grid[None, :]
                         for nbrs, G in zip(self.neighbours.T, self.G.transpose(1, 0, 2))
                     ]).transpose(1, 0, 2),
                 dtype=int)
             bk_latt_unique = np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1, 3))], dtype=int)
             assert len(bk_latt_unique) == self.NNB
-            bk_cart_unique = bk_latt_unique.dot(chk.recip_lattice / chk.mp_grid[:, None])
+            bk_cart_unique = bk_latt_unique.dot(recip_lattice / mp_grid[:, None])
             bk_cart_unique_length = np.linalg.norm(bk_cart_unique, axis=1)
             srt = np.argsort(bk_cart_unique_length)
             bk_latt_unique = bk_latt_unique[srt]
@@ -315,6 +314,10 @@ class MMN(W90_data):
             bk_cart_dict = {tuple(bk): bkcart for bk, bkcart in zip(bk_latt_unique, bk_cart_unique)}
             self.bk_cart = np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
             self.wk = np.array([[weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+
+    def set_bk_chk(self,chk):
+        self.set_bk(chk.kpt_latt,chk.mp_grid,chk.recip_lattice)
+
 
 
 class EIG(W90_data):

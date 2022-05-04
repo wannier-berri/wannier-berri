@@ -311,11 +311,19 @@ class TABresult(result.Result):
             iband=None,
             mode="fatband",
             fatfactor=20,
-            cut_k=True):
+            kwargs_line={},
+            label=None,
+            fatmax=None,
+            cut_k=True,
+            close_fig=True,
+            show_fig=True
+                    ):
         """
         a routine to plot a result along the path
         The circle size (size of quantity) changes linearly below 2 and logarithmically above 2.
         """
+
+        if fatmax is None : fatmax = fatfactor*10
 
         import matplotlib.pyplot as plt
         if iband is None:
@@ -345,7 +353,10 @@ class TABresult(result.Result):
             selE = (e <= Emax) * (e >= Emin)
             klineselE = kline[selE]
             klineall.append(klineselE)
-            plt.plot(klineselE, e[selE], color="gray")
+            _line, = plt.plot(klineselE, e[selE], **kwargs_line)
+        if label is not None:
+            _line.set_label(label)
+            plt.legend()
         if cut_k:
             klineall = [k for kl in klineall for k in kl]
             kmin = min(klineall)
@@ -363,13 +374,15 @@ class TABresult(result.Result):
                     selE = (e <= Emax) * (e >= Emin)
                     klineselE = kline[selE]
                     y = data[selE][:, ib]
-                    select = np.abs(y) > 2
-                    y[select] = np.log2(y[select])
+                    select = abs(y) > 2
+                    y[select] = np.log2(abs(y[select]))*np.sign(y[select])
                     y[~select] *= 0.5
-                    e1 = e[selE]
-                    for col, sel in [("red", (y > 0)), ("blue", (y < 0))]:
-                        plt.scatter(klineselE[sel], e1[sel], s=abs(y[sel]) * fatfactor, color=col)
-            else:
+                    e1=e[selE]
+                    for col,sel in [("red",(y>0)),("blue",(y<0))]:
+                        sz = abs(y[sel])*fatfactor
+                        sz[sz>fatmax] = fatmax
+                        plt.scatter(klineselE[sel],e1[sel],s=sz,color=col)
+            else :
                 raise ValueError("So far only fatband mode is implemented")
 
         x_ticks_labels = []
@@ -382,11 +395,18 @@ class TABresult(result.Result):
         plt.ylim([Emin, Emax])
         plt.xlim([kmin, kmax])
 
-        if save_file is None:
+        fig = plt.gcf()
+
+        if save_file is not None:
+            fig.savefig(save_file)
+
+        if show_fig:
             plt.show()
+
+        if close_fig:
+            plt.close(fig)
         else:
-            plt.savefig(save_file)
-        plt.close()
+            return fig
 
     def max(self):
         return -1  # tabulating does not contribute to adaptive refinement
