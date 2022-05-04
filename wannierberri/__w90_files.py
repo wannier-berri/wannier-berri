@@ -115,7 +115,7 @@ class CheckPoint():
                 AAW=self.wannier_gauge(data, ik, iknb)
                 AA_q_ik_ib = 1j * AAW[:,:,None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
 
-                if transl_inv:
+                if (transl_inv and not transl_inv_offdiag):
                     AA_q_ik_ib[range(self.num_wann),range(self.num_wann)]=-np.log(AAW.diagonal()).imag[:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,:]
 
                 # Translationally-invariant off-diagonal part
