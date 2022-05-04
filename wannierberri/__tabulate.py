@@ -315,7 +315,7 @@ class TABresult(result.Result):
             label=None,
             fatmax=None,
             cut_k=True,
-            close_fig=False,
+            close_fig=True,
             show_fig=True
                     ):
         """
