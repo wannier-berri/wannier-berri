@@ -404,8 +404,7 @@ class TABresult(result.Result):
             plt.show()
 
         if close_fig:
-            fig.close()
-
+            plt.close(fig)
         else:
             return fig
 
