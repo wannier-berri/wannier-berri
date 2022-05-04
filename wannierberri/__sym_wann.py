@@ -1,7 +1,7 @@
 import numpy as np
 import spglib
 from .__sym_wann_orbitals import Orbitals
-from .__utility import get_angle
+from .__utility import get_angle, alpha_A, beta_A
 
 
 class SymWann():
@@ -78,7 +78,7 @@ class SymWann():
         self.parity_TR = {
             'AA': 1,
             'BB': 1,
-            'CC': 1,
+            'CC': -1,
             'SS': -1
         }  #{'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
         self.magmom = magmom
@@ -424,9 +424,15 @@ class SymWann():
                                     elif X in ['CC', 'FF']:
                                         XX_L = self.matrix_list[X][self.H_select[rot_map[atom_a], rot_map[atom_b]],
                                                                    new_Rvec_index, :]
-                                        matrix_list_all[X][iR, atom_a, atom_b,
-                                                           self.H_select[atom_a, atom_b], :] = np.einsum(
-                                                               'ij,ij,mi->mj', self.rot_c[rot], self.rot_c[rot], XX_L)
+                                        #vector back to tensor
+                                        shape = np.shape(XX_L)
+                                        XXab_L = np.zeros((shape[0],3,3),dtype=complex)
+                                        XXab_L[:, alpha_A, beta_A] = -0.5j * XX_L 
+                                        XXab_L[:, beta_A, alpha_A] = 0.5j * XX_L 
+                                        XXab_rot = np.einsum('ai,bj,mab->mij', self.rot_c[rot], self.rot_c[rot], XXab_L)
+                                        #antisymetric part
+                                        XX_rot = 1j * (XXab_rot[:, alpha_A, beta_A] - XXab_rot[:, beta_A, alpha_A])
+                                        matrix_list_all[X][iR, atom_a, atom_b,self.H_select[atom_a, atom_b], :] = XX_rot
                                     else:
                                         print(f"WARNING: Symmetrization of {X} is not implemented")
                             else:
@@ -500,8 +506,8 @@ class SymWann():
         #=================================
 
         with np.printoptions(suppress=True, precision=4, threshold=np.inf, linewidth=500):
-            X = 'CC'
-            diag = False
+            X = 'AA'
+            diag = True
             test_i = self.iRvec.index([0, 0, 0])
             print(f'Testing {X} with diag = {diag}')
             print('[0,0,0]')
