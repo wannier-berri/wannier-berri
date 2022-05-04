@@ -116,4 +116,5 @@ def test_tabulate_path(system_Haldane_PythTB):
         iband=None,
         mode="fatband",
         fatfactor=20,
-        cut_k=True)
+        cut_k=True,
+        show_fig=False)

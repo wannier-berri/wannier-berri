@@ -12,6 +12,30 @@ from wannierberri import fermiocean
 #        and references (with urls) to the relevant papers
 
 
+
+
+class _DOS(StaticCalculator):
+
+    def __init__(self, fder,**kwargs):
+        self.Formula = frml.Identity
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+    def __call__(self, data_K):
+        return super().__call__(data_K) * data_K.cell_volume
+
+class DOS(_DOS):
+
+    def __init__(self, **kwargs):
+        super().__init__(fder=1, **kwargs)
+
+class CumDOS(_DOS):
+
+    def __init__(self, **kwargs):
+        super().__init__(fder=0, **kwargs)
+
+
 class AHC(StaticCalculator):
 
     def __init__(self, **kwargs):
