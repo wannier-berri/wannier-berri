@@ -269,8 +269,8 @@ def test_Fe_sym_W90_sym(check_integrate, system_Fe_sym_W90, compare_energyresult
         suffix="sym",
         use_symmetry=True,
         Efermi=Efermi_Fe,
-        comparer=compare_energyresult,
-        extra_precision={"Morb": 1e-3}) 
+        comparer=compare_energyresult)
+        #extra_precision={"Morb": 1e-3}) 
     #Also low accuracy for Morb. 
     #If the quantities should be zero on a coordinate compponent, with 'use_sym = True' quantities are more close to zero.
     #But the difference for Morb looks too much (1e-4 each Ef) in the test. As a comment above, maybe there is a bug?
