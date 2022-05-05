@@ -69,7 +69,7 @@ def dos(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **k
 
 
 def spin(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `S = \int [dk] s f`
     """
     return FermiOcean(
@@ -77,7 +77,7 @@ def spin(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **
 
 
 def Hplus_der(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" Fermi sea
+    r"""
     :math: `H_{\alpha\beta} = \tau \int [dk] \partial_\alpha (H + G)_\beta f`
     """
     res = FermiOcean(
@@ -94,7 +94,7 @@ def Hplus_der(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=Fals
 
 
 def Hplus_der_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" Fermi sea
+    r"""
     :math: `H_{\alpha\beta} = \tau \int [dk] \partial_\alpha (H + G)_\beta f`
     """
     res = FermiOcean(
@@ -111,7 +111,7 @@ def Hplus_der_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers
 
 
 def Morb(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `M = - \int [dk] (H + G - 2Ef * \Omega) f`
     Unit: :math: `\mu_B per unit cell`
     """
@@ -135,7 +135,7 @@ def Morb(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **
 
 
 def Morb_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `M = - \int [dk] (H + G - 2Ef * \Omega) f`
     Unit: :math: `\mu_B per unit cell`
     """
@@ -235,7 +235,7 @@ def gme_spin(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False
 
 # E1 B0
 def AHC(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `O = - e^2/\hbar \int [dk] \Omega f`
     Unit: s^3 * A^2 / (kg * m^3) = S/m 
     :math: `j_\alpha = \sigma_{\alpha\beta} E_\beta = \epsilon_{\alpha\beta\delta} O_delta E_\beta`
@@ -251,7 +251,7 @@ def AHC(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **k
 
 
 def AHC_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `O = - e^2/\hbar \int [dk] \Omega f`
     Unit: s^3 * A^2 / (kg * m^3) = S/m 
     :math: `j_\alpha = \sigma_{\alpha\beta} E_\beta = \epsilon_{\alpha\beta\delta} O_delta E_\beta`
@@ -267,7 +267,7 @@ def AHC_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False
 
 
 def ohmic_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `\sigma_{\alpha\beta} = -e^2/\hbar \tau \int [dk] v_\alpha v_\beta f'`
     Unit: s^3 * A^2 / (kg * m^3) = S/m 
     :math: `j_\alpha = \sigma_{\alpha\beta} E_\beta`
@@ -279,7 +279,7 @@ def ohmic_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=Fa
 
 
 def ohmic(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `\sigma_{\alpha\beta} = e^2/\hbar \tau \int [dk] v_{\alpha\beta} f`
     Unit: s^3 * A^2 / (kg * m^3) = S/m 
     :math: `j_\alpha = \sigma_{\alpha\beta} E_\beta`
@@ -287,12 +287,12 @@ def ohmic(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, *
     r""" sigma10tau1"""
     formula = frml.InvMass(data_K)
     return FermiOcean(
-        formula, data_K, Efermi, tetra, fder=0, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)() * factor_ohmic
+        formula, data_K, Efermi, tetra, fder=0, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)() * factor_t1_1_0
 
 
 # E2 B0
 def berry_dipole_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `D_{\beta\delta} = -\tau \int [dk] \Omega_\delta v_\beta f'`
     """
     formula = FormulaProduct(
@@ -305,7 +305,7 @@ def berry_dipole_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kra
 
 
 def berry_dipole(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `D_{\beta\delta} = \tau \int [dk] \partial_beta \Omega_\delta f`
     """
     res = FermiOcean(
@@ -322,7 +322,7 @@ def berry_dipole(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=F
 
 
 def berry_dipole_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `D_{\beta\delta} = \tau \int [dk] \partial_beta \Omega_\delta f`
     """
     res = FermiOcean(
@@ -339,7 +339,7 @@ def berry_dipole_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kram
 
 
 def NAHE(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `D_{\beta\delta} = e^3/\hbar^2 \tau \int [dk] \partial_beta \Omega_\delta f`
     Unit: S^2/A
     :math: `j_\alpha = \epsilon_{\alpha\gamma\delta} D_{\beta\delta} E_\beta E_\gamma`
@@ -349,7 +349,7 @@ def NAHE(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **
 
 
 def NAHE_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `D_{\beta\delta} = -e^3/\hbar^2 \tau \int [dk] \Omega_\delta v_\beta f'`
     Unit: S^2/A
     :math: `j_\alpha = \epsilon_{\alpha\gamma\delta} D_{\beta\delta} E_\beta E_\gamma`
@@ -359,7 +359,7 @@ def NAHE_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=Fal
 
 
 def Der3E(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `\sigma_{\alpha\sigma\rho} = -e^3/\hbar^2 \tau^2 \int [dk] v_{\alpha\sigma\rho} f`
     Unit: S^2/A
     :math: `j_\alpha = \sigma_{\alpha\sigma\rho} E_\sigma E_\rho`
@@ -376,7 +376,7 @@ def Der3E(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, *
 
 
 def Der3E_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `\sigma_{\alpha\sigma\rho} = e^3/\hbar^2 \tau^2 \int [dk] v_{\alpha\rho} v_\sigma f'`
     Unit: S^2/A
     :math: `j_\alpha = \sigma_{\alpha\sigma\rho} E_\sigma E_\rho`
@@ -387,7 +387,7 @@ def Der3E_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=Fa
 
 
 def Der3E_fder2(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `\sigma_{\alpha\sigma\rho} = -e^3/\hbar^2 \tau^2 \int [dk] v_\alpha v_\rho v_\sigma f''/2`
     Unit: S^2/A
     :math: `j_\alpha = \sigma_{\alpha\sigma\rho} E_\sigma E_\rho`
@@ -404,7 +404,7 @@ def Der3E_fder2(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=Fa
 
 # E1 B1
 def Hall_classic_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `\sigma_{\alpha\sigma :\mu} = e^3/\hbar^2 \tau^2 \sigma_{\beta\mu\rho} \int [dk] v_\alpha v_\beta v_{\rho\sigma} f'`
     Unit: S/m/T
     :math: `j_\alpha = \sigma_{\alpha\sigma :\mu} E_\sigma B_\mu`
@@ -416,7 +416,7 @@ def Hall_classic_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kra
         name='vel-mass-vel')
     res = FermiOcean(
         formula, data_K, Efermi, tetra, fder=1, degen_thresh=degen_thresh,
-        degen_Kramers=degen_Kramers)() * factor_Hall_classic
+        degen_Kramers=degen_Kramers)() * factor_t2_1_1
     res.data = res.data[:, :, :, beta_A, alpha_A] - res.data[:, :, :, alpha_A, beta_A]
     res.data = factor_t2_1_1 * 0.5 * (res.data[:, alpha_A, beta_A, :] - res.data[:, beta_A, alpha_A, :])
     res.rank -= 2
@@ -424,7 +424,7 @@ def Hall_classic_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kra
 
 
 def Hall_classic(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
-    r""" 
+    r"""
     :math: `\sigma_{\alpha\sigma :\mu} = -e^3/\hbar^2 \tau^2 \sigma_{\beta\mu\rho} \int [dk] v_{\alpha\beta} v_{\rho\sigma} f`
     Unit: S/m/T
     :math: `j_\alpha = \sigma_{\alpha\sigma :\mu} E_\sigma B_\mu`
@@ -433,7 +433,7 @@ def Hall_classic(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=F
     #formula2 = FormulaProduct([data_K.covariant('Ham', commader=1), frml.Der3E(data_K)], name='vel-Der3E')
     res = FermiOcean(
         formula1, data_K, Efermi, tetra, fder=0, degen_thresh=degen_thresh,
-        degen_Kramers=degen_Kramers)() * factor_Hall_classic
+        degen_Kramers=degen_Kramers)() * factor_t2_1_1
     #term2 = FermiOcean(
     #    formula2, data_K, Efermi, tetra, fder=0, degen_thresh=degen_thresh,
     #    degen_Kramers=degen_Kramers)() * factor_Hall_classic
