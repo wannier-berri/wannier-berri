@@ -40,7 +40,7 @@ class AHC(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.Omega
-        self.factor = fermiocean.fac_ahc
+        self.factor = fermiocean.factor_t0_1_0
         self.fder = 0
         super().__init__(**kwargs)
 
@@ -49,7 +49,7 @@ class Ohmic(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.InvMass
-        self.factor = fermiocean.factor_ohmic
+        self.factor = fermiocean.factor_t1_1_0
         self.fder = 0
         super().__init__(**kwargs)
 
