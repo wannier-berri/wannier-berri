@@ -338,7 +338,7 @@ def berry_dipole_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kram
     return res
 
 
-def NAHE(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
+def NAHC(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r"""
     :math: `D_{\beta\delta} = e^3/\hbar^2 \tau \int [dk] \partial_beta \Omega_\delta f`
     Unit: S^2/A
@@ -348,7 +348,7 @@ def NAHE(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **
             degen_Kramers=degen_Kramers, **kwargs_formula) * factor_t1_2_0
 
 
-def NAHE_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
+def NAHC_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r"""
     :math: `D_{\beta\delta} = -e^3/\hbar^2 \tau \int [dk] \Omega_\delta v_\beta f'`
     Unit: S^2/A
