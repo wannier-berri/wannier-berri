@@ -56,6 +56,8 @@ calculators_trans = {
     'berry_dipole': fermiocean.berry_dipole,
     'berry_dipole_test': fermiocean.berry_dipole_test,
     'berry_dipole_fsurf': fermiocean.berry_dipole_fsurf,
+    'nahc': fermiocean.NAHC,
+    'nahc_fsurf': fermiocean.NAHC_fsurf,
     'gyrotropic_Korb': fermiocean.gme_orb,
     'gyrotropic_Korb_test': fermiocean.gme_orb_test,
     'gyrotropic_Korb_fsurf': fermiocean.gme_orb_fsurf,
@@ -151,10 +153,12 @@ descriptions['conductivity_ohmic_fsurf'] = "ohmic conductivity in S/m for tau={}
     TAU_UNIT)
 descriptions['berry_dipole'] = "berry curvature dipole (dimensionless) - Fermi-sea formula"
 descriptions['berry_dipole_fsurf'] = "berry curvature dipole (dimensionless)  - Fermi-surface formula"
-descriptions['gyrotropic_Korb'] = "GME tensor, orbital part (Ampere) - Fermi-sea formula"
-descriptions['gyrotropic_Korb_fsurf'] = "GME tensor, orbital part (Ampere) - Fermi-surface formula"
-descriptions['gyrotropic_Kspin'] = "GME tensor, spin part (Ampere)  - Fermi-sea formula"
-descriptions['gyrotropic_Kspin_fsurf'] = "GME tensor, spin part (Ampere)  - Fermi-surface formula"
+descriptions['nahc'] = "nonlinear anomalous hall conductivity (S^2/A)  - Fermi-sea formula"
+descriptions['nahc_fsurf'] = "nonlinear anomalous hall conductivity (S^2/A)  - Fermi-surface formula"
+descriptions['gyrotropic_Korb'] = "GME tensor, orbital part (A/m^2/T) - Fermi-sea formula"
+descriptions['gyrotropic_Korb_fsurf'] = "GME tensor, orbital part (A/m^2/T) - Fermi-surface formula"
+descriptions['gyrotropic_Kspin'] = "GME tensor, spin part (A/m^2/T)  - Fermi-sea formula"
+descriptions['gyrotropic_Kspin_fsurf'] = "GME tensor, spin part (A/m^2/T)  - Fermi-surface formula"
 descriptions[
     'Hall_classic_fsurf'] = "classical Hall coefficient, in S/(m*T) for tau={} s. - Fermi-surface formula".format(
         TAU_UNIT)

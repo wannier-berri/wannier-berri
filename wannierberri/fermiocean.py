@@ -293,24 +293,20 @@ def ohmic(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, *
 # E2 B0
 def berry_dipole_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r""" 
-    :math: `D_{\beta\delta} = -e^3/\hbar^2 \tau \int [dk] \Omega_\delta v_\beta f'`
-    Unit: S^2/A
-    :math: `j_\alpha = \epsilon_{\alpha\gamma\delta} D_{\beta\delta} E_\beta E_\gamma`
+    :math: `D_{\beta\delta} = -\tau \int [dk] \Omega_\delta v_\beta f'`
     """
     formula = FormulaProduct(
         [frml.Omega(data_K, **kwargs_formula),
          data_K.covariant('Ham', commader=1)], name='berry-vel')
     res = FermiOcean(formula, data_K, Efermi, tetra, fder=1, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)()
     # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
-    res.data = np.swapaxes(res.data, 1, 2) * factor_t1_2_0
+    res.data = np.swapaxes(res.data, 1, 2)
     return res
 
 
 def berry_dipole(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r""" 
-    :math: `D_{\beta\delta} = e^3/\hbar^2 \tau \int [dk] \partial_beta \Omega_\delta f`
-    Unit: S^2/A
-    :math: `j_\alpha = \epsilon_{\alpha\gamma\delta} D_{\beta\delta} E_\beta E_\gamma`
+    :math: `D_{\beta\delta} = \tau \int [dk] \partial_beta \Omega_\delta f`
     """
     res = FermiOcean(
         frml.DerOmega(data_K, **kwargs_formula),
@@ -321,15 +317,13 @@ def berry_dipole(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=F
         degen_thresh=degen_thresh,
         degen_Kramers=degen_Kramers)()
     # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
-    res.data = np.swapaxes(res.data, 1, 2) * factor_t1_2_0
+    res.data = np.swapaxes(res.data, 1, 2)
     return res
 
 
 def berry_dipole_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r""" 
-    :math: `D_{\beta\delta} = e^3/\hbar^2 \tau \int [dk] \partial_beta \Omega_\delta f`
-    Unit: S^2/A
-    :math: `j_\alpha = \epsilon_{\alpha\gamma\delta} D_{\beta\delta} E_\beta E_\gamma`
+    :math: `D_{\beta\delta} = \tau \int [dk] \partial_beta \Omega_\delta f`
     """
     res = FermiOcean(
         frml_basic.tildeFc_d(data_K, **kwargs_formula),
@@ -340,8 +334,28 @@ def berry_dipole_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kram
         degen_thresh=degen_thresh,
         degen_Kramers=degen_Kramers)()
     # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
-    res.data = np.swapaxes(res.data, 1, 2) * factor_t1_2_0
+    res.data = np.swapaxes(res.data, 1, 2)
     return res
+
+
+def NAHE(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
+    r""" 
+    :math: `D_{\beta\delta} = e^3/\hbar^2 \tau \int [dk] \partial_beta \Omega_\delta f`
+    Unit: S^2/A
+    :math: `j_\alpha = \epsilon_{\alpha\gamma\delta} D_{\beta\delta} E_\beta E_\gamma`
+    """
+    return berry_dipole(data_K, Efermi, tetra=tetra, degen_thresh=degen_thresh,
+            degen_Kramers=degen_Kramers, **kwargs_formula) * factor_t1_2_0
+
+
+def NAHE_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
+    r""" 
+    :math: `D_{\beta\delta} = -e^3/\hbar^2 \tau \int [dk] \Omega_\delta v_\beta f'`
+    Unit: S^2/A
+    :math: `j_\alpha = \epsilon_{\alpha\gamma\delta} D_{\beta\delta} E_\beta E_\gamma`
+    """
+    return berry_dipole_fsurf(data_K, Efermi, tetra=tetra, degen_thresh=degen_thresh,
+            degen_Kramers=degen_Kramers, **kwargs_formula) * factor_t1_2_0
 
 
 def Der3E(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
