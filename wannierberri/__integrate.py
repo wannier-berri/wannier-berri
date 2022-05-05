@@ -143,11 +143,11 @@ calculators.update(calculators_opt)
 descriptions = defaultdict(lambda: "no description")
 descriptions['spin'] = "Total Spin polarization per unit cell"
 descriptions['Morb'] = "Total orbital magnetization, mu_B per unit cell"
-descriptions['ahc'] = "Anomalous hall conductivity (S/cm)"
+descriptions['ahc'] = "Anomalous hall conductivity (S/m)"
 descriptions['cumdos'] = "Cumulative density of states"
 descriptions['dos'] = "density of states"
-descriptions['conductivity_ohmic'] = "ohmic conductivity in S/cm for tau={} s . Fermi-sea formula".format(TAU_UNIT)
-descriptions['conductivity_ohmic_fsurf'] = "ohmic conductivity in S/cm for tau={} s . Fermi-surface formula".format(
+descriptions['conductivity_ohmic'] = "ohmic conductivity in S/m for tau={} s . Fermi-sea formula".format(TAU_UNIT)
+descriptions['conductivity_ohmic_fsurf'] = "ohmic conductivity in S/m for tau={} s . Fermi-surface formula".format(
     TAU_UNIT)
 descriptions['berry_dipole'] = "berry curvature dipole (dimensionless) - Fermi-sea formula"
 descriptions['berry_dipole_fsurf'] = "berry curvature dipole (dimensionless)  - Fermi-surface formula"
@@ -156,14 +156,14 @@ descriptions['gyrotropic_Korb_fsurf'] = "GME tensor, orbital part (Ampere) - Fer
 descriptions['gyrotropic_Kspin'] = "GME tensor, spin part (Ampere)  - Fermi-sea formula"
 descriptions['gyrotropic_Kspin_fsurf'] = "GME tensor, spin part (Ampere)  - Fermi-surface formula"
 descriptions[
-    'Hall_classic_fsurf'] = "classical Hall coefficient, in S/(cm*T) for tau={} s. - Fermi-surface formula".format(
+    'Hall_classic_fsurf'] = "classical Hall coefficient, in S/(m*T) for tau={} s. - Fermi-surface formula".format(
         TAU_UNIT)
-descriptions['Hall_morb_fsurf'] = "Low field AHE, orbital part, in S/(cm*T). - Fermi-surface formula"
-descriptions['Hall_spin_fsurf'] = "Low field AHE, spin    part, in S/(cm*T). - Fermi_surface formula"
-descriptions['opt_conductivity'] = "Optical conductivity in S/cm"
+descriptions['Hall_morb_fsurf'] = "Low field AHE, orbital part, in S/(m*T). - Fermi-surface formula"
+descriptions['Hall_spin_fsurf'] = "Low field AHE, spin    part, in S/(m*T). - Fermi_surface formula"
+descriptions['opt_conductivity'] = "Optical conductivity in S/m"
 descriptions['Faraday'] = "Tensor tildeD(omega) describing the Faraday rotation - see PRB 97, 035158 (2018)"
-descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in hbar/e S/cm (PRB RPS19)"
-descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in hbar/e S/cm (PRB QZYZ18)"
+descriptions['opt_SHCryoo'] = "Ryoo's Optical spin Hall conductivity in hbar/e S/m (PRB RPS19)"
+descriptions['opt_SHCqiao'] = "Qiao's Optical spin Hall conductivity in hbar/e S/m (PRB QZYZ18)"
 descriptions['opt_shiftcurrent'] = "Nonlinear shiftcurrent in A/V^2 - see PRB 97, 245143 (2018)"
 
 # omega - for optical properties of insulators
