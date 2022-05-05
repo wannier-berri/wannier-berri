@@ -165,8 +165,8 @@ def Morb_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=Fals
 def gme_orb_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r"""
     :math: `K^{orb}_{\alpha\mu} = e \tau \int [dk] M_\mu v_\alpha f'`
-    Unit: A/m^2/T 
-    :math: `j_\alpha = K_{\alpha\mu} B_\mu 
+    Unit: A/m^2/T
+    :math: `j_\alpha = K_{\alpha\mu} B_\mu
     """
     formula_1 = FormulaProduct(
         [frml.Morb_Hpm(data_K, sign=+1, **kwargs_formula),
@@ -186,8 +186,8 @@ def gme_orb_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=
 def gme_orb(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r"""
     :math: `K^{orb}_{\alpha\mu} = -e \tau \int [dk] \partial_\alpha M_\mu f`
-    Unit: A/m^2/T 
-    :math: `j_\alpha = K_{\alpha\mu} B_\mu 
+    Unit: A/m^2/T
+    :math: `j_\alpha = K_{\alpha\mu} B_\mu
     """
     Hp = Hplus_der(data_K, Efermi, tetra=tetra, **kwargs_formula).data
     D = berry_dipole(data_K, Efermi, tetra=tetra, **kwargs_formula).data
@@ -198,8 +198,8 @@ def gme_orb(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False,
 def gme_orb_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r"""
     :math: `K^{orb}_{\alpha\mu} = -e \tau \int [dk] \partial_\alpha M_\mu f`
-    Unit: A/m^2/T 
-    :math: `j_\alpha = K_{\alpha\mu} B_\mu 
+    Unit: A/m^2/T
+    :math: `j_\alpha = K_{\alpha\mu} B_\mu
     """
     Hp = Hplus_der_test(data_K, Efermi, tetra=tetra, **kwargs_formula).data
     D = berry_dipole_test(data_K, Efermi, tetra=tetra, **kwargs_formula).data
@@ -210,8 +210,8 @@ def gme_orb_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=F
 def gme_spin_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r"""
     :math: `K^{spin}_{\alpha,beta} = e \tau \int [dk] S_\beta v_\alpha f'`
-    Unit: A/m^2/T 
-    :math: `j_\alpha = K_{\alpha\mu} B_\mu 
+    Unit: A/m^2/T
+    :math: `j_\alpha = K_{\alpha\mu} B_\mu
     """
     formula = FormulaProduct([frml.Spin(data_K), data_K.covariant('Ham', commader=1)], name='spin-vel')
     res = FermiOcean(formula, data_K, Efermi, tetra, fder=1, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)()
@@ -223,8 +223,8 @@ def gme_spin_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers
 def gme_spin(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r"""
     :math: `K^{spin}_{\alpha,beta} = -e \tau \int [dk] \partial_\alpha S_\beta f`
-    Unit: A/m^2/T 
-    :math: `j_\alpha = K_{\alpha\mu} B_\mu 
+    Unit: A/m^2/T
+    :math: `j_\alpha = K_{\alpha\mu} B_\mu
     """
     formula = FormulaProduct([frml.DerSpin(data_K)], name='derspin')
     res = FermiOcean(formula, data_K, Efermi, tetra, fder=0, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)()
@@ -237,7 +237,7 @@ def gme_spin(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False
 def AHC(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r"""
     :math: `O = - e^2/\hbar \int [dk] \Omega f`
-    Unit: s^3 * A^2 / (kg * m^3) = S/m 
+    Unit: s^3 * A^2 / (kg * m^3) = S/m
     :math: `j_\alpha = \sigma_{\alpha\beta} E_\beta = \epsilon_{\alpha\beta\delta} O_delta E_\beta`
     """
     return FermiOcean(
@@ -253,7 +253,7 @@ def AHC(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **k
 def AHC_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r"""
     :math: `O = - e^2/\hbar \int [dk] \Omega f`
-    Unit: s^3 * A^2 / (kg * m^3) = S/m 
+    Unit: s^3 * A^2 / (kg * m^3) = S/m
     :math: `j_\alpha = \sigma_{\alpha\beta} E_\beta = \epsilon_{\alpha\beta\delta} O_delta E_\beta`
     """
     return FermiOcean(
@@ -269,7 +269,7 @@ def AHC_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False
 def ohmic_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r"""
     :math: `\sigma_{\alpha\beta} = -e^2/\hbar \tau \int [dk] v_\alpha v_\beta f'`
-    Unit: s^3 * A^2 / (kg * m^3) = S/m 
+    Unit: s^3 * A^2 / (kg * m^3) = S/m
     :math: `j_\alpha = \sigma_{\alpha\beta} E_\beta`
     """
     velocity = data_K.covariant('Ham', commader=1)
@@ -281,7 +281,7 @@ def ohmic_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=Fa
 def ohmic(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r"""
     :math: `\sigma_{\alpha\beta} = e^2/\hbar \tau \int [dk] v_{\alpha\beta} f`
-    Unit: s^3 * A^2 / (kg * m^3) = S/m 
+    Unit: s^3 * A^2 / (kg * m^3) = S/m
     :math: `j_\alpha = \sigma_{\alpha\beta} E_\beta`
     """
     r""" sigma10tau1"""
