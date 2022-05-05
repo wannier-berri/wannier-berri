@@ -110,7 +110,7 @@ class _SHC(DynamicCalculator):
         super().__init__(**kwargs)
         self.formula_kwargs = dict(SHC_type=SHC_type, shc_abc=shc_abc)
         self.Formula = Formula_SHC
-        self.final_factor = elementary_charge**2 / (* hbar * angstrom)
+        self.final_factor = elementary_charge**2 / (hbar * angstrom)
 
     def factor_omega(self, E1, E2):
         delta_minus = self.smear(E2 - E1 - self.omega)
