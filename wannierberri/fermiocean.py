@@ -4,7 +4,7 @@ from collections import defaultdict
 from . import __result as result
 from math import ceil
 from . import covariant_formulak as frml
-from .formula import FormulaProduct
+from .formula import FormulaProduct, FormulaSum
 from . import covariant_formulak_basic as frml_basic
 from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom #, Boltzmann
 
@@ -21,14 +21,7 @@ Ang_SI = angstrom
 ###########
 # factors #
 ###########
-fac_morb_Z = -elementary_charge/2/hbar*Ang_SI**2 # change unit of m.B to (eV).
-#fac_ahc = -1e10 * elementary_charge ** 2 / hbar
-#fac_spin_hall = fac_ahc * -0.5
-#factor_ohmic=(elementary_charge/Ang_SI/hbar**2  # first, transform to SI, not forgeting hbar in velocities - now in  1/(kg*m^3)
-#                 *elementary_charge**2*TAU_UNIT  # multiply by a dimensional factor - now in A^2*s^2/(kg*m^3*tau_unit) = S/(m*tau_unit)
-#                ) # now in  S/(cm*tau_unit)
-#factor_Hall_classic=elementary_charge**2*Ang_SI/hbar**3  # first, transform to SI, not forgeting hbar in velocities - now in  m/(J*s^3)
-#factor_Hall_classic*=elementary_charge**3/hbar*TAU_UNIT**2  # multiply by a dimensional factor - now in A^3*s^5*cm/(J^2*tau_unit^2) = S/(T*m*tau_unit^2)
+fac_morb_Z = elementary_charge/2/hbar*Ang_SI**2 # change unit of m.B to (eV).
 
 # Anomalous Hall conductivity
 factor_t0_1_0 = -(elementary_charge**2 / hbar / Ang_SI) 
@@ -72,11 +65,44 @@ def cumdos(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, 
 
 
 def spin(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
+    r""" 
+    :math: `\int [dk] S f_0`
+    """
     return FermiOcean(
         frml.Spin(data_K), data_K, Efermi, tetra, fder=0, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)()
 
+def berry(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
+    r""" 
+    :math: `\int [dk] \Omega f_0`
+    """
+    return FermiOcean(
+        frml.Omega(data_K, **kwargs_formula),
+        data_K,
+        Efermi,
+        tetra,
+        fder=0,
+        degen_thresh=degen_thresh,
+        degen_Kramers=degen_Kramers)()
+
+
+def berry_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
+    r""" 
+    :math: `\int [dk] \Omega f_0`
+    """
+    return FermiOcean(
+        frml_basic.tildeFc(data_K, **kwargs_formula),
+        data_K,
+        Efermi,
+        tetra,
+        fder=0,
+        degen_thresh=degen_thresh,
+        degen_Kramers=degen_Kramers)()
 
 def Morb(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
+    r""" 
+    :math: `-\int [dk] (H + G - 2Ef*\Omega) f_0`
+    Unit: \mu_B
+    """
     fac_morb = -eV_au / bohr**2
     return (
         FermiOcean(
@@ -91,6 +117,10 @@ def Morb(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **
 
 
 def Morb_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
+    r""" 
+    :math: `-\int [dk] (H + G - 2Ef*\Omega) f_0`
+    Unit: \mu_B
+    """
     fac_morb = -eV_au / bohr**2
     return (
         FermiOcean(
@@ -266,9 +296,9 @@ def spin_hall_ryoo(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=Fal
 def AHC(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r""" 
     Anoumalous Hall conductivity with fermi sea integral. (s^3 * A^2 / (kg * m^3) = S/m )
-    :math: `\sigma^{\tau^0;1,0}_{\alpha\beta} = -\int [dk] \Omega f_0`
+    :math: `\sigma^{\tau^0;1,0}_{\alpha\beta} = -\int [dk] \epsilon_{\alpha\beta\delta}  \Omega_\delta f_0`
     """
-    return FermiOcean(
+    res = FermiOcean(
         frml.Omega(data_K, **kwargs_formula),
         data_K,
         Efermi,
@@ -276,6 +306,8 @@ def AHC(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **k
         fder=0,
         degen_thresh=degen_thresh,
         degen_Kramers=degen_Kramers)() * factor_t0_1_0
+    res.data = np.einsum('abd,nd->nab', Levi_Civita, res.data)
+    return res
 
 
 def AHC_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
@@ -290,8 +322,9 @@ def AHC_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False
         tetra,
         fder=0,
         degen_thresh=degen_thresh,
-        degen_Kramers=degen_Kramers)()
-    return res * factor_t0_1_0
+        degen_Kramers=degen_Kramers)() * factor_t0_1_0
+    res.data = np.einsum('abd,nd->nab', Levi_Civita, res.data)
+    return res
 
 
 def ohmic_fsurf(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
@@ -544,6 +577,27 @@ def eMChA(data_K,Efermi,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwar
 #####################
 ### Zeeman terms  ###
 #####################
+
+
+def F_sum(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    r""" sigma10Ztau0 fermi sea"""
+    formula_1  = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula),frml.DerMorb(data_K,**kwargs_formula)], name='berry-morb_Hpm')
+    formula_2  = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula),frml.DerOmega(data_K,**kwargs_formula)], name='berry-berry')
+    res =  FermiOcean(formula_1,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res2 = FermiOcean(formula_2,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res.data -= res2.data.transpose(0,1,3,2)
+    res.data = res.data*fac_morb_Z*factor_t0_1_0
+    return res
+
+def F_sum_test(data_K,Efermi,kpart=None,tetra=False,degen_thresh=1e-4,degen_Kramers=False,**kwargs_formula):
+    r""" sigma10Ztau0 fermi sea"""
+    F_sum = FormulaSum ([frml.DerMorb(data_K,**kwargs_formula), frml.DerOmega(data_K,**kwargs_formula)], [1.,-1], ['ab','ba'], name = 'sum')
+    formula  = FormulaProduct ( [frml.Omega(data_K,**kwargs_formula), F_sum], name='berry-berry')
+    res =  FermiOcean(formula,data_K,Efermi,tetra,fder=1,degen_thresh=degen_thresh,degen_Kramers=degen_Kramers)()
+    res.data = res.data*fac_morb_Z*factor_t0_1_0
+    return res
+
+
 
 #TODO How to use one matrix for Morb. Not morb_Hpm and berry*mul_array(Efermi).(Efemri only work after FermiOcean.)
 # And think how calculate less terms.

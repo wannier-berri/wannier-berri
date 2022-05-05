@@ -122,64 +122,42 @@ class FormulaProduct(Formula_ln):
         raise NotImplementedError()
 
 
-class FormulaProduct_2(Formula_ln):
-    """a class to store a product of several formulae (when have same index)"""
+class FormulaSum(Formula_ln):
+    """a class to store a sum of several formulae
+    Parameters
+    ----------
+    formula_list: list
+        list of formulas
+    index_list: list of string
+        Index of formulas. 
+        All formulas will transpose to index of first formula in the list before sum together.
+    
+    return an array with same index with first formula. 
+    """
 
-    def __init__(self, formula_list, index_list, name="unknown", hermitian=False, dot=False):
+    def __init__(self, formula_list, sign, index_list, name="unknown"):
         if type(formula_list) not in (list, tuple):
             formula_list = [formula_list]
-        self.TRodd = bool(sum(f.TRodd for f in formula_list) % 2)
-        self.Iodd = bool(sum(f.Iodd for f in formula_list) % 2)
+        assert len(formula_list) > 0, 'formula_list is empty' 
+        TRodd_list = [f.TRodd for f in formula_list]
+        Iodd_list = [f.Iodd for f in formula_list]
+        assert len(set(TRodd_list)) == 1, 'formula in formula_list have different TRodd' 
+        assert len(set(Iodd_list)) == 1, 'formula in formula_list have different Iodd' 
+        self.TRodd = TRodd_list[0] 
+        self.Iodd = Iodd_list[0]
         self.name = name
         self.formulae = formula_list
         self.index = index_list
-        self.hermitian = hermitian
-        self.einsumlines = []
-        if dot:
-            self.einsumlines.append("LM" + self.index[0] + ",MN" + self.index[1] + "->LN")
-            self.ndim = 0
-        else:
-            save_index = self.index[0]
-            for i in range(len(self.index) - 1):
-                result_index = "".join(dict.fromkeys(save_index + self.index[i + 1]))
-                self.einsumlines.append("LM" + save_index + ",MN" + self.index[i + 1] + "->LN" + result_index)
-                save_index = result_index
-            self.ndim = len(save_index)
+        self.sign = sign
+        self.ndim = formula_list[0].ndim
 
     def nn(self, ik, inn, out):
         matrices = [frml.nn(ik, inn, out) for frml in self.formulae]
-        res = matrices[0]
-        for mat, line in zip(matrices[1:], self.einsumlines):
-            res = np.einsum(line, res, mat)
-        if self.hermitian:
-            res = 0.5 * (res + res.swapaxes(0, 1).conj())
+        res = self.sign[0] * matrices[0]
+        for mat, sign, index in zip(matrices[1:], self.sign[1:], self.index[1:]):
+            res += sign * np.einsum('MN' + index + '->MN' + self.index[0], mat)
         return np.array(res, dtype=complex)
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
-
-class ProductDelta(Formula_ln):
-    """ """
-
-    def __init__(self, matrix, index_list):
-        self.delta = np.eye(3)
-        self.TRodd = matrix.TRodd
-        self.Iodd = matrix.Iodd
-        self.matrix = matrix
-        self.index = index_list
-        self.ndim = len("".join(dict.fromkeys(self.index[0] + self.index[1])))
-
-    def nn(self, ik, inn, out):
-        matrix = self.matrix.nn(ik, inn, out)
-        res = np.einsum(
-            "" + self.index[0] + ",ML" + self.index[1] + "->ML" + "".join(dict.fromkeys(self.index[0] + self.index[1])),
-            self.delta, matrix)
-        return np.array(res, dtype=complex)
-
-    def ln(self, ik, inn, out):
-        matrix = self.matrix.ln(ik, inn, out)
-        res = np.einsum(
-            "" + self.index[0] + ",ML" + self.index[1] + "->ML" + "".join(dict.fromkeys(self.index[0] + self.index[1])),
-            self.delta, matrix)
-        return np.array(res, dtype=complex)
