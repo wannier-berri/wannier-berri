@@ -150,7 +150,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             0,
             fout_name_ref="kubo_Fe_W90",
             suffix_ref=quant,
-            precision=1e-8,
+            precision=1e-6,
             result_type=EnergyResult)
 
     extra_precision = {'berry': 1e-6}
