@@ -13,8 +13,8 @@
 
 import numpy as np
 from termcolor import cprint
-from .__utility import real_recip_lattice
-from .__system import System
+from wannierberri.__utility import real_recip_lattice
+from .system import System
 
 
 class System_tb(System):

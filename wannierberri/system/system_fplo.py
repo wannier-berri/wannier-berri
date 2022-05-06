@@ -13,9 +13,9 @@
 
 import numpy as np
 
-from .__utility import str2bool, real_recip_lattice
+from wannierberri.__utility import str2bool, real_recip_lattice
 from termcolor import cprint
-from .__system import System
+from .system import System
 from collections import defaultdict
 from scipy.constants import physical_constants, angstrom
 

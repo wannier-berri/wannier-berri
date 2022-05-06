@@ -10,7 +10,7 @@ from wannierberri.__w90_files import UHU, UIU, SHU, SIU, SPN
 
 @pytest.fixture(scope="module")
 def generate_formatted_files(create_files_GaAs_W90):
-    """Create formatted files for Fe using mmn2uHu"""
+    """Create formatted files for Fe using utils.mmn2uHu"""
 
     data_dir = create_files_GaAs_W90
 
@@ -33,7 +33,7 @@ def generate_formatted_files(create_files_GaAs_W90):
             else:
                 kwargs[tag + "_formatted"] = True
 
-        nb_out_list = wberri.mmn2uHu.run_mmn2uHu(
+        nb_out_list = wberri.utils.mmn2uHu.run_mmn2uHu(
             "GaAs", INPUTDIR=data_dir, OUTDIR=str(data_dir) + "/reduced_formatted", **kwargs)
 
         nb_out = nb_out_list[0]
