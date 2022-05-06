@@ -14,7 +14,7 @@
 
         Usage example: ::
 
-                python3 -m wannierberri.mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu
+                python3 -m wannierberri.utils.mmn2uHu seedname NBout=10 NBsum=100,200  targets=mmn,uHu formatted=uHu
 
 
         Options
@@ -52,7 +52,7 @@
 import numpy as np
 import os
 import datetime
-from .__utility import FortranFileR, FortranFileW
+from wannierberri.__utility import FortranFileR, FortranFileW
 
 
 def hlp():
