@@ -72,7 +72,7 @@ class SymWann():
         self.parity_I = {
             'AA': 1,
             'BB': 1,
-            'CC': 1,
+            'CC': -1,
             'SS': -1
         }  #{'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
         self.parity_TR = {
@@ -397,7 +397,7 @@ class SymWann():
                                                                                     new_Rvec_index]
 
                                 for X in self.matrix_list:
-                                    if X in ['AA', 'BB', 'SS']:
+                                    if X in ['AA', 'BB', 'SS', 'CC', 'FF']:
                                         num_w_a = len(
                                             sum(self.wann_atom_info[atom_a][4], []))  #number of orbitals of atom_a
                                         #X_L: only rotation wannier centres from L to L' before rotating orbitals.
@@ -421,18 +421,6 @@ class SymWann():
                                         matrix_list_all[X][iR, atom_a, atom_b,
                                                            self.H_select[atom_a, atom_b], :] = np.einsum(
                                                                'ij,nmi->nmj', self.rot_c[rot], XX_L).reshape(-1, 3)
-                                    elif X in ['CC', 'FF']:
-                                        XX_L = self.matrix_list[X][self.H_select[rot_map[atom_a], rot_map[atom_b]],
-                                                                   new_Rvec_index, :]
-                                        #vector back to tensor
-                                        shape = np.shape(XX_L)
-                                        XXab_L = np.zeros((shape[0],3,3),dtype=complex)
-                                        XXab_L[:, alpha_A, beta_A] = -0.5j * XX_L
-                                        XXab_L[:, beta_A, alpha_A] = 0.5j * XX_L
-                                        XXab_rot = np.einsum('ai,bj,mab->mij', self.rot_c[rot], self.rot_c[rot], XXab_L)
-                                        #antisymetric part
-                                        XX_rot = 1j * (XXab_rot[:, alpha_A, beta_A] - XXab_rot[:, beta_A, alpha_A])
-                                        matrix_list_all[X][iR, atom_a, atom_b,self.H_select[atom_a, atom_b], :] = XX_rot
                                     else:
                                         print(f"WARNING: Symmetrization of {X} is not implemented")
                             else:
