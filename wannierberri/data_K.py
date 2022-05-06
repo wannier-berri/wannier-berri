@@ -15,7 +15,7 @@
 import numpy as np
 import lazy_property
 from .__parallel import pool
-from .__system import System
+from .system.system import System
 from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A
 from .__tetrahedron import TetraWeights, get_bands_in_range, get_bands_below_range
 from .formula import Matrix_ln, Matrix_GenDer_ln

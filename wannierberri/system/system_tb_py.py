@@ -13,7 +13,7 @@
 
 import numpy as np
 from termcolor import cprint
-from .__system import System
+from .system import System
 
 
 class System_tb_py(System):

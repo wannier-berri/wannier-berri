@@ -31,7 +31,7 @@ Efermi_Chiral = np.linspace(-5, 8, 27)
 def create_W90_files(seedname, tags_needed, data_dir):
     """
     Extract the compressed amn and mmn data files.
-    Create files listed in tags_needed using mmn2uHu.
+    Create files listed in tags_needed using utils.mmn2uHu.
     """
 
     # Extract files if is not already done
@@ -52,7 +52,7 @@ def create_W90_files(seedname, tags_needed, data_dir):
         for tag in tags_compute:
             kwargs["write" + tag.upper()] = True
 
-        nb_out_list = wberri.mmn2uHu.run_mmn2uHu(
+        nb_out_list = wberri.utils.mmn2uHu.run_mmn2uHu(
             seedname, INPUTDIR=data_dir, OUTDIR=str(data_dir) + "/reduced", **kwargs)
         nb_out = nb_out_list[0]
 
