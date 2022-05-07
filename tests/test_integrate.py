@@ -246,13 +246,13 @@ def test_Fe_sym_W90(check_integrate, system_Fe_sym_W90, compare_energyresult):
     """Test anomalous Hall conductivity , spin
         using symmetrized model, without further summetrization"""
     check_integrate(
-        system_Fe_sym_W90, ['ahc', 'spin'],
+        system_Fe_sym_W90, ['ahc', 'spin', 'Morb'],
         fout_name="berry_Fe_sym_W90",
         use_symmetry=False,
         Efermi=Efermi_Fe,
         comparer=compare_energyresult)
     check_integrate(
-        system_Fe_sym_W90, ["gyrotropic_Kspin", "berry_dipole"],
+        system_Fe_sym_W90, ["gyrotropic_Kspin", "berry_dipole", "gyrotropic_Korb"],
         fout_name="berry_Fe_sym_W90",
         use_symmetry=False,
         Efermi=Efermi_Fe,
@@ -264,14 +264,14 @@ def test_Fe_sym_W90_sym(check_integrate, system_Fe_sym_W90, compare_energyresult
     """Test anomalous Hall conductivity , spin
         using symmetrized model and further symmetrization ( which should not have effect )"""
     check_integrate(
-        system_Fe_sym_W90, ['ahc', 'spin'],
+        system_Fe_sym_W90, ['ahc', 'spin', 'Morb'],
         fout_name="berry_Fe_sym_W90",
         suffix="sym",
         use_symmetry=True,
         Efermi=Efermi_Fe,
         comparer=compare_energyresult)
     check_integrate(
-        system_Fe_sym_W90, ["gyrotropic_Kspin", "berry_dipole"],
+        system_Fe_sym_W90, ["gyrotropic_Kspin", "berry_dipole", "gyrotropic_Korb"],
         fout_name="berry_Fe_sym_W90",
         suffix="sym",
         use_symmetry=True,
