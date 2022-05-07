@@ -13,7 +13,6 @@
 #------------------------------------------------------------#
 
 import numpy as np
-import multiprocessing
 from wannierberri.__utility import real_recip_lattice
 from .system_w90 import System_w90
 from termcolor import cprint
