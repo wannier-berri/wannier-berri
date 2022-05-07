@@ -85,10 +85,11 @@ class System():
         use the given wannier_centers (reduced) instead of those determined automatically. Incompatible with `wannier_centers_cart`
     npar : int
         number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
-    Notes:
-    -------
-        for tight-binding models it is recommended to use `use_wcc_phase = True`. In this case the external terms vanish, and
-        one can safely use `berry=False, morb=False`, and also set `'external_terms':False` in the parameters of the calculation
+
+    Notes
+    -----
+    + for tight-binding models it is recommended to use `use_wcc_phase = True`. In this case the external terms vanish, and
+    + one can safely use `berry=False, morb=False`, and also set `'external_terms':False` in the parameters of the calculation
 
     """.format(**default_parameters)
 
