@@ -3,12 +3,13 @@ import os
 
 import numpy as np
 import pytest
+import pickle
 
 import wannierberri as wberri
 from wannierberri import calculators as calc
 from wannierberri.__result import EnergyResult
 
-from common import OUTPUT_DIR
+from common import OUTPUT_DIR, REF_DIR
 from common_comparers import compare_quant
 from common_systems import Efermi_Fe, Efermi_GaAs, Efermi_Chiral, Efermi_Te_gpaw
 
@@ -388,3 +389,69 @@ def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, compare_any_result):
             '_CCab_antisym': True
         },
     )
+
+
+def test_tabulate_path(system_Haldane_PythTB):
+
+    k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
+    path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
+
+    calculators = {}
+    quantities = {
+                            "Energy":wberri.calculators.tabulate.Energy(),
+                            "berry":wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms":False}),
+                                  }
+
+    calculators ["tabulate"] = wberri.calculators.TabulatorAll(quantities,
+                                                       ibands=[0],
+                                                        mode="path")
+
+
+    run_result = wberri.run(
+        system=system_Haldane_PythTB,
+        grid=path,
+        calculators=calculators,
+        parallel=None,
+        use_irred_kpt=True,
+        symmetrize=True,  # should have no effect, but will check the cases and give a warning
+        #                parameters_K = parameters_K,
+        #                frmsf_name = None,
+        #                degen_thresh = degen_thresh, degen_Kramers = degen_Kramers
+    )
+
+
+    tab_result=run_result.results["tabulate"]
+    filename = "path_tab.pickle"
+    fout = open(os.path.join(OUTPUT_DIR, filename+"-run"), "wb")
+
+    data = {}
+    for quant in quantities.keys():
+        result_quant = tab_result.results.get(quant)
+        for comp in result_quant.get_component_list():
+            data[(quant, comp)] = result_quant.get_component(comp)
+    pickle.dump(data, fout)
+
+    data_ref = pickle.load(open(os.path.join(REF_DIR, filename), "rb"))
+
+    for quant in quantities.keys():
+        for comp in tab_result.results.get(quant).get_component_list():
+            _data = data[(quant, comp)]
+            _data_ref = data_ref[(quant, comp)]
+            assert _data == pytest.approx(_data_ref), (
+                f"tabulation along path gave a wrong result for quantity {quant} component {comp} "
+                + "with a maximal difference {}".format(max(abs(data - data_ref))))
+
+    # only checks that the plot runs without errors, not checking the result of the plot
+    tab_result.plot_path_fat(
+        path,
+        quantity='berry',
+        component='z',
+        save_file=os.path.join(OUTPUT_DIR, "Haldane-berry-VB.pdf"),
+        Eshift=0,
+        Emin=-2,
+        Emax=2,
+        iband=None,
+        mode="fatband",
+        fatfactor=20,
+        cut_k=True,
+        show_fig=False)

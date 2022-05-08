@@ -140,8 +140,9 @@ class Tabulator():
 
 class TABresult(result.Result):
 
-    def __init__(self, kpoints, recip_lattice, results={}):
+    def __init__(self, kpoints, recip_lattice, results={},mode="grid"):
         self.nband = results['Energy'].nband
+        self.mode = mode
         self.grid = None
         self.gridorder = None
         self.recip_lattice = recip_lattice
@@ -167,11 +168,12 @@ class TABresult(result.Result):
     def __add__(self, other):
         if other == 0:
             return self
+        assert self.mode == other.mode
         if self.nband != other.nband:
             raise RuntimeError(
                 "Adding results with different number of bands {} and {} - not allowed".format(self.nband, other.nband))
         results = {r: self.results[r] + other.results[r] for r in self.results if r in other.results}
-        return TABresult(np.vstack((self.kpoints, other.kpoints)), recip_lattice=self.recip_lattice, results=results)
+        return TABresult(np.vstack((self.kpoints, other.kpoints)), recip_lattice=self.recip_lattice, results=results, mode=self.mode)
 
     def save(self, name):
         return  # do nothing so far
@@ -182,12 +184,14 @@ class TABresult(result.Result):
     def savedata(self, name, prefix, suffix, i_iter):
         if i_iter > 0:
             pass  # so far do nothing on iterations, chang in future
-        else:
+        elif self.mode == "grid":
             self.self_to_grid()
             write_frmsf(
                 prefix + "-" + name, Ef0=0., numproc=None, quantities=self.results.keys(), res=self,
                 suffix=suffix)  # so far let it be the only mode, implement other modes in future
             # TODO : remove this messy call to external routine, which calls back an internal one
+        else:
+            pass # so far . TODO : implement writing to a text file
 
     @property
     def find_grid(self):
@@ -204,9 +208,10 @@ class TABresult(result.Result):
     def transform(self, sym):
         results = {r: self.results[r].transform(sym) for r in self.results}
         kpoints = [sym.transform_reduced_vector(k, self.recip_lattice) for k in self.kpoints]
-        return TABresult(kpoints=kpoints, recip_lattice=self.recip_lattice, results=results)
+        return TABresult(kpoints=kpoints, recip_lattice=self.recip_lattice, results=results, mode=self.mode)
 
     def to_grid(self, grid, order='C'):
+        assert (self.mode == "grid")
         print("setting the grid")
         grid1 = [np.linspace(0., 1., g, False) for g in grid]
         print("setting new kpoints")
@@ -339,7 +344,6 @@ class TABresult(result.Result):
 
         kline = path.getKline()
         E = self.get_data(quantity='Energy', iband=iband) - Eshift
-        print("shape of Energy", E.shape)
 
         plt.ylabel(r"$E$, eV")
         if Emin is None:
@@ -367,7 +371,6 @@ class TABresult(result.Result):
 
         if quantity is not None:
             data = self.get_data(quantity=quantity, iband=iband, component=component)
-            print("shape of data", data.shape)
             if mode == "fatband":
                 for ib in range(len(iband)):
                     e = E[:, ib]

@@ -21,6 +21,7 @@ from .data_K import Data_K
 from .__Kpoint import exclude_equiv_points
 from .__parallel import Parallel
 from .__result import ResultDict
+from .__path import Path
 
 
 def print_progress(count, total, t0):
@@ -44,6 +45,7 @@ def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}):
 
     if parallel.method == 'ray':
         remotes = [paralfunc.remote(dK, **remote_parameters) for dK in dK_list]
+
 
     print("processing {0} K points :".format(len(dK_list)), end=" ")
     if parallel.method == 'serial':
@@ -113,6 +115,20 @@ def run(
 ):
     """This will be a substitution for integrate() and tabulate(), and mostly is a copy of evaluate()
       so far let's implement without adaptive refinement (add it later) """
+
+    # along a path only tabulating is possible
+    if isinstance(grid,Path):
+        print ("Calculation along a path - checking calculators for compatibility")
+        for key,calc in calculators.items():
+            print (key,calc)
+            if not calc.allow_path:
+                raise ValueError(f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path")
+        print ("All calculators are compatible")
+        if symmetrize:
+            print ("Symmetrization switched off for Path")
+            symmetrize = False
+    else:
+        print ("Grid is regular")
 
     if parallel is None:
         parallel = Parallel()
@@ -211,7 +227,6 @@ def run(
             print("Warning: {0} \n the K_list was not pickled".format(err))
 
         time0 = time()
-        print(kp.get_res for kp in K_list)
         result_all = sum(kp.get_res for kp in K_list)
         time1 = time()
         print("time1 = ", time1 - time0)
