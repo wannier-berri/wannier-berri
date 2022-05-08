@@ -16,12 +16,13 @@
 #------------------------------------------------------------#
 '''This is a script to plot the band with line path (High symmetry line) or plane cut using tabulate calculation result from Wannierberri.
 Tested
-    NOTE:
+
+       NOTE:
 
           1. Please chose the line kpaths which are in the 1st BZ.
           2. The plane cut figure shows a plane cut of 2x2x2 reciprocal lattice.
           3. All k coordinate values in list like parameters should be integer. (means which k point).
-         eg. If k-grid is 12x12x12. kpoint (1/3,2/3,0.5) should be (4,8,6)
+             eg. If k-grid is 12x12x12. kpoint (1/3,2/3,0.5) should be (4,8,6)
           4. In order to ensure that more high symmetry points have k-grid points, you would better set NK as multiples of 12 when doing tabulate calculation.
 
         Usage example:
@@ -39,35 +40,35 @@ Tested
 
             type (String)
                 |  Type of plot.
-        |   Line: line cut
-        |   Plane: plane cut
+                |   Line: line cut
+                |   Plane: plane cut
                 |  Default: None
             quantity (Boolean)
                 |  Plot quantity or not.
-        |   False: Only plot energy of band.
-        |   True: Not only energy of band but also quantity(plot as color dot)
+                |   False: Only plot energy of band.
+                |   True: Not only energy of band but also quantity(plot as color dot)
                 |  Default: False
             o_point (list like)
-        |  k coordinate of origin.(type=Plane)
-        |  Two vectors and one origin can define a plane.
+                |  k coordinate of origin.(type=Plane)
+                |  Two vectors and one origin can define a plane.
                 |  Default: 0,0,0
             vec1 (list like)
                 |  k coordinate of one of the two vectors. (type=Plane)
-        |  Only direction of vector work. (0,0,1) == (0,0,6)
-        |  And it is the horizontal axis of plot.
+                |  Only direction of vector works. (0,0,1) == (0,0,6)
+                |  And it is the horizontal axis of plot.
                 |  Default: 0,0,1
             vec2 (list like)
                 |  k coordinate of one of the two vectors. (type=Plane)
-        |  Only direction of vector work. (0,1,0) == (0,6,0)
+                |  Only direction of vector work. (0,1,0) == (0,6,0)
                 |  Default: 0,1,0
             kpath (list like)
                 |  Starting points and ending points of k-path. (type=Plane)
-        |  6 elements are one group, the first three elements are k coordinate of starting point and the back three elements are k coordinate of ending point. It should have multiples of 6 elements.
-        |  coordinates are given as integers on the grid
-        |  Default: 0,0,0,0,0,40
+                |  6 elements are one group, the first three elements are k coordinate of starting point and the back three elements are k coordinate of ending point. It should have multiples of 6 elements.
+                |  coordinates are given as integers on the grid
+                |  Default: 0,0,0,0,0,40
             Efermi (float)
                 |  Fermi level when (type=Line)
-        |  Plotting energy (when type=Plane)
+                |  Plotting energy (when type=Plane)
                 |  default: 0.0
             E_min, E_max (float)
                 |  Energy window of plot. (type=Line)

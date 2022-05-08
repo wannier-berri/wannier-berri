@@ -168,7 +168,7 @@ def integrate(
         write results after each iteration as text files (".dat")
     write_bin : bool
         write results after each iteration as binary files (".npz").
-        See :ref:`wannierberri.__result.EnergyResult.save` for file format
+        See :func:`~wannierberri.__result.EnergyResult.save` for file format
     print_Kpoints : bool
         print the list of K points
     parameters : dict
