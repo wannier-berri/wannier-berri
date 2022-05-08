@@ -23,48 +23,22 @@ class Calculator():
 #                                     #
 #######################################
 
-class StaticCalculator_Morb(Calculator):
-
-    def __init__(self, Efermi, tetra=False):
-        self.Efermi = Efermi
-        assert hasattr(self, 'factor')
-        assert hasattr(self, 'Hplus')
-        assert hasattr(self, 'Omega')
-        try:
-            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
-        except:
-            pass
-        
-        cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
-
-    def __call__(self. data_K):
-
-        res = (hplus - 2 * self.Omega.mul_array(self.Efermi)
-        return res
-    def __init__(self, Efermi, tetra=False, kwargs_formula={}, **kwargs):
-        self.Efermi = Efermi
-        self.tetra = tetra
-        self.kwargs_formula = kwargs_formula
-        formula_hplus = self.Formula_Hplus(data_K, **self.kwargs_formula)
-        formula_omega = self.Formula_Omega(data_K, **self.kwargs_formula)
-         
-
-
 class StaticCalculator(Calculator):
 
-    def __init__(self, Efermi, tetra=False, kwargs_formula={}, **kwargs):
+    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
         self.Efermi = Efermi
         self.tetra = tetra
         self.kwargs_formula = kwargs_formula
-        assert hasattr(self, 'factor')
+        assert hasattr(self, 'factor'), "factor not set"
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
         assert hasattr(self, 'Formula'), "Formula not set - it  should be class with a trace(ik,inn,out) method "
-        try:
+        if print_comment:
+            assert hasattr(self, 'comment'), "comment not set"
             cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
-        except:
-            pass
-
+        if not use_factor:
+            self.factor = np.sign(self.factor)
+        
         if not self.tetra:
             self.extraEf = 0 if self.fder == 0 else 1 if self.fder in (1, 2) else 2 if self.fder == 3 else None
             self.dEF = Efermi[1] - Efermi[0]
@@ -75,7 +49,6 @@ class StaticCalculator(Calculator):
         super().__init__(**kwargs)
 
     def __call__(self, data_K):
-
         nk = data_K.nk
         NB = data_K.num_wann
         formula = self.Formula(data_K, **self.kwargs_formula)
@@ -110,7 +83,7 @@ class StaticCalculator(Calculator):
                 _values = {}
                 for n in nnall:
                     inn = np.arange(0, n)
-                    out = np.arange(n, self.NB)
+                    out = np.arange(n, NB)
                     _values[n] = formula.trace(ik, inn, out)
                 for n in bnd:
                     values[ik][n] = _values[n[1]] - _values[n[0]]
