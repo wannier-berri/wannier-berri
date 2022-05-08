@@ -1,11 +1,10 @@
-from wannierberri import __result as result
-from wannierberri.__tabulate import TABresult
 import numpy as np
 import abc, functools
-from wannierberri.__kubo import Gaussian, Lorentzian
 from collections import defaultdict
 from math import ceil
-# from numba import njit
+from wannierberri.__utility import Gaussian, Lorentzian
+from wannierberri.__result_tab import KBandResult,TABresult
+from wannierberri.__result import EnergyResult
 
 
 class Calculator():
@@ -115,7 +114,7 @@ class StaticCalculator(Calculator):
 
         restot *= self.factor / (data_K.nk * data_K.cell_volume)
 
-        res = result.EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd)
+        res = EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd)
         res.set_save_mode(self.save_mode)
         return res
 
@@ -207,7 +206,7 @@ class DynamicCalculator(Calculator, abc.ABC):
                                       * matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
         restot = restot.reshape(restot_shape).swapaxes(0, 1)  # swap the axes to get EF,omega,a,b,...
         restot[:] *= self.final_factor / (data_K.nk * data_K.cell_volume)
-        return result.EnergyResult(
+        return EnergyResult(
             [self.Efermi, self.omega], restot, TRodd=formula.TRodd, Iodd=formula.Iodd, TRtrans=formula.TRtrans)
 
 
@@ -257,7 +256,7 @@ class Tabulator(Calculator):
                 values[n] = formula.trace(ik, inn, out) / (n[1] - n[0])
             for ib, b in enumerate(ibands):
                 rslt[ik, ib] = values[group[ik][ib]]
-        return result.KBandResult(rslt, TRodd=formula.TRodd, Iodd=formula.Iodd)
+        return KBandResult(rslt, TRodd=formula.TRodd, Iodd=formula.Iodd)
 
 
 class TabulatorAll(Calculator):

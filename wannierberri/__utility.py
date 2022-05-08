@@ -50,8 +50,6 @@ class FortranFileW(scipy.io.FortranFile):
 
 alpha_A = np.array([1, 2, 0])
 beta_A = np.array([2, 0, 1])
-TAU_UNIT = 1E-9  # tau in nanoseconds
-TAU_UNIT_TXT = "ns"
 
 
 def print_my_name_start():
@@ -436,3 +434,27 @@ def get_angle(sina, cosa):
     if sina < 0.0:
         alpha = 2.0 * np.pi - alpha
     return alpha
+
+# smearing functions
+def Lorentzian(x, width):
+    return 1.0 / (np.pi * width) * width**2 / (x**2 + width**2)
+
+
+def Gaussian(x, width, adpt_smr):
+    '''
+    Compute 1 / (np.sqrt(pi) * width) * exp(-(x / width) ** 2)
+    If the exponent is less than -200, return 0.
+    An unoptimized version is the following.
+        def Gaussian(x, width, adpt_smr):
+            return 1 / (np.sqrt(pi) * width) * np.exp(-np.minimum(200.0, (x / width) ** 2))
+    '''
+    inds = abs(x) < width * np.sqrt(200.0)
+    output = np.zeros_like(x)
+    if adpt_smr:
+        # width is array
+        width_tile = np.tile(width, (x.shape[0], 1, 1))
+        output[inds] = 1.0 / (np.sqrt(np.pi) * width_tile[inds]) * np.exp(-(x[inds] / width_tile[inds])**2)
+    else:
+        # width is number
+        output[inds] = 1.0 / (np.sqrt(np.pi) * width) * np.exp(-(x[inds] / width)**2)
+    return output

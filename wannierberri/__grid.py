@@ -17,7 +17,7 @@ from time import time
 from . import symmetry
 import lazy_property
 from .__Kpoint import KpointBZ
-from .__finite_differences import FiniteDifferences
+#from .__finite_differences import FiniteDifferences
 
 
 class Grid():
@@ -60,7 +60,7 @@ class Grid():
         self.symgroup = system.symgroup if use_symmetry else symmetry.Group(real_lattice=system.real_lattice)
         self.div, self.FFT = determineNK(
             system.periodic, NKdiv, NKFFT, NK, NKFFT_recommended, self.symgroup, length=length, length_FFT=length_FFT)
-        self.findif = FiniteDifferences(self.recip_lattice, self.FFT)
+#        self.findif = FiniteDifferences(self.recip_lattice, self.FFT)
 
     @property
     def str_short(self):

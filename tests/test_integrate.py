@@ -6,7 +6,7 @@ import pytest
 from pytest import approx
 
 import wannierberri as wberri
-from wannierberri import fermiocean
+from wannierberri.__old_API import fermiocean
 
 from common import OUTPUT_DIR
 from common_comparers import compare_quant
@@ -177,7 +177,7 @@ def test_Fe(check_integrate, system_Fe_W90, compare_energyresult, quantities_Fe)
 def test_Fe_user(check_integrate, system_Fe_W90, compare_energyresult, quantities_Fe):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
 
-    calculators = {
+    calculators =  {
         'Morb': fermiocean.Morb,
         'ahc': fermiocean.AHC,
         'ahc_test': fermiocean.AHC_test,

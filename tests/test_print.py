@@ -4,4 +4,4 @@ import wannierberri as wb
 
 def test_print():
     wb.welcome()
-    wb.print_options()
+    wb.__old_API.__main.print_options()
