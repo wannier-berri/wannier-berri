@@ -151,7 +151,7 @@ def main():
     if quantity:
         QMAT = np.zeros((NB, NK[0], NK[1], NK[2]), dtype=float)
     for ib in range(NB):
-        EIGMAT[ib] = tab_result.get_data(iband=ib, quantity='E')
+        EIGMAT[ib] = tab_result.get_data(iband=ib, quantity='Energy')
         if quantity:
             QMAT[ib] = tab_result.get_data(iband=ib, quantity=qtype, component=component)
     EIGMAT = np.kron(np.ones((2, 2, 2)), EIGMAT)

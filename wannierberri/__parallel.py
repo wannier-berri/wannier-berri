@@ -6,10 +6,10 @@ class Parallel():
 
     Parameters
     -----------
-    method : str
-        a method to be used for parallelization 'serial' or 'ray'
     num_cpus : int
         number of parallel processes. If <=0  - serial execution
+    npar_k : int 
+        additional parallelisation ove k-points inside the FFT grid
     cluster : bool
         set to `True` to use a multi-node ray cluster ( see also `wannierberri.cluster <file:///home/stepan/github/wannier-berri-org/html/docs/parallel.html#multi-node-mode>`__  module)
     ray_init : dict
@@ -20,25 +20,14 @@ class Parallel():
 
     def __init__(
             self,
-            method=None,
             num_cpus=0,
             npar_k=0,
             ray_init={},  # add extra parameters for ray.init()
             cluster=False,  # add parameters for ray.init() for the slurm cluster
             progress_step_percent=1):
 
-        if method is None:
-            if num_cpus <= 0:
-                method = "serial"
-            else:
-                method = "ray"
-
-        self.method = method
+        self.method = "ray" if num_cpus>0 else "serial"
         self.progress_step_percent = progress_step_percent
-
-        if cluster:
-            if self.method != "ray":
-                print("WARNING: cluster (multinode) computation is possible only with 'ray' parallelization")
 
         if self.method == "serial":
             self.num_cpus = 1

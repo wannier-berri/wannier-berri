@@ -315,6 +315,7 @@ class TABresult(result.Result):
             label=None,
             fatmax=None,
             cut_k=True,
+            linecolor = 'black',
             close_fig=True,
             show_fig=True
                     ):
@@ -339,7 +340,7 @@ class TABresult(result.Result):
 
         kline = path.getKline()
         E = self.get_data(quantity='Energy', iband=iband) - Eshift
-        print("shape of Energy", E.shape)
+#        print("shape of Energy", E.shape)
 
         plt.ylabel(r"$E$, eV")
         if Emin is None:
@@ -351,9 +352,11 @@ class TABresult(result.Result):
         for ib in range(len(iband)):
             e = E[:, ib]
             selE = (e <= Emax) * (e >= Emin)
-            klineselE = kline[selE]
-            klineall.append(klineselE)
-            _line, = plt.plot(klineselE, e[selE], **kwargs_line)
+            e[~selE] = None
+            if np.any(selE):
+                klineselE = kline[selE]
+                klineall.append(klineselE)
+                _line, = plt.plot(kline, e, c = linecolor,**kwargs_line)
         if label is not None:
             _line.set_label(label)
             plt.legend()
@@ -367,7 +370,7 @@ class TABresult(result.Result):
 
         if quantity is not None:
             data = self.get_data(quantity=quantity, iband=iband, component=component)
-            print("shape of data", data.shape)
+#            print("shape of data", data.shape)
             if mode == "fatband":
                 for ib in range(len(iband)):
                     e = E[:, ib]
