@@ -315,7 +315,7 @@ class TABresult(result.Result):
             label=None,
             fatmax=None,
             cut_k=True,
-            linecolor = 'black',
+            linecolor='black',
             close_fig=True,
             show_fig=True
                     ):
@@ -356,7 +356,7 @@ class TABresult(result.Result):
             if np.any(selE):
                 klineselE = kline[selE]
                 klineall.append(klineselE)
-                _line, = plt.plot(kline, e, c = linecolor,**kwargs_line)
+                _line, = plt.plot(kline, e, c=linecolor,**kwargs_line)
         if label is not None:
             _line.set_label(label)
             plt.legend()

@@ -8,7 +8,7 @@ class Parallel():
     -----------
     num_cpus : int
         number of parallel processes. If <=0  - serial execution
-    npar_k : int 
+    npar_k : int
         additional parallelisation ove k-points inside the FFT grid
     cluster : bool
         set to `True` to use a multi-node ray cluster ( see also `wannierberri.cluster <file:///home/stepan/github/wannier-berri-org/html/docs/parallel.html#multi-node-mode>`__  module)
