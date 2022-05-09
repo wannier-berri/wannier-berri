@@ -54,7 +54,7 @@ def test_cluster_script(cluster_type, check_command_output):
         raise ValueError("cluster_type not identified. Only slurm or pbs.")
 
     command = [
-        'python', '-m', 'wannierberri.cluster', '--batch-system', cluster_type, '--exp-name',
+        'python', '-m', 'wannierberri.utils.cluster', '--batch-system', cluster_type, '--exp-name',
         'my_first_job_' + cluster_type, '--num-nodes', '4', '--partition', 'express', '--command',
         "'python -u wb-example.py'", '--num-gpus=3', '--sleep-head', '12.34', '--sleep-worker=5', '--no-submit'
     ]

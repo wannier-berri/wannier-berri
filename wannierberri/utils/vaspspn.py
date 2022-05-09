@@ -11,7 +11,7 @@
 
     usage : ::
 
-        python3 -m wannierberri.vaspspn   option=value
+        python3 -m wannierberri.utils.vaspspn   option=value
 
     Options
         -h
@@ -45,7 +45,7 @@ def hlp():
 
 def main():
     import sys
-    from .__utility import FortranFileW
+    from wanierberri.__utility import FortranFileW
     import numpy as np
     import datetime
 

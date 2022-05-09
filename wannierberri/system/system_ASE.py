@@ -13,9 +13,8 @@
 #------------------------------------------------------------#
 
 import numpy as np
-import multiprocessing
-from .__utility import real_recip_lattice
-from .__system_w90 import System_w90
+from wannierberri.__utility import real_recip_lattice
+from .system_w90 import System_w90
 from termcolor import cprint
 
 
@@ -27,15 +26,6 @@ class System_ASE(System_w90):
     ----------
     ase_wannier :
         An object of  `ASE Wannier <https://wiki.fysik.dtu.dk/ase/_modules/ase/dft/wannier.html#Wannier>`__ .
-    ase_calc : ASE calculator (GPAW)
-        needed only when `berry=True`
-    transl_inv : bool
-        Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
-    npar : int
-        number of processes used in the constructor
-    fft : str
-        library used to perform the fast Fourier transform from **q** to **R**. ``fftw`` or ``numpy``. (practically does not affect performance,
-        anyway mostly time of the constructor is consumed by reading the input files)
 
     Notes
     -----
@@ -44,11 +34,7 @@ class System_ASE(System_w90):
     def __init__(
                 self,
                 ase_wannier,
-                ase_calc=None,
-                transl_inv=True,
-                fft='fftw',
                 ase_R_vectors=False,  # for testing vs ASE
-                npar=multiprocessing.cpu_count(),
                 **parameters):
         self.set_parameters(**parameters)
         self.seedname = "ASE"
