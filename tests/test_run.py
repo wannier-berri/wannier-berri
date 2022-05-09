@@ -86,9 +86,6 @@ calculators_Fe = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea,
 }
 
-#,'ahc_test','dos','cumdos',
-#           'conductivity_ohmic','conductivity_ohmic_fsurf','Morb','Morb_test']
-
 calculators_GaAs = {
     'berry_dipole': calc.static.NLAHC_FermiSea(Efermi=Efermi_GaAs, use_factor=False),
     'berry_dipole_fsurf': calc.static.NLAHC_FermiSurf(Efermi=Efermi_GaAs, use_factor=False),

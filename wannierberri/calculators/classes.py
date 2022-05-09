@@ -23,6 +23,7 @@ class Calculator():
 #                                     #
 #######################################
 
+
 class StaticCalculator(Calculator):
 
     def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
@@ -49,6 +50,7 @@ class StaticCalculator(Calculator):
         super().__init__(**kwargs)
 
     def __call__(self, data_K):
+
         nk = data_K.nk
         NB = data_K.num_wann
         formula = self.Formula(data_K, **self.kwargs_formula)

@@ -13,7 +13,6 @@ import numpy as np
 
 #  TODO: Ideally, a docstring of every calculator should contain the equation that it implements
 #        and references (with urls) to the relevant papers
-#  XxLiu: Add references url later
 
 ######################
 # physical constants #
