@@ -229,7 +229,7 @@ class DerHplus_test(StaticCalculator):
         self.fder = 0
         self.comment = r""":math: `\int [dk] \partial_\alpha (H + G)_\mu f` for testing"""
         super().__init__(**kwargs)
-    
+
     def __call__(self, data_K):
         res = super().__call__(data_K)
         # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
