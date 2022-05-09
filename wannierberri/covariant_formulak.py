@@ -542,10 +542,10 @@ class VelMassVel(FormulaProduct):
             data_K.covariant('Ham', commader=1)], name='VelMassVel')
 
 
-class SOmega(FormulaProduct):
+class OmegaS(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
-        super().__init__([Spin(data_K), Omega(data_K, **kwargs_formula)], name='SpinOmega')
+        super().__init__([Omega(data_K, **kwargs_formula), Spin(data_K)], name='SpinOmega')
 
 
 class OmegaOmega(FormulaProduct):
