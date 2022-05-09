@@ -83,28 +83,54 @@ def check_run(parallel_serial, compare_any_result):
 
 calculators_Fe = {
     'ahc': calc.static.AHC,
-    'conductivity_ohmic': calc.static.Ohmic,
+    'conductivity_ohmic': calc.static.Ohmic_FermiSea,
 }
+
 #,'ahc_test','dos','cumdos',
 #           'conductivity_ohmic','conductivity_ohmic_fsurf','Morb','Morb_test']
 
 calculators_GaAs = {
-    'berry_dipole': calc.static.BerryDipole_FermiSea,
-    'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf,
+    'berry_dipole': calc.static.NLAHC_FermiSea(Efermi=Efermi_GaAs, use_factor=False),
+    'berry_dipole_fsurf': calc.static.NLAHC_FermiSurf(Efermi=Efermi_GaAs, use_factor=False),
+    'gyrotropic_Korb':calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs),
+    'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),
 }
 
 calculators_Te = {
     'dos': calc.static.DOS,
     'cumdos': calc.static.CumDOS,
-    'berry_dipole': calc.static.BerryDipole_FermiSea,
+    'berry_dipole': calc.static.NLAHC_FermiSea(Efermi=Efermi_Te_gpaw, use_factor=False),
 }
 
 calculators_Chiral = {
-    'conductivity_ohmic': calc.static.Ohmic(Efermi=Efermi_Chiral),
-    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False}),
-    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False})
+    'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral),
+    'berry_dipole': calc.static.NLAHC_FermiSea(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}),
+    'berry_dipole_fsurf': calc.static.NLAHC_FermiSurf(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}),
+    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False}),
+    'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral),
+    'Der3E':calc.static.Drude_FermiSea(Efermi=Efermi_Chiral),
+    'Hall_classic_fsurf':calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral),
+    'Hall_classic':calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral),
+    'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral),
+    'conductivity_ohmic_fsurf': calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral),
+    'dos': calc.static.DOS(Efermi=Efermi_Chiral),
+    'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral),
 }
 
+calculators_Chiral_tetra = {
+    'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
+    'berry_dipole': calc.static.NLAHC_FermiSea(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
+    'berry_dipole_fsurf': calc.static.NLAHC_FermiSurf(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
+    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, tetra=True, kwargs_formula={"external_terms": False}),
+    'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
+    'Der3E':calc.static.Drude_FermiSea(Efermi=Efermi_Chiral, tetra=True),
+    'Hall_classic_fsurf':calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
+    'Hall_classic':calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
+    'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
+    'conductivity_ohmic_fsurf': calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
+    'dos': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
+    'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral, tetra=True),
+}
 
 def resultType(quant):
     if quant in []:  # in future - add other options (tabulateresult)
@@ -264,8 +290,7 @@ def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
 
 
 def test_GaAs(check_run, system_GaAs_W90, compare_any_result, compare_fermisurfer):
-    param = {'Efermi': Efermi_GaAs}
-    calculators = {k: v(**param) for k, v in calculators_GaAs.items()}
+    calculators = {k: v for k, v in calculators_GaAs.items()}
 
     check_run(
         system_GaAs_W90,
@@ -286,6 +311,22 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
         system_Chiral_left,
         calculators_Chiral,
         fout_name="berry_Chiral",
+        suffix="left-run",
+        grid_param=grid_param,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=True,
+        extra_precision={"Morb": -1e-6},
+    )
+
+def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result, compare_fermisurfer):
+    grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
+    check_run(
+        system_Chiral_left,
+        calculators_Chiral_tetra,
+        fout_name="berry_Chiral_tetra",
         suffix="left-run",
         grid_param=grid_param,
         parameters_K={

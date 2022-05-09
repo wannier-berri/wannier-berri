@@ -240,7 +240,7 @@ class tildeHab_d(Formula_ln):
 
 class tildeHGab_d(Formula_ln):
 
-    def __init__(self, data_K, sign, **parameters):
+    def __init__(self, data_K, sign=+1, **parameters):
         self.F = tildeFab(data_K, **parameters)
         self.dF = tildeFab_d(data_K, **parameters)
         self.dH = tildeHab_d(data_K, **parameters)
