@@ -123,18 +123,18 @@ class Morb():
         :math: `M = -\int [dk] (H + G - 2Ef*\Omega) f`"""
         self.kwargs = kwargs_formula
         if use_factor:
-            self.factor = -eV_au / bohr**2 
+            self.factor = -eV_au / bohr**2
         else:
             self.factor = np.sign(self.factor)
         if print_comment:
             cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
 
     def __call__(self, data_K):
+        #with use_factor=False, the factor of AHC is -1, so it is '+' below.
         return self.factor * data_K.cell_volume * (
                 Hplus(Efermi=self.Efermi, tetra=self.tetra,
                     use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-            #with use_factor=False, the factor of AHC is -1, so it is '+' below.
-            + 2 * AHC(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                + 2 * AHC(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
                 print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
 
 class Morb_test():
@@ -147,18 +147,18 @@ class Morb_test():
         :math: `M = -\int [dk] (H + G - 2Ef*\Omega) f`"""
         self.kwargs = kwargs_formula
         if use_factor:
-            self.factor = -eV_au / bohr**2 
+            self.factor = -eV_au / bohr**2
         else:
             self.factor = np.sign(self.factor)
         if print_comment:
             cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
 
     def __call__(self, data_K):
+        #with use_factor=False, the factor of AHC is -1, so it is '+' below.
         return self.factor * data_K.cell_volume * (
-                Hplus_tert(Efermi=self.Efermi, tetra=self.tetra,
+                Hplus_test(Efermi=self.Efermi, tetra=self.tetra,
                     use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-            #with use_factor=False, the factor of AHC is -1, so it is '+' below.
-            + 2 * AHC_test(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                + 2 * AHC_test(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
                 print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
 
 
@@ -170,7 +170,7 @@ class Morb_test():
 class VelHplus(StaticCalculator):
 
     def __init__(self, **kwargs):
-        self.Formula = frml.VelHplus 
+        self.Formula = frml.VelHplus
         self.factor = 1
         self.fder = 1
         self.comment = r""":math: `\int [dk] v_\alpha (H + G)_\mu f'`"""
@@ -201,19 +201,19 @@ class GME_orb_FermiSurf():
         return self.factor * (
                 VelHplus(Efermi=self.Efermi, tetra=self.tetra,
                     use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-            - 2 * NLAHC_FermiSurf(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                - 2 * NLAHC_FermiSurf(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
                 print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
 
 
 class DerHplus(StaticCalculator):
 
     def __init__(self, **kwargs):
-        self.Formula = frml.DerMorb 
+        self.Formula = frml.DerMorb
         self.factor = 1
         self.fder = 0
         self.comment = r""":math: `\int [dk] \partial_\alpha (H + G)_\mu f`"""
         super().__init__(**kwargs)
-    
+
     def __call__(self, data_K):
         res = super().__call__(data_K)
         # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
@@ -261,7 +261,7 @@ class GME_orb_FermiSea():
         return self.factor * (
                 DerHplus(Efermi=self.Efermi, tetra=self.tetra,
                     use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-            - 2 * NLAHC_FermiSea(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                - 2 * NLAHC_FermiSea(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
                 print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
 
 
@@ -289,7 +289,7 @@ class GME_orb_FermiSea_test():
         return self.factor * (
                 DerHplus_test(Efermi=self.Efermi, tetra=self.tetra,
                     use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-            - 2 * NLAHC_FermiSea_test(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                - 2 * NLAHC_FermiSea_test(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
                 print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
 
 
@@ -402,7 +402,7 @@ class Hall_classic_FermiSurf(StaticCalculator):
         Instruction:
         :math: `j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu`"""
         super().__init__(**kwargs)
-    
+
     def __call__(self, data_K):
         res = super().__call__(data_K)
         res.data = res.data[:, :, :, beta_A, alpha_A] - res.data[:, :, :, alpha_A, beta_A]
@@ -423,7 +423,7 @@ class Hall_classic_FermiSea(StaticCalculator):
         Instruction:
         :math: `j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu`"""
         super().__init__(**kwargs)
-    
+
     def __call__(self, data_K):
         res = super().__call__(data_K)
         res.data = res.data.transpose(0, 4, 1, 2, 3)
@@ -494,7 +494,7 @@ Berry curvature dipole for testing (dimensionless) with use_factor=False
         return res
 
 
-class Drude_FermiSea(StaticCalculator):
+class NLDrude_FermiSea(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.Der3E
@@ -509,7 +509,7 @@ class Drude_FermiSea(StaticCalculator):
         super().__init__(**kwargs)
 
 
-class Drude_FermiSurf(StaticCalculator):
+class NLDrude_FermiSurf(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.MassVel
@@ -524,7 +524,7 @@ class Drude_FermiSurf(StaticCalculator):
         super().__init__(**kwargs)
 
 
-class Drude_Fermider2(StaticCalculator):
+class NLDrude_Fermider2(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.VelVelVel
@@ -556,13 +556,13 @@ class Spin_Hall(StaticCalculator):
         super().__init__(**kwargs)
 
 
-class Zeeman_AHC_spin(StaticCalculator):
+class AHC_Zeeman_spin(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.OmegaS
         self.factor = bohr_magneton / (elementary_charge * Ang_SI) * elementary_charge**2 / hbar / 100
         self.fder = 1
-        self.comment = r"""Zeeman AHC conductivity spin part (S/m/T)
+        self.comment = r"""AHC conductivity Zeeman correcton term spin part (S/m/T)
         With Fermi surface integral.
         Output:
         :math: `ZAHC^{spin}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * s_\mu f'`
@@ -588,13 +588,13 @@ class OmegaHplus(StaticCalculator):
         super().__init__(**kwargs)
 
 
-class Zeeman_AHC_orb():
+class AHC_Zeeman_orb():
 
     def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
         self.Efermi = Efermi
         self.tetra = tetra
         self.kwargs = kwargs_formula
-        self.comment = r"""Zeeman AHC conductivity orbital part (S/m/T)
+        self.comment = r"""AHC conductivity Zeeman correction term orbital part (S/m/T)
         With Fermi surface integral.
         :math: `m = H + G - 2Ef*\Omega`
         Output:
@@ -612,5 +612,5 @@ class Zeeman_AHC_orb():
         return self.factor * (
                 OmegaHplus(Efermi=self.Efermi, tetra=self.tetra,
                     use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-            - 2 * OmegaOmega(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                - 2 * OmegaOmega(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
                 print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))

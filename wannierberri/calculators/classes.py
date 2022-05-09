@@ -38,7 +38,7 @@ class StaticCalculator(Calculator):
             cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
         if not use_factor:
             self.factor = np.sign(self.factor)
-        
+
         if not self.tetra:
             self.extraEf = 0 if self.fder == 0 else 1 if self.fder in (1, 2) else 2 if self.fder == 3 else None
             self.dEF = Efermi[1] - Efermi[0]

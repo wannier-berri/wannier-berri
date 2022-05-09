@@ -104,30 +104,26 @@ calculators_Te = {
 
 calculators_Chiral = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral),
+    'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral),
     'berry_dipole': calc.static.NLAHC_FermiSea(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}),
     'berry_dipole_fsurf': calc.static.NLAHC_FermiSurf(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}),
     'ahc': calc.static.AHC(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False}),
-    'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral),
-    'Der3E':calc.static.Drude_FermiSea(Efermi=Efermi_Chiral),
+    'Der3E':calc.static.NLDrude_FermiSea(Efermi=Efermi_Chiral),
     'Hall_classic_fsurf':calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral),
     'Hall_classic':calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral),
-    'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral),
-    'conductivity_ohmic_fsurf': calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral),
     'dos': calc.static.DOS(Efermi=Efermi_Chiral),
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral),
 }
 
 calculators_Chiral_tetra = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
+    'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
     'berry_dipole': calc.static.NLAHC_FermiSea(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
     'berry_dipole_fsurf': calc.static.NLAHC_FermiSurf(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
     'ahc': calc.static.AHC(Efermi=Efermi_Chiral, tetra=True, kwargs_formula={"external_terms": False}),
-    'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
-    'Der3E':calc.static.Drude_FermiSea(Efermi=Efermi_Chiral, tetra=True),
+    'Der3E':calc.static.NLDrude_FermiSea(Efermi=Efermi_Chiral, tetra=True),
     'Hall_classic_fsurf':calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
     'Hall_classic':calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
-    'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
-    'conductivity_ohmic_fsurf': calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
     'dos': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral, tetra=True),
 }
