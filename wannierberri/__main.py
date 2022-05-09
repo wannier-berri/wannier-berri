@@ -24,8 +24,8 @@ from collections.abc import Iterable
 
 integrate_options = __integrate.calculators.keys()
 tabulate_options = __tabulate.calculators.keys()
-from .mmn2uHu import hlp as hlp_mmn
-from .vaspspn import hlp as hlp_spn
+from .utils.mmn2uHu import hlp as hlp_mmn
+from .utils.vaspspn import hlp as hlp_spn
 from time import time
 import sys
 

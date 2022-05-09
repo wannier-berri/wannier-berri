@@ -13,9 +13,9 @@
 
 import numpy as np
 import lazy_property
-from .__sym_wann import SymWann
-from .__utility import alpha_A, beta_A, iterate3dpm
-from .symmetry import Symmetry, Group, TimeReversal
+from .sym_wann import SymWann
+from wannierberri.__utility import alpha_A, beta_A, iterate3dpm
+from wannierberri.symmetry import Symmetry, Group, TimeReversal
 from termcolor import cprint
 import functools
 import multiprocessing
@@ -85,10 +85,11 @@ class System():
         use the given wannier_centers (reduced) instead of those determined automatically. Incompatible with `wannier_centers_cart`
     npar : int
         number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
-    Notes:
-    -------
-        for tight-binding models it is recommended to use `use_wcc_phase = True`. In this case the external terms vanish, and
-        one can safely use `berry=False, morb=False`, and also set `'external_terms':False` in the parameters of the calculation
+
+    Notes
+    -----
+    + for tight-binding models it is recommended to use `use_wcc_phase = True`. In this case the external terms vanish, and
+    + one can safely use `berry=False, morb=False`, and also set `'external_terms':False` in the parameters of the calculation
 
     """.format(**default_parameters)
 

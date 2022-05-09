@@ -1,3 +1,32 @@
+Version 0.12.0
+++++++++++++++++++
+
+
+## What's Changed
+* Add python3.9 to CI by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/124
+* Saving data as binary, update tests by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/122
+* removed obsolete op,ed,kpart from the code by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/126
+* Fix CI problem related to codecov and multiprocessing by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/132
+* Split testing and coverage calculation in CI by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/133
+* allowed calculation of symmetric and antisymmetric parts of optical c… by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/130
+* Setup flake8 static analysis in CI, format some files, fix trivial bugs by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/134
+* removed unused imports by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/136
+* `run()`  instead of `integrate()` and `tabulate()` by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/127
+* Tabulation of spin Berry curvature by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/138
+* more tests with chirality and TR-braking by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/141
+* Cleanup test by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/140
+* Fix Path when input k_nodes is a list of numpy arrays, add test by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/143
+* Fix symmetry Group constructor to raise for an infinite group by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/146
+* Automatic symmetry detection using spglib by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/148
+* Symmetrization of Wannier Hamiltonian and matrices by @Liu-Xiaoxiong in https://github.com/wannier-berri/wannier-berri/pull/89
+* Fix wrong symmetry of opt_shiftcurrent by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/150
+* Apply yapf to tests, fix all flake8 errors by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/151
+* Apply yapf to wannierberri, fix all flake8 errors by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/154
+* Importing WFs from Ase by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/155
+* separated Systems and utils (mmn2uHu, vaspspn, tab_plot) to a submodules by @stepan-tsirkin in  https://github.com/wannier-berri/wannier-berri/pull/157
+* Symmetrization of orbital magnetic moment. (BB_R and CC_R) by @Liu-Xiaoxiong in https://github.com/wannier-berri/wannier-berri/pull/156
+
+
 Version 0.11.1
 ++++++++++++++++++
 
