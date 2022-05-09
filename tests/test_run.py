@@ -99,7 +99,7 @@ calculators_GaAs = {
 calculators_Te = {
     'dos': calc.static.DOS,
     'cumdos': calc.static.CumDOS,
-    'berry_dipole': calc.static.NLAHC_FermiSea(Efermi=Efermi_Te_gpaw, use_factor=False),
+    'berry_dipole': calc.static.NLAHC_FermiSea,
 }
 
 calculators_Chiral = {
@@ -391,7 +391,7 @@ def test_Chiral_right(check_run, system_Chiral_left, system_Chiral_right, compar
 
 
 def test_Te_ASE(check_run, system_Te_ASE, compare_any_result):
-    param = {'Efermi': Efermi_Te_gpaw, "tetra": True}
+    param = {'Efermi': Efermi_Te_gpaw, "tetra": True, 'use_factor': False}
     calculators = {k: v(**param) for k, v in calculators_Te.items()}
     check_run(
         system_Te_ASE,
@@ -408,7 +408,7 @@ def test_Te_ASE(check_run, system_Te_ASE, compare_any_result):
 
 
 def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, compare_any_result):
-    param = {'Efermi': Efermi_Te_gpaw, "tetra": True}
+    param = {'Efermi': Efermi_Te_gpaw, "tetra": True, 'use_factor': False}
     calculators = {}
     for k, v in calculators_Te.items():
         par = {}
