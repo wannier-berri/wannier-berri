@@ -91,9 +91,243 @@ class Spin(StaticCalculator):
         super().__init__(**kwargs)
 
 
+class Hplus(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.Morb_Hpm
+        self.factor = 1
+        self.fder = 0
+        self.comment = r""":math: `\int [dk] (G + H) f`"""
+        super().__init__(**kwargs)
+
+
+class Hplus_test(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml_basic.tildeHGc
+        self.factor = 1
+        self.fder = 0
+        self.comment = r""":math: `\int [dk] (G + H) f` for testing"""
+        super().__init__(**kwargs)
+
+
+class Morb():
+
+    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
+        self.Efermi = Efermi
+        self.tetra = tetra
+        self.comment = r"""Orbital magnetic moment per unit cell (mu_B)
+        Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.85.014435>`_
+        Output:
+        :math: `M = -\int [dk] (H + G - 2Ef*\Omega) f`"""
+        self.kwargs = kwargs_formula
+        if use_factor:
+            self.factor = -eV_au / bohr**2
+        else:
+            self.factor = np.sign(self.factor)
+        if print_comment:
+            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
+
+    def __call__(self, data_K):
+        #with use_factor=False, the factor of AHC is -1, so it is '+' below.
+        return self.factor * data_K.cell_volume * (
+                Hplus(Efermi=self.Efermi, tetra=self.tetra,
+                    use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
+                + 2 * AHC(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
+
+
+class Morb_test():
+
+    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
+        self.Efermi = Efermi
+        self.tetra = tetra
+        self.comment = r"""Orbital magnetic moment per unit cell for testing (mu_B)
+        Output:
+        :math: `M = -\int [dk] (H + G - 2Ef*\Omega) f`"""
+        self.kwargs = kwargs_formula
+        if use_factor:
+            self.factor = -eV_au / bohr**2
+        else:
+            self.factor = np.sign(self.factor)
+        if print_comment:
+            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
+
+    def __call__(self, data_K):
+        #with use_factor=False, the factor of AHC is -1, so it is '+' below.
+        return self.factor * data_K.cell_volume * (
+                Hplus_test(Efermi=self.Efermi, tetra=self.tetra,
+                    use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
+                + 2 * AHC_test(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
+
+
 ####################
 #  cunductivities  #
 ####################
+
+# E^0 B^1
+class VelHplus(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.VelHplus
+        self.factor = 1
+        self.fder = 1
+        self.comment = r""":math: `\int [dk] v_\alpha (H + G)_\mu f'`"""
+        super().__init__(**kwargs)
+
+
+class GME_orb_FermiSurf():
+
+    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
+        self.Efermi = Efermi
+        self.tetra = tetra
+        self.kwargs = kwargs_formula
+        self.comment = r"""Gyrotropic tensor orbital part (A/m^2/T)
+        With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`_
+        :math: `m = H + G - Ef*\Omega`
+        Output:
+        :math: `K^{orb}_{\alpha :\mu} = e \int [dk] v_\alpha * m_\mu f'`
+        Instruction:
+        :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
+        if use_factor:
+            self.factor =  -elementary_charge**2 / (2 * hbar) # * factor_t0_0_1
+        else:
+            self.factor = np.sign(self.factor)
+        if print_comment:
+            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
+
+    def __call__(self, data_K):
+        return self.factor * (
+                VelHplus(Efermi=self.Efermi, tetra=self.tetra,
+                    use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
+                - 2 * BerryDipole_FermiSurf(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
+
+
+class DerHplus(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.DerMorb
+        self.factor = 1
+        self.fder = 0
+        self.comment = r""":math: `\int [dk] \partial_\alpha (H + G)_\mu f`"""
+        super().__init__(**kwargs)
+
+    def __call__(self, data_K):
+        res = super().__call__(data_K)
+        # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+        res.data = res.data.swapaxes(1, 2)
+        return res
+
+
+class DerHplus_test(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml_basic.tildeHGc_d
+        self.factor = 1
+        self.fder = 0
+        self.comment = r""":math: `\int [dk] \partial_\alpha (H + G)_\mu f` for testing"""
+        super().__init__(**kwargs)
+
+    def __call__(self, data_K):
+        res = super().__call__(data_K)
+        # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+        res.data = res.data.swapaxes(1, 2)
+        return res
+
+
+class GME_orb_FermiSea():
+
+    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
+        self.Efermi = Efermi
+        self.tetra = tetra
+        self.kwargs = kwargs_formula
+        self.comment = r"""Gyrotropic tensor orbital part (A/m^2/T)
+        With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
+        :math: `m = H + G - 2Ef*\Omega`
+        Output:
+        :math: `K^{orb}_{\alpha :\mu} = -e \int [dk] \partial_\alpha m_\mu f`
+        Instruction:
+        :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
+        if use_factor:
+            self.factor =  -elementary_charge**2 / (2 * hbar)# * factor_t0_0_1
+        else:
+            self.factor = np.sign(self.factor)
+        if print_comment:
+            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
+
+    def __call__(self, data_K):
+        return self.factor * (
+                DerHplus(Efermi=self.Efermi, tetra=self.tetra,
+                    use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
+                - 2 * BerryDipole_FermiSea(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
+
+
+class GME_orb_FermiSea_test():
+
+    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
+        self.Efermi = Efermi
+        self.tetra = tetra
+        self.kwargs = kwargs_formula
+        self.comment = r"""Gyrotropic tensor orbital part for testing (A/m^2/T)
+        With Fermi sea integral.
+        :math: `m = H + G - 2Ef*\Omega`
+        Output:
+        :math: `K^{orb}_{\alpha :\mu} = -e \int [dk] \partial_\alpha m_\mu f`
+        Instruction:
+        :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
+        if use_factor:
+            self.factor =  -elementary_charge**2 / (2 * hbar)# * factor_t0_0_1
+        else:
+            self.factor = np.sign(self.factor)
+        if print_comment:
+            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
+
+    def __call__(self, data_K):
+        return self.factor * (
+                DerHplus_test(Efermi=self.Efermi, tetra=self.tetra,
+                    use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
+                - 2 * BerryDipole_FermiSea_test(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
+
+
+class GME_spin_FermiSea(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.DerSpin
+        self.factor = -bohr_magneton / Ang_SI**2 # * factor_t0_0_1
+        self.fder = 0
+        self.comment = r"""Gyrotropic tensor spin part (A/m^2/T)
+        With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
+        Output:
+        :math: `K^{spin}_{\alpha :\mu} = -e \int [dk] \partial_\alpha s_\mu f`
+        Instruction:
+        :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
+        super().__init__(**kwargs)
+
+    def __call__(self, data_K):
+        res = super().__call__(data_K)
+        # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+        res.data = res.data.swapaxes(1, 2)
+        return res
+
+
+class GME_spin_FermiSurf(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.VelSpin
+        self.factor = -bohr_magneton / Ang_SI**2 # * factor_t0_0_1
+        self.fder = 1
+        self.comment = r"""Gyrotropic tensor spin part (A/m^2/T)
+        With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`_
+        Output:
+        :math: `K^{spin}_{\alpha\mu} = e \tau \int [dk] v_\alpha s_\mu f'`
+        Instruction:
+        :math: `j_\alpha = K_{\alpha\mu} B_\mu"""
+        super().__init__(**kwargs)
+
 
 # E^1 B^0
 class AHC(StaticCalculator):
@@ -327,247 +561,6 @@ class NLDrude_Fermider2(StaticCalculator):
         super().__init__(**kwargs)
 
 
-########################################
-#  Magnetic moment relative quantities #
-########################################
-
-#In python 3.9, the class must defined above where it was called. So move all magntic moment relative quantities at bottom of the file.
-
-class Hplus(StaticCalculator):
-
-    def __init__(self, **kwargs):
-        self.Formula = frml.Morb_Hpm
-        self.factor = 1
-        self.fder = 0
-        self.comment = r""":math: `\int [dk] (G + H) f`"""
-        super().__init__(**kwargs)
-
-
-class Hplus_test(StaticCalculator):
-
-    def __init__(self, **kwargs):
-        self.Formula = frml_basic.tildeHGc
-        self.factor = 1
-        self.fder = 0
-        self.comment = r""":math: `\int [dk] (G + H) f` for testing"""
-        super().__init__(**kwargs)
-
-
-class Morb():
-
-    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
-        self.Efermi = Efermi
-        self.tetra = tetra
-        self.comment = r"""Orbital magnetic moment per unit cell (mu_B)
-        Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.85.014435>`_
-        Output:
-        :math: `M = -\int [dk] (H + G - 2Ef*\Omega) f`"""
-        self.kwargs = kwargs_formula
-        if use_factor:
-            self.factor = -eV_au / bohr**2
-        else:
-            self.factor = np.sign(self.factor)
-        if print_comment:
-            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
-
-    def __call__(self, data_K):
-        #with use_factor=False, the factor of AHC is -1, so it is '+' below.
-        return self.factor * data_K.cell_volume * (
-                Hplus(Efermi=self.Efermi, tetra=self.tetra,
-                    use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-                + 2 * AHC(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
-                print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
-
-
-class Morb_test():
-
-    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
-        self.Efermi = Efermi
-        self.tetra = tetra
-        self.comment = r"""Orbital magnetic moment per unit cell for testing (mu_B)
-        Output:
-        :math: `M = -\int [dk] (H + G - 2Ef*\Omega) f`"""
-        self.kwargs = kwargs_formula
-        if use_factor:
-            self.factor = -eV_au / bohr**2
-        else:
-            self.factor = np.sign(self.factor)
-        if print_comment:
-            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
-
-    def __call__(self, data_K):
-        #with use_factor=False, the factor of AHC is -1, so it is '+' below.
-        return self.factor * data_K.cell_volume * (
-                Hplus_test(Efermi=self.Efermi, tetra=self.tetra,
-                    use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-                + 2 * AHC_test(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
-                print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
-
-
-# E^0 B^1
-class VelHplus(StaticCalculator):
-
-    def __init__(self, **kwargs):
-        self.Formula = frml.VelHplus
-        self.factor = 1
-        self.fder = 1
-        self.comment = r""":math: `\int [dk] v_\alpha (H + G)_\mu f'`"""
-        super().__init__(**kwargs)
-
-
-class GME_orb_FermiSurf():
-
-    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
-        self.Efermi = Efermi
-        self.tetra = tetra
-        self.kwargs = kwargs_formula
-        self.comment = r"""Gyrotropic tensor orbital part (A/m^2/T)
-        With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`_
-        :math: `m = H + G - Ef*\Omega`
-        Output:
-        :math: `K^{orb}_{\alpha :\mu} = e \int [dk] v_\alpha * m_\mu f'`
-        Instruction:
-        :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
-        if use_factor:
-            self.factor =  -elementary_charge**2 / (2 * hbar) # * factor_t0_0_1
-        else:
-            self.factor = np.sign(self.factor)
-        if print_comment:
-            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
-
-    def __call__(self, data_K):
-        return self.factor * (
-                VelHplus(Efermi=self.Efermi, tetra=self.tetra,
-                    use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-                - 2 * BerryDipole_FermiSurf(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
-                print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
-
-
-class DerHplus(StaticCalculator):
-
-    def __init__(self, **kwargs):
-        self.Formula = frml.DerMorb
-        self.factor = 1
-        self.fder = 0
-        self.comment = r""":math: `\int [dk] \partial_\alpha (H + G)_\mu f`"""
-        super().__init__(**kwargs)
-
-    def __call__(self, data_K):
-        res = super().__call__(data_K)
-        # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
-        res.data = res.data.swapaxes(1, 2)
-        return res
-
-
-class DerHplus_test(StaticCalculator):
-
-    def __init__(self, **kwargs):
-        self.Formula = frml_basic.tildeHGc_d
-        self.factor = 1
-        self.fder = 0
-        self.comment = r""":math: `\int [dk] \partial_\alpha (H + G)_\mu f` for testing"""
-        super().__init__(**kwargs)
-
-    def __call__(self, data_K):
-        res = super().__call__(data_K)
-        # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
-        res.data = res.data.swapaxes(1, 2)
-        return res
-
-
-class GME_orb_FermiSea():
-
-    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
-        self.Efermi = Efermi
-        self.tetra = tetra
-        self.kwargs = kwargs_formula
-        self.comment = r"""Gyrotropic tensor orbital part (A/m^2/T)
-        With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
-        :math: `m = H + G - 2Ef*\Omega`
-        Output:
-        :math: `K^{orb}_{\alpha :\mu} = -e \int [dk] \partial_\alpha m_\mu f`
-        Instruction:
-        :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
-        if use_factor:
-            self.factor =  -elementary_charge**2 / (2 * hbar)# * factor_t0_0_1
-        else:
-            self.factor = np.sign(self.factor)
-        if print_comment:
-            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
-
-    def __call__(self, data_K):
-        return self.factor * (
-                DerHplus(Efermi=self.Efermi, tetra=self.tetra,
-                    use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-                - 2 * BerryDipole_FermiSea(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
-                print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
-
-
-class GME_orb_FermiSea_test():
-
-    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
-        self.Efermi = Efermi
-        self.tetra = tetra
-        self.kwargs = kwargs_formula
-        self.comment = r"""Gyrotropic tensor orbital part for testing (A/m^2/T)
-        With Fermi sea integral.
-        :math: `m = H + G - 2Ef*\Omega`
-        Output:
-        :math: `K^{orb}_{\alpha :\mu} = -e \int [dk] \partial_\alpha m_\mu f`
-        Instruction:
-        :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
-        if use_factor:
-            self.factor =  -elementary_charge**2 / (2 * hbar)# * factor_t0_0_1
-        else:
-            self.factor = np.sign(self.factor)
-        if print_comment:
-            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
-
-    def __call__(self, data_K):
-        return self.factor * (
-                DerHplus_test(Efermi=self.Efermi, tetra=self.tetra,
-                    use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-                - 2 * BerryDipole_Fermisea(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
-                print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
-
-
-class GME_spin_FermiSea(StaticCalculator):
-
-    def __init__(self, **kwargs):
-        self.Formula = frml.DerSpin
-        self.factor = -bohr_magneton / Ang_SI**2 # * factor_t0_0_1
-        self.fder = 0
-        self.comment = r"""Gyrotropic tensor spin part (A/m^2/T)
-        With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
-        Output:
-        :math: `K^{spin}_{\alpha :\mu} = -e \int [dk] \partial_\alpha s_\mu f`
-        Instruction:
-        :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
-        super().__init__(**kwargs)
-
-    def __call__(self, data_K):
-        res = super().__call__(data_K)
-        # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
-        res.data = res.data.swapaxes(1, 2)
-        return res
-
-
-class GME_spin_FermiSurf(StaticCalculator):
-
-    def __init__(self, **kwargs):
-        self.Formula = frml.VelSpin
-        self.factor = -bohr_magneton / Ang_SI**2 # * factor_t0_0_1
-        self.fder = 1
-        self.comment = r"""Gyrotropic tensor spin part (A/m^2/T)
-        With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`_
-        Output:
-        :math: `K^{spin}_{\alpha\mu} = e \tau \int [dk] v_\alpha s_\mu f'`
-        Instruction:
-        :math: `j_\alpha = K_{\alpha\mu} B_\mu"""
-        super().__init__(**kwargs)
-
-
-# E^1 B^0
 class Spin_Hall(StaticCalculator):
 
     def __init__(self, **kwargs):
