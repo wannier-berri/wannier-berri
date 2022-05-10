@@ -34,7 +34,7 @@ class Calculator():
 
 class StaticCalculator(Calculator):
 
-    def __init__(self, Efermi, tetra=False, use_factor=True, kwargs_formula={}, **kwargs):
+    def __init__(self, Efermi, tetra=False, smoother=None, use_factor=True, kwargs_formula={}, **kwargs):
         self.Efermi = Efermi
         self.tetra = tetra
         self.kwargs_formula = kwargs_formula
