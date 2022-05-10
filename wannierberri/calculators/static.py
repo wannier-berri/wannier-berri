@@ -493,7 +493,7 @@ class NLAHC_FermiSea(BerryDipole_FermiSea):
         super().__init__(**kwargs)
 
 
-class BerryDipole_Fermisea_test(StaticCalculator):
+class BerryDipole_FermiSea_test(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml_basic.tildeFc_d
