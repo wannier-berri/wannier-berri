@@ -439,9 +439,7 @@ class BerryDipole_FermiSurf(StaticCalculator):
         self.Formula = frml.VelOmega
         self.factor = 1
         self.fder = 1
-        try:
-            self.comment
-        except:
+        if 'comment' not in dir(self):
             self.comment = r"""Berry curvature dipole (dimensionless)
         With Fermi surface integral. Eq(8) in `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.115.216806>`_
         Output:
@@ -468,9 +466,7 @@ class BerryDipole_FermiSea(StaticCalculator):
         self.Formula = frml.DerOmega
         self.factor = 1
         self.fder = 0
-        try:
-            self.comment
-        except:
+        if 'comment' not in dir(self):
             self.comment = r"""Berry curvature dipole (dimensionless)
         With Fermi sea integral. Eq(29) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
         Output:
@@ -485,7 +481,7 @@ class BerryDipole_FermiSea(StaticCalculator):
 
 
 class NLAHC_FermiSea(BerryDipole_FermiSea):
-    
+
     def __init__(self,**kwargs):
         self.factor = factor_t1_2_0
         self.comment = r"""Nonlinear anomalous Hall conductivity  (S^2/A)

@@ -37,7 +37,7 @@ def read_energyresult_dat(filename, mode="txt"):
     elif mode == "txt":
         # Now the txt mode
         print (f"file : {filename}")
-        ## get the first line that does not start with "####" neither empty
+        # get the first line that does not start with "####" neither empty
         for l in open(filename, 'r'):
             l = l.strip()
             if l.startswith("####") or len(l)==0:
