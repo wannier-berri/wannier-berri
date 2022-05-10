@@ -115,8 +115,8 @@ calculators_Chiral = {
 calculators_Chiral_tetra = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
     'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
-    'berry_dipole': calc.static.Berry_dipole_FermiSea(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
-    'berry_dipole_fsurf': calc.static.Berry_dipole_FermiSurf(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
+    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
+    'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
     'ahc': calc.static.AHC(Efermi=Efermi_Chiral, tetra=True, kwargs_formula={"external_terms": False}),
     'Der3E':calc.static.NLDrude_FermiSea(Efermi=Efermi_Chiral, tetra=True),
     'Hall_classic_fsurf':calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
