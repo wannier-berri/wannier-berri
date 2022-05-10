@@ -19,7 +19,7 @@ import itertools
 import numpy as np
 from lazy_property import LazyProperty as Lazy
 
-from .__utility import VoidSmoother
+from .smoother import VoidSmoother
 
 # A class to contain results or a calculation:
 # For any calculation there should be a class with the samemethods implemented
@@ -132,7 +132,7 @@ class EnergyResult(Result):
         |  Energy may also be an empty list, then the quantity does not depend on any energy (does it work?)
     data : array(float) or array(complex)
         | the data. The first dimensions should match the sizes of the Energies arrays. The rest should be equal to 3
-    smoothers :  a list of :class:`~wannierberri._utility.Smoother`
+    smoothers :  a list of :class:`~wannierberri.smoother.Smoother`
         | smoothers, one per each energy variable (usually do not need to be set by the calculator function.
         | but are set automaticaly for Fermi levels and Omega's , and during the further * and + operations
     TRodd : bool
