@@ -87,8 +87,8 @@ calculators_Fe = {
 }
 
 calculators_GaAs = {
-    'berry_dipole': calc.static.NLAHC_FermiSea(Efermi=Efermi_GaAs, use_factor=False),
-    'berry_dipole_fsurf': calc.static.NLAHC_FermiSurf(Efermi=Efermi_GaAs, use_factor=False),
+    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_GaAs, use_factor=False),
+    'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf(Efermi=Efermi_GaAs, use_factor=False),
     'gyrotropic_Korb':calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs),
     'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),
 }
@@ -102,8 +102,8 @@ calculators_Te = {
 calculators_Chiral = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral),
     'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral),
-    'berry_dipole': calc.static.NLAHC_FermiSea(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}),
-    'berry_dipole_fsurf': calc.static.NLAHC_FermiSurf(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}),
+    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}),
+    'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}),
     'ahc': calc.static.AHC(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False}),
     'Der3E':calc.static.NLDrude_FermiSea(Efermi=Efermi_Chiral),
     'Hall_classic_fsurf':calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral),
@@ -115,8 +115,8 @@ calculators_Chiral = {
 calculators_Chiral_tetra = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
     'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
-    'berry_dipole': calc.static.NLAHC_FermiSea(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
-    'berry_dipole_fsurf': calc.static.NLAHC_FermiSurf(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
+    'berry_dipole': calc.static.Berry_dipole_FermiSea(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
+    'berry_dipole_fsurf': calc.static.Berry_dipole_FermiSurf(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
     'ahc': calc.static.AHC(Efermi=Efermi_Chiral, tetra=True, kwargs_formula={"external_terms": False}),
     'Der3E':calc.static.NLDrude_FermiSea(Efermi=Efermi_Chiral, tetra=True),
     'Hall_classic_fsurf':calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
