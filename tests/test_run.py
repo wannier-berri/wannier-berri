@@ -819,8 +819,7 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
             fout_name="berry_CuMnAs_2d",
             grid_param={
                 'NK': [10, 10, 1],
-                'NKFFT': [5, 5, 1]
-                },
+                'NKFFT': [5, 5, 1]},
             use_symmetry=True,
             do_not_compare=True,)
 
@@ -838,7 +837,7 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
                 data2, abs=precision), (
                         f"calcuylated data of {label1}  and {label2} give a maximal "
                         + "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
-                    abs_err=np.max(abs(data1 - data2)), required_precision=precision))
+                            abs_err=np.max(abs(data1 - data2)), required_precision=precision))
 
 
 
