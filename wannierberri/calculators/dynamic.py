@@ -1,12 +1,121 @@
 import numpy as np
-from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom
+import abc, functools
+from wannierberri.__utility import Gaussian, Lorentzian
+from wannierberri.__result import EnergyResult
 
+from . import Calculator
+
+
+
+# The base class for Static Calculators
+# particular calculators are below
+
+class DynamicCalculator(Calculator, abc.ABC):
+
+    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', **kwargs):
+
+        for k, v in locals().items():  # is it safe to do so?
+            if k not in ['self', 'kwargs']:
+                vars(self)[k] = v
+        super().__init__(**kwargs)
+
+        self.formula_kwargs = {}
+        self.Formula = None
+        self.final_factor = 1.
+        self.dtype = complex
+        self.EFmin = self.Efermi.min()
+        self.EFmax = self.Efermi.max()
+        self.omegamin = self.omega.min()
+        self.omegamax = self.omega.max()
+        self.eocc1max = self.EFmin - 30 * self.kBT
+        self.eocc0min = self.EFmax + 30 * self.kBT
+
+        if self.smr_type == 'Lorentzian':
+            self.smear = functools.partial(Lorentzian, width=self.smr_fixed_width)
+        elif self.smr_type == 'Gaussian':
+            self.smear = functools.partial(Gaussian, width=self.smr_fixed_width, adpt_smr=False)
+        else:
+            raise ValueError("Invalid smearing type {self.smr_type}")
+        self.FermiDirac = functools.partial(FermiDirac, mu=self.Efermi, kBT=self.kBT)
+
+    @abc.abstractmethod
+    def factor_omega(self, E1, E2):
+        pass
+
+    def factor_Efermi(self, E1, E2):
+        return self.FermiDirac(E2) - self.FermiDirac(E1)
+
+    def nonzero(self, E1, E2):
+        if (E1 < self.eocc1max and E2 < self.eocc1max) or (E1 > self.eocc0min and E2 > self.eocc0min):
+            return False
+        else:
+            return True
+
+    def __call__(self, data_K):
+        formula = self.Formula(data_K, **self.formula_kwargs)
+        restot_shape = (len(self.omega), len(self.Efermi)) + (3, ) * formula.ndim
+        restot_shape_tmp = (
+            len(self.omega), len(self.Efermi) * 3**formula.ndim)  # we will first get it in this shape, then transpose
+
+        restot = np.zeros(restot_shape_tmp, self.dtype)
+
+        for ik in range(data_K.nk):
+            degen_groups = data_K.get_bands_in_range_groups_ik(
+                ik, -np.Inf, np.Inf, degen_thresh=self.degen_thresh, degen_Kramers=self.degen_Kramers)
+            #now find needed pairs:
+            # as a dictionary {((ibm1,ibm2),(ibn1,ibn2)):(Em,En)}
+            degen_group_pairs = [
+                (ibm, ibn, Em, En) for ibm, Em in degen_groups.items() for ibn, En in degen_groups.items()
+                if self.nonzero(Em, En)
+            ]
+            npair = len(degen_group_pairs)
+            matrix_elements = np.array(
+                [formula.trace_ln(ik, np.arange(*pair[0]), np.arange(*pair[1])) for pair in degen_group_pairs])
+            factor_Efermi = np.array([self.factor_Efermi(pair[2], pair[3]) for pair in degen_group_pairs])
+            factor_omega = np.array([self.factor_omega(pair[2], pair[3]) for pair in degen_group_pairs]).T
+            restot += factor_omega @ (factor_Efermi[:, :, None]
+                                      * matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
+        restot = restot.reshape(restot_shape).swapaxes(0, 1)  # swap the axes to get EF,omega,a,b,...
+        restot[:] *= self.final_factor / (data_K.nk * data_K.cell_volume)
+        return EnergyResult(
+            [self.Efermi, self.omega], restot, TRodd=formula.TRodd, Iodd=formula.Iodd, TRtrans=formula.TRtrans)
+
+# auxillary function"
+def FermiDirac(E, mu, kBT):
+    "here E is a number, mu is an array"
+    if kBT == 0:
+        return 1.0 * (E <= mu)
+    else:
+        res = np.zeros_like(mu)
+        res[mu > E + 30 * kBT] = 1.0
+        res[mu < E - 30 * kBT] = 0.0
+        sel = abs(mu - E) <= 30 * kBT
+        res[sel] = 1.0 / (np.exp((E - mu[sel]) / kBT) + 1)
+        return res
+
+
+
+
+###############################################
+###############################################
+###############################################
+###############################################
+####                                     ######
+####        Implemented calculators      ######
+####                                     ######
+###############################################
+###############################################
+###############################################
+###############################################
+
+from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]
 Ang_SI = angstrom
 
-from .classes import DynamicCalculator
+
+
 
 ###############################
 #              JDOS           #

@@ -47,12 +47,12 @@ t0 = time()
 wberri.run(system,
             grid=grid,
             calculators = {
-#                "ahc":wberri.calculators.static.AHC(Efermi=Efermi,tetra=False),
-#                 "tabulate":wberri.calculators.TabulatorAll({
-#                            "Energy":wberri.calculators.Energy(),
-#                            "berry":wberri.calculators.BerryCurvature(),
-#                                  }, 
-#                                       ibands = np.arange(4,10))
+                "ahc":wberri.calculators.static.AHC(Efermi=Efermi,tetra=False),
+                 "tabulate":wberri.calculators.TabulatorAll({
+                            "Energy":wberri.calculators.tabulate.Energy(),
+                            "berry":wberri.calculators.tabulate.BerryCurvature(),
+                                  }, 
+                                       ibands = np.arange(4,10)),
                  "opt_conductivity" : wberri.calculators.dynamic.OpticalConductivity(Efermi=Efermi,omega=omega),
 #                 "shc_ryoo" : wberri.calculators.dynamic.SHC(Efermi=Efermi,omega=omega),
 #                  "SHC": wberri.fermiocean_dynamic.SHC(Efermi=Efermi,omega=omega,SHC_type="qiao")
