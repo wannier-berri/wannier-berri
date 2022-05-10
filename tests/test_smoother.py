@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from pytest import approx
 
-from wannierberri.__utility import (
+from wannierberri.smoother import (
     AbstractSmoother,
     VoidSmoother,
     FermiDiracSmoother,

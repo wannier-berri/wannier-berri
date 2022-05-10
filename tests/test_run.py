@@ -3,12 +3,14 @@ import os
 
 import numpy as np
 import pytest
+import pickle
 
 import wannierberri as wberri
 from wannierberri import calculators as calc
+from wannierberri.smoother import FermiDiracSmoother
 from wannierberri.__result import EnergyResult
 
-from common import OUTPUT_DIR
+from common import OUTPUT_DIR, REF_DIR
 from common_comparers import compare_quant
 from common_systems import Efermi_Fe, Efermi_GaAs, Efermi_Chiral, Efermi_Te_gpaw
 
@@ -99,10 +101,12 @@ calculators_Te = {
     'berry_dipole': calc.static.BerryDipole_FermiSea,
 }
 
+
+smoother_Chiral = FermiDiracSmoother(Efermi_Chiral, T_Kelvin=1200, maxdE=8)
 calculators_Chiral = {
-    'conductivity_ohmic': calc.static.Ohmic(Efermi=Efermi_Chiral),
-    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False}),
-    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False})
+    'conductivity_ohmic': calc.static.Ohmic(Efermi=Efermi_Chiral,smoother=smoother_Chiral),
+    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False},smoother=smoother_Chiral),
+    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False},smoother=smoother_Chiral)
 }
 
 
@@ -150,7 +154,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             0,
             fout_name_ref="kubo_Fe_W90",
             suffix_ref=quant,
-            precision=1e-8,
+            precision=-1e-8,
             result_type=EnergyResult)
 
     extra_precision = {'berry': 1e-6}
@@ -263,7 +267,7 @@ def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
     )
 
 
-def test_GaAs(check_run, system_GaAs_W90, compare_any_result, compare_fermisurfer):
+def test_GaAs(check_run, system_GaAs_W90, compare_any_result):
     param = {'Efermi': Efermi_GaAs}
     calculators = {k: v(**param) for k, v in calculators_GaAs.items()}
 
@@ -280,7 +284,7 @@ def test_GaAs(check_run, system_GaAs_W90, compare_any_result, compare_fermisurfe
     )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 
-def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_fermisurfer):
+def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_energyresult):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
     check_run(
         system_Chiral_left,
@@ -296,8 +300,18 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
         extra_precision={"Morb": -1e-6},
     )
 
+    for quant in calculators_Chiral.keys():#["conductivity_ohmic", "berry_dipole", "ahc"]:
+        compare_energyresult(
+                fout_name="berry_Chiral",
+                suffix=quant+"-left-run",
+                adpt_num_iter=0,
+                suffix_ref=quant,
+                mode="txt",
+                compare_smooth=True,
+                precision=-1e-8)
 
-def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, compare_any_result, compare_fermisurfer):
+
+def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, compare_any_result):
     "check that for time-reversed model the ohmic conductivity is the same, but the AHC is opposite"
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
     results = [
@@ -323,7 +337,7 @@ def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, com
         assert data1 == pytest.approx(sign * data2, abs=precision), key
 
 
-def test_Chiral_right(check_run, system_Chiral_left, system_Chiral_right, compare_any_result, compare_fermisurfer):
+def test_Chiral_right(check_run, system_Chiral_left, system_Chiral_right, compare_any_result):
     "check that for flipped chirality the ohmic conductivity is the same, but the Berry dipole is opposite"
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
     results = [
@@ -388,3 +402,69 @@ def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, compare_any_result):
             '_CCab_antisym': True
         },
     )
+
+
+def test_tabulate_path(system_Haldane_PythTB):
+
+    k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
+    path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
+
+    calculators = {}
+    quantities = {
+                            "Energy":wberri.calculators.tabulate.Energy(),
+                            "berry":wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms":False}),
+                                  }
+
+    calculators ["tabulate"] = wberri.calculators.TabulatorAll(quantities,
+                                                       ibands=[0],
+                                                        mode="path")
+
+
+    run_result = wberri.run(
+        system=system_Haldane_PythTB,
+        grid=path,
+        calculators=calculators,
+        parallel=None,
+        use_irred_kpt=True,
+        symmetrize=True,  # should have no effect, but will check the cases and give a warning
+        #                parameters_K = parameters_K,
+        #                frmsf_name = None,
+        #                degen_thresh = degen_thresh, degen_Kramers = degen_Kramers
+    )
+
+
+    tab_result=run_result.results["tabulate"]
+    filename = "path_tab.pickle"
+    fout = open(os.path.join(OUTPUT_DIR, filename+"-run"), "wb")
+
+    data = {}
+    for quant in quantities.keys():
+        result_quant = tab_result.results.get(quant)
+        for comp in result_quant.get_component_list():
+            data[(quant, comp)] = result_quant.get_component(comp)
+    pickle.dump(data, fout)
+
+    data_ref = pickle.load(open(os.path.join(REF_DIR, filename), "rb"))
+
+    for quant in quantities.keys():
+        for comp in tab_result.results.get(quant).get_component_list():
+            _data = data[(quant, comp)]
+            _data_ref = data_ref[(quant, comp)]
+            assert _data == pytest.approx(_data_ref), (
+                f"tabulation along path gave a wrong result for quantity {quant} component {comp} "
+                + "with a maximal difference {}".format(max(abs(data - data_ref))))
+
+    # only checks that the plot runs without errors, not checking the result of the plot
+    tab_result.plot_path_fat(
+        path,
+        quantity='berry',
+        component='z',
+        save_file=os.path.join(OUTPUT_DIR, "Haldane-berry-VB.pdf"),
+        Eshift=0,
+        Emin=-2,
+        Emax=2,
+        iband=None,
+        mode="fatband",
+        fatfactor=20,
+        cut_k=True,
+        show_fig=False)

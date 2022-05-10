@@ -15,6 +15,10 @@ class Calculator():
         self.degen_Kramers = degen_Kramers
         self.save_mode = save_mode
 
+    @property
+    def allow_path(self):
+        return False    # change for those who can be calculated on a path instead of a grid
+
 
 #######################################
 #                                     #
@@ -25,10 +29,11 @@ class Calculator():
 
 class StaticCalculator(Calculator):
 
-    def __init__(self, Efermi, tetra=False, kwargs_formula={}, **kwargs):
+    def __init__(self, Efermi, tetra=False, smoother=None, kwargs_formula={}, **kwargs):
         self.Efermi = Efermi
         self.tetra = tetra
         self.kwargs_formula = kwargs_formula
+        self.smoother = smoother
         assert hasattr(self, 'factor')
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
@@ -115,7 +120,7 @@ class StaticCalculator(Calculator):
 
         restot *= self.factor / (data_K.nk * data_K.cell_volume)
 
-        res = result.EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd)
+        res = result.EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd, smoothers=[self.smoother])
         res.set_save_mode(self.save_mode)
         return res
 
@@ -262,10 +267,13 @@ class Tabulator(Calculator):
 
 class TabulatorAll(Calculator):
 
-    def __init__(self, tabulators, ibands=None):
+    def __init__(self, tabulators, ibands=None, mode="grid"):
         """ tabulators - dict 'key':tabulator
         one of them should be "Energy" """
         self.tabulators = tabulators
+        mode = mode.lower()
+        assert mode in ("grid","path")
+        self.mode = mode
         if "Energy" not in self.tabulators.keys():
             raise ValueError("Energy is not included in tabulators")
         if ibands is not None:
@@ -278,7 +286,13 @@ class TabulatorAll(Calculator):
 
     def __call__(self, data_K):
         return TABresult(
-            kpoints=data_K.kpoints_all,
+            kpoints=data_K.kpoints_all.copy(),
+            mode=self.mode,
             recip_lattice=data_K.system.recip_lattice,
             results={k: v(data_K)
-                     for k, v in self.tabulators.items()})
+                     for k, v in self.tabulators.items()} )
+
+
+    @property
+    def allow_path(self):
+        return self.mode == "path"
