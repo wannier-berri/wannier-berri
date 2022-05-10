@@ -200,7 +200,7 @@ class GME_orb_FermiSurf():
         return self.factor * (
                 VelHplus(Efermi=self.Efermi, tetra=self.tetra,
                     use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-                - 2 * NLAHC_FermiSurf(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                - 2 * BerryDipole_FermiSurf(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
                 print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
 
 
@@ -260,7 +260,7 @@ class GME_orb_FermiSea():
         return self.factor * (
                 DerHplus(Efermi=self.Efermi, tetra=self.tetra,
                     use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-                - 2 * NLAHC_FermiSea(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                - 2 * BerryDipole_FermiSea(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
                 print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
 
 
@@ -288,7 +288,7 @@ class GME_orb_FermiSea_test():
         return self.factor * (
                 DerHplus_test(Efermi=self.Efermi, tetra=self.tetra,
                     use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-                - 2 * NLAHC_FermiSea_test(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                - 2 * BerryDipole_FermiSea_test(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
                 print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
 
 
