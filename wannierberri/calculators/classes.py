@@ -15,7 +15,10 @@ class Calculator():
         self.degen_Kramers = degen_Kramers
         self.save_mode = save_mode
         if not hasattr(self, 'comment'):
-            self.comment = "calculator not described"
+            if self.__doc__ is not None:
+                self.comment = self.__doc__
+            else:
+                self.comment = "calculator not described"
         if print_comment:
             cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
 
@@ -126,7 +129,7 @@ class StaticCalculator(Calculator):
 
         restot *= self.factor / (data_K.nk * data_K.cell_volume)
 
-        res = EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd, smoothers=[self.smoother])
+        res = EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd, smoothers=[self.smoother], comment=self.comment)
         res.set_save_mode(self.save_mode)
         return res
 

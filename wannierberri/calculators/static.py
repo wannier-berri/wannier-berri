@@ -331,17 +331,18 @@ class GME_spin_FermiSurf(StaticCalculator):
 
 # E^1 B^0
 class AHC(StaticCalculator):
-
-    def __init__(self, **kwargs):
-        self.Formula = frml.Omega
-        self.factor = factors.factor_ahc
-        self.fder = 0
-        self.comment = r"""Anomalous Hall conductivity (s^3 * A^2 / (kg * m^3) = S/m)
+    r"""Anomalous Hall conductivity (s^3 * A^2 / (kg * m^3) = S/m)
         Eq(11) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
         Output:
         :math: `O = - e^2/\hbar \int [dk] \Omega f`
         Instruction:
         :math: `j_\alpha = \sigma_{\alpha\beta} E_\beta = \epsilon_{\alpha\beta\delta} O_delta E_\beta`"""
+
+    def __init__(self, **kwargs):
+        "describe input parameters here"
+        self.Formula = frml.Omega
+        self.factor = factors.factor_ahc
+        self.fder = 0
         super().__init__(**kwargs)
 
 
