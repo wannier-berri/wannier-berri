@@ -122,7 +122,7 @@ class StaticCalculator(Calculator):
 
         restot *= self.factor / (data_K.nk * data_K.cell_volume)
 
-        res = result.EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd)
+        res = result.EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd, comment=self.comment)
         res.set_save_mode(self.save_mode)
         return res
 
