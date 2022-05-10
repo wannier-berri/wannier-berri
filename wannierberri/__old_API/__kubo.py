@@ -18,9 +18,9 @@
 import numpy as np
 from scipy import constants as constants
 from termcolor import cprint
-from .__utility import alpha_A, beta_A
-from . import __result as result
-from .covariant_formulak import SpinVelocity
+from wannierberri.__utility import alpha_A, beta_A
+from wannierberri import __result as result
+from wannierberri.covariant_formulak import SpinVelocity
 
 # constants
 pi = constants.pi

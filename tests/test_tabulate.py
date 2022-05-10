@@ -33,7 +33,7 @@ def check_tabulate(parallel_serial, compare_fermisurfer):
             user_quantities={},
             frmsf_name="tabulate",
             comparer=compare_fermisurfer,
-            parallel=None,
+            parallel=parallel_serial,
             numproc=0,
             grid_param={
                 'NK': [6, 6, 6],

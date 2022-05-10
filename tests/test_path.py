@@ -73,7 +73,6 @@ def test_tabulate_path(system_Haldane_PythTB):
         grid=path,
         quantities=quantities,
         user_quantities={},
-        parallel=None,
         parameters={"external_terms": False},
         #                    specific_parameters = specific_parameters,
         ibands=[0],

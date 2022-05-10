@@ -17,9 +17,8 @@ from time import time
 import pickle
 import glob
 
-from .data_K import Data_K
-from .__Kpoint import exclude_equiv_points
-
+from wannierberri.data_K import Data_K
+from wannierberri.__Kpoint import exclude_equiv_points
 
 def print_progress(count, total, t0):
     t = time() - t0

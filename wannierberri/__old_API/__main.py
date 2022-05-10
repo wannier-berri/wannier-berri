@@ -13,21 +13,21 @@
 #  This is the main file of the module
 
 import functools
-from . import __version__
 from .__evaluate import evaluate_K
-from .smoother import getSmoother
+from wannierberri.smoother import getSmoother
+from wannierberri import __result_tab
 from . import __integrate
 from . import __tabulate
-from .__path import Path
+from wannierberri.__path import Path
 import numpy as np
 from collections.abc import Iterable
 
 integrate_options = __integrate.calculators.keys()
 tabulate_options = __tabulate.calculators.keys()
-from .utils.mmn2uHu import hlp as hlp_mmn
-from .utils.vaspspn import hlp as hlp_spn
+from wannierberri.utils.mmn2uHu import hlp as hlp_mmn
+from wannierberri.utils.vaspspn import hlp as hlp_spn
 from time import time
-from .parallel import Serial
+from wannierberri.parallel import Serial
 import sys
 
 from colorama import init
@@ -71,25 +71,6 @@ def print_options():
 #    cprint ("Options available to tabulate:",'green', attrs=['bold'])
 #    print("\n".join("{0:10s}  :  {1} ".format(key,__tabulate.descriptions[key]) for key in tabulate_options)+"\n\n")
 
-
-def welcome():
-    # ogiginally obtained by
-    # figlet("WANN IER BERRI",font='cosmic',col='yellow')
-    # with small modifications
-    logo = """
-.::    .   .::: .:::::::.  :::.    :::.:::.    :::. :::.,::::::  :::::::..       :::::::.  .,::::::  :::::::..   :::::::..   :::
-';;,  ;;  ;;;' '  ;;`;;  ` `;;;;,  `;;;`;;;;,  `;;; ;;;;;;;''''  ;;;;``;;;;       ;;;'';;' ;;;;''''  ;;;;``;;;;  ;;;;``;;;;  ;;;
- '[[, [[, [['    ,[[ '[[,    [[[[[. '[[  [[[[[. '[[ [[[ [[cccc    [[[,/[[['       [[[__[[\\. [[cccc    [[[,/[[['   [[[,/[[['  [[[
-   Y$c$$$c$P    c$$$cc$$$c   $$$ "Y$c$$  $$$ "Y$c$$ $$$ $$\"\"\"\"    $$$$$$c         $$\"\"\"\"Y$$ $$\"\"\"\"    $$$$$$c     $$$$$$c    $$$
-    "88"888      888   888,  888    Y88  888    Y88 888 888oo,__  888b "88bo,    _88o,,od8P 888oo,__  888b "88bo, 888b "88bo,888
-     "M "M"      YMM   ""`   MMM     YM  MMM     YM MMM \"\"\"\"YUMMM MMMM   "W"     ""YUMMMP"  \"\"\"\"YUMMM MMMM   "W"  MMMM   "W" MMM
-"""
-    cprint(logo, 'yellow')
-    figlet("    by Stepan Tsirkin et al", font='straight', col='green')
-
-    cprint("""\n  The Web page is :  HTTP://WANNIER-BERRI.ORG  \n""", 'yellow')
-
-    cprint("\nVersion: {}\n".format(__version__), 'cyan', attrs=['bold'])
 
 
 def check_option(quantities, avail, tp):
@@ -277,7 +258,7 @@ def tabulate(
     specific_parameters={},
     degen_thresh=1e-4,
     degen_Kramers=False,
-    parallel=None,
+    parallel=Serial(),
     print_Kpoints=True,
 ):
     """
@@ -364,7 +345,7 @@ def tabulate(
     if mode == '3D':
         res = res.to_grid(grid.dense)
         t2 = time()
-        ttxt, twrite = __tabulate.write_frmsf(
+        ttxt, twrite = __result_tab.write_frmsf(
             frmsf_name,
             Ef0,
             parallel.num_cpus if parallel is not None else 1,

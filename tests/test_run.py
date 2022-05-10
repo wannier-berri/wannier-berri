@@ -424,7 +424,6 @@ def test_tabulate_path(system_Haldane_PythTB):
         system=system_Haldane_PythTB,
         grid=path,
         calculators=calculators,
-        parallel=None,
         use_irred_kpt=True,
         symmetrize=True,  # should have no effect, but will check the cases and give a warning
         #                parameters_K = parameters_K,
