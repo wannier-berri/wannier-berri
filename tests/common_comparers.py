@@ -175,6 +175,8 @@ def compare_any_result():
                 filename_ref = fout_name_ref + f"-{suffix_ref}_iter-{i_iter:04d}" + ext
                 path_filename_ref = os.path.join(REF_DIR, filename_ref)
                 result_ref = result_type(file_npz=path_filename_ref)
+                print (result.comment,result_ref.comment)
+                print (type(result.comment),type(result_ref.comment))
                 maxval = result_ref._maxval_raw
                 if precision is None:
                     precision = max(maxval / 1E12, 1E-11)
