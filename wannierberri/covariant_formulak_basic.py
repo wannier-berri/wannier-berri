@@ -158,7 +158,7 @@ class tildeHab(Formula_ln):
 
 class tildeHGab(Formula_ln):
 
-    def __init__(self, data_K, sign, **parameters):
+    def __init__(self, data_K, sign=+1, **parameters):
         self.F = tildeFab(data_K, **parameters)
         self.H = tildeHab(data_K, **parameters)
         self.E = Eavln(data_K)

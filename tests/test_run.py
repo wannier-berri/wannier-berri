@@ -12,8 +12,15 @@ from wannierberri.__result import EnergyResult
 
 from common import OUTPUT_DIR, REF_DIR
 from common_comparers import compare_quant
-from common_systems import Efermi_Fe, Efermi_GaAs, Efermi_Chiral, Efermi_Te_gpaw
-
+from common_systems import (
+    Efermi_Fe,
+    Efermi_Fe_FPLO,
+    Efermi_GaAs,
+    Efermi_Haldane,
+    Efermi_CuMnAs_2d,
+    Efermi_Chiral,
+    Efermi_Te_gpaw,
+)
 
 @pytest.fixture
 def check_run(parallel_serial, compare_any_result):
@@ -85,7 +92,17 @@ def check_run(parallel_serial, compare_any_result):
 
 calculators_Fe = {
     'ahc': calc.static.AHC,
+    'ahc_test': calc.static.AHC_test,
     'conductivity_ohmic': calc.static.Ohmic_FermiSea,
+    'conductivity_ohmic_fsurf': calc.static.Ohmic_FermiSurf,
+    'Morb': calc.static.Morb,
+    'Morb_test': calc.static.Morb_test,
+    'dos': calc.static.DOS,
+    'cumdos':calc.static.CumDOS,
+}
+
+calculators_Fe_wcc = {
+    'ahc': calc.static.AHC(Efermi=Efermi_Fe,kwargs_formula={'correction_wcc': True}),
 }
 
 calculators_GaAs = {
@@ -176,7 +193,8 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             precision=-1e-8,
             result_type=EnergyResult)
 
-    extra_precision = {'berry': 1e-6}
+    #extra_precision = {'berry': 1e-6}
+    extra_precision = {'Morb': 1e-6}
     for quant in ["Energy", "berry"]:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
             _quant = "E" if quant == "Energy" else quant
@@ -192,6 +210,180 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
                 suffix_ref=_quant + _comp,
                 fout_name_ref="tabulate_Fe_W90",
                 precision=prec)
+
+
+def test_Fe_wcc(check_run, system_Fe_W90_wcc, compare_any_result):
+    param_kwargs = {'Efermi': Efermi_Fe, 'kwargs_formula':{'correction_wcc': True}}
+    param = {'Efermi': Efermi_Fe}
+    for k, v in calculators_Fe.items():
+        if k in ['dos','cumdos']:
+            calculators = {k: v(**param)}
+        else:
+            calculators = {k: v(**param_kwargs)}
+    check_run(
+        system_Fe_W90_wcc,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="wcc-run",
+        use_symmetry=False,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        #additional_parameters={'correction_wcc': True},
+        extra_precision={"Morb": -1}
+    )
+
+
+def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
+    param = {'Efermi': Efermi_Fe}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="sym-run",
+        suffix_ref="sym",
+        use_symmetry=True,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+
+def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result):
+    param = {'Efermi': Efermi_Fe}
+    cals = {'ahc': calc.static.AHC,
+            'Morb': calc.static.Morb,
+            'spin': calc.static.Spin}
+    calculators = {k: v(**param) for k, v in cals.items()}
+    check_run(
+        system_Fe_sym_W90,
+        calculators,
+        fout_name="berry_Fe_sym_W90",
+        suffix="-run",
+        use_symmetry=False
+    )
+    cals = {'gyrotropic_Kspin': calc.static.GME_orb_FermiSea,
+            'berry_dipole': calc.static.BerryDipole_FermiSea,
+            'gyrotropic_Korb': calc.static.GME_spin_FermiSea}
+    calculators = {k: v(**param) for k, v in cals.items()}
+    check_run(
+        system_Fe_sym_W90,
+        calculators,
+        fout_name="berry_Fe_sym_W90",
+        precision=1e-8,
+        suffix="-run",
+        compare_zero=True,
+        use_symmetry=False
+    )
+
+
+def test_Fe_sym_W90_sym(check_run, system_Fe_sym_W90, compare_any_result):
+    param = {'Efermi': Efermi_Fe}
+    cals = {'ahc': calc.static.AHC,
+            'Morb': calc.static.Morb,
+            'spin': calc.static.Spin}
+    calculators = {k: v(**param) for k, v in cals.items()}
+    check_run(
+        system_Fe_sym_W90,
+        calculators,
+        fout_name="berry_Fe_sym_W90",
+        suffix="sym-run",
+        use_symmetry=True
+    )
+    cals = {'gyrotropic_Kspin': calc.static.GME_orb_FermiSea,
+            'berry_dipole': calc.static.BerryDipole_FermiSea,
+            'gyrotropic_Korb': calc.static.GME_spin_FermiSea}
+    calculators = {k: v(**param) for k, v in cals.items()}
+    check_run(
+        system_Fe_sym_W90,
+        calculators,
+        fout_name="berry_Fe_sym_W90",
+        suffix="sym-run",
+        precision=1e-8,
+        compare_zero=True,
+        use_symmetry=True
+    )
+
+
+def test_Fe_FPLO(check_run, system_Fe_FPLO, compare_any_result):
+    param = {'Efermi': Efermi_Fe_FPLO}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    check_run(
+        system_Fe_FPLO,
+        calculators,
+        fout_name="berry_Fe_FPLO",
+        suffix="-run",
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+
+def test_Fe_FPLO_wcc(check_run, system_Fe_FPLO_wcc, compare_any_result):
+    param = {'Efermi': Efermi_Fe_FPLO}
+    param_kwargs = {'Efermi': Efermi_Fe_FPLO, 'kwargs_formula':{"external_terms": False}}
+    for k, v in calculators_Fe.items():
+        if k in ['ahc','ahc_test','Morb','Morb_test']:
+            calculators = {k: v(**param_kwargs)}
+        else:
+            calculators = {k: v(**param)}
+    calculators.update({'spin':calc.static.Spin(**param)})
+    check_run(
+        system_Fe_FPLO_wcc,
+        calculators,
+        fout_name="berry_Fe_FPLO",
+        suffix="wcc-run",
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+
+def test_Fe_FPLO_wcc_ext(check_run, system_Fe_FPLO_wcc, compare_any_result):
+    param_kwargs = {'Efermi': Efermi_Fe_FPLO, 'kwargs_formula':{
+        "internal_terms": False, "external_terms": True}}
+    for k, v in calculators_Fe.items():
+        if k in ['ahc','ahc_test','Morb','Morb_test']:
+            calculators = {k: v(**param_kwargs)}
+    check_run(
+        system_Fe_FPLO_wcc,
+        calculators,
+        fout_name="berry_Fe_FPLO",
+        suffix="wcc_ext-run",
+        precision=1e-8,
+        compare_zero=True,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+
+def test_Fe_FPLO_wcc_sym(check_run, system_Fe_FPLO_wcc, compare_any_result):
+    param = {'Efermi': Efermi_Fe_FPLO}
+    param_kwargs = {'Efermi': Efermi_Fe_FPLO, 'kwargs_formula':{"external_terms": False}}
+    for k, v in calculators_Fe.items():
+        if k in ['ahc','ahc_test','Morb','Morb_test']:
+            calculators = {k: v(**param_kwargs)}
+        else:
+            calculators = {k: v(**param)}
+    calculators.update({'spin':calc.static.Spin(**param)})
+    check_run(
+        system_Fe_FPLO_wcc,
+        calculators,
+        fout_name="berry_Fe_FPLO",
+        suffix="wcc-sym-run",
+        use_symmetry=True,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
 
 
 def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_ray):
@@ -210,22 +402,6 @@ def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_
     )
     parallel_ray.shutdown()
 
-
-def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
-    param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
-    check_run(
-        system_Fe_W90,
-        calculators,
-        fout_name="berry_Fe_W90",
-        suffix="sym-run",
-        suffix_ref="sym",
-        use_symmetry=True,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
-    )
 
 
 def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
@@ -284,7 +460,6 @@ def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
             '_CCab_antisym': True
         },
     )
-
 
 def test_GaAs(check_run, system_GaAs_W90, compare_any_result, compare_fermisurfer):
     calculators = {k: v for k, v in calculators_GaAs.items()}
