@@ -3,7 +3,7 @@ from wannierberri import covariant_formulak as frml
 from wannierberri import covariant_formulak_basic as frml_basic
 from termcolor import cprint
 import numpy as np
-#from wannierberri import fermiocean
+from wannierberri import __factors as factors
 
 #######################################
 #                                     #
@@ -18,12 +18,12 @@ import numpy as np
 # physical constants #
 ######################
 
-from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom  #, Boltzmann
-from ..__utility import TAU_UNIT, alpha_A, beta_A
-bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
-bohr = physical_constants['Bohr radius'][0] / angstrom
-eV_au = physical_constants['electron volt-hartree relationship'][0]
-Ang_SI = angstrom
+#from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom  #, Boltzmann
+from ..__utility import alpha_A, beta_A
+#bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
+#bohr = physical_constants['Bohr radius'][0] / angstrom
+#eV_au = physical_constants['electron volt-hartree relationship'][0]
+#Ang_SI = angstrom
 
 ###########
 # factors #
@@ -33,21 +33,21 @@ Ang_SI = angstrom
 #fac_spin_Z = elementary_charge * hbar / (2 * electron_mass) / Ang_SI**2# change unit of m_spin*B to (eV).
 
 #gme
-factor_t0_0_1 = -(elementary_charge / Ang_SI**2
-                * elementary_charge / hbar) # change velocity unit (red)
+#factor_t0_0_1 = -(elementary_charge / Ang_SI**2
+#                * elementary_charge / hbar) # change velocity unit (red)
 # Anomalous Hall conductivity
-factor_t0_1_0 = -(elementary_charge**2 / hbar / Ang_SI) /100.
+#factor_t0_1_0 = -(elementary_charge**2 / hbar / Ang_SI) /100.
 # Ohmic conductivity
-factor_t1_1_0 = (elementary_charge**2 / hbar / Ang_SI * TAU_UNIT /100.
-                * elementary_charge / hbar) # change velocity unit (red)
+#factor_t1_1_0 = (elementary_charge**2 / hbar / Ang_SI * TAU_UNIT /100.
+#                * elementary_charge / hbar) # change velocity unit (red)
 # Nonlinear anomalous Hall conductivity
-factor_t1_2_0 = elementary_charge**3 /hbar**2 * TAU_UNIT
+#factor_t1_2_0 = elementary_charge**3 /hbar**2 * TAU_UNIT
 # Classic Hall conductivity
-factor_t2_1_1 = -(elementary_charge**3 /hbar**2 * Ang_SI * TAU_UNIT**2 /100.
-                * elementary_charge**2 / hbar**2) # change velocity unit (red)
+#factor_t2_1_1 = -(elementary_charge**3 /hbar**2 * Ang_SI * TAU_UNIT**2 /100.
+#                * elementary_charge**2 / hbar**2) # change velocity unit (red)
 # Drude conductivity
-factor_t2_2_0 = -(elementary_charge**3 /hbar**2 * TAU_UNIT**2
-                * elementary_charge / hbar) # change velocity unit (red)
+#factor_t2_2_0 = -(elementary_charge**3 /hbar**2 * TAU_UNIT**2
+#                * elementary_charge / hbar) # change velocity unit (red)
 
 ####################
 # basic quantities #
@@ -122,7 +122,7 @@ class Morb():
         :math: `M = -\int [dk] (H + G - 2Ef*\Omega) f`"""
         self.kwargs = kwargs_formula
         if use_factor:
-            self.factor = -eV_au / bohr**2
+            self.factor = -factors.eV_au / factors.bohr**2
         else:
             self.factor = np.sign(self.factor)
         if print_comment:
@@ -147,7 +147,7 @@ class Morb_test():
         :math: `M = -\int [dk] (H + G - 2Ef*\Omega) f`"""
         self.kwargs = kwargs_formula
         if use_factor:
-            self.factor = -eV_au / bohr**2
+            self.factor = -factors.eV_au / factors.bohr**2
         else:
             self.factor = np.sign(self.factor)
         if print_comment:
@@ -191,7 +191,7 @@ class GME_orb_FermiSurf():
         Instruction:
         :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
         if use_factor:
-            self.factor =  -elementary_charge**2 / (2 * hbar) # * factor_t0_0_1
+            self.factor =  -factors.elementary_charge**2 / (2 * factors.hbar) # * factor_t0_0_1
         else:
             self.factor = np.sign(self.factor)
         if print_comment:
@@ -251,7 +251,7 @@ class GME_orb_FermiSea():
         Instruction:
         :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
         if use_factor:
-            self.factor =  -elementary_charge**2 / (2 * hbar)# * factor_t0_0_1
+            self.factor =  -factors.elementary_charge**2 / (2 * factors.hbar)# * factor_t0_0_1
         else:
             self.factor = np.sign(self.factor)
         if print_comment:
@@ -279,7 +279,7 @@ class GME_orb_FermiSea_test():
         Instruction:
         :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
         if use_factor:
-            self.factor =  -elementary_charge**2 / (2 * hbar)# * factor_t0_0_1
+            self.factor =  -factors.elementary_charge**2 / (2 * factors.hbar)# * factor_t0_0_1
         else:
             self.factor = np.sign(self.factor)
         if print_comment:
@@ -297,7 +297,7 @@ class GME_spin_FermiSea(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.DerSpin
-        self.factor = -bohr_magneton / Ang_SI**2 # * factor_t0_0_1
+        self.factor = -factors.bohr_magneton / factors.Ang_SI**2 # * factor_t0_0_1
         self.fder = 0
         self.comment = r"""Gyrotropic tensor spin part (A/m^2/T)
         With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
@@ -318,7 +318,7 @@ class GME_spin_FermiSurf(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.VelSpin
-        self.factor = -bohr_magneton / Ang_SI**2 # * factor_t0_0_1
+        self.factor = -factors.bohr_magneton / factors.Ang_SI**2 # * factor_t0_0_1
         self.fder = 1
         self.comment = r"""Gyrotropic tensor spin part (A/m^2/T)
         With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`_
@@ -334,7 +334,7 @@ class AHC(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.Omega
-        self.factor = factor_t0_1_0
+        self.factor = factors.factor_ahc
         self.fder = 0
         self.comment = r"""Anomalous Hall conductivity (s^3 * A^2 / (kg * m^3) = S/m)
         Eq(11) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
@@ -349,7 +349,7 @@ class AHC_test(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml_basic.tildeFc
-        self.factor = factor_t0_1_0
+        self.factor = factors.factor_ahc
         self.fder = 0
         self.comment = r"""Anomalous Hall conductivity for testing (s^3 * A^2 / (kg * m^3) = S/m)
         Output:
@@ -363,7 +363,7 @@ class Ohmic_FermiSea(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.InvMass
-        self.factor = factor_t1_1_0
+        self.factor = factors.factor_ohmic
         self.fder = 0
         self.comment  = r"""Ohmic conductivity (s^3 * A^2 / (kg * m^3) = S/m)
         With Fermi sea integral. Eq(31) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
@@ -378,7 +378,7 @@ class Ohmic_FermiSurf(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.VelVel
-        self.factor = factor_t1_1_0
+        self.factor = factors.factor_ohmic
         self.fder = 1
         self.comment  = r"""Ohmic conductivity (s^3 * A^2 / (kg * m^3) = S/m)
         With Fermi surface integral.
@@ -393,7 +393,7 @@ class Ohmic_FermiSurf(StaticCalculator):
 class Hall_classic_FermiSurf(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.VelMassVel
-        self.factor = factor_t2_1_1
+        self.factor = factors.factor_hall_classic
         self.fder = 1
         self.comment  = r"""Classic Hall conductivity (S/m/T)
         With Fermi surface integral.
@@ -414,7 +414,7 @@ class Hall_classic_FermiSurf(StaticCalculator):
 class Hall_classic_FermiSea(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.MassMass
-        self.factor = factor_t2_1_1
+        self.factor = factors.factor_hall_classic
         self.fder = 0
         self.comment  = r"""Classic Hall conductivity (S/m/T)
         With Fermi sea integral.
@@ -451,7 +451,7 @@ class BerryDipole_FermiSurf(StaticCalculator):
 class NLAHC_FermiSurf(BerryDipole_FermiSurf):
 
     def __init__(self, **kwargs):
-        self.factor = factor_t1_2_0
+        self.factor = factors.factor_nlahc
         self.comment = r"""Nonlinear anomalous Hall conductivity  (S^2/A)
         With Fermi surface integral. Eq(8) in `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.115.216806>`_
         Output:
@@ -484,7 +484,7 @@ class BerryDipole_FermiSea(StaticCalculator):
 class NLAHC_FermiSea(BerryDipole_FermiSea):
 
     def __init__(self,**kwargs):
-        self.factor = factor_t1_2_0
+        self.factor = factors.factor_nlahc
         self.comment = r"""Nonlinear anomalous Hall conductivity  (S^2/A)
         With Fermi sea integral. Eq(29) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
         Output:
@@ -498,15 +498,12 @@ class BerryDipole_FermiSea_test(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml_basic.tildeFc_d
-        self.factor = factor_t1_2_0
+        self.factor = 1
         self.fder = 0
-        self.comment = r"""Nonlinear anomalous Hall conductivity for testing (S^2/A) with use_factor=True
-Berry curvature dipole for testing (dimensionless) with use_factor=False
+        self.comment = r"""Berry curvature dipole for testing (dimensionless)
         With Fermi sea integral.
         Output:
-        :math: `D_{\beta\delta} = e^3/\hbar^2 \tau \int [dk] \partial_beta \Omega_\delta f`
-        Instruction:
-        :math: `j_\alpha = \epsilon_{\alpha\delta\gamma} \D_{\beta\delta} E_\beta E\gamma`"""
+        :math: `D_{\beta\delta} = \tau \int [dk] \partial_beta \Omega_\delta f`"""
         super().__init__(**kwargs)
 
     def __call__(self, data_K):
@@ -565,7 +562,7 @@ class Spin_Hall(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.SpinOmega
-        self.factor = factor_t0_1_0 * -0.5
+        self.factor = factors.factor_ahc * -0.5
         self.fder = 0
         self.comment = r"""Spin Hall conductivity with dc (S/m)
         With Fermi sea integral. Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.235113>`_
@@ -583,7 +580,7 @@ class AHC_Zeeman_spin(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.OmegaS
-        self.factor = bohr_magneton / (elementary_charge * Ang_SI) * elementary_charge**2 / hbar / 100
+        self.factor = 1#bohr_magneton / (elementary_charge * Ang_SI) * elementary_charge**2 / hbar / 100
         self.fder = 1
         self.comment = r"""AHC conductivity Zeeman correcton term spin part (S/m/T)
         With Fermi surface integral.
@@ -625,7 +622,7 @@ class AHC_Zeeman_orb():
         Instruction:
         :math: `j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = e \epsilon_{\alpha\beta\delta} ZAHC^{orb}_{\alpha\beta:\mu} E_\beta B_\mu`"""
         if use_factor:
-            self.factor = Ang_SI * elementary_charge / (2 * hbar) * elementary_charge**2 / hbar / 100
+            self.factor = 1#Ang_SI * elementary_charge / (2 * hbar) * elementary_charge**2 / hbar / 100
         else:
             self.factor = np.sign(self.factor)
         if print_comment:

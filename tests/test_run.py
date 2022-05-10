@@ -104,11 +104,11 @@ calculators_Te = {
 
 smoother_Chiral = FermiDiracSmoother(Efermi_Chiral, T_Kelvin=1200, maxdE=8)
 calculators_Chiral = {
-    'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral),
+    'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral,smoother=smoother_Chiral),
     'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral),
-    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}),
+    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False},smoother=smoother_Chiral),
     'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}),
-    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False}),
+    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False},smoother=smoother_Chiral),
     'Der3E':calc.static.NLDrude_FermiSea(Efermi=Efermi_Chiral),
     'Hall_classic_fsurf':calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral),
     'Hall_classic':calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral),
@@ -317,7 +317,8 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
         use_symmetry=True,
         extra_precision={"Morb": -1e-6},
     )
-    for quant in calculators_Chiral.keys():#["conductivity_ohmic", "berry_dipole", "ahc"]:
+    #for quant in calculators_Chiral.keys():#["conductivity_ohmic", "berry_dipole", "ahc"]:
+    for quant in ["conductivity_ohmic", "berry_dipole", "ahc"]:
         compare_energyresult(
                 fout_name="berry_Chiral",
                 suffix=quant+"-left-run",
