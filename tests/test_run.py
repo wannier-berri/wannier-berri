@@ -82,10 +82,11 @@ def check_run(parallel_serial, compare_any_result):
 
     return _inner
 
-
 calculators_Fe = {
     'ahc': calc.static.AHC,
     'conductivity_ohmic': calc.static.Ohmic_FermiSea,
+    'Morb':calc.static.Morb,
+    'Morb':calc.static.Morb_test
 }
 
 calculators_GaAs = {
