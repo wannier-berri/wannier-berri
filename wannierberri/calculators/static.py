@@ -288,7 +288,7 @@ class GME_orb_FermiSea_test():
         return self.factor * (
                 DerHplus_test(Efermi=self.Efermi, tetra=self.tetra,
                     use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-                - 2 * BerryDipole_FermiSea_test(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
+                - 2 * BerryDipole_Fermisea(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
                 print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
 
 
