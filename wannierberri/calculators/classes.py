@@ -11,10 +11,14 @@ from termcolor import cprint
 
 class Calculator():
 
-    def __init__(self, degen_thresh=1e-4, degen_Kramers=False, save_mode="bin+txt"):
+    def __init__(self, degen_thresh=1e-4, degen_Kramers=False, save_mode="bin+txt", print_comment=True):
         self.degen_thresh = degen_thresh
         self.degen_Kramers = degen_Kramers
         self.save_mode = save_mode
+        if not hasattr(self, 'comment'):
+            self.comment = "calculator not described"
+        if print_comment:
+            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
 
 
 #######################################
@@ -26,7 +30,7 @@ class Calculator():
 
 class StaticCalculator(Calculator):
 
-    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
+    def __init__(self, Efermi, tetra=False, use_factor=True, kwargs_formula={}, **kwargs):
         self.Efermi = Efermi
         self.tetra = tetra
         self.kwargs_formula = kwargs_formula
@@ -34,9 +38,6 @@ class StaticCalculator(Calculator):
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
         assert hasattr(self, 'Formula'), "Formula not set - it  should be class with a trace(ik,inn,out) method "
-        if print_comment:
-            assert hasattr(self, 'comment'), "comment not set"
-            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
         if not use_factor:
             self.factor = np.sign(self.factor)
 
