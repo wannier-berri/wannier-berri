@@ -8,8 +8,8 @@ bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]
 Ang_SI = angstrom
 
-#fac_morb_Z = elementary_charge/2/hbar * Ang_SI**2 # change unit of m_orb*B to (eV).
-#fac_spin_Z = elementary_charge * hbar / (2 * electron_mass) / Ang_SI**2# change unit of m_spin*B to (eV).
+fac_orb_Z = elementary_charge/2/hbar * Ang_SI**2 # change unit of m_orb*B to (eV).
+fac_spin_Z = elementary_charge * hbar / (2 * electron_mass) / Ang_SI**2# change unit of m_spin*B to (eV).
 
 factor_gme = -(elementary_charge / Ang_SI**2  # with tau^0 E^0 B^1
                 * elementary_charge / hbar) # change velocity unit from eV*m to m/s
