@@ -4,6 +4,7 @@ import os
 import numpy as np
 import pytest
 import pickle
+from pytest import approx
 
 import wannierberri as wberri
 from wannierberri import calculators as calc
@@ -793,8 +794,51 @@ def test_Chiral_right(check_run, system_Chiral_left, system_Chiral_right, compar
         assert data1 == pytest.approx(sign * data2, abs=precision), key
 
 
-
-
+def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
+    "check that for flipped chirality the ohmic conductivity is the same, but the Berry dipole is opposite"
+    
+    degen_param = [('degen_thresh', 0.05), ('degen_Kramers', True)]
+    calculators = {}
+    for tetra in True,False:
+        for degen in degen_param:
+            param_kwargs = {'Efermi': Efermi_CuMnAs_2d,'tetra':tetra,degen[0]:degen[1],'kwargs_formula':{'external_terms': False}}
+            param = {'Efermi': Efermi_CuMnAs_2d,'tetra':tetra,degen[0]:degen[1]}
+            label = f"-{tetra}-{degen[0]}"
+            print(param)
+            print(label)
+            for k, v in calculators_CuMnAs_2d.items():
+                if k == 'Hall_morb_fsurf':
+                    calculators.update({k+label: v(**param_kwargs)})
+                else:
+                    calculators.update({k+label: v(**param)})
+    
+    degen_param = [('degen_thresh', 0.05), ('degen_Kramers', True)]
+    results = check_run(
+            system_CuMnAs_2d_broken,
+            calculators,
+            fout_name="berry_CuMnAs_2d",
+            grid_param={
+            'NK': [10, 10, 1],
+            'NKFFT': [5, 5, 1]},
+            use_symmetry=True,
+            do_not_compare=True)
+    
+    for tetra in True,False:
+        for k in calculators_CuMnAs_2d.keys():
+            label1 = k + f"-{tetra}-{degen_param[0][0]}"
+            label2 = k + f"-{tetra}-{degen_param[1][0]}"
+            data1 = results.results[label1].data
+            data2 = results.results[label2].data
+            assert data1.shape == data2.shape
+            assert np.all(np.array(data1.shape[1:]) == 3)
+            assert np.all(np.array(data2.shape[1:]) == 3)
+            precision = 1e-14 * np.max(abs(data1))
+            assert data1 == approx(
+                data2, abs=precision
+                ), (
+                f"calcuylated data of {label1}  and {label2} give a maximal "
+                + "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
+                    abs_err=np.max(abs(data1 - data2)), required_precision=precision))
 
 
 
