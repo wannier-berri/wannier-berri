@@ -1,10 +1,6 @@
 import numpy as np
-from time import time
-import multiprocessing
-import functools
-import itertools
-from collections.abc import Iterable
 from .__result import Result
+import itertools
 
 
 
@@ -91,7 +87,7 @@ class KBandResult(Result):
             if component is None:
                 return self.data
             else:
-                raise result.NoComponentError(component, 0)
+                raise NoComponentError(component, 0)
         elif ndim == 1:
             if component in ["x", "y", "z"]:
                 return self.data[:, :, xyz[component]]
@@ -100,7 +96,7 @@ class KBandResult(Result):
             elif component == 'sq':
                 return np.linalg.norm(self.data, axis=-1)**2
             else:
-                raise result.NoComponentError(component, 1)
+                raise NoComponentError(component, 1)
         elif ndim == 2:
             if component == "trace":
                 return sum([self.data[:, :, i, i] for i in range(3)])
@@ -108,7 +104,7 @@ class KBandResult(Result):
                 try:
                     return self.data[:, :, xyz[component[0]], xyz[component[1]]]
                 except IndexError:
-                    raise result.NoComponentError(component, 2)
+                    raise NoComponentError(component, 2)
         elif ndim == 3:
             if component == "trace":
                 return sum([self.data[:, :, i, i, i] for i in range(3)])
@@ -116,7 +112,7 @@ class KBandResult(Result):
                 try:
                     return self.data[:, :, xyz[component[0]], xyz[component[1]], xyz[component[2]]]
                 except IndexError:
-                    raise result.NoComponentError(component, 3)
+                    raise NoComponentError(component, 3)
         elif ndim == 4:
             if component == "trace":
                 return sum([self.data[:, :, i, i, i, i] for i in range(3)])
@@ -124,7 +120,7 @@ class KBandResult(Result):
                 try:
                     return self.data[:, :, xyz[component[0]], xyz[component[1]], xyz[component[2]], xyz[component[3]]]
                 except IndexError:
-                    raise result.NoComponentError(component, 4)
+                    raise NoComponentError(component, 4)
         else:
             raise NotImplementedError("writing tensors with rank >4 is not implemented. But easy to do")
 

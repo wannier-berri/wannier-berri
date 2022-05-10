@@ -15,7 +15,7 @@
 import functools
 from .__evaluate import evaluate_K
 from wannierberri.smoother import getSmoother
-from wannierberri import __result_tab
+from wannierberri.result import __tabresult
 from . import __integrate
 from . import __tabulate
 from wannierberri.__path import Path
@@ -345,7 +345,7 @@ def tabulate(
     if mode == '3D':
         res = res.to_grid(grid.dense)
         t2 = time()
-        ttxt, twrite = __result_tab.write_frmsf(
+        ttxt, twrite = __tabresult.write_frmsf(
             frmsf_name,
             Ef0,
             parallel.num_cpus if parallel is not None else 1,

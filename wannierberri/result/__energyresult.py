@@ -1,5 +1,6 @@
 import numpy as np
-from .smoother import VoidSmoother
+from lazy_property import LazyProperty as Lazy
+from wannierberri.smoother import VoidSmoother
 from .__result import Result
 
 class EnergyResult(Result):

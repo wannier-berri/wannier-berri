@@ -6,7 +6,7 @@ receive :calss:`~wannierberri.data_K.Data_K` objects and yield
 
 import abc
 import numpy as np
-from wannierberri.__result_tab import KBandResult,TABresult
+from wannierberri.result import KBandResult,TABresult
 
 class Calculator(abc.ABC):
 

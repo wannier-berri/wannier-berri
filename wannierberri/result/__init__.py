@@ -15,14 +15,8 @@
 #  different types of  calculations.
 #  child classes can be defined specifically in each module
 
-import numpy as np
-from lazy_property import LazyProperty as Lazy
 
-
-# A class to contain results or a calculation:
-# For any calculation there should be a class with the samemethods implemented
-
-from .__dict import  ResultDict
+from .__resultdict import  ResultDict
 from .__energyresult import EnergyResult
-from .__tabresult import TABResult
+from .__tabresult import TABresult
 from .__kbandresult import KBandResult

@@ -10,7 +10,7 @@ from collections import defaultdict
 from math import ceil
 from wannierberri import covariant_formulak as frml
 from wannierberri import __factors as factors
-from wannierberri.__result import EnergyResult
+from wannierberri.result import EnergyResult
 from . import Calculator
 
 

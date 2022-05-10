@@ -8,7 +8,7 @@ import pickle
 import wannierberri as wberri
 from wannierberri import calculators as calc
 from wannierberri.smoother import FermiDiracSmoother
-from wannierberri.__result import EnergyResult
+from wannierberri.result import EnergyResult
 
 from common import OUTPUT_DIR, REF_DIR
 from common_comparers import compare_quant

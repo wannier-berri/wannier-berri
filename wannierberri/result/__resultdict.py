@@ -16,10 +16,7 @@
 #  child classes can be defined specifically in each module
 
 import numpy as np
-from lazy_property import LazyProperty as Lazy
-
-from .smoother import VoidSmoother
-from . import Result
+from .__result import Result
 
 # A class to contain results or a calculation:
 # For any calculation there should be a class with the samemethods implemented

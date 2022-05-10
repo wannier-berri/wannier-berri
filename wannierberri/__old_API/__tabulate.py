@@ -13,7 +13,7 @@
 
 import numpy as np
 from collections import defaultdict
-from wannierberri.__result_tab import TABresult, KBandResult
+from wannierberri.result import TABresult, KBandResult
 from wannierberri import covariant_formulak as frml
 from wannierberri import covariant_formulak_basic as frml_basic
 

@@ -1,7 +1,7 @@
 import numpy as np
 import abc, functools
 from wannierberri.__utility import Gaussian, Lorentzian
-from wannierberri.__result import EnergyResult
+from wannierberri.result import EnergyResult
 
 from . import Calculator
 

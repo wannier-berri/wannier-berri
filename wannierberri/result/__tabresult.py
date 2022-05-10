@@ -1,4 +1,10 @@
+import numpy as np
+from time import time
+import multiprocessing
+import functools
+from collections.abc import Iterable
 
+from .__result import Result
 from .__kbandresult import NoComponentError
 
 class TABresult(Result):

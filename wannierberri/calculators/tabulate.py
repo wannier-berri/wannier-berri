@@ -1,7 +1,7 @@
 import numpy as np
 from . import Calculator
 from wannierberri import covariant_formulak as frml
-from wannierberri.__result_tab import KBandResult
+from wannierberri.result import KBandResult
 
 
 # The base class for Tabulating

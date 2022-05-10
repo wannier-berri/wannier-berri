@@ -20,7 +20,7 @@ import glob
 from .data_K import Data_K
 from .__Kpoint import exclude_equiv_points
 from .parallel import Serial
-from .__result import ResultDict
+from .result import ResultDict
 from .__path import Path
 
 

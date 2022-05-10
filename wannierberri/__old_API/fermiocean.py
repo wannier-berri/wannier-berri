@@ -2,7 +2,7 @@ import numpy as np
 from wannierberri.__utility import alpha_A, beta_A
 from wannierberri import __factors  as factors
 from collections import defaultdict
-from wannierberri import __result as result
+from wannierberri import result as result
 from math import ceil
 from wannierberri import covariant_formulak as frml
 from wannierberri.formula import FormulaProduct
