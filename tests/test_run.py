@@ -571,7 +571,7 @@ def test_GaAs_tb_wcc_ws(check_run, system_GaAs_tb_wcc_ws, compare_any_result):
 
 
 def test_Haldane_PythTB(check_run, system_Haldane_PythTB, compare_any_result):
-    
+
     param = {'Efermi': Efermi_Haldane}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
@@ -591,7 +591,7 @@ def test_Haldane_TBmodels(check_run, system_Haldane_TBmodels, compare_any_result
 
     param = {'Efermi': Efermi_Haldane}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
-    
+
     check_run(
         system_Haldane_TBmodels,
         calculators,
@@ -609,11 +609,11 @@ def test_Haldane_TBmodels_internal(check_run, system_Haldane_TBmodels_internal, 
     param_kwargs = {'Efermi': Efermi_Haldane, 'kwargs_formula':{"external_terms": False}}
     param = {'Efermi': Efermi_Haldane}
     for k, v in calculators_Haldane.items():
-        if k =='ahc': 
+        if k =='ahc':
             calculators = {k: v(**param_kwargs)}
         else:
             calculators = {k: v(**param)}
-    
+
     check_run(
         system_Haldane_TBmodels_internal,
         calculators,
@@ -643,7 +643,7 @@ def test_Haldane_TBmodels_internal(check_run, system_Haldane_TBmodels_internal, 
 
 
 def test_Haldane_PythTB_sym(check_run, system_Haldane_PythTB, compare_any_result):
-    
+
     param = {'Efermi': Efermi_Haldane}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
@@ -661,7 +661,7 @@ def test_Haldane_PythTB_sym(check_run, system_Haldane_PythTB, compare_any_result
 
 
 def test_Haldane_TBmodels_sym(check_run, system_Haldane_TBmodels, compare_any_result):
-    
+
     param = {'Efermi': Efermi_Haldane}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
@@ -679,7 +679,7 @@ def test_Haldane_TBmodels_sym(check_run, system_Haldane_TBmodels, compare_any_re
 
 
 def test_Haldane_TBmodels_sym_refine(check_run, system_Haldane_TBmodels, compare_any_result):
-    
+
     param = {'Efermi': Efermi_Haldane}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
@@ -796,7 +796,7 @@ def test_Chiral_right(check_run, system_Chiral_left, system_Chiral_right, compar
 
 def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
     "check that for flipped chirality the ohmic conductivity is the same, but the Berry dipole is opposite"
-    
+
     degen_param = [('degen_thresh', 0.05), ('degen_Kramers', True)]
     calculators = {}
     for tetra in True,False:
@@ -811,18 +811,19 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
                     calculators.update({k+label: v(**param_kwargs)})
                 else:
                     calculators.update({k+label: v(**param)})
-    
+
     degen_param = [('degen_thresh', 0.05), ('degen_Kramers', True)]
     results = check_run(
             system_CuMnAs_2d_broken,
             calculators,
             fout_name="berry_CuMnAs_2d",
             grid_param={
-            'NK': [10, 10, 1],
-            'NKFFT': [5, 5, 1]},
+                'NK': [10, 10, 1],
+                'NKFFT': [5, 5, 1]
+                },
             use_symmetry=True,
-            do_not_compare=True)
-    
+            do_not_compare=True,)
+
     for tetra in True,False:
         for k in calculators_CuMnAs_2d.keys():
             label1 = k + f"-{tetra}-{degen_param[0][0]}"
@@ -834,10 +835,9 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
             assert np.all(np.array(data2.shape[1:]) == 3)
             precision = 1e-14 * np.max(abs(data1))
             assert data1 == approx(
-                data2, abs=precision
-                ), (
-                f"calcuylated data of {label1}  and {label2} give a maximal "
-                + "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
+                data2, abs=precision), (
+                        f"calcuylated data of {label1}  and {label2} give a maximal "
+                        + "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
                     abs_err=np.max(abs(data1 - data2)), required_precision=precision))
 
 
