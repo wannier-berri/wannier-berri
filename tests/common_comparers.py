@@ -36,7 +36,6 @@ def read_energyresult_dat(filename, mode="txt"):
         return res.E_titles, res.Energies, res.data, None  # we do not check smoothing in the binary mode
     elif mode == "txt":
         # Now the txt mode
-        print (f"file : {filename}")
         # get the first line that does not start with "####" neither empty
         for l in open(filename, 'r'):
             l = l.strip()
@@ -45,9 +44,7 @@ def read_energyresult_dat(filename, mode="txt"):
             else:
                 firstline = l.split()
                 break
-        print (f"firstline : {firstline}")
         data_raw = np.loadtxt(filename)
-        print ("data_raw ; ",data_raw.shape,"\n",data_raw)
 
         # energy titles: before 'x' or 'xx' or 'xxx' or ... occurs.
         E_titles = []
@@ -61,7 +58,6 @@ def read_energyresult_dat(filename, mode="txt"):
         n_data = (data_raw.shape[1] - N_energies) // 2
         data = data_raw[:, N_energies:N_energies + n_data]
         data_smooth = data_raw[:, N_energies + n_data:]
-        print (E_titles, data_energy.shape, data.shape, data_smooth.shape)
         return E_titles, data_energy, data, data_smooth
     else:
         raise ValueError(f"Supported modes are `txt` and `bin`, found {mode}")
@@ -175,8 +171,6 @@ def compare_any_result():
                 filename_ref = fout_name_ref + f"-{suffix_ref}_iter-{i_iter:04d}" + ext
                 path_filename_ref = os.path.join(REF_DIR, filename_ref)
                 result_ref = result_type(file_npz=path_filename_ref)
-                print (result.comment,result_ref.comment)
-                print (type(result.comment),type(result_ref.comment))
                 maxval = result_ref._maxval_raw
                 if precision is None:
                     precision = max(maxval / 1E12, 1E-11)
