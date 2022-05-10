@@ -1,7 +1,7 @@
 """
 The module describes calculators - objects that 
 receive :calss:`~wannierberri.data_K.Data_K` objects and yield
-:class:`~wannierberri.__result.Result`
+:class:`~wannierberri.result.Result`
 """
 
 import abc

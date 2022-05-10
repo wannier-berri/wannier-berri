@@ -119,12 +119,12 @@ def run(
 
     Parameters
     ----------
-    system : :class:`~wannierberri.__system.System`
+    system : :class:`~wannierberri.system.System`
         System under investigation
     grid : :class:`~wannierberri.Grid` or :class:`~wannierberri.Path`
         initial grid for integration. or path for tabulation
     calculators : dict
-        a dictionary where keys aare any string identifiers, and the values are of :class:`~wannierberri.calculators.classes.Calculator`
+        a dictionary where keys aare any string identifiers, and the values are of :class:`~wannierberri.calculators.Calculator`
     adpt_num_iter : int
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
     adpt_mesh : int
@@ -153,7 +153,7 @@ def run(
 
     Returns
     --------
-    dictionary of  :class:`~wannierberri.EnergyResult`
+    dictionary of  :class:`~wannierberri.result.EnergyResult`
 
     Notes
     -----

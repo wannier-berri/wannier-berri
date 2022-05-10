@@ -4,6 +4,7 @@ from wannierberri.__utility import Gaussian, Lorentzian
 from wannierberri.result import EnergyResult
 
 from . import Calculator
+from wannierberri.formula.covariant import SpinVelocity
 
 
 
@@ -190,7 +191,6 @@ class OpticalConductivity(DynamicCalculator):
 ###############################
 #          SHC                #
 ###############################
-from wannierberri.covariant_formulak import SpinVelocity
 
 
 class Formula_SHC():

@@ -18,8 +18,7 @@ from .parallel import pool
 from .system.system import System
 from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A
 from .__tetrahedron import TetraWeights, get_bands_in_range, get_bands_below_range
-from .formula import Matrix_ln, Matrix_GenDer_ln
-
+from . import formula
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -54,14 +53,6 @@ def parity_TR(name, der=0):
         raise ValueError(f"parity under TR unknown for {name}")
     return bool((p + der) % 2)
 
-
-class _Dcov(Matrix_ln):
-
-    def __init__(self, data_K):
-        super().__init__(data_K.D_H)
-
-    def nn(self, ik, inn, out):
-        raise ValueError("Dln should not be called within inner states")
 
 
 class Data_K(System):
@@ -347,13 +338,13 @@ class Data_K(System):
         key = (name, commader, gender)
         if key not in self._covariant_quantities:
             if gender == 0:
-                res = Matrix_ln(
+                res = formula.Matrix_ln(
                     self.Xbar(name, commader), Iodd=parity_I(name, commader), TRodd=parity_TR(name, commader))
             elif gender == 1:
                 if name == 'Ham':
                     res = self.V_covariant
                 else:
-                    res = Matrix_GenDer_ln(
+                    res = formula.Matrix_GenDer_ln(
                         self.covariant(name),
                         self.covariant(name, commader=1),
                         self.Dcov,
@@ -370,7 +361,7 @@ class Data_K(System):
     @property
     def V_covariant(self):
 
-        class V(Matrix_ln):
+        class V(formula.Matrix_ln):
 
             def __init__(self, matrix):
                 super().__init__(matrix, TRodd=True, Iodd=True)
@@ -382,7 +373,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def Dcov(self):
-        return _Dcov(self)
+        return formula.covariant.Dcov(self)
 
     @lazy_property.LazyProperty
     def dEig_inv(self):

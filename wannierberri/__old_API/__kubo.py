@@ -20,7 +20,7 @@ from scipy import constants as constants
 from termcolor import cprint
 from wannierberri.__utility import alpha_A, beta_A
 from wannierberri import result as result
-from wannierberri.covariant_formulak import SpinVelocity
+from wannierberri.formula.covariant import SpinVelocity
 from .__energyresultdict import EnergyResultDict
 # constants
 pi = constants.pi

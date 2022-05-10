@@ -16,6 +16,7 @@
 #  child classes can be defined specifically in each module
 
 
+from .__result import Result
 from .__resultdict import  ResultDict
 from .__energyresult import EnergyResult
 from .__tabresult import TABresult

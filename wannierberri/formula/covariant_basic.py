@@ -1,7 +1,7 @@
 import numpy as np
-from .__utility import alpha_A, beta_A
-from .formula import Formula_ln
-from .covariant_formulak import DerDcov, Eavln
+from wannierberri.__utility import alpha_A, beta_A
+from . import Formula_ln
+from .covariant import DerDcov, Eavln
 """ The following  Formulue are fundamental. They can be used to construct all
 quantities relatred to Berry curvature and orbital magnetic moment. They are written
 in the most explicit form, although probably not the most efecient.

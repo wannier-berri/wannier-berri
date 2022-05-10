@@ -1,6 +1,6 @@
 import numpy as np
 from . import Calculator
-from wannierberri import covariant_formulak as frml
+from wannierberri.formula import covariant as frml
 from wannierberri.result import KBandResult
 
 

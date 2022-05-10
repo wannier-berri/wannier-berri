@@ -4,9 +4,9 @@ from wannierberri import __factors  as factors
 from collections import defaultdict
 from wannierberri import result as result
 from math import ceil
-from wannierberri import covariant_formulak as frml
 from wannierberri.formula import FormulaProduct
-from wannierberri import covariant_formulak_basic as frml_basic
+from wannierberri.formula import covariant as frml
+from wannierberri.formula import covariant_basic as frml_basic
 
 
 def cumdos(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):

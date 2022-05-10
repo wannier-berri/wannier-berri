@@ -97,7 +97,7 @@ def system_Fe_W90(create_files_Fe_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe")
-    system = wberri.System_w90(
+    system = wberri.system.System_w90(
         seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv=False, use_wcc_phase=False)
     system.set_symmetry(symmetries_Fe)
     return system
@@ -111,7 +111,7 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe")
-    system = wberri.System_w90(seedname, morb=True, SHCqiao=False, SHCryoo=False, transl_inv=False, use_wcc_phase=True)
+    system = wberri.system.System_w90(seedname, morb=True, SHCqiao=False, SHCryoo=False, transl_inv=False, use_wcc_phase=True)
     system.set_symmetry(symmetries_Fe)
     return system
 
@@ -125,7 +125,7 @@ def system_Fe_sym_W90(create_files_Fe_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.System_w90(seedname, berry=True, morb=True, spin=True, use_ws=False)
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, use_ws=False)
     system.set_symmetry(symmetries_Fe)
     system.symmetrize(
         proj=['Fe:sp3d2;t2g'],
@@ -146,7 +146,7 @@ def system_GaAs_W90(create_files_GaAs_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.System_w90(seedname, berry=True, morb=True, transl_inv=False)
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, transl_inv=False)
 
     return system
 
@@ -159,7 +159,7 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.System_w90(seedname, morb=True, transl_inv=False, use_wcc_phase=True)
+    system = wberri.system.System_w90(seedname, morb=True, transl_inv=False, use_wcc_phase=True)
 
     return system
 
@@ -175,7 +175,7 @@ def system_GaAs_tb():
             tar.extract(tarinfo, data_dir)
 
     seedname = os.path.join(data_dir, "GaAs_tb.dat")
-    system = wberri.System_tb(seedname, berry=True)
+    system = wberri.system.System_tb(seedname, berry=True)
 
     return system
 
@@ -191,7 +191,7 @@ def system_GaAs_sym_tb():
             tar.extract(tarinfo, data_dir)
 
     seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
-    system = wberri.System_tb(seedname, berry=True, use_ws=False)
+    system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
     system.symmetrize(
         positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
         atom_name=['Ga', 'As'],
@@ -212,7 +212,7 @@ def system_GaAs_tb_wcc():
             tar.extract(tarinfo, data_dir)
     # Load system
     seedname = os.path.join(data_dir, "GaAs_tb.dat")
-    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=True)
+    system = wberri.system.System_tb(seedname, berry=True, use_wcc_phase=True)
 
     return system
 
@@ -228,7 +228,7 @@ def system_GaAs_tb_wcc_ws():
             tar.extract(tarinfo, data_dir)
     # Load system
     seedname = os.path.join(data_dir, "GaAs_tb.dat")
-    system = wberri.System_tb(seedname, berry=True, use_wcc_phase=True, use_ws=True, mp_grid=(2, 2, 2))
+    system = wberri.system.System_tb(seedname, berry=True, use_wcc_phase=True, use_ws=True, mp_grid=(2, 2, 2))
 
     return system
 
@@ -240,7 +240,7 @@ model_tbmodels_Haldane = wb_models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15)
 @pytest.fixture(scope="session")
 def system_Haldane_TBmodels():
     # Load system
-    system = wberri.System_TBmodels(model_tbmodels_Haldane, berry=True)
+    system = wberri.system.System_TBmodels(model_tbmodels_Haldane, berry=True)
     system.set_symmetry(["C3z"])
     return system
 
@@ -248,7 +248,7 @@ def system_Haldane_TBmodels():
 @pytest.fixture(scope="session")
 def system_Haldane_TBmodels_internal():
     # Load system
-    system = wberri.System_TBmodels(model_tbmodels_Haldane, berry=False)
+    system = wberri.system.System_TBmodels(model_tbmodels_Haldane, berry=False)
     system.set_symmetry(["C3z"])
     return system
 
@@ -261,7 +261,7 @@ model_pythtb_Haldane = wb_models.Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15)
 def system_Haldane_PythTB():
     """Create system for Haldane model using PythTB"""
     # Load system
-    system = wberri.System_PythTB(model_pythtb_Haldane, berry=True)
+    system = wberri.system.System_PythTB(model_pythtb_Haldane, berry=True)
     system.set_symmetry(["C3z"])
     return system
 
@@ -278,21 +278,21 @@ model_Chiral_right = wb_models.Chiral(
 
 @pytest.fixture(scope="session")
 def system_Chiral_left():
-    system = wberri.System_PythTB(model_Chiral_left, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_Chiral_left, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
     return system
 
 
 @pytest.fixture(scope="session")
 def system_Chiral_left_TR():
-    system = wberri.System_PythTB(model_Chiral_left_TR, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_Chiral_left_TR, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
     return system
 
 
 @pytest.fixture(scope="session")
 def system_Chiral_right():
-    system = wberri.System_PythTB(model_Chiral_right, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_Chiral_right, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
     return system
 
@@ -304,7 +304,7 @@ def system_Chiral_right():
 def system_Fe_FPLO():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.System_fplo(path, use_wcc_phase=False, morb=True, spin=True)
+    system = wberri.system.System_fplo(path, use_wcc_phase=False, morb=True, spin=True)
     system.set_symmetry(symmetries_Fe)
     return system
 
@@ -313,7 +313,7 @@ def system_Fe_FPLO():
 def system_Fe_FPLO_wcc():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.System_fplo(path, use_wcc_phase=True, morb=True, spin=True)
+    system = wberri.system.System_fplo(path, use_wcc_phase=True, morb=True, spin=True)
     system.set_symmetry(symmetries_Fe)
     return system
 
@@ -326,7 +326,7 @@ model_CuMnAs_2d_broken = wb_models.CuMnAs_2d(nx=0, ny=1, nz=0, hop1=1, hop2=0.08
 
 @pytest.fixture(scope="session")
 def system_CuMnAs_2d_broken():
-    system = wberri.System_PythTB(model_CuMnAs_2d_broken, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_CuMnAs_2d_broken, use_wcc_phase=True)
     return system
 
 
@@ -339,7 +339,7 @@ def system_Te_ASE():
     path = os.path.join(ROOT_DIR, "data", "Te_ASE")
     calc = gpaw.GPAW(os.path.join(path, "Te.gpw"))
     wan = ase.dft.wannier.Wannier(nwannier=12, calc=calc, file=os.path.join(path, 'wannier-12.json'))
-    system = wberri.System_ASE(wan, ase_calc=calc, use_wcc_phase=False, berry=True)
+    system = wberri.system.System_ASE(wan, ase_calc=calc, use_wcc_phase=False, berry=True)
     system.set_symmetry(symmetries_Te)
     return system
 
@@ -350,6 +350,6 @@ def system_Te_ASE_wcc():
     path = os.path.join(ROOT_DIR, "data", "Te_ASE")
     calc = gpaw.GPAW(os.path.join(path, "Te.gpw"))
     wan = ase.dft.wannier.Wannier(nwannier=12, calc=calc, file=os.path.join(path, 'wannier-12.json'))
-    system = wberri.System_ASE(wan, ase_calc=calc, use_wcc_phase=True, berry=False)
+    system = wberri.system.System_ASE(wan, ase_calc=calc, use_wcc_phase=True, berry=False)
     system.set_symmetry(symmetries_Te)
     return system
