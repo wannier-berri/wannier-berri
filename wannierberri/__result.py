@@ -154,7 +154,7 @@ class EnergyResult(Result):
     file_npz : str
         | path to a np file (if provided, the parameters `Enegries`, `data`, `TRodd`, `Iodd`, `rank` and
         | `E_titles` are neglected)
-    comment : str 
+    comment : str
         | Any line that can mark what is in the result
 
      """
