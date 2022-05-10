@@ -14,7 +14,7 @@
 
 import functools
 from .__evaluate import evaluate_K
-from wannierberri.__utility import getSmoother
+from wannierberri.smoother import getSmoother
 from wannierberri import __result_tab
 from . import __integrate
 from . import __tabulate
