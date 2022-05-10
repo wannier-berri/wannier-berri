@@ -60,7 +60,7 @@ class Path(Grid):
 
         self.symgroup = system.symgroup
         self.FFT = np.array([1, 1, 1])
-        self.findif = None
+#        self.findif = None
         self.breaks = breaks
 
         if k_list == 'sphere':

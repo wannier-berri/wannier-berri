@@ -109,7 +109,7 @@ class Data_K(System):
         self.grid = grid
         self.NKFFT = grid.FFT
         self.select_K = np.ones(self.nk, dtype=bool)
-        self.findif = grid.findif
+#        self.findif = grid.findif
         self.real_lattice = system.real_lattice
         self.num_wann = self.system.num_wann
         self.Kpoint = Kpoint

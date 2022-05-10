@@ -17,9 +17,9 @@ wannierberri - a module for Wannier interpolation
 __version__ = "0.12.0"
 
 from .run import run
-from .__main import integrate, tabulate, integrate_options, tabulate_options, welcome, print_options
+from .__old_API.__main import integrate, tabulate #, integrate_options, tabulate_options, print_options
 from . import symmetry
-from .__tabulate import TABresult
+from .__result_tab import TABresult
 from .__grid import Grid
 from .system.system_w90 import System_w90
 from .system.system_fplo import System_fplo
@@ -29,3 +29,32 @@ from .system.system_ASE import System_ASE
 from .__path import Path
 from .__parallel import Parallel
 from . import calculators
+
+from termcolor import cprint
+
+
+def figlet(text, font='cosmike', col='red'):
+    init(strip=not sys.stdout.isatty())  # strip colors if stdout is redirected
+    letters = [figlet_format(X, font=font).rstrip("\n").split("\n") for X in text]
+    logo = []
+    for i in range(len(letters[0])):
+        logo.append("".join(L[i] for L in letters))
+    cprint("\n".join(logo), col, attrs=['bold'])
+
+def welcome():
+    # ogiginally obtained by
+    # figlet("WANN IER BERRI",font='cosmic',col='yellow')
+    # with small modifications
+    logo = """
+.::    .   .::: .:::::::.  :::.    :::.:::.    :::. :::.,::::::  :::::::..       :::::::.  .,::::::  :::::::..   :::::::..   :::
+';;,  ;;  ;;;' '  ;;`;;  ` `;;;;,  `;;;`;;;;,  `;;; ;;;;;;;''''  ;;;;``;;;;       ;;;'';;' ;;;;''''  ;;;;``;;;;  ;;;;``;;;;  ;;;
+ '[[, [[, [['    ,[[ '[[,    [[[[[. '[[  [[[[[. '[[ [[[ [[cccc    [[[,/[[['       [[[__[[\\. [[cccc    [[[,/[[['   [[[,/[[['  [[[
+   Y$c$$$c$P    c$$$cc$$$c   $$$ "Y$c$$  $$$ "Y$c$$ $$$ $$\"\"\"\"    $$$$$$c         $$\"\"\"\"Y$$ $$\"\"\"\"    $$$$$$c     $$$$$$c    $$$
+    "88"888      888   888,  888    Y88  888    Y88 888 888oo,__  888b "88bo,    _88o,,od8P 888oo,__  888b "88bo, 888b "88bo,888
+     "M "M"      YMM   ""`   MMM     YM  MMM     YM MMM \"\"\"\"YUMMM MMMM   "W"     ""YUMMMP"  \"\"\"\"YUMMM MMMM   "W"  MMMM   "W" MMM
+"""
+    cprint(logo, 'yellow')
+
+    cprint("""\n  The Web page is :  HTTP://WANNIER-BERRI.ORG  \n""", 'yellow')
+
+    cprint("\nVersion: {}\n".format(__version__), 'cyan', attrs=['bold'])

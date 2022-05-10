@@ -1,6 +1,6 @@
 from .classes import StaticCalculator
 from wannierberri import covariant_formulak as frml
-from wannierberri import fermiocean
+from wannierberri import __factors as factors
 
 #######################################
 #                                     #
@@ -40,7 +40,7 @@ class AHC(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.Omega
-        self.factor = fermiocean.fac_ahc
+        self.factor = factors.fac_ahc
         self.fder = 0
         super().__init__(**kwargs)
 
@@ -49,7 +49,7 @@ class Ohmic(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.InvMass
-        self.factor = fermiocean.factor_ohmic
+        self.factor = factors.factor_ohmic
         self.fder = 0
         super().__init__(**kwargs)
 
