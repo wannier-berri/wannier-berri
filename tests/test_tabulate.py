@@ -3,7 +3,7 @@ import os
 
 import pytest
 import wannierberri as wberri
-from wannierberri import covariant_formulak as frml
+from wannierberri.formula import covariant as frml
 from wannierberri import formula
 
 from common import OUTPUT_DIR

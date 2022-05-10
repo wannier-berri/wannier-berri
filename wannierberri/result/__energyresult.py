@@ -36,6 +36,8 @@ class EnergyResult(Result):
     file_npz : str
         | path to a np file (if provided, the parameters `Enegries`, `data`, `TRodd`, `Iodd`, `rank` and
         | `E_titles` are neglected)
+    comment : str
+        | Any line that can mark what is in the result
 
      """
 
@@ -50,7 +52,8 @@ class EnergyResult(Result):
             rank=None,
             E_titles=["Efermi", "Omega"],
             save_mode="txt+bin",
-            file_npz=None):
+            file_npz=None,
+            comment="undocumented"):
         if file_npz is not None:
             res = np.load(open(file_npz, "rb"))
             energ = [
@@ -60,6 +63,11 @@ class EnergyResult(Result):
                 TRtrans = res['TRtrans']
             except KeyError:
                 pass
+            try:
+                comment = str(res['comment'])
+            except KeyError:
+                comment = "undocumented"
+
             self.__init__(
                 Energies=energ,
                 data=res['data'],
@@ -68,7 +76,8 @@ class EnergyResult(Result):
                 Iodd=res['Iodd'],
                 rank=res['rank'],
                 E_titles=list(res['E_titles']),
-                TRtrans=TRtrans)
+                TRtrans=TRtrans,
+                comment=comment)
         else:
             if not isinstance(Energies, (list, tuple)):
                 Energies = [Energies]
@@ -96,8 +105,10 @@ class EnergyResult(Result):
             self.TRtrans = TRtrans
             self.Iodd = Iodd
             self.set_save_mode(save_mode)
+            self.comment = comment
             if self.TRtrans:
                 assert self.rank == 2
+
 
     def set_smoother(self, smoothers):
         if smoothers is None:
@@ -133,17 +144,18 @@ class EnergyResult(Result):
             rank=self.rank,
             E_titles=self.E_titles)
 
-    def __mul__(self, other):
-        if isinstance(other, int) or isinstance(other, float):
+    def __mul__(self, number):
+        if isinstance(number, int) or isinstance(number, float):
             return EnergyResult(
                 Energies=self.Energies,
-                data=self.data * other,
+                data=self.data * number,
                 smoothers=self.smoothers,
                 TRodd=self.TRodd,
                 TRtrans=self.TRtrans,
                 Iodd=self.Iodd,
                 rank=self.rank,
-                E_titles=self.E_titles)
+                E_titles=self.E_titles,
+                comment=self.comment)
         else:
             raise TypeError("result can only be multilied by a number")
 
@@ -156,6 +168,10 @@ class EnergyResult(Result):
         assert self.Iodd == other.Iodd
         if other == 0:
             return self
+        if len(self.comment)>len(other.comment):
+            comment = self.comment
+        else:
+            comment = other.comment
         for i in range(self.N_energies):
             if np.linalg.norm(self.Energies[i] - other.Energies[i]) > 1e-8:
                 raise RuntimeError(f"Adding results with different energies {i} ({self.E_titles[i]}) - not allowed")
@@ -170,7 +186,8 @@ class EnergyResult(Result):
             TRtrans=self.TRtrans,
             Iodd=self.Iodd,
             rank=self.rank,
-            E_titles=self.E_titles)
+            E_titles=self.E_titles,
+            comment=comment)
 
     def __sub__(self, other):
         return self + (-1) * other
@@ -198,8 +215,8 @@ class EnergyResult(Result):
                 return ['  ']
             else:
                 return [a + b for a in 'xyz' for b in getHead(n - 1)]
-
-        head = "#" + "    ".join("{0:^15s}".format(s) for s in self.E_titles) + " " * 8 + "    ".join(
+        head = "".join("#### "+s+"\n" for s in self.comment.split("\n") )
+        head += "#" + "    ".join("{0:^15s}".format(s) for s in self.E_titles) + " " * 8 + "    ".join(
             frmt.format(b) for b in getHead(self.rank) * 2) + "\n"
         name = name.format('')
 
@@ -223,6 +240,7 @@ class EnergyResult(Result):
                 TRodd=self.TRodd,
                 TRtrans=self.TRtrans,
                 Iodd=self.Iodd,
+                comment=self.comment,
                 **energ)
 
     def savedata(self, name, prefix, suffix, i_iter):
@@ -263,4 +281,6 @@ class EnergyResult(Result):
             TRtrans=self.TRtrans,
             Iodd=self.Iodd,
             rank=self.rank,
-            E_titles=self.E_titles)
+            E_titles=self.E_titles,
+            comment=self.comment)
+

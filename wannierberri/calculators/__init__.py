@@ -7,21 +7,25 @@ receive :calss:`~wannierberri.data_K.Data_K` objects and yield
 import abc
 import numpy as np
 from wannierberri.result import KBandResult,TABresult
+from termcolor import cprint
 
-class Calculator(abc.ABC):
+class Calculator():
 
-    def __init__(self, degen_thresh=1e-4, degen_Kramers=False, save_mode="bin+txt"):
+    def __init__(self, degen_thresh=1e-4, degen_Kramers=False, save_mode="bin+txt", print_comment=True):
         self.degen_thresh = degen_thresh
         self.degen_Kramers = degen_Kramers
         self.save_mode = save_mode
+        if not hasattr(self, 'comment'):
+            if self.__doc__ is not None:
+                self.comment = self.__doc__
+            else:
+                self.comment = "calculator not described"
+        if print_comment:
+            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
 
     @property
     def allow_path(self):
         return False    # change for those who can be calculated on a path instead of a grid
-
-    @abc.abstractmethod
-    def __call__(self,data_K):
-        pass
 
 class TabulatorAll(Calculator):
 

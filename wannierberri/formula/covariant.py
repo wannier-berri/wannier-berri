@@ -501,8 +501,72 @@ class SpinOmega(Formula_ln):
 #                                  #
 ####################################
 
-
 class VelOmega(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([data_K.covariant('Ham', commader=1), Omega(data_K, **kwargs_formula)], name='VelOmega')
+
+
+class VelHplus(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([data_K.covariant('Ham', commader=1), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='VelHplus')
+
+
+class VelSpin(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([data_K.covariant('Ham', commader=1), Spin(data_K)], name='VelSpin')
+
+
+class VelVel(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([data_K.covariant('Ham', commader=1), data_K.covariant('Ham', commader=1)], name='VelVel')
+
+
+class VelVelVel(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([data_K.covariant('Ham', commader=1), data_K.covariant('Ham', commader=1), data_K.covariant('Ham', commader=1)], name='VelVelVel')
+
+
+class MassVel(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([InvMass(data_K), data_K.covariant('Ham', commader=1)], name='MassVel')
+
+
+class MassMass(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([InvMass(data_K), InvMass(data_K)], name='MassMass')
+
+
+class VelMassVel(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([data_K.covariant('Ham', commader=1), InvMass(data_K),
+            data_K.covariant('Ham', commader=1)], name='VelMassVel')
+
+
+class OmegaS(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Omega(data_K, **kwargs_formula), Spin(data_K)], name='SpinOmega')
+
+
+class OmegaOmega(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Omega(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula)], name='OmegaOmega')
+
+
+class OmegaHplus(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Omega(data_K, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='OmegaHplus')
+
+
+
+
