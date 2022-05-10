@@ -580,7 +580,7 @@ class AHC_Zeeman_spin(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.OmegaS
-        self.factor = 1#bohr_magneton / (elementary_charge * Ang_SI) * elementary_charge**2 / hbar / 100
+        self.factor = factors.fac_spin_Z * factors.factor_gme /100 #bohr_magneton / (elementary_charge * Ang_SI) * elementary_charge**2 / hbar / 100
         self.fder = 1
         self.comment = r"""AHC conductivity Zeeman correcton term spin part (S/m/T)
         With Fermi surface integral.
@@ -622,7 +622,7 @@ class AHC_Zeeman_orb():
         Instruction:
         :math: `j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = e \epsilon_{\alpha\beta\delta} ZAHC^{orb}_{\alpha\beta:\mu} E_\beta B_\mu`"""
         if use_factor:
-            self.factor = 1#Ang_SI * elementary_charge / (2 * hbar) * elementary_charge**2 / hbar / 100
+            self.factor = factors.fac_orb_Z * factors.factor_gme /100 #Ang_SI * elementary_charge / (2 * hbar) * elementary_charge**2 / hbar / 100
         else:
             self.factor = np.sign(self.factor)
         if print_comment:

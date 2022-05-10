@@ -101,10 +101,15 @@ calculators_Fe = {
 }
 
 calculators_GaAs = {
-    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_GaAs, use_factor=False),
-    'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf(Efermi=Efermi_GaAs, use_factor=False),
-    'gyrotropic_Korb':calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs),
-    'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),
+    'berry_dipole': calc.static.BerryDipole_FermiSea,
+    'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf,
+    'berry_dipole_test': calc.static.BerryDipole_FermiSea_test,
+}
+
+calculators_GaAs_internal = {
+    'dos': calc.static.DOS,
+    'cumdos':calc.static.CumDOS,
+    'conductivity_ohmic': calc.static.Ohmic_FermiSea,
 }
 
 calculators_Te = {
@@ -113,6 +118,13 @@ calculators_Te = {
     'berry_dipole': calc.static.NLAHC_FermiSea,
 }
 
+calculators_CuMnAs_2d = {
+    'dos': calc.static.DOS,
+    'cumdos': calc.static.CumDOS,
+    'conductivity_ohmic': calc.static.Ohmic_FermiSea,
+    'Hall_morb_fsurf': calc.static.AHC_Zeeman_orb,
+    'Hall_classic_fsurf': calc.static.Hall_classic_FermiSea,
+}
 
 smoother_Chiral = FermiDiracSmoother(Efermi_Chiral, T_Kelvin=1200, maxdE=8)
 calculators_Chiral = {
@@ -457,7 +469,14 @@ def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
     )
 
 def test_GaAs(check_run, system_GaAs_W90, compare_any_result, compare_fermisurfer):
-    calculators = {k: v for k, v in calculators_GaAs.items()}
+    
+    param = {'Efermi': Efermi_GaAs}
+    calculators = {k: v(**param) for k, v in calculators_GaAs.items()} 
+    calculators.update({k: v(**param) for k, v in calculators_GaAs.items()})
+    calculators.update({
+        'gyrotropic_Korb':calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs),
+        'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),}
+            )
 
     check_run(
         system_GaAs_W90,
@@ -469,6 +488,90 @@ def test_GaAs(check_run, system_GaAs_W90, compare_any_result, compare_fermisurfe
             '_CCab_antisym': True
         },
         extra_precision={"berry_dipole_fsurf": 1e-6}
+    )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
+
+
+def test_GaAs_tb(check_run, system_GaAs_tb, compare_any_result, compare_fermisurfer):
+    
+    param = {'Efermi': Efermi_GaAs}
+    calculators = {k: v(**param) for k, v in calculators_GaAs.items()}
+
+    check_run(
+        system_GaAs_tb,
+        calculators,
+        fout_name="berry_GaAs_tb",
+        suffix="run",
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        extra_precision={"berry_dipole_fsurf": 1e-6}
+    )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
+
+
+def test_GaAs_wcc(check_run, system_GaAs_W90_wcc, compare_any_result, compare_fermisurfer):
+    param = {'Efermi': Efermi_GaAs}
+    calculators = {k: v(**param) for k, v in calculators_GaAs.items()} 
+    calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()}) 
+
+    check_run(
+        system_GaAs_W90_wcc,
+        calculators,
+        fout_name="berry_GaAs_W90",
+        suffix="wcc-run",
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        extra_precision={"berry_dipole_fsurf": 1e-6}
+    )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
+
+
+def test_GaAs_tb_wcc(check_run, system_GaAs_tb_wcc, compare_any_result, compare_fermisurfer):
+    
+    param = {'Efermi': Efermi_GaAs}
+    calculators = {k: v(**param) for k, v in calculators_GaAs.items()}
+
+    check_run(
+        system_GaAs_tb_wcc,
+        calculators,
+        fout_name="berry_GaAs_tb",
+        suffix="wcc-run",
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        extra_precision={"berry_dipole_fsurf": 1e-6}
+    )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
+
+
+def test_GaAs_tb_wcc_ws(check_run, system_GaAs_tb_wcc_ws, compare_any_result, compare_fermisurfer):
+    
+    param = {'Efermi': Efermi_GaAs}
+    calculators = {k: v(**param) for k, v in calculators_GaAs_internal.items()}
+
+    check_run(
+        system_GaAs_tb_wcc_ws,
+        calculators,
+        fout_name="berry_GaAs_W90",
+        suffix="tb_wcc-run",
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        extra_precision={"conductivity_ohmic": -2e-6}
+    )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
+
+
+def test_GaAs_sym_tb(check_run, system_GaAs_sym_tb, compare_any_result, compare_fermisurfer):
+    
+    check_run(
+        system_GaAs_sym_tb,
+        {'ahc':calc.static.AHC(Efermi=Efermi_GaAs)},
+        fout_name="berry_GaAs_sym_tb",
+        suffix="-run",
+        compare_zero=True,
+        extra_precision={"ahc": 1e-7}
     )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 
