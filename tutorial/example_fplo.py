@@ -35,7 +35,7 @@ system=wberri.System_fplo('+hamdata',berry=False,spin=False)
 generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 system.set_symmetry(generators)
 grid=wberri.Grid(system,length=300,length_FFT=50)
-parallel=wberri.Parallel(method="ray",num_cpus=num_proc)
+parallel=wberri.parallel.Parallel(num_cpus=num_proc)
 
 wberri.integrate(system,
             grid=grid,

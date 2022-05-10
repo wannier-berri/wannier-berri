@@ -49,7 +49,7 @@ class Formula_ln(abc.ABC):
         return self.ln(ik, out, inn)
 
     def ll(self, ik, inn, out):
-        """Returns the submatrix :math:`X_{ll'}` at point `ik`, whee 
+        """Returns the submatrix :math:`X_{ll'}` at point `ik`, whee
         :math:`l, l' \in \mathrm{inn}`
         """
         return self.nn(ik, out, inn)

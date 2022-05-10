@@ -27,6 +27,7 @@ tabulate_options = __tabulate.calculators.keys()
 from .utils.mmn2uHu import hlp as hlp_mmn
 from .utils.vaspspn import hlp as hlp_spn
 from time import time
+from .parallel import Serial
 import sys
 
 from colorama import init
@@ -123,7 +124,7 @@ def integrate(
         restart=False,
         suffix="",
         file_Klist="Klist",
-        parallel=None,
+        parallel=Serial(),
         print_Kpoints=True,
         parameters={},
         parameters_K={},

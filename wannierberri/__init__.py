@@ -23,5 +23,4 @@ from .__tabulate import TABresult
 from .__grid import Grid
 from .system import System_w90, System_fplo, System_tb, System_PythTB, System_TBmodels, System_ASE
 from .__path import Path
-from .__parallel import Parallel
 from . import calculators

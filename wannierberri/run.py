@@ -19,7 +19,7 @@ import glob
 
 from .data_K import Data_K
 from .__Kpoint import exclude_equiv_points
-from .__parallel import Parallel
+from .parallel import Serial
 from .__result import ResultDict
 
 
@@ -106,7 +106,7 @@ def run(
     file_Klist=None,
     restart=False,
     Klist_part=10,
-    parallel=None,  # serial by default
+    parallel=Serial(),  # serial by default
     print_Kpoints=True,
     adpt_mesh=2,
     adpt_fac=1,
@@ -129,7 +129,7 @@ def run(
         the size of the refinement grid (usuallay no need to change)
     adpt_fac : int
         number of K-points to be refined per quantity and criteria.
-    parallel : :class:`~wannierberri.Parallel`
+    parallel : :class:`~wannierberri.parallel.Parallel`
         object describing parallelization scheme
     use_irred_kpt : bool
         evaluate only symmetry-irreducible K-points
@@ -157,8 +157,6 @@ def run(
     -----
     Results are also printed to ASCII files
     """
-    if parallel is None:
-        parallel = Parallel()
 
     if file_Klist is not None:
         if not file_Klist.endswith(".pickle"):

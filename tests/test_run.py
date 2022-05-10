@@ -20,7 +20,7 @@ def check_run(parallel_serial, compare_any_result):
         calculators={},
         fout_name="berry",
         compare_zero=False,
-        parallel=None,
+        parallel=parallel_serial,
         grid_param={
             'NK': [6, 6, 6],
             'NKFFT': [3, 3, 3]

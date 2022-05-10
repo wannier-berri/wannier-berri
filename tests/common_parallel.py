@@ -1,11 +1,10 @@
 import pytest
-from wannierberri import Parallel
+from wannierberri.parallel import Parallel,Serial
 
 
 @pytest.fixture(scope="session")
 def parallel_serial():
-    return Parallel(
-        num_cpus=0,
+    return Serial(
         npar_k=0,
         progress_step_percent=1,
     )

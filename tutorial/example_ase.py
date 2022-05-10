@@ -48,7 +48,7 @@ if do_wberri:
     import wannierberri as wberri
     system = wberri.System_ASE(wan, ase_calc=calc, use_wcc_phase=True, berry=True)
 
-    parallel = wberri.Parallel(num_cpus=4)
+    parallel = wberri.parallel.Parallel(num_cpus=4)
 
     path = wberri.Path(
         system, k_nodes=[[k1, k2, 0.35], [k1, k2, 0.5], [k1, k2, 0.65]], labels=["K<-", "H", "->K"], length=5000)
