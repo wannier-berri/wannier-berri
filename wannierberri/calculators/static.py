@@ -433,14 +433,27 @@ class Hall_classic_FermiSea(StaticCalculator):
 
 
 # E^2 B^0
-class NLAHC_FermiSurf(StaticCalculator):
+class BerryDipole_FermiSurf(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.VelOmega
-        self.factor = factor_t1_2_0
+        self.factor = 1
         self.fder = 1
-        self.comment = r"""Nonlinear anomalous Hall conductivity  (S^2/A) with use_factor=True
-Berry curvature dipole (dimensionless) with use_factor=False
+        try:
+            self.comment
+        except:
+            self.comment = r"""Berry curvature dipole (dimensionless)
+        With Fermi surface integral. Eq(8) in `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.115.216806>`_
+        Output:
+        :math: `D_{\beta\delta} = -\int [dk] v_\beta \Omega_\delta f'`"""
+        super().__init__(**kwargs)
+
+
+class NLAHC_FermiSurf(BerryDipole_FermiSurf):
+
+    def __init__(self, **kwargs):
+        self.factor = factor_t1_2_0
+        self.comment = r"""Nonlinear anomalous Hall conductivity  (S^2/A)
         With Fermi surface integral. Eq(8) in `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.115.216806>`_
         Output:
         :math: `D_{\beta\delta} = -e^3/\hbar^2 \tau \int [dk] v_\beta \Omega_\delta f'`
@@ -449,19 +462,19 @@ Berry curvature dipole (dimensionless) with use_factor=False
         super().__init__(**kwargs)
 
 
-class NLAHC_FermiSea(StaticCalculator):
+class BerryDipole_FermiSea(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.DerOmega
-        self.factor = factor_t1_2_0
+        self.factor = 1
         self.fder = 0
-        self.comment = r"""Nonlinear anomalous Hall conductivity  (S^2/A) with use_factor=True
-Berry curvature dipole (dimensionless) with use_factor=False
+        try:
+            self.comment
+        except:
+            self.comment = r"""Berry curvature dipole (dimensionless)
         With Fermi sea integral. Eq(29) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
         Output:
-        :math: `D_{\beta\delta} = e^3/\hbar^2 \tau \int [dk] \partial_beta \Omega_\delta f`
-        Instruction:
-        :math: `j_\alpha = \epsilon_{\alpha\delta\gamma} \D_{\beta\delta} E_\beta E\gamma`"""
+        :math: `D_{\beta\delta} = \int [dk] \partial_beta \Omega_\delta f`"""
         super().__init__(**kwargs)
 
     def __call__(self, data_K):
@@ -471,7 +484,20 @@ Berry curvature dipole (dimensionless) with use_factor=False
         return res
 
 
-class NLAHC_FermiSea_test(StaticCalculator):
+class NLAHC_FermiSea(BerryDipole_FermiSea):
+    
+    def __init__(self,**kwargs):
+        self.factor = factor_t1_2_0
+        self.comment = r"""Nonlinear anomalous Hall conductivity  (S^2/A)
+        With Fermi sea integral. Eq(29) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
+        Output:
+        :math: `D_{\beta\delta} = e^3/\hbar^2 \tau \int [dk] \partial_beta \Omega_\delta f`
+        Instruction:
+        :math: `j_\alpha = \epsilon_{\alpha\delta\gamma} \D_{\beta\delta} E_\beta E\gamma`"""
+        super().__init__(**kwargs)
+
+
+class BerryDipole_Fermisea_test(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml_basic.tildeFc_d
