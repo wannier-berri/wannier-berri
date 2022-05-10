@@ -19,7 +19,7 @@ class _DOS(StaticCalculator):
     def __init__(self, fder,**kwargs):
         self.Formula = frml.Identity
         self.factor = 1
-        self.fder = 1
+        self.fder = fder
         super().__init__(**kwargs)
 
     def __call__(self, data_K):
