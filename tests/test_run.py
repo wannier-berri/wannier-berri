@@ -89,7 +89,6 @@ def check_run(parallel_serial, compare_any_result):
 
     return _inner
 
-
 calculators_Fe = {
     'ahc': calc.static.AHC,
     'ahc_test': calc.static.AHC_test,
@@ -99,10 +98,6 @@ calculators_Fe = {
     'Morb_test': calc.static.Morb_test,
     'dos': calc.static.DOS,
     'cumdos':calc.static.CumDOS,
-}
-
-calculators_Fe_wcc = {
-    'ahc': calc.static.AHC(Efermi=Efermi_Fe,kwargs_formula={'correction_wcc': True}),
 }
 
 calculators_GaAs = {
