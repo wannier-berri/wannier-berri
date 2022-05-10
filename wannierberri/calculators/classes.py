@@ -29,10 +29,11 @@ class Calculator():
 
 class StaticCalculator(Calculator):
 
-    def __init__(self, Efermi, tetra=False, kwargs_formula={}, **kwargs):
+    def __init__(self, Efermi, tetra=False, smoother=None, kwargs_formula={}, **kwargs):
         self.Efermi = Efermi
         self.tetra = tetra
         self.kwargs_formula = kwargs_formula
+        self.smoother = smoother
         assert hasattr(self, 'factor')
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
@@ -119,7 +120,7 @@ class StaticCalculator(Calculator):
 
         restot *= self.factor / (data_K.nk * data_K.cell_volume)
 
-        res = result.EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd)
+        res = result.EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd, smoothers=[self.smoother])
         res.set_save_mode(self.save_mode)
         return res
 
