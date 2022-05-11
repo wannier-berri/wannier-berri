@@ -577,7 +577,7 @@ def test_GaAs_sym_tb(check_run, system_GaAs_sym_tb, compare_any_result):
         {'ahc': calc.static.AHC(Efermi=Efermi_GaAs)},
         fout_name="berry_GaAs_sym_tb",
         precision=1e-5,
-        compare_zero=True, 
+        compare_zero=True,
         suffix="run",
     )
 
@@ -646,7 +646,7 @@ def test_Haldane_TBmodels_external(check_run, system_Haldane_TBmodels, compare_a
         fout_name="berry_Haldane_tbmodels",
         suffix="wcc_external-run",
         precision=1e-8,
-        compare_zero=True, 
+        compare_zero=True,
         grid_param={
             'NK': [10, 10, 1],
             'NKFFT': [5, 5, 1]
