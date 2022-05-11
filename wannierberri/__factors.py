@@ -20,12 +20,14 @@ factor_hall_classic = -(elementary_charge**3 /hbar**2 * Ang_SI * TAU_UNIT**2  # 
                 * elementary_charge**2 / hbar**2) # change velocity unit from eV*m to m/s
 factor_nldrude = -(elementary_charge**3 /hbar**2 * TAU_UNIT**2  # with tau^2 E^2 B^0
                 * elementary_charge / hbar) # change velocity unit from eV*m to m/s
+
+factor_opt = -factor_ahc
+factor_shc = -factor_ahc
 #####################
 #for old_API
 fac_ahc = factor_ahc
 factor_Hall_classic = elementary_charge**2 * Ang_SI / hbar**3  # first, transform to SI, not forgeting hbar in velocities - now in  m/(J*s^3)
 factor_Hall_classic *= elementary_charge**3 / hbar * TAU_UNIT**2  # multiply by a dimensional factor - now in A^3*s^5*cm/(J^2*tau_unit^2) = S/(T*m*tau_unit^2)
-#factor_Hall_classic *= 1e-2  #  finally transform to S/(T*cm*tau_unit^2)
 fac_spin_hall = factor_ahc * -0.5
 
 

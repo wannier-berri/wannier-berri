@@ -1,17 +1,11 @@
 import numpy as np
-from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom
-
-bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
-bohr = physical_constants['Bohr radius'][0] / angstrom
-eV_au = physical_constants['electron volt-hartree relationship'][0]
-Ang_SI = angstrom
-
+from wannierberri import __factors as factors
 from .classes import DynamicCalculator
+
 
 ###############################
 #              JDOS           #
 ###############################
-
 
 class Formula_dyn_ident():
 
@@ -68,7 +62,7 @@ class OpticalConductivity(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_OptCond
-        self.final_factor = elementary_charge**2 / (hbar * angstrom)
+        self.final_factor = factors.factor_opt
 
     def factor_omega(self, E1, E2):
         delta_arg_12 = E2 - E1 - self.omega  # argument of delta function [iw, n, m]
@@ -110,7 +104,7 @@ class _SHC(DynamicCalculator):
         super().__init__(**kwargs)
         self.formula_kwargs = dict(SHC_type=SHC_type, shc_abc=shc_abc)
         self.Formula = Formula_SHC
-        self.final_factor = elementary_charge**2 / (hbar * angstrom)
+        self.final_factor = factors.factor_shc
 
     def factor_omega(self, E1, E2):
         delta_minus = self.smear(E2 - E1 - self.omega)
