@@ -91,75 +91,51 @@ class Spin(StaticCalculator):
         super().__init__(**kwargs)
 
 
-class Hplus(StaticCalculator):
+class Morb(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.Morb_Hpm
         self.factor = 1
         self.fder = 0
-        self.comment = r""":math: `\int [dk] (G + H) f`"""
+        self.comment = r"""Orbital magnetic moment per unit cell (mu_B)
+        Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.85.014435>`_
+        Output:
+        :math: `M = -\int [dk] (H + G - 2Ef*\Omega) f`"""
         super().__init__(**kwargs)
 
+    def __call__(self, data_K):
+        Hplus_res = super().__call__(data_K)
+        Omega_res = AHC(Efermi=self.Efermi, tetra=self.tetra, smoother=self.smoother,
+                use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        final_factor = -factors.eV_au / factors.bohr**2
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+        #with use_factor=False, the factor of AHC is -1, so it is '+' below.
+        return final_factor * data_K.cell_volume * (Hplus_res + 2 * Omega_res)
 
-class Hplus_test(StaticCalculator):
+
+class Morb_test(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml_basic.tildeHGc
         self.factor = 1
         self.fder = 0
-        self.comment = r""":math: `\int [dk] (G + H) f` for testing"""
-        super().__init__(**kwargs)
-
-
-class Morb():
-
-    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
-        self.Efermi = Efermi
-        self.tetra = tetra
-        self.comment = r"""Orbital magnetic moment per unit cell (mu_B)
-        Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.85.014435>`_
-        Output:
-        :math: `M = -\int [dk] (H + G - 2Ef*\Omega) f`"""
-        self.kwargs = kwargs_formula
-        if use_factor:
-            self.factor = -factors.eV_au / factors.bohr**2
-        else:
-            self.factor = np.sign(self.factor)
-        if print_comment:
-            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
-
-    def __call__(self, data_K):
-        #with use_factor=False, the factor of AHC is -1, so it is '+' below.
-        return self.factor * data_K.cell_volume * (
-                Hplus(Efermi=self.Efermi, tetra=self.tetra,
-                    use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-                + 2 * AHC(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
-                print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
-
-
-class Morb_test():
-
-    def __init__(self, Efermi, tetra=False, use_factor=True, print_comment=True, kwargs_formula={}, **kwargs):
-        self.Efermi = Efermi
-        self.tetra = tetra
         self.comment = r"""Orbital magnetic moment per unit cell for testing (mu_B)
         Output:
         :math: `M = -\int [dk] (H + G - 2Ef*\Omega) f`"""
-        self.kwargs = kwargs_formula
-        if use_factor:
-            self.factor = -factors.eV_au / factors.bohr**2
-        else:
-            self.factor = np.sign(self.factor)
-        if print_comment:
-            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
+        super().__init__(**kwargs)
 
     def __call__(self, data_K):
+        Hplus_res = super().__call__(data_K)
+        Omega_res = AHC_test(Efermi=self.Efermi, tetra=self.tetra, smoother=self.smoother,
+                use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        final_factor = -factors.eV_au / factors.bohr**2
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
         #with use_factor=False, the factor of AHC is -1, so it is '+' below.
-        return self.factor * data_K.cell_volume * (
-                Hplus_test(Efermi=self.Efermi, tetra=self.tetra,
-                    use_factor=False, print_comment=False, kwargs_formula=self.kwargs)(data_K)
-                + 2 * AHC_test(Efermi=self.Efermi, tetra=self.tetra, use_factor=False,
-                print_comment=False, kwargs_formula=self.kwargs)(data_K).mul_array(self.Efermi))
+        return final_factor * data_K.cell_volume * (Hplus_res + 2 * Omega_res)
 
 
 ####################
