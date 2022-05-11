@@ -142,8 +142,5 @@ class FormulaProduct(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
-
-
-#from . import formula
 from . import covariant
 from . import covariant_basic

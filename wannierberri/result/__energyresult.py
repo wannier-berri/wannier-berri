@@ -283,4 +283,3 @@ class EnergyResult(Result):
             rank=self.rank,
             E_titles=self.E_titles,
             comment=self.comment)
-

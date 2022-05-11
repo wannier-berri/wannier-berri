@@ -137,40 +137,7 @@ class StaticCalculator(Calculator):
 #  TODO: Ideally, a docstring of every calculator should contain the equation that it implements
 #        and references (with urls) to the relevant papers
 
-######################
-# physical constants #
-######################
-
-#from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom  #, Boltzmann
 from ..__utility import alpha_A, beta_A
-#bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
-#bohr = physical_constants['Bohr radius'][0] / angstrom
-#eV_au = physical_constants['electron volt-hartree relationship'][0]
-#Ang_SI = angstrom
-
-###########
-# factors #
-###########
-
-#fac_morb_Z = elementary_charge/2/hbar * Ang_SI**2 # change unit of m_orb*B to (eV).
-#fac_spin_Z = elementary_charge * hbar / (2 * electron_mass) / Ang_SI**2# change unit of m_spin*B to (eV).
-
-#gme
-#factor_t0_0_1 = -(elementary_charge / Ang_SI**2
-#                * elementary_charge / hbar) # change velocity unit (red)
-# Anomalous Hall conductivity
-#factor_t0_1_0 = -(elementary_charge**2 / hbar / Ang_SI) /100.
-# Ohmic conductivity
-#factor_t1_1_0 = (elementary_charge**2 / hbar / Ang_SI * TAU_UNIT /100.
-#                * elementary_charge / hbar) # change velocity unit (red)
-# Nonlinear anomalous Hall conductivity
-#factor_t1_2_0 = elementary_charge**3 /hbar**2 * TAU_UNIT
-# Classic Hall conductivity
-#factor_t2_1_1 = -(elementary_charge**3 /hbar**2 * Ang_SI * TAU_UNIT**2 /100.
-#                * elementary_charge**2 / hbar**2) # change velocity unit (red)
-# Drude conductivity
-#factor_t2_2_0 = -(elementary_charge**3 /hbar**2 * TAU_UNIT**2
-#                * elementary_charge / hbar) # change velocity unit (red)
 
 ####################
 # basic quantities #
@@ -462,6 +429,7 @@ class AHC(StaticCalculator):
         :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta = \epsilon_{\alpha\beta\delta} \Omega_\delta E_\beta`"""
 
     def __init__(self, **kwargs):
+        "describe input parameters here"
         self.Formula = frml.Omega
         self.factor = factors.factor_ahc
         self.fder = 0
@@ -604,6 +572,7 @@ class BerryDipole_FermiSea(StaticCalculator):
         return res
 
 
+
 class NLAHC_FermiSea(BerryDipole_FermiSea):
 
     def __init__(self,**kwargs):
@@ -703,7 +672,7 @@ class AHC_Zeeman_spin(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.OmegaS
-        self.factor = 1#bohr_magneton / (elementary_charge * Ang_SI) * elementary_charge**2 / hbar / 100
+        self.factor = factors.fac_spin_Z * factors.factor_gme /100 #bohr_magneton / (elementary_charge * Ang_SI) * elementary_charge**2 / hbar / 100
         self.fder = 1
         self.comment = r"""AHC conductivity Zeeman correcton term spin part (S/m/T)
         With Fermi surface integral.
@@ -745,7 +714,7 @@ class AHC_Zeeman_orb():
         Instruction:
         :math: `j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = e \epsilon_{\alpha\beta\delta} ZAHC^{orb}_{\alpha\beta:\mu} E_\beta B_\mu`"""
         if use_factor:
-            self.factor = 1#Ang_SI * elementary_charge / (2 * hbar) * elementary_charge**2 / hbar / 100
+            self.factor = factors.fac_orb_Z * factors.factor_gme /100 #Ang_SI * elementary_charge / (2 * hbar) * elementary_charge**2 / hbar / 100
         else:
             self.factor = np.sign(self.factor)
         if print_comment:
