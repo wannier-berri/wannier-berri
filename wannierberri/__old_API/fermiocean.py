@@ -347,7 +347,6 @@ class FermiOcean():
 
         ndim = formula.ndim
         self.Efermi = Efermi
-
         self.fder = fder
         self.tetra = tetra
         self.nk = data_K.nk
