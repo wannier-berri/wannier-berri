@@ -4,6 +4,7 @@ from wannierberri import covariant_formulak_basic as frml_basic
 from termcolor import cprint
 import numpy as np
 from wannierberri import __factors as factors
+from ..__utility import alpha_A, beta_A
 
 #######################################
 #                                     #
@@ -13,41 +14,6 @@ from wannierberri import __factors as factors
 
 #  TODO: Ideally, a docstring of every calculator should contain the equation that it implements
 #        and references (with urls) to the relevant papers
-
-######################
-# physical constants #
-######################
-
-#from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom  #, Boltzmann
-from ..__utility import alpha_A, beta_A
-#bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
-#bohr = physical_constants['Bohr radius'][0] / angstrom
-#eV_au = physical_constants['electron volt-hartree relationship'][0]
-#Ang_SI = angstrom
-
-###########
-# factors #
-###########
-
-#fac_morb_Z = elementary_charge/2/hbar * Ang_SI**2 # change unit of m_orb*B to (eV).
-#fac_spin_Z = elementary_charge * hbar / (2 * electron_mass) / Ang_SI**2# change unit of m_spin*B to (eV).
-
-#gme
-#factor_t0_0_1 = -(elementary_charge / Ang_SI**2
-#                * elementary_charge / hbar) # change velocity unit (red)
-# Anomalous Hall conductivity
-#factor_t0_1_0 = -(elementary_charge**2 / hbar / Ang_SI) /100.
-# Ohmic conductivity
-#factor_t1_1_0 = (elementary_charge**2 / hbar / Ang_SI * TAU_UNIT /100.
-#                * elementary_charge / hbar) # change velocity unit (red)
-# Nonlinear anomalous Hall conductivity
-#factor_t1_2_0 = elementary_charge**3 /hbar**2 * TAU_UNIT
-# Classic Hall conductivity
-#factor_t2_1_1 = -(elementary_charge**3 /hbar**2 * Ang_SI * TAU_UNIT**2 /100.
-#                * elementary_charge**2 / hbar**2) # change velocity unit (red)
-# Drude conductivity
-#factor_t2_2_0 = -(elementary_charge**3 /hbar**2 * TAU_UNIT**2
-#                * elementary_charge / hbar) # change velocity unit (red)
 
 ####################
 # basic quantities #
@@ -142,7 +108,7 @@ class Morb_test(StaticCalculator):
 #  cunductivities  #
 ####################
 
-# E^0 B^1
+# GME tensor
 class VelHplus(StaticCalculator):
 
     def __init__(self, **kwargs):
@@ -159,15 +125,13 @@ class GME_orb_FermiSurf():
         self.Efermi = Efermi
         self.tetra = tetra
         self.kwargs = kwargs_formula
-        self.comment = r"""Gyrotropic tensor orbital part (A/m^2/T)
+        self.comment = r"""Gyrotropic tensor orbital part (A)
         With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`_
         :math: `m = H + G - Ef*\Omega`
         Output:
-        :math: `K^{orb}_{\alpha :\mu} = e \int [dk] v_\alpha * m_\mu f'`
-        Instruction:
-        :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
+        :math: `K^{orb}_{\alpha :\mu} = \int [dk] v_\alpha * m_\mu f'`"""
         if use_factor:
-            self.factor =  -factors.elementary_charge**2 / (2 * factors.hbar) # * factor_t0_0_1
+            self.factor = factors.factor_gme * factors.fac_orb_Z
         else:
             self.factor = np.sign(self.factor)
         if print_comment:
@@ -223,11 +187,9 @@ class GME_orb_FermiSea():
         With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
         :math: `m = H + G - 2Ef*\Omega`
         Output:
-        :math: `K^{orb}_{\alpha :\mu} = -e \int [dk] \partial_\alpha m_\mu f`
-        Instruction:
-        :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
+        :math: `K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`"""
         if use_factor:
-            self.factor =  -factors.elementary_charge**2 / (2 * factors.hbar)# * factor_t0_0_1
+            self.factor = factors.factor_gme * factors.fac_orb_Z
         else:
             self.factor = np.sign(self.factor)
         if print_comment:
@@ -247,15 +209,13 @@ class GME_orb_FermiSea_test():
         self.Efermi = Efermi
         self.tetra = tetra
         self.kwargs = kwargs_formula
-        self.comment = r"""Gyrotropic tensor orbital part for testing (A/m^2/T)
+        self.comment = r"""Gyrotropic tensor orbital part for testing (A)
         With Fermi sea integral.
         :math: `m = H + G - 2Ef*\Omega`
         Output:
-        :math: `K^{orb}_{\alpha :\mu} = -e \int [dk] \partial_\alpha m_\mu f`
-        Instruction:
-        :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
+        :math: `K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`"""
         if use_factor:
-            self.factor =  -factors.elementary_charge**2 / (2 * factors.hbar)# * factor_t0_0_1
+            self.factor = factors.factor_gme * factors.fac_orb_Z
         else:
             self.factor = np.sign(self.factor)
         if print_comment:
@@ -273,14 +233,12 @@ class GME_spin_FermiSea(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.DerSpin
-        self.factor = -factors.bohr_magneton / factors.Ang_SI**2 # * factor_t0_0_1
+        self.factor = factors.factor_gme * factors.fac_spin_Z
         self.fder = 0
-        self.comment = r"""Gyrotropic tensor spin part (A/m^2/T)
+        self.comment = r"""Gyrotropic tensor spin part (A)
         With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
         Output:
-        :math: `K^{spin}_{\alpha :\mu} = -e \int [dk] \partial_\alpha s_\mu f`
-        Instruction:
-        :math: `j_\alpha = K_{\alpha :\mu} B_\mu"""
+        :math: `K^{spin}_{\alpha :\mu} = -\int [dk] \partial_\alpha s_\mu f`"""
         super().__init__(**kwargs)
 
     def __call__(self, data_K):
@@ -294,14 +252,12 @@ class GME_spin_FermiSurf(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.VelSpin
-        self.factor = -factors.bohr_magneton / factors.Ang_SI**2 # * factor_t0_0_1
+        self.factor = factors.factor_gme * factors.fac_spin_Z
         self.fder = 1
-        self.comment = r"""Gyrotropic tensor spin part (A/m^2/T)
+        self.comment = r"""Gyrotropic tensor spin part (A)
         With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`_
         Output:
-        :math: `K^{spin}_{\alpha\mu} = e \tau \int [dk] v_\alpha s_\mu f'`
-        Instruction:
-        :math: `j_\alpha = K_{\alpha\mu} B_\mu"""
+        :math: `K^{spin}_{\alpha\mu} = \tau \int [dk] v_\alpha s_\mu f'`"""
         super().__init__(**kwargs)
 
 
@@ -494,7 +450,7 @@ class NLDrude_FermiSea(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.Der3E
-        self.factor = 1#factor_t2_2_0
+        self.factor = factors.factor_nldrude
         self.fder = 0
         self.comment = r"""Drude conductivity (S^2/A)
         With Fermi sea integral. Eq(3) in `Ref <https://journals.aps.org/prresearch/abstract/10.1103/PhysRevResearch.2.043081>`_
@@ -509,7 +465,7 @@ class NLDrude_FermiSurf(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.MassVel
-        self.factor = 1#factor_t2_2_0
+        self.factor = factors.factor_nldrude
         self.fder = 1
         self.comment = r"""Drude conductivity (S^2/A)
         With Fermi surface integral.
@@ -524,7 +480,7 @@ class NLDrude_Fermider2(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.VelVelVel
-        self.factor = 0.5#factor_t2_2_0
+        self.factor = 0.5 * factors.factor_nldrude
         self.fder = 2
         self.comment = r"""Drude conductivity (S^2/A)
         With second derivative of distribution function. Eq(A28) in `Ref <https://journals.aps.org/prresearch/abstract/10.1103/PhysRevResearch.2.043081>`_
@@ -557,7 +513,7 @@ class AHC_Zeeman_spin(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.OmegaS
-        self.factor = factors.fac_spin_Z * factors.factor_gme /100 #bohr_magneton / (elementary_charge * Ang_SI) * elementary_charge**2 / hbar / 100
+        self.factor = factors.fac_spin_Z * factors.factor_ahc
         self.fder = 1
         self.comment = r"""AHC conductivity Zeeman correcton term spin part (S/m/T)
         With Fermi surface integral.
@@ -599,7 +555,7 @@ class AHC_Zeeman_orb():
         Instruction:
         :math: `j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = e \epsilon_{\alpha\beta\delta} ZAHC^{orb}_{\alpha\beta:\mu} E_\beta B_\mu`"""
         if use_factor:
-            self.factor = factors.fac_orb_Z * factors.factor_gme /100 #Ang_SI * elementary_charge / (2 * hbar) * elementary_charge**2 / hbar / 100
+            self.factor = factors.fac_orb_Z * factors.factor_ahc
         else:
             self.factor = np.sign(self.factor)
         if print_comment:

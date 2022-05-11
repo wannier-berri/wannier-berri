@@ -149,8 +149,8 @@ def opt_conductivity(
 
     # TODO: optimize for T = 0? take only necessary elements
 
-    # prefactor for correct units of the result (S/cm)
-    pre_fac = e**2 / (100.0 * hbar * data.nk * data.cell_volume * constants.angstrom)
+    # prefactor for correct units of the result (S/m)
+    pre_fac = e**2 / (hbar * data.nk * data.cell_volume * constants.angstrom)
 
     if conductivity_type == 'kubo':
         sigma_H = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3), dtype=np.dtype('complex128'))

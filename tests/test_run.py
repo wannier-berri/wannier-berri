@@ -570,6 +570,18 @@ def test_GaAs_tb_wcc_ws(check_run, system_GaAs_tb_wcc_ws, compare_any_result):
     )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 
+def test_GaAs_sym_tb(check_run, system_GaAs_sym_tb, compare_any_result):
+
+    check_run(
+        system_GaAs_sym_tb,
+        {'ahc': calc.static.AHC(Efermi=Efermi_GaAs)},
+        fout_name="berry_GaAs_sym_tb",
+        precision=1e-5,
+        compare_zero=True,
+        suffix="run",
+    )
+
+
 def test_Haldane_PythTB(check_run, system_Haldane_PythTB, compare_any_result):
 
     param = {'Efermi': Efermi_Haldane}
@@ -626,20 +638,20 @@ def test_Haldane_TBmodels_internal(check_run, system_Haldane_TBmodels_internal, 
     )
 
 
-#TODO How can it pass in test_integral????? Impossible!
-#def test_Haldane_TBmodels_external(check_run, system_Haldane_TBmodels, compare_any_result):
-#
-#    check_run(
-#        system_Haldane_TBmodels,
-#        {'ahc': calc.static.AHC(Efermi=Efermi_Haldane, kwargs_formula={"internal_terms": False})},
-#        fout_name="berry_Haldane_tbmodels",
-#        suffix="wcc_external-run",
-#        suffix="wcc_external",
-#        grid_param={
-#            'NK': [10, 10, 1],
-#            'NKFFT': [5, 5, 1]
-#        }
-#    )
+def test_Haldane_TBmodels_external(check_run, system_Haldane_TBmodels, compare_any_result):
+
+    check_run(
+        system_Haldane_TBmodels,
+        {'ahc': calc.static.AHC(Efermi=Efermi_Haldane, kwargs_formula={"internal_terms": False})},
+        fout_name="berry_Haldane_tbmodels",
+        suffix="wcc_external-run",
+        precision=1e-8,
+        compare_zero=True,
+        grid_param={
+            'NK': [10, 10, 1],
+            'NKFFT': [5, 5, 1]
+        }
+    )
 
 
 def test_Haldane_PythTB_sym(check_run, system_Haldane_PythTB, compare_any_result):

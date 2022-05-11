@@ -446,7 +446,7 @@ def test_GaAs_sym_tb(check_integrate, system_GaAs_sym_tb, compare_energyresult):
         Efermi=Efermi_GaAs,
         comparer=compare_energyresult,
         compare_zero=True,
-        extra_precision={"ahc": 1e-7})
+        extra_precision={"ahc": 1e-5})
 
 
 def test_Haldane_PythTB(check_integrate, system_Haldane_PythTB, compare_energyresult, quantities_Haldane):
