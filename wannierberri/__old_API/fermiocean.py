@@ -59,7 +59,7 @@ def Hall_morb_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramer
     factor = -factors.Ang_SI * factors.elementary_charge / (2 * factors.hbar)
     factor *= factors.elementary_charge**2 / factors.hbar  # multiply by a dimensional factor - now in S/(T*m)
     factor *= -1
-    factor *= 1e-2  #  finally transform to S/(T*cm)
+    #factor *= 1e-2  #  finally transform to S/(T*cm)
     formula_1 = FormulaProduct(
         [frml.Omega(data_K, **kwargs_formula),
          frml.Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='berry-morb_Hpm')
@@ -78,7 +78,7 @@ def Hall_spin_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramer
     factor = -factors.bohr_magneton / (factors.elementary_charge * factors.Ang_SI)
     factor *= -1
     factor *= factors.elementary_charge**2 / factors.hbar  # multiply by a dimensional factor - now in S/(T*m)
-    factor *= 1e-2  #  finally transform to S/(T*cm)
+    #factor *= 1e-2  #  finally transform to S/(T*cm)
     formula = FormulaProduct([frml.Omega(data_K, **kwargs_formula), frml.Spin(data_K)], name='berry-spin')
     return FermiOcean(
         formula, data_K, Efermi, tetra, fder=1, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)() * factor
@@ -192,21 +192,23 @@ def gme_orb_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=
         formula_2, data_K, Efermi, tetra, fder=1, degen_thresh=degen_thresh,
         degen_Kramers=degen_Kramers)().mul_array(Efermi)
     # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
-    res.data = np.swapaxes(res.data, 1, 2) * -factors.elementary_charge**2 / (2 * factors.hbar)
+    res.data = np.swapaxes(res.data, 1, 2) * factors.factor_gme * factors.fac_orb_Z#-factors.elementary_charge**2 / (2 * factors.hbar)
     return res
 
 
 def gme_orb(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     Hp = Hplus_der(data_K, Efermi, tetra=tetra, **kwargs_formula).data
     D = berry_dipole(data_K, Efermi, tetra=tetra, **kwargs_formula).data
-    tensor_K = -factors.elementary_charge**2 / (2 * factors.hbar) * (Hp - 2 * Efermi[:, None, None] * D)
+    #tensor_K = -factors.elementary_charge**2 / (2 * factors.hbar) * (Hp - 2 * Efermi[:, None, None] * D)
+    tensor_K = factors.factor_gme * factors.fac_orb_Z * (Hp - 2 * Efermi[:, None, None] * D)
     return result.EnergyResult(Efermi, tensor_K, TRodd=False, Iodd=True)
 
 
 def gme_orb_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     Hp = Hplus_der_test(data_K, Efermi, tetra=tetra, **kwargs_formula).data
     D = berry_dipole_test(data_K, Efermi, tetra=tetra, **kwargs_formula).data
-    tensor_K = -factors.elementary_charge**2 / (2 * factors.hbar) * (Hp - 2 * Efermi[:, None, None] * D)
+    #tensor_K = -factors.elementary_charge**2 / (2 * factors.hbar) * (Hp - 2 * Efermi[:, None, None] * D)
+    tensor_K = factors.factor_gme * factors.fac_orb_Z * (Hp - 2 * Efermi[:, None, None] * D)
     return result.EnergyResult(Efermi, tensor_K, TRodd=False, Iodd=True)
 
 
@@ -214,7 +216,7 @@ def gme_spin_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers
     formula = FormulaProduct([frml.Spin(data_K), data_K.covariant('Ham', commader=1)], name='spin-vel')
     res = FermiOcean(formula, data_K, Efermi, tetra, fder=1, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)()
     # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
-    res.data = np.swapaxes(res.data, 1, 2) * -factors.bohr_magneton / factors.Ang_SI**2
+    res.data = np.swapaxes(res.data, 1, 2) * factors.factor_gme * factors.fac_spin_Z #-factors.bohr_magneton / factors.Ang_SI**2
     return res
 
 
@@ -222,7 +224,7 @@ def gme_spin(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False
     formula = FormulaProduct([frml.DerSpin(data_K)], name='derspin')
     res = FermiOcean(formula, data_K, Efermi, tetra, fder=0, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)()
     # swap axes to be consistent with the eq. (30) of DOI:10.1038/s41524-021-00498-5
-    res.data = np.swapaxes(res.data, 1, 2) * -factors.bohr_magneton / factors.Ang_SI**2
+    res.data = np.swapaxes(res.data, 1, 2) * factors.factor_gme * factors.fac_spin_Z#-factors.bohr_magneton / factors.Ang_SI**2
     return res
 
 
@@ -289,14 +291,14 @@ def Der3E(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, *
         tetra,
         fder=0,
         degen_thresh=degen_thresh,
-        degen_Kramers=degen_Kramers)()
+        degen_Kramers=degen_Kramers)() #* factors.factor_nldrude
     return res
 
 
 def Der3E_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
     r"""sigma20tau2 first der f0 """
     formula = FormulaProduct([frml.InvMass(data_K), data_K.covariant('Ham', commader=1)], name='mass-vel')
-    res = FermiOcean(formula, data_K, Efermi, tetra, fder=1, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)()
+    res = FermiOcean(formula, data_K, Efermi, tetra, fder=1, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)() * factors.factor_nldrude
     return res
 
 
@@ -307,8 +309,8 @@ def Der3E_fder2(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=Fa
          data_K.covariant('Ham', commader=1),
          data_K.covariant('Ham', commader=1)],
         name='vel-vel-vel')
-    res = FermiOcean(
-        formula, data_K, Efermi, tetra, fder=2, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)() * 0.5
+    res = factors.factor_nldrude * FermiOcean(
+        formula, data_K, Efermi, tetra, fder=2, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)()
     return res
 
 
@@ -345,6 +347,7 @@ class FermiOcean():
 
         ndim = formula.ndim
         self.Efermi = Efermi
+
         self.fder = fder
         self.tetra = tetra
         self.nk = data_K.nk
