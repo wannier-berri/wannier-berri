@@ -291,7 +291,7 @@ def Der3E(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, *
         tetra,
         fder=0,
         degen_thresh=degen_thresh,
-        degen_Kramers=degen_Kramers)() #* factors.factor_nldrude
+        degen_Kramers=degen_Kramers)() * factors.factor_nldrude
     return res
 
 

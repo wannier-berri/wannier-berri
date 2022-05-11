@@ -189,7 +189,7 @@ class GME_orb_FermiSurf():
         Output:
         :math: `K^{orb}_{\alpha :\mu} = \int [dk] v_\alpha * m_\mu f'`"""
         if use_factor:
-            self.factor = factors.factor_gme * factor.fac_orb_Z
+            self.factor = factors.factor_gme * factors.fac_orb_Z
             #self.factor =  -factors.elementary_charge**2 / (2 * factors.hbar) # * factor_t0_0_1
         else:
             self.factor = np.sign(self.factor)
@@ -249,7 +249,7 @@ class GME_orb_FermiSea():
         :math: `K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`"""
         if use_factor:
             #self.factor =  -factors.elementary_charge**2 / (2 * factors.hbar)# * factor_t0_0_1
-            self.factor = factors.factor_gme * factor.fac_orb_Z
+            self.factor = factors.factor_gme * factors.fac_orb_Z
         else:
             self.factor = np.sign(self.factor)
         if print_comment:
@@ -275,7 +275,7 @@ class GME_orb_FermiSea_test():
         Output:
         :math: `K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`"""
         if use_factor:
-            self.factor = factors.factor_gme * factor.fac_orb_Z
+            self.factor = factors.factor_gme * factors.fac_orb_Z
             #self.factor =  -factors.elementary_charge**2 / (2 * factors.hbar)# * factor_t0_0_1
         else:
             self.factor = np.sign(self.factor)
@@ -295,7 +295,7 @@ class GME_spin_FermiSea(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.DerSpin
         #self.factor = -factors.bohr_magneton / factors.Ang_SI**2 # * factor_t0_0_1
-        self.factor = factors.factor_gme * factor.fac_spin_Z
+        self.factor = factors.factor_gme * factors.fac_spin_Z
         self.fder = 0
         self.comment = r"""Gyrotropic tensor spin part (A)
         With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
@@ -315,7 +315,7 @@ class GME_spin_FermiSurf(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.VelSpin
         #self.factor = -factors.bohr_magneton / factors.Ang_SI**2 # * factor_t0_0_1
-        self.factor = factors.factor_gme * factor.fac_spin_Z
+        self.factor = factors.factor_gme * factors.fac_spin_Z
         self.fder = 1
         self.comment = r"""Gyrotropic tensor spin part (A)
         With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`_
@@ -618,7 +618,7 @@ class AHC_Zeeman_orb():
         Instruction:
         :math: `j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = e \epsilon_{\alpha\beta\delta} ZAHC^{orb}_{\alpha\beta:\mu} E_\beta B_\mu`"""
         if use_factor:
-            self.factor = factors.fac_orb_Z * factors.factor_ahc 
+            self.factor = factors.fac_orb_Z * factors.factor_ahc
         else:
             self.factor = np.sign(self.factor)
         if print_comment:
