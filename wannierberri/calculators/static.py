@@ -57,7 +57,7 @@ class Spin(StaticCalculator):
 
 
 class Morb(StaticCalculator):
-    r"""Orbital magnetic moment per unit cell (:math:`\mu_B`)  
+    r"""Orbital magnetic moment per unit cell (:math:`\mu_B`)
 
         | Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.85.014435>`_
         | Output: :math:`M = -\int [dk] (H + G - 2E_f \cdot \Omega) f`"""
@@ -302,7 +302,7 @@ class Hall_classic_FermiSea(StaticCalculator):
         | With Fermi sea integral.
         | Output: :math:`\sigma_{\alpha\beta :\mu} = -e^3/\hbar^2 \tau^2 \epsilon_{\gamma\mu\rho} \int [dk] \partial_\gamma v_\alpha \partial_\rho v_\beta f`
         | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu`"""
-    
+
     def __init__(self, **kwargs):
         self.Formula = frml.MassMass
         self.factor = factors.factor_hall_classic
@@ -377,7 +377,7 @@ class NLAHC_FermiSea(BerryDipole_FermiSea):
 
 class BerryDipole_FermiSea_test(StaticCalculator):
     r"""Berry curvature dipole for testing (dimensionless)
-        
+
         | With Fermi sea integral.
         | Output: :math:`D_{\beta\delta} = \tau \int [dk] \partial_beta \Omega_\delta f`"""
 
