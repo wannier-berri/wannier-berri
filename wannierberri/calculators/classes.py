@@ -2,6 +2,7 @@ import numpy as np
 import abc, functools
 from collections import defaultdict
 from math import ceil
+from termcolor import cprint
 from wannierberri.__utility import Gaussian, Lorentzian
 from wannierberri.__result_tab import KBandResult,TABresult
 from wannierberri.__result import EnergyResult
@@ -9,10 +10,17 @@ from wannierberri.__result import EnergyResult
 
 class Calculator():
 
-    def __init__(self, degen_thresh=1e-4, degen_Kramers=False, save_mode="bin+txt"):
+    def __init__(self, degen_thresh=1e-4, degen_Kramers=False, save_mode="bin+txt", print_comment=True):
         self.degen_thresh = degen_thresh
         self.degen_Kramers = degen_Kramers
         self.save_mode = save_mode
+        if not hasattr(self, 'comment'):
+            if self.__doc__ is not None:
+                self.comment = self.__doc__
+            else:
+                self.comment = "calculator not described"
+        if print_comment:
+            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
 
     @property
     def allow_path(self):
@@ -28,15 +36,17 @@ class Calculator():
 
 class StaticCalculator(Calculator):
 
-    def __init__(self, Efermi, tetra=False, smoother=None, kwargs_formula={}, **kwargs):
+    def __init__(self, Efermi, tetra=False, smoother=None, use_factor=True, kwargs_formula={}, **kwargs):
         self.Efermi = Efermi
         self.tetra = tetra
         self.kwargs_formula = kwargs_formula
         self.smoother = smoother
-        assert hasattr(self, 'factor')
+        assert hasattr(self, 'factor'), "factor not set"
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
         assert hasattr(self, 'Formula'), "Formula not set - it  should be class with a trace(ik,inn,out) method "
+        if not use_factor:
+            self.factor = np.sign(self.factor)
 
         if not self.tetra:
             self.extraEf = 0 if self.fder == 0 else 1 if self.fder in (1, 2) else 2 if self.fder == 3 else None
@@ -83,7 +93,7 @@ class StaticCalculator(Calculator):
                 _values = {}
                 for n in nnall:
                     inn = np.arange(0, n)
-                    out = np.arange(n, self.NB)
+                    out = np.arange(n, NB)
                     _values[n] = formula.trace(ik, inn, out)
                 for n in bnd:
                     values[ik][n] = _values[n[1]] - _values[n[0]]
@@ -119,7 +129,7 @@ class StaticCalculator(Calculator):
 
         restot *= self.factor / (data_K.nk * data_K.cell_volume)
 
-        res = EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd, smoothers=[self.smoother])
+        res = EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd, smoothers=[self.smoother], comment=self.comment)
         res.set_save_mode(self.save_mode)
         return res
 
