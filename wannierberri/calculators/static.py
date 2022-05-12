@@ -15,6 +15,8 @@ from ..__utility import alpha_A, beta_A
 #  TODO: Ideally, a docstring of every calculator should contain the equation that it implements
 #        and references (with urls) to the relevant papers
 
+
+
 ####################
 # basic quantities #
 ####################
@@ -322,12 +324,12 @@ class Ohmic_FermiSea(StaticCalculator):
         self.Formula = frml.InvMass
         self.factor = factors.factor_ohmic
         self.fder = 0
-        self.comment  = r"""Ohmic conductivity (s^3 * A^2 / (kg * m^3) = S/m)
-        With Fermi sea integral. Eq(31) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
+        self.comment  = (fr"""Ohmic conductivity (s^3 * A^2 / (kg * m^3) = S/m for tau = 1{factors.TAU_UNIT_TXT}\n"""+
+        r"""With Fermi sea integral. Eq(31) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
         Output:
         :math: `\sigma_{\alpha\beta} = e^2/\hbar \tau \int [dk] \parital_\beta v_\alpha f`
         Instruction:
-        :math: `j_\alpha = \sigma_{\alpha\beta} E_\beta`"""
+        :math: `j_\alpha = \sigma_{\alpha\beta} E_\beta`""")
         super().__init__(**kwargs)
 
 

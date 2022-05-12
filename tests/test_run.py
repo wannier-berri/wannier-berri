@@ -279,9 +279,9 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result):
         suffix="-run",
         use_symmetry=False
     )
-    cals = {'gyrotropic_Kspin': calc.static.GME_orb_FermiSea,
+    cals = {'gyrotropic_Korb': calc.static.GME_orb_FermiSea,
             'berry_dipole': calc.static.BerryDipole_FermiSea,
-            'gyrotropic_Korb': calc.static.GME_spin_FermiSea}
+            'gyrotropic_Kspin': calc.static.GME_spin_FermiSea}
     calculators = {k: v(**param) for k, v in cals.items()}
     check_run(
         system_Fe_sym_W90,
@@ -307,9 +307,9 @@ def test_Fe_sym_W90_sym(check_run, system_Fe_sym_W90, compare_any_result):
         suffix="sym-run",
         use_symmetry=True
     )
-    cals = {'gyrotropic_Kspin': calc.static.GME_orb_FermiSea,
+    cals = {'gyrotropic_Korb': calc.static.GME_orb_FermiSea,
             'berry_dipole': calc.static.BerryDipole_FermiSea,
-            'gyrotropic_Korb': calc.static.GME_spin_FermiSea}
+            'gyrotropic_Kspin': calc.static.GME_spin_FermiSea}
     calculators = {k: v(**param) for k, v in cals.items()}
     check_run(
         system_Fe_sym_W90,
@@ -479,9 +479,12 @@ def test_GaAs(check_run, system_GaAs_W90, compare_any_result):
 
     param = {'Efermi': Efermi_GaAs}
     calculators = {k: v(**param) for k, v in calculators_GaAs.items()}
-    calculators.update({k: v(**param) for k, v in calculators_GaAs.items()})
+#    calculators.update({k: v(**param) for k, v in calculators_GaAs.items()})
+    calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
     calculators.update({
         'gyrotropic_Korb':calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs),
+        'gyrotropic_Kspin':calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
+        'gyrotropic_Kspin_fsurf':calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
         'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),}
             )
 
@@ -520,6 +523,11 @@ def test_GaAs_wcc(check_run, system_GaAs_W90_wcc, compare_any_result):
     param = {'Efermi': Efermi_GaAs}
     calculators = {k: v(**param) for k, v in calculators_GaAs.items()}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
+
+    calculators.update({
+        'gyrotropic_Kspin':calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
+        'gyrotropic_Kspin_fsurf':calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
+            })
 
     check_run(
         system_GaAs_W90_wcc,
