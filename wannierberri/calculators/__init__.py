@@ -27,6 +27,8 @@ class Calculator():
     def allow_path(self):
         return False    # change for those who can be calculated on a path instead of a grid
 
+
+
 class TabulatorAll(Calculator):
 
     def __init__(self, tabulators, ibands=None, mode="grid"):
@@ -54,9 +56,11 @@ class TabulatorAll(Calculator):
             results={k: v(data_K)
                      for k, v in self.tabulators.items()} )
 
+
     @property
     def allow_path(self):
         return self.mode == "path"
+
 
 
 from . import static, dynamic, tabulate

@@ -2,14 +2,16 @@ import numpy as np
 import abc, functools
 from wannierberri.__utility import Gaussian, Lorentzian
 from wannierberri.result import EnergyResult
-
 from . import Calculator
 from wannierberri.formula.covariant import SpinVelocity
 
 
+#######################################
+#                                     #
+#      integration (Efermi-omega)     #
+#                                     #
+#######################################
 
-# The base class for Static Calculators
-# particular calculators are below
 
 class DynamicCalculator(Calculator, abc.ABC):
 
@@ -81,6 +83,11 @@ class DynamicCalculator(Calculator, abc.ABC):
         return EnergyResult(
             [self.Efermi, self.omega], restot, TRodd=formula.TRodd, Iodd=formula.Iodd, TRtrans=formula.TRtrans)
 
+
+
+
+
+
 # auxillary function"
 def FermiDirac(E, mu, kBT):
     "here E is a number, mu is an array"
@@ -115,13 +122,12 @@ bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]
 Ang_SI = angstrom
 
-
+from wannierberri import __factors as factors
 
 
 ###############################
 #              JDOS           #
 ###############################
-
 
 class Formula_dyn_ident():
 
@@ -178,7 +184,7 @@ class OpticalConductivity(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_OptCond
-        self.final_factor = elementary_charge**2 / (100.0 * hbar * angstrom)
+        self.final_factor = factors.factor_opt
 
     def factor_omega(self, E1, E2):
         delta_arg_12 = E2 - E1 - self.omega  # argument of delta function [iw, n, m]
@@ -219,7 +225,7 @@ class _SHC(DynamicCalculator):
         super().__init__(**kwargs)
         self.formula_kwargs = dict(SHC_type=SHC_type, shc_abc=shc_abc)
         self.Formula = Formula_SHC
-        self.final_factor = elementary_charge**2 / (100.0 * hbar * angstrom)
+        self.final_factor = factors.factor_shc
 
     def factor_omega(self, E1, E2):
         delta_minus = self.smear(E2 - E1 - self.omega)

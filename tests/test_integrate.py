@@ -355,7 +355,7 @@ def test_GaAs(check_integrate, system_GaAs_W90, compare_energyresult, quantities
     """Test berry dipole"""
     check_integrate(
         system_GaAs_W90,
-        quantities_GaAs_internal + quantities_GaAs + ['gyrotropic_Korb', 'gyrotropic_Korb_test'],
+        quantities_GaAs_internal + quantities_GaAs + ['gyrotropic_Korb', 'gyrotropic_Korb_test','gyrotropic_Kspin', 'gyrotropic_Kspin_fsurf'],
         fout_name="berry_GaAs_W90",
         suffix="",
         Efermi=Efermi_GaAs,
@@ -391,7 +391,7 @@ def test_GaAs_wcc(
     """Test GaAs with wcc_phase, comparing with data obtained without it"""
     check_integrate(
         system_GaAs_W90_wcc,
-        quantities_GaAs + quantities_GaAs_internal,  #+['gyrotropic_Korb_test'],
+        quantities_GaAs + quantities_GaAs_internal + ['gyrotropic_Kspin', 'gyrotropic_Kspin_fsurf'],  #+['gyrotropic_Korb_test'],
         fout_name="berry_GaAs_W90",
         suffix="wcc",
         Efermi=Efermi_GaAs,
@@ -446,7 +446,7 @@ def test_GaAs_sym_tb(check_integrate, system_GaAs_sym_tb, compare_energyresult):
         Efermi=Efermi_GaAs,
         comparer=compare_energyresult,
         compare_zero=True,
-        extra_precision={"ahc": 1e-7})
+        extra_precision={"ahc": 1e-5})
 
 
 def test_Haldane_PythTB(check_integrate, system_Haldane_PythTB, compare_energyresult, quantities_Haldane):

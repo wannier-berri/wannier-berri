@@ -7,6 +7,7 @@ from wannierberri.result import KBandResult
 # The base class for Tabulating
 # particular calculators are below
 
+
 class Tabulator(Calculator):
 
     def __init__(self, Formula, kwargs_formula={}, **kwargs):
