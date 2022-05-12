@@ -12,7 +12,7 @@ from common import OUTPUT_DIR
 def get_component_list(quantity):
     if quantity in ["E", "Energy"]:
         return [None]
-    elif quantity in ["berry", "V", "morb"]:
+    elif quantity in ["berry", "V", "morb","spin"]:
         return [a for a in "xyz"]
     elif quantity in ["Der_berry", "Der_morb"]:
         return [a + b for a in "xyz" for b in "xyz"]
@@ -107,7 +107,7 @@ def test_Fe(check_tabulate, system_Fe_W90, compare_fermisurfer):
     """Test Energies, Velocities, berry curvature, its derivative"""
     result = check_tabulate(
         system_Fe_W90,
-        quantities_tab + ["spin_berry"],
+        quantities_tab + ["spin_berry","spin"],
         frmsf_name="tabulate_Fe_W90",
         suffix="",
         comparer=compare_fermisurfer,

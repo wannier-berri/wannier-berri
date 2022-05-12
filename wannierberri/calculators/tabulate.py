@@ -1,6 +1,7 @@
 import numpy as np
 from . import Calculator
 from wannierberri.formula import covariant as frml
+from wannierberri.formula import covariant_basic as frml_basic
 from wannierberri.result import KBandResult
 
 
@@ -64,13 +65,49 @@ class Tabulator(Calculator):
 
 
 
-class BerryCurvature(Tabulator):
-
-    def __init__(self, **kwargs):
-        super().__init__(frml.Omega, **kwargs)
 
 
 class Energy(Tabulator):
 
     def __init__(self, **kwargs):
         super().__init__(frml.Eavln, **kwargs)
+
+class Velocity(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.Velocity, **kwargs)
+
+
+class BerryCurvature(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.Omega, **kwargs)
+
+
+class Spin(Tabulator):
+    r" Spin expectation :math:` \langle u | \mathbf{\sigma} | u \rangle`"
+    def __init__(self, **kwargs):
+        super().__init__(frml.Spin, **kwargs)
+
+class DerBerryCurvature(Tabulator):
+    r"Derivative of Berry curvature :math:`X_{ab}\partial_b\Omega_a`"
+    def __init__(self, **kwargs):
+        super().__init__(frml.DerOmega, **kwargs)
+
+class OrbitalMoment(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.morb, **kwargs)
+
+
+class DerOrbitalMoment(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml_basic.Der_morb, **kwargs)
+
+
+class SpinBerry(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.SpinOmega, **kwargs)
+
