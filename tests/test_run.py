@@ -175,7 +175,13 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
         {
             "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
             # but not to energies
+            "V": calc.tabulate.Velocity(**param_tab),
+            "Der_berry": calc.tabulate.DerBerryCurvature(**param_tab),
             "berry": calc.tabulate.BerryCurvature(**param_tab),
+            'spin': calc.tabulate.Spin(**param_tab),
+            'spin_berry': calc.tabulate.SpinBerry(**param_tab),
+            'morb': calc.tabulate.OrbitalMoment(**param_tab),
+            'Der_morb': calc.tabulate.DerOrbitalMoment(**param_tab),
         },
         ibands=[5, 6, 7, 8])
 
@@ -209,8 +215,8 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             result_type=EnergyResult)
 
     #extra_precision = {'berry': 1e-6}
-    extra_precision = {'Morb': 1e-6}
-    for quant in ["Energy", "berry"]:
+    extra_precision = {'Morb': 1e-6,'Der_berry':1e-7}
+    for quant in result.results.get("tabulate").results.keys(): # ["Energy", "berry","Der_berry","spin","morb"]:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
             _quant = "E" if quant == "Energy" else quant
             _comp = "-" + comp if comp != "" else ""

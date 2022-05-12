@@ -468,7 +468,7 @@ class SpinVelocity(Matrix_ln):
 class SpinOmega(Formula_ln):
     "spin Berry curvature"
 
-    def __init__(self, data_K, spin_current_type, **parameters):
+    def __init__(self, data_K, spin_current_type="ryoo", **parameters):
         super().__init__(data_K, **parameters)
         self.A = data_K.covariant('AA')
         self.D = data_K.Dcov
