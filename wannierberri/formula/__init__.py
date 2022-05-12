@@ -7,10 +7,10 @@ class Formula_ln(abc.ABC):
 
     """
     A "Formula" is a ground concept of our calculation. Assume that we have divided
-    all our Wannierised states into subspaces A and B (or "inn" and "out")
-    We call a matrix "covariant" if it is caovariant under gauge transformations
-    inside the "inn" or "out" states, but do not intermix them.
-    A `Formula_ln` object has methods that returns submatrices the covariant matrix
+    all our Wannierised states into two subspaces, called "inn" and "out".
+    We call a matrix "covariant" if it is covariant under gauge transformations
+    inside the "inn" or "out" subspaces but do not intermix them.
+    A `Formula_ln` object has methods that returns submatrices of the covariant matrix.
     """
 
     @abc.abstractmethod
@@ -50,7 +50,7 @@ class Formula_ln(abc.ABC):
 
     def ll(self, ik, inn, out):
         """Returns the submatrix :math:`X_{ll'}` at point `ik`, whee
-        :math:`l, l' \in \mathrm{inn}`
+        :math:`l, l' \in \mathrm{out}`
         """
         return self.nn(ik, out, inn)
 
@@ -62,7 +62,7 @@ class Formula_ln(abc.ABC):
         return True
 
     def trace(self, ik, inn, out):
-        "Returns a tace over the `inn` states"
+        "Returns a trace over the `inn` states"
         return np.einsum("nn...->...", self.nn(ik, inn, out)).real
 
 
