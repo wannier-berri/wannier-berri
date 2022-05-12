@@ -23,7 +23,7 @@ from wannierberri.formula import covariant_basic as frml_basic
 # TODO : add factors to the calculation
 calculators = {
     'spin': frml.Spin,
-    'velocity': frml.Velocity,
+    'V': frml.Velocity,
     'berry': frml.Omega,
     'Der_berry': frml.DerOmega,
     'morb': frml.morb,
