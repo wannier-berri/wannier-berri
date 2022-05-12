@@ -112,7 +112,6 @@ class Morb_test(StaticCalculator):
 # GME tensor
 class GME_orb_FermiSurf(StaticCalculator):
     r"""Gyrotropic tensor orbital part (:math:`A`)
-
         | With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`_
         | Output: :math:`K^{orb}_{\alpha :\mu} = \int [dk] v_\alpha m^{orb}_\mu f'`
         | Where :math:`m^{orb} = H + G - 2E_f \cdot \Omega`"""
@@ -137,7 +136,6 @@ class GME_orb_FermiSurf(StaticCalculator):
 
 class GME_orb_FermiSea(StaticCalculator):
     r"""Gyrotropic tensor orbital part (:math:`A`)
-
         | With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
         | Output: :math:`K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`
         | Where :math:`m = H + G - 2E_f \cdot \Omega`"""
@@ -163,7 +161,6 @@ class GME_orb_FermiSea(StaticCalculator):
 
 class GME_orb_FermiSea_test(StaticCalculator):
     r"""Gyrotropic tensor orbital part for testing (:math:`A`)
-
         | With Fermi sea integral.
         | Output: :math:`K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`
         |Where :math: `m = H + G - 2E_f \cdot \Omega`"""
@@ -185,6 +182,12 @@ class GME_orb_FermiSea_test(StaticCalculator):
             final_factor = np.sign(final_factor)
 
         return final_factor * (Hplus_res - 2 * Omega_res)
+
+
+
+
+
+
 
 
 class GME_spin_FermiSea(StaticCalculator):
