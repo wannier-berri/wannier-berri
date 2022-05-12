@@ -175,7 +175,13 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
         {
             "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
             # but not to energies
+            "V": calc.tabulate.Velocity(**param_tab),
+            "Der_berry": calc.tabulate.DerBerryCurvature(**param_tab),
             "berry": calc.tabulate.BerryCurvature(**param_tab),
+            'spin': calc.tabulate.Spin(**param_tab),
+            'spin_berry': calc.tabulate.SpinBerry(**param_tab),
+            'morb': calc.tabulate.OrbitalMoment(**param_tab),
+            'Der_morb': calc.tabulate.DerOrbitalMoment(**param_tab),
         },
         ibands=[5, 6, 7, 8])
 
@@ -208,16 +214,15 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             precision=-1e-8,
             result_type=EnergyResult)
 
-    #extra_precision = {'berry': 1e-6}
-    extra_precision = {'Morb': 1e-6}
-    for quant in ["Energy", "berry"]:
+    extra_precision = {'Morb': 1e-6, 'Der_berry':5e-8}
+    for quant in result.results.get("tabulate").results.keys(): # ["Energy", "berry","Der_berry","spin","morb"]:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
             _quant = "E" if quant == "Energy" else quant
             _comp = "-" + comp if comp != "" else ""
             #            data=result.results.get(quant).data
             #            assert data.shape[0] == len(Efermi)
             #            assert np.all( np.array(data.shape[1:]) == 3)
-            prec = extra_precision[quant] if quant in extra_precision else 1e-8
+            prec = extra_precision[quant] if quant in extra_precision else 2e-8
             #            comparer(frmsf_name, quant+_comp+suffix,  suffix_ref=compare_quant(quant)+_comp+suffix_ref ,precision=prec )
             compare_fermisurfer(
                 fout_name="berry_Fe_W90-tabulate",
