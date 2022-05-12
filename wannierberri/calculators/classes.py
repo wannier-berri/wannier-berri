@@ -41,11 +41,12 @@ class StaticCalculator(Calculator):
         self.tetra = tetra
         self.kwargs_formula = kwargs_formula
         self.smoother = smoother
+        self.use_factor = use_factor
         assert hasattr(self, 'factor'), "factor not set"
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
         assert hasattr(self, 'Formula'), "Formula not set - it  should be class with a trace(ik,inn,out) method "
-        if not use_factor:
+        if not self.use_factor:
             self.factor = np.sign(self.factor)
 
         if not self.tetra:
