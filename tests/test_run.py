@@ -214,8 +214,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             precision=-1e-8,
             result_type=EnergyResult)
 
-    #extra_precision = {'berry': 1e-6}
-    extra_precision = {'Morb': 1e-6 }
+    extra_precision = {'Morb': 1e-6, 'Der_berry':5e-8}
     for quant in result.results.get("tabulate").results.keys(): # ["Energy", "berry","Der_berry","spin","morb"]:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
             _quant = "E" if quant == "Energy" else quant
