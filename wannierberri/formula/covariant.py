@@ -1,7 +1,6 @@
 import numpy as np
-from .__utility import alpha_A, beta_A
-from .formula import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct
-from .data_K import _Dcov
+from wannierberri.__utility import alpha_A, beta_A
+from . import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct
 
 
 class Identity(Formula_ln):
@@ -38,7 +37,16 @@ class DEinv_ln(Matrix_ln):
         raise NotImplementedError("dEinv_ln should not be called within inner states")
 
 
-class DerDcov(_Dcov):
+class Dcov(Matrix_ln):
+
+    def __init__(self, data_K):
+        super().__init__(data_K.D_H)
+
+    def nn(self, ik, inn, out):
+        raise ValueError("Dln should not be called within inner states")
+
+
+class DerDcov(Dcov):
 
     def __init__(self, data_K):
         self.W = data_K.covariant('Ham', commader=2)

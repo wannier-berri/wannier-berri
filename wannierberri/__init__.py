@@ -19,16 +19,13 @@ __version__ = "0.12.0"
 from .run import run
 from .__old_API.__main import integrate, tabulate #, integrate_options, tabulate_options, print_options
 from . import symmetry
-from .__result_tab import TABresult
+from . import system
+from .system import System_w90, System_fplo, System_tb, System_PythTB, System_TBmodels, System_ASE
 from .__grid import Grid
-from .system.system_w90 import System_w90
-from .system.system_fplo import System_fplo
-from .system.system_tb import System_tb
-from .system.system_tb_py import System_PythTB, System_TBmodels
-from .system.system_ASE import System_ASE
 from .__path import Path
-from .__parallel import Parallel
 from . import calculators
+from . import result
+from .parallel import Parallel, Serial
 
 from termcolor import cprint
 

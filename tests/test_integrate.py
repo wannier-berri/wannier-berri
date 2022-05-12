@@ -31,7 +31,7 @@ def check_integrate(parallel_serial):
             Efermi=np.linspace(-10, 10, 10),
             comparer=None,
             compare_zero=False,
-            parallel=None,
+            parallel=parallel_serial,
             grid_param={
                 'NK': [6, 6, 6],
                 'NKFFT': [3, 3, 3]

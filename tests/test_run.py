@@ -9,7 +9,7 @@ from pytest import approx
 import wannierberri as wberri
 from wannierberri import calculators as calc
 from wannierberri.smoother import FermiDiracSmoother
-from wannierberri.__result import EnergyResult
+from wannierberri.result import EnergyResult
 
 from common import OUTPUT_DIR, REF_DIR
 from common_comparers import compare_quant
@@ -30,7 +30,7 @@ def check_run(parallel_serial, compare_any_result):
         calculators={},
         fout_name="berry",
         compare_zero=False,
-        parallel=None,
+        parallel=parallel_serial,
         grid_param={
             'NK': [6, 6, 6],
             'NKFFT': [3, 3, 3]
@@ -104,7 +104,7 @@ calculators_Fe = {
 calculators_GaAs = {
     'berry_dipole': calc.static.BerryDipole_FermiSea,
     'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf,
-    'berry_dipole_test': calc.static.BerryDipole_FermiSea_test,
+    'berry_dipole_test': calc.static.BerryDipole_FermiSea_test
 }
 
 calculators_GaAs_internal = {
@@ -923,7 +923,6 @@ def test_tabulate_path(system_Haldane_PythTB):
         system=system_Haldane_PythTB,
         grid=path,
         calculators=calculators,
-        parallel=None,
         use_irred_kpt=True,
         symmetrize=True,  # should have no effect, but will check the cases and give a warning
         #                parameters_K = parameters_K,

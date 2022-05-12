@@ -19,9 +19,9 @@ import numpy as np
 from scipy import constants as constants
 from termcolor import cprint
 from wannierberri.__utility import alpha_A, beta_A
-from wannierberri import __result as result
-from wannierberri.covariant_formulak import SpinVelocity
-
+from wannierberri import result as result
+from wannierberri.formula.covariant import SpinVelocity
+from .__energyresultdict import EnergyResultDict
 # constants
 pi = constants.pi
 e = constants.e
@@ -342,7 +342,7 @@ def opt_conductivity(
             sigma_sym = np.real(sigma_H) + 1j * np.imag(sigma_AH)  # symmetric (TR-even, I-even)
             sigma_asym = np.real(sigma_AH) + 1j * np.imag(sigma_H)  # ansymmetric (TR-odd, I-even)
             # return result dictionary
-            return result.EnergyResultDict(
+            return EnergyResultDict(
                 {
                     'sym': result.EnergyResult([Efermi, omega], sigma_sym, TRodd=False, Iodd=False, rank=rank),
                     'asym': result.EnergyResult([Efermi, omega], sigma_asym, TRodd=True, Iodd=False, rank=rank)

@@ -15,7 +15,7 @@
 import functools
 from .__evaluate import evaluate_K
 from wannierberri.smoother import getSmoother
-from wannierberri import __result_tab
+from wannierberri.result import __tabresult
 from . import __integrate
 from . import __tabulate
 from wannierberri.__path import Path
@@ -27,6 +27,7 @@ tabulate_options = __tabulate.calculators.keys()
 from wannierberri.utils.mmn2uHu import hlp as hlp_mmn
 from wannierberri.utils.vaspspn import hlp as hlp_spn
 from time import time
+from wannierberri.parallel import Serial
 import sys
 
 from colorama import init
@@ -104,7 +105,7 @@ def integrate(
         restart=False,
         suffix="",
         file_Klist="Klist",
-        parallel=None,
+        parallel=Serial(),
         print_Kpoints=True,
         parameters={},
         parameters_K={},
@@ -114,7 +115,7 @@ def integrate(
 
     Parameters
     ----------
-    system : :class:`~wannierberri.__system.System`
+    system : :class:`~wannierberri.system.System`
         System under investigation
     grid : :class:`~wannierberri.Grid`
         initial grid for integration
@@ -132,12 +133,12 @@ def integrate(
         a dictionary `{name:function}`, where `name` is any string, and `function(data_K,Efermi)`
         takes two arguments
         `data_K` of  of type :class:`~wannierberri.data_K.Data_K`  and Efermi -  `np.array`
-        and returns an object  :class:`~wannierberri.__result.EnergyResult`
+        and returns an object  :class:`~wannierberri.result.EnergyResult`
     adpt_num_iter : int
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
     adpt_fac : int
         number of K-points to be refined per quantity and criteria.
-    parallel : :class:`~wannierberri.Parallel`
+    parallel : :class:`~wannierberri.parallel.Parallel`
         object describing parallelization scheme
     use_irred_kpt : bool
         evaluate only symmetry-irreducible K-points
@@ -149,7 +150,7 @@ def integrate(
         write results after each iteration as text files (".dat")
     write_bin : bool
         write results after each iteration as binary files (".npz").
-        See :ref:`wannierberri.__result.EnergyResult.save` for file format
+        See :func:`~wannierberri.result.EnergyResult.save` for file format
     print_Kpoints : bool
         print the list of K points
     parameters : dict
@@ -164,7 +165,7 @@ def integrate(
 
     Returns
     --------
-    dictionary of  :class:`~wannierberri.EnergyResult`
+    dictionary of  :class:`~wannierberri.result.EnergyResult`
 
     Notes
     -----
@@ -257,7 +258,7 @@ def tabulate(
     specific_parameters={},
     degen_thresh=1e-4,
     degen_Kramers=False,
-    parallel=None,
+    parallel=Serial(),
     print_Kpoints=True,
 ):
     """
@@ -265,7 +266,7 @@ def tabulate(
 
     Parameters
     ----------
-    system : :class:`~wannierberri.__system.System`
+    system : :class:`~wannierberri.system.System`
         System under investigation
     grid : :class:`~wannierberri.Grid`
         initial grid for integration
@@ -283,7 +284,7 @@ def tabulate(
         symmetrize the result
     frmsf_name :  str
         if not None, the results are also printed to text files, ready to plot by for `FermiSurfer <https://fermisurfer.osdn.jp/>`_
-    parallel : :class:`~wannierberri.Parallel`
+    parallel : :class:`~wannierberri.parallel.Parallel`
         object describing parallelization scheme
     print_Kpoints : bool
         print the list of K points
@@ -299,7 +300,7 @@ def tabulate(
 
     Returns
     --------
-    :class:`~wannierberri.__tabulate.TABresult`
+    :class:`~wannierberri.result.TABresult`
 
 
     """
@@ -344,7 +345,7 @@ def tabulate(
     if mode == '3D':
         res = res.to_grid(grid.dense)
         t2 = time()
-        ttxt, twrite = __result_tab.write_frmsf(
+        ttxt, twrite = __tabresult.write_frmsf(
             frmsf_name,
             Ef0,
             parallel.num_cpus if parallel is not None else 1,

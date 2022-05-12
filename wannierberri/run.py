@@ -19,8 +19,8 @@ import glob
 
 from .data_K import Data_K
 from .__Kpoint import exclude_equiv_points
-from .__parallel import Parallel
-from .__result import ResultDict
+from .parallel import Serial
+from .result import ResultDict
 from .__path import Path
 
 
@@ -99,9 +99,7 @@ def run(
     system,
     grid,
     calculators,
-    adpt_mesh=2,
     adpt_num_iter=0,
-    adpt_nk=1,
     use_irred_kpt=True,
     symmetrize=True,
     fout_name="result",
@@ -110,11 +108,57 @@ def run(
     file_Klist=None,
     restart=False,
     Klist_part=10,
-    parallel=None,  # serial by default
+    parallel=Serial(),  # serial by default
     print_Kpoints=True,
+    adpt_mesh=2,
+    adpt_fac=1,
 ):
-    """This will be a substitution for integrate() and tabulate(), and mostly is a copy of evaluate()
-      so far let's implement without adaptive refinement (add it later) """
+    """
+    The function to run a calculation. Substitutes the old :func:`~wannierberri.integrate` and :func:`~wannierberri.tabulate`
+    and allows to integrate and tabulate in one run.
+
+    Parameters
+    ----------
+    system : :class:`~wannierberri.system.System`
+        System under investigation
+    grid : :class:`~wannierberri.Grid` or :class:`~wannierberri.Path`
+        initial grid for integration. or path for tabulation
+    calculators : dict
+        a dictionary where keys aare any string identifiers, and the values are of :class:`~wannierberri.calculators.Calculator`
+    adpt_num_iter : int
+        number of recursive adaptive refinement iterations. See :ref:`sec-refine`
+    adpt_mesh : int
+        the size of the refinement grid (usuallay no need to change)
+    adpt_fac : int
+        number of K-points to be refined per quantity and criteria.
+    parallel : :class:`~wannierberri.parallel.Parallel`
+        object describing parallelization scheme
+    use_irred_kpt : bool
+        evaluate only symmetry-irreducible K-points
+    symmetrize : bool
+        symmetrize the result (always `True` if `use_irred_kpt == True`)
+    fout_name : str
+        beginning of the output files for each quantity after each iteration
+    suffix : str
+        extra marker inserted into output files to mark this particular calculation run
+    print_Kpoints : bool
+        print the list of K points
+    file_Klist : str or None
+        name of file where to store the Kpoint list of each iteration. May be needed to restart a calculation
+        to get more iterations. If `None` -- the file is not written
+    restart : bool
+        if `True` : reads restart information from `file_Klist` and starts from there
+    Klist_part : int
+        write the file_Klist by portions. Increase for speed, decrease for memory saving
+
+    Returns
+    --------
+    dictionary of  :class:`~wannierberri.result.EnergyResult`
+
+    Notes
+    -----
+    Results are also printed to ASCII files
+    """
 
     # along a path only tabulating is possible
     if isinstance(grid,Path):
@@ -129,9 +173,6 @@ def run(
             symmetrize = False
     else:
         print ("Grid is regular")
-
-    if parallel is None:
-        parallel = Parallel()
 
     if file_Klist is not None:
         if not file_Klist.endswith(".pickle"):
@@ -191,7 +232,7 @@ def run(
             start_iter = 0
 
     if adpt_num_iter < 0:
-        adpt_num_iter = -adpt_num_iter * np.prod(grid.div) / np.prod(adpt_mesh) / adpt_nk / 3
+        adpt_num_iter = -adpt_num_iter * np.prod(grid.div) / np.prod(adpt_mesh) / adpt_fac / 3
     adpt_num_iter = int(round(adpt_num_iter))
 
     if (adpt_mesh is None) or np.max(adpt_mesh) <= 1:
@@ -238,7 +279,7 @@ def run(
 
         # Now add some more points
         Kmax = np.array([K.max for K in K_list]).T
-        select_points = set().union(*(np.argsort(Km)[-adpt_nk:] for Km in Kmax))
+        select_points = set().union(*(np.argsort(Km)[-adpt_fac:] for Km in Kmax))
 
         time2 = time()
         print("time2 = ", time2 - time1)

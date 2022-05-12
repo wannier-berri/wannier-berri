@@ -1,12 +1,10 @@
 import pytest
-from wannierberri import Parallel
+from wannierberri.parallel import Parallel,Serial
 
 
 @pytest.fixture(scope="session")
 def parallel_serial():
-    return Parallel(
-        method="serial",
-        num_cpus=0,
+    return Serial(
         npar_k=0,
         progress_step_percent=1,
     )
@@ -28,7 +26,6 @@ def parallel_ray():
     ray_init['_redis_password'] = 'some_password'
 
     parallel = Parallel(
-        method="ray",
         num_cpus=4,
         npar_k=0,
         ray_init=ray_init,  # add extra parameters for ray.init()
@@ -41,7 +38,6 @@ def parallel_ray():
     # Now create a proper parallel environment to be used
 
     return Parallel(
-        method="ray",
         num_cpus=4,
         npar_k=0,
         ray_init={},  # add extra parameters for ray.init()

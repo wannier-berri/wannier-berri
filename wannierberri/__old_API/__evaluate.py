@@ -19,8 +19,6 @@ import glob
 
 from wannierberri.data_K import Data_K
 from wannierberri.__Kpoint import exclude_equiv_points
-from wannierberri.__parallel import Parallel
-
 
 def print_progress(count, total, t0):
     t = time() - t0
@@ -122,8 +120,6 @@ The parallelisation is done by K-points
 As a result, the integration will be performed over NKFFT x NKdiv
 """
 
-    if parallel is None:
-        parallel = Parallel()
 
     if file_Klist is not None:
         if not file_Klist.endswith(".pickle"):

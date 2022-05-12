@@ -13,9 +13,9 @@
 
 import numpy as np
 from collections import defaultdict
-from wannierberri.__result_tab import TABresult, KBandResult
-from wannierberri import covariant_formulak as frml
-from wannierberri import covariant_formulak_basic as frml_basic
+from wannierberri.result import TABresult, KBandResult
+from wannierberri.formula import covariant as frml
+from wannierberri.formula import covariant_basic as frml_basic
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
