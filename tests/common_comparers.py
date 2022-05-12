@@ -5,7 +5,7 @@ import os
 import numpy as np
 import pytest
 from pytest import approx
-from wannierberri.__result import EnergyResult
+from wannierberri.result import EnergyResult
 
 from common import REF_DIR, OUTPUT_DIR
 

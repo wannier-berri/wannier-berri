@@ -5,6 +5,14 @@ import abc
 
 class Formula_ln(abc.ABC):
 
+    """
+    A "Formula" is a ground concept of our calculation. Assume that we have divided
+    all our Wannierised states into two subspaces, called "inn" and "out".
+    We call a matrix "covariant" if it is covariant under gauge transformations
+    inside the "inn" or "out" subspaces but do not intermix them.
+    A `Formula_ln` object has methods that returns submatrices of the covariant matrix.
+    """
+
     @abc.abstractmethod
     def __init__(self, data_K, internal_terms=True, external_terms=True, correction_wcc=False, dT_wcc=False):
         self.internal_terms = internal_terms
@@ -22,16 +30,28 @@ class Formula_ln(abc.ABC):
 
     @abc.abstractmethod
     def ln(self, ik, inn, out):
+        """Returns the submatrix :math:`X_{ln}` at point `ik`, where
+        :math:`l \in \mathrm{out}` and :math:`n \in \mathrm{inn}`
+        """
         pass
 
     @abc.abstractmethod
     def nn(self, ik, inn, out):
+        """Returns the submatrix :math:`X_{nn'}` at point `ik`, where
+        :math:`n, n' \in \mathrm{inn}`
+        """
         pass
 
     def nl(self, ik, inn, out):
+        """Returns the submatrix :math:`X_{nl}` at point `ik`, where
+        :math:`l \in \mathrm{out}` and :math:`n \in \mathrm{inn}`
+        """
         return self.ln(ik, out, inn)
 
     def ll(self, ik, inn, out):
+        """Returns the submatrix :math:`X_{ll'}` at point `ik`, whee
+        :math:`l, l' \in \mathrm{out}`
+        """
         return self.nn(ik, out, inn)
 
     @property
@@ -42,6 +62,7 @@ class Formula_ln(abc.ABC):
         return True
 
     def trace(self, ik, inn, out):
+        "Returns a trace over the `inn` states"
         return np.einsum("nn...->...", self.nn(ik, inn, out)).real
 
 
@@ -121,3 +142,5 @@ class FormulaProduct(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+from . import covariant
+from . import covariant_basic

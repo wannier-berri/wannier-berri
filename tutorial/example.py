@@ -34,7 +34,7 @@ system=wberri.System_tb(tb_file='Fe_tb.dat',berry=True)
 generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 system.set_symmetry(generators)
 grid=wberri.Grid(system,length=100,length_FFT=15)
-parallel=wberri.Parallel(method="ray",num_cpus=num_proc)
+parallel=wberri.Parallel(num_cpus=num_proc)
 
 wberri.integrate(system,
             grid=grid,

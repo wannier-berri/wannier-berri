@@ -35,11 +35,10 @@ system=wberri.System_tb(tb_file='Fe_tb.dat',berry=True)
 
 generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 system.set_symmetry(generators)
-grid=wberri.Grid(system,length=15,length_FFT=15)
-#parallel=wberri.Parallel(method="ray",num_cpus=num_proc)
+grid=wberri.Grid(system,length=30,length_FFT=15)
 
-parallel=wberri.Parallel() # serial execution
-#parallel=wberri.Parallel(method="ray",num_cpus=num_proc)
+#parallel=wberri.Serial() # serial execution
+parallel=wberri.Parallel() # parallel with  "ray",num_cpus - auto)
 param_tabulate = {'ibands':np.arange(4,10)}
 
 
@@ -48,12 +47,12 @@ t0 = time()
 wberri.run(system,
             grid=grid,
             calculators = {
-#                "ahc":wberri.calculators.static.AHC(Efermi=Efermi,tetra=False),
-#                 "tabulate":wberri.calculators.TabulatorAll({
-#                            "Energy":wberri.calculators.Energy(),
-#                            "berry":wberri.calculators.BerryCurvature(),
-#                                  }, 
-#                                       ibands = np.arange(4,10))
+                "ahc":wberri.calculators.static.AHC(Efermi=Efermi,tetra=False),
+                 "tabulate":wberri.calculators.TabulatorAll({
+                            "Energy":wberri.calculators.tabulate.Energy(),
+                            "berry":wberri.calculators.tabulate.BerryCurvature(),
+                                  }, 
+                                       ibands = np.arange(4,10)),
                  "opt_conductivity" : wberri.calculators.dynamic.OpticalConductivity(Efermi=Efermi,omega=omega),
 #                 "shc_ryoo" : wberri.calculators.dynamic.SHC(Efermi=Efermi,omega=omega),
 #                  "SHC": wberri.fermiocean_dynamic.SHC(Efermi=Efermi,omega=omega,SHC_type="qiao")
@@ -91,7 +90,9 @@ t_int=time()-t0
 
 
 
-print (f"time for \nrun       : {t_run} \nintegrate : {t_int} \n ratio      {t_run/t_int}")
+print (f"time for \nrun       : {t_run} \nintegrate : {t_int} ")
+if t_int>0: 
+    print(f"ratio      {t_run/t_int}")
 
 parallel.shutdown()
 

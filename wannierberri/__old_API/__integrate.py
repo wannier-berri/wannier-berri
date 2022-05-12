@@ -17,7 +17,7 @@ from copy import copy
 
 from wannierberri.smoother import VoidSmoother
 from wannierberri.__factors import TAU_UNIT
-from wannierberri import __result as result
+from wannierberri import result as result
 from . import fermiocean as fermiocean
 from . import __kubo as kubo
 
@@ -219,7 +219,7 @@ def intProperty(
     return INTresult(results=results)
 
 
-class INTresult(result.Result):
+class INTresult(result.__result.Result):
 
     def __init__(self, results={}):
         self.results = results

@@ -10,10 +10,14 @@
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
 #------------------------------------------------------------
+#
+#  The purpose of this module is to provide Result classes for
+#  different types of  calculations.
+#  child classes can be defined specifically in each module
 
-from .system_w90 import System_w90
-from .system_fplo import System_fplo
-from .system_tb import System_tb
-from .system_tb_py import System_PythTB, System_TBmodels
-from .system_ASE import System_ASE
-from .system import System
+
+from .__result import Result
+from .__resultdict import  ResultDict
+from .__energyresult import EnergyResult
+from .__tabresult import TABresult
+from .__kbandresult import KBandResult

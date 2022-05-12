@@ -141,7 +141,7 @@ class System_TBmodels(System_tb_py):
 
     Notes
     -----
-    see also  parameters of the :class:`~wannierberri.System`
+    see also  parameters of the :class:`~wannierberri.System_tb_py`
     """
 
     def __init__(self, tbmodel, **parameters):
@@ -163,7 +163,7 @@ class System_PythTB(System_tb_py):
 
     Notes
     -----
-    see also  parameters of the :class:`~wannierberri.System`
+    see also  parameters of the :class:`~wannierberri.System_tb_py`
     """
 
     def __init__(self, ptb_model, **parameters):
