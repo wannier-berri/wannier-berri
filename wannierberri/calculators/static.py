@@ -8,7 +8,6 @@
 import numpy as np
 from collections import defaultdict
 from math import ceil
-from termcolor import cprint
 from wannierberri.formula import covariant as frml
 from wannierberri.formula import covariant_basic as frml_basic
 from wannierberri import __factors as factors
