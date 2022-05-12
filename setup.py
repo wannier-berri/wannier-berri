@@ -29,7 +29,7 @@ setuptools.setup(
                         'fortio>=0.4',
                         'ray[default]',
                         'sympy',
-                        'spglib'
+                        'spglib',
                         ],
      url="https://wannier-berri.org",
      packages=setuptools.find_packages(),
