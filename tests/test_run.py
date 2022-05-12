@@ -215,7 +215,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             result_type=EnergyResult)
 
     #extra_precision = {'berry': 1e-6}
-    extra_precision = {'Morb': 1e-6,'Der_berry':1e-7}
+    extra_precision = {'Morb': 1e-6 }
     for quant in result.results.get("tabulate").results.keys(): # ["Energy", "berry","Der_berry","spin","morb"]:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
             _quant = "E" if quant == "Energy" else quant
@@ -223,7 +223,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             #            data=result.results.get(quant).data
             #            assert data.shape[0] == len(Efermi)
             #            assert np.all( np.array(data.shape[1:]) == 3)
-            prec = extra_precision[quant] if quant in extra_precision else 1e-8
+            prec = extra_precision[quant] if quant in extra_precision else 2e-8
             #            comparer(frmsf_name, quant+_comp+suffix,  suffix_ref=compare_quant(quant)+_comp+suffix_ref ,precision=prec )
             compare_fermisurfer(
                 fout_name="berry_Fe_W90-tabulate",
