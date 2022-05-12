@@ -1,3 +1,24 @@
+Version 0.13.0
+++++++++++++++++++
+
+## What's Changed
+* typo in cumdos by @Liu-Xiaoxiong in https://github.com/wannier-berri/wannier-berri/pull/166
+* smoothwers in calculators by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/161
+* allowed tabulation along a path using by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/164
+* separated the old API to a submodule by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/163
+* Fermiocean to calculator with doc by @Liu-Xiaoxiong in https://github.com/wannier-berri/wannier-berri/pull/165
+* Change unit to SI by @Liu-Xiaoxiong in https://github.com/wannier-berri/wannier-berri/pull/168
+* All Class in Static are children of `StaticCalculator` by @Liu-Xiaoxiong in https://github.com/wannier-berri/wannier-berri/pull/169
+* Cleanup by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/162
+* Re-arranged files into submodules `result`, `system` , `formula`
+* rewrote most functionality as `Calculators`
+* EnergyResult writes comment into output file
+* separate classes Serial() and Parallel()
+
+
+**Full Changelog**: https://github.com/wannier-berri/wannier-berri/compare/v0.12.0...v0.13.0
+
+
 Version 0.12.0
 ++++++++++++++++++
 
@@ -25,7 +46,6 @@ Version 0.12.0
 * Importing WFs from Ase by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/155
 * separated Systems and utils (mmn2uHu, vaspspn, tab_plot) to a submodules by @stepan-tsirkin in  https://github.com/wannier-berri/wannier-berri/pull/157
 * Symmetrization of orbital magnetic moment. (BB_R and CC_R) by @Liu-Xiaoxiong in https://github.com/wannier-berri/wannier-berri/pull/156
-
 
 Version 0.11.1
 ++++++++++++++++++
