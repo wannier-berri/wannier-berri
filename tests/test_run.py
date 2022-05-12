@@ -972,14 +972,9 @@ def test_tabulate_path(system_Haldane_PythTB):
 def test_shc_static(check_run,system_Fe_W90):
     "Test whether SHC static and dynamic calculators are the same at omega=0"
 
-    Efermi = np.linspace(16.0, 18.0, 21)
-    omega = np.array([0.0])
-    kubo_params = dict(smr_fixed_width=1e-10, smr_type="Gaussian", kBT=0)
-
-    parameters_optical = dict(
-        Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=1e-10,smr_type="Gaussian", kBT=0)
-    parameters_static = dict(
-        Efermi=np.array([17.0, 18.0]) )
+    parameters_optical = dict(Efermi=np.array([17.0, 18.0]),
+            omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=1e-10,smr_type="Gaussian", kBT=0)
+    parameters_static = dict(Efermi=np.array([17.0, 18.0]))
 
     calculators = {}
 
@@ -988,9 +983,6 @@ def test_shc_static(check_run,system_Fe_W90):
     calculators['SHCqiao_static'] = wberri.calculators.static.SHC(kwargs_formula={'spin_current_type':'qiao'}, **parameters_static)
     calculators['SHCryoo_static'] = wberri.calculators.static.SHC(kwargs_formula={'spin_current_type':'ryoo'}, **parameters_static)
 
-
-    grid_param = dict(NK=[6, 6, 6], NKFFT=[3, 3, 3])
-    adpt_num_iter = 0
 
     result = check_run(
         system_Fe_W90,

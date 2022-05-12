@@ -1,7 +1,7 @@
 from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom  #, Boltzmann
 
-TAU_UNIT = 1E-9  # tau in nanoseconds
-TAU_UNIT_TXT = "ns"
+TAU_UNIT = 1E-15  # tau in nanoseconds
+TAU_UNIT_TXT = "fs"
 
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom
