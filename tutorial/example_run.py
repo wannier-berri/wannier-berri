@@ -37,8 +37,8 @@ generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 system.set_symmetry(generators)
 grid=wberri.Grid(system,length=30,length_FFT=15)
 
-#parallel=wberri.parallel.Serial() # serial execution
-parallel=wberri.parallel.Parallel() # parallel with  "ray",num_cpus - auto)
+#parallel=wberri.Serial() # serial execution
+parallel=wberri.Parallel() # parallel with  "ray",num_cpus - auto)
 param_tabulate = {'ibands':np.arange(4,10)}
 
 
