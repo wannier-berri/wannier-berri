@@ -517,7 +517,7 @@ class NLDrude_Fermider2(StaticCalculator):
         super().__init__(**kwargs)
 
 
-class Spin_Hall(StaticCalculator):
+class SHC(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.SpinOmega
