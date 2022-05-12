@@ -37,7 +37,7 @@ additional_parameters_description = defaultdict(lambda: defaultdict(lambda: "no 
 descriptions = defaultdict(lambda: "no description")
 descriptions['berry'] = "Berry curvature (Ang^{2})"
 descriptions['Der_berry'] = "1st deravetive of Berry curvature (Ang^{3})"
-descriptions['velocity'] = "velocity (eV*Ang)"
+descriptions['V'] = "velocity (eV*Ang)"
 descriptions['spin'] = "Spin"
 descriptions['morb'] = "orbital moment of Bloch states <nabla_k u_n| X(H-E_n) | nabla_k u_n> (eV*Ang**2)"
 descriptions[
