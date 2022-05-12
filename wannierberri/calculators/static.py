@@ -14,6 +14,8 @@ from ..__utility import alpha_A, beta_A
 #  TODO: Ideally, a docstring of every calculator should contain the equation that it implements
 #        and references (with urls) to the relevant papers
 
+
+
 ####################
 # basic quantities #
 ####################
@@ -247,11 +249,12 @@ class AHC_test(StaticCalculator):
 
 
 class Ohmic_FermiSea(StaticCalculator):
-    r"""Ohmic conductivity (:math:`S/m`)
+    __doc__ = (r"""Ohmic conductivity (:math:`S/m`)
 
         | With Fermi sea integral. Eq(31) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
-        | Output: :math:`\sigma_{\alpha\beta} = e^2/\hbar \tau \int [dk] \partial_\beta v_\alpha f`
-        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta`"""
+        | Output: :math:`\sigma_{\alpha\beta} = e^2/\hbar \tau \int [dk] \partial_\beta v_\alpha f`"""+
+        fr"for \tau=1{factors.TAU_UNIT_TXT}"+
+        r"""| Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta`""")
 
     def __init__(self, **kwargs):
         self.Formula = frml.InvMass
@@ -436,7 +439,7 @@ class NLDrude_Fermider2(StaticCalculator):
         super().__init__(**kwargs)
 
 
-class Spin_Hall(StaticCalculator):
+class SHC(StaticCalculator):
     r"""Spin Hall conductivity with dc (:math:`S/m`)
 
         | With Fermi sea integral. Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.235113>`_

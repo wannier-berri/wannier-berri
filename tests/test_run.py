@@ -181,6 +181,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
 
     parameters_optical = dict(
         Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
+
     calculators['opt_conductivity'] = wberri.calculators.dynamic.OpticalConductivity(**parameters_optical)
     calculators['opt_SHCqiao'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
     calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
@@ -279,9 +280,9 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result):
         suffix="-run",
         use_symmetry=False
     )
-    cals = {'gyrotropic_Kspin': calc.static.GME_orb_FermiSea,
+    cals = {'gyrotropic_Korb': calc.static.GME_orb_FermiSea,
             'berry_dipole': calc.static.BerryDipole_FermiSea,
-            'gyrotropic_Korb': calc.static.GME_spin_FermiSea}
+            'gyrotropic_Kspin': calc.static.GME_spin_FermiSea}
     calculators = {k: v(**param) for k, v in cals.items()}
     check_run(
         system_Fe_sym_W90,
@@ -307,9 +308,9 @@ def test_Fe_sym_W90_sym(check_run, system_Fe_sym_W90, compare_any_result):
         suffix="sym-run",
         use_symmetry=True
     )
-    cals = {'gyrotropic_Kspin': calc.static.GME_orb_FermiSea,
+    cals = {'gyrotropic_Korb': calc.static.GME_orb_FermiSea,
             'berry_dipole': calc.static.BerryDipole_FermiSea,
-            'gyrotropic_Korb': calc.static.GME_spin_FermiSea}
+            'gyrotropic_Kspin': calc.static.GME_spin_FermiSea}
     calculators = {k: v(**param) for k, v in cals.items()}
     check_run(
         system_Fe_sym_W90,
@@ -479,9 +480,12 @@ def test_GaAs(check_run, system_GaAs_W90, compare_any_result):
 
     param = {'Efermi': Efermi_GaAs}
     calculators = {k: v(**param) for k, v in calculators_GaAs.items()}
-    calculators.update({k: v(**param) for k, v in calculators_GaAs.items()})
+#    calculators.update({k: v(**param) for k, v in calculators_GaAs.items()})
+    calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
     calculators.update({
         'gyrotropic_Korb':calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs),
+        'gyrotropic_Kspin':calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
+        'gyrotropic_Kspin_fsurf':calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
         'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),}
             )
 
@@ -520,6 +524,11 @@ def test_GaAs_wcc(check_run, system_GaAs_W90_wcc, compare_any_result):
     param = {'Efermi': Efermi_GaAs}
     calculators = {k: v(**param) for k, v in calculators_GaAs.items()}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
+
+    calculators.update({
+        'gyrotropic_Kspin':calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
+        'gyrotropic_Kspin_fsurf':calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
+            })
 
     check_run(
         system_GaAs_W90_wcc,
@@ -958,3 +967,37 @@ def test_tabulate_path(system_Haldane_PythTB):
         fatfactor=20,
         cut_k=True,
         show_fig=False)
+
+
+def test_shc_static(check_run,system_Fe_W90):
+    "Test whether SHC static and dynamic calculators are the same at omega=0"
+
+    parameters_optical = dict(Efermi=np.array([17.0, 18.0]),
+            omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=1e-10,smr_type="Gaussian", kBT=0)
+    parameters_static = dict(Efermi=np.array([17.0, 18.0]))
+
+    calculators = {}
+
+    calculators['SHCqiao_dynamic'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
+    calculators['SHCryoo_dynamic'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
+    calculators['SHCqiao_static'] = wberri.calculators.static.SHC(kwargs_formula={'spin_current_type':'qiao'}, **parameters_static)
+    calculators['SHCryoo_static'] = wberri.calculators.static.SHC(kwargs_formula={'spin_current_type':'ryoo'}, **parameters_static)
+
+
+    result = check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="shc_Fe_W90",
+        suffix="run",
+        do_not_compare=True)
+
+
+    for mode in ["qiao", "ryoo"]:
+        data_static  = result.results[f"SHC{mode}_static" ].data
+        data_dynamic = result.results[f"SHC{mode}_dynamic"].data[:, 0, ...].real
+        precision = max(np.average(abs(data_static) / 1E10), 1E-8)
+        assert data_static == approx(
+            data_dynamic, abs=precision), (
+                f"data of"
+                f"SHC {mode} from static.SHC and dynamic.SHC give a maximal absolute"
+                f"difference of {np.max(np.abs(data_static - data_dynamic))}.")
