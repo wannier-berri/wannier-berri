@@ -9,7 +9,7 @@ from wannierberri.smoother import (
     VoidSmoother,
     FermiDiracSmoother,
     GaussianSmoother,
-    getSmoother,
+    get_smoother,
 )
 
 
@@ -48,12 +48,12 @@ def test_smoother():
         sm_data_3d = sm(data_3d, axis=1)
         assert sm_data_3d - sm_data_1d[None, :, None] == approx(0.0, abs=1E-10)
 
-    # Test getSmoother
-    assert getSmoother(e, None) == VoidSmoother()
-    assert getSmoother(None, None) == VoidSmoother()
-    assert getSmoother([0.0], 1.0) == VoidSmoother()
-    assert getSmoother(e, 0.1, "Gaussian") == GaussianSmoother(e, 0.1)
-    assert getSmoother(e, 0.1, "Fermi-Dirac") == FermiDiracSmoother(e, 0.1)
-    assert getSmoother(e, 0.2, "Gaussian") != GaussianSmoother(e, 0.1)
-    assert getSmoother(e + 0.1, 0.2, "Gaussian") != GaussianSmoother(e, 0.1)
-    assert getSmoother(e, 0.1, "Gaussian") != FermiDiracSmoother(e, 0.1)
+    # Test get_smoother
+    assert get_smoother(e, None) == VoidSmoother()
+    assert get_smoother(None, None) == VoidSmoother()
+    assert get_smoother([0.0], 1.0) == VoidSmoother()
+    assert get_smoother(e, 0.1, "Gaussian") == GaussianSmoother(e, 0.1)
+    assert get_smoother(e, 0.1, "Fermi-Dirac") == FermiDiracSmoother(e, 0.1)
+    assert get_smoother(e, 0.2, "Gaussian") != GaussianSmoother(e, 0.1)
+    assert get_smoother(e + 0.1, 0.2, "Gaussian") != GaussianSmoother(e, 0.1)
+    assert get_smoother(e, 0.1, "Gaussian") != FermiDiracSmoother(e, 0.1)
