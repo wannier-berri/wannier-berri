@@ -62,11 +62,13 @@ class SymWann():
             lattice,
             iRvec,
             XX_R,
-            soc=False,
-            magmom=None,
-            DFT_code='qe'):
+            **parameters):
 
-        self.soc = soc
+        for param in self.default_parameters:
+            if param in parameters:
+                vars(self)[param] = parameters[param]
+            else:
+                vars(self)[param] = self.default_parameters[param]
         self.Ham_R = XX_R['Ham']
         self.iRvec = iRvec.tolist()
         self.nRvec = len(iRvec)
@@ -89,9 +91,7 @@ class SymWann():
             'CC': -1,
             'SS': -1
         }  #{'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
-        self.magmom = magmom
         self.orbitals = Orbitals()
-        self.DFT_code = DFT_code
 
         self.wann_atom_info = []
 
@@ -473,7 +473,6 @@ class SymWann():
         print('number of symmetry oprations == ', nrot)
 
         return res_dic, tmp_R_list
-
 
     def symmetrize(self):
         #====Time Reversal====
