@@ -5,11 +5,11 @@ from wannierberri.__utility import get_angle
 
 
 class SymWann():
-    
+
     default_parameters = {
-            'soc': True,
-            'DFT_code':'qe'
-            }
+            'soc':False,
+            'magmom':None,
+            'DFT_code':'qe'}
 
     __doc__ = """
     Symmetrize wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
@@ -26,13 +26,13 @@ class SymWann():
         Name of each atom.
     proj: list
         Should be the same with projections card in relative Wannier90.win.
-        
+
         eg: ``['Te: s','Te:p']``
-        
+
         If there is hybrid orbital, grouping the other orbitals.
-        
+
         eg: ``['Fe':sp3d2;t2g]`` Plese don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
-            
+
             ``['X':sp;p2]`` Plese don't use ``['X':sp;pz,py]``
     iRvec: array
         List of R vectors.
@@ -41,7 +41,7 @@ class SymWann():
     soc: bool
         Spin orbital coupling. Default: ``{soc}``
     magmom: 2D array
-        Magnetic momentom of each atoms.
+        Magnetic momentom of each atoms. Default ``{magmom}``
     DFT_code: str
         ``'qe'`` or ``'vasp'``   Default: ``{DFT_code}``
         vasp and qe have different orbitals arrangement with SOC.
@@ -51,20 +51,19 @@ class SymWann():
     Dictionary of matrix after symmetrization.
     Updated list of R vectors.
 
-    """.format(**default_parameters)    
+    """.format(**default_parameters)
 
     def __init__(
             self,
-            num_wann=None,
-            lattice=None,
-            positions=None,
-            atom_name=None,
-            proj=None,
-            iRvec=None,
-            XX_R=None,
+            positions,
+            atom_name,
+            proj,
+            num_wann,
+            lattice,
+            iRvec,
+            XX_R,
             soc=False,
             magmom=None,
-            cRvec=None,
             DFT_code='qe'):
 
         self.soc = soc
@@ -92,8 +91,7 @@ class SymWann():
         }  #{'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
         self.magmom = magmom
         self.orbitals = Orbitals()
-
-        # number of orbitals in each shell
+        self.DFT_code = DFT_code
 
         self.wann_atom_info = []
 
@@ -190,9 +188,9 @@ class SymWann():
             print('====================\nSystem have inversion symmetry\n====================')
 
         if self.soc:
-            if DFT_code in ['VASP', 'vasp', 'Vasp']:
+            if self.DFT_code in ['VASP', 'vasp', 'Vasp']:
                 pass
-            elif DFT_code in ['QE', 'qe', 'quantum_espresso', 'Quantum_Espresso', 'Espresso', 'espresso']:
+            elif self.DFT_code in ['QE', 'qe', 'quantum_espresso', 'Quantum_Espresso', 'Espresso', 'espresso']:
 
                 def spin_range(Mat_in):
                     Mat_out = np.zeros(np.shape(Mat_in), dtype=complex)
@@ -209,6 +207,8 @@ class SymWann():
                 self.Ham_R = spin_range(self.Ham_R)
                 for X in self.matrix_list:
                     self.matrix_list[X] = spin_range(self.matrix_list[X])
+            else:
+                raise NotImplementedError("Only work for DFT_code = 'qe' or 'vasp' at this moment")
 
     #==============================
     #Find space group and symmetres
@@ -265,7 +265,7 @@ class SymWann():
                 alpha = np.arccos(rmat[1, 1])
                 if rmat[0, 1] > 0.0: alpha = -1.0 * alpha
             # euler_angle = np.array([alpha, beta, gamma])
-            dmat = np.zeros((2, 2), dtype=complex:)
+            dmat = np.zeros((2, 2), dtype=complex)
             dmat[0, 0] = np.exp(-(alpha + gamma) / 2.0 * 1j) * np.cos(beta / 2.0)
             dmat[0, 1] = -np.exp(-(alpha - gamma) / 2.0 * 1j) * np.sin(beta / 2.0)
             dmat[1, 0] = np.exp((alpha - gamma) / 2.0 * 1j) * np.sin(beta / 2.0)
@@ -304,7 +304,7 @@ class SymWann():
                             + f'After operation: {atom_position},\nAll wann_atom: {wann_atom_positions}')
             rot_map.append(match_index)
             vec_shift_map.append(vec_shift)
-        #Check if the symmetry operator respect to magnetic moment.
+        #Check if the symmetry operator respect magnetic moment.
         #TODO opt magnet code
         rot_sym = self.symmetry['rotations'][sym]
         rot_sym_glb = np.dot(np.dot(np.transpose(self.lattice), rot_sym), np.linalg.inv(np.transpose(self.lattice)))
@@ -317,12 +317,12 @@ class SymWann():
                         sym_only = False
                     else:
                         sym_only = True
-                        print('Symmetry operator {} is respect to magnetic moment'.format(sym + 1))
+                        print('Symmetry operator {} respect magnetic moment'.format(sym + 1))
                     if abs(np.linalg.norm(magmom + np.linalg.det(rot_sym_glb) * new_magmom)) > 0.0005:
                         sym_T = False
                     else:
                         sym_T = True
-                        print('Symmetry operator {}*T is respect to magnetic moment'.format(sym + 1))
+                        print('Symmetry operator {}*T respect magnetic moment'.format(sym + 1))
                     if sym_T + sym_only == 0:
                         break
 
@@ -474,6 +474,7 @@ class SymWann():
 
         return res_dic, tmp_R_list
 
+
     def symmetrize(self):
         #====Time Reversal====
         #syl: (sigma_y)^T *1j, syr: sigma_y*1j
@@ -496,12 +497,35 @@ class SymWann():
             return_dic_add, iRvec_add_0 = self.average_H(iRvec_add)
             for X in return_dic_add.keys():
                 return_dic[X] = np.concatenate((return_dic[X], return_dic_add[X]), axis=2)
+
+        if self.soc:
+            if self.DFT_code in ['VASP', 'vasp', 'Vasp']:
+                pass
+            elif self.DFT_code in ['QE', 'qe', 'quantum_espresso', 'Quantum_Espresso', 'Espresso', 'espresso']:
+
+                def spin_range_back(Mat_in):
+                    Mat_out = np.zeros(np.shape(Mat_in), dtype=complex)
+                    Mat_out[0:self.num_wann:2,0:self.num_wann:2, :] = Mat_in[0:self.num_wann // 2,
+                                                                                0:self.num_wann // 2, :]
+                    Mat_out[1:self.num_wann:2,0:self.num_wann:2, :] = Mat_in[self.num_wann // 2:self.num_wann,
+                                                                                0:self.num_wann // 2, :]
+                    Mat_out[0:self.num_wann:2,1:self.num_wann:2, :] = Mat_in[0:self.num_wann // 2,
+                                                                                self.num_wann // 2:self.num_wann, :]
+                    Mat_out[1:self.num_wann:2, 1:self.num_wann:2, :] = Mat_in[
+                                                self.num_wann // 2:self.num_wann,self.num_wann // 2:self.num_wann, :]
+                    return Mat_out
+
+                return_dic['Ham'] = spin_range_back(return_dic['Ham'])
+                for X in self.matrix_list:
+                    return_dic[X] = spin_range_back(return_dic[X])
+
         print('Symmetrizing Finished')
 
         #=================================
         #   for  test
         #=================================
-
+        with np.printoptions(suppress=True, precision=30, threshold=np.inf, linewidth=500):
+            print( return_dic['AA'][4,4,4,2].real )
         with np.printoptions(suppress=True, precision=4, threshold=np.inf, linewidth=500):
             X = 'AA'
             diag = True
