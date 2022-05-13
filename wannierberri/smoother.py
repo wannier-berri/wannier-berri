@@ -133,7 +133,7 @@ class VoidSmoother(AbstractSmoother):
         return A
 
 
-def getSmoother(energy, smear, mode=None):
+def get_smoother(energy, smear, mode=None):
     """
     Return a smoother that applies for the given energy range. The smoother can
     be used a function that applies to an array. The axis of the array to be smoothed
@@ -142,7 +142,7 @@ def getSmoother(energy, smear, mode=None):
     If you calculated some quantity ``data`` over a range of ``efermi`` and want
     to apply the Fermi-Dirac smoother at 300 K, run the following code::
 
-        smoother = wannierberri.getSmoother(efermi, 300, "Fermi-Dirac")
+        smoother = wannierberri.get_smoother(efermi, 300, "Fermi-Dirac")
         data_smooth = smoother(data)
 
     Parameters
