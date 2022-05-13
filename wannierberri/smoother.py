@@ -5,11 +5,8 @@ import numpy as np
 class AbstractSmoother(abc.ABC):
     """ Smoother for smoothing an array by convolution.
     This is an abstract class which cannot by instantiated. Only the specific child classes
-    can be instantiated. Each child class should implement its own version of _params,
-    __init__, and _broaden.
-    - _params : list of parameters that uniquely define the smoother.
-    - _broaden : function that defines the broadening method.
-    - __init__ : initialize Smoother parameters
+    can be instantiated. Each child class should implement its own version of ``_params``,
+    ``__init__``, and ``_broaden``.
 
     Parameters
     -----------
@@ -24,10 +21,12 @@ class AbstractSmoother(abc.ABC):
     @property
     @abc.abstractmethod
     def _params(self):
+        """list of parameters that uniquely define the smoother."""
         pass
 
     @abc.abstractmethod
     def __init__(self, E, smear, maxdE):
+        """initialize Smoother parameters"""
         self.smear = smear
         self.E = np.copy(E)
         self.maxdE = maxdE
@@ -40,6 +39,7 @@ class AbstractSmoother(abc.ABC):
 
     @abc.abstractmethod
     def _broaden(self, E):
+        """The broadening method to be used."""
         pass
 
     def __str__(self):
@@ -55,6 +55,7 @@ class AbstractSmoother(abc.ABC):
         return True
 
     def __call__(self, A, axis=0):
+        """Apply smoother to ``A`` along the given axis"""
         assert self.E.shape[0] == A.shape[axis]
         A = A.transpose((axis, ) + tuple(range(0, axis)) + tuple(range(axis + 1, A.ndim)))
         res = np.zeros(A.shape, dtype=A.dtype)
@@ -132,7 +133,31 @@ class VoidSmoother(AbstractSmoother):
         return A
 
 
-def getSmoother(energy, smear, mode=None):
+def get_smoother(energy, smear, mode=None):
+    """
+    Return a smoother that applies for the given energy range. The smoother can
+    be used a function that applies to an array. The axis of the array to be smoothed
+    can be controlled with an argument ``axis``, whose default is 0.
+
+    If you calculated some quantity ``data`` over a range of ``efermi`` and want
+    to apply the Fermi-Dirac smoother at 300 K, run the following code::
+
+        smoother = wannierberri.get_smoother(efermi, 300, "Fermi-Dirac")
+        data_smooth = smoother(data)
+
+    Parameters
+    -----------
+    energy : 1D array of float
+        The energies on which the data are calculated at. Must be evenly spaced.
+    smear : float
+        - ``mode == None``: not used.
+        - ``mode == "Fermi-Dirac"``: Smearing parameter in Kelvin units.
+        - ``mode == "Gaussian"``: Smearing parameter in eV units.
+    mode : str or None
+        Smoother mode. Default: ``None``.
+        Avaliable options: ``None``, ``"Fermi-Dirac"``, and ``"Gaussian"``.
+    """
+
     if energy is None:
         return VoidSmoother()
     if smear is None or smear <= 0:
