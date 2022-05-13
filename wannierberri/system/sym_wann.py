@@ -5,7 +5,13 @@ from wannierberri.__utility import get_angle
 
 
 class SymWann():
-    '''
+    
+    default_parameters = {
+            'soc': True,
+            'DFT_code':'qe'
+            }
+
+    __doc__ = """
     Symmetrize wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
 
     Parameters
@@ -20,27 +26,32 @@ class SymWann():
         Name of each atom.
     proj: list
         Should be the same with projections card in relative Wannier90.win.
-        eg: ['Te: s','Te:p']
+        
+        eg: ``['Te: s','Te:p']``
+        
         If there is hybrid orbital, grouping the other orbitals.
-        eg: ['Fe':sp3d2;t2g] Plese don't use ['Fe':sp3d2;dxz,dyz,dxy]
-            ['X':sp;p2] Plese don't use ['X':sp;pz,py]
+        
+        eg: ``['Fe':sp3d2;t2g]`` Plese don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
+            
+            ``['X':sp;p2]`` Plese don't use ``['X':sp;pz,py]``
     iRvec: array
         List of R vectors.
     XX_R: dic
-        Matrix before symmetrization. {'Ham':self.Ham_R,'AA':self.AA_R,......}
+        Matrix before symmetrization.
     soc: bool
-        Spin orbital coupling.
+        Spin orbital coupling. Default: ``{soc}``
     magmom: 2D array
         Magnetic momentom of each atoms.
     DFT_code: str
-        'qe' or 'vasp'
-        default: 'qe'
+        ``'qe'`` or ``'vasp'``   Default: ``{DFT_code}``
         vasp and qe have different orbitals arrangement with SOC.
+
     Return
     ------
     Dictionary of matrix after symmetrization.
     Updated list of R vectors.
-    '''
+
+    """.format(**default_parameters)    
 
     def __init__(
             self,
@@ -52,13 +63,11 @@ class SymWann():
             iRvec=None,
             XX_R=None,
             soc=False,
-            TR=False,
             magmom=None,
             cRvec=None,
-            DFT_code=None):
+            DFT_code='qe'):
 
         self.soc = soc
-        self.TR = TR
         self.Ham_R = XX_R['Ham']
         self.iRvec = iRvec.tolist()
         self.nRvec = len(iRvec)
@@ -256,7 +265,7 @@ class SymWann():
                 alpha = np.arccos(rmat[1, 1])
                 if rmat[0, 1] > 0.0: alpha = -1.0 * alpha
             # euler_angle = np.array([alpha, beta, gamma])
-            dmat = np.zeros((2, 2), dtype=complex)
+            dmat = np.zeros((2, 2), dtype=complex:)
             dmat[0, 0] = np.exp(-(alpha + gamma) / 2.0 * 1j) * np.cos(beta / 2.0)
             dmat[0, 1] = -np.exp(-(alpha - gamma) / 2.0 * 1j) * np.sin(beta / 2.0)
             dmat[1, 0] = np.exp((alpha - gamma) / 2.0 * 1j) * np.sin(beta / 2.0)
