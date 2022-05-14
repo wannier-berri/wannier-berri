@@ -188,9 +188,9 @@ class SymWann():
             print('====================\nSystem have inversion symmetry\n====================')
 
         if self.soc:
-            if self.DFT_code in ['VASP', 'vasp', 'Vasp']:
+            if self.DFT_code.lower() == 'vasp':
                 pass
-            elif self.DFT_code in ['QE', 'qe', 'quantum_espresso', 'Quantum_Espresso', 'Espresso', 'espresso']:
+            elif self.DFT_code.lower() in ['qe', 'quantum_espresso', 'espresso']:
 
                 def spin_range(Mat_in):
                     Mat_out = np.zeros(np.shape(Mat_in), dtype=complex)
@@ -498,9 +498,9 @@ class SymWann():
                 return_dic[X] = np.concatenate((return_dic[X], return_dic_add[X]), axis=2)
 
         if self.soc:
-            if self.DFT_code in ['VASP', 'vasp', 'Vasp']:
+            if self.DFT_code.lower() == 'vasp':
                 pass
-            elif self.DFT_code in ['QE', 'qe', 'quantum_espresso', 'Quantum_Espresso', 'Espresso', 'espresso']:
+            elif self.DFT_code.lower() in ['qe', 'quantum_espresso', 'espresso']:
 
                 def spin_range_back(Mat_in):
                     Mat_out = np.zeros(np.shape(Mat_in), dtype=complex)
