@@ -322,12 +322,12 @@ class SymWann():
                 if sym_only_cont == self.positions.shape[0]:
                     sym_only = True
                     print('Symmetry operator {} respect magnetic moment'.format(sym + 1))
-                else: 
+                else:
                     sym_only = False
                 if sym_T_cont == self.positions.shape[0]:
                     sym_T = True
                     print('Symmetry operator {}*T respect magnetic moment'.format(sym + 1))
-                else: 
+                else:
                     sym_T = False
             else:
                 sym_only = True
@@ -528,7 +528,7 @@ class SymWann():
         #=================================
         #   for  test
         #=================================
-        
+
         with np.printoptions(suppress=True, precision=4, threshold=np.inf, linewidth=500):
             X = 'AA'
             diag = True
