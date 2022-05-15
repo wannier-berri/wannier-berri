@@ -310,21 +310,33 @@ class SymWann():
         rot_sym_glb = np.dot(np.dot(np.transpose(self.lattice), rot_sym), np.linalg.inv(np.transpose(self.lattice)))
         if self.soc:
             if self.magmom is not None:
+                sym_only_cont = 0
+                sym_T_cont = 0
                 for i in range(self.num_wann_atom):
                     magmom = np.round(self.wann_atom_info[i][-2], decimals=4)
                     new_magmom = np.round(np.dot(rot_sym_glb, magmom), decimals=4)
                     if abs(np.linalg.norm(magmom - np.linalg.det(rot_sym_glb) * new_magmom)) > 0.0005:
-                        sym_only = False
+                        sym_only_atom = False
+                        sym_only_cont += sym_only_atom
                     else:
-                        sym_only = True
-                        print('Symmetry operator {} respect magnetic moment'.format(sym + 1))
+                        sym_only_atom = True
+                        sym_only_cont += sym_only_atom
                     if abs(np.linalg.norm(magmom + np.linalg.det(rot_sym_glb) * new_magmom)) > 0.0005:
-                        sym_T = False
+                        sym_T_atom = False
+                        sym_T_cont += sym_T_atom
                     else:
-                        sym_T = True
-                        print('Symmetry operator {}*T respect magnetic moment'.format(sym + 1))
-                    if sym_T + sym_only == 0:
-                        break
+                        sym_T_atom = True
+                        sym_T_cont += sym_T_atom
+                if sym_only_cont == self.positions.shape[0]:
+                    sym_only = True
+                    print('Symmetry operator {} respect magnetic moment'.format(sym + 1))
+                else: 
+                    sym_only = False
+                if sym_T_cont == self.positions.shape[0]:
+                    sym_T = True
+                    print('Symmetry operator {}*T respect magnetic moment'.format(sym + 1))
+                else: 
+                    sym_T = False
 
             else:
                 sym_only = True
@@ -409,17 +421,19 @@ class SymWann():
                                     if X in ['AA', 'BB', 'SS', 'CC', 'FF']:
                                         num_w_a = len(
                                             sum(self.wann_atom_info[atom_a][4], []))  #number of orbitals of atom_a
+                                        num_w_b = len(
+                                            sum(self.wann_atom_info[atom_b][4], []))  #number of orbitals of atom_b
                                         #X_L: only rotation wannier centres from L to L' before rotating orbitals.
                                         XX_L = self.matrix_list[X][self.H_select[rot_map[atom_a], rot_map[atom_b]],
-                                                                   new_Rvec_index, :].reshape(num_w_a, num_w_a, 3)
+                                                                   new_Rvec_index, :].reshape(num_w_a, num_w_b, 3)
                                         #special even with R == [0,0,0] diagonal terms.
                                         if iR == self.iRvec.index([0, 0, 0]) and atom_a == atom_b:
-                                            if X == 'AA':
+                                            if X == 'AA' and atom_a == atom_b:
                                                 XX_L += np.einsum(
                                                     'mn,p->mnp', np.eye(num_w_a),
                                                     (vec_shift[atom_a] - self.symmetry['translations'][rot]).dot(
                                                         self.lattice))
-                                            elif X == 'BB':
+                                            elif X == 'BB' and atom_a == atom_b:
                                                 XX_L += (
                                                     np.einsum('mn,p->mnp', np.eye(num_w_a),
                                                     (vec_shift[atom_a] - self.symmetry['translations'][rot]).dot(
