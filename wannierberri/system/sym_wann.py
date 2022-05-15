@@ -315,18 +315,10 @@ class SymWann():
                 for i in range(self.num_wann_atom):
                     magmom = np.round(self.wann_atom_info[i][-2], decimals=4)
                     new_magmom = np.round(np.dot(rot_sym_glb, magmom), decimals=4)
-                    if abs(np.linalg.norm(magmom - np.linalg.det(rot_sym_glb) * new_magmom)) > 0.0005:
-                        sym_only_atom = False
-                        sym_only_cont += sym_only_atom
-                    else:
-                        sym_only_atom = True
-                        sym_only_cont += sym_only_atom
-                    if abs(np.linalg.norm(magmom + np.linalg.det(rot_sym_glb) * new_magmom)) > 0.0005:
-                        sym_T_atom = False
-                        sym_T_cont += sym_T_atom
-                    else:
-                        sym_T_atom = True
-                        sym_T_cont += sym_T_atom
+                    if abs(np.linalg.norm(magmom - np.linalg.det(rot_sym_glb) * new_magmom)) < 0.0005:
+                        sym_only_cont += 1
+                    if abs(np.linalg.norm(magmom + np.linalg.det(rot_sym_glb) * new_magmom)) < 0.0005:
+                        sym_T_cont += 1
                 if sym_only_cont == self.positions.shape[0]:
                     sym_only = True
                     print('Symmetry operator {} respect magnetic moment'.format(sym + 1))
@@ -439,7 +431,7 @@ class SymWann():
                                                     (vec_shift[atom_a] - self.symmetry['translations'][rot]).dot(
                                                         self.lattice))
                                                     *self.Ham_R[self.H_select[rot_map[atom_a], rot_map[atom_b]],
-                                                        new_Rvec_index].reshape(num_w_a, num_w_a)[:, :, None])
+                                                        new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
                                         #X_all: rotating vector.
                                         matrix_list_all[X][iR, atom_a, atom_b,
                                                            self.H_select[atom_a, atom_b], :] = np.einsum(
@@ -537,8 +529,7 @@ class SymWann():
         #=================================
         #   for  test
         #=================================
-        with np.printoptions(suppress=True, precision=30, threshold=np.inf, linewidth=500):
-            print( return_dic['AA'][4,4,4,2].real )
+        
         with np.printoptions(suppress=True, precision=4, threshold=np.inf, linewidth=500):
             X = 'AA'
             diag = True
