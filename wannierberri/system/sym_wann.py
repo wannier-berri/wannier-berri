@@ -329,7 +329,6 @@ class SymWann():
                     print('Symmetry operator {}*T respect magnetic moment'.format(sym + 1))
                 else: 
                     sym_T = False
-
             else:
                 sym_only = True
                 sym_T = True
