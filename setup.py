@@ -27,6 +27,7 @@ setuptools.setup(
                         'packaging>=20.8',
                         'matplotlib',
                         'fortio>=0.4',
+                        'protobuf==3.20.1',
                         'ray[default]',
                         'sympy',
                         'spglib',
