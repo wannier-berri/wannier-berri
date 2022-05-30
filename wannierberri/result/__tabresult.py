@@ -55,12 +55,35 @@ class TABresult(Result):
             pass  # so far do nothing on iterations, chang in future
         elif self.mode == "grid":
             self.self_to_grid()
-            write_frmsf(
-                prefix + "-" + name, Ef0=0., numproc=None, quantities=self.results.keys(), res=self,
-                suffix=suffix)  # so far let it be the only mode, implement other modes in future
-            # TODO : remove this messy call to external routine, which calls back an internal one
+            self.write_frmsf(prefix + "-" + name, suffix=suffix)  # so far let it be the only mode, implement other modes in future
         else:
             pass # so far . TODO : implement writing to a text file
+
+    def write_frmsf(self,frmsf_name, suffix=""):
+        quantities = self.results.keys()
+        if len(suffix) > 0:
+            suffix = "-" + suffix
+        if frmsf_name is not None:
+            open(f"{frmsf_name}_E{suffix}.frmsf", "w").write(self.fermiSurfer(quantity=None, efermi=0))
+            ttxt = 0
+            twrite = 0
+            for Q in quantities:
+                print (f"writing {Q}")
+                for comp in self.results[Q].get_component_list():
+                    try:
+                        t31 = time()
+                        txt = self.fermiSurfer(quantity=Q, component=comp)
+                        t32 = time()
+                        open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf", "w").write(txt)
+                        t33 = time()
+                        ttxt += t32 - t31
+                        twrite += t33 - t32
+                    except NoComponentError:
+                        pass
+        else:
+            ttxt = 0
+            twrite = 0
+        return ttxt, twrite
 
     @property
     def find_grid(self):
@@ -286,29 +309,7 @@ class TABresult(Result):
     def max(self):
         return -1  # tabulating does not contribute to adaptive refinement
 
-def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
-    if len(suffix) > 0:
-        suffix = "-" + suffix
-    if frmsf_name is not None:
-        open(f"{frmsf_name}_E{suffix}.frmsf", "w").write(res.fermiSurfer(quantity=None, efermi=Ef0, npar=numproc))
-        ttxt = 0
-        twrite = 0
-        for Q in quantities:
-            for comp in res.results[Q].get_component_list():
-                try:
-                    t31 = time()
-                    txt = res.fermiSurfer(quantity=Q, component=comp, efermi=Ef0, npar=numproc)
-                    t32 = time()
-                    open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf", "w").write(txt)
-                    t33 = time()
-                    ttxt += t32 - t31
-                    twrite += t33 - t32
-                except NoComponentError:
-                    pass
-    else:
-        ttxt = 0
-        twrite = 0
-    return ttxt, twrite
+
 
 def _savetxt(limits=None, a=None, fmt=".8f", npar=0):
     assert a.ndim == 1, "only 1D arrays are supported. found shape{}".format(a.shape)

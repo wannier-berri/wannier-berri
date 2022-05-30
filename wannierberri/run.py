@@ -153,12 +153,19 @@ def run(
 
     Returns
     --------
-    dictionary of  :class:`~wannierberri.result.EnergyResult`
+    dictionary of  :class:`~wannierberri.result.ResultDict`
 
     Notes
     -----
     Results are also printed to ASCII files
     """
+
+    if use_irred_kpt:
+        for k,v in calculators.items():
+            if not v.allow_sym:
+                print (f"WARNING: Calculator {k} cannot be symmetrized. Full Brillouin zone will be used for ALL calculators")
+                use_irred_kpt = False
+
 
     # along a path only tabulating is possible
     if isinstance(grid,Path):

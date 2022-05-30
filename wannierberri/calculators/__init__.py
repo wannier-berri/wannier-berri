@@ -27,11 +27,13 @@ class Calculator():
     def allow_path(self):
         return False    # change for those who can be calculated on a path instead of a grid
 
-
+    @property
+    def allow_sym(self):
+        return True
 
 class TabulatorAll(Calculator):
 
-    def __init__(self, tabulators, ibands=None, mode="grid"):
+    def __init__(self, tabulators, ibands=None, jbands=None, mode="grid"):
         """ tabulators - dict 'key':tabulator
         one of them should be "Energy" """
         self.tabulators = tabulators
@@ -42,11 +44,19 @@ class TabulatorAll(Calculator):
             raise ValueError("Energy is not included in tabulators")
         if ibands is not None:
             ibands = np.array(ibands)
+        if jbands is not None:
+            jbands = np.array(jbands)
         for k, v in self.tabulators.items():
             if v.ibands is None:
                 v.ibands = ibands
             else:
                 assert v.ibands == ibands
+            if hasattr(v,'jbands'):
+                if v.jbands is None:
+                    v.jbands = jbands
+                else:
+                    assert v.jbands == jbands
+
 
     def __call__(self, data_K):
         return TABresult(
@@ -61,6 +71,9 @@ class TabulatorAll(Calculator):
     def allow_path(self):
         return self.mode == "path"
 
+    @property
+    def allow_sym(self):
+        return all([t.allow_sym for t in self.tabulators.values()])
 
 
-from . import static, dynamic, tabulate
+from . import static, dynamic, tabulate, tabulateOD

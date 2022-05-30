@@ -345,7 +345,7 @@ def tabulate(
     if mode == '3D':
         res = res.to_grid(grid.dense)
         t2 = time()
-        ttxt, twrite = __tabresult.write_frmsf(
+        ttxt, twrite = write_frmsf(
             frmsf_name,
             Ef0,
             parallel.num_cpus if parallel is not None else 1,
@@ -363,3 +363,28 @@ def tabulate(
             ("         to_grid : {} s\n" + "         txt     : {} s\n" + "         write   : {} s\n").format(
                 t2 - t1, ttxt, twrite))
     return res
+
+
+def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
+    if len(suffix) > 0:
+        suffix = "-" + suffix
+    if frmsf_name is not None:
+        open(f"{frmsf_name}_E{suffix}.frmsf", "w").write(res.fermiSurfer(quantity=None, efermi=Ef0, npar=numproc))
+        ttxt = 0
+        twrite = 0
+        for Q in quantities:
+            for comp in res.results[Q].get_component_list():
+                try:
+                    t31 = time()
+                    txt = res.fermiSurfer(quantity=Q, component=comp, efermi=Ef0, npar=numproc)
+                    t32 = time()
+                    open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf", "w").write(txt)
+                    t33 = time()
+                    ttxt += t32 - t31
+                    twrite += t33 - t32
+                except NoComponentError:
+                    pass
+    else:
+        ttxt = 0
+        twrite = 0
+    return ttxt, twrite

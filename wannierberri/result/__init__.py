@@ -21,3 +21,4 @@ from .__resultdict import  ResultDict
 from .__energyresult import EnergyResult
 from .__tabresult import TABresult
 from .__kbandresult import KBandResult
+from .__kbandbandresult import KBandBandResult
