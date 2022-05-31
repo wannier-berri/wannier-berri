@@ -130,7 +130,7 @@ def system_Fe_sym_W90(create_files_Fe_W90):
     system.symmetrize(
         proj=['Fe:sp3d2;t2g'],
         atom_name=['Fe'],
-        positions=[[0, 0, 0]],
+        positions=np.array([[0, 0, 0]]),
         magmom=[[0., 0., -2.31]],
         soc=True,
         DFT_code='qe')
