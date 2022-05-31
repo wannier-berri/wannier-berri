@@ -584,23 +584,22 @@ class Linear_MR_FermiSurf(StaticCalculator):
         self.factor = factors.factor_lmr
         self.fder = 1
         super().__init__(**kwargs)
-    
+
     def __call__(self, data_K):
         res = super().__call__(data_K)
         term2 = np.einsum('pu,nabb->naup',delta_f,res.data)
         term3 = np.einsum('au,npbb->naup',delta_f,res.data)
-        res.data = -res.data + term2 + term3 
+        res.data = -res.data + term2 + term3
         res.data = res.data.transpose(0,1,3,2)
         return res
 
 class Linear_MR_FermiSum(StaticCalculator):
     def __init__(self, **kwargs):
-        F = frml.VelOmega
         self.Formula = frml.lmr
         self.factor = factors.factor_lmr
         self.fder = 1
         super().__init__(**kwargs)
-    
+
     def __call__(self, data_K):
         res = super().__call__(data_K)
         res.data = res.data.transpose(0,1,3,2)

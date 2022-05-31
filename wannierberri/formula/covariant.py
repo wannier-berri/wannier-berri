@@ -579,8 +579,8 @@ class lmr(FormulaSum):
         formula = FormulaProduct ( [VelOmega(data_K,**kwargs_formula),data_K.covariant('Ham', commader=1)], name='velberry-vel (aup) ([pu]abb) ([au]pbb)')
         super().__init__([formula,
             DeltaProduct(delta_f,formula,'pu,MLabb->MLaup'),
-            DeltaProduct(delta_f,formula,'au,MLpbb->MLaup')
-            ],[-1,1,1],['aup','aup','aup'], name='lmr')
+            DeltaProduct(delta_f,formula,'au,MLpbb->MLaup')],
+            [-1,1,1],['aup','aup','aup'], name='lmr')
 
 
 

@@ -16,7 +16,7 @@ factor_ahc = -(elementary_charge**2 / hbar / Ang_SI)  # with tau^0 E^1 B^0
 factor_ohmic = (elementary_charge**2 / hbar / Ang_SI * TAU_UNIT  # with tau^1 E^1 B^0
                 * elementary_charge / hbar) # change velocity unit from eV*m to m/s
 factor_lmr = (elementary_charge**3 /hbar**2 * Ang_SI * TAU_UNIT # with tau^1 E^1 B^1
-                * elementary_charge / hbar) # change velocity unit from eV*m to m/s 
+                * elementary_charge / hbar) # change velocity unit from eV*m to m/s
 factor_qmr = (elementary_charge**4 /hbar**3 * Ang_SI**3 * TAU_UNIT # with tau^1 E^1 B^2
                 * elementary_charge / hbar) # change velocity unit from eV*m to m/s
 factor_nlahc = elementary_charge**3 /hbar**2 * TAU_UNIT  # with tau^1 E^2 B^0
@@ -26,7 +26,7 @@ factor_hall_classic = -(elementary_charge**3 /hbar**2 * Ang_SI * TAU_UNIT**2  # 
 factor_nldrude = -(elementary_charge**3 /hbar**2 * TAU_UNIT**2  # with tau^2 E^2 B^0
                 * elementary_charge / hbar) # change velocity unit from eV*m to m/s
 factor_emcha = -(elementary_charge**4 /hbar**3 * Ang_SI**2 * TAU_UNIT**2 # with tau^2 E^2 B^1
-                * elementary_charge / hbar) # change velocity unit from eV*m to m/s 
+                * elementary_charge / hbar) # change velocity unit from eV*m to m/s
 
 factor_opt = -factor_ahc
 factor_shc = -factor_ahc
