@@ -1,6 +1,6 @@
 import numpy as np
-from wannierberri.__utility import alpha_A, beta_A
-from . import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct
+from wannierberri.__utility import alpha_A, beta_A, delta_f, Levi_Civita
+from . import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct, FormulaSum, DeltaProduct
 
 
 class Identity(Formula_ln):
@@ -497,7 +497,7 @@ class SpinOmega(Formula_ln):
 
 ####################################
 #                                  #
-#    Some Prooducts                #
+#    Some Products                 #
 #                                  #
 ####################################
 
@@ -505,6 +505,11 @@ class VelOmega(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([data_K.covariant('Ham', commader=1), Omega(data_K, **kwargs_formula)], name='VelOmega')
+
+class VelOmegaVel(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([data_K.covariant('Ham', commader=1), Omega(data_K, **kwargs_formula),data_K.covariant('Ham', commader=1)], name='VelOmegaVel')
 
 
 class VelHplus(FormulaProduct):
@@ -567,6 +572,15 @@ class OmegaHplus(FormulaProduct):
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([Omega(data_K, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='OmegaHplus')
 
+
+class lmr(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        formula = FormulaProduct ( [VelOmega(data_K,**kwargs_formula),data_K.covariant('Ham', commader=1)], name='velberry-vel (aup) ([pu]abb) ([au]pbb)')
+        super().__init__([formula,
+            DeltaProduct(delta_f,formula,'pu,MLabb->MLaup'),
+            DeltaProduct(delta_f,formula,'au,MLpbb->MLaup')
+            ],[-1,1,1],['aup','aup','aup'], name='lmr')
 
 
 

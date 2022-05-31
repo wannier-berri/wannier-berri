@@ -14,7 +14,7 @@ from wannierberri import __factors as factors
 from wannierberri.result import EnergyResult
 from . import Calculator
 
-
+delta_f = np.eye(3)
 # The base class for Static Calculators
 # particular calculators are below
 
@@ -308,12 +308,6 @@ class GME_orb_FermiSea_test(StaticCalculator):
         return final_factor * (Hplus_res - 2 * Omega_res)
 
 
-
-
-
-
-
-
 class GME_spin_FermiSea(StaticCalculator):
     r"""Gyrotropic tensor spin part (:math:`A`)
 
@@ -584,6 +578,36 @@ class SHC(StaticCalculator):
 
 
 # E^1 B^1
+class Linear_MR_FermiSurf(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.VelOmegaVel
+        self.factor = factors.factor_lmr
+        self.fder = 1
+        super().__init__(**kwargs)
+    
+    def __call__(self, data_K):
+        res = super().__call__(data_K)
+        term2 = np.einsum('pu,nabb->naup',delta_f,res.data)
+        term3 = np.einsum('au,npbb->naup',delta_f,res.data)
+        res.data = -res.data + term2 + term3 
+        res.data = res.data.transpose(0,1,3,2)
+        return res
+
+class Linear_MR_FermiSum(StaticCalculator):
+    def __init__(self, **kwargs):
+        F = frml.VelOmega
+        self.Formula = frml.lmr
+        self.factor = factors.factor_lmr
+        self.fder = 1
+        super().__init__(**kwargs)
+    
+    def __call__(self, data_K):
+        res = super().__call__(data_K)
+        res.data = res.data.transpose(0,1,3,2)
+        return res
+
+
+
 class AHC_Zeeman_spin(StaticCalculator):
     r"""AHC conductivity Zeeman correcton term spin part (:math:`S/m/T`)
 
