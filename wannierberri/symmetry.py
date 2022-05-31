@@ -278,7 +278,7 @@ class Group():
         if result.allow_sym:
             return sum(result.transform(s) for s in self.symmetries) / self.size
         else:
-            return r
+            return self
 
     def gen_symmetric_tensor(self, rank, TRodd, Iodd):
         r"""generates a random tensor, which respects the given symmetry pointgroup. May be used to get an idea, what components of the tensr are allowed by the symmetry.

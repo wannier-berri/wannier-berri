@@ -61,7 +61,7 @@ class KBandBandResult(Result):
         return KBandBandResult(self.data[:, ibands])
 
     def average_deg(self, deg):
-        pass   # do not average over degenerate 
+        pass   # do not average over degenerate
         return self
 
     def transform(self, sym):

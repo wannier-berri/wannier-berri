@@ -19,8 +19,8 @@ class TabulatorOD(Calculator):
 #        raise NotImplementedError()
 
     def __call__(self, data_K):
-#        formula = self.Formula(data_K, **self.kwargs_formula)
-        nk = data_K.nk
+        # formula = self.Formula(data_K, **self.kwargs_formula)
+        # nk = data_K.nk
         NB = data_K.num_wann
         ibands = self.ibands
         jbands = self.jbands
