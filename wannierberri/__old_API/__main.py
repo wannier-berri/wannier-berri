@@ -14,7 +14,7 @@
 
 import functools
 from .__evaluate import evaluate_K
-from wannierberri.smoother import getSmoother
+from wannierberri.smoother import get_smoother
 from wannierberri.result import __tabresult
 from . import __integrate
 from . import __tabulate
@@ -206,9 +206,9 @@ def integrate(
             "          To specify smearing, pass smearing parameters to the variable 'parameters' as a dict.\n"
             "          See parameters_optical for details.")
         smearW = None
-    smoothEf = getSmoother(Efermi, smearEf, "Fermi-Dirac")  # smoother for functions of Fermi energy
-    smoothW = getSmoother(omega, smearW)  # smoother for functions of frequency
-    # smoothW  = getSmoother(omega,  smearW,  "Gaussian") # smoother for functions of frequency
+    smoothEf = get_smoother(Efermi, smearEf, "Fermi-Dirac")  # smoother for functions of Fermi energy
+    smoothW = get_smoother(omega, smearW)  # smoother for functions of frequency
+    # smoothW  = get_smoother(omega,  smearW,  "Gaussian") # smoother for functions of frequency
 
     eval_func = functools.partial(
         __integrate.intProperty,
