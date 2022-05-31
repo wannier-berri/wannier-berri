@@ -27,6 +27,7 @@ from . import calculators
 from . import result
 from .parallel import Parallel, Serial
 from .smoother import get_smoother
+from .evaluate_k import evaluate_k
 
 from termcolor import cprint
 
