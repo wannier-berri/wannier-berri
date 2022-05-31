@@ -15,7 +15,7 @@ setuptools.setup(
      long_description_content_type="text/markdown",
      python_requires='>=3.7',
      install_requires = [
-                        'numpy>=1.18,<1.23',
+                        'numpy>=1.18,<1.23', # reauired by numba, numpy-1.23 is inpre-release state so far (31.05.22) https://pypi.org/project/numpy/#history 
                         'scipy>=1.0',
                         'lazy_property',
                         'colorama',
@@ -27,7 +27,7 @@ setuptools.setup(
                         'packaging>=20.8',
                         'matplotlib',
                         'fortio>=0.4',
-                        'protobuf==3.20.1',
+                        'protobuf==3.20.1', # req by ray : https://github.com/ray-project/ray/issues/25205 , https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
                         'ray[default]',
                         'sympy',
                         'spglib',
