@@ -564,6 +564,10 @@ class DerMorb(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+    @property
+    def additive(self):
+        return False
+
 ##############################
 ###  second derivative of ####
 ###   orbital moment      ####
@@ -645,6 +649,9 @@ class Der2Morb(Formula_ln):
     def ln(self,ik,inn,out):
         raise NotImplementedError()
 
+    @property
+    def additive(self):
+        return False
 
 ########################
 #   spin transport     #
