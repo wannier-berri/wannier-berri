@@ -64,14 +64,14 @@ class DerDcov(Dcov):
         return summ
 
 
-class Der2Dcov(_Dcov):
+class Der2Dcov(Dcov):
     def __init__(self,data_K):
         self.dD = DerDcov(data_K)
         self.WV = DerWln(data_K)
-        self.dV= InvMass(data_K)
-        self.V=data_K.covariant('Ham',gender = 1)
-        self.D=data_K.Dcov
-        self.dEinv=DEinv_ln(data_K)
+        self.dV = InvMass(data_K)
+        self.V = data_K.covariant('Ham',gender=1)
+        self.D = data_K.Dcov
+        self.dEinv = DEinv_ln(data_K)
     def ln(self,ik,inn,out):
         summ = self.WV.ln(ik,inn,out)
         summ += np.einsum( "lpbe,pnd->lnbde" , self.dV.ll(ik,inn,out) , self.D.ln(ik,inn,out) )
@@ -92,11 +92,11 @@ class Der2Dcov(_Dcov):
 class Der2A(Formula_ln):
     def __init__(self,data_K):
         self.dD = DerDcov(data_K)
-        self.D=data_K.Dcov
+        self.D = data_K.Dcov
         self.A  = data_K.covariant('AA')
         self.dA = data_K.covariant('AA',gender=1)
         self.Abar_de  = Matrix_GenDer_ln(data_K.covariant('AA',commader=1),data_K.covariant('AA',commader=2),
-                    data_K.Dcov ,Iodd = None,TRodd = None)
+                    data_K.Dcov ,Iodd=None,TRodd=None)
     def nn(self,ik,inn,out):
         summ = self.Abar_de.nn(ik,inn,out)
         summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.A.ln(ik,inn,out) )
@@ -117,11 +117,11 @@ class Der2A(Formula_ln):
 class Der2B(Formula_ln):
     def __init__(self,data_K):
         self.dD = DerDcov(data_K)
-        self.D=data_K.Dcov
+        self.D = data_K.Dcov
         self.B  = data_K.covariant('BB')
         self.dB = data_K.covariant('BB',gender=1)
-        self.Bbar_de  = Matrix_GenDer_ln(data_K.covariant('BB',commader=1),data_K.covariant('BB',commader=2),
-                    data_K.Dcov ,Iodd = None,TRodd = None)
+        self.Bbar_de = Matrix_GenDer_ln(data_K.covariant('BB',commader=1),data_K.covariant('BB',commader=2),
+                    data_K.Dcov ,Iodd=None,TRodd=None)
     def nn(self,ik,inn,out):
         summ = self.Bbar_de.nn(ik,inn,out)
         summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.B.ln(ik,inn,out) )
@@ -142,11 +142,11 @@ class Der2B(Formula_ln):
 class Der2O(Formula_ln):
     def __init__(self,data_K):
         self.dD = DerDcov(data_K)
-        self.D=data_K.Dcov
+        self.D = data_K.Dcov
         self.O  = data_K.covariant('OO')
         self.dO = data_K.covariant('OO',gender=1)
         self.Obar_de  = Matrix_GenDer_ln(data_K.covariant('OO',commader=1),data_K.covariant('OO',commader=2),
-                    data_K.Dcov ,Iodd = False ,TRodd = True)
+                    data_K.Dcov ,Iodd=False ,TRodd=True)
     def nn(self,ik,inn,out):
         summ = self.Obar_de.nn(ik,inn,out)
         summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.O.ln(ik,inn,out) )
@@ -162,11 +162,11 @@ class Der2O(Formula_ln):
 class Der2H(Formula_ln):
     def __init__(self,data_K):
         self.dD = DerDcov(data_K)
-        self.D=data_K.Dcov
+        self.D = data_K.Dcov
         self.H  = data_K.covariant('CC')
         self.dH = data_K.covariant('CC',gender=1)
         self.Hbar_de  = Matrix_GenDer_ln(data_K.covariant('CC',commader=1),data_K.covariant('CC',commader=2),
-                    data_K.Dcov ,Iodd = False ,TRodd = True)
+                    data_K.Dcov ,Iodd=False ,TRodd=True)
     def nn(self,ik,inn,out):
         summ = self.Hbar_de.nn(ik,inn,out)
         summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.H.ln(ik,inn,out) )
@@ -530,8 +530,8 @@ class DerMorb(Formula_ln):
             self.A = data_K.covariant('AA')
             self.dA = data_K.covariant('AA', gender=1)
             self.B = data_K.covariant('BB')
-            self.dB = data_K.covariant('BB',gender = 1)
-            self.dH  = data_K.covariant('CC',gender = 1)
+            self.dB = data_K.covariant('BB',gender=1)
+            self.dH  = data_K.covariant('CC',gender=1)
         self.ndim=2
         self.Iodd=True
         self.TRodd=False
@@ -583,12 +583,12 @@ class Der2Morb(Formula_ln):
         self.Omega = Omega(data_K,**parameters)
         if self.external_terms:
             self.A = data_K.covariant('AA')
-            self.dA = data_K.covariant('AA',gender = 1)
+            self.dA = data_K.covariant('AA',gender=1)
             self.ddA = Der2A(data_K)
             self.B = data_K.covariant('BB')
-            self.dB = data_K.covariant('BB',gender = 1)
+            self.dB = data_K.covariant('BB',gender=1)
             self.ddB = Der2B(data_K)
-            self.dH  = data_K.covariant('CC',gender = 1)
+            self.dH  = data_K.covariant('CC',gender=1)
             self.ddH  = Der2H(data_K)
         self.ndim=3
         self.Iodd=False
@@ -625,12 +625,10 @@ class Der2Morb(Formula_ln):
                         self.A.nn(ik,inn,out)[:,:,a]*self.E[ik][inn][None,:,None],self.ddA.nn(ik,inn,out)[:,:,b])
                 summ+=  -1j *s* np.einsum("mlc,ple,lncd->mncde",self.A.nn(ik,inn,out)[:,:,a],
                         self.V.nn(ik,inn,out),self.dA.nn(ik,inn,out)[:,:,b])
-               
                 summ +=  -1 *s* np.einsum("mlce,lncd->mncde",self.dD.nl (ik,inn,out)[:,:,a],
                         self.dB.ln(ik,inn,out)[:,:,b,:])
                 summ +=  -1 *s* np.einsum("mlc,lncde->mncde",self.D.nl (ik,inn,out)[:,:,a],
                         self.ddB.ln(ik,inn,out)[:,:,b,:])
-               
                 summ +=  -1 *s* np.einsum("mlce,lncd->mncde",(self.dB.ln(ik,inn,out)[:,:,a]).transpose(1,0,2,3).conj(),
                         self.dD.ln (ik,inn,out)[:,:,b])
                 summ +=  -1 *s* np.einsum("mlc,lncde->mncde",(self.B.ln(ik,inn,out)[:,:,a]).transpose(1,0,2).conj(),
@@ -643,7 +641,7 @@ class Der2Morb(Formula_ln):
 
         summ+=summ.swapaxes(0,1).conj()
         return summ
-    
+
     def ln(self,ik,inn,out):
         raise NotImplementedError()
 
@@ -842,9 +840,9 @@ class lmr_sea(FormulaSum):
 class qmr_surf(FormulaSum):
 
     def __init__(self, data_K, **kwargs_formula):
-        formula = FormulaProduct ( [data_K.covariant('Ham', commader=1)],
-                data_K.covariant('Ham', commader=1)],
-                OmegaOmega(data_K,**kwargs_formula),
+        formula = FormulaProduct ( [data_K.covariant('Ham', commader=1),
+                data_K.covariant('Ham', commader=1),
+                OmegaOmega(data_K,**kwargs_formula)],
                 name='VelVelOmegaOmega')
         super().__init__([formula,
             DeltaProduct(delta_f,formula,'pv,MLabub->MLapuv'),
@@ -860,10 +858,10 @@ class qmr_sea(FormulaSum):
     def __init__(self, data_K, **kwargs_formula):
         formula1  = FormulaProduct ( [InvMass(data_K),OmegaOmega(data_K,**kwargs_formula)],
             name='mass-berryberry (apuv) (ab[pv]ub) (pb[au]vb) ([au][pv]bcbc)')
-        formula2  = FormulaProduct ( [data_K.covariant('Ham', commader=1), 
-            DerOmega(data_K,**kwargs_formula),Omega(data_K,**kwargs_formula)],
-            name='vel-derberry-berry (aupv) (avpu) (a[pv]ubb) (p[au]vbb) ([au][pv]bbcc)')
-        super().__init__([formula1, formula2, formula2
+        formula2  = FormulaProduct(
+                [data_K.covariant('Ham', commader=1), DerOmega(data_K,**kwargs_formula),Omega(data_K,**kwargs_formula)],
+                name='vel-derberry-berry (aupv) (avpu) (a[pv]ubb) (p[au]vbb) ([au][pv]bbcc)')
+        super().__init__([formula1, formula2, formula2,
             DeltaProduct(delta_f,formula1,'pv,MLabub->MLapuv'),
             DeltaProduct(delta_f,formula2,'pv,MLaubb->MLapuv'),
             DeltaProduct(delta_f,
@@ -929,16 +927,14 @@ class emcha_sea(FormulaSum):
             name='mass-derberry (apus)(asup) ([au]bpbs)')
         formula3  = FormulaProduct ( [velocity,Der2Omega(data_K,**kwargs_formula)],
             name='vel-der2berry-vel (aups) ([au]bbps)')
-        tmp = FormulaSum([formula3,formula1,formula2,formua2],[1,1,1,1],['aups','asup','apus','apsu'])
+        tmp = FormulaSum([formula3,formula1,formula2,formula2],[1,1,1,1],['aups','asup','apus','apsu'])
         super().__init__([tmp,
             DeltaProduct(delta_f,FormulaSum([formula2,formula1],[1,1],['aups','ausp']),'us,MLabbp->MLaups'),
             DeltaProduct(delta_f,tmp,'au,MLbbps->MLaups'),
             DeltaProduct(delta_f,formula2,'us,MLabbp->MLaups'),
-            FormulaSum([formula3,formula2],[1,1],['aups','apsu']), 
+            FormulaSum([formula3,formula2],[1,1],['aups','apsu']),
             DeltaProduct(Levi_Civita,
                 DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
                 'xub,MLaxpbs->MLaups') ],
             [2,-2,-1,-1,1,-1],['aups','aups','aups','aups','aups','aups'])
-
-
 
