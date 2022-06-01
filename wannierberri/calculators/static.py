@@ -442,6 +442,99 @@ class Hall_classic_FermiSea(StaticCalculator):
         return res
 
 
+class Linear_MR_FermiSurf(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.lmr_surf
+        self.factor = factors.factor_lmr
+        self.fder = 1
+        super().__init__(**kwargs)
+
+    def __call__(self, data_K):
+        res = super().__call__(data_K)
+        res.data = res.data.transpose(0,1,3,2)
+        return res
+
+
+class Linear_MR_FermiSea(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.lmr_sea
+        self.factor = factors.factor_lmr
+        self.fder = 0
+        super().__init__(**kwargs)
+
+    def __call__(self, data_K):
+        res = super().__call__(data_K)
+        res.data = res.data.transpose(0,1,3,2)
+        return res
+
+
+class AHC_Zeeman_spin(StaticCalculator):
+    r"""AHC conductivity Zeeman correcton term spin part (:math:`S/m/T`)
+
+        | With Fermi surface integral.
+        | Output: :math:`ZAHC^{spin}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * s_\mu f'`
+        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = \epsilon_{\alpha\beta\delta} ZAHC^{spin}_{\alpha\beta:\mu} E_\beta` B_\mu"""
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.OmegaS
+        self.factor = factors.fac_spin_Z * factors.factor_ahc
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class OmegaOmega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.OmegaOmega
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class AHC_Zeeman_orb(StaticCalculator):
+    r"""AHC conductivity Zeeman correction term orbital part (:math:`S/m/T`)
+
+        | With Fermi surface integral.
+        | Output: :math:`ZAHC^{orb}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * m_\mu f'`
+        | Where :math: `m = H + G - 2Ef*\Omega`
+        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = e \epsilon_{\alpha\beta\delta} ZAHC^{orb}_{\alpha\beta:\mu} E_\beta B_\mu`"""
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.OmegaHplus
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+    def __call__(self, data_K):
+        Hplus_res = super().__call__(data_K)
+        Omega_res = OmegaOmega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        final_factor = factors.fac_orb_Z * factors.factor_ahc
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+
+        return final_factor * (Hplus_res - 2 * Omega_res)
+
+
+#E^1 B^2
+class Quadra_MR_FermiSurf(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.qmr_surf
+        self.factor = factors.factor_qmr
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class Quadra_MR_FermiSea(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.qmr_sea
+        self.factor = factors.factor_qmr
+        self.fder = 0
+        super().__init__(**kwargs)
+
+
+
 # E^2 B^0
 class BerryDipole_FermiSurf(StaticCalculator):
     r"""Berry curvature dipole (dimensionless)
@@ -561,6 +654,40 @@ class NLDrude_Fermider2(StaticCalculator):
         super().__init__(**kwargs)
 
 
+#E^2 B^1
+class NLHall_FermiSurf(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.nlhall_surf
+        self.factor = factors.factor_nlhc
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class NLHall_FermiSea(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.nlhall_sea
+        self.factor = factors.factor_nlhc
+        self.fder = 0
+        super().__init__(**kwargs)
+
+
+class eMChA_FermiSurf(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.emcha_surf
+        self.factor = factors.factor_emcha
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class eMChA_FermiSea(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.emcha_sea
+        self.factor = factors.factor_emcha
+        self.fder = 0
+        super().__init__(**kwargs)
+
+
+#others
 class SHC(StaticCalculator):
     r"""Spin Hall conductivity with dc (:math:`S/m`)
 
@@ -577,80 +704,3 @@ class SHC(StaticCalculator):
         super().__init__(**kwargs)
 
 
-# E^1 B^1
-class Linear_MR_FermiSurf(StaticCalculator):
-    def __init__(self, **kwargs):
-        self.Formula = frml.VelOmegaVel
-        self.factor = factors.factor_lmr
-        self.fder = 1
-        super().__init__(**kwargs)
-
-    def __call__(self, data_K):
-        res = super().__call__(data_K)
-        term2 = np.einsum('pu,nabb->naup',delta_f,res.data)
-        term3 = np.einsum('au,npbb->naup',delta_f,res.data)
-        res.data = -res.data + term2 + term3
-        res.data = res.data.transpose(0,1,3,2)
-        return res
-
-class Linear_MR_FermiSum(StaticCalculator):
-    def __init__(self, **kwargs):
-        self.Formula = frml.lmr
-        self.factor = factors.factor_lmr
-        self.fder = 1
-        super().__init__(**kwargs)
-
-    def __call__(self, data_K):
-        res = super().__call__(data_K)
-        res.data = res.data.transpose(0,1,3,2)
-        return res
-
-
-
-class AHC_Zeeman_spin(StaticCalculator):
-    r"""AHC conductivity Zeeman correcton term spin part (:math:`S/m/T`)
-
-        | With Fermi surface integral.
-        | Output: :math:`ZAHC^{spin}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * s_\mu f'`
-        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = \epsilon_{\alpha\beta\delta} ZAHC^{spin}_{\alpha\beta:\mu} E_\beta` B_\mu"""
-
-    def __init__(self, **kwargs):
-        self.Formula = frml.OmegaS
-        self.factor = factors.fac_spin_Z * factors.factor_ahc
-        self.fder = 1
-        super().__init__(**kwargs)
-
-
-class OmegaOmega(StaticCalculator):
-
-    def __init__(self, **kwargs):
-        self.Formula = frml.OmegaOmega
-        self.factor = 1
-        self.fder = 1
-        super().__init__(**kwargs)
-
-
-class AHC_Zeeman_orb(StaticCalculator):
-    r"""AHC conductivity Zeeman correction term orbital part (:math:`S/m/T`)
-
-        | With Fermi surface integral.
-        | Output: :math:`ZAHC^{orb}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * m_\mu f'`
-        | Where :math: `m = H + G - 2Ef*\Omega`
-        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = e \epsilon_{\alpha\beta\delta} ZAHC^{orb}_{\alpha\beta:\mu} E_\beta B_\mu`"""
-
-    def __init__(self, **kwargs):
-        self.Formula = frml.OmegaHplus
-        self.factor = 1
-        self.fder = 1
-        super().__init__(**kwargs)
-
-    def __call__(self, data_K):
-        Hplus_res = super().__call__(data_K)
-        Omega_res = OmegaOmega(Efermi=self.Efermi, tetra=self.tetra,
-                smoother=self.smoother,use_factor=False, print_comment=False,
-                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
-        final_factor = factors.fac_orb_Z * factors.factor_ahc
-        if not self.use_factor:
-            final_factor = np.sign(final_factor)
-
-        return final_factor * (Hplus_res - 2 * Omega_res)

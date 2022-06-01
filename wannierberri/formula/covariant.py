@@ -64,6 +64,127 @@ class DerDcov(Dcov):
         return summ
 
 
+class Der2Dcov(_Dcov):
+    def __init__(self,data_K):
+        self.dD = DerDcov(data_K)
+        self.WV = DerWln(data_K)
+        self.dV= InvMass(data_K)
+        self.V=data_K.covariant('Ham',gender = 1)
+        self.D=data_K.Dcov
+        self.dEinv=DEinv_ln(data_K)
+    def ln(self,ik,inn,out):
+        summ = self.WV.ln(ik,inn,out)
+        summ += np.einsum( "lpbe,pnd->lnbde" , self.dV.ll(ik,inn,out) , self.D.ln(ik,inn,out) )
+        summ += np.einsum( "lpde,pnb->lnbde" , self.dV.ll(ik,inn,out) , self.D.ln(ik,inn,out) )
+        summ += np.einsum( "lpe,pnbd->lnbde" , self.V.ll(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "lpd,pnbe->lnbde" , self.V.ll(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "lpb,pnde->lnbde" , self.V.ll(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += -np.einsum( "lmde,mnb->lnbde" , self.dD.ln(ik,inn,out) , self.V.nn(ik,inn,out) )
+        summ += -np.einsum( "lmbd,mne->lnbde" , self.dD.ln(ik,inn,out) , self.V.nn(ik,inn,out) )
+        summ += -np.einsum( "lmbe,mnd->lnbde" , self.dD.ln(ik,inn,out) , self.V.nn(ik,inn,out) )
+        summ += -np.einsum( "lmb,mnde->lnbde" , self.D.ln(ik,inn,out) , self.dV.nn(ik,inn,out) )
+        summ += -np.einsum( "lmd,mnbe->lnbde" , self.D.ln(ik,inn,out) , self.dV.nn(ik,inn,out) )
+        summ *= -self.dEinv.ln(ik,inn,out)[:,:,None,None,None]
+        return summ
+
+
+#TODO Der2A,B,O can be merged to one class.
+class Der2A(Formula_ln):
+    def __init__(self,data_K):
+        self.dD = DerDcov(data_K)
+        self.D=data_K.Dcov
+        self.A  = data_K.covariant('AA')
+        self.dA = data_K.covariant('AA',gender=1)
+        self.Abar_de  = Matrix_GenDer_ln(data_K.covariant('AA',commader=1),data_K.covariant('AA',commader=2),
+                    data_K.Dcov ,Iodd = None,TRodd = None)
+    def nn(self,ik,inn,out):
+        summ = self.Abar_de.nn(ik,inn,out)
+        summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.A.ln(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...e->mnb...de" , self.D.nl(ik,inn,out) , self.dA.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnde->mnb...de" , self.A.nl(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...e,lnd->mnb...de" , self.dA.nl(ik,inn,out) , self.D.ln(ik,inn,out) )
+        return summ
+
+    def ln(self,ik,inn,out):
+        summ = self.Abar_de.ln(ik,inn,out)
+        summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.ln(ik,inn,out) , self.A.nn(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...e->mnb...de" , self.D.ln(ik,inn,out) , self.dA.nn(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnde->mnb...de" , self.A.ll(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...e,lnd->mnb...de" , self.dA.ll(ik,inn,out) , self.D.ln(ik,inn,out) )
+        return summ
+
+
+class Der2B(Formula_ln):
+    def __init__(self,data_K):
+        self.dD = DerDcov(data_K)
+        self.D=data_K.Dcov
+        self.B  = data_K.covariant('BB')
+        self.dB = data_K.covariant('BB',gender=1)
+        self.Bbar_de  = Matrix_GenDer_ln(data_K.covariant('BB',commader=1),data_K.covariant('BB',commader=2),
+                    data_K.Dcov ,Iodd = None,TRodd = None)
+    def nn(self,ik,inn,out):
+        summ = self.Bbar_de.nn(ik,inn,out)
+        summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.B.ln(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...e->mnb...de" , self.D.nl(ik,inn,out) , self.dB.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnde->mnb...de" , self.B.nl(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...e,lnd->mnb...de" , self.dB.nl(ik,inn,out) , self.D.ln(ik,inn,out) )
+        return summ
+
+    def ln(self,ik,inn,out):
+        summ = self.Bbar_de.ln(ik,inn,out)
+        summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.ln(ik,inn,out) , self.B.nn(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...e->mnb...de" , self.D.ln(ik,inn,out) , self.dB.nn(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnde->mnb...de" , self.B.ll(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...e,lnd->mnb...de" , self.dB.ll(ik,inn,out) , self.D.ln(ik,inn,out) )
+        return summ
+
+
+class Der2O(Formula_ln):
+    def __init__(self,data_K):
+        self.dD = DerDcov(data_K)
+        self.D=data_K.Dcov
+        self.O  = data_K.covariant('OO')
+        self.dO = data_K.covariant('OO',gender=1)
+        self.Obar_de  = Matrix_GenDer_ln(data_K.covariant('OO',commader=1),data_K.covariant('OO',commader=2),
+                    data_K.Dcov ,Iodd = False ,TRodd = True)
+    def nn(self,ik,inn,out):
+        summ = self.Obar_de.nn(ik,inn,out)
+        summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.O.ln(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...e->mnb...de" , self.D.nl(ik,inn,out) , self.dO.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnde->mnb...de" , self.O.nl(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...e,lnd->mnb...de" , self.dO.nl(ik,inn,out) , self.D.ln(ik,inn,out) )
+        return summ
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
+
+
+class Der2H(Formula_ln):
+    def __init__(self,data_K):
+        self.dD = DerDcov(data_K)
+        self.D=data_K.Dcov
+        self.H  = data_K.covariant('CC')
+        self.dH = data_K.covariant('CC',gender=1)
+        self.Hbar_de  = Matrix_GenDer_ln(data_K.covariant('CC',commader=1),data_K.covariant('CC',commader=2),
+                    data_K.Dcov ,Iodd = False ,TRodd = True)
+    def nn(self,ik,inn,out):
+        summ = self.Hbar_de.nn(ik,inn,out)
+        summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.H.ln(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...e->mnb...de" , self.D.nl(ik,inn,out) , self.dH.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnde->mnb...de" , self.H.nl(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...e,lnd->mnb...de" , self.dH.nl(ik,inn,out) , self.D.ln(ik,inn,out) )
+        return summ
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
+
+
+class Velocity(Matrix_ln):
+
+    def __init__(self, data_K):
+        v = data_K.covariant('Ham', gender=1)
+        self.__dict__.update(v.__dict__)
+
 class InvMass(Matrix_GenDer_ln):
     r""" :math:`\overline{V}^{b:d}`"""
 
@@ -222,17 +343,62 @@ class DerOmega(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+###############################
+###  second derivative of  ####
+###  Berry curvature       ####
+###############################
+
+
+class Der2Omega(Formula_ln):
+
+    def __init__(self,data_K,**parameters):
+        super().__init__(data_K,**parameters)
+        self.ddD = Der2Dcov(data_K)
+        self.dD = DerDcov(data_K)
+        self.D  = data_K.Dcov
+
+        if self.external_terms:
+            self.A  = data_K.covariant('AA')
+            self.dA = data_K.covariant('AA',gender=1)
+            self.ddA = Der2A(data_K)
+            self.ddO  = Der2O(data_K)
+        self.ndim=3
+        self.Iodd=False
+        self.TRodd=True
+
+    def nn(self,ik,inn,out):
+        summ = np.zeros( (len(inn),len(inn),3,3,3),dtype=complex )
+        if self.external_terms:
+            summ += 0.5 * self.ddO.nn(ik,inn,out)
+
+        for s,a,b in (+1,alpha_A,beta_A),(-1,beta_A,alpha_A):
+            if self.internal_terms:
+                summ+= -1j*s*np.einsum("mlce,lncd->mncde",self.dD.nl(ik,inn,out)[:,:,a],self.dD.ln(ik,inn,out)[:,:,b])
+                summ+= -1j*s*np.einsum("mlc,lncde->mncde",self.D.nl(ik,inn,out)[:,:,a],self.ddD.ln(ik,inn,out)[:,:,b])
+                pass
+
+            if self.external_terms:
+                summ +=  -1 *s* np.einsum("mlce,lncd->mncde",self.dD.nl(ik,inn,out)[:,:,a], self.dA.ln(ik,inn,out)[:,:,b,:])
+                summ +=  -1 *s* np.einsum("mlc,lncde->mncde",self.D.nl(ik,inn,out)[:,:,a], self.ddA.ln(ik,inn,out)[:,:,b,:])
+                summ +=  -1 *s* np.einsum("mlcde,lnc->mncde",self.ddD.nl(ik,inn,out)[:,:,a,:],
+                        self.A.ln (ik,inn,out)[:,:,b])
+                summ +=  -1 *s* np.einsum("mlcd,lnce->mncde",self.dD.nl(ik,inn,out)[:,:,a,:],
+                        self.dA.ln (ik,inn,out)[:,:,b])
+                summ+=  -1j *s* np.einsum("mlce,lncd->mncde",self.dA.nn(ik,inn,out)[:,:,a], self.dA.nn(ik,inn,out)[:,:,b,:])
+                summ+=  -1j *s* np.einsum("mlc,lncde->mncde",self.A.nn(ik,inn,out)[:,:,a], self.ddA.nn(ik,inn,out)[:,:,b,:])
+                pass
+
+        summ+=summ.swapaxes(0,1).conj()
+        return summ
+
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
+
 
 ########################
-#   orbital moment     #
+#     spin moment      #
 ########################
-
-
-class Velocity(Matrix_ln):
-
-    def __init__(self, data_K):
-        v = data_K.covariant('Ham', gender=1)
-        self.__dict__.update(v.__dict__)
 
 
 class Spin(Matrix_ln):
@@ -247,6 +413,18 @@ class DerSpin(Matrix_GenDer_ln):
     def __init__(self, data_K):
         s = data_K.covariant('SS', gender=1)
         self.__dict__.update(s.__dict__)
+
+class Der2Spin(Matrix_GenDer_ln):
+
+    def __init__(self, data_K):
+        super().__init__(data_K.covariant('SS', commader=1), data_K.covariant('SS', commader=2), data_K.Dcov)
+        #self.TRodd = False
+        #self.Iodd = False
+
+
+########################
+#   orbital moment     #
+########################
 
 
 class Morb_H(Formula_ln):
@@ -352,57 +530,122 @@ class DerMorb(Formula_ln):
             self.A = data_K.covariant('AA')
             self.dA = data_K.covariant('AA', gender=1)
             self.B = data_K.covariant('BB')
-            self.dB = data_K.covariant('BB', gender=1)
-            self.dH = data_K.covariant('CC', gender=1)
-        self.ndim = 2
-        self.Iodd = True
-        self.TRodd = False
-
-    def nn(self, ik, inn, out):
-        summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
+            self.dB = data_K.covariant('BB',gender = 1)
+            self.dH  = data_K.covariant('CC',gender = 1)
+        self.ndim=2
+        self.Iodd=True
+        self.TRodd=False
+    def nn(self,ik,inn,out):
+        summ = np.zeros( (len(inn),len(inn),3,3),dtype=complex )
         if self.internal_terms:
-            summ += -2j * np.einsum(
-                "mpc,pld,lnc->mncd",
-                self.D.nl(ik, inn, out)[:, :, alpha_A], self.V.ll(ik, inn, out),
-                self.D.ln(ik, inn, out)[:, :, beta_A])
-            for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
-                summ += -2j * s * np.einsum(
-                    "mlc,lncd->mncd",
-                    self.D.nl(ik, inn, out)[:, :, a],
-                    self.E[ik][out][:, None, None, None] * self.dD.ln(ik, inn, out)[:, :, b])
+            summ += -1j * np.einsum("mpc,pld,lnc->mncd",self.D.nl(ik,inn,out)[:,:,alpha_A],
+                    self.V.ll(ik,inn,out),self.D.ln(ik,inn,out)[:,:,beta_A] )
+            for s,a,b in (+1,alpha_A,beta_A),(-1,beta_A,alpha_A):
+                summ +=  -1j *s* np.einsum("mlc,lncd->mncd",self.D.nl(ik,inn,out)[:,:,a],
+                        self.E[ik][out][:,None,None,None]*self.dD.ln(ik,inn,out)[:,:,b])
+
         if self.external_terms:
-            summ += 1 * self.dH.nn(ik, inn, out)
-            summ += -2j * np.einsum(
-                "mpc,pld,lnc->mncd",
-                self.A.nn(ik, inn, out)[:, :, alpha_A], self.V.nn(ik, inn, out),
-                self.A.nn(ik, inn, out)[:, :, beta_A])
-            for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
-                summ += -2j * s * np.einsum(
-                    "mlc,lncd->mncd",
-                    self.A.nn(ik, inn, out)[:, :, a] * self.E[ik][inn][None, :, None],
-                    self.dA.nn(ik, inn, out)[:, :, b, :])
-                summ += -2 * s * np.einsum(
-                    "mlc,lncd->mncd",
-                    self.D.nl(ik, inn, out)[:, :, a],
-                    self.dB.ln(ik, inn, out)[:, :, b, :])
-                summ += -2 * s * np.einsum(
-                    "mlc,lncd->mncd", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
-                    self.dD.ln(ik, inn, out)[:, :, b, :])
+            summ += 0.5 * self.dH.nn(ik,inn,out)
+            summ += -1j * np.einsum("mpc,pld,lnc->mncd",self.A.nn(ik,inn,out)[:,:,alpha_A],
+                    self.V.nn(ik,inn,out),self.A.nn(ik,inn,out)[:,:,beta_A] )
+            for s,a,b in (+1,alpha_A,beta_A),(-1,beta_A,alpha_A):
+                summ+=  -1j *s* np.einsum("mlc,lncd->mncd",self.A.nn(ik,inn,out)[:,:,a]*self.E[ik][inn][None,:,None],
+                        self.dA.nn(ik,inn,out)[:,:,b,:])
+                summ +=  -1 *s* np.einsum("mlc,lncd->mncd",self.D.nl (ik,inn,out)[:,:,a], self.dB.ln(ik,inn,out)[:,:,b,:])
+                summ +=  -1 *s* np.einsum("mlc,lncd->mncd",(self.B.ln(ik,inn,out)[:,:,a]).transpose(1,0,2).conj(),
+                        self.dD.ln (ik,inn,out)[:,:,b,:])
 
-        summ += 1 * np.einsum("mlc,lnd->mncd", self.Omega.nn(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += 1 * self.E[ik][inn][:, None, None, None] * self.dO.nn(ik, inn, out)
+        summ += 0.5 * np.einsum("mlc,lnd->mncd",self.Omega.nn(ik,inn,out),self.V.nn(ik,inn,out) )
+        summ += 0.5 * self.E[ik][inn][:,None,None,None]*self.dO.nn(ik,inn,out)
 
-        # Stepan: Shopuldn't we use the line below?
-        # TODO: check this formula
-        #summ+=summ.swapaxes(0,1).conj()
+        summ+=summ.swapaxes(0,1).conj()
         return summ
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
-    @property
-    def additive(self):
-        return False
+##############################
+###  second derivative of ####
+###   orbital moment      ####
+##############################
+
+class Der2Morb(Formula_ln):
+    def __init__(self,data_K,**parameters):
+        super().__init__(data_K,**parameters)
+        self.ddD = Der2Dcov(data_K)
+        self.dD = DerDcov(data_K)
+        self.D  = data_K.Dcov
+        self.dV= InvMass(data_K)
+        self.V = data_K.covariant('Ham',commader=1)
+        self.E = data_K.E_K
+        self.dO  = DerOmega(data_K,**parameters)
+        self.ddO  = Der2Omega(data_K)
+        self.Omega = Omega(data_K,**parameters)
+        if self.external_terms:
+            self.A = data_K.covariant('AA')
+            self.dA = data_K.covariant('AA',gender = 1)
+            self.ddA = Der2A(data_K)
+            self.B = data_K.covariant('BB')
+            self.dB = data_K.covariant('BB',gender = 1)
+            self.ddB = Der2B(data_K)
+            self.dH  = data_K.covariant('CC',gender = 1)
+            self.ddH  = Der2H(data_K)
+        self.ndim=3
+        self.Iodd=False
+        self.TRodd=True
+    #TODO merge term if possible.
+    def nn(self,ik,inn,out):
+        summ = np.zeros( (len(inn),len(inn),3,3,3),dtype=complex )
+        if self.internal_terms:
+            summ += -1j * np.einsum("mpc,plde,lnc->mncde",self.D.nl(ik,inn,out)[:,:,alpha_A],
+                    self.dV.ll(ik,inn,out),self.D.ln(ik,inn,out)[:,:,beta_A] )
+            for s,a,b in (+1,alpha_A,beta_A),(-1,beta_A,alpha_A):
+                summ += -0.5j *s*  np.einsum("mpce,pld,lnc->mncde",self.dD.nl(ik,inn,out)[:,:,a,:],
+                        self.V.ll(ik,inn,out),self.D.ln(ik,inn,out)[:,:,b] )
+                summ += -0.5j *s*  np.einsum("mpc,pld,lnce->mncde",self.D.nl(ik,inn,out)[:,:,a],
+                        self.V.ll(ik,inn,out),self.dD.ln(ik,inn,out)[:,:,b,:] )
+                summ+=  -1j *s* np.einsum("mlce,lncd->mncde",self.dD.nl(ik,inn,out)[:,:,a,:],
+                    self.E[ik][out][:,None,None,None]*self.dD.ln(ik,inn,out)[:,:,b])
+                summ+=  -1j *s* np.einsum("mlc,lncde->mncde",self.D.nl(ik,inn,out)[:,:,a],
+                    self.E[ik][out][:,None,None,None,None]*self.ddD.ln(ik,inn,out)[:,:,b])
+                summ+=  -1j *s* np.einsum("mpc,ple,lncd->mncde",self.D.nl(ik,inn,out)[:,:,a],
+                    self.V.ll(ik,inn,out),self.dD.ln(ik,inn,out)[:,:,b])
+        if self.external_terms:
+            summ += 0.5 * self.ddH.nn(ik,inn,out)
+            summ += -1j * np.einsum("mpc,plde,lnc->mncde",self.A.nn(ik,inn,out)[:,:,alpha_A],
+                    self.dV.nn(ik,inn,out),self.A.nn(ik,inn,out)[:,:,beta_A] )
+            for s,a,b in (+1,alpha_A,beta_A),(-1,beta_A,alpha_A):
+                summ += -0.5j * np.einsum("mpce,pld,lnc->mncde",self.dA.nn(ik,inn,out)[:,:,a],
+                        self.V.nn(ik,inn,out),self.A.nn(ik,inn,out)[:,:,b] )
+                summ += -0.5j * np.einsum("mpc,pld,lnce->mncde",self.A.nn(ik,inn,out)[:,:,a],
+                        self.V.nn(ik,inn,out),self.dA.nn(ik,inn,out)[:,:,b] )
+                summ+=  -1j *s* np.einsum("mlce,lncd->mncde",
+                        self.dA.nn(ik,inn,out)[:,:,a]*self.E[ik][inn][None,:,None,None],self.dA.nn(ik,inn,out)[:,:,b])
+                summ+=  -1j *s* np.einsum("mlc,lncde->mncde",
+                        self.A.nn(ik,inn,out)[:,:,a]*self.E[ik][inn][None,:,None],self.ddA.nn(ik,inn,out)[:,:,b])
+                summ+=  -1j *s* np.einsum("mlc,ple,lncd->mncde",self.A.nn(ik,inn,out)[:,:,a],
+                        self.V.nn(ik,inn,out),self.dA.nn(ik,inn,out)[:,:,b])
+               
+                summ +=  -1 *s* np.einsum("mlce,lncd->mncde",self.dD.nl (ik,inn,out)[:,:,a],
+                        self.dB.ln(ik,inn,out)[:,:,b,:])
+                summ +=  -1 *s* np.einsum("mlc,lncde->mncde",self.D.nl (ik,inn,out)[:,:,a],
+                        self.ddB.ln(ik,inn,out)[:,:,b,:])
+               
+                summ +=  -1 *s* np.einsum("mlce,lncd->mncde",(self.dB.ln(ik,inn,out)[:,:,a]).transpose(1,0,2,3).conj(),
+                        self.dD.ln (ik,inn,out)[:,:,b])
+                summ +=  -1 *s* np.einsum("mlc,lncde->mncde",(self.B.ln(ik,inn,out)[:,:,a]).transpose(1,0,2).conj(),
+                        self.ddD.ln (ik,inn,out)[:,:,b])
+
+        summ += 0.5 * np.einsum("mlce,lnd->mncde",self.dO.nn(ik,inn,out),self.V.nn(ik,inn,out) )
+        summ += 0.5 * np.einsum("mlc,lnde->mncde",self.Omega.nn(ik,inn,out),self.dV.nn(ik,inn,out) )
+        summ += 0.5 * np.einsum("mle,lncd->mncde",self.V.nn(ik,inn,out),self.dO.nn(ik,inn,out) )
+        summ += 0.5 * self.E[ik][inn][:,None,None,None,None]*self.ddO.nn(ik,inn,out)
+
+        summ+=summ.swapaxes(0,1).conj()
+        return summ
+    
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
 
 
 ########################
@@ -573,14 +816,129 @@ class OmegaHplus(FormulaProduct):
         super().__init__([Omega(data_K, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='OmegaHplus')
 
 
-class lmr(FormulaSum):
+class lmr_surf(FormulaSum):
 
     def __init__(self, data_K, **kwargs_formula):
-        formula = FormulaProduct ( [VelOmega(data_K,**kwargs_formula),data_K.covariant('Ham', commader=1)], name='velberry-vel (aup) ([pu]abb) ([au]pbb)')
+        formula = FormulaProduct ( [VelOmega(data_K,**kwargs_formula),data_K.covariant('Ham', commader=1)],
+                name='VelOmegaVel')
         super().__init__([formula,
             DeltaProduct(delta_f,formula,'pu,MLabb->MLaup'),
             DeltaProduct(delta_f,formula,'au,MLpbb->MLaup')],
-            [-1,1,1],['aup','aup','aup'], name='lmr')
+            [-1,1,1],['aup','aup','aup'], name='lmr_surf')
+
+
+class lmr_sea(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        formula = FormulaProduct ( [InvMass(data_K),Omega(data_K,**kwargs_formula)], name='MassOmega')
+        super().__init__([FormulaProduct(
+            [data_K.covariant('Ham', commader=1), DerOmega(data_K,**kwargs_formula)], name='VelDerOmega'),
+            formula,
+            DeltaProduct(delta_f,formula,'pu,MLabb->MLaup'),
+            DeltaProduct(delta_f,formula,'au,MLpbb->MLaup')],
+            [-1,-1,1,1],['aup','apu','aup','aup'], name='lmr_sea')
+
+
+class qmr_surf(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        formula = FormulaProduct ( [data_K.covariant('Ham', commader=1)],
+                data_K.covariant('Ham', commader=1)],
+                OmegaOmega(data_K,**kwargs_formula),
+                name='VelVelOmegaOmega')
+        super().__init__([formula,
+            DeltaProduct(delta_f,formula,'pv,MLabub->MLapuv'),
+            DeltaProduct(delta_f,
+                DeltaProduct(delta_f,formula,'pv,MLbcbc->MLpv'),
+                'au,MLpv->MLapuv'),
+            DeltaProduct(delta_f,formula,'au,MLpbvb->MLapuv')],
+            [1,-1,1,-1],['aup','aup','aup'], name='qmr_surf')
+
+
+class qmr_sea(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        formula1  = FormulaProduct ( [InvMass(data_K),OmegaOmega(data_K,**kwargs_formula)],
+            name='mass-berryberry (apuv) (ab[pv]ub) (pb[au]vb) ([au][pv]bcbc)')
+        formula2  = FormulaProduct ( [data_K.covariant('Ham', commader=1), 
+            DerOmega(data_K,**kwargs_formula),Omega(data_K,**kwargs_formula)],
+            name='vel-derberry-berry (aupv) (avpu) (a[pv]ubb) (p[au]vbb) ([au][pv]bbcc)')
+        super().__init__([formula1, formula2, formula2
+            DeltaProduct(delta_f,formula1,'pv,MLabub->MLapuv'),
+            DeltaProduct(delta_f,formula2,'pv,MLaubb->MLapuv'),
+            DeltaProduct(delta_f,
+                DeltaProduct(delta_f,formula1,'pv,MLbcbc->MLpv'),
+                'au,MLpv->MLapuv'),
+            DeltaProduct(delta_f,
+                DeltaProduct(delta_f,formula2,'pv,MLbbcc->MLpv'),
+                'au,MLpv->MLapuv'),
+            DeltaProduct(delta_f,formula1,'au,MLpbvb->MLapuv'),
+            DeltaProduct(delta_f,formula2,'au,MLpvbb->MLapuv')],
+            [1,1,1,-1,-1,1,1,-1,-1],
+            ['apuv','aupv','auvp','apuv','apuv','apuv','apuv','apuv','apuv'],
+            name='qmr_sea')
+
+
+class nlhall_surf(DeltaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        formula  = FormulaProduct ( [OmegaOmega(data_K,**kwargs_formula),data_K.covariant('Ham', commader=1)],
+        name='OmegaOmegaVel')
+        formula_sum = FormulaSum([DeltaProduct(delta_f,formula,'pu,MLdbb->MLdpu'),formula],
+            [1,-1],['dpu','dup'],)
+        super().__init__(Levi_Civita, formula_sum, 'sda,ndpu->napsu')
+
+
+class nlhall_sea(DeltaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        formula = FormulaProduct ( [Omega(data_K,**kwargs_formula),DerOmega(data_K,**kwargs_formula)],
+            name='OmegaDerOmega')
+        formula_sum = FormulaSum([DeltaProduct(delta_f,formula,'pu,MLbdb->MLdpu'),formula,formula],
+            [1,-1,-1],['dpu','pud','dup'],)
+        super().__init__(Levi_Civita, formula_sum, 'sda,ndpu->napsu')
+
+
+class emcha_surf(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        velocity =  data_K.covariant('Ham',commader=1)
+        formula1  = FormulaProduct ( [InvMass(data_K),Omega(data_K,**kwargs_formula),velocity],
+            name='mass-berry-vel (apus)(psua) ([au]bpbs) ([us]abbp)')
+        formula2  = FormulaProduct ( [velocity,DerOmega(data_K,**kwargs_formula),velocity],
+            name='v-derberry-vel (aups) ([au]bbps) ([us]abpb)')
+        tmp = FormulaSum([formula2,formula1],[1,1],['aups','apus'])
+        super().__init__([tmp,
+            DeltaProduct(delta_f,formula1,'us,MLabbp->MLaups'),
+            DeltaProduct(delta_f,tmp,'au,MLbbps->MLaups'),
+            DeltaProduct(delta_f,formula2,'us,MLabpb->MLaups'),
+            formula2,
+            DeltaProduct(Levi_Civita,
+                DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
+                'xub,MLaxpbs->MLaups') ],
+            [2,-2,-1,-1,1,-1],['aups','aups','aups','aups','aups','aups'])
+
+
+class emcha_sea(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        velocity =  data_K.covariant('Ham',commader=1)
+        formula1  = FormulaProduct ( [Der3E(data_K),Omega(data_K,**kwargs_formula)],
+            name='Der3E-berry (apsu) ([au]bpsb)')
+        formula2  = FormulaProduct ( [InvMass(data_K),DerOmega(data_K,**kwargs_formula)],
+            name='mass-derberry (apus)(asup) ([au]bpbs)')
+        formula3  = FormulaProduct ( [velocity,Der2Omega(data_K,**kwargs_formula)],
+            name='vel-der2berry-vel (aups) ([au]bbps)')
+        tmp = FormulaSum([formula3,formula1,formula2,formua2],[1,1,1,1],['aups','asup','apus','apsu'])
+        super().__init__([tmp,
+            DeltaProduct(delta_f,FormulaSum([formula2,formula1],[1,1],['aups','ausp']),'us,MLabbp->MLaups'),
+            DeltaProduct(delta_f,tmp,'au,MLbbps->MLaups'),
+            DeltaProduct(delta_f,formula2,'us,MLabbp->MLaups'),
+            FormulaSum([formula3,formula2],[1,1],['aups','apsu']), 
+            DeltaProduct(Levi_Civita,
+                DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
+                'xub,MLaxpbs->MLaups') ],
+            [2,-2,-1,-1,1,-1],['aups','aups','aups','aups','aups','aups'])
 
 
 
