@@ -14,7 +14,7 @@
 wannierberri - a module for Wannier interpolation
 """
 
-__version__ = "0.13.2"
+__version__ = "0.13.3"
 
 from .run import run
 from .__old_API.__main import integrate, tabulate #, integrate_options, tabulate_options, print_options
