@@ -517,6 +517,90 @@ class AHC_Zeeman_orb(StaticCalculator):
         return final_factor * (Hplus_res - 2 * Omega_res)
 
 
+class Der2Spin(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.Der2Spin
+        self.factor = 1
+        self.fder = 0
+        super().__init__(**kwargs)
+
+
+class Ohmic_Zeeman_spin(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.MassSpin
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        res = super().__call__(data_K)
+        term2 = Der2Spin(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K)
+        final_factor = factors.fac_spin_Z * factors.factor_ohmic
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+        res.data = final_factor * (res.data - term2.data.transpose(0,2,3,1))
+
+        return res
+
+
+class Der2Hplus(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.Der2Morb
+        self.factor = 1
+        self.fder = 0
+        super().__init__(**kwargs)
+
+
+class Der2Omega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.Der2Omega
+        self.factor = 1
+        self.fder = 0
+        super().__init__(**kwargs)
+
+
+class MassOmega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.MassOmega
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class Ohmic_Zeeman_orb(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.MassHplus
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        Hplus1 = super().__call__(data_K)
+        Omega1 = MassOmega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        Hplus2 = Der2Hplus(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K)
+        Omega2 = Der2Omega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        final_factor = factors.fac_orb_Z * factors.factor_ohmic
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+        Hplus1.data = final_factor * (Hplus1.data - 2 * Omega1.data
+                - Hplus2.data.transpose(0,2,3,1)
+                + 2 * Omega2.data.transpose(0,2,3,1) )
+
+        return Hplus1
+
+
 #E^1 B^2
 class Quadra_MR_FermiSurf(StaticCalculator):
     def __init__(self, **kwargs):
@@ -533,6 +617,302 @@ class Quadra_MR_FermiSea(StaticCalculator):
         self.fder = 0
         super().__init__(**kwargs)
 
+
+class AHC_Zeeman2_spin(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.OmegaSpinSpin
+        self.factor = 0.5 * factors.fac_spin_Z * factors.fac_spin_Z * factors.factor_ahc
+        self.fder = 2
+        super().__init__(**kwargs)
+
+
+class OmegaOmegaHplus(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.OmegaOmegaHplus
+        self.factor = 1
+        self.fder = 2
+        super().__init__(**kwargs)
+
+
+class OmegaOmegaOmega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.OmegaOmegaOmega
+        self.factor = 1
+        self.fder = 2
+        super().__init__(**kwargs)
+
+
+class AHC_Zeeman2_orb(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.OmegaHplusHplus
+        self.factor = 1
+        self.fder = 2
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        OHH = super().__call__(data_K)
+        OOH = OmegaOmegaHplus(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        OOO = OmegaOmegaOmega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi).mul_array(self.Efermi)
+        final_factor = 0.5 * factors.fac_orb_Z * factors.fac_orb_Z * factors.factor_ohmic
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+        OHH.data = final_factor * (OHH.data - 2 * OOH.data - 2 * OOH.data.transpose(0,1,3,2) + 4 * OOO.data )
+
+        return OHH
+
+
+class Der2SpinSpin(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.Der2SpinSpin
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class Ohmic_Zeeman2_spin(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.MassSpinSpin
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        term1 = super().__call__(data_K)
+        term2 = Der2SpinSpin(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K)
+        final_factor = factors.fac_spin_Z * factors.fac_spin_Z * factors.factor_ohmic
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+        term1.data = final_factor * (0.5 * term1.data
+                - term2.data.transpose(0,2,3,1,4) )
+
+        return term1
+
+
+class MassOmegaOmega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.MassOmegaOmega
+        self.factor = 1
+        self.fder = 2
+        super().__init__(**kwargs)
+
+
+class MassHplusOmega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.MassHplusOmega
+        self.factor = 1
+        self.fder = 2
+        super().__init__(**kwargs)
+
+
+class Der2HplusHplus(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.Der2HplusHplus
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class Der2OmegaHplus(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.Der2OmegaHplus
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class Der2HplusOmega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.Der2HplusOmega
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class Der2OmegaOmega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.Der2OmegaOmega
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class Ohmic_Zeeman2_orb(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.MassHplusHplus
+        self.factor = 1
+        self.fder = 2
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        HH = super().__call__(data_K)
+        HO = MassHplusOmega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        OO = MassOmegaOmega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi).mul_array(self.Efermi)
+        D2HH = Der2HplusHplus(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K)
+        D2OH = Der2OmegaHplus(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        D2HO = Der2HplusOmega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        D2OO = Der2OmegaOmega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi).mul_array(self.Efermi)
+        final_factor = factors.fac_orb_Z * factors.fac_orb_Z * factors.factor_ohmic
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+        HH.data = final_factor * (0.5 * HH.data
+                - 1. * HO.data
+                - 1. * HO.data.transpose(0,1,2,4,3)
+                + 2. * OO.data
+                - D2HH.data.transpose(0,2,3,1,4)
+                + 2. * D2HO.data.transpose(0,2,3,1,4)
+                + 2. * D2OH.data.transpose(0,2,3,1,4)
+                - 4. * D2OO.data.transpose(0,2,3,1,4) )
+
+        return HH
+
+
+class Linear_MR_Zeeman_spin(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.lmr_spin_Z
+        self.factor = factors.factor_lmr * factors.fac_spin_Z
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class lmr_orb_Z_Omega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.lmr_orb_Z_Omega
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class Linear_MR_Zeeman_orb(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.lmr_orb_Z_Hplus
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        H = super().__call__(data_K)
+        O = lmr_orb_Z_Omega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        final_factor = factors.fac_orb_Z * factors.factor_lmr
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+
+        return final_factor * (H - 2 * O)
+
+
+class HC_Z_term1_spin(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.HC_Z_term1_spin
+        self.factor = 1
+        #factors.fac_spin_Z * factors.factor_hall_classic
+        self.fder = 0
+        super().__init__(**kwargs)
+
+
+class Hall_classic_Zeeman_spin(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.HC_Z_term2_spin
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        term2 = super().__call__(data_K)
+        term1 = HC_Z_term1_spin(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K)
+        final_factor = factors.fac_spin_Z * factors.factor_hall_classic
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+        term1.data = final_factor * (term2.data - term1.data)
+
+        return term1
+
+
+class HC_Z_term1_orb_Omega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.HC_Z_term1_orb_Omega
+        self.factor = 1
+        self.fder = 0
+        super().__init__(**kwargs)
+
+
+class HC_Z_term2_orb_Omega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.HC_Z_term2_orb_Omega
+        self.factor = 1
+        self.fder = 0
+        super().__init__(**kwargs)
+
+
+class HC_Z_term1_orb_Hplus(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.HC_Z_term1_orb_Hplus
+        self.factor = 1
+        self.fder = 0
+        super().__init__(**kwargs)
+
+
+class Hall_classic_Zeeman_orb(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.HC_Z_term2_orb_Hplus
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        term2_H = super().__call__(data_K)
+        term2_O = HC_Z_term2_orb_Omega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        term1_O = HC_Z_term1_orb_Omega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        term1_H = HC_Z_term1_orb_Hplus(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K)
+        final_factor = factors.fac_orb_Z * factors.factor_hall_classic
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+        term2_H.data = final_factor * (term2_H.data - 2 * term2_O.data
+                - term1_H.data + 2 * term1_O.data)
+
+        return term2_H
 
 
 # E^2 B^0
@@ -685,6 +1065,80 @@ class eMChA_FermiSea(StaticCalculator):
         self.factor = factors.factor_emcha
         self.fder = 0
         super().__init__(**kwargs)
+
+
+class NLAHC_Zeeman_spin(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.NLAHC_Z_spin
+        self.factor = factors.fac_spin_Z * factors.factor_nlahc
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class DerOmegaOmega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.DerOmegaOmega
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class HLAHC_Zeeman_orb(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.DerOmegaHplus
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        Hplus = super().__call__(data_K)
+        Omega = DerOmegaOmega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        final_factor = factors.fac_orb_Z * factors.factor_nlahc
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+
+        return final_factor * (Hplus - 2 * Omega)
+
+
+class NLDrude_Zeeman_spin(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.NLDrude_Z_spin
+        self.factor = factors.fac_spin_Z * factors.factor_nldrude
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class NLDrude_Zeeman_orb_Omega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.NLDrude_Z_orb_Omega
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class NLDrude_Zeeman_orb(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.NLDrude_Z_orb_Hplus
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        Hplus = super().__call__(data_K)
+        Omega = NLDrude_Zeeman_orb_Omega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        final_factor = factors.fac_orb_Z * factors.factor_nldrude
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+
+        return final_factor * (Hplus - 2 * Omega)
 
 
 #others

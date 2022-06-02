@@ -809,6 +809,11 @@ class OmegaS(FormulaProduct):
         super().__init__([Omega(data_K, **kwargs_formula), Spin(data_K)], name='SpinOmega')
 
 
+class MassSpin(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([InvMass(data_K), Spin(data_K)], name='MassSpin')
+
 class OmegaOmega(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
@@ -945,3 +950,211 @@ class emcha_sea(FormulaSum):
                 'xub,MLaxpbs->MLaups') ],
             [2,-2,-1,-1,1,-1],['aups','aups','aups','aups','aups','aups'])
 
+
+class MassOmega(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([InvMass(data_K), Omega(data_K, **kwargs_formula)], name='MassOmega')
+
+
+class MassHplus(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([InvMass(data_K), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='MassHplus')
+
+
+class MassaHplusHplus(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([InvMass(data_K), Morb_Hpm(data_K, sign=+1, **kwargs_formula),
+            Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='MassHplusHplus')
+
+
+class MassHplusOmega(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([InvMass(data_K), Morb_Hpm(data_K, sign=+1, **kwargs_formula),
+            Omega(data_K, **kwargs_formula)], name='MassHplusOmega')
+
+
+class MassOmegaOmega(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([InvMass(data_K), Omega(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula)], name='MassOmegaOmega')
+
+
+class Der2OmegaOmega(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Der2Omega(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula)], name='Der2OmegaOmega')
+
+
+class Der2OmegaHplus(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Der2Omega(data_K, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='Der2OmegaHplus')
+
+
+class Der2HplusHplus(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Der2Morb(data_K, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='Der2HplusHplus')
+
+
+class Der2HplusOmega(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Der2Morb(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula)], name='Der2HplusOmega')
+
+
+class Der2SpinSpin(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Der2Spin(data_K), Spin(data_K)], name='Der2SpinSpin')
+
+
+class MassSpinSpin(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([InvMass(data_K), Spin(data_K), Spin(data_K)], name='MassSpinSpin')
+
+
+class OmegaSpinSpin(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Omega(data_K, **kwargs_formula), Spin(data_K), Spin(data_K)], name='OmegaSpinSpin')
+
+
+class OmegaOmegaOmega(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Omega(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula)], name='OmegaOmegaOmega')
+
+
+class OmegaOmegaHplus(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Omega(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='OmegaOmegaHplus')
+
+
+class OmegaHplusHplus(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Omega(data_K, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='OmegaHplusHplus')
+
+
+class NLAHC_Z_spin(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([DerOmega(data_K, **kwargs_formula), Spin(data_K)], name='DerOmegaSpin')
+
+
+class DerOmegaOmega(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([DerOmega(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula)], name='DerOmegaOmega')
+
+
+class DerOmegaHplus(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([DerOmega(data_K, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='DerOmegaHplus')
+
+
+class NLDrude_Z_spin(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term1 = FormulaProduct([Der3E(data_K), Spin(data_K)], name='Der3ESpin')
+        term2 = FormulaProduct([Der2Spin(data_K), data_K.covariant('Ham', commader=1)], name='Der2SpinVel')
+        super().__init__([term1, term2], [-1,1], ['apsu', 'uaps'])
+
+
+class NLDrude_Z_orb_Hplus(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term1 = FormulaProduct([Der3E(data_K), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='Der3EHplus')
+        term2 = FormulaProduct([Der2Morb(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='Der2HplusVel')
+        super().__init__([term1, term2], [-1,1], ['apsu', 'uaps'])
+
+
+class NLDrude_Z_orb_Omega(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term1 = FormulaProduct([Der3E(data_K), Omega(data_K, **kwargs_formula)], name='Der3EOmega')
+        term2 = FormulaProduct([Der2Omega(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='Der2OmegaVel')
+        super().__init__([term1, term2], [-1,1], ['apsu', 'uaps'])
+
+
+class lmr_spin_Z(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term1 = FormulaProduct([lmr_sea(data_K, **kwargs_formula), Spin(data_K)], name='lmrSpin')
+        term2 = FormulaProduct([DerSpin(data_K), Omega(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='DerSpinOmegaVel')
+        term3 = DeltaProduct(delta_f, term2, 'pu,MLvabb->MLaupv'),
+        term4 = DeltaProduct(delta_f, term2, 'au,MLvpbb->MLaupv'),
+        super().__init__([term1, term2, term3, term4], [1,1,-1,-1], ['aupv', 'vaup', 'aupv', 'aupv'])
+
+
+class lmr_orb_Z_Hplus(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term1 = FormulaProduct([lmr_sea(data_K, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='lmrHplus')
+        term2 = FormulaProduct([DerMorb(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='DerHplusOmegaVel')
+        term3 = DeltaProduct(delta_f, term2, 'pu,MLvabb->MLaupv'),
+        term4 = DeltaProduct(delta_f, term2, 'au,MLvpbb->MLaupv'),
+        super().__init__([term1, term2, term3, term4], [1,1,-1,-1], ['aupv', 'vaup', 'aupv', 'aupv'])
+
+
+class lmr_orb_Z_Omega(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term1 = FormulaProduct([lmr_sea(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula)], name='lmrOmega')
+        term2 = FormulaProduct([DerOmega(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='DerOmegaOmegaVel')
+        term3 = DeltaProduct(delta_f, term2, 'pu,MLvabb->MLaupv'),
+        term4 = DeltaProduct(delta_f, term2, 'au,MLvpbb->MLaupv'),
+        super().__init__([term1, term2, term3, term4], [1,1,-1,-1], ['aupv', 'vaup', 'aupv', 'aupv'])
+
+
+class HC_Z_term1_spin(DeltaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term = FormulaProduct([Der2Spin(data_K), InvMass(data_K)], name='Der2SpinMass')
+        term_sum = FormulaSum([term, term], [1,1], ['vabps','vpsab'])
+        super().__init__(Levi_Civita, term_sum, 'bup,MLvabps->MLasuv')
+
+
+class HC_Z_term2_spin(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term = FormulaProduct([InvMass(data_K), InvMass(data_K), Spin(data_K)], name='MassMassSpin')
+        super().__init__(Levi_Civita, term, 'bup,MLabpsv->MLasuv')
+
+
+class HC_Z_term1_orb_Omega(DeltaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term = FormulaProduct([Der2Omega(data_K, **kwargs_formula), InvMass(data_K)], name='Der2OmegaMass')
+        term_sum = FormulaSum([term, term], [1,1], ['vabps','vpsab'])
+        super().__init__(Levi_Civita, term_sum, 'bup,MLvabps->MLasuv')
+
+
+class HC_Z_term1_orb_Hplus(DeltaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term = FormulaProduct([Der2Morb(data_K, **kwargs_formula), InvMass(data_K)], name='Der2HplusMass')
+        term_sum = FormulaSum([term, term], [1,1], ['vabps','vpsab'])
+        super().__init__(Levi_Civita, term_sum, 'bup,MLvabps->MLasuv')
+
+
+class HC_Z_term2_orb_Omega(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term = FormulaProduct([InvMass(data_K), InvMass(data_K), Omega(data_K, **kwargs_formula)], name='MassMassOmega')
+        super().__init__(Levi_Civita, term, 'bup,MLabpsv->MLasuv')
+
+
+class HC_Z_term2_orb_Hplus(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term = FormulaProduct([InvMass(data_K), InvMass(data_K), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='MassMassHplus')
+        super().__init__(Levi_Civita, term, 'bup,MLabpsv->MLasuv')
