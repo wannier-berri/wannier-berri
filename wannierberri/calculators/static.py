@@ -1085,7 +1085,7 @@ class DerOmegaOmega(StaticCalculator):
         super().__init__(**kwargs)
 
 
-class HLAHC_Zeeman_orb(StaticCalculator):
+class NLAHC_Zeeman_orb(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.DerOmegaHplus

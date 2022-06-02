@@ -862,7 +862,7 @@ class qmr_surf(FormulaSum):
                 DeltaProduct(delta_f,formula,'pv,MLbcbc->MLpv'),
                 'au,MLpv->MLapuv'),
             DeltaProduct(delta_f,formula,'au,MLpbvb->MLapuv')],
-            [1,-1,1,-1],['aup','aup','aup'], name='qmr_surf')
+            [1,-1,1,-1],['aupv','aupv','aupv'], name='qmr_surf')
 
 
 class qmr_sea(FormulaSum):
@@ -896,7 +896,7 @@ class nlhall_surf(DeltaProduct):
         name='OmegaOmegaVel')
         formula_sum = FormulaSum([DeltaProduct(delta_f,formula,'pu,MLdbb->MLdpu'),formula],
             [1,-1],['dpu','dup'],)
-        super().__init__(Levi_Civita, formula_sum, 'sda,ndpu->napsu')
+        super().__init__(Levi_Civita, formula_sum, 'sda,MLdpu->MLapsu')
 
 
 class nlhall_sea(DeltaProduct):
@@ -906,7 +906,7 @@ class nlhall_sea(DeltaProduct):
             name='OmegaDerOmega')
         formula_sum = FormulaSum([DeltaProduct(delta_f,formula,'pu,MLbdb->MLdpu'),formula,formula],
             [1,-1,-1],['dpu','pud','dup'],)
-        super().__init__(Levi_Civita, formula_sum, 'sda,ndpu->napsu')
+        super().__init__(Levi_Civita, formula_sum, 'sda,MLdpu->MLapsu')
 
 
 class emcha_surf(FormulaSum):
@@ -963,7 +963,7 @@ class MassHplus(FormulaProduct):
         super().__init__([InvMass(data_K), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='MassHplus')
 
 
-class MassaHplusHplus(FormulaProduct):
+class MassHplusHplus(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([InvMass(data_K), Morb_Hpm(data_K, sign=+1, **kwargs_formula),
