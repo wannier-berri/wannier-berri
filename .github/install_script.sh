@@ -8,7 +8,6 @@ set -ev
 sudo apt-get install libxc-dev
 pip install codecov
 pip install -U pip setuptools wheel 
-pip install -U numba   # here numba will fix a (not latest) version of numpy
 pip install ray
 
 # install optional dependencies
