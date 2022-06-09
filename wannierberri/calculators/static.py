@@ -35,7 +35,7 @@ class StaticCalculator(Calculator):
 
         if not self.tetra:
             self.extraEf = 0 if self.fder == 0 else 1 if self.fder in (1, 2) else 2 if self.fder == 3 else None
-            self.dEF = Efermi[1] - Efermi[0]
+            self.dEF = Efermi[1] - Efermi[0] if len(Efermi)>1 else 0.001
             self.EFmin = Efermi[0] - self.extraEf * self.dEF
             self.EFmax = Efermi[-1] + self.extraEf * self.dEF
             self.nEF_extra = Efermi.shape[0] + 2 * self.extraEf
