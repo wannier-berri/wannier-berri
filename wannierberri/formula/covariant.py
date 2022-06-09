@@ -862,7 +862,7 @@ class qmr_surf(FormulaSum):
                 DeltaProduct(delta_f,formula,'pv,MLbcbc->MLpv'),
                 'au,MLpv->MLapuv'),
             DeltaProduct(delta_f,formula,'au,MLpbvb->MLapuv')],
-            [1,-1,1,-1],['aupv','aupv','aupv'], name='qmr_surf')
+            [1,-1,1,-1],['apuv','apuv','apuv'], name='qmr_surf')
 
 
 class qmr_sea(FormulaSum):
@@ -872,7 +872,7 @@ class qmr_sea(FormulaSum):
             name='mass-berryberry (apuv) (ab[pv]ub) (pb[au]vb) ([au][pv]bcbc)')
         formula2  = FormulaProduct(
                 [data_K.covariant('Ham', commader=1), DerOmega(data_K,**kwargs_formula),Omega(data_K,**kwargs_formula)],
-                name='vel-derberry-berry (aupv) (avpu) (a[pv]ubb) (p[au]vbb) ([au][pv]bbcc)')
+                name='vel-derberry-berry (aupv) (auvp) (a[pv]ubb) (p[au]vbb) ([au][pv]bbcc)')
         super().__init__([formula1, formula2, formula2,
             DeltaProduct(delta_f,formula1,'pv,MLabub->MLapuv'),
             DeltaProduct(delta_f,formula2,'pv,MLaubb->MLapuv'),

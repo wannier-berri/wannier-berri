@@ -682,7 +682,7 @@ class Ohmic_Zeeman2_spin(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.MassSpinSpin
         self.factor = 1
-        self.fder = 1
+        self.fder = 2
         super().__init__(**kwargs)
     def __call__(self, data_K):
         term1 = super().__call__(data_K)
@@ -1074,6 +1074,12 @@ class NLAHC_Zeeman_spin(StaticCalculator):
         self.factor = factors.fac_spin_Z * factors.factor_nlahc
         self.fder = 1
         super().__init__(**kwargs)
+    def __call__(self, data_K):
+        res = super().__call__(data_K)
+        # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
+        res.data = res.data.swapaxes(1, 2)
+        return res
+
 
 
 class DerOmegaOmega(StaticCalculator):
@@ -1101,7 +1107,7 @@ class NLAHC_Zeeman_orb(StaticCalculator):
         if not self.use_factor:
             final_factor = np.sign(final_factor)
 
-        return final_factor * (Hplus - 2 * Omega)
+        return final_factor * (Hplus - 2 * Omega).transpose(0,2,1,3)
 
 
 class NLDrude_Zeeman_spin(StaticCalculator):
