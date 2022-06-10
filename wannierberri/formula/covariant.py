@@ -856,13 +856,14 @@ class qmr_surf(FormulaSum):
                 data_K.covariant('Ham', commader=1),
                 OmegaOmega(data_K,**kwargs_formula)],
                 name='VelVelOmegaOmega')
-        super().__init__([formula,
+        super().__init__([
+            formula,
             DeltaProduct(delta_f,formula,'pv,MLabub->MLapuv'),
             DeltaProduct(delta_f,
                 DeltaProduct(delta_f,formula,'pv,MLbcbc->MLpv'),
                 'au,MLpv->MLapuv'),
             DeltaProduct(delta_f,formula,'au,MLpbvb->MLapuv')],
-            [1,-1,1,-1],['apuv','apuv','apuv'], name='qmr_surf')
+            [1,-1,1,-1],['apuv','apuv','apuv','apuv'], name='qmr_surf')
 
 
 class qmr_sea(FormulaSum):
@@ -873,7 +874,8 @@ class qmr_sea(FormulaSum):
         formula2  = FormulaProduct(
                 [data_K.covariant('Ham', commader=1), DerOmega(data_K,**kwargs_formula),Omega(data_K,**kwargs_formula)],
                 name='vel-derberry-berry (aupv) (auvp) (a[pv]ubb) (p[au]vbb) ([au][pv]bbcc)')
-        super().__init__([formula1, formula2, formula2,
+        super().__init__([
+            formula1, formula2, formula2,
             DeltaProduct(delta_f,formula1,'pv,MLabub->MLapuv'),
             DeltaProduct(delta_f,formula2,'pv,MLaubb->MLapuv'),
             DeltaProduct(delta_f,
@@ -885,7 +887,7 @@ class qmr_sea(FormulaSum):
             DeltaProduct(delta_f,formula1,'au,MLpbvb->MLapuv'),
             DeltaProduct(delta_f,formula2,'au,MLpvbb->MLapuv')],
             [1,1,1,-1,-1,1,1,-1,-1],
-            ['apuv','aupv','auvp','apuv','apuv','apuv','apuv','apuv','apuv'],
+            ['apuv','aupv','avpu','apuv','apuv','apuv','apuv','apuv','apuv'],
             name='qmr_sea')
 
 
