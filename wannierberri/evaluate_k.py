@@ -1,7 +1,9 @@
-
+import numpy as np
+from collections.abc import Iterable
 from .__grid import Grid
 from .data_K import Data_K
 from .calculators import Calculator, tabulate
+from collections import defaultdict
 
 available_quantities = {
     "energy": tabulate.Energy(print_comment=False),
@@ -30,6 +32,9 @@ def evaluate_k(
                 k=[0.,0.,0.],
                 quantities = [],
                 calculators = {},
+                formula = {},
+                param_formula = {},
+                iband = None,
                 return_single_as_dict = False
               ):
     """This function presents a shortcut to evaluate some property at a particular k-point
@@ -42,6 +47,11 @@ def evaluate_k(
     calculators : dict 
         Dictionary str : :class:`~wanierberri.calculators.Calculator`
         alows to evaluate quantities that are not available here, or using specific parameters
+    formula : dict 
+        Dictionary str : :class:`~wanierberri.formula.Formula_ln`
+        alows to evaluate block-diagonal part of a covariant formula (considering iband as "inner" states)
+    param_formula : dict 
+        Dictionary str : dict -parameters to be passed to the corresponding formula
     return_single_as_dict : bool
         wether to pack a result into dict if only one calculator/quantity is requested
 
@@ -71,14 +81,33 @@ def evaluate_k(
     grid = Grid(system, NK=1, NKFFT=1)
     data_k = Data_K(system, grid=grid, dK=k)
     result = {c:calc(data_k) for c,calc in calculators_all.items()}
+    if iband is None:
+        iband = np.arange(system.num_wann)
+    if not isinstance(iband,Iterable):
+        iband = [iband]
+    iband_out = sorted(np.array(list(set(range(system.num_wann))-set(iband))))
+    
 
     # Now get the data at the single k-point
     #result_data = {}
     for k,v in result.items():
         try:
-            result[k] = v.data[0]
+            result[k] = v.data[0][list(iband)]
         except Exception as err:
             print (err)
+
+
+    if iband is None:
+        iband = np.arange(system.num_wann)
+    if not isinstance(iband,Iterable):
+        iband = [iband]
+
+    _param_formula = defaultdict(lambda : {} )
+    _param_formula.update(param_formula)
+    
+    for k,f in formula.items():
+        form = f(data_k,**_param_formula[k])
+        result[k] = form.nn(0,iband,iband_out)
 
 
     if len(result) == 1:
