@@ -68,6 +68,7 @@ class TABresult(Result):
         #TODO: make it cleaner, to work with iterations
         grid = np.zeros(3, dtype=int)
         kp = np.array(self.kpoints)
+        kp = np.concatenate((kp,[[1,1,1]])) # in case only k=0 is used in some direction
         for i in range(3):
             k = np.sort(kp[:, i])
             dk = np.max(k[1:] - k[:-1])
