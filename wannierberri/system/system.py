@@ -370,6 +370,10 @@ class System():
         else:
             return np.zeros_like(self.wannier_centers_cart)
 
+    @property
+    def is_phonon(self):
+        return False
+
     def set_wannier_centers(self):
         """
         set self.wannier_centers_cart and self.wannier_centers_reduced. Also, if

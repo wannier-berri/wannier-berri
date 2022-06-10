@@ -22,7 +22,7 @@ AU_SEC  = const.hbar/HARTREE_SI
 AU_PS = AU_SEC * 1.0E+12
 AU_TERAHERTZ  = AU_PS
 RY_TO_THZ = 1.0 / AU_TERAHERTZ / FPI
-
+print ("RY_TO_THZ = ",RY_TO_THZ)
 
 def od2array(od):
     text = [t.replace(',',' ').split() for t in od['#text'].split("\n")]
@@ -42,8 +42,9 @@ def od2array(od):
         data = data.reshape( (size//ncol,ncol) )
     else:
         data = data.reshape(size)
-        
     return data
+
+
 
 
 class System_Phonon_QE(System_w90):
@@ -55,7 +56,7 @@ class System_Phonon_QE(System_w90):
 
         self.set_parameters(**parameters)
         with open(seedname+".dyn0","r") as f:
-            self.mp_grid =  tuple(int(n) for n in  f.readline().split())
+            self.mp_grid =  np.array(f.readline().split(),dtype=int)
             nqirr = int(f.readline().strip())
         print (self.mp_grid,nqirr)
         q_points = []
@@ -135,6 +136,12 @@ class System_Phonon_QE(System_w90):
         print (self.Ham_R.shape)
         self.set_symmetry()
         print (self.iRvec.shape)
+
+
+    @property
+    def is_phonon(self):
+        return True
+
         
 #        dynamical_matrix_R = dynamical_matrix_R.reshape(np.prod(self.mp_grid),self.number_of_phonons,self.number_of_phonons)
  #       print(self.Ham_R.shape)
