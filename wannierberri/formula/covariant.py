@@ -927,7 +927,8 @@ class emcha_surf(FormulaSum):
             formula2,
             DeltaProduct(Levi_Civita,
                 DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
-                'xub,MLaxpbs->MLaups') ],
+                'xub,MLaxpbs->MLaups')
+            ],
             [2,-2,-1,-1,1,-1],['aups','aups','aups','aups','aups','aups'])
 
 
@@ -941,15 +942,16 @@ class emcha_sea(FormulaSum):
             name='mass-derberry (apus)(asup) ([au]bpbs)')
         formula3  = FormulaProduct ( [velocity,Der2Omega(data_K,**kwargs_formula)],
             name='vel-der2berry-vel (aups) ([au]bbps)')
-        tmp = FormulaSum([formula3,formula1,formula2,formula2],[1,1,1,1],['aups','asup','apus','apsu'])
+        tmp = FormulaSum([formula3,formula1,formula2,formula2],[1,1,1,1],['aups','apsu','apus','asup'])
         super().__init__([tmp,
             DeltaProduct(delta_f,FormulaSum([formula2,formula1],[1,1],['aups','ausp']),'us,MLabbp->MLaups'),
             DeltaProduct(delta_f,tmp,'au,MLbbps->MLaups'),
             DeltaProduct(delta_f,formula2,'us,MLabbp->MLaups'),
-            FormulaSum([formula3,formula2],[1,1],['aups','apsu']),
+            FormulaSum([formula3,formula2],[1,1],['aups','asup']),
             DeltaProduct(Levi_Civita,
                 DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
-                'xub,MLaxpbs->MLaups') ],
+                'xub,MLaxpbs->MLaups')
+            ],
             [2,-2,-1,-1,1,-1],['aups','aups','aups','aups','aups','aups'])
 
 
