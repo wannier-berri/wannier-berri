@@ -418,8 +418,8 @@ class Der2Spin(Matrix_GenDer_ln):
 
     def __init__(self, data_K):
         super().__init__(data_K.covariant('SS', commader=1), data_K.covariant('SS', commader=2), data_K.Dcov)
-        self.TRodd = False
-        self.Iodd = True
+        self.Iodd = False
+        self.TRodd = True
 
 
 ########################
