@@ -1107,7 +1107,10 @@ class NLAHC_Zeeman_orb(StaticCalculator):
         if not self.use_factor:
             final_factor = np.sign(final_factor)
 
-        return final_factor * (Hplus - 2 * Omega).transpose(0,2,1,3)
+        res = final_factor * (Hplus - 2 * Omega)
+        res.data = res.data.swapaxes(1, 2)
+
+        return res
 
 
 class NLDrude_Zeeman_spin(StaticCalculator):
