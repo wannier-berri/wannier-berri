@@ -46,12 +46,12 @@ class Dcov(Matrix_ln):
         raise ValueError("Dln should not be called within inner states")
 
 
-class DerDcov(Dcov):
+class DerDcov(Formula_ln):
 
     def __init__(self, data_K):
         self.W = data_K.covariant('Ham', commader=2)
         self.V = data_K.covariant('Ham', gender=1)
-        self.D = data_K.Dcov
+        self.D = Dcov(data_K)
         self.dEinv = DEinv_ln(data_K)
 
     def ln(self, ik, inn, out):
@@ -63,15 +63,20 @@ class DerDcov(Dcov):
         summ *= -self.dEinv.ln(ik, inn, out)[:, :, None, None]
         return summ
 
+    def nn(self, ik, inn, out):
+        raise ValueError("Dln should not be called within inner states")
 
-class Der2Dcov(Dcov):
+
+class Der2Dcov(Formula_ln):
+
     def __init__(self,data_K):
         self.dD = DerDcov(data_K)
         self.WV = DerWln(data_K)
         self.dV = InvMass(data_K)
         self.V = data_K.covariant('Ham',gender=1)
-        self.D = data_K.Dcov
+        self.D = Dcov(data_K)
         self.dEinv = DEinv_ln(data_K)
+
     def ln(self,ik,inn,out):
         summ = self.WV.ln(ik,inn,out)
         summ += np.einsum( "lpbe,pnd->lnbde" , self.dV.ll(ik,inn,out) , self.D.ln(ik,inn,out) )
@@ -87,16 +92,19 @@ class Der2Dcov(Dcov):
         summ *= -self.dEinv.ln(ik,inn,out)[:,:,None,None,None]
         return summ
 
+    def nn(self, ik, inn, out):
+        raise ValueError("Dln should not be called within inner states")
+
 
 #TODO Der2A,B,O can be merged to one class.
 class Der2A(Formula_ln):
     def __init__(self,data_K):
         self.dD = DerDcov(data_K)
-        self.D = data_K.Dcov
+        self.D = Dcov(data_K)
         self.A  = data_K.covariant('AA')
         self.dA = data_K.covariant('AA',gender=1)
         self.Abar_de  = Matrix_GenDer_ln(data_K.covariant('AA',commader=1),data_K.covariant('AA',commader=2),
-                    data_K.Dcov ,Iodd=None,TRodd=None)
+                    Dcov(data_K) ,Iodd=None,TRodd=None)
     def nn(self,ik,inn,out):
         summ = self.Abar_de.nn(ik,inn,out)
         summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.A.ln(ik,inn,out) )
@@ -117,11 +125,11 @@ class Der2A(Formula_ln):
 class Der2B(Formula_ln):
     def __init__(self,data_K):
         self.dD = DerDcov(data_K)
-        self.D = data_K.Dcov
+        self.D = Dcov(data_K)
         self.B  = data_K.covariant('BB')
         self.dB = data_K.covariant('BB',gender=1)
         self.Bbar_de = Matrix_GenDer_ln(data_K.covariant('BB',commader=1),data_K.covariant('BB',commader=2),
-                    data_K.Dcov ,Iodd=None,TRodd=None)
+                    Dcov(data_K) ,Iodd=None,TRodd=None)
     def nn(self,ik,inn,out):
         summ = self.Bbar_de.nn(ik,inn,out)
         summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.B.ln(ik,inn,out) )
@@ -142,11 +150,11 @@ class Der2B(Formula_ln):
 class Der2O(Formula_ln):
     def __init__(self,data_K):
         self.dD = DerDcov(data_K)
-        self.D = data_K.Dcov
+        self.D = Dcov(data_K)
         self.O  = data_K.covariant('OO')
         self.dO = data_K.covariant('OO',gender=1)
         self.Obar_de  = Matrix_GenDer_ln(data_K.covariant('OO',commader=1),data_K.covariant('OO',commader=2),
-                    data_K.Dcov ,Iodd=False ,TRodd=True)
+                    Dcov(data_K) ,Iodd=False ,TRodd=True)
     def nn(self,ik,inn,out):
         summ = self.Obar_de.nn(ik,inn,out)
         summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.O.ln(ik,inn,out) )
@@ -162,11 +170,11 @@ class Der2O(Formula_ln):
 class Der2H(Formula_ln):
     def __init__(self,data_K):
         self.dD = DerDcov(data_K)
-        self.D = data_K.Dcov
+        self.D = Dcov(data_K)
         self.H  = data_K.covariant('CC')
         self.dH = data_K.covariant('CC',gender=1)
         self.Hbar_de  = Matrix_GenDer_ln(data_K.covariant('CC',commader=1),data_K.covariant('CC',commader=2),
-                    data_K.Dcov ,Iodd=False ,TRodd=True)
+                    Dcov(data_K) ,Iodd=False ,TRodd=True)
     def nn(self,ik,inn,out):
         summ = self.Hbar_de.nn(ik,inn,out)
         summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.H.ln(ik,inn,out) )
@@ -189,7 +197,7 @@ class InvMass(Matrix_GenDer_ln):
     r""" :math:`\overline{V}^{b:d}`"""
 
     def __init__(self, data_K):
-        super().__init__(data_K.covariant('Ham', commader=1), data_K.covariant('Ham', commader=2), data_K.Dcov)
+        super().__init__(data_K.covariant('Ham', commader=1), data_K.covariant('Ham', commader=2), Dcov(data_K))
         self.TRodd = False
         self.Iodd = False
 
@@ -198,7 +206,7 @@ class DerWln(Matrix_GenDer_ln):
     r""" :math:`\overline{W}^{bc:d}`"""
 
     def __init__(self, data_K):
-        super().__init__(data_K.covariant('Ham', 2), data_K.covariant('Ham', 3), data_K.Dcov)
+        super().__init__(data_K.covariant('Ham', 2), data_K.covariant('Ham', 3), Dcov(data_K))
         self.TRodd = False
         self.Iodd = False
 
@@ -213,7 +221,7 @@ class Der3E(Formula_ln):
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
         self.V = data_K.covariant('Ham', commader=1)
-        self.D = data_K.Dcov
+        self.D = Dcov(data_K)
         self.dV = InvMass(data_K)
         self.dD = DerDcov(data_K)
         self.dW = DerWln(data_K)
@@ -247,7 +255,7 @@ class Omega(Formula_ln):
 
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
-        self.D = data_K.Dcov
+        self.D = Dcov(data_K)
 
         if self.external_terms:
             self.A = data_K.covariant('AA')
@@ -299,7 +307,7 @@ class DerOmega(Formula_ln):
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
         self.dD = DerDcov(data_K)
-        self.D = data_K.Dcov
+        self.D = Dcov(data_K)
 
         if self.external_terms:
             self.A = data_K.covariant('AA')
@@ -355,7 +363,7 @@ class Der2Omega(Formula_ln):
         super().__init__(data_K,**parameters)
         self.ddD = Der2Dcov(data_K)
         self.dD = DerDcov(data_K)
-        self.D  = data_K.Dcov
+        self.D  = Dcov(data_K)
 
         if self.external_terms:
             self.A  = data_K.covariant('AA')
@@ -417,7 +425,7 @@ class DerSpin(Matrix_GenDer_ln):
 class Der2Spin(Matrix_GenDer_ln):
 
     def __init__(self, data_K):
-        super().__init__(data_K.covariant('SS', commader=1), data_K.covariant('SS', commader=2), data_K.Dcov)
+        super().__init__(data_K.covariant('SS', commader=1), data_K.covariant('SS', commader=2), Dcov(data_K))
         self.Iodd = False
         self.TRodd = True
 
@@ -436,7 +444,7 @@ class Morb_H(Formula_ln):
             self.A = data_K.covariant('AA')
             self.B = data_K.covariant('BB')
             self.C = data_K.covariant('CC')
-        self.D = data_K.Dcov
+        self.D = Dcov(data_K)
         self.E = data_K.E_K
         self.ndim = 1
         self.Iodd = False
@@ -521,7 +529,7 @@ class DerMorb(Formula_ln):
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
         self.dD = DerDcov(data_K)
-        self.D = data_K.Dcov
+        self.D = Dcov(data_K)
         self.V = data_K.covariant('Ham', commader=1)
         self.E = data_K.E_K
         self.dO = DerOmega(data_K, **parameters)
@@ -578,7 +586,7 @@ class Der2Morb(Formula_ln):
         super().__init__(data_K,**parameters)
         self.ddD = Der2Dcov(data_K)
         self.dD = DerDcov(data_K)
-        self.D  = data_K.Dcov
+        self.D  = Dcov(data_K)
         self.dV= InvMass(data_K)
         self.V = data_K.covariant('Ham',commader=1)
         self.E = data_K.E_K
@@ -719,7 +727,7 @@ class SpinOmega(Formula_ln):
     def __init__(self, data_K, spin_current_type="ryoo", **parameters):
         super().__init__(data_K, **parameters)
         self.A = data_K.covariant('AA')
-        self.D = data_K.Dcov
+        self.D = Dcov(data_K)
         self.J = SpinVelocity(data_K, spin_current_type)
         self.dEinv = DEinv_ln(data_K)
         self.ndim = 3
@@ -817,7 +825,7 @@ class MassSpin(FormulaProduct):
 class OmegaOmega(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
-        super().__init__([Omega(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula)], name='OmegaOmega')
+        super().__init__([Omega(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula)], name='OmegaOmega', additive=True)
 
 
 class OmegaHplus(FormulaProduct):
@@ -866,14 +874,38 @@ class qmr_surf(FormulaSum):
             [1,-1,1,-1],['apuv','apuv','apuv','apuv'], name='qmr_surf')
 
 
+class MassOmegaOmega(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([InvMass(data_K),
+                OmegaOmega(data_K,**kwargs_formula)],
+                name='MassOmegaOmega')
+
+
+class VelDerOmegaOmega(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Velocity(data_K),
+                DerOmega(data_K,**kwargs_formula),
+                Omega(data_K,**kwargs_formula)],
+                name='VelDerOmegaOmega')
+
+class ddo(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([
+                DerOmega(data_K,**kwargs_formula),
+                Velocity(data_K)],
+                name='VelDerOmegaOmega')
+
 class qmr_sea(FormulaSum):
 
     def __init__(self, data_K, **kwargs_formula):
         formula1  = FormulaProduct ( [InvMass(data_K),OmegaOmega(data_K,**kwargs_formula)],
-            name='mass-berryberry (apuv) (ab[pv]ub) (pb[au]vb) ([au][pv]bcbc)')
+            name='mass-berryberry (apuv) (ab[pv]ub) (pb[au]vb) ([au][pv]bcbc)',additive = True)
         formula2  = FormulaProduct(
                 [data_K.covariant('Ham', commader=1), DerOmega(data_K,**kwargs_formula),Omega(data_K,**kwargs_formula)],
-                name='vel-derberry-berry (aupv) (auvp) (a[pv]ubb) (p[au]vbb) ([au][pv]bbcc)')
+                name='vel-derberry-berry (aupv) (auvp) (a[pv]ubb) (p[au]vbb) ([au][pv]bbcc)', additive=True)
         super().__init__([
             formula1, formula2, formula2,
             DeltaProduct(delta_f,formula1,'pv,MLabub->MLapuv'),
@@ -888,7 +920,7 @@ class qmr_sea(FormulaSum):
             DeltaProduct(delta_f,formula2,'au,MLpvbb->MLapuv')],
             [1,1,1,-1,-1,1,1,-1,-1],
             ['apuv','aupv','avpu','apuv','apuv','apuv','apuv','apuv','apuv'],
-            name='qmr_sea')
+            name='qmr_sea', additive = False)
 
 
 class nlhall_surf(DeltaProduct):

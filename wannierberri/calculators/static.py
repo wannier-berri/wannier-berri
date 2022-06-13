@@ -610,10 +610,63 @@ class Quadra_MR_FermiSurf(StaticCalculator):
         super().__init__(**kwargs)
 
 
+class DDO_FermiSurf(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.ddo
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+class DDO_FermiSea(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.Der2Omega
+        self.factor = 1
+        self.fder = 0
+        super().__init__(**kwargs)
+
+class MassOmegaOmega(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.MassOmegaOmega
+        self.factor = 1
+        self.fder = 0
+        super().__init__(**kwargs)
+
+
+class QMR_FermiSea(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.VelDerOmegaOmega
+        self.factor = 1
+        self.fder = 0
+        super().__init__(**kwargs)
+
+    def __call__(self, data_K):
+        res2 = super().__call__(data_K)
+        res = MassOmegaOmega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K)
+        delta_f = np.eye(3)
+        term1 = res.data + res2.data.transpose(0,1,3,2,4)+res2.data.transpose(0,1,3,4,2)
+        term2 = np.einsum('pv,nabub->napuv',delta_f,res.data) + np.einsum('pv,naubb->napuv',delta_f,res2.data)
+        term3 = np.einsum('au,pv,nbcbc->napuv',delta_f,delta_f,res.data) + np.einsum('au,pv,nbbcc->napuv',delta_f,delta_f,res2.data)
+        term4 = np.einsum('au,npbvb->napuv',delta_f,res.data) + np.einsum('au,npvbb->napuv',delta_f,res2.data)
+        res.data = term1 - term2  + term3 - term4
+        res.data *= factors.factor_qmr
+
+        return res
+
+
 class Quadra_MR_FermiSea(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.qmr_sea
         self.factor = factors.factor_qmr
+        self.fder = 0
+        super().__init__(**kwargs)
+
+class OO_FermiSea(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.OmegaOmega
+        self.factor = 1
         self.fder = 0
         super().__init__(**kwargs)
 
