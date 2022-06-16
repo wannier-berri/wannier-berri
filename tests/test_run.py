@@ -23,8 +23,10 @@ from common_systems import (
     Efermi_Te_gpaw,
 )
 
+
 @pytest.fixture
 def check_run(parallel_serial, compare_any_result):
+
     def _inner(
         system,
         calculators={},
@@ -90,6 +92,7 @@ def check_run(parallel_serial, compare_any_result):
 
     return _inner
 
+
 calculators_Fe = {
     'ahc': calc.static.AHC,
     'ahc_test': calc.static.AHC_test,
@@ -98,7 +101,7 @@ calculators_Fe = {
     'Morb': calc.static.Morb,
     'Morb_test': calc.static.Morb_test,
     'dos': calc.static.DOS,
-    'cumdos':calc.static.CumDOS,
+    'cumdos': calc.static.CumDOS,
 }
 
 calculators_GaAs = {
@@ -109,13 +112,13 @@ calculators_GaAs = {
 
 calculators_GaAs_internal = {
     'dos': calc.static.DOS,
-    'cumdos':calc.static.CumDOS,
+    'cumdos': calc.static.CumDOS,
     'conductivity_ohmic': calc.static.Ohmic_FermiSea,
 }
 
 calculators_Haldane = {
     'dos': calc.static.DOS,
-    'ahc':calc.static.AHC,
+    'ahc': calc.static.AHC,
     'conductivity_ohmic': calc.static.Ohmic_FermiSea,
 }
 
@@ -609,22 +612,19 @@ def test_Haldane_PythTB(check_run, system_Haldane_PythTB, compare_any_result):
         grid_param={
             'NK': [10, 10, 1],
             'NKFFT': [5, 5, 1]
-        }
-    )
+        })
 
 
 def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
 
     param = dict(
-        Efermi = Efermi_GaAs,
-        omega = np.arange(1.0, 5.1, 0.5),
-        smr_fixed_width = 0.2,
-        smr_type = 'Gaussian',
-        kBT = 0.01,
+        Efermi=Efermi_GaAs,
+        omega=np.arange(1.0, 5.1, 0.5),
+        smr_fixed_width=0.2,
+        smr_type='Gaussian',
+        kBT=0.01,
     )
-    calculators = dict(
-        shift_current = calc.dynamic.ShiftCurrent(sc_eta=0.1, **param)
-    )
+    calculators = dict(shift_current=calc.dynamic.ShiftCurrent(sc_eta=0.1, **param))
 
     check_run(
         system_GaAs_W90,

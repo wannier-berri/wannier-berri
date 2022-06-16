@@ -255,38 +255,41 @@ def test_shiftcurrent_run(check_integrate_dynamical, system_GaAs_W90, compare_en
 
     fout_name = "kubo_GaAs_W90_run"
 
-    result_integrate = wberri.integrate(system_GaAs_W90,
-        grid = grid,
-        Efermi = Efermi_GaAs,
-        omega = omega,
-        quantities = ["opt_shiftcurrent"],
-        parameters = kubo_params,
-        fout_name = os.path.join(OUTPUT_DIR, fout_name),
-        restart = False,
+    result_integrate = wberri.integrate(
+        system_GaAs_W90,
+        grid=grid,
+        Efermi=Efermi_GaAs,
+        omega=omega,
+        quantities=["opt_shiftcurrent"],
+        parameters=kubo_params,
+        fout_name=os.path.join(OUTPUT_DIR, fout_name),
+        restart=False,
     )
 
     calculators = dict(
-        opt_shiftcurrent = calc.dynamic.ShiftCurrent(
-            Efermi = Efermi_GaAs,
-            omega = omega,
-            smr_fixed_width = 0.2,
-            kBT = 0.,
-            smr_type = 'Gaussian',
-            degen_thresh = 0,
-            sc_eta = 0.10,
-        ),
-    )
+        opt_shiftcurrent=calc.dynamic.ShiftCurrent(
+            Efermi=Efermi_GaAs,
+            omega=omega,
+            smr_fixed_width=0.2,
+            kBT=0.,
+            smr_type='Gaussian',
+            degen_thresh=0,
+            sc_eta=0.10,
+        ), )
 
-    result_run = wberri.run(system_GaAs_W90,
-        grid = grid,
-        calculators = calculators,
-        fout_name = os.path.join(OUTPUT_DIR, fout_name),
+    result_run = wberri.run(
+        system_GaAs_W90,
+        grid=grid,
+        calculators=calculators,
+        fout_name=os.path.join(OUTPUT_DIR, fout_name),
     )
 
     for key in result_integrate.results.keys():
         data_integrate = result_integrate.results[key].data
         data_run = result_run.results[key].data
         precision = max(np.average(abs(data_integrate) / 1E10), 1E-8)
-        assert data_run == approx(data_integrate, abs=precision), (f"data of"
-            f"{key} from integrate and run give a maximal absolute"
-            f"difference of {np.max(np.abs(data_run - data_integrate))}.")
+        assert data_run == approx(
+            data_integrate, abs=precision), (
+                f"data of"
+                f"{key} from integrate and run give a maximal absolute"
+                f"difference of {np.max(np.abs(data_run - data_integrate))}.")
