@@ -228,3 +228,85 @@ class SHC(DynamicCalculator):
         if self.smr_type != 'Lorentzian':
             cfac.imag = np.pi * self.smear(delta_arg_12)
         return cfac / 2
+
+# ===============
+#  Shift current
+# ===============
+
+class ShiftCurrentFormula():
+
+    def __init__(self, data_K, sc_eta):
+        nk = data_K.A_H.shape[0]
+        nw = data_K.A_H.shape[1]
+        A = np.zeros((nk, nw, nw, 3, 3), dtype=complex)
+        A_Hbar_der = data_K.Xbar('AA', 1)
+        B = data_K.A_H
+
+        A_Hbar = data_K.Xbar('AA')
+        D_H = data_K.D_H
+        V_H = data_K.Xbar('Ham', 1)
+        del2E_H = data_K.Xbar('Ham', 2)
+        dEig_inv = data_K.dEig_inv.swapaxes(2, 1)
+
+        # define D using broadening parameter
+        E_K = data_K.E_K
+        dEig = E_K[:, :, None] - E_K[:, None, :]
+        dEig_inv_Pval = dEig / (dEig**(2) + sc_eta**(2))
+        D_H_Pval = -V_H * dEig_inv_Pval[:, :, :, None]
+
+        # commutators
+        # ** the spatial index of D_H_Pval corresponds to generalized derivative direction
+        # ** --> stored in the fourth column of output variables
+        sum_AD = ( np.einsum('knlc,klma->knmca', A_Hbar, D_H_Pval)
+                 - np.einsum('knnc,knma->knmca', A_Hbar, D_H_Pval)
+                 - np.einsum('knla,klmc->knmca', D_H_Pval, A_Hbar)
+                 + np.einsum('knma,kmmc->knmca', D_H_Pval, A_Hbar) )
+        sum_HD = ( np.einsum('knlc,klma->knmca', V_H, D_H_Pval)
+                 - np.einsum('knnc,knma->knmca', V_H, D_H_Pval)
+                 - np.einsum('knla,klmc->knmca', D_H_Pval, V_H)
+                 + np.einsum('knma,kmmc->knmca', D_H_Pval, V_H) )
+
+        # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction
+        # ** --> stored in the fourth column of output variables
+        AD_bit = ( np.einsum('knnc,knma->knmac', A_Hbar, D_H)
+                 - np.einsum('kmmc,knma->knmac', A_Hbar, D_H)
+                 + np.einsum('knna,knmc->knmac', A_Hbar, D_H)
+                 - np.einsum('kmma,knmc->knmac', A_Hbar, D_H) )
+        AA_bit = ( np.einsum('knnb,knma->knmab', A_Hbar, A_Hbar)
+                 - np.einsum('kmmb,knma->knmab', A_Hbar, A_Hbar) )
+        # ** this one is invariant under a<-->c
+        DV_bit = ( np.einsum('knmc,knna->knmca', D_H, V_H)
+                 - np.einsum('knmc,kmma->knmca', D_H, V_H)
+                 + np.einsum('knma,knnc->knmca', D_H, V_H)
+                 - np.einsum('knma,kmmc->knmca', D_H, V_H) )
+
+        # generalized derivative
+        A = (A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD
+            + 1j * (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, :, np.newaxis, np.newaxis])
+
+        # generalized derivative is fourth index of A, we put it into third index of Imn
+        Imn = np.einsum('knmca,kmnb->knmabc', A, B)
+        Imn += Imn.swapaxes(4, 5) # symmetrize b and c
+
+        self.Imn = Imn
+        self.ndim = 3
+        self.TRodd = False
+        self.Iodd = True
+        self.TRtrans = False
+
+    def trace_ln(self, ik, inn1, inn2):
+        return self.Imn[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+
+class ShiftCurrent(DynamicCalculator):
+
+    def __init__(self, sc_eta, **kwargs):
+        super().__init__(**kwargs)
+        self.formula_kwargs = dict(sc_eta=sc_eta)
+        self.Formula = ShiftCurrentFormula
+        self.final_factor = factors.factor_shift_current
+
+    def factor_omega(self, E1, E2):
+        delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
+        delta_arg_21 = E2 - E1 - self.omega
+        return self.smear(delta_arg_12) + self.smear(delta_arg_21)

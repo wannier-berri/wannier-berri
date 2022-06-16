@@ -613,6 +613,30 @@ def test_Haldane_PythTB(check_run, system_Haldane_PythTB, compare_any_result):
     )
 
 
+def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
+
+    param = dict(
+        Efermi = Efermi_GaAs,
+        omega = np.arange(1.0, 5.1, 0.5),
+        smr_fixed_width = 0.2,
+        smr_type = 'Gaussian',
+        kBT = 0.01,
+    )
+    calculators = dict(
+        shift_current = calc.dynamic.ShiftCurrent(sc_eta=0.1, **param)
+    )
+
+    check_run(
+        system_GaAs_W90,
+        calculators,
+        fout_name="dynamic_GaAs_W90",
+        grid_param={
+            'NK': [6, 6, 6],
+            'NKFFT': [3, 3, 3]
+        },
+    )
+
+
 def test_Haldane_TBmodels(check_run, system_Haldane_TBmodels, compare_any_result):
 
     param = {'Efermi': Efermi_Haldane}
