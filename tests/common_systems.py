@@ -10,7 +10,6 @@ import wannierberri as wberri
 import wannierberri.symmetry as SYM
 from wannierberri import models as wb_models
 
-import gpaw
 import ase
 import ase.dft.wannier
 from common import ROOT_DIR
@@ -336,6 +335,7 @@ def system_CuMnAs_2d_broken():
 @pytest.fixture(scope="session")
 def system_Te_ASE():
     """Create system for Fe using  FPLO  data"""
+    import gpaw
     path = os.path.join(ROOT_DIR, "data", "Te_ASE")
     calc = gpaw.GPAW(os.path.join(path, "Te.gpw"))
     wan = ase.dft.wannier.Wannier(nwannier=12, calc=calc, file=os.path.join(path, 'wannier-12.json'))
@@ -347,6 +347,7 @@ def system_Te_ASE():
 @pytest.fixture(scope="session")
 def system_Te_ASE_wcc():
     """Create system for Fe using  FPLO  data"""
+    import gpaw
     path = os.path.join(ROOT_DIR, "data", "Te_ASE")
     calc = gpaw.GPAW(os.path.join(path, "Te.gpw"))
     wan = ase.dft.wannier.Wannier(nwannier=12, calc=calc, file=os.path.join(path, 'wannier-12.json'))
