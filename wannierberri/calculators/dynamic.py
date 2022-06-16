@@ -219,25 +219,13 @@ class Formula_SHC():
         return self.imAB[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
 
 
-class _SHC(DynamicCalculator):
+class SHC(DynamicCalculator):
 
     def __init__(self, SHC_type="ryoo", shc_abc=None, **kwargs):
         super().__init__(**kwargs)
         self.formula_kwargs = dict(SHC_type=SHC_type, shc_abc=shc_abc)
         self.Formula = Formula_SHC
         self.final_factor = factors.factor_shc
-
-    def factor_omega(self, E1, E2):
-        delta_minus = self.smear(E2 - E1 - self.omega)
-        delta_plus = self.smear(E1 - E2 - self.omega)
-        cfac2 = delta_plus - delta_minus  # TODO : for Lorentzian do the real and imaginary parts together
-        cfac1 = np.real((E1 - E2) / ((E1 - E2)**2 - (self.omega + 1j * self.smr_fixed_width)**2))
-        cfac = (2 * cfac1 + 1j * np.pi * cfac2) / 4.
-        return cfac
-
-
-class SHC(_SHC):
-    "a more laconic implementation of the energy factor"
 
     def factor_omega(self, E1, E2):
         delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
