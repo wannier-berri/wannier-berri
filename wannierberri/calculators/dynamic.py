@@ -201,16 +201,11 @@ class OpticalConductivity(DynamicCalculator):
 
 class Formula_SHC():
 
-    def __init__(self, data_K, SHC_type='ryoo', shc_abc=None):
+    def __init__(self, data_K, SHC_type='ryoo'):
         A = SpinVelocity(data_K, SHC_type).matrix
         B = -1j * data_K.A_H
         self.imAB = np.imag(A[:, :, :, :, None, :] * B.swapaxes(1, 2)[:, :, :, None, :, None])
         self.ndim = 3
-        if shc_abc is not None:
-            assert len(shc_abc) == 3
-            a, b, c = (x - 1 for x in shc_abc)
-            self.imAB = self.imAB[:, :, :, a, b, c]
-            self.ndim = 0
         self.TRodd = False
         self.Iodd = False
         self.TRtrans = False
@@ -221,9 +216,9 @@ class Formula_SHC():
 
 class SHC(DynamicCalculator):
 
-    def __init__(self, SHC_type="ryoo", shc_abc=None, **kwargs):
+    def __init__(self, SHC_type="ryoo", **kwargs):
         super().__init__(**kwargs)
-        self.formula_kwargs = dict(SHC_type=SHC_type, shc_abc=shc_abc)
+        self.formula_kwargs = dict(SHC_type=SHC_type)
         self.Formula = Formula_SHC
         self.final_factor = factors.factor_shc
 
