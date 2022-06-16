@@ -236,11 +236,7 @@ class SHC(DynamicCalculator):
 class ShiftCurrentFormula():
 
     def __init__(self, data_K, sc_eta):
-        nk = data_K.A_H.shape[0]
-        nw = data_K.A_H.shape[1]
-        A = np.zeros((nk, nw, nw, 3, 3), dtype=complex)
         A_Hbar_der = data_K.Xbar('AA', 1)
-        B = data_K.A_H
 
         A_Hbar = data_K.Xbar('AA')
         D_H = data_K.D_H
@@ -251,7 +247,7 @@ class ShiftCurrentFormula():
         # define D using broadening parameter
         E_K = data_K.E_K
         dEig = E_K[:, :, None] - E_K[:, None, :]
-        dEig_inv_Pval = dEig / (dEig**(2) + sc_eta**(2))
+        dEig_inv_Pval = dEig / (dEig**2 + sc_eta**2)
         D_H_Pval = -V_H * dEig_inv_Pval[:, :, :, None]
 
         # commutators
@@ -281,11 +277,11 @@ class ShiftCurrentFormula():
                  - np.einsum('knma,kmmc->knmca', D_H, V_H) )
 
         # generalized derivative
-        A = (A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD
+        A_gen_der = (A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD
             + 1j * (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, :, np.newaxis, np.newaxis])
 
         # generalized derivative is fourth index of A, we put it into third index of Imn
-        Imn = np.einsum('knmca,kmnb->knmabc', A, B)
+        Imn = np.einsum('knmca,kmnb->knmabc', A_gen_der, data_K.A_H)
         Imn += Imn.swapaxes(4, 5) # symmetrize b and c
 
         self.Imn = Imn
@@ -310,4 +306,45 @@ class ShiftCurrent(DynamicCalculator):
         delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
         delta_arg_21 = E2 - E1 - self.omega
         return self.smear(delta_arg_12) + self.smear(delta_arg_21)
+
+# ===================
+#  Injection current
+# ===================
+
+class InjectionCurrentFormula():
+    """
+    Eq. (10) of Lihm and Park, PRB 105, 045201 (2022)
+    Use v_mn = i * r_mn * (e_m - e_n) / hbar to replace v with r.
+    """
+
+    def __init__(self, data_K):
+        A_H = data_K.A_H
+        V_H = data_K.Xbar('Ham', 1) # (k, m, n, a)
+        V_H_diag = np.diagonal(V_H, axis1=1, axis2=2).transpose(0, 2, 1) # (k, m, a)
+
+        # compute delta_V[k, m, n, a] = V_H[k, m, m, a] - V_H[k, n, n, a]
+        delta_V = V_H_diag[:, :, None, :] - V_H_diag[:, None, :, :] # (k, m, n, a)
+
+        Imn = np.einsum('kmna,kmnb,knmc->kmnabc', delta_V, A_H, A_H)
+
+        self.Imn = Imn
+        self.ndim = 3
+        self.TRodd = True
+        self.Iodd = True
+        self.TRtrans = False
+
+    def trace_ln(self, ik, inn1, inn2):
+        return self.Imn[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+
+class InjectionCurrent(DynamicCalculator):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.Formula = InjectionCurrentFormula
+        self.final_factor = factors.factor_injection_current
+
+    def factor_omega(self, E1, E2):
+        delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
+        return self.smear(delta_arg_12)
 

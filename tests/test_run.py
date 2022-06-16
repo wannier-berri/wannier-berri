@@ -616,6 +616,7 @@ def test_Haldane_PythTB(check_run, system_Haldane_PythTB, compare_any_result):
 
 
 def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
+    "Test shift current and injection current"
 
     param = dict(
         Efermi=Efermi_GaAs,
@@ -624,7 +625,10 @@ def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
         smr_type='Gaussian',
         kBT=0.01,
     )
-    calculators = dict(shift_current=calc.dynamic.ShiftCurrent(sc_eta=0.1, **param))
+    calculators = dict(
+        shift_current=calc.dynamic.ShiftCurrent(sc_eta=0.1, **param),
+        injection_current=calc.dynamic.InjectionCurrent(**param)
+    )
 
     check_run(
         system_GaAs_W90,
