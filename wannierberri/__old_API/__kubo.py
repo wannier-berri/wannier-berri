@@ -26,7 +26,7 @@ from .__energyresultdict import EnergyResultDict
 pi = constants.pi
 e = constants.e
 hbar = constants.hbar
-eV_seconds = 6.582119e-16
+eV_seconds = hbar / e
 
 
 # smearing functions
@@ -171,8 +171,6 @@ def opt_conductivity(
         tildeD = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3), dtype=float)
     elif conductivity_type == 'shiftcurrent':
         sigma_shift = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3, 3), dtype=complex)
-        # prefactor for the shift current
-        pre_fac = -1.j * eV_seconds * pi * e**3 / (4.0 * hbar**(2) * data.nk * data.cell_volume)
 
     if adpt_smr:
         cprint("WARNING: Adaptive smearing is an experimental feature and has not been extensively tested.", 'red')
@@ -264,16 +262,7 @@ def opt_conductivity(
             Imn = np.einsum('nmca,mnb->nmabc', A, B) + np.einsum('nmba,mnc->nmabc', A, B)
 
             delta_mn = delta
-
-            dE2 = E[:, np.newaxis] - E[np.newaxis, :]  # E_n(k) - E_m(k) [n, m]
-            delta_arg = dE2[np.newaxis, :, :] - omega[:, np.newaxis, np.newaxis]
-            if smr_type == 'Lorentzian':
-                delta_nm = Lorentzian(delta_arg, eta)
-            elif smr_type == 'Gaussian':
-                delta_nm = Gaussian(delta_arg, eta, adpt_smr)
-            else:
-                cprint("Invalid smearing type. Fallback to Lorentzian", 'red')
-                delta_nm = Lorentzian(delta_arg, eta)
+            delta_nm = delta.transpose((0, 2, 1))
             cfac = delta_mn + delta_nm
 
         if conductivity_type == 'tildeD':
@@ -326,8 +315,7 @@ def opt_conductivity(
 
                 elif conductivity_type == 'shiftcurrent':
                     temp = -dfE[np.newaxis, :, :] * cfac
-
-                    sigma_shift[iEF] += pre_fac * kubo_sum_elements(Imn, temp, data.num_wann)
+                    sigma_shift[iEF] += kubo_sum_elements(Imn, temp, data.num_wann)
 
     if conductivity_type == 'kubo':
 
@@ -356,7 +344,8 @@ def opt_conductivity(
         return result.EnergyResult([Efermi, omega], tildeD * pre_fac, TRodd=False, Iodd=True, rank=2)
 
     elif conductivity_type == 'shiftcurrent':
-        return result.EnergyResult([Efermi, omega], sigma_shift, TRodd=False, Iodd=True, rank=3)
+        pre_fac = -1.j * eV_seconds * pi * e**3 / (4.0 * hbar**(2) * data.nk * data.cell_volume)
+        return result.EnergyResult([Efermi, omega], sigma_shift * pre_fac, TRodd=False, Iodd=True, rank=3)
 
 
 def opt_SHCqiao(data, Efermi, omega=0, **parameters):
