@@ -240,3 +240,53 @@ def test_shiftcurrent_symmetry(check_integrate_dynamical, system_GaAs_sym_tb):
     # It seems that the finite eta correction term (PRB 103 247101 (2021)) is needed to get perfect agreement.
     assert result_full_k.results["opt_shiftcurrent"].data == approx(
         result_irr_k.results["opt_shiftcurrent"].data, abs=1e-6)
+
+
+def test_shiftcurrent_run(check_integrate_dynamical, system_GaAs_W90, compare_energyresult):
+    "Test shift current implementation in integrate and run give the same results"
+
+    from wannierberri import calculators as calc
+    from common_systems import Efermi_GaAs
+
+    omega = np.arange(1.0, 5.1, 0.5)
+    kubo_params = dict(smr_fixed_width=0.20, smr_type="Gaussian", sc_eta=0.10)
+    grid_param = dict(NK=[6, 6, 6], NKFFT=[3, 3, 3])
+    grid = wberri.Grid(system_GaAs_W90, **grid_param)
+
+    fout_name = "kubo_GaAs_W90_run"
+
+    result_integrate = wberri.integrate(system_GaAs_W90,
+        grid = grid,
+        Efermi = Efermi_GaAs,
+        omega = omega,
+        quantities = ["opt_shiftcurrent"],
+        parameters = kubo_params,
+        fout_name = os.path.join(OUTPUT_DIR, fout_name),
+        restart = False,
+    )
+
+    calculators = dict(
+        opt_shiftcurrent = calc.dynamic.ShiftCurrent(
+            Efermi = Efermi_GaAs,
+            omega = omega,
+            smr_fixed_width = 0.2,
+            kBT = 0.,
+            smr_type = 'Gaussian',
+            degen_thresh = 0,
+            sc_eta = 0.10,
+        ),
+    )
+
+    result_run = wberri.run(system_GaAs_W90,
+        grid = grid,
+        calculators = calculators,
+        fout_name = os.path.join(OUTPUT_DIR, fout_name),
+    )
+
+    for key in result_integrate.results.keys():
+        data_integrate = result_integrate.results[key].data
+        data_run = result_run.results[key].data
+        precision = max(np.average(abs(data_integrate) / 1E10), 1E-8)
+        assert data_run == approx(data_integrate, abs=precision), (f"data of"
+            f"{key} from integrate and run give a maximal absolute"
+            f"difference of {np.max(np.abs(data_run - data_integrate))}.")
