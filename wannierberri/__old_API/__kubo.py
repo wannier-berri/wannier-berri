@@ -155,27 +155,22 @@ def opt_conductivity(
     if conductivity_type == 'kubo':
         sigma_H = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
         sigma_AH = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
-        rank = 2
     elif conductivity_type == 'SHC':
         if shc_specification:
             sigma_H = np.zeros((Efermi.shape[0], omega.shape[0]), dtype=np.dtype('complex128'))
             sigma_AH = np.zeros((Efermi.shape[0], omega.shape[0]), dtype=np.dtype('complex128'))
-            rank = 0
             shc_alpha = shc_alpha - 1  #In python, indices start from 0.
             shc_beta = shc_beta - 1
             shc_gamma = shc_gamma - 1
         else:
             sigma_H = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
             sigma_AH = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
-            rank = 3
         # Calculate spin-velocity matrix
         spin_velocity = SpinVelocity(data, SHC_type)
     elif conductivity_type == 'tildeD':
         tildeD = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3), dtype=float)
-        rank = 2
     elif conductivity_type == 'shiftcurrent':
         sigma_shift = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3, 3), dtype=complex)
-        rank = 3
         # prefactor for the shift current
         pre_fac = -1.j * eV_seconds * pi * e**3 / (4.0 * hbar**(2) * data.nk * data.cell_volume)
 
@@ -344,23 +339,24 @@ def opt_conductivity(
             # return result dictionary
             return EnergyResultDict(
                 {
-                    'sym': result.EnergyResult([Efermi, omega], sigma_sym, TRodd=False, Iodd=False, rank=rank),
-                    'asym': result.EnergyResult([Efermi, omega], sigma_asym, TRodd=True, Iodd=False, rank=rank)
+                    'sym': result.EnergyResult([Efermi, omega], sigma_sym, TRodd=False, Iodd=False, rank=2),
+                    'asym': result.EnergyResult([Efermi, omega], sigma_asym, TRodd=True, Iodd=False, rank=2)
                 })  # the proper smoother is set later for both elements
         else:
             return result.EnergyResult(
-                [Efermi, omega], sigma_H + sigma_AH, TRodd=False, Iodd=False, TRtrans=True, rank=rank)
+                [Efermi, omega], sigma_H + sigma_AH, TRodd=False, Iodd=False, TRtrans=True, rank=2)
 
     elif conductivity_type == 'SHC':
         sigma_SHC = np.real(sigma_AH) + 1j * np.imag(sigma_H)
+        rank = 0 if shc_specification else 3
         return result.EnergyResult([Efermi, omega], sigma_SHC, TRodd=False, Iodd=False, rank=rank)
 
     elif conductivity_type == 'tildeD':
         pre_fac = 1. / (data.nk * data.cell_volume)
-        return result.EnergyResult([Efermi, omega], tildeD * pre_fac, TRodd=False, Iodd=True, rank=rank)
+        return result.EnergyResult([Efermi, omega], tildeD * pre_fac, TRodd=False, Iodd=True, rank=2)
 
     elif conductivity_type == 'shiftcurrent':
-        return result.EnergyResult([Efermi, omega], sigma_shift, TRodd=False, Iodd=True, rank=rank)
+        return result.EnergyResult([Efermi, omega], sigma_shift, TRodd=False, Iodd=True, rank=3)
 
 
 def opt_SHCqiao(data, Efermi, omega=0, **parameters):
