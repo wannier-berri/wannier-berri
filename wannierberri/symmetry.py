@@ -110,9 +110,9 @@ class Symmetry():
             res = self.rotate(
                 res.transpose(tuple(range(i)) + tuple(range(i + 1, dim))
                               + (i, ))).transpose(tuple(range(i)) + (dim - 1, ) + tuple(range(i, dim - 1)))
-        if self.TR and TRodd:
-            res = -res.conj()
-        if self.Inv and Iodd:
+        if self.TR:
+            res = res.conj()
+        if (self.TR and TRodd) != (self.Inv and Iodd):
             res = -res
         if self.TR and TRtrans:
             res = res.swapaxes(dim - rank, dim - rank + 1)
