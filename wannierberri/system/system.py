@@ -141,7 +141,6 @@ class System():
             XX_R=XX_R,
             soc=soc,
             magmom=magmom,
-            cRvec=self.iRvec.dot(self.real_lattice)[None, None, :, :] + self.diff_wcc_cart[:, :, None, :],
             DFT_code=DFT_code)
         XX_R, self.iRvec = symmetrize_wann.symmetrize()
         for X in XX_R.keys():

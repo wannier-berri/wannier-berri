@@ -26,6 +26,7 @@ from .__path import Path
 from . import calculators
 from . import result
 from .parallel import Parallel, Serial
+from .smoother import get_smoother
 
 from termcolor import cprint
 
