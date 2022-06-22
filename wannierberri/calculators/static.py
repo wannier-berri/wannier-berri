@@ -624,6 +624,88 @@ class DDO_FermiSea(StaticCalculator):
         self.fder = 0
         super().__init__(**kwargs)
 
+
+class DS_FermiSurf(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.ds
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+class DS_FermiSea(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.DerSpin
+        self.factor = 1
+        self.fder = 0
+        super().__init__(**kwargs)
+
+class DDS_FermiSurf(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.dds
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+
+class DDS_FermiSea(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.Der2Spin
+        self.factor = 1
+        self.fder = 0
+        super().__init__(**kwargs)
+
+class DM_FermiSurf(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.dm
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        Hplus_res = super().__call__(data_K)
+        Omega_res = BerryDipole_FermiSurf(Efermi=self.Efermi, tetra=self.tetra, smoother=self.smoother,
+                use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        return Hplus_res - 2 * Omega_res
+
+class DM_FermiSea(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.DerMorb
+        self.factor = 1
+        self.fder = 0
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        Hplus_res = super().__call__(data_K)
+        Omega_res = BerryDipole_FermiSea(Efermi=self.Efermi, tetra=self.tetra, smoother=self.smoother,
+                use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        return Hplus_res - 2 * Omega_res
+
+class DDM_FermiSurf(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.ddm
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        Hplus_res = super().__call__(data_K)
+        Omega_res = DDO_FermiSurf(Efermi=self.Efermi, tetra=self.tetra, smoother=self.smoother,
+                use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        return Hplus_res - 2 * Omega_res
+class DDM_FermiSea(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.Der2Morb
+        self.factor = 1
+        self.fder = 0
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        Hplus_res = super().__call__(data_K)
+        Omega_res = DDO_FermiSea(Efermi=self.Efermi, tetra=self.tetra, smoother=self.smoother,
+                use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        return Hplus_res - 2 * Omega_res
+
+
+
 class MassOmegaOmega(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.MassOmegaOmega

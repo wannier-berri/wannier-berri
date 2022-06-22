@@ -351,6 +351,7 @@ class DerOmega(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+
 ###############################
 ###  second derivative of  ####
 ###  Berry curvature       ####
@@ -402,8 +403,7 @@ class Der2Omega(Formula_ln):
 
     def ln(self,ik,inn,out):
         raise NotImplementedError()
-
-
+    
 ########################
 #     spin moment      #
 ########################
@@ -422,12 +422,30 @@ class DerSpin(Matrix_GenDer_ln):
         s = data_K.covariant('SS', gender=1)
         self.__dict__.update(s.__dict__)
 
-class Der2Spin(Matrix_GenDer_ln):
 
-    def __init__(self, data_K):
-        super().__init__(data_K.covariant('SS', commader=1), data_K.covariant('SS', commader=2), Dcov(data_K))
+class Der2Spin(Formula_ln):
+    def __init__(self,data_K):
+        self.dD = DerDcov(data_K)
+        self.D = Dcov(data_K)
+        self.S  = data_K.covariant('SS')
+        self.dS = data_K.covariant('SS',gender=1)
+        self.Sbar_de  = Matrix_GenDer_ln(data_K.covariant('SS',commader=1),data_K.covariant('SS',commader=2),
+                    Dcov(data_K) ,Iodd=None,TRodd=None)
+        self.ndim=3
         self.Iodd = False
         self.TRodd = True
+
+    def nn(self,ik,inn,out):
+        summ = self.Sbar_de.nn(ik,inn,out)
+        summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.S.ln(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...e->mnb...de" , self.D.nl(ik,inn,out) , self.dS.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnde->mnb...de" , self.S.nl(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...e,lnd->mnb...de" , self.dS.nl(ik,inn,out) , self.D.ln(ik,inn,out) )
+
+        return summ
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
 
 
 ########################
@@ -572,9 +590,6 @@ class DerMorb(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
-    @property
-    def additive(self):
-        return False
 
 ##############################
 ###  second derivative of ####
@@ -825,7 +840,7 @@ class MassSpin(FormulaProduct):
 class OmegaOmega(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
-        super().__init__([Omega(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula)], name='OmegaOmega', additive=True)
+        super().__init__([Omega(data_K, **kwargs_formula), Omega(data_K, **kwargs_formula)], name='OmegaOmega')
 
 
 class OmegaHplus(FormulaProduct):
@@ -890,22 +905,45 @@ class VelDerOmegaOmega(FormulaProduct):
                 Omega(data_K,**kwargs_formula)],
                 name='VelDerOmegaOmega')
 
-class ddo(FormulaProduct):
+class ds(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([
-                DerOmega(data_K,**kwargs_formula),
-                Velocity(data_K)],
+                Spin(data_K),
+                data_K.covariant('Ham', commader=1)],
+                name='VelDerOmegaOmega')
+
+class dds(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([
+                DerSpin(data_K),
+                data_K.covariant('Ham', commader=1)],
+                name='VelDerOmegaOmega')
+
+class dm(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([
+                Morb_Hpm(data_K,sign=+1,**kwargs_formula),
+                data_K.covariant('Ham', commader=1)],
+                name='VelDerOmegaOmega')
+class ddm(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([
+                DerMorb(data_K,**kwargs_formula),
+                data_K.covariant('Ham', commader=1)],
                 name='VelDerOmegaOmega')
 
 class qmr_sea(FormulaSum):
 
     def __init__(self, data_K, **kwargs_formula):
         formula1  = FormulaProduct ( [InvMass(data_K),OmegaOmega(data_K,**kwargs_formula)],
-            name='mass-berryberry (apuv) (ab[pv]ub) (pb[au]vb) ([au][pv]bcbc)',additive = True)
+            name='mass-berryberry (apuv) (ab[pv]ub) (pb[au]vb) ([au][pv]bcbc)')
         formula2  = FormulaProduct(
                 [data_K.covariant('Ham', commader=1), DerOmega(data_K,**kwargs_formula),Omega(data_K,**kwargs_formula)],
-                name='vel-derberry-berry (aupv) (auvp) (a[pv]ubb) (p[au]vbb) ([au][pv]bbcc)', additive=True)
+                name='vel-derberry-berry (aupv) (auvp) (a[pv]ubb) (p[au]vbb) ([au][pv]bbcc)')
         super().__init__([
             formula1, formula2, formula2,
             DeltaProduct(delta_f,formula1,'pv,MLabub->MLapuv'),
@@ -920,7 +958,7 @@ class qmr_sea(FormulaSum):
             DeltaProduct(delta_f,formula2,'au,MLpvbb->MLapuv')],
             [1,1,1,-1,-1,1,1,-1,-1],
             ['apuv','aupv','avpu','apuv','apuv','apuv','apuv','apuv','apuv'],
-            name='qmr_sea', additive = False)
+            name='qmr_sea')
 
 
 class nlhall_surf(DeltaProduct):
@@ -951,7 +989,10 @@ class emcha_surf(FormulaSum):
             name='mass-berry-vel (apus)(psua) ([au]bpbs) ([us]abbp)')
         formula2  = FormulaProduct ( [velocity,DerOmega(data_K,**kwargs_formula),velocity],
             name='v-derberry-vel (aups) ([au]bbps) ([us]abpb)')
-        tmp = FormulaSum([formula2,formula1],[1,1],['aups','apus'])
+        tmp = FormulaSum([
+            formula1,
+            formula2
+            ],[1,1],['aups','apus'])
         super().__init__([tmp,
             DeltaProduct(delta_f,formula1,'us,MLabbp->MLaups'),
             DeltaProduct(delta_f,tmp,'au,MLbbps->MLaups'),

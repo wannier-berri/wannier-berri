@@ -113,10 +113,9 @@ class Matrix_GenDer_ln(Formula_ln):
 class FormulaProduct(Formula_ln):
     """a class to store a product of several formulae"""
 
-    def __init__(self, formula_list, name="unknown", hermitian=False, additive=True):
+    def __init__(self, formula_list, name="unknown", hermitian=False):
         if type(formula_list) not in (list, tuple):
             formula_list = [formula_list]
-        self.additive = additive
         self.TRodd = bool(sum(f.TRodd for f in formula_list) % 2)
         self.Iodd = bool(sum(f.Iodd for f in formula_list) % 2)
         self.name = name
@@ -143,20 +142,17 @@ class FormulaProduct(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
-    def additive(self):
-        return self.additive
 
 class DeltaProduct(Formula_ln):
     """a class to store a product of formulae and delta function"""
 
-    def __init__(self, delta_f, formula, einsumstr, additive = True):
+    def __init__(self, delta_f, formula, einsumstr):
         self.formula = formula
         self.delta_f = delta_f
         self.TRodd =  self.formula.TRodd
         self.Iodd =  self.formula.Iodd
         self.ndim = len(einsumstr.split('->')[1]) - 2
         self.einsumstr = einsumstr
-        self.additive = additive
 
     def nn(self, ik, inn, out):
         matrix = self.formula.nn(ik, inn, out)
@@ -166,8 +162,6 @@ class DeltaProduct(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
-    def additive(self):
-        return self.additive
 
 class FormulaSum(Formula_ln):
     """a class to store a sum of several formulae
@@ -182,7 +176,7 @@ class FormulaSum(Formula_ln):
     return an array with same index with first formula. 
     """
 
-    def __init__(self, formula_list, sign, index_list, name="unknown", additive = True):
+    def __init__(self, formula_list, sign, index_list, name="unknown",additive=True):
         if type(formula_list) not in (list, tuple):
             formula_list = [formula_list]
         assert len(formula_list) > 0, 'formula_list is empty' 
@@ -211,6 +205,7 @@ class FormulaSum(Formula_ln):
 
     def additive(self):
         return self.additive
+
 
 from . import covariant
 from . import covariant_basic
