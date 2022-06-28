@@ -329,10 +329,9 @@ def system_CuMnAs_2d_broken():
 
 # Systems from ASE+gpaw code interface
 
-
 @pytest.fixture(scope="session")
-def system_Te_ASE():
-    """Create system for Fe using  FPLO  data"""
+def data_Te_ASE():
+    """read data for Te from ASE+GPAW"""
     import gpaw
     import ase
     import ase.dft.wannier
@@ -340,21 +339,22 @@ def system_Te_ASE():
     path = os.path.join(ROOT_DIR, "data", "Te_ASE")
     calc = gpaw.GPAW(os.path.join(path, "Te.gpw"))
     wan = ase.dft.wannier.Wannier(nwannier=12, calc=calc, file=os.path.join(path, 'wannier-12.json'))
+    return wan,calc
+
+
+@pytest.fixture(scope="session")
+def system_Te_ASE(data_Te_ASE):
+    """Create system for Te using  ASE+GPAW data with use_wcc_phase=False"""
+    wan,calc = data_Te_ASE
     system = wberri.system.System_ASE(wan, ase_calc=calc, use_wcc_phase=False, berry=True)
     system.set_symmetry(symmetries_Te)
     return system
 
 
 @pytest.fixture(scope="session")
-def system_Te_ASE_wcc():
-    """Create system for Fe using  FPLO  data"""
-    import gpaw
-    import ase
-    import ase.dft.wannier
-
-    path = os.path.join(ROOT_DIR, "data", "Te_ASE")
-    calc = gpaw.GPAW(os.path.join(path, "Te.gpw"))
-    wan = ase.dft.wannier.Wannier(nwannier=12, calc=calc, file=os.path.join(path, 'wannier-12.json'))
+def system_Te_ASE_wcc(data_Te_ASE):
+    """Create system for Te using  ASE+GPAW data with use_wcc_phase=True"""
+    wan,calc = data_Te_ASE
     system = wberri.system.System_ASE(wan, ase_calc=calc, use_wcc_phase=True, berry=False)
     system.set_symmetry(symmetries_Te)
     return system

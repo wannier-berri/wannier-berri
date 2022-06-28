@@ -867,7 +867,7 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
 
 
 
-def test_Te_ASE(check_run, system_Te_ASE, compare_any_result):
+def test_Te_ASE(check_run, system_Te_ASE, data_Te_ASE, compare_any_result):
     param = {'Efermi': Efermi_Te_gpaw, "tetra": True, 'use_factor': False}
     calculators = {k: v(**param) for k, v in calculators_Te.items()}
     check_run(
@@ -884,7 +884,7 @@ def test_Te_ASE(check_run, system_Te_ASE, compare_any_result):
     )
 
 
-def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, compare_any_result):
+def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_result):
     param = {'Efermi': Efermi_Te_gpaw, "tetra": True, 'use_factor': False}
     calculators = {}
     for k, v in calculators_Te.items():
