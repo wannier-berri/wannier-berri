@@ -77,6 +77,16 @@ class Velocity(Tabulator):
     def __init__(self, **kwargs):
         super().__init__(frml.Velocity, **kwargs)
 
+class W(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.InvMass, **kwargs)
+
+class WV(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.Der3E, **kwargs)
+
 class BerryCurvature(Tabulator):
 
     def __init__(self, **kwargs):

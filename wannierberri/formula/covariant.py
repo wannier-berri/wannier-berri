@@ -50,7 +50,7 @@ class DerDcov(Formula_ln):
 
     def __init__(self, data_K):
         self.W = data_K.covariant('Ham', commader=2)
-        self.V = data_K.covariant('Ham', gender=1)
+        self.V = data_K.covariant('Ham', commader=1)
         self.D = Dcov(data_K)
         self.dEinv = DEinv_ln(data_K)
 
@@ -73,7 +73,7 @@ class Der2Dcov(Formula_ln):
         self.dD = DerDcov(data_K)
         self.WV = DerWln(data_K)
         self.dV = InvMass(data_K)
-        self.V = data_K.covariant('Ham',gender=1)
+        self.V = data_K.covariant('Ham',commader=1)
         self.D = Dcov(data_K)
         self.dEinv = DEinv_ln(data_K)
 
@@ -89,6 +89,7 @@ class Der2Dcov(Formula_ln):
         summ += -np.einsum( "lmbe,mnd->lnbde" , self.dD.ln(ik,inn,out) , self.V.nn(ik,inn,out) )
         summ += -np.einsum( "lmb,mnde->lnbde" , self.D.ln(ik,inn,out) , self.dV.nn(ik,inn,out) )
         summ += -np.einsum( "lmd,mnbe->lnbde" , self.D.ln(ik,inn,out) , self.dV.nn(ik,inn,out) )
+
         summ *= -self.dEinv.ln(ik,inn,out)[:,:,None,None,None]
         return summ
 
@@ -207,8 +208,8 @@ class DerWln(Matrix_GenDer_ln):
 
     def __init__(self, data_K):
         super().__init__(data_K.covariant('Ham', 2), data_K.covariant('Ham', 3), Dcov(data_K))
-        self.TRodd = False
-        self.Iodd = False
+        self.TRodd = True
+        self.Iodd = True
 
 
 #############################
@@ -231,15 +232,15 @@ class Der3E(Formula_ln):
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
-        summ += 1 * self.dW.nn(ik, inn, out)
-        summ += 1 * np.einsum("mlac,lnb->mnabc", self.dV.nl(ik, inn, out), self.D.ln(ik, inn, out))
-        summ += 1 * np.einsum("mla,lnbc->mnabc", self.V.nl(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += -1 * np.einsum("mlbc,lna->mnabc", self.dD.nl(ik, inn, out), self.V.ln(ik, inn, out))
-        summ += -1 * np.einsum("mlb,lnac->mnabc", self.D.nl(ik, inn, out), self.dV.ln(ik, inn, out))
+        summ += 0.5 * self.dW.nn(ik, inn, out)
+        summ += 1. * np.einsum("mlac,lnb->mnabc", self.dV.nl(ik, inn, out), self.D.ln(ik, inn, out))
+        summ += 1. * np.einsum("mla,lnbc->mnabc", self.V.nl(ik, inn, out), self.dD.ln(ik, inn, out))
+        #summ += -1. * np.einsum("mlbc,lna->mnabc", self.dD.nl(ik, inn, out), self.V.ln(ik, inn, out))
+        #summ += -1. * np.einsum("mlb,lnac->mnabc", self.D.nl(ik, inn, out), self.dV.ln(ik, inn, out))
 
         # TODO: alternatively: add factor 0.5 to first term, remove 4th and 5th, and ad line below.
         # Should give the same, I think, but needs to be tested
-        # summ+=summ.swapaxes(0,1).conj()
+        summ+=summ.swapaxes(0,1).conj()
         return summ
 
     def ln(self, ik, inn, out):
@@ -990,18 +991,21 @@ class emcha_surf(FormulaSum):
         formula2  = FormulaProduct ( [velocity,DerOmega(data_K,**kwargs_formula),velocity],
             name='v-derberry-vel (aups) ([au]bbps) ([us]abpb)')
         tmp = FormulaSum([
-            formula1,
-            formula2
+            formula2,
+            formula1
             ],[1,1],['aups','apus'])
-        super().__init__([tmp,
+        super().__init__([
+            tmp,
             DeltaProduct(delta_f,formula1,'us,MLabbp->MLaups'),
             DeltaProduct(delta_f,tmp,'au,MLbbps->MLaups'),
             DeltaProduct(delta_f,formula2,'us,MLabpb->MLaups'),
             formula2,
             DeltaProduct(Levi_Civita,
                 DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
-                'xub,MLaxpbs->MLaups')],
-            [2,-2,-1,-1,1,-1],['aups','aups','aups','aups','aups','aups'])
+                'xub,MLaxpbs->MLaups')
+            ],
+            [2,-2,-1,1,-1,-1],['aups','aups','aups','aups','aups','aups'])
+            #[-1,-2,-1,-1,1,-1],['aups','aups','aups','aups','aups','aups'])
 
 
 class emcha_sea(FormulaSum):
@@ -1022,8 +1026,9 @@ class emcha_sea(FormulaSum):
             FormulaSum([formula3,formula2],[1,1],['aups','asup']),
             DeltaProduct(Levi_Civita,
                 DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
-                'xub,MLaxpbs->MLaups')],
-            [2,-2,-1,-1,1,-1],['aups','aups','aups','aups','aups','aups'])
+                'xub,MLaxpbs->MLaups')
+            ],
+            [2,-2,-1,1,-1,-1],['aups','aups','aups','aups','aups','aups'],additive=True)
 
 
 class MassOmega(FormulaProduct):
