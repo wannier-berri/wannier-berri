@@ -111,18 +111,17 @@ class StaticCalculator(Calculator):
                 raise NotImplementedError(f"Derivatives  d^{self.fder}f/dE^{self.fder} is not implemented")
 
         restot /= data_K.nk * data_K.cell_volume
-
-        if self.use_factor:
-            restot *= self.final_factor
-        else:
-            restot *= np.sign(self.final_factor)
+        restot = multiply_factor(restot, self.final_factor, self.use_factor)
 
         res = EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd, smoothers=[self.smoother], comment=self.comment)
         res.set_save_mode(self.save_mode)
         return res
 
-
-
+def multiply_factor(res, final_factor, use_factor):
+    if use_factor:
+        return res * final_factor
+    else:
+        return res * np.sign(final_factor)
 
 
 ###############################################
@@ -199,11 +198,12 @@ class Morb(StaticCalculator):
         Omega_res = AHC(Efermi=self.Efermi, tetra=self.tetra, smoother=self.smoother,
                 use_factor=False, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
-        final_factor = -factors.eV_au / factors.bohr**2
-        if not self.use_factor:
-            final_factor = np.sign(final_factor)
-        #with use_factor=False, the factor of AHC is -1, so it is '+' below.
-        return final_factor * data_K.cell_volume * (Hplus_res + 2 * Omega_res)
+        # with use_factor=False, the factor of AHC is -1, so it is '+' below.
+
+        final_factor = -factors.eV_au / factors.bohr**2 * data_K.cell_volume
+        res = Hplus_res + 2 * Omega_res
+        res = multiply_factor(res, final_factor, self.use_factor)
+        return res
 
 
 class Morb_test(StaticCalculator):
@@ -221,18 +221,17 @@ class Morb_test(StaticCalculator):
         Omega_res = AHC_test(Efermi=self.Efermi, tetra=self.tetra, smoother=self.smoother,
                 use_factor=False, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
-        final_factor = -factors.eV_au / factors.bohr**2
-        if not self.use_factor:
-            final_factor = np.sign(final_factor)
-        #with use_factor=False, the factor of AHC is -1, so it is '+' below.
-        return final_factor * data_K.cell_volume * (Hplus_res + 2 * Omega_res)
+        # with use_factor=False, the factor of AHC is -1, so it is '+' below.
 
+        final_factor = -factors.eV_au / factors.bohr**2 * data_K.cell_volume
+        res = Hplus_res + 2 * Omega_res
+        res = multiply_factor(res, final_factor, self.use_factor)
+        return res
 
 ####################
-#  cunductivities  #
+#  conductivities  #
 ####################
 
-# GME tensor
 class GME_orb_FermiSurf(StaticCalculator):
     r"""Gyrotropic tensor orbital part (:math:`A`)
         | With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`_
@@ -250,10 +249,9 @@ class GME_orb_FermiSurf(StaticCalculator):
                 smoother=self.smoother,use_factor=False, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
         final_factor = factors.factor_gme * factors.fac_orb_Z
-        if not self.use_factor:
-            final_factor = np.sign(final_factor)
-
-        return final_factor * (Hplus_res - 2 * Omega_res)
+        res = Hplus_res - 2 * Omega_res
+        res = multiply_factor(res, final_factor, self.use_factor)
+        return res
 
 
 class GME_orb_FermiSea(StaticCalculator):
@@ -274,10 +272,9 @@ class GME_orb_FermiSea(StaticCalculator):
                 smoother=self.smoother,use_factor=False, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
         final_factor = factors.factor_gme * factors.fac_orb_Z
-        if not self.use_factor:
-            final_factor = np.sign(final_factor)
-
-        return final_factor * (Hplus_res - 2 * Omega_res)
+        res = Hplus_res - 2 * Omega_res
+        res = multiply_factor(res, final_factor, self.use_factor)
+        return res
 
 
 class GME_orb_FermiSea_test(StaticCalculator):
@@ -298,10 +295,9 @@ class GME_orb_FermiSea_test(StaticCalculator):
                 smoother=self.smoother,use_factor=False, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
         final_factor = factors.factor_gme * factors.fac_orb_Z
-        if not self.use_factor:
-            final_factor = np.sign(final_factor)
-
-        return final_factor * (Hplus_res - 2 * Omega_res)
+        res = Hplus_res - 2 * Omega_res
+        res = multiply_factor(res, final_factor, self.use_factor)
+        return res
 
 
 class GME_spin_FermiSea(StaticCalculator):
@@ -611,8 +607,8 @@ class AHC_Zeeman_orb(StaticCalculator):
         Omega_res = OmegaOmega(Efermi=self.Efermi, tetra=self.tetra,
                 smoother=self.smoother,use_factor=False, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
-        final_factor = factors.fac_orb_Z * factors.factor_ahc
-        if not self.use_factor:
-            final_factor = np.sign(final_factor)
 
-        return final_factor * (Hplus_res - 2 * Omega_res)
+        final_factor = factors.fac_orb_Z * factors.factor_ahc
+        res = Hplus_res - 2 * Omega_res
+        res = multiply_factor(res, final_factor, self.use_factor)
+        return res
