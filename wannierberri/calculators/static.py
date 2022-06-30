@@ -26,12 +26,10 @@ class StaticCalculator(Calculator):
         self.kwargs_formula = kwargs_formula
         self.smoother = smoother
         self.use_factor = use_factor
-        assert hasattr(self, 'factor'), "factor not set"
+        self.final_factor = 1.
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
         assert hasattr(self, 'Formula'), "Formula not set - it  should be class with a trace(ik,inn,out) method "
-        if not self.use_factor:
-            self.factor = np.sign(self.factor)
 
         if not self.tetra:
             self.extraEf = 0 if self.fder == 0 else 1 if self.fder in (1, 2) else 2 if self.fder == 3 else None
@@ -112,7 +110,12 @@ class StaticCalculator(Calculator):
             else:
                 raise NotImplementedError(f"Derivatives  d^{self.fder}f/dE^{self.fder} is not implemented")
 
-        restot *= self.factor / (data_K.nk * data_K.cell_volume)
+        restot /= data_K.nk * data_K.cell_volume
+
+        if self.use_factor:
+            restot *= self.final_factor
+        else:
+            restot *= np.sign(self.final_factor)
 
         res = EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd, smoothers=[self.smoother], comment=self.comment)
         res.set_save_mode(self.save_mode)
@@ -148,7 +151,6 @@ class _DOS(StaticCalculator):
 
     def __init__(self, fder,**kwargs):
         self.Formula = frml.Identity
-        self.factor = 1
         self.fder = fder
         super().__init__(**kwargs)
 
@@ -177,7 +179,6 @@ class Spin(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.Spin
-        self.factor = 1
         self.fder = 0
         super().__init__(**kwargs)
 
@@ -190,7 +191,6 @@ class Morb(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.Morb_Hpm
-        self.factor = 1
         self.fder = 0
         super().__init__(**kwargs)
 
@@ -210,7 +210,6 @@ class Morb_test(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml_basic.tildeHGc
-        self.factor = 1
         self.fder = 0
         self.comment = r"""Orbital magnetic moment per unit cell for testing (\mu_B)
         Output:
@@ -242,7 +241,6 @@ class GME_orb_FermiSurf(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.VelHplus
-        self.factor = 1
         self.fder = 1
         super().__init__(**kwargs)
 
@@ -266,7 +264,6 @@ class GME_orb_FermiSea(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.DerMorb
-        self.factor = 1
         self.fder = 0
         super().__init__(**kwargs)
 
@@ -291,7 +288,6 @@ class GME_orb_FermiSea_test(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml_basic.tildeHGc_d
-        self.factor = 1
         self.fder = 0
         super().__init__(**kwargs)
 
@@ -308,12 +304,6 @@ class GME_orb_FermiSea_test(StaticCalculator):
         return final_factor * (Hplus_res - 2 * Omega_res)
 
 
-
-
-
-
-
-
 class GME_spin_FermiSea(StaticCalculator):
     r"""Gyrotropic tensor spin part (:math:`A`)
 
@@ -322,9 +312,9 @@ class GME_spin_FermiSea(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.DerSpin
-        self.factor = factors.factor_gme * factors.fac_spin_Z
         self.fder = 0
         super().__init__(**kwargs)
+        self.final_factor = factors.factor_gme * factors.fac_spin_Z
 
     def __call__(self, data_K):
         res = super().__call__(data_K)
@@ -341,9 +331,9 @@ class GME_spin_FermiSurf(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.VelSpin
-        self.factor = factors.factor_gme * factors.fac_spin_Z
         self.fder = 1
         super().__init__(**kwargs)
+        self.final_factor = factors.factor_gme * factors.fac_spin_Z
 
 
 # E^1 B^0
@@ -357,9 +347,9 @@ class AHC(StaticCalculator):
     def __init__(self, **kwargs):
         "describe input parameters here"
         self.Formula = frml.Omega
-        self.factor = factors.factor_ahc
         self.fder = 0
         super().__init__(**kwargs)
+        self.final_factor = factors.factor_ahc
 
 
 class AHC_test(StaticCalculator):
@@ -370,9 +360,9 @@ class AHC_test(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml_basic.tildeFc
-        self.factor = factors.factor_ahc
         self.fder = 0
         super().__init__(**kwargs)
+        self.final_factor = factors.factor_ahc
 
 
 class Ohmic_FermiSea(StaticCalculator):
@@ -385,9 +375,9 @@ class Ohmic_FermiSea(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.InvMass
-        self.factor = factors.factor_ohmic
         self.fder = 0
         super().__init__(**kwargs)
+        self.final_factor = factors.factor_ohmic
 
 
 class Ohmic_FermiSurf(StaticCalculator):
@@ -399,9 +389,9 @@ class Ohmic_FermiSurf(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.VelVel
-        self.factor = factors.factor_ohmic
         self.fder = 1
         super().__init__(**kwargs)
+        self.final_factor = factors.factor_ohmic
 
 
 # E^1 B^1
@@ -414,9 +404,9 @@ class Hall_classic_FermiSurf(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.VelMassVel
-        self.factor = factors.factor_hall_classic
         self.fder = 1
         super().__init__(**kwargs)
+        self.final_factor = factors.factor_hall_classic
 
     def __call__(self, data_K):
         res = super().__call__(data_K)
@@ -435,9 +425,9 @@ class Hall_classic_FermiSea(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.MassMass
-        self.factor = factors.factor_hall_classic
         self.fder = 0
         super().__init__(**kwargs)
+        self.final_factor = factors.factor_hall_classic
 
     def __call__(self, data_K):
         res = super().__call__(data_K)
@@ -457,7 +447,6 @@ class BerryDipole_FermiSurf(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.VelOmega
-        self.factor = 1
         self.fder = 1
         super().__init__(**kwargs)
 
@@ -470,8 +459,8 @@ class NLAHC_FermiSurf(BerryDipole_FermiSurf):
         | Instruction: :math:`j_\alpha = \epsilon_{\alpha\delta\gamma} D_{\beta\delta} E_\beta E\gamma`"""
 
     def __init__(self, **kwargs):
-        self.factor = factors.factor_nlahc
         super().__init__(**kwargs)
+        self.final_factor = factors.factor_nlahc
 
 
 class BerryDipole_FermiSea(StaticCalculator):
@@ -482,7 +471,6 @@ class BerryDipole_FermiSea(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.DerOmega
-        self.factor = 1
         self.fder = 0
         super().__init__(**kwargs)
 
@@ -502,8 +490,8 @@ class NLAHC_FermiSea(BerryDipole_FermiSea):
         | Instruction: :math:`j_\alpha = \epsilon_{\alpha\delta\gamma} D_{\beta\delta} E_\beta E\gamma`"""
 
     def __init__(self,**kwargs):
-        self.factor = factors.factor_nlahc
         super().__init__(**kwargs)
+        self.final_factor = factors.factor_nlahc
 
 
 class BerryDipole_FermiSea_test(StaticCalculator):
@@ -514,7 +502,6 @@ class BerryDipole_FermiSea_test(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml_basic.tildeFc_d
-        self.factor = 1
         self.fder = 0
         super().__init__(**kwargs)
 
@@ -534,9 +521,9 @@ class NLDrude_FermiSea(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.Der3E
-        self.factor = factors.factor_nldrude
         self.fder = 0
         super().__init__(**kwargs)
+        self.final_factor = factors.factor_nldrude
 
 
 class NLDrude_FermiSurf(StaticCalculator):
@@ -548,9 +535,9 @@ class NLDrude_FermiSurf(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.MassVel
-        self.factor = factors.factor_nldrude
         self.fder = 1
         super().__init__(**kwargs)
+        self.final_factor = factors.factor_nldrude
 
 
 class NLDrude_Fermider2(StaticCalculator):
@@ -562,9 +549,9 @@ class NLDrude_Fermider2(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.VelVelVel
-        self.factor = 0.5 * factors.factor_nldrude
         self.fder = 2
         super().__init__(**kwargs)
+        self.final_factor = 0.5 * factors.factor_nldrude
 
 
 class SHC(StaticCalculator):
@@ -578,9 +565,9 @@ class SHC(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.SpinOmega
-        self.factor = factors.factor_ahc * -0.5
         self.fder = 0
         super().__init__(**kwargs)
+        self.final_factor = factors.factor_ahc * -0.5
 
 
 # E^1 B^1
@@ -593,16 +580,15 @@ class AHC_Zeeman_spin(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.OmegaS
-        self.factor = factors.fac_spin_Z * factors.factor_ahc
         self.fder = 1
         super().__init__(**kwargs)
+        self.final_factor = factors.fac_spin_Z * factors.factor_ahc
 
 
 class OmegaOmega(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.OmegaOmega
-        self.factor = 1
         self.fder = 1
         super().__init__(**kwargs)
 
@@ -617,7 +603,6 @@ class AHC_Zeeman_orb(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.OmegaHplus
-        self.factor = 1
         self.fder = 1
         super().__init__(**kwargs)
 

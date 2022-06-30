@@ -79,7 +79,7 @@ class DynamicCalculator(Calculator, abc.ABC):
             restot += factor_omega @ (factor_Efermi[:, :, None]
                                       * matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
         restot = restot.reshape(restot_shape).swapaxes(0, 1)  # swap the axes to get EF,omega,a,b,...
-        restot[:] *= self.final_factor / (data_K.nk * data_K.cell_volume)
+        restot *= self.final_factor / (data_K.nk * data_K.cell_volume)
         return EnergyResult(
             [self.Efermi, self.omega], restot, TRodd=formula.TRodd, Iodd=formula.Iodd, TRtrans=formula.TRtrans)
 
