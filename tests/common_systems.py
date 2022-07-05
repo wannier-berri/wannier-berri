@@ -332,7 +332,10 @@ def system_CuMnAs_2d_broken():
 @pytest.fixture(scope="session")
 def data_Te_ASE():
     """read data for Te from ASE+GPAW"""
-    import gpaw
+    try:
+        import gpaw
+    except (ImportError, ModuleNotFoundError) as e:
+        pytest.xfail("failed to import gpaw")
     import ase
     import ase.dft.wannier
 
