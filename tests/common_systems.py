@@ -334,7 +334,7 @@ def data_Te_ASE():
     """read data for Te from ASE+GPAW"""
     try:
         import gpaw
-    except (ImportError, ModuleNotFoundError) as e:
+    except (ImportError, ModuleNotFoundError):
         pytest.xfail("failed to import gpaw")
     import ase
     import ase.dft.wannier
