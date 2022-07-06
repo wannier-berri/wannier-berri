@@ -16,6 +16,7 @@ pip install ase
 pip install gpaw
 gpaw info
 gpaw install-data --register ~/gpaw-data
+pip install -U wannierberri
 
 case "$INSTALL_TYPE" in
     dev)
