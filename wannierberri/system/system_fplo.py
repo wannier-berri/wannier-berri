@@ -92,7 +92,7 @@ class System_fplo(System):
                             continue
                         arread = np.array(arread, dtype=float)
                         Rvec = arread[:, :3] + (
-                            self.wannier_centers_cart_auto[None, jw] - self.wannier_centers_cart_auto[None, jw])
+                            self.wannier_centers_cart_auto[None, iw] - self.wannier_centers_cart_auto[None, jw])
                         Rvec = Rvec.dot(inv_real_lattice)  # should be integer now
                         iRvec = np.array(np.round(Rvec), dtype=int)
                         assert (abs(iRvec - Rvec).max() < 1e-8)
