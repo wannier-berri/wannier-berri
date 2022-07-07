@@ -1008,7 +1008,7 @@ def test_shc_static(check_run,system_Fe_W90):
 
 
 def test_factor_nlahc(check_run, system_GaAs_W90):
-    "Test whether final_factor for NLAHC works as expected"
+    "Test whether constant_factor for NLAHC works as expected"
 
     from wannierberri.__factors import factor_nlahc
 
