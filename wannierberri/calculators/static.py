@@ -20,13 +20,13 @@ from . import Calculator
 
 class StaticCalculator(Calculator):
 
-    def __init__(self, Efermi, tetra=False, smoother=None, use_factor=True, kwargs_formula={}, **kwargs):
+    def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={}, **kwargs):
         self.Efermi = Efermi
         self.tetra = tetra
         self.kwargs_formula = kwargs_formula
         self.smoother = smoother
         self.use_factor = use_factor
-        self.constant_factor = 1.
+        self.constant_factor = constant_factor
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
         assert hasattr(self, 'Formula'), "Formula not set - it  should be class with a trace(ik,inn,out) method "
@@ -191,19 +191,15 @@ class Morb(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.Morb_Hpm
         self.fder = 0
-        super().__init__(**kwargs)
+        constant_factor = -factors.eV_au / factors.bohr**2
+        super().__init__(constant_factor=constant_factor, **kwargs)
 
     def __call__(self, data_K):
         Hplus_res = super().__call__(data_K)
         Omega_res = AHC(Efermi=self.Efermi, tetra=self.tetra, smoother=self.smoother,
-                use_factor=False, print_comment=False,
+                constant_factor=self.constant_factor, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
-        # with use_factor=False, the factor of AHC is -1, so it is '+' below.
-
-        constant_factor = -factors.eV_au / factors.bohr**2 * data_K.cell_volume
-        res = Hplus_res + 2 * Omega_res
-        res = multiply_factor(res, constant_factor, self.use_factor)
-        return res
+        return (Hplus_res + 2 * Omega_res) / data_K.cell_volume
 
 
 class Morb_test(StaticCalculator):
@@ -214,19 +210,15 @@ class Morb_test(StaticCalculator):
         self.comment = r"""Orbital magnetic moment per unit cell for testing (\mu_B)
         Output:
         :math: `M = -\int [dk] (H + G - 2E_f \cdot \Omega) f`"""
-        super().__init__(**kwargs)
+        constant_factor = -factors.eV_au / factors.bohr**2
+        super().__init__(constant_factor=constant_factor, **kwargs)
 
     def __call__(self, data_K):
         Hplus_res = super().__call__(data_K)
         Omega_res = AHC_test(Efermi=self.Efermi, tetra=self.tetra, smoother=self.smoother,
-                use_factor=False, print_comment=False,
+                constant_factor=self.constant_factor, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
-        # with use_factor=False, the factor of AHC is -1, so it is '+' below.
-
-        constant_factor = -factors.eV_au / factors.bohr**2 * data_K.cell_volume
-        res = Hplus_res + 2 * Omega_res
-        res = multiply_factor(res, constant_factor, self.use_factor)
-        return res
+        return (Hplus_res + 2 * Omega_res) / data_K.cell_volume
 
 ####################
 #  conductivities  #
@@ -241,17 +233,15 @@ class GME_orb_FermiSurf(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.VelHplus
         self.fder = 1
-        super().__init__(**kwargs)
+        constant_factor = factors.factor_gme * factors.fac_orb_Z
+        super().__init__(constant_factor=constant_factor, **kwargs)
 
     def __call__(self, data_K):
         Hplus_res = super().__call__(data_K)
         Omega_res = BerryDipole_FermiSurf(Efermi=self.Efermi, tetra=self.tetra,
-                smoother=self.smoother,use_factor=False, print_comment=False,
+                smoother=self.smoother, constant_factor=self.constant_factor, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
-        constant_factor = factors.factor_gme * factors.fac_orb_Z
-        res = Hplus_res - 2 * Omega_res
-        res = multiply_factor(res, constant_factor, self.use_factor)
-        return res
+        return Hplus_res - 2 * Omega_res
 
 
 class GME_orb_FermiSea(StaticCalculator):
@@ -263,18 +253,16 @@ class GME_orb_FermiSea(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.DerMorb
         self.fder = 0
-        super().__init__(**kwargs)
+        constant_factor = factors.factor_gme * factors.fac_orb_Z
+        super().__init__(constant_factor=constant_factor, **kwargs)
 
     def __call__(self, data_K):
         Hplus_res = super().__call__(data_K)
         Hplus_res.data = Hplus_res.data.swapaxes(1, 2)
         Omega_res = BerryDipole_FermiSea(Efermi=self.Efermi, tetra=self.tetra,
-                smoother=self.smoother,use_factor=False, print_comment=False,
+                smoother=self.smoother, constant_factor=self.constant_factor, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
-        constant_factor = factors.factor_gme * factors.fac_orb_Z
-        res = Hplus_res - 2 * Omega_res
-        res = multiply_factor(res, constant_factor, self.use_factor)
-        return res
+        return Hplus_res - 2 * Omega_res
 
 
 class GME_orb_FermiSea_test(StaticCalculator):
@@ -286,18 +274,16 @@ class GME_orb_FermiSea_test(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml_basic.tildeHGc_d
         self.fder = 0
-        super().__init__(**kwargs)
+        constant_factor = factors.factor_gme * factors.fac_orb_Z
+        super().__init__(constant_factor=constant_factor, **kwargs)
 
     def __call__(self, data_K):
         Hplus_res = super().__call__(data_K)
         Hplus_res.data = Hplus_res.data.swapaxes(1, 2)
         Omega_res = BerryDipole_FermiSea_test(Efermi=self.Efermi, tetra=self.tetra,
-                smoother=self.smoother,use_factor=False, print_comment=False,
+                smoother=self.smoother, constant_factor=self.constant_factor, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
-        constant_factor = factors.factor_gme * factors.fac_orb_Z
-        res = Hplus_res - 2 * Omega_res
-        res = multiply_factor(res, constant_factor, self.use_factor)
-        return res
+        return Hplus_res - 2 * Omega_res
 
 
 class GME_spin_FermiSea(StaticCalculator):
@@ -309,8 +295,7 @@ class GME_spin_FermiSea(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.DerSpin
         self.fder = 0
-        super().__init__(**kwargs)
-        self.constant_factor = factors.factor_gme * factors.fac_spin_Z
+        super().__init__(constant_factor=factors.factor_gme * factors.fac_spin_Z, **kwargs)
 
     def __call__(self, data_K):
         res = super().__call__(data_K)
@@ -328,8 +313,7 @@ class GME_spin_FermiSurf(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.VelSpin
         self.fder = 1
-        super().__init__(**kwargs)
-        self.constant_factor = factors.factor_gme * factors.fac_spin_Z
+        super().__init__(constant_factor=factors.factor_gme * factors.fac_spin_Z, **kwargs)
 
 
 # E^1 B^0
@@ -344,8 +328,7 @@ class AHC(StaticCalculator):
         "describe input parameters here"
         self.Formula = frml.Omega
         self.fder = 0
-        super().__init__(**kwargs)
-        self.constant_factor = factors.factor_ahc
+        super().__init__(constant_factor=factors.factor_ahc, **kwargs)
 
 
 class AHC_test(StaticCalculator):
@@ -357,8 +340,7 @@ class AHC_test(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml_basic.tildeFc
         self.fder = 0
-        super().__init__(**kwargs)
-        self.constant_factor = factors.factor_ahc
+        super().__init__(constant_factor=factors.factor_ahc, **kwargs)
 
 
 class Ohmic_FermiSea(StaticCalculator):
@@ -372,8 +354,7 @@ class Ohmic_FermiSea(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.InvMass
         self.fder = 0
-        super().__init__(**kwargs)
-        self.constant_factor = factors.factor_ohmic
+        super().__init__(constant_factor=factors.factor_ohmic, **kwargs)
 
 
 class Ohmic_FermiSurf(StaticCalculator):
@@ -386,8 +367,7 @@ class Ohmic_FermiSurf(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.VelVel
         self.fder = 1
-        super().__init__(**kwargs)
-        self.constant_factor = factors.factor_ohmic
+        super().__init__(constant_factor=factors.factor_ohmic, **kwargs)
 
 
 # E^1 B^1
@@ -401,8 +381,7 @@ class Hall_classic_FermiSurf(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.VelMassVel
         self.fder = 1
-        super().__init__(**kwargs)
-        self.constant_factor = factors.factor_hall_classic
+        super().__init__(constant_factor=factors.factor_hall_classic, **kwargs)
 
     def __call__(self, data_K):
         res = super().__call__(data_K)
@@ -422,8 +401,7 @@ class Hall_classic_FermiSea(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.MassMass
         self.fder = 0
-        super().__init__(**kwargs)
-        self.constant_factor = factors.factor_hall_classic
+        super().__init__(constant_factor=factors.factor_hall_classic, **kwargs)
 
     def __call__(self, data_K):
         res = super().__call__(data_K)
@@ -455,8 +433,7 @@ class NLAHC_FermiSurf(BerryDipole_FermiSurf):
         | Instruction: :math:`j_\alpha = \epsilon_{\alpha\delta\gamma} D_{\beta\delta} E_\beta E\gamma`"""
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.constant_factor = factors.factor_nlahc
+        super().__init__(constant_factor=factors.factor_nlahc, **kwargs)
 
 
 class BerryDipole_FermiSea(StaticCalculator):
@@ -486,8 +463,7 @@ class NLAHC_FermiSea(BerryDipole_FermiSea):
         | Instruction: :math:`j_\alpha = \epsilon_{\alpha\delta\gamma} D_{\beta\delta} E_\beta E\gamma`"""
 
     def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-        self.constant_factor = factors.factor_nlahc
+        super().__init__(constant_factor=factors.factor_nlahc, **kwargs)
 
 
 class BerryDipole_FermiSea_test(StaticCalculator):
@@ -518,8 +494,7 @@ class NLDrude_FermiSea(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.Der3E
         self.fder = 0
-        super().__init__(**kwargs)
-        self.constant_factor = factors.factor_nldrude
+        super().__init__(constant_factor=factors.factor_nlahc, **kwargs)
 
 
 class NLDrude_FermiSurf(StaticCalculator):
@@ -532,8 +507,7 @@ class NLDrude_FermiSurf(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.MassVel
         self.fder = 1
-        super().__init__(**kwargs)
-        self.constant_factor = factors.factor_nldrude
+        super().__init__(constant_factor=factors.factor_nldrude, **kwargs)
 
 
 class NLDrude_Fermider2(StaticCalculator):
@@ -546,8 +520,7 @@ class NLDrude_Fermider2(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.VelVelVel
         self.fder = 2
-        super().__init__(**kwargs)
-        self.constant_factor = 0.5 * factors.factor_nldrude
+        super().__init__(constant_factor=factors.factor_nlahc * 0.5, **kwargs)
 
 
 class SHC(StaticCalculator):
@@ -562,8 +535,7 @@ class SHC(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.SpinOmega
         self.fder = 0
-        super().__init__(**kwargs)
-        self.constant_factor = factors.factor_ahc * -0.5
+        super().__init__(constant_factor=factors.factor_nlahc * -0.5, **kwargs)
 
 
 # E^1 B^1
@@ -577,8 +549,7 @@ class AHC_Zeeman_spin(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.OmegaS
         self.fder = 1
-        super().__init__(**kwargs)
-        self.constant_factor = factors.fac_spin_Z * factors.factor_ahc
+        super().__init__(constant_factor=factors.fac_spin_Z * factors.factor_ahc, **kwargs)
 
 
 class OmegaOmega(StaticCalculator):
@@ -600,15 +571,12 @@ class AHC_Zeeman_orb(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.OmegaHplus
         self.fder = 1
-        super().__init__(**kwargs)
+        constant_factor = factors.fac_orb_Z * factors.factor_ahc
+        super().__init__(constant_factor=constant_factor, **kwargs)
 
     def __call__(self, data_K):
         Hplus_res = super().__call__(data_K)
         Omega_res = OmegaOmega(Efermi=self.Efermi, tetra=self.tetra,
-                smoother=self.smoother,use_factor=False, print_comment=False,
+                smoother=self.smoother, constant_factor=self.constant_factor, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
-
-        constant_factor = factors.fac_orb_Z * factors.factor_ahc
-        res = Hplus_res - 2 * Omega_res
-        res = multiply_factor(res, constant_factor, self.use_factor)
-        return res
+        return Hplus_res - 2 * Omega_res
