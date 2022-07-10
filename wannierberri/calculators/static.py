@@ -559,10 +559,9 @@ class AHC_Zeeman_orb(StaticCalculator):
         self.Formula = frml.OmegaHplus
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
+        self.OmegaOmega = OmegaOmega(constant_factor=constant_factor, print_comment=False, **kwargs)
 
     def __call__(self, data_K):
         Hplus_res = super().__call__(data_K)
-        Omega_res = OmegaOmega(Efermi=self.Efermi, tetra=self.tetra,
-                smoother=self.smoother, constant_factor=self.constant_factor, print_comment=False,
-                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        Omega_res = self.OmegaOmega(data_K).mul_array(self.Efermi)
         return Hplus_res - 2 * Omega_res
