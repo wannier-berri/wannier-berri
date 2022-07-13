@@ -15,6 +15,7 @@ from common import ROOT_DIR
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
 symmetries_Te = ["C3z", "C2x", "TimeReversal"]
 symmetries_GaAs = [SYM.C4z * SYM.Inversion, SYM.TimeReversal, SYM.Rotation(3, [1, 1, 1])]
+symmetries_Mn3Sn = ["C3z"]
 
 Efermi_Fe = np.linspace(17, 18, 11)
 Efermi_Te_gpaw = np.linspace(4, 8, 11)
@@ -23,6 +24,7 @@ Efermi_GaAs = np.linspace(7, 9, 11)
 Efermi_Haldane = np.linspace(-3, 3, 11)
 Efermi_CuMnAs_2d = np.linspace(-2, 2, 11)
 Efermi_Chiral = np.linspace(-5, 8, 27)
+Efermi_Mn3Sn = np.linspace(2, 3, 11)
 
 
 def create_W90_files(seedname, tags_needed, data_dir):
@@ -360,4 +362,44 @@ def system_Te_ASE_wcc(data_Te_ASE):
     wan,calc = data_Te_ASE
     system = wberri.system.System_ASE(wan, ase_calc=calc, use_wcc_phase=True, berry=False)
     system.set_symmetry(symmetries_Te)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Mn3Sn_sym_tb():
+    """Create system for Mn3Sn using _tb.dat data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "Mn3Sn_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "Mn3Sn_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "Mn3Sn_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+
+    seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
+    system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
+    system.symmetrize(
+            positions = np.array([
+                [0.6666667,       0.8333333,       0],
+                [0.1666667,       0.3333333,       0],
+                [0.6666667,       0.3333333,       0],
+                [0.3333333,       0.1666667,       0.5],
+                [0.8333333,       0.6666667,       0.5],
+                [0.3333333,       0.6666667,       0.5],
+                [0.8333333,       0.1666667,       0.5],
+                [0.1666667,       0.8333333,       0],
+                ]),
+            atom_name = ['Mn','Mn','Mn','Mn','Mn','Mn','Sn','Sn'],
+            proj = ['Mn:s;d','Sn:p'],
+            soc=True,
+            magmom=[
+                [0, 2, 0],
+                [np.sqrt(3), -1,  0],
+                [-np.sqrt(3), -1, 0],
+                [0, 2, 0],  
+                [np.sqrt(3), -1, 0],
+                [-np.sqrt(3), -1, 0],
+                [0, 0, 0],
+                [0, 0, 0]],
+            DFT_code='vasp',)
+
     return system
