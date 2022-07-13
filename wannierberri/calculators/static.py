@@ -49,6 +49,7 @@ class StaticCalculator(Calculator):
         formula = self.Formula(data_K, **self.kwargs_formula)
         ndim = formula.ndim
 
+        print('Iodd,TRodd', formula.Iodd, formula.TRodd)
         # get a list [{(ib1,ib2):W} for ik in op:ed]
         if self.tetra:
             weights = data_K.tetraWeights.weights_all_band_groups(

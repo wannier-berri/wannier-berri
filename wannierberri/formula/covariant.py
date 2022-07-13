@@ -1005,7 +1005,6 @@ class emcha_surf(FormulaSum):
                 'xub,MLaxpbs->MLaups')
             ],
             [2,-2,-1,1,-1,-1],['aups','aups','aups','aups','aups','aups'])
-            #[-1,-2,-1,-1,1,-1],['aups','aups','aups','aups','aups','aups'])
 
 
 class emcha_sea(FormulaSum):
