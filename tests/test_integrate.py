@@ -457,9 +457,7 @@ def test_Mn3Sn_sym_tb(check_integrate, system_Mn3Sn_sym_tb, compare_energyresult
         fout_name="ahc_Mn3Sn_sym_tb",
         suffix="",
         Efermi=Efermi_Mn3Sn,
-        comparer=compare_energyresult,
-        #extra_precision={"ahc": 1e-5}
-        )
+        comparer=compare_energyresult)
 
 
 def test_Haldane_PythTB(check_integrate, system_Haldane_PythTB, compare_energyresult, quantities_Haldane):

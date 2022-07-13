@@ -378,7 +378,7 @@ def system_Mn3Sn_sym_tb():
     seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
     system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
     system.symmetrize(
-            positions = np.array([
+            positions=np.array([
                 [0.6666667,       0.8333333,       0],
                 [0.1666667,       0.3333333,       0],
                 [0.6666667,       0.3333333,       0],
@@ -386,16 +386,15 @@ def system_Mn3Sn_sym_tb():
                 [0.8333333,       0.6666667,       0.5],
                 [0.3333333,       0.6666667,       0.5],
                 [0.8333333,       0.1666667,       0.5],
-                [0.1666667,       0.8333333,       0],
-                ]),
-            atom_name = ['Mn','Mn','Mn','Mn','Mn','Mn','Sn','Sn'],
-            proj = ['Mn:s;d','Sn:p'],
+                [0.1666667,       0.8333333,       0]]),
+            atom_name=['Mn','Mn','Mn','Mn','Mn','Mn','Sn','Sn'],
+            proj=['Mn:s;d','Sn:p'],
             soc=True,
             magmom=[
                 [0, 2, 0],
                 [np.sqrt(3), -1,  0],
                 [-np.sqrt(3), -1, 0],
-                [0, 2, 0],  
+                [0, 2, 0],
                 [np.sqrt(3), -1, 0],
                 [-np.sqrt(3), -1, 0],
                 [0, 0, 0],
