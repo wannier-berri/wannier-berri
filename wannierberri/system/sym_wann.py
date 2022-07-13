@@ -525,53 +525,5 @@ class SymWann():
 
         print('Symmetrizing Finished')
 
-        #=================================
-        #   for  test
-        #=================================
-
-        with np.printoptions(suppress=True, precision=4, threshold=np.inf, linewidth=500):
-            X = 'AA'
-            diag = True
-            test_i = self.iRvec.index([0, 0, 0])
-            print(f'Testing {X} with diag = {diag}')
-            print('[0,0,0]')
-            for i in range(3):
-                if diag:
-                    print(np.diag(return_dic[X][:, :, test_i, i].real))
-                    print(np.diag(self.matrix_list[X][:, :, test_i, i].real))
-                else:
-                    print(return_dic[X][:, :, test_i, i].real)
-                    print(self.matrix_list[X][:, :, test_i, i].real)
-                print('==============================================')
-            test_i = self.iRvec.index([1, 0, 0])
-            print('[1,0,0]')
-            for i in range(3):
-                if diag:
-                    print(np.diag(return_dic[X][:, :, test_i, i].real))
-                    print(np.diag(self.matrix_list[X][:, :, test_i, i].real))
-                else:
-                    print(return_dic[X][:, :, test_i, i].real)
-                    print(self.matrix_list[X][:, :, test_i, i].real)
-                print('==============================================')
-            test_i = self.iRvec.index([0, 1, 0])
-            print('[0,1,0]')
-            for i in range(3):
-                if diag:
-                    print(np.diag(return_dic[X][:, :, test_i, i].real))
-                    print(np.diag(self.matrix_list[X][:, :, test_i, i].real))
-                else:
-                    print(return_dic[X][:, :, test_i, i].real)
-                    print(self.matrix_list[X][:, :, test_i, i].real)
-                print('==============================================')
-            test_i = self.iRvec.index([0, 0, 1])
-            print('[0,0,1]')
-            for i in range(3):
-                if diag:
-                    print(np.diag(return_dic[X][:, :, test_i, i].real))
-                    print(np.diag(self.matrix_list[X][:, :, test_i, i].real))
-                else:
-                    print(return_dic[X][:, :, test_i, i].real)
-                    print(self.matrix_list[X][:, :, test_i, i].real)
-                print('==============================================')
 
         return return_dic, np.array(self.iRvec + iRvec_add)
