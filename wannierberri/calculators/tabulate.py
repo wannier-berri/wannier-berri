@@ -129,24 +129,6 @@ class OrbitalMoment(Tabulator):
         super().__init__(frml.morb, **kwargs)
 
 
-class DerOrbitalMoment_(Tabulator):
-
-    def __init__(self, **kwargs):
-        super().__init__(frml_basic.Der_morb, **kwargs)
-
-
-class DerOrbitalMoment(Tabulator):
-
-    def __init__(self, **kwargs):
-        super().__init__(frml.DerMorb, **kwargs)
-
-
-class Der2OrbitalMoment(Tabulator):
-
-    def __init__(self, **kwargs):
-        super().__init__(frml.Der2Morb, **kwargs)
-
-
 class SpinBerry(Tabulator):
 
     def __init__(self, **kwargs):
