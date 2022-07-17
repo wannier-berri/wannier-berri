@@ -1007,6 +1007,161 @@ class emcha_surf(FormulaSum):
             [2,-2,-1,1,-1,-1],['aups','aups','aups','aups','aups','aups'])
 
 
+class emcha_surf_term1(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        velocity =  data_K.covariant('Ham',commader=1)
+        formula1  = FormulaProduct ( [InvMass(data_K),Omega(data_K,**kwargs_formula),velocity],
+            name='mass-berry-vel (apus)(psua) ([au]bpbs) ([us]abbp)')
+        formula2  = FormulaProduct ( [velocity,DerOmega(data_K,**kwargs_formula),velocity],
+            name='v-derberry-vel (aups) ([au]bbps) ([us]abpb)')
+        tmp = FormulaSum([
+            formula2,
+            formula1
+            ],[1,1],['aups','apus'])
+        super().__init__([
+            tmp,
+            #DeltaProduct(delta_f,formula1,'us,MLabbp->MLaups'),
+            #DeltaProduct(delta_f,tmp,'au,MLbbps->MLaups'),
+            #DeltaProduct(delta_f,formula2,'us,MLabpb->MLaups'),
+            #formula2,
+            #DeltaProduct(Levi_Civita,
+            #    DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
+            #    'xub,MLaxpbs->MLaups')
+            ],
+            #[2,-2,-1,1,-1,-1],['aups','aups','aups','aups','aups','aups'])
+            [2],['aups'])
+
+
+class emcha_surf_term2(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        velocity =  data_K.covariant('Ham',commader=1)
+        formula1  = FormulaProduct ( [InvMass(data_K),Omega(data_K,**kwargs_formula),velocity],
+            name='mass-berry-vel (apus)(psua) ([au]bpbs) ([us]abbp)')
+        formula2  = FormulaProduct ( [velocity,DerOmega(data_K,**kwargs_formula),velocity],
+            name='v-derberry-vel (aups) ([au]bbps) ([us]abpb)')
+        tmp = FormulaSum([
+            formula2,
+            formula1
+            ],[1,1],['aups','apus'])
+        super().__init__([
+            #tmp,
+            DeltaProduct(delta_f,formula1,'us,MLabbp->MLaups'),
+            #DeltaProduct(delta_f,tmp,'au,MLbbps->MLaups'),
+            #DeltaProduct(delta_f,formula2,'us,MLabpb->MLaups'),
+            #formula2,
+            #DeltaProduct(Levi_Civita,
+            #    DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
+            #    'xub,MLaxpbs->MLaups')
+            ],
+            #[2,-2,-1,1,-1,-1],['aups','aups','aups','aups','aups','aups'])
+            [-2],['aups'])
+
+
+class emcha_surf_term3(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        velocity =  data_K.covariant('Ham',commader=1)
+        formula1  = FormulaProduct ( [InvMass(data_K),Omega(data_K,**kwargs_formula),velocity],
+            name='mass-berry-vel (apus)(psua) ([au]bpbs) ([us]abbp)')
+        formula2  = FormulaProduct ( [velocity,DerOmega(data_K,**kwargs_formula),velocity],
+            name='v-derberry-vel (aups) ([au]bbps) ([us]abpb)')
+        tmp = FormulaSum([
+            formula2,
+            formula1
+            ],[1,1],['aups','apus'])
+        super().__init__([
+            #tmp,
+            #DeltaProduct(delta_f,formula1,'us,MLabbp->MLaups'),
+            DeltaProduct(delta_f,tmp,'au,MLbbps->MLaups'),
+            #DeltaProduct(delta_f,formula2,'us,MLabpb->MLaups'),
+            #formula2,
+            #DeltaProduct(Levi_Civita,
+            #    DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
+            #    'xub,MLaxpbs->MLaups')
+            ],
+            #[2,-2,-1,1,-1,-1],['aups','aups','aups','aups','aups','aups'])
+            [-1],['aups'])
+
+class emcha_surf_term4(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        velocity =  data_K.covariant('Ham',commader=1)
+        formula1  = FormulaProduct ( [InvMass(data_K),Omega(data_K,**kwargs_formula),velocity],
+            name='mass-berry-vel (apus)(psua) ([au]bpbs) ([us]abbp)')
+        formula2  = FormulaProduct ( [velocity,DerOmega(data_K,**kwargs_formula),velocity],
+            name='v-derberry-vel (aups) ([au]bbps) ([us]abpb)')
+        tmp = FormulaSum([
+            formula2,
+            formula1
+            ],[1,1],['aups','apus'])
+        super().__init__([
+            #tmp,
+            #DeltaProduct(delta_f,formula1,'us,MLabbp->MLaups'),
+            #DeltaProduct(delta_f,tmp,'au,MLbbps->MLaups'),
+            DeltaProduct(delta_f,formula2,'us,MLabpb->MLaups'),
+            #formula2,
+            #DeltaProduct(Levi_Civita,
+            #    DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
+            #    'xub,MLaxpbs->MLaups')
+            ],
+            #[2,-2,-1,1,-1,-1],['aups','aups','aups','aups','aups','aups'])
+            [1],['aups'])
+
+
+class emcha_surf_term5(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        velocity =  data_K.covariant('Ham',commader=1)
+        formula1  = FormulaProduct ( [InvMass(data_K),Omega(data_K,**kwargs_formula),velocity],
+            name='mass-berry-vel (apus)(psua) ([au]bpbs) ([us]abbp)')
+        formula2  = FormulaProduct ( [velocity,DerOmega(data_K,**kwargs_formula),velocity],
+            name='v-derberry-vel (aups) ([au]bbps) ([us]abpb)')
+        tmp = FormulaSum([
+            formula2,
+            formula1
+            ],[1,1],['aups','apus'])
+        super().__init__([
+            #tmp,
+            #DeltaProduct(delta_f,formula1,'us,MLabbp->MLaups'),
+            #DeltaProduct(delta_f,tmp,'au,MLbbps->MLaups'),
+            #DeltaProduct(delta_f,formula2,'us,MLabpb->MLaups'),
+            formula2,
+            #DeltaProduct(Levi_Civita,
+            #    DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
+            #    'xub,MLaxpbs->MLaups')
+            ],
+            #[2,-2,-1,1,-1,-1],['aups','aups','aups','aups','aups','aups'])
+            [-1],['aups'])
+
+
+class emcha_surf_term6(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        velocity =  data_K.covariant('Ham',commader=1)
+        formula1  = FormulaProduct ( [InvMass(data_K),Omega(data_K,**kwargs_formula),velocity],
+            name='mass-berry-vel (apus)(psua) ([au]bpbs) ([us]abbp)')
+        formula2  = FormulaProduct ( [velocity,DerOmega(data_K,**kwargs_formula),velocity],
+            name='v-derberry-vel (aups) ([au]bbps) ([us]abpb)')
+        tmp = FormulaSum([
+            formula2,
+            formula1
+            ],[1,1],['aups','apus'])
+        super().__init__([
+            #tmp,
+            #DeltaProduct(delta_f,formula1,'us,MLabbp->MLaups'),
+            #DeltaProduct(delta_f,tmp,'au,MLbbps->MLaups'),
+            #DeltaProduct(delta_f,formula2,'us,MLabpb->MLaups'),
+            #formula2,
+            DeltaProduct(Levi_Civita,
+                DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
+                'xub,MLaxpbs->MLaups')
+            ],
+            #[2,-2,-1,1,-1,-1],['aups','aups','aups','aups','aups','aups'])
+            [-1],['aups'])
+
+
 class emcha_sea(FormulaSum):
 
     def __init__(self, data_K, **kwargs_formula):
@@ -1148,12 +1303,38 @@ class NLDrude_Z_spin(FormulaSum):
         super().__init__([term1, term2], [-1,1], ['apsu', 'uaps'])
 
 
+class NLDrude_Z_spin_term1(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term1 = FormulaProduct([Der3E(data_K), Spin(data_K)], name='Der3ESpin')
+        #term2 = FormulaProduct([Der2Spin(data_K), data_K.covariant('Ham', commader=1)], name='Der2SpinVel')
+        super().__init__([term1], [-1], ['apsu'])
+class NLDrude_Z_spin_term2(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        #term1 = FormulaProduct([Der3E(data_K), Spin(data_K)], name='Der3ESpin')
+        term2 = FormulaProduct([Der2Spin(data_K), data_K.covariant('Ham', commader=1)], name='Der2SpinVel')
+        super().__init__([term2], [1], ['uaps'])
+
+
 class NLDrude_Z_orb_Hplus(FormulaSum):
 
     def __init__(self, data_K, **kwargs_formula):
         term1 = FormulaProduct([Der3E(data_K), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='Der3EHplus')
         term2 = FormulaProduct([Der2Morb(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='Der2HplusVel')
         super().__init__([term1, term2], [-1,1], ['apsu', 'uaps'])
+class NLDrude_Z_orb_Hplus_term1(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term1 = FormulaProduct([Der3E(data_K), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='Der3EHplus')
+        #term2 = FormulaProduct([Der2Morb(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='Der2HplusVel')
+        super().__init__([term1], [-1], ['apsu'])
+class NLDrude_Z_orb_Hplus_term2(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        #term1 = FormulaProduct([Der3E(data_K), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='Der3EHplus')
+        term2 = FormulaProduct([Der2Morb(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='Der2HplusVel')
+        super().__init__([term2], [1], ['uaps'])
 
 
 class NLDrude_Z_orb_Omega(FormulaSum):
@@ -1162,6 +1343,18 @@ class NLDrude_Z_orb_Omega(FormulaSum):
         term1 = FormulaProduct([Der3E(data_K), Omega(data_K, **kwargs_formula)], name='Der3EOmega')
         term2 = FormulaProduct([Der2Omega(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='Der2OmegaVel')
         super().__init__([term1, term2], [-1,1], ['apsu', 'uaps'])
+class NLDrude_Z_orb_Omega_term1(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term1 = FormulaProduct([Der3E(data_K), Omega(data_K, **kwargs_formula)], name='Der3EOmega')
+        #term2 = FormulaProduct([Der2Omega(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='Der2OmegaVel')
+        super().__init__([term1], [-1], ['apsu'])
+class NLDrude_Z_orb_Omega_term2(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        #term1 = FormulaProduct([Der3E(data_K), Omega(data_K, **kwargs_formula)], name='Der3EOmega')
+        term2 = FormulaProduct([Der2Omega(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='Der2OmegaVel')
+        super().__init__([term2], [1], ['uaps'])
 
 
 class lmr_spin_Z(FormulaSum):

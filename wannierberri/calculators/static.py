@@ -49,7 +49,7 @@ class StaticCalculator(Calculator):
         formula = self.Formula(data_K, **self.kwargs_formula)
         ndim = formula.ndim
 
-        print('Iodd,TRodd', formula.Iodd, formula.TRodd)
+        #print('Iodd,TRodd', formula.Iodd, formula.TRodd)
         # get a list [{(ib1,ib2):W} for ik in op:ed]
         if self.tetra:
             weights = data_K.tetraWeights.weights_all_band_groups(
@@ -1195,6 +1195,43 @@ class eMChA_FermiSurf(StaticCalculator):
         super().__init__(**kwargs)
 
 
+class eMChA_FermiSurf_term1(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.emcha_surf_term1
+        self.factor = factors.factor_emcha
+        self.fder = 1
+        super().__init__(**kwargs)
+class eMChA_FermiSurf_term2(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.emcha_surf_term2
+        self.factor = factors.factor_emcha
+        self.fder = 1
+        super().__init__(**kwargs)
+class eMChA_FermiSurf_term3(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.emcha_surf_term3
+        self.factor = factors.factor_emcha
+        self.fder = 1
+        super().__init__(**kwargs)
+class eMChA_FermiSurf_term4(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.emcha_surf_term4
+        self.factor = factors.factor_emcha
+        self.fder = 1
+        super().__init__(**kwargs)
+class eMChA_FermiSurf_term5(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.emcha_surf_term5
+        self.factor = factors.factor_emcha
+        self.fder = 1
+        super().__init__(**kwargs)
+class eMChA_FermiSurf_term6(StaticCalculator):
+    def __init__(self, **kwargs):
+        self.Formula = frml.emcha_surf_term6
+        self.factor = factors.factor_emcha
+        self.fder = 1
+        super().__init__(**kwargs)
+
 class eMChA_FermiSea(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.emcha_sea
@@ -1256,12 +1293,40 @@ class NLDrude_Zeeman_spin(StaticCalculator):
         self.factor = factors.fac_spin_Z * factors.factor_nldrude
         self.fder = 1
         super().__init__(**kwargs)
+class NLDrude_Zeeman_spin_term1(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.NLDrude_Z_spin_term1
+        self.factor = factors.fac_spin_Z * factors.factor_nldrude
+        self.fder = 1
+        super().__init__(**kwargs)
+class NLDrude_Zeeman_spin_term2(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.NLDrude_Z_spin_term2
+        self.factor = factors.fac_spin_Z * factors.factor_nldrude
+        self.fder = 1
+        super().__init__(**kwargs)
 
 
 class NLDrude_Zeeman_orb_Omega(StaticCalculator):
 
     def __init__(self, **kwargs):
         self.Formula = frml.NLDrude_Z_orb_Omega
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+class NLDrude_Zeeman_orb_Omega_term1(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.NLDrude_Z_orb_Omega_term1
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+class NLDrude_Zeeman_orb_Omega_term2(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.NLDrude_Z_orb_Omega_term2
         self.factor = 1
         self.fder = 1
         super().__init__(**kwargs)
@@ -1277,6 +1342,40 @@ class NLDrude_Zeeman_orb(StaticCalculator):
     def __call__(self, data_K):
         Hplus = super().__call__(data_K)
         Omega = NLDrude_Zeeman_orb_Omega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        final_factor = factors.fac_orb_Z * factors.factor_nldrude
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+
+        return final_factor * (Hplus - 2 * Omega)
+class NLDrude_Zeeman_orb_term1(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.NLDrude_Z_orb_Hplus_term1
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        Hplus = super().__call__(data_K)
+        Omega = NLDrude_Zeeman_orb_Omega_term1(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother,use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        final_factor = factors.fac_orb_Z * factors.factor_nldrude
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+
+        return final_factor * (Hplus - 2 * Omega)
+class NLDrude_Zeeman_orb_term2(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.NLDrude_Z_orb_Hplus_term2
+        self.factor = 1
+        self.fder = 1
+        super().__init__(**kwargs)
+    def __call__(self, data_K):
+        Hplus = super().__call__(data_K)
+        Omega = NLDrude_Zeeman_orb_Omega_term2(Efermi=self.Efermi, tetra=self.tetra,
                 smoother=self.smoother,use_factor=False, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
         final_factor = factors.fac_orb_Z * factors.factor_nldrude
