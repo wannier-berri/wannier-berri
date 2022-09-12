@@ -545,7 +545,7 @@ class morb(Morb_Hpm):
 
 class DerMorb(Formula_ln):
 
-    def __init__(self, data_K, **parameters):
+    def __init__(self, data_K, sign=+1,**parameters):
         super().__init__(data_K, **parameters)
         self.dD = DerDcov(data_K)
         self.D = Dcov(data_K)
@@ -562,6 +562,8 @@ class DerMorb(Formula_ln):
         self.ndim=2
         self.Iodd=True
         self.TRodd=False
+        self.sign=sign
+    
     def nn(self,ik,inn,out):
         summ = np.zeros( (len(inn),len(inn),3,3),dtype=complex )
         if self.internal_terms:
@@ -582,8 +584,8 @@ class DerMorb(Formula_ln):
                 summ +=  -1 *s* np.einsum("mlc,lncd->mncd",(self.B.ln(ik,inn,out)[:,:,a]).transpose(1,0,2).conj(),
                         self.dD.ln (ik,inn,out)[:,:,b,:])
 
-        summ += 0.5 * np.einsum("mlc,lnd->mncd",self.Omega.nn(ik,inn,out),self.V.nn(ik,inn,out) )
-        summ += 0.5 * self.E[ik][inn][:,None,None,None]*self.dO.nn(ik,inn,out)
+        summ += self.sign * 0.5 * np.einsum("mlc,lnd->mncd",self.Omega.nn(ik,inn,out),self.V.nn(ik,inn,out) )
+        summ += self.sign * 0.5 * self.E[ik][inn][:,None,None,None]*self.dO.nn(ik,inn,out)
 
         summ+=summ.swapaxes(0,1).conj()
         return summ
@@ -592,13 +594,20 @@ class DerMorb(Formula_ln):
         raise NotImplementedError()
 
 
+class DerMorb_Tab(DerMorb):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, sign=-1, **parameters)
+
+
+
 ##############################
 ###  second derivative of ####
 ###   orbital moment      ####
 ##############################
 
 class Der2Morb(Formula_ln):
-    def __init__(self,data_K,**parameters):
+    def __init__(self,data_K,sign=+1,**parameters):
         super().__init__(data_K,**parameters)
         self.ddD = Der2Dcov(data_K)
         self.dD = DerDcov(data_K)
@@ -621,6 +630,7 @@ class Der2Morb(Formula_ln):
         self.ndim=3
         self.Iodd=False
         self.TRodd=True
+        self.sign=sign
     #TODO merge term if possible.
     def nn(self,ik,inn,out):
         summ = np.zeros( (len(inn),len(inn),3,3,3),dtype=complex )
@@ -662,10 +672,10 @@ class Der2Morb(Formula_ln):
                 summ +=  -1 *s* np.einsum("mlc,lncde->mncde",(self.B.ln(ik,inn,out)[:,:,a]).transpose(1,0,2).conj(),
                         self.ddD.ln (ik,inn,out)[:,:,b])
 
-        summ += 0.5 * np.einsum("mlce,lnd->mncde",self.dO.nn(ik,inn,out),self.V.nn(ik,inn,out) )
-        summ += 0.5 * np.einsum("mlc,lnde->mncde",self.Omega.nn(ik,inn,out),self.dV.nn(ik,inn,out) )
-        summ += 0.5 * np.einsum("mle,lncd->mncde",self.V.nn(ik,inn,out),self.dO.nn(ik,inn,out) )
-        summ += 0.5 * self.E[ik][inn][:,None,None,None,None]*self.ddO.nn(ik,inn,out)
+        summ += self.sign * 0.5 * np.einsum("mlce,lnd->mncde",self.dO.nn(ik,inn,out),self.V.nn(ik,inn,out) )
+        summ += self.sign * 0.5 * np.einsum("mlc,lnde->mncde",self.Omega.nn(ik,inn,out),self.dV.nn(ik,inn,out) )
+        summ += self.sign * 0.5 * np.einsum("mle,lncd->mncde",self.V.nn(ik,inn,out),self.dO.nn(ik,inn,out) )
+        summ += self.sign * 0.5 * self.E[ik][inn][:,None,None,None,None]*self.ddO.nn(ik,inn,out)
 
         summ+=summ.swapaxes(0,1).conj()
         return summ
@@ -676,6 +686,14 @@ class Der2Morb(Formula_ln):
     @property
     def additive(self):
         return False
+
+
+
+class Der2Morb_Tab(Der2Morb):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, sign=-1, **parameters)
+
 
 ########################
 #   spin transport     #
