@@ -27,7 +27,7 @@ setuptools.setup(
                         'packaging>=20.8',
                         'matplotlib',
                         'fortio>=0.4',
-                        'protobuf==3.20.1', # req by ray : https://github.com/ray-project/ray/issues/25205 , https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
+                        'protobuf==3.20.2', # req by ray : https://github.com/ray-project/ray/issues/25205 , https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
                         'ray[default]',
                         'sympy',
                         'spglib',
