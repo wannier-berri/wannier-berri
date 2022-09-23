@@ -26,7 +26,6 @@ print ("RY_TO_THZ = ",RY_TO_THZ)
 
 def od2array(od):
     text = [t.replace(',',' ').split() for t in od['#text'].split("\n")]
-    
     if od['@type']=='real':
         data = np.array(text,dtype=float)
     elif od['@type']=='integer':
@@ -43,6 +42,7 @@ def od2array(od):
     else:
         data = data.reshape(size)
     return data
+
 
 
 
@@ -72,6 +72,7 @@ class System_Phonon_QE(System_w90):
             freq = np.sort(freq)
             real_lattice = od2array(geometry['AT'])
             atom_positions = np.array([geometry[f'ATOM.{i+1}']['@TAU'].split() for i in range(number_of_atoms)],dtype=float)
+            atom_positions = atom_positions.dot(np.linalg.inv(real_lattice))
             types = np.array([geometry[f'ATOM.{i+1}']['@INDEX'] for i in range(number_of_atoms)],dtype=int)-1
             masses = masses_tp[types]
             print ("masses ",masses)
@@ -136,6 +137,7 @@ class System_Phonon_QE(System_w90):
         print (self.Ham_R.shape)
         self.set_symmetry()
         print (self.iRvec.shape)
+        self.do_at_end_of_init()
 
 
     @property

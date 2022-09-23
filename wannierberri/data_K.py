@@ -290,7 +290,7 @@ class Data_K(System):
         print_my_name_start()
         EUU = self.poolmap(np.linalg.eigh, self.HH_K)
         E_K = self.phonon_freq_from_square(np.array([euu[0] for euu in EUU]))
-        print ("E_K = ",E_K.min(), E_K.max(), E_K.mean())
+#        print ("E_K = ",E_K.min(), E_K.max(), E_K.mean())
         select = (E_K > self.Emin) * (E_K < self.Emax)
         self.select_K = np.all(select, axis=1)
         self.select_B = np.all(select, axis=0)
@@ -319,7 +319,7 @@ class Data_K(System):
                     Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
         print_my_name_end()
-        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
+#        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
         return Ecorners
 
     def phonon_freq_from_square(self,E):
