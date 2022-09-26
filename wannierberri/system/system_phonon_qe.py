@@ -1,5 +1,5 @@
 import numpy as np
-import xmltodict
+import untangle
        
 import functools
 import multiprocessing
@@ -24,24 +24,15 @@ AU_TERAHERTZ  = AU_PS
 RY_TO_THZ = 1.0 / AU_TERAHERTZ / FPI
 print ("RY_TO_THZ = ",RY_TO_THZ)
 
-def od2array(od):
-    text = [t.replace(',',' ').split() for t in od['#text'].split("\n")]
-    if od['@type']=='real':
-        data = np.array(text,dtype=float)
-    elif od['@type']=='integer':
-        data = np.array(text,dtype=int)
-    elif od['@type']=='complex':
-        data = np.array(text,dtype=float)
-        data = data[:,0]+1j*data[:,1]
+def _str2array(s,dtype=float):
+    if dtype == float:
+        return np.array([_.split() for _ in s.strip().split("\n")],dtype=float)
+    elif dtype == complex:
+        s = s.replace(","," ")
+        s = _str2array(s)
+        return s[:,0]+1j*s[:,1]
     else:
-        raise ValueError(f"unknown data type {od['@type']}")
-    size = int(od['@size'])
-    if '@columns' in od:
-        ncol = int(od['@columns'])
-        data = data.reshape( (size//ncol,ncol) )
-    else:
-        data = data.reshape(size)
-    return data
+        raise ValueError(f"dtype = '{dtype}' is not supported by _str2array")
 
 
 
@@ -63,17 +54,19 @@ class System_Phonon_QE(System_w90):
         dynamical_mat = []
         cnt = 0
         for ifile in range(1,nqirr+1):
-            data = xmltodict.parse(open(f"{seedname}.dyn{ifile}.xml",'rb'))['Root']
-            geometry = data['GEOMETRY_INFO']
-            number_of_atoms = od2array(geometry['NUMBER_OF_ATOMS'])[0]
-            number_of_types = od2array(geometry['NUMBER_OF_TYPES'])[0]
-            masses_tp = np.array([od2array(geometry[f'MASS.{i+1}'])[0] for i in range(number_of_types)]).reshape(-1)
-            freq = np.array( [od2array(data["FREQUENCIES_THZ_CMM1"][f"OMEGA.{j+1}"]).reshape(-1) for j in range(3*number_of_atoms)]  )[:,0]
+            fname = f"{seedname}.dyn{ifile}.xml"
+            data = untangle.parse(open(fname).read().lower()).root
+            geometry = data.geometry_info
+            number_of_atoms = int(geometry.number_of_atoms.cdata)
+            number_of_types = int(geometry.number_of_types.cdata)
+            masses_tp = np.array([float(geometry.__getattr__(f'mass_{i+1}').cdata) for i in range(number_of_types)])
+            freq = np.array( [data.frequencies_thz_cmm1.__getattr__(f"omega_{j+1}").cdata.split()[0] for j in range(3*number_of_atoms)],dtype=float  )
             freq = np.sort(freq)
-            real_lattice = od2array(geometry['AT'])
-            atom_positions = np.array([geometry[f'ATOM.{i+1}']['@TAU'].split() for i in range(number_of_atoms)],dtype=float)
+            real_lattice = _str2array(geometry.at.cdata)
+            atom_positions = np.array([geometry.__getattr__(f'atom_{i+1}')['tau'].split() 
+                                for i in range(number_of_atoms)],dtype=float)
             atom_positions = atom_positions.dot(np.linalg.inv(real_lattice))
-            types = np.array([geometry[f'ATOM.{i+1}']['@INDEX'] for i in range(number_of_atoms)],dtype=int)-1
+            types = np.array([geometry.__getattr__(f'atom_{i+1}')['index'] for i in range(number_of_atoms)],dtype=int)-1
             masses = masses_tp[types]
             print ("masses ",masses)
             
@@ -92,14 +85,16 @@ class System_Phonon_QE(System_w90):
                     f"real lattice in {seedname}.dyn{ifile}.xml and {seedname}.dyn1.xml are different : {real-lattice} and {self.real_lattice}")
                 assert np.linalg.norm(self.atom_positions-atom_positions)<1e-10, (
                     f"atom positions in {seedname}.dyn{ifile}.xml and {seedname}.dyn1.xml are different : {real_lattice} and {self.real_lattice}")
-            number_of_q = od2array(geometry['NUMBER_OF_Q'])[0]
+            number_of_q = int(geometry.number_of_q.cdata)
             for iq in range(number_of_q):
-                dynamical = data[f"DYNAMICAL_MAT_.{iq+1}"]
-                q = self.real_lattice.dot(od2array(dynamical['Q_POINT'])[0]) # converting from cartisean(2pi/alatt) to reduced coordinates
+                dynamical = data.__getattr__(f"dynamical_mat__{iq+1}")
+                q = _str2array(dynamical.q_point.cdata).reshape(3)
+                q = self.real_lattice.dot(q) # converting from cartisean(2pi/alatt) to reduced coordinates
                 dyn_mat = np.zeros( (3*self.number_of_atoms,3*self.number_of_atoms), dtype=complex)
                 for i in range(self.number_of_atoms):
                     for j in range(self.number_of_atoms):
-                        phi = od2array(dynamical[f'PHI.{i+1}.{j+1}']).reshape(3,3,order='F')/np.sqrt(masses[i]*masses[j])/AMU_RY
+                        phi = _str2array(dynamical.__getattr__(f'phi_{i+1}_{j+1}').cdata,dtype=complex
+                                            ).reshape(3,3,order='F')/np.sqrt(masses[i]*masses[j])/AMU_RY
                         dyn_mat[i*3:i*3+3,j*3:j*3+3] = phi
                 dyn_mat = 0.5*(dyn_mat+dyn_mat.T.conj())
                 dynamical_mat.append( dyn_mat )

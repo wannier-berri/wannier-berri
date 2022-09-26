@@ -31,6 +31,7 @@ setuptools.setup(
                         'ray[default]',
                         'sympy',
                         'spglib',
+                        'untangle',
                         ],
      url="https://wannier-berri.org",
      packages=setuptools.find_packages(),
