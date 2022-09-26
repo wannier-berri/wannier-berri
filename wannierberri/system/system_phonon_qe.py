@@ -36,9 +36,16 @@ def _str2array(s,dtype=float):
 
 class System_Phonon_QE(System_w90):
 
+    """Class to represent dynamical matrices from QuantumEspresso
+
+    asr=True imposes a simple acoustic sum rule
+
+    """
+
     def __init__(self,seedname,
             fft='fftw',
             npar=multiprocessing.cpu_count(),
+            asr=True,
             **parameters):
 
         self.set_parameters(**parameters)
@@ -116,7 +123,19 @@ class System_Phonon_QE(System_w90):
         self.iRvec, self.Ndegen = self.wigner_seitz(self.mp_grid)
         self.Ham_R= np.array([self.Ham_R[tuple(iR % self.mp_grid)] / nd for iR, nd in zip(self.iRvec, self.Ndegen)]) / np.prod(self.mp_grid)
         self.Ham_R = self.Ham_R.transpose((1, 2, 0))
+
         self.do_at_end_of_init()
+
+        iR0 = self.iR0
+        if asr:
+            print ("Hermicity before ASR: ",np.linalg.norm(self.Ham_R - self.Ham_R.transpose((1,0,2)).conj()))
+            _ham = np.copy(self.Ham_R)
+            for i in range(3):
+                for j in range(3):
+                    for a in range(self.number_of_atoms):
+                        self.Ham_R[3*a+i,3*a+j,iR0]-= self.Ham_R[3*a+i,j::3,:].sum()
+            print ("Hermicity after ASR: ",np.linalg.norm(self.Ham_R - self.Ham_R.transpose((1,0,2)).conj()))
+            print ("change by ASR : ",np.linalg.norm(self.Ham_R - _ham ))
 
 
     @property
