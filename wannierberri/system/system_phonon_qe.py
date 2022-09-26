@@ -52,7 +52,7 @@ class System_Phonon_QE(System_w90):
         with open(seedname+".dyn0","r") as f:
             self.mp_grid =  np.array(f.readline().split(),dtype=int)
             nqirr = int(f.readline().strip())
-        print (self.mp_grid,nqirr)
+#        print (self.mp_grid,nqirr)
         q_points = []
         dynamical_mat = []
         cnt = 0
@@ -64,7 +64,9 @@ class System_Phonon_QE(System_w90):
             number_of_types = int(geometry.number_of_types.cdata)
             masses_tp = np.array([float(geometry.__getattr__(f'mass_{i+1}').cdata) for i in range(number_of_types)])
             freq = np.array( [data.frequencies_thz_cmm1.__getattr__(f"omega_{j+1}").cdata.split()[0] for j in range(3*number_of_atoms)],dtype=float  )
+            freq_cmm1 = np.array( [data.frequencies_thz_cmm1.__getattr__(f"omega_{j+1}").cdata.split()[1] for j in range(3*number_of_atoms)],dtype=float  )
             freq = np.sort(freq)
+            freq_cmm1 = np.sort(freq_cmm1)
             real_lattice = _str2array(geometry.at.cdata)
             atom_positions = np.array([geometry.__getattr__(f'atom_{i+1}')['tau'].split()
                                 for i in range(number_of_atoms)],dtype=float)
@@ -101,9 +103,10 @@ class System_Phonon_QE(System_w90):
                 dyn_mat = 0.5*(dyn_mat+dyn_mat.T.conj())
                 dynamical_mat.append( dyn_mat )
                 w2 = np.sort(np.linalg.eigvalsh(dyn_mat)) #*2.18e-18/(5.29e-11**2)  )
-                print ("omega2",w2)
+#                print ("omega2",w2)
                 ph = np.sqrt(np.abs(w2))*RY_TO_THZ
-                print (f"q = {q}\n   freq calculated {ph}\n   freq read     {freq}\n ratio   {ph/freq}")
+#                print (f"q = {q}\n   freq calculated {ph}\n   freq read     {freq}\n ratio   {ph/freq}")
+#                print (f"q = {q}\n   freq calculated {ph}\n   freq read cmm1     {freq_cmm1}\n ratio   {ph/freq_cmm1}")
                 q_points.append(q)
                 cnt += 1
                 self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=self.real_lattice)
@@ -128,14 +131,11 @@ class System_Phonon_QE(System_w90):
 
         iR0 = self.iR0
         if asr:
-            print ("Hermicity before ASR: ",np.linalg.norm(self.Ham_R - self.Ham_R.transpose((1,0,2)).conj()))
             _ham = np.copy(self.Ham_R)
             for i in range(3):
                 for j in range(3):
                     for a in range(self.number_of_atoms):
                         self.Ham_R[3*a+i,3*a+j,iR0]-= self.Ham_R[3*a+i,j::3,:].sum()
-            print ("Hermicity after ASR: ",np.linalg.norm(self.Ham_R - self.Ham_R.transpose((1,0,2)).conj()))
-            print ("change by ASR : ",np.linalg.norm(self.Ham_R - _ham ))
 
 
     @property

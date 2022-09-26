@@ -16,7 +16,8 @@ import numpy as np
 import lazy_property
 from .parallel import pool
 from .system.system import System
-from .system.system_phonon_qe import RY_TO_THZ
+#from .system.system_phonon_qe import RY_TO_THZ
+from .__factors import Ry_eV
 from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A
 from .__tetrahedron import TetraWeights, get_bands_in_range, get_bands_below_range
 from . import formula
@@ -325,7 +326,7 @@ class Data_K(System):
     def phonon_freq_from_square(self,E):
         """takes  sqrt(|E|)*sign(E) for phonons, returrns input for electrons"""
         if self.is_phonon:
-            e = np.sqrt(np.abs(E))*RY_TO_THZ
+            e = np.sqrt(np.abs(E))*Ry_eV
             e[E<0] = -e[E<0]
             return e
         else:
