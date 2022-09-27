@@ -1013,18 +1013,6 @@ def test_shc_static(check_run,system_Fe_W90):
                 f"SHC {mode} from static.SHC and dynamic.SHC give a maximal absolute"
                 f"difference of {np.max(np.abs(data_static - data_dynamic))}.")
 
-def test_phonons_Si(check_run, system_Phonons_Si):
-    """test  dos, cumdos for phonons"""
-
-    calculators = {k:cal(tetra=False,Efermi=omega_phonon) for k,cal in calculators_phonons.items()}
-    check_run(
-        system_Phonons_Si,
-        calculators,
-        fout_name="phonons_Si",
-        use_symmetry=True,
-        extra_precision={"Morb": -1e-6},
-    )
-
 
 
 def test_phonons_Si_tetra(check_run, system_Phonons_Si):
