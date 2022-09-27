@@ -45,7 +45,7 @@ def hlp():
 
 def main():
     import sys
-    from wanierberri.__utility import FortranFileW
+    from wannierberri.__utility import FortranFileW
     import numpy as np
     import datetime
 

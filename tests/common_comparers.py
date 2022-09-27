@@ -166,6 +166,7 @@ def compare_any_result():
 
             if compare_zero:
                 result_ref = result * 0.
+                path_filename_ref = "ZERO"
                 assert precision > 0, "comparing with zero is possible only with absolute precision"
             else:
                 filename_ref = fout_name_ref + f"-{suffix_ref}_iter-{i_iter:04d}" + ext

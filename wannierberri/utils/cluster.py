@@ -18,6 +18,7 @@ from .__cluster_template import slurm_text, pbs_torque_text
 
 JOB_NAME = "{{JOB_NAME}}"
 NUM_NODES = "{{NUM_NODES}}"
+NUM_CPUS_TEXT = "{{NUM_CPUS_TEXT}}"
 NUM_GPUS_PER_NODE = "{{NUM_GPUS_PER_NODE}}"
 PARTITION_NAME = "{{PARTITION_NAME}}"
 COMMAND_PLACEHOLDER = "{{COMMAND_PLACEHOLDER}}"
@@ -41,6 +42,8 @@ if __name__ == '__main__':
         type=str,
         default="",
         help="The specified nodes to use. Same format as the return of 'sinfo'. Default: ''.")
+    parser.add_argument("--num-cpus-per-node", nargs='?', type=int, help="Number of CPUs to use in each node. "
+        "(Default: None (use all available cpus))")
     parser.add_argument("--num-gpus", type=int, default=0, help="Number of GPUs to use in each node. (Default: 0)")
     parser.add_argument(
         "--partition",
@@ -105,6 +108,11 @@ if __name__ == '__main__':
 
     text = text.replace(JOB_NAME, job_name)
     text = text.replace(NUM_NODES, str(args.num_nodes))
+
+    num_cpus_text = ""
+    if args.num_cpus_per_node is not None:
+        num_cpus_text = f"--num-cpus={args.num_cpus_per_node}"
+    text = text.replace(NUM_CPUS_TEXT, num_cpus_text)
 
     gpu_text = ""
     if args.num_gpus > 0:
