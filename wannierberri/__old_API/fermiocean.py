@@ -352,7 +352,7 @@ class FermiOcean():
         self.nk = data_K.nk
         self.NB = data_K.num_wann
         self.formula = formula
-        self.final_factor = 1. / (data_K.nk * data_K.cell_volume)
+        self.constant_factor = 1. / (data_K.nk * data_K.cell_volume)
 
         # get a list [{(ib1,ib2):W} for ik in op:ed]
         if self.tetra:
@@ -398,7 +398,7 @@ class FermiOcean():
             res = self.__call_tetra()
         else:
             res = self.__call_notetra()
-        res *= self.final_factor
+        res *= self.constant_factor
         return result.EnergyResult(self.Efermi, res, TRodd=self.formula.TRodd, Iodd=self.formula.Iodd)
 
     def __call_tetra(self):
