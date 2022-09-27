@@ -314,8 +314,8 @@ class SymWann():
             if self.magmom is not None:
                 for i in range(self.num_wann_atom):
                     if sym_only or sym_T:
-                        magmom = np.round(self.wann_atom_info[i][-2], decimals=4)
-                        new_magmom = np.round(np.dot(rot_sym_glb, magmom), decimals=4)*np.linalg.det(rot_sym_glb)
+                        magmom = self.wann_atom_info[i][-2]
+                        new_magmom = np.dot(rot_sym_glb, magmom)*np.linalg.det(rot_sym_glb)
                         if abs(np.linalg.norm(magmom - new_magmom)) > 0.0005:
                             sym_only = False
                         if abs(np.linalg.norm(magmom + new_magmom)) > 0.0005:
