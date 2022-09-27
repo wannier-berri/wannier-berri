@@ -24,7 +24,7 @@ class DynamicCalculator(Calculator, abc.ABC):
 
         self.formula_kwargs = {}
         self.Formula = None
-        self.final_factor = 1.
+        self.constant_factor = 1.
         self.dtype = complex
         self.EFmin = self.Efermi.min()
         self.EFmax = self.Efermi.max()
@@ -79,7 +79,7 @@ class DynamicCalculator(Calculator, abc.ABC):
             restot += factor_omega @ (factor_Efermi[:, :, None]
                                       * matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
         restot = restot.reshape(restot_shape).swapaxes(0, 1)  # swap the axes to get EF,omega,a,b,...
-        restot[:] *= self.final_factor / (data_K.nk * data_K.cell_volume)
+        restot *= self.constant_factor / (data_K.nk * data_K.cell_volume)
         return EnergyResult(
             [self.Efermi, self.omega], restot, TRodd=formula.TRodd, Iodd=formula.Iodd, TRtrans=formula.TRtrans)
 
@@ -184,7 +184,7 @@ class OpticalConductivity(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_OptCond
-        self.final_factor = factors.factor_opt
+        self.constant_factor = factors.factor_opt
 
     def factor_omega(self, E1, E2):
         delta_arg_12 = E2 - E1 - self.omega  # argument of delta function [iw, n, m]
@@ -225,7 +225,7 @@ class _SHC(DynamicCalculator):
         super().__init__(**kwargs)
         self.formula_kwargs = dict(SHC_type=SHC_type, shc_abc=shc_abc)
         self.Formula = Formula_SHC
-        self.final_factor = factors.factor_shc
+        self.constant_factor = factors.factor_shc
 
     def factor_omega(self, E1, E2):
         delta_minus = self.smear(E2 - E1 - self.omega)
