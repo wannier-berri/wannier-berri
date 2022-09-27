@@ -102,9 +102,9 @@ class System_Phonon_QE(System_w90):
                         dyn_mat[i*3:i*3+3,j*3:j*3+3] = phi
                 dyn_mat = 0.5*(dyn_mat+dyn_mat.T.conj())
                 dynamical_mat.append( dyn_mat )
-                w2 = np.sort(np.linalg.eigvalsh(dyn_mat)) #*2.18e-18/(5.29e-11**2)  )
+#                w2 = np.sort(np.linalg.eigvalsh(dyn_mat)) #*2.18e-18/(5.29e-11**2)  )
 #                print ("omega2",w2)
-                ph = np.sqrt(np.abs(w2))*RY_TO_THZ
+#                ph = np.sqrt(np.abs(w2))*RY_TO_THZ
 #                print (f"q = {q}\n   freq calculated {ph}\n   freq read     {freq}\n ratio   {ph/freq}")
 #                print (f"q = {q}\n   freq calculated {ph}\n   freq read cmm1     {freq_cmm1}\n ratio   {ph/freq_cmm1}")
                 q_points.append(q)
@@ -131,7 +131,6 @@ class System_Phonon_QE(System_w90):
 
         iR0 = self.iR0
         if asr:
-            _ham = np.copy(self.Ham_R)
             for i in range(3):
                 for j in range(3):
                     for a in range(self.number_of_atoms):
