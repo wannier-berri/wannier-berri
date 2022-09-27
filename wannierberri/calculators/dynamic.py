@@ -245,3 +245,56 @@ class SHC(_SHC):
         if self.smr_type != 'Lorentzian':
             cfac.imag = np.pi * self.smear(delta_arg_12)
         return cfac / 2
+
+
+###############################
+#           MSHC              #
+###############################
+
+class Formula_MSHC():
+
+    def __init__(self, data_K, SHC_type='ryoo', shc_abc=None):
+        A = SpinVelocity(data_K, SHC_type).matrix
+        B = -1j * data_K.A_H
+        self.reAB = np.real(A[:, :, :, :, None, :] * B.swapaxes(1, 2)[:, :, :, None, :, None])
+        self.ndim = 3
+        if shc_abc is not None:
+            assert len(shc_abc) == 3
+            a, b, c = (x - 1 for x in shc_abc)
+            self.reAB = self.reAB[:, :, :, a, b, c]
+            self.ndim = 0
+        self.TRodd = False
+        self.Iodd = False
+        self.TRtrans = False
+
+    def trace_ln(self, ik, inn1, inn2):
+        return self.reAB[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+
+class MSHC(DynamicCalculator):
+
+    def __init__(self, SHC_type="ryoo", shc_abc=None, Ef=0 ,Gamma=0, **kwargs):
+        super().__init__(**kwargs)
+        self.formula_kwargs = dict(SHC_type=SHC_type, shc_abc=shc_abc)
+        self.Formula = Formula_SHC
+        self.final_factor = factors.factor_mshc
+        self.Gamma2 = Gamma**2
+        self.Ef = Ef
+
+    def factor_omega(self, E1, E2):
+        #delta_minus = self.smear(E2 - E1 - self.omega)
+        #delta_plus = self.smear(E1 - E2 - self.omega)
+        #cfac2 = delta_plus - delta_minus  # TODO : for Lorentzian do the real and imaginary parts together
+        #cfac1 = np.real((E1 - E2) / ((E1 - E2)**2 - (self.omega + 1j * self.smr_fixed_width)**2))
+        #cfac = (2 * cfac1 + 1j * np.pi * cfac2) / 4.
+        delta_n = (self.Ef-E1)**2 + self.Gamma2
+        delta_m = (self.Ef-E2)**2 + self.Gamma2
+        cfac = self.Gamma2/delta_n/delta_m
+
+        return cfac
+
+
+
+
+
+
