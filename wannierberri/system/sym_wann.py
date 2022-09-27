@@ -309,26 +309,21 @@ class SymWann():
         rot_sym = self.symmetry['rotations'][sym]
         rot_sym_glb = np.dot(np.dot(np.transpose(self.lattice), rot_sym), np.linalg.inv(np.transpose(self.lattice)))
         if self.soc:
+            sym_only = True
+            sym_T = True
             if self.magmom is not None:
                 for i in range(self.num_wann_atom):
-                    magmom = np.round(self.wann_atom_info[i][-2], decimals=4)
-                    new_magmom = np.round(np.dot(rot_sym_glb, magmom), decimals=4)
-                    if abs(np.linalg.norm(magmom - np.linalg.det(rot_sym_glb) * new_magmom)) > 0.0005:
-                        sym_only = False
-                    else:
-                        sym_only = True
-                        print('Symmetry operator {} respect magnetic moment'.format(sym + 1))
-                    if abs(np.linalg.norm(magmom + np.linalg.det(rot_sym_glb) * new_magmom)) > 0.0005:
-                        sym_T = False
-                    else:
-                        sym_T = True
-                        print('Symmetry operator {}*T respect magnetic moment'.format(sym + 1))
-                    if sym_T + sym_only == 0:
-                        break
-
-            else:
-                sym_only = True
-                sym_T = True
+                    if sym_only or sym_T:
+                        magmom = self.wann_atom_info[i][-2]
+                        new_magmom = np.dot(rot_sym_glb, magmom)*np.linalg.det(rot_sym_glb)
+                        if abs(np.linalg.norm(magmom - new_magmom)) > 0.0005:
+                            sym_only = False
+                        if abs(np.linalg.norm(magmom + new_magmom)) > 0.0005:
+                            sym_T = False
+                if sym_only:
+                    print('Symmetry operator {} respect magnetic moment'.format(sym + 1))
+                if sym_T:
+                    print('Symmetry operator {}*T respect magnetic moment'.format(sym + 1))
         else:
             sym_only = True
             sym_T = False
@@ -409,23 +404,25 @@ class SymWann():
                                     if X in ['AA', 'BB', 'SS', 'CC', 'FF']:
                                         num_w_a = len(
                                             sum(self.wann_atom_info[atom_a][4], []))  #number of orbitals of atom_a
+                                        num_w_b = len(
+                                            sum(self.wann_atom_info[atom_b][4], []))  #number of orbitals of atom_b
                                         #X_L: only rotation wannier centres from L to L' before rotating orbitals.
                                         XX_L = self.matrix_list[X][self.H_select[rot_map[atom_a], rot_map[atom_b]],
-                                                                   new_Rvec_index, :].reshape(num_w_a, num_w_a, 3)
+                                                                   new_Rvec_index, :].reshape(num_w_a, num_w_b, 3)
                                         #special even with R == [0,0,0] diagonal terms.
                                         if iR == self.iRvec.index([0, 0, 0]) and atom_a == atom_b:
-                                            if X == 'AA':
+                                            if X == 'AA' and atom_a == atom_b:
                                                 XX_L += np.einsum(
                                                     'mn,p->mnp', np.eye(num_w_a),
                                                     (vec_shift[atom_a] - self.symmetry['translations'][rot]).dot(
                                                         self.lattice))
-                                            elif X == 'BB':
+                                            elif X == 'BB' and atom_a == atom_b:
                                                 XX_L += (
                                                     np.einsum('mn,p->mnp', np.eye(num_w_a),
                                                     (vec_shift[atom_a] - self.symmetry['translations'][rot]).dot(
                                                         self.lattice))
                                                     *self.Ham_R[self.H_select[rot_map[atom_a], rot_map[atom_b]],
-                                                        new_Rvec_index].reshape(num_w_a, num_w_a)[:, :, None])
+                                                        new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
                                         #X_all: rotating vector.
                                         matrix_list_all[X][iR, atom_a, atom_b,
                                                            self.H_select[atom_a, atom_b], :] = np.einsum(
@@ -520,54 +517,5 @@ class SymWann():
 
         print('Symmetrizing Finished')
 
-        #=================================
-        #   for  test
-        #=================================
-        with np.printoptions(suppress=True, precision=30, threshold=np.inf, linewidth=500):
-            print( return_dic['AA'][4,4,4,2].real )
-        with np.printoptions(suppress=True, precision=4, threshold=np.inf, linewidth=500):
-            X = 'AA'
-            diag = True
-            test_i = self.iRvec.index([0, 0, 0])
-            print(f'Testing {X} with diag = {diag}')
-            print('[0,0,0]')
-            for i in range(3):
-                if diag:
-                    print(np.diag(return_dic[X][:, :, test_i, i].real))
-                    print(np.diag(self.matrix_list[X][:, :, test_i, i].real))
-                else:
-                    print(return_dic[X][:, :, test_i, i].real)
-                    print(self.matrix_list[X][:, :, test_i, i].real)
-                print('==============================================')
-            test_i = self.iRvec.index([1, 0, 0])
-            print('[1,0,0]')
-            for i in range(3):
-                if diag:
-                    print(np.diag(return_dic[X][:, :, test_i, i].real))
-                    print(np.diag(self.matrix_list[X][:, :, test_i, i].real))
-                else:
-                    print(return_dic[X][:, :, test_i, i].real)
-                    print(self.matrix_list[X][:, :, test_i, i].real)
-                print('==============================================')
-            test_i = self.iRvec.index([0, 1, 0])
-            print('[0,1,0]')
-            for i in range(3):
-                if diag:
-                    print(np.diag(return_dic[X][:, :, test_i, i].real))
-                    print(np.diag(self.matrix_list[X][:, :, test_i, i].real))
-                else:
-                    print(return_dic[X][:, :, test_i, i].real)
-                    print(self.matrix_list[X][:, :, test_i, i].real)
-                print('==============================================')
-            test_i = self.iRvec.index([0, 0, 1])
-            print('[0,0,1]')
-            for i in range(3):
-                if diag:
-                    print(np.diag(return_dic[X][:, :, test_i, i].real))
-                    print(np.diag(self.matrix_list[X][:, :, test_i, i].real))
-                else:
-                    print(return_dic[X][:, :, test_i, i].real)
-                    print(self.matrix_list[X][:, :, test_i, i].real)
-                print('==============================================')
 
         return return_dic, np.array(self.iRvec + iRvec_add)

@@ -17,6 +17,7 @@ from common_systems import (
     Efermi_Haldane,
     Efermi_CuMnAs_2d,
     Efermi_Chiral,
+    Efermi_Mn3Sn,
 )
 
 
@@ -447,6 +448,16 @@ def test_GaAs_sym_tb(check_integrate, system_GaAs_sym_tb, compare_energyresult):
         comparer=compare_energyresult,
         compare_zero=True,
         extra_precision={"ahc": 1e-5})
+
+
+def test_Mn3Sn_sym_tb(check_integrate, system_Mn3Sn_sym_tb, compare_energyresult):
+    """Test ahc with sym_wann method"""
+    check_integrate(
+        system_Mn3Sn_sym_tb, ["ahc"],
+        fout_name="ahc_Mn3Sn_sym_tb",
+        suffix="",
+        Efermi=Efermi_Mn3Sn,
+        comparer=compare_energyresult)
 
 
 def test_Haldane_PythTB(check_integrate, system_Haldane_PythTB, compare_energyresult, quantities_Haldane):
