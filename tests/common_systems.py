@@ -387,7 +387,7 @@ def system_Mn3Sn_sym_tb():
                 [0.3333333,       0.6666667,       0.5],
                 [0.8333333,       0.1666667,       0.5],
                 [0.1666667,       0.8333333,       0]]),
-            atom_name=['Mn','Mn','Mn','Mn','Mn','Mn','Sn','Sn'],
+            atom_name=['Mn']*6 + ['Sn']*2,
             proj=['Mn:s;d','Sn:p'],
             soc=True,
             magmom=[

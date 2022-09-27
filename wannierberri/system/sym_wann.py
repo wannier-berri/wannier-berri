@@ -309,29 +309,21 @@ class SymWann():
         rot_sym = self.symmetry['rotations'][sym]
         rot_sym_glb = np.dot(np.dot(np.transpose(self.lattice), rot_sym), np.linalg.inv(np.transpose(self.lattice)))
         if self.soc:
+            sym_only = True
+            sym_T = True
             if self.magmom is not None:
-                sym_only_cont = 0
-                sym_T_cont = 0
                 for i in range(self.num_wann_atom):
-                    magmom = np.round(self.wann_atom_info[i][-2], decimals=4)
-                    new_magmom = np.round(np.dot(rot_sym_glb, magmom), decimals=4)
-                    if abs(np.linalg.norm(magmom - np.linalg.det(rot_sym_glb) * new_magmom)) < 0.0005:
-                        sym_only_cont += 1
-                    if abs(np.linalg.norm(magmom + np.linalg.det(rot_sym_glb) * new_magmom)) < 0.0005:
-                        sym_T_cont += 1
-                if sym_only_cont == self.positions.shape[0]:
-                    sym_only = True
+                    if sym_only or sym_T:
+                        magmom = np.round(self.wann_atom_info[i][-2], decimals=4)
+                        new_magmom = np.round(np.dot(rot_sym_glb, magmom), decimals=4)*np.linalg.det(rot_sym_glb)
+                        if abs(np.linalg.norm(magmom - new_magmom)) > 0.0005:
+                            sym_only = False
+                        if abs(np.linalg.norm(magmom + new_magmom)) > 0.0005:
+                            sym_T = False
+                if sym_only:
                     print('Symmetry operator {} respect magnetic moment'.format(sym + 1))
-                else:
-                    sym_only = False
-                if sym_T_cont == self.positions.shape[0]:
-                    sym_T = True
+                if sym_T:
                     print('Symmetry operator {}*T respect magnetic moment'.format(sym + 1))
-                else:
-                    sym_T = False
-            else:
-                sym_only = True
-                sym_T = True
         else:
             sym_only = True
             sym_T = False
