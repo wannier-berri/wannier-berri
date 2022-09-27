@@ -1015,6 +1015,7 @@ def test_shc_static(check_run,system_Fe_W90):
 
 
 
+
 def test_phonons_Si_tetra(check_run, system_Phonons_Si):
     """test  dos, cumdos for phonons"""
 
@@ -1025,5 +1026,41 @@ def test_phonons_Si_tetra(check_run, system_Phonons_Si):
         fout_name="phonons_Si_tetra",
         use_symmetry=True,
     )
+
+
+def test_factor_nlahc(check_run, system_GaAs_W90):
+    "Test whether constant_factor for NLAHC works as expected"
+
+    from wannierberri.__factors import factor_nlahc
+
+    calculators = dict(
+        bcd=calc.static.BerryDipole_FermiSurf(Efermi=Efermi_GaAs),
+        nlahc=calc.static.NLAHC_FermiSurf(Efermi=Efermi_GaAs),
+        nlahc_no_factor=calc.static.NLAHC_FermiSurf(Efermi=Efermi_GaAs, use_factor=False),
+    )
+
+    result = check_run(
+        system_GaAs_W90,
+        calculators,
+        fout_name="berry_GaAs_W90_factor",
+        do_not_compare=True,
+    )
+
+    data_bcd = result.results["bcd"].data
+    data_nlahc = result.results["nlahc"].data
+    data_nlahc_no_factor = result.results["nlahc_no_factor"].data
+    precision = max(np.average(abs(data_bcd) / 1E10), 1E-8)
+
+    assert data_nlahc_no_factor == approx(
+        data_bcd, abs=precision), (
+            f"data of"
+            f"BerryDipole and NLAHC with no units give a maximal absolute"
+            f"difference of {np.max(np.abs(data_nlahc_no_factor - data_bcd))}.")
+
+    assert data_nlahc == approx(
+        data_bcd * factor_nlahc, abs=precision), (
+            f"data of"
+            f"BerryDipole times factor_nlahc and NLAHC give a maximal absolute"
+            f"difference of {np.max(np.abs(data_nlahc - data_bcd * factor_nlahc))}.")
 
 
