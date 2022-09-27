@@ -38,9 +38,9 @@ class System_Phonon_QE(System_w90):
 
     """Class to represent dynamical matrices from QuantumEspresso
 
-    reads the '*.dyn*.xml' files and 
+    reads the '*.dyn*.xml' files and
     allows to interpolate the dynamical matrix and get the phonon frequencies
-    so far onl;y DOS, cumDOS and tabulation is tested. 
+    so far onl;y DOS, cumDOS and tabulation is tested.
     Other calculators, in principle, may be applied on your own risk.
 
     Parameters
