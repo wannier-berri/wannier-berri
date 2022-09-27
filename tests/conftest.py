@@ -28,6 +28,7 @@ from common_systems import (
     system_Chiral_left_TR,
     system_Chiral_right,
     system_CuMnAs_2d_broken,
+    system_Phonons_Si,
 )
 
 # Comparers for tests

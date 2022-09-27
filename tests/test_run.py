@@ -21,6 +21,7 @@ from common_systems import (
     Efermi_CuMnAs_2d,
     Efermi_Chiral,
     Efermi_Te_gpaw,
+    omega_phonon,
 )
 
 @pytest.fixture
@@ -100,6 +101,12 @@ calculators_Fe = {
     'dos': calc.static.DOS,
     'cumdos':calc.static.CumDOS,
 }
+
+calculators_phonons = {
+    'dos': calc.static.DOS,
+    'cumdos':calc.static.CumDOS,
+}
+
 
 calculators_GaAs = {
     'berry_dipole': calc.static.BerryDipole_FermiSea,
@@ -1005,3 +1012,30 @@ def test_shc_static(check_run,system_Fe_W90):
                 f"data of"
                 f"SHC {mode} from static.SHC and dynamic.SHC give a maximal absolute"
                 f"difference of {np.max(np.abs(data_static - data_dynamic))}.")
+
+def test_phonons_Si(check_run, system_Phonons_Si):
+    """test  dos, cumdos for phonons"""
+
+    calculators = {k:cal(tetra=False,Efermi=omega_phonon) for k,cal in calculators_phonons.items()}
+    check_run(
+        system_Phonons_Si,
+        calculators,
+        fout_name="phonons_Si",
+        use_symmetry=True,
+        extra_precision={"Morb": -1e-6},
+    )
+
+
+
+def test_phonons_Si_tetra(check_run, system_Phonons_Si):
+    """test  dos, cumdos for phonons"""
+
+    calculators = {k:cal(tetra=True,Efermi=omega_phonon) for k,cal in calculators_phonons.items()}
+    check_run(
+        system_Phonons_Si,
+        calculators,
+        fout_name="phonons_Si_tetra",
+        use_symmetry=True,
+    )
+
+

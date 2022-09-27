@@ -18,6 +18,7 @@ from common import ROOT_DIR
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
 symmetries_Te = ["C3z", "C2x", "TimeReversal"]
 symmetries_GaAs = [SYM.C4z * SYM.Inversion, SYM.TimeReversal, SYM.Rotation(3, [1, 1, 1])]
+symmetries_Si = ["C4z","C4x","TimeReversal"]
 
 Efermi_Fe = np.linspace(17, 18, 11)
 Efermi_Te_gpaw = np.linspace(4, 8, 11)
@@ -26,6 +27,7 @@ Efermi_GaAs = np.linspace(7, 9, 11)
 Efermi_Haldane = np.linspace(-3, 3, 11)
 Efermi_CuMnAs_2d = np.linspace(-2, 2, 11)
 Efermi_Chiral = np.linspace(-5, 8, 27)
+omega_phonon = np.linspace(-0.01, 0.1, 23)
 
 
 def create_W90_files(seedname, tags_needed, data_dir):
@@ -352,4 +354,13 @@ def system_Te_ASE_wcc():
     wan = ase.dft.wannier.Wannier(nwannier=12, calc=calc, file=os.path.join(path, 'wannier-12.json'))
     system = wberri.system.System_ASE(wan, ase_calc=calc, use_wcc_phase=True, berry=False)
     system.set_symmetry(symmetries_Te)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Phonons_Si():
+    """Create system of phonons of Si using  QE data"""
+    path = os.path.join(ROOT_DIR, "data", "Si_phonons/si")
+    system = wberri.system.System_Phonon_QE(path, use_ws=True, asr=True)
+    system.set_symmetry(symmetries_Si)
     return system
