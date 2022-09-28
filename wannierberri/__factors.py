@@ -1,4 +1,5 @@
 from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom  #, Boltzmann
+import numpy as np
 
 TAU_UNIT = 1E-15  # tau in nanoseconds
 TAU_UNIT_TXT = "fs"
@@ -23,6 +24,7 @@ factor_nldrude = -(elementary_charge**3 /hbar**2 * TAU_UNIT**2  # with tau^2 E^2
 
 factor_opt = -factor_ahc
 factor_shc = -factor_ahc
+factor_mshc = -factor_ahc/np.pi/2
 #####################
 #for old_API
 fac_ahc = factor_ahc
