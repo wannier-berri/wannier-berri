@@ -30,6 +30,7 @@ from common_systems import (
     system_Chiral_right,
     system_CuMnAs_2d_broken,
     system_Phonons_Si,
+    system_Mn3Sn_sym_tb,
 )
 
 # Comparers for tests
