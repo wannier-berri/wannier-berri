@@ -51,14 +51,14 @@ echo "IP Head: $ip_head"
 echo "STARTING HEAD at $node_1"
 # srun --nodes=1 --ntasks=1 -w $node_1 start-head.sh $ip $redis_password &
 srun --nodes=1 --ntasks=1 -w $node_1 \
-  ray start --head --node-ip-address=$ip --port=6379 --redis-password=$redis_password --block {{SPILLING}}&
+  ray start --head --node-ip-address=$ip --port=6379 --redis-password=$redis_password {{NUM_CPUS_TEXT}} --block {{SPILLING}}&
 sleep {{SLEEP_HEAD}}
 
 worker_num=$(($SLURM_JOB_NUM_NODES - 1)) #number of nodes other than the head node
 for ((i = 1; i <= $worker_num; i++)); do
   node_i=${nodes_array[$i]}
   echo "STARTING WORKER $i at $node_i"
-  srun --nodes=1 --ntasks=1 -w $node_i ray start --address $ip_head --redis-password=$redis_password --block &
+  srun --nodes=1 --ntasks=1 -w $node_i ray start --address $ip_head --redis-password=$redis_password {{NUM_CPUS_TEXT}} --block &
   sleep {{SLEEP_WORKER}}
 done
 
@@ -98,7 +98,9 @@ thishost=`uname -n | awk -F. '{print $1.}'`
 ip=`hostname -i`
 port=6379
 ip_head="$ip:$port"
+ray_command=$(which ray)
 export ip_head
+echo "RAY command: $ray_command"
 echo "IP Head: $ip_head"
 
 echo "Allocate Nodes = <$jobnodes>"
@@ -107,11 +109,11 @@ echo "set up ray cluster..."
 for node in `echo $jobnodes`; do
     if [[ $node == "$thishost" ]]; then
         echo "STARTING HEAD at $node"
-        ray start --head --node-ip-address=$ip --port=$port --redis-password=$redis_password --block {{SPILLING}}&
+        ray start --head --node-ip-address=$ip --port=$port --redis-password=$redis_password {{NUM_CPUS_TEXT}} --block {{SPILLING}}&
         sleep {{SLEEP_HEAD}}
     else
         echo "STARTING WORKER at $node"
-        ssh $node ray start --address=$ip_head --redis-password=$redis_password
+        ssh $node "$ray_command start --address=$ip_head --redis-password=$redis_password {{NUM_CPUS_TEXT}}"
         sleep {{SLEEP_WORKER}}
     fi
 done
