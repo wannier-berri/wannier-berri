@@ -110,7 +110,7 @@ class System_Phonon_QE(System_w90):
                 for i in range(self.number_of_atoms):
                     for j in range(self.number_of_atoms):
                         phi = _str2array(dynamical.__getattr__(f'phi_{i+1}_{j+1}').cdata,dtype=complex
-                                            ).reshape(3,3,order='F')/np.sqrt(masses[i]*masses[j])/AMU_RY
+                                            ).reshape(3,3,order='F')
                         dyn_mat[i*3:i*3+3,j*3:j*3+3] = phi
                 dyn_mat = 0.5*(dyn_mat+dyn_mat.T.conj())
                 dynamical_mat.append( dyn_mat )
@@ -148,6 +148,9 @@ class System_Phonon_QE(System_w90):
                     for a in range(self.number_of_atoms):
                         self.Ham_R[3*a+i,3*a+j,iR0]-= self.Ham_R[3*a+i,j::3,:].sum()
 
+        for i in range(self.number_of_atoms):
+            for j in range(self.number_of_atoms):
+                self.Ham_R[3*i:3*i+3, 3*j:3*j+3, :] /= np.sqrt(masses[i]*masses[j]) * AMU_RY
 
     @property
     def is_phonon(self):
