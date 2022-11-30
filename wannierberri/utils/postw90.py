@@ -10,6 +10,9 @@
 #------------------------------------------------------------
 """This utility emulates (at least partly) the behaviour of postw90.x. It sahould start from the same *.win file and produce the same result.
 
+    optionally, parameters can be given in the command line (theose will override the parameters in the ffile)
+    additional options starting with "__wb" can be provided"
+
         Usage example: ::
 
                 python3 -m wannierberri.utils.postw90 seedname 
@@ -34,16 +37,22 @@ parameters = {
     "fermi_energy_min":None,
     "fermi_energy_max":None,
     "fermi_energy_step":None,
+    "__wb_fft_lib":"fftw",
 #    "kmesh" : None ,
 #    "gyrotropic" : False,
 #    "gyrotropic_task" : "",
     }
 
 def main():
-    seedname = sys.argv[1]  if len(sys.argv)==2 else "wannier90"
+    seedname = sys.argv[1]  if len(sys.argv)>1 else "wannier90"
     with open(seedname+".win") as f:
         parsed_win = w90io.parse_win_raw(f.read())
+
     parsed_param = parsed_win["parameters"]
+    if len(sys.argv)>2:
+        parsed_command_line = w90io.parse_win_raw("\n".join(sys.argv[2:]))
+        parsed_param.update(parsed_command_line["parameters"])
+
     for p in parameters:
         try:
             parameters[p] = parsed_param[p]
@@ -61,7 +70,7 @@ def main():
             calc["ahc"] = calculators.static.AHC(Efermi=efermi,tetra=False)
 
 
-    system = System_w90(seedname,berry=True)
+    system = System_w90(seedname,berry=True,fft=parameters["__wb_fft_lib"])
     grid = Grid(system,NK=parameters["berry_kmesh"])
     parallel = Parallel() # parallel with  "ray",num_cpus - auto
 
@@ -72,6 +81,7 @@ def main():
             adpt_num_iter=0,
             fout_name='Fe',
             suffix = "",
+            parameters_K={"fftlib":parameters["__wb_fft_lib"]},
             restart=False,
             )
 
