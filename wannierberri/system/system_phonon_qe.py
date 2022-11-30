@@ -5,6 +5,7 @@ from wannierberri.__utility import real_recip_lattice
 from wannierberri.system import System_w90
 from wannierberri.__utility import FFT
 from scipy import constants as const
+from .__factors import Ry_eV
 
 #from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom  #, Boltzmann
 
@@ -12,13 +13,6 @@ from scipy import constants as const
 
 # These constants are taken from QE
 AMU_RY = const.m_u/const.m_e/2
-FPI = 4*np.pi
-HARTREE_SI       = 4.3597447222071E-18
-AU_SEC  = const.hbar/HARTREE_SI
-AU_PS = AU_SEC * 1.0E+12
-AU_TERAHERTZ  = AU_PS
-RY_TO_THZ = 1.0 / AU_TERAHERTZ / FPI
-#print ("RY_TO_THZ = ",RY_TO_THZ)
 
 def _str2array(s,dtype=float):
     if dtype == float:
@@ -29,9 +23,6 @@ def _str2array(s,dtype=float):
         return s[:,0]+1j*s[:,1]
     else:
         raise ValueError(f"dtype = '{dtype}' is not supported by _str2array")
-
-
-
 
 
 class System_Phonon_QE(System_w90):
@@ -85,8 +76,6 @@ class System_Phonon_QE(System_w90):
             atom_positions = atom_positions.dot(np.linalg.inv(real_lattice))
             types = np.array([geometry.__getattr__(f'atom_{i+1}')['index'] for i in range(number_of_atoms)],dtype=int)-1
             masses = masses_tp[types]
-#            print ("masses ",masses)
-            #print (atom_positions)
             if ifile==1:
                 self.real_lattice = real_lattice
                 self.number_of_atoms = number_of_atoms
@@ -114,20 +103,13 @@ class System_Phonon_QE(System_w90):
                         dyn_mat[i*3:i*3+3,j*3:j*3+3] = phi
                 dyn_mat = 0.5*(dyn_mat+dyn_mat.T.conj())
                 dynamical_mat.append( dyn_mat )
-#                w2 = np.sort(np.linalg.eigvalsh(dyn_mat)) #*2.18e-18/(5.29e-11**2)  )
-#                print ("omega2",w2)
-#                ph = np.sqrt(np.abs(w2))*RY_TO_THZ
-#                print (f"q = {q}\n   freq calculated {ph}\n   freq read     {freq}\n ratio   {ph/freq}")
-#                print (f"q = {q}\n   freq calculated {ph}\n   freq read cmm1     {freq_cmm1}\n ratio   {ph/freq_cmm1}")
                 q_points.append(q)
                 cnt += 1
                 self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=self.real_lattice)
         self.wannier_centers_cart = self.wannier_centers_red.dot(self.real_lattice)
         qpoints_found = np.zeros( self.mp_grid,dtype=float)
         dynamical_matrix_q = np.zeros( tuple(self.mp_grid)+(self.number_of_phonons,)*2,dtype=complex)
-        print (dynamical_matrix_q.shape)
         agrid = np.array(self.mp_grid)
-        print (cnt, len(q_points), len(dynamical_mat))
         for q,dyn_mat in zip(q_points,dynamical_mat):
             iq = tuple(np.array(np.round(q*agrid), dtype=int) % agrid)
             dynamical_matrix_q[iq] = dyn_mat
@@ -137,7 +119,7 @@ class System_Phonon_QE(System_w90):
         self.Ham_R = FFT(dynamical_matrix_q, axes=(0, 1, 2), numthreads=npar, fft=fft, destroy=False)
         self.iRvec, self.Ndegen = self.wigner_seitz(self.mp_grid)
         self.Ham_R= np.array([self.Ham_R[tuple(iR % self.mp_grid)] / nd for iR, nd in zip(self.iRvec, self.Ndegen)]) / np.prod(self.mp_grid)
-        self.Ham_R = self.Ham_R.transpose((1, 2, 0))
+        self.Ham_R = self.Ham_R.transpose((1, 2, 0))*(Ry_eV**2) # now the units are eV**2, to be "kind of consistent" with electronic systems
 
         self.do_at_end_of_init()
 

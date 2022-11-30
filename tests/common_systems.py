@@ -374,8 +374,8 @@ def system_Phonons_Si():
     system = wberri.system.System_Phonon_QE(path, use_ws=True, asr=True)
     system.set_symmetry(symmetries_Si)
     return system
-    
-    
+
+
 @pytest.fixture(scope="session")
 def system_Mn3Sn_sym_tb():
     """Create system for Mn3Sn using _tb.dat data"""
