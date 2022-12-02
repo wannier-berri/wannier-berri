@@ -1,6 +1,7 @@
 """Create system objects."""
 
 import os
+import shutil
 import tarfile
 
 import pytest
@@ -10,7 +11,7 @@ import wannierberri as wberri
 import wannierberri.symmetry as SYM
 from wannierberri import models as wb_models
 
-from common import ROOT_DIR
+from common import ROOT_DIR, TMP_DATA_DIR
 
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
 symmetries_Te = ["C3z", "C2x", "TimeReversal"]
@@ -60,6 +61,8 @@ def create_W90_files(seedname, tags_needed, data_dir):
             os.rename(
                 os.path.join(result_dir, "{0}_nbs={1}.{2}".format(seedname, nb_out, tag)),
                 os.path.join(data_dir, "{}.{}".format(seedname, tag)))
+
+
 
 
 @pytest.fixture(scope="session")

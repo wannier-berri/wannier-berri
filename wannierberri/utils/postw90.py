@@ -37,10 +37,9 @@ parameters = {
     "fermi_energy_min":None,
     "fermi_energy_max":None,
     "fermi_energy_step":None,
+    "use_ws_distance":True,
+    "transl_inv":True,
     "__wb_fft_lib":"fftw",
-#    "kmesh" : None ,
-#    "gyrotropic" : False,
-#    "gyrotropic_task" : "",
     }
 
 def main():
@@ -62,7 +61,7 @@ def main():
         efermi = np.array([parameters["fermi_energy"]])
     else:
         mn,mx,st = [parameters["fermi_energy_"+s] for s in ("min","max","step")]
-        efermi = np.linspace( mn,mx,(mx-mn)//st+1)
+        efermi = np.linspace( mn,mx,int(abs((mx-mn)/st))+1)
 
     calc = {}
     if parameters["berry"] :
@@ -70,7 +69,11 @@ def main():
             calc["ahc"] = calculators.static.AHC(Efermi=efermi,tetra=False)
 
 
-    system = System_w90(seedname,berry=True,fft=parameters["__wb_fft_lib"])
+    system = System_w90(seedname,berry=parameters["berry"],
+        use_ws=parameters["use_ws_distance"],
+        fft=parameters["__wb_fft_lib"],
+        transl_inv=parameters["transl_inv"]
+        )
     grid = Grid(system,NK=parameters["berry_kmesh"])
     parallel = Parallel() # parallel with  "ray",num_cpus - auto
 
