@@ -1,7 +1,6 @@
 """Create system objects."""
 
 import os
-import shutil
 import tarfile
 
 import pytest
@@ -11,7 +10,7 @@ import wannierberri as wberri
 import wannierberri.symmetry as SYM
 from wannierberri import models as wb_models
 
-from common import ROOT_DIR, TMP_DATA_DIR
+from common import ROOT_DIR
 
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
 symmetries_Te = ["C3z", "C2x", "TimeReversal"]

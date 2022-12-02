@@ -1,5 +1,5 @@
-""" The goal of these tests is to benchmark results with postw90.xm where possible.
-    for that we will use the util wannierberri.utils.postw90 which mimics the behavious of postw90.x 
+""" The goal of these tests is to benchmark results with postw90.xm where possible
+    for that we will use the util wannierberri.utils.postw90 which mimics the behavious of postw90.x
 """
 
 from common import ROOT_DIR, TMP_DATA_DIR
@@ -7,7 +7,7 @@ from common_systems import create_W90_files
 import numpy as np
 from pytest import approx
 import subprocess
-import os
+import os,shutil
 
 def create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_postw90):
     """
@@ -53,8 +53,8 @@ def create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_post
 
 def error_message_pw90(precision,error,parameters,tmp_dir):
     return f"""Data did not match with postw90.x. The difference = {error} which is greater
-hat the required precision {precision}. 
-    The temporary directory is : {tmp_dir}.
+hat the required precision {precision}
+    The temporary directory is : {tmp_dir}
     The parameters of the calculation are :
 {parameters}"""
 
@@ -62,9 +62,9 @@ def check_postw90(data_dir,seedname,win_file_postw90="",precision=-1e-7,tmp_dir=
 
     tags_needed = ["mmn","chk","eig"]
     tmp_dir = create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_postw90)
-    p1 = subprocess.run(["postw90.x",seedname], cwd=tmp_dir)
+    subprocess.run(["postw90.x",seedname], cwd=tmp_dir)
     out = open(os.path.join(tmp_dir,"stdout_wberri"),"w")
-    p2 = subprocess.run(["python","-m","wannierberri.utils.postw90",seedname], cwd=tmp_dir,stdout=out, stderr=out )
+    subprocess.run(["python","-m","wannierberri.utils.postw90",seedname], cwd=tmp_dir,stdout=out, stderr=out )
 
     # so far, hardcode it for AHC, later generalize
     data_pw90 = np.loadtxt(os.path.join(tmp_dir,seedname+"-ahc-fermiscan.dat"))

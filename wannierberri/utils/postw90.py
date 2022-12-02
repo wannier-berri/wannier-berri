@@ -15,15 +15,19 @@
 
         Usage example: ::
 
-                python3 -m wannierberri.utils.postw90 seedname 
-
+                python3 -m wannierberri.utils.postw90 seedname [parameters] [ __wb_fft_lib=<value> ]
 
         Options
             seedname
                 | seedname for wanier90 files (default : wannier90)
+            parameters
+                | any parameters that can be accepted by postw90.x (e.g. berry=True), but no spaces are allowed in the parameters
+                | command-line parameters override those found in the seedname.win file
+            __wb_fft_lib
+                | fftw3 (default) or numpy
 """
 
-import sys 
+import sys
 import w90io
 from .. import run,Grid,calculators,System_w90, Parallel
 import numpy as np
@@ -40,7 +44,7 @@ parameters = {
     "use_ws_distance":True,
     "transl_inv":True,
     "__wb_fft_lib":"fftw",
-    }
+             }
 
 def main():
     seedname = sys.argv[1]  if len(sys.argv)>1 else "wannier90"
@@ -73,17 +77,17 @@ def main():
         use_ws=parameters["use_ws_distance"],
         fft=parameters["__wb_fft_lib"],
         transl_inv=parameters["transl_inv"]
-        )
+                       )
     grid = Grid(system,NK=parameters["berry_kmesh"])
     parallel = Parallel() # parallel with  "ray",num_cpus - auto
 
     run(system,
             grid=grid,
-            calculators = calc,
+            calculators=calc,
             parallel=parallel,
             adpt_num_iter=0,
             fout_name='Fe',
-            suffix = "",
+            suffix="",
             parameters_K={"fftlib":parameters["__wb_fft_lib"]},
             restart=False,
             )
