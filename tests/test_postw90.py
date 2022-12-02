@@ -39,7 +39,7 @@ def create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_post
     for tag in tags_needed:
         fn = "{}.{}".format(seedname, tag)
         os.symlink(os.path.join(data_dir_full,fn),os.path.join(data_dir_tmp,fn))
-    os.symlink(os.path.join(ROOT_DIR,"../wannierberri"),os.path.join(data_dir_tmp,"wannierberri"))
+#    os.symlink(os.path.join(ROOT_DIR,"../wannierberri"),os.path.join(data_dir_tmp,"wannierberri"))
 
     fn = "{}.{}".format(seedname, "win")
     win_text = open(os.path.join(data_dir_full,fn),"r").read()
