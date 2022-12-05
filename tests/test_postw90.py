@@ -6,7 +6,6 @@ from common import ROOT_DIR, TMP_DATA_DIR
 from common_systems import create_W90_files
 import numpy as np
 import pytest
-import subprocess
 import os,shutil
 from test_cluster import check_command_output
 
