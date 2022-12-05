@@ -22,7 +22,7 @@ def check_command_output():
                     f.write(sp.stdout.decode('utf-8'))
             return str(sp.stdout)
         else:
-            RuntimeError(f" Execution of command \n {command} \n failed with returncode {sp.returncode}\n amd message : \n {sp.stderr}")
+            raise RuntimeError(f" Execution of command \n {command} \n failed with returncode {sp.returncode}\n amd message : \n {sp.stderr}")
 
     return _inner
 
