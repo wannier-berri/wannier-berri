@@ -375,6 +375,14 @@ def system_Phonons_Si():
     system.set_symmetry(symmetries_Si)
     return system
 
+@pytest.fixture(scope="session")
+def system_Phonons_GaAs():
+    """Create system of phonons of Si using  QE data"""
+    path = os.path.join(ROOT_DIR, "data", "GaAs_phonons/GaAs")
+    system = wberri.system.System_Phonon_QE(path, use_ws=True, asr=True)
+    system.set_symmetry(symmetries_GaAs)
+    return system
+
 
 @pytest.fixture(scope="session")
 def system_Mn3Sn_sym_tb():

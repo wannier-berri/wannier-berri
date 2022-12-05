@@ -5,7 +5,7 @@ from wannierberri.__utility import real_recip_lattice
 from wannierberri.system import System_w90
 from wannierberri.__utility import FFT
 from scipy import constants as const
-from .__factors import Ry_eV
+from ..__factors import Ry_eV
 
 #from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom  #, Boltzmann
 
@@ -63,33 +63,19 @@ class System_Phonon_QE(System_w90):
             fname = f"{seedname}.dyn{ifile}.xml"
             data = untangle.parse(open(fname).read().lower()).root
             geometry = data.geometry_info
-            number_of_atoms = int(geometry.number_of_atoms.cdata)
-            number_of_types = int(geometry.number_of_types.cdata)
-            masses_tp = np.array([float(geometry.__getattr__(f'mass_{i+1}').cdata) for i in range(number_of_types)])
-            freq = np.array( [data.frequencies_thz_cmm1.__getattr__(f"omega_{j+1}").cdata.split()[0] for j in range(3*number_of_atoms)],dtype=float  )
-            freq_cmm1 = np.array( [data.frequencies_thz_cmm1.__getattr__(f"omega_{j+1}").cdata.split()[1] for j in range(3*number_of_atoms)],dtype=float  )
-            freq = np.sort(freq)
-            freq_cmm1 = np.sort(freq_cmm1)
-            real_lattice = _str2array(geometry.at.cdata)
-            atom_positions = np.array([geometry.__getattr__(f'atom_{i+1}')['tau'].split()
-                                for i in range(number_of_atoms)],dtype=float)
-            atom_positions = atom_positions.dot(np.linalg.inv(real_lattice))
-            types = np.array([geometry.__getattr__(f'atom_{i+1}')['index'] for i in range(number_of_atoms)],dtype=int)-1
-            masses = masses_tp[types]
-            if ifile==1:
-                self.real_lattice = real_lattice
-                self.number_of_atoms = number_of_atoms
+            if ifile == 1:
+                number_of_types = int(geometry.number_of_types.cdata)
+                masses_tp = np.array([float(geometry.__getattr__(f'mass_{i+1}').cdata) for i in range(number_of_types)])
+                self.real_lattice = _str2array(geometry.at.cdata)
+                self.number_of_atoms = int(geometry.number_of_atoms.cdata)
                 self.number_of_phonons = 3*self.number_of_atoms
+                atom_positions_cart = np.array([geometry.__getattr__(f'atom_{i+1}')['tau'].split()
+                                for i in range(self.number_of_atoms)],dtype=float)
+                self.atom_positions = atom_positions_cart.dot(np.linalg.inv(self.real_lattice))
+                types = np.array([geometry.__getattr__(f'atom_{i+1}')['index'] for i in range(self.number_of_atoms)],dtype=int)-1
+                masses = masses_tp[types]
                 self.num_wann = self.number_of_phonons
-                self.atom_positions = atom_positions
                 self.wannier_centers_red = np.array( [atom for atom in self.atom_positions for i in range(3)])
-            else:
-                assert self.number_of_atoms == number_of_atoms, (
-                    f"number of atoms in {seedname}.dyn{ifile}.xml and {seedname}.dyn1.xml are different : {number_of_atoms} and {self.number_of_atoms}")
-                assert np.linalg.norm(self.real_lattice-real_lattice)<1e-10, (
-                    f"real lattice in {seedname}.dyn{ifile}.xml and {seedname}.dyn1.xml are different : {real_lattice} and {self.real_lattice}")
-                assert np.linalg.norm(self.atom_positions-atom_positions)<1e-10, (
-                    f"atom positions in {seedname}.dyn{ifile}.xml and {seedname}.dyn1.xml are different : {real_lattice} and {self.real_lattice}")
             number_of_q = int(geometry.number_of_q.cdata)
             for iq in range(number_of_q):
                 dynamical = data.__getattr__(f"dynamical_mat__{iq+1}")

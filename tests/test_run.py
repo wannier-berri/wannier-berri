@@ -1015,15 +1015,14 @@ def test_shc_static(check_run,system_Fe_W90):
 
 
 
-
-def test_phonons_Si_tetra(check_run, system_Phonons_Si):
+def test_phonons_GaAs_tetra(check_run, system_Phonons_GaAs):
     """test  dos, cumdos for phonons"""
 
     calculators = {k:cal(tetra=True,Efermi=omega_phonon) for k,cal in calculators_phonons.items()}
     check_run(
-        system_Phonons_Si,
+        system_Phonons_GaAs,
         calculators,
-        fout_name="phonons_Si_tetra",
+        fout_name="phonons_GaAs_tetra",
         use_symmetry=True,
     )
 
