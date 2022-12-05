@@ -7,7 +7,6 @@ from common_systems import create_W90_files
 import numpy as np
 import pytest
 import os,shutil
-from test_cluster import check_command_output
 
 def create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_postw90):
     """

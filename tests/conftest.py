@@ -41,6 +41,9 @@ from common_comparers import (
     compare_sym_asym,
 )
 
+
+from test_cluster import check_command_output
+
 # Parallel objects
 from common_parallel import parallel_serial, parallel_ray
 
