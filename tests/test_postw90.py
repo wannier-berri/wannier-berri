@@ -5,13 +5,14 @@
 from common import ROOT_DIR, TMP_DATA_DIR
 from common_systems import create_W90_files
 import numpy as np
-from pytest import approx
+import pytest
 import subprocess
 import os,shutil
+from test_cluster import check_command_output
 
 def create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_postw90):
     """
-    create a temporary folder to runpostw90 and wanierberri.utils.postw90
+    create a temporary folder to run postw90 and wanierberri.utils.postw90
     """
 
     data_dir_full = os.path.join(ROOT_DIR, "data", data_dir)
@@ -58,33 +59,40 @@ hat the required precision {precision}
     The parameters of the calculation are :
 {parameters}"""
 
-def check_postw90(data_dir,seedname,win_file_postw90="",precision=-1e-7,tmp_dir=None):
-
-    tags_needed = ["mmn","chk","eig"]
-    tmp_dir = create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_postw90)
-    subprocess.run(["postw90.x",seedname], cwd=tmp_dir)
-    out = open(os.path.join(tmp_dir,"stdout_wberri"),"w")
-    subprocess.run(["python","-m","wannierberri.utils.postw90",seedname], cwd=tmp_dir,stdout=out, stderr=out )
-
-    # so far, hardcode it for AHC, later generalize
-    data_pw90 = np.loadtxt(os.path.join(tmp_dir,seedname+"-ahc-fermiscan.dat"))
-    data_wb   = np.loadtxt(os.path.join(tmp_dir,seedname+"-ahc_iter-0000.dat"))
 
 
-    maxval = np.max(abs(data_wb[:,4:7]))
-    if precision is None:
-        precision = max(maxval / 1E12, 1E-11)
-    elif precision < 0:
-        precision = max(maxval * abs(precision), 1E-11)
+@pytest.fixture(scope="module")
+def check_postw90(check_command_output):
+    def _inner(data_dir,seedname,win_file_postw90="",precision=-1e-7,tmp_dir=None):
 
-    assert data_pw90[:,1:4] == approx(data_wb[:,1:4]/100, abs=precision), error_message_pw90(precision,
-            np.max(np.abs(data_pw90[:,1:4]-data_wb[:,1:4]/100)), win_file_postw90, tmp_dir)
+        tags_needed = ["mmn","chk","eig"]
+        tmp_dir = create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_postw90)
+        check_command_output(["postw90.x",seedname], cwd=tmp_dir)
+        data_pw90 = np.loadtxt(os.path.join(tmp_dir,seedname+"-ahc-fermiscan.dat"))
+
+        out = os.path.join(tmp_dir,"stdout_wberri")
+        check_command_output(["python3","-m","wannierberri.utils.postw90",seedname], cwd=tmp_dir,stdout_filename=out)
+
+        # so far, hardcode it for AHC, later generalize
+        data_wb   = np.loadtxt(os.path.join(tmp_dir,seedname+"-ahc_iter-0000.dat"))
+
+
+        maxval = np.max(abs(data_wb[:,4:7]))
+        if precision is None:
+            precision = max(maxval / 1E12, 1E-11)
+        elif precision < 0:
+            precision = max(maxval * abs(precision), 1E-11)
+
+        assert data_pw90[:,1:4] == pytest.approx(data_wb[:,1:4]/100, abs=precision), error_message_pw90(precision,
+                np.max(np.abs(data_pw90[:,1:4]-data_wb[:,1:4]/100)), win_file_postw90, tmp_dir)
+
+    return _inner
 
 
 
-
-
-def check_Fe(ti,uws):
+@pytest.mark.parametrize("ti",[True,False])
+@pytest.mark.parametrize("uws",[True,False])
+def test_Fe(ti,uws,check_postw90):
     parameters = f"""
 berry = true
 berry_task = ahc
@@ -102,14 +110,3 @@ use_ws_distance = {uws}
 """
     check_postw90("Fe_Wannier90","Fe",parameters, precision=-1e-6)
 
-def test_Fe_1():
-    check_Fe(True,False)
-
-def test_Fe_2():
-    check_Fe(True,True)
-
-def test_Fe_3():
-    check_Fe(False,True)
-
-def test_Fe_4():
-    check_Fe(False,False)
