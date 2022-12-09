@@ -137,6 +137,10 @@ class Data_K(System):
 #   let's write them explicitly, for better code readability
 ###########################
 
+    @property
+    def is_phonon(self):
+        return self.system.is_phonon
+
     @lazy_property.LazyProperty
     def Ham_R(self):
         return self.system.Ham_R * self.expdK[None, None, :]
@@ -284,7 +288,8 @@ class Data_K(System):
     def E_K(self):
         print_my_name_start()
         EUU = self.poolmap(np.linalg.eigh, self.HH_K)
-        E_K = np.array([euu[0] for euu in EUU])
+        E_K = self.phonon_freq_from_square(np.array([euu[0] for euu in EUU]))
+#        print ("E_K = ",E_K.min(), E_K.max(), E_K.mean())
         select = (E_K > self.Emin) * (E_K < self.Emax)
         self.select_K = np.all(select, axis=1)
         self.select_B = np.all(select, axis=0)
@@ -300,7 +305,7 @@ class Data_K(System):
         dK2 = self.Kpoint.dK_fullBZ / 2
         expdK = np.exp(
             2j * np.pi * self.system.iRvec
-            * dK2[None, :])  # we omit the wcc phases here, because they do not affect hte energies
+            * dK2[None, :])  # we omit the wcc phases here, because they do not affect the energies
         expdK = np.array([1. / expdK, expdK])
         Ecorners = np.zeros((self.nk_selected, 2, 2, 2, self.nb_selected), dtype=float)
         for ix in 0, 1:
@@ -311,8 +316,19 @@ class Data_K(System):
                     _HH_K = self.fft_R_to_k(_Ham_R, hermitean=True)
                     E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
                     Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
+        Ecorners = self.phonon_freq_from_square(Ecorners)
         print_my_name_end()
+#        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
         return Ecorners
+
+    def phonon_freq_from_square(self,E):
+        """takes  sqrt(|E|)*sign(E) for phonons, returns input for electrons"""
+        if self.is_phonon:
+            e = np.sqrt(np.abs(E))
+            e[E<0] = -e[E<0]
+            return e
+        else:
+            return E
 
     @property
     def HH_K(self):

@@ -15,6 +15,7 @@ from common import ROOT_DIR
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
 symmetries_Te = ["C3z", "C2x", "TimeReversal"]
 symmetries_GaAs = [SYM.C4z * SYM.Inversion, SYM.TimeReversal, SYM.Rotation(3, [1, 1, 1])]
+symmetries_Si = ["C4z","C4x","TimeReversal"]
 symmetries_Mn3Sn = ["C3z"]
 
 Efermi_Fe = np.linspace(17, 18, 11)
@@ -24,6 +25,7 @@ Efermi_GaAs = np.linspace(7, 9, 11)
 Efermi_Haldane = np.linspace(-3, 3, 11)
 Efermi_CuMnAs_2d = np.linspace(-2, 2, 11)
 Efermi_Chiral = np.linspace(-5, 8, 27)
+omega_phonon = np.linspace(-0.01, 0.1, 23)
 Efermi_Mn3Sn = np.linspace(2, 3, 11)
 
 
@@ -366,6 +368,23 @@ def system_Te_ASE_wcc(data_Te_ASE):
 
 
 @pytest.fixture(scope="session")
+def system_Phonons_Si():
+    """Create system of phonons of Si using  QE data"""
+    path = os.path.join(ROOT_DIR, "data", "Si_phonons/si")
+    system = wberri.system.System_Phonon_QE(path, use_ws=True, asr=True)
+    system.set_symmetry(symmetries_Si)
+    return system
+
+@pytest.fixture(scope="session")
+def system_Phonons_GaAs():
+    """Create system of phonons of Si using  QE data"""
+    path = os.path.join(ROOT_DIR, "data", "GaAs_phonons/GaAs")
+    system = wberri.system.System_Phonon_QE(path, use_ws=True, asr=True)
+    system.set_symmetry(symmetries_GaAs)
+    return system
+
+
+@pytest.fixture(scope="session")
 def system_Mn3Sn_sym_tb():
     """Create system for Mn3Sn using _tb.dat data"""
 
@@ -400,5 +419,4 @@ def system_Mn3Sn_sym_tb():
                 [0, 0, 0],
                 [0, 0, 0]],
             DFT_code='vasp',)
-
     return system
