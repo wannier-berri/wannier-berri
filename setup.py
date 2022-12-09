@@ -1,5 +1,5 @@
 ## python3 setup.py bdist_wheel
-## python3 -m twine upload dist/* 
+## python3 -m twine upload dist/*
 import setuptools
 
 with open("README.rst", "r") as fh:
@@ -7,15 +7,15 @@ with open("README.rst", "r") as fh:
 
 
 setuptools.setup(
-     name='wannierberri',  
+     name='wannierberri',
      author="Stepan S. Tsirkin",
      author_email="stepan.tsirkin@uzh.ch",
      description="Advanced tool for Wannier interpolation",
      long_description=long_description,
      long_description_content_type="text/markdown",
      python_requires='>=3.7',
-     install_requires = [
-                        'numpy>=1.18,<1.23', # reauired by numba, numpy-1.23 is inpre-release state so far (31.05.22) https://pypi.org/project/numpy/#history 
+     install_requires=[
+                        'numpy>=1.18,<1.23', # reauired by numba, numpy-1.23 is inpre-release state so far (31.05.22) https://pypi.org/project/numpy/#history
                         'scipy>=1.0',
                         'lazy_property',
                         'colorama',
@@ -32,12 +32,13 @@ setuptools.setup(
                         'sympy',
                         'spglib<2',
                         'w90io @ git+https://github.com/jimustafa/wannier90-pylib-io.git'
-                        ],
+                        'untangle',
+                      ],
      url="https://wannier-berri.org",
      packages=setuptools.find_packages(),
      classifiers=[
          "Programming Language :: Python :: 3",
          "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
          "Operating System :: OS Independent",
-     ],
- )
+                 ],
+                )
