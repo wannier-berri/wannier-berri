@@ -115,7 +115,7 @@ class Symmetry():
         if (self.TR and TRodd) != (self.Inv and Iodd):
             res = -res
         if self.TR and TRtrans:
-            res = res.swapaxes(dim - rank, dim - rank + 1)
+            res = res.swapaxes(dim - rank, dim - rank + 1).conj()
         return res
 
 
