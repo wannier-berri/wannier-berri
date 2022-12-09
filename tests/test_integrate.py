@@ -69,8 +69,8 @@ def check_integrate(parallel_serial):
             parameters_K=parameters_K,
             fout_name=os.path.join(OUTPUT_DIR, fout_name),
             suffix=suffix,
-            write_txt=(mode == "txt"),
-            write_bin=(mode == "bin"),
+            write_txt=("txt" in mode),
+            write_bin=("bin" in mode),
             restart=restart,
         )
         if len(suffix) > 0:
