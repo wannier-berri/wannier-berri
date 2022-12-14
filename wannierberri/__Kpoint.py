@@ -147,8 +147,16 @@ class KpointBZ():
 
 
 def exclude_equiv_points(K_list, new_points=None):
+    # cnt: the number of excluded k-points
+    # weight_changed: a dictionary that saves the "old" weights, K_list[i].factor,
+    #       for k-points that are already calculated (i < n - new_points)
+    #       and whose weights are changed by this function
+
     cnt = 0
     n = len(K_list)
+
+    if new_points is None:
+        new_points = n
 
     K_list_length = np.array([K.distGamma for K in K_list])
     K_list_sort = np.argsort(K_list_length)
@@ -157,19 +165,35 @@ def exclude_equiv_points(K_list, new_points=None):
 
     exclude = []
 
+    # dictionary; key: ik, value: previous factor
+    weight_changed = {}
+
     for start, end in zip(wall[:-1], wall[1:]):
         for l in range(start, end):
             i = K_list_sort[l]
             if i not in exclude:
-                for m in range(l + 1, end):
+                for m in range(start, end):
                     j = K_list_sort[m]
+                    if i >= j:
+                        continue
+                    # There are two cases:
+                    # (i) if i < n - new_points <= j; or
+                    # (ii) if n - new_points <= i < j
+                    # In both cases, j is excluded
                     if new_points is not None:
-                        if i < n - new_points and j < n - new_points:
+                        if i < n - new_points and j < n - new_points:   
                             continue
                     if j not in exclude:
                         if K_list[i].equiv(K_list[j]):
+                            print('exclude dbg', i, j, K_list[i].K, K_list[j].K, n, new_points)
                             exclude.append(j)
+                            if i < n - new_points:
+                                if i not in weight_changed:
+                                    weight_changed[i] = K_list[i].factor
                             K_list[i].absorb(K_list[j])
+                            cnt += 1
+                            
+
     for i in sorted(exclude)[-1::-1]:
         del K_list[i]
-    return cnt
+    return cnt, weight_changed
