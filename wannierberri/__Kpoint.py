@@ -55,7 +55,7 @@ class KpointBZ():
             "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ], refinement level:{3}, dK={4} ".format(
                 self.K[0], self.K[1], self.K[2], self.refinement_level, self.dK))
 
-    @property
+    @lazy_property.LazyProperty
     def _max(self):
         return self.res.max  #np.max(self.res_smooth)
 
