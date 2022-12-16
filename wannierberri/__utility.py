@@ -311,3 +311,4 @@ def Gaussian(x, width, adpt_smr):
         # width is number
         output[inds] = 1.0 / (np.sqrt(np.pi) * width) * np.exp(-(x[inds] / width)**2)
     return output
+
