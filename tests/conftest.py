@@ -13,6 +13,7 @@ from common_systems import (
     system_Fe_sym_W90,
     system_Fe_FPLO,
     system_Fe_FPLO_wcc,
+    data_Te_ASE,
     system_Te_ASE,
     system_Te_ASE_wcc,
     system_GaAs_W90,
@@ -28,6 +29,9 @@ from common_systems import (
     system_Chiral_left_TR,
     system_Chiral_right,
     system_CuMnAs_2d_broken,
+    system_Phonons_Si,
+    system_Phonons_GaAs,
+    system_Mn3Sn_sym_tb,
 )
 
 # Comparers for tests

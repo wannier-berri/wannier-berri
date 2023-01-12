@@ -28,7 +28,9 @@ thishost=`uname -n | awk -F. '{print $1.}'`
 ip=`hostname -i`
 port=6379
 ip_head="$ip:$port"
+ray_command=$(which ray)
 export ip_head
+echo "RAY command: $ray_command"
 echo "IP Head: $ip_head"
 
 echo "Allocate Nodes = <$jobnodes>"
@@ -37,11 +39,11 @@ echo "set up ray cluster..."
 for node in `echo $jobnodes`; do
     if [[ $node == "$thishost" ]]; then
         echo "STARTING HEAD at $node"
-        ray start --head --node-ip-address=$ip --port=$port --redis-password=$redis_password --block &
+        ray start --head --node-ip-address=$ip --port=$port --redis-password=$redis_password --num-cpus=3 --block &
         sleep 12.34
     else
         echo "STARTING WORKER at $node"
-        ssh $node ray start --address=$ip_head --redis-password=$redis_password
+        ssh $node "$ray_command start --address=$ip_head --redis-password=$redis_password --num-cpus=3"
         sleep 5.0
     fi
 done

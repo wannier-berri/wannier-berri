@@ -21,7 +21,7 @@ def parallel_ray():
 
     # first we just check that the initialization works with cluster=True and some dummy ray_init parameters
     ray_init = {}
-    ray_init['address'] = ''
+    ray_init['address'] = None
     ray_init['_node_ip_address'] = "0.0.0.0"
     ray_init['_redis_password'] = 'some_password'
 

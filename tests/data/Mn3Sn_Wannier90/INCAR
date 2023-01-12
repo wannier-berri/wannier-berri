@@ -1,0 +1,55 @@
+ISTART = 0
+ICHARG = 11
+LWAVE = T
+LCHARG = F
+LORBIT = 10
+LORBMOM=T
+
+LWANNIER90 = .TRUE.
+LWRITE_MMN_AMN = .TRUE.
+LWRITE_UNK = .FALSE.
+
+tartparameter for this run:
+   NWRITE =      2     # write-flag & timer
+   INIWAV =      1     # electr: 0-lowe 1-rand  2-diag
+   ISTART =      0     # job   : 0-new  1-cont  2-samecut
+   ICHARG =      2     # charge: 1-file 2-atom 10-const
+   PREC   = Normal   # normal or accurate (medium, high low for compatibility)
+   ISPIN  =      2     # spin polarized calculation   
+   NBANDS = 160
+
+   LNONCOLLINEAR =  T  #   non collinear calculations
+
+ Spin-orbit coupling related tags
+   LSORBIT     =     T 
+#   SAXIS       =  0 0 1
+   MAGMOM = 0 2 0  1.732 -1  0 -1.732 -1 0  0  2 0   1.732 -1  0 -1.732 -1 0   0 0 0 0 0 0
+   GGA_COMPAT  =   .F.   
+   
+ Electronic Relaxation 
+#   ENCUT  =  400     # eV 
+   NELM   =  60  
+   NELMIN =  2 
+   NELMDL =  0       # of ELM steps 
+   EDIFF  = 1E-05    # stopping-criterion for ELM
+   LREAL  =      F   # real-space projection
+  
+#   NPAR=4
+    
+#  NELECT=
+#  NUPDOWN=
+
+Ionic relaxation
+   IBRION =      -1    #ionic relax: 0-MD 1-quasi-New 2-CG -1-static
+   EDIFFG =    1E-05   #stopping-criterion for IOM
+   NSW    =      0     # number of steps for IOM
+   ISIF   =      2     #stress and relaxation
+   ISYM   =      0     #0-nonsym 1-usesym 2-fastsym
+   POTIM  =   0.5000   #time-step for ionic-motion
+
+ DOS related values:
+   ISMEAR =     1  ;   
+   SIGMA  =   0.05    # broadening in eV -4-tet -1-fermi 0-gaus
+
+ Electronic relaxation 2 (details)
+   IALGO  =     38    # algorithm
