@@ -1,3 +1,24 @@
+Version 0.13.5
+++++++++++++++++++
+## What's Changed
+* Solved index issue in the FPLO Hamiltonian reading function. by @philipp-eck in https://github.com/wannier-berri/wannier-berri/pull/203
+* Allow running tests without gpaw and ase by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/195
+* Fix use of factor in static calculators by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/202
+* Fix ray cluster script for pbs, add num-cpus-per-node argument by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/205
+* added test python 3.10, removed 3.7 by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/212
+* symmetrization of magnetic system works for multi_atom unit cells. by @Liu-Xiaoxiong in https://github.com/wannier-berri/wannier-berri/pull/179
+* fixed spglib<2 by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/213
+* Bump protobuf from 3.20.1 to 3.20.2 by @dependabot in https://github.com/wannier-berri/wannier-berri/pull/211
+* Phonons by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/191
+* Change the attribute KpointBZ._max into a lazy property by @jhryoo in https://github.com/wannier-berri/wannier-berri/pull/218
+
+## New Contributors
+* @philipp-eck made their first contribution in https://github.com/wannier-berri/wannier-berri/pull/203
+* @dependabot made their first contribution in https://github.com/wannier-berri/wannier-berri/pull/211
+* @jhryoo made their first contribution in https://github.com/wannier-berri/wannier-berri/pull/218
+
+**Full Changelog**: https://github.com/wannier-berri/wannier-berri/compare/v0.13.4...v0.13.5
+
 Version 0.13.0
 ++++++++++++++++++
 
