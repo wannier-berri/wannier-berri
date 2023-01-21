@@ -105,26 +105,26 @@ class System():
             if param not in self.default_parameters:
                 print(f"WARNING: parameter {param} was passed to data_K, which is not recognised")
 
-        if self.npar is None:
+        if self.npar is None :
             self.npar = multiprocessing.cpu_count()
-        if self.mp_grid is not None:
+        if self.mp_grid is not None :
             self.mp_grip = np.array(self.mp_grid)
 
         periodic = np.zeros(3, dtype=bool)
         periodic[:len(self.periodic)] = self.periodic
         self.periodic = periodic
         self.needed_R_matrices = set(['Ham'])
-        if self.morb : 
+        if self.morb :
             self.needed_R_matrices.update(['AA','BB','CC'])
-        if self.berry : 
+        if self.berry :
             self.needed_R_matrices.add('AA')
-        if self.spin : 
+        if self.spin :
             self.needed_R_matrices.add('SS')
-        if self._getFF : 
+        if self._getFF :
             self.needed_R_matrices.add('FF')
-        if self.SHCryoo:
+        if self.SHCryoo :
             self.needed_R_matrices.update(['AA','SS','SA','SHA','SR','SH','SHR'])
-        if self.SHCqiao:
+        if self.SHCqiao :
             self.needed_R_matrices.update(['AA','SS','SR','SH','SHR'])
 
         self._XX_R = dict()
@@ -137,35 +137,40 @@ class System():
             'AA', 'BB', 'CC', etc
         """
         if not isinstance(keys,(list,tuple)):
-            keys = [keys] 
+            keys = [keys]
         for k in keys:
             if k in self.needed_R_matrices:
                 return True
-    
+
     def get_R_mat(self,key):
         try:
-            return self._XX_R[key] 
+            return self._XX_R[key]
         except KeyError:
             raise ValueError(f"The real-space matrix elements '{key}' are not set in the system,"+
             " but are required for the current calculation. please check parameters of the System() initializer")
 
 
     def has_R_mat(self,key):
-        return (key in self._XX_R) 
+        return (key in self._XX_R)
+
+    def has_R_mat_any(self,keys):
+        for k in keys:
+            if self.has_R_mat(k):
+                return True
 
     def set_R_mat(self,key,value,reset=False):
         if key in self._XX_R and not reset:
-           raise RuntimeError(f"setting {key} for the second time. smth is wrong")
+            raise RuntimeError(f"setting {key} for the second time. smth is wrong")
         self._XX_R[key]=value
-        
+
     @property
     def Ham_R(self):
         return self.get_R_mat('Ham')
-        
+
     @property
     def AA_R(self):
         return self.get_R_mat('AA')
-    
+
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe'):
         """
@@ -220,7 +225,7 @@ class System():
 
         iR0 = self.iR0
         if 'AA' in self.needed_R_matrices:
-            self.set_X_mat('AA',np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex) )
+            self.set_R_mat('AA',np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex) )
             if not self.use_wcc_phase:
                 for i in range(self.num_wann):
                     self.get_R_mat('AA')[i, i, iR0, :] = self.wannier_centers_cart_auto[i]
@@ -288,7 +293,7 @@ class System():
                     "{0:3d} {1:3d} {2:15.8e} {3:15.8e}\n".format(
                         m + 1, n + 1, self.Ham_R[m, n, iR].real * self.Ndegen[iR], self.Ham_R[m, n, iR].imag
                         * self.Ndegen[iR]) for n in range(self.num_wann) for m in range(self.num_wann)))
-        if hasattr(self, 'AA_R'):
+        if self.has_R_mat('AA'):
             for iR in range(self.nRvec):
                 f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
                 f.write(
@@ -411,9 +416,9 @@ class System():
                 print("WARNING: orbital moment does not work with wcc_phase so far")
                 norm = np.linalg.norm(self.get_R_mat('CC') - self.conj_XX_R('CC'))
                 assert norm < 1e-10, f"CC_R is not Hermitian, norm={norm}"
-                assert hasattr(self, 'BB_R'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
-                T = self.wannier_centers_cart[:, None, None, :, None] * self.BB_R[:, :, :, None, :]
-                CC_R_new = self.CC_R.copy() + 1.j * sum(
+                assert self.has_R_mat('BB'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
+                T = self.wannier_centers_cart[:, None, None, :, None] * self.get_R_mat('BB')[:, :, :, None, :]
+                CC_R_new = self.get_R_mat('CC').copy() + 1.j * sum(
                     s * (
                         -T[:, :, :, a, b]  # -t_i^a * B_{ij}^b(R)
                         - self.conj_XX_R(T[:, :, :, b, a])  # - B_{ji}^a(-R)^*  * t_j^b
@@ -422,9 +427,7 @@ class System():
                     ) for (s, a, b) in [(+1, alpha_A, beta_A), (-1, beta_A, alpha_A)])
                 norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
                 assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
-
-            if (hasattr(self, "SA_R") or hasattr(self, "SHA_R") or hasattr(self, "SR_R") or hasattr(self, "SH")
-                    or hasattr(self, "SHR_R")):
+            if self.has_R_mat_any(['SA','SHA','SR','SH','SHR']):
                 raise NotImplementedError("use_wcc_phase=True for spin current matrix elements not implemented")
 
             for X in ['AA', 'BB', 'CC']:
@@ -464,7 +467,7 @@ class System():
     def conj_XX_R(self, XX_R):
         """ reverses the R-vector and takes the hermitian conjugate """
         if isinstance(XX_R,str):
-            XX_R=elf.get_R_mat(XX_R)
+            XX_R=self.get_R_mat(XX_R)
         XX_R_new = np.zeros_like(XX_R)
         lst_R, lst_mR = self.reverseR
         XX_R_new[:, :, lst_R] = XX_R[:, :, lst_mR]
@@ -481,7 +484,7 @@ class System():
     def check_hermitian(self, XX):
         if XX in self._XX_R:
             _X = self.get_R_mat(XX).copy()
-            assert (np.max(abs(_X - self.conh_XX_R(XX_R))) < 1e-8), f"{XX} should obey X(-R) = X(R)^+"
+            assert (np.max(abs(_X - self.conj_XX_R(XX))) < 1e-8), f"{XX} should obey X(-R) = X(R)^+"
         else:
             print(f"{XX} is missing,nothing to check")
 

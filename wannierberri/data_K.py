@@ -161,7 +161,7 @@ class Data_K(System):
                 res = X_R* self.expdK.reshape(shape)
 
             if key in memoize_R:
-                 self.set_R_mat(key,res)
+                self.set_R_mat(key,res)
         return res
 
 

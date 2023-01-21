@@ -99,26 +99,27 @@ class System_tb_py(System):
         nRvec = self.iRvec.shape[0]
         self.nRvec0 = nRvec
         # Define Ham_R matrix from hoppings
-        self.Ham_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0), dtype=complex)
+        Ham_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0), dtype=complex)
         if module == 'tbmodels':
             for hop in model.hop.items():
                 R = np.array(hop[0], dtype=int)
                 hops = np.array(hop[1]).reshape((self.num_wann, self.num_wann))
                 iR = int(np.argwhere(np.all((R - R_all[:, :self.dimr]) == 0, axis=1)))
                 inR = int(np.argwhere(np.all((-R - R_all[:, :self.dimr]) == 0, axis=1)))
-                self.Ham_R[:, :, iR] += hops
-                self.Ham_R[:, :, inR] += np.conjugate(hops.T)
+                Ham_R[:, :, iR] += hops
+                Ham_R[:, :, inR] += np.conjugate(hops.T)
         elif module == 'pythtb':
             for nhop in model._hoppings:
                 i = nhop[1]
                 j = nhop[2]
                 iR = np.argwhere(np.all((nhop[-1] - self.iRvec[:, :self.dimr]) == 0, axis=1))
                 inR = np.argwhere(np.all((-nhop[-1] - self.iRvec[:, :self.dimr]) == 0, axis=1))
-                self.Ham_R[i, j, iR] += nhop[0]
-                self.Ham_R[j, i, inR] += np.conjugate(nhop[0])
+                Ham_R[i, j, iR] += nhop[0]
+                Ham_R[j, i, inR] += np.conjugate(nhop[0])
             # Set the onsite energies at H(R=[000])
             for i in range(model._norb):
-                self.Ham_R[i, i, index0] = model._site_energies[i]
+                Ham_R[i, i, index0] = model._site_energies[i]
+        self.set_R_mat('Ham',Ham_R)
 
 
         self.getXX_only_wannier_centers()
