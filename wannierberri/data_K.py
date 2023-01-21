@@ -147,7 +147,7 @@ class Data_K(System):
         memoize_R = ['Ham','AA','OO','BB','CC','CCab']
         try:
             return self._XX_R[key]
-        except:
+        except KeyError:
             if key == 'OO':
                 res = self._OO_R()
             elif key == 'CCab':
@@ -159,7 +159,6 @@ class Data_K(System):
                 shape = [1]*X_R.ndim
                 shape[2]=self.expdK.shape[0]
                 res = X_R* self.expdK.reshape(shape)
-
             if key in memoize_R:
                 self.set_R_mat(key,res)
         return res
