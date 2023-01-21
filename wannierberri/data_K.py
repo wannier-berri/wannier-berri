@@ -154,6 +154,8 @@ class Data_K(System):
                 res = self._CCab_R()
             elif key == 'FF':
                 res = self._FF_R()
+            elif key == 'T_wcc':
+                res = self._T_wcc_R()
             else:
                 X_R = self.system.get_R_mat(key)
                 shape = [1]*X_R.ndim
@@ -165,8 +167,7 @@ class Data_K(System):
 
 
     #  this is a bit ovberhead, but to maintain uniformity of the code let's use this
-    @lazy_property.LazyProperty
-    def T_wcc_R(self):
+    def _T_wcc_R(self):
         nw = self.num_wann
         res = np.zeros((nw, nw, self.system.nRvec, 3), dtype=complex)
         res[np.arange(nw), np.arange(nw), self.system.iR0, :] = self.system.wannier_centers_cart_wcc_phase
@@ -175,8 +176,8 @@ class Data_K(System):
     def _OO_R(self):
         # We do not multiply by expdK, because it is already accounted in AA_R
         return 1j * (
-            self.cRvec_wcc[:, :, :, alpha_A] * self.AA_R[:, :, :, beta_A]
-            - self.cRvec_wcc[:, :, :, beta_A] * self.AA_R[:, :, :, alpha_A])
+            self.cRvec_wcc[:, :, :, alpha_A] * self.get_R_mat('AA')[:, :, :, beta_A]
+            - self.cRvec_wcc[:, :, :, beta_A] * self.get_R_mat('AA')[:, :, :, alpha_A])
 
     def _CCab_R(self):
         if self._CCab_antisym:
@@ -189,7 +190,7 @@ class Data_K(System):
 
     def _FF_R(self):
         if self._FF_antisym:
-            return self.cRvec_wcc[:, :, :, :, None] * self.AA_R[:, :, :, None, :]
+            return self.cRvec_wcc[:, :, :, :, None] * self.get_R_mat('AA')[:, :, :, None, :]
         else:
             return self.system.get_R_mat('FF') * self.expdK[None, None, :, None, None]
 
