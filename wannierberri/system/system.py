@@ -127,10 +127,12 @@ class System():
         if self.SHCqiao:
             self.needed_R_matrices.update(['AA','SS','SR','SH','SHR'])
 
+        self._XX_R = dict()
+
 
     def need_R_any(self,keys):
         """returns True is any of the listed matrices is needed in to be set
-        
+
         keys : str or list of str
             'AA', 'BB', 'CC', etc
         """
@@ -138,7 +140,32 @@ class System():
             keys = [keys] 
         for k in keys:
             if k in self.needed_R_matrices:
-                return True 
+                return True
+    
+    def get_R_mat(self,key):
+        try:
+            return self._XX_R[key] 
+        except KeyError:
+            raise ValueError(f"The real-space matrix elements '{key}' are not set in the system,"+
+            " but are required for the current calculation. please check parameters of the System() initializer")
+
+
+    def has_R_mat(self,key):
+        return (key in self._XX_R) 
+
+    def set_R_mat(self,key,value,reset=False):
+        if key in self._XX_R and not reset:
+           raise RuntimeError(f"setting {key} for the second time. smth is wrong")
+        self._XX_R[key]=value
+        
+    @property
+    def Ham_R(self):
+        return self.get_R_mat('Ham')
+        
+    @property
+    def AA_R(self):
+        return self.get_R_mat('AA')
+    
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe'):
         """
@@ -151,12 +178,6 @@ class System():
         magmom: array
             Magnetic moment of each atom.
         """
-        XX_R = {'Ham': self.Ham_R}
-        for X in ['AA', 'BB', 'CC', 'SS', 'FF', 'SA', 'SHA', 'SR', 'SH', 'SHR']:
-            try:
-                XX_R[X] = vars(self)[X + '_R']
-            except KeyError:
-                pass
         symmetrize_wann = SymWann(
             num_wann=self.num_wann,
             lattice=self.real_lattice,
@@ -164,13 +185,11 @@ class System():
             atom_name=atom_name,
             proj=proj,
             iRvec=self.iRvec,
-            XX_R=XX_R,
+            XX_R=self._XX_R,
             soc=soc,
             magmom=magmom,
             DFT_code=DFT_code)
-        XX_R, self.iRvec = symmetrize_wann.symmetrize()
-        for X in XX_R.keys():
-            vars(self)[X + '_R'] = XX_R[X]
+        self._XX_R, self.iRvec = symmetrize_wann.symmetrize()
 
     def check_periodic(self):
         exclude = np.zeros(self.nRvec, dtype=bool)
@@ -187,9 +206,8 @@ class System():
             notexclude = np.logical_not(exclude)
             self.iRvec = self.iRvec[notexclude]
             for X in ['Ham', 'AA', 'BB', 'CC', 'SS', 'FF']:
-                XR = X + '_R'
-                if hasattr(self, XR):
-                    vars(self)[XR] = vars(self)[XR][:, :, notexclude]
+                if X in self._XX_R:
+                    self.set_R_mat(X, self.get_X_mat(X)[:, :, notexclude], reset=True)
 
 
     def getXX_only_wannier_centers(self, getSS=False):
@@ -202,19 +220,19 @@ class System():
 
         iR0 = self.iR0
         if 'AA' in self.needed_R_matrices:
-            self.AA_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
+            self.set_X_mat('AA',np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex) )
             if not self.use_wcc_phase:
                 for i in range(self.num_wann):
-                    self.AA_R[i, i, iR0, :] = self.wannier_centers_cart_auto[i]
+                    self.get_R_mat('AA')[i, i, iR0, :] = self.wannier_centers_cart_auto[i]
 
         if 'BB' in self.needed_R_matrices:
-            self.BB_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
+            self.set_R_mat('BB', np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex) )
             if not self.use_wcc_phase:
                 for i in range(self.num_wann):
-                    self.BB_R[i, i, iR0, :] = self.AA_R[i, i, iR0, :] * self.Ham_R[i, i, iR0]
+                    self.get_R_mat('BB')[i, i, iR0, :] = self.get_R_mat('AA')[i, i, iR0, :] * self.get_R_mat('Ham')[i, i, iR0]
 
         if 'CC' in self.needed_R_matrices:
-            self.CC_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
+            self.set_R_mat('CC',np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex))
 
         if 'SS' in self.needed_R_matrices and getSS:
             raise NotImplementedError()
@@ -236,11 +254,9 @@ class System():
             print("using ws_distance")
             ws_map = ws_dist_map(
                 self.iRvec, self.wannier_centers_cart_ws, self.mp_grid, self.real_lattice, npar=self.npar)
-            for X in ['Ham', 'AA', 'BB', 'CC', 'SS', 'FF', 'SA', 'SHA', 'SR', 'SH', 'SHR']:
-                XR = X + '_R'
-                if hasattr(self, XR):
-                    print("using ws_dist for {}".format(XR))
-                    vars(self)[XR] = ws_map(vars(self)[XR])
+            for X in self._XX_R:
+                print("using ws_dist for {}".format(X))
+                self.set_R_mat(X, ws_map(self.get_R_mat(X)),reset=True)
             self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
         else:
             print("NOT using ws_dist")
@@ -385,15 +401,15 @@ class System():
         if self.use_wcc_phase:
             if self.wannier_centers_cart is None:
                 raise ValueError("use_wcc_phase = True, but the wannier centers could not be determined")
-            if hasattr(self, 'AA_R'):
-                AA_R_new = np.copy(self.AA_R)
+            if self.has_R_mat('AA'):
+                AA_R_new = np.copy(self.get_R_mat('AA'))
                 AA_R_new[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] -= self.wannier_centers_cart
-            if hasattr(self, 'BB_R'):
+            if self.has_R_mat('BB'):
                 print("WARNING: orbital moment does not work with wcc_phase so far")
-                BB_R_new = self.BB_R.copy() - self.Ham_R[:, :, :, None] * self.wannier_centers_cart[None, :, None, :]
-            if hasattr(self, 'CC_R'):
+                BB_R_new = self.get_R_mat('BB').copy() - self.get_R_mat('Ham')[:, :, :, None] * self.wannier_centers_cart[None, :, None, :]
+            if self.has_R_mat('CC'):
                 print("WARNING: orbital moment does not work with wcc_phase so far")
-                norm = np.linalg.norm(self.CC_R - self.conj_XX_R(self.CC_R))
+                norm = np.linalg.norm(self.get_R_mat('CC') - self.conj_XX_R('CC'))
                 assert norm < 1e-10, f"CC_R is not Hermitian, norm={norm}"
                 assert hasattr(self, 'BB_R'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
                 T = self.wannier_centers_cart[:, None, None, :, None] * self.BB_R[:, :, :, None, :]
@@ -412,8 +428,8 @@ class System():
                 raise NotImplementedError("use_wcc_phase=True for spin current matrix elements not implemented")
 
             for X in ['AA', 'BB', 'CC']:
-                if hasattr(self, X + '_R'):
-                    vars(self)[X + '_R'] = locals()[X + '_R_new']
+                if self.has_R_mat( X ):
+                    self.set_R_mat(X, locals()[X + '_R_new'], reset=True)
 
     @property
     def iR0(self):
@@ -447,6 +463,8 @@ class System():
 
     def conj_XX_R(self, XX_R):
         """ reverses the R-vector and takes the hermitian conjugate """
+        if isinstance(XX_R,str):
+            XX_R=elf.get_R_mat(XX_R)
         XX_R_new = np.zeros_like(XX_R)
         lst_R, lst_mR = self.reverseR
         XX_R_new[:, :, lst_R] = XX_R[:, :, lst_mR]
@@ -461,9 +479,9 @@ class System():
         return abs(np.linalg.det(self.real_lattice))
 
     def check_hermitian(self, XX):
-        if hasattr(self, XX):
-            XX_R = np.copy(vars(self)[XX])
-            assert (np.max(abs(XX_R - self.conh_XX_R(XX_R))) < 1e-8), f"{XX} should obey X(-R) = X(R)^+"
+        if XX in self._XX_R:
+            _X = self.get_R_mat(XX).copy()
+            assert (np.max(abs(_X - self.conh_XX_R(XX_R))) < 1e-8), f"{XX} should obey X(-R) = X(R)^+"
         else:
             print(f"{XX} is missing,nothing to check")
 
