@@ -147,7 +147,7 @@ class System_w90(System):
         try:
             del spn
         except NameError:
-            pa
+            pass
 
 
         if 'SA' in self.needed_R_matrices:

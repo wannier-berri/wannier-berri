@@ -78,7 +78,7 @@ class System_tb(System):
                     [[f.readline().split()[2:8] for n in range(self.num_wann)] for m in range(self.num_wann)],
                     dtype=float)
                 AA_R[:, :, ir, :] = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / self.Ndegen[ir]
-            self.wannier_centers_cart_auto = np.diagonal(self.AA_R[:, :, self.iR0, :], axis1=0, axis2=1).T
+            self.wannier_centers_cart_auto = np.diagonal(AA_R[:, :, self.iR0, :], axis1=0, axis2=1).T
             self.set_R_mat('AA',AA_R)
 
         f.close()
