@@ -113,6 +113,32 @@ class System():
         periodic = np.zeros(3, dtype=bool)
         periodic[:len(self.periodic)] = self.periodic
         self.periodic = periodic
+        self.needed_R_matrices = set(['Ham'])
+        if self.morb : 
+            self.needed_R_matrices.update(['AA','BB','CC'])
+        if self.berry : 
+            self.needed_R_matrices.add('AA')
+        if self.spin : 
+            self.needed_R_matrices.add('SS')
+        if self._getFF : 
+            self.needed_R_matrices.add('FF')
+        if self.SHCryoo:
+            self.needed_R_matrices.update(['AA','SS','SA','SHA','SR','SH','SHR'])
+        if self.SHCqiao:
+            self.needed_R_matrices.update(['AA','SS','SR','SH','SHR'])
+
+
+    def need_R_any(self,keys):
+        """returns True is any of the listed matrices is needed in to be set
+        
+        keys : str or list of str
+            'AA', 'BB', 'CC', etc
+        """
+        if not isinstance(keys,(list,tuple)):
+            keys = [keys] 
+        for k in keys:
+            if k in self.needed_R_matrices:
+                return True 
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe'):
         """
@@ -165,37 +191,6 @@ class System():
                 if hasattr(self, XR):
                     vars(self)[XR] = vars(self)[XR][:, :, notexclude]
 
-    @property
-    def getAA(self):
-        return self.morb or self.berry or self.SHCryoo or self.SHCqiao
-
-    @property
-    def getBB(self):
-        return self.morb
-
-    @property
-    def getCC(self):
-        return self.morb
-
-    @property
-    def getSS(self):
-        return self.spin or self.SHCryoo or self.SHCqiao
-
-    @property
-    def getFF(self):
-        return self._getFF
-
-    @property
-    def getSA(self):
-        return self.SHCryoo
-
-    @property
-    def getSHA(self):
-        return self.SHCryoo
-
-    @property
-    def getSHC(self):
-        return self.SHCqiao
 
     def getXX_only_wannier_centers(self, getSS=False):
         """return AA_R, BB_R, CC_R containing only the diagonal matrix elements, evaluated from
@@ -206,29 +201,25 @@ class System():
         """
 
         iR0 = self.iR0
-        if self.getAA:
+        if 'AA' in self.needed_R_matrices:
             self.AA_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
             if not self.use_wcc_phase:
                 for i in range(self.num_wann):
                     self.AA_R[i, i, iR0, :] = self.wannier_centers_cart_auto[i]
 
-        if self.getBB:
+        if 'BB' in self.needed_R_matrices:
             self.BB_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
             if not self.use_wcc_phase:
                 for i in range(self.num_wann):
                     self.BB_R[i, i, iR0, :] = self.AA_R[i, i, iR0, :] * self.Ham_R[i, i, iR0]
 
-        if self.getCC:
+        if 'CC' in self.needed_R_matrices:
             self.CC_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
 
-        if self.getSS and getSS:
+        if 'SS' in self.needed_R_matrices and getSS:
             raise NotImplementedError()
 
-        if self.getSA:
-            raise NotImplementedError()
 
-        if self.getSHA:
-            raise NotImplementedError()
 
 
     def do_at_end_of_init(self):

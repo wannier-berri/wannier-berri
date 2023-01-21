@@ -69,7 +69,7 @@ class System_w90(System):
         self.wannier_centers_cart_auto = chk.wannier_centers
 
         eig = EIG(seedname)
-        if self.getAA or self.getBB:
+        if self.need_R_any(['AA','BB']):
             mmn = MMN(seedname, npar=npar)
 
         kpt_mp_grid = [
@@ -95,7 +95,7 @@ class System_w90(System):
         self.Ham_R = fourier_q_to_R_loc(HHq)
         timeFFT += time() - t0
 
-        if self.getAA:
+        if self.need_R_any('AA'):
             AAq = chk.get_AA_q(mmn, transl_inv=transl_inv)
             t0 = time()
             self.AA_R = fourier_q_to_R_loc(AAq)
@@ -119,37 +119,45 @@ class System_w90(System):
                             "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90."
                         )
 
-        if self.getBB:
+        if 'BB' in self.needed_R_matrices:
             t0 = time()
             self.BB_R = fourier_q_to_R_loc(chk.get_AA_q(mmn, eig))
             timeFFT += time() - t0
 
-        if self.getCC:
+        if 'CC' in self.needed_R_matrices:
             uhu = UHU(seedname)
             t0 = time()
             self.CC_R = fourier_q_to_R_loc(chk.get_CC_q(uhu, mmn))
             timeFFT += time() - t0
             del uhu
 
-        if self.getSS:
+        if self.need_R_any(['SS','SR','SH','SHR']):
             spn = SPN(seedname)
-            t0 = time()
-            self.SS_R = fourier_q_to_R_loc(chk.get_SS_q(spn))
-            if self.getSHC:
-                self.SR_R = fourier_q_to_R_loc(chk.get_SR_q(spn, mmn))
-                self.SH_R = fourier_q_to_R_loc(chk.get_SH_q(spn, eig))
-                self.SHR_R = fourier_q_to_R_loc(chk.get_SHR_q(spn, mmn, eig))
-            timeFFT += time() - t0
-            del spn
 
-        if self.getSA:
+        t0 = time()
+        if self.need_R_any('SR'):
+            self.SS_R = fourier_q_to_R_loc(chk.get_SS_q(spn))
+        if self.need_R_any('SR'):
+            self.SR_R = fourier_q_to_R_loc(chk.get_SR_q(spn, mmn))
+        if self.need_R_any('SH'):
+            self.SH_R = fourier_q_to_R_loc(chk.get_SH_q(spn, eig))
+        if self.need_R_any('SHR'):
+            self.SHR_R = fourier_q_to_R_loc(chk.get_SHR_q(spn, mmn, eig))
+        timeFFT += time() - t0
+        try:
+            del spn
+        except NameError:
+            pass
+
+
+        if 'SA' in self.needed_R_matrices:
             siu = SIU(seedname)
             t0 = time()
             self.SA_R = fourier_q_to_R_loc(chk.get_SA_q(siu, mmn))
             timeFFT += time() - t0
             del siu
 
-        if self.getSHA:
+        if 'SHA' in self.needed_R_matrices:
             shu = SHU(seedname)
             t0 = time()
             self.SHA_R = fourier_q_to_R_loc(chk.get_SHA_q(shu, mmn))

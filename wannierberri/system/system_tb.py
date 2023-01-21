@@ -68,7 +68,7 @@ class System_tb(System):
 
         self.iRvec = np.array(self.iRvec, dtype=int)
 
-        if self.getAA:
+        if 'AA' in self.needed_R_matrices:
             self.AA_R = np.zeros((self.num_wann, self.num_wann, nRvec, 3), dtype=complex)
             for ir in range(nRvec):
                 f.readline()

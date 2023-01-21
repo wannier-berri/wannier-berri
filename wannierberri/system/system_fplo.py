@@ -107,7 +107,7 @@ class System_fplo(System):
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=real_lattice_bohr * bohr)
         iRvec = list(Ham_R.keys())
         self.Ham_R = np.array([Ham_R[iR] for iR in iRvec]).transpose((1, 2, 0))
-        if self.getSS:
+        if self.need_R_any('SS'):
             self.SS_R = np.array([SS_R[iR] for iR in iRvec]).transpose((1, 2, 0, 3))
 
         self.nRvec0 = len(iRvec)
