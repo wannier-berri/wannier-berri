@@ -374,6 +374,10 @@ class System():
     def is_phonon(self):
         return False
 
+    @property
+    def is_electron_phonon(self):
+        return False
+
     def set_wannier_centers(self):
         """
         set self.wannier_centers_cart and self.wannier_centers_reduced. Also, if
