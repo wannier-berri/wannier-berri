@@ -1,8 +1,9 @@
 import numpy as np
 import untangle
 from .system_w90 import System_w90
-from .system_phonon_qe import System_Phonon_QE
-from ..__utility import FFT,real_recip_lattice,FortranFileR
+from .system_phonon import System_Phonon
+from ..__utility import real_recip_lattice
+from ..__factors import bohr # Bohr radius in Angstroms
 import os
 
 # Note : it will probably not work if use_ws=True in EPW
@@ -26,16 +27,28 @@ class System_EPW(System_w90):
     """
 
     def __init__(self,seedname,
-            system_electron=None,
-            system_phonon=None,
+            asr = True
             **parameters):
 
         self.set_parameters(**parameters)
         path = tuple(seedname.split("/")[:-1])
         path = os.path.join(*path) if len(path)>0 else ""
-        read_crystal(os.path.join(path,"crystal.fmt"))
+
+        (real_lattice,masses,atom_positions_red,wannier_centers_red
+                ) = read_crystal(os.path.join(path,"crystal.fmt"))
+
         (nbndsub, nmodes, nrr_k, nrr_q, nrr_g, Ham_R, dyn_mat, irvec_k, irvec_q, irvec_g,
-            ndegen_k,ndegen_g) = read_epwdata(os.path.join(path,"epwdata.fmt"))
+            ndegen_k,ndegen_q,ndegen_g) = read_epwdata(os.path.join(path,"epwdata.fmt"))
+
+        self.system_ph=System_Phonon(real_lattice=real_lattice,
+                masses=masses,
+                iRvec=irvec_q,ndegen=None,
+                mp_grid=None,
+                Ham_R=None,dyn_mat_R=dyn_mat,
+                atom_positions_cart=None,atom_positions_red=atom_positions_red, # speciy one of them
+                asr=asr,
+                )
+
         with open(seedname+".epmatwp","rb") as f:
             epmatwp = np.fromfile(f,dtype=np.complex128).reshape( (nbndsub, nbndsub, nrr_k, nmodes,nrr_g), order='F' )
         epmatwp/=ndegen_k[None,None,:,None,None]
@@ -59,7 +72,7 @@ class FormattedFile():
         self.fl = open(filename,"r")
 
     def read_dtype(self,dtype):
-        return [dtype(x) for x in self.fl.readline().split()]
+        return np.array([dtype(x) for x in self.fl.readline().split()])
 
     def readint(self):
         return self.read_dtype(int)
@@ -113,21 +126,29 @@ def read_epwdata(filename):
     dyn_mat = dyn_mat/ndegen_q[None,None,:]
     return (nbndsub, nmodes, nrr_k, nrr_q, nrr_g, 
                 Ham_R, dyn_mat,
-                irvec_k, irvec_q, irvec_g, ndegen_k, ndegen_g)
+                irvec_k, irvec_q, irvec_g, ndegen_k, ndegen_q, ndegen_g)
 
 
 def read_crystal(filename):
-    f  = open(filename,"r")
-    f.readline() #  WRITE(crystal,*) nat
-    f.readline() #  WRITE(crystal,*) nmodes
-    f.readline() #  WRITE(crystal,*) nelec
-    f.readline() #  WRITE(crystal,*) at
-    f.readline() #  WRITE(crystal,*) bg
-    f.readline() #  WRITE(crystal,*) omega
-    f.readline() #  WRITE(crystal,*) alat
-    f.readline() #  WRITE(crystal,*) tau
-    f.readline() #  WRITE(crystal,*) amass
-    f.readline() #  WRITE(crystal,*) ityp
+    f  = FormattedFile(filename)
+    nat = f.readint()[0] #  WRITE(crystal,*) nat
+    nmodes = f.readint()[0] #  WRITE(crystal,*) nmodes
+    assert 3*nat==nmodes
+    nelec = f.readfloat()[0] #  WRITE(crystal,*) nelec
+    at = f.readfloat().reshape((3,3),order='C')  #  WRITE(crystal,*) at
+    bg = f.readfloat().reshape((3,3),order='C') #  WRITE(crystal,*) bg
+    assert (np.linalg.norm(at.dot(bg.T)-np.eye(3))<1e-8)
+    omega = f.readfloat()[0] #  WRITE(crystal,*) omega
+    alat = f.readfloat()[0] #  WRITE(crystal,*) alat
+    assert abs(omega-np.linalg.det(at*alat))<1e-8
+    real_lattice=alat*at*bohr
+    atom_positions_red = f.readfloat().reshape(nat,3,order='C').dot(bg.T)#  WRITE(crystal,*) tau
+    print (atom_positions_red)
+    amass = f.readfloat() #  WRITE(crystal,*) amass
+    ityp = f.readint() #  WRITE(crystal,*) ityp
+    masses = np.array([amass[it-1] for it in ityp])
     f.readline() #  WRITE(crystal,*) noncolin
-    f.readline() #  WRITE(crystal,*) w_centers
-    return None
+    wannier_centers_red = f.readfloat().reshape((-1,3),order='C').dot(bg.T)#  WRITE(crystal,*) w_centers
+    print (real_lattice)
+    print (wannier_centers_red)
+    return (real_lattice,masses,atom_positions_red,wannier_centers_red)

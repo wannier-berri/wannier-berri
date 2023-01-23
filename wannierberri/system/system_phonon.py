@@ -37,8 +37,10 @@ class System_Phonon(System):
                 Ham_R=None,dyn_mat_R=None,
                 atom_positions_cart=None,atom_positions_red=None, # speciy one of them
                 asr=True,
+                **parameters
                 ):
 
+        self.set_parameters(**parameters)
         self.mp_grid = mp_grid
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=real_lattice)
         assert (atom_positions_red is None)!=(atom_positions_cart is None), "need to specify either atom_positions_red or atom_positions_cart, but never both) "
