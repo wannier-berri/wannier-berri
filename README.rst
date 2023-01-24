@@ -66,7 +66,7 @@ University of Zurich
 
 License
 --------
-The code is distributed under the terms of  GNU GENERAL PUBLIC LICENSE  Version 2, the same as Wannier90
+The code is distributed under the terms of  GNU GENERAL PUBLIC LICENSE  Version 2
 
 Acknowledgements
 ----------------
