@@ -240,8 +240,6 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
 
 
 def test_Fe_dynamic_noband(check_run, system_Fe_W90, compare_any_result):
-    param = {'Efermi': Efermi_Fe}
-    param_tab = {'degen_thresh': 5e-2}
     calculators = {}
     parameters_optical = dict(
         Efermi=np.array([117.0, 118.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
@@ -250,13 +248,13 @@ def test_Fe_dynamic_noband(check_run, system_Fe_W90, compare_any_result):
     calculators['opt_SHCqiao'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
     calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
 
-    result = check_run(
+    check_run(
         system_Fe_W90,
         calculators,
         fout_name="berry_Fe_W90",
         suffix="run_noband",
-        precision = 1e-15,
-        compare_zero = True)
+        precision=1e-15,
+        compare_zero=True)
 
 
 def test_Fe_wcc(check_run, system_Fe_W90_wcc, compare_any_result):
