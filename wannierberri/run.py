@@ -184,7 +184,7 @@ def run(
         if not file_Klist.endswith(".pickle"):
             file_Klist += ".pickle"
     if file_Klist_factor_changed is not None:
-        if not file_Klist_factor_changed.endswith(".pickle"):
+        if not file_Klist_factor_changed.endswith(".txt"):
             file_Klist_factor_changed += ".txt"
 
     print(f"The set of k points is a {grid.str_short}")
@@ -328,8 +328,6 @@ def run(
         if not (restart and i_iter == 0):
             result_all.savedata(prefix=fout_name, suffix=suffix, i_iter=i_iter + start_iter)
 
-        if i_iter >= adpt_num_iter:
-            break
 
         # Now add some more points
         Kmax = np.array([K.max for K in K_list]).T
@@ -366,14 +364,18 @@ def run(
             for iK, prev_factor in weight_changed.items():
                 result_excluded += K_list[iK].res * (prev_factor - K_list[iK].factor)
                 
+
         if file_Klist_factor_changed is not None:
+            print (f"Writing file_Klist_factor_changed to {file_Klist_factor_changed}")
             fw_changed = open(file_Klist_factor_changed, "a")
             for iK in weight_changed:
                 fw_changed.write("{0} {1}\n".format(iK, K_list[iK].factor))
             for iK in excluded_Klist:
                 fw_changed.write("{0} {1}\n".format(iK, 0.0))
-
             fw_changed.close()
+
+        if i_iter >= adpt_num_iter:
+            break
 
 
     print("Totally processed {0} K-points ".format(counter))

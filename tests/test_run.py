@@ -45,6 +45,7 @@ def check_run(parallel_serial, compare_any_result):
         precision=-1e-8,
         restart=False,
         file_Klist=None,
+        file_Klist_factor_changed=None,
         do_not_compare=False,
         skip_compare=[],
     ):
@@ -63,6 +64,7 @@ def check_run(parallel_serial, compare_any_result):
             suffix=suffix,
             restart=restart,
             file_Klist=file_Klist,
+            file_Klist_factor_changed=file_Klist_factor_changed
         )
 
         if do_not_compare:
@@ -487,6 +489,49 @@ def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
             '_CCab_antisym': True
         },
     )
+
+
+def test_Fe_pickle_Klist_factor_changed(check_run, system_Fe_W90, compare_any_result):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    #  First, remove the
+    try:
+        os.remove("Klist.pickle")
+    except FileNotFoundError:
+        pass
+    param = {'Efermi': Efermi_Fe}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="pickle-run",
+        suffix_ref="sym",
+        adpt_num_iter=0,
+        use_symmetry=True,
+        file_Klist="Klist.pickle",
+        file_Klist_factor_changed="Klist_factor_changed.txt",
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+    check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="pickle-run",
+        suffix_ref="sym",
+        adpt_num_iter=1,
+        use_symmetry=True,
+        file_Klist="Klist.pickle",
+        file_Klist_factor_changed="Klist_factor_changed.txt",
+        restart=True,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
 
 def test_GaAs(check_run, system_GaAs_W90, compare_any_result):
 
