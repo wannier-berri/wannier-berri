@@ -45,8 +45,6 @@ def check_run(parallel_serial, compare_any_result):
         precision=-1e-8,
         restart=False,
         file_Klist=None,
-        file_Klist_factor_changed=None,
-        incremental_update=False,
         do_not_compare=False,
         skip_compare=[],
     ):
@@ -65,8 +63,6 @@ def check_run(parallel_serial, compare_any_result):
             suffix=suffix,
             restart=restart,
             file_Klist=file_Klist,
-            file_Klist_factor_changed=file_Klist_factor_changed,
-            incremental_update=incremental_update,
         )
 
         if do_not_compare:
@@ -471,7 +467,7 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
     )
 
 
-def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
+def test_Fe_pickle_Klist_12(check_run, system_Fe_W90, compare_any_result):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     #  First, remove the
     try:
@@ -511,7 +507,7 @@ def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
     )
 
 
-def test_Fe_pickle_Klist_factor_changed(check_run, system_Fe_W90, compare_any_result):
+def test_Fe_pickle_Klist_021(check_run, system_Fe_W90, compare_any_result):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     #  First, remove the
     try:
@@ -529,8 +525,6 @@ def test_Fe_pickle_Klist_factor_changed(check_run, system_Fe_W90, compare_any_re
         adpt_num_iter=0,
         use_symmetry=True,
         file_Klist="Klist.pickle",
-        file_Klist_factor_changed="Klist_factor_changed.txt",
-        incremental_update=True,
         parameters_K={
             '_FF_antisym': True,
             '_CCab_antisym': True
@@ -545,8 +539,6 @@ def test_Fe_pickle_Klist_factor_changed(check_run, system_Fe_W90, compare_any_re
         adpt_num_iter=2,
         use_symmetry=True,
         file_Klist="Klist.pickle",
-        file_Klist_factor_changed="Klist_factor_changed.txt",
-        incremental_update=True,
         restart=True,
         parameters_K={
             '_FF_antisym': True,
@@ -562,8 +554,6 @@ def test_Fe_pickle_Klist_factor_changed(check_run, system_Fe_W90, compare_any_re
         adpt_num_iter=1,
         use_symmetry=True,
         file_Klist="Klist.pickle",
-        file_Klist_factor_changed="Klist_factor_changed.txt",
-        incremental_update=True,
         restart=True,
         parameters_K={
             '_FF_antisym': True,

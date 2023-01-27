@@ -107,8 +107,6 @@ def run(
     parameters_K={},
     file_Klist=None,
     restart=False,
-    file_Klist_factor_changed=None,
-    incremental_update=False,
     Klist_part=10,
     parallel=Serial(),  # serial by default
     print_Kpoints=True,
@@ -148,10 +146,6 @@ def run(
     file_Klist : str or None
         name of file where to store the Kpoint list of each iteration. May be needed to restart a calculation
         to get more iterations. If `None` -- the file is not written
-    file_Klist_factor_changed : str or None
-    incremental_update : bool
-        if `False` : For every adaptive refinement iteration, all the k-points are summed to get the results.
-        if `True` : The BZ sum is updated from the previous iteration, using the new/changed k-points only.
     restart : bool
         if `True` : reads restart information from `file_Klist` and starts from there
     Klist_part : int
@@ -181,11 +175,15 @@ def run(
         print ("Grid is regular")
 
     if file_Klist is not None:
+        do_write_Klist = True
         if not file_Klist.endswith(".pickle"):
             file_Klist += ".pickle"
-    if file_Klist_factor_changed is not None:
-        if not file_Klist_factor_changed.endswith(".txt"):
-            file_Klist_factor_changed += ".txt"
+            file_Klist_factor_changed = file_Klist+".changed_factors.txt"
+        else:
+            file_Klist_factor_changed = file_Klist[:-7]+".changed_factors.txt"
+    else:
+        do_write_Klist = False
+        file_Klist_factor_changed = None
 
     print(f"The set of k points is a {grid.str_short}")
 
@@ -222,26 +220,25 @@ def run(
 
             nk_prev = len(K_list)
 
-            if file_Klist_factor_changed is not None:
-                try:
-                    # patching the Klist by updating the factors
-                    fr_div = open(file_Klist_factor_changed, "r")
-                    factor_changed_K_list = []
-                    for line in fr_div:
-                        line_ = line.split()
-                        iK = int(line_[0])
-                        fac = float(line_[1])
+            try:
+                # patching the Klist by updating the factors
+                fr_div = open(file_Klist_factor_changed, "r")
+                factor_changed_K_list = []
+                for line in fr_div:
+                    line_ = line.split()
+                    iK = int(line_[0])
+                    fac = float(line_[1])
 
-                        factor_changed_K_list.append(iK)
-                        K_list[iK].factor = fac
-                    print("{0} K-points were read from {1}".format(len(factor_changed_K_list), file_Klist_factor_changed))
-                    fr_div.close()
-                except FileNotFoundError:
-                    print (f"File with changed factors {file_Klist_factor_changed} not found, assume they were not changed")
+                    factor_changed_K_list.append(iK)
+                    K_list[iK].factor = fac
+                print("{0} K-points were read from {1}".format(len(factor_changed_K_list), file_Klist_factor_changed))
+                fr_div.close()
+            except FileNotFoundError:
+                print (f"File with changed factors {file_Klist_factor_changed} not found, assume they were not changed")
         except Exception as err:
             restart = False
-            print("WARNING: {}".format(err))
-            print("WARNING : reading from {0} failed, starting from scrath".format(file_Klist))
+#            print("WARNING: {}".format(err))
+            raise RuntimeError("{1}: reading from {0} failed, starting from scrath".format(file_Klist,err))
     else:
         K_list = grid.get_K_list(use_symmetry=use_irred_kpt)
         print("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
@@ -300,25 +297,19 @@ def run(
 
         nk = len(K_list)
         try:
-            if file_Klist is not None:
-                if file_Klist_factor_changed is None:
-                    fw = open(file_Klist, "wb")
-                    for ink in range(0, nk, Klist_part):
-                        pickle.dump(K_list[ink:ink + Klist_part], fw)
-                    fw.close()
-                else:
-                    # append new (refined) k-points only
-                    fw = open(file_Klist, "ab")
-                    for ink in range(nk_prev, nk, Klist_part):
-                        pickle.dump(K_list[ink:ink + Klist_part], fw)
-                    fw.close()
+            if do_write_Klist:
+                # append new (refined) k-points only
+                fw = open(file_Klist, "ab")
+                for ink in range(nk_prev, nk, Klist_part):
+                    pickle.dump(K_list[ink:ink + Klist_part], fw)
+                fw.close()
 
         except Exception as err:
             print("Warning: {0} \n the K_list was not pickled".format(err))
 
         time0 = time()
 
-        if result_all is None or not incremental_update:
+        if result_all is None:
             result_all = sum(kp.get_res for kp in K_list)
         else:
             if result_excluded is not None:
@@ -351,11 +342,10 @@ def run(
             K_list += K_list[iK].divide(adpt_mesh, system.periodic, use_symmetry=use_irred_kpt)
             if abs(K_list[iK].factor) < 1.e-10:
                 excluded_Klist.append(iK)
-                if incremental_update:
-                    if result_excluded is None:
-                        result_excluded = results - K_list[iK].get_res
-                    else:
-                        result_excluded += results - K_list[iK].get_res
+                if result_excluded is None:
+                    result_excluded = results - K_list[iK].get_res
+                else:
+                    result_excluded += results - K_list[iK].get_res
 
         if use_irred_kpt:
             print("checking for equivalent points in all points (of new  {} points)".format(len(K_list) - l1))
@@ -366,11 +356,10 @@ def run(
 
         print("sum of weights now :{}".format(sum(Kp.factor for Kp in K_list)))
 
-        if incremental_update:
-            for iK, prev_factor in weight_changed_old.items():
-                result_excluded += K_list[iK].res * (prev_factor - K_list[iK].factor)
+        for iK, prev_factor in weight_changed_old.items():
+            result_excluded += K_list[iK].res * (prev_factor - K_list[iK].factor)
 
-        if file_Klist_factor_changed is not None:
+        if do_write_Klist:
             print (f"Writing file_Klist_factor_changed to {file_Klist_factor_changed}")
             fw_changed = open(file_Klist_factor_changed, "a")
             for iK in excluded_Klist:
@@ -378,7 +367,6 @@ def run(
             for iK in weight_changed_old:
                 fw_changed.write("{0} {1} # changed\n".format(iK, K_list[iK].factor))
             fw_changed.close()
-
 
 
     print("Totally processed {0} K-points ".format(counter))
