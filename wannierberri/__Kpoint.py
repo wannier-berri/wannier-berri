@@ -181,7 +181,7 @@ def exclude_equiv_points(K_list, new_points=None):
                     # (ii) if n - new_points <= i < j
                     # In both cases, j is excluded
                     if new_points is not None:
-                        if i < n - new_points and j < n - new_points:   
+                        if i < n - new_points and j < n - new_points:
                             continue
                     if j not in exclude:
                         if K_list[i].equiv(K_list[j]):
@@ -192,7 +192,6 @@ def exclude_equiv_points(K_list, new_points=None):
                                     weight_changed[i] = K_list[i].factor
                             K_list[i].absorb(K_list[j])
                             cnt += 1
-                            
 
     for i in sorted(exclude)[-1::-1]:
         del K_list[i]

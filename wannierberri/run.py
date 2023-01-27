@@ -320,9 +320,8 @@ def run(
         else:
             if result_excluded is not None:
                 result_all -= result_excluded
-            
             result_all += sum(kp.get_res for kp in K_list[nk_prev:])
-            
+
         time1 = time()
         print("time1 = ", time1 - time0)
         if not (restart and i_iter == 0):
@@ -363,7 +362,6 @@ def run(
         if incremental_update:
             for iK, prev_factor in weight_changed.items():
                 result_excluded += K_list[iK].res * (prev_factor - K_list[iK].factor)
-                
 
         if file_Klist_factor_changed is not None:
             print (f"Writing file_Klist_factor_changed to {file_Klist_factor_changed}")
