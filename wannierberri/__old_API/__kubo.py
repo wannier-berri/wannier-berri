@@ -21,7 +21,7 @@ from termcolor import cprint
 from ..__utility import alpha_A, beta_A
 from .. import result as result
 from ..formula.covariant import SpinVelocity
-from .__energyresultdict2 import EnergyResultDict
+from .__energyresultdict import EnergyResultDict
 # constants
 pi = constants.pi
 e = constants.e

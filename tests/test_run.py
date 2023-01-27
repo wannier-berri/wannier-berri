@@ -180,7 +180,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer,co
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
     calculators["tabulate"] = calc.TabulatorAll(
         {
-#            "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
+            #"Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
             # but not to energies
             "V": calc.tabulate.Velocity(**param_tab),
             "Der_berry": calc.tabulate.DerBerryCurvature(**param_tab),
@@ -949,10 +949,10 @@ def test_tabulate_path(system_Haldane_PythTB,compare_npy):
 
     calculators = {}
     quantities = {
-        #                    "Energy":wberri.calculators.tabulate.Energy(),
-                            "berry":wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms":False}),
-                            "berry_connection_OD":wberri.calculators.tabulateOD.BerryConnection(kwargs_formula={"external_terms":False}),
-                                  }
+                    # "Energy":wberri.calculators.tabulate.Energy(),
+                    "berry":wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms":False}),
+                    "berry_connection_OD":wberri.calculators.tabulateOD.BerryConnection(kwargs_formula={"external_terms":False}),
+                 }
 
     calculators ["tabulate"] = wberri.calculators.TabulatorAll(quantities,
                                                        ibands=[0],

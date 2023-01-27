@@ -25,6 +25,7 @@ integrate_options = __integrate.calculators.keys()
 tabulate_options = __tabulate.calculators.keys()
 from ..utils.mmn2uHu import hlp as hlp_mmn
 from ..utils.vaspspn import hlp as hlp_spn
+from ..result.__tabresult import write_frmsf
 from time import time
 from ..parallel import Serial
 import sys

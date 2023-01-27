@@ -1,4 +1,3 @@
-import numpy as np
 from ..result import ResultDict
 
 class EnergyResultDict(ResultDict):
@@ -6,7 +5,7 @@ class EnergyResultDict(ResultDict):
 
     def set_smoother(self, smoother):
         for v in self.results.values():
-             v.set_smoother(smoother)
+            v.set_smoother(smoother)
 
     def savedata(self, name, prefix, suffix, i_iter):
         for k, v in self.results.items():
