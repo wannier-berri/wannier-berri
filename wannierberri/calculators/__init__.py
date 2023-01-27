@@ -32,10 +32,7 @@ class Calculator():
         return True
 
 class TabulatorAll(Calculator):
-
-    def __init__(self, tabulators, ibands=None, jbands=None, mode="grid", save_mode="npz"):
-"""    Calculator that wraps all tabulators
-
+    """    Calculator that wraps all tabulators
     Parameters
     ----------
     tabulators : dict str : :class:`~wannierberri.calculators.Tabulator` or :class:`~wannierberri.calculators.TabulatorOD`
@@ -48,7 +45,10 @@ class TabulatorAll(Calculator):
         "grid" or "path"
     save_mode : 
         "npz" or "npy" or "frmsf" (later for grid mode only)
-"""
+    """
+
+    def __init__(self, tabulators, ibands=None, jbands=None, mode="grid", save_mode="npz"):
+
         self.tabulators = tabulators
         mode = mode.lower()
         assert mode in ("grid","path")
