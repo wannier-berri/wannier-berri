@@ -40,6 +40,8 @@ from common_comparers import (
     compare_energyresult,
     compare_fermisurfer,
     compare_sym_asym,
+    compare_npz,
+    compare_npy,
 )
 
 # Parallel objects

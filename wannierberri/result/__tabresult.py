@@ -9,14 +9,14 @@ from .__kbandresult import NoComponentError
 
 class TABresult(Result):
 
-    def __init__(self, kpoints, recip_lattice, results={},mode="grid"):
+    def __init__(self, kpoints, recip_lattice, results={},mode="grid",save_mode="npz"):
         self.nband = results['Energy'].nband
         self.mode = mode
         self.grid = None
         self.gridorder = None
         self.recip_lattice = recip_lattice
         self.kpoints = np.array(kpoints, dtype=float) % 1
-
+        self.save_mode=save_mode
         self.results = results
         for r in results:
             assert len(kpoints) == results[r].nk
@@ -38,11 +38,12 @@ class TABresult(Result):
         if other == 0:
             return self
         assert self.mode == other.mode
+        assert self.save_mode == other.save_mode
         if self.nband != other.nband:
             raise RuntimeError(
                 "Adding results with different number of bands {} and {} - not allowed".format(self.nband, other.nband))
         results = {r: self.results[r] + other.results[r] for r in self.results if r in other.results}
-        return TABresult(np.vstack((self.kpoints, other.kpoints)), recip_lattice=self.recip_lattice, results=results, mode=self.mode)
+        return TABresult(np.vstack((self.kpoints, other.kpoints)), recip_lattice=self.recip_lattice, results=results, mode=self.mode, save_mode=self.save_mode)
 
     def save(self, name):
         return  # do nothing so far
@@ -52,10 +53,24 @@ class TABresult(Result):
 
     def savedata(self, name, prefix, suffix, i_iter):
         if i_iter > 0:
-            pass  # so far do nothing on iterations, chang in future
-        elif self.mode == "grid":
+            return  # so far do nothing on iterations, chang in future
+        if self.mode == "grid":
             self.self_to_grid()
-            self.write_frmsf(prefix + "-" + name, suffix=suffix)  # so far let it be the only mode, implement other modes in future
+            if "frmsf" in self.save_mode:
+                write_frmsf(
+                    prefix + "-" + name, Ef0=0., numproc=None, 
+                        quantities=[k for k,v in self.results.items() if v.allow_frmsf], 
+                        res=self,
+                    suffix=suffix)  # so far let it be the only mode, implement other modes in future
+            # TODO : remove this messy call to external routine, which calls back an internal one
+        if len(suffix)>0:
+            suffix = "-"+suffix
+        if "npy" in self.save_mode:
+            for k,v in self.results.items():
+                np.save(f"{prefix}-{name}-{self.mode}-{k}{suffix}.npy",v.data_list[0])
+        if "npz" in self.save_mode:
+            for k,v in self.results.items():
+                np.savez_compressed(f"{prefix}-{name}-{self.mode}-{k}{suffix}.npz",data=v.data_list[0])
         else:
             pass # so far . TODO : implement writing to a text file
 
@@ -101,7 +116,7 @@ class TABresult(Result):
     def transform(self, sym):
         results = {r: self.results[r].transform(sym) for r in self.results}
         kpoints = [sym.transform_reduced_vector(k, self.recip_lattice) for k in self.kpoints]
-        return TABresult(kpoints=kpoints, recip_lattice=self.recip_lattice, results=results, mode=self.mode)
+        return TABresult(kpoints=kpoints, recip_lattice=self.recip_lattice, results=results, mode=self.mode, save_mode=self.save_mode)
 
     def to_grid(self, grid, order='C'):
         assert (self.mode == "grid")
@@ -130,7 +145,7 @@ class TABresult(Result):
         results = {r: self.results[r].to_grid(k_map) for r in self.results}
         t1 = time()
         print("collecting: to_grid  : {}".format(t1 - t0))
-        res = TABresult(k_new, recip_lattice=self.recip_lattice, results=results)
+        res = TABresult(k_new, recip_lattice=self.recip_lattice, results=results, mode=self.mode, save_mode=self.save_mode)
         t2 = time()
         print("collecting: TABresult  : {}".format(t2 - t1))
         res.grid = np.copy(grid)
@@ -307,10 +322,33 @@ class TABresult(Result):
         else:
             return fig
 
+    @property
     def max(self):
-        return -1  # tabulating does not contribute to adaptive refinement
+        return np.array([-1.])  # tabulating does not contribute to adaptive refinement
 
-
+def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
+    if len(suffix) > 0:
+        suffix = "-" + suffix
+    if frmsf_name is not None:
+        open(f"{frmsf_name}_E{suffix}.frmsf", "w").write(res.fermiSurfer(quantity=None, efermi=Ef0, npar=numproc))
+        ttxt = 0
+        twrite = 0
+        for Q in quantities:
+            for comp in res.results[Q].get_component_list():
+                try:
+                    t31 = time()
+                    txt = res.fermiSurfer(quantity=Q, component=comp, efermi=Ef0, npar=numproc)
+                    t32 = time()
+                    open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf", "w").write(txt)
+                    t33 = time()
+                    ttxt += t32 - t31
+                    twrite += t33 - t32
+                except NoComponentError:
+                    pass
+    else:
+        ttxt = 0
+        twrite = 0
+    return ttxt, twrite
 
 def _savetxt(limits=None, a=None, fmt=".8f", npar=0):
     assert a.ndim == 1, "only 1D arrays are supported. found shape{}".format(a.shape)

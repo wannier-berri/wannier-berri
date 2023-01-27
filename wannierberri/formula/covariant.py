@@ -431,7 +431,7 @@ def _J_H_qiao(data_K):
     SH_H = data_K.Xbar("SH")
     shc_K_H = -1j * data_K.Xbar("SR")
     _spin_velocity_einsum_opt(shc_K_H, SS_H, data_K.D_H)
-    shc_L_H = -1j * data_K._R_to_k_H(data_K.SHR_R, hermitean=False)
+    shc_L_H = -1j * data_K._R_to_k_H(data_K.get_R_mat('SHR'), hermitean=False)
     _spin_velocity_einsum_opt(shc_L_H, SH_H, data_K.D_H)
     J = (
         data_K.delE_K[:, None, :, :, None] * SS_H[:, :, :, None, :]

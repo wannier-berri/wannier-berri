@@ -234,6 +234,63 @@ def compare_fermisurfer():
     return _inner
 
 
+
+
+@pytest.fixture
+def compare_npy():
+    """Compare two tabulated npy files"""
+
+    def _inner(filename, filename_ref=None,  precision=None):
+
+        if filename_ref is None:
+            filename_ref = filename
+        path_filename = os.path.join(OUTPUT_DIR, filename)
+        path_filename_ref = os.path.join(REF_DIR, 'tabulate_npy', filename_ref)
+        data = np.load(path_filename)
+        data_ref = np.load(path_filename_ref)
+        if precision is None:
+            precision = max(abs(np.average(data_ref) / 1E12), 1E-11)
+        elif precision < 0:
+            precision = max(abs(np.average(data_ref) * abs(precision)), 1E-11)
+        assert data.shape == data_ref.shape, f"data shape {data.shape} != {data_ref.shape}"
+
+        assert data == approx(
+            data_ref, abs=precision), error_message(
+                fout_name, suffix, None, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref, precision)
+
+    return _inner
+
+@pytest.fixture
+def compare_npz():
+    """Compare two tabulated npz files"""
+
+    def _inner(filename, filename_ref=None,  precision=None):
+
+        if filename_ref is None:
+            filename_ref = filename
+        path_filename = os.path.join(OUTPUT_DIR, filename)
+        path_filename_ref = os.path.join(REF_DIR, 'tabulate_npz', filename_ref)
+        alldata = np.load(path_filename)
+        alldata_ref = np.load(path_filename_ref)
+        assert (set(alldata.keys())==set(alldata_ref.keys())), (f"files {path_filename} and {path_filename_ref}"+
+            f" have different fields : {[str(k) for k in alldata.keys()]} and {[str(k) for k in alldata_ref.keys()]}")
+
+        for k in alldata.keys():
+            data = alldata[k]
+            data_ref = alldata[k]
+            if precision is None:
+                precision = max(abs(np.average(data_ref) / 1E12), 1E-11)
+            elif precision < 0:
+                precision = max(abs(np.average(data_ref) * abs(precision)), 1E-11)
+            assert data.shape == data_ref.shape, f"data shape {data.shape} != {data_ref.shape}"
+
+            assert data == approx(
+                data_ref, abs=precision), error_message(
+                    fout_name, suffix, None, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref, precision)
+
+    return _inner
+
+
 @pytest.fixture
 def compare_sym_asym():
     " to comapre the results separated by symmetric-antisymmetric part"

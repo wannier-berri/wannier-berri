@@ -51,6 +51,7 @@ if True:  # change to False if you want just to handle the pre-computed result
                             "berry":wberri.calculators.tabulate.BerryCurvature(),
                             "connection":wberri.calculators.tabulateOD.BerryConnection(),
                                   }, 
+                                    save_mode="npz",
                                        ibands = np.arange(4,10),jbands=np.arange(10,14)),
                  "opt_conductivity" : wberri.calculators.dynamic.OpticalConductivity(Efermi=Efermi,omega=omega),
 #                 "shc_ryoo" : wberri.calculators.dynamic.SHC(Efermi=Efermi,omega=omega),
