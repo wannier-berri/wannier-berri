@@ -256,7 +256,7 @@ def compare_npy():
 
         assert data == approx(
             data_ref, abs=precision), error_message(
-                fout_name, suffix, None, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref, precision)
+                filename, "", None, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref, precision)
 
     return _inner
 
@@ -286,7 +286,7 @@ def compare_npz():
 
             assert data == approx(
                 data_ref, abs=precision), error_message(
-                    fout_name, suffix, None, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref, precision)
+                    filename, "", None, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref, precision)
 
     return _inner
 

@@ -48,8 +48,6 @@ class TabulatorOD(Calculator):
 
 
 
-
-
 class BerryConnection(TabulatorOD):
 
     def matrix(self,data_K):

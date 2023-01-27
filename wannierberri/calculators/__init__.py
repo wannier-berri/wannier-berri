@@ -34,8 +34,21 @@ class Calculator():
 class TabulatorAll(Calculator):
 
     def __init__(self, tabulators, ibands=None, jbands=None, mode="grid", save_mode="npz"):
-        """ tabulators - dict 'key':tabulator
-        one of them should be "Energy" """
+"""    Calculator that wraps all tabulators
+
+    Parameters
+    ----------
+    tabulators : dict str : :class:`~wannierberri.calculators.Tabulator` or :class:`~wannierberri.calculators.TabulatorOD`
+        one of them should be "Energy" 
+    ibands : list
+        select band indices "i" in X_{ij}
+    jbands : list
+        select band indices "j" in X_{ij}
+    mode : str
+        "grid" or "path"
+    save_mode : 
+        "npz" or "npy" or "frmsf" (later for grid mode only)
+"""
         self.tabulators = tabulators
         mode = mode.lower()
         assert mode in ("grid","path")

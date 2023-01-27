@@ -58,9 +58,9 @@ class TABresult(Result):
             self.self_to_grid()
             if "frmsf" in self.save_mode:
                 write_frmsf(
-                    prefix + "-" + name, Ef0=0., numproc=None, 
-                        quantities=[k for k,v in self.results.items() if v.allow_frmsf], 
-                        res=self,
+                    prefix + "-" + name, Ef0=0., numproc=None,
+                    quantities=[k for k,v in self.results.items() if v.allow_frmsf],
+                    res=self,
                     suffix=suffix)  # so far let it be the only mode, implement other modes in future
             # TODO : remove this messy call to external routine, which calls back an internal one
         if len(suffix)>0:

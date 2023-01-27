@@ -223,7 +223,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer,co
             result_type=EnergyResult)
 
     extra_precision = {'Morb': 1e-6, 'Der_berry':5e-8}
-    compare_frmsf = [q for q in result.results.get("tabulate").results.keys() if not(q.endswith("OD"))]
+    compare_frmsf = [q for q in result.results.get("tabulate").results.keys() if not q.endswith("OD")]
     print ("comparing FermiSurfer files for",compare_frmsf)
     for quant in compare_frmsf:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
