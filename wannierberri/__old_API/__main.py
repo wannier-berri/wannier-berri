@@ -14,20 +14,19 @@
 
 import functools
 from .__evaluate import evaluate_K
-from ..result.__kbandresult import NoComponentError
-from wannierberri.smoother import get_smoother
+from ..smoother import get_smoother
 from . import __integrate
 from . import __tabulate
-from wannierberri.__path import Path
+from ..__path import Path
 import numpy as np
 from collections.abc import Iterable
 
 integrate_options = __integrate.calculators.keys()
 tabulate_options = __tabulate.calculators.keys()
-from wannierberri.utils.mmn2uHu import hlp as hlp_mmn
-from wannierberri.utils.vaspspn import hlp as hlp_spn
+from ..utils.mmn2uHu import hlp as hlp_mmn
+from ..utils.vaspspn import hlp as hlp_spn
 from time import time
-from wannierberri.parallel import Serial
+from ..parallel import Serial
 import sys
 
 from colorama import init
@@ -364,27 +363,3 @@ def tabulate(
                 t2 - t1, ttxt, twrite))
     return res
 
-
-def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
-    if len(suffix) > 0:
-        suffix = "-" + suffix
-    if frmsf_name is not None:
-        open(f"{frmsf_name}_E{suffix}.frmsf", "w").write(res.fermiSurfer(quantity=None, efermi=Ef0, npar=numproc))
-        ttxt = 0
-        twrite = 0
-        for Q in quantities:
-            for comp in res.results[Q].get_component_list():
-                try:
-                    t31 = time()
-                    txt = res.fermiSurfer(quantity=Q, component=comp, efermi=Ef0, npar=numproc)
-                    t32 = time()
-                    open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf", "w").write(txt)
-                    t33 = time()
-                    ttxt += t32 - t31
-                    twrite += t33 - t32
-                except NoComponentError:
-                    pass
-    else:
-        ttxt = 0
-        twrite = 0
-    return ttxt, twrite

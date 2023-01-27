@@ -31,6 +31,8 @@ class Calculator():
     def allow_sym(self):
         return True
 
+from . import static, dynamic, tabulate, tabulateOD
+
 class TabulatorAll(Calculator):
     """    Calculator that wraps all tabulators
     Parameters
@@ -55,7 +57,7 @@ class TabulatorAll(Calculator):
         self.mode = mode
         self.save_mode = save_mode
         if "Energy" not in self.tabulators.keys():
-            raise ValueError("Energy is not included in tabulators")
+            self.tabulators["Energy"] = tabulate.Energy()
         if ibands is not None:
             ibands = np.array(ibands)
         if jbands is not None:
@@ -91,4 +93,3 @@ class TabulatorAll(Calculator):
         return all([t.allow_sym for t in self.tabulators.values()])
 
 
-from . import static, dynamic, tabulate, tabulateOD
