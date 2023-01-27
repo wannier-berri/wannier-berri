@@ -32,6 +32,10 @@ class TabulatorOD(Calculator):
         rslt = self.matrix(data_K)[:,ibands][:,:,jbands]
         return KBandBandResult(rslt)
 
+    @property
+    def allow_sym(self):
+        return False
+
 
 ###############################################
 ###############################################
