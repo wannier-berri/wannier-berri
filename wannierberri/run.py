@@ -223,18 +223,21 @@ def run(
             nk_prev = len(K_list)
 
             if file_Klist_factor_changed is not None:
-                # patching the Klist by updating the factors
-                fr_div = open(file_Klist_factor_changed, "r")
-                factor_changed_K_list = []
-                for line in fr_div:
-                    line_ = line.split()
-                    iK = int(line_[0])
-                    fac = float(line_[1])
+                try:
+                    # patching the Klist by updating the factors
+                    fr_div = open(file_Klist_factor_changed, "r")
+                    factor_changed_K_list = []
+                    for line in fr_div:
+                        line_ = line.split()
+                        iK = int(line_[0])
+                        fac = float(line_[1])
 
-                    factor_changed_K_list.append(iK)
-                    K_list[iK].factor = fac
-                print("{0} K-points were read from {1}".format(len(factor_changed_K_list), file_Klist_factor_changed))
-                fr_div.close()
+                        factor_changed_K_list.append(iK)
+                        K_list[iK].factor = fac
+                    print("{0} K-points were read from {1}".format(len(factor_changed_K_list), file_Klist_factor_changed))
+                    fr_div.close()
+                except FileNotFoundError:
+                    print (f"File with changed factors {file_Klist_factor_changed} not found, assume they were not changed")
         except Exception as err:
             restart = False
             print("WARNING: {}".format(err))
@@ -284,7 +287,7 @@ def run(
     for i_iter in range(adpt_num_iter + 1):
         if print_Kpoints:
             print(
-                "iteration {0} - {1} points. New points are:".format(i_iter, len([K for K in K_list if K.res is None])))
+                "iteration {0} - {1} points. New points are:".format(i_iter+start_iter, len([K for K in K_list if K.res is None])))
             for i, K in enumerate(K_list):
                 if not K.evaluated:
                     print(" K-point {0} : {1} ".format(i, K))
@@ -327,6 +330,8 @@ def run(
         if not (restart and i_iter == 0):
             result_all.savedata(prefix=fout_name, suffix=suffix, i_iter=i_iter + start_iter)
 
+        if i_iter >= adpt_num_iter:
+            break
 
         # Now add some more points
         Kmax = np.array([K.max for K in K_list]).T
@@ -354,26 +359,26 @@ def run(
 
         if use_irred_kpt:
             print("checking for equivalent points in all points (of new  {} points)".format(len(K_list) - l1))
-            nexcl, weight_changed = exclude_equiv_points(K_list, new_points=len(K_list) - l1)
+            nexcl, weight_changed_old = exclude_equiv_points(K_list, new_points=len(K_list) - l1)
             print(" excluded {0} points".format(nexcl))
+        else:
+            weight_changed_old = {}
 
         print("sum of weights now :{}".format(sum(Kp.factor for Kp in K_list)))
 
         if incremental_update:
-            for iK, prev_factor in weight_changed.items():
+            for iK, prev_factor in weight_changed_old.items():
                 result_excluded += K_list[iK].res * (prev_factor - K_list[iK].factor)
 
         if file_Klist_factor_changed is not None:
             print (f"Writing file_Klist_factor_changed to {file_Klist_factor_changed}")
             fw_changed = open(file_Klist_factor_changed, "a")
-            for iK in weight_changed:
-                fw_changed.write("{0} {1}\n".format(iK, K_list[iK].factor))
             for iK in excluded_Klist:
-                fw_changed.write("{0} {1}\n".format(iK, 0.0))
+                fw_changed.write("{0} {1} # refined\n".format(iK, 0.0))
+            for iK in weight_changed_old:
+                fw_changed.write("{0} {1} # changed\n".format(iK, K_list[iK].factor))
             fw_changed.close()
 
-        if i_iter >= adpt_num_iter:
-            break
 
 
     print("Totally processed {0} K-points ".format(counter))
