@@ -87,7 +87,7 @@ def test_tabulate_path(system_Haldane_PythTB):
     fout = open(os.path.join(OUTPUT_DIR, filename), "wb")
 
     data = {}
-    for quant in ["Energy"] + quantities:
+    for quant in ["_Energy"] + quantities:
         result_quant = tab_result.results.get(quant)
         for comp in result_quant.get_component_list():
             data[(quant, comp)] = result_quant.get_component(comp)
@@ -95,10 +95,11 @@ def test_tabulate_path(system_Haldane_PythTB):
 
     data_ref = pickle.load(open(os.path.join(REF_DIR, filename), "rb"))
 
-    for quant in ["Energy"] + quantities:
+    for quant in ["_Energy"] + quantities:
         for comp in tab_result.results.get(quant).get_component_list():
             _data = data[(quant, comp)]
-            _data_ref = data_ref[(quant, comp)]
+            quant_ref= quant if quant != "_Energy" else "Energy"
+            _data_ref = data_ref[(quant_ref, comp)]
             assert _data == approx(_data_ref), (
                 f"tabulation along path gave a wrong result for quantity {quant} component {comp} "
                 + "with a maximal difference {}".format(max(abs(data - data_ref))))

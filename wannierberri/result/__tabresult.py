@@ -133,7 +133,7 @@ class TABresult(Result):
         self.__dict__.update(res.__dict__)  # another dirty trick, TODO : clean it
 
     def __get_data_grid(self, quantity, iband, component=None, efermi=None):
-        if quantity == 'Energy':
+        if quantity == '_Energy':
             return self.Enk.data[:, iband].reshape(self.grid)
         elif component is None:
             return self.results[quantity].data[:, iband].reshape(tuple(self.grid) + (3, ) * self.results[quantity].rank)
@@ -141,7 +141,7 @@ class TABresult(Result):
             return self.results[quantity].get_component(component)[:, iband].reshape(self.grid)
 
     def __get_data_path(self, quantity, iband, component=None, efermi=None):
-        if quantity == 'Energy':
+        if quantity == '_Energy':
             return self.Enk.data[:, iband]
         elif component is None:
             return self.results[quantity].data[:, iband]
@@ -226,7 +226,7 @@ class TABresult(Result):
             raise ValueError("iband should be either an integer, or array of intergers, or None")
 
         kline = path.getKline()
-        E = self.get_data(quantity='Energy', iband=iband) - Eshift
+        E = self.get_data(quantity='_Energy', iband=iband) - Eshift
 
         plt.ylabel(r"$E$, eV")
         if Emin is None:

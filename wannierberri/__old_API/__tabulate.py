@@ -75,7 +75,7 @@ def tabXnk(
 
     tabulator = Tabulator(data_K, ibands, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)
 
-    results = {'Energy': KBandResult(data_K.E_K[:, ibands], TRodd=False, Iodd=False)}
+    results = {'_Energy': KBandResult(data_K.E_K[:, ibands], TRodd=False, Iodd=False)}
     for qfull in quantities:
         q = qfull.split('^')[0]
         __parameters = {}

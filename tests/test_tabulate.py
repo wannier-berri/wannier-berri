@@ -126,7 +126,7 @@ def test_Fe(check_tabulate, system_Fe_W90, compare_fermisurfer):
 
     xyz = ["x", "y", "z"]
     print(result.results.keys())
-    assert result.results["Energy"].get_component_list() == [""]
+    assert result.results["_Energy"].get_component_list() == [""]
     assert result.results["berry"].get_component_list() == xyz
     assert result.results["Der_berry"].get_component_list() == [a + b for a in xyz for b in xyz]
     assert result.results["spin_berry"].get_component_list() == [a + b + c for a in xyz for b in xyz for c in xyz]
