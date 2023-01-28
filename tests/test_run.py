@@ -497,13 +497,13 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
     param_tab = {'degen_thresh': 5e-2}
-    calculators["tabulate"] = calc.TabulatorAll(
+    calculators["tabulate"] = calc.TabulatorAll (
         {
             "V": calc.tabulate.Velocity(**param_tab),
             "berry": calc.tabulate.BerryCurvature(**param_tab),
         },
         ibands=[5, 6, 7, 8],save_mode="frmsf+npz"
-        )
+                                                )
 
 
     check_run(

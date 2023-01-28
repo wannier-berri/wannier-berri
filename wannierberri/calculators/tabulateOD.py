@@ -22,7 +22,7 @@ class TabulatorOD(Calculator):
         # formula = self.Formula(data_K, **self.kwargs_formula)
         # nk = data_K.nk
         NB = data_K.num_wann
-        ibands = self.ibands 
+        ibands = self.ibands
         jbands = self.jbands
         if ibands is None:
             ibands = np.arange(NB)

@@ -11,7 +11,7 @@ from wannierberri.result import KBandResult
 
 class Tabulator(Calculator):
 
-    def __init__(self, Formula, kwargs_formula={}, ibands = None, **kwargs):
+    def __init__(self, Formula, kwargs_formula={}, ibands=None, **kwargs):
         self.Formula = Formula
         self.ibands = ibands
         self.kwargs_formula = kwargs_formula
