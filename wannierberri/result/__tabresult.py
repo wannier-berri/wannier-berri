@@ -10,7 +10,7 @@ from .__kbandresult import NoComponentError
 class TABresult(Result):
 
     def __init__(self, kpoints, recip_lattice, results={},mode="grid",save_mode="npz"):
-        self.nband = results['Energy'].nband
+        self.nband = results['_Energy'].nband
         self.mode = mode
         self.grid = None
         self.gridorder = None
@@ -24,7 +24,7 @@ class TABresult(Result):
 
     @property
     def Enk(self):
-        return self.results['Energy']
+        return self.results['_Energy']
 
     def __mul__(self, other):
         #K-point factors do not play arole in tabulating quantities
@@ -73,32 +73,6 @@ class TABresult(Result):
                 np.savez_compressed(f"{prefix}-{name}-{self.mode}-{k}{suffix}.npz",data=v.data_list[0])
         else:
             pass # so far . TODO : implement writing to a text file
-
-    def write_frmsf(self,frmsf_name, suffix=""):
-        quantities = self.results.keys()
-        if len(suffix) > 0:
-            suffix = "-" + suffix
-        if frmsf_name is not None:
-            open(f"{frmsf_name}_E{suffix}.frmsf", "w").write(self.fermiSurfer(quantity=None, efermi=0))
-            ttxt = 0
-            twrite = 0
-            for Q in quantities:
-                print (f"writing {Q}")
-                for comp in self.results[Q].get_component_list():
-                    try:
-                        t31 = time()
-                        txt = self.fermiSurfer(quantity=Q, component=comp)
-                        t32 = time()
-                        open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf", "w").write(txt)
-                        t33 = time()
-                        ttxt += t32 - t31
-                        twrite += t33 - t32
-                    except NoComponentError:
-                        pass
-        else:
-            ttxt = 0
-            twrite = 0
-        return ttxt, twrite
 
     @property
     def find_grid(self):
@@ -324,7 +298,7 @@ class TABresult(Result):
 
     @property
     def max(self):
-        return np.array([-1.])  # tabulating does not contribute to adaptive refinement
+        return []  # tabulating does not contribute to adaptive refinement
 
 def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
     if len(suffix) > 0:

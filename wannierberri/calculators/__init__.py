@@ -51,13 +51,16 @@ class TabulatorAll(Calculator):
 
     def __init__(self, tabulators, ibands=None, jbands=None, mode="grid", save_mode="npz"):
 
-        self.tabulators = tabulators
+        self.tabulators = {}
+        self.tabulators.update(tabulators)
         mode = mode.lower()
         assert mode in ("grid","path")
         self.mode = mode
         self.save_mode = save_mode
-        if "Energy" not in self.tabulators.keys():
-            self.tabulators["Energy"] = tabulate.Energy()
+        if "frmsf in save_mode":
+            if "_Energy" not in self.tabulators.keys():
+                self.tabulators["_Energy"] = tabulate.Energy()
+#        self.tabulators["_Energy"].ibands = None  # tabulate all energies for FermiSurfer
         if ibands is not None:
             ibands = np.array(ibands)
         if jbands is not None:
@@ -65,13 +68,9 @@ class TabulatorAll(Calculator):
         for k, v in self.tabulators.items():
             if v.ibands is None:
                 v.ibands = ibands
-            else:
-                assert v.ibands == ibands
             if hasattr(v,'jbands'):
                 if v.jbands is None:
                     v.jbands = jbands
-                else:
-                    assert v.jbands == jbands
 
 
     def __call__(self, data_K):

@@ -286,7 +286,10 @@ def run(
 
         # Now add some more points
         Kmax = np.array([K.max for K in K_list]).T
+#        print ("Maximal values for Kpoints\n",Kmax)
+#        print ("Maximal values for Kpoints sorted\n",np.sort(Kmax,axis=0))
         select_points = set().union(*(np.argsort(Km)[-adpt_fac:] for Km in Kmax))
+        print ("points selected for refinement:",select_points)
 
         time2 = time()
         print("time2 = ", time2 - time1)

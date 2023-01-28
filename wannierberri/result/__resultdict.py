@@ -67,7 +67,11 @@ class ResultDict(Result):
     # a list of numbers, by each of those the refinement points will be selected
     @property
     def max(self):
-        return np.array([x for v in self.results.values() for x in v.max])
+        lst = []
+        for k in sorted(self.results.keys()):
+            lst+=list(self.results[k].max)
+        return np.array(lst)
+#        return np.array([x for k in sorted(self.results.keys()) [k].values() for x in v.max])
 
 
 

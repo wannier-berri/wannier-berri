@@ -178,9 +178,8 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer,co
     param = {'Efermi': Efermi_Fe}
     param_tab = {'degen_thresh': 5e-2}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
-    calculators["tabulate"] = calc.TabulatorAll(
-        {
-            #"Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
+    tabulators = {
+            "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
             # but not to energies
             "V": calc.tabulate.Velocity(**param_tab),
             "Der_berry": calc.tabulate.DerBerryCurvature(**param_tab),
@@ -190,7 +189,8 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer,co
             'morb': calc.tabulate.OrbitalMoment(**param_tab),
             'Der_morb': calc.tabulate.DerOrbitalMoment(**param_tab),
             'berry_connection_OD': calc.tabulateOD.BerryConnection(),
-        },
+                }
+    calculators["tabulate"] = calc.TabulatorAll(tabulators,
         ibands=[5, 6, 7, 8],jbands=[1,4,7,10],save_mode="frmsf+npz")
 
     parameters_optical = dict(
@@ -223,7 +223,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer,co
             result_type=EnergyResult)
 
     extra_precision = {'Morb': 1e-6, 'Der_berry':5e-8}
-    compare_frmsf = [q for q in result.results.get("tabulate").results.keys() if not q.endswith("OD")]
+    compare_frmsf = [q for q in tabulators.keys() if not q.endswith("OD") ]#and not q.startswith("_")]
     print ("comparing FermiSurfer files for",compare_frmsf)
     for quant in compare_frmsf:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
@@ -242,8 +242,43 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer,co
                 precision=prec)
 
     for quant in result.results.get("tabulate").results.keys():
+        if quant == "_Energy":
+            continue
         prec = extra_precision[quant] if quant in extra_precision else 2e-8
         compare_npz( filename=f"berry_Fe_W90-tabulate-grid-{quant}-run.npz",
+                precision=prec)
+
+
+
+def test_Fe_symm_connection(check_run, system_Fe_W90,  compare_npz):
+    "runs with symmetric system, but berry connection does not allow to use symmetries. also should do nothing on iterations"
+    param_tab = {'degen_thresh': 5e-2}
+    calculators = {}
+    calculators["tabulate"] = calc.TabulatorAll(
+        {
+            "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
+            # but not to energies
+            "V": calc.tabulate.Velocity(**param_tab),
+            'berry_connection_OD': calc.tabulateOD.BerryConnection(),
+        },
+        ibands=[5, 6, 7, 8],jbands=[1,4,7,10],save_mode="npz")
+
+
+    result = check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="run-sym",
+        adpt_num_iter=2,
+        use_symmetry=True,
+        skip_compare=['tabulate'])
+
+    for quant in result.results.get("tabulate").results.keys():
+        if quant.startswith("_"):
+            continue
+        prec = 2e-8
+        compare_npz( filename=f"berry_Fe_W90-tabulate-grid-{quant}-run-sym.npz",
+                    filename_ref=f"berry_Fe_W90-tabulate-grid-{quant}-run.npz",
                 precision=prec)
 
 
@@ -461,6 +496,16 @@ def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_
 def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    param_tab = {'degen_thresh': 5e-2}
+    calculators["tabulate"] = calc.TabulatorAll(
+        {
+            "V": calc.tabulate.Velocity(**param_tab),
+            "berry": calc.tabulate.BerryCurvature(**param_tab),
+        },
+        ibands=[5, 6, 7, 8],save_mode="frmsf+npz"
+        )
+
+
     check_run(
         system_Fe_W90,
         calculators,
@@ -469,6 +514,7 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
         suffix_ref="sym",
         adpt_num_iter=1,
         use_symmetry=True,
+        skip_compare=["tabulate"],
         parameters_K={
             '_FF_antisym': True,
             '_CCab_antisym': True
@@ -949,7 +995,7 @@ def test_tabulate_path(system_Haldane_PythTB,compare_npy):
 
     calculators = {}
     quantities = {
-                    # "Energy":wberri.calculators.tabulate.Energy(),
+                    "Energy":wberri.calculators.tabulate.Energy(),
                     "berry":wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms":False}),
                     "berry_connection_OD":wberri.calculators.tabulateOD.BerryConnection(kwargs_formula={"external_terms":False}),
                  }

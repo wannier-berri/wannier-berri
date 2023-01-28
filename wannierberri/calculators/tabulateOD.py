@@ -9,9 +9,9 @@ from wannierberri.result import KBandBandResult
 
 class TabulatorOD(Calculator):
 
-    def __init__(self, kwargs_formula={}):
-        self.ibands = None
-        self.jbands = None
+    def __init__(self, ibands=None, jbands=None, kwargs_formula={}):
+        self.ibands = ibands
+        self.jbands = jbands
         self.kwargs_formula = kwargs_formula
         super().__init__()
 
@@ -22,7 +22,7 @@ class TabulatorOD(Calculator):
         # formula = self.Formula(data_K, **self.kwargs_formula)
         # nk = data_K.nk
         NB = data_K.num_wann
-        ibands = self.ibands
+        ibands = self.ibands 
         jbands = self.jbands
         if ibands is None:
             ibands = np.arange(NB)
