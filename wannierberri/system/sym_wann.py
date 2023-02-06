@@ -409,9 +409,11 @@ class SymWann():
                                     if X in ['AA', 'BB', 'SS', 'CC', 'FF']:
                                         num_w_a = len(
                                             sum(self.wann_atom_info[atom_a][4], []))  #number of orbitals of atom_a
+                                        num_w_b = len(
+                                            sum(self.wann_atom_info[atom_b][4], []))  #number of orbitals of atom_b
                                         #X_L: only rotation wannier centres from L to L' before rotating orbitals.
                                         XX_L = self.matrix_list[X][self.H_select[rot_map[atom_a], rot_map[atom_b]],
-                                                                   new_Rvec_index, :].reshape(num_w_a, num_w_a, 3)
+                                                                   new_Rvec_index, :].reshape(num_w_a, num_w_b, 3)
                                         #special even with R == [0,0,0] diagonal terms.
                                         if iR == self.iRvec.index([0, 0, 0]) and atom_a == atom_b:
                                             if X == 'AA':
