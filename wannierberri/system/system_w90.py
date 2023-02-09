@@ -57,15 +57,15 @@ class System_w90(System):
             guiding_centers=False,
             fft='fftw',
             npar=multiprocessing.cpu_count(),
-            kmesh_tol = 1e-7,
-            bk_complete_tol = 1e-5,
+            kmesh_tol=1e-7,
+            bk_complete_tol=1e-5,
             **parameters):
 
         self.set_parameters(**parameters)
         self.npar = npar
         self.seedname = seedname
 
-        chk = CheckPoint(self.seedname, kmesh_tol = kmesh_tol, bk_complete_tol = bk_complete_tol)
+        chk = CheckPoint(self.seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         if self.mp_grid is None:
             self.mp_grid = chk.mp_grid
