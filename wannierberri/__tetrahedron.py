@@ -12,7 +12,7 @@ from collections import defaultdict
 import lazy_property
 import numpy as np
 from numba import njit
-
+import abc
 
 @njit
 def weights_tetra(efall, e0, e1, e2, e3, der=0):
@@ -138,14 +138,6 @@ def get_bands_below_range(emin, Eband, Ebandmax=None):
         return 0
 
 
-def weights_parallelepiped(efermi, Ecenter, Ecorner, der=0):
-    occ = np.zeros((efermi.shape))
-    Ecorner = np.reshape(Ecorner, (2, 2, 2))
-    for iface in 0, 1:
-        for Eface in Ecorner[iface, :, :], Ecorner[:, iface, :], Ecorner[:, :, iface]:
-            occ += weights_tetra(efermi, Ecenter, Eface[0, 0], Eface[0, 1], Eface[1, 1], der=der)
-            occ += weights_tetra(efermi, Ecenter, Eface[0, 0], Eface[1, 0], Eface[1, 1], der=der)
-    return occ / 12.
 
 
 class TetraWeights():
@@ -154,12 +146,12 @@ class TetraWeights():
 
     def __init__(self, eCenter, eCorners):
         self.nk, self.nb = eCenter.shape
-        assert eCorners.shape == (self.nk, 2, 2, 2, self.nb)
+        eCorners.shape == (self.nk, 2, 2, 2, self.nb) 
         self.eCenter = eCenter
         self.eCorners = eCorners
         self.eFermis = []
         self.weights = defaultdict(lambda: defaultdict(lambda: {}))
-        Eall = np.concatenate((self.eCenter[:, None, :], self.eCorners.reshape(self.nk, 8, self.nb)), axis=1)
+        Eall = np.concatenate((self.eCenter[:, None, :], self.eCorners.reshape(self.nk, -1, self.nb)), axis=1)
         self.Emin = Eall.min(axis=1)
         self.Emax = Eall.max(axis=1)
         self.eFermi = None
@@ -168,12 +160,16 @@ class TetraWeights():
     def ones(self):
         return np.ones(len(self.eFermi))
 
-    def __weight_1b(self, ik, ib, der):
+    def weight_1b(self, ik, ib, der):
         if ib not in self.weights[der][ik]:
-            self.weights[der][ik][ib] = weights_parallelepiped(
-                self.eFermi, self.eCenter[ik, ib], self.eCorners[ik, :, :, :, ib], der=der)
+            self.weights[der][ik][ib] = self.weights_cell(
+                self.eFermi, self.eCenter[ik, ib], self.eCorners[ik, ... , ib], der=der)
         return self.weights[der][ik][ib]
 
+
+    @abc.abstractmethod
+    def weights_cell(self,efermi, Ecenter, Ecorner, der=0):
+        pass
 
 # this is for fermiocean
 
@@ -196,7 +192,7 @@ class TetraWeights():
                 Ebandmin=self.Emin[ik],
                 Ebandmax=self.Emax[ik])
             weights = {
-                (ib1, ib2): sum(self.__weight_1b(ik, ib, der) for ib in range(ib1, ib2)) / (ib2 - ib1)
+                (ib1, ib2): sum(self.weight_1b(ik, ib, der) for ib in range(ib1, ib2)) / (ib2 - ib1)
                 for ib1, ib2 in bands_in_range
             }
 
@@ -208,3 +204,48 @@ class TetraWeights():
 
             res.append(weights)
         return res
+
+
+
+class TetraWeightsParallel(TetraWeights):
+
+    def __init__(self, eCenter, eCorners):
+        self.nk, self.nb = eCenter.shape
+        assert eCorners.shape == (self.nk, 2, 2, 2, self.nb) 
+        super().__init__(eCenter,eCorners)
+
+    def weights_cell(self,efermi, Ecenter, Ecorner, der=0):
+        occ = np.zeros((efermi.shape))
+        Ecorner = np.reshape(Ecorner, (2, 2, 2))
+        for iface in 0, 1:
+            for Eface in Ecorner[iface, :, :], Ecorner[:, iface, :], Ecorner[:, :, iface]:
+                occ += weights_tetra(efermi, Ecenter, Eface[0, 0], Eface[0, 1], Eface[1, 1], der=der)
+                occ += weights_tetra(efermi, Ecenter, Eface[0, 0], Eface[1, 0], Eface[1, 1], der=der)
+        return occ / 12.
+
+
+
+class TetraWeightsTrigonal(TetraWeights):
+    """ builds tetrahedrons in a trigonal (hexagonal) prism """
+    
+    def __init__(self, eCenter, eCorners,screw="left"):
+        self.nk, self.nb = eCenter.shape
+        assert eCorners.shape == (self.nk, 6, 2, self.nb) 
+        if screw=="left":
+            super().__init__(eCenter,eCorners[:,-1::-1,:,:])
+        elif screw=="right":
+            super().__init__(eCenter,eCorners)
+        else:
+            raise VelueError(f"in Trigonalgonal tetrahedron method the screw may be left or right, found {screw}")
+
+
+    def weights_cell(self,efermi, Ecenter, Ecorner, der=0):
+        occ = np.zeros((efermi.shape))
+        for i in range(6):
+            occ += 2*weights_tetra(efermi, Ecenter, Ecorner[i%6 ,0], Ecorner[i%6,1], Ecorner[(i+1)%6,1], der=der)
+            occ += 2*weights_tetra(efermi, Ecenter, Ecorner[i%6 ,0], Ecorner[(i+1)%6,0], Ecorner[(i+1)%6,1], der=der)
+        for iz in range(2):
+            for i in range(3):
+                occ += weights_tetra(efermi, Ecenter, Ecorner[(2*i)%6 ,iz], Ecorner[(2*i+1)%6,iz], Ecorner[(2*i+2)%6,iz], der=der)
+            occ += 3*weights_tetra(efermi, Ecenter, Ecorner[0 ,iz], Ecorner[2,iz], Ecorner[4,iz], der=der  )
+        return occ / 36.

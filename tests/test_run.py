@@ -167,6 +167,20 @@ calculators_Chiral_tetra = {
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral, tetra=True),
 }
 
+calculators_Chiral_tetra_trigonal = {
+    'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True, tetra_type="trigonal"),
+    'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral, tetra=True, tetra_type="trigonal"),
+    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}, tetra_type="trigonal"),
+    'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}, tetra_type="trigonal"),
+    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, tetra=True, kwargs_formula={"external_terms": False}, tetra_type="trigonal"),
+    'Der3E':calc.static.NLDrude_FermiSea(Efermi=Efermi_Chiral, tetra=True, tetra_type="trigonal"),
+    'Hall_classic_fsurf':calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral, tetra=True, tetra_type="trigonal"),
+    'Hall_classic':calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral, tetra=True, tetra_type="trigonal"),
+    'dos': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True, tetra_type="trigonal"),
+    'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral, tetra=True, tetra_type="trigonal"),
+}
+
+
 def resultType(quant):
     if quant in []:  # in future - add other options (tabulateresult)
         pass
@@ -781,6 +795,22 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
     check_run(
         system_Chiral_left,
         calculators_Chiral_tetra,
+        fout_name="berry_Chiral_tetra",
+        suffix="left-run",
+        grid_param=grid_param,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=True,
+        extra_precision={"Morb": -1e-6},
+    )
+
+def test_Chiral_left_tetra_trigonal(check_run, system_Chiral_left, compare_any_result):
+    grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
+    check_run(
+        system_Chiral_left,
+        calculators_Chiral_tetra_trigonal,
         fout_name="berry_Chiral_tetra",
         suffix="left-run",
         grid_param=grid_param,

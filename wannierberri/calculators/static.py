@@ -20,9 +20,10 @@ from . import Calculator
 
 class StaticCalculator(Calculator):
 
-    def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={}, **kwargs):
+    def __init__(self, Efermi, tetra=False, tetra_type="default", smoother=None, constant_factor=1., use_factor=True, kwargs_formula={}, **kwargs):
         self.Efermi = Efermi
         self.tetra = tetra
+        self.tetra_type = tetra_type
         self.kwargs_formula = kwargs_formula
         self.smoother = smoother
         self.use_factor = use_factor
@@ -49,7 +50,7 @@ class StaticCalculator(Calculator):
 
         # get a list [{(ib1,ib2):W} for ik in op:ed]
         if self.tetra:
-            weights = data_K.tetraWeights.weights_all_band_groups(
+            weights = data_K.tetraWeights(self.tetra_type).weights_all_band_groups(
                 self.Efermi, der=self.fder, degen_thresh=self.degen_thresh,
                 degen_Kramers=self.degen_Kramers)  # here W is array of shape Efermi
         else:

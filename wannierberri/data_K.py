@@ -16,8 +16,8 @@ import numpy as np
 import lazy_property
 from .parallel import pool
 from .system.system import System
-from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A
-from .__tetrahedron import TetraWeights, get_bands_in_range, get_bands_below_range
+from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A, angle_vectors
+from .__tetrahedron import TetraWeightsParallel, TetraWeightsTrigonal, get_bands_in_range, get_bands_below_range
 from . import formula
 
 def _rotate_matrix(X):
@@ -239,9 +239,20 @@ class Data_K(System):
     def nk(self):
         return np.prod(self.NKFFT)
 
-    @lazy_property.LazyProperty
-    def tetraWeights(self):
-        return TetraWeights(self.E_K, self.E_K_corners)
+    def tetraWeights(self,tetra_type="default"):
+        if not hasattr(self,"saved_tetra"):
+            self.saved_tetra={}
+        if tetra_type not in self.saved_tetra:
+            if tetra_type == "default":
+                return TetraWeightsParallel(self.E_K, self.E_K_corners )
+            elif tetra_type == "trigonal-left":
+                return TetraWeightsTrigonal(self.E_K, self.E_K_corners_trigonal,screw="left")
+            elif tetra_type == "trigonal-right" or tetra_type=="trigonal":
+                return TetraWeightsTrigonal(self.E_K, self.E_K_corners_trigonal,screw="right")
+            else:
+                raise ValueError(f"unknown type of tetrahedron method : {tetra_type}")
+        return  self.saved_tetra[tetra_type]
+
 
     def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False):
         bands_in_range = get_bands_in_range(
@@ -297,6 +308,39 @@ class Data_K(System):
                     _HH_K = self.fft_R_to_k(_Ham_R, hermitean=True)
                     E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
                     Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
+        Ecorners = self.phonon_freq_from_square(Ecorners)
+        print_my_name_end()
+#        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
+        return Ecorners
+
+    @lazy_property.LazyProperty
+    def E_K_corners_trigonal(self):
+        rec = self.system.recip_lattice
+        angle = angle_vectors(rec[0],rec[1])
+
+        dK = self.Kpoint.dK_fullBZ 
+        dK2 = np.array([ dK[0]/3, dK[1]/3, dK[2]/2 ])
+        rec_latt = self.system.recip_lattice
+        if angle< np.pi/2:
+            vectors_inplane = ( [1,1], [-1,2],[-2,1],[-1,-1],[1,-2], [ 2,-1] )
+        else :
+            vectors_inplane = ( [2,1], [1,2],[-1,1],[-2,-1],[-1,-2], [ 1,-1] )
+
+        expdK = np.exp(
+            2j * np.pi * self.system.iRvec
+            * dK2[None, :])  # we omit the wcc phases here, because they do not affect the energies
+
+        expdKz = [1. / expdK[:,2], expdK[:,2]]
+        expdK2 = [expdK[:,:2],expdK[:,:2]*expdK[:,:2]]
+        expdKxy = [None,  expdK2[0], expdK2[1], 1./expdK2[1], 1./expdK2[0]  ]
+        Ecorners = np.zeros((self.nk_selected, 6, 2, self.nb_selected), dtype=float)
+        for ixy,(ix,iy) in enumerate(vectors_inplane):
+            for iz in 0, 1:
+                _expdK = expdKxy[ix][ :, 0] * expdKxy[iy][ :, 1] * expdKz[iz]
+                _Ham_R = self.Ham_R[:, :, :] * _expdK[None, None, :]
+                _HH_K = self.fft_R_to_k(_Ham_R, hermitean=True)
+                E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
+                Ecorners[:, ixy, iz, :] = E[self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
         print_my_name_end()
 #        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
