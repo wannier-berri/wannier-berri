@@ -146,7 +146,7 @@ class TetraWeights():
 
     def __init__(self, eCenter, eCorners):
         self.nk, self.nb = eCenter.shape
-        eCorners.shape == (self.nk, 2, 2, 2, self.nb) 
+        eCorners.shape == (self.nk, 2, 2, 2, self.nb)
         self.eCenter = eCenter
         self.eCorners = eCorners
         self.eFermis = []
@@ -211,7 +211,7 @@ class TetraWeightsParallel(TetraWeights):
 
     def __init__(self, eCenter, eCorners):
         self.nk, self.nb = eCenter.shape
-        assert eCorners.shape == (self.nk, 2, 2, 2, self.nb) 
+        assert eCorners.shape == (self.nk, 2, 2, 2, self.nb)
         super().__init__(eCenter,eCorners)
 
     def weights_cell(self,efermi, Ecenter, Ecorner, der=0):
@@ -227,16 +227,16 @@ class TetraWeightsParallel(TetraWeights):
 
 class TetraWeightsTrigonal(TetraWeights):
     """ builds tetrahedrons in a trigonal (hexagonal) prism """
-    
+
     def __init__(self, eCenter, eCorners,screw="left"):
         self.nk, self.nb = eCenter.shape
-        assert eCorners.shape == (self.nk, 6, 2, self.nb) 
+        assert eCorners.shape == (self.nk, 6, 2, self.nb)
         if screw=="left":
             super().__init__(eCenter,eCorners[:,-1::-1,:,:])
         elif screw=="right":
             super().__init__(eCenter,eCorners)
         else:
-            raise VelueError(f"in Trigonalgonal tetrahedron method the screw may be left or right, found {screw}")
+            raise ValueError(f"in Trigonalgonal tetrahedron method the screw may be left or right, found {screw}")
 
 
     def weights_cell(self,efermi, Ecenter, Ecorner, der=0):

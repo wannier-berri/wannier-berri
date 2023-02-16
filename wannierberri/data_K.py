@@ -251,7 +251,7 @@ class Data_K(System):
                 return TetraWeightsTrigonal(self.E_K, self.E_K_corners_trigonal,screw="right")
             else:
                 raise ValueError(f"unknown type of tetrahedron method : {tetra_type}")
-        return  self.saved_tetra[tetra_type]
+        return self.saved_tetra[tetra_type]
 
 
     def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False):
@@ -318,9 +318,8 @@ class Data_K(System):
         rec = self.system.recip_lattice
         angle = angle_vectors(rec[0],rec[1])
 
-        dK = self.Kpoint.dK_fullBZ 
+        dK = self.Kpoint.dK_fullBZ
         dK2 = np.array([ dK[0]/3, dK[1]/3, dK[2]/2 ])
-        rec_latt = self.system.recip_lattice
         if angle< np.pi/2:
             vectors_inplane = ( [1,1], [-1,2],[-2,1],[-1,-1],[1,-2], [ 2,-1] )
         else :
