@@ -13,9 +13,9 @@
 
 import numpy as np
 from collections import defaultdict
-from wannierberri.result import TABresult, KBandResult
-from wannierberri.formula import covariant as frml
-from wannierberri.formula import covariant_basic as frml_basic
+from ..result import TABresult, KBandResult
+from ..formula import covariant as frml
+from ..formula import covariant_basic as frml_basic
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
@@ -75,7 +75,7 @@ def tabXnk(
 
     tabulator = Tabulator(data_K, ibands, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)
 
-    results = {'Energy': KBandResult(data_K.E_K[:, ibands], TRodd=False, Iodd=False)}
+    results = {'_Energy': KBandResult(data_K.E_K[:, ibands], TRodd=False, Iodd=False)}
     for qfull in quantities:
         q = qfull.split('^')[0]
         __parameters = {}

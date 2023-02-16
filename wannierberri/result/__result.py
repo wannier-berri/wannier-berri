@@ -45,3 +45,7 @@ class Result():
 
     def __radd__(self, other):
         return self + other
+
+    @property
+    def allow_sym(self):
+        return True

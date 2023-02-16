@@ -153,12 +153,19 @@ def run(
 
     Returns
     --------
-    dictionary of  :class:`~wannierberri.result.EnergyResult`
+    dictionary of  :class:`~wannierberri.result.ResultDict`
 
     Notes
     -----
     Results are also printed to ASCII files
     """
+
+    if use_irred_kpt:
+        for k,v in calculators.items():
+            if not v.allow_sym:
+                print (f"WARNING: Calculator {k} cannot be symmetrized. Full Brillouin zone will be used for ALL calculators")
+                use_irred_kpt = False
+
 
     # along a path only tabulating is possible
     if isinstance(grid,Path):
@@ -279,7 +286,10 @@ def run(
 
         # Now add some more points
         Kmax = np.array([K.max for K in K_list]).T
+#        print ("Maximal values for Kpoints\n",Kmax)
+#        print ("Maximal values for Kpoints sorted\n",np.sort(Kmax,axis=0))
         select_points = set().union(*(np.argsort(Km)[-adpt_fac:] for Km in Kmax))
+        print ("points selected for refinement:",select_points)
 
         time2 = time()
         print("time2 = ", time2 - time1)

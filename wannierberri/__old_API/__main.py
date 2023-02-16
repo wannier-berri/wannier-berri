@@ -14,20 +14,20 @@
 
 import functools
 from .__evaluate import evaluate_K
-from wannierberri.smoother import get_smoother
-from wannierberri.result import __tabresult
+from ..smoother import get_smoother
 from . import __integrate
 from . import __tabulate
-from wannierberri.__path import Path
+from ..__path import Path
 import numpy as np
 from collections.abc import Iterable
 
 integrate_options = __integrate.calculators.keys()
 tabulate_options = __tabulate.calculators.keys()
-from wannierberri.utils.mmn2uHu import hlp as hlp_mmn
-from wannierberri.utils.vaspspn import hlp as hlp_spn
+from ..utils.mmn2uHu import hlp as hlp_mmn
+from ..utils.vaspspn import hlp as hlp_spn
+from ..result.__tabresult import write_frmsf
 from time import time
-from wannierberri.parallel import Serial
+from ..parallel import Serial
 import sys
 
 from colorama import init
@@ -345,7 +345,7 @@ def tabulate(
     if mode == '3D':
         res = res.to_grid(grid.dense)
         t2 = time()
-        ttxt, twrite = __tabresult.write_frmsf(
+        ttxt, twrite = write_frmsf(
             frmsf_name,
             Ef0,
             parallel.num_cpus if parallel is not None else 1,
@@ -363,3 +363,4 @@ def tabulate(
             ("         to_grid : {} s\n" + "         txt     : {} s\n" + "         write   : {} s\n").format(
                 t2 - t1, ttxt, twrite))
     return res
+

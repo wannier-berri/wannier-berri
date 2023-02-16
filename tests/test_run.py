@@ -174,12 +174,11 @@ def resultType(quant):
         return EnergyResult
 
 
-def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
+def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer,compare_npz):
     param = {'Efermi': Efermi_Fe}
     param_tab = {'degen_thresh': 5e-2}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
-    calculators["tabulate"] = calc.TabulatorAll(
-        {
+    tabulators = {
             "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
             # but not to energies
             "V": calc.tabulate.Velocity(**param_tab),
@@ -189,8 +188,10 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             'spin_berry': calc.tabulate.SpinBerry(**param_tab),
             'morb': calc.tabulate.OrbitalMoment(**param_tab),
             'Der_morb': calc.tabulate.DerOrbitalMoment(**param_tab),
-        },
-        ibands=[5, 6, 7, 8])
+            'berry_connection_OD': calc.tabulateOD.BerryConnection(),
+                }
+    calculators["tabulate"] = calc.TabulatorAll(tabulators,
+        ibands=[5, 6, 7, 8],jbands=[1,4,7,10],save_mode="frmsf+npz")
 
     parameters_optical = dict(
         Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
@@ -222,7 +223,9 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             result_type=EnergyResult)
 
     extra_precision = {'Morb': 1e-6, 'Der_berry':5e-8}
-    for quant in result.results.get("tabulate").results.keys(): # ["Energy", "berry","Der_berry","spin","morb"]:
+    compare_frmsf = [q for q in tabulators.keys() if not q.endswith("OD") ]#and not q.startswith("_")]
+    print ("comparing FermiSurfer files for",compare_frmsf)
+    for quant in compare_frmsf:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
             _quant = "E" if quant == "Energy" else quant
             _comp = "-" + comp if comp != "" else ""
@@ -237,6 +240,47 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
                 suffix_ref=_quant + _comp,
                 fout_name_ref="tabulate_Fe_W90",
                 precision=prec)
+
+    for quant in result.results.get("tabulate").results.keys():
+        if quant == "_Energy":
+            continue
+        prec = extra_precision[quant] if quant in extra_precision else 2e-8
+        compare_npz( filename=f"berry_Fe_W90-tabulate-grid-{quant}-run.npz",
+                precision=prec)
+
+
+
+def test_Fe_symm_connection(check_run, system_Fe_W90,  compare_npz):
+    "runs with symmetric system, but berry connection does not allow to use symmetries. also should do nothing on iterations"
+    param_tab = {'degen_thresh': 5e-2}
+    calculators = {}
+    calculators["tabulate"] = calc.TabulatorAll(
+        {
+            "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
+            # but not to energies
+            "V": calc.tabulate.Velocity(**param_tab),
+            'berry_connection_OD': calc.tabulateOD.BerryConnection(),
+        },
+        ibands=[5, 6, 7, 8],jbands=[1,4,7,10],save_mode="npz")
+
+
+    result = check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="run-sym",
+        adpt_num_iter=2,
+        use_symmetry=True,
+        skip_compare=['tabulate'])
+
+    for quant in result.results.get("tabulate").results.keys():
+        if quant.startswith("_"):
+            continue
+        prec = 2e-8
+        compare_npz( filename=f"berry_Fe_W90-tabulate-grid-{quant}-run-sym.npz",
+                    filename_ref=f"berry_Fe_W90-tabulate-grid-{quant}-run.npz",
+                precision=prec)
+
 
 
 def test_Fe_dynamic_noband(check_run, system_Fe_W90, compare_any_result):
@@ -452,6 +496,16 @@ def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_
 def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    param_tab = {'degen_thresh': 5e-2}
+    calculators["tabulate"] = calc.TabulatorAll (
+        {
+            "V": calc.tabulate.Velocity(**param_tab),
+            "berry": calc.tabulate.BerryCurvature(**param_tab),
+        },
+        ibands=[5, 6, 7, 8],save_mode="frmsf+npz"
+                                                )
+
+
     check_run(
         system_Fe_W90,
         calculators,
@@ -460,6 +514,7 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
         suffix_ref="sym",
         adpt_num_iter=1,
         use_symmetry=True,
+        skip_compare=["tabulate"],
         parameters_K={
             '_FF_antisym': True,
             '_CCab_antisym': True
@@ -933,20 +988,22 @@ def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_resul
     )
 
 
-def test_tabulate_path(system_Haldane_PythTB):
+def test_tabulate_path(system_Haldane_PythTB,compare_npy):
 
     k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
     path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
 
     calculators = {}
     quantities = {
-                            "Energy":wberri.calculators.tabulate.Energy(),
-                            "berry":wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms":False}),
-                                  }
+                    "Energy":wberri.calculators.tabulate.Energy(),
+                    "berry":wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms":False}),
+                    "berry_connection_OD":wberri.calculators.tabulateOD.BerryConnection(kwargs_formula={"external_terms":False}),
+                 }
 
     calculators ["tabulate"] = wberri.calculators.TabulatorAll(quantities,
                                                        ibands=[0],
-                                                        mode="path")
+                                                        mode="path",
+                                                        save_mode="npy")
 
 
     run_result = wberri.run(
@@ -954,6 +1011,7 @@ def test_tabulate_path(system_Haldane_PythTB):
         grid=path,
         calculators=calculators,
         use_irred_kpt=True,
+        fout_name=os.path.join(OUTPUT_DIR,"tab_Haldane"),
         symmetrize=True,  # should have no effect, but will check the cases and give a warning
         #                parameters_K = parameters_K,
         #                frmsf_name = None,
@@ -966,7 +1024,7 @@ def test_tabulate_path(system_Haldane_PythTB):
     fout = open(os.path.join(OUTPUT_DIR, filename+"-run"), "wb")
 
     data = {}
-    for quant in quantities.keys():
+    for quant in ["Energy","berry"]:
         result_quant = tab_result.results.get(quant)
         for comp in result_quant.get_component_list():
             data[(quant, comp)] = result_quant.get_component(comp)
@@ -975,6 +1033,11 @@ def test_tabulate_path(system_Haldane_PythTB):
     data_ref = pickle.load(open(os.path.join(REF_DIR, filename), "rb"))
 
     for quant in quantities.keys():
+        compare_npy( filename=f"tab_Haldane-tabulate-path-{quant}.npy",
+                precision=-1e-10)
+
+
+    for quant in ["Energy","berry"]:
         for comp in tab_result.results.get(quant).get_component_list():
             _data = data[(quant, comp)]
             _data_ref = data_ref[(quant, comp)]

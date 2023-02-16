@@ -38,17 +38,17 @@ class ResultDict(Result):
 
     #  multiplication by a number
     def __mul__(self, number):
-        return ResultDict({k: v * number for k, v in self.results.items()})
+        return self.__class__({k: v * number for k, v in self.results.items()})
 
     def __truediv__(self, number):
-        return ResultDict({k: v / number for k, v in self.results.items()})
+        return self.__class__({k: v / number for k, v in self.results.items()})
 
     # +
     def __add__(self, other):
         if other == 0:
             return self
         results = {k: self.results[k] + other.results[k] for k in self.results if k in other.results}
-        return ResultDict(results)
+        return self.__class__(results)
 
     # -
     def __sub__(self, other):
@@ -62,12 +62,16 @@ class ResultDict(Result):
     #  how result transforms under symmetry operations
     def transform(self, sym):
         results = {k: self.results[k].transform(sym) for k in self.results}
-        return ResultDict(results)
+        return self.__class__(results)
 
     # a list of numbers, by each of those the refinement points will be selected
     @property
     def max(self):
-        return np.array([x for v in self.results.values() for x in v.max])
+        lst = []
+        for k in sorted(self.results.keys()):
+            lst+=list(self.results[k].max)
+        return np.array(lst)
+#        return np.array([x for k in sorted(self.results.keys()) [k].values() for x in v.max])
 
 
 
