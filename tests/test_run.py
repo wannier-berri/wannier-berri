@@ -472,7 +472,7 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
         fout_name="berry_Fe_W90",
         suffix="sym-run",
         suffix_ref="sym",
-        adpt_num_iter=1,
+        adpt_num_iter=3,
         use_symmetry=True,
         parameters_K={
             '_FF_antisym': True,
@@ -481,7 +481,7 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
     )
 
 
-def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
+def test_Fe_pickle_Klist_12(check_run, system_Fe_W90, compare_any_result):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     #  First, remove the
     try:
@@ -496,7 +496,7 @@ def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
         fout_name="berry_Fe_W90",
         suffix="pickle-run",
         suffix_ref="sym",
-        adpt_num_iter=0,
+        adpt_num_iter=1,
         use_symmetry=True,
         file_Klist="Klist.pickle",
         parameters_K={
@@ -510,6 +510,61 @@ def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
         fout_name="berry_Fe_W90",
         suffix="pickle-run",
         suffix_ref="sym",
+        adpt_num_iter=2,
+        use_symmetry=True,
+        file_Klist="Klist.pickle",
+        restart=True,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+
+def test_Fe_pickle_Klist_021(check_run, system_Fe_W90, compare_any_result):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    #  First, remove the
+    try:
+        os.remove("Klist.pickle")
+    except FileNotFoundError:
+        pass
+    param = {'Efermi': Efermi_Fe}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="pickle-run-fch",
+        suffix_ref="sym",
+        adpt_num_iter=0,
+        use_symmetry=True,
+        file_Klist="Klist.pickle",
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+    check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="pickle-run-fch",
+        suffix_ref="sym",
+        adpt_num_iter=2,
+        use_symmetry=True,
+        file_Klist="Klist.pickle",
+        restart=True,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+    check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="pickle-run-fch",
+        suffix_ref="sym",
         adpt_num_iter=1,
         use_symmetry=True,
         file_Klist="Klist.pickle",
@@ -519,6 +574,7 @@ def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
             '_CCab_antisym': True
         },
     )
+
 
 def test_GaAs(check_run, system_GaAs_W90, compare_any_result):
 
