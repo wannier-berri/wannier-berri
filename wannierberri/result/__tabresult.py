@@ -284,8 +284,9 @@ class TABresult(Result):
         else:
             return fig
 
+    @property
     def max(self):
-        return -1  # tabulating does not contribute to adaptive refinement
+        return np.array([-1.])  # tabulating does not contribute to adaptive refinement
 
 def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
     if len(suffix) > 0:
