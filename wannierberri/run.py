@@ -175,8 +175,15 @@ def run(
         print ("Grid is regular")
 
     if file_Klist is not None:
+        do_write_Klist = True
         if not file_Klist.endswith(".pickle"):
             file_Klist += ".pickle"
+            file_Klist_factor_changed = file_Klist+".changed_factors.txt"
+        else:
+            file_Klist_factor_changed = file_Klist[:-7]+".changed_factors.txt"
+    else:
+        do_write_Klist = False
+        file_Klist_factor_changed = None
 
     print(f"The set of k points is a {grid.str_short}")
 
@@ -209,14 +216,42 @@ def run(
             if len(K_list) == 0:
                 print("WARNING : {0} contains zero points starting from scrath".format(file_Klist))
                 restart = False
+            fr.close()
+
+            nk_prev = len(K_list)
+
+            try:
+                # patching the Klist by updating the factors
+                fr_div = open(file_Klist_factor_changed, "r")
+                factor_changed_K_list = []
+                for line in fr_div:
+                    line_ = line.split()
+                    iK = int(line_[0])
+                    fac = float(line_[1])
+
+                    factor_changed_K_list.append(iK)
+                    K_list[iK].factor = fac
+                print("{0} K-points were read from {1}".format(len(factor_changed_K_list), file_Klist_factor_changed))
+                fr_div.close()
+            except FileNotFoundError:
+                print (f"File with changed factors {file_Klist_factor_changed} not found, assume they were not changed")
         except Exception as err:
             restart = False
-            print("WARNING: {}".format(err))
-            print("WARNING : reading from {0} failed, starting from scrath".format(file_Klist))
+#            print("WARNING: {}".format(err))
+            raise RuntimeError("{1}: reading from {0} failed, starting from scrath".format(file_Klist,err))
     else:
         K_list = grid.get_K_list(use_symmetry=use_irred_kpt)
         print("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
         start_iter = 0
+        nk_prev = 0
+
+    if not restart:
+        import os
+        def remove_file(filename):
+            if filename is not None and os.path.exists(filename):
+                os.remove(filename)
+        remove_file(file_Klist)
+        remove_file(file_Klist_factor_changed)
 
 
 #    suffix="-"+suffix if len(suffix)>0 else ""
@@ -243,11 +278,13 @@ def run(
         adpt_mesh = np.array(adpt_mesh)
 
     counter = 0
+    result_all = None
+    result_excluded = None
 
     for i_iter in range(adpt_num_iter + 1):
         if print_Kpoints:
             print(
-                "iteration {0} - {1} points. New points are:".format(i_iter, len([K for K in K_list if K.res is None])))
+                "iteration {0} - {1} points. New points are:".format(i_iter+start_iter, len([K for K in K_list if K.res is None])))
             for i, K in enumerate(K_list):
                 if not K.evaluated:
                     print(" K-point {0} : {1} ".format(i, K))
@@ -258,17 +295,27 @@ def run(
             symgroup=system.symgroup if symmetrize else None,
             remote_parameters=remote_parameters)
 
+        nk = len(K_list)
         try:
-            if file_Klist is not None:
-                nk = len(K_list)
-                fw = open(file_Klist, "wb")
-                for ink in range(0, nk, Klist_part):
+            if do_write_Klist:
+                # append new (refined) k-points only
+                fw = open(file_Klist, "ab")
+                for ink in range(nk_prev, nk, Klist_part):
                     pickle.dump(K_list[ink:ink + Klist_part], fw)
+                fw.close()
+
         except Exception as err:
             print("Warning: {0} \n the K_list was not pickled".format(err))
 
         time0 = time()
-        result_all = sum(kp.get_res for kp in K_list)
+
+        if result_all is None:
+            result_all = sum(kp.get_res for kp in K_list)
+        else:
+            if result_excluded is not None:
+                result_all -= result_excluded
+            result_all += sum(kp.get_res for kp in K_list[nk_prev:])
+
         time1 = time()
         print("time1 = ", time1 - time0)
         if not (restart and i_iter == 0):
@@ -284,14 +331,43 @@ def run(
         time2 = time()
         print("time2 = ", time2 - time1)
         l1 = len(K_list)
+
+        excluded_Klist = []
+        result_excluded = None
+
+        nk_prev = nk
+
         for iK in select_points:
+            results = K_list[iK].get_res
             K_list += K_list[iK].divide(adpt_mesh, system.periodic, use_symmetry=use_irred_kpt)
+            if abs(K_list[iK].factor) < 1.e-10:
+                excluded_Klist.append(iK)
+                if result_excluded is None:
+                    result_excluded = results - K_list[iK].get_res
+                else:
+                    result_excluded += results - K_list[iK].get_res
 
         if use_irred_kpt:
             print("checking for equivalent points in all points (of new  {} points)".format(len(K_list) - l1))
-            nexcl = exclude_equiv_points(K_list, new_points=len(K_list) - l1)
+            nexcl, weight_changed_old = exclude_equiv_points(K_list, new_points=len(K_list) - l1)
             print(" excluded {0} points".format(nexcl))
+        else:
+            weight_changed_old = {}
+
         print("sum of weights now :{}".format(sum(Kp.factor for Kp in K_list)))
+
+        for iK, prev_factor in weight_changed_old.items():
+            result_excluded += K_list[iK].res * (prev_factor - K_list[iK].factor)
+
+        if do_write_Klist:
+            print (f"Writing file_Klist_factor_changed to {file_Klist_factor_changed}")
+            fw_changed = open(file_Klist_factor_changed, "a")
+            for iK in excluded_Klist:
+                fw_changed.write("{0} {1} # refined\n".format(iK, 0.0))
+            for iK in weight_changed_old:
+                fw_changed.write("{0} {1} # changed\n".format(iK, K_list[iK].factor))
+            fw_changed.close()
+
 
     print("Totally processed {0} K-points ".format(counter))
 
