@@ -72,6 +72,9 @@ class DynamicCalculator(Calculator, abc.ABC):
                 if self.nonzero(Em, En)
             ]
             npair = len(degen_group_pairs)
+            if npair == 0:
+                continue
+
             matrix_elements = np.array(
                 [formula.trace_ln(ik, np.arange(*pair[0]), np.arange(*pair[1])) for pair in degen_group_pairs])
             factor_Efermi = np.array([self.factor_Efermi(pair[2], pair[3]) for pair in degen_group_pairs])
