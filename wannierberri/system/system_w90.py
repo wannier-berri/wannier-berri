@@ -40,6 +40,10 @@ class System_w90(System):
     fft : str
         library used to perform the fast Fourier transform from **q** to **R**. ``fftw`` or ``numpy``. (practically does not affect performance,
         anyway mostly time of the constructor is consumed by reading the input files)
+    kmesh_tol : float
+        tolerance to consider the b_k vectors (connecting to neighbouring k-points on the grid) belonging to the same shell
+    bk_complete_tol : float
+        tolerance to consider the set of b_k shells as complete.
 
     Notes
     -----
@@ -53,13 +57,15 @@ class System_w90(System):
             guiding_centers=False,
             fft='fftw',
             npar=multiprocessing.cpu_count(),
+            kmesh_tol=1e-7,
+            bk_complete_tol=1e-5,
             **parameters):
 
         self.set_parameters(**parameters)
         self.npar = npar
         self.seedname = seedname
 
-        chk = CheckPoint(self.seedname)
+        chk = CheckPoint(self.seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         if self.mp_grid is None:
             self.mp_grid = chk.mp_grid
