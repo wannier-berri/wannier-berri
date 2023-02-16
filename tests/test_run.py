@@ -811,7 +811,7 @@ def test_Chiral_left_tetra_trigonal(check_run, system_Chiral_left, compare_any_r
     check_run(
         system_Chiral_left,
         calculators_Chiral_tetra_trigonal,
-        fout_name="berry_Chiral_tetra",
+        fout_name="berry_Chiral_tetra_trigonal",
         suffix="left-run",
         grid_param=grid_param,
         parameters_K={
