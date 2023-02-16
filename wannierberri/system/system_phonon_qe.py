@@ -102,10 +102,11 @@ class System_Phonon_QE(System_w90):
             qpoints_found[iq] = True
         assert np.all(qpoints_found),('some qpoints were not found in the files:\n'+'\n'.join(str(x/agrid))
                for x in np.where(np.logical_not(qpoints_found)))
-        self.Ham_R = FFT(dynamical_matrix_q, axes=(0, 1, 2), numthreads=npar, fft=fft, destroy=False)
+        Ham_R = FFT(dynamical_matrix_q, axes=(0, 1, 2), numthreads=npar, fft=fft, destroy=False)
         self.iRvec, self.Ndegen = self.wigner_seitz(self.mp_grid)
-        self.Ham_R= np.array([self.Ham_R[tuple(iR % self.mp_grid)] / nd for iR, nd in zip(self.iRvec, self.Ndegen)]) / np.prod(self.mp_grid)
-        self.Ham_R = self.Ham_R.transpose((1, 2, 0))*(Ry_eV**2) # now the units are eV**2, to be "kind of consistent" with electronic systems
+        Ham_R= np.array([Ham_R[tuple(iR % self.mp_grid)] / nd for iR, nd in zip(self.iRvec, self.Ndegen)]) / np.prod(self.mp_grid)
+        Ham_R = Ham_R.transpose((1, 2, 0))*(Ry_eV**2) # now the units are eV**2, to be "kind of consistent" with electronic systems
+        self.set_R_mat('Ham',Ham_R)
 
         self.do_at_end_of_init()
 
