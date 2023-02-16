@@ -119,6 +119,7 @@ class Data_K(System):
         self.dK = dK
         self._bar_quantities = {}
         self._covariant_quantities = {}
+        self._XX_R = {}
 
     def set_parameters(self, **parameters):
         for param in self.default_parameters:
@@ -141,77 +142,57 @@ class Data_K(System):
     def is_phonon(self):
         return self.system.is_phonon
 
-    @lazy_property.LazyProperty
-    def Ham_R(self):
-        return self.system.Ham_R * self.expdK[None, None, :]
 
-    @lazy_property.LazyProperty
-    def AA_R(self):
-        return self.system.AA_R * self.expdK[None, None, :, None]
+    def get_R_mat(self,key):
+        memoize_R = ['Ham','AA','OO','BB','CC','CCab']
+        try:
+            return self._XX_R[key]
+        except KeyError:
+            if key == 'OO':
+                res = self._OO_R()
+            elif key == 'CCab':
+                res = self._CCab_R()
+            elif key == 'FF':
+                res = self._FF_R()
+            elif key == 'T_wcc':
+                res = self._T_wcc_R()
+            else:
+                X_R = self.system.get_R_mat(key)
+                shape = [1]*X_R.ndim
+                shape[2]=self.expdK.shape[0]
+                res = X_R* self.expdK.reshape(shape)
+            if key in memoize_R:
+                self.set_R_mat(key,res)
+        return res
+
 
     #  this is a bit ovberhead, but to maintain uniformity of the code let's use this
-    @lazy_property.LazyProperty
-    def T_wcc_R(self):
+    def _T_wcc_R(self):
         nw = self.num_wann
         res = np.zeros((nw, nw, self.system.nRvec, 3), dtype=complex)
         res[np.arange(nw), np.arange(nw), self.system.iR0, :] = self.system.wannier_centers_cart_wcc_phase
         return res
 
-    @lazy_property.LazyProperty
-    def OO_R(self):
+    def _OO_R(self):
         # We do not multiply by expdK, because it is already accounted in AA_R
         return 1j * (
-            self.cRvec_wcc[:, :, :, alpha_A] * self.AA_R[:, :, :, beta_A]
-            - self.cRvec_wcc[:, :, :, beta_A] * self.AA_R[:, :, :, alpha_A])
+            self.cRvec_wcc[:, :, :, alpha_A] * self.get_R_mat('AA')[:, :, :, beta_A]
+            - self.cRvec_wcc[:, :, :, beta_A] * self.get_R_mat('AA')[:, :, :, alpha_A])
 
-    @lazy_property.LazyProperty
-    def BB_R(self):
-        return self.system.BB_R * self.expdK[None, None, :, None]
-
-    @lazy_property.LazyProperty
-    def CC_R(self):
-        return self.system.CC_R * self.expdK[None, None, :, None]
-
-    @lazy_property.LazyProperty
-    def CCab_R(self):
+    def _CCab_R(self):
         if self._CCab_antisym:
             CCab = np.zeros((self.num_wann, self.num_wann, self.system.nRvec, 3, 3), dtype=complex)
-            CCab[:, :, :, alpha_A, beta_A] = -0.5j * self.CC_R
-            CCab[:, :, :, beta_A, alpha_A] = 0.5j * self.CC_R
+            CCab[:, :, :, alpha_A, beta_A] = -0.5j * self.get_R_mat('CC')
+            CCab[:, :, :, beta_A, alpha_A] = 0.5j * self.get_R_mat('CC')
             return CCab
         else:
-            return self.system.CCab_R * self.expdK[None, None, :, None, None]
+            return self.system.get_R_mat('CCab') * self.expdK[None, None, :, None, None]
 
-    @lazy_property.LazyProperty
-    def FF_R(self):
+    def _FF_R(self):
         if self._FF_antisym:
-            return self.cRvec_wcc[:, :, :, :, None] * self.AA_R[:, :, :, None, :]
+            return self.cRvec_wcc[:, :, :, :, None] * self.get_R_mat('AA')[:, :, :, None, :]
         else:
-            return self.system.FF_R * self.expdK[None, None, :, None, None]
-
-    @lazy_property.LazyProperty
-    def SS_R(self):
-        return self.system.SS_R * self.expdK[None, None, :, None]
-
-    @property
-    def SH_R(self):
-        return self.system.SH_R * self.expdK[None, None, :, None]
-
-    @property
-    def SR_R(self):
-        return self.system.SR_R * self.expdK[None, None, :, None, None]
-
-    @property
-    def SA_R(self):
-        return self.system.SA_R * self.expdK[None, None, :, None, None]
-
-    @property
-    def SHA_R(self):
-        return self.system.SHA_R * self.expdK[None, None, :, None, None]
-
-    @property
-    def SHR_R(self):
-        return self.system.SHR_R * self.expdK[None, None, :, None, None]
+            return self.system.get_R_mat('FF') * self.expdK[None, None, :, None, None]
 
 ###############################################################
 
@@ -346,7 +327,7 @@ class Data_K(System):
         key = (name, der)
         if key not in self._bar_quantities:
             self._bar_quantities[key] = self._R_to_k_H(
-                getattr(self, name + '_R').copy(), der=der, hermitean=(name in ['AA', 'SS', 'OO']))
+                self.get_R_mat(name).copy(), der=der, hermitean=(name in ['AA', 'SS', 'OO']))
         return self._bar_quantities[key]
 
     def covariant(self, name, commader=0, gender=0, save=True):
