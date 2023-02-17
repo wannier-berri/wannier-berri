@@ -879,6 +879,27 @@ def test_Chiral_left_tetra_trigonal(check_run, system_Chiral_left, compare_any_r
     )
 
 
+def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result):
+    grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
+    calculators = {
+    'dos_tetra': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
+    'dos_trig': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True, tetra_type=trigonal),
+    }
+    check_run(
+        system_Chiral_left,
+        calculators_Chiral_tetra_trigonal,
+        fout_name="berry_Chiral_tetra_trigonal",
+        suffix="left-run",
+        grid_param=grid_param,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=True,
+        extra_precision={"Morb": -1e-6},
+    )
+
+
 def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, compare_any_result):
     "check that for time-reversed model the ohmic conductivity is the same, but the AHC is opposite"
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}

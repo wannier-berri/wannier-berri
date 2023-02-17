@@ -13,6 +13,14 @@ import lazy_property
 import numpy as np
 from numba import njit
 import abc
+from functools import lru_cache
+
+
+
+@lru_cache
+def ones(n):
+    return np.ones(n)
+
 
 @njit
 def weights_tetra(efall, e0, e1, e2, e3, der=0):
@@ -150,22 +158,23 @@ class TetraWeights():
         self.eCenter = eCenter
         self.eCorners = eCorners
         self.eFermis = []
-        self.weights = defaultdict(lambda: defaultdict(lambda: {}))
+        self.weights = []  
         Eall = np.concatenate((self.eCenter[:, None, :], self.eCorners.reshape(self.nk, -1, self.nb)), axis=1)
         self.Emin = Eall.min(axis=1)
         self.Emax = Eall.max(axis=1)
-        self.eFermi = None
 
-    @lazy_property.LazyProperty
-    def ones(self):
-        return np.ones(len(self.eFermi))
 
-    def weight_1b(self, ik, ib, der):
-        if ib not in self.weights[der][ik]:
-            self.weights[der][ik][ib] = self.weights_cell(
-                self.eFermi, self.eCenter[ik, ib], self.eCorners[ik, ... , ib], der=der)
-        return self.weights[der][ik][ib]
+    def weight_1b(self, ief,ik, ib, der):
+        if ib not in self.weights[ief][der][ik]:
+            self.weights[ief][der][ik][ib] = self.weights_cell(
+                self.eFermis[ief], self.eCenter[ik, ib], self.eCorners[ik, ... , ib], der=der)
+        return self.weights[ief][der][ik][ib]
 
+    def index_eFermi(self,eFermi):
+        for i,eF in enumerate(self.eFermis):
+            if eF is eFermi:
+                return i
+        raise ValueError(f"Fermi level {eFermi} is not found in self.eFermis")
 
     @abc.abstractmethod
     def weights_cell(self,efermi, Ecenter, Ecorner, der=0):
@@ -177,30 +186,33 @@ class TetraWeights():
         """
              here  the key of the return dict is a pair of integers (ib1,ib2)
         """
-        if self.eFermi is None:
-            self.eFermi = eFermi
+        if eFermi in self.eFermis:
+            ief = self.index_eFermi(eFermi)
         else:
-            assert self.eFermi is eFermi
+            ief = len(self.weights)
+            self.weights.append( defaultdict(lambda: defaultdict(lambda: {})) )
+            self.eFermis.append(eFermi)
+        
         res = []
         for ik in range(self.nk):
             bands_in_range = get_bands_in_range(
-                self.eFermi[0],
-                self.eFermi[-1],
+                eFermi[0],
+                eFermi[-1],
                 self.eCenter[ik],
                 degen_thresh=degen_thresh,
                 degen_Kramers=degen_Kramers,
                 Ebandmin=self.Emin[ik],
                 Ebandmax=self.Emax[ik])
             weights = {
-                (ib1, ib2): sum(self.weight_1b(ik, ib, der) for ib in range(ib1, ib2)) / (ib2 - ib1)
+                (ib1, ib2): sum(self.weight_1b(ief,ik, ib, der) for ib in range(ib1, ib2)) / (ib2 - ib1)
                 for ib1, ib2 in bands_in_range
             }
 
             if der == 0:
-                bandmax = get_bands_below_range(self.eFermi[0], self.eCenter[ik], Ebandmax=self.Emax[ik])
+                bandmax = get_bands_below_range(eFermi[0], self.eCenter[ik], Ebandmax=self.Emax[ik])
                 if len(bands_in_range) > 0:
                     bandmax = min(bandmax, bands_in_range[0][0])
-                weights[(0, bandmax)] = self.ones
+                weights[(0, bandmax)] = ones(len(eFermi))
 
             res.append(weights)
         return res
