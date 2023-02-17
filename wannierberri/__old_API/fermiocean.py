@@ -356,7 +356,7 @@ class FermiOcean():
 
         # get a list [{(ib1,ib2):W} for ik in op:ed]
         if self.tetra:
-            self.weights = data_K.tetraWeights.weights_all_band_groups(
+            self.weights = data_K.tetraWeights().weights_all_band_groups(
                 Efermi, der=self.fder, degen_thresh=degen_thresh,
                 degen_Kramers=degen_Kramers)  # here W is array of shape Efermi
         else:

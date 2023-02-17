@@ -244,13 +244,14 @@ class Data_K(System):
             self.saved_tetra={}
         if tetra_type not in self.saved_tetra:
             if tetra_type == "default":
-                return TetraWeightsParallel(self.E_K, self.E_K_corners )
+                tw = TetraWeightsParallel(self.E_K, self.E_K_corners )
             elif tetra_type == "trigonal-left":
-                return TetraWeightsTrigonal(self.E_K, self.E_K_corners_trigonal,screw="left")
+                tw = TetraWeightsTrigonal(self.E_K, self.E_K_corners_trigonal,screw="left")
             elif tetra_type == "trigonal-right" or tetra_type=="trigonal":
-                return TetraWeightsTrigonal(self.E_K, self.E_K_corners_trigonal,screw="right")
+                tw = TetraWeightsTrigonal(self.E_K, self.E_K_corners_trigonal,screw="right")
             else:
                 raise ValueError(f"unknown type of tetrahedron method : {tetra_type}")
+            self.saved_tetra[tetra_type] = tw
         return self.saved_tetra[tetra_type]
 
 
