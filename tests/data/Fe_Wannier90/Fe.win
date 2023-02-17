@@ -1,24 +1,3 @@
-# ========== Berry =============
-berry = true
-berry_task = kubo+shc
-berry_kmesh = 6 6 6
-
-adpt_smr = false
-smr_type = gauss
-smr_fixed_en_width = 0.20
-
-fermi_energy = 17.0
-
-kubo_freq_min = 0.0
-kubo_freq_max = 7.0
-kubo_freq_step = 1.0
-kubo_eigval_max = 1000.0
-
-shc_freq_scan = .true.
-shc_alpha = 1
-shc_beta  = 2
-shc_gamma = 3
-# =============================
 
 exclude_bands = 1-8
 num_bands    =   20
@@ -40,8 +19,6 @@ spinors = T
 begin projections
 Fe: sp3d2;dxy;dxz;dyz
 end projections
-
-use_ws_distance = true
 
 begin unit_cell_cart
 bohr
