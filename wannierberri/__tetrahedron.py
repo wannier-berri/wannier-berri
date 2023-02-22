@@ -23,7 +23,7 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
     # a dirty trick to avoid divisions by zero
     diff_min=1e-12
     for i in range(3):
-        if abs(e[i + 1] - e[i]) < diff_min:
+        if e[i + 1] - e[i] < diff_min:
             e[i + 1] = e[i] + diff_min
     e1, e2, e3, e4 = e
 
