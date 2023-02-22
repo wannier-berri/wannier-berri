@@ -884,9 +884,9 @@ def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result
     nshift=4
     Efermi_shift = Efermi_Chiral+Efermi_Chiral[nshift]-Efermi_Chiral[0]
     calculators = {
-    'dos': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
-    'dos_trig': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True, tetra_type="trigonal"),
-    'dos_trig_2': calc.static.DOS(Efermi=Efermi_shift, tetra=True, tetra_type="trigonal"),
+        'dos': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
+        'dos_trig': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True, tetra_type="trigonal"),
+        'dos_trig_2': calc.static.DOS(Efermi=Efermi_shift, tetra=True, tetra_type="trigonal"),
     }
     result = check_run(
         system_Chiral_left,
@@ -900,7 +900,6 @@ def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result
         },
         use_symmetry=True,
         skip_compare='dos_trig_2'
-#        extra_precision={"Morb": -1e-6},
     )
     data1 = result.results.get("dos_trig_2").data[:-nshift]
     data2 = result.results.get("dos_trig").data[nshift:]
@@ -913,9 +912,9 @@ def test_Chiral_left_tetra_trig_nosym(check_run, system_Chiral_left, compare_any
     "the trigonal tetrahedron method is symmetyric, so using symmetyries should not change the result"
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
     calculators = {
-    'dos_trig': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True, tetra_type="trigonal"),
+        'dos_trig': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True, tetra_type="trigonal"),
     }
-    result = check_run(
+    check_run(
         system_Chiral_left,
         calculators,
         fout_name="berry_Chiral_tetra_trigonal",

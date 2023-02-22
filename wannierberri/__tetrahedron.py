@@ -9,7 +9,6 @@
 #------------------------------------------------------------#
 
 from collections import defaultdict
-import lazy_property
 import numpy as np
 from numba import njit
 import abc
@@ -183,7 +182,7 @@ class TetraWeights():
         self.eCenter = eCenter
         self.eCorners = eCorners
         self.eFermis = []
-        self.weights = []  
+        self.weights = []
         Eall = np.concatenate((self.eCenter[:, None, :], self.eCorners.reshape(self.nk, -1, self.nb)), axis=1)
         self.Emin = Eall.min(axis=1)
         self.Emax = Eall.max(axis=1)
@@ -219,7 +218,7 @@ class TetraWeights():
             ief = len(self.weights)
             self.weights.append( defaultdict(lambda: defaultdict(lambda: {})) )
             self.eFermis.append(eFermi)
-        
+
         res = []
         for ik in range(self.nk):
             bands_in_range = get_bands_in_range(
