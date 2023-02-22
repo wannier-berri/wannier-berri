@@ -23,23 +23,47 @@ def ones(n):
 
 
 @njit
-def weights_tetra(efall, e0, e1, e2, e3, der=0):
-
+def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
     e = [e0, e1, e2, e3]
 
     #    print (e0,e1,e2,e3,der)
     e = np.array(sorted([e0, e1, e2, e3]))
     # a dirty trick to avoid divisions by zero
+    diff_min=1e-12
     for i in range(3):
-        if abs(e[i + 1] - e[i]) < 1e-12:
-            e[i + 1:] += 1e-10
+        if e[i + 1] - e[i] < diff_min:
+            e[i + 1] = e[i] + diff_min
     e1, e2, e3, e4 = e
 
     nEF = len(efall)
     occ = np.zeros((nEF))
+
+    # the accurate behaviour is a bit slower, but in some cases the faster implementation gives wrong results
+    # in particular, when the energies e0,e1,e2,e3 are close to each other
+    # TODO : check how to handle this with derivatives
+    if accurate and der==0:
+        for i in range(nEF):
+            ef = efall[i]
+            if ef >= e4:
+                occ[i] = 1.
+            elif ef < e1:
+                occ[i] = 0.
+            elif ef >= e3:  # c3
+                occ[i] = 1 - ((ef-e4)/(e1-e4)) * ((ef-e4)/(e2-e4)) * ((ef-e4)/(e3-e4))
+            elif ef >= e2:  # c2
+                a13 = (ef-e1)/(e3-e1)
+                a14 = (ef-e1)/(e4-e1)
+                a23 = (ef-e2)/(e3-e2)
+                a24 = (ef-e2)/(e4-e2)
+                occ[i] = a23*a24 + a13*( a14*(1-a24) + a24*(1-a23) )
+            else:  # c1
+                occ[i] = ((ef-e1)/(e2-e1)) * ((ef-e1)/(e3-e1)) * ((ef-e1)/(e4-e1))
+        return occ
+
     denom3 = 1. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
     denom2 = 1. / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
     denom1 = 1. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+#    _denom1 = 1. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
 
     if der == 0:
         c10 = -e1**3 * denom1
@@ -113,6 +137,7 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0):
             else:  # c1
                 occ[i] = 6 * c13
     return occ
+
 
 
 #@njit
