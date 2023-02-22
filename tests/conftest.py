@@ -8,6 +8,7 @@ from common import ROOT_DIR, OUTPUT_DIR, REF_DIR
 from common_systems import (
     create_files_Fe_W90,
     create_files_GaAs_W90,
+    create_W90_files,
     system_Fe_W90,
     system_Fe_W90_wcc,
     system_Fe_sym_W90,
@@ -41,6 +42,9 @@ from common_comparers import (
     compare_fermisurfer,
     compare_sym_asym,
 )
+
+
+from test_cluster import check_command_output
 
 # Parallel objects
 from common_parallel import parallel_serial, parallel_ray
