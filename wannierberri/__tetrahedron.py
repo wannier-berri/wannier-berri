@@ -199,7 +199,8 @@ class TetraWeights():
         for i,eF in enumerate(self.eFermis):
             if eF is eFermi:
                 return i
-        raise ValueError(f"Fermi level {eFermi} is not found in self.eFermis")
+        return -1
+#        raise ValueError(f"Fermi level {eFermi} is not found in self.eFermis")
 
     @abc.abstractmethod
     def weights_cell(self,efermi, Ecenter, Ecorner, der=0):
@@ -211,9 +212,10 @@ class TetraWeights():
         """
              here  the key of the return dict is a pair of integers (ib1,ib2)
         """
-        if eFermi in self.eFermis:
-            ief = self.index_eFermi(eFermi)
-        else:
+#        print ("debug",eFermi,self.eFermis)
+        ief = self.index_eFermi(eFermi)
+#        print ("debug, index_eFermi:",ief)
+        if ief<0:
             ief = len(self.weights)
             self.weights.append( defaultdict(lambda: defaultdict(lambda: {})) )
             self.eFermis.append(eFermi)
