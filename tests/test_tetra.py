@@ -81,16 +81,16 @@ data2e = (5.934   , 5.93314105, 5.93327453, 5.93327816, 5.93373734, 1.0, 1.0)
 data3 = ( 0.34253665432,0.121245,0.2356431,0.51254,0.614651,0.38891045,0.38891045)
 
 
-@pytest.mark.parametrize("data",[data1,data2,data2b,data2c,data2d,data2e,data2,data3])
+@pytest.mark.parametrize("data", [data1,data2,data2b,data2c,data2d,data2e,data2,data3])
 def test_tetra_accurate(data):
     """testing some 'magic' values, for which the old implementation gives errors
         aso some normal inpyuts are checked
         data is (ef,e1,e2,e3,e4,w_old,w_acc)
     """
-    ef,e1,e2,e3,e4=data[:5]
-    ef=np.array([ef])
-    weight_old=weights_tetra(ef,e1,e2,e3,e4,der=0,accurate=False)
-    weight_acc=weights_tetra(ef,e1,e2,e3,e4,der=0,accurate=True)
+    ef,e1,e2,e3,e4 = data[:5]
+    ef = np.array([ef])
+    weight_old = weights_tetra(ef,e1,e2,e3,e4,der=0,accurate=False)
+    weight_acc = weights_tetra(ef,e1,e2,e3,e4,der=0,accurate=True)
     print ("weights (old/acc):",weight_old,weight_acc)
     assert weight_old[0] == approx(data[5],abs=1e-8)
-    assert weight_acc[0] == approx(data[6],abs=1e-8) 
+    assert weight_acc[0] == approx(data[6],abs=1e-8)
