@@ -37,6 +37,8 @@ class Grid():
         number of k-points in the FFT grid along each directions
     NKdiv : int
         number of k-points in the division (K-) grid along each directions
+    use_symmetry : bool
+        use symmetries of the system to exclude equivalent points
 
     Notes
     -----

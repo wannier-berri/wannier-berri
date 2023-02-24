@@ -22,6 +22,7 @@ from . import symmetry
 from . import system
 from .system import System_w90, System_fplo, System_tb, System_PythTB, System_TBmodels, System_ASE, System_Phonon_QE
 from .__grid import Grid
+from .__grid_tetra import GridTetra
 from .__path import Path
 from . import calculators
 from . import result
