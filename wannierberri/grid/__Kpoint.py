@@ -14,7 +14,7 @@
 
 import numpy as np
 import lazy_property
-from .symmetry import SYMMETRY_PRECISION
+from ..symmetry import SYMMETRY_PRECISION
 import abc
 
 class KpointBZ(abc.ABC):

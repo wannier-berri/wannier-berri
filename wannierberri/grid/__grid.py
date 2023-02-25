@@ -14,7 +14,7 @@
 from collections.abc import Iterable
 import numpy as np
 from time import time
-from . import symmetry
+from .. import symmetry
 import lazy_property
 from .__Kpoint import KpointBZparallel
 import abc

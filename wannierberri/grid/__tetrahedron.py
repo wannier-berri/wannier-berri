@@ -12,7 +12,6 @@ from collections import defaultdict
 import lazy_property
 import numpy as np
 from numba import njit
-import abc
 
 @njit
 def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
@@ -230,11 +229,6 @@ class TetraWeights():
         return res
 
 class TetraWeightsParal(TetraWeights):
-
-#    def __weight_1b_1k(self, eFermi, eCenter, eCorners, der):
-#        return weights_parallelepiped(eFermi, eCenter, eCorners, der=der)
-#    def weights_parallelepiped(self,efermi, Ecenter, Ecorner, der=0):
-
 
     def weight_1k1b_priv(self, eFermi, ik, ib, der):
         occ = np.zeros((eFermi.shape))

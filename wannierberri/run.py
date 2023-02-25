@@ -18,11 +18,9 @@ import pickle
 import glob
 
 from .data_K import Data_K
-from .__Kpoint import exclude_equiv_points
+from .grid import exclude_equiv_points, Path, Grid
 from .parallel import Serial
 from .result import ResultDict
-from .__path import Path
-from .__grid import Grid
 
 
 def print_progress(count, total, t0):
@@ -113,6 +111,7 @@ def run(
     print_Kpoints=True,
     adpt_mesh=2,
     adpt_fac=1,
+    fast_iter=True
 ):
     """
     The function to run a calculation. Substitutes the old :func:`~wannierberri.integrate` and :func:`~wannierberri.tabulate`
@@ -151,6 +150,8 @@ def run(
         if `True` : reads restart information from `file_Klist` and starts from there
     Klist_part : int
         write the file_Klist by portions. Increase for speed, decrease for memory saving
+    fast_iter : bool
+        if under iterations appear peaks that arte not further removed, set this parameter to False.
 
     Returns
     --------
@@ -310,7 +311,7 @@ def run(
 
         time0 = time()
 
-        if result_all is None:
+        if (result_all is None) or (not fast_iter):
             result_all = sum(kp.get_res for kp in K_list)
         else:
             if result_excluded is not None:

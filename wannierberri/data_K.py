@@ -17,10 +17,9 @@ import lazy_property
 from .parallel import pool
 from .system.system import System
 from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A
-from .__tetrahedron import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
+from .grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
 from . import formula
-from .__Kpoint import KpointBZparallel
-from .__Kpoint_tetra import KpointBZtetra
+from .grid import KpointBZparallel, KpointBZtetra
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -245,10 +244,10 @@ class Data_K(System):
     def tetraWeights(self):
         if isinstance(self.Kpoint,KpointBZparallel):
             print ("tetrahedron in parallelepiped")
-            return  TetraWeightsParal(eCenter = self.E_K , eCorners = self.E_K_corners_parallel() )
-        elif isinstance(self.Kpoint,KpointBZtetra):
+            return TetraWeightsParal(eCenter=self.E_K, eCorners=self.E_K_corners_parallel() )
+        elif isinstance(self.Kpoint, KpointBZtetra):
             print ("tetrahedron in tetrahedron")
-            return TetraWeights(eCenter = self.E_K ,eCorners = self.E_K_corners_tetra() )
+            return TetraWeights(eCenter=self.E_K, eCorners=self.E_K_corners_tetra() )
         else:
             raise RuntimeError()
 
@@ -298,7 +297,6 @@ class Data_K(System):
         print_my_name_end()
         return E_K[self.select_K, :][:, self.select_B]
 
-    
 
     # evaluate the energies in the corners of the parallelepiped, in order to use tetrahedron method
 

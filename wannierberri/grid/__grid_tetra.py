@@ -11,14 +11,9 @@
 #                                                            #
 #------------------------------------------------------------
 
-from collections.abc import Iterable
 import numpy as np
-from time import time
-from . import symmetry
-import lazy_property
 from .__Kpoint_tetra import KpointBZtetra
 from .__grid import GridAbstract
-#from .__finite_differences import FiniteDifferences
 
 
 class GridTetra(GridAbstract):
@@ -44,10 +39,10 @@ class GridTetra(GridAbstract):
 
     """
 
-    def __init__(self, system, length, NKFFT=None, NK=None, IBZ_tetra = None, 
+    def __init__(self, system, length, NKFFT=None, NK=None, IBZ_tetra=None,
             refine_by_volume=True,
             refine_by_size=True,
-            length_size = None
+            length_size=None
                 ):
 
         if NKFFT is None:
@@ -58,8 +53,8 @@ class GridTetra(GridAbstract):
             self.FFT = np.array(NKFFT)
 
         self.recip_lattice_reduced = system.recip_lattice/self.FFT[:,None]
-        print ("reduced reciprocal lattice : \n",self.recip_lattice_reduced)
-        if IBZ_tetra is None:   # divide the full reciprocal unit cell into 5 tetrahedra - 
+        print ("reduced reciprocal lattice : \n", self.recip_lattice_reduced)
+        if IBZ_tetra is None:   # divide the full reciprocal unit cell into 5 tetrahedra -
             print ("WARNING : irreducible wedge not provided, no use of symmetries")
             tetrahedra = np.array([  [ [0,0,0],[1,0,0],[0,1,0],[0,0,1] ],
                                      [ [1,0,1],[0,0,1],[1,0,0],[1,1,1] ],
@@ -100,13 +95,12 @@ class GridTetra(GridAbstract):
             print (f"maximal tetrahedron size for now is {self.size_max} ({len(self.K_list)}), we need to refine down to size {dkmax}")
             volumes = [tetra_volume(K.vertices) for K in self.K_list]
             print ("the volume is ",sum(volumes),min(volumes),max(volumes),np.mean(volumes))
-#            print ("sizes now are ",self.sizes)
+            # print ("sizes now are ",self.sizes)
             if self.size_max < dkmax:
                 break
             klist = []
             for K in self.K_list:
                 if K.size > dkmax:
-#                        klist+=K.divide(ndiv=int(K.size/dkmax+1), refine=False)
                     klist+=K.divide(ndiv=2, refine=False)
                 else:
                     klist.append(K)
@@ -124,18 +118,17 @@ class GridTetra(GridAbstract):
             klist = []
             for K,v in zip(self.K_list,volumes):
                 if v > vmax:
-#                        klist+=K.divide(ndiv=int(K.size/dkmax+1), refine=False)
                     klist+=K.divide(ndiv=2, refine=False)
                 else:
                     klist.append(K)
             self.K_list = klist
 
     @property
-    def size_max(self): 
+    def size_max(self):
         return self.sizes.max()
 
     @property
-    def sizes(self): 
+    def sizes(self):
         return np.array([K.size for K in self.K_list])
 
     @property
@@ -146,63 +139,9 @@ class GridTetra(GridAbstract):
     def dense(self):
         raise NotImplementedError()
 
-    @lazy_property.LazyProperty
-    def points_FFT(self):
-        dkx, dky, dkz = 1. / self.FFT
-        return np.array(
-            [
-                np.array([ix * dkx, iy * dky, iz * dkz]) for ix in range(self.FFT[0]) for iy in range(self.FFT[1])
-                for iz in range(self.FFT[2])
-            ])
-
-
     def get_K_list(self, use_symmetry=True):
         """ returns the list of Symmetry-irreducible K-points"""
         return [K.copy() for K in self.K_list]
-
-
-        dK = 1. / self.div
-        factor = 1. / np.prod(self.div)
-        print("generating K_list")
-        t0 = time()
-        K_list = [
-            [
-                [
-                    KpointBZ(
-                        K=np.array([x, y, z]) * dK,
-                        dK=dK,
-                        NKFFT=self.FFT,
-                        factor=factor,
-                        symgroup=self.symgroup,
-                        refinement_level=0) for z in range(self.div[2])
-                ] for y in range(self.div[1])
-            ] for x in range(self.div[0])
-        ]
-        print("Done in {} s ".format(time() - t0))
-        if use_symmetry:
-            t0 = time()
-            print("excluding symmetry-equivalent K-points from initial grid")
-            for z in range(self.div[2]):
-                for y in range(self.div[1]):
-                    for x in range(self.div[0]):
-                        KP = K_list[x][y][z]
-                        if KP is not None:
-                            star = KP.star
-                            star = [tuple(k) for k in np.array(np.round(KP.star * self.div), dtype=int) % self.div]
-                            for k in star:
-                                if k != (x, y, z):
-                                    KP.absorb(K_list[k[0]][k[1]][k[2]])
-                                    K_list[k[0]][k[1]][k[2]] = None
-            print("Done in {} s ".format(time() - t0))
-
-        K_list = [K for Kyz in K_list for Kz in Kyz for K in Kz if K is not None]
-        print("Done in {} s ".format(time() - t0))
-        print(
-            "K_list contains {} Irreducible points({}%) out of initial {}x{}x{}={} grid".format(
-                len(K_list), round(len(K_list) / np.prod(self.div) * 100, 2), self.div[0], self.div[1], self.div[2],
-                np.prod(self.div)))
-        return K_list
-
 
 def tetra_volume( vortices ):
     return abs(np.linalg.det( vortices[1:]-vortices[0][None,:]))/6.

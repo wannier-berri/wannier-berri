@@ -1,6 +1,6 @@
 from .__grid import GridAbstract
 from .__Kpoint import KpointBZ
-from .__utility import warning
+from ..__utility import warning
 from collections.abc import Iterable
 import numpy as np
 

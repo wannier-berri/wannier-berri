@@ -18,7 +18,7 @@ from .__Kpoint import KpointBZ
 from collections.abc import Iterable
 # fixing the order of the edges by their vortices
 EDGES = [ [0,1], [0,2], [0,3], [1,2], [1,3], [2,3] ]
-EDGES_COMPLEMENT  = [list(set([0,1,2,3]) - set(e) ) for e in EDGES ] 
+EDGES_COMPLEMENT  = [list(set([0,1,2,3]) - set(e) ) for e in EDGES ]
 
 class KpointBZtetra(KpointBZ):
 
@@ -31,7 +31,6 @@ class KpointBZtetra(KpointBZ):
         self.factor = factor
         self.res = None
         self.NKFFT = np.copy(NKFFT)
-#        self.symgroup = symgroup
         self.refinement_level = refinement_level
         self.split_level = split_level
 
@@ -41,20 +40,18 @@ class KpointBZtetra(KpointBZ):
 
     @property
     def vertices_fullBZ(self):
-        return  self.vertices/self.NKFFT
+        return self.vertices/self.NKFFT
 
     @lazy_property.LazyProperty
     def __edge_lengths(self):
         edges = np.array([self.vertices[i[1]]-self.vertices[i[0]] for i in EDGES]).dot(self.basis)
-        return np.linalg.norm(edges,axis = 1)
+        return np.linalg.norm(edges, axis=1)
 
     @lazy_property.LazyProperty
     def size(self):
         return max(self.__edge_lengths)
-    
-    
 
-    def divide(self,  ndiv=2, periodic=[True,True,True], use_symmetry=True,refine = True,):
+    def divide(self,  ndiv=2, periodic=[True,True,True], use_symmetry=True, refine=True):
         """
             we either 'split' (if the tetrahedra is too big) refine = False
              or 'refine' (if the result is big), but it only matters for the counters
@@ -62,7 +59,7 @@ class KpointBZtetra(KpointBZ):
 #        print (f"splitting into {ndiv} pieces")
         if isinstance(ndiv, Iterable):
             ndiv = ndiv[0]
-        if not(np.all(periodic)):
+        if not np.all(periodic) :
             raise ValueError("tetrahedron grid can be used only for 3D-periodic systems")
         i_edge = np.argmax(self.__edge_lengths)
         edge = EDGES[ i_edge ]
@@ -74,16 +71,16 @@ class KpointBZtetra(KpointBZ):
         for i in range(ndiv):
             add_list.append(
                 KpointBZtetra(
-                    K = self.K,
-                    vertices = np.array([self.vertices[edge_comp[0]],
+                    K=self.K,
+                    vertices=np.array([self.vertices[edge_comp[0]],
                                          self.vertices[edge_comp[1]],
                                          v0+i*dv, v0+(i+1)*dv] ),
-                    factor = self.factor/ndiv,
-                    basis = self.basis, 
-                    refinement_level = self.refinement_level + int(refine),
-                    split_level = self.split_level+int (not refine),
+                    factor=self.factor/ndiv,
+                    basis=self.basis,
+                    refinement_level=self.refinement_level + int(refine),
+                    split_level=self.split_level+int (not refine),
 
-            ) )
+                            ) )
 #        print (f"splitted {self.size} intp {[k.size for k in add_list]}")
         self.factor = 0.
         return add_list
