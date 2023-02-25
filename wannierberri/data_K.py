@@ -243,10 +243,8 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def tetraWeights(self):
         if isinstance(self.Kpoint,KpointBZparallel):
-            print ("tetrahedron in parallelepiped")
             return TetraWeightsParal(eCenter=self.E_K, eCorners=self.E_K_corners_parallel() )
         elif isinstance(self.Kpoint, KpointBZtetra):
-            print ("tetrahedron in tetrahedron")
             return TetraWeights(eCenter=self.E_K, eCorners=self.E_K_corners_tetra() )
         else:
             raise RuntimeError()
