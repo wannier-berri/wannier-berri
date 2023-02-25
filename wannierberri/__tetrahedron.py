@@ -12,7 +12,7 @@ from collections import defaultdict
 import lazy_property
 import numpy as np
 from numba import njit
-
+import abc
 
 @njit
 def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
@@ -163,28 +163,21 @@ def get_bands_below_range(emin, Eband, Ebandmax=None):
         return 0
 
 
-def weights_parallelepiped(efermi, Ecenter, Ecorner, der=0):
-    occ = np.zeros((efermi.shape))
-    Ecorner = np.reshape(Ecorner, (2, 2, 2))
-    for iface in 0, 1:
-        for Eface in Ecorner[iface, :, :], Ecorner[:, iface, :], Ecorner[:, :, iface]:
-            occ += weights_tetra(efermi, Ecenter, Eface[0, 0], Eface[0, 1], Eface[1, 1], der=der)
-            occ += weights_tetra(efermi, Ecenter, Eface[0, 0], Eface[1, 0], Eface[1, 1], der=der)
-    return occ / 12.
+
 
 
 class TetraWeights():
     """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
        the Fermi level list remains the same throughout calculation"""
 
-    def __init__(self, eCenter, eCorners):
-        self.nk, self.nb = eCenter.shape
-        assert eCorners.shape == (self.nk, 2, 2, 2, self.nb)
+    def __init__(self,  eCenter, eCorners):
         self.eCenter = eCenter
         self.eCorners = eCorners
+        assert self.eCenter.shape == (self.eCorners.shape[0],  self.eCorners.shape[-1])
+        self.nk, self.nb = self.eCenter.shape
         self.eFermis = []
         self.weights = defaultdict(lambda: defaultdict(lambda: {}))
-        Eall = np.concatenate((self.eCenter[:, None, :], self.eCorners.reshape(self.nk, 8, self.nb)), axis=1)
+        Eall = np.concatenate((self.eCenter[:, None, :], self.eCorners.reshape(self.nk, -1, self.nb)), axis=1)
         self.Emin = Eall.min(axis=1)
         self.Emax = Eall.max(axis=1)
         self.eFermi = None
@@ -193,12 +186,14 @@ class TetraWeights():
     def ones(self):
         return np.ones(len(self.eFermi))
 
-    def __weight_1b(self, ik, ib, der):
+    def weight_1k1b(self, ik, ib, der):
         if ib not in self.weights[der][ik]:
-            self.weights[der][ik][ib] = weights_parallelepiped(
-                self.eFermi, self.eCenter[ik, ib], self.eCorners[ik, :, :, :, ib], der=der)
+            self.weights[der][ik][ib] = self.weight_1k1b_priv(self.eFermi,  ik, ib, der=der)
         return self.weights[der][ik][ib]
 
+    def weight_1k1b_priv(self, eFermi, ik, ib, der):
+        eCorners = self.eCorners[ik, :, ib]
+        return weights_tetra(eFermi, eCorners[0], eCorners[1], eCorners[2], eCorners[3], der=der)
 
 # this is for fermiocean
 
@@ -221,7 +216,7 @@ class TetraWeights():
                 Ebandmin=self.Emin[ik],
                 Ebandmax=self.Emax[ik])
             weights = {
-                (ib1, ib2): sum(self.__weight_1b(ik, ib, der) for ib in range(ib1, ib2)) / (ib2 - ib1)
+                (ib1, ib2): sum(self.weight_1k1b(ik, ib, der) for ib in range(ib1, ib2)) / (ib2 - ib1)
                 for ib1, ib2 in bands_in_range
             }
 
@@ -233,3 +228,22 @@ class TetraWeights():
 
             res.append(weights)
         return res
+
+class TetraWeightsParal(TetraWeights):
+
+#    def __weight_1b_1k(self, eFermi, eCenter, eCorners, der):
+#        return weights_parallelepiped(eFermi, eCenter, eCorners, der=der)
+#    def weights_parallelepiped(self,efermi, Ecenter, Ecorner, der=0):
+
+
+    def weight_1k1b_priv(self, eFermi, ik, ib, der):
+        occ = np.zeros((eFermi.shape))
+        eCorner = self.eCorners[ik, ..., ib]
+        eCenter = self.eCenter [ik, ib]
+
+        for iface in 0, 1:
+            for Eface in eCorner[iface, :, :], eCorner[:, iface, :], eCorner[:, :, iface]:
+                occ += weights_tetra(eFermi, eCenter, Eface[0, 0], Eface[0, 1], Eface[1, 1], der=der)
+                occ += weights_tetra(eFermi, eCenter, Eface[0, 0], Eface[1, 0], Eface[1, 1], der=der)
+        return occ / 12.
+

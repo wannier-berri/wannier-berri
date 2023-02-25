@@ -22,6 +22,7 @@ from .__Kpoint import exclude_equiv_points
 from .parallel import Serial
 from .result import ResultDict
 from .__path import Path
+from .__grid import Grid
 
 
 def print_progress(count, total, t0):
@@ -339,7 +340,7 @@ def run(
 
         for iK in select_points:
             results = K_list[iK].get_res
-            K_list += K_list[iK].divide(adpt_mesh, system.periodic, use_symmetry=use_irred_kpt)
+            K_list += K_list[iK].divide(adpt_mesh, periodic=system.periodic, use_symmetry=use_irred_kpt)
             if abs(K_list[iK].factor) < 1.e-10:
                 excluded_Klist.append(iK)
                 if result_excluded is None:
@@ -347,7 +348,7 @@ def run(
                 else:
                     result_excluded += results - K_list[iK].get_res
 
-        if use_irred_kpt:
+        if use_irred_kpt and isinstance(grid,Grid):
             print("checking for equivalent points in all points (of new  {} points)".format(len(K_list) - l1))
             nexcl, weight_changed_old = exclude_equiv_points(K_list, new_points=len(K_list) - l1)
             print(" excluded {0} points".format(nexcl))

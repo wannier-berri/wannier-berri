@@ -17,11 +17,11 @@ from time import time
 from . import symmetry
 import lazy_property
 from .__Kpoint_tetra import KpointBZtetra
-from .__grid import Grid
+from .__grid import GridAbstract
 #from .__finite_differences import FiniteDifferences
 
 
-class GridTetra(Grid):
+class GridTetra(GridAbstract):
     """ A class containing information about the k-grid.konsisting of tetrahedra
 
     Parameters
@@ -69,7 +69,7 @@ class GridTetra(Grid):
                                    ]) - np.array([0.5,0.5,0.5])[None,None,:]
         else :
             tetrahedra = np.array(IBZ_tetra)
-        print ("using starting tetrahedra with vertices", tetrahedra)
+        print ("using starting tetrahedra with vertices \n", tetrahedra)
         weights = np.array([tetra_volume(t) for t in tetrahedra])
         print (f"volumes of tetrahedra are {weights}, total = {sum(weights)} (further normalized)")
         weights/=sum(weights)
@@ -140,7 +140,7 @@ class GridTetra(Grid):
 
     @property
     def str_short(self):
-        return "GridTetra() with {} tetrahedrons, NKFFT={}, NKtot={}".format(self.div, self.FFT, self.dense)
+        return "GridTetra() with {} tetrahedrons, NKFFT={}, NKtot={}".format(len(self.K_list), self.FFT, np.prod(self.FFT)*len(self.K_list))
 
     @property
     def dense(self):

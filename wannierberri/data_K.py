@@ -17,8 +17,10 @@ import lazy_property
 from .parallel import pool
 from .system.system import System
 from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A
-from .__tetrahedron import TetraWeights, get_bands_in_range, get_bands_below_range
+from .__tetrahedron import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
 from . import formula
+from .__Kpoint import KpointBZparallel
+from .__Kpoint_tetra import KpointBZtetra
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -241,7 +243,14 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def tetraWeights(self):
-        return TetraWeights(self.E_K, self.E_K_corners)
+        if isinstance(self.Kpoint,KpointBZparallel):
+            print ("tetrahedron in parallelepiped")
+            return  TetraWeightsParal(eCenter = self.E_K , eCorners = self.E_K_corners_parallel() )
+        elif isinstance(self.Kpoint,KpointBZtetra):
+            print ("tetrahedron in tetrahedron")
+            return TetraWeights(eCenter = self.E_K ,eCorners = self.E_K_corners_tetra() )
+        else:
+            raise RuntimeError()
 
     def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False):
         bands_in_range = get_bands_in_range(
@@ -265,24 +274,53 @@ class Data_K(System):
 #  Basic variables and their standard derivatives #
 ###################################################
 
+
+    def select_bands(self,energies):
+        if hasattr(self,'bands_selected'):
+            return
+        energies = energies.reshape( (energies.shape[0], -1, energies.shape[-1]) )
+        select = np.any(energies > self.Emin,axis=1) * np.any(energies < self.Emax,axis=1)
+        self.select_K = np.all(select, axis=1)
+        self.select_B = np.all(select, axis=0)
+        self.nk_selected = self.select_K.sum()
+        self.nb_selected = self.select_B.sum()
+        self.bands_selected = True
+
+
     @lazy_property.LazyProperty
     def E_K(self):
         print_my_name_start()
         EUU = self.poolmap(np.linalg.eigh, self.HH_K)
         E_K = self.phonon_freq_from_square(np.array([euu[0] for euu in EUU]))
 #        print ("E_K = ",E_K.min(), E_K.max(), E_K.mean())
-        select = (E_K > self.Emin) * (E_K < self.Emax)
-        self.select_K = np.all(select, axis=1)
-        self.select_B = np.all(select, axis=0)
-        self.nk_selected = self.select_K.sum()
-        self.nb_selected = self.select_B.sum()
+        self.select_bands(E_K)
         self._UU = np.array([euu[1] for euu in EUU])[self.select_K, :][:, self.select_B]
         print_my_name_end()
         return E_K[self.select_K, :][:, self.select_B]
 
+    
+
     # evaluate the energies in the corners of the parallelepiped, in order to use tetrahedron method
-    @lazy_property.LazyProperty
-    def E_K_corners(self):
+
+
+    def E_K_corners_tetra(self):
+        vertices = self.Kpoint.vertices_fullBZ
+        expdK = np.exp(  2j * np.pi * self.system.iRvec.dot(
+               vertices.T) ).T  # we omit the wcc phases here, because they do not affect the energies
+        Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
+        for iv,_exp in enumerate(expdK):
+            _Ham_R = self.Ham_R[:, :, :] * _exp[None, None, :]
+            _HH_K = self.fft_R_to_k(_Ham_R, hermitean=True)
+            Ecorners[:, iv, :] = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
+        self.select_bands(Ecorners)
+        for iv,_exp in enumerate(expdK):
+            Ecorners[:, iv, :] = Ecorners[:, iv, :][self.select_K, :][:, self.select_B]
+        Ecorners = self.phonon_freq_from_square(Ecorners)
+        print_my_name_end()
+#        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
+        return Ecorners
+
+    def E_K_corners_parallel(self):
         dK2 = self.Kpoint.dK_fullBZ / 2
         expdK = np.exp(
             2j * np.pi * self.system.iRvec

@@ -15,7 +15,7 @@
 import numpy as np
 import lazy_property
 from .__Kpoint import KpointBZ
-
+from collections.abc import Iterable
 # fixing the order of the edges by their vortices
 EDGES = [ [0,1], [0,2], [0,3], [1,2], [1,3], [2,3] ]
 EDGES_COMPLEMENT  = [list(set([0,1,2,3]) - set(e) ) for e in EDGES ] 
@@ -39,6 +39,9 @@ class KpointBZtetra(KpointBZ):
         return KpointBZtetra(vertices=self.vertices, K=self.K, NKFFT=self.NKFFT, factor=self.factor, basis=self.basis,
             refinement_level=self.refinement_level, split_level=self.split_level)
 
+    @property
+    def vertices_fullBZ(self):
+        return  self.vertices/self.NKFFT
 
     @lazy_property.LazyProperty
     def __edge_lengths(self):
@@ -49,6 +52,7 @@ class KpointBZtetra(KpointBZ):
     def size(self):
         return max(self.__edge_lengths)
     
+    
 
     def divide(self,  ndiv=2, periodic=[True,True,True], use_symmetry=True,refine = True,):
         """
@@ -56,6 +60,8 @@ class KpointBZtetra(KpointBZ):
              or 'refine' (if the result is big), but it only matters for the counters
         """
 #        print (f"splitting into {ndiv} pieces")
+        if isinstance(ndiv, Iterable):
+            ndiv = ndiv[0]
         if not(np.all(periodic)):
             raise ValueError("tetrahedron grid can be used only for 3D-periodic systems")
         i_edge = np.argmax(self.__edge_lengths)

@@ -16,11 +16,26 @@ import numpy as np
 from time import time
 from . import symmetry
 import lazy_property
-from .__Kpoint import KpointBZ
+from .__Kpoint import KpointBZparallel
+import abc
 #from .__finite_differences import FiniteDifferences
 
+class GridAbstract(abc.ABC):
 
-class Grid():
+    @abc.abstractmethod
+    def __init__(self,**kwargs):
+        pass
+
+    @abc.abstractmethod
+    def get_K_list(self, use_symmetry=False):
+        pass
+
+    @property
+    def recip_lattice(self):
+        return self.symgroup.recip_lattice
+
+
+class Grid(GridAbstract):
     """ A class containing information about the k-grid.
 
     Parameters
@@ -81,9 +96,6 @@ class Grid():
                 for iz in range(self.FFT[2])
             ])
 
-    @property
-    def recip_lattice(self):
-        return self.symgroup.recip_lattice
 
     def get_K_list(self, use_symmetry=True):
         """ returns the list of Symmetry-irreducible K-points"""
@@ -94,7 +106,7 @@ class Grid():
         K_list = [
             [
                 [
-                    KpointBZ(
+                    KpointBZparallel(
                         K=np.array([x, y, z]) * dK,
                         dK=dK,
                         NKFFT=self.FFT,

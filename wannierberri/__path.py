@@ -1,11 +1,11 @@
-from .__grid import Grid
+from .__grid import GridAbstract
 from .__Kpoint import KpointBZ
 from .__utility import warning
 from collections.abc import Iterable
 import numpy as np
 
 
-class Path(Grid):
+class Path(GridAbstract):
     """ A class containing information about the k-path
 
     Parameters

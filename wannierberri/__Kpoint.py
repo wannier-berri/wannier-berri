@@ -138,7 +138,7 @@ class KpointBZparallel(KpointBZ):
         adpt_shift = (-self.dK + dK_adpt) / 2.
         newfac = self.factor / np.prod(ndiv)
         K_list_add = [
-            KpointBZ(
+            KpointBZparallel(
                 K=K0 + adpt_shift + dK_adpt * np.array([x, y, z]),
                 dK=dK_adpt,
                 NKFFT=self.NKFFT,
