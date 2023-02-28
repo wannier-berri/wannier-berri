@@ -161,6 +161,15 @@ def get_bands_below_range(emin, Eband, Ebandmax=None):
     else:
         return 0
 
+def get_bands_above_range(emax, Eband, Ebandmin=None):
+    if Ebandmin is None:
+        Ebandmin = Eband
+    add = np.where((Ebandmin > emax))[0]
+    if len(add) > 0:
+        return add[0]
+    else:
+        return len(Eband)
+
 
 
 
@@ -192,6 +201,8 @@ class TetraWeights():
     def weight_1k1b(self, ik, ib, der):
         if self.null:
             return 0.
+        if der==-1:
+            return 1-self.weight_1k1b( ik, ib, der=0)
         if ib not in self.weights[der][ik]:
             self.weights[der][ik][ib] = self.weight_1k1b_priv(self.eFermi,  ik, ib, der=der)
         return self.weights[der][ik][ib]
@@ -227,9 +238,17 @@ class TetraWeights():
 
             if der == 0:
                 bandmax = get_bands_below_range(self.eFermi[0], self.eCenter[ik], Ebandmax=self.Emax[ik])
-                bandmin = get_bands_below_range(Emax, self.eCenter[ik], Ebandmax=self.Emax[ik])
+                bandmin = get_bands_below_range(Emin, self.eCenter[ik], Ebandmax=self.Emax[ik])
                 if len(bands_in_range) > 0:
                     bandmax = min(bandmax, bands_in_range[0][0])
+                if bandmax>bandmin:
+                    weights[(bandmin, bandmax)] = self.ones
+
+            if der == -1:
+                bandmin = get_bands_above_range(self.eFermi[-1], self.eCenter[ik], Ebandmin=self.Emin[ik])
+                bandmax = get_bands_above_range(Emax, self.eCenter[ik], Ebandmin=self.Emin[ik])
+                if len(bands_in_range) > 0:
+                    bandmin = max(bandmin, bands_in_range[-1][-1])
                 if bandmax>bandmin:
                     weights[(bandmin, bandmax)] = self.ones
 

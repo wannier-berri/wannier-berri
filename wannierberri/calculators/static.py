@@ -21,7 +21,7 @@ from . import Calculator
 class StaticCalculator(Calculator):
 
     def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={}, 
-            Emin=-np.Inf, Emax=np.Inf, **kwargs):
+            Emin=-np.Inf, Emax=np.Inf, hole_like=False, **kwargs):
         self.Efermi = Efermi
         self.Emin=Emin
         self.Emax=Emax
@@ -29,6 +29,7 @@ class StaticCalculator(Calculator):
         self.kwargs_formula = kwargs_formula
         self.smoother = smoother
         self.use_factor = use_factor
+        self.hole_like = hole_like
         self.constant_factor = constant_factor
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
@@ -53,7 +54,7 @@ class StaticCalculator(Calculator):
         # get a list [{(ib1,ib2):W} for ik in op:ed]
         if self.tetra:
             weights = data_K.tetraWeights.weights_all_band_groups(
-                self.Efermi, der=self.fder, degen_thresh=self.degen_thresh,
+                self.Efermi, der=-1 if self.hole_like else self.fder, degen_thresh=self.degen_thresh,
                 degen_Kramers=self.degen_Kramers, Emin=self.Emin, Emax=self.Emax)  # here W is array of shape Efermi
         else:
             weights = data_K.get_bands_in_range_groups(
