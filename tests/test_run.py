@@ -167,6 +167,19 @@ calculators_Chiral_tetra = {
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral, tetra=True),
 }
 
+
+Efermi_Chiral_half = Efermi_Chiral[:len(Efermi_Chiral)//2]
+calculators_Chiral_half = {
+    'dos': calc.static.DOS(Efermi=Efermi_Chiral_half, tetra=False),
+    'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral_half, tetra=False),
+}
+
+calculators_Chiral_tetra_half = {
+    'dos': calc.static.DOS(Efermi=Efermi_Chiral_half, tetra=True),
+    'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral_half, tetra=True),
+}
+
+
 def resultType(quant):
     if quant in []:  # in future - add other options (tabulateresult)
         pass
@@ -832,9 +845,10 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
                 precision=-1e-8)
 
 
+
 def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
-    check_run(
+    result_full = check_run(
         system_Chiral_left,
         calculators_Chiral_tetra,
         fout_name="berry_Chiral_tetra",
@@ -847,6 +861,38 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         use_symmetry=True,
         extra_precision={"Morb": -1e-6},
     )
+
+    result_half = check_run(
+        system_Chiral_left,
+        calculators_Chiral_tetra_half,
+        fout_name="berry_Chiral_tetra",
+        suffix="left-run",
+        grid_param=grid_param,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=True,
+        extra_precision={"Morb": -1e-6},
+        do_not_compare=True,
+    )
+
+    for key,res_half in result_half.results.items():
+        print (key)
+        res_full = result_full.results[key]
+        nef = len(res_half.Energies[0])
+        data1 = res_half.data
+        data2 = res_full.data[:nef]
+        assert data1.shape == data2.shape
+        precision = 1e-14 * np.max(abs(data1))
+        assert data1 == approx(
+                data2, abs=precision), (
+                        f"calcuylated data of {key}  of full and half sets of Fermi levels give a maximal "
+                        + "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
+                            abs_err=np.max(abs(data1 - data2)), required_precision=precision))
+
+
+
 
 
 def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, compare_any_result):

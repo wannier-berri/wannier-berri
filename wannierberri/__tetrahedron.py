@@ -148,7 +148,7 @@ def get_bands_in_range(emin, emax, Eband, degen_thresh=-1, degen_Kramers=False, 
         Ebandmax = Eband
     bands = []
     for ib1, ib2 in get_borders(Eband, degen_thresh, degen_Kramers=degen_Kramers):
-        if Ebandmax[ib1:ib2].max() >= emin and Ebandmax[ib1:ib2].min() <= emax:
+        if Ebandmax[ib1:ib2].max() >= emin and Ebandmin[ib1:ib2].min() <= emax:
             bands.append([ib1, ib2])
     return bands
 
