@@ -288,6 +288,15 @@ def get_angle(sina, cosa):
         alpha = 2.0 * np.pi - alpha
     return alpha
 
+def angle_vectors(vec1,vec2):
+    cos = np.dot(vec1,vec2)/np.linalg.norm(vec1)/np.linalg.norm(vec2)
+    return np.arccos(cos)
+
+def angle_vectors_deg(vec1,vec2):
+    angle = angle_vectors(vec1,vec2)
+    return int(round(angle/np.pi*180))
+
+
 # smearing functions
 def Lorentzian(x, width):
     return 1.0 / (np.pi * width) * width**2 / (x**2 + width**2)

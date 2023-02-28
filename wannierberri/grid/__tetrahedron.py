@@ -147,7 +147,7 @@ def get_bands_in_range(emin, emax, Eband, degen_thresh=-1, degen_Kramers=False, 
         Ebandmax = Eband
     bands = []
     for ib1, ib2 in get_borders(Eband, degen_thresh, degen_Kramers=degen_Kramers):
-        if Ebandmax[ib1:ib2].max() >= emin and Ebandmax[ib1:ib2].min() <= emax:
+        if Ebandmax[ib1:ib2].max() >= emin and Ebandmin[ib1:ib2].min() <= emax:
             bands.append([ib1, ib2])
     return bands
 
@@ -174,18 +174,24 @@ class TetraWeights():
         self.eCorners = eCorners
         assert self.eCenter.shape == (self.eCorners.shape[0],  self.eCorners.shape[-1])
         self.nk, self.nb = self.eCenter.shape
-        self.eFermis = []
-        self.weights = defaultdict(lambda: defaultdict(lambda: {}))
-        Eall = np.concatenate((self.eCenter[:, None, :], self.eCorners.reshape(self.nk, -1, self.nb)), axis=1)
-        self.Emin = Eall.min(axis=1)
-        self.Emax = Eall.max(axis=1)
         self.eFermi = None
+        if self.nk==0:
+            self.null = True
+        else:
+            self.null=False
+#        self.eFermis = []
+            self.weights = defaultdict(lambda: defaultdict(lambda: {}))
+            Eall = np.concatenate((self.eCenter[:, None, :], self.eCorners.reshape(self.nk, -1, self.nb)), axis=1)
+            self.Emin = Eall.min(axis=1)
+            self.Emax = Eall.max(axis=1)
 
     @lazy_property.LazyProperty
     def ones(self):
         return np.ones(len(self.eFermi))
 
     def weight_1k1b(self, ik, ib, der):
+        if self.null:
+            return 0.
         if ib not in self.weights[der][ik]:
             self.weights[der][ik][ib] = self.weight_1k1b_priv(self.eFermi,  ik, ib, der=der)
         return self.weights[der][ik][ib]
@@ -196,7 +202,7 @@ class TetraWeights():
 
 # this is for fermiocean
 
-    def weights_all_band_groups(self, eFermi, der, degen_thresh=-1, degen_Kramers=False):
+    def weights_all_band_groups(self, eFermi, der, degen_thresh=-1, degen_Kramers=False, Emin=-np.Inf, Emax=np.Inf):
         """
              here  the key of the return dict is a pair of integers (ib1,ib2)
         """
@@ -216,14 +222,16 @@ class TetraWeights():
                 Ebandmax=self.Emax[ik])
             weights = {
                 (ib1, ib2): sum(self.weight_1k1b(ik, ib, der) for ib in range(ib1, ib2)) / (ib2 - ib1)
-                for ib1, ib2 in bands_in_range
+                for ib1, ib2 in bands_in_range if self.Emin[ik][ib1]<Emax and self.Emax[ik][ib2-1]>Emin
             }
 
             if der == 0:
                 bandmax = get_bands_below_range(self.eFermi[0], self.eCenter[ik], Ebandmax=self.Emax[ik])
+                bandmin = get_bands_below_range(Emax, self.eCenter[ik], Ebandmax=self.Emax[ik])
                 if len(bands_in_range) > 0:
                     bandmax = min(bandmax, bands_in_range[0][0])
-                weights[(0, bandmax)] = self.ones
+                if bandmax>bandmin:
+                    weights[(bandmin, bandmax)] = self.ones
 
             res.append(weights)
         return res

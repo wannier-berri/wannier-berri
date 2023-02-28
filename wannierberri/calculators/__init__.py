@@ -6,7 +6,7 @@ receive :calss:`~wannierberri.data_K.Data_K` objects and yield
 
 import abc
 import numpy as np
-from wannierberri.result import KBandResult,TABresult
+from ..result import KBandResult,TABresult
 from termcolor import cprint
 
 class Calculator():

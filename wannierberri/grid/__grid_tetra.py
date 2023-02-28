@@ -14,7 +14,7 @@
 import numpy as np
 from .__Kpoint_tetra import KpointBZtetra
 from .__grid import GridAbstract
-
+from ..__utility import angle_vectors_deg
 
 class GridTetra(GridAbstract):
     """ A class containing information about the k-grid.konsisting of tetrahedra
@@ -39,7 +39,7 @@ class GridTetra(GridAbstract):
 
     """
 
-    def __init__(self, system, length, NKFFT=None, NK=None, IBZ_tetra=None,
+    def __init__(self, system, length, NKFFT=None, IBZ_tetra=None, weights = None,
             refine_by_volume=True,
             refine_by_size=True,
             length_size=None
@@ -65,9 +65,13 @@ class GridTetra(GridAbstract):
         else :
             tetrahedra = np.array(IBZ_tetra)
         print ("using starting tetrahedra with vertices \n", tetrahedra)
-        weights = np.array([tetra_volume(t) for t in tetrahedra])
-        print (f"volumes of tetrahedra are {weights}, total = {sum(weights)} (further normalized)")
-        weights/=sum(weights)
+        _weights = np.array([tetra_volume(t) for t in tetrahedra])
+        print (f"volumes of tetrahedra are {_weights}, total = {sum(_weights)} ")
+        if weights is None:
+            weights = _weights/sum(_weights)
+        else :
+            weights = np.array(weights)*_weights
+        print (f"weights of tetrahedra are {weights}, total = {sum(weights)} ")
         self.K_list=[]
         print ("generating starting K_list")
         for tetr,w in zip(tetrahedra,weights):
@@ -146,4 +150,48 @@ class GridTetra(GridAbstract):
 def tetra_volume( vortices ):
     return abs(np.linalg.det( vortices[1:]-vortices[0][None,:]))/6.
 
+
+class GridTrigonal(GridTetra):
+    """ good choice for Tellurium"""
+
+    def __init__(self, system, length, **kwargs):
+
+        #these ones are for the case when the reciprocal lattice vectors form a 120deg angle
+        IBZ_tetra = np.array( [
+                    [ [0, 0, 0] , [1/3,2/3, 0.0], [2/3,1/3, 0.0], [1/3,2/3,0.5] ],
+                    [ [0, 0, 0] , [2/3,1/3, 0.5], [2/3,1/3, 0.0], [1/3,2/3,0.5] ],
+                    [ [0, 0, 0] , [2/3,1/3, 0.5], [0  ,  0, 0.5], [1/3,2/3,0.5] ],
+                              ]  )
+
+        b1,b2,b3 = system.recip_lattice
+        assert angle_vectors_deg(b1,b3)==90
+        assert angle_vectors_deg(b2,b3)==90
+        assert angle_vectors_deg(b1,b2) in (60, 120)
+        if angle_vectors_deg(b1,b2) == 60: 
+            IBZ_tetra[:,:,0] = IBZ_tetra[:,:,0]-IBZ_tetra[:,:,1]
+
+        super().__init__(system, length, IBZ_tetra=IBZ_tetra, **kwargs)
+
+
+class GridTrigonalH(GridTetra):
+    """ good choice for Tellurium conduction/valence band, only a small part near the H-point is considered, use NKFFT=1"""
+
+    def __init__(self, system, length, x=0.5, NKFFT=1, **kwargs):
+
+        #these ones are for the case when the reciprocal lattice vectors form a 120deg angle
+        H = np.array([2/3, 1/3, 1/2])
+        K = np.array([2/3, 1/3, 0  ])
+        H1= np.array([1/3,-1/3, 1/2])
+        A = (H-K)
+        IBZ_tetra = np.array( [ [ H, H+x*(K-H), H+x*(A-H), H+x*(H1-H) ] ,
+                                [ H, H-x*(K-H), H+x*(A-H), H+x*(H1-H) ] ] )
+
+        b1,b2,b3 = system.recip_lattice
+        assert angle_vectors_deg(b1,b3)==90
+        assert angle_vectors_deg(b2,b3)==90
+        assert angle_vectors_deg(b1,b2) in (60, 120)
+        if angle_vectors_deg(b1,b2) == 60: 
+            IBZ_tetra[:,:,0] = IBZ_tetra[:,:,0]-IBZ_tetra[:,:,1]
+
+        super().__init__(system, length, IBZ_tetra=IBZ_tetra, weights=[12,12], NKFFT=1, **kwargs)
 

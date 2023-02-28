@@ -249,22 +249,22 @@ class Data_K(System):
         else:
             raise RuntimeError()
 
-    def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False):
+    def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False, Emin=-np.Inf, Emax=np.Inf):
         bands_in_range = get_bands_in_range(
-            emin, emax, self.E_K[ik], degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)
+            emin, emax, self.E_K[ik], degen_thresh=degen_thresh, degen_Kramers=degen_Kramers, Emin=Emin, Emax=Emax)
         weights = {(ib1, ib2): self.E_K[ik, ib1:ib2].mean() for ib1, ib2 in bands_in_range}
         if sea:
-            bandmax = get_bands_below_range(emin, self.E_K[ik])
+            bandmax = get_bands_below_range(emin, self.E_K[ik], Emin=Emin, Emax=Emax)
             if len(bands_in_range) > 0:
                 bandmax = min(bandmax, bands_in_range[0][0])
             if bandmax > 0:
                 weights[(0, bandmax)] = -np.Inf
         return weights
 
-    def get_bands_in_range_groups(self, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False):
+    def get_bands_in_range_groups(self, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False, Emin=-np.Inf, Emax=np.Inf):
         res = []
         for ik in range(self.nk):
-            res.append(self.get_bands_in_range_groups_ik(ik, emin, emax, degen_thresh, degen_Kramers, sea))
+            res.append(self.get_bands_in_range_groups_ik(ik, emin, emax, degen_thresh, degen_Kramers, sea, Emin=Emin, Emax=Emax))
         return res
 
 ###################################################
@@ -277,8 +277,8 @@ class Data_K(System):
             return
         energies = energies.reshape( (energies.shape[0], -1, energies.shape[-1]) )
         select = np.any(energies > self.Emin,axis=1) * np.any(energies < self.Emax,axis=1)
-        self.select_K = np.all(select, axis=1)
-        self.select_B = np.all(select, axis=0)
+        self.select_K = np.any(select, axis=1)
+        self.select_B = np.any(select, axis=0)
         self.nk_selected = self.select_K.sum()
         self.nb_selected = self.select_B.sum()
         self.bands_selected = True
@@ -303,14 +303,15 @@ class Data_K(System):
         vertices = self.Kpoint.vertices_fullBZ
         expdK = np.exp(  2j * np.pi * self.system.iRvec.dot(
                vertices.T) ).T  # we omit the wcc phases here, because they do not affect the energies
-        Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
+        _Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
         for iv,_exp in enumerate(expdK):
             _Ham_R = self.Ham_R[:, :, :] * _exp[None, None, :]
             _HH_K = self.fft_R_to_k(_Ham_R, hermitean=True)
-            Ecorners[:, iv, :] = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
-        self.select_bands(Ecorners)
+            _Ecorners[:, iv, :] = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
+        self.select_bands(_Ecorners)
+        Ecorners = np.zeros((self.nk_selected, 4, self.nb_selected), dtype=float)
         for iv,_exp in enumerate(expdK):
-            Ecorners[:, iv, :] = Ecorners[:, iv, :][self.select_K, :][:, self.select_B]
+            Ecorners[:, iv, :] = _Ecorners[:, iv, :][self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
         print_my_name_end()
 #        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())

@@ -8,10 +8,10 @@
 import numpy as np
 from collections import defaultdict
 from math import ceil
-from wannierberri.formula import covariant as frml
-from wannierberri.formula import covariant_basic as frml_basic
-from wannierberri import __factors as factors
-from wannierberri.result import EnergyResult
+from ..formula import covariant as frml
+from ..formula import covariant_basic as frml_basic
+from .. import __factors as factors
+from ..result import EnergyResult
 from . import Calculator
 
 
@@ -20,8 +20,11 @@ from . import Calculator
 
 class StaticCalculator(Calculator):
 
-    def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={}, **kwargs):
+    def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={}, 
+            Emin=-np.Inf, Emax=np.Inf, **kwargs):
         self.Efermi = Efermi
+        self.Emin=Emin
+        self.Emax=Emax
         self.tetra = tetra
         self.kwargs_formula = kwargs_formula
         self.smoother = smoother
@@ -51,14 +54,17 @@ class StaticCalculator(Calculator):
         if self.tetra:
             weights = data_K.tetraWeights.weights_all_band_groups(
                 self.Efermi, der=self.fder, degen_thresh=self.degen_thresh,
-                degen_Kramers=self.degen_Kramers)  # here W is array of shape Efermi
+                degen_Kramers=self.degen_Kramers, Emin=self.Emin, Emax=self.Emax)  # here W is array of shape Efermi
         else:
             weights = data_K.get_bands_in_range_groups(
                 self.EFmin,
                 self.EFmax,
                 degen_thresh=self.degen_thresh,
                 degen_Kramers=self.degen_Kramers,
-                sea=(self.fder == 0))  # here W is energy
+                sea=(self.fder == 0),
+                Emin=self.Emin,
+                Emax=self.Emax
+            )  # here W is energy
 
 #        """formula  - TraceFormula to evaluate
 #           bands = a list of lists of k-points for every

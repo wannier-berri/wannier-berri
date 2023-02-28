@@ -1,9 +1,9 @@
 import numpy as np
 import abc, functools
-from wannierberri.__utility import Gaussian, Lorentzian
-from wannierberri.result import EnergyResult
+from ..__utility import Gaussian, Lorentzian
+from ..result import EnergyResult
 from . import Calculator
-from wannierberri.formula.covariant import SpinVelocity
+from ..formula.covariant import SpinVelocity
 
 
 #######################################
@@ -125,7 +125,7 @@ bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]
 Ang_SI = angstrom
 
-from wannierberri import __factors as factors
+from .. import __factors as factors
 
 
 ###############################

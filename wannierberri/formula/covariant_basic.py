@@ -1,5 +1,5 @@
 import numpy as np
-from wannierberri.__utility import alpha_A, beta_A
+from ..__utility import alpha_A, beta_A
 from . import Formula_ln
 from .covariant import DerDcov, Eavln
 """ The following  Formulue are fundamental. They can be used to construct all

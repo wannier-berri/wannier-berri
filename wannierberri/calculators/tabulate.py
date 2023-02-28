@@ -1,8 +1,8 @@
 import numpy as np
 from . import Calculator
-from wannierberri.formula import covariant as frml
-from wannierberri.formula import covariant_basic as frml_basic
-from wannierberri.result import KBandResult
+from ..formula import covariant as frml
+from ..formula import covariant_basic as frml_basic
+from ..result import KBandResult
 
 
 # The base class for Tabulating
