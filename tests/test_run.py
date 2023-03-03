@@ -849,6 +849,35 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
     )
 
 
+def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result):
+    grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
+    nshift=4
+    Efermi_shift = Efermi_Chiral+Efermi_Chiral[nshift]-Efermi_Chiral[0]
+    calculators = {
+        'dos': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
+        'dos_trig': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
+        'dos_trig_2': calc.static.DOS(Efermi=Efermi_shift, tetra=True),
+    }
+    result = check_run(
+        system_Chiral_left,
+        calculators,
+        fout_name="berry_Chiral_tetra_trigonal",
+        suffix="left-run-2",
+        grid_param=grid_param,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=True,
+        skip_compare='dos_trig_2'
+    )
+    data1 = result.results.get("dos_trig_2").data[:-nshift]
+    data2 = result.results.get("dos_trig").data[nshift:]
+    assert data1.shape == data2.shape
+    assert data1 == approx(data2), "the result with the shifted set of Fermi levels is different by {}".format(
+            np.max(np.abs(data1-data2)) )
+
+
 def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, compare_any_result):
     "check that for time-reversed model the ohmic conductivity is the same, but the AHC is opposite"
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
