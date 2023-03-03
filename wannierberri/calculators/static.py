@@ -20,7 +20,7 @@ from . import Calculator
 
 class StaticCalculator(Calculator):
 
-    def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={}, 
+    def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={},
             Emin=-np.Inf, Emax=np.Inf, hole_like=False, **kwargs):
         self.Efermi = Efermi
         self.Emin=Emin

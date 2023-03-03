@@ -251,10 +251,10 @@ class Data_K(System):
 
     def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False, Emin=-np.Inf, Emax=np.Inf):
         bands_in_range = get_bands_in_range(
-            emin, emax, self.E_K[ik], degen_thresh=degen_thresh, degen_Kramers=degen_Kramers, Emin=Emin, Emax=Emax)
+            emin, emax, self.E_K[ik], degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)
         weights = {(ib1, ib2): self.E_K[ik, ib1:ib2].mean() for ib1, ib2 in bands_in_range}
         if sea:
-            bandmax = get_bands_below_range(emin, self.E_K[ik], Emin=Emin, Emax=Emax)
+            bandmax = get_bands_below_range(emin, self.E_K[ik])
             if len(bands_in_range) > 0:
                 bandmax = min(bandmax, bands_in_range[0][0])
             if bandmax > 0:

@@ -39,7 +39,7 @@ class GridTetra(GridAbstract):
 
     """
 
-    def __init__(self, system, length, NKFFT=None, IBZ_tetra=None, weights = None,
+    def __init__(self, system, length, NKFFT=None, IBZ_tetra=None, weights=None,
             refine_by_volume=True,
             refine_by_size=True,
             length_size=None
@@ -167,7 +167,7 @@ class GridTrigonal(GridTetra):
         assert angle_vectors_deg(b1,b3)==90
         assert angle_vectors_deg(b2,b3)==90
         assert angle_vectors_deg(b1,b2) in (60, 120)
-        if angle_vectors_deg(b1,b2) == 60: 
+        if angle_vectors_deg(b1,b2) == 60:
             IBZ_tetra[:,:,0] = IBZ_tetra[:,:,0]-IBZ_tetra[:,:,1]
 
         super().__init__(system, length, IBZ_tetra=IBZ_tetra, **kwargs)
@@ -190,7 +190,7 @@ class GridTrigonalH(GridTetra):
         assert angle_vectors_deg(b1,b3)==90
         assert angle_vectors_deg(b2,b3)==90
         assert angle_vectors_deg(b1,b2) in (60, 120)
-        if angle_vectors_deg(b1,b2) == 60: 
+        if angle_vectors_deg(b1,b2) == 60:
             IBZ_tetra[:,:,0] = IBZ_tetra[:,:,0]-IBZ_tetra[:,:,1]
 
         super().__init__(system, length, IBZ_tetra=IBZ_tetra, weights=[12,12], NKFFT=1, **kwargs)
