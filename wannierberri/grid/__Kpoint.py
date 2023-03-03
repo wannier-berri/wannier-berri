@@ -15,14 +15,17 @@
 import numpy as np
 import lazy_property
 from ..symmetry import SYMMETRY_PRECISION
-import abc
 
-class KpointBZ(abc.ABC):
+class KpointBZ():
 
-
-    @abc.abstractmethod
-    def __init__(self):
-        pass
+    def __init__(self, K=np.zeros(3), dK=np.ones(3), NKFFT=np.ones(3), factor=1., symgroup=None):
+        self.K = np.copy(K)
+        self.dK = np.copy(dK)
+        self.factor = factor
+        self.res = None
+        self.NKFFT = np.copy(NKFFT)
+        self.symgroup = symgroup
+        self.refinement_level = 0
 
 
     def set_res(self, res):
@@ -37,9 +40,8 @@ class KpointBZ(abc.ABC):
             "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ], refinement level:{3}, factor = {4}".format(
                 self.K[0], self.K[1], self.K[2], self.refinement_level,self.factor))
 
-    @abc.abstractmethod
     def divide(self, ndiv, periodic, use_symmetry=True):
-        pass
+        raise NotImplementedError()
 
     @lazy_property.LazyProperty
     def _max(self):
@@ -75,6 +77,20 @@ class KpointBZ(abc.ABC):
         self.check_evaluated
         return self.res * self.factor
 
+
+class KpointBZpath(KpointBZ):
+
+    def __init__(self, K=np.zeros(3),  symgroup=None):
+        self.K = np.copy(K)
+        self.symgroup = symgroup
+        self.factor = 1
+        self.res = None
+        self.NKFFT = np.array([1,1,1])
+
+    def __str__(self):
+        return (
+            "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ] ".format(
+                self.K[0], self.K[1], self.K[2]))
 
 
 class KpointBZparallel(KpointBZ):

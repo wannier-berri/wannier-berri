@@ -34,6 +34,15 @@ class GridAbstract(abc.ABC):
     def recip_lattice(self):
         return self.symgroup.recip_lattice
 
+    @lazy_property.LazyProperty
+    def points_FFT(self):
+        dkx, dky, dkz = 1. / self.FFT
+        return np.array(
+            [
+                np.array([ix * dkx, iy * dky, iz * dkz]) for ix in range(self.FFT[0]) for iy in range(self.FFT[1])
+                for iz in range(self.FFT[2])
+            ])
+
 
 class Grid(GridAbstract):
     """ A class containing information about the k-grid.
@@ -87,14 +96,6 @@ class Grid(GridAbstract):
     def dense(self):
         return self.div * self.FFT
 
-    @lazy_property.LazyProperty
-    def points_FFT(self):
-        dkx, dky, dkz = 1. / self.FFT
-        return np.array(
-            [
-                np.array([ix * dkx, iy * dky, iz * dkz]) for ix in range(self.FFT[0]) for iy in range(self.FFT[1])
-                for iz in range(self.FFT[2])
-            ])
 
 
     def get_K_list(self, use_symmetry=True):
