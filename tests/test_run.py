@@ -36,6 +36,7 @@ def check_run(parallel_serial, compare_any_result):
             'NK': [6, 6, 6],
             'NKFFT': [3, 3, 3]
         },
+        grid=None,
         adpt_num_iter=0,
         parameters_K={},
         use_symmetry=False,
@@ -49,7 +50,8 @@ def check_run(parallel_serial, compare_any_result):
         skip_compare=[],
     ):
 
-        grid = wberri.Grid(system, **grid_param)
+        if grid is None:
+            grid = wberri.Grid(system, **grid_param)
         result = wberri.run(
             system,
             grid=grid,
@@ -849,6 +851,24 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
     )
 
 
+def test_Chiral_left_tetra_tetragrid(check_run, system_Chiral_left, compare_any_result):
+#    grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
+    grid = wberri.GridTetra(system_Chiral_left,length=8,NKFFT = [5, 5, 2])
+    check_run(
+        system_Chiral_left,
+        calculators_Chiral_tetra,
+        fout_name="berry_Chiral_tetragrid",
+        suffix="",
+        grid=grid,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=True,
+        extra_precision={"Morb": -1e-6},
+    )
+
+
 def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
     nshift=4
@@ -1016,6 +1036,33 @@ def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_resul
             '_CCab_antisym': True
         },
     )
+
+def test_Te_ASE_wcc_tetragrid(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_result):
+    param = {'Efermi': Efermi_Te_gpaw, "tetra": True, 'use_factor': False}
+    calculators = {}
+    for k, v in calculators_Te.items():
+        par = {}
+        par.update(param)
+        if k not in ["dos", "cumdos"]:
+            par["kwargs_formula"] = {"external_terms": False}
+        calculators[k] = v(**par)
+
+    grid = wberri.GridTetra(system_Te_ASE_wcc,length=20)
+
+    check_run(
+        system_Te_ASE_wcc,
+        calculators,
+        fout_name="berry_Te_ASE_tetra_grid",
+        suffix="wcc",
+        suffix_ref="",
+        use_symmetry=True,
+        grid=grid,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
 
 
 def test_tabulate_path(system_Haldane_PythTB):
