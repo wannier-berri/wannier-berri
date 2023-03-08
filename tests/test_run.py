@@ -898,7 +898,7 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
 
 
 def test_Chiral_left_tetra_tetragrid(check_run, system_Chiral_left, compare_any_result):
-    grid = wberri.GridTetra(system_Chiral_left, length=8, NKFFT=[5, 5, 2])
+    grid = wberri.grid.GridTetra(system_Chiral_left, length=8, NKFFT=[5, 5, 2])
     check_run(
         system_Chiral_left,
         calculators_Chiral_tetra,
@@ -1092,12 +1092,39 @@ def test_Te_ASE_wcc_tetragrid(check_run, system_Te_ASE_wcc, data_Te_ASE, compare
             par["kwargs_formula"] = {"external_terms": False}
         calculators[k] = v(**par)
 
-    grid = wberri.GridTetra(system_Te_ASE_wcc,length=20)
+    grid = wberri.grid.GridTrigonal(system_Te_ASE_wcc,length=50,NKFFT=[3,3,2])
 
     check_run(
         system_Te_ASE_wcc,
         calculators,
-        fout_name="berry_Te_ASE_tetra_grid",
+        fout_name="berry_Te_ASE_tetragrid",
+        suffix="wcc",
+        suffix_ref="",
+        use_symmetry=True,
+        grid=grid,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+
+def test_Te_ASE_wcc_tetragridH(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_result):
+    param = {'Efermi': Efermi_Te_gpaw, "tetra": True, 'use_factor': False}
+    calculators = {}
+    for k, v in calculators_Te.items():
+        par = {}
+        par.update(param)
+        if k not in ["dos", "cumdos"]:
+            par["kwargs_formula"] = {"external_terms": False}
+        calculators[k] = v(**par)
+
+    grid = wberri.grid.GridTrigonalH(system_Te_ASE_wcc,length=50,NKFFT=[3,3,2],x=0.6)
+
+    check_run(
+        system_Te_ASE_wcc,
+        calculators,
+        fout_name="berry_Te_ASE_tetragridH",
         suffix="wcc",
         suffix_ref="",
         use_symmetry=True,

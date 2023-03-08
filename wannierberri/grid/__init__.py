@@ -1,5 +1,5 @@
 from .__grid import Grid
-from .__grid_tetra import GridTetra, GridTrigonal
+from .__grid_tetra import GridTetra, GridTrigonal, GridTrigonalH
 from .__path import Path
 from .__Kpoint_tetra import KpointBZtetra
 from .__Kpoint import KpointBZparallel, exclude_equiv_points
