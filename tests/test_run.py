@@ -852,8 +852,7 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
 
 
 def test_Chiral_left_tetra_tetragrid(check_run, system_Chiral_left, compare_any_result):
-#    grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
-    grid = wberri.GridTetra(system_Chiral_left,length=8,NKFFT = [5, 5, 2])
+    grid = wberri.GridTetra(system_Chiral_left, length=8, NKFFT=[5, 5, 2])
     check_run(
         system_Chiral_left,
         calculators_Chiral_tetra,
