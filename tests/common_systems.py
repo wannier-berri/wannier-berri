@@ -105,6 +105,15 @@ def system_Fe_W90(create_files_Fe_W90):
     system.set_symmetry(symmetries_Fe)
     return system
 
+@pytest.fixture(scope="session")
+def system_Fe_W90_sparse(create_files_Fe_W90,system_Fe_W90):
+    """Create convert to sparse format (keeping all matrix elements) and back, to test interface"""
+
+    params = system_Fe_W90.get_sparse({X:-1 for X in system_Fe_W90._XX_R.keys()})
+    system = wberri.system.SystemSparse(real_lattice=params['real_lattice'], matrices=params['matrices'])
+    system.set_symmetry(symmetries_Fe)
+    return system
+
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_wcc(create_files_Fe_W90):

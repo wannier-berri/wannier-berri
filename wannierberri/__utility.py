@@ -77,15 +77,16 @@ def real_recip_lattice(real_lattice=None, recip_lattice=None):
                 "\n WARNING!!!!! usually need to provide either with real or reciprocal lattice. If you only want to generate a random symmetric tensor - that it fine \n",
                 "yellow")
             return None, None
-        recip_lattice = conjugate_basis(real_lattice)
+        else:
+            recip_lattice = conjugate_basis(real_lattice)
     else:
         if real_lattice is not None:
             assert np.linalg.norm(
-                real_lattice.dot(recip_lattice.T) / (2 * np.pi)
+                np.array(real_lattice).dot(recip_lattice.T) / (2 * np.pi)
                 - np.eye(3)) <= 1e-8, "real and reciprocal lattice do not match"
         else:
             real_lattice = conjugate_basis(recip_lattice)
-    return real_lattice, recip_lattice
+    return np.array(real_lattice), np.array(recip_lattice)
 
 
 
