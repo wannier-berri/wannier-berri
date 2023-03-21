@@ -379,7 +379,7 @@ def system_Te_ASE_wcc(data_Te_ASE):
     return system
 
 @pytest.fixture(scope="session")
-def system_Te_sparse(data_Te_ASE):
+def system_Te_sparse():
     """Create system for Te using symmetrized Wannier functions through a sparse interface"""
     path = os.path.join(ROOT_DIR, "data", "Te_sparse","parameters_Te_low.pickle")
     param = pickle.load(open(path,"rb"))

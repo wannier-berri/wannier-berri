@@ -25,11 +25,17 @@ from .result import ResultDict
 
 def print_progress(count, total, t0):
     t = time() - t0
+    do_print = False
     if count == 0:
         t_remain = "unknown"
     else:
-        t_remain = "{:22.1f}".format(t / count * (total - count))
-    print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
+        t_rem_s = t / count * (total - count)
+        if t_rem_s < 5:
+            do_print = False
+        else:
+            t_remain = "{:22.1f}".format(t_rem_s)
+    if do_print:
+        print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
 
 
 def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}):
