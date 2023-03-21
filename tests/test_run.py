@@ -254,6 +254,54 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
                 precision=prec)
 
 
+def test_Fe_sparse(check_run, system_Fe_W90_sparse, compare_any_result):
+    param = {'Efermi': Efermi_Fe}
+    param_tab = {'degen_thresh': 5e-2}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators["tabulate"] = calc.TabulatorAll(
+        {
+            "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
+            # but not to energies
+            "V": calc.tabulate.Velocity(**param_tab),
+            "Der_berry": calc.tabulate.DerBerryCurvature(**param_tab),
+            "berry": calc.tabulate.BerryCurvature(**param_tab),
+            'spin': calc.tabulate.Spin(**param_tab),
+            'spin_berry': calc.tabulate.SpinBerry(**param_tab),
+            'morb': calc.tabulate.OrbitalMoment(**param_tab),
+            'Der_morb': calc.tabulate.DerOrbitalMoment(**param_tab),
+        },
+        ibands=[5, 6, 7, 8])
+
+    parameters_optical = dict(
+        Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
+
+    calculators['opt_conductivity'] = wberri.calculators.dynamic.OpticalConductivity(**parameters_optical)
+    calculators['opt_SHCqiao'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
+    calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
+
+    check_run(
+        system_Fe_W90_sparse,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="run-sparse",
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        extra_precision={"Morb": -1e-6},
+        skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
+
+    for quant in 'opt_conductivity', 'opt_SHCryoo', 'opt_SHCryoo':
+        compare_any_result(
+            "berry_Fe_W90",
+            quant + "-run-sparse",
+            0,
+            fout_name_ref="kubo_Fe_W90",
+            suffix_ref=quant,
+            precision=-1e-8,
+            result_type=EnergyResult)
+
+
 def test_Fe_dynamic_noband(check_run, system_Fe_W90, compare_any_result):
     calculators = {}
     parameters_optical = dict(
@@ -1283,5 +1331,6 @@ def test_factor_nlahc(check_run, system_GaAs_W90):
             f"data of"
             f"BerryDipole times factor_nlahc and NLAHC give a maximal absolute"
             f"difference of {np.max(np.abs(data_nlahc - data_bcd * factor_nlahc))}.")
+
 
 

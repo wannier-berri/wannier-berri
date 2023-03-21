@@ -19,6 +19,7 @@ from ..symmetry import Symmetry, Group, TimeReversal
 from termcolor import cprint
 import functools
 import multiprocessing
+from collections import defaultdict
 
 
 class System():
@@ -93,6 +94,7 @@ class System():
 
     """.format(**default_parameters)
 
+
     def set_parameters(self, **parameters):
 
         for param in self.default_parameters:
@@ -128,6 +130,20 @@ class System():
             self.needed_R_matrices.update(['AA','SS','SR','SH','SHR'])
 
         self._XX_R = dict()
+
+        if self.wannier_centers_cart is not None:
+            self.wannier_centers_cart = np.array(self.wannier_centers_cart)
+            if self.wannier_centers_reduced is not None:
+                raise ValueError(
+                    "one should not specify both wannier_centers_cart and wannier_centers_reduced,"
+                    "or, set_wannier_centers should not be called twice")
+            else:
+                self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+        elif self.wannier_centers_reduced is not None:
+            self.wannier_centers_reduced = np.array(self.wannier_centers_reduced)
+            self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
+        if self.wannier_centers_cart is not None:
+            self.num_wann = self.wannier_centers_cart.shape[0]
 
 
     def need_R_any(self,keys):
@@ -388,14 +404,15 @@ class System():
         use_wcc_phase=True, modify the relevant real-space matrix elements .
         """
         if self.wannier_centers_cart is not None:
-            if self.wannier_centers_reduced is not None:
-                raise ValueError(
-                    "one should not specify both wannier_centers_cart and wannier_centers_reduced,"
-                    "or, set_wannier_centers should not be called twice")
-            else:
-                self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
-        elif self.wannier_centers_reduced is not None:
-            self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
+            pass
+#            if self.wannier_centers_reduced is not None:
+#                raise ValueError(
+#                    "one should not specify both wannier_centers_cart and wannier_centers_reduced,"
+#                    "or, set_wannier_centers should not be called twice")
+#            else:
+#                self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+#        elif self.wannier_centers_reduced is not None:
+#            self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
         elif hasattr(self, "wannier_centers_cart_auto"):
             self.wannier_centers_cart = self.wannier_centers_cart_auto
             self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
@@ -556,6 +573,31 @@ class System():
                 "operation.\nTo include such symmetries, use set_symmetry.")
 
         self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
+
+
+    def get_sparse(self,min_values={'Ham':1e-3}):
+        ret_dic = dict(
+                real_lattice=self.real_lattice.tolist(),
+                wannier_centers_reduced=self.wannier_centers_reduced.tolist(),
+                matrices={},
+                use_wcc_phase=self.use_wcc_phase
+                    )
+
+        def array_to_dict(A,minval):
+            A_tmp = abs(A.reshape(A.shape[:3]+(-1,))).max(axis=-1)
+            wh=np.argwhere(A_tmp>=minval)
+            dic = defaultdict(lambda : dict())
+            for w in wh:
+                iR=tuple(self.iRvec[w[2]])
+                a = A[tuple(w)]
+                if A.ndim>3:
+                    a = a.tolist()
+                dic[iR][(w[0],w[1])]=a
+            return dict(dic)
+
+        for k,v in min_values.items():
+            ret_dic['matrices'][k] = array_to_dict(self.get_R_mat(k),v)
+        return ret_dic
 
 
 class ws_dist_map():
