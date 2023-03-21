@@ -22,6 +22,8 @@ EDGES_COMPLEMENT  = [list(set([0,1,2,3]) - set(e) ) for e in EDGES ]
 
 class KpointBZtetra(KpointBZ):
 
+    "describes the K-point and surrounding tetrahedron"
+
     def __init__(self, vertices, basis=np.eye(3), K=0, NKFFT=np.ones(3), factor=1.,  refinement_level=0, split_level=0):
         cntr = np.mean(vertices, axis=0)
         assert (vertices.shape == (4,3) )

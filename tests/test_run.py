@@ -21,6 +21,7 @@ from common_systems import (
     Efermi_CuMnAs_2d,
     Efermi_Chiral,
     Efermi_Te_gpaw,
+    Efermi_Te_sparse,
     omega_phonon,
 )
 
@@ -1130,8 +1131,8 @@ def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_resul
         },
     )
 
-def test_Te_ASE_wcc_tetragrid(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_result):
-    param = {'Efermi': Efermi_Te_gpaw, "tetra": True, 'use_factor': False}
+def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):
+    param = {'Efermi': Efermi_Te_sparse, "tetra": True, 'use_factor': False}
     calculators = {}
     for k, v in calculators_Te.items():
         par = {}
@@ -1140,14 +1141,12 @@ def test_Te_ASE_wcc_tetragrid(check_run, system_Te_ASE_wcc, data_Te_ASE, compare
             par["kwargs_formula"] = {"external_terms": False}
         calculators[k] = v(**par)
 
-    grid = wberri.grid.GridTrigonal(system_Te_ASE_wcc,length=50,NKFFT=[3,3,2])
+    grid = wberri.grid.GridTrigonal(system_Te_sparse, length=50, NKFFT=[3,3,2])
 
     check_run(
-        system_Te_ASE_wcc,
+        system_Te_sparse,
         calculators,
-        fout_name="berry_Te_ASE_tetragrid",
-        suffix="wcc",
-        suffix_ref="",
+        fout_name="berry_Te_sparse_tetragrid",
         use_symmetry=True,
         grid=grid,
         parameters_K={
@@ -1157,7 +1156,7 @@ def test_Te_ASE_wcc_tetragrid(check_run, system_Te_ASE_wcc, data_Te_ASE, compare
     )
 
 
-def test_Te_ASE_wcc_tetragridH(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_result):
+def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
     param = {'Efermi': Efermi_Te_gpaw, "tetra": True, 'use_factor': False}
     calculators = {}
     for k, v in calculators_Te.items():
@@ -1167,14 +1166,12 @@ def test_Te_ASE_wcc_tetragridH(check_run, system_Te_ASE_wcc, data_Te_ASE, compar
             par["kwargs_formula"] = {"external_terms": False}
         calculators[k] = v(**par)
 
-    grid = wberri.grid.GridTrigonalH(system_Te_ASE_wcc,length=50,NKFFT=[3,3,2],x=0.6)
+    grid = wberri.grid.GridTrigonalH(system_Te_sparse,length=50,NKFFT=[3,3,2],x=0.6)
 
     check_run(
-        system_Te_ASE_wcc,
+        system_Te_sparse,
         calculators,
-        fout_name="berry_Te_ASE_tetragridH",
-        suffix="wcc",
-        suffix_ref="",
+        fout_name="berry_Te_sparse_tetragridH",
         use_symmetry=True,
         grid=grid,
         parameters_K={
