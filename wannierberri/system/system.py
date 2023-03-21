@@ -132,6 +132,7 @@ class System():
         self._XX_R = dict()
 
         if self.wannier_centers_cart is not None:
+            self.wannier_centers_cart = np.array(self.wannier_centers_cart)
             if self.wannier_centers_reduced is not None:
                 raise ValueError(
                     "one should not specify both wannier_centers_cart and wannier_centers_reduced,"
@@ -139,6 +140,7 @@ class System():
             else:
                 self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
         elif self.wannier_centers_reduced is not None:
+            self.wannier_centers_reduced = np.array(self.wannier_centers_reduced)
             self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
         if self.wannier_centers_cart is not None:
             self.num_wann = self.wannier_centers_cart.shape[0]
@@ -575,9 +577,10 @@ class System():
 
     def get_sparse(self,min_values={'Ham':1e-3}):
         ret_dic = dict(
-                real_lattice=self.real_lattice.tolist(), 
+                real_lattice=self.real_lattice.tolist(),
                 wannier_centers_reduced=self.wannier_centers_reduced.tolist(),
-                matrices = {}
+                matrices={},
+                use_wcc_phase=self.use_wcc_phase
                     )
 
         def array_to_dict(A,minval):

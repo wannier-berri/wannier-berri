@@ -21,7 +21,7 @@ class SystemSparse(System):
 
     """"""
 
-    def __init__(self, real_lattice, matrices = {}, **parameters):
+    def __init__(self, real_lattice, matrices={}, **parameters):
 
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=real_lattice)
         self.set_parameters(**parameters)
@@ -51,8 +51,6 @@ class SystemSparse(System):
         self.do_at_end_of_init()
 
 
-
-
 def getshape(dic):
     for k,v in dic.items():
         for k1,v1 in v.items():
@@ -66,5 +64,6 @@ def getnband(dic):
         for ib in m.keys():
             nband=max(nband,ib[0],ib[1])
     return nband+1
+
 
 
