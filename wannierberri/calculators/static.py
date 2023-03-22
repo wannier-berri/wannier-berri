@@ -30,11 +30,12 @@ class StaticCalculator(Calculator):
         self.smoother = smoother
         self.use_factor = use_factor
         self.hole_like = hole_like
-        self.constant_factor = constant_factor
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
         assert hasattr(self, 'Formula'), "Formula not set - it  should be class with a trace(ik,inn,out) method "
-
+        self.constant_factor = constant_factor
+        if self.hole_like and self.fder==0:
+            self.constant_factor *= -1
         if not self.tetra:
             self.extraEf = 0 if self.fder == 0 else 1 if self.fder in (1, 2) else 2 if self.fder == 3 else None
             self.dEF = Efermi[1] - Efermi[0] if len(Efermi)>1 else 0.001

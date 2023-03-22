@@ -207,6 +207,7 @@ class System():
             magmom=magmom,
             DFT_code=DFT_code)
         self._XX_R, self.iRvec = symmetrize_wann.symmetrize()
+        self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom, DFT_code='qe')
 
     def check_periodic(self):
         exclude = np.zeros(self.nRvec, dtype=bool)
@@ -577,11 +578,13 @@ class System():
 
     def get_sparse(self,min_values={'Ham':1e-3}):
         ret_dic = dict(
-                real_lattice=self.real_lattice.tolist(),
-                wannier_centers_reduced=self.wannier_centers_reduced.tolist(),
+                real_lattice=self.real_lattice,
+                wannier_centers_reduced=self.wannier_centers_reduced,
                 matrices={},
                 use_wcc_phase=self.use_wcc_phase
                     )
+        if hasattr(self,'symmetrize_info'):
+            ret_dic['symmetrize_info']=self.symmetrize_info
 
         def array_to_dict(A,minval):
             A_tmp = abs(A.reshape(A.shape[:3]+(-1,))).max(axis=-1)
@@ -589,10 +592,7 @@ class System():
             dic = defaultdict(lambda : dict())
             for w in wh:
                 iR=tuple(self.iRvec[w[2]])
-                a = A[tuple(w)]
-                if A.ndim>3:
-                    a = a.tolist()
-                dic[iR][(w[0],w[1])]=a
+                dic[iR][(w[0],w[1])]=A[tuple(w)]
             return dict(dic)
 
         for k,v in min_values.items():

@@ -18,29 +18,29 @@ import pickle
 import glob
 
 from .data_K import Data_K
-from .grid import exclude_equiv_points, Path, Grid
+from .grid import exclude_equiv_points, Path, Grid, GridTetra
 from .parallel import Serial
 from .result import ResultDict
 
 
-def print_progress(count, total, t0):
+def print_progress(count, total, t0, tprev, print_progress_step):
     t = time() - t0
-    do_print = False
+    t_remain = None
     if count == 0:
         t_remain = "unknown"
     else:
         t_rem_s = t / count * (total - count)
-        if t_rem_s < 5:
-            do_print = False
-        else:
-            t_remain = "{:22.1f}".format(t_rem_s)
-    if do_print:
+        t_remain = "{:22.1f}".format(t_rem_s)
+    if t-tprev>print_progress_step:
         print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
+        tprev=t
+    return tprev
 
 
-def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}):
+def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}, print_progress_step=5):
     print(f"symgroup : {symgroup}")
     t0 = time()
+    t_print_prev = t0
     selK = [ik for ik, k in enumerate(K_list) if k.res is None]
     numK = len(selK)
     dK_list = [K_list[ik] for ik in selK]
@@ -65,7 +65,7 @@ def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}):
         for count, Kp in enumerate(dK_list):
             res.append(paralfunc(Kp, **remote_parameters))
             if (count + 1) % nstep_print == 0:
-                print_progress(count + 1, numK, t0)
+                t_print_prev = print_progress(count + 1, numK, t0, t_print_prev, print_progress_step)
     elif parallel.method == 'ray':
         num_remotes = len(remotes)
         num_remotes_calculated = 0
@@ -77,7 +77,7 @@ def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}):
             num_remotes_calculated = len(remotes_calculated)
             if num_remotes_calculated >= num_remotes:
                 break
-            print_progress(num_remotes_calculated, numK, t0)
+            t_print_prev = print_progress(num_remotes_calculated, numK, t0, t_print_prev, print_progress_step)
         res = parallel.ray.get(remotes)
     else:
         raise RuntimeError(f"unsupported parallel method : '{parallel.method}'")
@@ -117,7 +117,8 @@ def run(
     print_Kpoints=True,
     adpt_mesh=2,
     adpt_fac=1,
-    fast_iter=True
+    fast_iter=True,
+    print_progress_step=5,
 ):
     """
     The function to run a calculation. Substitutes the old :func:`~wannierberri.integrate` and :func:`~wannierberri.tabulate`
@@ -158,6 +159,8 @@ def run(
         write the file_Klist by portions. Increase for speed, decrease for memory saving
     fast_iter : bool
         if under iterations appear peaks that arte not further removed, set this parameter to False.
+    print_progress_step : float or int
+        intervals to print progress
 
     Returns
     --------
@@ -179,6 +182,8 @@ def run(
         if symmetrize:
             print ("Symmetrization switched off for Path")
             symmetrize = False
+    if isinstance(grid,GridTetra):
+        print ("Grid is tetrahedral")
     else:
         print ("Grid is regular")
 
@@ -301,6 +306,7 @@ def run(
             K_list,
             parallel,
             symgroup=system.symgroup if symmetrize else None,
+            print_progress_step=print_progress_step,
             remote_parameters=remote_parameters)
 
         nk = len(K_list)
