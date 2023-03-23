@@ -51,7 +51,7 @@ class KpointBZtetra(KpointBZ):
 
     @lazy_property.LazyProperty
     def __i_max_edge(self):
-        """returns the index of the maximal edge. 
+        """returns the index of the maximal edge.
         If there are equal edges, the edge with the smallest index (inthe EDGES array) is returned. This is done for reproducibility of the tests
         """
         lengths = self.__edge_lengths
