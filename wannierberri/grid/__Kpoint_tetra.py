@@ -50,6 +50,18 @@ class KpointBZtetra(KpointBZ):
         return np.linalg.norm(edges, axis=1)
 
     @lazy_property.LazyProperty
+    def __i_max_edge(self):
+        """returns the index of the maximal edge. 
+        If there are equal edges, the edge with the smallest index (inthe EDGES array) is returned. This is done for reproducibility of the tests
+        """
+        lengths = self.__edge_lengths
+        srt = np.argsort(lengths)
+#        lengths_sorted=lengths[srt]
+        srt_short=srt[np.where(lengths[srt[-1]]-lengths[srt]<1e-6  )]
+#        print ("srt",srt
+        return min(srt_short)
+
+    @lazy_property.LazyProperty
     def size(self):
         return max(self.__edge_lengths)
 
@@ -63,7 +75,7 @@ class KpointBZtetra(KpointBZ):
             ndiv = ndiv[0]
         if not np.all(periodic) :
             raise ValueError("tetrahedron grid can be used only for 3D-periodic systems")
-        i_edge = np.argmax(self.__edge_lengths)
+        i_edge = self.__i_max_edge
         edge = EDGES[ i_edge ]
         edge_comp = EDGES_COMPLEMENT[ i_edge ]
         v0 = self.vertices[edge[0]]
