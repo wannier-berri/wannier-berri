@@ -18,14 +18,14 @@ from ..symmetry import SYMMETRY_PRECISION
 
 class KpointBZ():
 
-    def __init__(self, K=np.zeros(3), dK=np.ones(3), NKFFT=np.ones(3), factor=1., symgroup=None):
+    def __init__(self, K=np.zeros(3), dK=np.ones(3), NKFFT=np.ones(3), factor=1., symgroup=None, refinement_level=-1):
         self.K = np.copy(K)
         self.dK = np.copy(dK)
         self.factor = factor
         self.res = None
         self.NKFFT = np.copy(NKFFT)
         self.symgroup = symgroup
-        self.refinement_level = 0
+        self.refinement_level = refinement_level
 
 
     def set_res(self, res):
@@ -39,9 +39,6 @@ class KpointBZ():
         return (
             "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ], refinement level:{3}, factor = {4}".format(
                 self.K[0], self.K[1], self.K[2], self.refinement_level,self.factor))
-
-    def divide(self, ndiv, periodic, use_symmetry=True):
-        raise NotImplementedError()
 
     @lazy_property.LazyProperty
     def _max(self):
@@ -81,11 +78,7 @@ class KpointBZ():
 class KpointBZpath(KpointBZ):
 
     def __init__(self, K=np.zeros(3),  symgroup=None):
-        self.K = np.copy(K)
-        self.symgroup = symgroup
-        self.factor = 1
-        self.res = None
-        self.NKFFT = np.array([1,1,1])
+        super().__init__(K=np.copy(K), symgroup=symgroup)
 
     def __str__(self):
         return (
@@ -96,16 +89,6 @@ class KpointBZpath(KpointBZ):
 class KpointBZparallel(KpointBZ):
 
     "describes a Kpoint and the surrounding parallelagramm of size dK x dK x dK"
-
-    def __init__(self, K=np.zeros(3), dK=np.ones(3), NKFFT=np.ones(3), factor=1., symgroup=None, refinement_level=-1):
-        self.K = np.copy(K)
-        self.dK = np.copy(dK)
-        self.factor = factor
-        self.res = None
-        self.NKFFT = np.copy(NKFFT)
-        self.symgroup = symgroup
-        self.refinement_level = refinement_level
-
 
     @lazy_property.LazyProperty
     def dK_fullBZ(self):

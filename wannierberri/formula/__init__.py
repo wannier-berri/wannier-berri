@@ -33,14 +33,12 @@ class Formula_ln(abc.ABC):
         """Returns the submatrix :math:`X_{ln}` at point `ik`, where
         :math:`l \in \mathrm{out}` and :math:`n \in \mathrm{inn}`
         """
-        pass
 
     @abc.abstractmethod
     def nn(self, ik, inn, out):
         """Returns the submatrix :math:`X_{nn'}` at point `ik`, where
         :math:`n, n' \in \mathrm{inn}`
         """
-        pass
 
     def nl(self, ik, inn, out):
         """Returns the submatrix :math:`X_{nl}` at point `ik`, where
