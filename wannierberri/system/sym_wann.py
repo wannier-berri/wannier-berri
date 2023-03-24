@@ -1,7 +1,7 @@
 import numpy as np
 import spglib
 from .sym_wann_orbitals import Orbitals
-from wannierberri.__utility import get_angle
+from ..__utility import get_angle
 
 
 class SymWann():

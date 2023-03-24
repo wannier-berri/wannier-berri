@@ -52,7 +52,7 @@
 import numpy as np
 import os
 import datetime
-from wannierberri.__utility import FortranFileR, FortranFileW
+from ..__utility import FortranFileR, FortranFileW
 
 
 def hlp():

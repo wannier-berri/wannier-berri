@@ -5,7 +5,7 @@ import tarfile
 
 import pytest
 import numpy as np
-
+import pickle
 import wannierberri as wberri
 import wannierberri.symmetry as SYM
 from wannierberri import models as wb_models
@@ -20,6 +20,7 @@ symmetries_Mn3Sn = ["C3z"]
 
 Efermi_Fe = np.linspace(17, 18, 11)
 Efermi_Te_gpaw = np.linspace(4, 8, 11)
+Efermi_Te_sparse = np.linspace(4, 8, 11)
 Efermi_Fe_FPLO = np.linspace(-0.5, 0.5, 11)
 Efermi_GaAs = np.linspace(7, 9, 11)
 Efermi_Haldane = np.linspace(-3, 3, 11)
@@ -374,6 +375,15 @@ def system_Te_ASE_wcc(data_Te_ASE):
     """Create system for Te using  ASE+GPAW data with use_wcc_phase=True"""
     wan,calc = data_Te_ASE
     system = wberri.system.System_ASE(wan, ase_calc=calc, use_wcc_phase=True, berry=False)
+    system.set_symmetry(symmetries_Te)
+    return system
+
+@pytest.fixture(scope="session")
+def system_Te_sparse():
+    """Create system for Te using symmetrized Wannier functions through a sparse interface"""
+    path = os.path.join(ROOT_DIR, "data", "Te_sparse","parameters_Te_low.pickle")
+    param = pickle.load(open(path,"rb"))
+    system = wberri.system.SystemSparse(**param)
     system.set_symmetry(symmetries_Te)
     return system
 

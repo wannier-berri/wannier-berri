@@ -1,9 +1,8 @@
 import numpy as np
 import untangle
 import multiprocessing
-from wannierberri.__utility import real_recip_lattice
-from wannierberri.system import System_w90
-from wannierberri.__utility import FFT
+from ..__utility import real_recip_lattice, FFT
+from . import System_w90
 from scipy import constants as const
 from ..__factors import Ry_eV
 

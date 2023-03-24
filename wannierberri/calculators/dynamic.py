@@ -1,9 +1,9 @@
 import numpy as np
 import abc, functools
-from wannierberri.__utility import Gaussian, Lorentzian
-from wannierberri.result import EnergyResult
+from ..__utility import Gaussian, Lorentzian
+from ..result import EnergyResult
 from . import Calculator
-from wannierberri.formula.covariant import SpinVelocity
+from ..formula.covariant import SpinVelocity
 
 
 #######################################
@@ -43,7 +43,7 @@ class DynamicCalculator(Calculator, abc.ABC):
 
     @abc.abstractmethod
     def factor_omega(self, E1, E2):
-        pass
+        "determines a frequency-dependent factor for bands with energies E1 and E2"
 
     def factor_Efermi(self, E1, E2):
         return self.FermiDirac(E2) - self.FermiDirac(E1)
@@ -125,7 +125,7 @@ bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]
 Ang_SI = angstrom
 
-from wannierberri import __factors as factors
+from .. import __factors as factors
 
 
 ###############################

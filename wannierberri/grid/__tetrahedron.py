@@ -166,36 +166,56 @@ def get_bands_below_range(emin, Eband, Ebandmax=None):
     else:
         return 0
 
+def get_bands_above_range(emax, Eband, Ebandmin=None):
+    if Ebandmin is None:
+        Ebandmin = Eband
+    add = np.where((Ebandmin > emax))[0]
+    if len(add) > 0:
+        return add[0]
+    else:
+        return len(Eband)
 
-def weights_parallelepiped(efermi, Ecenter, Ecorner, der=0):
-    occ = np.zeros((efermi.shape))
-    Ecorner = np.reshape(Ecorner, (2, 2, 2))
-    for iface in 0, 1:
-        for Eface in Ecorner[iface, :, :], Ecorner[:, iface, :], Ecorner[:, :, iface]:
-            occ += weights_tetra(efermi, Ecenter, Eface[0, 0], Eface[0, 1], Eface[1, 1], der=der)
-            occ += weights_tetra(efermi, Ecenter, Eface[0, 0], Eface[1, 0], Eface[1, 1], der=der)
-    return occ / 12.
+
+
 
 
 class TetraWeights():
     """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
        the Fermi level list remains the same throughout calculation"""
 
-    def __init__(self, eCenter, eCorners):
-        self.nk, self.nb = eCenter.shape
-        assert eCorners.shape == (self.nk, 2, 2, 2, self.nb)
+    def __init__(self,  eCenter, eCorners):
         self.eCenter = eCenter
         self.eCorners = eCorners
+        assert self.eCenter.shape == (self.eCorners.shape[0],  self.eCorners.shape[-1])
+        self.nk, self.nb = self.eCenter.shape
         self.eFermis = []
-        self.weights = []
-        Eall = np.concatenate((self.eCenter[:, None, :], self.eCorners.reshape(self.nk, 8, self.nb)), axis=1)
-        self.Emin = Eall.min(axis=1)
-        self.Emax = Eall.max(axis=1)
+        self.eFermi = None
+        if self.nk==0:
+            self.null = True
+        else:
+            self.null=False
+#        self.eFermis = []
+            self.weights = []
+            Eall = np.concatenate((self.eCenter[:, None, :], self.eCorners.reshape(self.nk, -1, self.nb)), axis=1)
+            self.Emin = Eall.min(axis=1)
+            self.Emax = Eall.max(axis=1)
+
+
+    def weight_1k1b(self, ief, ik, ib, der):
+        if self.null:
+            return 0.
+        if der==-1:
+            return 1-self.weight_1k1b( ief, ik, ib, der=0)
+        return self.weight_1k1b_priv(self.eFermis[ief],  ik, ib, der=der)
+
+    def weight_1k1b_priv(self, eFermi, ik, ib, der):
+        eCorners = self.eCorners[ik, :, ib]
+        return weights_tetra(eFermi, eCorners[0], eCorners[1], eCorners[2], eCorners[3], der=der)
 
     def __weight_1b(self, ief, ik, ib, der):
         if ib not in self.weights[ief][der][ik]:
-            self.weights[ief][der][ik][ib] = weights_parallelepiped(
-                self.eFermis[ief], self.eCenter[ik, ib], self.eCorners[ik, :, :, :, ib], der=der)
+            self.weights[ief][der][ik][ib] = self.weight_1k1b(ief, ik, ib, der)
+#                self.eFermis[ief], self.eCenter[ik, ib], self.eCorners[ik, :, :, :, ib], der=der)
         return self.weights[ief][der][ik][ib]
 
     def index_eFermi(self,eFermi):
@@ -204,9 +224,10 @@ class TetraWeights():
                 return i
         return -1
 
+
 # this is for fermiocean
 
-    def weights_all_band_groups(self, eFermi, der, degen_thresh=-1, degen_Kramers=False):
+    def weights_all_band_groups(self, eFermi, der, degen_thresh=-1, degen_Kramers=False, Emin=-np.Inf, Emax=np.Inf):
         """
              here  the key of the return dict is a pair of integers (ib1,ib2)
         """
@@ -229,13 +250,37 @@ class TetraWeights():
             weights = {
                 (ib1, ib2): sum(self.__weight_1b(ief,ik, ib, der) for ib in range(ib1, ib2)) / (ib2 - ib1)
                 for ib1, ib2 in bands_in_range
-            }
+                    }
 
             if der == 0:
                 bandmax = get_bands_below_range(eFermi[0], self.eCenter[ik], Ebandmax=self.Emax[ik])
+                bandmin = get_bands_below_range(Emin, self.eCenter[ik], Ebandmax=self.Emax[ik])
                 if len(bands_in_range) > 0:
                     bandmax = min(bandmax, bands_in_range[0][0])
-                weights[(0, bandmax)] = ones(len(eFermi))
+                if bandmax>bandmin:
+                    weights[(bandmin, bandmax)] = ones(len(eFermi))
+
+            if der == -1:
+                bandmin = get_bands_above_range(eFermi[-1], self.eCenter[ik], Ebandmin=self.Emin[ik])
+                bandmax = get_bands_above_range(Emax, self.eCenter[ik], Ebandmin=self.Emin[ik])
+                if len(bands_in_range) > 0:
+                    bandmin = max(bandmin, bands_in_range[-1][-1])
+                if bandmax>bandmin:
+                    weights[(bandmin, bandmax)] = ones(len(eFermi))
 
             res.append(weights)
         return res
+
+class TetraWeightsParal(TetraWeights):
+
+    def weight_1k1b_priv(self, eFermi, ik, ib, der):
+        occ = np.zeros((eFermi.shape))
+        eCorner = self.eCorners[ik, ..., ib]
+        eCenter = self.eCenter [ik, ib]
+
+        for iface in 0, 1:
+            for Eface in eCorner[iface, :, :], eCorner[:, iface, :], eCorner[:, :, iface]:
+                occ += weights_tetra(eFermi, eCenter, Eface[0, 0], Eface[0, 1], Eface[1, 1], der=der)
+                occ += weights_tetra(eFermi, eCenter, Eface[0, 0], Eface[1, 0], Eface[1, 1], der=der)
+        return occ / 12.
+

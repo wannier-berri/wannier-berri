@@ -8,10 +8,10 @@
 import numpy as np
 from collections import defaultdict
 from math import ceil
-from wannierberri.formula import covariant as frml
-from wannierberri.formula import covariant_basic as frml_basic
-from wannierberri import __factors as factors
-from wannierberri.result import EnergyResult
+from ..formula import covariant as frml
+from ..formula import covariant_basic as frml_basic
+from .. import __factors as factors
+from ..result import EnergyResult
 from . import Calculator
 
 
@@ -20,17 +20,22 @@ from . import Calculator
 
 class StaticCalculator(Calculator):
 
-    def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={}, **kwargs):
+    def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={},
+            Emin=-np.Inf, Emax=np.Inf, hole_like=False, **kwargs):
         self.Efermi = Efermi
+        self.Emin=Emin
+        self.Emax=Emax
         self.tetra = tetra
         self.kwargs_formula = kwargs_formula
         self.smoother = smoother
         self.use_factor = use_factor
-        self.constant_factor = constant_factor
+        self.hole_like = hole_like
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
         assert hasattr(self, 'Formula'), "Formula not set - it  should be class with a trace(ik,inn,out) method "
-
+        self.constant_factor = constant_factor
+        if self.hole_like and self.fder==0:
+            self.constant_factor *= -1
         if not self.tetra:
             self.extraEf = 0 if self.fder == 0 else 1 if self.fder in (1, 2) else 2 if self.fder == 3 else None
             self.dEF = Efermi[1] - Efermi[0] if len(Efermi)>1 else 0.001
@@ -50,15 +55,18 @@ class StaticCalculator(Calculator):
         # get a list [{(ib1,ib2):W} for ik in op:ed]
         if self.tetra:
             weights = data_K.tetraWeights.weights_all_band_groups(
-                self.Efermi, der=self.fder, degen_thresh=self.degen_thresh,
-                degen_Kramers=self.degen_Kramers)  # here W is array of shape Efermi
+                self.Efermi, der=-1 if self.hole_like else self.fder, degen_thresh=self.degen_thresh,
+                degen_Kramers=self.degen_Kramers, Emin=self.Emin, Emax=self.Emax)  # here W is array of shape Efermi
         else:
             weights = data_K.get_bands_in_range_groups(
                 self.EFmin,
                 self.EFmax,
                 degen_thresh=self.degen_thresh,
                 degen_Kramers=self.degen_Kramers,
-                sea=(self.fder == 0))  # here W is energy
+                sea=(self.fder == 0),
+                Emin=self.Emin,
+                Emax=self.Emax
+            )  # here W is energy
 
 #        """formula  - TraceFormula to evaluate
 #           bands = a list of lists of k-points for every
