@@ -100,5 +100,3 @@ class SystemKP(System):
         self.derHam_cart  = lambda k : self.derHam (self.k_cart2red(k))
         self.der2Ham_cart = lambda k : self.der2Ham(self.k_cart2red(k))
         self.der3Ham_cart = lambda k : self.der3Ham(self.k_cart2red(k))
-
-
