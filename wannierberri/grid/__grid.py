@@ -14,13 +14,37 @@
 from collections.abc import Iterable
 import numpy as np
 from time import time
-from . import symmetry
+from .. import symmetry
 import lazy_property
-from .__Kpoint import KpointBZ
+from .__Kpoint import KpointBZparallel
+import abc
 #from .__finite_differences import FiniteDifferences
 
+class GridAbstract(abc.ABC):
 
-class Grid():
+    @abc.abstractmethod
+    def __init__(self,**kwargs):
+        "init"
+
+    @abc.abstractmethod
+    def get_K_list(self, use_symmetry=False):
+        " get all K-points in the grid "
+
+#    @property
+#    def recip_lattice(self):
+#        return self.symgroup.recip_lattice
+
+    @lazy_property.LazyProperty
+    def points_FFT(self):
+        dkx, dky, dkz = 1. / self.FFT
+        return np.array(
+            [
+                np.array([ix * dkx, iy * dky, iz * dkz]) for ix in range(self.FFT[0]) for iy in range(self.FFT[1])
+                for iz in range(self.FFT[2])
+            ])
+
+
+class Grid(GridAbstract):
     """ A class containing information about the k-grid.
 
     Parameters
@@ -37,6 +61,8 @@ class Grid():
         number of k-points in the FFT grid along each directions
     NKdiv : int
         number of k-points in the division (K-) grid along each directions
+    use_symmetry : bool
+        use symmetries of the system to exclude equivalent points
 
     Notes
     -----
@@ -70,18 +96,7 @@ class Grid():
     def dense(self):
         return self.div * self.FFT
 
-    @lazy_property.LazyProperty
-    def points_FFT(self):
-        dkx, dky, dkz = 1. / self.FFT
-        return np.array(
-            [
-                np.array([ix * dkx, iy * dky, iz * dkz]) for ix in range(self.FFT[0]) for iy in range(self.FFT[1])
-                for iz in range(self.FFT[2])
-            ])
 
-    @property
-    def recip_lattice(self):
-        return self.symgroup.recip_lattice
 
     def get_K_list(self, use_symmetry=True):
         """ returns the list of Symmetry-irreducible K-points"""
@@ -92,7 +107,7 @@ class Grid():
         K_list = [
             [
                 [
-                    KpointBZ(
+                    KpointBZparallel(
                         K=np.array([x, y, z]) * dK,
                         dK=dK,
                         NKFFT=self.FFT,

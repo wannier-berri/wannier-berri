@@ -22,7 +22,6 @@ class AbstractSmoother(abc.ABC):
     @abc.abstractmethod
     def _params(self):
         """list of parameters that uniquely define the smoother."""
-        pass
 
     @abc.abstractmethod
     def __init__(self, E, smear, maxdE):
@@ -40,7 +39,6 @@ class AbstractSmoother(abc.ABC):
     @abc.abstractmethod
     def _broaden(self, E):
         """The broadening method to be used."""
-        pass
 
     def __str__(self):
         return f"<{type(self).__name__}>"

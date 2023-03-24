@@ -21,6 +21,7 @@ from common_systems import (
     Efermi_CuMnAs_2d,
     Efermi_Chiral,
     Efermi_Te_gpaw,
+    Efermi_Te_sparse,
     omega_phonon,
 )
 
@@ -36,6 +37,7 @@ def check_run(parallel_serial, compare_any_result):
             'NK': [6, 6, 6],
             'NKFFT': [3, 3, 3]
         },
+        grid=None,
         adpt_num_iter=0,
         parameters_K={},
         use_symmetry=False,
@@ -49,7 +51,8 @@ def check_run(parallel_serial, compare_any_result):
         skip_compare=[],
     ):
 
-        grid = wberri.Grid(system, **grid_param)
+        if grid is None:
+            grid = wberri.Grid(system, **grid_param)
         result = wberri.run(
             system,
             grid=grid,
@@ -254,21 +257,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
 
 def test_Fe_sparse(check_run, system_Fe_W90_sparse, compare_any_result):
     param = {'Efermi': Efermi_Fe}
-    param_tab = {'degen_thresh': 5e-2}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
-    calculators["tabulate"] = calc.TabulatorAll(
-        {
-            "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
-            # but not to energies
-            "V": calc.tabulate.Velocity(**param_tab),
-            "Der_berry": calc.tabulate.DerBerryCurvature(**param_tab),
-            "berry": calc.tabulate.BerryCurvature(**param_tab),
-            'spin': calc.tabulate.Spin(**param_tab),
-            'spin_berry': calc.tabulate.SpinBerry(**param_tab),
-            'morb': calc.tabulate.OrbitalMoment(**param_tab),
-            'Der_morb': calc.tabulate.DerOrbitalMoment(**param_tab),
-        },
-        ibands=[5, 6, 7, 8])
 
     parameters_optical = dict(
         Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
@@ -943,6 +932,23 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
 
 
 
+def test_Chiral_left_tetra_tetragrid(check_run, system_Chiral_left, compare_any_result):
+    grid = wberri.grid.GridTetra(system_Chiral_left, length=8, NKFFT=[5, 5, 2])
+    check_run(
+        system_Chiral_left,
+        calculators_Chiral_tetra,
+        fout_name="berry_Chiral_tetragrid",
+        suffix="",
+        grid=grid,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=True,
+        extra_precision={"Morb": -1e-6},
+    )
+
+
 def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
     nshift=4
@@ -1110,6 +1116,56 @@ def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_resul
             '_CCab_antisym': True
         },
     )
+
+def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):
+    param = {'Efermi': Efermi_Te_sparse, "tetra": True, 'use_factor': False, 'Emax':6.15, 'hole_like':True}
+    calculators = {}
+    for k, v in calculators_Te.items():
+        par = {}
+        par.update(param)
+        if k not in ["dos", "cumdos"]:
+            par["kwargs_formula"] = {"external_terms": False}
+        calculators[k] = v(**par)
+
+    grid = wberri.grid.GridTrigonal(system_Te_sparse, length=50, NKFFT=[3,3,2])
+
+    check_run(
+        system_Te_sparse,
+        calculators,
+        fout_name="berry_Te_sparse_tetragrid",
+        use_symmetry=True,
+        grid=grid,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+
+def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
+    param = {'Efermi': Efermi_Te_gpaw, "tetra": True, 'use_factor': False}
+    calculators = {}
+    for k, v in calculators_Te.items():
+        par = {}
+        par.update(param)
+        if k not in ["dos", "cumdos"]:
+            par["kwargs_formula"] = {"external_terms": False}
+        calculators[k] = v(**par)
+
+    grid = wberri.grid.GridTrigonalH(system_Te_sparse,length=50,NKFFT=[3,3,2],x=0.6)
+
+    check_run(
+        system_Te_sparse,
+        calculators,
+        fout_name="berry_Te_sparse_tetragridH",
+        use_symmetry=True,
+        grid=grid,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
 
 
 def test_tabulate_path(system_Haldane_PythTB):

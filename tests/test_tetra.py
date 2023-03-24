@@ -1,5 +1,5 @@
 import numpy as np
-from wannierberri.__tetrahedron import weights_tetra
+from wannierberri.grid.__tetrahedron import weights_tetra
 import pytest
 from pytest import approx
 

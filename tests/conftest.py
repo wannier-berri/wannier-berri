@@ -1,7 +1,6 @@
 """pytest configuration file for WannierBerri tests."""
 
 import pytest
-
 from common import ROOT_DIR, OUTPUT_DIR, REF_DIR
 
 # WannierBerri Systems
@@ -18,6 +17,7 @@ from common_systems import (
     data_Te_ASE,
     system_Te_ASE,
     system_Te_ASE_wcc,
+    system_Te_sparse,
     system_GaAs_W90,
     system_GaAs_W90_wcc,
     system_GaAs_tb,

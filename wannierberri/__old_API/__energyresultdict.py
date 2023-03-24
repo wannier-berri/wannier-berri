@@ -1,5 +1,5 @@
 import numpy as np
-from wannierberri.result import EnergyResult
+from ..result import EnergyResult
 
 class EnergyResultDict(EnergyResult):
     '''Stores a dictionary of instances of the class Result.'''

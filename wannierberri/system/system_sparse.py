@@ -21,7 +21,7 @@ class SystemSparse(System):
 
     """"""
 
-    def __init__(self, real_lattice, matrices={}, **parameters):
+    def __init__(self, real_lattice, matrices={}, symmetrize_info=None, **parameters):
 
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=real_lattice)
         self.set_parameters(**parameters)
@@ -49,6 +49,8 @@ class SystemSparse(System):
                 print (f"WARNING: {k} is empty")
 
         self.do_at_end_of_init()
+        if symmetrize_info is not None:
+            self.symmetrize(**symmetrize_info)
 
 
 def getshape(dic):

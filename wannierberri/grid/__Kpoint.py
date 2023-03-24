@@ -14,8 +14,7 @@
 
 import numpy as np
 import lazy_property
-from .symmetry import SYMMETRY_PRECISION
-
+from ..symmetry import SYMMETRY_PRECISION
 
 class KpointBZ():
 
@@ -28,6 +27,7 @@ class KpointBZ():
         self.symgroup = symgroup
         self.refinement_level = refinement_level
 
+
     def set_res(self, res):
         self.res = res
 
@@ -35,29 +35,15 @@ class KpointBZ():
     def Kp_fullBZ(self):
         return self.K / self.NKFFT
 
-    @lazy_property.LazyProperty
-    def dK_fullBZ(self):
-        return self.dK / self.NKFFT
-
-    @lazy_property.LazyProperty
-    def dK_fullBZ_cart(self):
-        return self.dK_fullBZ[:, None] * self.symgroup.recip_lattice
-
-    @lazy_property.LazyProperty
-    def star(self):
-        if self.symgroup is None:
-            return [self.K]
-        else:
-            return self.symgroup.star(self.K)
-
     def __str__(self):
         return (
-            "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ], refinement level:{3}, dK={4} ".format(
-                self.K[0], self.K[1], self.K[2], self.refinement_level, self.dK))
+            "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ], refinement level:{3}, factor = {4}".format(
+                self.K[0], self.K[1], self.K[2], self.refinement_level,self.factor))
 
     @lazy_property.LazyProperty
     def _max(self):
         return self.res.max  #np.max(self.res_smooth)
+
 
     @property
     def evaluated(self):
@@ -87,6 +73,40 @@ class KpointBZ():
     def get_res(self):
         self.check_evaluated
         return self.res * self.factor
+
+
+class KpointBZpath(KpointBZ):
+
+    def __init__(self, K=np.zeros(3),  symgroup=None):
+        super().__init__(K=np.copy(K), symgroup=symgroup)
+
+    def __str__(self):
+        return (
+            "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ] ".format(
+                self.K[0], self.K[1], self.K[2]))
+
+
+class KpointBZparallel(KpointBZ):
+
+    "describes a Kpoint and the surrounding parallelagramm of size dK x dK x dK"
+
+    @lazy_property.LazyProperty
+    def dK_fullBZ(self):
+        return self.dK / self.NKFFT
+
+    @lazy_property.LazyProperty
+    def dK_fullBZ_cart(self):
+        return self.dK_fullBZ[:, None] * self.symgroup.recip_lattice
+
+    @lazy_property.LazyProperty
+    def star(self):
+        if self.symgroup is None:
+            return [self.K]
+        else:
+            return self.symgroup.star(self.K)
+
+    def __str__(self):
+        return super().__str__()+"dK={} ".format(self.dK)
 
     def absorb(self, other):
         if other is None:
@@ -119,7 +139,7 @@ class KpointBZ():
         adpt_shift = (-self.dK + dK_adpt) / 2.
         newfac = self.factor / np.prod(ndiv)
         K_list_add = [
-            KpointBZ(
+            KpointBZparallel(
                 K=K0 + adpt_shift + dK_adpt * np.array([x, y, z]),
                 dK=dK_adpt,
                 NKFFT=self.NKFFT,

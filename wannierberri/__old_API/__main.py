@@ -14,20 +14,20 @@
 
 import functools
 from .__evaluate import evaluate_K
-from wannierberri.smoother import get_smoother
-from wannierberri.result import __tabresult
+from ..smoother import get_smoother
+from ..result import __tabresult
 from . import __integrate
 from . import __tabulate
-from wannierberri.__path import Path
+from ..grid import Path
 import numpy as np
 from collections.abc import Iterable
 
 integrate_options = __integrate.calculators.keys()
 tabulate_options = __tabulate.calculators.keys()
-from wannierberri.utils.mmn2uHu import hlp as hlp_mmn
-from wannierberri.utils.vaspspn import hlp as hlp_spn
+from ..utils.mmn2uHu import hlp as hlp_mmn
+from ..utils.vaspspn import hlp as hlp_spn
 from time import time
-from wannierberri.parallel import Serial
+from ..parallel import Serial
 import sys
 
 from colorama import init

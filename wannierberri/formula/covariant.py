@@ -1,5 +1,5 @@
 import numpy as np
-from wannierberri.__utility import alpha_A, beta_A
+from ..__utility import alpha_A, beta_A
 from . import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct
 
 
