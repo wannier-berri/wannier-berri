@@ -56,7 +56,7 @@ class SystemKP(System):
 
     """
 
-    def __init__(self, Ham, derHam=None, der2Ham=None, der3Ham=None, kmax=1., real_lattice=None, recip_lattice=None,  k_vector_cartesian=True, finite_diff_dk=1e-4, **parameters):
+    def __init__(self, Ham, derHam=None, der2Ham=None, der3Ham=None, kmax=1., real_lattice=None, recip_lattice=None,  k_vector_cartesian=True, finite_diff_dk=1e-4, maxder=3, **parameters):
         if kmax is not None:
             assert real_lattice is None, "kmax and real_lattice should not be set tigether"
             assert recip_lattice is None, "kmax and recip_lattice should not be set tigether"
@@ -96,7 +96,21 @@ class SystemKP(System):
             self.derHam = Derivative3D(self.Ham , bk_red=self.bk_red, bk_cart=self.bk_cart, wk=self.wk)
         assert self.derHam([0,0,0]).shape == (self.num_wann,self.num_wann,3)
 
+        if der2Ham is not None:
+            self.der2Ham=der2Ham(self.k_ham_from_red)
+        else:
+            self.der2Ham = Derivative3D(self.derHam , bk_red=self.bk_red, bk_cart=self.bk_cart, wk=self.wk)
+        assert self.der2Ham([0,0,0]).shape == (self.num_wann,self.num_wann,3,3)
+
+
         self.Ham_cart     = lambda k : self.Ham    (self.k_cart2red(k))
         self.derHam_cart  = lambda k : self.derHam (self.k_cart2red(k))
         self.der2Ham_cart = lambda k : self.der2Ham(self.k_cart2red(k))
-        self.der3Ham_cart = lambda k : self.der3Ham(self.k_cart2red(k))
+#        self.der3Ham_cart = lambda k : self.der3Ham(self.k_cart2red(k))
+        self.set_symmetry()
+        print("Number of wannier functions:", self.num_wann)
+
+
+    @property
+    def NKFFT_recommended(self):
+        return [1,1,1]

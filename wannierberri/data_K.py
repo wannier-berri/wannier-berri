@@ -497,7 +497,29 @@ class Data_K_R(Data_K):
 class Data_K_k(Data_K):
     """ The Data_K class for systems defined by k-dependent HAmiltonians  (kp)"""
 
-    pass
+
+    @property
+    def HH_K(self):
+        return np.array([self.system.Ham(k) for k in self.kpoints_all])
+
+    def Xbar(self, name, der=0):
+        key = (name, der)
+        if name != 'Ham':
+            raise VAlueError(f'quantity {name} is not defined for a kp model')
+        if key not in self._bar_quantities:
+            if der==0:
+                raise RuntimeError("Why is `Ham` called through Xbar, are you sure?")
+                X = self.HH_K
+            else:
+                if der == 1:
+                    fun = self.system.derHam
+                elif der == 2 :
+                    fun = self.system.der2Ham
+                elif der == 3 :
+                    fun = self.system.der3Ham
+                X = np.array([fun(k) for k in self.kpoints_all])
+            self._bar_quantities[key] = self._rotate(X)[self.select_K]
+        return self._bar_quantities[key]
 
 
 def get_data_k(system, dK, grid,  **parameters):
@@ -505,4 +527,3 @@ def get_data_k(system, dK, grid,  **parameters):
         return Data_K_k(system,dK,grid,  **parameters)
     else:
         return Data_K_R(system, dK, grid, **parameters)
-
