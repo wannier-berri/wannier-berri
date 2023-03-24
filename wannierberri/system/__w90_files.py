@@ -13,9 +13,9 @@
 #------------------------------------------------------------#
 
 import numpy as np
-from .__utility import FortranFileR
+from ..__utility import FortranFileR
 import multiprocessing
-from .__utility import alpha_A, beta_A
+from ..__utility import alpha_A, beta_A
 from time import time
 from itertools import islice
 import gc
