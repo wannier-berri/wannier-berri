@@ -17,7 +17,7 @@ from time import time
 import pickle
 import glob
 
-from ..data_K import Data_K
+from ..data_K import get_data_k
 from ..grid import exclude_equiv_points
 
 def print_progress(count, total, t0):
@@ -133,13 +133,13 @@ As a result, the integration will be performed over NKFFT x NKdiv
 
         @ray.remote
         def paralfunc(Kpoint, _system, _grid, npar_k):
-            data = Data_K(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+            data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
             return func(data)
     else:
         remote_parameters = {'_system': system, '_grid': grid, 'npar_k': parallel.npar_k}
 
         def paralfunc(Kpoint, _system, _grid, npar_k):
-            data = Data_K(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+            data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
             return func(data)
 
     if restart:

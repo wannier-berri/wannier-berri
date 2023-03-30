@@ -43,7 +43,7 @@ class DynamicCalculator(Calculator, abc.ABC):
 
     @abc.abstractmethod
     def factor_omega(self, E1, E2):
-        pass
+        "determines a frequency-dependent factor for bands with energies E1 and E2"
 
     def factor_Efermi(self, E1, E2):
         return self.FermiDirac(E2) - self.FermiDirac(E1)

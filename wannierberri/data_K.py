@@ -13,6 +13,7 @@
 
 # TODO : maybe to make some lazy_property's not so lazy to save some memory
 import numpy as np
+import abc
 import lazy_property
 from .parallel import pool
 from .system.system import System
@@ -21,9 +22,6 @@ from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha
 from .grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
 from . import formula
 from .grid import KpointBZparallel, KpointBZtetra
-#import abc
-
-
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -60,7 +58,7 @@ def parity_TR(name, der=0):
 
 
 
-class Data_K(System):
+class _Data_K(System,abc.ABC):
 
     default_parameters = {
         # Those are not used at the moment, but will be restored (TODO):
@@ -233,7 +231,6 @@ class Data_K(System):
     # evaluate the energies in the corners of the parallelepiped, in order to use tetrahedron method
 
 
-
     def phonon_freq_from_square(self,E):
         """takes  sqrt(|E|)*sign(E) for phonons, returns input for electrons"""
         if self.is_phonon:
@@ -244,7 +241,7 @@ class Data_K(System):
             return E
 
     @property
-#    @abc.abstractmethod
+    @abc.abstractmethod
     def HH_K(self):
         """returns Wannier Hamiltonian for alkl points of the FFT grid"""
 
@@ -352,7 +349,7 @@ class Data_K(System):
 #########################################################################################################################################
 
 
-class Data_K_R(Data_K):
+class Data_K_R(_Data_K):
 
     """ The Data_K class for systems defined by R-space matrix elements (Wannier/TB)"""
 
@@ -494,7 +491,7 @@ class Data_K_R(Data_K):
         return Ecorners
 
 
-class Data_K_k(Data_K):
+class Data_K_k(_Data_K):
     """ The Data_K class for systems defined by k-dependent HAmiltonians  (kp)"""
 
 

@@ -24,15 +24,15 @@ class GridAbstract(abc.ABC):
 
     @abc.abstractmethod
     def __init__(self,**kwargs):
-        pass
+        "init"
 
     @abc.abstractmethod
     def get_K_list(self, use_symmetry=False):
-        pass
+        " get all K-points in the grid "
 
-    @property
-    def recip_lattice(self):
-        return self.symgroup.recip_lattice
+#    @property
+#    def recip_lattice(self):
+#        return self.symgroup.recip_lattice
 
     @lazy_property.LazyProperty
     def points_FFT(self):
