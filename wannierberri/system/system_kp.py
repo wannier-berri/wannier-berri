@@ -91,16 +91,22 @@ class SystemKP(System):
         self.bk_cart = self.bk_red.dot(self.recip_lattice)
 
         if derHam is not None:
-            self.derHam=derHam(self.k_ham_from_red)
+            self.derHam=lambda k : derHam(self.k_ham_from_red(k))
         else:
             self.derHam = Derivative3D(self.Ham , bk_red=self.bk_red, bk_cart=self.bk_cart, wk=self.wk)
         assert self.derHam([0,0,0]).shape == (self.num_wann,self.num_wann,3)
 
         if der2Ham is not None:
-            self.der2Ham=der2Ham(self.k_ham_from_red)
+            self.der2Ham=lambda k : der2Ham(self.k_ham_from_red(k))
         else:
             self.der2Ham = Derivative3D(self.derHam , bk_red=self.bk_red, bk_cart=self.bk_cart, wk=self.wk)
         assert self.der2Ham([0,0,0]).shape == (self.num_wann,self.num_wann,3,3)
+
+        if der3Ham is not None:
+            self.der3Ham=lambda k : der3Ham(self.k_ham_from_red(k))
+        else:
+            self.der3Ham = Derivative3D(self.der2Ham , bk_red=self.bk_red, bk_cart=self.bk_cart, wk=self.wk)
+        assert self.der3Ham([0,0,0]).shape == (self.num_wann,self.num_wann,3,3,3)
 
 
         self.Ham_cart     = lambda k : self.Ham    (self.k_cart2red(k))

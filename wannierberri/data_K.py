@@ -519,6 +519,38 @@ class Data_K_k(_Data_K):
         return self._bar_quantities[key]
 
 
+    def E_K_corners_tetra(self):
+        vertices = self.Kpoint.vertices_fullBZ
+        _Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
+        for iv,v in enumerate(vertices):
+            _HH_K = np.array([self.system.Ham(k+v) for k in self.kpoints_all])
+            _Ecorners[:, iv, :] = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
+        self.select_bands(_Ecorners)
+        Ecorners = np.zeros((self.nk_selected, 4, self.nb_selected), dtype=float)
+        for iv,v in enumerate(vertices):
+            Ecorners[:, iv, :] = _Ecorners[:, iv, :][self.select_K, :][:, self.select_B]
+        Ecorners = self.phonon_freq_from_square(Ecorners)
+        print_my_name_end()
+#        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
+        return Ecorners
+
+    def E_K_corners_parallel(self):
+        dK = self.Kpoint.dK_fullBZ
+        Ecorners = np.zeros((self.nk_selected, 2, 2, 2, self.nb_selected), dtype=float)
+        for ix in 0, 1:
+            for iy in 0, 1:
+                for iz in 0, 1:
+                    v = (np.array([ix,iy,iz])-0.5)*dK
+                    _HH_K = np.array([self.system.Ham(k+v) for k in self.kpoints_all])
+                    E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
+                    Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
+        Ecorners = self.phonon_freq_from_square(Ecorners)
+        print_my_name_end()
+#        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
+        return Ecorners
+
+
+
 def get_data_k(system, dK, grid,  **parameters):
     if isinstance(system,SystemKP):
         return Data_K_k(system,dK,grid,  **parameters)
