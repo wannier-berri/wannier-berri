@@ -119,4 +119,4 @@ class SystemKP(System):
 
     @property
     def NKFFT_recommended(self):
-        return [1,1,1]
+        return np.array([1,1,1])
