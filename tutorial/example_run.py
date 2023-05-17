@@ -18,9 +18,6 @@ else:
    if 'wannierberri' in os.listdir() :
        os.remove('wannierberri')
 
-if 'Fe_tb.dat' not in os.listdir():
-    os.system('tar -xvf ../data/Fe_tb.dat.tar.gz') 
-
 
 import wannierberri as wberri
 
@@ -31,7 +28,7 @@ SYM=wberri.symmetry
 
 Efermi=np.linspace(12.,13.,11)
 omega = np.linspace(0,1.,1001)
-system=wberri.System_tb(tb_file='Fe_tb.dat',berry=True)
+system=wberri.System_w90('../tests/data/Fe_Wannier90/Fe',berry=True)
 
 generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 system.set_symmetry(generators)

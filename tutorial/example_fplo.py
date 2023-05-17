@@ -17,9 +17,6 @@ else:
    if 'wannierberri' in os.listdir() :
        os.remove('wannierberri')
 
-if 'Fe_tb.dat' not in os.listdir():
-    os.system('tar -xvf ../data/Fe_tb.dat.tar.gz') 
-
 
 import wannierberri as wberri
 
@@ -28,9 +25,8 @@ import numpy as np
 
 SYM=wberri.symmetry
 
-#Efermi=np.linspace(12.,13.,1001)
 Efermi=np.linspace(-0.5,0.5,1001)
-system=wberri.System_fplo('+hamdata',berry=False,spin=False)
+system=wberri.System_fplo('../tests/data/Fe_FPLO/+hamdata',berry=False,spin=False)
 
 generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 system.set_symmetry(generators)
