@@ -187,28 +187,9 @@ class SymWann():
         if self.Inv:
             print('====================\nSystem have inversion symmetry\n====================')
 
-        if self.soc:
-            if self.DFT_code.lower() == 'vasp':
-                pass
-            elif self.DFT_code.lower() in ['qe', 'quantum_espresso', 'espresso']:
-
-                def spin_range(Mat_in):
-                    Mat_out = np.zeros(np.shape(Mat_in), dtype=complex)
-                    Mat_out[0:self.num_wann // 2, 0:self.num_wann // 2, :] = Mat_in[0:self.num_wann:2,
-                                                                                    0:self.num_wann:2, :]
-                    Mat_out[self.num_wann // 2:self.num_wann, 0:self.num_wann // 2, :] = Mat_in[1:self.num_wann:2,
-                                                                                                0:self.num_wann:2, :]
-                    Mat_out[0:self.num_wann // 2, self.num_wann // 2:self.num_wann, :] = Mat_in[0:self.num_wann:2,
-                                                                                                1:self.num_wann:2, :]
-                    Mat_out[self.num_wann // 2:self.num_wann,
-                            self.num_wann // 2:self.num_wann, :] = Mat_in[1:self.num_wann:2, 1:self.num_wann:2, :]
-                    return Mat_out
-
-                self.Ham_R = spin_range(self.Ham_R)
-                for X in self.matrix_list:
-                    self.matrix_list[X] = spin_range(self.matrix_list[X])
-            else:
-                raise NotImplementedError("Only work for DFT_code = 'qe' or 'vasp' at this moment")
+        self.spin_reorder(self.Ham_R)
+        for X in self.matrix_list:
+            self.spin_reorder(self.matrix_list[X])
 
     #==============================
     #Find space group and symmetres
@@ -482,7 +463,7 @@ class SymWann():
             self.ur = np.kron(syr, base_m)
 
         #========================================================
-        #symmetrize exist R vectors and find additional R vectors
+        #symmetrize existing R vectors and find additional R vectors
         #========================================================
         print('##########################')
         print('Symmetrizing Start')
@@ -494,28 +475,34 @@ class SymWann():
             for X in return_dic_add.keys():
                 return_dic[X] = np.concatenate((return_dic[X], return_dic_add[X]), axis=2)
 
-        if self.soc:
-            if self.DFT_code.lower() == 'vasp':
-                pass
-            elif self.DFT_code.lower() in ['qe', 'quantum_espresso', 'espresso']:
-
-                def spin_range_back(Mat_in):
-                    Mat_out = np.zeros(np.shape(Mat_in), dtype=complex)
-                    Mat_out[0:self.num_wann:2,0:self.num_wann:2, :] = Mat_in[0:self.num_wann // 2,
-                                                                                0:self.num_wann // 2, :]
-                    Mat_out[1:self.num_wann:2,0:self.num_wann:2, :] = Mat_in[self.num_wann // 2:self.num_wann,
-                                                                                0:self.num_wann // 2, :]
-                    Mat_out[0:self.num_wann:2,1:self.num_wann:2, :] = Mat_in[0:self.num_wann // 2,
-                                                                                self.num_wann // 2:self.num_wann, :]
-                    Mat_out[1:self.num_wann:2, 1:self.num_wann:2, :] = Mat_in[
-                                                self.num_wann // 2:self.num_wann,self.num_wann // 2:self.num_wann, :]
-                    return Mat_out
-
-                return_dic['Ham'] = spin_range_back(return_dic['Ham'])
-                for X in self.matrix_list:
-                    return_dic[X] = spin_range_back(return_dic[X])
+        self.spin_reorder(return_dic['Ham'], back=True)
+        for X in self.matrix_list:
+            self.spin_reorder(return_dic[X], back=True)
 
         print('Symmetrizing Finished')
 
-
         return return_dic, np.array(self.iRvec + iRvec_add)
+
+
+    def spin_reorder(self,Mat_in,back=False):
+        """ rearranges the spins of the Wannier functions
+            back=False : from interlacing spins to spin blocks
+            back=True : from spin blocks to interlacing spins
+        """
+        if not self.soc:
+            return
+        elif self.DFT_code.lower() == 'vasp':
+            return
+        elif self.DFT_code.lower() in ['qe', 'quantum_espresso', 'espresso']:
+            Mat_out = np.zeros(np.shape(Mat_in), dtype=complex)
+            nw2 = self.num_wann // 2
+            for i in 0,1:
+                for j in 0,1:
+                    if back:
+                        Mat_out[i:self.num_wann:2,j:self.num_wann:2, ...] = Mat_in[i*nw2:(i+1)*nw2, j*nw2:(j+1)*nw2,...]
+                    else:
+                        Mat_out[i*nw2:(i+1)*nw2, j*nw2:(j+1)*nw2,...] = Mat_in[i:self.num_wann:2,j:self.num_wann:2, ...]
+            Mat_in[...]=Mat_out[...]
+            return
+        else :
+            raise ValueError(f"does not work for DFT_code  '{self.DFT_code}' so far")
