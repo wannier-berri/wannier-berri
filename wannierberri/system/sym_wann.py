@@ -125,7 +125,7 @@ class SymWann():
             for iatom in range(num_atom):
                 if self.atom_name[iatom] == name_str:
                     for iorb in orb_str:
-                        num_orb = self.orbitals.num_orbitals[iorb]
+                        num_orb = self.orbitals.num_orbitals(iorb)
                         orb_list = [orbital_index + i for i in range(num_orb)]
                         if self.soc:
                             orb_list += [orbital_index + i + int(self.num_wann / 2) for i in range(num_orb)]
