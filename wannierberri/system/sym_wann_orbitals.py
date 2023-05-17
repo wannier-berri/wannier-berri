@@ -69,7 +69,7 @@ class Orbitals():
             'sp3d2': [sp3d2_1, sp3d2_2, sp3d2_3, sp3d2_4, sp3d2_5, sp3d2_6],
             'sp3d2_plus': [sp3d2_plus_1, sp3d2_plus_2, sp3d2_plus_3, sp3d2_plus_4, sp3d2_plus_5, sp3d2_plus_6],
             't2g': [dxz, dyz, dxy],
-            'eg': [dx2_y2, dz2], 
+            'eg': [dx2_y2, dz2],
         }
         self.orb_chara_dic = {
             's': [x],
@@ -166,7 +166,7 @@ class Orbitals():
                 orb_rot_mat[2, i] = 1 / 6 - 1 / sym.sqrt(2) * subs[1] - tmp_1/2 - tmp_2
                 orb_rot_mat[3, i] = 1 / 6 + 1 / sym.sqrt(2) * subs[1] - tmp_1/2 - tmp_2
                 orb_rot_mat[4, i] = 1 / 6 - 1 / sym.sqrt(2) * subs[2] + tmp_1
-                orb_rot_mat[5, i] = 1 / 6 + 1 / sym.sqrt(2) * subs[2] + tmp_1 
+                orb_rot_mat[5, i] = 1 / 6 + 1 / sym.sqrt(2) * subs[2] + tmp_1
             elif orb_symbol == 't2g':
                 orb_rot_mat[0, i] = subs[0].evalf()
                 orb_rot_mat[1, i] = subs[1].evalf()
