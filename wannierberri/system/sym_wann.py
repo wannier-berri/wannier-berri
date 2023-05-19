@@ -133,12 +133,10 @@ class SymWann():
                         orbital_index_list[iatom].append(orb_list)
 
         self.wann_atom_info = []
-        self.num_wann_atom = 0
         for atom in range(num_atom):
             name = self.atom_name[atom]
             if name in proj_dic:
                 projection = proj_dic[name]
-                self.num_wann_atom += 1
                 orb_position_dic = {}
                 for i in range(len(projection)):
                     orb_select = np.zeros((self.num_wann, self.num_wann), dtype=bool)
@@ -146,31 +144,25 @@ class SymWann():
                         for oj in orbital_index_list[atom][i]:
                             orb_select[oi, oj] = True
                     orb_position_dic[projection[i]] = orb_select
-                if self.magmom is None:
-                    self.wann_atom_info.append(
-                        (
-                            atom + 1, self.atom_name[atom], self.positions[atom], projection, orbital_index_list[atom],
-                            orb_position_dic))
-                else:
-                    self.wann_atom_info.append(
-                        (
-                            atom + 1, self.atom_name[atom], self.positions[atom], projection, orbital_index_list[atom],
-                            self.magmom[atom], orb_position_dic))
+                self.wann_atom_info.append( WannAtomInfo(iatom=atom+1, atom_name=self.atom_name[atom], 
+                        position=self.positions[atom], projection=projection, orbital_index=orbital_index_list[atom],
+                        orb_position_dic=orb_position_dic, magmom=self.magmom[atom] if self.magmom is not None else None) )
+        self.num_wann_atom = len (self.wann_atom_info)
 
         self.H_select = np.zeros((self.num_wann_atom, self.num_wann_atom, self.num_wann, self.num_wann), dtype=bool)
-        for atom_a in range(self.num_wann_atom):
-            for atom_b in range(self.num_wann_atom):
-                orb_list_a = self.wann_atom_info[atom_a][4]  #list of orbital index
-                orb_list_b = self.wann_atom_info[atom_b][4]  #...
+        for a,atom_a in enumerate(self.wann_atom_info):
+            orb_list_a = atom_a.orbital_index
+            for b,atom_b in enumerate(self.wann_atom_info):
+                orb_list_b = atom_b.orbital_index
                 for oa_list in orb_list_a:
                     for oia in oa_list:
                         for ob_list in orb_list_b:
                             for oib in ob_list:
-                                self.H_select[atom_a, atom_b, oia, oib] = True
+                                self.H_select[a, b, oia, oib] = True
 
         print('Wannier atoms info')
         for item in self.wann_atom_info:
-            print(item[:-1])
+            print(item)
 
         numbers = []
         names = list(set(self.atom_name))
@@ -264,7 +256,7 @@ class SymWann():
         rot_map: A map to show which atom is the equivalent atom after rotation operation.
         vec_shift_map: Change of R vector after rotation operation.
         '''
-        wann_atom_positions = [self.wann_atom_info[i][2] for i in range(self.num_wann_atom)]
+        wann_atom_positions = [self.wann_atom_info[i].position for i in range(self.num_wann_atom)]
         rot_map = []
         vec_shift_map = []
         for atomran in range(self.num_wann_atom):
@@ -295,7 +287,7 @@ class SymWann():
             if self.magmom is not None:
                 for i in range(self.num_wann_atom):
                     if sym_only or sym_T:
-                        magmom = self.wann_atom_info[i][-2]
+                        magmom = self.wann_atom_info[i].magmom
                         new_magmom = np.dot(rot_sym_glb, magmom)*np.linalg.det(rot_sym_glb)
                         if abs(np.linalg.norm(magmom - new_magmom)) > 0.0005:
                             sym_only = False
@@ -315,8 +307,8 @@ class SymWann():
         '''
         Combianing rotation matrix of Hamiltonian per orbital_quantum_number into per atom.  (num_wann,num_wann)
         '''
-        orbitals = self.wann_atom_info[atom_index][3]
-        orb_position_dic = self.wann_atom_info[atom_index][-1]
+        orbitals = self.wann_atom_info[atom_index].projection
+        orb_position_dic = self.wann_atom_info[atom_index].orb_position_dic
         p_mat = np.zeros((self.num_wann, self.num_wann), dtype=complex)
         p_mat_dagger = np.zeros((self.num_wann, self.num_wann), dtype=complex)
         rot_sym = self.symmetry['rotations'][rot]
@@ -371,7 +363,7 @@ class SymWann():
                 #TODO try numba
                 for iR in range(nRvec):
                     for atom_a in range(self.num_wann_atom):
-                        num_w_a = len(sum(self.wann_atom_info[atom_a][4], []))  #number of orbitals of atom_a
+                        num_w_a = self.wann_atom_info[atom_a].num_wann  #number of orbitals of atom_a
                         for atom_b in range(self.num_wann_atom):
                             new_Rvec = list(atom_R_map[iR, atom_a, atom_b])
                             if new_Rvec in self.iRvec:
@@ -383,31 +375,28 @@ class SymWann():
 
                                 for X in self.matrix_list:
                                     if X in ['AA', 'BB', 'SS', 'CC', 'FF']:
-                                        num_w_a = len(
-                                            sum(self.wann_atom_info[atom_a][4], []))  #number of orbitals of atom_a
-                                        num_w_b = len(
-                                            sum(self.wann_atom_info[atom_b][4], []))  #number of orbitals of atom_b
+                                        num_w_a = self.wann_atom_info[atom_a].num_wann
+                                        num_w_b = self.wann_atom_info[atom_b].num_wann
                                         #X_L: only rotation wannier centres from L to L' before rotating orbitals.
                                         XX_L = self.matrix_list[X][self.H_select[rot_map[atom_a], rot_map[atom_b]],
                                                                    new_Rvec_index, :].reshape(num_w_a, num_w_b, 3)
                                         #special even with R == [0,0,0] diagonal terms.
                                         if iR == self.iRvec.index([0, 0, 0]) and atom_a == atom_b:
-                                            if X == 'AA' and atom_a == atom_b:
-                                                XX_L += np.einsum(
-                                                    'mn,p->mnp', np.eye(num_w_a),
-                                                    (vec_shift[atom_a] - self.symmetry['translations'][rot]).dot(
-                                                        self.lattice))
-                                            elif X == 'BB' and atom_a == atom_b:
-                                                XX_L += (
-                                                    np.einsum('mn,p->mnp', np.eye(num_w_a),
-                                                    (vec_shift[atom_a] - self.symmetry['translations'][rot]).dot(
-                                                        self.lattice))
+                                            if X in ['AA','BB']:
+                                                v_tmp = (vec_shift[atom_a] - self.symmetry['translations'][rot]).dot(self.lattice)
+                                                m_tmp = np.zeros_like(XX_L)
+                                                for i in range(num_w_a):
+                                                    m_tmp[i,i,:]=v_tmp
+                                            if X == 'AA':
+                                                XX_L += m_tmp
+                                            elif X == 'BB':
+                                                XX_L += (m_tmp
                                                     *self.Ham_R[self.H_select[rot_map[atom_a], rot_map[atom_b]],
                                                         new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
                                         #X_all: rotating vector.
                                         matrix_list_all[X][iR, atom_a, atom_b,
-                                                           self.H_select[atom_a, atom_b], :] = np.einsum(
-                                                               'ij,nmi->nmj', self.rot_c[rot], XX_L).reshape(-1, 3)
+                                                           self.H_select[atom_a, atom_b], :] = np.tensordot(
+                                                                XX_L, self.rot_c[rot], axes = 1 ).reshape(-1, 3)
                                     else:
                                         print(f"WARNING: Symmetrization of {X} is not implemented")
                             else:
@@ -506,3 +495,18 @@ class SymWann():
             return
         else :
             raise ValueError(f"does not work for DFT_code  '{self.DFT_code}' so far")
+
+class WannAtomInfo():
+
+    def __init__(self,  iatom, atom_name, position, projection, orbital_index,  orb_position_dic, magmom=None):
+        self.iatom = iatom
+        self.atom_name = atom_name
+        self.position = position
+        self.projection = projection
+        self.orbital_index = orbital_index
+        self.orb_position_dic = orb_position_dic
+        self.magmom = magmom
+        self.num_wann = len(sum(self.orbital_index, []))  #number of orbitals of atom_a
+
+    def __str__(self):
+        return "; ".join(f"{key}:{value}" for key,value in self.__dict__.items() if key!="orb_position_dic" )
