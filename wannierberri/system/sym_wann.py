@@ -254,6 +254,24 @@ class SymWann():
             rot_orbital = np.kron(dmat, rot_orbital)
         return rot_orbital
 
+    def Part_P_short(self, symop, orb_symbol):
+        '''
+        Rotation matrix of orbitals.
+
+        Without SOC Part_P = rotation matrix of orbital
+        With SOC Part_P = Kronecker product of rotation matrix of orbital and rotation matrix of spin
+        '''
+        rot_orbital = self.orbitals.rot_orb(orb_symbol, symop.rotation_cart)
+
+        if self.soc:
+            dmat = symop.spinor_rotation
+            rot_orbital = np.kron(dmat, rot_orbital)
+        return rot_orbital
+
+
+
+
+
     def atom_rot_map(self, symop):
         '''
         rot_map: A map to show which atom is the equivalent atom after rotation operation.
@@ -314,7 +332,8 @@ class SymWann():
         p_mat = np.zeros((self.num_wann, self.num_wann), dtype=complex)
         p_mat_dagger = np.zeros((self.num_wann, self.num_wann), dtype=complex)
         for orb_name in orbitals:
-            tmp = self.Part_P(symop.rotation_cart, orb_name)
+#            tmp = self.Part_P(symop.rotation_cart, orb_name)
+            tmp = self.Part_P_short(symop, orb_name)
             orb_position = orb_position_dic[orb_name]
             p_mat[orb_position] = tmp.flatten()
             p_mat_dagger[orb_position] = np.conj(np.transpose(tmp)).flatten()
