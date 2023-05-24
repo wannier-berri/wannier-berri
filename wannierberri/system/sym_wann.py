@@ -211,64 +211,6 @@ class SymWann():
             print(
                 "     (%8.5f %8.5f %8.5f)  (%8.5f %8.5f %8.5f)" %
                 (trans[0], trans[1], trans[2], trans_cart[0], trans_cart[1], trans_cart[2]))
-        return rot_c
-
-    def Part_P(self, rot_sym_glb, orb_symbol):
-        '''
-        Rotation matrix of orbitals.
-
-        Without SOC Part_P = rotation matrix of orbital
-        With SOC Part_P = Kronecker product of rotation matrix of orbital and rotation matrix of spin
-        '''
-        if abs(np.dot(np.transpose(rot_sym_glb), rot_sym_glb) - np.eye(3)).max() > 1.0E-4:
-            raise RuntimeError('rot_sym is not orthogomal \n {}'.format(rot_sym_glb))
-        rmat = np.linalg.det(rot_sym_glb) * rot_sym_glb
-        select = np.abs(rmat) < 0.01
-        rmat[select] = 0.0
-        select = rmat > 0.99
-        rmat[select] = 1.0
-        select = rmat < -0.99
-        rmat[select] = -1.0
-        rot_orbital = self.orbitals.rot_orb(orb_symbol, rot_sym_glb)
-        if self.soc:
-            if np.abs(rmat[2, 2]) < 1.0:
-                beta = np.arccos(rmat[2, 2])
-                cos_gamma = -rmat[2, 0] / np.sin(beta)
-                sin_gamma = rmat[2, 1] / np.sin(beta)
-                gamma = get_angle(sin_gamma, cos_gamma)
-                cos_alpha = rmat[0, 2] / np.sin(beta)
-                sin_alpha = rmat[1, 2] / np.sin(beta)
-                alpha = get_angle(sin_alpha, cos_alpha)
-            else:
-                beta = 0.0
-                if rmat[2, 2] == -1.: beta = np.pi
-                gamma = 0.0
-                alpha = np.arccos(rmat[1, 1])
-                if rmat[0, 1] > 0.0: alpha = -1.0 * alpha
-            # euler_angle = np.array([alpha, beta, gamma])
-            dmat = np.zeros((2, 2), dtype=complex)
-            dmat[0, 0] = np.exp(-(alpha + gamma) / 2.0 * 1j) * np.cos(beta / 2.0)
-            dmat[0, 1] = -np.exp(-(alpha - gamma) / 2.0 * 1j) * np.sin(beta / 2.0)
-            dmat[1, 0] = np.exp((alpha - gamma) / 2.0 * 1j) * np.sin(beta / 2.0)
-            dmat[1, 1] = np.exp((alpha + gamma) / 2.0 * 1j) * np.cos(beta / 2.0)
-            rot_orbital = np.kron(dmat, rot_orbital)
-        return rot_orbital
-
-    def Part_P_short(self, symop, orb_symbol):
-        '''
-        Rotation matrix of orbitals.
-
-        Without SOC Part_P = rotation matrix of orbital
-        With SOC Part_P = Kronecker product of rotation matrix of orbital and rotation matrix of spin
-        '''
-        rot_orbital = self.orbitals.rot_orb(orb_symbol, symop.rotation_cart)
-
-        if self.soc:
-            dmat = symop.spinor_rotation
-            rot_orbital = np.kron(dmat, rot_orbital)
-        return rot_orbital
-
-
 
 
 
@@ -332,11 +274,12 @@ class SymWann():
         p_mat = np.zeros((self.num_wann, self.num_wann), dtype=complex)
         p_mat_dagger = np.zeros((self.num_wann, self.num_wann), dtype=complex)
         for orb_name in orbitals:
-#            tmp = self.Part_P(symop.rotation_cart, orb_name)
-            tmp = self.Part_P_short(symop, orb_name)
+            rot_orbital = self.orbitals.rot_orb(orb_name, symop.rotation_cart)
+            if self.soc:
+                rot_orbital = np.kron(symop.spinor_rotation, rot_orbital)
             orb_position = orb_position_dic[orb_name]
-            p_mat[orb_position] = tmp.flatten()
-            p_mat_dagger[orb_position] = np.conj(np.transpose(tmp)).flatten()
+            p_mat[orb_position] = rot_orbital.flatten()
+            p_mat_dagger[orb_position] = np.conj(np.transpose(rot_orbital)).flatten()
         return p_mat, p_mat_dagger
 
     def average_H(self, iRvec):
