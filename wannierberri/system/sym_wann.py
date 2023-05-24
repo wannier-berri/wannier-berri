@@ -1,7 +1,6 @@
 import numpy as np
 import spglib
 from .sym_wann_orbitals import Orbitals
-from ..__utility import get_angle
 from irrep.spacegroup import SymmetryOperation
 
 class SymWann():
@@ -144,7 +143,7 @@ class SymWann():
                         for oj in orbital_index_list[atom][i]:
                             orb_select[oi, oj] = True
                     orb_position_dic[projection[i]] = orb_select
-                self.wann_atom_info.append( WannAtomInfo(iatom=atom+1, atom_name=self.atom_name[atom], 
+                self.wann_atom_info.append( WannAtomInfo(iatom=atom+1, atom_name=self.atom_name[atom],
                         position=self.positions[atom], projection=projection, orbital_index=orbital_index_list[atom],
                         orb_position_dic=orb_position_dic, magmom=self.magmom[atom] if self.magmom is not None else None) )
         self.num_wann_atom = len (self.wann_atom_info)
@@ -174,12 +173,12 @@ class SymWann():
         print("  Spacegroup is %s." % spglib.get_spacegroup(cell))
         dataset = spglib.get_symmetry_dataset(cell)
         self.symmetry_operations = [
-            SymmetryOperation(rot, dataset['translations'][i], cell[0], ind=i + 1, spinor=self.soc) 
-                for i,rot in enumerate(dataset['rotations']) 
-                          ]
+                SymmetryOperation(rot, dataset['translations'][i], cell[0], ind=i + 1, spinor=self.soc)
+                for i,rot in enumerate(dataset['rotations'])
+                                   ]
         self.nsymm = len(self.symmetry_operations)
         self.show_symmetry()
-        has_inv = np.any([(s.inversion and s.angle==0) for s in   self.symmetry_operations])  # has inversion or not
+        has_inv = np.any([(s.inversion and s.angle==0) for s in self.symmetry_operations])  # has inversion or not
         if has_inv:
             print('====================\nSystem has inversion symmetry\n====================')
 
@@ -191,7 +190,6 @@ class SymWann():
     #Find space group and symmetres
     #==============================
     def show_symmetry(self):
-        rot_c = []
         for i, symop  in enumerate(self.symmetry_operations):
             rot = symop.rotation
             trans = symop.translation
@@ -242,7 +240,6 @@ class SymWann():
             vec_shift_map.append(vec_shift)
         #Check if the symmetry operator respect magnetic moment.
         #TODO opt magnet code
-        rot_sym_glb = symop.rotation_cart 
         if self.soc:
             sym_only = True
             sym_T = True
@@ -354,7 +351,7 @@ class SymWann():
                                         #X_all: rotating vector.
                                         matrix_list_all[X][iR, atom_a, atom_b,
                                                            self.H_select[atom_a, atom_b], :] = np.tensordot(
-                                                                XX_L, symop.rotation_cart, axes = 1 ).reshape(-1, 3)
+                                                                XX_L, symop.rotation_cart, axes=1).reshape(-1, 3)
                                     else:
                                         print(f"WARNING: Symmetrization of {X} is not implemented")
                             else:
