@@ -28,8 +28,8 @@
 """
 
 import sys
-import w90io
-from .. import run,Grid,calculators,System_w90, Parallel
+import wannier90io as w90io
+from .. import run, Grid, calculators, System_w90, Parallel
 import numpy as np
 
 # default parameters
