@@ -3,6 +3,7 @@ import spglib
 from .sym_wann_orbitals import Orbitals
 from irrep.spacegroup import SymmetryOperation
 from collections import defaultdict
+import lazy_property
 
 class SymWann():
 
@@ -130,7 +131,7 @@ class SymWann():
         for atom,name in enumerate(self.atom_name):
             if name in proj_dic:
                 projection = proj_dic[name]
-                self.wann_atom_info.append( WannAtomInfo(iatom=atom+1, atom_name=self.atom_name[atom],
+                self.wann_atom_info.append( WannAtomInfo(iatom=atom+1,  atom_name=self.atom_name[atom],
                         position=self.positions[atom], projection=projection, orbital_index=orbital_index_list[atom], soc=self.soc,
                         magmom=self.magmom[atom] if self.magmom is not None else None) )
         self.num_wann_atom = len (self.wann_atom_info)
@@ -160,7 +161,7 @@ class SymWann():
         print("  Spacegroup is %s." % spglib.get_spacegroup(cell))
         dataset = spglib.get_symmetry_dataset(cell)
         self.symmetry_operations = [
-                SymmetryOperation(rot, dataset['translations'][i], cell[0], ind=i + 1, spinor=self.soc)
+                SymmetryOperation_loc(rot, dataset['translations'][i], cell[0], ind=i + 1, spinor=self.soc)
                 for i,rot in enumerate(dataset['rotations'])
                                    ]
         self.nsymm = len(self.symmetry_operations)
@@ -180,11 +181,9 @@ class SymWann():
         for i, symop  in enumerate(self.symmetry_operations):
             rot = symop.rotation
             trans = symop.translation
-            rot_cart = np.dot(np.dot(np.transpose(self.lattice), rot), np.linalg.inv(np.transpose(self.lattice)))
-            trans_cart = np.dot(np.dot(np.transpose(self.lattice), trans), np.linalg.inv(np.transpose(self.lattice)))
-            det = np.linalg.det(rot_cart)
-            symop.rotation_cart = rot_cart
-            symop.translation_cart = trans_cart
+            rot_cart = symop.rotation_cart
+            trans_cart = symop.translation_cart
+            det = symop.det_cart
             print("  --------------- %4d ---------------" % (i + 1))
             print(" det = ", det)
             print("  rotation:                    cart:")
@@ -427,7 +426,7 @@ class SymWann():
 
 class WannAtomInfo():
 
-    def __init__(self,  iatom, atom_name, position, projection, orbital_index,  magmom=None, soc=False):
+    def __init__(self,   iatom, atom_name, position, projection, orbital_index,  magmom=None, soc=False):
         self.iatom = iatom
         self.atom_name = atom_name
         self.position = position
@@ -461,3 +460,31 @@ class WannAtomInfo():
 
     def __str__(self):
         return "; ".join(f"{key}:{value}" for key,value in self.__dict__.items() if key!="orb_position_dic" )
+
+
+# TODO : move to irrep?
+class SymmetryOperation_loc(SymmetryOperation):
+
+    @lazy_property.LazyProperty
+    def rotation_cart(self):
+        return np.dot(np.dot(self._lattice_T, self.rotation), self._lattice_inv_T)
+
+    @lazy_property.LazyProperty
+    def translation_cart(self):
+        return np.dot(np.dot(self._lattice_T, self.translation), self._lattice_inv_T)
+
+    @lazy_property.LazyProperty
+    def det_cart(self):
+        return np.linalg.det(self.rotation_cart)
+    
+    @lazy_property.LazyProperty
+    def det(self):
+        return np.linalg.det(self.rotation)
+
+    @lazy_property.LazyProperty
+    def _lattice_inv_T(self):
+        return np.linalg.inv(np.transpose(self.Lattice))
+
+    @lazy_property.LazyProperty
+    def _lattice_T(self):
+        return np.transpose(self.Lattice)
