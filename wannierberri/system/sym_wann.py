@@ -301,24 +301,27 @@ class SymWann():
                     p_map[atom], p_map_dagger[atom] = self.full_p_mat(atom, symop)
                 R_map = np.dot(R_list, np.transpose(symop.rotation))
                 atom_R_map = R_map[:, None, None, :] - vec_shift[None, :, None, :] + vec_shift[None, None, :, :]
-                Ham_all = np.zeros(
-                    (nRvec, self.num_wann_atom, self.num_wann_atom, self.num_wann, self.num_wann), dtype=complex)
-                matrix_list_all = {
-                    X: np.zeros(
-                        (nRvec, self.num_wann_atom, self.num_wann_atom, self.num_wann, self.num_wann, 3), dtype=complex)
-                    for X in self.matrix_list
-                }
 
                 #TODO try numba
-                for iR in range(nRvec):
-                    for atom_a in range(self.num_wann_atom):
-                        num_w_a = self.wann_atom_info[atom_a].num_wann  #number of orbitals of atom_a
-                        for atom_b in range(self.num_wann_atom):
+                for atom_a in range(self.num_wann_atom):
+                    num_w_a = self.wann_atom_info[atom_a].num_wann  #number of orbitals of atom_a
+                    for atom_b in range(self.num_wann_atom):
+                        Ham_all = np.zeros(
+                            (nRvec, self.num_wann, self.num_wann), dtype=complex)
+#                            (nRvec, self.wann_atom_info[atom_a].num_wann, self.wann_atom_info[atom_b].num_wann), dtype=complex)
+                        matrix_list_all = {
+                            X: np.zeros(
+                                (nRvec, self.num_wann, self.num_wann, 3), dtype=complex)
+                                    for X in self.matrix_list
+                                          }
+
+                        for iR in range(nRvec):
                             new_Rvec = list(atom_R_map[iR, atom_a, atom_b])
                             if new_Rvec in self.iRvec:
                                 new_Rvec_index = self.iRvec.index(new_Rvec)
-                                Ham_all[iR, atom_a, atom_b,
+                                Ham_all[iR,
                                         self.H_select[atom_a, atom_b]] = self.Ham_R[self.H_select[rot_map[atom_a],
+#                                        :] = self.Ham_R[self.H_select[rot_map[atom_a],
                                                                                                   rot_map[atom_b]],
                                                                                     new_Rvec_index]
 
@@ -343,24 +346,19 @@ class SymWann():
                                                     *self.Ham_R[self.H_select[rot_map[atom_a], rot_map[atom_b]],
                                                         new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
                                         #X_all: rotating vector.
-                                        matrix_list_all[X][iR, atom_a, atom_b,
+                                        matrix_list_all[X][iR,
                                                            self.H_select[atom_a, atom_b], :] = np.tensordot(
                                                                 XX_L, symop.rotation_cart, axes=1).reshape(-1, 3)
                                     else:
                                         print(f"WARNING: Symmetrization of {X} is not implemented")
-                            else:
-                                if new_Rvec in tmp_R_list:
-                                    pass
-                                else:
-                                    tmp_R_list.append(new_Rvec)
+                            elif new_Rvec not in tmp_R_list:
+                                tmp_R_list.append(new_Rvec)
 
-                for atom_a in range(self.num_wann_atom):
-                    for atom_b in range(self.num_wann_atom):
                         '''
                         H_ab_sym = P_dagger_a dot H_ab dot P_b
                         H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
                         '''
-                        tmp = np.dot(np.dot(p_map_dagger[atom_a], Ham_all[:, atom_a, atom_b]), p_map[atom_b])
+                        tmp = np.dot(np.dot(p_map_dagger[atom_a], Ham_all[:, ]), p_map[atom_b])
                         if sym_only:
                             Ham_res += tmp.transpose(0, 2, 1)
 
@@ -369,8 +367,8 @@ class SymWann():
                             Ham_res += tmp_T.transpose(0, 2, 1)
 
                         for X in self.matrix_list:  # vector matrix
-                            X_shift = matrix_list_all[X].transpose(0, 1, 2, 5, 3, 4)
-                            tmpX = np.dot(np.dot(p_map_dagger[atom_a], X_shift[:, atom_a, atom_b]), p_map[atom_b])
+                            X_shift = matrix_list_all[X].transpose(0, 3, 1, 2)
+                            tmpX = np.dot(np.dot(p_map_dagger[atom_a], X_shift[: ]), p_map[atom_b])
                             if symop.inversion:
                                 parity_I = self.parity_I[X]
                             else:
