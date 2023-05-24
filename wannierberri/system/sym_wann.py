@@ -2,6 +2,7 @@ import numpy as np
 import spglib
 from .sym_wann_orbitals import Orbitals
 from irrep.spacegroup import SymmetryOperation
+from collections import defaultdict
 
 class SymWann():
 
@@ -56,7 +57,7 @@ class SymWann():
             self,
             positions,
             atom_name,
-            proj,
+            projections,
             num_wann,
             lattice,
             iRvec,
@@ -75,7 +76,6 @@ class SymWann():
         self.lattice = lattice
         self.positions = positions
         self.atom_name = atom_name
-        self.proj = proj
         self.possible_matrix_list = ['AA', 'SS', 'BB', 'CC']  #['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
         self.matrix_list = {k: v for k, v in XX_R.items() if k in self.possible_matrix_list}
         self.parity_I = {
@@ -109,40 +109,34 @@ class SymWann():
         H_select matrices is bool matrix which can select a subspace of Hamiltonian between one atom and it's
         equivalent atom after symmetry operation.
         '''
-        proj_dic = {}
+        proj_dic = defaultdict(lambda : [])
         orbital_index = 0
-        orbital_index_list = []
-        for i in range(num_atom):
-            orbital_index_list.append([])
-        for iproj in self.proj:
-            name_str = iproj.split(":")[0].split()[0]
-            orb_str = iproj.split(":")[1].strip('\n').strip().split(';')
-            if name_str in proj_dic:
-                proj_dic[name_str] = proj_dic[name_str] + orb_str
-            else:
-                proj_dic[name_str] = orb_str
-            for iatom in range(num_atom):
-                if self.atom_name[iatom] == name_str:
+        orbital_index_list = [[] for i in range(num_atom)]
+        for proj in projections:
+            name_str = proj.split(":")[0].split()[0]
+            orb_str = proj.split(":")[1].strip('\n').strip().split(';')
+            proj_dic[name_str] += orb_str
+            for iatom,atom_name in enumerate(self.atom_name):
+                if atom_name == name_str:
                     for iorb in orb_str:
                         num_orb = self.orbitals.num_orbitals(iorb)
                         orb_list = [orbital_index + i for i in range(num_orb)]
                         if self.soc:
-                            orb_list += [orbital_index + i + int(self.num_wann / 2) for i in range(num_orb)]
+                            orb_list += [i + self.num_wann // 2 for i in orb_list]
                         orbital_index += num_orb
                         orbital_index_list[iatom].append(orb_list)
 
         self.wann_atom_info = []
-        for atom in range(num_atom):
-            name = self.atom_name[atom]
+        for atom,name in enumerate(self.atom_name):
             if name in proj_dic:
                 projection = proj_dic[name]
                 orb_position_dic = {}
-                for i in range(len(projection)):
+                for ip,proj in enumerate(projection):
                     orb_select = np.zeros((self.num_wann, self.num_wann), dtype=bool)
-                    for oi in orbital_index_list[atom][i]:
-                        for oj in orbital_index_list[atom][i]:
+                    for oi in orbital_index_list[atom][ip]:
+                        for oj in orbital_index_list[atom][ip]:
                             orb_select[oi, oj] = True
-                    orb_position_dic[projection[i]] = orb_select
+                    orb_position_dic[proj] = orb_select
                 self.wann_atom_info.append( WannAtomInfo(iatom=atom+1, atom_name=self.atom_name[atom],
                         position=self.positions[atom], projection=projection, orbital_index=orbital_index_list[atom],
                         orb_position_dic=orb_position_dic, magmom=self.magmom[atom] if self.magmom is not None else None) )
