@@ -2,7 +2,7 @@ import numpy as np
 import spglib
 from .sym_wann_orbitals import Orbitals
 from ..__utility import get_angle
-
+from irrep.spacegroup import SymmetryOperation
 
 class SymWann():
 
@@ -172,12 +172,16 @@ class SymWann():
         #print(cell)
         print("[get_spacegroup]")
         print("  Spacegroup is %s." % spglib.get_spacegroup(cell))
-        self.symmetry = spglib.get_symmetry_dataset(cell)
-        self.nsymm = self.symmetry['rotations'].shape[0]
-        self.rot_c = self.show_symmetry()
-        self.Inv = (self.symmetry['rotations'][1] == -1 * np.eye(3)).all()  #inversion or not
-        if self.Inv:
-            print('====================\nSystem have inversion symmetry\n====================')
+        dataset = spglib.get_symmetry_dataset(cell)
+        self.symmetry_operations = [
+            SymmetryOperation(rot, dataset['translations'][i], cell[0], ind=i + 1, spinor=self.soc) 
+                for i,rot in enumerate(dataset['rotations']) 
+                          ]
+        self.nsymm = len(self.symmetry_operations)
+        self.show_symmetry()
+        has_inv = np.any([(s.inversion and s.angle==0) for s in   self.symmetry_operations])  # has inversion or not
+        if has_inv:
+            print('====================\nSystem has inversion symmetry\n====================')
 
         self.spin_reorder(self.Ham_R)
         for X in self.matrix_list:
@@ -188,11 +192,14 @@ class SymWann():
     #==============================
     def show_symmetry(self):
         rot_c = []
-        for i, (rot, trans) in enumerate(zip(self.symmetry['rotations'], self.symmetry['translations'])):
+        for i, symop  in enumerate(self.symmetry_operations):
+            rot = symop.rotation
+            trans = symop.translation
             rot_cart = np.dot(np.dot(np.transpose(self.lattice), rot), np.linalg.inv(np.transpose(self.lattice)))
             trans_cart = np.dot(np.dot(np.transpose(self.lattice), trans), np.linalg.inv(np.transpose(self.lattice)))
             det = np.linalg.det(rot_cart)
-            rot_c.append(rot_cart)
+            symop.rotation_cart = rot_cart
+            symop.translation_cart = trans_cart
             print("  --------------- %4d ---------------" % (i + 1))
             print(" det = ", det)
             print("  rotation:                    cart:")
@@ -213,8 +220,8 @@ class SymWann():
         Without SOC Part_P = rotation matrix of orbital
         With SOC Part_P = Kronecker product of rotation matrix of orbital and rotation matrix of spin
         '''
-        if abs(np.dot(np.transpose(rot_sym_glb), rot_sym_glb) - np.eye(3)).sum() > 1.0E-4:
-            print('rot_sym is not orthogomal \n {}'.format(rot_sym_glb))
+        if abs(np.dot(np.transpose(rot_sym_glb), rot_sym_glb) - np.eye(3)).max() > 1.0E-4:
+            raise RuntimeError('rot_sym is not orthogomal \n {}'.format(rot_sym_glb))
         rmat = np.linalg.det(rot_sym_glb) * rot_sym_glb
         select = np.abs(rmat) < 0.01
         rmat[select] = 0.0
@@ -222,6 +229,7 @@ class SymWann():
         rmat[select] = 1.0
         select = rmat < -0.99
         rmat[select] = -1.0
+        rot_orbital = self.orbitals.rot_orb(orb_symbol, rot_sym_glb)
         if self.soc:
             if np.abs(rmat[2, 2]) < 1.0:
                 beta = np.arccos(rmat[2, 2])
@@ -243,15 +251,10 @@ class SymWann():
             dmat[0, 1] = -np.exp(-(alpha - gamma) / 2.0 * 1j) * np.sin(beta / 2.0)
             dmat[1, 0] = np.exp((alpha - gamma) / 2.0 * 1j) * np.sin(beta / 2.0)
             dmat[1, 1] = np.exp((alpha + gamma) / 2.0 * 1j) * np.cos(beta / 2.0)
-        rot_orbital = self.orbitals.rot_orb(orb_symbol, rot_sym_glb)
-        if self.soc:
             rot_orbital = np.kron(dmat, rot_orbital)
-            rot_imag = rot_orbital.imag
-            rot_real = rot_orbital.real
-            rot_orbital = np.array(rot_real + 1j * rot_imag, dtype=complex)
         return rot_orbital
 
-    def atom_rot_map(self, sym):
+    def atom_rot_map(self, symop):
         '''
         rot_map: A map to show which atom is the equivalent atom after rotation operation.
         vec_shift_map: Change of R vector after rotation operation.
@@ -261,7 +264,7 @@ class SymWann():
         vec_shift_map = []
         for atomran in range(self.num_wann_atom):
             atom_position = np.array(wann_atom_positions[atomran])
-            new_atom = np.dot(self.symmetry['rotations'][sym], atom_position) + self.symmetry['translations'][sym]
+            new_atom = np.dot(symop.rotation, atom_position) + symop.translation
             for atom_index in range(self.num_wann_atom):
                 old_atom = np.array(wann_atom_positions[atom_index])
                 diff = np.array(new_atom - old_atom)
@@ -272,15 +275,14 @@ class SymWann():
                 else:
                     if atom_index == self.num_wann_atom - 1:
                         assert atom_index != 0, (
-                            f'Error!!!!: no atom can match the new atom after symmetry operation {sym+1},\n'
+                            f'Error!!!!: no atom can match the new atom after symmetry operation {symop.ind},\n'
                             + f'Before operation: atom {atomran} = {atom_position},\n'
                             + f'After operation: {atom_position},\nAll wann_atom: {wann_atom_positions}')
             rot_map.append(match_index)
             vec_shift_map.append(vec_shift)
         #Check if the symmetry operator respect magnetic moment.
         #TODO opt magnet code
-        rot_sym = self.symmetry['rotations'][sym]
-        rot_sym_glb = np.dot(np.dot(np.transpose(self.lattice), rot_sym), np.linalg.inv(np.transpose(self.lattice)))
+        rot_sym_glb = symop.rotation_cart 
         if self.soc:
             sym_only = True
             sym_T = True
@@ -288,34 +290,31 @@ class SymWann():
                 for i in range(self.num_wann_atom):
                     if sym_only or sym_T:
                         magmom = self.wann_atom_info[i].magmom
-                        new_magmom = np.dot(rot_sym_glb, magmom)*np.linalg.det(rot_sym_glb)
+                        new_magmom = np.dot(symop.rotation_cart , magmom)*(-1 if symop.inversion else 1)
                         if abs(np.linalg.norm(magmom - new_magmom)) > 0.0005:
                             sym_only = False
                         if abs(np.linalg.norm(magmom + new_magmom)) > 0.0005:
                             sym_T = False
                 if sym_only:
-                    print('Symmetry operator {} respect magnetic moment'.format(sym + 1))
+                    print('Symmetry operator {} respects magnetic moment'.format(symop.ind + 1))
                 if sym_T:
-                    print('Symmetry operator {}*T respect magnetic moment'.format(sym + 1))
+                    print('Symmetry operator {}*T respects magnetic moment'.format(symop.ind + 1))
         else:
             sym_only = True
             sym_T = False
 
         return np.array(rot_map, dtype=int), np.array(vec_shift_map, dtype=int), sym_only, sym_T
 
-    def full_p_mat(self, atom_index, rot):
+    def full_p_mat(self, atom_index, symop):
         '''
-        Combianing rotation matrix of Hamiltonian per orbital_quantum_number into per atom.  (num_wann,num_wann)
+        Combining rotation matrix of Hamiltonian per orbital_quantum_number into per atom.  (num_wann,num_wann)
         '''
         orbitals = self.wann_atom_info[atom_index].projection
         orb_position_dic = self.wann_atom_info[atom_index].orb_position_dic
         p_mat = np.zeros((self.num_wann, self.num_wann), dtype=complex)
         p_mat_dagger = np.zeros((self.num_wann, self.num_wann), dtype=complex)
-        rot_sym = self.symmetry['rotations'][rot]
-        rot_sym_glb = np.dot(np.dot(np.transpose(self.lattice), rot_sym), np.linalg.inv(np.transpose(self.lattice)))
-        for orb in range(len(orbitals)):
-            orb_name = orbitals[orb]
-            tmp = self.Part_P(rot_sym_glb, orb_name)
+        for orb_name in orbitals:
+            tmp = self.Part_P(symop.rotation_cart, orb_name)
             orb_position = orb_position_dic[orb_name]
             p_mat[orb_position] = tmp.flatten()
             p_mat_dagger[orb_position] = np.conj(np.transpose(tmp)).flatten()
@@ -335,22 +334,19 @@ class SymWann():
         }
         # print (f"iRvec ({nRvec}):\n  {self.iRvec}")
 
-        for rot in range(self.nsymm):
-            # rot_cart = np.dot(
-            #     np.dot(np.transpose(self.lattice), self.symmetry['rotations'][rot]),
-            #     np.linalg.inv(np.transpose(self.lattice)))
-            rot_map, vec_shift, sym_only, sym_T = self.atom_rot_map(rot)
+        for irot,symop in enumerate(self.symmetry_operations):
+            rot_map, vec_shift, sym_only, sym_T = self.atom_rot_map(symop)
             if sym_only + sym_T == 0:
                 pass
             else:
-                print('rot = ', rot + 1)
+                print('irot = ', irot + 1)
                 if sym_only: nrot += 1
                 if sym_T: nrot += 1
                 p_map = np.zeros((self.num_wann_atom, self.num_wann, self.num_wann), dtype=complex)
                 p_map_dagger = np.zeros((self.num_wann_atom, self.num_wann, self.num_wann), dtype=complex)
                 for atom in range(self.num_wann_atom):
-                    p_map[atom], p_map_dagger[atom] = self.full_p_mat(atom, rot)
-                R_map = np.dot(R_list, np.transpose(self.symmetry['rotations'][rot]))
+                    p_map[atom], p_map_dagger[atom] = self.full_p_mat(atom, symop)
+                R_map = np.dot(R_list, np.transpose(symop.rotation))
                 atom_R_map = R_map[:, None, None, :] - vec_shift[None, :, None, :] + vec_shift[None, None, :, :]
                 Ham_all = np.zeros(
                     (nRvec, self.num_wann_atom, self.num_wann_atom, self.num_wann, self.num_wann), dtype=complex)
@@ -383,7 +379,7 @@ class SymWann():
                                         #special even with R == [0,0,0] diagonal terms.
                                         if iR == self.iRvec.index([0, 0, 0]) and atom_a == atom_b:
                                             if X in ['AA','BB']:
-                                                v_tmp = (vec_shift[atom_a] - self.symmetry['translations'][rot]).dot(self.lattice)
+                                                v_tmp = (vec_shift[atom_a] - symop.translation).dot(self.lattice)
                                                 m_tmp = np.zeros_like(XX_L)
                                                 for i in range(num_w_a):
                                                     m_tmp[i,i,:]=v_tmp
@@ -396,7 +392,7 @@ class SymWann():
                                         #X_all: rotating vector.
                                         matrix_list_all[X][iR, atom_a, atom_b,
                                                            self.H_select[atom_a, atom_b], :] = np.tensordot(
-                                                                XX_L, self.rot_c[rot], axes = 1 ).reshape(-1, 3)
+                                                                XX_L, symop.rotation_cart, axes = 1 ).reshape(-1, 3)
                                     else:
                                         print(f"WARNING: Symmetrization of {X} is not implemented")
                             else:
@@ -422,7 +418,7 @@ class SymWann():
                         for X in self.matrix_list:  # vector matrix
                             X_shift = matrix_list_all[X].transpose(0, 1, 2, 5, 3, 4)
                             tmpX = np.dot(np.dot(p_map_dagger[atom_a], X_shift[:, atom_a, atom_b]), p_map[atom_b])
-                            if np.linalg.det(self.symmetry['rotations'][rot]) < 0:
+                            if symop.inversion:
                                 parity_I = self.parity_I[X]
                             else:
                                 parity_I = 1

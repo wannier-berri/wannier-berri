@@ -33,6 +33,7 @@ setuptools.setup(
                         'spglib<2',
                         'w90io @ git+https://github.com/jimustafa/wannier90-pylib-io.git',
                         'untangle',
+                        'irrep>=1.8.2',
                       ],
      url="https://wannier-berri.org",
      packages=setuptools.find_packages(),
