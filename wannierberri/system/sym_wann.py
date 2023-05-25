@@ -297,30 +297,46 @@ class SymWann():
 
                 R_map = np.dot(R_list, np.transpose(symop.rotation))
                 atom_R_map = R_map[:, None, None, :] - vec_shift[None, :, None, :] + vec_shift[None, None, :, :]
+                iR0 = self.iRvec.index([0, 0, 0])
 
                 #TODO try numba
                 for atom_a in range(self.num_wann_atom):
                     num_w_a = self.wann_atom_info[atom_a].num_wann  #number of orbitals of atom_a
                     for atom_b in range(self.num_wann_atom):
                         num_w_b = self.wann_atom_info[atom_b].num_wann
-                        Ham_all = np.zeros( (nRvec, num_w_a,num_w_b), dtype=complex)
-                        matrix_list_all = { X: np.zeros( (nRvec, num_w_a, num_w_b, 3), dtype=complex)
-                                            for X in self.matrix_list
-                                          }
+#                        matrix_list_all = { X: np.zeros( (num_w_a, num_w_b, 3), dtype=complex)
+#                                            for X in self.matrix_list
+#                                          }
 
                         for iR in range(nRvec):
                             new_Rvec = list(atom_R_map[iR, atom_a, atom_b])
                             if new_Rvec in self.iRvec:
                                 new_Rvec_index = self.iRvec.index(new_Rvec)
-                                Ham_all[iR] = self.Ham_R[self.H_select[rot_map[atom_a], rot_map[atom_b]],
+                                tmp = self.Ham_R[self.H_select[rot_map[atom_a], rot_map[atom_b]],
                                                          new_Rvec_index].reshape(num_w_a, num_w_b)
+                                tmp = np.dot(np.dot(p_mat_atom_dagger[atom_a], tmp), p_mat_atom[atom_b])
+
+                                '''
+                                H_ab_sym = P_dagger_a dot H_ab dot P_b
+                                H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
+                                '''
+
+                                if sym_only:
+                                    Ham_res[self.H_select[atom_a, atom_b],iR] += tmp.reshape(-1)
+
+                                if sym_T:
+                                    ul = self.wann_atom_info[atom_a].ul
+                                    ur = self.wann_atom_info[atom_b].ur
+                                    tmp_T = ul.dot(tmp).dot(ur).conj()
+                                    Ham_res[self.H_select[atom_a, atom_b],iR] += tmp_T.reshape(-1)
+
                                 for X in self.matrix_list:
                                     if X in ['AA', 'BB', 'SS', 'CC', 'FF']:
                                         #X_L: only rotation wannier centres from L to L' before rotating orbitals.
                                         XX_L = self.matrix_list[X][self.H_select[rot_map[atom_a], rot_map[atom_b]],
                                                                    new_Rvec_index, :].reshape(num_w_a, num_w_b, 3)
                                         #special even with R == [0,0,0] diagonal terms.
-                                        if iR == self.iRvec.index([0, 0, 0]) and atom_a == atom_b:
+                                        if iR == iR0 and atom_a == atom_b:
                                             if X in ['AA','BB']:
                                                 v_tmp = (vec_shift[atom_a] - symop.translation).dot(self.lattice)
                                                 m_tmp = np.zeros_like(XX_L)
@@ -333,40 +349,25 @@ class SymWann():
                                                     *self.Ham_R[self.H_select[rot_map[atom_a], rot_map[atom_b]],
                                                         new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
                                         #X_all: rotating vector.
-                                        matrix_list_all[X][iR, :] = np.tensordot(
+                                        matrix_list_all = np.tensordot(
                                                                 XX_L, symop.rotation_cart, axes=1).reshape(num_w_a, num_w_b, 3)
+                                        X_shift = matrix_list_all.transpose(2, 0, 1)
+                                        tmpX = np.dot(np.dot(p_mat_atom_dagger[atom_a], X_shift), p_mat_atom[atom_b])
+                                        if symop.inversion:
+                                            parity_I = self.parity_I[X]
+                                        else:
+                                            parity_I = 1
+                                        if sym_only:
+                                            matrix_list_res[X][self.H_select[atom_a, atom_b],iR] += tmpX.transpose( 0, 2, 1).reshape(-1,3) * parity_I
+                                        if sym_T:
+                                            tmpX_T = ul.dot(tmpX.transpose(1, 0, 2)).dot(ur).conj()
+                                            matrix_list_res[X][self.H_select[atom_a, atom_b],iR] += tmpX_T.transpose(0, 2, 1).reshape(-1,3) * parity_I * self.parity_TR[X]
                                     else:
                                         print(f"WARNING: Symmetrization of {X} is not implemented")
+
                             elif new_Rvec not in tmp_R_list:
                                 tmp_R_list.append(new_Rvec)
 
-                        '''
-                        H_ab_sym = P_dagger_a dot H_ab dot P_b
-                        H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
-                        '''
-                        tmp = np.dot(np.dot(p_mat_atom_dagger[atom_a], Ham_all[:, ]), p_mat_atom[atom_b])
-                        print (tmp.shape)
-                        if sym_only:
-                            Ham_res[self.H_select[atom_a, atom_b]] += tmp.transpose(0, 2, 1).reshape(-1,nRvec)
-
-                        if sym_T:
-                            ul = self.wann_atom_info[atom_a].ul
-                            ur = self.wann_atom_info[atom_b].ur
-                            tmp_T = ul.dot(tmp.transpose(1, 0, 2)).dot(ur).conj()
-                            Ham_res[self.H_select[atom_a, atom_b]] += tmp_T.transpose(0, 2, 1).reshape(-1,nRvec)
-
-                        for X in self.matrix_list:  # vector matrix
-                            X_shift = matrix_list_all[X].transpose(0, 3, 1, 2)
-                            tmpX = np.dot(np.dot(p_mat_atom_dagger[atom_a], X_shift[: ]), p_mat_atom[atom_b])
-                            if symop.inversion:
-                                parity_I = self.parity_I[X]
-                            else:
-                                parity_I = 1
-                            if sym_only:
-                                matrix_list_res[X][self.H_select[atom_a, atom_b]] += tmpX.transpose(0, 3, 1, 2).reshape(-1,nRvec,3) * parity_I
-                            if sym_T:
-                                tmpX_T = ul.dot(tmpX.transpose(1, 2, 0, 3)).dot(ur).conj()
-                                matrix_list_res[X][self.H_select[atom_a, atom_b]] += tmpX_T.transpose(0, 3, 1, 2).reshape(-1,nRvec,3) * parity_I * self.parity_TR[X]
 
         for k in matrix_list_res:
             matrix_list_res[k] /= nrot
