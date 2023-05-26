@@ -79,12 +79,12 @@ class SymWann():
         self.possible_matrix_list = ['Ham','AA', 'SS', 'BB', 'CC']  #['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
         self.matrix_list = XX_R
         for k in XX_R:
-             if k not in self.possible_matrix_list:
+            if k not in self.possible_matrix_list:
                 print (f"WARNING: symmetrization of matrix {k} is not implemented yet, so it will not be symmetrized, but passed as it. Use on your own risk")
         # This is confusing, actually the I-odd vectors have "+1" here, because the minus is already in the rotation matrix
         # but Ham is a scalar, so +1
         #TODO: change it
-        self.parity_I = { 
+        self.parity_I = {
             'Ham':1,
             'AA': 1,
             'BB': 1,
@@ -297,7 +297,7 @@ class SymWann():
                 if sym_T:
                     p_mat_atom_T = []
                     p_mat_atom_dagger_T = []
-                    for atom in range(self.num_wann_atom):
+                    for atom_a in range(self.num_wann_atom):
                         ul = self.wann_atom_info[atom_a].ul
                         ur = self.wann_atom_info[atom_a].ur
                         p_mat_atom_T.append(p_mat_atom[atom_a].dot(ur))
@@ -322,33 +322,32 @@ class SymWann():
                                 H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
                                 '''
                                 for X in matrix_list_res:
-#                                    if X in self.possible_matrix_list:
-                                        shape = (num_w_a, num_w_b)+self.matrix_list[X].shape[3:]
-                                        #X_L: only rotation wannier centres from L to L' before rotating orbitals.
-                                        XX_L = self.matrix_list[X][self.H_select[rot_map[atom_a], rot_map[atom_b]],
-                                                                   new_Rvec_index].reshape(shape)
-                                        #special even with R == [0,0,0] diagonal terms.
-                                        if iR == iR0 and atom_a == atom_b:
-                                            if X in ['AA','BB']:
-                                                v_tmp = (vec_shift[atom_a] - symop.translation).dot(self.lattice)
-                                                m_tmp = np.zeros_like(XX_L)
-                                                for i in range(num_w_a):
-                                                    m_tmp[i,i,:]=v_tmp
-                                            if X == 'AA':
-                                                XX_L += m_tmp
-                                            elif X == 'BB':
-                                                XX_L += (m_tmp
-                                                    *self.matrix_list['Ham'][self.H_select[rot_map[atom_a], rot_map[atom_b]],
-                                                        new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
-                                        if XX_L.ndim==3:
-                                            #X_all: rotating vector.
-                                            XX_L = np.tensordot( XX_L, symop.rotation_cart, axes=1).reshape( shape )
-                                        if symop.inversion:
-                                            XX_L*=self.parity_I[X]
-                                        if sym_only:
-                                            matrix_list_res[X][self.H_select[atom_a, atom_b],iR] += _rotate_matrix_flat(XX_L,p_mat_atom_dagger[atom_a], p_mat_atom[atom_b])
-                                        if sym_T:
-                                            matrix_list_res[X][self.H_select[atom_a, atom_b],iR] += _rotate_matrix_flat(XX_L,p_mat_atom_dagger_T[atom_a], p_mat_atom_T[atom_b]).conj() * self.parity_TR[X]
+                                    shape = (num_w_a, num_w_b)+self.matrix_list[X].shape[3:]
+                                    #X_L: only rotation wannier centres from L to L' before rotating orbitals.
+                                    XX_L = self.matrix_list[X][self.H_select[rot_map[atom_a], rot_map[atom_b]],
+                                                               new_Rvec_index].reshape(shape)
+                                    #special even with R == [0,0,0] diagonal terms.
+                                    if iR == iR0 and atom_a == atom_b:
+                                        if X in ['AA','BB']:
+                                            v_tmp = (vec_shift[atom_a] - symop.translation).dot(self.lattice)
+                                            m_tmp = np.zeros_like(XX_L)
+                                            for i in range(num_w_a):
+                                                m_tmp[i,i,:]=v_tmp
+                                        if X == 'AA':
+                                            XX_L += m_tmp
+                                        elif X == 'BB':
+                                            XX_L += (m_tmp
+                                                *self.matrix_list['Ham'][self.H_select[rot_map[atom_a], rot_map[atom_b]],
+                                                    new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
+                                    if XX_L.ndim==3:
+                                        #X_all: rotating vector.
+                                        XX_L = np.tensordot( XX_L, symop.rotation_cart, axes=1).reshape( shape )
+                                    if symop.inversion:
+                                        XX_L*=self.parity_I[X]
+                                    if sym_only:
+                                        matrix_list_res[X][self.H_select[atom_a, atom_b],iR] += _rotate_matrix_flat(XX_L,p_mat_atom_dagger[atom_a], p_mat_atom[atom_b])
+                                    if sym_T:
+                                        matrix_list_res[X][self.H_select[atom_a, atom_b],iR] += _rotate_matrix_flat(XX_L,p_mat_atom_dagger_T[atom_a], p_mat_atom_T[atom_b]).conj() * self.parity_TR[X]
 
                             elif new_Rvec not in tmp_R_list:
                                 tmp_R_list.append(new_Rvec)
@@ -464,7 +463,7 @@ class SymmetryOperation_loc(SymmetryOperation):
     @lazy_property.LazyProperty
     def det_cart(self):
         return np.linalg.det(self.rotation_cart)
-    
+
     @lazy_property.LazyProperty
     def det(self):
         return np.linalg.det(self.rotation)
