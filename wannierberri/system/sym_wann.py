@@ -4,6 +4,7 @@ from .sym_wann_orbitals import Orbitals
 from irrep.spacegroup import SymmetryOperation
 from collections import defaultdict
 import lazy_property
+from time import time
 
 class SymWann():
 
@@ -70,8 +71,9 @@ class SymWann():
                 vars(self)[param] = parameters[param]
             else:
                 vars(self)[param] = self.default_parameters[param]
-        self.iRvec = iRvec.tolist()
-        self.nRvec = len(iRvec)
+        self.iRvec = [tuple(R) for R in iRvec]
+        self.iRvec_index = {r:i for i,r in enumerate(self.iRvec)}
+        self.nRvec = len(self.iRvec)
         self.num_wann = num_wann
         self.lattice = lattice
         self.positions = positions
@@ -115,6 +117,8 @@ class SymWann():
         H_select matrices is bool matrix which can select a subspace of Hamiltonian between one atom and it's
         equivalent atom after symmetry operation.
         '''
+        times = []
+        times.append(time())
         proj_dic = defaultdict(lambda : [])
         orbital_index = 0
         orbital_index_list = [[] for i in range(num_atom)]
@@ -131,6 +135,7 @@ class SymWann():
                             orb_list += [i + self.num_wann // 2 for i in orb_list]
                         orbital_index += num_orb
                         orbital_index_list[iatom].append(orb_list)
+        times.append(time())
 
         self.wann_atom_info = []
         for atom,name in enumerate(self.atom_name):
@@ -140,6 +145,7 @@ class SymWann():
                         position=self.positions[atom], projection=projection, orbital_index=orbital_index_list[atom], soc=self.soc,
                         magmom=self.magmom[atom] if self.magmom is not None else None) )
         self.num_wann_atom = len (self.wann_atom_info)
+        times.append(time())
 
         self.H_select = np.zeros((self.num_wann_atom, self.num_wann_atom, self.num_wann, self.num_wann), dtype=bool)
         for a,atom_a in enumerate(self.wann_atom_info):
@@ -151,6 +157,7 @@ class SymWann():
                         for ob_list in orb_list_b:
                             for oib in ob_list:
                                 self.H_select[a, b, oia, oib] = True
+        times.append(time())
 
         self.matrix_dict_list = {}
         for k,v in XX_R.items():
@@ -158,10 +165,12 @@ class SymWann():
             self.matrix_dict_list[k] = _matrix_to_dict(v, self.H_select, self.wann_atom_info)
             if k not in self.possible_matrix_list:
                 raise ValueError(f" symmetrization of matrix {k} is not implemented yet")#, so it will not be symmetrized, but passed as it. Use on your own risk")
+        times.append(time())
 
         print('Wannier atoms info')
         for item in self.wann_atom_info:
             print(item)
+        times.append(time())
 
         numbers = []
         names = list(set(self.atom_name))
@@ -171,21 +180,43 @@ class SymWann():
         print("[get_spacegroup]")
         print("  Spacegroup is %s." % spglib.get_spacegroup(cell))
         dataset = spglib.get_symmetry_dataset(cell)
-        self.symmetry_operations = [
+        all_symmetry_operations = [
                 SymmetryOperation_loc(rot, dataset['translations'][i], cell[0], ind=i + 1, spinor=self.soc)
                 for i,rot in enumerate(dataset['rotations'])
                                    ]
-        self.show_symmetry()
+        times.append(time())
         self.nrot=0
-        for symop in self.symmetry_operations:
+        self.symmetry_operations = []
+        for symop in all_symmetry_operations:
             symop.rot_map, symop.vec_shift, symop.sym_only, symop.sym_T = self.atom_rot_map(symop)
-            if symop.sym_only: self.nrot += 1
-            if symop.sym_T: self.nrot += 1
+            if symop.sym_T or symop.sym_only:
+                self.symmetry_operations.append(symop)
+                if symop.sym_only: self.nrot += 1
+                if symop.sym_T: self.nrot += 1
+                symop.p_mat_atom = []
+                symop.p_mat_atom_dagger = []
+                for atom in range(self.num_wann_atom):
+                    p_mat_, p_mat_dagger_ = self.atom_p_mat(self.wann_atom_info[atom], symop)
+                    symop.p_mat_atom.append(p_mat_)
+                    symop.p_mat_atom_dagger.append(p_mat_dagger_)
+                if symop.sym_T:
+                    symop.p_mat_atom_T = []
+                    symop.p_mat_atom_dagger_T = []
+                    for atom in range(self.num_wann_atom):
+                        ul = self.wann_atom_info[atom].ul
+                        ur = self.wann_atom_info[atom].ur
+                        symop.p_mat_atom_T.append(symop.p_mat_atom[atom].dot(ur))
+                        symop.p_mat_atom_dagger_T.append(ul.dot(symop.p_mat_atom_dagger[atom]))
+        times.append(time())
 
         self.nsymm = len(self.symmetry_operations)
         has_inv = np.any([(s.inversion and s.angle==0) for s in self.symmetry_operations])  # has inversion or not
         if has_inv:
             print('====================\nSystem has inversion symmetry\n====================')
+
+        self.show_symmetry()
+        times.append(time())
+        print ("Timing of SymWann.__init__():", [t1-t0 for t0,t1 in zip(times,times[1:])], "total:",times[-1]-times[0])
 
 
 #        self.find_irreducible_Rab()
@@ -283,32 +314,44 @@ class SymWann():
         return p_mat, p_mat_dagger
 
 
+    def index_R(self,R):
+        try:
+            return self.iRvec_index[tuple(R)]
+        except KeyError:
+            return -1
+
     def find_irreducible_Rab(self):
         print ("searching irreducible Rvectors for pairs of a,b")
+
         R_list = np.array(self.iRvec, dtype=int)
         irreducible = np.ones((self.nRvec,self.num_wann_atom,self.num_wann_atom),dtype=bool)
+        t0=time()
         for symop in self.symmetry_operations:
             if symop.sym_only or symop.sym_T:
                 print('symmetry operation  ', symop.ind)
                 R_map = np.dot(R_list, np.transpose(symop.rotation))
                 atom_R_map = R_map[:, None, None, :] - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :]
                 for a in range(self.num_wann_atom):
+                    a1 = symop.rot_map[a]
                     for b in range(self.num_wann_atom):
+                        b1 = symop.rot_map[b]
                         for iR in range(self.nRvec):
                             if irreducible[iR,a,b]:
-                                new_Rvec = list(atom_R_map[iR, a, b])
-                                if new_Rvec in self.iRvec:
-                                    iR1 = self.iRvec.index(new_Rvec)
-                                    a1,b1 = symop.rot_map[a],symop.rot_map[b]
-                                    if not (a,b,iR) == (a1,b1,iR1):
+                                iR1 = self.index_R(atom_R_map[iR, a, b])
+                                if iR1>=0 and not (a,b,iR) == (a1,b1,iR1):
                                         irreducible[iR1,a1,b1]=False
         print (f"Found {np.sum(irreducible)} sets of (R,a,b) out of the total {self.nRvec*self.num_wann_atom**2} ({self.nRvec}*{self.num_wann_atom}^2)")
+        t1=time()
         dic =  {(a,b):set([iR for iR in range(self.nRvec)  if irreducible[iR,a,b]])
                 for a in range(self.num_wann_atom)  for b in range(self.num_wann_atom)}
-        return {k:v for k,v in dic.items() if len(v)>0}
+        t2=time()
+        res =  {k:v for k,v in dic.items() if len(v)>0}
+        t3=time()
+#        print ("timing search irred",t1-t0,t2-t1,t3-t2)
+        return res
 
 
-    def average_H_irreducible(self, iRab_new, matrix_dict_in, iRvec_old, iRvec_new, mode):
+    def average_H_irreducible(self, iRab_new, matrix_dict_in, iRvec_new, mode):
         assert mode in ["sum","single"]
         iRvec_new_array = np.array(iRvec_new, dtype=int)
 
@@ -319,33 +362,19 @@ class SymWann():
         for symop in self.symmetry_operations:
             if symop.sym_only or symop.sym_T:
                 print('symmetry operation  ', symop.ind)
-                p_mat_atom = []
-                p_mat_atom_dagger = []
-                for atom in range(self.num_wann_atom):
-                    p_mat_, p_mat_dagger_ = self.atom_p_mat(self.wann_atom_info[atom], symop)
-                    p_mat_atom.append(p_mat_)
-                    p_mat_atom_dagger.append(p_mat_dagger_)
-                if symop.sym_T:
-                    p_mat_atom_T = []
-                    p_mat_atom_dagger_T = []
-                    for atom in range(self.num_wann_atom):
-                        ul = self.wann_atom_info[atom].ul
-                        ur = self.wann_atom_info[atom].ur
-                        p_mat_atom_T.append(p_mat_atom[atom].dot(ur))
-                        p_mat_atom_dagger_T.append(ul.dot(p_mat_atom_dagger[atom]))
 
                 R_map = np.dot(iRvec_new_array, np.transpose(symop.rotation))
                 atom_R_map = R_map[:, None, None, :] - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :]
-                iR0_old = iRvec_old.index([0, 0, 0])
+                iR0_old = self.index_R((0, 0, 0))
 
                 #TODO try numba
                 for (atom_a,atom_b),iR_new_list in iRab_new.items():
                     exclude_set = set()
                     for iR in iR_new_list:
-                        new_Rvec = list(atom_R_map[iR, atom_a, atom_b])
-                        iRab_all[(symop.rot_map[atom_a], symop.rot_map[atom_b])].add(tuple(new_Rvec))
-                        if new_Rvec in iRvec_old:
-                            new_Rvec_index = iRvec_old.index(new_Rvec)
+                        new_Rvec = tuple(atom_R_map[iR, atom_a, atom_b])
+                        iRab_all[(symop.rot_map[atom_a], symop.rot_map[atom_b])].add(new_Rvec)
+                        new_Rvec_index = self.index_R(new_Rvec)
+                        if new_Rvec_index>=0 :
                             '''
                             H_ab_sym = P_dagger_a dot H_ab dot P_b
                             H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
@@ -378,15 +407,17 @@ class SymWann():
                                     if symop.inversion:
                                         XX_L*=self.parity_I[X]
                                     if symop.sym_only:
-                                        matrix_dict_list_res[X][(atom_a,atom_b)][iR] += _rotate_matrix(XX_L,p_mat_atom_dagger[atom_a], p_mat_atom[atom_b])
+                                        matrix_dict_list_res[X][(atom_a,atom_b)][iR] += _rotate_matrix(XX_L,symop.p_mat_atom_dagger[atom_a], symop.p_mat_atom[atom_b])
                                     if symop.sym_T:
-                                        matrix_dict_list_res[X][(atom_a,atom_b)][iR] += _rotate_matrix(XX_L,p_mat_atom_dagger_T[atom_a], p_mat_atom_T[atom_b]).conj() * self.parity_TR[X]
+                                        matrix_dict_list_res[X][(atom_a,atom_b)][iR] += _rotate_matrix(XX_L,symop.p_mat_atom_dagger_T[atom_a], symop.p_mat_atom_T[atom_b]).conj() * self.parity_TR[X]
                     # in single mode we need to determine it only once
                     if mode == "single":
-                        print (f"({atom_a},{atom_b}) : excluded",exclude_set)
-                        for iR in exclude_set:
-                            iR_new_list.remove(iR)
-                        print (f"({atom_a},{atom_b}) : remaining",iR_new_list)
+                        iR_new_list-=exclude_set
+
+        if mode == "single":
+            for (atom_a,atom_b),iR_new_list in iRab_new.items():
+                assert len(iR_new_list)==0, f"for atoms ({atom_a},{atom_b}) some R vectors were not set : {iR_new_list}"
+
 
         if mode == "sum":
             for x in matrix_dict_list_res.values():
@@ -404,24 +435,30 @@ class SymWann():
         #========================================================
         print('##########################')
         print('Symmetrizing Started')
+        t0=time()
         iRab_irred = self.find_irreducible_Rab()
-        matrix_dict_list_res, iRvec_ab_all = self.average_H_irreducible( iRab_new=iRab_irred, matrix_dict_in=self.matrix_dict_list, iRvec_old=self.iRvec, iRvec_new=self.iRvec, mode="sum")
-#        print ("iRvec_ab_all = ",iRvec_ab_all)
+        t1=time()
+        matrix_dict_list_res, iRvec_ab_all = self.average_H_irreducible( iRab_new=iRab_irred, matrix_dict_in=self.matrix_dict_list, iRvec_new=self.iRvec, mode="sum")
+        t2=time()
         iRvec_new_set = set.union(*iRvec_ab_all.values())
         iRvec_new_set.add( (0,0,0) )
-        iRvec_new = [list(irvec) for irvec in iRvec_new_set]
+        iRvec_new = list(iRvec_new_set)
         nRvec_new = len(iRvec_new)
-        iRab_new = {k:set([iRvec_new.index(list(irvec)) for irvec in v]) for k,v in iRvec_ab_all.items()}
-#        print ("iRab_new = ",iRab_new)
-        matrix_dict_list_res, iRab_all_2 = self.average_H_irreducible( iRab_new=iRab_new, matrix_dict_in=matrix_dict_list_res, iRvec_old=self.iRvec, iRvec_new=iRvec_new, mode="single")
-
+        t2a=time()
+        iRvec_new_index = {r:i for i,r in enumerate(iRvec_new)}
+        iRab_new = {k:set([iRvec_new_index[irvec] for irvec in v]) for k,v in iRvec_ab_all.items()}
+        t3=time()
+        matrix_dict_list_res, iRab_all_2 = self.average_H_irreducible( iRab_new=iRab_new, matrix_dict_in=matrix_dict_list_res, iRvec_new=iRvec_new, mode="single")
+        t4=time()
 
         return_dic = {}
         for k,v in matrix_dict_list_res.items():
             return_dic[k] = _dict_to_matrix(v, H_select=self.H_select, wann_atom_info=self.wann_atom_info, nRvec=nRvec_new, ndimv=self.ndimv[k] )
             self.spin_reorder(return_dic[k], back=True)
+        t5=time()
 
         print('Symmetrizing Finished')
+        print ("Timing:",t1-t0,t2-t1,t2a-t2,t3-t2a,t4-t3,t5-t4,"total:",t5-t0)
 
         return return_dic, np.array(iRvec_new)
 
@@ -483,7 +520,7 @@ class WannAtomInfo():
 
 
     def __str__(self):
-        return "; ".join(f"{key}:{value}" for key,value in self.__dict__.items() if key!="orb_position_dic" )
+        return "; ".join(f"{key}:{value}" for key,value in self.__dict__.items() if key not in ["orb_position_on_atom_dic","ul","ur"] )
 
 
 # TODO : move to irrep?
