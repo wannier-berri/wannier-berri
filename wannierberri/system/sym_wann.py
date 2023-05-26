@@ -279,7 +279,12 @@ class SymWann():
         R_list = np.array(iRvec, dtype=int)
         nRvec = len(R_list)
         tmp_R_list = []
-        matrix_list_res = {k: np.zeros_like(v )  for k,v in self.matrix_list.items() if k in self.possible_matrix_list}
+        matrix_list_res = {}
+        for k,v in self.matrix_list.items():
+            if k in self.possible_matrix_list:
+                shape = list(v.shape)
+                shape[2]=nRvec
+                matrix_list_res[k] = np.zeros(shape, dtype=complex)
 
         for irot,symop in enumerate(self.symmetry_operations):
             rot_map, vec_shift, sym_only, sym_T = self.atom_rot_map(symop)
