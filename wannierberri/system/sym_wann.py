@@ -255,13 +255,13 @@ class SymWann():
         return np.array(rot_map, dtype=int), np.array(vec_shift_map, dtype=int), sym_only, sym_T
 
 
-    def atom_p_mat(self, atom_index, symop):
+    def atom_p_mat(self, atom_info, symop):
         '''
         Combining rotation matrix of Hamiltonian per orbital_quantum_number into per atom.  (num_wann,num_wann)
         '''
-        orbitals = self.wann_atom_info[atom_index].projection
-        orb_position_dic = self.wann_atom_info[atom_index].orb_position_on_atom_dic
-        num_wann_on_atom = self.wann_atom_info[atom_index].num_wann
+        orbitals = atom_info.projection
+        orb_position_dic = atom_info.orb_position_on_atom_dic
+        num_wann_on_atom =atom_info.num_wann
         p_mat = np.zeros((num_wann_on_atom, num_wann_on_atom), dtype=complex)
         p_mat_dagger = np.zeros_like(p_mat)
         for orb_name in orbitals:
@@ -291,7 +291,7 @@ class SymWann():
                 p_mat_atom = []
                 p_mat_atom_dagger = []
                 for atom in range(self.num_wann_atom):
-                    p_mat_, p_mat_dagger_ = self.atom_p_mat(atom, symop)
+                    p_mat_, p_mat_dagger_ = self.atom_p_mat(self.wann_atom_info[atom], symop)
                     p_mat_atom.append(p_mat_)
                     p_mat_atom_dagger.append(p_mat_dagger_)
                 if sym_T:
@@ -313,7 +313,6 @@ class SymWann():
                     num_w_a = self.wann_atom_info[atom_a].num_wann  #number of orbitals of atom_a
                     for atom_b in range(self.num_wann_atom):
                         num_w_b = self.wann_atom_info[atom_b].num_wann
-
                         for iR in range(nRvec):
                             new_Rvec = list(atom_R_map[iR, atom_a, atom_b])
                             if new_Rvec in self.iRvec:
@@ -478,13 +477,12 @@ class SymmetryOperation_loc(SymmetryOperation):
     def _lattice_T(self):
         return np.transpose(self.Lattice)
 
-
 def _rotate_matrix_flat(X,L,R):
     if X.ndim==2:
         return L.dot(X).dot(R).flatten()
     elif X.ndim==3:
         X_shift = X.transpose(2, 0, 1)
-        tmpX = np.dot(np.dot(L, X_shift), R)
+        tmpX = L.dot(X_shift).dot(R)
         return tmpX.transpose( 0, 2, 1).reshape(-1,3)
     else:
         raise ValueError()
