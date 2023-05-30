@@ -79,6 +79,7 @@ class SymWann():
         self.positions = positions
         self.atom_name = atom_name
         self.possible_matrix_list = ['Ham','AA', 'SS', 'BB', 'CC']  #['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
+
         # This is confusing, actually the I-odd vectors have "+1" here, because the minus is already in the rotation matrix
         # but Ham is a scalar, so +1
         #TODO: change it
@@ -219,7 +220,6 @@ class SymWann():
         print ("Timing of SymWann.__init__():", [t1-t0 for t0,t1 in zip(times,times[1:])], "total:",times[-1]-times[0])
 
 
-#        self.find_irreducible_Rab()
 
     #==============================
     #Find space group and symmetres
