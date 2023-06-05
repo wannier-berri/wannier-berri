@@ -1,6 +1,6 @@
 from .classes import StaticCalculator
-from wannierberri import covariant_formulak as frml
-from wannierberri import fermiocean
+from .. import covariant_formulak as frml
+from .. import fermiocean
 
 ##################################################
 ######                                     #######

@@ -70,6 +70,20 @@ calculators_Fe = {
     #,'ahc_test','dos','cumdos',
     #           'conductivity_ohmic','conductivity_ohmic_fsurf','Morb','Morb_test']
 
+calculators_Fe_transl_inv = {
+    'ahc': calc.static.AHC,
+}
+
+
+calculators_Fe_transl_inv_unchanged = {
+    'conductivity_ohmic': calc.static.Ohmic,
+#    'conductivity_ohmic_fsurf': calc.static.Ohmic_FermiSurf,
+#    'dos': calc.static.DOS,
+#    'cumdos':calc.static.CumDOS,
+}
+
+
+
 calculators_GaAs = {
     'berry_dipole': calc.static.BerryDipole_FermiSea,
     'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf,
@@ -133,6 +147,80 @@ def test_Fe(check_run,system_Fe_W90, compare_any_result,compare_fermisurfer):
                  suffix = _quant + _comp + "-run",
                  suffix_ref = _quant + _comp,
                  fout_name_ref="tabulate_Fe_W90",precision=prec)
+
+def test_Fe_transl_inv_diag(check_run, system_Fe_W90_transl_inv_diag, compare_any_result):
+    """The reference data for this test were generated with the  `new` implemetation, 
+    hence the factor 100 to trqanform AHC intu units S/m"""
+
+    param = {'Efermi': Efermi_Fe}
+    param_tab = {'degen_thresh': 5e-2}
+    calculators = {}
+    for k, v in calculators_Fe_transl_inv_unchanged.items():
+        calculators[k] = v(**param)
+    for k, v in calculators_Fe_transl_inv.items():
+        calculators[k] = v(**param)
+
+    suffix = "run_transl_inv_diag"
+    result = check_run(
+        system_Fe_W90_transl_inv_diag,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix=suffix,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        extra_precision={"Morb": -1e-6},
+        skip_compare=list(calculators_Fe_transl_inv.keys())
+                )
+
+    for quant in calculators_Fe_transl_inv:
+        compare_any_result(
+            "berry_Fe_W90",
+            quant + "-"+suffix,
+            0,
+            fout_name_ref="berry_Fe_W90",
+            suffix_ref=quant+ "-"+suffix,
+            factor=100,
+            result_type=EnergyResult)
+
+
+
+def test_Fe_transl_inv_full(check_run, system_Fe_W90_transl_inv_full, compare_any_result):
+    """The reference data for this test were generated with the  `new` implemetation, 
+    hence the factor 100 to trqanform AHC intu units S/m"""
+
+    param = {'Efermi': Efermi_Fe}
+    param_tab = {'degen_thresh': 5e-2}
+    calculators = {}
+    for k, v in calculators_Fe_transl_inv_unchanged.items():
+        calculators[k] = v(**param)
+    for k, v in calculators_Fe_transl_inv.items():
+        calculators[k] = v(**param)
+
+    suffix = "run_transl_inv_full"
+    result = check_run(
+        system_Fe_W90_transl_inv_full,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix=suffix,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        extra_precision={"Morb": -1e-6},
+        skip_compare=list(calculators_Fe_transl_inv.keys())
+                )
+
+    for quant in calculators_Fe_transl_inv:
+        compare_any_result(
+            "berry_Fe_W90",
+            quant + "-"+suffix,
+            0,
+            fout_name_ref="berry_Fe_W90",
+            suffix_ref=quant+ "-"+suffix,
+            factor=100,
+            result_type=EnergyResult)
 
 
 

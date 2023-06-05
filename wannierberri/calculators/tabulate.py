@@ -1,5 +1,5 @@
 from .classes import Tabulator
-from wannierberri import covariant_formulak as frml
+from .. import covariant_formulak as frml
 
 class BerryCurvature(Tabulator):
     def __init__(self,**kwargs):

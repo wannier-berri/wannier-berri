@@ -1,9 +1,9 @@
-from wannierberri import fermiocean
-from wannierberri import __result as result
-from wannierberri.__tabulate import TABresult
+from .. import fermiocean
+from .. import __result as result
+from ..__tabulate import TABresult
 import numpy as np
 import abc,functools
-from wannierberri.__kubo import Gaussian, Lorentzian
+from ..__kubo import Gaussian, Lorentzian
 from collections import defaultdict
 from math import ceil
 from numba import njit

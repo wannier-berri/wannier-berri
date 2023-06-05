@@ -80,7 +80,7 @@ class  OpticalConductivity(DynamicCalculator):
 ##################################
 ###          SHC                ##
 ##################################
-from wannierberri.covariant_formulak import SpinVelocity
+from ..covariant_formulak import SpinVelocity
 
 class Formula_SHC():
 
