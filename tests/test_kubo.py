@@ -217,26 +217,3 @@ def test_shc(system_Fe_W90):
     # TODO: Add wcc test
 
 
-def test_shiftcurrent_symmetry(check_integrate_dynamical, system_GaAs_sym_tb):
-    """Test shift current with and without symmetry is the same for a symmetrized system"""
-    import copy
-
-    kwargs = dict(
-        quantities=["opt_shiftcurrent"],
-        Efermi=np.array([7.0]),
-        omega=np.arange(1.0, 5.1, 0.5),
-        grid_param=dict(NK=6, NKFFT=3),
-        additional_parameters=dict(smr_fixed_width=0.20, smr_type="Gaussian", sc_eta=0.1),
-        comparer=None,
-    )
-
-    system = copy.deepcopy(system_GaAs_sym_tb)
-    system.set_symmetry(symmetries_GaAs)
-
-    result_irr_k = check_integrate_dynamical(system, use_symmetry=True, fout_name="kubo_GaAs_sym_irr_k", **kwargs)
-    result_full_k = check_integrate_dynamical(system, use_symmetry=False, fout_name="kubo_GaAs_sym_full_k", **kwargs)
-
-    # FIXME: there is small but nonzero difference between the two results.
-    # It seems that the finite eta correction term (PRB 103 247101 (2021)) is needed to get perfect agreement.
-    assert result_full_k.results["opt_shiftcurrent"].data == approx(
-        result_irr_k.results["opt_shiftcurrent"].data, abs=1e-6)

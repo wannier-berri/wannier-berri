@@ -15,6 +15,7 @@ from common import ROOT_DIR
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
 symmetries_Te = ["C3z", "C2x", "TimeReversal"]
 symmetries_GaAs = [SYM.C4z * SYM.Inversion, SYM.TimeReversal, SYM.Rotation(3, [1, 1, 1])]
+#symmetries_GaAs = [ SYM.C2z]
 symmetries_Si = ["C4z","C4x","TimeReversal"]
 symmetries_Mn3Sn = ["C3z"]
 
@@ -205,6 +206,7 @@ def system_GaAs_sym_tb():
 
     seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
     system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
+    system.set_symmetry(symmetries_GaAs)
     system.symmetrize(
         positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
         atom_name=['Ga', 'As'],

@@ -370,6 +370,7 @@ class SymWann():
                 #TODO try numba
                 for (atom_a,atom_b),iR_new_list in iRab_new.items():
                     exclude_set = set()
+#                    print (f"{atom_a},{atom_b} : iR_new_list ({iR_new_list})")
                     for iR in iR_new_list:
                         new_Rvec = tuple(atom_R_map[iR, atom_a, atom_b])
                         iRab_all[(symop.rot_map[atom_a], symop.rot_map[atom_b])].add(new_Rvec)
@@ -412,11 +413,13 @@ class SymWann():
                                         matrix_dict_list_res[X][(atom_a,atom_b)][iR] += _rotate_matrix(XX_L,symop.p_mat_atom_dagger_T[atom_a], symop.p_mat_atom_T[atom_b]).conj() * self.parity_TR[X]
                     # in single mode we need to determine it only once
                     if mode == "single":
+#                        print (f"{atom_a},{atom_b} : excluding ({exclude_set})")
                         iR_new_list-=exclude_set
+#                    print (f"{atom_a},{atom_b} : iR_new_list -upd ({iR_new_list})")
 
         if mode == "single":
             for (atom_a,atom_b),iR_new_list in iRab_new.items():
-                assert len(iR_new_list)==0, f"for atoms ({atom_a},{atom_b}) some R vectors were not set : {iR_new_list}"
+                assert len(iR_new_list)==0, f"for atoms ({atom_a},{atom_b}) some R vectors were not set : {iR_new_list}"+", ".join(str(iRvec_new[ir]) for ir in iR_new_list)
 
 
         if mode == "sum":
@@ -573,9 +576,7 @@ def _matrix_to_dict( mat, H_select, wann_atom_info):
             X = mat[ H_select[a, b] ]
             X = X.reshape( (num_w_a,num_w_b)+mat.shape[2:] )
             for iR in range(mat.shape[2]):
-                x = X[:,:,iR]
-                if np.max(abs(x))>1e-15:
-                    result_ab[iR]=x
+                result_ab[iR]=X[:,:,iR]
             if len(result_ab)>0:
                 result[(a,b)] = result_ab
     return result

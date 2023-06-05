@@ -68,6 +68,7 @@ def check_run(parallel_serial, compare_any_result):
             file_Klist=file_Klist,
         )
 
+        print ("checked:", calculators.keys(),result.results.keys())
         if do_not_compare:
             return result  # compare result externally
 
@@ -725,6 +726,7 @@ def test_GaAs_sym_tb(check_run, system_GaAs_sym_tb, compare_any_result):
         compare_zero=True,
         suffix="run",
     )
+
 
 
 def test_Haldane_PythTB(check_run, system_Haldane_PythTB, compare_any_result):
