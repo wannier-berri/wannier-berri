@@ -272,7 +272,6 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
 def test_Fe_transl_inv_diag(check_run, system_Fe_W90_transl_inv_diag, compare_any_result):
 
     param = {'Efermi': Efermi_Fe}
-    param_tab = {'degen_thresh': 5e-2}
     calculators = {}
     for k, v in calculators_Fe_transl_inv_unchanged.items():
         calculators[k] = v(**param)
@@ -280,7 +279,7 @@ def test_Fe_transl_inv_diag(check_run, system_Fe_W90_transl_inv_diag, compare_an
         calculators[k] = v(**param)
 
     suffix = "run_transl_inv_diag"
-    result = check_run(
+    check_run(
         system_Fe_W90_transl_inv_diag,
         calculators,
         fout_name="berry_Fe_W90",
@@ -307,7 +306,6 @@ def test_Fe_transl_inv_diag(check_run, system_Fe_W90_transl_inv_diag, compare_an
 def test_Fe_transl_inv_full(check_run, system_Fe_W90_transl_inv_full, compare_any_result):
 
     param = {'Efermi': Efermi_Fe}
-    param_tab = {'degen_thresh': 5e-2}
     calculators = {}
     for k, v in calculators_Fe_transl_inv_unchanged.items():
         calculators[k] = v(**param)
@@ -315,7 +313,7 @@ def test_Fe_transl_inv_full(check_run, system_Fe_W90_transl_inv_full, compare_an
         calculators[k] = v(**param)
 
     suffix = "run_transl_inv_full"
-    result = check_run(
+    check_run(
         system_Fe_W90_transl_inv_full,
         calculators,
         fout_name="berry_Fe_W90",
