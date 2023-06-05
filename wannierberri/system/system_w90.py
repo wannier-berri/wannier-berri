@@ -32,6 +32,8 @@ class System_w90(System):
         the seedname used in Wannier90
     transl_inv : bool
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
+    transl_inv_offdiag : bool
+        Use translationally invariant form of off-diagonal position matrix elements[JML TODO: Add reference]
     guiding_centers : bool
         If True, enable overwriting the diagonal elements of the AA_R matrix at R=0 with the
         Wannier centers calculated from Wannier90.
@@ -54,6 +56,7 @@ class System_w90(System):
             self,
             seedname="wannier90",
             transl_inv=True,
+            transl_inv_offdiag = False,
             guiding_centers=False,
             fft='fftw',
             npar=multiprocessing.cpu_count(),
@@ -101,33 +104,47 @@ class System_w90(System):
         self.set_R_mat('Ham', fourier_q_to_R_loc(HHq))
         timeFFT += time() - t0
 
+
         if self.need_R_any('AA'):
-            AAq = chk.get_AA_q(mmn, transl_inv=transl_inv)
-            t0 = time()
-            self.set_R_mat('AA',fourier_q_to_R_loc(AAq))
-            timeFFT += time() - t0
+            AA_qb, bk_latt_unique = chk.get_AA_q(mmn,transl_inv=transl_inv, centers=chk.wannier_centers, transl_inv_offdiag=transl_inv_offdiag)
+            t0=time()
+            if transl_inv_offdiag:
+                AA_Rb = fourier_q_to_R_loc(AA_qb)
+                AA_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
+                # Sum over b vectors considering the phase factors
+                for iR in range(self.nRvec0):
+                    for ib in range(mmn.NNB):
+                        phase = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib, :], self.iRvec[iR, :]) / 2)
+                        AA_R[:, :, iR, :] += AA_Rb[:, :, iR, ib, :] * phase
+                # Set diagonal parts
+                for iw in range(self.num_wann):
+                    AA_R[iw, iw, self.iR0, :] = self.wannier_centers_cart_auto[iw, :]
+            else:
+                AA_R = np.sum(fourier_q_to_R_loc(AA_qb), axis=3)
+            timeFFT+=time()-t0
+
             if transl_inv:
-                wannier_centers_cart_new = np.diagonal(self.get_R_mat('AA')[:, :, self.iR0, :], axis1=0, axis2=1).transpose()
-                if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart_auto) < 1e-6):
+                wannier_centers_cart_new = np.diagonal(AA_R[:,:,self.iR0,:],axis1=0,axis2=1).transpose()
+                if not np.all(abs(wannier_centers_cart_new-self.wannier_centers_cart_auto)<1e-6):
                     if guiding_centers:
-                        print(
-                            f"The read Wannier centers\n{self.wannier_centers_cart_auto}\n"
-                            f"are different from the evaluated Wannier centers\n{wannier_centers_cart_new}\n"
-                            "This can happen if guiding_centres was set to true in Wannier90.\n"
-                            "Overwrite the evaluated centers using the read centers.")
+                        print(f"The read Wannier centers\n{self.wannier_centers_cart_auto}\n"
+                              f"are different from the evaluated Wannier centers\n{wannier_centers_cart_new}\n"
+                              "This can happen if guiding_centres was set to true in Wannier90.\n"
+                              "Overwrite the evaluated centers using the read centers.")
                         for iw in range(self.num_wann):
-                            self.get_R_mat('AA')[iw, iw, self.iR0, :] = self.wannier_centers_cart_auto[iw, :]
+                            AA_R[iw, iw, self.iR0, :] = self.wannier_centers_cart_auto[iw, :]
                     else:
                         raise ValueError(
                             f"the difference between read\n{self.wannier_centers_cart_auto}\n"
                             f"and evluated \n{wannier_centers_cart_new}\n wannier centers is\n"
                             f"{self.wannier_centers_cart_auto-wannier_centers_cart_new}\n"
-                            "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90."
-                        )
+                            "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90.")
+            self.set_R_mat('AA',AA_R)
+
 
         if 'BB' in self.needed_R_matrices:
             t0 = time()
-            self.set_R_mat('BB', fourier_q_to_R_loc(chk.get_AA_q(mmn, eig)))
+            self.set_R_mat('BB', fourier_q_to_R_loc(chk.get_BB_q(mmn, eig)))
             timeFFT += time() - t0
 
         if 'CC' in self.needed_R_matrices:
