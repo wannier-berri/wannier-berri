@@ -33,7 +33,7 @@ class System_w90(System):
     transl_inv : bool
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
     transl_inv_offdiag : bool
-        Use translationally invariant form of off-diagonal position matrix elements[JML TODO: Add reference]
+        Use translationally invariant form of both diagonal and off-diagonal position matrix elements[JML TODO: Add reference]
     guiding_centers : bool
         If True, enable overwriting the diagonal elements of the AA_R matrix at R=0 with the
         Wannier centers calculated from Wannier90.
@@ -56,7 +56,7 @@ class System_w90(System):
             self,
             seedname="wannier90",
             transl_inv=True,
-            transl_inv_offdiag = False,
+            transl_inv_offdiag=False,
             guiding_centers=False,
             fft='fftw',
             npar=multiprocessing.cpu_count(),
@@ -64,6 +64,8 @@ class System_w90(System):
             bk_complete_tol=1e-5,
             **parameters):
 
+        if transl_inv_offdiag:
+            transl_inv=True
         self.set_parameters(**parameters)
         self.npar = npar
         self.seedname = seedname
