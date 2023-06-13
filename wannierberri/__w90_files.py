@@ -103,28 +103,73 @@ class CheckPoint():
         SS_q = np.array([self.wannier_gauge(S, ik, ik) for ik, S in enumerate(spn.data)])
         return 0.5 * (SS_q + SS_q.transpose(0, 2, 1, 3).conj())
 
-    def get_AA_q(self, mmn, eig=None, transl_inv=False):  # if eig is present - it is BB_q
-        if transl_inv and (eig is not None):
-            raise RuntimeError("transl_inv cannot be used to obtain BB")
+    #########
+    # Oscar #
+    ############################################################################################################
+    def get_AA_q(self, mmn, transl_inv=False, centers=None, transl_inv_OSD=False, int_cc=False):
         mmn.set_bk_chk(self)
         AA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
                 data = mmn.data[ik, ib]
-                if eig is not None:
-                    data = data * eig.data[ik, :, None]
-                AAW = self.wannier_gauge(data, ik, iknb)
-                AA_q_ik = 1.j * AAW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
-                if transl_inv:
-                    AA_q_ik[range(self.num_wann), range(self.num_wann)] = -np.log(
-                        AAW.diagonal()).imag[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, :]
-                AA_q[ik] += AA_q_ik
-        if eig is None:
-            AA_q = 0.5 * (AA_q + AA_q.transpose((0, 2, 1, 3)).conj())
+                AAW=self.wannier_gauge(data, ik, iknb)
+                AA_q_ik_ib = 1j * AAW[:,:,None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+
+                if (transl_inv and not transl_inv_OSD):
+                    AA_q_ik_ib[range(self.num_wann),range(self.num_wann)]=-np.log(
+                        AAW.diagonal()).imag[:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,:]
+
+                # Translationally-invariant convention
+                if transl_inv_OSD:
+                    for iw in range(self.num_wann):
+                        for jw in range(self.num_wann):
+                            if iw != jw:
+                                if not int_cc:
+                                    AA_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib, :], centers[jw, :]) )
+                                else:                                
+                                    AA_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib, :], (centers[iw, :] + centers[jw, :])/2 ) )
+                            else:
+                                AA_q_ik_ib[iw, iw, :] = -np.log(AAW.diagonal()).imag[iw]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,:]
+
+                AA_q[ik] += AA_q_ik_ib
+
+        # The result should be hermitian, but this line can be used for testing
+        #AA_q = 0.5 * (AA_q + AA_q.transpose((0, 2, 1, 3)).conj())
         return AA_q
 
-    def get_CC_q(self, uhu, mmn):  # if eig is present - it is BB_q
+    def get_BB_q(self, mmn, eig, transl_inv=False, centers=None, transl_inv_OSD=False):
+        mmn.set_bk_chk(self)
+        BB_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb = mmn.neighbours[ik, ib]
+                data = mmn.data[ik, ib]
+                data = data * eig.data[ik, :, None]
+                BBW=self.wannier_gauge(data, ik, iknb)
+                BB_q_ik_ib = 1j * BBW[:,:,None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+
+                if (transl_inv and not transl_inv_OSD):
+                    BB_q_ik_ib[range(self.num_wann),range(self.num_wann)]=-np.log(
+                        BBW.diagonal()).imag[:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,:]
+
+                # Translationally-invariant convention
+                if transl_inv_OSD:
+                    for iw in range(self.num_wann):
+                        for jw in range(self.num_wann):   
+                            BB_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib, :], centers[jw, :]) )                    
+                            #if iw != jw:
+                            #    BB_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib, :], centers[jw, :]) )
+                            #else:
+                            #    BB_q_ik_ib[iw, iw, :] = -np.log(BBW.diagonal()).imag[iw]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,:]
+
+                BB_q[ik] += BB_q_ik_ib
+
+        #BB_q = 0.5 * (BB_q + BB_q.transpose((0, 2, 1, 3)).conj())
+        return BB_q
+
+    # Anti-symmetric C matrix
+    def get_CC_q(self, mmn, uhu, transl_inv=False, centers=None, transl_inv_OSD=False):
         mmn.set_bk_chk(self)
         assert uhu.NNB == mmn.NNB
         CC_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
@@ -134,12 +179,53 @@ class CheckPoint():
                 for ib2 in range(mmn.NNB):
                     iknb2 = mmn.neighbours[ik, ib2]
                     data = uhu.data[ik, ib1, ib2]
-                    CC_q[ik] += 1.j * self.wannier_gauge(data, iknb1, iknb2)[:, :, None] * (
+                    CC_q_ik_ib = 1.j * self.wannier_gauge(data, iknb1, iknb2)[:, :, None] * (
                         mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
                             mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
                             - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
-        CC_q = 0.5 * (CC_q + CC_q.transpose((0, 2, 1, 3)).conj())
+                    
+                    # Translationally-invariant convention
+                    if transl_inv_OSD:
+                        for iw in range(self.num_wann):
+                            for jw in range(self.num_wann):                     
+                                CC_q_ik_ib[iw, jw, :] *= np.exp(-1j * np.dot(mmn.bk_cart[ik, ib1, :], centers[iw, :]) )
+                                CC_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib2, :], centers[jw, :]) )
+                    
+                    CC_q[ik] += CC_q_ik_ib
+
+        #CC_q = 0.5 * (CC_q + CC_q.transpose((0, 2, 1, 3)).conj())
         return CC_q
+    
+    # Anti-symmetric F matrix
+    def get_FF_q(self, mmn, uiu, transl_inv=False, centers=None, transl_inv_OSD=False):
+        mmn.set_bk_chk(self)
+        assert uiu.NNB == mmn.NNB
+        FF_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+        for ik in range(self.num_kpts):
+            for ib1 in range(mmn.NNB):
+                iknb1 = mmn.neighbours[ik, ib1]
+                for ib2 in range(mmn.NNB):
+                    iknb2 = mmn.neighbours[ik, ib2]
+                    data = uiu.data[ik, ib1, ib2] # < u_k+b1 | I | u_k+b2 > 
+                    FF_q_ik_ib = self.wannier_gauge(data, iknb1, iknb2)[:, :, None] * (
+                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
+                            mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
+                            - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
+
+                    # Translationally-invariant convention
+                    if transl_inv_OSD:
+                        for iw in range(self.num_wann):
+                            for jw in range(self.num_wann):
+                                FF_q_ik_ib[iw, jw, :] *= np.exp(-1j * np.dot(mmn.bk_cart[ik, ib1, :], centers[iw, :]) )
+                                FF_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib2, :], centers[jw, :]) )
+
+                    FF_q[ik] += FF_q_ik_ib
+
+        # FF_q = 0.5 * (FF_q - FF_q.transpose((0, 2, 1, 3)).conj())
+        return FF_q
+
+    ############################################################################################################
+
     def get_SA_q(self, siu, mmn):
         mmn.set_bk_chk(self)
         SA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)

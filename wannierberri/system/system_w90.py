@@ -17,7 +17,7 @@ import functools
 import multiprocessing
 from ..__utility import iterate3dpm, real_recip_lattice, fourier_q_to_R
 from .system import System
-from ..__w90_files import EIG, MMN, CheckPoint, SPN, UHU, SIU, SHU
+from ..__w90_files import EIG, MMN, CheckPoint, SPN, UHU, UIU, SIU, SHU
 from time import time
 
 
@@ -54,12 +54,25 @@ class System_w90(System):
             self,
             seedname="wannier90",
             transl_inv=True,
+            #############
+            ### Oscar ###
+            #######################################
+            transl_inv_OSD=False, # Activate Convention I to deal with translational invariance
+            int_cc=False, # Activate the use of intrinsic centers for the position matrix elements
+            #######################################
             guiding_centers=False,
             fft='fftw',
             npar=multiprocessing.cpu_count(),
             kmesh_tol=1e-7,
             bk_complete_tol=1e-5,
             **parameters):
+
+        #############
+        ### Oscar ###
+        ########################################    
+        if transl_inv_OSD:
+            transl_inv=True
+        ########################################
 
         self.set_parameters(**parameters)
         self.npar = npar
@@ -101,41 +114,56 @@ class System_w90(System):
         self.set_R_mat('Ham', fourier_q_to_R_loc(HHq))
         timeFFT += time() - t0
 
+        #########
+        # Oscar #
+        ############################################################################################################
+        
+        centers=chk.wannier_centers
+        
         if self.need_R_any('AA'):
-            AAq = chk.get_AA_q(mmn, transl_inv=transl_inv)
+            AAq = chk.get_AA_q(mmn, transl_inv=transl_inv, centers=centers, transl_inv_OSD=transl_inv_OSD, int_cc=int_cc)
             t0 = time()
             self.set_R_mat('AA',fourier_q_to_R_loc(AAq))
             timeFFT += time() - t0
-            if transl_inv:
-                wannier_centers_cart_new = np.diagonal(self.get_R_mat('AA')[:, :, self.iR0, :], axis1=0, axis2=1).transpose()
-                if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart_auto) < 1e-6):
-                    if guiding_centers:
-                        print(
-                            f"The read Wannier centers\n{self.wannier_centers_cart_auto}\n"
-                            f"are different from the evaluated Wannier centers\n{wannier_centers_cart_new}\n"
-                            "This can happen if guiding_centres was set to true in Wannier90.\n"
-                            "Overwrite the evaluated centers using the read centers.")
-                        for iw in range(self.num_wann):
-                            self.get_R_mat('AA')[iw, iw, self.iR0, :] = self.wannier_centers_cart_auto[iw, :]
-                    else:
-                        raise ValueError(
-                            f"the difference between read\n{self.wannier_centers_cart_auto}\n"
-                            f"and evluated \n{wannier_centers_cart_new}\n wannier centers is\n"
-                            f"{self.wannier_centers_cart_auto-wannier_centers_cart_new}\n"
-                            "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90."
-                        )
+            #if transl_inv:
+            #    wannier_centers_cart_new = np.diagonal(self.get_R_mat('AA')[:, :, self.iR0, :], axis1=0, axis2=1).transpose()
+            #    if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart_auto) < 1e-6):
+            #        if guiding_centers:
+            #            print(
+            #                f"The read Wannier centers\n{self.wannier_centers_cart_auto}\n"
+            #                f"are different from the evaluated Wannier centers\n{wannier_centers_cart_new}\n"
+            #                "This can happen if guiding_centres was set to true in Wannier90.\n"
+            #                "Overwrite the evaluated centers using the read centers.")
+            #            for iw in range(self.num_wann):
+            #                self.get_R_mat('AA')[iw, iw, self.iR0, :] = self.wannier_centers_cart_auto[iw, :]
+            #        else:
+            #            raise ValueError(
+            #                f"the difference between read\n{self.wannier_centers_cart_auto}\n"
+            #                f"and evluated \n{wannier_centers_cart_new}\n wannier centers is\n"
+            #                f"{self.wannier_centers_cart_auto-wannier_centers_cart_new}\n"
+            #                "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90."
+            #            )
 
         if 'BB' in self.needed_R_matrices:
             t0 = time()
-            self.set_R_mat('BB', fourier_q_to_R_loc(chk.get_AA_q(mmn, eig)))
+            self.set_R_mat('BB', fourier_q_to_R_loc(chk.get_BB_q(mmn, eig, transl_inv=transl_inv, centers=centers, transl_inv_OSD=transl_inv_OSD)))
             timeFFT += time() - t0
 
         if 'CC' in self.needed_R_matrices:
             uhu = UHU(seedname)
             t0 = time()
-            self.set_R_mat('CC', fourier_q_to_R_loc(chk.get_CC_q(uhu, mmn)))
+            self.set_R_mat('CC', fourier_q_to_R_loc(chk.get_CC_q(mmn, uhu, transl_inv=transl_inv, centers=centers, transl_inv_OSD=transl_inv_OSD)))
             timeFFT += time() - t0
             del uhu
+
+        if 'FF' in self.needed_R_matrices:
+            uiu = UIU(seedname)
+            t0 = time()
+            self.set_R_mat('FF', fourier_q_to_R_loc(chk.get_FF_q(mmn, uiu, transl_inv=transl_inv, centers=centers, transl_inv_OSD=transl_inv_OSD)))
+            timeFFT += time() - t0
+            del uiu
+
+        ############################################################################################################
 
         if self.need_R_any(['SS', 'SR', 'SH', 'SHR']):
             spn = SPN(seedname)

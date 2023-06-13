@@ -144,8 +144,11 @@ class Data_K(System):
         return self.system.is_phonon
 
 
+    #########
+    # Oscar #
+    ############################################################################################################
     def get_R_mat(self,key):
-        memoize_R = ['Ham','AA','OO','BB','CC','CCab']
+        memoize_R = ['Ham','AA','OO','BB','CC','CCab','FF']
         try:
             return self._XX_R[key]
         except KeyError:
@@ -153,8 +156,8 @@ class Data_K(System):
                 res = self._OO_R()
             elif key == 'CCab':
                 res = self._CCab_R()
-            elif key == 'FF':
-                res = self._FF_R()
+            #elif key == 'FF':
+            #    res = self._FF_R()
             elif key == 'T_wcc':
                 res = self._T_wcc_R()
             else:
@@ -165,6 +168,7 @@ class Data_K(System):
             if key in memoize_R:
                 self.set_R_mat(key,res)
         return res
+    ############################################################################################################
 
 
     #  this is a bit ovberhead, but to maintain uniformity of the code let's use this
