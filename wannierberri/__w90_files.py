@@ -106,123 +106,249 @@ class CheckPoint():
     #########
     # Oscar #
     ############################################################################################################
-    def get_AA_q(self, mmn, transl_inv=False, centers=None, transl_inv_OSD=False, int_cc=False):
+    def get_AA_q(self, mmn, transl_inv=False, centers=None, transl_inv_JaeMo=False, transl_inv_OSD=False):
         mmn.set_bk_chk(self)
-        AA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+    
+        # Unify the b vector indices
+        bk_latt = np.rint((mmn.bk_cart @ np.linalg.inv(self.recip_lattice)) * self.mp_grid[None, None, :]).astype(int)
+        bk_latt_unique = np.unique(bk_latt.reshape(-1, 3), axis=0)
+        bk_cart_unique = (bk_latt_unique / self.mp_grid[None, :]) @ self.recip_lattice
+        assert bk_latt_unique.shape == (mmn.NNB, 3)
+        bk_latt_unique = [tuple(b) for b in bk_latt_unique]
+
+        AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
-                data = mmn.data[ik, ib]
-                AAW=self.wannier_gauge(data, ik, iknb)
+                data = mmn.data[ik, ib] # < u_k | u_k+b > 
+                AAW  = self.wannier_gauge(data, ik, iknb)
+
+                # Naive finite-difference scheme
                 AA_q_ik_ib = 1j * AAW[:,:,None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+                if (not transl_inv_JaeMo and not transl_inv_OSD):                    
+                    if transl_inv:
+                        AA_q_ik_ib[range(self.num_wann),range(self.num_wann)] = -np.log(
+                            AAW.diagonal()).imag[:,None] * mmn.wk[ik,ib] * mmn.bk_cart[ik,ib,None,:]
+                  
+                # Jae-Mo's method
+                if transl_inv_JaeMo:
+                    for iw in range(self.num_wann):
+                        for jw in range(self.num_wann):
+                            AA_q_ik_ib[iw, jw, :] *= np.exp(1j * np.dot(mmn.bk_cart[ik, ib, :], (centers[iw,:] + centers[jw,:])/2 ))
+                            #if iw != jw:
+                            #    AA_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib, :], (centers[iw, :] + centers[jw, :])/2 ) )
+                            #else:
+                            #    AA_q_ik_ib[iw, iw, :] = -np.log(AAW.diagonal()).imag[iw] * mmn.wk[ik,ib] * mmn.bk_cart[ik,ib,:]
 
-                if (transl_inv and not transl_inv_OSD):
-                    AA_q_ik_ib[range(self.num_wann),range(self.num_wann)]=-np.log(
-                        AAW.diagonal()).imag[:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,:]
-
-                # Translationally-invariant convention
+                # Convention I method
                 if transl_inv_OSD:
                     for iw in range(self.num_wann):
                         for jw in range(self.num_wann):
-                            if iw != jw:
-                                if not int_cc:
-                                    AA_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib, :], centers[jw, :]) )
-                                else:                                
-                                    AA_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib, :], (centers[iw, :] + centers[jw, :])/2 ) )
-                            else:
-                                AA_q_ik_ib[iw, iw, :] = -np.log(AAW.diagonal()).imag[iw]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,:]
+                            AA_q_ik_ib[iw, jw, :] *= np.exp(1j * np.dot(mmn.bk_cart[ik, ib, :], centers[jw,:]) )                            
+                            #if iw != jw:
+                            #    AA_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib, :], centers[jw, :]) )
+                            #else:
+                            #    AA_q_ik_ib[iw, iw, :] = 0.0#-np.log(AAW.diagonal()).imag[iw]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,:]
 
-                AA_q[ik] += AA_q_ik_ib
+                # Find unique b index
+                b_latt = np.rint((mmn.bk_cart[ik, ib, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
+                ib_unique = bk_latt_unique.index(tuple(b_latt))
+                assert np.allclose(bk_cart_unique[ib_unique, :], mmn.bk_cart[ik, ib, :])                
 
-        # The result should be hermitian, but this line can be used for testing
-        #AA_q = 0.5 * (AA_q + AA_q.transpose((0, 2, 1, 3)).conj())
-        return AA_q
+                AA_qb[ik, :, :, ib_unique, :] = AA_q_ik_ib
 
-    def get_BB_q(self, mmn, eig, transl_inv=False, centers=None, transl_inv_OSD=False):
+        # The naive finite-difference scheme is known to break hermiticity
+        #if (not transl_inv_JaeMo and not transl_inv_OSD):
+        #    AA_qb = 0.5 * (AA_qb + AA_qb.swapaxes(1,2).conj())
+
+        return AA_qb, np.array(bk_latt_unique) / self.mp_grid[None, :]
+
+    def get_BB_q(self, mmn, eig, transl_inv=False, centers=None, transl_inv_JaeMo=False, transl_inv_OSD=False):
         mmn.set_bk_chk(self)
-        BB_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+
+        # Unify the b vector indices
+        bk_latt = np.rint((mmn.bk_cart @ np.linalg.inv(self.recip_lattice)) * self.mp_grid[None, None, :]).astype(int)
+        bk_latt_unique = np.unique(bk_latt.reshape(-1, 3), axis=0)
+        bk_cart_unique = (bk_latt_unique / self.mp_grid[None, :]) @ self.recip_lattice
+        assert bk_latt_unique.shape == (mmn.NNB, 3)
+        bk_latt_unique = [tuple(b) for b in bk_latt_unique]
+        
+        BB_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
                 data = mmn.data[ik, ib]
-                data = data * eig.data[ik, :, None]
-                BBW=self.wannier_gauge(data, ik, iknb)
-                BB_q_ik_ib = 1j * BBW[:,:,None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+                data = data * eig.data[ik, :, None] # < u_k | H_k | u_k+b > 
+                BBW  = self.wannier_gauge(data, ik, iknb)
 
-                if (transl_inv and not transl_inv_OSD):
+                # Naive finite-difference scheme
+                BB_q_ik_ib = 1j * BBW[:,:,None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+                if (not transl_inv_JaeMo and not transl_inv_OSD):
                     BB_q_ik_ib[range(self.num_wann),range(self.num_wann)]=-np.log(
                         BBW.diagonal()).imag[:,None]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,None,:]
 
-                # Translationally-invariant convention
+                # Jae-Mo's method
+                if transl_inv_JaeMo:
+                    for iw in range(self.num_wann):
+                        for jw in range(self.num_wann):
+                            BB_q_ik_ib[iw, jw, :] *= np.exp(1j * np.dot(mmn.bk_cart[ik, ib, :], (centers[iw,:] + centers[jw,:])/2 ))
+                            #if iw != jw:
+                            #    BB_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib, :], (centers[iw, :] + centers[jw, :])/2 ) )
+                            #else:
+                            #    BB_q_ik_ib[iw, iw, :] = -np.log(BBW.diagonal()).imag[iw] * mmn.wk[ik,ib] * mmn.bk_cart[ik,ib,:]
+
+                # Convention I method
                 if transl_inv_OSD:
                     for iw in range(self.num_wann):
-                        for jw in range(self.num_wann):   
-                            BB_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib, :], centers[jw, :]) )                    
+                        for jw in range(self.num_wann):
+                            BB_q_ik_ib[iw, jw, :] *= np.exp(1j * np.dot(mmn.bk_cart[ik, ib, :], centers[jw,:]) )                            
                             #if iw != jw:
                             #    BB_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib, :], centers[jw, :]) )
                             #else:
                             #    BB_q_ik_ib[iw, iw, :] = -np.log(BBW.diagonal()).imag[iw]*mmn.wk[ik,ib]*mmn.bk_cart[ik,ib,:]
 
-                BB_q[ik] += BB_q_ik_ib
+                # Find unique b index
+                b_latt = np.rint((mmn.bk_cart[ik, ib, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
+                ib_unique = bk_latt_unique.index(tuple(b_latt))
+                assert np.allclose(bk_cart_unique[ib_unique, :], mmn.bk_cart[ik, ib, :])                
 
-        #BB_q = 0.5 * (BB_q + BB_q.transpose((0, 2, 1, 3)).conj())
-        return BB_q
+                BB_qb[ik, :, :, ib_unique, :] = BB_q_ik_ib
+
+        # The naive finite-difference scheme is known to break hermiticity
+        #if (not transl_inv_JaeMo and not transl_inv_OSD):
+        #    BB_qb = 0.5 * (BB_qb + BB_qb.swapaxes(1,2).conj())
+
+        return BB_qb, np.array(bk_latt_unique) / self.mp_grid[None, :]
 
     # Anti-symmetric C matrix
-    def get_CC_q(self, mmn, uhu, transl_inv=False, centers=None, transl_inv_OSD=False):
+    def get_CC_q(self, mmn, uhu, transl_inv=False, centers=None, transl_inv_JaeMo=False, transl_inv_OSD=False):
         mmn.set_bk_chk(self)
+
+        # Unify the b1 vector indices
+        b1k_latt = np.rint((mmn.bk_cart @ np.linalg.inv(self.recip_lattice)) * self.mp_grid[None, None, :]).astype(int)
+        b1k_latt_unique = np.unique(b1k_latt.reshape(-1, 3), axis=0)
+        b1k_cart_unique = (b1k_latt_unique / self.mp_grid[None, :]) @ self.recip_lattice
+        assert b1k_latt_unique.shape == (mmn.NNB, 3)
+        b1k_latt_unique = [tuple(b1) for b1 in b1k_latt_unique]
+
+        # Unify the b2 vector indices
+        b2k_latt = np.rint((mmn.bk_cart @ np.linalg.inv(self.recip_lattice)) * self.mp_grid[None, None, :]).astype(int)
+        b2k_latt_unique = np.unique(b2k_latt.reshape(-1, 3), axis=0)
+        b2k_cart_unique = (b2k_latt_unique / self.mp_grid[None, :]) @ self.recip_lattice
+        assert b2k_latt_unique.shape == (mmn.NNB, 3)
+        b2k_latt_unique = [tuple(b2) for b2 in b2k_latt_unique]
+
         assert uhu.NNB == mmn.NNB
-        CC_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+        CC_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib1 in range(mmn.NNB):
                 iknb1 = mmn.neighbours[ik, ib1]
                 for ib2 in range(mmn.NNB):
                     iknb2 = mmn.neighbours[ik, ib2]
-                    data = uhu.data[ik, ib1, ib2]
+                    data = uhu.data[ik, ib1, ib2] # < u_k+b1 | H_k | u_k+b2 > 
+                    
+                    # Naive finite-difference scheme
                     CC_q_ik_ib = 1.j * self.wannier_gauge(data, iknb1, iknb2)[:, :, None] * (
                         mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
                             mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
-                            - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
-                    
-                    # Translationally-invariant convention
+                            - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]    
+
+                    # Jae-Mo's method
+                    if transl_inv_JaeMo:
+                        for iw in range(self.num_wann):
+                            for jw in range(self.num_wann):
+                                CC_q_ik_ib[iw, jw, :] *= np.exp(-1j * np.dot(mmn.bk_cart[ik, ib1, :], (centers[iw,:]+centers[jw,:])/2 ))
+                                CC_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib2, :], (centers[iw,:]+centers[jw,:])/2 ))
+
+                    # Convention I method
                     if transl_inv_OSD:
                         for iw in range(self.num_wann):
                             for jw in range(self.num_wann):                     
-                                CC_q_ik_ib[iw, jw, :] *= np.exp(-1j * np.dot(mmn.bk_cart[ik, ib1, :], centers[iw, :]) )
-                                CC_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib2, :], centers[jw, :]) )
-                    
-                    CC_q[ik] += CC_q_ik_ib
+                                CC_q_ik_ib[iw, jw, :] *= np.exp(-1j * np.dot(mmn.bk_cart[ik, ib1, :], centers[iw,:]) )
+                                CC_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib2, :], centers[jw,:]) )
 
-        #CC_q = 0.5 * (CC_q + CC_q.transpose((0, 2, 1, 3)).conj())
-        return CC_q
+                    # Find unique b1 index
+                    b1_latt = np.rint((mmn.bk_cart[ik, ib1, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
+                    ib1_unique = b1k_latt_unique.index(tuple(b1_latt))
+                    assert np.allclose(b1k_cart_unique[ib1_unique, :], mmn.bk_cart[ik, ib1, :])  
+
+                    # Find unique b2 index
+                    b2_latt = np.rint((mmn.bk_cart[ik, ib2, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
+                    ib2_unique = b2k_latt_unique.index(tuple(b2_latt))
+                    assert np.allclose(b2k_cart_unique[ib2_unique, :], mmn.bk_cart[ik, ib2, :])  
+                    
+                    CC_qb[ik, :, :, ib1_unique, ib2_unique, :] = CC_q_ik_ib
+
+        # The naive finite-difference scheme is known to break hermiticity (note the global 1j factor in CC_q_ik_ib)
+        #if (not transl_inv_JaeMo and not transl_inv_OSD):
+        #    CC_qb = 0.5 * (CC_qb + CC_qb.swapaxes(1,2).conj())
+
+        return CC_qb, np.array(b1k_latt_unique) / self.mp_grid[None, :], np.array(b2k_latt_unique) / self.mp_grid[None, :]
     
     # Anti-symmetric F matrix
-    def get_FF_q(self, mmn, uiu, transl_inv=False, centers=None, transl_inv_OSD=False):
+    def get_FF_q(self, mmn, uiu, transl_inv=False, centers=None, transl_inv_JaeMo=False, transl_inv_OSD=False):
         mmn.set_bk_chk(self)
         assert uiu.NNB == mmn.NNB
-        FF_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+
+        # Unify the b1 vector indices
+        b1k_latt = np.rint((mmn.bk_cart @ np.linalg.inv(self.recip_lattice)) * self.mp_grid[None, None, :]).astype(int)
+        b1k_latt_unique = np.unique(b1k_latt.reshape(-1, 3), axis=0)
+        b1k_cart_unique = (b1k_latt_unique / self.mp_grid[None, :]) @ self.recip_lattice
+        assert b1k_latt_unique.shape == (mmn.NNB, 3)
+        b1k_latt_unique = [tuple(b1) for b1 in b1k_latt_unique]
+
+        # Unify the b2 vector indices
+        b2k_latt = np.rint((mmn.bk_cart @ np.linalg.inv(self.recip_lattice)) * self.mp_grid[None, None, :]).astype(int)
+        b2k_latt_unique = np.unique(b2k_latt.reshape(-1, 3), axis=0)
+        b2k_cart_unique = (b2k_latt_unique / self.mp_grid[None, :]) @ self.recip_lattice
+        assert b2k_latt_unique.shape == (mmn.NNB, 3)
+        b2k_latt_unique = [tuple(b2) for b2 in b2k_latt_unique]
+
+        FF_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib1 in range(mmn.NNB):
                 iknb1 = mmn.neighbours[ik, ib1]
                 for ib2 in range(mmn.NNB):
                     iknb2 = mmn.neighbours[ik, ib2]
                     data = uiu.data[ik, ib1, ib2] # < u_k+b1 | I | u_k+b2 > 
+
+                    # Naive finite-difference scheme
                     FF_q_ik_ib = self.wannier_gauge(data, iknb1, iknb2)[:, :, None] * (
                         mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
                             mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
                             - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
 
-                    # Translationally-invariant convention
+                    # Jae-Mo's method
+                    if transl_inv_JaeMo:
+                        for iw in range(self.num_wann):
+                            for jw in range(self.num_wann):
+                                FF_q_ik_ib[iw, jw, :] *= np.exp(-1j * np.dot(mmn.bk_cart[ik, ib1, :], (centers[iw,:]+centers[jw,:])/2 ))
+                                FF_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib2, :], (centers[iw,:]+centers[jw,:])/2 ))
+
+                    # Convention I method
                     if transl_inv_OSD:
                         for iw in range(self.num_wann):
                             for jw in range(self.num_wann):
-                                FF_q_ik_ib[iw, jw, :] *= np.exp(-1j * np.dot(mmn.bk_cart[ik, ib1, :], centers[iw, :]) )
-                                FF_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib2, :], centers[jw, :]) )
+                                FF_q_ik_ib[iw, jw, :] *= np.exp(-1j * np.dot(mmn.bk_cart[ik, ib1, :], centers[iw,:]))
+                                FF_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib2, :], centers[jw,:]))
 
-                    FF_q[ik] += FF_q_ik_ib
+                    # Find unique b1 index
+                    b1_latt = np.rint((mmn.bk_cart[ik, ib1, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
+                    ib1_unique = b1k_latt_unique.index(tuple(b1_latt))
+                    assert np.allclose(b1k_cart_unique[ib1_unique, :], mmn.bk_cart[ik, ib1, :])   
 
-        # FF_q = 0.5 * (FF_q - FF_q.transpose((0, 2, 1, 3)).conj())
-        return FF_q
+                    # Find unique b2 index
+                    b2_latt = np.rint((mmn.bk_cart[ik, ib2, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
+                    ib2_unique = b2k_latt_unique.index(tuple(b2_latt))
+                    assert np.allclose(b2k_cart_unique[ib2_unique, :], mmn.bk_cart[ik, ib2, :]) 
+
+                    FF_qb[ik, :, :, ib1_unique, ib2_unique, :] = FF_q_ik_ib
+
+        # The naive finite-difference scheme is known to break hermiticity
+        #if (not transl_inv_JaeMo and not transl_inv_OSD):
+        #    FF_qb = 0.5 * (FF_qb - FF_qb.swapaxes(1,2).conj())
+
+        return FF_qb, np.array(b1k_latt_unique) / self.mp_grid[None, :], np.array(b2k_latt_unique) / self.mp_grid[None, :]
 
     ############################################################################################################
 

@@ -156,8 +156,8 @@ class Data_K(System):
                 res = self._OO_R()
             elif key == 'CCab':
                 res = self._CCab_R()
-            #elif key == 'FF':
-            #    res = self._FF_R()
+            elif key == 'FF':
+                res = self._FF_R()
             elif key == 'T_wcc':
                 res = self._T_wcc_R()
             else:
@@ -197,7 +197,7 @@ class Data_K(System):
         if self._FF_antisym:
             return self.cRvec_wcc[:, :, :, :, None] * self.get_R_mat('AA')[:, :, :, None, :]
         else:
-            return self.system.get_R_mat('FF') * self.expdK[None, None, :, None, None]
+            return self.system.get_R_mat('FF') * self.expdK[None, None, :, None]
 
 ###############################################################
 
@@ -221,12 +221,14 @@ class Data_K(System):
             der [=0] - defines the order of comma-derivative
             hermitean [=True] - consider the matrix hermitean
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
-
+            
         for i in range(der):
             shape_cR = np.shape(self.cRvec_wcc)
             XX_R = 1j * XX_R.reshape((XX_R.shape) + (1, )) * self.cRvec_wcc.reshape(
                 (shape_cR[0], shape_cR[1], self.system.nRvec) + (1, ) * len(XX_R.shape[3:]) + (3, ))
-        return self._rotate((self.fft_R_to_k(XX_R, hermitean=hermitean))[self.select_K])
+
+        return self._rotate((self.fft_R_to_k(XX_R, hermitean=True))[self.select_K])
+
 
 #####################
 #  Basic variables  #
