@@ -1,0 +1,43 @@
+ISTART = 0
+ICHARG = 11
+LWAVE = T
+LCHARG = T
+ISMEAR=-5
+
+
+SYSTEM = Te
+LSORBIT=T
+
+LWANNIER90 = .TRUE.
+LWRITE_MMN_AMN = .TRUE.
+
+LHFCALC = .TRUE. ; HFSCREEN = 0.2
+ALGO = Norm ; 
+PRECFOCK  =  Normal  # for high quality calculations
+NBANDS=32
+
+
+#General parameters
+PREC = acc
+EDIFF = 1E-06
+EDIFFG = -1e-5
+LREAL = False
+NCORE=8
+
+#Electronic convergence
+ALGO = Fast
+NELM =  0
+#NELMIN = 5
+NELMDL = 0
+
+#Cell optimization
+IBRION = -1
+POTIM = 0.2
+NSW = 0
+ISIF = 3
+NFREE = 10
+ADDGRID = TRUE
+
+#Output generation
+NWRITE = 2
+LVTOT = F

@@ -1,0 +1,137 @@
+
+     Program PW2WANNIER v.6.7MaX starts on 11May2022 at  1:21:11 
+
+     This program is part of the open-source Quantum ESPRESSO suite
+     for quantum simulation of materials; please cite
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 21 395502 (2009);
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 29 465901 (2017);
+          URL http://www.quantum-espresso.org", 
+     in publications or presentations arising from this work. More details at
+     http://www.quantum-espresso.org/quote
+
+     Parallel version (MPI), running on    60 processors
+
+     MPI processes distributed on     3 nodes
+     R & G space division:  proc/nbgrp/npool/nimage =      60
+ 
+  Reading nscf_save data
+
+     Reading xml data from directory:
+
+     temp/GeTe.save/
+     Message from routine read_pp_mesh:
+     mesh size missing, using the one in header
+     Message from routine read_pp_mesh:
+     mesh size missing, using the one in header
+
+     IMPORTANT: XC functional enforced from input :
+     Exchange-correlation= PBE
+                           (   1   4   3   4   0   0   0)
+     Any further DFT definition will be discarded
+     Please, verify this is what you really want
+
+ 
+     Parallelization info
+     --------------------
+     sticks:   dense  smooth     PW     G-vecs:    dense   smooth      PW
+     Min          21      21      6                  501      501      79
+     Max          22      22      7                  504      504      83
+     Sum        1295    1295    375                30127    30127    4837
+ 
+     Reading collected, re-writing distributed wavefunctions
+ 
+  Spin CASE ( default = unpolarized )
+ 
+  Wannier mode is: standalone     
+ 
+  -----------------
+  *** Reading nnkp 
+  -----------------
+ 
+  Checking info from wannier.nnkp file
+ 
+  - Real lattice is ok
+  - Reciprocal lattice is ok
+  - K-points are ok
+  - Number of wannier functions is ok (  8)
+  - All guiding functions are given 
+ 
+ Projections:
+    0.000000    0.000000    0.000000  0  1  1    1.000000
+    0.000000    0.000000    0.000000  1  1  1    1.000000
+    0.000000    0.000000    0.000000  1  2  1    1.000000
+    0.000000    0.000000    0.000000  1  3  1    1.000000
+    0.000000   -0.000000    1.167694  0  1  1    1.000000
+    0.000000   -0.000000    1.167694  1  1  1    1.000000
+    0.000000   -0.000000    1.167694  1  2  1    1.000000
+    0.000000   -0.000000    1.167694  1  3  1    1.000000
+ 
+  Reading data about k-point neighbours 
+ 
+  All neighbours are found 
+ 
+  Opening pp-files 
+ 
+ 
+  --------------------------
+  *** Compute  A projections
+  --------------------------
+ 
+  AMN: iknum =       27
+       1       2       3       4       5       6       7       8       9      10
+      11      12      13      14      15      16      17      18      19      20
+      21      22      23      24      25      26      27
+
+  AMN calculated
+ 
+  ---------------
+  *** Compute  M 
+  ---------------
+ 
+  MMN: iknum =       27
+       1       2       3       4       5       6       7       8       9      10
+      11      12      13      14      15      16      17      18      19      20
+      21      22      23      24      25      26      27
+
+  MMN calculated
+ 
+  -----------------------------------
+  *** Non-collinear calculation is   
+      required for spin              
+      term  to be computed           
+  -----------------------------------
+  -----------------------------------
+  *** Orbital terms are not computed 
+  -----------------------------------
+ 
+  ----------------
+  *** Write bands 
+  ----------------
+ 
+ 
+  -----------------------------
+  *** Plot info is not printed 
+  -----------------------------
+ 
+  -----------------------------
+  *** Parity info is not printed 
+  -----------------------------
+ 
+  ------------
+  *** Stop pp 
+  ------------
+ 
+ 
+     init_pw2wan  :      1.71s CPU      1.87s WALL (       1 calls)
+     compute_amn  :      0.39s CPU      0.40s WALL (       1 calls)
+     compute_mmn  :      0.42s CPU      0.45s WALL (       1 calls)
+ 
+     PW2WANNIER   :      2.53s CPU      2.75s WALL
+
+ 
+   This run was terminated on:   1:21:13  11May2022            
+
+=------------------------------------------------------------------------------=
+   JOB DONE.
+=------------------------------------------------------------------------------=
+ 
