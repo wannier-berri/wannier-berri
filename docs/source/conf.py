@@ -37,7 +37,7 @@ release = wannierberri.__version__
 extensions = [
     'sphinx.ext.autodoc', 'sphinx.ext.mathjax', 'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode', 'sphinx_pyreverse' , 'sphinx_sitemap' , 'sphinx.ext.napoleon',
-#    'nbsphinx',
+    'nbsphinx',
 ]
 
 

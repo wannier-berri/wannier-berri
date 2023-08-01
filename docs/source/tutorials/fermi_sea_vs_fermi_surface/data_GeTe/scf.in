@@ -1,0 +1,30 @@
+&control
+    calculation  = 'scf'
+    restart_mode = 'from_scratch'
+    prefix       = 'GeTe'
+    pseudo_dir   = '~/PP/all/'
+    outdir       = './temp/'
+    tprnfor      = .true.
+    tstress      = .true.
+!    verbosity    = 'high'
+/
+&system
+    ibrav     = 5
+    celldm(1) = 8.28600098
+    celldm(4) = 0.53389363
+    ntyp      = 2
+    nat       = 2
+    ecutwfc   = 70
+/
+&electrons
+   conv_thr = 1.d-12
+/
+ATOMIC_SPECIES
+ Ge 72.61 Ge.dojo.sr.ONCVv0.4.pbe.standard.upf
+ Te 127.6 Te.dojo.sr.ONCVv0.4.pbe.standard.upf
+ATOMIC_POSITIONS crystal
+Ge            0.0000000000        0.0000000000        0.0000000000
+Te            0.4688262167        0.4688262167        0.4688262167
+K_POINTS { automatic }
+ 12 12 12 0 0 0
+

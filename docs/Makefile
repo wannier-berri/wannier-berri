@@ -45,3 +45,5 @@ clean_html :
 	rm html/*.html
 	rm -r doctrees
 
+clean_jupyter : 
+	jupyter nbconvert --clear-output --inplace source/tutorials/*/*.ipynb

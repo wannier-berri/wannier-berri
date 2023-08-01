@@ -1,0 +1,8 @@
+&inputpp
+   outdir = 'temp/'
+   prefix = 'GeTe'
+   seedname = 'GeTe'
+   write_mmn = .true.
+   write_amn = .true.
+   write_spn = .true.
+/

@@ -118,10 +118,10 @@ Author
    :hidden:
 
    newfeatures
-   news
    capabilities
    timing
    exampleFe
+   tutorials/index
    documentation
    methods
    install
