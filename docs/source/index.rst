@@ -121,7 +121,6 @@ Author
    news
    capabilities
    timing
-   tutorials/index
    exampleFe
    documentation
    methods
