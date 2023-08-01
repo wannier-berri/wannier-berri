@@ -40,6 +40,7 @@ extensions = [
     'nbsphinx',
 ]
 
+nbsphinx_allow_errors = True
 
 html_baseurl = 'https://wannier-berri.org'
 # Add any paths that contain templates here, relative to this directory.
