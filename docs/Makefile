@@ -20,30 +20,11 @@ help:
 
 
 
-fig_subdirs := $(wildcard source/imag/*/ )
-fig_sources := $(wildcard $(addsuffix *.pdf,$(fig_subdirs)))
-fig_objects := $(patsubst %.pdf,%.pdf.svg,$(fig_sources))
-
-figures : $(fig_objects)
-
-$(fig_objects) : %.pdf.svg : %.pdf
-
-%.pdf.svg : %.pdf
-	pdf2svg $(CONVERTFLAGS) $< $@
-
-html : figures
-
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 html : Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-clean_fig_svg :
-	rm source/imag/*/*.pdf.svg
-
-clean_html :
+clean :
 	rm html/*.html
 	rm -r doctrees
-
-clean_jupyter : 
-	jupyter nbconvert --clear-output --inplace source/tutorials/*/*.ipynb

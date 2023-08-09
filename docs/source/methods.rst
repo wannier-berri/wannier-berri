@@ -277,7 +277,7 @@ Moreover, the evaluation time of a mixed Fourier transform only
 logarithmically depends on the size of the *ab initio* grid (recall that
 :math:`N_{\rm FFT}\sim N_{\bf R}\sim N_{\bf q}`), while for the slow
 Fourier transform, the dependence is linear. However, in practice we
-will see  (:ref:`sec-timing`) that the Fourier transform in
+see  that the Fourier transform in
 the present implementation consumes only a small portion of
 computational time, and therefore the overall computational time is
 practically independent of the size of the *ab initio* grid.
@@ -424,7 +424,7 @@ refinement iterations. The procedure stops after the pre-defined number
 of iterations was performed.
 :numref:`figrefinement` (g) shows how undesired
 artificial peaks of the the AHC curve are removed iteration by
-iteration, yielding a smooth curve (See :ref:`sec-example` for details).
+iteration, yielding a smooth curve.
 
 
 
@@ -481,98 +481,6 @@ Eqs. :eq:`eq-replica1`-:eq:`eq-replica2`,
 and has practically no extra computational cost, while giving notable
 accuracy improvement.
 
-
-.. _sec-fermisea:
-
-Scanning multiple Fermi levels 
----------------------------------------------
-
-**Note : the implementation described below is replaced in the code by a better one**
-
-It is often needed to study anomalous Hall conductivity (AHC) not only
-for the pristine Fermi level :math:`E_F`, but considering it as a free
-parameter :math:`\epsilon`. On the one hand it gives an estimate of the
-accuracy of the calculation, e.g. sharp spikes may indicate that the
-result is not converged. On the other hand :math:`\epsilon`-dependence
-gives access to the question of the influence of doping and temperature,
-and also allows calculation of anomalous Nernst effect
-:eq:`eq-ANE`. As implemented in ``postw90.x``, evaluation of
-multiple Fermi levels has a large computational cost. However there is a
-way to perform the computation of AHC for multiple Fermi levels without
-extra computational costs. To show this let’s rewrite
-:eq:`eq-Berry-wanint`, :eq:`eq-AHC` as
-:math:`\sigma_{\alpha\beta}(\epsilon)=-\epsilon_{\alpha\beta\gamma}\frac{e^2}{\hbar}\Omega_\gamma(\epsilon)`,
-where
-:math:`\Omega_\gamma(\epsilon)=\sum_{\bf K}w_{\bf K}\Omega_\gamma({\bf K},\epsilon)`
-and
-
-.. math::
-   :label: eq-Osum-o-uo
-
-   \Omega ({\bf K},\epsilon) = \sum_{\boldsymbol{\kappa}}\left( \sum_n^{O({\bf k},\epsilon)} P_n({\bf k}) + \sum_l^{U({\bf k},\epsilon)}\sum_n^{O({\bf k},\epsilon)} Q_{ln}({\bf k}) \right),
-   \label{eq:Osum-o-uo}
-
-where :math:`{\bf k}={\bf K}+\boldsymbol{\kappa}`, the definitions of
-:math:`P_n` and :math:`Q_{ln}` straightly follow from
-:eq:`eq-Berry-wanint`, and we omit the cartesian
-index :math:`\gamma` further in this subsection. Now suppose we want to
-evaluate :math:`\Omega(\epsilon_i)` for a series of Fermi levels
-:math:`\epsilon_i`. For different :math:`{\bf k}`-points and Fermi
-levels :math:`\epsilon` the sets of occupied :math:`O({\bf k},\epsilon)`
-and unoccupied states :math:`U({\bf k},\epsilon)` change and repeating
-this summations many times may be computationally heavy. Instead we note
-that when going from one Fermi level :math:`\epsilon_i` to another
-:math:`\epsilon_{i+1}` only a few states at a few
-:math:`\boldsymbol{\kappa}`-points change from unoccupied to occupied.
-Let’s denote the set of such :math:`\boldsymbol{\kappa}`-points as
-:math:`\delta \kappa_i` then, the change of the total Berry curvature is
-
-.. math::
-   :label: eq-deltamu
-
-   \begin{gathered}
-   \delta{\Omega}_i \equiv  \Omega(\epsilon_{i+1})-{\Omega}(\epsilon_i)=\\=
-    \sum_{\bf k}^{\delta \kappa_i} \left(  \sum_n^{O({\bf k},\epsilon_{i+1})} P_n({\bf k}) + \sum_l^{U({\bf k},\epsilon_{i+1})}\sum_n^{O({\bf k},\epsilon_{i+1})} Q_{ln}({\bf k}) -
-     \sum_n^{O({\bf k},\epsilon_{i})} P_n({\bf k}) - \sum_l^{U({\bf k},\epsilon_{i})}\sum_n^{O({\bf k},\epsilon_{i})} Q_{ln}({\bf k}) \right)= \\=
-   \sum_{\bf k}^{\delta \kappa_i} \left( \sum_n^{\delta O_i({\bf k})} P_n + 
-   \sum_l^{U({\bf k},\epsilon_{i+1})}\sum_n^{\delta O_i({\bf k})} Q_{ln}({\bf k})
-   -\sum_l^{\delta O_i({\bf k})}\sum_n^{O({\bf k},\epsilon_i)} Q_{ln}({\bf k}) \right),
-   \label{eq:deltamu}\end{gathered}
-
-where
-:math:`\delta O_i({\bf k})\equiv O({\bf k},\epsilon_{i+1})-O({\bf k},\epsilon_{i})`.
-Note that if the step :math:`\epsilon_{i+1}-\epsilon_i` is small, then
-:math:`\delta \kappa_i` and :math:`\delta O_i({\bf k})` include only few
-elements, if not empty. Hence the evaluation of
-:eq:`eq-deltamu` will be very fast. Thus, the full
-summation :eq:`eq-Osum-o-uo` is needed only for the
-first Fermi level.
-
-In a similar way this approach may be applied to orbital magnetization
-and other Fermi-sea properties. E.g. the orbital magnetization may be
-written as
-
-.. math::
-   :label: eq-Morb-wanint
-
-   \begin{aligned}
-   M_\gamma ({\bf k}) &=& \sum_n^{\text{occ}}{\rm Re\,}\left[\overline{C}^{\rm H}_{nn,\gamma} + E_n\overline{\Omega}^{\rm H}_{nn,\gamma}  \right] - \nonumber \\
-   &&-2\epsilon_{\alpha\beta\gamma}\sum_l^{\text{unocc}}\sum_n^{\text{occ}}{\rm Re\,}\left[D_{nl,\alpha}(\overline{B}^{\rm H}_{ln,\beta}+ \overline{A}^{\rm H}_{ln,\beta}E_n)\right] \nonumber\\
-   &&+\epsilon_{\alpha\beta\gamma}{\rm Im\,}\sum_l^{\text{unocc}}\sum_n^{\text{occ}}D_{nl,\alpha} (E_l+E_n) D_{ln,\beta}
-   \label{eq:Morb-wanint}\end{aligned}
-
-where
-:math:`C_{mn,\gamma}({\bf R})\equiv\epsilon_{\alpha\beta\gamma}\langle\mathbf{0}m\vert r_\alpha\cdot\hat{H}\cdot(r_\beta-R_\beta)\vert{\bf R}n\rangle`,
-:math:`B_{mn,\beta}({\bf R})\equiv\langle\mathbf{0}m\vert\hat{H}\cdot(r_\beta-R_\beta)\vert{\bf R}n\rangle`
-and the other ingredients were explained under
-:eq:`eq-Berry-wanint`.
-Equation :eq:`eq-Morb-wanint` is written following the
-approach of Ref. , but the result has a different form, which can be
-straightforwardly processed by analogy with
-:eq:`eq-Osum-o-uo` and :eq:`eq-deltamu`,
-where the first line of :eq:`eq-Morb-wanint` expresses
-:math:`P_n({\bf k})` while the second and third lines correspond to
-:math:`Q_{ln}({\bf k})`.
 
 
 .. [2]

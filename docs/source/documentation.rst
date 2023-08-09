@@ -1,5 +1,5 @@
 **************************
-Documentation 
+API reference
 **************************
 
 .. automodule:: wannierberri

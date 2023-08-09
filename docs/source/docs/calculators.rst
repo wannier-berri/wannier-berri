@@ -1,6 +1,8 @@
 Calculators
 =============
 
+.. _sec-calculators:
+
 .. autoclass:: wannierberri.calculators.Calculator
 
 

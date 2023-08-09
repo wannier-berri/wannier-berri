@@ -15,6 +15,8 @@ Integration
 The code may be used to evaluate the following quantities, represented
 as Brillouin zone integrals (by means of the |integrate| function):
 
+** Note : it is advised to use the correspondinc :class:`~wannierberri.calcul;atoprs.Calculculator` class instead, see  :ref:`example <sec-calculators>`.
+
 Static (frequency-independent) quantities
 ++++++++++++++++++++++++++++++++++++++++++
 
@@ -109,7 +111,7 @@ Static (frequency-independent) quantities
 Dynamic (frequency-dependent) quantities
 ++++++++++++++++++++++++++++++++++++++++++
 
--  ``'opt_conductivity'``: Kubo-greenwood formula for optical conductivity (:ref:`example <sec-optconf-example>`)
+-  ``'opt_conductivity'``: Kubo-greenwood formula for optical conductivity 
 
    .. math::
       :label: optcondform
