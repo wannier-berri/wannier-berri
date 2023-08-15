@@ -22,6 +22,7 @@ project = 'Wannier Berri'
 copyright = '2021, Stepan Tsirkin' 
 author = 'Stepan Tsirkin'
 numfig = True
+master_doc = 'index'
 
 # The full version, including alpha/beta/rc tags
 release = wannierberri.__version__
@@ -39,6 +40,7 @@ extensions = [
     'nbsphinx',
 ]
 
+nbsphinx_allow_errors = True
 
 html_baseurl = 'https://wannier-berri.org'
 # Add any paths that contain templates here, relative to this directory.
@@ -116,7 +118,8 @@ html_use_opensearch = 'https://wannier-berri.org'
 
 html_theme = 'sphinx_rtd_theme'
 html_favicon = 'imag/logo-WB/WB-logo.ico'
-html_logo = 'imag/logo-WB/WANNIERBERRI-redblack.png'
+#html_logo = 'imag/logo-WB/WANNIERBERRI-redblack.png'
+html_logo = 'imag/logo-WB/Book.png'
 html_show_sourcelink = False
 
 # True Basque colors

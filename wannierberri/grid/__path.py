@@ -17,14 +17,14 @@ class Path(GridAbstract):
     dk :  float
         (inverse angstroms) -- in this case the grid is NK[i]=length*||B[i]||/2pi  B- reciprocal lattice
     k_nodes : list
-        | cordinates of the nodes in the the reduced coordinates. Some entries may be None - which means that the segment should be skipped
+        cordinates of the nodes in the the reduced coordinates. Some entries may be None - which means that the segment should be skipped
         | No labels or nk's should be assigned to None nodes
     nk : int  or list or numpy.array(3)
         number of k-points along each directions
     k_list : list or str
-        |if k_list is a list  - Coordinatres of all k-points in the reduced coordinates
-        |if k_list = 'sphere' - Automatically generate k-points on a sphere (request r1 origin ntheta nphi)
-        |if k_list = 'spheroid' - Automatically generate k-points on a spheroid (request r1 r2 origin ntheta nphi)
+        | if k_list is a list  - Coordinatres of all k-points in the reduced coordinates
+        | if k_list = 'sphere' - Automatically generate k-points on a sphere (request r1 origin ntheta nphi)
+        | if k_list = 'spheroid' - Automatically generate k-points on a spheroid (request r1 r2 origin ntheta nphi)
     labels : list  of dict
         | if k_list is set - it is a dict {i:lab} with i - index of k-point, lab - corresponding label (not all kpoints need to be labeled
         | if k_nodes is set - it is a list of labels, one for every node
