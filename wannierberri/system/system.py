@@ -200,7 +200,7 @@ class System():
             lattice=self.real_lattice,
             positions=positions,
             atom_name=atom_name,
-            proj=proj,
+            projections=proj,
             iRvec=self.iRvec,
             XX_R=self._XX_R,
             soc=soc,
