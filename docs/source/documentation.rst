@@ -18,7 +18,6 @@ API reference
    docs/grid
    docs/symmetries
    docs/smoother
-   docs/utils
    docs/data_K
    docs/models
    docs/oldAPI

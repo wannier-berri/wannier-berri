@@ -12,6 +12,7 @@
 
    capabilities
    documentation
+   docs/utils
    install
    benchmark
    methods
