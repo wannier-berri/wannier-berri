@@ -4,7 +4,7 @@ from ..__utility import Gaussian, Lorentzian
 from ..result import EnergyResult
 from . import Calculator
 from ..formula.covariant import SpinVelocity
-
+from copy import copy
 
 #######################################
 #                                     #
@@ -22,7 +22,7 @@ class DynamicCalculator(Calculator, abc.ABC):
                 vars(self)[k] = v
         super().__init__(**kwargs)
 
-        self.kwargs_formula = kwargs_formula
+        self.kwargs_formula = copy(kwargs_formula)
         self.Formula = None
         self.constant_factor = 1.
         self.dtype = complex
@@ -233,7 +233,7 @@ class _SHC(DynamicCalculator):
 
     def __init__(self, SHC_type="ryoo", shc_abc=None, **kwargs):
         super().__init__(**kwargs)
-        self.kwargs_formula = dict(SHC_type=SHC_type, shc_abc=shc_abc)
+        self.kwargs_formula.update(dict(SHC_type=SHC_type, shc_abc=shc_abc))
         self.Formula = Formula_SHC
         self.constant_factor = factors.factor_shc
 

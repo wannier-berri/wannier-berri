@@ -148,7 +148,8 @@ calculators_CuMnAs_2d = {
 smoother_Chiral = FermiDiracSmoother(Efermi_Chiral, T_Kelvin=1200, maxdE=8)
 
 parameters_Chiral_optical = dict(
-        Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian" , kwargs_formula={"external_terms": False }, )
+        Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian" , 
+        kwargs_formula={"external_terms": False }, )
 
 calculators_Chiral = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral,smoother=smoother_Chiral),
@@ -888,6 +889,7 @@ def test_Haldane_TBmodels_sym_refine(check_run, system_Haldane_TBmodels, compare
 
 def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_energyresult):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
+
     check_run(
         system_Chiral_left,
         calculators_Chiral,
@@ -912,6 +914,17 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
                 compare_smooth=True,
                 precision=-1e-8)
 
+#        skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
+
+    for quant in 'opt_conductivity', :# 'opt_SHCryoo', 'opt_SHCryoo':
+        compare_any_result(
+            "berry_Chiral",
+            quant + "-left-run",
+            0,
+            fout_name_ref="kubo_Chiral",
+            suffix_ref=quant,
+            precision=-1e-8,
+            result_type=EnergyResult)
 
 
 def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
