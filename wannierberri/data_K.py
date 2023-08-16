@@ -343,6 +343,10 @@ class _Data_K(System,abc.ABC):
         '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
         return self.Xbar('AA') + 1j * self.D_H
 
+    @property
+    def A_H_internal(self):
+        '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118. only internal term'''
+        return 1j * self.D_H
 
 
 

@@ -4,7 +4,7 @@ from ..__utility import Gaussian, Lorentzian
 from ..result import EnergyResult
 from . import Calculator
 from ..formula.covariant import SpinVelocity
-
+from copy import copy
 
 #######################################
 #                                     #
@@ -15,14 +15,14 @@ from ..formula.covariant import SpinVelocity
 
 class DynamicCalculator(Calculator, abc.ABC):
 
-    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', **kwargs):
+    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', kwargs_formula={}, **kwargs):
 
         for k, v in locals().items():  # is it safe to do so?
             if k not in ['self', 'kwargs']:
                 vars(self)[k] = v
         super().__init__(**kwargs)
 
-        self.formula_kwargs = {}
+        self.kwargs_formula = copy(kwargs_formula)
         self.Formula = None
         self.constant_factor = 1.
         self.dtype = complex
@@ -55,7 +55,7 @@ class DynamicCalculator(Calculator, abc.ABC):
             return True
 
     def __call__(self, data_K):
-        formula = self.Formula(data_K, **self.formula_kwargs)
+        formula = self.Formula(data_K, **self.kwargs_formula)
         restot_shape = (len(self.omega), len(self.Efermi)) + (3, ) * formula.ndim
         restot_shape_tmp = (
             len(self.omega), len(self.Efermi) * 3**formula.ndim)  # we will first get it in this shape, then transpose
@@ -170,8 +170,11 @@ class JDOS(DynamicCalculator):
 
 class Formula_OptCond():
 
-    def __init__(self, data_K):
-        A = data_K.A_H
+    def __init__(self, data_K, external_terms=True):
+        if external_terms:
+            A = data_K.A_H
+        else:
+            A = data_K.A_H_internal
         self.AA = 1j * A[:, :, :, :, None] * A.swapaxes(1, 2)[:, :, :, None, :]
         self.ndim = 2
         self.TRodd = False
@@ -204,9 +207,15 @@ class OpticalConductivity(DynamicCalculator):
 
 class Formula_SHC():
 
-    def __init__(self, data_K, SHC_type='ryoo'):
-        A = SpinVelocity(data_K, SHC_type).matrix
-        B = -1j * data_K.A_H
+
+    def __init__(self, data_K, SHC_type='ryoo', shc_abc=None, external_terms=True):
+        A = SpinVelocity(data_K, SHC_type,external_terms=external_terms).matrix
+        if external_terms:
+            B = -1j * data_K.A_H
+        else:
+            B = -1j * data_K.A_H_internal
+
+
         self.imAB = np.imag(A[:, :, :, :, None, :] * B.swapaxes(1, 2)[:, :, :, None, :, None])
         self.ndim = 3
         self.TRodd = False
@@ -221,7 +230,7 @@ class SHC(DynamicCalculator):
 
     def __init__(self, SHC_type="ryoo", **kwargs):
         super().__init__(**kwargs)
-        self.formula_kwargs = dict(SHC_type=SHC_type)
+        self.kwargs_formula.update(dict(SHC_type=SHC_type, shc_abc=shc_abc))
         self.Formula = Formula_SHC
         self.constant_factor = factors.factor_shc
 

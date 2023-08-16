@@ -22,6 +22,7 @@ from common_systems import (
     Efermi_Chiral,
     Efermi_Te_gpaw,
     Efermi_Te_sparse,
+    omega_chiral,
     omega_phonon,
     mass_kp_iso
 )
@@ -148,6 +149,11 @@ calculators_CuMnAs_2d = {
 }
 
 smoother_Chiral = FermiDiracSmoother(Efermi_Chiral, T_Kelvin=1200, maxdE=8)
+
+parameters_Chiral_optical = dict(
+        Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian" ,
+        kwargs_formula={"external_terms": False }, )
+
 calculators_Chiral = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral,smoother=smoother_Chiral),
     'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral),
@@ -159,7 +165,13 @@ calculators_Chiral = {
     'Hall_classic':calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral),
     'dos': calc.static.DOS(Efermi=Efermi_Chiral),
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral),
+    'opt_conductivity' : wberri.calculators.dynamic.OpticalConductivity(**parameters_Chiral_optical),
+    # 'opt_SHCqiao' : wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_Chiral_optical),
+    # 'opt_SHCryoo' : wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_Chiral_optical),
 }
+
+
+
 
 calculators_Chiral_tetra = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
@@ -337,6 +349,14 @@ def test_Fe_wcc(check_run, system_Fe_W90_wcc, compare_any_result):
 def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+
+    parameters_optical = dict(
+        Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
+
+    calculators['opt_conductivity'] = wberri.calculators.dynamic.OpticalConductivity(**parameters_optical)
+    calculators['opt_SHCqiao'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
+    calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
+
     check_run(
         system_Fe_W90,
         calculators,
@@ -348,7 +368,18 @@ def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
             '_FF_antisym': True,
             '_CCab_antisym': True
         },
-    )
+        skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo']
+            )
+
+    for quant in 'opt_conductivity', 'opt_SHCryoo', 'opt_SHCryoo':
+        compare_any_result(
+            "berry_Fe_W90",
+            quant + "-sym-run",
+            0,
+            fout_name_ref="kubo_Fe_W90_sym",
+            suffix_ref=quant,
+            precision=-1e-8,
+            result_type=EnergyResult)
 
 
 def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result):
@@ -886,6 +917,7 @@ def test_Haldane_TBmodels_sym_refine(check_run, system_Haldane_TBmodels, compare
 
 def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_energyresult):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
+
     check_run(
         system_Chiral_left,
         calculators_Chiral,
@@ -909,6 +941,19 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
                 mode="txt",
                 compare_smooth=True,
                 precision=-1e-8)
+
+#        skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
+
+    for quant in 'opt_conductivity', :# 'opt_SHCryoo', 'opt_SHCryoo':
+        compare_any_result(
+            "berry_Chiral",
+            quant + "-left-run",
+            0,
+            fout_name_ref="kubo_Chiral",
+            suffix_ref=quant,
+            precision=-1e-8,
+            result_type=EnergyResult)
+
 
 
 
