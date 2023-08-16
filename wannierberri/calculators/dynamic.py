@@ -233,7 +233,7 @@ class _SHC(DynamicCalculator):
 
     def __init__(self, SHC_type="ryoo", shc_abc=None, **kwargs):
         super().__init__(**kwargs)
-        self.formula_kwargs = dict(SHC_type=SHC_type, shc_abc=shc_abc)
+        self.kwargs_formula = dict(SHC_type=SHC_type, shc_abc=shc_abc)
         self.Formula = Formula_SHC
         self.constant_factor = factors.factor_shc
 
