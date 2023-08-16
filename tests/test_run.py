@@ -1375,7 +1375,7 @@ def check_kp_mass_isotropic(check_run):
             assert cumdos[select_minus]  == approx(0, abs=precision)
             assert ohmic["sea"][select_minus] == approx(0, abs=precision)
             assert ohmic["surf"][select_minus] == approx(0, abs=precision)
-    
+
             ## compare with results evaluated analytically
             mass = mass_kp_iso
             Efp = Efermi[select_plus]
