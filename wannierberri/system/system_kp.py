@@ -23,7 +23,7 @@ from .__finite_differences import find_shells, Derivative3D
 
 class SystemKP(System):
 
-    r"""
+    """
     A system to describe k.p Hamiltonians.
     Technically, it is concodered as a periodic system with k-vector limited to the box defined by the reciprocal lattice.
     a k-vector is always translated to have reduced coordinates between [-1/2,1/2)
@@ -58,6 +58,7 @@ class SystemKP(System):
     * if derivatives of hamiltonian are not provided, they are computed with finite diifferences
     * internally, `self.Ham` and derivatives (`self.Ham_cart`, `self_derHam_cart` ...) accept k in reduced coordinated.
     * the derivatives are always assumed w.r.t. cartesian coordinates
+
 
     """
 
@@ -118,6 +119,7 @@ class SystemKP(System):
         self.derHam_cart  = lambda k : self.derHam (self.k_cart2red(k))
         self.der2Ham_cart = lambda k : self.der2Ham(self.k_cart2red(k))
         self.der3Ham_cart = lambda k : self.der3Ham(self.k_cart2red(k))
+
         self.set_symmetry()
         print("Number of wannier functions:", self.num_wann)
 
