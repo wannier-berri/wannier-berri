@@ -23,6 +23,7 @@ from common_systems import (
     Efermi_Te_gpaw,
     Efermi_Te_sparse,
     omega_phonon,
+    mass_kp_iso
 )
 
 @pytest.fixture
@@ -1320,4 +1321,79 @@ def test_factor_nlahc(check_run, system_GaAs_W90):
             f"difference of {np.max(np.abs(data_nlahc - data_bcd * factor_nlahc))}.")
 
 
+@pytest.fixture
+def check_kp_mass_isotropic(check_run):
+    def _inner(system,suffix):
 
+        Efermi = np.linspace(-0.1,0.5,101)
+        tetra=True
+        calculators =   {
+            'cumdos':calc.static.CumDOS(Efermi=Efermi,tetra=tetra),
+            'dos':calc.static.DOS(Efermi=Efermi,tetra=tetra),
+            'ohmic_sea':calc.static.Ohmic_FermiSea(Efermi=Efermi,tetra=tetra),
+            'ohmic_surf':calc.static.Ohmic_FermiSurf(Efermi=Efermi,tetra=tetra),
+                    }
+
+        result = check_run(
+                    system,
+                    calculators,
+                    grid_param={
+                        'length': 20,
+                        'NKFFT': 5
+                                },
+                    fout_name="berry_kp_mass_iso",
+                    suffix=suffix,
+                            )
+
+
+        cumdos = result.results["cumdos"].data/system.cell_volume
+        dos = result.results["dos"].data/system.cell_volume
+        ohmic = {}
+        ohmic["sea"] = result.results["ohmic_sea"].data/wberri.__factors.factor_ohmic
+        ohmic["surf"] = result.results["ohmic_surf"].data/wberri.__factors.factor_ohmic
+
+        precision = 1e-8
+        try:
+            for ss in "sea","surf":
+                ohm = ohmic[ss]
+                for i in range(3):
+                    for j in range(3):
+                        if i==j:
+                            assert ohm[:,i,j] == approx(ohm[:,0,0], abs=precision)
+                        else:
+                            assert ohm[:,i,j] == approx(0, abs=precision)
+        except AssertionError:
+            raise RuntimeError(f"ohmic({ss}) conductivity is not isotropic, componenets {i,j}")
+        ohmic["sea"]=ohmic["sea"][:,0,0]
+        ohmic["surf"]=ohmic["surf"][:,0,0]
+
+
+        select_plus = Efermi>0.2
+        select_minus = Efermi<0
+        assert dos[select_minus] == approx(0, abs=precision)
+        assert cumdos[select_minus]  == approx(0, abs=precision)
+        assert ohmic["sea"][select_minus] == approx(0, abs=precision)
+        assert ohmic["surf"][select_minus] == approx(0, abs=precision)
+
+        ## compare with results evaluated analytically
+        mass = mass_kp_iso
+        Efp = Efermi[select_plus]
+        dos_anal = mass*np.sqrt(2*Efp*mass)/(2*np.pi**2)
+        cumdos_anal = np.sqrt(2*Efp*mass)**3/(6*np.pi**2)
+        ohmic_anal = np.sqrt(2*Efp*mass)**3/(6*np.pi**2)/mass
+        precision = 0.05
+        assert dos[select_plus] == approx(dos_anal, rel=precision)
+        assert cumdos[select_plus] == approx(cumdos_anal, rel=precision)
+        assert ohmic["sea"][select_plus] == approx(ohmic_anal, rel=precision)
+        assert ohmic["surf"][select_plus] == approx(ohmic_anal, rel=precision)
+    return _inner
+
+
+def test_kp_mass_isotropic_0(check_kp_mass_isotropic, system_kp_mass_iso_0):
+    check_kp_mass_isotropic(system_kp_mass_iso_0,"0")
+
+def test_kp_mass_isotropic_1(check_kp_mass_isotropic, system_kp_mass_iso_1):
+    check_kp_mass_isotropic(system_kp_mass_iso_1,"1")
+
+def test_kp_mass_isotropic_2(check_kp_mass_isotropic, system_kp_mass_iso_2):
+    check_kp_mass_isotropic(system_kp_mass_iso_2,"2")

@@ -38,7 +38,7 @@ class SystemKP(System):
     der2Ham : function
         The cartesian second k-derivative of the Hamiltonian - a funkction of 3D k-vector that returns a (num_waan x num_wann x 3 x 3) Hermitean (in mn) matrix
     kmax : float
-        maximal k-vector (in `\AA`)  In this case the reciprocal lattice is cubic with size  2kmax
+        maximal k-vector (in :math:`\AA^{-1}`)  In this case the reciprocal lattice is cubic with size  2kmax
     real_lattice : array(3,3)
         the lattice vectors of the model (iif `kmax` is not set)
     recip_lattice : array(3,3)
@@ -120,3 +120,4 @@ class SystemKP(System):
     @property
     def NKFFT_recommended(self):
         return np.array([1,1,1])
+

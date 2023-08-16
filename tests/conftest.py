@@ -34,6 +34,9 @@ from common_systems import (
     system_Phonons_Si,
     system_Phonons_GaAs,
     system_Mn3Sn_sym_tb,
+    system_kp_mass_iso_0,
+    system_kp_mass_iso_1,
+    system_kp_mass_iso_2,
 )
 
 # Comparers for tests

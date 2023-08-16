@@ -502,7 +502,7 @@ class Data_K_k(_Data_K):
     def Xbar(self, name, der=0):
         key = (name, der)
         if name != 'Ham':
-            raise VAlueError(f'quantity {name} is not defined for a kp model')
+            raise ValueError(f'quantity {name} is not defined for a kp model')
         if key not in self._bar_quantities:
             if der==0:
                 raise RuntimeError("Why is `Ham` called through Xbar, are you sure?")

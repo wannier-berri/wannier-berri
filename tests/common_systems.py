@@ -441,3 +441,34 @@ def system_Mn3Sn_sym_tb():
                 [0, 0, 0]],
             DFT_code='vasp',)
     return system
+
+
+
+
+###################################
+# Isotropic effective mas s model #
+###################################
+mass_kp_iso = 1.912
+kmax_kp = 2.123
+
+def ham_mass_iso (k):
+    return np.array([[np.dot(k,k)/(2*mass_kp_iso)]])
+
+def dham_mass_iso (k):
+    return np.array(k).reshape(1,1,3)/mass_kp_iso
+
+def d2ham_mass_iso (k):
+    return np.eye(3).reshape(1,1,3,3)/mass_kp_iso
+
+
+@pytest.fixture(scope="session")
+def system_kp_mass_iso_0():
+    return wberri.system.SystemKP(Ham=ham_mass_iso, kmax=kmax_kp)
+
+@pytest.fixture(scope="session")
+def system_kp_mass_iso_1():
+    return wberri.system.SystemKP(Ham=ham_mass_iso, derHam=dham_mass_iso, kmax=kmax_kp)
+
+@pytest.fixture(scope="session")
+def system_kp_mass_iso_2():
+    return wberri.system.SystemKP(Ham=ham_mass_iso, derHam=dham_mass_iso, der2Ham=d2ham_mass_iso, kmax=kmax_kp)
