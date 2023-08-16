@@ -162,8 +162,8 @@ calculators_Chiral = {
     'dos': calc.static.DOS(Efermi=Efermi_Chiral),
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral),
     'opt_conductivity' : wberri.calculators.dynamic.OpticalConductivity(**parameters_Chiral_optical),
-    #'opt_SHCqiao' : wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_Chiral_optical),
-    #'opt_SHCryoo' : wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_Chiral_optical),
+    # 'opt_SHCqiao' : wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_Chiral_optical),
+    # 'opt_SHCryoo' : wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_Chiral_optical),
 }
 
 
