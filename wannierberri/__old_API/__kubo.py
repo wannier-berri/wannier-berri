@@ -112,6 +112,7 @@ def opt_conductivity(
         conductivity_type='kubo',
         SHC_type='ryoo',
         sc_eta=0.04,
+        external_terms=True,
         sep_sym_asym=False):
     '''
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
@@ -134,6 +135,7 @@ def opt_conductivity(
         conductivity_type type of optical conductivity ('kubo', 'SHC'(spin Hall conductivity), 'tildeD' (finite-frequency Berry curvature dipole) )
         SHC_type        'ryoo': PRB RPS19, 'qiao': PRB QZYZ18
         sep_sym_asym    separate the optical conductivity into symmetric and antisymmetric parts
+        external_terms  include external terms in the calculation
 
     Returns:    a list of (complex) optical conductivity 3 x 3 (x 3) tensors (one for each frequency value).
                 The result is given in S/cm.
@@ -210,16 +212,23 @@ def opt_conductivity(
             cprint("Invalid smearing type. Fallback to Lorentzian", 'red')
             delta = Lorentzian(delta_arg, eta)
 
+
+        if external_terms:
+            A_H = data.A_H[ik]  # [n, m, a] in angstrom
+        else:
+            A_H = data.A_H_internal[ik]  # [n, m, a] in angstrom
+
+
         if conductivity_type == 'kubo':
             # generalized Berry connection matrix
-            A = data.A_H[ik]  # [n, m, a] in angstrom
+            A = A_H  # [n, m, a] in angstrom
         elif conductivity_type == 'SHC':
             A = spin_velocity.matrix[ik]
-            B = -1j * data.A_H[ik]
+            B = -1j * A_H
         elif conductivity_type == 'tildeD':
             rfac = dE[None, :, :] / (dE[None, :, :] + omega[:, None, None] + 1j * eta)
             rfac = (rfac + rfac.transpose(0, 2, 1).conj()).real / 2
-            A = data.A_H[ik]
+            A = A_H
             AA = A[:, :, :, None] * A.transpose(1, 0, 2)[:, :, None, :]
             imAA = np.imag(AA[:, :, alpha_A, beta_A] - AA[:, :, beta_A, alpha_A])
             degen = np.zeros(E.shape, dtype=bool)
@@ -228,12 +237,10 @@ def opt_conductivity(
             tildeOmega = (-rfac[:, :, :, None] * imAA[None, :, :, :]).sum(axis=2)  # [iw,n,c]
             tildeOmega[:, degen, :] = 0
         elif conductivity_type == 'shiftcurrent':
-            B = data.A_H[ik]
+            B = A_H
 
-            A_Hbar = data.Xbar('AA')[ik]
             D_H = data.D_H[ik]
             V_H = data.Xbar('Ham', 1)[ik]
-            A_Hbar_der = data.Xbar('AA', 1)[ik]
             del2E_H = data.Xbar('Ham', 2)[ik]
             dEig_inv = data.dEig_inv[ik].transpose(1, 0)
 
@@ -243,27 +250,33 @@ def opt_conductivity(
             dEig_inv_Pval = dEig / (dEig**(2) + sc_eta**(2))
             D_H_Pval = -V_H * dEig_inv_Pval[:, :, None]
 
-            # commutators
-            # ** the spatial index of D_H_Pval corresponds to generalized derivative direction
-            # ** --> stored in the fourth column of output variables
-            sum_AD =  (np.einsum('nlc,lma->nmca', A_Hbar, D_H_Pval) - np.einsum('nnc,nma->nmca', A_Hbar, D_H_Pval))  \
-                     -(np.einsum('nla,lmc->nmca', D_H_Pval, A_Hbar) - np.einsum('nma,mmc->nmca', D_H_Pval, A_Hbar))
+
+            if external_terms:
+                A_Hbar = data.Xbar('AA')[ik]
+                A_Hbar_der = data.Xbar('AA', 1)[ik]
+                # commutators
+                # ** the spatial index of D_H_Pval corresponds to generalized derivative direction
+                # ** --> stored in the fourth column of output variables
+                sum_AD =  (np.einsum('nlc,lma->nmca', A_Hbar, D_H_Pval) - np.einsum('nnc,nma->nmca', A_Hbar, D_H_Pval))  \
+                         -(np.einsum('nla,lmc->nmca', D_H_Pval, A_Hbar) - np.einsum('nma,mmc->nmca', D_H_Pval, A_Hbar))
+
             sum_HD =  (np.einsum('nlc,lma->nmca', V_H, D_H_Pval) - np.einsum('nnc,nma->nmca', V_H, D_H_Pval))  \
                      -(np.einsum('nla,lmc->nmca', D_H_Pval, V_H) - np.einsum('nma,mmc->nmca', D_H_Pval, V_H))
 
-            # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction
-            # ** --> stored in the fourth column of output variables
-            AD_bit =     np.einsum('nnc,nma->nmac' , A_Hbar, D_H) - np.einsum('mmc,nma->nmac' , A_Hbar, D_H) \
-                       + np.einsum('nna,nmc->nmac' , A_Hbar, D_H) - np.einsum('mma,nmc->nmac' , A_Hbar, D_H)
-            AA_bit = np.einsum('nnb,nma->nmab', A_Hbar, A_Hbar) - np.einsum('mmb,nma->nmab', A_Hbar, A_Hbar)
+            if external_terms:
+                # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction
+                # ** --> stored in the fourth column of output variables
+                AD_bit =     np.einsum('nnc,nma->nmac' , A_Hbar, D_H) - np.einsum('mmc,nma->nmac' , A_Hbar, D_H) \
+                           + np.einsum('nna,nmc->nmac' , A_Hbar, D_H) - np.einsum('mma,nmc->nmac' , A_Hbar, D_H)
+                AA_bit = np.einsum('nnb,nma->nmab', A_Hbar, A_Hbar) - np.einsum('mmb,nma->nmab', A_Hbar, A_Hbar)
             # ** this one is invariant under a<-->c
             DV_bit =     np.einsum('nmc,nna->nmca' , D_H, V_H) - np.einsum('nmc,mma->nmca' , D_H, V_H) \
                        + np.einsum('nma,nnc->nmca' , D_H, V_H) - np.einsum('nma,mmc->nmca' , D_H, V_H)
 
             # generalized derivative
-            A = (
-                A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD + 1j *
-                (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, np.newaxis, np.newaxis])
+            A = 1j * (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, np.newaxis, np.newaxis]
+            if external_terms:
+                A = A+ (A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD )
 
             # generalized derivative is fourth index of A, we put it into third index of Imn
             Imn = np.einsum('nmca,mnb->nmabc', A, B) + np.einsum('nmba,mnc->nmabc', A, B)

@@ -9,7 +9,7 @@ import wannierberri as wberri
 
 from common import OUTPUT_DIR
 from common_comparers import compare_quant
-from common_systems import symmetries_GaAs
+from common_systems import symmetries_GaAs, Efermi_Chiral,omega_chiral
 
 
 @pytest.fixture
@@ -119,6 +119,66 @@ def test_optical(check_integrate_dynamical, system_Fe_W90, compare_energyresult,
         specific_parameters=specific_parameters)
 
     compare_sym_asym("kubo_Fe_W90")
+
+
+def test_optical_Chiral(check_integrate_dynamical, system_Chiral_left, compare_energyresult):
+    """Test optical properties: optical conductivity and spin Hall conductivity
+    without use of symmetries and withou adaptive refinement
+    without external terms, for the Chiral model
+    """
+    quantities = ["opt_conductivity"]
+
+    Efermi = Efermi_Chiral
+    omega = omega_chiral
+    kubo_params = dict(smr_fixed_width=0.20, smr_type="Gaussian", external_terms=False)
+    grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
+    adpt_num_iter = 0
+
+    check_integrate_dynamical(
+        system_Chiral_left,
+        quantities,
+        fout_name="kubo_Chiral",
+        Efermi=Efermi,
+        omega=omega,
+        grid_param=grid_param,
+        adpt_num_iter=adpt_num_iter,
+        comparer=compare_energyresult,
+        additional_parameters=kubo_params,
+            )
+
+
+def test_optical_Chiral_sym(check_integrate_dynamical, system_Chiral_left, compare_energyresult):
+    """Test optical properties: optical conductivity and spin Hall conductivity
+    without use of symmetries and withou adaptive refinement
+    without external terms, for the Chiral model
+    """
+    quantities = ["opt_conductivity"]
+
+    #parameters_Chiral_optical = dict(
+    #        Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian" ,
+    #kwargs_formula={"external_terms": False }, )
+
+    Efermi = Efermi_Chiral
+    omega = omega_chiral
+    kubo_params = dict(smr_fixed_width=0.20, smr_type="Gaussian", external_terms=False)
+    grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
+    adpt_num_iter = 0
+
+    check_integrate_dynamical(
+        system_Chiral_left,
+        quantities,
+        fout_name="kubo_Chiral",
+        Efermi=Efermi,
+        omega=omega,
+        suffix="sym",
+        suffix_ref="",
+        use_symmetry=True,
+        grid_param=grid_param,
+        adpt_num_iter=adpt_num_iter,
+        comparer=compare_energyresult,
+        additional_parameters=kubo_params,
+            )
+
 
 
 def test_optical_sym(check_integrate_dynamical, system_Fe_W90, compare_energyresult, compare_sym_asym):

@@ -13,7 +13,7 @@ from ..formula import covariant_basic as frml_basic
 from .. import __factors as factors
 from ..result import EnergyResult
 from . import Calculator
-
+from copy import copy
 
 # The base class for Static Calculators
 # particular calculators are below
@@ -26,7 +26,7 @@ class StaticCalculator(Calculator):
         self.Emin=Emin
         self.Emax=Emax
         self.tetra = tetra
-        self.kwargs_formula = kwargs_formula
+        self.kwargs_formula = copy(kwargs_formula)
         self.smoother = smoother
         self.use_factor = use_factor
         self.hole_like = hole_like
