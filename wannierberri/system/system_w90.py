@@ -17,7 +17,7 @@ import functools
 import multiprocessing
 from ..__utility import iterate3dpm, real_recip_lattice, fourier_q_to_R
 from .system import System
-from ..__w90_files import EIG, MMN, CheckPoint, SPN, UHU, SIU, SHU
+from .__w90_files import EIG, MMN, CheckPoint, SPN, UHU, SIU, SHU
 from time import time
 
 

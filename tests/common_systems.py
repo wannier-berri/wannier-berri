@@ -441,3 +441,70 @@ def system_Mn3Sn_sym_tb():
                 [0, 0, 0]],
             DFT_code='vasp',)
     return system
+
+
+
+
+###################################
+# Isotropic effective mas s model #
+###################################
+mass_kp_iso = 1.912
+kmax_kp = 2.123
+
+def ham_mass_iso (k):
+    return np.array([[np.dot(k,k)/(2*mass_kp_iso)]])
+
+def dham_mass_iso (k):
+    return np.array(k).reshape(1,1,3)/mass_kp_iso
+
+def d2ham_mass_iso (k):
+    return np.eye(3).reshape(1,1,3,3)/mass_kp_iso
+
+
+@pytest.fixture(scope="session")
+def system_kp_mass_iso_0():
+    return wberri.system.SystemKP(Ham=ham_mass_iso, kmax=kmax_kp)
+
+@pytest.fixture(scope="session")
+def system_kp_mass_iso_1():
+    return wberri.system.SystemKP(Ham=ham_mass_iso, derHam=dham_mass_iso, kmax=kmax_kp)
+
+@pytest.fixture(scope="session")
+def system_kp_mass_iso_2():
+    return wberri.system.SystemKP(Ham=ham_mass_iso, derHam=dham_mass_iso, der2Ham=d2ham_mass_iso, kmax=kmax_kp)
+
+
+
+###################################
+# AnIsotropic effective mas s model #
+###################################
+
+kmax_kp_aniso=2.1
+
+inv_mass_kp_aniso = np.array([[0.86060064, 0.19498375, 0.09798235],
+ [0.01270294, 0.77373333, 0.00816169],
+ [0.15613272, 0.11770323, 0.71668436]])
+
+def ham_mass_aniso (k):
+    e=np.dot(k,np.dot(inv_mass_kp_aniso,k))
+    return np.array([[e]])
+
+def dham_mass_aniso (k):
+    return (np.dot(k,inv_mass_kp_aniso)+np.dot(inv_mass_kp_aniso,k)).reshape(1,1,3)
+
+def d2ham_mass_aniso (k):
+    return (inv_mass_kp_aniso + inv_mass_kp_aniso.T).reshape(1,1,3,3)
+
+
+
+@pytest.fixture(scope="session")
+def system_kp_mass_aniso_0():
+    return wberri.system.SystemKP(Ham=ham_mass_aniso, kmax=kmax_kp_aniso)
+
+@pytest.fixture(scope="session")
+def system_kp_mass_aniso_1():
+    return wberri.system.SystemKP(Ham=ham_mass_aniso, derHam=dham_mass_aniso, kmax=kmax_kp_aniso)
+
+@pytest.fixture(scope="session")
+def system_kp_mass_aniso_2():
+    return wberri.system.SystemKP(Ham=ham_mass_aniso, derHam=dham_mass_aniso, der2Ham=d2ham_mass_aniso, kmax=kmax_kp_aniso)

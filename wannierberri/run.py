@@ -17,7 +17,7 @@ from time import time
 import pickle
 import glob
 
-from .data_K import Data_K
+from .data_K import get_data_k
 from .grid import exclude_equiv_points, Path, Grid, GridTetra
 from .parallel import Serial
 from .result import ResultDict
@@ -207,12 +207,12 @@ def run(
 
         @ray.remote
         def paralfunc(Kpoint, _system, _grid, _calculators, npar_k):
-            data = Data_K(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+            data = get_data_k(_system,  Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
             return ResultDict({k: v(data) for k, v in _calculators.items()})
     else:
 
         def paralfunc(Kpoint, _system, _grid, _calculators, npar_k):
-            data = Data_K(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+            data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
             return ResultDict({k: v(data) for k, v in _calculators.items()})
 
     if restart:
