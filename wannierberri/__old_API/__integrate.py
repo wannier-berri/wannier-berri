@@ -125,6 +125,7 @@ parameters_optical = {
     'shc_alpha': (0, "direction of spin current (1, 2, 3)"),
     'shc_beta': (0, "direction of applied electric field (1, 2, 3)"),
     'shc_gamma': (0, "direction of spin polarization (1, 2, 3)"),
+    'external_terms': (True, "incude external terms in calculation"),
     'shc_specification': (False, "calculate all 27 components of SHC if false"),
     'sc_eta': (0.04, "broadening parameter for shiftcurrent calculation, units of eV"),
     'sep_sym_asym': (False, "separate symmetric and antisymmetric parts in optical conductivity")

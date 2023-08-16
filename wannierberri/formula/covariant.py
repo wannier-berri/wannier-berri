@@ -424,7 +424,9 @@ def _spin_velocity_einsum_opt(C, A, B):
         C[ik] += np.transpose(tmp_c, (0, 2, 3, 1))  # nsma -> nmas
 
 
-def _J_H_qiao(data_K):
+def _J_H_qiao(data_K,external_terms=True):
+    if not external_terms :
+        raise NotImplementedError("spin Hall without external terms is not implemented yet")
     # Spin current operator, J. Qiao et al PRB (2019)
     # J_H_qiao[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
     SS_H = data_K.Xbar('SS')
@@ -439,7 +441,9 @@ def _J_H_qiao(data_K):
     return (J + J.swapaxes(1, 2).conj()) / 2
 
 
-def _J_H_ryoo(data_K):
+def _J_H_ryoo(data_K,external_terms=True):
+    if not external_terms :
+        raise NotImplementedError("spin Hall without external terms is not implemented yet")
     # Spin current operator, J. H. Ryoo et al PRB (2019)
     # J_H_ryoo[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
     SA_H = data_K.Xbar("SA")
@@ -452,13 +456,13 @@ def _J_H_ryoo(data_K):
 class SpinVelocity(Matrix_ln):
     "spin current matrix elements. SpinVelocity.matrix[ik, m, n, a, s] = <u_mk|{v^a S^s}|u_nk> / 2"
 
-    def __init__(self, data_K, spin_current_type):
+    def __init__(self, data_K, spin_current_type,external_terms=True):
         if spin_current_type == "qiao":
             # J. Qiao et al PRB (2018)
-            super().__init__(_J_H_qiao(data_K))
+            super().__init__(_J_H_qiao(data_K,external_terms=external_terms))
         elif spin_current_type == "ryoo":
             # J. H. Ryoo et al PRB (2019)
-            super().__init__(_J_H_ryoo(data_K))
+            super().__init__(_J_H_ryoo(data_K,external_terms=external_terms))
         else:
             raise ValueError(f"spin_current_type must be qiao or ryoo, not {spin_current_type}")
         self.TRodd = False
