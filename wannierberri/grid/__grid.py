@@ -82,7 +82,7 @@ class Grid(GridAbstract):
 
     def __init__(self, system, length=None, NKdiv=None, NKFFT=None, NK=None, length_FFT=None, use_symmetry=True):
 
-        NKFFT_recommended = system.NKFFT_recommended
+        NKFFT_recommended = np.array(system.NKFFT_recommended)
         self.symgroup = system.symgroup if use_symmetry else symmetry.Group(real_lattice=system.real_lattice)
         self.div, self.FFT = determineNK(
             system.periodic, NKdiv, NKFFT, NK, NKFFT_recommended, self.symgroup, length=length, length_FFT=length_FFT)

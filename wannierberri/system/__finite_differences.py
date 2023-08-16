@@ -1,4 +1,4 @@
-from .__utility import find_degen
+from ..__utility import find_degen
 
 import numpy as np
 from lazy_property import LazyProperty
@@ -77,6 +77,26 @@ def check_B1(shell_mat, selected_shells):
             return True, False, None
         else:
             return True, True, weight_shell
+
+
+class Derivative3D():
+
+    "a class to describe a derivative of a function with a finite-difference scheme"
+
+    def __init__(self,function,bk_red,bk_cart,wk):
+        self.function=function
+        self.bk_cart=bk_cart
+        self.bk_red=bk_red
+        self.wk=wk
+        shape=function([0,0,0]).shape
+        self.bk_cart=bk_cart.reshape( (bk_cart.shape[0],)+(1,)*len(shape)+(3,) )
+
+
+    def __call__(self,k):
+        """returns a derivative of the function"""
+        k=np.array(k)
+        return sum( wk*self.function(k+bk_red)[...,None]*bk_cart
+                for wk,bk_red,bk_cart in zip(self.wk, self.bk_red, self.bk_cart) )
 
 
 def get_neighbours_FFT(recip_lattice, FFT):
