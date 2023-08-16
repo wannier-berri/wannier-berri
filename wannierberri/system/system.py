@@ -186,15 +186,33 @@ class System():
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe'):
         """
-        proj:
-            Should be the same with projections card in Wannier90.win.
-        positions: list
+        Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
+
+
+        Parameters
+        ----------
+        positions: array
             Positions of each atom.
         atom_name: list
             Name of each atom.
-        magmom: array
-            Magnetic moment of each atom.
+        proj: list
+            Should be the same with projections card in relative Wannier90.win.
+
+            eg: ``['Te: s','Te:p']``
+
+            If there is hybrid orbital, grouping the other orbitals.
+
+            eg: ``['Fe':sp3d2;t2g]`` Plese don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
+
+                ``['X':sp;p2]`` Plese don't use ``['X':sp;pz,py]``
+        soc: bool
+            Spin orbital coupling.
+        magmom: 2D array
+            Magnetic momens of each atoms.
+        DFT_code: str
+            DFT code used : ``'qe'`` or ``'vasp'`` . This is needed, because vasp and qe have different orbitals arrangement with SOC.(grouped by spin or by orbital type)
         """
+
         symmetrize_wann = SymWann(
             num_wann=self.num_wann,
             lattice=self.real_lattice,

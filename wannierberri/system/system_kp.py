@@ -34,11 +34,16 @@ class SystemKP(System):
     Ham : function
         The Hamiltonian - a funkction of 3D k-vector that returns a (num_waan x num_wann) Hermitean matrix
     derHam : function
-        The cartesian k-derivative of the Hamiltonian - a funkction of 3D k-vector that returns a (num_waan x num_wann x 3) Hermitean (in mn) matrix
+        The cartesian k-derivative of the Hamiltonian - a funkction of 3D k-vector that returns a (num_waan x num_wann x 3) Hermitean (in mn) matrix.
+        If not specified, it will be evaluated numerically from `Ham` with a finite-difference scheme using the `finite_diff_dk` parameter.
     der2Ham : function
         The cartesian second k-derivative of the Hamiltonian - a funkction of 3D k-vector that returns a (num_waan x num_wann x 3 x 3) Hermitean (in mn) matrix
+        If not specified, it will be evaluated numerically from `derHam` with a finite-difference scheme using the `finite_diff_dk` parameter.
+    der3Ham : function
+        The cartesian second k-derivative of the Hamiltonian - a funkction of 3D k-vector that returns a (num_waan x num_wann x 3 x 3 x 3) Hermitean (in mn) matrix
+        If not specified, it will be evaluated numerically from `der2Ham` with a finite-difference scheme using the `finite_diff_dk` parameter.
     kmax : float
-        maximal k-vector (in :math:`\AA^{-1}`)  In this case the reciprocal lattice is cubic with size  2kmax
+        maximal k-vector (in :math:`\mathring{\rm A}^{-1}`)  In this case the reciprocal lattice is cubic with size  2kmax
     real_lattice : array(3,3)
         the lattice vectors of the model (iif `kmax` is not set)
     recip_lattice : array(3,3)
@@ -48,11 +53,12 @@ class SystemKP(System):
     finite_diff_dk : float
         defines the dk in taking derivatives *in fraction of the reciprocal lattice
 
-    Note:
-    --------
-         if derivatives of hamiltonian are not provided, they are computed with finite diifferences
+    Notes
+    -----
+    * if derivatives of hamiltonian are not provided, they are computed with finite diifferences
+    * internally, `self.Ham` and derivatives (`self.Ham_cart`, `self_derHam_cart` ...) accept k in reduced coordinated.
+    * the derivatives are always assumed w.r.t. cartesian coordinates
 
-        internally, self.Ham and derivatives accept k in reduced coordinated. self.Ham_cart, self_derHam_cart ... accept k-vector in
 
     """
 
@@ -112,7 +118,8 @@ class SystemKP(System):
         self.Ham_cart     = lambda k : self.Ham    (self.k_cart2red(k))
         self.derHam_cart  = lambda k : self.derHam (self.k_cart2red(k))
         self.der2Ham_cart = lambda k : self.der2Ham(self.k_cart2red(k))
-#        self.der3Ham_cart = lambda k : self.der3Ham(self.k_cart2red(k))
+        self.der3Ham_cart = lambda k : self.der3Ham(self.k_cart2red(k))
+
         self.set_symmetry()
         print("Number of wannier functions:", self.num_wann)
 
