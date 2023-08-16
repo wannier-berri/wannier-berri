@@ -26,6 +26,7 @@ Efermi_GaAs = np.linspace(7, 9, 11)
 Efermi_Haldane = np.linspace(-3, 3, 11)
 Efermi_CuMnAs_2d = np.linspace(-2, 2, 11)
 Efermi_Chiral = np.linspace(-5, 8, 27)
+omega_chiral = np.linspace(0, 1., 11)
 omega_phonon = np.linspace(-0.01, 0.1, 23)
 Efermi_Mn3Sn = np.linspace(2, 3, 11)
 
@@ -293,6 +294,7 @@ model_Chiral_right = wb_models.Chiral(
 def system_Chiral_left():
     system = wberri.system.System_PythTB(model_Chiral_left, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
+    system.set_spin([1,-1])
     return system
 
 
@@ -300,6 +302,7 @@ def system_Chiral_left():
 def system_Chiral_left_TR():
     system = wberri.system.System_PythTB(model_Chiral_left_TR, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
+    system.set_spin([-1,1])
     return system
 
 
@@ -307,6 +310,7 @@ def system_Chiral_left_TR():
 def system_Chiral_right():
     system = wberri.system.System_PythTB(model_Chiral_right, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
+    system.set_spin([1,-1])
     return system
 
 

@@ -22,6 +22,7 @@ from common_systems import (
     Efermi_Chiral,
     Efermi_Te_gpaw,
     Efermi_Te_sparse,
+    omega_chiral,
     omega_phonon,
     mass_kp_iso
 )
@@ -145,6 +146,10 @@ calculators_CuMnAs_2d = {
 }
 
 smoother_Chiral = FermiDiracSmoother(Efermi_Chiral, T_Kelvin=1200, maxdE=8)
+
+parameters_Chiral_optical = dict(
+        Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian" , kwargs_formula={"external_terms": False }, )
+
 calculators_Chiral = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral,smoother=smoother_Chiral),
     'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral),
@@ -156,7 +161,13 @@ calculators_Chiral = {
     'Hall_classic':calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral),
     'dos': calc.static.DOS(Efermi=Efermi_Chiral),
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral),
+    'opt_conductivity' : wberri.calculators.dynamic.OpticalConductivity(**parameters_Chiral_optical),
+#    'opt_SHCqiao' : wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_Chiral_optical),
+#    'opt_SHCryoo' : wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_Chiral_optical),
 }
+
+
+
 
 calculators_Chiral_tetra = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
