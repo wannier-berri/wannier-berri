@@ -155,7 +155,7 @@ def test_optical_Chiral_sym(check_integrate_dynamical, system_Chiral_left, compa
     quantities = ["opt_conductivity"]
 
     #parameters_Chiral_optical = dict(
-    #        Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian" , 
+    #        Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian" ,
     #kwargs_formula={"external_terms": False }, )
 
     Efermi = Efermi_Chiral
