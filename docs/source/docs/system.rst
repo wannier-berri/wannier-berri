@@ -11,6 +11,13 @@ The system may come either from :ref:`Wanier functions <sec-wan-fun>`  construct
    :show-inheritance:
    :member-order: bysource
 
+
+Symmetrization of the system
+-----------------------------
+
+.. automethod:: wannierberri.system.System.symmetrize
+
+
 .. _sec-wan-fun:
 
 From Wannier functions 
@@ -61,7 +68,13 @@ TBmodels
 .. autoclass:: wannierberri.system.System_TBmodels
    :show-inheritance:
 
+.. _sec-kp-model:
+
+:math:`\mathbf{k}\cdot\mathbf{p}` models
+------------------------------------------
+
+.. autoclass:: wannierberri.system.SystemKP
+   :show-inheritance:
 
 
-Symmetrization of the system
------------------------------
+

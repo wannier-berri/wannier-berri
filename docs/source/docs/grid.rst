@@ -1,4 +1,4 @@
-Creating a grid or Path
+Grid or Path
 ========================
 
 .. autoclass:: wannierberri.Grid
