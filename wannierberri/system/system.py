@@ -188,7 +188,7 @@ class System():
             * array(num_wann,num_wann,nRvec,...)` full spin matrix for all R
             `...` denotes the vector/tensor cartesian dimensions of the matrix element
         R : list(int)
-            list of 3 integer values specifying R. if 
+            list of 3 integer values specifying R. if
         reset : bool
             allows to reset matrix if it is already set
         add : bool
@@ -290,11 +290,11 @@ class System():
 
         Parameters
         ----------
-        spin : one on the following 
+        spin : one on the following
             1D `array(num_wann)` of `+1` or `-1` spins are along `axis`
         axis : array(3)
             spin quantization axis (if spin is a 1D array)
-        **kwargs : 
+        **kwargs :
             optional arguments 'R', 'reset', 'add' see :func:`~wannierberri.system.System.set_R_mat`
         """
         spins = np.array(spins)
