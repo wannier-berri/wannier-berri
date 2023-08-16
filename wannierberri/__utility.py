@@ -77,15 +77,16 @@ def real_recip_lattice(real_lattice=None, recip_lattice=None):
                 "\n WARNING!!!!! usually need to provide either with real or reciprocal lattice. If you only want to generate a random symmetric tensor - that it fine \n",
                 "yellow")
             return None, None
-        recip_lattice = conjugate_basis(real_lattice)
+        else:
+            recip_lattice = conjugate_basis(real_lattice)
     else:
         if real_lattice is not None:
             assert np.linalg.norm(
-                real_lattice.dot(recip_lattice.T) / (2 * np.pi)
+                np.array(real_lattice).dot(recip_lattice.T) / (2 * np.pi)
                 - np.eye(3)) <= 1e-8, "real and reciprocal lattice do not match"
         else:
             real_lattice = conjugate_basis(recip_lattice)
-    return real_lattice, recip_lattice
+    return np.array(real_lattice), np.array(recip_lattice)
 
 
 
@@ -288,6 +289,15 @@ def get_angle(sina, cosa):
         alpha = 2.0 * np.pi - alpha
     return alpha
 
+def angle_vectors(vec1,vec2):
+    cos = np.dot(vec1,vec2)/np.linalg.norm(vec1)/np.linalg.norm(vec2)
+    return np.arccos(cos)
+
+def angle_vectors_deg(vec1,vec2):
+    angle = angle_vectors(vec1,vec2)
+    return int(round(angle/np.pi*180))
+
+
 # smearing functions
 def Lorentzian(x, width):
     return 1.0 / (np.pi * width) * width**2 / (x**2 + width**2)
@@ -311,3 +321,4 @@ def Gaussian(x, width, adpt_smr):
         # width is number
         output[inds] = 1.0 / (np.sqrt(np.pi) * width) * np.exp(-(x[inds] / width)**2)
     return output
+

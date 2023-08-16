@@ -6,6 +6,7 @@ TAU_UNIT_TXT = "fs"
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]
+Ry_eV = physical_constants['Rydberg constant times hc in eV'][0]  # =13.605693122994
 Ang_SI = angstrom
 
 fac_orb_Z = elementary_charge/2/hbar * Ang_SI**2 # change unit of m_orb*B to (eV).

@@ -15,9 +15,9 @@ import numpy as np
 from collections import defaultdict
 from copy import copy
 
-from wannierberri.smoother import VoidSmoother
-from wannierberri.__factors import TAU_UNIT
-from wannierberri import result as result
+from ..smoother import VoidSmoother
+from ..__factors import TAU_UNIT
+from .. import result as result
 from . import fermiocean as fermiocean
 from . import __kubo as kubo
 

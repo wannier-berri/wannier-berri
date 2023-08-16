@@ -15,9 +15,9 @@
 import numpy as np
 import functools
 import multiprocessing
-from wannierberri.__utility import iterate3dpm, real_recip_lattice, fourier_q_to_R
+from ..__utility import iterate3dpm, real_recip_lattice, fourier_q_to_R
 from .system import System
-from wannierberri.__w90_files import EIG, MMN, CheckPoint, SPN, UHU, SIU, SHU
+from .__w90_files import EIG, MMN, CheckPoint, SPN, UHU, SIU, SHU
 from time import time
 
 
@@ -40,6 +40,10 @@ class System_w90(System):
     fft : str
         library used to perform the fast Fourier transform from **q** to **R**. ``fftw`` or ``numpy``. (practically does not affect performance,
         anyway mostly time of the constructor is consumed by reading the input files)
+    kmesh_tol : float
+        tolerance to consider the b_k vectors (connecting to neighbouring k-points on the grid) belonging to the same shell
+    bk_complete_tol : float
+        tolerance to consider the set of b_k shells as complete.
 
     Notes
     -----
@@ -53,13 +57,15 @@ class System_w90(System):
             guiding_centers=False,
             fft='fftw',
             npar=multiprocessing.cpu_count(),
+            kmesh_tol=1e-7,
+            bk_complete_tol=1e-5,
             **parameters):
 
         self.set_parameters(**parameters)
         self.npar = npar
         self.seedname = seedname
 
-        chk = CheckPoint(self.seedname)
+        chk = CheckPoint(self.seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         if self.mp_grid is None:
             self.mp_grid = chk.mp_grid
@@ -69,7 +75,7 @@ class System_w90(System):
         self.wannier_centers_cart_auto = chk.wannier_centers
 
         eig = EIG(seedname)
-        if self.getAA or self.getBB:
+        if self.need_R_any(['AA','BB']):
             mmn = MMN(seedname, npar=npar)
 
         kpt_mp_grid = [
@@ -92,16 +98,16 @@ class System_w90(System):
         timeFFT = 0
         HHq = chk.get_HH_q(eig)
         t0 = time()
-        self.Ham_R = fourier_q_to_R_loc(HHq)
+        self.set_R_mat('Ham', fourier_q_to_R_loc(HHq))
         timeFFT += time() - t0
 
-        if self.getAA:
+        if self.need_R_any('AA'):
             AAq = chk.get_AA_q(mmn, transl_inv=transl_inv)
             t0 = time()
-            self.AA_R = fourier_q_to_R_loc(AAq)
+            self.set_R_mat('AA',fourier_q_to_R_loc(AAq))
             timeFFT += time() - t0
             if transl_inv:
-                wannier_centers_cart_new = np.diagonal(self.AA_R[:, :, self.iR0, :], axis1=0, axis2=1).transpose()
+                wannier_centers_cart_new = np.diagonal(self.get_R_mat('AA')[:, :, self.iR0, :], axis1=0, axis2=1).transpose()
                 if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart_auto) < 1e-6):
                     if guiding_centers:
                         print(
@@ -110,7 +116,7 @@ class System_w90(System):
                             "This can happen if guiding_centres was set to true in Wannier90.\n"
                             "Overwrite the evaluated centers using the read centers.")
                         for iw in range(self.num_wann):
-                            self.AA_R[iw, iw, self.iR0, :] = self.wannier_centers_cart_auto[iw, :]
+                            self.get_R_mat('AA')[iw, iw, self.iR0, :] = self.wannier_centers_cart_auto[iw, :]
                     else:
                         raise ValueError(
                             f"the difference between read\n{self.wannier_centers_cart_auto}\n"
@@ -119,40 +125,48 @@ class System_w90(System):
                             "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90."
                         )
 
-        if self.getBB:
+        if 'BB' in self.needed_R_matrices:
             t0 = time()
-            self.BB_R = fourier_q_to_R_loc(chk.get_AA_q(mmn, eig))
+            self.set_R_mat('BB', fourier_q_to_R_loc(chk.get_AA_q(mmn, eig)))
             timeFFT += time() - t0
 
-        if self.getCC:
+        if 'CC' in self.needed_R_matrices:
             uhu = UHU(seedname)
             t0 = time()
-            self.CC_R = fourier_q_to_R_loc(chk.get_CC_q(uhu, mmn))
+            self.set_R_mat('CC', fourier_q_to_R_loc(chk.get_CC_q(uhu, mmn)))
             timeFFT += time() - t0
             del uhu
 
-        if self.getSS:
+        if self.need_R_any(['SS', 'SR', 'SH', 'SHR']):
             spn = SPN(seedname)
-            t0 = time()
-            self.SS_R = fourier_q_to_R_loc(chk.get_SS_q(spn))
-            if self.getSHC:
-                self.SR_R = fourier_q_to_R_loc(chk.get_SR_q(spn, mmn))
-                self.SH_R = fourier_q_to_R_loc(chk.get_SH_q(spn, eig))
-                self.SHR_R = fourier_q_to_R_loc(chk.get_SHR_q(spn, mmn, eig))
-            timeFFT += time() - t0
-            del spn
 
-        if self.getSA:
+        t0 = time()
+        if self.need_R_any('SS'):
+            self.set_R_mat('SS' ,fourier_q_to_R_loc(chk.get_SS_q(spn)))
+        if self.need_R_any('SR'):
+            self.set_R_mat('SR' , fourier_q_to_R_loc(chk.get_SR_q(spn, mmn)))
+        if self.need_R_any('SH'):
+            self.set_R_mat('SH' , fourier_q_to_R_loc(chk.get_SH_q(spn, eig)))
+        if self.need_R_any('SHR'):
+            self.set_R_mat('SHR' , fourier_q_to_R_loc(chk.get_SHR_q(spn, mmn, eig)))
+        timeFFT += time() - t0
+        try:
+            del spn
+        except NameError:
+            pass
+
+
+        if 'SA' in self.needed_R_matrices:
             siu = SIU(seedname)
             t0 = time()
-            self.SA_R = fourier_q_to_R_loc(chk.get_SA_q(siu, mmn))
+            self.set_R_mat('SA', fourier_q_to_R_loc(chk.get_SA_q(siu, mmn)) )
             timeFFT += time() - t0
             del siu
 
-        if self.getSHA:
+        if 'SHA' in self.needed_R_matrices:
             shu = SHU(seedname)
             t0 = time()
-            self.SHA_R = fourier_q_to_R_loc(chk.get_SHA_q(shu, mmn))
+            self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(shu, mmn)) )
             timeFFT += time() - t0
             del shu
 

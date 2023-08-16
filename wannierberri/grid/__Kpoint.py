@@ -14,12 +14,11 @@
 
 import numpy as np
 import lazy_property
-from .symmetry import SYMMETRY_PRECISION
-
+from ..symmetry import SYMMETRY_PRECISION
 
 class KpointBZ():
 
-    def __init__(self, K=np.zeros(3), dK=np.ones(3), NKFFT=np.ones(3), factor=1., symgroup=None, refinement_level=-1):
+    def __init__(self, K=np.zeros(3), dK=np.ones(3), NKFFT=np.ones(3), factor=1., symgroup=None, refinement_level=-1 ):
         self.K = np.copy(K)
         self.dK = np.copy(dK)
         self.factor = factor
@@ -28,6 +27,8 @@ class KpointBZ():
         self.symgroup = symgroup
         self.refinement_level = refinement_level
 
+
+
     def set_res(self, res):
         self.res = res
 
@@ -35,29 +36,15 @@ class KpointBZ():
     def Kp_fullBZ(self):
         return self.K / self.NKFFT
 
-    @lazy_property.LazyProperty
-    def dK_fullBZ(self):
-        return self.dK / self.NKFFT
-
-    @lazy_property.LazyProperty
-    def dK_fullBZ_cart(self):
-        return self.dK_fullBZ[:, None] * self.symgroup.recip_lattice
-
-    @lazy_property.LazyProperty
-    def star(self):
-        if self.symgroup is None:
-            return [self.K]
-        else:
-            return self.symgroup.star(self.K)
-
     def __str__(self):
         return (
-            "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ], refinement level:{3}, dK={4} ".format(
-                self.K[0], self.K[1], self.K[2], self.refinement_level, self.dK))
+            "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ], refinement level:{3}, factor = {4}".format(
+                self.K[0], self.K[1], self.K[2], self.refinement_level,self.factor))
 
-    @property
+    @lazy_property.LazyProperty
     def _max(self):
         return self.res.max  #np.max(self.res_smooth)
+
 
     @property
     def evaluated(self):
@@ -87,6 +74,40 @@ class KpointBZ():
     def get_res(self):
         self.check_evaluated
         return self.res * self.factor
+
+
+class KpointBZpath(KpointBZ):
+
+    def __init__(self, K=np.zeros(3),  symgroup=None):
+        super().__init__(K=np.copy(K), symgroup=symgroup)
+
+    def __str__(self):
+        return (
+            "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ] ".format(
+                self.K[0], self.K[1], self.K[2]))
+
+
+class KpointBZparallel(KpointBZ):
+
+    "describes a Kpoint and the surrounding parallelagramm of size dK x dK x dK"
+
+    @lazy_property.LazyProperty
+    def dK_fullBZ(self):
+        return self.dK / self.NKFFT
+
+    @lazy_property.LazyProperty
+    def dK_fullBZ_cart(self):
+        return self.dK_fullBZ[:, None] * self.symgroup.recip_lattice
+
+    @lazy_property.LazyProperty
+    def star(self):
+        if self.symgroup is None:
+            return [self.K]
+        else:
+            return self.symgroup.star(self.K)
+
+    def __str__(self):
+        return super().__str__()+"dK={} ".format(self.dK)
 
     def absorb(self, other):
         if other is None:
@@ -119,7 +140,7 @@ class KpointBZ():
         adpt_shift = (-self.dK + dK_adpt) / 2.
         newfac = self.factor / np.prod(ndiv)
         K_list_add = [
-            KpointBZ(
+            KpointBZparallel(
                 K=K0 + adpt_shift + dK_adpt * np.array([x, y, z]),
                 dK=dK_adpt,
                 NKFFT=self.NKFFT,
@@ -147,8 +168,16 @@ class KpointBZ():
 
 
 def exclude_equiv_points(K_list, new_points=None):
+    # cnt: the number of excluded k-points
+    # weight_changed_old: a dictionary that saves the "old" weights, K_list[i].factor,
+    #       for k-points that are already calculated (i < n - new_points)
+    #       and whose weights are changed by this function
+
     cnt = 0
     n = len(K_list)
+
+    if new_points is None:
+        new_points = n
 
     K_list_length = np.array([K.distGamma for K in K_list])
     K_list_sort = np.argsort(K_list_length)
@@ -157,19 +186,33 @@ def exclude_equiv_points(K_list, new_points=None):
 
     exclude = []
 
+    # dictionary; key: ik, value: previous factor
+    weight_changed_old = {}
+
     for start, end in zip(wall[:-1], wall[1:]):
         for l in range(start, end):
             i = K_list_sort[l]
             if i not in exclude:
-                for m in range(l + 1, end):
+                for m in range(start, end):
                     j = K_list_sort[m]
-                    if new_points is not None:
-                        if i < n - new_points and j < n - new_points:
-                            continue
+                    if i >= j:
+                        continue
+                    # There are two cases:
+                    # (i) if i < n - new_points <= j; or
+                    # (ii) if n - new_points <= i < j
+                    # In both cases, j is excluded
+                    if i < n - new_points and j < n - new_points:
+                        continue
                     if j not in exclude:
                         if K_list[i].equiv(K_list[j]):
+                            print('exclude dbg', i, j, K_list[i].K, K_list[j].K, n, new_points)
                             exclude.append(j)
+                            if i < n - new_points:
+                                if i not in weight_changed_old:
+                                    weight_changed_old[i] = K_list[i].factor
                             K_list[i].absorb(K_list[j])
+                            cnt += 1
+
     for i in sorted(exclude)[-1::-1]:
         del K_list[i]
-    return cnt
+    return cnt, weight_changed_old

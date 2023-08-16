@@ -8,10 +8,10 @@
 import numpy as np
 from collections import defaultdict
 from math import ceil
-from wannierberri.formula import covariant as frml
-from wannierberri.formula import covariant_basic as frml_basic
-from wannierberri import __factors as factors
-from wannierberri.result import EnergyResult
+from ..formula import covariant as frml
+from ..formula import covariant_basic as frml_basic
+from .. import __factors as factors
+from ..result import EnergyResult
 from . import Calculator
 
 
@@ -20,20 +20,25 @@ from . import Calculator
 
 class StaticCalculator(Calculator):
 
-    def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={}, **kwargs):
+    def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={},
+            Emin=-np.Inf, Emax=np.Inf, hole_like=False, **kwargs):
         self.Efermi = Efermi
+        self.Emin=Emin
+        self.Emax=Emax
         self.tetra = tetra
         self.kwargs_formula = kwargs_formula
         self.smoother = smoother
         self.use_factor = use_factor
-        self.constant_factor = constant_factor
+        self.hole_like = hole_like
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
         assert hasattr(self, 'Formula'), "Formula not set - it  should be class with a trace(ik,inn,out) method "
-
+        self.constant_factor = constant_factor
+        if self.hole_like and self.fder==0:
+            self.constant_factor *= -1
         if not self.tetra:
             self.extraEf = 0 if self.fder == 0 else 1 if self.fder in (1, 2) else 2 if self.fder == 3 else None
-            self.dEF = Efermi[1] - Efermi[0]
+            self.dEF = Efermi[1] - Efermi[0] if len(Efermi)>1 else 0.001
             self.EFmin = Efermi[0] - self.extraEf * self.dEF
             self.EFmax = Efermi[-1] + self.extraEf * self.dEF
             self.nEF_extra = Efermi.shape[0] + 2 * self.extraEf
@@ -50,15 +55,18 @@ class StaticCalculator(Calculator):
         # get a list [{(ib1,ib2):W} for ik in op:ed]
         if self.tetra:
             weights = data_K.tetraWeights.weights_all_band_groups(
-                self.Efermi, der=self.fder, degen_thresh=self.degen_thresh,
-                degen_Kramers=self.degen_Kramers)  # here W is array of shape Efermi
+                self.Efermi, der=-1 if self.hole_like else self.fder, degen_thresh=self.degen_thresh,
+                degen_Kramers=self.degen_Kramers, Emin=self.Emin, Emax=self.Emax)  # here W is array of shape Efermi
         else:
             weights = data_K.get_bands_in_range_groups(
                 self.EFmin,
                 self.EFmax,
                 degen_thresh=self.degen_thresh,
                 degen_Kramers=self.degen_Kramers,
-                sea=(self.fder == 0))  # here W is energy
+                sea=(self.fder == 0),
+                Emin=self.Emin,
+                Emax=self.Emax
+            )  # here W is energy
 
 #        """formula  - TraceFormula to evaluate
 #           bands = a list of lists of k-points for every
@@ -182,7 +190,7 @@ class Spin(StaticCalculator):
 class Morb(StaticCalculator):
     r"""Orbital magnetic moment per unit cell (:math:`\mu_B`)
 
-        | Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.85.014435>`_
+        | Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.85.014435>`__
         | Output: :math:`M = -\int [dk] (H + G - 2E_f \cdot \Omega) f`"""
 
     def __init__(self, constant_factor=-factors.eV_au / factors.bohr**2, **kwargs):
@@ -219,7 +227,7 @@ class Morb_test(StaticCalculator):
 
 class GME_orb_FermiSurf(StaticCalculator):
     r"""Gyrotropic tensor orbital part (:math:`A`)
-        | With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`_
+        | With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`__
         | Output: :math:`K^{orb}_{\alpha :\mu} = \int [dk] v_\alpha m^{orb}_\mu f'`
         | Where :math:`m^{orb} = H + G - 2E_f \cdot \Omega`"""
 
@@ -237,7 +245,7 @@ class GME_orb_FermiSurf(StaticCalculator):
 
 class GME_orb_FermiSea(StaticCalculator):
     r"""Gyrotropic tensor orbital part (:math:`A`)
-        | With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
+        | With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
         | Output: :math:`K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`
         | Where :math:`m = H + G - 2E_f \cdot \Omega`"""
 
@@ -258,7 +266,7 @@ class GME_orb_FermiSea_test(StaticCalculator):
     r"""Gyrotropic tensor orbital part for testing (:math:`A`)
         | With Fermi sea integral.
         | Output: :math:`K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`
-        |Where :math: `m = H + G - 2E_f \cdot \Omega`"""
+        | Where :math: `m = H + G - 2E_f \cdot \Omega` """
 
     def __init__(self, constant_factor=factors.factor_gme * factors.fac_orb_Z, **kwargs):
         self.Formula = frml_basic.tildeHGc_d
@@ -276,7 +284,7 @@ class GME_orb_FermiSea_test(StaticCalculator):
 class GME_spin_FermiSea(StaticCalculator):
     r"""Gyrotropic tensor spin part (:math:`A`)
 
-        | With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
+        | With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
         | Output: :math:`K^{spin}_{\alpha :\mu} = -\int [dk] \partial_\alpha s_\mu f`"""
 
     def __init__(self, constant_factor=factors.factor_gme * factors.fac_spin_Z, **kwargs):
@@ -294,7 +302,7 @@ class GME_spin_FermiSea(StaticCalculator):
 class GME_spin_FermiSurf(StaticCalculator):
     r"""Gyrotropic tensor spin part (:math:`A`)
 
-        | With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`_
+        | With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`__
         | Output: :math:`K^{spin}_{\alpha :\mu} = \tau \int [dk] v_\alpha s_\mu f'`"""
 
     def __init__(self, constant_factor=factors.factor_gme * factors.fac_spin_Z, **kwargs):
@@ -307,7 +315,7 @@ class GME_spin_FermiSurf(StaticCalculator):
 class AHC(StaticCalculator):
     r"""Anomalous Hall conductivity (:math:`s^3 \cdot A^2 / (kg \cdot m^3) = S/m`)
 
-        | With Fermi sea integral Eq(11) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
+        | With Fermi sea integral Eq(11) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
         | Output: :math:`O = -e^2/\hbar \int [dk] \Omega f`
         | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta = \epsilon_{\alpha\beta\delta} O_\delta E_\beta`"""
 
@@ -333,7 +341,7 @@ class AHC_test(StaticCalculator):
 class Ohmic_FermiSea(StaticCalculator):
     __doc__ = (r"""Ohmic conductivity (:math:`S/m`)
 
-        | With Fermi sea integral. Eq(31) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
+        | With Fermi sea integral. Eq(31) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
         | Output: :math:`\sigma_{\alpha\beta} = e^2/\hbar \tau \int [dk] \partial_\beta v_\alpha f`"""+
         fr"for \tau=1{factors.TAU_UNIT_TXT}"+
         r"""| Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta`""")
@@ -403,7 +411,7 @@ class Hall_classic_FermiSea(StaticCalculator):
 class BerryDipole_FermiSurf(StaticCalculator):
     r"""Berry curvature dipole (dimensionless)
 
-        | With Fermi surface integral. Eq(8) in `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.115.216806>`_
+        | With Fermi surface integral. Eq(8) in `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.115.216806>`__
         | Output: :math:`D_{\beta\delta} = -\int [dk] v_\beta \Omega_\delta f'`"""
 
     def __init__(self, **kwargs):
@@ -415,7 +423,7 @@ class BerryDipole_FermiSurf(StaticCalculator):
 class NLAHC_FermiSurf(BerryDipole_FermiSurf):
     r"""Nonlinear anomalous Hall conductivity (:math:`S^2/A`)
 
-        | With Fermi surface integral. Eq(8) in `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.115.216806>`_
+        | With Fermi surface integral. Eq(8) in `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.115.216806>`__
         | Output: :math:`D_{\beta\delta} = -e^3/\hbar^2 \tau \int [dk] v_\beta \Omega_\delta f'`
         | Instruction: :math:`j_\alpha = \epsilon_{\alpha\delta\gamma} D_{\beta\delta} E_\beta E\gamma`"""
 
@@ -426,7 +434,7 @@ class NLAHC_FermiSurf(BerryDipole_FermiSurf):
 class BerryDipole_FermiSea(StaticCalculator):
     r"""Berry curvature dipole (dimensionless)
 
-        | With Fermi sea integral. Eq(29) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
+        | With Fermi sea integral. Eq(29) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
         | Output: :math:`D_{\beta\delta} = \int [dk] \partial_\beta \Omega_\delta f`"""
 
     def __init__(self, **kwargs):
@@ -445,7 +453,7 @@ class BerryDipole_FermiSea(StaticCalculator):
 class NLAHC_FermiSea(BerryDipole_FermiSea):
     r"""Nonlinear anomalous Hall conductivity  (:math:`S^2/A`)
 
-        | With Fermi sea integral. Eq(29) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`_
+        | With Fermi sea integral. Eq(29) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
         | Output: :math:`D_{\beta\delta} = e^3/\hbar^2 \tau \int [dk] \partial_\beta \Omega_\delta f`
         | Instruction: :math:`j_\alpha = \epsilon_{\alpha\delta\gamma} D_{\beta\delta} E_\beta E\gamma`"""
 
@@ -474,7 +482,7 @@ class BerryDipole_FermiSea_test(StaticCalculator):
 class NLDrude_FermiSea(StaticCalculator):
     r"""Drude conductivity (:math:`S^2/A`)
 
-        | With Fermi sea integral. Eq(3) in `Ref <https://journals.aps.org/prresearch/abstract/10.1103/PhysRevResearch.2.043081>`_
+        | With Fermi sea integral. Eq(3) in `Ref <https://journals.aps.org/prresearch/abstract/10.1103/PhysRevResearch.2.043081>`__
         | Output: :math:`\sigma_{\alpha\beta\gamma} = -e^3/\hbar^2 \tau^2 \int [dk] \partial_{\beta\gamma} v_\alpha f`
         | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta\gamma} E_\beta E\gamma`"""
 
@@ -500,7 +508,7 @@ class NLDrude_FermiSurf(StaticCalculator):
 class NLDrude_Fermider2(StaticCalculator):
     r"""Drude conductivity (:math:`S^2/A`)
 
-        | With second derivative of distribution function. Eq(A28) in `Ref <https://journals.aps.org/prresearch/abstract/10.1103/PhysRevResearch.2.043081>`_
+        | With second derivative of distribution function. Eq(A28) in `Ref <https://journals.aps.org/prresearch/abstract/10.1103/PhysRevResearch.2.043081>`__
         | Output: :math:`\sigma_{\alpha\beta\gamma} = -e^3/\hbar^2 \tau^2 \int [dk] v_\beta v_\alpha v_\gamma f'`
         | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta\gamma} E_\beta E\gamma`"""
 
@@ -514,8 +522,8 @@ class SHC(StaticCalculator):
     r"""Spin Hall conductivity with dc (:math:`S/m`)
 
         | With Fermi sea integral. Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.235113>`_
-        | Qiao type : with kwargs_formula={'spin_current_type':'qiao'}. Eq(49,50) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.98.214402>`_
-        | Ryoo type : with kwargs_formula={'spin_current_type':'ryoo'}. Eq(17,26-29) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.235113>`_
+        | Qiao type : with kwargs_formula={'spin_current_type':'qiao'}. Eq(49,50) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.98.214402>`__
+        | Ryoo type : with kwargs_formula={'spin_current_type':'ryoo'}. Eq(17,26-29) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.235113>`__
         | Output: :math:`\sigma_{\alpha\beta} = -e^2/\hbar \int [dk] Im(j_{nm,\alpha} v_{mn,\beta})/(\epsilon_n - \epsilon_m)^2 f`
         | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta`"""
 
@@ -531,7 +539,7 @@ class AHC_Zeeman_spin(StaticCalculator):
 
         | With Fermi surface integral.
         | Output: :math:`ZAHC^{spin}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * s_\mu f'`
-        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = \epsilon_{\alpha\beta\delta} ZAHC^{spin}_{\alpha\beta:\mu} E_\beta` B_\mu"""
+        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = \epsilon_{\alpha\beta\delta} ZAHC^{spin}_{\alpha\beta:\mu} E_\beta B_\mu` """
 
     def __init__(self, constant_factor=factors.fac_spin_Z * factors.factor_ahc, **kwargs):
         self.Formula = frml.OmegaS
@@ -552,7 +560,7 @@ class AHC_Zeeman_orb(StaticCalculator):
 
         | With Fermi surface integral.
         | Output: :math:`ZAHC^{orb}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * m_\mu f'`
-        | Where :math: `m = H + G - 2Ef*\Omega`
+        | Where :math:`m = H + G - 2Ef*\Omega`
         | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = e \epsilon_{\alpha\beta\delta} ZAHC^{orb}_{\alpha\beta:\mu} E_\beta B_\mu`"""
 
     def __init__(self, constant_factor=factors.fac_orb_Z * factors.factor_ahc, **kwargs):

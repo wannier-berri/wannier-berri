@@ -17,25 +17,30 @@ from time import time
 import pickle
 import glob
 
-from .data_K import Data_K
-from .__Kpoint import exclude_equiv_points
+from .data_K import get_data_k
+from .grid import exclude_equiv_points, Path, Grid, GridTetra
 from .parallel import Serial
 from .result import ResultDict
-from .__path import Path
 
 
-def print_progress(count, total, t0):
+def print_progress(count, total, t0, tprev, print_progress_step):
     t = time() - t0
+    t_remain = None
     if count == 0:
         t_remain = "unknown"
     else:
-        t_remain = "{:22.1f}".format(t / count * (total - count))
-    print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
+        t_rem_s = t / count * (total - count)
+        t_remain = "{:22.1f}".format(t_rem_s)
+    if t-tprev>print_progress_step:
+        print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
+        tprev=t
+    return tprev
 
 
-def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}):
+def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}, print_progress_step=5):
     print(f"symgroup : {symgroup}")
     t0 = time()
+    t_print_prev = t0
     selK = [ik for ik, k in enumerate(K_list) if k.res is None]
     numK = len(selK)
     dK_list = [K_list[ik] for ik in selK]
@@ -60,7 +65,7 @@ def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}):
         for count, Kp in enumerate(dK_list):
             res.append(paralfunc(Kp, **remote_parameters))
             if (count + 1) % nstep_print == 0:
-                print_progress(count + 1, numK, t0)
+                t_print_prev = print_progress(count + 1, numK, t0, t_print_prev, print_progress_step)
     elif parallel.method == 'ray':
         num_remotes = len(remotes)
         num_remotes_calculated = 0
@@ -72,7 +77,7 @@ def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}):
             num_remotes_calculated = len(remotes_calculated)
             if num_remotes_calculated >= num_remotes:
                 break
-            print_progress(num_remotes_calculated, numK, t0)
+            t_print_prev = print_progress(num_remotes_calculated, numK, t0, t_print_prev, print_progress_step)
         res = parallel.ray.get(remotes)
     else:
         raise RuntimeError(f"unsupported parallel method : '{parallel.method}'")
@@ -112,6 +117,8 @@ def run(
     print_Kpoints=True,
     adpt_mesh=2,
     adpt_fac=1,
+    fast_iter=True,
+    print_progress_step=5,
 ):
     """
     The function to run a calculation. Substitutes the old :func:`~wannierberri.integrate` and :func:`~wannierberri.tabulate`
@@ -150,6 +157,10 @@ def run(
         if `True` : reads restart information from `file_Klist` and starts from there
     Klist_part : int
         write the file_Klist by portions. Increase for speed, decrease for memory saving
+    fast_iter : bool
+        if under iterations appear peaks that arte not further removed, set this parameter to False.
+    print_progress_step : float or int
+        intervals to print progress
 
     Returns
     --------
@@ -171,12 +182,21 @@ def run(
         if symmetrize:
             print ("Symmetrization switched off for Path")
             symmetrize = False
+    if isinstance(grid,GridTetra):
+        print ("Grid is tetrahedral")
     else:
         print ("Grid is regular")
 
     if file_Klist is not None:
+        do_write_Klist = True
         if not file_Klist.endswith(".pickle"):
             file_Klist += ".pickle"
+            file_Klist_factor_changed = file_Klist+".changed_factors.txt"
+        else:
+            file_Klist_factor_changed = file_Klist[:-7]+".changed_factors.txt"
+    else:
+        do_write_Klist = False
+        file_Klist_factor_changed = None
 
     print(f"The set of k points is a {grid.str_short}")
 
@@ -187,12 +207,12 @@ def run(
 
         @ray.remote
         def paralfunc(Kpoint, _system, _grid, _calculators, npar_k):
-            data = Data_K(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+            data = get_data_k(_system,  Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
             return ResultDict({k: v(data) for k, v in _calculators.items()})
     else:
 
         def paralfunc(Kpoint, _system, _grid, _calculators, npar_k):
-            data = Data_K(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+            data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
             return ResultDict({k: v(data) for k, v in _calculators.items()})
 
     if restart:
@@ -209,14 +229,42 @@ def run(
             if len(K_list) == 0:
                 print("WARNING : {0} contains zero points starting from scrath".format(file_Klist))
                 restart = False
+            fr.close()
+
+            nk_prev = len(K_list)
+
+            try:
+                # patching the Klist by updating the factors
+                fr_div = open(file_Klist_factor_changed, "r")
+                factor_changed_K_list = []
+                for line in fr_div:
+                    line_ = line.split()
+                    iK = int(line_[0])
+                    fac = float(line_[1])
+
+                    factor_changed_K_list.append(iK)
+                    K_list[iK].factor = fac
+                print("{0} K-points were read from {1}".format(len(factor_changed_K_list), file_Klist_factor_changed))
+                fr_div.close()
+            except FileNotFoundError:
+                print (f"File with changed factors {file_Klist_factor_changed} not found, assume they were not changed")
         except Exception as err:
             restart = False
-            print("WARNING: {}".format(err))
-            print("WARNING : reading from {0} failed, starting from scrath".format(file_Klist))
+#            print("WARNING: {}".format(err))
+            raise RuntimeError("{1}: reading from {0} failed, starting from scrath".format(file_Klist,err))
     else:
         K_list = grid.get_K_list(use_symmetry=use_irred_kpt)
         print("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
         start_iter = 0
+        nk_prev = 0
+
+    if not restart:
+        import os
+        def remove_file(filename):
+            if filename is not None and os.path.exists(filename):
+                os.remove(filename)
+        remove_file(file_Klist)
+        remove_file(file_Klist_factor_changed)
 
 
 #    suffix="-"+suffix if len(suffix)>0 else ""
@@ -243,11 +291,13 @@ def run(
         adpt_mesh = np.array(adpt_mesh)
 
     counter = 0
+    result_all = None
+    result_excluded = None
 
     for i_iter in range(adpt_num_iter + 1):
         if print_Kpoints:
             print(
-                "iteration {0} - {1} points. New points are:".format(i_iter, len([K for K in K_list if K.res is None])))
+                "iteration {0} - {1} points. New points are:".format(i_iter+start_iter, len([K for K in K_list if K.res is None])))
             for i, K in enumerate(K_list):
                 if not K.evaluated:
                     print(" K-point {0} : {1} ".format(i, K))
@@ -256,19 +306,30 @@ def run(
             K_list,
             parallel,
             symgroup=system.symgroup if symmetrize else None,
+            print_progress_step=print_progress_step,
             remote_parameters=remote_parameters)
 
+        nk = len(K_list)
         try:
-            if file_Klist is not None:
-                nk = len(K_list)
-                fw = open(file_Klist, "wb")
-                for ink in range(0, nk, Klist_part):
+            if do_write_Klist:
+                # append new (refined) k-points only
+                fw = open(file_Klist, "ab")
+                for ink in range(nk_prev, nk, Klist_part):
                     pickle.dump(K_list[ink:ink + Klist_part], fw)
+                fw.close()
+
         except Exception as err:
             print("Warning: {0} \n the K_list was not pickled".format(err))
 
         time0 = time()
-        result_all = sum(kp.get_res for kp in K_list)
+
+        if (result_all is None) or (not fast_iter):
+            result_all = sum(kp.get_res for kp in K_list)
+        else:
+            if result_excluded is not None:
+                result_all -= result_excluded
+            result_all += sum(kp.get_res for kp in K_list[nk_prev:])
+
         time1 = time()
         print("time1 = ", time1 - time0)
         if not (restart and i_iter == 0):
@@ -284,14 +345,43 @@ def run(
         time2 = time()
         print("time2 = ", time2 - time1)
         l1 = len(K_list)
-        for iK in select_points:
-            K_list += K_list[iK].divide(adpt_mesh, system.periodic, use_symmetry=use_irred_kpt)
 
-        if use_irred_kpt:
+        excluded_Klist = []
+        result_excluded = None
+
+        nk_prev = nk
+
+        for iK in select_points:
+            results = K_list[iK].get_res
+            K_list += K_list[iK].divide(adpt_mesh, periodic=system.periodic, use_symmetry=use_irred_kpt)
+            if abs(K_list[iK].factor) < 1.e-10:
+                excluded_Klist.append(iK)
+                if result_excluded is None:
+                    result_excluded = results - K_list[iK].get_res
+                else:
+                    result_excluded += results - K_list[iK].get_res
+
+        if use_irred_kpt and isinstance(grid,Grid):
             print("checking for equivalent points in all points (of new  {} points)".format(len(K_list) - l1))
-            nexcl = exclude_equiv_points(K_list, new_points=len(K_list) - l1)
+            nexcl, weight_changed_old = exclude_equiv_points(K_list, new_points=len(K_list) - l1)
             print(" excluded {0} points".format(nexcl))
+        else:
+            weight_changed_old = {}
+
         print("sum of weights now :{}".format(sum(Kp.factor for Kp in K_list)))
+
+        for iK, prev_factor in weight_changed_old.items():
+            result_excluded += K_list[iK].res * (prev_factor - K_list[iK].factor)
+
+        if do_write_Klist:
+            print (f"Writing file_Klist_factor_changed to {file_Klist_factor_changed}")
+            fw_changed = open(file_Klist_factor_changed, "a")
+            for iK in excluded_Klist:
+                fw_changed.write("{0} {1} # refined\n".format(iK, 0.0))
+            for iK in weight_changed_old:
+                fw_changed.write("{0} {1} # changed\n".format(iK, K_list[iK].factor))
+            fw_changed.close()
+
 
     print("Totally processed {0} K-points ".format(counter))
 

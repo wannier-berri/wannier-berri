@@ -14,20 +14,20 @@
 
 import functools
 from .__evaluate import evaluate_K
-from wannierberri.smoother import get_smoother
-from wannierberri.result import __tabresult
+from ..smoother import get_smoother
+from ..result import __tabresult
 from . import __integrate
 from . import __tabulate
-from wannierberri.__path import Path
+from ..grid import Path
 import numpy as np
 from collections.abc import Iterable
 
 integrate_options = __integrate.calculators.keys()
 tabulate_options = __tabulate.calculators.keys()
-from wannierberri.utils.mmn2uHu import hlp as hlp_mmn
-from wannierberri.utils.vaspspn import hlp as hlp_spn
+from ..utils.mmn2uHu import hlp as hlp_mmn
+from ..utils.vaspspn import hlp as hlp_spn
 from time import time
-from wannierberri.parallel import Serial
+from ..parallel import Serial
 import sys
 
 from colorama import init
@@ -132,7 +132,7 @@ def integrate(
     user_quantities : dict
         a dictionary `{name:function}`, where `name` is any string, and `function(data_K,Efermi)`
         takes two arguments
-        `data_K` of  of type :class:`~wannierberri.data_K.Data_K`  and Efermi -  `np.array`
+        `data_K` of  of type :class:`~wannierberri.data_K._Data_K`  and Efermi -  `np.array`
         and returns an object  :class:`~wannierberri.result.EnergyResult`
     adpt_num_iter : int
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
@@ -160,7 +160,7 @@ def integrate(
         `'quantity^label':dict`, where dict is analogous to  `parameters`. This values will override
         for the instance of the quantity labeled by '^label'
     parameters_K : dict
-        parameters to be passed to the :class:`~wannierberri.data_K.Data_K`,
+        parameters to be passed to the :class:`~wannierberri.data_K._Data_K`,
         so they are common for the calculation.
 
     Returns
@@ -295,7 +295,7 @@ def tabulate(
         `'quantity^label':dict`, where dict is analogous to  `parameters`. This values will override
         for the instance of the quantity labeled by '^label'
     parameters_K : dict
-        parameters to be passed to the :class:`~wannierberri.data_K.Data_K`,
+        parameters to be passed to the :class:`~wannierberri.data_K._Data_K`,
         so they are common for the calculation.
 
     Returns

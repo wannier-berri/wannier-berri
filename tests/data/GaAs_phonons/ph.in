@@ -1,0 +1,14 @@
+--
+&inputph
+  prefix   = 'GaAs',
+  fildyn   = 'GaAs.dyn.xml',
+  amass(1) = 69.723,
+  amass(2) = 74.9216,
+  outdir   = './temp/'
+  ldisp    = .true.,
+  fildvscf = 'dvscf',
+  nq1      = 2,
+  nq2      = 2,
+  nq3      = 2,
+  tr2_ph   =  1.0d-16
+ /

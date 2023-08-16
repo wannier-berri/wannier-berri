@@ -1,12 +1,12 @@
 """
 The module describes calculators - objects that 
-receive :calss:`~wannierberri.data_K.Data_K` objects and yield
+receive :calss:`~wannierberri.data_K._Data_K` objects and yield
 :class:`~wannierberri.result.Result`
 """
 
 import abc
 import numpy as np
-from wannierberri.result import KBandResult,TABresult
+from ..result import KBandResult,TABresult
 from termcolor import cprint
 
 class Calculator():
@@ -31,13 +31,14 @@ class Calculator():
 
 class TabulatorAll(Calculator):
 
-    def __init__(self, tabulators, ibands=None, mode="grid"):
+    def __init__(self, tabulators, ibands=None, mode="grid", save_mode="frmsf"):
         """ tabulators - dict 'key':tabulator
         one of them should be "Energy" """
         self.tabulators = tabulators
         mode = mode.lower()
         assert mode in ("grid","path")
         self.mode = mode
+        self.save_mode = save_mode
         if "Energy" not in self.tabulators.keys():
             raise ValueError("Energy is not included in tabulators")
         if ibands is not None:
@@ -53,6 +54,7 @@ class TabulatorAll(Calculator):
             kpoints=data_K.kpoints_all.copy(),
             mode=self.mode,
             recip_lattice=data_K.system.recip_lattice,
+            save_mode=self.save_mode,
             results={k: v(data_K)
                      for k, v in self.tabulators.items()} )
 

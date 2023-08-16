@@ -14,11 +14,12 @@
 import numpy as np
 import lazy_property
 from .sym_wann import SymWann
-from wannierberri.__utility import alpha_A, beta_A, iterate3dpm
-from wannierberri.symmetry import Symmetry, Group, TimeReversal
+from ..__utility import alpha_A, beta_A, iterate3dpm
+from ..symmetry import Symmetry, Group, TimeReversal
 from termcolor import cprint
 import functools
 import multiprocessing
+from collections import defaultdict
 
 
 class System():
@@ -93,6 +94,7 @@ class System():
 
     """.format(**default_parameters)
 
+
     def set_parameters(self, **parameters):
 
         for param in self.default_parameters:
@@ -105,46 +107,125 @@ class System():
             if param not in self.default_parameters:
                 print(f"WARNING: parameter {param} was passed to data_K, which is not recognised")
 
-        if self.npar is None:
+        if self.npar is None :
             self.npar = multiprocessing.cpu_count()
-        if self.mp_grid is not None:
+        if self.mp_grid is not None :
             self.mp_grip = np.array(self.mp_grid)
 
         periodic = np.zeros(3, dtype=bool)
         periodic[:len(self.periodic)] = self.periodic
         self.periodic = periodic
+        self.needed_R_matrices = set(['Ham'])
+        if self.morb :
+            self.needed_R_matrices.update(['AA','BB','CC'])
+        if self.berry :
+            self.needed_R_matrices.add('AA')
+        if self.spin :
+            self.needed_R_matrices.add('SS')
+        if self._getFF :
+            self.needed_R_matrices.add('FF')
+        if self.SHCryoo :
+            self.needed_R_matrices.update(['AA','SS','SA','SHA','SR','SH','SHR'])
+        if self.SHCqiao :
+            self.needed_R_matrices.update(['AA','SS','SR','SH','SHR'])
+
+        self._XX_R = dict()
+
+        if self.wannier_centers_cart is not None:
+            self.wannier_centers_cart = np.array(self.wannier_centers_cart)
+            if self.wannier_centers_reduced is not None:
+                raise ValueError(
+                    "one should not specify both wannier_centers_cart and wannier_centers_reduced,"
+                    "or, set_wannier_centers should not be called twice")
+            else:
+                self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+        elif self.wannier_centers_reduced is not None:
+            self.wannier_centers_reduced = np.array(self.wannier_centers_reduced)
+            self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
+        if self.wannier_centers_cart is not None:
+            self.num_wann = self.wannier_centers_cart.shape[0]
+
+
+    def need_R_any(self,keys):
+        """returns True is any of the listed matrices is needed in to be set
+
+        keys : str or list of str
+            'AA', 'BB', 'CC', etc
+        """
+        if not isinstance(keys,(list,tuple)):
+            keys = [keys]
+        for k in keys:
+            if k in self.needed_R_matrices:
+                return True
+
+    def get_R_mat(self,key):
+        try:
+            return self._XX_R[key]
+        except KeyError:
+            raise ValueError(f"The real-space matrix elements '{key}' are not set in the system,"+
+            " but are required for the current calculation. please check parameters of the System() initializer")
+
+
+    def has_R_mat(self,key):
+        return (key in self._XX_R)
+
+    def has_R_mat_any(self,keys):
+        for k in keys:
+            if self.has_R_mat(k):
+                return True
+
+    def set_R_mat(self,key,value,reset=False):
+        if key in self._XX_R and not reset:
+            raise RuntimeError(f"setting {key} for the second time. smth is wrong")
+        self._XX_R[key]=value
+
+    @property
+    def Ham_R(self):
+        return self.get_R_mat('Ham')
+
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe'):
         """
-        proj:
-            Should be the same with projections card in Wannier90.win.
-        positions: list
+        Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
+
+
+        Parameters
+        ----------
+        positions: array
             Positions of each atom.
         atom_name: list
             Name of each atom.
-        magmom: array
-            Magnetic moment of each atom.
+        proj: list
+            Should be the same with projections card in relative Wannier90.win.
+
+            eg: ``['Te: s','Te:p']``
+
+            If there is hybrid orbital, grouping the other orbitals.
+
+            eg: ``['Fe':sp3d2;t2g]`` Plese don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
+
+                ``['X':sp;p2]`` Plese don't use ``['X':sp;pz,py]``
+        soc: bool
+            Spin orbital coupling.
+        magmom: 2D array
+            Magnetic momens of each atoms.
+        DFT_code: str
+            DFT code used : ``'qe'`` or ``'vasp'`` . This is needed, because vasp and qe have different orbitals arrangement with SOC.(grouped by spin or by orbital type)
         """
-        XX_R = {'Ham': self.Ham_R}
-        for X in ['AA', 'BB', 'CC', 'SS', 'FF', 'SA', 'SHA', 'SR', 'SH', 'SHR']:
-            try:
-                XX_R[X] = vars(self)[X + '_R']
-            except KeyError:
-                pass
+
         symmetrize_wann = SymWann(
             num_wann=self.num_wann,
             lattice=self.real_lattice,
             positions=positions,
             atom_name=atom_name,
-            proj=proj,
+            projections=proj,
             iRvec=self.iRvec,
-            XX_R=XX_R,
+            XX_R=self._XX_R,
             soc=soc,
             magmom=magmom,
             DFT_code=DFT_code)
-        XX_R, self.iRvec = symmetrize_wann.symmetrize()
-        for X in XX_R.keys():
-            vars(self)[X + '_R'] = XX_R[X]
+        self._XX_R, self.iRvec = symmetrize_wann.symmetrize()
+        self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom, DFT_code='qe')
 
     def check_periodic(self):
         exclude = np.zeros(self.nRvec, dtype=bool)
@@ -161,41 +242,9 @@ class System():
             notexclude = np.logical_not(exclude)
             self.iRvec = self.iRvec[notexclude]
             for X in ['Ham', 'AA', 'BB', 'CC', 'SS', 'FF']:
-                XR = X + '_R'
-                if hasattr(self, XR):
-                    vars(self)[XR] = vars(self)[XR][:, :, notexclude]
+                if X in self._XX_R:
+                    self.set_R_mat(X, self.get_X_mat(X)[:, :, notexclude], reset=True)
 
-    @property
-    def getAA(self):
-        return self.morb or self.berry or self.SHCryoo or self.SHCqiao
-
-    @property
-    def getBB(self):
-        return self.morb
-
-    @property
-    def getCC(self):
-        return self.morb
-
-    @property
-    def getSS(self):
-        return self.spin or self.SHCryoo or self.SHCqiao
-
-    @property
-    def getFF(self):
-        return self._getFF
-
-    @property
-    def getSA(self):
-        return self.SHCryoo
-
-    @property
-    def getSHA(self):
-        return self.SHCryoo
-
-    @property
-    def getSHC(self):
-        return self.SHCqiao
 
     def getXX_only_wannier_centers(self, getSS=False):
         """return AA_R, BB_R, CC_R containing only the diagonal matrix elements, evaluated from
@@ -206,29 +255,25 @@ class System():
         """
 
         iR0 = self.iR0
-        if self.getAA:
-            self.AA_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
+        if 'AA' in self.needed_R_matrices:
+            self.set_R_mat('AA',np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex) )
             if not self.use_wcc_phase:
                 for i in range(self.num_wann):
-                    self.AA_R[i, i, iR0, :] = self.wannier_centers_cart_auto[i]
+                    self.get_R_mat('AA')[i, i, iR0, :] = self.wannier_centers_cart_auto[i]
 
-        if self.getBB:
-            self.BB_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
+        if 'BB' in self.needed_R_matrices:
+            self.set_R_mat('BB', np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex) )
             if not self.use_wcc_phase:
                 for i in range(self.num_wann):
-                    self.BB_R[i, i, iR0, :] = self.AA_R[i, i, iR0, :] * self.Ham_R[i, i, iR0]
+                    self.get_R_mat('BB')[i, i, iR0, :] = self.get_R_mat('AA')[i, i, iR0, :] * self.get_R_mat('Ham')[i, i, iR0]
 
-        if self.getCC:
-            self.CC_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
+        if 'CC' in self.needed_R_matrices:
+            self.set_R_mat('CC',np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex))
 
-        if self.getSS and getSS:
+        if 'SS' in self.needed_R_matrices and getSS:
             raise NotImplementedError()
 
-        if self.getSA:
-            raise NotImplementedError()
 
-        if self.getSHA:
-            raise NotImplementedError()
 
 
     def do_at_end_of_init(self):
@@ -245,11 +290,9 @@ class System():
             print("using ws_distance")
             ws_map = ws_dist_map(
                 self.iRvec, self.wannier_centers_cart_ws, self.mp_grid, self.real_lattice, npar=self.npar)
-            for X in ['Ham', 'AA', 'BB', 'CC', 'SS', 'FF', 'SA', 'SHA', 'SR', 'SH', 'SHR']:
-                XR = X + '_R'
-                if hasattr(self, XR):
-                    print("using ws_dist for {}".format(XR))
-                    vars(self)[XR] = ws_map(vars(self)[XR])
+            for X in self._XX_R:
+                print("using ws_dist for {}".format(X))
+                self.set_R_mat(X, ws_map(self.get_R_mat(X)),reset=True)
             self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
         else:
             print("NOT using ws_dist")
@@ -281,14 +324,14 @@ class System():
                     "{0:3d} {1:3d} {2:15.8e} {3:15.8e}\n".format(
                         m + 1, n + 1, self.Ham_R[m, n, iR].real * self.Ndegen[iR], self.Ham_R[m, n, iR].imag
                         * self.Ndegen[iR]) for n in range(self.num_wann) for m in range(self.num_wann)))
-        if hasattr(self, 'AA_R'):
+        if self.has_R_mat('AA'):
             for iR in range(self.nRvec):
                 f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
                 f.write(
                     "".join(
                         "{0:3d} {1:3d} ".format(m + 1, n + 1) + " ".join(
                             "{:15.8e} {:15.8e}".format(a.real, a.imag)
-                            for a in self.AA_R[m, n, iR] * self.Ndegen[iR]) + "\n" for n in range(self.num_wann)
+                            for a in self.get_R_mat('AA')[m, n, iR] * self.Ndegen[iR]) + "\n" for n in range(self.num_wann)
                         for m in range(self.num_wann)))
         f.close()
 
@@ -370,39 +413,47 @@ class System():
         else:
             return np.zeros_like(self.wannier_centers_cart)
 
+    @property
+    def is_phonon(self):
+        return False
+
     def set_wannier_centers(self):
         """
         set self.wannier_centers_cart and self.wannier_centers_reduced. Also, if
         use_wcc_phase=True, modify the relevant real-space matrix elements .
         """
         if self.wannier_centers_cart is not None:
-            if self.wannier_centers_reduced is not None:
-                raise ValueError(
-                    "one should not specify both wannier_centers_cart and wannier_centers_reduced,"
-                    "or, set_wannier_centers should not be called twice")
-            else:
-                self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
-        elif self.wannier_centers_reduced is not None:
-            self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
+            pass
+#            if self.wannier_centers_reduced is not None:
+#                raise ValueError(
+#                    "one should not specify both wannier_centers_cart and wannier_centers_reduced,"
+#                    "or, set_wannier_centers should not be called twice")
+#            else:
+#                self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+#        elif self.wannier_centers_reduced is not None:
+#            self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
         elif hasattr(self, "wannier_centers_cart_auto"):
             self.wannier_centers_cart = self.wannier_centers_cart_auto
             self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
         if self.use_wcc_phase:
+            R_new = {}
             if self.wannier_centers_cart is None:
                 raise ValueError("use_wcc_phase = True, but the wannier centers could not be determined")
-            if hasattr(self, 'AA_R'):
-                AA_R_new = np.copy(self.AA_R)
+            if self.has_R_mat('AA'):
+                AA_R_new = np.copy(self.get_R_mat('AA'))
                 AA_R_new[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] -= self.wannier_centers_cart
-            if hasattr(self, 'BB_R'):
+                R_new['AA']=AA_R_new
+            if self.has_R_mat('BB'):
                 print("WARNING: orbital moment does not work with wcc_phase so far")
-                BB_R_new = self.BB_R.copy() - self.Ham_R[:, :, :, None] * self.wannier_centers_cart[None, :, None, :]
-            if hasattr(self, 'CC_R'):
+                BB_R_new = self.get_R_mat('BB').copy() - self.get_R_mat('Ham')[:, :, :, None] * self.wannier_centers_cart[None, :, None, :]
+                R_new['BB']=BB_R_new
+            if self.has_R_mat('CC'):
                 print("WARNING: orbital moment does not work with wcc_phase so far")
-                norm = np.linalg.norm(self.CC_R - self.conj_XX_R(self.CC_R))
+                norm = np.linalg.norm(self.get_R_mat('CC') - self.conj_XX_R('CC'))
                 assert norm < 1e-10, f"CC_R is not Hermitian, norm={norm}"
-                assert hasattr(self, 'BB_R'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
-                T = self.wannier_centers_cart[:, None, None, :, None] * self.BB_R[:, :, :, None, :]
-                CC_R_new = self.CC_R.copy() + 1.j * sum(
+                assert self.has_R_mat('BB'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
+                T = self.wannier_centers_cart[:, None, None, :, None] * self.get_R_mat('BB')[:, :, :, None, :]
+                CC_R_new = self.get_R_mat('CC').copy() + 1.j * sum(
                     s * (
                         -T[:, :, :, a, b]  # -t_i^a * B_{ij}^b(R)
                         - self.conj_XX_R(T[:, :, :, b, a])  # - B_{ji}^a(-R)^*  * t_j^b
@@ -411,14 +462,13 @@ class System():
                     ) for (s, a, b) in [(+1, alpha_A, beta_A), (-1, beta_A, alpha_A)])
                 norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
                 assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
-
-            if (hasattr(self, "SA_R") or hasattr(self, "SHA_R") or hasattr(self, "SR_R") or hasattr(self, "SH")
-                    or hasattr(self, "SHR_R")):
+                R_new['CC']=CC_R_new
+            if self.has_R_mat_any(['SA','SHA','SR','SH','SHR']):
                 raise NotImplementedError("use_wcc_phase=True for spin current matrix elements not implemented")
 
             for X in ['AA', 'BB', 'CC']:
-                if hasattr(self, X + '_R'):
-                    vars(self)[X + '_R'] = locals()[X + '_R_new']
+                if self.has_R_mat( X ):
+                    self.set_R_mat(X, R_new[X], reset=True)
 
     @property
     def iR0(self):
@@ -452,6 +502,8 @@ class System():
 
     def conj_XX_R(self, XX_R):
         """ reverses the R-vector and takes the hermitian conjugate """
+        if isinstance(XX_R,str):
+            XX_R=self.get_R_mat(XX_R)
         XX_R_new = np.zeros_like(XX_R)
         lst_R, lst_mR = self.reverseR
         XX_R_new[:, :, lst_R] = XX_R[:, :, lst_mR]
@@ -466,9 +518,9 @@ class System():
         return abs(np.linalg.det(self.real_lattice))
 
     def check_hermitian(self, XX):
-        if hasattr(self, XX):
-            XX_R = np.copy(vars(self)[XX])
-            assert (np.max(abs(XX_R - self.conh_XX_R(XX_R))) < 1e-8), f"{XX} should obey X(-R) = X(R)^+"
+        if XX in self._XX_R:
+            _X = self.get_R_mat(XX).copy()
+            assert (np.max(abs(_X - self.conj_XX_R(XX))) < 1e-8), f"{XX} should obey X(-R) = X(R)^+"
         else:
             print(f"{XX} is missing,nothing to check")
 
@@ -540,6 +592,30 @@ class System():
                 "operation.\nTo include such symmetries, use set_symmetry.")
 
         self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
+
+
+    def get_sparse(self,min_values={'Ham':1e-3}):
+        ret_dic = dict(
+                real_lattice=self.real_lattice,
+                wannier_centers_reduced=self.wannier_centers_reduced,
+                matrices={},
+                use_wcc_phase=self.use_wcc_phase
+                    )
+        if hasattr(self,'symmetrize_info'):
+            ret_dic['symmetrize_info']=self.symmetrize_info
+
+        def array_to_dict(A,minval):
+            A_tmp = abs(A.reshape(A.shape[:3]+(-1,))).max(axis=-1)
+            wh=np.argwhere(A_tmp>=minval)
+            dic = defaultdict(lambda : dict())
+            for w in wh:
+                iR=tuple(self.iRvec[w[2]])
+                dic[iR][(w[0],w[1])]=A[tuple(w)]
+            return dict(dic)
+
+        for k,v in min_values.items():
+            ret_dic['matrices'][k] = array_to_dict(self.get_R_mat(k),v)
+        return ret_dic
 
 
 class ws_dist_map():

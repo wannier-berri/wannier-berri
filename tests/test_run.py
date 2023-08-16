@@ -21,6 +21,9 @@ from common_systems import (
     Efermi_CuMnAs_2d,
     Efermi_Chiral,
     Efermi_Te_gpaw,
+    Efermi_Te_sparse,
+    omega_phonon,
+    mass_kp_iso
 )
 
 
@@ -37,6 +40,7 @@ def check_run(parallel_serial, compare_any_result):
             'NK': [6, 6, 6],
             'NKFFT': [3, 3, 3]
         },
+        grid=None,
         adpt_num_iter=0,
         parameters_K={},
         use_symmetry=False,
@@ -50,7 +54,8 @@ def check_run(parallel_serial, compare_any_result):
         skip_compare=[],
     ):
 
-        grid = wberri.Grid(system, **grid_param)
+        if grid is None:
+            grid = wberri.Grid(system, **grid_param)
         result = wberri.run(
             system,
             grid=grid,
@@ -103,6 +108,12 @@ calculators_Fe = {
     'dos': calc.static.DOS,
     'cumdos': calc.static.CumDOS,
 }
+
+calculators_phonons = {
+    'dos': calc.static.DOS,
+    'cumdos':calc.static.CumDOS,
+}
+
 
 calculators_GaAs = {
     'berry_dipole': calc.static.BerryDipole_FermiSea,
@@ -162,6 +173,19 @@ calculators_Chiral_tetra = {
     'dos': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral, tetra=True),
 }
+
+
+Efermi_Chiral_half = Efermi_Chiral[:len(Efermi_Chiral)//2]
+calculators_Chiral_half = {
+    'dos': calc.static.DOS(Efermi=Efermi_Chiral_half, tetra=False),
+    'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral_half, tetra=False),
+}
+
+calculators_Chiral_tetra_half = {
+    'dos': calc.static.DOS(Efermi=Efermi_Chiral_half, tetra=True),
+    'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral_half, tetra=True),
+}
+
 
 def resultType(quant):
     if quant in []:  # in future - add other options (tabulateresult)
@@ -233,6 +257,58 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
                 suffix_ref=_quant + _comp,
                 fout_name_ref="tabulate_Fe_W90",
                 precision=prec)
+
+
+def test_Fe_sparse(check_run, system_Fe_W90_sparse, compare_any_result):
+    param = {'Efermi': Efermi_Fe}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+
+    parameters_optical = dict(
+        Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
+
+    calculators['opt_conductivity'] = wberri.calculators.dynamic.OpticalConductivity(**parameters_optical)
+    calculators['opt_SHCqiao'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
+    calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
+
+    check_run(
+        system_Fe_W90_sparse,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="run-sparse",
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        extra_precision={"Morb": -1e-6},
+        skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
+
+    for quant in 'opt_conductivity', 'opt_SHCryoo', 'opt_SHCryoo':
+        compare_any_result(
+            "berry_Fe_W90",
+            quant + "-run-sparse",
+            0,
+            fout_name_ref="kubo_Fe_W90",
+            suffix_ref=quant,
+            precision=-1e-8,
+            result_type=EnergyResult)
+
+
+def test_Fe_dynamic_noband(check_run, system_Fe_W90, compare_any_result):
+    calculators = {}
+    parameters_optical = dict(
+        Efermi=np.array([117.0, 118.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
+
+    calculators['opt_conductivity'] = wberri.calculators.dynamic.OpticalConductivity(**parameters_optical)
+    calculators['opt_SHCqiao'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
+    calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
+
+    check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="run_noband",
+        precision=1e-15,
+        compare_zero=True)
 
 
 def test_Fe_wcc(check_run, system_Fe_W90_wcc, compare_any_result):
@@ -436,7 +512,7 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
         fout_name="berry_Fe_W90",
         suffix="sym-run",
         suffix_ref="sym",
-        adpt_num_iter=1,
+        adpt_num_iter=3,
         use_symmetry=True,
         parameters_K={
             '_FF_antisym': True,
@@ -445,7 +521,7 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
     )
 
 
-def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
+def test_Fe_pickle_Klist_12(check_run, system_Fe_W90, compare_any_result):
     """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
     #  First, remove the
     try:
@@ -460,7 +536,7 @@ def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
         fout_name="berry_Fe_W90",
         suffix="pickle-run",
         suffix_ref="sym",
-        adpt_num_iter=0,
+        adpt_num_iter=1,
         use_symmetry=True,
         file_Klist="Klist.pickle",
         parameters_K={
@@ -474,6 +550,61 @@ def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
         fout_name="berry_Fe_W90",
         suffix="pickle-run",
         suffix_ref="sym",
+        adpt_num_iter=2,
+        use_symmetry=True,
+        file_Klist="Klist.pickle",
+        restart=True,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+
+def test_Fe_pickle_Klist_021(check_run, system_Fe_W90, compare_any_result):
+    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
+    #  First, remove the
+    try:
+        os.remove("Klist.pickle")
+    except FileNotFoundError:
+        pass
+    param = {'Efermi': Efermi_Fe}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="pickle-run-fch",
+        suffix_ref="sym",
+        adpt_num_iter=0,
+        use_symmetry=True,
+        file_Klist="Klist.pickle",
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+    check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="pickle-run-fch",
+        suffix_ref="sym",
+        adpt_num_iter=2,
+        use_symmetry=True,
+        file_Klist="Klist.pickle",
+        restart=True,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+    check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="pickle-run-fch",
+        suffix_ref="sym",
         adpt_num_iter=1,
         use_symmetry=True,
         file_Klist="Klist.pickle",
@@ -483,6 +614,7 @@ def test_Fe_pickle_Klist(check_run, system_Fe_W90, compare_any_result):
             '_CCab_antisym': True
         },
     )
+
 
 def test_GaAs(check_run, system_GaAs_W90, compare_any_result):
 
@@ -779,9 +911,10 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
                 precision=-1e-8)
 
 
+
 def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
-    check_run(
+    result_full = check_run(
         system_Chiral_left,
         calculators_Chiral_tetra,
         fout_name="berry_Chiral_tetra",
@@ -794,6 +927,84 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         use_symmetry=True,
         extra_precision={"Morb": -1e-6},
     )
+
+    result_half = check_run(
+        system_Chiral_left,
+        calculators_Chiral_tetra_half,
+        fout_name="berry_Chiral_tetra",
+        suffix="left-run",
+        grid_param=grid_param,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=True,
+        extra_precision={"Morb": -1e-6},
+        do_not_compare=True,
+    )
+
+    for key,res_half in result_half.results.items():
+        print (key)
+        res_full = result_full.results[key]
+        nef = len(res_half.Energies[0])
+        data1 = res_half.data
+        data2 = res_full.data[:nef]
+        assert data1.shape == data2.shape
+        precision = 1e-14 * np.max(abs(data1))
+        assert data1 == approx(
+                data2, abs=precision), (
+                        f"calcuylated data of {key}  of full and half sets of Fermi levels give a maximal "
+                        + "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
+                            abs_err=np.max(abs(data1 - data2)), required_precision=precision))
+
+
+
+
+
+def test_Chiral_left_tetra_tetragrid(check_run, system_Chiral_left, compare_any_result):
+    grid = wberri.grid.GridTetra(system_Chiral_left, length=8, NKFFT=[5, 5, 2])
+    check_run(
+        system_Chiral_left,
+        calculators_Chiral_tetra,
+        fout_name="berry_Chiral_tetragrid",
+        suffix="",
+        grid=grid,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=True,
+        extra_precision={"Morb": -1e-6},
+    )
+
+
+def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result):
+    grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
+    nshift=4
+    Efermi_shift = Efermi_Chiral+Efermi_Chiral[nshift]-Efermi_Chiral[0]
+    calculators = {
+        'dos': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
+        'dos_trig': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
+        'dos_trig_2': calc.static.DOS(Efermi=Efermi_shift, tetra=True),
+    }
+    result = check_run(
+        system_Chiral_left,
+        calculators,
+        fout_name="berry_Chiral_tetra_trigonal",
+        suffix="left-run-2",
+        grid_param=grid_param,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=True,
+        skip_compare='dos_trig_2'
+    )
+    data1 = result.results.get("dos_trig_2").data[:-nshift]
+    data2 = result.results.get("dos_trig").data[nshift:]
+    assert data1.shape == data2.shape
+    assert data1 == approx(data2), "the result with the shifted set of Fermi levels is different by {}".format(
+            np.max(np.abs(data1-data2)) )
 
 
 def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, compare_any_result):
@@ -935,6 +1146,60 @@ def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_resul
         },
     )
 
+def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):
+    param = {'Efermi': Efermi_Te_sparse, "tetra": True, 'use_factor': False, 'Emax':6.15, 'hole_like':True}
+    calculators = {}
+    for k, v in calculators_Te.items():
+        par = {}
+        par.update(param)
+        if k not in ["dos", "cumdos"]:
+            par["kwargs_formula"] = {"external_terms": False}
+        calculators[k] = v(**par)
+
+    grid = wberri.grid.GridTrigonal(system_Te_sparse, length=50, NKFFT=[3,3,2])
+
+    check_run(
+        system_Te_sparse,
+        calculators,
+        fout_name="berry_Te_sparse_tetragrid",
+        use_symmetry=True,
+        grid=grid,
+        # temporarily weakened precision here. Will restrict it later with new data
+        extra_precision={"berry_dipole": 1e-7},
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+
+def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
+    param = {'Efermi': Efermi_Te_gpaw, "tetra": True, 'use_factor': False}
+    calculators = {}
+    for k, v in calculators_Te.items():
+        par = {}
+        par.update(param)
+        if k not in ["dos", "cumdos"]:
+            par["kwargs_formula"] = {"external_terms": False}
+        calculators[k] = v(**par)
+
+    grid = wberri.grid.GridTrigonalH(system_Te_sparse,length=50,NKFFT=[3,3,2],x=0.6)
+
+    check_run(
+        system_Te_sparse,
+        calculators,
+        fout_name="berry_Te_sparse_tetragridH",
+        use_symmetry=True,
+        grid=grid,
+        # temporarily weakened precision here. Will restrict it later with new data
+        extra_precision={"berry_dipole": 1e-7},
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+
 
 def test_tabulate_path(system_Haldane_PythTB):
 
@@ -1035,6 +1300,19 @@ def test_shc_static(check_run,system_Fe_W90):
                 f"difference of {np.max(np.abs(data_static - data_dynamic))}.")
 
 
+
+def test_phonons_GaAs_tetra(check_run, system_Phonons_GaAs):
+    """test  dos, cumdos for phonons"""
+
+    calculators = {k:cal(tetra=True,Efermi=omega_phonon) for k,cal in calculators_phonons.items()}
+    check_run(
+        system_Phonons_GaAs,
+        calculators,
+        fout_name="phonons_GaAs_tetra",
+        use_symmetry=True,
+    )
+
+
 def test_factor_nlahc(check_run, system_GaAs_W90):
     "Test whether constant_factor for NLAHC works as expected"
 
@@ -1069,4 +1347,94 @@ def test_factor_nlahc(check_run, system_GaAs_W90):
             f"data of"
             f"BerryDipole times factor_nlahc and NLAHC give a maximal absolute"
             f"difference of {np.max(np.abs(data_nlahc - data_bcd * factor_nlahc))}.")
+
+
+@pytest.fixture
+def check_kp_mass_isotropic(check_run):
+    def _inner(system,name,suffix, check_anal=False):
+
+        Efermi = np.linspace(-0.1,0.5,101)
+        tetra=True
+        calculators =   {
+            'cumdos':calc.static.CumDOS(Efermi=Efermi,tetra=tetra),
+            'dos':calc.static.DOS(Efermi=Efermi,tetra=tetra),
+            'ohmic_sea':calc.static.Ohmic_FermiSea(Efermi=Efermi,tetra=tetra),
+            'ohmic_surf':calc.static.Ohmic_FermiSurf(Efermi=Efermi,tetra=tetra),
+                    }
+
+        result = check_run(
+                    system,
+                    calculators,
+                    grid_param={
+                        'length': 20,
+                        'NKFFT': 5
+                                },
+                    fout_name="berry_kp_mass_"+name,
+                    suffix=suffix,
+                            )
+
+        if check_anal:
+            cumdos = result.results["cumdos"].data/system.cell_volume
+            dos = result.results["dos"].data/system.cell_volume
+            ohmic = {}
+            ohmic["sea"] = result.results["ohmic_sea"].data/wberri.__factors.factor_ohmic
+            ohmic["surf"] = result.results["ohmic_surf"].data/wberri.__factors.factor_ohmic
+
+            precision = 1e-8
+            try:
+                for ss in "sea","surf":
+                    ohm = ohmic[ss]
+                    for i in range(3):
+                        for j in range(3):
+                            if i==j:
+                                assert ohm[:,i,j] == approx(ohm[:,0,0], abs=precision)
+                            else:
+                                assert ohm[:,i,j] == approx(0, abs=precision)
+            except AssertionError:
+                raise RuntimeError(f"ohmic({ss}) conductivity is not isotropic, componenets {i,j}")
+            ohmic["sea"]=ohmic["sea"][:,0,0]
+            ohmic["surf"]=ohmic["surf"][:,0,0]
+
+
+            select_plus = Efermi>0.2
+            select_minus = Efermi<0
+
+            assert dos[select_minus] == approx(0, abs=precision)
+            assert cumdos[select_minus]  == approx(0, abs=precision)
+            assert ohmic["sea"][select_minus] == approx(0, abs=precision)
+            assert ohmic["surf"][select_minus] == approx(0, abs=precision)
+
+            ## compare with results evaluated analytically
+            mass = mass_kp_iso
+            Efp = Efermi[select_plus]
+            dos_anal = mass*np.sqrt(2*Efp*mass)/(2*np.pi**2)
+            cumdos_anal = np.sqrt(2*Efp*mass)**3/(6*np.pi**2)
+            ohmic_anal = np.sqrt(2*Efp*mass)**3/(6*np.pi**2)/mass
+            precision = 0.05
+            assert dos[select_plus] == approx(dos_anal, rel=precision)
+            assert cumdos[select_plus] == approx(cumdos_anal, rel=precision)
+            assert ohmic["sea"][select_plus] == approx(ohmic_anal, rel=precision)
+            assert ohmic["surf"][select_plus] == approx(ohmic_anal, rel=precision)
+    return _inner
+
+
+def test_kp_mass_isotropic_0(check_kp_mass_isotropic, system_kp_mass_iso_0):
+    check_kp_mass_isotropic(system_kp_mass_iso_0,"iso","0",check_anal=True)
+
+def test_kp_mass_isotropic_1(check_kp_mass_isotropic, system_kp_mass_iso_1):
+    check_kp_mass_isotropic(system_kp_mass_iso_1,"iso","1",check_anal=True)
+
+def test_kp_mass_isotropic_2(check_kp_mass_isotropic, system_kp_mass_iso_2):
+    check_kp_mass_isotropic(system_kp_mass_iso_2,"iso","2",check_anal=True)
+
+
+
+def test_kp_mass_anisotropic_0(check_kp_mass_isotropic, system_kp_mass_aniso_0):
+    check_kp_mass_isotropic(system_kp_mass_aniso_0,"aniso","0",check_anal=False)
+
+def test_kp_mass_anisotropic_1(check_kp_mass_isotropic, system_kp_mass_aniso_1):
+    check_kp_mass_isotropic(system_kp_mass_aniso_1,"aniso","1",check_anal=False)
+
+def test_kp_mass_anisotropic_2(check_kp_mass_isotropic, system_kp_mass_aniso_2):
+    check_kp_mass_isotropic(system_kp_mass_aniso_2,"aniso","2",check_anal=False)
 

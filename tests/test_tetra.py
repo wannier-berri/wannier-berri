@@ -1,5 +1,6 @@
 import numpy as np
-from wannierberri.__tetrahedron import weights_tetra
+from wannierberri.grid.__tetrahedron import weights_tetra
+import pytest
 from pytest import approx
 
 
@@ -69,3 +70,27 @@ def test_tetra_derivatives():
         ])
     for e in E:
         check_tetra_derivatives(E=e)
+
+
+data1 = (5.7337,    5.73353853088151321771,    5.73363955524649249185,    5.73396963801047121478,    5.74032502121022680797, -0.01272583,0.01325275 )
+data2 = (5.933275 , 5.93314105, 5.93327453, 5.93327816, 5.93373734, 0.5      , 0.22023401)
+data2b = (5.933274, 5.93314105, 5.93327453, 5.93327816, 5.93373734, 0.2265625, 0.21533874)
+data2c = (5.933200, 5.93314105, 5.93327453, 5.93327816, 5.93373734, 0.02734375, 0.01877191)
+data2d = (5.933   , 5.93314105, 5.93327453, 5.93327816, 5.93373734, 0.0, 0.0)
+data2e = (5.934   , 5.93314105, 5.93327453, 5.93327816, 5.93373734, 1.0, 1.0)
+data3 = ( 0.34253665432,0.121245,0.2356431,0.51254,0.614651,0.38891045,0.38891045)
+
+
+@pytest.mark.parametrize("data", [data1,data2,data2b,data2c,data2d,data2e,data2,data3])
+def test_tetra_accurate(data):
+    """testing some 'magic' values, for which the old implementation gives errors
+        aso some normal inpyuts are checked
+        data is (ef,e1,e2,e3,e4,w_old,w_acc)
+    """
+    ef,e1,e2,e3,e4 = data[:5]
+    ef = np.array([ef])
+    weight_old = weights_tetra(ef,e1,e2,e3,e4,der=0,accurate=False)
+    weight_acc = weights_tetra(ef,e1,e2,e3,e4,der=0,accurate=True)
+    print ("weights (old/acc):",weight_old,weight_acc)
+    assert weight_old[0] == approx(data[5],abs=1e-8)
+    assert weight_acc[0] == approx(data[6],abs=1e-8)

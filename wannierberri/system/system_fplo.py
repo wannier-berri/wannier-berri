@@ -13,7 +13,7 @@
 
 import numpy as np
 
-from wannierberri.__utility import str2bool, real_recip_lattice
+from ..__utility import str2bool, real_recip_lattice
 from termcolor import cprint
 from .system import System
 from collections import defaultdict
@@ -106,9 +106,9 @@ class System_fplo(System):
 
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=real_lattice_bohr * bohr)
         iRvec = list(Ham_R.keys())
-        self.Ham_R = np.array([Ham_R[iR] for iR in iRvec]).transpose((1, 2, 0))
-        if self.getSS:
-            self.SS_R = np.array([SS_R[iR] for iR in iRvec]).transpose((1, 2, 0, 3))
+        self.set_R_mat('Ham', np.array([Ham_R[iR] for iR in iRvec]).transpose((1, 2, 0)) )
+        if self.need_R_any('SS'):
+            self.set_R_mat('SS' , np.array([SS_R[iR] for iR in iRvec]).transpose((1, 2, 0, 3)) )
 
         self.nRvec0 = len(iRvec)
         self.iRvec = np.array(iRvec, dtype=int)

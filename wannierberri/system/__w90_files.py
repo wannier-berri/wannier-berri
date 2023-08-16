@@ -13,9 +13,9 @@
 #------------------------------------------------------------#
 
 import numpy as np
-from .__utility import FortranFileR
+from ..__utility import FortranFileR
 import multiprocessing
-from .__utility import alpha_A, beta_A
+from ..__utility import alpha_A, beta_A
 from time import time
 from itertools import islice
 import gc
@@ -25,7 +25,9 @@ readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip
 
 class CheckPoint():
 
-    def __init__(self, seedname):
+    def __init__(self, seedname, kmesh_tol=1e-7,bk_complete_tol=1e-5):
+        self.kmesh_tol = kmesh_tol # will be used in set_bk
+        self.bk_complete_tol = bk_complete_tol # will be used in set_bk
         t0 = time()
         seedname = seedname.strip()
         FIN = FortranFileR(seedname + '.chk')
@@ -271,9 +273,9 @@ class MMN(W90_data):
         t2 = time()
         print("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2 - t0, t1 - t0, t2 - t1))
 
-    def set_bk(self, kpt_latt,mp_grid,recip_lattice):
+    def set_bk(self, kpt_latt,mp_grid,recip_lattice,kmesh_tol=1e-7, bk_complete_tol=1e-5):
         try:
-            self.bk
+            self.bk_cart
             self.wk
             return
         except AttributeError:
@@ -294,7 +296,7 @@ class MMN(W90_data):
             bk_cart_unique_length = bk_cart_unique_length[srt]
             brd = [
                 0,
-            ] + list(np.where(bk_cart_unique_length[1:] - bk_cart_unique_length[:-1] > 1e-7)[0] + 1) + [
+            ] + list(np.where(bk_cart_unique_length[1:] - bk_cart_unique_length[:-1] > kmesh_tol)[0] + 1) + [
                 self.NNB,
             ]
             shell_mat = np.array([bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2]) for b1, b2 in zip(brd, brd[1:])])
@@ -304,7 +306,7 @@ class MMN(W90_data):
             weight_shell = np.eye(3).reshape(1, -1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
             check_eye = sum(w * m for w, m in zip(weight_shell, shell_mat))
             tol = np.linalg.norm(check_eye - np.eye(3))
-            if tol > 1e-5:
+            if tol > bk_complete_tol:
                 raise RuntimeError(
                     "Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\nweight_shell={}\n"
                     .format(
@@ -316,7 +318,7 @@ class MMN(W90_data):
             self.wk = np.array([[weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
 
     def set_bk_chk(self,chk):
-        self.set_bk(chk.kpt_latt,chk.mp_grid,chk.recip_lattice)
+        self.set_bk(chk.kpt_latt,chk.mp_grid,chk.recip_lattice,kmesh_tol=chk.kmesh_tol, bk_complete_tol=chk.bk_complete_tol)
 
 
 

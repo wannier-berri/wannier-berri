@@ -1,11 +1,11 @@
-from .__grid import Grid
-from .__Kpoint import KpointBZ
-from .__utility import warning
+from .__grid import GridAbstract
+from .__Kpoint import KpointBZpath
+from ..__utility import warning
 from collections.abc import Iterable
 import numpy as np
 
 
-class Path(Grid):
+class Path(GridAbstract):
     """ A class containing information about the k-path
 
     Parameters
@@ -17,14 +17,14 @@ class Path(Grid):
     dk :  float
         (inverse angstroms) -- in this case the grid is NK[i]=length*||B[i]||/2pi  B- reciprocal lattice
     k_nodes : list
-        | cordinates of the nodes in the the reduced coordinates. Some entries may be None - which means that the segment should be skipped
+        cordinates of the nodes in the the reduced coordinates. Some entries may be None - which means that the segment should be skipped
         | No labels or nk's should be assigned to None nodes
     nk : int  or list or numpy.array(3)
         number of k-points along each directions
     k_list : list or str
-        |if k_list is a list  - Coordinatres of all k-points in the reduced coordinates
-        |if k_list = 'sphere' - Automatically generate k-points on a sphere (request r1 origin ntheta nphi)
-        |if k_list = 'spheroid' - Automatically generate k-points on a spheroid (request r1 r2 origin ntheta nphi)
+        | if k_list is a list  - Coordinatres of all k-points in the reduced coordinates
+        | if k_list = 'sphere' - Automatically generate k-points on a sphere (request r1 origin ntheta nphi)
+        | if k_list = 'spheroid' - Automatically generate k-points on a spheroid (request r1 r2 origin ntheta nphi)
     labels : list  of dict
         | if k_list is set - it is a dict {i:lab} with i - index of k-point, lab - corresponding label (not all kpoints need to be labeled
         | if k_nodes is set - it is a list of labels, one for every node
@@ -161,11 +161,9 @@ class Path(Grid):
         """ returns the list of K-points"""
         if use_symmetry:
             print("WARNING : symmetry is not used for a tabulation along path")
-        dK = np.array([1., 1., 1.])
-        factor = 1.
         print("generating K_list")
         K_list = [
-            KpointBZ(K=K, dK=dK, NKFFT=self.FFT, factor=factor, symgroup=self.symgroup, refinement_level=0)
+            KpointBZpath(K=K,  symgroup=self.symgroup)
             for K in self.K_list
         ]
         print("Done ")

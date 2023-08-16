@@ -13,7 +13,7 @@
 
 import numpy as np
 from termcolor import cprint
-from wannierberri.__utility import real_recip_lattice
+from ..__utility import real_recip_lattice
 from .system import System
 
 
@@ -56,7 +56,7 @@ class System_tb(System):
 
         self.iRvec = []
 
-        self.Ham_R = np.zeros((self.num_wann, self.num_wann, nRvec), dtype=complex)
+        Ham_R = np.zeros((self.num_wann, self.num_wann, nRvec), dtype=complex)
 
         for ir in range(nRvec):
             f.readline()
@@ -64,22 +64,22 @@ class System_tb(System):
             hh = np.array(
                 [[f.readline().split()[2:4] for n in range(self.num_wann)] for m in range(self.num_wann)],
                 dtype=float).transpose((1, 0, 2))
-            self.Ham_R[:, :, ir] = (hh[:, :, 0] + 1j * hh[:, :, 1]) / self.Ndegen[ir]
+            Ham_R[:, :, ir] = (hh[:, :, 0] + 1j * hh[:, :, 1]) / self.Ndegen[ir]
+        self.set_R_mat('Ham',Ham_R)
 
         self.iRvec = np.array(self.iRvec, dtype=int)
 
-        if self.getAA:
-            self.AA_R = np.zeros((self.num_wann, self.num_wann, nRvec, 3), dtype=complex)
+        if 'AA' in self.needed_R_matrices:
+            AA_R = np.zeros((self.num_wann, self.num_wann, nRvec, 3), dtype=complex)
             for ir in range(nRvec):
                 f.readline()
                 assert (np.array(f.readline().split(), dtype=int) == self.iRvec[ir]).all()
                 aa = np.array(
                     [[f.readline().split()[2:8] for n in range(self.num_wann)] for m in range(self.num_wann)],
                     dtype=float)
-                self.AA_R[:, :, ir, :] = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / self.Ndegen[ir]
-            self.wannier_centers_cart_auto = np.diagonal(self.AA_R[:, :, self.iR0, :], axis1=0, axis2=1).T
-        else:
-            self.AA_R = None
+                AA_R[:, :, ir, :] = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / self.Ndegen[ir]
+            self.wannier_centers_cart_auto = np.diagonal(AA_R[:, :, self.iR0, :], axis1=0, axis2=1).T
+            self.set_R_mat('AA',AA_R)
 
         f.close()
 
