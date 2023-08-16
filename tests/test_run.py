@@ -148,7 +148,7 @@ calculators_CuMnAs_2d = {
 smoother_Chiral = FermiDiracSmoother(Efermi_Chiral, T_Kelvin=1200, maxdE=8)
 
 parameters_Chiral_optical = dict(
-        Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian" , 
+        Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian" ,
         kwargs_formula={"external_terms": False }, )
 
 calculators_Chiral = {
@@ -925,6 +925,8 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
             suffix_ref=quant,
             precision=-1e-8,
             result_type=EnergyResult)
+
+
 
 
 def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):

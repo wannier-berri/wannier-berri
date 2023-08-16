@@ -128,14 +128,10 @@ def test_optical_Chiral(check_integrate_dynamical, system_Chiral_left, compare_e
     """
     quantities = ["opt_conductivity"]
 
-    #parameters_Chiral_optical = dict(
-    #        Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian" , 
-    #kwargs_formula={"external_terms": False }, )
-
     Efermi = Efermi_Chiral
     omega = omega_chiral
     kubo_params = dict(smr_fixed_width=0.20, smr_type="Gaussian", external_terms=False)
-    grid_param = dict(NK=[6, 6, 6], NKFFT=[3, 3, 3])
+    grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
     adpt_num_iter = 0
 
     check_integrate_dynamical(
@@ -165,7 +161,7 @@ def test_optical_Chiral_sym(check_integrate_dynamical, system_Chiral_left, compa
     Efermi = Efermi_Chiral
     omega = omega_chiral
     kubo_params = dict(smr_fixed_width=0.20, smr_type="Gaussian", external_terms=False)
-    grid_param = dict(NK=[6, 6, 6], NKFFT=[3, 3, 3])
+    grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
     adpt_num_iter = 0
 
     check_integrate_dynamical(
