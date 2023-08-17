@@ -323,3 +323,16 @@ def Gaussian(x, width, adpt_smr):
         output[inds] = 1.0 / (np.sqrt(np.pi) * width) * np.exp(-(x[inds] / width)**2)
     return output
 
+
+# auxillary function"
+def FermiDirac(E, mu, kBT):
+    "here E is a number, mu is an array"
+    if kBT == 0:
+        return 1.0 * (E <= mu)
+    else:
+        res = np.zeros_like(mu)
+        res[mu > E + 30 * kBT] = 1.0
+        res[mu < E - 30 * kBT] = 0.0
+        sel = abs(mu - E) <= 30 * kBT
+        res[sel] = 1.0 / (np.exp((E - mu[sel]) / kBT) + 1)
+        return res

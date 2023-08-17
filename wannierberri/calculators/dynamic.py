@@ -1,6 +1,6 @@
 import numpy as np
 import abc, functools
-from ..__utility import Gaussian, Lorentzian
+from ..__utility import Gaussian, Lorentzian, FermiDirac
 from ..result import EnergyResult
 from . import Calculator
 from ..formula.covariant import SpinVelocity
@@ -88,21 +88,6 @@ class DynamicCalculator(Calculator, abc.ABC):
 
 
 
-
-
-
-# auxillary function"
-def FermiDirac(E, mu, kBT):
-    "here E is a number, mu is an array"
-    if kBT == 0:
-        return 1.0 * (E <= mu)
-    else:
-        res = np.zeros_like(mu)
-        res[mu > E + 30 * kBT] = 1.0
-        res[mu < E - 30 * kBT] = 0.0
-        sel = abs(mu - E) <= 30 * kBT
-        res[sel] = 1.0 / (np.exp((E - mu[sel]) / kBT) + 1)
-        return res
 
 
 
@@ -228,7 +213,7 @@ class Formula_SHC():
 
 class SHC(DynamicCalculator):
 
-    def __init__(self, SHC_type="ryoo", **kwargs):
+    def __init__(self, SHC_type="ryoo", shc_abc=None, **kwargs):
         super().__init__(**kwargs)
         self.kwargs_formula.update(dict(SHC_type=SHC_type, shc_abc=shc_abc))
         self.Formula = Formula_SHC
@@ -247,10 +232,11 @@ class SHC(DynamicCalculator):
 
 class ShiftCurrentFormula():
 
-    def __init__(self, data_K, sc_eta):
-        A_Hbar_der = data_K.Xbar('AA', 1)
+    def __init__(self, data_K, sc_eta, external_terms=True):
 
-        A_Hbar = data_K.Xbar('AA')
+        if external_terms:
+            A_Hbar_der = data_K.Xbar('AA', 1)
+            A_Hbar = data_K.Xbar('AA')
         D_H = data_K.D_H
         V_H = data_K.Xbar('Ham', 1)
         del2E_H = data_K.Xbar('Ham', 2)
@@ -265,10 +251,11 @@ class ShiftCurrentFormula():
         # commutators
         # ** the spatial index of D_H_Pval corresponds to generalized derivative direction
         # ** --> stored in the fourth column of output variables
-        sum_AD = ( np.einsum('knlc,klma->knmca', A_Hbar, D_H_Pval)
-                 - np.einsum('knnc,knma->knmca', A_Hbar, D_H_Pval)
-                 - np.einsum('knla,klmc->knmca', D_H_Pval, A_Hbar)
-                 + np.einsum('knma,kmmc->knmca', D_H_Pval, A_Hbar) )
+        if external_terms:
+            sum_AD = ( np.einsum('knlc,klma->knmca', A_Hbar, D_H_Pval)
+                     - np.einsum('knnc,knma->knmca', A_Hbar, D_H_Pval)
+                     - np.einsum('knla,klmc->knmca', D_H_Pval, A_Hbar)
+                     + np.einsum('knma,kmmc->knmca', D_H_Pval, A_Hbar) )
         sum_HD = ( np.einsum('knlc,klma->knmca', V_H, D_H_Pval)
                  - np.einsum('knnc,knma->knmca', V_H, D_H_Pval)
                  - np.einsum('knla,klmc->knmca', D_H_Pval, V_H)
@@ -276,12 +263,13 @@ class ShiftCurrentFormula():
 
         # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction
         # ** --> stored in the fourth column of output variables
-        AD_bit = ( np.einsum('knnc,knma->knmac', A_Hbar, D_H)
-                 - np.einsum('kmmc,knma->knmac', A_Hbar, D_H)
-                 + np.einsum('knna,knmc->knmac', A_Hbar, D_H)
-                 - np.einsum('kmma,knmc->knmac', A_Hbar, D_H) )
-        AA_bit = ( np.einsum('knnb,knma->knmab', A_Hbar, A_Hbar)
-                 - np.einsum('kmmb,knma->knmab', A_Hbar, A_Hbar) )
+        if external_terms:
+            AD_bit = ( np.einsum('knnc,knma->knmac', A_Hbar, D_H)
+                     - np.einsum('kmmc,knma->knmac', A_Hbar, D_H)
+                     + np.einsum('knna,knmc->knmac', A_Hbar, D_H)
+                     - np.einsum('kmma,knmc->knmac', A_Hbar, D_H) )
+            AA_bit = ( np.einsum('knnb,knma->knmab', A_Hbar, A_Hbar)
+                     - np.einsum('kmmb,knma->knmab', A_Hbar, A_Hbar) )
         # ** this one is invariant under a<-->c
         DV_bit = ( np.einsum('knmc,knna->knmca', D_H, V_H)
                  - np.einsum('knmc,kmma->knmca', D_H, V_H)
@@ -289,11 +277,19 @@ class ShiftCurrentFormula():
                  - np.einsum('knma,kmmc->knmca', D_H, V_H) )
 
         # generalized derivative
-        A_gen_der = (A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD
-            + 1j * (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, :, np.newaxis, np.newaxis])
+        A_gen_der = ( + 1j * (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, :, np.newaxis, np.newaxis])
+        if external_terms:
+            A_gen_der += A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD
+
 
         # generalized derivative is fourth index of A, we put it into third index of Imn
-        Imn = np.einsum('knmca,kmnb->knmabc', A_gen_der, data_K.A_H)
+        if external_terms:
+            A_H = data_K.A_H
+        else:
+            A_H = data_K.A_H_internal
+
+
+        Imn = np.einsum('knmca,kmnb->knmabc', A_gen_der, A_H)
         Imn += Imn.swapaxes(4, 5) # symmetrize b and c
 
         self.Imn = Imn
@@ -310,9 +306,9 @@ class ShiftCurrent(DynamicCalculator):
 
     def __init__(self, sc_eta, **kwargs):
         super().__init__(**kwargs)
-        self.formula_kwargs = dict(sc_eta=sc_eta)
+        self.kwargs_formula.update( dict(sc_eta=sc_eta) )
         self.Formula = ShiftCurrentFormula
-        self.final_factor = factors.factor_shift_current
+        self.constant_factor = factors.factor_shift_current
 
     def factor_omega(self, E1, E2):
         delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
@@ -354,7 +350,7 @@ class InjectionCurrent(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = InjectionCurrentFormula
-        self.final_factor = factors.factor_injection_current
+        self.constant_factor = factors.factor_injection_current
 
     def factor_omega(self, E1, E2):
         delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]

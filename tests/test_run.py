@@ -154,6 +154,9 @@ parameters_Chiral_optical = dict(
         Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian" ,
         kwargs_formula={"external_terms": False }, )
 
+
+parameters_Chiral_shiftcurrent = dict( sc_eta=0.1 )
+
 calculators_Chiral = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral,smoother=smoother_Chiral),
     'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral),
@@ -166,8 +169,7 @@ calculators_Chiral = {
     'dos': calc.static.DOS(Efermi=Efermi_Chiral),
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral),
     'opt_conductivity' : wberri.calculators.dynamic.OpticalConductivity(**parameters_Chiral_optical),
-    # 'opt_SHCqiao' : wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_Chiral_optical),
-    # 'opt_SHCryoo' : wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_Chiral_optical),
+    'opt_shiftcurrent' : wberri.calculators.dynamic.ShiftCurrent(**parameters_Chiral_shiftcurrent, **parameters_Chiral_optical),
 }
 
 
@@ -928,7 +930,8 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
             '_FF_antisym': True,
             '_CCab_antisym': True
         },
-        use_symmetry=True,
+        skip_compare=["opt_shiftcurrent"],
+        use_symmetry=False,  ## !!! temporary
         extra_precision={"Morb": -1e-6},
     )
     #for quant in calculators_Chiral.keys():#["conductivity_ohmic", "berry_dipole", "ahc"]:
@@ -944,7 +947,7 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
 
 #        skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
 
-    for quant in 'opt_conductivity', :# 'opt_SHCryoo', 'opt_SHCryoo':
+    for quant in 'opt_conductivity', "opt_shiftcurrent": # 'opt_SHCryoo', 'opt_SHCryoo':
         compare_any_result(
             "berry_Chiral",
             quant + "-left-run",

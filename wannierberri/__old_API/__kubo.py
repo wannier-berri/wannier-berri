@@ -18,7 +18,7 @@
 import numpy as np
 from scipy import constants as constants
 from termcolor import cprint
-from ..__utility import alpha_A, beta_A
+from ..__utility import alpha_A, beta_A, Gaussian,Lorentzian,FermiDirac
 from .. import result as result
 from ..formula.covariant import SpinVelocity
 from .__energyresultdict import EnergyResultDict
@@ -27,40 +27,6 @@ pi = constants.pi
 e = constants.e
 hbar = constants.hbar
 eV_seconds = hbar / e
-
-
-# smearing functions
-def Lorentzian(x, width):
-    return 1.0 / (pi * width) * width**2 / (x**2 + width**2)
-
-
-def Gaussian(x, width, adpt_smr):
-    '''
-    Compute 1 / (np.sqrt(pi) * width) * exp(-(x / width) ** 2)
-    If the exponent is less than -200, return 0.
-    An unoptimized version is the following.
-        def Gaussian(x, width, adpt_smr):
-            return 1 / (np.sqrt(pi) * width) * np.exp(-np.minimum(200.0, (x / width) ** 2))
-    '''
-    inds = abs(x) < width * np.sqrt(200.0)
-    output = np.zeros_like(x)
-    if adpt_smr:
-        # width is array
-        width_tile = np.tile(width, (x.shape[0], 1, 1))
-        output[inds] = 1.0 / (np.sqrt(pi) * width_tile[inds]) * np.exp(-(x[inds] / width_tile[inds])**2)
-    else:
-        # width is number
-        output[inds] = 1.0 / (np.sqrt(pi) * width) * np.exp(-(x[inds] / width)**2)
-    return output
-
-
-# Fermi-Dirac distribution
-def FermiDirac(E, mu, kBT):
-    if kBT == 0:
-        return 1.0 * (E <= mu)
-    else:
-        arg = np.maximum(np.minimum((E - mu) / kBT, 700.0), -700.0)
-        return 1.0 / (np.exp(arg) + 1)
 
 
 def fermiSurf(EF, E, kBT):  # returns arra [iF, n ]
@@ -272,7 +238,7 @@ def opt_conductivity(
                 A = A+ (A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD )
 
             # generalized derivative is fourth index of A, we put it into third index of Imn
-            Imn = np.einsum('nmca,mnb->nmabc', A, B) + np.einsum('nmba,mnc->nmabc', A, B)
+            Imn = np.einsum('nmca,mnb->nmabc', A, A_H) + np.einsum('nmba,mnc->nmabc', A, A_H)
 
             delta_mn = delta
             delta_nm = delta.transpose((0, 2, 1))
