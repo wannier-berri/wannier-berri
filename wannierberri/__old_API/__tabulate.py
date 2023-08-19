@@ -16,6 +16,7 @@ from collections import defaultdict
 from ..result import TABresult, KBandResult
 from ..formula import covariant as frml
 from ..formula import covariant_basic as frml_basic
+from ..symmetry import transform_ident
 
 #If one whants to add  new quantities to tabulate, just modify the following dictionaries
 
@@ -75,7 +76,11 @@ def tabXnk(
 
     tabulator = Tabulator(data_K, ibands, degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)
 
-    results = {'Energy': KBandResult(data_K.E_K[:, ibands], TRodd=False, Iodd=False)}
+    results = {'Energy': KBandResult(data_K.E_K[:, ibands],
+            transformTR=transform_ident,
+            transformInv=transform_ident)
+                }
+
     for qfull in quantities:
         q = qfull.split('^')[0]
         __parameters = {}
@@ -131,7 +136,9 @@ class Tabulator():
             for ib, b in enumerate(self.ibands):
                 rslt[ik, ib] = values[self.group[ik][ib]]
 
-        return KBandResult(rslt, TRodd=formula.TRodd, Iodd=formula.Iodd)
+        return KBandResult(rslt,
+                            transformTR=formula.transformTR,
+                            transformInv=formula.transformInv)
 
 
 

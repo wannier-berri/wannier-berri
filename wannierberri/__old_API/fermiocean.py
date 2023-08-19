@@ -7,6 +7,7 @@ from math import ceil
 from ..formula import FormulaProduct
 from ..formula import covariant as frml
 from ..formula import covariant_basic as frml_basic
+from ..symmetry import transform_ident, transform_odd
 
 
 def cumdos(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
@@ -201,7 +202,7 @@ def gme_orb(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False,
     D = berry_dipole(data_K, Efermi, tetra=tetra, **kwargs_formula).data
     #tensor_K = -factors.elementary_charge**2 / (2 * factors.hbar) * (Hp - 2 * Efermi[:, None, None] * D)
     tensor_K = factors.factor_gme * factors.fac_orb_Z * (Hp - 2 * Efermi[:, None, None] * D)
-    return result.EnergyResult(Efermi, tensor_K, TRodd=False, Iodd=True)
+    return result.EnergyResult(Efermi, tensor_K, transformTR=transform_ident, transformInv=transform_odd)
 
 
 def gme_orb_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
@@ -209,7 +210,7 @@ def gme_orb_test(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=F
     D = berry_dipole_test(data_K, Efermi, tetra=tetra, **kwargs_formula).data
     #tensor_K = -factors.elementary_charge**2 / (2 * factors.hbar) * (Hp - 2 * Efermi[:, None, None] * D)
     tensor_K = factors.factor_gme * factors.fac_orb_Z * (Hp - 2 * Efermi[:, None, None] * D)
-    return result.EnergyResult(Efermi, tensor_K, TRodd=False, Iodd=True)
+    return result.EnergyResult(Efermi, tensor_K, transformTR=transform_ident, transformInv=transform_odd)
 
 
 def gme_spin_fsurf(data_K, Efermi, tetra=False, degen_thresh=1e-4, degen_Kramers=False, **kwargs_formula):
@@ -399,7 +400,7 @@ class FermiOcean():
         else:
             res = self.__call_notetra()
         res *= self.constant_factor
-        return result.EnergyResult(self.Efermi, res, TRodd=self.formula.TRodd, Iodd=self.formula.Iodd)
+        return result.EnergyResult(self.Efermi, res, transformTR=self.formula.transformTR, transformInv=self.formula.transformInv)
 
     def __call_tetra(self):
         restot = np.zeros(self.Efermi.shape + self.shape)

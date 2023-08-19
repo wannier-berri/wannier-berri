@@ -124,7 +124,7 @@ class StaticCalculator(Calculator):
         else:
             restot *= np.sign(self.constant_factor)
 
-        res = EnergyResult(self.Efermi, restot, TRodd=formula.TRodd, Iodd=formula.Iodd, smoothers=[self.smoother], comment=self.comment)
+        res = EnergyResult(self.Efermi, restot, transformTR=formula.transformTR, transformInv=formula.transformInv, smoothers=[self.smoother], comment=self.comment)
         res.set_save_mode(self.save_mode)
         return res
 

@@ -5,6 +5,7 @@ from ..result import EnergyResult
 from . import Calculator
 from ..formula.covariant import SpinVelocity
 from copy import copy
+from ..symmetry import transform_ident, transform_trans
 
 #######################################
 #                                     #
@@ -84,7 +85,7 @@ class DynamicCalculator(Calculator, abc.ABC):
         restot = restot.reshape(restot_shape).swapaxes(0, 1)  # swap the axes to get EF,omega,a,b,...
         restot *= self.constant_factor / (data_K.nk * data_K.cell_volume)
         return EnergyResult(
-            [self.Efermi, self.omega], restot, TRodd=formula.TRodd, Iodd=formula.Iodd, TRtrans=formula.TRtrans)
+            [self.Efermi, self.omega], restot, transformTR=formula.transformTR, transformInv=formula.transformInv)
 
 
 
@@ -135,9 +136,8 @@ from .. import __factors as factors
 class Formula_dyn_ident():
 
     def __init__(self, data_K):
-        self.TRodd = False
-        self.Iodd = False
-        self.TRtrans = False
+        self.transformTR  = transform_ident
+        self.transformInv = transform_ident
         self.ndim = 0
 
     def trace_ln(self, ik, inn1, inn2):
@@ -177,9 +177,8 @@ class Formula_OptCond():
             A = data_K.A_H_internal
         self.AA = 1j * A[:, :, :, :, None] * A.swapaxes(1, 2)[:, :, :, None, :]
         self.ndim = 2
-        self.TRodd = False
-        self.Iodd = False
-        self.TRtrans = True
+        self.transformTR  = transform_trans
+        self.transformInv = transform_ident
 
     def trace_ln(self, ik, inn1, inn2):
         return self.AA[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
@@ -221,9 +220,8 @@ class Formula_SHC():
             a, b, c = (x - 1 for x in shc_abc)
             self.imAB = self.imAB[:, :, :, a, b, c]
             self.ndim = 0
-        self.TRodd = False
-        self.Iodd = False
-        self.TRtrans = False
+        self.transformTR  = transform_ident
+        self.transformInv = transform_ident
 
     def trace_ln(self, ik, inn1, inn2):
         return self.imAB[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
