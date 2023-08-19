@@ -22,6 +22,8 @@ from ..__utility import alpha_A, beta_A
 from .. import result as result
 from ..formula.covariant import SpinVelocity
 from .__energyresultdict import EnergyResultDict
+from ..symmetry import transform_ident, transform_odd, transform_trans
+
 # constants
 pi = constants.pi
 e = constants.e
@@ -357,23 +359,23 @@ def opt_conductivity(
             # return result dictionary
             return EnergyResultDict(
                 {
-                    'sym': result.EnergyResult([Efermi, omega], sigma_sym, TRodd=False, Iodd=False, rank=rank),
-                    'asym': result.EnergyResult([Efermi, omega], sigma_asym, TRodd=True, Iodd=False, rank=rank)
+                    'sym': result.EnergyResult([Efermi, omega], sigma_sym, transformTR=transform_ident, transformInv=transform_ident, rank=rank),
+                    'asym': result.EnergyResult([Efermi, omega], sigma_asym, transformTR=transform_odd, transformInv=transform_ident,  rank=rank)
                 })  # the proper smoother is set later for both elements
         else:
             return result.EnergyResult(
-                [Efermi, omega], sigma_H + sigma_AH, TRodd=False, Iodd=False, TRtrans=True, rank=rank)
+                [Efermi, omega], sigma_H + sigma_AH, transformTR=transform_trans, transformInv=transform_ident, rank=rank)
 
     elif conductivity_type == 'SHC':
         sigma_SHC = np.real(sigma_AH) + 1j * np.imag(sigma_H)
-        return result.EnergyResult([Efermi, omega], sigma_SHC, TRodd=False, Iodd=False, rank=rank)
+        return result.EnergyResult([Efermi, omega], sigma_SHC, transformTR=transform_ident, transformInv=transform_ident, rank=rank)
 
     elif conductivity_type == 'tildeD':
         pre_fac = 1. / (data.nk * data.cell_volume)
-        return result.EnergyResult([Efermi, omega], tildeD * pre_fac, TRodd=False, Iodd=True, rank=rank)
+        return result.EnergyResult([Efermi, omega], tildeD * pre_fac, transformTR=transform_ident, transformInv=transform_odd, rank=rank)
 
     elif conductivity_type == 'shiftcurrent':
-        return result.EnergyResult([Efermi, omega], sigma_shift, TRodd=False, Iodd=True, rank=rank)
+        return result.EnergyResult([Efermi, omega], sigma_shift, transformTR=transform_ident, transformInv=transform_odd, rank=rank)
 
 
 def opt_SHCqiao(data, Efermi, omega=0, **parameters):

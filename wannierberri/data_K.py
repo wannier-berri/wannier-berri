@@ -22,14 +22,14 @@ from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha
 from .grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
 from . import formula
 from .grid import KpointBZparallel, KpointBZtetra
+from .symmetry import transform_ident, transform_odd
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
 
 
-def parity_I(name, der=0):
-    """returns True if quantity is odd under inversion,(after a real trace is taken, if appropriate)
-     False otherwise
+def get_transform_Inv(name, der=0):
+    """returns the transformation of the quantity  under inversion
     raises for unknown quantities"""
     if name in ['Ham', 'CC', 'FF', 'OO', 'SS']:  # even before derivative
         p = 0
@@ -39,11 +39,15 @@ def parity_I(name, der=0):
         return None
     else:
         raise ValueError(f"parity under inversion unknown for {name}")
-    return bool((p + der) % 2)
+    if (p + der) % 2 == 1:
+        return transform_odd
+    else:
+        return transform_ident
 
 
-def parity_TR(name, der=0):
-    """returns True if quantity is odd under TR, ,(after a real trace is taken, if appropriate)
+
+def get_transform_TR(name, der=0):
+    """returns transformation of quantity is under TR, (after a real trace is taken, if appropriate)
     False otherwise
     raises ValueError for unknown quantities"""
     if name in ['Ham', 'T_wcc']:  # even before derivative
@@ -54,7 +58,10 @@ def parity_TR(name, der=0):
         return None
     else:
         raise ValueError(f"parity under TR unknown for {name}")
-    return bool((p + der) % 2)
+    if (p + der) % 2 == 1:
+        return transform_odd
+    else:
+        return transform_ident
 
 
 
@@ -260,7 +267,10 @@ class _Data_K(System,abc.ABC):
         if key not in self._covariant_quantities:
             if gender == 0:
                 res = formula.Matrix_ln(
-                    self.Xbar(name, commader), Iodd=parity_I(name, commader), TRodd=parity_TR(name, commader))
+                    self.Xbar(name, commader),
+                    transformTR=get_transform_TR(name, commader),
+                    transformInv=get_transform_Inv(name, commader),
+                                        )
             elif gender == 1:
                 if name == 'Ham':
                     res = self.V_covariant
@@ -269,8 +279,9 @@ class _Data_K(System,abc.ABC):
                         self.covariant(name),
                         self.covariant(name, commader=1),
                         self.Dcov,
-                        Iodd=parity_I(name, gender),
-                        TRodd=parity_TR(name, gender))
+                        transformTR=get_transform_TR(name, gender),
+                        transformInv=get_transform_Inv(name, gender)
+                                                )
             else:
                 raise NotImplementedError()
             if not save:
@@ -285,7 +296,7 @@ class _Data_K(System,abc.ABC):
         class V(formula.Matrix_ln):
 
             def __init__(self, matrix):
-                super().__init__(matrix, TRodd=True, Iodd=True)
+                super().__init__(matrix, transformTR=transform_odd,transformInv=transform_odd)
 
             def ln(self, ik, inn, out):
                 return np.zeros((len(out), len(inn), 3), dtype=complex)

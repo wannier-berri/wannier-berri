@@ -1,6 +1,7 @@
 import numpy as np
 import abc
 """some basic classes to construct formulae for evaluation"""
+from ..symmetry import transform_ident, transform_odd, TransformProduct
 
 
 class Formula_ln(abc.ABC):
@@ -67,13 +68,13 @@ class Formula_ln(abc.ABC):
 class Matrix_ln(Formula_ln):
     "anything that can be called just as elements of a matrix"
 
-    def __init__(self, matrix, TRodd=None, Iodd=None):
+    def __init__(self, matrix, transformTR=None, transformInv=None):
         self.matrix = matrix
         self.ndim = len(matrix.shape) - 3
-        if TRodd is not None:
-            self.TRodd = TRodd
-        if Iodd is not None:
-            self.Iodd = Iodd
+        if transformTR is not None:
+            self.transformTR = transformTR
+        if transformInv is not None:
+            self.transformInv= transformInv
 
     def ln(self, ik, inn, out):
         return self.matrix[ik][out][:, inn]
@@ -85,15 +86,15 @@ class Matrix_ln(Formula_ln):
 class Matrix_GenDer_ln(Formula_ln):
     "generalized erivative of MAtrix_ln"
 
-    def __init__(self, matrix, matrix_comader, D, TRodd=None, Iodd=None):
+    def __init__(self, matrix, matrix_comader, D, transformTR=None, transformInv=None):
         self.A = matrix
         self.dA = matrix_comader
         self.D = D
         self.ndim = matrix.ndim + 1
-        if TRodd is not None:
-            self.TRodd = TRodd
-        if Iodd is not None:
-            self.Iodd = Iodd
+        if transformTR is not None:
+            self.transformTR = transformTR
+        if transformInv is not None:
+            self.transformInv= transformInv
 
     def nn(self, ik, inn, out):
         summ = self.dA.nn(ik, inn, out)
@@ -114,8 +115,8 @@ class FormulaProduct(Formula_ln):
     def __init__(self, formula_list, name="unknown", hermitian=False):
         if type(formula_list) not in (list, tuple):
             formula_list = [formula_list]
-        self.TRodd = bool(sum(f.TRodd for f in formula_list) % 2)
-        self.Iodd = bool(sum(f.Iodd for f in formula_list) % 2)
+        self.transformTR=TransformProduct(f.transformTR for f in formula_list)
+        self.transformInv=TransformProduct(f.transformInv for f in formula_list)
         self.name = name
         self.formulae = formula_list
         self.hermitian = hermitian
