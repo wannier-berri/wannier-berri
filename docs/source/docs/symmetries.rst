@@ -16,3 +16,8 @@ Symmetries
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: wannierberri.symmetry.Transform
+   :show-inheritance:
+
+.. autoclass:: wannierberri.symmetry.TransformProduct
+   :show-inheritance:
