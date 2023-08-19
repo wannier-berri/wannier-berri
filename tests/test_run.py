@@ -803,6 +803,7 @@ def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
             'NK': [6, 6, 6],
             'NKFFT': [3, 3, 3]
         },
+        precision = 1e-9
     )
 
 
