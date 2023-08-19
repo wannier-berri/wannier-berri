@@ -277,7 +277,7 @@ def tabulate(
     user_quantities : dict
         a dictionary `{name:formula}`, where `name` is any string, and `formula`
         is a name of a child class of  :class:`~wannierberri.formula.Formula_ln`
-        which should have defined attributes `nn` , `TRodd`, `Iodd`
+        which should have defined attributes `nn` , `transformInv`, `transformTR`
     use_irred_kpt : bool
         evaluate only symmetry-irreducible K-points
     symmetrize : bool
