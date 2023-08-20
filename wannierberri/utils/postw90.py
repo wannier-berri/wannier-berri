@@ -13,8 +13,8 @@
     optionally, parameters can be given in the command line (theose will override the parameters in the ffile)
     additional options starting with "__wb" can be provided"
 
-    
-    **Note:** to use this module the user needs to manually install the wannier90io module from github: 
+
+    **Note:** to use this module the user needs to manually install the wannier90io module from github:
     `pip install git+https://github.com/jimustafa/wannier90io-python.git`
 
         Usage example: ::
