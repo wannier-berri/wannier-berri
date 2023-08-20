@@ -421,19 +421,11 @@ class Transform():
         return res
 
     def __eq__(self,other):
-        verbose = True  # True for testing
-        if verbose:
-            print (f"checking equaality of {self} and {other}")
         if not isinstance(other,Transform):
-            if verbose: print (f"the other is not Transform, it is {other}")
             return False
         for key in "factor","conj","transpose_axes":
             if getattr(self,key)!=getattr(other,key):
-                if verbose:
-                    print (f"are NOT equal becasuse of {key} : {getattr(self,key)}!={getattr(other,key)}")
                 return False
-        if verbose:
-            print (f"are equal : {self} and {other}")
         return True
 
 
@@ -455,5 +447,7 @@ class TransformProduct(Transform):
 
 transform_ident = Transform()
 transform_odd   = Transform(factor=-1)
+transform_odd_conj   = Transform(factor=-1,conj=True)
+transform_odd_trans_021   = Transform(factor=-1,transpose_axes=(0,2,1))
 transform_trans = Transform(transpose_axes=(1,0))
 

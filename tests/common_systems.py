@@ -212,6 +212,7 @@ def system_GaAs_sym_tb():
         proj=['Ga:sp3', 'As:sp3'],
         soc=True,
         DFT_code='vasp')
+    system.set_symmetry(symmetries_GaAs)
     return system
 
 

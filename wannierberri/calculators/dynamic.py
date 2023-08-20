@@ -5,7 +5,7 @@ from ..result import EnergyResult
 from . import Calculator
 from ..formula.covariant import SpinVelocity
 from copy import copy
-from ..symmetry import transform_ident, transform_trans, transform_odd
+from ..symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
 
 #######################################
 #                                     #
@@ -84,8 +84,17 @@ class DynamicCalculator(Calculator, abc.ABC):
                                       * matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
         restot = restot.reshape(restot_shape).swapaxes(0, 1)  # swap the axes to get EF,omega,a,b,...
         restot *= self.constant_factor / (data_K.nk * data_K.cell_volume)
+        try:
+            transformTR = self.transformTR
+        except AttributeError:
+            transformTR = formula.transformTR
+        try:
+            transformInv = self.transformInv
+        except AttributeError:
+            transformInv = formula.transformInv
+
         return EnergyResult(
-            [self.Efermi, self.omega], restot, transformTR=formula.transformTR, transformInv=formula.transformInv)
+            [self.Efermi, self.omega], restot, transformTR=transformTR, transformInv=transformInv)
 
 
 
@@ -327,8 +336,11 @@ class InjectionCurrentFormula():
     Use v_mn = i * r_mn * (e_m - e_n) / hbar to replace v with r.
     """
 
-    def __init__(self, data_K):
-        A_H = data_K.A_H
+    def __init__(self, data_K,external_terms=True):
+        if external_terms:
+            A_H = data_K.A_H
+        else:
+            A_H = data_K.A_H_internal
         V_H = data_K.Xbar('Ham', 1) # (k, m, n, a)
         V_H_diag = np.diagonal(V_H, axis1=1, axis2=2).transpose(0, 2, 1) # (k, m, a)
 
@@ -339,8 +351,6 @@ class InjectionCurrentFormula():
 
         self.Imn = Imn
         self.ndim = 3
-        self.transformTR  = transform_odd
-        self.transformInv = transform_odd
 
     def trace_ln(self, ik, inn1, inn2):
         return self.Imn[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
@@ -351,6 +361,8 @@ class InjectionCurrent(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = InjectionCurrentFormula
+        self.transformTR  = transform_odd_trans_021
+        self.transformInv = transform_odd
         self.constant_factor = factors.factor_injection_current
 
     def factor_omega(self, E1, E2):

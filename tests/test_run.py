@@ -803,9 +803,61 @@ def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
             'NK': [6, 6, 6],
             'NKFFT': [3, 3, 3]
         },
-        precision = 1e-9
+        extra_precision=dict(shift_current=1e-9,injection_current=1e-7)
     )
 
+
+def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb, compare_any_result):
+    "Test shift current and injection current"
+
+    param = dict(
+        Efermi=Efermi_GaAs,
+        omega=np.arange(1.0, 5.1, 0.5),
+        smr_fixed_width=0.2,
+        smr_type='Gaussian',
+        kBT=0.01,
+    )
+    calculators = dict(
+        shift_current=calc.dynamic.ShiftCurrent(sc_eta=0.1, **param),
+        injection_current=calc.dynamic.InjectionCurrent(**param),
+        opt_conductivity=wberri.calculators.dynamic.OpticalConductivity(**param)
+    )
+
+    result_full_k = check_run(
+        system_GaAs_sym_tb,
+        calculators,
+        fout_name="dynamic_GaAs_sym",
+        grid_param={
+            'NK': [6, 6, 6],
+            'NKFFT': [3, 3, 3]
+        },
+        use_symmetry=False,
+        do_not_compare=True,
+            )
+
+    result_irr_k = check_run(
+        system_GaAs_sym_tb,
+        calculators,
+        fout_name="dynamic_GaAs_sym",
+        suffix="sym",
+        suffix_ref="",
+        grid_param={
+            'NK': [6, 6, 6],
+            'NKFFT': [3, 3, 3]
+        },
+        use_symmetry=True,
+        do_not_compare=True,
+    )
+
+
+    assert result_full_k.results["shift_current"].data == approx(
+        result_irr_k.results["shift_current"].data, abs=1e-6)
+
+    assert result_full_k.results["injection_current"].data == approx(
+        result_irr_k.results["injection_current"].data, abs=1e-6)
+
+    assert result_full_k.results["opt_conductivity"].data == approx(
+        result_irr_k.results["opt_conductivity"].data, abs=1e-7)
 
 def test_Haldane_TBmodels(check_run, system_Haldane_TBmodels, compare_any_result):
 
