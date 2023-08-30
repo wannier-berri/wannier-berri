@@ -469,7 +469,7 @@ class System():
         if self.use_wcc_phase:
             return self.wannier_centers_cart
         else:
-            return np.zeros_like(self.wannier_centers_cart)
+            return np.zeros(self.wannier_centers_cart.shape, dtype=float)
 
     @property
     def is_phonon(self):
@@ -566,7 +566,7 @@ class System():
         """ reverses the R-vector and takes the hermitian conjugate """
         if isinstance(XX_R,str):
             XX_R=self.get_R_mat(XX_R)
-        XX_R_new = np.zeros_like(XX_R)
+        XX_R_new = np.zeros(XX_R.shape, dtype=complex)
         lst_R, lst_mR = self.reverseR
         XX_R_new[:, :, lst_R] = XX_R[:, :, lst_mR]
         return XX_R_new.swapaxes(0, 1).conj()
