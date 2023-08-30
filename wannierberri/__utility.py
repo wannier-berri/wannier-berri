@@ -313,7 +313,7 @@ def Gaussian(x, width, adpt_smr):
             return 1 / (np.sqrt(pi) * width) * np.exp(-np.minimum(200.0, (x / width) ** 2))
     '''
     inds = abs(x) < width * np.sqrt(200.0)
-    output = np.zeros_like(x)
+    output = np.zeros(x.shape,dtype=float)
     if adpt_smr:
         # width is array
         width_tile = np.tile(width, (x.shape[0], 1, 1))
@@ -330,7 +330,7 @@ def FermiDirac(E, mu, kBT):
     if kBT == 0:
         return 1.0 * (E <= mu)
     else:
-        res = np.zeros_like(mu)
+        res = np.zeros(mu.shape, dtype=float)
         res[mu > E + 30 * kBT] = 1.0
         res[mu < E - 30 * kBT] = 0.0
         sel = abs(mu - E) <= 30 * kBT
