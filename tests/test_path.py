@@ -63,8 +63,66 @@ def test_path_4(system_Haldane_PythTB):
 
 
 def test_tabulate_path(system_Haldane_PythTB):
-    return 
-    # TODO : rewrite the test based on calculators
+
+
+def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
+    param = {'Efermi': Efermi_Fe}
+    param_tab = {'degen_thresh': 5e-2}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    quantities = ['V', 'berry', 'Der_berry', 'morb', 'Der_morb']
+    calculators["tabulate"] = calc.TabulatorAll(
+        {
+            "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
+            # but not to energies
+            "V": calc.tabulate.Velocity(**param_tab),
+            "Der_berry": calc.tabulate.DerBerryCurvature(**param_tab),
+            "berry": calc.tabulate.BerryCurvature(**param_tab),
+            'morb': calc.tabulate.OrbitalMoment(**param_tab),
+            'Der_morb': calc.tabulate.DerOrbitalMoment(**param_tab),
+        },
+        ibands=[5, 6, 7, 8])
+
+    result = check_run(
+        system_Fe_W90,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="run",
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        extra_precision={"Morb": -1e-6},
+        skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
+
+    for quant in 'opt_conductivity', 'opt_SHCryoo', 'opt_SHCryoo':
+        compare_any_result(
+            "berry_Fe_W90",
+            quant + "-run",
+            0,
+            fout_name_ref="kubo_Fe_W90",
+            suffix_ref=quant,
+            precision=-1e-8,
+            result_type=EnergyResult)
+
+    extra_precision = {'Morb': 1e-6, 'Der_berry':5e-8}
+    for quant in result.results.get("tabulate").results.keys(): # ["Energy", "berry","Der_berry","spin","morb"]:
+        for comp in result.results.get("tabulate").results.get(quant).get_component_list():
+            _quant = "E" if quant == "Energy" else quant
+            _comp = "-" + comp if comp != "" else ""
+            #            data=result.results.get(quant).data
+            #            assert data.shape[0] == len(Efermi)
+            #            assert np.all( np.array(data.shape[1:]) == 3)
+            prec = extra_precision[quant] if quant in extra_precision else 2e-8
+            #            comparer(frmsf_name, quant+_comp+suffix,  suffix_ref=compare_quant(quant)+_comp+suffix_ref ,precision=prec )
+            compare_fermisurfer(
+                fout_name="berry_Fe_W90-tabulate",
+                suffix=_quant + _comp + "-run",
+                suffix_ref=_quant + _comp,
+                fout_name_ref="tabulate_Fe_W90",
+                precision=prec)
+
+
+
     quantities = ['V', 'berry', 'Der_berry', 'morb', 'Der_morb']
 
     k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
