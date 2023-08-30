@@ -263,7 +263,7 @@ class SymWann():
         orb_position_dic = atom_info.orb_position_on_atom_dic
         num_wann_on_atom =atom_info.num_wann
         p_mat = np.zeros((num_wann_on_atom, num_wann_on_atom), dtype=complex)
-        p_mat_dagger = np.zeros_like(p_mat)
+        p_mat_dagger = np.zeros(p_mat.shape, dtype=p_mat)
         for orb_name in orbitals:
             rot_orbital = self.orbitals.rot_orb(orb_name, symop.rotation_cart)
             if self.soc:
@@ -335,7 +335,7 @@ class SymWann():
                                     if iR == iR0 and atom_a == atom_b:
                                         if X in ['AA','BB']:
                                             v_tmp = (vec_shift[atom_a] - symop.translation).dot(self.lattice)
-                                            m_tmp = np.zeros_like(XX_L)
+                                            m_tmp = np.zeros(XX_L.shape, stype=XX_L.dtype)
                                             for i in range(num_w_a):
                                                 m_tmp[i,i,:]=v_tmp
                                         if X == 'AA':
