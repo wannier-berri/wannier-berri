@@ -10,7 +10,6 @@
 .. toctree:: 
    :maxdepth: 4
 
-   capabilities
    documentation
    docs/utils
    install

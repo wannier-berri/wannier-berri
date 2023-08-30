@@ -17,7 +17,6 @@ wannierberri - a module for Wannier interpolation
 __version__ = "0.14.0"
 
 from .run import run
-from .__old_API.__main import integrate, tabulate #, integrate_options, tabulate_options, print_options
 from . import symmetry
 from . import system
 from .system import System_w90, System_fplo, System_tb, System_PythTB, System_TBmodels, System_ASE, System_Phonon_QE
