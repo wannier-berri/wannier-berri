@@ -17,6 +17,7 @@ pip install gpaw
 gpaw info
 gpaw install-data --register ~/gpaw-data
 pip install -U wannierberri
+pip install git+https://github.com/jimustafa/wannier90io-python.git
 sudo apt-get install wannier90
 
 case "$INSTALL_TYPE" in

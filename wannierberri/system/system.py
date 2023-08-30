@@ -174,10 +174,48 @@ class System():
             if self.has_R_mat(k):
                 return True
 
-    def set_R_mat(self,key,value,reset=False):
-        if key in self._XX_R and not reset:
-            raise RuntimeError(f"setting {key} for the second time. smth is wrong")
-        self._XX_R[key]=value
+    def set_R_mat(self,key,value,diag=False,R=None,reset=False,add=False):
+        """
+        Set real-space matrix specified by `key`. Either diagonal, specific R or full matix.  Useful for model calculations
+
+        Parameters
+        ----------
+        key : str
+            `SS', 'AA' , etc
+        value : array
+            * `array(num_wann,...)` if `diag=True` . Sets the diagonal part ( if `R` not set, `R=[0,0,0]`)
+            * `array(num_wann,num_wann,..)`  matrix for `R` (`R` should be set )
+            * array(num_wann,num_wann,nRvec,...)` full spin matrix for all R
+            `...` denotes the vector/tensor cartesian dimensions of the matrix element
+        R : list(int)
+            list of 3 integer values specifying R. if
+        reset : bool
+            allows to reset matrix if it is already set
+        add : bool
+            add matrix to the already existing
+
+        """
+        assert value.shape[0] == self.num_wann
+        if diag:
+            if R is None:
+                R=[0,0,0]
+            XX = np.zeros((self.num_wann, self.num_wann)+value.shape[1:], dtype=value.dtype)
+            XX[np.arange(self.num_wann),np.arange(self.num_wann)]=value
+            self.set_R_mat(key,XX,R=R,reset=reset,add=add)
+        elif R is not None:
+            XX = np.zeros((self.num_wann, self.num_wann,self.nRvec)+value.shape[2:], dtype=value.dtype)
+            XX[:,:,self.iR(R)]=value
+            self.set_R_mat(key,XX,reset=reset,add=add)
+        else:
+            if key in self._XX_R :
+                if reset:
+                    self._XX_R[key] = value
+                elif add:
+                    self._XX_R[key] += value
+                else:
+                    raise RuntimeError(f"setting {key} for the second time without explicit permission. smth is wrong")
+            else:
+                self._XX_R[key]=value
 
     @property
     def Ham_R(self):
@@ -186,15 +224,33 @@ class System():
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe'):
         """
-        proj:
-            Should be the same with projections card in Wannier90.win.
-        positions: list
+        Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
+
+
+        Parameters
+        ----------
+        positions: array
             Positions of each atom.
         atom_name: list
             Name of each atom.
-        magmom: array
-            Magnetic moment of each atom.
+        proj: list
+            Should be the same with projections card in relative Wannier90.win.
+
+            eg: ``['Te: s','Te:p']``
+
+            If there is hybrid orbital, grouping the other orbitals.
+
+            eg: ``['Fe':sp3d2;t2g]`` Plese don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
+
+                ``['X':sp;p2]`` Plese don't use ``['X':sp;pz,py]``
+        soc: bool
+            Spin orbital coupling.
+        magmom: 2D array
+            Magnetic momens of each atoms.
+        DFT_code: str
+            DFT code used : ``'qe'`` or ``'vasp'`` . This is needed, because vasp and qe have different orbitals arrangement with SOC.(grouped by spin or by orbital type)
         """
+
         symmetrize_wann = SymWann(
             num_wann=self.num_wann,
             lattice=self.real_lattice,
@@ -227,6 +283,26 @@ class System():
                 if X in self._XX_R:
                     self.set_R_mat(X, self.get_X_mat(X)[:, :, notexclude], reset=True)
 
+    def set_spin(self, spins, axis=[0,0,1], **kwargs):
+        """
+        Set spins along axis in  SS(R=0).  Useful for model calculations.
+        For more cversatility use :func:`~wannierberri.system.System.set_R_mat`
+
+        Parameters
+        ----------
+        spin : one on the following
+            1D `array(num_wann)` of `+1` or `-1` spins are along `axis`
+        axis : array(3)
+            spin quantization axis (if spin is a 1D array)
+        **kwargs :
+            optional arguments 'R', 'reset', 'add' see :func:`~wannierberri.system.System.set_R_mat`
+        """
+        spins = np.array(spins)
+        if max(abs(spins) -1)>1e-3 :
+            print ("WARNING : some of your spins are not +1 or -1, are you sure you want it like this?")
+        axis = np.array(axis)/np.linalg.norm(axis)
+        value = np.array([s*axis for s in spins], dtype=complex)
+        self.set_R_mat(key='SS', value=value, diag=True, **kwargs)
 
     def getXX_only_wannier_centers(self, getSS=False):
         """return AA_R, BB_R, CC_R containing only the diagonal matrix elements, evaluated from
@@ -272,9 +348,9 @@ class System():
             print("using ws_distance")
             ws_map = ws_dist_map(
                 self.iRvec, self.wannier_centers_cart_ws, self.mp_grid, self.real_lattice, npar=self.npar)
-            for X in self._XX_R:
-                print("using ws_dist for {}".format(X))
-                self.set_R_mat(X, ws_map(self.get_R_mat(X)),reset=True)
+            for key,val in self._XX_R.items():
+                print("using ws_dist for {}".format(key))
+                self.set_R_mat(key, ws_map(val),reset=True)
             self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
         else:
             print("NOT using ws_dist")
@@ -454,6 +530,10 @@ class System():
 
     @property
     def iR0(self):
+        return self.iRvec.tolist().index([0, 0, 0])
+
+    def iR(self,R):
+        R=np.array(np.round(R),dtype=int).tolist()
         return self.iRvec.tolist().index([0, 0, 0])
 
     @lazy_property.LazyProperty

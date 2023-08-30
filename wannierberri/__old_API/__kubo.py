@@ -18,49 +18,17 @@
 import numpy as np
 from scipy import constants as constants
 from termcolor import cprint
-from ..__utility import alpha_A, beta_A
+from ..__utility import alpha_A, beta_A, Gaussian,Lorentzian,FermiDirac
 from .. import result as result
 from ..formula.covariant import SpinVelocity
 from .__energyresultdict import EnergyResultDict
+from ..symmetry import transform_ident, transform_odd, transform_trans
+
 # constants
 pi = constants.pi
 e = constants.e
 hbar = constants.hbar
-eV_seconds = 6.582119e-16
-
-
-# smearing functions
-def Lorentzian(x, width):
-    return 1.0 / (pi * width) * width**2 / (x**2 + width**2)
-
-
-def Gaussian(x, width, adpt_smr):
-    '''
-    Compute 1 / (np.sqrt(pi) * width) * exp(-(x / width) ** 2)
-    If the exponent is less than -200, return 0.
-    An unoptimized version is the following.
-        def Gaussian(x, width, adpt_smr):
-            return 1 / (np.sqrt(pi) * width) * np.exp(-np.minimum(200.0, (x / width) ** 2))
-    '''
-    inds = abs(x) < width * np.sqrt(200.0)
-    output = np.zeros_like(x)
-    if adpt_smr:
-        # width is array
-        width_tile = np.tile(width, (x.shape[0], 1, 1))
-        output[inds] = 1.0 / (np.sqrt(pi) * width_tile[inds]) * np.exp(-(x[inds] / width_tile[inds])**2)
-    else:
-        # width is number
-        output[inds] = 1.0 / (np.sqrt(pi) * width) * np.exp(-(x[inds] / width)**2)
-    return output
-
-
-# Fermi-Dirac distribution
-def FermiDirac(E, mu, kBT):
-    if kBT == 0:
-        return 1.0 * (E <= mu)
-    else:
-        arg = np.maximum(np.minimum((E - mu) / kBT, 700.0), -700.0)
-        return 1.0 / (np.exp(arg) + 1)
+eV_seconds = hbar / e
 
 
 def fermiSurf(EF, E, kBT):  # returns arra [iF, n ]
@@ -112,6 +80,7 @@ def opt_conductivity(
         conductivity_type='kubo',
         SHC_type='ryoo',
         sc_eta=0.04,
+        external_terms=True,
         sep_sym_asym=False):
     '''
     Calculates the optical conductivity according to the Kubo-Greenwood formula.
@@ -134,6 +103,7 @@ def opt_conductivity(
         conductivity_type type of optical conductivity ('kubo', 'SHC'(spin Hall conductivity), 'tildeD' (finite-frequency Berry curvature dipole) )
         SHC_type        'ryoo': PRB RPS19, 'qiao': PRB QZYZ18
         sep_sym_asym    separate the optical conductivity into symmetric and antisymmetric parts
+        external_terms  include external terms in the calculation
 
     Returns:    a list of (complex) optical conductivity 3 x 3 (x 3) tensors (one for each frequency value).
                 The result is given in S/cm.
@@ -155,29 +125,22 @@ def opt_conductivity(
     if conductivity_type == 'kubo':
         sigma_H = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
         sigma_AH = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3), dtype=np.dtype('complex128'))
-        rank = 2
     elif conductivity_type == 'SHC':
         if shc_specification:
             sigma_H = np.zeros((Efermi.shape[0], omega.shape[0]), dtype=np.dtype('complex128'))
             sigma_AH = np.zeros((Efermi.shape[0], omega.shape[0]), dtype=np.dtype('complex128'))
-            rank = 0
             shc_alpha = shc_alpha - 1  #In python, indices start from 0.
             shc_beta = shc_beta - 1
             shc_gamma = shc_gamma - 1
         else:
             sigma_H = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
             sigma_AH = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3, 3), dtype=np.dtype('complex128'))
-            rank = 3
         # Calculate spin-velocity matrix
         spin_velocity = SpinVelocity(data, SHC_type)
     elif conductivity_type == 'tildeD':
         tildeD = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3), dtype=float)
-        rank = 2
     elif conductivity_type == 'shiftcurrent':
         sigma_shift = np.zeros((Efermi.shape[0], omega.shape[0], 3, 3, 3), dtype=complex)
-        rank = 3
-        # prefactor for the shift current
-        pre_fac = -1.j * eV_seconds * pi * e**3 / (4.0 * hbar**(2) * data.nk * data.cell_volume)
 
     if adpt_smr:
         cprint("WARNING: Adaptive smearing is an experimental feature and has not been extensively tested.", 'red')
@@ -210,16 +173,23 @@ def opt_conductivity(
             cprint("Invalid smearing type. Fallback to Lorentzian", 'red')
             delta = Lorentzian(delta_arg, eta)
 
+
+        if external_terms:
+            A_H = data.A_H[ik]  # [n, m, a] in angstrom
+        else:
+            A_H = data.A_H_internal[ik]  # [n, m, a] in angstrom
+
+
         if conductivity_type == 'kubo':
             # generalized Berry connection matrix
-            A = data.A_H[ik]  # [n, m, a] in angstrom
+            A = A_H  # [n, m, a] in angstrom
         elif conductivity_type == 'SHC':
             A = spin_velocity.matrix[ik]
-            B = -1j * data.A_H[ik]
+            B = -1j * A_H
         elif conductivity_type == 'tildeD':
             rfac = dE[None, :, :] / (dE[None, :, :] + omega[:, None, None] + 1j * eta)
             rfac = (rfac + rfac.transpose(0, 2, 1).conj()).real / 2
-            A = data.A_H[ik]
+            A = A_H
             AA = A[:, :, :, None] * A.transpose(1, 0, 2)[:, :, None, :]
             imAA = np.imag(AA[:, :, alpha_A, beta_A] - AA[:, :, beta_A, alpha_A])
             degen = np.zeros(E.shape, dtype=bool)
@@ -228,12 +198,10 @@ def opt_conductivity(
             tildeOmega = (-rfac[:, :, :, None] * imAA[None, :, :, :]).sum(axis=2)  # [iw,n,c]
             tildeOmega[:, degen, :] = 0
         elif conductivity_type == 'shiftcurrent':
-            B = data.A_H[ik]
+            B = A_H
 
-            A_Hbar = data.Xbar('AA')[ik]
             D_H = data.D_H[ik]
             V_H = data.Xbar('Ham', 1)[ik]
-            A_Hbar_der = data.Xbar('AA', 1)[ik]
             del2E_H = data.Xbar('Ham', 2)[ik]
             dEig_inv = data.dEig_inv[ik].transpose(1, 0)
 
@@ -243,42 +211,39 @@ def opt_conductivity(
             dEig_inv_Pval = dEig / (dEig**(2) + sc_eta**(2))
             D_H_Pval = -V_H * dEig_inv_Pval[:, :, None]
 
-            # commutators
-            # ** the spatial index of D_H_Pval corresponds to generalized derivative direction
-            # ** --> stored in the fourth column of output variables
-            sum_AD =  (np.einsum('nlc,lma->nmca', A_Hbar, D_H_Pval) - np.einsum('nnc,nma->nmca', A_Hbar, D_H_Pval))  \
-                     -(np.einsum('nla,lmc->nmca', D_H_Pval, A_Hbar) - np.einsum('nma,mmc->nmca', D_H_Pval, A_Hbar))
+
+            if external_terms:
+                A_Hbar = data.Xbar('AA')[ik]
+                A_Hbar_der = data.Xbar('AA', 1)[ik]
+                # commutators
+                # ** the spatial index of D_H_Pval corresponds to generalized derivative direction
+                # ** --> stored in the fourth column of output variables
+                sum_AD =  (np.einsum('nlc,lma->nmca', A_Hbar, D_H_Pval) - np.einsum('nnc,nma->nmca', A_Hbar, D_H_Pval))  \
+                         -(np.einsum('nla,lmc->nmca', D_H_Pval, A_Hbar) - np.einsum('nma,mmc->nmca', D_H_Pval, A_Hbar))
+
             sum_HD =  (np.einsum('nlc,lma->nmca', V_H, D_H_Pval) - np.einsum('nnc,nma->nmca', V_H, D_H_Pval))  \
                      -(np.einsum('nla,lmc->nmca', D_H_Pval, V_H) - np.einsum('nma,mmc->nmca', D_H_Pval, V_H))
 
-            # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction
-            # ** --> stored in the fourth column of output variables
-            AD_bit =     np.einsum('nnc,nma->nmac' , A_Hbar, D_H) - np.einsum('mmc,nma->nmac' , A_Hbar, D_H) \
-                       + np.einsum('nna,nmc->nmac' , A_Hbar, D_H) - np.einsum('mma,nmc->nmac' , A_Hbar, D_H)
-            AA_bit = np.einsum('nnb,nma->nmab', A_Hbar, A_Hbar) - np.einsum('mmb,nma->nmab', A_Hbar, A_Hbar)
+            if external_terms:
+                # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction
+                # ** --> stored in the fourth column of output variables
+                AD_bit =     np.einsum('nnc,nma->nmac' , A_Hbar, D_H) - np.einsum('mmc,nma->nmac' , A_Hbar, D_H) \
+                           + np.einsum('nna,nmc->nmac' , A_Hbar, D_H) - np.einsum('mma,nmc->nmac' , A_Hbar, D_H)
+                AA_bit = np.einsum('nnb,nma->nmab', A_Hbar, A_Hbar) - np.einsum('mmb,nma->nmab', A_Hbar, A_Hbar)
             # ** this one is invariant under a<-->c
             DV_bit =     np.einsum('nmc,nna->nmca' , D_H, V_H) - np.einsum('nmc,mma->nmca' , D_H, V_H) \
                        + np.einsum('nma,nnc->nmca' , D_H, V_H) - np.einsum('nma,mmc->nmca' , D_H, V_H)
 
             # generalized derivative
-            A = (
-                A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD + 1j *
-                (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, np.newaxis, np.newaxis])
+            A = 1j * (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, np.newaxis, np.newaxis]
+            if external_terms:
+                A = A+ (A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD )
 
             # generalized derivative is fourth index of A, we put it into third index of Imn
-            Imn = np.einsum('nmca,mnb->nmabc', A, B) + np.einsum('nmba,mnc->nmabc', A, B)
+            Imn = np.einsum('nmca,mnb->nmabc', A, A_H) + np.einsum('nmba,mnc->nmabc', A, A_H)
 
             delta_mn = delta
-
-            dE2 = E[:, np.newaxis] - E[np.newaxis, :]  # E_n(k) - E_m(k) [n, m]
-            delta_arg = dE2[np.newaxis, :, :] - omega[:, np.newaxis, np.newaxis]
-            if smr_type == 'Lorentzian':
-                delta_nm = Lorentzian(delta_arg, eta)
-            elif smr_type == 'Gaussian':
-                delta_nm = Gaussian(delta_arg, eta, adpt_smr)
-            else:
-                cprint("Invalid smearing type. Fallback to Lorentzian", 'red')
-                delta_nm = Lorentzian(delta_arg, eta)
+            delta_nm = delta.transpose((0, 2, 1))
             cfac = delta_mn + delta_nm
 
         if conductivity_type == 'tildeD':
@@ -331,8 +296,7 @@ def opt_conductivity(
 
                 elif conductivity_type == 'shiftcurrent':
                     temp = -dfE[np.newaxis, :, :] * cfac
-
-                    sigma_shift[iEF] += pre_fac * kubo_sum_elements(Imn, temp, data.num_wann)
+                    sigma_shift[iEF] += kubo_sum_elements(Imn, temp, data.num_wann)
 
     if conductivity_type == 'kubo':
 
@@ -344,23 +308,25 @@ def opt_conductivity(
             # return result dictionary
             return EnergyResultDict(
                 {
-                    'sym': result.EnergyResult([Efermi, omega], sigma_sym, TRodd=False, Iodd=False, rank=rank),
-                    'asym': result.EnergyResult([Efermi, omega], sigma_asym, TRodd=True, Iodd=False, rank=rank)
+                    'sym': result.EnergyResult([Efermi, omega], sigma_sym, transformTR=transform_ident, transformInv=transform_ident, rank=2),
+                    'asym': result.EnergyResult([Efermi, omega], sigma_asym, transformTR=transform_odd, transformInv=transform_ident,  rank=2)
                 })  # the proper smoother is set later for both elements
         else:
             return result.EnergyResult(
-                [Efermi, omega], sigma_H + sigma_AH, TRodd=False, Iodd=False, TRtrans=True, rank=rank)
+                [Efermi, omega], sigma_H + sigma_AH, transformTR=transform_trans, transformInv=transform_ident, rank=2)
 
     elif conductivity_type == 'SHC':
         sigma_SHC = np.real(sigma_AH) + 1j * np.imag(sigma_H)
-        return result.EnergyResult([Efermi, omega], sigma_SHC, TRodd=False, Iodd=False, rank=rank)
+        rank = 0 if shc_specification else 3
+        return result.EnergyResult([Efermi, omega], sigma_SHC, transformTR=transform_ident, transformInv=transform_ident, rank=rank)
 
     elif conductivity_type == 'tildeD':
         pre_fac = 1. / (data.nk * data.cell_volume)
-        return result.EnergyResult([Efermi, omega], tildeD * pre_fac, TRodd=False, Iodd=True, rank=rank)
+        return result.EnergyResult([Efermi, omega], tildeD * pre_fac, transformTR=transform_ident, transformInv=transform_odd, rank=2)
 
     elif conductivity_type == 'shiftcurrent':
-        return result.EnergyResult([Efermi, omega], sigma_shift, TRodd=False, Iodd=True, rank=rank)
+        pre_fac = -1.j * eV_seconds * pi * e**3 / (4.0 * hbar**(2) * data.nk * data.cell_volume)
+        return result.EnergyResult([Efermi, omega], sigma_shift * pre_fac, transformTR=transform_ident, transformInv=transform_odd, rank=3)
 
 
 def opt_SHCqiao(data, Efermi, omega=0, **parameters):

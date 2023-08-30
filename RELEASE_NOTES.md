@@ -1,3 +1,32 @@
+Version 0.14.0
+++++++++++++++++++
+## What's Changed
+* refactoring ??_R  by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/224
+* Fix an edge case in DynamicCalculator by @jhryoo in https://github.com/wannier-berri/wannier-berri/pull/216
+* modified ci.yml to avoid double builds by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/228
+* also avoid double checks for lint and codecov by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/229
+* Boosting speed in run.py by @jhryoo in https://github.com/wannier-berri/wannier-berri/pull/217
+* allowed avoid writing frmsf files by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/226
+* utils.postw90 by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/188
+* fixed the tetrahedron method to be more accurate with der=0 by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/231
+* allowed evaluation of multiple sets of Fermi levels in one calculatio… by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/234
+* fixed a bug for tetrahedron method by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/232
+* SystemSparse by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/240
+* Tetrahedron grids by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/233
+* fixed rename of w90io by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/246
+* rearrangements in sym_wann by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/245
+* created docs index by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/259
+* adding documentation to the main repository by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/260
+* Kdotp by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/243
+* documentation for kdotp by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/261
+* added test for dynamical caclculators with symmetrising results by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/262
+* changes TRodd, Iodd, TRtrans to more general transformations by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/263
+* Implement shift current and injection current via Calculator by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/197
+
+
+**Full Changelog**: https://github.com/wannier-berri/wannier-berri/compare/v0.13.5...v0.14.0
+
+
 Version 0.13.5
 ++++++++++++++++++
 ## What's Changed

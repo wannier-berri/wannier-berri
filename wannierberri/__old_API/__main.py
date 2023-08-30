@@ -132,7 +132,7 @@ def integrate(
     user_quantities : dict
         a dictionary `{name:function}`, where `name` is any string, and `function(data_K,Efermi)`
         takes two arguments
-        `data_K` of  of type :class:`~wannierberri.data_K.Data_K`  and Efermi -  `np.array`
+        `data_K` of  of type :class:`~wannierberri.data_K._Data_K`  and Efermi -  `np.array`
         and returns an object  :class:`~wannierberri.result.EnergyResult`
     adpt_num_iter : int
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
@@ -160,7 +160,7 @@ def integrate(
         `'quantity^label':dict`, where dict is analogous to  `parameters`. This values will override
         for the instance of the quantity labeled by '^label'
     parameters_K : dict
-        parameters to be passed to the :class:`~wannierberri.data_K.Data_K`,
+        parameters to be passed to the :class:`~wannierberri.data_K._Data_K`,
         so they are common for the calculation.
 
     Returns
@@ -277,7 +277,7 @@ def tabulate(
     user_quantities : dict
         a dictionary `{name:formula}`, where `name` is any string, and `formula`
         is a name of a child class of  :class:`~wannierberri.formula.Formula_ln`
-        which should have defined attributes `nn` , `TRodd`, `Iodd`
+        which should have defined attributes `nn` , `transformInv`, `transformTR`
     use_irred_kpt : bool
         evaluate only symmetry-irreducible K-points
     symmetrize : bool
@@ -295,7 +295,7 @@ def tabulate(
         `'quantity^label':dict`, where dict is analogous to  `parameters`. This values will override
         for the instance of the quantity labeled by '^label'
     parameters_K : dict
-        parameters to be passed to the :class:`~wannierberri.data_K.Data_K`,
+        parameters to be passed to the :class:`~wannierberri.data_K._Data_K`,
         so they are common for the calculation.
 
     Returns

@@ -1,6 +1,6 @@
 """
 The module describes calculators - objects that 
-receive :calss:`~wannierberri.data_K.Data_K` objects and yield
+receive :calss:`~wannierberri.data_K._Data_K` objects and yield
 :class:`~wannierberri.result.Result`
 """
 
