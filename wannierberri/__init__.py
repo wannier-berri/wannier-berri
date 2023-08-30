@@ -19,6 +19,7 @@ __version__ = "0.14.1"
 from .run import run
 from . import symmetry
 from . import system
+from . import utils
 from .system import System_w90, System_fplo, System_tb, System_PythTB, System_TBmodels, System_ASE, System_Phonon_QE
 from .grid import Grid, Path
 from . import calculators
