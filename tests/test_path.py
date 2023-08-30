@@ -8,7 +8,6 @@ from wannierberri.calculators import tabulate as caltab
 from wannierberri.calculators import TabulatorAll
 
 from common import OUTPUT_DIR, REF_DIR
-from test_run import check_run
 
 def test_path_1(system_Haldane_PythTB):
     # Test the construction of Path class
@@ -80,8 +79,7 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
             'Der_morb': caltab.DerOrbitalMoment(**param_tab, **no_external),
         },
         ibands=[0],
-        mode = "path"
-        )
+        mode="path")
 
 
     k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
