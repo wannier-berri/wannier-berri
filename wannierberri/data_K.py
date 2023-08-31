@@ -370,7 +370,6 @@ class Data_K_R(_Data_K):
 
 
     def __init__(self, system, dK, grid, **parameters):
-        print (parameters)
         super().__init__(system, dK, grid, **parameters)
 
         self.cRvec_wcc = self.system.cRvec_p_wcc
@@ -387,7 +386,6 @@ class Data_K_R(_Data_K):
         self._bar_quantities = {}
         self._covariant_quantities = {}
         self._XX_R = {}
-
 
 
     @property
