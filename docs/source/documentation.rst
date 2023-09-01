@@ -20,7 +20,6 @@ API reference
    docs/smoother
    docs/data_K
    docs/models
-   docs/oldAPI
 
 
 .. include:: shortcuts.rst

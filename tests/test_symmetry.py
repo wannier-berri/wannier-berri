@@ -3,7 +3,7 @@
 from copy import deepcopy
 import numpy as np
 import pytest
-
+from packaging.version import parse as pversion
 import wannierberri.symmetry as sym
 
 from common_systems import symmetries_GaAs, symmetries_Fe
@@ -13,10 +13,9 @@ from common_systems import symmetries_GaAs, symmetries_Fe
 def check_symgroup_equal():
 
     def _inner(g1, g2):
-        assert g1.size == g2.size, "Symmetry group size is different"
+        assert g1.size == g2.size, F"Symmetry group size is different fIRST: {g1.size}, SECOND: {g2.size}"
         for s in g1.symmetries:
-            if s not in g2.symmetries:
-                assert False, f"Symmetry {s} in group 1 is not in group 2"
+            assert s in g2.symmetries, f"Symmetry {s} in group 1 is not in group 2"
 
     return _inner
 
@@ -53,8 +52,12 @@ def test_symmetry_spglib_Fe(system_Fe_W90, check_symgroup_equal):
 
     # Magnetic symmetries involving time-reversal is not implemented in spglib.
     # So, we exclude symmetries involving time reversal from the generators.
-    symmetries_Fe_except_TR = [sym for sym in symmetries_Fe if not sym.TR]
-    system_explicit.set_symmetry(symmetries_Fe_except_TR)
+    import spglib
+    if pversion(spglib.__version__)<pversion("2"):
+        symmetries_Fe_except_TR = [sym for sym in symmetries_Fe if not sym.TR]
+        system_explicit.set_symmetry(symmetries_Fe_except_TR)
+    else:
+        system_explicit.set_symmetry(symmetries_Fe)
 
     system_spglib = deepcopy(system_Fe_W90)
     positions = [[0., 0., 0.]]
@@ -63,7 +66,12 @@ def test_symmetry_spglib_Fe(system_Fe_W90, check_symgroup_equal):
     system_spglib.set_structure(positions, labels, magnetic_moments)
     system_spglib.set_symmetry_from_structure()
 
-    check_symgroup_equal(system_explicit.symgroup, system_spglib.symgroup)
+    try:
+        sg1=system_explicit.symgroup
+        sg2=system_spglib.symgroup
+        check_symgroup_equal(sg1, sg2)
+    except Exception as err:
+        raise RuntimeError(f"groups are not equal {err}\n explicit: \n---------\n{sg1}\n---------\n---------\n{sg2}\n---------\n")
 
     # Raise error if magnetic_moments is set to a number, not a 3d vector
     with pytest.raises(Exception):
