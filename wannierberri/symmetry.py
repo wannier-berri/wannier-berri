@@ -90,7 +90,7 @@ class Symmetry():
         print(self)
 
     def __str__(self):
-        return f"rotation: {self.R} , TR: {self.TR} , I: {self.Inv}"
+        return f"rotation:\n{np.round(self.R,decimals=4)} , TR: {self.TR} , I: {self.Inv}"
 
     def __mul__(self, other):
         return Symmetry((self.R @ other.R) * (self.iInv * other.iInv), self.TR != other.TR)
@@ -262,6 +262,12 @@ class Group():
             assert self.check_basis_symmetry(self.real_lattice), "real_lattice is not symmetric" + MSG_not_symmetric
         if real_lattice is not None:
             assert self.check_basis_symmetry(self.recip_lattice), "recip_lattice is not symmetric" + MSG_not_symmetric
+
+    def __str__(self):
+        s=f"Real_lattice:\n{np.round(self.real_lattice,decimals=4)}\n Recip. Lattice:\n {np.round(self.recip_lattice,decimals=4)}\n size:{self.size}\nOperations:\n"
+        for i,sym in enumerate(self.symmetries):
+            s+=f"{i}:\n{sym}\n"
+        return s
 
     def check_basis_symmetry(self, basis, tol=1e-6, rel_tol=None):
         "returns True if the basis is symmetric"

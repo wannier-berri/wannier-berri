@@ -21,7 +21,6 @@ import functools
 import multiprocessing
 from collections import defaultdict
 
-
 class System():
 
     default_parameters = {
@@ -635,17 +634,27 @@ class System():
 
         spglib_symmetry = spglib.get_symmetry(self.get_spglib_cell())
         symmetry_gen = []
-        for isym in range(spglib_symmetry["rotations"].shape[0]):
+        for isym,W  in enumerate(spglib_symmetry["rotations"]):
             # spglib gives real-space rotations in reduced coordinates. Here,
             # 1) convert to Cartesian coordinates, and
             # 2) take transpose to go to reciprocal space.
             W = spglib_symmetry["rotations"][isym]
             Wcart = self.real_lattice.T @ W @ np.linalg.inv(self.real_lattice).T
             R = Wcart.T
-            symmetry_gen.append(Symmetry(R))
+            try:
+                TR = spglib_symmetry['time_reversals'][isym]
+                tr_found=True
+            except KeyError:
+                TR = False
+                tr_found = False
+            symmetry_gen.append(Symmetry(R,TR=TR))
 
         if self.magnetic_moments is None:
             symmetry_gen.append(TimeReversal)
+        elif not tr_found:
+            print ( "WARNING: you specified magnetic moments but spglib did not detect symmetries involving time-reversal"+
+                    f"proobably it is because you have an old spglib version {spglib.__version__}"+
+                    "We suggest upgrading to spglib>=2.0.2")
         else:
             if not all([len(x) for x in self.magnetic_moments]):
                 raise ValueError("magnetic_moments must be a list of 3d vector")
