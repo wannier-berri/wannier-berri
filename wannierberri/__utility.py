@@ -29,6 +29,7 @@ except Exception as err:
     print("WARNING : error importing  `pyfftw` : {} \n will use numpy instead \n".format(err))
 
 
+
 # inheriting just in order to have posibility to change default values, without changing the rest of the code
 class FortranFileR(fortio.FortranFile):
 
@@ -77,15 +78,16 @@ def real_recip_lattice(real_lattice=None, recip_lattice=None):
                 "\n WARNING!!!!! usually need to provide either with real or reciprocal lattice. If you only want to generate a random symmetric tensor - that it fine \n",
                 "yellow")
             return None, None
-        recip_lattice = conjugate_basis(real_lattice)
+        else:
+            recip_lattice = conjugate_basis(real_lattice)
     else:
         if real_lattice is not None:
             assert np.linalg.norm(
-                real_lattice.dot(recip_lattice.T) / (2 * np.pi)
+                np.array(real_lattice).dot(recip_lattice.T) / (2 * np.pi)
                 - np.eye(3)) <= 1e-8, "real and reciprocal lattice do not match"
         else:
             real_lattice = conjugate_basis(recip_lattice)
-    return real_lattice, recip_lattice
+    return np.array(real_lattice), np.array(recip_lattice)
 
 
 
@@ -288,6 +290,15 @@ def get_angle(sina, cosa):
         alpha = 2.0 * np.pi - alpha
     return alpha
 
+def angle_vectors(vec1,vec2):
+    cos = np.dot(vec1,vec2)/np.linalg.norm(vec1)/np.linalg.norm(vec2)
+    return np.arccos(cos)
+
+def angle_vectors_deg(vec1,vec2):
+    angle = angle_vectors(vec1,vec2)
+    return int(round(angle/np.pi*180))
+
+
 # smearing functions
 def Lorentzian(x, width):
     return 1.0 / (np.pi * width) * width**2 / (x**2 + width**2)
@@ -302,7 +313,7 @@ def Gaussian(x, width, adpt_smr):
             return 1 / (np.sqrt(pi) * width) * np.exp(-np.minimum(200.0, (x / width) ** 2))
     '''
     inds = abs(x) < width * np.sqrt(200.0)
-    output = np.zeros_like(x)
+    output = np.zeros(x.shape,dtype=float)
     if adpt_smr:
         # width is array
         width_tile = np.tile(width, (x.shape[0], 1, 1))
@@ -312,3 +323,16 @@ def Gaussian(x, width, adpt_smr):
         output[inds] = 1.0 / (np.sqrt(np.pi) * width) * np.exp(-(x[inds] / width)**2)
     return output
 
+
+# auxillary function"
+def FermiDirac(E, mu, kBT):
+    "here E is a number, mu is an array"
+    if kBT == 0:
+        return 1.0 * (E <= mu)
+    else:
+        res = np.zeros(mu.shape, dtype=float)
+        res[mu > E + 30 * kBT] = 1.0
+        res[mu < E - 30 * kBT] = 0.0
+        sel = abs(mu - E) <= 30 * kBT
+        res[sel] = 1.0 / (np.exp((E - mu[sel]) / kBT) + 1)
+        return res

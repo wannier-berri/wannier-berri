@@ -9,13 +9,13 @@ with open("README.rst", "r") as fh:
 setuptools.setup(
      name='wannierberri',
      author="Stepan S. Tsirkin",
-     author_email="stepan.tsirkin@uzh.ch",
+     author_email="stepan.tsirkin@ehu.eus",
      description="Advanced tool for Wannier interpolation",
      long_description=long_description,
      long_description_content_type="text/markdown",
      python_requires='>=3.7',
      install_requires=[
-                        'numpy>=1.18,<1.23', # reauired by numba, numpy-1.23 is inpre-release state so far (31.05.22) https://pypi.org/project/numpy/#history
+                        'numpy<1.25,>=1.24', # upper limit reauired by numba . min 1.24 required by scipy.io
                         'scipy>=1.0',
                         'lazy_property',
                         'colorama',
@@ -30,9 +30,9 @@ setuptools.setup(
                         'protobuf==3.20.2', # req by ray : https://github.com/ray-project/ray/issues/25205 , https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
                         'ray[default]',
                         'sympy',
-                        'spglib<2',
-                        'w90io @ git+https://github.com/jimustafa/wannier90-pylib-io.git',
+                        'spglib>=2',
                         'untangle',
+                        'irrep>=1.8.2',
                       ],
      url="https://wannier-berri.org",
      packages=setuptools.find_packages(),

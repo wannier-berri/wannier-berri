@@ -4,9 +4,10 @@ import numpy as np
 from pytest import approx
 
 import wannierberri as wberri
+from wannierberri.calculators import tabulate as caltab
+from wannierberri.calculators import TabulatorAll
 
 from common import OUTPUT_DIR, REF_DIR
-
 
 def test_path_1(system_Haldane_PythTB):
     # Test the construction of Path class
@@ -62,32 +63,54 @@ def test_path_4(system_Haldane_PythTB):
     assert path_npy.K_list == approx(path.K_list), "path.K_list is wrong"
 
 
-def test_tabulate_path(system_Haldane_PythTB):
-    quantities = ['V', 'berry', 'Der_berry', 'morb', 'Der_morb']
+def test_tabulate_path(system_Haldane_PythTB, check_run):
+    param_tab = {'degen_thresh': 5e-2,}
+    no_external = dict(kwargs_formula={"external_terms": False }, )
+
+    calculators = {}
+    calculators["tabulate"] = TabulatorAll(
+        {
+            "Energy": caltab.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
+            # but not to energies
+            "V": caltab.Velocity(**param_tab),
+            "Der_berry": caltab.DerBerryCurvature(**param_tab, **no_external),
+            "berry": caltab.BerryCurvature(**param_tab, **no_external),
+            'morb': caltab.OrbitalMoment(**param_tab, **no_external),
+            'Der_morb': caltab.DerOrbitalMoment(**param_tab, **no_external),
+        },
+        ibands=[0],
+        mode="path")
+
 
     k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
     path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
 
-    tab_result = wberri.tabulate(
+
+    result = check_run(
         system=system_Haldane_PythTB,
         grid=path,
-        quantities=quantities,
-        user_quantities={},
-        parameters={"external_terms": False},
-        #                    specific_parameters = specific_parameters,
-        ibands=[0],
-        use_irred_kpt=True,
-        symmetrize=True,  # should have no effect, but will check the cases and give a warning
+        calculators=calculators,
+        fout_name="berry_Fe_W90",
+        suffix="run",
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=True, # should have no effect, but will check the cases and give a warning
         #                parameters_K = parameters_K,
         #                frmsf_name = None,
         #                degen_thresh = degen_thresh, degen_Kramers = degen_Kramers
-    )
+        skip_compare=['tabulate', ])
+
+
+    tab_result = result.results["tabulate"]
 
     filename = "path_tab.pickle"
     fout = open(os.path.join(OUTPUT_DIR, filename), "wb")
 
     data = {}
-    for quant in ["Energy"] + quantities:
+    quantities = result.results["tabulate"].results.keys()
+    for quant in quantities:
         result_quant = tab_result.results.get(quant)
         for comp in result_quant.get_component_list():
             data[(quant, comp)] = result_quant.get_component(comp)
@@ -95,7 +118,7 @@ def test_tabulate_path(system_Haldane_PythTB):
 
     data_ref = pickle.load(open(os.path.join(REF_DIR, filename), "rb"))
 
-    for quant in ["Energy"] + quantities:
+    for quant in quantities:
         for comp in tab_result.results.get(quant).get_component_list():
             _data = data[(quant, comp)]
             _data_ref = data_ref[(quant, comp)]

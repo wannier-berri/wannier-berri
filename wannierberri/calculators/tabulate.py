@@ -1,8 +1,8 @@
 import numpy as np
 from . import Calculator
-from wannierberri.formula import covariant as frml
-from wannierberri.formula import covariant_basic as frml_basic
-from wannierberri.result import KBandResult
+from ..formula import covariant as frml
+from ..formula import covariant_basic as frml_basic
+from ..result import KBandResult
 
 
 # The base class for Tabulating
@@ -48,7 +48,7 @@ class Tabulator(Calculator):
                 values[n] = formula.trace(ik, inn, out) / (n[1] - n[0])
             for ib, b in enumerate(ibands):
                 rslt[ik, ib] = values[group[ik][ib]]
-        return KBandResult(rslt, TRodd=formula.TRodd, Iodd=formula.Iodd)
+        return KBandResult(rslt, transformTR=formula.transformTR, transformInv=formula.transformInv)
 
 
 ###############################################

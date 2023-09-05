@@ -61,6 +61,14 @@ class Symmetry():
     Symmetries that acts on reciprocal space objects, in Cartesian coordinates.
     A k-point vector ``k`` transform as ``self.iTR * self.iInv * (sym.R @ k)``.
 
+    Parameters
+    ------------
+    R : (3, 3) ndarray
+        Rotation matrix.  ``det(R) = 1 or -1``.
+    TR : bool
+        True if symmetry involves time reversal.
+
+
     Attributes
     ----------
     R : (3, 3) ndarray
@@ -68,7 +76,7 @@ class Symmetry():
     TR : bool
         True if symmetry involves time reversal.
     Inv : bool
-        True if symmetry involves spatial inversion.
+        True if symmetry involves spatial inversion. (i.e. if on input det(R) was -1)
     """
 
     def __init__(self, R, TR=False):
@@ -82,7 +90,7 @@ class Symmetry():
         print(self)
 
     def __str__(self):
-        return f"rotation: {self.R} , TR: {self.TR} , I: {self.Inv}"
+        return f"rotation:\n{np.round(self.R,decimals=4)} , TR: {self.TR} , I: {self.Inv}"
 
     def __mul__(self, other):
         return Symmetry((self.R @ other.R) * (self.iInv * other.iInv), self.TR != other.TR)
@@ -99,7 +107,7 @@ class Symmetry():
     def rotate(self, res):
         return res @ self.R.T
 
-    def transform_tensor(self, data, rank, TRodd=False, Iodd=False, TRtrans=False):
+    def transform_tensor(self, data, rank, transformTR, transformInv):
         res = np.copy(data)
         dim = len(res.shape)
         if rank > 0:
@@ -110,10 +118,15 @@ class Symmetry():
             res = self.rotate(
                 res.transpose(tuple(range(i)) + tuple(range(i + 1, dim))
                               + (i, ))).transpose(tuple(range(i)) + (dim - 1, ) + tuple(range(i, dim - 1)))
-        if (self.TR and TRodd) != (self.Inv and Iodd):
-            res = -res
-        if self.TR and TRtrans:
-            res = res.swapaxes(dim - rank, dim - rank + 1)
+        if self.TR:
+            transformTR(res)
+#            res = res.conj()
+#        if (self.TR and TRodd) != (self.Inv and Iodd):
+#            res = -res
+#        if self.TR and TRtrans:
+#            res = res.swapaxes(dim - rank, dim - rank + 1).conj()
+        if self.Inv:
+            transformInv(res)
         return res
 
 
@@ -250,6 +263,12 @@ class Group():
         if real_lattice is not None:
             assert self.check_basis_symmetry(self.recip_lattice), "recip_lattice is not symmetric" + MSG_not_symmetric
 
+    def __str__(self):
+        s=f"Real_lattice:\n{np.round(self.real_lattice,decimals=4)}\n Recip. Lattice:\n {np.round(self.recip_lattice,decimals=4)}\n size:{self.size}\nOperations:\n"
+        for i,sym in enumerate(self.symmetries):
+            s+=f"{i}:\n{sym}\n"
+        return s
+
     def check_basis_symmetry(self, basis, tol=1e-6, rel_tol=None):
         "returns True if the basis is symmetric"
         if rel_tol is not None:
@@ -342,14 +361,16 @@ class Group():
                 equalities[value] = [ind_xyz]
         return ["=".join(val) for val in equalities.values()]
 
-    def symmetrize_tensor(self, data, TRodd, Iodd, rank=None):
+    def symmetrize_tensor(self, data, transformTR, transformInv, rank=None):
         dim = data.ndim
         if rank is None:
             rank = dim
         shape = np.array(data.shape)
         assert np.all(shape[dim - rank:dim] == 3), "the last rank={} dimensions should be 3, found : {}".format(
             rank, shape)
-        return sum(s.transform_tensor(data, TRodd=TRodd, Iodd=Iodd, rank=rank) for s in self.symmetries) / self.size
+        return sum(s.transform_tensor(data, rank=rank,
+                    transformTR=transformTR, transformInv=transformInv)
+                                for s in self.symmetries) / self.size
 
     def star(self, k):
         st = [S.transform_reduced_vector(k, self.recip_lattice) for S in self.symmetries]
@@ -359,10 +380,80 @@ class Group():
                 del st[i]
         return np.array(st)
 
+########
+# transformation of tensors (inplace)
+#########
 
-if __name__ == '__main__':
-    s = Rotation(4)
-    basis = np.array([[1, 0, -0.3], [0, 1, -0.3], [0, 0, 0.6]])
-    group = Group([s], basis)
-    v = [-0.375, -0.375, 0.375]
-    print(group.star(v))
+
+
+class Transform():
+    r"""Describes transformation of a tensor under inversion or time-reversal
+
+    Parameters
+    ----------
+    factor : int
+        mu,tiplication fuctor (+1 or -1)
+    conj : bool
+        apply complex conjugation
+    transpose_axes : tuple
+        how to permute the axes of the tensor.
+
+    Note
+    -----
+    * Pre-defined transforms are :
+        + `transform_ident = Transform()`
+        + `transform_odd   = Transform(factor=-1)`
+        + `transform_trans = Transform(transpose_axes=(1,0))`
+        """
+
+
+    def __init__(self,factor=1,conj=False,transpose_axes=None):
+        self.conj=conj
+        self.factor=factor
+        assert factor in (1,-1),f"factor is {factor}"
+        self.transpose_axes=transpose_axes
+
+    def __str__(self):
+        return (f"Transform(factor={self.factor}, conj={self.conj}, transpose_axes={self.transpose_axes}")
+
+    def __call__(self,res):
+        if self.transpose_axes is not None:
+            dim0=res.ndim-len(self.transpose_axes)
+            trans = tuple(i for i in range(dim0))+tuple(dim0+a for a in self.transpose_axes)
+            res[:]=res.transpose(trans)
+        if self.conj:
+            res[:]=res[:].conj()
+        res[:]*=self.factor
+        return res
+
+    def __eq__(self,other):
+        if not isinstance(other,Transform):
+            return False
+        for key in "factor","conj","transpose_axes":
+            if getattr(self,key)!=getattr(other,key):
+                return False
+        return True
+
+
+
+class TransformProduct(Transform):
+    """Constructs a :class:`~Transform`
+    from a list of :class:`~Transform`
+    """
+
+    def __init__(self, transform_list):
+        transform_list=list(transform_list)
+        conj_list = list([t.conj for t in transform_list])
+        if len(set(conj_list))!=1 :
+            raise ValueError("either ALL of NONE of the transformatrions in a product should have conjugation .  {conj_list}")
+        if np.any([t.transpose_axes is not None for t in transform_list]):
+            raise NotImplementedError("Product of transformations including transposing is not implemented")
+        super().__init__(factor=np.prod([t.factor for t in transform_list]), conj=conj_list[0])
+
+
+transform_ident = Transform()
+transform_odd   = Transform(factor=-1)
+transform_odd_conj   = Transform(factor=-1,conj=True)
+transform_odd_trans_021   = Transform(factor=-1,transpose_axes=(0,2,1))
+transform_trans = Transform(transpose_axes=(1,0))
+

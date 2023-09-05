@@ -1,0 +1,18 @@
+{% extends "!layout.html" %}
+
+{% block header %}
+<img src="{{ pathto("_static/WANNIERBERRI-line-redblack.png", 1) }}" alt="WannierBerri  logo" />
+{% endblock %}
+
+{% block extrahead %}
+    <!-- Place this tag in your head or just before your close body tag. -->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+{% endblock %}
+
+  {% block menu %}
+    {{ super() }}
+    <a href="genindex.html">Index</a>
+    <a href="http://wannier-berri.org">Back to Wannier-Berri.org</a>
+  {% endblock %}
+
+

@@ -14,20 +14,19 @@
 wannierberri - a module for Wannier interpolation
 """
 
-__version__ = "0.13.5"
+__version__ = "0.14.1"
 
 from .run import run
-from .__old_API.__main import integrate, tabulate #, integrate_options, tabulate_options, print_options
 from . import symmetry
 from . import system
 from .system import System_w90, System_fplo, System_tb, System_PythTB, System_TBmodels, System_ASE, System_Phonon_QE
-from .__grid import Grid
-from .__path import Path
+from .grid import Grid, Path
 from . import calculators
 from . import result
 from .parallel import Parallel, Serial
 from .smoother import get_smoother
 from .evaluate_k import evaluate_k
+from . import utils
 
 from termcolor import cprint
 

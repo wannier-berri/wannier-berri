@@ -1,7 +1,9 @@
 import numpy as np
-from wannierberri.__utility import alpha_A, beta_A
+from ..__utility import alpha_A, beta_A
 from . import Formula_ln
 from .covariant import DerDcov, Eavln
+from ..symmetry import transform_ident, transform_odd
+
 """ The following  Formulue are fundamental. They can be used to construct all
 quantities relatred to Berry curvature and orbital magnetic moment. They are written
 in the most explicit form, although probably not the most efecient.
@@ -117,8 +119,8 @@ class tildeHab(Formula_ln):
         self.D = data_K.Dcov
         self.E = data_K.E_K
         self.ndim = 2
-        self.Iodd = False
-        self.TRodd = True
+        self.transformTR=transform_odd
+        self.transformInv=transform_ident
 
     @property
     def additive(self):
@@ -196,8 +198,8 @@ class tildeHab_d(Formula_ln):
             self.dB = data_K.covariant('BB', gender=1)
             self.dH = data_K.covariant('CCab', gender=1)
         self.ndim = 2
-        self.Iodd = True
-        self.TRodd = False
+        self.transformTR=transform_ident
+        self.transformInv=transform_odd
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
@@ -306,16 +308,16 @@ class tildeFc(AntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeFab, data_K, **parameters)
-        self.Iodd = False
-        self.TRodd = True
+        self.transformTR=transform_odd
+        self.transformInv=transform_ident
 
 
 class tildeHGc(AntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeHGab, data_K, **parameters)
-        self.Iodd = False
-        self.TRodd = True
+        self.transformTR=transform_odd
+        self.transformInv=transform_ident
 
     @property
     def additive(self):
@@ -326,16 +328,16 @@ class tildeFc_d(AntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeFab_d, data_K, **parameters)
-        self.Iodd = True
-        self.TRodd = False
+        self.transformTR=transform_ident
+        self.transformInv=transform_odd
 
 
 class tildeHGc_d(AntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeHGab_d, data_K, **parameters)
-        self.Iodd = True
-        self.TRodd = False
+        self.transformTR=transform_ident
+        self.transformInv=transform_odd
 
     @property
     def additive(self):

@@ -1,7 +1,6 @@
 """pytest configuration file for WannierBerri tests."""
 
 import pytest
-
 from common import ROOT_DIR, OUTPUT_DIR, REF_DIR
 
 # WannierBerri Systems
@@ -10,6 +9,7 @@ from common_systems import (
     create_files_GaAs_W90,
     create_W90_files,
     system_Fe_W90,
+    system_Fe_W90_sparse,
     system_Fe_W90_wcc,
     system_Fe_sym_W90,
     system_Fe_FPLO,
@@ -17,6 +17,7 @@ from common_systems import (
     data_Te_ASE,
     system_Te_ASE,
     system_Te_ASE_wcc,
+    system_Te_sparse,
     system_GaAs_W90,
     system_GaAs_W90_wcc,
     system_GaAs_tb,
@@ -33,6 +34,12 @@ from common_systems import (
     system_Phonons_Si,
     system_Phonons_GaAs,
     system_Mn3Sn_sym_tb,
+    system_kp_mass_iso_0,
+    system_kp_mass_iso_1,
+    system_kp_mass_iso_2,
+    system_kp_mass_aniso_0,
+    system_kp_mass_aniso_1,
+    system_kp_mass_aniso_2,
 )
 
 # Comparers for tests
@@ -45,6 +52,7 @@ from common_comparers import (
 
 
 from test_cluster import check_command_output
+from test_run import check_run
 
 # Parallel objects
 from common_parallel import parallel_serial, parallel_ray
