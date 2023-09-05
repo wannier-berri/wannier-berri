@@ -13,6 +13,7 @@
 
 __debug = False
 
+from . import PYFFTW_IMPORTED
 import inspect
 import numpy as np
 
@@ -21,12 +22,6 @@ from time import time
 from termcolor import cprint
 import fortio, scipy.io
 
-try:
-    import pyfftw
-    PYFFTW_IMPORTED = True
-except Exception as err:
-    PYFFTW_IMPORTED = False
-    print("WARNING : error importing  `pyfftw` : {} \n will use numpy instead \n".format(err))
 
 
 

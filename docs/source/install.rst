@@ -8,14 +8,26 @@ version maybe achieved via `pip <https://pypi.org/project/wannierberri/>`_
 
 ::
 
-   pip3 install wannierberri
+   pip install wannierberri[all]
 
-The dependencies are quite basic and will be installed automatically.
-Those include ``numpy``\ (Oliphant 2006), ``scipy >= 1.0``\ (Virtanen et
-al. 2020), pyFFTW(“PyFFTW,” n.d.) (python wrapper of FFTW(Frigo and
-Johnson 2005)), ``lazy_property``, and a few ’cosmetic’ modules
-``colorama``, ``termcolor`` and ``pyfiglet`` which are needed for a nice
-colorful output in the terminal.
+This will install all needed dependencies. However, some dependencies are heavy
+and might be not necessary for your particular use. Moreover, some of them might fail
+to install on some systems. To try WannierBerri, one may use a bare installation 
+`pip install wannierberri` (with minimal necessary dependencies), which will fail
+for some features, or you may specify which features you actually need.
+
+* `parallel` : enables parallel execution via `ray`
+* `symmetry` : enables symmetrization, setting symmetry form structure
+* `fftw`     : use a faster implementation of FFT in FFTW
+* `plot`     : use plotting routines
+* `phonons`  : phonons interpolation
+
+
+For example : 
+
+::
+
+   pip install wannierberri[parallel,fftw]
 
 
 Parallelization
