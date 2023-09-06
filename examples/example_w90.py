@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
+
+import wannierberri as wberri
+import numpy as np
+
+
+
 import os
 os.environ['OPENBLAS_NUM_THREADS'] = '1' 
 os.environ['MKL_NUM_THREADS'] = '1'
 
 ## these linesline if you want to use the git version of the code, instead of the one installed by pip
-local_code=False
+local_code=True
 num_proc=4
 
 from time import time
@@ -19,9 +25,6 @@ else:
        os.remove('wannierberri')
 
 
-import wannierberri as wberri
-
-import numpy as np
 
 
 SYM=wberri.symmetry

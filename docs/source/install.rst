@@ -73,3 +73,34 @@ Hence, to execute WannierBerri in parallel on Windows one has to start the scrip
 
 The solution was found in this answer:  `<https://stackoverflow.com/a/18205006>`_
 
+
+.. _sec-pyfftw:
+
+known bug with pyfftw
+----------------------
+
+Under some installations appears a bug with pyfftw:
+
+::
+
+      File "/home/stepan/github/wannier-berri-work/wannier-berri-master/examples/wannierberri/__utility.py", line 152, in fourier_q_to_R
+        AA_q_mp = FFT(AA_q_mp, axes=(0, 1, 2), numthreads=numthreads, fft=fft, destroy=False)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "/home/stepan/github/wannier-berri-work/wannier-berri-master/examples/wannierberri/__utility.py", line 138, in FFT
+        return fft_W(inp, axes, inverse=inverse, destroy=destroy, numthreads=numthreads)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "/home/stepan/github/wannier-berri-work/wannier-berri-master/examples/wannierberri/__utility.py", line 107, in fft_W
+        fft_object = pyfftw.FFTW(
+                     ^^^^^^^^^^^^
+      File "pyfftw/pyfftw.pyx", line 1426, in pyfftw.pyfftw.FFTW.__cinit__
+    RuntimeError: The data has an uncaught error that led to the planner returning NULL. This is a bug.
+
+
+As mentioned [here](https://github.com/spectralDNS/spectralDNS/issues/29#issuecomment-392537709), this can be avoided by importing `pyfftw` prior to `numpy`.
+This is the order of imports inside `wannierberri`, but to avoid this bug do not import `numpy` before `wanierberri`, always after
+
+If the problem is not solved, you may switch to `numpy` for fft transforms.See 
+
+    * :class:`~wannierberri.system.System_w90` (parameter `fft`)
+
+    * :class:`~wannierberri.data_K._Data_K` (`fftlib` passed from :func:`~wannierberri.run` via `parameters_K`)

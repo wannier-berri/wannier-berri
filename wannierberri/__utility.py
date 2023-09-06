@@ -14,6 +14,8 @@
 __debug = False
 
 from . import PYFFTW_IMPORTED
+if PYFFTW_IMPORTED :
+    import pyfftw
 import inspect
 import numpy as np
 
@@ -97,6 +99,16 @@ def str2bool(v):
 
 
 def fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
+    try:
+        return _fft_W(inp, axes, inverse=False, destroy=True, numthreads=1)
+    except RuntimeError as err:
+        if "This is a bug" in str(err):
+            raise RuntimeError(f"{err}\n Probably this can be fixed by importing wannierberri prior to numpy."
+                " See https://docs.wannier-berri.org/en/master/install.html#known-bug-with-pyfftw")
+        else:
+            raise err
+
+def _fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
     assert inp.dtype == complex
     # t0=time()
     fft_in = pyfftw.empty_aligned(inp.shape, dtype='complex128')

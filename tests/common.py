@@ -1,5 +1,5 @@
 """Common constants shared by all tests"""
-
+import pyfftw
 import os
 
 # Root folder containing test scripts
