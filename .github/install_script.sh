@@ -8,15 +8,15 @@ set -ev
 sudo apt-get install libxc-dev
 pip install codecov
 pip install -U pip setuptools wheel 
-pip install ray
+#pip install ray
 
 # install optional dependencies
-pip install tbmodels pythtb spglib
+pip install tbmodels pythtb #spglib
 pip install ase
 pip install gpaw
 gpaw info
 gpaw install-data --register ~/gpaw-data
-pip install -U wannierberri
+pip install -U wannierberri[all]
 pip install git+https://github.com/jimustafa/wannier90io-python.git
 sudo apt-get install wannier90
 

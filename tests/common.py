@@ -1,5 +1,6 @@
 """Common constants shared by all tests"""
-
+import pyfftw
+print (f"pyfftw version : {pyfftw.__version__}") # this is only to avoid lint error
 import os
 
 # Root folder containing test scripts
