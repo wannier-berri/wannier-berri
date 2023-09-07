@@ -1,7 +1,7 @@
 import numpy as np
 from collections.abc import Iterable
-from .__grid import Grid
-from .data_K import Data_K
+from .grid import Grid
+from .data_K import get_data_k
 from collections import defaultdict
 from .calculators import tabulate
 
@@ -34,7 +34,8 @@ def evaluate_k( system=None,
                 formula={},
                 param_formula={},
                 iband=None,
-                return_single_as_dict=False
+                return_single_as_dict=False,
+                parameters_K={},
               ):
     """This function presents a shortcut to evaluate some property at a particular k-point
     The main goal is to be convenient, rather than efficient
@@ -71,14 +72,14 @@ def evaluate_k( system=None,
     calculators_all = {}
     for q in quantities:
         if q not in available_quantities:
-            raise ValueError(f"unknown quantity {q}. known quantities are ")
+            raise ValueError(f"unknown quantity {q}. known quantities are {available_quantities.keys()}")
         if q in calculators:
             raise ValueError(f"Quantity {q} is requwsted, but it is used as a name of a calculator. Please, rename the latter")
         calculators_all[q] = available_quantities[q]
     calculators_all.update(calculators)
 
     grid = Grid(system, NK=1, NKFFT=1)
-    data_k = Data_K(system, grid=grid, dK=k)
+    data_k = get_data_k(system, grid=grid, dK=k, **parameters_K)
     result = {c:calc(data_k) for c,calc in calculators_all.items()}
     if iband is None:
         iband = np.arange(system.num_wann)

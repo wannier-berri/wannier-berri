@@ -36,13 +36,6 @@ from .. import run, Grid, calculators, System_w90, Parallel
 import numpy as np
 
 
-try:
-    import wannier90io as w90io
-except ImportError as err:
-    raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n"+
-                        "please install it manuall as \n"+
-                        "`pip install git+https://github.com/jimustafa/wannier90io-python.git`"
-                        )
 
 
 # default parameters
@@ -60,6 +53,15 @@ parameters = {
              }
 
 def main():
+    try:
+        import wannier90io as w90io
+    except ImportError as err:
+        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n"+
+                        "please install it manuall as \n"+
+                        "`pip install git+https://github.com/jimustafa/wannier90io-python.git`"
+                        )
+
+
     seedname = sys.argv[1]  if len(sys.argv)>1 else "wannier90"
     with open(seedname+".win") as f:
         parsed_win = w90io.parse_win_raw(f.read())
