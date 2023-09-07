@@ -6,6 +6,17 @@ with open("README.rst", "r") as fh:
     long_description = fh.read()
 
 
+extras_require={
+    "parallel" : ['ray[default]','protobuf==3.20.2'], #  protobuf req by ray : https://github.com/ray-project/ray/issues/25205 , https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
+    "fftw"     : ['pyFFTW>=0.12.0'],
+    "plot"     : ['matplotlib'],
+    "symmetry" : [ 'sympy', 'spglib>=2', 'irrep>=1.8.2' ],
+    "phonons"  : [ 'untangle' ],
+                }
+
+extras_require["all"] = sum( (extras_require[k] for k in extras_require.keys() ), [])
+
+
 setuptools.setup(
      name='wannierberri',
      author="Stepan S. Tsirkin",
@@ -20,20 +31,11 @@ setuptools.setup(
                         'lazy_property',
                         'colorama',
                         'termcolor',
-                        'pyfiglet',
                         'numba>=0.55.2',
-                        'termcolor',
-                        'pyFFTW>=0.12.0',
                         'packaging>=20.8',
-                        'matplotlib',
                         'fortio>=0.4',
-                        'protobuf==3.20.2', # req by ray : https://github.com/ray-project/ray/issues/25205 , https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
-                        'ray[default]',
-                        'sympy',
-                        'spglib>=2',
-                        'untangle',
-                        'irrep>=1.8.2',
                       ],
+     extras_require=extras_require,
      url="https://wannier-berri.org",
      packages=setuptools.find_packages(),
      classifiers=[

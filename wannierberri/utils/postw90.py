@@ -53,6 +53,7 @@ parameters = {
              }
 
 def main():
+
     try:
         import wannier90io as w90io
     except ImportError as err:
@@ -60,7 +61,6 @@ def main():
                         "please install it manuall as \n"+
                         "`pip install git+https://github.com/jimustafa/wannier90io-python.git`"
                         )
-
 
     seedname = sys.argv[1]  if len(sys.argv)>1 else "wannier90"
     with open(seedname+".win") as f:

@@ -23,7 +23,7 @@ from .__finite_differences import find_shells, Derivative3D
 
 class SystemKP(System):
 
-    """
+    r"""
     A system to describe k.p Hamiltonians.
     Technically, it is concodered as a periodic system with k-vector limited to the box defined by the reciprocal lattice.
     a k-vector is always translated to have reduced coordinates between [-1/2,1/2)
