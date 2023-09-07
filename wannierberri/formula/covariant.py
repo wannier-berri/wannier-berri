@@ -223,11 +223,6 @@ class DerOmega(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
-
-########################
-#   orbital moment     #
-########################
-
 class Hamiltonian(Matrix_ln):
 
     def __init__(self, data_K):
@@ -257,6 +252,9 @@ class DerSpin(Matrix_GenDer_ln):
         s = data_K.covariant('SS', gender=1)
         self.__dict__.update(s.__dict__)
 
+########################
+#   orbital moment     #
+########################
 
 class Morb_H(Formula_ln):
 
