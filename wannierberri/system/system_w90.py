@@ -53,12 +53,12 @@ class System_w90(System):
     def __init__(
             self,
             seedname="wannier90",
-            transl_inv=True,
             #############
             ### Oscar ###
             #######################################
-            transl_inv_JaeMo=False, # Activate Jae-Mo's method to deal with translational invariance
-            transl_inv_OSD=False,   # Activate Convention I to deal with translational invariance
+            # Translationally-invariant approaches for real-space matrix elements
+            transl_inv=True,      # Marzari & Vanderbilt formula for band-diagonal matrix elements of A
+            transl_inv_JM=False,  # Jae-Mo's scheme
             #######################################
             guiding_centers=False,
             fft='fftw',
@@ -66,13 +66,6 @@ class System_w90(System):
             kmesh_tol=1e-7,
             bk_complete_tol=1e-5,
             **parameters):
-
-        #############
-        ### Oscar ###
-        ########################################    
-        if transl_inv_JaeMo or transl_inv_OSD:
-            transl_inv=True        
-        ########################################
 
         self.set_parameters(**parameters)
         self.npar = npar
@@ -87,10 +80,15 @@ class System_w90(System):
         self.num_wann = chk.num_wann
         self.wannier_centers_cart_auto = chk.wannier_centers
 
+        # Necessary ab initio matrices
         eig = EIG(seedname)
         if self.need_R_any(['AA','BB']):
             mmn = MMN(seedname, npar=npar)
-
+        if self.need_R_any(['CC']):
+            uhu = UHU(seedname)
+        if self.need_R_any(['CC','FF','FF_tot']):
+            uiu = UIU(seedname)
+        
         kpt_mp_grid = [
             tuple(k) for k in np.array(np.round(chk.kpt_latt * np.array(chk.mp_grid)[None, :]), dtype=int) % chk.mp_grid
         ]
@@ -99,6 +97,7 @@ class System_w90(System):
                 "the grid of k-points read from .chk file is not Gamma-centered. Please, use Gamma-centered grids in the ab initio calculation"
             )
 
+        # Fourier transform from ab initio mesh to real-space mesh
         fourier_q_to_R_loc = functools.partial(
             fourier_q_to_R,
             mp_grid=chk.mp_grid,
@@ -111,7 +110,11 @@ class System_w90(System):
         #########
         # Oscar #
         ############################################################################################################
-        
+
+        centers=chk.wannier_centers     
+        R_cart = self.iRvec.dot(self.real_lattice)
+
+        # H(R) matrix
         timeFFT = 0
         HHq = chk.get_HH_q(eig)
         t0 = time()
@@ -119,200 +122,132 @@ class System_w90(System):
         self.set_R_mat('Ham', HH_R)
         timeFFT += time() - t0
 
-        centers=chk.wannier_centers     
-        R_cart = self.iRvec.dot(self.real_lattice)
-        
+        # A_a(R) matrix
         if self.need_R_any('AA'):
-            AA_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)           
-            AA_qb, bk_latt_unique = chk.get_AA_q(
-                mmn, transl_inv=transl_inv, centers=centers, transl_inv_JaeMo=transl_inv_JaeMo, transl_inv_OSD=transl_inv_OSD)
+            AA_qb, bk_latt_unique = chk.get_AA_qb(
+                mmn, centers=centers, transl_inv=transl_inv, transl_inv_JM=transl_inv_JM)
             t0 = time()
+            AA_Rb = fourier_q_to_R_loc(AA_qb)
+            timeFFT += time() - t0
 
             # Naive finite-difference scheme
-            if (not transl_inv_JaeMo and not transl_inv_OSD):
+            if not transl_inv_JM:
                 AA_R = np.sum(fourier_q_to_R_loc(AA_qb), axis=3)
-                # Set diagonal parts
-                for iw in range(self.num_wann): # Impose result from Convention I
-                        AA_R[iw, iw, self.iR0, :] = 0.0
 
-            # Jae-Mo's method
-            if transl_inv_JaeMo:
-                AA_Rb = fourier_q_to_R_loc(AA_qb)
-
-                # Sum over b vectors considering the phase factors
-                for iR in range(self.nRvec0):              
-                    for ib in range(mmn.NNB):
-                        AA_R[:, :, iR, :] += AA_Rb[:, :, iR, ib, :] * np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib, :], self.iRvec[iR, :]) / 2) 
-
-                # Set diagonal parts
-                for iw in range(self.num_wann): # Impose result from Convention I       
-                    AA_R[iw, iw, self.iR0, :] = 0.0 #self.wannier_centers_cart_auto[iw, :]
-
-            # Convention I method
-            if transl_inv_OSD:
-                AA_Rb = fourier_q_to_R_loc(AA_qb)
-
-                # Sum over b vectors considering the phase factors
-                for iR in range(self.nRvec0):
-                    for ib in range(mmn.NNB):
-                        AA_R[:, :, iR, :] += AA_Rb[:, :, iR, ib, :]
-
-                # Set diagonal parts
-                for iw in range(self.num_wann): # Impose result from Convention I
-                    AA_R[iw, iw, self.iR0, :] = 0.0 #self.wannier_centers_cart_auto[iw, :]
-
-            timeFFT += time() - t0
+            # Following Jae-Mo's scheme, keep b-resolved real-space matrix and sum after ws_dist is used
+            if transl_inv_JM:
+                AA_R = AA_Rb
+                self.NNB = mmn.NNB
+                self.bk_latt_unique = bk_latt_unique
 
             self.set_R_mat('AA',AA_R)
 
+            # Using Marzari & Vanderbilt formula
+            if transl_inv:
+                wannier_centers_cart_new = np.diagonal(self.get_R_mat('AA')[:, :, self.iR0, :], axis1=0, axis2=1).transpose()
+                if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart_auto) < 1e-6):
+                    if guiding_centers:
+                        print(
+                            f"The read Wannier centers\n{self.wannier_centers_cart_auto}\n"
+                            f"are different from the evaluated Wannier centers\n{wannier_centers_cart_new}\n"
+                            "This can happen if guiding_centres was set to true in Wannier90.\n"
+                            "Overwrite the evaluated centers using the read centers.")
+                        for iw in range(self.num_wann):
+                            self.get_R_mat('AA')[iw, iw, self.iR0, :] = self.wannier_centers_cart_auto[iw, :]
+                    else:
+                        raise ValueError(
+                            f"the difference between read\n{self.wannier_centers_cart_auto}\n"
+                            f"and evluated \n{wannier_centers_cart_new}\n wannier centers is\n"
+                            f"{self.wannier_centers_cart_auto-wannier_centers_cart_new}\n"
+                            "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90."
+                        )
+
+        # B_a(R) matrix
         if 'BB' in self.needed_R_matrices:
-            BB_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
-            BB_R_recentered = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
-            BB_qb, bk_latt_unique = chk.get_BB_q(
-                mmn, eig, transl_inv=transl_inv, centers=centers, transl_inv_JaeMo=transl_inv_JaeMo, transl_inv_OSD=transl_inv_OSD)
+            BB_qb, bk_latt_unique = chk.get_BB_qb(mmn, eig, centers=centers, transl_inv_JM=transl_inv_JM)
             t0 = time()
+            BB_Rb = fourier_q_to_R_loc(BB_qb)
+            timeFFT += time() - t0
 
             # Naive finite-difference scheme
-            if (not transl_inv_JaeMo and not transl_inv_OSD):
-                BB_R = np.sum(fourier_q_to_R_loc(BB_qb), axis=3)
+            if not transl_inv_JM:
+                BB_R = np.sum(BB_Rb, axis=3)
 
-            # Jae-Mo's method
-            if transl_inv_JaeMo:
-                BB_Rb = fourier_q_to_R_loc(BB_qb)
-
-                # Sum over b vectors considering the phase factors
-                for iR in range(self.nRvec0):
-                    for ib in range(mmn.NNB):
-                        BB_R_recentered[:, :, iR, :] += BB_Rb[:, :, iR, ib, :] * np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib, :], self.iRvec[iR, :]) / 2)
-
-                # Compute the original real-space matrix elements from the "recentered" matrices
-                for iR in range(self.nRvec0):
-                    for iw in range(self.num_wann):
-                        for jw in range(self.num_wann):
-                            BB_R[iw, jw, iR, :] = BB_R_recentered[iw, jw, iR, :] - 0.5 * (self.iRvec[iR, :] + centers[jw, :] - centers[iw, :]) * HH_R[iw, jw, iR]
-
-            # Convention I method
-            if transl_inv_OSD:
-                BB_Rb = fourier_q_to_R_loc(BB_qb)
-                # Sum over b vectors considering the phase factors
-                for iR in range(self.nRvec0):
-                    for ib in range(mmn.NNB):
-                        BB_R[:, :, iR, :] += BB_Rb[:, :, iR, ib, :]
+            # Following Jae-Mo's scheme, keep b-resolved real-space matrix and sum after ws_dist is used
+            if transl_inv_JM:
+                BB_R = BB_Rb
+                self.NNB = mmn.NNB
+                self.bk_latt_unique = bk_latt_unique
 
             self.set_R_mat('BB',BB_R)
+            
+        # C_a(R) matrix
+        if 'CC' in self.needed_R_matrices:
+            CC_qb, b1k_latt_unique, b2k_latt_unique = chk.get_CC_qb(mmn, uhu, centers=centers, transl_inv_JM=transl_inv_JM)
+            t0 = time()
+            CC_Rb = fourier_q_to_R_loc(CC_qb)
             timeFFT += time() - t0
 
-        if 'CC' in self.needed_R_matrices:
-            CC_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
-            uhu = UHU(seedname)
-            CC_qb, b1k_latt_unique, b2k_latt_unique = chk.get_CC_q(
-                mmn, uhu, transl_inv=transl_inv, centers=centers, transl_inv_JaeMo=transl_inv_JaeMo, transl_inv_OSD=transl_inv_OSD)
-            t0 = time()
-
             # Naive finite-difference scheme
-            if (not transl_inv_JaeMo and not transl_inv_OSD):
-                CC_R = np.sum(fourier_q_to_R_loc(CC_qb), axis=(3,4))
+            if (not transl_inv_JM):
+                CC_R = np.sum(CC_Rb, axis=(3,4))
 
-            # Jae-Mo's method
-            if transl_inv_JaeMo:
-                CC_Rb = fourier_q_to_R_loc(CC_qb)
-
-                # Sum over b vectors considering the phase factors
-                for iR in range(self.nRvec0):
-                    for ib1 in range(mmn.NNB):
-                        for ib2 in range(mmn.NNB):
-                            phase_b1 = np.exp(-2j * np.pi * np.dot(b1k_latt_unique[ib1,:], self.iRvec[iR,:])/2 )
-                            phase_b2 = np.exp(-2j * np.pi * np.dot(b2k_latt_unique[ib2,:], self.iRvec[iR,:])/2 )
-                            CC_R[:, :, iR, :] += CC_Rb[:, :, iR, ib1, ib2, :] * phase_b1 * phase_b2
-
-                # Compute the original real-space matrix elements from the "recentered" matrices
-                for iR in range(self.nRvec0):
-                    for iw in range(self.num_wann):
-                        for jw in range(self.num_wann):
-                            CC_R_rc_B  = 1j * (centers[jw, alpha_A] - centers[iw, alpha_A] + self.iRvec[iR, alpha_A]) * BB_R_recentered[iw, jw, iR,  beta_A]
-                            CC_R_rc_B -= 1j * (centers[jw,  beta_A] - centers[iw,  beta_A] + self.iRvec[iR,  beta_A]) * BB_R_recentered[iw, jw, iR, alpha_A]
-                            CC_R_rc_H  = 0.5j * (centers[jw, alpha_A] - centers[iw, alpha_A]) * self.iRvec[iR,  beta_A]
-                            CC_R_rc_H -= 0.5j * (centers[jw,  beta_A] - centers[iw,  beta_A]) * self.iRvec[iR, alpha_A]
-                            CC_R_rc_H *= HH_R[iw, jw, iR]
-
-                            CC_R[iw, jw, iR, :] = CC_R[iw, jw, iR, :] + CC_R_rc_B + CC_R_rc_H
-
-            # Convention I method
-            if transl_inv_OSD:
-                CC_Rb = fourier_q_to_R_loc(CC_qb)
-                # Sum over b vectors considering the phase factors
-                for iR in range(self.nRvec0):
-                    for ib1 in range(mmn.NNB):
-                        for ib2 in range(mmn.NNB):
-                            CC_R[:, :, iR, :] += CC_Rb[:, :, iR, ib1, ib2, :]
+            # Following Jae-Mo's scheme, keep b-resolved real-space matrix and sum after ws_dist is used
+            if transl_inv_JM:
+                CC_R = CC_Rb
+                self.NNB = mmn.NNB
+                self.bk_latt_unique = bk_latt_unique
 
             self.set_R_mat('CC', CC_R)
-            timeFFT += time() - t0
-            del uhu
 
+        # F_a(R) matrix
         if 'FF' in self.needed_R_matrices:
-            FF_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
-            FF_R_recentered = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
-            uiu = UIU(seedname)
-            FF_qb, b1k_latt_unique, b2k_latt_unique = chk.get_FF_q(
-                mmn, uiu, transl_inv=transl_inv, centers=centers, transl_inv_JaeMo=transl_inv_JaeMo, transl_inv_OSD=transl_inv_OSD)
+            FF_qb, b1k_latt_unique, b2k_latt_unique = chk.get_FF_qb(mmn, uiu, centers=centers, transl_inv_JM=transl_inv_JM)
             t0 = time()
+            FF_Rb = fourier_q_to_R_loc(FF_qb)
+            timeFFT += time() - t0
 
             # Naive finite-difference scheme
-            if (not transl_inv_JaeMo and not transl_inv_OSD):
-                FF_R = np.sum(fourier_q_to_R_loc(FF_qb), axis=(3,4))
+            if not transl_inv_JM:
+                FF_R = np.sum(FF_Rb, axis=(3,4))
 
-            # Jae-Mo's method
-            if transl_inv_JaeMo:
-                FF_Rb = fourier_q_to_R_loc(FF_qb)
-            
-                # Sum over b vectors considering the phase factors
-                for iR in range(self.nRvec0):
-                    for ib1 in range(mmn.NNB):
-                        for ib2 in range(mmn.NNB):
-                            phase_b1 = np.exp(-2j * np.pi * np.dot(b1k_latt_unique[ib1,:], self.iRvec[iR,:])/2 )
-                            phase_b2 = np.exp(-2j * np.pi * np.dot(b2k_latt_unique[ib2,:], self.iRvec[iR,:])/2 )
-                            FF_R_recentered[:, :, iR, :] += FF_Rb[:, :, iR, ib1, ib2, :] * phase_b1 * phase_b2
-            
-                # Compute the original real-space matrix elements from the "recentered" matrices
-                AA_Rb = fourier_q_to_R_loc(AA_qb)
-                AA_R_rc = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
-
-                # Sum over b vectors considering the phase factors
-                for iR in range(self.nRvec0):
-                    for ib in range(mmn.NNB):
-                        AA_R_rc[:, :, iR, :] += AA_Rb[:, :, iR, ib, :] * np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib, :], self.iRvec[iR, :]) / 2) 
-
-                # Set diagonal parts
-                for iw in range(self.num_wann): # Impose result from Convention I       
-                    AA_R_rc[iw, iw, self.iR0, :] = 0.0 #self.wannier_centers_cart_auto[iw, :]
-
-                FF_R_rc_A = np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex)
-                for iR in range(self.nRvec0):
-                    for iw in range(self.num_wann):
-                        for jw in range(self.num_wann):
-                            rc_A = centers[jw, :] - centers[iw, :] + R_cart[iR, :]        
-                            #FF_R_rc_A[iw, jw, iR, :] = AA_R[iw, jw, iR, alpha_A] * rc_A[beta_A] - AA_R[iw, jw, iR, beta_A] * rc_A[alpha_A]                  
-                            FF_R_rc_A[iw, jw, iR, :] += -0.5 * AA_R_rc[iw, jw, iR, alpha_A] * rc_A[ beta_A]
-                            FF_R_rc_A[iw, jw, iR, :] +=  0.5 * AA_R_rc[iw, jw, iR,  beta_A] * rc_A[alpha_A]
-                            FF_R_rc_A[iw, jw, iR, :] +=  0.5 * rc_A[alpha_A] * AA_R_rc[iw, jw, iR,  beta_A]
-                            FF_R_rc_A[iw, jw, iR, :] += -0.5 * rc_A[ beta_A] * AA_R_rc[iw, jw, iR, alpha_A]
-                
-                            FF_R[iw, jw, iR, :] = FF_R_recentered[iw, jw, iR, :] + FF_R_rc_A[iw, jw, iR, :]
-
-            # Convention I method
-            if transl_inv_OSD:
-                FF_Rb = fourier_q_to_R_loc(FF_qb)
-                # Sum over b vectors considering the phase factors
-                for iR in range(self.nRvec0):
-                    for ib1 in range(mmn.NNB):
-                        for ib2 in range(mmn.NNB):
-                            FF_R[:, :, iR, :] += FF_Rb[:, :, iR, ib1, ib2, :]
+            # Following Jae-Mo's scheme, keep b-resolved real-space matrix and sum after ws_dist is used
+            if transl_inv_JM:
+                FF_R = FF_Rb
+                self.NNB = mmn.NNB
+                self.bk_latt_unique = bk_latt_unique
 
             self.set_R_mat('FF', FF_R)
-            timeFFT += time() - t0
-            del uiu
 
+        # F_bc(R) matrix
+        if 'FF_tot' in self.needed_R_matrices:
+            FF_qb, b1k_latt_unique, b2k_latt_unique = chk.get_FF_qb_tot(mmn, uiu, centers=centers, transl_inv_JM=transl_inv_JM)
+            t0 = time()
+            FF_Rb = fourier_q_to_R_loc(FF_qb)
+            timeFFT += time() - t0
+
+            # Naive finite-difference scheme
+            if not transl_inv_JM:
+                FF_R = np.sum(FF_Rb, axis=(3,4))
+
+            # Following Jae-Mo's scheme, keep b-resolved real-space matrix and sum after ws_dist is used
+            if transl_inv_JM:
+                FF_R = FF_Rb
+                self.NNB = mmn.NNB
+                self.bk_latt_unique = bk_latt_unique
+
+            self.set_R_mat('FF_tot', FF_R)
+
+        try:
+            del uhu
+        except NameError:
+            pass
+
+        try:
+            del uiu
+        except NameError:
+            pass
+        
         ############################################################################################################
 
         if self.need_R_any(['SS', 'SR', 'SH', 'SHR']):
@@ -353,6 +288,164 @@ class System_w90(System):
         self.do_at_end_of_init()
         print("Real-space lattice:\n", self.real_lattice)
 
+        #########
+        # Oscar #
+        ############################################################################################################
+
+        # Perform the b-sums after the ws_dist is applied for Jae-Mo's scheme, adding the phase factors and the recentered matrices
+        if transl_inv_JM:
+            t0 = time()
+            print("Completing real-space matrix elements obtained from Jae-Mo's approach...")
+
+            # Basic quantities to simplify notation
+            num_wann       = self.num_wann                      # Number of Wannier functions
+            wc_cart        = self.wannier_centers_cart          # Wannier centers in cartesian coordinates
+            wc_red         = self.wannier_centers_reduced       # Wannier centers in reduced coordinates
+            nRvec          = self.nRvec                         # Number of R vectors after ws_dist
+            iRvec          = self.iRvec                         # List of R vector indices after ws_dist
+            cRvec          = self.cRvec                         # List of R vector cartesian coordinates after ws_dist
+            NNB            = self.NNB                           # Number of nearest-neighbor b vectors
+            bk_latt_unique = self.bk_latt_unique                # List of nearest-neighbor b vectors
+            
+            # A_a(R) matrix
+            AA_R  = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
+            AA_Rb = self.get_R_mat('AA')
+            
+            for iw in range(num_wann):
+                for jw in range(num_wann):
+                    for iR in range(nRvec):
+                        for ib in range(NNB):
+                            phase = np.exp(-2.j * np.pi * np.dot(bk_latt_unique[ib, :], iRvec[iR, :]) / 2)
+                            AA_R[iw, jw, iR] += AA_Rb[iw, jw, iR, ib] * phase
+
+            self.set_R_mat('AA',AA_R,reset=True)
+
+            # O_a(R) matrix (Berry curvature)
+            r_c  = wc_cart[:, None, None, :] - wc_cart[None, :, None, :] - cRvec[None, None, :, :]
+            OO_R = 1.j * (AA_R[:, :, :, alpha_A] * r_c[:, :, :, beta_A] - AA_R[:, :, :, beta_A] * r_c[:, :, :, alpha_A])
+            self.set_R_mat('OO',OO_R)
+        
+            # B_a(R) matrix
+            BB_R  = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
+            BB_Rb = self.get_R_mat('BB')
+        
+            BB_R_rc = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex) # Recentered B_a(R) matrix
+            for iw in range(num_wann):
+                for jw in range(num_wann):
+                    for iR in range(nRvec):
+                        for ib in range(NNB):
+                            phase = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib, :], iRvec[iR, :]) / 2)
+                            BB_R_rc[iw, jw, iR, :] += BB_Rb[iw, jw, iR, ib, :] * phase
+                        
+            HH_R = self.get_R_mat('Ham') # Hamiltonian matrix in the new real-space mesh
+            for iw in range(num_wann):   # Matrices relating recentered B_a(R) matrix to original B_a(R) matrix
+                for jw in range(num_wann):
+                    for iR in range(nRvec):
+                        rc = cRvec[iR,:] + wc_cart[jw,:] - wc_cart[iw,:]
+                    
+                        rc_to_H = -0.5 * rc * HH_R[iw,jw,iR]
+                    
+                        BB_R[iw,jw,iR] = BB_R_rc[iw,jw,iR] + rc_to_H 
+                        
+            self.set_R_mat('BB',BB_R,reset=True)
+        
+            # C_a(R) matrix
+            CC_R  = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
+            CC_Rb = self.get_R_mat('CC')
+        
+            CC_R_rc = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex) # Recentered C_a(R) matrix
+            for iw in range(num_wann):
+                for jw in range(num_wann):
+                    for iR in range(nRvec):
+                        for ib1 in range(NNB):
+                            for ib2 in range(NNB):
+                                phase_b1 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib1, :], iRvec[iR, :]) / 2)
+                                phase_b2 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib2, :], iRvec[iR, :]) / 2)
+                                CC_R_rc[iw, jw, iR, :] += CC_Rb[iw, jw, iR, ib1, ib2, :] * phase_b1 * phase_b2
+                 
+            HH_R = self.get_R_mat('Ham') # Matrices relating recentered C_a(R) matrix to original C_a(R) matrix
+            for iw in range(num_wann):
+                for jw in range(num_wann):
+                    for iR in range(nRvec):
+                        # Find the inverse R vector
+                        for jR in range(nRvec):
+                            if all(iRvec[iR] == -iRvec[jR]):
+                                iRinv = jR
+                            
+                        rc_1 = cRvec[iR,:] + wc_cart[jw,:] - wc_cart[iw,:]
+                        rc_2 = (wc_cart[jw,:,None] - wc_cart[iw,:,None]) * cRvec[iR,None,:]
+                    
+                        rc_to_H  = 0.5j * rc_1[alpha_A] * ( BB_R_rc[iw,jw,iR, beta_A] + BB_R_rc[jw,iw,iRinv, beta_A].conj() )
+                        rc_to_H -= 0.5j * rc_1[ beta_A] * ( BB_R_rc[iw,jw,iR,alpha_A] + BB_R_rc[jw,iw,iRinv,alpha_A].conj() )
+                        rc_to_H += 0.5j * rc_2[alpha_A, beta_A] * HH_R[iw,jw,iR]
+                        rc_to_H -= 0.5j * rc_2[ beta_A,alpha_A] * HH_R[iw,jw,iR]
+                    
+                        CC_R[iw,jw,iR] = CC_R_rc[iw,jw,iR] + rc_to_H
+                
+            self.set_R_mat('CC',CC_R,reset=True)
+        
+            # F_a(R) matrix
+            FF_R  = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
+            FF_Rb = self.get_R_mat('FF')
+
+            FF_R_rc = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex) # Recentered F_a(R) matrix
+            for iw in range(num_wann):
+                for jw in range(num_wann):
+                    for iR in range(nRvec):
+                        for ib1 in range(NNB):
+                            for ib2 in range(NNB):
+                                phase_b1 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib1,:],iRvec[iR,:]) / 2)
+                                phase_b2 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib2,:],iRvec[iR,:]) / 2)
+                                FF_R_rc[iw, jw, iR, :] += FF_Rb[iw, jw, iR, ib1, ib2, :] * phase_b1 * phase_b2
+                        
+            # Matrices relating recentered F_a(R) matrix to original F_a(R) matrix
+            #AA_R = self.get_R_mat('AA')
+            for iw in range(num_wann):
+                for jw in range(num_wann):
+                    for iR in range(nRvec):
+                        rc = cRvec[iR,:] + wc_cart[jw,:] - wc_cart[iw,:]
+                    
+                        rc_to_H  = -0.5 * AA_R[iw,jw,iR,alpha_A] * rc[ beta_A]
+                        rc_to_H +=  0.5 * AA_R[iw,jw,iR, beta_A] * rc[alpha_A]
+                        rc_to_H +=  0.5 * rc[alpha_A] * AA_R[iw,jw,iR, beta_A]
+                        rc_to_H += -0.5 * rc[ beta_A] * AA_R[iw,jw,iR,alpha_A]
+                    
+                        FF_R[iw,jw,iR] = FF_R_rc[iw,jw,iR] + rc_to_H
+        
+            self.set_R_mat('FF',FF_R,reset=True)
+        
+            # F_bc(R) matrix
+            FF_tot_R  = np.zeros((num_wann, num_wann, nRvec, 3, 3), dtype=complex)
+            FF_tot_Rb = self.get_R_mat('FF_tot')
+
+            FF_tot_R_rc = np.zeros((num_wann, num_wann, nRvec, 3, 3), dtype=complex) # Recentered F_bc(R) matrix
+            for iw in range(num_wann):
+                for jw in range(num_wann):
+                    for iR in range(nRvec):
+                        for ib1 in range(NNB):
+                            for ib2 in range(NNB):
+                                phase_b1 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib1,:],iRvec[iR,:]) / 2)
+                                phase_b2 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib2,:],iRvec[iR,:]) / 2)
+                                FF_tot_R_rc[iw, jw, iR, :, :] += FF_tot_Rb[iw, jw, iR, ib1, ib2, :, :] * phase_b1 * phase_b2
+                        
+            # Matrices relating recentered F_bc(R) matrix to original F_bc(R) matrix
+            #AA_R = self.get_R_mat('AA')
+            for iw in range(num_wann):
+                for jw in range(num_wann):
+                    for iR in range(nRvec):
+                        rc = cRvec[iR,:] + wc_cart[jw,:] - wc_cart[iw,:]
+                    
+                        rc_to_H  = -0.5 * AA_R[iw,jw,iR,:,None] * rc[None,:]
+                        rc_to_H +=  0.5 * rc[:,None] * AA_R[iw,jw,iR,None,:]
+                    
+                        FF_tot_R[iw,jw,iR] = FF_tot_R_rc[iw,jw,iR] + rc_to_H
+        
+            self.set_R_mat('FF_tot',FF_tot_R,reset=True)
+
+            print(time()-t0)
+            
+        ############################################################################################################
+        
     def wigner_seitz(self, mp_grid):
         ws_search_size = np.array([1] * 3)
         dist_dim = np.prod((ws_search_size + 1) * 2 + 1)

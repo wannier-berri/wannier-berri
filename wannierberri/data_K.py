@@ -148,16 +148,16 @@ class Data_K(System):
     # Oscar #
     ############################################################################################################
     def get_R_mat(self,key):
-        memoize_R = ['Ham','AA','OO','BB','CC','CCab','FF']
+        memoize_R = ['Ham','AA','BB','CC','FF','FF_tot','OO']
         try:
             return self._XX_R[key]
         except KeyError:
             if key == 'OO':
                 res = self._OO_R()
-            elif key == 'CCab':
-                res = self._CCab_R()
-            elif key == 'FF':
-                res = self._FF_R()
+            #elif key == 'CCab':
+            #    res = self._CCab_R()
+            #elif key == 'FF':
+            #    res = self._FF_R()
             elif key == 'T_wcc':
                 res = self._T_wcc_R()
             else:
@@ -184,20 +184,20 @@ class Data_K(System):
             self.cRvec_wcc[:, :, :, alpha_A] * self.get_R_mat('AA')[:, :, :, beta_A]
             - self.cRvec_wcc[:, :, :, beta_A] * self.get_R_mat('AA')[:, :, :, alpha_A])
 
-    def _CCab_R(self):
-        if self._CCab_antisym:
-            CCab = np.zeros((self.num_wann, self.num_wann, self.system.nRvec, 3, 3), dtype=complex)
-            CCab[:, :, :, alpha_A, beta_A] = -0.5j * self.get_R_mat('CC')
-            CCab[:, :, :, beta_A, alpha_A] = 0.5j * self.get_R_mat('CC')
-            return CCab
-        else:
-            return self.system.get_R_mat('CCab') * self.expdK[None, None, :, None, None]
+    #def _CCab_R(self):
+    #    if self._CCab_antisym:
+    #        CCab = np.zeros((self.num_wann, self.num_wann, self.system.nRvec, 3, 3), dtype=complex)
+    #        CCab[:, :, :, alpha_A, beta_A] = -0.5j * self.get_R_mat('CC')
+    #        CCab[:, :, :, beta_A, alpha_A] = 0.5j * self.get_R_mat('CC')
+    #        return CCab
+    #    else:
+    #        return self.system.get_R_mat('CCab') * self.expdK[None, None, :, None, None]
 
-    def _FF_R(self):
-        if self._FF_antisym:
-            return self.cRvec_wcc[:, :, :, :, None] * self.get_R_mat('AA')[:, :, :, None, :]
-        else:
-            return self.system.get_R_mat('FF') * self.expdK[None, None, :, None]
+    #def _FF_R(self):
+    #    if self._FF_antisym:
+    #        return self.cRvec_wcc[:, :, :, :, None] * self.get_R_mat('AA')[:, :, :, None, :]
+    #    else:
+    #        return self.system.get_R_mat('FF') * self.expdK[None, None, :, None]
 
 ###############################################################
 
@@ -227,7 +227,7 @@ class Data_K(System):
             XX_R = 1j * XX_R.reshape((XX_R.shape) + (1, )) * self.cRvec_wcc.reshape(
                 (shape_cR[0], shape_cR[1], self.system.nRvec) + (1, ) * len(XX_R.shape[3:]) + (3, ))
 
-        return self._rotate((self.fft_R_to_k(XX_R, hermitean=True))[self.select_K])
+        return self._rotate((self.fft_R_to_k(XX_R, hermitean=hermitean))[self.select_K])
 
 
 #####################
@@ -415,7 +415,7 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def dEig_inv(self):
-        dEig_threshold = 1.e-7
+        dEig_threshold = 1.e-5
         dEig = self.E_K[:, :, None] - self.E_K[:, None, :]
         select = abs(dEig) < dEig_threshold
         dEig[select] = dEig_threshold
