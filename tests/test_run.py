@@ -328,11 +328,12 @@ def test_Fe_dynamic_noband(check_run, system_Fe_W90, compare_any_result):
 def test_Fe_wcc(check_run, system_Fe_W90_wcc, compare_any_result):
     param_kwargs = {'Efermi': Efermi_Fe, 'kwargs_formula':{'correction_wcc': True}}
     param = {'Efermi': Efermi_Fe}
+    calculators = {}
     for k, v in calculators_Fe.items():
-        if k in ['dos','cumdos']:
-            calculators = {k: v(**param)}
+        if k in ['dos','cumdos','conductivity_ohmic', 'conductivity_ohmic_fsurf']:
+            calculators[k] =  v(**param)
         else:
-            calculators = {k: v(**param_kwargs)}
+            calculators[k] =  v(**param_kwargs)
     check_run(
         system_Fe_W90_wcc,
         calculators,

@@ -70,6 +70,16 @@ def evaluate_k( system=None,
         print ( help() )
         return
 
+    set1=set(quantities)
+    set2=set(formula.keys())
+    set3=set(calculators.keys())
+    try:
+        assert len(set1.intersection(set2)) == 0
+        assert len(set2.intersection(set3)) == 0
+        assert len(set1.intersection(set3)) == 0
+    except AssertionError:
+        raise ValueError("names of calculators, formula and quantities should be unique")
+
     grid = Grid(system, NK=1, NKFFT=1)
     data_k = get_data_k(system, grid=grid, dK=k, **parameters_K)
 
@@ -85,8 +95,6 @@ def evaluate_k( system=None,
     for q in quantities:
         if q not in available_quantities:
             raise ValueError(f"unknown quantity {q}. known quantities are {available_quantities.keys()}")
-        if q in calculators:
-            raise ValueError(f"Quantity {q} is requested, but it is used as a name of a calculator. Please, rename the latter")
         result[q] = available_quantities[q](data_k).data[0][list(iband)]
 
 

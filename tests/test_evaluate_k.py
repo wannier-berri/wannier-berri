@@ -1,7 +1,7 @@
 """Test wberri.evaluatre_k() function"""
 import os
 
-from pytest import approx
+import pytest
 
 import wannierberri as wberri
 from wannierberri import calculators as calc
@@ -49,15 +49,14 @@ def test_evaluate_k_all(system_Fe_W90):
     for key,res in result.items():
         if isinstance(res,np.ndarray):
             data=res
-            data_ref=result_ref[key]
         elif isinstance(res,wberri.result.Result):
-            result[key]=res.as_dict()
-            continue # uncomment to generate a new refernce file
+            result[key]=res.data
             data=res.data
-            data_ref=result_ref[key].data
         else:
             raise ValueError(f"Uncomparable type of result : {type(res)}")
-        assert (data == approx(data_ref,abs=acc)
+        # continue # uncomment to generate a new reference file
+        data_ref=result_ref[key]
+        assert (data == pytest.approx(data_ref,abs=acc)
                 ), "the result of evaluate_k for {key} is different from the reference data by {err} greater than the required accuracy {acc}".format(
                     key=key, err=np.max(abs(data-data_ref)),acc=acc)
     np.savez_compressed(os.path.join(OUTPUT_DIR,"evaluate_k.npz"), **result)
@@ -77,7 +76,7 @@ def test_evaluate_k_1q(system_Fe_W90):
                             return_single_as_dict=False,
                         )
         acc = 1e-8
-        assert (result == approx(data_ref[key],abs=acc)
+        assert (result == pytest.approx(data_ref[key],abs=acc)
             ), "the result of evaluate_k for {key} is different from the reference data by {err} greater than the required accuracy {acc}".format(
                 key=key, err=np.max(abs(result[key]-data_ref[key])),acc=acc)
 
@@ -94,7 +93,7 @@ def test_evaluate_k_1f(system_Fe_W90):
                             return_single_as_dict=False,
                         )
         acc = 1e-8
-        assert (result == approx(data_ref[key],abs=acc)
+        assert (result == pytest.approx(data_ref[key],abs=acc)
             ), "the result of evaluate_k for {key} is different from the reference data by {err} greater than the required accuracy {acc}".format(
                 key=key, err=np.max(abs(result[key]-data_ref[key])),acc=acc)
 
@@ -108,4 +107,8 @@ def test_evaluate_fail(system_Fe_W90):
     with pytest.raises(ValueError):
         wberri.evaluate_k(  system_Fe_W90,  k=k, quantities=["abracadabra"], )
     with pytest.raises(ValueError):
-        wberri.evaluate_k(  system_Fe_W90,  k=k, quantities=["abracadabra"], formula={"abracadabra":None})
+        wberri.evaluate_k(  system_Fe_W90,  k=k, quantities=["ham"], formula={"ham":None})
+    with pytest.raises(ValueError):
+        wberri.evaluate_k(  system_Fe_W90,  k=k, quantities=["ham"], calculators={"ham":None})
+    with pytest.raises(ValueError):
+        wberri.evaluate_k(  system_Fe_W90,  k=k, calculators={"abracadabra":None}, formula={"abracadabra":None})
