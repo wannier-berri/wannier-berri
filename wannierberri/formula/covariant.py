@@ -229,8 +229,6 @@ class Hamiltonian(Matrix_ln):
         v = data_K.covariant('Ham', gender=0)
         self.__dict__.update(v.__dict__)
 
-    def ln(self,inn,out):
-        return super().ln(inn,out)*0
 
 class Velocity(Matrix_ln):
 

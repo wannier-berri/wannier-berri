@@ -54,7 +54,8 @@ def evaluate_k( system=None,
         Dictionary str : dict -parameters to be passed to the corresponding formula
     return_single_as_dict : bool
         wether to pack a result into dict if only one calculator/quantity is requested
-
+    iband : int or list(int)
+        bands to select (only for `quantities` and `formula`
     Returns
     -------
     dict or array
@@ -69,18 +70,11 @@ def evaluate_k( system=None,
         print ( help() )
         return
 
-    calculators_all = {}
-    for q in quantities:
-        if q not in available_quantities:
-            raise ValueError(f"unknown quantity {q}. known quantities are {available_quantities.keys()}")
-        if q in calculators:
-            raise ValueError(f"Quantity {q} is requwsted, but it is used as a name of a calculator. Please, rename the latter")
-        calculators_all[q] = available_quantities[q]
-    calculators_all.update(calculators)
-
     grid = Grid(system, NK=1, NKFFT=1)
     data_k = get_data_k(system, grid=grid, dK=k, **parameters_K)
-    result = {c:calc(data_k) for c,calc in calculators_all.items()}
+
+    result = {c:calc(data_k) for c,calc in calculators.items()}
+
     if iband is None:
         iband = np.arange(system.num_wann)
     if not isinstance(iband,Iterable):
@@ -88,30 +82,27 @@ def evaluate_k( system=None,
     iband_out = sorted(np.array(list(set(range(system.num_wann))-set(iband))))
 
 
-    # Now get the data at the single k-point
-    #result_data = {}
-    for k,v in result.items():
-        try:
-            result[k] = v.data[0][list(iband)]
-        except Exception as err:
-            print (err)
+    for q in quantities:
+        if q not in available_quantities:
+            raise ValueError(f"unknown quantity {q}. known quantities are {available_quantities.keys()}")
+        if q in calculators:
+            raise ValueError(f"Quantity {q} is requested, but it is used as a name of a calculator. Please, rename the latter")
+        result[q] = available_quantities[q](data_k).data[0][list(iband)]
 
 
-    if iband is None:
-        iband = np.arange(system.num_wann)
-    if not isinstance(iband,Iterable):
-        iband = [iband]
 
     _param_formula = defaultdict(lambda : {} )
     _param_formula.update(param_formula)
 
     for k,f in formula.items():
+        if k in calculators:
+            raise ValueError(f"Quantity {q} is used as a name of a formula and a calculator. Please, rename the one of those")
         form = f(data_k,**_param_formula[k])
         result[k] = form.nn(0,iband,iband_out)
 
-
-    if len(result) == 1:
-        result = list(result.values())[0]
+    if not return_single_as_dict:
+        if len(result) == 1:
+            result = list(result.values())[0]
 
     return result
 
