@@ -11,7 +11,7 @@ from math import ceil
 from ..formula import covariant as frml
 from ..formula import covariant_basic as frml_basic
 from .. import __factors as factors
-from ..result import EnergyResult
+from ..result import EnergyResult, K__Result
 from . import Calculator
 from copy import copy
 
@@ -21,12 +21,13 @@ from copy import copy
 class StaticCalculator(Calculator):
 
     def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={},
-            Emin=-np.Inf, Emax=np.Inf, hole_like=False, **kwargs):
+            Emin=-np.Inf, Emax=np.Inf, hole_like=False, k_resolved=False, **kwargs):
         self.Efermi = Efermi
         self.Emin=Emin
         self.Emax=Emax
         self.tetra = tetra
         self.kwargs_formula = copy(kwargs_formula)
+        self.k_resolved = k_resolved
         self.smoother = smoother
         self.use_factor = use_factor
         self.hole_like = hole_like
@@ -52,6 +53,14 @@ class StaticCalculator(Calculator):
         formula = self.Formula(data_K, **self.kwargs_formula)
         ndim = formula.ndim
 
+        ## when we do not need k-resolved, we assume as it is only one k-point,m and dump everything there
+        if self.k_resolved:
+            nk_result=nk
+            ik_to_result = lambda ik: ik
+        else:
+            nk_result=1
+            ik_to_result = lambda ik: 0
+
         # get a list [{(ib1,ib2):W} for ik in op:ed]
         if self.tetra:
             weights = data_K.tetraWeights.weights_all_band_groups(
@@ -71,6 +80,7 @@ class StaticCalculator(Calculator):
 #        """formula  - TraceFormula to evaluate
 #           bands = a list of lists of k-points for every
         shape = (3, ) * ndim
+
         lambdadic = lambda: np.zeros(((3, ) * ndim), dtype=float)
         values = [defaultdict(lambdadic) for ik in range(nk)]
         for ik, bnd in enumerate(weights):
@@ -91,41 +101,46 @@ class StaticCalculator(Calculator):
 
         if self.tetra:
             # tetrahedron method
-            restot = np.zeros(self.Efermi.shape + shape)
+            restot = np.zeros((nk_result,) + self.Efermi.shape + shape)
             for ik, weights in enumerate(weights):
                 valuesik = values[ik]
                 for n, w in weights.items():
-                    restot += np.einsum("e,...->e...", w, valuesik[n])
+                    restot[ik_to_result(ik)] += np.einsum("e,...->e...", w, valuesik[n])
         else:
             # no tetrahedron
-            restot = np.zeros((self.nEF_extra, ) + shape)
+            restot = np.zeros((nk_result,self.nEF_extra, ) + shape)
             for ik, weights in enumerate(weights):
                 valuesik = values[ik]
                 for n, E in sorted(weights.items()):
                     if E < self.EFmin:
-                        restot += valuesik[n][None]
+                        restot[ik_to_result(ik)] += valuesik[n][None]
                     elif E <= self.EFmax:
                         iEf = ceil((E - self.EFmin) / self.dEF)
-                        restot[iEf:] += valuesik[n]
+                        restot[ik_to_result(ik),iEf:] += valuesik[n]
             if self.fder == 0:
                 pass
             elif self.fder == 1:
-                restot = (restot[2:] - restot[:-2]) / (2 * self.dEF)
+                restot = (restot[:, 2:] - restot[:, :-2]) / (2 * self.dEF)
             elif self.fder == 2:
-                restot = (restot[2:] + restot[:-2] - 2 * restot[1:-1]) / (self.dEF**2)
+                restot = (restot[:, 2:] + restot[:, :-2] - 2 * restot[:, 1:-1]) / (self.dEF**2)
             elif self.fder == 3:
-                restot = (restot[4:] - restot[:-4] - 2 * (restot[3:-1] - restot[1:-3])) / (2 * self.dEF**3)
+                restot = (restot[:, 4:] - restot[:, :-4] - 2 * (restot[:, 3:-1] - restot[:, 1:-3])) / (2 * self.dEF**3)
             else:
                 raise NotImplementedError(f"Derivatives  d^{self.fder}f/dE^{self.fder} is not implemented")
 
-        restot /= data_K.nk * data_K.cell_volume
+        restot /= data_K.cell_volume
+        if not self.k_resolved:
+            restot /= data_K.nk
         if self.use_factor:
             restot *= self.constant_factor
         else:
             restot *= np.sign(self.constant_factor)
 
-        res = EnergyResult(self.Efermi, restot, transformTR=formula.transformTR, transformInv=formula.transformInv, smoothers=[self.smoother], comment=self.comment)
-        res.set_save_mode(self.save_mode)
+        if self.k_resolved:
+            return K__Result([restot], transformTR=formula.transformTR, transformInv=formula.transformInv, rank=restot.ndim - 2 )
+        else:
+            res = EnergyResult(self.Efermi, restot[0], transformTR=formula.transformTR, transformInv=formula.transformInv, smoothers=[self.smoother], comment=self.comment)
+            res.set_save_mode(self.save_mode)
         return res
 
 
@@ -202,10 +217,11 @@ class Morb(StaticCalculator):
     def __call__(self, data_K):
         Hplus_res = super().__call__(data_K)
         Omega_res = self.AHC(data_K).mul_array(self.Efermi)
-        return (Hplus_res - 2 * Omega_res) * data_K.cell_volume
+        Hplus_res.add( - 2 * Omega_res)
+        return Hplus_res  * data_K.cell_volume
 
 
-class Morb_test(StaticCalculator):
+class Morb_test(Morb):
 
     def __init__(self, constant_factor=-factors.eV_au / factors.bohr**2, **kwargs):
         self.Formula = frml_basic.tildeHGc
@@ -216,10 +232,6 @@ class Morb_test(StaticCalculator):
         super().__init__(constant_factor=constant_factor, **kwargs)
         self.AHC = AHC_test(constant_factor=constant_factor, print_comment=False, **kwargs)
 
-    def __call__(self, data_K):
-        Hplus_res = super().__call__(data_K)
-        Omega_res = self.AHC(data_K).mul_array(self.Efermi)
-        return (Hplus_res - 2 * Omega_res) * data_K.cell_volume
 
 ####################
 #  conductivities  #

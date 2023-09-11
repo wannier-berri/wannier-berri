@@ -20,7 +20,8 @@ class TABresult(Result):
         self.results = results
         for r in results:
             assert len(kpoints) == results[r].nk
-            assert self.nband == results[r].nband
+            if hasattr(r,"nband"):
+                assert self.nband == results[r].nband
 
     @property
     def Enk(self):

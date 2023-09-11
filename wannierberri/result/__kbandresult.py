@@ -4,13 +4,17 @@ import itertools
 
 
 
-class KBandResult(Result):
+class K__Result(Result):
 
-    def __init__(self, data, transformTR, transformInv):
+    def __init__(self, data, transformTR, transformInv, rank=None):
         if isinstance(data, list):
             self.data_list = data
         else:
             self.data_list = [data]
+        if rank is None:
+            self.rank=self.get_rank()
+        else:
+            self.rank=rank
         self.transformTR=transformTR
         self.transformInv=transformInv
 
@@ -27,9 +31,6 @@ class KBandResult(Result):
             self.data_list = [np.vstack(self.data_list)]
         return self.data_list[0]
 
-    @property
-    def rank(self):
-        return len(self.data_list[0].shape) - 2
 
     @property
     def nband(self):
@@ -41,14 +42,38 @@ class KBandResult(Result):
 
     def __add__(self, other):
         assert self.fit(other)
-        return KBandResult( data=self.data_list + other.data_list,
+        return self.__class__( data=self.data_list + other.data_list,
                             transformTR=self.transformTR,
-                            transformInv=self.transformInv )
+                            transformInv=self.transformInv,
+                            rank=self.rank)
+
+    def add(self,other):
+        self.data_list = [d1+d2 for d1,d2 in zip(self.data_list, other.data_list)]
+
 
     def __mul__(self, number):
-        return KBandResult( data=[d * number for d in self.data_list],
+        return self.__class__( data=[d * number for d in self.data_list],
                             transformTR=self.transformTR,
-                            transformInv=self.transformInv )
+                            transformInv=self.transformInv,
+                            rank=self.rank )
+
+    def mul_array(self, other, axes=None):
+        if isinstance(axes, int):
+            axes = (axes, )
+        if axes is None:
+            axes = tuple(range(other.ndim))
+        axes = tuple((a+1) for a in axes) # because 0th dimentsion is k here
+        for i, d in enumerate(other.shape):
+            assert d == self.data_list[0].shape[axes[i]], "shapes  {} should match the axes {} of {}".format(
+                other.shape, axes, self.data_list[0].shape)
+        reshape = tuple((self.data.shape[i] if i in axes else 1) for i in range(self.data_list[0].ndim))
+        other_reshape = other.reshape(reshape)
+        return self.__class__(
+            data=[d*other_reshape for d in self.data_list],
+            transformTR=self.transformTR,
+            transformInv=self.transformInv,
+            rank=self.rank)
+
 
     def __truediv__(self, number):
         return self * 1  # actually a copy
@@ -56,14 +81,16 @@ class KBandResult(Result):
     def to_grid(self, k_map):
         dataall = self.data
         data = np.array([sum(dataall[ik] for ik in km) / len(km) for km in k_map])
-        return KBandResult(data=data,
+        return self.__class__(data=data,
                             transformTR=self.transformTR,
-                            transformInv=self.transformInv )
+                            transformInv=self.transformInv,
+                            rank=self.rank  )
 
     def select_bands(self, ibands):
-        return KBandResult(self.data[:, ibands],
+        return self.__class__(self.data[:, ibands],
                             transformTR=self.transformTR,
-                            transformInv=self.transformInv )
+                            transformInv=self.transformInv,
+                            rank=self.rank  )
 
     def average_deg(self, deg):
         for i, D in enumerate(deg):
@@ -75,9 +102,10 @@ class KBandResult(Result):
     def transform(self, sym):
         data = [sym.transform_tensor(data, rank=self.rank,
                     transformTR=self.transformTR, transformInv=self.transformInv) for data in self.data_list]
-        return KBandResult(data,
+        return self.__class__(data,
                             transformTR=self.transformTR,
-                            transformInv=self.transformInv )
+                            transformInv=self.transformInv,
+                            rank=self.rank  )
 
     def get_component_list(self):
         dim = len(self.data.shape[2:])
@@ -102,7 +130,7 @@ class KBandResult(Result):
                 raise NoComponentError(component, 0)
         elif ndim == 1:
             if component in ["x", "y", "z"]:
-                return self.data[:, :, xyz[component]]
+                return self.data[..., xyz[component]]
             elif component == 'norm':
                 return np.linalg.norm(self.data, axis=-1)
             elif component == 'sq':
@@ -111,30 +139,38 @@ class KBandResult(Result):
                 raise NoComponentError(component, 1)
         elif ndim == 2:
             if component == "trace":
-                return sum([self.data[:, :, i, i] for i in range(3)])
+                return sum([self.data[..., i, i] for i in range(3)])
             else:
                 try:
-                    return self.data[:, :, xyz[component[0]], xyz[component[1]]]
+                    return self.data[..., xyz[component[0]], xyz[component[1]]]
                 except IndexError:
                     raise NoComponentError(component, 2)
         elif ndim == 3:
             if component == "trace":
-                return sum([self.data[:, :, i, i, i] for i in range(3)])
+                return sum([self.data[..., i, i, i] for i in range(3)])
             else:
                 try:
-                    return self.data[:, :, xyz[component[0]], xyz[component[1]], xyz[component[2]]]
+                    return self.data[..., xyz[component[0]], xyz[component[1]], xyz[component[2]]]
                 except IndexError:
                     raise NoComponentError(component, 3)
         elif ndim == 4:
             if component == "trace":
-                return sum([self.data[:, :, i, i, i, i] for i in range(3)])
+                return sum([self.data[..., i, i, i, i] for i in range(3)])
             else:
                 try:
-                    return self.data[:, :, xyz[component[0]], xyz[component[1]], xyz[component[2]], xyz[component[3]]]
+                    return self.data[..., xyz[component[0]], xyz[component[1]], xyz[component[2]], xyz[component[3]]]
                 except IndexError:
                     raise NoComponentError(component, 4)
         else:
             raise NotImplementedError("writing tensors with rank >4 is not implemented. But easy to do")
+
+
+
+class KBandResult(K__Result):
+
+    def get_rank(self):
+        return len(self.data_list[0].shape) - 2
+
 
 class NoComponentError(RuntimeError):
 
