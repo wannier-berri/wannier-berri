@@ -13,6 +13,10 @@
     optionally, parameters can be given in the command line (theose will override the parameters in the ffile)
     additional options starting with "__wb" can be provided"
 
+
+    **Note:** to use this module the user needs to manually install the wannier90io module from github:
+    `pip install git+https://github.com/jimustafa/wannier90io-python.git`
+
         Usage example: ::
 
                 python3 -m wannierberri.utils.postw90 seedname [parameters] [ __wb_fft_lib=<value> ]
@@ -28,9 +32,11 @@
 """
 
 import sys
-import wannier90io as w90io
 from .. import run, Grid, calculators, System_w90, Parallel
 import numpy as np
+
+
+
 
 # default parameters
 parameters = {
@@ -47,6 +53,14 @@ parameters = {
              }
 
 def main():
+    try:
+        import wannier90io as w90io
+    except ImportError as err:
+        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n"+
+                        "please install it manuall as \n"+
+                        "`pip install git+https://github.com/jimustafa/wannier90io-python.git`"
+                        )
+
     seedname = sys.argv[1]  if len(sys.argv)>1 else "wannier90"
     with open(seedname+".win") as f:
         parsed_win = w90io.parse_win_raw(f.read())

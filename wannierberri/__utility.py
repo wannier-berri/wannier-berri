@@ -13,6 +13,9 @@
 
 __debug = False
 
+from . import PYFFTW_IMPORTED
+if PYFFTW_IMPORTED :
+    import pyfftw
 import inspect
 import numpy as np
 
@@ -21,12 +24,7 @@ from time import time
 from termcolor import cprint
 import fortio, scipy.io
 
-try:
-    import pyfftw
-    PYFFTW_IMPORTED = True
-except Exception as err:
-    PYFFTW_IMPORTED = False
-    print("WARNING : error importing  `pyfftw` : {} \n will use numpy instead \n".format(err))
+
 
 
 # inheriting just in order to have posibility to change default values, without changing the rest of the code
@@ -101,6 +99,16 @@ def str2bool(v):
 
 
 def fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
+    try:
+        return _fft_W(inp, axes, inverse=False, destroy=True, numthreads=1)
+    except RuntimeError as err:
+        if "This is a bug" in str(err):
+            raise RuntimeError(f"{err}\n Probably this can be fixed by importing wannierberri prior to numpy."
+                " See https://docs.wannier-berri.org/en/master/install.html#known-bug-with-pyfftw")
+        else:
+            raise err
+
+def _fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
     assert inp.dtype == complex
     # t0=time()
     fft_in = pyfftw.empty_aligned(inp.shape, dtype='complex128')
@@ -312,7 +320,7 @@ def Gaussian(x, width, adpt_smr):
             return 1 / (np.sqrt(pi) * width) * np.exp(-np.minimum(200.0, (x / width) ** 2))
     '''
     inds = abs(x) < width * np.sqrt(200.0)
-    output = np.zeros_like(x)
+    output = np.zeros(x.shape,dtype=float)
     if adpt_smr:
         # width is array
         width_tile = np.tile(width, (x.shape[0], 1, 1))
@@ -322,3 +330,16 @@ def Gaussian(x, width, adpt_smr):
         output[inds] = 1.0 / (np.sqrt(np.pi) * width) * np.exp(-(x[inds] / width)**2)
     return output
 
+
+# auxillary function"
+def FermiDirac(E, mu, kBT):
+    "here E is a number, mu is an array"
+    if kBT == 0:
+        return 1.0 * (E <= mu)
+    else:
+        res = np.zeros(mu.shape, dtype=float)
+        res[mu > E + 30 * kBT] = 1.0
+        res[mu < E - 30 * kBT] = 0.0
+        sel = abs(mu - E) <= 30 * kBT
+        res[sel] = 1.0 / (np.exp((E - mu[sel]) / kBT) + 1)
+        return res

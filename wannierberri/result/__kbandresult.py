@@ -6,17 +6,18 @@ import itertools
 
 class KBandResult(Result):
 
-    def __init__(self, data, TRodd, Iodd):
+    def __init__(self, data, transformTR, transformInv):
         if isinstance(data, list):
             self.data_list = data
         else:
             self.data_list = [data]
-        self.TRodd = TRodd
-        self.Iodd = Iodd
+        self.transformTR=transformTR
+        self.transformInv=transformInv
 
     def fit(self, other):
-        for var in ['TRodd', 'Iodd', 'rank', 'nband']:
+        for var in ['transformTR', 'transformInv', 'rank', 'nband']:
             if getattr(self, var) != getattr(other, var):
+                print (f"parameters {var} are not fit : `{getattr(self, var)}` and `{getattr(other, var)}` ")
                 return False
         return True
 
@@ -40,10 +41,14 @@ class KBandResult(Result):
 
     def __add__(self, other):
         assert self.fit(other)
-        return KBandResult(self.data_list + other.data_list, self.TRodd, self.Iodd)
+        return KBandResult( data=self.data_list + other.data_list,
+                            transformTR=self.transformTR,
+                            transformInv=self.transformInv )
 
     def __mul__(self, number):
-        return KBandResult([d * number for d in self.data_list], self.TRodd, self.Iodd)
+        return KBandResult( data=[d * number for d in self.data_list],
+                            transformTR=self.transformTR,
+                            transformInv=self.transformInv )
 
     def __truediv__(self, number):
         return self * 1  # actually a copy
@@ -51,10 +56,14 @@ class KBandResult(Result):
     def to_grid(self, k_map):
         dataall = self.data
         data = np.array([sum(dataall[ik] for ik in km) / len(km) for km in k_map])
-        return KBandResult(data, self.TRodd, self.Iodd)
+        return KBandResult(data=data,
+                            transformTR=self.transformTR,
+                            transformInv=self.transformInv )
 
     def select_bands(self, ibands):
-        return KBandResult(self.data[:, ibands], self.TRodd, self.Iodd)
+        return KBandResult(self.data[:, ibands],
+                            transformTR=self.transformTR,
+                            transformInv=self.transformInv )
 
     def average_deg(self, deg):
         for i, D in enumerate(deg):
@@ -64,8 +73,11 @@ class KBandResult(Result):
         return self
 
     def transform(self, sym):
-        data = [sym.transform_tensor(data, rank=self.rank, TRodd=self.TRodd, Iodd=self.Iodd) for data in self.data_list]
-        return KBandResult(data, self.TRodd, self.Iodd)
+        data = [sym.transform_tensor(data, rank=self.rank,
+                    transformTR=self.transformTR, transformInv=self.transformInv) for data in self.data_list]
+        return KBandResult(data,
+                            transformTR=self.transformTR,
+                            transformInv=self.transformInv )
 
     def get_component_list(self):
         dim = len(self.data.shape[2:])

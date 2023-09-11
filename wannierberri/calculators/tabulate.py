@@ -48,7 +48,7 @@ class Tabulator(Calculator):
                 values[n] = formula.trace(ik, inn, out) / (n[1] - n[0])
             for ib, b in enumerate(ibands):
                 rslt[ik, ib] = values[group[ik][ib]]
-        return KBandResult(rslt, TRodd=formula.TRodd, Iodd=formula.Iodd)
+        return KBandResult(rslt, transformTR=formula.transformTR, transformInv=formula.transformInv)
 
 
 ###############################################

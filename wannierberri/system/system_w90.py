@@ -17,7 +17,7 @@ import functools
 import multiprocessing
 from ..__utility import iterate3dpm, real_recip_lattice, fourier_q_to_R, alpha_A, beta_A
 from .system import System
-from ..__w90_files import EIG, MMN, CheckPoint, SPN, UHU, UIU, SIU, SHU
+from .__w90_files import EIG, MMN, CheckPoint, SPN, UHU, UIU, SIU, SHU
 from time import time
 
 
@@ -80,6 +80,10 @@ class System_w90(System):
         self.num_wann = chk.num_wann
         self.wannier_centers_cart_auto = chk.wannier_centers
 
+        #############
+        ### Oscar ###
+        #######################################
+
         # Necessary ab initio matrices
         eig = EIG(seedname)
         if self.need_R_any(['AA','BB']):
@@ -88,7 +92,9 @@ class System_w90(System):
             uhu = UHU(seedname)
         if self.need_R_any(['CC','FF','FF_tot']):
             uiu = UIU(seedname)
-        
+
+        #######################################
+
         kpt_mp_grid = [
             tuple(k) for k in np.array(np.round(chk.kpt_latt * np.array(chk.mp_grid)[None, :]), dtype=int) % chk.mp_grid
         ]
@@ -97,7 +103,6 @@ class System_w90(System):
                 "the grid of k-points read from .chk file is not Gamma-centered. Please, use Gamma-centered grids in the ab initio calculation"
             )
 
-        # Fourier transform from ab initio mesh to real-space mesh
         fourier_q_to_R_loc = functools.partial(
             fourier_q_to_R,
             mp_grid=chk.mp_grid,
@@ -111,15 +116,13 @@ class System_w90(System):
         # Oscar #
         ############################################################################################################
 
-        centers=chk.wannier_centers     
-        R_cart = self.iRvec.dot(self.real_lattice)
+        centers=chk.wannier_centers
 
         # H(R) matrix
         timeFFT = 0
         HHq = chk.get_HH_q(eig)
         t0 = time()
-        HH_R = fourier_q_to_R_loc(HHq)
-        self.set_R_mat('Ham', HH_R)
+        self.set_R_mat('Ham', fourier_q_to_R_loc(HHq))
         timeFFT += time() - t0
 
         # A_a(R) matrix
@@ -132,7 +135,7 @@ class System_w90(System):
 
             # Naive finite-difference scheme
             if not transl_inv_JM:
-                AA_R = np.sum(fourier_q_to_R_loc(AA_qb), axis=3)
+                AA_R = np.sum(AA_Rb, axis=3)
 
             # Following Jae-Mo's scheme, keep b-resolved real-space matrix and sum after ws_dist is used
             if transl_inv_JM:
@@ -180,16 +183,16 @@ class System_w90(System):
                 self.bk_latt_unique = bk_latt_unique
 
             self.set_R_mat('BB',BB_R)
-            
+
         # C_a(R) matrix
         if 'CC' in self.needed_R_matrices:
             CC_qb, b1k_latt_unique, b2k_latt_unique = chk.get_CC_qb(mmn, uhu, centers=centers, transl_inv_JM=transl_inv_JM)
             t0 = time()
             CC_Rb = fourier_q_to_R_loc(CC_qb)
             timeFFT += time() - t0
-
+            
             # Naive finite-difference scheme
-            if (not transl_inv_JM):
+            if not transl_inv_JM:
                 CC_R = np.sum(CC_Rb, axis=(3,4))
 
             # Following Jae-Mo's scheme, keep b-resolved real-space matrix and sum after ws_dist is used
@@ -249,7 +252,8 @@ class System_w90(System):
             pass
         
         ############################################################################################################
-
+            
+            
         if self.need_R_any(['SS', 'SR', 'SH', 'SHR']):
             spn = SPN(seedname)
 
@@ -348,7 +352,7 @@ class System_w90(System):
                         BB_R[iw,jw,iR] = BB_R_rc[iw,jw,iR] + rc_to_H 
                         
             self.set_R_mat('BB',BB_R,reset=True)
-        
+
             # C_a(R) matrix
             CC_R  = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
             CC_Rb = self.get_R_mat('CC')
@@ -379,7 +383,7 @@ class System_w90(System):
                         rc_to_H -= 0.5j * rc_1[ beta_A] * ( BB_R_rc[iw,jw,iR,alpha_A] + BB_R_rc[jw,iw,iRinv,alpha_A].conj() )
                         rc_to_H += 0.5j * rc_2[alpha_A, beta_A] * HH_R[iw,jw,iR]
                         rc_to_H -= 0.5j * rc_2[ beta_A,alpha_A] * HH_R[iw,jw,iR]
-                    
+
                         CC_R[iw,jw,iR] = CC_R_rc[iw,jw,iR] + rc_to_H
                 
             self.set_R_mat('CC',CC_R,reset=True)
@@ -397,9 +401,8 @@ class System_w90(System):
                                 phase_b1 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib1,:],iRvec[iR,:]) / 2)
                                 phase_b2 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib2,:],iRvec[iR,:]) / 2)
                                 FF_R_rc[iw, jw, iR, :] += FF_Rb[iw, jw, iR, ib1, ib2, :] * phase_b1 * phase_b2
-                        
+
             # Matrices relating recentered F_a(R) matrix to original F_a(R) matrix
-            #AA_R = self.get_R_mat('AA')
             for iw in range(num_wann):
                 for jw in range(num_wann):
                     for iR in range(nRvec):
@@ -413,7 +416,7 @@ class System_w90(System):
                         FF_R[iw,jw,iR] = FF_R_rc[iw,jw,iR] + rc_to_H
         
             self.set_R_mat('FF',FF_R,reset=True)
-        
+
             # F_bc(R) matrix
             FF_tot_R  = np.zeros((num_wann, num_wann, nRvec, 3, 3), dtype=complex)
             FF_tot_Rb = self.get_R_mat('FF_tot')
@@ -445,7 +448,7 @@ class System_w90(System):
             print(time()-t0)
             
         ############################################################################################################
-        
+
     def wigner_seitz(self, mp_grid):
         ws_search_size = np.array([1] * 3)
         dist_dim = np.prod((ws_search_size + 1) * 2 + 1)
