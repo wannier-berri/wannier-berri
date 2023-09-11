@@ -34,6 +34,12 @@ from common_systems import (
     system_Phonons_Si,
     system_Phonons_GaAs,
     system_Mn3Sn_sym_tb,
+    system_kp_mass_iso_0,
+    system_kp_mass_iso_1,
+    system_kp_mass_iso_2,
+    system_kp_mass_aniso_0,
+    system_kp_mass_aniso_1,
+    system_kp_mass_aniso_2,
 )
 
 # Comparers for tests
@@ -46,6 +52,7 @@ from common_comparers import (
 
 
 from test_cluster import check_command_output
+from test_run import check_run
 
 # Parallel objects
 from common_parallel import parallel_serial, parallel_ray

@@ -419,7 +419,6 @@ class Data_K_R(_Data_K):
     ############################################################################################################
 
 
-
     #  this is a bit ovberhead, but to maintain uniformity of the code let's use this
     def _T_wcc_R(self):
         nw = self.num_wann
