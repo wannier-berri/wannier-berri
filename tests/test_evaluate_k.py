@@ -65,7 +65,6 @@ def test_evaluate_k_all(system_Fe_W90):
 
 
 def test_evaluate_k_all_1band(system_Fe_W90):
-    param = dict(Efermi=Efermi_Fe)
     result = wberri.evaluate_k(
                             system_Fe_W90,
                             k=k,
