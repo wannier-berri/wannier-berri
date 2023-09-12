@@ -103,8 +103,6 @@ def evaluate_k( system=None,
     _param_formula.update(param_formula)
 
     for k,f in formula.items():
-        if k in calculators:
-            raise ValueError(f"Quantity {q} is used as a name of a formula and a calculator. Please, rename the one of those")
         form = f(data_k,**_param_formula[k])
         result[k] = form.nn(0,iband,iband_out)
 
