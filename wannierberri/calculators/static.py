@@ -234,7 +234,7 @@ class Morb_test(Morb):
         self.comment = r"""Orbital magnetic moment per unit cell for testing (\mu_B)
         Output:
         :math: `M = -\int [dk] (H + G - 2E_f \cdot \Omega) f`"""
-        super().__init__(constant_factor=constant_factor, **kwargs)
+        StaticCalculator.__init__(self,constant_factor=constant_factor, **kwargs)
         self.AHC = AHC_test(constant_factor=constant_factor, print_comment=False, **kwargs)
 
 
