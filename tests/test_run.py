@@ -186,6 +186,7 @@ calculators_Chiral_tetra = {
     'Hall_classic':calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
     'dos': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral, tetra=True),
+    'spin': wberri.calculators.static.Spin(Efermi=Efermi_Chiral,tetra=True),
 }
 
 
