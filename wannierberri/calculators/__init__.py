@@ -11,10 +11,17 @@ from termcolor import cprint
 
 class Calculator():
 
-    def __init__(self, degen_thresh=1e-4, degen_Kramers=False, save_mode="bin+txt", print_comment=True):
+    def __init__(self, degen_thresh=1e-4, degen_Kramers=False, save_mode="bin+txt", print_comment=False):
         self.degen_thresh = degen_thresh
         self.degen_Kramers = degen_Kramers
         self.save_mode = save_mode
+        self._set_comment(print_comment)
+
+    @property
+    def allow_path(self):
+        return False    # change for those who can be calculated on a path instead of a grid
+
+    def _set_comment(self, print_comment=True):
         if not hasattr(self, 'comment'):
             if self.__doc__ is not None:
                 self.comment = self.__doc__
@@ -23,15 +30,14 @@ class Calculator():
         if print_comment:
             cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
 
-    @property
-    def allow_path(self):
-        return False    # change for those who can be calculated on a path instead of a grid
-
 
 
 class TabulatorAll(Calculator):
+    """
+    TabulatorAll - a pack of all k-resolved calculators (Tabulators)
+    """
 
-    def __init__(self, tabulators, ibands=None, mode="grid", save_mode="frmsf"):
+    def __init__(self, tabulators, ibands=None, mode="grid", save_mode="frmsf",print_comment=False):
         """ tabulators - dict 'key':tabulator
         one of them should be "Energy" """
         self.tabulators = tabulators
@@ -49,6 +55,10 @@ class TabulatorAll(Calculator):
                     v.ibands = ibands
                 else:
                     assert v.ibands == ibands
+        self.comment = (self.__doc__+"\n Includes the following tabulators : \n"+"-"*50+"\n"+ "\n".join(
+                    f""" "{key}" : {val} : {val.comment}\n""" for key,val in self.tabulators.items())+
+                    "\n"+"-"*50+"\n" )
+        self._set_comment(print_comment)
 
     def __call__(self, data_K):
         return TABresult(

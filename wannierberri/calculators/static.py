@@ -137,7 +137,12 @@ class StaticCalculator(Calculator):
             restot *= np.sign(self.constant_factor)
 
         if self.k_resolved:
-            return K__Result([restot], transformTR=formula.transformTR, transformInv=formula.transformInv, rank=restot.ndim - 2 )
+            return K__Result([restot], transformTR=formula.transformTR, transformInv=formula.transformInv, rank=restot.ndim-2,
+                    other_properties=dict(
+                                            comment=self.comment,
+                                            efermi=self.Efermi
+                                         )
+                            )
         else:
             res = EnergyResult(self.Efermi, restot[0], transformTR=formula.transformTR, transformInv=formula.transformInv, smoothers=[self.smoother], comment=self.comment)
             res.set_save_mode(self.save_mode)

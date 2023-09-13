@@ -6,7 +6,7 @@ import itertools
 
 class K__Result(Result):
 
-    def __init__(self, data, transformTR, transformInv, rank=None):
+    def __init__(self, data, transformTR, transformInv, rank=None, other_properties={}):
         if isinstance(data, list):
             self.data_list = data
         else:
@@ -17,9 +17,10 @@ class K__Result(Result):
             self.rank=rank
         self.transformTR=transformTR
         self.transformInv=transformInv
+        self.other_properties = other_properties
 
     def fit(self, other):
-        for var in ['transformTR', 'transformInv', 'rank', 'nband']:
+        for var in ['transformTR', 'transformInv', 'rank']:
             if getattr(self, var) != getattr(other, var):
                 print (f"parameters {var} are not fit : `{getattr(self, var)}` and `{getattr(other, var)}` ")
                 return False
@@ -32,9 +33,6 @@ class K__Result(Result):
         return self.data_list[0]
 
 
-    @property
-    def nband(self):
-        return self.data_list[0].shape[1]
 
     @property
     def nk(self):
@@ -45,7 +43,9 @@ class K__Result(Result):
         return self.__class__( data=self.data_list + other.data_list,
                             transformTR=self.transformTR,
                             transformInv=self.transformInv,
-                            rank=self.rank)
+                            rank=self.rank,
+                            other_properties=self.other_properties
+                            )
 
     def add(self,other):
         self.data_list = [d1+d2 for d1,d2 in zip(self.data_list, other.data_list)]
@@ -55,7 +55,9 @@ class K__Result(Result):
         return self.__class__( data=[d * number for d in self.data_list],
                             transformTR=self.transformTR,
                             transformInv=self.transformInv,
-                            rank=self.rank )
+                            rank=self.rank,
+                            other_properties=self.other_properties
+                            )
 
     def mul_array(self, other, axes=None):
         if isinstance(axes, int):
@@ -69,10 +71,12 @@ class K__Result(Result):
         reshape = tuple((self.data.shape[i] if i in axes else 1) for i in range(self.data_list[0].ndim))
         other_reshape = other.reshape(reshape)
         return self.__class__(
-            data=[d*other_reshape for d in self.data_list],
-            transformTR=self.transformTR,
-            transformInv=self.transformInv,
-            rank=self.rank)
+                            data=[d*other_reshape for d in self.data_list],
+                            transformTR=self.transformTR,
+                            transformInv=self.transformInv,
+                            rank=self.rank,
+                            other_properties=self.other_properties
+                             )
 
 
     def __truediv__(self, number):
@@ -84,13 +88,17 @@ class K__Result(Result):
         return self.__class__(data=data,
                             transformTR=self.transformTR,
                             transformInv=self.transformInv,
-                            rank=self.rank  )
+                            rank=self.rank,
+                            other_properties=self.other_properties
+                             )
 
     def select_bands(self, ibands):
         return self.__class__(self.data[:, ibands],
                             transformTR=self.transformTR,
                             transformInv=self.transformInv,
-                            rank=self.rank  )
+                            rank=self.rank,
+                            other_properties=self.other_properties
+                            )
 
     def average_deg(self, deg):
         for i, D in enumerate(deg):
@@ -105,7 +113,9 @@ class K__Result(Result):
         return self.__class__(data,
                             transformTR=self.transformTR,
                             transformInv=self.transformInv,
-                            rank=self.rank  )
+                            other_properties=self.other_properties,
+                            rank=self.rank
+                             )
 
     def get_component_list(self):
         dim = len(self.data.shape[2:])
@@ -171,6 +181,15 @@ class KBandResult(K__Result):
     def get_rank(self):
         return len(self.data_list[0].shape) - 2
 
+    def fit(self, other):
+        if self.nband  != other.nband:
+            print (f"parameter 'nband' does  not match : `{self.nband}` and `{other.nband}` ")
+            return False
+        return super().fit(other)
+
+    @property
+    def nband(self):
+        return self.data_list[0].shape[1]
 
 class NoComponentError(RuntimeError):
 
