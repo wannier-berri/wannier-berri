@@ -1,0 +1,28 @@
+ &control
+    calculation='scf'
+    restart_mode='from_scratch',
+    pseudo_dir = '.',
+    outdir='./'
+    prefix='Fe'
+ /
+ &system
+    ibrav = 3, celldm(1) =5.4235, nat= 1, ntyp= 1,
+    nbnd=40,
+    ecutwfc =60.0
+    lspinorb=.true.,
+    noncolin=.true., 
+    starting_magnetization(1) = -1
+    occupations='smearing', smearing='cold', degauss=0.02
+ /
+ &electrons
+    startingwfc='random'
+    diagonalization='cg'
+    conv_thr=1.0e-8
+ /
+ATOMIC_SPECIES
+ Fe 55.85 Fe.upf
+ATOMIC_POSITIONS
+ Fe 0.0 0.0 0.0
+K_POINTS (automatic)
+6 6 6 0 0 0
+
