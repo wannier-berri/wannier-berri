@@ -15,10 +15,12 @@ class Formula_ln(abc.ABC):
     """
 
     @abc.abstractmethod
-    def __init__(self, data_K, internal_terms=True, external_terms=True, correction_wcc=False, dT_wcc=False):
+    def __init__(self, data_K, Ef=0., Gamma=0. ,internal_terms=True, external_terms=True, correction_wcc=False, dT_wcc=False):
         self.internal_terms = internal_terms
         self.external_terms = external_terms
         self.correction_wcc = correction_wcc
+        self.Ef = Ef
+        self.Gamma = Gamma
         if self.correction_wcc:
             if not (self.external_terms and self.internal_terms):
                 raise ValueError(
@@ -62,6 +64,7 @@ class Formula_ln(abc.ABC):
 
     def trace(self, ik, inn, out):
         "Returns a trace over the `inn` states"
+        #print(np.shape(self.nn(ik, inn, out) ) )
         return np.einsum("nn...->...", self.nn(ik, inn, out)).real
 
 

@@ -303,6 +303,7 @@ class _Data_K(System,abc.ABC):
 
         return V(self.Xbar('Ham', der=1))
 
+
     @lazy_property.LazyProperty
     def Dcov(self):
         return formula.covariant.Dcov(self)

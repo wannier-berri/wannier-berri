@@ -420,6 +420,18 @@ class BerryDipole_FermiSurf(StaticCalculator):
         super().__init__(**kwargs)
 
 
+class BerryDipole_kp(StaticCalculator):
+    r"""Berry curvature dipole (dimensionless)
+
+        | With Fermi surface integral. Eq(8) in `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.115.216806>`__
+        | Output: :math:`D_{\beta\delta} = -\int [dk] v_\beta \Omega_\delta f'`"""
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.VelOmegakp
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
 class NLAHC_FermiSurf(BerryDipole_FermiSurf):
     r"""Nonlinear anomalous Hall conductivity (:math:`S^2/A`)
 
@@ -573,3 +585,20 @@ class AHC_Zeeman_orb(StaticCalculator):
         Hplus_res = super().__call__(data_K)
         Omega_res = self.OmegaOmega(data_K).mul_array(self.Efermi)
         return Hplus_res - 2 * Omega_res
+
+class X1(StaticCalculator):
+    def __init__(self, constant_factor=1., **kwargs):
+        self.Formula = frml.X1
+        self.fder = 1
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+class X2(StaticCalculator):
+    def __init__(self, constant_factor=1., **kwargs):
+        self.Formula = frml.X2
+        self.fder = 1
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+
+
+

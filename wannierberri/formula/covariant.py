@@ -27,6 +27,13 @@ class Eavln(Matrix_ln):
         self.transformTR=transform_ident
         self.transformInv=transform_ident
 
+class HH_K(Matrix_ln):
+    """ be careful : this is not a covariant matrix"""
+    def __init__(self, data_K):
+        super().__init__(data_K.HH_K)
+        self.ndim = 0
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
 
 class DEinv_ln(Matrix_ln):
     "DEinv_ln.matrix[ik, m, n] = 1 / (E_mk - E_nk)"
@@ -371,7 +378,7 @@ class DerMorb(Formula_ln):
                 self.D.nl(ik, inn, out)[:, :, alpha_A], self.V.ll(ik, inn, out),
                 self.D.ln(ik, inn, out)[:, :, beta_A])
             for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
-                summ += -2j * s * np.einsum(
+                summ += -2j * s * np.ei1nsum(
                     "mlc,lncd->mncd",
                     self.D.nl(ik, inn, out)[:, :, a],
                     self.E[ik][out][:, None, None, None] * self.dD.ln(ik, inn, out)[:, :, b])
@@ -503,6 +510,137 @@ class SpinOmega(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+class Omegakp(Formula_ln):
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)    
+        self.dEinv = DEinv_ln(data_K)
+        self.V = data_K.covariant('Ham', commader=1)
+        self.ndim = 1
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+
+    def nn(self, ik, inn, out):
+        summ = -2j * np.einsum("mla,ml,nl,lna->mna", self.V.nl(ik,inn,out)[:, :, alpha_A] , 
+                self.dEinv.nl(ik,inn,out), 
+                self.dEinv.nl(ik,inn,out), 
+                self.V.ln(ik,inn,out)[:, :, beta_A] )
+        return summ
+    
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
+
+
+class GreenR(Formula_ln):
+    def __init__(self, data_K,Ef=0.,Gamma=0., **parameters):
+        super().__init__(data_K ,**parameters)
+        self.Ef=Ef
+        self.Gamma=Gamma
+        self.HH_K = HH_K(data_K)
+        self.ndim = 0
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+        #self.UU_K = data_K.UU_K
+        #self.nk = data_K.nk
+        #self.weights = data_K.tetraWeights.weights_all_band_groups(
+        #        np.array([self.Ef]), 1, degen_thresh=0.0001,
+        #        degen_Kramers=False, Emin=-np.inf, Emax=np.inf)  # here W is array of shape Efermi 
+        #print('###############################',np.shape(self.weights))
+
+    def nn(self, ik, inn, out):
+        #lambdadic = lambda: np.zeros(((3, ) * 0), dtype=float)
+        #values = [defaultdict(lambdadic) for ikk in range(self.nk)]
+        #for ikp, bnd in enumerate(weights):
+        #    for n in bnd:
+        #        inn = np.arange(n[0], n[1])
+        #        out = np.concatenate((np.arange(0, n[0]), np.arange(n[1], NB)))
+        #        values[ik][n] = formula.trace(ikp, inn, out)
+        
+       # for ikp, weights in enumerate(weights):
+       #     if ikp
+       #         valuesik = values[ikp]
+       #         for n, w in weights.items():
+       #             restot += np.einsum("e,...->e...", w, valuesik[n])
+        GR = np.linalg.pinv(self.Ef - self.HH_K.nn(ik,inn,out) + self.Gamma  )
+        return GR
+    
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+class GreenA(Formula_ln):
+    def __init__(self, data_K,Ef=0.,Gamma=0., **parameters):
+        super().__init__(data_K ,**parameters)
+        self.Ef=Ef
+        self.Gamma=Gamma
+        self.HH_K = HH_K(data_K)
+        self.ndim = 0
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+
+    def nn(self, ik, inn, out):
+        GA = np.linalg.pinv(self.Ef - self.HH_K.nn(ik,inn,out) - self.Gamma  )
+        return GA
+    
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
+class X1(Formula_ln):
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)    
+        self.GR = GreenR(data_K,Ef=self.Ef,Gamma=self.Gamma)
+        self.GA = GreenA(data_K,Ef=self.Ef,Gamma=self.Gamma)
+        self.V = data_K.covariant('Ham', commader=1)
+        self.ndim = 3
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+
+    def nn(self, ik, inn, out):
+        #summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
+        summ = np.einsum("mqa,qp,pl,lxb,xy,yzc,zn->mnabc", 
+                self.V.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
+                self.V.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
+                self.V.nn(ik,inn,out),
+                self.GA.nn(ik,inn,out)
+            ).imag
+
+        return summ + summ.transpose(0,1,2,4,3)
+    
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+class X2(Formula_ln):
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)    
+        self.GR = GreenR(data_K,Ef=self.Ef,Gamma=self.Gamma)
+        self.GA = GreenA(data_K,Ef=self.Ef,Gamma=self.Gamma)
+        self.V = data_K.covariant('Ham', commader=1)
+        self.W = data_K.covariant('Ham', commader=2)
+        self.ndim = 3
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+
+    def nn(self, ik, inn, out):
+        #summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
+        summ = np.einsum("mqa,qp,pl,lxbc,xn->mnabc", 
+                self.V.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
+                self.W.nn(ik,inn,out),
+                self.GA.nn(ik,inn,out)
+            ).imag
+
+        return summ + summ.transpose(0,1,2,4,3)
+    
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
+
 
 ####################################
 #                                  #
@@ -515,6 +653,10 @@ class VelOmega(FormulaProduct):
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([data_K.covariant('Ham', commader=1), Omega(data_K, **kwargs_formula)], name='VelOmega')
 
+class VelOmegakp(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([data_K.covariant('Ham', commader=1), Omegakp(data_K, **kwargs_formula)], name='VelOmegakp')
 
 class VelHplus(FormulaProduct):
 
