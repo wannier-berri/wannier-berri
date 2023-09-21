@@ -100,12 +100,12 @@ def hlp():
     exit()
 
 
-def main():
+def main(argv):
     if "-h" in argv:
         hlp()
     # ===========================================================
     # input
-    filename = argv
+    filename = argv[0]
     Line = False
     Plane = False
     quantity = False

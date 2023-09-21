@@ -195,8 +195,10 @@ def run_mmn2uHu(PREFIX, **kwargs):
     if writeUIU: UXUlist.append(("uIu", uIu_formatted))
     print(UXUlist)
     if len(UXUlist) > 0:
+        NB_sum_max = NB_in-IBstartSum
         for NB_sum in NB_sum_list:
-            if NB_sum is None: NB_sum = NB_in
+            if NB_sum is None or NB_sum>NB_sum_max:
+                NB_sum = NB_sum_max
             for UXU in UXUlist:
                 print("----------\n  {1}  NBsum={0} \n---------".format(NB_sum, UXU[0]))
                 formatted = UXU[1]
