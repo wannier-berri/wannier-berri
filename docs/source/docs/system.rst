@@ -6,10 +6,11 @@ They all have an important common method :func:`~wannierberri.System.set_symmetr
 The system may come either from :ref:`Wanier functions <sec-wan-fun>`  constructed by `Wannier90 <http://wannier90.org>`_, or from ref:`tight binding <sec-tb-models>` models. 
 
 .. autoclass:: wannierberri.system.System
-   :members: set_parameters, set_symmetry, set_structure, set_symmetry_from_structure, set_R_mat, set_spin
+   :members: set_parameters, set_symmetry, set_structure, set_symmetry_from_structure, set_R_mat, set_spin, set_spin_pairs, set_spin_from_code
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
+
 
 
 Symmetrization of the system

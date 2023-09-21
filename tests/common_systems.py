@@ -153,6 +153,22 @@ def system_Fe_sym_W90(create_files_Fe_W90):
 
 
 @pytest.fixture(scope="session")
+def system_Fe_W90_set_spin(create_files_Fe_W90):
+    """Create system for Fe symmetrization using Wannier90 data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
+    create_W90_files('Fe_sym', ['uHu'], data_dir)
+
+    # Load system
+    seedname = os.path.join(data_dir, "Fe_sym")
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=False, use_ws=False)
+    system.set_symmetry(symmetries_Fe)
+    system.set_spin_from_code(DFT_code="qe", SHCqiao=False)
+    return system
+
+
+
+@pytest.fixture(scope="session")
 def system_GaAs_W90(create_files_GaAs_W90):
     """Create system for GaAs using Wannier90 data"""
 

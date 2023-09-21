@@ -385,6 +385,44 @@ def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
             precision=-1e-8,
             result_type=EnergyResult)
 
+Efermi_Fe_wide = np.linspace(-100,40,1401)
+
+param = dict( Efermi=Efermi_Fe_wide, 
+                tetra=True,
+            )
+
+def test_Fe_set_spin(check_run, system_Fe_W90_set_spin, compare_any_result):
+#    param = {'Efermi': Efermi_Fe_wide}
+    calculators = {
+                    "spin": wberri.calculators.static.Spin(**param),
+                    "dos": wberri.calculators.static.DOS(**param),
+                    "cumdos": wberri.calculators.static.CumDOS(**param)
+                  }
+
+    check_run(
+        system_Fe_W90_set_spin,
+        calculators,
+            grid_param=dict(NK=20),
+        fout_name="Fe_set_spin",
+        use_symmetry=False,
+            )
+
+def test_Fe_spin(check_run, system_Fe_sym_W90, compare_any_result):
+#    param = {'Efermi': Efermi_Fe_wide}
+    calculators = {
+                    "spin": wberri.calculators.static.Spin(**param),
+                    "dos": wberri.calculators.static.DOS(**param),
+                    "cumdos": wberri.calculators.static.CumDOS(**param)
+                  }
+
+    check_run(
+        system_Fe_sym_W90,
+        calculators,
+    grid_param=dict(NK=20),
+        fout_name="Fe_spin",
+        use_symmetry=False,
+            )
+
 
 def test_Fe_FPLO(check_run, system_Fe_FPLO, compare_any_result):
     param = {'Efermi': Efermi_Fe_FPLO}
