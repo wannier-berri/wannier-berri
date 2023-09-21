@@ -7,6 +7,7 @@ from common_systems import create_W90_files
 import numpy as np
 import pytest
 import os,shutil
+import wannierberri as wberri
 
 def create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_postw90):
     """
@@ -69,7 +70,11 @@ def check_postw90(check_command_output):
         data_pw90 = np.loadtxt(os.path.join(tmp_dir,seedname+"-ahc-fermiscan.dat"))
 
         out = os.path.join(tmp_dir,"stdout_wberri")
-        check_command_output(["python3","-m","wannierberri.utils.postw90",seedname], cwd=tmp_dir,stdout_filename=out)
+#        check_command_output(["python3","-m","wannierberri.utils.postw90",seedname], cwd=tmp_dir,stdout_filename=out)
+        cwd = os.getcwd()
+        os.chdir(tmp_dir)
+        wberri.utils.postw90.main([seedname])
+        os.chdir(cwd)
 
         # so far, hardcode it for AHC, later generalize
         data_wb   = np.loadtxt(os.path.join(tmp_dir,seedname+"-ahc_iter-0000.dat"))

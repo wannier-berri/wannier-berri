@@ -359,17 +359,16 @@ def run_mmn2uHu(PREFIX, **kwargs):
     return NB_out_list
 
 
-def main():
+def main(argv):
     hlp()
-    from sys import argv
 
-    if len(argv) < 2 or argv[1] == "-h": exit()
+    if len(argv)==0 or argv[0]=="-h": return
 
-    PREFIX = argv[1]
+    PREFIX = argv[0]
 
     kwargs = {}
 
-    for arg in argv[2:]:
+    for arg in argv[1:]:
         arg = arg.split("=")
         if arg[0] == "NBout": kwargs["NB_out_list"] = [int(s) for s in arg[1].split(',')]
         if arg[0] == "NBsum": kwargs["NB_sum_list"] = [int(s) for s in arg[1].split(',')]
@@ -400,4 +399,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    from sys import argv
+    main(argv[1:])

@@ -90,7 +90,6 @@ Tested
 
 import numpy as np
 import matplotlib.pyplot as plt
-from sys import argv
 import pickle
 
 
@@ -102,11 +101,11 @@ def hlp():
 
 
 def main():
-    if "-h" in argv[1:]:
+    if "-h" in argv:
         hlp()
     # ===========================================================
     # input
-    filename = argv[1]
+    filename = argv
     Line = False
     Plane = False
     quantity = False
@@ -121,7 +120,7 @@ def main():
     qtype = None
     component = None
     cmax = 200
-    for arg in argv[2:]:
+    for arg in argv[1:]:
         arg = arg.split("=")
         if arg[0] == "type":
             if arg[1] == "Line": Line = True
@@ -307,6 +306,6 @@ def main():
             plt.colorbar(bar)
         plt.savefig('Plane_eig' + str(component) + '.png')
 
-
 if __name__ == "__main__":
-    main()
+    from sys import argv
+    main(argv[1:])
