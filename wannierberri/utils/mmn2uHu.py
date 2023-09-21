@@ -395,7 +395,7 @@ def main(argv):
             kwargs["spn_formatted_out"] = any(x in tarlist for x in ("spn", "spn_out", "all"))
             kwargs["spn_formatted_in"] = any(x in tarlist for x in ("spn", "spn_in", "all"))
 
-    run_mmn2uHu(PREFIX, **kwargs)
+    return run_mmn2uHu(PREFIX, **kwargs)
 
 
 if __name__ == "__main__":

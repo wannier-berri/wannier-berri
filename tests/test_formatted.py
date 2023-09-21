@@ -14,6 +14,8 @@ def generate_formatted_files(create_files_GaAs_W90):
 
     data_dir = create_files_GaAs_W90
 
+    print (f"data_dir={str(data_dir)}")
+
     # Create sIu, sHu files using mmn2uHu utility if they do not exist
     tags_needed = ["uHu", "uIu", "sHu", "sIu", "spn"]
     tags_compute = []
@@ -24,17 +26,32 @@ def generate_formatted_files(create_files_GaAs_W90):
             tags_compute.append(tag)
 
     if len(tags_compute) > 0:
-        kwargs = {}
+        kwargs = []
+        kwargs.append(f"input={str(data_dir)}")
+        kwargs.append(f"output={str(data_dir)}/reduced_formatted")
+        kwargs.append("targets="+",".join(tags_compute))
+        tags_formatted=[]
         for tag in tags_compute:
-            kwargs["write" + tag.upper()] = True
             if tag == "spn":
-                kwargs[tag + "_formatted_in"] = False
-                kwargs[tag + "_formatted_out"] = True
+                tags_formatted.append('spn_out')
             else:
-                kwargs[tag + "_formatted"] = True
+                tags_formatted.append(tag)
+        kwargs.append("formatted="+",".join(tags_formatted))
+        kwargs.append("IBstart=1")
+        kwargs.append("IBstartSum=1")
+        kwargs.append("NBsum=1000")
+        #        for tag in tags_compute:
+        #            kwargs["write" + tag.upper()] = True
+        #            if tag == "spn":
+        #                kwargs[tag + "_formatted_in"] = False
+        #                kwargs[tag + "_formatted_out"] = True
+        #            else:
+        #                kwargs[tag + "_formatted"] = True
 
-        nb_out_list = wberri.utils.mmn2uHu.run_mmn2uHu(
-            "GaAs", INPUTDIR=data_dir, OUTDIR=str(data_dir) + "/reduced_formatted", **kwargs)
+        #        nb_out_list = wberri.utils.mmn2uHu.run_mmn2uHu(
+        #            "GaAs", INPUTDIR=data_dir, OUTDIR=str(data_dir) + "/reduced_formatted", **kwargs)
+        print ("kwargs = ", kwargs)
+        nb_out_list = wberri.utils.mmn2uHu.main(["GaAs"]+kwargs)
 
         nb_out = nb_out_list[0]
 
