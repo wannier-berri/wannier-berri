@@ -93,7 +93,7 @@ def main(argv):
         transl_inv=parameters["transl_inv"]
                        )
     grid = Grid(system,NK=parameters["berry_kmesh"])
-    parallel = Parallel(ray_init={'ignore_reinit_error':'True'}) # parallel with  "ray",num_cpus - auto
+    parallel = Parallel() # parallel with  "ray",num_cpus - auto
 
     run(system,
             grid=grid,
@@ -105,6 +105,8 @@ def main(argv):
             parameters_K={"fftlib":parameters["__wb_fft_lib"]},
             restart=False,
             )
+
+    parallel.shutdown()
 
 
 

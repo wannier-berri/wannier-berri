@@ -69,7 +69,7 @@ def check_postw90(check_command_output):
         check_command_output(["postw90.x",seedname], cwd=tmp_dir)
         data_pw90 = np.loadtxt(os.path.join(tmp_dir,seedname+"-ahc-fermiscan.dat"))
 
-        out = os.path.join(tmp_dir,"stdout_wberri")
+#        out = os.path.join(tmp_dir,"stdout_wberri")
 #        check_command_output(["python3","-m","wannierberri.utils.postw90",seedname], cwd=tmp_dir,stdout_filename=out)
         cwd = os.getcwd()
         os.chdir(tmp_dir)
