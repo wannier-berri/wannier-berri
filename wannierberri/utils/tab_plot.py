@@ -100,7 +100,7 @@ def hlp():
     exit()
 
 
-def main(argv):
+def main(argv,tab_result=None):
     if "-h" in argv:
         hlp()
     # ===========================================================
@@ -143,7 +143,8 @@ def main(argv):
 
     ####################################
     print('Reading file ...')
-    tab_result = pickle.load(open(filename, "rb"))
+    if tab_result is None:
+        tab_result = pickle.load(open(filename, "rb"))
     LATTICE = tab_result.recip_lattice
     NK = tab_result.grid
     NB = tab_result.nband

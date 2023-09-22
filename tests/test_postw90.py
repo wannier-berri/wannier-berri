@@ -62,7 +62,7 @@ hat the required precision {precision}
 
 @pytest.fixture(scope="module")
 def check_postw90(check_command_output):
-    def _inner(data_dir,seedname,win_file_postw90="",precision=-1e-7,tmp_dir=None):
+    def _inner(data_dir,seedname,win_file_postw90="",precision=-1e-7,tmp_dir=None,argv=[]):
 
         tags_needed = ["mmn","chk","eig"]
         tmp_dir = create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_postw90)
@@ -73,7 +73,7 @@ def check_postw90(check_command_output):
 #        check_command_output(["python3","-m","wannierberri.utils.postw90",seedname], cwd=tmp_dir,stdout_filename=out)
         cwd = os.getcwd()
         os.chdir(tmp_dir)
-        wberri.utils.postw90.main([seedname])
+        wberri.utils.postw90.main([seedname]+argv)
         os.chdir(cwd)
 
         # so far, hardcode it for AHC, later generalize
@@ -111,5 +111,11 @@ fermi_energy_step = 0.1
 transl_inv={ti}
 use_ws_distance = {uws}
 """
-    check_postw90("Fe_Wannier90","Fe",parameters, precision=-1e-6)
+    check_postw90(
+                    data_dir="Fe_Wannier90",
+                    seedname="Fe",
+                    win_file_postw90=parameters,
+                    precision=-1e-6,
+                    argv=["__wb_fft_lib=numpy"]
+                 )
 
