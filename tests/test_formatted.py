@@ -39,7 +39,7 @@ def generate_formatted_files(create_files_GaAs_W90):
         kwargs.append("formatted="+",".join(tags_formatted))
         kwargs.append("IBstart=1")
         kwargs.append("IBstartSum=1")
-        kwargs.append("NBsum=1000")
+        kwargs.append("NBsum=16,100")
         #        for tag in tags_compute:
         #            kwargs["write" + tag.upper()] = True
         #            if tag == "spn":
