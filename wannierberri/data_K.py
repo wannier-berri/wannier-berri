@@ -263,7 +263,7 @@ class _Data_K(System,abc.ABC):
     @property
     @abc.abstractmethod
     def HH_K(self):
-        """returns Wannier Hamiltonian for alkl points of the FFT grid"""
+        """returns Wannier Hamiltonian for all points of the FFT grid"""
 
     @lazy_property.LazyProperty
     def delE_K(self):
@@ -677,7 +677,7 @@ class Data_K_R(_Data_K):
 
 
 class Data_K_k(_Data_K):
-    """ The Data_K class for systems defined by k-dependent HAmiltonians  (kp)"""
+    """ The Data_K class for systems defined by k-dependent Hamiltonians  (kp)"""
 
 
     @property

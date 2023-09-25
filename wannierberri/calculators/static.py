@@ -186,6 +186,9 @@ class Spin(StaticCalculator):
         self.fder = 0
         super().__init__(**kwargs)
 
+    def __call__(self, data_K):
+        return super().__call__(data_K) * data_K.cell_volume
+
 
 class Morb(StaticCalculator):
     r"""Orbital magnetic moment per unit cell (:math:`\mu_B`)
