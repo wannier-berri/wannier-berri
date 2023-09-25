@@ -18,7 +18,7 @@ import lazy_property
 from .parallel import pool
 from .system.system import System
 from .system.system_kp import SystemKP
-from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A
+from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A, LeviCivita
 from .grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
 from . import formula
 from .grid import KpointBZparallel, KpointBZtetra
@@ -31,8 +31,12 @@ def _rotate_matrix(X):
 def get_transform_Inv(name, der=0):
     """returns the transformation of the quantity  under inversion
     raises for unknown quantities"""
-    if name in ['Ham', 'CC', 'FF', 'OO', 'SS']:  # even before derivative
+    ###########
+    # Oscar ###
+    ###########################################################################
+    if name in ['Ham', 'CC', 'FF', 'OO', 'GG', 'SS']:  # even before derivative
         p = 0
+    ###########################################################################
     elif name in ['T_wcc']:  # odd before derivative
         p = 1
     elif name in ['D', 'AA', 'BB', 'CCab']:
@@ -52,8 +56,12 @@ def get_transform_TR(name, der=0):
     raises ValueError for unknown quantities"""
     if name in ['Ham', 'T_wcc']:  # even before derivative
         p = 0
-    elif name in ['CC', 'FF', 'OO', 'SS']:  # odd before derivative
+    #########
+    # Oscar #
+    ###########################################################################
+    elif name in ['CC', 'FF', 'OO', 'GG', 'SS']:  # odd before derivative
         p = 1
+    ###########################################################################
     elif name in ['D', 'AA', 'BB', 'CCab']:
         return None
     else:
@@ -116,6 +124,11 @@ class _Data_K(System,abc.ABC):
         self.num_wann = self.system.num_wann
         self.Kpoint = Kpoint
         self.nkptot = self.NKFFT[0] * self.NKFFT[1] * self.NKFFT[2]
+        #########
+        # Oscar #
+        #######################################################################
+        self.dEnm_threshold = 1e-5
+        #######################################################################
 
         self.poolmap = pool(self.npar_k)[0]
 
@@ -360,6 +373,161 @@ class _Data_K(System,abc.ABC):
         return 1j * self.D_H
 
 
+    #########
+    # Oscar #
+    ###########################################################################
+    @lazy_property.LazyProperty
+    def kron(self):
+        En   = self.E_K
+        kron = np.zeros((self.nkptot, self.num_wann, self.num_wann), dtype=int)
+        for ik in range(self.nkptot):
+            for iw in range(self.num_wann):
+                for jw in range(self.num_wann):
+                    if abs(En[ik, iw]-En[ik, jw]) < self.dEnm_threshold:
+                        kron[ik, iw, jw] = 1
+        return kron
+
+    @lazy_property.LazyProperty
+    def E1(self):
+        ''' Electric dipole moment '''
+        # Basic covariant matrices in the Hamiltonian gauge
+        A = self.Xbar('AA')
+
+        # Other matrices
+        D = self.D_H
+        kron = self.kron
+
+        # _____ 1. Internal terms _____ #
+        A_int  = 1.j * D
+        Aa_int = kron[:,:,:,None] * A_int # Energy diagonal piece
+        A_int  = A_int - Aa_int           # Energy non-diagonal piece
+
+        # _____ 2. External terms _____ #
+        Aa_ext = kron[:,:,:,None] * A # Energy diagonal piece
+        A_ext  = A - Aa_ext           # Energy non-diagonal piece
+
+        # Final formula
+        A_H = A_int + A_ext
+        return -1 * A_H
+
+    @lazy_property.LazyProperty
+    def M1(self):
+        ''' Magnetic dipole moment '''
+        # Basic covariant matrices in the Hamiltonian gauge
+        H = self.Xbar('Ham')
+        A = self.Xbar('AA')
+        B = self.Xbar('BB')
+        C = self.Xbar('CC')
+        O = self.Xbar('OO')
+
+        # Other matrices
+        D        = self.D_H
+        En       = self.E_K
+        kron     = self.kron
+        Eln_plus = 0.5 * (En[:,:,None] + En[:,None,:])
+
+        # _____ 1. Internal terms _____ #
+        A_int  = 1.j * D
+        Aa_int = kron[:,:,:,None] * A_int # Energy diagonal piece
+        A_int  = A_int - Aa_int           # Energy non-diagonal piece
+
+        Cbc_int = 1.j * np.einsum('klpa,kpm,kmnb->klnab', A_int, H, A_int)
+        C_int   = Cbc_int[:,:,:,alpha_A,beta_A] - Cbc_int[:,:,:,beta_A,alpha_A]
+
+        Obc_int = 1.j * np.einsum('klpa,kpnb->klnab', A_int, A_int)
+        O_int   = Obc_int[:,:,:,alpha_A,beta_A] - Obc_int[:,:,:,beta_A,alpha_A]
+
+        # _____ 2. External terms _____ #
+        Aa_ext = kron[:,:,:,None] * A # Energy diagonal piece
+        A_ext  = A - Aa_ext           # Energy non-diagonal piece
+
+        Cbc_ext  = -1.j * np.einsum('kl,klpa,kpnb->klnab', En, Aa_ext, A_ext)
+        Cbc_ext += -1.j * np.einsum('kn,klpa,kpnb->klnab', En, A_ext, Aa_ext)
+        Cbc_ext -= 1.j * Eln_plus[:,:,:,None,None] * np.einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
+        C_ext    = C + Cbc_ext[:,:,:,alpha_A,beta_A] - Cbc_ext[:,:,:,beta_A,alpha_A]
+
+        Obc_ext  = -1.j * np.einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
+        Obc_ext += -1.j * np.einsum('klpa,kpnb->klnab',  A_ext, Aa_ext)
+        Obc_ext += -1.j * np.einsum('klpa,kpnb->klnab', Aa_ext,  A_ext)
+        O_ext    = O + Obc_ext[:,:,:,alpha_A,beta_A] - Obc_ext[:,:,:,beta_A,alpha_A]
+
+        # _____ 3. Cross terms _____ #
+        Cbc_cross  = np.einsum('klpa,kpnb->klnab', A_int, B)
+        Cbc_cross  = 1.j * ( Cbc_cross - Cbc_cross.swapaxes(1,2).conj() )     
+        Cbc_cross += -1.j * np.einsum('kl,klpa,kpnb->klnab', En, Aa_ext, A_int)
+        Cbc_cross += -1.j * np.einsum('kn,klpa,kpnb->klnab', En, A_int, Aa_ext)
+        C_cross = Cbc_cross[:,:,:,alpha_A,beta_A] - Cbc_cross[:,:,:,beta_A,alpha_A]
+
+        Obc_cross  = 1.j * np.einsum('klpa,kpnb->klnab', A_ext, A_int)
+        Obc_cross += 1.j * np.einsum('klpa,kpnb->klnab', A_int, A_ext)
+        O_cross    = Obc_cross[:,:,:,alpha_A,beta_A] - Obc_cross[:,:,:,beta_A,alpha_A]
+        
+        
+        # Final formula
+        C_H = C_int + C_ext + C_cross
+        O_H = O_int + O_ext + O_cross
+        return -0.5 * ( C_H - Eln_plus[:,:,:,None] * O_H )
+
+    @lazy_property.LazyProperty
+    def E2(self):
+        ''' Electric quadrupole moment '''
+        # Basic covariant matrices in the Hamiltonian gauge
+        A = self.Xbar('AA')
+        G = self.Xbar('GG')
+
+        # Other matrices
+        D    = self.D_H
+        kron = self.kron
+
+        # _____ 1. Internal terms _____ #
+
+        A_int  = 1.j * D
+        Aa_int = kron[:,:,:,None] * A_int # Energy diagonal piece
+        A_int  = A_int - Aa_int           # Energy non-diagonal piece
+
+        Gbc_int = np.einsum('klpa,kpnb->klnab', A_int, A_int)
+        G_int = 0.5 * ( Gbc_int + Gbc_int.swapaxes(3,4) )
+
+        # _____ 2. External terms _____ #
+
+        Aa_ext = kron[:,:,:,None] * A # Energy diagonal piece
+        A_ext  = A - Aa_ext           # Energy non-diagonal piece
+
+        Gbc_ext  = G
+        Gbc_ext += -np.einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
+        Gbc_ext += -np.einsum('klpa,kpnb->klnab',  A_ext, Aa_ext)
+        Gbc_ext += -np.einsum('klpa,kpnb->klnab', Aa_ext,  A_ext)
+        G_ext    = 0.5 * ( Gbc_ext + Gbc_ext.swapaxes(3,4) )
+        
+        # _____ 3. Cross terms _____ #
+
+        Gbc_cross = np.einsum('klpa,kpnb->klnab', A_ext, A_int)
+        Gbc_cross = np.einsum('klpa,kpnb->klnab', A_int, A_ext)
+        G_cross = 0.5 * ( Gbc_cross + Gbc_cross.swapaxes(3,4) )
+
+        # Final formula
+        G_H = G_int + G_ext + G_cross
+        return -1. * G_H
+
+    @lazy_property.LazyProperty
+    def Bln(self):
+        m  = self.M1
+        q  = self.E2
+        En = self.E_K
+        Enm = En[:,:,None] - En[:,None,:]
+
+        B = np.einsum('klna,abc->klnbc', m, LeviCivita)
+        B -= (1.j / 2.) * Enm[:,:,:,None,None] * q
+        return B
+        
+    @lazy_property.LazyProperty
+    def Vn(self):
+        ''' Band velocity '''
+        V_H = self.Xbar('Ham', 1) # (k, m, n, a)
+        return np.diagonal(V_H, axis1=1, axis2=2).transpose(0, 2, 1) # (k, m, a)
+        
+    ###########################################################################
+
 
 #########################################################################################################################################
 
@@ -394,9 +562,9 @@ class Data_K_R(_Data_K):
 
     #########
     # Oscar #
-    ############################################################################################################
-    def get_R_mat(self,key):
-        memoize_R = ['Ham','AA','OO','BB','CC','CCab','FF','FF_tot']
+    ###########################################################################
+    def get_R_mat(self, key):
+        memoize_R = ['Ham', 'AA', 'OO', 'BB', 'CC', 'CCab', 'GG']
         try:
             return self._XX_R[key]
         except KeyError:
@@ -404,19 +572,20 @@ class Data_K_R(_Data_K):
                 res = self._OO_R()
             elif key == 'CCab':
                 res = self._CCab_R()
-            #elif key == 'FF':
-            #    res = self._FF_R()
+            elif key == 'FF':
+                res = self._FF_R()
             elif key == 'T_wcc':
                 res = self._T_wcc_R()
             else:
                 X_R = self.system.get_R_mat(key)
                 shape = [1]*X_R.ndim
-                shape[2]=self.expdK.shape[0]
-                res = X_R* self.expdK.reshape(shape)
+                shape[2] = self.expdK.shape[0]
+                res = X_R * self.expdK.reshape(shape)
             if key in memoize_R:
-                self.set_R_mat(key,res)
+                self.set_R_mat(key, res)
         return res
-    ############################################################################################################
+    ###########################################################################
+
 
 
     #  this is a bit ovberhead, but to maintain uniformity of the code let's use this
@@ -445,7 +614,7 @@ class Data_K_R(_Data_K):
         if self._FF_antisym:
             return self.cRvec_wcc[:, :, :, :, None] * self.get_R_mat('AA')[:, :, :, None, :]
         else:
-            return self.system.get_R_mat('FF_tot') * self.expdK[None, None, :, None, None]
+            return self.system.get_R_mat('FF') * self.expdK[None, None, :, None, None]
 
     def Xbar(self, name, der=0):
         key = (name, der)
