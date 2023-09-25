@@ -14,7 +14,7 @@
 import numpy as np
 import lazy_property
 from .sym_wann import SymWann
-from ..__utility import alpha_A, beta_A, iterate3dpm
+from ..__utility import iterate3dpm, alpha_A, beta_A
 from ..symmetry import Symmetry, Group, TimeReversal
 from termcolor import cprint
 import functools
@@ -31,12 +31,12 @@ class System():
         'spin': False,
         'SHCryoo': False,
         'SHCqiao': False,
-        #########        
+        #########
         # Oscar #
-        ############################################################################################################
+        #######################################################################
         'OSD': False,
         'transl_inv_JM': False,
-        ############################################################################################################
+        #######################################################################
         'use_ws': True,
         'mp_grid': None,
         'periodic': (True, True, True),
@@ -135,10 +135,10 @@ class System():
             self.needed_R_matrices.update(['AA','SS','SR','SH','SHR'])
         #########
         # Oscar #
-        ############################################################################################################
+        #######################################################################
         if self.OSD :
-            self.needed_R_matrices.update(['AA','BB','CC','FF','FF_tot','OO'])
-        ############################################################################################################
+            self.needed_R_matrices.update(['AA', 'BB', 'CC', 'GG'])
+        #######################################################################
 
         self._XX_R = dict()
 
@@ -504,40 +504,40 @@ class System():
         elif hasattr(self, "wannier_centers_cart_auto"):
             self.wannier_centers_cart = self.wannier_centers_cart_auto
             self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
-        if self.use_wcc_phase:
+        if (self.use_wcc_phase and not self.transl_inv_JM):
             R_new = {}
             if self.wannier_centers_cart is None:
                 raise ValueError("use_wcc_phase = True, but the wannier centers could not be determined")
-            #if self.has_R_mat('AA'):
-            #    AA_R_new = np.copy(self.get_R_mat('AA'))
-            #    AA_R_new[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] -= self.wannier_centers_cart
-            #    R_new['AA']=AA_R_new
-            #if self.has_R_mat('BB'):
-            #    print("WARNING: orbital moment does not work with wcc_phase so far")
-            #    BB_R_new = self.get_R_mat('BB').copy() - self.get_R_mat('Ham')[:, :, :, None] * self.wannier_centers_cart[None, :, None, :]
-            #    R_new['BB']=BB_R_new
-            #if self.has_R_mat('CC'):
-            #    print("WARNING: orbital moment does not work with wcc_phase so far")
-            #    norm = np.linalg.norm(self.get_R_mat('CC') - self.conj_XX_R('CC'))
-            #    assert norm < 1e-10, f"CC_R is not Hermitian, norm={norm}"
-            #    assert self.has_R_mat('BB'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
-            #    T = self.wannier_centers_cart[:, None, None, :, None] * self.get_R_mat('BB')[:, :, :, None, :]
-            #    CC_R_new = self.get_R_mat('CC').copy() + 1.j * sum(
-            #        s * (
-            #            -T[:, :, :, a, b]  # -t_i^a * B_{ij}^b(R)
-            #            - self.conj_XX_R(T[:, :, :, b, a])  # - B_{ji}^a(-R)^*  * t_j^b
-            #            + self.wannier_centers_cart[:, None, None, a] * self.Ham_R[:, :, :, None]
-            #            * self.wannier_centers_cart[None, :, None, b]  # + t_i^a*H_ij(R)t_j^b
-            #        ) for (s, a, b) in [(+1, alpha_A, beta_A), (-1, beta_A, alpha_A)])
-            #    norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
-            #    assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
-            #    R_new['CC']=CC_R_new
-            #if self.has_R_mat_any(['SA','SHA','SR','SH','SHR']):
-            #    raise NotImplementedError("use_wcc_phase=True for spin current matrix elements not implemented")
+            if self.has_R_mat('AA'):
+                AA_R_new = np.copy(self.get_R_mat('AA'))
+                AA_R_new[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] -= self.wannier_centers_cart
+                R_new['AA']=AA_R_new
+            if self.has_R_mat('BB'):
+                print("WARNING: orbital moment does not work with wcc_phase so far")
+                BB_R_new = self.get_R_mat('BB').copy() - self.get_R_mat('Ham')[:, :, :, None] * self.wannier_centers_cart[None, :, None, :]
+                R_new['BB']=BB_R_new
+            if self.has_R_mat('CC'):
+                print("WARNING: orbital moment does not work with wcc_phase so far")
+                norm = np.linalg.norm(self.get_R_mat('CC') - self.conj_XX_R('CC'))
+                assert norm < 1e-10, f"CC_R is not Hermitian, norm={norm}"
+                assert self.has_R_mat('BB'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
+                T = self.wannier_centers_cart[:, None, None, :, None] * self.get_R_mat('BB')[:, :, :, None, :]
+                CC_R_new = self.get_R_mat('CC').copy() + 1.j * sum(
+                    s * (
+                        -T[:, :, :, a, b]  # -t_i^a * B_{ij}^b(R)
+                        - self.conj_XX_R(T[:, :, :, b, a])  # - B_{ji}^a(-R)^*  * t_j^b
+                        + self.wannier_centers_cart[:, None, None, a] * self.Ham_R[:, :, :, None]
+                        * self.wannier_centers_cart[None, :, None, b]  # + t_i^a*H_ij(R)t_j^b
+                    ) for (s, a, b) in [(+1, alpha_A, beta_A), (-1, beta_A, alpha_A)])
+                norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
+                assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
+                R_new['CC']=CC_R_new
+            if self.has_R_mat_any(['SA','SHA','SR','SH','SHR']):
+                raise NotImplementedError("use_wcc_phase=True for spin current matrix elements not implemented")
 
-            #for X in ['AA', 'BB', 'CC']:
-            #    if self.has_R_mat( X ):
-            #        self.set_R_mat(X, R_new[X], reset=True)
+            for X in ['AA', 'BB', 'CC']:
+                if self.has_R_mat( X ):
+                    self.set_R_mat(X, R_new[X], reset=True)
 
     @property
     def iR0(self):
