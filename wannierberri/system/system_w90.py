@@ -53,13 +53,7 @@ class System_w90(System):
     def __init__(
             self,
             seedname="wannier90",
-            #############
-            ### Oscar ###
-            #######################################
-            # Translationally-invariant approaches for real-space matrix elements
-            transl_inv=True,      # Marzari & Vanderbilt formula for band-diagonal matrix elements of A
-            transl_inv_JM=False,  # Jae-Mo's scheme
-            #######################################
+            transl_inv=True,      
             guiding_centers=False,
             fft='fftw',
             npar=multiprocessing.cpu_count(),
@@ -80,20 +74,24 @@ class System_w90(System):
         self.num_wann = chk.num_wann
         self.wannier_centers_cart_auto = chk.wannier_centers
 
-        #############
-        ### Oscar ###
-        #######################################
+        #########
+        # Oscar #
+        #######################################################################
+
+        # Deactivate transl_inv if Jae-Mo's scheme is used
+        if self.transl_inv_JM:
+            transl_inv = False
 
         # Necessary ab initio matrices
         eig = EIG(seedname)
-        if self.need_R_any(['AA','BB']):
+        if self.need_R_any(['AA', 'BB']):
             mmn = MMN(seedname, npar=npar)
         if self.need_R_any(['CC']):
             uhu = UHU(seedname)
-        if self.need_R_any(['CC','FF','FF_tot']):
+        if self.need_R_any(['GG']):
             uiu = UIU(seedname)
 
-        #######################################
+        #######################################################################
 
         kpt_mp_grid = [
             tuple(k) for k in np.array(np.round(chk.kpt_latt * np.array(chk.mp_grid)[None, :]), dtype=int) % chk.mp_grid
@@ -116,7 +114,8 @@ class System_w90(System):
         # Oscar #
         ############################################################################################################
 
-        centers=chk.wannier_centers
+        centers = chk.wannier_centers
+        transl_inv_JM = self.transl_inv_JM
 
         # H(R) matrix
         timeFFT = 0
@@ -143,7 +142,7 @@ class System_w90(System):
                 self.NNB = mmn.NNB
                 self.bk_latt_unique = bk_latt_unique
 
-            self.set_R_mat('AA',AA_R)
+            self.set_R_mat('AA', AA_R)
 
             # Using Marzari & Vanderbilt formula
             if transl_inv:
@@ -182,7 +181,7 @@ class System_w90(System):
                 self.NNB = mmn.NNB
                 self.bk_latt_unique = bk_latt_unique
 
-            self.set_R_mat('BB',BB_R)
+            self.set_R_mat('BB', BB_R)
 
         # C_a(R) matrix
         if 'CC' in self.needed_R_matrices:
@@ -190,10 +189,10 @@ class System_w90(System):
             t0 = time()
             CC_Rb = fourier_q_to_R_loc(CC_qb)
             timeFFT += time() - t0
-            
+
             # Naive finite-difference scheme
             if not transl_inv_JM:
-                CC_R = np.sum(CC_Rb, axis=(3,4))
+                CC_R = np.sum(CC_Rb, axis=(3, 4))
 
             # Following Jae-Mo's scheme, keep b-resolved real-space matrix and sum after ws_dist is used
             if transl_inv_JM:
@@ -203,43 +202,24 @@ class System_w90(System):
 
             self.set_R_mat('CC', CC_R)
 
-        # F_a(R) matrix
-        if 'FF' in self.needed_R_matrices:
-            FF_qb, b1k_latt_unique, b2k_latt_unique = chk.get_FF_qb(mmn, uiu, centers=centers, transl_inv_JM=transl_inv_JM)
+        # G_bc(R) matrix
+        if 'GG' in self.needed_R_matrices:
+            GG_qb, b1k_latt_unique, b2k_latt_unique = chk.get_GG_qb(mmn, uiu, centers=centers, transl_inv_JM=transl_inv_JM)
             t0 = time()
-            FF_Rb = fourier_q_to_R_loc(FF_qb)
+            GG_Rb = fourier_q_to_R_loc(GG_qb)
             timeFFT += time() - t0
 
             # Naive finite-difference scheme
             if not transl_inv_JM:
-                FF_R = np.sum(FF_Rb, axis=(3,4))
+                GG_R = np.sum(GG_Rb, axis=(3, 4))
 
             # Following Jae-Mo's scheme, keep b-resolved real-space matrix and sum after ws_dist is used
             if transl_inv_JM:
-                FF_R = FF_Rb
+                GG_R = GG_Rb
                 self.NNB = mmn.NNB
                 self.bk_latt_unique = bk_latt_unique
 
-            self.set_R_mat('FF', FF_R)
-
-        # F_bc(R) matrix
-        if 'FF_tot' in self.needed_R_matrices:
-            FF_qb, b1k_latt_unique, b2k_latt_unique = chk.get_FF_qb_tot(mmn, uiu, centers=centers, transl_inv_JM=transl_inv_JM)
-            t0 = time()
-            FF_Rb = fourier_q_to_R_loc(FF_qb)
-            timeFFT += time() - t0
-
-            # Naive finite-difference scheme
-            if not transl_inv_JM:
-                FF_R = np.sum(FF_Rb, axis=(3,4))
-
-            # Following Jae-Mo's scheme, keep b-resolved real-space matrix and sum after ws_dist is used
-            if transl_inv_JM:
-                FF_R = FF_Rb
-                self.NNB = mmn.NNB
-                self.bk_latt_unique = bk_latt_unique
-
-            self.set_R_mat('FF_tot', FF_R)
+            self.set_R_mat('GG', GG_R)
 
         try:
             del uhu
@@ -250,10 +230,9 @@ class System_w90(System):
             del uiu
         except NameError:
             pass
-        
-        ############################################################################################################
-            
-            
+
+        #######################################################################
+
         if self.need_R_any(['SS', 'SR', 'SH', 'SHR']):
             spn = SPN(seedname)
 
@@ -294,7 +273,7 @@ class System_w90(System):
 
         #########
         # Oscar #
-        ############################################################################################################
+        #######################################################################
 
         # Perform the b-sums after the ws_dist is applied for Jae-Mo's scheme, adding the phase factors and the recentered matrices
         if transl_inv_JM:
@@ -302,19 +281,18 @@ class System_w90(System):
             print("Completing real-space matrix elements obtained from Jae-Mo's approach...")
 
             # Basic quantities to simplify notation
-            num_wann       = self.num_wann                      # Number of Wannier functions
-            wc_cart        = self.wannier_centers_cart          # Wannier centers in cartesian coordinates
-            wc_red         = self.wannier_centers_reduced       # Wannier centers in reduced coordinates
-            nRvec          = self.nRvec                         # Number of R vectors after ws_dist
-            iRvec          = self.iRvec                         # List of R vector indices after ws_dist
-            cRvec          = self.cRvec                         # List of R vector cartesian coordinates after ws_dist
-            NNB            = self.NNB                           # Number of nearest-neighbor b vectors
-            bk_latt_unique = self.bk_latt_unique                # List of nearest-neighbor b vectors
-            
+            num_wann = self.num_wann                  # Number of Wannier functions
+            wc_cart = self.wannier_centers_cart       # Wannier centers in cartesian coordinates
+            nRvec = self.nRvec                        # Number of R vectors after ws_dist
+            iRvec = self.iRvec                        # List of R vector indices after ws_dist
+            cRvec = self.cRvec                        # List of R vector cartesian coordinates after ws_dist
+            NNB = self.NNB                            # Number of nearest-neighbor b vectors
+            bk_latt_unique = self.bk_latt_unique      # List of nearest-neighbor b vectors
+
             # A_a(R) matrix
-            AA_R  = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
+            AA_R = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
             AA_Rb = self.get_R_mat('AA')
-            
+
             for iw in range(num_wann):
                 for jw in range(num_wann):
                     for iR in range(nRvec):
@@ -322,42 +300,37 @@ class System_w90(System):
                             phase = np.exp(-2.j * np.pi * np.dot(bk_latt_unique[ib, :], iRvec[iR, :]) / 2)
                             AA_R[iw, jw, iR] += AA_Rb[iw, jw, iR, ib] * phase
 
-            self.set_R_mat('AA',AA_R,reset=True)
+            self.set_R_mat('AA', AA_R, reset=True)
 
-            # O_a(R) matrix (Berry curvature)
-            r_c  = wc_cart[:, None, None, :] - wc_cart[None, :, None, :] - cRvec[None, None, :, :]
-            OO_R = 1.j * (AA_R[:, :, :, alpha_A] * r_c[:, :, :, beta_A] - AA_R[:, :, :, beta_A] * r_c[:, :, :, alpha_A])
-            self.set_R_mat('OO',OO_R)
-        
             # B_a(R) matrix
-            BB_R  = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
+            BB_R = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
             BB_Rb = self.get_R_mat('BB')
-        
-            BB_R_rc = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex) # Recentered B_a(R) matrix
+
+            BB_R_rc = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)  # Recentered B_a(R) matrix
             for iw in range(num_wann):
                 for jw in range(num_wann):
                     for iR in range(nRvec):
                         for ib in range(NNB):
                             phase = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib, :], iRvec[iR, :]) / 2)
                             BB_R_rc[iw, jw, iR, :] += BB_Rb[iw, jw, iR, ib, :] * phase
-                        
-            HH_R = self.get_R_mat('Ham') # Hamiltonian matrix in the new real-space mesh
-            for iw in range(num_wann):   # Matrices relating recentered B_a(R) matrix to original B_a(R) matrix
+
+            HH_R = self.get_R_mat('Ham')  # Hamiltonian matrix in the new real-space mesh
+            for iw in range(num_wann):    # Matrices relating recentered B_a(R) matrix to original B_a(R) matrix
                 for jw in range(num_wann):
                     for iR in range(nRvec):
-                        rc = cRvec[iR,:] + wc_cart[jw,:] - wc_cart[iw,:]
-                    
-                        rc_to_H = -0.5 * rc * HH_R[iw,jw,iR]
-                    
-                        BB_R[iw,jw,iR] = BB_R_rc[iw,jw,iR] + rc_to_H 
-                        
-            self.set_R_mat('BB',BB_R,reset=True)
+                        rc = cRvec[iR, :] + wc_cart[jw, :] - wc_cart[iw, :]
+
+                        rc_to_H = -0.5 * rc * HH_R[iw, jw, iR]
+
+                        BB_R[iw, jw, iR] = BB_R_rc[iw, jw, iR] + rc_to_H
+
+            self.set_R_mat('BB', BB_R, reset=True)
 
             # C_a(R) matrix
-            CC_R  = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
+            CC_R = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
             CC_Rb = self.get_R_mat('CC')
-        
-            CC_R_rc = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex) # Recentered C_a(R) matrix
+
+            CC_R_rc = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)  # Recentered C_a(R) matrix
             for iw in range(num_wann):
                 for jw in range(num_wann):
                     for iR in range(nRvec):
@@ -366,8 +339,8 @@ class System_w90(System):
                                 phase_b1 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib1, :], iRvec[iR, :]) / 2)
                                 phase_b2 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib2, :], iRvec[iR, :]) / 2)
                                 CC_R_rc[iw, jw, iR, :] += CC_Rb[iw, jw, iR, ib1, ib2, :] * phase_b1 * phase_b2
-                 
-            HH_R = self.get_R_mat('Ham') # Matrices relating recentered C_a(R) matrix to original C_a(R) matrix
+
+            HH_R = self.get_R_mat('Ham')  # Matrices relating recentered C_a(R) matrix to original C_a(R) matrix
             for iw in range(num_wann):
                 for jw in range(num_wann):
                     for iR in range(nRvec):
@@ -375,79 +348,49 @@ class System_w90(System):
                         for jR in range(nRvec):
                             if all(iRvec[iR] == -iRvec[jR]):
                                 iRinv = jR
-                            
-                        rc_1 = cRvec[iR,:] + wc_cart[jw,:] - wc_cart[iw,:]
-                        rc_2 = (wc_cart[jw,:,None] - wc_cart[iw,:,None]) * cRvec[iR,None,:]
-                    
-                        rc_to_H  = 0.5j * rc_1[alpha_A] * ( BB_R_rc[iw,jw,iR, beta_A] + BB_R_rc[jw,iw,iRinv, beta_A].conj() )
-                        rc_to_H -= 0.5j * rc_1[ beta_A] * ( BB_R_rc[iw,jw,iR,alpha_A] + BB_R_rc[jw,iw,iRinv,alpha_A].conj() )
-                        rc_to_H += 0.5j * rc_2[alpha_A, beta_A] * HH_R[iw,jw,iR]
-                        rc_to_H -= 0.5j * rc_2[ beta_A,alpha_A] * HH_R[iw,jw,iR]
 
-                        CC_R[iw,jw,iR] = CC_R_rc[iw,jw,iR] + rc_to_H
-                
-            self.set_R_mat('CC',CC_R,reset=True)
-        
-            # F_a(R) matrix
-            FF_R  = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
-            FF_Rb = self.get_R_mat('FF')
+                        rc_1 = cRvec[iR, :] + wc_cart[jw, :] - wc_cart[iw, :]
+                        rc_2 = (wc_cart[jw, :, None] - wc_cart[iw, :, None]) * cRvec[iR, None, :]
 
-            FF_R_rc = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex) # Recentered F_a(R) matrix
+                        rc_to_H = 0.5j * rc_1[alpha_A] * (BB_R_rc[iw, jw, iR, beta_A] + BB_R_rc[jw, iw, iRinv, beta_A].conj())
+                        rc_to_H -= 0.5j * rc_1[beta_A] * (BB_R_rc[iw, jw, iR, alpha_A] + BB_R_rc[jw, iw, iRinv, alpha_A].conj())
+                        rc_to_H += 0.5j * rc_2[alpha_A, beta_A] * HH_R[iw, jw, iR]
+                        rc_to_H -= 0.5j * rc_2[beta_A, alpha_A] * HH_R[iw, jw, iR]
+
+                        CC_R[iw, jw, iR] = CC_R_rc[iw, jw, iR] + rc_to_H
+
+            self.set_R_mat('CC', CC_R, reset=True)
+
+            # G_bc(R) matrix
+            GG_R = np.zeros((num_wann, num_wann, nRvec, 3, 3), dtype=complex)
+            GG_Rb = self.get_R_mat('GG')
+
+            GG_R_rc = np.zeros((num_wann, num_wann, nRvec, 3, 3), dtype=complex)  # Recentered F_bc(R) matrix
             for iw in range(num_wann):
                 for jw in range(num_wann):
                     for iR in range(nRvec):
                         for ib1 in range(NNB):
                             for ib2 in range(NNB):
-                                phase_b1 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib1,:],iRvec[iR,:]) / 2)
-                                phase_b2 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib2,:],iRvec[iR,:]) / 2)
-                                FF_R_rc[iw, jw, iR, :] += FF_Rb[iw, jw, iR, ib1, ib2, :] * phase_b1 * phase_b2
+                                phase_b1 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib1, :],iRvec[iR, :]) / 2)
+                                phase_b2 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib2, :],iRvec[iR, :]) / 2)
+                                GG_R_rc[iw, jw, iR, :, :] += GG_Rb[iw, jw, iR, ib1, ib2, :, :] * phase_b1 * phase_b2
 
-            # Matrices relating recentered F_a(R) matrix to original F_a(R) matrix
-            for iw in range(num_wann):
-                for jw in range(num_wann):
-                    for iR in range(nRvec):
-                        rc = cRvec[iR,:] + wc_cart[jw,:] - wc_cart[iw,:]
-                    
-                        rc_to_H  = -0.5 * AA_R[iw,jw,iR,alpha_A] * rc[ beta_A]
-                        rc_to_H +=  0.5 * AA_R[iw,jw,iR, beta_A] * rc[alpha_A]
-                        rc_to_H +=  0.5 * rc[alpha_A] * AA_R[iw,jw,iR, beta_A]
-                        rc_to_H += -0.5 * rc[ beta_A] * AA_R[iw,jw,iR,alpha_A]
-                    
-                        FF_R[iw,jw,iR] = FF_R_rc[iw,jw,iR] + rc_to_H
-        
-            self.set_R_mat('FF',FF_R,reset=True)
-
-            # F_bc(R) matrix
-            FF_tot_R  = np.zeros((num_wann, num_wann, nRvec, 3, 3), dtype=complex)
-            FF_tot_Rb = self.get_R_mat('FF_tot')
-
-            FF_tot_R_rc = np.zeros((num_wann, num_wann, nRvec, 3, 3), dtype=complex) # Recentered F_bc(R) matrix
-            for iw in range(num_wann):
-                for jw in range(num_wann):
-                    for iR in range(nRvec):
-                        for ib1 in range(NNB):
-                            for ib2 in range(NNB):
-                                phase_b1 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib1,:],iRvec[iR,:]) / 2)
-                                phase_b2 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib2,:],iRvec[iR,:]) / 2)
-                                FF_tot_R_rc[iw, jw, iR, :, :] += FF_tot_Rb[iw, jw, iR, ib1, ib2, :, :] * phase_b1 * phase_b2
-                        
             # Matrices relating recentered F_bc(R) matrix to original F_bc(R) matrix
-            #AA_R = self.get_R_mat('AA')
             for iw in range(num_wann):
                 for jw in range(num_wann):
                     for iR in range(nRvec):
-                        rc = cRvec[iR,:] + wc_cart[jw,:] - wc_cart[iw,:]
-                    
-                        rc_to_H  = -0.5 * AA_R[iw,jw,iR,:,None] * rc[None,:]
-                        rc_to_H +=  0.5 * rc[:,None] * AA_R[iw,jw,iR,None,:]
-                    
-                        FF_tot_R[iw,jw,iR] = FF_tot_R_rc[iw,jw,iR] + rc_to_H
-        
-            self.set_R_mat('FF_tot',FF_tot_R,reset=True)
+                        rc = cRvec[iR, :] + wc_cart[jw, :] - wc_cart[iw, :]
+
+                        rc_to_H = -0.5 * AA_R[iw, jw, iR, :, None] * rc[None, :]
+                        rc_to_H += 0.5 * rc[:, None] * AA_R[iw, jw, iR, None, :]
+
+                        GG_R[iw, jw, iR] = GG_R_rc[iw, jw, iR] + rc_to_H
+
+            self.set_R_mat('GG', GG_R, reset=True)
 
             print(time()-t0)
-            
-        ############################################################################################################
+
+    ###########################################################################
 
     def wigner_seitz(self, mp_grid):
         ws_search_size = np.array([1] * 3)

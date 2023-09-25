@@ -105,7 +105,7 @@ class CheckPoint():
 
     #########
     # Oscar #
-    ############################################################################################################
+    ###########################################################################
 
     # A_a(q,b) matrix
     def get_AA_qb(self, mmn, centers=None, transl_inv=False, transl_inv_JM=False):
@@ -117,7 +117,7 @@ class CheckPoint():
         bk_cart_unique = (bk_latt_unique / self.mp_grid[None, :]) @ self.recip_lattice
         assert bk_latt_unique.shape == (mmn.NNB, 3)
         bk_latt_unique = [tuple(b) for b in bk_latt_unique]
-        
+
         AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
@@ -131,18 +131,18 @@ class CheckPoint():
                 # Marzari & Vanderbilt formula for band-diagonal matrix elements
                 if transl_inv:
                     AA_q_ik_ib[range(self.num_wann), range(self.num_wann)] = -np.log(
-                        AAW.diagonal()).imag[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, :] 
+                        AAW.diagonal()).imag[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, :]
 
                 # Jae-Mo's scheme
                 if transl_inv_JM:
                     for iw in range(self.num_wann):
                         for jw in range(self.num_wann):
-                            AA_q_ik_ib[iw, jw, :] *= np.exp(1j * np.dot(mmn.bk_cart[ik, ib, :], (centers[iw, :] + centers[jw, :])/2 ))             
+                            AA_q_ik_ib[iw, jw, :] *= np.exp(1j * np.dot(mmn.bk_cart[ik, ib, :], (centers[iw, :] + centers[jw, :])/2))
 
                 # Find unique b index
                 b_latt = np.rint((mmn.bk_cart[ik, ib, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
                 ib_unique = bk_latt_unique.index(tuple(b_latt))
-                assert np.allclose(bk_cart_unique[ib_unique, :], mmn.bk_cart[ik, ib, :])                
+                assert np.allclose(bk_cart_unique[ib_unique, :], mmn.bk_cart[ik, ib, :])
 
                 AA_qb[ik, :, :, ib_unique, :] = AA_q_ik_ib
 
@@ -161,28 +161,28 @@ class CheckPoint():
         bk_cart_unique = (bk_latt_unique / self.mp_grid[None, :]) @ self.recip_lattice
         assert bk_latt_unique.shape == (mmn.NNB, 3)
         bk_latt_unique = [tuple(b) for b in bk_latt_unique]
-        
+
         BB_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
                 data = mmn.data[ik, ib]
-                data = data * eig.data[ik, :, None] # < u_k | H_k | u_k+b > 
-                BBW  = self.wannier_gauge(data, ik, iknb)
+                data = data * eig.data[ik, :, None]  # < u_k | H_k | u_k+b >
+                BBW = self.wannier_gauge(data, ik, iknb)
 
                 # Naive finite-difference scheme following phase convention II
-                BB_q_ik_ib = 1j * BBW[:,:,None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]   
-                    
+                BB_q_ik_ib = 1j * BBW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+
                 # Jae-Mo's scheme
                 if transl_inv_JM:
                     for iw in range(self.num_wann):
                         for jw in range(self.num_wann):
-                            BB_q_ik_ib[iw, jw, :] *= np.exp(1j * np.dot(mmn.bk_cart[ik, ib, :], (centers[iw,:] + centers[jw,:])/2 ))
+                            BB_q_ik_ib[iw, jw, :] *= np.exp(1j * np.dot(mmn.bk_cart[ik, ib, :], (centers[iw, :] + centers[jw, :])/2))
 
                 # Find unique b index
                 b_latt = np.rint((mmn.bk_cart[ik, ib, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
                 ib_unique = bk_latt_unique.index(tuple(b_latt))
-                assert np.allclose(bk_cart_unique[ib_unique, :], mmn.bk_cart[ik, ib, :])                
+                assert np.allclose(bk_cart_unique[ib_unique, :], mmn.bk_cart[ik, ib, :])
 
                 BB_qb[ik, :, :, ib_unique, :] = BB_q_ik_ib
 
@@ -208,14 +208,14 @@ class CheckPoint():
         b2k_cart_unique = (b2k_latt_unique / self.mp_grid[None, :]) @ self.recip_lattice
         assert b2k_latt_unique.shape == (mmn.NNB, 3)
         b2k_latt_unique = [tuple(b2) for b2 in b2k_latt_unique]
-        
+
         CC_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib1 in range(mmn.NNB):
                 iknb1 = mmn.neighbours[ik, ib1]
                 for ib2 in range(mmn.NNB):
                     iknb2 = mmn.neighbours[ik, ib2]
-                    data = uhu.data[ik, ib1, ib2] # < u_k+b1 | H_k | u_k+b2 > 
+                    data = uhu.data[ik, ib1, ib2]  # < u_k+b1 | H_k | u_k+b2 >
 
                     # Naive finite-difference scheme following phase convention II
                     CC_q_ik_ib = 1.j * self.wannier_gauge(data, iknb1, iknb2)[:, :, None] * (
@@ -227,19 +227,19 @@ class CheckPoint():
                     if transl_inv_JM:
                         for iw in range(self.num_wann):
                             for jw in range(self.num_wann):
-                                CC_q_ik_ib[iw, jw, :] *= np.exp(-1j * np.dot(mmn.bk_cart[ik, ib1, :], (centers[iw,:]+centers[jw,:])/2 ))
-                                CC_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib2, :], (centers[iw,:]+centers[jw,:])/2 ))
+                                CC_q_ik_ib[iw, jw, :] *= np.exp(-1j * np.dot(mmn.bk_cart[ik, ib1, :], (centers[iw, :]+centers[jw, :])/2))
+                                CC_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib2, :], (centers[iw, :]+centers[jw, :])/2))
 
                     # Find unique b1 index
                     b1_latt = np.rint((mmn.bk_cart[ik, ib1, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
                     ib1_unique = b1k_latt_unique.index(tuple(b1_latt))
-                    assert np.allclose(b1k_cart_unique[ib1_unique, :], mmn.bk_cart[ik, ib1, :])  
+                    assert np.allclose(b1k_cart_unique[ib1_unique, :], mmn.bk_cart[ik, ib1, :])
 
                     # Find unique b2 index
                     b2_latt = np.rint((mmn.bk_cart[ik, ib2, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
                     ib2_unique = b2k_latt_unique.index(tuple(b2_latt))
-                    assert np.allclose(b2k_cart_unique[ib2_unique, :], mmn.bk_cart[ik, ib2, :])  
-                    
+                    assert np.allclose(b2k_cart_unique[ib2_unique, :], mmn.bk_cart[ik, ib2, :])
+
                     CC_qb[ik, :, :, ib1_unique, ib2_unique, :] = CC_q_ik_ib
 
         # Only Jae-Mo's scheme preserves hermiticity, but it can be enforced
@@ -248,8 +248,8 @@ class CheckPoint():
 
         return CC_qb, np.array(b1k_latt_unique) / self.mp_grid[None, :], np.array(b2k_latt_unique) / self.mp_grid[None, :]
 
-    # Anti-symmetric F_a(q,b) matrix
-    def get_FF_qb(self, mmn, uiu, centers=None, transl_inv_JM=False):
+    # Symmetric G_bc(q,b) matrix
+    def get_GG_qb(self, mmn, uiu, centers=None, transl_inv_JM=False):
         mmn.set_bk_chk(self)
         assert uiu.NNB == mmn.NNB
 
@@ -267,74 +267,16 @@ class CheckPoint():
         assert b2k_latt_unique.shape == (mmn.NNB, 3)
         b2k_latt_unique = [tuple(b2) for b2 in b2k_latt_unique]
 
-        FF_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
+        GG_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib1 in range(mmn.NNB):
                 iknb1 = mmn.neighbours[ik, ib1]
                 for ib2 in range(mmn.NNB):
                     iknb2 = mmn.neighbours[ik, ib2]
-                    data = uiu.data[ik, ib1, ib2] # < u_k+b1 | I | u_k+b2 > 
+                    data = uiu.data[ik, ib1, ib2]  # < u_k+b1 | I | u_k+b2 >
 
                     # Naive finite-difference scheme following phase convention II
-                    FF_q_ik_ib = self.wannier_gauge(data, iknb1, iknb2)[:, :, None] * (
-                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                            mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
-                            - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
-
-                    # Jae-Mo's scheme
-                    if transl_inv_JM:
-                        for iw in range(self.num_wann):
-                            for jw in range(self.num_wann):
-                                FF_q_ik_ib[iw, jw, :] *= np.exp(-1j * np.dot(mmn.bk_cart[ik, ib1, :], (centers[iw,:]+centers[jw,:])/2 ))
-                                FF_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib2, :], (centers[iw,:]+centers[jw,:])/2 ))
-
-                    # Find unique b1 index
-                    b1_latt = np.rint((mmn.bk_cart[ik, ib1, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
-                    ib1_unique = b1k_latt_unique.index(tuple(b1_latt))
-                    assert np.allclose(b1k_cart_unique[ib1_unique, :], mmn.bk_cart[ik, ib1, :])   
-
-                    # Find unique b2 index
-                    b2_latt = np.rint((mmn.bk_cart[ik, ib2, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
-                    ib2_unique = b2k_latt_unique.index(tuple(b2_latt))
-                    assert np.allclose(b2k_cart_unique[ib2_unique, :], mmn.bk_cart[ik, ib2, :]) 
-
-                    FF_qb[ik, :, :, ib1_unique, ib2_unique, :] = FF_q_ik_ib
-
-        # Only Jae-Mo's scheme preserves hermiticity, but it can be enforced
-        if not transl_inv_JM:
-            FF_qb = 0.5 * (FF_qb - FF_qb.transpose((0, 2, 1, 3, 4, 5)).conj())
-
-        return FF_qb, np.array(b1k_latt_unique) / self.mp_grid[None, :], np.array(b2k_latt_unique) / self.mp_grid[None, :]
-
-    # Full F_bc(q,b) matrix
-    def get_FF_qb_tot(self, mmn, uiu, centers=None, transl_inv_JM=False):
-        mmn.set_bk_chk(self)
-        assert uiu.NNB == mmn.NNB
-
-        # Unify the b1 vector indices
-        b1k_latt = np.rint((mmn.bk_cart @ np.linalg.inv(self.recip_lattice)) * self.mp_grid[None, None, :]).astype(int)
-        b1k_latt_unique = np.unique(b1k_latt.reshape(-1, 3), axis=0)
-        b1k_cart_unique = (b1k_latt_unique / self.mp_grid[None, :]) @ self.recip_lattice
-        assert b1k_latt_unique.shape == (mmn.NNB, 3)
-        b1k_latt_unique = [tuple(b1) for b1 in b1k_latt_unique]
-
-        # Unify the b2 vector indices
-        b2k_latt = np.rint((mmn.bk_cart @ np.linalg.inv(self.recip_lattice)) * self.mp_grid[None, None, :]).astype(int)
-        b2k_latt_unique = np.unique(b2k_latt.reshape(-1, 3), axis=0)
-        b2k_cart_unique = (b2k_latt_unique / self.mp_grid[None, :]) @ self.recip_lattice
-        assert b2k_latt_unique.shape == (mmn.NNB, 3)
-        b2k_latt_unique = [tuple(b2) for b2 in b2k_latt_unique]
-
-        FF_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3, 3), dtype=complex)
-        for ik in range(self.num_kpts):
-            for ib1 in range(mmn.NNB):
-                iknb1 = mmn.neighbours[ik, ib1]
-                for ib2 in range(mmn.NNB):
-                    iknb2 = mmn.neighbours[ik, ib2]
-                    data = uiu.data[ik, ib1, ib2] # < u_k+b1 | I | u_k+b2 > 
-
-                    # Naive finite-difference scheme following phase convention II
-                    FF_q_ik_ib = self.wannier_gauge(data, iknb1, iknb2)[:, :, None, None] * (
+                    GG_q_ik_ib = self.wannier_gauge(data, iknb1, iknb2)[:, :, None, None] * (
                         mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
                             mmn.bk_cart[ik, ib1, :, None] * mmn.bk_cart[ik, ib2, None, :]))[None, None, :, :]
 
@@ -342,28 +284,31 @@ class CheckPoint():
                     if transl_inv_JM:
                         for iw in range(self.num_wann):
                             for jw in range(self.num_wann):
-                                FF_q_ik_ib[iw, jw, :] *= np.exp(-1j * np.dot(mmn.bk_cart[ik, ib1, :], (centers[iw,:]+centers[jw,:])/2 ))
-                                FF_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib2, :], (centers[iw,:]+centers[jw,:])/2 ))
+                                GG_q_ik_ib[iw, jw, :] *= np.exp(-1j * np.dot(mmn.bk_cart[ik, ib1, :], (centers[iw, :]+centers[jw, :])/2))
+                                GG_q_ik_ib[iw, jw, :] *= np.exp( 1j * np.dot(mmn.bk_cart[ik, ib2, :], (centers[iw, :]+centers[jw, :])/2))
 
                     # Find unique b1 index
                     b1_latt = np.rint((mmn.bk_cart[ik, ib1, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
                     ib1_unique = b1k_latt_unique.index(tuple(b1_latt))
-                    assert np.allclose(b1k_cart_unique[ib1_unique, :], mmn.bk_cart[ik, ib1, :])   
+                    assert np.allclose(b1k_cart_unique[ib1_unique, :], mmn.bk_cart[ik, ib1, :])
 
                     # Find unique b2 index
                     b2_latt = np.rint((mmn.bk_cart[ik, ib2, :] @ np.linalg.inv(self.recip_lattice)) * self.mp_grid).astype(int)
                     ib2_unique = b2k_latt_unique.index(tuple(b2_latt))
-                    assert np.allclose(b2k_cart_unique[ib2_unique, :], mmn.bk_cart[ik, ib2, :]) 
+                    assert np.allclose(b2k_cart_unique[ib2_unique, :], mmn.bk_cart[ik, ib2, :])
 
-                    FF_qb[ik, :, :, ib1_unique, ib2_unique, :, :] = FF_q_ik_ib
+                    GG_qb[ik, :, :, ib1_unique, ib2_unique, :, :] = GG_q_ik_ib
 
+        # G_bc is symmetric in the cartesian indices
+        GG_qb = 0.5 * (GG_qb + GG_qb.swapaxes(5, 6))
+                    
         # Only Jae-Mo's scheme preserves hermiticity, but it can be enforced
         if not transl_inv_JM:
-            FF_qb = 0.5 * (FF_qb + FF_qb.transpose((0, 2, 1, 4, 3, 5, 6)).conj())
+            GG_qb = 0.5 * (GG_qb + GG_qb.transpose((0, 2, 1, 4, 3, 5, 6)).conj())
 
-        return FF_qb, np.array(b1k_latt_unique) / self.mp_grid[None, :], np.array(b2k_latt_unique) / self.mp_grid[None, :]
-    
-    ############################################################################################################
+        return GG_qb, np.array(b1k_latt_unique) / self.mp_grid[None, :], np.array(b2k_latt_unique) / self.mp_grid[None, :]
+
+    ###########################################################################
 
     def get_SA_q(self, siu, mmn):
         mmn.set_bk_chk(self)
