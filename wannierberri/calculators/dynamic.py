@@ -238,6 +238,255 @@ class SHC(DynamicCalculator):
             cfac.imag = np.pi * self.smear(delta_arg_12)
         return cfac / 2
 
+####################################################
+#    Spatially-dispersive conductivity tensor      #
+####################################################
+    
+# _____ Antisymmetric (time-even) spatially-dispersive conductivity tensor _____ #
+
+class SDCT_asym(DynamicCalculator):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.Formula = Formula_SDCT_asym_sea_I
+        self.constant_factor = factors.factor_SDCT
+        self.sea_II = SDCT_asym_sea_II(**kwargs)
+
+    def __call__(self, data_K):
+        sea_I  = super().__call__(data_K)
+        sea_II = self.sea_II(data_K)
+        return sea_I + sea_II
+
+    def factor_omega(self, E1, E2):
+        eta = 1e-1
+        omega = self.omega + 1.j * eta
+        Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
+        Zfac = 1. / Z_arg_12
+        return omega * Zfac
+    
+class Formula_SDCT_asym_sea_I():
+
+    def __init__(self, data_K):
+        # Intrinsic multipole moments
+        A = -1. * data_K.E1
+        B = data_K.Bln
+        
+        # Other quantities
+        Vn = data_K.Vn
+        Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
+
+        # Formula
+        summ  = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+        summ += -np.imag( A[:,:,:,:,None,None] * B[:,:,:,None,:,:] )
+        summ += Vnm_plus[:,:,:,:,None,None] * np.imag( A[:,:,:,None,:,None] * A.swapaxes(1,2)[:,:,:,None,None,:] )
+        summ  = summ - summ.swapaxes(3,4)
+        
+        self.summ = summ
+        self.ndim = 3
+        self.transformTR  = transform_ident
+        self.transformInv = transform_odd
+
+    def trace_ln(self, ik, inn1, inn2):
+        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+
+class SDCT_asym_sea_I(DynamicCalculator):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.Formula = Formula_SDCT_asym_sea_I
+        self.constant_factor = factors.factor_SDCT
+
+    def factor_omega(self, E1, E2):
+        eta = 1e-1
+        omega = self.omega + 1.j * eta
+        Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
+        Zfac = 1. / Z_arg_12
+        return omega * Zfac
+
+
+class Formula_SDCT_asym_sea_II():
+
+    def __init__(self, data_K):
+        # Intrinsic multipole moments
+        A = -1. * data_K.E1
+        
+        # Other quantities
+        Vn = data_K.Vn
+        Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
+
+        # Formula
+        summ  = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+        summ += np.imag( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vnm_plus[:,:,:,None,None,:]
+        
+        self.summ = summ
+        self.ndim = 3
+        self.transformTR  = transform_ident
+        self.transformInv = transform_odd
+
+    def trace_ln(self, ik, inn1, inn2):
+        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+
+class SDCT_asym_sea_II(DynamicCalculator):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.Formula = Formula_SDCT_asym_sea_II
+        self.constant_factor = factors.factor_SDCT
+
+    def factor_omega(self, E1, E2):
+        eta = 1e-1
+        omega = self.omega + 1.j * eta
+        Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
+        Zfac = 1. / Z_arg_12
+        return omega * (3.0 * (E2 - E1)**2 - omega**2  ) * Zfac**2
+
+class Formula_SDCT_asym_surf_I():
+
+    def __init__(self, data_K):
+        # Intrinsic multipole moments
+        A = -1. * data_K.E1
+        
+        # Other quantities
+        Vn = data_K.Vn
+
+        # Formula
+        summ = -np.imag( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vn[:,:,None,None,None,:]
+        
+        self.summ = summ
+        self.ndim = 3
+        self.transformTR  = transform_ident
+        self.transformInv = transform_odd
+
+    def trace_ln(self, ik, inn1, inn2):
+        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+class Formula_SDCT_asym_surf_II():
+
+    def __init__(self, data_K):
+        # Intrinsic multipole moments
+        Bln = data_K.Bln
+        Bn  = np.diagonal(B_H, axis1=1, axis2=2).transpose(0, 3, 1)
+        
+        # Other quantities
+        Vn   = data_K.Vn
+        kron = data_K.kron
+
+        # Formula
+        summ = Vn[:,:,None,:,None,None] * Bn[:,:,None,None,:,:] * kron[:,:,:,None,None,None]
+        summ = summ - summ.swapaxes(3,4)
+        
+        self.summ = summ
+        self.ndim = 3
+        self.transformTR  = transform_ident
+        self.transformInv = transform_odd
+
+    def trace_ln(self, ik, inn1, inn2):
+        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+# _____ Symmetric (time-odd) spatially-dispersive conductivity tensor _____ #
+
+class SDCT_sym(DynamicCalculator):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.Formula = Formula_SDCT_sym_sea_I
+        self.constant_factor = factors.factor_SDCT
+        self.sea_II = SDCT_sym_sea_II(**kwargs)
+
+    def __call__(self, data_K):
+        sea_I  = super().__call__(data_K)
+        sea_II = self.sea_II(data_K)
+        return sea_I + sea_II
+
+    def factor_omega(self, E1, E2):
+        eta = 1e-1
+        omega = self.omega + 1.j * eta
+        Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
+        Zfac = 1. / Z_arg_12
+        return 1.j * (E2 - E1) * Zfac
+    
+class Formula_SDCT_sym_sea_I():
+
+    def __init__(self, data_K):
+        # Intrinsic multipole moments
+        A = -1. * data_K.E1
+        B = data_K.Bln
+        
+        # Other quantities
+        Vn = data_K.Vn
+        Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
+
+        # Formula
+        summ  = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+        summ += np.real( A[:,:,:,:,None,None] * B[:,:,:,None,:,:] )
+        summ += Vnm_plus[:,:,:,:,None,None] * np.real( A[:,:,:,None,:,None] * A.swapaxes(1,2)[:,:,:,None,None,:] )
+        summ  = summ + summ.swapaxes(3,4)
+        
+        self.summ = summ
+        self.ndim = 3
+        self.transformTR  = transform_ident
+        self.transformInv = transform_odd
+
+    def trace_ln(self, ik, inn1, inn2):
+        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+
+class SDCT_sym_sea_I(DynamicCalculator):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.Formula = Formula_SDCT_sym_sea_I
+        self.constant_factor = factors.factor_SDCT
+
+    def factor_omega(self, E1, E2):
+        eta = 1e-1
+        omega = self.omega + 1.j * eta
+        Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
+        Zfac = 1. / Z_arg_12
+        return 1.j * (E2 - E1) * Zfac
+
+
+class Formula_SDCT_sym_sea_II():
+
+    def __init__(self, data_K):
+        # Intrinsic multipole moments
+        A = -1. * data_K.E1
+        
+        # Other quantities
+        Vn = data_K.Vn
+        Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
+
+        # Formula
+        summ  = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+        summ -= np.real( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vnm_plus[:,:,:,None,None,:]
+        
+        self.summ = summ
+        self.ndim = 3
+        self.transformTR  = transform_ident
+        self.transformInv = transform_odd
+
+    def trace_ln(self, ik, inn1, inn2):
+        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+
+class SDCT_sym_sea_II(DynamicCalculator):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.Formula = Formula_SDCT_sym_sea_II
+        self.constant_factor = factors.factor_SDCT
+
+    def factor_omega(self, E1, E2):
+        eta = 1e-1
+        omega = self.omega + 1.j * eta
+        Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
+        Zfac = 1. / Z_arg_12
+        return 1.j * (E2 - E1)**3 * Zfac**2
+
+###############################################################################
+
 # ===============
 #  Shift current
 # ===============
