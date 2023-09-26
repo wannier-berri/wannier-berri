@@ -14,7 +14,7 @@
 import numpy as np
 import lazy_property
 from .sym_wann import SymWann
-from ..__utility import iterate3dpm, alpha_A, beta_A
+from ..__utility import alpha_A, beta_A, iterate3dpm
 from ..symmetry import Symmetry, Group, TimeReversal
 from termcolor import cprint
 import functools

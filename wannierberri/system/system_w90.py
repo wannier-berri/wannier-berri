@@ -84,7 +84,7 @@ class System_w90(System):
 
         # Necessary ab initio matrices
         eig = EIG(seedname)
-        if self.need_R_any(['AA', 'BB']):
+        if self.need_R_any(['AA','BB']):
             mmn = MMN(seedname, npar=npar)
         if self.need_R_any(['CC']):
             uhu = UHU(seedname)
