@@ -393,9 +393,12 @@ def test_Fe_set_spin(check_run, system_Fe_W90_set_spin, compare_any_result):
                     "cumdos": wberri.calculators.static.CumDOS(**param),
                   }
 
-    parameters_optical = dict(
-        Efermi=np.array([Efermi_Fe[0],Efermi_Fe[-1]]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
-    calculators['opt_SHCsimple'] = wberri.calculators.dynamic.SHC(SHC_type="simple", **parameters_optical)
+    parameters_shc = dict(
+                            Efermi=np.array([Efermi_Fe[0],Efermi_Fe[-1]]), omega=np.arange(0.0, 7.1, 1.0),
+                            smr_fixed_width=0.20, smr_type="Gaussian",
+                            SHC_type="simple",kwargs_formula={"external_terms":True}
+                         )
+    calculators['opt_SHCsimple'] = wberri.calculators.dynamic.SHC(**parameters_shc)
 
     check_run(
         system_Fe_W90_set_spin,
