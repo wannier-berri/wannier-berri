@@ -345,7 +345,7 @@ class System():
 
 
 
-    def set_spin_from_code(self,DFT_code="qe", SHCqiao=False):
+    def set_spin_from_code(self,DFT_code="qe"):
         """set SS_R, assuming that each Wannier function is an eigenstate of Sz,
          according to the ordering of the ab-initio code
         Parameters

@@ -163,7 +163,7 @@ def system_Fe_W90_set_spin(create_files_Fe_W90):
     seedname = os.path.join(data_dir, "Fe_sym")
     system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=False, use_ws=False)
     system.set_symmetry(symmetries_Fe)
-    system.set_spin_from_code(DFT_code="qe", SHCqiao=False)
+    system.set_spin_from_code(DFT_code="qe")
     return system
 
 
