@@ -52,7 +52,6 @@ from common_comparers import (
 
 
 from test_cluster import check_command_output
-
 from test_run import check_run
 
 # Parallel objects

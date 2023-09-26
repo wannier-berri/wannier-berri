@@ -126,7 +126,7 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe")
-    system = wberri.system.System_w90(seedname, morb=True, SHCqiao=False, SHCryoo=False, transl_inv=False, use_wcc_phase=True)
+    system = wberri.system.System_w90(seedname, morb=True, spin=True, SHCqiao=False, SHCryoo=False, transl_inv=False, use_wcc_phase=True)
     system.set_symmetry(symmetries_Fe)
     return system
 
@@ -162,6 +162,7 @@ def system_GaAs_W90(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, transl_inv=False)
+    system.set_symmetry(symmetries_GaAs)
 
     return system
 
@@ -175,6 +176,7 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.system.System_w90(seedname, morb=True, transl_inv=False, spin=True, use_wcc_phase=True)
+    system.set_symmetry(symmetries_GaAs)
 
     return system
 
@@ -191,6 +193,7 @@ def system_GaAs_tb():
 
     seedname = os.path.join(data_dir, "GaAs_tb.dat")
     system = wberri.system.System_tb(seedname, berry=True)
+    system.set_symmetry(symmetries_GaAs)
 
     return system
 
@@ -230,7 +233,7 @@ def system_GaAs_tb_wcc():
     # Load system
     seedname = os.path.join(data_dir, "GaAs_tb.dat")
     system = wberri.system.System_tb(seedname, berry=True, use_wcc_phase=True)
-
+    system.set_symmetry(symmetries_GaAs)
     return system
 
 
