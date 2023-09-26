@@ -7,5 +7,4 @@ Utilities
 
    mmn2uHu
    vaspspn
-   tab_plot
    postw90
