@@ -356,7 +356,7 @@ class System():
         SHCqiao : bools
             it ``True`` also sets the matrices SHA, SA, SRA for SHCqiao calculations
 
-        Notes: 
+        Notes:
         -------
         * This is a rough approximation, that may be used on own risk
         * The pure-spin character may be broken by maximal localization. Recommended to use `num_iter=0` in wanier90
