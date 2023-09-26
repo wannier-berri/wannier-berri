@@ -429,49 +429,63 @@ def _spin_velocity_einsum_opt(C, A, B):
         C[ik] += np.transpose(tmp_c, (0, 2, 3, 1))  # nsma -> nmas
 
 
-def _J_H_qiao(data_K,external_terms=True):
-    if not external_terms :
-        raise NotImplementedError("spin Hall without external terms is not implemented yet")
-    # Spin current operator, J. Qiao et al PRB (2019)
-    # J_H_qiao[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
-    SS_H = data_K.Xbar('SS')
-    SH_H = data_K.Xbar("SH")
-    shc_K_H = -1j * data_K.Xbar("SR")
-    _spin_velocity_einsum_opt(shc_K_H, SS_H, data_K.D_H)
-    shc_L_H = -1j * data_K._R_to_k_H(data_K.get_R_mat('SHR'), hermitean=False)
-    _spin_velocity_einsum_opt(shc_L_H, SH_H, data_K.D_H)
-    J = (
-        data_K.delE_K[:, None, :, :, None] * SS_H[:, :, :, None, :]
-        + data_K.E_K[:, None, :, None, None] * shc_K_H[:, :, :, :, :] - shc_L_H)
-    return (J + J.swapaxes(1, 2).conj()) / 2
-
-
-def _J_H_ryoo(data_K,external_terms=True):
-    if not external_terms :
-        raise NotImplementedError("spin Hall without external terms is not implemented yet")
-    # Spin current operator, J. H. Ryoo et al PRB (2019)
-    # J_H_ryoo[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
-    SA_H = data_K.Xbar("SA")
-    SHA_H = data_K.Xbar("SHA")
-    J = -1j * (data_K.E_K[:, None, :, None, None] * SA_H - SHA_H)
-    _spin_velocity_einsum_opt(J, data_K.Xbar('SS'), data_K.Xbar('Ham', 1))
-    return (J + J.swapaxes(1, 2).conj()) / 2
 
 
 class SpinVelocity(Matrix_ln):
     "spin current matrix elements. SpinVelocity.matrix[ik, m, n, a, s] = <u_mk|{v^a S^s}|u_nk> / 2"
 
     def __init__(self, data_K, spin_current_type,external_terms=True):
-        if spin_current_type == "qiao":
+        if spin_current_type == "simple":
+            # tight-binding case
+            super().__init__(self._J_H_simple(data_K))
+        elif spin_current_type == "qiao":
             # J. Qiao et al PRB (2018)
-            super().__init__(_J_H_qiao(data_K,external_terms=external_terms))
+            super().__init__(self._J_H_qiao(data_K,external_terms=external_terms))
         elif spin_current_type == "ryoo":
             # J. H. Ryoo et al PRB (2019)
-            super().__init__(_J_H_ryoo(data_K,external_terms=external_terms))
+            super().__init__(self._J_H_ryoo(data_K,external_terms=external_terms))
         else:
-            raise ValueError(f"spin_current_type must be qiao or ryoo, not {spin_current_type}")
+            raise ValueError(f"spin_current_type must be `qiao` or `ryoo` or `simple`, not {spin_current_type}")
         self.transformTR=transform_ident
         self.transformInv=transform_odd
+
+    def _J_H_simple(self, data_K):
+        # Spin current operator, J. Qiao et al PRB (2019)
+        # J_H[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
+        S = data_K.Xbar('SS')
+        V = data_K.Xbar("Ham",1)
+        J = np.einsum("klms,kmna->klnas", S, V)
+        return (J + J.swapaxes(1, 2).conj()) / 2
+
+
+    def _J_H_qiao(self, data_K,external_terms=True):
+        if not external_terms :
+            raise NotImplementedError("spin Hall qiao without external terms is not implemented yet. Use `SHC_type='simple'`")
+        # Spin current operator, J. Qiao et al PRB (2019)
+        # J_H_qiao[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
+        SS_H = data_K.Xbar('SS')
+        SH_H = data_K.Xbar("SH")
+        shc_K_H = -1j * data_K.Xbar("SR")
+        _spin_velocity_einsum_opt(shc_K_H, SS_H, data_K.D_H)
+        shc_L_H = -1j * data_K._R_to_k_H(data_K.get_R_mat('SHR'), hermitean=False)
+        _spin_velocity_einsum_opt(shc_L_H, SH_H, data_K.D_H)
+        J = (
+            data_K.delE_K[:, None, :, :, None] * SS_H[:, :, :, None, :]
+            + data_K.E_K[:, None, :, None, None] * shc_K_H[:, :, :, :, :] - shc_L_H)
+        return (J + J.swapaxes(1, 2).conj()) / 2
+
+
+    def _J_H_ryoo(self,data_K,external_terms=True):
+        if not external_terms :
+            raise NotImplementedError("spin Hall ryoo without external terms is not implemented yet. Use `SHC_type='simple'`")
+        # Spin current operator, J. H. Ryoo et al PRB (2019)
+        # J_H_ryoo[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
+        SA_H = data_K.Xbar("SA")
+        SHA_H = data_K.Xbar("SHA")
+        J = -1j * (data_K.E_K[:, None, :, None, None] * SA_H - SHA_H)
+        _spin_velocity_einsum_opt(J, data_K.Xbar('SS'), data_K.Xbar('Ham', 1))
+        return (J + J.swapaxes(1, 2).conj()) / 2
+
 
 
 class SpinOmega(Formula_ln):

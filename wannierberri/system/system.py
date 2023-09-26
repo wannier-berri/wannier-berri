@@ -252,6 +252,9 @@ class System():
             Magnetic momens of each atoms.
         DFT_code: str
             DFT code used : ``'qe'`` or ``'vasp'`` . This is needed, because vasp and qe have different orbitals arrangement with SOC.(grouped by spin or by orbital type)
+
+        Notes:
+            does not update wannier_centers. TODO: make the code update them
         """
 
         symmetrize_wann = SymWann(
@@ -309,14 +312,12 @@ class System():
         value = np.array([s*axis for s in spins], dtype=complex)
         self.set_R_mat(key='SS', value=value, diag=True, **kwargs)
 
-    def set_spin_pairs(self,pairs, SHCqiao=False):
+    def set_spin_pairs(self,pairs):
         """set SS_R, assuming that each Wannier function is an eigenstate of Sz,
         Parameters
         ----------
         pairs : list of tuple
             list of pair of indices of bands ``[(up1,down1), (up2,down2), ..]``
-        SHCqiao : bools
-            it ``True`` also sets the matrices SHA, SA, SRA for SHCqiao calculations
 
         Notes:
         -------
@@ -333,14 +334,15 @@ class System():
                      "For other states spin properties will be set to zero. are yoiu sure ?")
         SS_R0 = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
         for i,j in pairs:
+            dist=np.linalg.norm( self.wannier_centers_cart[i]-self.wannier_centers_cart[j] )
+            if dist>1e-3:
+                print (f"WARNING: setting spin pair for Wannier function {i} and {j}, distance between them {dist}")
             SS_R0[i,i]=pauli_xyz[0,0]
             SS_R0[i,j]=pauli_xyz[0,1]
             SS_R0[j,i]=pauli_xyz[1,0]
             SS_R0[j,j]=pauli_xyz[1,1]
             self.set_R_mat(key='SS',value=SS_R0,diag=False,R=[0,0,0],reset=True)
 
-        if SHCqiao:
-            raise NotImplementedError()
 
 
     def set_spin_from_code(self,DFT_code="qe", SHCqiao=False):
@@ -353,8 +355,6 @@ class System():
                 *  ``'qe'`` : if bands are grouped by orbital type, in each pair first comes spin-up,then spin-down
                 *  ``'vasp'`` : if bands are grouped by spin : first come all spin-up, then all spin-down
             1D `array(num_wann)` of `+1` or `-1` spins are along `axis`
-        SHCqiao : bools
-            it ``True`` also sets the matrices SHA, SA, SRA for SHCqiao calculations
 
         Notes:
         -------
@@ -369,7 +369,7 @@ class System():
             pairs = [(i,i+nw2)   for i in range(nw2)]
         elif DFT_code.lower() in ['qe', 'quantum_espresso', 'espresso']:
             pairs = [(2*i,2*i+1) for i in range(nw2)]
-        self.set_spin_pairs(pairs, SHCqiao=SHCqiao)
+        self.set_spin_pairs(pairs)
 
     def getXX_only_wannier_centers(self, getSS=False):
         """return AA_R, BB_R, CC_R containing only the diagonal matrix elements, evaluated from
