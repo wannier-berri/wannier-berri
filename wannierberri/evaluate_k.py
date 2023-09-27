@@ -7,7 +7,7 @@ from .calculators import tabulate
 
 available_quantities = {
     "energy": tabulate.Energy(print_comment=False),
-    "band_gradients": tabulate.Velocity(print_comment=False),
+    "band_gradients": tabulate.Velocity(print_comment=False, kwargs_formula={"external_terms": False}),
     "berry_curvature": tabulate.BerryCurvature(print_comment=False),
     "berry_curvature_internal_terms": tabulate.BerryCurvature(kwargs_formula={"external_terms": False},print_comment=False),
     "berry_curvature_external_terms": tabulate.BerryCurvature(kwargs_formula={"internal_terms": False},print_comment=False),

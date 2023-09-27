@@ -232,8 +232,10 @@ class Hamiltonian(Matrix_ln):
 
 class Velocity(Matrix_ln):
 
-    def __init__(self, data_K):
+    def __init__(self, data_K, external_terms=False):
         v = data_K.covariant('Ham', gender=1)
+        if external_terms:
+            v.matrix+=1j*data_K.Xbar('AA')*(data_K.E_K[:, :, None,None] - data_K.E_K[:, None, :,None])
         self.__dict__.update(v.__dict__)
 
 
@@ -449,11 +451,11 @@ class SpinVelocity(Matrix_ln):
         self.transformTR=transform_ident
         self.transformInv=transform_odd
 
-    def _J_H_simple(self, data_K):
+    def _J_H_simple(self, data_K, external_terms=True):
         # Spin current operator, J. Qiao et al PRB (2019)
         # J_H[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
         S = data_K.Xbar('SS')
-        V = data_K.Xbar("Ham",1)
+        V = Velocity(data_K, external_terms=external_terms).matrix
         J = np.einsum("klms,kmna->klnas", S, V)
         return (J + J.swapaxes(1, 2).conj()) / 2
 
