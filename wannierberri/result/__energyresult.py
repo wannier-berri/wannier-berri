@@ -208,18 +208,18 @@ class EnergyResult(Result):
 
         open(name, "w").write(head + "\n".join(self.__write(self.data, self.dataSmooth, i=0)))
 
-    def save(self, name):
+
+
+
+    def as_dict(self):
         """
-        writes a dictionary-like objectto file called `name`  with the folloing keys:
+        returns a dictionary-like object with the folloing keys:
         - 'E_titles' : list of str - titles of the energies on which the result depends
         - 'Energies_0', ['Energies_1', ... ] - corresponding arrays of energies
         - data : array of shape (len(Energies_0), [ len(Energies_1), ...] , [3  ,[ 3, ... ]] )
         """
-        name = name.format('')
         energ = {f'Energies_{i}': E for i, E in enumerate(self.Energies)}
-        with open(name + ".npz", "wb") as f:
-            np.savez_compressed(
-                f,
+        return dict(
                 E_titles=self.E_titles,
                 data=self.data,
                 rank=self.rank,
@@ -227,6 +227,15 @@ class EnergyResult(Result):
                 transformInv=str(self.transformInv),
                 comment=self.comment,
                 **energ)
+
+
+    def save(self, name):
+        """
+        writes a dictionary-like objectto file called `name`  defined in :func:`~wannierberri.result.EnergyResult.as_dict`
+        """
+        name = name.format('')
+        with open(name + ".npz", "wb") as f:
+            np.savez_compressed(f, **self.as_dict() )
 
     def savedata(self, name, prefix, suffix, i_iter):
         suffix = "-" + suffix if len(suffix) > 0 else ""

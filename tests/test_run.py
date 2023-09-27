@@ -108,6 +108,7 @@ calculators_Fe = {
     'Morb_test': calc.static.Morb_test,
     'dos': calc.static.DOS,
     'cumdos': calc.static.CumDOS,
+    'spin': calc.static.Spin,
 }
 
 calculators_phonons = {
@@ -328,11 +329,12 @@ def test_Fe_dynamic_noband(check_run, system_Fe_W90, compare_any_result):
 def test_Fe_wcc(check_run, system_Fe_W90_wcc, compare_any_result):
     param_kwargs = {'Efermi': Efermi_Fe, 'kwargs_formula':{'correction_wcc': True}}
     param = {'Efermi': Efermi_Fe}
+    calculators = {}
     for k, v in calculators_Fe.items():
-        if k in ['dos','cumdos']:
-            calculators = {k: v(**param)}
+        if k in ['dos','cumdos','conductivity_ohmic', 'conductivity_ohmic_fsurf','spin']:
+            calculators[k] =  v(**param)
         else:
-            calculators = {k: v(**param_kwargs)}
+            calculators[k] =  v(**param_kwargs)
     check_run(
         system_Fe_W90_wcc,
         calculators,
@@ -343,7 +345,6 @@ def test_Fe_wcc(check_run, system_Fe_W90_wcc, compare_any_result):
             '_FF_antisym': True,
             '_CCab_antisym': True
         },
-        #additional_parameters={'correction_wcc': True},
         extra_precision={"Morb": -1}
     )
 
@@ -482,7 +483,10 @@ def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_
 
 def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items() if k!='spin'}
+    # We do not include spin here, because it was not there in the beginning
+    # adding another calculator may change the behaviour of the refinement procedure, and hence we would
+    # have to replace reference files for all calculators
     check_run(
         system_Fe_W90,
         calculators,
@@ -506,7 +510,10 @@ def test_Fe_pickle_Klist_12(check_run, system_Fe_W90, compare_any_result):
     except FileNotFoundError:
         pass
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items() if k!='spin'}
+    # We do not include spin here, because it was not there in the beginning
+    # adding another calculator may change the behaviour of the refinement procedure, and hence we would
+    # have to replace reference files for all calculators
     check_run(
         system_Fe_W90,
         calculators,
@@ -546,7 +553,10 @@ def test_Fe_pickle_Klist_021(check_run, system_Fe_W90, compare_any_result):
     except FileNotFoundError:
         pass
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items() if k!='spin'}
+    # We do not include spin here, because it was not there in the beginning
+    # adding another calculator may change the behaviour of the refinement procedure, and hence we would
+    # have to replace reference files for all calculators
     check_run(
         system_Fe_W90,
         calculators,
