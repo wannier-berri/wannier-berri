@@ -345,7 +345,7 @@ class System():
 
 
 
-    def set_spin_from_code(self,DFT_code="qe"):
+    def set_spin_from_code(self, DFT_code="qe"):
         """set SS_R, assuming that each Wannier function is an eigenstate of Sz,
          according to the ordering of the ab-initio code
         Parameters
@@ -359,7 +359,7 @@ class System():
         Notes:
         -------
         * This is a rough approximation, that may be used on own risk
-        * The pure-spin character may be broken by maximal localization. Recommended to use `num_iter=0` in wanier90
+        * The pure-spin character may be broken by maximal localization. Recommended to use `num_iter=0` in Wannier90
         * if your DFT code has a different name, but uses the same spin ordering as `qe` or `vasp` - set `DFT_code='qe'` or `DFT_code='vasp'` correspondingly
         * if your DFT code has a different spin ordering, use   :func:`~wannierberri.system.System.set_spin_pairs`
         """

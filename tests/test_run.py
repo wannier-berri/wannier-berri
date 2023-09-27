@@ -387,7 +387,7 @@ def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
 
 
 
-def test_Fe_set_spin(check_run, system_Fe_W90_set_spin, compare_any_result):
+def test_Fe_set_spin(check_run, system_Fe_W90_proj_set_spin, compare_any_result):
     param = {'Efermi': Efermi_Fe}
     calculators = { "spin": wberri.calculators.static.Spin(**param),
                     "cumdos": wberri.calculators.static.CumDOS(**param),
@@ -396,16 +396,18 @@ def test_Fe_set_spin(check_run, system_Fe_W90_set_spin, compare_any_result):
     parameters_shc = dict(
                             Efermi=np.array([Efermi_Fe[0],Efermi_Fe[-1]]), omega=np.arange(0.0, 7.1, 1.0),
                             smr_fixed_width=0.20, smr_type="Gaussian",
-                            SHC_type="simple",kwargs_formula={"external_terms":True}
+                            SHC_type="simple"
                          )
     calculators['opt_SHCsimple'] = wberri.calculators.dynamic.SHC(**parameters_shc)
+    calculators['opt_SHCsimple_internal'] = wberri.calculators.dynamic.SHC(kwargs_formula={"external_terms":False},**parameters_shc)
 
     check_run(
-        system_Fe_W90_set_spin,
+        system_Fe_W90_proj_set_spin,
         calculators,
         fout_name="Fe_set_spin",
         use_symmetry=False,
             )
+
 
 
 def test_Fe_FPLO(check_run, system_Fe_FPLO, compare_any_result):
