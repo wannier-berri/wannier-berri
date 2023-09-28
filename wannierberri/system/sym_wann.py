@@ -143,16 +143,7 @@ class SymWann():
                         magmom=self.magmom[atom] if self.magmom is not None else None) )
         self.num_wann_atom = len (self.wann_atom_info)
 
-        self.H_select = np.zeros((self.num_wann_atom, self.num_wann_atom, self.num_wann, self.num_wann), dtype=bool)
-        for a,atom_a in enumerate(self.wann_atom_info):
-            orb_list_a = atom_a.orbital_index
-            for b,atom_b in enumerate(self.wann_atom_info):
-                orb_list_b = atom_b.orbital_index
-                for oa_list in orb_list_a:
-                    for oia in oa_list:
-                        for ob_list in orb_list_b:
-                            for oib in ob_list:
-                                self.H_select[a, b, oia, oib] = True
+        self.H_select = _get_H_select(self.num_wann, self.num_wann_atom, self.wann_atom_info)
 
         print('Wannier atoms info')
         for item in self.wann_atom_info:
@@ -490,3 +481,45 @@ def _rotate_matrix_flat(X,L,R):
         return tmpX.transpose( 0, 2, 1).reshape(-1,3)
     else:
         raise ValueError()
+
+
+def _matrix_to_dict( mat, H_select, wann_atom_info):
+    """transforms a matrix X[m,n,iR,...] into a dictionary like
+        {(a,b): {iR: np.array(num_w_a.num_w_b,...)}}
+    """
+    result = {}
+    for a,atom_a in enumerate(wann_atom_info):
+        num_w_a = atom_a.num_wann  #number of orbitals of atom_a
+        for b,atom_b in enumerate(wann_atom_info):
+            num_w_b = atom_b.num_wann  #number of orbitals of atom_a
+            result_ab = {}
+            X = mat[ H_select[a, b] ]
+            X = X.reshape( (num_w_a,num_w_b)+mat.shape[2:] )
+            for iR in range(mat.shape[2]):
+                result_ab[iR]=X[:,:,iR]
+            if len(result_ab)>0:
+                result[(a,b)] = result_ab
+    return result
+
+
+def _dict_to_matrix(dic,H_select,nRvec,ndimv):
+    num_wann = H_select.shape[2]
+    mat = np.zeros( (num_wann,num_wann,nRvec)+(3,)*ndimv, dtype=complex )
+    for (a,b), irX in dic.items():
+        for iR,X in irX.items():
+            mat[H_select[a,b],iR] = X.reshape( (-1,)+X.shape[2:])
+    return mat
+
+def _get_H_select(num_wann,num_wann_atom,wann_atom_info):
+    H_select = np.zeros((num_wann_atom, num_wann_atom, num_wann, num_wann), dtype=bool)
+    for a,atom_a in enumerate(wann_atom_info):
+        orb_list_a = atom_a.orbital_index
+        for b,atom_b in enumerate(wann_atom_info):
+            orb_list_b = atom_b.orbital_index
+            for oa_list in orb_list_a:
+                for oia in oa_list:
+                    for ob_list in orb_list_b:
+                        for oib in ob_list:
+                            H_select[a, b, oia, oib] = True
+    return H_select
+

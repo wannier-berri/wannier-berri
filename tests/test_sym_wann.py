@@ -271,3 +271,24 @@ def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
             '_CCab_antisym': True
         },
     )
+
+
+
+from wannierberri.system.sym_wann import _dict_to_matrix, _matrix_to_dict, _get_H_select
+class AtomInfo():
+    """fake AtomInfo for test"""
+    def __init__(self,orbital_index):
+        self.num_wann=sum( len(oi) for oi in orbital_index )
+        self.orbital_index=orbital_index
+
+def test_matrix_to_dict():
+    wann_atom_info=[AtomInfo(n) for n in ([[1,3],[5,6]], [ [0,2,4] ])]
+    num_wann = sum( (at.num_wann for at in wann_atom_info) )
+    num_wann_atom = len(wann_atom_info)
+    nRvec = 8
+    ndimv=2
+    mat = np.random.random( (num_wann,num_wann, nRvec)+(3,)*ndimv )
+    H_select = _get_H_select(num_wann, num_wann_atom, wann_atom_info)
+    dic = _matrix_to_dict( mat, H_select, wann_atom_info)
+    mat_new = _dict_to_matrix(dic,H_select,nRvec,ndimv)
+    assert mat_new == approx(mat, abs=1e-8)
