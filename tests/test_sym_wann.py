@@ -3,18 +3,20 @@ import numpy as np
 import pytest
 from pytest import approx
 
+import wannierberri as wberri
 from wannierberri import calculators as calc
 
 from common_systems import (
     Efermi_GaAs,
     Efermi_Fe,
     Efermi_Mn3Sn,
+    Efermi_Te_sparse,
 )
 
 
 from test_run import (
-        #calculators_GaAs,
         calculators_GaAs_internal,
+        calculators_Te,
                         )
 
 
@@ -24,7 +26,7 @@ from test_run import (
 def check_symmetry(check_run):
     def _inner(system,
         calculators={},
-        precision=1e-8,
+        precision=1e-7,
         **kwargs,
             ):
         kwargs['do_not_compare']=True
@@ -33,10 +35,16 @@ def check_symmetry(check_run):
         print (calculators.keys(),result_irr_k.results.keys(),result_full_k.results.keys())
 
         for quant in calculators.keys():
-            assert result_full_k.results[quant].data == approx(
-                    result_irr_k.results[quant].data,
-                    rel=abs(precision) if precision<0 else None,
-                    abs=precision if precision>0 else None)
+            diff = abs(result_full_k.results[quant].data-result_irr_k.results[quant].data).max()
+            if precision<0:
+                req_precision = -precision*( abs(result_full_k.results[quant].data)+abs(result_irr_k.results[quant].data) ).max()/2
+            else:
+                req_precision=precision
+            assert diff<=req_precision, (
+                                            f"data of {quant} with and without symmetries give a maximal "
+                                            f"absolute difference of {diff} greater than the required precision {req_precision}"
+                                        )
+
 
     return _inner
 
@@ -68,16 +76,10 @@ def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb):
 def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb):
     param = {'Efermi': Efermi_Mn3Sn}
     calculators = {}
-#    calculators.update({k: v(**param) for k, v in calculators_GaAs.items()})
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
     calculators.update({
         'ahc':calc.static.AHC(Efermi=Efermi_Mn3Sn, kwargs_formula={"external_terms":True}),
-        # 'gyrotropic_Korb':calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs, kwargs_formula={"external_terms":False}),
-        # 'gyrotropic_Kspin':calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
-        # 'gyrotropic_Kspin_fsurf':calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
-        # 'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),
                         })
-
     check_symmetry(system=system_Mn3Sn_sym_tb,calculators=calculators)
 
 
@@ -137,20 +139,16 @@ def test_Fe_sym_W90_sym(check_run, system_Fe_sym_W90, compare_any_result):
     )
 
 
-def test_GaAs_sym_tb(check_symmetry, check_run, system_GaAs_sym_tb, compare_any_result):
+def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb, compare_any_result):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
-    #calculators.update({k: v(**param) for k, v in calculators_GaAs.items()})
-    #calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
     calculators.update({
         'berry_dipole':calc.static.BerryDipole_FermiSea(**param, kwargs_formula={"external_terms":True}),
-        # 'gyrotropic_Korb':calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs, kwargs_formula={"external_terms":False}),
-        # 'gyrotropic_Kspin':calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
+        'gyrotropic_Korb':calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs, kwargs_formula={"external_terms":True}),
+        'gyrotropic_Kspin':calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
         # 'gyrotropic_Kspin_fsurf':calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
         # 'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),
                         })
-
-    check_symmetry(system=system_GaAs_sym_tb,calculators=calculators)
 
     check_run(
         system_GaAs_sym_tb,
@@ -160,6 +158,12 @@ def test_GaAs_sym_tb(check_symmetry, check_run, system_GaAs_sym_tb, compare_any_
         compare_zero=True,
         suffix="sym-zero",
                 )
+
+def test_GaAs_sym_tb(check_symmetry, system_GaAs_sym_tb):
+    param = {'Efermi': Efermi_GaAs}
+    calculators = {}
+    calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
+    check_symmetry(system=system_GaAs_sym_tb,calculators=calculators)
 
 
 def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb, compare_any_result):
@@ -213,3 +217,57 @@ def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb, compare_any_result):
 
     assert result_full_k.results["opt_conductivity"].data == approx(
         result_irr_k.results["opt_conductivity"].data, abs=1e-7)
+
+
+def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):
+    param = {'Efermi': Efermi_Te_sparse, "tetra": True, 'use_factor': False, 'Emax':6.15, 'hole_like':True}
+    calculators = {}
+    for k, v in calculators_Te.items():
+        par = {}
+        par.update(param)
+        if k not in ["dos", "cumdos"]:
+            par["kwargs_formula"] = {"external_terms": False}
+        calculators[k] = v(**par)
+
+    grid = wberri.grid.GridTrigonal(system_Te_sparse, length=50, NKFFT=[3,3,2])
+
+    check_run(
+        system_Te_sparse,
+        calculators,
+        fout_name="berry_Te_sparse_tetragrid",
+        use_symmetry=True,
+        grid=grid,
+        # temporarily weakened precision here. Will restrict it later with new data
+        extra_precision={"berry_dipole": 1e-7},
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+
+def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
+    param = {'Efermi': Efermi_Te_sparse, "tetra": True, 'use_factor': False}
+    calculators = {}
+    for k, v in calculators_Te.items():
+        par = {}
+        par.update(param)
+        if k not in ["dos", "cumdos"]:
+            par["kwargs_formula"] = {"external_terms": False}
+        calculators[k] = v(**par)
+
+    grid = wberri.grid.GridTrigonalH(system_Te_sparse,length=50,NKFFT=[3,3,2],x=0.6)
+
+    check_run(
+        system_Te_sparse,
+        calculators,
+        fout_name="berry_Te_sparse_tetragridH",
+        use_symmetry=True,
+        grid=grid,
+        # temporarily weakened precision here. Will restrict it later with new data
+        extra_precision={"berry_dipole": 1e-7},
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )

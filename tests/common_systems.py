@@ -209,6 +209,7 @@ def system_GaAs_sym_tb():
 
     seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
     system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
+    system.set_symmetry(symmetries_GaAs)
     system.symmetrize(
         positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
         atom_name=['Ga', 'As'],
