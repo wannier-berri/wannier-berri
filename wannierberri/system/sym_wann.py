@@ -99,6 +99,10 @@ class SymWann():
             'CC': -1,
             'SS': -1
         }  #{'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
+        self.ndimv = {
+            'Ham':0,
+            'AA':1, 'BB':1, 'CC':1,'SS':1
+                    }
         self.orbitals = Orbitals()
 
         self.wann_atom_info = []
@@ -149,6 +153,15 @@ class SymWann():
         print('Wannier atoms info')
         for item in self.wann_atom_info:
             print(item)
+
+        self.matrix_dict_list = {}
+        for k,v1 in XX_R.items():
+            v = np.copy(v1)
+            self.spin_reorder(v) # TODO : remove
+            self.matrix_dict_list[k] = _matrix_to_dict(v, self.H_select, self.wann_atom_info)
+            if k not in self.possible_matrix_list:
+                raise ValueError(f" symmetrization of matrix {k} is not implemented yet")
+
 
         numbers = []
         names = list(set(self.atom_name))
@@ -305,7 +318,7 @@ class SymWann():
             print('irot = ', irot + 1)
             R_map = np.dot(R_list, np.transpose(symop.rotation))
             atom_R_map = R_map[:, None, None, :] - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :]
-            iR0 = self.iRvec.index( (0, 0, 0) )
+            iR0 = self.index_R( (0, 0, 0) )
 
             #TODO try numba
             for atom_a in range(self.num_wann_atom):
@@ -356,7 +369,22 @@ class SymWann():
         print('number of symmetry oprations == ', self.nrot)
         return matrix_list_res, tmp_R_list
 
-    def symmetrize(self):
+
+    def index_R(self,R):
+        try:
+            return self.iRvec_index[tuple(R)]
+        except KeyError:
+            return None
+
+    def symmetrize(self,method="old"):
+        if method == "old":
+            return self.symmetrize_old()
+        elif method == "new":
+            return self.symmetrize_new()
+        else:
+            raise ValueError()
+
+    def symmetrize_old(self):
 
         #========================================================
         #symmetrize existing R vectors and find additional R vectors
@@ -409,6 +437,141 @@ class SymWann():
             return
         else :
             raise ValueError(f"does not work for DFT_code  '{self.DFT_code}' so far")
+
+
+    def find_irreducible_Rab(self):
+        print ("searching irreducible Rvectors for pairs of a,b")
+
+        R_list = np.array(self.iRvec, dtype=int)
+        irreducible = np.ones((self.nRvec,self.num_wann_atom,self.num_wann_atom),dtype=bool)
+        for symop in self.symmetry_operations:
+            if symop.sym_only or symop.sym_T:
+                print('symmetry operation  ', symop.ind)
+                R_map = np.dot(R_list, np.transpose(symop.rotation))
+                atom_R_map = R_map[:, None, None, :] - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :]
+                for a in range(self.num_wann_atom):
+                    a1 = symop.rot_map[a]
+                    for b in range(self.num_wann_atom):
+                        b1 = symop.rot_map[b]
+                        for iR in range(self.nRvec):
+                            if irreducible[iR,a,b]:
+                                iR1 = self.index_R(atom_R_map[iR, a, b])
+                                if iR1 is not None and not (a,b,iR) == (a1,b1,iR1):
+                                    irreducible[iR1,a1,b1]=False
+        print (f"Found {np.sum(irreducible)} sets of (R,a,b) out of the total {self.nRvec*self.num_wann_atom**2} ({self.nRvec}*{self.num_wann_atom}^2)")
+        dic =  {(a,b):set([iR for iR in range(self.nRvec)  if irreducible[iR,a,b]])
+                for a in range(self.num_wann_atom)  for b in range(self.num_wann_atom)}
+        res =  {k:v for k,v in dic.items() if len(v)>0}
+        return res
+
+
+    def average_H_irreducible(self, iRab_new, matrix_dict_in, iRvec_new, mode):
+        assert mode in ["sum","single"]
+        iRvec_new_array = np.array(iRvec_new, dtype=int)
+
+        matrix_dict_list_res = {k:defaultdict( lambda:defaultdict(lambda: 0))  for k,v in self.matrix_dict_list.items() }
+
+        iRab_all = defaultdict( lambda:set() )
+
+        for symop in self.symmetry_operations:
+            if symop.sym_only or symop.sym_T:
+                print('symmetry operation  ', symop.ind)
+
+                R_map = np.dot(iRvec_new_array, np.transpose(symop.rotation))
+                atom_R_map = R_map[:, None, None, :] - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :]
+                iR0_old = self.index_R((0, 0, 0))
+
+                #TODO try numba
+                for (atom_a,atom_b),iR_new_list in iRab_new.items():
+                    exclude_set = set()
+#                    print (f"{atom_a},{atom_b} : iR_new_list ({iR_new_list})")
+                    for iR in iR_new_list:
+                        new_Rvec = tuple(atom_R_map[iR, atom_a, atom_b])
+                        iRab_all[(symop.rot_map[atom_a], symop.rot_map[atom_b])].add(new_Rvec)
+                        new_Rvec_index = self.index_R(new_Rvec)
+                        if new_Rvec_index is not None:
+                            '''
+                            H_ab_sym = P_dagger_a dot H_ab dot P_b
+                            H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
+                            '''
+                            for X in matrix_dict_list_res:
+                                if new_Rvec_index in matrix_dict_in[X][(symop.rot_map[atom_a], symop.rot_map[atom_b])]:
+                                    if mode == "single":
+                                        exclude_set.add(iR)
+                                    #X_L: only rotation wannier centres from L to L' before rotating orbitals.
+                                    XX_L = matrix_dict_in[X][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
+                                                               new_Rvec_index]
+                                    #special even with R == [0,0,0] diagonal terms.
+                                    if iR == iR0_old and atom_a == atom_b:
+                                        if X in ['AA','BB']:
+                                            v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
+                                            m_tmp = np.zeros(XX_L.shape, dtype=complex)
+                                            for i in range(self.wann_atom_info[atom_a].num_wann):
+                                                m_tmp[i,i,:]=v_tmp
+                                        if X == 'AA':
+                                            XX_L += m_tmp
+                                        elif X == 'BB':
+                                            XX_L += (m_tmp
+                                                *self.matrix_dict_list['Ham'][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
+                                                    new_Rvec_index][:,:,None] )
+                                    if XX_L.ndim==3:
+                                        #X_all: rotating vector.
+                                        XX_L = np.tensordot( XX_L, symop.rotation_cart, axes=1).reshape( XX_L.shape )
+                                    elif XX_L.ndim>3:
+                                        raise ValueError("transformation of tensors is not implemented")
+                                    if symop.inversion:
+                                        XX_L*=self.parity_I[X]
+                                    if symop.sym_only:
+                                        matrix_dict_list_res[X][(atom_a,atom_b)][iR] += _rotate_matrix(XX_L,symop.p_mat_atom_dagger[atom_a], symop.p_mat_atom[atom_b])
+                                    if symop.sym_T:
+                                        matrix_dict_list_res[X][(atom_a,atom_b)][iR] += _rotate_matrix(XX_L,symop.p_mat_atom_dagger_T[atom_a], symop.p_mat_atom_T[atom_b]).conj() * self.parity_TR[X]
+                    # in single mode we need to determine it only once
+                    if mode == "single":
+                        # print (f"{atom_a},{atom_b} : excluding ({exclude_set})")
+                        iR_new_list-=exclude_set
+                        # print (f"{atom_a},{atom_b} : iR_new_list -upd ({iR_new_list})")
+
+        if mode == "single":
+            for (atom_a,atom_b),iR_new_list in iRab_new.items():
+                assert len(iR_new_list)==0, f"for atoms ({atom_a},{atom_b}) some R vectors were not set : {iR_new_list}"+", ".join(str(iRvec_new[ir]) for ir in iR_new_list)
+
+
+        if mode == "sum":
+            for x in matrix_dict_list_res.values():
+                for d in x.values():
+                    for k,v in d.items():
+                        v /= self.nrot
+        print('number of symmetry oprations == ', self.nrot)
+        return matrix_dict_list_res, iRab_all
+
+
+    def symmetrize_new(self):
+
+        #========================================================
+        #symmetrize existing R vectors and find additional R vectors
+        #========================================================
+        print('##########################')
+        print('Symmetrizing Started')
+        iRab_irred = self.find_irreducible_Rab()
+        matrix_dict_list_res, iRvec_ab_all = self.average_H_irreducible( iRab_new=iRab_irred, matrix_dict_in=self.matrix_dict_list, iRvec_new=self.iRvec, mode="sum")
+        iRvec_new_set = set.union(*iRvec_ab_all.values())
+        iRvec_new_set.add( (0,0,0) )
+        iRvec_new = list(iRvec_new_set)
+        nRvec_new = len(iRvec_new)
+        iRvec_new_index = {r:i for i,r in enumerate(iRvec_new)}
+        iRab_new = {k:set([iRvec_new_index[irvec] for irvec in v]) for k,v in iRvec_ab_all.items()}
+        matrix_dict_list_res, iRab_all_2 = self.average_H_irreducible( iRab_new=iRab_new, matrix_dict_in=matrix_dict_list_res, iRvec_new=iRvec_new, mode="single")
+
+        return_dic = {}
+        for k,v in matrix_dict_list_res.items():
+            return_dic[k] = _dict_to_matrix(v, H_select=self.H_select, nRvec=nRvec_new, ndimv=self.ndimv[k] )
+            self.spin_reorder(return_dic[k], back=True)
+
+        print('Symmetrizing Finished')
+
+        return return_dic, np.array(iRvec_new)
+
+
 
 class WannAtomInfo():
 
@@ -484,6 +647,17 @@ def _rotate_matrix_flat(X,L,R):
         return tmpX.transpose( 0, 2, 1).reshape(-1,3)
     else:
         raise ValueError()
+
+def _rotate_matrix(X,L,R):
+    if X.ndim==2:
+        return L.dot(X).dot(R)
+    elif X.ndim==3:
+        X_shift = X.transpose(2, 0, 1)
+        tmpX = L.dot(X_shift).dot(R)
+        return tmpX.transpose( 0, 2, 1).reshape(X.shape)
+    else:
+        raise ValueError()
+
 
 
 def _matrix_to_dict( mat, H_select, wann_atom_info):

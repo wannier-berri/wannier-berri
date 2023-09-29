@@ -274,7 +274,8 @@ def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
 
 
 
-from wannierberri.system.sym_wann import _dict_to_matrix, _matrix_to_dict, _get_H_select
+from wannierberri.system.sym_wann import _dict_to_matrix, _matrix_to_dict, _get_H_select, _rotate_matrix
+
 class AtomInfo():
     """fake AtomInfo for test"""
     def __init__(self,orbital_index):
@@ -292,3 +293,12 @@ def test_matrix_to_dict():
     dic = _matrix_to_dict( mat, H_select, wann_atom_info)
     mat_new = _dict_to_matrix(dic,H_select,nRvec,ndimv)
     assert mat_new == approx(mat, abs=1e-8)
+
+def test_rotate_matrix():
+    num_wann=5
+    L=np.random.random( (num_wann, num_wann) ) +1j*np.random.random( (num_wann, num_wann) )
+    R=np.random.random( (num_wann, num_wann) ) +1j*np.random.random( (num_wann, num_wann) )
+    scal = np.random.random( (num_wann, num_wann) ) +1j*np.random.random( (num_wann, num_wann) )
+    vec = np.random.random( (num_wann, num_wann, 3) ) +1j*np.random.random( (num_wann, num_wann, 3) )
+    assert _rotate_matrix(scal,L,R) == approx(np.einsum("lm,mn,np->lp",L,scal,R) )
+    assert _rotate_matrix(vec,L,R) == approx(np.einsum("lm,mna,np->lpa",L,vec,R) )
