@@ -49,6 +49,9 @@ class DynamicCalculator(Calculator, abc.ABC):
     def factor_Efermi(self, E1, E2):
         return self.FermiDirac(E2) - self.FermiDirac(E1)
 
+    def factor_Efermi_der(self, E1):
+        return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
+
     def nonzero(self, E1, E2):
         if (E1 < self.eocc1max and E2 < self.eocc1max) or (E1 > self.eocc0min and E2 > self.eocc0min):
             return False
@@ -78,7 +81,10 @@ class DynamicCalculator(Calculator, abc.ABC):
 
             matrix_elements = np.array(
                 [formula.trace_ln(ik, np.arange(*pair[0]), np.arange(*pair[1])) for pair in degen_group_pairs])
-            factor_Efermi = np.array([self.factor_Efermi(pair[2], pair[3]) for pair in degen_group_pairs])
+            if self.fder == 0:
+                factor_Efermi = np.array([self.factor_Efermi(pair[2], pair[3]) for pair in degen_group_pairs])
+            elif self.fder == 1:
+                factor_Efermi = np.array([self.factor_Efermi_der(pair[2]) for pair in degen_group_pairs])
             factor_omega = np.array([self.factor_omega(pair[2], pair[3]) for pair in degen_group_pairs]).T
             restot += factor_omega @ (factor_Efermi[:, :, None]
                                       * matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
@@ -241,36 +247,32 @@ class SHC(DynamicCalculator):
 ####################################################
 #    Spatially-dispersive conductivity tensor      #
 ####################################################
-    
+
 # _____ Antisymmetric (time-even) spatially-dispersive conductivity tensor _____ #
 
-class SDCT_asym(DynamicCalculator):
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.Formula = Formula_SDCT_asym_sea_I
-        self.constant_factor = factors.factor_SDCT
-        self.sea_II = SDCT_asym_sea_II(**kwargs)
+class SDCT_asym(Calculator):
+    def __init__(self, fermi_sea=True, fermi_surf=True, **kwargs):
+        self.terms = []
+        # Fermi sea terms
+        if fermi_sea:
+            self.terms.extend([SDCT_asym_sea_I(**kwargs),
+                                   SDCT_asym_sea_II(**kwargs)])
+        # Fermi surface terms
+        if fermi_surf:
+            self.terms.extend([SDCT_asym_surf_I(**kwargs),
+                                   SDCT_asym_surf_II(**kwargs)])
 
     def __call__(self, data_K):
-        sea_I  = super().__call__(data_K)
-        sea_II = self.sea_II(data_K)
-        return sea_I + sea_II
+        return sum( cal(data_K) for cal in self.terms )
 
-    def factor_omega(self, E1, E2):
-        eta = 1e-1
-        omega = self.omega + 1.j * eta
-        Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
-        Zfac = 1. / Z_arg_12
-        return omega * Zfac
-    
+
 class Formula_SDCT_asym_sea_I():
 
     def __init__(self, data_K):
         # Intrinsic multipole moments
         A = -1. * data_K.E1
         B = data_K.Bln
-        
+
         # Other quantities
         Vn = data_K.Vn
         Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
@@ -280,7 +282,7 @@ class Formula_SDCT_asym_sea_I():
         summ += -np.imag( A[:,:,:,:,None,None] * B[:,:,:,None,:,:] )
         summ += Vnm_plus[:,:,:,:,None,None] * np.imag( A[:,:,:,None,:,None] * A.swapaxes(1,2)[:,:,:,None,None,:] )
         summ  = summ - summ.swapaxes(3,4)
-        
+
         self.summ = summ
         self.ndim = 3
         self.transformTR  = transform_ident
@@ -295,6 +297,7 @@ class SDCT_asym_sea_I(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_SDCT_asym_sea_I
+        self.fder = 0
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
@@ -310,7 +313,7 @@ class Formula_SDCT_asym_sea_II():
     def __init__(self, data_K):
         # Intrinsic multipole moments
         A = -1. * data_K.E1
-        
+
         # Other quantities
         Vn = data_K.Vn
         Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
@@ -318,7 +321,7 @@ class Formula_SDCT_asym_sea_II():
         # Formula
         summ  = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
         summ += np.imag( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vnm_plus[:,:,:,None,None,:]
-        
+
         self.summ = summ
         self.ndim = 3
         self.transformTR  = transform_ident
@@ -333,6 +336,7 @@ class SDCT_asym_sea_II(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_SDCT_asym_sea_II
+        self.fder = 0
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
@@ -347,14 +351,15 @@ class Formula_SDCT_asym_surf_I():
     def __init__(self, data_K):
         # Intrinsic multipole moments
         A = -1. * data_K.E1
-        
+
         # Other quantities
         Vn = data_K.Vn
 
         # Formula
         summ = -np.imag( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vn[:,:,None,None,None,:]
-        
+
         self.summ = summ
+        self.fder = 1
         self.ndim = 3
         self.transformTR  = transform_ident
         self.transformInv = transform_odd
@@ -362,58 +367,81 @@ class Formula_SDCT_asym_surf_I():
     def trace_ln(self, ik, inn1, inn2):
         return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
 
-class Formula_SDCT_asym_surf_II():
-
-    def __init__(self, data_K):
-        # Intrinsic multipole moments
-        Bln = data_K.Bln
-        Bn  = np.diagonal(B_H, axis1=1, axis2=2).transpose(0, 3, 1)
-        
-        # Other quantities
-        Vn   = data_K.Vn
-        kron = data_K.kron
-
-        # Formula
-        summ = Vn[:,:,None,:,None,None] * Bn[:,:,None,None,:,:] * kron[:,:,:,None,None,None]
-        summ = summ - summ.swapaxes(3,4)
-        
-        self.summ = summ
-        self.ndim = 3
-        self.transformTR  = transform_ident
-        self.transformInv = transform_odd
-
-    def trace_ln(self, ik, inn1, inn2):
-        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
-
-# _____ Symmetric (time-odd) spatially-dispersive conductivity tensor _____ #
-
-class SDCT_sym(DynamicCalculator):
+class SDCT_asym_surf_I(DynamicCalculator):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.Formula = Formula_SDCT_sym_sea_I
+        self.Formula = Formula_SDCT_asym_surf_I
+        self.fder = 1
         self.constant_factor = factors.factor_SDCT
-        self.sea_II = SDCT_sym_sea_II(**kwargs)
-
-    def __call__(self, data_K):
-        sea_I  = super().__call__(data_K)
-        sea_II = self.sea_II(data_K)
-        return sea_I + sea_II
 
     def factor_omega(self, E1, E2):
         eta = 1e-1
         omega = self.omega + 1.j * eta
         Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
-        return 1.j * (E2 - E1) * Zfac
-    
+        return omega * (E2 - E1) * Zfac
+
+class Formula_SDCT_asym_surf_II():
+
+    def __init__(self, data_K):
+        # Intrinsic multipole moments
+        Bln = data_K.Bln
+        Bn  = np.diagonal(Bln, axis1=1, axis2=2).transpose(0, 3, 1, 2)
+
+        # Other quantities
+        Vn = data_K.Vn
+
+        # Formula
+        summ = Vn[:,:,:,None,None] * Bn[:,:,None,:,:]
+        summ = summ - summ.swapaxes(3,4)
+
+        self.summ = summ
+        self.ndim = 3
+        self.transformTR  = transform_ident
+        self.transformInv = transform_odd
+
+    def trace_ln(self, ik, inn1, inn2): # There is no sum over l
+        return self.summ[ik, inn1].sum(axis=0)
+
+class SDCT_asym_surf_II(DynamicCalculator):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.Formula = Formula_SDCT_asym_surf_II
+        self.fder = 1
+        self.constant_factor = factors.factor_SDCT
+
+    def factor_omega(self, E1, E2):
+        eta = 1e-1
+        omega = self.omega + 1.j * eta
+        return 1. / omega
+
+# _____ Symmetric (time-odd) spatially-dispersive conductivity tensor _____ #
+
+class SDCT_sym(Calculator):
+    def __init__(self, fermi_sea=True, fermi_surf=True, **kwargs):
+        self.terms = []
+        # Fermi sea terms
+        if fermi_sea:
+            self.terms.extend([SDCT_sym_sea_I(**kwargs),
+                                   SDCT_sym_sea_II(**kwargs)])
+        # Fermi surface terms
+        if fermi_surf:
+            self.terms.extend([SDCT_sym_surf_I(**kwargs),
+                                   SDCT_sym_surf_II(**kwargs)])
+
+    def __call__(self, data_K):
+        return sum( cal(data_K) for cal in self.terms )
+
+
 class Formula_SDCT_sym_sea_I():
 
     def __init__(self, data_K):
         # Intrinsic multipole moments
         A = -1. * data_K.E1
         B = data_K.Bln
-        
+
         # Other quantities
         Vn = data_K.Vn
         Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
@@ -423,10 +451,10 @@ class Formula_SDCT_sym_sea_I():
         summ += np.real( A[:,:,:,:,None,None] * B[:,:,:,None,:,:] )
         summ += Vnm_plus[:,:,:,:,None,None] * np.real( A[:,:,:,None,:,None] * A.swapaxes(1,2)[:,:,:,None,None,:] )
         summ  = summ + summ.swapaxes(3,4)
-        
+
         self.summ = summ
         self.ndim = 3
-        self.transformTR  = transform_ident
+        self.transformTR  = transform_odd
         self.transformInv = transform_odd
 
     def trace_ln(self, ik, inn1, inn2):
@@ -438,6 +466,7 @@ class SDCT_sym_sea_I(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_SDCT_sym_sea_I
+        self.fder = 0
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
@@ -453,7 +482,7 @@ class Formula_SDCT_sym_sea_II():
     def __init__(self, data_K):
         # Intrinsic multipole moments
         A = -1. * data_K.E1
-        
+
         # Other quantities
         Vn = data_K.Vn
         Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
@@ -461,10 +490,10 @@ class Formula_SDCT_sym_sea_II():
         # Formula
         summ  = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
         summ -= np.real( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vnm_plus[:,:,:,None,None,:]
-        
+
         self.summ = summ
         self.ndim = 3
-        self.transformTR  = transform_ident
+        self.transformTR  = transform_odd
         self.transformInv = transform_odd
 
     def trace_ln(self, ik, inn1, inn2):
@@ -476,6 +505,7 @@ class SDCT_sym_sea_II(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_SDCT_sym_sea_II
+        self.fder = 0
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
@@ -484,6 +514,75 @@ class SDCT_sym_sea_II(DynamicCalculator):
         Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
         return 1.j * (E2 - E1)**3 * Zfac**2
+
+
+class Formula_SDCT_sym_surf_I():
+
+    def __init__(self, data_K):
+        # Intrinsic multipole moments
+        A = -1. * data_K.E1
+
+        # Other quantities
+        Vn = data_K.Vn
+
+        # Formula
+        summ = np.real( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vn[:,:,None,None,None,:]
+
+        self.summ = summ
+        self.fder = 1
+        self.ndim = 3
+        self.transformTR  = transform_odd
+        self.transformInv = transform_odd
+
+    def trace_ln(self, ik, inn1, inn2):
+        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+
+class SDCT_sym_surf_I(DynamicCalculator):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.Formula = Formula_SDCT_sym_surf_I
+        self.fder = 1
+        self.constant_factor = factors.factor_SDCT
+
+    def factor_omega(self, E1, E2):
+        eta = 1e-1
+        omega = self.omega + 1.j * eta
+        Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
+        Zfac = 1. / Z_arg_12
+        return 1.j * (E2 - E1)**2 * Zfac
+
+
+class Formula_SDCT_sym_surf_II():
+
+    def __init__(self, data_K):
+        Vn   = data_K.Vn
+
+        # Formula
+        summ = Vn[:,:,:,None,None] * Vn[:,:,None,:,None] * Vn[:,:,None,None,:]
+
+        self.summ = summ
+        self.ndim = 3
+        self.transformTR  = transform_odd
+        self.transformInv = transform_odd
+
+    def trace_ln(self, ik, inn1, inn2): # There is no sum over l
+        return self.summ[ik, inn1].sum(axis=0)
+
+
+class SDCT_sym_surf_II(DynamicCalculator):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.Formula = Formula_SDCT_sym_surf_II
+        self.fder = 1
+        self.constant_factor = factors.factor_SDCT
+
+    def factor_omega(self, E1, E2):
+        eta = 1e-1
+        omega = self.omega + 1.j * eta
+        return -1.j / omega**2
 
 ###############################################################################
 
