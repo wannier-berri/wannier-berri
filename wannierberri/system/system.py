@@ -21,6 +21,10 @@ import functools
 import multiprocessing
 from collections import defaultdict
 
+pauli_x = [[0,1],[1,0]]
+pauli_y = [[0,-1j],[1j,0]]
+pauli_z = [[1,0],[0,-1]]
+pauli_xyz = np.array([pauli_x,pauli_y,pauli_z]).transpose((1,2,0))
 class System():
 
     default_parameters = {
@@ -248,6 +252,9 @@ class System():
             Magnetic momens of each atoms.
         DFT_code: str
             DFT code used : ``'qe'`` or ``'vasp'`` . This is needed, because vasp and qe have different orbitals arrangement with SOC.(grouped by spin or by orbital type)
+
+        Notes:
+            does not update wannier_centers. TODO: make the code update them
         """
 
         symmetrize_wann = SymWann(
@@ -285,7 +292,9 @@ class System():
     def set_spin(self, spins, axis=[0,0,1], **kwargs):
         """
         Set spins along axis in  SS(R=0).  Useful for model calculations.
+        Note : The spin matrix is purely diagonal, so that <up | sigma_x | down> = 0
         For more cversatility use :func:`~wannierberri.system.System.set_R_mat`
+        :func:`~wannierberri.system.System.set_spin_pairs`, :func:`~wannierberri.system.System.set_spin_from_code`
 
         Parameters
         ----------
@@ -302,6 +311,65 @@ class System():
         axis = np.array(axis)/np.linalg.norm(axis)
         value = np.array([s*axis for s in spins], dtype=complex)
         self.set_R_mat(key='SS', value=value, diag=True, **kwargs)
+
+    def set_spin_pairs(self,pairs):
+        """set SS_R, assuming that each Wannier function is an eigenstate of Sz,
+        Parameters
+        ----------
+        pairs : list of tuple
+            list of pair of indices of bands ``[(up1,down1), (up2,down2), ..]``
+
+        Notes:
+        -------
+        * For abinitio calculations this is a rough approximation, that may be used on own risk.
+        See also :func:`~wannierberri.system.System.set_spin_from_code`
+        """
+        assert all( len(p)==2 for p in pairs )
+        all_states = np.array( sum( (list(p) for p in pairs), []) )
+        assert np.all(all_states>=0) and (np.all(all_states<self.num_wann)), (
+            f"indices of states should be 0<=i<num_wann-{self.num_wann}, found {pairs}" )
+        assert len(set(all_states)) == len(all_states), "some states appear more then once in pairs"
+        if len(pairs) < self.num_wann/2:
+            print (f"WARNING : number of spin pairs {len(pairs)} is less then num_wann/2 = {self.num_wann/2}. "+
+                     "For other states spin properties will be set to zero. are yoiu sure ?")
+        SS_R0 = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
+        for i,j in pairs:
+            dist=np.linalg.norm( self.wannier_centers_cart[i]-self.wannier_centers_cart[j] )
+            if dist>1e-3:
+                print (f"WARNING: setting spin pair for Wannier function {i} and {j}, distance between them {dist}")
+            SS_R0[i,i]=pauli_xyz[0,0]
+            SS_R0[i,j]=pauli_xyz[0,1]
+            SS_R0[j,i]=pauli_xyz[1,0]
+            SS_R0[j,j]=pauli_xyz[1,1]
+            self.set_R_mat(key='SS',value=SS_R0,diag=False,R=[0,0,0],reset=True)
+
+
+
+    def set_spin_from_code(self, DFT_code="qe"):
+        """set SS_R, assuming that each Wannier function is an eigenstate of Sz,
+         according to the ordering of the ab-initio code
+        Parameters
+        ----------
+        DFT_code: str
+            DFT code used :
+                *  ``'qe'`` : if bands are grouped by orbital type, in each pair first comes spin-up,then spin-down
+                *  ``'vasp'`` : if bands are grouped by spin : first come all spin-up, then all spin-down
+            1D `array(num_wann)` of `+1` or `-1` spins are along `axis`
+
+        Notes:
+        -------
+        * This is a rough approximation, that may be used on own risk
+        * The pure-spin character may be broken by maximal localization. Recommended to use `num_iter=0` in Wannier90
+        * if your DFT code has a different name, but uses the same spin ordering as `qe` or `vasp` - set `DFT_code='qe'` or `DFT_code='vasp'` correspondingly
+        * if your DFT code has a different spin ordering, use   :func:`~wannierberri.system.System.set_spin_pairs`
+        """
+        assert self.num_wann%2==0, f"odd number of Wannier functions {self.num_wann} cannot be grouped into spin pairs"
+        nw2=self.num_wann//2
+        if DFT_code.lower() == 'vasp':
+            pairs = [(i,i+nw2)   for i in range(nw2)]
+        elif DFT_code.lower() in ['qe', 'quantum_espresso', 'espresso']:
+            pairs = [(2*i,2*i+1) for i in range(nw2)]
+        self.set_spin_pairs(pairs)
 
     def getXX_only_wannier_centers(self, getSS=False):
         """return AA_R, BB_R, CC_R containing only the diagonal matrix elements, evaluated from
