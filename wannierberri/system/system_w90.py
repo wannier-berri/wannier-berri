@@ -53,7 +53,7 @@ class System_w90(System):
     def __init__(
             self,
             seedname="wannier90",
-            transl_inv=True,      
+            transl_inv=True,
             guiding_centers=False,
             fft='fftw',
             npar=multiprocessing.cpu_count(),
@@ -277,111 +277,56 @@ class System_w90(System):
             print("Completing real-space matrix elements obtained from Jae-Mo's approach...")
 
             # Basic quantities to simplify notation
-            num_wann = self.num_wann                  # Number of Wannier functions
             wc_cart = self.wannier_centers_cart       # Wannier centers in cartesian coordinates
-            nRvec = self.nRvec                        # Number of R vectors after ws_dist
             iRvec = self.iRvec                        # List of R vector indices after ws_dist
             cRvec = self.cRvec                        # List of R vector cartesian coordinates after ws_dist
-            NNB = self.NNB                            # Number of nearest-neighbor b vectors
             bk_latt_unique = self.bk_latt_unique      # List of nearest-neighbor b vectors
 
-            # A_a(R) matrix
-            AA_R = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
+            # Phase factor to be added to real-space matrix elements (iR,ib)
+            phase = np.exp(-2.j * np.pi * np.dot(bk_latt_unique[:,:], iRvec.T) / 2).swapaxes(0,1)
+
+            # Real-space matrices to undo recentering (iw,jw,iR,a,b,...)
+            rc_1 = cRvec[None,None,:,:] + wc_cart[None,:,None,:] - wc_cart[:,None,None,:]
+            rc_2 = (wc_cart[None,:,None,:,None] - wc_cart[:,None,None,:,None]) * cRvec[None,None,:,None,:]
+
+            # --- A_a(R) matrix --- #
+            # Original matrix (no effect from recentering)
             AA_Rb = self.get_R_mat('AA')
-
-            for iw in range(num_wann):
-                for jw in range(num_wann):
-                    for iR in range(nRvec):
-                        for ib in range(NNB):
-                            phase = np.exp(-2.j * np.pi * np.dot(bk_latt_unique[ib, :], iRvec[iR, :]) / 2)
-                            AA_R[iw, jw, iR] += AA_Rb[iw, jw, iR, ib] * phase
-
+            AA_R  = (AA_Rb * phase[None,None,:,:,None]).sum(axis=3)
             self.set_R_mat('AA', AA_R, reset=True)
 
-            # B_a(R) matrix
-            BB_R = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
-            BB_Rb = self.get_R_mat('BB')
+            # --- B_a(R) matrix --- #
+            # Recentered matrix
+            BB_Rb   = self.get_R_mat('BB')
+            BB_R_rc = (BB_Rb * phase[None,None,:,:,None]).sum(axis=3)
 
-            BB_R_rc = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)  # Recentered B_a(R) matrix
-            for iw in range(num_wann):
-                for jw in range(num_wann):
-                    for iR in range(nRvec):
-                        for ib in range(NNB):
-                            phase = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib, :], iRvec[iR, :]) / 2)
-                            BB_R_rc[iw, jw, iR, :] += BB_Rb[iw, jw, iR, ib, :] * phase
+            # Matrices relating recentered to original
+            HH_R    = self.get_R_mat('Ham')
+            rc_to_H = - 0.5 * rc_1 * HH_R[:,:,:,None]
 
-            HH_R = self.get_R_mat('Ham')  # Hamiltonian matrix in the new real-space mesh
-            for iw in range(num_wann):    # Matrices relating recentered B_a(R) matrix to original B_a(R) matrix
-                for jw in range(num_wann):
-                    for iR in range(nRvec):
-                        rc = cRvec[iR, :] + wc_cart[jw, :] - wc_cart[iw, :]
-
-                        rc_to_H = -0.5 * rc * HH_R[iw, jw, iR]
-
-                        BB_R[iw, jw, iR] = BB_R_rc[iw, jw, iR] + rc_to_H
-
+            # Original matrix
+            BB_R = BB_R_rc + rc_to_H
             self.set_R_mat('BB', BB_R, reset=True)
 
-            # C_a(R) matrix
-            CC_R = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)
-            CC_Rb = self.get_R_mat('CC')
+            # --- C_a(R) matrix --- #
+            # Recentered matrix
+            CC_Rb   = self.get_R_mat('CC')
+            CC_R_rc = (CC_Rb * phase[None,None,:,:,None,None] * phase[None,None,:,None,:,None]).sum(axis=(3,4))
 
-            CC_R_rc = np.zeros((num_wann, num_wann, nRvec, 3), dtype=complex)  # Recentered C_a(R) matrix
-            for iw in range(num_wann):
-                for jw in range(num_wann):
-                    for iR in range(nRvec):
-                        for ib1 in range(NNB):
-                            for ib2 in range(NNB):
-                                phase_b1 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib1, :], iRvec[iR, :]) / 2)
-                                phase_b2 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib2, :], iRvec[iR, :]) / 2)
-                                CC_R_rc[iw, jw, iR, :] += CC_Rb[iw, jw, iR, ib1, ib2, :] * phase_b1 * phase_b2
+            # Matrices relating recentered to original
+            HH_R = self.get_R_mat('Ham')
+            lst_R, lst_mR = self.reverseR
+            rc_to_H  = 0.5j * rc_1[:,:,lst_R,:,None] * (BB_R_rc[:,:,lst_R,None,:] + BB_R_rc[:,:,lst_mR,None,:].swapaxes(0,1).conj())
+            rc_to_H += 0.5j * rc_2 * HH_R[:,:,:,None,None]
 
-            HH_R = self.get_R_mat('Ham')  # Matrices relating recentered C_a(R) matrix to original C_a(R) matrix
-            for iw in range(num_wann):
-                for jw in range(num_wann):
-                    for iR in range(nRvec):
-                        # Find the inverse R vector
-                        for jR in range(nRvec):
-                            if all(iRvec[iR] == -iRvec[jR]):
-                                iRinv = jR
-
-                        rc_1 = cRvec[iR, :] + wc_cart[jw, :] - wc_cart[iw, :]
-                        rc_2 = (wc_cart[jw, :, None] - wc_cart[iw, :, None]) * cRvec[iR, None, :]
-
-                        rc_to_H = 0.5j * rc_1[alpha_A] * (BB_R_rc[iw, jw, iR, beta_A] + BB_R_rc[jw, iw, iRinv, beta_A].conj())
-                        rc_to_H -= 0.5j * rc_1[beta_A] * (BB_R_rc[iw, jw, iR, alpha_A] + BB_R_rc[jw, iw, iRinv, alpha_A].conj())
-                        rc_to_H += 0.5j * rc_2[alpha_A, beta_A] * HH_R[iw, jw, iR]
-                        rc_to_H -= 0.5j * rc_2[beta_A, alpha_A] * HH_R[iw, jw, iR]
-
-                        CC_R[iw, jw, iR] = CC_R_rc[iw, jw, iR] + rc_to_H
-
+            # Original matrix
+            CC_R = CC_R_rc + rc_to_H[:,:,:,alpha_A,beta_A] - rc_to_H[:,:,:,beta_A,alpha_A]
             self.set_R_mat('CC', CC_R, reset=True)
 
-            # G_bc(R) matrix
-            GG_R = np.zeros((num_wann, num_wann, nRvec, 3, 3), dtype=complex)
+            # --- G_bc(R) matrix --- #
+            # Original matrix (no effect from recentering)
             GG_Rb = self.get_R_mat('GG')
-
-            GG_R_rc = np.zeros((num_wann, num_wann, nRvec, 3, 3), dtype=complex)  # Recentered F_bc(R) matrix
-            for iw in range(num_wann):
-                for jw in range(num_wann):
-                    for iR in range(nRvec):
-                        for ib1 in range(NNB):
-                            for ib2 in range(NNB):
-                                phase_b1 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib1, :],iRvec[iR, :]) / 2)
-                                phase_b2 = np.exp(-2j * np.pi * np.dot(bk_latt_unique[ib2, :],iRvec[iR, :]) / 2)
-                                GG_R_rc[iw, jw, iR, :, :] += GG_Rb[iw, jw, iR, ib1, ib2, :, :] * phase_b1 * phase_b2
-
-            # Matrices relating recentered F_bc(R) matrix to original F_bc(R) matrix
-            for iw in range(num_wann):
-                for jw in range(num_wann):
-                    for iR in range(nRvec):
-                        rc = cRvec[iR, :] + wc_cart[jw, :] - wc_cart[iw, :]
-
-                        rc_to_H = -0.5 * AA_R[iw, jw, iR, :, None] * rc[None, :]
-                        rc_to_H += 0.5 * rc[:, None] * AA_R[iw, jw, iR, None, :]
-
-                        GG_R[iw, jw, iR] = GG_R_rc[iw, jw, iR] + rc_to_H
-
+            GG_R  = (GG_Rb * phase[None,None,:,:,None,None,None] * phase[None,None,:,None,:,None,None]).sum(axis=(3,4))
             self.set_R_mat('GG', GG_R, reset=True)
 
             print(time()-t0)

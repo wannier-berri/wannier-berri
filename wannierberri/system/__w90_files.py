@@ -301,7 +301,7 @@ class CheckPoint():
 
         # G_bc is symmetric in the cartesian indices
         GG_qb = 0.5 * (GG_qb + GG_qb.swapaxes(5, 6))
-                    
+
         # Only Jae-Mo's scheme preserves hermiticity, but it can be enforced
         if not transl_inv_JM:
             GG_qb = 0.5 * (GG_qb + GG_qb.transpose((0, 2, 1, 4, 3, 5, 6)).conj())
