@@ -25,8 +25,6 @@ from termcolor import cprint
 import fortio, scipy.io
 
 
-
-
 # inheriting just in order to have posibility to change default values, without changing the rest of the code
 class FortranFileR(fortio.FortranFile):
 
