@@ -78,20 +78,49 @@ def check_system():
 
 
 def test_system_Fe_W90(check_system, system_Fe_W90):
-    check_system(system_Fe_W90,"Fe_W90", extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc, matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA'])
+    check_system(
+            system_Fe_W90,"Fe_W90",
+            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA']
+                )
 
 def test_system_Fe_W90_wcc(check_system, system_Fe_W90_wcc):
-    check_system(system_Fe_W90_wcc,"Fe_W90_wcc", extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc, matrices=['Ham','AA', 'BB', 'CC', 'SS'])
+    check_system(
+            system_Fe_W90_wcc,"Fe_W90_wcc",
+            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            matrices=['Ham','AA', 'BB', 'CC', 'SS']
+                )
 
 def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
-    check_system(system_Fe_W90_sparse,"Fe_W90_sparse",matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA'])
+    check_system(
+            system_Fe_W90_sparse,"Fe_W90_sparse",
+            matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA']
+                )
+
+
+def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90):
+    check_system(
+            system_Fe_sym_W90,"Fe_sym_W90",
+            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            matrices=['Ham','AA', 'BB', 'CC', 'SS']
+                )
+
+def test_system_Fe_W90_proj_set_spin(check_system, system_Fe_W90_proj_set_spin):
+    check_system(
+            system_Fe_W90_proj_set_spin,"Fe_W90_proj_set_spin",
+            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            matrices=['Ham','AA', 'BB', 'CC', 'SS']
+                )
+
+def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
+    check_system(
+            system_Fe_W90_proj,"Fe_W90_proj",
+            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR']
+                )
 
 
 """
-def system_Fe_W90_wcc(create_files_Fe_W90):
-def system_Fe_sym_W90(create_files_Fe_W90):
-def system_Fe_W90_proj_set_spin(create_files_Fe_W90):
-def system_Fe_W90_proj(create_files_Fe_W90):
 def system_GaAs_W90(create_files_GaAs_W90):
 def system_GaAs_W90_wcc(create_files_GaAs_W90):
 def system_GaAs_tb():
