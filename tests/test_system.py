@@ -80,8 +80,12 @@ def check_system():
 def test_system_Fe_W90(check_system, system_Fe_W90):
     check_system(system_Fe_W90,"Fe_W90", extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc, matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA'])
 
+def test_system_Fe_W90_wcc(check_system, system_Fe_W90_wcc):
+    check_system(system_Fe_W90_wcc,"Fe_W90_wcc", extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc, matrices=['Ham','AA', 'BB', 'CC', 'SS'])
+
 def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
     check_system(system_Fe_W90_sparse,"Fe_W90_sparse",matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA'])
+
 
 """
 def system_Fe_W90_wcc(create_files_Fe_W90):
