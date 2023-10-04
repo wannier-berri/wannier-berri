@@ -10,7 +10,7 @@ def check_system():
     def _inner( system,name,
                 properties=['num_wann','recip_lattice','real_lattice','nRvec','iRvec','cRvec','iR0','use_ws', 'periodic',
                 'use_wcc_phase','_getFF',
-                'cRvec',  'cell_volume','is_phonon'],
+                'cRvec',  'cell_volume','is_phonon']+properties_wcc,
                 extra_properties=[],
                 exclude_properties=[],
                 precision_properties=1e-8,
@@ -83,20 +83,21 @@ def check_system():
 def test_system_Fe_W90(check_system, system_Fe_W90):
     check_system(
             system_Fe_W90,"Fe_W90",
-            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            extra_properties=['wannier_centers_cart_auto','mp_grid'],
             matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA']
                 )
 
 def test_system_Fe_W90_wcc(check_system, system_Fe_W90_wcc):
     check_system(
             system_Fe_W90_wcc,"Fe_W90_wcc",
-            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            extra_properties=['wannier_centers_cart_auto','mp_grid'],
             matrices=['Ham','AA', 'BB', 'CC', 'SS']
                 )
 
 def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
     check_system(
             system_Fe_W90_sparse,"Fe_W90_sparse",
+            exclude_properties = properties_wcc, 
             matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA']
                 )
 
@@ -104,63 +105,63 @@ def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
 def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90):
     check_system(
             system_Fe_sym_W90,"Fe_sym_W90",
-            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            extra_properties=['wannier_centers_cart_auto','mp_grid'],
             matrices=['Ham','AA', 'BB', 'CC', 'SS']
                 )
 
 def test_system_Fe_W90_proj_set_spin(check_system, system_Fe_W90_proj_set_spin):
     check_system(
             system_Fe_W90_proj_set_spin,"Fe_W90_proj_set_spin",
-            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            extra_properties=['wannier_centers_cart_auto','mp_grid'],
             matrices=['Ham','AA', 'BB', 'CC', 'SS']
                 )
 
 def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
     check_system(
             system_Fe_W90_proj,"Fe_W90_proj",
-            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            extra_properties=['wannier_centers_cart_auto','mp_grid'],
             matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR']
                 )
 
 def test_system_GaAs_W90(check_system, system_GaAs_W90):
     check_system(
             system_GaAs_W90,"GaAs_W90",
-            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            extra_properties=['wannier_centers_cart_auto','mp_grid'],
             matrices=['Ham','AA', 'BB', 'CC', 'SS']
                 )
 
 def test_system_GaAs_W90_wcc(check_system, system_GaAs_W90_wcc):
     check_system(
             system_GaAs_W90_wcc,"GaAs_W90_wcc",
-            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            extra_properties=['wannier_centers_cart_auto','mp_grid'],
             matrices=['Ham','AA', 'BB', 'CC', 'SS']
                 )
 
 def test_system_GaAs_tb(check_system, system_GaAs_tb):
     check_system(
             system_GaAs_tb,"GaAs_tb",
-            extra_properties=['wannier_centers_cart_auto']+properties_wcc,
+            extra_properties=['wannier_centers_cart_auto'],
             matrices=['Ham','AA' ]
                 )
 
 def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb):
     check_system(
             system_GaAs_sym_tb,"GaAs_sym_tb",
-            extra_properties=['wannier_centers_cart_auto']+properties_wcc,
+            extra_properties=['wannier_centers_cart_auto'],
             matrices=['Ham','AA' ]
                 )
 
 def test_system_GaAs_tb_wcc(check_system, system_GaAs_tb_wcc):
     check_system(
             system_GaAs_tb_wcc,"GaAs_tb_wcc",
-            extra_properties=['wannier_centers_cart_auto']+properties_wcc,
+            extra_properties=['wannier_centers_cart_auto'],
             matrices=['Ham','AA' ]
                 )
 
 def test_system_GaAs_tb_wcc_ws(check_system, system_GaAs_tb_wcc_ws):
     check_system(
             system_GaAs_tb_wcc_ws,"GaAs_tb_wcc_ws",
-            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            extra_properties=['wannier_centers_cart_auto','mp_grid'],
             matrices=['Ham','AA' ]
                 )
 
@@ -168,60 +169,104 @@ def test_system_GaAs_tb_wcc_ws(check_system, system_GaAs_tb_wcc_ws):
 def test_system_Haldane_TBmodels(check_system, system_Haldane_TBmodels):
     check_system(
             system_Haldane_TBmodels,"Haldane", suffix="TBmodels",
-            extra_properties=properties_wcc,
             matrices=['Ham','AA' ]
                 )
 
 def test_system_Haldane_TBmodels_internal(check_system, system_Haldane_TBmodels_internal):
     check_system(
             system_Haldane_TBmodels_internal,"Haldane", suffix="TBmodels_internal",
-            extra_properties=properties_wcc,
             matrices=['Ham' ]
                 )
 
 def test_system_Haldane_PythTB(check_system, system_Haldane_PythTB):
     check_system(
             system_Haldane_PythTB,"Haldane", suffix="PythTB",
-            extra_properties=properties_wcc,
             matrices=['Ham','AA' ]
                 )
 
 def test_system_Chiral_left(check_system, system_Chiral_left):
     check_system(
             system_Chiral_left,"Chiral_left",
-            extra_properties=properties_wcc,
             matrices=['Ham']
                 )
 
 def test_system_Chiral_left_TR(check_system, system_Chiral_left_TR):
     check_system(
             system_Chiral_left_TR,"Chiral_left_TR",
-            extra_properties=properties_wcc,
             matrices=['Ham']
                 )
 
 def test_system_Chiral_right(check_system, system_Chiral_right):
     check_system(
             system_Chiral_right,"Chiral_right",
-            extra_properties=properties_wcc,
+            matrices=['Ham']
+                )
+
+def test_system_Fe_FPLO(check_system, system_Fe_FPLO):
+    check_system(
+            system_Fe_FPLO,"Fe_FPLO",
+            extra_properties=['wannier_centers_cart_auto'],
+            matrices=['Ham','AA', 'SS']
+                )
+
+def test_system_Fe_FPLO_wcc(check_system, system_Fe_FPLO_wcc):
+    check_system(
+            system_Fe_FPLO_wcc,"Fe_FPLO_wcc",
+            extra_properties=['wannier_centers_cart_auto'],
+            matrices=['Ham','AA', 'SS']
+                )
+
+def test_system_Fe_FPLO_wcc(check_system, system_Fe_FPLO_wcc):
+    check_system(
+            system_Fe_FPLO_wcc,"Fe_FPLO_wcc",
+            extra_properties=['wannier_centers_cart_auto'],
+            matrices=['Ham','AA', 'SS']
+                )
+
+def test_system_CuMnAs_2d_broken(check_system, system_CuMnAs_2d_broken):
+    check_system(
+            system_CuMnAs_2d_broken,"CuMnAs_2d_broken",
             matrices=['Ham']
                 )
 
 
-"""
-def system_Fe_FPLO():
-def system_Fe_FPLO_wcc():
-def system_CuMnAs_2d_broken():
-def system_Te_ASE(data_Te_ASE):
-def system_Te_ASE_wcc(data_Te_ASE):
-def system_Te_sparse():
-def system_Phonons_Si():
-def system_Phonons_GaAs():
-def system_Mn3Sn_sym_tb():
-def system_kp_mass_iso_0():
-def system_kp_mass_iso_1():
-def system_kp_mass_iso_2():
-def system_kp_mass_aniso_0():
-def system_kp_mass_aniso_1():
-def system_kp_mass_aniso_2():
-"""
+def test_system_Te_ASE(check_system, system_Te_ASE):
+    check_system(
+            system_Te_ASE,"Te_ASE",
+            extra_properties=['wannier_centers_cart_auto'],
+            matrices=['Ham','AA']
+                )
+
+def test_system_Te_ASE_wcc(check_system, system_Te_ASE_wcc):
+    check_system(
+            system_Te_ASE_wcc,"Te_ASE_wcc",
+            extra_properties=['wannier_centers_cart_auto'],
+            matrices=['Ham']
+                )
+
+def test_system_Te_sparse(check_system, system_Te_sparse):
+    check_system(
+            system_Te_sparse,"Te_sparse",
+            matrices=['Ham']
+                )
+
+def test_system_Phonons_Si(check_system, system_Phonons_Si):
+    check_system(
+            system_Phonons_Si,"Phonons_Si",
+            matrices=['Ham']
+                )
+
+def test_system_Phonons_GaAs(check_system, system_Phonons_GaAs):
+    check_system(
+            system_Phonons_GaAs,"Phonons_GaAs",
+            matrices=['Ham']
+                )
+
+def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb):
+    check_system(
+            system_Mn3Sn_sym_tb,"Mn3Sn_sym_tb",
+            extra_properties=['wannier_centers_cart_auto'],
+            matrices=['Ham','AA']
+                )
+
+#### TODO : add tests for kp systems ?

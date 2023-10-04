@@ -536,7 +536,7 @@ class System():
         if self.use_wcc_phase:
             return self.wannier_centers_cart
         else:
-            return np.zeros(self.wannier_centers_cart.shape, dtype=float)
+            return np.zeros((self.num_wann,3), dtype=float)
 
     @property
     def is_phonon(self):
