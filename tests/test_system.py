@@ -18,6 +18,8 @@ def check_system():
                 precision_matrix_elements=1e-7,
                 suffix=""
                ):
+        if len(suffix)>0: 
+            suffix = "_"+suffix
         out_dir = os.path.join(OUTPUT_DIR, 'systems',name+suffix)
         os.makedirs(out_dir,exist_ok=True)
 
@@ -61,10 +63,11 @@ def check_system():
                 diff = abs(data-data_ref).max()
                 raise ValueError(
                                     f"matrix elements {key} for system {name} give an "
-                                    f"absolute difference of {diff} greater than the required precision {req_precision}\n"
-                                    f"the missed elements are : \n"+
-                                    "\n".join ("{i} | system.iRvec[i[2]] | {mat[i]} | {mat_ref[i]} | {abs(mat[i]-mat_ref[i])}"
-                                            for i in zip(np.where(abs(data-data_ref)>req_precision)) )+"\n\n"
+                                    f"absolute difference of {diff} greater than the required precision {req_precision}\n"+
+                                    ( (f"the missed elements are : \n"+
+                                    "\n".join (f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i]-data_ref[i])}"
+                                            for i in zip(*np.where(abs(data-data_ref)>req_precision)) )+"\n\n"
+                                        ) if XX else "" )
                                 )
             print (" - Ok!")
 
@@ -162,13 +165,50 @@ def test_system_GaAs_tb_wcc_ws(check_system, system_GaAs_tb_wcc_ws):
                 )
 
 
+def test_system_Haldane_TBmodels(check_system, system_Haldane_TBmodels):
+    check_system(
+            system_Haldane_TBmodels,"Haldane", suffix="TBmodels",
+            extra_properties=properties_wcc,
+            matrices=['Ham','AA' ]
+                )
+
+def test_system_Haldane_TBmodels_internal(check_system, system_Haldane_TBmodels_internal):
+    check_system(
+            system_Haldane_TBmodels_internal,"Haldane", suffix="TBmodels_internal",
+            extra_properties=properties_wcc,
+            matrices=['Ham' ]
+                )
+
+def test_system_Haldane_PythTB(check_system, system_Haldane_PythTB):
+    check_system(
+            system_Haldane_PythTB,"Haldane", suffix="PythTB",
+            extra_properties=properties_wcc,
+            matrices=['Ham','AA' ]
+                )
+
+def test_system_Chiral_left(check_system, system_Chiral_left):
+    check_system(
+            system_Chiral_left,"Chiral_left",
+            extra_properties=properties_wcc,
+            matrices=['Ham']
+                )
+
+def test_system_Chiral_left_TR(check_system, system_Chiral_left_TR):
+    check_system(
+            system_Chiral_left_TR,"Chiral_left_TR",
+            extra_properties=properties_wcc,
+            matrices=['Ham']
+                )
+
+def test_system_Chiral_right(check_system, system_Chiral_right):
+    check_system(
+            system_Chiral_right,"Chiral_right",
+            extra_properties=properties_wcc,
+            matrices=['Ham']
+                )
+
+
 """
-def system_Haldane_TBmodels():
-def system_Haldane_TBmodels_internal():
-def system_Haldane_PythTB():
-def system_Chiral_left():
-def system_Chiral_left_TR():
-def system_Chiral_right():
 def system_Fe_FPLO():
 def system_Fe_FPLO_wcc():
 def system_CuMnAs_2d_broken():
