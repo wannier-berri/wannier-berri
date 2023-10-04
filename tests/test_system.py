@@ -1,17 +1,16 @@
 """Test data of systems"""
 import numpy as np
 import pytest, os
-from pytest import approx
 from common import OUTPUT_DIR, REF_DIR
 
+properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced','wannier_centers_cart_wcc_phase','wannier_centers_cart_ws', 'diff_wcc_cart', 'diff_wcc_red','cRvec_p_wcc']
 
 @pytest.fixture
 def check_system():
     def _inner( system,name,
-                properties=['num_wann','recip_lattice','real_lattice','nRvec','iRvec','cRvec','iR0','frozen_max','use_ws','mp_grid', 'periodic', 
-                'use_wcc_phase','wannier_centers_cart', 'wannier_centers_reduced','_getFF','wannier_centers_cart_auto',
-                'wannier_centers_cart_wcc_phase','wannier_centers_cart_ws',
-                'cRvec', 'cRvec_p_wcc', 'cell_volume','is_phonon', 'diff_wcc_cart', 'diff_wcc_red'],
+                properties=['num_wann','recip_lattice','real_lattice','nRvec','iRvec','cRvec','iR0','use_ws', 'periodic',
+                'use_wcc_phase','_getFF',
+                'cRvec',  'cell_volume','is_phonon'],
                 extra_properties=[],
                 exclude_properties=[],
                 precision_properties=1e-8,
@@ -29,17 +28,21 @@ def check_system():
         properties = [p for p in properties + extra_properties if p not in exclude_properties]
         # First save the system data, to produce reference data
 
-        # we save each property as separate file, so that if in future we add more properties, we do not need to 
+        # we save each property as separate file, so that if in future we add more properties, we do not need to
         # rewrite the old files, so that the changes in a PR will be clearly visible
         for key in properties:
-            np.savez_compressed( os.path.join(out_dir,key+".npz") , getattr(system,key) )
+            print (f"saving {key}",end="")
+            np.savez( os.path.join(out_dir,key+".npz") , getattr(system,key) , allow_pickle=True)
+            print (" - Ok!")
         for key in matrices:
+            print (f"saving {key}",end="")
             np.savez_compressed( os.path.join(out_dir,key+".npz") , system.get_R_mat(key) )
+            print (" - Ok!")
 
 
         def check_property(key,prec,XX=False):
             print (f"checking {key} prec={prec} XX={XX}", end="")
-            data_ref = np.load( os.path.join(REF_DIR,"systems",  name, key+".npz") )['arr_0']
+            data_ref = np.load( os.path.join(REF_DIR,"systems",  name, key+".npz"), allow_pickle=True )['arr_0']
             if XX:
                 data = system.get_R_mat(key)
             else:
@@ -50,17 +53,17 @@ def check_system():
                 data_ref=np.array(data_ref,dtype=int)
             if hasattr(data_ref,'shape'):
                 assert data.shape == data_ref.shape, f"{key} has the wrong shape {data.shape}, should be {data_ref.shape}"
-            diff = abs(data-data_ref).max()
             if prec<0:
                 req_precision = -prec*( abs(data_ref) )
             else:
                 req_precision = prec
-            if diff>req_precision:
+            if not data==pytest.approx(data_ref):
+                diff = abs(data-data_ref).max()
                 raise ValueError(
                                     f"matrix elements {key} for system {name} give an "
                                     f"absolute difference of {diff} greater than the required precision {req_precision}\n"
                                     f"the missed elements are : \n"+
-                                    "\n".join ("{i} | system.iRvec[i[2]] | {mat[i]} | {mat_ref[i]} | {abs(mat[i]-mat_ref[i])}" 
+                                    "\n".join ("{i} | system.iRvec[i[2]] | {mat[i]} | {mat_ref[i]} | {abs(mat[i]-mat_ref[i])}"
                                             for i in zip(np.where(abs(data-data_ref)>req_precision)) )+"\n\n"
                                 )
             print (" - Ok!")
@@ -75,13 +78,12 @@ def check_system():
 
 
 def test_system_Fe_W90(check_system, system_Fe_W90):
-    check_system(system_Fe_W90,"Fe_W90",matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA'])
+    check_system(system_Fe_W90,"Fe_W90", extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc, matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA'])
 
+def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
+    check_system(system_Fe_W90_sparse,"Fe_W90_sparse",matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA'])
 
 """
-def system_Fe_W90(create_files_Fe_W90):
-def system_Fe_W90_sparse(create_files_Fe_W90,system_Fe_W90):
-    params = system_Fe_W90.get_sparse({X:-1 for X in system_Fe_W90._XX_R.keys()})
 def system_Fe_W90_wcc(create_files_Fe_W90):
 def system_Fe_sym_W90(create_files_Fe_W90):
 def system_Fe_W90_proj_set_spin(create_files_Fe_W90):
