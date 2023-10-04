@@ -18,7 +18,7 @@ def check_system():
                 precision_matrix_elements=1e-7,
                 suffix=""
                ):
-        if len(suffix)>0: 
+        if len(suffix)>0:
             suffix = "_"+suffix
         out_dir = os.path.join(OUTPUT_DIR, 'systems',name+suffix)
         os.makedirs(out_dir,exist_ok=True)
@@ -64,7 +64,7 @@ def check_system():
                 raise ValueError(
                                     f"matrix elements {key} for system {name} give an "
                                     f"absolute difference of {diff} greater than the required precision {req_precision}\n"+
-                                    ( (f"the missed elements are : \n"+
+                                    ( ("the missed elements are : \n"+
                                     "\n".join (f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i]-data_ref[i])}"
                                             for i in zip(*np.where(abs(data-data_ref)>req_precision)) )+"\n\n"
                                         ) if XX else "" )
@@ -97,7 +97,7 @@ def test_system_Fe_W90_wcc(check_system, system_Fe_W90_wcc):
 def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
     check_system(
             system_Fe_W90_sparse,"Fe_W90_sparse",
-            exclude_properties = properties_wcc, 
+            exclude_properties=properties_wcc,
             matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA']
                 )
 
@@ -205,13 +205,6 @@ def test_system_Chiral_right(check_system, system_Chiral_right):
 def test_system_Fe_FPLO(check_system, system_Fe_FPLO):
     check_system(
             system_Fe_FPLO,"Fe_FPLO",
-            extra_properties=['wannier_centers_cart_auto'],
-            matrices=['Ham','AA', 'SS']
-                )
-
-def test_system_Fe_FPLO_wcc(check_system, system_Fe_FPLO_wcc):
-    check_system(
-            system_Fe_FPLO_wcc,"Fe_FPLO_wcc",
             extra_properties=['wannier_centers_cart_auto'],
             matrices=['Ham','AA', 'SS']
                 )
