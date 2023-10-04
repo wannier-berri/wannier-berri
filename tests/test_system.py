@@ -119,14 +119,50 @@ def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
             matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR']
                 )
 
+def test_system_GaAs_W90(check_system, system_GaAs_W90):
+    check_system(
+            system_GaAs_W90,"GaAs_W90",
+            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            matrices=['Ham','AA', 'BB', 'CC', 'SS']
+                )
+
+def test_system_GaAs_W90_wcc(check_system, system_GaAs_W90_wcc):
+    check_system(
+            system_GaAs_W90_wcc,"GaAs_W90_wcc",
+            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            matrices=['Ham','AA', 'BB', 'CC', 'SS']
+                )
+
+def test_system_GaAs_tb(check_system, system_GaAs_tb):
+    check_system(
+            system_GaAs_tb,"GaAs_tb",
+            extra_properties=['wannier_centers_cart_auto']+properties_wcc,
+            matrices=['Ham','AA' ]
+                )
+
+def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb):
+    check_system(
+            system_GaAs_sym_tb,"GaAs_sym_tb",
+            extra_properties=['wannier_centers_cart_auto']+properties_wcc,
+            matrices=['Ham','AA' ]
+                )
+
+def test_system_GaAs_tb_wcc(check_system, system_GaAs_tb_wcc):
+    check_system(
+            system_GaAs_tb_wcc,"GaAs_tb_wcc",
+            extra_properties=['wannier_centers_cart_auto']+properties_wcc,
+            matrices=['Ham','AA' ]
+                )
+
+def test_system_GaAs_tb_wcc_ws(check_system, system_GaAs_tb_wcc_ws):
+    check_system(
+            system_GaAs_tb_wcc_ws,"GaAs_tb_wcc_ws",
+            extra_properties=['wannier_centers_cart_auto','mp_grid']+properties_wcc,
+            matrices=['Ham','AA' ]
+                )
+
 
 """
-def system_GaAs_W90(create_files_GaAs_W90):
-def system_GaAs_W90_wcc(create_files_GaAs_W90):
-def system_GaAs_tb():
-def system_GaAs_sym_tb():
-def system_GaAs_tb_wcc():
-def system_GaAs_tb_wcc_ws():
 def system_Haldane_TBmodels():
 def system_Haldane_TBmodels_internal():
 def system_Haldane_PythTB():
