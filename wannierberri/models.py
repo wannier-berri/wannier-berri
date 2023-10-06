@@ -28,7 +28,7 @@ def Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2):
     t2 = hop2 * np.exp(1.j * phi)
     t2c = t2.conjugate()
     my_model = tbmodels.Model(
-        on_site=[delta, -delta],
+        on_site=[-delta, delta],
         uc=[[1.0, 0.0], [0.5, np.sqrt(3.0) / 2.0]],
         dim=2,
         occ=1,
