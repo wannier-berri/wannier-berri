@@ -234,10 +234,9 @@ class Velocity(Matrix_ln):
 
     def __init__(self, data_K, external_terms=False):
         v = data_K.covariant('Ham', gender=1)
-        if external_terms:
-            v.matrix+=1j*data_K.Xbar('AA')*(data_K.E_K[:, :, None,None] - data_K.E_K[:, None, :,None])
         self.__dict__.update(v.__dict__)
-
+        if external_terms:
+            self.matrix = self.matrix+1j*data_K.Xbar('AA')*(data_K.E_K[:, :, None,None] - data_K.E_K[:, None, :,None])
 
 class Spin(Matrix_ln):
 
