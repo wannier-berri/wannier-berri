@@ -438,13 +438,13 @@ class SpinVelocity(Matrix_ln):
     def __init__(self, data_K, spin_current_type,external_terms=True):
         if spin_current_type == "simple":
             # tight-binding case
-            super().__init__(self._J_H_simple(data_K))
+            super().__init__(self._J_H_simple(data_K, external_terms=external_terms))
         elif spin_current_type == "qiao":
             # J. Qiao et al PRB (2018)
-            super().__init__(self._J_H_qiao(data_K,external_terms=external_terms))
+            super().__init__(self._J_H_qiao(data_K, external_terms=external_terms))
         elif spin_current_type == "ryoo":
             # J. H. Ryoo et al PRB (2019)
-            super().__init__(self._J_H_ryoo(data_K,external_terms=external_terms))
+            super().__init__(self._J_H_ryoo(data_K, external_terms=external_terms))
         else:
             raise ValueError(f"spin_current_type must be `qiao` or `ryoo` or `simple`, not {spin_current_type}")
         self.transformTR=transform_ident
@@ -459,7 +459,7 @@ class SpinVelocity(Matrix_ln):
         return (J + J.swapaxes(1, 2).conj()) / 2
 
 
-    def _J_H_qiao(self, data_K,external_terms=True):
+    def _J_H_qiao(self, data_K, external_terms=True):
         if not external_terms :
             raise NotImplementedError("spin Hall qiao without external terms is not implemented yet. Use `SHC_type='simple'`")
         # Spin current operator, J. Qiao et al PRB (2019)
