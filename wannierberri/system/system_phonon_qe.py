@@ -74,7 +74,7 @@ class System_Phonon_QE(System_w90):
                 types = np.array([geometry.__getattr__(f'atom_{i+1}')['index'] for i in range(self.number_of_atoms)],dtype=int)-1
                 masses = masses_tp[types]
                 self.num_wann = self.number_of_phonons
-                self.wannier_centers_red = np.array( [atom for atom in self.atom_positions for i in range(3)])
+                self.wannier_centers_reduced = np.array( [atom for atom in self.atom_positions for i in range(3)])
             number_of_q = int(geometry.number_of_q.cdata)
             for iq in range(number_of_q):
                 dynamical = data.__getattr__(f"dynamical_mat__{iq+1}")
@@ -91,7 +91,7 @@ class System_Phonon_QE(System_w90):
                 q_points.append(q)
                 cnt += 1
                 self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=self.real_lattice)
-        self.wannier_centers_cart = self.wannier_centers_red.dot(self.real_lattice)
+        self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
         qpoints_found = np.zeros( self.mp_grid,dtype=float)
         dynamical_matrix_q = np.zeros( tuple(self.mp_grid)+(self.number_of_phonons,)*2,dtype=complex)
         agrid = np.array(self.mp_grid)

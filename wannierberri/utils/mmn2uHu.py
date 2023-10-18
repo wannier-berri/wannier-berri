@@ -195,8 +195,10 @@ def run_mmn2uHu(PREFIX, **kwargs):
     if writeUIU: UXUlist.append(("uIu", uIu_formatted))
     print(UXUlist)
     if len(UXUlist) > 0:
+        NB_sum_max = NB_in-IBstartSum
         for NB_sum in NB_sum_list:
-            if NB_sum is None: NB_sum = NB_in
+            if NB_sum is None or NB_sum>NB_sum_max:
+                NB_sum = NB_sum_max
             for UXU in UXUlist:
                 print("----------\n  {1}  NBsum={0} \n---------".format(NB_sum, UXU[0]))
                 formatted = UXU[1]
@@ -359,17 +361,16 @@ def run_mmn2uHu(PREFIX, **kwargs):
     return NB_out_list
 
 
-def main():
+def main(argv):
     hlp()
-    from sys import argv
 
-    if len(argv) < 2 or argv[1] == "-h": exit()
+    if len(argv)==0 or argv[0]=="-h": return
 
-    PREFIX = argv[1]
+    PREFIX = argv[0]
 
     kwargs = {}
 
-    for arg in argv[2:]:
+    for arg in argv[1:]:
         arg = arg.split("=")
         if arg[0] == "NBout": kwargs["NB_out_list"] = [int(s) for s in arg[1].split(',')]
         if arg[0] == "NBsum": kwargs["NB_sum_list"] = [int(s) for s in arg[1].split(',')]
@@ -396,8 +397,9 @@ def main():
             kwargs["spn_formatted_out"] = any(x in tarlist for x in ("spn", "spn_out", "all"))
             kwargs["spn_formatted_in"] = any(x in tarlist for x in ("spn", "spn_in", "all"))
 
-    run_mmn2uHu(PREFIX, **kwargs)
+    return run_mmn2uHu(PREFIX, **kwargs)
 
 
 if __name__ == "__main__":
-    main()
+    from sys import argv
+    main(argv[1:])
