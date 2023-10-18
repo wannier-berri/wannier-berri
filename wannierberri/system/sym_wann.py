@@ -494,6 +494,13 @@ class SymWann():
 
 
     def average_H_irreducible(self, iRab_new, matrix_dict_in, iRvec_new, mode):
+        """
+        Return
+        --------
+            (matrix_dict_list_res, iRab_all)
+            matrix_dict_list_res : dict
+                {"Ham":{ (a,b):{iR:mat} }, "AA":{...}, ...} , where iR is the index of R-vector in the old set of R-vectors
+        """
         assert mode in ["sum","single"]
         iRvec_new_array = np.array(iRvec_new, dtype=int)
 
@@ -530,7 +537,7 @@ class SymWann():
                                     XX_L = matrix_dict_in[X][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
                                                                new_Rvec_index]
                                     #special even with R == [0,0,0] diagonal terms.
-                                    if iR == iR0_old and atom_a == atom_b:
+                                    if new_Rvec_index == iR0_old and atom_a == atom_b:
                                         if X in ['AA','BB']:
                                             v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
                                             m_tmp = np.zeros(XX_L.shape, dtype=complex)
