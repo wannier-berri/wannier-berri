@@ -398,7 +398,7 @@ def test_Fe_set_spin(check_run, system_Fe_W90_proj_set_spin, compare_any_result)
                             smr_fixed_width=0.20, smr_type="Gaussian",
                             SHC_type="simple"
                          )
-    calculators['opt_SHCsimple'] = wberri.calculators.dynamic.SHC(**parameters_shc)
+    calculators['opt_SHCsimple'] = wberri.calculators.dynamic.SHC(kwargs_formula={"external_terms":True},**parameters_shc)
     calculators['opt_SHCsimple_internal'] = wberri.calculators.dynamic.SHC(kwargs_formula={"external_terms":False},**parameters_shc)
 
     check_run(
