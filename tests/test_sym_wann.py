@@ -50,52 +50,6 @@ def check_symmetry(check_run):
     return _inner
 
 
-@pytest.fixture
-def check_matrix_elements():
-    def _inner(system,checked_elements=None,
-                precision=1e-7,name="",suffix=""
-            ):
-        if checked_elements is None:
-            checked_elements = list(system._XX_R.keys())
-        data_res = {k:system.get_R_mat(k) for k in checked_elements}
-        out_dir = os.path.join(OUTPUT_DIR, name+suffix)
-        os.makedirs(out_dir,exist_ok=True)
-        for k,d in data_res.items():
-            np.savez_compressed( os.path.join(out_dir,k+".npz") , d )
-
-        for key,mat  in data_res.items():
-            mat_ref = np.load( os.path.join(REF_DIR,"systems",  name, key+".npz") )['arr_0']
-            assert mat.shape==mat_ref.shape, f"{key} has the wrong shape {mat.shape}, should be {mat_ref.shape}"
-            diff = abs(mat-mat_ref).max()
-            if precision<0:
-                req_precision = -precision*( abs(mat_ref) )
-            else:
-                req_precision = precision
-            if diff>req_precision:
-                raise ValueError(
-                                    f"matrix elements {key} for system {name} give an "
-                                    f"absolute difference of {diff} greater than the required precision {req_precision}\n"
-                                    f"the missed elements are : \n"+
-                                    "\n".join ("{i} | system.iRvec[i[2]] | {mat[i]} | {mat_ref[i]} | {abs(mat[i]-mat_ref[i])}" 
-                                            for i in zip(np.where(abs(mat-mat_ref)>req_precision)) )+"\n\n"
-                                )
-
-    return _inner
-
-
-
-def test_GaAs_sym_tb_me(check_matrix_elements, system_GaAs_sym_tb):
-    check_matrix_elements(
-        system_GaAs_sym_tb,
-        checked_elements=['Ham','AA'],
-        name="GaAs")
-
-
-def test_Fe_sym_me(check_matrix_elements, system_Fe_sym_W90):
-    check_matrix_elements(
-        system_Fe_sym_W90,
-        checked_elements=['Ham','AA','BB','CC','SS'],
-        name="Fe")
 
 
 def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb):

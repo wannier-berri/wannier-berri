@@ -8,7 +8,7 @@ properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced','wannier_cen
 @pytest.fixture
 def check_system():
     def _inner( system,name,
-                properties=['num_wann','recip_lattice','real_lattice','nRvec','iRvec','cRvec','iR0','use_ws', 'periodic',
+                properties=['num_wann','recip_lattice','real_lattice','nRvec','iRvec','cRvec','use_ws', 'periodic',
                 'use_wcc_phase','_getFF',
                 'cRvec',  'cell_volume','is_phonon']+properties_wcc,
                 extra_properties=[],
@@ -16,7 +16,8 @@ def check_system():
                 precision_properties=1e-8,
                 matrices=[],
                 precision_matrix_elements=1e-7,
-                suffix=""
+                suffix="",
+                sort_iR=False
                ):
         if len(suffix)>0:
             suffix = "_"+suffix
@@ -42,7 +43,7 @@ def check_system():
             print (" - Ok!")
 
 
-        def check_property(key,prec,XX=False):
+        def check_property(key,prec,XX=False,sort=None,sort_axis=2):
             print (f"checking {key} prec={prec} XX={XX}", end="")
             data_ref = np.load( os.path.join(REF_DIR,"systems",  name, key+".npz"), allow_pickle=True )['arr_0']
             if XX:
@@ -50,6 +51,13 @@ def check_system():
             else:
                 data = getattr(system,key)
             data=np.array(data)
+            if sort is not None:
+                if sort_axis==0:
+                    data=data[sort]
+                elif sort_axis==2:
+                    data=data[:,:,sort]
+                else:
+                    raise ValueError(f"sorting only along axis 0 or 2, but {sort_axis} is requested")
             if data.dtype==bool:
                 data=np.array(data,dtype=int)
                 data_ref=np.array(data_ref,dtype=int)
@@ -71,10 +79,22 @@ def check_system():
                                 )
             print (" - Ok!")
 
+        if sort_iR:
+            iRvec_ref = np.load( os.path.join(REF_DIR,"systems",  name, "iRvec.npz"), allow_pickle=True )['arr_0'].tolist()
+            iRvec_new = system.iRvec.tolist()
+            sort_R = [iRvec_new.index(iR) for iR in iRvec_ref]
+        else:
+            sort_R = None
+
         for key in properties:
-            check_property(key,precision_properties,XX=False)
+                if key in ['iRvec','cRvec']:
+                    check_property(key, precision_properties, XX=False, sort=sort_R, sort_axis=0)
+                elif key in ['cRvec_p_wcc']:
+                    check_property(key, precision_properties, XX=False, sort=sort_R, sort_axis=2)
+                else:
+                    check_property(key, precision_properties, XX=False)
         for key in matrices:
-            check_property(key,precision_matrix_elements,XX=True)
+            check_property(key, precision_matrix_elements, XX=True, sort=sort_R)
 
     return _inner
 
@@ -108,6 +128,18 @@ def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90):
             extra_properties=['wannier_centers_cart_auto','mp_grid'],
             matrices=['Ham','AA', 'BB', 'CC', 'SS']
                 )
+
+def test_system_Fe_sym_W90_new(check_system, system_Fe_sym_W90_new):
+    check_system(
+            system_Fe_sym_W90_new,"Fe_sym_W90",
+            extra_properties=['wannier_centers_cart_auto','mp_grid'],
+            matrices=['Ham','AA', 'BB', 'CC', 'SS'],
+            sort_iR=True
+                )
+
+
+
+
 
 def test_system_Fe_W90_proj_set_spin(check_system, system_Fe_W90_proj_set_spin):
     check_system(
@@ -149,6 +181,14 @@ def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb):
             system_GaAs_sym_tb,"GaAs_sym_tb",
             extra_properties=['wannier_centers_cart_auto'],
             matrices=['Ham','AA' ]
+                )
+
+def test_system_GaAs_sym_tb_new(check_system, system_GaAs_sym_tb_new):
+    check_system(
+            system_GaAs_sym_tb_new,"GaAs_sym_tb",
+            extra_properties=['wannier_centers_cart_auto'],
+            matrices=['Ham','AA' ],
+            sort_iR=True
                 )
 
 def test_system_GaAs_tb_wcc(check_system, system_GaAs_tb_wcc):
@@ -260,6 +300,14 @@ def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb):
             system_Mn3Sn_sym_tb,"Mn3Sn_sym_tb",
             extra_properties=['wannier_centers_cart_auto'],
             matrices=['Ham','AA']
+                )
+
+def test_system_Mn3Sn_sym_tb_new(check_system, system_Mn3Sn_sym_tb_new):
+    check_system(
+            system_Mn3Sn_sym_tb_new,"Mn3Sn_sym_tb",
+            extra_properties=['wannier_centers_cart_auto'],
+            matrices=['Ham','AA'],
+            sort_iR=True
                 )
 
 #### TODO : add tests for kp systems ?
