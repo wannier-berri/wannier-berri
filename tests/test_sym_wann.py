@@ -1,8 +1,7 @@
 """Test symmetrization of Wannier models"""
 import numpy as np
-import pytest, os
+import pytest
 from pytest import approx
-from common import OUTPUT_DIR, REF_DIR
 
 import wannierberri as wberri
 from wannierberri import calculators as calc

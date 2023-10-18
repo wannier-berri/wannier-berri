@@ -268,8 +268,7 @@ def system_GaAs_sym_tb():
         proj=['Ga:sp3', 'As:sp3'],
         soc=True,
         DFT_code='vasp',
-        method="old"
-        )
+        method="old")
     system.set_symmetry(symmetries_GaAs)
     return system
 
@@ -292,8 +291,7 @@ def system_GaAs_sym_tb_new():
         proj=['Ga:sp3', 'As:sp3'],
         soc=True,
         DFT_code='vasp',
-        method="new"
-        )
+        method="new")
     system.set_symmetry(symmetries_GaAs)
     return system
 

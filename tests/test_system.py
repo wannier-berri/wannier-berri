@@ -53,9 +53,9 @@ def check_system():
             data=np.array(data)
             if sort is not None:
                 if sort_axis==0:
-                    data=data[sort]
+                    data_ref=data_ref[sort]
                 elif sort_axis==2:
-                    data=data[:,:,sort]
+                    data_ref=data_ref[:,:,sort]
                 else:
                     raise ValueError(f"sorting only along axis 0 or 2, but {sort_axis} is requested")
             if data.dtype==bool:
@@ -82,17 +82,17 @@ def check_system():
         if sort_iR:
             iRvec_ref = np.load( os.path.join(REF_DIR,"systems",  name, "iRvec.npz"), allow_pickle=True )['arr_0'].tolist()
             iRvec_new = system.iRvec.tolist()
-            sort_R = [iRvec_new.index(iR) for iR in iRvec_ref]
+            sort_R = [iRvec_ref.index(iR) for iR in iRvec_new]
         else:
             sort_R = None
 
         for key in properties:
-                if key in ['iRvec','cRvec']:
-                    check_property(key, precision_properties, XX=False, sort=sort_R, sort_axis=0)
-                elif key in ['cRvec_p_wcc']:
-                    check_property(key, precision_properties, XX=False, sort=sort_R, sort_axis=2)
-                else:
-                    check_property(key, precision_properties, XX=False)
+            if key in ['iRvec','cRvec']:
+                check_property(key, precision_properties, XX=False, sort=sort_R, sort_axis=0)
+            elif key in ['cRvec_p_wcc']:
+                check_property(key, precision_properties, XX=False, sort=sort_R, sort_axis=2)
+            else:
+                check_property(key, precision_properties, XX=False)
         for key in matrices:
             check_property(key, precision_matrix_elements, XX=True, sort=sort_R)
 
