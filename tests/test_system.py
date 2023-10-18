@@ -67,16 +67,24 @@ def check_system():
                 req_precision = -prec*( abs(data_ref) )
             else:
                 req_precision = prec
-            if not data==pytest.approx(data_ref):
+            if not data==pytest.approx(data_ref, abs=req_precision):
                 diff = abs(data-data_ref).max()
-                raise ValueError(
-                                    f"matrix elements {key} for system {name} give an "
-                                    f"absolute difference of {diff} greater than the required precision {req_precision}\n"+
-                                    ( ("the missed elements are : \n"+
-                                    "\n".join (f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i]-data_ref[i])}"
-                                            for i in zip(*np.where(abs(data-data_ref)>req_precision)) )+"\n\n"
-                                        ) if XX else "" )
-                                )
+                missed = np.where(abs(data-data_ref)>req_precision)
+                n_missed = len(missed[0])
+                err_msg = ( f"matrix elements {key} for system {name} give an "+
+                            f"absolute difference of {diff} greater than the required precision {req_precision}\n" 
+                            f"wrong elements {n_missed} out of {data.size}")
+                if XX:
+                    if n_missed<data.size/10:
+                        err_msg += "\n"+("\n".join (f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i]-data_ref[i])}"
+                                            for i in zip(*missed) )+"\n\n" )
+                    else:
+                        all_i  = np.where(abs(data-data_ref)>= -np.Inf)
+                        err_msg += "\n"+("\n".join (f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i]-data_ref[i])} | {data[i]/data_ref[i]} | {abs(data[i]-data_ref[i])<req_precision} "
+                                            for i in zip(*all_i) )+"\n\n" )
+
+                raise ValueError(err_msg)
+
             print (" - Ok!")
 
         if sort_iR:

@@ -274,9 +274,9 @@ class SymWann():
                         if abs(np.linalg.norm(magmom + new_magmom)) > 0.0005:
                             sym_T = False
                 if sym_only:
-                    print('Symmetry operator {} respects magnetic moment'.format(symop.ind + 1))
+                    print('Symmetry operator {} respects magnetic moment'.format(symop.ind))
                 if sym_T:
-                    print('Symmetry operator {}*T respects magnetic moment'.format(symop.ind + 1))
+                    print('Symmetry operator {}*T respects magnetic moment'.format(symop.ind))
         else:
             sym_only = True
             sym_T = False
@@ -440,28 +440,56 @@ class SymWann():
 
 
     def find_irreducible_Rab(self):
+        """
+        Finds which Rvectors can be chosen as an irreducible set for each pair (a,b)
+
+        Return
+        --------
+        dict { (a,b):set([index of Rvecotr, if it is irreducible])}
+        """
         print ("searching irreducible Rvectors for pairs of a,b")
 
         R_list = np.array(self.iRvec, dtype=int)
         irreducible = np.ones((self.nRvec,self.num_wann_atom,self.num_wann_atom),dtype=bool)
-        for symop in self.symmetry_operations:
-            if symop.sym_only or symop.sym_T:
-                print('symmetry operation  ', symop.ind)
-                R_map = np.dot(R_list, np.transpose(symop.rotation))
-                atom_R_map = R_map[:, None, None, :] - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :]
-                for a in range(self.num_wann_atom):
-                    a1 = symop.rot_map[a]
-                    for b in range(self.num_wann_atom):
+
+#  Alternative implementation - not sure if it can behave differently
+#        for symop in self.symmetry_operations:
+#            if symop.sym_only or symop.sym_T:
+#                print('symmetry operation  ', symop.ind)
+#                R_map = np.dot(R_list, np.transpose(symop.rotation))
+#                atom_R_map = R_map[:, None, None, :] - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :]
+#                for a in range(self.num_wann_atom):
+#                    a1 = symop.rot_map[a]
+#                    for b in range(self.num_wann_atom):
+#                        b1 = symop.rot_map[b]
+#                        for iR in range(self.nRvec):
+#                            if irreducible[iR,a,b]:
+#                                iR1 = self.index_R(atom_R_map[iR, a, b])
+#                                if iR1 is not None and not (a,b,iR) == (a1,b1,iR1):
+#                                    irreducible[iR1,a1,b1]=False
+
+        for a in range(self.num_wann_atom):
+            for b in range(self.num_wann_atom):
+                for symop in self.symmetry_operations:
+                    if symop.sym_only or symop.sym_T:
+                        print('symmetry operation  ', symop.ind)
+                        a1 = symop.rot_map[a]
                         b1 = symop.rot_map[b]
-                        for iR in range(self.nRvec):
-                            if irreducible[iR,a,b]:
-                                iR1 = self.index_R(atom_R_map[iR, a, b])
-                                if iR1 is not None and not (a,b,iR) == (a1,b1,iR1):
-                                    irreducible[iR1,a1,b1]=False
+                        if (a1,b1)>=(a,b):
+                            R_map = np.dot(R_list, np.transpose(symop.rotation))
+                            atom_R_map = R_map[:, None, None, :] - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :]
+                            for iR in range(self.nRvec):
+                                if irreducible[iR,a,b]:
+                                    iR1 = self.index_R(atom_R_map[iR, a, b])
+                                    if iR1 is not None and (a1,b1,iR1)>(a,b,iR):
+                                        irreducible[iR1,a1,b1]=False
+
         print (f"Found {np.sum(irreducible)} sets of (R,a,b) out of the total {self.nRvec*self.num_wann_atom**2} ({self.nRvec}*{self.num_wann_atom}^2)")
         dic =  {(a,b):set([iR for iR in range(self.nRvec)  if irreducible[iR,a,b]])
                 for a in range(self.num_wann_atom)  for b in range(self.num_wann_atom)}
         res =  {k:v for k,v in dic.items() if len(v)>0}
+        res_irvec={k:[ self.iRvec[i] for i in sorted(v)] for k,v in res.items()}
+        print (f"irreducible sets are: \n{res}\n{ res_irvec}")
         return res
 
 
@@ -523,7 +551,7 @@ class SymWann():
                                         XX_L*=self.parity_I[X]
                                     if symop.sym_only:
                                         matrix_dict_list_res[X][(atom_a,atom_b)][iR] += _rotate_matrix(XX_L,symop.p_mat_atom_dagger[atom_a], symop.p_mat_atom[atom_b])
-                                    if symop.sym_T:
+                                    if symop.sym_T and (mode=="sum" or not symop.sym_only):
                                         matrix_dict_list_res[X][(atom_a,atom_b)][iR] += _rotate_matrix(XX_L,symop.p_mat_atom_dagger_T[atom_a], symop.p_mat_atom_T[atom_b]).conj() * self.parity_TR[X]
                     # in single mode we need to determine it only once
                     if mode == "single":
@@ -535,13 +563,12 @@ class SymWann():
             for (atom_a,atom_b),iR_new_list in iRab_new.items():
                 assert len(iR_new_list)==0, f"for atoms ({atom_a},{atom_b}) some R vectors were not set : {iR_new_list}"+", ".join(str(iRvec_new[ir]) for ir in iR_new_list)
 
-
         if mode == "sum":
             for x in matrix_dict_list_res.values():
                 for d in x.values():
                     for k,v in d.items():
                         v /= self.nrot
-        print('number of symmetry oprations == ', self.nrot)
+        print('number of symmetry operations == ', self.nrot)
         return matrix_dict_list_res, iRab_all
 
 
