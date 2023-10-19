@@ -376,7 +376,8 @@ class SymWann():
         except KeyError:
             return None
 
-    def symmetrize(self,method="old"):
+    def symmetrize(self,method="new"):
+        # TODO : eventually remove the "old"
         if method == "old":
             return self.symmetrize_old()
         elif method == "new":
@@ -385,7 +386,6 @@ class SymWann():
             raise ValueError()
 
     def symmetrize_old(self):
-
         #========================================================
         #symmetrize existing R vectors and find additional R vectors
         #========================================================

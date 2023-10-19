@@ -130,16 +130,16 @@ def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
                 )
 
 
-def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90):
+def test_system_Fe_sym_W90_old(check_system, system_Fe_sym_W90_old):
     check_system(
-            system_Fe_sym_W90,"Fe_sym_W90",
+            system_Fe_sym_W90_old,"Fe_sym_W90",
             extra_properties=['wannier_centers_cart_auto','mp_grid'],
             matrices=['Ham','AA', 'BB', 'CC', 'SS']
                 )
 
-def test_system_Fe_sym_W90_new(check_system, system_Fe_sym_W90_new):
+def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90):
     check_system(
-            system_Fe_sym_W90_new,"Fe_sym_W90",
+            system_Fe_sym_W90,"Fe_sym_W90",
             extra_properties=['wannier_centers_cart_auto','mp_grid'],
             matrices=['Ham','AA', 'BB', 'CC', 'SS'],
             sort_iR=True
@@ -184,16 +184,16 @@ def test_system_GaAs_tb(check_system, system_GaAs_tb):
             matrices=['Ham','AA' ]
                 )
 
-def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb):
+def test_system_GaAs_sym_tb_old(check_system, system_GaAs_sym_tb_old):
     check_system(
-            system_GaAs_sym_tb,"GaAs_sym_tb",
+            system_GaAs_sym_tb_old,"GaAs_sym_tb",
             extra_properties=['wannier_centers_cart_auto'],
             matrices=['Ham','AA' ]
                 )
 
-def test_system_GaAs_sym_tb_new(check_system, system_GaAs_sym_tb_new):
+def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb):
     check_system(
-            system_GaAs_sym_tb_new,"GaAs_sym_tb",
+            system_GaAs_sym_tb,"GaAs_sym_tb",
             extra_properties=['wannier_centers_cart_auto'],
             matrices=['Ham','AA' ],
             sort_iR=True,
@@ -289,7 +289,8 @@ def test_system_Te_ASE_wcc(check_system, system_Te_ASE_wcc):
 def test_system_Te_sparse(check_system, system_Te_sparse):
     check_system(
             system_Te_sparse,"Te_sparse",
-            matrices=['Ham']
+            matrices=['Ham'],
+            sort_iR=True
                 )
 
 def test_system_Phonons_Si(check_system, system_Phonons_Si):
@@ -304,16 +305,16 @@ def test_system_Phonons_GaAs(check_system, system_Phonons_GaAs):
             matrices=['Ham']
                 )
 
-def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb):
+def test_system_Mn3Sn_sym_tb_old(check_system, system_Mn3Sn_sym_tb_old):
     check_system(
-            system_Mn3Sn_sym_tb,"Mn3Sn_sym_tb",
+            system_Mn3Sn_sym_tb_old,"Mn3Sn_sym_tb",
             extra_properties=['wannier_centers_cart_auto'],
             matrices=['Ham','AA']
                 )
 
-def test_system_Mn3Sn_sym_tb_new(check_system, system_Mn3Sn_sym_tb_new):
+def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb):
     check_system(
-            system_Mn3Sn_sym_tb_new,"Mn3Sn_sym_tb",
+            system_Mn3Sn_sym_tb,"Mn3Sn_sym_tb",
             extra_properties=['wannier_centers_cart_auto'],
             matrices=['Ham','AA'],
             sort_iR=True

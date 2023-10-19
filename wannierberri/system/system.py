@@ -225,7 +225,7 @@ class System():
         return self.get_R_mat('Ham')
 
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', method="old"):
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', method="new"):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
 
@@ -252,6 +252,8 @@ class System():
             Magnetic momens of each atoms.
         DFT_code: str
             DFT code used : ``'qe'`` or ``'vasp'`` . This is needed, because vasp and qe have different orbitals arrangement with SOC.(grouped by spin or by orbital type)
+        method : str
+            `new` or `old`. They give same result but `new` is faster. `old` will be eventually removed.
 
         Notes:
             does not update wannier_centers. TODO: make the code update them

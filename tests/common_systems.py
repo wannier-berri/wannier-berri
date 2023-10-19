@@ -131,7 +131,7 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
 
 
 @pytest.fixture(scope="session")
-def system_Fe_sym_W90(create_files_Fe_W90):
+def system_Fe_sym_W90_old(create_files_Fe_W90):
     """Create system for Fe symmetrization using Wannier90 data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
@@ -153,7 +153,7 @@ def system_Fe_sym_W90(create_files_Fe_W90):
     return system
 
 @pytest.fixture(scope="session")
-def system_Fe_sym_W90_new(create_files_Fe_W90):
+def system_Fe_sym_W90(create_files_Fe_W90):
     """Create system for Fe symmetrization using Wannier90 data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
@@ -250,7 +250,7 @@ def system_GaAs_tb():
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_sym_tb():
+def system_GaAs_sym_tb_old():
     """Create system for GaAs using sym_tb.dat data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
@@ -273,7 +273,7 @@ def system_GaAs_sym_tb():
     return system
 
 @pytest.fixture(scope="session")
-def system_GaAs_sym_tb_new():
+def system_GaAs_sym_tb():
     """Create system for GaAs using sym_tb.dat data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
@@ -492,7 +492,7 @@ def system_Phonons_GaAs():
 
 
 @pytest.fixture(scope="session")
-def system_Mn3Sn_sym_tb():
+def system_Mn3Sn_sym_tb_old():
     """Create system for Mn3Sn using _tb.dat data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "Mn3Sn_Wannier90")
@@ -530,7 +530,7 @@ def system_Mn3Sn_sym_tb():
     return system
 
 @pytest.fixture(scope="session")
-def system_Mn3Sn_sym_tb_new():
+def system_Mn3Sn_sym_tb():
     """Create system for Mn3Sn using _tb.dat data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "Mn3Sn_Wannier90")
