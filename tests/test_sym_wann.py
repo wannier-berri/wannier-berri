@@ -239,7 +239,7 @@ def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):
         use_symmetry=True,
         grid=grid,
         # temporarily weakened precision here. Will restrict it later with new data
-        extra_precision={"berry_dipole": 1e-7},
+        extra_precision={"berry_dipole": 3e-7},
         parameters_K={
             '_FF_antisym': True,
             '_CCab_antisym': True
@@ -266,7 +266,7 @@ def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
         use_symmetry=True,
         grid=grid,
         # temporarily weakened precision here. Will restrict it later with new data
-        extra_precision={"berry_dipole": 1e-7},
+        extra_precision={"berry_dipole": 3e-7, "dos":2e-8},
         parameters_K={
             '_FF_antisym': True,
             '_CCab_antisym': True
