@@ -72,7 +72,7 @@ def check_system():
                 missed = np.where(abs(data-data_ref)>req_precision)
                 n_missed = len(missed[0])
                 err_msg = ( f"matrix elements {key} for system {name} give an "+
-                            f"absolute difference of {diff} greater than the required precision {req_precision}\n" 
+                            f"absolute difference of {diff} greater than the required precision {req_precision}\n"
                             f"wrong elements {n_missed} out of {data.size}")
                 if XX:
                     if n_missed<data.size/10:
@@ -196,7 +196,8 @@ def test_system_GaAs_sym_tb_new(check_system, system_GaAs_sym_tb_new):
             system_GaAs_sym_tb_new,"GaAs_sym_tb",
             extra_properties=['wannier_centers_cart_auto'],
             matrices=['Ham','AA' ],
-            sort_iR=True
+            sort_iR=True,
+            suffix="new"
                 )
 
 def test_system_GaAs_tb_wcc(check_system, system_GaAs_tb_wcc):
