@@ -31,7 +31,6 @@
                 | fftw3 (default) or numpy
 """
 
-import sys
 from .. import run, Grid, calculators, System_w90, Parallel
 import numpy as np
 
@@ -52,7 +51,7 @@ parameters = {
     "__wb_fft_lib":"fftw",
              }
 
-def main():
+def main(argv):
 
     try:
         import wannier90io as w90io
@@ -62,13 +61,13 @@ def main():
                         "`pip install git+https://github.com/jimustafa/wannier90io-python.git`"
                         )
 
-    seedname = sys.argv[1]  if len(sys.argv)>1 else "wannier90"
+    seedname = argv[0]  if len(argv)>0 else "wannier90"
     with open(seedname+".win") as f:
         parsed_win = w90io.parse_win_raw(f.read())
 
     parsed_param = parsed_win["parameters"]
-    if len(sys.argv)>2:
-        parsed_command_line = w90io.parse_win_raw("\n".join(sys.argv[2:]))
+    if len(argv)>1:
+        parsed_command_line = w90io.parse_win_raw("\n".join(argv[1:]))
         parsed_param.update(parsed_command_line["parameters"])
 
     for p in parameters:
@@ -107,7 +106,10 @@ def main():
             restart=False,
             )
 
+    parallel.shutdown()
+
 
 
 if __name__ == "__main__":
-    main()
+    from sys import argv
+    main(argv[1:])

@@ -12,6 +12,8 @@ from common_systems import (
     system_Fe_W90_sparse,
     system_Fe_W90_wcc,
     system_Fe_sym_W90,
+    system_Fe_W90_proj_set_spin,
+    system_Fe_W90_proj,
     system_Fe_FPLO,
     system_Fe_FPLO_wcc,
     data_Te_ASE,
