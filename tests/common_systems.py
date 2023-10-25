@@ -131,6 +131,28 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
 
 
 @pytest.fixture(scope="session")
+def system_Fe_sym_W90_old(create_files_Fe_W90):
+    """Create system for Fe symmetrization using Wannier90 data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
+    create_W90_files('Fe_sym', ['uHu'], data_dir)
+
+    # Load system
+    seedname = os.path.join(data_dir, "Fe_sym")
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, use_ws=False)
+    system.set_symmetry(symmetries_Fe)
+    system.symmetrize(
+        proj=['Fe:sp3d2;t2g'],
+        atom_name=['Fe'],
+        positions=np.array([[0, 0, 0]]),
+        magmom=[[0., 0., -2.31]],
+        soc=True,
+        DFT_code='qe',
+        method="old")
+
+    return system
+
+@pytest.fixture(scope="session")
 def system_Fe_sym_W90(create_files_Fe_W90):
     """Create system for Fe symmetrization using Wannier90 data"""
 
@@ -147,7 +169,8 @@ def system_Fe_sym_W90(create_files_Fe_W90):
         positions=np.array([[0, 0, 0]]),
         magmom=[[0., 0., -2.31]],
         soc=True,
-        DFT_code='qe')
+        DFT_code='qe',
+        method="new")
 
     return system
 
@@ -227,6 +250,29 @@ def system_GaAs_tb():
 
 
 @pytest.fixture(scope="session")
+def system_GaAs_sym_tb_old():
+    """Create system for GaAs using sym_tb.dat data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "GaAs_sym_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "GaAs_sym_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+
+    seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
+    system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
+    system.set_symmetry(symmetries_GaAs)
+    system.symmetrize(
+        positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
+        atom_name=['Ga', 'As'],
+        proj=['Ga:sp3', 'As:sp3'],
+        soc=True,
+        DFT_code='vasp',
+        method="old")
+    system.set_symmetry(symmetries_GaAs)
+    return system
+
+@pytest.fixture(scope="session")
 def system_GaAs_sym_tb():
     """Create system for GaAs using sym_tb.dat data"""
 
@@ -238,14 +284,17 @@ def system_GaAs_sym_tb():
 
     seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
     system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
+    system.set_symmetry(symmetries_GaAs)
     system.symmetrize(
         positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
         atom_name=['Ga', 'As'],
         proj=['Ga:sp3', 'As:sp3'],
         soc=True,
-        DFT_code='vasp')
+        DFT_code='vasp',
+        method="new")
     system.set_symmetry(symmetries_GaAs)
     return system
+
 
 
 @pytest.fixture(scope="session")
@@ -443,6 +492,44 @@ def system_Phonons_GaAs():
 
 
 @pytest.fixture(scope="session")
+def system_Mn3Sn_sym_tb_old():
+    """Create system for Mn3Sn using _tb.dat data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "Mn3Sn_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "Mn3Sn_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "Mn3Sn_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+
+    seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
+    system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
+    system.symmetrize(
+            positions=np.array([
+                [0.6666667,       0.8333333,       0],
+                [0.1666667,       0.3333333,       0],
+                [0.6666667,       0.3333333,       0],
+                [0.3333333,       0.1666667,       0.5],
+                [0.8333333,       0.6666667,       0.5],
+                [0.3333333,       0.6666667,       0.5],
+                [0.8333333,       0.1666667,       0.5],
+                [0.1666667,       0.8333333,       0]]),
+            atom_name=['Mn']*6 + ['Sn']*2,
+            proj=['Mn:s;d','Sn:p'],
+            soc=True,
+            magmom=[
+                [0, 2, 0],
+                [np.sqrt(3), -1,  0],
+                [-np.sqrt(3), -1, 0],
+                [0, 2, 0],
+                [np.sqrt(3), -1, 0],
+                [-np.sqrt(3), -1, 0],
+                [0, 0, 0],
+                [0, 0, 0]],
+            DFT_code='vasp',
+            method="old")
+    return system
+
+@pytest.fixture(scope="session")
 def system_Mn3Sn_sym_tb():
     """Create system for Mn3Sn using _tb.dat data"""
 
@@ -476,9 +563,9 @@ def system_Mn3Sn_sym_tb():
                 [-np.sqrt(3), -1, 0],
                 [0, 0, 0],
                 [0, 0, 0]],
-            DFT_code='vasp',)
+            DFT_code='vasp',
+            method="new")
     return system
-
 
 
 

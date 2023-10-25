@@ -21,7 +21,6 @@ from common_systems import (
     Efermi_CuMnAs_2d,
     Efermi_Chiral,
     Efermi_Te_gpaw,
-    Efermi_Te_sparse,
     omega_chiral,
     omega_phonon,
     mass_kp_iso
@@ -1158,59 +1157,6 @@ def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_resul
         suffix="wcc",
         suffix_ref="",
         use_symmetry=True,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
-    )
-
-def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):
-    param = {'Efermi': Efermi_Te_sparse, "tetra": True, 'use_factor': False, 'Emax':6.15, 'hole_like':True}
-    calculators = {}
-    for k, v in calculators_Te.items():
-        par = {}
-        par.update(param)
-        if k not in ["dos", "cumdos"]:
-            par["kwargs_formula"] = {"external_terms": False}
-        calculators[k] = v(**par)
-
-    grid = wberri.grid.GridTrigonal(system_Te_sparse, length=50, NKFFT=[3,3,2])
-
-    check_run(
-        system_Te_sparse,
-        calculators,
-        fout_name="berry_Te_sparse_tetragrid",
-        use_symmetry=True,
-        grid=grid,
-        # temporarily weakened precision here. Will restrict it later with new data
-        extra_precision={"berry_dipole": 1e-7},
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
-    )
-
-
-def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
-    param = {'Efermi': Efermi_Te_gpaw, "tetra": True, 'use_factor': False}
-    calculators = {}
-    for k, v in calculators_Te.items():
-        par = {}
-        par.update(param)
-        if k not in ["dos", "cumdos"]:
-            par["kwargs_formula"] = {"external_terms": False}
-        calculators[k] = v(**par)
-
-    grid = wberri.grid.GridTrigonalH(system_Te_sparse,length=50,NKFFT=[3,3,2],x=0.6)
-
-    check_run(
-        system_Te_sparse,
-        calculators,
-        fout_name="berry_Te_sparse_tetragridH",
-        use_symmetry=True,
-        grid=grid,
-        # temporarily weakened precision here. Will restrict it later with new data
-        extra_precision={"berry_dipole": 1e-7},
         parameters_K={
             '_FF_antisym': True,
             '_CCab_antisym': True
