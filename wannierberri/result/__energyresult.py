@@ -2,6 +2,7 @@ import numpy as np
 from lazy_property import LazyProperty as Lazy
 from ..smoother import VoidSmoother
 from .__result import Result
+from collections.abc import Iterable
 
 class EnergyResult(Result):
     """A class to store data dependent on several energies, e.g. Efermi and Omega
@@ -9,9 +10,10 @@ class EnergyResult(Result):
 
     Parameters
     -----------
-    Energies  : 1D array or list of 1D arrays
+    Energies  : 1D (or 2D) array or list of 1D ( or 2D) arrays
         |  The energies, on which the data depend
         |  Energy may also be an empty list, then the quantity does not depend on any energy (does it work?)
+        | in fact that may be not energies, but q-vectors or other variables
     data : array(float) or array(complex)
         | the data. The first dimensions should match the sizes of the Energies arrays. The rest should be equal to 3
     smoothers :  a list of :class:`~wannierberri.smoother.Smoother`
@@ -186,7 +188,7 @@ class EnergyResult(Result):
                 return ["    " + "    ".join("{0:15.6e}".format(x) for x in data_tmp)]
         else:
             return [
-                "{0:15.6e}    {1:s}".format(E, s) for j, E in enumerate(self.Energies[i])
+                "{0:s}    {1:s}".format(_E_to_str(E), s) for j, E in enumerate(self.Energies[i])
                 for s in self.__write(data[j], datasm[j], i + 1)
             ]
 
@@ -199,7 +201,13 @@ class EnergyResult(Result):
             else:
                 return [a + b for a in 'xyz' for b in getHead(n - 1)]
         head = "".join("#### "+s+"\n" for s in self.comment.split("\n") )
-        head += "#" + "    ".join("{0:^15s}".format(s) for s in self.E_titles) + " " * 8 + "    ".join(
+        E_titles_loc = []
+        for E,Etit in zip(self.Energies,self.E_titles):
+            if E.ndim==1:
+                E_titles_loc.append("{0:^15s}".format(Etit) )
+            else:
+                E_titles_loc.append("  ".join("{0:^15s}".format(f"{Etit}[{i}]") for i in range(len(E[0])) ) )
+        head += "#" + "    ".join(E_titles_loc) + " " * 8 + "    ".join(
             frmt.format(b) for b in getHead(self.rank) * 2) + "\n"
         name = name.format('')
 
@@ -275,3 +283,10 @@ class EnergyResult(Result):
             rank=self.rank,
             E_titles=self.E_titles,
             comment=self.comment)
+
+
+def _E_to_str(E):
+    if isinstance(E,Iterable):
+        return "  ".join(_E_to_str(e) for e in E)
+    else:
+        return "{0:15.6e}".format(E)

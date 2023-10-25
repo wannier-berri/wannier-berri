@@ -483,6 +483,21 @@ class Data_K_R(_Data_K):
 #        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
         return Ecorners
 
+    def E_K_q(self,q):
+        "evaluates energies at a grid shifted by vector q (in reciprocal coordinates)"
+        if not hasattr(self,"_E_K_q"):
+            self._E_K_q = {}
+        if q not in self._E_K_q:
+            _expdK = np.exp(  2j * np.pi * self.system.iRvec.dot(q) ).T  # we omit the wcc phases here, because they do not affect the energies
+            _Ham_R = self.Ham_R[:, :, :] * _expdK[None, None, :]
+            _HH_K = self.fft_R_to_k(_Ham_R, hermitean=True)
+            E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
+            EKq = E[self.select_K, :][:, self.select_B]
+            EKq = self.phonon_freq_from_square(EKq)
+            self._E_K_q[q]=EKq
+        return self._E_K_q[q]
+
+
     def E_K_corners_parallel(self):
         dK2 = self.Kpoint.dK_fullBZ / 2
         expdK = np.exp(
@@ -561,6 +576,19 @@ class Data_K_k(_Data_K):
         print_my_name_end()
 #        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
         return Ecorners
+
+    def E_K_q(self,q):
+        "evaluates energies at a grid shifted by vector q (in reciprocal coordinates)"
+        if not hasattr(self,"_E_K_q"):
+            self._E_K_q = {}
+        q_hash = tuple(np.round(q,decimals=8))
+        if q_hash not in self._E_K_q:
+            _HH_K = np.array([self.system.Ham(k+q) for k in self.kpoints_all])
+            E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
+            EKq = E[self.select_K, :][:, self.select_B]
+            EKq = self.phonon_freq_from_square(EKq)
+            self._E_K_q[q_hash]=EKq
+        return self._E_K_q[q_hash]
 
 
 
