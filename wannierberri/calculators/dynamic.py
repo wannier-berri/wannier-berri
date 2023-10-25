@@ -49,9 +49,6 @@ class DynamicCalculator(Calculator, abc.ABC):
     def factor_Efermi(self, E1, E2):
         return self.FermiDirac(E2) - self.FermiDirac(E1)
 
-    def factor_Efermi_der(self, E1):
-        return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
-
     def nonzero(self, E1, E2):
         if (E1 < self.eocc1max and E2 < self.eocc1max) or (E1 > self.eocc0min and E2 > self.eocc0min):
             return False
@@ -81,10 +78,7 @@ class DynamicCalculator(Calculator, abc.ABC):
 
             matrix_elements = np.array(
                 [formula.trace_ln(ik, np.arange(*pair[0]), np.arange(*pair[1])) for pair in degen_group_pairs])
-            if self.fder == 0:
-                factor_Efermi = np.array([self.factor_Efermi(pair[2], pair[3]) for pair in degen_group_pairs])
-            elif self.fder == 1:
-                factor_Efermi = np.array([self.factor_Efermi_der(pair[2]) for pair in degen_group_pairs])
+            factor_Efermi = np.array([self.factor_Efermi(pair[2], pair[3]) for pair in degen_group_pairs])
             factor_omega = np.array([self.factor_omega(pair[2], pair[3]) for pair in degen_group_pairs]).T
             restot += factor_omega @ (factor_Efermi[:, :, None]
                                       * matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
@@ -297,7 +291,6 @@ class SDCT_asym_sea_I(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_SDCT_asym_sea_I
-        self.fder = 0
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
@@ -336,7 +329,6 @@ class SDCT_asym_sea_II(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_SDCT_asym_sea_II
-        self.fder = 0
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
@@ -359,7 +351,6 @@ class Formula_SDCT_asym_surf_I():
         summ = -np.imag( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vn[:,:,None,None,None,:]
 
         self.summ = summ
-        self.fder = 1
         self.ndim = 3
         self.transformTR  = transform_ident
         self.transformInv = transform_odd
@@ -372,7 +363,6 @@ class SDCT_asym_surf_I(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_SDCT_asym_surf_I
-        self.fder = 1
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
@@ -381,6 +371,9 @@ class SDCT_asym_surf_I(DynamicCalculator):
         Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
         return omega * (E2 - E1) * Zfac
+
+    def factor_Efermi(self, E1, E2):
+        return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
 
 class Formula_SDCT_asym_surf_II():
 
@@ -409,13 +402,15 @@ class SDCT_asym_surf_II(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_SDCT_asym_surf_II
-        self.fder = 1
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
         eta = 1e-1
         omega = self.omega + 1.j * eta
         return 1. / omega
+
+    def factor_Efermi(self, E1, E2):
+        return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
 
 # _____ Symmetric (time-odd) spatially-dispersive conductivity tensor _____ #
 
@@ -466,7 +461,6 @@ class SDCT_sym_sea_I(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_SDCT_sym_sea_I
-        self.fder = 0
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
@@ -505,7 +499,6 @@ class SDCT_sym_sea_II(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_SDCT_sym_sea_II
-        self.fder = 0
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
@@ -529,7 +522,6 @@ class Formula_SDCT_sym_surf_I():
         summ = np.real( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vn[:,:,None,None,None,:]
 
         self.summ = summ
-        self.fder = 1
         self.ndim = 3
         self.transformTR  = transform_odd
         self.transformInv = transform_odd
@@ -543,7 +535,6 @@ class SDCT_sym_surf_I(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_SDCT_sym_surf_I
-        self.fder = 1
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
@@ -552,6 +543,9 @@ class SDCT_sym_surf_I(DynamicCalculator):
         Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
         return 1.j * (E2 - E1)**2 * Zfac
+
+    def factor_Efermi(self, E1, E2):
+        return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
 
 
 class Formula_SDCT_sym_surf_II():
@@ -576,13 +570,15 @@ class SDCT_sym_surf_II(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_SDCT_sym_surf_II
-        self.fder = 1
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
         eta = 1e-1
         omega = self.omega + 1.j * eta
         return -1.j / omega**2
+
+    def factor_Efermi(self, E1, E2):
+        return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
 
 ###############################################################################
 
