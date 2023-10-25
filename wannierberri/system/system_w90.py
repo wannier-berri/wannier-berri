@@ -88,7 +88,7 @@ class System_w90(System):
             mmn = MMN(seedname, npar=npar)
         if self.need_R_any(['CC']):
             uhu = UHU(seedname)
-        if self.need_R_any(['GG']):
+        if self.need_R_any(['OO','GG']):
             uiu = UIU(seedname)
 
         #######################################################################
@@ -202,6 +202,25 @@ class System_w90(System):
 
             self.set_R_mat('CC', CC_R)
 
+        # O_a(R) matrix
+        if 'OO' in self.needed_R_matrices:
+            OO_qb, b1k_latt_unique, b2k_latt_unique = chk.get_OO_qb(mmn, uiu, centers=centers, transl_inv_JM=transl_inv_JM)
+            t0 = time()
+            OO_Rb = fourier_q_to_R_loc(OO_qb)
+            timeFFT += time() - t0
+
+            # Naive finite-difference scheme
+            if not transl_inv_JM:
+                OO_R = np.sum(OO_Rb, axis=(3, 4))
+
+            # Following Jae-Mo's scheme, keep b-resolved real-space matrix and sum after ws_dist is used
+            if transl_inv_JM:
+                OO_R = OO_Rb
+                self.NNB = mmn.NNB
+                self.bk_latt_unique = bk_latt_unique
+
+            self.set_R_mat('OO', OO_R)
+
         # G_bc(R) matrix
         if 'GG' in self.needed_R_matrices:
             GG_qb, b1k_latt_unique, b2k_latt_unique = chk.get_GG_qb(mmn, uiu, centers=centers, transl_inv_JM=transl_inv_JM)
@@ -290,44 +309,65 @@ class System_w90(System):
             rc_2 = (wc_cart[None,:,None,:,None] - wc_cart[:,None,None,:,None]) * cRvec[None,None,:,None,:]
 
             # --- A_a(R) matrix --- #
-            # Original matrix (no effect from recentering)
-            AA_Rb = self.get_R_mat('AA')
-            AA_R  = (AA_Rb * phase[None,None,:,:,None]).sum(axis=3)
-            self.set_R_mat('AA', AA_R, reset=True)
+            if self.need_R_any('AA'):
+                # Original matrix (no effect from recentering)
+                AA_Rb = self.get_R_mat('AA')
+                AA_R  = (AA_Rb * phase[None,None,:,:,None]).sum(axis=3)
+                self.set_R_mat('AA', AA_R, reset=True)
 
             # --- B_a(R) matrix --- #
-            # Recentered matrix
-            BB_Rb   = self.get_R_mat('BB')
-            BB_R_rc = (BB_Rb * phase[None,None,:,:,None]).sum(axis=3)
+            if 'BB' in self.needed_R_matrices:
+                # Recentered matrix
+                BB_Rb   = self.get_R_mat('BB')
+                BB_R_rc = (BB_Rb * phase[None,None,:,:,None]).sum(axis=3)
 
-            # Matrices relating recentered to original
-            HH_R    = self.get_R_mat('Ham')
-            rc_to_H = - 0.5 * rc_1 * HH_R[:,:,:,None]
+                # Matrices relating recentered to original
+                HH_R    = self.get_R_mat('Ham')
+                rc_to_H = - 0.5 * rc_1 * HH_R[:,:,:,None]
 
-            # Original matrix
-            BB_R = BB_R_rc + rc_to_H
-            self.set_R_mat('BB', BB_R, reset=True)
+                # Original matrix
+                BB_R = BB_R_rc + rc_to_H
+                self.set_R_mat('BB', BB_R, reset=True)
 
             # --- C_a(R) matrix --- #
-            # Recentered matrix
-            CC_Rb   = self.get_R_mat('CC')
-            CC_R_rc = (CC_Rb * phase[None,None,:,:,None,None] * phase[None,None,:,None,:,None]).sum(axis=(3,4))
+            if 'CC' in self.needed_R_matrices:
+                if BB_R_rc is None:
+                    raise ValueError('Recentered B matrix is needed in Jae-Mo`s implementation of C')
+                else:
+                    # Recentered matrix
+                    CC_Rb   = self.get_R_mat('CC')
+                    CC_R_rc = (CC_Rb * phase[None,None,:,:,None,None] * phase[None,None,:,None,:,None]).sum(axis=(3,4))
 
-            # Matrices relating recentered to original
-            HH_R = self.get_R_mat('Ham')
-            lst_R, lst_mR = self.reverseR
-            rc_to_H  = 0.5j * rc_1[:,:,lst_R,:,None] * (BB_R_rc[:,:,lst_R,None,:] + BB_R_rc[:,:,lst_mR,None,:].swapaxes(0,1).conj())
-            rc_to_H += 0.5j * rc_2 * HH_R[:,:,:,None,None]
+                    # Matrices relating recentered to original
+                    HH_R = self.get_R_mat('Ham')
+                    lst_R, lst_mR = self.reverseR
+                    rc_to_H  = 0.5j * rc_1[:,:,lst_R,:,None] * (BB_R_rc[:,:,lst_R,None,:] + BB_R_rc[:,:,lst_mR,None,:].swapaxes(0,1).conj())
+                    rc_to_H += 0.5j * rc_2 * HH_R[:,:,:,None,None]
 
-            # Original matrix
-            CC_R = CC_R_rc + rc_to_H[:,:,:,alpha_A,beta_A] - rc_to_H[:,:,:,beta_A,alpha_A]
-            self.set_R_mat('CC', CC_R, reset=True)
+                    # Original matrix
+                    CC_R = CC_R_rc + rc_to_H[:,:,:,alpha_A,beta_A] - rc_to_H[:,:,:,beta_A,alpha_A]
+                    self.set_R_mat('CC', CC_R, reset=True)
+
+            # --- O_a(R) matrix --- #
+            if 'OO' in self.needed_R_matrices:
+                # Recentered matrix
+                OO_Rb   = self.get_R_mat('OO')
+                OO_R_rc = (OO_Rb * phase[None,None,:,:,None,None] * phase[None,None,:,None,:,None]).sum(axis=(3,4))
+
+                # Matrices relating recentered to original
+                rc_to_H  = -0.5j * AA_R[:,:,:,:,None] * rc_1[:,:,:,None,:]
+                rc_to_H +=  0.5j * rc_1[:,:,:,:,None] * AA_R[:,:,:,None,:]
+
+                # Original matrix
+                OO_R = OO_R_rc + rc_to_H[:,:,:,alpha_A,beta_A] - rc_to_H[:,:,:,beta_A,alpha_A]
+                self.set_R_mat('OO', OO_R, reset=True)
 
             # --- G_bc(R) matrix --- #
-            # Original matrix (no effect from recentering)
-            GG_Rb = self.get_R_mat('GG')
-            GG_R  = (GG_Rb * phase[None,None,:,:,None,None,None] * phase[None,None,:,None,:,None,None]).sum(axis=(3,4))
-            self.set_R_mat('GG', GG_R, reset=True)
+            if 'GG' in self.needed_R_matrices:
+                # Original matrix (no effect from recentering)
+                GG_Rb = self.get_R_mat('GG')
+                GG_R  = (GG_Rb * phase[None,None,:,:,None,None,None] * phase[None,None,:,None,:,None,None]).sum(axis=(3,4))
+                self.set_R_mat('GG', GG_R, reset=True)
 
             print(time()-t0)
 

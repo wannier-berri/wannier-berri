@@ -141,7 +141,7 @@ class System():
         # Oscar #
         #######################################################################
         if self.OSD :
-            self.needed_R_matrices.update(['AA', 'BB', 'CC', 'GG'])
+            self.needed_R_matrices.update(['AA', 'BB', 'CC', 'GG', 'OO'])
         #######################################################################
 
         self._XX_R = dict()
