@@ -341,3 +341,12 @@ def FermiDirac(E, mu, kBT):
         sel = abs(mu - E) <= 30 * kBT
         res[sel] = 1.0 / (np.exp((E - mu[sel]) / kBT) + 1)
         return res
+
+def read_numbers(fl,num_read,dtype=int):
+    assert dtype in (int,float), "intended only to read integers or floats"
+    n=np.prod(num_read)
+    read=[]
+    while len(read)<n:
+        read+=fl.readline().split()
+    if len(read)>n : print ( "more numbers ({}) read then expected ({})".format(len(read),n))
+    return np.array(read,dtype=dtype).reshape(num_read)

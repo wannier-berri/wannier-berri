@@ -15,10 +15,11 @@
 import numpy as np
 from ..__utility import FortranFileR
 import multiprocessing
-from ..__utility import alpha_A, beta_A
+from ..__utility import alpha_A, beta_A, str2bool, read_numbers
 from time import time
 from itertools import islice
 import gc
+from scipy.constants import physical_constants
 
 readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip()
 
@@ -317,8 +318,41 @@ class MMN(W90_data):
             self.bk_cart = np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
             self.wk = np.array([[weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
 
-    def set_bk_chk(self,chk):
-        self.set_bk(chk.kpt_latt,chk.mp_grid,chk.recip_lattice,kmesh_tol=chk.kmesh_tol, bk_complete_tol=chk.bk_complete_tol)
+    def set_bk_chk(self, chk, **argv):
+        self.set_bk(chk.kpt_latt, chk.mp_grid, chk.recip_lattice, **argv)
+
+
+class AMN(W90_data):
+
+    @property
+    def NB(self):
+        return self.data.shape[1]
+
+    @property
+    def NW(self):
+        return self.data.shape[2]
+
+
+    def __init__(self,seedname,num_proc=4):
+        f_mmn_in=open(seedname+".amn","r").readlines()
+        print ("reading {}.amn: ".format(seedname)+f_mmn_in[0].strip())
+        s=f_mmn_in[1]
+        NB,NK,NW=np.array(s.split(),dtype=int)
+        self.data=np.zeros( (NK,NB,NW), dtype=complex )
+        block=self.NW*self.NB
+        allmmn=( f_mmn_in[2+j*block:2+(j+1)*block]  for j in range(self.NK) )
+        p=multiprocessing.Pool(num_proc)
+        self.data= np.array(p.map(str2arraymmn,allmmn)).reshape((self.NK,self.NW,self.NB)).transpose(0,2,1)
+
+    def write(self,seedname,comment="written by WannierBerri"):
+        comment=comment.strip()
+        f_mmn_out=open(seedname+".amn","w")
+        print ("writing {}.amn: ".format(seedname)+comment+"\n")
+        f_mmn_out.write(comment+"\n")
+        f_mmn_out.write("  {:3d} {:3d} {:3d}  \n".format(self.NB,self.NK,self.NW))
+        for ik in range(self.NK):
+            f_mmn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(ib+1,iw+1,ik+1,self.data[ik,ib,iw].real,self.data[ik,ib,iw].imag) for iw in range(self.NW) for ib in range(self.NB)))
+        f_mmn_out.close()
 
 
 
@@ -491,3 +525,153 @@ class SHU(SXU):
 
     def __init__(self, seedname='wannier90', formatted=False):
         super().__init__(seedname=seedname, formatted=formatted, suffix='sHu')
+
+
+class WIN():
+
+    # TODO :use w90io to read win file
+    def __init__(self,seedname='wannier90'):
+        self.name=seedname+".win"
+        lines=[l.strip().lower() for l in open(seedname+".win").readlines()]
+        for l in lines:
+            for delim in '!','%':  # put other valid delimiters here
+                l.replace(delim,'#')
+        lines=[l.split('#')[0].strip() for l in lines] # drop comments
+        self.lines=[l for l in lines if len(l)>0]      # blank lines
+        unit_length={'ang':1.,'bohr':physical_constants['Bohr radius'][0]*1e10}
+        self.units={'unit_cell_cart':unit_length}
+
+    def print_clean(self):
+        print ("\n".join("{:3d}:{}".format(i,l) for i,l in enumerate(self.lines)) )
+
+    def findparam(self,param):
+        "returns the string corresponding to the parameter"
+        ll=[l for l in self.lines  if l.startswith(param)]
+        assert len(ll)<=1 , "Parameter {} was found {}>1 times in the '{}' file\n".format(param, len(ll), self.name)
+        assert len(ll)>=0 , "Parameter {} was not found  in the '{}' file\n".format(param, self.name)
+        ll=ll[0].split("=")
+        assert len(ll)>=1 , "nothing was found on the right of '{} =' ".format(param)
+        assert len(ll)<=2 , " '=' is given {}>1 times for  '{} ' ".format(len(ll)-1, param)
+        assert len(ll)==2
+        return ll[1].strip()
+
+
+    def get_param(self,param,dtype=int,size=1):
+        try:
+            param=param.lower().strip()
+            assert size>=1
+            res=self.findparam(param)
+            if dtype==str:
+                return res
+            res=res.split()
+            assert len(res)>0
+            if dtype==bool:
+                res=[str2bool(x) for x in res]
+            else:
+                res=[dtype(x) for x in res]
+            if len(res)==1:
+                if size==1:
+                    return res[0]
+                else:
+                    return np.array(res*size)
+            else:
+                return np.array(res,dtype=dtype)
+        except Exception as err:
+            raise RuntimeError("ERROR reading parameter {} from {} :\n {}".format(param,self.name,err))
+
+    def find_begin_end(self,begend,param):
+        "returns the line index where the corresponding begin/end parameter is found"
+        il=[i for i,l in enumerate (self.lines) if l.startswith(begend) and l.split()[1]==param]
+        assert len(il)<=1 , "{} {} was found {}>1 times in the '{}' file\n".format(begend,param,len(il),self.name)
+        assert len(il)>0 , "{} {} was not found  in the '{}' file\n".format(      begend,param,self.name)
+        return il[0]
+
+
+    def get_param_block(self,param,shape=None,dtype=float):
+        try:
+            begin = self.find_begin_end('begin' , param)+1
+            end   = self.find_begin_end('end'   , param)
+            try :
+                l=self.lines[begin].split()[0]
+#                print ("unit read is {}".format(l))
+                unit=self.units[param][l]
+                begin +=1
+#                print ("unit recognized as {}".format(unit))
+            except KeyError:
+                unit=None
+            if shape is None:
+                res = np.loadtxt(self.lines[begin:end],dtype=dtype)
+            else:
+                assert len(shape)==2 , "shape is wrong : {}".format(shape)
+                assert end-begin==shape[0] , 'end={} , begin={} , shape={} '.format(end,begin,shape)
+                res=np.array( [l.split()[:shape[1]] for l in self.lines[begin:end]],dtype=dtype)
+            if unit is not None:
+                res*=unit
+            return res
+        except Exception as err:
+            raise RuntimeError("ERROR reading parameter block {} from {} :\n {}".format(param,self.name,err))
+
+
+class DMN():
+
+    def __init__(self,seedname="wannier90",num_wann=0,num_bands=None,nkpt=None):
+        if seedname is not None:
+            self.read(seedname,num_wann)
+        else:
+            self.void(num_wann,num_bands,nkpt)
+
+    def read(self,seedname="wannier90",num_wann=0):
+        fl=open(seedname+".dmn","r")
+        self.comment=fl.readline().strip()
+        self.NB,self.Nsym,self.nkptirr,self.nkpt = read_numbers(fl,4)
+        self.num_wann=num_wann
+        self.kpt2kptirr              = read_numbers(fl,self.nkpt)-1
+        self.kptirr                  = read_numbers(fl,self.nkptirr)-1
+        self.kptirr2kpt= read_numbers(fl,(self.Nsym,self.nkptirr))-1
+        # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
+        self.kpt2kptirr_sym           = np.array([np.where(self.kptirr2kpt[:,self.kpt2kptirr[ik]]==ik)[0][0] for ik in range(self.nkpt)])
+
+        # read the rest of lines and comvert to conplex array
+        data=[l.strip("() \n").split(",") for l in fl.readlines()]
+        data=np.array([x for x in data if len(x)==2],dtype=float)
+        data=data[:,0]+1j*data[:,1]
+        n1=self.num_wann**2*self.Nsym*self.nkptirr
+        self.D_wann_dag=data[:n1].reshape(self.nkptirr,self.Nsym,self.num_wann,self.num_wann).transpose((0,1,3,2)).conj()
+        self.d_band=data[n1:].reshape(self.nkptirr,self.Nsym,self.NB,self.NB)
+
+    def void(self,num_wann,num_bands,nkpt):
+        self.comment="only identity"
+        self.NB,self.Nsym,self.nkptirr,self.nkpt = num_bands,1,nkpt,nkpt
+        self.num_wann=num_wann
+        self.kpt2kptirr              = np.arange(self.nkpt)
+        self.kptirr                  = self.kpt2kptirr
+        self.kptirr2kpt= np.array([self.kptirr])
+        self.kpt2kptirr_sym           = np.zeros(self.nkpt,dtype=int)
+        # read the rest of lines and comvert to conplex array
+        self.d_band=np.ones((self.nkptirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.NB)[None,None,:,:]
+        self.D_wann_dag=np.ones((self.nkptirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.num_wann)[None,None,:,:]
+
+
+    def select_bands(self,win_index_irr):
+        self.d_band=[ D[:,wi,:][:,:,wi] for D,wi in zip(self.d_band,win_index_irr) ]
+
+    def set_free(self,frozen_irr):
+        free=np.logical_not(frozen_irr)
+        self.d_band_free=[ d[:,f,:][:,:,f] for d,f in zip(self.d_band,free) ]
+
+    def write(self):
+        print (self.comment)
+        print (self.NB,self.Nsym,self.nkptirr,self.nkpt,self.num_wann)
+        for i in range(self.nkptirr):
+            for j in range(self.Nsym):
+                print()
+                for M in self.D_band[i][j],self.d_wann[i][j]:
+                    print("\n".join(" ".join("{}".format("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
+#                   print("\n".join(" ".join("{:4.2f}".format(abs(x)**2) for x in m) for m in M)+"\n")
+
+def str2arraymmn(A):
+    a=np.array([l.split()[3:] for l in A],dtype=float)
+#    if shape is None:
+#        n=int(round(np.sqrt(a.shape[0])))
+#        shape=(n,n)
+    return (a[:,0]+1j*a[:,1])
