@@ -667,7 +667,7 @@ class X2(Formula_ln):
                 self.GR.nn(ik,inn,out),
                 self.GR.nn(ik,inn,out),
                 self.V.nn(ik,inn,out),
-                self.GR.nn(ik,inn,out)
+                self.GR.nn(ik,inn,out),
                 self.V.nn(ik,inn,out),
                 self.GR.nn(ik,inn,out)
             ).imag
@@ -677,8 +677,8 @@ class X2(Formula_ln):
                 self.GR.nn(ik,inn,out),
                 self.GR.nn(ik,inn,out),
                 self.V.nn(ik,inn,out),
-                self.GR.nn(ik,inn,out)
-                self.GR.nn(ik,inn,out)
+                self.GR.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
                 self.V.nn(ik,inn,out),
                 self.GR.nn(ik,inn,out)
             ).imag
