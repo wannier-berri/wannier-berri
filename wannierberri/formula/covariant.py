@@ -640,6 +640,52 @@ class X2(Formula_ln):
         raise NotImplementedError()
 
 
+class X2(Formula_ln):
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)    
+        self.GR = GreenR(data_K,Ef=self.Ef,Gamma=self.Gamma)
+        self.V = data_K.covariant('Ham', commader=1)
+        self.W = data_K.covariant('Ham', commader=2)
+        self.ndim = 3
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+
+    def nn(self, ik, inn, out):
+        #summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
+        summ = 2*np.einsum("mqa,qp,pz,zl,lxbc,xn->mnabc", 
+                self.V.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
+                self.W.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out)
+            ).imag
+        
+        summ += 4*np.einsum("mqa,qp,pz,zl,lyb,yw,wxc,xn->mnabc", 
+                self.V.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
+                self.V.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out)
+                self.V.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out)
+            ).imag
+
+        summ += 2*np.einsum("mqa,qp,pl,lzb,zy,yw,wxc,xn->mnabc", 
+                self.V.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out),
+                self.V.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out)
+                self.GR.nn(ik,inn,out)
+                self.V.nn(ik,inn,out),
+                self.GR.nn(ik,inn,out)
+            ).imag
+        return summ + summ.transpose(0,1,2,4,3)
+    
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
 
 
 ####################################
