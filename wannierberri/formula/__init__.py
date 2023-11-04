@@ -84,6 +84,9 @@ class Matrix_ln(Formula_ln):
 
     def nn(self, ik, inn, out):
         return self.matrix[ik][inn][:, inn]
+    
+    def aa(self, ik, inn, out):
+        return self.matrix[ik]
 
 
 class Matrix_GenDer_ln(Formula_ln):
