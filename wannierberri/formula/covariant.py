@@ -611,8 +611,36 @@ class d2Green(Formula_ln):
     def nn(self, ik, inn, out):
         raise NotImplementedError()
 
-
 class X1(Formula_ln):
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)    
+        self.E = data_K.E_K
+        self.GR = 1./(self.Ef - self.E + self.Gamma)
+        self.GA = 1./(self.Ef - self.E - self.Gamma)
+        self.V = data_K.covariant('Ham', commader=1)
+        self.ndim = 3
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+
+    def nn(self, ik, inn, out):
+        #summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
+        #print(np.shape(self.GR) )
+        summ = -1*np.einsum("mqa,q,q,qxb,x,xnc,n->mnabc", 
+                self.V.aa(ik,inn,out),
+                self.GR[ik],
+                self.GR[ik],
+                self.V.aa(ik,inn,out),
+                self.GR[ik],
+                self.V.aa(ik,inn,out),
+                self.GA[ik]
+                ).imag
+
+        return summ + summ.transpose(0,1,2,4,3)
+    
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+class X11(Formula_ln):
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)    
         self.GR = Green(data_K,Ef=self.Ef,Gamma=self.Gamma,sign=1)
@@ -632,7 +660,7 @@ class X1(Formula_ln):
                 self.GR.aa(ik,inn,out),
                 self.V.aa(ik,inn,out),
                 self.GA.aa(ik,inn,out)
-                ).imag[inn][:,inn]
+                ).imag
 
         return summ + summ.transpose(0,1,2,4,3)
     
