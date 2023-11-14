@@ -32,3 +32,6 @@ factor_Hall_classic *= elementary_charge**3 / hbar * TAU_UNIT**2  # multiply by 
 fac_spin_hall = factor_ahc * -0.5
 factor_shift_current = 1j * hbar / elementary_charge * pi * elementary_charge**3 / (4 * hbar**2)
 factor_injection_current = - pi * elementary_charge**3 / (hbar**2) * TAU_UNIT
+
+factor_lfahe_spin =  factor_ahc*hbar/(2*electron_mass)
+

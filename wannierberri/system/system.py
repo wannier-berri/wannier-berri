@@ -41,6 +41,7 @@ class System():
         'use_wcc_phase': False,
         'wannier_centers_cart': None,
         'wannier_centers_reduced': None,
+        'Bfield':[0,0,0],
         'npar': None,
         '_getFF': False,
     }
@@ -148,6 +149,17 @@ class System():
         if self.wannier_centers_cart is not None:
             self.num_wann = self.wannier_centers_cart.shape[0]
 
+
+    def set_B_field(self,B):
+        """adds a B.sigma term to the Hamiltonean"""
+        assert B.shape==(3,)
+        S = selg.get_R_mat("SS")
+        assert S.shape[-1]==3
+        self.set_R_mat(
+                        key='Ham',
+                        vaslue =  (self.SS_R @ self.Bfield)*(hbar/(2*electron_mass) ), 
+                        add=True
+                      )
 
     def need_R_any(self,keys):
         """returns True is any of the listed matrices is needed in to be set

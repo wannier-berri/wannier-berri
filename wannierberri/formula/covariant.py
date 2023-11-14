@@ -519,6 +519,173 @@ class SpinOmega(Formula_ln):
         raise NotImplementedError()
 
 
+
+
+class PertOmega(Formula_ln):
+    " evaluates the change of Berry curvature in response to small perturbation"
+
+    def __init__(self, data_K, pertS, pertScomma):
+        # pertScomma - the comma derivative of perturbation, with derivative being the first cartesian index
+        self.ndimPert  = pertS.ndim - 3 
+        print ( "perturbation is {} dimensiona; ".format(self.ndimPert))
+        A    = data_K.Xbar('AA')
+        D    = data_K.D_H
+        V    = data_K.covariant('Ham',commader=1).matrix
+        O    = data_K.covariant('OO').matrix
+        S    = pertS
+        Sc   = pertScomma
+        dEi  = data_K.dEig_inv
+        T    = -S*( dEi.reshape(dEi.shape+(1,)*(self.ndimPert) ))
+        Acal= (-(A+1j*D)*data_K.dEig_inv[:,:,:,None])
+        del dEi
+
+        # Now add the dimentsions of the perturbation
+#        newshape=A.shape+(1,)*self.ndimPert
+#        for var in 'A','D','Acal','V','O':
+#            locals()[var].shape  = newshape
+
+        # now define the "alpha" and "beta" components
+        A_,D_,V_,Acal_,Sc_={},{},{},{},{}
+        for var in 'A','D','V','Acal','Sc':
+            for c in 'alpha','beta':
+#                print (var,c,locals()[var].shape)
+                locals()[var+"_"][c]=locals()[var][:,:,:,globals()[c+'_A']]
+
+        self.A_=A_
+        self.D_=D_
+        self.V_=V_
+        self.Acal_=Acal_
+        self.Sc_=Sc_
+        self.S=S
+        self.O=O
+        self.T=T
+        self.ndim=self.ndimPert+1
+
+
+    def nn(self, ik, inn, out):
+        # This is the formula to be implemented:
+        # orange terms
+
+        indpert="defghi"[:self.ndimPert]
+#        formula =  TraceFormula ( [ ],ndim=1+ndimPert,TRodd=False,Iodd=True)
+        summ = np.zeros((len(inn), len(inn)) +(3,)*self.ndim, dtype=complex)
+#        formula.add_term  ( ('nl,ln', 2*O , T ) )
+        summ +=2*np.einsum(f"mla,ln{indpert}->mna{indpert}", self.O[ik,inn][:,out],self.T[ik,out][:,inn])
+        for s,a,b in ( +1.,'alpha','beta'),(-1.,'beta','alpha'):
+            #  blue terms
+#            formula.add_term( ('nl,ln',    Acal_ [a] ,  2*Sc_[b]*s        ) )
+            summ += 2*s*np.einsum(f"mla,lna{indpert}->mna{indpert}", self.Acal_ [a][ik,inn][:,out], self.Sc_[b][ik,out][:,inn] )
+#            formula.add_term( ('nl,lp,pn', Acal_ [a] ,  2*V_[b] *s, T     ) )
+            summ += 2*s*np.einsum(f"mla,lpa,pn{indpert}->mna{indpert}", self.Acal_ [a][ik,inn][:,out], self.V_[b][ik,out][:,out], self.T[ik,out][:,inn] )
+#            formula.add_term( ('nl,lp,pn', Acal_ [a] ,  2*S     *s, D_[b] ) )
+            summ += 2*s*np.einsum(f"mla,lp{indpert},pna->mna{indpert}", self.Acal_ [a][ik,inn][:,out], self.S[ik,out][:,out], self.D_[b][ik,out][:,inn] )
+#            formula.add_term( ('nl,lm,mn', Acal_ [a] , -2*D_[b] *s, S     ) )
+            summ -= 2*s*np.einsum(f"mla,loa,on{indpert}->mna{indpert}", self.Acal_ [a][ik,inn][:,out], self.D_[b][ik,out][:,inn], self.S[ik,inn][:,inn] )
+#            formula.add_term( ('nl,lm,mn', Acal_ [a] , -2*T     *s, V_[b] ) )
+            summ -= 2*s*np.einsum(f"mla,lo{indpert},ona->mna{indpert}", self.Acal_ [a][ik,inn][:,out], self.T[ik,out][:,inn], self.V_[b][ik,inn][:,inn] )
+            #  green terms
+#            formula.add_term( ('nl,lp,pn',    D_ [a] , -2*A_[b] *s, T     ) )
+            summ -= 2*s*np.einsum(f"mla,lpa,pn{indpert}->mna{indpert}", self.D_[a][ik,inn][:,out], self.A_[b][ik,out][:,out], self.T[ik,out][:,inn] )
+#            formula.add_term( ('nl,lm,mn',    D_ [a] ,  2*T     *s, A_[b] ) )
+            summ += 2*s*np.einsum(f"mla,lo{indpert},ona->mna{indpert}", self.D_[a][ik,inn][:,out], self.T[ik,out][:,inn], self.A_[b][ik,inn][:,inn] )
+        return summ
+
+#    TODO:
+#    TODO: I think it is correct only for the trace
+#    TODO: more generally, the facxtor of 2 should be changed to adding a hermitean conjugate, right?
+
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
+
+
+class PertOmega2(Formula_ln):
+    " evaluates the change of Berry curvature in response to small perturbation"
+
+    def __init__(self, data_K, pertS, pertScomma):
+        # pertScomma - the comma derivative of perturbation, with derivative being the first cartesian index
+        self.ndimPert  = pertS.ndim - 3 
+        print ( "perturbation is {} dimensiona; ".format(self.ndimPert))
+        self.A    = data_K.covariant('AA')
+        self.D    = data_K.Dcov
+        self.V    = data_K.covariant('Ham',commader=1)
+        self.O    = data_K.covariant('OO')
+        self.S    = Matrix_ln(pertS)
+        self.Sc   = Matrix_ln(pertScomma)
+        dEi  = data_K.dEig_inv
+        self.T    = Matrix_ln(-self.S.matrix*( dEi.reshape(dEi.shape+(1,)*(self.ndimPert) )) )
+        self.Acal= Matrix_ln(-(data_K.Xbar('AA')+1j*data_K.D_H)*data_K.dEig_inv[:,:,:,None])
+        del dEi
+
+        self.ndim=self.ndimPert+1
+
+
+    def nn(self, ik, inn, out):
+        # This is the formula to be implemented:
+        # orange terms
+        iio = (ik,inn,out)
+        indpert="defghi"[:self.ndimPert]
+            #  blue terms
+        summ_loc_1 = self.Sc.ln(*iio)
+        summ_loc_1 += np.einsum(f"lpa,pn{indpert}->lna{indpert}", self.V.ll(*iio), self.T.ln(*iio) )
+        summ_loc_1 += np.einsum(f"lp{indpert},pna->lna{indpert}", self.S.ll(*iio), self.D.ln(*iio) )
+        summ_loc_1 -= np.einsum(f"lma,mn{indpert}->lna{indpert}", self.D.ln(*iio), self.S.nn(*iio) )
+        summ_loc_1 -= np.einsum(f"lm{indpert},mna->lna{indpert}", self.T.ln(*iio), self.V.nn(*iio) )
+        #  green terms
+        summ_loc_2 = -np.einsum(f"lpa,pn{indpert}->lna{indpert}", self.A.ll(*iio), self.T.ln(*iio) )
+        summ_loc_2 += np.einsum(f"lm{indpert},mna->lna{indpert}", self.T.ln(*iio), self.A.nn(*iio) )
+
+        summ = 2*np.einsum(f"mla,ln{indpert}->mna{indpert}", self.O.nl(*iio),self.T.ln(*iio))
+        Acal=self.Acal.nl(*iio)
+        D=self.D.nl(*iio)
+        for s,a,b in ( +1.,alpha_A,beta_A),(-1.,beta_A,alpha_A):
+            #  blue terms
+            summ += 2*s*np.einsum(f"mla,lna{indpert}->mna{indpert}", Acal[:,:,a], summ_loc_1[:,:,b] )
+            #  green terms
+            summ += 2*s*np.einsum(f"mla,lna{indpert}->mna{indpert}", D[:,:,a], summ_loc_2[:,:,b] )
+        return summ
+
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
+class PertOmegaZeemanSpin(PertOmega):
+    " evaluates the change of Berry curvature in response to small Zeeman B-field correction"
+
+    def __init__(self,data_K,Bdirection=None):
+        pertS     = data_K.Xbar('SS')
+        pertScomma = data_K.covariant('SS',commader=1).matrix.transpose(0,1,2,4,3)  # transpose, because the derivative is the last index, but should be the first
+        if Bdirection is not None:
+            print ("Bdirection is {}".format(Bdirection))
+            Bdirection=np.array(Bdirection,dtype=float)
+            Bdirection/=np.linalg.norm(Bdirection)
+            pertS =  pertS @ Bdirection
+            pertScomma =  pertScomma @ Bdirection
+        super().__init__(data_K,pertS,pertScomma)
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+
+
+class PertOmegaZeemanSpin2(PertOmega2):
+    " evaluates the change of Berry curvature in response to small Zeeman B-field correction"
+
+    def __init__(self,data_K,Bdirection=None):
+        pertS     = data_K.Xbar('SS')
+        pertScomma = data_K.covariant('SS',commader=1).matrix.transpose(0,1,2,4,3)  # transpose, because the derivative is the last index, but should be the first
+        if Bdirection is not None:
+            print ("Bdirection is {}".format(Bdirection))
+            Bdirection=np.array(Bdirection,dtype=float)
+            Bdirection/=np.linalg.norm(Bdirection)
+            pertS =  pertS @ Bdirection
+            pertScomma =  pertScomma @ Bdirection
+        super().__init__(data_K,pertS,pertScomma)
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+
+
 ####################################
 #                                  #
 #    Some Prooducts                #

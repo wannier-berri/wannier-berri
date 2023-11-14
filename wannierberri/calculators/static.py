@@ -329,6 +329,28 @@ class AHC(StaticCalculator):
         super().__init__(constant_factor=constant_factor, **kwargs)
 
 
+class LFAHE_spin_fsea(StaticCalculator):
+    r"""Evaluates a change in the Anomalous Hall conductivity with a small B-field (:math:`s^3 \cdot A^2 / (kg \cdot m^3\cdot T) = S/(m T)`)
+    """
+
+    def __init__(self,  **kwargs):
+        "describe input parameters here"
+        self.Formula = frml.PertOmegaZeemanSpin
+        self.fder = 0
+        super().__init__(constant_factor=factors.factor_lfahe_spin, **kwargs)
+
+
+class LFAHE_spin_fsea2(StaticCalculator):
+    r"""Evaluates a change in the Anomalous Hall conductivity with a small B-field (:math:`s^3 \cdot A^2 / (kg \cdot m^3\cdot T) = S/(m T)`)
+    """
+
+    def __init__(self,  **kwargs):
+        "describe input parameters here"
+        self.Formula = frml.PertOmegaZeemanSpin2
+        self.fder = 0
+        super().__init__(constant_factor=factors.factor_lfahe_spin, **kwargs)
+
+
 class AHC_test(StaticCalculator):
     r"""Anomalous Hall conductivity for testing (:math:`s^3 \cdot A^2 / (kg \cdot m^3) = S/m`)
 
