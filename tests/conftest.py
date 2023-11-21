@@ -7,6 +7,7 @@ from common import ROOT_DIR, OUTPUT_DIR, REF_DIR
 from common_systems import (
     create_files_Fe_W90,
     create_files_GaAs_W90,
+    create_files_Si_W90,
     create_W90_files,
     system_Fe_W90,
     system_Fe_W90_sparse,
@@ -26,6 +27,7 @@ from common_systems import (
     system_GaAs_sym_tb,
     system_GaAs_tb_wcc,
     system_GaAs_tb_wcc_ws,
+    system_Si_W90_JM,
     system_Haldane_PythTB,
     system_Haldane_TBmodels,
     system_Haldane_TBmodels_internal,

@@ -95,6 +95,19 @@ def create_files_GaAs_W90():
 
 
 @pytest.fixture(scope="session")
+def create_files_Si_W90():
+    """Create data files for Si: uHu, and uIu"""
+
+    seedname = "Si"
+    tags_needed = []  # Files to calculate if they do not exist
+    data_dir = os.path.join(ROOT_DIR, "data", "Si_Wannier90")
+
+    create_W90_files(seedname, tags_needed, data_dir)
+
+    return data_dir
+
+
+@pytest.fixture(scope="session")
 def system_Fe_W90(create_files_Fe_W90):
     """Create system for Fe using Wannier90 data"""
 
@@ -276,6 +289,23 @@ def system_GaAs_tb_wcc_ws():
     # Load system
     seedname = os.path.join(data_dir, "GaAs_tb.dat")
     system = wberri.system.System_tb(seedname, berry=True, use_wcc_phase=True, use_ws=True, mp_grid=(2, 2, 2))
+
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+
+    data_dir = create_files_Si_W90
+    for tag in ('uHu', 'uIu'):
+        if not os.path.isfile(os.path.join(data_dir, "Si.{}".format(tag))):
+            tar = tarfile.open(os.path.join(data_dir, "Si.{}.tar.gz".format(tag)))
+            for tarinfo in tar:
+                tar.extract(tarinfo, data_dir)                
+    # Load system
+    seedname = os.path.join(data_dir, "Si")
+    system = wberri.system.System_w90(seedname, OSD=True, use_ws=True, use_wcc_phase=True, transl_inv=False, transl_inv_JM=True, guiding_centers=True)
 
     return system
 

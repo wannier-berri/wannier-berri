@@ -1,0 +1,41 @@
+num_bands       =   4
+num_wann        =   4
+
+num_iter        = 200
+conv_tol        = 1.0e-10
+conv_window     = 40
+
+guiding_centres = true
+use_ws_distance = true
+
+begin projections
+!! Bond-centered s-orbitals
+f=-0.125,-0.125, 0.375:s
+f= 0.375,-0.125,-0.125:s
+f=-0.125, 0.375,-0.125:s
+f=-0.125,-0.125,-0.125:s
+end projections
+
+begin unit_cell_cart
+ bohr
+-5.10   0.00   5.10
+ 0.00   5.10   5.10
+-5.10   5.10   0.00
+end unit_cell_cart
+
+begin atoms_frac
+ Si  0.00  0.00  0.00
+ Si -0.25  0.75 -0.25
+end atoms_frac
+
+mp_grid =      2      2      2
+begin kpoints
+  0.00000000  0.00000000  0.00000000
+  0.00000000  0.00000000  0.50000000
+  0.00000000  0.50000000  0.00000000
+  0.00000000  0.50000000  0.50000000
+  0.50000000  0.00000000  0.00000000
+  0.50000000  0.00000000  0.50000000
+  0.50000000  0.50000000  0.00000000
+  0.50000000  0.50000000  0.50000000
+end kpoints
