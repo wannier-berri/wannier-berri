@@ -302,7 +302,7 @@ def system_Si_W90_JM(create_files_Si_W90):
         if not os.path.isfile(os.path.join(data_dir, "Si.{}".format(tag))):
             tar = tarfile.open(os.path.join(data_dir, "Si.{}.tar.gz".format(tag)))
             for tarinfo in tar:
-                tar.extract(tarinfo, data_dir)                
+                tar.extract(tarinfo, data_dir)
     # Load system
     seedname = os.path.join(data_dir, "Si")
     system = wberri.system.System_w90(seedname, OSD=True, use_ws=True, use_wcc_phase=True, transl_inv=False, transl_inv_JM=True, guiding_centers=True)
