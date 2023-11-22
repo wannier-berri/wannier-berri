@@ -29,7 +29,7 @@ SLEEP_HEAD = "{{SLEEP_HEAD}}"
 SLEEP_WORKER = "{{SLEEP_WORKER}}"
 SPILLING = "{{SPILLING}}"
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--batch-system", type=str, required=True, help="The batch system to use. Only Slurm and PBS implemented..")
@@ -150,3 +150,7 @@ if __name__ == '__main__':
         print(f"Now you may submit it to the queue with ' {submit_command} {script_file} '")
 
     sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()

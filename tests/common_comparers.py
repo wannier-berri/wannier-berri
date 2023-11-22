@@ -7,7 +7,7 @@ import pytest
 from pytest import approx
 from wannierberri.result import EnergyResult
 
-from common import REF_DIR, OUTPUT_DIR
+from common import REF_DIR, OUTPUT_DIR, ROOT_DIR
 
 
 def compare_quant(quantity):
@@ -151,6 +151,7 @@ def compare_any_result():
             adpt_num_iter,
             fout_name_ref=None,
             suffix_ref=None,
+            ref_dir=None,
             compare_zero=False,
             precision=None,
             result_type=None):
@@ -158,6 +159,10 @@ def compare_any_result():
             suffix_ref = suffix
         if fout_name_ref is None:
             fout_name_ref = fout_name
+        if ref_dir is None:
+            path_ref = REF_DIR
+        else:
+            path_ref = os.path.join(ROOT_DIR, ref_dir)
         ext = ".npz"
         for i_iter in range(adpt_num_iter + 1):
             filename = fout_name + f"-{suffix}_iter-{i_iter:04d}" + ext
@@ -170,7 +175,7 @@ def compare_any_result():
                 assert precision > 0, "comparing with zero is possible only with absolute precision"
             else:
                 filename_ref = fout_name_ref + f"-{suffix_ref}_iter-{i_iter:04d}" + ext
-                path_filename_ref = os.path.join(REF_DIR, filename_ref)
+                path_filename_ref = os.path.join(path_ref, filename_ref)
                 result_ref = result_type(file_npz=path_filename_ref)
                 maxval = result_ref._maxval_raw
                 if precision is None:

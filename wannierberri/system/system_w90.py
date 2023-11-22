@@ -17,7 +17,7 @@ import functools
 import multiprocessing
 from ..__utility import iterate3dpm, real_recip_lattice, fourier_q_to_R
 from .system import System
-from ..__w90_files import EIG, MMN, CheckPoint, SPN, UHU, SIU, SHU
+from .__w90_files import EIG, MMN, CheckPoint, SPN, UHU, SIU, SHU
 from time import time
 
 
@@ -158,21 +158,17 @@ class System_w90(System):
 
         if self.need_R_any(['SS', 'SR', 'SH', 'SHR']):
             spn = SPN(seedname)
-
-        t0 = time()
-        if self.need_R_any('SS'):
-            self.set_R_mat('SS' ,fourier_q_to_R_loc(chk.get_SS_q(spn)))
-        if self.need_R_any('SR'):
-            self.set_R_mat('SR' , fourier_q_to_R_loc(chk.get_SR_q(spn, mmn)))
-        if self.need_R_any('SH'):
-            self.set_R_mat('SH' , fourier_q_to_R_loc(chk.get_SH_q(spn, eig)))
-        if self.need_R_any('SHR'):
-            self.set_R_mat('SHR' , fourier_q_to_R_loc(chk.get_SHR_q(spn, mmn, eig)))
-        timeFFT += time() - t0
-        try:
+            t0 = time()
+            if self.need_R_any('SS'):
+                self.set_R_mat('SS' ,fourier_q_to_R_loc(chk.get_SS_q(spn)))
+            if self.need_R_any('SR'):
+                self.set_R_mat('SR' , fourier_q_to_R_loc(chk.get_SR_q(spn, mmn)))
+            if self.need_R_any('SH'):
+                self.set_R_mat('SH' , fourier_q_to_R_loc(chk.get_SH_q(spn, eig)))
+            if self.need_R_any('SHR'):
+                self.set_R_mat('SHR' , fourier_q_to_R_loc(chk.get_SHR_q(spn, mmn, eig)))
+            timeFFT += time() - t0
             del spn
-        except NameError:
-            pass
 
 
         if 'SA' in self.needed_R_matrices:

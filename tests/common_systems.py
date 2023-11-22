@@ -26,6 +26,7 @@ Efermi_GaAs = np.linspace(7, 9, 11)
 Efermi_Haldane = np.linspace(-3, 3, 11)
 Efermi_CuMnAs_2d = np.linspace(-2, 2, 11)
 Efermi_Chiral = np.linspace(-5, 8, 27)
+omega_chiral = np.linspace(0, 1., 11)
 omega_phonon = np.linspace(-0.01, 0.1, 23)
 Efermi_Mn3Sn = np.linspace(2, 3, 11)
 
@@ -152,10 +153,32 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe")
-    system = wberri.system.System_w90(seedname, morb=True, SHCqiao=False, SHCryoo=False, transl_inv=False, use_wcc_phase=True)
+    system = wberri.system.System_w90(seedname, morb=True, spin=True, SHCqiao=False, SHCryoo=False, transl_inv=False, use_wcc_phase=True)
     system.set_symmetry(symmetries_Fe)
     return system
 
+
+@pytest.fixture(scope="session")
+def system_Fe_sym_W90_old(create_files_Fe_W90):
+    """Create system for Fe symmetrization using Wannier90 data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
+    create_W90_files('Fe_sym', ['uHu'], data_dir)
+
+    # Load system
+    seedname = os.path.join(data_dir, "Fe_sym")
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, use_ws=False)
+    system.set_symmetry(symmetries_Fe)
+    system.symmetrize(
+        proj=['Fe:sp3d2;t2g'],
+        atom_name=['Fe'],
+        positions=np.array([[0, 0, 0]]),
+        magmom=[[0., 0., -2.31]],
+        soc=True,
+        DFT_code='qe',
+        method="old")
+
+    return system
 
 @pytest.fixture(scope="session")
 def system_Fe_sym_W90(create_files_Fe_W90):
@@ -174,9 +197,39 @@ def system_Fe_sym_W90(create_files_Fe_W90):
         positions=np.array([[0, 0, 0]]),
         magmom=[[0., 0., -2.31]],
         soc=True,
-        DFT_code='qe')
+        DFT_code='qe',
+        method="new")
 
     return system
+
+
+@pytest.fixture(scope="session")
+def system_Fe_W90_proj_set_spin(create_files_Fe_W90):
+    """Create system for Fe symmetrization using Wannier90 data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
+    create_W90_files('Fe_sym', ['uHu'], data_dir)
+
+    # Load system
+    seedname = os.path.join(data_dir, "Fe_sym")
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=False, use_ws=False)
+    system.set_symmetry(symmetries_Fe)
+    system.set_spin_from_code(DFT_code="qe")
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Fe_W90_proj(create_files_Fe_W90):
+    """Create system for Fe symmetrization using Wannier90 data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
+    create_W90_files('Fe_sym', ['uHu'], data_dir)
+    # Load system
+    seedname = os.path.join(data_dir, "Fe_sym")
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, SHCqiao=True, spin=True, use_ws=False)
+    system.set_symmetry(symmetries_Fe)
+    return system
+
 
 
 @pytest.fixture(scope="session")
@@ -188,6 +241,7 @@ def system_GaAs_W90(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, transl_inv=False)
+    system.set_symmetry(symmetries_GaAs)
 
     return system
 
@@ -201,6 +255,7 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.system.System_w90(seedname, morb=True, transl_inv=False, spin=True, use_wcc_phase=True)
+    system.set_symmetry(symmetries_GaAs)
 
     return system
 
@@ -217,9 +272,33 @@ def system_GaAs_tb():
 
     seedname = os.path.join(data_dir, "GaAs_tb.dat")
     system = wberri.system.System_tb(seedname, berry=True)
+    system.set_symmetry(symmetries_GaAs)
 
     return system
 
+
+@pytest.fixture(scope="session")
+def system_GaAs_sym_tb_old():
+    """Create system for GaAs using sym_tb.dat data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "GaAs_sym_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "GaAs_sym_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+
+    seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
+    system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
+    system.set_symmetry(symmetries_GaAs)
+    system.symmetrize(
+        positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
+        atom_name=['Ga', 'As'],
+        proj=['Ga:sp3', 'As:sp3'],
+        soc=True,
+        DFT_code='vasp',
+        method="old")
+    system.set_symmetry(symmetries_GaAs)
+    return system
 
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb():
@@ -233,13 +312,17 @@ def system_GaAs_sym_tb():
 
     seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
     system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
+    system.set_symmetry(symmetries_GaAs)
     system.symmetrize(
         positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
         atom_name=['Ga', 'As'],
         proj=['Ga:sp3', 'As:sp3'],
         soc=True,
-        DFT_code='vasp')
+        DFT_code='vasp',
+        method="new")
+    system.set_symmetry(symmetries_GaAs)
     return system
+
 
 
 @pytest.fixture(scope="session")
@@ -254,7 +337,7 @@ def system_GaAs_tb_wcc():
     # Load system
     seedname = os.path.join(data_dir, "GaAs_tb.dat")
     system = wberri.system.System_tb(seedname, berry=True, use_wcc_phase=True)
-
+    system.set_symmetry(symmetries_GaAs)
     return system
 
 
@@ -321,6 +404,7 @@ model_Chiral_right = wb_models.Chiral(
 def system_Chiral_left():
     system = wberri.system.System_PythTB(model_Chiral_left, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
+    system.set_spin([1,-1])
     return system
 
 
@@ -328,6 +412,7 @@ def system_Chiral_left():
 def system_Chiral_left_TR():
     system = wberri.system.System_PythTB(model_Chiral_left_TR, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
+    system.set_spin([-1,1])
     return system
 
 
@@ -335,6 +420,7 @@ def system_Chiral_left_TR():
 def system_Chiral_right():
     system = wberri.system.System_PythTB(model_Chiral_right, use_wcc_phase=True)
     system.set_symmetry(["C3z"])
+    system.set_spin([1,-1])
     return system
 
 
@@ -386,13 +472,13 @@ def data_Te_ASE():
     path = os.path.join(ROOT_DIR, "data", "Te_ASE")
     calc = gpaw.GPAW(os.path.join(path, "Te.gpw"))
     wan = ase.dft.wannier.Wannier(nwannier=12, calc=calc, file=os.path.join(path, 'wannier-12.json'))
-    return wan,calc
+    return wan, calc
 
 
 @pytest.fixture(scope="session")
 def system_Te_ASE(data_Te_ASE):
     """Create system for Te using  ASE+GPAW data with use_wcc_phase=False"""
-    wan,calc = data_Te_ASE
+    wan, calc = data_Te_ASE
     system = wberri.system.System_ASE(wan, ase_calc=calc, use_wcc_phase=False, berry=True)
     system.set_symmetry(symmetries_Te)
     return system
@@ -401,7 +487,7 @@ def system_Te_ASE(data_Te_ASE):
 @pytest.fixture(scope="session")
 def system_Te_ASE_wcc(data_Te_ASE):
     """Create system for Te using  ASE+GPAW data with use_wcc_phase=True"""
-    wan,calc = data_Te_ASE
+    wan, calc = data_Te_ASE
     system = wberri.system.System_ASE(wan, ase_calc=calc, use_wcc_phase=True, berry=False)
     system.set_symmetry(symmetries_Te)
     return system
@@ -432,6 +518,44 @@ def system_Phonons_GaAs():
     system.set_symmetry(symmetries_GaAs)
     return system
 
+
+@pytest.fixture(scope="session")
+def system_Mn3Sn_sym_tb_old():
+    """Create system for Mn3Sn using _tb.dat data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "Mn3Sn_Wannier90")
+    if not os.path.isfile(os.path.join(data_dir, "Mn3Sn_tb.dat")):
+        tar = tarfile.open(os.path.join(data_dir, "Mn3Sn_tb.dat.tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+
+    seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
+    system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
+    system.symmetrize(
+            positions=np.array([
+                [0.6666667,       0.8333333,       0],
+                [0.1666667,       0.3333333,       0],
+                [0.6666667,       0.3333333,       0],
+                [0.3333333,       0.1666667,       0.5],
+                [0.8333333,       0.6666667,       0.5],
+                [0.3333333,       0.6666667,       0.5],
+                [0.8333333,       0.1666667,       0.5],
+                [0.1666667,       0.8333333,       0]]),
+            atom_name=['Mn']*6 + ['Sn']*2,
+            proj=['Mn:s;d','Sn:p'],
+            soc=True,
+            magmom=[
+                [0, 2, 0],
+                [np.sqrt(3), -1,  0],
+                [-np.sqrt(3), -1, 0],
+                [0, 2, 0],
+                [np.sqrt(3), -1, 0],
+                [-np.sqrt(3), -1, 0],
+                [0, 0, 0],
+                [0, 0, 0]],
+            DFT_code='vasp',
+            method="old")
+    return system
 
 @pytest.fixture(scope="session")
 def system_Mn3Sn_sym_tb():
@@ -467,5 +591,72 @@ def system_Mn3Sn_sym_tb():
                 [-np.sqrt(3), -1, 0],
                 [0, 0, 0],
                 [0, 0, 0]],
-            DFT_code='vasp',)
+            DFT_code='vasp',
+            method="new")
     return system
+
+
+
+###################################
+# Isotropic effective mas s model #
+###################################
+mass_kp_iso = 1.912
+kmax_kp = 2.123
+
+def ham_mass_iso (k):
+    return np.array([[np.dot(k,k)/(2*mass_kp_iso)]])
+
+def dham_mass_iso (k):
+    return np.array(k).reshape(1,1,3)/mass_kp_iso
+
+def d2ham_mass_iso (k):
+    return np.eye(3).reshape(1,1,3,3)/mass_kp_iso
+
+
+@pytest.fixture(scope="session")
+def system_kp_mass_iso_0():
+    return wberri.system.SystemKP(Ham=ham_mass_iso, kmax=kmax_kp)
+
+@pytest.fixture(scope="session")
+def system_kp_mass_iso_1():
+    return wberri.system.SystemKP(Ham=ham_mass_iso, derHam=dham_mass_iso, kmax=kmax_kp)
+
+@pytest.fixture(scope="session")
+def system_kp_mass_iso_2():
+    return wberri.system.SystemKP(Ham=ham_mass_iso, derHam=dham_mass_iso, der2Ham=d2ham_mass_iso, kmax=kmax_kp)
+
+
+
+###################################
+# AnIsotropic effective mas s model #
+###################################
+
+kmax_kp_aniso=2.1
+
+inv_mass_kp_aniso = np.array([[0.86060064, 0.19498375, 0.09798235],
+ [0.01270294, 0.77373333, 0.00816169],
+ [0.15613272, 0.11770323, 0.71668436]])
+
+def ham_mass_aniso (k):
+    e=np.dot(k,np.dot(inv_mass_kp_aniso,k))
+    return np.array([[e]])
+
+def dham_mass_aniso (k):
+    return (np.dot(k,inv_mass_kp_aniso)+np.dot(inv_mass_kp_aniso,k)).reshape(1,1,3)
+
+def d2ham_mass_aniso (k):
+    return (inv_mass_kp_aniso + inv_mass_kp_aniso.T).reshape(1,1,3,3)
+
+
+
+@pytest.fixture(scope="session")
+def system_kp_mass_aniso_0():
+    return wberri.system.SystemKP(Ham=ham_mass_aniso, kmax=kmax_kp_aniso)
+
+@pytest.fixture(scope="session")
+def system_kp_mass_aniso_1():
+    return wberri.system.SystemKP(Ham=ham_mass_aniso, derHam=dham_mass_aniso, kmax=kmax_kp_aniso)
+
+@pytest.fixture(scope="session")
+def system_kp_mass_aniso_2():
+    return wberri.system.SystemKP(Ham=ham_mass_aniso, derHam=dham_mass_aniso, der2Ham=d2ham_mass_aniso, kmax=kmax_kp_aniso)

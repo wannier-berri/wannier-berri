@@ -13,6 +13,10 @@
     optionally, parameters can be given in the command line (theose will override the parameters in the ffile)
     additional options starting with "__wb" can be provided"
 
+
+    **Note:** to use this module the user needs to manually install the wannier90io module from github:
+    `pip install git+https://github.com/jimustafa/wannier90io-python.git`
+
         Usage example: ::
 
                 python3 -m wannierberri.utils.postw90 seedname [parameters] [ __wb_fft_lib=<value> ]
@@ -27,10 +31,11 @@
                 | fftw3 (default) or numpy
 """
 
-import sys
-import wannier90io as w90io
 from .. import run, Grid, calculators, System_w90, Parallel
 import numpy as np
+
+
+
 
 # default parameters
 parameters = {
@@ -46,14 +51,23 @@ parameters = {
     "__wb_fft_lib":"fftw",
              }
 
-def main():
-    seedname = sys.argv[1]  if len(sys.argv)>1 else "wannier90"
+def main(argv):
+
+    try:
+        import wannier90io as w90io
+    except ImportError as err:
+        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n"+
+                        "please install it manuall as \n"+
+                        "`pip install git+https://github.com/jimustafa/wannier90io-python.git`"
+                        )
+
+    seedname = argv[0]  if len(argv)>0 else "wannier90"
     with open(seedname+".win") as f:
         parsed_win = w90io.parse_win_raw(f.read())
 
     parsed_param = parsed_win["parameters"]
-    if len(sys.argv)>2:
-        parsed_command_line = w90io.parse_win_raw("\n".join(sys.argv[2:]))
+    if len(argv)>1:
+        parsed_command_line = w90io.parse_win_raw("\n".join(argv[1:]))
         parsed_param.update(parsed_command_line["parameters"])
 
     for p in parameters:
@@ -92,7 +106,10 @@ def main():
             restart=False,
             )
 
+    parallel.shutdown()
+
 
 
 if __name__ == "__main__":
-    main()
+    from sys import argv
+    main(argv[1:])

@@ -6,35 +6,36 @@ with open("README.rst", "r") as fh:
     long_description = fh.read()
 
 
+extras_require={
+    "parallel" : ['ray[default]','protobuf==3.20.2'], #  protobuf req by ray : https://github.com/ray-project/ray/issues/25205 , https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
+    "fftw"     : ['pyFFTW>=0.12.0'],
+    "plot"     : ['matplotlib'],
+    "symmetry" : [ 'sympy', 'spglib>=2', 'irrep>=1.8.2' ],
+    "phonons"  : [ 'untangle' ],
+                }
+
+extras_require["all"] = sum( (extras_require[k] for k in extras_require.keys() ), [])
+
+
 setuptools.setup(
      name='wannierberri',
      author="Stepan S. Tsirkin",
-     author_email="stepan.tsirkin@uzh.ch",
+     author_email="stepan.tsirkin@ehu.eus",
      description="Advanced tool for Wannier interpolation",
      long_description=long_description,
      long_description_content_type="text/markdown",
      python_requires='>=3.7',
      install_requires=[
-                        'numpy>=1.18,<1.23', # reauired by numba, numpy-1.23 is inpre-release state so far (31.05.22) https://pypi.org/project/numpy/#history
+                        'numpy<1.25,>=1.24', # upper limit reauired by numba . min 1.24 required by scipy.io
                         'scipy>=1.0',
                         'lazy_property',
                         'colorama',
                         'termcolor',
-                        'pyfiglet',
                         'numba>=0.55.2',
-                        'termcolor',
-                        'pyFFTW>=0.12.0',
                         'packaging>=20.8',
-                        'matplotlib',
                         'fortio>=0.4',
-                        'protobuf==3.20.2', # req by ray : https://github.com/ray-project/ray/issues/25205 , https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
-                        'ray[default]',
-                        'sympy',
-                        'spglib<2',
-                        'wannier90io @ git+https://github.com/jimustafa/wannier90-pylib-io.git',
-                        'untangle',
-                        'irrep>=1.8.2',
                       ],
+     extras_require=extras_require,
      url="https://wannier-berri.org",
      packages=setuptools.find_packages(),
      classifiers=[

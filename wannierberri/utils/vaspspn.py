@@ -43,8 +43,7 @@ def hlp():
     print(__doc__)
 
 
-def main():
-    import sys
+def main(argv):
     from ..__utility import FortranFileW
     import numpy as np
     import datetime
@@ -54,7 +53,7 @@ def main():
     NBout = 0
     IBstart = 1
     normalize = "norm"
-    for arg in sys.argv[1:]:
+    for arg in argv:
         if arg == "-h":
             hlp()
             exit()
@@ -135,4 +134,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    from sys import argv
+    main(argv[1:])

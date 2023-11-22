@@ -232,7 +232,11 @@ class TABresult(Result):
             if np.any(selE):
                 klineselE = kline[selE]
                 klineall.append(klineselE)
-                _line, = plt.plot(kline, e, c=linecolor,**kwargs_line)
+                _kwargs = dict(c=linecolor)
+                _kwargs.update(kwargs_line)
+                if 'c' in _kwargs and 'color' in _kwargs:
+                    del _kwargs['c']
+                _line, = plt.plot(kline, e, **_kwargs)
         if label is not None:
             _line.set_label(label)
             plt.legend()

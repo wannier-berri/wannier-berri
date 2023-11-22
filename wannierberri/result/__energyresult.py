@@ -17,16 +17,11 @@ class EnergyResult(Result):
     smoothers :  a list of :class:`~wannierberri.smoother.Smoother`
         | smoothers, one per each energy variable (usually do not need to be set by the calculator function.
         | but are set automaticaly for Fermi levels and Omega's , and during the further * and + operations
-    TRodd : bool
-        | True if the symmetric part of the result is Odd under time-reversal operation (False if it is even)
+    transformTR : :class:~wannierberri.symmetry.Transform
+        | How the result trabsfrms  under time-reversal operation
         | relevant if system has TimeReversal, either alone or in combination with spatial symmetyries
-    TRtrans : bool
-        | True if the result is should be transposed under time-reversal operation. (i.e. the symmetric and
-        | antisymmetric parts have different parity under TR)
-        | allowed only for rank-2 tensors
-        | relevant if system has TimeReversal, either alone or in combination with spatial symmetyries
-    Iodd : bool
-        | `True` if the result is Odd under spatial inversion (`False` if it is even)
+    transformInv : :class:~wannierberri.symmetry.Transform
+        | How the result trabsfrms  under inversion
         | relevant if system has Inversion, either alone or as part of other symmetyries (e.g. Mx=C2x*I)
     rank : int
         | of the tensor, usually no need, to specify, it is set automatically to the number of dimensions
@@ -34,7 +29,7 @@ class EnergyResult(Result):
     E_titles : list of str
         | titles to be printed above the energy columns
     file_npz : str
-        | path to a np file (if provided, the parameters `Enegries`, `data`, `TRodd`, `Iodd`, `rank` and
+        | path to a np file (if provided, the parameters `Enegries`, `data`, `transformTR`, `transformInv`, `rank` and
         | `E_titles` are neglected)
     comment : str
         | Any line that can mark what is in the result
@@ -46,9 +41,8 @@ class EnergyResult(Result):
             Energies=None,
             data=None,
             smoothers=None,
-            TRodd=False,
-            Iodd=False,
-            TRtrans=False,
+            transformTR=None,
+            transformInv=None,
             rank=None,
             E_titles=["Efermi", "Omega"],
             save_mode="txt+bin",
@@ -60,10 +54,6 @@ class EnergyResult(Result):
                 res[f'Energies_{i}'] for i, _ in enumerate(res['E_titles'])
             ]  # in binary mode energies are just two arrays
             try:
-                TRtrans = res['TRtrans']
-            except KeyError:
-                pass
-            try:
                 comment = str(res['comment'])
             except KeyError:
                 comment = "undocumented"
@@ -72,11 +62,11 @@ class EnergyResult(Result):
                 Energies=energ,
                 data=res['data'],
                 smoothers=smoothers,
-                TRodd=res['TRodd'],
-                Iodd=res['Iodd'],
+                # TODO : transform the old Iodd.TRodd,TRtrans into new transformators (if needeed))
+                # transformTR=res['transformTR'],
+                # transformInv=res['transformInv'],
                 rank=res['rank'],
                 E_titles=list(res['E_titles']),
-                TRtrans=TRtrans,
                 comment=comment)
         else:
             if not isinstance(Energies, (list, tuple)):
@@ -101,13 +91,10 @@ class EnergyResult(Result):
             self.Energies = Energies
             self.data = data
             self.set_smoother(smoothers)
-            self.TRodd = TRodd
-            self.TRtrans = TRtrans
-            self.Iodd = Iodd
+            self.transformTR=transformTR
+            self.transformInv=transformInv
             self.set_save_mode(save_mode)
             self.comment = comment
-            if self.TRtrans:
-                assert self.rank == 2
 
 
     def set_smoother(self, smoothers):
@@ -138,9 +125,8 @@ class EnergyResult(Result):
             Energies=self.Energies,
             data=self.data * other.reshape(reshape),
             smoothers=self.smoothers,
-            TRodd=self.TRodd,
-            TRtrans=self.TRtrans,
-            Iodd=self.Iodd,
+            transformTR=self.transformTR,
+            transformInv=self.transformInv,
             rank=self.rank,
             E_titles=self.E_titles)
 
@@ -150,9 +136,8 @@ class EnergyResult(Result):
                 Energies=self.Energies,
                 data=self.data * number,
                 smoothers=self.smoothers,
-                TRodd=self.TRodd,
-                TRtrans=self.TRtrans,
-                Iodd=self.Iodd,
+                transformTR=self.transformTR,
+                transformInv=self.transformInv,
                 rank=self.rank,
                 E_titles=self.E_titles,
                 comment=self.comment)
@@ -163,9 +148,8 @@ class EnergyResult(Result):
         return self * (1. / number)
 
     def __add__(self, other):
-        assert self.TRodd == other.TRodd
-        assert self.TRtrans == other.TRtrans
-        assert self.Iodd == other.Iodd
+        assert self.transformTR == other.transformTR
+        assert self.transformInv == other.transformInv
         if other == 0:
             return self
         if len(self.comment)>len(other.comment):
@@ -182,9 +166,8 @@ class EnergyResult(Result):
             Energies=self.Energies,
             data=self.data + other.data,
             smoothers=self.smoothers,
-            TRodd=self.TRodd,
-            TRtrans=self.TRtrans,
-            Iodd=self.Iodd,
+            transformTR=self.transformTR,
+            transformInv=self.transformInv,
             rank=self.rank,
             E_titles=self.E_titles,
             comment=comment)
@@ -222,26 +205,34 @@ class EnergyResult(Result):
 
         open(name, "w").write(head + "\n".join(self.__write(self.data, self.dataSmooth, i=0)))
 
-    def save(self, name):
+
+
+
+    def as_dict(self):
         """
-        writes a dictionary-like objectto file called `name`  with the folloing keys:
+        returns a dictionary-like object with the folloing keys:
         - 'E_titles' : list of str - titles of the energies on which the result depends
         - 'Energies_0', ['Energies_1', ... ] - corresponding arrays of energies
         - data : array of shape (len(Energies_0), [ len(Energies_1), ...] , [3  ,[ 3, ... ]] )
         """
-        name = name.format('')
         energ = {f'Energies_{i}': E for i, E in enumerate(self.Energies)}
-        with open(name + ".npz", "wb") as f:
-            np.savez_compressed(
-                f,
+        return dict(
                 E_titles=self.E_titles,
                 data=self.data,
                 rank=self.rank,
-                TRodd=self.TRodd,
-                TRtrans=self.TRtrans,
-                Iodd=self.Iodd,
+                transformTR=str(self.transformTR),
+                transformInv=str(self.transformInv),
                 comment=self.comment,
                 **energ)
+
+
+    def save(self, name):
+        """
+        writes a dictionary-like objectto file called `name`  defined in :func:`~wannierberri.result.EnergyResult.as_dict`
+        """
+        name = name.format('')
+        with open(name + ".npz", "wb") as f:
+            np.savez_compressed(f, **self.as_dict() )
 
     def savedata(self, name, prefix, suffix, i_iter):
         suffix = "-" + suffix if len(suffix) > 0 else ""
@@ -275,11 +266,12 @@ class EnergyResult(Result):
     def transform(self, sym):
         return EnergyResult(
             Energies=self.Energies,
-            data=sym.transform_tensor(self.data, self.rank, TRodd=self.TRodd, Iodd=self.Iodd, TRtrans=self.TRtrans),
+            data=sym.transform_tensor(self.data, self.rank,
+                                        transformTR=self.transformTR,
+                                        transformInv=self.transformInv),
             smoothers=self.smoothers,
-            TRodd=self.TRodd,
-            TRtrans=self.TRtrans,
-            Iodd=self.Iodd,
+            transformTR=self.transformTR,
+            transformInv=self.transformInv,
             rank=self.rank,
             E_titles=self.E_titles,
             comment=self.comment)

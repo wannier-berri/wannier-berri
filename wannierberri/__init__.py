@@ -14,10 +14,17 @@
 wannierberri - a module for Wannier interpolation
 """
 
-__version__ = "0.13.5"
+__version__ = "0.14.3"
+
+try:
+    import pyfftw
+    PYFFTW_IMPORTED = True
+except Exception as err:
+    PYFFTW_IMPORTED = False
+    print("WARNING : error importing  `pyfftw` : {} \n will use numpy instead \n".format(err))
+
 
 from .run import run
-from .__old_API.__main import integrate, tabulate #, integrate_options, tabulate_options, print_options
 from . import symmetry
 from . import system
 from .system import System_w90, System_fplo, System_tb, System_PythTB, System_TBmodels, System_ASE, System_Phonon_QE
@@ -26,21 +33,13 @@ from . import calculators
 from . import result
 from .parallel import Parallel, Serial
 from .smoother import get_smoother
+from .evaluate_k import evaluate_k
+from . import utils
 
 from termcolor import cprint
 
-
-def figlet(text, font='cosmike', col='red'):
-    init(strip=not sys.stdout.isatty())  # strip colors if stdout is redirected
-    letters = [figlet_format(X, font=font).rstrip("\n").split("\n") for X in text]
-    logo = []
-    for i in range(len(letters[0])):
-        logo.append("".join(L[i] for L in letters))
-    cprint("\n".join(logo), col, attrs=['bold'])
-
 def welcome():
-    # ogiginally obtained by
-    # figlet("WANN IER BERRI",font='cosmic',col='yellow')
+    # ogiginally obtained by pyfiglet, font='cosmic'
     # with small modifications
     logo = """
 .::    .   .::: .:::::::.  :::.    :::.:::.    :::. :::.,::::::  :::::::..       :::::::.  .,::::::  :::::::..   :::::::..   :::
