@@ -21,6 +21,10 @@ class Calculator():
     def allow_path(self):
         return False    # change for those who can be calculated on a path instead of a grid
 
+    @property
+    def allow_grid(self):
+        return True    # change for those who can be calculated ONLY on a path
+
     def _set_comment(self, print_comment=True):
         if not hasattr(self, 'comment'):
             if self.__doc__ is not None:
@@ -74,6 +78,9 @@ class TabulatorAll(Calculator):
     def allow_path(self):
         return self.mode == "path"
 
+    @property
+    def allow_grid(self):
+        return self.mode == "grid"
 
 
 from . import static, dynamic, tabulate

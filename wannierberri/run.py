@@ -185,6 +185,14 @@ def run(
         if symmetrize:
             print ("Symmetrization switched off for Path")
             symmetrize = False
+    else:
+        print ("Calculation on  grid - checking calculators for compatibility")
+        for key,calc in calculators.items():
+            print (key,calc)
+            if not calc.allow_grid:
+                raise ValueError(f"Calculation on Grid is running, but calculator `{key}` is not compatible with a Grid")
+        print ("All calculators are compatible")
+
     if isinstance(grid,GridTetra):
         print ("Grid is tetrahedral")
     else:
