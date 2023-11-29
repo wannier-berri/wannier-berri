@@ -1331,7 +1331,6 @@ def test_tabulate_fail(system_Haldane_PythTB):
     k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
     path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
 
-    calculators = {}
     quantities = {
                             "Energy":wberri.calculators.tabulate.Energy(),
                             "berry":wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms":False}),
@@ -1341,7 +1340,7 @@ def test_tabulate_fail(system_Haldane_PythTB):
     calculators_fail ={"tabulate_grid":wberri.calculators.TabulatorAll(quantities,
                                                        ibands=[0],
                                                         mode="grid"),
-                        "ahc":wberri.calculators.static.AHC(Efermi = Efermi_Haldane)}
+                        "ahc":wberri.calculators.static.AHC(Efermi=Efermi_Haldane)}
     for key,val in calculators_fail.items():
         with pytest.raises(ValueError, match=f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path"):
             wberri.run(system=system_Haldane_PythTB, grid=path, calculators={key:val})
