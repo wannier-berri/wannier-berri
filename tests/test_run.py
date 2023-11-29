@@ -980,20 +980,24 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
 @pytest.mark.parametrize("use_sym", [True,False])
 def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
-    param = dict(Efermi = Efermi_Chiral, tetra=tetra, kwargs_formula={"external_terms":False})
-    calculators = {"AHC":calc.static.AHC(**param)
+    param = dict(Efermi=Efermi_Chiral, tetra=tetra, kwargs_formula={"external_terms":False})
+    system = system_Chiral_left
+
+    calculators = {"AHC":calc.static.AHC(**param),
+                "Morb":calc.static.AHC(**param)
                     }
     calculators["tabulate"] =  calc.TabulatorAll(
         {
             "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
-            "AHC":calc.static.AHC(**param, k_resolved=True)
+            "AHC":calc.static.AHC(**param, k_resolved=True),
+            "Morb":calc.static.AHC(**param, k_resolved=True)
         },
-        mode = "grid",
+        mode="grid",
         ibands=(0,1))
 
 
     result = check_run(
-        system_Chiral_left,
+        system,
         calculators,
         fout_name="berry_Chiral_static_tab",
         suffix="",
@@ -1007,7 +1011,7 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
     )
 
     print (result.results.keys())
-    for key in "AHC",:
+    for key in "AHC","Morb":
         print (key)
         data_int = result.results[key].data
         data_tab = result.results["tabulate"].results[key].data
@@ -1015,6 +1019,58 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
         assert data_tab_int.shape == data_int.shape
         prec = 1e-8*np.max(abs(data_int))
         assert abs(data_tab_int-data_int).max()<prec
+
+
+@pytest.mark.parametrize("tetra", [True,False])
+@pytest.mark.parametrize("use_sym", [True,False])
+def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
+    grid_param = {'NK': [10, 10, 1], 'NKFFT': [5, 5, 1]}
+    param = dict(Efermi=Efermi_Haldane, tetra=tetra, kwargs_formula={"external_terms":False})
+    system = system_Haldane_PythTB
+
+    calculators = {"AHC":calc.static.AHC(**param),
+                "Morb":calc.static.AHC(**param)
+                    }
+    calculators["tabulate"] =  calc.TabulatorAll(
+        {
+            "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
+            "AHC":calc.static.AHC(**param, k_resolved=True),
+            "Morb":calc.static.AHC(**param, k_resolved=True),
+            "berry":calc.tabulate.BerryCurvature(kwargs_formula={"external_terms":False})
+        },
+        mode="grid",
+        ibands=(0,1))
+
+
+    result = check_run(
+        system,
+        calculators,
+        fout_name="berry_Haldane_static_tab",
+        suffix="",
+        grid_param=grid_param,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=use_sym,
+        do_not_compare=True
+    )
+
+    print (result.results.keys())
+    for key in "AHC","Morb":
+        print (key)
+        data_int = result.results[key].data
+        data_tab = result.results["tabulate"].results[key].data
+        data_tab_int = data_tab.mean(axis=0)
+        assert data_tab_int.shape == data_int.shape
+        prec = 1e-8*np.max(abs(data_int))
+        assert abs(data_tab_int-data_int).max()<prec
+
+    iEF=np.argmin(abs(Efermi_Haldane))
+    ahc_k = result.results["tabulate"].results["AHC"].data[:,iEF]
+    berry_k = result.results["tabulate"].results["berry"].data[:,0]*wberri.__factors.factor_ahc/system.cell_volume
+    prec = 1e-8*np.max(abs(berry_k))
+    assert abs(berry_k-ahc_k).max()<prec
 
 
 
