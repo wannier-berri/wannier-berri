@@ -11,9 +11,9 @@ from ..result import KBandResult
 
 class Tabulator(Calculator):
 
-    def __init__(self, Formula, kwargs_formula={}, **kwargs):
+    def __init__(self, Formula, ibands=None, kwargs_formula={}, **kwargs):
         self.Formula = Formula
-        self.ibands = None
+        self.ibands = ibands
         self.kwargs_formula = kwargs_formula
         super().__init__(**kwargs)
 
