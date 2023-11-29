@@ -88,12 +88,12 @@ def real_recip_lattice(real_lattice=None, recip_lattice=None):
 
 
 def str2bool(v):
-    if v[0] in "fF":
+    if v.lower()  in ("f", "false", ".false."):
         return False
-    elif v[0] in "tT":
+    elif v.lower() in ("t", "true",".true."):
         return True
     else:
-        raise RuntimeError(" unrecognized value of bool parameter :{0}".format(v))
+        raise ValueError(f"unrecognized value of bool parameter :{v}")
 
 
 def fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
