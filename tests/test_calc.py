@@ -8,18 +8,16 @@ from common_comparers import error_message
 import os, pytest
 
 
-from common_systems import (
-    Efermi_Fe,
-    )
+from common_systems import Efermi_Fe
 
 @pytest.fixture
 def check_calculator(compare_any_result):
 
-    def _inner(system,calc,name,dK=[0.1,0.2,0.3],NKFFT=[3,3,3], param_K={}, 
+    def _inner(system,calc,name,dK=[0.1,0.2,0.3],NKFFT=[3,3,3], param_K={},
                 precision=-1e-8,
                 compare_zero=False,
                 do_not_compare=False,
-                result_type = EnergyResult
+                result_type=EnergyResult
                 ):
         grid = wberri.Grid(system, NKFFT=NKFFT, NK=1)
         data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid, **param_K)
@@ -44,7 +42,7 @@ def check_calculator(compare_any_result):
                 precision = max(maxval * abs(precision), 1E-11)
             err = (result - result_ref)._maxval_raw
             assert err < precision, error_message(
-                fout_name, "", 0, err, path_filename, path_filename_ref, precision)
+                name, "", 0, err, path_filename, path_filename_ref, precision)
         return result
     return _inner
 

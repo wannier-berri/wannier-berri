@@ -4,9 +4,9 @@ import numpy as np
 
 def test_utility_str2bool():
     for v in "F","f","False","false","fAlSe",".false.":
-        assert util.str2bool(v)==False
+        assert util.str2bool(v) is False
     for v in "True","true","TRuE",".TrUe.":
-        assert util.str2bool(v)==True
+        assert util.str2bool(v) is True
     for v in ".true","false.","svas":
         with pytest.raises(ValueError, match=f"unrecognized value of bool parameter :{v}"):
             util.str2bool(v)
