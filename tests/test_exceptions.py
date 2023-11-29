@@ -3,12 +3,12 @@ import pytest
 import numpy as np
 
 def test_utility_str2bool():
-    for v in "F","f","False","false","fAlSe",".false.":
+    for v in "F","f","False","false","fAlSe",".false."," \n .False. \n":
         assert util.str2bool(v) is False
-    for v in "True","true","TRuE",".TrUe.":
+    for v in "True","true","TRuE",".TrUe.", " True \n":
         assert util.str2bool(v) is True
     for v in ".true","false.","svas":
-        with pytest.raises(ValueError, match=f"unrecognized value of bool parameter :{v}"):
+        with pytest.raises(ValueError, match=f"unrecognized value of bool parameter :`{v}`"):
             util.str2bool(v)
 
 def test_utility_FFT():
