@@ -140,6 +140,7 @@ def fft_np(inp, axes, inverse=False):
 
 
 def FFT(inp, axes, inverse=False, destroy=True, numthreads=1, fft='fftw'):
+    fft = fft.lower()
     if fft == 'fftw' and not PYFFTW_IMPORTED:
         fft = 'numpy'
     if fft == 'fftw':
@@ -147,7 +148,7 @@ def FFT(inp, axes, inverse=False, destroy=True, numthreads=1, fft='fftw'):
     elif fft == 'numpy':
         return fft_np(inp, axes, inverse=inverse)
     else:
-        raise ValueError("unknown type of fft : {}".format(fft))
+        raise ValueError(f"unknown type of fft : {fft}")
 
 
 def fourier_q_to_R(AA_q, mp_grid, kpt_mp_grid, iRvec, ndegen, numthreads=1, fft='fftw'):
@@ -171,7 +172,8 @@ class FFT_R_to_k():
         print_my_name_start()
         self.NKFFT = tuple(NKFFT)
         self.num_wann = num_wann
-        assert lib in ('fftw', 'numpy', 'slow'), "fft lib '{}' is not known/supported".format(lib)
+        lib = lib.lower()
+        assert lib in ('fftw', 'numpy', 'slow'),  f"fft lib '{lib.lower()}' is unknown/supported"
         if lib == 'fftw' and not PYFFTW_IMPORTED:
             lib = 'numpy'
         self.lib = lib
@@ -208,8 +210,6 @@ class FFT_R_to_k():
             return AAA_K
         elif self.lib == 'slow':
             raise RuntimeError("FFT.transform should not be called for slow FT")
-        else:
-            raise ValueError(f"Unknown type of Fourier transform :'{self.lib}'")
 
     @Lazy
     def exponent(self):
