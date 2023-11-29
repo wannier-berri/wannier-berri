@@ -141,6 +141,7 @@ def compare_energyresult():
     return _inner
 
 
+
 @pytest.fixture
 def compare_any_result():
     """Compare dat file output of EnergyResult with the file in reference folder"""
