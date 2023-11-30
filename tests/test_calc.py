@@ -1,7 +1,6 @@
 import wannierberri as wberri
 from wannierberri.calculators import static
 from wannierberri.formula import covariant as frml
-from wannierberri.__factors import factor_ahc
 from wannierberri.result import EnergyResult
 from common import OUTPUT_DIR, REF_DIR
 from common_comparers import error_message
@@ -48,20 +47,10 @@ def check_calculator(compare_any_result):
 
 
 
-def test_AHC_fder(system_Fe_W90,check_calculator):
+def test_calc_fder(system_Fe_W90,check_calculator):
 
-    class AHC1(static.StaticCalculator):
-        def __init__(self,  **kwargs):
-            self.Formula = frml.Omega
-            self.fder = 1
-            super().__init__(constant_factor=factor_ahc, **kwargs)
-
-    class AHC2(static.StaticCalculator):
-        def __init__(self, **kwargs):
-            self.Formula = frml.Omega
-            self.fder = 1
-            super().__init__(constant_factor=factor_ahc, **kwargs)
-
-    param = {"Efermi":Efermi_Fe}
-    for name,calc in [("AHC0",static.AHC), ("AHC1", AHC1), ("AHC2", AHC2)]:
-        check_calculator(system_Fe_W90,calc(**param),"Fe-"+name)
+    param = dict(Formula=frml.Identity, Efermi=Efermi_Fe, tetra=False)
+    for fder in range(4):
+        calc =  static.StaticCalculator(**param, fder=fder)
+        name = f"Fe-ident-fder={fder}"
+        check_calculator(system_Fe_W90, calc, name, do_not_compare=False)
