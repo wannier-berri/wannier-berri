@@ -47,7 +47,7 @@ class TabulatorAll(Calculator):
             if v.ibands is None:
                 v.ibands = ibands
             else:
-                assert v.ibands == ibands
+                assert np.all(v.ibands == ibands)
 
     def __call__(self, data_K):
         return TABresult(
