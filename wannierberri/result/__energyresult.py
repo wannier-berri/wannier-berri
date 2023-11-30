@@ -228,14 +228,6 @@ class EnergyResult(Result):
                 **energ)
 
 
-    def save(self, name):
-        """
-        writes a dictionary-like objectto file called `name`  defined in :func:`~wannierberri.result.EnergyResult.as_dict`
-        """
-        name = name.format('')
-        with open(name + ".npz", "wb") as f:
-            np.savez_compressed(f, **self.as_dict() )
-
     def savedata(self, name, prefix, suffix, i_iter):
         suffix = "-" + suffix if len(suffix) > 0 else ""
         prefix = prefix + "-" if len(prefix) > 0 else ""
@@ -248,10 +240,6 @@ class EnergyResult(Result):
     @property
     def _maxval(self):
         return np.abs(self.dataSmooth).max()
-
-    @property
-    def _maxval_raw(self):
-        return np.abs(self.data).max()
 
     @property
     def _norm(self):

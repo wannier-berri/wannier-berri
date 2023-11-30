@@ -1,9 +1,12 @@
+import numpy as np
+
 import wannierberri as wberri
 from wannierberri.calculators import static
 from wannierberri.formula import covariant as frml
-from wannierberri.result import EnergyResult
+from wannierberri.result import EnergyResult, KBandResult
 from common import OUTPUT_DIR, REF_DIR
 from common_comparers import error_message
+import numbers
 import os, pytest
 
 
@@ -16,11 +19,13 @@ def check_calculator(compare_any_result):
                 precision=-1e-8,
                 compare_zero=False,
                 do_not_compare=False,
-                result_type=EnergyResult
+                result_type=EnergyResult,
+                factor=1
                 ):
         grid = wberri.Grid(system, NKFFT=NKFFT, NK=1)
         data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid, **param_K)
-        result = calc(data_K)
+        result = calc(data_K)*factor
+
         filename = "calculator-"+name
         path_filename=os.path.join(OUTPUT_DIR,filename)
         result.save(path_filename)
@@ -53,4 +58,9 @@ def test_calc_fder(system_Fe_W90,check_calculator):
     for fder in range(4):
         calc =  static.StaticCalculator(**param, fder=fder)
         name = f"Fe-ident-fder={fder}"
-        check_calculator(system_Fe_W90, calc, name, do_not_compare=False)
+        check_calculator(system_Fe_W90, calc, name)
+
+def test_tabulator_mul(system_Fe_W90,check_calculator):
+    calc=wberri.calculators.tabulate.Energy()
+    name = f"Fe-tab-energy"
+    check_calculator(system_Fe_W90, calc, name, factor=5,  result_type=KBandResult)

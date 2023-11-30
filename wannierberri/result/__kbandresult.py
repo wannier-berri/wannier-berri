@@ -6,11 +6,16 @@ import itertools
 
 class KBandResult(Result):
 
-    def __init__(self, data, transformTR, transformInv):
-        if isinstance(data, list):
-            self.data_list = data
-        else:
-            self.data_list = [data]
+    def __init__(self, data=None, transformTR=None, transformInv=None, file_npz=None):
+        assert (data is not None) or (file_npz is not None)
+        if file_npz is not None:
+            res = np.load(open(file_npz, "rb"))
+            self.__init__(data=res['data'])
+        if data is not None:
+            if isinstance(data, list):
+                self.data_list = data
+            else:
+                self.data_list = [data]
         self.transformTR=transformTR
         self.transformInv=transformInv
 
@@ -50,8 +55,32 @@ class KBandResult(Result):
                             transformTR=self.transformTR,
                             transformInv=self.transformInv )
 
+    def __sub__(self, other):
+        if (self.transformTR is not None) and (other.transformTR is not None):
+            assert self.transformTR == other.transformTR
+        if (self.transformInv is not None) and (other.transformInv is not None):
+            assert self.transformInv == other.transformInv
+        return KBandResult(
+            data=self.data-other.data,
+            transformTR=self.transformTR,
+            transformInv=self.transformInv,
+        )
+
     def __truediv__(self, number):
         return self * 1  # actually a copy
+
+    def as_dict(self):
+        """
+        returns a dictionary-like object with the folloing keys:
+        - 'E_titles' : list of str - titles of the energies on which the result depends
+        - 'Energies_0', ['Energies_1', ... ] - corresponding arrays of energies
+        - data : array of shape (len(Energies_0), [ len(Energies_1), ...] , [3  ,[ 3, ... ]] )
+        """
+        return dict(
+                data=self.data,
+                transformTR=str(self.transformTR),
+                transformInv=str(self.transformInv)
+        )
 
     def to_grid(self, k_map):
         dataall = self.data
