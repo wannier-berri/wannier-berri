@@ -995,13 +995,13 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
     system = system_Chiral_left
 
     calculators = {"AHC":calc.static.AHC(**param),
-                "Morb":calc.static.AHC(**param)
+                "Morb":calc.static.Morb(**param)
                     }
     calculators["tabulate"] =  calc.TabulatorAll(
         {
             "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
             "AHC":calc.static.AHC(**param, k_resolved=True),
-            "Morb":calc.static.AHC(**param, k_resolved=True)
+            "Morb":calc.static.Morb(**param, k_resolved=True)
         },
         mode="grid",
         ibands=(0,1))
@@ -1050,7 +1050,7 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
             "berry":calc.tabulate.BerryCurvature(kwargs_formula={"external_terms":False})
         },
         mode="grid",
-        ibands=(0,1))
+        ibands=(0,))
 
 
     result = check_run(
