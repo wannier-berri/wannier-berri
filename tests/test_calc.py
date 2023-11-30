@@ -1,5 +1,4 @@
 import numpy as np
-
 import wannierberri as wberri
 from wannierberri.calculators import static
 from wannierberri.formula import covariant as frml
@@ -7,6 +6,8 @@ from wannierberri.result import EnergyResult, KBandResult
 from common import OUTPUT_DIR, REF_DIR
 from common_comparers import error_message
 import numbers
+
+
 import os, pytest
 
 
@@ -64,3 +65,4 @@ def test_tabulator_mul(system_Fe_W90,check_calculator):
     calc=wberri.calculators.tabulate.Energy()
     name = f"Fe-tab-energy"
     check_calculator(system_Fe_W90, calc, name, factor=5,  result_type=KBandResult)
+
