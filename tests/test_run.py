@@ -209,6 +209,17 @@ def resultType(quant):
         return EnergyResult
 
 
+def test_TabulatorAll_fail():
+    with pytest.raises(AssertionError):
+        calc.TabulatorAll(
+            {
+                "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
+                # but not to energies
+                "V": calc.tabulate.Velocity(ibands=[5, 6]),
+            },
+            ibands=[5, 6, 7, 8])
+
+
 def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
     param = {'Efermi': Efermi_Fe}
     param_tab = {'degen_thresh': 5e-2}
@@ -219,7 +230,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             # but not to energies
             "V": calc.tabulate.Velocity(**param_tab),
             "Der_berry": calc.tabulate.DerBerryCurvature(**param_tab),
-            "berry": calc.tabulate.BerryCurvature(**param_tab),
+            "berry": calc.tabulate.BerryCurvature(ibands=[5, 6, 7, 8], **param_tab),
             'spin': calc.tabulate.Spin(**param_tab),
             'spin_berry': calc.tabulate.SpinBerry(**param_tab),
             'morb': calc.tabulate.OrbitalMoment(**param_tab),
