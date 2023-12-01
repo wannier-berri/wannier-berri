@@ -4,7 +4,7 @@ from wannierberri.formula import covariant as frml
 from wannierberri.result import EnergyResult, KBandResult
 from common import OUTPUT_DIR, REF_DIR
 from common_comparers import error_message
-
+import numpy as np
 import os, pytest
 
 
@@ -20,7 +20,7 @@ def check_calculator(compare_any_result):
                 result_type=EnergyResult,
                 factor=1
                 ):
-        grid = wberri.Grid(system, NKFFT=NKFFT, NK=1)
+        grid = wberri.Grid(system, NKFFT=NKFFT, NKdiv=1)
         data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid, **param_K)
         result = calc(data_K)*factor
 
@@ -64,3 +64,29 @@ def test_tabulator_mul(system_Fe_W90,check_calculator):
     check_calculator(system_Fe_W90, calc, name, factor=5,  result_type=KBandResult)
 
 
+
+
+
+@pytest.fixture
+def check_save_result():
+    def _inner(system, calc, result_type, filename="dummy"):
+        grid = wberri.Grid(system, NKFFT=3, NK=5)
+        dK=np.random.random(3)
+        data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
+        result = calc(data_K)
+        path_filename = os.path.join(OUTPUT_DIR, filename)
+        result.save(path_filename)
+        result_read = result_type(file_npz=path_filename+".npz")
+        assert result.data.shape == result_read.data.shape
+        assert str(result.transformTR) == str(result_read.transformTR)
+        assert str(result.transformInv) == str(result_read.transformInv)
+    return _inner
+
+def test_save_KBandResult(system_Haldane_PythTB, check_save_result):
+    calc = wberri.calculators.tabulate.Energy()
+    check_save_result(system_Haldane_PythTB , calc, result_type=KBandResult)
+
+def test_save_EnergyResult(system_Haldane_PythTB, check_save_result):
+    param = dict(Formula=frml.Identity, Efermi=Efermi_Fe, tetra=False, fder=0)
+    calc = static.StaticCalculator(**param)
+    check_save_result(system_Haldane_PythTB , calc, result_type=EnergyResult)

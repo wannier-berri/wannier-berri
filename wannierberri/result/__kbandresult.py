@@ -1,7 +1,7 @@
 import numpy as np
 from .__result import Result
 import itertools
-
+from ..symmetry import transform_from_dict
 
 
 class KBandResult(Result):
@@ -9,15 +9,20 @@ class KBandResult(Result):
     def __init__(self, data=None, transformTR=None, transformInv=None, file_npz=None):
         assert (data is not None) or (file_npz is not None)
         if file_npz is not None:
-            res = np.load(open(file_npz, "rb"))
-            self.__init__(data=res['data'])
-        if data is not None:
-            if isinstance(data, list):
-                self.data_list = data
-            else:
-                self.data_list = [data]
-        self.transformTR=transformTR
-        self.transformInv=transformInv
+            res = np.load(open(file_npz, "rb"),allow_pickle=True)
+            self.__init__(
+                data=res['data'],
+                transformTR=transform_from_dict(res, 'transformTR'),
+                transformInv=transform_from_dict(res, 'transformInv'),
+            )
+        else:
+            if data is not None:
+                if isinstance(data, list):
+                    self.data_list = data
+                else:
+                    self.data_list = [data]
+            self.transformTR=transformTR
+            self.transformInv=transformInv
 
     def fit(self, other):
         for var in ['transformTR', 'transformInv', 'rank', 'nband']:
@@ -48,7 +53,8 @@ class KBandResult(Result):
         assert self.fit(other)
         return KBandResult( data=self.data_list + other.data_list,
                             transformTR=self.transformTR,
-                            transformInv=self.transformInv )
+                            transformInv=self.transformInv
+        )
 
     def __mul__(self, number):
         return KBandResult( data=[d * number for d in self.data_list],
@@ -78,8 +84,8 @@ class KBandResult(Result):
         """
         return dict(
                 data=self.data,
-                transformTR=str(self.transformTR),
-                transformInv=str(self.transformInv)
+                transformTR=self.transformTR.as_dict(),
+                transformInv=self.transformInv.as_dict()
         )
 
     def to_grid(self, k_map):
