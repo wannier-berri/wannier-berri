@@ -86,7 +86,35 @@ def test_save_KBandResult(system_Haldane_PythTB, check_save_result):
     calc = wberri.calculators.tabulate.Energy()
     check_save_result(system_Haldane_PythTB , calc, result_type=KBandResult)
 
+def test_save_KBandResult_add(system_Haldane_PythTB, check_calculator):
+    calc1 = wberri.calculators.tabulate.Energy()
+    calc2 = wberri.calculators.tabulate.Velocity()
+    calc3 = wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms":False})
+    res1 = check_calculator(system_Haldane_PythTB, calc1, "dummy", result_type=KBandResult, do_not_compare=True)
+    res2 = check_calculator(system_Haldane_PythTB, calc2, "dummy", result_type=KBandResult, do_not_compare=True)
+    res3 = check_calculator(system_Haldane_PythTB, calc3, "dummy", result_type=KBandResult, do_not_compare=True)
+    assert res1.fit(res2) is False
+    assert res2.fit(res3) is False
+    assert res3.fit(res1) is False
+    with pytest.raises(AssertionError):
+        res1+res2
+    with pytest.raises(AssertionError):
+        res1-res2
+
+
 def test_save_EnergyResult(system_Haldane_PythTB, check_save_result):
     param = dict(Formula=frml.Identity, Efermi=Efermi_Fe, tetra=False, fder=0)
     calc = static.StaticCalculator(**param)
     check_save_result(system_Haldane_PythTB , calc, result_type=EnergyResult)
+
+def test_get_transform():
+    from wannierberri.symmetry import transform_from_dict
+    assert transform_from_dict({"asdasd": "aasd"}, "transformTR") is None
+    assert transform_from_dict({"transformTR":np.array("transform()",dtype=object)},"transformTR") is None
+    assert transform_from_dict({"transformTR":None},"transformTR") is None
+    with pytest.raises(TypeError):
+        transform_from_dict({"transformTR":np.array({"x":5},dtype=object)},"transformTR")
+    with pytest.raises(ValueError):
+        transform_from_dict({"transformTR":np.zeros(5)},"transformTR")
+    with pytest.raises(ValueError):
+        transform_from_dict({"transformTR":np.array((1,2,3),dtype=object)},"transformTR")

@@ -407,16 +407,11 @@ class Transform():
         """
 
 
-    def __init__(self,factor=1,conj=False,transpose_axes=None,dic=None):
-        if dic is not None:
-            self.conj=dic["conj"]
-            self.factor=dic["factor"]
-            self.transpose_axes=dic["transpose_axes"]
-        else:
-            self.conj=conj
-            self.factor=factor
-            assert factor in (1,-1),f"factor is {factor}"
-            self.transpose_axes=transpose_axes
+    def __init__(self,factor=1,conj=False,transpose_axes=None):
+        self.conj=conj
+        self.factor=factor
+        assert factor in (1,-1),f"factor is {factor}"
+        self.transpose_axes=transpose_axes
 
     def as_dict(self):
         return {k:self.__getattribute__(k) for k in ["conj","factor","transpose_axes"] }

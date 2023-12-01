@@ -3,6 +3,7 @@ import pytest
 import numpy as np
 from wannierberri import calculators as calc
 
+
 def test_utility_str2bool():
     for v in "F","f","False","false","fAlSe",".false."," \n .False. \n":
         assert util.str2bool(v) is False
@@ -49,3 +50,4 @@ def test_TabulatorAll_fail(ibands):
                 "V": calc.tabulate.Velocity(ibands=ibands),
             },
             ibands=[5, 6, 7, 8])
+
