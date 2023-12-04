@@ -69,16 +69,16 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left):
         ibands=(0,1))
 
     with pytest.raises(ValueError):
-            result = check_run(
-            system,
-            calculators,
-            fout_name="berry_Chiral_static_tab",
-            suffix="",
-            grid_param=grid_param,
-            parameters_K={
-                '_FF_antisym': True,
-                '_CCab_antisym': True
-            },
-            use_symmetry=False,
-            do_not_compare=True
+        check_run(
+                system,
+                calculators,
+                fout_name="berry_Chiral_static_tab",
+                suffix="",
+                grid_param=grid_param,
+                parameters_K={
+                    '_FF_antisym': True,
+                    '_CCab_antisym': True
+                },
+                use_symmetry=False,
+                do_not_compare=True
         )

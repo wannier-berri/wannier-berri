@@ -91,7 +91,6 @@ def test_BD_trace(system_Haldane_PythTB):
     dK = [0.1, 0.2, 0.3]
     grid = wberri.Grid(system, NKFFT=[3,3,1], NKdiv=1)
     data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
-    berry = wberri.calculators.tabulate.BerryCurvature
     noext = dict(kwargs_formula={"external_terms":False})
     bd = wberri.calculators.tabulate.DerBerryCurvature(**noext)
     result = bd(data_K)
