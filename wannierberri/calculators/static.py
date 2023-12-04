@@ -21,7 +21,7 @@ from copy import copy
 class StaticCalculator(Calculator):
 
     def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={},
-            Emin=-np.Inf, Emax=np.Inf, hole_like=False, **kwargs):
+            Emin=-np.Inf, Emax=np.Inf, hole_like=False, Formula=None, fder=None,**kwargs):
         self.Efermi = Efermi
         self.Emin=Emin
         self.Emax=Emax
@@ -30,6 +30,10 @@ class StaticCalculator(Calculator):
         self.smoother = smoother
         self.use_factor = use_factor
         self.hole_like = hole_like
+        if Formula is not None:
+            self.Formula=Formula
+        if fder is not None:
+            self.fder=fder
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
         assert hasattr(self, 'Formula'), "Formula not set - it  should be class with a trace(ik,inn,out) method "

@@ -44,10 +44,14 @@ class TabulatorAll(Calculator):
         if ibands is not None:
             ibands = np.array(ibands)
         for k, v in self.tabulators.items():
-            if v.ibands is None:
-                v.ibands = ibands
+            if v.ibands is not None:
+                try:
+                    assert len(v.ibands) == len(ibands)
+                    assert np.all(v.ibands == ibands)
+                except AssertionError:
+                    raise ValueError(f"tabulator {k} has ibands={v.ibands} not equalt to ibands={ibands} required in TabulatorAll")
             else:
-                assert v.ibands == ibands
+                v.ibands = ibands
 
     def __call__(self, data_K):
         return TABresult(

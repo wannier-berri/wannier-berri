@@ -1,5 +1,6 @@
 import numpy as np
 from lazy_property import LazyProperty as Lazy
+from ..symmetry import transform_from_dict
 from ..smoother import VoidSmoother
 from .__result import Result
 
@@ -49,7 +50,7 @@ class EnergyResult(Result):
             file_npz=None,
             comment="undocumented"):
         if file_npz is not None:
-            res = np.load(open(file_npz, "rb"))
+            res = np.load(open(file_npz, "rb"),allow_pickle=True)
             energ = [
                 res[f'Energies_{i}'] for i, _ in enumerate(res['E_titles'])
             ]  # in binary mode energies are just two arrays
@@ -63,8 +64,8 @@ class EnergyResult(Result):
                 data=res['data'],
                 smoothers=smoothers,
                 # TODO : transform the old Iodd.TRodd,TRtrans into new transformators (if needeed))
-                # transformTR=res['transformTR'],
-                # transformInv=res['transformInv'],
+                transformTR=transform_from_dict(res,'transformTR'),
+                transformInv=transform_from_dict(res,'transformInv'),
                 rank=res['rank'],
                 E_titles=list(res['E_titles']),
                 comment=comment)
@@ -222,19 +223,11 @@ class EnergyResult(Result):
                 E_titles=self.E_titles,
                 data=self.data,
                 rank=self.rank,
-                transformTR=str(self.transformTR),
-                transformInv=str(self.transformInv),
+                transformTR=self.transformTR.as_dict(),
+                transformInv=self.transformInv.as_dict(),
                 comment=self.comment,
                 **energ)
 
-
-    def save(self, name):
-        """
-        writes a dictionary-like objectto file called `name`  defined in :func:`~wannierberri.result.EnergyResult.as_dict`
-        """
-        name = name.format('')
-        with open(name + ".npz", "wb") as f:
-            np.savez_compressed(f, **self.as_dict() )
 
     def savedata(self, name, prefix, suffix, i_iter):
         suffix = "-" + suffix if len(suffix) > 0 else ""
@@ -248,10 +241,6 @@ class EnergyResult(Result):
     @property
     def _maxval(self):
         return np.abs(self.dataSmooth).max()
-
-    @property
-    def _maxval_raw(self):
-        return np.abs(self.data).max()
 
     @property
     def _norm(self):
