@@ -18,10 +18,10 @@ class TABresult(Result):
         self.kpoints = np.array(kpoints, dtype=float) % 1
         self.save_mode=save_mode
         self.results = results
-        for r in results:
-            assert len(kpoints) == results[r].nk
-            if hasattr(r,"nband"):
-                assert self.nband == results[r].nband
+        for k,res in results.items():
+            assert len(kpoints) == res.nk
+            if hasattr(res,"nband"):
+                assert self.nband == res.nband
 
     @property
     def Enk(self):

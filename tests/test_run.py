@@ -1005,7 +1005,6 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
         mode="grid",
         ibands=(0,1))
 
-
     result = check_run(
         system,
         calculators,

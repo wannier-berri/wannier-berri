@@ -129,14 +129,6 @@ class K__Result(Result):
                             other_properties=self.other_properties
                              )
 
-    def select_bands(self, ibands):
-        return self.__class__(self.data[:, ibands],
-                            transformTR=self.transformTR,
-                            transformInv=self.transformInv,
-                            rank=self.rank,
-                            other_properties=self.other_properties
-                            )
-
     def average_deg(self, deg):
         for i, D in enumerate(deg):
             for ib1, ib2 in D:
@@ -212,7 +204,6 @@ class K__Result(Result):
             raise NotImplementedError("writing tensors with rank >4 is not implemented. But easy to do")
 
 
-
 class KBandResult(K__Result):
 
     def get_rank(self):
@@ -227,6 +218,14 @@ class KBandResult(K__Result):
     @property
     def nband(self):
         return self.data_list[0].shape[1]
+
+    def select_bands(self, ibands):
+        return self.__class__(self.data[:, ibands],
+                            transformTR=self.transformTR,
+                            transformInv=self.transformInv,
+                            rank=self.rank,
+                            other_properties=self.other_properties
+                            )
 
 class NoComponentError(RuntimeError):
 

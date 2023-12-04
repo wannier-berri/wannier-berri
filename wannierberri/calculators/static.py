@@ -231,7 +231,7 @@ class Morb(StaticCalculator):
 
     def __call__(self, data_K):
         Hplus_res = super().__call__(data_K)
-        Omega_res = self.AHC(data_K).mul_array(self.Efermi)
+        Omega_res = self.AHC(data_K).mul_array(self.Efermi,axes=0)
         Hplus_res.add( - 2 * Omega_res)
         return Hplus_res  * data_K.cell_volume
 
