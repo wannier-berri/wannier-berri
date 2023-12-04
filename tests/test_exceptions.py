@@ -47,7 +47,7 @@ def test_TabulatorAll_fail(ibands):
             {
                 "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
                 # but not to energies
-                "V": calc.tabulate.Velocity(ibands=ibands),
+                "V": calc.tabulate.Velocity(ibands=ibands, print_comment=True),
             },
             ibands=[5, 6, 7, 8])
 

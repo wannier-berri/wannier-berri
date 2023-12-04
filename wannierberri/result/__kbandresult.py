@@ -148,15 +148,21 @@ class K__Result(Result):
 
     def get_component_list(self):
         dim = len(self.data.shape[2:])
-        return ["".join(s) for s in itertools.product(*[("x", "y", "z")] * dim)]
+        comp_list = ["".join(s) for s in itertools.product(*[("x", "y", "z")] * dim)]
+        if self.ndim >= 2 :
+            comp_list.append("trace")
+        return comp_list
 
-    def get_component(self, component=None):
-        xyz = {"x": 0, "y": 1, "z": 2}
+    @property
+    def ndim(self):
         dims = np.array(self.data.shape[2:])
         if not np.all(dims == 3):
             raise RuntimeError(f"dimensions of all components should be 3, found {dims}")
+        return len(dims)
 
-        ndim = len(dims)
+    def get_component(self, component=None):
+        xyz = {"x": 0, "y": 1, "z": 2}
+        ndim = self.ndim
 
         if component is not None:
             component = component.lower()
@@ -176,32 +182,17 @@ class K__Result(Result):
                 return np.linalg.norm(self.data, axis=-1)**2
             else:
                 raise NoComponentError(component, 1)
-        elif ndim == 2:
-            if component == "trace":
-                return sum([self.data[..., i, i] for i in range(3)])
-            else:
-                try:
-                    return self.data[..., xyz[component[0]], xyz[component[1]]]
-                except IndexError:
-                    raise NoComponentError(component, 2)
-        elif ndim == 3:
-            if component == "trace":
-                return sum([self.data[..., i, i, i] for i in range(3)])
-            else:
-                try:
-                    return self.data[..., xyz[component[0]], xyz[component[1]], xyz[component[2]]]
-                except IndexError:
-                    raise NoComponentError(component, 3)
-        elif ndim == 4:
-            if component == "trace":
-                return sum([self.data[..., i, i, i, i] for i in range(3)])
-            else:
-                try:
-                    return self.data[..., xyz[component[0]], xyz[component[1]], xyz[component[2]], xyz[component[3]]]
-                except IndexError:
-                    raise NoComponentError(component, 4)
         else:
-            raise NotImplementedError("writing tensors with rank >4 is not implemented. But easy to do")
+            dims = tuple(np.arange(self.data.ndim))
+            _data = self.data.transpose(dims[-ndim:]+dims[:-ndim])
+            print(f"dims={dims}, data_shape={self.data.shape}, , _data_shape={_data.shape}")
+            if component == "trace":
+                return sum([_data[((i,)*ndim)] for i in range(3)])
+            else:
+                try:
+                    return _data[tuple([xyz[c] for c in component])]
+                except IndexError as err:
+                    raise NoComponentError(component, 2,err)
 
 
 class KBandResult(K__Result):
@@ -229,8 +220,8 @@ class KBandResult(K__Result):
 
 class NoComponentError(RuntimeError):
 
-    def __init__(self, comp, dim):
+    def __init__(self, comp, dim, err=""):
         # Call the base class constructor with the parameters it needs
-        super().__init__("component {} does not exist for tensor with dimension {}".format(comp, dim))
+        super().__init__("component {} does not exist for tensor with dimension {} :\n{}".format(comp, dim,err))
 
 

@@ -66,7 +66,7 @@ class TabulatorAll(Calculator):
         assert mode in ("grid","path")
         self.mode = mode
         self.save_mode = save_mode
-        if np.any([tab.require_energy for tab in self.tabulators.values()]):
+        if self.require_energy():
             if "Energy" not in self.tabulators.keys():
                 self.tabulators["Energy"] = Energy()
         if ibands is not None:

@@ -1040,7 +1040,7 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
     calculators = {"AHC":calc.static.AHC(**param),
                 "Morb":calc.static.AHC(**param)
                     }
-    calculators["tabulate"] =  calc.TabulatorAll(
+    calculators["tabulate"] = calc.TabulatorAll(
         {
             "AHC":calc.static.AHC(**param, k_resolved=True),
             "Morb":calc.static.AHC(**param, k_resolved=True),

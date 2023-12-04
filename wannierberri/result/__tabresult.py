@@ -3,9 +3,7 @@ from time import time
 import multiprocessing
 import functools
 from collections.abc import Iterable
-
 from .__result import Result
-from .__kbandresult import NoComponentError
 
 class TABresult(Result):
 
@@ -304,16 +302,13 @@ def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
         twrite = 0
         for Q in quantities:
             for comp in res.results[Q].get_component_list():
-                try:
-                    t31 = time()
-                    txt = res.fermiSurfer(quantity=Q, component=comp, efermi=Ef0, npar=numproc)
-                    t32 = time()
-                    open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf", "w").write(txt)
-                    t33 = time()
-                    ttxt += t32 - t31
-                    twrite += t33 - t32
-                except NoComponentError:
-                    pass
+                t31 = time()
+                txt = res.fermiSurfer(quantity=Q, component=comp, efermi=Ef0, npar=numproc)
+                t32 = time()
+                open(f"{frmsf_name}_{Q}-{comp}{suffix}.frmsf", "w").write(txt)
+                t33 = time()
+                ttxt += t32 - t31
+                twrite += t33 - t32
     else:
         ttxt = 0
         twrite = 0
