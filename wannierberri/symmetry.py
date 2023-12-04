@@ -413,6 +413,10 @@ class Transform():
         assert factor in (1,-1),f"factor is {factor}"
         self.transpose_axes=transpose_axes
 
+    def as_dict(self):
+        return {k:self.__getattribute__(k) for k in ["conj","factor","transpose_axes"] }
+
+
     def __str__(self):
         return (f"Transform(factor={self.factor}, conj={self.conj}, transpose_axes={self.transpose_axes}")
 
@@ -436,6 +440,7 @@ class Transform():
 
 
 
+
 class TransformProduct(Transform):
     """Constructs a :class:`~Transform`
     from a list of :class:`~Transform`
@@ -451,9 +456,26 @@ class TransformProduct(Transform):
         super().__init__(factor=np.prod([t.factor for t in transform_list]), conj=conj_list[0])
 
 
+
 transform_ident = Transform()
 transform_odd   = Transform(factor=-1)
 transform_odd_conj   = Transform(factor=-1,conj=True)
 transform_odd_trans_021   = Transform(factor=-1,transpose_axes=(0,2,1))
 transform_trans = Transform(transpose_axes=(1,0))
 
+def transform_from_dict(dic,key):
+    """Finds a trandform in a dictionary and returns it.
+    if not found, returns None"""
+    if key not in dic:
+        return None
+    elif dic[key] is None:
+        return None
+    else:
+        d = dic[key].item()
+        if isinstance(d,dict):
+            return Transform(**d)
+        elif isinstance(d,str):
+            print ("WARNING : transform read as string from file, recognized as None")
+            return None
+        else:
+            return ValueError(f"wrong type of transform[{key}] in the npz file:{type(d)}")

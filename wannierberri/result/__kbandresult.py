@@ -1,18 +1,28 @@
 import numpy as np
 from .__result import Result
 import itertools
-
+from ..symmetry import transform_from_dict
 
 
 class KBandResult(Result):
 
-    def __init__(self, data, transformTR, transformInv):
-        if isinstance(data, list):
-            self.data_list = data
+    def __init__(self, data=None, transformTR=None, transformInv=None, file_npz=None):
+        assert (data is not None) or (file_npz is not None)
+        if file_npz is not None:
+            res = np.load(open(file_npz, "rb"),allow_pickle=True)
+            self.__init__(
+                data=res['data'],
+                transformTR=transform_from_dict(res, 'transformTR'),
+                transformInv=transform_from_dict(res, 'transformInv'),
+            )
         else:
-            self.data_list = [data]
-        self.transformTR=transformTR
-        self.transformInv=transformInv
+            if data is not None:
+                if isinstance(data, list):
+                    self.data_list = data
+                else:
+                    self.data_list = [data]
+            self.transformTR=transformTR
+            self.transformInv=transformInv
 
     def fit(self, other):
         for var in ['transformTR', 'transformInv', 'rank', 'nband']:
@@ -43,15 +53,40 @@ class KBandResult(Result):
         assert self.fit(other)
         return KBandResult( data=self.data_list + other.data_list,
                             transformTR=self.transformTR,
-                            transformInv=self.transformInv )
+                            transformInv=self.transformInv
+        )
 
     def __mul__(self, number):
         return KBandResult( data=[d * number for d in self.data_list],
                             transformTR=self.transformTR,
                             transformInv=self.transformInv )
 
+    def __sub__(self, other):
+        if (self.transformTR is not None) and (other.transformTR is not None):
+            assert self.transformTR == other.transformTR
+        if (self.transformInv is not None) and (other.transformInv is not None):
+            assert self.transformInv == other.transformInv
+        return KBandResult(
+            data=self.data-other.data,
+            transformTR=self.transformTR,
+            transformInv=self.transformInv,
+        )
+
     def __truediv__(self, number):
         return self * 1  # actually a copy
+
+    def as_dict(self):
+        """
+        returns a dictionary-like object with the folloing keys:
+        - 'E_titles' : list of str - titles of the energies on which the result depends
+        - 'Energies_0', ['Energies_1', ... ] - corresponding arrays of energies
+        - data : array of shape (len(Energies_0), [ len(Energies_1), ...] , [3  ,[ 3, ... ]] )
+        """
+        return dict(
+                data=self.data,
+                transformTR=self.transformTR.as_dict(),
+                transformInv=self.transformInv.as_dict()
+        )
 
     def to_grid(self, k_map):
         dataall = self.data
