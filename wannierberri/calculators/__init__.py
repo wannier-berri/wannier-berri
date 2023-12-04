@@ -58,7 +58,7 @@ class TabulatorAll(Calculator):
                 if v.ibands is None:
                     v.ibands = ibands
                 else:
-                    assert v.ibands == ibands
+                    assert v.ibands == ibands  
         self.comment = (self.__doc__+"\n Includes the following tabulators : \n"+"-"*50+"\n"+ "\n".join(
                     f""" "{key}" : {val} : {val.comment}\n""" for key,val in self.tabulators.items())+
                     "\n"+"-"*50+"\n" )

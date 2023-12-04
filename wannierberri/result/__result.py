@@ -1,3 +1,4 @@
+import numpy as np
 class Result():
 
     def __init__(self):
@@ -21,7 +22,16 @@ class Result():
 
     # saving as binary
     def save(self, name):
-        raise NotImplementedError()
+        """
+        writes a dictionary-like objectto file called `name`  defined in :func:`~wannierberri.result.EnergyResult.as_dict`
+        """
+        name = name.format('')
+        with open(name + ".npz", "wb") as f:
+            np.savez_compressed(f, **self.as_dict(), allow_pickle=True )
+
+    @property
+    def _maxval_raw(self):
+        return np.abs(self.data).max()
 
     def set_save_mode(self, set_mode):
         self.save_modes = set_mode.split('+')

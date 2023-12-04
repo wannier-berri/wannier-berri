@@ -1,6 +1,8 @@
 from wannierberri import __utility as util
 import pytest
 import numpy as np
+from wannierberri import calculators as calc
+
 
 def test_utility_str2bool():
     for v in "F","f","False","false","fAlSe",".false."," \n .False. \n":
@@ -36,4 +38,16 @@ def test_utility_FFT_R_to_k():
     util.FFT_R_to_k( iRvec, NKFFT, num_wann, lib="numpy").transform(AAA_K)
     with pytest.raises(RuntimeError, match="FFT.transform should not be called for slow FT"):
         util.FFT_R_to_k( iRvec, NKFFT, num_wann, lib="slow").transform(AAA_K)
+
+
+@pytest.mark.parametrize("ibands",[[5,6],[4,6,7,8]])
+def test_TabulatorAll_fail(ibands):
+    with pytest.raises(ValueError):
+        calc.TabulatorAll(
+            {
+                "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
+                # but not to energies
+                "V": calc.tabulate.Velocity(ibands=ibands),
+            },
+            ibands=[5, 6, 7, 8])
 
