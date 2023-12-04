@@ -2,20 +2,22 @@ import numpy as np
 from . import Calculator
 from ..formula import covariant as frml
 from ..formula import covariant_basic as frml_basic
-from ..result import KBandResult
+from ..result import KBandResult,TABresult
 
-
-# The base class for Tabulating
+# The base classes for Tabulating
 # particular calculators are below
-
 
 class Tabulator(Calculator):
 
     def __init__(self, Formula, ibands=None, kwargs_formula={}, **kwargs):
         self.Formula = Formula
-        self.ibands = ibands
+        self.ibands = np.array(ibands) if (ibands is not None) else None
         self.kwargs_formula = kwargs_formula
         super().__init__(**kwargs)
+
+    @property
+    def require_energy(self):
+        return True
 
     def __call__(self, data_K):
         formula = self.Formula(data_K, **self.kwargs_formula)
@@ -51,6 +53,62 @@ class Tabulator(Calculator):
         return KBandResult(rslt, transformTR=formula.transformTR, transformInv=formula.transformInv)
 
 
+class TabulatorAll(Calculator):
+    """
+    TabulatorAll - a pack of all k-resolved calculators (Tabulators)
+    """
+
+    def __init__(self, tabulators, ibands=None, mode="grid", save_mode="frmsf",print_comment=False):
+        """ tabulators - dict 'key':tabulator
+        one of them should be "Energy" """
+        self.tabulators = tabulators
+        mode = mode.lower()
+        assert mode in ("grid","path")
+        self.mode = mode
+        self.save_mode = save_mode
+        if np.any([tab.require_energy for tab in self.tabulators.values()]):
+            if "Energy" not in self.tabulators.keys():
+                self.tabulators["Energy"] = Energy()
+        if ibands is not None:
+            ibands = np.array(ibands)
+        for k, v in self.tabulators.items():
+            if hasattr(v, 'ibands'):
+                if v.ibands is not None:
+                    try:
+                        assert len(v.ibands) == len(ibands)
+                        assert np.all(v.ibands == ibands)
+                    except AssertionError:
+                        raise ValueError(f"tabulator {k} has ibands={v.ibands} not equal to ibands={ibands} required in TabulatorAll")
+                else:
+                    v.ibands = ibands
+
+        self.comment = (self.__doc__+"\n Includes the following tabulators : \n"+"-"*50+"\n"+ "\n".join(
+                    f""" "{key}" : {val} : {val.comment}\n""" for key,val in self.tabulators.items())+
+                    "\n"+"-"*50+"\n" )
+        self._set_comment(print_comment)
+
+    def require_energy(self):
+        if np.any([tab.require_energy for tab in self.tabulators.values()]) and "frmsf" in self.save_mode:
+            return True
+        else:
+            return False
+    def __call__(self, data_K):
+        return TABresult(
+            kpoints=data_K.kpoints_all.copy(),
+            mode=self.mode,
+            recip_lattice=data_K.system.recip_lattice,
+            save_mode=self.save_mode,
+            results={k: v(data_K)
+                     for k, v in self.tabulators.items()} )
+
+
+    @property
+    def allow_path(self):
+        return self.mode == "path"
+
+    @property
+    def allow_grid(self):
+        return self.mode == "grid"
 
 ###############################################
 ###############################################

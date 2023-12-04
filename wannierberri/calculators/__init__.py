@@ -4,9 +4,6 @@ receive :calss:`~wannierberri.data_K._Data_K` objects and yield
 :class:`~wannierberri.result.Result`
 """
 
-import abc
-import numpy as np
-from ..result import KBandResult,TABresult
 from termcolor import cprint
 
 class Calculator():
@@ -36,51 +33,5 @@ class Calculator():
 
 
 
-class TabulatorAll(Calculator):
-    """
-    TabulatorAll - a pack of all k-resolved calculators (Tabulators)
-    """
-
-    def __init__(self, tabulators, ibands=None, mode="grid", save_mode="frmsf",print_comment=False):
-        """ tabulators - dict 'key':tabulator
-        one of them should be "Energy" """
-        self.tabulators = tabulators
-        mode = mode.lower()
-        assert mode in ("grid","path")
-        self.mode = mode
-        self.save_mode = save_mode
-        if "Energy" not in self.tabulators.keys():
-            raise ValueError("Energy is not included in tabulators")
-        if ibands is not None:
-            ibands = np.array(ibands)
-        for k, v in self.tabulators.items():
-            if hasattr(v,"ibands"):
-                if v.ibands is None:
-                    v.ibands = ibands
-                else:
-                    assert v.ibands == ibands  
-        self.comment = (self.__doc__+"\n Includes the following tabulators : \n"+"-"*50+"\n"+ "\n".join(
-                    f""" "{key}" : {val} : {val.comment}\n""" for key,val in self.tabulators.items())+
-                    "\n"+"-"*50+"\n" )
-        self._set_comment(print_comment)
-
-    def __call__(self, data_K):
-        return TABresult(
-            kpoints=data_K.kpoints_all.copy(),
-            mode=self.mode,
-            recip_lattice=data_K.system.recip_lattice,
-            save_mode=self.save_mode,
-            results={k: v(data_K)
-                     for k, v in self.tabulators.items()} )
-
-
-    @property
-    def allow_path(self):
-        return self.mode == "path"
-
-    @property
-    def allow_grid(self):
-        return self.mode == "grid"
-
-
 from . import static, dynamic, tabulate
+from .tabulate import TabulatorAll

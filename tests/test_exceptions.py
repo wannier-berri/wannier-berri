@@ -14,7 +14,7 @@ def test_utility_str2bool():
             util.str2bool(v)
 
 def test_utility_FFT():
-    inp = np.random.random( (5,4,3,5) ) * (1+2j)
+    inp = np.random.random( (5,4,3,5) ) * (1+2.j)
     axes = (0,2)
     for fft in "fftw","numpy", "FfTw", "nUmPY":
         util.FFT(inp, axes,  fft=fft)
@@ -43,7 +43,7 @@ def test_utility_FFT_R_to_k():
 @pytest.mark.parametrize("ibands",[[5,6],[4,6,7,8]])
 def test_TabulatorAll_fail(ibands):
     with pytest.raises(ValueError):
-        calc.TabulatorAll(
+        calc.tabulate.TabulatorAll(
             {
                 "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
                 # but not to energies

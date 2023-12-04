@@ -152,6 +152,9 @@ class StaticCalculator(Calculator):
             res.set_save_mode(self.save_mode)
         return res
 
+    @property
+    def require_energy(self):
+        return True
 
 ###############################################
 ###############################################

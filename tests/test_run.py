@@ -210,7 +210,7 @@ def resultType(quant):
 
 
 def test_TabulatorAll_fail():
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         calc.TabulatorAll(
             {
                 "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
@@ -981,7 +981,7 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         precision = 1e-14 * np.max(abs(data1))
         assert data1 == approx(
                 data2, abs=precision), (
-                        f"calcuylated data of {key}  of full and half sets of Fermi levels give a maximal "
+                        f"calculated data of {key}  of full and half sets of Fermi levels give a maximal "
                         + "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
                             abs_err=np.max(abs(data1 - data2)), required_precision=precision))
 
@@ -999,7 +999,6 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
                     }
     calculators["tabulate"] =  calc.TabulatorAll(
         {
-            "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
             "AHC":calc.static.AHC(**param, k_resolved=True),
             "Morb":calc.static.Morb(**param, k_resolved=True)
         },
@@ -1044,7 +1043,6 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
                     }
     calculators["tabulate"] =  calc.TabulatorAll(
         {
-            "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
             "AHC":calc.static.AHC(**param, k_resolved=True),
             "Morb":calc.static.AHC(**param, k_resolved=True),
             "berry":calc.tabulate.BerryCurvature(kwargs_formula={"external_terms":False})
