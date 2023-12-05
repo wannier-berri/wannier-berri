@@ -122,7 +122,7 @@ class EnergyResult(Result):
             assert d == self.data.shape[axes[i]], "shapes  {} should match the axes {} of {}".format(
                 other.shape, axes, self.data.shape)
         reshape = tuple((self.data.shape[i] if i in axes else 1) for i in range(self.data.ndim))
-        return EnergyResult(
+        return self.__class__(
             Energies=self.Energies,
             data=self.data * other.reshape(reshape),
             smoothers=self.smoothers,
@@ -133,7 +133,7 @@ class EnergyResult(Result):
 
     def __mul__(self, number):
         if isinstance(number, int) or isinstance(number, float):
-            return EnergyResult(
+            return self.__class__(
                 Energies=self.Energies,
                 data=self.data * number,
                 smoothers=self.smoothers,
@@ -165,7 +165,7 @@ class EnergyResult(Result):
             if self.smoothers[i] != other.smoothers[i]:
                 raise RuntimeError(
                     f"Adding results with different smoothers [{i}]: {self.smoothers[i]} and {other.smoothers[i]}")
-        return EnergyResult(
+        return self.__class__(
             Energies=self.Energies,
             data=self.data + other.data,
             smoothers=self.smoothers,
@@ -174,6 +174,9 @@ class EnergyResult(Result):
             rank=self.rank,
             E_titles=self.E_titles,
             comment=comment)
+
+    def add(self,other):
+        self.data+=other.data
 
     def __sub__(self, other):
         return self + (-1) * other
@@ -255,7 +258,7 @@ class EnergyResult(Result):
         return np.array([self._maxval, self._norm, self._normder])
 
     def transform(self, sym):
-        return EnergyResult(
+        return self.__class__(
             Energies=self.Energies,
             data=sym.transform_tensor(self.data, self.rank,
                                         transformTR=self.transformTR,
@@ -266,3 +269,5 @@ class EnergyResult(Result):
             rank=self.rank,
             E_titles=self.E_titles,
             comment=self.comment)
+
+
