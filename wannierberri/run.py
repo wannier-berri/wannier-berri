@@ -16,6 +16,7 @@ from collections.abc import Iterable
 from time import time
 import pickle
 import glob
+from termcolor import cprint
 
 from .data_K import get_data_k
 from .grid import exclude_equiv_points, Path, Grid, GridTetra
@@ -171,6 +172,8 @@ def run(
     Results are also printed to ASCII files
     """
 
+    cprint ("Starting run()", 'red', attrs=['bold'])
+    print_calculators(calculators)
     # along a path only tabulating is possible
     if isinstance(grid,Path):
         print ("Calculation along a path - checking calculators for compatibility")
@@ -182,6 +185,14 @@ def run(
         if symmetrize:
             print ("Symmetrization switched off for Path")
             symmetrize = False
+    else:
+        print ("Calculation on  grid - checking calculators for compatibility")
+        for key,calc in calculators.items():
+            print (key,calc)
+            if not calc.allow_grid:
+                raise ValueError(f"Calculation on Grid is running, but calculator `{key}` is not compatible with a Grid")
+        print ("All calculators are compatible")
+
     if isinstance(grid,GridTetra):
         print ("Grid is tetrahedral")
     else:
@@ -384,5 +395,16 @@ def run(
 
 
     print("Totally processed {0} K-points ".format(counter))
+    print ("run() finished")
 
     return result_all
+
+def print_calculators(calculators):
+    cprint("Using the follwing calculators : \n" + "#"*60 +"\n", "cyan", attrs=["bold"])
+    for key,val in calculators.items() :
+        cprint (f" '{key}' ", "magenta", attrs=["bold"], end="")
+        print (" : ",end="")
+        cprint(f" {val} ", "yellow", attrs=["bold"], end="")
+        print ( f" : {val.comment}" )
+    cprint("#"*60 , "cyan", attrs=["bold"])
+

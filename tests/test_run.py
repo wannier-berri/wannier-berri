@@ -209,6 +209,17 @@ def resultType(quant):
         return EnergyResult
 
 
+def test_TabulatorAll_fail():
+    with pytest.raises(ValueError):
+        calc.TabulatorAll(
+            {
+                "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
+                # but not to energies
+                "V": calc.tabulate.Velocity(ibands=[5, 6]),
+            },
+            ibands=[5, 6, 7, 8])
+
+
 def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
     param = {'Efermi': Efermi_Fe}
     param_tab = {'degen_thresh': 5e-2}
@@ -219,7 +230,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             # but not to energies
             "V": calc.tabulate.Velocity(**param_tab),
             "Der_berry": calc.tabulate.DerBerryCurvature(**param_tab),
-            "berry": calc.tabulate.BerryCurvature(**param_tab),
+            "berry": calc.tabulate.BerryCurvature(ibands=[5, 6, 7, 8], **param_tab),
             'spin': calc.tabulate.Spin(**param_tab),
             'spin_berry': calc.tabulate.SpinBerry(**param_tab),
             'morb': calc.tabulate.OrbitalMoment(**param_tab),
@@ -970,11 +981,104 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         precision = 1e-14 * np.max(abs(data1))
         assert data1 == approx(
                 data2, abs=precision), (
-                        f"calcuylated data of {key}  of full and half sets of Fermi levels give a maximal "
+                        f"calculated data of {key}  of full and half sets of Fermi levels give a maximal "
                         + "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
                             abs_err=np.max(abs(data1 - data2)), required_precision=precision))
 
 
+
+@pytest.mark.parametrize("tetra", [True,False])
+@pytest.mark.parametrize("use_sym", [True,False])
+def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
+    grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
+    param = dict(Efermi=Efermi_Chiral, tetra=tetra, kwargs_formula={"external_terms":False})
+    system = system_Chiral_left
+
+    calculators = {"AHC":calc.static.AHC(**param),
+                "Morb":calc.static.Morb(**param)
+                    }
+    calculators["tabulate"] =  calc.TabulatorAll(
+        {
+            "AHC":calc.static.AHC(**param, k_resolved=True),
+            "Morb":calc.static.Morb(**param, k_resolved=True)
+        },
+        mode="grid",
+        ibands=(0,1))
+
+    result = check_run(
+        system,
+        calculators,
+        fout_name="berry_Chiral_static_tab",
+        suffix="",
+        grid_param=grid_param,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=use_sym,
+        do_not_compare=True
+    )
+
+    print (result.results.keys())
+    for key in "AHC","Morb":
+        print (key)
+        data_int = result.results[key].data
+        data_tab = result.results["tabulate"].results[key].data
+        data_tab_int = data_tab.mean(axis=0)
+        assert data_tab_int.shape == data_int.shape
+        prec = 1e-8*np.max(abs(data_int))
+        assert abs(data_tab_int-data_int).max()<prec
+
+
+@pytest.mark.parametrize("tetra", [True,False])
+@pytest.mark.parametrize("use_sym", [True,False])
+def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
+    grid_param = {'NK': [10, 10, 1], 'NKFFT': [5, 5, 1]}
+    param = dict(Efermi=Efermi_Haldane, tetra=tetra, kwargs_formula={"external_terms":False})
+    system = system_Haldane_PythTB
+
+    calculators = {"AHC":calc.static.AHC(**param),
+                "Morb":calc.static.AHC(**param)
+                    }
+    calculators["tabulate"] = calc.TabulatorAll(
+        {
+            "AHC":calc.static.AHC(**param, k_resolved=True),
+            "Morb":calc.static.AHC(**param, k_resolved=True),
+            "berry":calc.tabulate.BerryCurvature(kwargs_formula={"external_terms":False})
+        },
+        mode="grid",
+        ibands=(0,))
+
+
+    result = check_run(
+        system,
+        calculators,
+        fout_name="berry_Haldane_static_tab",
+        suffix="",
+        grid_param=grid_param,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        use_symmetry=use_sym,
+        do_not_compare=True
+    )
+
+    print (result.results.keys())
+    for key in "AHC","Morb":
+        print (key)
+        data_int = result.results[key].data
+        data_tab = result.results["tabulate"].results[key].data
+        data_tab_int = data_tab.mean(axis=0)
+        assert data_tab_int.shape == data_int.shape
+        prec = 1e-8*np.max(abs(data_int))
+        assert abs(data_tab_int-data_int).max()<prec
+
+    iEF=np.argmin(abs(Efermi_Haldane))
+    ahc_k = result.results["tabulate"].results["AHC"].data[:,iEF]
+    berry_k = result.results["tabulate"].results["berry"].data[:,0]*wberri.__factors.factor_ahc/system.cell_volume
+    prec = 1e-8*np.max(abs(berry_k))
+    assert abs(berry_k-ahc_k).max()<prec
 
 
 
@@ -1228,6 +1332,26 @@ def test_tabulate_path(system_Haldane_PythTB):
         fatfactor=20,
         cut_k=True,
         show_fig=False)
+
+
+def test_tabulate_fail(system_Haldane_PythTB):
+
+    k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
+    path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
+
+    quantities = {
+                            "Energy":wberri.calculators.tabulate.Energy(),
+                            "berry":wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms":False}),
+                                  }
+
+    key = "tabulate_grid"
+    calculators_fail ={"tabulate_grid":wberri.calculators.TabulatorAll(quantities,
+                                                       ibands=[0],
+                                                        mode="grid"),
+                        "ahc":wberri.calculators.static.AHC(Efermi=Efermi_Haldane)}
+    for key,val in calculators_fail.items():
+        with pytest.raises(ValueError, match=f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path"):
+            wberri.run(system=system_Haldane_PythTB, grid=path, calculators={key:val})
 
 
 def test_shc_static(check_run,system_Fe_W90):

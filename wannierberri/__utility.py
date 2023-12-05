@@ -263,14 +263,26 @@ class FFT_R_to_k():
         return AAA_K
 
 
+def iterate_nd(size, pm=False):
+    a = -size[0] if pm else 0
+    b = size[0]+1 if pm else size[0]
+    if len(size)==1:
+        return np.array([(i,) for i in range(a,b)])
+    else:
+        return np.array([(i,)+tuple(j) for i in range(a,b) for j in iterate_nd(size[1:], pm=pm)])
+
 def iterate3dpm(size):
-    return (
-        np.array([i, j, k]) for i in range(-size[0], size[0] + 1) for j in range(-size[1], size[1] + 1)
-        for k in range(-size[2], size[2] + 1))
+    assert len(size)==3
+    return iterate_nd(size,pm=True)
+#   return (
+#       np.array([i, j, k]) for i in range(-size[0], size[0] + 1) for j in range(-size[1], size[1] + 1)
+#       for k in range(-size[2], size[2] + 1))
 
 
-def iterate3d(size):
-    return (np.array([i, j, k]) for i in range(0, size[0]) for j in range(0, size[1]) for k in range(0, size[2]))
+#def iterate3d(size):
+#    assert len(size)==3
+#    return iterate_nd(size,pm=False)
+#    return (np.array([i, j, k]) for i in range(0, size[0]) for j in range(0, size[1]) for k in range(0, size[2]))
 
 
 def find_degen(arr, degen_thresh):

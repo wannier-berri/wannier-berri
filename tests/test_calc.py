@@ -37,14 +37,14 @@ def check_calculator(compare_any_result):
         else:
             path_filename_ref = os.path.join(REF_DIR, filename+".npz")
             result_ref = result_type(file_npz=path_filename_ref)
-            maxval = result_ref._maxval_raw
-            if precision is None:
-                precision = max(maxval / 1E12, 1E-11)
-            elif precision < 0:
-                precision = max(maxval * abs(precision), 1E-11)
-            err = (result - result_ref)._maxval_raw
-            assert err < precision, error_message(
-                name, "", 0, err, path_filename, path_filename_ref, precision)
+        maxval = result_ref._maxval_raw
+        if precision is None:
+            precision = max(maxval / 1E12, 1E-11)
+        elif precision < 0:
+            precision = max(maxval * abs(precision), 1E-11)
+        err = (result - result_ref)._maxval_raw
+        assert err < precision, error_message(
+            name, "", 0, err, path_filename, path_filename_ref, precision)
         return result
     return _inner
 
@@ -63,9 +63,40 @@ def test_tabulator_mul(system_Fe_W90,check_calculator):
     name = "Fe-tab-energy"
     check_calculator(system_Fe_W90, calc, name, factor=5,  result_type=KBandResult)
 
+def test_tab_fit(system_Haldane_PythTB):
+    system = system_Haldane_PythTB
+    dK = [0.1, 0.2, 0.3]
+    grid = wberri.Grid(system, NKFFT=[3,3,1], NKdiv=1)
+    data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
+    morb = wberri.calculators.tabulate.OrbitalMoment
+    berry = wberri.calculators.tabulate.BerryCurvature
+    noext = dict(kwargs_formula={"external_terms":False})
+    calculators = [[cal(ibands=ib, **noext) for ib in ( [0,],[0,1]) ] for cal in (berry, morb)]
+    results = [[cal[b](data_K) for b in range(2)] for cal in calculators]
+    for ical1,ib1 in wberri.__utility.iterate_nd((2,2)):
+        for ical2,  ib2 in wberri.__utility.iterate_nd((2, 2)):
+            r1=results[ical1][ib1]
+            r2=results[ical2][ib2]
+            check = r1.fit(r2)
+            assert check == (  (ib1==ib2) ) , f"{r1.nband}, {r2.nband}, {check}"
 
+    for res in results:
+        r1=res[0]
+        r2=res[1].select_bands((0,))
+        assert r1.fit(r2),  f"{r1.nband}, {r2.nband}, {r1.fit(r2)}"
+        assert r1.data == pytest.approx(r2.data)
 
-
+def test_BD_trace(system_Haldane_PythTB):
+    system = system_Haldane_PythTB
+    dK = [0.1, 0.2, 0.3]
+    grid = wberri.Grid(system, NKFFT=[3,3,1], NKdiv=1)
+    data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
+    noext = dict(kwargs_formula={"external_terms":False})
+    bd = wberri.calculators.tabulate.DerBerryCurvature(**noext)
+    result = bd(data_K)
+    trace = result.get_component("trace")
+    print (f"shape of trace {trace.shape}")
+    assert (np.max(abs(trace)))< 1e-10
 
 @pytest.fixture
 def check_save_result():
