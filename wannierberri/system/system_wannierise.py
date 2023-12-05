@@ -61,6 +61,8 @@ class System_Wannierise(System_w90):
         if self.need_R_any(['AA','BB']):
             mmn=aidata.mmn
 
+        print(f"Need A:{self.need_R_any('AA')}, berry:{self.berry}")
+
         fourier_q_to_R_loc=functools.partial(fourier_q_to_R,
                                              mp_grid=aidata.chk.mp_grid,
                                              kpt_mp_grid=aidata.kpt_mp_grid,
@@ -78,7 +80,7 @@ class System_Wannierise(System_w90):
         if self.need_R_any('AA'):
             AAq=aidata.chk.get_AA_q(mmn,transl_inv=transl_inv)
             t0=time()
-            self.AA_R=fourier_q_to_R_loc(AAq)
+            self.set_R_mat('AA',fourier_q_to_R_loc(AAq))
             timeFFT+=time()-t0
 
         if self.need_R_any('BB'):

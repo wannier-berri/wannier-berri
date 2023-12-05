@@ -106,6 +106,7 @@ class AbInitioData():
                  conv_tol=1e-9,
                  mix_ratio=0.5,
                  num_iter_converge=10,
+                 print_progress_every=10
                  ):
 
         self.froz_min=froz_min
@@ -177,7 +178,8 @@ class AbInitioData():
             except IndexError:
                 _delta= "--"
 #            print ("iteration {:4d}".format(i_iter)+" Omega_I= "+"  ".join("{:15.10f}".format(x) for x in Omega_I)+" tot =","{:15.10f}".format(sum(Omega_I)))
-            print ("iteration {:4d}".format(i_iter)+" Omega_I = {:15.10f}".format(Omega_I)+f"  delta={_delta}")
+            if i_iter%print_progress_every == 0:
+                print ("iteration {:4d}".format(i_iter)+" Omega_I = {:15.10f}".format(Omega_I)+f"  delta={_delta}")
             if i_iter+1>=num_iter_converge:
                 if np.std(Omega_I_list[-num_iter_converge:])<conv_tol:
                     break
