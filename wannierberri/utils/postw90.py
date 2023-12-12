@@ -33,7 +33,7 @@
 
 from .. import run, Grid, calculators, System_w90, Parallel
 import numpy as np
-from ..system.__w90_files import parse_win_raw
+from ..system.w90_files import parse_win_raw
 
 
 

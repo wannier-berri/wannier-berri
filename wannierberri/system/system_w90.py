@@ -17,7 +17,7 @@ import functools
 import multiprocessing
 from ..__utility import iterate3dpm, real_recip_lattice, fourier_q_to_R
 from .system import System
-from .__w90_files import Wannier90Data
+from .w90_files import Wannier90data
 
 
 class System_w90(System):
@@ -29,8 +29,8 @@ class System_w90(System):
     ----------
     seedname : str
         the seedname used in Wannier90
-    w90data : `~wannierberri.system.Wannier90data
-        object that contains all Wanier90 input files and chk all together. If provided, overrides the seedname
+    w90data : `~wannierberri.system.Wannier90data`
+        object that contains all Wanier90 input files and chk all together. If provided, overrides the `seedname`
     transl_inv : bool
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
     guiding_centers : bool
@@ -67,7 +67,7 @@ class System_w90(System):
         self.npar = npar
         self.seedname = seedname
         if w90data is None:
-            w90data = Wannier90Data(self.seedname, read_chk=True, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+            w90data = Wannier90data(self.seedname, read_chk=True, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
         w90data.check_wannierised(msg="creation of System_Wannierise")
         chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)

@@ -21,15 +21,28 @@ from itertools import islice
 import gc
 from scipy.constants import physical_constants
 import functools
-from . import disentangle
-from copy import copy, deepcopy
+from .disentanglement import disentangle
+from copy import copy
 
 readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip()
 
 
 class CheckPoint():
+    """
+    A class to store the data about wannierisation, written by Wannier90
+
+    Parameters
+    ----------
+    seedname : str
+        the prefix of the file (including relative/absolute path, but not including the extension `.chk`)
+    kmesh_tol : float
+        tolerance to distinguish different/same k-points
+    bk_complete_tol : float
+        tolerance for the completeness relation for finite-difference scheme
+    """
 
     def __init__(self, seedname, kmesh_tol=1e-7, bk_complete_tol=1e-5):
+
         self.kmesh_tol = kmesh_tol  # will be used in set_bk
         self.bk_complete_tol = bk_complete_tol  # will be used in set_bk
         t0 = time()
@@ -138,19 +151,12 @@ class CheckPoint():
                 for ib2 in range(mmn.NNB):
                     iknb2 = mmn.neighbours[ik, ib2]
                     data = uhu.data[ik, ib1, ib2]
-                    CC_q[ik] += 1.j * self.wannier_gauge(data, iknb1, iknb2)[:, :, None] * (
-                                                                                                   mmn.wk[ik, ib1] *
-                                                                                                   mmn.wk[ik, ib2] * (
-                                                                                                           mmn.bk_cart[
-                                                                                                               ik, ib1, alpha_A] *
-                                                                                                           mmn.bk_cart[
-                                                                                                               ik, ib2, beta_A]
-                                                                                                           -
-                                                                                                           mmn.bk_cart[
-                                                                                                               ik, ib1, beta_A] *
-                                                                                                           mmn.bk_cart[
-                                                                                                               ik, ib2, alpha_A]))[
-                                                                                           None, None, :]
+                    CC_q[ik] += (1.j * self.wannier_gauge(data, iknb1, iknb2)[:, :, None] *
+                            (mmn.wk[ik, ib1] * mmn.wk[ik, ib2] *
+                                (mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A] -
+                                       mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A])
+                             ) [None, None, :]
+                                )
         CC_q = 0.5 * (CC_q + CC_q.transpose((0, 2, 1, 3)).conj())
         return CC_q
 
@@ -219,8 +225,20 @@ import lazy_property
 
 
 class CheckPoint_bare(CheckPoint):
+    """
+            Class to store data from Wanierisationm obtained internally
+            Initialize without the v_matrix (to be written later by `~wannierberri.system.disentangle`)
+
+            Parameters
+            ----------
+            win : `~wannierberri.system.w90_files.WIN`
+            eig : `~wannierberri.system.w90_files.EIG`
+            amn : `~wannierberri.system.w90_files.AMN`
+            mmn : `~wannierberri.system.w90_files.MMN`
+            """
 
     def __init__(self, win, eig, amn, mmn):
+
         self.mp_grid = np.array(win.get_param("mp_grid"))
         self.kpt_latt = win.get_kpoints()
         self.real_lattice = win.get_unit_cell_cart_ang()
@@ -232,7 +250,7 @@ class CheckPoint_bare(CheckPoint):
         self.recip_lattice = 2 * np.pi * np.linalg.inv(self.real_lattice).T
 
 
-class Wannier90Data:
+class Wannier90data:
     """A class to describe all input files of wannier90, and to construct the Wannier functions
      via disentanglement procedure"""
 
@@ -260,17 +278,18 @@ class Wannier90Data:
         # else:
         #    self.Dmn=DMN(None,num_wann=self.chk.num_wann,num_bands=self.chk.num_bands,nkpt=self.chk.num_kpts)
 
-    def check_conform(self, this, key):
-        file_list = ['eig', 'mmn', 'amn', 'uiu', 'uhu', 'chk', 'siu', 'shu', 'spn']
-        assert (key in file_list)
-        for file in file_list:
-            if file != key and hasattr(self, 'file'):
-                other = getattr(self, file)
-                for attr in ['NK', 'NB', 'NW', 'NNB']:
-                    if hasattr(this, attr) and hasattr(other, attr):
-                        a = getattr(this)
-                        b = getattr(other)
-                        assert a == b, f"files {key} and {file} have different attribute {attr} : {a} and {b} respectively"
+    # def check_conform(self, this, key):
+    #     file_list = ['eig', 'mmn', 'amn', 'uiu', 'uhu', 'chk', 'siu', 'shu', 'spn']
+    #     return
+    #     assert (key in file_list)
+    #     for file in file_list:
+    #         if file != key and hasattr(self, file):
+    #             other = getattr(self, file)
+    #             for attr in ['NK', 'NB', 'NW', 'NNB']:
+    #                 if hasattr(this, attr) and hasattr(other, attr):
+    #                     a = getattr(this, attr)
+    #                     b = getattr(other, attr)
+    #                     assert a == b, f"files {key} and {file} have different attribute {attr} : {a} and {b} respectively"
 
     @lazy_property.LazyProperty
     def win(self):
@@ -334,7 +353,7 @@ class Wannier90Data:
             raise RuntimeError(f"no wannieruisation was performed on the w90 input files, cannot proceed with {msg}")
 
     def disentangle(self, **parameters):
-        disentangle.disentangle(self, **parameters)
+        disentangle(self, **parameters)
 
     # TODO : allow k-dependent window (can it be useful?)
     # def apply_outer_window(self,

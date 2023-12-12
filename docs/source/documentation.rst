@@ -18,6 +18,7 @@ API reference
    docs/grid
    docs/symmetries
    docs/smoother
+   docs/w90_files
    docs/data_K
    docs/models
 

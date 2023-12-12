@@ -189,6 +189,7 @@ class System():
             * `array(num_wann,...)` if `diag=True` . Sets the diagonal part ( if `R` not set, `R=[0,0,0]`)
             * `array(num_wann,num_wann,..)`  matrix for `R` (`R` should be set )
             * array(num_wann,num_wann,nRvec,...)` full spin matrix for all R
+
             `...` denotes the vector/tensor cartesian dimensions of the matrix element
         R : list(int)
             list of 3 integer values specifying R. if
@@ -350,13 +351,14 @@ class System():
     def set_spin_from_code(self, DFT_code="qe"):
         """set SS_R, assuming that each Wannier function is an eigenstate of Sz,
          according to the ordering of the ab-initio code
+
         Parameters
         ----------
         DFT_code: str
             DFT code used :
                 *  ``'qe'`` : if bands are grouped by orbital type, in each pair first comes spin-up,then spin-down
                 *  ``'vasp'`` : if bands are grouped by spin : first come all spin-up, then all spin-down
-            1D `array(num_wann)` of `+1` or `-1` spins are along `axis`
+
 
         Notes:
         -------
@@ -364,6 +366,7 @@ class System():
         * The pure-spin character may be broken by maximal localization. Recommended to use `num_iter=0` in Wannier90
         * if your DFT code has a different name, but uses the same spin ordering as `qe` or `vasp` - set `DFT_code='qe'` or `DFT_code='vasp'` correspondingly
         * if your DFT code has a different spin ordering, use   :func:`~wannierberri.system.System.set_spin_pairs`
+
         """
         assert self.num_wann%2==0, f"odd number of Wannier functions {self.num_wann} cannot be grouped into spin pairs"
         nw2=self.num_wann//2

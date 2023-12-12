@@ -11,10 +11,37 @@ def disentangle(w90data,
                 froz_max=-np.Inf,
                 num_iter=100,
                 conv_tol=1e-9,
-                mix_ratio=0.5,
                 num_iter_converge=10,
+                mix_ratio=0.5,
                 print_progress_every=10
                 ):
+    r"""
+    Performs disentanglement of the bands recorded in w90data, following the procedure described in
+    `Souza et al,PRB 2001 <https://doi.org/10.1103/PhysRevB.65.035109>`__
+    At the end writes `w90data.chk.v_matrix` and sets `w90data.wannierised = True`
+
+    Parameters
+    ----------
+    w90data: :class:`~wannierberri.system.Wannier90data`
+        the data
+    froz_min : float
+        lower bound of the frozen window
+    froz_max : float
+        upper bound of the frozen window
+    num_iter : int
+        maximal number of iteration for disentanglement
+    conv_tol : float
+        tolerance for convergence of the spread functional  (in :math:`\mathring{\rm A}^{2}`)
+    num_iter_converge : int
+        the convergence is achieved when the standard deviation of the spread functional over the `num_iter_converge`
+        iterations is less than conv_tol
+    print_progress_every
+        frequency to print the progress
+
+    Returns
+    -------
+    w90data.chk.v_matrix : numpy.ndarray
+    """
     froz_min = froz_min
     froz_max = froz_max
     assert 0 < mix_ratio <= 1
@@ -128,6 +155,7 @@ def disentangle(w90data,
     U_opt_full = U_opt_full_irr  # temporary, withour symmetries
     w90data.chk.v_matrix = np.array(U_opt_full).transpose((0, 2, 1))
     w90data.wannierised = True
+    return w90data.chk.v_matrix
 
 
 # now rotating to the optimized space

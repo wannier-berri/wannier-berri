@@ -31,7 +31,7 @@ class System_tb(System):
 
     Notes
     -----
-    see also  parameters of the :class:`~wannierberri.System`
+    see also  parameters of the :class:`~wannierberri.system.System`
     """
 
     def __init__(self, tb_file="wannier90_tb.dat", **parameters):
