@@ -146,9 +146,6 @@ def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90):
                 )
 
 
-
-
-
 def test_system_Fe_W90_proj_set_spin(check_system, system_Fe_W90_proj_set_spin):
     check_system(
             system_Fe_W90_proj_set_spin,"Fe_W90_proj_set_spin",
@@ -162,6 +159,14 @@ def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
             extra_properties=['wannier_centers_cart_auto','mp_grid'],
             matrices=['Ham','AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR']
                 )
+
+def test_system_Fe_W90_disentngle(check_system, system_Fe_W90_disentangle):
+    check_system(
+            system_Fe_W90_disentangle,"Fe_W90_disentangle",
+            extra_properties=['wannier_centers_cart_auto','mp_grid'],
+            matrices=['Ham','AA']
+                )
+
 
 def test_system_GaAs_W90(check_system, system_GaAs_W90):
     check_system(

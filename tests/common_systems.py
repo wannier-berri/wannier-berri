@@ -174,7 +174,6 @@ def system_Fe_sym_W90(create_files_Fe_W90):
 
     return system
 
-
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj_set_spin(create_files_Fe_W90):
     """Create system for Fe symmetrization using Wannier90 data"""
@@ -202,6 +201,38 @@ def system_Fe_W90_proj(create_files_Fe_W90):
     system.set_symmetry(symmetries_Fe)
     return system
 
+@pytest.fixture(scope="session")
+def system_Fe_W90_proj_ws(create_files_Fe_W90):
+    """Create system for Fe symmetrization using Wannier90 data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
+    create_W90_files('Fe_sym', ['uHu'], data_dir)
+    # Load system
+    seedname = os.path.join(data_dir, "Fe_sym")
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, SHCqiao=True, spin=True, use_ws=True)
+    system.set_symmetry(symmetries_Fe)
+    return system
+
+@pytest.fixture(scope="session")
+def system_Fe_W90_disentangle(create_files_Fe_W90):
+    """Create system for Fe symmetrization using Wannier90 data"""
+
+    data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
+    create_W90_files('Fe_sym', ['uHu'], data_dir)
+    w90data = wberri.system.Wannier90data(seedname=os.path.join(data_dir,'Fe_sym') )
+    with pytest.raises(RuntimeError):
+        wberri.system.System_w90(w90data=w90data)
+    #aidata.apply_outer_window(win_min=-8,win_max= 100 )
+    w90data.disentangle( froz_min=-8,
+                 froz_max=20,
+                 num_iter=2000,
+                 conv_tol=5e-7,
+                 mix_ratio=0.9,
+                 print_progress_every=100
+                  )
+    system=wberri.system.System_w90(w90data=w90data,berry=True, morb=True)
+    del w90data
+    return system
 
 
 @pytest.fixture(scope="session")

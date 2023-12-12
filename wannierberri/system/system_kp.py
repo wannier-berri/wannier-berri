@@ -43,7 +43,7 @@ class SystemKP(System):
         The cartesian second k-derivative of the Hamiltonian - a funkction of 3D k-vector that returns a (num_waan x num_wann x 3 x 3 x 3) Hermitean (in mn) matrix
         If not specified, it will be evaluated numerically from `der2Ham` with a finite-difference scheme using the `finite_diff_dk` parameter.
     kmax : float
-        maximal k-vector (in :math:`\mathring{\rm A}^{-1}`)  In this case the reciprocal lattice is cubic with size  2kmax
+        maximal k-vector (in :math:`\mathring{\rm A}^{-1}`)  In this case the reciprocal lattice is cubic with size  `2*kmax`
     real_lattice : array(3,3)
         the lattice vectors of the model (iif `kmax` is not set)
     recip_lattice : array(3,3)
