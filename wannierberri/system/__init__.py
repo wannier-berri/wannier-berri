@@ -19,7 +19,7 @@ from .system_tb_py import System_PythTB, System_TBmodels
 from .system_ASE import System_ASE
 from .system_sparse import SystemSparse
 from .system_wannierise import System_Wannierise
-from .disentangle import Wannier90Data
+from .__w90_files import Wannier90Data
 from .system import System
 
 from .system_phonon_qe import System_Phonon_QE

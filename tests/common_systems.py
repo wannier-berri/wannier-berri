@@ -220,6 +220,8 @@ def system_Fe_W90_disentangle(create_files_Fe_W90):
     data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
     create_W90_files('Fe_sym', ['uHu'], data_dir)
     w90data=wberri.system.Wannier90Data(seedname=os.path.join(data_dir,'Fe_sym') )
+    with pytest.raises(RuntimeError):
+        wberri.system.System_Wannierise(w90data)
     #aidata.apply_outer_window(win_min=-8,win_max= 100 )
     w90data.disentangle( froz_min=-8,
                  froz_max=20,

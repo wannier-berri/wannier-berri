@@ -21,7 +21,8 @@ from itertools import islice
 import gc
 from scipy.constants import physical_constants
 import functools
-
+from . import disentangle
+from copy import copy, deepcopy
 readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip()
 
 
@@ -202,8 +203,115 @@ class CheckPoint():
                           i] += 1.j * SHRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
         return SHR_q
 
+import lazy_property
 
-class W90_data():
+
+class CheckPoint_bare(CheckPoint):
+
+    def __init__(self, win, eig, amn, mmn):
+        self.mp_grid = np.array(win.get_param("mp_grid"))
+        self.kpt_latt = win.get_kpoints()
+        self.real_lattice = win.get_unit_cell_cart_ang()
+        self.num_kpts = eig.NK
+        self.num_wann = amn.NW
+        self.num_bands = mmn.NB
+        self.win_min = np.array([0] * self.num_kpts)
+        self.win_max = np.array([self.num_bands] * self.num_kpts)
+        self.recip_lattice = 2 * np.pi * np.linalg.inv(self.real_lattice).T
+
+
+class Wannier90Data:
+    """A class to describe all input files of wannier90, and to construct the Wannier functions
+     via disentanglement procedure"""
+
+    # todo :  rotatre uHu and spn
+    # todo : create a model from this
+    # todo : symmetry
+
+    def __init__(self, seedname="wannier90", read_chk=False, read_amn=False):  # ,sitesym=False):
+        self.seedname = copy(seedname)
+        win = WIN(self.seedname)
+        self.eig = EIG(self.seedname)
+        self.mmn = MMN(self.seedname)
+        self.amn = AMN(self.seedname)
+        self.chk = CheckPoint_bare(win=win, eig=self.eig, mmn=self.mmn, amn=self.amn)
+        assert self.eig.NK == self.amn.NK == self.mmn.NK
+        assert self.eig.NB >= self.amn.NB
+        assert self.eig.NB >= self.mmn.NB
+        self.kpt_mp_grid = [tuple(k) for k in
+                            np.array(np.round(self.chk.kpt_latt * np.array(self.chk.mp_grid)[None, :]),
+                                     dtype=int) % self.chk.mp_grid]
+        self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
+        self.win_index = [np.arange(self.eig.NB)] * self.chk.num_kpts
+        self.wannierised = False
+        # if sitesym:
+        #    self.Dmn=DMN(self.seedname,num_wann=self.chk.num_wann)
+        # else:
+        #    self.Dmn=DMN(None,num_wann=self.chk.num_wann,num_bands=self.chk.num_bands,nkpt=self.chk.num_kpts)
+
+    @lazy_property.LazyProperty
+    def uhu(self):
+         return UHU(self.seedname)
+
+    @lazy_property.LazyProperty
+    def spn(self):
+         return SPN(self.seedname)
+
+    @lazy_property.LazyProperty
+    def siu(self):
+        return SIU(self.seedname)
+
+    @lazy_property.LazyProperty
+    def shu(self):
+        return SHU(self.seedname)
+
+    @property
+    def iter_kpts(self):
+        return range(self.chk.num_kpts)
+
+    @lazy_property.LazyProperty
+    def wannier_centres(self):
+        return get_wannier_centres(self.chk, self.mmn)
+
+    def check_wannierised(self, msg=""):
+       if not self.wannierised:
+           raise RuntimeError(f"no wannieruisation was performed on the w90 input files, cannot proceed with {msg}")
+
+    def disentangle(self, **parameters):
+        disentangle.disentangle(self, **parameters)
+
+    # TODO : allow k-dependent window (can it be useful?)
+    # def apply_outer_window(self,
+    #                  win_min=-np.Inf,
+    #                  win_max=np.Inf ):
+    #     raise NotImplementedError("outer window does not work so far")
+    #     "Excludes the bands from outside the outer window"
+    #
+    #     def win_index_nondegen(ik,thresh=DEGEN_THRESH):
+    #         "define the indices of the selected bands, making sure that degenerate bands were not split"
+    #         E=self.Eig[ik]
+    #         ind=np.where( ( E<=win_max)*(E>=win_min) )[0]
+    #         while ind[0]>0 and E[ind[0]]-E[ind[0]-1]<thresh:
+    #             ind=[ind[0]-1]+ind
+    #         while ind[0]<len(E) and E[ind[-1]+1]-E[ind[-1]]<thresh:
+    #             ind=ind+[ind[-1]+1]
+    #         return ind
+    #
+    #     # win_index_irr=[win_index_nondegen(ik) for ik in self.Dmn.kptirr]
+    #     # self.excluded_bands=[list(set(ind)
+    #     # self.Dmn.select_bands(win_index_irr)
+    #     # win_index=[win_index_irr[ik] for ik in self.Dmn.kpt2kptirr]
+    #     win_index=[win_index_nondegen(ik) for ik in self.iter_kpts]
+    #     self._Eig=[E[ind] for E, ind in zip(self._Eig,win_index)]
+    #     self._Mmn=[[self._Mmn[ik][ib][win_index[ik],:][:,win_index[ikb]] for ib,ikb in enumerate(self.mmn.neighbours[ik])] for ik in self.iter_kpts]
+    #     self._Amn=[self._Amn[ik][win_index[ik],:] for ik in self.iter_kpts]
+
+    # TODO : allow k-dependent window (can it be useful?)
+def get_wannier_centres(chk, mmn):
+    return chk.get_AA_q(mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(axis=0).real.T / chk.num_kpts
+
+
+class W90_file:
 
     @property
     def n_neighb(self):
@@ -227,7 +335,7 @@ class W90_data():
 def convert (A):
     return np.array([l.split() for l in A], dtype=float)
 
-class MMN(W90_data):
+class MMN(W90_file):
     """
     MMN.data[ik, ib, m, n] = <u_{m,k}|u_{n,k+b}>
     """
@@ -325,7 +433,7 @@ def str2arraymmn(A):
     a = np.array([l.split()[3:] for l in A], dtype=float)
     return (a[:, 0] + 1j * a[:, 1])
 
-class AMN(W90_data):
+class AMN(W90_file):
 
     @property
     def NB(self):
@@ -360,7 +468,7 @@ class AMN(W90_data):
     """
 
 
-class EIG(W90_data):
+class EIG(W90_file):
 
     def __init__(self, seedname):
         data = np.loadtxt(seedname + ".eig")
@@ -372,7 +480,7 @@ class EIG(W90_data):
         self.data = data[:, :, 2]
 
 
-class SPN(W90_data):
+class SPN(W90_file):
     """
     SPN.data[ik, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k}>
     """
@@ -410,7 +518,7 @@ class SPN(W90_data):
         print("----------\n SPN OK  \n---------\n")
 
 
-class UXU(W90_data):
+class UXU(W90_file):
     """
     Read and setup uHu or uIu object.
     pw2wannier90 writes data_pw2w90[n, m, ib1, ib2, ik] = <u_{m,k+b1}|X|u_{n,k+b2}>
@@ -469,7 +577,7 @@ class UIU(UXU):
         super().__init__(seedname=seedname, formatted=formatted, suffix='uIu')
 
 
-class SXU(W90_data):
+class SXU(W90_file):
     """
     Read and setup sHu or sIu object.
     pw2wannier90 writes data_pw2w90[n, m, ipol, ib, ik] = <u_{m,k}|S_ipol * X|u_{n,k+b}>

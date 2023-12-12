@@ -47,6 +47,7 @@ class System_Wannierise(System_w90):
                  **parameters
                  ):
 
+        w90data.check_wannierised(msg="creation of System_Wannierise")
         self.set_parameters(**parameters)
         self.npar = npar
         self.seedname=w90data.seedname
