@@ -1,10 +1,10 @@
-from .__w90_files import MMN, EIG, AMN, WIN, CheckPoint, SPN,UHU,SIU,SHU
+from .__w90_files import MMN, EIG, AMN, WIN, CheckPoint #, SPN,UHU,SIU,SHU
 from copy import deepcopy
 import numpy as np
 from .system_wannierise import System_Wannierise
 from copy import copy
 DEGEN_THRESH=1e-2  # for safity - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
-import lazy_property
+#import lazy_property
 
 
 class CheckPoint_bare(CheckPoint):
@@ -24,9 +24,9 @@ class AbInitioData():
         self.seedname=copy(seedname)
         self.chk=CheckPoint_bare()
         win=WIN(self.seedname)
-        self.chk.mp_grid=win.get_param("mp_grid",dtype=int,size=3)
-        self.chk.kpt_latt=win.get_param_block("kpoints",dtype=float,shape=(np.prod(self.chk.mp_grid),3))
-        self.chk.real_lattice=win.get_param_block("unit_cell_cart",dtype=float,shape=(3,3))
+        self.chk.mp_grid=np.array(win.get_param("mp_grid"))
+        self.chk.kpt_latt=win.get_kpoints()
+        self.chk.real_lattice=win.get_unit_cell_cart_ang()
         self.eig=EIG(self.seedname)
         self.mmn=MMN(self.seedname)
         self.amn=AMN(self.seedname)
@@ -51,21 +51,21 @@ class AbInitioData():
         #else:
         #    self.Dmn=DMN(None,num_wann=self.chk.num_wann,num_bands=self.chk.num_bands,nkpt=self.chk.num_kpts)
 
-    @lazy_property.LazyProperty
-    def uhu(self):
-        return UHU(self.seedname)
-
-    @lazy_property.LazyProperty
-    def spn(self):
-        return SPN(self.seedname)
-
-    @lazy_property.LazyProperty
-    def siu(self):
-        return SIU(self.seedname)
-
-    @lazy_property.LazyProperty
-    def shu(self):
-        return SHU(self.seedname)
+    # @lazy_property.LazyProperty
+    # def uhu(self):
+    #     return UHU(self.seedname)
+    #
+    # @lazy_property.LazyProperty
+    # def spn(self):
+    #     return SPN(self.seedname)
+    #
+    # @lazy_property.LazyProperty
+    # def siu(self):
+    #     return SIU(self.seedname)
+    #
+    # @lazy_property.LazyProperty
+    # def shu(self):
+    #     return SHU(self.seedname)
 
     @property
     def iter_kpts(self):

@@ -15,11 +15,12 @@
 import numpy as np
 from ..__utility import FortranFileR
 import multiprocessing
-from ..__utility import alpha_A, beta_A, str2bool
+from ..__utility import alpha_A, beta_A
 from time import time
 from itertools import islice
 import gc
 from scipy.constants import physical_constants
+import functools
 
 readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip()
 
@@ -548,84 +549,24 @@ class WIN():
 
     # TODO :use w90io to read win file
     def __init__(self,seedname='wannier90'):
-        self.name=seedname+".win"
-        lines=[l.strip().lower() for l in open(seedname+".win").readlines()]
-        for l in lines:
-            for delim in '!','%':  # put other valid delimiters here
-                l.replace(delim,'#')
-        lines=[l.split('#')[0].strip() for l in lines] # drop comments
-        self.lines=[l for l in lines if len(l)>0]      # blank lines
-        unit_length={'ang':1.,'bohr':physical_constants['Bohr radius'][0]*1e10}
-        self.units={'unit_cell_cart':unit_length}
+        self.name = seedname+".win"
+        self.parsed = parse_win_raw(self.name)
+        self.units_length={'ang':1.,'bohr':physical_constants['Bohr radius'][0]*1e10}
 
 
-    def findparam(self,param):
-        "returns the string corresponding to the parameter"
-        ll=[l for l in self.lines  if l.startswith(param)]
-        assert len(ll)<=1 , "Parameter {} was found {}>1 times in the '{}' file\n".format(param, len(ll), self.name)
-        assert len(ll)>=0 , "Parameter {} was not found  in the '{}' file\n".format(param, self.name)
-        ll=ll[0].split("=")
-        assert len(ll)>=1 , "nothing was found on the right of '{} =' ".format(param)
-        assert len(ll)<=2 , " '=' is given {}>1 times for  '{} ' ".format(len(ll)-1, param)
-        assert len(ll)==2
-        return ll[1].strip()
+    @functools.lru_cache()
+    def get_param(self,param):
+        return self.parsed['parameters'][param]
 
+    @functools.lru_cache()
+    def get_unit_cell_cart_ang(self):
+        cell = self.parsed['unit_cell_cart']
+        A = np.array([cell['a1'],cell['a2'],cell['a3']])
+        return A*self.units_length[cell['units']]
 
-    def get_param(self,param,dtype=int,size=1):
-        try:
-            param=param.lower().strip()
-            assert size>=1
-            res=self.findparam(param)
-            if dtype==str:
-                return res
-            res=res.split()
-            assert len(res)>0
-            if dtype==bool:
-                res=[str2bool(x) for x in res]
-            else:
-                res=[dtype(x) for x in res]
-            if len(res)==1:
-                if size==1:
-                    return res[0]
-                else:
-                    return np.array(res*size)
-            else:
-                return np.array(res,dtype=dtype)
-        except Exception as err:
-            raise RuntimeError("ERROR reading parameter {} from {} :\n {}".format(param,self.name,err))
-
-    def find_begin_end(self,begend,param):
-        "returns the line index where the corresponding begin/end parameter is found"
-        il=[i for i,l in enumerate (self.lines) if l.startswith(begend) and l.split()[1]==param]
-        assert len(il)<=1 , "{} {} was found {}>1 times in the '{}' file\n".format(begend,param,len(il),self.name)
-        assert len(il)>0 , "{} {} was not found  in the '{}' file\n".format(      begend,param,self.name)
-        return il[0]
-
-
-    def get_param_block(self,param,shape=None,dtype=float):
-        try:
-            begin = self.find_begin_end('begin' , param)+1
-            end   = self.find_begin_end('end'   , param)
-            try :
-                l=self.lines[begin].split()[0]
-#                print ("unit read is {}".format(l))
-                unit=self.units[param][l]
-                begin +=1
-#                print ("unit recognized as {}".format(unit))
-            except KeyError:
-                unit=None
-            if shape is None:
-                res = np.loadtxt(self.lines[begin:end],dtype=dtype)
-            else:
-                assert len(shape)==2 , "shape is wrong : {}".format(shape)
-                assert end-begin==shape[0] , 'end={} , begin={} , shape={} '.format(end,begin,shape)
-                res=np.array( [l.split()[:shape[1]] for l in self.lines[begin:end]],dtype=dtype)
-            if unit is not None:
-                res*=unit
-            return res
-        except Exception as err:
-            raise RuntimeError("ERROR reading parameter block {} from {} :\n {}".format(param,self.name,err))
-
+    @functools.lru_cache()
+    def get_kpoints(self):
+        return np.array(self.parsed['kpoints']['kpoints'])
 
 """
 class DMN:

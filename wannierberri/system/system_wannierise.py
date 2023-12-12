@@ -16,7 +16,6 @@ import functools
 import multiprocessing
 from ..__utility import real_recip_lattice, fourier_q_to_R
 from .system_w90 import System_w90
-from time import time
 
 class System_Wannierise(System_w90):
     """
@@ -39,12 +38,14 @@ class System_Wannierise(System_w90):
     see also  parameters of the :class:`~wannierberri.System`
     """
 
-    def __init__(self,aidata,
-                    transl_inv=True,
-                    fft='fftw',
-                    npar=multiprocessing.cpu_count(),
-                    **parameters
-                    ):
+    def __init__(self,
+                 aidata,
+                 transl_inv=True,
+                 guiding_centers=False,
+                 fft='fftw',
+                 npar=multiprocessing.cpu_count(),
+                 **parameters
+                 ):
 
         self.set_parameters(**parameters)
         self.npar = npar
@@ -57,9 +58,7 @@ class System_Wannierise(System_w90):
         self.iRvec,self.Ndegen=self.wigner_seitz(aidata.chk.mp_grid)
         self.nRvec0=len(self.iRvec)
 
-        eig=aidata.eig
-        if self.need_R_any(['AA','BB']):
-            mmn=aidata.mmn
+
 
         print(f"Need A:{self.need_R_any('AA')}, berry:{self.berry}")
 
@@ -71,57 +70,7 @@ class System_Wannierise(System_w90):
                                              numthreads=npar,
                                              fft=fft)
 
-        timeFFT=0
-        HHq=aidata.chk.get_HH_q(eig)
-        t0=time()
-        self.set_R_mat('Ham', fourier_q_to_R_loc(HHq))
-        timeFFT+=time()-t0
-
-        if self.need_R_any('AA'):
-            AAq=aidata.chk.get_AA_q(mmn,transl_inv=transl_inv)
-            t0=time()
-            self.set_R_mat('AA',fourier_q_to_R_loc(AAq))
-            timeFFT+=time()-t0
-
-        if self.need_R_any('BB'):
-            t0=time()
-            self.BB_R=fourier_q_to_R_loc(aidata.chk.get_AA_q(mmn,eig))
-            timeFFT+=time()-t0
-
-        if self.need_R_any('CC'):
-            uhu=aidata.uhu
-            t0=time()
-            self.CC_R=fourier_q_to_R_loc(aidata.chk.get_CC_q(uhu,mmn))
-            timeFFT+=time()-t0
-            del uhu
-
-        if self.need_R_any(['SS', 'SR', 'SH', 'SHR']):
-            spn=aidata.spn # TODO : access through aidata, not directly
-            t0=time()
-            if self.need_R_any('SS'):
-                self.SS_R=fourier_q_to_R_loc(aidata.get_SS_q(spn))
-            if self.need_R_any('SR'):
-                self.SR_R=fourier_q_to_R_loc(aidata.get_SR_q(spn,mmn))
-            if self.need_R_any('SH'):
-                self.SH_R=fourier_q_to_R_loc(aidata.get_SH_q(spn,eig))
-            if self.need_R_any('SHR'):
-                self.SHR_R=fourier_q_to_R_loc(aidata.get_SHR_q(spn,mmn,eig))
-            timeFFT+=time()-t0
-            del spn
-
-        if self.need_R_any('SA'):
-            siu=aidata.siu # TODO : access through aidata, not directly
-            t0=time()
-            self.SA_R=fourier_q_to_R_loc(aidata.get_SA_q(siu,mmn))
-            timeFFT+=time()-t0
-            del siu
-
-        if self.need_R_any('SHA'):
-            shu=aidata.shu # TODO : access through aidata, not directly
-            t0=time()
-            self.SHA_R=fourier_q_to_R_loc(aidata.get_SHA_q(shu,mmn))
-            timeFFT+=time()-t0
-            del shu
-
-        print ("time for FFT_q_to_R : {} s".format(timeFFT))
+        self.set_R_matrices_from_chk(chk=aidata.chk, mmn=aidata.mmn, eig=aidata.eig, seedname=aidata.seedname,
+                                     fourier_q_to_R_loc=fourier_q_to_R_loc,
+                                    transl_inv=transl_inv, guiding_centers=guiding_centers)
         self.do_at_end_of_init()
