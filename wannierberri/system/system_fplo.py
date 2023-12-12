@@ -9,7 +9,7 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 
 import numpy as np
 
@@ -92,7 +92,7 @@ class System_fplo(System):
                             continue
                         arread = np.array(arread, dtype=float)
                         Rvec = arread[:, :3] + (
-                            self.wannier_centers_cart_auto[None, iw] - self.wannier_centers_cart_auto[None, jw])
+                                self.wannier_centers_cart_auto[None, iw] - self.wannier_centers_cart_auto[None, jw])
                         Rvec = Rvec.dot(inv_real_lattice)  # should be integer now
                         iRvec = np.array(np.round(Rvec), dtype=int)
                         assert (abs(iRvec - Rvec).max() < 1e-8)
@@ -106,9 +106,9 @@ class System_fplo(System):
 
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=real_lattice_bohr * bohr)
         iRvec = list(Ham_R.keys())
-        self.set_R_mat('Ham', np.array([Ham_R[iR] for iR in iRvec]).transpose((1, 2, 0)) )
+        self.set_R_mat('Ham', np.array([Ham_R[iR] for iR in iRvec]).transpose((1, 2, 0)))
         if self.need_R_any('SS'):
-            self.set_R_mat('SS' , np.array([SS_R[iR] for iR in iRvec]).transpose((1, 2, 0, 3)) )
+            self.set_R_mat('SS', np.array([SS_R[iR] for iR in iRvec]).transpose((1, 2, 0, 3)))
 
         self.nRvec0 = len(iRvec)
         self.iRvec = np.array(iRvec, dtype=int)

@@ -354,3 +354,4 @@ def FermiDirac(E, mu, kBT):
         sel = abs(mu - E) <= 30 * kBT
         res[sel] = 1.0 / (np.exp((E - mu[sel]) / kBT) + 1)
         return res
+
