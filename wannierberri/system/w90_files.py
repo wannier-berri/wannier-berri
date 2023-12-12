@@ -152,11 +152,11 @@ class CheckPoint():
                     iknb2 = mmn.neighbours[ik, ib2]
                     data = uhu.data[ik, ib1, ib2]
                     CC_q[ik] += (1.j * self.wannier_gauge(data, iknb1, iknb2)[:, :, None] *
-                            (mmn.wk[ik, ib1] * mmn.wk[ik, ib2] *
-                                (mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A] -
-                                       mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A])
-                             ) [None, None, :]
-                                )
+                                 (mmn.wk[ik, ib1] * mmn.wk[ik, ib2] *
+                                  (mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A] -
+                                   mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A])
+                                  )[None, None, :]
+                                 )
         CC_q = 0.5 * (CC_q + CC_q.transpose((0, 2, 1, 3)).conj())
         return CC_q
 
@@ -238,7 +238,6 @@ class CheckPoint_bare(CheckPoint):
             """
 
     def __init__(self, win, eig, amn, mmn):
-
         self.mp_grid = np.array(win.get_param("mp_grid"))
         self.kpt_latt = win.get_kpoints()
         self.real_lattice = win.get_unit_cell_cart_ang()
@@ -259,83 +258,90 @@ class Wannier90data:
     # todo : symmetry
 
     def __init__(self, seedname="wannier90", read_chk=False,
-                 kmesh_tol=1e-7, bk_complete_tol=1e-5,):  # ,sitesym=False):
+                 kmesh_tol=1e-7, bk_complete_tol=1e-5, ):  # ,sitesym=False):
         self.seedname = copy(seedname)
+        self.__files_classes = {'win': WIN,
+                                'eig': EIG,
+                                'mmn': MMN,
+                                'amn': AMN,
+                                'uiu': UIU,
+                                'uhu': UHU,
+                                'siu': SIU,
+                                'shu': SHU,
+                                'spn': SPN
+                                }
+        self.__files = {}
         if read_chk:
             self.chk = CheckPoint(seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
             self.wannierised = True
         else:
             self.chk = CheckPoint_bare(win=self.win, eig=self.eig, mmn=self.mmn, amn=self.amn)
             self.kpt_mp_grid = [tuple(k) for k in
-                            np.array(np.round(self.chk.kpt_latt * np.array(self.chk.mp_grid)[None, :]),
-                                     dtype=int) % self.chk.mp_grid]
+                                np.array(np.round(self.chk.kpt_latt * np.array(self.chk.mp_grid)[None, :]),
+                                         dtype=int) % self.chk.mp_grid]
             self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
             self.win_index = [np.arange(self.eig.NB)] * self.chk.num_kpts
             self.wannierised = False
+        self.set_file(key='chk', val=self.chk)
 
         # if sitesym:
         #    self.Dmn=DMN(self.seedname,num_wann=self.chk.num_wann)
         # else:
         #    self.Dmn=DMN(None,num_wann=self.chk.num_wann,num_bands=self.chk.num_bands,nkpt=self.chk.num_kpts)
 
-    # def check_conform(self, this, key):
-    #     file_list = ['eig', 'mmn', 'amn', 'uiu', 'uhu', 'chk', 'siu', 'shu', 'spn']
-    #     return
-    #     assert (key in file_list)
-    #     for file in file_list:
-    #         if file != key and hasattr(self, file):
-    #             other = getattr(self, file)
-    #             for attr in ['NK', 'NB', 'NW', 'NNB']:
-    #                 if hasattr(this, attr) and hasattr(other, attr):
-    #                     a = getattr(this, attr)
-    #                     b = getattr(other, attr)
-    #                     assert a == b, f"files {key} and {file} have different attribute {attr} : {a} and {b} respectively"
+    def set_file(self, key, val=None, overwrite=False):
+        if not overwrite:
+            assert key not in self.__files, f"file `{key}` was already set"
+        if val is None:
+            val = self.__files_classes[key](self.seedname)
+        self.check_conform(key, val)
+        self.__files[key] = val
 
-    @lazy_property.LazyProperty
+    def get_file(self, key):
+        if key not in self.__files:
+            self.set_file(key)
+        return self.__files[key]
+
+    def check_conform(self, key, this):
+        for key2, other in self.__files.items():
+            for attr in ['NK', 'NB', 'NW', 'NNB']:
+                if hasattr(this, attr) and hasattr(other, attr):
+                    a = getattr(this, attr)
+                    b = getattr(other, attr)
+                    if None not in (a,b):
+                        assert a == b, f"files {key} and {key2} have different attribute {attr} : {a} and {b} respectively"
+
+    @property
     def win(self):
-        return WIN(self.seedname)
+        return self.get_file('win')
 
-    @lazy_property.LazyProperty
+    @property
     def amn(self):
-        _ = AMN(self.seedname)
-        self.check_conform(_, 'amn')
-        return _
+        return self.get_file('amn')
 
-    @lazy_property.LazyProperty
+    @property
     def eig(self):
-        _ = EIG(self.seedname)
-        self.check_conform(_, 'eig')
-        return _
+        return self.get_file('eig')
 
-    @lazy_property.LazyProperty
+    @property
     def mmn(self):
-        _ =  MMN(self.seedname)
-        self.check_conform(_, 'mmn')
-        return _
+        return self.get_file('mmn')
 
-    @lazy_property.LazyProperty
+    @property
     def uhu(self):
-        _ = UHU(self.seedname)
-        self.check_conform(_, 'uhu')
-        return _
+        return self.get_file('uhu')
 
-    @lazy_property.LazyProperty
+    @property
     def spn(self):
-        _ = SPN(self.seedname)
-        self.check_conform(_, 'spn')
-        return _
+        return self.get_file('spn')
 
-    @lazy_property.LazyProperty
+    @property
     def siu(self):
-        _ = SIU(self.seedname)
-        self.check_conform(_, 'siu')
-        return _
+        return self.get_file('siu')
 
-    @lazy_property.LazyProperty
+    @property
     def shu(self):
-        _ = SHU(self.seedname)
-        self.check_conform(_, 'shu')
-        return _
+        return self.get_file('shu')
 
     @property
     def iter_kpts(self):
@@ -346,7 +352,8 @@ class Wannier90data:
         try:
             return self.chk.wannier_centers
         except AttributeError:
-            return self.chk.get_AA_q(self.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(axis=0).real.T / self.chk.num_kpts
+            return self.chk.get_AA_q(self.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(
+                axis=0).real.T / self.chk.num_kpts
 
     def check_wannierised(self, msg=""):
         if not self.wannierised:
@@ -384,9 +391,6 @@ class Wannier90data:
     # TODO : allow k-dependent window (can it be useful?)
 
 
-
-
-
 class W90_file:
 
     @property
@@ -406,7 +410,7 @@ class W90_file:
         if self.n_neighb > 0:
             return self.data.shape[1]
         else:
-            return 0
+            return None
 
 
 def convert(A):
