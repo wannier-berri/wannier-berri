@@ -220,12 +220,15 @@ def system_Fe_W90_disentangle(create_files_Fe_W90):
     data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
     create_W90_files('Fe_sym', ['uHu'], data_dir)
     aidata=wberri.system.AbInitioData(seedname=os.path.join(data_dir,'Fe_sym') )
+    with pytest.raises(RuntimeError):
+        # check that it fails before disentanglement
+        aidata.getSystem(berry=True)
     #aidata.apply_outer_window(win_min=-8,win_max= 100 )
     aidata.disentangle( froz_min=-8,
                  froz_max=20,
-                 num_iter=1000,
-                 conv_tol=1e-9,
-                 mix_ratio=1.0,
+                 num_iter=2000,
+                 conv_tol=5e-7,
+                 mix_ratio=0.9,
                  print_progress_every=100
                   )
     system=wberri.system.System_Wannierise(aidata,berry=True)

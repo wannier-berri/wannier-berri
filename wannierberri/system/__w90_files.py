@@ -15,7 +15,7 @@
 import numpy as np
 from ..__utility import FortranFileR
 import multiprocessing
-from ..__utility import alpha_A, beta_A, str2bool, read_numbers
+from ..__utility import alpha_A, beta_A, str2bool
 from time import time
 from itertools import islice
 import gc
@@ -223,10 +223,8 @@ class W90_data():
         else:
             return 0
 
-
-def convert(A):
+def convert (A):
     return np.array([l.split() for l in A], dtype=float)
-
 
 class MMN(W90_data):
     """
@@ -247,6 +245,7 @@ class MMN(W90_data):
         data = []
         headstring = []
         mult = 4
+
         # FIXME: npar = 0 does not work
         if npar > 0:
             pool = multiprocessing.Pool(npar)
@@ -321,6 +320,9 @@ class MMN(W90_data):
     def set_bk_chk(self, chk, **argv):
         self.set_bk(chk.kpt_latt, chk.mp_grid, chk.recip_lattice, **argv)
 
+def str2arraymmn(A):
+    a = np.array([l.split()[3:] for l in A], dtype=float)
+    return (a[:, 0] + 1j * a[:, 1])
 
 class AMN(W90_data):
 
@@ -333,7 +335,7 @@ class AMN(W90_data):
         return self.data.shape[2]
 
 
-    def __init__(self,seedname,num_proc=4):
+    def __init__(self,seedname, npar=multiprocessing.cpu_count()):
         f_mmn_in=open(seedname+".amn","r").readlines()
         print ("reading {}.amn: ".format(seedname)+f_mmn_in[0].strip())
         s=f_mmn_in[1]
@@ -341,9 +343,10 @@ class AMN(W90_data):
         self.data=np.zeros( (NK,NB,NW), dtype=complex )
         block=self.NW*self.NB
         allmmn=( f_mmn_in[2+j*block:2+(j+1)*block]  for j in range(self.NK) )
-        p=multiprocessing.Pool(num_proc)
+        p=multiprocessing.Pool(npar)
         self.data= np.array(p.map(str2arraymmn,allmmn)).reshape((self.NK,self.NW,self.NB)).transpose(0,2,1)
 
+    """
     def write(self,seedname,comment="written by WannierBerri"):
         comment=comment.strip()
         f_mmn_out=open(seedname+".amn","w")
@@ -353,7 +356,7 @@ class AMN(W90_data):
         for ik in range(self.NK):
             f_mmn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(ib+1,iw+1,ik+1,self.data[ik,ib,iw].real,self.data[ik,ib,iw].imag) for iw in range(self.NW) for ib in range(self.NB)))
         f_mmn_out.close()
-
+    """
 
 
 class EIG(W90_data):
@@ -527,6 +530,20 @@ class SHU(SXU):
         super().__init__(seedname=seedname, formatted=formatted, suffix='sHu')
 
 
+def parse_win_raw(filename=None,text=None):
+    try:
+        import wannier90io as w90io
+    except ImportError as err:
+        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n"+
+                        "please install it manuall as \n"+
+                        "`pip install git+https://github.com/jimustafa/wannier90io-python.git`")
+    if filename is not None:
+        with open(filename) as f:
+            return w90io.parse_win_raw(f.read())
+    elif text is not None:
+        return w90io.parse_win_raw(text)
+
+
 class WIN():
 
     # TODO :use w90io to read win file
@@ -541,8 +558,6 @@ class WIN():
         unit_length={'ang':1.,'bohr':physical_constants['Bohr radius'][0]*1e10}
         self.units={'unit_cell_cart':unit_length}
 
-    def print_clean(self):
-        print ("\n".join("{:3d}:{}".format(i,l) for i,l in enumerate(self.lines)) )
 
     def findparam(self,param):
         "returns the string corresponding to the parameter"
@@ -612,7 +627,8 @@ class WIN():
             raise RuntimeError("ERROR reading parameter block {} from {} :\n {}".format(param,self.name,err))
 
 
-class DMN():
+"""
+class DMN:
 
     def __init__(self,seedname="wannier90",num_wann=0,num_bands=None,nkpt=None):
         if seedname is not None:
@@ -668,10 +684,6 @@ class DMN():
                 for M in self.D_band[i][j],self.d_wann[i][j]:
                     print("\n".join(" ".join("{}".format("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
 #                   print("\n".join(" ".join("{:4.2f}".format(abs(x)**2) for x in m) for m in M)+"\n")
+"""
 
-def str2arraymmn(A):
-    a=np.array([l.split()[3:] for l in A],dtype=float)
-#    if shape is None:
-#        n=int(round(np.sqrt(a.shape[0])))
-#        shape=(n,n)
-    return (a[:,0]+1j*a[:,1])
+

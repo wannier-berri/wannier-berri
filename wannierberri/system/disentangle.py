@@ -73,30 +73,32 @@ class AbInitioData():
 
 
     # TODO : allow k-dependent window (can it be useful?)
-    def apply_outer_window(self,
-                     win_min=-np.Inf,
-                     win_max=np.Inf ):
-        raise NotImplementedError("outer window does not work so far")
-        "Excludes the bands from outside the outer window"
 
-        def win_index_nondegen(ik,thresh=DEGEN_THRESH):
-            "define the indices of the selected bands, making sure that degenerate bands were not split"
-            E=self.Eig[ik]
-            ind=np.where( ( E<=win_max)*(E>=win_min) )[0]
-            while ind[0]>0 and E[ind[0]]-E[ind[0]-1]<thresh:
-                ind=[ind[0]-1]+ind
-            while ind[0]<len(E) and E[ind[-1]+1]-E[ind[-1]]<thresh:
-                ind=ind+[ind[-1]+1]
-            return ind
+    # def apply_outer_window(self,
+    #                  win_min=-np.Inf,
+    #                  win_max=np.Inf ):
+    #     raise NotImplementedError("outer window does not work so far")
+    #     "Excludes the bands from outside the outer window"
+    #
+    #     def win_index_nondegen(ik,thresh=DEGEN_THRESH):
+    #         "define the indices of the selected bands, making sure that degenerate bands were not split"
+    #         E=self.Eig[ik]
+    #         ind=np.where( ( E<=win_max)*(E>=win_min) )[0]
+    #         while ind[0]>0 and E[ind[0]]-E[ind[0]-1]<thresh:
+    #             ind=[ind[0]-1]+ind
+    #         while ind[0]<len(E) and E[ind[-1]+1]-E[ind[-1]]<thresh:
+    #             ind=ind+[ind[-1]+1]
+    #         return ind
+    #
+    #     # win_index_irr=[win_index_nondegen(ik) for ik in self.Dmn.kptirr]
+    #     # self.excluded_bands=[list(set(ind)
+    #     # self.Dmn.select_bands(win_index_irr)
+    #     # win_index=[win_index_irr[ik] for ik in self.Dmn.kpt2kptirr]
+    #     win_index=[win_index_nondegen(ik) for ik in self.iter_kpts]
+    #     self._Eig=[E[ind] for E, ind in zip(self._Eig,win_index)]
+    #     self._Mmn=[[self._Mmn[ik][ib][win_index[ik],:][:,win_index[ikb]] for ib,ikb in enumerate(self.mmn.neighbours[ik])] for ik in self.iter_kpts]
+    #     self._Amn=[self._Amn[ik][win_index[ik],:] for ik in self.iter_kpts]
 
-#        win_index_irr=[win_index_nondegen(ik) for ik in self.Dmn.kptirr]
-#        self.excluded_bands=[list(set(ind)
-#        self.Dmn.select_bands(win_index_irr)
-#        win_index=[win_index_irr[ik] for ik in self.Dmn.kpt2kptirr]
-        win_index=[win_index_nondegen(ik) for ik in self.iter_kpts]
-        self._Eig=[E[ind] for E, ind in zip(self._Eig,win_index)]
-        self._Mmn=[[self._Mmn[ik][ib][win_index[ik],:][:,win_index[ikb]] for ib,ikb in enumerate(self.mmn.neighbours[ik])] for ik in self.iter_kpts]
-        self._Amn=[self._Amn[ik][win_index[ik],:] for ik in self.iter_kpts]
 
     # TODO : allow k-dependent window (can it be useful?)
     def disentangle(self,
@@ -163,26 +165,34 @@ class AbInitioData():
 #                '+---------------------------------------------------------------------+<-- DIS'  )
 
         Omega_I_list=[]
-        Z_old=None
+        Z_old = None
         for i_iter in range(num_iter):
-            Z=[(z+zfr)  for z,zfr in zip(calc_Z(Mmn_FF('free','free'),U_opt_free),Z_frozen) ]  # only for irreducible
+            Z = [(z+zfr)  for z,zfr in zip(calc_Z(Mmn_FF('free','free'),U_opt_free),Z_frozen) ]  # only for irreducible
             if i_iter>0 and mix_ratio<1:
-                Z=[ (mix_ratio*z + (1-mix_ratio)*zo) for z,zo in zip(Z,Z_old) ]  #  only for irreducible
+                Z = [(mix_ratio*z + (1-mix_ratio)*zo) for z,zo in zip(Z,Z_old) ]  #  only for irreducible
 #            U_opt_free_irr=self.get_max_eig(Z,self.nWfree[irr],self.chk.num_bandsfree[irr]) #  only for irreducible
 #            U_opt_free=self.symmetrize_U_opt(U_opt_free_irr,free=True)
             U_opt_free=self.get_max_eig(Z,self.nWfree,self.chk.num_bandsfree) #
             Omega_I=sum(Mmn_FF.Omega_I(U_opt_free))
             Omega_I_list.append(Omega_I)
-            try:
-                _delta="{:15.8e}".format(Omega_I-Omega_I_list[-2])
-            except IndexError:
-                _delta= "--"
-#            print ("iteration {:4d}".format(i_iter)+" Omega_I= "+"  ".join("{:15.10f}".format(x) for x in Omega_I)+" tot =","{:15.10f}".format(sum(Omega_I)))
-            if i_iter%print_progress_every == 0:
-                print ("iteration {:4d}".format(i_iter)+" Omega_I = {:15.10f}".format(Omega_I)+f"  delta={_delta}")
-            if i_iter+1>=num_iter_converge:
-                if np.std(Omega_I_list[-num_iter_converge:])<conv_tol:
-                    break
+
+            if i_iter>0:
+                delta = "{:15.8e}".format(Omega_I - Omega_I_list[-2])
+            else:
+                delta = "--"
+
+            if i_iter>=num_iter_converge:
+                delta_std = np.std(Omega_I_list[-num_iter_converge:])
+                delta_std_str = "{:15.8e}".format(delta_std)
+            else:
+                delta_std = np.Inf
+                delta_std_str = "--"
+
+            if i_iter % print_progress_every == 0:
+                print("iteration {:4d}".format(i_iter)+" Omega_I = {:15.10f}".format(Omega_I)+f"  delta={delta}, "
+                                                                        f"delta_std={delta_std_str}")
+            if delta_std<conv_tol:
+                break
             Z_old=deepcopy(Z)
         del Z_old
 
@@ -195,7 +205,8 @@ class AbInitioData():
             nfrozen=sum(self.frozen[ik])
             nfree=sum(self.free[ik])
             assert nfree+nfrozen==nband
-            assert nfrozen<=self.chk.num_wann, "number of frozen bands {} at k-point {} is greater than number of wannier functions {}".format(nfrozen,ik+1,self.chk.num_wann)
+            assert nfrozen<=self.chk.num_wann, ("number of frozen bands {} at k-point {} is greater than number of "
+                                                "wannier functions {}").format(nfrozen,ik+1,self.chk.num_wann)
             U[self.frozen[ik] , range( nfrozen) ] = 1.
             U[self.free[ik]   , nfrozen : ] = U_opt_free[ik]
             Z,D,V=np.linalg.svd(U.T.conj().dot(self.Amn[ik]))
@@ -222,24 +233,24 @@ class AbInitioData():
             raise RuntimeError(f"no disentanglement was performed on the abinitio data, cannot proceed with {msg}")
 
 
-    def symmetrize_U_opt(self,U_opt_free_irr,free=False):
-        # TODO : first symmetrize by the little group
-        # Now distribute to reducible points
-        d_band=self.Dmn.d_band_free if free else self.Dmn.d_band
-        U_opt_free=[d_band[ikirr][isym] @ U_opt_free_irr[ikirr] @ self.Dmn.D_wann_dag[ikirr][isym] for isym,ikirr in zip(self.Dmn.kpt2kptirr_sym,self.Dmn.kpt2kptirr)  ]
-        return U_opt_free
-
-    def rotate(self,mat,ik1,ik2):
-        # data should be of form NBxNBx ...   - any form later
-        if len(mat.shape)==1:
-            mat=np.diag(mat)
-        assert mat.shape[:2]==(self.num_bands,)*2
-        shape=mat.shape[2:]
-        mat=mat.reshape(mat.shape[:2]+(-1,)).transpose(2,0,1)
-        mat=mat[self.win_min[ik1]:self.win_max[ik1],self.win_min[ik2]:self.win_max[ik2]]
-        v1=self.v_matrix[ik1].conj()
-        v2=self.v_matrix[ik2].T
-        return np.array( [v1.dot(m).dot(v2) for m in mat]).transpose( (1,2,0) ).reshape( (self.num_wann,)*2+shape )
+    # def symmetrize_U_opt(self,U_opt_free_irr,free=False):
+    #     # TODO : first symmetrize by the little group
+    #     # Now distribute to reducible points
+    #     d_band=self.Dmn.d_band_free if free else self.Dmn.d_band
+    #     U_opt_free=[d_band[ikirr][isym] @ U_opt_free_irr[ikirr] @ self.Dmn.D_wann_dag[ikirr][isym] for isym,ikirr in zip(self.Dmn.kpt2kptirr_sym,self.Dmn.kpt2kptirr)  ]
+    #     return U_opt_free
+    #
+    # def rotate(self,mat,ik1,ik2):
+    #     # data should be of form NBxNBx ...   - any form later
+    #     if len(mat.shape)==1:
+    #         mat=np.diag(mat)
+    #     assert mat.shape[:2]==(self.num_bands,)*2
+    #     shape=mat.shape[2:]
+    #     mat=mat.reshape(mat.shape[:2]+(-1,)).transpose(2,0,1)
+    #     mat=mat[self.win_min[ik1]:self.win_max[ik1],self.win_min[ik2]:self.win_max[ik2]]
+    #     v1=self.v_matrix[ik1].conj()
+    #     v2=self.v_matrix[ik2].T
+    #     return np.array( [v1.dot(m).dot(v2) for m in mat]).transpose( (1,2,0) ).reshape( (self.num_wann,)*2+shape )
 
 
     #def write_files(self,seedname="wannier90"):

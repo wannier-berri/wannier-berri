@@ -33,7 +33,7 @@
 
 from .. import run, Grid, calculators, System_w90, Parallel
 import numpy as np
-
+from ..system.__w90_files import parse_win_raw
 
 
 
@@ -52,22 +52,11 @@ parameters = {
              }
 
 def main(argv):
-
-    try:
-        import wannier90io as w90io
-    except ImportError as err:
-        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n"+
-                        "please install it manuall as \n"+
-                        "`pip install git+https://github.com/jimustafa/wannier90io-python.git`"
-                        )
-
-    seedname = argv[0]  if len(argv)>0 else "wannier90"
-    with open(seedname+".win") as f:
-        parsed_win = w90io.parse_win_raw(f.read())
-
+    seedname = argv[0]
+    parsed_win = parse_win_raw(seedname+".win")
     parsed_param = parsed_win["parameters"]
     if len(argv)>1:
-        parsed_command_line = w90io.parse_win_raw("\n".join(argv[1:]))
+        parsed_command_line = parse_win_raw(text="\n".join(argv[1:]))
         parsed_param.update(parsed_command_line["parameters"])
 
     for p in parameters:
@@ -93,7 +82,7 @@ def main(argv):
         transl_inv=parameters["transl_inv"]
                        )
     grid = Grid(system,NK=parameters["berry_kmesh"])
-    parallel = Parallel() # parallel with  "ray",num_cpus - auto
+    parallel = Parallel(4) # parallel with  "ray",num_cpus - auto
 
     run(system,
             grid=grid,
