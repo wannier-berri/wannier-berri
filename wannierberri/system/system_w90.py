@@ -17,8 +17,7 @@ import functools
 import multiprocessing
 from ..__utility import iterate3dpm, real_recip_lattice, fourier_q_to_R
 from .system import System
-from .__w90_files import EIG, MMN, CheckPoint, SPN, UHU, SIU, SHU
-from time import time
+from .__w90_files import Wannier90Data
 
 
 class System_w90(System):
@@ -30,6 +29,8 @@ class System_w90(System):
     ----------
     seedname : str
         the seedname used in Wannier90
+    w90data : `~wannierberri.system.Wannier90data
+        object that contains all Wanier90 input files and chk all together. If provided, overrides the seedname
     transl_inv : bool
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
     guiding_centers : bool
@@ -53,6 +54,7 @@ class System_w90(System):
     def __init__(
             self,
             seedname="wannier90",
+            w90data=None,
             transl_inv=True,
             guiding_centers=False,
             fft='fftw',
@@ -64,21 +66,18 @@ class System_w90(System):
         self.set_parameters(**parameters)
         self.npar = npar
         self.seedname = seedname
-
-        chk = CheckPoint(self.seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+        if w90data is None:
+            w90data = Wannier90Data(self.seedname, read_chk=True, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+        w90data.check_wannierised(msg="creation of System_Wannierise")
+        chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         if self.mp_grid is None:
             self.mp_grid = chk.mp_grid
         self.iRvec, self.Ndegen = self.wigner_seitz(chk.mp_grid)
         self.nRvec0 = len(self.iRvec)
         self.num_wann = chk.num_wann
-        self.wannier_centers_cart_auto = chk.wannier_centers
+        self.wannier_centers_cart_auto = w90data.wannier_centers
 
-        eig = EIG(seedname)
-        if self.need_R_any(['AA', 'BB']):
-            mmn = MMN(seedname, npar=npar)
-        else:
-            mmn = None
 
         kpt_mp_grid = [
             tuple(k) for k in np.array(np.round(chk.kpt_latt * np.array(chk.mp_grid)[None, :]), dtype=int) % chk.mp_grid
@@ -97,24 +96,11 @@ class System_w90(System):
             numthreads=npar,
             fft=fft)
 
-        self.set_R_matrices_from_chk(chk=chk, mmn=mmn, eig=eig, seedname=seedname,
-                                     fourier_q_to_R_loc=fourier_q_to_R_loc,
-                                    transl_inv=transl_inv, guiding_centers=guiding_centers)
-        self.do_at_end_of_init()
-        print("Real-space lattice:\n", self.real_lattice)
-
-    def set_R_matrices_from_chk(self, chk, eig, seedname, fourier_q_to_R_loc, mmn, transl_inv, guiding_centers):
-        timeFFT = 0
-        HHq = chk.get_HH_q(eig)
-        t0 = time()
-        self.set_R_mat('Ham', fourier_q_to_R_loc(HHq))
-        timeFFT += time() - t0
+        self.set_R_mat('Ham', fourier_q_to_R_loc(chk.get_HH_q(w90data.eig)))
 
         if self.need_R_any('AA'):
-            AAq = chk.get_AA_q(mmn, transl_inv=transl_inv)
-            t0 = time()
+            AAq = chk.get_AA_q(w90data.mmn, transl_inv=transl_inv)
             self.set_R_mat('AA', fourier_q_to_R_loc(AAq))
-            timeFFT += time() - t0
             if transl_inv:
                 wannier_centers_cart_new = np.diagonal(self.get_R_mat('AA')[:, :, self.iR0, :], axis1=0,
                                                        axis2=1).transpose()
@@ -136,46 +122,28 @@ class System_w90(System):
                         )
 
         if 'BB' in self.needed_R_matrices:
-            t0 = time()
-            self.set_R_mat('BB', fourier_q_to_R_loc(chk.get_AA_q(mmn, eig)))
-            timeFFT += time() - t0
-
+            self.set_R_mat('BB', fourier_q_to_R_loc(chk.get_AA_q(w90data.mmn, w90data.eig)))
         if 'CC' in self.needed_R_matrices:
-            uhu = UHU(seedname)
-            t0 = time()
-            self.set_R_mat('CC', fourier_q_to_R_loc(chk.get_CC_q(uhu, mmn)))
-            timeFFT += time() - t0
-            del uhu
+            self.set_R_mat('CC', fourier_q_to_R_loc(chk.get_CC_q(w90data.uhu, w90data.mmn)))
 
-        if self.need_R_any(['SS', 'SR', 'SH', 'SHR']):
-            spn = SPN(seedname)
-            t0 = time()
-            if self.need_R_any('SS'):
-                self.set_R_mat('SS', fourier_q_to_R_loc(chk.get_SS_q(spn)))
-            if self.need_R_any('SR'):
-                self.set_R_mat('SR', fourier_q_to_R_loc(chk.get_SR_q(spn, mmn)))
-            if self.need_R_any('SH'):
-                self.set_R_mat('SH', fourier_q_to_R_loc(chk.get_SH_q(spn, eig)))
-            if self.need_R_any('SHR'):
-                self.set_R_mat('SHR', fourier_q_to_R_loc(chk.get_SHR_q(spn, mmn, eig)))
-            timeFFT += time() - t0
-            del spn
+        if self.need_R_any('SS'):
+            self.set_R_mat('SS', fourier_q_to_R_loc(chk.get_SS_q(w90data.spn)))
+        if self.need_R_any('SR'):
+            self.set_R_mat('SR', fourier_q_to_R_loc(chk.get_SR_q(w90data.spn, w90data.mmn)))
+        if self.need_R_any('SH'):
+            self.set_R_mat('SH', fourier_q_to_R_loc(chk.get_SH_q(w90data.spn, w90data.eig)))
+        if self.need_R_any('SHR'):
+            self.set_R_mat('SHR', fourier_q_to_R_loc(chk.get_SHR_q(w90data.spn, w90data.mmn, w90data.eig)))
 
         if 'SA' in self.needed_R_matrices:
-            siu = SIU(seedname)
-            t0 = time()
-            self.set_R_mat('SA', fourier_q_to_R_loc(chk.get_SA_q(siu, mmn)))
-            timeFFT += time() - t0
-            del siu
-
+            self.set_R_mat('SA', fourier_q_to_R_loc(chk.get_SA_q(w90data.siu, w90data.mmn)))
         if 'SHA' in self.needed_R_matrices:
-            shu = SHU(seedname)
-            t0 = time()
-            self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(shu, mmn)))
-            timeFFT += time() - t0
-            del shu
+            self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.shu, w90data.mmn)))
 
-        print("time for FFT_q_to_R : {} s".format(timeFFT))
+        del w90data
+
+        self.do_at_end_of_init()
+        print("Real-space lattice:\n", self.real_lattice)
 
     def wigner_seitz(self, mp_grid):
         ws_search_size = np.array([1] * 3)

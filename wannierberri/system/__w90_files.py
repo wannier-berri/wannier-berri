@@ -10,7 +10,7 @@
 #           Stepan Tsirkin, University of Zurich             #
 #   some parts of this file are originate                    #
 # from the translation of Wannier90 code                     #
-#------------------------------------------------------------#
+# ------------------------------------------------------------#
 
 import numpy as np
 from ..__utility import FortranFileR
@@ -23,14 +23,15 @@ from scipy.constants import physical_constants
 import functools
 from . import disentangle
 from copy import copy, deepcopy
+
 readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip()
 
 
 class CheckPoint():
 
-    def __init__(self, seedname, kmesh_tol=1e-7,bk_complete_tol=1e-5):
-        self.kmesh_tol = kmesh_tol # will be used in set_bk
-        self.bk_complete_tol = bk_complete_tol # will be used in set_bk
+    def __init__(self, seedname, kmesh_tol=1e-7, bk_complete_tol=1e-5):
+        self.kmesh_tol = kmesh_tol  # will be used in set_bk
+        self.bk_complete_tol = bk_complete_tol  # will be used in set_bk
         t0 = time()
         seedname = seedname.strip()
         FIN = FortranFileR(seedname + '.chk')
@@ -86,15 +87,15 @@ class CheckPoint():
         # data should be of form NBxNBx ...   - any form later
         if len(mat.shape) == 1:
             mat = np.diag(mat)
-        assert mat.shape[:2] == (self.num_bands, ) * 2, f"mat.shape={mat.shape}, num_bands={self.num_bands}"
+        assert mat.shape[:2] == (self.num_bands,) * 2, f"mat.shape={mat.shape}, num_bands={self.num_bands}"
         mat = mat[self.win_min[ik1]:self.win_max[ik1], self.win_min[ik2]:self.win_max[ik2]]
         v1 = self.v_matrix[ik1].conj()
         v2 = self.v_matrix[ik2].T
         return np.tensordot(
             np.tensordot(v1, mat, axes=(1, 0)), v2, axes=(1, 0)).transpose((
-                0,
-                -1,
-            ) + tuple(range(1, mat.ndim - 1)))
+                                                                               0,
+                                                                               -1,
+                                                                           ) + tuple(range(1, mat.ndim - 1)))
 
     def get_HH_q(self, eig):
         assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands)
@@ -138,11 +139,21 @@ class CheckPoint():
                     iknb2 = mmn.neighbours[ik, ib2]
                     data = uhu.data[ik, ib1, ib2]
                     CC_q[ik] += 1.j * self.wannier_gauge(data, iknb1, iknb2)[:, :, None] * (
-                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                            mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
-                            - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
+                                                                                                   mmn.wk[ik, ib1] *
+                                                                                                   mmn.wk[ik, ib2] * (
+                                                                                                           mmn.bk_cart[
+                                                                                                               ik, ib1, alpha_A] *
+                                                                                                           mmn.bk_cart[
+                                                                                                               ik, ib2, beta_A]
+                                                                                                           -
+                                                                                                           mmn.bk_cart[
+                                                                                                               ik, ib1, beta_A] *
+                                                                                                           mmn.bk_cart[
+                                                                                                               ik, ib2, alpha_A]))[
+                                                                                           None, None, :]
         CC_q = 0.5 * (CC_q + CC_q.transpose((0, 2, 1, 3)).conj())
         return CC_q
+
     def get_SA_q(self, siu, mmn):
         mmn.set_bk_chk(self)
         SA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
@@ -200,8 +211,9 @@ class CheckPoint():
                     SHM_i = SH_i.dot(mmn.data[ik, ib])
                     SHRW = self.wannier_gauge(SHM_i, ik, iknb) - self.wannier_gauge(SH_i, ik, ik)
                     SHR_q[ik, :, :, :,
-                          i] += 1.j * SHRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+                    i] += 1.j * SHRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
         return SHR_q
+
 
 import lazy_property
 
@@ -228,54 +240,98 @@ class Wannier90Data:
     # todo : create a model from this
     # todo : symmetry
 
-    def __init__(self, seedname="wannier90", read_chk=False, read_amn=False):  # ,sitesym=False):
+    def __init__(self, seedname="wannier90", read_chk=False,
+                 kmesh_tol=1e-7, bk_complete_tol=1e-5,):  # ,sitesym=False):
         self.seedname = copy(seedname)
-        win = WIN(self.seedname)
-        self.eig = EIG(self.seedname)
-        self.mmn = MMN(self.seedname)
-        self.amn = AMN(self.seedname)
-        self.chk = CheckPoint_bare(win=win, eig=self.eig, mmn=self.mmn, amn=self.amn)
-        assert self.eig.NK == self.amn.NK == self.mmn.NK
-        assert self.eig.NB >= self.amn.NB
-        assert self.eig.NB >= self.mmn.NB
-        self.kpt_mp_grid = [tuple(k) for k in
+        if read_chk:
+            self.chk = CheckPoint(seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+            self.wannierised = True
+        else:
+            self.chk = CheckPoint_bare(win=self.win, eig=self.eig, mmn=self.mmn, amn=self.amn)
+            self.kpt_mp_grid = [tuple(k) for k in
                             np.array(np.round(self.chk.kpt_latt * np.array(self.chk.mp_grid)[None, :]),
                                      dtype=int) % self.chk.mp_grid]
-        self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
-        self.win_index = [np.arange(self.eig.NB)] * self.chk.num_kpts
-        self.wannierised = False
+            self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
+            self.win_index = [np.arange(self.eig.NB)] * self.chk.num_kpts
+            self.wannierised = False
+
         # if sitesym:
         #    self.Dmn=DMN(self.seedname,num_wann=self.chk.num_wann)
         # else:
         #    self.Dmn=DMN(None,num_wann=self.chk.num_wann,num_bands=self.chk.num_bands,nkpt=self.chk.num_kpts)
 
+    def check_conform(self, this, key):
+        file_list = ['eig', 'mmn', 'amn', 'uiu', 'uhu', 'chk', 'siu', 'shu', 'spn']
+        assert (key in file_list)
+        for file in file_list:
+            if file != key and hasattr(self, 'file'):
+                other = getattr(self, file)
+                for attr in ['NK', 'NB', 'NW', 'NNB']:
+                    if hasattr(this, attr) and hasattr(other, attr):
+                        a = getattr(this)
+                        b = getattr(other)
+                        assert a == b, f"files {key} and {file} have different attribute {attr} : {a} and {b} respectively"
+
+    @lazy_property.LazyProperty
+    def win(self):
+        return WIN(self.seedname)
+
+    @lazy_property.LazyProperty
+    def amn(self):
+        _ = AMN(self.seedname)
+        self.check_conform(_, 'amn')
+        return _
+
+    @lazy_property.LazyProperty
+    def eig(self):
+        _ = EIG(self.seedname)
+        self.check_conform(_, 'eig')
+        return _
+
+    @lazy_property.LazyProperty
+    def mmn(self):
+        _ =  MMN(self.seedname)
+        self.check_conform(_, 'mmn')
+        return _
+
     @lazy_property.LazyProperty
     def uhu(self):
-         return UHU(self.seedname)
+        _ = UHU(self.seedname)
+        self.check_conform(_, 'uhu')
+        return _
 
     @lazy_property.LazyProperty
     def spn(self):
-         return SPN(self.seedname)
+        _ = SPN(self.seedname)
+        self.check_conform(_, 'spn')
+        return _
 
     @lazy_property.LazyProperty
     def siu(self):
-        return SIU(self.seedname)
+        _ = SIU(self.seedname)
+        self.check_conform(_, 'siu')
+        return _
 
     @lazy_property.LazyProperty
     def shu(self):
-        return SHU(self.seedname)
+        _ = SHU(self.seedname)
+        self.check_conform(_, 'shu')
+        return _
 
     @property
     def iter_kpts(self):
         return range(self.chk.num_kpts)
 
     @lazy_property.LazyProperty
-    def wannier_centres(self):
-        return get_wannier_centres(self.chk, self.mmn)
+    def wannier_centers(self):
+        try:
+            return self.chk.wannier_centers
+        except AttributeError:
+            return self.chk.get_AA_q(self.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(axis=0).real.T / self.chk.num_kpts
 
     def check_wannierised(self, msg=""):
-       if not self.wannierised:
-           raise RuntimeError(f"no wannieruisation was performed on the w90 input files, cannot proceed with {msg}")
+        if not self.wannierised:
+            raise RuntimeError(f"no wannieruisation was performed on the w90 input files, cannot proceed with {msg}")
 
     def disentangle(self, **parameters):
         disentangle.disentangle(self, **parameters)
@@ -307,8 +363,9 @@ class Wannier90Data:
     #     self._Amn=[self._Amn[ik][win_index[ik],:] for ik in self.iter_kpts]
 
     # TODO : allow k-dependent window (can it be useful?)
-def get_wannier_centres(chk, mmn):
-    return chk.get_AA_q(mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(axis=0).real.T / chk.num_kpts
+
+
+
 
 
 class W90_file:
@@ -332,8 +389,10 @@ class W90_file:
         else:
             return 0
 
-def convert (A):
+
+def convert(A):
     return np.array([l.split() for l in A], dtype=float)
+
 
 class MMN(W90_file):
     """
@@ -382,7 +441,7 @@ class MMN(W90_file):
         t2 = time()
         print("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2 - t0, t1 - t0, t2 - t1))
 
-    def set_bk(self, kpt_latt,mp_grid,recip_lattice,kmesh_tol=1e-7, bk_complete_tol=1e-5):
+    def set_bk(self, kpt_latt, mp_grid, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
         try:
             self.bk_cart
             self.wk
@@ -404,10 +463,10 @@ class MMN(W90_file):
             bk_cart_unique = bk_cart_unique[srt]
             bk_cart_unique_length = bk_cart_unique_length[srt]
             brd = [
-                0,
-            ] + list(np.where(bk_cart_unique_length[1:] - bk_cart_unique_length[:-1] > kmesh_tol)[0] + 1) + [
-                self.NNB,
-            ]
+                      0,
+                  ] + list(np.where(bk_cart_unique_length[1:] - bk_cart_unique_length[:-1] > kmesh_tol)[0] + 1) + [
+                      self.NNB,
+                  ]
             shell_mat = np.array([bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2]) for b1, b2 in zip(brd, brd[1:])])
             shell_mat_line = shell_mat.reshape(-1, 9)
             u, s, v = np.linalg.svd(shell_mat_line, full_matrices=False)
@@ -429,9 +488,11 @@ class MMN(W90_file):
     def set_bk_chk(self, chk, **argv):
         self.set_bk(chk.kpt_latt, chk.mp_grid, chk.recip_lattice, **argv)
 
+
 def str2arraymmn(A):
     a = np.array([l.split()[3:] for l in A], dtype=float)
     return (a[:, 0] + 1j * a[:, 1])
+
 
 class AMN(W90_file):
 
@@ -443,17 +504,16 @@ class AMN(W90_file):
     def NW(self):
         return self.data.shape[2]
 
-
-    def __init__(self,seedname, npar=multiprocessing.cpu_count()):
-        f_mmn_in=open(seedname+".amn","r").readlines()
-        print ("reading {}.amn: ".format(seedname)+f_mmn_in[0].strip())
-        s=f_mmn_in[1]
-        NB,NK,NW=np.array(s.split(),dtype=int)
-        self.data=np.zeros( (NK,NB,NW), dtype=complex )
-        block=self.NW*self.NB
-        allmmn=( f_mmn_in[2+j*block:2+(j+1)*block]  for j in range(self.NK) )
-        p=multiprocessing.Pool(npar)
-        self.data= np.array(p.map(str2arraymmn,allmmn)).reshape((self.NK,self.NW,self.NB)).transpose(0,2,1)
+    def __init__(self, seedname, npar=multiprocessing.cpu_count()):
+        f_mmn_in = open(seedname + ".amn", "r").readlines()
+        print("reading {}.amn: ".format(seedname) + f_mmn_in[0].strip())
+        s = f_mmn_in[1]
+        NB, NK, NW = np.array(s.split(), dtype=int)
+        self.data = np.zeros((NK, NB, NW), dtype=complex)
+        block = self.NW * self.NB
+        allmmn = (f_mmn_in[2 + j * block:2 + (j + 1) * block] for j in range(self.NK))
+        p = multiprocessing.Pool(npar)
+        self.data = np.array(p.map(str2arraymmn, allmmn)).reshape((self.NK, self.NW, self.NB)).transpose(0, 2, 1)
 
     """
     def write(self,seedname,comment="written by WannierBerri"):
@@ -639,13 +699,13 @@ class SHU(SXU):
         super().__init__(seedname=seedname, formatted=formatted, suffix='sHu')
 
 
-def parse_win_raw(filename=None,text=None):
+def parse_win_raw(filename=None, text=None):
     try:
         import wannier90io as w90io
     except ImportError as err:
-        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n"+
-                        "please install it manuall as \n"+
-                        "`pip install git+https://github.com/jimustafa/wannier90io-python.git`")
+        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n" +
+                          "please install it manuall as \n" +
+                          "`pip install git+https://github.com/jimustafa/wannier90io-python.git`")
     if filename is not None:
         with open(filename) as f:
             return w90io.parse_win_raw(f.read())
@@ -656,25 +716,25 @@ def parse_win_raw(filename=None,text=None):
 class WIN():
 
     # TODO :use w90io to read win file
-    def __init__(self,seedname='wannier90'):
-        self.name = seedname+".win"
+    def __init__(self, seedname='wannier90'):
+        self.name = seedname + ".win"
         self.parsed = parse_win_raw(self.name)
-        self.units_length={'ang':1.,'bohr':physical_constants['Bohr radius'][0]*1e10}
-
+        self.units_length = {'ang': 1., 'bohr': physical_constants['Bohr radius'][0] * 1e10}
 
     @functools.lru_cache()
-    def get_param(self,param):
+    def get_param(self, param):
         return self.parsed['parameters'][param]
 
     @functools.lru_cache()
     def get_unit_cell_cart_ang(self):
         cell = self.parsed['unit_cell_cart']
-        A = np.array([cell['a1'],cell['a2'],cell['a3']])
-        return A*self.units_length[cell['units']]
+        A = np.array([cell['a1'], cell['a2'], cell['a3']])
+        return A * self.units_length[cell['units']]
 
     @functools.lru_cache()
     def get_kpoints(self):
         return np.array(self.parsed['kpoints']['kpoints'])
+
 
 """
 class DMN:
@@ -734,5 +794,3 @@ class DMN:
                     print("\n".join(" ".join("{}".format("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
 #                   print("\n".join(" ".join("{:4.2f}".format(abs(x)**2) for x in m) for m in M)+"\n")
 """
-
-

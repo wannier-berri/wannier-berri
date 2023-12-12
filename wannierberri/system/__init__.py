@@ -18,7 +18,6 @@ from .system_kp import SystemKP
 from .system_tb_py import System_PythTB, System_TBmodels
 from .system_ASE import System_ASE
 from .system_sparse import SystemSparse
-from .system_wannierise import System_Wannierise
 from .__w90_files import Wannier90Data
 from .system import System
 
