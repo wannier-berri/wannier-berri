@@ -9,11 +9,19 @@ DEGEN_THRESH=1e-2  # for safity - avoid splitting (almost) degenerate states bet
 
 class CheckPoint_bare(CheckPoint):
 
-    def __init__(self):
-        pass
+    def __init__(self,win,eig,amn,mmn):
+        self.mp_grid=np.array(win.get_param("mp_grid"))
+        self.kpt_latt=win.get_kpoints()
+        self.real_lattice=win.get_unit_cell_cart_ang()
+        self.num_kpts=eig.NK
+        self.num_wann=amn.NW
+        self.num_bands=mmn.NB
+        self.win_min=np.array([0]*self.num_kpts)
+        self.win_max=np.array([self.num_bands]*self.num_kpts)
+        self.recip_lattice=2*np.pi*np.linalg.inv(self.real_lattice).T
 
 
-class AbInitioData():
+class Wannier90Data:
     """A class to describe all input files of wannier90, and to construct the Wannier functions
      via disentanglement procedure"""
 # todo :  rotatre uHu and spn
@@ -22,24 +30,15 @@ class AbInitioData():
 
     def __init__(self,seedname="wannier90"):#,sitesym=False):
         self.seedname=copy(seedname)
-        self.chk=CheckPoint_bare()
-        win=WIN(self.seedname)
-        self.chk.mp_grid=np.array(win.get_param("mp_grid"))
-        self.chk.kpt_latt=win.get_kpoints()
-        self.chk.real_lattice=win.get_unit_cell_cart_ang()
+        win = WIN(self.seedname)
         self.eig=EIG(self.seedname)
         self.mmn=MMN(self.seedname)
         self.amn=AMN(self.seedname)
+        self.chk=CheckPoint_bare(win=win, eig=self.eig, mmn=self.mmn, amn=self.amn)
         assert self.eig.NK==self.amn.NK==self.mmn.NK
         assert self.eig.NB>=self.amn.NB
         assert self.eig.NB>=self.mmn.NB
         self.kpt_mp_grid=[tuple(k) for k in np.array( np.round(self.chk.kpt_latt*np.array(self.chk.mp_grid)[None,:]),dtype=int)%self.chk.mp_grid]
-        self.chk.num_kpts=self.eig.NK
-        self.chk.num_wann=self.amn.NW
-        self.chk.num_bands=self.mmn.NB
-        self.chk.win_min=np.array([0]*self.chk.num_kpts)
-        self.chk.win_max=np.array([self.chk.num_bands]*self.chk.num_kpts)
-        self.chk.recip_lattice=2*np.pi*np.linalg.inv(self.chk.real_lattice).T
         self.mmn.set_bk(mp_grid=self.chk.mp_grid,kpt_latt=self.chk.kpt_latt,recip_lattice=self.chk.recip_lattice)
         self.Mmn=[m for m in self.mmn.data]
         self.Amn=[a for a in self.amn.data]
@@ -140,10 +139,10 @@ class AbInitioData():
         #U_opt_free_irr=self.get_max_eig(  [ self.Amn[ik][free,:].dot(self.Amn[ik][free,:].T.conj())
         #for ik,free in zip(irr,self.free[irr])]  ,self.nWfree[irr],self.chk.num_bandsfree[irr]) # nBfee x nWfree marrices
         #U_opt_free=self.symmetrize_U_opt(U_opt_free_irr,free=True)
-        U_opt_free = self.get_max_eig(  [ self.Amn[ik][free,:].dot(self.Amn[ik][free,:].T.conj())
+        U_opt_free = get_max_eig(  [ self.Amn[ik][free,:].dot(self.Amn[ik][free,:].T.conj())
                         for ik,free in enumerate(self.free)]  ,self.nWfree,self.chk.num_bandsfree) # nBfee x nWfree marrices
 
-        Mmn_FF=self.Mmn_Free_Frozen(self.Mmn,self.free,self.frozen,self.mmn.neighbours,self.mmn.wk,self.chk.num_wann)
+        Mmn_FF=MmnFreeFrozen(self.Mmn,self.free,self.frozen,self.mmn.neighbours,self.mmn.wk,self.chk.num_wann)
 
 #        TODO : symmetrize (if needed)
         def calc_Z(Mmn_loc,U=None):
@@ -172,7 +171,7 @@ class AbInitioData():
                 Z = [(mix_ratio*z + (1-mix_ratio)*zo) for z,zo in zip(Z,Z_old) ]  #  only for irreducible
 #            U_opt_free_irr=self.get_max_eig(Z,self.nWfree[irr],self.chk.num_bandsfree[irr]) #  only for irreducible
 #            U_opt_free=self.symmetrize_U_opt(U_opt_free_irr,free=True)
-            U_opt_free=self.get_max_eig(Z,self.nWfree,self.chk.num_bandsfree) #
+            U_opt_free=get_max_eig(Z,self.nWfree,self.chk.num_bandsfree) #
             Omega_I=sum(Mmn_FF.Omega_I(U_opt_free))
             Omega_I_list.append(Omega_I)
 
@@ -216,6 +215,13 @@ class AbInitioData():
         self.chk.v_matrix=np.array(U_opt_full).transpose((0,2,1))
         self.disentangled=True
 
+    @property
+    def wannier_centres(self):
+        return get_wannier_centres(self.chk,self.mmn)
+
+def get_wannier_centres(chk,mmn):
+    return chk.get_AA_q(mmn,transl_inv=True).diagonal(axis1=1,axis2=2).sum(axis=0).real.T/chk.num_kpts
+
 
 # now rotating to the optimized space
 #        self.Hmn=[]
@@ -228,9 +234,10 @@ class AbInitioData():
 #            self.Amn[ik]=Ud.dot(self.Amn[ik])
 #            self.Mmn[ik]=[Ud.dot(M).dot(U_opt_full[ibk]) for M,ibk in zip (self.Mmn[ik],self.mmn.neighbours[ik])]
 
-    def check_disentangled(self,msg=""):
-        if not self.disentangled:
-            raise RuntimeError(f"no disentanglement was performed on the abinitio data, cannot proceed with {msg}")
+#    def check_disentangled(self,msg=""):
+#        if not self.disentangled:
+#            raise RuntimeError(f"no disentanglement was performed on the abinitio data, cannot proceed with {msg}")
+
 
 
     # def symmetrize_U_opt(self,U_opt_free_irr,free=False):
@@ -272,56 +279,50 @@ class AbInitioData():
     #    MMN(data=Mmn,G=self.G,bk_cart=self.mmn.bk_cart,wk=self.mmn.wk,neighbours=self.mmn.neighbours).write(seedname)
     #    AMN(data=Amn).write(seedname)
 
-    def get_max_eig(self,matrix,nvec,nBfree):
-        """ return the nvec column-eigenvectors of matrix with maximal eigenvalues.
-        Both matrix and nvec are lists by k-points with arbitrary size of matrices"""
-        assert len(matrix)==len(nvec)==len(nBfree)
-        assert np.all([m.shape[0]==m.shape[1] for m in matrix])
-        assert np.all([m.shape[0]>=nv for m,nv in zip(matrix,nvec)]), "nvec={}, m.shape={}".format(nvec,[m.shape for m in matrix])
-        EV=[np.linalg.eigh(M) for M in matrix]
-        return [ ev[1][:,np.argsort(ev[0])[nf-nv:nf]] for ev,nv,nf  in zip(EV,nvec,nBfree) ]
-
-    @property
-    def wannier_centres(self):
-        return self.chk.get_AA_q(self.mmn,transl_inv=True).diagonal(axis1=1,axis2=2).sum(axis=0).real.T/self.chk.num_kpts
-
-    def getSystem(self,**parameters):
-        return System_Wannierise(self,**parameters)
-
-    class Mmn_Free_Frozen():
-        # TODO : make use of irreducible kpoints (maybe)
-        """ a class to store and call the Mmn matrix between/inside the free and frozen subspaces, as well as to calculate the streads"""
-        def __init__(self,Mmn,free,frozen,neighbours,wb,NW):
-            self.NK=len(Mmn)
-            self.wk=wb
-            self.neighbours=neighbours
-            self.data={}
-            self.spaces={'free':free,'frozen':frozen}
-            for s1,sp1 in self.spaces.items():
-                for s2,sp2 in self.spaces.items():
-                    self.data[(s1,s2)]=[[Mmn[ik][ib][sp1[ik],:][:,sp2[ikb]]
-                            for ib,ikb in enumerate(neigh)] for ik,neigh in enumerate(self.neighbours)]
-            self.Omega_I_0=NW*self.wk[0].sum()
-            self.Omega_I_frozen=-sum( sum( wb*np.sum(abs(mmn[ib])**2) for ib,wb in enumerate(WB)) for WB,mmn in zip(self.wk,self('frozen','frozen')))/self.NK
-
-        def __call__(self,space1,space2):
-            assert space1 in self.spaces
-            assert space2 in self.spaces
-            return self.data[(space1,space2)]
-
-        def Omega_I_free_free(self,U_opt_free):
-            U=U_opt_free
-            Mmn=self('free','free')
-            return -sum( self.wk[ik][ib]*np.sum(abs(   U[ik].T.conj().dot(Mmn[ib]).dot(U[ikb])  )**2)
-                        for ik,Mmn in enumerate(Mmn) for ib,ikb in enumerate(self.neighbours[ik])  )/self.NK
-
-        def Omega_I_free_frozen(self,U_opt_free):
-            U=U_opt_free
-            Mmn=self('free','frozen')
-            return -sum( self.wk[ik][ib]*np.sum(abs(   U[ik].T.conj().dot(Mmn[ib])  )**2)
-                        for ik,Mmn in enumerate(Mmn) for ib,ikb in enumerate(self.neighbours[ik])  )/self.NK*2
+def get_max_eig(matrix,nvec,nBfree):
+    """ return the nvec column-eigenvectors of matrix with maximal eigenvalues.
+    Both matrix and nvec are lists by k-points with arbitrary size of matrices"""
+    assert len(matrix)==len(nvec)==len(nBfree)
+    assert np.all([m.shape[0]==m.shape[1] for m in matrix])
+    assert np.all([m.shape[0]>=nv for m,nv in zip(matrix,nvec)]), "nvec={}, m.shape={}".format(nvec,[m.shape for m in matrix])
+    EV=[np.linalg.eigh(M) for M in matrix]
+    return [ ev[1][:,np.argsort(ev[0])[nf-nv:nf]] for ev,nv,nf  in zip(EV,nvec,nBfree) ]
 
 
-        def Omega_I(self,U_opt_free):
-            return self.Omega_I_0,self.Omega_I_frozen,self.Omega_I_free_frozen(U_opt_free),self.Omega_I_free_free(U_opt_free)
+class MmnFreeFrozen:
+    # TODO : make use of irreducible kpoints (maybe)
+    """ a class to store and call the Mmn matrix between/inside the free and frozen subspaces, as well as to calculate the streads"""
+    def __init__(self,Mmn,free,frozen,neighbours,wb,NW):
+        self.NK=len(Mmn)
+        self.wk=wb
+        self.neighbours=neighbours
+        self.data={}
+        self.spaces={'free':free,'frozen':frozen}
+        for s1,sp1 in self.spaces.items():
+            for s2,sp2 in self.spaces.items():
+                self.data[(s1,s2)]=[[Mmn[ik][ib][sp1[ik],:][:,sp2[ikb]]
+                        for ib,ikb in enumerate(neigh)] for ik,neigh in enumerate(self.neighbours)]
+        self.Omega_I_0=NW*self.wk[0].sum()
+        self.Omega_I_frozen=-sum( sum( wb*np.sum(abs(mmn[ib])**2) for ib,wb in enumerate(WB)) for WB,mmn in zip(self.wk,self('frozen','frozen')))/self.NK
+
+    def __call__(self,space1,space2):
+        assert space1 in self.spaces
+        assert space2 in self.spaces
+        return self.data[(space1,space2)]
+
+    def Omega_I_free_free(self,U_opt_free):
+        U=U_opt_free
+        Mmn=self('free','free')
+        return -sum( self.wk[ik][ib]*np.sum(abs(   U[ik].T.conj().dot(Mmn[ib]).dot(U[ikb])  )**2)
+                    for ik,Mmn in enumerate(Mmn) for ib,ikb in enumerate(self.neighbours[ik])  )/self.NK
+
+    def Omega_I_free_frozen(self,U_opt_free):
+        U=U_opt_free
+        Mmn=self('free','frozen')
+        return -sum( self.wk[ik][ib]*np.sum(abs(   U[ik].T.conj().dot(Mmn[ib])  )**2)
+                    for ik,Mmn in enumerate(Mmn) for ib,ikb in enumerate(self.neighbours[ik])  )/self.NK*2
+
+
+    def Omega_I(self,U_opt_free):
+        return self.Omega_I_0,self.Omega_I_frozen,self.Omega_I_free_frozen(U_opt_free),self.Omega_I_free_free(U_opt_free)
 

@@ -23,7 +23,7 @@ class System_Wannierise(System_w90):
 
     Parameters
     ----------
-    aidata : :class:`~wannierberri.AbInitioData`
+    w90data : :class:`~wannierberri.AbInitioData`
         the data from AbInitio code, should be disentangled already.
     transl_inv : bool
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
@@ -39,7 +39,7 @@ class System_Wannierise(System_w90):
     """
 
     def __init__(self,
-                 aidata,
+                 w90data,
                  transl_inv=True,
                  guiding_centers=False,
                  fft='fftw',
@@ -49,13 +49,12 @@ class System_Wannierise(System_w90):
 
         self.set_parameters(**parameters)
         self.npar = npar
-        self.seedname=aidata.seedname
-        aidata.check_disentangled()
-        self.real_lattice,self.recip_lattice=real_recip_lattice(aidata.chk.real_lattice,aidata.chk.recip_lattice)
-        self.mp_grid=aidata.chk.mp_grid
-        self.wannier_centers_cart_auto = aidata.wannier_centres
-        self.num_wann=aidata.chk.num_wann
-        self.iRvec,self.Ndegen=self.wigner_seitz(aidata.chk.mp_grid)
+        self.seedname=w90data.seedname
+        self.real_lattice,self.recip_lattice=real_recip_lattice(w90data.chk.real_lattice, w90data.chk.recip_lattice)
+        self.mp_grid=w90data.chk.mp_grid
+        self.wannier_centers_cart_auto = w90data.wannier_centres
+        self.num_wann=w90data.chk.num_wann
+        self.iRvec,self.Ndegen=self.wigner_seitz(w90data.chk.mp_grid)
         self.nRvec0=len(self.iRvec)
 
 
@@ -63,14 +62,14 @@ class System_Wannierise(System_w90):
         print(f"Need A:{self.need_R_any('AA')}, berry:{self.berry}")
 
         fourier_q_to_R_loc=functools.partial(fourier_q_to_R,
-                                             mp_grid=aidata.chk.mp_grid,
-                                             kpt_mp_grid=aidata.kpt_mp_grid,
+                                             mp_grid=w90data.chk.mp_grid,
+                                             kpt_mp_grid=w90data.kpt_mp_grid,
                                              iRvec=self.iRvec,
                                              ndegen=self.Ndegen,
                                              numthreads=npar,
                                              fft=fft)
 
-        self.set_R_matrices_from_chk(chk=aidata.chk, mmn=aidata.mmn, eig=aidata.eig, seedname=aidata.seedname,
+        self.set_R_matrices_from_chk(chk=w90data.chk, mmn=w90data.mmn, eig=w90data.eig, seedname=w90data.seedname,
                                      fourier_q_to_R_loc=fourier_q_to_R_loc,
-                                    transl_inv=transl_inv, guiding_centers=guiding_centers)
+                                     transl_inv=transl_inv, guiding_centers=guiding_centers)
         self.do_at_end_of_init()
