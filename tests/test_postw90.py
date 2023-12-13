@@ -79,7 +79,7 @@ def check_postw90(check_command_output):
         os.chdir(cwd)
 
         # so far, hardcode it for AHC, later generalize
-        data_wb   = np.loadtxt(os.path.join(tmp_dir, seedname + "-ahc_iter-0000.dat"))
+        data_wb = np.loadtxt(os.path.join(tmp_dir, seedname + "-ahc_iter-0000.dat"))
         maxval = np.max(abs(data_wb[:, 4:7]))
         if precision is None:
             precision = max(maxval / 1E12, 1E-11)

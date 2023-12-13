@@ -201,7 +201,7 @@ class KBandResult(K__Result):
         return len(self.data_list[0].shape) - 2
 
     def fit(self, other):
-        if self.nband  != other.nband:
+        if self.nband != other.nband:
             print (f"parameter 'nband' does  not match : `{self.nband}` and `{other.nband}` ")
             return False
         return super().fit(other)

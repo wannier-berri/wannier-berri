@@ -18,7 +18,7 @@ from .__Kpoint import KpointBZ
 
 # fixing the order of the edges by their vortices
 EDGES = [ [0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3] ]
-EDGES_COMPLEMENT  = [list(set([0, 1, 2, 3]) - set(e) ) for e in EDGES ]
+EDGES_COMPLEMENT = [list(set([0, 1, 2, 3]) - set(e) ) for e in EDGES ]
 
 
 class KpointBZtetra(KpointBZ):

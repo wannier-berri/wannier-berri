@@ -1378,7 +1378,7 @@ def test_shc_static(check_run, system_Fe_W90):
 
 
     for mode in ["qiao", "ryoo"]:
-        data_static  = result.results[f"SHC{mode}_static" ].data
+        data_static = result.results[f"SHC{mode}_static" ].data
         data_dynamic = result.results[f"SHC{mode}_dynamic"].data[:, 0, ...].real
         precision = max(np.average(abs(data_static) / 1E10), 1E-8)
         assert data_static == approx(
@@ -1488,7 +1488,7 @@ def check_kp_mass_isotropic(check_run):
             select_minus = Efermi < 0
 
             assert dos[select_minus] == approx(0, abs=precision)
-            assert cumdos[select_minus]  == approx(0, abs=precision)
+            assert cumdos[select_minus] == approx(0, abs=precision)
             assert ohmic["sea"][select_minus] == approx(0, abs=precision)
             assert ohmic["surf"][select_minus] == approx(0, abs=precision)
 
