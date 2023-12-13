@@ -2,10 +2,11 @@ import numpy as np
 from . import Calculator
 from ..formula import covariant as frml
 from ..formula import covariant_basic as frml_basic
-from ..result import KBandResult,TABresult
+from ..result import KBandResult, TABresult
 
 # The base classes for Tabulating
 # particular calculators are below
+
 
 class Tabulator(Calculator):
 
@@ -58,12 +59,12 @@ class TabulatorAll(Calculator):
     TabulatorAll - a pack of all k-resolved calculators (Tabulators)
     """
 
-    def __init__(self, tabulators, ibands=None, mode="grid", save_mode="frmsf",print_comment=False):
+    def __init__(self, tabulators, ibands=None, mode="grid", save_mode="frmsf", print_comment=False):
         """ tabulators - dict 'key':tabulator
         one of them should be "Energy" """
         self.tabulators = tabulators
         mode = mode.lower()
-        assert mode in ("grid","path")
+        assert mode in ("grid", "path")
         self.mode = mode
         self.save_mode = save_mode
         if self.require_energy():
@@ -83,7 +84,7 @@ class TabulatorAll(Calculator):
                     v.ibands = ibands
 
         self.comment = (self.__doc__+"\n Includes the following tabulators : \n"+"-"*50+"\n"+ "\n".join(
-                    f""" "{key}" : {val} : {val.comment}\n""" for key,val in self.tabulators.items())+
+                    f""" "{key}" : {val} : {val.comment}\n""" for key, val in self.tabulators.items())+
                     "\n"+"-"*50+"\n" )
         self._set_comment(print_comment)
 
@@ -92,6 +93,7 @@ class TabulatorAll(Calculator):
             return True
         else:
             return False
+
     def __call__(self, data_K):
         return TABresult(
             kpoints=data_K.kpoints_all.copy(),
@@ -131,6 +133,7 @@ class Energy(Tabulator):
     def __init__(self, **kwargs):
         super().__init__(frml.Eavln, **kwargs)
 
+
 class Velocity(Tabulator):
 
     def __init__(self, **kwargs):
@@ -145,13 +148,17 @@ class BerryCurvature(Tabulator):
 
 class Spin(Tabulator):
     r" Spin expectation :math:` \langle u | \mathbf{\sigma} | u \rangle`"
+
     def __init__(self, **kwargs):
         super().__init__(frml.Spin, **kwargs)
 
+
 class DerBerryCurvature(Tabulator):
     r"Derivative of Berry curvature :math:`X_{ab}\partial_b\Omega_a`"
+
     def __init__(self, **kwargs):
         super().__init__(frml.DerOmega, **kwargs)
+
 
 class OrbitalMoment(Tabulator):
 

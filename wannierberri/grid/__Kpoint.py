@@ -16,6 +16,7 @@ import numpy as np
 import lazy_property
 from ..symmetry import SYMMETRY_PRECISION
 
+
 class KpointBZ():
 
     def __init__(self, K=np.zeros(3), dK=np.ones(3), NKFFT=np.ones(3), factor=1., symgroup=None, refinement_level=-1 ):
@@ -39,7 +40,7 @@ class KpointBZ():
     def __str__(self):
         return (
             "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ], refinement level:{3}, factor = {4}".format(
-                self.K[0], self.K[1], self.K[2], self.refinement_level,self.factor))
+                self.K[0], self.K[1], self.K[2], self.refinement_level, self.factor))
 
     @lazy_property.LazyProperty
     def _max(self):

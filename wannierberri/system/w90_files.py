@@ -12,22 +12,21 @@
 # from the translation of Wannier90 code                     #
 # ------------------------------------------------------------#
 
-import numpy as np
-from ..__utility import FortranFileR
 import multiprocessing
-from ..__utility import alpha_A, beta_A
+import gc
+import functools
+from scipy.constants import physical_constants
 from time import time
 from itertools import islice
-import gc
-from scipy.constants import physical_constants
-import functools
-from .disentanglement import disentangle
 from copy import copy
+import numpy as np
+from .disentanglement import disentangle
+from ..__utility import FortranFileR, alpha_A, beta_A
 
 readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip()
 
 
-class CheckPoint():
+class CheckPoint:
     """
     A class to store the data about wannierisation, written by Wannier90
 
@@ -308,7 +307,7 @@ class Wannier90data:
                 if hasattr(this, attr) and hasattr(other, attr):
                     a = getattr(this, attr)
                     b = getattr(other, attr)
-                    if None not in (a,b):
+                    if None not in (a, b):
                         assert a == b, f"files {key} and {key2} have different attribute {attr} : {a} and {b} respectively"
 
     @property

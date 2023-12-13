@@ -175,10 +175,10 @@ def run(
     cprint ("Starting run()", 'red', attrs=['bold'])
     print_calculators(calculators)
     # along a path only tabulating is possible
-    if isinstance(grid,Path):
+    if isinstance(grid, Path):
         print ("Calculation along a path - checking calculators for compatibility")
-        for key,calc in calculators.items():
-            print (key,calc)
+        for key, calc in calculators.items():
+            print (key, calc)
             if not calc.allow_path:
                 raise ValueError(f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path")
         print ("All calculators are compatible")
@@ -187,13 +187,13 @@ def run(
             symmetrize = False
     else:
         print ("Calculation on  grid - checking calculators for compatibility")
-        for key,calc in calculators.items():
-            print (key,calc)
+        for key, calc in calculators.items():
+            print (key, calc)
             if not calc.allow_grid:
                 raise ValueError(f"Calculation on Grid is running, but calculator `{key}` is not compatible with a Grid")
         print ("All calculators are compatible")
 
-    if isinstance(grid,GridTetra):
+    if isinstance(grid, GridTetra):
         print ("Grid is tetrahedral")
     else:
         print ("Grid is regular")
@@ -262,7 +262,7 @@ def run(
         except Exception as err:
             restart = False
 #            print("WARNING: {}".format(err))
-            raise RuntimeError("{1}: reading from {0} failed, starting from scrath".format(file_Klist,err))
+            raise RuntimeError("{1}: reading from {0} failed, starting from scrath".format(file_Klist, err))
     else:
         K_list = grid.get_K_list(use_symmetry=use_irred_kpt)
         print("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
@@ -271,6 +271,7 @@ def run(
 
     if not restart:
         import os
+
         def remove_file(filename):
             if filename is not None and os.path.exists(filename):
                 os.remove(filename)
@@ -372,7 +373,7 @@ def run(
                 else:
                     result_excluded += results - K_list[iK].get_res
 
-        if use_irred_kpt and isinstance(grid,Grid):
+        if use_irred_kpt and isinstance(grid, Grid):
             print("checking for equivalent points in all points (of new  {} points)".format(len(K_list) - l1))
             nexcl, weight_changed_old = exclude_equiv_points(K_list, new_points=len(K_list) - l1)
             print(" excluded {0} points".format(nexcl))
@@ -399,11 +400,12 @@ def run(
 
     return result_all
 
+
 def print_calculators(calculators):
     cprint("Using the follwing calculators : \n" + "#"*60 +"\n", "cyan", attrs=["bold"])
-    for key,val in calculators.items() :
+    for key, val in calculators.items() :
         cprint (f" '{key}' ", "magenta", attrs=["bold"], end="")
-        print (" : ",end="")
+        print (" : ", end="")
         cprint(f" {val} ", "yellow", attrs=["bold"], end="")
         print ( f" : {val.comment}" )
     cprint("#"*60 , "cyan", attrs=["bold"])

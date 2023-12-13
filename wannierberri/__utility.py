@@ -18,11 +18,11 @@ if PYFFTW_IMPORTED :
     import pyfftw
 import inspect
 import numpy as np
-
 from lazy_property import LazyProperty as Lazy
 from time import time
 from termcolor import cprint
-import fortio, scipy.io
+import fortio
+import scipy.io
 
 
 # inheriting just in order to have posibility to change default values, without changing the rest of the code
@@ -91,7 +91,7 @@ def str2bool(v):
     v1=v.strip().lower()
     if v1  in ("f", "false", ".false."):
         return False
-    elif v1 in ("t", "true",".true."):
+    elif v1 in ("t", "true", ".true."):
         return True
     else:
         raise ValueError(f"unrecognized value of bool parameter :`{v}`")
@@ -106,6 +106,7 @@ def fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
                 " See https://docs.wannier-berri.org/en/master/install.html#known-bug-with-pyfftw")
         else:
             raise err
+
 
 def _fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
     assert inp.dtype == complex
@@ -267,13 +268,14 @@ def iterate_nd(size, pm=False):
     a = -size[0] if pm else 0
     b = size[0]+1 if pm else size[0]
     if len(size)==1:
-        return np.array([(i,) for i in range(a,b)])
+        return np.array([(i,) for i in range(a, b)])
     else:
-        return np.array([(i,)+tuple(j) for i in range(a,b) for j in iterate_nd(size[1:], pm=pm)])
+        return np.array([(i,)+tuple(j) for i in range(a, b) for j in iterate_nd(size[1:], pm=pm)])
+
 
 def iterate3dpm(size):
     assert len(size)==3
-    return iterate_nd(size,pm=True)
+    return iterate_nd(size, pm=True)
 #   return (
 #       np.array([i, j, k]) for i in range(-size[0], size[0] + 1) for j in range(-size[1], size[1] + 1)
 #       for k in range(-size[2], size[2] + 1))
@@ -308,12 +310,14 @@ def get_angle(sina, cosa):
         alpha = 2.0 * np.pi - alpha
     return alpha
 
-def angle_vectors(vec1,vec2):
-    cos = np.dot(vec1,vec2)/np.linalg.norm(vec1)/np.linalg.norm(vec2)
+
+def angle_vectors(vec1, vec2):
+    cos = np.dot(vec1, vec2)/np.linalg.norm(vec1)/np.linalg.norm(vec2)
     return np.arccos(cos)
 
-def angle_vectors_deg(vec1,vec2):
-    angle = angle_vectors(vec1,vec2)
+
+def angle_vectors_deg(vec1, vec2):
+    angle = angle_vectors(vec1, vec2)
     return int(round(angle/np.pi*180))
 
 
@@ -331,7 +335,7 @@ def Gaussian(x, width, adpt_smr):
             return 1 / (np.sqrt(pi) * width) * np.exp(-np.minimum(200.0, (x / width) ** 2))
     '''
     inds = abs(x) < width * np.sqrt(200.0)
-    output = np.zeros(x.shape,dtype=float)
+    output = np.zeros(x.shape, dtype=float)
     if adpt_smr:
         # width is array
         width_tile = np.tile(width, (x.shape[0], 1, 1))

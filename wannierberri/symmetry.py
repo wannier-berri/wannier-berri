@@ -9,7 +9,7 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 """ module to define the Symmetry operations. Contains a general class for Rotation, Mirror, and also some pre-defined shortcuts:
 
 + Identity =Symmetry( np.eye(3))
@@ -90,7 +90,7 @@ class Symmetry():
         print(self)
 
     def __str__(self):
-        return f"rotation:\n{np.round(self.R,decimals=4)} , TR: {self.TR} , I: {self.Inv}"
+        return f"rotation:\n{np.round(self.R, decimals=4)} , TR: {self.TR} , I: {self.Inv}"
 
     def __mul__(self, other):
         return Symmetry((self.R @ other.R) * (self.iInv * other.iInv), self.TR != other.TR)
@@ -117,14 +117,14 @@ class Symmetry():
         for i in range(dim - rank, dim):
             res = self.rotate(
                 res.transpose(tuple(range(i)) + tuple(range(i + 1, dim))
-                              + (i, ))).transpose(tuple(range(i)) + (dim - 1, ) + tuple(range(i, dim - 1)))
+                              + (i,))).transpose(tuple(range(i)) + (dim - 1,) + tuple(range(i, dim - 1)))
         if self.TR:
             transformTR(res)
-#            res = res.conj()
-#        if (self.TR and TRodd) != (self.Inv and Iodd):
-#            res = -res
-#        if self.TR and TRtrans:
-#            res = res.swapaxes(dim - rank, dim - rank + 1).conj()
+        #            res = res.conj()
+        #        if (self.TR and TRodd) != (self.Inv and Iodd):
+        #            res = -res
+        #        if self.TR and TRtrans:
+        #            res = res.swapaxes(dim - rank, dim - rank + 1).conj()
         if self.Inv:
             transformInv(res)
         return res
@@ -170,7 +170,7 @@ class Mirror(Symmetry):
         super().__init__(-Rotation(2, axis).R)
 
 
-#some typically used symmetries
+# some typically used symmetries
 Identity = Symmetry(np.eye(3))
 Inversion = Symmetry(-np.eye(3))
 TimeReversal = Symmetry(np.eye(3), True)
@@ -255,18 +255,18 @@ class Group():
                 break
 
         self.symmetries = sym_list
-        MSG_not_symmetric = (
-            " : please check if  the symmetries are consistent with the lattice vectors,"
-            + " and that  enough digits were written for the lattice vectors (at least 6-7 after coma)")
+        msg_not_symmetric = (
+                " : please check if  the symmetries are consistent with the lattice vectors,"
+                + " and that  enough digits were written for the lattice vectors (at least 6-7 after coma)")
         if real_lattice is not None:
-            assert self.check_basis_symmetry(self.real_lattice), "real_lattice is not symmetric" + MSG_not_symmetric
+            assert self.check_basis_symmetry(self.real_lattice), "real_lattice is not symmetric" + msg_not_symmetric
         if real_lattice is not None:
-            assert self.check_basis_symmetry(self.recip_lattice), "recip_lattice is not symmetric" + MSG_not_symmetric
+            assert self.check_basis_symmetry(self.recip_lattice), "recip_lattice is not symmetric" + msg_not_symmetric
 
     def __str__(self):
-        s=f"Real_lattice:\n{np.round(self.real_lattice,decimals=4)}\n Recip. Lattice:\n {np.round(self.recip_lattice,decimals=4)}\n size:{self.size}\nOperations:\n"
-        for i,sym in enumerate(self.symmetries):
-            s+=f"{i}:\n{sym}\n"
+        s = f"Real_lattice:\n{np.round(self.real_lattice, decimals=4)}\n Recip. Lattice:\n {np.round(self.recip_lattice, decimals=4)}\n size:{self.size}\nOperations:\n"
+        for i, sym in enumerate(self.symmetries):
+            s += f"{i}:\n{sym}\n"
         return s
 
     def check_basis_symmetry(self, basis, tol=1e-6, rel_tol=None):
@@ -313,7 +313,7 @@ class Group():
         `numpy.array(float)`
              :math:`3 \times 3\times \ldots` array respecting the symmetry
         """
-        A = self.symmetrize_tensor(np.random.random((3, ) * rank), TRodd=TRodd, Iodd=Iodd)
+        A = self.symmetrize_tensor(np.random.random((3,) * rank), TRodd=TRodd, Iodd=Iodd)
         A[abs(A) < 1e-14] = 0
         return A
 
@@ -339,7 +339,7 @@ class Group():
         indices = [()]
         indices_xyz = [""]
         for i in range(A.ndim):
-            indices = [(j, ) + ind for j in (0, 1, 2) for ind in indices]
+            indices = [(j,) + ind for j in (0, 1, 2) for ind in indices]
             indices_xyz = [a + ind for a in "xyz" for ind in indices_xyz]
         equalities = {0: ["0"]}
         tol = 1e-14
@@ -369,8 +369,8 @@ class Group():
         assert np.all(shape[dim - rank:dim] == 3), "the last rank={} dimensions should be 3, found : {}".format(
             rank, shape)
         return sum(s.transform_tensor(data, rank=rank,
-                    transformTR=transformTR, transformInv=transformInv)
-                                for s in self.symmetries) / self.size
+                                      transformTR=transformTR, transformInv=transformInv)
+                   for s in self.symmetries) / self.size
 
     def star(self, k):
         st = [S.transform_reduced_vector(k, self.recip_lattice) for S in self.symmetries]
@@ -380,19 +380,19 @@ class Group():
                 del st[i]
         return np.array(st)
 
+
 ########
 # transformation of tensors (inplace)
 #########
 
 
-
-class Transform():
+class Transform:
     r"""Describes transformation of a tensor under inversion or time-reversal
 
     Parameters
     ----------
     factor : int
-        mu,tiplication fuctor (+1 or -1)
+        multiplication factor (+1 or -1)
     conj : bool
         apply complex conjugation
     transpose_axes : tuple
@@ -406,39 +406,35 @@ class Transform():
         + `transform_trans = Transform(transpose_axes=(1,0))`
         """
 
-
-    def __init__(self,factor=1,conj=False,transpose_axes=None):
-        self.conj=conj
-        self.factor=factor
-        assert factor in (1,-1),f"factor is {factor}"
-        self.transpose_axes=transpose_axes
+    def __init__(self, factor=1, conj=False, transpose_axes=None):
+        self.conj = conj
+        self.factor = factor
+        assert factor in (1, -1), f"factor is {factor}"
+        self.transpose_axes = transpose_axes
 
     def as_dict(self):
-        return {k:self.__getattribute__(k) for k in ["conj","factor","transpose_axes"] }
-
+        return {k: self.__getattribute__(k) for k in ["conj", "factor", "transpose_axes"]}
 
     def __str__(self):
-        return (f"Transform(factor={self.factor}, conj={self.conj}, transpose_axes={self.transpose_axes}")
+        return f"Transform(factor={self.factor}, conj={self.conj}, transpose_axes={self.transpose_axes}"
 
-    def __call__(self,res):
+    def __call__(self, res):
         if self.transpose_axes is not None:
-            dim0=res.ndim-len(self.transpose_axes)
-            trans = tuple(i for i in range(dim0))+tuple(dim0+a for a in self.transpose_axes)
-            res[:]=res.transpose(trans)
+            dim0 = res.ndim - len(self.transpose_axes)
+            trans = tuple(i for i in range(dim0)) + tuple(dim0 + a for a in self.transpose_axes)
+            res[:] = res.transpose(trans)
         if self.conj:
-            res[:]=res[:].conj()
-        res[:]*=self.factor
+            res[:] = res[:].conj()
+        res[:] *= self.factor
         return res
 
-    def __eq__(self,other):
-        if not isinstance(other,Transform):
+    def __eq__(self, other):
+        if not isinstance(other, Transform):
             return False
-        for key in "factor","conj","transpose_axes":
-            if getattr(self,key)!=getattr(other,key):
+        for key in "factor", "conj", "transpose_axes":
+            if getattr(self, key) != getattr(other, key):
                 return False
         return True
-
-
 
 
 class TransformProduct(Transform):
@@ -447,24 +443,25 @@ class TransformProduct(Transform):
     """
 
     def __init__(self, transform_list):
-        transform_list=list(transform_list)
+        transform_list = list(transform_list)
         conj_list = list([t.conj for t in transform_list])
-        if len(set(conj_list))!=1 :
-            raise ValueError("either ALL of NONE of the transformatrions in a product should have conjugation .  {conj_list}")
+        if len(set(conj_list)) != 1:
+            raise ValueError(
+                "either ALL of NONE of the transformations in a product should have conjugation .  {conj_list}")
         if np.any([t.transpose_axes is not None for t in transform_list]):
             raise NotImplementedError("Product of transformations including transposing is not implemented")
         super().__init__(factor=np.prod([t.factor for t in transform_list]), conj=conj_list[0])
 
 
-
 transform_ident = Transform()
-transform_odd   = Transform(factor=-1)
-transform_odd_conj   = Transform(factor=-1,conj=True)
-transform_odd_trans_021   = Transform(factor=-1,transpose_axes=(0,2,1))
-transform_trans = Transform(transpose_axes=(1,0))
+transform_odd = Transform(factor=-1)
+transform_odd_conj = Transform(factor=-1, conj=True)
+transform_odd_trans_021 = Transform(factor=-1, transpose_axes=(0, 2, 1))
+transform_trans = Transform(transpose_axes=(1, 0))
 
-def transform_from_dict(dic,key):
-    """Finds a trandform in a dictionary and returns it.
+
+def transform_from_dict(dic, key):
+    """Finds a transform in a dictionary and returns it.
     if not found, returns None"""
     if key not in dic:
         return None
@@ -472,10 +469,10 @@ def transform_from_dict(dic,key):
         return None
     else:
         d = dic[key].item()
-        if isinstance(d,dict):
+        if isinstance(d, dict):
             return Transform(**d)
-        elif isinstance(d,str):
-            print ("WARNING : transform read as string from file, recognized as None")
+        elif isinstance(d, str):
+            print("WARNING : transform read as string from file, recognized as None")
             return None
         else:
             return ValueError(f"wrong type of transform[{key}] in the npz file:{type(d)}")

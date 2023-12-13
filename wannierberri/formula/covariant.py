@@ -6,7 +6,7 @@ from ..symmetry import transform_ident, transform_odd
 
 class Identity(Formula_ln):
 
-    def __init__(self,data_K=None):
+    def __init__(self, data_K=None):
         self.ndim = 0
         self.transformTR=transform_ident
         self.transformInv=transform_ident
@@ -223,6 +223,7 @@ class DerOmega(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+
 class Hamiltonian(Matrix_ln):
 
     def __init__(self, data_K):
@@ -236,7 +237,8 @@ class Velocity(Matrix_ln):
         v = data_K.covariant('Ham', gender=1)
         self.__dict__.update(v.__dict__)
         if external_terms:
-            self.matrix = self.matrix+1j*data_K.Xbar('AA')*(data_K.E_K[:, :, None,None] - data_K.E_K[:, None, :,None])
+            self.matrix = self.matrix+1j*data_K.Xbar('AA')*(data_K.E_K[:, :, None, None] - data_K.E_K[:, None, :, None])
+
 
 class Spin(Matrix_ln):
 
@@ -254,6 +256,7 @@ class DerSpin(Matrix_GenDer_ln):
 ########################
 #   orbital moment     #
 ########################
+
 
 class Morb_H(Formula_ln):
 
@@ -435,7 +438,7 @@ def _spin_velocity_einsum_opt(C, A, B):
 class SpinVelocity(Matrix_ln):
     "spin current matrix elements. SpinVelocity.matrix[ik, m, n, a, s] = <u_mk|{v^a S^s}|u_nk> / 2"
 
-    def __init__(self, data_K, spin_current_type,external_terms=True):
+    def __init__(self, data_K, spin_current_type, external_terms=True):
         if spin_current_type == "simple":
             # tight-binding case
             super().__init__(self._J_H_simple(data_K, external_terms=external_terms))
@@ -476,7 +479,7 @@ class SpinVelocity(Matrix_ln):
         return (J + J.swapaxes(1, 2).conj()) / 2
 
 
-    def _J_H_ryoo(self,data_K,external_terms=True):
+    def _J_H_ryoo(self, data_K, external_terms=True):
         if not external_terms :
             raise NotImplementedError("spin Hall ryoo without external terms is not implemented yet. Use `SHC_type='simple'`")
         # Spin current operator, J. H. Ryoo et al PRB (2019)

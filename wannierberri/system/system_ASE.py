@@ -31,6 +31,7 @@ class System_ASE(System_w90):
     -----
     see also  parameters of the :class:`~wannierberri.System`
     """
+
     def __init__(
                 self,
                 ase_wannier,

@@ -5,15 +5,17 @@ from wannierberri.result import EnergyResult, KBandResult
 from common import OUTPUT_DIR, REF_DIR
 from common_comparers import error_message
 import numpy as np
-import os, pytest
+import os
+import pytest
 
 
 from common_systems import Efermi_Fe
 
+
 @pytest.fixture
 def check_calculator(compare_any_result):
 
-    def _inner(system,calc,name,dK=[0.1,0.2,0.3],NKFFT=[3,3,3], param_K={},
+    def _inner(system, calc, name, dK=[0.1, 0.2, 0.3], NKFFT=[3, 3, 3], param_K={},
                 precision=-1e-8,
                 compare_zero=False,
                 do_not_compare=False,
@@ -25,7 +27,7 @@ def check_calculator(compare_any_result):
         result = calc(data_K)*factor
 
         filename = "calculator-"+name
-        path_filename=os.path.join(OUTPUT_DIR,filename)
+        path_filename=os.path.join(OUTPUT_DIR, filename)
         result.save(path_filename)
         if do_not_compare:
             return result
@@ -50,7 +52,7 @@ def check_calculator(compare_any_result):
 
 
 
-def test_calc_fder(system_Fe_W90,check_calculator):
+def test_calc_fder(system_Fe_W90, check_calculator):
 
     param = dict(Formula=frml.Identity, Efermi=Efermi_Fe, tetra=False)
     for fder in range(4):
@@ -58,22 +60,24 @@ def test_calc_fder(system_Fe_W90,check_calculator):
         name = f"Fe-ident-fder={fder}"
         check_calculator(system_Fe_W90, calc, name)
 
-def test_tabulator_mul(system_Fe_W90,check_calculator):
+
+def test_tabulator_mul(system_Fe_W90, check_calculator):
     calc=wberri.calculators.tabulate.Energy()
     name = "Fe-tab-energy"
     check_calculator(system_Fe_W90, calc, name, factor=5,  result_type=KBandResult)
 
+
 def test_tab_fit(system_Haldane_PythTB):
     system = system_Haldane_PythTB
     dK = [0.1, 0.2, 0.3]
-    grid = wberri.Grid(system, NKFFT=[3,3,1], NKdiv=1)
+    grid = wberri.Grid(system, NKFFT=[3, 3, 1], NKdiv=1)
     data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
     morb = wberri.calculators.tabulate.OrbitalMoment
     berry = wberri.calculators.tabulate.BerryCurvature
-    noext = dict(kwargs_formula={"external_terms":False})
-    calculators = [[cal(ibands=ib, **noext) for ib in ( [0,],[0,1]) ] for cal in (berry, morb)]
+    noext = dict(kwargs_formula={"external_terms": False})
+    calculators = [[cal(ibands=ib, **noext) for ib in ( [0,], [0, 1]) ] for cal in (berry, morb)]
     results = [[cal[b](data_K) for b in range(2)] for cal in calculators]
-    for ical1,ib1 in wberri.__utility.iterate_nd((2,2)):
+    for ical1, ib1 in wberri.__utility.iterate_nd((2, 2)):
         for ical2,  ib2 in wberri.__utility.iterate_nd((2, 2)):
             r1=results[ical1][ib1]
             r2=results[ical2][ib2]
@@ -86,17 +90,19 @@ def test_tab_fit(system_Haldane_PythTB):
         assert r1.fit(r2),  f"{r1.nband}, {r2.nband}, {r1.fit(r2)}"
         assert r1.data == pytest.approx(r2.data)
 
+
 def test_BD_trace(system_Haldane_PythTB):
     system = system_Haldane_PythTB
     dK = [0.1, 0.2, 0.3]
-    grid = wberri.Grid(system, NKFFT=[3,3,1], NKdiv=1)
+    grid = wberri.Grid(system, NKFFT=[3, 3, 1], NKdiv=1)
     data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
-    noext = dict(kwargs_formula={"external_terms":False})
+    noext = dict(kwargs_formula={"external_terms": False})
     bd = wberri.calculators.tabulate.DerBerryCurvature(**noext)
     result = bd(data_K)
     trace = result.get_component("trace")
     print (f"shape of trace {trace.shape}")
     assert (np.max(abs(trace)))< 1e-10
+
 
 @pytest.fixture
 def check_save_result():
@@ -113,14 +119,16 @@ def check_save_result():
         assert str(result.transformInv) == str(result_read.transformInv)
     return _inner
 
+
 def test_save_KBandResult(system_Haldane_PythTB, check_save_result):
     calc = wberri.calculators.tabulate.Energy()
     check_save_result(system_Haldane_PythTB , calc, result_type=KBandResult)
 
+
 def test_save_KBandResult_add(system_Haldane_PythTB, check_calculator):
     calc1 = wberri.calculators.tabulate.Energy()
     calc2 = wberri.calculators.tabulate.Velocity()
-    calc3 = wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms":False})
+    calc3 = wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms": False})
     res1 = check_calculator(system_Haldane_PythTB, calc1, "dummy", result_type=KBandResult, do_not_compare=True)
     res2 = check_calculator(system_Haldane_PythTB, calc2, "dummy", result_type=KBandResult, do_not_compare=True)
     res3 = check_calculator(system_Haldane_PythTB, calc3, "dummy", result_type=KBandResult, do_not_compare=True)
@@ -138,14 +146,15 @@ def test_save_EnergyResult(system_Haldane_PythTB, check_save_result):
     calc = static.StaticCalculator(**param)
     check_save_result(system_Haldane_PythTB , calc, result_type=EnergyResult)
 
+
 def test_get_transform():
     from wannierberri.symmetry import transform_from_dict
     assert transform_from_dict({"asdasd": "aasd"}, "transformTR") is None
-    assert transform_from_dict({"transformTR":np.array("transform()",dtype=object)},"transformTR") is None
-    assert transform_from_dict({"transformTR":None},"transformTR") is None
+    assert transform_from_dict({"transformTR": np.array("transform()", dtype=object)}, "transformTR") is None
+    assert transform_from_dict({"transformTR": None}, "transformTR") is None
     with pytest.raises(TypeError):
-        transform_from_dict({"transformTR":np.array({"x":5},dtype=object)},"transformTR")
+        transform_from_dict({"transformTR": np.array({"x": 5}, dtype=object)}, "transformTR")
     with pytest.raises(ValueError):
-        transform_from_dict({"transformTR":np.zeros(5)},"transformTR")
+        transform_from_dict({"transformTR": np.zeros(5)}, "transformTR")
     with pytest.raises(ValueError):
-        transform_from_dict({"transformTR":np.array((1,2,3),dtype=object)},"transformTR")
+        transform_from_dict({"transformTR": np.array((1, 2, 3), dtype=object)}, "transformTR")

@@ -5,9 +5,10 @@ import functools
 from collections.abc import Iterable
 from .__result import Result
 
+
 class TABresult(Result):
 
-    def __init__(self, kpoints, recip_lattice, results={},mode="grid",save_mode="frmsf"):
+    def __init__(self, kpoints, recip_lattice, results={}, mode="grid", save_mode="frmsf"):
         self.nband = results['Energy'].nband
         self.mode = mode
         self.grid = None
@@ -16,9 +17,9 @@ class TABresult(Result):
         self.kpoints = np.array(kpoints, dtype=float) % 1
         self.save_mode=save_mode
         self.results = results
-        for k,res in results.items():
+        for k, res in results.items():
             assert len(kpoints) == res.nk
-            if hasattr(res,"nband"):
+            if hasattr(res, "nband"):
                 assert self.nband == res.nband
 
     @property
@@ -69,7 +70,7 @@ class TABresult(Result):
         #TODO: make it cleaner, to work with iterations
         grid = np.zeros(3, dtype=int)
         kp = np.array(self.kpoints)
-        kp = np.concatenate((kp,[[1,1,1]])) # in case only k=0 is used in some direction
+        kp = np.concatenate((kp, [[1, 1, 1]])) # in case only k=0 is used in some direction
         for i in range(3):
             k = np.sort(kp[:, i])
             dk = np.max(k[1:] - k[:-1])
@@ -259,10 +260,10 @@ class TABresult(Result):
                     y[select] = np.log2(abs(y[select]))*np.sign(y[select])
                     y[~select] *= 0.5
                     e1=e[selE]
-                    for col,sel in [("red",(y>0)),("blue",(y<0))]:
+                    for col, sel in [("red", (y>0)), ("blue", (y<0))]:
                         sz = abs(y[sel])*fatfactor
                         sz[sz>fatmax] = fatmax
-                        plt.scatter(klineselE[sel],e1[sel],s=sz,color=col)
+                        plt.scatter(klineselE[sel], e1[sel], s=sz, color=col)
             else :
                 raise ValueError("So far only fatband mode is implemented")
 
@@ -293,6 +294,7 @@ class TABresult(Result):
     def max(self):
         return np.array([-1.])  # tabulating does not contribute to adaptive refinement
 
+
 def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
     if len(suffix) > 0:
         suffix = "-" + suffix
@@ -313,6 +315,7 @@ def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
         ttxt = 0
         twrite = 0
     return ttxt, twrite
+
 
 def _savetxt(limits=None, a=None, fmt=".8f", npar=0):
     assert a.ndim == 1, "only 1D arrays are supported. found shape{}".format(a.shape)

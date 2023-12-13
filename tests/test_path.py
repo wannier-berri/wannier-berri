@@ -9,6 +9,7 @@ from wannierberri.calculators import TabulatorAll
 
 from common import OUTPUT_DIR, REF_DIR
 
+
 def test_path_1(system_Haldane_PythTB):
     # Test the construction of Path class
     k_nodes = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
@@ -64,7 +65,7 @@ def test_path_4(system_Haldane_PythTB):
 
 
 def test_tabulate_path(system_Haldane_PythTB, check_run):
-    param_tab = {'degen_thresh': 5e-2,}
+    param_tab = {'degen_thresh': 5e-2, }
     no_external = dict(kwargs_formula={"external_terms": False }, )
 
     calculators = {}
@@ -122,7 +123,7 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
         for comp in tab_result.results.get(quant).get_component_list():
             _data = data[(quant, comp)]
             if comp=="trace" and (quant, comp) not in data_ref:
-                _data_ref = data_ref[(quant,"xx")]+data_ref[(quant,"yy")]+data_ref[(quant,"zz")]
+                _data_ref = data_ref[(quant, "xx")]+data_ref[(quant, "yy")]+data_ref[(quant, "zz")]
             else:
                 _data_ref = data_ref[(quant, comp)]
             assert _data == approx(_data_ref), (

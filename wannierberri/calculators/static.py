@@ -18,10 +18,11 @@ from copy import copy
 # The base class for Static Calculators
 # particular calculators are below
 
+
 class StaticCalculator(Calculator):
 
     def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={},
-            Emin=-np.Inf, Emax=np.Inf, hole_like=False, k_resolved=False, Formula=None, fder=None,**kwargs):
+            Emin=-np.Inf, Emax=np.Inf, hole_like=False, k_resolved=False, Formula=None, fder=None, **kwargs):
         self.Efermi = Efermi
         self.Emin=Emin
         self.Emax=Emax
@@ -112,7 +113,7 @@ class StaticCalculator(Calculator):
                     restot[ik_to_result(ik)] += np.einsum("e,...->e...", w, valuesik[n])
         else:
             # no tetrahedron
-            restot = np.zeros((nk_result,self.nEF_extra, ) + shape)
+            restot = np.zeros((nk_result, self.nEF_extra, ) + shape)
             for ik, weights in enumerate(weights):
                 valuesik = values[ik]
                 for n, E in sorted(weights.items()):
@@ -120,7 +121,7 @@ class StaticCalculator(Calculator):
                         restot[ik_to_result(ik)] += valuesik[n][None]
                     elif E <= self.EFmax:
                         iEf = ceil((E - self.EFmin) / self.dEF)
-                        restot[ik_to_result(ik),iEf:] += valuesik[n]
+                        restot[ik_to_result(ik), iEf:] += valuesik[n]
             if self.fder == 0:
                 pass
             elif self.fder == 1:
@@ -178,9 +179,10 @@ from ..__utility import alpha_A, beta_A
 # basic quantities #
 ####################
 
+
 class _DOS(StaticCalculator):
 
-    def __init__(self, fder,**kwargs):
+    def __init__(self, fder, **kwargs):
         self.Formula = frml.Identity
         self.fder = fder
         super().__init__(**kwargs)
@@ -231,7 +233,7 @@ class Morb(StaticCalculator):
 
     def __call__(self, data_K):
         Hplus_res = super().__call__(data_K)
-        Omega_res = self.AHC(data_K).mul_array(self.Efermi,axes=0)
+        Omega_res = self.AHC(data_K).mul_array(self.Efermi, axes=0)
         Hplus_res.add( - 2 * Omega_res)
         return Hplus_res  * data_K.cell_volume
 
@@ -244,7 +246,7 @@ class Morb_test(Morb):
         self.comment = r"""Orbital magnetic moment per unit cell for testing (\mu_B)
         Output:
         :math: `M = -\int [dk] (H + G - 2E_f \cdot \Omega) f`"""
-        StaticCalculator.__init__(self,constant_factor=constant_factor, **kwargs)
+        StaticCalculator.__init__(self, constant_factor=constant_factor, **kwargs)
         self.AHC = AHC_test(constant_factor=constant_factor, print_comment=False, **kwargs)
 
 

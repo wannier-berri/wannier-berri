@@ -2,6 +2,7 @@ from scipy.constants import Boltzmann, elementary_charge
 import abc
 import numpy as np
 
+
 class AbstractSmoother(abc.ABC):
     """ Smoother for smoothing an array by convolution.
     This is an abstract class which cannot by instantiated. Only the specific child classes

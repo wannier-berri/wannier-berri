@@ -92,7 +92,7 @@ class Orbitals():
 
 
 
-    def num_orbitals(self,orb_symbol):
+    def num_orbitals(self, orb_symbol):
         return len(self.orb_function_dic[orb_symbol])
 
 
@@ -111,7 +111,7 @@ class Orbitals():
             equation = (self.orb_function_dic[orb_symbol][i](xp, yp, zp)).expand()
             for j in range(OC_len):
                 eq_tmp = equation.subs(OC[j], 1)
-                for j_add in range(1,OC_len):
+                for j_add in range(1, OC_len):
                     eq_tmp = eq_tmp.subs(OC[(j + j_add) % OC_len], 0)
                 subs.append(eq_tmp)
             if orb_symbol in ['sp3d2']:
@@ -119,7 +119,7 @@ class Orbitals():
                 equation_plus = (self.orb_function_dic[orb_symbol + '_plus'][i](xp, yp, zp)).expand()
                 for k in range(OC_plus_len):
                     eq_tmp = equation_plus.subs(OC_plus[k], 1)
-                    for k_add in range(1,OC_plus_len):
+                    for k_add in range(1, OC_plus_len):
                         eq_tmp = eq_tmp.subs(OC_plus[(k + k_add) % OC_plus_len], 0)
                     subs_plus.append(eq_tmp)
 

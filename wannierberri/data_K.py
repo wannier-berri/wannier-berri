@@ -9,7 +9,7 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 
 # TODO : maybe to make some lazy_property's not so lazy to save some memory
 import numpy as np
@@ -23,6 +23,7 @@ from .grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands
 from . import formula
 from .grid import KpointBZparallel, KpointBZtetra
 from .symmetry import transform_ident, transform_odd
+
 
 def _rotate_matrix(X):
     return X[1].T.conj().dot(X[0]).dot(X[1])
@@ -45,7 +46,6 @@ def get_transform_Inv(name, der=0):
         return transform_ident
 
 
-
 def get_transform_TR(name, der=0):
     """returns transformation of quantity is under TR, (after a real trace is taken, if appropriate)
     False otherwise
@@ -64,9 +64,7 @@ def get_transform_TR(name, der=0):
         return transform_ident
 
 
-
-class _Data_K(System,abc.ABC):
-
+class _Data_K(System, abc.ABC):
     default_parameters = {
         # Those are not used at the moment, but will be restored (TODO):
         # 'frozen_max': -np.Inf,
@@ -97,7 +95,7 @@ class _Data_K(System,abc.ABC):
         library used to perform fft : 'fftw' (defgault) or 'numpy' or 'slow'
     """.format(**default_parameters)
 
-    #Those are not used at the moment , but will be restored (TODO):
+    # Those are not used at the moment , but will be restored (TODO):
     #    frozen_max : float
     #        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
     #        If not specified, attempts to read this value from system. Othewise set to  ``{frozen_max}``
@@ -111,7 +109,7 @@ class _Data_K(System,abc.ABC):
         self.grid = grid
         self.NKFFT = grid.FFT
         self.select_K = np.ones(self.nk, dtype=bool)
-#        self.findif = grid.findif
+        #        self.findif = grid.findif
         self.real_lattice = system.real_lattice
         self.num_wann = self.system.num_wann
         self.Kpoint = Kpoint
@@ -133,24 +131,22 @@ class _Data_K(System,abc.ABC):
             if param not in self.default_parameters:
                 print(f"WARNING: parameter {param} was passed to data_K, which is not recognised")
 
-###########################################
-#   Now the **_R objects are evaluated only on demand
-# - as Lazy_property (if used more than once)
-#   as property   - iif used only once
-#   let's write them explicitly, for better code readability
-###########################
+    ###########################################
+    #   Now the **_R objects are evaluated only on demand
+    # - as Lazy_property (if used more than once)
+    #   as property   - iif used only once
+    #   let's write them explicitly, for better code readability
+    ###########################
 
     @property
     def is_phonon(self):
         return self.system.is_phonon
 
+    ###############################################################
 
-
-###############################################################
-
-###########
-#  TOOLS  #
-###########
+    ###########
+    #  TOOLS  #
+    ###########
 
     def _rotate(self, mat):
         print_my_name_start()
@@ -162,10 +158,9 @@ class _Data_K(System,abc.ABC):
                 mat[..., i] = self._rotate(mat[..., i])
             return mat
 
-
-#####################
-#  Basic variables  #
-#####################
+    #####################
+    #  Basic variables  #
+    #####################
 
     @lazy_property.LazyProperty
     def nbands(self):
@@ -181,14 +176,15 @@ class _Data_K(System,abc.ABC):
 
     @lazy_property.LazyProperty
     def tetraWeights(self):
-        if isinstance(self.Kpoint,KpointBZparallel):
-            return TetraWeightsParal(eCenter=self.E_K, eCorners=self.E_K_corners_parallel() )
+        if isinstance(self.Kpoint, KpointBZparallel):
+            return TetraWeightsParal(eCenter=self.E_K, eCorners=self.E_K_corners_parallel())
         elif isinstance(self.Kpoint, KpointBZtetra):
-            return TetraWeights(eCenter=self.E_K, eCorners=self.E_K_corners_tetra() )
+            return TetraWeights(eCenter=self.E_K, eCorners=self.E_K_corners_tetra())
         else:
             raise RuntimeError()
 
-    def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False, Emin=-np.Inf, Emax=np.Inf):
+    def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False,
+                                     Emin=-np.Inf, Emax=np.Inf):
         bands_in_range = get_bands_in_range(
             emin, emax, self.E_K[ik], degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)
         weights = {(ib1, ib2): self.E_K[ik, ib1:ib2].mean() for ib1, ib2 in bands_in_range}
@@ -200,49 +196,47 @@ class _Data_K(System,abc.ABC):
                 weights[(0, bandmax)] = -np.Inf
         return weights
 
-    def get_bands_in_range_groups(self, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False, Emin=-np.Inf, Emax=np.Inf):
+    def get_bands_in_range_groups(self, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False, Emin=-np.Inf,
+                                  Emax=np.Inf):
         res = []
         for ik in range(self.nk):
-            res.append(self.get_bands_in_range_groups_ik(ik, emin, emax, degen_thresh, degen_Kramers, sea, Emin=Emin, Emax=Emax))
+            res.append(self.get_bands_in_range_groups_ik(ik, emin, emax, degen_thresh, degen_Kramers, sea, Emin=Emin,
+                                                         Emax=Emax))
         return res
 
-###################################################
-#  Basic variables and their standard derivatives #
-###################################################
+    ###################################################
+    #  Basic variables and their standard derivatives #
+    ###################################################
 
-
-    def select_bands(self,energies):
-        if hasattr(self,'bands_selected'):
+    def select_bands(self, energies):
+        if hasattr(self, 'bands_selected'):
             return
-        energies = energies.reshape( (energies.shape[0], -1, energies.shape[-1]) )
-        select = np.any(energies > self.Emin,axis=1) * np.any(energies < self.Emax,axis=1)
+        energies = energies.reshape((energies.shape[0], -1, energies.shape[-1]))
+        select = np.any(energies > self.Emin, axis=1) * np.any(energies < self.Emax, axis=1)
         self.select_K = np.any(select, axis=1)
         self.select_B = np.any(select, axis=0)
         self.nk_selected = self.select_K.sum()
         self.nb_selected = self.select_B.sum()
         self.bands_selected = True
 
-
     @lazy_property.LazyProperty
     def E_K(self):
         print_my_name_start()
         EUU = self.poolmap(np.linalg.eigh, self.HH_K)
         E_K = self.phonon_freq_from_square(np.array([euu[0] for euu in EUU]))
-#        print ("E_K = ",E_K.min(), E_K.max(), E_K.mean())
+        #        print ("E_K = ",E_K.min(), E_K.max(), E_K.mean())
         self.select_bands(E_K)
         self._UU = np.array([euu[1] for euu in EUU])[self.select_K, :][:, self.select_B]
         print_my_name_end()
         return E_K[self.select_K, :][:, self.select_B]
 
-
     # evaluate the energies in the corners of the parallelepiped, in order to use tetrahedron method
 
-
-    def phonon_freq_from_square(self,E):
+    def phonon_freq_from_square(self, E):
         """takes  sqrt(|E|)*sign(E) for phonons, returns input for electrons"""
         if self.is_phonon:
             e = np.sqrt(np.abs(E))
-            e[E<0] = -e[E<0]
+            e[E < 0] = -e[E < 0]
             return e
         else:
             return E
@@ -260,7 +254,6 @@ class _Data_K(System,abc.ABC):
         if check > 1e-10: raise RuntimeError(f"The band derivatives have considerable imaginary part: {check}")
         return delE_K.real
 
-
     def covariant(self, name, commader=0, gender=0, save=True):
         assert commader * gender == 0, "cannot mix comm and generalized derivatives"
         key = (name, commader, gender)
@@ -270,7 +263,7 @@ class _Data_K(System,abc.ABC):
                     self.Xbar(name, commader),
                     transformTR=get_transform_TR(name, commader),
                     transformInv=get_transform_Inv(name, commader),
-                                        )
+                )
             elif gender == 1:
                 if name == 'Ham':
                     res = self.V_covariant
@@ -281,7 +274,7 @@ class _Data_K(System,abc.ABC):
                         self.Dcov,
                         transformTR=get_transform_TR(name, gender),
                         transformInv=get_transform_Inv(name, gender)
-                                                )
+                    )
             else:
                 raise NotImplementedError()
             if not save:
@@ -296,7 +289,7 @@ class _Data_K(System,abc.ABC):
         class V(formula.Matrix_ln):
 
             def __init__(self, matrix):
-                super().__init__(matrix, transformTR=transform_odd,transformInv=transform_odd)
+                super().__init__(matrix, transformTR=transform_odd, transformInv=transform_odd)
 
             def ln(self, ik, inn, out):
                 return np.zeros((len(out), len(inn), 3), dtype=complex)
@@ -317,15 +310,14 @@ class _Data_K(System,abc.ABC):
         dEig[select] = 0.
         return dEig
 
-
-#    defining sets of degenerate states - needed only for testing with random_gauge
+    #    defining sets of degenerate states - needed only for testing with random_gauge
 
     @lazy_property.LazyProperty
     def degen(self):
         A = [np.where(E[1:] - E[:-1] > self.degen_thresh_random_gauge)[0] + 1 for E in self.E_K]
         A = [[
-            0,
-        ] + list(a) + [len(E)] for a, E in zip(A, self.E_K)]
+                 0,
+             ] + list(a) + [len(E)] for a, E in zip(A, self.E_K)]
         return [[(ib1, ib2) for ib1, ib2 in zip(a, a[1:]) if ib2 - ib1 > 1] for a in A]
 
     @lazy_property.LazyProperty
@@ -360,14 +352,11 @@ class _Data_K(System,abc.ABC):
         return 1j * self.D_H
 
 
-
 #########################################################################################################################################
 
 
 class Data_K_R(_Data_K):
-
     """ The Data_K class for systems defined by R-space matrix elements (Wannier/TB)"""
-
 
     def __init__(self, system, dK, grid, **parameters):
         super().__init__(system, dK, grid, **parameters)
@@ -387,14 +376,12 @@ class Data_K_R(_Data_K):
         self._covariant_quantities = {}
         self._XX_R = {}
 
-
     @property
     def HH_K(self):
         return self.fft_R_to_k(self.Ham_R, hermitean=True)
 
-
-    def get_R_mat(self,key):
-        memoize_R = ['Ham','AA','OO','BB','CC','CCab']
+    def get_R_mat(self, key):
+        memoize_R = ['Ham', 'AA', 'OO', 'BB', 'CC', 'CCab']
         try:
             return self._XX_R[key]
         except KeyError:
@@ -408,13 +395,12 @@ class Data_K_R(_Data_K):
                 res = self._T_wcc_R()
             else:
                 X_R = self.system.get_R_mat(key)
-                shape = [1]*X_R.ndim
-                shape[2]=self.expdK.shape[0]
-                res = X_R* self.expdK.reshape(shape)
+                shape = [1] * X_R.ndim
+                shape[2] = self.expdK.shape[0]
+                res = X_R * self.expdK.reshape(shape)
             if key in memoize_R:
-                self.set_R_mat(key,res)
+                self.set_R_mat(key, res)
         return res
-
 
     #  this is a bit ovberhead, but to maintain uniformity of the code let's use this
     def _T_wcc_R(self):
@@ -426,8 +412,8 @@ class Data_K_R(_Data_K):
     def _OO_R(self):
         # We do not multiply by expdK, because it is already accounted in AA_R
         return 1j * (
-            self.cRvec_wcc[:, :, :, alpha_A] * self.get_R_mat('AA')[:, :, :, beta_A]
-            - self.cRvec_wcc[:, :, :, beta_A] * self.get_R_mat('AA')[:, :, :, alpha_A])
+                self.cRvec_wcc[:, :, :, alpha_A] * self.get_R_mat('AA')[:, :, :, beta_A]
+                - self.cRvec_wcc[:, :, :, beta_A] * self.get_R_mat('AA')[:, :, :, alpha_A])
 
     def _CCab_R(self):
         if self._CCab_antisym:
@@ -451,7 +437,6 @@ class Data_K_R(_Data_K):
                 self.get_R_mat(name).copy(), der=der, hermitean=(name in ['AA', 'SS', 'OO']))
         return self._bar_quantities[key]
 
-
     def _R_to_k_H(self, XX_R, der=0, hermitean=True):
         """ converts from real-space matrix elements in Wannier gauge to
             k-space quantities in k-space.
@@ -461,26 +446,26 @@ class Data_K_R(_Data_K):
 
         for i in range(der):
             shape_cR = np.shape(self.cRvec_wcc)
-            XX_R = 1j * XX_R.reshape((XX_R.shape) + (1, )) * self.cRvec_wcc.reshape(
-                (shape_cR[0], shape_cR[1], self.system.nRvec) + (1, ) * len(XX_R.shape[3:]) + (3, ))
+            XX_R = 1j * XX_R.reshape((XX_R.shape) + (1,)) * self.cRvec_wcc.reshape(
+                (shape_cR[0], shape_cR[1], self.system.nRvec) + (1,) * len(XX_R.shape[3:]) + (3,))
         return self._rotate((self.fft_R_to_k(XX_R, hermitean=hermitean))[self.select_K])
 
     def E_K_corners_tetra(self):
         vertices = self.Kpoint.vertices_fullBZ
-        expdK = np.exp(  2j * np.pi * self.system.iRvec.dot(
-               vertices.T) ).T  # we omit the wcc phases here, because they do not affect the energies
+        expdK = np.exp(2j * np.pi * self.system.iRvec.dot(
+            vertices.T)).T  # we omit the wcc phases here, because they do not affect the energies
         _Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
-        for iv,_exp in enumerate(expdK):
+        for iv, _exp in enumerate(expdK):
             _Ham_R = self.Ham_R[:, :, :] * _exp[None, None, :]
             _HH_K = self.fft_R_to_k(_Ham_R, hermitean=True)
             _Ecorners[:, iv, :] = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
         self.select_bands(_Ecorners)
         Ecorners = np.zeros((self.nk_selected, 4, self.nb_selected), dtype=float)
-        for iv,_exp in enumerate(expdK):
+        for iv, _exp in enumerate(expdK):
             Ecorners[:, iv, :] = _Ecorners[:, iv, :][self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
         print_my_name_end()
-#        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
+        #        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
         return Ecorners
 
     def E_K_corners_parallel(self):
@@ -500,13 +485,12 @@ class Data_K_R(_Data_K):
                     Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
         print_my_name_end()
-#        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
+        #        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
         return Ecorners
 
 
 class Data_K_k(_Data_K):
     """ The Data_K class for systems defined by k-dependent Hamiltonians  (kp)"""
-
 
     @property
     def HH_K(self):
@@ -517,34 +501,33 @@ class Data_K_k(_Data_K):
         if name != 'Ham':
             raise ValueError(f'quantity {name} is not defined for a kp model')
         if key not in self._bar_quantities:
-            if der==0:
+            if der == 0:
                 raise RuntimeError("Why is `Ham` called through Xbar, are you sure?")
                 X = self.HH_K
             else:
                 if der == 1:
                     fun = self.system.derHam
-                elif der == 2 :
+                elif der == 2:
                     fun = self.system.der2Ham
-                elif der == 3 :
+                elif der == 3:
                     fun = self.system.der3Ham
                 X = np.array([fun(k) for k in self.kpoints_all])
             self._bar_quantities[key] = self._rotate(X)[self.select_K]
         return self._bar_quantities[key]
 
-
     def E_K_corners_tetra(self):
         vertices = self.Kpoint.vertices_fullBZ
         _Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
-        for iv,v in enumerate(vertices):
-            _HH_K = np.array([self.system.Ham(k+v) for k in self.kpoints_all])
+        for iv, v in enumerate(vertices):
+            _HH_K = np.array([self.system.Ham(k + v) for k in self.kpoints_all])
             _Ecorners[:, iv, :] = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
         self.select_bands(_Ecorners)
         Ecorners = np.zeros((self.nk_selected, 4, self.nb_selected), dtype=float)
-        for iv,v in enumerate(vertices):
+        for iv, v in enumerate(vertices):
             Ecorners[:, iv, :] = _Ecorners[:, iv, :][self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
         print_my_name_end()
-#        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
+        #        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
         return Ecorners
 
     def E_K_corners_parallel(self):
@@ -553,19 +536,18 @@ class Data_K_k(_Data_K):
         for ix in 0, 1:
             for iy in 0, 1:
                 for iz in 0, 1:
-                    v = (np.array([ix,iy,iz])-0.5)*dK
-                    _HH_K = np.array([self.system.Ham(k+v) for k in self.kpoints_all])
+                    v = (np.array([ix, iy, iz]) - 0.5) * dK
+                    _HH_K = np.array([self.system.Ham(k + v) for k in self.kpoints_all])
                     E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
                     Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
         print_my_name_end()
-#        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
+        #        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
         return Ecorners
 
 
-
-def get_data_k(system, dK, grid,  **parameters):
-    if isinstance(system,SystemKP):
-        return Data_K_k(system,dK,grid,  **parameters)
+def get_data_k(system, dK, grid, **parameters):
+    if isinstance(system, SystemKP):
+        return Data_K_k(system, dK, grid, **parameters)
     else:
         return Data_K_R(system, dK, grid, **parameters)

@@ -10,7 +10,7 @@ class K__Result(Result):
     def __init__(self, data=None, transformTR=None, transformInv=None, file_npz=None, rank=None, other_properties={}):
         assert (data is not None) or (file_npz is not None)
         if file_npz is not None:
-            res = np.load(open(file_npz, "rb"),allow_pickle=True)
+            res = np.load(open(file_npz, "rb"), allow_pickle=True)
             self.__init__(
                 data=res['data'],
                 transformTR=transform_from_dict(res, 'transformTR'),
@@ -59,8 +59,8 @@ class K__Result(Result):
                             other_properties=self.other_properties
                             )
 
-    def add(self,other):
-        self.data_list = [d1+d2 for d1,d2 in zip(self.data_list, other.data_list)]
+    def add(self, other):
+        self.data_list = [d1+d2 for d1, d2 in zip(self.data_list, other.data_list)]
 
 
 
@@ -192,7 +192,7 @@ class K__Result(Result):
                 try:
                     return _data[tuple([xyz[c] for c in component])]
                 except IndexError as err:
-                    raise NoComponentError(component, 2,err)
+                    raise NoComponentError(component, 2, err)
 
 
 class KBandResult(K__Result):
@@ -218,10 +218,11 @@ class KBandResult(K__Result):
                             other_properties=self.other_properties
                             )
 
+
 class NoComponentError(RuntimeError):
 
     def __init__(self, comp, dim, err=""):
         # Call the base class constructor with the parameters it needs
-        super().__init__("component {} does not exist for tensor with dimension {} :\n{}".format(comp, dim,err))
+        super().__init__("component {} does not exist for tensor with dimension {} :\n{}".format(comp, dim, err))
 
 

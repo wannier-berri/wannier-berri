@@ -4,6 +4,7 @@ from ..symmetry import transform_from_dict
 from ..smoother import VoidSmoother
 from .__result import Result
 
+
 class EnergyResult(Result):
     """A class to store data dependent on several energies, e.g. Efermi and Omega
       Energy may also be an empty list, then the quantity does not depend on any energy (does it work?)
@@ -50,7 +51,7 @@ class EnergyResult(Result):
             file_npz=None,
             comment="undocumented"):
         if file_npz is not None:
-            res = np.load(open(file_npz, "rb"),allow_pickle=True)
+            res = np.load(open(file_npz, "rb"), allow_pickle=True)
             energ = [
                 res[f'Energies_{i}'] for i, _ in enumerate(res['E_titles'])
             ]  # in binary mode energies are just two arrays
@@ -64,8 +65,8 @@ class EnergyResult(Result):
                 data=res['data'],
                 smoothers=smoothers,
                 # TODO : transform the old Iodd.TRodd,TRtrans into new transformators (if needeed))
-                transformTR=transform_from_dict(res,'transformTR'),
-                transformInv=transform_from_dict(res,'transformInv'),
+                transformTR=transform_from_dict(res, 'transformTR'),
+                transformInv=transform_from_dict(res, 'transformInv'),
                 rank=res['rank'],
                 E_titles=list(res['E_titles']),
                 comment=comment)
@@ -143,7 +144,7 @@ class EnergyResult(Result):
                 E_titles=self.E_titles,
                 comment=self.comment)
         else:
-            raise TypeError("result can only be multilied by a number")
+            raise TypeError("result can only be multiplied by a number")
 
     def __truediv__(self, number):
         return self * (1. / number)
@@ -175,7 +176,7 @@ class EnergyResult(Result):
             E_titles=self.E_titles,
             comment=comment)
 
-    def add(self,other):
+    def add(self, other):
         self.data+=other.data
 
     def __sub__(self, other):

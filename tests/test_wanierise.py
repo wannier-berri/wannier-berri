@@ -1,7 +1,8 @@
 import wannierberri as wberri
 import numpy as np
 
-def test_disentangle(system_Fe_W90_disentangle,system_Fe_W90_proj_ws):
+
+def test_disentangle(system_Fe_W90_disentangle, system_Fe_W90_proj_ws):
     """
     tests that the two systems give similar eigenvalues aalong the path
     """
@@ -27,8 +28,8 @@ def test_disentangle(system_Fe_W90_disentangle,system_Fe_W90_proj_ws):
                        length=200)  # length [ Ang] ~= 2*pi/dk
 
     energies=[]
-    for system in system_Fe_W90_disentangle,system_Fe_W90_proj_ws:
-        print ("Wannier Centers\n",np.round(system.wannier_centers_reduced,decimals=4))
+    for system in system_Fe_W90_disentangle, system_Fe_W90_proj_ws:
+        print ("Wannier Centers\n", np.round(system.wannier_centers_reduced, decimals=4))
         result = wberri.run(system,
                         grid=path,
                         calculators={"tabulate": tab_all_path},
@@ -38,7 +39,7 @@ def test_disentangle(system_Fe_W90_disentangle,system_Fe_W90_proj_ws):
     select = energies[1] < 18
     diff = abs(energies[1][select] - energies[0][select])
     # the precidsion is not very high here, although the two codes are assumed to do the same. Not sure why..
-    d,acc = np.max(diff), 0.2
+    d, acc = np.max(diff), 0.2
     assert d<acc, f"the interpolated bands differ from w90 interpolation by max {d}>{acc}"
-    d,acc = np.mean(diff)/diff.size, 0.05
+    d, acc = np.mean(diff)/diff.size, 0.05
     assert d<acc, f"the interpolated bands on average differ from w90 interpolation by {d}>{acc}"

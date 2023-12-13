@@ -9,14 +9,15 @@ available_quantities = {
     "energy": tabulate.Energy(print_comment=False),
     "band_gradients": tabulate.Velocity(print_comment=False, kwargs_formula={"external_terms": False}),
     "berry_curvature": tabulate.BerryCurvature(print_comment=False),
-    "berry_curvature_internal_terms": tabulate.BerryCurvature(kwargs_formula={"external_terms": False},print_comment=False),
-    "berry_curvature_external_terms": tabulate.BerryCurvature(kwargs_formula={"internal_terms": False},print_comment=False),
+    "berry_curvature_internal_terms": tabulate.BerryCurvature(kwargs_formula={"external_terms": False}, print_comment=False),
+    "berry_curvature_external_terms": tabulate.BerryCurvature(kwargs_formula={"internal_terms": False}, print_comment=False),
                         }
 
 comments = {
     "berry_curvature_internal_terms": "only the internal terms are evaluated",
     "berry_curvature_external_terms": "only the external terms are evaluated",
 }
+
 
 def help():
     hlp = "Available named quantities:\n"
@@ -28,7 +29,7 @@ def help():
 
 
 def evaluate_k( system=None,
-                k=[0.,0.,0.],
+                k=[0., 0., 0.],
                 quantities=[],
                 calculators={},
                 formula={},
@@ -83,11 +84,11 @@ def evaluate_k( system=None,
     grid = Grid(system, NK=1, NKFFT=1)
     data_k = get_data_k(system, grid=grid, dK=k, **parameters_K)
 
-    result = {c:calc(data_k) for c,calc in calculators.items()}
+    result = {c: calc(data_k) for c, calc in calculators.items()}
 
     if iband is None:
         iband = np.arange(system.num_wann)
-    if not isinstance(iband,Iterable):
+    if not isinstance(iband, Iterable):
         iband = [iband]
     iband_out = sorted(np.array(list(set(range(system.num_wann))-set(iband))))
 
@@ -102,9 +103,9 @@ def evaluate_k( system=None,
     _param_formula = defaultdict(lambda : {} )
     _param_formula.update(param_formula)
 
-    for k,f in formula.items():
-        form = f(data_k,**_param_formula[k])
-        result[k] = form.nn(0,iband,iband_out)
+    for k, f in formula.items():
+        form = f(data_k, **_param_formula[k])
+        result[k] = form.nn(0, iband, iband_out)
 
     if not return_single_as_dict:
         if len(result) == 1:

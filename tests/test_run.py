@@ -112,7 +112,7 @@ calculators_Fe = {
 
 calculators_phonons = {
     'dos': calc.static.DOS,
-    'cumdos':calc.static.CumDOS,
+    'cumdos': calc.static.CumDOS,
 }
 
 
@@ -158,14 +158,14 @@ parameters_Chiral_optical = dict(
 parameters_Chiral_shiftcurrent = dict( sc_eta=0.1 )
 
 calculators_Chiral = {
-    'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral,smoother=smoother_Chiral),
-    'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral),
-    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False},smoother=smoother_Chiral),
+    'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, smoother=smoother_Chiral),
+    'conductivity_ohmic_fsurf': calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral),
+    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}, smoother=smoother_Chiral),
     'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}),
-    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False},smoother=smoother_Chiral),
-    'Der3E':calc.static.NLDrude_FermiSea(Efermi=Efermi_Chiral),
-    'Hall_classic_fsurf':calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral),
-    'Hall_classic':calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral),
+    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False}, smoother=smoother_Chiral),
+    'Der3E': calc.static.NLDrude_FermiSea(Efermi=Efermi_Chiral),
+    'Hall_classic_fsurf': calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral),
+    'Hall_classic': calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral),
     'dos': calc.static.DOS(Efermi=Efermi_Chiral),
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral),
     'opt_conductivity' : wberri.calculators.dynamic.OpticalConductivity(**parameters_Chiral_optical),
@@ -177,16 +177,16 @@ calculators_Chiral = {
 
 calculators_Chiral_tetra = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
-    'conductivity_ohmic_fsurf':calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
+    'conductivity_ohmic_fsurf': calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
     'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
     'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
     'ahc': calc.static.AHC(Efermi=Efermi_Chiral, tetra=True, kwargs_formula={"external_terms": False}),
-    'Der3E':calc.static.NLDrude_FermiSea(Efermi=Efermi_Chiral, tetra=True),
-    'Hall_classic_fsurf':calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
-    'Hall_classic':calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
+    'Der3E': calc.static.NLDrude_FermiSea(Efermi=Efermi_Chiral, tetra=True),
+    'Hall_classic_fsurf': calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
+    'Hall_classic': calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
     'dos': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral, tetra=True),
-    'spin': wberri.calculators.static.Spin(Efermi=Efermi_Chiral,tetra=True),
+    'spin': wberri.calculators.static.Spin(Efermi=Efermi_Chiral, tetra=True),
 }
 
 
@@ -267,7 +267,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             precision=-1e-8,
             result_type=EnergyResult)
 
-    extra_precision = {'Morb': 1e-6, 'Der_berry':5e-8}
+    extra_precision = {'Morb': 1e-6, 'Der_berry': 5e-8}
     for quant in result.results.get("tabulate").results.keys(): # ["Energy", "berry","Der_berry","spin","morb"]:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
             _quant = "E" if quant == "Energy" else quant
@@ -338,11 +338,11 @@ def test_Fe_dynamic_noband(check_run, system_Fe_W90, compare_any_result):
 
 
 def test_Fe_wcc(check_run, system_Fe_W90_wcc, compare_any_result):
-    param_kwargs = {'Efermi': Efermi_Fe, 'kwargs_formula':{'correction_wcc': True}}
+    param_kwargs = {'Efermi': Efermi_Fe, 'kwargs_formula': {'correction_wcc': True}}
     param = {'Efermi': Efermi_Fe}
     calculators = {}
     for k, v in calculators_Fe.items():
-        if k in ['dos','cumdos','conductivity_ohmic', 'conductivity_ohmic_fsurf','spin']:
+        if k in ['dos', 'cumdos', 'conductivity_ohmic', 'conductivity_ohmic_fsurf', 'spin']:
             calculators[k] =  v(**param)
         else:
             calculators[k] =  v(**param_kwargs)
@@ -404,12 +404,12 @@ def test_Fe_set_spin(check_run, system_Fe_W90_proj_set_spin, compare_any_result)
                   }
 
     parameters_shc = dict(
-                            Efermi=np.array([Efermi_Fe[0],Efermi_Fe[-1]]), omega=np.arange(0.0, 7.1, 1.0),
+                            Efermi=np.array([Efermi_Fe[0], Efermi_Fe[-1]]), omega=np.arange(0.0, 7.1, 1.0),
                             smr_fixed_width=0.20, smr_type="Gaussian",
                             SHC_type="simple"
                          )
-    calculators['opt_SHCsimple'] = wberri.calculators.dynamic.SHC(kwargs_formula={"external_terms":True},**parameters_shc)
-    calculators['opt_SHCsimple_internal'] = wberri.calculators.dynamic.SHC(kwargs_formula={"external_terms":False},**parameters_shc)
+    calculators['opt_SHCsimple'] = wberri.calculators.dynamic.SHC(kwargs_formula={"external_terms": True}, **parameters_shc)
+    calculators['opt_SHCsimple_internal'] = wberri.calculators.dynamic.SHC(kwargs_formula={"external_terms": False}, **parameters_shc)
 
     check_run(
         system_Fe_W90_proj_set_spin,
@@ -437,13 +437,13 @@ def test_Fe_FPLO(check_run, system_Fe_FPLO, compare_any_result):
 
 def test_Fe_FPLO_wcc(check_run, system_Fe_FPLO_wcc, compare_any_result):
     param = {'Efermi': Efermi_Fe_FPLO}
-    param_kwargs = {'Efermi': Efermi_Fe_FPLO, 'kwargs_formula':{"external_terms": False}}
+    param_kwargs = {'Efermi': Efermi_Fe_FPLO, 'kwargs_formula': {"external_terms": False}}
     for k, v in calculators_Fe.items():
-        if k in ['ahc','ahc_test','Morb','Morb_test']:
+        if k in ['ahc', 'ahc_test', 'Morb', 'Morb_test']:
             calculators = {k: v(**param_kwargs)}
         else:
             calculators = {k: v(**param)}
-    calculators.update({'spin':calc.static.Spin(**param)})
+    calculators.update({'spin': calc.static.Spin(**param)})
     check_run(
         system_Fe_FPLO_wcc,
         calculators,
@@ -457,10 +457,10 @@ def test_Fe_FPLO_wcc(check_run, system_Fe_FPLO_wcc, compare_any_result):
 
 
 def test_Fe_FPLO_wcc_ext(check_run, system_Fe_FPLO_wcc, compare_any_result):
-    param_kwargs = {'Efermi': Efermi_Fe_FPLO, 'kwargs_formula':{
+    param_kwargs = {'Efermi': Efermi_Fe_FPLO, 'kwargs_formula': {
         "internal_terms": False, "external_terms": True}}
     for k, v in calculators_Fe.items():
-        if k in ['ahc','ahc_test','Morb','Morb_test']:
+        if k in ['ahc', 'ahc_test', 'Morb', 'Morb_test']:
             calculators = {k: v(**param_kwargs)}
     check_run(
         system_Fe_FPLO_wcc,
@@ -478,13 +478,13 @@ def test_Fe_FPLO_wcc_ext(check_run, system_Fe_FPLO_wcc, compare_any_result):
 
 def test_Fe_FPLO_wcc_sym(check_run, system_Fe_FPLO_wcc, compare_any_result):
     param = {'Efermi': Efermi_Fe_FPLO}
-    param_kwargs = {'Efermi': Efermi_Fe_FPLO, 'kwargs_formula':{"external_terms": False}}
+    param_kwargs = {'Efermi': Efermi_Fe_FPLO, 'kwargs_formula': {"external_terms": False}}
     for k, v in calculators_Fe.items():
-        if k in ['ahc','ahc_test','Morb','Morb_test']:
+        if k in ['ahc', 'ahc_test', 'Morb', 'Morb_test']:
             calculators = {k: v(**param_kwargs)}
         else:
             calculators = {k: v(**param)}
-    calculators.update({'spin':calc.static.Spin(**param)})
+    calculators.update({'spin': calc.static.Spin(**param)})
     check_run(
         system_Fe_FPLO_wcc,
         calculators,
@@ -645,10 +645,10 @@ def test_GaAs(check_run, system_GaAs_W90, compare_any_result):
 #    calculators.update({k: v(**param) for k, v in calculators_GaAs.items()})
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
     calculators.update({
-        'gyrotropic_Korb':calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs),
-        'gyrotropic_Kspin':calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
-        'gyrotropic_Kspin_fsurf':calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
-        'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),}
+        'gyrotropic_Korb': calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs),
+        'gyrotropic_Kspin': calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
+        'gyrotropic_Kspin_fsurf': calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
+        'gyrotropic_Korb_test': calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs), }
             )
 
     check_run(
@@ -688,8 +688,8 @@ def test_GaAs_wcc(check_run, system_GaAs_W90_wcc, compare_any_result):
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
 
     calculators.update({
-        'gyrotropic_Kspin':calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
-        'gyrotropic_Kspin_fsurf':calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
+        'gyrotropic_Kspin': calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
+        'gyrotropic_Kspin_fsurf': calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
             })
 
     check_run(
@@ -781,7 +781,7 @@ def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
             'NK': [6, 6, 6],
             'NKFFT': [3, 3, 3]
         },
-        extra_precision=dict(shift_current=1e-9,injection_current=1e-7)
+        extra_precision=dict(shift_current=1e-9, injection_current=1e-7)
     )
 
 
@@ -805,7 +805,7 @@ def test_Haldane_TBmodels(check_run, system_Haldane_TBmodels, compare_any_result
 
 def test_Haldane_TBmodels_internal(check_run, system_Haldane_TBmodels_internal, compare_any_result):
 
-    param_kwargs = {'Efermi': Efermi_Haldane, 'kwargs_formula':{"external_terms": False}}
+    param_kwargs = {'Efermi': Efermi_Haldane, 'kwargs_formula': {"external_terms": False}}
     param = {'Efermi': Efermi_Haldane}
     for k, v in calculators_Haldane.items():
         if k =='ahc':
@@ -971,7 +971,7 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         do_not_compare=True,
     )
 
-    for key,res_half in result_half.results.items():
+    for key, res_half in result_half.results.items():
         print (key)
         res_full = result_full.results[key]
         nef = len(res_half.Energies[0])
@@ -987,23 +987,23 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
 
 
 
-@pytest.mark.parametrize("tetra", [True,False])
-@pytest.mark.parametrize("use_sym", [True,False])
+@pytest.mark.parametrize("tetra", [True, False])
+@pytest.mark.parametrize("use_sym", [True, False])
 def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
-    param = dict(Efermi=Efermi_Chiral, tetra=tetra, kwargs_formula={"external_terms":False})
+    param = dict(Efermi=Efermi_Chiral, tetra=tetra, kwargs_formula={"external_terms": False})
     system = system_Chiral_left
 
-    calculators = {"AHC":calc.static.AHC(**param),
-                "Morb":calc.static.Morb(**param)
+    calculators = {"AHC": calc.static.AHC(**param),
+                "Morb": calc.static.Morb(**param)
                     }
     calculators["tabulate"] =  calc.TabulatorAll(
         {
-            "AHC":calc.static.AHC(**param, k_resolved=True),
-            "Morb":calc.static.Morb(**param, k_resolved=True)
+            "AHC": calc.static.AHC(**param, k_resolved=True),
+            "Morb": calc.static.Morb(**param, k_resolved=True)
         },
         mode="grid",
-        ibands=(0,1))
+        ibands=(0, 1))
 
     result = check_run(
         system,
@@ -1020,7 +1020,7 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
     )
 
     print (result.results.keys())
-    for key in "AHC","Morb":
+    for key in "AHC", "Morb":
         print (key)
         data_int = result.results[key].data
         data_tab = result.results["tabulate"].results[key].data
@@ -1030,21 +1030,21 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
         assert abs(data_tab_int-data_int).max()<prec
 
 
-@pytest.mark.parametrize("tetra", [True,False])
-@pytest.mark.parametrize("use_sym", [True,False])
+@pytest.mark.parametrize("tetra", [True, False])
+@pytest.mark.parametrize("use_sym", [True, False])
 def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
     grid_param = {'NK': [10, 10, 1], 'NKFFT': [5, 5, 1]}
-    param = dict(Efermi=Efermi_Haldane, tetra=tetra, kwargs_formula={"external_terms":False})
+    param = dict(Efermi=Efermi_Haldane, tetra=tetra, kwargs_formula={"external_terms": False})
     system = system_Haldane_PythTB
 
-    calculators = {"AHC":calc.static.AHC(**param),
-                "Morb":calc.static.AHC(**param)
+    calculators = {"AHC": calc.static.AHC(**param),
+                "Morb": calc.static.AHC(**param)
                     }
     calculators["tabulate"] = calc.TabulatorAll(
         {
-            "AHC":calc.static.AHC(**param, k_resolved=True),
-            "Morb":calc.static.AHC(**param, k_resolved=True),
-            "berry":calc.tabulate.BerryCurvature(kwargs_formula={"external_terms":False})
+            "AHC": calc.static.AHC(**param, k_resolved=True),
+            "Morb": calc.static.AHC(**param, k_resolved=True),
+            "berry": calc.tabulate.BerryCurvature(kwargs_formula={"external_terms": False})
         },
         mode="grid",
         ibands=(0,))
@@ -1065,7 +1065,7 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
     )
 
     print (result.results.keys())
-    for key in "AHC","Morb":
+    for key in "AHC", "Morb":
         print (key)
         data_int = result.results[key].data
         data_tab = result.results["tabulate"].results[key].data
@@ -1075,8 +1075,8 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
         assert abs(data_tab_int-data_int).max()<prec
 
     iEF=np.argmin(abs(Efermi_Haldane))
-    ahc_k = result.results["tabulate"].results["AHC"].data[:,iEF]
-    berry_k = result.results["tabulate"].results["berry"].data[:,0]*wberri.__factors.factor_ahc/system.cell_volume
+    ahc_k = result.results["tabulate"].results["AHC"].data[:, iEF]
+    berry_k = result.results["tabulate"].results["berry"].data[:, 0]*wberri.__factors.factor_ahc/system.cell_volume
     prec = 1e-8*np.max(abs(berry_k))
     assert abs(berry_k-ahc_k).max()<prec
 
@@ -1185,10 +1185,10 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
 
     degen_param = [('degen_thresh', 0.05), ('degen_Kramers', True)]
     calculators = {}
-    for tetra in True,False:
+    for tetra in True, False:
         for degen in degen_param:
-            param_kwargs = {'Efermi': Efermi_CuMnAs_2d,'tetra':tetra,degen[0]:degen[1],'kwargs_formula':{'external_terms': False}}
-            param = {'Efermi': Efermi_CuMnAs_2d,'tetra':tetra,degen[0]:degen[1]}
+            param_kwargs = {'Efermi': Efermi_CuMnAs_2d, 'tetra': tetra, degen[0]: degen[1], 'kwargs_formula': {'external_terms': False}}
+            param = {'Efermi': Efermi_CuMnAs_2d, 'tetra': tetra, degen[0]: degen[1]}
             label = f"-{tetra}-{degen[0]}"
             print(param)
             print(label)
@@ -1209,7 +1209,7 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
             use_symmetry=True,
             do_not_compare=True,)
 
-    for tetra in True,False:
+    for tetra in True, False:
         for k in calculators_CuMnAs_2d.keys():
             label1 = k + f"-{tetra}-{degen_param[0][0]}"
             label2 = k + f"-{tetra}-{degen_param[1][0]}"
@@ -1276,8 +1276,8 @@ def test_tabulate_path(system_Haldane_PythTB):
 
     calculators = {}
     quantities = {
-                            "Energy":wberri.calculators.tabulate.Energy(),
-                            "berry":wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms":False}),
+                            "Energy": wberri.calculators.tabulate.Energy(),
+                            "berry": wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms": False}),
                                   }
 
     calculators ["tabulate"] = wberri.calculators.TabulatorAll(quantities,
@@ -1340,33 +1340,33 @@ def test_tabulate_fail(system_Haldane_PythTB):
     path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
 
     quantities = {
-                            "Energy":wberri.calculators.tabulate.Energy(),
-                            "berry":wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms":False}),
+                            "Energy": wberri.calculators.tabulate.Energy(),
+                            "berry": wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms": False}),
                                   }
 
     key = "tabulate_grid"
-    calculators_fail ={"tabulate_grid":wberri.calculators.TabulatorAll(quantities,
+    calculators_fail ={"tabulate_grid": wberri.calculators.TabulatorAll(quantities,
                                                        ibands=[0],
                                                         mode="grid"),
-                        "ahc":wberri.calculators.static.AHC(Efermi=Efermi_Haldane)}
-    for key,val in calculators_fail.items():
+                        "ahc": wberri.calculators.static.AHC(Efermi=Efermi_Haldane)}
+    for key, val in calculators_fail.items():
         with pytest.raises(ValueError, match=f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path"):
-            wberri.run(system=system_Haldane_PythTB, grid=path, calculators={key:val})
+            wberri.run(system=system_Haldane_PythTB, grid=path, calculators={key: val})
 
 
-def test_shc_static(check_run,system_Fe_W90):
+def test_shc_static(check_run, system_Fe_W90):
     "Test whether SHC static and dynamic calculators are the same at omega=0"
 
     parameters_optical = dict(Efermi=np.array([17.0, 18.0]),
-            omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=1e-10,smr_type="Gaussian", kBT=0)
+            omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=1e-10, smr_type="Gaussian", kBT=0)
     parameters_static = dict(Efermi=np.array([17.0, 18.0]))
 
     calculators = {}
 
     calculators['SHCqiao_dynamic'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
     calculators['SHCryoo_dynamic'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
-    calculators['SHCqiao_static'] = wberri.calculators.static.SHC(kwargs_formula={'spin_current_type':'qiao'}, **parameters_static)
-    calculators['SHCryoo_static'] = wberri.calculators.static.SHC(kwargs_formula={'spin_current_type':'ryoo'}, **parameters_static)
+    calculators['SHCqiao_static'] = wberri.calculators.static.SHC(kwargs_formula={'spin_current_type': 'qiao'}, **parameters_static)
+    calculators['SHCryoo_static'] = wberri.calculators.static.SHC(kwargs_formula={'spin_current_type': 'ryoo'}, **parameters_static)
 
 
     result = check_run(
@@ -1392,7 +1392,7 @@ def test_shc_static(check_run,system_Fe_W90):
 def test_phonons_GaAs_tetra(check_run, system_Phonons_GaAs):
     """test  dos, cumdos for phonons"""
 
-    calculators = {k:cal(tetra=True,Efermi=omega_phonon) for k,cal in calculators_phonons.items()}
+    calculators = {k: cal(tetra=True, Efermi=omega_phonon) for k, cal in calculators_phonons.items()}
     check_run(
         system_Phonons_GaAs,
         calculators,
@@ -1439,15 +1439,15 @@ def test_factor_nlahc(check_run, system_GaAs_W90):
 
 @pytest.fixture
 def check_kp_mass_isotropic(check_run):
-    def _inner(system,name,suffix, check_anal=False):
+    def _inner(system, name, suffix, check_anal=False):
 
-        Efermi = np.linspace(-0.1,0.5,101)
+        Efermi = np.linspace(-0.1, 0.5, 101)
         tetra=True
         calculators =   {
-            'cumdos':calc.static.CumDOS(Efermi=Efermi,tetra=tetra),
-            'dos':calc.static.DOS(Efermi=Efermi,tetra=tetra),
-            'ohmic_sea':calc.static.Ohmic_FermiSea(Efermi=Efermi,tetra=tetra),
-            'ohmic_surf':calc.static.Ohmic_FermiSurf(Efermi=Efermi,tetra=tetra),
+            'cumdos': calc.static.CumDOS(Efermi=Efermi, tetra=tetra),
+            'dos': calc.static.DOS(Efermi=Efermi, tetra=tetra),
+            'ohmic_sea': calc.static.Ohmic_FermiSea(Efermi=Efermi, tetra=tetra),
+            'ohmic_surf': calc.static.Ohmic_FermiSurf(Efermi=Efermi, tetra=tetra),
                     }
 
         result = check_run(
@@ -1470,18 +1470,18 @@ def check_kp_mass_isotropic(check_run):
 
             precision = 1e-8
             try:
-                for ss in "sea","surf":
+                for ss in "sea", "surf":
                     ohm = ohmic[ss]
                     for i in range(3):
                         for j in range(3):
                             if i==j:
-                                assert ohm[:,i,j] == approx(ohm[:,0,0], abs=precision)
+                                assert ohm[:, i, j] == approx(ohm[:, 0, 0], abs=precision)
                             else:
-                                assert ohm[:,i,j] == approx(0, abs=precision)
+                                assert ohm[:, i, j] == approx(0, abs=precision)
             except AssertionError:
                 raise RuntimeError(f"ohmic({ss}) conductivity is not isotropic, componenets {i,j}")
-            ohmic["sea"]=ohmic["sea"][:,0,0]
-            ohmic["surf"]=ohmic["surf"][:,0,0]
+            ohmic["sea"]=ohmic["sea"][:, 0, 0]
+            ohmic["surf"]=ohmic["surf"][:, 0, 0]
 
 
             select_plus = Efermi>0.2
@@ -1507,22 +1507,26 @@ def check_kp_mass_isotropic(check_run):
 
 
 def test_kp_mass_isotropic_0(check_kp_mass_isotropic, system_kp_mass_iso_0):
-    check_kp_mass_isotropic(system_kp_mass_iso_0,"iso","0",check_anal=True)
+    check_kp_mass_isotropic(system_kp_mass_iso_0, "iso", "0", check_anal=True)
+
 
 def test_kp_mass_isotropic_1(check_kp_mass_isotropic, system_kp_mass_iso_1):
-    check_kp_mass_isotropic(system_kp_mass_iso_1,"iso","1",check_anal=True)
+    check_kp_mass_isotropic(system_kp_mass_iso_1, "iso", "1", check_anal=True)
+
 
 def test_kp_mass_isotropic_2(check_kp_mass_isotropic, system_kp_mass_iso_2):
-    check_kp_mass_isotropic(system_kp_mass_iso_2,"iso","2",check_anal=True)
+    check_kp_mass_isotropic(system_kp_mass_iso_2, "iso", "2", check_anal=True)
 
 
 
 def test_kp_mass_anisotropic_0(check_kp_mass_isotropic, system_kp_mass_aniso_0):
-    check_kp_mass_isotropic(system_kp_mass_aniso_0,"aniso","0",check_anal=False)
+    check_kp_mass_isotropic(system_kp_mass_aniso_0, "aniso", "0", check_anal=False)
+
 
 def test_kp_mass_anisotropic_1(check_kp_mass_isotropic, system_kp_mass_aniso_1):
-    check_kp_mass_isotropic(system_kp_mass_aniso_1,"aniso","1",check_anal=False)
+    check_kp_mass_isotropic(system_kp_mass_aniso_1, "aniso", "1", check_anal=False)
+
 
 def test_kp_mass_anisotropic_2(check_kp_mass_isotropic, system_kp_mass_aniso_2):
-    check_kp_mass_isotropic(system_kp_mass_aniso_2,"aniso","2",check_anal=False)
+    check_kp_mass_isotropic(system_kp_mass_aniso_2, "aniso", "2", check_anal=False)
 
