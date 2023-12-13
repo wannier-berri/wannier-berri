@@ -80,7 +80,7 @@ def main(argv):
                         transl_inv=parameters["transl_inv"]
                         )
     grid = Grid(system, NK=parameters["berry_kmesh"])
-    parallel = Parallel(4)  # parallel with  "ray",num_cpus - auto
+    parallel = Parallel()  # parallel with  "ray",num_cpus - auto
 
     run(system,
         grid=grid,
