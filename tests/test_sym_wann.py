@@ -66,9 +66,9 @@ def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb):
                         )
 
     check_symmetry(system=system_GaAs_sym_tb,
-                    grid_param=dict(NK=6, NKFFT=3),
-                    calculators=calculators,
-                    precision=1e-6
+                   grid_param=dict(NK=6, NKFFT=3),
+                   calculators=calculators,
+                   precision=1e-6
                     )
 
 

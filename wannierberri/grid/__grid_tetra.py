@@ -58,10 +58,10 @@ class GridTetra(GridAbstract):
         if IBZ_tetra is None:   # divide the full reciprocal unit cell into 5 tetrahedra -
             print("WARNING : irreducible wedge not provided, no use of symmetries")
             tetrahedra = np.array([[[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]],
-                                     [[1, 0, 1], [0, 0, 1], [1, 0, 0], [1, 1, 1]],
-                                     [[1, 1, 0], [1, 0, 0], [0, 1, 0], [1, 1, 1]],
-                                     [[0, 1, 1], [0, 0, 1], [0, 1, 0], [1, 1, 1]],
-                                     [[0, 0, 1], [0, 1, 0], [1, 0, 0], [1, 1, 1]]
+                                   [[1, 0, 1], [0, 0, 1], [1, 0, 0], [1, 1, 1]],
+                                   [[1, 1, 0], [1, 0, 0], [0, 1, 0], [1, 1, 1]],
+                                   [[0, 1, 1], [0, 0, 1], [0, 1, 0], [1, 1, 1]],
+                                   [[0, 0, 1], [0, 1, 0], [1, 0, 0], [1, 1, 1]]
                                    ]) - np.array([0.5, 0.5, 0.5])[None, None, :]
         else:
             tetrahedra = np.array(IBZ_tetra)
@@ -182,7 +182,7 @@ class GridTrigonalH(GridTetra):
         H1 = np.array([1 / 3, -1 / 3, 1 / 2])
         A = (H - K)
         IBZ_tetra = np.array([[H, H + x * (K - H), H + x * (A - H), H + x * (H1 - H)],
-                                [H, H - x * (K - H), H + x * (A - H), H + x * (H1 - H)]])
+                              [H, H - x * (K - H), H + x * (A - H), H + x * (H1 - H)]])
 
         b1, b2, b3 = system.recip_lattice
         assert angle_vectors_deg(b1, b3) == 90

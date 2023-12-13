@@ -130,7 +130,7 @@ def disentangle(w90data,
 
         if i_iter % print_progress_every == 0:
             print("iteration {:4d}".format(i_iter) + " Omega_I = {:15.10f}".format(Omega_I) + f"  delta={delta}, "
-                                                                                       f"delta_std={delta_std_str}")
+                  f"delta_std={delta_std_str}")
         if delta_std < conv_tol:
             break
         Z_old = deepcopy(Z)

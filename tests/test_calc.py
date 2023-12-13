@@ -16,11 +16,11 @@ from common_systems import Efermi_Fe
 def check_calculator(compare_any_result):
 
     def _inner(system, calc, name, dK=[0.1, 0.2, 0.3], NKFFT=[3, 3, 3], param_K={},
-                precision=-1e-8,
-                compare_zero=False,
-                do_not_compare=False,
-                result_type=EnergyResult,
-                factor=1
+               precision=-1e-8,
+               compare_zero=False,
+               do_not_compare=False,
+               result_type=EnergyResult,
+               factor=1
                 ):
         grid = wberri.Grid(system, NKFFT=NKFFT, NKdiv=1)
         data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid, **param_K)

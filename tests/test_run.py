@@ -400,7 +400,7 @@ def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
 def test_Fe_set_spin(check_run, system_Fe_W90_proj_set_spin, compare_any_result):
     param = {'Efermi': Efermi_Fe}
     calculators = {"spin": wberri.calculators.static.Spin(**param),
-                    "cumdos": wberri.calculators.static.CumDOS(**param),
+                   "cumdos": wberri.calculators.static.CumDOS(**param),
                   }
 
     parameters_shc = dict(

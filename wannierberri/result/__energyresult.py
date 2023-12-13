@@ -262,8 +262,8 @@ class EnergyResult(Result):
         return self.__class__(
             Energies=self.Energies,
             data=sym.transform_tensor(self.data, self.rank,
-                                        transformTR=self.transformTR,
-                                        transformInv=self.transformInv),
+                                      transformTR=self.transformTR,
+                                      transformInv=self.transformInv),
             smoothers=self.smoothers,
             transformTR=self.transformTR,
             transformInv=self.transformInv,

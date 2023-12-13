@@ -81,8 +81,8 @@ class KpointBZtetra(KpointBZ):
                 KpointBZtetra(
                     K=self.K,
                     vertices=np.array([self.vertices[edge_comp[0]],
-                                         self.vertices[edge_comp[1]],
-                                         v0 + i * dv, v0 + (i + 1) * dv]),
+                                       self.vertices[edge_comp[1]],
+                                       v0 + i * dv, v0 + (i + 1) * dv]),
                     factor=self.factor / ndiv,
                     basis=self.basis,
                     refinement_level=self.refinement_level + int(refine),

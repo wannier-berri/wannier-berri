@@ -489,7 +489,7 @@ class SymWann():
 
         print(f"Found {np.sum(irreducible)} sets of (R,a,b) out of the total {self.nRvec*self.num_wann_atom**2} ({self.nRvec}*{self.num_wann_atom}^2)")
         dic = {(a, b): set([iR for iR in range(self.nRvec)  if irreducible[iR, a, b]])
-                for a in range(self.num_wann_atom)  for b in range(self.num_wann_atom)}
+               for a in range(self.num_wann_atom)  for b in range(self.num_wann_atom)}
         res = {k: v for k, v in dic.items() if len(v) > 0}
         return res
 
