@@ -185,8 +185,10 @@ class SymWann():
             symop.rot_map, symop.vec_shift, symop.sym_only, symop.sym_T = self.atom_rot_map(symop)
             if symop.sym_T or symop.sym_only:
                 self.symmetry_operations.append(symop)
-                if symop.sym_only: self.nrot += 1
-                if symop.sym_T: self.nrot += 1
+                if symop.sym_only:
+                    self.nrot += 1
+                if symop.sym_T:
+                    self.nrot += 1
                 symop.p_mat_atom = []
                 symop.p_mat_atom_dagger = []
                 for atom in range(self.num_wann_atom):

@@ -201,7 +201,8 @@ class TABresult(Result):
         The circle size (size of quantity) changes linearly below 2 and logarithmically above 2.
         """
 
-        if fatmax is None : fatmax = fatfactor * 10
+        if fatmax is None :
+            fatmax = fatfactor * 10
 
         import matplotlib.pyplot as plt
         if iband is None:

@@ -59,11 +59,16 @@ def main(argv):
             exit()
         else:
             k, v = arg.split("=")
-            if k == "fin": fin = v
-            elif k == "fout": fout = v
-            elif k == "NB": NBout = int(v)
-            elif k == "IBstart": IBstart = int(v)
-            elif k == "norm": normalize = v
+            if k == "fin":
+                fin = v
+            elif k == "fout":
+                fout = v
+            elif k == "NB":
+                NBout = int(v)
+            elif k == "IBstart":
+                IBstart = int(v)
+            elif k == "norm":
+                normalize = v
 
     print("reading {0}\n writing to {1}".format(fin, fout))
 
@@ -78,14 +83,18 @@ def main(argv):
 
     print(RECL, ispin, iprec)
 
-    if iprec != 45200: raise RuntimeError('double precision WAVECAR is not supported')
-    if ispin != 1: raise RuntimeError('WAVECAR does not contain spinor wavefunctions. ISPIN={0}'.format(ispin))
+    if iprec != 45200:
+        raise RuntimeError('double precision WAVECAR is not supported')
+    if ispin != 1:
+        raise RuntimeError('WAVECAR does not contain spinor wavefunctions. ISPIN={0}'.format(ispin))
 
     NK, NBin = [int(x) for x in record(1, 2)]
 
     IBstart -= 1
-    if IBstart < 0: IBstart = 0
-    if NBout <= 0: NBout = NBin
+    if IBstart < 0:
+        IBstart = 0
+    if NBout <= 0:
+        NBout = NBin
     if NBout + IBstart > NBin:
         print(
             ' WARNING: NB+IBstart-1=', NBout + IBstart,

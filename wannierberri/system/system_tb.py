@@ -37,8 +37,10 @@ class System_tb(System):
     def __init__(self, tb_file="wannier90_tb.dat", **parameters):
 
         self.set_parameters(**parameters)
-        if self.morb: raise ValueError("System_tb class cannot be used for evaluation of orbital magnetic moments")
-        if self.spin: raise ValueError("System_tb class cannot be used for evaluation of spin properties")
+        if self.morb:
+            raise ValueError("System_tb class cannot be used for evaluation of orbital magnetic moments")
+        if self.spin:
+            raise ValueError("System_tb class cannot be used for evaluation of spin properties")
 
         self.seedname = tb_file.split("/")[-1].split("_")[0]
         f = open(tb_file, "r")

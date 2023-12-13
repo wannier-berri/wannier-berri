@@ -792,7 +792,8 @@ class ws_dist_map():
                 if ir in self._iRvec_new[irnew]:
                     chsum += self._iRvec_new[irnew][ir]
             chsum = np.abs(chsum - np.ones((self.num_wann, self.num_wann))).sum()
-            if chsum > 1e-12: print("WARNING: Check sum for {0} : {1}".format(ir, chsum))
+            if chsum > 1e-12:
+                print("WARNING: Check sum for {0} : {1}".format(ir, chsum))
 
     def __call__(self, matrix):
         ndim = len(matrix.shape) - 3

@@ -93,7 +93,8 @@ def run_mmn2uHu(PREFIX, **kwargs):
     MMNrd = False
     EIGrd = False
 
-    if not (writeEIG or writeUHU or writeSHU): EIGrd = True
+    if not (writeEIG or writeUHU or writeSHU):
+        EIGrd = True
 
     print("----------\n MMN  read\n---------\n")
 
@@ -191,8 +192,10 @@ def run_mmn2uHu(PREFIX, **kwargs):
     print("----------\n AMN  - OK \n---------\n")
 
     UXUlist = []
-    if writeUHU: UXUlist.append(("uHu", uHu_formatted))
-    if writeUIU: UXUlist.append(("uIu", uIu_formatted))
+    if writeUHU:
+        UXUlist.append(("uHu", uHu_formatted))
+    if writeUIU:
+        UXUlist.append(("uIu", uIu_formatted))
     print(UXUlist)
     if len(UXUlist) > 0:
         NB_sum_max = NB_in - IBstartSum
@@ -304,12 +307,15 @@ def run_mmn2uHu(PREFIX, **kwargs):
         print("----------\n SPN OK  \n---------\n")
 
     SXUlist = []
-    if writeSHU: SXUlist.append(("sHu", sHu_formatted))
-    if writeSIU: SXUlist.append(("sIu", sIu_formatted))
+    if writeSHU:
+        SXUlist.append(("sHu", sHu_formatted))
+    if writeSIU:
+        SXUlist.append(("sIu", sIu_formatted))
     print(SXUlist)
     if len(SXUlist) > 0:
         for NB_sum in NB_sum_list:
-            if NB_sum is None: NB_sum = NB_in
+            if NB_sum is None:
+                NB_sum = NB_in
             for SXU in SXUlist:
                 print("----------\n  {1}  NBsum={0} \n---------".format(NB_sum, SXU[0]))
                 formatted = SXU[1]
@@ -364,7 +370,8 @@ def run_mmn2uHu(PREFIX, **kwargs):
 def main(argv):
     hlp()
 
-    if len(argv) == 0 or argv[0] == "-h": return
+    if len(argv) == 0 or argv[0] == "-h":
+        return
 
     PREFIX = argv[0]
 
@@ -372,12 +379,18 @@ def main(argv):
 
     for arg in argv[1:]:
         arg = arg.split("=")
-        if arg[0] == "NBout": kwargs["NB_out_list"] = [int(s) for s in arg[1].split(',')]
-        if arg[0] == "NBsum": kwargs["NB_sum_list"] = [int(s) for s in arg[1].split(',')]
-        if arg[0] == "IBstart": kwargs["IBstart"] = int(arg[1]) - 1
-        if arg[0] == "IBstartSum": kwargs["IBstartSum"] = int(arg[1]) - 1
-        if arg[0] == "input": kwargs["INPUTDIR"] = arg[1]
-        if arg[0] == "output": kwargs["OUTDIR"] = arg[1]
+        if arg[0] == "NBout":
+            kwargs["NB_out_list"] = [int(s) for s in arg[1].split(',')]
+        if arg[0] == "NBsum":
+            kwargs["NB_sum_list"] = [int(s) for s in arg[1].split(',')]
+        if arg[0] == "IBstart":
+            kwargs["IBstart"] = int(arg[1]) - 1
+        if arg[0] == "IBstartSum":
+            kwargs["IBstartSum"] = int(arg[1]) - 1
+        if arg[0] == "input":
+            kwargs["INPUTDIR"] = arg[1]
+        if arg[0] == "output":
+            kwargs["OUTDIR"] = arg[1]
         if arg[0] == "targets":
             tarlist = arg[1].split(",")
             kwargs["writeAMN"] = "amn" in tarlist

@@ -441,7 +441,8 @@ class MMN(W90_file):
             pool = multiprocessing.Pool(npar)
         for j in range(0, NNB * NK, npar * mult):
             x = list(islice(f_mmn_in, int(block * npar * mult)))
-            if len(x) == 0: break
+            if len(x) == 0:
+                break
             headstring += x[::block]
             y = [x[i * block + 1:(i + 1) * block] for i in range(npar * mult) if (i + 1) * block <= len(x)]
             if npar > 0:

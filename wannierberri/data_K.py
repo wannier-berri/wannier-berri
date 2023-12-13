@@ -251,7 +251,8 @@ class _Data_K(System, abc.ABC):
         print_my_name_start()
         delE_K = np.einsum("klla->kla", self.Xbar('Ham', 1))
         check = np.abs(delE_K).imag.max()
-        if check > 1e-10: raise RuntimeError(f"The band derivatives have considerable imaginary part: {check}")
+        if check > 1e-10:
+            raise RuntimeError(f"The band derivatives have considerable imaginary part: {check}")
         return delE_K.real
 
     def covariant(self, name, commader=0, gender=0, save=True):
