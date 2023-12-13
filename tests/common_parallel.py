@@ -1,5 +1,5 @@
 import pytest
-from wannierberri.parallel import Parallel,Serial
+from wannierberri.parallel import Parallel, Serial
 
 
 @pytest.fixture(scope="session")

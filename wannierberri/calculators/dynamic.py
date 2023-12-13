@@ -1,11 +1,20 @@
 import numpy as np
-import abc, functools
+import abc
+import functools
 from ..__utility import Gaussian, Lorentzian, FermiDirac
 from ..result import EnergyResult
 from . import Calculator
 from ..formula.covariant import SpinVelocity
 from copy import copy
 from ..symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
+from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom
+from .. import __factors as factors
+
+bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
+bohr = physical_constants['Bohr radius'][0] / angstrom
+eV_au = physical_constants['electron volt-hartree relationship'][0]
+Ang_SI = angstrom
+
 
 #######################################
 #                                     #
@@ -16,7 +25,8 @@ from ..symmetry import transform_ident, transform_trans, transform_odd, transfor
 
 class DynamicCalculator(Calculator, abc.ABC):
 
-    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', kwargs_formula={}, **kwargs):
+    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', kwargs_formula={},
+                 **kwargs):
 
         for k, v in locals().items():  # is it safe to do so?
             if k not in ['self', 'kwargs']:
@@ -57,16 +67,16 @@ class DynamicCalculator(Calculator, abc.ABC):
 
     def __call__(self, data_K):
         formula = self.Formula(data_K, **self.kwargs_formula)
-        restot_shape = (len(self.omega), len(self.Efermi)) + (3, ) * formula.ndim
+        restot_shape = (len(self.omega), len(self.Efermi)) + (3,) * formula.ndim
         restot_shape_tmp = (
-            len(self.omega), len(self.Efermi) * 3**formula.ndim)  # we will first get it in this shape, then transpose
+            len(self.omega), len(self.Efermi) * 3 ** formula.ndim)  # we will first get it in this shape, then transpose
 
         restot = np.zeros(restot_shape_tmp, self.dtype)
 
         for ik in range(data_K.nk):
             degen_groups = data_K.get_bands_in_range_groups_ik(
                 ik, -np.Inf, np.Inf, degen_thresh=self.degen_thresh, degen_Kramers=self.degen_Kramers)
-            #now find needed pairs:
+            # now find needed pairs:
             # as a dictionary {((ibm1,ibm2),(ibn1,ibn2)):(Em,En)}
             degen_group_pairs = [
                 (ibm, ibn, Em, En) for ibm, Em in degen_groups.items() for ibn, En in degen_groups.items()
@@ -80,8 +90,8 @@ class DynamicCalculator(Calculator, abc.ABC):
                 [formula.trace_ln(ik, np.arange(*pair[0]), np.arange(*pair[1])) for pair in degen_group_pairs])
             factor_Efermi = np.array([self.factor_Efermi(pair[2], pair[3]) for pair in degen_group_pairs])
             factor_omega = np.array([self.factor_omega(pair[2], pair[3]) for pair in degen_group_pairs]).T
-            restot += factor_omega @ (factor_Efermi[:, :, None]
-                                      * matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
+            restot += factor_omega @ (factor_Efermi[:, :, None] *
+                                      matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
         restot = restot.reshape(restot_shape).swapaxes(0, 1)  # swap the axes to get EF,omega,a,b,...
         restot *= self.constant_factor / (data_K.nk * data_K.cell_volume)
         try:
@@ -97,11 +107,6 @@ class DynamicCalculator(Calculator, abc.ABC):
             [self.Efermi, self.omega], restot, transformTR=transformTR, transformInv=transformInv)
 
 
-
-
-
-
-
 ###############################################
 ###############################################
 ###############################################
@@ -114,23 +119,14 @@ class DynamicCalculator(Calculator, abc.ABC):
 ###############################################
 ###############################################
 
-from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom
-bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
-bohr = physical_constants['Bohr radius'][0] / angstrom
-eV_au = physical_constants['electron volt-hartree relationship'][0]
-Ang_SI = angstrom
-
-from .. import __factors as factors
-
 
 ###############################
 #              JDOS           #
 ###############################
-
 class Formula_dyn_ident():
 
     def __init__(self, data_K):
-        self.transformTR  = transform_ident
+        self.transformTR = transform_ident
         self.transformInv = transform_ident
         self.ndim = 0
 
@@ -148,7 +144,7 @@ class JDOS(DynamicCalculator):
 
     def nonzero(self, E1, E2):
         return (E1 < self.Efermi.max()) and (E2 > self.Efermi.min()) and (
-            self.omega.min() - 5 * self.smr_fixed_width < E2 - E1 < self.omega.max() + 5 * self.smr_fixed_width)
+                self.omega.min() - 5 * self.smr_fixed_width < E2 - E1 < self.omega.max() + 5 * self.smr_fixed_width)
 
     def energy_factor(self, E1, E2):
         res = np.zeros((len(self.Efermi), len(self.omega)))
@@ -171,7 +167,7 @@ class Formula_OptCond():
             A = data_K.A_H_internal
         self.AA = 1j * A[:, :, :, :, None] * A.swapaxes(1, 2)[:, :, :, None, :]
         self.ndim = 2
-        self.transformTR  = transform_trans
+        self.transformTR = transform_trans
         self.transformInv = transform_ident
 
     def trace_ln(self, ik, inn1, inn2):
@@ -200,14 +196,12 @@ class OpticalConductivity(DynamicCalculator):
 
 class Formula_SHC():
 
-
     def __init__(self, data_K, SHC_type='ryoo', shc_abc=None, external_terms=True):
-        A = SpinVelocity(data_K, SHC_type,external_terms=external_terms).matrix
+        A = SpinVelocity(data_K, SHC_type, external_terms=external_terms).matrix
         if external_terms:
             B = -1j * data_K.A_H
         else:
             B = -1j * data_K.A_H_internal
-
 
         self.imAB = np.imag(A[:, :, :, :, None, :] * B.swapaxes(1, 2)[:, :, :, None, :, None])
         self.ndim = 3
@@ -216,7 +210,7 @@ class Formula_SHC():
             a, b, c = (x - 1 for x in shc_abc)
             self.imAB = self.imAB[:, :, :, a, b, c]
             self.ndim = 0
-        self.transformTR  = transform_ident
+        self.transformTR = transform_ident
         self.transformInv = transform_ident
 
     def trace_ln(self, ik, inn1, inn2):
@@ -238,9 +232,11 @@ class SHC(DynamicCalculator):
             cfac.imag = np.pi * self.smear(delta_arg_12)
         return cfac / 2
 
+
 # ===============
 #  Shift current
 # ===============
+
 
 class ShiftCurrentFormula():
 
@@ -257,42 +253,41 @@ class ShiftCurrentFormula():
         # define D using broadening parameter
         E_K = data_K.E_K
         dEig = E_K[:, :, None] - E_K[:, None, :]
-        dEig_inv_Pval = dEig / (dEig**2 + sc_eta**2)
+        dEig_inv_Pval = dEig / (dEig ** 2 + sc_eta ** 2)
         D_H_Pval = -V_H * dEig_inv_Pval[:, :, :, None]
 
         # commutators
         # ** the spatial index of D_H_Pval corresponds to generalized derivative direction
         # ** --> stored in the fourth column of output variables
         if external_terms:
-            sum_AD = ( np.einsum('knlc,klma->knmca', A_Hbar, D_H_Pval)
-                     - np.einsum('knnc,knma->knmca', A_Hbar, D_H_Pval)
-                     - np.einsum('knla,klmc->knmca', D_H_Pval, A_Hbar)
-                     + np.einsum('knma,kmmc->knmca', D_H_Pval, A_Hbar) )
-        sum_HD = ( np.einsum('knlc,klma->knmca', V_H, D_H_Pval)
-                 - np.einsum('knnc,knma->knmca', V_H, D_H_Pval)
-                 - np.einsum('knla,klmc->knmca', D_H_Pval, V_H)
-                 + np.einsum('knma,kmmc->knmca', D_H_Pval, V_H) )
+            sum_AD = (np.einsum('knlc,klma->knmca', A_Hbar, D_H_Pval) -
+                      np.einsum('knnc,knma->knmca', A_Hbar, D_H_Pval) -
+                      np.einsum('knla,klmc->knmca', D_H_Pval, A_Hbar) +
+                      np.einsum('knma,kmmc->knmca', D_H_Pval, A_Hbar))
+        sum_HD = (np.einsum('knlc,klma->knmca', V_H, D_H_Pval) -
+                  np.einsum('knnc,knma->knmca', V_H, D_H_Pval) -
+                  np.einsum('knla,klmc->knmca', D_H_Pval, V_H) +
+                  np.einsum('knma,kmmc->knmca', D_H_Pval, V_H))
 
         # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction
         # ** --> stored in the fourth column of output variables
         if external_terms:
-            AD_bit = ( np.einsum('knnc,knma->knmac', A_Hbar, D_H)
-                     - np.einsum('kmmc,knma->knmac', A_Hbar, D_H)
-                     + np.einsum('knna,knmc->knmac', A_Hbar, D_H)
-                     - np.einsum('kmma,knmc->knmac', A_Hbar, D_H) )
-            AA_bit = ( np.einsum('knnb,knma->knmab', A_Hbar, A_Hbar)
-                     - np.einsum('kmmb,knma->knmab', A_Hbar, A_Hbar) )
+            AD_bit = (np.einsum('knnc,knma->knmac', A_Hbar, D_H) -
+                      np.einsum('kmmc,knma->knmac', A_Hbar, D_H) +
+                      np.einsum('knna,knmc->knmac', A_Hbar, D_H) -
+                      np.einsum('kmma,knmc->knmac', A_Hbar, D_H))
+            AA_bit = (np.einsum('knnb,knma->knmab', A_Hbar, A_Hbar) -
+                      np.einsum('kmmb,knma->knmab', A_Hbar, A_Hbar))
         # ** this one is invariant under a<-->c
-        DV_bit = ( np.einsum('knmc,knna->knmca', D_H, V_H)
-                 - np.einsum('knmc,kmma->knmca', D_H, V_H)
-                 + np.einsum('knma,knnc->knmca', D_H, V_H)
-                 - np.einsum('knma,kmmc->knmca', D_H, V_H) )
+        DV_bit = (np.einsum('knmc,knna->knmca', D_H, V_H) -
+                  np.einsum('knmc,kmma->knmca', D_H, V_H) +
+                  np.einsum('knma,knnc->knmca', D_H, V_H) -
+                  np.einsum('knma,kmmc->knmca', D_H, V_H))
 
         # generalized derivative
-        A_gen_der = ( + 1j * (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, :, np.newaxis, np.newaxis])
+        A_gen_der = (+ 1j * (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, :, np.newaxis, np.newaxis])
         if external_terms:
             A_gen_der += A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD
-
 
         # generalized derivative is fourth index of A, we put it into third index of Imn
         if external_terms:
@@ -300,13 +295,12 @@ class ShiftCurrentFormula():
         else:
             A_H = data_K.A_H_internal
 
-
         Imn = np.einsum('knmca,kmnb->knmabc', A_gen_der, A_H)
-        Imn += Imn.swapaxes(4, 5) # symmetrize b and c
+        Imn += Imn.swapaxes(4, 5)  # symmetrize b and c
 
         self.Imn = Imn
         self.ndim = 3
-        self.transformTR  = transform_ident
+        self.transformTR = transform_ident
         self.transformInv = transform_odd
 
     def trace_ln(self, ik, inn1, inn2):
@@ -317,7 +311,7 @@ class ShiftCurrent(DynamicCalculator):
 
     def __init__(self, sc_eta, **kwargs):
         super().__init__(**kwargs)
-        self.kwargs_formula.update( dict(sc_eta=sc_eta) )
+        self.kwargs_formula.update(dict(sc_eta=sc_eta))
         self.Formula = ShiftCurrentFormula
         self.constant_factor = factors.factor_shift_current
 
@@ -326,9 +320,11 @@ class ShiftCurrent(DynamicCalculator):
         delta_arg_21 = E2 - E1 - self.omega
         return self.smear(delta_arg_12) + self.smear(delta_arg_21)
 
+
 # ===================
 #  Injection current
 # ===================
+
 
 class InjectionCurrentFormula():
     """
@@ -336,16 +332,16 @@ class InjectionCurrentFormula():
     Use v_mn = i * r_mn * (e_m - e_n) / hbar to replace v with r.
     """
 
-    def __init__(self, data_K,external_terms=True):
+    def __init__(self, data_K, external_terms=True):
         if external_terms:
             A_H = data_K.A_H
         else:
             A_H = data_K.A_H_internal
-        V_H = data_K.Xbar('Ham', 1) # (k, m, n, a)
-        V_H_diag = np.diagonal(V_H, axis1=1, axis2=2).transpose(0, 2, 1) # (k, m, a)
+        V_H = data_K.Xbar('Ham', 1)  # (k, m, n, a)
+        V_H_diag = np.diagonal(V_H, axis1=1, axis2=2).transpose(0, 2, 1)  # (k, m, a)
 
         # compute delta_V[k, m, n, a] = V_H[k, m, m, a] - V_H[k, n, n, a]
-        delta_V = V_H_diag[:, :, None, :] - V_H_diag[:, None, :, :] # (k, m, n, a)
+        delta_V = V_H_diag[:, :, None, :] - V_H_diag[:, None, :, :]  # (k, m, n, a)
 
         Imn = np.einsum('kmna,kmnb,knmc->kmnabc', delta_V, A_H, A_H)
 
@@ -361,11 +357,10 @@ class InjectionCurrent(DynamicCalculator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = InjectionCurrentFormula
-        self.transformTR  = transform_odd_trans_021
+        self.transformTR = transform_odd_trans_021
         self.transformInv = transform_odd
         self.constant_factor = factors.factor_injection_current
 
     def factor_omega(self, E1, E2):
         delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
         return self.smear(delta_arg_12)
-

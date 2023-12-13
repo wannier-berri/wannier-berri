@@ -10,7 +10,7 @@ class K__Result(Result):
     def __init__(self, data=None, transformTR=None, transformInv=None, file_npz=None, rank=None, other_properties={}):
         assert (data is not None) or (file_npz is not None)
         if file_npz is not None:
-            res = np.load(open(file_npz, "rb"),allow_pickle=True)
+            res = np.load(open(file_npz, "rb"), allow_pickle=True)
             self.__init__(
                 data=res['data'],
                 transformTR=transform_from_dict(res, 'transformTR'),
@@ -22,19 +22,19 @@ class K__Result(Result):
                     self.data_list = data
                 else:
                     self.data_list = [data]
-            self.transformTR=transformTR
-            self.transformInv=transformInv
+            self.transformTR = transformTR
+            self.transformInv = transformInv
         if rank is None:
-            self.rank=self.get_rank()
+            self.rank = self.get_rank()
         else:
-            self.rank=rank
+            self.rank = rank
         self.other_properties = other_properties
 
 
     def fit(self, other):
         for var in ['transformTR', 'transformInv', 'rank']:
             if getattr(self, var) != getattr(other, var):
-                print (f"parameters {var} are not fit : `{getattr(self, var)}` and `{getattr(other, var)}` ")
+                print(f"parameters {var} are not fit : `{getattr(self, var)}` and `{getattr(other, var)}` ")
                 return False
         return True
 
@@ -52,20 +52,20 @@ class K__Result(Result):
 
     def __add__(self, other):
         assert self.fit(other)
-        return self.__class__( data=self.data_list + other.data_list,
+        return self.__class__(data=self.data_list + other.data_list,
                             transformTR=self.transformTR,
                             transformInv=self.transformInv,
                             rank=self.rank,
                             other_properties=self.other_properties
                             )
 
-    def add(self,other):
-        self.data_list = [d1+d2 for d1,d2 in zip(self.data_list, other.data_list)]
+    def add(self, other):
+        self.data_list = [d1 + d2 for d1, d2 in zip(self.data_list, other.data_list)]
 
 
 
     def __mul__(self, number):
-        return self.__class__( data=[d * number for d in self.data_list],
+        return self.__class__(data=[d * number for d in self.data_list],
                             transformTR=self.transformTR,
                             transformInv=self.transformInv,
                             rank=self.rank,
@@ -77,14 +77,14 @@ class K__Result(Result):
             axes = (axes, )
         if axes is None:
             axes = tuple(range(other.ndim))
-        axes = tuple((a+1) for a in axes) # because 0th dimentsion is k here
+        axes = tuple((a + 1) for a in axes)  # because 0th dimentsion is k here
         for i, d in enumerate(other.shape):
             assert d == self.data_list[0].shape[axes[i]], "shapes  {} should match the axes {} of {}".format(
                 other.shape, axes, self.data_list[0].shape)
         reshape = tuple((self.data.shape[i] if i in axes else 1) for i in range(self.data_list[0].ndim))
         other_reshape = other.reshape(reshape)
         return self.__class__(
-                            data=[d*other_reshape for d in self.data_list],
+                            data=[d * other_reshape for d in self.data_list],
                             transformTR=self.transformTR,
                             transformInv=self.transformInv,
                             rank=self.rank,
@@ -98,7 +98,7 @@ class K__Result(Result):
         if (self.transformInv is not None) and (other.transformInv is not None):
             assert self.transformInv == other.transformInv
         return KBandResult(
-            data=self.data-other.data,
+            data=self.data - other.data,
             transformTR=self.transformTR,
             transformInv=self.transformInv,
         )
@@ -149,7 +149,7 @@ class K__Result(Result):
     def get_component_list(self):
         dim = len(self.data.shape[2:])
         comp_list = ["".join(s) for s in itertools.product(*[("x", "y", "z")] * dim)]
-        if self.ndim >= 2 :
+        if self.ndim >= 2:
             comp_list.append("trace")
         return comp_list
 
@@ -184,15 +184,15 @@ class K__Result(Result):
                 raise NoComponentError(component, 1)
         else:
             dims = tuple(np.arange(self.data.ndim))
-            _data = self.data.transpose(dims[-ndim:]+dims[:-ndim])
+            _data = self.data.transpose(dims[-ndim:] + dims[:-ndim])
             print(f"dims={dims}, data_shape={self.data.shape}, , _data_shape={_data.shape}")
             if component == "trace":
-                return sum([_data[((i,)*ndim)] for i in range(3)])
+                return sum([_data[((i,) * ndim)] for i in range(3)])
             else:
                 try:
                     return _data[tuple([xyz[c] for c in component])]
                 except IndexError as err:
-                    raise NoComponentError(component, 2,err)
+                    raise NoComponentError(component, 2, err)
 
 
 class KBandResult(K__Result):
@@ -201,8 +201,8 @@ class KBandResult(K__Result):
         return len(self.data_list[0].shape) - 2
 
     def fit(self, other):
-        if self.nband  != other.nband:
-            print (f"parameter 'nband' does  not match : `{self.nband}` and `{other.nband}` ")
+        if self.nband != other.nband:
+            print(f"parameter 'nband' does  not match : `{self.nband}` and `{other.nband}` ")
             return False
         return super().fit(other)
 
@@ -218,10 +218,9 @@ class KBandResult(K__Result):
                             other_properties=self.other_properties
                             )
 
+
 class NoComponentError(RuntimeError):
 
     def __init__(self, comp, dim, err=""):
         # Call the base class constructor with the parameters it needs
-        super().__init__("component {} does not exist for tensor with dimension {} :\n{}".format(comp, dim,err))
-
-
+        super().__init__("component {} does not exist for tensor with dimension {} :\n{}".format(comp, dim, err))

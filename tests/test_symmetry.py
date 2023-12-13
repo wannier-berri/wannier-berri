@@ -53,7 +53,7 @@ def test_symmetry_spglib_Fe(system_Fe_W90, check_symgroup_equal):
     # Magnetic symmetries involving time-reversal is not implemented in spglib.
     # So, we exclude symmetries involving time reversal from the generators.
     import spglib
-    if pversion(spglib.__version__)<pversion("2"):
+    if pversion(spglib.__version__) < pversion("2"):
         symmetries_Fe_except_TR = [sym for sym in symmetries_Fe if not sym.TR]
         system_explicit.set_symmetry(symmetries_Fe_except_TR)
     else:
@@ -67,8 +67,8 @@ def test_symmetry_spglib_Fe(system_Fe_W90, check_symgroup_equal):
     system_spglib.set_symmetry_from_structure()
 
     try:
-        sg1=system_explicit.symgroup
-        sg2=system_spglib.symgroup
+        sg1 = system_explicit.symgroup
+        sg2 = system_spglib.symgroup
         check_symgroup_equal(sg1, sg2)
     except Exception as err:
         raise RuntimeError(f"groups are not equal {err}\n explicit: \n---------\n{sg1}\n---------\n---------\n{sg2}\n---------\n")

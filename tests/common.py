@@ -1,7 +1,8 @@
 """Common constants shared by all tests"""
 import pyfftw
-print (f"pyfftw version : {pyfftw.__version__}") # this is only to avoid lint error
 import os
+
+print(f"pyfftw version : {pyfftw.__version__}")  # this is only to avoid lint error
 
 # Root folder containing test scripts
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))

@@ -12,22 +12,22 @@
 # from the translation of Wannier90 code                     #
 # ------------------------------------------------------------#
 
-import numpy as np
-from ..__utility import FortranFileR
 import multiprocessing
-from ..__utility import alpha_A, beta_A
+import gc
+import functools
+from scipy.constants import physical_constants
 from time import time
 from itertools import islice
-import gc
-from scipy.constants import physical_constants
-import functools
-from .disentanglement import disentangle
 from copy import copy
+import numpy as np
+import lazy_property
+from .disentanglement import disentangle
+from ..__utility import FortranFileR, alpha_A, beta_A
 
 readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip()
 
 
-class CheckPoint():
+class CheckPoint:
     """
     A class to store the data about wannierisation, written by Wannier90
 
@@ -154,7 +154,7 @@ class CheckPoint():
                     CC_q[ik] += (1.j * self.wannier_gauge(data, iknb1, iknb2)[:, :, None] *
                                  (mmn.wk[ik, ib1] * mmn.wk[ik, ib2] *
                                   (mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A] -
-                                   mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A])
+                                     mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A])
                                   )[None, None, :]
                                  )
         CC_q = 0.5 * (CC_q + CC_q.transpose((0, 2, 1, 3)).conj())
@@ -221,7 +221,7 @@ class CheckPoint():
         return SHR_q
 
 
-import lazy_property
+
 
 
 class CheckPoint_bare(CheckPoint):
@@ -308,7 +308,7 @@ class Wannier90data:
                 if hasattr(this, attr) and hasattr(other, attr):
                     a = getattr(this, attr)
                     b = getattr(other, attr)
-                    if None not in (a,b):
+                    if None not in (a, b):
                         assert a == b, f"files {key} and {key2} have different attribute {attr} : {a} and {b} respectively"
 
     @property
@@ -442,7 +442,8 @@ class MMN(W90_file):
             pool = multiprocessing.Pool(npar)
         for j in range(0, NNB * NK, npar * mult):
             x = list(islice(f_mmn_in, int(block * npar * mult)))
-            if len(x) == 0: break
+            if len(x) == 0:
+                break
             headstring += x[::block]
             y = [x[i * block + 1:(i + 1) * block] for i in range(npar * mult) if (i + 1) * block <= len(x)]
             if npar > 0:
@@ -726,8 +727,8 @@ def parse_win_raw(filename=None, text=None):
     try:
         import wannier90io as w90io
     except ImportError as err:
-        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n" +
-                          "please install it manuall as \n" +
+        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n"
+                          "please install it manually as \n"
                           "`pip install git+https://github.com/jimustafa/wannier90io-python.git`")
     if filename is not None:
         with open(filename) as f:

@@ -9,16 +9,17 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 # This is an auxilary class for the __evaluate.py  module
 
 import numpy as np
 import lazy_property
 from ..symmetry import SYMMETRY_PRECISION
 
+
 class KpointBZ():
 
-    def __init__(self, K=np.zeros(3), dK=np.ones(3), NKFFT=np.ones(3), factor=1., symgroup=None, refinement_level=-1 ):
+    def __init__(self, K=np.zeros(3), dK=np.ones(3), NKFFT=np.ones(3), factor=1., symgroup=None, refinement_level=-1):
         self.K = np.copy(K)
         self.dK = np.copy(dK)
         self.factor = factor
@@ -39,11 +40,11 @@ class KpointBZ():
     def __str__(self):
         return (
             "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ], refinement level:{3}, factor = {4}".format(
-                self.K[0], self.K[1], self.K[2], self.refinement_level,self.factor))
+                self.K[0], self.K[1], self.K[2], self.refinement_level, self.factor))
 
     @lazy_property.LazyProperty
     def _max(self):
-        return self.res.max  #np.max(self.res_smooth)
+        return self.res.max  # np.max(self.res_smooth)
 
 
     @property
@@ -78,7 +79,7 @@ class KpointBZ():
 
 class KpointBZpath(KpointBZ):
 
-    def __init__(self, K=np.zeros(3),  symgroup=None):
+    def __init__(self, K=np.zeros(3), symgroup=None):
         super().__init__(K=np.copy(K), symgroup=symgroup)
 
     def __str__(self):
@@ -107,7 +108,7 @@ class KpointBZparallel(KpointBZ):
             return self.symgroup.star(self.K)
 
     def __str__(self):
-        return super().__str__()+"dK={} ".format(self.dK)
+        return super().__str__() + "dK={} ".format(self.dK)
 
     def absorb(self, other):
         if other is None:

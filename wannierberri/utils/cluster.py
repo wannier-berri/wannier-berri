@@ -29,6 +29,7 @@ SLEEP_HEAD = "{{SLEEP_HEAD}}"
 SLEEP_WORKER = "{{SLEEP_WORKER}}"
 SPILLING = "{{SPILLING}}"
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -71,7 +72,7 @@ def main():
         help="Time to wait (sleep) after starting ray on every worker node (deconds, Default: 5.0)")
     parser.add_argument(
         "--spilling-directory", type=str, default="", help="directory to spill objects in case of lack of memory"
-    )  #  see : https://docs.ray.io/en/master/memory-management.html#object-spilling
+    )  # see : https://docs.ray.io/en/master/memory-management.html#object-spilling
 
     parser.add_argument(
         '--submit', dest='submit', action='store_true', help=" DO submit the generated script with sbatch")

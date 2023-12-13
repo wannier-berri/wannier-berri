@@ -7,6 +7,7 @@ Test creation of submission scripts for slurm and PBS batch systems.
 No jobs are submitted in the test.
 """
 
+
 @pytest.fixture(scope="session")
 def check_command_output():
     from sys import version_info
@@ -14,11 +15,11 @@ def check_command_output():
     assert version_info.minor >= 7
     from subprocess import run
 
-    def _inner(command,cwd=None,stdout_filename=None):
-        sp = run(command, capture_output=True,cwd=cwd)
+    def _inner(command, cwd=None, stdout_filename=None):
+        sp = run(command, capture_output=True, cwd=cwd)
         if sp.returncode == 0:
             if stdout_filename is not None:
-                with open(stdout_filename,"w") as f:
+                with open(stdout_filename, "w") as f:
                     f.write(sp.stdout.decode('utf-8'))
             return str(sp.stdout)
         else:

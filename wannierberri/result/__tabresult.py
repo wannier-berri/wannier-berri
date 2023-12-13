@@ -5,20 +5,21 @@ import functools
 from collections.abc import Iterable
 from .__result import Result
 
+
 class TABresult(Result):
 
-    def __init__(self, kpoints, recip_lattice, results={},mode="grid",save_mode="frmsf"):
+    def __init__(self, kpoints, recip_lattice, results={}, mode="grid", save_mode="frmsf"):
         self.nband = results['Energy'].nband
         self.mode = mode
         self.grid = None
         self.gridorder = None
         self.recip_lattice = recip_lattice
         self.kpoints = np.array(kpoints, dtype=float) % 1
-        self.save_mode=save_mode
+        self.save_mode = save_mode
         self.results = results
-        for k,res in results.items():
+        for k, res in results.items():
             assert len(kpoints) == res.nk
-            if hasattr(res,"nband"):
+            if hasattr(res, "nband"):
                 assert self.nband == res.nband
 
     @property
@@ -26,11 +27,11 @@ class TABresult(Result):
         return self.results['Energy']
 
     def __mul__(self, other):
-        #K-point factors do not play arole in tabulating quantities
+        # K-point factors do not play arole in tabulating quantities
         return self
 
     def __truediv__(self, other):
-        #K-point factors do not play arole in tabulating quantities
+        # K-point factors do not play arole in tabulating quantities
         return self
 
     def __add__(self, other):
@@ -61,15 +62,15 @@ class TABresult(Result):
                     suffix=suffix)  # so far let it be the only mode, implement other modes in future
             # TODO : remove this messy call to external routine, which calls back an internal one
         else:
-            pass # so far . TODO : implement writing to a text file
+            pass  # so far . TODO : implement writing to a text file
 
     @property
     def find_grid(self):
         """ Find the full grid."""
-        #TODO: make it cleaner, to work with iterations
+        # TODO: make it cleaner, to work with iterations
         grid = np.zeros(3, dtype=int)
         kp = np.array(self.kpoints)
-        kp = np.concatenate((kp,[[1,1,1]])) # in case only k=0 is used in some direction
+        kp = np.concatenate((kp, [[1, 1, 1]]))  # in case only k=0 is used in some direction
         for i in range(3):
             k = np.sort(kp[:, i])
             dk = np.max(k[1:] - k[:-1])
@@ -200,7 +201,8 @@ class TABresult(Result):
         The circle size (size of quantity) changes linearly below 2 and logarithmically above 2.
         """
 
-        if fatmax is None : fatmax = fatfactor*10
+        if fatmax is None:
+            fatmax = fatfactor * 10
 
         import matplotlib.pyplot as plt
         if iband is None:
@@ -256,14 +258,14 @@ class TABresult(Result):
                     klineselE = kline[selE]
                     y = data[selE][:, ib]
                     select = abs(y) > 2
-                    y[select] = np.log2(abs(y[select]))*np.sign(y[select])
+                    y[select] = np.log2(abs(y[select])) * np.sign(y[select])
                     y[~select] *= 0.5
-                    e1=e[selE]
-                    for col,sel in [("red",(y>0)),("blue",(y<0))]:
-                        sz = abs(y[sel])*fatfactor
-                        sz[sz>fatmax] = fatmax
-                        plt.scatter(klineselE[sel],e1[sel],s=sz,color=col)
-            else :
+                    e1 = e[selE]
+                    for col, sel in [("red", (y > 0)), ("blue", (y < 0))]:
+                        sz = abs(y[sel]) * fatfactor
+                        sz[sz > fatmax] = fatmax
+                        plt.scatter(klineselE[sel], e1[sel], s=sz, color=col)
+            else:
                 raise ValueError("So far only fatband mode is implemented")
 
         x_ticks_labels = []
@@ -293,6 +295,7 @@ class TABresult(Result):
     def max(self):
         return np.array([-1.])  # tabulating does not contribute to adaptive refinement
 
+
 def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
     if len(suffix) > 0:
         suffix = "-" + suffix
@@ -313,6 +316,7 @@ def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
         ttxt = 0
         twrite = 0
     return ttxt, twrite
+
 
 def _savetxt(limits=None, a=None, fmt=".8f", npar=0):
     assert a.ndim == 1, "only 1D arrays are supported. found shape{}".format(a.shape)

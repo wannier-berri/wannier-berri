@@ -106,7 +106,8 @@ class Path(GridAbstract):
                         _nk = next(nkgen)
                     else:
                         _nk = round(np.linalg.norm((start - end).dot(self.recip_lattice)) / dk) + 1
-                        if _nk == 1: _nk = 2
+                        if _nk == 1:
+                            _nk = 2
                     self.K_list = np.vstack(
                         (
                             self.K_list, start[None, :] + np.linspace(0, 1., _nk - 1, endpoint=False)[:, None] *
@@ -163,7 +164,7 @@ class Path(GridAbstract):
             print("WARNING : symmetry is not used for a tabulation along path")
         print("generating K_list")
         K_list = [
-            KpointBZpath(K=K,  symgroup=self.symgroup)
+            KpointBZpath(K=K, symgroup=self.symgroup)
             for K in self.K_list
         ]
         print("Done ")
@@ -174,7 +175,7 @@ class Path(GridAbstract):
         K = np.zeros(KPcart.shape[0])
         k = np.linalg.norm(KPcart[1:, :] - KPcart[:-1, :], axis=1)
         k[k > break_thresh] = 0.0
-        if len(self.breaks)>0:
-            k[self.breaks]=0.0
+        if len(self.breaks) > 0:
+            k[self.breaks] = 0.0
         K[1:] = np.cumsum(k)
         return K
