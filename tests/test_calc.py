@@ -56,7 +56,7 @@ def test_calc_fder(system_Fe_W90, check_calculator):
 
     param = dict(Formula=frml.Identity, Efermi=Efermi_Fe, tetra=False)
     for fder in range(4):
-        calc =  static.StaticCalculator(**param, fder=fder)
+        calc = static.StaticCalculator(**param, fder=fder)
         name = f"Fe-ident-fder={fder}"
         check_calculator(system_Fe_W90, calc, name)
 

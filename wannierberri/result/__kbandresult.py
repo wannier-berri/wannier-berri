@@ -77,7 +77,7 @@ class K__Result(Result):
             axes = (axes, )
         if axes is None:
             axes = tuple(range(other.ndim))
-        axes = tuple((a + 1) for a in axes) # because 0th dimentsion is k here
+        axes = tuple((a + 1) for a in axes)  # because 0th dimentsion is k here
         for i, d in enumerate(other.shape):
             assert d == self.data_list[0].shape[axes[i]], "shapes  {} should match the axes {} of {}".format(
                 other.shape, axes, self.data_list[0].shape)

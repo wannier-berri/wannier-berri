@@ -44,7 +44,7 @@ class KpointBZ():
 
     @lazy_property.LazyProperty
     def _max(self):
-        return self.res.max  #np.max(self.res_smooth)
+        return self.res.max  # np.max(self.res_smooth)
 
 
     @property

@@ -62,7 +62,7 @@ class TABresult(Result):
                     suffix=suffix)  # so far let it be the only mode, implement other modes in future
             # TODO : remove this messy call to external routine, which calls back an internal one
         else:
-            pass # so far . TODO : implement writing to a text file
+            pass  # so far . TODO : implement writing to a text file
 
     @property
     def find_grid(self):
@@ -70,7 +70,7 @@ class TABresult(Result):
         # TODO: make it cleaner, to work with iterations
         grid = np.zeros(3, dtype=int)
         kp = np.array(self.kpoints)
-        kp = np.concatenate((kp, [[1, 1, 1]])) # in case only k=0 is used in some direction
+        kp = np.concatenate((kp, [[1, 1, 1]]))  # in case only k=0 is used in some direction
         for i in range(3):
             k = np.sort(kp[:, i])
             dk = np.max(k[1:] - k[:-1])

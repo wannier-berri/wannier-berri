@@ -268,7 +268,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             result_type=EnergyResult)
 
     extra_precision = {'Morb': 1e-6, 'Der_berry': 5e-8}
-    for quant in result.results.get("tabulate").results.keys(): # ["Energy", "berry","Der_berry","spin","morb"]:
+    for quant in result.results.get("tabulate").results.keys():  # ["Energy", "berry","Der_berry","spin","morb"]:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
             _quant = "E" if quant == "Energy" else quant
             _comp = "-" + comp if comp != "" else ""
@@ -343,9 +343,9 @@ def test_Fe_wcc(check_run, system_Fe_W90_wcc, compare_any_result):
     calculators = {}
     for k, v in calculators_Fe.items():
         if k in ['dos', 'cumdos', 'conductivity_ohmic', 'conductivity_ohmic_fsurf', 'spin']:
-            calculators[k] =  v(**param)
+            calculators[k] = v(**param)
         else:
-            calculators[k] =  v(**param_kwargs)
+            calculators[k] = v(**param_kwargs)
     check_run(
         system_Fe_W90_wcc,
         calculators,
@@ -702,7 +702,7 @@ def test_GaAs_wcc(check_run, system_GaAs_W90_wcc, compare_any_result):
             '_CCab_antisym': True
         },
         extra_precision={"berry_dipole_fsurf": 1e-6}
-    )# This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
+    )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem
 
 
 def test_GaAs_tb_wcc(check_run, system_GaAs_tb_wcc, compare_any_result):
@@ -911,7 +911,7 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
             '_CCab_antisym': True
         },
         skip_compare=["opt_shiftcurrent"],
-        use_symmetry=False,  ## !!! temporary
+        use_symmetry=False,  # !!! temporary
         extra_precision={"Morb": -1e-6},
     )
     # for quant in calculators_Chiral.keys():#["conductivity_ohmic", "berry_dipole", "ahc"]:
@@ -927,7 +927,7 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
 
 #        skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
 
-    for quant in 'opt_conductivity', "opt_shiftcurrent": # 'opt_SHCryoo', 'opt_SHCryoo':
+    for quant in 'opt_conductivity', "opt_shiftcurrent":  # 'opt_SHCryoo', 'opt_SHCryoo':
         compare_any_result(
             "berry_Chiral",
             quant + "-left-run",
@@ -997,7 +997,7 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
     calculators = {"AHC": calc.static.AHC(**param),
                 "Morb": calc.static.Morb(**param)
                     }
-    calculators["tabulate"] =  calc.TabulatorAll(
+    calculators["tabulate"] = calc.TabulatorAll(
         {
             "AHC": calc.static.AHC(**param, k_resolved=True),
             "Morb": calc.static.Morb(**param, k_resolved=True)
@@ -1443,7 +1443,7 @@ def check_kp_mass_isotropic(check_run):
 
         Efermi = np.linspace(-0.1, 0.5, 101)
         tetra = True
-        calculators =   {
+        calculators = {
             'cumdos': calc.static.CumDOS(Efermi=Efermi, tetra=tetra),
             'dos': calc.static.DOS(Efermi=Efermi, tetra=tetra),
             'ohmic_sea': calc.static.Ohmic_FermiSea(Efermi=Efermi, tetra=tetra),

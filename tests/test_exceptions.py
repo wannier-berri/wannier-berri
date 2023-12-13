@@ -62,7 +62,7 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left):
     calculators = {"AHC": calc.static.AHC(**param),
                 "Morb": calc.static.Morb(**param)
                     }
-    calculators["tabulate"] =  calc.TabulatorAll(
+    calculators["tabulate"] = calc.TabulatorAll(
         {
             "AHC": calc.static.AHC(**param, k_resolved=True),
             "Morb": calc.static.Morb(**param, k_resolved=True)

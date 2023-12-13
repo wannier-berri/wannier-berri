@@ -97,7 +97,7 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
             '_FF_antisym': True,
             '_CCab_antisym': True
         },
-        use_symmetry=True, # should have no effect, but will check the cases and give a warning
+        use_symmetry=True,  # should have no effect, but will check the cases and give a warning
         #                parameters_K = parameters_K,
         #                frmsf_name = None,
         #                degen_thresh = degen_thresh, degen_Kramers = degen_Kramers

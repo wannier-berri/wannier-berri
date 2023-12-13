@@ -79,7 +79,7 @@ class SymWann():
         self.lattice = lattice
         self.positions = positions
         self.atom_name = atom_name
-        self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC']  #['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
+        self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC']  # ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
         self.matrix_list = XX_R
         for k in XX_R:
             if k not in self.possible_matrix_list:
@@ -93,14 +93,14 @@ class SymWann():
             'BB': 1,
             'CC': -1,
             'SS': -1
-        }  #{'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
+        }  # {'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
         self.parity_TR = {
             'Ham': 1,
             'AA': 1,
             'BB': 1,
             'CC': -1,
             'SS': -1
-        }  #{'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
+        }  # {'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
         self.ndimv = {
             'Ham': 0,
             'AA': 1, 'BB': 1, 'CC': 1, 'SS': 1
@@ -159,7 +159,7 @@ class SymWann():
         self.matrix_dict_list = {}
         for k, v1 in XX_R.items():
             v = np.copy(v1)
-            self.spin_reorder(v) # TODO : remove
+            self.spin_reorder(v)  # TODO : remove
             self.matrix_dict_list[k] = _matrix_to_dict(v, self.H_select, self.wann_atom_info)
             if k not in self.possible_matrix_list:
                 raise ValueError(f" symmetrization of matrix {k} is not implemented yet")
@@ -324,7 +324,7 @@ class SymWann():
 
             # TODO try numba
             for atom_a in range(self.num_wann_atom):
-                num_w_a = self.wann_atom_info[atom_a].num_wann  #number of orbitals of atom_a
+                num_w_a = self.wann_atom_info[atom_a].num_wann  # number of orbitals of atom_a
                 for atom_b in range(self.num_wann_atom):
                     num_w_b = self.wann_atom_info[atom_b].num_wann
                     for iR in range(nRvec):
@@ -488,9 +488,9 @@ class SymWann():
                                         irreducible[iR1, a1, b1] = False
 
         print (f"Found {np.sum(irreducible)} sets of (R,a,b) out of the total {self.nRvec*self.num_wann_atom**2} ({self.nRvec}*{self.num_wann_atom}^2)")
-        dic =  {(a, b): set([iR for iR in range(self.nRvec)  if irreducible[iR, a, b]])
+        dic = {(a, b): set([iR for iR in range(self.nRvec)  if irreducible[iR, a, b]])
                 for a in range(self.num_wann_atom)  for b in range(self.num_wann_atom)}
-        res =  {k: v for k, v in dic.items() if len(v) > 0}
+        res = {k: v for k, v in dic.items() if len(v) > 0}
         return res
 
 
@@ -625,7 +625,7 @@ class WannAtomInfo():
 #        self.orb_position_dic = orb_position_dic
         self.magmom = magmom
         self.soc = soc
-        self.num_wann = len(sum(self.orbital_index, []))  #number of orbitals of atom_a
+        self.num_wann = len(sum(self.orbital_index, []))  # number of orbitals of atom_a
         allindex = sorted(sum(self.orbital_index , []))
         print ("allindex", allindex)
         self.orb_position_on_atom_dic = {}
@@ -709,9 +709,9 @@ def _matrix_to_dict( mat, H_select, wann_atom_info):
     """
     result = {}
     for a, atom_a in enumerate(wann_atom_info):
-        num_w_a = atom_a.num_wann  #number of orbitals of atom_a
+        num_w_a = atom_a.num_wann  # number of orbitals of atom_a
         for b, atom_b in enumerate(wann_atom_info):
-            num_w_b = atom_b.num_wann  #number of orbitals of atom_a
+            num_w_b = atom_b.num_wann  # number of orbitals of atom_a
             result_ab = {}
             X = mat[ H_select[a, b] ]
             X = X.reshape( (num_w_a, num_w_b) + mat.shape[2:] )

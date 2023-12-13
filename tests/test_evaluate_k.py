@@ -14,7 +14,7 @@ from common_systems import Efermi_Fe
 k = np.array([0.1, 0.2, 0.3])
 
 quantities = ["energy", "berry_curvature"]
-formulae =  {   "ham" : wberri.formula.covariant.Hamiltonian,
+formulae = {   "ham" : wberri.formula.covariant.Hamiltonian,
                 "vel" : wberri.formula.covariant.Velocity,
                 "mass": wberri.formula.covariant.InvMass,
                 "morb": wberri.formula.covariant.morb
