@@ -27,11 +27,11 @@ class TABresult(Result):
         return self.results['Energy']
 
     def __mul__(self, other):
-        #K-point factors do not play arole in tabulating quantities
+        # K-point factors do not play arole in tabulating quantities
         return self
 
     def __truediv__(self, other):
-        #K-point factors do not play arole in tabulating quantities
+        # K-point factors do not play arole in tabulating quantities
         return self
 
     def __add__(self, other):
@@ -67,7 +67,7 @@ class TABresult(Result):
     @property
     def find_grid(self):
         """ Find the full grid."""
-        #TODO: make it cleaner, to work with iterations
+        # TODO: make it cleaner, to work with iterations
         grid = np.zeros(3, dtype=int)
         kp = np.array(self.kpoints)
         kp = np.concatenate((kp, [[1, 1, 1]])) # in case only k=0 is used in some direction

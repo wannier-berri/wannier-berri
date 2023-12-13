@@ -9,7 +9,7 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 
 __debug = False
 
@@ -281,7 +281,7 @@ def iterate3dpm(size):
 #       for k in range(-size[2], size[2] + 1))
 
 
-#def iterate3d(size):
+# def iterate3d(size):
 #    assert len(size)==3
 #    return iterate_nd(size,pm=False)
 #    return (np.array([i, j, k]) for i in range(0, size[0]) for j in range(0, size[1]) for k in range(0, size[2]))

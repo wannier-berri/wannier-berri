@@ -59,7 +59,7 @@ class StaticCalculator(Calculator):
         formula = self.Formula(data_K, **self.kwargs_formula)
         ndim = formula.ndim
 
-        ## when we do not need k-resolved, we assume as it is only one k-point,m and dump everything there
+        # when we do not need k-resolved, we assume as it is only one k-point,m and dump everything there
         if self.k_resolved:
             nk_result = nk
             ik_to_result = lambda ik: ik

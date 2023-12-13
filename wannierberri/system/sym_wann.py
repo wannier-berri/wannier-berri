@@ -86,7 +86,7 @@ class SymWann():
                 print (f"WARNING: symmetrization of matrix {k} is not implemented yet, so it will not be symmetrized, but passed as it. Use on your own risk")
         # This is confusing, actually the I-odd vectors have "+1" here, because the minus is already in the rotation matrix
         # but Ham is a scalar, so +1
-        #TODO: change it
+        # TODO: change it
         self.parity_I = {
             'Ham': 1,
             'AA': 1,
@@ -111,9 +111,9 @@ class SymWann():
 
         num_atom = len(self.atom_name)
 
-        #=============================================================
-        #Generate wannier_atoms_information list and H_select matrices
-        #=============================================================
+        # =============================================================
+        # Generate wannier_atoms_information list and H_select matrices
+        # =============================================================
         '''
         Wannier_atoms_information is a list of informations about atoms which contribute projections orbitals.
         Form: (number [int], name_of_element [str],position [array], orbital_index [list] ,
@@ -170,7 +170,7 @@ class SymWann():
         for name in self.atom_name:
             numbers.append(names.index(name) + 1)
         cell = (self.lattice, self.positions, numbers)
-        #print(cell)
+        # print(cell)
         print("[get_spacegroup]")
         print("  Spacegroup is %s." % spglib.get_spacegroup(cell))
         dataset = spglib.get_symmetry_dataset(cell)
@@ -213,9 +213,9 @@ class SymWann():
         for X in self.matrix_list.values():
             self.spin_reorder(X)
 
-    #==============================
-    #Find space group and symmetres
-    #==============================
+    # ==============================
+    # Find space group and symmetres
+    # ==============================
     def show_symmetry(self):
         for i, symop  in enumerate(self.symmetry_operations):
             rot = symop.rotation
@@ -262,8 +262,8 @@ class SymWann():
                             f'Error!!!!: no atom can match the new atom after symmetry operation {symop.ind},\n'
                             + f'Before operation: atom {atomran} = {atom_position},\n'
                             + f'After operation: {atom_position},\nAll wann_atom: {wann_atom_positions}')
-        #Check if the symmetry operator respect magnetic moment.
-        #TODO opt magnet code
+        # Check if the symmetry operator respect magnetic moment.
+        # TODO opt magnet code
         if self.soc:
             sym_only = True
             sym_T = True
@@ -305,7 +305,7 @@ class SymWann():
         return p_mat, p_mat_dagger
 
     def average_H(self, iRvec):
-        #If we can make if faster, respectively is the better choice. Because XX_all matrix are supper large.(eat memory)
+        # If we can make if faster, respectively is the better choice. Because XX_all matrix are supper large.(eat memory)
         R_list = np.array(iRvec, dtype=int)
         nRvec = len(R_list)
         tmp_R_list = []
@@ -322,7 +322,7 @@ class SymWann():
             atom_R_map = R_map[:, None, None, :] - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :]
             iR0 = self.index_R( (0, 0, 0) )
 
-            #TODO try numba
+            # TODO try numba
             for atom_a in range(self.num_wann_atom):
                 num_w_a = self.wann_atom_info[atom_a].num_wann  #number of orbitals of atom_a
                 for atom_b in range(self.num_wann_atom):
@@ -337,10 +337,10 @@ class SymWann():
                             '''
                             for X in matrix_list_res:
                                 shape = (num_w_a, num_w_b) + self.matrix_list[X].shape[3:]
-                                #X_L: only rotation wannier centres from L to L' before rotating orbitals.
+                                # X_L: only rotation wannier centres from L to L' before rotating orbitals.
                                 XX_L = self.matrix_list[X][self.H_select[symop.rot_map[atom_a], symop.rot_map[atom_b]],
                                                            new_Rvec_index].reshape(shape)
-                                #special even with R == [0,0,0] diagonal terms.
+                                # special even with R == [0,0,0] diagonal terms.
                                 if iR == iR0 and atom_a == atom_b:
                                     if X in ['AA', 'BB']:
                                         v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
@@ -355,7 +355,7 @@ class SymWann():
                                                 * self.matrix_list['Ham'][self.H_select[symop.rot_map[atom_a], symop.rot_map[atom_b]],
                                                     new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
                                 if XX_L.ndim == 3:
-                                    #X_all: rotating vector.
+                                    # X_all: rotating vector.
                                     XX_L = np.tensordot( XX_L, symop.rotation_cart, axes=1).reshape( shape )
                                 if symop.inversion:
                                     XX_L *= self.parity_I[X]
@@ -389,9 +389,9 @@ class SymWann():
             raise ValueError()
 
     def symmetrize_old(self):
-        #========================================================
-        #symmetrize existing R vectors and find additional R vectors
-        #========================================================
+        # ========================================================
+        # symmetrize existing R vectors and find additional R vectors
+        # ========================================================
         print('##########################')
         print('Symmetrizing Start')
         return_dic, iRvec_add = self.average_H(self.iRvec)
@@ -518,7 +518,7 @@ class SymWann():
                 R_map = np.dot(iRvec_new_array, np.transpose(symop.rotation))
                 atom_R_map = R_map[:, None, None, :] - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :]
 
-                #TODO try numba
+                # TODO try numba
                 for (atom_a, atom_b), iR_new_list in iRab_new.items():
                     exclude_set = set()
 #                    print (f"{atom_a},{atom_b} : iR_new_list ({iR_new_list})")
@@ -536,10 +536,10 @@ class SymWann():
                                 if new_Rvec_index in matrix_dict_in[X][(symop.rot_map[atom_a], symop.rot_map[atom_b])]:
                                     if mode == "single":
                                         exclude_set.add(iR)
-                                    #X_L: only rotation wannier centres from L to L' before rotating orbitals.
+                                    # X_L: only rotation wannier centres from L to L' before rotating orbitals.
                                     XX_L = matrix_dict_in[X][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
                                                                new_Rvec_index]
-                                    #special even with R == [0,0,0] diagonal terms.
+                                    # special even with R == [0,0,0] diagonal terms.
                                     if iR == iR0 and atom_a == atom_b:
                                         # print (f"setting diagonal AA/BB for {atom_a}, {atom_b}")
                                         if X in ['AA', 'BB']:
@@ -555,7 +555,7 @@ class SymWann():
                                                     * self.matrix_dict_list['Ham'][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
                                                         new_Rvec_index][:, :, None] )
                                     if XX_L.ndim == 3:
-                                        #X_all: rotating vector.
+                                        # X_all: rotating vector.
                                         XX_L = np.tensordot( XX_L, symop.rotation_cart, axes=1).reshape( XX_L.shape )
                                     elif XX_L.ndim > 3:
                                         raise ValueError("transformation of tensors is not implemented")
@@ -586,9 +586,9 @@ class SymWann():
 
     def symmetrize_new(self):
 
-        #========================================================
-        #symmetrize existing R vectors and find additional R vectors
-        #========================================================
+        # ========================================================
+        # symmetrize existing R vectors and find additional R vectors
+        # ========================================================
         print('##########################')
         print('Symmetrizing Started')
         iRab_irred = self.find_irreducible_Rab()
@@ -638,8 +638,8 @@ class WannAtomInfo():
                     orb_select[oi, oj] = True
             self.orb_position_on_atom_dic[pr] = orb_select
 
-        #====Time Reversal====
-        #syl: (sigma_y)^T *1j, syr: sigma_y*1j
+        # ====Time Reversal====
+        # syl: (sigma_y)^T *1j, syr: sigma_y*1j
         if self.soc:
             base_m = np.eye(self.num_wann // 2)
             syl = np.array([[0.0, -1.0], [1.0, 0.0]])

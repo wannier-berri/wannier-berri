@@ -9,7 +9,7 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 
 import numpy as np
 from .__Kpoint_tetra import KpointBZtetra
@@ -154,7 +154,7 @@ class GridTrigonal(GridTetra):
 
     def __init__(self, system, length, **kwargs):
 
-        #these ones are for the case when the reciprocal lattice vectors form a 120deg angle
+        # these ones are for the case when the reciprocal lattice vectors form a 120deg angle
         IBZ_tetra = np.array( [
                     [ [0, 0, 0] , [1 / 3, 2 / 3, 0.0], [2 / 3, 1 / 3, 0.0], [1 / 3, 2 / 3, 0.5] ],
                     [ [0, 0, 0] , [2 / 3, 1 / 3, 0.5], [2 / 3, 1 / 3, 0.0], [1 / 3, 2 / 3, 0.5] ],
@@ -176,7 +176,7 @@ class GridTrigonalH(GridTetra):
 
     def __init__(self, system, length, x=0.5, NKFFT=1, **kwargs):
 
-        #these ones are for the case when the reciprocal lattice vectors form a 120deg angle
+        # these ones are for the case when the reciprocal lattice vectors form a 120deg angle
         H = np.array([2 / 3, 1 / 3, 1 / 2])
         K = np.array([2 / 3, 1 / 3, 0  ])
         H1 = np.array([1 / 3, -1 / 3, 1 / 2])

@@ -914,7 +914,7 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
         use_symmetry=False,  ## !!! temporary
         extra_precision={"Morb": -1e-6},
     )
-    #for quant in calculators_Chiral.keys():#["conductivity_ohmic", "berry_dipole", "ahc"]:
+    # for quant in calculators_Chiral.keys():#["conductivity_ohmic", "berry_dipole", "ahc"]:
     for quant in ["conductivity_ohmic", "berry_dipole", "ahc"]:
         compare_energyresult(
                 fout_name="berry_Chiral",
@@ -1492,7 +1492,7 @@ def check_kp_mass_isotropic(check_run):
             assert ohmic["sea"][select_minus] == approx(0, abs=precision)
             assert ohmic["surf"][select_minus] == approx(0, abs=precision)
 
-            ## compare with results evaluated analytically
+            # compare with results evaluated analytically
             mass = mass_kp_iso
             Efp = Efermi[select_plus]
             dos_anal = mass * np.sqrt(2 * Efp * mass) / (2 * np.pi**2)

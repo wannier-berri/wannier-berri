@@ -403,7 +403,7 @@ class DerMorb(Formula_ln):
 
         # Stepan: Shopuldn't we use the line below?
         # TODO: check this formula
-        #summ+=summ.swapaxes(0,1).conj()
+        # summ+=summ.swapaxes(0,1).conj()
         return summ
 
     def ln(self, ik, inn, out):

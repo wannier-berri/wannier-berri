@@ -1,9 +1,9 @@
 #!/usr/bin/env python2
-#=========================== Wave2spn =============================
+# =========================== Wave2spn =============================
 #                                                                 #
 #    An utility to convert WAVECAR to .spn file for WANNIER90     #
 #                                                                 #
-#=========================== Wave2spn =============================
+# =========================== Wave2spn =============================
 #
 # Written by Stepan Tsirkin (University of the Basque Country)
 #    now at : Iniversity of Zurich

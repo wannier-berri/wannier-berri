@@ -58,7 +58,7 @@ class AbstractSmoother(abc.ABC):
         assert self.E.shape[0] == A.shape[axis]
         A = A.transpose((axis, ) + tuple(range(0, axis)) + tuple(range(axis + 1, A.ndim)))
         res = np.zeros(A.shape, dtype=A.dtype)
-        #TODO maybe change tensordot to numba
+        # TODO maybe change tensordot to numba
         for i in range(self.NE):
             start = max(0, i - self.NE1)
             end = min(self.NE, i + self.NE1 + 1)
