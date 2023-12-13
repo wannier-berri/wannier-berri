@@ -164,8 +164,8 @@ class System:
         try:
             return self._XX_R[key]
         except KeyError:
-            raise ValueError(f"The real-space matrix elements '{key}' are not set in the system," +
-                             " but are required for the current calculation. please check parameters of the System() initializer")
+            raise ValueError(f"The real-space matrix elements '{key}' are not set in the system,"
+                             + " but are required for the current calculation. please check parameters of the System() initializer")
 
     def has_R_mat(self, key):
         return (key in self._XX_R)
@@ -331,8 +331,8 @@ class System:
             f"indices of states should be 0<=i<num_wann-{self.num_wann}, found {pairs}")
         assert len(set(all_states)) == len(all_states), "some states appear more then once in pairs"
         if len(pairs) < self.num_wann / 2:
-            print(f"WARNING : number of spin pairs {len(pairs)} is less then num_wann/2 = {self.num_wann / 2}. " +
-                  "For other states spin properties will be set to zero. are yoiu sure ?")
+            print(f"WARNING : number of spin pairs {len(pairs)} is less then num_wann/2 = {self.num_wann / 2}. "
+                  + "For other states spin properties will be set to zero. are yoiu sure ?")
         SS_R0 = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
         for i, j in pairs:
             dist = np.linalg.norm(self.wannier_centers_cart[i] - self.wannier_centers_cart[j])
@@ -722,9 +722,9 @@ class System:
             symmetry_gen.append(TimeReversal)
         elif not tr_found:
             print(
-                "WARNING: you specified magnetic moments but spglib did not detect symmetries involving time-reversal" +
-                f"proobably it is because you have an old spglib version {spglib.__version__}" +
-                "We suggest upgrading to spglib>=2.0.2")
+                "WARNING: you specified magnetic moments but spglib did not detect symmetries involving time-reversal"
+                + f"proobably it is because you have an old spglib version {spglib.__version__}"
+                + "We suggest upgrading to spglib>=2.0.2")
         else:
             if not all([len(x) for x in self.magnetic_moments]):
                 raise ValueError("magnetic_moments must be a list of 3d vector")

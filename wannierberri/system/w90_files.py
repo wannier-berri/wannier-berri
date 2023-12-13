@@ -150,10 +150,10 @@ class CheckPoint:
                 for ib2 in range(mmn.NNB):
                     iknb2 = mmn.neighbours[ik, ib2]
                     data = uhu.data[ik, ib1, ib2]
-                    CC_q[ik] += (1.j * self.wannier_gauge(data, iknb1, iknb2)[:, :, None] *
-                                 (mmn.wk[ik, ib1] * mmn.wk[ik, ib2] *
-                                  (mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A] -
-                                   mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A])
+                    CC_q[ik] += (1.j * self.wannier_gauge(data, iknb1, iknb2)[:, :, None]
+                                 * (mmn.wk[ik, ib1] * mmn.wk[ik, ib2]
+                                  * (mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
+                                     - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A])
                                   )[None, None, :]
                                  )
         CC_q = 0.5 * (CC_q + CC_q.transpose((0, 2, 1, 3)).conj())
@@ -725,8 +725,8 @@ def parse_win_raw(filename=None, text=None):
     try:
         import wannier90io as w90io
     except ImportError as err:
-        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n" +
-                          "please install it manuall as \n" +
+        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n"
+                          "please install it manually as \n"
                           "`pip install git+https://github.com/jimustafa/wannier90io-python.git`")
     if filename is not None:
         with open(filename) as f:

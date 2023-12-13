@@ -109,8 +109,8 @@ class Path(GridAbstract):
                         if _nk == 1: _nk = 2
                     self.K_list = np.vstack(
                         (
-                            self.K_list, start[None, :] + np.linspace(0, 1., _nk - 1, endpoint=False)[:, None] *
-                            (end - start)[None, :]))
+                            self.K_list, start[None, :] + np.linspace(0, 1., _nk - 1, endpoint=False)[:, None]
+                            * (end - start)[None, :]))
                 elif end is None:
                     self.breaks.append(self.K_list.shape[0] - 1)
             self.K_list = np.vstack((self.K_list, k_nodes[-1]))

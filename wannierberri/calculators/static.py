@@ -15,6 +15,7 @@ from ..result import EnergyResult, K__Result
 from . import Calculator
 from copy import copy
 
+
 # The base class for Static Calculators
 # particular calculators are below
 
@@ -22,10 +23,10 @@ from copy import copy
 class StaticCalculator(Calculator):
 
     def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={},
-            Emin=-np.Inf, Emax=np.Inf, hole_like=False, k_resolved=False, Formula=None, fder=None, **kwargs):
+                 Emin=-np.Inf, Emax=np.Inf, hole_like=False, k_resolved=False, Formula=None, fder=None, **kwargs):
         self.Efermi = Efermi
-        self.Emin=Emin
-        self.Emax=Emax
+        self.Emin = Emin
+        self.Emax = Emax
         self.tetra = tetra
         self.kwargs_formula = copy(kwargs_formula)
         self.k_resolved = k_resolved
@@ -33,18 +34,18 @@ class StaticCalculator(Calculator):
         self.use_factor = use_factor
         self.hole_like = hole_like
         if Formula is not None:
-            self.Formula=Formula
+            self.Formula = Formula
         if fder is not None:
-            self.fder=fder
+            self.fder = fder
         assert hasattr(
             self, 'fder'), "fder not set -  derivative of fermi distribution . 0: fermi-sea, 1: fermi-surface 2: f''  "
         assert hasattr(self, 'Formula'), "Formula not set - it  should be class with a trace(ik,inn,out) method "
         self.constant_factor = constant_factor
-        if self.hole_like and self.fder==0:
+        if self.hole_like and self.fder == 0:
             self.constant_factor *= -1
         if not self.tetra:
             self.extraEf = 0 if self.fder == 0 else 1 if self.fder in (1, 2) else 2 if self.fder == 3 else None
-            self.dEF = Efermi[1] - Efermi[0] if len(Efermi)>1 else 0.001
+            self.dEF = Efermi[1] - Efermi[0] if len(Efermi) > 1 else 0.001
             self.EFmin = Efermi[0] - self.extraEf * self.dEF
             self.EFmax = Efermi[-1] + self.extraEf * self.dEF
             self.nEF_extra = Efermi.shape[0] + 2 * self.extraEf
@@ -60,10 +61,10 @@ class StaticCalculator(Calculator):
 
         ## when we do not need k-resolved, we assume as it is only one k-point,m and dump everything there
         if self.k_resolved:
-            nk_result=nk
+            nk_result = nk
             ik_to_result = lambda ik: ik
         else:
-            nk_result=1
+            nk_result = 1
             ik_to_result = lambda ik: 0
 
         # get a list [{(ib1,ib2):W} for ik in op:ed]
@@ -82,11 +83,11 @@ class StaticCalculator(Calculator):
                 Emax=self.Emax
             )  # here W is energy
 
-#        """formula  - TraceFormula to evaluate
-#           bands = a list of lists of k-points for every
-        shape = (3, ) * ndim
+        #        """formula  - TraceFormula to evaluate
+        #           bands = a list of lists of k-points for every
+        shape = (3,) * ndim
 
-        lambdadic = lambda: np.zeros(((3, ) * ndim), dtype=float)
+        lambdadic = lambda: np.zeros(((3,) * ndim), dtype=float)
         values = [defaultdict(lambdadic) for ik in range(nk)]
         for ik, bnd in enumerate(weights):
             if formula.additive:
@@ -113,7 +114,7 @@ class StaticCalculator(Calculator):
                     restot[ik_to_result(ik)] += np.einsum("e,...->e...", w, valuesik[n])
         else:
             # no tetrahedron
-            restot = np.zeros((nk_result, self.nEF_extra, ) + shape)
+            restot = np.zeros((nk_result, self.nEF_extra,) + shape)
             for ik, weights in enumerate(weights):
                 valuesik = values[ik]
                 for n, E in sorted(weights.items()):
@@ -127,9 +128,10 @@ class StaticCalculator(Calculator):
             elif self.fder == 1:
                 restot = (restot[:, 2:] - restot[:, :-2]) / (2 * self.dEF)
             elif self.fder == 2:
-                restot = (restot[:, 2:] + restot[:, :-2] - 2 * restot[:, 1:-1]) / (self.dEF**2)
+                restot = (restot[:, 2:] + restot[:, :-2] - 2 * restot[:, 1:-1]) / (self.dEF ** 2)
             elif self.fder == 3:
-                restot = (restot[:, 4:] - restot[:, :-4] - 2 * (restot[:, 3:-1] - restot[:, 1:-3])) / (2 * self.dEF**3)
+                restot = (restot[:, 4:] - restot[:, :-4] - 2 * (restot[:, 3:-1] - restot[:, 1:-3])) / (
+                            2 * self.dEF ** 3)
             else:
                 raise NotImplementedError(f"Derivatives  d^{self.fder}f/dE^{self.fder} is not implemented")
 
@@ -142,20 +144,23 @@ class StaticCalculator(Calculator):
             restot *= np.sign(self.constant_factor)
 
         if self.k_resolved:
-            return K__Result([restot], transformTR=formula.transformTR, transformInv=formula.transformInv, rank=restot.ndim-2,
-                    other_properties=dict(
-                                            comment=self.comment,
-                                            efermi=self.Efermi
-                                         )
-                            )
+            return K__Result([restot], transformTR=formula.transformTR, transformInv=formula.transformInv,
+                             rank=restot.ndim - 2,
+                             other_properties=dict(
+                                 comment=self.comment,
+                                 efermi=self.Efermi
+                             )
+                             )
         else:
-            res = EnergyResult(self.Efermi, restot[0], transformTR=formula.transformTR, transformInv=formula.transformInv, smoothers=[self.smoother], comment=self.comment)
+            res = EnergyResult(self.Efermi, restot[0], transformTR=formula.transformTR,
+                               transformInv=formula.transformInv, smoothers=[self.smoother], comment=self.comment)
             res.set_save_mode(self.save_mode)
         return res
 
     @property
     def require_energy(self):
         return True
+
 
 ###############################################
 ###############################################
@@ -174,6 +179,7 @@ class StaticCalculator(Calculator):
 #        and references (with urls) to the relevant papers
 
 from ..__utility import alpha_A, beta_A
+
 
 ####################
 # basic quantities #
@@ -225,7 +231,7 @@ class Morb(StaticCalculator):
         | Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.85.014435>`__
         | Output: :math:`M = -\int [dk] (H + G - 2E_f \cdot \Omega) f`"""
 
-    def __init__(self, constant_factor=-factors.eV_au / factors.bohr**2, **kwargs):
+    def __init__(self, constant_factor=-factors.eV_au / factors.bohr ** 2, **kwargs):
         self.Formula = frml.Morb_Hpm
         self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -234,13 +240,13 @@ class Morb(StaticCalculator):
     def __call__(self, data_K):
         Hplus_res = super().__call__(data_K)
         Omega_res = self.AHC(data_K).mul_array(self.Efermi, axes=0)
-        Hplus_res.add( - 2 * Omega_res)
-        return Hplus_res  * data_K.cell_volume
+        Hplus_res.add(- 2 * Omega_res)
+        return Hplus_res * data_K.cell_volume
 
 
 class Morb_test(Morb):
 
-    def __init__(self, constant_factor=-factors.eV_au / factors.bohr**2, **kwargs):
+    def __init__(self, constant_factor=-factors.eV_au / factors.bohr ** 2, **kwargs):
         self.Formula = frml_basic.tildeHGc
         self.fder = 0
         self.comment = r"""Orbital magnetic moment per unit cell for testing (\mu_B)
@@ -371,9 +377,9 @@ class Ohmic_FermiSea(StaticCalculator):
     __doc__ = (r"""Ohmic conductivity (:math:`S/m`)
 
         | With Fermi sea integral. Eq(31) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
-        | Output: :math:`\sigma_{\alpha\beta} = e^2/\hbar \tau \int [dk] \partial_\beta v_\alpha f`"""+
-        fr"for \tau=1{factors.TAU_UNIT_TXT}"+
-        r"""| Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta`""")
+        | Output: :math:`\sigma_{\alpha\beta} = e^2/\hbar \tau \int [dk] \partial_\beta v_\alpha f`"""
+               fr"for \tau=1{factors.TAU_UNIT_TXT}"
+               r"| Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta`")
 
     def __init__(self, constant_factor=factors.factor_ohmic, **kwargs):
         self.Formula = frml.InvMass
@@ -476,7 +482,6 @@ class BerryDipole_FermiSea(StaticCalculator):
         # swap axes to be consistent with the eq. (29) of DOI:10.1038/s41524-021-00498-5
         res.data = res.data.swapaxes(1, 2)
         return res
-
 
 
 class NLAHC_FermiSea(BerryDipole_FermiSea):
