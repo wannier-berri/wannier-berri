@@ -192,4 +192,3 @@ class GridTrigonalH(GridTetra):
             IBZ_tetra[:, :, 0] = IBZ_tetra[:, :, 0] - IBZ_tetra[:, :, 1]
 
         super().__init__(system, length, IBZ_tetra=IBZ_tetra, weights=[12, 12], NKFFT=1, **kwargs)
-

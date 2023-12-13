@@ -81,4 +81,3 @@ class System_ASE(System_w90):
         self.do_at_end_of_init()
 
         cprint("Reading the ASE system finished successfully", 'green', attrs=['bold'])
-

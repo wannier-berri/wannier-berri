@@ -127,8 +127,8 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
             else:
                 _data_ref = data_ref[(quant, comp)]
             assert _data == approx(_data_ref), (
-                f"tabulation along path gave a wrong result for quantity {quant} component {comp} "
-                + "with a maximal difference {}".format(max(abs(data - data_ref))))
+                f"tabulation along path gave a wrong result for quantity {quant} component {comp} " +
+                "with a maximal difference {}".format(max(abs(data - data_ref))))
 
     # only checks that the plot runs without errors, not checking the result of the plot
     tab_result.plot_path_fat(

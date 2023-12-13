@@ -80,8 +80,6 @@ def check_postw90(check_command_output):
 
         # so far, hardcode it for AHC, later generalize
         data_wb   = np.loadtxt(os.path.join(tmp_dir, seedname + "-ahc_iter-0000.dat"))
-
-
         maxval = np.max(abs(data_wb[:, 4:7]))
         if precision is None:
             precision = max(maxval / 1E12, 1E-11)
@@ -108,8 +106,6 @@ smr_fixed_en_width = 0.20
 fermi_energy_min = 17.0
 fermi_energy_max = 18.0
 fermi_energy_step = 0.1
-
-
 transl_inv={ti}
 use_ws_distance = {uws}
 """
@@ -120,4 +116,3 @@ use_ws_distance = {uws}
                     precision=-1e-6,
                     argv=["__wb_fft_lib=numpy"]
                  )
-

@@ -78,8 +78,8 @@ def real_recip_lattice(real_lattice=None, recip_lattice=None):
     else:
         if real_lattice is not None:
             assert np.linalg.norm(
-                np.array(real_lattice).dot(recip_lattice.T) / (2 * np.pi)
-                - np.eye(3)) <= 1e-8, "real and reciprocal lattice do not match"
+                np.array(real_lattice).dot(recip_lattice.T) / (2 * np.pi) -
+                np.eye(3)) <= 1e-8, "real and reciprocal lattice do not match"
         else:
             real_lattice = conjugate_basis(recip_lattice)
     return np.array(real_lattice), np.array(recip_lattice)
@@ -358,4 +358,3 @@ def FermiDirac(E, mu, kBT):
         sel = abs(mu - E) <= 30 * kBT
         res[sel] = 1.0 / (np.exp((E - mu[sel]) / kBT) + 1)
         return res
-

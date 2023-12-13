@@ -112,4 +112,3 @@ def evaluate_k( system=None,
             result = list(result.values())[0]
 
     return result
-

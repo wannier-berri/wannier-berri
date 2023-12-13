@@ -90,8 +90,8 @@ class DynamicCalculator(Calculator, abc.ABC):
                 [formula.trace_ln(ik, np.arange(*pair[0]), np.arange(*pair[1])) for pair in degen_group_pairs])
             factor_Efermi = np.array([self.factor_Efermi(pair[2], pair[3]) for pair in degen_group_pairs])
             factor_omega = np.array([self.factor_omega(pair[2], pair[3]) for pair in degen_group_pairs]).T
-            restot += factor_omega @ (factor_Efermi[:, :, None]
-                                      * matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
+            restot += factor_omega @ (factor_Efermi[:, :, None] *
+                                      matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
         restot = restot.reshape(restot_shape).swapaxes(0, 1)  # swap the axes to get EF,omega,a,b,...
         restot *= self.constant_factor / (data_K.nk * data_K.cell_volume)
         try:
@@ -260,29 +260,29 @@ class ShiftCurrentFormula():
         # ** the spatial index of D_H_Pval corresponds to generalized derivative direction
         # ** --> stored in the fourth column of output variables
         if external_terms:
-            sum_AD = (np.einsum('knlc,klma->knmca', A_Hbar, D_H_Pval)
-                      - np.einsum('knnc,knma->knmca', A_Hbar, D_H_Pval)
-                      - np.einsum('knla,klmc->knmca', D_H_Pval, A_Hbar)
-                      + np.einsum('knma,kmmc->knmca', D_H_Pval, A_Hbar))
-        sum_HD = (np.einsum('knlc,klma->knmca', V_H, D_H_Pval)
-                  - np.einsum('knnc,knma->knmca', V_H, D_H_Pval)
-                  - np.einsum('knla,klmc->knmca', D_H_Pval, V_H)
-                  + np.einsum('knma,kmmc->knmca', D_H_Pval, V_H))
+            sum_AD = (np.einsum('knlc,klma->knmca', A_Hbar, D_H_Pval) -
+                      np.einsum('knnc,knma->knmca', A_Hbar, D_H_Pval) -
+                      np.einsum('knla,klmc->knmca', D_H_Pval, A_Hbar) +
+                      np.einsum('knma,kmmc->knmca', D_H_Pval, A_Hbar))
+        sum_HD = (np.einsum('knlc,klma->knmca', V_H, D_H_Pval) -
+                  np.einsum('knnc,knma->knmca', V_H, D_H_Pval) -
+                  np.einsum('knla,klmc->knmca', D_H_Pval, V_H) +
+                  np.einsum('knma,kmmc->knmca', D_H_Pval, V_H))
 
         # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction
         # ** --> stored in the fourth column of output variables
         if external_terms:
-            AD_bit = (np.einsum('knnc,knma->knmac', A_Hbar, D_H)
-                      - np.einsum('kmmc,knma->knmac', A_Hbar, D_H)
-                      + np.einsum('knna,knmc->knmac', A_Hbar, D_H)
-                      - np.einsum('kmma,knmc->knmac', A_Hbar, D_H))
-            AA_bit = (np.einsum('knnb,knma->knmab', A_Hbar, A_Hbar)
-                      - np.einsum('kmmb,knma->knmab', A_Hbar, A_Hbar))
+            AD_bit = (np.einsum('knnc,knma->knmac', A_Hbar, D_H) -
+                      np.einsum('kmmc,knma->knmac', A_Hbar, D_H) +
+                      np.einsum('knna,knmc->knmac', A_Hbar, D_H) -
+                      np.einsum('kmma,knmc->knmac', A_Hbar, D_H))
+            AA_bit = (np.einsum('knnb,knma->knmab', A_Hbar, A_Hbar) -
+                      np.einsum('kmmb,knma->knmab', A_Hbar, A_Hbar))
         # ** this one is invariant under a<-->c
-        DV_bit = (np.einsum('knmc,knna->knmca', D_H, V_H)
-                  - np.einsum('knmc,kmma->knmca', D_H, V_H)
-                  + np.einsum('knma,knnc->knmca', D_H, V_H)
-                  - np.einsum('knma,kmmc->knmca', D_H, V_H))
+        DV_bit = (np.einsum('knmc,knna->knmca', D_H, V_H) -
+                  np.einsum('knmc,kmma->knmca', D_H, V_H) +
+                  np.einsum('knma,knnc->knmca', D_H, V_H) -
+                  np.einsum('knma,kmmc->knmca', D_H, V_H))
 
         # generalized derivative
         A_gen_der = (+ 1j * (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, :, np.newaxis, np.newaxis])

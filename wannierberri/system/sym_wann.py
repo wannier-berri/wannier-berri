@@ -259,9 +259,9 @@ class SymWann():
                 else:
                     if atom_index == self.num_wann_atom - 1:
                         raise RuntimeError(
-                            f'Error!!!!: no atom can match the new atom after symmetry operation {symop.ind},\n'
-                            + f'Before operation: atom {atomran} = {atom_position},\n'
-                            + f'After operation: {atom_position},\nAll wann_atom: {wann_atom_positions}')
+                            f'Error!!!!: no atom can match the new atom after symmetry operation {symop.ind},\n' +
+                            f'Before operation: atom {atomran} = {atom_position},\n' +
+                            f'After operation: {atom_position},\nAll wann_atom: {wann_atom_positions}')
         # Check if the symmetry operator respect magnetic moment.
         # TODO opt magnet code
         if self.soc:
@@ -351,8 +351,8 @@ class SymWann():
                                         if X == 'AA':
                                             XX_L += m_tmp
                                         elif X == 'BB':
-                                            XX_L += (m_tmp
-                                                * self.matrix_list['Ham'][self.H_select[symop.rot_map[atom_a], symop.rot_map[atom_b]],
+                                            XX_L += (m_tmp *
+                                                self.matrix_list['Ham'][self.H_select[symop.rot_map[atom_a], symop.rot_map[atom_b]],
                                                     new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
                                 if XX_L.ndim == 3:
                                     # X_all: rotating vector.
@@ -551,8 +551,8 @@ class SymWann():
                                             if X == 'AA':
                                                 XX_L = XX_L + m_tmp
                                             elif X == 'BB':
-                                                XX_L = XX_L + (m_tmp
-                                                    * self.matrix_dict_list['Ham'][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
+                                                XX_L = XX_L + (m_tmp *
+                                                    self.matrix_dict_list['Ham'][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
                                                         new_Rvec_index][:, :, None] )
                                     if XX_L.ndim == 3:
                                         # X_all: rotating vector.
@@ -743,4 +743,3 @@ def _get_H_select(num_wann, num_wann_atom, wann_atom_info):
                         for oib in ob_list:
                             H_select[a, b, oia, oib] = True
     return H_select
-

@@ -164,8 +164,8 @@ class System:
         try:
             return self._XX_R[key]
         except KeyError:
-            raise ValueError(f"The real-space matrix elements '{key}' are not set in the system,"
-                             + " but are required for the current calculation. please check parameters of the System() initializer")
+            raise ValueError(f"The real-space matrix elements '{key}' are not set in the system," +
+                             " but are required for the current calculation. please check parameters of the System() initializer")
 
     def has_R_mat(self, key):
         return (key in self._XX_R)
@@ -331,8 +331,8 @@ class System:
             f"indices of states should be 0<=i<num_wann-{self.num_wann}, found {pairs}")
         assert len(set(all_states)) == len(all_states), "some states appear more then once in pairs"
         if len(pairs) < self.num_wann / 2:
-            print(f"WARNING : number of spin pairs {len(pairs)} is less then num_wann/2 = {self.num_wann / 2}. "
-                  + "For other states spin properties will be set to zero. are yoiu sure ?")
+            print(f"WARNING : number of spin pairs {len(pairs)} is less then num_wann/2 = {self.num_wann / 2}. " +
+                  "For other states spin properties will be set to zero. are yoiu sure ?")
         SS_R0 = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
         for i, j in pairs:
             dist = np.linalg.norm(self.wannier_centers_cart[i] - self.wannier_centers_cart[j])
@@ -446,8 +446,8 @@ class System:
             f.write(
                 "".join(
                     "{0:3d} {1:3d} {2:15.8e} {3:15.8e}\n".format(
-                        m + 1, n + 1, self.Ham_R[m, n, iR].real * self.Ndegen[iR], self.Ham_R[m, n, iR].imag
-                        * self.Ndegen[iR]) for n in range(self.num_wann) for m in range(self.num_wann)))
+                        m + 1, n + 1, self.Ham_R[m, n, iR].real * self.Ndegen[iR], self.Ham_R[m, n, iR].imag *
+                        self.Ndegen[iR]) for n in range(self.num_wann) for m in range(self.num_wann)))
         if self.has_R_mat('AA'):
             for iR in range(self.nRvec):
                 f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
@@ -581,10 +581,10 @@ class System:
                 T = self.wannier_centers_cart[:, None, None, :, None] * self.get_R_mat('BB')[:, :, :, None, :]
                 CC_R_new = self.get_R_mat('CC').copy() + 1.j * sum(
                     s * (
-                            -T[:, :, :, a, b]  # -t_i^a * B_{ij}^b(R)
-                            - self.conj_XX_R(T[:, :, :, b, a])  # - B_{ji}^a(-R)^*  * t_j^b
-                            + self.wannier_centers_cart[:, None, None, a] * self.Ham_R[:, :, :, None]
-                            * self.wannier_centers_cart[None, :, None, b]  # + t_i^a*H_ij(R)t_j^b
+                            -T[:, :, :, a, b] -  # -t_i^a * B_{ij}^b(R)
+                            self.conj_XX_R(T[:, :, :, b, a]) +  # - B_{ji}^a(-R)^*  * t_j^b
+                            self.wannier_centers_cart[:, None, None, a] * self.Ham_R[:, :, :, None] *
+                            self.wannier_centers_cart[None, :, None, b]  # + t_i^a*H_ij(R)t_j^b
                     ) for (s, a, b) in [(+1, alpha_A, beta_A), (-1, beta_A, alpha_A)])
                 norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
                 assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
@@ -722,9 +722,9 @@ class System:
             symmetry_gen.append(TimeReversal)
         elif not tr_found:
             print(
-                "WARNING: you specified magnetic moments but spglib did not detect symmetries involving time-reversal"
-                + f"proobably it is because you have an old spglib version {spglib.__version__}"
-                + "We suggest upgrading to spglib>=2.0.2")
+                "WARNING: you specified magnetic moments but spglib did not detect symmetries involving time-reversal" +
+                f"proobably it is because you have an old spglib version {spglib.__version__}" +
+                "We suggest upgrading to spglib>=2.0.2")
         else:
             if not all([len(x) for x in self.magnetic_moments]):
                 raise ValueError("magnetic_moments must be a list of 3d vector")

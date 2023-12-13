@@ -226,8 +226,8 @@ class tildeHab_d(Formula_ln):
                 self.B.nn(ik, inn, out) - self.E[ik][inn][:, None, None] * self.A.nn(ik, inn, out))
             summ += 2 * np.einsum(
                 "mla,lnbd->mnabd", self.T_wcc.nn(ik, inn, out),
-                self.dB.nn(ik, inn, out) - self.E[ik][inn][:, None, None] * self.dA.nn(ik, inn, out)
-                - np.einsum("mld,lnb->mnbd", self.V.nn(ik, inn, out), self.A.nn(ik, inn, out)))
+                self.dB.nn(ik, inn, out) - self.E[ik][inn][:, None, None] * self.dA.nn(ik, inn, out) -
+                np.einsum("mld,lnb->mnbd", self.V.nn(ik, inn, out), self.A.nn(ik, inn, out)))
 
         summ = 0.5 * (summ + summ.transpose((1, 0, 3, 2, 4)).conj())
         return summ

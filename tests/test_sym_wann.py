@@ -307,4 +307,3 @@ def test_rotate_matrix():
     vec = np.random.random( (num_wann, num_wann, 3) ) + 1j * np.random.random( (num_wann, num_wann, 3) )
     assert _rotate_matrix(scal, L, R) == approx(np.einsum("lm,mn,np->lp", L, scal, R) )
     assert _rotate_matrix(vec, L, R) == approx(np.einsum("lm,mna,np->lpa", L, vec, R) )
-

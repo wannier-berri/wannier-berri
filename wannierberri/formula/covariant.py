@@ -474,8 +474,8 @@ class SpinVelocity(Matrix_ln):
         shc_L_H = -1j * data_K._R_to_k_H(data_K.get_R_mat('SHR'), hermitean=False)
         _spin_velocity_einsum_opt(shc_L_H, SH_H, data_K.D_H)
         J = (
-            data_K.delE_K[:, None, :, :, None] * SS_H[:, :, :, None, :]
-            + data_K.E_K[:, None, :, None, None] * shc_K_H[:, :, :, :, :] - shc_L_H)
+            data_K.delE_K[:, None, :, :, None] * SS_H[:, :, :, None, :] +
+            data_K.E_K[:, None, :, None, None] * shc_K_H[:, :, :, :, :] - shc_L_H)
         return (J + J.swapaxes(1, 2).conj()) / 2
 
 
@@ -593,7 +593,3 @@ class OmegaHplus(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([Omega(data_K, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='OmegaHplus')
-
-
-
-

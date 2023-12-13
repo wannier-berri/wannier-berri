@@ -92,4 +92,3 @@ class KpointBZtetra(KpointBZ):
 #        print (f"splitted {self.size} intp {[k.size for k in add_list]}")
         self.factor = 0.
         return add_list
-

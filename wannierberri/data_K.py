@@ -413,8 +413,8 @@ class Data_K_R(_Data_K):
     def _OO_R(self):
         # We do not multiply by expdK, because it is already accounted in AA_R
         return 1j * (
-                self.cRvec_wcc[:, :, :, alpha_A] * self.get_R_mat('AA')[:, :, :, beta_A]
-                - self.cRvec_wcc[:, :, :, beta_A] * self.get_R_mat('AA')[:, :, :, alpha_A])
+                self.cRvec_wcc[:, :, :, alpha_A] * self.get_R_mat('AA')[:, :, :, beta_A] -
+                self.cRvec_wcc[:, :, :, beta_A] * self.get_R_mat('AA')[:, :, :, alpha_A])
 
     def _CCab_R(self):
         if self._CCab_antisym:
@@ -472,8 +472,8 @@ class Data_K_R(_Data_K):
     def E_K_corners_parallel(self):
         dK2 = self.Kpoint.dK_fullBZ / 2
         expdK = np.exp(
-            2j * np.pi * self.system.iRvec
-            * dK2[None, :])  # we omit the wcc phases here, because they do not affect the energies
+            2j * np.pi * self.system.iRvec *
+            dK2[None, :])  # we omit the wcc phases here, because they do not affect the energies
         expdK = np.array([1. / expdK, expdK])
         Ecorners = np.zeros((self.nk_selected, 2, 2, 2, self.nb_selected), dtype=float)
         for ix in 0, 1:

@@ -409,4 +409,3 @@ def print_calculators(calculators):
         cprint(f" {val} ", "yellow", attrs=["bold"], end="")
         print ( f" : {val.comment}" )
     cprint("#" * 60 , "cyan", attrs=["bold"])
-

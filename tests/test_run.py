@@ -981,8 +981,8 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         precision = 1e-14 * np.max(abs(data1))
         assert data1 == approx(
                 data2, abs=precision), (
-                        f"calculated data of {key}  of full and half sets of Fermi levels give a maximal "
-                        + "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
+                        f"calculated data of {key}  of full and half sets of Fermi levels give a maximal " +
+                        "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
                             abs_err=np.max(abs(data1 - data2)), required_precision=precision))
 
 
@@ -1221,8 +1221,8 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
             precision = 1e-14 * np.max(abs(data1))
             assert data1 == approx(
                 data2, abs=precision), (
-                        f"calcuylated data of {label1}  and {label2} give a maximal "
-                        + "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
+                        f"calcuylated data of {label1}  and {label2} give a maximal " +
+                        "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
                             abs_err=np.max(abs(data1 - data2)), required_precision=precision))
 
 
@@ -1315,8 +1315,8 @@ def test_tabulate_path(system_Haldane_PythTB):
             _data = data[(quant, comp)]
             _data_ref = data_ref[(quant, comp)]
             assert _data == pytest.approx(_data_ref), (
-                f"tabulation along path gave a wrong result for quantity {quant} component {comp} "
-                + "with a maximal difference {}".format(max(abs(data - data_ref))))
+                f"tabulation along path gave a wrong result for quantity {quant} component {comp} " +
+                "with a maximal difference {}".format(max(abs(data - data_ref))))
 
     # only checks that the plot runs without errors, not checking the result of the plot
     tab_result.plot_path_fat(
@@ -1529,4 +1529,3 @@ def test_kp_mass_anisotropic_1(check_kp_mass_isotropic, system_kp_mass_aniso_1):
 
 def test_kp_mass_anisotropic_2(check_kp_mass_isotropic, system_kp_mass_aniso_2):
     check_kp_mass_isotropic(system_kp_mass_aniso_2, "aniso", "2", check_anal=False)
-

@@ -84,8 +84,8 @@ class TabulatorAll(Calculator):
                     v.ibands = ibands
 
         self.comment = (self.__doc__ + "\n Includes the following tabulators : \n" + "-" * 50 + "\n" + "\n".join(
-                    f""" "{key}" : {val} : {val.comment}\n""" for key, val in self.tabulators.items())
-                    + "\n" + "-" * 50 + "\n" )
+                    f""" "{key}" : {val} : {val.comment}\n""" for key, val in self.tabulators.items()) +
+                    "\n" + "-" * 50 + "\n" )
         self._set_comment(print_comment)
 
     def require_energy(self):
@@ -176,4 +176,3 @@ class SpinBerry(Tabulator):
 
     def __init__(self, **kwargs):
         super().__init__(frml.SpinOmega, **kwargs)
-

@@ -224,5 +224,3 @@ class NoComponentError(RuntimeError):
     def __init__(self, comp, dim, err=""):
         # Call the base class constructor with the parameters it needs
         super().__init__("component {} does not exist for tensor with dimension {} :\n{}".format(comp, dim, err))
-
-
