@@ -74,7 +74,7 @@ class System_ASE(System_w90):
             )
 
         self.set_R_mat('Ham', np.array([ase_wannier.get_hopping(R) / nd for R, nd in zip(self.iRvec, self.Ndegen)]).transpose(
-            (1, 2, 0)) )
+            (1, 2, 0)))
 
         self.getXX_only_wannier_centers()
 

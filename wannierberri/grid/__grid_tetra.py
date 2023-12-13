@@ -57,11 +57,11 @@ class GridTetra(GridAbstract):
         print("reduced reciprocal lattice : \n", self.recip_lattice_reduced)
         if IBZ_tetra is None:   # divide the full reciprocal unit cell into 5 tetrahedra -
             print("WARNING : irreducible wedge not provided, no use of symmetries")
-            tetrahedra = np.array([  [ [0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1] ],
-                                     [ [1, 0, 1], [0, 0, 1], [1, 0, 0], [1, 1, 1] ],
-                                     [ [1, 1, 0], [1, 0, 0], [0, 1, 0], [1, 1, 1] ],
-                                     [ [0, 1, 1], [0, 0, 1], [0, 1, 0], [1, 1, 1] ],
-                                     [ [0, 0, 1], [0, 1, 0], [1, 0, 0], [1, 1, 1] ]
+            tetrahedra = np.array([  [ [0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                                     [ [1, 0, 1], [0, 0, 1], [1, 0, 0], [1, 1, 1]],
+                                     [ [1, 1, 0], [1, 0, 0], [0, 1, 0], [1, 1, 1]],
+                                     [ [0, 1, 1], [0, 0, 1], [0, 1, 0], [1, 1, 1]],
+                                     [ [0, 0, 1], [0, 1, 0], [1, 0, 0], [1, 1, 1]]
                                    ]) - np.array([0.5, 0.5, 0.5])[None, None, :]
         else:
             tetrahedra = np.array(IBZ_tetra)
@@ -145,7 +145,7 @@ class GridTetra(GridAbstract):
         return [K.copy() for K in self.K_list]
 
 
-def tetra_volume( vortices ):
+def tetra_volume( vortices):
     return abs(np.linalg.det( vortices[1:] - vortices[0][None, :])) / 6.
 
 
@@ -156,10 +156,10 @@ class GridTrigonal(GridTetra):
 
         # these ones are for the case when the reciprocal lattice vectors form a 120deg angle
         IBZ_tetra = np.array( [
-                    [ [0, 0, 0], [1 / 3, 2 / 3, 0.0], [2 / 3, 1 / 3, 0.0], [1 / 3, 2 / 3, 0.5] ],
-                    [ [0, 0, 0], [2 / 3, 1 / 3, 0.5], [2 / 3, 1 / 3, 0.0], [1 / 3, 2 / 3, 0.5] ],
-                    [ [0, 0, 0], [2 / 3, 1 / 3, 0.5], [0, 0, 0.5], [1 / 3, 2 / 3, 0.5] ],
-                              ]  )
+                    [ [0, 0, 0], [1 / 3, 2 / 3, 0.0], [2 / 3, 1 / 3, 0.0], [1 / 3, 2 / 3, 0.5]],
+                    [ [0, 0, 0], [2 / 3, 1 / 3, 0.5], [2 / 3, 1 / 3, 0.0], [1 / 3, 2 / 3, 0.5]],
+                    [ [0, 0, 0], [2 / 3, 1 / 3, 0.5], [0, 0, 0.5], [1 / 3, 2 / 3, 0.5]],
+                              ])
 
         b1, b2, b3 = system.recip_lattice
         assert angle_vectors_deg(b1, b3) == 90
@@ -178,11 +178,11 @@ class GridTrigonalH(GridTetra):
 
         # these ones are for the case when the reciprocal lattice vectors form a 120deg angle
         H = np.array([2 / 3, 1 / 3, 1 / 2])
-        K = np.array([2 / 3, 1 / 3, 0  ])
+        K = np.array([2 / 3, 1 / 3, 0])
         H1 = np.array([1 / 3, -1 / 3, 1 / 2])
         A = (H - K)
-        IBZ_tetra = np.array( [ [ H, H + x * (K - H), H + x * (A - H), H + x * (H1 - H) ],
-                                [ H, H - x * (K - H), H + x * (A - H), H + x * (H1 - H) ] ] )
+        IBZ_tetra = np.array( [ [ H, H + x * (K - H), H + x * (A - H), H + x * (H1 - H)],
+                                [ H, H - x * (K - H), H + x * (A - H), H + x * (H1 - H)]])
 
         b1, b2, b3 = system.recip_lattice
         assert angle_vectors_deg(b1, b3) == 90

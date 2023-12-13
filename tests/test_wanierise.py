@@ -34,7 +34,7 @@ def test_disentangle(system_Fe_W90_disentangle, system_Fe_W90_proj_ws):
                         grid=path,
                         calculators={"tabulate": tab_all_path},
                         print_Kpoints=False)
-        energies.append( result.results["tabulate"].get_data(quantity="Energy", iband=np.arange(0, 18)) )
+        energies.append( result.results["tabulate"].get_data(quantity="Energy", iband=np.arange(0, 18)))
 
     select = energies[1] < 18
     diff = abs(energies[1][select] - energies[0][select])

@@ -147,7 +147,7 @@ class SymWann():
                 projection = proj_dic[name]
                 self.wann_atom_info.append( WannAtomInfo(iatom=atom + 1, atom_name=self.atom_name[atom],
                         position=self.positions[atom], projection=projection, orbital_index=orbital_index_list[atom], soc=self.soc,
-                        magmom=self.magmom[atom] if self.magmom is not None else None) )
+                        magmom=self.magmom[atom] if self.magmom is not None else None))
         self.num_wann_atom = len(self.wann_atom_info)
 
         self.H_select = _get_H_select(self.num_wann, self.num_wann_atom, self.wann_atom_info)
@@ -254,7 +254,7 @@ class SymWann():
                 if np.all(abs((diff + 0.5) % 1 - 0.5) < 1e-5):
                     rot_map.append(atom_index)
                     vec_shift_map.append( np.array(
-                        np.round(new_atom - np.array(wann_atom_positions[atom_index])), dtype=int) )
+                        np.round(new_atom - np.array(wann_atom_positions[atom_index])), dtype=int))
                     break
                 else:
                     if atom_index == self.num_wann_atom - 1:
@@ -320,7 +320,7 @@ class SymWann():
             print('irot = ', irot + 1)
             R_map = np.dot(R_list, np.transpose(symop.rotation))
             atom_R_map = R_map[:, None, None, :] - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :]
-            iR0 = self.index_R( (0, 0, 0) )
+            iR0 = self.index_R( (0, 0, 0))
 
             # TODO try numba
             for atom_a in range(self.num_wann_atom):
@@ -356,7 +356,7 @@ class SymWann():
                                                     new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
                                 if XX_L.ndim == 3:
                                     # X_all: rotating vector.
-                                    XX_L = np.tensordot( XX_L, symop.rotation_cart, axes=1).reshape( shape )
+                                    XX_L = np.tensordot( XX_L, symop.rotation_cart, axes=1).reshape( shape)
                                 if symop.inversion:
                                     XX_L *= self.parity_I[X]
                                 if symop.sym_only:
@@ -506,11 +506,11 @@ class SymWann():
         iRab_new = copy.deepcopy(iRab_new)
         iRvec_new_array = np.array(iRvec_new, dtype=int)
 
-        matrix_dict_list_res = {k: defaultdict( lambda: defaultdict(lambda: 0))  for k, v in self.matrix_dict_list.items() }
+        matrix_dict_list_res = {k: defaultdict( lambda: defaultdict(lambda: 0))  for k, v in self.matrix_dict_list.items()}
 
-        iRab_all = defaultdict( lambda: set() )
+        iRab_all = defaultdict( lambda: set())
 
-        iR0 = iRvec_new.index( (0, 0, 0) )
+        iR0 = iRvec_new.index( (0, 0, 0))
         for symop in self.symmetry_operations:
             if symop.sym_only or symop.sym_T:
                 print('symmetry operation  ', symop.ind)
@@ -553,10 +553,10 @@ class SymWann():
                                             elif X == 'BB':
                                                 XX_L = XX_L + (m_tmp *
                                                     self.matrix_dict_list['Ham'][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
-                                                        new_Rvec_index][:, :, None] )
+                                                        new_Rvec_index][:, :, None])
                                     if XX_L.ndim == 3:
                                         # X_all: rotating vector.
-                                        XX_L = np.tensordot( XX_L, symop.rotation_cart, axes=1).reshape( XX_L.shape )
+                                        XX_L = np.tensordot( XX_L, symop.rotation_cart, axes=1).reshape( XX_L.shape)
                                     elif XX_L.ndim > 3:
                                         raise ValueError("transformation of tensors is not implemented")
                                     if symop.inversion:
@@ -595,7 +595,7 @@ class SymWann():
         matrix_dict_list_res, iRvec_ab_all = self.average_H_irreducible( iRab_new=iRab_irred, matrix_dict_in=self.matrix_dict_list, iRvec_new=self.iRvec, mode="sum")
 #        print ("matrix_dict_list_res = ", matrix_dict_list_res)
         iRvec_new_set = set.union(*iRvec_ab_all.values())
-        iRvec_new_set.add( (0, 0, 0) )
+        iRvec_new_set.add( (0, 0, 0))
         iRvec_new = list(iRvec_new_set)
         nRvec_new = len(iRvec_new)
         iRvec_new_index = {r: i for i, r in enumerate(iRvec_new)}
@@ -605,7 +605,7 @@ class SymWann():
 
         return_dic = {}
         for k, v in matrix_dict_list_res.items():
-            return_dic[k] = _dict_to_matrix(v, H_select=self.H_select, nRvec=nRvec_new, ndimv=self.ndimv[k] )
+            return_dic[k] = _dict_to_matrix(v, H_select=self.H_select, nRvec=nRvec_new, ndimv=self.ndimv[k])
             self.spin_reorder(return_dic[k], back=True)
 
         print('Symmetrizing Finished')
@@ -649,7 +649,7 @@ class WannAtomInfo():
 
 
     def __str__(self):
-        return "; ".join(f"{key}:{value}" for key, value in self.__dict__.items() if key != "orb_position_dic" )
+        return "; ".join(f"{key}:{value}" for key, value in self.__dict__.items() if key != "orb_position_dic")
 
 
 # TODO : move to irrep?
@@ -713,8 +713,8 @@ def _matrix_to_dict( mat, H_select, wann_atom_info):
         for b, atom_b in enumerate(wann_atom_info):
             num_w_b = atom_b.num_wann  # number of orbitals of atom_a
             result_ab = {}
-            X = mat[ H_select[a, b] ]
-            X = X.reshape( (num_w_a, num_w_b) + mat.shape[2:] )
+            X = mat[ H_select[a, b]]
+            X = X.reshape( (num_w_a, num_w_b) + mat.shape[2:])
             for iR in range(mat.shape[2]):
                 result_ab[iR] = X[:, :, iR]
             if len(result_ab) > 0:
@@ -724,7 +724,7 @@ def _matrix_to_dict( mat, H_select, wann_atom_info):
 
 def _dict_to_matrix(dic, H_select, nRvec, ndimv):
     num_wann = H_select.shape[2]
-    mat = np.zeros( (num_wann, num_wann, nRvec) + (3,) * ndimv, dtype=complex )
+    mat = np.zeros( (num_wann, num_wann, nRvec) + (3,) * ndimv, dtype=complex)
     for (a, b), irX in dic.items():
         for iR, X in irX.items():
             mat[H_select[a, b], iR] = X.reshape( (-1,) + X.shape[2:])

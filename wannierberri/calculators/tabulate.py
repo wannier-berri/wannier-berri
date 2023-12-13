@@ -85,7 +85,7 @@ class TabulatorAll(Calculator):
 
         self.comment = (self.__doc__ + "\n Includes the following tabulators : \n" + "-" * 50 + "\n" + "\n".join(
                     f""" "{key}" : {val} : {val.comment}\n""" for key, val in self.tabulators.items()) +
-                    "\n" + "-" * 50 + "\n" )
+                    "\n" + "-" * 50 + "\n")
         self._set_comment(print_comment)
 
     def require_energy(self):
@@ -101,7 +101,7 @@ class TabulatorAll(Calculator):
             recip_lattice=data_K.system.recip_lattice,
             save_mode=self.save_mode,
             results={k: v(data_K)
-                     for k, v in self.tabulators.items()} )
+                     for k, v in self.tabulators.items()})
 
 
     @property

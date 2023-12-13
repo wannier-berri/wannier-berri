@@ -38,7 +38,7 @@ def check_symmetry(check_run):
         for quant in calculators.keys():
             diff = abs(result_full_k.results[quant].data - result_irr_k.results[quant].data).max()
             if precision < 0:
-                req_precision = -precision * ( abs(result_full_k.results[quant].data) + abs(result_irr_k.results[quant].data) ).max() / 2
+                req_precision = -precision * ( abs(result_full_k.results[quant].data) + abs(result_irr_k.results[quant].data)).max() / 2
             else:
                 req_precision = precision
             assert diff <= req_precision, (
@@ -282,17 +282,17 @@ def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
 class AtomInfo():
     """fake AtomInfo for test"""
     def __init__(self, orbital_index):
-        self.num_wann = sum( len(oi) for oi in orbital_index )
+        self.num_wann = sum( len(oi) for oi in orbital_index)
         self.orbital_index = orbital_index
 
 
 def test_matrix_to_dict():
-    wann_atom_info = [AtomInfo(n) for n in ([[1, 3], [5, 6]], [ [0, 2, 4] ])]
-    num_wann = sum( (at.num_wann for at in wann_atom_info) )
+    wann_atom_info = [AtomInfo(n) for n in ([[1, 3], [5, 6]], [ [0, 2, 4]])]
+    num_wann = sum( (at.num_wann for at in wann_atom_info))
     num_wann_atom = len(wann_atom_info)
     nRvec = 8
     ndimv = 2
-    mat = np.random.random( (num_wann, num_wann, nRvec) + (3,) * ndimv )
+    mat = np.random.random( (num_wann, num_wann, nRvec) + (3,) * ndimv)
     H_select = _get_H_select(num_wann, num_wann_atom, wann_atom_info)
     dic = _matrix_to_dict( mat, H_select, wann_atom_info)
     mat_new = _dict_to_matrix(dic, H_select, nRvec, ndimv)
@@ -301,9 +301,9 @@ def test_matrix_to_dict():
 
 def test_rotate_matrix():
     num_wann = 5
-    L = np.random.random( (num_wann, num_wann) ) + 1j * np.random.random( (num_wann, num_wann) )
-    R = np.random.random( (num_wann, num_wann) ) + 1j * np.random.random( (num_wann, num_wann) )
-    scal = np.random.random( (num_wann, num_wann) ) + 1j * np.random.random( (num_wann, num_wann) )
-    vec = np.random.random( (num_wann, num_wann, 3) ) + 1j * np.random.random( (num_wann, num_wann, 3) )
-    assert _rotate_matrix(scal, L, R) == approx(np.einsum("lm,mn,np->lp", L, scal, R) )
-    assert _rotate_matrix(vec, L, R) == approx(np.einsum("lm,mna,np->lpa", L, vec, R) )
+    L = np.random.random( (num_wann, num_wann)) + 1j * np.random.random( (num_wann, num_wann))
+    R = np.random.random( (num_wann, num_wann)) + 1j * np.random.random( (num_wann, num_wann))
+    scal = np.random.random( (num_wann, num_wann)) + 1j * np.random.random( (num_wann, num_wann))
+    vec = np.random.random( (num_wann, num_wann, 3)) + 1j * np.random.random( (num_wann, num_wann, 3))
+    assert _rotate_matrix(scal, L, R) == approx(np.einsum("lm,mn,np->lp", L, scal, R))
+    assert _rotate_matrix(vec, L, R) == approx(np.einsum("lm,mna,np->lpa", L, vec, R))

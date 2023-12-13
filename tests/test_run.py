@@ -152,10 +152,10 @@ smoother_Chiral = FermiDiracSmoother(Efermi_Chiral, T_Kelvin=1200, maxdE=8)
 
 parameters_Chiral_optical = dict(
         Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian",
-        kwargs_formula={"external_terms": False }, )
+        kwargs_formula={"external_terms": False}, )
 
 
-parameters_Chiral_shiftcurrent = dict( sc_eta=0.1 )
+parameters_Chiral_shiftcurrent = dict( sc_eta=0.1)
 
 calculators_Chiral = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, smoother=smoother_Chiral),
@@ -1125,7 +1125,7 @@ def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result
     data2 = result.results.get("dos_trig").data[nshift:]
     assert data1.shape == data2.shape
     assert data1 == approx(data2), "the result with the shifted set of Fermi levels is different by {}".format(
-            np.max(np.abs(data1 - data2)) )
+            np.max(np.abs(data1 - data2)))
 
 
 def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, compare_any_result):
@@ -1378,7 +1378,7 @@ def test_shc_static(check_run, system_Fe_W90):
 
 
     for mode in ["qiao", "ryoo"]:
-        data_static = result.results[f"SHC{mode}_static" ].data
+        data_static = result.results[f"SHC{mode}_static"].data
         data_dynamic = result.results[f"SHC{mode}_dynamic"].data[:, 0, ...].real
         precision = max(np.average(abs(data_static) / 1E10), 1E-8)
         assert data_static == approx(

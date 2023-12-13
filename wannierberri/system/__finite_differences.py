@@ -89,14 +89,14 @@ class Derivative3D():
         self.bk_red = bk_red
         self.wk = wk
         shape = function([0, 0, 0]).shape
-        self.bk_cart = bk_cart.reshape( (bk_cart.shape[0],) + (1,) * len(shape) + (3,) )
+        self.bk_cart = bk_cart.reshape( (bk_cart.shape[0],) + (1,) * len(shape) + (3,))
 
 
     def __call__(self, k):
         """returns a derivative of the function"""
         k = np.array(k)
         return sum( wk * self.function(k + bk_red)[..., None] * bk_cart
-                for wk, bk_red, bk_cart in zip(self.wk, self.bk_red, self.bk_cart) )
+                for wk, bk_red, bk_cart in zip(self.wk, self.bk_red, self.bk_cart))
 
 
 def get_neighbours_FFT(recip_lattice, FFT):

@@ -205,7 +205,7 @@ class EnergyResult(Result):
                 return ['  ']
             else:
                 return [a + b for a in 'xyz' for b in getHead(n - 1)]
-        head = "".join("#### " + s + "\n" for s in self.comment.split("\n") )
+        head = "".join("#### " + s + "\n" for s in self.comment.split("\n"))
         head += "#" + "    ".join("{0:^15s}".format(s) for s in self.E_titles) + " " * 8 + "    ".join(
             frmt.format(b) for b in getHead(self.rank) * 2) + "\n"
         name = name.format('')

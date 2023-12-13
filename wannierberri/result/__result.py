@@ -29,7 +29,7 @@ class Result():
         """
         name = name.format('')
         with open(name + ".npz", "wb") as f:
-            np.savez_compressed(f, **self.as_dict(), allow_pickle=True )
+            np.savez_compressed(f, **self.as_dict(), allow_pickle=True)
 
     @property
     def _maxval_raw(self):

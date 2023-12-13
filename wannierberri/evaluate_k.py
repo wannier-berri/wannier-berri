@@ -68,7 +68,7 @@ def evaluate_k( system=None,
     # without parameters - just print the available options
     if system is None:
         print(__doc__)
-        print( help() )
+        print( help())
         return
 
     set1 = set(quantities)
@@ -100,7 +100,7 @@ def evaluate_k( system=None,
 
 
 
-    _param_formula = defaultdict(lambda: {} )
+    _param_formula = defaultdict(lambda: {})
     _param_formula.update(param_formula)
 
     for k, f in formula.items():

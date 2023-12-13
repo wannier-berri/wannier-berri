@@ -15,7 +15,7 @@ def test_utility_str2bool():
 
 
 def test_utility_FFT():
-    inp = np.random.random( (5, 4, 3, 5) ) * (1 + 2.j)
+    inp = np.random.random( (5, 4, 3, 5)) * (1 + 2.j)
     axes = (0, 2)
     for fft in "fftw", "numpy", "FfTw", "nUmPY":
         util.FFT(inp, axes, fft=fft)

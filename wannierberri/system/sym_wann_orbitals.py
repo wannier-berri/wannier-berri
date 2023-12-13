@@ -100,7 +100,7 @@ class Orbitals():
         ''' Get rotation matrix of orbitals in each orbital quantum number '''
         orb_dim = self.num_orbitals(orb_symbol)
         orb_rot_mat = np.zeros((orb_dim, orb_dim), dtype=float)
-        xp, yp, zp = np.dot(np.linalg.inv(rot_glb), self.xyz )
+        xp, yp, zp = np.dot(np.linalg.inv(rot_glb), self.xyz)
         OC = self.orb_chara_dic[orb_symbol]
         OC_len = len(OC)
         if orb_symbol == 'sp3d2':

@@ -66,7 +66,7 @@ def test_path_4(system_Haldane_PythTB):
 
 def test_tabulate_path(system_Haldane_PythTB, check_run):
     param_tab = {'degen_thresh': 5e-2, }
-    no_external = dict(kwargs_formula={"external_terms": False }, )
+    no_external = dict(kwargs_formula={"external_terms": False}, )
 
     calculators = {}
     calculators["tabulate"] = TabulatorAll(
