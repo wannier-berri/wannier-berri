@@ -145,7 +145,7 @@ class SymWann():
         for atom, name in enumerate(self.atom_name):
             if name in proj_dic:
                 projection = proj_dic[name]
-                self.wann_atom_info.append( WannAtomInfo(iatom=atom + 1,  atom_name=self.atom_name[atom],
+                self.wann_atom_info.append( WannAtomInfo(iatom=atom + 1, atom_name=self.atom_name[atom],
                         position=self.positions[atom], projection=projection, orbital_index=orbital_index_list[atom], soc=self.soc,
                         magmom=self.magmom[atom] if self.magmom is not None else None) )
         self.num_wann_atom = len (self.wann_atom_info)
@@ -616,7 +616,7 @@ class SymWann():
 
 class WannAtomInfo():
 
-    def __init__(self,   iatom, atom_name, position, projection, orbital_index,  magmom=None, soc=False):
+    def __init__(self, iatom, atom_name, position, projection, orbital_index, magmom=None, soc=False):
         self.iatom = iatom
         self.atom_name = atom_name
         self.position = position

@@ -64,7 +64,7 @@ def test_calc_fder(system_Fe_W90, check_calculator):
 def test_tabulator_mul(system_Fe_W90, check_calculator):
     calc = wberri.calculators.tabulate.Energy()
     name = "Fe-tab-energy"
-    check_calculator(system_Fe_W90, calc, name, factor=5,  result_type=KBandResult)
+    check_calculator(system_Fe_W90, calc, name, factor=5, result_type=KBandResult)
 
 
 def test_tab_fit(system_Haldane_PythTB):
@@ -78,7 +78,7 @@ def test_tab_fit(system_Haldane_PythTB):
     calculators = [[cal(ibands=ib, **noext) for ib in ( [0,], [0, 1]) ] for cal in (berry, morb)]
     results = [[cal[b](data_K) for b in range(2)] for cal in calculators]
     for ical1, ib1 in wberri.__utility.iterate_nd((2, 2)):
-        for ical2,  ib2 in wberri.__utility.iterate_nd((2, 2)):
+        for ical2, ib2 in wberri.__utility.iterate_nd((2, 2)):
             r1 = results[ical1][ib1]
             r2 = results[ical2][ib2]
             check = r1.fit(r2)
@@ -87,7 +87,7 @@ def test_tab_fit(system_Haldane_PythTB):
     for res in results:
         r1 = res[0]
         r2 = res[1].select_bands((0,))
-        assert r1.fit(r2),  f"{r1.nband}, {r2.nband}, {r1.fit(r2)}"
+        assert r1.fit(r2), f"{r1.nband}, {r2.nband}, {r1.fit(r2)}"
         assert r1.data == pytest.approx(r2.data)
 
 

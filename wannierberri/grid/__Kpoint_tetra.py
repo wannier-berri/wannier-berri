@@ -25,7 +25,7 @@ class KpointBZtetra(KpointBZ):
 
     "describes the K-point and surrounding tetrahedron"
 
-    def __init__(self, vertices, basis=np.eye(3), K=0, NKFFT=np.ones(3), factor=1.,  refinement_level=0, split_level=0):
+    def __init__(self, vertices, basis=np.eye(3), K=0, NKFFT=np.ones(3), factor=1., refinement_level=0, split_level=0):
         cntr = np.mean(vertices, axis=0)
         super().__init__(K=np.array(K) + cntr, NKFFT=NKFFT, factor=factor, symgroup=None, refinement_level=refinement_level)
         assert (vertices.shape == (4, 3) )
@@ -62,7 +62,7 @@ class KpointBZtetra(KpointBZ):
     def size(self):
         return max(self.__edge_lengths)
 
-    def divide(self,  ndiv=2, periodic=[True, True, True], use_symmetry=True, refine=True):
+    def divide(self, ndiv=2, periodic=[True, True, True], use_symmetry=True, refine=True):
         """
             we either 'split' (if the tetrahedra is too big) refine = False
              or 'refine' (if the result is big), but it only matters for the counters

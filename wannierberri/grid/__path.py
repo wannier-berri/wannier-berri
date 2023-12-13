@@ -164,7 +164,7 @@ class Path(GridAbstract):
             print("WARNING : symmetry is not used for a tabulation along path")
         print("generating K_list")
         K_list = [
-            KpointBZpath(K=K,  symgroup=self.symgroup)
+            KpointBZpath(K=K, symgroup=self.symgroup)
             for K in self.K_list
         ]
         print("Done ")

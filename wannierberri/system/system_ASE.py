@@ -73,7 +73,7 @@ class System_ASE(System_w90):
                 "the grid of k-points read from .chk file is not Gamma-centerred. Please, use Gamma-centered grids in the ab initio calculation"
             )
 
-        self.set_R_mat('Ham',  np.array([ase_wannier.get_hopping(R) / nd for R, nd in zip(self.iRvec, self.Ndegen)]).transpose(
+        self.set_R_mat('Ham', np.array([ase_wannier.get_hopping(R) / nd for R, nd in zip(self.iRvec, self.Ndegen)]).transpose(
             (1, 2, 0)) )
 
         self.getXX_only_wannier_centers()

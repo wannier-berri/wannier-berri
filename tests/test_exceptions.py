@@ -18,10 +18,10 @@ def test_utility_FFT():
     inp = np.random.random( (5, 4, 3, 5) ) * (1 + 2.j)
     axes = (0, 2)
     for fft in "fftw", "numpy", "FfTw", "nUmPY":
-        util.FFT(inp, axes,  fft=fft)
-    for fft in "fft" , "np",  "idkwhat", "dummy":
+        util.FFT(inp, axes, fft=fft)
+    for fft in "fft" , "np", "idkwhat", "dummy":
         with pytest.raises(ValueError, match=f"unknown type of fft : {fft}"):
-            util.FFT(inp, axes,  fft=fft)
+            util.FFT(inp, axes, fft=fft)
 
 
 def test_utility_FFT_R_to_k():

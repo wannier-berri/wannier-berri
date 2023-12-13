@@ -175,7 +175,7 @@ class FFT_R_to_k():
         self.NKFFT = tuple(NKFFT)
         self.num_wann = num_wann
         lib = lib.lower()
-        assert lib in ('fftw', 'numpy', 'slow'),  f"fft lib '{lib.lower()}' is unknown/supported"
+        assert lib in ('fftw', 'numpy', 'slow'), f"fft lib '{lib.lower()}' is unknown/supported"
         if lib == 'fftw' and not PYFFTW_IMPORTED:
             lib = 'numpy'
         self.lib = lib

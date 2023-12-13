@@ -218,7 +218,7 @@ def run(
 
         @ray.remote
         def paralfunc(Kpoint, _system, _grid, _calculators, npar_k):
-            data = get_data_k(_system,  Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+            data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
             return ResultDict({k: v(data) for k, v in _calculators.items()})
     else:
 

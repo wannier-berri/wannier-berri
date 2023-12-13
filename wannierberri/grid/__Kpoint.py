@@ -79,7 +79,7 @@ class KpointBZ():
 
 class KpointBZpath(KpointBZ):
 
-    def __init__(self, K=np.zeros(3),  symgroup=None):
+    def __init__(self, K=np.zeros(3), symgroup=None):
         super().__init__(K=np.copy(K), symgroup=symgroup)
 
     def __str__(self):

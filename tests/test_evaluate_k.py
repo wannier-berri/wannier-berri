@@ -135,10 +135,10 @@ def test_evaluate_k_hlp():
 
 def test_evaluate_fail(system_Fe_W90):
     with pytest.raises(ValueError):
-        wberri.evaluate_k(  system_Fe_W90,  k=k, quantities=["abracadabra"], )
+        wberri.evaluate_k(  system_Fe_W90, k=k, quantities=["abracadabra"], )
     with pytest.raises(ValueError):
-        wberri.evaluate_k(  system_Fe_W90,  k=k, quantities=["ham"], formula={"ham": None})
+        wberri.evaluate_k(  system_Fe_W90, k=k, quantities=["ham"], formula={"ham": None})
     with pytest.raises(ValueError):
-        wberri.evaluate_k(  system_Fe_W90,  k=k, quantities=["ham"], calculators={"ham": None})
+        wberri.evaluate_k(  system_Fe_W90, k=k, quantities=["ham"], calculators={"ham": None})
     with pytest.raises(ValueError):
-        wberri.evaluate_k(  system_Fe_W90,  k=k, calculators={"abracadabra": None}, formula={"abracadabra": None})
+        wberri.evaluate_k(  system_Fe_W90, k=k, calculators={"abracadabra": None}, formula={"abracadabra": None})
