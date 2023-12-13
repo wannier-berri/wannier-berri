@@ -91,6 +91,6 @@ def test_tetra_accurate(data):
     ef = np.array([ef])
     weight_old = weights_tetra(ef, e1, e2, e3, e4, der=0, accurate=False)
     weight_acc = weights_tetra(ef, e1, e2, e3, e4, der=0, accurate=True)
-    print ("weights (old/acc):", weight_old, weight_acc)
+    print("weights (old/acc):", weight_old, weight_acc)
     assert weight_old[0] == approx(data[5], abs=1e-8)
     assert weight_acc[0] == approx(data[6], abs=1e-8)

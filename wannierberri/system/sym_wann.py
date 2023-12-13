@@ -83,7 +83,7 @@ class SymWann():
         self.matrix_list = XX_R
         for k in XX_R:
             if k not in self.possible_matrix_list:
-                print (f"WARNING: symmetrization of matrix {k} is not implemented yet, so it will not be symmetrized, but passed as it. Use on your own risk")
+                print(f"WARNING: symmetrization of matrix {k} is not implemented yet, so it will not be symmetrized, but passed as it. Use on your own risk")
         # This is confusing, actually the I-odd vectors have "+1" here, because the minus is already in the rotation matrix
         # but Ham is a scalar, so +1
         # TODO: change it
@@ -148,7 +148,7 @@ class SymWann():
                 self.wann_atom_info.append( WannAtomInfo(iatom=atom + 1, atom_name=self.atom_name[atom],
                         position=self.positions[atom], projection=projection, orbital_index=orbital_index_list[atom], soc=self.soc,
                         magmom=self.magmom[atom] if self.magmom is not None else None) )
-        self.num_wann_atom = len (self.wann_atom_info)
+        self.num_wann_atom = len(self.wann_atom_info)
 
         self.H_select = _get_H_select(self.num_wann, self.num_wann_atom, self.wann_atom_info)
 
@@ -450,7 +450,7 @@ class SymWann():
         --------
         dict { (a,b):set([index of Rvecotr, if it is irreducible])}
         """
-        print ("searching irreducible Rvectors for pairs of a,b")
+        print("searching irreducible Rvectors for pairs of a,b")
 
         R_list = np.array(self.iRvec, dtype=int)
         irreducible = np.ones((self.nRvec, self.num_wann_atom, self.num_wann_atom), dtype=bool)
@@ -487,7 +487,7 @@ class SymWann():
                                     if iR1 is not None and (a1, b1, iR1) > (a, b, iR):
                                         irreducible[iR1, a1, b1] = False
 
-        print (f"Found {np.sum(irreducible)} sets of (R,a,b) out of the total {self.nRvec*self.num_wann_atom**2} ({self.nRvec}*{self.num_wann_atom}^2)")
+        print(f"Found {np.sum(irreducible)} sets of (R,a,b) out of the total {self.nRvec*self.num_wann_atom**2} ({self.nRvec}*{self.num_wann_atom}^2)")
         dic = {(a, b): set([iR for iR in range(self.nRvec)  if irreducible[iR, a, b]])
                 for a in range(self.num_wann_atom)  for b in range(self.num_wann_atom)}
         res = {k: v for k, v in dic.items() if len(v) > 0}
@@ -627,11 +627,11 @@ class WannAtomInfo():
         self.soc = soc
         self.num_wann = len(sum(self.orbital_index, []))  # number of orbitals of atom_a
         allindex = sorted(sum(self.orbital_index , []))
-        print ("allindex", allindex)
+        print("allindex", allindex)
         self.orb_position_on_atom_dic = {}
         for pr, ind in zip(projection, orbital_index):
             indx = [allindex.index(i) for i in ind]
-            print (pr, ":", ind, ":", indx)
+            print(pr, ":", ind, ":", indx)
             orb_select = np.zeros((self.num_wann, self.num_wann), dtype=bool)
             for oi in indx:
                 for oj in indx:

@@ -29,7 +29,7 @@ def test_disentangle(system_Fe_W90_disentangle, system_Fe_W90_proj_ws):
 
     energies = []
     for system in system_Fe_W90_disentangle, system_Fe_W90_proj_ws:
-        print ("Wannier Centers\n", np.round(system.wannier_centers_reduced, decimals=4))
+        print("Wannier Centers\n", np.round(system.wannier_centers_reduced, decimals=4))
         result = wberri.run(system,
                         grid=path,
                         calculators={"tabulate": tab_all_path},

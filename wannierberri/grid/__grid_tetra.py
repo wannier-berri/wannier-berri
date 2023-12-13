@@ -54,9 +54,9 @@ class GridTetra(GridAbstract):
             self.FFT = np.array(NKFFT)
 
         self.recip_lattice_reduced = system.recip_lattice / self.FFT[:, None]
-        print ("reduced reciprocal lattice : \n", self.recip_lattice_reduced)
+        print("reduced reciprocal lattice : \n", self.recip_lattice_reduced)
         if IBZ_tetra is None:   # divide the full reciprocal unit cell into 5 tetrahedra -
-            print ("WARNING : irreducible wedge not provided, no use of symmetries")
+            print("WARNING : irreducible wedge not provided, no use of symmetries")
             tetrahedra = np.array([  [ [0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1] ],
                                      [ [1, 0, 1], [0, 0, 1], [1, 0, 0], [1, 1, 1] ],
                                      [ [1, 1, 0], [1, 0, 0], [0, 1, 0], [1, 1, 1] ],
@@ -65,41 +65,41 @@ class GridTetra(GridAbstract):
                                    ]) - np.array([0.5, 0.5, 0.5])[None, None, :]
         else :
             tetrahedra = np.array(IBZ_tetra)
-        print ("using starting tetrahedra with vertices \n", tetrahedra)
+        print("using starting tetrahedra with vertices \n", tetrahedra)
         _weights = np.array([tetra_volume(t) for t in tetrahedra])
-        print (f"volumes of tetrahedra are {_weights}, total = {sum(_weights)} ")
+        print(f"volumes of tetrahedra are {_weights}, total = {sum(_weights)} ")
         if weights is None:
             weights = _weights / sum(_weights)
         else :
             weights = np.array(weights) * _weights
-        print (f"weights of tetrahedra are {weights}, total = {sum(weights)} ")
+        print(f"weights of tetrahedra are {weights}, total = {sum(weights)} ")
         self.K_list = []
-        print ("generating starting K_list")
+        print("generating starting K_list")
         for tetr, w in zip(tetrahedra, weights):
             K = KpointBZtetra(vertices=tetr, K=0, NKFFT=self.FFT, factor=w, basis=self.recip_lattice_reduced, refinement_level=0, split_level=0)
-            print (K)
-            print (K.size)
+            print(K)
+            print(K.size)
             self.K_list.append(K)
 
         if refine_by_volume:
             dkmax = 2 * np.pi / length
             vmax = dkmax**3 / np.linalg.det(self.recip_lattice_reduced)
             self.split_tetra_volume(vmax)
-            print ("refinement by volume done")
+            print("refinement by volume done")
         if refine_by_size:
             if length_size is None:
                 length_size = 0.5 * length
             dkmax = (2 * np.pi / length_size) * np.sqrt(2)
             self.split_tetra_size(dkmax)
-            print ("refinement by size done")
+            print("refinement by size done")
 
 
     def split_tetra_size(self, dkmax):
         """split tetrahedra that have at lkeast one edge larger than dkmax"""
         while True:
-            print (f"maximal tetrahedron size for now is {self.size_max} ({len(self.K_list)}), we need to refine down to size {dkmax}")
+            print(f"maximal tetrahedron size for now is {self.size_max} ({len(self.K_list)}), we need to refine down to size {dkmax}")
             volumes = [tetra_volume(K.vertices) for K in self.K_list]
-            print ("the volume is ", sum(volumes), min(volumes), max(volumes), np.mean(volumes))
+            print("the volume is ", sum(volumes), min(volumes), max(volumes), np.mean(volumes))
             # print ("sizes now are ",self.sizes)
             if self.size_max < dkmax:
                 break
@@ -116,8 +116,8 @@ class GridTetra(GridAbstract):
         """split tetrahedra that have at least one edge larger than dkmax"""
         while True:
             volumes = [tetra_volume(K.vertices) for K in self.K_list]
-            print (f"maximal tetrahedron size for now is {max(volumes)} ({len(self.K_list)}), we need to refine down to size {vmax}")
-            print ("the volume is ", sum(volumes), min(volumes), max(volumes), np.mean(volumes))
+            print(f"maximal tetrahedron size for now is {max(volumes)} ({len(self.K_list)}), we need to refine down to size {vmax}")
+            print("the volume is ", sum(volumes), min(volumes), max(volumes), np.mean(volumes))
             if max(volumes) < vmax:
                 break
             klist = []

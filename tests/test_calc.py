@@ -100,7 +100,7 @@ def test_BD_trace(system_Haldane_PythTB):
     bd = wberri.calculators.tabulate.DerBerryCurvature(**noext)
     result = bd(data_K)
     trace = result.get_component("trace")
-    print (f"shape of trace {trace.shape}")
+    print(f"shape of trace {trace.shape}")
     assert (np.max(abs(trace))) < 1e-10
 
 

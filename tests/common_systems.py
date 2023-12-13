@@ -615,15 +615,15 @@ mass_kp_iso = 1.912
 kmax_kp = 2.123
 
 
-def ham_mass_iso (k):
+def ham_mass_iso(k):
     return np.array([[np.dot(k, k) / (2 * mass_kp_iso)]])
 
 
-def dham_mass_iso (k):
+def dham_mass_iso(k):
     return np.array(k).reshape(1, 1, 3) / mass_kp_iso
 
 
-def d2ham_mass_iso (k):
+def d2ham_mass_iso(k):
     return np.eye(3).reshape(1, 1, 3, 3) / mass_kp_iso
 
 
@@ -652,16 +652,16 @@ inv_mass_kp_aniso = np.array([[0.86060064, 0.19498375, 0.09798235],
  [0.15613272, 0.11770323, 0.71668436]])
 
 
-def ham_mass_aniso (k):
+def ham_mass_aniso(k):
     e = np.dot(k, np.dot(inv_mass_kp_aniso, k))
     return np.array([[e]])
 
 
-def dham_mass_aniso (k):
+def dham_mass_aniso(k):
     return (np.dot(k, inv_mass_kp_aniso) + np.dot(inv_mass_kp_aniso, k)).reshape(1, 1, 3)
 
 
-def d2ham_mass_aniso (k):
+def d2ham_mass_aniso(k):
     return (inv_mass_kp_aniso + inv_mass_kp_aniso.T).reshape(1, 1, 3, 3)
 
 

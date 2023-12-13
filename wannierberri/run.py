@@ -172,31 +172,31 @@ def run(
     Results are also printed to ASCII files
     """
 
-    cprint ("Starting run()", 'red', attrs=['bold'])
+    cprint("Starting run()", 'red', attrs=['bold'])
     print_calculators(calculators)
     # along a path only tabulating is possible
     if isinstance(grid, Path):
-        print ("Calculation along a path - checking calculators for compatibility")
+        print("Calculation along a path - checking calculators for compatibility")
         for key, calc in calculators.items():
-            print (key, calc)
+            print(key, calc)
             if not calc.allow_path:
                 raise ValueError(f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path")
-        print ("All calculators are compatible")
+        print("All calculators are compatible")
         if symmetrize:
-            print ("Symmetrization switched off for Path")
+            print("Symmetrization switched off for Path")
             symmetrize = False
     else:
-        print ("Calculation on  grid - checking calculators for compatibility")
+        print("Calculation on  grid - checking calculators for compatibility")
         for key, calc in calculators.items():
-            print (key, calc)
+            print(key, calc)
             if not calc.allow_grid:
                 raise ValueError(f"Calculation on Grid is running, but calculator `{key}` is not compatible with a Grid")
-        print ("All calculators are compatible")
+        print("All calculators are compatible")
 
     if isinstance(grid, GridTetra):
-        print ("Grid is tetrahedral")
+        print("Grid is tetrahedral")
     else:
-        print ("Grid is regular")
+        print("Grid is regular")
 
     if file_Klist is not None:
         do_write_Klist = True
@@ -258,7 +258,7 @@ def run(
                 print("{0} K-points were read from {1}".format(len(factor_changed_K_list), file_Klist_factor_changed))
                 fr_div.close()
             except FileNotFoundError:
-                print (f"File with changed factors {file_Klist_factor_changed} not found, assume they were not changed")
+                print(f"File with changed factors {file_Klist_factor_changed} not found, assume they were not changed")
         except Exception as err:
             restart = False
 #            print("WARNING: {}".format(err))
@@ -386,7 +386,7 @@ def run(
             result_excluded += K_list[iK].res * (prev_factor - K_list[iK].factor)
 
         if do_write_Klist:
-            print (f"Writing file_Klist_factor_changed to {file_Klist_factor_changed}")
+            print(f"Writing file_Klist_factor_changed to {file_Klist_factor_changed}")
             fw_changed = open(file_Klist_factor_changed, "a")
             for iK in excluded_Klist:
                 fw_changed.write("{0} {1} # refined\n".format(iK, 0.0))
@@ -396,7 +396,7 @@ def run(
 
 
     print("Totally processed {0} K-points ".format(counter))
-    print ("run() finished")
+    print("run() finished")
 
     return result_all
 
@@ -404,8 +404,8 @@ def run(
 def print_calculators(calculators):
     cprint("Using the follwing calculators : \n" + "#" * 60 + "\n", "cyan", attrs=["bold"])
     for key, val in calculators.items() :
-        cprint (f" '{key}' ", "magenta", attrs=["bold"], end="")
-        print (" : ", end="")
+        cprint(f" '{key}' ", "magenta", attrs=["bold"], end="")
+        print(" : ", end="")
         cprint(f" {val} ", "yellow", attrs=["bold"], end="")
-        print ( f" : {val.comment}" )
+        print( f" : {val.comment}" )
     cprint("#" * 60 , "cyan", attrs=["bold"])

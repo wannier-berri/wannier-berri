@@ -81,7 +81,7 @@ class Serial(Parallel):
         self.npar_K = 1
 
     def shutdown(self):
-        print ("No need to shutdown Serial()")
+        print("No need to shutdown Serial()")
 
 
 

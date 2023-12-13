@@ -67,8 +67,8 @@ def evaluate_k( system=None,
 
     # without parameters - just print the available options
     if system is None:
-        print (__doc__)
-        print ( help() )
+        print(__doc__)
+        print( help() )
         return
 
     set1 = set(quantities)

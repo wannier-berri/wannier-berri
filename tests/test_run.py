@@ -972,7 +972,7 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
     )
 
     for key, res_half in result_half.results.items():
-        print (key)
+        print(key)
         res_full = result_full.results[key]
         nef = len(res_half.Energies[0])
         data1 = res_half.data
@@ -1019,9 +1019,9 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
         do_not_compare=True
     )
 
-    print (result.results.keys())
+    print(result.results.keys())
     for key in "AHC", "Morb":
-        print (key)
+        print(key)
         data_int = result.results[key].data
         data_tab = result.results["tabulate"].results[key].data
         data_tab_int = data_tab.mean(axis=0)
@@ -1064,9 +1064,9 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
         do_not_compare=True
     )
 
-    print (result.results.keys())
+    print(result.results.keys())
     for key in "AHC", "Morb":
-        print (key)
+        print(key)
         data_int = result.results[key].data
         data_tab = result.results["tabulate"].results[key].data
         data_tab_int = data_tab.mean(axis=0)
@@ -1280,7 +1280,7 @@ def test_tabulate_path(system_Haldane_PythTB):
                             "berry": wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms": False}),
                                   }
 
-    calculators ["tabulate"] = wberri.calculators.TabulatorAll(quantities,
+    calculators["tabulate"] = wberri.calculators.TabulatorAll(quantities,
                                                        ibands=[0],
                                                         mode="path")
 

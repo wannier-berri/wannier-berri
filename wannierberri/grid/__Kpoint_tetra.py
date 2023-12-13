@@ -86,7 +86,7 @@ class KpointBZtetra(KpointBZ):
                     factor=self.factor / ndiv,
                     basis=self.basis,
                     refinement_level=self.refinement_level + int(refine),
-                    split_level=self.split_level + int (not refine),
+                    split_level=self.split_level + int(not refine),
                     NKFFT=self.NKFFT
                             ) )
 #        print (f"splitted {self.size} intp {[k.size for k in add_list]}")

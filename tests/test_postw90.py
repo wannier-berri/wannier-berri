@@ -45,7 +45,7 @@ def create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_post
 
     fn = "{}.{}".format(seedname, "win")
     win_text = open(os.path.join(data_dir_full, fn), "r").read()
-    print (win_text)
+    print(win_text)
     win_text = win_file_postw90 + "\n\n" + "#" * 20 + "\n\n" + win_text
     with open(os.path.join(data_dir_tmp, fn), "w") as f:
         f.write(win_text)

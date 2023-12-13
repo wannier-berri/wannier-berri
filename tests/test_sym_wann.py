@@ -33,7 +33,7 @@ def check_symmetry(check_run):
         kwargs['do_not_compare'] = True
         result_irr_k = check_run(system, use_symmetry=True, calculators=calculators, suffix="irr_k", **kwargs)
         result_full_k = check_run(system, use_symmetry=False, calculators=calculators, suffix="full_k", **kwargs)
-        print (calculators.keys(), result_irr_k.results.keys(), result_full_k.results.keys())
+        print(calculators.keys(), result_irr_k.results.keys(), result_full_k.results.keys())
 
         for quant in calculators.keys():
             diff = abs(result_full_k.results[quant].data - result_irr_k.results[quant].data).max()

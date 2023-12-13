@@ -14,7 +14,7 @@ def generate_formatted_files(create_files_GaAs_W90):
 
     data_dir = create_files_GaAs_W90
 
-    print (f"data_dir={str(data_dir)}")
+    print(f"data_dir={str(data_dir)}")
 
     # Create sIu, sHu files using mmn2uHu utility if they do not exist
     tags_needed = ["uHu", "uIu", "sHu", "sIu", "spn"]
@@ -50,7 +50,7 @@ def generate_formatted_files(create_files_GaAs_W90):
 
         #        nb_out_list = wberri.utils.mmn2uHu.run_mmn2uHu(
         #            "GaAs", INPUTDIR=data_dir, OUTDIR=str(data_dir) + "/reduced_formatted", **kwargs)
-        print ("kwargs = ", kwargs)
+        print("kwargs = ", kwargs)
         nb_out_list = wberri.utils.mmn2uHu.main(["GaAs"] + kwargs)
 
         nb_out = nb_out_list[0]

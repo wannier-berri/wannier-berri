@@ -34,7 +34,7 @@ class K__Result(Result):
     def fit(self, other):
         for var in ['transformTR', 'transformInv', 'rank']:
             if getattr(self, var) != getattr(other, var):
-                print (f"parameters {var} are not fit : `{getattr(self, var)}` and `{getattr(other, var)}` ")
+                print(f"parameters {var} are not fit : `{getattr(self, var)}` and `{getattr(other, var)}` ")
                 return False
         return True
 
@@ -202,7 +202,7 @@ class KBandResult(K__Result):
 
     def fit(self, other):
         if self.nband != other.nband:
-            print (f"parameter 'nband' does  not match : `{self.nband}` and `{other.nband}` ")
+            print(f"parameter 'nband' does  not match : `{self.nband}` and `{other.nband}` ")
             return False
         return super().fit(other)
 
