@@ -161,10 +161,10 @@ class Orbitals():
             elif orb_symbol == 'sp3d2':
                 tmp_1 = (2 * subs_plus[0] - subs_plus[1] - subs_plus[2]) / 3
                 tmp_2 = (subs_plus[1] - subs_plus[2]) / 2
-                orb_rot_mat[0, i] = 1 / 6 - 1 / sym.sqrt(2) * subs[0] - tmp_1/2 + tmp_2
-                orb_rot_mat[1, i] = 1 / 6 + 1 / sym.sqrt(2) * subs[0] - tmp_1/2 + tmp_2
-                orb_rot_mat[2, i] = 1 / 6 - 1 / sym.sqrt(2) * subs[1] - tmp_1/2 - tmp_2
-                orb_rot_mat[3, i] = 1 / 6 + 1 / sym.sqrt(2) * subs[1] - tmp_1/2 - tmp_2
+                orb_rot_mat[0, i] = 1 / 6 - 1 / sym.sqrt(2) * subs[0] - tmp_1 / 2 + tmp_2
+                orb_rot_mat[1, i] = 1 / 6 + 1 / sym.sqrt(2) * subs[0] - tmp_1 / 2 + tmp_2
+                orb_rot_mat[2, i] = 1 / 6 - 1 / sym.sqrt(2) * subs[1] - tmp_1 / 2 - tmp_2
+                orb_rot_mat[3, i] = 1 / 6 + 1 / sym.sqrt(2) * subs[1] - tmp_1 / 2 - tmp_2
                 orb_rot_mat[4, i] = 1 / 6 - 1 / sym.sqrt(2) * subs[2] + tmp_1
                 orb_rot_mat[5, i] = 1 / 6 + 1 / sym.sqrt(2) * subs[2] + tmp_1
             elif orb_symbol == 't2g':

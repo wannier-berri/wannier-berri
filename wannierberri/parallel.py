@@ -78,7 +78,7 @@ class Serial(Parallel):
             _, self.npar_k = pool(0)
         else:
             self.npar_k = npar_k
-        self.npar_K=1
+        self.npar_K = 1
 
     def shutdown(self):
         print ("No need to shutdown Serial()")

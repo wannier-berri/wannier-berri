@@ -11,7 +11,7 @@ from common import OUTPUT_DIR, REF_DIR
 from common_systems import Efermi_Fe
 
 
-k=np.array([0.1, 0.2, 0.3])
+k = np.array([0.1, 0.2, 0.3])
 
 quantities = ["energy", "berry_curvature"]
 formulae =  {   "ham" : wberri.formula.covariant.Hamiltonian,
@@ -43,23 +43,23 @@ def test_evaluate_k_all(system_Fe_W90):
                             param_formula={"morb": {"external_terms": False}},
                             iband=[4, 5]
                         )
-    result["kpoint"]=k
+    result["kpoint"] = k
 
     result_ref = np.load(os.path.join(REF_DIR, "evaluate_k.npz"))
     acc = 1e-8
     for key, res in result.items():
         if isinstance(res, np.ndarray):
-            data=res
+            data = res
         elif isinstance(res, wberri.result.Result):
-            result[key]=res.data
-            data=res.data
+            result[key] = res.data
+            data = res.data
         else:
             raise ValueError(f"Uncomparable type of result : {type(res)}")
         # continue # uncomment to generate a new reference file
-        data_ref=result_ref[key]
+        data_ref = result_ref[key]
         assert (data == pytest.approx(data_ref, rel=acc)
                 ), "the result of evaluate_k for {key} is different from the reference data by {err} greater than the required accuracy {acc}".format(
-                    key=key, err=np.max(abs(data-data_ref)), acc=acc)
+                    key=key, err=np.max(abs(data - data_ref)), acc=acc)
     np.savez_compressed(os.path.join(OUTPUT_DIR, "evaluate_k.npz"), **result)
 
 
@@ -72,23 +72,23 @@ def test_evaluate_k_all_1band(system_Fe_W90):
                             param_formula={"morb": {"external_terms": False}},
                             iband=4
                         )
-    result["kpoint"]=k
+    result["kpoint"] = k
 
     result_ref = np.load(os.path.join(REF_DIR, "evaluate_k.npz"))
     acc = 1e-8
     for key, res in result.items():
         if isinstance(res, np.ndarray):
-            data=res
+            data = res
         elif isinstance(res, wberri.result.Result):
-            result[key]=res.data
-            data=res.data
+            result[key] = res.data
+            data = res.data
         else:
             raise ValueError(f"Uncomparable type of result : {type(res)}")
         # continue # uncomment to generate a new reference file
-        data_ref=result_ref[key]
+        data_ref = result_ref[key]
         assert (data[0] == pytest.approx(data_ref[0], rel=acc)
                 ), "the result of evaluate_k for {key} is different from the reference data by {err} greater than the required accuracy {acc}".format(
-                    key=key, err=np.max(abs(data-data_ref)), acc=acc)
+                    key=key, err=np.max(abs(data - data_ref)), acc=acc)
     np.savez_compressed(os.path.join(OUTPUT_DIR, "evaluate_k.npz"), **result)
 
 
@@ -108,7 +108,7 @@ def test_evaluate_k_1q(system_Fe_W90):
         acc = 1e-8
         assert (result == pytest.approx(data_ref[key], rel=acc)
             ), "the result of evaluate_k for {key} is different from the reference data by {err} greater than the required accuracy {acc}".format(
-                key=key, err=np.max(abs(result[key]-data_ref[key])), acc=acc)
+                key=key, err=np.max(abs(result[key] - data_ref[key])), acc=acc)
 
 
 def test_evaluate_k_1f(system_Fe_W90):
@@ -125,7 +125,7 @@ def test_evaluate_k_1f(system_Fe_W90):
         acc = 1e-8
         assert (result == pytest.approx(data_ref[key], rel=acc)
             ), "the result of evaluate_k for {key} is different from the reference data by {err} greater than the required accuracy {acc}".format(
-                key=key, err=np.max(abs(result[key]-data_ref[key])), acc=acc)
+                key=key, err=np.max(abs(result[key] - data_ref[key])), acc=acc)
 
 
 def test_evaluate_k_hlp():

@@ -32,9 +32,9 @@ def print_progress(count, total, t0, tprev, print_progress_step):
     else:
         t_rem_s = t / count * (total - count)
         t_remain = "{:22.1f}".format(t_rem_s)
-    if t-tprev>print_progress_step:
+    if t - tprev > print_progress_step:
         print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
-        tprev=t
+        tprev = t
     return tprev
 
 
@@ -202,9 +202,9 @@ def run(
         do_write_Klist = True
         if not file_Klist.endswith(".pickle"):
             file_Klist += ".pickle"
-            file_Klist_factor_changed = file_Klist+".changed_factors.txt"
+            file_Klist_factor_changed = file_Klist + ".changed_factors.txt"
         else:
-            file_Klist_factor_changed = file_Klist[:-7]+".changed_factors.txt"
+            file_Klist_factor_changed = file_Klist[:-7] + ".changed_factors.txt"
     else:
         do_write_Klist = False
         file_Klist_factor_changed = None
@@ -309,7 +309,7 @@ def run(
     for i_iter in range(adpt_num_iter + 1):
         if print_Kpoints:
             print(
-                "iteration {0} - {1} points. New points are:".format(i_iter+start_iter, len([K for K in K_list if K.res is None])))
+                "iteration {0} - {1} points. New points are:".format(i_iter + start_iter, len([K for K in K_list if K.res is None])))
             for i, K in enumerate(K_list):
                 if not K.evaluated:
                     print(" K-point {0} : {1} ".format(i, K))
@@ -402,11 +402,11 @@ def run(
 
 
 def print_calculators(calculators):
-    cprint("Using the follwing calculators : \n" + "#"*60 +"\n", "cyan", attrs=["bold"])
+    cprint("Using the follwing calculators : \n" + "#" * 60 + "\n", "cyan", attrs=["bold"])
     for key, val in calculators.items() :
         cprint (f" '{key}' ", "magenta", attrs=["bold"], end="")
         print (" : ", end="")
         cprint(f" {val} ", "yellow", attrs=["bold"], end="")
         print ( f" : {val.comment}" )
-    cprint("#"*60 , "cyan", attrs=["bold"])
+    cprint("#" * 60 , "cyan", attrs=["bold"])
 

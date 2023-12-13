@@ -46,7 +46,7 @@ def create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_post
     fn = "{}.{}".format(seedname, "win")
     win_text = open(os.path.join(data_dir_full, fn), "r").read()
     print (win_text)
-    win_text = win_file_postw90 + "\n\n"+"#"*20+"\n\n" + win_text
+    win_text = win_file_postw90 + "\n\n" + "#" * 20 + "\n\n" + win_text
     with open(os.path.join(data_dir_tmp, fn), "w") as f:
         f.write(win_text)
     return data_dir_tmp
@@ -69,17 +69,17 @@ def check_postw90(check_command_output):
         tags_needed = ["mmn", "chk", "eig"]
         tmp_dir = create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_postw90)
         check_command_output(["postw90.x", seedname], cwd=tmp_dir)
-        data_pw90 = np.loadtxt(os.path.join(tmp_dir, seedname+"-ahc-fermiscan.dat"))
+        data_pw90 = np.loadtxt(os.path.join(tmp_dir, seedname + "-ahc-fermiscan.dat"))
 
 #        out = os.path.join(tmp_dir,"stdout_wberri")
 #        check_command_output(["python3","-m","wannierberri.utils.postw90",seedname], cwd=tmp_dir,stdout_filename=out)
         cwd = os.getcwd()
         os.chdir(tmp_dir)
-        wberri.utils.postw90.main([seedname]+argv)
+        wberri.utils.postw90.main([seedname] + argv)
         os.chdir(cwd)
 
         # so far, hardcode it for AHC, later generalize
-        data_wb   = np.loadtxt(os.path.join(tmp_dir, seedname+"-ahc_iter-0000.dat"))
+        data_wb   = np.loadtxt(os.path.join(tmp_dir, seedname + "-ahc_iter-0000.dat"))
 
 
         maxval = np.max(abs(data_wb[:, 4:7]))
@@ -88,8 +88,8 @@ def check_postw90(check_command_output):
         elif precision < 0:
             precision = max(maxval * abs(precision), 1E-11)
 
-        assert data_pw90[:, 1:4] == pytest.approx(data_wb[:, 1:4]/100, abs=precision), error_message_pw90(precision,
-                np.max(np.abs(data_pw90[:, 1:4]-data_wb[:, 1:4]/100)), win_file_postw90, tmp_dir)
+        assert data_pw90[:, 1:4] == pytest.approx(data_wb[:, 1:4] / 100, abs=precision), error_message_pw90(precision,
+                np.max(np.abs(data_pw90[:, 1:4] - data_wb[:, 1:4] / 100)), win_file_postw90, tmp_dir)
 
     return _inner
 

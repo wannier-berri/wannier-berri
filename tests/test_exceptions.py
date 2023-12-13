@@ -15,7 +15,7 @@ def test_utility_str2bool():
 
 
 def test_utility_FFT():
-    inp = np.random.random( (5, 4, 3, 5) ) * (1+2.j)
+    inp = np.random.random( (5, 4, 3, 5) ) * (1 + 2.j)
     axes = (0, 2)
     for fft in "fftw", "numpy", "FfTw", "nUmPY":
         util.FFT(inp, axes,  fft=fft)
@@ -35,7 +35,7 @@ def test_utility_FFT_R_to_k():
         with pytest.raises(AssertionError, match=f"fft lib '{lib.lower()}' is unknown/supported"):
             util.FFT_R_to_k( iRvec, NKFFT, num_wann, lib=lib)
 
-    AAA_K = np.random.random( (num_wann, num_wann)+NKFFT+(3, 3, 3))
+    AAA_K = np.random.random( (num_wann, num_wann) + NKFFT + (3, 3, 3))
 
     util.FFT_R_to_k( iRvec, NKFFT, num_wann, lib="numpy").transform(AAA_K)
     with pytest.raises(RuntimeError, match="FFT.transform should not be called for slow FT"):

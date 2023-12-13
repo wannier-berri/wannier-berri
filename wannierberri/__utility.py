@@ -88,7 +88,7 @@ def real_recip_lattice(real_lattice=None, recip_lattice=None):
 
 
 def str2bool(v):
-    v1=v.strip().lower()
+    v1 = v.strip().lower()
     if v1  in ("f", "false", ".false."):
         return False
     elif v1 in ("t", "true", ".true."):
@@ -266,15 +266,15 @@ class FFT_R_to_k():
 
 def iterate_nd(size, pm=False):
     a = -size[0] if pm else 0
-    b = size[0]+1 if pm else size[0]
-    if len(size)==1:
+    b = size[0] + 1 if pm else size[0]
+    if len(size) == 1:
         return np.array([(i,) for i in range(a, b)])
     else:
-        return np.array([(i,)+tuple(j) for i in range(a, b) for j in iterate_nd(size[1:], pm=pm)])
+        return np.array([(i,) + tuple(j) for i in range(a, b) for j in iterate_nd(size[1:], pm=pm)])
 
 
 def iterate3dpm(size):
-    assert len(size)==3
+    assert len(size) == 3
     return iterate_nd(size, pm=True)
 #   return (
 #       np.array([i, j, k]) for i in range(-size[0], size[0] + 1) for j in range(-size[1], size[1] + 1)
@@ -312,13 +312,13 @@ def get_angle(sina, cosa):
 
 
 def angle_vectors(vec1, vec2):
-    cos = np.dot(vec1, vec2)/np.linalg.norm(vec1)/np.linalg.norm(vec2)
+    cos = np.dot(vec1, vec2) / np.linalg.norm(vec1) / np.linalg.norm(vec2)
     return np.arccos(cos)
 
 
 def angle_vectors_deg(vec1, vec2):
     angle = angle_vectors(vec1, vec2)
-    return int(round(angle/np.pi*180))
+    return int(round(angle / np.pi * 180))
 
 
 # smearing functions

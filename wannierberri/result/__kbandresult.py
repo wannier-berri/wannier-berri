@@ -22,12 +22,12 @@ class K__Result(Result):
                     self.data_list = data
                 else:
                     self.data_list = [data]
-            self.transformTR=transformTR
-            self.transformInv=transformInv
+            self.transformTR = transformTR
+            self.transformInv = transformInv
         if rank is None:
-            self.rank=self.get_rank()
+            self.rank = self.get_rank()
         else:
-            self.rank=rank
+            self.rank = rank
         self.other_properties = other_properties
 
 
@@ -60,7 +60,7 @@ class K__Result(Result):
                             )
 
     def add(self, other):
-        self.data_list = [d1+d2 for d1, d2 in zip(self.data_list, other.data_list)]
+        self.data_list = [d1 + d2 for d1, d2 in zip(self.data_list, other.data_list)]
 
 
 
@@ -77,14 +77,14 @@ class K__Result(Result):
             axes = (axes, )
         if axes is None:
             axes = tuple(range(other.ndim))
-        axes = tuple((a+1) for a in axes) # because 0th dimentsion is k here
+        axes = tuple((a + 1) for a in axes) # because 0th dimentsion is k here
         for i, d in enumerate(other.shape):
             assert d == self.data_list[0].shape[axes[i]], "shapes  {} should match the axes {} of {}".format(
                 other.shape, axes, self.data_list[0].shape)
         reshape = tuple((self.data.shape[i] if i in axes else 1) for i in range(self.data_list[0].ndim))
         other_reshape = other.reshape(reshape)
         return self.__class__(
-                            data=[d*other_reshape for d in self.data_list],
+                            data=[d * other_reshape for d in self.data_list],
                             transformTR=self.transformTR,
                             transformInv=self.transformInv,
                             rank=self.rank,
@@ -98,7 +98,7 @@ class K__Result(Result):
         if (self.transformInv is not None) and (other.transformInv is not None):
             assert self.transformInv == other.transformInv
         return KBandResult(
-            data=self.data-other.data,
+            data=self.data - other.data,
             transformTR=self.transformTR,
             transformInv=self.transformInv,
         )
@@ -184,10 +184,10 @@ class K__Result(Result):
                 raise NoComponentError(component, 1)
         else:
             dims = tuple(np.arange(self.data.ndim))
-            _data = self.data.transpose(dims[-ndim:]+dims[:-ndim])
+            _data = self.data.transpose(dims[-ndim:] + dims[:-ndim])
             print(f"dims={dims}, data_shape={self.data.shape}, , _data_shape={_data.shape}")
             if component == "trace":
-                return sum([_data[((i,)*ndim)] for i in range(3)])
+                return sum([_data[((i,) * ndim)] for i in range(3)])
             else:
                 try:
                     return _data[tuple([xyz[c] for c in component])]

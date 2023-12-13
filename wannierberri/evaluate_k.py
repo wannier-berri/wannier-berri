@@ -22,9 +22,9 @@ comments = {
 def help():
     hlp = "Available named quantities:\n"
     for q, c in available_quantities.items():
-        hlp+= f" '{q}' : {c.comment} \n"
+        hlp += f" '{q}' : {c.comment} \n"
         if q in comments:
-            hlp+=f"       Note : {comments[q]}\n"
+            hlp += f"       Note : {comments[q]}\n"
     return hlp
 
 
@@ -71,9 +71,9 @@ def evaluate_k( system=None,
         print ( help() )
         return
 
-    set1=set(quantities)
-    set2=set(formula.keys())
-    set3=set(calculators.keys())
+    set1 = set(quantities)
+    set2 = set(formula.keys())
+    set3 = set(calculators.keys())
     try:
         assert len(set1.intersection(set2)) == 0
         assert len(set2.intersection(set3)) == 0
@@ -90,7 +90,7 @@ def evaluate_k( system=None,
         iband = np.arange(system.num_wann)
     if not isinstance(iband, Iterable):
         iband = [iband]
-    iband_out = sorted(np.array(list(set(range(system.num_wann))-set(iband))))
+    iband_out = sorted(np.array(list(set(range(system.num_wann)) - set(iband))))
 
 
     for q in quantities:

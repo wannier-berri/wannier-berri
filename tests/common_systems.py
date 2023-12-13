@@ -235,7 +235,7 @@ def system_Fe_W90_disentangle(create_files_Fe_W90):
                  mix_ratio=0.9,
                  print_progress_every=100
                   )
-    system=wberri.system.System_w90(w90data=w90data, berry=True, morb=True)
+    system = wberri.system.System_w90(w90data=w90data, berry=True, morb=True)
     del w90data
     return system
 
@@ -552,7 +552,7 @@ def system_Mn3Sn_sym_tb_old():
                 [0.3333333,       0.6666667,       0.5],
                 [0.8333333,       0.1666667,       0.5],
                 [0.1666667,       0.8333333,       0]]),
-            atom_name=['Mn']*6 + ['Sn']*2,
+            atom_name=['Mn'] * 6 + ['Sn'] * 2,
             proj=['Mn:s;d', 'Sn:p'],
             soc=True,
             magmom=[
@@ -591,7 +591,7 @@ def system_Mn3Sn_sym_tb():
                 [0.3333333,       0.6666667,       0.5],
                 [0.8333333,       0.1666667,       0.5],
                 [0.1666667,       0.8333333,       0]]),
-            atom_name=['Mn']*6 + ['Sn']*2,
+            atom_name=['Mn'] * 6 + ['Sn'] * 2,
             proj=['Mn:s;d', 'Sn:p'],
             soc=True,
             magmom=[
@@ -616,15 +616,15 @@ kmax_kp = 2.123
 
 
 def ham_mass_iso (k):
-    return np.array([[np.dot(k, k)/(2*mass_kp_iso)]])
+    return np.array([[np.dot(k, k) / (2 * mass_kp_iso)]])
 
 
 def dham_mass_iso (k):
-    return np.array(k).reshape(1, 1, 3)/mass_kp_iso
+    return np.array(k).reshape(1, 1, 3) / mass_kp_iso
 
 
 def d2ham_mass_iso (k):
-    return np.eye(3).reshape(1, 1, 3, 3)/mass_kp_iso
+    return np.eye(3).reshape(1, 1, 3, 3) / mass_kp_iso
 
 
 @pytest.fixture(scope="session")
@@ -645,7 +645,7 @@ def system_kp_mass_iso_2():
 ###################################
 # AnIsotropic effective mas s model #
 ###################################
-kmax_kp_aniso=2.1
+kmax_kp_aniso = 2.1
 
 inv_mass_kp_aniso = np.array([[0.86060064, 0.19498375, 0.09798235],
  [0.01270294, 0.77373333, 0.00816169],
@@ -653,12 +653,12 @@ inv_mass_kp_aniso = np.array([[0.86060064, 0.19498375, 0.09798235],
 
 
 def ham_mass_aniso (k):
-    e=np.dot(k, np.dot(inv_mass_kp_aniso, k))
+    e = np.dot(k, np.dot(inv_mass_kp_aniso, k))
     return np.array([[e]])
 
 
 def dham_mass_aniso (k):
-    return (np.dot(k, inv_mass_kp_aniso)+np.dot(inv_mass_kp_aniso, k)).reshape(1, 1, 3)
+    return (np.dot(k, inv_mass_kp_aniso) + np.dot(inv_mass_kp_aniso, k)).reshape(1, 1, 3)
 
 
 def d2ham_mass_aniso (k):

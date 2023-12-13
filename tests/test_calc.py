@@ -24,10 +24,10 @@ def check_calculator(compare_any_result):
                 ):
         grid = wberri.Grid(system, NKFFT=NKFFT, NKdiv=1)
         data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid, **param_K)
-        result = calc(data_K)*factor
+        result = calc(data_K) * factor
 
-        filename = "calculator-"+name
-        path_filename=os.path.join(OUTPUT_DIR, filename)
+        filename = "calculator-" + name
+        path_filename = os.path.join(OUTPUT_DIR, filename)
         result.save(path_filename)
         if do_not_compare:
             return result
@@ -37,7 +37,7 @@ def check_calculator(compare_any_result):
             path_filename_ref = "ZERO"
             assert precision > 0, "comparing with zero is possible only with absolute precision"
         else:
-            path_filename_ref = os.path.join(REF_DIR, filename+".npz")
+            path_filename_ref = os.path.join(REF_DIR, filename + ".npz")
             result_ref = result_type(file_npz=path_filename_ref)
         maxval = result_ref._maxval_raw
         if precision is None:
@@ -62,7 +62,7 @@ def test_calc_fder(system_Fe_W90, check_calculator):
 
 
 def test_tabulator_mul(system_Fe_W90, check_calculator):
-    calc=wberri.calculators.tabulate.Energy()
+    calc = wberri.calculators.tabulate.Energy()
     name = "Fe-tab-energy"
     check_calculator(system_Fe_W90, calc, name, factor=5,  result_type=KBandResult)
 
@@ -79,14 +79,14 @@ def test_tab_fit(system_Haldane_PythTB):
     results = [[cal[b](data_K) for b in range(2)] for cal in calculators]
     for ical1, ib1 in wberri.__utility.iterate_nd((2, 2)):
         for ical2,  ib2 in wberri.__utility.iterate_nd((2, 2)):
-            r1=results[ical1][ib1]
-            r2=results[ical2][ib2]
+            r1 = results[ical1][ib1]
+            r2 = results[ical2][ib2]
             check = r1.fit(r2)
-            assert check == (  (ib1==ib2) ) , f"{r1.nband}, {r2.nband}, {check}"
+            assert check == (  (ib1 == ib2) ) , f"{r1.nband}, {r2.nband}, {check}"
 
     for res in results:
-        r1=res[0]
-        r2=res[1].select_bands((0,))
+        r1 = res[0]
+        r2 = res[1].select_bands((0,))
         assert r1.fit(r2),  f"{r1.nband}, {r2.nband}, {r1.fit(r2)}"
         assert r1.data == pytest.approx(r2.data)
 
@@ -101,19 +101,19 @@ def test_BD_trace(system_Haldane_PythTB):
     result = bd(data_K)
     trace = result.get_component("trace")
     print (f"shape of trace {trace.shape}")
-    assert (np.max(abs(trace)))< 1e-10
+    assert (np.max(abs(trace))) < 1e-10
 
 
 @pytest.fixture
 def check_save_result():
     def _inner(system, calc, result_type, filename="dummy"):
         grid = wberri.Grid(system, NKFFT=3, NK=5)
-        dK=np.random.random(3)
+        dK = np.random.random(3)
         data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
         result = calc(data_K)
         path_filename = os.path.join(OUTPUT_DIR, filename)
         result.save(path_filename)
-        result_read = result_type(file_npz=path_filename+".npz")
+        result_read = result_type(file_npz=path_filename + ".npz")
         assert result.data.shape == result_read.data.shape
         assert str(result.transformTR) == str(result_read.transformTR)
         assert str(result.transformInv) == str(result_read.transformInv)
@@ -136,9 +136,9 @@ def test_save_KBandResult_add(system_Haldane_PythTB, check_calculator):
     assert res2.fit(res3) is False
     assert res3.fit(res1) is False
     with pytest.raises(AssertionError):
-        res1+res2
+        res1 + res2
     with pytest.raises(AssertionError):
-        res1-res2
+        res1 - res2
 
 
 def test_save_EnergyResult(system_Haldane_PythTB, check_save_result):

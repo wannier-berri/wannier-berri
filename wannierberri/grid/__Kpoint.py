@@ -108,7 +108,7 @@ class KpointBZparallel(KpointBZ):
             return self.symgroup.star(self.K)
 
     def __str__(self):
-        return super().__str__()+"dK={} ".format(self.dK)
+        return super().__str__() + "dK={} ".format(self.dK)
 
     def absorb(self, other):
         if other is None:

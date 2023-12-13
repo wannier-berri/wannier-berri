@@ -190,7 +190,7 @@ calculators_Chiral_tetra = {
 }
 
 
-Efermi_Chiral_half = Efermi_Chiral[:len(Efermi_Chiral)//2]
+Efermi_Chiral_half = Efermi_Chiral[:len(Efermi_Chiral) // 2]
 calculators_Chiral_half = {
     'dos': calc.static.DOS(Efermi=Efermi_Chiral_half, tetra=False),
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral_half, tetra=False),
@@ -518,7 +518,7 @@ def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_
 
 def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items() if k!='spin'}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items() if k != 'spin'}
     # We do not include spin here, because it was not there in the beginning
     # adding another calculator may change the behaviour of the refinement procedure, and hence we would
     # have to replace reference files for all calculators
@@ -545,7 +545,7 @@ def test_Fe_pickle_Klist_12(check_run, system_Fe_W90, compare_any_result):
     except FileNotFoundError:
         pass
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items() if k!='spin'}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items() if k != 'spin'}
     # We do not include spin here, because it was not there in the beginning
     # adding another calculator may change the behaviour of the refinement procedure, and hence we would
     # have to replace reference files for all calculators
@@ -588,7 +588,7 @@ def test_Fe_pickle_Klist_021(check_run, system_Fe_W90, compare_any_result):
     except FileNotFoundError:
         pass
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items() if k!='spin'}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items() if k != 'spin'}
     # We do not include spin here, because it was not there in the beginning
     # adding another calculator may change the behaviour of the refinement procedure, and hence we would
     # have to replace reference files for all calculators
@@ -808,7 +808,7 @@ def test_Haldane_TBmodels_internal(check_run, system_Haldane_TBmodels_internal, 
     param_kwargs = {'Efermi': Efermi_Haldane, 'kwargs_formula': {"external_terms": False}}
     param = {'Efermi': Efermi_Haldane}
     for k, v in calculators_Haldane.items():
-        if k =='ahc':
+        if k == 'ahc':
             calculators = {k: v(**param_kwargs)}
         else:
             calculators = {k: v(**param)}
@@ -918,7 +918,7 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
     for quant in ["conductivity_ohmic", "berry_dipole", "ahc"]:
         compare_energyresult(
                 fout_name="berry_Chiral",
-                suffix=quant+"-left-run",
+                suffix=quant + "-left-run",
                 adpt_num_iter=0,
                 suffix_ref=quant,
                 mode="txt",
@@ -1026,8 +1026,8 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
         data_tab = result.results["tabulate"].results[key].data
         data_tab_int = data_tab.mean(axis=0)
         assert data_tab_int.shape == data_int.shape
-        prec = 1e-8*np.max(abs(data_int))
-        assert abs(data_tab_int-data_int).max()<prec
+        prec = 1e-8 * np.max(abs(data_int))
+        assert abs(data_tab_int - data_int).max() < prec
 
 
 @pytest.mark.parametrize("tetra", [True, False])
@@ -1071,14 +1071,14 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
         data_tab = result.results["tabulate"].results[key].data
         data_tab_int = data_tab.mean(axis=0)
         assert data_tab_int.shape == data_int.shape
-        prec = 1e-8*np.max(abs(data_int))
-        assert abs(data_tab_int-data_int).max()<prec
+        prec = 1e-8 * np.max(abs(data_int))
+        assert abs(data_tab_int - data_int).max() < prec
 
-    iEF=np.argmin(abs(Efermi_Haldane))
+    iEF = np.argmin(abs(Efermi_Haldane))
     ahc_k = result.results["tabulate"].results["AHC"].data[:, iEF]
-    berry_k = result.results["tabulate"].results["berry"].data[:, 0]*wberri.__factors.factor_ahc/system.cell_volume
-    prec = 1e-8*np.max(abs(berry_k))
-    assert abs(berry_k-ahc_k).max()<prec
+    berry_k = result.results["tabulate"].results["berry"].data[:, 0] * wberri.__factors.factor_ahc / system.cell_volume
+    prec = 1e-8 * np.max(abs(berry_k))
+    assert abs(berry_k - ahc_k).max() < prec
 
 
 
@@ -1101,8 +1101,8 @@ def test_Chiral_left_tetra_tetragrid(check_run, system_Chiral_left, compare_any_
 
 def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
-    nshift=4
-    Efermi_shift = Efermi_Chiral+Efermi_Chiral[nshift]-Efermi_Chiral[0]
+    nshift = 4
+    Efermi_shift = Efermi_Chiral + Efermi_Chiral[nshift] - Efermi_Chiral[0]
     calculators = {
         'dos': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
         'dos_trig': calc.static.DOS(Efermi=Efermi_Chiral, tetra=True),
@@ -1125,7 +1125,7 @@ def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result
     data2 = result.results.get("dos_trig").data[nshift:]
     assert data1.shape == data2.shape
     assert data1 == approx(data2), "the result with the shifted set of Fermi levels is different by {}".format(
-            np.max(np.abs(data1-data2)) )
+            np.max(np.abs(data1 - data2)) )
 
 
 def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, compare_any_result):
@@ -1194,9 +1194,9 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
             print(label)
             for k, v in calculators_CuMnAs_2d.items():
                 if k == 'Hall_morb_fsurf':
-                    calculators.update({k+label: v(**param_kwargs)})
+                    calculators.update({k + label: v(**param_kwargs)})
                 else:
-                    calculators.update({k+label: v(**param)})
+                    calculators.update({k + label: v(**param)})
 
     degen_param = [('degen_thresh', 0.05), ('degen_Kramers', True)]
     results = check_run(
@@ -1297,9 +1297,9 @@ def test_tabulate_path(system_Haldane_PythTB):
     )
 
 
-    tab_result=run_result.results["tabulate"]
+    tab_result = run_result.results["tabulate"]
     filename = "path_tab.pickle"
-    fout = open(os.path.join(OUTPUT_DIR, filename+"-run"), "wb")
+    fout = open(os.path.join(OUTPUT_DIR, filename + "-run"), "wb")
 
     data = {}
     for quant in quantities.keys():
@@ -1345,7 +1345,7 @@ def test_tabulate_fail(system_Haldane_PythTB):
                                   }
 
     key = "tabulate_grid"
-    calculators_fail ={"tabulate_grid": wberri.calculators.TabulatorAll(quantities,
+    calculators_fail = {"tabulate_grid": wberri.calculators.TabulatorAll(quantities,
                                                        ibands=[0],
                                                         mode="grid"),
                         "ahc": wberri.calculators.static.AHC(Efermi=Efermi_Haldane)}
@@ -1442,7 +1442,7 @@ def check_kp_mass_isotropic(check_run):
     def _inner(system, name, suffix, check_anal=False):
 
         Efermi = np.linspace(-0.1, 0.5, 101)
-        tetra=True
+        tetra = True
         calculators =   {
             'cumdos': calc.static.CumDOS(Efermi=Efermi, tetra=tetra),
             'dos': calc.static.DOS(Efermi=Efermi, tetra=tetra),
@@ -1457,16 +1457,16 @@ def check_kp_mass_isotropic(check_run):
                         'length': 20,
                         'NKFFT': 5
                                 },
-                    fout_name="berry_kp_mass_"+name,
+                    fout_name="berry_kp_mass_" + name,
                     suffix=suffix,
                             )
 
         if check_anal:
-            cumdos = result.results["cumdos"].data/system.cell_volume
-            dos = result.results["dos"].data/system.cell_volume
+            cumdos = result.results["cumdos"].data / system.cell_volume
+            dos = result.results["dos"].data / system.cell_volume
             ohmic = {}
-            ohmic["sea"] = result.results["ohmic_sea"].data/wberri.__factors.factor_ohmic
-            ohmic["surf"] = result.results["ohmic_surf"].data/wberri.__factors.factor_ohmic
+            ohmic["sea"] = result.results["ohmic_sea"].data / wberri.__factors.factor_ohmic
+            ohmic["surf"] = result.results["ohmic_surf"].data / wberri.__factors.factor_ohmic
 
             precision = 1e-8
             try:
@@ -1474,18 +1474,18 @@ def check_kp_mass_isotropic(check_run):
                     ohm = ohmic[ss]
                     for i in range(3):
                         for j in range(3):
-                            if i==j:
+                            if i == j:
                                 assert ohm[:, i, j] == approx(ohm[:, 0, 0], abs=precision)
                             else:
                                 assert ohm[:, i, j] == approx(0, abs=precision)
             except AssertionError:
                 raise RuntimeError(f"ohmic({ss}) conductivity is not isotropic, componenets {i,j}")
-            ohmic["sea"]=ohmic["sea"][:, 0, 0]
-            ohmic["surf"]=ohmic["surf"][:, 0, 0]
+            ohmic["sea"] = ohmic["sea"][:, 0, 0]
+            ohmic["surf"] = ohmic["surf"][:, 0, 0]
 
 
-            select_plus = Efermi>0.2
-            select_minus = Efermi<0
+            select_plus = Efermi > 0.2
+            select_minus = Efermi < 0
 
             assert dos[select_minus] == approx(0, abs=precision)
             assert cumdos[select_minus]  == approx(0, abs=precision)
@@ -1495,9 +1495,9 @@ def check_kp_mass_isotropic(check_run):
             ## compare with results evaluated analytically
             mass = mass_kp_iso
             Efp = Efermi[select_plus]
-            dos_anal = mass*np.sqrt(2*Efp*mass)/(2*np.pi**2)
-            cumdos_anal = np.sqrt(2*Efp*mass)**3/(6*np.pi**2)
-            ohmic_anal = np.sqrt(2*Efp*mass)**3/(6*np.pi**2)/mass
+            dos_anal = mass * np.sqrt(2 * Efp * mass) / (2 * np.pi**2)
+            cumdos_anal = np.sqrt(2 * Efp * mass)**3 / (6 * np.pi**2)
+            ohmic_anal = np.sqrt(2 * Efp * mass)**3 / (6 * np.pi**2) / mass
             precision = 0.05
             assert dos[select_plus] == approx(dos_anal, rel=precision)
             assert cumdos[select_plus] == approx(cumdos_anal, rel=precision)

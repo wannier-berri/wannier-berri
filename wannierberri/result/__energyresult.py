@@ -93,8 +93,8 @@ class EnergyResult(Result):
             self.Energies = Energies
             self.data = data
             self.set_smoother(smoothers)
-            self.transformTR=transformTR
-            self.transformInv=transformInv
+            self.transformTR = transformTR
+            self.transformInv = transformInv
             self.set_save_mode(save_mode)
             self.comment = comment
 
@@ -156,7 +156,7 @@ class EnergyResult(Result):
             assert self.transformInv == other.transformInv
         if other == 0:
             return self
-        if len(self.comment)>len(other.comment):
+        if len(self.comment) > len(other.comment):
             comment = self.comment
         else:
             comment = other.comment
@@ -177,7 +177,7 @@ class EnergyResult(Result):
             comment=comment)
 
     def add(self, other):
-        self.data+=other.data
+        self.data += other.data
 
     def __sub__(self, other):
         return self + (-1) * other
@@ -205,7 +205,7 @@ class EnergyResult(Result):
                 return ['  ']
             else:
                 return [a + b for a in 'xyz' for b in getHead(n - 1)]
-        head = "".join("#### "+s+"\n" for s in self.comment.split("\n") )
+        head = "".join("#### " + s + "\n" for s in self.comment.split("\n") )
         head += "#" + "    ".join("{0:^15s}".format(s) for s in self.E_titles) + " " * 8 + "    ".join(
             frmt.format(b) for b in getHead(self.rank) * 2) + "\n"
         name = name.format('')
