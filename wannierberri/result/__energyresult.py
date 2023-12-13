@@ -4,6 +4,7 @@ from ..symmetry import transform_from_dict
 from ..smoother import VoidSmoother
 from .__result import Result
 
+
 class EnergyResult(Result):
     """A class to store data dependent on several energies, e.g. Efermi and Omega
       Energy may also be an empty list, then the quantity does not depend on any energy (does it work?)
@@ -50,7 +51,7 @@ class EnergyResult(Result):
             file_npz=None,
             comment="undocumented"):
         if file_npz is not None:
-            res = np.load(open(file_npz, "rb"),allow_pickle=True)
+            res = np.load(open(file_npz, "rb"), allow_pickle=True)
             energ = [
                 res[f'Energies_{i}'] for i, _ in enumerate(res['E_titles'])
             ]  # in binary mode energies are just two arrays
@@ -64,8 +65,8 @@ class EnergyResult(Result):
                 data=res['data'],
                 smoothers=smoothers,
                 # TODO : transform the old Iodd.TRodd,TRtrans into new transformators (if needeed))
-                transformTR=transform_from_dict(res,'transformTR'),
-                transformInv=transform_from_dict(res,'transformInv'),
+                transformTR=transform_from_dict(res, 'transformTR'),
+                transformInv=transform_from_dict(res, 'transformInv'),
                 rank=res['rank'],
                 E_titles=list(res['E_titles']),
                 comment=comment)
@@ -92,8 +93,8 @@ class EnergyResult(Result):
             self.Energies = Energies
             self.data = data
             self.set_smoother(smoothers)
-            self.transformTR=transformTR
-            self.transformInv=transformInv
+            self.transformTR = transformTR
+            self.transformInv = transformInv
             self.set_save_mode(save_mode)
             self.comment = comment
 
@@ -143,7 +144,7 @@ class EnergyResult(Result):
                 E_titles=self.E_titles,
                 comment=self.comment)
         else:
-            raise TypeError("result can only be multilied by a number")
+            raise TypeError("result can only be multiplied by a number")
 
     def __truediv__(self, number):
         return self * (1. / number)
@@ -155,7 +156,7 @@ class EnergyResult(Result):
             assert self.transformInv == other.transformInv
         if other == 0:
             return self
-        if len(self.comment)>len(other.comment):
+        if len(self.comment) > len(other.comment):
             comment = self.comment
         else:
             comment = other.comment
@@ -175,8 +176,8 @@ class EnergyResult(Result):
             E_titles=self.E_titles,
             comment=comment)
 
-    def add(self,other):
-        self.data+=other.data
+    def add(self, other):
+        self.data += other.data
 
     def __sub__(self, other):
         return self + (-1) * other
@@ -204,7 +205,7 @@ class EnergyResult(Result):
                 return ['  ']
             else:
                 return [a + b for a in 'xyz' for b in getHead(n - 1)]
-        head = "".join("#### "+s+"\n" for s in self.comment.split("\n") )
+        head = "".join("#### " + s + "\n" for s in self.comment.split("\n"))
         head += "#" + "    ".join("{0:^15s}".format(s) for s in self.E_titles) + " " * 8 + "    ".join(
             frmt.format(b) for b in getHead(self.rank) * 2) + "\n"
         name = name.format('')
@@ -261,13 +262,11 @@ class EnergyResult(Result):
         return self.__class__(
             Energies=self.Energies,
             data=sym.transform_tensor(self.data, self.rank,
-                                        transformTR=self.transformTR,
-                                        transformInv=self.transformInv),
+                                      transformTR=self.transformTR,
+                                      transformInv=self.transformInv),
             smoothers=self.smoothers,
             transformTR=self.transformTR,
             transformInv=self.transformInv,
             rank=self.rank,
             E_titles=self.E_titles,
             comment=self.comment)
-
-

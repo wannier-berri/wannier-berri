@@ -74,7 +74,7 @@ class Matrix_ln(Formula_ln):
         if transformTR is not None:
             self.transformTR = transformTR
         if transformInv is not None:
-            self.transformInv= transformInv
+            self.transformInv = transformInv
 
     def ln(self, ik, inn, out):
         return self.matrix[ik][out][:, inn]
@@ -94,7 +94,7 @@ class Matrix_GenDer_ln(Formula_ln):
         if transformTR is not None:
             self.transformTR = transformTR
         if transformInv is not None:
-            self.transformInv= transformInv
+            self.transformInv = transformInv
 
     def nn(self, ik, inn, out):
         summ = self.dA.nn(ik, inn, out)
@@ -115,8 +115,8 @@ class FormulaProduct(Formula_ln):
     def __init__(self, formula_list, name="unknown", hermitian=False):
         if type(formula_list) not in (list, tuple):
             formula_list = [formula_list]
-        self.transformTR=TransformProduct(f.transformTR for f in formula_list)
-        self.transformInv=TransformProduct(f.transformInv for f in formula_list)
+        self.transformTR = TransformProduct(f.transformTR for f in formula_list)
+        self.transformInv = TransformProduct(f.transformInv for f in formula_list)
         self.name = name
         self.formulae = formula_list
         self.hermitian = hermitian

@@ -9,7 +9,7 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 """
 wannierberri - a module for Wannier interpolation
 """
@@ -38,6 +38,7 @@ from . import utils
 from . import data_K
 
 from termcolor import cprint
+
 
 def welcome():
     # ogiginally obtained by pyfiglet, font='cosmic'

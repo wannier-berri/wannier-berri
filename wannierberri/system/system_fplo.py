@@ -54,7 +54,7 @@ class System_fplo(System):
             if l.startswith("end spin:"):
                 break
             elif l.startswith("lattice_vectors:"):
-                real_lattice_bohr = np.array([next(f).split() for i in range(3)], dtype=float)
+                real_lattice_bohr = np.array([next(f).split() for _ in range(3)], dtype=float)
                 inv_real_lattice = np.linalg.inv(real_lattice_bohr)
             elif l.startswith("nwan:"):
                 self.num_wann = int(next(f))

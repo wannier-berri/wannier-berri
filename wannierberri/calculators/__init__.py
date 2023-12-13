@@ -6,6 +6,7 @@ receive :calss:`~wannierberri.data_K._Data_K` objects and yield
 
 from termcolor import cprint
 
+
 class Calculator():
 
     def __init__(self, degen_thresh=1e-4, degen_Kramers=False, save_mode="bin+txt", print_comment=False):

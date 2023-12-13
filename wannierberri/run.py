@@ -9,7 +9,7 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 
 import numpy as np
 from collections.abc import Iterable
@@ -32,9 +32,9 @@ def print_progress(count, total, t0, tprev, print_progress_step):
     else:
         t_rem_s = t / count * (total - count)
         t_remain = "{:22.1f}".format(t_rem_s)
-    if t-tprev>print_progress_step:
+    if t - tprev > print_progress_step:
         print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
-        tprev=t
+        tprev = t
     return tprev
 
 
@@ -172,39 +172,39 @@ def run(
     Results are also printed to ASCII files
     """
 
-    cprint ("Starting run()", 'red', attrs=['bold'])
+    cprint("Starting run()", 'red', attrs=['bold'])
     print_calculators(calculators)
     # along a path only tabulating is possible
-    if isinstance(grid,Path):
-        print ("Calculation along a path - checking calculators for compatibility")
-        for key,calc in calculators.items():
-            print (key,calc)
+    if isinstance(grid, Path):
+        print("Calculation along a path - checking calculators for compatibility")
+        for key, calc in calculators.items():
+            print(key, calc)
             if not calc.allow_path:
                 raise ValueError(f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path")
-        print ("All calculators are compatible")
+        print("All calculators are compatible")
         if symmetrize:
-            print ("Symmetrization switched off for Path")
+            print("Symmetrization switched off for Path")
             symmetrize = False
     else:
-        print ("Calculation on  grid - checking calculators for compatibility")
-        for key,calc in calculators.items():
-            print (key,calc)
+        print("Calculation on  grid - checking calculators for compatibility")
+        for key, calc in calculators.items():
+            print(key, calc)
             if not calc.allow_grid:
                 raise ValueError(f"Calculation on Grid is running, but calculator `{key}` is not compatible with a Grid")
-        print ("All calculators are compatible")
+        print("All calculators are compatible")
 
-    if isinstance(grid,GridTetra):
-        print ("Grid is tetrahedral")
+    if isinstance(grid, GridTetra):
+        print("Grid is tetrahedral")
     else:
-        print ("Grid is regular")
+        print("Grid is regular")
 
     if file_Klist is not None:
         do_write_Klist = True
         if not file_Klist.endswith(".pickle"):
             file_Klist += ".pickle"
-            file_Klist_factor_changed = file_Klist+".changed_factors.txt"
+            file_Klist_factor_changed = file_Klist + ".changed_factors.txt"
         else:
-            file_Klist_factor_changed = file_Klist[:-7]+".changed_factors.txt"
+            file_Klist_factor_changed = file_Klist[:-7] + ".changed_factors.txt"
     else:
         do_write_Klist = False
         file_Klist_factor_changed = None
@@ -218,7 +218,7 @@ def run(
 
         @ray.remote
         def paralfunc(Kpoint, _system, _grid, _calculators, npar_k):
-            data = get_data_k(_system,  Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+            data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
             return ResultDict({k: v(data) for k, v in _calculators.items()})
     else:
 
@@ -258,11 +258,11 @@ def run(
                 print("{0} K-points were read from {1}".format(len(factor_changed_K_list), file_Klist_factor_changed))
                 fr_div.close()
             except FileNotFoundError:
-                print (f"File with changed factors {file_Klist_factor_changed} not found, assume they were not changed")
+                print(f"File with changed factors {file_Klist_factor_changed} not found, assume they were not changed")
         except Exception as err:
             restart = False
 #            print("WARNING: {}".format(err))
-            raise RuntimeError("{1}: reading from {0} failed, starting from scrath".format(file_Klist,err))
+            raise RuntimeError("{1}: reading from {0} failed, starting from scrath".format(file_Klist, err))
     else:
         K_list = grid.get_K_list(use_symmetry=use_irred_kpt)
         print("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
@@ -271,6 +271,7 @@ def run(
 
     if not restart:
         import os
+
         def remove_file(filename):
             if filename is not None and os.path.exists(filename):
                 os.remove(filename)
@@ -308,7 +309,7 @@ def run(
     for i_iter in range(adpt_num_iter + 1):
         if print_Kpoints:
             print(
-                "iteration {0} - {1} points. New points are:".format(i_iter+start_iter, len([K for K in K_list if K.res is None])))
+                "iteration {0} - {1} points. New points are:".format(i_iter + start_iter, len([K for K in K_list if K.res is None])))
             for i, K in enumerate(K_list):
                 if not K.evaluated:
                     print(" K-point {0} : {1} ".format(i, K))
@@ -372,7 +373,7 @@ def run(
                 else:
                     result_excluded += results - K_list[iK].get_res
 
-        if use_irred_kpt and isinstance(grid,Grid):
+        if use_irred_kpt and isinstance(grid, Grid):
             print("checking for equivalent points in all points (of new  {} points)".format(len(K_list) - l1))
             nexcl, weight_changed_old = exclude_equiv_points(K_list, new_points=len(K_list) - l1)
             print(" excluded {0} points".format(nexcl))
@@ -385,7 +386,7 @@ def run(
             result_excluded += K_list[iK].res * (prev_factor - K_list[iK].factor)
 
         if do_write_Klist:
-            print (f"Writing file_Klist_factor_changed to {file_Klist_factor_changed}")
+            print(f"Writing file_Klist_factor_changed to {file_Klist_factor_changed}")
             fw_changed = open(file_Klist_factor_changed, "a")
             for iK in excluded_Klist:
                 fw_changed.write("{0} {1} # refined\n".format(iK, 0.0))
@@ -395,16 +396,16 @@ def run(
 
 
     print("Totally processed {0} K-points ".format(counter))
-    print ("run() finished")
+    print("run() finished")
 
     return result_all
 
-def print_calculators(calculators):
-    cprint("Using the follwing calculators : \n" + "#"*60 +"\n", "cyan", attrs=["bold"])
-    for key,val in calculators.items() :
-        cprint (f" '{key}' ", "magenta", attrs=["bold"], end="")
-        print (" : ",end="")
-        cprint(f" {val} ", "yellow", attrs=["bold"], end="")
-        print ( f" : {val.comment}" )
-    cprint("#"*60 , "cyan", attrs=["bold"])
 
+def print_calculators(calculators):
+    cprint("Using the follwing calculators : \n" + "#" * 60 + "\n", "cyan", attrs=["bold"])
+    for key, val in calculators.items():
+        cprint(f" '{key}' ", "magenta", attrs=["bold"], end="")
+        print(" : ", end="")
+        cprint(f" {val} ", "yellow", attrs=["bold"], end="")
+        print(f" : {val.comment}")
+    cprint("#" * 60, "cyan", attrs=["bold"])

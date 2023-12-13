@@ -10,7 +10,7 @@
 #           Stepan Tsirkin, University of Zurich             #
 #   some parts of this file are originate                    #
 # from the translation of Wannier90 code                     #
-#------------------------------------------------------------#
+# ---------------------------------------------------------- #
 
 import numpy as np
 from ..__utility import real_recip_lattice
@@ -31,6 +31,7 @@ class System_ASE(System_w90):
     -----
     see also  parameters of the :class:`~wannierberri.System`
     """
+
     def __init__(
                 self,
                 ase_wannier,
@@ -72,12 +73,11 @@ class System_ASE(System_w90):
                 "the grid of k-points read from .chk file is not Gamma-centerred. Please, use Gamma-centered grids in the ab initio calculation"
             )
 
-        self.set_R_mat('Ham',  np.array([ase_wannier.get_hopping(R) / nd for R, nd in zip(self.iRvec, self.Ndegen)]).transpose(
-            (1, 2, 0)) )
+        self.set_R_mat('Ham', np.array([ase_wannier.get_hopping(R) / nd for R, nd in zip(self.iRvec, self.Ndegen)]).transpose(
+            (1, 2, 0)))
 
         self.getXX_only_wannier_centers()
 
         self.do_at_end_of_init()
 
         cprint("Reading the ASE system finished successfully", 'green', attrs=['bold'])
-

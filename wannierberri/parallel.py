@@ -58,6 +58,7 @@ class Parallel():
     def shutdown(self):
         self.ray.shutdown()
 
+
 class Serial(Parallel):
     """ a class defining the serial execution (although `npar_k` is allowed)
 
@@ -69,7 +70,7 @@ class Serial(Parallel):
         progress (and estimated time to end) will be printed after each percent is completed
 """
 
-    def __init__(self,npar_k=None,progress_step_percent=1):
+    def __init__(self, npar_k=None, progress_step_percent=1):
         self.progress_step_percent = progress_step_percent
         self.method = "serial"
         self.num_cpus = 1
@@ -77,10 +78,10 @@ class Serial(Parallel):
             _, self.npar_k = pool(0)
         else:
             self.npar_k = npar_k
-        self.npar_K=1
+        self.npar_K = 1
 
     def shutdown(self):
-        print ("No need to shutdown Serial()")
+        print("No need to shutdown Serial()")
 
 
 

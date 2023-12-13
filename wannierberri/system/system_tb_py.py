@@ -9,7 +9,7 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 
 import numpy as np
 from termcolor import cprint
@@ -66,7 +66,7 @@ class System_tb_py(System):
         self.norb = positions.shape[0]
         wannier_centers_reduced = np.zeros((self.norb, 3))
         wannier_centers_reduced[:, :self.dimr] = positions
-        self.real_lattice = np.eye((3), dtype=float)
+        self.real_lattice = np.eye(3, dtype=float)
         self.real_lattice[:self.dimr, :self.dimr] = np.array(real)
         self.wannier_centers_cart_auto = wannier_centers_reduced.dot(self.real_lattice)
         self.periodic[self.dimr:] = False
@@ -119,8 +119,7 @@ class System_tb_py(System):
             # Set the onsite energies at H(R=[000])
             for i in range(model._norb):
                 Ham_R[i, i, index0] = model._site_energies[i]
-        self.set_R_mat('Ham',Ham_R)
-
+        self.set_R_mat('Ham', Ham_R)
 
         self.getXX_only_wannier_centers()
         self.do_at_end_of_init()

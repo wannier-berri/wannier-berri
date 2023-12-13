@@ -6,10 +6,10 @@ from ..symmetry import transform_ident, transform_odd
 
 class Identity(Formula_ln):
 
-    def __init__(self,data_K=None):
+    def __init__(self, data_K=None):
         self.ndim = 0
-        self.transformTR=transform_ident
-        self.transformInv=transform_ident
+        self.transformTR = transform_ident
+        self.transformInv = transform_ident
 
     def nn(self, ik, inn, out):
         return np.eye(len(inn))
@@ -24,8 +24,8 @@ class Eavln(Matrix_ln):
     def __init__(self, data_K):
         super().__init__(0.5 * (data_K.E_K[:, :, None] + data_K.E_K[:, None, :]))
         self.ndim = 0
-        self.transformTR=transform_ident
-        self.transformInv=transform_ident
+        self.transformTR = transform_ident
+        self.transformInv = transform_ident
 
 
 class DEinv_ln(Matrix_ln):
@@ -70,8 +70,8 @@ class InvMass(Matrix_GenDer_ln):
 
     def __init__(self, data_K):
         super().__init__(data_K.covariant('Ham', commader=1), data_K.covariant('Ham', commader=2), data_K.Dcov)
-        self.transformTR=transform_ident
-        self.transformInv=transform_ident
+        self.transformTR = transform_ident
+        self.transformInv = transform_ident
 
 
 class DerWln(Matrix_GenDer_ln):
@@ -79,8 +79,8 @@ class DerWln(Matrix_GenDer_ln):
 
     def __init__(self, data_K):
         super().__init__(data_K.covariant('Ham', 2), data_K.covariant('Ham', 3), data_K.Dcov)
-        self.transformTR=transform_odd
-        self.transformInv=transform_odd
+        self.transformTR = transform_odd
+        self.transformInv = transform_odd
 
 
 #############################
@@ -98,8 +98,8 @@ class Der3E(Formula_ln):
         self.dD = DerDcov(data_K)
         self.dW = DerWln(data_K)
         self.ndim = 3
-        self.transformTR=transform_odd
-        self.transformInv=transform_odd
+        self.transformTR = transform_odd
+        self.transformInv = transform_odd
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
@@ -134,8 +134,8 @@ class Omega(Formula_ln):
             self.O = data_K.covariant('OO')
 
         self.ndim = 1
-        self.transformTR=transform_odd
-        self.transformInv=transform_ident
+        self.transformTR = transform_odd
+        self.transformInv = transform_ident
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3), dtype=complex)
@@ -186,8 +186,8 @@ class DerOmega(Formula_ln):
             self.dA = data_K.covariant('AA', gender=1)
             self.dO = data_K.covariant('OO', gender=1)
         self.ndim = 2
-        self.transformTR=transform_ident
-        self.transformInv=transform_odd
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
@@ -223,6 +223,7 @@ class DerOmega(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+
 class Hamiltonian(Matrix_ln):
 
     def __init__(self, data_K):
@@ -236,7 +237,8 @@ class Velocity(Matrix_ln):
         v = data_K.covariant('Ham', gender=1)
         self.__dict__.update(v.__dict__)
         if external_terms:
-            self.matrix = self.matrix+1j*data_K.Xbar('AA')*(data_K.E_K[:, :, None,None] - data_K.E_K[:, None, :,None])
+            self.matrix = self.matrix + 1j * data_K.Xbar('AA') * (data_K.E_K[:, :, None, None] - data_K.E_K[:, None, :, None])
+
 
 class Spin(Matrix_ln):
 
@@ -255,6 +257,7 @@ class DerSpin(Matrix_GenDer_ln):
 #   orbital moment     #
 ########################
 
+
 class Morb_H(Formula_ln):
 
     def __init__(self, data_K, **parameters):
@@ -267,8 +270,8 @@ class Morb_H(Formula_ln):
         self.D = data_K.Dcov
         self.E = data_K.E_K
         self.ndim = 1
-        self.transformTR=transform_odd
-        self.transformInv=transform_ident
+        self.transformTR = transform_odd
+        self.transformInv = transform_ident
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3), dtype=complex)
@@ -315,8 +318,8 @@ class Morb_Hpm(Formula_ln):
             self.O = Omega(data_K, **parameters)
             self.Eav = Eavln(data_K)
         self.ndim = 1
-        self.transformTR=transform_odd
-        self.transformInv=transform_ident
+        self.transformTR = transform_odd
+        self.transformInv = transform_ident
 
     @property
     def additive(self):
@@ -361,8 +364,8 @@ class DerMorb(Formula_ln):
             self.dB = data_K.covariant('BB', gender=1)
             self.dH = data_K.covariant('CC', gender=1)
         self.ndim = 2
-        self.transformTR=transform_ident
-        self.transformInv=transform_odd
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
@@ -400,7 +403,7 @@ class DerMorb(Formula_ln):
 
         # Stepan: Shopuldn't we use the line below?
         # TODO: check this formula
-        #summ+=summ.swapaxes(0,1).conj()
+        # summ+=summ.swapaxes(0,1).conj()
         return summ
 
     def ln(self, ik, inn, out):
@@ -435,7 +438,7 @@ def _spin_velocity_einsum_opt(C, A, B):
 class SpinVelocity(Matrix_ln):
     "spin current matrix elements. SpinVelocity.matrix[ik, m, n, a, s] = <u_mk|{v^a S^s}|u_nk> / 2"
 
-    def __init__(self, data_K, spin_current_type,external_terms=True):
+    def __init__(self, data_K, spin_current_type, external_terms=True):
         if spin_current_type == "simple":
             # tight-binding case
             super().__init__(self._J_H_simple(data_K, external_terms=external_terms))
@@ -447,8 +450,8 @@ class SpinVelocity(Matrix_ln):
             super().__init__(self._J_H_ryoo(data_K, external_terms=external_terms))
         else:
             raise ValueError(f"spin_current_type must be `qiao` or `ryoo` or `simple`, not {spin_current_type}")
-        self.transformTR=transform_ident
-        self.transformInv=transform_odd
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
 
     def _J_H_simple(self, data_K, external_terms=True):
         # Spin current operator, J. Qiao et al PRB (2019)
@@ -460,7 +463,7 @@ class SpinVelocity(Matrix_ln):
 
 
     def _J_H_qiao(self, data_K, external_terms=True):
-        if not external_terms :
+        if not external_terms:
             raise NotImplementedError("spin Hall qiao without external terms is not implemented yet. Use `SHC_type='simple'`")
         # Spin current operator, J. Qiao et al PRB (2019)
         # J_H_qiao[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
@@ -471,13 +474,13 @@ class SpinVelocity(Matrix_ln):
         shc_L_H = -1j * data_K._R_to_k_H(data_K.get_R_mat('SHR'), hermitean=False)
         _spin_velocity_einsum_opt(shc_L_H, SH_H, data_K.D_H)
         J = (
-            data_K.delE_K[:, None, :, :, None] * SS_H[:, :, :, None, :]
-            + data_K.E_K[:, None, :, None, None] * shc_K_H[:, :, :, :, :] - shc_L_H)
+            data_K.delE_K[:, None, :, :, None] * SS_H[:, :, :, None, :] +
+            data_K.E_K[:, None, :, None, None] * shc_K_H[:, :, :, :, :] - shc_L_H)
         return (J + J.swapaxes(1, 2).conj()) / 2
 
 
-    def _J_H_ryoo(self,data_K,external_terms=True):
-        if not external_terms :
+    def _J_H_ryoo(self, data_K, external_terms=True):
+        if not external_terms:
             raise NotImplementedError("spin Hall ryoo without external terms is not implemented yet. Use `SHC_type='simple'`")
         # Spin current operator, J. H. Ryoo et al PRB (2019)
         # J_H_ryoo[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
@@ -499,8 +502,8 @@ class SpinOmega(Formula_ln):
         self.J = SpinVelocity(data_K, spin_current_type)
         self.dEinv = DEinv_ln(data_K)
         self.ndim = 3
-        self.transformTR=transform_ident
-        self.transformInv=transform_ident
+        self.transformTR = transform_ident
+        self.transformInv = transform_ident
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
@@ -590,7 +593,3 @@ class OmegaHplus(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([Omega(data_K, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='OmegaHplus')
-
-
-
-
