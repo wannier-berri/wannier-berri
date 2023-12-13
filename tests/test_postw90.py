@@ -26,7 +26,7 @@ def create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_post
     if tmp_dir is None:
         for i in range(10**6):
             dr = f"__tmp_{data_dir}_{i:07d}"
-            if not os.path.exists( os.path.join(ROOT_DIR, TMP_DATA_DIR, dr)):
+            if not os.path.exists(os.path.join(ROOT_DIR, TMP_DATA_DIR, dr)):
                 tmp_dir = dr
                 break
 

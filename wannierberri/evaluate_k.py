@@ -28,7 +28,7 @@ def help():
     return hlp
 
 
-def evaluate_k( system=None,
+def evaluate_k(system=None,
                 k=[0., 0., 0.],
                 quantities=[],
                 calculators={},
@@ -68,7 +68,7 @@ def evaluate_k( system=None,
     # without parameters - just print the available options
     if system is None:
         print(__doc__)
-        print( help())
+        print(help())
         return
 
     set1 = set(quantities)

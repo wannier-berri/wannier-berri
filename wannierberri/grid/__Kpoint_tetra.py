@@ -17,7 +17,7 @@ import lazy_property
 from .__Kpoint import KpointBZ
 
 # fixing the order of the edges by their vortices
-EDGES = [ [0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]
+EDGES = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]
 EDGES_COMPLEMENT = [list(set([0, 1, 2, 3]) - set(e)) for e in EDGES]
 
 
@@ -70,8 +70,8 @@ class KpointBZtetra(KpointBZ):
         if not np.all(periodic):
             raise ValueError("tetrahedron grid can be used only for 3D-periodic systems")
         i_edge = self.__i_max_edge
-        edge = EDGES[ i_edge]
-        edge_comp = EDGES_COMPLEMENT[ i_edge]
+        edge = EDGES[i_edge]
+        edge_comp = EDGES_COMPLEMENT[i_edge]
         v0 = self.vertices[edge[0]]
         dv = (self.vertices[edge[1]] - v0) / ndiv
         add_list = []

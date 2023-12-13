@@ -52,7 +52,7 @@ class K__Result(Result):
 
     def __add__(self, other):
         assert self.fit(other)
-        return self.__class__( data=self.data_list + other.data_list,
+        return self.__class__(data=self.data_list + other.data_list,
                             transformTR=self.transformTR,
                             transformInv=self.transformInv,
                             rank=self.rank,
@@ -65,7 +65,7 @@ class K__Result(Result):
 
 
     def __mul__(self, number):
-        return self.__class__( data=[d * number for d in self.data_list],
+        return self.__class__(data=[d * number for d in self.data_list],
                             transformTR=self.transformTR,
                             transformInv=self.transformInv,
                             rank=self.rank,

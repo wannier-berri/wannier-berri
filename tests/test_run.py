@@ -155,7 +155,7 @@ parameters_Chiral_optical = dict(
         kwargs_formula={"external_terms": False}, )
 
 
-parameters_Chiral_shiftcurrent = dict( sc_eta=0.1)
+parameters_Chiral_shiftcurrent = dict(sc_eta=0.1)
 
 calculators_Chiral = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, smoother=smoother_Chiral),
@@ -399,7 +399,7 @@ def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
 
 def test_Fe_set_spin(check_run, system_Fe_W90_proj_set_spin, compare_any_result):
     param = {'Efermi': Efermi_Fe}
-    calculators = { "spin": wberri.calculators.static.Spin(**param),
+    calculators = {"spin": wberri.calculators.static.Spin(**param),
                     "cumdos": wberri.calculators.static.CumDOS(**param),
                   }
 
