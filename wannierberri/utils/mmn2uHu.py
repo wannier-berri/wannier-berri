@@ -10,7 +10,7 @@
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
 # ------------------------------------------------------------
-'''This utility calculates the matrices .uHu, .uIu, .sHu, and/or .sIu from the .mmn, .spn matrices, and also reduces the number of bands in .amn, .mmn, .eig  and .spn files
+"""This utility calculates the matrices .uHu, .uIu, .sHu, and/or .sIu from the .mmn, .spn matrices, and also reduces the number of bands in .amn, .mmn, .eig  and .spn files
 
         Usage example: ::
 
@@ -47,7 +47,7 @@
                 |  default: none
 
 
-'''
+"""
 
 import numpy as np
 import os
@@ -113,7 +113,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
                 for ib in range(NNB):
                     s = f_mmn_in.readline()
                     MMNheadstrings[ik].append(s)
-                    ik1, ik2 = (int(i) - 1 for i in s.split()[:2])
+                    # ik1, ik2 = (int(i) - 1 for i in s.split()[:2])
                     tmp = np.array(
                         [[f_mmn_in.readline().split() for n in range(NB_in)] for m in range(NB_in)], dtype=float)
                     tmp = (tmp[:, :, 0] + 1j * tmp[:, :, 1])

@@ -18,7 +18,7 @@ from .. import symmetry
 import lazy_property
 from .__Kpoint import KpointBZparallel
 import abc
-#from .__finite_differences import FiniteDifferences
+# from .__finite_differences import FiniteDifferences
 
 
 class GridAbstract(abc.ABC):

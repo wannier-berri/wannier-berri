@@ -11,18 +11,18 @@
 #                                                            #
 # ------------------------------------------------------------
 
+import scipy.io
+import fortio
+from termcolor import cprint
+from time import time
+from lazy_property import LazyProperty as Lazy
+import numpy as np
+import inspect
+from . import PYFFTW_IMPORTED
 __debug = False
 
-from . import PYFFTW_IMPORTED
 if PYFFTW_IMPORTED :
     import pyfftw
-import inspect
-import numpy as np
-from lazy_property import LazyProperty as Lazy
-from time import time
-from termcolor import cprint
-import fortio
-import scipy.io
 
 
 # inheriting just in order to have posibility to change default values, without changing the rest of the code

@@ -7,6 +7,13 @@ from . import Calculator
 from ..formula.covariant import SpinVelocity
 from copy import copy
 from ..symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
+from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom
+from .. import __factors as factors
+
+bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
+bohr = physical_constants['Bohr radius'][0] / angstrom
+eV_au = physical_constants['electron volt-hartree relationship'][0]
+Ang_SI = angstrom
 
 
 #######################################
@@ -112,20 +119,10 @@ class DynamicCalculator(Calculator, abc.ABC):
 ###############################################
 ###############################################
 
-from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom
-
-bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
-bohr = physical_constants['Bohr radius'][0] / angstrom
-eV_au = physical_constants['electron volt-hartree relationship'][0]
-Ang_SI = angstrom
-
-from .. import __factors as factors
-
 
 ###############################
 #              JDOS           #
 ###############################
-
 class Formula_dyn_ident():
 
     def __init__(self, data_K):

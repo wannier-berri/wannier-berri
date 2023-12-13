@@ -20,6 +20,7 @@ from time import time
 from itertools import islice
 from copy import copy
 import numpy as np
+import lazy_property
 from .disentanglement import disentangle
 from ..__utility import FortranFileR, alpha_A, beta_A
 
@@ -220,7 +221,7 @@ class CheckPoint:
         return SHR_q
 
 
-import lazy_property
+
 
 
 class CheckPoint_bare(CheckPoint):

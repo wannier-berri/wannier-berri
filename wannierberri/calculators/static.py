@@ -8,13 +8,13 @@
 import numpy as np
 from collections import defaultdict
 from math import ceil
+from copy import copy
 from ..formula import covariant as frml
 from ..formula import covariant_basic as frml_basic
 from .. import __factors as factors
 from ..result import EnergyResult, K__Result
 from . import Calculator
-from copy import copy
-
+from ..__utility import alpha_A, beta_A
 
 # The base class for Static Calculators
 # particular calculators are below
@@ -174,17 +174,13 @@ class StaticCalculator(Calculator):
 ###############################################
 ###############################################
 
-
 #  TODO: Ideally, a docstring of every calculator should contain the equation that it implements
 #        and references (with urls) to the relevant papers
-
-from ..__utility import alpha_A, beta_A
 
 
 ####################
 # basic quantities #
 ####################
-
 
 class _DOS(StaticCalculator):
 

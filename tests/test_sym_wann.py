@@ -1,4 +1,5 @@
 """Test symmetrization of Wannier models"""
+from wannierberri.system.sym_wann import _dict_to_matrix, _matrix_to_dict, _get_H_select, _rotate_matrix
 import numpy as np
 import pytest
 from pytest import approx
@@ -276,7 +277,6 @@ def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
 
 
 
-from wannierberri.system.sym_wann import _dict_to_matrix, _matrix_to_dict, _get_H_select, _rotate_matrix
 
 
 class AtomInfo():

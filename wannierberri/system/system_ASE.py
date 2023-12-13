@@ -10,7 +10,7 @@
 #           Stepan Tsirkin, University of Zurich             #
 #   some parts of this file are originate                    #
 # from the translation of Wannier90 code                     #
-#------------------------------------------------------------#
+# ---------------------------------------------------------- #
 
 import numpy as np
 from ..__utility import real_recip_lattice

@@ -227,7 +227,7 @@ def system_Fe_W90_disentangle(create_files_Fe_W90):
     w90data = wberri.system.Wannier90data(seedname=os.path.join(data_dir, 'Fe_sym') )
     with pytest.raises(RuntimeError):
         wberri.system.System_w90(w90data=w90data)
-    #aidata.apply_outer_window(win_min=-8,win_max= 100 )
+    # aidata.apply_outer_window(win_min=-8,win_max= 100 )
     w90data.disentangle( froz_min=-8,
                  froz_max=20,
                  num_iter=2000,
