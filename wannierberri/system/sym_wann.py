@@ -124,7 +124,7 @@ class SymWann():
         H_select matrices is bool matrix which can select a subspace of Hamiltonian between one atom and it's
         equivalent atom after symmetry operation.
         '''
-        proj_dic = defaultdict(lambda : [])
+        proj_dic = defaultdict(lambda: [])
         orbital_index = 0
         orbital_index_list = [[] for i in range(num_atom)]
         for proj in projections:
@@ -271,7 +271,7 @@ class SymWann():
                 for i in range(self.num_wann_atom):
                     if sym_only or sym_T:
                         magmom = self.wann_atom_info[i].magmom
-                        new_magmom = np.dot(symop.rotation_cart , magmom) * (-1 if symop.inversion else 1)
+                        new_magmom = np.dot(symop.rotation_cart, magmom) * (-1 if symop.inversion else 1)
                         if abs(np.linalg.norm(magmom - new_magmom)) > 0.0005:
                             sym_only = False
                         if abs(np.linalg.norm(magmom + new_magmom)) > 0.0005:
@@ -438,7 +438,7 @@ class SymWann():
                         Mat_out[i * nw2:(i + 1) * nw2, j * nw2:(j + 1) * nw2, ...] = Mat_in[i:self.num_wann:2, j:self.num_wann:2, ...]
             Mat_in[...] = Mat_out[...]
             return
-        else :
+        else:
             raise ValueError(f"does not work for DFT_code  '{self.DFT_code}' so far")
 
 
@@ -626,7 +626,7 @@ class WannAtomInfo():
         self.magmom = magmom
         self.soc = soc
         self.num_wann = len(sum(self.orbital_index, []))  # number of orbitals of atom_a
-        allindex = sorted(sum(self.orbital_index , []))
+        allindex = sorted(sum(self.orbital_index, []))
         print("allindex", allindex)
         self.orb_position_on_atom_dic = {}
         for pr, ind in zip(projection, orbital_index):

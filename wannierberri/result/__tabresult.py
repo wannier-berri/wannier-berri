@@ -201,7 +201,7 @@ class TABresult(Result):
         The circle size (size of quantity) changes linearly below 2 and logarithmically above 2.
         """
 
-        if fatmax is None :
+        if fatmax is None:
             fatmax = fatfactor * 10
 
         import matplotlib.pyplot as plt
@@ -265,7 +265,7 @@ class TABresult(Result):
                         sz = abs(y[sel]) * fatfactor
                         sz[sz > fatmax] = fatmax
                         plt.scatter(klineselE[sel], e1[sel], s=sz, color=col)
-            else :
+            else:
                 raise ValueError("So far only fatband mode is implemented")
 
         x_ticks_labels = []

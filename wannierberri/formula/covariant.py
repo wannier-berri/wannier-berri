@@ -463,7 +463,7 @@ class SpinVelocity(Matrix_ln):
 
 
     def _J_H_qiao(self, data_K, external_terms=True):
-        if not external_terms :
+        if not external_terms:
             raise NotImplementedError("spin Hall qiao without external terms is not implemented yet. Use `SHC_type='simple'`")
         # Spin current operator, J. Qiao et al PRB (2019)
         # J_H_qiao[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
@@ -480,7 +480,7 @@ class SpinVelocity(Matrix_ln):
 
 
     def _J_H_ryoo(self, data_K, external_terms=True):
-        if not external_terms :
+        if not external_terms:
             raise NotImplementedError("spin Hall ryoo without external terms is not implemented yet. Use `SHC_type='simple'`")
         # Spin current operator, J. H. Ryoo et al PRB (2019)
         # J_H_ryoo[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2

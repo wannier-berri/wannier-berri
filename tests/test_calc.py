@@ -82,7 +82,7 @@ def test_tab_fit(system_Haldane_PythTB):
             r1 = results[ical1][ib1]
             r2 = results[ical2][ib2]
             check = r1.fit(r2)
-            assert check == (  (ib1 == ib2) ) , f"{r1.nband}, {r2.nband}, {check}"
+            assert check == (  (ib1 == ib2) ), f"{r1.nband}, {r2.nband}, {check}"
 
     for res in results:
         r1 = res[0]
@@ -122,7 +122,7 @@ def check_save_result():
 
 def test_save_KBandResult(system_Haldane_PythTB, check_save_result):
     calc = wberri.calculators.tabulate.Energy()
-    check_save_result(system_Haldane_PythTB , calc, result_type=KBandResult)
+    check_save_result(system_Haldane_PythTB, calc, result_type=KBandResult)
 
 
 def test_save_KBandResult_add(system_Haldane_PythTB, check_calculator):
@@ -144,7 +144,7 @@ def test_save_KBandResult_add(system_Haldane_PythTB, check_calculator):
 def test_save_EnergyResult(system_Haldane_PythTB, check_save_result):
     param = dict(Formula=frml.Identity, Efermi=Efermi_Fe, tetra=False, fder=0)
     calc = static.StaticCalculator(**param)
-    check_save_result(system_Haldane_PythTB , calc, result_type=EnergyResult)
+    check_save_result(system_Haldane_PythTB, calc, result_type=EnergyResult)
 
 
 def test_get_transform():

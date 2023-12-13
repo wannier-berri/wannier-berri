@@ -63,14 +63,14 @@ class GridTetra(GridAbstract):
                                      [ [0, 1, 1], [0, 0, 1], [0, 1, 0], [1, 1, 1] ],
                                      [ [0, 0, 1], [0, 1, 0], [1, 0, 0], [1, 1, 1] ]
                                    ]) - np.array([0.5, 0.5, 0.5])[None, None, :]
-        else :
+        else:
             tetrahedra = np.array(IBZ_tetra)
         print("using starting tetrahedra with vertices \n", tetrahedra)
         _weights = np.array([tetra_volume(t) for t in tetrahedra])
         print(f"volumes of tetrahedra are {_weights}, total = {sum(_weights)} ")
         if weights is None:
             weights = _weights / sum(_weights)
-        else :
+        else:
             weights = np.array(weights) * _weights
         print(f"weights of tetrahedra are {weights}, total = {sum(weights)} ")
         self.K_list = []
@@ -156,9 +156,9 @@ class GridTrigonal(GridTetra):
 
         # these ones are for the case when the reciprocal lattice vectors form a 120deg angle
         IBZ_tetra = np.array( [
-                    [ [0, 0, 0] , [1 / 3, 2 / 3, 0.0], [2 / 3, 1 / 3, 0.0], [1 / 3, 2 / 3, 0.5] ],
-                    [ [0, 0, 0] , [2 / 3, 1 / 3, 0.5], [2 / 3, 1 / 3, 0.0], [1 / 3, 2 / 3, 0.5] ],
-                    [ [0, 0, 0] , [2 / 3, 1 / 3, 0.5], [0  , 0, 0.5], [1 / 3, 2 / 3, 0.5] ],
+                    [ [0, 0, 0], [1 / 3, 2 / 3, 0.0], [2 / 3, 1 / 3, 0.0], [1 / 3, 2 / 3, 0.5] ],
+                    [ [0, 0, 0], [2 / 3, 1 / 3, 0.5], [2 / 3, 1 / 3, 0.0], [1 / 3, 2 / 3, 0.5] ],
+                    [ [0, 0, 0], [2 / 3, 1 / 3, 0.5], [0, 0, 0.5], [1 / 3, 2 / 3, 0.5] ],
                               ]  )
 
         b1, b2, b3 = system.recip_lattice
@@ -181,7 +181,7 @@ class GridTrigonalH(GridTetra):
         K = np.array([2 / 3, 1 / 3, 0  ])
         H1 = np.array([1 / 3, -1 / 3, 1 / 2])
         A = (H - K)
-        IBZ_tetra = np.array( [ [ H, H + x * (K - H), H + x * (A - H), H + x * (H1 - H) ] ,
+        IBZ_tetra = np.array( [ [ H, H + x * (K - H), H + x * (A - H), H + x * (H1 - H) ],
                                 [ H, H - x * (K - H), H + x * (A - H), H + x * (H1 - H) ] ] )
 
         b1, b2, b3 = system.recip_lattice

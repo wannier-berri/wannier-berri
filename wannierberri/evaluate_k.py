@@ -100,7 +100,7 @@ def evaluate_k( system=None,
 
 
 
-    _param_formula = defaultdict(lambda : {} )
+    _param_formula = defaultdict(lambda: {} )
     _param_formula.update(param_formula)
 
     for k, f in formula.items():

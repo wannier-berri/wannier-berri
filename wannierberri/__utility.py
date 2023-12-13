@@ -21,7 +21,7 @@ import inspect
 from . import PYFFTW_IMPORTED
 __debug = False
 
-if PYFFTW_IMPORTED :
+if PYFFTW_IMPORTED:
     import pyfftw
 
 

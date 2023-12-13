@@ -67,7 +67,7 @@ class KpointBZtetra(KpointBZ):
             we either 'split' (if the tetrahedra is too big) refine = False
              or 'refine' (if the result is big), but it only matters for the counters
         """
-        if not np.all(periodic) :
+        if not np.all(periodic):
             raise ValueError("tetrahedron grid can be used only for 3D-periodic systems")
         i_edge = self.__i_max_edge
         edge = EDGES[ i_edge ]

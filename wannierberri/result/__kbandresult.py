@@ -149,7 +149,7 @@ class K__Result(Result):
     def get_component_list(self):
         dim = len(self.data.shape[2:])
         comp_list = ["".join(s) for s in itertools.product(*[("x", "y", "z")] * dim)]
-        if self.ndim >= 2 :
+        if self.ndim >= 2:
             comp_list.append("trace")
         return comp_list
 

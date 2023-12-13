@@ -403,9 +403,9 @@ def run(
 
 def print_calculators(calculators):
     cprint("Using the follwing calculators : \n" + "#" * 60 + "\n", "cyan", attrs=["bold"])
-    for key, val in calculators.items() :
+    for key, val in calculators.items():
         cprint(f" '{key}' ", "magenta", attrs=["bold"], end="")
         print(" : ", end="")
         cprint(f" {val} ", "yellow", attrs=["bold"], end="")
         print( f" : {val.comment}" )
-    cprint("#" * 60 , "cyan", attrs=["bold"])
+    cprint("#" * 60, "cyan", attrs=["bold"])

@@ -19,7 +19,7 @@ def test_utility_FFT():
     axes = (0, 2)
     for fft in "fftw", "numpy", "FfTw", "nUmPY":
         util.FFT(inp, axes, fft=fft)
-    for fft in "fft" , "np", "idkwhat", "dummy":
+    for fft in "fft", "np", "idkwhat", "dummy":
         with pytest.raises(ValueError, match=f"unknown type of fft : {fft}"):
             util.FFT(inp, axes, fft=fft)
 
