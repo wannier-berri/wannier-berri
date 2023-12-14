@@ -511,10 +511,12 @@ class _Data_K(System,abc.ABC):
         En = self.E_K
         Enm = En[:,:,None] - En[:,None,:]
 
-        B = -0.5j * Enm[:,:,:,None,None] * q
-        B[:,:,:,alpha_A,beta_A] += m
-        B[:,:,:,beta_A,alpha_A] -= m
-        return B
+        B_q = -0.5j * Enm[:,:,:,None,None] * q
+        B_m = np.zeros((self.nk,self.num_wann,self.num_wann,3,3), dtype=complex)
+        B_m[:,:,:,alpha_A,beta_A] += m
+        B_m[:,:,:,beta_A,alpha_A] -= m
+        B = B_m + B_q
+        return B_m, B_q, B
 
     @lazy_property.LazyProperty
     def Vn(self):
