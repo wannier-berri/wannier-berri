@@ -1,6 +1,6 @@
 import numpy as np
 import abc, functools
-from ..__utility import Gaussian, Lorentzian, FermiDirac
+from ..__utility import Gaussian, Lorentzian, FermiDirac, alpha_A, beta_A
 from ..result import EnergyResult
 from . import Calculator
 from ..formula.covariant import SpinVelocity
@@ -242,6 +242,10 @@ class SHC(DynamicCalculator):
 #    Spatially-dispersive conductivity tensor      #
 ####################################################
 
+# To keep e^2/hbar as the global factor of SDCT
+electron_g_factor = physical_constants['electron g factor'][0]
+m_spin_prefactor = electron_g_factor * hbar / electron_mass
+
 # _____ Antisymmetric (time-even) spatially-dispersive conductivity tensor _____ #
 
 class SDCT_asym(Calculator):
@@ -262,31 +266,36 @@ class SDCT_asym(Calculator):
 
 class Formula_SDCT_asym_sea_I():
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
         # Intrinsic multipole moments
-        A = -1. * data_K.E1
-        B_M1, B_E2, B = data_K.Bln
-
+        if external_terms:
+            A = -1. * data_K.E1
+            B_M1, B_E2, B = data_K.Bln
+            if spin:
+                S = data_K.Xbar('SS')
+                B_M1[:,:,:,alpha_A,beta_A] += -0.5 * m_s_prefactor * S
+                B_M1[:,:,:,beta_A,alpha_A] -= -0.5 * m_s_prefactor * S
+        else:
+            A = -1. * data_K.E1_internal
+            B_M1, B_E2, B = data_K.Bln_internal
+            
         # Other quantities
         Vn = data_K.Vn
         Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
 
         # --- Formula --- #
-        summ  = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+        summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
 
-        # Magnetic dipole contribution
         if M1_terms:
-            summ += -np.imag( A[:,:,:,:,None,None] * B_M1[:,:,:,None,:,:] )
+            summ += -np.imag( A[:,:,:,:,None,None] * B_M1.swapaxes(1,2)[:,:,:,None,:,:] )
 
-        # Electric quadrupole contribution
         if E2_terms:
-            summ += -np.imag( A[:,:,:,:,None,None] * B_E2[:,:,:,None,:,:] )
+            summ += -np.imag( A[:,:,:,:,None,None] * B_E2.swapaxes(1,2)[:,:,:,None,:,:] )
 
-        # Band-dispersive contribution
         if V_terms:
             summ += Vnm_plus[:,:,:,:,None,None] * np.imag( A[:,:,:,None,:,None] * A.swapaxes(1,2)[:,:,:,None,None,:] )
 
-        summ  = summ - summ.swapaxes(3,4)
+        summ = summ - summ.swapaxes(3,4)
 
         self.summ = summ
         self.ndim = 3
@@ -299,15 +308,14 @@ class Formula_SDCT_asym_sea_I():
 
 class SDCT_asym_sea_I(DynamicCalculator):
 
-    def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, **kwargs):
+    def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **kwargs):
         super().__init__(**kwargs)
-        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms))
+        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, spin=spin))
         self.Formula = Formula_SDCT_asym_sea_I
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
-        eta = 1e-1
-        omega = self.omega + 1.j * eta
+        omega = self.omega + 1.j * self.smr_fixed_width
         Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
         return omega * Zfac
@@ -315,16 +323,20 @@ class SDCT_asym_sea_I(DynamicCalculator):
 
 class Formula_SDCT_asym_sea_II():
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
         # Intrinsic multipole moments
-        A = -1. * data_K.E1
+        if external_terms:
+            A = -1. * data_K.E1
+        else:
+            A = -1. * data_K.E1_internal
 
         # Other quantities
         Vn = data_K.Vn
         Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
 
         # --- Formula --- #
-        summ  = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+        summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+
         if V_terms:
             summ += np.imag( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vnm_plus[:,:,:,None,None,:]
 
@@ -339,30 +351,33 @@ class Formula_SDCT_asym_sea_II():
 
 class SDCT_asym_sea_II(DynamicCalculator):
 
-    def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, **kwargs):
+    def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **kwargs):
         super().__init__(**kwargs)
-        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms))
+        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, spin=spin))
         self.Formula = Formula_SDCT_asym_sea_II
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
-        eta = 1e-1
-        omega = self.omega + 1.j * eta
+        omega = self.omega + 1.j * self.smr_fixed_width
         Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
         return omega * (3.0 * (E2 - E1)**2 - omega**2  ) * Zfac**2
 
 class Formula_SDCT_asym_surf_I():
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
         # Intrinsic multipole moments
-        A = -1. * data_K.E1
+        if external_terms:
+            A = -1. * data_K.E1
+        else:
+            A = -1. * data_K.E1_internal
 
         # Other quantities
         Vn = data_K.Vn
 
         # --- Formula --- #
         summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+
         if V_terms:
             summ += -np.imag( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vn[:,:,None,None,None,:]
 
@@ -376,15 +391,14 @@ class Formula_SDCT_asym_surf_I():
 
 class SDCT_asym_surf_I(DynamicCalculator):
 
-    def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, **kwargs):
+    def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **kwargs):
         super().__init__(**kwargs)
-        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms))
+        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, spin=spin))
         self.Formula = Formula_SDCT_asym_surf_I
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
-        eta = 1e-1
-        omega = self.omega + 1.j * eta
+        omega = self.omega + 1.j * self.smr_fixed_width
         Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
         return omega * (E2 - E1) * Zfac
@@ -394,9 +408,16 @@ class SDCT_asym_surf_I(DynamicCalculator):
 
 class Formula_SDCT_asym_surf_II():
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
         # Intrinsic multipole moments
-        B_M1, B_E2, B = data_K.Bln
+        if external_terms:
+            B_M1, B_E2, B = data_K.Bln
+            if spin:
+                S = data_K.Xbar('SS')
+                B_M1[:,:,:,alpha_A,beta_A] += -0.5 * m_s_prefactor * S
+                B_M1[:,:,:,beta_A,alpha_A] -= -0.5 * m_s_prefactor * S
+        else:
+            B_M1, B_E2, B = data_K.Bln_internal
         Bn_M1 = np.diagonal(B_M1, axis1=1, axis2=2).transpose(0, 3, 1, 2)
 
         # Other quantities
@@ -420,15 +441,14 @@ class Formula_SDCT_asym_surf_II():
 
 class SDCT_asym_surf_II(DynamicCalculator):
 
-    def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, **kwargs):
+    def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **kwargs):
         super().__init__(**kwargs)
-        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms))
+        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, spin=spin))
         self.Formula = Formula_SDCT_asym_surf_II
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
-        eta = 1e-1
-        omega = self.omega + 1.j * eta
+        omega = self.omega + 1.j * self.smr_fixed_width
         return 1. / omega
 
     def factor_Efermi(self, E1, E2):
@@ -454,20 +474,36 @@ class SDCT_sym(Calculator):
 
 class Formula_SDCT_sym_sea_I():
 
-    def __init__(self, data_K):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
         # Intrinsic multipole moments
-        A = -1. * data_K.E1
-        B = data_K.Bln
+        if external_terms:
+            A = -1. * data_K.E1
+            B_M1, B_E2, B = data_K.Bln
+            if spin:
+                S = data_K.Xbar('SS')
+                B_M1[:,:,:,alpha_A,beta_A] += -0.5 * m_s_prefactor * S
+                B_M1[:,:,:,beta_A,alpha_A] -= -0.5 * m_s_prefactor * S
+        else:
+            A = -1. * data_K.E1_internal
+            B_M1, B_E2, B = data_K.Bln_internal
 
         # Other quantities
         Vn = data_K.Vn
         Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
 
         # Formula
-        summ  = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
-        summ += np.real( A[:,:,:,:,None,None] * B[:,:,:,None,:,:] )
-        summ += Vnm_plus[:,:,:,:,None,None] * np.real( A[:,:,:,None,:,None] * A.swapaxes(1,2)[:,:,:,None,None,:] )
-        summ  = summ + summ.swapaxes(3,4)
+        summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+
+        if M1_terms:
+            summ += np.real( A[:,:,:,:,None,None] * B_M1.swapaxes(1,2)[:,:,:,None,:,:] )
+
+        if E2_terms:
+            summ += np.real( A[:,:,:,:,None,None] * B_E2.swapaxes(1,2)[:,:,:,None,:,:] )
+
+        if V_terms:
+            summ += Vnm_plus[:,:,:,:,None,None] * np.real( A[:,:,:,None,:,None] * A.swapaxes(1,2)[:,:,:,None,None,:] )
+
+        summ = summ + summ.swapaxes(3,4)
 
         self.summ = summ
         self.ndim = 3
@@ -480,14 +516,14 @@ class Formula_SDCT_sym_sea_I():
 
 class SDCT_sym_sea_I(DynamicCalculator):
 
-    def __init__(self, **kwargs):
+    def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **kwargs):
         super().__init__(**kwargs)
+        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, spin=spin))
         self.Formula = Formula_SDCT_sym_sea_I
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
-        eta = 1e-1
-        omega = self.omega + 1.j * eta
+        omega = self.omega + 1.j * self.smr_fixed_width
         Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
         return 1.j * (E2 - E1) * Zfac
@@ -495,7 +531,7 @@ class SDCT_sym_sea_I(DynamicCalculator):
 
 class Formula_SDCT_sym_sea_II():
 
-    def __init__(self, data_K):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
         # Intrinsic multipole moments
         A = -1. * data_K.E1
 
@@ -504,8 +540,10 @@ class Formula_SDCT_sym_sea_II():
         Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
 
         # Formula
-        summ  = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
-        summ -= np.real( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vnm_plus[:,:,:,None,None,:]
+        summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+
+        if V_terms:
+            summ -= np.real( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vnm_plus[:,:,:,None,None,:]
 
         self.summ = summ
         self.ndim = 3
@@ -518,14 +556,14 @@ class Formula_SDCT_sym_sea_II():
 
 class SDCT_sym_sea_II(DynamicCalculator):
 
-    def __init__(self, **kwargs):
+    def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **kwargs):
         super().__init__(**kwargs)
+        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, spin=spin))
         self.Formula = Formula_SDCT_sym_sea_II
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
-        eta = 1e-1
-        omega = self.omega + 1.j * eta
+        omega = self.omega + 1.j * self.smr_fixed_width
         Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
         return 1.j * (E2 - E1)**3 * Zfac**2
@@ -533,7 +571,7 @@ class SDCT_sym_sea_II(DynamicCalculator):
 
 class Formula_SDCT_sym_surf_I():
 
-    def __init__(self, data_K):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
         # Intrinsic multipole moments
         A = -1. * data_K.E1
 
@@ -541,7 +579,10 @@ class Formula_SDCT_sym_surf_I():
         Vn = data_K.Vn
 
         # Formula
-        summ = np.real( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vn[:,:,None,None,None,:]
+        summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+
+        if V_terms:
+            summ += np.real( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vn[:,:,None,None,None,:]
 
         self.summ = summ
         self.ndim = 3
@@ -554,14 +595,14 @@ class Formula_SDCT_sym_surf_I():
 
 class SDCT_sym_surf_I(DynamicCalculator):
 
-    def __init__(self, **kwargs):
+    def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **kwargs):
         super().__init__(**kwargs)
+        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, spin=spin))
         self.Formula = Formula_SDCT_sym_surf_I
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
-        eta = 1e-1
-        omega = self.omega + 1.j * eta
+        omega = self.omega + 1.j * self.smr_fixed_width
         Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
         return 1.j * (E2 - E1)**2 * Zfac
@@ -572,11 +613,14 @@ class SDCT_sym_surf_I(DynamicCalculator):
 
 class Formula_SDCT_sym_surf_II():
 
-    def __init__(self, data_K):
-        Vn   = data_K.Vn
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+        Vn = data_K.Vn
 
         # Formula
-        summ = Vn[:,:,:,None,None] * Vn[:,:,None,:,None] * Vn[:,:,None,None,:]
+        summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+
+        if V_terms:
+            summ = Vn[:,:,:,None,None] * Vn[:,:,None,:,None] * Vn[:,:,None,None,:]
 
         self.summ = summ
         self.ndim = 3
@@ -589,14 +633,14 @@ class Formula_SDCT_sym_surf_II():
 
 class SDCT_sym_surf_II(DynamicCalculator):
 
-    def __init__(self, **kwargs):
+    def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **kwargs):
         super().__init__(**kwargs)
+        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, spin=spin))
         self.Formula = Formula_SDCT_sym_surf_II
         self.constant_factor = factors.factor_SDCT
 
     def factor_omega(self, E1, E2):
-        eta = 1e-1
-        omega = self.omega + 1.j * eta
+        omega = self.omega + 1.j * self.smr_fixed_width
         return -1.j / omega**2
 
     def factor_Efermi(self, E1, E2):

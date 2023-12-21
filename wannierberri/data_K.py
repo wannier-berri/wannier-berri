@@ -127,7 +127,7 @@ class _Data_K(System,abc.ABC):
         #########
         # Oscar #
         #######################################################################
-        self.dEnm_threshold = 1e-4
+        self.dEnm_threshold = 1e-3
         #######################################################################
 
         self.poolmap = pool(self.npar_k)[0]
@@ -322,7 +322,7 @@ class _Data_K(System,abc.ABC):
 
     @lazy_property.LazyProperty
     def dEig_inv(self):
-        dEig_threshold = 1.e-7
+        dEig_threshold = 1e-7
         dEig = self.E_K[:, :, None] - self.E_K[:, None, :]
         select = abs(dEig) < dEig_threshold
         dEig[select] = dEig_threshold
@@ -407,6 +407,22 @@ class _Data_K(System,abc.ABC):
         return -1 * A_H
 
     @lazy_property.LazyProperty
+    def E1_internal(self):
+        ''' Electric dipole moment (only internal terms) '''
+        # Other matrices
+        D    = self.D_H
+        kron = self.kron
+
+        # _____ 1. Internal terms _____ #
+        A_int  = 1.j * D
+        Aa_int = kron[:,:,:,None] * A_int # Energy diagonal piece
+        A_int  = A_int - Aa_int           # Energy non-diagonal piece
+
+        # Final formula
+        A_H = A_int
+        return -1 * A_H
+
+    @lazy_property.LazyProperty
     def M1(self):
         ''' Magnetic dipole moment '''
         # Basic covariant matrices in the Hamiltonian gauge
@@ -465,6 +481,34 @@ class _Data_K(System,abc.ABC):
         return -0.5 * ( C_H - Eln_plus[:,:,:,None] * O_H )
 
     @lazy_property.LazyProperty
+    def M1_internal(self):
+        ''' Magnetic dipole moment (only internal terms) '''
+        # Basic covariant matrices in the Hamiltonian gauge
+        H = self.Xbar('Ham')
+
+        # Other matrices
+        D        = self.D_H
+        En       = self.E_K
+        kron     = self.kron
+        Eln_plus = 0.5 * (En[:,:,None] + En[:,None,:])
+
+        # _____ 1. Internal terms _____ #
+        A_int  = 1.j * D
+        Aa_int = kron[:,:,:,None] * A_int # Energy diagonal piece
+        A_int  = A_int - Aa_int           # Energy non-diagonal piece
+
+        Cbc_int = 1.j * np.einsum('klpa,kpm,kmnb->klnab', A_int, H, A_int)
+        C_int = Cbc_int[:,:,:,alpha_A,beta_A] - Cbc_int[:,:,:,beta_A,alpha_A]
+
+        Obc_int = 1.j * np.einsum('klpa,kpnb->klnab', A_int, A_int)
+        O_int = Obc_int[:,:,:,alpha_A,beta_A] - Obc_int[:,:,:,beta_A,alpha_A]
+
+        # Final formula
+        C_H = C_int
+        O_H = O_int
+        return -0.5 * ( C_H - Eln_plus[:,:,:,None] * O_H )
+
+    @lazy_property.LazyProperty
     def E2(self):
         ''' Electric quadrupole moment '''
         # Basic covariant matrices in the Hamiltonian gauge
@@ -505,9 +549,43 @@ class _Data_K(System,abc.ABC):
         return -1. * G_H
 
     @lazy_property.LazyProperty
+    def E2_internal(self):
+        ''' Electric quadrupole moment (only internal terms)'''
+        # Other matrices
+        D    = self.D_H
+        kron = self.kron
+
+        # _____ 1. Internal terms _____ #
+
+        A_int  = 1.j * D
+        Aa_int = kron[:,:,:,None] * A_int # Energy diagonal piece
+        A_int  = A_int - Aa_int           # Energy non-diagonal piece
+
+        Gbc_int = np.einsum('klpa,kpnb->klnab', A_int, A_int)
+        G_int = 0.5 * ( Gbc_int + Gbc_int.swapaxes(3,4) )
+
+        # Final formula
+        G_H = G_int
+        return -1. * G_H
+
+    @lazy_property.LazyProperty
     def Bln(self):
         m  = self.M1
         q  = self.E2
+        En = self.E_K
+        Enm = En[:,:,None] - En[:,None,:]
+
+        B_q = -0.5j * Enm[:,:,:,None,None] * q
+        B_m = np.zeros((self.nk,self.num_wann,self.num_wann,3,3), dtype=complex)
+        B_m[:,:,:,alpha_A,beta_A] += m
+        B_m[:,:,:,beta_A,alpha_A] -= m
+        B = B_m + B_q
+        return B_m, B_q, B
+
+    @lazy_property.LazyProperty
+    def Bln_internal(self):
+        m  = self.M1_internal
+        q  = self.E2_internal
         En = self.E_K
         Enm = En[:,:,None] - En[:,None,:]
 
