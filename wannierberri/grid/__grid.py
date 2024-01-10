@@ -9,7 +9,7 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 
 from collections.abc import Iterable
 import numpy as np
@@ -18,12 +18,13 @@ from .. import symmetry
 import lazy_property
 from .__Kpoint import KpointBZparallel
 import abc
-#from .__finite_differences import FiniteDifferences
+# from .__finite_differences import FiniteDifferences
+
 
 class GridAbstract(abc.ABC):
 
     @abc.abstractmethod
-    def __init__(self,**kwargs):
+    def __init__(self, **kwargs):
         "init"
 
     @abc.abstractmethod

@@ -92,7 +92,7 @@ class Orbitals():
 
 
 
-    def num_orbitals(self,orb_symbol):
+    def num_orbitals(self, orb_symbol):
         return len(self.orb_function_dic[orb_symbol])
 
 
@@ -100,7 +100,7 @@ class Orbitals():
         ''' Get rotation matrix of orbitals in each orbital quantum number '''
         orb_dim = self.num_orbitals(orb_symbol)
         orb_rot_mat = np.zeros((orb_dim, orb_dim), dtype=float)
-        xp, yp, zp = np.dot(np.linalg.inv(rot_glb), self.xyz )
+        xp, yp, zp = np.dot(np.linalg.inv(rot_glb), self.xyz)
         OC = self.orb_chara_dic[orb_symbol]
         OC_len = len(OC)
         if orb_symbol == 'sp3d2':
@@ -111,7 +111,7 @@ class Orbitals():
             equation = (self.orb_function_dic[orb_symbol][i](xp, yp, zp)).expand()
             for j in range(OC_len):
                 eq_tmp = equation.subs(OC[j], 1)
-                for j_add in range(1,OC_len):
+                for j_add in range(1, OC_len):
                     eq_tmp = eq_tmp.subs(OC[(j + j_add) % OC_len], 0)
                 subs.append(eq_tmp)
             if orb_symbol in ['sp3d2']:
@@ -119,7 +119,7 @@ class Orbitals():
                 equation_plus = (self.orb_function_dic[orb_symbol + '_plus'][i](xp, yp, zp)).expand()
                 for k in range(OC_plus_len):
                     eq_tmp = equation_plus.subs(OC_plus[k], 1)
-                    for k_add in range(1,OC_plus_len):
+                    for k_add in range(1, OC_plus_len):
                         eq_tmp = eq_tmp.subs(OC_plus[(k + k_add) % OC_plus_len], 0)
                     subs_plus.append(eq_tmp)
 
@@ -161,10 +161,10 @@ class Orbitals():
             elif orb_symbol == 'sp3d2':
                 tmp_1 = (2 * subs_plus[0] - subs_plus[1] - subs_plus[2]) / 3
                 tmp_2 = (subs_plus[1] - subs_plus[2]) / 2
-                orb_rot_mat[0, i] = 1 / 6 - 1 / sym.sqrt(2) * subs[0] - tmp_1/2 + tmp_2
-                orb_rot_mat[1, i] = 1 / 6 + 1 / sym.sqrt(2) * subs[0] - tmp_1/2 + tmp_2
-                orb_rot_mat[2, i] = 1 / 6 - 1 / sym.sqrt(2) * subs[1] - tmp_1/2 - tmp_2
-                orb_rot_mat[3, i] = 1 / 6 + 1 / sym.sqrt(2) * subs[1] - tmp_1/2 - tmp_2
+                orb_rot_mat[0, i] = 1 / 6 - 1 / sym.sqrt(2) * subs[0] - tmp_1 / 2 + tmp_2
+                orb_rot_mat[1, i] = 1 / 6 + 1 / sym.sqrt(2) * subs[0] - tmp_1 / 2 + tmp_2
+                orb_rot_mat[2, i] = 1 / 6 - 1 / sym.sqrt(2) * subs[1] - tmp_1 / 2 - tmp_2
+                orb_rot_mat[3, i] = 1 / 6 + 1 / sym.sqrt(2) * subs[1] - tmp_1 / 2 - tmp_2
                 orb_rot_mat[4, i] = 1 / 6 - 1 / sym.sqrt(2) * subs[2] + tmp_1
                 orb_rot_mat[5, i] = 1 / 6 + 1 / sym.sqrt(2) * subs[2] + tmp_1
             elif orb_symbol == 't2g':

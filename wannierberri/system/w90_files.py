@@ -10,24 +10,41 @@
 #           Stepan Tsirkin, University of Zurich             #
 #   some parts of this file are originate                    #
 # from the translation of Wannier90 code                     #
-#------------------------------------------------------------#
+# ------------------------------------------------------------#
 
-import numpy as np
-from ..__utility import FortranFileR
 import multiprocessing
-from ..__utility import alpha_A, beta_A
+import gc
+import functools
+from scipy.constants import physical_constants
 from time import time
 from itertools import islice
-import gc
+from copy import copy
+import numpy as np
+import lazy_property
+from .disentanglement import disentangle
+from ..__utility import FortranFileR, alpha_A, beta_A
 
 readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip()
 
 
-class CheckPoint():
+class CheckPoint:
+    """
+    A class to store the data about wannierisation, written by Wannier90
 
-    def __init__(self, seedname, kmesh_tol=1e-7,bk_complete_tol=1e-5):
-        self.kmesh_tol = kmesh_tol # will be used in set_bk
-        self.bk_complete_tol = bk_complete_tol # will be used in set_bk
+    Parameters
+    ----------
+    seedname : str
+        the prefix of the file (including relative/absolute path, but not including the extension `.chk`)
+    kmesh_tol : float
+        tolerance to distinguish different/same k-points
+    bk_complete_tol : float
+        tolerance for the completeness relation for finite-difference scheme
+    """
+
+    def __init__(self, seedname, kmesh_tol=1e-7, bk_complete_tol=1e-5):
+
+        self.kmesh_tol = kmesh_tol  # will be used in set_bk
+        self.bk_complete_tol = bk_complete_tol  # will be used in set_bk
         t0 = time()
         seedname = seedname.strip()
         FIN = FortranFileR(seedname + '.chk')
@@ -83,15 +100,15 @@ class CheckPoint():
         # data should be of form NBxNBx ...   - any form later
         if len(mat.shape) == 1:
             mat = np.diag(mat)
-        assert mat.shape[:2] == (self.num_bands, ) * 2, f"mat.shape={mat.shape}, num_bands={self.num_bands}"
+        assert mat.shape[:2] == (self.num_bands,) * 2, f"mat.shape={mat.shape}, num_bands={self.num_bands}"
         mat = mat[self.win_min[ik1]:self.win_max[ik1], self.win_min[ik2]:self.win_max[ik2]]
         v1 = self.v_matrix[ik1].conj()
         v2 = self.v_matrix[ik2].T
         return np.tensordot(
             np.tensordot(v1, mat, axes=(1, 0)), v2, axes=(1, 0)).transpose((
-                0,
-                -1,
-            ) + tuple(range(1, mat.ndim - 1)))
+                                                                               0,
+                                                                               -1,
+                                                                           ) + tuple(range(1, mat.ndim - 1)))
 
     def get_HH_q(self, eig):
         assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands)
@@ -296,11 +313,185 @@ class CheckPoint():
                     SHM_i = SH_i.dot(mmn.data[ik, ib])
                     SHRW = self.wannier_gauge(SHM_i, ik, iknb) - self.wannier_gauge(SH_i, ik, ik)
                     SHR_q[ik, :, :, :,
-                          i] += 1.j * SHRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+                    i] += 1.j * SHRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
         return SHR_q
 
 
-class W90_data():
+
+
+
+class CheckPoint_bare(CheckPoint):
+    """
+            Class to store data from Wanierisationm obtained internally
+            Initialize without the v_matrix (to be written later by `~wannierberri.system.disentangle`)
+
+            Parameters
+            ----------
+            win : `~wannierberri.system.w90_files.WIN`
+            eig : `~wannierberri.system.w90_files.EIG`
+            amn : `~wannierberri.system.w90_files.AMN`
+            mmn : `~wannierberri.system.w90_files.MMN`
+            """
+
+    def __init__(self, win, eig, amn, mmn):
+        self.mp_grid = np.array(win.get_param("mp_grid"))
+        self.kpt_latt = win.get_kpoints()
+        self.real_lattice = win.get_unit_cell_cart_ang()
+        self.num_kpts = eig.NK
+        self.num_wann = amn.NW
+        self.num_bands = mmn.NB
+        self.win_min = np.array([0] * self.num_kpts)
+        self.win_max = np.array([self.num_bands] * self.num_kpts)
+        self.recip_lattice = 2 * np.pi * np.linalg.inv(self.real_lattice).T
+
+
+class Wannier90data:
+    """A class to describe all input files of wannier90, and to construct the Wannier functions
+     via disentanglement procedure"""
+
+    # todo :  rotatre uHu and spn
+    # todo : create a model from this
+    # todo : symmetry
+
+    def __init__(self, seedname="wannier90", read_chk=False,
+                 kmesh_tol=1e-7, bk_complete_tol=1e-5, ):  # ,sitesym=False):
+        self.seedname = copy(seedname)
+        self.__files_classes = {'win': WIN,
+                                'eig': EIG,
+                                'mmn': MMN,
+                                'amn': AMN,
+                                'uiu': UIU,
+                                'uhu': UHU,
+                                'siu': SIU,
+                                'shu': SHU,
+                                'spn': SPN
+                                }
+        self.__files = {}
+        if read_chk:
+            self.chk = CheckPoint(seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+            self.wannierised = True
+        else:
+            self.chk = CheckPoint_bare(win=self.win, eig=self.eig, mmn=self.mmn, amn=self.amn)
+            self.kpt_mp_grid = [tuple(k) for k in
+                                np.array(np.round(self.chk.kpt_latt * np.array(self.chk.mp_grid)[None, :]),
+                                         dtype=int) % self.chk.mp_grid]
+            self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
+            self.win_index = [np.arange(self.eig.NB)] * self.chk.num_kpts
+            self.wannierised = False
+        self.set_file(key='chk', val=self.chk)
+
+        # if sitesym:
+        #    self.Dmn=DMN(self.seedname,num_wann=self.chk.num_wann)
+        # else:
+        #    self.Dmn=DMN(None,num_wann=self.chk.num_wann,num_bands=self.chk.num_bands,nkpt=self.chk.num_kpts)
+
+    def set_file(self, key, val=None, overwrite=False):
+        if not overwrite:
+            assert key not in self.__files, f"file `{key}` was already set"
+        if val is None:
+            val = self.__files_classes[key](self.seedname)
+        self.check_conform(key, val)
+        self.__files[key] = val
+
+    def get_file(self, key):
+        if key not in self.__files:
+            self.set_file(key)
+        return self.__files[key]
+
+    def check_conform(self, key, this):
+        for key2, other in self.__files.items():
+            for attr in ['NK', 'NB', 'NW', 'NNB']:
+                if hasattr(this, attr) and hasattr(other, attr):
+                    a = getattr(this, attr)
+                    b = getattr(other, attr)
+                    if None not in (a, b):
+                        assert a == b, f"files {key} and {key2} have different attribute {attr} : {a} and {b} respectively"
+
+    @property
+    def win(self):
+        return self.get_file('win')
+
+    @property
+    def amn(self):
+        return self.get_file('amn')
+
+    @property
+    def eig(self):
+        return self.get_file('eig')
+
+    @property
+    def mmn(self):
+        return self.get_file('mmn')
+
+    @property
+    def uhu(self):
+        return self.get_file('uhu')
+
+    @property
+    def uiu(self):
+        return self.get_file('uiu')
+
+    @property
+    def spn(self):
+        return self.get_file('spn')
+
+    @property
+    def siu(self):
+        return self.get_file('siu')
+
+    @property
+    def shu(self):
+        return self.get_file('shu')
+
+    @property
+    def iter_kpts(self):
+        return range(self.chk.num_kpts)
+
+    @lazy_property.LazyProperty
+    def wannier_centers(self):
+        try:
+            return self.chk.wannier_centers
+        except AttributeError:
+            return self.chk.get_AA_q(self.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(
+                axis=0).real.T / self.chk.num_kpts
+
+    def check_wannierised(self, msg=""):
+        if not self.wannierised:
+            raise RuntimeError(f"no wannieruisation was performed on the w90 input files, cannot proceed with {msg}")
+
+    def disentangle(self, **parameters):
+        disentangle(self, **parameters)
+
+    # TODO : allow k-dependent window (can it be useful?)
+    # def apply_outer_window(self,
+    #                  win_min=-np.Inf,
+    #                  win_max=np.Inf ):
+    #     raise NotImplementedError("outer window does not work so far")
+    #     "Excludes the bands from outside the outer window"
+    #
+    #     def win_index_nondegen(ik,thresh=DEGEN_THRESH):
+    #         "define the indices of the selected bands, making sure that degenerate bands were not split"
+    #         E=self.Eig[ik]
+    #         ind=np.where( ( E<=win_max)*(E>=win_min) )[0]
+    #         while ind[0]>0 and E[ind[0]]-E[ind[0]-1]<thresh:
+    #             ind=[ind[0]-1]+ind
+    #         while ind[0]<len(E) and E[ind[-1]+1]-E[ind[-1]]<thresh:
+    #             ind=ind+[ind[-1]+1]
+    #         return ind
+    #
+    #     # win_index_irr=[win_index_nondegen(ik) for ik in self.Dmn.kptirr]
+    #     # self.excluded_bands=[list(set(ind)
+    #     # self.Dmn.select_bands(win_index_irr)
+    #     # win_index=[win_index_irr[ik] for ik in self.Dmn.kpt2kptirr]
+    #     win_index=[win_index_nondegen(ik) for ik in self.iter_kpts]
+    #     self._Eig=[E[ind] for E, ind in zip(self._Eig,win_index)]
+    #     self._Mmn=[[self._Mmn[ik][ib][win_index[ik],:][:,win_index[ikb]] for ib,ikb in enumerate(self.mmn.neighbours[ik])] for ik in self.iter_kpts]
+    #     self._Amn=[self._Amn[ik][win_index[ik],:] for ik in self.iter_kpts]
+
+    # TODO : allow k-dependent window (can it be useful?)
+
+
+class W90_file:
 
     @property
     def n_neighb(self):
@@ -319,14 +510,14 @@ class W90_data():
         if self.n_neighb > 0:
             return self.data.shape[1]
         else:
-            return 0
+            return None
 
 
 def convert(A):
     return np.array([l.split() for l in A], dtype=float)
 
 
-class MMN(W90_data):
+class MMN(W90_file):
     """
     MMN.data[ik, ib, m, n] = <u_{m,k}|u_{n,k+b}>
     """
@@ -345,12 +536,14 @@ class MMN(W90_data):
         data = []
         headstring = []
         mult = 4
+
         # FIXME: npar = 0 does not work
         if npar > 0:
             pool = multiprocessing.Pool(npar)
         for j in range(0, NNB * NK, npar * mult):
             x = list(islice(f_mmn_in, int(block * npar * mult)))
-            if len(x) == 0: break
+            if len(x) == 0:
+                break
             headstring += x[::block]
             y = [x[i * block + 1:(i + 1) * block] for i in range(npar * mult) if (i + 1) * block <= len(x)]
             if npar > 0:
@@ -372,7 +565,7 @@ class MMN(W90_data):
         t2 = time()
         print("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2 - t0, t1 - t0, t2 - t1))
 
-    def set_bk(self, kpt_latt,mp_grid,recip_lattice,kmesh_tol=1e-7, bk_complete_tol=1e-5):
+    def set_bk(self, kpt_latt, mp_grid, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
         try:
             self.bk_cart
             self.wk
@@ -397,10 +590,10 @@ class MMN(W90_data):
             bk_cart_unique = bk_cart_unique[srt]
             bk_cart_unique_length = bk_cart_unique_length[srt]
             brd = [
-                0,
-            ] + list(np.where(bk_cart_unique_length[1:] - bk_cart_unique_length[:-1] > kmesh_tol)[0] + 1) + [
-                self.NNB,
-            ]
+                      0,
+                  ] + list(np.where(bk_cart_unique_length[1:] - bk_cart_unique_length[:-1] > kmesh_tol)[0] + 1) + [
+                      self.NNB,
+                  ]
             shell_mat = np.array([bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2]) for b1, b2 in zip(brd, brd[1:])])
             shell_mat_line = shell_mat.reshape(-1, 9)
             u, s, v = np.linalg.svd(shell_mat_line, full_matrices=False)
@@ -449,12 +642,49 @@ class MMN(W90_data):
             self.ib_unique_map = ib_unique_map
             ###################################################################
 
-    def set_bk_chk(self,chk):
-        self.set_bk(chk.kpt_latt,chk.mp_grid,chk.recip_lattice,kmesh_tol=chk.kmesh_tol, bk_complete_tol=chk.bk_complete_tol)
+    def set_bk_chk(self, chk, **argv):
+        self.set_bk(chk.kpt_latt, chk.mp_grid, chk.recip_lattice, **argv)
+
+def str2arraymmn(A):
+    a = np.array([l.split()[3:] for l in A], dtype=float)
+    return (a[:, 0] + 1j * a[:, 1])
 
 
+class AMN(W90_file):
 
-class EIG(W90_data):
+    @property
+    def NB(self):
+        return self.data.shape[1]
+
+    @property
+    def NW(self):
+        return self.data.shape[2]
+
+    def __init__(self, seedname, npar=multiprocessing.cpu_count()):
+        f_mmn_in = open(seedname + ".amn", "r").readlines()
+        print("reading {}.amn: ".format(seedname) + f_mmn_in[0].strip())
+        s = f_mmn_in[1]
+        NB, NK, NW = np.array(s.split(), dtype=int)
+        self.data = np.zeros((NK, NB, NW), dtype=complex)
+        block = self.NW * self.NB
+        allmmn = (f_mmn_in[2 + j * block:2 + (j + 1) * block] for j in range(self.NK))
+        p = multiprocessing.Pool(npar)
+        self.data = np.array(p.map(str2arraymmn, allmmn)).reshape((self.NK, self.NW, self.NB)).transpose(0, 2, 1)
+
+    """
+    def write(self,seedname,comment="written by WannierBerri"):
+        comment=comment.strip()
+        f_mmn_out=open(seedname+".amn","w")
+        print ("writing {}.amn: ".format(seedname)+comment+"\n")
+        f_mmn_out.write(comment+"\n")
+        f_mmn_out.write("  {:3d} {:3d} {:3d}  \n".format(self.NB,self.NK,self.NW))
+        for ik in range(self.NK):
+            f_mmn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(ib+1,iw+1,ik+1,self.data[ik,ib,iw].real,self.data[ik,ib,iw].imag) for iw in range(self.NW) for ib in range(self.NB)))
+        f_mmn_out.close()
+    """
+
+
+class EIG(W90_file):
 
     def __init__(self, seedname):
         data = np.loadtxt(seedname + ".eig")
@@ -466,7 +696,7 @@ class EIG(W90_data):
         self.data = data[:, :, 2]
 
 
-class SPN(W90_data):
+class SPN(W90_file):
     """
     SPN.data[ik, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k}>
     """
@@ -504,7 +734,7 @@ class SPN(W90_data):
         print("----------\n SPN OK  \n---------\n")
 
 
-class UXU(W90_data):
+class UXU(W90_file):
     """
     Read and setup uHu or uIu object.
     pw2wannier90 writes data_pw2w90[n, m, ib1, ib2, ik] = <u_{m,k+b1}|X|u_{n,k+b2}>
@@ -563,7 +793,7 @@ class UIU(UXU):
         super().__init__(seedname=seedname, formatted=formatted, suffix='uIu')
 
 
-class SXU(W90_data):
+class SXU(W90_file):
     """
     Read and setup sHu or sIu object.
     pw2wannier90 writes data_pw2w90[n, m, ipol, ib, ik] = <u_{m,k}|S_ipol * X|u_{n,k+b}>
@@ -623,3 +853,100 @@ class SHU(SXU):
 
     def __init__(self, seedname='wannier90', formatted=False):
         super().__init__(seedname=seedname, formatted=formatted, suffix='sHu')
+
+
+def parse_win_raw(filename=None, text=None):
+    try:
+        import wannier90io as w90io
+    except ImportError as err:
+        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n"
+                          "please install it manually as \n"
+                          "`pip install git+https://github.com/jimustafa/wannier90io-python.git`")
+    if filename is not None:
+        with open(filename) as f:
+            return w90io.parse_win_raw(f.read())
+    elif text is not None:
+        return w90io.parse_win_raw(text)
+
+
+class WIN():
+
+    # TODO :use w90io to read win file
+    def __init__(self, seedname='wannier90'):
+        self.name = seedname + ".win"
+        self.parsed = parse_win_raw(self.name)
+        self.units_length = {'ang': 1., 'bohr': physical_constants['Bohr radius'][0] * 1e10}
+
+    @functools.lru_cache()
+    def get_param(self, param):
+        return self.parsed['parameters'][param]
+
+    @functools.lru_cache()
+    def get_unit_cell_cart_ang(self):
+        cell = self.parsed['unit_cell_cart']
+        A = np.array([cell['a1'], cell['a2'], cell['a3']])
+        return A * self.units_length[cell['units']]
+
+    @functools.lru_cache()
+    def get_kpoints(self):
+        return np.array(self.parsed['kpoints']['kpoints'])
+
+
+"""
+class DMN:
+
+    def __init__(self,seedname="wannier90",num_wann=0,num_bands=None,nkpt=None):
+        if seedname is not None:
+            self.read(seedname,num_wann)
+        else:
+            self.void(num_wann,num_bands,nkpt)
+
+    def read(self,seedname="wannier90",num_wann=0):
+        fl=open(seedname+".dmn","r")
+        self.comment=fl.readline().strip()
+        self.NB,self.Nsym,self.nkptirr,self.nkpt = read_numbers(fl,4)
+        self.num_wann=num_wann
+        self.kpt2kptirr              = read_numbers(fl,self.nkpt)-1
+        self.kptirr                  = read_numbers(fl,self.nkptirr)-1
+        self.kptirr2kpt= read_numbers(fl,(self.Nsym,self.nkptirr))-1
+        # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
+        self.kpt2kptirr_sym           = np.array([np.where(self.kptirr2kpt[:,self.kpt2kptirr[ik]]==ik)[0][0] for ik in range(self.nkpt)])
+
+        # read the rest of lines and comvert to conplex array
+        data=[l.strip("() \n").split(",") for l in fl.readlines()]
+        data=np.array([x for x in data if len(x)==2],dtype=float)
+        data=data[:,0]+1j*data[:,1]
+        n1=self.num_wann**2*self.Nsym*self.nkptirr
+        self.D_wann_dag=data[:n1].reshape(self.nkptirr,self.Nsym,self.num_wann,self.num_wann).transpose((0,1,3,2)).conj()
+        self.d_band=data[n1:].reshape(self.nkptirr,self.Nsym,self.NB,self.NB)
+
+    def void(self,num_wann,num_bands,nkpt):
+        self.comment="only identity"
+        self.NB,self.Nsym,self.nkptirr,self.nkpt = num_bands,1,nkpt,nkpt
+        self.num_wann=num_wann
+        self.kpt2kptirr              = np.arange(self.nkpt)
+        self.kptirr                  = self.kpt2kptirr
+        self.kptirr2kpt= np.array([self.kptirr])
+        self.kpt2kptirr_sym           = np.zeros(self.nkpt,dtype=int)
+        # read the rest of lines and comvert to conplex array
+        self.d_band=np.ones((self.nkptirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.NB)[None,None,:,:]
+        self.D_wann_dag=np.ones((self.nkptirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.num_wann)[None,None,:,:]
+
+
+    def select_bands(self,win_index_irr):
+        self.d_band=[ D[:,wi,:][:,:,wi] for D,wi in zip(self.d_band,win_index_irr) ]
+
+    def set_free(self,frozen_irr):
+        free=np.logical_not(frozen_irr)
+        self.d_band_free=[ d[:,f,:][:,:,f] for d,f in zip(self.d_band,free) ]
+
+    def write(self):
+        print (self.comment)
+        print (self.NB,self.Nsym,self.nkptirr,self.nkpt,self.num_wann)
+        for i in range(self.nkptirr):
+            for j in range(self.Nsym):
+                print()
+                for M in self.D_band[i][j],self.d_wann[i][j]:
+                    print("\n".join(" ".join("{}".format("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
+#                   print("\n".join(" ".join("{:4.2f}".format(abs(x)**2) for x in m) for m in M)+"\n")
+"""

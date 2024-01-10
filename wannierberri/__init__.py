@@ -9,12 +9,12 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 """
 wannierberri - a module for Wannier interpolation
 """
 
-__version__ = "0.14.3"
+__version__ = "0.15.0"
 
 try:
     import pyfftw
@@ -35,8 +35,10 @@ from .parallel import Parallel, Serial
 from .smoother import get_smoother
 from .evaluate_k import evaluate_k
 from . import utils
+from . import data_K
 
 from termcolor import cprint
+
 
 def welcome():
     # ogiginally obtained by pyfiglet, font='cosmic'

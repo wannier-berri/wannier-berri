@@ -39,7 +39,7 @@ def read_energyresult_dat(filename, mode="txt"):
         # get the first line that does not start with "####" neither empty
         for l in open(filename, 'r'):
             l = l.strip()
-            if l.startswith("####") or len(l)==0:
+            if l.startswith("####") or len(l) == 0:
                 continue
             else:
                 firstline = l.split()
@@ -139,6 +139,7 @@ def compare_energyresult():
                         path_filename_ref, precision)
 
     return _inner
+
 
 
 @pytest.fixture

@@ -4,17 +4,26 @@ receive :calss:`~wannierberri.data_K._Data_K` objects and yield
 :class:`~wannierberri.result.Result`
 """
 
-import abc
-import numpy as np
-from ..result import KBandResult,TABresult
 from termcolor import cprint
+
 
 class Calculator():
 
-    def __init__(self, degen_thresh=1e-4, degen_Kramers=False, save_mode="bin+txt", print_comment=True):
+    def __init__(self, degen_thresh=1e-4, degen_Kramers=False, save_mode="bin+txt", print_comment=False):
         self.degen_thresh = degen_thresh
         self.degen_Kramers = degen_Kramers
         self.save_mode = save_mode
+        self._set_comment(print_comment)
+
+    @property
+    def allow_path(self):
+        return False    # change for those who can be calculated on a path instead of a grid
+
+    @property
+    def allow_grid(self):
+        return True    # change for those who can be calculated ONLY on a path
+
+    def _set_comment(self, print_comment=True):
         if not hasattr(self, 'comment'):
             if self.__doc__ is not None:
                 self.comment = self.__doc__
@@ -23,46 +32,7 @@ class Calculator():
         if print_comment:
             cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
 
-    @property
-    def allow_path(self):
-        return False    # change for those who can be calculated on a path instead of a grid
-
-
-
-class TabulatorAll(Calculator):
-
-    def __init__(self, tabulators, ibands=None, mode="grid", save_mode="frmsf"):
-        """ tabulators - dict 'key':tabulator
-        one of them should be "Energy" """
-        self.tabulators = tabulators
-        mode = mode.lower()
-        assert mode in ("grid","path")
-        self.mode = mode
-        self.save_mode = save_mode
-        if "Energy" not in self.tabulators.keys():
-            raise ValueError("Energy is not included in tabulators")
-        if ibands is not None:
-            ibands = np.array(ibands)
-        for k, v in self.tabulators.items():
-            if v.ibands is None:
-                v.ibands = ibands
-            else:
-                assert v.ibands == ibands
-
-    def __call__(self, data_K):
-        return TABresult(
-            kpoints=data_K.kpoints_all.copy(),
-            mode=self.mode,
-            recip_lattice=data_K.system.recip_lattice,
-            save_mode=self.save_mode,
-            results={k: v(data_K)
-                     for k, v in self.tabulators.items()} )
-
-
-    @property
-    def allow_path(self):
-        return self.mode == "path"
-
 
 
 from . import static, dynamic, tabulate
+from .tabulate import TabulatorAll

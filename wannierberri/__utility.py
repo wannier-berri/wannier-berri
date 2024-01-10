@@ -9,20 +9,20 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 
+import scipy.io
+import fortio
+from termcolor import cprint
+from time import time
+from lazy_property import LazyProperty as Lazy
+import numpy as np
+import inspect
+from . import PYFFTW_IMPORTED
 __debug = False
 
-from . import PYFFTW_IMPORTED
-if PYFFTW_IMPORTED :
+if PYFFTW_IMPORTED:
     import pyfftw
-import inspect
-import numpy as np
-
-from lazy_property import LazyProperty as Lazy
-from time import time
-from termcolor import cprint
-import fortio, scipy.io
 
 
 # inheriting just in order to have posibility to change default values, without changing the rest of the code
@@ -78,8 +78,8 @@ def real_recip_lattice(real_lattice=None, recip_lattice=None):
     else:
         if real_lattice is not None:
             assert np.linalg.norm(
-                np.array(real_lattice).dot(recip_lattice.T) / (2 * np.pi)
-                - np.eye(3)) <= 1e-8, "real and reciprocal lattice do not match"
+                np.array(real_lattice).dot(recip_lattice.T) / (2 * np.pi) -
+                np.eye(3)) <= 1e-8, "real and reciprocal lattice do not match"
         else:
             real_lattice = conjugate_basis(recip_lattice)
     return np.array(real_lattice), np.array(recip_lattice)
@@ -88,12 +88,13 @@ def real_recip_lattice(real_lattice=None, recip_lattice=None):
 
 
 def str2bool(v):
-    if v[0] in "fF":
+    v1 = v.strip().lower()
+    if v1  in ("f", "false", ".false."):
         return False
-    elif v[0] in "tT":
+    elif v1 in ("t", "true", ".true."):
         return True
     else:
-        raise RuntimeError(" unrecognized value of bool parameter :{0}".format(v))
+        raise ValueError(f"unrecognized value of bool parameter :`{v}`")
 
 
 def fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
@@ -105,6 +106,7 @@ def fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
                 " See https://docs.wannier-berri.org/en/master/install.html#known-bug-with-pyfftw")
         else:
             raise err
+
 
 def _fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
     assert inp.dtype == complex
@@ -140,6 +142,7 @@ def fft_np(inp, axes, inverse=False):
 
 
 def FFT(inp, axes, inverse=False, destroy=True, numthreads=1, fft='fftw'):
+    fft = fft.lower()
     if fft == 'fftw' and not PYFFTW_IMPORTED:
         fft = 'numpy'
     if fft == 'fftw':
@@ -147,7 +150,7 @@ def FFT(inp, axes, inverse=False, destroy=True, numthreads=1, fft='fftw'):
     elif fft == 'numpy':
         return fft_np(inp, axes, inverse=inverse)
     else:
-        raise ValueError("unknown type of fft : {}".format(fft))
+        raise ValueError(f"unknown type of fft : {fft}")
 
 
 def fourier_q_to_R(AA_q, mp_grid, kpt_mp_grid, iRvec, ndegen, numthreads=1, fft='fftw'):
@@ -171,7 +174,8 @@ class FFT_R_to_k():
         print_my_name_start()
         self.NKFFT = tuple(NKFFT)
         self.num_wann = num_wann
-        assert lib in ('fftw', 'numpy', 'slow'), "fft lib '{}' is not known/supported".format(lib)
+        lib = lib.lower()
+        assert lib in ('fftw', 'numpy', 'slow'), f"fft lib '{lib.lower()}' is unknown/supported"
         if lib == 'fftw' and not PYFFTW_IMPORTED:
             lib = 'numpy'
         self.lib = lib
@@ -208,8 +212,6 @@ class FFT_R_to_k():
             return AAA_K
         elif self.lib == 'slow':
             raise RuntimeError("FFT.transform should not be called for slow FT")
-        else:
-            raise ValueError(f"Unknown type of Fourier transform :'{self.lib}'")
 
     @Lazy
     def exponent(self):
@@ -262,14 +264,27 @@ class FFT_R_to_k():
         return AAA_K
 
 
+def iterate_nd(size, pm=False):
+    a = -size[0] if pm else 0
+    b = size[0] + 1 if pm else size[0]
+    if len(size) == 1:
+        return np.array([(i,) for i in range(a, b)])
+    else:
+        return np.array([(i,) + tuple(j) for i in range(a, b) for j in iterate_nd(size[1:], pm=pm)])
+
+
 def iterate3dpm(size):
-    return (
-        np.array([i, j, k]) for i in range(-size[0], size[0] + 1) for j in range(-size[1], size[1] + 1)
-        for k in range(-size[2], size[2] + 1))
+    assert len(size) == 3
+    return iterate_nd(size, pm=True)
+#   return (
+#       np.array([i, j, k]) for i in range(-size[0], size[0] + 1) for j in range(-size[1], size[1] + 1)
+#       for k in range(-size[2], size[2] + 1))
 
 
-def iterate3d(size):
-    return (np.array([i, j, k]) for i in range(0, size[0]) for j in range(0, size[1]) for k in range(0, size[2]))
+# def iterate3d(size):
+#    assert len(size)==3
+#    return iterate_nd(size,pm=False)
+#    return (np.array([i, j, k]) for i in range(0, size[0]) for j in range(0, size[1]) for k in range(0, size[2]))
 
 
 def find_degen(arr, degen_thresh):
@@ -295,13 +310,15 @@ def get_angle(sina, cosa):
         alpha = 2.0 * np.pi - alpha
     return alpha
 
-def angle_vectors(vec1,vec2):
-    cos = np.dot(vec1,vec2)/np.linalg.norm(vec1)/np.linalg.norm(vec2)
+
+def angle_vectors(vec1, vec2):
+    cos = np.dot(vec1, vec2) / np.linalg.norm(vec1) / np.linalg.norm(vec2)
     return np.arccos(cos)
 
-def angle_vectors_deg(vec1,vec2):
-    angle = angle_vectors(vec1,vec2)
-    return int(round(angle/np.pi*180))
+
+def angle_vectors_deg(vec1, vec2):
+    angle = angle_vectors(vec1, vec2)
+    return int(round(angle / np.pi * 180))
 
 
 # smearing functions
@@ -318,7 +335,7 @@ def Gaussian(x, width, adpt_smr):
             return 1 / (np.sqrt(pi) * width) * np.exp(-np.minimum(200.0, (x / width) ** 2))
     '''
     inds = abs(x) < width * np.sqrt(200.0)
-    output = np.zeros(x.shape,dtype=float)
+    output = np.zeros(x.shape, dtype=float)
     if adpt_smr:
         # width is array
         width_tile = np.tile(width, (x.shape[0], 1, 1))

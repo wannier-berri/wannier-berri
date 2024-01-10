@@ -9,7 +9,7 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 #
 #  The purpose of this module is to provide Result classes for
 #  different types of  calculations.
@@ -18,22 +18,22 @@
 import numpy as np
 from .__result import Result
 
+
 # A class to contain results or a calculation:
 # For any calculation there should be a class with the samemethods implemented
 
 
-
 # a class for data defined for a set of Fermi levels
-#Data is stored in an array data, where first dimension indexes the Fermi level
+# Data is stored in an array data, where first dimension indexes the Fermi level
 
 
 class ResultDict(Result):
-    '''Stores a dictionary of instances of the class Result.'''
+    """Stores a dictionary of instances of the class Result."""
 
     def __init__(self, results):
-        '''
+        """
         Initialize instance with a dictionary of results with string keys and values of type Result.
-        '''
+        """
         self.results = results
 
     #  multiplication by a number
@@ -68,7 +68,3 @@ class ResultDict(Result):
     @property
     def max(self):
         return np.array([x for v in self.results.values() for x in v.max])
-
-
-
-

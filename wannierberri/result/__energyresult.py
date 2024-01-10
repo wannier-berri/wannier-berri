@@ -1,7 +1,9 @@
 import numpy as np
 from lazy_property import LazyProperty as Lazy
+from ..symmetry import transform_from_dict
 from ..smoother import VoidSmoother
 from .__result import Result
+
 
 class EnergyResult(Result):
     """A class to store data dependent on several energies, e.g. Efermi and Omega
@@ -49,7 +51,7 @@ class EnergyResult(Result):
             file_npz=None,
             comment="undocumented"):
         if file_npz is not None:
-            res = np.load(open(file_npz, "rb"))
+            res = np.load(open(file_npz, "rb"), allow_pickle=True)
             energ = [
                 res[f'Energies_{i}'] for i, _ in enumerate(res['E_titles'])
             ]  # in binary mode energies are just two arrays
@@ -63,8 +65,8 @@ class EnergyResult(Result):
                 data=res['data'],
                 smoothers=smoothers,
                 # TODO : transform the old Iodd.TRodd,TRtrans into new transformators (if needeed))
-                # transformTR=res['transformTR'],
-                # transformInv=res['transformInv'],
+                transformTR=transform_from_dict(res, 'transformTR'),
+                transformInv=transform_from_dict(res, 'transformInv'),
                 rank=res['rank'],
                 E_titles=list(res['E_titles']),
                 comment=comment)
@@ -91,8 +93,8 @@ class EnergyResult(Result):
             self.Energies = Energies
             self.data = data
             self.set_smoother(smoothers)
-            self.transformTR=transformTR
-            self.transformInv=transformInv
+            self.transformTR = transformTR
+            self.transformInv = transformInv
             self.set_save_mode(save_mode)
             self.comment = comment
 
@@ -121,7 +123,7 @@ class EnergyResult(Result):
             assert d == self.data.shape[axes[i]], "shapes  {} should match the axes {} of {}".format(
                 other.shape, axes, self.data.shape)
         reshape = tuple((self.data.shape[i] if i in axes else 1) for i in range(self.data.ndim))
-        return EnergyResult(
+        return self.__class__(
             Energies=self.Energies,
             data=self.data * other.reshape(reshape),
             smoothers=self.smoothers,
@@ -132,7 +134,7 @@ class EnergyResult(Result):
 
     def __mul__(self, number):
         if isinstance(number, int) or isinstance(number, float):
-            return EnergyResult(
+            return self.__class__(
                 Energies=self.Energies,
                 data=self.data * number,
                 smoothers=self.smoothers,
@@ -142,7 +144,7 @@ class EnergyResult(Result):
                 E_titles=self.E_titles,
                 comment=self.comment)
         else:
-            raise TypeError("result can only be multilied by a number")
+            raise TypeError("result can only be multiplied by a number")
 
     def __truediv__(self, number):
         return self * (1. / number)
@@ -183,6 +185,9 @@ class EnergyResult(Result):
                 E_titles=self.E_titles,
                 comment=comment)
 
+    def add(self, other):
+        self.data += other.data
+
     def __sub__(self, other):
         return self + (-1) * other
 
@@ -209,7 +214,7 @@ class EnergyResult(Result):
                 return ['  ']
             else:
                 return [a + b for a in 'xyz' for b in getHead(n - 1)]
-        head = "".join("#### "+s+"\n" for s in self.comment.split("\n") )
+        head = "".join("#### " + s + "\n" for s in self.comment.split("\n"))
         head += "#" + "    ".join("{0:^15s}".format(s) for s in self.E_titles) + " " * 8 + "    ".join(
             frmt.format(b) for b in getHead(self.rank) * 2) + "\n"
         name = name.format('')
@@ -231,19 +236,11 @@ class EnergyResult(Result):
                 E_titles=self.E_titles,
                 data=self.data,
                 rank=self.rank,
-                transformTR=str(self.transformTR),
-                transformInv=str(self.transformInv),
+                transformTR=self.transformTR.as_dict(),
+                transformInv=self.transformInv.as_dict(),
                 comment=self.comment,
                 **energ)
 
-
-    def save(self, name):
-        """
-        writes a dictionary-like objectto file called `name`  defined in :func:`~wannierberri.result.EnergyResult.as_dict`
-        """
-        name = name.format('')
-        with open(name + ".npz", "wb") as f:
-            np.savez_compressed(f, **self.as_dict() )
 
     def savedata(self, name, prefix, suffix, i_iter):
         suffix = "-" + suffix if len(suffix) > 0 else ""
@@ -259,10 +256,6 @@ class EnergyResult(Result):
         return np.abs(self.dataSmooth).max()
 
     @property
-    def _maxval_raw(self):
-        return np.abs(self.data).max()
-
-    @property
     def _norm(self):
         return np.linalg.norm(self.dataSmooth)
 
@@ -275,11 +268,11 @@ class EnergyResult(Result):
         return np.array([self._maxval, self._norm, self._normder])
 
     def transform(self, sym):
-        return EnergyResult(
+        return self.__class__(
             Energies=self.Energies,
             data=sym.transform_tensor(self.data, self.rank,
-                                        transformTR=self.transformTR,
-                                        transformInv=self.transformInv),
+                                      transformTR=self.transformTR,
+                                      transformInv=self.transformInv),
             smoothers=self.smoothers,
             transformTR=self.transformTR,
             transformInv=self.transformInv,

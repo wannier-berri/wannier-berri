@@ -10,15 +10,14 @@
 #           Stepan Tsirkin, University of Zurich             #
 #   some parts of this file are originate                    #
 # from the translation of Wannier90 code                     #
-#------------------------------------------------------------#
+# ------------------------------------------------------------#
 
 import numpy as np
 import functools
 import multiprocessing
 from ..__utility import iterate3dpm, real_recip_lattice, fourier_q_to_R, alpha_A, beta_A
 from .system import System
-from .__w90_files import EIG, MMN, CheckPoint, SPN, UHU, UIU, SIU, SHU
-from time import time
+from .w90_files import Wannier90data
 
 
 class System_w90(System):
@@ -30,6 +29,8 @@ class System_w90(System):
     ----------
     seedname : str
         the seedname used in Wannier90
+    w90data : `~wannierberri.system.Wannier90data`
+        object that contains all Wanier90 input files and chk all together. If provided, overrides the `seedname`
     transl_inv : bool
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
     guiding_centers : bool
@@ -53,6 +54,7 @@ class System_w90(System):
     def __init__(
             self,
             seedname="wannier90",
+            w90data=None,
             transl_inv=True,
             guiding_centers=False,
             fft='fftw',
@@ -64,15 +66,17 @@ class System_w90(System):
         self.set_parameters(**parameters)
         self.npar = npar
         self.seedname = seedname
-
-        chk = CheckPoint(self.seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+        if w90data is None:
+            w90data = Wannier90data(self.seedname, read_chk=True, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+        w90data.check_wannierised(msg="creation of System_Wannierise")
+        chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         if self.mp_grid is None:
             self.mp_grid = chk.mp_grid
         self.iRvec, self.Ndegen = self.wigner_seitz(chk.mp_grid)
         self.nRvec0 = len(self.iRvec)
         self.num_wann = chk.num_wann
-        self.wannier_centers_cart_auto = chk.wannier_centers
+        self.wannier_centers_cart_auto = w90data.wannier_centers
 
         #########
         # Oscar #
@@ -84,18 +88,6 @@ class System_w90(System):
                 print ("WARNING : Jae-Mo's scheme does not apply Marzari & Vanderbilt formula for"
                        "the band-diagonal matrix elements of the position operator.")
                 transl_inv = False
-
-        # Necessary ab initio matrices
-        eig = EIG(seedname)
-        if self.need_R_any(['AA','BB']):
-            mmn = MMN(seedname, npar=npar)
-            mmn.set_bk_chk(chk)
-        if self.need_R_any(['CC']):
-            uhu = UHU(seedname)
-            assert uhu.NNB == mmn.NNB
-        if self.need_R_any(['OO','GG']):
-            uiu = UIU(seedname)
-            assert uiu.NNB == mmn.NNB
 
         #######################################################################
 
@@ -127,95 +119,57 @@ class System_w90(System):
         # factors depending on the lattice vectors R can be added, and the sum
         # over nearest-neighbor vectors can be finally performed.
 
+        w90data.mmn.set_bk_chk(chk)
+
         # H(R) matrix
-        timeFFT = 0
-        HHq = chk.get_HH_q(eig)
-        t0 = time()
+        HHq = chk.get_HH_q(w90data.eig)
         self.set_R_mat('Ham', fourier_q_to_R_loc(HHq))
-        timeFFT += time() - t0
 
         # A_a(R,b) matrix
         if self.need_R_any('AA'):
-            AA_qb = chk.get_AA_qb(mmn, transl_inv=transl_inv)
-            t0 = time()
+            AA_qb = chk.get_AA_qb(w90data.mmn, transl_inv=transl_inv)
             AA_Rb = fourier_q_to_R_loc(AA_qb)
-            timeFFT += time() - t0
             self.set_R_mat('AA', AA_Rb)
 
         # B_a(R,b) matrix
         if 'BB' in self.needed_R_matrices:
-            BB_qb = chk.get_BB_qb(mmn, eig)
-            t0 = time()
+            BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig)
             BB_Rb = fourier_q_to_R_loc(BB_qb)
-            timeFFT += time() - t0
             self.set_R_mat('BB', BB_Rb)
 
         # C_a(R,b1,b2) matrix
         if 'CC' in self.needed_R_matrices:
-            CC_qb = chk.get_CC_qb(mmn, uhu)
-            t0 = time()
+            CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu)
             CC_Rb = fourier_q_to_R_loc(CC_qb)
-            timeFFT += time() - t0
             self.set_R_mat('CC', CC_Rb)
 
         # O_a(R,b1,b2) matrix
         if 'OO' in self.needed_R_matrices:
-            OO_qb = chk.get_OO_qb(mmn, uiu)
-            t0 = time()
+            OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu)
             OO_Rb = fourier_q_to_R_loc(OO_qb)
-            timeFFT += time() - t0
             self.set_R_mat('OO', OO_Rb)
 
         # G_bc(R,b1,b2) matrix
         if 'GG' in self.needed_R_matrices:
-            GG_qb = chk.get_GG_qb(mmn, uiu)
-            t0 = time()
+            GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu)
             GG_Rb = fourier_q_to_R_loc(GG_qb)
-            timeFFT += time() - t0
             self.set_R_mat('GG', GG_Rb)
-
-        try:
-            del uhu
-        except NameError:
-            pass
-
-        try:
-            del uiu
-        except NameError:
-            pass
 
         #######################################################################
 
-        if self.need_R_any(['SS', 'SR', 'SH', 'SHR']):
-            spn = SPN(seedname)
-            t0 = time()
-            if self.need_R_any('SS'):
-                self.set_R_mat('SS' ,fourier_q_to_R_loc(chk.get_SS_q(spn)))
-            if self.need_R_any('SR'):
-                self.set_R_mat('SR' , fourier_q_to_R_loc(chk.get_SR_q(spn, mmn)))
-            if self.need_R_any('SH'):
-                self.set_R_mat('SH' , fourier_q_to_R_loc(chk.get_SH_q(spn, eig)))
-            if self.need_R_any('SHR'):
-                self.set_R_mat('SHR' , fourier_q_to_R_loc(chk.get_SHR_q(spn, mmn, eig)))
-            timeFFT += time() - t0
-            del spn
-
+        if self.need_R_any('SS'):
+            self.set_R_mat('SS', fourier_q_to_R_loc(chk.get_SS_q(w90data.spn)))
+        if self.need_R_any('SR'):
+            self.set_R_mat('SR', fourier_q_to_R_loc(chk.get_SR_q(w90data.spn, w90data.mmn)))
+        if self.need_R_any('SH'):
+            self.set_R_mat('SH', fourier_q_to_R_loc(chk.get_SH_q(w90data.spn, w90data.eig)))
+        if self.need_R_any('SHR'):
+            self.set_R_mat('SHR', fourier_q_to_R_loc(chk.get_SHR_q(w90data.spn, w90data.mmn, w90data.eig)))
 
         if 'SA' in self.needed_R_matrices:
-            siu = SIU(seedname)
-            t0 = time()
-            self.set_R_mat('SA', fourier_q_to_R_loc(chk.get_SA_q(siu, mmn)) )
-            timeFFT += time() - t0
-            del siu
-
+            self.set_R_mat('SA', fourier_q_to_R_loc(chk.get_SA_q(w90data.siu, w90data.mmn)))
         if 'SHA' in self.needed_R_matrices:
-            shu = SHU(seedname)
-            t0 = time()
-            self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(shu, mmn)) )
-            timeFFT += time() - t0
-            del shu
-
-        print("time for FFT_q_to_R : {} s".format(timeFFT))
+            self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.shu, w90data.mmn)))
 
         self.do_at_end_of_init()
         print("Real-space lattice:\n", self.real_lattice)
@@ -232,13 +186,12 @@ class System_w90(System):
         # nearest-neighbor vectors to finally obtain the real-space matrix
         # elements.
 
-        t0 = time()
-        print("Completing the computation of real-space matrix elements...")
-
         # Wannier centers
         centers = chk.wannier_centers
         # Optimal center in Jae-Mo's implementation
         r0 = 0.5 * (centers[:,None,None,:] + centers[None,:,None,:] + self.cRvec[None,None,:,:])
+        # Unique set of nearest-neighbor vectors (cartesian)
+        bk_cart_unique = w90data.mmn.bk_cart_unique
 
         # --- A_a(R) matrix --- #
         if self.need_R_any('AA'):
@@ -249,7 +202,7 @@ class System_w90(System):
                 if not self.use_wcc_phase: # Phase convention II
                     pass
                 else:                      # Phase convention I
-                    phase  = np.einsum('ba,ja->jb', mmn.bk_cart_unique, centers)
+                    phase  = np.einsum('ba,ja->jb', bk_cart_unique, centers)
                     AA_Rb *= np.exp(1.j * phase[None,:,None,:,None])
 
                 AA_R = np.sum(AA_Rb, axis=3)
@@ -260,7 +213,7 @@ class System_w90(System):
             # Jae-Mo's finite-difference scheme
             else:
                 # Recentered matrix
-                phase  = np.einsum('ba,ijRa->ijRb', mmn.bk_cart_unique, r0 - self.cRvec[None,None,:,:])
+                phase  = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None,None,:,:])
                 AA_R0b = AA_Rb * np.exp(1.j * phase[:,:,:,:,None])
                 AA_R0  = np.sum(AA_R0b, axis=3)
 
@@ -302,7 +255,7 @@ class System_w90(System):
                 if not self.use_wcc_phase: # Phase convention II
                     pass
                 else:                      # Phase convention I
-                    phase  = np.einsum('ba,ja->jb', mmn.bk_cart_unique, centers)
+                    phase  = np.einsum('ba,ja->jb', bk_cart_unique, centers)
                     BB_Rb *= np.exp(1.j * phase[None,:,None,:,None])
 
                 BB_R = np.sum(BB_Rb, axis=3)
@@ -310,7 +263,7 @@ class System_w90(System):
             # Jae-Mo's finite-difference scheme
             else:
                 # Recentered matrix
-                phase  = np.einsum('ba,ijRa->ijRb', mmn.bk_cart_unique, r0 - self.cRvec[None,None,:,:])
+                phase  = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None,None,:,:])
                 BB_R0b = BB_Rb * np.exp(1.j * phase[:,:,:,:,None])
                 BB_R0  = np.sum(BB_R0b, axis=3)
 
@@ -334,8 +287,8 @@ class System_w90(System):
                 if not self.use_wcc_phase: # Phase convention II
                     pass
                 else:                      # Phase convention I
-                    phase_1 = -np.einsum('ba,ia->ib', mmn.bk_cart_unique, centers)
-                    phase_2 =  np.einsum('ba,ja->jb', mmn.bk_cart_unique, centers)
+                    phase_1 = -np.einsum('ba,ia->ib', bk_cart_unique, centers)
+                    phase_2 =  np.einsum('ba,ja->jb', bk_cart_unique, centers)
                     phase  = phase_1[:,None,:,None] + phase_2[None,:,None,:]
                     CC_Rb *= np.exp(1.j * phase[:,:,None,:,:,None])
 
@@ -347,8 +300,8 @@ class System_w90(System):
             # Jae-Mo's finite-difference scheme
             else:
                 # Recentered matrix
-                phase_1 = -np.einsum('ba,ijRa->ijRb', mmn.bk_cart_unique, r0)
-                phase_2 =  np.einsum('ba,ijRa->ijRb', mmn.bk_cart_unique, r0 - self.cRvec[None,None,:,:])
+                phase_1 = -np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0)
+                phase_2 =  np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None,None,:,:])
                 phase  = phase_1[:,:,:,:,None] + phase_2[:,:,:,None,:]
                 CC_R0b = CC_Rb * np.exp(1.j * phase[:,:,:,:,:,None])
                 CC_R0  = np.sum(CC_R0b, axis=(3,4))
@@ -377,8 +330,8 @@ class System_w90(System):
                 if not self.use_wcc_phase: # Phase convention II
                     pass
                 else:                      # Phase convention I
-                    phase_1 = -np.einsum('ba,ia->ib', mmn.bk_cart_unique, centers)
-                    phase_2 =  np.einsum('ba,ja->jb', mmn.bk_cart_unique, centers)
+                    phase_1 = -np.einsum('ba,ia->ib', bk_cart_unique, centers)
+                    phase_2 =  np.einsum('ba,ja->jb', bk_cart_unique, centers)
                     phase  = phase_1[:,None,:,None] + phase_2[None,:,None,:]
                     OO_Rb *= np.exp(1.j * phase[:,:,None,:,:,None])
 
@@ -390,8 +343,8 @@ class System_w90(System):
             # Jae-Mo's finite-difference scheme
             else:
                 # Recentered matrix
-                phase_1 = -np.einsum('ba,ijRa->ijRb', mmn.bk_cart_unique, r0)
-                phase_2 =  np.einsum('ba,ijRa->ijRb', mmn.bk_cart_unique, r0 - self.cRvec[None,None,:,:])
+                phase_1 = -np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0)
+                phase_2 =  np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None,None,:,:])
                 phase  = phase_1[:,:,:,:,None] + phase_2[:,:,:,None,:]
                 OO_R0b = OO_Rb * np.exp(1.j * phase[:,:,:,:,:,None])
                 OO_R0  = np.sum(OO_R0b, axis=(3,4))
@@ -417,8 +370,8 @@ class System_w90(System):
                 if not self.use_wcc_phase: # Phase convention II
                     pass
                 else:                      # Phase convention I
-                    phase_1 = -np.einsum('ba,ia->ib', mmn.bk_cart_unique, centers)
-                    phase_2 =  np.einsum('ba,ja->jb', mmn.bk_cart_unique, centers)
+                    phase_1 = -np.einsum('ba,ia->ib', bk_cart_unique, centers)
+                    phase_2 =  np.einsum('ba,ja->jb', bk_cart_unique, centers)
                     phase  = phase_1[:,None,:,None] + phase_2[None,:,None,:]
                     GG_Rb *= np.exp(1.j * phase[:,:,None,:,:,None,None])
 
@@ -430,8 +383,8 @@ class System_w90(System):
             # Jae-Mo's finite-difference scheme
             else:
                 # Recentered matrix
-                phase_1 = -np.einsum('ba,ijRa->ijRb', mmn.bk_cart_unique, r0)
-                phase_2 =  np.einsum('ba,ijRa->ijRb', mmn.bk_cart_unique, r0 - self.cRvec[None,None,:,:])
+                phase_1 = -np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0)
+                phase_2 =  np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None,None,:,:])
                 phase  = phase_1[:,:,:,:,None] + phase_2[:,:,:,None,:]
                 GG_R0b = GG_Rb * np.exp(1.j * phase[:,:,:,:,:,None,None])
                 GG_R0  = np.sum(GG_R0b, axis=(3,4))
@@ -448,8 +401,6 @@ class System_w90(System):
                 GG_R = GG_R0 + 0.5 * (rc + rc.swapaxes(3,4))
 
             self.set_R_mat('GG', GG_R, reset=True)
-
-        print(time()-t0)
 
     ###########################################################################
 

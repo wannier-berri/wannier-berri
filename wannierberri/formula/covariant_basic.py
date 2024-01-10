@@ -119,8 +119,8 @@ class tildeHab(Formula_ln):
         self.D = data_K.Dcov
         self.E = data_K.E_K
         self.ndim = 2
-        self.transformTR=transform_odd
-        self.transformInv=transform_ident
+        self.transformTR = transform_odd
+        self.transformInv = transform_ident
 
     @property
     def additive(self):
@@ -198,8 +198,8 @@ class tildeHab_d(Formula_ln):
             self.dB = data_K.covariant('BB', gender=1)
             self.dH = data_K.covariant('CCab', gender=1)
         self.ndim = 2
-        self.transformTR=transform_ident
-        self.transformInv=transform_odd
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
@@ -226,8 +226,8 @@ class tildeHab_d(Formula_ln):
                 self.B.nn(ik, inn, out) - self.E[ik][inn][:, None, None] * self.A.nn(ik, inn, out))
             summ += 2 * np.einsum(
                 "mla,lnbd->mnabd", self.T_wcc.nn(ik, inn, out),
-                self.dB.nn(ik, inn, out) - self.E[ik][inn][:, None, None] * self.dA.nn(ik, inn, out)
-                - np.einsum("mld,lnb->mnbd", self.V.nn(ik, inn, out), self.A.nn(ik, inn, out)))
+                self.dB.nn(ik, inn, out) - self.E[ik][inn][:, None, None] * self.dA.nn(ik, inn, out) -
+                np.einsum("mld,lnb->mnbd", self.V.nn(ik, inn, out), self.A.nn(ik, inn, out)))
 
         summ = 0.5 * (summ + summ.transpose((1, 0, 3, 2, 4)).conj())
         return summ
@@ -308,16 +308,16 @@ class tildeFc(AntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeFab, data_K, **parameters)
-        self.transformTR=transform_odd
-        self.transformInv=transform_ident
+        self.transformTR = transform_odd
+        self.transformInv = transform_ident
 
 
 class tildeHGc(AntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeHGab, data_K, **parameters)
-        self.transformTR=transform_odd
-        self.transformInv=transform_ident
+        self.transformTR = transform_odd
+        self.transformInv = transform_ident
 
     @property
     def additive(self):
@@ -328,16 +328,16 @@ class tildeFc_d(AntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeFab_d, data_K, **parameters)
-        self.transformTR=transform_ident
-        self.transformInv=transform_odd
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
 
 
 class tildeHGc_d(AntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeHGab_d, data_K, **parameters)
-        self.transformTR=transform_ident
-        self.transformInv=transform_odd
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
 
     @property
     def additive(self):

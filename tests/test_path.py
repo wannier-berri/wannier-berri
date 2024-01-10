@@ -9,6 +9,7 @@ from wannierberri.calculators import TabulatorAll
 
 from common import OUTPUT_DIR, REF_DIR
 
+
 def test_path_1(system_Haldane_PythTB):
     # Test the construction of Path class
     k_nodes = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
@@ -64,8 +65,8 @@ def test_path_4(system_Haldane_PythTB):
 
 
 def test_tabulate_path(system_Haldane_PythTB, check_run):
-    param_tab = {'degen_thresh': 5e-2,}
-    no_external = dict(kwargs_formula={"external_terms": False }, )
+    param_tab = {'degen_thresh': 5e-2, }
+    no_external = dict(kwargs_formula={"external_terms": False}, )
 
     calculators = {}
     calculators["tabulate"] = TabulatorAll(
@@ -96,7 +97,7 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
             '_FF_antisym': True,
             '_CCab_antisym': True
         },
-        use_symmetry=True, # should have no effect, but will check the cases and give a warning
+        use_symmetry=True,  # should have no effect, but will check the cases and give a warning
         #                parameters_K = parameters_K,
         #                frmsf_name = None,
         #                degen_thresh = degen_thresh, degen_Kramers = degen_Kramers
@@ -121,10 +122,13 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
     for quant in quantities:
         for comp in tab_result.results.get(quant).get_component_list():
             _data = data[(quant, comp)]
-            _data_ref = data_ref[(quant, comp)]
+            if comp == "trace" and (quant, comp) not in data_ref:
+                _data_ref = data_ref[(quant, "xx")] + data_ref[(quant, "yy")] + data_ref[(quant, "zz")]
+            else:
+                _data_ref = data_ref[(quant, comp)]
             assert _data == approx(_data_ref), (
-                f"tabulation along path gave a wrong result for quantity {quant} component {comp} "
-                + "with a maximal difference {}".format(max(abs(data - data_ref))))
+                f"tabulation along path gave a wrong result for quantity {quant} component {comp} " +
+                "with a maximal difference {}".format(max(abs(data - data_ref))))
 
     # only checks that the plot runs without errors, not checking the result of the plot
     tab_result.plot_path_fat(

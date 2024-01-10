@@ -1,3 +1,32 @@
+Version 0.15.0
+++++++++++++++++++
+## What's Changed
+* remove wannier90io from dependencies by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/265
+* added python-3.11 by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/266
+* changed all zeros_like to np.zeros by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/267
+* source code is now uploaded to pypi by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/268
+* removed old_API and corresponding tests and documentation by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/269
+* compatibility with spglib>=2 by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/270
+* more tests of sym_wann by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/271
+* Fixing pyfftw by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/272
+* Easy access to k-points by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/185
+* replaced data for test Fe_sym, and reference files by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/278
+* Fix spin factor by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/280
+* Allow to manually set spin pairs by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/279
+* refactor utils to be included in codecov by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/281
+* testing data in systems by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/285
+* fixed bug in the Velocity formula by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/287
+* Optimization of sym_wann -NEW! by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/282
+* more specific tests by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/294
+* more tests by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/295
+* implemented k-resolved static calculators by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/276
+* Disentanglement from wannier90 inputs by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/288
+* fixed most of pep8 issues.  by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/297
+
+
+**Full Changelog**: https://github.com/wannier-berri/wannier-berri/compare/v...v0.15.0
+
+
 Version 0.14.0
 ++++++++++++++++++
 ## What's Changed

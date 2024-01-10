@@ -9,7 +9,7 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 
 import numpy as np
 from termcolor import cprint
@@ -31,14 +31,16 @@ class System_tb(System):
 
     Notes
     -----
-    see also  parameters of the :class:`~wannierberri.System`
+    see also  parameters of the :class:`~wannierberri.system.System`
     """
 
     def __init__(self, tb_file="wannier90_tb.dat", **parameters):
 
         self.set_parameters(**parameters)
-        if self.morb: raise ValueError("System_tb class cannot be used for evaluation of orbital magnetic moments")
-        if self.spin: raise ValueError("System_tb class cannot be used for evaluation of spin properties")
+        if self.morb:
+            raise ValueError("System_tb class cannot be used for evaluation of orbital magnetic moments")
+        if self.spin:
+            raise ValueError("System_tb class cannot be used for evaluation of spin properties")
 
         self.seedname = tb_file.split("/")[-1].split("_")[0]
         f = open(tb_file, "r")
@@ -65,7 +67,7 @@ class System_tb(System):
                 [[f.readline().split()[2:4] for n in range(self.num_wann)] for m in range(self.num_wann)],
                 dtype=float).transpose((1, 0, 2))
             Ham_R[:, :, ir] = (hh[:, :, 0] + 1j * hh[:, :, 1]) / self.Ndegen[ir]
-        self.set_R_mat('Ham',Ham_R)
+        self.set_R_mat('Ham', Ham_R)
 
         self.iRvec = np.array(self.iRvec, dtype=int)
 
@@ -79,7 +81,7 @@ class System_tb(System):
                     dtype=float)
                 AA_R[:, :, ir, :] = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / self.Ndegen[ir]
             self.wannier_centers_cart_auto = np.diagonal(AA_R[:, :, self.iR0, :], axis1=0, axis2=1).T
-            self.set_R_mat('AA',AA_R)
+            self.set_R_mat('AA', AA_R)
 
         f.close()
 

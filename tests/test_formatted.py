@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 import wannierberri as wberri
-from wannierberri.system.__w90_files import UHU, UIU, SHU, SIU, SPN
+from wannierberri.system.w90_files import UHU, UIU, SHU, SIU, SPN
 
 
 @pytest.fixture(scope="module")
@@ -14,7 +14,7 @@ def generate_formatted_files(create_files_GaAs_W90):
 
     data_dir = create_files_GaAs_W90
 
-    print (f"data_dir={str(data_dir)}")
+    print(f"data_dir={str(data_dir)}")
 
     # Create sIu, sHu files using mmn2uHu utility if they do not exist
     tags_needed = ["uHu", "uIu", "sHu", "sIu", "spn"]
@@ -29,14 +29,14 @@ def generate_formatted_files(create_files_GaAs_W90):
         kwargs = []
         kwargs.append(f"input={str(data_dir)}")
         kwargs.append(f"output={str(data_dir)}/reduced_formatted")
-        kwargs.append("targets="+",".join(tags_compute))
-        tags_formatted=[]
+        kwargs.append("targets=" + ",".join(tags_compute))
+        tags_formatted = []
         for tag in tags_compute:
             if tag == "spn":
                 tags_formatted.append('spn_out')
             else:
                 tags_formatted.append(tag)
-        kwargs.append("formatted="+",".join(tags_formatted))
+        kwargs.append("formatted=" + ",".join(tags_formatted))
         kwargs.append("IBstart=1")
         kwargs.append("IBstartSum=1")
         kwargs.append("NBsum=16,100")
@@ -50,8 +50,8 @@ def generate_formatted_files(create_files_GaAs_W90):
 
         #        nb_out_list = wberri.utils.mmn2uHu.run_mmn2uHu(
         #            "GaAs", INPUTDIR=data_dir, OUTDIR=str(data_dir) + "/reduced_formatted", **kwargs)
-        print ("kwargs = ", kwargs)
-        nb_out_list = wberri.utils.mmn2uHu.main(["GaAs"]+kwargs)
+        print("kwargs = ", kwargs)
+        nb_out_list = wberri.utils.mmn2uHu.main(["GaAs"] + kwargs)
 
         nb_out = nb_out_list[0]
 

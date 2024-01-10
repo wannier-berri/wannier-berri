@@ -9,7 +9,7 @@
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
-#------------------------------------------------------------
+# ------------------------------------------------------------
 #
 #  The purpose of this module is to provide Result classes for
 #  different types of  calculations.
@@ -20,4 +20,4 @@ from .__result import Result
 from .__resultdict import  ResultDict
 from .__energyresult import EnergyResult
 from .__tabresult import TABresult
-from .__kbandresult import KBandResult
+from .__kbandresult import KBandResult, K__Result
