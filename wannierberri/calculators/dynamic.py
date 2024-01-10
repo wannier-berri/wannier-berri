@@ -533,11 +533,14 @@ class Formula_SDCT_sym_sea_II():
 
     def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
         # Intrinsic multipole moments
-        A = -1. * data_K.E1
+        if external_terms:
+            A = -1. * data_K.E1
+        else:
+            A = -1. * data_K.E1_internal
 
         # Other quantities
         Vn = data_K.Vn
-        Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
+        Vnm_plus = Vn[:,:,None,:] + Vn[:,None,:,:]
 
         # Formula
         summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
@@ -573,7 +576,10 @@ class Formula_SDCT_sym_surf_I():
 
     def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
         # Intrinsic multipole moments
-        A = -1. * data_K.E1
+        if external_terms:
+            A = -1. * data_K.E1
+        else:
+            A = -1. * data_K.E1_internal
 
         # Other quantities
         Vn = data_K.Vn
