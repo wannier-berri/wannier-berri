@@ -119,7 +119,7 @@ class System_tb_py(System):
                 inR = np.argwhere(np.all((-nhop[-1] - self.iRvec[:, :self.dimr]) == 0, axis=1))[0][0]
                 if model._nspin == 1:
                     Ham_R[i, j, iR] += nhop[0]
-                    Ham_R[i, j, inR] += np.conjugate(nhop[0])
+                    Ham_R[j, i, inR] += np.conjugate(nhop[0])
                 elif model._nspin == 2:
                     print("hopping :", nhop[0].shape, Ham_R.shape, iR,
                           Ham_R[2 * i:2 * i + 2, 2 * j:2 * j + 2, iR].shape)
