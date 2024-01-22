@@ -1072,13 +1072,13 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
         data_tab_int = data_tab.mean(axis=0)
         assert data_tab_int.shape == data_int.shape
         prec = 1e-8 * np.max(abs(data_int))
-        assert abs(data_tab_int - data_int).max() < prec
+        assert abs(data_tab_int - data_int).max() <= prec
 
     iEF = np.argmin(abs(Efermi_Haldane))
     ahc_k = result.results["tabulate"].results["AHC"].data[:, iEF]
     berry_k = result.results["tabulate"].results["berry"].data[:, 0] * wberri.__factors.factor_ahc / system.cell_volume
     prec = 1e-8 * np.max(abs(berry_k))
-    assert abs(berry_k - ahc_k).max() < prec
+    assert abs(berry_k - ahc_k).max() <= prec
 
 
 

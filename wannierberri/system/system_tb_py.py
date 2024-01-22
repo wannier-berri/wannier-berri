@@ -53,7 +53,7 @@ class System_tb_py(System):
             positions = model._orb
             if model._nspin == 1:
                 self.spinors = False
-                self.num_wann = mode._norb
+                self.num_wann = model._norb
             elif model._nspin == 2:
                 self.spinors = True
                 self.num_wann = model._norb * 2
@@ -122,7 +122,7 @@ class System_tb_py(System):
                     Ham_R[i, j, inR] += np.conjugate(nhop[0])
                 elif model._nspin == 2:
                     print("hopping :", nhop[0].shape, Ham_R.shape, iR,
-                              Ham_R[2 * i:2 * i + 2, 2 * j:2 * j + 2, iR].shape)
+                          Ham_R[2 * i:2 * i + 2, 2 * j:2 * j + 2, iR].shape)
                     Ham_R[2 * i:2 * i + 2, 2 * j:2 * j + 2, iR] += nhop[0]
                     Ham_R[2 * j:2 * j + 2, 2 * i:2 * i + 2, inR] += np.conjugate(nhop[0].T)
 

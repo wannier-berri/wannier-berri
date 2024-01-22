@@ -150,40 +150,31 @@ class EnergyResult(Result):
         return self * (1. / number)
 
     def __add__(self, other):
-        if isinstance(other, int) or isinstance(other, float):
-            return EnergyResult(
-                Energies=self.Energies,
-                data=self.data,
-                smoothers=self.smoothers,
-                transformTR=self.transformTR,
-                transformInv=self.transformInv,
-                rank=self.rank,
-                E_titles=self.E_titles,
-                comment=self.comment)
-        else:
+        if (self.transformTR is not None) and (other.transformTR is not None):
             assert self.transformTR == other.transformTR
+        if (self.transformInv is not None) and (other.transformInv is not None):
             assert self.transformInv == other.transformInv
-            if other == 0:
-                return self
-            if len(self.comment)>len(other.comment):
-                comment = self.comment
-            else:
-                comment = other.comment
-            for i in range(self.N_energies):
-                if np.linalg.norm(self.Energies[i] - other.Energies[i]) > 1e-8:
-                    raise RuntimeError(f"Adding results with different energies {i} ({self.E_titles[i]}) - not allowed")
-                if self.smoothers[i] != other.smoothers[i]:
-                    raise RuntimeError(
-                        f"Adding results with different smoothers [{i}]: {self.smoothers[i]} and {other.smoothers[i]}")
-            return EnergyResult(
-                Energies=self.Energies,
-                data=self.data + other.data,
-                smoothers=self.smoothers,
-                transformTR=self.transformTR,
-                transformInv=self.transformInv,
-                rank=self.rank,
-                E_titles=self.E_titles,
-                comment=comment)
+        if other == 0:
+            return self
+        if len(self.comment) > len(other.comment):
+            comment = self.comment
+        else:
+            comment = other.comment
+        for i in range(self.N_energies):
+            if np.linalg.norm(self.Energies[i] - other.Energies[i]) > 1e-8:
+                raise RuntimeError(f"Adding results with different energies {i} ({self.E_titles[i]}) - not allowed")
+            if self.smoothers[i] != other.smoothers[i]:
+                raise RuntimeError(
+                    f"Adding results with different smoothers [{i}]: {self.smoothers[i]} and {other.smoothers[i]}")
+        return self.__class__(
+            Energies=self.Energies,
+            data=self.data + other.data,
+            smoothers=self.smoothers,
+            transformTR=self.transformTR,
+            transformInv=self.transformInv,
+            rank=self.rank,
+            E_titles=self.E_titles,
+            comment=comment)
 
     def add(self, other):
         self.data += other.data

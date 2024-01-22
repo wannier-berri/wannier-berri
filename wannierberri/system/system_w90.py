@@ -85,8 +85,8 @@ class System_w90(System):
         # Deactivate transl_inv if Jae-Mo's scheme is used
         if self.transl_inv_JM:
             if transl_inv:
-                print ("WARNING : Jae-Mo's scheme does not apply Marzari & Vanderbilt formula for"
-                       "the band-diagonal matrix elements of the position operator.")
+                print("WARNING : Jae-Mo's scheme does not apply Marzari & Vanderbilt formula for"
+                      "the band-diagonal matrix elements of the position operator.")
                 transl_inv = False
 
         #######################################################################

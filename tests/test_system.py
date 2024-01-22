@@ -234,11 +234,12 @@ def test_system_GaAs_tb_wcc_ws(check_system, system_GaAs_tb_wcc_ws):
         matrices=['Ham', 'AA']
     )
 
+
 def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
     check_system(
-            system_Si_W90_JM,"Si_W90_JM",
-            extra_properties=['wannier_centers_cart_auto','mp_grid'],
-            matrices=['Ham','AA','BB','CC','GG']
+            system_Si_W90_JM, "Si_W90_JM",
+            extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
+            matrices=['Ham', 'AA', 'BB', 'CC', 'GG']
                 )
 
 

@@ -1,5 +1,6 @@
 import numpy as np
-import abc, functools
+import abc
+import functools
 from ..__utility import Gaussian, Lorentzian, FermiDirac, alpha_A, beta_A
 from ..result import EnergyResult
 from . import Calculator
@@ -231,6 +232,7 @@ class SHC(DynamicCalculator):
             cfac.imag = np.pi * self.smear(delta_arg_12)
         return cfac / 2
 
+
 ####################################################
 #    Spatially-dispersive conductivity tensor      #
 ####################################################
@@ -241,18 +243,18 @@ m_spin_prefactor = electron_g_factor * hbar / electron_mass
 
 # _____ Antisymmetric (time-even) spatially-dispersive conductivity tensor _____ #
 
+
 class SDCT_asym(Calculator):
+
     def __init__(self, fermi_sea=True, fermi_surf=True, **kwargs):
         self.comment = "calculator not described"
         self.terms = []
         # Fermi sea terms
         if fermi_sea:
-            self.terms.extend([SDCT_asym_sea_I(**kwargs),
-                                   SDCT_asym_sea_II(**kwargs)])
+            self.terms.extend([SDCT_asym_sea_I(**kwargs), SDCT_asym_sea_II(**kwargs)])
         # Fermi surface terms
         if fermi_surf:
-            self.terms.extend([SDCT_asym_surf_I(**kwargs),
-                                   SDCT_asym_surf_II(**kwargs)])
+            self.terms.extend([SDCT_asym_surf_I(**kwargs), SDCT_asym_surf_II(**kwargs)])
 
     def __call__(self, data_K):
         return sum( cal(data_K) for cal in self.terms )
@@ -267,12 +269,12 @@ class Formula_SDCT_asym_sea_I():
             B_M1, B_E2, B = data_K.Bln
             if spin:
                 S = data_K.Xbar('SS')
-                B_M1[:,:,:,alpha_A,beta_A] += -0.5 * m_s_prefactor * S
-                B_M1[:,:,:,beta_A,alpha_A] -= -0.5 * m_s_prefactor * S
+                B_M1[:,:,:,alpha_A,beta_A] += -0.5 * m_spin_prefactor * S
+                B_M1[:,:,:,beta_A,alpha_A] -= -0.5 * m_spin_prefactor * S
         else:
             A = -1. * data_K.E1_internal
             B_M1, B_E2, B = data_K.Bln_internal
-            
+
         # Other quantities
         Vn = data_K.Vn
         Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
@@ -408,8 +410,8 @@ class Formula_SDCT_asym_surf_II():
             B_M1, B_E2, B = data_K.Bln
             if spin:
                 S = data_K.Xbar('SS')
-                B_M1[:,:,:,alpha_A,beta_A] += -0.5 * m_s_prefactor * S
-                B_M1[:,:,:,beta_A,alpha_A] -= -0.5 * m_s_prefactor * S
+                B_M1[:,:,:,alpha_A,beta_A] += -0.5 * m_spin_prefactor * S
+                B_M1[:,:,:,beta_A,alpha_A] -= -0.5 * m_spin_prefactor * S
         else:
             B_M1, B_E2, B = data_K.Bln_internal
         Bn_M1 = np.diagonal(B_M1, axis1=1, axis2=2).transpose(0, 3, 1, 2)
@@ -456,12 +458,10 @@ class SDCT_sym(Calculator):
         self.terms = []
         # Fermi sea terms
         if fermi_sea:
-            self.terms.extend([SDCT_sym_sea_I(**kwargs),
-                                   SDCT_sym_sea_II(**kwargs)])
+            self.terms.extend([SDCT_sym_sea_I(**kwargs), SDCT_sym_sea_II(**kwargs)])
         # Fermi surface terms
         if fermi_surf:
-            self.terms.extend([SDCT_sym_surf_I(**kwargs),
-                                   SDCT_sym_surf_II(**kwargs)])
+            self.terms.extend([SDCT_sym_surf_I(**kwargs), SDCT_sym_surf_II(**kwargs)])
 
     def __call__(self, data_K):
         return sum( cal(data_K) for cal in self.terms )
@@ -476,8 +476,8 @@ class Formula_SDCT_sym_sea_I():
             B_M1, B_E2, B = data_K.Bln
             if spin:
                 S = data_K.Xbar('SS')
-                B_M1[:,:,:,alpha_A,beta_A] += -0.5 * m_s_prefactor * S
-                B_M1[:,:,:,beta_A,alpha_A] -= -0.5 * m_s_prefactor * S
+                B_M1[:,:,:,alpha_A,beta_A] += -0.5 * m_spin_prefactor * S
+                B_M1[:,:,:,beta_A,alpha_A] -= -0.5 * m_spin_prefactor * S
         else:
             A = -1. * data_K.E1_internal
             B_M1, B_E2, B = data_K.Bln_internal
