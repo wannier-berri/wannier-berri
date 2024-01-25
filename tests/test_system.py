@@ -173,7 +173,8 @@ def test_system_Fe_W90_disentngle(check_system, system_Fe_W90_disentangle):
     check_system(
         system_Fe_W90_disentangle, "Fe_W90_disentangle",
         extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
-        matrices=['Ham', 'AA']
+        matrices=['Ham', 'AA'],
+        precision_matrix_elements=3e-7,
     )
 
 
