@@ -90,7 +90,7 @@ class CheckPoint:
             self.v_matrix = [u.dot(u_opt[:, :nd]) for u, u_opt, nd in zip(u_matrix, u_matrix_opt, ndimwin)]
         else:
             self.v_matrix = [u for u in u_matrix]
-        self.wannier_centers = readfloat().reshape((self.num_wann, 3))
+        self._wannier_centers = readfloat().reshape((self.num_wann, 3))
         self.wannier_spreads = readfloat().reshape((self.num_wann))
         del u_matrix, m_matrix
         gc.collect()
@@ -153,6 +153,10 @@ class CheckPoint:
                 AA_qb[ik, :, :, ib_unique, :] = AA_q_ik_ib
 
         return AA_qb
+
+    def get_AA_q(self, mmn, transl_inv=False):
+        return self.get_AA_qb(mmn=mmn, transl_inv=transl_inv).sum(axis=3)
+
 
     # --- B_a(q,b) matrix --- #
     def get_BB_qb(self, mmn, eig):
@@ -317,6 +321,9 @@ class CheckPoint:
         return SHR_q
 
 
+    @property
+    def wannier_centers(self):
+        return self._wannier_centers
 
 
 
@@ -343,6 +350,7 @@ class CheckPoint_bare(CheckPoint):
         self.win_min = np.array([0] * self.num_kpts)
         self.win_max = np.array([self.num_bands] * self.num_kpts)
         self.recip_lattice = 2 * np.pi * np.linalg.inv(self.real_lattice).T
+
 
 
 class Wannier90data:
@@ -449,11 +457,7 @@ class Wannier90data:
 
     @lazy_property.LazyProperty
     def wannier_centers(self):
-        try:
-            return self.chk.wannier_centers
-        except AttributeError:
-            return self.chk.get_AA_q(self.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(
-                axis=0).real.T / self.chk.num_kpts
+        return self.chk.wannier_centers
 
     def check_wannierised(self, msg=""):
         if not self.wannierised:

@@ -154,6 +154,9 @@ def disentangle(w90data,
     #        U_opt_full=self.symmetrize_U_opt(U_opt_full_irr,free=False)
     U_opt_full = U_opt_full_irr  # temporary, withour symmetries
     w90data.chk.v_matrix = np.array(U_opt_full).transpose((0, 2, 1))
+    w90data.chk._wannier_centers = w90data.chk.get_AA_q(w90data.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(
+                axis=0).real.T / w90data.chk.num_kpts
+
     w90data.wannierised = True
     return w90data.chk.v_matrix
 

@@ -61,6 +61,7 @@ class System_w90(System):
             npar=multiprocessing.cpu_count(),
             kmesh_tol=1e-7,
             bk_complete_tol=1e-5,
+            wcc_phase_findiff=False,
             **parameters):
 
         self.set_parameters(**parameters)
@@ -91,6 +92,7 @@ class System_w90(System):
 
         #######################################################################
 
+        use_wcc_phase_findiff = self.use_wcc_phase and wcc_phase_findiff
         kpt_mp_grid = [
             tuple(k) for k in np.array(np.round(chk.kpt_latt * np.array(chk.mp_grid)[None, :]), dtype=int) % chk.mp_grid
         ]
@@ -171,7 +173,7 @@ class System_w90(System):
         if 'SHA' in self.needed_R_matrices:
             self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.shu, w90data.mmn)))
 
-        self.do_at_end_of_init()
+        self.do_ws_dist()
         print("Real-space lattice:\n", self.real_lattice)
 
         #########
@@ -199,9 +201,7 @@ class System_w90(System):
 
             # Naive finite-difference scheme
             if not self.transl_inv_JM:
-                if not self.use_wcc_phase: # Phase convention II
-                    pass
-                else:                      # Phase convention I
+                if use_wcc_phase_findiff : # Phase convention I
                     phase  = np.einsum('ba,ja->jb', bk_cart_unique, centers)
                     AA_Rb *= np.exp(1.j * phase[None,:,None,:,None])
 
@@ -252,7 +252,7 @@ class System_w90(System):
 
             # Naive finite-difference scheme
             if not self.transl_inv_JM:
-                if not self.use_wcc_phase: # Phase convention II
+                if not use_wcc_phase_findiff: # Phase convention II
                     pass
                 else:                      # Phase convention I
                     phase  = np.einsum('ba,ja->jb', bk_cart_unique, centers)
@@ -284,7 +284,7 @@ class System_w90(System):
 
             # Naive finite-difference scheme
             if not self.transl_inv_JM:
-                if not self.use_wcc_phase: # Phase convention II
+                if not use_wcc_phase_findiff: # Phase convention II
                     pass
                 else:                      # Phase convention I
                     phase_1 = -np.einsum('ba,ia->ib', bk_cart_unique, centers)
@@ -327,7 +327,7 @@ class System_w90(System):
 
             # Naive finite-difference scheme
             if not self.transl_inv_JM:
-                if not self.use_wcc_phase: # Phase convention II
+                if not use_wcc_phase_findiff: # Phase convention II
                     pass
                 else:                      # Phase convention I
                     phase_1 = -np.einsum('ba,ia->ib', bk_cart_unique, centers)
@@ -401,6 +401,9 @@ class System_w90(System):
                 GG_R = GG_R0 + 0.5 * (rc + rc.swapaxes(3,4))
 
             self.set_R_mat('GG', GG_R, reset=True)
+
+        self.do_at_end_of_init(do_ws_dist=False,
+                convert_convention=( (not self.transl_inv_JM) and self.use_wcc_phase and (not wcc_phase_findiff) ) )
 
     ###########################################################################
 

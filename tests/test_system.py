@@ -74,8 +74,8 @@ def check_system():
                 missed = np.where(abs(data - data_ref) > req_precision)
                 n_missed = len(missed[0])
                 err_msg = (f"matrix elements {key} for system {name} give an "
-                           f"absolute difference of {diff} greater than the required precision {req_precision}\n"
-                           f"wrong elements {n_missed} out of {data.size}")
+                           f"absolute difference of {diff} greater than the required precision {req_precision}"
+                           f"wrong elements {n_missed} out of {data.size}\n")
                 if XX:
                     if n_missed < data.size / 10:
                         err_msg += "\n" + ("\n".join(
@@ -124,7 +124,7 @@ def test_system_Fe_W90_wcc(check_system, system_Fe_W90_wcc):
     check_system(
         system_Fe_W90_wcc, "Fe_W90_wcc",
         extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
     )
 
 
