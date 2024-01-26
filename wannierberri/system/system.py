@@ -13,6 +13,7 @@
 
 import numpy as np
 import lazy_property
+from functools import cached_property
 from .sym_wann import SymWann
 from ..__utility import alpha_A, beta_A, iterate3dpm
 from ..symmetry import Symmetry, Group, TimeReversal
@@ -272,6 +273,8 @@ class System:
             magmom=magmom,
             DFT_code=DFT_code)
         self._XX_R, self.iRvec = symmetrize_wann.symmetrize(method=method)
+        self.clear_cached_R()
+        self.clear_cached_wcc()
         self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom,
                                     DFT_code='qe')
 
@@ -503,11 +506,11 @@ class System:
         """
         self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def cRvec(self):
         return self.iRvec.dot(self.real_lattice)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def cRvec_p_wcc(self):
         """
         With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [i,j,iRvec,a] (Cartesian)
@@ -517,7 +520,13 @@ class System:
         else:
             return self.cRvec[None, None, :, :]
 
-    @lazy_property.LazyProperty
+    def clear_cached_R(self):
+        for attr in 'cRvec', 'cRvec_p_wcc':
+            if hasattr(self,attr):
+                delattr(self,attr)
+
+
+    @cached_property
     def diff_wcc_cart(self):
         """
         With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [i,j,a] (Cartesian)
@@ -525,13 +534,14 @@ class System:
         wannier_centers = self.wannier_centers_cart
         return wannier_centers[None, :, :] - wannier_centers[:, None, :]
 
-    @lazy_property.LazyProperty
+    @cached_property
     def diff_wcc_red(self):
         """
         With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [i,j,a] (Reduced)
         """
         wannier_centers = self.wannier_centers_reduced
         return wannier_centers[None, :, :] - wannier_centers[:, None, :]
+
 
     @property
     def wannier_centers_cart_wcc_phase(self):
@@ -540,6 +550,12 @@ class System:
             return self.wannier_centers_cart
         else:
             return np.zeros((self.num_wann, 3), dtype=float)
+
+    def clear_cached_wcc(self):
+        for attr in 'diff_wcc_cart', 'cRvec_p_wcc', 'diff_wcc_red':
+            if hasattr(self,attr):
+                delattr(self,attr)
+
 
     @property
     def is_phonon(self):

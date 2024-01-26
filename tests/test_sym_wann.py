@@ -52,7 +52,7 @@ def check_symmetry(check_run):
 
 
 
-def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb):
+def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb_wcc):
     """Test shift current with and without symmetry is the same for a symmetrized system"""
     param = dict(
         Efermi=Efermi_GaAs,
@@ -65,7 +65,7 @@ def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb):
         shift_current=calc.dynamic.ShiftCurrent(sc_eta=0.1, **param),
                         )
 
-    check_symmetry(system=system_GaAs_sym_tb,
+    check_symmetry(system=system_GaAs_sym_tb_wcc,
                    grid_param=dict(NK=6, NKFFT=3),
                    calculators=calculators,
                    precision=1e-6
@@ -75,14 +75,14 @@ def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb):
 
 
 
-def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb):
+def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb_wcc):
     param = {'Efermi': Efermi_Mn3Sn}
     calculators = {}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
     calculators.update({
         'ahc': calc.static.AHC(Efermi=Efermi_Mn3Sn, kwargs_formula={"external_terms": True}),
                         })
-    check_symmetry(system=system_Mn3Sn_sym_tb, calculators=calculators)
+    check_symmetry(system=system_Mn3Sn_sym_tb_wcc, calculators=calculators)
 
 
 def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result):
@@ -141,7 +141,7 @@ def test_Fe_sym_W90_sym(check_run, system_Fe_sym_W90, compare_any_result):
     )
 
 
-def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb, compare_any_result):
+def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb_wcc, compare_any_result):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
     calculators.update({
@@ -153,7 +153,7 @@ def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb, compare
                         })
 
     check_run(
-        system_GaAs_sym_tb,
+        system_GaAs_sym_tb_wcc,
         {'ahc': calc.static.AHC(Efermi=Efermi_GaAs)},
         fout_name="berry_GaAs_sym_tb",
         precision=1e-5,

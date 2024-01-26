@@ -285,8 +285,7 @@ def system_GaAs_tb():
     return system
 
 
-@pytest.fixture(scope="session")
-def system_GaAs_sym_tb_old():
+def get_system_GaAs_sym_tb(method=None, use_wcc_phase=False, use_ws=False):
     """Create system for GaAs using sym_tb.dat data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
@@ -296,7 +295,7 @@ def system_GaAs_sym_tb_old():
             tar.extract(tarinfo, data_dir)
 
     seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
+    system = wberri.system.System_tb(seedname, berry=True, use_ws=use_ws, use_wcc_phase=use_wcc_phase)
     system.set_symmetry(symmetries_GaAs)
     system.symmetrize(
         positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
@@ -308,30 +307,21 @@ def system_GaAs_sym_tb_old():
     system.set_symmetry(symmetries_GaAs)
     return system
 
+@pytest.fixture(scope="session")
+def system_GaAs_sym_tb_old():
+    """Create system for GaAs using sym_tb.dat data"""
+    return get_system_GaAs_sym_tb(method="old", use_wcc_phase=False, use_ws=Fasle)
+
 
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb():
     """Create system for GaAs using sym_tb.dat data"""
+    return get_system_GaAs_sym_tb(method="new", use_wcc_phase=False, use_ws=False)
 
-    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "GaAs_sym_tb.dat")):
-        tar = tarfile.open(os.path.join(data_dir, "GaAs_sym_tb.dat.tar.gz"))
-        for tarinfo in tar:
-            tar.extract(tarinfo, data_dir)
-
-    seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
-    system.set_symmetry(symmetries_GaAs)
-    system.symmetrize(
-        positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
-        atom_name=['Ga', 'As'],
-        proj=['Ga:sp3', 'As:sp3'],
-        soc=True,
-        DFT_code='vasp',
-        method="new")
-    system.set_symmetry(symmetries_GaAs)
-    return system
-
+@pytest.fixture(scope="session")
+def system_GaAs_sym_tb_wcc():
+    """Create system for GaAs using sym_tb.dat data"""
+    return get_system_GaAs_sym_tb(method="new", use_wcc_phase=True, use_ws=True)
 
 
 @pytest.fixture(scope="session")
@@ -530,10 +520,9 @@ def system_Phonons_GaAs():
     return system
 
 
-@pytest.fixture(scope="session")
-def system_Mn3Sn_sym_tb_old():
-    """Create system for Mn3Sn using _tb.dat data"""
 
+
+def get_system_Mn3Sn_sym_tb(method, use_wcc_phase=False, use_ws=False):
     data_dir = os.path.join(ROOT_DIR, "data", "Mn3Sn_Wannier90")
     if not os.path.isfile(os.path.join(data_dir, "Mn3Sn_tb.dat")):
         tar = tarfile.open(os.path.join(data_dir, "Mn3Sn_tb.dat.tar.gz"))
@@ -541,7 +530,7 @@ def system_Mn3Sn_sym_tb_old():
             tar.extract(tarinfo, data_dir)
 
     seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
+    system = wberri.system.System_tb(seedname, berry=True, use_ws=use_ws, use_wcc_phase=use_wcc_phase)
     system.symmetrize(
             positions=np.array([
                 [0.6666667, 0.8333333, 0],
@@ -565,47 +554,24 @@ def system_Mn3Sn_sym_tb_old():
                 [0, 0, 0],
                 [0, 0, 0]],
             DFT_code='vasp',
-            method="old")
+            method=method)
     return system
 
+
+@pytest.fixture(scope="session")
+def system_Mn3Sn_sym_tb_old():
+    """Create system for Mn3Sn using _tb.dat data"""
+    return get_system_Mn3Sn_sym_tb(method="old", use_wcc_phase=False, use_ws=False)
 
 @pytest.fixture(scope="session")
 def system_Mn3Sn_sym_tb():
     """Create system for Mn3Sn using _tb.dat data"""
+    return get_system_Mn3Sn_sym_tb(method="new", use_wcc_phase=False, use_ws=False)
 
-    data_dir = os.path.join(ROOT_DIR, "data", "Mn3Sn_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "Mn3Sn_tb.dat")):
-        tar = tarfile.open(os.path.join(data_dir, "Mn3Sn_tb.dat.tar.gz"))
-        for tarinfo in tar:
-            tar.extract(tarinfo, data_dir)
-
-    seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, use_ws=False)
-    system.symmetrize(
-            positions=np.array([
-                [0.6666667, 0.8333333, 0],
-                [0.1666667, 0.3333333, 0],
-                [0.6666667, 0.3333333, 0],
-                [0.3333333, 0.1666667, 0.5],
-                [0.8333333, 0.6666667, 0.5],
-                [0.3333333, 0.6666667, 0.5],
-                [0.8333333, 0.1666667, 0.5],
-                [0.1666667, 0.8333333, 0]]),
-            atom_name=['Mn'] * 6 + ['Sn'] * 2,
-            proj=['Mn:s;d', 'Sn:p'],
-            soc=True,
-            magmom=[
-                [0, 2, 0],
-                [np.sqrt(3), -1, 0],
-                [-np.sqrt(3), -1, 0],
-                [0, 2, 0],
-                [np.sqrt(3), -1, 0],
-                [-np.sqrt(3), -1, 0],
-                [0, 0, 0],
-                [0, 0, 0]],
-            DFT_code='vasp',
-            method="new")
-    return system
+@pytest.fixture(scope="session")
+def system_Mn3Sn_sym_tb_wcc():
+    """Create system for Mn3Sn using _tb.dat data"""
+    return get_system_Mn3Sn_sym_tb(method="new", use_wcc_phase=True, use_ws=False)
 
 
 ###################################
