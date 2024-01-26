@@ -340,20 +340,20 @@ class SymWann():
                                 # X_L: only rotation wannier centres from L to L' before rotating orbitals.
                                 XX_L = self.matrix_list[X][self.H_select[symop.rot_map[atom_a], symop.rot_map[atom_b]],
                                                            new_Rvec_index].reshape(shape)
-                                # special even with R == [0,0,0] diagonal terms.
-                                if iR == iR0 and atom_a == atom_b:
-                                    if X in ['AA', 'BB']:
-                                        v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
-                                        m_tmp = np.zeros(XX_L.shape, dtype=complex)
-                                        for i in range(num_w_a):
-                                            m_tmp[i, i, :] = v_tmp
-                                        # print (f"(old) setting diagonal for atoms {atom_a},{atom_b}, opeartion={symop.ind}. v_tmp={v_tmp} \n m_tmp=\n {m_tmp}")
-                                        if X == 'AA':
-                                            XX_L += m_tmp
-                                        elif X == 'BB':
-                                            XX_L += (m_tmp *
-                                                self.matrix_list['Ham'][self.H_select[symop.rot_map[atom_a], symop.rot_map[atom_b]],
-                                                    new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
+                                # # special even with R == [0,0,0] diagonal terms.
+                                #if iR == iR0 and atom_a == atom_b:
+                                #    if X in ['AA', 'BB']:
+                                #        v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
+                                #        m_tmp = np.zeros(XX_L.shape, dtype=complex)
+                                #        for i in range(num_w_a):
+                                #            m_tmp[i, i, :] = v_tmp
+                                #        # print (f"(old) setting diagonal for atoms {atom_a},{atom_b}, opeartion={symop.ind}. v_tmp={v_tmp} \n m_tmp=\n {m_tmp}")
+                                #        if X == 'AA':
+                                #            XX_L += m_tmp
+                                #        elif X == 'BB':
+                                #            XX_L += (m_tmp *
+                                #                self.matrix_list['Ham'][self.H_select[symop.rot_map[atom_a], symop.rot_map[atom_b]],
+                                #                    new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
                                 if XX_L.ndim == 3:
                                     # X_all: rotating vector.
                                     XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=1).reshape(shape)
@@ -539,21 +539,21 @@ class SymWann():
                                     # X_L: only rotation wannier centres from L to L' before rotating orbitals.
                                     XX_L = matrix_dict_in[X][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
                                                                new_Rvec_index]
-                                    # special even with R == [0,0,0] diagonal terms.
-                                    if iR == iR0 and atom_a == atom_b:
-                                        # print (f"setting diagonal AA/BB for {atom_a}, {atom_b}")
-                                        if X in ['AA', 'BB']:
-                                            v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
-                                            m_tmp = np.zeros(XX_L.shape, dtype=complex)
-                                            for i in range(self.wann_atom_info[atom_a].num_wann):
-                                                m_tmp[i, i, :] = v_tmp
-                                            # print (f"(new) setting diagonal for atoms {atom_a},{atom_b}, operation {symop.ind}. v_tmp={v_tmp}")
-                                            if X == 'AA':
-                                                XX_L = XX_L + m_tmp
-                                            elif X == 'BB':
-                                                XX_L = XX_L + (m_tmp *
-                                                    self.matrix_dict_list['Ham'][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
-                                                        new_Rvec_index][:, :, None])
+                                    # # special even with R == [0,0,0] diagonal terms.
+                                    #if iR == iR0 and atom_a == atom_b:
+                                    #    # print (f"setting diagonal AA/BB for {atom_a}, {atom_b}")
+                                    #    if X in ['AA', 'BB']:
+                                    #        v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
+                                    #        m_tmp = np.zeros(XX_L.shape, dtype=complex)
+                                    #        for i in range(self.wann_atom_info[atom_a].num_wann):
+                                    #            m_tmp[i, i, :] = v_tmp
+                                    #        # print (f"(new) setting diagonal for atoms {atom_a},{atom_b}, operation {symop.ind}. v_tmp={v_tmp}")
+                                    #        if X == 'AA':
+                                    #            XX_L = XX_L + m_tmp
+                                    #        elif X == 'BB':
+                                    #            XX_L = XX_L + (m_tmp *
+                                    #                self.matrix_dict_list['Ham'][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
+                                    #                    new_Rvec_index][:, :, None])
                                     if XX_L.ndim == 3:
                                         # X_all: rotating vector.
                                         XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=1).reshape(XX_L.shape)

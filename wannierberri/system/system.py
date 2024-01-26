@@ -256,6 +256,9 @@ class System:
         Notes:
             does not update wannier_centers. TODO: make the code update them
         """
+        
+        if not self.use_wcc_phase:
+            raise NotImplementedError("Symmetrization is implemented only for convention I")
 
         symmetrize_wann = SymWann(
             num_wann=self.num_wann,
