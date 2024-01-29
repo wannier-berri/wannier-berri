@@ -275,7 +275,7 @@ def get_system_GaAs_sym_tb(method=None, use_wcc_phase=False, use_ws=False):
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb_old():
     """Create system for GaAs using sym_tb.dat data"""
-    return get_system_GaAs_sym_tb(method="old", use_wcc_phase=False, use_ws=Fasle)
+    return get_system_GaAs_sym_tb(method="old", use_wcc_phase=False, use_ws=False)
 
 
 @pytest.fixture(scope="session")
