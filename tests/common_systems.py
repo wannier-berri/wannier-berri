@@ -131,8 +131,7 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
     return system
 
 
-@pytest.fixture(scope="session")
-def system_Fe_sym_W90_old(create_files_Fe_W90):
+def get_system_Fe_sym_W90(method=None,use_wcc_phase=False, use_ws=False, **kwargs):
     """Create system for Fe symmetrization using Wannier90 data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
@@ -140,83 +139,40 @@ def system_Fe_sym_W90_old(create_files_Fe_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, use_ws=False)
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, use_ws=use_ws, use_wcc_phase=use_wcc_phase, **kwargs)
     system.set_symmetry(symmetries_Fe)
-    system.symmetrize(
-        proj=['Fe:sp3d2;t2g'],
-        atom_name=['Fe'],
-        positions=np.array([[0, 0, 0]]),
-        magmom=[[0., 0., -2.31]],
-        soc=True,
-        DFT_code='qe',
-        method="old")
-
+    if method is not None:
+        system.symmetrize(
+            proj=['Fe:sp3d2;t2g'],
+            atom_name=['Fe'],
+            positions=np.array([[0, 0, 0]]),
+            magmom=[[0., 0., -2.31]],
+            soc=True,
+            DFT_code='qe',
+            method=method)
     return system
-
 
 @pytest.fixture(scope="session")
-def system_Fe_sym_W90(create_files_Fe_W90):
-    """Create system for Fe symmetrization using Wannier90 data"""
+def system_Fe_sym_W90_old():
+    return get_system_Fe_sym_W90(method="old")
 
-    data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
-    create_W90_files('Fe_sym', ['uHu'], data_dir)
-
-    # Load system
-    seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, use_ws=False)
-    system.set_symmetry(symmetries_Fe)
-    system.symmetrize(
-        proj=['Fe:sp3d2;t2g'],
-        atom_name=['Fe'],
-        positions=np.array([[0, 0, 0]]),
-        magmom=[[0., 0., -2.31]],
-        soc=True,
-        DFT_code='qe',
-        method="new")
-
-    return system
-
+@pytest.fixture(scope="session")
+def system_Fe_sym_W90():
+    return get_system_Fe_sym_W90(method="new")
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj_set_spin(create_files_Fe_W90):
-    """Create system for Fe symmetrization using Wannier90 data"""
-
-    data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
-    create_W90_files('Fe_sym', ['uHu'], data_dir)
-
-    # Load system
-    seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=False, use_ws=False)
-    system.set_symmetry(symmetries_Fe)
+    system=get_system_Fe_sym_W90()
     system.set_spin_from_code(DFT_code="qe")
     return system
 
-
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj(create_files_Fe_W90):
-    """Create system for Fe symmetrization using Wannier90 data"""
-
-    data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
-    create_W90_files('Fe_sym', ['uHu'], data_dir)
-    # Load system
-    seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, SHCqiao=True, spin=True, use_ws=False)
-    system.set_symmetry(symmetries_Fe)
-    return system
-
+    return get_system_Fe_sym_W90(SHCqiao=True)
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj_ws(create_files_Fe_W90):
-    """Create system for Fe symmetrization using Wannier90 data"""
-
-    data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
-    create_W90_files('Fe_sym', ['uHu'], data_dir)
-    # Load system
-    seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, SHCqiao=True, spin=True, use_ws=True)
-    system.set_symmetry(symmetries_Fe)
-    return system
-
+    return get_system_Fe_sym_W90(use_ws=True)
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_disentangle(create_files_Fe_W90):

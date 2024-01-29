@@ -73,8 +73,6 @@ def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb):
 
 
 
-
-
 def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb):
     param = {'Efermi': Efermi_Mn3Sn}
     calculators = {}
@@ -84,8 +82,8 @@ def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb):
                         })
     check_symmetry(system=system_Mn3Sn_sym_tb, calculators=calculators)
 
-
-def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result):
+@pytest.mark.parametrize("use_k_sym", [False, True])
+def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result, use_k_sym):
     param = {'Efermi': Efermi_Fe}
     cals = {'ahc': calc.static.AHC,
             'Morb': calc.static.Morb,
@@ -96,7 +94,7 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result):
         calculators,
         fout_name="berry_Fe_sym_W90",
         suffix="-run",
-        use_symmetry=False
+        use_symmetry=use_k_sym
     )
     cals = {'gyrotropic_Korb': calc.static.GME_orb_FermiSea,
             'berry_dipole': calc.static.BerryDipole_FermiSea,
@@ -109,37 +107,33 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result):
         precision=1e-8,
         suffix="-run",
         compare_zero=True,
-        use_symmetry=False
+        use_symmetry=use_k_sym
     )
 
-
-def test_Fe_sym_W90_sym(check_run, system_Fe_sym_W90, compare_any_result):
-    param = {'Efermi': Efermi_Fe}
-    cals = {'ahc': calc.static.AHC,
+@pytest.fixture
+def checksym_Fe(check_run, compare_any_result, check_symmetry):
+    def _inner(system):
+        param = {'Efermi': Efermi_Fe}
+        cals = {'dos': calc.static.DOS,
+                'cumdos': calc.static.CumDOS,
+            'conductivity_ohmic': calc.static.Ohmic_FermiSea,
+            'conductivity_ohmic_fsurf': calc.static.Ohmic_FermiSurf,
+            'ahc': calc.static.AHC,
             'Morb': calc.static.Morb,
             'spin': calc.static.Spin}
-    calculators = {k: v(**param) for k, v in cals.items()}
-    check_run(
-        system_Fe_sym_W90,
-        calculators,
-        fout_name="berry_Fe_sym_W90",
-        suffix="sym-run",
-        use_symmetry=True
-    )
-    cals = {'gyrotropic_Korb': calc.static.GME_orb_FermiSea,
-            'berry_dipole': calc.static.BerryDipole_FermiSea,
-            'gyrotropic_Kspin': calc.static.GME_spin_FermiSea}
-    calculators = {k: v(**param) for k, v in cals.items()}
-    check_run(
-        system_Fe_sym_W90,
-        calculators,
-        fout_name="berry_Fe_sym_W90",
-        suffix="sym-run",
-        precision=1e-8,
-        compare_zero=True,
-        use_symmetry=True
-    )
+        calculators = {k: v(**param) for k, v in cals.items()}
+        check_symmetry(system=system,
+                       grid_param=dict(NK=6, NKFFT=3),
+                   calculators=calculators,
+                   precision=1e-6
+                    )
+    return _inner
 
+def test_Fe_old(system_Fe_sym_W90_old, checksym_Fe):
+    checksym_Fe(system_Fe_sym_W90_old)
+
+def test_Fe_new(system_Fe_sym_W90, checksym_Fe):
+    checksym_Fe(system_Fe_sym_W90)
 
 def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb, compare_any_result):
     param = {'Efermi': Efermi_GaAs}
