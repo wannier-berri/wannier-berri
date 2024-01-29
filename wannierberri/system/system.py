@@ -257,9 +257,9 @@ class System:
         Notes:
             does not update wannier_centers. TODO: make the code update them
         """
-        
-        if not self.use_wcc_phase:
-            raise NotImplementedError("Symmetrization is implemented only for convention I")
+
+#        if not self.use_wcc_phase:
+#            raise NotImplementedError("Symmetrization is implemented only for convention I")
 
         symmetrize_wann = SymWann(
             num_wann=self.num_wann,
@@ -270,9 +270,29 @@ class System:
             iRvec=self.iRvec,
             XX_R=self._XX_R,
             soc=soc,
+            wannier_centers_cart=self.wannier_centers_cart,
             magmom=magmom,
+            use_wcc_phase=self.use_wcc_phase,
             DFT_code=DFT_code)
-        self._XX_R, self.iRvec = symmetrize_wann.symmetrize(method=method)
+        if self.has_R_mat('AA'):
+            print ("diagonal elements of position operator before symmetrization\n",self.get_R_mat('AA')[:,:,self.iR0].diagonal())
+
+        print ("Wannier Centers cart (raw):\n",self.wannier_centers_cart)
+        print ("Wannier Centers red: (raw):\n",self.wannier_centers_reduced)
+        (self._XX_R, self.iRvec), self.wannier_centers_cart = symmetrize_wann.symmetrize(method=method)
+        self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+
+        if self.has_R_mat('AA'):
+            print ("diagonal elements of position operator after symmetrization\n",self.get_R_mat('AA')[:,:,self.iR0].diagonal())
+        print ("Wannier Centers cart (symmetrized):\n",self.wannier_centers_cart)
+        print ("Wannier Centers red: (symmetrized):\n",self.wannier_centers_reduced)
+        ## Temporary!
+#        self.wannier_centers_cart*=0
+#        self.wannier_centers_reduced*=0
+        if self.use_wcc_phase and self.has_R_mat('AA'):
+            self.get_R_mat('AA')[np.arange(self.num_wann),np.arange(self.num_wann),self.iR0,:]=0
+        if self.has_R_mat('AA'):
+            print ("diagonal elements of position operator are zero\n",self.get_R_mat('AA')[:,:,self.iR0].diagonal())
         self.clear_cached_R()
         self.clear_cached_wcc()
         self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom,
