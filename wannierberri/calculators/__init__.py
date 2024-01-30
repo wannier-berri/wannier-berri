@@ -4,8 +4,6 @@ receive :calss:`~wannierberri.data_K._Data_K` objects and yield
 :class:`~wannierberri.result.Result`
 """
 
-from .tabulate import TabulatorAll
-from . import static, dynamic, tabulate
 from termcolor import cprint
 
 
@@ -33,3 +31,6 @@ class Calculator():
                 self.comment = "calculator not described"
         if print_comment:
             cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
+
+from . import static, dynamic, tabulate
+from .tabulate import TabulatorAll
