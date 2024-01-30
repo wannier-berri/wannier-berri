@@ -326,7 +326,7 @@ class SymWann():
         WCC_out = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
 
         for irot, symop in enumerate(self.symmetry_operations):
-            print('irot = ', irot + 1)
+            # print('irot = ', irot + 1)
             # TODO try numba
             for atom_a in range(self.num_wann_atom):
                 num_w_a = self.wann_atom_info[atom_a].num_wann  # number of orbitals of atom_a
@@ -387,6 +387,7 @@ class SymWann():
                                                            new_Rvec_index].reshape(shape)
                                 # # special even with R == [0,0,0] diagonal terms.
                                 # if not self.use_wcc_phase:
+                                # TODO : after making sure that average_WCC works, remove this
                                 if iR == iR0 and atom_a == atom_b:
                                     if X == '_WCC':
                                         v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
@@ -428,6 +429,7 @@ class SymWann():
         else:
             raise ValueError()
 
+        # TODO : after making sure that average_WCC works, remove _WCC
         if '_WCC' in res[0]:
             ir_list = [tuple(x) for x in res[1]]
             iR0 = ir_list.index((0, 0, 0))
@@ -438,6 +440,7 @@ class SymWann():
             del res[0]['_WCC']
         return res, wcc
 
+    # TODO : eventually remove
     def symmetrize_old(self):
         # ========================================================
         # symmetrize existing R vectors and find additional R vectors
@@ -590,6 +593,7 @@ class SymWann():
                                     XX_L = matrix_dict_in[X][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
                                                                new_Rvec_index]
                                     # # special even with R == [0,0,0] diagonal terms.
+                                    # TODO : after making sure that average_WCC works, remove _WCC
                                     if iR == iR0 and atom_a == atom_b:
                                         if X == '_WCC':
                                             v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
@@ -610,9 +614,7 @@ class SymWann():
                                         matrix_dict_list_res[X][(atom_a, atom_b)][iR] += _rotate_matrix(XX_L, symop.p_mat_atom_dagger_T[atom_a], symop.p_mat_atom_T[atom_b]).conj() * self.parity_TR[X]
                     # in single mode we need to determine it only once
                     if mode == "single":
-                        # print (f"{atom_a},{atom_b} : excluding ({exclude_set})")
                         iR_new_list -= exclude_set
-                        # print (f"{atom_a},{atom_b} : iR_new_list -upd ({iR_new_list})")
 
         if mode == "single":
             for (atom_a, atom_b), iR_new_list in iRab_new.items():

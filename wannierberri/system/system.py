@@ -274,8 +274,6 @@ class System:
             magmom=magmom,
             use_wcc_phase=self.use_wcc_phase,
             DFT_code=DFT_code)
-        if self.has_R_mat('AA'):
-            print("diagonal elements of position operator before symmetrization\n", self.get_R_mat('AA')[:, :, self.iR0].diagonal())
 
         print("Wannier Centers cart (raw):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (raw):\n", self.wannier_centers_reduced)
@@ -283,15 +281,14 @@ class System:
         self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
 
         if self.has_R_mat('AA'):
-            print("diagonal elements of position operator after symmetrization\n", self.get_R_mat('AA')[:, :, self.iR0].diagonal())
+            A_diag = self.get_R_mat('AA')[:, :, self.iR0].diagonal()
+            if self.use_wcc_phase:
+                A_diag_max = abs(A_diag).max()
+                if A_diag_max>1e-5:
+                    print (f"WARNING : the maximal value of diagonal position matrix elements is {A_diag_max}. This may signal a problem")
+                self.get_R_mat('AA')[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] = 0
         print("Wannier Centers cart (symmetrized):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (symmetrized):\n", self.wannier_centers_reduced)
-        # Temporary!
-#        self.wannier_centers_cart*=0
-#        self.wannier_centers_reduced*=0
-        if self.use_wcc_phase and self.has_R_mat('AA'):
-            self.get_R_mat('AA')[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] = 0
-            print("diagonal elements of position operator are zero\n", self.get_R_mat('AA')[:, :, self.iR0].diagonal())
         self.clear_cached_R()
         self.clear_cached_wcc()
         self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom,
