@@ -264,6 +264,11 @@ def test_system_Haldane_PythTB(check_system, system_Haldane_PythTB):
         matrices=['Ham', 'AA']
     )
 
+def test_system_KaneMele_odd_PythTB(check_system, system_KaneMele_odd_PythTB):
+    check_system(
+        system_KaneMele_odd_PythTB, "KaneMele", suffix="PythTB",
+        matrices=['Ham','SS']
+    )
 
 def test_system_Chiral_left(check_system, system_Chiral_left):
     check_system(

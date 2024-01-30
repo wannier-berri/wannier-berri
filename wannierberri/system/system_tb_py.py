@@ -72,6 +72,7 @@ class System_tb_py(System):
         self.real_lattice = np.eye(3, dtype=float)
         self.real_lattice[:self.dimr, :self.dimr] = np.array(real)
         self.wannier_centers_cart_auto = wannier_centers_reduced.dot(self.real_lattice)
+        self.set_wannier_centers()
         self.periodic[self.dimr:] = False
         self.recip_lattice = 2 * np.pi * np.linalg.inv(self.real_lattice).T
         Rvec = [tuple(row) for row in Rvec]
@@ -132,6 +133,8 @@ class System_tb_py(System):
                     Ham_R[i, i, index0] = model._site_energies[i]
                 elif model._nspin == 2:
                     Ham_R[2 * i:2 * i + 2, 2 * i:2 * i + 2, index0] = model._site_energies[i]
+            if model._nspin == 2 and self.spin:
+                self.set_spin_pairs( [ (i,i+1) for i in range(0,self.num_wann,2)])
 
         self.set_R_mat('Ham',Ham_R)
 

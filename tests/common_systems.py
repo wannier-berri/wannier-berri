@@ -418,6 +418,7 @@ def system_Haldane_TBmodels_internal():
 
 # Haldane model from PythTB
 model_pythtb_Haldane = wb_models.Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15)
+model_pythtb_KaneMele_odd = wb_models.KaneMele_ptb('odd')
 
 
 @pytest.fixture(scope="session")
@@ -428,6 +429,13 @@ def system_Haldane_PythTB():
     system.set_symmetry(["C3z"])
     return system
 
+@pytest.fixture(scope="session")
+def system_KaneMele_odd_PythTB():
+    """Create system for Haldane model using PythTB"""
+    # Load system
+    system = wberri.system.System_PythTB(model_pythtb_KaneMele_odd, use_wcc_phase=True, spin=True)
+    system.set_symmetry(["C3z","TimeReversal"])
+    return system
 
 # Chiral model
 # A chiral system that also breaks time-reversal. It can be used to test almost any quantity.
