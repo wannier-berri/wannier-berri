@@ -1,3 +1,5 @@
+from . import covariant
+from . import covariant_basic
 import numpy as np
 import abc
 """some basic classes to construct formulae for evaluation"""
@@ -140,6 +142,3 @@ class FormulaProduct(Formula_ln):
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
-
-from . import covariant
-from . import covariant_basic

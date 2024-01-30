@@ -5,7 +5,7 @@ import os
 from common import OUTPUT_DIR, REF_DIR
 
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced', 'wannier_centers_cart_wcc_phase',
-                  'wannier_centers_cart_ws', 'diff_wcc_cart', 'diff_wcc_red'] #, 'cRvec_p_wcc']
+                  'wannier_centers_cart_ws', 'diff_wcc_cart', 'diff_wcc_red']  # , 'cRvec_p_wcc']
 
 
 @pytest.fixture
@@ -53,7 +53,7 @@ def check_system():
             else:
                 data = getattr(system, key)
             data = np.array(data)
-            print ("sort = ",sort)
+            print("sort = ", sort)
             if sort is not None:
                 if sort_axis == 0:
                     data_ref = data_ref[sort]

@@ -38,10 +38,10 @@ def check_symmetry(check_run):
 
         for quant in calculators.keys():
             diff = abs(result_full_k.results[quant].data - result_irr_k.results[quant].data).max()
-            try :
+            try:
                 prec = extra_precision[quant]
             except KeyError:
-                prec=precision
+                prec = precision
             if prec < 0:
                 req_precision = -prec * (abs(result_full_k.results[quant].data) + abs(result_irr_k.results[quant].data)).max() / 2
             else:
@@ -90,6 +90,7 @@ def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb_wcc):
                         })
     check_symmetry(system=system_Mn3Sn_sym_tb_wcc, calculators=calculators)
 
+
 @pytest.mark.parametrize("use_k_sym", [False, True])
 def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result, use_k_sym):
     param = {'Efermi': Efermi_Fe}
@@ -119,6 +120,7 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result, use_k_sym)
         use_symmetry=use_k_sym
     )
 
+
 @pytest.fixture
 def checksym_Fe(check_run, compare_any_result, check_symmetry):
     def _inner(system):
@@ -142,17 +144,22 @@ def checksym_Fe(check_run, compare_any_result, check_symmetry):
                     )
     return _inner
 
+
 def test_Fe_old(system_Fe_sym_W90_old, checksym_Fe):
     checksym_Fe(system_Fe_sym_W90_old)
+
 
 def test_Fe_new(system_Fe_sym_W90, checksym_Fe):
     checksym_Fe(system_Fe_sym_W90)
 
+
 def test_Fe_old_wcc(system_Fe_sym_W90_old_wcc, checksym_Fe):
     checksym_Fe(system_Fe_sym_W90_old_wcc)
 
+
 def test_Fe_new_wcc(system_Fe_sym_W90_wcc, checksym_Fe):
     checksym_Fe(system_Fe_sym_W90_wcc)
+
 
 def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb_wcc, compare_any_result):
     param = {'Efermi': Efermi_GaAs}
@@ -237,7 +244,7 @@ def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb_wcc, compare_any_result)
 
 
 def test_Te_sparse(check_symmetry, system_Te_sparse):
-    param = {'Efermi': Efermi_Te_sparse,  'Emax': 6.15, 'hole_like': True}
+    param = {'Efermi': Efermi_Te_sparse, 'Emax': 6.15, 'hole_like': True}
     calculators = {}
     for k, v in calculators_Te.items():
         par = {}
@@ -248,11 +255,12 @@ def test_Te_sparse(check_symmetry, system_Te_sparse):
 
 
         check_symmetry(system=system_Te_sparse,
-                       grid_param=dict(NK=(6,6,4), NKFFT=(3,3,2)),
+                       grid_param=dict(NK=(6, 6, 4), NKFFT=(3, 3, 2)),
                        calculators=calculators,
                        precision=-1e-8,
                 extra_precision={"berry_dipole": 5e-7},
                     )
+
 
 def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):
     param = {'Efermi': Efermi_Te_sparse, "tetra": True, 'use_factor': False, 'Emax': 6.15, 'hole_like': True}

@@ -275,23 +275,23 @@ class System:
             use_wcc_phase=self.use_wcc_phase,
             DFT_code=DFT_code)
         if self.has_R_mat('AA'):
-            print ("diagonal elements of position operator before symmetrization\n",self.get_R_mat('AA')[:,:,self.iR0].diagonal())
+            print("diagonal elements of position operator before symmetrization\n", self.get_R_mat('AA')[:, :, self.iR0].diagonal())
 
-        print ("Wannier Centers cart (raw):\n",self.wannier_centers_cart)
-        print ("Wannier Centers red: (raw):\n",self.wannier_centers_reduced)
+        print("Wannier Centers cart (raw):\n", self.wannier_centers_cart)
+        print("Wannier Centers red: (raw):\n", self.wannier_centers_reduced)
         (self._XX_R, self.iRvec), self.wannier_centers_cart = symmetrize_wann.symmetrize(method=method)
         self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
 
         if self.has_R_mat('AA'):
-            print ("diagonal elements of position operator after symmetrization\n",self.get_R_mat('AA')[:,:,self.iR0].diagonal())
-        print ("Wannier Centers cart (symmetrized):\n",self.wannier_centers_cart)
-        print ("Wannier Centers red: (symmetrized):\n",self.wannier_centers_reduced)
-        ## Temporary!
+            print("diagonal elements of position operator after symmetrization\n", self.get_R_mat('AA')[:, :, self.iR0].diagonal())
+        print("Wannier Centers cart (symmetrized):\n", self.wannier_centers_cart)
+        print("Wannier Centers red: (symmetrized):\n", self.wannier_centers_reduced)
+        # Temporary!
 #        self.wannier_centers_cart*=0
 #        self.wannier_centers_reduced*=0
         if self.use_wcc_phase and self.has_R_mat('AA'):
-            self.get_R_mat('AA')[np.arange(self.num_wann),np.arange(self.num_wann),self.iR0,:]=0
-            print ("diagonal elements of position operator are zero\n",self.get_R_mat('AA')[:,:,self.iR0].diagonal())
+            self.get_R_mat('AA')[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] = 0
+            print("diagonal elements of position operator are zero\n", self.get_R_mat('AA')[:, :, self.iR0].diagonal())
         self.clear_cached_R()
         self.clear_cached_wcc()
         self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom,
@@ -425,7 +425,7 @@ class System:
         if 'SS' in self.needed_R_matrices and getSS:
             raise NotImplementedError()
 
-    def do_at_end_of_init(self,convert_convention=True):
+    def do_at_end_of_init(self, convert_convention=True):
         self.set_symmetry()
         self.check_periodic()
         self.set_wannier_centers()
@@ -543,8 +543,8 @@ class System:
 
     def clear_cached_R(self):
         for attr in 'cRvec', 'cRvec_p_wcc':
-            if hasattr(self,attr):
-                delattr(self,attr)
+            if hasattr(self, attr):
+                delattr(self, attr)
 
 
     @cached_property
@@ -574,8 +574,8 @@ class System:
 
     def clear_cached_wcc(self):
         for attr in 'diff_wcc_cart', 'cRvec_p_wcc', 'diff_wcc_red':
-            if hasattr(self,attr):
-                delattr(self,attr)
+            if hasattr(self, attr):
+                delattr(self, attr)
 
 
     @property

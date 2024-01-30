@@ -131,7 +131,7 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
     return system
 
 
-def get_system_Fe_sym_W90(method=None,use_wcc_phase=False, use_ws=False, **kwargs):
+def get_system_Fe_sym_W90(method=None, use_wcc_phase=False, use_ws=False, **kwargs):
     """Create system for Fe symmetrization using Wannier90 data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
@@ -152,17 +152,21 @@ def get_system_Fe_sym_W90(method=None,use_wcc_phase=False, use_ws=False, **kwarg
             method=method)
     return system
 
+
 @pytest.fixture(scope="session")
 def system_Fe_sym_W90_old():
     return get_system_Fe_sym_W90(method="old")
+
 
 @pytest.fixture(scope="session")
 def system_Fe_sym_W90():
     return get_system_Fe_sym_W90(method="new")
 
+
 @pytest.fixture(scope="session")
 def system_Fe_sym_W90_old_wcc():
     return get_system_Fe_sym_W90(method="old", use_wcc_phase=True)
+
 
 @pytest.fixture(scope="session")
 def system_Fe_sym_W90_wcc():
@@ -171,17 +175,20 @@ def system_Fe_sym_W90_wcc():
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj_set_spin(create_files_Fe_W90):
-    system=get_system_Fe_sym_W90()
+    system = get_system_Fe_sym_W90()
     system.set_spin_from_code(DFT_code="qe")
     return system
+
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj(create_files_Fe_W90):
     return get_system_Fe_sym_W90(SHCqiao=True)
 
+
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj_ws(create_files_Fe_W90):
     return get_system_Fe_sym_W90(use_ws=True)
+
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_disentangle(create_files_Fe_W90):
@@ -272,6 +279,7 @@ def get_system_GaAs_sym_tb(method=None, use_wcc_phase=False, use_ws=False):
     system.set_symmetry(symmetries_GaAs)
     return system
 
+
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb_old():
     """Create system for GaAs using sym_tb.dat data"""
@@ -282,6 +290,7 @@ def system_GaAs_sym_tb_old():
 def system_GaAs_sym_tb():
     """Create system for GaAs using sym_tb.dat data"""
     return get_system_GaAs_sym_tb(method="new", use_wcc_phase=False, use_ws=False)
+
 
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb_wcc():
@@ -528,10 +537,12 @@ def system_Mn3Sn_sym_tb_old():
     """Create system for Mn3Sn using _tb.dat data"""
     return get_system_Mn3Sn_sym_tb(method="old", use_wcc_phase=False, use_ws=False)
 
+
 @pytest.fixture(scope="session")
 def system_Mn3Sn_sym_tb():
     """Create system for Mn3Sn using _tb.dat data"""
     return get_system_Mn3Sn_sym_tb(method="new", use_wcc_phase=False, use_ws=False)
+
 
 @pytest.fixture(scope="session")
 def system_Mn3Sn_sym_tb_wcc():

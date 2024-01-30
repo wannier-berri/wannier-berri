@@ -89,9 +89,9 @@ class SymWann():
                 raise NotImplementedError(f"symmetrization of matrix {k} is not implemented yet")
         # this an overhead,  but reusing the routines developed for AA, so it is fine, o let's live with this
         if self.wannier_centers_cart is not None:
-            WCC_R = np.zeros((self.num_wann,self.num_wann,self.nRvec,3),dtype=complex)
-            WCC_R [np.arange(self.num_wann), np.arange(self.num_wann), self.index_R((0,0,0)), :] = self.wannier_centers_cart
-            XX_R ["_WCC"] = WCC_R
+            WCC_R = np.zeros((self.num_wann, self.num_wann, self.nRvec, 3), dtype=complex)
+            WCC_R[np.arange(self.num_wann), np.arange(self.num_wann), self.index_R((0, 0, 0)), :] = self.wannier_centers_cart
+            XX_R["_WCC"] = WCC_R
         self.matrix_list = XX_R
 
         # This is confusing, actually the I-odd vectors have "+1" here, because the minus is already in the rotation matrix
@@ -115,8 +115,8 @@ class SymWann():
         }  # {'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
         self.ndimv = {
             'Ham': 0,
-            'AA': 1, 
-            '_WCC': 1, 
+            'AA': 1,
+            '_WCC': 1,
             'BB': 1, 'CC': 1, 'SS': 1
                     }
         self.orbitals = Orbitals()
@@ -173,7 +173,7 @@ class SymWann():
         self.matrix_dict_list = {}
         for k, v1 in XX_R.items():
             v = np.copy(v1)
-            self.spin_reorder(v) 
+            self.spin_reorder(v)
             self.matrix_dict_list[k] = _matrix_to_dict(v, self.H_select, self.wann_atom_info)
 #            if k not in self.possible_matrix_list:
 #                raise ValueError(f" symmetrization of matrix {k} is not implemented yet")
@@ -320,10 +320,10 @@ class SymWann():
 
 
     def average_WCC(self):
-        WCC_in = np.zeros((self.num_wann,self.num_wann,3),dtype=complex)
-        WCC_in [np.arange(self.num_wann), np.arange(self.num_wann), :] = self.wannier_centers_cart
+        WCC_in = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
+        WCC_in[np.arange(self.num_wann), np.arange(self.num_wann), :] = self.wannier_centers_cart
         self.spin_reorder(WCC_in)
-        WCC_out = np.zeros((self.num_wann,self.num_wann,3),dtype=complex)
+        WCC_out = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
 
         for irot, symop in enumerate(self.symmetry_operations):
             print('irot = ', irot + 1)
@@ -388,13 +388,13 @@ class SymWann():
                                 # # special even with R == [0,0,0] diagonal terms.
                                 # if not self.use_wcc_phase:
                                 if iR == iR0 and atom_a == atom_b:
-                                    if X in ['AA', 'BB','_WCC']:
+                                    if X in ['AA', 'BB', '_WCC']:
                                         v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
                                         m_tmp = np.zeros(XX_L.shape, dtype=complex)
                                         for i in range(num_w_a):
                                             m_tmp[i, i, :] = v_tmp
                                         # print (f"(old) setting diagonal for atoms {atom_a},{atom_b}, opeartion={symop.ind}. v_tmp={v_tmp} \n m_tmp=\n {m_tmp}")
-                                        if X == '_WCC' or (X=='AA' and not self.use_wcc_phase):
+                                        if X == '_WCC' or (X == 'AA' and not self.use_wcc_phase):
                                             XX_L += m_tmp
                                 #        elif X == 'BB':
                                 #            XX_L += (m_tmp *
@@ -428,9 +428,9 @@ class SymWann():
     def symmetrize(self, method="new"):
         # TODO : eventually remove the "old"
         if method == "old":
-            res =  self.symmetrize_old()
+            res = self.symmetrize_old()
         elif method == "new":
-            res =  self.symmetrize_new()
+            res = self.symmetrize_new()
         else:
             raise ValueError()
 
@@ -455,7 +455,7 @@ class SymWann():
             for X in return_dic_add.keys():
                 return_dic[X] = np.concatenate((return_dic[X], return_dic_add[X]), axis=2)
 
-        #for k, v in self.matrix_list.items():
+        # for k, v in self.matrix_list.items():
         #    if k not in self.possible_matrix_list:
         #        shape = list(self.matrix_list[k].shape)
         #        shape[2] = nRvec_add
@@ -594,14 +594,14 @@ class SymWann():
                                     # # special even with R == [0,0,0] diagonal terms.
 #                                    if not self.use_wcc_phase:
                                     if iR == iR0 and atom_a == atom_b:
-                                    #    # print (f"setting diagonal AA/BB for {atom_a}, {atom_b}")
-                                        if X in ['AA', 'BB','_WCC']:
+                                        #    # print (f"setting diagonal AA/BB for {atom_a}, {atom_b}")
+                                        if X in ['AA', 'BB', '_WCC']:
                                             v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
                                             m_tmp = np.zeros(XX_L.shape, dtype=complex)
                                             for i in range(self.wann_atom_info[atom_a].num_wann):
                                                 m_tmp[i, i, :] = v_tmp
                                             # print (f"(new) setting diagonal for atoms {atom_a},{atom_b}, operation {symop.ind}. v_tmp={v_tmp}")
-                                            if X == '_WCC' or (X=='AA' and not self.use_wcc_phase):
+                                            if X == '_WCC' or (X == 'AA' and not self.use_wcc_phase):
                                                 XX_L = XX_L + m_tmp
                                     #        elif X == 'BB':
                                     #
@@ -797,5 +797,3 @@ def _get_H_select(num_wann, num_wann_atom, wann_atom_info):
                         for oib in ob_list:
                             H_select[a, b, oia, oib] = True
     return H_select
-
-
