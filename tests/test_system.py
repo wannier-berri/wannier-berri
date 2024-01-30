@@ -137,18 +137,18 @@ def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
     )
 
 
-def test_system_Fe_sym_W90_old(check_system, system_Fe_sym_W90_old):
+def test_system_Fe_sym_W90_old(check_system, system_Fe_sym_W90_old_wcc):
     check_system(
-        system_Fe_sym_W90_old, "Fe_sym_W90",
+        system_Fe_sym_W90_old_wcc, "Fe_sym_W90_wcc",
         extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
         sort_iR=True
     )
 
 
-def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90):
+def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90_wcc):
     check_system(
-        system_Fe_sym_W90, "Fe_sym_W90",
+        system_Fe_sym_W90_wcc, "Fe_sym_W90_wcc",
         extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
         sort_iR=True
@@ -203,17 +203,18 @@ def test_system_GaAs_tb(check_system, system_GaAs_tb):
     )
 
 
-def test_system_GaAs_sym_tb_old(check_system, system_GaAs_sym_tb_old):
+def test_system_GaAs_sym_tb_old(check_system, system_GaAs_sym_tb_old_wcc):
     check_system(
-        system_GaAs_sym_tb_old, "GaAs_sym_tb",
+        system_GaAs_sym_tb_old_wcc, "GaAs_sym_tb_wcc",
         extra_properties=['wannier_centers_cart_auto'],
-        matrices=['Ham', 'AA']
+        matrices=['Ham', 'AA'],
+        sort_iR=True,
     )
 
 
-def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb):
+def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb_wcc):
     check_system(
-        system_GaAs_sym_tb, "GaAs_sym_tb",
+        system_GaAs_sym_tb_wcc, "GaAs_sym_tb_wcc",
         extra_properties=['wannier_centers_cart_auto'],
         matrices=['Ham', 'AA'],
         sort_iR=True,
@@ -340,11 +341,12 @@ def test_system_Phonons_GaAs(check_system, system_Phonons_GaAs):
     )
 
 
-def test_system_Mn3Sn_sym_tb_old(check_system, system_Mn3Sn_sym_tb_old):
+def test_system_Mn3Sn_sym_tb_old(check_system, system_Mn3Sn_sym_tb_old_wcc):
     check_system(
-        system_Mn3Sn_sym_tb_old, "Mn3Sn_sym_tb",
+        system_Mn3Sn_sym_tb_old_wcc, "Mn3Sn_sym_tb_wcc",
         extra_properties=['wannier_centers_cart_auto'],
-        matrices=['Ham', 'AA']
+        matrices=['Ham', 'AA'],
+        sort_iR=True
     )
 
 

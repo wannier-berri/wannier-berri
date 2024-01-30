@@ -154,16 +154,6 @@ def get_system_Fe_sym_W90(method=None, use_wcc_phase=False, use_ws=False, **kwar
 
 
 @pytest.fixture(scope="session")
-def system_Fe_sym_W90_old():
-    return get_system_Fe_sym_W90(method="old")
-
-
-@pytest.fixture(scope="session")
-def system_Fe_sym_W90():
-    return get_system_Fe_sym_W90(method="new")
-
-
-@pytest.fixture(scope="session")
 def system_Fe_sym_W90_old_wcc():
     return get_system_Fe_sym_W90(method="old", use_wcc_phase=True)
 
@@ -281,21 +271,15 @@ def get_system_GaAs_sym_tb(method=None, use_wcc_phase=False, use_ws=False):
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_sym_tb_old():
+def system_GaAs_sym_tb_old_wcc():
     """Create system for GaAs using sym_tb.dat data"""
-    return get_system_GaAs_sym_tb(method="old", use_wcc_phase=False, use_ws=False)
-
-
-@pytest.fixture(scope="session")
-def system_GaAs_sym_tb():
-    """Create system for GaAs using sym_tb.dat data"""
-    return get_system_GaAs_sym_tb(method="new", use_wcc_phase=False, use_ws=False)
+    return get_system_GaAs_sym_tb(method="old", use_wcc_phase=True, use_ws=False)
 
 
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb_wcc():
     """Create system for GaAs using sym_tb.dat data"""
-    return get_system_GaAs_sym_tb(method="new", use_wcc_phase=True, use_ws=True)
+    return get_system_GaAs_sym_tb(method="new", use_wcc_phase=True, use_ws=False)
 
 
 @pytest.fixture(scope="session")
@@ -533,15 +517,9 @@ def get_system_Mn3Sn_sym_tb(method, use_wcc_phase=False, use_ws=False):
 
 
 @pytest.fixture(scope="session")
-def system_Mn3Sn_sym_tb_old():
+def system_Mn3Sn_sym_tb_old_wcc():
     """Create system for Mn3Sn using _tb.dat data"""
-    return get_system_Mn3Sn_sym_tb(method="old", use_wcc_phase=False, use_ws=False)
-
-
-@pytest.fixture(scope="session")
-def system_Mn3Sn_sym_tb():
-    """Create system for Mn3Sn using _tb.dat data"""
-    return get_system_Mn3Sn_sym_tb(method="new", use_wcc_phase=False, use_ws=False)
+    return get_system_Mn3Sn_sym_tb(method="old", use_wcc_phase=True, use_ws=False)
 
 
 @pytest.fixture(scope="session")

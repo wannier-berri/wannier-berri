@@ -92,7 +92,7 @@ def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb_wcc):
 
 
 @pytest.mark.parametrize("use_k_sym", [False, True])
-def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result, use_k_sym):
+def test_Fe_sym_W90(check_run, system_Fe_sym_W90_wcc, compare_any_result, use_k_sym):
     param = {'Efermi': Efermi_Fe}
     cals = {'ahc': calc.static.AHC,
             'Morb': calc.static.Morb,
@@ -100,7 +100,7 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result, use_k_sym)
     calculators = {k: v(**param) for k, v in cals.items()}
 
     check_run(
-        system_Fe_sym_W90,
+        system_Fe_sym_W90_wcc,
         calculators,
         fout_name="berry_Fe_sym_W90",
         suffix="-run",
@@ -111,7 +111,7 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result, use_k_sym)
             'gyrotropic_Kspin': calc.static.GME_spin_FermiSea}
     calculators = {k: v(**param) for k, v in cals.items()}
     check_run(
-        system_Fe_sym_W90,
+        system_Fe_sym_W90_wcc,
         calculators,
         fout_name="berry_Fe_sym_W90",
         precision=1e-8,
@@ -143,14 +143,6 @@ def checksym_Fe(check_run, compare_any_result, check_symmetry):
                    precision=-1e-8
                     )
     return _inner
-
-
-def test_Fe_old(system_Fe_sym_W90_old, checksym_Fe):
-    checksym_Fe(system_Fe_sym_W90_old)
-
-
-def test_Fe_new(system_Fe_sym_W90, checksym_Fe):
-    checksym_Fe(system_Fe_sym_W90)
 
 
 def test_Fe_old_wcc(system_Fe_sym_W90_old_wcc, checksym_Fe):

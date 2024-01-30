@@ -388,18 +388,12 @@ class SymWann():
                                 # # special even with R == [0,0,0] diagonal terms.
                                 # if not self.use_wcc_phase:
                                 if iR == iR0 and atom_a == atom_b:
-                                    if X in ['AA', 'BB', '_WCC']:
+                                    if X == '_WCC':
                                         v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
                                         m_tmp = np.zeros(XX_L.shape, dtype=complex)
                                         for i in range(num_w_a):
                                             m_tmp[i, i, :] = v_tmp
-                                        # print (f"(old) setting diagonal for atoms {atom_a},{atom_b}, opeartion={symop.ind}. v_tmp={v_tmp} \n m_tmp=\n {m_tmp}")
-                                        if X == '_WCC' or (X == 'AA' and not self.use_wcc_phase):
-                                            XX_L += m_tmp
-                                #        elif X == 'BB':
-                                #            XX_L += (m_tmp *
-                                #                self.matrix_list['Ham'][self.H_select[symop.rot_map[atom_a], symop.rot_map[atom_b]],
-                                #                    new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
+                                        XX_L += m_tmp
                                 if XX_L.ndim == 3:
                                     # X_all: rotating vector.
                                     XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=1).reshape(shape)
@@ -435,8 +429,12 @@ class SymWann():
             raise ValueError()
 
         if '_WCC' in res[0]:
-            # wcc = res[0]['_WCC'][:,:,self.index_R((0,0,0))].diagonal().T.real
+            ir_list = [tuple(x) for x in res[1]]
+            iR0 = ir_list.index((0, 0, 0))
+            wcc_1 = res[0]['_WCC'][:, :, iR0].diagonal().T.real
             wcc = self.average_WCC()
+            err = abs(wcc - wcc_1).max()
+            assert err < 1e-6, f"symmetrization of wanier_centers with two methods gives a large error {err} \n{wcc}\n--  vs -- \n{wcc_1}\n"
             del res[0]['_WCC']
         return res, wcc
 
@@ -592,22 +590,13 @@ class SymWann():
                                     XX_L = matrix_dict_in[X][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
                                                                new_Rvec_index]
                                     # # special even with R == [0,0,0] diagonal terms.
-#                                    if not self.use_wcc_phase:
                                     if iR == iR0 and atom_a == atom_b:
-                                        #    # print (f"setting diagonal AA/BB for {atom_a}, {atom_b}")
-                                        if X in ['AA', 'BB', '_WCC']:
+                                        if X == '_WCC':
                                             v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
                                             m_tmp = np.zeros(XX_L.shape, dtype=complex)
                                             for i in range(self.wann_atom_info[atom_a].num_wann):
                                                 m_tmp[i, i, :] = v_tmp
-                                            # print (f"(new) setting diagonal for atoms {atom_a},{atom_b}, operation {symop.ind}. v_tmp={v_tmp}")
-                                            if X == '_WCC' or (X == 'AA' and not self.use_wcc_phase):
-                                                XX_L = XX_L + m_tmp
-                                    #        elif X == 'BB':
-                                    #
-                                    #            XX_L = XX_L + (m_tmp *
-                                    #                self.matrix_dict_list['Ham'][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
-                                    #                    new_Rvec_index][:, :, None])
+                                            XX_L = XX_L + m_tmp
                                     if XX_L.ndim == 3:
                                         # X_all: rotating vector.
                                         XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=1).reshape(XX_L.shape)
