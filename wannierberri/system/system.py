@@ -284,8 +284,8 @@ class System:
             A_diag = self.get_R_mat('AA')[:, :, self.iR0].diagonal()
             if self.use_wcc_phase:
                 A_diag_max = abs(A_diag).max()
-                if A_diag_max>1e-5:
-                    print (f"WARNING : the maximal value of diagonal position matrix elements is {A_diag_max}. This may signal a problem")
+                if A_diag_max > 1e-5:
+                    print(f"WARNING : the maximal value of diagonal position matrix elements is {A_diag_max}. This may signal a problem")
                 self.get_R_mat('AA')[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] = 0
         print("Wannier Centers cart (symmetrized):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (symmetrized):\n", self.wannier_centers_reduced)
