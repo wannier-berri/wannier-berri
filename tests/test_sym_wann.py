@@ -28,6 +28,7 @@ def check_symmetry(check_run):
     def _inner(system,
         calculators={},
         precision=1e-7,
+        extra_precision={},
         **kwargs,
             ):
         kwargs['do_not_compare'] = True
@@ -37,10 +38,14 @@ def check_symmetry(check_run):
 
         for quant in calculators.keys():
             diff = abs(result_full_k.results[quant].data - result_irr_k.results[quant].data).max()
-            if precision < 0:
-                req_precision = -precision * (abs(result_full_k.results[quant].data) + abs(result_irr_k.results[quant].data)).max() / 2
+            try :
+                prec = extra_precision[quant]
+            except KeyError:
+                prec=precision
+            if prec < 0:
+                req_precision = -prec * (abs(result_full_k.results[quant].data) + abs(result_irr_k.results[quant].data)).max() / 2
             else:
-                req_precision = precision
+                req_precision = prec
             assert diff <= req_precision, (
                                             f"data of {quant} with and without symmetries give a maximal "
                                             f"absolute difference of {diff} greater than the required precision {req_precision}"
@@ -229,6 +234,25 @@ def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb_wcc, compare_any_result)
     assert result_full_k.results["opt_conductivity"].data == approx(
         result_irr_k.results["opt_conductivity"].data, abs=1e-7)
 
+
+
+def test_Te_sparse(check_symmetry, system_Te_sparse):
+    param = {'Efermi': Efermi_Te_sparse,  'Emax': 6.15, 'hole_like': True}
+    calculators = {}
+    for k, v in calculators_Te.items():
+        par = {}
+        par.update(param)
+        if k not in ["dos", "cumdos"]:
+            par["kwargs_formula"] = {"external_terms": False}
+        calculators[k] = v(**par)
+
+
+        check_symmetry(system=system_Te_sparse,
+                       grid_param=dict(NK=(6,6,4), NKFFT=(3,3,2)),
+                       calculators=calculators,
+                       precision=-1e-8,
+                extra_precision={"berry_dipole": 5e-7},
+                    )
 
 def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):
     param = {'Efermi': Efermi_Te_sparse, "tetra": True, 'use_factor': False, 'Emax': 6.15, 'hole_like': True}

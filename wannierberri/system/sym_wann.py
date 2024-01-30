@@ -84,7 +84,6 @@ class SymWann():
         self.positions = positions
         self.atom_name = atom_name
         self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', '_WCC']  # ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
-        self.matrix_list = XX_R
         for k in XX_R:
             if k not in self.possible_matrix_list:
                 raise NotImplementedError(f"symmetrization of matrix {k} is not implemented yet")
@@ -93,6 +92,7 @@ class SymWann():
             WCC_R = np.zeros((self.num_wann,self.num_wann,self.nRvec,3),dtype=complex)
             WCC_R [np.arange(self.num_wann), np.arange(self.num_wann), self.index_R((0,0,0)), :] = self.wannier_centers_cart
             XX_R ["_WCC"] = WCC_R
+        self.matrix_list = XX_R
 
         # This is confusing, actually the I-odd vectors have "+1" here, because the minus is already in the rotation matrix
         # but Ham is a scalar, so +1
@@ -171,7 +171,8 @@ class SymWann():
             print(item)
 
         self.matrix_dict_list = {}
-        for k, v in XX_R.items():
+        for k, v1 in XX_R.items():
+            v = np.copy(v1)
             self.spin_reorder(v) 
             self.matrix_dict_list[k] = _matrix_to_dict(v, self.H_select, self.wann_atom_info)
 #            if k not in self.possible_matrix_list:
@@ -385,8 +386,8 @@ class SymWann():
                                 XX_L = self.matrix_list[X][self.H_select[symop.rot_map[atom_a], symop.rot_map[atom_b]],
                                                            new_Rvec_index].reshape(shape)
                                 # # special even with R == [0,0,0] diagonal terms.
-                                if not self.use_wcc_phase:
-                                  if iR == iR0 and atom_a == atom_b:
+                                # if not self.use_wcc_phase:
+                                if iR == iR0 and atom_a == atom_b:
                                     if X in ['AA', 'BB','_WCC']:
                                         v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
                                         m_tmp = np.zeros(XX_L.shape, dtype=complex)
@@ -434,9 +435,10 @@ class SymWann():
             raise ValueError()
 
         if '_WCC' in res[0]:
-        #    self.wannier_centers_cart = res[0]['_WCC'][:,:,self.index_R((0,0,0))].diagonal().T.real
+            # wcc = res[0]['_WCC'][:,:,self.index_R((0,0,0))].diagonal().T.real
+            wcc = self.average_WCC()
             del res[0]['_WCC']
-        return res, self.average_WCC()
+        return res, wcc
 
     def symmetrize_old(self):
         # ========================================================
@@ -590,8 +592,8 @@ class SymWann():
                                     XX_L = matrix_dict_in[X][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
                                                                new_Rvec_index]
                                     # # special even with R == [0,0,0] diagonal terms.
-                                    if not self.use_wcc_phase:
-                                      if iR == iR0 and atom_a == atom_b:
+#                                    if not self.use_wcc_phase:
+                                    if iR == iR0 and atom_a == atom_b:
                                     #    # print (f"setting diagonal AA/BB for {atom_a}, {atom_b}")
                                         if X in ['AA', 'BB','_WCC']:
                                             v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)

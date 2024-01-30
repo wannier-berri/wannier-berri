@@ -141,7 +141,8 @@ def test_system_Fe_sym_W90_old(check_system, system_Fe_sym_W90_old):
     check_system(
         system_Fe_sym_W90_old, "Fe_sym_W90",
         extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
+        sort_iR=True
     )
 
 

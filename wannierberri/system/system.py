@@ -291,12 +291,11 @@ class System:
 #        self.wannier_centers_reduced*=0
         if self.use_wcc_phase and self.has_R_mat('AA'):
             self.get_R_mat('AA')[np.arange(self.num_wann),np.arange(self.num_wann),self.iR0,:]=0
-        if self.has_R_mat('AA'):
             print ("diagonal elements of position operator are zero\n",self.get_R_mat('AA')[:,:,self.iR0].diagonal())
         self.clear_cached_R()
         self.clear_cached_wcc()
         self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom,
-                                    DFT_code='qe')
+                                    DFT_code=DFT_code)
 
     def check_periodic(self):
         exclude = np.zeros(self.nRvec, dtype=bool)
@@ -426,10 +425,12 @@ class System:
         if 'SS' in self.needed_R_matrices and getSS:
             raise NotImplementedError()
 
-    def do_at_end_of_init(self):
+    def do_at_end_of_init(self,convert_convention=True):
         self.set_symmetry()
         self.check_periodic()
         self.set_wannier_centers()
+        if convert_convention:
+            self.convention_II_to_I()
         self.do_ws_dist()
         print("Number of wannier functions:", self.num_wann)
         print("Number of R points:", self.nRvec)
@@ -599,6 +600,9 @@ class System:
         elif hasattr(self, "wannier_centers_cart_auto"):
             self.wannier_centers_cart = self.wannier_centers_cart_auto
             self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+
+
+    def convention_II_to_I(self):
         if self.use_wcc_phase:
             R_new = {}
             if self.wannier_centers_cart is None:
