@@ -275,7 +275,9 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, morb=True, transl_inv=False, spin=True, use_wcc_phase=True)
+    system = wberri.system.System_w90(seedname, morb=True,
+                                      OSD=True, OSD_spin=True,
+                                      transl_inv=False, spin=True, use_wcc_phase=True)
     system.set_symmetry(symmetries_GaAs)
 
     return system

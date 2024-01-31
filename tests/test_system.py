@@ -190,7 +190,7 @@ def test_system_GaAs_W90_wcc(check_system, system_GaAs_W90_wcc):
     check_system(
         system_GaAs_W90_wcc, "GaAs_W90_wcc",
         extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'GG', 'OO']
     )
 
 

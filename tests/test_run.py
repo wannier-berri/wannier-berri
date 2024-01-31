@@ -173,6 +173,18 @@ calculators_Chiral = {
 }
 
 
+calculators_SDCT = {
+    'SDCT_sym_sea_I': wberri.calculators.dynamic.SDCT_sym_sea_I,
+    'SDCT_sym_sea_II': wberri.calculators.dynamic.SDCT_sym_sea_II,
+    'SDCT_asym_sea_I': wberri.calculators.dynamic.SDCT_asym_sea_I,
+    'SDCT_asym_sea_II': wberri.calculators.dynamic.SDCT_asym_sea_II,
+    'SDCT_asym_surf_I': wberri.calculators.dynamic.SDCT_asym_surf_I,
+    'SDCT_asym_surf_II': wberri.calculators.dynamic.SDCT_asym_surf_II,
+    'SDCT_sym_surf_I': wberri.calculators.dynamic.SDCT_sym_surf_I,
+    'SDCT_sym_surf_II': wberri.calculators.dynamic.SDCT_sym_surf_II,
+    'SDCT_sym': wberri.calculators.dynamic.SDCT_sym,
+    'SDCT_asym': wberri.calculators.dynamic.SDCT_asym,
+}
 
 
 calculators_Chiral_tetra = {
@@ -720,6 +732,23 @@ def test_GaAs_tb_wcc(check_run, system_GaAs_tb_wcc, compare_any_result):
             '_CCab_antisym': True
         },
         extra_precision={"berry_dipole_fsurf": 1e-6}
+    )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
+
+def test_GaAs_SDCT(check_run, system_GaAs_W90_wcc, compare_any_result):
+
+    param = {'Efermi': Efermi_GaAs,
+             'omega':np.linspace(0.0, 7, 8),
+             'kBT':0.05, 'smr_fixed_width':0.1
+             }
+    calculators = {k+"_internal": v(kwargs_formula=dict(external_terms=False), **param)
+                   for k, v in calculators_SDCT.items()}
+    calculators.update({k+"_full": v(**param) for k, v in calculators_SDCT.items()})
+
+    check_run(
+        system_GaAs_W90_wcc,
+        calculators,
+        fout_name="GaAs_W90",
+        suffix="",
     )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 
