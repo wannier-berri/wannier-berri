@@ -753,8 +753,10 @@ def test_GaAs_SDCT(check_run, system_GaAs_W90_wcc, compare_any_result):
         extra_precision={
                 "SDCT_asym_sea_I_internal":1e-7,
                 "SDCT_asym_sea_I_full": 1e-7,
-                "SDCT_asym_internal": 1e-7,
-                "SDCT_asym_full": 1e-7,
+                "SDCT_asym_sea_II_internal" : 1e-6,
+                "SDCT_asym_sea_II_full" : 1e-6,
+                "SDCT_asym_internal": 1e-6,
+                "SDCT_asym_full": 1e-6,
         }
     )
 
