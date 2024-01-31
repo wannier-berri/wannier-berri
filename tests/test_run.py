@@ -749,7 +749,8 @@ def test_GaAs_SDCT(check_run, system_GaAs_W90_wcc, compare_any_result):
         calculators,
         fout_name="GaAs_W90",
         suffix="",
-    )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
+        precision=1e-10
+    )
 
 
 def test_GaAs_tb_wcc_ws(check_run, system_GaAs_tb_wcc_ws, compare_any_result):

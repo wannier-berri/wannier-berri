@@ -240,7 +240,7 @@ def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
     check_system(
             system_Si_W90_JM, "Si_W90_JM",
             extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
-            matrices=['Ham', 'AA', 'BB', 'CC', 'GG']
+            matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO']
                 )
 
 
