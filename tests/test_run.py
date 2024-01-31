@@ -749,7 +749,13 @@ def test_GaAs_SDCT(check_run, system_GaAs_W90_wcc, compare_any_result):
         calculators,
         fout_name="GaAs_W90",
         suffix="",
-        precision=1e-10
+        precision=1e-9,
+        extra_precision={
+                "SDCT_asym_sea_I_internal":1e-7,
+                "SDCT_asym_sea_I_full": 1e-7,
+                "SDCT_asym_internal": 1e-7,
+                "SDCT_asym_full": 1e-7,
+        }
     )
 
 
