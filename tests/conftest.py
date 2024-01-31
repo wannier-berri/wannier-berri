@@ -34,6 +34,7 @@ from common_systems import (
     system_Si_W90_JM,
     system_Haldane_PythTB,
     system_KaneMele_odd_PythTB,
+    system_Chiral_OSD,
     system_Haldane_TBmodels,
     system_Haldane_TBmodels_internal,
     system_Chiral_left,

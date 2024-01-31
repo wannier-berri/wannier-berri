@@ -270,6 +270,12 @@ def test_system_KaneMele_odd_PythTB(check_system, system_KaneMele_odd_PythTB):
         matrices=['Ham','SS']
     )
 
+def test_system_Chiral_OSD(check_system, system_Chiral_OSD):
+    check_system(
+        system_Chiral_OSD, "Chiral_OSD",
+        matrices=['Ham','SS']
+    )
+
 def test_system_Chiral_left(check_system, system_Chiral_left):
     check_system(
         system_Chiral_left, "Chiral_left",

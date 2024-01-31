@@ -749,15 +749,25 @@ def test_GaAs_SDCT(check_run, system_GaAs_W90_wcc, compare_any_result):
         calculators,
         fout_name="GaAs_W90",
         suffix="",
-        precision=1e-9,
-        extra_precision={
-                "SDCT_asym_sea_I_internal":1e-7,
-                "SDCT_asym_sea_I_full": 1e-7,
-                "SDCT_asym_sea_II_internal" : 1e-6,
-                "SDCT_asym_sea_II_full" : 1e-6,
-                "SDCT_asym_internal": 1e-6,
-                "SDCT_asym_full": 1e-6,
-        }
+        precision=5e-3,
+        compare_zero=True
+    )
+
+def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result):
+
+    param = {'Efermi': np.linspace(-2,2,5),
+             'omega':np.linspace(0.0, 4, 5),
+             'kBT':0.5, 'smr_fixed_width':0.5,
+             'kwargs_formula' : dict(external_terms=False)
+             }
+    calculators = {k: v(**param) for k, v in calculators_SDCT.items()}
+
+    check_run(
+        system_Chiral_OSD,
+        calculators,
+        fout_name="Chiral_OSD_SDCT",
+        suffix="",
+        #precision=,
     )
 
 

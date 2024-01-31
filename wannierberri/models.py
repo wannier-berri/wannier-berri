@@ -320,3 +320,64 @@ def KaneMele_ptb(topological):
     ret_model.set_hop(1.j*rashba*( 0.5*sigma_x+r3h*sigma_y), 0, 1, [-1, 0], mode="add")
 
     return ret_model
+
+
+def Chiral_OSD():
+    """ Chiral model to trest OSD
+    """
+
+    from pythtb import tb_model
+    # define lattice vectors
+    a = 1.0
+    c = 1.0
+    a1 = [np.sqrt(3.0) * a, 0.0, 0.0]
+    a2 = [np.sqrt(3.0) * a / 2.0, 3.0 * a / 2.0, 0.0]
+    a3 = [0.0, 0.0, c]
+    lat = [a1, a2, a3]
+
+    # define coordinates of orbitals
+    orb = [[0.0, 0.0, 0.0],
+           [1/3, 1/3, 0.0]]
+
+    # make three dimensional tight-binding model
+    my_model = tb_model(3, 3, lat, orb, nspin=2)
+
+    # set model parameters
+    t1 = 1.0
+    Delta = 0.5 * t1
+    l1 = -0.06 * t1
+    l2 = 0.05 * t1
+
+    # useful definitions
+    # Pauli matrices
+    P0 = np.array([1.0, 0.0, 0.0, 0.0])
+    P1 = np.array([0.0, 1.0, 0.0, 0.0])
+    P2 = np.array([0.0, 0.0, 1.0, 0.0])
+    P3 = np.array([0.0, 0.0, 0.0, 1.0])
+    # nearest-neighbor vectors
+    d1 = [0.0, a, 0.0]
+    d2 = [np.sqrt(3.0) * a / 2.0, -a / 2.0, 0.0]
+    d3 = [-np.sqrt(3.0) * a / 2.0, -a / 2.0, 0.0]
+
+    # set on-site energies
+    my_model.set_onsite([-Delta * P0, Delta * P0])
+    # set hoppings (one for each connected pair of orbitals)
+    # (amplitude, i, j, [lattice vector to cell containing j])
+    # nearest-neighbor hoppings (spin-independent and -dependent):
+    my_model.set_hop(1.j * t1 * P0, 1, 0, [0, 0, 0])
+    my_model.set_hop(1.j * t1 * P0, 1, 0, [1, 0, 0])
+    my_model.set_hop(1.j * t1 * P0, 1, 0, [0, 1, 0])
+
+    my_model.set_hop((1.j * l1 / a) * (d1[0] * P1 + d1[1] * P2), 1, 0, [0, 1, 0], mode='add')
+    my_model.set_hop((1.j * l1 / a) * (d2[0] * P1 + d2[1] * P2), 1, 0, [1, 0, 0], mode='add')
+    my_model.set_hop((1.j * l1 / a) * (d3[0] * P1 + d3[1] * P2), 1, 0, [0, 0, 0], mode='add')
+
+    # next-to-nearest neighbor hoppings (helical):
+    my_model.set_hop((1.j * l2 / a) * (a1[0] * P1 + a1[1] * P2 + a3[2] * P3), 0, 0, [1, 0, 1])
+    my_model.set_hop((1.j * l2 / a) * (-a2[0] * P1 - a2[1] * P2 + a3[2] * P3), 0, 0, [0, -1, 1])
+    my_model.set_hop((1.j * l2 / a) * ((-a1[0] + a2[0]) * P1 + (-a1[1] + a2[1]) * P2 + a3[2] * P3), 0, 0, [-1, 1, 1])
+
+    my_model.set_hop((1.j * l2 / a) * (a2[0] * P1 + a2[1] * P2 + a3[2] * P3), 1, 1, [0, 1, 1])
+    my_model.set_hop((1.j * l2 / a) * (-a1[0] * P1 - a1[1] * P2 + a3[2] * P3), 1, 1, [-1, 0, 1])
+    my_model.set_hop((1.j * l2 / a) * ((a1[0] - a2[0]) * P1 + (a1[1] - a2[1]) * P2 + a3[2] * P3), 1, 1, [1, -1, 1])
+    return my_model
