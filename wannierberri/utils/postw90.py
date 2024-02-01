@@ -8,7 +8,7 @@
 # https://github.com/stepan-tsirkin/wannier-berri            #
 #                                                            #
 # ------------------------------------------------------------
-"""This utility emulates (at least partly) the behaviour of postw90.x. It sahould start from the same *.win file and produce the same result.
+"""This utility emulates (at least partly) the behaviour of postw90.x. It sahould start from the same `*.win` file and produce the same result.
 
     optionally, parameters can be given in the command line (theose will override the parameters in the ffile)
     additional options starting with "__wb" can be provided"

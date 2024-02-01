@@ -183,11 +183,11 @@ class System:
         Parameters
         ----------
         key : str
-            `SS', 'AA' , etc
+            'SS', 'AA' , etc
         value : array
             * `array(num_wann,...)` if `diag=True` . Sets the diagonal part ( if `R` not set, `R=[0,0,0]`)
             * `array(num_wann,num_wann,..)`  matrix for `R` (`R` should be set )
-            * array(num_wann,num_wann,nRvec,...)` full spin matrix for all R
+            * `array(num_wann,num_wann,nRvec,...)` full spin matrix for all R
 
             `...` denotes the vector/tensor cartesian dimensions of the matrix element
         R : list(int)
@@ -245,6 +245,13 @@ class System:
             eg: ``['Fe':sp3d2;t2g]`` Plese don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
 
                 ``['X':sp;p2]`` Plese don't use ``['X':sp;pz,py]``
+
+            Note: If in `wannier90.win` file one sets several projections in one line like ``['Fe':d;sp3]``
+            the actual order (as written to the `wannier90.nnkp` file) may be different. It is ordered by the orbital number l,
+            and the hybrids are assigned negative numbers (e.g. for sp3 l=-3, see 
+            `Wannier90 user guide <https://raw.githubusercontent.com/wannier-developers/wannier90/v3.1.0/doc/compiled_docs/user_guide.pdf>`__
+            chapter 3). So, the actual order will be ``['Fe':sp3;d]``. To  avoid confusion, it is recommended to put the different groups of projectons
+            as separate lines of the `wannier90.win` file
         soc: bool
             Spin orbital coupling.
         magmom: 2D array
