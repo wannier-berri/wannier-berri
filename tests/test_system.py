@@ -5,7 +5,7 @@ import os
 from common import OUTPUT_DIR, REF_DIR
 
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced', 'wannier_centers_cart_wcc_phase',
-                  'wannier_centers_cart_ws', 'diff_wcc_cart', 'diff_wcc_red', 'cRvec_p_wcc']
+                  'wannier_centers_cart_ws', 'diff_wcc_cart', 'diff_wcc_red']  # , 'cRvec_p_wcc']
 
 
 @pytest.fixture
@@ -13,7 +13,7 @@ def check_system():
     def _inner(system, name,
                properties=['num_wann', 'recip_lattice', 'real_lattice', 'nRvec', 'iRvec', 'cRvec', 'use_ws', 'periodic',
                            'use_wcc_phase', '_getFF',
-                           'cRvec', 'cell_volume', 'is_phonon'] + properties_wcc,
+                           'cell_volume', 'is_phonon'] + properties_wcc,
                extra_properties=[],
                exclude_properties=[],
                precision_properties=1e-8,
@@ -45,7 +45,7 @@ def check_system():
             np.savez_compressed(os.path.join(out_dir, key + ".npz"), system.get_R_mat(key))
             print(" - Ok!")
 
-        def check_property(key, prec, XX=False, sort=None, sort_axis=2):
+        def check_property(key, prec, XX=False, sort=None, sort_axis=2, print_missed=False):
             print(f"checking {key} prec={prec} XX={XX}", end="")
             data_ref = np.load(os.path.join(REF_DIR, "systems", name, key + ".npz"), allow_pickle=True)['arr_0']
             if XX:
@@ -53,6 +53,7 @@ def check_system():
             else:
                 data = getattr(system, key)
             data = np.array(data)
+            print("sort = ", sort)
             if sort is not None:
                 if sort_axis == 0:
                     data_ref = data_ref[sort]
@@ -74,9 +75,9 @@ def check_system():
                 missed = np.where(abs(data - data_ref) > req_precision)
                 n_missed = len(missed[0])
                 err_msg = (f"matrix elements {key} for system {name} give an "
-                           f"absolute difference of {diff} greater than the required precision {req_precision}\n"
+                           f"absolute difference of {diff} greater than the required precision {req_precision}"
                            f"wrong elements {n_missed} out of {data.size}")
-                if XX:
+                if XX or print_missed:
                     if n_missed < data.size / 10:
                         err_msg += "\n" + ("\n".join(
                             f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])}"
@@ -101,13 +102,13 @@ def check_system():
 
         for key in properties:
             if key in ['iRvec', 'cRvec']:
-                check_property(key, precision_properties, XX=False, sort=sort_R, sort_axis=0)
+                check_property(key, precision_properties, XX=False, sort=sort_R, sort_axis=0, print_missed=True)
             elif key in ['cRvec_p_wcc']:
-                check_property(key, precision_properties, XX=False, sort=sort_R, sort_axis=2)
+                check_property(key, precision_properties, XX=False, sort=sort_R, sort_axis=2, print_missed=True)
             else:
                 check_property(key, precision_properties, XX=False)
         for key in matrices:
-            check_property(key, precision_matrix_elements, XX=True, sort=sort_R)
+            check_property(key, precision_matrix_elements, XX=True, sort=sort_R, print_missed=True)
 
     return _inner
 
@@ -136,17 +137,18 @@ def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
     )
 
 
-def test_system_Fe_sym_W90_old(check_system, system_Fe_sym_W90_old):
+def test_system_Fe_sym_W90_old(check_system, system_Fe_sym_W90_old_wcc):
     check_system(
-        system_Fe_sym_W90_old, "Fe_sym_W90",
+        system_Fe_sym_W90_old_wcc, "Fe_sym_W90_wcc",
         extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
+        sort_iR=True
     )
 
 
-def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90):
+def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90_wcc):
     check_system(
-        system_Fe_sym_W90, "Fe_sym_W90",
+        system_Fe_sym_W90_wcc, "Fe_sym_W90_wcc",
         extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
         sort_iR=True
@@ -201,17 +203,18 @@ def test_system_GaAs_tb(check_system, system_GaAs_tb):
     )
 
 
-def test_system_GaAs_sym_tb_old(check_system, system_GaAs_sym_tb_old):
+def test_system_GaAs_sym_tb_old(check_system, system_GaAs_sym_tb_old_wcc):
     check_system(
-        system_GaAs_sym_tb_old, "GaAs_sym_tb",
+        system_GaAs_sym_tb_old_wcc, "GaAs_sym_tb_wcc",
         extra_properties=['wannier_centers_cart_auto'],
-        matrices=['Ham', 'AA']
+        matrices=['Ham', 'AA'],
+        sort_iR=True,
     )
 
 
-def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb):
+def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb_wcc):
     check_system(
-        system_GaAs_sym_tb, "GaAs_sym_tb",
+        system_GaAs_sym_tb_wcc, "GaAs_sym_tb_wcc",
         extra_properties=['wannier_centers_cart_auto'],
         matrices=['Ham', 'AA'],
         sort_iR=True,
@@ -338,17 +341,18 @@ def test_system_Phonons_GaAs(check_system, system_Phonons_GaAs):
     )
 
 
-def test_system_Mn3Sn_sym_tb_old(check_system, system_Mn3Sn_sym_tb_old):
+def test_system_Mn3Sn_sym_tb_old(check_system, system_Mn3Sn_sym_tb_old_wcc):
     check_system(
-        system_Mn3Sn_sym_tb_old, "Mn3Sn_sym_tb",
+        system_Mn3Sn_sym_tb_old_wcc, "Mn3Sn_sym_tb_wcc",
         extra_properties=['wannier_centers_cart_auto'],
-        matrices=['Ham', 'AA']
+        matrices=['Ham', 'AA'],
+        sort_iR=True
     )
 
 
-def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb):
+def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb_wcc):
     check_system(
-        system_Mn3Sn_sym_tb, "Mn3Sn_sym_tb",
+        system_Mn3Sn_sym_tb_wcc, "Mn3Sn_sym_tb_wcc",
         extra_properties=['wannier_centers_cart_auto'],
         matrices=['Ham', 'AA'],
         sort_iR=True

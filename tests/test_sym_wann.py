@@ -28,6 +28,7 @@ def check_symmetry(check_run):
     def _inner(system,
         calculators={},
         precision=1e-7,
+        extra_precision={},
         **kwargs,
             ):
         kwargs['do_not_compare'] = True
@@ -37,10 +38,14 @@ def check_symmetry(check_run):
 
         for quant in calculators.keys():
             diff = abs(result_full_k.results[quant].data - result_irr_k.results[quant].data).max()
-            if precision < 0:
-                req_precision = -precision * (abs(result_full_k.results[quant].data) + abs(result_irr_k.results[quant].data)).max() / 2
+            try:
+                prec = extra_precision[quant]
+            except KeyError:
+                prec = precision
+            if prec < 0:
+                req_precision = -prec * (abs(result_full_k.results[quant].data) + abs(result_irr_k.results[quant].data)).max() / 2
             else:
-                req_precision = precision
+                req_precision = prec
             assert diff <= req_precision, (
                                             f"data of {quant} with and without symmetries give a maximal "
                                             f"absolute difference of {diff} greater than the required precision {req_precision}"
@@ -52,7 +57,7 @@ def check_symmetry(check_run):
 
 
 
-def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb):
+def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb_wcc):
     """Test shift current with and without symmetry is the same for a symmetrized system"""
     param = dict(
         Efermi=Efermi_GaAs,
@@ -65,7 +70,7 @@ def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb):
         shift_current=calc.dynamic.ShiftCurrent(sc_eta=0.1, **param),
                         )
 
-    check_symmetry(system=system_GaAs_sym_tb,
+    check_symmetry(system=system_GaAs_sym_tb_wcc,
                    grid_param=dict(NK=6, NKFFT=3),
                    calculators=calculators,
                    precision=1e-6
@@ -74,74 +79,81 @@ def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb):
 
 
 
-
-def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb):
+def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb_wcc):
     param = {'Efermi': Efermi_Mn3Sn}
     calculators = {}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
     calculators.update({
+        'ahc_int': calc.static.AHC(Efermi=Efermi_Mn3Sn, kwargs_formula={"external_terms": False}),
+        'ahc_ext': calc.static.AHC(Efermi=Efermi_Mn3Sn, kwargs_formula={"internal_terms": False}),
         'ahc': calc.static.AHC(Efermi=Efermi_Mn3Sn, kwargs_formula={"external_terms": True}),
                         })
-    check_symmetry(system=system_Mn3Sn_sym_tb, calculators=calculators)
+    check_symmetry(system=system_Mn3Sn_sym_tb_wcc, calculators=calculators)
 
 
-def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result):
+@pytest.mark.parametrize("use_k_sym", [False, True])
+def test_Fe_sym_W90(check_run, system_Fe_sym_W90_wcc, compare_any_result, use_k_sym):
     param = {'Efermi': Efermi_Fe}
     cals = {'ahc': calc.static.AHC,
             'Morb': calc.static.Morb,
             'spin': calc.static.Spin}
     calculators = {k: v(**param) for k, v in cals.items()}
+
     check_run(
-        system_Fe_sym_W90,
+        system_Fe_sym_W90_wcc,
         calculators,
         fout_name="berry_Fe_sym_W90",
         suffix="-run",
-        use_symmetry=False
+        use_symmetry=use_k_sym
     )
     cals = {'gyrotropic_Korb': calc.static.GME_orb_FermiSea,
             'berry_dipole': calc.static.BerryDipole_FermiSea,
             'gyrotropic_Kspin': calc.static.GME_spin_FermiSea}
     calculators = {k: v(**param) for k, v in cals.items()}
     check_run(
-        system_Fe_sym_W90,
+        system_Fe_sym_W90_wcc,
         calculators,
         fout_name="berry_Fe_sym_W90",
         precision=1e-8,
         suffix="-run",
         compare_zero=True,
-        use_symmetry=False
+        use_symmetry=use_k_sym
     )
 
 
-def test_Fe_sym_W90_sym(check_run, system_Fe_sym_W90, compare_any_result):
-    param = {'Efermi': Efermi_Fe}
-    cals = {'ahc': calc.static.AHC,
+@pytest.fixture
+def checksym_Fe(check_run, compare_any_result, check_symmetry):
+    def _inner(system):
+        param = {'Efermi': Efermi_Fe}
+        cals = {'dos': calc.static.DOS,
+                'cumdos': calc.static.CumDOS,
+            'conductivity_ohmic': calc.static.Ohmic_FermiSea,
+            'conductivity_ohmic_fsurf': calc.static.Ohmic_FermiSurf,
+            'ahc': calc.static.AHC,
             'Morb': calc.static.Morb,
             'spin': calc.static.Spin}
-    calculators = {k: v(**param) for k, v in cals.items()}
-    check_run(
-        system_Fe_sym_W90,
-        calculators,
-        fout_name="berry_Fe_sym_W90",
-        suffix="sym-run",
-        use_symmetry=True
-    )
-    cals = {'gyrotropic_Korb': calc.static.GME_orb_FermiSea,
-            'berry_dipole': calc.static.BerryDipole_FermiSea,
-            'gyrotropic_Kspin': calc.static.GME_spin_FermiSea}
-    calculators = {k: v(**param) for k, v in cals.items()}
-    check_run(
-        system_Fe_sym_W90,
-        calculators,
-        fout_name="berry_Fe_sym_W90",
-        suffix="sym-run",
-        precision=1e-8,
-        compare_zero=True,
-        use_symmetry=True
-    )
+        calculators = {k: v(**param) for k, v in cals.items()}
+        calculators.update({
+            'ahc_int': calc.static.AHC(Efermi=Efermi_Fe, kwargs_formula={"external_terms": False}),
+            'ahc_ext': calc.static.AHC(Efermi=Efermi_Fe, kwargs_formula={"internal_terms": False}),
+                        })
+        check_symmetry(system=system,
+                       grid_param=dict(NK=6, NKFFT=3),
+                   calculators=calculators,
+                   precision=-1e-8
+                    )
+    return _inner
 
 
-def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb, compare_any_result):
+def test_Fe_old_wcc(system_Fe_sym_W90_old_wcc, checksym_Fe):
+    checksym_Fe(system_Fe_sym_W90_old_wcc)
+
+
+def test_Fe_new_wcc(system_Fe_sym_W90_wcc, checksym_Fe):
+    checksym_Fe(system_Fe_sym_W90_wcc)
+
+
+def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb_wcc, compare_any_result):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
     calculators.update({
@@ -153,7 +165,7 @@ def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb, compare
                         })
 
     check_run(
-        system_GaAs_sym_tb,
+        system_GaAs_sym_tb_wcc,
         {'ahc': calc.static.AHC(Efermi=Efermi_GaAs)},
         fout_name="berry_GaAs_sym_tb",
         precision=1e-5,
@@ -162,14 +174,33 @@ def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb, compare
                 )
 
 
-def test_GaAs_sym_tb(check_symmetry, system_GaAs_sym_tb):
+def test_GaAs_sym_tb(check_symmetry, system_GaAs_sym_tb_wcc):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
-    check_symmetry(system=system_GaAs_sym_tb, calculators=calculators)
+    check_symmetry(system=system_GaAs_sym_tb_wcc, calculators=calculators)
 
 
-def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb, compare_any_result):
+def test_GaAs_sym_tb_fail_convII(check_symmetry, system_GaAs_tb):
+    with pytest.raises(NotImplementedError, match="Symmetrization is implemented only for convention I"):
+        system_GaAs_tb.symmetrize(
+            positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
+            atom_name=['Ga', 'As'],
+            proj=['Ga:sp3', 'As:sp3'],
+            soc=True,
+            DFT_code='vasp')
+
+
+def test_wrong_mat_fail(check_symmetry, system_Haldane_PythTB_wrong_mat):
+    with pytest.raises(NotImplementedError, match="symmetrization of matrix"):
+        system_Haldane_PythTB_wrong_mat.symmetrize(
+            positions=np.array([[1. / 3., 1. / 3.], [2. / 3., 2. / 3.]]),
+            atom_name=['one', 'two'],
+            proj=['one:s', 'two:s'],
+            soc=False)
+
+
+def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb_wcc, compare_any_result):
     "Test shift current and injection current"
 
     param = dict(
@@ -186,7 +217,7 @@ def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb, compare_any_result):
     )
 
     result_full_k = check_run(
-        system_GaAs_sym_tb,
+        system_GaAs_sym_tb_wcc,
         calculators,
         fout_name="dynamic_GaAs_sym",
         grid_param={
@@ -198,7 +229,7 @@ def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb, compare_any_result):
             )
 
     result_irr_k = check_run(
-        system_GaAs_sym_tb,
+        system_GaAs_sym_tb_wcc,
         calculators,
         fout_name="dynamic_GaAs_sym",
         suffix="sym",
@@ -220,6 +251,26 @@ def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb, compare_any_result):
 
     assert result_full_k.results["opt_conductivity"].data == approx(
         result_irr_k.results["opt_conductivity"].data, abs=1e-7)
+
+
+
+def test_Te_sparse(check_symmetry, system_Te_sparse):
+    param = {'Efermi': Efermi_Te_sparse, 'Emax': 6.15, 'hole_like': True}
+    calculators = {}
+    for k, v in calculators_Te.items():
+        par = {}
+        par.update(param)
+        if k not in ["dos", "cumdos"]:
+            par["kwargs_formula"] = {"external_terms": False}
+        calculators[k] = v(**par)
+
+
+        check_symmetry(system=system_Te_sparse,
+                       grid_param=dict(NK=(6, 6, 4), NKFFT=(3, 3, 2)),
+                       calculators=calculators,
+                       precision=-1e-8,
+                extra_precision={"berry_dipole": 5e-7},
+                    )
 
 
 def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):

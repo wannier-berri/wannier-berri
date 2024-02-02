@@ -13,6 +13,7 @@
 
 import numpy as np
 import lazy_property
+from functools import cached_property
 from .sym_wann import SymWann
 from ..__utility import alpha_A, beta_A, iterate3dpm
 from ..symmetry import Symmetry, Group, TimeReversal
@@ -182,11 +183,11 @@ class System:
         Parameters
         ----------
         key : str
-            `SS', 'AA' , etc
+            'SS', 'AA' , etc
         value : array
             * `array(num_wann,...)` if `diag=True` . Sets the diagonal part ( if `R` not set, `R=[0,0,0]`)
             * `array(num_wann,num_wann,..)`  matrix for `R` (`R` should be set )
-            * array(num_wann,num_wann,nRvec,...)` full spin matrix for all R
+            * `array(num_wann,num_wann,nRvec,...)` full spin matrix for all R
 
             `...` denotes the vector/tensor cartesian dimensions of the matrix element
         R : list(int)
@@ -225,7 +226,7 @@ class System:
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', method="new"):
         """
-        Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
+        Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
 
 
         Parameters
@@ -244,6 +245,13 @@ class System:
             eg: ``['Fe':sp3d2;t2g]`` Plese don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
 
                 ``['X':sp;p2]`` Plese don't use ``['X':sp;pz,py]``
+
+            Note: If in `wannier90.win` file one sets several projections in one line like ``['Fe':d;sp3]``
+            the actual order (as written to the `wannier90.nnkp` file) may be different. It is ordered by the orbital number l,
+            and the hybrids are assigned negative numbers (e.g. for sp3 l=-3, see
+            `Wannier90 user guide <https://raw.githubusercontent.com/wannier-developers/wannier90/v3.1.0/doc/compiled_docs/user_guide.pdf>`__
+            chapter 3). So, the actual order will be ``['Fe':sp3;d]``. To  avoid confusion, it is recommended to put the different groups of projectons
+            as separate lines of the `wannier90.win` file. See also `here <https://github.com/wannier-developers/wannier90/issues/463>`__
         soc: bool
             Spin orbital coupling.
         magmom: 2D array
@@ -254,8 +262,11 @@ class System:
             `new` or `old`. They give same result but `new` is faster. `old` will be eventually removed.
 
         Notes:
-            does not update wannier_centers. TODO: make the code update them
+            Works only with phase convention I (`use_wcc_phase=True`)
         """
+
+        if not self.use_wcc_phase:
+            raise NotImplementedError("Symmetrization is implemented only for convention I")
 
         symmetrize_wann = SymWann(
             num_wann=self.num_wann,
@@ -266,11 +277,29 @@ class System:
             iRvec=self.iRvec,
             XX_R=self._XX_R,
             soc=soc,
+            wannier_centers_cart=self.wannier_centers_cart,
             magmom=magmom,
+            use_wcc_phase=self.use_wcc_phase,
             DFT_code=DFT_code)
-        self._XX_R, self.iRvec = symmetrize_wann.symmetrize(method=method)
+
+        print("Wannier Centers cart (raw):\n", self.wannier_centers_cart)
+        print("Wannier Centers red: (raw):\n", self.wannier_centers_reduced)
+        (self._XX_R, self.iRvec), self.wannier_centers_cart = symmetrize_wann.symmetrize(method=method)
+        self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+
+        if self.has_R_mat('AA'):
+            A_diag = self.get_R_mat('AA')[:, :, self.iR0].diagonal()
+            if self.use_wcc_phase:
+                A_diag_max = abs(A_diag).max()
+                if A_diag_max > 1e-5:
+                    print(f"WARNING : the maximal value of diagonal position matrix elements is {A_diag_max}. This may signal a problem")
+                self.get_R_mat('AA')[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] = 0
+        print("Wannier Centers cart (symmetrized):\n", self.wannier_centers_cart)
+        print("Wannier Centers red: (symmetrized):\n", self.wannier_centers_reduced)
+        self.clear_cached_R()
+        self.clear_cached_wcc()
         self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom,
-                                    DFT_code='qe')
+                                    DFT_code=DFT_code)
 
     def check_periodic(self):
         exclude = np.zeros(self.nRvec, dtype=bool)
@@ -400,10 +429,12 @@ class System:
         if 'SS' in self.needed_R_matrices and getSS:
             raise NotImplementedError()
 
-    def do_at_end_of_init(self):
+    def do_at_end_of_init(self, convert_convention=True):
         self.set_symmetry()
         self.check_periodic()
         self.set_wannier_centers()
+        if convert_convention:
+            self.convention_II_to_I()
         self.do_ws_dist()
         print("Number of wannier functions:", self.num_wann)
         print("Number of R points:", self.nRvec)
@@ -500,11 +531,11 @@ class System:
         """
         self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def cRvec(self):
         return self.iRvec.dot(self.real_lattice)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def cRvec_p_wcc(self):
         """
         With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [i,j,iRvec,a] (Cartesian)
@@ -514,7 +545,13 @@ class System:
         else:
             return self.cRvec[None, None, :, :]
 
-    @lazy_property.LazyProperty
+    def clear_cached_R(self):
+        for attr in 'cRvec', 'cRvec_p_wcc':
+            if hasattr(self, attr):
+                delattr(self, attr)
+
+
+    @cached_property
     def diff_wcc_cart(self):
         """
         With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [i,j,a] (Cartesian)
@@ -522,13 +559,14 @@ class System:
         wannier_centers = self.wannier_centers_cart
         return wannier_centers[None, :, :] - wannier_centers[:, None, :]
 
-    @lazy_property.LazyProperty
+    @cached_property
     def diff_wcc_red(self):
         """
         With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [i,j,a] (Reduced)
         """
         wannier_centers = self.wannier_centers_reduced
         return wannier_centers[None, :, :] - wannier_centers[:, None, :]
+
 
     @property
     def wannier_centers_cart_wcc_phase(self):
@@ -537,6 +575,12 @@ class System:
             return self.wannier_centers_cart
         else:
             return np.zeros((self.num_wann, 3), dtype=float)
+
+    def clear_cached_wcc(self):
+        for attr in 'diff_wcc_cart', 'cRvec_p_wcc', 'diff_wcc_red':
+            if hasattr(self, attr):
+                delattr(self, attr)
+
 
     @property
     def is_phonon(self):
@@ -560,6 +604,9 @@ class System:
         elif hasattr(self, "wannier_centers_cart_auto"):
             self.wannier_centers_cart = self.wannier_centers_cart_auto
             self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+
+
+    def convention_II_to_I(self):
         if self.use_wcc_phase:
             R_new = {}
             if self.wannier_centers_cart is None:

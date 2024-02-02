@@ -65,6 +65,8 @@ class SymWann():
             lattice,
             iRvec,
             XX_R,
+            wannier_centers_cart=None,
+            use_wcc_phase=True,
             **parameters):
 
         for param in self.default_parameters:
@@ -72,6 +74,8 @@ class SymWann():
                 vars(self)[param] = parameters[param]
             else:
                 vars(self)[param] = self.default_parameters[param]
+        self.use_wcc_phase = use_wcc_phase
+        self.wannier_centers_cart = wannier_centers_cart
         self.iRvec = [tuple(R) for R in iRvec]
         self.iRvec_index = {r: i for i, r in enumerate(self.iRvec)}
         self.nRvec = len(self.iRvec)
@@ -79,17 +83,24 @@ class SymWann():
         self.lattice = lattice
         self.positions = positions
         self.atom_name = atom_name
-        self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC']  # ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
-        self.matrix_list = XX_R
+        self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', '_WCC']  # ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
         for k in XX_R:
             if k not in self.possible_matrix_list:
-                print(f"WARNING: symmetrization of matrix {k} is not implemented yet, so it will not be symmetrized, but passed as it. Use on your own risk")
+                raise NotImplementedError(f"symmetrization of matrix {k} is not implemented yet")
+        # this an overhead,  but reusing the routines developed for AA, so it is fine, o let's live with this
+        if self.wannier_centers_cart is not None:
+            WCC_R = np.zeros((self.num_wann, self.num_wann, self.nRvec, 3), dtype=complex)
+            WCC_R[np.arange(self.num_wann), np.arange(self.num_wann), self.index_R((0, 0, 0)), :] = self.wannier_centers_cart
+            XX_R["_WCC"] = WCC_R
+        self.matrix_list = XX_R
+
         # This is confusing, actually the I-odd vectors have "+1" here, because the minus is already in the rotation matrix
         # but Ham is a scalar, so +1
         # TODO: change it
         self.parity_I = {
             'Ham': 1,
             'AA': 1,
+            '_WCC': 1,
             'BB': 1,
             'CC': -1,
             'SS': -1
@@ -97,13 +108,16 @@ class SymWann():
         self.parity_TR = {
             'Ham': 1,
             'AA': 1,
+            '_WCC': 1,
             'BB': 1,
             'CC': -1,
             'SS': -1
         }  # {'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
         self.ndimv = {
             'Ham': 0,
-            'AA': 1, 'BB': 1, 'CC': 1, 'SS': 1
+            'AA': 1,
+            '_WCC': 1,
+            'BB': 1, 'CC': 1, 'SS': 1
                     }
         self.orbitals = Orbitals()
 
@@ -159,10 +173,8 @@ class SymWann():
         self.matrix_dict_list = {}
         for k, v1 in XX_R.items():
             v = np.copy(v1)
-            self.spin_reorder(v)  # TODO : remove
+            self.spin_reorder(v)
             self.matrix_dict_list[k] = _matrix_to_dict(v, self.H_select, self.wann_atom_info)
-            if k not in self.possible_matrix_list:
-                raise ValueError(f" symmetrization of matrix {k} is not implemented yet")
 
 
         numbers = []
@@ -170,7 +182,6 @@ class SymWann():
         for name in self.atom_name:
             numbers.append(names.index(name) + 1)
         cell = (self.lattice, self.positions, numbers)
-        # print(cell)
         print("[get_spacegroup]")
         print("  Spacegroup is %s." % spglib.get_spacegroup(cell))
         dataset = spglib.get_symmetry_dataset(cell)
@@ -178,7 +189,6 @@ class SymWann():
                 SymmetryOperation_loc(rot, dataset['translations'][i], cell[0], ind=i + 1, spinor=self.soc)
                 for i, rot in enumerate(dataset['rotations'])
                                    ]
-#        self.symmetry_operations=all_symmetry_operations
         self.nrot = 0
         self.symmetry_operations = []
         for symop in all_symmetry_operations:
@@ -304,8 +314,39 @@ class SymWann():
             p_mat_dagger[orb_position] = np.conj(np.transpose(rot_orbital)).flatten()
         return p_mat, p_mat_dagger
 
+
+    def average_WCC(self):
+        WCC_in = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
+        WCC_in[np.arange(self.num_wann), np.arange(self.num_wann), :] = self.wannier_centers_cart
+        self.spin_reorder(WCC_in)
+        WCC_out = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
+
+        for irot, symop in enumerate(self.symmetry_operations):
+            # print('irot = ', irot + 1)
+            # TODO try numba
+            for atom_a in range(self.num_wann_atom):
+                num_w_a = self.wann_atom_info[atom_a].num_wann  # number of orbitals of atom_a
+                shape = (num_w_a, num_w_a, 3)
+                # X_L: only rotation wannier centres from L to L' before rotating orbitals.
+                XX_L = WCC_in[self.H_select[symop.rot_map[atom_a], symop.rot_map[atom_a]]].reshape(shape)
+                v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
+                m_tmp = np.zeros(XX_L.shape, dtype=complex)
+                for i in range(num_w_a):
+                    m_tmp[i, i, :] = v_tmp
+                XX_L += m_tmp
+                XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=1).reshape(shape)
+                if symop.inversion:
+                    XX_L *= self.parity_I['AA']
+                if symop.sym_only:
+                    WCC_out[self.H_select[atom_a, atom_a]] += _rotate_matrix_flat(XX_L, symop.p_mat_atom_dagger[atom_a], symop.p_mat_atom[atom_a])
+                if symop.sym_T:
+                    WCC_out[self.H_select[atom_a, atom_a]] += _rotate_matrix_flat(XX_L, symop.p_mat_atom_dagger_T[atom_a], symop.p_mat_atom_T[atom_a]).conj() * self.parity_TR['AA']
+        WCC_out /= self.nrot
+        self.spin_reorder(WCC_out, back=True)
+        print('number of symmetry oprations == ', self.nrot)
+        return WCC_out.diagonal().T.real
+
     def average_H(self, iRvec):
-        # If we can make if faster, respectively is the better choice. Because XX_all matrix are supper large.(eat memory)
         R_list = np.array(iRvec, dtype=int)
         nRvec = len(R_list)
         tmp_R_list = []
@@ -340,20 +381,16 @@ class SymWann():
                                 # X_L: only rotation wannier centres from L to L' before rotating orbitals.
                                 XX_L = self.matrix_list[X][self.H_select[symop.rot_map[atom_a], symop.rot_map[atom_b]],
                                                            new_Rvec_index].reshape(shape)
-                                # special even with R == [0,0,0] diagonal terms.
+                                # # special even with R == [0,0,0] diagonal terms.
+                                # if not self.use_wcc_phase:
+                                # TODO : after making sure that average_WCC works, remove this
                                 if iR == iR0 and atom_a == atom_b:
-                                    if X in ['AA', 'BB']:
+                                    if X == '_WCC':
                                         v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
                                         m_tmp = np.zeros(XX_L.shape, dtype=complex)
                                         for i in range(num_w_a):
                                             m_tmp[i, i, :] = v_tmp
-                                        # print (f"(old) setting diagonal for atoms {atom_a},{atom_b}, opeartion={symop.ind}. v_tmp={v_tmp} \n m_tmp=\n {m_tmp}")
-                                        if X == 'AA':
-                                            XX_L += m_tmp
-                                        elif X == 'BB':
-                                            XX_L += (m_tmp *
-                                                self.matrix_list['Ham'][self.H_select[symop.rot_map[atom_a], symop.rot_map[atom_b]],
-                                                    new_Rvec_index].reshape(num_w_a, num_w_b)[:, :, None])
+                                        XX_L += m_tmp
                                 if XX_L.ndim == 3:
                                     # X_all: rotating vector.
                                     XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=1).reshape(shape)
@@ -382,12 +419,24 @@ class SymWann():
     def symmetrize(self, method="new"):
         # TODO : eventually remove the "old"
         if method == "old":
-            return self.symmetrize_old()
+            res = self.symmetrize_old()
         elif method == "new":
-            return self.symmetrize_new()
+            res = self.symmetrize_new()
         else:
             raise ValueError()
 
+        # TODO : after making sure that average_WCC works, remove _WCC
+        if '_WCC' in res[0]:
+            ir_list = [tuple(x) for x in res[1]]
+            iR0 = ir_list.index((0, 0, 0))
+            wcc_1 = res[0]['_WCC'][:, :, iR0].diagonal().T.real
+            wcc = self.average_WCC()
+            err = abs(wcc - wcc_1).max()
+            assert err < 1e-6, f"symmetrization of wanier_centers with two methods gives a large error {err} \n{wcc}\n--  vs -- \n{wcc_1}\n"
+            del res[0]['_WCC']
+        return res, wcc
+
+    # TODO : eventually remove
     def symmetrize_old(self):
         # ========================================================
         # symmetrize existing R vectors and find additional R vectors
@@ -403,12 +452,12 @@ class SymWann():
             for X in return_dic_add.keys():
                 return_dic[X] = np.concatenate((return_dic[X], return_dic_add[X]), axis=2)
 
-        for k, v in self.matrix_list.items():
-            if k not in self.possible_matrix_list:
-                shape = list(self.matrix_list[k].shape)
-                shape[2] = nRvec_add
-                return_dic_zero = np.zeros(shape, dtype=self.matrix_list[k].dtype)
-                return_dic[k] = np.concatenate((self.matrix_list[k], return_dic_zero), axis=2)
+        # for k, v in self.matrix_list.items():
+        #    if k not in self.possible_matrix_list:
+        #        shape = list(self.matrix_list[k].shape)
+        #        shape[2] = nRvec_add
+        #        return_dic_zero = np.zeros(shape, dtype=self.matrix_list[k].dtype)
+        #        return_dic[k] = np.concatenate((self.matrix_list[k], return_dic_zero), axis=2)
 
         for X in return_dic.values():
             self.spin_reorder(X, back=True)
@@ -539,21 +588,15 @@ class SymWann():
                                     # X_L: only rotation wannier centres from L to L' before rotating orbitals.
                                     XX_L = matrix_dict_in[X][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
                                                                new_Rvec_index]
-                                    # special even with R == [0,0,0] diagonal terms.
+                                    # # special even with R == [0,0,0] diagonal terms.
+                                    # TODO : after making sure that average_WCC works, remove _WCC
                                     if iR == iR0 and atom_a == atom_b:
-                                        # print (f"setting diagonal AA/BB for {atom_a}, {atom_b}")
-                                        if X in ['AA', 'BB']:
+                                        if X == '_WCC':
                                             v_tmp = (symop.vec_shift[atom_a] - symop.translation).dot(self.lattice)
                                             m_tmp = np.zeros(XX_L.shape, dtype=complex)
                                             for i in range(self.wann_atom_info[atom_a].num_wann):
                                                 m_tmp[i, i, :] = v_tmp
-                                            # print (f"(new) setting diagonal for atoms {atom_a},{atom_b}, operation {symop.ind}. v_tmp={v_tmp}")
-                                            if X == 'AA':
-                                                XX_L = XX_L + m_tmp
-                                            elif X == 'BB':
-                                                XX_L = XX_L + (m_tmp *
-                                                    self.matrix_dict_list['Ham'][(symop.rot_map[atom_a], symop.rot_map[atom_b])][
-                                                        new_Rvec_index][:, :, None])
+                                            XX_L = XX_L + m_tmp
                                     if XX_L.ndim == 3:
                                         # X_all: rotating vector.
                                         XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=1).reshape(XX_L.shape)
@@ -567,9 +610,7 @@ class SymWann():
                                         matrix_dict_list_res[X][(atom_a, atom_b)][iR] += _rotate_matrix(XX_L, symop.p_mat_atom_dagger_T[atom_a], symop.p_mat_atom_T[atom_b]).conj() * self.parity_TR[X]
                     # in single mode we need to determine it only once
                     if mode == "single":
-                        # print (f"{atom_a},{atom_b} : excluding ({exclude_set})")
                         iR_new_list -= exclude_set
-                        # print (f"{atom_a},{atom_b} : iR_new_list -upd ({iR_new_list})")
 
         if mode == "single":
             for (atom_a, atom_b), iR_new_list in iRab_new.items():
