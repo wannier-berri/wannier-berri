@@ -259,6 +259,13 @@ def test_system_Haldane_PythTB(check_system, system_Haldane_PythTB):
     )
 
 
+def test_system_Haldane_PythTB_sym(check_system, system_Haldane_PythTB_sym):
+    check_system(
+        system_Haldane_PythTB_sym, "Haldane", suffix="PythTB_sym",
+        matrices=['Ham',]
+    )
+
+
 def test_system_Chiral_left(check_system, system_Chiral_left):
     check_system(
         system_Chiral_left, "Chiral_left",

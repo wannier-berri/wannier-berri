@@ -221,7 +221,6 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
     """Create system for GaAs using Wannier90 data with wcc phases"""
 
     data_dir = create_files_GaAs_W90
-
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.system.System_w90(seedname, morb=True, transl_inv=False, spin=True, use_wcc_phase=True)
@@ -247,7 +246,7 @@ def system_GaAs_tb():
     return system
 
 
-def get_system_GaAs_sym_tb(method=None, use_wcc_phase=False, use_ws=False):
+def get_system_GaAs_sym_tb(method=None, use_wcc_phase=False, use_ws=False, symmetrize=True, berry=True):
     """Create system for GaAs using sym_tb.dat data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
@@ -257,15 +256,15 @@ def get_system_GaAs_sym_tb(method=None, use_wcc_phase=False, use_ws=False):
             tar.extract(tarinfo, data_dir)
 
     seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, use_ws=use_ws, use_wcc_phase=use_wcc_phase)
-    system.set_symmetry(symmetries_GaAs)
-    system.symmetrize(
-        positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
-        atom_name=['Ga', 'As'],
-        proj=['Ga:sp3', 'As:sp3'],
-        soc=True,
-        DFT_code='vasp',
-        method="old")
+    system = wberri.system.System_tb(seedname, berry=berry, use_ws=use_ws, use_wcc_phase=use_wcc_phase)
+    if symmetrize:
+        system.symmetrize(
+            positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
+            atom_name=['Ga', 'As'],
+            proj=['Ga:sp3', 'As:sp3'],
+            soc=True,
+            DFT_code='vasp',
+            method=method)
     system.set_symmetry(symmetries_GaAs)
     return system
 
@@ -344,6 +343,15 @@ def system_Haldane_PythTB():
     # Load system
     system = wberri.system.System_PythTB(model_pythtb_Haldane, berry=True)
     system.set_symmetry(["C3z"])
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Haldane_PythTB_wrong_mat():
+    """Create system for Haldane model using PythTB - contains a wrong R-matrix to test exception"""
+    # Load system
+    system = wberri.system.System_PythTB(model_pythtb_Haldane, use_wcc_phase=True)
+    system.set_R_mat('abracadabra', system.get_R_mat('Ham') *4)
     return system
 
 

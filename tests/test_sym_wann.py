@@ -181,6 +181,25 @@ def test_GaAs_sym_tb(check_symmetry, system_GaAs_sym_tb_wcc):
     check_symmetry(system=system_GaAs_sym_tb_wcc, calculators=calculators)
 
 
+def test_GaAs_sym_tb_fail_convII(check_symmetry, system_GaAs_tb):
+    with pytest.raises(NotImplementedError, match="Symmetrization is implemented only for convention I"):
+        system_GaAs_tb.symmetrize(
+            positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
+            atom_name=['Ga', 'As'],
+            proj=['Ga:sp3', 'As:sp3'],
+            soc=True,
+            DFT_code='vasp')
+
+
+def test_wrong_mat_fail(check_symmetry, system_Haldane_PythTB_wrong_mat):
+    with pytest.raises(NotImplementedError, match="symmetrization of matrix"):
+        system_Haldane_PythTB_wrong_mat.symmetrize(
+            positions=np.array([[1. / 3., 1. / 3.], [2. / 3., 2. / 3.]]),
+            atom_name=['one', 'two'],
+            proj=['one:s', 'two:s'],
+            soc=False)
+
+
 def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb_wcc, compare_any_result):
     "Test shift current and injection current"
 

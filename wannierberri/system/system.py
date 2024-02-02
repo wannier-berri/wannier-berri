@@ -226,7 +226,7 @@ class System:
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', method="new"):
         """
-        Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
+        Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
 
 
         Parameters
@@ -248,10 +248,10 @@ class System:
 
             Note: If in `wannier90.win` file one sets several projections in one line like ``['Fe':d;sp3]``
             the actual order (as written to the `wannier90.nnkp` file) may be different. It is ordered by the orbital number l,
-            and the hybrids are assigned negative numbers (e.g. for sp3 l=-3, see 
+            and the hybrids are assigned negative numbers (e.g. for sp3 l=-3, see
             `Wannier90 user guide <https://raw.githubusercontent.com/wannier-developers/wannier90/v3.1.0/doc/compiled_docs/user_guide.pdf>`__
             chapter 3). So, the actual order will be ``['Fe':sp3;d]``. To  avoid confusion, it is recommended to put the different groups of projectons
-            as separate lines of the `wannier90.win` file
+            as separate lines of the `wannier90.win` file. See also `here <https://github.com/wannier-developers/wannier90/issues/463>`__
         soc: bool
             Spin orbital coupling.
         magmom: 2D array
@@ -262,7 +262,7 @@ class System:
             `new` or `old`. They give same result but `new` is faster. `old` will be eventually removed.
 
         Notes:
-            does not update wannier_centers. TODO: make the code update them
+            Works only with phase convention I (`use_wcc_phase=True`)
         """
 
         if not self.use_wcc_phase:

@@ -175,8 +175,6 @@ class SymWann():
             v = np.copy(v1)
             self.spin_reorder(v)
             self.matrix_dict_list[k] = _matrix_to_dict(v, self.H_select, self.wann_atom_info)
-#            if k not in self.possible_matrix_list:
-#                raise ValueError(f" symmetrization of matrix {k} is not implemented yet")
 
 
         numbers = []
@@ -184,7 +182,6 @@ class SymWann():
         for name in self.atom_name:
             numbers.append(names.index(name) + 1)
         cell = (self.lattice, self.positions, numbers)
-        # print(cell)
         print("[get_spacegroup]")
         print("  Spacegroup is %s." % spglib.get_spacegroup(cell))
         dataset = spglib.get_symmetry_dataset(cell)
@@ -192,7 +189,6 @@ class SymWann():
                 SymmetryOperation_loc(rot, dataset['translations'][i], cell[0], ind=i + 1, spinor=self.soc)
                 for i, rot in enumerate(dataset['rotations'])
                                    ]
-#        self.symmetry_operations=all_symmetry_operations
         self.nrot = 0
         self.symmetry_operations = []
         for symop in all_symmetry_operations:

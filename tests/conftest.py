@@ -31,6 +31,7 @@ from common_systems import (
     system_GaAs_tb_wcc,
     system_GaAs_tb_wcc_ws,
     system_Haldane_PythTB,
+    system_Haldane_PythTB_wrong_mat,
     system_Haldane_TBmodels,
     system_Haldane_TBmodels_internal,
     system_Chiral_left,
