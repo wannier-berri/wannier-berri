@@ -351,7 +351,7 @@ def system_Haldane_PythTB_wrong_mat():
     """Create system for Haldane model using PythTB - contains a wrong R-matrix to test exception"""
     # Load system
     system = wberri.system.System_PythTB(model_pythtb_Haldane, use_wcc_phase=True)
-    system.set_R_mat('abracadabra', system.get_R_mat('Ham') *4)
+    system.set_R_mat('abracadabra', system.get_R_mat('Ham') * 4)
     return system
 
 
