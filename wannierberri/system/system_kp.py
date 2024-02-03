@@ -50,7 +50,7 @@ class SystemKP(System):
     k_vector_cartesian : bool
         if True, the k-vector in `Ham`, `derHar`, `der2Ham` is given in cartesian coordinates. if `False` - it is in reduced coordinates (Note : the derivatives are always assumed w.r.t. cartesian coordinates)
     finite_diff_dk : float
-        defines the dk in taking derivatives *in fraction of the reciprocal lattice
+        defines the dk in taking derivatives (in fraction of the reciprocal lattice)
 
     Notes
     -----

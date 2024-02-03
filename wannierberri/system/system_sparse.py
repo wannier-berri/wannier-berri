@@ -47,7 +47,7 @@ class SystemSparse(System):
             else:
                 print(f"WARNING: {k} is empty")
 
-        self.do_at_end_of_init()
+        self.do_at_end_of_init(convert_convention=False)
         if symmetrize_info is not None:
             self.symmetrize(**symmetrize_info)
 
