@@ -13,7 +13,7 @@
 
 import numpy as np
 
-from .system import System
+from .system import System_k
 from ..__utility import real_recip_lattice
 from .__finite_differences import find_shells, Derivative3D
 
@@ -21,7 +21,7 @@ from .__finite_differences import find_shells, Derivative3D
 # from lazy_property import LazyProperty
 
 
-class SystemKP(System):
+class SystemKP(System_k):
     r"""
     A system to describe k.p Hamiltonians.
     Technically, it is concodered as a periodic system with k-vector limited to the box defined by the reciprocal lattice.

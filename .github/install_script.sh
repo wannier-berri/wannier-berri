@@ -1,23 +1,20 @@
 #!/bin/bash
 
-# Author: Dominik Gresch <greschd@gmx.ch>
-# Copied from Z2Pack https://github.com/Z2PackDev/Z2Pack
-
 # Be verbose, and stop with error as soon there's one
 set -ev
-sudo apt-get install libxc-dev
+# sudo apt-get install libxc-dev
 pip install codecov
 pip install -U pip setuptools wheel 
-#pip install ray
+# pip install ray
 
 # install optional dependencies
-pip install tbmodels pythtb #spglib
-pip install ase
-pip install gpaw==23.6.1
-gpaw info
-gpaw install-data --register ~/gpaw-data
+pip install pythtb # tbmodels spglib
+# pip install ase
+# pip install gpaw==23.6.1
+# gpaw info
+# gpaw install-data --register ~/gpaw-data
 pip install -U wannierberri[all]
-pip install git+https://github.com/jimustafa/wannier90io-python.git
+# pip install git+https://github.com/jimustafa/wannier90io-python.git
 sudo apt-get install wannier90
 
 case "$INSTALL_TYPE" in

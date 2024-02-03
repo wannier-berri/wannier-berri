@@ -13,11 +13,11 @@
 
 import numpy as np
 
-from .system import System
+from .system_R import System_R
 from ..__utility import real_recip_lattice
 
 
-class SystemSparse(System):
+class SystemSparse(System_R):
     """"""
 
     def __init__(self, real_lattice, matrices={}, symmetrize_info=None, **parameters):

@@ -13,10 +13,10 @@
 
 import numpy as np
 from termcolor import cprint
-from .system import System
+from .system_R import System_R
 
 
-class System_tb_py(System):
+class System_tb_py(System_R):
     """This interface initializes the System class from a tight-binding
     model packewd by one of the available python modules (see below)
 

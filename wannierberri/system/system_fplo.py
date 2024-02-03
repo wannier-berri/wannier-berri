@@ -15,14 +15,14 @@ import numpy as np
 
 from ..__utility import str2bool, real_recip_lattice
 from termcolor import cprint
-from .system import System
+from .system_R import System_R
 from collections import defaultdict
 from scipy.constants import physical_constants, angstrom
 
 bohr = physical_constants['Bohr radius'][0] / angstrom
 
 
-class System_fplo(System):
+class System_fplo(System_R):
     """
     System initialized from the `+hamdata` file written by `FPLO <https://www.fplo.de/>`__ code,
 

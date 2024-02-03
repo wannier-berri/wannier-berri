@@ -14,10 +14,10 @@
 import numpy as np
 from termcolor import cprint
 from ..__utility import real_recip_lattice
-from .system import System
+from .system_R import System_R
 
 
-class System_tb(System):
+class System_tb(System_R):
     """
     System initialized from the `*_tb.dat` file, which can be written either by  `Wannier90 <http://wannier.org>`__ code,
     or composed by the user based on some tight-binding model.
