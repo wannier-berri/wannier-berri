@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import lazy_property
 from functools import cached_property
 from termcolor import cprint
@@ -11,6 +12,27 @@ from .ws_dist import ws_dist_map
 
 
 class System_R(System):
+
+    def set_wannier_centers(self, wannier_centers_cart=None, wannier_centers_reduced=None):
+        """
+            set self.wannier_centers_cart. Only one of parameters should be provided.
+            If both are None: self.wannier_centers_cart is set to zero.
+        """
+        lcart = (wannier_centers_cart is not None)
+        lred = (wannier_centers_reduced is not None)
+        if lred:
+            _wannier_centers_cart = wannier_centers_reduced.dot(self.real_lattice)
+            if lcart:
+                assert abs(wannier_centers_cart - _wannier_centers_cart).max() < 1e-8
+            else:
+                self.wannier_centers_cart = _wannier_centers_cart
+        else:
+            if lcart:
+                self.wannier_centers_cart = wannier_centers_cart
+            else:
+                self.wannier_centers_cart = np.zeros((self.num_wann, 3))
+        self.clear_cached_wcc()
+
 
     def need_R_any(self, keys):
         """returns True is any of the listed matrices is needed in to be set
@@ -148,7 +170,6 @@ class System_R(System):
         print("Wannier Centers cart (raw):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (raw):\n", self.wannier_centers_reduced)
         (self._XX_R, self.iRvec), self.wannier_centers_cart = symmetrize_wann.symmetrize(method=method)
-        self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
 
         if self.has_R_mat('AA'):
             A_diag = self.get_R_mat('AA')[:, :, self.iR0].diagonal()
@@ -266,7 +287,7 @@ class System_R(System):
 
     def getXX_only_wannier_centers(self, getSS=False):
         """return AA_R, BB_R, CC_R containing only the diagonal matrix elements, evaluated from
-        the wannier_centers_cart_auto cariable (tight-binding approximation).
+        the wannier_centers_cart variable (tight-binding approximation).
         In practice, it is useless because corresponding terms vanish with use_wcc_phase = True.
         but for testing may be used
         Used with pythtb, tbmodels, and also fplo, ASE until proper evaluation of matrix elements is implemented for them.
@@ -277,7 +298,7 @@ class System_R(System):
             self.set_R_mat('AA', np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex))
             if not self.use_wcc_phase:
                 for i in range(self.num_wann):
-                    self.get_R_mat('AA')[i, i, iR0, :] = self.wannier_centers_cart_auto[i]
+                    self.get_R_mat('AA')[i, i, iR0, :] = self.wannier_centers_cart[i]
 
         if 'BB' in self.needed_R_matrices:
             self.set_R_mat('BB', np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex))
@@ -295,7 +316,6 @@ class System_R(System):
     def do_at_end_of_init(self, convert_convention=True):
         self.set_symmetry()
         self.check_periodic()
-        self.set_wannier_centers()
         if convert_convention:
             self.convention_II_to_I()
         self.do_ws_dist()
@@ -303,25 +323,24 @@ class System_R(System):
         print("Number of R points:", self.nRvec)
         print("Recommended size of FFT grid", self.NKFFT_recommended)
 
-    def do_ws_dist(self):
-        if self.use_ws and (self.mp_grid is not None):
+    def do_ws_dist(self, wannier_centers_cart=None, mp_grid=None):
+        """
+        Perform the minimal-distance replica selection method
+        """
+        if wannier_centers_cart is None:
+            wannier_centers_cart = self.wannier_centers_cart
+        if mp_grid is None:
+            mp_grid = self.mp_grid
+        if self.use_ws and (mp_grid is not None):
             print("using ws_distance")
             ws_map = ws_dist_map(
-                self.iRvec, self.wannier_centers_cart_ws, self.mp_grid, self.real_lattice, npar=self.npar)
+                self.iRvec, wannier_centers_cart, mp_grid, self.real_lattice, npar=self.npar)
             for key, val in self._XX_R.items():
                 print("using ws_dist for {}".format(key))
                 self.set_R_mat(key, ws_map(val), reset=True)
             self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
         else:
             print("NOT using ws_dist")
-
-    @property
-    def wannier_centers_cart_ws(self):
-        "to prefer the values read from .chk over the values provided in the input"
-        if hasattr(self, "wannier_centers_cart_auto"):
-            return self.wannier_centers_cart_auto
-        else:
-            return self.wannier_centers_cart
 
     def to_tb_file(self, tb_file=None):
         if tb_file is None:
@@ -409,7 +428,6 @@ class System_R(System):
         wannier_centers = self.wannier_centers_reduced
         return wannier_centers[None, :, :] - wannier_centers[:, None, :]
 
-
     @property
     def wannier_centers_cart_wcc_phase(self):
         "returns zero array if use_wcc_phase = False"
@@ -419,33 +437,17 @@ class System_R(System):
             return np.zeros((self.num_wann, 3), dtype=float)
 
     def clear_cached_wcc(self):
-        for attr in 'diff_wcc_cart', 'cRvec_p_wcc', 'diff_wcc_red':
+        for attr in 'diff_wcc_cart', 'cRvec_p_wcc', 'diff_wcc_red', "wannier_centers_reduced":
             if hasattr(self, attr):
                 delattr(self, attr)
 
+    @cached_property
+    def wannier_centers_reduced(self):
+        return self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
 
     @property
     def is_phonon(self):
         return False
-
-    def set_wannier_centers(self):
-        """
-        set self.wannier_centers_cart and self.wannier_centers_reduced. Also, if
-        use_wcc_phase=True, modify the relevant real-space matrix elements .
-        """
-        if self.wannier_centers_cart is not None:
-            pass
-        #            if self.wannier_centers_reduced is not None:
-        #                raise ValueError(
-        #                    "one should not specify both wannier_centers_cart and wannier_centers_reduced,"
-        #                    "or, set_wannier_centers should not be called twice")
-        #            else:
-        #                self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
-        #        elif self.wannier_centers_reduced is not None:
-        #            self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
-        elif hasattr(self, "wannier_centers_cart_auto"):
-            self.wannier_centers_cart = self.wannier_centers_cart_auto
-            self.wannier_centers_reduced = self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
 
 
     def convention_II_to_I(self):
@@ -641,3 +643,39 @@ class System_R(System):
         for k, v in min_values.items():
             ret_dic['matrices'][k] = array_to_dict(self.get_R_mat(k), v)
         return ret_dic
+
+    def save_npz(self, path, extra_properties=[], exclude_properties=[], R_matrices=None, overwrite=True):
+        """
+        Save system to a directory of npz files
+        Parameters
+        ----------
+        path : str
+            path to saved files. If does not exist - will be created (unless overwrite=False)
+        extra_properties : list of str
+            names of properties which are not essential for reconstruction, but will also be saved
+        exclude_properties : list of str
+            dp not save certain properties - duse on your own risk
+        R_matrices : list of str
+            list of the R matrices, e.g. ```['Ham','AA',...]``` to be saved. if None: all R-matrices will be saved
+        overwrite : bool
+            if the directory already exiists, it will be overwritten
+        """
+        essential_properties = ['num_wann', 'real_lattice', 'iRvec', 'periodic',
+                                'use_wcc_phase', '_getFF', 'is_phonon', 'wannier_centers_cart']
+
+        properties = [x for x in essential_properties + extra_properties if x not in exclude_properties]
+        if R_matrices is None:
+            R_matrices = list(self._XX_R.keys())
+
+        try:
+            os.makedirs(path, exist_ok=overwrite)
+        except FileExistsError:
+            raise FileExistsError(f"Directorry {path} already exists. To overwrite it set overwrite=True")
+        for key in properties:
+            print(f"saving {key}", end="")
+            np.savez(os.path.join(path, key + ".npz"), getattr(self, key), allow_pickle=False)
+            print(" - Ok!")
+        for key in R_matrices:
+            print(f"saving {key}", end="")
+            np.savez_compressed(os.path.join(path, key + ".npz"), self.get_R_mat(key))
+            print(" - Ok!")

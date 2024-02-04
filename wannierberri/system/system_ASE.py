@@ -37,7 +37,7 @@ class System_ASE(System_w90):
                 ase_wannier,
                 ase_R_vectors=False,  # for testing vs ASE
                 **parameters):
-        self.set_parameters(**parameters)
+        super().__init__(**parameters)
         self.seedname = "ASE"
         ase_wannier.translate_all_to_cell()
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=np.array(ase_wannier.unitcell_cc))
@@ -60,8 +60,8 @@ class System_ASE(System_w90):
         self.nRvec0 = len(self.iRvec)
         self.num_wann = ase_wannier.nwannier
         self.num_kpts = ase_wannier.Nk
-        self.wannier_centers_cart_auto = ase_wannier.get_centers()
-        print(f"got the Wanier centers : {self.wannier_centers_cart_auto}")
+        self.wannier_centers_cart = ase_wannier.get_centers()
+        print(f"got the Wanier centers : {self.wannier_centers_cart}")
         self.kpt_red = ase_wannier.kpt_kc
 
         kpt_mp_grid = [

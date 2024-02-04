@@ -5,14 +5,14 @@ import os
 from common import OUTPUT_DIR, REF_DIR
 
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced', 'wannier_centers_cart_wcc_phase',
-                  'wannier_centers_cart_ws', 'diff_wcc_cart', 'diff_wcc_red']  # , 'cRvec_p_wcc']
+                  'diff_wcc_cart', 'diff_wcc_red']  # , 'cRvec_p_wcc']
 
 
 @pytest.fixture
 def check_system():
     def _inner(system, name,
                properties=['num_wann', 'recip_lattice', 'real_lattice', 'nRvec', 'iRvec', 'cRvec', 'use_ws', 'periodic',
-                           'use_wcc_phase', '_getFF',
+                           'use_wcc_phase',
                            'cell_volume', 'is_phonon'] + properties_wcc,
                extra_properties=[],
                exclude_properties=[],
@@ -116,7 +116,7 @@ def check_system():
 def test_system_Fe_W90(check_system, system_Fe_W90):
     check_system(
         system_Fe_W90, "Fe_W90",
-        extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
+        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA']
     )
 
@@ -124,7 +124,7 @@ def test_system_Fe_W90(check_system, system_Fe_W90):
 def test_system_Fe_W90_wcc(check_system, system_Fe_W90_wcc):
     check_system(
         system_Fe_W90_wcc, "Fe_W90_wcc",
-        extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
+        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
     )
 
@@ -140,7 +140,7 @@ def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
 def test_system_Fe_sym_W90_old(check_system, system_Fe_sym_W90_old_wcc):
     check_system(
         system_Fe_sym_W90_old_wcc, "Fe_sym_W90_wcc",
-        extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
+        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
         sort_iR=True
     )
@@ -149,7 +149,7 @@ def test_system_Fe_sym_W90_old(check_system, system_Fe_sym_W90_old_wcc):
 def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90_wcc):
     check_system(
         system_Fe_sym_W90_wcc, "Fe_sym_W90_wcc",
-        extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
+        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
         sort_iR=True
     )
@@ -158,7 +158,7 @@ def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90_wcc):
 def test_system_Fe_W90_proj_set_spin(check_system, system_Fe_W90_proj_set_spin):
     check_system(
         system_Fe_W90_proj_set_spin, "Fe_W90_proj_set_spin",
-        extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
+        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
     )
 
@@ -166,7 +166,7 @@ def test_system_Fe_W90_proj_set_spin(check_system, system_Fe_W90_proj_set_spin):
 def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
     check_system(
         system_Fe_W90_proj, "Fe_W90_proj",
-        extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
+        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR']
     )
 
@@ -174,7 +174,7 @@ def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
 def test_system_Fe_W90_disentngle(check_system, system_Fe_W90_disentangle):
     check_system(
         system_Fe_W90_disentangle, "Fe_W90_disentangle",
-        extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
+        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA']
     )
 
@@ -182,7 +182,7 @@ def test_system_Fe_W90_disentngle(check_system, system_Fe_W90_disentangle):
 def test_system_GaAs_W90(check_system, system_GaAs_W90):
     check_system(
         system_GaAs_W90, "GaAs_W90",
-        extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
+        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
     )
 
@@ -190,7 +190,7 @@ def test_system_GaAs_W90(check_system, system_GaAs_W90):
 def test_system_GaAs_W90_wcc(check_system, system_GaAs_W90_wcc):
     check_system(
         system_GaAs_W90_wcc, "GaAs_W90_wcc",
-        extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
+        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
     )
 
@@ -198,7 +198,6 @@ def test_system_GaAs_W90_wcc(check_system, system_GaAs_W90_wcc):
 def test_system_GaAs_tb(check_system, system_GaAs_tb):
     check_system(
         system_GaAs_tb, "GaAs_tb",
-        extra_properties=['wannier_centers_cart_auto'],
         matrices=['Ham', 'AA']
     )
 
@@ -206,7 +205,6 @@ def test_system_GaAs_tb(check_system, system_GaAs_tb):
 def test_system_GaAs_sym_tb_old(check_system, system_GaAs_sym_tb_old_wcc):
     check_system(
         system_GaAs_sym_tb_old_wcc, "GaAs_sym_tb_wcc",
-        extra_properties=['wannier_centers_cart_auto'],
         matrices=['Ham', 'AA'],
         sort_iR=True,
     )
@@ -215,7 +213,6 @@ def test_system_GaAs_sym_tb_old(check_system, system_GaAs_sym_tb_old_wcc):
 def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb_wcc):
     check_system(
         system_GaAs_sym_tb_wcc, "GaAs_sym_tb_wcc",
-        extra_properties=['wannier_centers_cart_auto'],
         matrices=['Ham', 'AA'],
         sort_iR=True,
         suffix="new"
@@ -225,7 +222,6 @@ def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb_wcc):
 def test_system_GaAs_tb_wcc(check_system, system_GaAs_tb_wcc):
     check_system(
         system_GaAs_tb_wcc, "GaAs_tb_wcc",
-        extra_properties=['wannier_centers_cart_auto'],
         matrices=['Ham', 'AA']
     )
 
@@ -233,7 +229,7 @@ def test_system_GaAs_tb_wcc(check_system, system_GaAs_tb_wcc):
 def test_system_GaAs_tb_wcc_ws(check_system, system_GaAs_tb_wcc_ws):
     check_system(
         system_GaAs_tb_wcc_ws, "GaAs_tb_wcc_ws",
-        extra_properties=['wannier_centers_cart_auto', 'mp_grid'],
+        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA']
     )
 
@@ -283,7 +279,6 @@ def test_system_Chiral_right(check_system, system_Chiral_right):
 def test_system_Fe_FPLO(check_system, system_Fe_FPLO):
     check_system(
         system_Fe_FPLO, "Fe_FPLO",
-        extra_properties=['wannier_centers_cart_auto'],
         matrices=['Ham', 'AA', 'SS']
     )
 
@@ -291,7 +286,6 @@ def test_system_Fe_FPLO(check_system, system_Fe_FPLO):
 def test_system_Fe_FPLO_wcc(check_system, system_Fe_FPLO_wcc):
     check_system(
         system_Fe_FPLO_wcc, "Fe_FPLO_wcc",
-        extra_properties=['wannier_centers_cart_auto'],
         matrices=['Ham', 'AA', 'SS']
     )
 
@@ -306,7 +300,6 @@ def test_system_CuMnAs_2d_broken(check_system, system_CuMnAs_2d_broken):
 def test_system_Te_ASE(check_system, system_Te_ASE):
     check_system(
         system_Te_ASE, "Te_ASE",
-        extra_properties=['wannier_centers_cart_auto'],
         matrices=['Ham', 'AA']
     )
 
@@ -314,7 +307,6 @@ def test_system_Te_ASE(check_system, system_Te_ASE):
 def test_system_Te_ASE_wcc(check_system, system_Te_ASE_wcc):
     check_system(
         system_Te_ASE_wcc, "Te_ASE_wcc",
-        extra_properties=['wannier_centers_cart_auto'],
         matrices=['Ham']
     )
 
@@ -344,7 +336,6 @@ def test_system_Phonons_GaAs(check_system, system_Phonons_GaAs):
 def test_system_Mn3Sn_sym_tb_old(check_system, system_Mn3Sn_sym_tb_old_wcc):
     check_system(
         system_Mn3Sn_sym_tb_old_wcc, "Mn3Sn_sym_tb_wcc",
-        extra_properties=['wannier_centers_cart_auto'],
         matrices=['Ham', 'AA'],
         sort_iR=True
     )
@@ -353,7 +344,6 @@ def test_system_Mn3Sn_sym_tb_old(check_system, system_Mn3Sn_sym_tb_old_wcc):
 def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb_wcc):
     check_system(
         system_Mn3Sn_sym_tb_wcc, "Mn3Sn_sym_tb_wcc",
-        extra_properties=['wannier_centers_cart_auto'],
         matrices=['Ham', 'AA'],
         sort_iR=True
     )

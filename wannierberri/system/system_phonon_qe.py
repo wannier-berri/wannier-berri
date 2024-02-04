@@ -3,6 +3,7 @@ import untangle
 import multiprocessing
 from ..__utility import real_recip_lattice, FFT
 from . import System_w90
+from .system_R import System_R
 from scipy import constants as const
 from ..__factors import Ry_eV
 
@@ -51,7 +52,7 @@ class System_Phonon_QE(System_w90):
                  asr=True,
                  **parameters):
 
-        self.set_parameters(**parameters)
+        System_R.__init__(self, **parameters)
         with open(seedname + ".dyn0", "r") as f:
             self.mp_grid = np.array(f.readline().split(), dtype=int)
             nqirr = int(f.readline().strip())

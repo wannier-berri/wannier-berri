@@ -38,7 +38,7 @@ class System_fplo(System_R):
 
     def __init__(self, hamdata="+hamdata", **parameters):
 
-        self.set_parameters(**parameters)
+        super().__init__(**parameters)
         if not self.use_wcc_phase:
             print(
                 "WARNING: It is highly recommended to use `use_wcc_phase=True` with System_fplo"
@@ -66,12 +66,12 @@ class System_fplo(System_R):
                 if (not have_spin) and self.spin:
                     raise ValueError("spin info required, but not contained in the file")
             elif l.startswith("wancenters:"):
-                self.wannier_centers_cart_auto = np.array([next(f).split() for i in range(self.num_wann)], dtype=float)
+                self.wannier_centers_cart = np.array([next(f).split() for i in range(self.num_wann)], dtype=float)
             elif l.startswith("spin:"):
                 ispin = int(next(f))
                 assert ispin == 1, f"spin = 1 expected, got {ispin}"
                 Ham_R = defaultdict(lambda: np.zeros((self.num_wann, self.num_wann), dtype=complex))
-                if self.spin:
+                if self.need_R_any('SS'):
                     SS_R = defaultdict(lambda: np.zeros((self.num_wann, self.num_wann, 3), dtype=complex))
                 while True:
                     l = next(f)
@@ -92,14 +92,14 @@ class System_fplo(System_R):
                             continue
                         arread = np.array(arread, dtype=float)
                         Rvec = arread[:, :3] + (
-                                self.wannier_centers_cart_auto[None, iw] - self.wannier_centers_cart_auto[None, jw])
+                                self.wannier_centers_cart[None, iw] - self.wannier_centers_cart[None, jw])
                         Rvec = Rvec.dot(inv_real_lattice)  # should be integer now
                         iRvec = np.array(np.round(Rvec), dtype=int)
                         assert (abs(iRvec - Rvec).max() < 1e-8)
                         iRvec = [tuple(ir) for ir in iRvec]
                         for iR, a in zip(iRvec, arread):
                             Ham_R[iR][iw, jw] = a[3] + 1j * a[4]
-                            if self.spin:
+                            if self.need_R_any('SS'):
                                 SS_R[iR][iw, jw, :] = a[5:11:2] + 1j * a[6:11:2]
         f.close()
         # Reading of file finished

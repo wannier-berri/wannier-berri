@@ -34,7 +34,7 @@ class System_tb_py(System_R):
     """
 
     def __init__(self, model, module, **parameters):
-        self.set_parameters(**parameters)
+        super().__init__(**parameters)
         names = {'tbmodels': 'TBmodels', 'pythtb': 'PythTB'}
         self.seedname = 'model_{}'.format(names[module])
 
@@ -68,7 +68,7 @@ class System_tb_py(System_R):
         wannier_centers_reduced[:, :self.dimr] = positions
         self.real_lattice = np.eye(3, dtype=float)
         self.real_lattice[:self.dimr, :self.dimr] = np.array(real)
-        self.wannier_centers_cart_auto = wannier_centers_reduced.dot(self.real_lattice)
+        self.wannier_centers_cart = wannier_centers_reduced.dot(self.real_lattice)
         self.periodic[self.dimr:] = False
         self.recip_lattice = 2 * np.pi * np.linalg.inv(self.real_lattice).T
         Rvec = [tuple(row) for row in Rvec]

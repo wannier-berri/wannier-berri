@@ -20,12 +20,21 @@ from ..__utility import real_recip_lattice
 class SystemSparse(System_R):
     """"""
 
-    def __init__(self, real_lattice, matrices={}, symmetrize_info=None, **parameters):
+    def __init__(self, real_lattice,
+                 wannier_centers_reduced=None,
+                 wannier_centers_cart=None,
+                 matrices={},
+                 num_wann=None,
+                 symmetrize_info=None,
+                 **parameters):
 
+        super().__init__(**parameters)
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=real_lattice)
-        self.set_parameters(**parameters)
-        if not hasattr(self, 'num_wann') or self.num_wann is None:
+        if num_wann is None:
             self.num_wann = max(getnband(m) for m in matrices.values())
+        self.set_wannier_centers(wannier_centers_cart=wannier_centers_cart,
+                                 wannier_centers_reduced=wannier_centers_reduced)
+        self.num_wann = self.wannier_centers_cart.shape[0]
 
         assert 'Ham' in matrices, "Hamiltonian ('Ham') should be provided in matrices"
         irvec_set = set()

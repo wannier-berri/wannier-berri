@@ -63,7 +63,7 @@ class System_w90(System_R):
             bk_complete_tol=1e-5,
             **parameters):
 
-        self.set_parameters(**parameters)
+        super().__init__(**parameters)
         self.npar = npar
         self.seedname = seedname
         if w90data is None:
@@ -76,7 +76,7 @@ class System_w90(System_R):
         self.iRvec, self.Ndegen = self.wigner_seitz(chk.mp_grid)
         self.nRvec0 = len(self.iRvec)
         self.num_wann = chk.num_wann
-        self.wannier_centers_cart_auto = w90data.wannier_centers
+        self.wannier_centers_cart = w90data.wannier_centers
 
 
         kpt_mp_grid = [
@@ -104,20 +104,20 @@ class System_w90(System_R):
             if transl_inv:
                 wannier_centers_cart_new = np.diagonal(self.get_R_mat('AA')[:, :, self.iR0, :], axis1=0,
                                                        axis2=1).transpose()
-                if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart_auto) < 1e-6):
+                if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart) < 1e-6):
                     if guiding_centers:
                         print(
-                            f"The read Wannier centers\n{self.wannier_centers_cart_auto}\n"
+                            f"The read Wannier centers\n{self.wannier_centers_cart}\n"
                             f"are different from the evaluated Wannier centers\n{wannier_centers_cart_new}\n"
                             "This can happen if guiding_centres was set to true in Wannier90.\n"
                             "Overwrite the evaluated centers using the read centers.")
                         for iw in range(self.num_wann):
-                            self.get_R_mat('AA')[iw, iw, self.iR0, :] = self.wannier_centers_cart_auto[iw, :]
+                            self.get_R_mat('AA')[iw, iw, self.iR0, :] = self.wannier_centers_cart[iw, :]
                     else:
                         raise ValueError(
-                            f"the difference between read\n{self.wannier_centers_cart_auto}\n"
+                            f"the difference between read\n{self.wannier_centers_cart}\n"
                             f"and evluated \n{wannier_centers_cart_new}\n wannier centers is\n"
-                            f"{self.wannier_centers_cart_auto - wannier_centers_cart_new}\n"
+                            f"{self.wannier_centers_cart - wannier_centers_cart_new}\n"
                             "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90."
                         )
 

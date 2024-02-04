@@ -36,11 +36,10 @@ class System_tb(System_R):
 
     def __init__(self, tb_file="wannier90_tb.dat", **parameters):
 
-        self.set_parameters(**parameters)
-        if self.morb:
-            raise ValueError("System_tb class cannot be used for evaluation of orbital magnetic moments")
-        if self.spin:
-            raise ValueError("System_tb class cannot be used for evaluation of spin properties")
+        super().__init__(**parameters)
+        for key in self.needed_R_matrices:
+            if key not in ['Ham', 'AA']:
+                raise ValueError(f"System_tb class cannot be used for evaluation of {key}_R")
 
         self.seedname = tb_file.split("/")[-1].split("_")[0]
         f = open(tb_file, "r")
@@ -80,7 +79,7 @@ class System_tb(System_R):
                     [[f.readline().split()[2:8] for n in range(self.num_wann)] for m in range(self.num_wann)],
                     dtype=float)
                 AA_R[:, :, ir, :] = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / self.Ndegen[ir]
-            self.wannier_centers_cart_auto = np.diagonal(AA_R[:, :, self.iR0, :], axis1=0, axis2=1).T
+            self.wannier_centers_cart = np.diagonal(AA_R[:, :, self.iR0, :], axis1=0, axis2=1).T
             self.set_R_mat('AA', AA_R)
 
         f.close()
