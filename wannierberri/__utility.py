@@ -85,6 +85,11 @@ def real_recip_lattice(real_lattice=None, recip_lattice=None):
     return np.array(real_lattice), np.array(recip_lattice)
 
 
+def clear_cached(obj, properties=[]):
+    for attr in properties:
+        if hasattr(obj, attr):
+            delattr(obj, attr)
+
 
 
 def str2bool(v):

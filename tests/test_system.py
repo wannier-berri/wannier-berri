@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 import os
 from common import OUTPUT_DIR, REF_DIR
+from wannierberri.system.system_R import System_R
 
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced', 'wannier_centers_cart_wcc_phase',
                   'diff_wcc_cart', 'diff_wcc_red']  # , 'cRvec_p_wcc']
@@ -229,6 +230,20 @@ def test_system_GaAs_tb_wcc(check_system, system_GaAs_tb_wcc):
 def test_system_GaAs_tb_wcc_ws(check_system, system_GaAs_tb_wcc_ws):
     check_system(
         system_GaAs_tb_wcc_ws, "GaAs_tb_wcc_ws",
+        extra_properties=['mp_grid'],
+        matrices=['Ham', 'AA']
+    )
+
+
+def test_system_GaAs_tb_wcc_ws_save_load(check_system, system_GaAs_tb_wcc_ws):
+    name = "GaAs_tb_wcc_ws_save"
+    path = os.path.join(OUTPUT_DIR, name)
+    system_GaAs_tb_wcc_ws.save_npz(path, extra_properties=["recip_lattice"])
+    system = System_R()
+    system.load_npz(path, load_all_XX_R=True)
+    check_system(
+        system, "GaAs_tb_wcc_ws",
+        suffix="save-load",
         extra_properties=['mp_grid'],
         matrices=['Ham', 'AA']
     )

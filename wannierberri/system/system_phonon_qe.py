@@ -53,6 +53,7 @@ class System_Phonon_QE(System_w90):
                  **parameters):
 
         System_R.__init__(self, **parameters)
+        self.is_phonon = True
         with open(seedname + ".dyn0", "r") as f:
             self.mp_grid = np.array(f.readline().split(), dtype=int)
             nqirr = int(f.readline().strip())
@@ -125,7 +126,3 @@ class System_Phonon_QE(System_w90):
         for i in range(self.number_of_atoms):
             for j in range(self.number_of_atoms):
                 self.Ham_R[3 * i:3 * i + 3, 3 * j:3 * j + 3, :] /= np.sqrt(masses[i] * masses[j]) * AMU_RY
-
-    @property
-    def is_phonon(self):
-        return True

@@ -13,8 +13,10 @@
 
 import numpy as np
 import lazy_property
-from ..symmetry import Group
 import multiprocessing
+from functools import cached_property
+from ..symmetry import Group
+from ..__utility import real_recip_lattice
 
 pauli_x = [[0, 1], [1, 0]]
 pauli_y = [[0, -1j], [1j, 0]]
@@ -102,6 +104,7 @@ class System:
 
         self.periodic = np.zeros(3, dtype=bool)
         self.periodic[:len(self.periodic)] = periodic
+        self.is_phonon = False
 
         self.needed_R_matrices = set(['Ham'])
         if morb:
@@ -118,6 +121,15 @@ class System:
             self.needed_R_matrices.update(['AA', 'SS', 'SR', 'SH', 'SHR'])
 
         self._XX_R = dict()
+
+    def set_real_lattice(self, real_lattice=None, recip_lattice=None):
+        self.real_lattice, _ = real_recip_lattice(real_lattice=real_lattice, recip_lattice=recip_lattice)
+
+
+    @cached_property
+    def recip_lattice(self):
+        real, recip = real_recip_lattice(real_lattice=self.real_lattice)
+        return recip
 
     def set_symmetry(self, symmetry_gen=[]):
         """

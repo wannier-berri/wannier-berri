@@ -13,7 +13,6 @@
 
 import numpy as np
 from termcolor import cprint
-from ..__utility import real_recip_lattice
 from .system_R import System_R
 
 
@@ -45,8 +44,8 @@ class System_tb(System_R):
         f = open(tb_file, "r")
         l = f.readline()
         cprint("reading TB file {0} ( {1} )".format(tb_file, l.strip()), 'green', attrs=['bold'])
-        real_lattice = np.array([f.readline().split()[:3] for i in range(3)], dtype=float)
-        self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=real_lattice)
+        self.set_real_lattice(real_lattice=np.array([f.readline().split()[:3] for i in range(3)], dtype=float))
+
         self.num_wann = int(f.readline())
         nRvec = int(f.readline())
         self.nRvec0 = nRvec

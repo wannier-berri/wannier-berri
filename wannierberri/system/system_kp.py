@@ -63,6 +63,7 @@ class SystemKP(System_k):
 
     def __init__(self, Ham, derHam=None, der2Ham=None, der3Ham=None, kmax=1., real_lattice=None, recip_lattice=None,
                  k_vector_cartesian=True, finite_diff_dk=1e-4, **parameters):
+        super().__init__(**parameters)
         if kmax is not None:
             assert real_lattice is None, "kmax and real_lattice should not be set tigether"
             assert recip_lattice is None, "kmax and recip_lattice should not be set tigether"
@@ -71,7 +72,6 @@ class SystemKP(System_k):
                                                                    recip_lattice=recip_lattice)
         self.recip_lattice_inv = np.linalg.inv(self.recip_lattice)
 
-        self.set_parameters(**parameters)
         if not hasattr(self, 'num_wann') or self.num_wann is None:
             self.num_wann = Ham([0, 0, 0]).shape[0]
         else:

@@ -4,14 +4,19 @@ import lazy_property
 from functools import cached_property
 from termcolor import cprint
 from collections import defaultdict
+import glob
 from .system import System, pauli_xyz
 from .sym_wann import SymWann
-from ..__utility import alpha_A, beta_A
+from ..__utility import alpha_A, beta_A, clear_cached
 from ..symmetry import Symmetry, Group, TimeReversal
 from .ws_dist import ws_dist_map
 
 
 class System_R(System):
+
+    def __init__(self, **parameters):
+        super().__init__(**parameters)
+        self._XX_R = {}
 
     def set_wannier_centers(self, wannier_centers_cart=None, wannier_centers_reduced=None):
         """
@@ -407,10 +412,7 @@ class System_R(System):
             return self.cRvec[None, None, :, :]
 
     def clear_cached_R(self):
-        for attr in 'cRvec', 'cRvec_p_wcc':
-            if hasattr(self, attr):
-                delattr(self, attr)
-
+        clear_cached(self, ['cRvec', 'cRvec_p_wcc'])
 
     @cached_property
     def diff_wcc_cart(self):
@@ -437,18 +439,11 @@ class System_R(System):
             return np.zeros((self.num_wann, 3), dtype=float)
 
     def clear_cached_wcc(self):
-        for attr in 'diff_wcc_cart', 'cRvec_p_wcc', 'diff_wcc_red', "wannier_centers_reduced":
-            if hasattr(self, attr):
-                delattr(self, attr)
+        clear_cached(self, ['diff_wcc_cart', 'cRvec_p_wcc', 'diff_wcc_red', "wannier_centers_reduced"])
 
     @cached_property
     def wannier_centers_reduced(self):
         return self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
-
-    @property
-    def is_phonon(self):
-        return False
-
 
     def convention_II_to_I(self):
         if self.use_wcc_phase:
@@ -644,6 +639,14 @@ class System_R(System):
             ret_dic['matrices'][k] = array_to_dict(self.get_R_mat(k), v)
         return ret_dic
 
+    @cached_property
+    def essential_properties(self):
+        return ['num_wann', 'real_lattice', 'iRvec', 'periodic',
+                'use_wcc_phase', 'is_phonon', 'wannier_centers_cart', 'symgroup']
+
+    def _R_mat_npz_filename(self, key):
+        return "_XX_R_" + key + ".npz"
+
     def save_npz(self, path, extra_properties=[], exclude_properties=[], R_matrices=None, overwrite=True):
         """
         Save system to a directory of npz files
@@ -660,10 +663,8 @@ class System_R(System):
         overwrite : bool
             if the directory already exiists, it will be overwritten
         """
-        essential_properties = ['num_wann', 'real_lattice', 'iRvec', 'periodic',
-                                'use_wcc_phase', '_getFF', 'is_phonon', 'wannier_centers_cart']
 
-        properties = [x for x in essential_properties + extra_properties if x not in exclude_properties]
+        properties = [x for x in self.essential_properties + extra_properties if x not in exclude_properties]
         if R_matrices is None:
             R_matrices = list(self._XX_R.keys())
 
@@ -671,11 +672,51 @@ class System_R(System):
             os.makedirs(path, exist_ok=overwrite)
         except FileExistsError:
             raise FileExistsError(f"Directorry {path} already exists. To overwrite it set overwrite=True")
+
         for key in properties:
             print(f"saving {key}", end="")
-            np.savez(os.path.join(path, key + ".npz"), getattr(self, key), allow_pickle=False)
+            fullpath = os.path.join(path, key + ".npz")
+            a = self.__getattribute__(key)
+            if key in ['symgroup']:
+                np.savez(fullpath, **a.as_dict(), allow_pickle=False)
+            else:
+                np.savez(fullpath, a, allow_pickle=False)
             print(" - Ok!")
         for key in R_matrices:
             print(f"saving {key}", end="")
-            np.savez_compressed(os.path.join(path, key + ".npz"), self.get_R_mat(key))
+            np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
+            print(" - Ok!")
+
+    def load_npz(self, path, load_all_XX_R=False, exclude_properties=[]):
+        """
+        Save system to a directory of npz files
+        Parameters
+        ----------
+        path : str
+            path to saved files. If does not exist - will be created (unless overwrite=False)
+        load_all_XX_R : list of str
+            load all matrices which were saved
+        exclude_properties : list of str
+            dp not save certain properties - duse on your own risk
+        """
+        all_files = glob.glob(os.path.join(path, "*.npz"))
+        all_names = [os.path.splitext(os.path.split(x)[-1])[0] for x in all_files]
+        properties = [x for x in all_names if not x.startswith('_XX_R_') and x not in exclude_properties]
+        for key in properties:
+            print(f"loading {key}", end="")
+            a = np.load(os.path.join(path, key + ".npz"), allow_pickle=False)
+            if key == 'symgroup':
+                val = Group(dictionary=a)
+            else:
+                val = a['arr_0']
+            self.__setattr__(key, val)
+            print(" - Ok!")
+        if load_all_XX_R:
+            R_files = glob.glob(os.path.join(path, "_XX_R_*.npz"))
+            R_matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
+            self.needed_R_matrices.update(R_matrices)
+        for key in self.needed_R_matrices:
+            print(f"loading R_matrix {key}", end="")
+            a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
+            self.set_R_mat(key, a)
             print(" - Ok!")
