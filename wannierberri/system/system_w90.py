@@ -311,11 +311,11 @@ class System_w90(System):
                     raise ValueError('Recentered B matrix is needed in Jae-Mo`s implementation of C')
                 BB_R0_conj = self.conj_XX_R(BB_R0)
                 if not self.use_wcc_phase: # Phase convention II
-                    rc  = 0.5j * r0[:,:,:,:,None] * BB_R0[:,:,:,None,:]
-                    rc -= 0.5j * (r0[:,:,:,:,None] - self.cRvec[None,None,:,:,None]) *  BB_R0_conj[:,:,:,None,:]
+                    rc  = 1j * r0[:,:,:,:,None] * BB_R0[:,:,:,None,:]
+                    rc -= 1j * (r0[:,:,:,:,None] - self.cRvec[None,None,:,:,None]) *  BB_R0_conj[:,:,:,None,:]
                     rc -= 0.5j * (centers[:,None,None,:,None] + centers[None,:,None,:,None]) * self.cRvec[None,None,:,None,:] * HH_R[:,:,:,None,None]
                 else:                      # Phase convention I
-                    rc   = 0.5j * (r0[:,:,:,:,None] - centers[:,None,None,:,None]) * (BB_R0 + BB_R0_conj)[:,:,:,None,:]
+                    rc   = 1j * (r0[:,:,:,:,None] - centers[:,None,None,:,None]) * (BB_R0 + BB_R0_conj)[:,:,:,None,:]
 
                 CC_R = CC_R0 + rc[:,:,:,alpha_A,beta_A] - rc[:,:,:,beta_A,alpha_A]
 
