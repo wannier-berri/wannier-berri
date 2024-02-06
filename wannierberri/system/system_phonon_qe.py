@@ -55,7 +55,7 @@ class System_Phonon_QE(System_w90):
         System_R.__init__(self, **parameters)
         self.is_phonon = True
         with open(seedname + ".dyn0", "r") as f:
-            self.mp_grid = np.array(f.readline().split(), dtype=int)
+            mp_grid = np.array(f.readline().split(), dtype=int)
             nqirr = int(f.readline().strip())
         #        print (self.mp_grid,nqirr)
         q_points = []
@@ -97,9 +97,9 @@ class System_Phonon_QE(System_w90):
                 cnt += 1
                 self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=self.real_lattice)
         self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
-        qpoints_found = np.zeros(self.mp_grid, dtype=float)
-        dynamical_matrix_q = np.zeros(tuple(self.mp_grid) + (self.number_of_phonons,) * 2, dtype=complex)
-        agrid = np.array(self.mp_grid)
+        qpoints_found = np.zeros(mp_grid, dtype=float)
+        dynamical_matrix_q = np.zeros(tuple(mp_grid) + (self.number_of_phonons,) * 2, dtype=complex)
+        agrid = np.array(mp_grid)
         for q, dyn_mat in zip(q_points, dynamical_mat):
             iq = tuple(np.array(np.round(q * agrid), dtype=int) % agrid)
             dynamical_matrix_q[iq] = dyn_mat
@@ -107,14 +107,15 @@ class System_Phonon_QE(System_w90):
         assert np.all(qpoints_found), ('some qpoints were not found in the files:\n' + '\n'.join(str(x / agrid))
                                        for x in np.where(np.logical_not(qpoints_found)))
         Ham_R = FFT(dynamical_matrix_q, axes=(0, 1, 2), numthreads=npar, fft=fft, destroy=False)
-        self.iRvec, self.Ndegen = self.wigner_seitz(self.mp_grid)
-        Ham_R = np.array([Ham_R[tuple(iR % self.mp_grid)] / nd for iR, nd in zip(self.iRvec, self.Ndegen)]) / np.prod(
-            self.mp_grid)
+        self.iRvec, self.Ndegen = self.wigner_seitz(mp_grid)
+        Ham_R = np.array([Ham_R[tuple(iR % mp_grid)] / nd for iR, nd in zip(self.iRvec, self.Ndegen)]) / np.prod(
+            mp_grid)
         Ham_R = Ham_R.transpose((1, 2, 0)) * (
                     Ry_eV ** 2)  # now the units are eV**2, to be "kind of consistent" with electronic systems
         self.set_R_mat('Ham', Ham_R)
 
         self.do_at_end_of_init()
+        self.do_ws_dist(mp_grid=mp_grid)
 
         iR0 = self.iR0
         if asr:

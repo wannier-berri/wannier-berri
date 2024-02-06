@@ -117,7 +117,6 @@ def check_system():
 def test_system_Fe_W90(check_system, system_Fe_W90):
     check_system(
         system_Fe_W90, "Fe_W90",
-        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA']
     )
 
@@ -125,7 +124,6 @@ def test_system_Fe_W90(check_system, system_Fe_W90):
 def test_system_Fe_W90_wcc(check_system, system_Fe_W90_wcc):
     check_system(
         system_Fe_W90_wcc, "Fe_W90_wcc",
-        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
     )
 
@@ -141,7 +139,6 @@ def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
 def test_system_Fe_sym_W90_old(check_system, system_Fe_sym_W90_old_wcc):
     check_system(
         system_Fe_sym_W90_old_wcc, "Fe_sym_W90_wcc",
-        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
         sort_iR=True
     )
@@ -150,7 +147,6 @@ def test_system_Fe_sym_W90_old(check_system, system_Fe_sym_W90_old_wcc):
 def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90_wcc):
     check_system(
         system_Fe_sym_W90_wcc, "Fe_sym_W90_wcc",
-        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
         sort_iR=True
     )
@@ -159,7 +155,6 @@ def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90_wcc):
 def test_system_Fe_W90_proj_set_spin(check_system, system_Fe_W90_proj_set_spin):
     check_system(
         system_Fe_W90_proj_set_spin, "Fe_W90_proj_set_spin",
-        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
     )
 
@@ -167,7 +162,6 @@ def test_system_Fe_W90_proj_set_spin(check_system, system_Fe_W90_proj_set_spin):
 def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
     check_system(
         system_Fe_W90_proj, "Fe_W90_proj",
-        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR']
     )
 
@@ -175,7 +169,6 @@ def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
 def test_system_Fe_W90_disentngle(check_system, system_Fe_W90_disentangle):
     check_system(
         system_Fe_W90_disentangle, "Fe_W90_disentangle",
-        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA']
     )
 
@@ -183,7 +176,6 @@ def test_system_Fe_W90_disentngle(check_system, system_Fe_W90_disentangle):
 def test_system_GaAs_W90(check_system, system_GaAs_W90):
     check_system(
         system_GaAs_W90, "GaAs_W90",
-        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
     )
 
@@ -191,7 +183,6 @@ def test_system_GaAs_W90(check_system, system_GaAs_W90):
 def test_system_GaAs_W90_wcc(check_system, system_GaAs_W90_wcc):
     check_system(
         system_GaAs_W90_wcc, "GaAs_W90_wcc",
-        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
     )
 
@@ -230,7 +221,6 @@ def test_system_GaAs_tb_wcc(check_system, system_GaAs_tb_wcc):
 def test_system_GaAs_tb_wcc_ws(check_system, system_GaAs_tb_wcc_ws):
     check_system(
         system_GaAs_tb_wcc_ws, "GaAs_tb_wcc_ws",
-        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA']
     )
 
@@ -238,13 +228,12 @@ def test_system_GaAs_tb_wcc_ws(check_system, system_GaAs_tb_wcc_ws):
 def test_system_GaAs_tb_wcc_ws_save_load(check_system, system_GaAs_tb_wcc_ws):
     name = "GaAs_tb_wcc_ws_save"
     path = os.path.join(OUTPUT_DIR, name)
-    system_GaAs_tb_wcc_ws.save_npz(path, extra_properties=["recip_lattice"])
+    system_GaAs_tb_wcc_ws.save_npz(path)
     system = System_R()
     system.load_npz(path, load_all_XX_R=True)
     check_system(
         system, "GaAs_tb_wcc_ws",
         suffix="save-load",
-        extra_properties=['mp_grid'],
         matrices=['Ham', 'AA']
     )
 

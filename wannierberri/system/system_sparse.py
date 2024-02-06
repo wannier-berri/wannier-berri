@@ -14,7 +14,6 @@
 import numpy as np
 
 from .system_R import System_R
-from ..__utility import real_recip_lattice
 
 
 class SystemSparse(System_R):
@@ -29,7 +28,7 @@ class SystemSparse(System_R):
                  **parameters):
 
         super().__init__(**parameters)
-        self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=real_lattice)
+        self.real_lattice = real_lattice
         if num_wann is None:
             self.num_wann = max(getnband(m) for m in matrices.values())
         self.set_wannier_centers(wannier_centers_cart=wannier_centers_cart,

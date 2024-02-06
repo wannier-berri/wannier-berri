@@ -5,18 +5,81 @@ from functools import cached_property
 from termcolor import cprint
 from collections import defaultdict
 import glob
+import multiprocessing
 from .system import System, pauli_xyz
 from .sym_wann import SymWann
-from ..__utility import alpha_A, beta_A, clear_cached
+from ..__utility import alpha_A, beta_A, clear_cached, one2three
 from ..symmetry import Symmetry, Group, TimeReversal
 from .ws_dist import ws_dist_map
 
 
 class System_R(System):
+    """
+        The base class for describing a system. Does not have its own constructor,
+        please use the child classes, e.g  :class:`System_w90` or :class:`System_tb`
 
-    def __init__(self, **parameters):
+
+        Parameters
+        -----------
+        berry : bool
+            set ``True`` to enable evaluation of external term in  Berry connection or Berry curvature and their
+            derivatives.
+        spin : bool
+            set ``True`` if quantities derived from spin  will be used.
+        morb : bool
+            set ``True`` to enable calculation of external terms in orbital moment and its derivatives.
+            Requires the ``.uHu`` file.
+        periodic : [bool,bool,bool]
+            set ``True`` for periodic directions and ``False`` for confined (e.g. slab direction for 2D systems). If less then 3 values provided, the rest are treated as ``False`` .
+        SHCryoo : bool
+            set ``True`` if quantities derived from Ryoo's spin-current elements will be used. (RPS 2019)
+        SHCqiao : bool
+            set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018).
+        use_ws : bool
+            minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
+            (Note: for :class:`System_tb` the method is not employed in the constructor. use `do_ws_dist()` if needed)
+        _getFF : bool
+            generate the FF_R matrix based on the uIu file. May be used for only testing so far. Default : ``{_getFF}``
+        use_wcc_phase: bool
+            using wannier centers in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
+        npar : int
+            number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
+
+        """
+
+    def __init__(self,
+                 berry=False,
+                 morb=False,
+                 spin=False,
+                 SHCryoo=False,
+                 SHCqiao=False,
+                 use_ws=True,
+                 use_wcc_phase=False,
+                 npar=None,
+                 _getFF=False,
+                 **parameters):
+
         super().__init__(**parameters)
-        self._XX_R = {}
+        self.use_ws = use_ws
+        self.needed_R_matrices = set(['Ham'])
+        self.npar = multiprocessing.cpu_count() if npar is None else npar
+        self.use_wcc_phase = use_wcc_phase
+
+
+        if morb:
+            self.needed_R_matrices.update(['AA', 'BB', 'CC'])
+        if berry:
+            self.needed_R_matrices.add('AA')
+        if spin:
+            self.needed_R_matrices.add('SS')
+        if _getFF:
+            self.needed_R_matrices.add('FF')
+        if SHCryoo:
+            self.needed_R_matrices.update(['AA', 'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR'])
+        if SHCqiao:
+            self.needed_R_matrices.update(['AA', 'SS', 'SR', 'SH', 'SHR'])
+        self._XX_R = dict()
+
 
     def set_wannier_centers(self, wannier_centers_cart=None, wannier_centers_reduced=None):
         """
@@ -323,29 +386,36 @@ class System_R(System):
         self.check_periodic()
         if convert_convention:
             self.convention_II_to_I()
-        self.do_ws_dist()
         print("Number of wannier functions:", self.num_wann)
         print("Number of R points:", self.nRvec)
         print("Recommended size of FFT grid", self.NKFFT_recommended)
 
-    def do_ws_dist(self, wannier_centers_cart=None, mp_grid=None):
+    def do_ws_dist(self, mp_grid, wannier_centers_cart=None):
         """
         Perform the minimal-distance replica selection method
+        As a side effect - it sets the variable _NKFFT_recommended to mp_grid
+
+        Parameters:
+        -----------
+        wannier_centers_cart : array(float)
+            Wannier centers used (if None -- use those already stored in the system)
+        mp_grid : [nk1,nk2,nk3] or int
+            size of Monkhorst-Pack frid used in ab initio calculation.
         """
+        try:
+            mp_grid = one2three(mp_grid)
+            assert mp_grid is not None
+        except AssertionError:
+            raise ValueError(f"mp_greid should be one integer, of three integers. found {mp_grid}")
+        self._NKFFT_recommended = mp_grid
         if wannier_centers_cart is None:
             wannier_centers_cart = self.wannier_centers_cart
-        if mp_grid is None:
-            mp_grid = self.mp_grid
-        if self.use_ws and (mp_grid is not None):
-            print("using ws_distance")
-            ws_map = ws_dist_map(
-                self.iRvec, wannier_centers_cart, mp_grid, self.real_lattice, npar=self.npar)
-            for key, val in self._XX_R.items():
-                print("using ws_dist for {}".format(key))
-                self.set_R_mat(key, ws_map(val), reset=True)
-            self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
-        else:
-            print("NOT using ws_dist")
+        ws_map = ws_dist_map(
+            self.iRvec, wannier_centers_cart, mp_grid, self.real_lattice, npar=self.npar)
+        for key, val in self._XX_R.items():
+            print("using ws_dist for {}".format(key))
+            self.set_R_mat(key, ws_map(val), reset=True)
+        self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
 
     def to_tb_file(self, tb_file=None):
         if tb_file is None:
@@ -385,8 +455,8 @@ class System_R(System):
     @property
     def NKFFT_recommended(self):
         "finds a minimal FFT grid on which different R-vectors do not overlap"
-        if self.mp_grid is not None:
-            return self.mp_grid
+        if hasattr(self, '_NKFFT_recommended'):
+            return self._NKFFT_recommended
         NKFFTrec = np.ones(3, dtype=int)
         for i in range(3):
             R = self.iRvec[:, i]
@@ -644,6 +714,11 @@ class System_R(System):
         return ['num_wann', 'real_lattice', 'iRvec', 'periodic',
                 'use_wcc_phase', 'is_phonon', 'wannier_centers_cart', 'symgroup']
 
+    @cached_property
+    def optional_properties(self):
+        return ["positions", "magnetic_moments", "atom_labels"]
+
+
     def _R_mat_npz_filename(self, key):
         return "_XX_R_" + key + ".npz"
 
@@ -676,12 +751,18 @@ class System_R(System):
         for key in properties:
             print(f"saving {key}", end="")
             fullpath = os.path.join(path, key + ".npz")
-            a = self.__getattribute__(key)
+            a = getattr(self, key)
             if key in ['symgroup']:
                 np.savez(fullpath, **a.as_dict(), allow_pickle=False)
             else:
                 np.savez(fullpath, a, allow_pickle=False)
             print(" - Ok!")
+        for key in self.optional_properties:
+            if key not in properties:
+                fullpath = os.path.join(path, key + ".npz")
+                if hasattr(self, key):
+                    a = getattr(self, key)
+                    np.savez(fullpath, a, allow_pickle=False)
         for key in R_matrices:
             print(f"saving {key}", end="")
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
@@ -709,7 +790,7 @@ class System_R(System):
                 val = Group(dictionary=a)
             else:
                 val = a['arr_0']
-            self.__setattr__(key, val)
+            setattr(self, key, val)
             print(" - Ok!")
         if load_all_XX_R:
             R_files = glob.glob(os.path.join(path, "_XX_R_*.npz"))

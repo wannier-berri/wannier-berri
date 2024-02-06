@@ -30,13 +30,19 @@ class System_fplo(System_R):
     ----------
     hamdata : str
         name (and path) of the "+hamdata" file to be read
+    mp_grid : [nk1,nk2,nk3]
+        size of Monkhorst-Pack frid used in ab initio calculation. Needed when use_ws=True, which is default and highly
+        recommended
+
 
     Notes
     -----
     see also  parameters of the :class:`~wannierberri.System`
     """
 
-    def __init__(self, hamdata="+hamdata", **parameters):
+    def __init__(self, hamdata="+hamdata",
+                 mp_grid=None,
+                 **parameters):
 
         super().__init__(**parameters)
         if not self.use_wcc_phase:
@@ -116,5 +122,7 @@ class System_fplo(System_R):
         self.getXX_only_wannier_centers(getSS=False)
 
         self.do_at_end_of_init()
+        if self.use_ws:
+            self.do_ws_dist(mp_grid=mp_grid)
 
         cprint("Reading the FPLO Wannier system from {} finished successfully".format(hamdata), 'green', attrs=['bold'])

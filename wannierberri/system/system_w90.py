@@ -71,13 +71,12 @@ class System_w90(System_R):
         w90data.check_wannierised(msg="creation of System_Wannierise")
         chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
-        if self.mp_grid is None:
-            self.mp_grid = chk.mp_grid
+        mp_grid = chk.mp_grid
+        self._NKFFT_recommended = mp_grid
         self.iRvec, self.Ndegen = self.wigner_seitz(chk.mp_grid)
         self.nRvec0 = len(self.iRvec)
         self.num_wann = chk.num_wann
         self.wannier_centers_cart = w90data.wannier_centers
-
 
         kpt_mp_grid = [
             tuple(k) for k in np.array(np.round(chk.kpt_latt * np.array(chk.mp_grid)[None, :]), dtype=int) % chk.mp_grid
@@ -143,6 +142,8 @@ class System_w90(System_R):
         del w90data
 
         self.do_at_end_of_init()
+        if self.use_ws:
+            self.do_ws_dist(mp_grid=mp_grid)
         print("Real-space lattice:\n", self.real_lattice)
 
     def wigner_seitz(self, mp_grid):

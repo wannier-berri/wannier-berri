@@ -13,7 +13,6 @@
 
 import numpy as np
 import lazy_property
-import multiprocessing
 from functools import cached_property
 from ..symmetry import Group
 from ..__utility import real_recip_lattice
@@ -33,39 +32,12 @@ class System:
 
     Parameters
     -----------
-    seedname : str
-        the seedname used in Wannier90.
-    berry : bool
-        set ``True`` to enable evaluation of external term in  Berry connection or Berry curvature and their
-        derivatives.
-    spin : bool
-        set ``True`` if quantities derived from spin  will be used.
-    morb : bool
-        set ``True`` to enable calculation of external terms in orbital moment and its derivatives.
-        Requires the ``.uHu`` file.
     periodic : [bool,bool,bool]
         set ``True`` for periodic directions and ``False`` for confined (e.g. slab direction for 2D systems). If less then 3 values provided, the rest are treated as ``False`` .
-    SHCryoo : bool
-        set ``True`` if quantities derived from Ryoo's spin-current elements will be used. (RPS 2019)
-    SHCqiao : bool
-        set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018).
-    use_ws : bool
-        minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
-    mp_grid : [nk1,nk2,nk3]
-        size of Monkhorst-Pack frid used in ab initio calculation. Needed when `use_ws=True`, and only if it cannot be read from input file, i.e.
-        like :class:`.System_tb`, :class:`.System_PythTB`, :class:`.System_TBmodels` ,:class:`.System_fplo`, but only if
-        the data originate from ab initio data, not from toy models.
-        In contrast, for :class:`.System_w90` and :class:`.System_ase` it is not needed,  but can be provided and will override the original value
-        (if you know what and why you are doing)
     frozen_max : float
-        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary. Default: ``{frozen_max}``
-    _getFF : bool
-        generate the FF_R matrix based on the uIu file. May be used for only testing so far. Default : ``{_getFF}``
-    use_wcc_phase: bool
-        using wannier centers in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
-    npar : int
-        number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
-
+        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
+    NKFFT :
+        the FFT grid which further will be used in calculations by default
     Notes
     -----
     + for tight-binding models it is recommended to use `use_wcc_phase = True`. In this case the external terms vanish, and
@@ -74,53 +46,21 @@ class System:
     """
 
     def __init__(self,
-        seedname='wannier90',
         frozen_max=-np.Inf,
-        berry=False,
-        morb=False,
-        spin=False,
-        SHCryoo=False,
-        SHCqiao=False,
-        use_ws=True,
-        mp_grid=None,
         periodic=(True, True, True),
-        use_wcc_phase=False,
-        npar=None,
-        _getFF=False,
+        NKFFT=None
                  ):
 
         # TODO: move some initialization to child classes
-        self.seedname = seedname
         self.frozen_max = frozen_max
-        self.use_ws = use_ws
         self.periodic = periodic
-        self.use_wcc_phase = use_wcc_phase
-
-        self.npar = multiprocessing.cpu_count() if npar is None else npar
-        if mp_grid is not None:
-            self.mp_grid = np.array(mp_grid)
-        else:
-            self.mp_grid = None
+        if NKFFT is not None:
+            self._NKFFT_recommended = NKFFT
 
         self.periodic = np.zeros(3, dtype=bool)
         self.periodic[:len(self.periodic)] = periodic
         self.is_phonon = False
 
-        self.needed_R_matrices = set(['Ham'])
-        if morb:
-            self.needed_R_matrices.update(['AA', 'BB', 'CC'])
-        if berry:
-            self.needed_R_matrices.add('AA')
-        if spin:
-            self.needed_R_matrices.add('SS')
-        if _getFF:
-            self.needed_R_matrices.add('FF')
-        if SHCryoo:
-            self.needed_R_matrices.update(['AA', 'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR'])
-        if SHCqiao:
-            self.needed_R_matrices.update(['AA', 'SS', 'SR', 'SH', 'SHR'])
-
-        self._XX_R = dict()
 
     def set_real_lattice(self, real_lattice=None, recip_lattice=None):
         self.real_lattice, _ = real_recip_lattice(real_lattice=real_lattice, recip_lattice=recip_lattice)

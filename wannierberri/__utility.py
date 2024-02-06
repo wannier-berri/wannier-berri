@@ -19,6 +19,7 @@ from lazy_property import LazyProperty as Lazy
 import numpy as np
 import inspect
 from . import PYFFTW_IMPORTED
+from collections.abc import Iterable
 __debug = False
 
 if PYFFTW_IMPORTED:
@@ -363,3 +364,14 @@ def FermiDirac(E, mu, kBT):
         sel = abs(mu - E) <= 30 * kBT
         res[sel] = 1.0 / (np.exp((E - mu[sel]) / kBT) + 1)
         return res
+
+
+def one2three(nk):
+    if nk is None:
+        return None
+    elif isinstance(nk, Iterable):
+        assert len(nk) == 3
+    else:
+        nk = (nk,) * 3
+    assert np.all([isinstance(n, (int, np.integer)) and n > 0 for n in nk])
+    return np.array(nk)

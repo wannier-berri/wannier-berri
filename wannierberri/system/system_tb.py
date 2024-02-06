@@ -33,7 +33,8 @@ class System_tb(System_R):
     see also  parameters of the :class:`~wannierberri.system.System`
     """
 
-    def __init__(self, tb_file="wannier90_tb.dat", **parameters):
+    def __init__(self, tb_file="wannier90_tb.dat",
+                 **parameters):
 
         super().__init__(**parameters)
         for key in self.needed_R_matrices:
@@ -44,7 +45,7 @@ class System_tb(System_R):
         f = open(tb_file, "r")
         l = f.readline()
         cprint("reading TB file {0} ( {1} )".format(tb_file, l.strip()), 'green', attrs=['bold'])
-        self.set_real_lattice(real_lattice=np.array([f.readline().split()[:3] for i in range(3)], dtype=float))
+        self.real_lattice = np.array([f.readline().split()[:3] for i in range(3)], dtype=float)
 
         self.num_wann = int(f.readline())
         nRvec = int(f.readline())
@@ -75,7 +76,7 @@ class System_tb(System_R):
                 f.readline()
                 assert (np.array(f.readline().split(), dtype=int) == self.iRvec[ir]).all()
                 aa = np.array(
-                    [[f.readline().split()[2:8] for n in range(self.num_wann)] for m in range(self.num_wann)],
+                    [[f.readline().split()[2:8] for _ in range(self.num_wann)] for _ in range(self.num_wann)],
                     dtype=float)
                 AA_R[:, :, ir, :] = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / self.Ndegen[ir]
             self.wannier_centers_cart = np.diagonal(AA_R[:, :, self.iR0, :], axis1=0, axis2=1).T

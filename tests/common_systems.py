@@ -308,8 +308,8 @@ def system_GaAs_tb_wcc_ws():
             tar.extract(tarinfo, data_dir)
     # Load system
     seedname = os.path.join(data_dir, "GaAs_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, use_wcc_phase=True, use_ws=True, mp_grid=(2, 2, 2))
-
+    system = wberri.system.System_tb(seedname, berry=True, use_wcc_phase=True)
+    system.do_ws_dist(mp_grid=(2, 2, 2))
     return system
 
 
@@ -407,7 +407,7 @@ def system_Chiral_right():
 def system_Fe_FPLO():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.system.System_fplo(path, use_wcc_phase=False, morb=True, spin=True)
+    system = wberri.system.System_fplo(path, use_wcc_phase=False, morb=True, spin=True, use_ws=False)
     system.set_symmetry(symmetries_Fe)
     return system
 
@@ -416,7 +416,7 @@ def system_Fe_FPLO():
 def system_Fe_FPLO_wcc():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.system.System_fplo(path, use_wcc_phase=True, morb=True, spin=True)
+    system = wberri.system.System_fplo(path, use_wcc_phase=True, morb=True, spin=True, use_ws=False)
     system.set_symmetry(symmetries_Fe)
     return system
 

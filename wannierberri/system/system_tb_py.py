@@ -42,7 +42,7 @@ class System_tb_py(System_R):
             # Extract the parameters from the model
             real = model.uc
             self.num_wann = model.size
-            if self.spin:
+            if self.need_R_any('SS'):
                 raise ValueError(
                     "System_{} class cannot be used for evaluation of spin properties".format(names[module]))
             self.spinors = False
@@ -70,7 +70,6 @@ class System_tb_py(System_R):
         self.real_lattice[:self.dimr, :self.dimr] = np.array(real)
         self.wannier_centers_cart = wannier_centers_reduced.dot(self.real_lattice)
         self.periodic[self.dimr:] = False
-        self.recip_lattice = 2 * np.pi * np.linalg.inv(self.real_lattice).T
         Rvec = [tuple(row) for row in Rvec]
         Rvecs = np.unique(Rvec, axis=0).astype('int32')
 

@@ -41,12 +41,12 @@ class System_ASE(System_w90):
         self.seedname = "ASE"
         ase_wannier.translate_all_to_cell()
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=np.array(ase_wannier.unitcell_cc))
-        self.mp_grid = ase_wannier.kptgrid
+        mp_grid = ase_wannier.kptgrid
 
         if not ase_R_vectors:
-            self.iRvec, self.Ndegen = self.wigner_seitz(self.mp_grid)
+            self.iRvec, self.Ndegen = self.wigner_seitz(mp_grid)
         else:  # enable to do ase-like R-vectors
-            N1, N2, N3 = (self.mp_grid - 1) // 2
+            N1, N2, N3 = (mp_grid - 1) // 2
             self.iRvec = np.array(
                 [[n1, n2, n3] for n1 in range(-N1, N1 + 1) for n2 in range(-N2, N2 + 1) for n3 in range(-N3, N3 + 1)],
                 dtype=int)
@@ -66,7 +66,7 @@ class System_ASE(System_w90):
 
         kpt_mp_grid = [
             tuple(k)
-            for k in np.array(np.round(self.kpt_red * np.array(self.mp_grid)[None, :]), dtype=int) % self.mp_grid
+            for k in np.array(np.round(self.kpt_red * np.array(mp_grid)[None, :]), dtype=int) % mp_grid
         ]
         if (0, 0, 0) not in kpt_mp_grid:
             raise ValueError(
@@ -79,5 +79,6 @@ class System_ASE(System_w90):
         self.getXX_only_wannier_centers()
 
         self.do_at_end_of_init()
+        self.do_ws_dist(mp_grid=mp_grid)
 
         cprint("Reading the ASE system finished successfully", 'green', attrs=['bold'])
