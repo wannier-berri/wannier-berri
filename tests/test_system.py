@@ -84,8 +84,12 @@ def check_system():
                             for i in zip(*missed)) + "\n\n")
                     else:
                         all_i = np.where(abs(data - data_ref) >= -np.Inf)
+                        ratio = np.zeros(data_ref.shape)
+                        select = abs(data_ref) > 1e-12
+                        ratio [select] = data[select] / data_ref[select]
+                        ratio[np.logical_not(select)] = None
                         err_msg += "\n" + ("\n".join(
-                            f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {data[i] / data_ref[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
+                            f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {ratio[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
                             for i in zip(*all_i)) + "\n\n")
 
                 raise ValueError(err_msg)
