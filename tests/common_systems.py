@@ -421,6 +421,16 @@ def system_Fe_FPLO_wcc():
     return system
 
 
+@pytest.fixture(scope="session")
+def system_Fe_FPLO_wcc_ws():
+    """Create system for Fe using  FPLO  data"""
+    path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
+    system = wberri.system.System_fplo(path, use_wcc_phase=True, morb=True, spin=True,
+                                       use_ws=True, mp_grid=2)
+    system.set_symmetry(symmetries_Fe)
+    return system
+
+
 # CuMnAs 2D model
 # These parameters provide ~0.4eV gap between conduction and valence bands
 # and splitting into subbands is within 0.04 eV
@@ -632,3 +642,48 @@ def system_random_load_bare():
     system = wberri.system.System_R(berry=True, morb=True, SHCryoo=True, SHCqiao=True)
     system.load_npz(path=os.path.join(ROOT_DIR, "data", "random"))
     return system
+
+
+@pytest.fixture(scope="session")
+def system_random_GaAs():
+    return wberri.system.SystemRandom(num_wann=16, nRvec=30, max_R=4,
+                                      real_lattice=np.ones(3) - np.eye(3),
+                                      berry=True, spin=True,
+                                      use_wcc_phase=True)
+
+
+def get_system_random_GaAs_load_ws_sym(use_ws=False, sym=False):
+    system = wberri.system.System_R(berry=True, spin=True)
+    system.load_npz(path=os.path.join(ROOT_DIR, "data", "random_GaAs"))
+    if use_ws:
+        system.do_ws_dist(mp_grid=2)
+    if sym:
+        system.symmetrize(
+            proj=['Ga:sp3', 'As:sp3'],
+            atom_name=['Ga', 'As'],
+            positions=np.array([[0, 0, 0], [1 / 4, 1 / 4, 1 / 4]]),
+            soc=True,
+            DFT_code='qe',
+            method="new"
+        )
+        system.set_structure(
+            atom_labels=['Ga', 'As'],
+            positions=np.array([[0, 0, 0], [1 / 4, 1 / 4, 1 / 4]])
+        )
+        system.set_symmetry_from_structure()
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_random_GaAs_load_bare():
+    return get_system_random_GaAs_load_ws_sym(use_ws=False, sym=False)
+
+
+@pytest.fixture(scope="session")
+def system_random_GaAs_load_ws():
+    return get_system_random_GaAs_load_ws_sym(use_ws=True, sym=False)
+
+
+@pytest.fixture(scope="session")
+def system_random_GaAs_load_ws_sym():
+    return get_system_random_GaAs_load_ws_sym(use_ws=True, sym=True)

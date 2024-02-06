@@ -393,7 +393,7 @@ class System_R(System):
     def do_ws_dist(self, mp_grid, wannier_centers_cart=None):
         """
         Perform the minimal-distance replica selection method
-        As a side effect - it sets the variable _NKFFT_recommended to mp_grid
+        As a side effect - it sets the variable _NKFFT_recommended to mp_grid and self.use_ws=True
 
         Parameters:
         -----------
@@ -408,6 +408,7 @@ class System_R(System):
         except AssertionError:
             raise ValueError(f"mp_greid should be one integer, of three integers. found {mp_grid}")
         self._NKFFT_recommended = mp_grid
+        self.use_ws = True
         if wannier_centers_cart is None:
             wannier_centers_cart = self.wannier_centers_cart
         ws_map = ws_dist_map(
@@ -753,16 +754,16 @@ class System_R(System):
             fullpath = os.path.join(path, key + ".npz")
             a = getattr(self, key)
             if key in ['symgroup']:
-                np.savez(fullpath, **a.as_dict(), allow_pickle=False)
+                np.savez(fullpath, **a.as_dict())
             else:
-                np.savez(fullpath, a, allow_pickle=False)
+                np.savez(fullpath, a)
             print(" - Ok!")
         for key in self.optional_properties:
             if key not in properties:
                 fullpath = os.path.join(path, key + ".npz")
                 if hasattr(self, key):
                     a = getattr(self, key)
-                    np.savez(fullpath, a, allow_pickle=False)
+                    np.savez(fullpath, a)
         for key in R_matrices:
             print(f"saving {key}", end="")
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))

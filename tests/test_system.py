@@ -39,7 +39,7 @@ def check_system():
         # rewrite the old files, so that the changes in a PR will be clearly visible
         for key in properties:
             print(f"saving {key}", end="")
-            np.savez(os.path.join(out_dir, key + ".npz"), getattr(system, key), allow_pickle=True)
+            np.savez(os.path.join(out_dir, key + ".npz"), getattr(system, key))
             print(" - Ok!")
         for key in matrices:
             print(f"saving {key}", end="")
@@ -48,7 +48,7 @@ def check_system():
 
         def check_property(key, prec, XX=False, sort=None, sort_axis=2, print_missed=False):
             print(f"checking {key} prec={prec} XX={XX}", end="")
-            data_ref = np.load(os.path.join(REF_DIR, "systems", name, key + ".npz"), allow_pickle=True)['arr_0']
+            data_ref = np.load(os.path.join(REF_DIR, "systems", name, key + ".npz"))['arr_0']
             if XX:
                 data = system.get_R_mat(key)
             else:
@@ -88,7 +88,6 @@ def check_system():
                         err_msg += "\n" + ("\n".join(
                             f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {data[i] / data_ref[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
                             for i in zip(*all_i)) + "\n\n")
-
                 raise ValueError(err_msg)
 
             print(" - Ok!")
@@ -294,6 +293,13 @@ def test_system_Fe_FPLO_wcc(check_system, system_Fe_FPLO_wcc):
     )
 
 
+def test_system_Fe_FPLO_wcc_ws(check_system, system_Fe_FPLO_wcc_ws):
+    check_system(
+        system_Fe_FPLO_wcc_ws, "Fe_FPLO_wcc_ws",
+        matrices=['Ham', 'AA', 'SS']
+    )
+
+
 def test_system_CuMnAs_2d_broken(check_system, system_CuMnAs_2d_broken):
     check_system(
         system_CuMnAs_2d_broken, "CuMnAs_2d_broken",
@@ -358,11 +364,44 @@ def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb_wcc):
 def test_system_random(check_system, system_random):
     system = system_random
     assert system.wannier_centers_cart.shape == (system.num_wann, 3)
+    system.save_npz(os.path.join(OUTPUT_DIR, "randomsys"))
+
 
 
 def test_system_random_load_bare(check_system, system_random_load_bare):
     check_system(
         system_random_load_bare, "random_bare",
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR'],
+        sort_iR=False
+    )
+
+
+def test_system_random_GaAs(check_system, system_random_GaAs):
+    system = system_random_GaAs
+    assert system.wannier_centers_cart.shape == (system.num_wann, 3)
+    assert system.num_wann == 16
+    system.save_npz(os.path.join(OUTPUT_DIR, "randomsys_GaAs"))
+
+
+def test_system_random_GaAs_load_bare(check_system, system_random_GaAs_load_bare):
+    check_system(
+        system_random_GaAs_load_bare, "random_GaAs_bare",
+        matrices=['Ham', 'AA', 'SS'],
+        sort_iR=False
+    )
+
+
+def test_system_random_GaAs_load_ws(check_system, system_random_GaAs_load_ws):
+    check_system(
+        system_random_GaAs_load_ws, "random_GaAs_ws",
+        matrices=['Ham', 'AA', 'SS'],
+        sort_iR=False
+    )
+
+
+def test_system_random_GaAs_load_ws_sym(check_system, system_random_GaAs_load_ws_sym):
+    check_system(
+        system_random_GaAs_load_ws_sym, "random_GaAs_ws_sym",
+        matrices=['Ham', 'AA', 'SS'],
         sort_iR=False
     )

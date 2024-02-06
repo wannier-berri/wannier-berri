@@ -174,11 +174,40 @@ def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb_wcc, com
                 )
 
 
+def test_GaAs_random_zero(check_symmetry, check_run, system_random_GaAs_load_ws_sym, compare_any_result):
+    param = {'Efermi': Efermi_GaAs}
+    calculators = {}
+    calculators.update({
+        'berry_dipole': calc.static.BerryDipole_FermiSea(**param, kwargs_formula={"external_terms": True}),
+        # 'gyrotropic_Korb': calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs, kwargs_formula={"external_terms": True}),
+        'gyrotropic_Kspin': calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
+        # 'gyrotropic_Kspin_fsurf':calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
+        # 'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),
+                        })
+
+    check_run(
+        system_random_GaAs_load_ws_sym,
+        {'ahc': calc.static.AHC(Efermi=Efermi_GaAs)},
+        fout_name="berry_GaAs_sym_random",
+        precision=1e-5,
+        compare_zero=True,
+        suffix="sym-zero",
+                )
+
+
 def test_GaAs_sym_tb(check_symmetry, system_GaAs_sym_tb_wcc):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
     check_symmetry(system=system_GaAs_sym_tb_wcc, calculators=calculators)
+
+
+def test_GaAs_random(check_symmetry, system_random_GaAs_load_ws_sym):
+    system = system_random_GaAs_load_ws_sym
+    param = {'Efermi': Efermi_GaAs}
+    calculators = {}
+    calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
+    check_symmetry(system=system, calculators=calculators)
 
 
 def test_GaAs_sym_tb_fail_convII(check_symmetry, system_GaAs_tb):

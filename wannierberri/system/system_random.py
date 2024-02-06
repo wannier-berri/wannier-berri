@@ -34,7 +34,7 @@ class SystemRandom(System_R):
 
         self.num_wann = num_wann
 
-        assert 3 * (max_R * 2 + 1) >= nRvec
+        assert (max_R * 2 + 1)**3 >= nRvec, "too many Rvectors or max_R too small"
         count = 0
         iRvec = set({(0, 0, 0)})
         while len(iRvec) < nRvec:
