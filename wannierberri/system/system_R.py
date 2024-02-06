@@ -801,3 +801,17 @@ class System_R(System):
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
             self.set_R_mat(key, a)
             print(" - Ok!")
+
+
+def ndim_R(key):
+    """
+    returns the number of cartesian dimensions of a matrix by key
+    """
+    if key in ["Ham"]:
+        return 0
+    elif key in ["AA", "BB", "CC", "SS", "SH"]:
+        return 1
+    elif key in ["SHA", "SA", "SR", "SHR"]:
+        return 2
+    else:
+        raise ValueError(f"unknown matrix {key}")

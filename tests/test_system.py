@@ -353,3 +353,16 @@ def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb_wcc):
     )
 
 # TODO : add tests for kp systems ?
+
+
+def test_system_random(check_system, system_random):
+    system = system_random
+    assert system.wannier_centers_cart.shape == (system.num_wann, 3)
+
+
+def test_system_random_load_bare(check_system, system_random_load_bare):
+    check_system(
+        system_random_load_bare, "random_bare",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR'],
+        sort_iR=False
+    )

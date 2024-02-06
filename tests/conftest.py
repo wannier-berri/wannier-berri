@@ -48,6 +48,8 @@ from common_systems import (
     system_kp_mass_aniso_0,
     system_kp_mass_aniso_1,
     system_kp_mass_aniso_2,
+    system_random,
+    system_random_load_bare
 )
 
 # Comparers for tests

@@ -618,3 +618,17 @@ def system_kp_mass_aniso_1():
 @pytest.fixture(scope="session")
 def system_kp_mass_aniso_2():
     return wberri.system.SystemKP(Ham=ham_mass_aniso, derHam=dham_mass_aniso, der2Ham=d2ham_mass_aniso, kmax=kmax_kp_aniso)
+
+
+@pytest.fixture(scope="session")
+def system_random():
+    system = wberri.system.SystemRandom(num_wann=6, nRvec=20, max_R=4, berry=True, morb=True, SHCryoo=True, SHCqiao=True)
+    # system.save_npz("randomsys")
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_random_load_bare():
+    system = wberri.system.System_R(berry=True, morb=True, SHCryoo=True, SHCqiao=True)
+    system.load_npz(path=os.path.join(ROOT_DIR, "data", "random"))
+    return system
