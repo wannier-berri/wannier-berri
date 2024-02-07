@@ -48,7 +48,7 @@ class System_w90(System_R):
 
     Notes
     -----
-    see also  parameters of the :class:`~wannierberri.System`
+    see also  parameters of the :class:`~wannierberri.system.System`
     """
 
     def __init__(

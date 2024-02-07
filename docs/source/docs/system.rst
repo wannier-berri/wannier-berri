@@ -104,6 +104,12 @@ TBmodels
 .. autoclass:: wannierberri.system.System_TBmodels
    :show-inheritance:
 
+Randomly generated
+----------------------------------
+
+.. autoclass:: wannierberri.system.SystemRandom
+   :show-inheritance:
+
 
 k-space systems
 ================

@@ -4,7 +4,8 @@ from .system_R import System_R, ndim_R
 
 class SystemRandom(System_R):
     """
-    Randomly generated system
+    Randomly generated system. Mainly for testing.
+    Further can be symmetrized to get generic system with certain symmmetries.
 
     Parameters:
     -----------
