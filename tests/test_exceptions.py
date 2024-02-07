@@ -89,11 +89,21 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left):
 
 
 def test_TBmodels_fail():
+    try:
+        import tbmodels
+        tbmodels  # just to avoid F401
+    except (ImportError, ModuleNotFoundError):
+        pytest.xfail("failed to import tbmodels")
     with pytest.raises(ValueError):
         wberri.system.System_TBmodels(wberri.models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15), spin=True)
 
 
 def test_morb_fail():
+    try:
+        import tbmodels
+        tbmodels  # just to avoid F401
+    except (ImportError, ModuleNotFoundError):
+        pytest.xfail("failed to import tbmodels")
     with pytest.raises(ValueError):
         wberri.system.System_tb(wberri.models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15), spin=True)
 
