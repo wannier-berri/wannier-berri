@@ -2,19 +2,18 @@
 
 # Be verbose, and stop with error as soon there's one
 set -ev
-# sudo apt-get install libxc-dev
+# for gpaw
+sudo apt-get install libxc-dev
 pip install codecov
 pip install -U pip setuptools wheel 
-# pip install ray
 
 # install optional dependencies
 pip install pythtb # tbmodels spglib
-# pip install ase
-# pip install gpaw==23.6.1
-# gpaw info
-# gpaw install-data --register ~/gpaw-data
+pip install ase
+pip install gpaw==24.1.0
+gpaw info
+gpaw install-data --register ~/gpaw-data
 pip install -U wannierberri[all]
-# pip install git+https://github.com/jimustafa/wannier90io-python.git
 sudo apt-get install wannier90
 
 case "$INSTALL_TYPE" in

@@ -15,6 +15,7 @@
 import numpy as np
 from ..__utility import real_recip_lattice
 from .system_w90 import System_w90
+from .system_R import System_R
 from termcolor import cprint
 
 
@@ -37,7 +38,7 @@ class System_ASE(System_w90):
                 ase_wannier,
                 ase_R_vectors=False,  # for testing vs ASE
                 **parameters):
-        super().__init__(**parameters)
+        System_R.__init__(self, **parameters)
         self.seedname = "ASE"
         ase_wannier.translate_all_to_cell()
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=np.array(ase_wannier.unitcell_cc))
