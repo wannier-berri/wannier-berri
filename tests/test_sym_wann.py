@@ -181,15 +181,16 @@ def test_GaAs_random_zero(check_symmetry, check_run, system_random_GaAs_load_ws_
         'berry_dipole': calc.static.BerryDipole_FermiSea(**param, kwargs_formula={"external_terms": True}),
         # 'gyrotropic_Korb': calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs, kwargs_formula={"external_terms": True}),
         'gyrotropic_Kspin': calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
+        'ahc': calc.static.AHC(Efermi=Efermi_GaAs),
         # 'gyrotropic_Kspin_fsurf':calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
         # 'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),
-                        })
+                    })
 
     check_run(
         system_random_GaAs_load_ws_sym,
-        {'ahc': calc.static.AHC(Efermi=Efermi_GaAs)},
+        calculators,
         fout_name="berry_GaAs_sym_random",
-        precision=1e-5,
+        precision=2e-5,
         compare_zero=True,
         suffix="sym-zero",
                 )

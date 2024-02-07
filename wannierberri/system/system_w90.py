@@ -73,7 +73,7 @@ class System_w90(System_R):
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         mp_grid = chk.mp_grid
         self._NKFFT_recommended = mp_grid
-        self.iRvec, self.Ndegen = self.wigner_seitz(chk.mp_grid)
+        self.iRvec, Ndegen = self.wigner_seitz(chk.mp_grid)
         self.nRvec0 = len(self.iRvec)
         self.num_wann = chk.num_wann
         self.wannier_centers_cart = w90data.wannier_centers
@@ -91,7 +91,7 @@ class System_w90(System_R):
             mp_grid=chk.mp_grid,
             kpt_mp_grid=kpt_mp_grid,
             iRvec=self.iRvec,
-            ndegen=self.Ndegen,
+            ndegen=Ndegen,
             numthreads=npar,
             fft=fft)
 

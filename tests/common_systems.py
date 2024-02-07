@@ -94,6 +94,16 @@ def create_files_GaAs_W90():
     return data_dir
 
 
+def create_files_tb(dir, file):
+    data_dir = os.path.join(ROOT_DIR, "data", dir)
+    path_tb_file = os.path.join(data_dir, file)
+    if not os.path.isfile(path_tb_file):
+        tar = tarfile.open(os.path.join(data_dir, file + ".tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+    return path_tb_file
+
+
 @pytest.fixture(scope="session")
 def system_Fe_W90(create_files_Fe_W90):
     """Create system for Fe using Wannier90 data"""
@@ -229,33 +239,9 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
     return system
 
 
-@pytest.fixture(scope="session")
-def system_GaAs_tb():
-    """Create system for GaAs using _tb.dat data"""
-
-    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
-        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
-        for tarinfo in tar:
-            tar.extract(tarinfo, data_dir)
-
-    seedname = os.path.join(data_dir, "GaAs_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True)
-    system.set_symmetry(symmetries_GaAs)
-
-    return system
-
-
-def get_system_GaAs_sym_tb(method=None, use_wcc_phase=False, use_ws=False, symmetrize=True, berry=True):
+def get_system_GaAs_tb(method=None, use_wcc_phase=False, use_ws=False, symmetrize=True, berry=True):
     """Create system for GaAs using sym_tb.dat data"""
-
-    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "GaAs_sym_tb.dat")):
-        tar = tarfile.open(os.path.join(data_dir, "GaAs_sym_tb.dat.tar.gz"))
-        for tarinfo in tar:
-            tar.extract(tarinfo, data_dir)
-
-    seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
+    seedname = create_files_tb(dir="GaAs_Wannier90", file=f"GaAs{'_sym' if symmetrize else ''}_tb.dat")
     system = wberri.system.System_tb(seedname, berry=berry, use_ws=use_ws, use_wcc_phase=use_wcc_phase)
     if symmetrize:
         system.symmetrize(
@@ -265,55 +251,40 @@ def get_system_GaAs_sym_tb(method=None, use_wcc_phase=False, use_ws=False, symme
             soc=True,
             DFT_code='vasp',
             method=method)
+    if use_ws:
+        system.do_ws_dist(mp_grid=(2, 2, 2))
     system.set_symmetry(symmetries_GaAs)
     return system
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_tb():
+    """Create system for GaAs using _tb.dat data"""
+    return get_system_GaAs_tb(method="new", use_wcc_phase=False, use_ws=False, symmetrize=False)
 
 
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb_old_wcc():
     """Create system for GaAs using sym_tb.dat data"""
-    return get_system_GaAs_sym_tb(method="old", use_wcc_phase=True, use_ws=False)
+    return get_system_GaAs_tb(method="old", use_wcc_phase=True, use_ws=False, symmetrize=True)
 
 
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb_wcc():
     """Create system for GaAs using sym_tb.dat data"""
-    return get_system_GaAs_sym_tb(method="new", use_wcc_phase=True, use_ws=False)
+    return get_system_GaAs_tb(method="new", use_wcc_phase=True, use_ws=False, symmetrize=True)
 
 
 @pytest.fixture(scope="session")
 def system_GaAs_tb_wcc():
     """Create system for GaAs using _tb_dat data"""
-
-    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
-        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
-        for tarinfo in tar:
-            tar.extract(tarinfo, data_dir)
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, use_wcc_phase=True)
-    system.set_symmetry(symmetries_GaAs)
-    return system
+    return get_system_GaAs_tb(method="new", use_wcc_phase=True, use_ws=False, symmetrize=False)
 
 
 @pytest.fixture(scope="session")
 def system_GaAs_tb_wcc_ws():
     """Create system for GaAs using _tb_dat data"""
-
-    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
-        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
-        for tarinfo in tar:
-            tar.extract(tarinfo, data_dir)
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, use_wcc_phase=True)
-    system.do_ws_dist(mp_grid=(2, 2, 2))
-    return system
-
-
-# Haldane model from TBmodels
+    return get_system_GaAs_tb(method="new", use_wcc_phase=True, use_ws=True, symmetrize=False)
 
 
 @pytest.fixture(scope="session")

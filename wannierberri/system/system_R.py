@@ -419,6 +419,10 @@ class System_R(System):
         self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
 
     def to_tb_file(self, tb_file=None):
+        """
+        Write the system in the format of the wannier90_tb.dat file
+        Note : in is always written in phase convention I
+        """
         if tb_file is None:
             tb_file = self.seedname + "_fromchk_tb.dat"
         f = open(tb_file, "w")
@@ -427,24 +431,28 @@ class System_R(System):
         np.savetxt(f, self.real_lattice)
         f.write("{}\n".format(self.num_wann))
         f.write("{}\n".format(self.nRvec))
+        Ndegen = np.ones(self.nRvec, dtype=int)
         for i in range(0, self.nRvec, 15):
-            a = self.Ndegen[i:min(i + 15, self.nRvec)]
+            a = Ndegen[i:min(i + 15, self.nRvec)]
             f.write("  ".join("{:2d}".format(x) for x in a) + "\n")
         for iR in range(self.nRvec):
             f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
             f.write(
                 "".join(
                     "{0:3d} {1:3d} {2:15.8e} {3:15.8e}\n".format(
-                        m + 1, n + 1, self.Ham_R[m, n, iR].real * self.Ndegen[iR], self.Ham_R[m, n, iR].imag *
-                        self.Ndegen[iR]) for n in range(self.num_wann) for m in range(self.num_wann)))
+                        m + 1, n + 1, self.Ham_R[m, n, iR].real * Ndegen[iR], self.Ham_R[m, n, iR].imag *
+                        Ndegen[iR]) for n in range(self.num_wann) for m in range(self.num_wann)))
         if self.has_R_mat('AA'):
+            AA = np.copy(self.get_R_mat('AA'))
+            if self.use_wcc_phase:
+                AA[self.range_wann, self.range_wann, self.iR0] += self.wannier_centers_cart
             for iR in range(self.nRvec):
                 f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
                 f.write(
                     "".join(
                         "{0:3d} {1:3d} ".format(m + 1, n + 1) + " ".join(
                             "{:15.8e} {:15.8e}".format(a.real, a.imag)
-                            for a in self.get_R_mat('AA')[m, n, iR] * self.Ndegen[iR]) + "\n" for n in
+                            for a in AA[m, n, iR] * Ndegen[iR]) + "\n" for n in
                         range(self.num_wann)
                         for m in range(self.num_wann)))
         f.close()
@@ -625,7 +633,7 @@ class System_R(System):
         if magnetic_moments is not None:
             if len(magnetic_moments) != len(positions):
                 raise ValueError("length of positions and magnetic_moments must be the same")
-            if not all([len(x) for x in magnetic_moments]):
+            if not all([len(x) == 3 for x in magnetic_moments]):
                 raise ValueError("magnetic_moments must be a list of 3d vector")
         self.positions = positions
         self.atom_labels = atom_labels

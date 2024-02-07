@@ -4,6 +4,7 @@ import pytest
 import os
 from common import OUTPUT_DIR, REF_DIR
 from wannierberri.system.system_R import System_R
+from wannierberri.system.system_tb import System_tb
 
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced', 'wannier_centers_cart_wcc_phase',
                   'diff_wcc_cart', 'diff_wcc_red']  # , 'cRvec_p_wcc']
@@ -364,6 +365,7 @@ def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb_wcc):
 def test_system_random(check_system, system_random):
     system = system_random
     assert system.wannier_centers_cart.shape == (system.num_wann, 3)
+    assert system.get_R_mat('AA')[:, :, system.iR0].diagonal().imag == pytest.approx(0)
     system.save_npz(os.path.join(OUTPUT_DIR, "randomsys"))
 
 
@@ -376,10 +378,26 @@ def test_system_random_load_bare(check_system, system_random_load_bare):
     )
 
 
+def test_system_random_to_tb_back(check_system, system_random_GaAs_load_bare):
+    path = os.path.join(OUTPUT_DIR, "random_GaAS_tb")
+    system_random_GaAs_load_bare.to_tb_file(path)
+    system_tb = System_tb(path, berry=True, use_wcc_phase=True)
+    print(system_tb.wannier_centers_cart)
+    print(system_random_GaAs_load_bare.wannier_centers_cart)
+
+    check_system(
+        system_tb, "random_GaAs_bare",
+        suffix="_tb",
+        matrices=['Ham', 'AA'],
+        sort_iR=False
+    )
+
+
 def test_system_random_GaAs(check_system, system_random_GaAs):
     system = system_random_GaAs
     assert system.wannier_centers_cart.shape == (system.num_wann, 3)
     assert system.num_wann == 16
+    assert system.get_R_mat('AA')[:, :, system.iR0].diagonal() == pytest.approx(0)
     system.save_npz(os.path.join(OUTPUT_DIR, "randomsys_GaAs"))
 
 

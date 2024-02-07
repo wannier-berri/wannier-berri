@@ -96,6 +96,9 @@ class System:
     def cell_volume(self):
         return abs(np.linalg.det(self.real_lattice))
 
+    @cached_property
+    def range_wann(self):
+        return np.arange(self.num_wann)
 
 
 

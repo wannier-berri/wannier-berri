@@ -1,6 +1,8 @@
 from wannierberri import __utility as util
 import pytest
 import numpy as np
+import wannierberri as wberri
+from common_systems import create_files_tb
 from wannierberri import calculators as calc
 
 
@@ -84,3 +86,22 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left):
                 use_symmetry=False,
                 do_not_compare=True
         )
+
+
+def test_TBmodels_fail():
+    with pytest.raises(ValueError):
+        wberri.system.System_TBmodels(wberri.models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15), spin=True)
+
+
+def test_morb_fail():
+    with pytest.raises(ValueError):
+        wberri.system.System_tb(wberri.models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15), spin=True)
+
+
+def test_system_GaAs_tb_morb_fail():
+    """Create system for GaAs using _tb.dat data"""
+
+    seedname = create_files_tb(dir="GaAs_Wannier90", file="GaAs_tb.dat")
+    for tag in 'spin', 'morb', 'SHCqiao', 'SHCryoo':
+        with pytest.raises(ValueError):
+            wberri.system.System_tb(seedname, **{tag: True})
