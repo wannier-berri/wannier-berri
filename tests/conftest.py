@@ -20,6 +20,7 @@ from common_systems import (
     system_Fe_W90_disentangle,
     system_Fe_FPLO,
     system_Fe_FPLO_wcc,
+    system_Fe_FPLO_wcc_ws,
     data_Te_ASE,
     system_Te_ASE,
     system_Te_ASE_wcc,
@@ -52,6 +53,12 @@ from common_systems import (
     system_kp_mass_aniso_0,
     system_kp_mass_aniso_1,
     system_kp_mass_aniso_2,
+    system_random,
+    system_random_load_bare,
+    system_random_GaAs,
+    system_random_GaAs_load_bare,
+    system_random_GaAs_load_ws,
+    system_random_GaAs_load_ws_sym,
 )
 
 # Comparers for tests

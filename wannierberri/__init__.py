@@ -23,11 +23,14 @@ except Exception as err:
     PYFFTW_IMPORTED = False
     print("WARNING : error importing  `pyfftw` : {} \n will use numpy instead \n".format(err))
 
-
 from .run import run
 from . import symmetry
 from . import system
-from .system import System_w90, System_fplo, System_tb, System_PythTB, System_TBmodels, System_ASE, System_Phonon_QE
+from . import models
+from .system import (System_w90, System_fplo, System_tb,
+                     System_PythTB, System_TBmodels, System_ASE,
+                     System_Phonon_QE, System_R
+                     )
 from .grid import Grid, Path
 from . import calculators
 from . import result

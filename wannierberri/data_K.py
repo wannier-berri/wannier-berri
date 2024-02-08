@@ -17,6 +17,7 @@ import abc
 import lazy_property
 from .parallel import pool
 from .system.system import System
+from .system.system_R import System_R
 from .system.system_kp import SystemKP
 from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A
 from .grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
@@ -601,7 +602,7 @@ class _Data_K(System, abc.ABC):
 #########################################################################################################################################
 
 
-class Data_K_R(_Data_K):
+class Data_K_R(_Data_K, System_R):
     """ The Data_K class for systems defined by R-space matrix elements (Wannier/TB)"""
 
     def __init__(self, system, dK, grid, **parameters):

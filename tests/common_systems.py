@@ -94,6 +94,16 @@ def create_files_GaAs_W90():
     return data_dir
 
 
+def create_files_tb(dir, file):
+    data_dir = os.path.join(ROOT_DIR, "data", dir)
+    path_tb_file = os.path.join(data_dir, file)
+    if not os.path.isfile(path_tb_file):
+        tar = tarfile.open(os.path.join(data_dir, file + ".tar.gz"))
+        for tarinfo in tar:
+            tar.extract(tarinfo, data_dir)
+    return path_tb_file
+
+
 @pytest.fixture(scope="session")
 def create_files_Si_W90():
     """Create data files for Si: uHu, and uIu"""
@@ -236,41 +246,16 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
     data_dir = create_files_GaAs_W90
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, morb=True,
-                                      OSD=True, OSD_spin=True,
+    system = wberri.system.System_w90(seedname, morb=True, OSD=True,
                                       transl_inv=False, spin=True, use_wcc_phase=True)
     system.set_symmetry(symmetries_GaAs)
 
     return system
 
 
-@pytest.fixture(scope="session")
-def system_GaAs_tb():
-    """Create system for GaAs using _tb.dat data"""
-
-    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
-        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
-        for tarinfo in tar:
-            tar.extract(tarinfo, data_dir)
-
-    seedname = os.path.join(data_dir, "GaAs_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True)
-    system.set_symmetry(symmetries_GaAs)
-
-    return system
-
-
-def get_system_GaAs_sym_tb(method=None, use_wcc_phase=False, use_ws=False, symmetrize=True, berry=True):
+def get_system_GaAs_tb(method=None, use_wcc_phase=False, use_ws=False, symmetrize=True, berry=True):
     """Create system for GaAs using sym_tb.dat data"""
-
-    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "GaAs_sym_tb.dat")):
-        tar = tarfile.open(os.path.join(data_dir, "GaAs_sym_tb.dat.tar.gz"))
-        for tarinfo in tar:
-            tar.extract(tarinfo, data_dir)
-
-    seedname = os.path.join(data_dir, "GaAs_sym_tb.dat")
+    seedname = create_files_tb(dir="GaAs_Wannier90", file=f"GaAs{'_sym' if symmetrize else ''}_tb.dat")
     system = wberri.system.System_tb(seedname, berry=berry, use_ws=use_ws, use_wcc_phase=use_wcc_phase)
     if symmetrize:
         system.symmetrize(
@@ -280,53 +265,40 @@ def get_system_GaAs_sym_tb(method=None, use_wcc_phase=False, use_ws=False, symme
             soc=True,
             DFT_code='vasp',
             method=method)
+    if use_ws:
+        system.do_ws_dist(mp_grid=(2, 2, 2))
     system.set_symmetry(symmetries_GaAs)
     return system
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_tb():
+    """Create system for GaAs using _tb.dat data"""
+    return get_system_GaAs_tb(method="new", use_wcc_phase=False, use_ws=False, symmetrize=False)
 
 
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb_old_wcc():
     """Create system for GaAs using sym_tb.dat data"""
-    return get_system_GaAs_sym_tb(method="old", use_wcc_phase=True, use_ws=False)
+    return get_system_GaAs_tb(method="old", use_wcc_phase=True, use_ws=False, symmetrize=True)
 
 
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb_wcc():
     """Create system for GaAs using sym_tb.dat data"""
-    return get_system_GaAs_sym_tb(method="new", use_wcc_phase=True, use_ws=False)
+    return get_system_GaAs_tb(method="new", use_wcc_phase=True, use_ws=False, symmetrize=True)
 
 
 @pytest.fixture(scope="session")
 def system_GaAs_tb_wcc():
     """Create system for GaAs using _tb_dat data"""
-
-    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
-        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
-        for tarinfo in tar:
-            tar.extract(tarinfo, data_dir)
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, use_wcc_phase=True)
-    system.set_symmetry(symmetries_GaAs)
-    return system
+    return get_system_GaAs_tb(method="new", use_wcc_phase=True, use_ws=False, symmetrize=False)
 
 
 @pytest.fixture(scope="session")
 def system_GaAs_tb_wcc_ws():
     """Create system for GaAs using _tb_dat data"""
-
-    data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
-    if not os.path.isfile(os.path.join(data_dir, "GaAs_tb.dat")):
-        tar = tarfile.open(os.path.join(data_dir, "GaAs_tb.dat.tar.gz"))
-        for tarinfo in tar:
-            tar.extract(tarinfo, data_dir)
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, use_wcc_phase=True, use_ws=True, mp_grid=(2, 2, 2))
-
-    return system
-
+    return get_system_GaAs_tb(method="new", use_wcc_phase=True, use_ws=True, symmetrize=False)
 
 @pytest.fixture(scope="session")
 def system_Si_W90_JM(create_files_Si_W90):
@@ -348,10 +320,15 @@ def system_Si_W90_JM(create_files_Si_W90):
 # Haldane model from TBmodels
 model_tbmodels_Haldane = wb_models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15)
 
-
 @pytest.fixture(scope="session")
 def system_Haldane_TBmodels():
     # Load system
+    try:
+        import tbmodels
+        tbmodels  # just to avoid F401
+    except (ImportError, ModuleNotFoundError):
+        pytest.xfail("failed to import tbmodels")
+    model_tbmodels_Haldane = wb_models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15)
     system = wberri.system.System_TBmodels(model_tbmodels_Haldane, berry=True)
     system.set_symmetry(["C3z"])
     return system
@@ -360,6 +337,12 @@ def system_Haldane_TBmodels():
 @pytest.fixture(scope="session")
 def system_Haldane_TBmodels_internal():
     # Load system
+    try:
+        import tbmodels
+        tbmodels  # just to avoid F401
+    except (ImportError, ModuleNotFoundError):
+        pytest.xfail("failed to import tbmodels")
+    model_tbmodels_Haldane = wb_models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15)
     system = wberri.system.System_TBmodels(model_tbmodels_Haldane, berry=False)
     system.set_symmetry(["C3z"])
     return system
@@ -444,7 +427,7 @@ def system_Chiral_right():
 def system_Fe_FPLO():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.system.System_fplo(path, use_wcc_phase=False, morb=True, spin=True)
+    system = wberri.system.System_fplo(path, use_wcc_phase=False, morb=True, spin=True, use_ws=False)
     system.set_symmetry(symmetries_Fe)
     return system
 
@@ -453,7 +436,17 @@ def system_Fe_FPLO():
 def system_Fe_FPLO_wcc():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.system.System_fplo(path, use_wcc_phase=True, morb=True, spin=True)
+    system = wberri.system.System_fplo(path, use_wcc_phase=True, morb=True, spin=True, use_ws=False)
+    system.set_symmetry(symmetries_Fe)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Fe_FPLO_wcc_ws():
+    """Create system for Fe using  FPLO  data"""
+    path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
+    system = wberri.system.System_fplo(path, use_wcc_phase=True, morb=True, spin=True,
+                                       use_ws=True, mp_grid=2)
     system.set_symmetry(symmetries_Fe)
     return system
 
@@ -479,20 +472,19 @@ def data_Te_ASE():
         import gpaw
     except (ImportError, ModuleNotFoundError):
         pytest.xfail("failed to import gpaw")
-    import ase
     import ase.dft.wannier
 
     path = os.path.join(ROOT_DIR, "data", "Te_ASE")
     calc = gpaw.GPAW(os.path.join(path, "Te.gpw"))
     wan = ase.dft.wannier.Wannier(nwannier=12, calc=calc, file=os.path.join(path, 'wannier-12.json'))
-    return wan, calc
+    return wan
 
 
 @pytest.fixture(scope="session")
 def system_Te_ASE(data_Te_ASE):
     """Create system for Te using  ASE+GPAW data with use_wcc_phase=False"""
-    wan, calc = data_Te_ASE
-    system = wberri.system.System_ASE(wan, ase_calc=calc, use_wcc_phase=False, berry=True)
+    wan = data_Te_ASE
+    system = wberri.system.System_ASE(wan, use_wcc_phase=False, berry=True)
     system.set_symmetry(symmetries_Te)
     return system
 
@@ -500,8 +492,8 @@ def system_Te_ASE(data_Te_ASE):
 @pytest.fixture(scope="session")
 def system_Te_ASE_wcc(data_Te_ASE):
     """Create system for Te using  ASE+GPAW data with use_wcc_phase=True"""
-    wan, calc = data_Te_ASE
-    system = wberri.system.System_ASE(wan, ase_calc=calc, use_wcc_phase=True, berry=False)
+    wan = data_Te_ASE
+    system = wberri.system.System_ASE(wan, use_wcc_phase=True, berry=False)
     system.set_symmetry(symmetries_Te)
     return system
 
@@ -655,3 +647,62 @@ def system_kp_mass_aniso_1():
 @pytest.fixture(scope="session")
 def system_kp_mass_aniso_2():
     return wberri.system.SystemKP(Ham=ham_mass_aniso, derHam=dham_mass_aniso, der2Ham=d2ham_mass_aniso, kmax=kmax_kp_aniso)
+
+
+@pytest.fixture(scope="session")
+def system_random():
+    system = wberri.system.SystemRandom(num_wann=6, nRvec=20, max_R=4, berry=True, morb=True, SHCryoo=True, SHCqiao=True)
+    # system.save_npz("randomsys")
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_random_load_bare():
+    system = wberri.system.System_R(berry=True, morb=True, SHCryoo=True, SHCqiao=True)
+    system.load_npz(path=os.path.join(ROOT_DIR, "data", "random"))
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_random_GaAs():
+    return wberri.system.SystemRandom(num_wann=16, nRvec=30, max_R=4,
+                                      real_lattice=np.ones(3) - np.eye(3),
+                                      berry=True, spin=True,
+                                      use_wcc_phase=True)
+
+
+def get_system_random_GaAs_load_ws_sym(use_ws=False, sym=False):
+    system = wberri.system.System_R(berry=True, spin=True)
+    system.load_npz(path=os.path.join(ROOT_DIR, "data", "random_GaAs"))
+    if use_ws:
+        system.do_ws_dist(mp_grid=2)
+    if sym:
+        system.symmetrize(
+            proj=['Ga:sp3', 'As:sp3'],
+            atom_name=['Ga', 'As'],
+            positions=np.array([[0, 0, 0], [1 / 4, 1 / 4, 1 / 4]]),
+            soc=True,
+            DFT_code='qe',
+            method="new"
+        )
+        system.set_structure(
+            atom_labels=['Ga', 'As'],
+            positions=np.array([[0, 0, 0], [1 / 4, 1 / 4, 1 / 4]])
+        )
+        system.set_symmetry_from_structure()
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_random_GaAs_load_bare():
+    return get_system_random_GaAs_load_ws_sym(use_ws=False, sym=False)
+
+
+@pytest.fixture(scope="session")
+def system_random_GaAs_load_ws():
+    return get_system_random_GaAs_load_ws_sym(use_ws=True, sym=False)
+
+
+@pytest.fixture(scope="session")
+def system_random_GaAs_load_ws_sym():
+    return get_system_random_GaAs_load_ws_sym(use_ws=True, sym=True)

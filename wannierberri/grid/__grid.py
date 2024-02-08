@@ -11,14 +11,13 @@
 #                                                            #
 # ------------------------------------------------------------
 
-from collections.abc import Iterable
 import numpy as np
 from time import time
-from .. import symmetry
-import lazy_property
-from .__Kpoint import KpointBZparallel
 import abc
-# from .__finite_differences import FiniteDifferences
+import lazy_property
+from .. import symmetry
+from .__Kpoint import KpointBZparallel
+from ..__utility import one2three
 
 
 class GridAbstract(abc.ABC):
@@ -143,15 +142,6 @@ class Grid(GridAbstract):
                 np.prod(self.div)))
         return K_list
 
-
-def one2three(nk):
-    if nk is None:
-        return None
-    if isinstance(nk, Iterable):
-        if len(nk) != 3:
-            raise RuntimeError("nk should be specified either as one  number or 3 numbers. found {}".format(nk))
-        return np.array(nk)
-    return np.array((nk, ) * 3)
 
 
 def iterate_vector(v1, v2):

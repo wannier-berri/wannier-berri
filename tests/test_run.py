@@ -372,6 +372,36 @@ def test_Fe_wcc(check_run, system_Fe_W90_wcc, compare_any_result):
     )
 
 
+def test_Fe_wcc_save_load(check_run, system_Fe_W90_wcc, compare_any_result):
+    param_kwargs = {'Efermi': Efermi_Fe, 'kwargs_formula': {'correction_wcc': True}}
+    param = {'Efermi': Efermi_Fe}
+    calculators = {}
+    for k, v in calculators_Fe.items():
+        if k in ['dos', 'cumdos', 'conductivity_ohmic', 'conductivity_ohmic_fsurf', 'spin']:
+            calculators[k] = v(**param)
+        else:
+            calculators[k] = v(**param_kwargs)
+
+    name = "Fe_wcc_save"
+    path = os.path.join(OUTPUT_DIR, name)
+    system_Fe_W90_wcc.save_npz(path, extra_properties=["recip_lattice"])
+    system = wberri.system.system_R.System_R()
+    system.load_npz(path, load_all_XX_R=True)
+
+    check_run(
+        system,
+        calculators,
+        fout_name="berry_Fe_W90",
+        suffix="wcc-run",
+        use_symmetry=False,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+        extra_precision={"Morb": -1}
+    )
+
+
 def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
