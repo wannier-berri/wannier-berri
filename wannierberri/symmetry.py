@@ -86,6 +86,9 @@ class Symmetry():
         self.iTR = -1 if self.TR else 1
         self.iInv = -1 if self.Inv else 1
 
+    def as_dict(self):
+        return dict(R=self.R * (-1 if self.Inv else 1), TR=self.TR)
+
     def show(self):
         print(self)
 
@@ -235,33 +238,57 @@ class Group():
       + if you only want to generate a symmetric tensor, or to find independent components,  `recip_lattice` and `real_latice`, are not needed
     """
 
-    def __init__(self, generator_list=[], recip_lattice=None, real_lattice=None):
-        self.real_lattice, self.recip_lattice = real_recip_lattice(
-            real_lattice=real_lattice, recip_lattice=recip_lattice)
-        sym_list = [(op if isinstance(op, Symmetry) else from_string_prod(op)) for op in generator_list]
-        if len(sym_list) == 0:
-            sym_list = [Identity]
+    def __init__(self, generator_list=[], recip_lattice=None, real_lattice=None, dictionary=None):
+        if dictionary is not None:
+            nsym = dictionary['nsym']
+            gen_lst = []
+            for i in range(nsym):
+                d = {}
+                for k, v in dictionary.items():
+                    l = self._symm_dict_prefix(i)
+                    if k.startswith(l):
+                        d[k[len(l):]] = v
+                gen_lst.append(Symmetry(**d))
+            self.__init__(generator_list=gen_lst, real_lattice=dictionary['real_lattice'], dictionary=None)
+        else:
+            self.real_lattice, self.recip_lattice = real_recip_lattice(
+                real_lattice=real_lattice, recip_lattice=recip_lattice)
+            sym_list = [(op if isinstance(op, Symmetry) else from_string_prod(op)) for op in generator_list]
+            if len(sym_list) == 0:
+                sym_list = [Identity]
 
-        while True:
-            lenold = len(sym_list)
-            for s1 in sym_list:
-                for s2 in sym_list:
-                    s3 = s1 * s2
-                    if s3 not in sym_list:
-                        sym_list.append(s3)
-                        if len(sym_list) > 1000:
-                            raise RuntimeError("Cannot define a finite group")
-            if len(sym_list) == lenold:
-                break
+            while True:
+                lenold = len(sym_list)
+                for s1 in sym_list:
+                    for s2 in sym_list:
+                        s3 = s1 * s2
+                        if s3 not in sym_list:
+                            sym_list.append(s3)
+                            if len(sym_list) > 1000:
+                                raise RuntimeError("Cannot define a finite group")
+                if len(sym_list) == lenold:
+                    break
 
-        self.symmetries = sym_list
-        msg_not_symmetric = (
-                " : please check if  the symmetries are consistent with the lattice vectors," +
-                " and that  enough digits were written for the lattice vectors (at least 6-7 after coma)")
-        if real_lattice is not None:
-            assert self.check_basis_symmetry(self.real_lattice), "real_lattice is not symmetric" + msg_not_symmetric
-        if real_lattice is not None:
-            assert self.check_basis_symmetry(self.recip_lattice), "recip_lattice is not symmetric" + msg_not_symmetric
+            self.symmetries = sym_list
+            msg_not_symmetric = (
+                    " : please check if  the symmetries are consistent with the lattice vectors," +
+                    " and that  enough digits were written for the lattice vectors (at least 6-7 after coma)")
+            if real_lattice is not None:
+                assert self.check_basis_symmetry(self.real_lattice), "real_lattice is not symmetric" + msg_not_symmetric
+            if real_lattice is not None:
+                assert self.check_basis_symmetry(self.recip_lattice), "recip_lattice is not symmetric" + msg_not_symmetric
+
+    def _symm_dict_prefix(self, i):
+        return f'symm{i}_'
+
+    def as_dict(self):
+        nsym = len(self.symmetries)
+        ret = dict(real_lattice=self.recip_lattice,
+                   nsym=nsym)
+        for i, s in enumerate(self.symmetries):
+            for k, v in s.as_dict().items():
+                ret[self._symm_dict_prefix(i) + k] = v
+        return ret
 
     def __str__(self):
         s = f"Real_lattice:\n{np.round(self.real_lattice, decimals=4)}\n Recip. Lattice:\n {np.round(self.recip_lattice, decimals=4)}\n size:{self.size}\nOperations:\n"

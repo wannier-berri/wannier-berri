@@ -6,17 +6,25 @@ They all have an important common method :func:`~wannierberri.System.set_symmetr
 The system may come either from :ref:`Wanier functions <sec-wan-fun>`  constructed by `Wannier90 <http://wannier90.org>`_, or from ref:`tight binding <sec-tb-models>` models. 
 
 .. autoclass:: wannierberri.system.System
-   :members: set_parameters, set_symmetry, set_structure, set_symmetry_from_structure, set_R_mat, set_spin, set_spin_pairs, set_spin_from_code
+   :members: set_symmetry
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
 
 
+Real-space systems
+======================
+.. autoclass:: wannierberri.system.System_R
+   :members: set_structure, set_symmetry_from_structure, set_R_mat, set_spin, set_spin_pairs, set_spin_from_code
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
 
 Symmetrization of the system
 -----------------------------
 
-.. automethod:: wannierberri.system.System.symmetrize
+.. automethod:: wannierberri.system.System_R.symmetrize
 
 
 .. _sec-wan-fun:
@@ -95,6 +103,16 @@ TBmodels
 
 .. autoclass:: wannierberri.system.System_TBmodels
    :show-inheritance:
+
+Randomly generated
+----------------------------------
+
+.. autoclass:: wannierberri.system.SystemRandom
+   :show-inheritance:
+
+
+k-space systems
+================
 
 .. _sec-kp-model:
 
