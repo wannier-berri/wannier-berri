@@ -13,10 +13,10 @@
 
 import numpy as np
 from termcolor import cprint
-from .system import System
+from .system_R import System_R
 
 
-class System_tb_py(System):
+class System_tb_py(System_R):
     """This interface initializes the System class from a tight-binding
     model packewd by one of the available python modules (see below)
 
@@ -34,7 +34,7 @@ class System_tb_py(System):
     """
 
     def __init__(self, model, module, **parameters):
-        self.set_parameters(**parameters)
+        super().__init__(**parameters)
         names = {'tbmodels': 'TBmodels', 'pythtb': 'PythTB'}
         self.seedname = 'model_{}'.format(names[module])
 
@@ -42,7 +42,7 @@ class System_tb_py(System):
             # Extract the parameters from the model
             real = model.uc
             self.num_wann = model.size
-            if self.spin:
+            if self.need_R_any('SS'):
                 raise ValueError(
                     "System_{} class cannot be used for evaluation of spin properties".format(names[module]))
             self.spinors = False
@@ -68,9 +68,8 @@ class System_tb_py(System):
         wannier_centers_reduced[:, :self.dimr] = positions
         self.real_lattice = np.eye(3, dtype=float)
         self.real_lattice[:self.dimr, :self.dimr] = np.array(real)
-        self.wannier_centers_cart_auto = wannier_centers_reduced.dot(self.real_lattice)
+        self.wannier_centers_cart = wannier_centers_reduced.dot(self.real_lattice)
         self.periodic[self.dimr:] = False
-        self.recip_lattice = 2 * np.pi * np.linalg.inv(self.real_lattice).T
         Rvec = [tuple(row) for row in Rvec]
         Rvecs = np.unique(Rvec, axis=0).astype('int32')
 

@@ -26,6 +26,15 @@ def test_symmetry_group():
     assert sym.Group([sym.Inversion, sym.C4z, sym.TimeReversal * sym.C2x]).size == 16
 
 
+def test_symmetry_as_dict(check_symgroup_equal):
+    for sg1 in (sym.Group([sym.Inversion, sym.TimeReversal]),
+               sym.Group([sym.C3z, sym.C6z]),
+               sym.Group([sym.Inversion, sym.C4z, sym.TimeReversal * sym.C2x])
+               ):
+        sg2 = sym.Group(dictionary=sg1.as_dict())
+        check_symgroup_equal(sg1, sg2)
+
+
 def test_symmetry_group_failure():
     # sym.Group should fail for this generator
     with pytest.raises(RuntimeError):
