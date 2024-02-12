@@ -33,6 +33,7 @@ from common_systems import (
     system_GaAs_tb_wcc,
     system_GaAs_tb_wcc_ws,
     system_Si_W90_JM,
+    system_Si_W90_wccFD,
     system_Haldane_PythTB,
     system_KaneMele_odd_PythTB,
     system_Chiral_OSD,

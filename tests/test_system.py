@@ -250,6 +250,13 @@ def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
                 )
 
 
+def test_system_Si_W90_wccFD(check_system, system_Si_W90_wccFD):
+    check_system(
+            system_Si_W90_wccFD, "Si_W90_wccFD",
+            matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO']
+                )
+
+
 def test_system_Haldane_TBmodels(check_system, system_Haldane_TBmodels):
     check_system(
         system_Haldane_TBmodels, "Haldane", suffix="TBmodels",

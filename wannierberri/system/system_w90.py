@@ -386,7 +386,7 @@ class System_w90(System_R):
 
             # Naive finite-difference scheme
             if not transl_inv_JM:
-                if not self.use_wcc_phase:  # Phase convention II
+                if use_wcc_phase_findiff:  # Phase convention II
                     pass
                 else:                      # Phase convention I
                     phase_1 = -np.einsum('ba,ia->ib', bk_cart_unique, centers)

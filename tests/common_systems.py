@@ -301,11 +301,9 @@ def system_GaAs_tb_wcc_ws():
     return get_system_GaAs_tb(method="new", use_wcc_phase=True, use_ws=True, symmetrize=False)
 
 
-@pytest.fixture(scope="session")
-def system_Si_W90_JM(create_files_Si_W90):
+def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_phase_fin_diff=False):
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
 
-    data_dir = create_files_Si_W90
     for tag in ('uHu', 'uIu'):
         if not os.path.isfile(os.path.join(data_dir, "Si.{}".format(tag))):
             tar = tarfile.open(os.path.join(data_dir, "Si.{}.tar.gz".format(tag)))
@@ -313,10 +311,27 @@ def system_Si_W90_JM(create_files_Si_W90):
                 tar.extract(tarinfo, data_dir)
     # Load system
     seedname = os.path.join(data_dir, "Si")
-    system = wberri.system.System_w90(seedname, OSD=True, use_ws=True, use_wcc_phase=True, transl_inv=False, transl_inv_JM=True, guiding_centers=True)
+    system = wberri.system.System_w90(seedname, OSD=True, use_ws=True, use_wcc_phase=True,
+                                      transl_inv=transl_inv,
+                                      transl_inv_JM=transl_inv_JM,
+                                      wcc_phase_findiff=wcc_phase_fin_diff,
+                                      guiding_centers=True)
 
     return system
 
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    return get_system_Si_W90_JM(data_dir, transl_inv_JM=True)
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_wccFD(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    return get_system_Si_W90_JM(data_dir, transl_inv=True, wcc_phase_fin_diff=True)
 
 # Haldane model from TBmodels
 
