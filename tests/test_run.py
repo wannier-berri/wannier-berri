@@ -764,15 +764,16 @@ def test_GaAs_tb_wcc(check_run, system_GaAs_tb_wcc, compare_any_result):
         extra_precision={"berry_dipole_fsurf": 1e-6}
     )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
+
 def test_GaAs_SDCT(check_run, system_GaAs_W90_wcc, compare_any_result):
 
     param = {'Efermi': Efermi_GaAs,
-             'omega':np.linspace(0.0, 7, 8),
-             'kBT':0.05, 'smr_fixed_width':0.1
+             'omega': np.linspace(0.0, 7, 8),
+             'kBT': 0.05, 'smr_fixed_width': 0.1
              }
-    calculators = {k+"_internal": v(kwargs_formula=dict(external_terms=False), **param)
+    calculators = {k + "_internal": v(kwargs_formula=dict(external_terms=False), **param)
                    for k, v in calculators_SDCT.items()}
-    calculators.update({k+"_full": v(**param) for k, v in calculators_SDCT.items()})
+    calculators.update({k + "_full": v(**param) for k, v in calculators_SDCT.items()})
 
     check_run(
         system_GaAs_W90_wcc,
@@ -783,12 +784,13 @@ def test_GaAs_SDCT(check_run, system_GaAs_W90_wcc, compare_any_result):
         compare_zero=True
     )
 
+
 def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result):
 
-    param = {'Efermi': np.linspace(-2,2,5),
-             'omega':np.linspace(0.0, 4, 5),
-             'kBT':0.5, 'smr_fixed_width':0.5,
-             'kwargs_formula' : dict(external_terms=False)
+    param = {'Efermi': np.linspace(-2, 2, 5),
+             'omega': np.linspace(0.0, 4, 5),
+             'kBT': 0.5, 'smr_fixed_width': 0.5,
+             'kwargs_formula': dict(external_terms=False)
              }
     calculators = {k: v(**param) for k, v in calculators_SDCT.items()}
 
@@ -797,7 +799,7 @@ def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result):
         calculators,
         fout_name="Chiral_OSD_SDCT",
         suffix="",
-        #precision=,
+        # precision=,
     )
 
 
@@ -814,18 +816,18 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
     calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
 
     param = {'Efermi': Efermi,
-             'omega':np.linspace(0.0, 4, 5),
-             'kBT':0.5, 'smr_fixed_width':0.5,
-             'kwargs_formula' : dict(external_terms=False)
+             'omega': np.linspace(0.0, 4, 5),
+             'kBT': 0.5, 'smr_fixed_width': 0.5,
+             'kwargs_formula': dict(external_terms=False)
              }
-    calculators.update( {k: v(**param) for k, v in calculators_SDCT.items()} )
+    calculators.update({k: v(**param) for k, v in calculators_SDCT.items()})
 
     check_run(
         system_random_load_bare,
         calculators,
         fout_name="random_wcc",
         suffix="",
-        #precision=,
+        # precision=,
     )
 
 

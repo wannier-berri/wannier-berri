@@ -159,6 +159,8 @@ class CheckPoint:
 
 
     # --- B_a(q,b) matrix --- #
+
+
     def get_BB_qb(self, mmn, eig):
 
         BB_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
@@ -633,13 +635,13 @@ class MMN(W90_file):
             bk_cart_unique = (bk_latt_unique / mp_grid[None, :]) @ recip_lattice
             assert bk_latt_unique.shape == (self.NNB, 3)
 
-            ib_unique_map = np.zeros((self.NK,self.NNB), dtype=int)
+            ib_unique_map = np.zeros((self.NK, self.NNB), dtype=int)
             for ik in range(self.NK):
                 for ib in range(self.NNB):
                     b_latt = np.rint((self.bk_cart[ik, ib, :] @ np.linalg.inv(recip_lattice)) * mp_grid).astype(int)
                     ib_unique = [tuple(b) for b in bk_latt_unique].index(tuple(b_latt))
                     assert np.allclose(bk_cart_unique[ib_unique, :], self.bk_cart[ik, ib, :])
-                    ib_unique_map[ik,ib] = ib_unique
+                    ib_unique_map[ik, ib] = ib_unique
 
             self.bk_latt_unique = bk_latt_unique
             self.bk_cart_unique = bk_cart_unique
@@ -648,6 +650,7 @@ class MMN(W90_file):
 
     def set_bk_chk(self, chk, **argv):
         self.set_bk(chk.kpt_latt, chk.mp_grid, chk.recip_lattice, **argv)
+
 
 def str2arraymmn(A):
     a = np.array([l.split()[3:] for l in A], dtype=float)

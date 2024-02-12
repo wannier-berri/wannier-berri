@@ -370,10 +370,12 @@ class _Data_K(System, abc.ABC):
     #########
     # Oscar #
     ###########################################################################
+
+
     @lazy_property.LazyProperty
     def kron(self):
-        En   = self.E_K
-        kron = np.array( abs(En[:,:,None]-En[:,None,:]) < self.dEnm_threshold, dtype=int )
+        En = self.E_K
+        kron = np.array(abs(En[:, :, None] - En[:, None, :]) < self.dEnm_threshold, dtype=int)
 
         return kron
 
@@ -384,17 +386,17 @@ class _Data_K(System, abc.ABC):
         A = self.Xbar('AA')
 
         # Other matrices
-        D    = self.D_H
+        D = self.D_H
         kron = self.kron
 
         # _____ 1. Internal terms _____ #
-        A_int  = 1.j * D
-        Aa_int = kron[:,:,:,None] * A_int # Energy diagonal piece
-        A_int  = A_int - Aa_int           # Energy non-diagonal piece
+        A_int = 1.j * D
+        Aa_int = kron[:, :, :, None] * A_int  # Energy diagonal piece
+        A_int = A_int - Aa_int           # Energy non-diagonal piece
 
         # _____ 2. External terms _____ #
-        Aa_ext = kron[:,:,:,None] * A # Energy diagonal piece
-        A_ext  = A - Aa_ext           # Energy non-diagonal piece
+        Aa_ext = kron[:, :, :, None] * A  # Energy diagonal piece
+        A_ext = A - Aa_ext           # Energy non-diagonal piece
 
         # Final formula
         A_H = A_int + A_ext
@@ -404,13 +406,13 @@ class _Data_K(System, abc.ABC):
     def E1_internal(self):
         ''' Electric dipole moment (only internal terms) '''
         # Other matrices
-        D    = self.D_H
+        D = self.D_H
         kron = self.kron
 
         # _____ 1. Internal terms _____ #
-        A_int  = 1.j * D
-        Aa_int = kron[:,:,:,None] * A_int # Energy diagonal piece
-        A_int  = A_int - Aa_int           # Energy non-diagonal piece
+        A_int = 1.j * D
+        Aa_int = kron[:, :, :, None] * A_int  # Energy diagonal piece
+        A_int = A_int - Aa_int           # Energy non-diagonal piece
 
         # Final formula
         A_H = A_int
@@ -427,52 +429,52 @@ class _Data_K(System, abc.ABC):
         O = self.Xbar('OO')
 
         # Other matrices
-        D        = self.D_H
-        En       = self.E_K
-        kron     = self.kron
-        Eln_plus = 0.5 * (En[:,:,None] + En[:,None,:])
+        D = self.D_H
+        En = self.E_K
+        kron = self.kron
+        Eln_plus = 0.5 * (En[:, :, None] + En[:, None, :])
 
         # _____ 1. Internal terms _____ #
-        A_int  = 1.j * D
-        Aa_int = kron[:,:,:,None] * A_int # Energy diagonal piece
-        A_int  = A_int - Aa_int           # Energy non-diagonal piece
+        A_int = 1.j * D
+        Aa_int = kron[:, :, :, None] * A_int  # Energy diagonal piece
+        A_int = A_int - Aa_int           # Energy non-diagonal piece
 
         Cbc_int = 1.j * np.einsum('klpa,kpm,kmnb->klnab', A_int, H, A_int)
-        C_int = Cbc_int[:,:,:,alpha_A,beta_A] - Cbc_int[:,:,:,beta_A,alpha_A]
+        C_int = Cbc_int[:, :, :, alpha_A, beta_A] - Cbc_int[:, :, :, beta_A, alpha_A]
 
         Obc_int = 1.j * np.einsum('klpa,kpnb->klnab', A_int, A_int)
-        O_int = Obc_int[:,:,:,alpha_A,beta_A] - Obc_int[:,:,:,beta_A,alpha_A]
+        O_int = Obc_int[:, :, :, alpha_A, beta_A] - Obc_int[:, :, :, beta_A, alpha_A]
 
         # _____ 2. External terms _____ #
-        Aa_ext = kron[:,:,:,None] * A # Energy diagonal piece
-        A_ext  = A - Aa_ext           # Energy non-diagonal piece
+        Aa_ext = kron[:, :, :, None] * A  # Energy diagonal piece
+        A_ext = A - Aa_ext           # Energy non-diagonal piece
 
-        Cbc_ext  = -1.j * Eln_plus[:,:,:,None,None] * np.einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
+        Cbc_ext = -1.j * Eln_plus[:, :, :, None, None] * np.einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
         Cbc_ext += -1.j * np.einsum('kl,klpa,kpnb->klnab', En, Aa_ext, A_ext)
         Cbc_ext += -1.j * np.einsum('kn,klpa,kpnb->klnab', En, A_ext, Aa_ext)
-        C_ext = C + Cbc_ext[:,:,:,alpha_A,beta_A] - Cbc_ext[:,:,:,beta_A,alpha_A]
+        C_ext = C + Cbc_ext[:, :, :, alpha_A, beta_A] - Cbc_ext[:, :, :, beta_A, alpha_A]
 
-        Obc_ext  = -1.j * np.einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
-        Obc_ext += -1.j * np.einsum('klpa,kpnb->klnab',  A_ext, Aa_ext)
-        Obc_ext += -1.j * np.einsum('klpa,kpnb->klnab', Aa_ext,  A_ext)
-        O_ext = O + Obc_ext[:,:,:,alpha_A,beta_A] - Obc_ext[:,:,:,beta_A,alpha_A]
+        Obc_ext = -1.j * np.einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
+        Obc_ext += -1.j * np.einsum('klpa,kpnb->klnab', A_ext, Aa_ext)
+        Obc_ext += -1.j * np.einsum('klpa,kpnb->klnab', Aa_ext, A_ext)
+        O_ext = O + Obc_ext[:, :, :, alpha_A, beta_A] - Obc_ext[:, :, :, beta_A, alpha_A]
 
         # _____ 3. Cross terms _____ #
-        Cbc_cross  = np.einsum('klpa,kpnb->klnab', A_int, B)
-        Cbc_cross  = 1.j * ( Cbc_cross - Cbc_cross.swapaxes(1,2).conj() )
+        Cbc_cross = np.einsum('klpa,kpnb->klnab', A_int, B)
+        Cbc_cross = 1.j * (Cbc_cross - Cbc_cross.swapaxes(1, 2).conj())
         Cbc_cross += -1.j * np.einsum('kl,klpa,kpnb->klnab', En, Aa_ext, A_int)
         Cbc_cross += -1.j * np.einsum('kn,klpa,kpnb->klnab', En, A_int, Aa_ext)
-        C_cross = Cbc_cross[:,:,:,alpha_A,beta_A] - Cbc_cross[:,:,:,beta_A,alpha_A]
+        C_cross = Cbc_cross[:, :, :, alpha_A, beta_A] - Cbc_cross[:, :, :, beta_A, alpha_A]
 
-        Obc_cross  = 1.j * np.einsum('klpa,kpnb->klnab', A_ext, A_int)
+        Obc_cross = 1.j * np.einsum('klpa,kpnb->klnab', A_ext, A_int)
         Obc_cross += 1.j * np.einsum('klpa,kpnb->klnab', A_int, A_ext)
-        O_cross = Obc_cross[:,:,:,alpha_A,beta_A] - Obc_cross[:,:,:,beta_A,alpha_A]
+        O_cross = Obc_cross[:, :, :, alpha_A, beta_A] - Obc_cross[:, :, :, beta_A, alpha_A]
 
 
         # Final formula
         C_H = C_int + C_ext + C_cross
         O_H = O_int + O_ext + O_cross
-        return -0.5 * ( C_H - Eln_plus[:,:,:,None] * O_H )
+        return -0.5 * (C_H - Eln_plus[:, :, :, None] * O_H)
 
     @lazy_property.LazyProperty
     def M1_internal(self):
@@ -481,26 +483,26 @@ class _Data_K(System, abc.ABC):
         H = self.Xbar('Ham')
 
         # Other matrices
-        D        = self.D_H
-        En       = self.E_K
-        kron     = self.kron
-        Eln_plus = 0.5 * (En[:,:,None] + En[:,None,:])
+        D = self.D_H
+        En = self.E_K
+        kron = self.kron
+        Eln_plus = 0.5 * (En[:, :, None] + En[:, None, :])
 
         # _____ 1. Internal terms _____ #
-        A_int  = 1.j * D
-        Aa_int = kron[:,:,:,None] * A_int # Energy diagonal piece
-        A_int  = A_int - Aa_int           # Energy non-diagonal piece
+        A_int = 1.j * D
+        Aa_int = kron[:, :, :, None] * A_int  # Energy diagonal piece
+        A_int = A_int - Aa_int           # Energy non-diagonal piece
 
         Cbc_int = 1.j * np.einsum('klpa,kpm,kmnb->klnab', A_int, H, A_int)
-        C_int = Cbc_int[:,:,:,alpha_A,beta_A] - Cbc_int[:,:,:,beta_A,alpha_A]
+        C_int = Cbc_int[:, :, :, alpha_A, beta_A] - Cbc_int[:, :, :, beta_A, alpha_A]
 
         Obc_int = 1.j * np.einsum('klpa,kpnb->klnab', A_int, A_int)
-        O_int = Obc_int[:,:,:,alpha_A,beta_A] - Obc_int[:,:,:,beta_A,alpha_A]
+        O_int = Obc_int[:, :, :, alpha_A, beta_A] - Obc_int[:, :, :, beta_A, alpha_A]
 
         # Final formula
         C_H = C_int
         O_H = O_int
-        return -0.5 * ( C_H - Eln_plus[:,:,:,None] * O_H )
+        return -0.5 * (C_H - Eln_plus[:, :, :, None] * O_H)
 
     @lazy_property.LazyProperty
     def E2(self):
@@ -510,33 +512,33 @@ class _Data_K(System, abc.ABC):
         G = self.Xbar('GG')
 
         # Other matrices
-        D    = self.D_H
+        D = self.D_H
         kron = self.kron
 
         # _____ 1. Internal terms _____ #
 
-        A_int  = 1.j * D
-        Aa_int = kron[:,:,:,None] * A_int # Energy diagonal piece
-        A_int  = A_int - Aa_int           # Energy non-diagonal piece
+        A_int = 1.j * D
+        Aa_int = kron[:, :, :, None] * A_int  # Energy diagonal piece
+        A_int = A_int - Aa_int           # Energy non-diagonal piece
 
         Gbc_int = np.einsum('klpa,kpnb->klnab', A_int, A_int)
-        G_int = 0.5 * ( Gbc_int + Gbc_int.swapaxes(3,4) )
+        G_int = 0.5 * (Gbc_int + Gbc_int.swapaxes(3, 4))
 
         # _____ 2. External terms _____ #
 
-        Aa_ext = kron[:,:,:,None] * A # Energy diagonal piece
-        A_ext  = A - Aa_ext           # Energy non-diagonal piece
+        Aa_ext = kron[:, :, :, None] * A  # Energy diagonal piece
+        A_ext = A - Aa_ext           # Energy non-diagonal piece
 
-        Gbc_ext  = -np.einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
-        Gbc_ext += -np.einsum('klpa,kpnb->klnab',  A_ext, Aa_ext)
-        Gbc_ext += -np.einsum('klpa,kpnb->klnab', Aa_ext,  A_ext)
-        G_ext = G + 0.5 * ( Gbc_ext + Gbc_ext.swapaxes(3,4) )
+        Gbc_ext = -np.einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
+        Gbc_ext += -np.einsum('klpa,kpnb->klnab', A_ext, Aa_ext)
+        Gbc_ext += -np.einsum('klpa,kpnb->klnab', Aa_ext, A_ext)
+        G_ext = G + 0.5 * (Gbc_ext + Gbc_ext.swapaxes(3, 4))
 
         # _____ 3. Cross terms _____ #
 
-        Gbc_cross  = np.einsum('klpa,kpnb->klnab', A_ext, A_int)
+        Gbc_cross = np.einsum('klpa,kpnb->klnab', A_ext, A_int)
         Gbc_cross += np.einsum('klpa,kpnb->klnab', A_int, A_ext)
-        G_cross = 0.5 * ( Gbc_cross + Gbc_cross.swapaxes(3,4) )
+        G_cross = 0.5 * (Gbc_cross + Gbc_cross.swapaxes(3, 4))
 
         # Final formula
         G_H = G_int + G_ext + G_cross
@@ -546,17 +548,17 @@ class _Data_K(System, abc.ABC):
     def E2_internal(self):
         ''' Electric quadrupole moment (only internal terms)'''
         # Other matrices
-        D    = self.D_H
+        D = self.D_H
         kron = self.kron
 
         # _____ 1. Internal terms _____ #
 
-        A_int  = 1.j * D
-        Aa_int = kron[:,:,:,None] * A_int # Energy diagonal piece
-        A_int  = A_int - Aa_int           # Energy non-diagonal piece
+        A_int = 1.j * D
+        Aa_int = kron[:, :, :, None] * A_int  # Energy diagonal piece
+        A_int = A_int - Aa_int           # Energy non-diagonal piece
 
         Gbc_int = np.einsum('klpa,kpnb->klnab', A_int, A_int)
-        G_int = 0.5 * ( Gbc_int + Gbc_int.swapaxes(3,4) )
+        G_int = 0.5 * (Gbc_int + Gbc_int.swapaxes(3, 4))
 
         # Final formula
         G_H = G_int
@@ -564,37 +566,37 @@ class _Data_K(System, abc.ABC):
 
     @lazy_property.LazyProperty
     def Bln(self):
-        m  = self.M1
-        q  = self.E2
+        m = self.M1
+        q = self.E2
         En = self.E_K
-        Enm = En[:,:,None] - En[:,None,:]
+        Enm = En[:, :, None] - En[:, None, :]
 
-        B_q = -0.5j * Enm[:,:,:,None,None] * q
-        B_m = np.zeros((self.nk,self.num_wann,self.num_wann,3,3), dtype=complex)
-        B_m[:,:,:,alpha_A,beta_A] += m
-        B_m[:,:,:,beta_A,alpha_A] -= m
+        B_q = -0.5j * Enm[:, :, :, None, None] * q
+        B_m = np.zeros((self.nk, self.num_wann, self.num_wann, 3, 3), dtype=complex)
+        B_m[:, :, :, alpha_A, beta_A] += m
+        B_m[:, :, :, beta_A, alpha_A] -= m
         B = B_m + B_q
         return B_m, B_q, B
 
     @lazy_property.LazyProperty
     def Bln_internal(self):
-        m  = self.M1_internal
-        q  = self.E2_internal
+        m = self.M1_internal
+        q = self.E2_internal
         En = self.E_K
-        Enm = En[:,:,None] - En[:,None,:]
+        Enm = En[:, :, None] - En[:, None, :]
 
-        B_q = -0.5j * Enm[:,:,:,None,None] * q
-        B_m = np.zeros((self.nk,self.num_wann,self.num_wann,3,3), dtype=complex)
-        B_m[:,:,:,alpha_A,beta_A] += m
-        B_m[:,:,:,beta_A,alpha_A] -= m
+        B_q = -0.5j * Enm[:, :, :, None, None] * q
+        B_m = np.zeros((self.nk, self.num_wann, self.num_wann, 3, 3), dtype=complex)
+        B_m[:, :, :, alpha_A, beta_A] += m
+        B_m[:, :, :, beta_A, alpha_A] -= m
         B = B_m + B_q
         return B_m, B_q, B
 
     @lazy_property.LazyProperty
     def Vn(self):
         ''' Band velocity '''
-        V_H = self.Xbar('Ham', 1) # (k, m, n, a)
-        return np.diagonal(V_H, axis1=1, axis2=2).transpose(0, 2, 1) # (k, m, a)
+        V_H = self.Xbar('Ham', 1)  # (k, m, n, a)
+        return np.diagonal(V_H, axis1=1, axis2=2).transpose(0, 2, 1)  # (k, m, a)
 
     ###########################################################################
 
@@ -655,6 +657,8 @@ class Data_K_R(_Data_K, System_R):
 
 
     #  this is a bit ovberhead, but to maintain uniformity of the code let's use this
+
+
     def _T_wcc_R(self):
         nw = self.num_wann
         res = np.zeros((nw, nw, self.system.nRvec, 3), dtype=complex)

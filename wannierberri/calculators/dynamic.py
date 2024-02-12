@@ -257,7 +257,7 @@ class SDCT_asym(Calculator):
             self.terms.extend([SDCT_asym_surf_I(**kwargs), SDCT_asym_surf_II(**kwargs)])
 
     def __call__(self, data_K):
-        return sum( cal(data_K) for cal in self.terms )
+        return sum(cal(data_K) for cal in self.terms)
 
 
 class Formula_SDCT_asym_sea_I():
@@ -269,33 +269,33 @@ class Formula_SDCT_asym_sea_I():
             B_M1, B_E2, B = data_K.Bln
             if spin:
                 S = data_K.Xbar('SS')
-                B_M1[:,:,:,alpha_A,beta_A] += -0.5 * m_spin_prefactor * S
-                B_M1[:,:,:,beta_A,alpha_A] -= -0.5 * m_spin_prefactor * S
+                B_M1[:, :, :, alpha_A, beta_A] += -0.5 * m_spin_prefactor * S
+                B_M1[:, :, :, beta_A, alpha_A] -= -0.5 * m_spin_prefactor * S
         else:
             A = -1. * data_K.E1_internal
             B_M1, B_E2, B = data_K.Bln_internal
 
         # Other quantities
         Vn = data_K.Vn
-        Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
+        Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
 
         # --- Formula --- #
         summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
 
         if M1_terms:
-            summ += -np.imag( A[:,:,:,:,None,None] * B_M1.swapaxes(1,2)[:,:,:,None,:,:] )
+            summ += -np.imag(A[:, :, :, :, None, None] * B_M1.swapaxes(1, 2)[:, :, :, None, :, :])
 
         if E2_terms:
-            summ += -np.imag( A[:,:,:,:,None,None] * B_E2.swapaxes(1,2)[:,:,:,None,:,:] )
+            summ += -np.imag(A[:, :, :, :, None, None] * B_E2.swapaxes(1, 2)[:, :, :, None, :, :])
 
         if V_terms:
-            summ += Vnm_plus[:,:,:,:,None,None] * np.imag( A[:,:,:,None,:,None] * A.swapaxes(1,2)[:,:,:,None,None,:] )
+            summ += Vnm_plus[:, :, :, :, None, None] * np.imag(A[:, :, :, None, :, None] * A.swapaxes(1, 2)[:, :, :, None, None, :])
 
-        summ = summ - summ.swapaxes(3,4)
+        summ = summ - summ.swapaxes(3, 4)
 
         self.summ = summ
         self.ndim = 3
-        self.transformTR  = transform_ident
+        self.transformTR = transform_ident
         self.transformInv = transform_odd
 
     def trace_ln(self, ik, inn1, inn2):
@@ -328,17 +328,17 @@ class Formula_SDCT_asym_sea_II():
 
         # Other quantities
         Vn = data_K.Vn
-        Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
+        Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
 
         # --- Formula --- #
         summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
 
         if V_terms:
-            summ += np.imag( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vnm_plus[:,:,:,None,None,:]
+            summ += np.imag(A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None]) * Vnm_plus[:, :, :, None, None, :]
 
         self.summ = summ
         self.ndim = 3
-        self.transformTR  = transform_ident
+        self.transformTR = transform_ident
         self.transformInv = transform_odd
 
     def trace_ln(self, ik, inn1, inn2):
@@ -357,7 +357,8 @@ class SDCT_asym_sea_II(DynamicCalculator):
         omega = self.omega + 1.j * self.smr_fixed_width
         Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
-        return omega * (3.0 * (E2 - E1)**2 - omega**2  ) * Zfac**2
+        return omega * (3.0 * (E2 - E1)**2 - omega**2) * Zfac**2
+
 
 class Formula_SDCT_asym_surf_I():
 
@@ -375,15 +376,16 @@ class Formula_SDCT_asym_surf_I():
         summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
 
         if V_terms:
-            summ += -np.imag( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vn[:,:,None,None,None,:]
+            summ += -np.imag(A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None]) * Vn[:, :, None, None, None, :]
 
         self.summ = summ
         self.ndim = 3
-        self.transformTR  = transform_ident
+        self.transformTR = transform_ident
         self.transformInv = transform_odd
 
     def trace_ln(self, ik, inn1, inn2):
         return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
 
 class SDCT_asym_surf_I(DynamicCalculator):
 
@@ -402,6 +404,7 @@ class SDCT_asym_surf_I(DynamicCalculator):
     def factor_Efermi(self, E1, E2):
         return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
 
+
 class Formula_SDCT_asym_surf_II():
 
     def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
@@ -410,8 +413,8 @@ class Formula_SDCT_asym_surf_II():
             B_M1, B_E2, B = data_K.Bln
             if spin:
                 S = data_K.Xbar('SS')
-                B_M1[:,:,:,alpha_A,beta_A] += -0.5 * m_spin_prefactor * S
-                B_M1[:,:,:,beta_A,alpha_A] -= -0.5 * m_spin_prefactor * S
+                B_M1[:, :, :, alpha_A, beta_A] += -0.5 * m_spin_prefactor * S
+                B_M1[:, :, :, beta_A, alpha_A] -= -0.5 * m_spin_prefactor * S
         else:
             B_M1, B_E2, B = data_K.Bln_internal
         Bn_M1 = np.diagonal(B_M1, axis1=1, axis2=2).transpose(0, 3, 1, 2)
@@ -423,17 +426,18 @@ class Formula_SDCT_asym_surf_II():
         summ = np.zeros((data_K.nk, data_K.num_wann, 3, 3, 3), dtype=complex)
 
         if M1_terms:
-            summ += Vn[:,:,:,None,None] * Bn_M1[:,:,None,:,:]
+            summ += Vn[:, :, :, None, None] * Bn_M1[:, :, None, :, :]
 
-        summ = summ - summ.swapaxes(3,4)
+        summ = summ - summ.swapaxes(3, 4)
 
         self.summ = summ
         self.ndim = 3
-        self.transformTR  = transform_ident
+        self.transformTR = transform_ident
         self.transformInv = transform_odd
 
-    def trace_ln(self, ik, inn1, inn2): # There is no sum over l
+    def trace_ln(self, ik, inn1, inn2):  # There is no sum over l
         return self.summ[ik, inn1].sum(axis=0)
+
 
 class SDCT_asym_surf_II(DynamicCalculator):
 
@@ -452,6 +456,7 @@ class SDCT_asym_surf_II(DynamicCalculator):
 
 # _____ Symmetric (time-odd) spatially-dispersive conductivity tensor _____ #
 
+
 class SDCT_sym(Calculator):
     def __init__(self, fermi_sea=True, fermi_surf=True, **kwargs):
         self.comment = "calculator not described"
@@ -464,7 +469,7 @@ class SDCT_sym(Calculator):
             self.terms.extend([SDCT_sym_surf_I(**kwargs), SDCT_sym_surf_II(**kwargs)])
 
     def __call__(self, data_K):
-        return sum( cal(data_K) for cal in self.terms )
+        return sum(cal(data_K) for cal in self.terms)
 
 
 class Formula_SDCT_sym_sea_I():
@@ -476,33 +481,33 @@ class Formula_SDCT_sym_sea_I():
             B_M1, B_E2, B = data_K.Bln
             if spin:
                 S = data_K.Xbar('SS')
-                B_M1[:,:,:,alpha_A,beta_A] += -0.5 * m_spin_prefactor * S
-                B_M1[:,:,:,beta_A,alpha_A] -= -0.5 * m_spin_prefactor * S
+                B_M1[:, :, :, alpha_A, beta_A] += -0.5 * m_spin_prefactor * S
+                B_M1[:, :, :, beta_A, alpha_A] -= -0.5 * m_spin_prefactor * S
         else:
             A = -1. * data_K.E1_internal
             B_M1, B_E2, B = data_K.Bln_internal
 
         # Other quantities
         Vn = data_K.Vn
-        Vnm_plus = 0.5 * ( Vn[:,:,None,:] + Vn[:,None,:,:] )
+        Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
 
         # Formula
         summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
 
         if M1_terms:
-            summ += np.real( A[:,:,:,:,None,None] * B_M1.swapaxes(1,2)[:,:,:,None,:,:] )
+            summ += np.real(A[:, :, :, :, None, None] * B_M1.swapaxes(1, 2)[:, :, :, None, :, :])
 
         if E2_terms:
-            summ += np.real( A[:,:,:,:,None,None] * B_E2.swapaxes(1,2)[:,:,:,None,:,:] )
+            summ += np.real(A[:, :, :, :, None, None] * B_E2.swapaxes(1, 2)[:, :, :, None, :, :])
 
         if V_terms:
-            summ += Vnm_plus[:,:,:,:,None,None] * np.real( A[:,:,:,None,:,None] * A.swapaxes(1,2)[:,:,:,None,None,:] )
+            summ += Vnm_plus[:, :, :, :, None, None] * np.real(A[:, :, :, None, :, None] * A.swapaxes(1, 2)[:, :, :, None, None, :])
 
-        summ = summ + summ.swapaxes(3,4)
+        summ = summ + summ.swapaxes(3, 4)
 
         self.summ = summ
         self.ndim = 3
-        self.transformTR  = transform_odd
+        self.transformTR = transform_odd
         self.transformInv = transform_odd
 
     def trace_ln(self, ik, inn1, inn2):
@@ -535,17 +540,17 @@ class Formula_SDCT_sym_sea_II():
 
         # Other quantities
         Vn = data_K.Vn
-        Vnm_plus = Vn[:,:,None,:] + Vn[:,None,:,:]
+        Vnm_plus = Vn[:, :, None, :] + Vn[:, None, :, :]
 
         # Formula
         summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
 
         if V_terms:
-            summ -= np.real( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vnm_plus[:,:,:,None,None,:]
+            summ -= np.real(A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None]) * Vnm_plus[:, :, :, None, None, :]
 
         self.summ = summ
         self.ndim = 3
-        self.transformTR  = transform_odd
+        self.transformTR = transform_odd
         self.transformInv = transform_odd
 
     def trace_ln(self, ik, inn1, inn2):
@@ -583,11 +588,11 @@ class Formula_SDCT_sym_surf_I():
         summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
 
         if V_terms:
-            summ += np.real( A[:,:,:,:,None,None] * A.swapaxes(1,2)[:,:,:,None,:,None] ) * Vn[:,:,None,None,None,:]
+            summ += np.real(A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None]) * Vn[:, :, None, None, None, :]
 
         self.summ = summ
         self.ndim = 3
-        self.transformTR  = transform_odd
+        self.transformTR = transform_odd
         self.transformInv = transform_odd
 
     def trace_ln(self, ik, inn1, inn2):
@@ -621,14 +626,14 @@ class Formula_SDCT_sym_surf_II():
         summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
 
         if V_terms:
-            summ = Vn[:,:,:,None,None] * Vn[:,:,None,:,None] * Vn[:,:,None,None,:]
+            summ = Vn[:, :, :, None, None] * Vn[:, :, None, :, None] * Vn[:, :, None, None, :]
 
         self.summ = summ
         self.ndim = 3
-        self.transformTR  = transform_odd
+        self.transformTR = transform_odd
         self.transformInv = transform_odd
 
-    def trace_ln(self, ik, inn1, inn2): # There is no sum over l
+    def trace_ln(self, ik, inn1, inn2):  # There is no sum over l
         return self.summ[ik, inn1].sum(axis=0)
 
 

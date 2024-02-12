@@ -300,6 +300,7 @@ def system_GaAs_tb_wcc_ws():
     """Create system for GaAs using _tb_dat data"""
     return get_system_GaAs_tb(method="new", use_wcc_phase=True, use_ws=True, symmetrize=False)
 
+
 @pytest.fixture(scope="session")
 def system_Si_W90_JM(create_files_Si_W90):
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
@@ -353,6 +354,7 @@ model_pythtb_Haldane = wb_models.Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15)
 model_pythtb_KaneMele_odd = wb_models.KaneMele_ptb('odd')
 model_pythtb_Chiral_OSD = wb_models.Chiral_OSD()
 
+
 @pytest.fixture(scope="session")
 def system_Haldane_PythTB():
     """Create system for Haldane model using PythTB"""
@@ -361,21 +363,24 @@ def system_Haldane_PythTB():
     system.set_symmetry(["C3z"])
     return system
 
+
 @pytest.fixture(scope="session")
 def system_KaneMele_odd_PythTB():
     """Create system for Haldane model using PythTB"""
     # Load system
     system = wberri.system.System_PythTB(model_pythtb_KaneMele_odd, use_wcc_phase=True, spin=True)
-    system.set_symmetry(["C3z","TimeReversal"])
+    system.set_symmetry(["C3z", "TimeReversal"])
     return system
+
 
 @pytest.fixture(scope="session")
 def system_Chiral_OSD():
     """Create system for Haldane model using PythTB"""
     # Load system
     system = wberri.system.System_PythTB(model_pythtb_Chiral_OSD, use_wcc_phase=True, spin=True)
-    #system.set_symmetry(["C3z","TimeReversal"])
+    # system.set_symmetry(["C3z","TimeReversal"])
     return system
+
 
 @pytest.fixture(scope="session")
 def system_Haldane_PythTB_wrong_mat():

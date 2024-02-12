@@ -210,7 +210,7 @@ class System_w90(System_R):
         # Wannier centers
         centers = chk.wannier_centers
         # Optimal center in Jae-Mo's implementation
-        r0 = 0.5 * (centers[:,None,None,:] + centers[None,:,None,:] + self.cRvec[None,None,:,:])
+        r0 = 0.5 * (centers[:, None, None, :] + centers[None, :, None, :] + self.cRvec[None, None, :, :])
         # Unique set of nearest-neighbor vectors (cartesian)
         bk_cart_unique = w90data.mmn.bk_cart_unique
 
@@ -220,9 +220,9 @@ class System_w90(System_R):
 
             # Naive finite-difference scheme
             if not transl_inv_JM:
-                if use_wcc_phase_findiff : # Phase convention I
-                    phase  = np.einsum('ba,ja->jb', bk_cart_unique, centers)
-                    AA_Rb *= np.exp(1.j * phase[None,:,None,:,None])
+                if use_wcc_phase_findiff:  # Phase convention I
+                    phase = np.einsum('ba,ja->jb', bk_cart_unique, centers)
+                    AA_Rb *= np.exp(1.j * phase[None, :, None, :, None])
 
                 AA_R = np.sum(AA_Rb, axis=3)
 
@@ -232,14 +232,14 @@ class System_w90(System_R):
             # Jae-Mo's finite-difference scheme
             else:
                 # Recentered matrix
-                phase  = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None,None,:,:])
-                AA_R0b = AA_Rb * np.exp(1.j * phase[:,:,:,:,None])
-                AA_R0  = np.sum(AA_R0b, axis=3)
+                phase = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None, None, :, :])
+                AA_R0b = AA_Rb * np.exp(1.j * phase[:, :, :, :, None])
+                AA_R0 = np.sum(AA_R0b, axis=3)
 
                 # Original matrix
                 AA_R = AA_R0
-                if not self.use_wcc_phase: # Phase convention II
-                    AA_R[range(self.num_wann),range(self.num_wann),self.iR0] += centers
+                if not self.use_wcc_phase:  # Phase convention II
+                    AA_R[range(self.num_wann), range(self.num_wann), self.iR0] += centers
                 else:                      # Phase convention I
                     pass
 
@@ -271,27 +271,27 @@ class System_w90(System_R):
 
             # Naive finite-difference scheme
             if not transl_inv_JM:
-                if not use_wcc_phase_findiff: # Phase convention II
+                if not use_wcc_phase_findiff:  # Phase convention II
                     pass
                 else:                      # Phase convention I
-                    phase  = np.einsum('ba,ja->jb', bk_cart_unique, centers)
-                    BB_Rb *= np.exp(1.j * phase[None,:,None,:,None])
+                    phase = np.einsum('ba,ja->jb', bk_cart_unique, centers)
+                    BB_Rb *= np.exp(1.j * phase[None, :, None, :, None])
 
                 BB_R = np.sum(BB_Rb, axis=3)
 
             # Jae-Mo's finite-difference scheme
             else:
                 # Recentered matrix
-                phase  = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None,None,:,:])
-                BB_R0b = BB_Rb * np.exp(1.j * phase[:,:,:,:,None])
-                BB_R0  = np.sum(BB_R0b, axis=3)
+                phase = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None, None, :, :])
+                BB_R0b = BB_Rb * np.exp(1.j * phase[:, :, :, :, None])
+                BB_R0 = np.sum(BB_R0b, axis=3)
 
                 # Original matrix
                 HH_R = self.get_R_mat('Ham')
-                if not self.use_wcc_phase: # Phase convention II
-                    rc = (r0 - self.cRvec[None,None,:,:]) * HH_R[:,:,:,None]
+                if not self.use_wcc_phase:  # Phase convention II
+                    rc = (r0 - self.cRvec[None, None, :, :]) * HH_R[:, :, :, None]
                 else:                      # Phase convention I
-                    rc = (r0 - self.cRvec[None,None,:,:] - centers[None,:,None,:]) * HH_R[:,:,:,None]
+                    rc = (r0 - self.cRvec[None, None, :, :] - centers[None, :, None, :]) * HH_R[:, :, :, None]
 
                 BB_R = BB_R0 + rc
 
@@ -303,15 +303,15 @@ class System_w90(System_R):
 
             # Naive finite-difference scheme
             if not transl_inv_JM:
-                if not use_wcc_phase_findiff: # Phase convention II
+                if not use_wcc_phase_findiff:  # Phase convention II
                     pass
                 else:                      # Phase convention I
                     phase_1 = -np.einsum('ba,ia->ib', bk_cart_unique, centers)
-                    phase_2 =  np.einsum('ba,ja->jb', bk_cart_unique, centers)
-                    phase  = phase_1[:,None,:,None] + phase_2[None,:,None,:]
-                    CC_Rb *= np.exp(1.j * phase[:,:,None,:,:,None])
+                    phase_2 = np.einsum('ba,ja->jb', bk_cart_unique, centers)
+                    phase = phase_1[:, None, :, None] + phase_2[None, :, None, :]
+                    CC_Rb *= np.exp(1.j * phase[:, :, None, :, :, None])
 
-                CC_R = np.sum(CC_Rb, axis=(3,4))
+                CC_R = np.sum(CC_Rb, axis=(3, 4))
 
                 # Hermiticity is not preserved, but it can be enforced
                 CC_R = 0.5 * (CC_R + self.conj_XX_R(CC_R))
@@ -320,23 +320,23 @@ class System_w90(System_R):
             else:
                 # Recentered matrix
                 phase_1 = -np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0)
-                phase_2 =  np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None,None,:,:])
-                phase  = phase_1[:,:,:,:,None] + phase_2[:,:,:,None,:]
-                CC_R0b = CC_Rb * np.exp(1.j * phase[:,:,:,:,:,None])
-                CC_R0  = np.sum(CC_R0b, axis=(3,4))
+                phase_2 = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None, None, :, :])
+                phase = phase_1[:, :, :, :, None] + phase_2[:, :, :, None, :]
+                CC_R0b = CC_Rb * np.exp(1.j * phase[:, :, :, :, :, None])
+                CC_R0 = np.sum(CC_R0b, axis=(3, 4))
 
                 # Original matrix
                 if BB_R0 is None:
                     raise ValueError('Recentered B matrix is needed in Jae-Mo`s implementation of C')
                 BB_R0_conj = self.conj_XX_R(BB_R0)
-                if not self.use_wcc_phase: # Phase convention II
-                    rc  = 1j * r0[:,:,:,:,None] * BB_R0[:,:,:,None,:]
-                    rc -= 1j * (r0[:,:,:,:,None] - self.cRvec[None,None,:,:,None]) *  BB_R0_conj[:,:,:,None,:]
-                    rc -= 0.5j * (centers[:,None,None,:,None] + centers[None,:,None,:,None]) * self.cRvec[None,None,:,None,:] * HH_R[:,:,:,None,None]
+                if not self.use_wcc_phase:  # Phase convention II
+                    rc = 1j * r0[:, :, :, :, None] * BB_R0[:, :, :, None, :]
+                    rc -= 1j * (r0[:, :, :, :, None] - self.cRvec[None, None, :, :, None]) * BB_R0_conj[:, :, :, None, :]
+                    rc -= 0.5j * (centers[:, None, None, :, None] + centers[None, :, None, :, None]) * self.cRvec[None, None, :, None, :] * HH_R[:, :, :, None, None]
                 else:                      # Phase convention I
-                    rc   = 1j * (r0[:,:,:,:,None] - centers[:,None,None,:,None]) * (BB_R0 + BB_R0_conj)[:,:,:,None,:]
+                    rc = 1j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None, :]
 
-                CC_R = CC_R0 + rc[:,:,:,alpha_A,beta_A] - rc[:,:,:,beta_A,alpha_A]
+                CC_R = CC_R0 + rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
 
             self.set_R_mat('CC', CC_R, reset=True)
 
@@ -346,15 +346,15 @@ class System_w90(System_R):
 
             # Naive finite-difference scheme
             if not transl_inv_JM:
-                if not use_wcc_phase_findiff: # Phase convention II
+                if not use_wcc_phase_findiff:  # Phase convention II
                     pass
                 else:                      # Phase convention I
                     phase_1 = -np.einsum('ba,ia->ib', bk_cart_unique, centers)
-                    phase_2 =  np.einsum('ba,ja->jb', bk_cart_unique, centers)
-                    phase  = phase_1[:,None,:,None] + phase_2[None,:,None,:]
-                    OO_Rb *= np.exp(1.j * phase[:,:,None,:,:,None])
+                    phase_2 = np.einsum('ba,ja->jb', bk_cart_unique, centers)
+                    phase = phase_1[:, None, :, None] + phase_2[None, :, None, :]
+                    OO_Rb *= np.exp(1.j * phase[:, :, None, :, :, None])
 
-                OO_R = np.sum(OO_Rb, axis=(3,4))
+                OO_R = np.sum(OO_Rb, axis=(3, 4))
 
                 # Hermiticity is not preserved, but it can be enforced
                 OO_R = 0.5 * (OO_R + self.conj_XX_R(OO_R))
@@ -363,20 +363,20 @@ class System_w90(System_R):
             else:
                 # Recentered matrix
                 phase_1 = -np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0)
-                phase_2 =  np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None,None,:,:])
-                phase  = phase_1[:,:,:,:,None] + phase_2[:,:,:,None,:]
-                OO_R0b = OO_Rb * np.exp(1.j * phase[:,:,:,:,:,None])
-                OO_R0  = np.sum(OO_R0b, axis=(3,4))
+                phase_2 = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None, None, :, :])
+                phase = phase_1[:, :, :, :, None] + phase_2[:, :, :, None, :]
+                OO_R0b = OO_Rb * np.exp(1.j * phase[:, :, :, :, :, None])
+                OO_R0 = np.sum(OO_R0b, axis=(3, 4))
 
                 # Original matrix
                 if AA_R0 is None:
                     raise ValueError('Recentered A matrix is needed in Jae-Mo`s implementation of O')
-                if not self.use_wcc_phase: # Phase convention II
-                    rc = 1.j * self.cRvec[None,None,:,:,None] * AA_R0[:,:,:,None,:]
+                if not self.use_wcc_phase:  # Phase convention II
+                    rc = 1.j * self.cRvec[None, None, :, :, None] * AA_R0[:, :, :, None, :]
                 else:                      # Phase convention I
-                    rc = 1.j * (r0[:,:,:,:,None] - centers[:,None,None,:,None]) * AA_R0[:,:,:,None,:]
+                    rc = 1.j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * AA_R0[:, :, :, None, :]
 
-                OO_R = OO_R0 + rc[:,:,:,alpha_A,beta_A] - rc[:,:,:,beta_A,alpha_A]
+                OO_R = OO_R0 + rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
 
             self.set_R_mat('OO', OO_R, reset=True)
 
@@ -386,15 +386,15 @@ class System_w90(System_R):
 
             # Naive finite-difference scheme
             if not transl_inv_JM:
-                if not self.use_wcc_phase: # Phase convention II
+                if not self.use_wcc_phase:  # Phase convention II
                     pass
                 else:                      # Phase convention I
                     phase_1 = -np.einsum('ba,ia->ib', bk_cart_unique, centers)
-                    phase_2 =  np.einsum('ba,ja->jb', bk_cart_unique, centers)
-                    phase  = phase_1[:,None,:,None] + phase_2[None,:,None,:]
-                    GG_Rb *= np.exp(1.j * phase[:,:,None,:,:,None,None])
+                    phase_2 = np.einsum('ba,ja->jb', bk_cart_unique, centers)
+                    phase = phase_1[:, None, :, None] + phase_2[None, :, None, :]
+                    GG_Rb *= np.exp(1.j * phase[:, :, None, :, :, None, None])
 
-                GG_R = np.sum(GG_Rb, axis=(3,4))
+                GG_R = np.sum(GG_Rb, axis=(3, 4))
 
                 # Hermiticity is not preserved, but it can be enforced
                 GG_R = 0.5 * (GG_R + self.conj_XX_R(GG_R))
@@ -403,26 +403,26 @@ class System_w90(System_R):
             else:
                 # Recentered matrix
                 phase_1 = -np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0)
-                phase_2 =  np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None,None,:,:])
-                phase  = phase_1[:,:,:,:,None] + phase_2[:,:,:,None,:]
-                GG_R0b = GG_Rb * np.exp(1.j * phase[:,:,:,:,:,None,None])
-                GG_R0  = np.sum(GG_R0b, axis=(3,4))
+                phase_2 = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None, None, :, :])
+                phase = phase_1[:, :, :, :, None] + phase_2[:, :, :, None, :]
+                GG_R0b = GG_Rb * np.exp(1.j * phase[:, :, :, :, :, None, None])
+                GG_R0 = np.sum(GG_R0b, axis=(3, 4))
 
                 # Original matrix
                 if AA_R0 is None:
                     raise ValueError('Recentered A matrix is needed in Jae-Mo`s implementation of G')
-                if not self.use_wcc_phase: # Phase convention II
-                    rc = (centers[:,None,None,:,None] + centers[None,:,None,:,None]) * AA_R0[:,:,:,None,:]
-                    rc[range(self.num_wann),range(self.num_wann),self.iR0] += centers[range(self.num_wann),:,None] * centers[range(self.num_wann),None,:]
+                if not self.use_wcc_phase:  # Phase convention II
+                    rc = (centers[:, None, None, :, None] + centers[None, :, None, :, None]) * AA_R0[:, :, :, None, :]
+                    rc[range(self.num_wann), range(self.num_wann), self.iR0] += centers[range(self.num_wann), :, None] * centers[range(self.num_wann), None, :]
                 else:                      # Phase convention I
-                    rc = np.zeros((self.num_wann,self.num_wann,self.nRvec,3,3), dtype=complex)
+                    rc = np.zeros((self.num_wann, self.num_wann, self.nRvec, 3, 3), dtype=complex)
 
-                GG_R = GG_R0 + 0.5 * (rc + rc.swapaxes(3,4))
+                GG_R = GG_R0 + 0.5 * (rc + rc.swapaxes(3, 4))
 
             self.set_R_mat('GG', GG_R, reset=True)
 
         self.do_at_end_of_init(
-                convert_convention=( (not transl_inv_JM) and self.use_wcc_phase and (not wcc_phase_findiff) ) )
+                convert_convention=((not transl_inv_JM) and self.use_wcc_phase and (not wcc_phase_findiff)))
 
     ###########################################################################
 
