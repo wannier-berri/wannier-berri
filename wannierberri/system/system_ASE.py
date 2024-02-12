@@ -15,6 +15,7 @@
 import numpy as np
 from ..__utility import real_recip_lattice
 from .system_w90 import System_w90
+from .system_R import System_R
 from termcolor import cprint
 
 
@@ -37,16 +38,16 @@ class System_ASE(System_w90):
                 ase_wannier,
                 ase_R_vectors=False,  # for testing vs ASE
                 **parameters):
-        self.set_parameters(**parameters)
+        System_R.__init__(self, **parameters)
         self.seedname = "ASE"
         ase_wannier.translate_all_to_cell()
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=np.array(ase_wannier.unitcell_cc))
-        self.mp_grid = ase_wannier.kptgrid
+        mp_grid = ase_wannier.kptgrid
 
         if not ase_R_vectors:
-            self.iRvec, self.Ndegen = self.wigner_seitz(self.mp_grid)
+            self.iRvec, self.Ndegen = self.wigner_seitz(mp_grid)
         else:  # enable to do ase-like R-vectors
-            N1, N2, N3 = (self.mp_grid - 1) // 2
+            N1, N2, N3 = (mp_grid - 1) // 2
             self.iRvec = np.array(
                 [[n1, n2, n3] for n1 in range(-N1, N1 + 1) for n2 in range(-N2, N2 + 1) for n3 in range(-N3, N3 + 1)],
                 dtype=int)
@@ -60,13 +61,13 @@ class System_ASE(System_w90):
         self.nRvec0 = len(self.iRvec)
         self.num_wann = ase_wannier.nwannier
         self.num_kpts = ase_wannier.Nk
-        self.wannier_centers_cart_auto = ase_wannier.get_centers()
-        print(f"got the Wanier centers : {self.wannier_centers_cart_auto}")
+        self.wannier_centers_cart = ase_wannier.get_centers()
+        print(f"got the Wanier centers : {self.wannier_centers_cart}")
         self.kpt_red = ase_wannier.kpt_kc
 
         kpt_mp_grid = [
             tuple(k)
-            for k in np.array(np.round(self.kpt_red * np.array(self.mp_grid)[None, :]), dtype=int) % self.mp_grid
+            for k in np.array(np.round(self.kpt_red * np.array(mp_grid)[None, :]), dtype=int) % mp_grid
         ]
         if (0, 0, 0) not in kpt_mp_grid:
             raise ValueError(
@@ -79,5 +80,6 @@ class System_ASE(System_w90):
         self.getXX_only_wannier_centers()
 
         self.do_at_end_of_init()
+        self.do_ws_dist(mp_grid=mp_grid)
 
         cprint("Reading the ASE system finished successfully", 'green', attrs=['bold'])
