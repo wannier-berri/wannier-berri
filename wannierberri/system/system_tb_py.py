@@ -27,13 +27,18 @@ class System_tb_py(System_R):
         name of the tight-binding model object.
     module : str
         name of the module 'pythtb' or 'tbmodels'
+    spin : bool
+        generate SS_R matrix (if PythTB model  has spin)
 
     Notes
     -----
     see also  parameters of the :class:`~wannierberri.System`
     """
 
-    def __init__(self, model, module, **parameters):
+    def __init__(self, model, module,
+                 spin=False,
+                 **parameters
+                 ):
         super().__init__(**parameters)
         names = {'tbmodels': 'TBmodels', 'pythtb': 'PythTB'}
         self.seedname = 'model_{}'.format(names[module])
@@ -50,14 +55,17 @@ class System_tb_py(System_R):
             Rvec = np.array([R[0] for R in model.hop.items()], dtype=int)
         elif module == 'pythtb':
             real = model._lat
-            self.num_wann = model._norb
+            positions = model._orb
             if model._nspin == 1:
                 self.spinors = False
+                self.num_wann = model._norb
             elif model._nspin == 2:
                 self.spinors = True
+                self.num_wann = model._norb * 2
+                positions = np.array(sum(([p, p] for p in positions), []))
             else:
                 raise Exception("\n\nWrong value of nspin!")
-            positions = model._orb
+            print("number of wannier functions:", self.num_wann)
             Rvec = np.array([R[-1] for R in model._hoppings], dtype=int)
         else:
             raise ValueError("unknown tight-binding module {}".format(module))
@@ -69,6 +77,7 @@ class System_tb_py(System_R):
         self.real_lattice = np.eye(3, dtype=float)
         self.real_lattice[:self.dimr, :self.dimr] = np.array(real)
         self.wannier_centers_cart = wannier_centers_reduced.dot(self.real_lattice)
+
         self.periodic[self.dimr:] = False
         Rvec = [tuple(row) for row in Rvec]
         Rvecs = np.unique(Rvec, axis=0).astype('int32')
@@ -111,14 +120,28 @@ class System_tb_py(System_R):
             for nhop in model._hoppings:
                 i = nhop[1]
                 j = nhop[2]
-                iR = np.argwhere(np.all((nhop[-1] - self.iRvec[:, :self.dimr]) == 0, axis=1))
-                inR = np.argwhere(np.all((-nhop[-1] - self.iRvec[:, :self.dimr]) == 0, axis=1))
-                Ham_R[i, j, iR] += nhop[0]
-                Ham_R[j, i, inR] += np.conjugate(nhop[0])
+                iR = np.argwhere(np.all((nhop[-1] - self.iRvec[:, :self.dimr]) == 0, axis=1))[0][0]
+                inR = np.argwhere(np.all((-nhop[-1] - self.iRvec[:, :self.dimr]) == 0, axis=1))[0][0]
+                if model._nspin == 1:
+                    Ham_R[i, j, iR] += nhop[0]
+                    Ham_R[j, i, inR] += np.conjugate(nhop[0])
+                elif model._nspin == 2:
+                    print("hopping :", nhop[0].shape, Ham_R.shape, iR,
+                          Ham_R[2 * i:2 * i + 2, 2 * j:2 * j + 2, iR].shape)
+                    Ham_R[2 * i:2 * i + 2, 2 * j:2 * j + 2, iR] += nhop[0]
+                    Ham_R[2 * j:2 * j + 2, 2 * i:2 * i + 2, inR] += np.conjugate(nhop[0].T)
+
             # Set the onsite energies at H(R=[000])
             for i in range(model._norb):
-                Ham_R[i, i, index0] = model._site_energies[i]
+                if model._nspin == 1:
+                    Ham_R[i, i, index0] = model._site_energies[i]
+                elif model._nspin == 2:
+                    Ham_R[2 * i:2 * i + 2, 2 * i:2 * i + 2, index0] = model._site_energies[i]
+            if model._nspin == 2 and spin:
+                self.set_spin_pairs([(i, i + 1) for i in range(0, self.num_wann, 2)])
+
         self.set_R_mat('Ham', Ham_R)
+
 
         self.getXX_only_wannier_centers()
         self.do_at_end_of_init()

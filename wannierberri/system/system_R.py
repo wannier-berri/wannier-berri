@@ -29,6 +29,9 @@ class System_R(System):
         morb : bool
             set ``True`` to enable calculation of external terms in orbital moment and its derivatives.
             Requires the ``.uHu`` file.
+        OSD : bool
+            set ``True`` to enable calculation of external terms in orbital contribution to Optical Spatial dispersion
+            Requires the `uIu`` and ``.uHu`` files.
         periodic : [bool,bool,bool]
             set ``True`` for periodic directions and ``False`` for confined (e.g. slab direction for 2D systems). If less then 3 values provided, the rest are treated as ``False`` .
         SHCryoo : bool
@@ -53,6 +56,7 @@ class System_R(System):
                  spin=False,
                  SHCryoo=False,
                  SHCqiao=False,
+                 OSD=False,
                  use_ws=True,
                  use_wcc_phase=False,
                  npar=None,
@@ -78,6 +82,9 @@ class System_R(System):
             self.needed_R_matrices.update(['AA', 'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR'])
         if SHCqiao:
             self.needed_R_matrices.update(['AA', 'SS', 'SR', 'SH', 'SHR'])
+        if OSD:
+            self.needed_R_matrices.update(['AA', 'BB', 'CC', 'GG', 'OO'])
+
         self._XX_R = dict()
 
 
@@ -818,9 +825,9 @@ def ndim_R(key):
     """
     if key in ["Ham"]:
         return 0
-    elif key in ["AA", "BB", "CC", "SS", "SH"]:
+    elif key in ["AA", "BB", "CC", "SS", "SH", "OO"]:
         return 1
-    elif key in ["SHA", "SA", "SR", "SHR"]:
+    elif key in ["SHA", "SA", "SR", "SHR", "GG", "FF"]:
         return 2
     else:
         raise ValueError(f"unknown matrix {key}")

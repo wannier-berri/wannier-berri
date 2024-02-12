@@ -340,7 +340,9 @@ class Group():
         `numpy.array(float)`
              :math:`3 \times 3\times \ldots` array respecting the symmetry
         """
-        A = self.symmetrize_tensor(np.random.random((3,) * rank), TRodd=TRodd, Iodd=Iodd)
+        transform_TR = transform_odd if TRodd else transform_ident
+        transform_I = transform_odd if Iodd else transform_ident
+        A = self.symmetrize_tensor(np.random.random((3,) * rank), transformTR=transform_TR, transformInv=transform_I)
         A[abs(A) < 1e-14] = 0
         return A
 
