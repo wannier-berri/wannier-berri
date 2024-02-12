@@ -137,10 +137,8 @@ class System_tb_py(System_R):
                     Ham_R[i, i, index0] = model._site_energies[i]
                 elif model._nspin == 2:
                     Ham_R[2 * i:2 * i + 2, 2 * i:2 * i + 2, index0] = model._site_energies[i]
-
             if model._nspin == 2 and spin:
                 self.set_spin_pairs([(i, i + 1) for i in range(0, self.num_wann, 2)])
-
 
         self.set_R_mat('Ham', Ham_R)
 
