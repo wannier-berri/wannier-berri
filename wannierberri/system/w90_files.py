@@ -90,7 +90,7 @@ class CheckPoint:
             self.v_matrix = [u.dot(u_opt[:, :nd]) for u, u_opt, nd in zip(u_matrix, u_matrix_opt, ndimwin)]
         else:
             self.v_matrix = [u for u in u_matrix]
-        self.wannier_centers = readfloat().reshape((self.num_wann, 3))
+        self._wannier_centers = readfloat().reshape((self.num_wann, 3))
         self.wannier_spreads = readfloat().reshape((self.num_wann))
         del u_matrix, m_matrix
         gc.collect()
@@ -120,45 +120,147 @@ class CheckPoint:
         SS_q = np.array([self.wannier_gauge(S, ik, ik) for ik, S in enumerate(spn.data)])
         return 0.5 * (SS_q + SS_q.transpose(0, 2, 1, 3).conj())
 
-    def get_AA_q(self, mmn, eig=None, transl_inv=False):  # if eig is present - it is BB_q
-        if transl_inv and (eig is not None):
-            raise RuntimeError("transl_inv cannot be used to obtain BB")
-        mmn.set_bk_chk(self)
-        AA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+    #########
+    # Oscar #
+    ###########################################################################
+
+    # Depart from the original matrix elements in the ab initio mesh
+    # (Hamiltonian gauge) to obtain the corresponding matrix elements in the
+    # Wannier gauge. The last constitute the basis to construct the real-space
+    # matrix elements for Wannier interpolation, independently of the
+    # finite-difference scheme used.
+
+    # --- A_a(q,b) matrix --- #
+    def get_AA_qb(self, mmn, transl_inv=False):
+
+        AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
-                data = mmn.data[ik, ib]
-                if eig is not None:
-                    data = data * eig.data[ik, :, None]
-                AAW = self.wannier_gauge(data, ik, iknb)
-                AA_q_ik = 1.j * AAW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
-                if transl_inv:
-                    AA_q_ik[range(self.num_wann), range(self.num_wann)] = -np.log(
-                        AAW.diagonal()).imag[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, :]
-                AA_q[ik] += AA_q_ik
-        if eig is None:
-            AA_q = 0.5 * (AA_q + AA_q.transpose((0, 2, 1, 3)).conj())
-        return AA_q
+                ib_unique = mmn.ib_unique_map[ik, ib]
+                # Matrix < u_k | u_k+b > (mmn)
+                data = mmn.data[ik, ib]                   # Hamiltonian gauge
+                AAW = self.wannier_gauge(data, ik, iknb)  # Wannier gauge
 
-    def get_CC_q(self, uhu, mmn):  # if eig is present - it is BB_q
-        mmn.set_bk_chk(self)
-        assert uhu.NNB == mmn.NNB
-        CC_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+                # Matrix for finite-difference schemes
+                AA_q_ik_ib = 1.j * AAW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+
+                # Marzari & Vanderbilt formula for band-diagonal matrix elements
+                if transl_inv:
+                    AA_q_ik_ib[range(self.num_wann), range(self.num_wann)] = -np.log(
+                        AAW.diagonal()).imag[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, :]
+
+                AA_qb[ik, :, :, ib_unique, :] = AA_q_ik_ib
+
+        return AA_qb
+
+    def get_AA_q(self, mmn, transl_inv=False):
+        return self.get_AA_qb(mmn=mmn, transl_inv=transl_inv).sum(axis=3)
+
+
+    # --- B_a(q,b) matrix --- #
+
+
+    def get_BB_qb(self, mmn, eig):
+
+        BB_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
+        for ik in range(self.num_kpts):
+            for ib in range(mmn.NNB):
+                iknb = mmn.neighbours[ik, ib]
+                ib_unique = mmn.ib_unique_map[ik, ib]
+
+                # Matrix < u_k | H_k | u_k+b > (eig * mmn)
+                data = mmn.data[ik, ib]                   # Hamiltonian gauge (only mmn)
+                data = data * eig.data[ik, :, None]       # Hamiltonian gauge (add energies)
+                BBW = self.wannier_gauge(data, ik, iknb)  # Wannier gauge
+
+                # Matrix for finite-difference schemes
+                BB_q_ik_ib = 1j * BBW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+                BB_qb[ik, :, :, ib_unique, :] = BB_q_ik_ib
+
+        return BB_qb
+
+    # --- C_a(q,b1,b2) matrix --- #
+    def get_CC_qb(self, mmn, uhu):
+
+        CC_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib1 in range(mmn.NNB):
                 iknb1 = mmn.neighbours[ik, ib1]
+                ib1_unique = mmn.ib_unique_map[ik, ib1]
                 for ib2 in range(mmn.NNB):
                     iknb2 = mmn.neighbours[ik, ib2]
-                    data = uhu.data[ik, ib1, ib2]
-                    CC_q[ik] += (1.j * self.wannier_gauge(data, iknb1, iknb2)[:, :, None] *
-                                 (mmn.wk[ik, ib1] * mmn.wk[ik, ib2] *
-                                  (mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A] -
-                                     mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A])
-                                  )[None, None, :]
-                                 )
-        CC_q = 0.5 * (CC_q + CC_q.transpose((0, 2, 1, 3)).conj())
-        return CC_q
+                    ib2_unique = mmn.ib_unique_map[ik, ib2]
+
+                    # Matrix < u_k+b1 | H_k | u_k+b2 > (uHu)
+                    data = uhu.data[ik, ib1, ib2]                 # Hamiltonian gauge
+                    CCW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
+
+                    # Matrix for finite-difference schemes (takes antisymmetric piece only)
+                    CC_q_ik_ib = 1.j * CCW[:, :, None] * (
+                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
+                            mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
+                            - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
+
+                    CC_qb[ik, :, :, ib1_unique, ib2_unique, :] = CC_q_ik_ib
+
+        return CC_qb
+
+    # --- O_a(q,b1,b2) matrix --- #
+    def get_OO_qb(self, mmn, uiu):
+
+        OO_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
+        for ik in range(self.num_kpts):
+            for ib1 in range(mmn.NNB):
+                iknb1 = mmn.neighbours[ik, ib1]
+                ib1_unique = mmn.ib_unique_map[ik, ib1]
+                for ib2 in range(mmn.NNB):
+                    iknb2 = mmn.neighbours[ik, ib2]
+                    ib2_unique = mmn.ib_unique_map[ik, ib2]
+
+                    # Matrix < u_k+b1 | I | u_k+b2 > (uIu)
+                    data = uiu.data[ik, ib1, ib2]                 # Hamiltonian gauge
+                    OOW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
+
+                    # Matrix for finite-difference schemes (takes antisymmetric piece only)
+                    OO_q_ik_ib = 1.j * OOW[:, :, None] * (
+                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
+                            mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
+                            - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
+
+                    OO_qb[ik, :, :, ib1_unique, ib2_unique, :] = OO_q_ik_ib
+
+        return OO_qb
+
+    # Symmetric G_bc(q,b1,b2) matrix
+    def get_GG_qb(self, mmn, uiu):
+
+        GG_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3, 3), dtype=complex)
+        for ik in range(self.num_kpts):
+            for ib1 in range(mmn.NNB):
+                iknb1 = mmn.neighbours[ik, ib1]
+                ib1_unique = mmn.ib_unique_map[ik, ib1]
+                for ib2 in range(mmn.NNB):
+                    iknb2 = mmn.neighbours[ik, ib2]
+                    ib2_unique = mmn.ib_unique_map[ik, ib2]
+
+                    # Matrix < u_k+b1 | I | u_k+b2 > (uIu)
+                    data = uiu.data[ik, ib1, ib2]                 # Hamiltonian gauge
+                    GGW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
+
+                    # Matrix for finite-difference schemes (takes symmetric piece only)
+                    GG_q_ik_ib = GGW[:, :, None, None] * (
+                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
+                            mmn.bk_cart[ik, ib1, :, None] * mmn.bk_cart[ik, ib2, None, :]))[None, None, :, :]
+
+                    GG_qb[ik, :, :, ib1_unique, ib2_unique, :, :] = GG_q_ik_ib
+
+        # G_bc is symmetric in the cartesian indices
+        GG_qb = 0.5 * (GG_qb + GG_qb.swapaxes(5, 6))
+
+        return GG_qb
+
+    ###########################################################################
 
     def get_SA_q(self, siu, mmn):
         mmn.set_bk_chk(self)
@@ -221,6 +323,9 @@ class CheckPoint:
         return SHR_q
 
 
+    @property
+    def wannier_centers(self):
+        return self._wannier_centers
 
 
 
@@ -247,6 +352,7 @@ class CheckPoint_bare(CheckPoint):
         self.win_min = np.array([0] * self.num_kpts)
         self.win_max = np.array([self.num_bands] * self.num_kpts)
         self.recip_lattice = 2 * np.pi * np.linalg.inv(self.real_lattice).T
+
 
 
 class Wannier90data:
@@ -332,6 +438,10 @@ class Wannier90data:
         return self.get_file('uhu')
 
     @property
+    def uiu(self):
+        return self.get_file('uiu')
+
+    @property
     def spn(self):
         return self.get_file('spn')
 
@@ -349,11 +459,7 @@ class Wannier90data:
 
     @lazy_property.LazyProperty
     def wannier_centers(self):
-        try:
-            return self.chk.wannier_centers
-        except AttributeError:
-            return self.chk.get_AA_q(self.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(
-                axis=0).real.T / self.chk.num_kpts
+        return self.chk.wannier_centers
 
     def check_wannierised(self, msg=""):
         if not self.wannierised:
@@ -469,6 +575,9 @@ class MMN(W90_file):
         try:
             self.bk_cart
             self.wk
+            self.bk_latt_unique
+            self.bk_cart_unique
+            self.ib_unique_map
             return
         except AttributeError:
             bk_latt = np.array(
@@ -508,6 +617,36 @@ class MMN(W90_file):
             bk_cart_dict = {tuple(bk): bkcart for bk, bkcart in zip(bk_latt_unique, bk_cart_unique)}
             self.bk_cart = np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
             self.wk = np.array([[weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
+
+            #############
+            ### Oscar ###
+            ###################################################################
+
+            # Wannier90 provides a list of nearest-neighbor vectors b for every
+            # q point. For Jae-Mo's finite-difference scheme it is convenient
+            # to evaluate the Fourier transform of the matrix elements in the
+            # original ab-initio mesh before performing the sum over
+            # nearest-neighbor vectors. This requires defining a mapping from
+            # any pair {q,b} to a unique list of b vectors that is independent
+            # of q.
+
+            bk_latt = np.rint((self.bk_cart @ np.linalg.inv(recip_lattice)) * mp_grid[None, None, :]).astype(int)
+            bk_latt_unique = np.unique(bk_latt.reshape(-1, 3), axis=0)
+            bk_cart_unique = (bk_latt_unique / mp_grid[None, :]) @ recip_lattice
+            assert bk_latt_unique.shape == (self.NNB, 3)
+
+            ib_unique_map = np.zeros((self.NK, self.NNB), dtype=int)
+            for ik in range(self.NK):
+                for ib in range(self.NNB):
+                    b_latt = np.rint((self.bk_cart[ik, ib, :] @ np.linalg.inv(recip_lattice)) * mp_grid).astype(int)
+                    ib_unique = [tuple(b) for b in bk_latt_unique].index(tuple(b_latt))
+                    assert np.allclose(bk_cart_unique[ib_unique, :], self.bk_cart[ik, ib, :])
+                    ib_unique_map[ik, ib] = ib_unique
+
+            self.bk_latt_unique = bk_latt_unique
+            self.bk_cart_unique = bk_cart_unique
+            self.ib_unique_map = ib_unique_map
+            ###################################################################
 
     def set_bk_chk(self, chk, **argv):
         self.set_bk(chk.kpt_latt, chk.mp_grid, chk.recip_lattice, **argv)

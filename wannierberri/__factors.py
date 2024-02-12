@@ -24,6 +24,13 @@ factor_nldrude = -(elementary_charge**3 / hbar**2 * TAU_UNIT**2 *  # with tau^2 
 
 factor_opt = -factor_ahc
 factor_shc = -factor_ahc
+
+#########
+# Oscar #
+###############################################################################
+factor_SDCT = elementary_charge**2 / hbar
+###############################################################################
+
 #####################
 # for old_API
 fac_ahc = factor_ahc

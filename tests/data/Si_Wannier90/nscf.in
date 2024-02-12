@@ -1,0 +1,38 @@
+ &CONTROL
+    calculation  = 'bands'
+    restart_mode = 'from_scratch'
+    outdir       = './temp/'
+    pseudo_dir   = '../pseudo/'
+    prefix       = 'Si'
+ /
+
+&SYSTEM
+    ibrav     =  2
+    celldm(1) = 10.20
+    nat       =  2
+    ntyp      = 1
+    ecutwfc   = 90
+    ecutrho   = 1080
+/
+
+&ELECTRONS
+    conv_thr = 1.0d-10
+/
+
+ATOMIC_SPECIES
+    Si 28.086 Si_ONCV_PBE_sr.upf
+
+ATOMIC_POSITIONS {crystal}
+    Si  0.00  0.00  0.00
+    Si -0.25  0.75 -0.25
+
+K_POINTS crystal
+8
+  0.00000000  0.00000000  0.00000000  1.250000e-01
+  0.00000000  0.00000000  0.50000000  1.250000e-01
+  0.00000000  0.50000000  0.00000000  1.250000e-01
+  0.00000000  0.50000000  0.50000000  1.250000e-01
+  0.50000000  0.00000000  0.00000000  1.250000e-01
+  0.50000000  0.00000000  0.50000000  1.250000e-01
+  0.50000000  0.50000000  0.00000000  1.250000e-01
+  0.50000000  0.50000000  0.50000000  1.250000e-01

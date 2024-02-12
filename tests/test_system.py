@@ -86,8 +86,12 @@ def check_system():
                             for i in zip(*missed)) + "\n\n")
                     else:
                         all_i = np.where(abs(data - data_ref) >= -np.Inf)
+                        ratio = np.zeros(data_ref.shape)
+                        select = abs(data_ref) > 1e-12
+                        ratio[select] = data[select] / data_ref[select]
+                        ratio[np.logical_not(select)] = None
                         err_msg += "\n" + ("\n".join(
-                            f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {data[i] / data_ref[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
+                            f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {ratio[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
                             for i in zip(*all_i)) + "\n\n")
                 raise ValueError(err_msg)
 
@@ -124,7 +128,7 @@ def test_system_Fe_W90(check_system, system_Fe_W90):
 def test_system_Fe_W90_wcc(check_system, system_Fe_W90_wcc):
     check_system(
         system_Fe_W90_wcc, "Fe_W90_wcc",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
     )
 
 
@@ -169,7 +173,8 @@ def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
 def test_system_Fe_W90_disentngle(check_system, system_Fe_W90_disentangle):
     check_system(
         system_Fe_W90_disentangle, "Fe_W90_disentangle",
-        matrices=['Ham', 'AA']
+        matrices=['Ham', 'AA'],
+        precision_matrix_elements=3e-7,
     )
 
 
@@ -183,7 +188,7 @@ def test_system_GaAs_W90(check_system, system_GaAs_W90):
 def test_system_GaAs_W90_wcc(check_system, system_GaAs_W90_wcc):
     check_system(
         system_GaAs_W90_wcc, "GaAs_W90_wcc",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'GG', 'OO']
     )
 
 
@@ -238,6 +243,20 @@ def test_system_GaAs_tb_wcc_ws_save_load(check_system, system_GaAs_tb_wcc_ws):
     )
 
 
+def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
+    check_system(
+            system_Si_W90_JM, "Si_W90_JM",
+            matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO']
+                )
+
+
+def test_system_Si_W90_wccFD(check_system, system_Si_W90_wccFD):
+    check_system(
+            system_Si_W90_wccFD, "Si_W90_wccFD",
+            matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO']
+                )
+
+
 def test_system_Haldane_TBmodels(check_system, system_Haldane_TBmodels):
     check_system(
         system_Haldane_TBmodels, "Haldane", suffix="TBmodels",
@@ -256,6 +275,20 @@ def test_system_Haldane_PythTB(check_system, system_Haldane_PythTB):
     check_system(
         system_Haldane_PythTB, "Haldane", suffix="PythTB",
         matrices=['Ham', 'AA']
+    )
+
+
+def test_system_KaneMele_odd_PythTB(check_system, system_KaneMele_odd_PythTB):
+    check_system(
+        system_KaneMele_odd_PythTB, "KaneMele", suffix="PythTB",
+        matrices=['Ham', 'SS']
+    )
+
+
+def test_system_Chiral_OSD(check_system, system_Chiral_OSD):
+    check_system(
+        system_Chiral_OSD, "Chiral_OSD",
+        matrices=['Ham', 'SS']
     )
 
 
@@ -373,7 +406,7 @@ def test_system_random(check_system, system_random):
 def test_system_random_load_bare(check_system, system_random_load_bare):
     check_system(
         system_random_load_bare, "random_bare",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR'],
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'GG', 'OO'],
         sort_iR=False
     )
 

@@ -105,6 +105,19 @@ def create_files_tb(dir, file):
 
 
 @pytest.fixture(scope="session")
+def create_files_Si_W90():
+    """Create data files for Si: uHu, and uIu"""
+
+    seedname = "Si"
+    tags_needed = []  # Files to calculate if they do not exist
+    data_dir = os.path.join(ROOT_DIR, "data", "Si_Wannier90")
+
+    create_W90_files(seedname, tags_needed, data_dir)
+
+    return data_dir
+
+
+@pytest.fixture(scope="session")
 def system_Fe_W90(create_files_Fe_W90):
     """Create system for Fe using Wannier90 data"""
 
@@ -233,7 +246,8 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
     data_dir = create_files_GaAs_W90
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, morb=True, transl_inv=False, spin=True, use_wcc_phase=True)
+    system = wberri.system.System_w90(seedname, morb=True, OSD=True,
+                                      transl_inv=False, spin=True, use_wcc_phase=True)
     system.set_symmetry(symmetries_GaAs)
 
     return system
@@ -287,6 +301,41 @@ def system_GaAs_tb_wcc_ws():
     return get_system_GaAs_tb(method="new", use_wcc_phase=True, use_ws=True, symmetrize=False)
 
 
+def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_phase_fin_diff=False):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+
+    for tag in ('uHu', 'uIu'):
+        if not os.path.isfile(os.path.join(data_dir, "Si.{}".format(tag))):
+            tar = tarfile.open(os.path.join(data_dir, "Si.{}.tar.gz".format(tag)))
+            for tarinfo in tar:
+                tar.extract(tarinfo, data_dir)
+    # Load system
+    seedname = os.path.join(data_dir, "Si")
+    system = wberri.system.System_w90(seedname, OSD=True, use_ws=True, use_wcc_phase=True,
+                                      transl_inv=transl_inv,
+                                      transl_inv_JM=transl_inv_JM,
+                                      wcc_phase_findiff=wcc_phase_fin_diff,
+                                      guiding_centers=True)
+
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    return get_system_Si_W90_JM(data_dir, transl_inv_JM=True)
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_wccFD(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    return get_system_Si_W90_JM(data_dir, transl_inv=True, wcc_phase_fin_diff=True)
+
+# Haldane model from TBmodels
+
+
 @pytest.fixture(scope="session")
 def system_Haldane_TBmodels():
     # Load system
@@ -317,6 +366,8 @@ def system_Haldane_TBmodels_internal():
 
 # Haldane model from PythTB
 model_pythtb_Haldane = wb_models.Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15)
+model_pythtb_KaneMele_odd = wb_models.KaneMele_ptb('odd')
+model_pythtb_Chiral_OSD = wb_models.Chiral_OSD()
 
 
 @pytest.fixture(scope="session")
@@ -325,6 +376,24 @@ def system_Haldane_PythTB():
     # Load system
     system = wberri.system.System_PythTB(model_pythtb_Haldane, berry=True)
     system.set_symmetry(["C3z"])
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_KaneMele_odd_PythTB():
+    """Create system for Haldane model using PythTB"""
+    # Load system
+    system = wberri.system.System_PythTB(model_pythtb_KaneMele_odd, use_wcc_phase=True, spin=True)
+    system.set_symmetry(["C3z", "TimeReversal"])
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Chiral_OSD():
+    """Create system for Haldane model using PythTB"""
+    # Load system
+    system = wberri.system.System_PythTB(model_pythtb_Chiral_OSD, use_wcc_phase=True, spin=True)
+    # system.set_symmetry(["C3z","TimeReversal"])
     return system
 
 
@@ -602,14 +671,18 @@ def system_kp_mass_aniso_2():
 
 @pytest.fixture(scope="session")
 def system_random():
-    system = wberri.system.SystemRandom(num_wann=6, nRvec=20, max_R=4, berry=True, morb=True, SHCryoo=True, SHCqiao=True)
+    system = wberri.system.SystemRandom(num_wann=6, nRvec=20, max_R=4,
+                                        use_wcc_phase=True,
+                                        berry=True, morb=True, spin=True,
+                                        SHCryoo=True, SHCqiao=True, OSD=True)
     # system.save_npz("randomsys")
     return system
 
 
 @pytest.fixture(scope="session")
 def system_random_load_bare():
-    system = wberri.system.System_R(berry=True, morb=True, SHCryoo=True, SHCqiao=True)
+    system = wberri.system.System_R(berry=True, morb=True, spin=True,
+                                    SHCryoo=True, SHCqiao=True, OSD=True)
     system.load_npz(path=os.path.join(ROOT_DIR, "data", "random"))
     return system
 

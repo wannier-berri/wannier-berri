@@ -54,12 +54,14 @@ class System:
         # TODO: move some initialization to child classes
         self.frozen_max = frozen_max
         self.periodic = periodic
+
         if NKFFT is not None:
             self._NKFFT_recommended = NKFFT
 
         self.periodic = np.zeros(3, dtype=bool)
         self.periodic[:len(self.periodic)] = periodic
         self.is_phonon = False
+
 
 
     def set_real_lattice(self, real_lattice=None, recip_lattice=None):
@@ -91,6 +93,7 @@ class System:
 
         """
         self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
+
 
     @lazy_property.LazyProperty
     def cell_volume(self):

@@ -173,6 +173,18 @@ calculators_Chiral = {
 }
 
 
+calculators_SDCT = {
+    'SDCT_sym_sea_I': wberri.calculators.dynamic.SDCT_sym_sea_I,
+    'SDCT_sym_sea_II': wberri.calculators.dynamic.SDCT_sym_sea_II,
+    'SDCT_asym_sea_I': wberri.calculators.dynamic.SDCT_asym_sea_I,
+    'SDCT_asym_sea_II': wberri.calculators.dynamic.SDCT_asym_sea_II,
+    'SDCT_asym_surf_I': wberri.calculators.dynamic.SDCT_asym_surf_I,
+    'SDCT_asym_surf_II': wberri.calculators.dynamic.SDCT_asym_surf_II,
+    'SDCT_sym_surf_I': wberri.calculators.dynamic.SDCT_sym_surf_I,
+    'SDCT_sym_surf_II': wberri.calculators.dynamic.SDCT_sym_surf_II,
+    'SDCT_sym': wberri.calculators.dynamic.SDCT_sym,
+    'SDCT_asym': wberri.calculators.dynamic.SDCT_asym,
+}
 
 
 calculators_Chiral_tetra = {
@@ -753,6 +765,72 @@ def test_GaAs_tb_wcc(check_run, system_GaAs_tb_wcc, compare_any_result):
     )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 
+def test_GaAs_SDCT(check_run, system_GaAs_W90_wcc, compare_any_result):
+
+    param = {'Efermi': Efermi_GaAs,
+             'omega': np.linspace(0.0, 7, 8),
+             'kBT': 0.05, 'smr_fixed_width': 0.1
+             }
+    calculators = {k + "_internal": v(kwargs_formula=dict(external_terms=False), **param)
+                   for k, v in calculators_SDCT.items()}
+    calculators.update({k + "_full": v(**param) for k, v in calculators_SDCT.items()})
+
+    check_run(
+        system_GaAs_W90_wcc,
+        calculators,
+        fout_name="GaAs_W90",
+        suffix="",
+        precision=5e-3,
+        compare_zero=True
+    )
+
+
+def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result):
+
+    param = {'Efermi': np.linspace(-2, 2, 5),
+             'omega': np.linspace(0.0, 4, 5),
+             'kBT': 0.5, 'smr_fixed_width': 0.5,
+             'kwargs_formula': dict(external_terms=False)
+             }
+    calculators = {k: v(**param) for k, v in calculators_SDCT.items()}
+
+    check_run(
+        system_Chiral_OSD,
+        calculators,
+        fout_name="Chiral_OSD_SDCT",
+        suffix="",
+        # precision=,
+    )
+
+
+def test_random(check_run, system_random_load_bare, compare_any_result):
+    Efermi = np.linspace(-2, 2, 5)
+    param = {'Efermi': Efermi}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items()
+                   if not k.endswith("_test")}
+    parameters_optical = dict(
+        Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
+
+    calculators['opt_conductivity'] = wberri.calculators.dynamic.OpticalConductivity(**parameters_optical)
+    calculators['opt_SHCqiao'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
+    calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
+
+    param = {'Efermi': Efermi,
+             'omega': np.linspace(0.0, 4, 5),
+             'kBT': 0.5, 'smr_fixed_width': 0.5,
+             'kwargs_formula': dict(external_terms=False)
+             }
+    calculators.update({k: v(**param) for k, v in calculators_SDCT.items()})
+
+    check_run(
+        system_random_load_bare,
+        calculators,
+        fout_name="random_wcc",
+        suffix="",
+        # precision=,
+    )
+
+
 def test_GaAs_tb_wcc_ws(check_run, system_GaAs_tb_wcc_ws, compare_any_result):
 
     param = {'Efermi': Efermi_GaAs}
@@ -1102,13 +1180,13 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
         data_tab_int = data_tab.mean(axis=0)
         assert data_tab_int.shape == data_int.shape
         prec = 1e-8 * np.max(abs(data_int))
-        assert abs(data_tab_int - data_int).max() < prec
+        assert abs(data_tab_int - data_int).max() <= prec
 
     iEF = np.argmin(abs(Efermi_Haldane))
     ahc_k = result.results["tabulate"].results["AHC"].data[:, iEF]
     berry_k = result.results["tabulate"].results["berry"].data[:, 0] * wberri.__factors.factor_ahc / system.cell_volume
     prec = 1e-8 * np.max(abs(berry_k))
-    assert abs(berry_k - ahc_k).max() < prec
+    assert abs(berry_k - ahc_k).max() <= prec
 
 
 

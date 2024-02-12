@@ -357,11 +357,25 @@ def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
     )
 
 
+def test_KaneMele_sym(check_symmetry, system_KaneMele_odd_PythTB):
+    param = {'Efermi': np.linspace(-4., 4., 21)}
+    calculators = {}
+    calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
+    calculators.update({
+            'berry_dipole': calc.static.BerryDipole_FermiSea(**param, kwargs_formula={"external_terms": False}),
+            'gyrotropic_Korb': calc.static.GME_orb_FermiSea(**param, kwargs_formula={"external_terms": False}),
+            'gyrotropic_Kspin': calc.static.GME_spin_FermiSea(**param),
+                })
+
+    check_symmetry(system=system_KaneMele_odd_PythTB,
+                   grid_param=dict(NK=(6, 6, 1), NKFFT=(3, 3, 1)),
+                   calculators=calculators)
 
 
 
 class AtomInfo():
     """fake AtomInfo for test"""
+
     def __init__(self, orbital_index):
         self.num_wann = sum(len(oi) for oi in orbital_index)
         self.orbital_index = orbital_index
