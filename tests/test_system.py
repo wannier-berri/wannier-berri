@@ -3,6 +3,10 @@ import numpy as np
 import pytest
 import os
 from common import OUTPUT_DIR, REF_DIR
+
+from common_systems import model_1d_pythtb
+import wannierberri as wberri
+
 from wannierberri.system.system_R import System_R
 from wannierberri.system.system_tb import System_tb
 
@@ -391,6 +395,24 @@ def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb_wcc):
         matrices=['Ham', 'AA'],
         sort_iR=True
     )
+
+
+def test_system_pythtb_spinor():
+    model1, model2 = model_1d_pythtb()
+    k = np.linspace(0, 1, 20, endpoint=False)
+    e1 = model1.solve_all(k)
+    e2 = model1.solve_all(k)
+    assert e1 == pytest.approx(e2), ("models defined in pythtb using spinors and in scalar way gave energies"
+                                     f"different by {abs(e1 - e2).max()}")
+
+    for model, comment, e in (model2, "in a scalar way", e2), (model1, "using spinors", e1), :
+        system = wberri.system.System_PythTB(model)
+        grid = wberri.Grid(system=system, NKFFT=[20, 1, 1], NKdiv=1)
+        datak = wberri.data_K.get_data_k(system=system, dK=[0, 0, 0], grid=grid)
+        ew = datak.E_K.T
+        assert e == pytest.approx(ew), ("System gave eigenvalues different from the model "
+                                      f"defined in pythtb {comment}"
+                                      f"maximal difference: {abs(e - ew).max()}")
 
 # TODO : add tests for kp systems ?
 

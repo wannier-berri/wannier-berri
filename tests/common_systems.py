@@ -669,6 +669,32 @@ def system_kp_mass_aniso_2():
     return wberri.system.SystemKP(Ham=ham_mass_aniso, derHam=dham_mass_aniso, der2Ham=d2ham_mass_aniso, kmax=kmax_kp_aniso)
 
 
+
+def model_1d_pythtb():
+    import pythtb
+    lat = [[1.0]]
+    orb = [[0], [0.5]]
+    orb2 = [orb[0]] * 2 + [orb[1]] * 2
+
+    model1d_1 = pythtb.tb_model(1, 1, lat, orb, nspin=2)
+    model1d_2 = pythtb.tb_model(1, 1, lat, orb2, nspin=1)
+    Delta = 1
+    model1d_1.set_onsite([-Delta, Delta])
+    model1d_2.set_onsite([-Delta] * 2 + [Delta] * 2)
+    a = np.random.random(4)
+    b = np.random.random(4)
+    model1d_1.set_hop(a, 0, 1, [0])
+    model1d_1.set_hop(b, 1, 0, [-1])
+
+    pauli = np.array([[[1, 0], [0, 1]], [[0, 1], [1, 0]], [[0, -1j], [1j, 0]], [[1, 0], [0, -1]]])
+    for i in range(2):
+        for j in range(2):
+            model1d_2.set_hop(a.dot(pauli[:, i, j]), 0 + i, 2 + j, [0])
+            model1d_2.set_hop(b.dot(pauli[:, i, j]), 2 + i, 0 + j, [-1])
+
+    return model1d_1, model1d_2
+
+
 @pytest.fixture(scope="session")
 def system_random():
     system = wberri.system.SystemRandom(num_wann=6, nRvec=20, max_R=4,
