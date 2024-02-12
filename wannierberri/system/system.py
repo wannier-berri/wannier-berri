@@ -61,6 +61,7 @@ class System:
         self.periodic = np.zeros(3, dtype=bool)
         self.periodic[:len(self.periodic)] = periodic
         self.is_phonon = False
+        self.force_no_external_terms = False
 
 
 

@@ -151,8 +151,7 @@ calculators_CuMnAs_2d = {
 smoother_Chiral = FermiDiracSmoother(Efermi_Chiral, T_Kelvin=1200, maxdE=8)
 
 parameters_Chiral_optical = dict(
-        Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian",
-        kwargs_formula={"external_terms": False}, )
+        Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian")
 
 
 parameters_Chiral_shiftcurrent = dict(sc_eta=0.1)
@@ -160,9 +159,9 @@ parameters_Chiral_shiftcurrent = dict(sc_eta=0.1)
 calculators_Chiral = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, smoother=smoother_Chiral),
     'conductivity_ohmic_fsurf': calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral),
-    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}, smoother=smoother_Chiral),
-    'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf(Efermi=Efermi_Chiral, use_factor=False, kwargs_formula={"external_terms": False}),
-    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, kwargs_formula={"external_terms": False}, smoother=smoother_Chiral),
+    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, use_factor=False, smoother=smoother_Chiral),
+    'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf(Efermi=Efermi_Chiral, use_factor=False),
+    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, smoother=smoother_Chiral),
     'Der3E': calc.static.NLDrude_FermiSea(Efermi=Efermi_Chiral),
     'Hall_classic_fsurf': calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral),
     'Hall_classic': calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral),
@@ -190,9 +189,9 @@ calculators_SDCT = {
 calculators_Chiral_tetra = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
     'conductivity_ohmic_fsurf': calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
-    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
-    'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf(Efermi=Efermi_Chiral, tetra=True, use_factor=False, kwargs_formula={"external_terms": False}),
-    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, tetra=True, kwargs_formula={"external_terms": False}),
+    'berry_dipole': calc.static.BerryDipole_FermiSea(Efermi=Efermi_Chiral, tetra=True, use_factor=False),
+    'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf(Efermi=Efermi_Chiral, tetra=True, use_factor=False),
+    'ahc': calc.static.AHC(Efermi=Efermi_Chiral, tetra=True),
     'Der3E': calc.static.NLDrude_FermiSea(Efermi=Efermi_Chiral, tetra=True),
     'Hall_classic_fsurf': calc.static.Hall_classic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
     'Hall_classic': calc.static.Hall_classic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
@@ -479,7 +478,7 @@ def test_Fe_FPLO(check_run, system_Fe_FPLO, compare_any_result):
 
 def test_Fe_FPLO_wcc(check_run, system_Fe_FPLO_wcc, compare_any_result):
     param = {'Efermi': Efermi_Fe_FPLO}
-    param_kwargs = {'Efermi': Efermi_Fe_FPLO, 'kwargs_formula': {"external_terms": False}}
+    param_kwargs = {'Efermi': Efermi_Fe_FPLO}
     for k, v in calculators_Fe.items():
         if k in ['ahc', 'ahc_test', 'Morb', 'Morb_test']:
             calculators = {k: v(**param_kwargs)}
@@ -498,29 +497,9 @@ def test_Fe_FPLO_wcc(check_run, system_Fe_FPLO_wcc, compare_any_result):
     )
 
 
-def test_Fe_FPLO_wcc_ext(check_run, system_Fe_FPLO_wcc, compare_any_result):
-    param_kwargs = {'Efermi': Efermi_Fe_FPLO, 'kwargs_formula': {
-        "internal_terms": False, "external_terms": True}}
-    for k, v in calculators_Fe.items():
-        if k in ['ahc', 'ahc_test', 'Morb', 'Morb_test']:
-            calculators = {k: v(**param_kwargs)}
-    check_run(
-        system_Fe_FPLO_wcc,
-        calculators,
-        fout_name="berry_Fe_FPLO",
-        suffix="wcc_ext-run",
-        precision=1e-8,
-        compare_zero=True,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
-    )
-
-
 def test_Fe_FPLO_wcc_sym(check_run, system_Fe_FPLO_wcc, compare_any_result):
     param = {'Efermi': Efermi_Fe_FPLO}
-    param_kwargs = {'Efermi': Efermi_Fe_FPLO, 'kwargs_formula': {"external_terms": False}}
+    param_kwargs = {'Efermi': Efermi_Fe_FPLO}
     for k, v in calculators_Fe.items():
         if k in ['ahc', 'ahc_test', 'Morb', 'Morb_test']:
             calculators = {k: v(**param_kwargs)}
@@ -790,7 +769,6 @@ def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result):
     param = {'Efermi': np.linspace(-2, 2, 5),
              'omega': np.linspace(0.0, 4, 5),
              'kBT': 0.5, 'smr_fixed_width': 0.5,
-             'kwargs_formula': dict(external_terms=False)
              }
     calculators = {k: v(**param) for k, v in calculators_SDCT.items()}
 
@@ -827,7 +805,6 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
         calculators,
         fout_name="random_wcc",
         suffix="",
-        # precision=,
     )
 
 
@@ -913,7 +890,7 @@ def test_Haldane_TBmodels(check_run, system_Haldane_TBmodels, compare_any_result
 
 def test_Haldane_TBmodels_internal(check_run, system_Haldane_TBmodels_internal, compare_any_result):
 
-    param_kwargs = {'Efermi': Efermi_Haldane, 'kwargs_formula': {"external_terms": False}}
+    param_kwargs = {'Efermi': Efermi_Haldane}
     param = {'Efermi': Efermi_Haldane}
     for k, v in calculators_Haldane.items():
         if k == 'ahc':
@@ -926,22 +903,6 @@ def test_Haldane_TBmodels_internal(check_run, system_Haldane_TBmodels_internal, 
         calculators,
         fout_name="berry_Haldane_tbmodels",
         suffix="internal-run",
-        grid_param={
-            'NK': [10, 10, 1],
-            'NKFFT': [5, 5, 1]
-        }
-    )
-
-
-def test_Haldane_TBmodels_external(check_run, system_Haldane_TBmodels, compare_any_result):
-
-    check_run(
-        system_Haldane_TBmodels,
-        {'ahc': calc.static.AHC(Efermi=Efermi_Haldane, kwargs_formula={"internal_terms": False})},
-        fout_name="berry_Haldane_tbmodels",
-        suffix="wcc_external-run",
-        precision=1e-8,
-        compare_zero=True,
         grid_param={
             'NK': [10, 10, 1],
             'NKFFT': [5, 5, 1]
@@ -1099,7 +1060,7 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
 @pytest.mark.parametrize("use_sym", [True, False])
 def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
-    param = dict(Efermi=Efermi_Chiral, tetra=tetra, kwargs_formula={"external_terms": False})
+    param = dict(Efermi=Efermi_Chiral, tetra=tetra)
     system = system_Chiral_left
 
     calculators = {"AHC": calc.static.AHC(**param),
@@ -1142,7 +1103,7 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
 @pytest.mark.parametrize("use_sym", [True, False])
 def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
     grid_param = {'NK': [10, 10, 1], 'NKFFT': [5, 5, 1]}
-    param = dict(Efermi=Efermi_Haldane, tetra=tetra, kwargs_formula={"external_terms": False})
+    param = dict(Efermi=Efermi_Haldane, tetra=tetra)
     system = system_Haldane_PythTB
 
     calculators = {"AHC": calc.static.AHC(**param),
@@ -1152,7 +1113,7 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
         {
             "AHC": calc.static.AHC(**param, k_resolved=True),
             "Morb": calc.static.AHC(**param, k_resolved=True),
-            "berry": calc.tabulate.BerryCurvature(kwargs_formula={"external_terms": False})
+            "berry": calc.tabulate.BerryCurvature()
         },
         mode="grid",
         ibands=(0,))
@@ -1295,7 +1256,7 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
     calculators = {}
     for tetra in True, False:
         for degen in degen_param:
-            param_kwargs = {'Efermi': Efermi_CuMnAs_2d, 'tetra': tetra, degen[0]: degen[1], 'kwargs_formula': {'external_terms': False}}
+            param_kwargs = {'Efermi': Efermi_CuMnAs_2d, 'tetra': tetra, degen[0]: degen[1], }
             param = {'Efermi': Efermi_CuMnAs_2d, 'tetra': tetra, degen[0]: degen[1]}
             label = f"-{tetra}-{degen[0]}"
             print(param)
@@ -1335,31 +1296,12 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
 
 
 
-def test_Te_ASE(check_run, system_Te_ASE, data_Te_ASE, compare_any_result):
-    param = {'Efermi': Efermi_Te_gpaw, "tetra": True, 'use_factor': False}
-    calculators = {k: v(**param) for k, v in calculators_Te.items()}
-    check_run(
-        system_Te_ASE,
-        calculators,
-        fout_name="berry_Te_ASE",
-        suffix="",
-        suffix_ref="",
-        use_symmetry=True,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
-    )
-
-
 def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_result):
     param = {'Efermi': Efermi_Te_gpaw, "tetra": True, 'use_factor': False}
     calculators = {}
     for k, v in calculators_Te.items():
         par = {}
         par.update(param)
-        if k not in ["dos", "cumdos"]:
-            par["kwargs_formula"] = {"external_terms": False}
         calculators[k] = v(**par)
 
     check_run(
@@ -1385,7 +1327,7 @@ def test_tabulate_path(system_Haldane_PythTB):
     calculators = {}
     quantities = {
                             "Energy": wberri.calculators.tabulate.Energy(),
-                            "berry": wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms": False}),
+                            "berry": wberri.calculators.tabulate.BerryCurvature(),
                                   }
 
     calculators["tabulate"] = wberri.calculators.TabulatorAll(quantities,
@@ -1449,7 +1391,7 @@ def test_tabulate_fail(system_Haldane_PythTB):
 
     quantities = {
                             "Energy": wberri.calculators.tabulate.Energy(),
-                            "berry": wberri.calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms": False}),
+                            "berry": wberri.calculators.tabulate.BerryCurvature(),
                                   }
 
     key = "tabulate_grid"

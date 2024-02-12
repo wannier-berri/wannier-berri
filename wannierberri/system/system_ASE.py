@@ -39,6 +39,8 @@ class System_ASE(System_w90):
                 ase_R_vectors=False,  # for testing vs ASE
                 **parameters):
         System_R.__init__(self, **parameters)
+        self.force_no_external_terms = True
+        self.use_wcc_phase = True
         self.seedname = "ASE"
         ase_wannier.translate_all_to_cell()
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=np.array(ase_wannier.unitcell_cc))
@@ -76,8 +78,6 @@ class System_ASE(System_w90):
 
         self.set_R_mat('Ham', np.array([ase_wannier.get_hopping(R) / nd for R, nd in zip(self.iRvec, self.Ndegen)]).transpose(
             (1, 2, 0)))
-
-        self.getXX_only_wannier_centers()
 
         self.do_at_end_of_init()
         self.do_ws_dist(mp_grid=mp_grid)

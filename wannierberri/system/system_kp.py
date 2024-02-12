@@ -64,6 +64,7 @@ class SystemKP(System_k):
     def __init__(self, Ham, derHam=None, der2Ham=None, der3Ham=None, kmax=1., real_lattice=None, recip_lattice=None,
                  k_vector_cartesian=True, finite_diff_dk=1e-4, **parameters):
         super().__init__(**parameters)
+        self.force_no_external_terms = True
         if kmax is not None:
             assert real_lattice is None, "kmax and real_lattice should not be set tigether"
             assert recip_lattice is None, "kmax and recip_lattice should not be set tigether"

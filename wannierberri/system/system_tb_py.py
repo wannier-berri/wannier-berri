@@ -40,6 +40,8 @@ class System_tb_py(System_R):
                  **parameters
                  ):
         super().__init__(**parameters)
+        self.force_no_external_terms = True
+        self.use_wcc_phase = True
         names = {'tbmodels': 'TBmodels', 'pythtb': 'PythTB'}
         self.seedname = 'model_{}'.format(names[module])
 
@@ -142,8 +144,6 @@ class System_tb_py(System_R):
 
         self.set_R_mat('Ham', Ham_R)
 
-
-        self.getXX_only_wannier_centers()
         self.do_at_end_of_init()
         cprint("Reading the system from {} finished successfully".format(names[module]), 'green', attrs=['bold'])
 

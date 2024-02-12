@@ -374,7 +374,7 @@ model_pythtb_Chiral_OSD = wb_models.Chiral_OSD()
 def system_Haldane_PythTB():
     """Create system for Haldane model using PythTB"""
     # Load system
-    system = wberri.system.System_PythTB(model_pythtb_Haldane, berry=True)
+    system = wberri.system.System_PythTB(model_pythtb_Haldane)
     system.set_symmetry(["C3z"])
     return system
 
@@ -383,7 +383,7 @@ def system_Haldane_PythTB():
 def system_KaneMele_odd_PythTB():
     """Create system for Haldane model using PythTB"""
     # Load system
-    system = wberri.system.System_PythTB(model_pythtb_KaneMele_odd, use_wcc_phase=True, spin=True)
+    system = wberri.system.System_PythTB(model_pythtb_KaneMele_odd, spin=True)
     system.set_symmetry(["C3z", "TimeReversal"])
     return system
 
@@ -392,7 +392,7 @@ def system_KaneMele_odd_PythTB():
 def system_Chiral_OSD():
     """Create system for Haldane model using PythTB"""
     # Load system
-    system = wberri.system.System_PythTB(model_pythtb_Chiral_OSD, use_wcc_phase=True, spin=True)
+    system = wberri.system.System_PythTB(model_pythtb_Chiral_OSD, spin=True)
     # system.set_symmetry(["C3z","TimeReversal"])
     return system
 
@@ -418,7 +418,7 @@ model_Chiral_right = wb_models.Chiral(
 
 @pytest.fixture(scope="session")
 def system_Chiral_left():
-    system = wberri.system.System_PythTB(model_Chiral_left, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_Chiral_left)
     system.set_symmetry(["C3z"])
     system.set_spin([1, -1])
     return system
@@ -426,7 +426,7 @@ def system_Chiral_left():
 
 @pytest.fixture(scope="session")
 def system_Chiral_left_TR():
-    system = wberri.system.System_PythTB(model_Chiral_left_TR, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_Chiral_left_TR)
     system.set_symmetry(["C3z"])
     system.set_spin([-1, 1])
     return system
@@ -434,29 +434,18 @@ def system_Chiral_left_TR():
 
 @pytest.fixture(scope="session")
 def system_Chiral_right():
-    system = wberri.system.System_PythTB(model_Chiral_right, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_Chiral_right)
     system.set_symmetry(["C3z"])
     system.set_spin([1, -1])
     return system
 
 
 # Systems from FPLO code interface
-
-
-@pytest.fixture(scope="session")
-def system_Fe_FPLO():
-    """Create system for Fe using  FPLO  data"""
-    path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.system.System_fplo(path, use_wcc_phase=False, morb=True, spin=True, use_ws=False)
-    system.set_symmetry(symmetries_Fe)
-    return system
-
-
 @pytest.fixture(scope="session")
 def system_Fe_FPLO_wcc():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.system.System_fplo(path, use_wcc_phase=True, morb=True, spin=True, use_ws=False)
+    system = wberri.system.System_fplo(path, morb=True, spin=True, use_ws=False)
     system.set_symmetry(symmetries_Fe)
     return system
 
@@ -465,7 +454,7 @@ def system_Fe_FPLO_wcc():
 def system_Fe_FPLO_wcc_ws():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.system.System_fplo(path, use_wcc_phase=True, morb=True, spin=True,
+    system = wberri.system.System_fplo(path, morb=True, spin=True,
                                        use_ws=True, mp_grid=2)
     system.set_symmetry(symmetries_Fe)
     return system
@@ -479,7 +468,7 @@ model_CuMnAs_2d_broken = wb_models.CuMnAs_2d(nx=0, ny=1, nz=0, hop1=1, hop2=0.08
 
 @pytest.fixture(scope="session")
 def system_CuMnAs_2d_broken():
-    system = wberri.system.System_PythTB(model_CuMnAs_2d_broken, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_CuMnAs_2d_broken)
     return system
 
 

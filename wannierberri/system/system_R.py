@@ -69,7 +69,6 @@ class System_R(System):
         self.npar = multiprocessing.cpu_count() if npar is None else npar
         self.use_wcc_phase = use_wcc_phase
 
-
         if morb:
             self.needed_R_matrices.update(['AA', 'BB', 'CC'])
         if berry:
@@ -360,33 +359,6 @@ class System_R(System):
             pairs = [(2 * i, 2 * i + 1) for i in range(nw2)]
         self.set_spin_pairs(pairs)
 
-    def getXX_only_wannier_centers(self, getSS=False):
-        """return AA_R, BB_R, CC_R containing only the diagonal matrix elements, evaluated from
-        the wannier_centers_cart variable (tight-binding approximation).
-        In practice, it is useless because corresponding terms vanish with use_wcc_phase = True.
-        but for testing may be used
-        Used with pythtb, tbmodels, and also fplo, ASE until proper evaluation of matrix elements is implemented for them.
-        """
-
-        iR0 = self.iR0
-        if 'AA' in self.needed_R_matrices:
-            self.set_R_mat('AA', np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex))
-            if not self.use_wcc_phase:
-                for i in range(self.num_wann):
-                    self.get_R_mat('AA')[i, i, iR0, :] = self.wannier_centers_cart[i]
-
-        if 'BB' in self.needed_R_matrices:
-            self.set_R_mat('BB', np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex))
-            if not self.use_wcc_phase:
-                for i in range(self.num_wann):
-                    self.get_R_mat('BB')[i, i, iR0, :] = self.get_R_mat('AA')[i, i, iR0, :] * self.get_R_mat('Ham')[
-                        i, i, iR0]
-
-        if 'CC' in self.needed_R_matrices:
-            self.set_R_mat('CC', np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex))
-
-        if 'SS' in self.needed_R_matrices and getSS:
-            raise NotImplementedError()
 
     def do_at_end_of_init(self, convert_convention=True):
         self.set_symmetry()

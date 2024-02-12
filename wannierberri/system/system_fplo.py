@@ -45,6 +45,8 @@ class System_fplo(System_R):
                  **parameters):
 
         super().__init__(**parameters)
+        self.force_no_external_terms = True
+        self.use_wcc_phase = True
         if not self.use_wcc_phase:
             print(
                 "WARNING: It is highly recommended to use `use_wcc_phase=True` with System_fplo"
@@ -118,8 +120,6 @@ class System_fplo(System_R):
 
         self.nRvec0 = len(iRvec)
         self.iRvec = np.array(iRvec, dtype=int)
-
-        self.getXX_only_wannier_centers(getSS=False)
 
         self.do_at_end_of_init()
         if self.use_ws:
