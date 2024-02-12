@@ -825,9 +825,9 @@ def ndim_R(key):
     """
     if key in ["Ham"]:
         return 0
-    elif key in ["AA", "BB", "CC", "SS", "SH"]:
+    elif key in ["AA", "BB", "CC", "SS", "SH", "OO"]:
         return 1
-    elif key in ["SHA", "SA", "SR", "SHR"]:
+    elif key in ["SHA", "SA", "SR", "SHR", "GG", "FF"]:
         return 2
     else:
         raise ValueError(f"unknown matrix {key}")

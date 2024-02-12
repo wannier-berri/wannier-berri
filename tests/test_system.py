@@ -396,7 +396,7 @@ def test_system_random(check_system, system_random):
 def test_system_random_load_bare(check_system, system_random_load_bare):
     check_system(
         system_random_load_bare, "random_bare",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR'],
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'GG', 'OO'],
         sort_iR=False
     )
 

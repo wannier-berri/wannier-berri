@@ -318,7 +318,7 @@ def system_Si_W90_JM(create_files_Si_W90):
 
 
 # Haldane model from TBmodels
-model_tbmodels_Haldane = wb_models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15)
+
 
 @pytest.fixture(scope="session")
 def system_Haldane_TBmodels():
@@ -651,14 +651,18 @@ def system_kp_mass_aniso_2():
 
 @pytest.fixture(scope="session")
 def system_random():
-    system = wberri.system.SystemRandom(num_wann=6, nRvec=20, max_R=4, berry=True, morb=True, SHCryoo=True, SHCqiao=True)
+    system = wberri.system.SystemRandom(num_wann=6, nRvec=20, max_R=4,
+                                        use_wcc_phase=True,
+                                        berry=True, morb=True, spin=True,
+                                        SHCryoo=True, SHCqiao=True, OSD=True)
     # system.save_npz("randomsys")
     return system
 
 
 @pytest.fixture(scope="session")
 def system_random_load_bare():
-    system = wberri.system.System_R(berry=True, morb=True, SHCryoo=True, SHCqiao=True)
+    system = wberri.system.System_R(berry=True, morb=True, spin=True,
+                                    SHCryoo=True, SHCqiao=True, OSD=True)
     system.load_npz(path=os.path.join(ROOT_DIR, "data", "random"))
     return system
 

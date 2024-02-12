@@ -801,6 +801,34 @@ def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result):
     )
 
 
+def test_random(check_run, system_random_load_bare, compare_any_result):
+    Efermi = np.linspace(-2, 2, 5)
+    param = {'Efermi': Efermi}
+    calculators = {k: v(**param) for k, v in calculators_Fe.items()
+                   if not k.endswith("_test")}
+    parameters_optical = dict(
+        Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
+
+    calculators['opt_conductivity'] = wberri.calculators.dynamic.OpticalConductivity(**parameters_optical)
+    calculators['opt_SHCqiao'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
+    calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
+
+    param = {'Efermi': Efermi,
+             'omega':np.linspace(0.0, 4, 5),
+             'kBT':0.5, 'smr_fixed_width':0.5,
+             'kwargs_formula' : dict(external_terms=False)
+             }
+    calculators.update( {k: v(**param) for k, v in calculators_SDCT.items()} )
+
+    check_run(
+        system_random_load_bare,
+        calculators,
+        fout_name="random_wcc",
+        suffix="",
+        #precision=,
+    )
+
+
 def test_GaAs_tb_wcc_ws(check_run, system_GaAs_tb_wcc_ws, compare_any_result):
 
     param = {'Efermi': Efermi_GaAs}
