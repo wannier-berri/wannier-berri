@@ -694,6 +694,7 @@ def model_1d_pythtb():
 
     return model1d_1, model1d_2
 
+
 @pytest.fixture(scope="session")
 def system_random():
     system = wberri.system.SystemRandom(num_wann=6, nRvec=20, max_R=4,
@@ -755,4 +756,3 @@ def system_random_GaAs_load_ws():
 @pytest.fixture(scope="session")
 def system_random_GaAs_load_ws_sym():
     return get_system_random_GaAs_load_ws_sym(use_ws=True, sym=True)
-
