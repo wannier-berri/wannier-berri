@@ -206,6 +206,7 @@ class FFT_R_to_k():
         return self.fft_plan(A)
 
     def transform(self, AAA_K):
+        assert np.iscomplexobj(AAA_K)
         if self.lib == 'numpy':
             AAA_K[...] = np.fft.ifftn(AAA_K, axes=(0, 1, 2))
         elif self.lib == 'fftw':

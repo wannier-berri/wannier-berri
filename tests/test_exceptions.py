@@ -37,7 +37,8 @@ def test_utility_FFT_R_to_k():
         with pytest.raises(AssertionError, match=f"fft lib '{lib.lower()}' is unknown/supported"):
             util.FFT_R_to_k(iRvec, NKFFT, num_wann, lib=lib)
 
-    AAA_K = np.random.random((num_wann, num_wann) + NKFFT + (3, 3, 3))
+    shape = (num_wann, num_wann) + NKFFT + (3, 3, 3)
+    AAA_K = np.random.random(shape) + 1j*np.random.random(shape)
 
     util.FFT_R_to_k(iRvec, NKFFT, num_wann, lib="numpy").transform(AAA_K)
     with pytest.raises(RuntimeError, match="FFT.transform should not be called for slow FT"):
