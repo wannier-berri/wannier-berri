@@ -171,7 +171,7 @@ class System_R(System):
             self.set_R_mat(key, XX, reset=reset, add=add)
         else:
             if Hermitean:
-                value = 0.5*(value+value.swapaxes((0,1)).conj())
+                value = 0.5*(value+self.conj_XX_R(value))
             if key in self._XX_R:
                 if reset:
                     self._XX_R[key] = value
