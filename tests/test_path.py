@@ -66,7 +66,6 @@ def test_path_4(system_Haldane_PythTB):
 
 def test_tabulate_path(system_Haldane_PythTB, check_run):
     param_tab = {'degen_thresh': 5e-2, }
-    no_external = dict(kwargs_formula={"external_terms": False}, )
 
     calculators = {}
     calculators["tabulate"] = TabulatorAll(
@@ -74,10 +73,10 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
             "Energy": caltab.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
             # but not to energies
             "V": caltab.Velocity(**param_tab),
-            "Der_berry": caltab.DerBerryCurvature(**param_tab, **no_external),
-            "berry": caltab.BerryCurvature(**param_tab, **no_external),
-            'morb': caltab.OrbitalMoment(**param_tab, **no_external),
-            'Der_morb': caltab.DerOrbitalMoment(**param_tab, **no_external),
+            "Der_berry": caltab.DerBerryCurvature(**param_tab),
+            "berry": caltab.BerryCurvature(**param_tab),
+            'morb': caltab.OrbitalMoment(**param_tab),
+            'Der_morb': caltab.DerOrbitalMoment(**param_tab),
         },
         ibands=[0],
         mode="path")
@@ -85,6 +84,7 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
 
     k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
     path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
+    print ("k-pointsd",path.K_list)
 
 
     result = check_run(
@@ -128,7 +128,7 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
                 _data_ref = data_ref[(quant, comp)]
             assert _data == approx(_data_ref), (
                 f"tabulation along path gave a wrong result for quantity {quant} component {comp} " +
-                "with a maximal difference {}".format(max(abs(data - data_ref))))
+                "with a maximal difference {}".format(max(abs(_data - _data_ref))))
 
     # only checks that the plot runs without errors, not checking the result of the plot
     tab_result.plot_path_fat(

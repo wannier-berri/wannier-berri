@@ -345,23 +345,10 @@ def system_Haldane_TBmodels():
     except (ImportError, ModuleNotFoundError):
         pytest.xfail("failed to import tbmodels")
     model_tbmodels_Haldane = wb_models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15)
-    system = wberri.system.System_TBmodels(model_tbmodels_Haldane, berry=True)
+    system = wberri.system.System_TBmodels(model_tbmodels_Haldane)
     system.set_symmetry(["C3z"])
     return system
 
-
-@pytest.fixture(scope="session")
-def system_Haldane_TBmodels_internal():
-    # Load system
-    try:
-        import tbmodels
-        tbmodels  # just to avoid F401
-    except (ImportError, ModuleNotFoundError):
-        pytest.xfail("failed to import tbmodels")
-    model_tbmodels_Haldane = wb_models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15)
-    system = wberri.system.System_TBmodels(model_tbmodels_Haldane, berry=False)
-    system.set_symmetry(["C3z"])
-    return system
 
 
 # Haldane model from PythTB

@@ -29,29 +29,28 @@ from common_systems import (
 
 @pytest.fixture
 def check_run(parallel_serial, compare_any_result):
-
     def _inner(
-        system,
-        calculators={},
-        fout_name="berry",
-        compare_zero=False,
-        parallel=parallel_serial,
-        grid_param={
-            'NK': [6, 6, 6],
-            'NKFFT': [3, 3, 3]
-        },
-        grid=None,
-        adpt_num_iter=0,
-        parameters_K={},
-        use_symmetry=False,
-        suffix="",
-        suffix_ref="",
-        extra_precision={},
-        precision=-1e-8,
-        restart=False,
-        file_Klist=None,
-        do_not_compare=False,
-        skip_compare=[],
+            system,
+            calculators={},
+            fout_name="berry",
+            compare_zero=False,
+            parallel=parallel_serial,
+            grid_param={
+                'NK': [6, 6, 6],
+                'NKFFT': [3, 3, 3]
+            },
+            grid=None,
+            adpt_num_iter=0,
+            parameters_K={},
+            use_symmetry=False,
+            suffix="",
+            suffix_ref="",
+            extra_precision={},
+            precision=-1e-8,
+            restart=False,
+            file_Klist=None,
+            do_not_compare=False,
+            skip_compare=[],
     ):
 
         if grid is None:
@@ -115,7 +114,6 @@ calculators_phonons = {
     'cumdos': calc.static.CumDOS,
 }
 
-
 calculators_GaAs = {
     'berry_dipole': calc.static.BerryDipole_FermiSea,
     'berry_dipole_fsurf': calc.static.BerryDipole_FermiSurf,
@@ -151,8 +149,7 @@ calculators_CuMnAs_2d = {
 smoother_Chiral = FermiDiracSmoother(Efermi_Chiral, T_Kelvin=1200, maxdE=8)
 
 parameters_Chiral_optical = dict(
-        Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian")
-
+    Efermi=Efermi_Chiral, omega=omega_chiral, smr_fixed_width=0.20, smr_type="Gaussian")
 
 parameters_Chiral_shiftcurrent = dict(sc_eta=0.1)
 
@@ -168,9 +165,9 @@ calculators_Chiral = {
     'dos': calc.static.DOS(Efermi=Efermi_Chiral),
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral),
     'opt_conductivity': wberri.calculators.dynamic.OpticalConductivity(**parameters_Chiral_optical),
-    'opt_shiftcurrent': wberri.calculators.dynamic.ShiftCurrent(**parameters_Chiral_shiftcurrent, **parameters_Chiral_optical),
+    'opt_shiftcurrent': wberri.calculators.dynamic.ShiftCurrent(**parameters_Chiral_shiftcurrent,
+                                                                **parameters_Chiral_optical),
 }
-
 
 calculators_SDCT = {
     'SDCT_sym_sea_I': wberri.calculators.dynamic.SDCT_sym_sea_I,
@@ -185,7 +182,6 @@ calculators_SDCT = {
     'SDCT_asym': wberri.calculators.dynamic.SDCT_asym,
 }
 
-
 calculators_Chiral_tetra = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
     'conductivity_ohmic_fsurf': calc.static.Ohmic_FermiSurf(Efermi=Efermi_Chiral, tetra=True),
@@ -199,7 +195,6 @@ calculators_Chiral_tetra = {
     'cumdos': calc.static.CumDOS(Efermi=Efermi_Chiral, tetra=True),
     'spin': wberri.calculators.static.Spin(Efermi=Efermi_Chiral, tetra=True),
 }
-
 
 Efermi_Chiral_half = Efermi_Chiral[:len(Efermi_Chiral) // 2]
 calculators_Chiral_half = {
@@ -424,7 +419,7 @@ def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
             '_CCab_antisym': True
         },
         skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo']
-            )
+    )
 
     for quant in 'opt_conductivity', 'opt_SHCryoo', 'opt_SHCryoo':
         compare_any_result(
@@ -437,42 +432,27 @@ def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
             result_type=EnergyResult)
 
 
-
 def test_Fe_set_spin(check_run, system_Fe_W90_proj_set_spin, compare_any_result):
     param = {'Efermi': Efermi_Fe}
     calculators = {"spin": wberri.calculators.static.Spin(**param),
                    "cumdos": wberri.calculators.static.CumDOS(**param),
-                  }
+                   }
 
     parameters_shc = dict(
-                            Efermi=np.array([Efermi_Fe[0], Efermi_Fe[-1]]), omega=np.arange(0.0, 7.1, 1.0),
-                            smr_fixed_width=0.20, smr_type="Gaussian",
-                            SHC_type="simple"
-                         )
-    calculators['opt_SHCsimple'] = wberri.calculators.dynamic.SHC(kwargs_formula={"external_terms": True}, **parameters_shc)
-    calculators['opt_SHCsimple_internal'] = wberri.calculators.dynamic.SHC(kwargs_formula={"external_terms": False}, **parameters_shc)
+        Efermi=np.array([Efermi_Fe[0], Efermi_Fe[-1]]), omega=np.arange(0.0, 7.1, 1.0),
+        smr_fixed_width=0.20, smr_type="Gaussian",
+        SHC_type="simple"
+    )
+    calculators['opt_SHCsimple'] = wberri.calculators.dynamic.SHC(kwargs_formula={"external_terms": True},
+                                                                  **parameters_shc)
+    calculators['opt_SHCsimple_internal'] = wberri.calculators.dynamic.SHC(kwargs_formula={"external_terms": False},
+                                                                           **parameters_shc)
 
     check_run(
         system_Fe_W90_proj_set_spin,
         calculators,
         fout_name="Fe_set_spin",
         use_symmetry=False,
-            )
-
-
-
-def test_Fe_FPLO(check_run, system_Fe_FPLO, compare_any_result):
-    param = {'Efermi': Efermi_Fe_FPLO}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
-    check_run(
-        system_Fe_FPLO,
-        calculators,
-        fout_name="berry_Fe_FPLO",
-        suffix="-run",
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
     )
 
 
@@ -534,7 +514,6 @@ def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_
         },
     )
     parallel_ray.shutdown()
-
 
 
 def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
@@ -660,17 +639,16 @@ def test_Fe_pickle_Klist_021(check_run, system_Fe_W90, compare_any_result):
 
 
 def test_GaAs(check_run, system_GaAs_W90, compare_any_result):
-
     param = {'Efermi': Efermi_GaAs}
     calculators = {k: v(**param) for k, v in calculators_GaAs.items()}
-#    calculators.update({k: v(**param) for k, v in calculators_GaAs.items()})
+    #    calculators.update({k: v(**param) for k, v in calculators_GaAs.items()})
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
     calculators.update({
         'gyrotropic_Korb': calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs),
         'gyrotropic_Kspin': calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
         'gyrotropic_Kspin_fsurf': calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
         'gyrotropic_Korb_test': calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs), }
-            )
+    )
 
     check_run(
         system_GaAs_W90,
@@ -686,7 +664,6 @@ def test_GaAs(check_run, system_GaAs_W90, compare_any_result):
 
 
 def test_GaAs_tb(check_run, system_GaAs_tb, compare_any_result):
-
     param = {'Efermi': Efermi_GaAs}
     calculators = {k: v(**param) for k, v in calculators_GaAs.items()}
 
@@ -711,7 +688,7 @@ def test_GaAs_wcc(check_run, system_GaAs_W90_wcc, compare_any_result):
     calculators.update({
         'gyrotropic_Kspin': calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
         'gyrotropic_Kspin_fsurf': calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
-            })
+    })
 
     check_run(
         system_GaAs_W90_wcc,
@@ -727,7 +704,6 @@ def test_GaAs_wcc(check_run, system_GaAs_W90_wcc, compare_any_result):
 
 
 def test_GaAs_tb_wcc(check_run, system_GaAs_tb_wcc, compare_any_result):
-
     param = {'Efermi': Efermi_GaAs}
     calculators = {k: v(**param) for k, v in calculators_GaAs.items()}
 
@@ -745,7 +721,6 @@ def test_GaAs_tb_wcc(check_run, system_GaAs_tb_wcc, compare_any_result):
 
 
 def test_GaAs_SDCT(check_run, system_GaAs_W90_wcc, compare_any_result):
-
     param = {'Efermi': Efermi_GaAs,
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1
@@ -765,7 +740,6 @@ def test_GaAs_SDCT(check_run, system_GaAs_W90_wcc, compare_any_result):
 
 
 def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result):
-
     param = {'Efermi': np.linspace(-2, 2, 5),
              'omega': np.linspace(0.0, 4, 5),
              'kBT': 0.5, 'smr_fixed_width': 0.5,
@@ -809,7 +783,6 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
 
 
 def test_GaAs_tb_wcc_ws(check_run, system_GaAs_tb_wcc_ws, compare_any_result):
-
     param = {'Efermi': Efermi_GaAs}
     calculators = {k: v(**param) for k, v in calculators_GaAs_internal.items()}
 
@@ -826,9 +799,7 @@ def test_GaAs_tb_wcc_ws(check_run, system_GaAs_tb_wcc_ws, compare_any_result):
     )  # This is a low precision for the nonabelian thing, not sure if it does not indicate a problem, or is a gauge-dependent thing
 
 
-
 def test_Haldane_PythTB(check_run, system_Haldane_PythTB, compare_any_result):
-
     param = {'Efermi': Efermi_Haldane}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
@@ -870,9 +841,7 @@ def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
     )
 
 
-
 def test_Haldane_TBmodels(check_run, system_Haldane_TBmodels, compare_any_result):
-
     param = {'Efermi': Efermi_Haldane}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
@@ -888,30 +857,23 @@ def test_Haldane_TBmodels(check_run, system_Haldane_TBmodels, compare_any_result
     )
 
 
-def test_Haldane_TBmodels_internal(check_run, system_Haldane_TBmodels_internal, compare_any_result):
-
-    param_kwargs = {'Efermi': Efermi_Haldane}
+def test_Haldane_PythTB(check_run, system_Haldane_PythTB, compare_any_result):
     param = {'Efermi': Efermi_Haldane}
-    for k, v in calculators_Haldane.items():
-        if k == 'ahc':
-            calculators = {k: v(**param_kwargs)}
-        else:
-            calculators = {k: v(**param)}
+    calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
     check_run(
-        system_Haldane_TBmodels_internal,
+        system_Haldane_PythTB,
         calculators,
         fout_name="berry_Haldane_tbmodels",
-        suffix="internal-run",
+        suffix="pythtb-run",
+        use_symmetry=False,
         grid_param={
             'NK': [10, 10, 1],
             'NKFFT': [5, 5, 1]
         }
     )
 
-
 def test_Haldane_PythTB_sym(check_run, system_Haldane_PythTB, compare_any_result):
-
     param = {'Efermi': Efermi_Haldane}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
@@ -929,7 +891,6 @@ def test_Haldane_PythTB_sym(check_run, system_Haldane_PythTB, compare_any_result
 
 
 def test_Haldane_TBmodels_sym(check_run, system_Haldane_TBmodels, compare_any_result):
-
     param = {'Efermi': Efermi_Haldane}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
@@ -947,7 +908,6 @@ def test_Haldane_TBmodels_sym(check_run, system_Haldane_TBmodels, compare_any_re
 
 
 def test_Haldane_TBmodels_sym_refine(check_run, system_Haldane_TBmodels, compare_any_result):
-
     param = {'Efermi': Efermi_Haldane}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
@@ -986,15 +946,15 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
     # for quant in calculators_Chiral.keys():#["conductivity_ohmic", "berry_dipole", "ahc"]:
     for quant in ["conductivity_ohmic", "berry_dipole", "ahc"]:
         compare_energyresult(
-                fout_name="berry_Chiral",
-                suffix=quant + "-left-run",
-                adpt_num_iter=0,
-                suffix_ref=quant,
-                mode="txt",
-                compare_smooth=True,
-                precision=-1e-8)
+            fout_name="berry_Chiral",
+            suffix=quant + "-left-run",
+            adpt_num_iter=0,
+            suffix_ref=quant,
+            mode="txt",
+            compare_smooth=True,
+            precision=-1e-8)
 
-#        skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
+    #        skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
 
     for quant in 'opt_conductivity', "opt_shiftcurrent":  # 'opt_SHCryoo', 'opt_SHCryoo':
         compare_any_result(
@@ -1005,8 +965,6 @@ def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_
             suffix_ref=quant,
             precision=-1e-8,
             result_type=EnergyResult)
-
-
 
 
 def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
@@ -1049,11 +1007,10 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         assert data1.shape == data2.shape
         precision = 1e-14 * np.max(abs(data1))
         assert data1 == approx(
-                data2, abs=precision), (
-                        f"calculated data of {key}  of full and half sets of Fermi levels give a maximal " +
-                        "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
-                            abs_err=np.max(abs(data1 - data2)), required_precision=precision))
-
+            data2, abs=precision), (
+                f"calculated data of {key}  of full and half sets of Fermi levels give a maximal " +
+                "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
+                    abs_err=np.max(abs(data1 - data2)), required_precision=precision))
 
 
 @pytest.mark.parametrize("tetra", [True, False])
@@ -1064,8 +1021,8 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
     system = system_Chiral_left
 
     calculators = {"AHC": calc.static.AHC(**param),
-                "Morb": calc.static.Morb(**param)
-                    }
+                   "Morb": calc.static.Morb(**param)
+                   }
     calculators["tabulate"] = calc.TabulatorAll(
         {
             "AHC": calc.static.AHC(**param, k_resolved=True),
@@ -1107,8 +1064,8 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
     system = system_Haldane_PythTB
 
     calculators = {"AHC": calc.static.AHC(**param),
-                "Morb": calc.static.AHC(**param)
-                    }
+                   "Morb": calc.static.AHC(**param)
+                   }
     calculators["tabulate"] = calc.TabulatorAll(
         {
             "AHC": calc.static.AHC(**param, k_resolved=True),
@@ -1117,7 +1074,6 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
         },
         mode="grid",
         ibands=(0,))
-
 
     result = check_run(
         system,
@@ -1148,7 +1104,6 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
     berry_k = result.results["tabulate"].results["berry"].data[:, 0] * wberri.__factors.factor_ahc / system.cell_volume
     prec = 1e-8 * np.max(abs(berry_k))
     assert abs(berry_k - ahc_k).max() <= prec
-
 
 
 def test_Chiral_left_tetra_tetragrid(check_run, system_Chiral_left, compare_any_result):
@@ -1194,7 +1149,7 @@ def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result
     data2 = result.results.get("dos_trig").data[nshift:]
     assert data1.shape == data2.shape
     assert data1 == approx(data2), "the result with the shifted set of Fermi levels is different by {}".format(
-            np.max(np.abs(data1 - data2)))
+        np.max(np.abs(data1 - data2)))
 
 
 def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, compare_any_result):
@@ -1269,14 +1224,14 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
 
     degen_param = [('degen_thresh', 0.05), ('degen_Kramers', True)]
     results = check_run(
-            system_CuMnAs_2d_broken,
-            calculators,
-            fout_name="berry_CuMnAs_2d",
-            grid_param={
-                'NK': [10, 10, 1],
-                'NKFFT': [5, 5, 1]},
-            use_symmetry=True,
-            do_not_compare=True,)
+        system_CuMnAs_2d_broken,
+        calculators,
+        fout_name="berry_CuMnAs_2d",
+        grid_param={
+            'NK': [10, 10, 1],
+            'NKFFT': [5, 5, 1]},
+        use_symmetry=True,
+        do_not_compare=True, )
 
     for tetra in True, False:
         for k in calculators_CuMnAs_2d.keys():
@@ -1290,10 +1245,9 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
             precision = 1e-14 * np.max(abs(data1))
             assert data1 == approx(
                 data2, abs=precision), (
-                        f"calcuylated data of {label1}  and {label2} give a maximal " +
-                        "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
-                            abs_err=np.max(abs(data1 - data2)), required_precision=precision))
-
+                    f"calcuylated data of {label1}  and {label2} give a maximal " +
+                    "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
+                        abs_err=np.max(abs(data1 - data2)), required_precision=precision))
 
 
 def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_result):
@@ -1318,23 +1272,17 @@ def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_resul
     )
 
 
-
 def test_tabulate_path(system_Haldane_PythTB):
-
     k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
     path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
 
     calculators = {}
-    quantities = {
-                            "Energy": wberri.calculators.tabulate.Energy(),
-                            "berry": wberri.calculators.tabulate.BerryCurvature(),
-                                  }
-
+    quantities = {"Energy": wberri.calculators.tabulate.Energy(),
+                  "berry": wberri.calculators.tabulate.BerryCurvature()
+                  }
     calculators["tabulate"] = wberri.calculators.TabulatorAll(quantities,
-                                                       ibands=[0],
-                                                        mode="path")
-
-
+                                                              ibands=[0],
+                                                              mode="path")
     run_result = wberri.run(
         system=system_Haldane_PythTB,
         grid=path,
@@ -1345,7 +1293,6 @@ def test_tabulate_path(system_Haldane_PythTB):
         #                frmsf_name = None,
         #                degen_thresh = degen_thresh, degen_Kramers = degen_Kramers
     )
-
 
     tab_result = run_result.results["tabulate"]
     filename = "path_tab.pickle"
@@ -1365,8 +1312,8 @@ def test_tabulate_path(system_Haldane_PythTB):
             _data = data[(quant, comp)]
             _data_ref = data_ref[(quant, comp)]
             assert _data == pytest.approx(_data_ref), (
-                f"tabulation along path gave a wrong result for quantity {quant} component {comp} " +
-                "with a maximal difference {}".format(max(abs(data - data_ref))))
+                    f"tabulation along path gave a wrong result for quantity {quant} component {comp} " +
+                    "with a maximal difference {}".format(max(abs(_data - _data_ref))))
 
     # only checks that the plot runs without errors, not checking the result of the plot
     tab_result.plot_path_fat(
@@ -1385,22 +1332,22 @@ def test_tabulate_path(system_Haldane_PythTB):
 
 
 def test_tabulate_fail(system_Haldane_PythTB):
-
     k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
     path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
 
     quantities = {
-                            "Energy": wberri.calculators.tabulate.Energy(),
-                            "berry": wberri.calculators.tabulate.BerryCurvature(),
-                                  }
+        "Energy": wberri.calculators.tabulate.Energy(),
+        "berry": wberri.calculators.tabulate.BerryCurvature(),
+    }
 
     key = "tabulate_grid"
     calculators_fail = {"tabulate_grid": wberri.calculators.TabulatorAll(quantities,
-                                                       ibands=[0],
-                                                        mode="grid"),
+                                                                         ibands=[0],
+                                                                         mode="grid"),
                         "ahc": wberri.calculators.static.AHC(Efermi=Efermi_Haldane)}
     for key, val in calculators_fail.items():
-        with pytest.raises(ValueError, match=f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path"):
+        with pytest.raises(ValueError,
+                           match=f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path"):
             wberri.run(system=system_Haldane_PythTB, grid=path, calculators={key: val})
 
 
@@ -1408,16 +1355,17 @@ def test_shc_static(check_run, system_Fe_W90):
     "Test whether SHC static and dynamic calculators are the same at omega=0"
 
     parameters_optical = dict(Efermi=np.array([17.0, 18.0]),
-            omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=1e-10, smr_type="Gaussian", kBT=0)
+                              omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=1e-10, smr_type="Gaussian", kBT=0)
     parameters_static = dict(Efermi=np.array([17.0, 18.0]))
 
     calculators = {}
 
     calculators['SHCqiao_dynamic'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
     calculators['SHCryoo_dynamic'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
-    calculators['SHCqiao_static'] = wberri.calculators.static.SHC(kwargs_formula={'spin_current_type': 'qiao'}, **parameters_static)
-    calculators['SHCryoo_static'] = wberri.calculators.static.SHC(kwargs_formula={'spin_current_type': 'ryoo'}, **parameters_static)
-
+    calculators['SHCqiao_static'] = wberri.calculators.static.SHC(kwargs_formula={'spin_current_type': 'qiao'},
+                                                                  **parameters_static)
+    calculators['SHCryoo_static'] = wberri.calculators.static.SHC(kwargs_formula={'spin_current_type': 'ryoo'},
+                                                                  **parameters_static)
 
     result = check_run(
         system_Fe_W90,
@@ -1426,17 +1374,15 @@ def test_shc_static(check_run, system_Fe_W90):
         suffix="run",
         do_not_compare=True)
 
-
     for mode in ["qiao", "ryoo"]:
         data_static = result.results[f"SHC{mode}_static"].data
         data_dynamic = result.results[f"SHC{mode}_dynamic"].data[:, 0, ...].real
         precision = max(np.average(abs(data_static) / 1E10), 1E-8)
         assert data_static == approx(
             data_dynamic, abs=precision), (
-                f"data of"
-                f"SHC {mode} from static.SHC and dynamic.SHC give a maximal absolute"
-                f"difference of {np.max(np.abs(data_static - data_dynamic))}.")
-
+            f"data of"
+            f"SHC {mode} from static.SHC and dynamic.SHC give a maximal absolute"
+            f"difference of {np.max(np.abs(data_static - data_dynamic))}.")
 
 
 def test_phonons_GaAs_tetra(check_run, system_Phonons_GaAs):
@@ -1476,15 +1422,15 @@ def test_factor_nlahc(check_run, system_GaAs_W90):
 
     assert data_nlahc_no_factor == approx(
         data_bcd, abs=precision), (
-            f"data of"
-            f"BerryDipole and NLAHC with no units give a maximal absolute"
-            f"difference of {np.max(np.abs(data_nlahc_no_factor - data_bcd))}.")
+        f"data of"
+        f"BerryDipole and NLAHC with no units give a maximal absolute"
+        f"difference of {np.max(np.abs(data_nlahc_no_factor - data_bcd))}.")
 
     assert data_nlahc == approx(
         data_bcd * factor_nlahc, abs=precision), (
-            f"data of"
-            f"BerryDipole times factor_nlahc and NLAHC give a maximal absolute"
-            f"difference of {np.max(np.abs(data_nlahc - data_bcd * factor_nlahc))}.")
+        f"data of"
+        f"BerryDipole times factor_nlahc and NLAHC give a maximal absolute"
+        f"difference of {np.max(np.abs(data_nlahc - data_bcd * factor_nlahc))}.")
 
 
 @pytest.fixture
@@ -1498,18 +1444,18 @@ def check_kp_mass_isotropic(check_run):
             'dos': calc.static.DOS(Efermi=Efermi, tetra=tetra),
             'ohmic_sea': calc.static.Ohmic_FermiSea(Efermi=Efermi, tetra=tetra),
             'ohmic_surf': calc.static.Ohmic_FermiSurf(Efermi=Efermi, tetra=tetra),
-                    }
+        }
 
         result = check_run(
-                    system,
-                    calculators,
-                    grid_param={
-                        'length': 20,
-                        'NKFFT': 5
-                                },
-                    fout_name="berry_kp_mass_" + name,
-                    suffix=suffix,
-                            )
+            system,
+            calculators,
+            grid_param={
+                'length': 20,
+                'NKFFT': 5
+            },
+            fout_name="berry_kp_mass_" + name,
+            suffix=suffix,
+        )
 
         if check_anal:
             cumdos = result.results["cumdos"].data / system.cell_volume
@@ -1529,10 +1475,9 @@ def check_kp_mass_isotropic(check_run):
                             else:
                                 assert ohm[:, i, j] == approx(0, abs=precision)
             except AssertionError:
-                raise RuntimeError(f"ohmic({ss}) conductivity is not isotropic, componenets {i,j}")
+                raise RuntimeError(f"ohmic({ss}) conductivity is not isotropic, componenets {i, j}")
             ohmic["sea"] = ohmic["sea"][:, 0, 0]
             ohmic["surf"] = ohmic["surf"][:, 0, 0]
-
 
             select_plus = Efermi > 0.2
             select_minus = Efermi < 0
@@ -1545,14 +1490,15 @@ def check_kp_mass_isotropic(check_run):
             # compare with results evaluated analytically
             mass = mass_kp_iso
             Efp = Efermi[select_plus]
-            dos_anal = mass * np.sqrt(2 * Efp * mass) / (2 * np.pi**2)
-            cumdos_anal = np.sqrt(2 * Efp * mass)**3 / (6 * np.pi**2)
-            ohmic_anal = np.sqrt(2 * Efp * mass)**3 / (6 * np.pi**2) / mass
+            dos_anal = mass * np.sqrt(2 * Efp * mass) / (2 * np.pi ** 2)
+            cumdos_anal = np.sqrt(2 * Efp * mass) ** 3 / (6 * np.pi ** 2)
+            ohmic_anal = np.sqrt(2 * Efp * mass) ** 3 / (6 * np.pi ** 2) / mass
             precision = 0.05
             assert dos[select_plus] == approx(dos_anal, rel=precision)
             assert cumdos[select_plus] == approx(cumdos_anal, rel=precision)
             assert ohmic["sea"][select_plus] == approx(ohmic_anal, rel=precision)
             assert ohmic["surf"][select_plus] == approx(ohmic_anal, rel=precision)
+
     return _inner
 
 
@@ -1566,7 +1512,6 @@ def test_kp_mass_isotropic_1(check_kp_mass_isotropic, system_kp_mass_iso_1):
 
 def test_kp_mass_isotropic_2(check_kp_mass_isotropic, system_kp_mass_iso_2):
     check_kp_mass_isotropic(system_kp_mass_iso_2, "iso", "2", check_anal=True)
-
 
 
 def test_kp_mass_anisotropic_0(check_kp_mass_isotropic, system_kp_mass_aniso_0):

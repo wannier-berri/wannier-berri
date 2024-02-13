@@ -39,7 +39,7 @@ class System_tb_py(System_R):
                  spin=False,
                  **parameters
                  ):
-        super().__init__(**parameters)
+        super().__init__(spin=spin, **parameters)
         self.force_no_external_terms = True
         self.use_wcc_phase = True
         names = {'tbmodels': 'TBmodels', 'pythtb': 'PythTB'}
@@ -49,7 +49,7 @@ class System_tb_py(System_R):
             # Extract the parameters from the model
             real = model.uc
             self.num_wann = model.size
-            if self.need_R_any('SS'):
+            if self.need_R_any(['SS', 'SHA', 'SA', 'SH', 'SRA', 'SR']):
                 raise ValueError(
                     "System_{} class cannot be used for evaluation of spin properties".format(names[module]))
             self.spinors = False

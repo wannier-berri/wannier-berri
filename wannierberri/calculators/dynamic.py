@@ -671,10 +671,10 @@ class SDCT_sym_surf_II(DynamicCalculator):
 # ===============
 
 
-class ShiftCurrentFormula():
+class ShiftCurrentFormula(Formula):
 
-    def __init__(self, data_K, sc_eta, external_terms=True):
-
+    def __init__(self, data_K, sc_eta, **parameters):
+        super().__init__(data_K, **parameters)
         if self.external_terms:
             A_Hbar_der = data_K.Xbar('AA', 1)
             A_Hbar = data_K.Xbar('AA')
@@ -759,13 +759,14 @@ class ShiftCurrent(DynamicCalculator):
 # ===================
 
 
-class InjectionCurrentFormula():
+class InjectionCurrentFormula(Formula):
     """
     Eq. (10) of Lihm and Park, PRB 105, 045201 (2022)
     Use v_mn = i * r_mn * (e_m - e_n) / hbar to replace v with r.
     """
 
-    def __init__(self, data_K, external_terms=True):
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
         if self.external_terms:
             A_H = data_K.A_H
         else:

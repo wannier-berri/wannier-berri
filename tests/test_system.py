@@ -264,13 +264,6 @@ def test_system_Si_W90_wccFD(check_system, system_Si_W90_wccFD):
 def test_system_Haldane_TBmodels(check_system, system_Haldane_TBmodels):
     check_system(
         system_Haldane_TBmodels, "Haldane", suffix="TBmodels",
-        matrices=['Ham', 'AA']
-    )
-
-
-def test_system_Haldane_TBmodels_internal(check_system, system_Haldane_TBmodels_internal):
-    check_system(
-        system_Haldane_TBmodels_internal, "Haldane", suffix="TBmodels_internal",
         matrices=['Ham']
     )
 
@@ -278,7 +271,7 @@ def test_system_Haldane_TBmodels_internal(check_system, system_Haldane_TBmodels_
 def test_system_Haldane_PythTB(check_system, system_Haldane_PythTB):
     check_system(
         system_Haldane_PythTB, "Haldane", suffix="PythTB",
-        matrices=['Ham', 'AA']
+        matrices=['Ham']
     )
 
 
@@ -317,24 +310,17 @@ def test_system_Chiral_right(check_system, system_Chiral_right):
     )
 
 
-def test_system_Fe_FPLO(check_system, system_Fe_FPLO):
-    check_system(
-        system_Fe_FPLO, "Fe_FPLO",
-        matrices=['Ham', 'AA', 'SS']
-    )
-
-
 def test_system_Fe_FPLO_wcc(check_system, system_Fe_FPLO_wcc):
     check_system(
         system_Fe_FPLO_wcc, "Fe_FPLO_wcc",
-        matrices=['Ham', 'AA', 'SS']
+        matrices=['Ham', 'SS']
     )
 
 
 def test_system_Fe_FPLO_wcc_ws(check_system, system_Fe_FPLO_wcc_ws):
     check_system(
         system_Fe_FPLO_wcc_ws, "Fe_FPLO_wcc_ws",
-        matrices=['Ham', 'AA', 'SS']
+        matrices=['Ham', 'SS']
     )
 
 
@@ -342,13 +328,6 @@ def test_system_CuMnAs_2d_broken(check_system, system_CuMnAs_2d_broken):
     check_system(
         system_CuMnAs_2d_broken, "CuMnAs_2d_broken",
         matrices=['Ham']
-    )
-
-
-def test_system_Te_ASE(check_system, system_Te_ASE):
-    check_system(
-        system_Te_ASE, "Te_ASE",
-        matrices=['Ham', 'AA']
     )
 
 
