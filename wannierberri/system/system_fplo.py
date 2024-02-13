@@ -43,17 +43,11 @@ class System_fplo(System_R):
     def __init__(self, hamdata="+hamdata",
                  mp_grid=None,
                  **parameters):
-
-        super().__init__(**parameters)
-        self.force_no_external_terms = True
-        self.use_wcc_phase = True
-        if not self.use_wcc_phase:
-            print(
-                "WARNING: It is highly recommended to use `use_wcc_phase=True` with System_fplo"
-                ", and further set parameters={`external_terms':False}"
-                "in any case, the external terms are evaluated using the diagonal approximation for position matrix elements (Tight-binding-like)"
-            )
-
+        if "name" not in parameters:
+            parameters["name"] = "ASE"
+        super().__init__(force_internal_terms_only=True,
+                         use_wcc_phase=True,
+                         **parameters)
         self.seedname = hamdata.split("/")[-1].split("_")[0]
         f = open(hamdata, "r")
         allread = False

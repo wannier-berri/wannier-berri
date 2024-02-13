@@ -84,6 +84,9 @@ class System_R(System):
         if OSD:
             self.needed_R_matrices.update(['AA', 'BB', 'CC', 'GG', 'OO'])
 
+        if self.force_internal_terms_only:
+            self.needed_R_matrices = self.needed_R_matrices.intersection(['Ham','SS'])
+
         self._XX_R = dict()
 
 

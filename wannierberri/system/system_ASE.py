@@ -16,6 +16,7 @@ import numpy as np
 from ..__utility import real_recip_lattice
 from .system_w90 import System_w90
 from .system_R import System_R
+from .ws_dist import wigner_seitz
 from termcolor import cprint
 
 
@@ -38,16 +39,18 @@ class System_ASE(System_w90):
                 ase_wannier,
                 ase_R_vectors=False,  # for testing vs ASE
                 **parameters):
-        System_R.__init__(self, **parameters)
-        self.force_no_external_terms = True
-        self.use_wcc_phase = True
-        self.seedname = "ASE"
+        if "name" not in parameters:
+            parameters["name"] = "ASE"
+        System_R.__init__(self,
+                          force_internal_terms_only=True,
+                          use_wcc_phase=True,
+                          **parameters)
         ase_wannier.translate_all_to_cell()
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=np.array(ase_wannier.unitcell_cc))
         mp_grid = ase_wannier.kptgrid
 
         if not ase_R_vectors:
-            self.iRvec, self.Ndegen = self.wigner_seitz(mp_grid)
+            self.iRvec, self.Ndegen = wigner_seitz(self.recip_lattice, mp_grid)
         else:  # enable to do ase-like R-vectors
             N1, N2, N3 = (mp_grid - 1) // 2
             self.iRvec = np.array(

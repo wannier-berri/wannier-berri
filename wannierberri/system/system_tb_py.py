@@ -32,6 +32,7 @@ class System_tb_py(System_R):
 
     Notes
     -----
+    always uses use_wcc_phase=True, force_internal_terms_only=True
     see also  parameters of the :class:`~wannierberri.System`
     """
 
@@ -39,11 +40,12 @@ class System_tb_py(System_R):
                  spin=False,
                  **parameters
                  ):
-        super().__init__(spin=spin, **parameters)
-        self.force_no_external_terms = True
-        self.use_wcc_phase = True
         names = {'tbmodels': 'TBmodels', 'pythtb': 'PythTB'}
-        self.seedname = 'model_{}'.format(names[module])
+        super().__init__(spin=spin,
+                         force_internal_terms_only=True,
+                         use_wcc_phase=True,
+                         name=f'model_{names[module]}',
+                         **parameters)
 
         if module == 'tbmodels':
             # Extract the parameters from the model

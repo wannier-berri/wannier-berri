@@ -25,7 +25,8 @@ class SystemRandom(System_R):
                  real_lattice=None,
                  max_R=5,
                  **parameters):
-
+        if "name" not in parameters:
+            parameters["name"] = "random"
         super().__init__(**parameters)
         if real_lattice is None:
             while True:

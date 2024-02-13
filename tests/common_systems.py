@@ -484,19 +484,10 @@ def data_Te_ASE():
 
 
 @pytest.fixture(scope="session")
-def system_Te_ASE(data_Te_ASE):
-    """Create system for Te using  ASE+GPAW data with use_wcc_phase=False"""
-    wan = data_Te_ASE
-    system = wberri.system.System_ASE(wan, use_wcc_phase=False, berry=True)
-    system.set_symmetry(symmetries_Te)
-    return system
-
-
-@pytest.fixture(scope="session")
 def system_Te_ASE_wcc(data_Te_ASE):
     """Create system for Te using  ASE+GPAW data with use_wcc_phase=True"""
     wan = data_Te_ASE
-    system = wberri.system.System_ASE(wan, use_wcc_phase=True, berry=False)
+    system = wberri.system.System_ASE(wan)
     system.set_symmetry(symmetries_Te)
     return system
 

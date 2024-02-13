@@ -7,8 +7,8 @@ class Formula(abc.ABC):
     @abc.abstractmethod
     def __init__(self, data_K, internal_terms=True, cross_terms=True, external_terms=True):
         self.internal_terms = internal_terms
-        self.external_terms = external_terms and not data_K.force_no_external_terms
-        self.cross_terms = cross_terms and not data_K.force_no_external_terms
+        self.external_terms = external_terms and not data_K.force_internal_terms_only
+        self.cross_terms = cross_terms and not data_K.force_internal_terms_only
 
 
 class Formula_ln(Formula):

@@ -1,3 +1,5 @@
+import os.path
+
 import numpy as np
 import untangle
 import multiprocessing
@@ -51,7 +53,8 @@ class System_Phonon_QE(System_w90):
                  npar=multiprocessing.cpu_count(),
                  asr=True,
                  **parameters):
-
+        if "name" not in parameters:
+            parameters["name"] = os.path.split(seedname)[-1]
         System_R.__init__(self, **parameters)
         self.is_phonon = True
         self.use_wcc_phase=False

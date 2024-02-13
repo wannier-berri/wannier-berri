@@ -13,11 +13,13 @@
 # ------------------------------------------------------------#
 
 import numpy as np
+import os
 import functools
 import multiprocessing
-from ..__utility import iterate3dpm, real_recip_lattice, fourier_q_to_R, alpha_A, beta_A
+from ..__utility import real_recip_lattice, fourier_q_to_R, alpha_A, beta_A
 from .system_R import System_R
 from .w90_files import Wannier90data
+from .ws_dist import wigner_seitz
 
 
 class System_w90(System_R):
@@ -67,6 +69,8 @@ class System_w90(System_R):
             wcc_phase_fin_diff=True,
             **parameters):
 
+        if "name" not in parameters:
+            parameters["name"] = os.path.split(seedname)[-1]
         super().__init__(**parameters)
         self.npar = npar
         self.seedname = seedname
@@ -77,7 +81,7 @@ class System_w90(System_R):
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         mp_grid = chk.mp_grid
         self._NKFFT_recommended = mp_grid
-        self.iRvec, Ndegen = self.wigner_seitz(chk.mp_grid)
+        self.iRvec, Ndegen = wigner_seitz(self.recip_lattice, chk.mp_grid)
         self.nRvec0 = len(self.iRvec)
         self.num_wann = chk.num_wann
         self.wannier_centers_cart = w90data.wannier_centers
@@ -212,29 +216,25 @@ class System_w90(System_R):
         # Unique set of nearest-neighbor vectors (cartesian)
         bk_cart_unique = w90data.mmn.bk_cart_unique
 
-        lexp1 = self.need_R_any(['AA', 'BB'])
-        lexp2 = self.need_R_any(['CC', 'OO', 'GG'])
         if use_wcc_phase_findiff:  # Phase convention I
             _expiphase = np.exp(1j * np.einsum('ba,ja->jb', bk_cart_unique, centers))
-            if lexp1: expiphase1 = _expiphase[None, :, None, :, None]
-            if lexp2: expiphase2 = (_expiphase[:, None, :, None].conj() * _expiphase[None, :, None, :]
+            expiphase1 = _expiphase[None, :, None, :, None]
+            expiphase2 = (_expiphase[:, None, :, None].conj() * _expiphase[None, :, None, :]
                                     )[:, :, None, :, :, None]
+            del _expiphase
         elif transl_inv_JM:
             # Optimal center in Jae-Mo's implementation
             r0 = 0.5 * (centers[:, None, None, :] + centers[None, :, None, :] + self.cRvec[None, None, :, :])
             phase = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None, None, :, :])
             _expiphase = np.exp(1j * phase)
-            if lexp1: expiphase1 = _expiphase[:, :, :, :, None]
-            if lexp2:
-                phase_1 = -np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0)
-                expiphase2 = (np.exp(1j * phase_1)[:, :, :, :, None] * _expiphase[:, :, :, None, :]
-                              )[:, :, :, :, :, None]
-                del phase_1
-            del phase
-            del _expiphase
+            expiphase1 = _expiphase[:, :, :, :, None]
+            phase_1 = -np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0)
+            expiphase2 = (np.exp(1j * phase_1)[:, :, :, :, None] * _expiphase[:, :, :, None, :]
+                          )[:, :, :, :, :, None]
+            del phase_1, phase, _expiphase
         else:
-            if lexp1: expiphase1 = 1
-            if lexp2: expiphase2 = 1
+            expiphase1 = 1
+            expiphase2 = np.ones( (1,)*6 )
 
         def _reset_mat(key, phase, axis, Hermitean=True):
             if self.need_R_any(key):
@@ -248,8 +248,7 @@ class System_w90(System_R):
         _reset_mat('OO', expiphase2, (3, 4))
         _reset_mat('GG', expiphase2[:, :, :, :, :, :, None], (3, 4))
 
-        if lexp1: del expiphase1
-        if lexp2: del expiphase2
+        del expiphase1, expiphase2
 
         if transl_inv_JM:
             self.recenter_JM(r0, centers)
@@ -312,23 +311,3 @@ class System_w90(System_R):
                         centers[range(self.num_wann), :, None] * centers[range(self.num_wann), None, :])
                 self.set_R_mat('GG', 0.5 * (rc + rc.swapaxes(3, 4)),
                                add=True, Hermitean=True)
-
-    def wigner_seitz(self, mp_grid):
-        ws_search_size = np.array([1] * 3)
-        dist_dim = np.prod((ws_search_size + 1) * 2 + 1)
-        origin = divmod((dist_dim + 1), 2)[0] - 1
-        real_metric = self.real_lattice.dot(self.real_lattice.T)
-        mp_grid = np.array(mp_grid)
-        irvec = []
-        ndegen = []
-        for n in iterate3dpm(mp_grid * ws_search_size):
-            dist = []
-            for i in iterate3dpm((1, 1, 1) + ws_search_size):
-                ndiff = n - i * mp_grid
-                dist.append(ndiff.dot(real_metric.dot(ndiff)))
-            dist_min = np.min(dist)
-            if abs(dist[origin] - dist_min) < 1.e-7:
-                irvec.append(n)
-                ndegen.append(np.sum(abs(dist - dist_min) < 1.e-7))
-
-        return np.array(irvec), np.array(ndegen)

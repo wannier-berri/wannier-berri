@@ -114,7 +114,7 @@ class _Data_K(System, abc.ABC):
     def __init__(self, system, dK, grid, Kpoint=None, **parameters):
         self.system = system
         self.set_parameters(**parameters)
-        self.force_no_external_terms = system.force_no_external_terms
+        self.force_internal_terms_only = system.force_internal_terms_only
         self.grid = grid
         self.NKFFT = grid.FFT
         self.select_K = np.ones(self.nk, dtype=bool)

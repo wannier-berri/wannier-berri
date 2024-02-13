@@ -21,7 +21,6 @@ from common_systems import (
     system_Fe_FPLO_wcc,
     system_Fe_FPLO_wcc_ws,
     data_Te_ASE,
-    system_Te_ASE,
     system_Te_ASE_wcc,
     system_Te_sparse,
     system_GaAs_W90,

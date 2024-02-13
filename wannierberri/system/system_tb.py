@@ -12,6 +12,7 @@
 # ------------------------------------------------------------
 
 import numpy as np
+import os
 from termcolor import cprint
 from .system_R import System_R
 
@@ -35,7 +36,8 @@ class System_tb(System_R):
 
     def __init__(self, tb_file="wannier90_tb.dat",
                  **parameters):
-
+        if "name" not in parameters:
+            parameters["name"] = os.path.splitext(os.path.split(tb_file)[-1])[0]
         super().__init__(**parameters)
         for key in self.needed_R_matrices:
             if key not in ['Ham', 'AA']:
