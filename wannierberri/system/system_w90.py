@@ -64,7 +64,7 @@ class System_w90(System_R):
             npar=multiprocessing.cpu_count(),
             kmesh_tol=1e-7,
             bk_complete_tol=1e-5,
-            wcc_phase_findiff=False,
+            wcc_phase_fin_diff=True,
             **parameters):
 
         super().__init__(**parameters)
@@ -91,7 +91,7 @@ class System_w90(System_R):
 
         #######################################################################
 
-        use_wcc_phase_findiff = self.use_wcc_phase and wcc_phase_findiff
+        use_wcc_phase_findiff = self.use_wcc_phase and wcc_phase_fin_diff
         kpt_mp_grid = [
             tuple(k) for k in np.array(np.round(chk.kpt_latt * np.array(chk.mp_grid)[None, :]), dtype=int) % chk.mp_grid
         ]
@@ -422,7 +422,7 @@ class System_w90(System_R):
             self.set_R_mat('GG', GG_R, reset=True)
 
         self.do_at_end_of_init(
-                convert_convention=((not transl_inv_JM) and self.use_wcc_phase and (not wcc_phase_findiff)))
+                convert_convention=((not transl_inv_JM) and self.use_wcc_phase and (not wcc_phase_fin_diff)))
 
     ###########################################################################
 

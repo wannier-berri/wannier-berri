@@ -58,7 +58,7 @@ class System_R(System):
                  SHCqiao=False,
                  OSD=False,
                  use_ws=True,
-                 use_wcc_phase=False,
+                 use_wcc_phase=True,
                  npar=None,
                  _getFF=False,
                  **parameters):

@@ -54,6 +54,7 @@ class System_Phonon_QE(System_w90):
 
         System_R.__init__(self, **parameters)
         self.is_phonon = True
+        self.use_wcc_phase=False
         with open(seedname + ".dyn0", "r") as f:
             mp_grid = np.array(f.readline().split(), dtype=int)
             nqirr = int(f.readline().strip())
