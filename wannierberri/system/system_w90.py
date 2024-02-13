@@ -236,14 +236,13 @@ class System_w90(System_R):
         if self.need_R_any('AA'):
             AA_Rb = self.get_R_mat('AA')
             AA_R = np.sum(AA_Rb*expiphase1, axis=3)
+            self.set_R_mat('AA', AA_R, reset=True, Hermitean=True)
+
             # Naive finite-difference scheme
             if transl_inv_JM:
                 AA_R0 = AA_R.copy()
                 if not self.use_wcc_phase:  # Phase convention II
-                    AA_R[range(self.num_wann), range(self.num_wann), self.iR0] += centers
-                else:                      # Phase convention I
-                    pass
-            self.set_R_mat('AA', AA_R, reset=True, Hermitean=True)
+                    self.set_R_mat('AA', centers, R=[0,0,0], add=True)
 
             # Check wannier centers if Marzari & Vanderbilt formula is used
             if (transl_inv and not self.use_wcc_phase):
