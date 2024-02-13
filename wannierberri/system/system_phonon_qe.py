@@ -6,6 +6,7 @@ import multiprocessing
 from ..__utility import real_recip_lattice, FFT
 from . import System_w90
 from .system_R import System_R
+from .ws_dist import wigner_seitz
 from scipy import constants as const
 from ..__factors import Ry_eV
 
@@ -111,7 +112,7 @@ class System_Phonon_QE(System_w90):
         assert np.all(qpoints_found), ('some qpoints were not found in the files:\n' + '\n'.join(str(x / agrid))
                                        for x in np.where(np.logical_not(qpoints_found)))
         Ham_R = FFT(dynamical_matrix_q, axes=(0, 1, 2), numthreads=npar, fft=fft, destroy=False)
-        self.iRvec, self.Ndegen = self.wigner_seitz(mp_grid)
+        self.iRvec, self.Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=mp_grid)
         Ham_R = np.array([Ham_R[tuple(iR % mp_grid)] / nd for iR, nd in zip(self.iRvec, self.Ndegen)]) / np.prod(
             mp_grid)
         Ham_R = Ham_R.transpose((1, 2, 0)) * (

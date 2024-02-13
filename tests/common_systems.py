@@ -200,7 +200,7 @@ def system_Fe_W90_proj_set_spin(create_files_Fe_W90):
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj(create_files_Fe_W90):
-    return get_system_Fe_sym_W90(SHCqiao=True,use_wcc_phase=False)
+    return get_system_Fe_sym_W90(SHCqiao=True, use_wcc_phase=False, use_ws=False)
 
 
 @pytest.fixture(scope="session")
@@ -252,11 +252,10 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
     data_dir = create_files_GaAs_W90
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, morb=True, OSD=True,
+    system = wberri.system.System_w90(seedname, morb=True,
                                       transl_inv=False, spin=True,
                                       wcc_phase_fin_diff=False)
     system.set_symmetry(symmetries_GaAs)
-
     return system
 
 
@@ -395,7 +394,7 @@ def system_Chiral_OSD():
 def system_Haldane_PythTB_wrong_mat():
     """Create system for Haldane model using PythTB - contains a wrong R-matrix to test exception"""
     # Load system
-    system = wberri.system.System_PythTB(model_pythtb_Haldane, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_pythtb_Haldane)
     system.set_R_mat('abracadabra', system.get_R_mat('Ham') * 4)
     return system
 

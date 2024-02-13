@@ -52,7 +52,10 @@ class SystemRandom(System_R):
         if len(iRvec) < nRvec:
             print(f"WARNING : required number of R-vectors {nRvec} was not achieved. got only {len(iRvec)}")
         print(f"iRvec2={iRvec}")
-        self.iRvec = np.array(list(iRvec)[:nRvec])
+        iRvec = np.array(list(iRvec), dtype=int)
+        norm = np.linalg.norm(iRvec, axis=1)
+        srt = np.argsort(norm)
+        self.iRvec = iRvec[srt][:nRvec]
         print(f"iRvec3={iRvec}")
         np.random.shuffle(self.iRvec)
         print(f"iRvec4={self.iRvec}")

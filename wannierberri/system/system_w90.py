@@ -35,7 +35,7 @@ class System_w90(System_R):
         object that contains all Wannier90 input files and chk all together. If provided, overrides the `seedname`
     transl_inv : bool
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
-    transl_inv : bool
+    transl_inv_JM : bool
         translational-invariant scheme for diagonal and off-diagonal matrix elements for all matrices. Follows method of Jae-Mo Lihm
     guiding_centers : bool
         If True, enable overwriting the diagonal elements of the AA_R matrix at R=0 with the
@@ -81,7 +81,7 @@ class System_w90(System_R):
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         mp_grid = chk.mp_grid
         self._NKFFT_recommended = mp_grid
-        self.iRvec, Ndegen = wigner_seitz(self.recip_lattice, chk.mp_grid)
+        self.iRvec, Ndegen = wigner_seitz(real_lattice=self.recip_lattice, mp_grid=chk.mp_grid)
         self.nRvec0 = len(self.iRvec)
         self.num_wann = chk.num_wann
         self.wannier_centers_cart = w90data.wannier_centers
@@ -236,14 +236,14 @@ class System_w90(System_R):
             expiphase1 = 1
             expiphase2 = np.ones( (1,)*6 )
 
-        def _reset_mat(key, phase, axis, Hermitean=True):
+        def _reset_mat(key, phase, axis, Hermitian=True):
             if self.need_R_any(key):
                 XX_Rb = self.get_R_mat(key)
                 XX_R = np.sum(XX_Rb * phase, axis=axis)
-                self.set_R_mat(key, XX_R, reset=True, Hermitean=Hermitean)
+                self.set_R_mat(key, XX_R, reset=True, Hermitian=Hermitian)
 
         _reset_mat('AA', expiphase1, 3)
-        _reset_mat('BB', expiphase1, 3, Hermitean=False)
+        _reset_mat('BB', expiphase1, 3, Hermitian=False)
         _reset_mat('CC', expiphase2, (3, 4))
         _reset_mat('OO', expiphase2, (3, 4))
         _reset_mat('GG', expiphase2[:, :, :, :, :, :, None], (3, 4))
@@ -288,7 +288,7 @@ class System_w90(System_R):
                               ) * self.cRvec[None, None, :, None, :] * HH_R[:, :, :, None, None]
 
             CC_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
-            self.set_R_mat('CC', CC_R_add, add=True, Hermitean=True)
+            self.set_R_mat('CC', CC_R_add, add=True, Hermitian=True)
 
         # --- O_a(R) matrix --- #
         if 'OO' in self.needed_R_matrices:
@@ -298,7 +298,7 @@ class System_w90(System_R):
             else:  # Phase convention II
                 rc = 1.j * self.cRvec[None, None, :, :, None] * AA_R0[:, :, :, None, :]
             OO_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
-            self.set_R_mat('OO', OO_R_add, add=True, Hermitean=True)
+            self.set_R_mat('OO', OO_R_add, add=True, Hermitian=True)
 
         # --- G_bc(R) matrix --- #
         if 'GG' in self.needed_R_matrices:
@@ -310,4 +310,4 @@ class System_w90(System_R):
                 rc[self.range_wann, self.range_wann, self.iR0] += (
                         centers[range(self.num_wann), :, None] * centers[range(self.num_wann), None, :])
                 self.set_R_mat('GG', 0.5 * (rc + rc.swapaxes(3, 4)),
-                               add=True, Hermitean=True)
+                               add=True, Hermitian=True)

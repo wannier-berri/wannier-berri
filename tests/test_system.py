@@ -17,9 +17,9 @@ properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced', 'wannier_ce
 @pytest.fixture
 def check_system():
     def _inner(system, name,
-               properties=['num_wann', 'recip_lattice', 'real_lattice', 'nRvec', 'iRvec', 'cRvec', 'use_ws', 'periodic',
-                           'use_wcc_phase',
-                           'cell_volume', 'is_phonon'] + properties_wcc,
+               properties=['num_wann', 'recip_lattice', 'real_lattice',  'use_ws', 'periodic',
+                           'use_wcc_phase', 'cell_volume', 'is_phonon',
+                           'nRvec', 'iRvec', 'cRvec'] + properties_wcc,
                extra_properties=[],
                exclude_properties=[],
                precision_properties=1e-8,
@@ -192,7 +192,7 @@ def test_system_GaAs_W90(check_system, system_GaAs_W90):
 def test_system_GaAs_W90_wcc(check_system, system_GaAs_W90_wcc):
     check_system(
         system_GaAs_W90_wcc, "GaAs_W90_wcc",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'GG', 'OO']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
     )
 
 

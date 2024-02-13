@@ -65,7 +65,7 @@ class SystemKP(System_k):
                  k_vector_cartesian=True, finite_diff_dk=1e-4, **parameters):
         if "name" not in parameters:
             parameters["name"] = "kp"
-        super().__init__(force_only_internal_terms=True, **parameters)
+        super().__init__(force_internal_terms_only=True, **parameters)
         if kmax is not None:
             assert real_lattice is None, "kmax and real_lattice should not be set tigether"
             assert recip_lattice is None, "kmax and recip_lattice should not be set tigether"

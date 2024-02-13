@@ -138,9 +138,9 @@ class System_R(System):
             if self.has_R_mat(k):
                 return True
 
-    def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False, Hermitean=False):
+    def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False, Hermitian=False):
         """
-        Set real-space matrix specified by `key`. Either diagonal, specific R or full matix.  Useful for model calculations
+        Set real-space matrix specified by `key`. Either diagonal, specific R or full matrix.  Useful for model calculations
 
         Parameters
         ----------
@@ -152,14 +152,16 @@ class System_R(System):
             * `array(num_wann,num_wann,nRvec,...)` full spin matrix for all R
 
             `...` denotes the vector/tensor cartesian dimensions of the matrix element
+        diag : bool
+            set only the diagonal for a specific R-vector (if specified), or fpr R=[0,0,0]
         R : list(int)
             list of 3 integer values specifying R. if
         reset : bool
             allows to reset matrix if it is already set
         add : bool
             add matrix to the already existing
-        Hermitean : bool
-            force the value to be Hermitean (only if all vectors are set at once)
+        Hermitian : bool
+            force the value to be Hermitian (only if all vectors are set at once)
         """
         assert value.shape[0] == self.num_wann
         if diag:
@@ -173,7 +175,7 @@ class System_R(System):
             XX[:, :, self.iR(R)] = value
             self.set_R_mat(key, XX, reset=reset, add=add)
         else:
-            if Hermitean:
+            if Hermitian:
                 value = 0.5*(value+self.conj_XX_R(value))
             if key in self._XX_R:
                 if reset:
@@ -539,8 +541,9 @@ class System_R(System):
                 norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
                 assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
                 R_new['CC'] = CC_R_new
-            if self.has_R_mat_any(['SA', 'SHA', 'SR', 'SH', 'SHR']):
-                raise NotImplementedError("use_wcc_phase=True for spin current matrix elements not implemented")
+            unknown = set(self._XX_R.keys())-set(['Ham','AA','BB','CC','SS'])
+            if len(unknown)>0:
+                raise NotImplementedError(f"Convertion of conventions for {list(unknown)} is not implemented")
 
             for X in ['AA', 'BB', 'CC']:
                 if self.has_R_mat(X):
@@ -552,7 +555,7 @@ class System_R(System):
 
     def iR(self, R):
         R = np.array(np.round(R), dtype=int).tolist()
-        return self.iRvec.tolist().index([0, 0, 0])
+        return self.iRvec.tolist().index(R)
 
     @lazy_property.LazyProperty
     def reverseR(self):

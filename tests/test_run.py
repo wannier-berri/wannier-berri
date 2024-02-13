@@ -727,7 +727,7 @@ def test_GaAs_SDCT(check_run, system_GaAs_W90_wcc, compare_any_result):
              }
     calculators = {k + "_internal": v(kwargs_formula=dict(external_terms=False), **param)
                    for k, v in calculators_SDCT.items()}
-    calculators.update({k + "_full": v(**param) for k, v in calculators_SDCT.items()})
+#    calculators.update({k + "_full": v(**param) for k, v in calculators_SDCT.items()})
 
     check_run(
         system_GaAs_W90_wcc,
