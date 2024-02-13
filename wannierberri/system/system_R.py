@@ -135,7 +135,7 @@ class System_R(System):
             if self.has_R_mat(k):
                 return True
 
-    def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False):
+    def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False, Hermitean=False):
         """
         Set real-space matrix specified by `key`. Either diagonal, specific R or full matix.  Useful for model calculations
 
@@ -155,7 +155,8 @@ class System_R(System):
             allows to reset matrix if it is already set
         add : bool
             add matrix to the already existing
-
+        Hermitean : bool
+            force the value to be Hermitean (only if all vectors are set at once)
         """
         assert value.shape[0] == self.num_wann
         if diag:
@@ -169,6 +170,8 @@ class System_R(System):
             XX[:, :, self.iR(R)] = value
             self.set_R_mat(key, XX, reset=reset, add=add)
         else:
+            if Hermitean:
+                value = 0.5*(value+value.swapaxes((0,1)).conj())
             if key in self._XX_R:
                 if reset:
                     self._XX_R[key] = value
