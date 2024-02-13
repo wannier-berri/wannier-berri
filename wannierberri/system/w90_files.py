@@ -130,9 +130,8 @@ class CheckPoint:
     # matrix elements for Wannier interpolation, independently of the
     # finite-difference scheme used.
 
-    # --- A_a(q,b) matrix --- #
-    def get_AA_qb(self, mmn, transl_inv=False):
-
+    def get_AABB_qb(self, mmn, transl_inv=False, eig=None):
+        assert (not transl_inv) or eig is None
         AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
@@ -140,50 +139,38 @@ class CheckPoint:
                 ib_unique = mmn.ib_unique_map[ik, ib]
                 # Matrix < u_k | u_k+b > (mmn)
                 data = mmn.data[ik, ib]                   # Hamiltonian gauge
+                if eig is not None:
+                    data = data * eig.data[ik, :, None]  # Hamiltonian gauge (add energies)
                 AAW = self.wannier_gauge(data, ik, iknb)  # Wannier gauge
-
                 # Matrix for finite-difference schemes
                 AA_q_ik_ib = 1.j * AAW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
-
                 # Marzari & Vanderbilt formula for band-diagonal matrix elements
                 if transl_inv:
                     AA_q_ik_ib[range(self.num_wann), range(self.num_wann)] = -np.log(
                         AAW.diagonal()).imag[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, :]
-
                 AA_qb[ik, :, :, ib_unique, :] = AA_q_ik_ib
-
         return AA_qb
+
+
+    # --- A_a(q,b) matrix --- #
+
+    def get_AA_qb(self, mmn, transl_inv=False):
+        return self.get_AABB_qb(mmn, transl_inv=transl_inv)
 
     def get_AA_q(self, mmn, transl_inv=False):
         return self.get_AA_qb(mmn=mmn, transl_inv=transl_inv).sum(axis=3)
 
-
     # --- B_a(q,b) matrix --- #
-
-
     def get_BB_qb(self, mmn, eig):
+        return self.get_AABB_qb(mmn, eig=eig)
 
-        BB_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
-        for ik in range(self.num_kpts):
-            for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                ib_unique = mmn.ib_unique_map[ik, ib]
 
-                # Matrix < u_k | H_k | u_k+b > (eig * mmn)
-                data = mmn.data[ik, ib]                   # Hamiltonian gauge (only mmn)
-                data = data * eig.data[ik, :, None]       # Hamiltonian gauge (add energies)
-                BBW = self.wannier_gauge(data, ik, iknb)  # Wannier gauge
+    def get_CCOOGG_qb(self, mmn, uhu, antisym=True):
 
-                # Matrix for finite-difference schemes
-                BB_q_ik_ib = 1j * BBW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
-                BB_qb[ik, :, :, ib_unique, :] = BB_q_ik_ib
-
-        return BB_qb
-
-    # --- C_a(q,b1,b2) matrix --- #
-    def get_CC_qb(self, mmn, uhu):
-
-        CC_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
+        if antisym:
+            CC_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
+        else:
+            CC_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib1 in range(mmn.NNB):
                 iknb1 = mmn.neighbours[ik, ib1]
@@ -196,70 +183,33 @@ class CheckPoint:
                     data = uhu.data[ik, ib1, ib2]                 # Hamiltonian gauge
                     CCW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
 
-                    # Matrix for finite-difference schemes (takes antisymmetric piece only)
-                    CC_q_ik_ib = 1.j * CCW[:, :, None] * (
-                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                            mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
-                            - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
-
-                    CC_qb[ik, :, :, ib1_unique, ib2_unique, :] = CC_q_ik_ib
-
+                    if antisym:
+                        # Matrix for finite-difference schemes (takes antisymmetric piece only)
+                        CC_q_ik_ib = 1.j * CCW[:, :, None] * (
+                            mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
+                                mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
+                                - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
+                        CC_qb[ik, :, :, ib1_unique, ib2_unique, :] = CC_q_ik_ib
+                    else:
+                        # Matrix for finite-difference schemes (takes symmetric piece only)
+                        GG_q_ik_ib = CCW[:, :, None, None] * (
+                                         mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
+                                         mmn.bk_cart[ik, ib1, :, None] *
+                                         mmn.bk_cart[ik, ib2, None, :]) ) [None, None, :, :]
+                        CC_qb[ik, :, :, ib1_unique, ib2_unique, :, :] = GG_q_ik_ib
         return CC_qb
+
+    # --- C_a(q,b1,b2) matrix --- #
+    def get_CC_qb(self, mmn, uhu):
+        return self.get_CCOOGG_qb(mmn, uhu)
 
     # --- O_a(q,b1,b2) matrix --- #
     def get_OO_qb(self, mmn, uiu):
-
-        OO_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
-        for ik in range(self.num_kpts):
-            for ib1 in range(mmn.NNB):
-                iknb1 = mmn.neighbours[ik, ib1]
-                ib1_unique = mmn.ib_unique_map[ik, ib1]
-                for ib2 in range(mmn.NNB):
-                    iknb2 = mmn.neighbours[ik, ib2]
-                    ib2_unique = mmn.ib_unique_map[ik, ib2]
-
-                    # Matrix < u_k+b1 | I | u_k+b2 > (uIu)
-                    data = uiu.data[ik, ib1, ib2]                 # Hamiltonian gauge
-                    OOW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
-
-                    # Matrix for finite-difference schemes (takes antisymmetric piece only)
-                    OO_q_ik_ib = 1.j * OOW[:, :, None] * (
-                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                            mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
-                            - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
-
-                    OO_qb[ik, :, :, ib1_unique, ib2_unique, :] = OO_q_ik_ib
-
-        return OO_qb
+        return self.get_CCOOGG_qb(mmn, uiu)
 
     # Symmetric G_bc(q,b1,b2) matrix
     def get_GG_qb(self, mmn, uiu):
-
-        GG_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3, 3), dtype=complex)
-        for ik in range(self.num_kpts):
-            for ib1 in range(mmn.NNB):
-                iknb1 = mmn.neighbours[ik, ib1]
-                ib1_unique = mmn.ib_unique_map[ik, ib1]
-                for ib2 in range(mmn.NNB):
-                    iknb2 = mmn.neighbours[ik, ib2]
-                    ib2_unique = mmn.ib_unique_map[ik, ib2]
-
-                    # Matrix < u_k+b1 | I | u_k+b2 > (uIu)
-                    data = uiu.data[ik, ib1, ib2]                 # Hamiltonian gauge
-                    GGW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
-
-                    # Matrix for finite-difference schemes (takes symmetric piece only)
-                    GG_q_ik_ib = GGW[:, :, None, None] * (
-                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                            mmn.bk_cart[ik, ib1, :, None] * mmn.bk_cart[ik, ib2, None, :]))[None, None, :, :]
-
-                    GG_qb[ik, :, :, ib1_unique, ib2_unique, :, :] = GG_q_ik_ib
-
-        # G_bc is symmetric in the cartesian indices
-        GG_qb = 0.5 * (GG_qb + GG_qb.swapaxes(5, 6))
-
-        return GG_qb
-
+        return self.get_CCOOGG_qb(mmn, uiu, antisym=False)
     ###########################################################################
 
     def get_SA_q(self, siu, mmn):
