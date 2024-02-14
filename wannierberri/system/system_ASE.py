@@ -48,7 +48,7 @@ class System_ASE(System_R):
         mp_grid = ase_wannier.kptgrid
 
         if not ase_R_vectors:
-            self.iRvec, self.Ndegen = wigner_seitz(real_lattice=self.recip_lattice, mp_grid=mp_grid)
+            self.iRvec, self.Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=mp_grid)
         else:  # enable to do ase-like R-vectors
             N1, N2, N3 = (mp_grid - 1) // 2
             self.iRvec = np.array(

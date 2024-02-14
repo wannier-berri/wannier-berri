@@ -258,6 +258,50 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
     system.set_symmetry(symmetries_GaAs)
     return system
 
+@pytest.fixture(scope="session")
+def system_GaAs_W90_wccFD(create_files_GaAs_W90):
+    """Create system for GaAs using Wannier90 data with wcc phases"""
+
+    data_dir = create_files_GaAs_W90
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs")
+    system = wberri.system.System_w90(seedname, morb=True,
+                                      transl_inv=True, spin=True,
+                                      OSD=True,
+                                      wcc_phase_fin_diff=True)
+    system.set_symmetry(symmetries_GaAs)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90_wccJM(create_files_GaAs_W90):
+    """Create system for GaAs using Wannier90 data with wcc phases"""
+
+    data_dir = create_files_GaAs_W90
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs")
+    system = wberri.system.System_w90(seedname, morb=True,
+                                      transl_inv_JM=True, spin=True,
+                                      OSD=True,
+                                      wcc_phase_fin_diff=False)
+    system.set_symmetry(symmetries_GaAs)
+    return system
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90_JM(create_files_GaAs_W90):
+    """Create system for GaAs using Wannier90 data with wcc phases"""
+
+    data_dir = create_files_GaAs_W90
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs")
+    system = wberri.system.System_w90(seedname, morb=True,
+                                      transl_inv_JM=True, spin=True,
+                                      OSD=True,
+                                      use_wcc_phase=False,
+                                      wcc_phase_fin_diff=False)
+    system.set_symmetry(symmetries_GaAs)
+    return system
+
 
 def get_system_GaAs_tb(method=None, use_wcc_phase=True, use_ws=False, symmetrize=True, berry=True):
     """Create system for GaAs using sym_tb.dat data"""

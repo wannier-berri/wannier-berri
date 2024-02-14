@@ -81,7 +81,7 @@ class System_w90(System_R):
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         mp_grid = chk.mp_grid
         self._NKFFT_recommended = mp_grid
-        self.iRvec, Ndegen = wigner_seitz(real_lattice=self.recip_lattice, mp_grid=chk.mp_grid)
+        self.iRvec, Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=chk.mp_grid)
         self.nRvec0 = len(self.iRvec)
         self.num_wann = chk.num_wann
         self.wannier_centers_cart = w90data.wannier_centers
@@ -234,11 +234,12 @@ class System_w90(System_R):
             del phase_1, phase, _expiphase
         else:
             expiphase1 = 1
-            expiphase2 = np.ones( (1,)*6 )
+            expiphase2 = 1
 
         def _reset_mat(key, phase, axis, Hermitian=True):
             if self.need_R_any(key):
                 XX_Rb = self.get_R_mat(key)
+                phase = np.reshape(phase,np.shape(phase)+(1,)*(XX_Rb.ndim-np.ndim(phase)))
                 XX_R = np.sum(XX_Rb * phase, axis=axis)
                 self.set_R_mat(key, XX_R, reset=True, Hermitian=Hermitian)
 
@@ -246,7 +247,7 @@ class System_w90(System_R):
         _reset_mat('BB', expiphase1, 3, Hermitian=False)
         _reset_mat('CC', expiphase2, (3, 4))
         _reset_mat('OO', expiphase2, (3, 4))
-        _reset_mat('GG', expiphase2[:, :, :, :, :, :, None], (3, 4))
+        _reset_mat('GG', expiphase2, (3, 4))
 
         del expiphase1, expiphase2
 
@@ -258,11 +259,15 @@ class System_w90(System_R):
 
     ###########################################################################
     def recenter_JM(self, r0, centers):
+        known = ['Ham','AA','BB','CC','OO','GG','SS']
+        unknown = set(self._XX_R.keys())-set(known)
+        if len (unknown)>0:
+            raise NotImplementedError(f"transl_inv_JM for {list(unknown)} is not implemented")
         # --- A_a(R) matrix --- #
         if self.need_R_any('AA'):
             AA_R0 = self.get_R_mat('AA').copy()
             if not self.use_wcc_phase:  # Phase convention II
-                self.set_R_mat('AA', centers, R=[0, 0, 0], add=True)
+                self.set_R_mat('AA', centers, R=[0, 0, 0], add=True, diag=True)
         # --- B_a(R) matrix --- #
         if 'BB' in self.needed_R_matrices:
             BB_R0 = self.get_R_mat('BB').copy()

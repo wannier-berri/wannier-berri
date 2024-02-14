@@ -13,7 +13,6 @@ from wannierberri.system.system_tb import System_tb
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced', 'wannier_centers_cart_wcc_phase',
                   'diff_wcc_cart', 'diff_wcc_red']  # , 'cRvec_p_wcc']
 
-
 @pytest.fixture
 def check_system():
     def _inner(system, name,
@@ -195,6 +194,23 @@ def test_system_GaAs_W90_wcc(check_system, system_GaAs_W90_wcc):
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
     )
 
+def test_system_GaAs_W90_wccFD(check_system, system_GaAs_W90_wccFD):
+    check_system(
+        system_GaAs_W90_wccFD, "GaAs_W90_wccFD",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'OO', 'GG']
+    )
+
+def test_system_GaAs_W90_wccJM(check_system, system_GaAs_W90_wccJM):
+    check_system(
+        system_GaAs_W90_wccJM, "GaAs_W90_wccJM",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'OO', 'GG'],
+    )
+
+def test_system_GaAs_W90_JM(check_system, system_GaAs_W90_JM):
+    check_system(
+        system_GaAs_W90_JM, "GaAs_W90_JM",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'OO', 'GG'],
+    )
 
 def test_system_GaAs_tb(check_system, system_GaAs_tb):
     check_system(
