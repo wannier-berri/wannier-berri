@@ -263,56 +263,73 @@ class System_w90(System_R):
         unknown = set(self._XX_R.keys())-set(known)
         if len (unknown)>0:
             raise NotImplementedError(f"transl_inv_JM for {list(unknown)} is not implemented")
+        if self.use_wcc_phase:
+            self.recenter_JM_I(r0,centers)
+        else:
+            self.recenter_JM_II(r0,centers)
+
+    def recenter_JM_I(self, r0, centers):
+        """convention I"""
         # --- A_a(R) matrix --- #
         if self.need_R_any('AA'):
             AA_R0 = self.get_R_mat('AA').copy()
-            if not self.use_wcc_phase:  # Phase convention II
-                self.set_R_mat('AA', centers, R=[0, 0, 0], add=True, diag=True)
         # --- B_a(R) matrix --- #
-        if 'BB' in self.needed_R_matrices:
+        if self.need_R_any('BB'):
             BB_R0 = self.get_R_mat('BB').copy()
-            # Original matrix
             HH_R = self.get_R_mat('Ham')
-            if self.use_wcc_phase:  # Phase convention I
-                rc = (r0 - self.cRvec[None, None, :, :] - centers[None, :, None, :]) * HH_R[:, :, :, None]
-            else:  # Phase convention II
-                rc = (r0 - self.cRvec[None, None, :, :]) * HH_R[:, :, :, None]
+            rc = (r0 - self.cRvec[None, None, :, :] - centers[None, :, None, :]) * HH_R[:, :, :, None]
             self.set_R_mat('BB', rc, add=True)
-
         # --- C_a(R) matrix --- #
-        if 'CC' in self.needed_R_matrices:
+        if self.need_R_any('CC'):
             assert BB_R0 is not None, 'Recentered B matrix is needed in Jae-Mo`s implementation of C'
             BB_R0_conj = self.conj_XX_R(BB_R0)
-            if self.use_wcc_phase:  # Phase convention I
-                rc = 1j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None,
-                                                                                     :]
-            else:  # Phase convention II
-                rc = 1j * r0[:, :, :, :, None] * BB_R0[:, :, :, None, :]
-                rc -= 1j * (r0[:, :, :, :, None] - self.cRvec[None, None, :, :, None]) * BB_R0_conj[:, :, :, None, :]
-                rc -= 0.5j * (centers[:, None, None, :, None] + centers[None, :, None, :, None]
-                              ) * self.cRvec[None, None, :, None, :] * HH_R[:, :, :, None, None]
-
+            rc = 1j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None,
             CC_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
             self.set_R_mat('CC', CC_R_add, add=True, Hermitian=True)
-
         # --- O_a(R) matrix --- #
-        if 'OO' in self.needed_R_matrices:
+        if self.need_R_any('OO'):
             assert AA_R0 is not None, 'Recentered A matrix is needed in Jae-Mo`s implementation of O'
-            if self.use_wcc_phase:  # Phase convention I
-                rc = 1.j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * AA_R0[:, :, :, None, :]
-            else:  # Phase convention II
-                rc = 1.j * self.cRvec[None, None, :, :, None] * AA_R0[:, :, :, None, :]
+            rc = 1.j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * AA_R0[:, :, :, None, :]
             OO_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
             self.set_R_mat('OO', OO_R_add, add=True, Hermitian=True)
 
         # --- G_bc(R) matrix --- #
-        if 'GG' in self.needed_R_matrices:
+        if self.need_R_any('GG'):
+            pass
+
+    def recenter_JM_II(self, r0, centers):
+        """convention II - will be eventually removed"""
+        # --- A_a(R) matrix --- #
+        if self.need_R_any('AA'):
+            AA_R0 = self.get_R_mat('AA').copy()
+            self.set_R_mat('AA', centers, R=[0, 0, 0], add=True, diag=True)
+        # --- B_a(R) matrix --- #
+        if self.need_R_any('BB'):
+            BB_R0 = self.get_R_mat('BB').copy()
+            HH_R = self.get_R_mat('Ham')
+            rc = (r0 - self.cRvec[None, None, :, :]) * HH_R[:, :, :, None]
+            self.set_R_mat('BB', rc, add=True)
+        # --- C_a(R) matrix --- #
+        if self.need_R_any('CC'):
+            assert BB_R0 is not None, 'Recentered B matrix is needed in Jae-Mo`s implementation of C'
+            BB_R0_conj = self.conj_XX_R(BB_R0)
+            rc = 1j * r0[:, :, :, :, None] * BB_R0[:, :, :, None, :]
+            rc -= 1j * (r0[:, :, :, :, None] - self.cRvec[None, None, :, :, None]) * BB_R0_conj[:, :, :, None, :]
+            rc -= 0.5j * (centers[:, None, None, :, None] + centers[None, :, None, :, None]
+                          ) * self.cRvec[None, None, :, None, :] * HH_R[:, :, :, None, None]
+            CC_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
+            self.set_R_mat('CC', CC_R_add, add=True, Hermitian=True)
+        # --- O_a(R) matrix --- #
+        if self.need_R_any('OO'):
+            assert AA_R0 is not None, 'Recentered A matrix is needed in Jae-Mo`s implementation of O'
+            rc = 1.j * self.cRvec[None, None, :, :, None] * AA_R0[:, :, :, None, :]
+            OO_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
+            self.set_R_mat('OO', OO_R_add, add=True, Hermitian=True)
+        # --- G_bc(R) matrix --- #
+        if self.need_R_any('GG'):
             assert AA_R0 is not None, 'Recentered A matrix is needed in Jae-Mo`s implementation of G'
-            if self.use_wcc_phase:  # Phase convention I
-                pass
-            else:  # Phase convention II
-                rc = (centers[:, None, None, :, None] + centers[None, :, None, :, None]) * AA_R0[:, :, :, None, :]
-                rc[self.range_wann, self.range_wann, self.iR0] += (
-                        centers[range(self.num_wann), :, None] * centers[range(self.num_wann), None, :])
-                self.set_R_mat('GG', 0.5 * (rc + rc.swapaxes(3, 4)),
-                               add=True, Hermitian=True)
+            rc = (centers[:, None, None, :, None] + centers[None, :, None, :, None]) * AA_R0[:, :, :, None, :]
+            rc[self.range_wann, self.range_wann, self.iR0] += (
+                    centers[range(self.num_wann), :, None] * centers[range(self.num_wann), None, :])
+            self.set_R_mat('GG', 0.5 * (rc + rc.swapaxes(3, 4)),
+                           add=True, Hermitian=True)
