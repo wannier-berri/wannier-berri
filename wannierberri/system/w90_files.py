@@ -15,12 +15,12 @@
 import multiprocessing
 import gc
 import functools
+from functools import cached_property
 from scipy.constants import physical_constants
 from time import time
 from itertools import islice
 from copy import copy
 import numpy as np
-import lazy_property
 from .disentanglement import disentangle
 from ..__utility import FortranFileR, alpha_A, beta_A
 
@@ -407,7 +407,7 @@ class Wannier90data:
     def iter_kpts(self):
         return range(self.chk.num_kpts)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def wannier_centers(self):
         return self.chk.wannier_centers
 

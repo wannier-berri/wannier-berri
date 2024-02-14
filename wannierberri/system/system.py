@@ -12,7 +12,6 @@
 # ------------------------------------------------------------
 
 import numpy as np
-import lazy_property
 from functools import cached_property
 from ..symmetry import Group
 from ..__utility import real_recip_lattice
@@ -98,7 +97,7 @@ class System:
         self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
 
-    @lazy_property.LazyProperty
+    @cached_property
     def cell_volume(self):
         return abs(np.linalg.det(self.real_lattice))
 

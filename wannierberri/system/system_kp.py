@@ -18,9 +18,6 @@ from ..__utility import real_recip_lattice
 from .__finite_differences import find_shells, Derivative3D
 
 
-# from lazy_property import LazyProperty
-
-
 class SystemKP(System_k):
     r"""
     A system to describe k.p Hamiltonians.

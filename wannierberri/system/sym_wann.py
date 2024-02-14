@@ -3,18 +3,13 @@ import spglib
 from .sym_wann_orbitals import Orbitals
 from irrep.spacegroup import SymmetryOperation
 from collections import defaultdict
-import lazy_property
+from functools import cached_property
 import copy
 
 
 class SymWann():
 
-    default_parameters = {
-            'soc': False,
-            'magmom': None,
-            'DFT_code': 'qe'}
-
-    __doc__ = """
+    """
     Symmetrize wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
 
     Parameters
@@ -34,27 +29,26 @@ class SymWann():
 
         If there is hybrid orbital, grouping the other orbitals.
 
-        eg: ``['Fe':sp3d2;t2g]`` Plese don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
+        eg: ``['Fe':sp3d2;t2g]`` Please don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
 
-            ``['X':sp;p2]`` Plese don't use ``['X':sp;pz,py]``
+            ``['X':sp;p2]`` Please don't use ``['X':sp;pz,py]``
     iRvec: array
         List of R vectors.
     XX_R: dic
         Matrix before symmetrization.
     soc: bool
-        Spin orbital coupling. Default: ``{soc}``
+        Spin orbital coupling.
     magmom: 2D array
-        Magnetic momentom of each atoms. Default ``{magmom}``
+        Magnetic momentom of each atoms.
     DFT_code: str
-        ``'qe'`` or ``'vasp'``   Default: ``{DFT_code}``
+        ``'qe'`` or ``'vasp'``
         vasp and qe have different orbitals arrangement with SOC.
 
     Return
     ------
     Dictionary of matrix after symmetrization.
     Updated list of R vectors.
-
-    """.format(**default_parameters)
+    """
 
     def __init__(
             self,
@@ -67,13 +61,14 @@ class SymWann():
             XX_R,
             wannier_centers_cart=None,
             use_wcc_phase=True,
-            **parameters):
+            soc=False,
+            magmom=None,
+            DFT_code='qe'
+    ):
 
-        for param in self.default_parameters:
-            if param in parameters:
-                vars(self)[param] = parameters[param]
-            else:
-                vars(self)[param] = self.default_parameters[param]
+        self.soc=soc
+        self.magmom=magmom
+        self.DFT_code=DFT_code
         self.use_wcc_phase = use_wcc_phase
         self.wannier_centers_cart = wannier_centers_cart
         self.iRvec = [tuple(R) for R in iRvec]
@@ -696,27 +691,27 @@ class WannAtomInfo():
 # TODO : move to irrep?
 class SymmetryOperation_loc(SymmetryOperation):
 
-    @lazy_property.LazyProperty
+    @cached_property
     def rotation_cart(self):
         return np.dot(np.dot(self._lattice_T, self.rotation), self._lattice_inv_T)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def translation_cart(self):
         return np.dot(np.dot(self._lattice_T, self.translation), self._lattice_inv_T)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def det_cart(self):
         return np.linalg.det(self.rotation_cart)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def det(self):
         return np.linalg.det(self.rotation)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def _lattice_inv_T(self):
         return np.linalg.inv(np.transpose(self.Lattice))
 
-    @lazy_property.LazyProperty
+    @cached_property
     def _lattice_T(self):
         return np.transpose(self.Lattice)
 

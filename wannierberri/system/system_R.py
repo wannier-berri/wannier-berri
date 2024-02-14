@@ -1,6 +1,5 @@
 import numpy as np
 import os
-import lazy_property
 from functools import cached_property
 from termcolor import cprint
 from collections import defaultdict
@@ -557,7 +556,7 @@ class System_R(System):
         R = np.array(np.round(R), dtype=int).tolist()
         return self.iRvec.tolist().index(R)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def reverseR(self):
         """indices of R vectors that has -R in irvec, and the indices of the corresponding -R vectors."""
         mapping = np.all(self.iRvec[:, None, :] + self.iRvec[None, :, :] == 0, axis=2)

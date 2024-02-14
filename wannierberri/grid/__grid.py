@@ -14,7 +14,7 @@
 import numpy as np
 from time import time
 import abc
-import lazy_property
+from functools import cached_property
 from .. import symmetry
 from .__Kpoint import KpointBZparallel
 from ..__utility import one2three
@@ -34,7 +34,7 @@ class GridAbstract(abc.ABC):
 #    def recip_lattice(self):
 #        return self.symgroup.recip_lattice
 
-    @lazy_property.LazyProperty
+    @cached_property
     def points_FFT(self):
         dkx, dky, dkz = 1. / self.FFT
         return np.array(
