@@ -283,7 +283,7 @@ class System_w90(System_R):
         if self.need_R_any('CC'):
             assert BB_R0 is not None, 'Recentered B matrix is needed in Jae-Mo`s implementation of C'
             BB_R0_conj = self.conj_XX_R(BB_R0)
-            rc = 1j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None,
+            rc = 1j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None,:]
             CC_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
             self.set_R_mat('CC', CC_R_add, add=True, Hermitian=True)
         # --- O_a(R) matrix --- #
