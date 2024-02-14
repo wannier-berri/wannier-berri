@@ -106,9 +106,8 @@ class _Data_K(System, abc.ABC):
                  fftlib='fftw',
                  npar_k=1,
                  random_gauge=False,
-                 degen_thresh_random_gauge=1e-4,
-                 _FF_antisym=False,
-                 _CCab_antisym=False):
+                 degen_thresh_random_gauge=1e-4
+                 ):
         self.system = system
         self.Emin = Emin
         self.Emax = Emax
@@ -600,8 +599,13 @@ class _Data_K(System, abc.ABC):
 class Data_K_R(_Data_K, System_R):
     """ The Data_K class for systems defined by R-space matrix elements (Wannier/TB)"""
 
-    def __init__(self, system, dK, grid, **parameters):
+    def __init__(self, system, dK, grid,
+                 _FF_antisym=False,
+                 _CCab_antisym=False,
+                 **parameters):
         super().__init__(system, dK, grid, **parameters)
+        self._FF_antisym = _FF_antisym
+        self._CCab_antisym = _CCab_antisym
 
         self.cRvec_wcc = self.system.cRvec_p_wcc
 
