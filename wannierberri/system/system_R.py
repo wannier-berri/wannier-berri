@@ -84,7 +84,7 @@ class System_R(System):
             self.needed_R_matrices.update(['AA', 'BB', 'CC', 'GG', 'OO'])
 
         if self.force_internal_terms_only:
-            self.needed_R_matrices = self.needed_R_matrices.intersection(['Ham','SS'])
+            self.needed_R_matrices = self.needed_R_matrices.intersection(['Ham', 'SS'])
 
         self._XX_R = dict()
 
@@ -175,7 +175,7 @@ class System_R(System):
             self.set_R_mat(key, XX, reset=reset, add=add)
         else:
             if Hermitian:
-                value = 0.5*(value+self.conj_XX_R(value))
+                value = 0.5 * (value + self.conj_XX_R(value))
             if key in self._XX_R:
                 if reset:
                     self._XX_R[key] = value
@@ -540,8 +540,8 @@ class System_R(System):
                 norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
                 assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
                 R_new['CC'] = CC_R_new
-            unknown = set(self._XX_R.keys())-set(['Ham','AA','BB','CC','SS'])
-            if len(unknown)>0:
+            unknown = set(self._XX_R.keys()) - set(['Ham', 'AA', 'BB', 'CC', 'SS'])
+            if len(unknown) > 0:
                 raise NotImplementedError(f"Convertion of conventions for {list(unknown)} is not implemented")
 
             for X in ['AA', 'BB', 'CC']:

@@ -38,7 +38,7 @@ def test_utility_FFT_R_to_k():
             util.FFT_R_to_k(iRvec, NKFFT, num_wann, lib=lib)
 
     shape = (num_wann, num_wann) + NKFFT + (3, 3, 3)
-    AAA_K = np.random.random(shape) + 1j*np.random.random(shape)
+    AAA_K = np.random.random(shape) + 1j * np.random.random(shape)
 
     util.FFT_R_to_k(iRvec, NKFFT, num_wann, lib="numpy").transform(AAA_K)
     with pytest.raises(RuntimeError, match="FFT.transform should not be called for slow FT"):

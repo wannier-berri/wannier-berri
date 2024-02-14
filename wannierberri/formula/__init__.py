@@ -3,6 +3,7 @@ import abc
 """some basic classes to construct formulae for evaluation"""
 from ..symmetry import transform_ident, transform_odd, TransformProduct
 
+
 class Formula(abc.ABC):
     @abc.abstractmethod
     def __init__(self, data_K, internal_terms=True, cross_terms=True, external_terms=True):
@@ -146,6 +147,7 @@ class FormulaProduct(Formula_ln):
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
+
 
 from . import covariant
 from . import covariant_basic

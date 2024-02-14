@@ -85,7 +85,7 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
 
     k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
     path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
-    print ("k-pointsd",path.K_list)
+    print("k-pointsd", path.K_list)
 
 
     result = check_run(
@@ -146,6 +146,7 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
         cut_k=True,
         show_fig=False)
 
+
 def test_tabulate_fail(system_Haldane_PythTB):
     k_nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
     path = wberri.Path(system_Haldane_PythTB, k_nodes=k_nodes, dk=1.0)
@@ -159,7 +160,7 @@ def test_tabulate_fail(system_Haldane_PythTB):
     calculators_fail = {"tabulate_grid": wberri.calculators.TabulatorAll(quantities,
                                                                          ibands=[0],
                                                                          mode="grid"),
-                        "ahc": wberri.calculators.static.AHC(Efermi=np.array([0,1,2]))}
+                        "ahc": wberri.calculators.static.AHC(Efermi=np.array([0, 1, 2]))}
     for key, val in calculators_fail.items():
         with pytest.raises(ValueError,
                            match=f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path"):

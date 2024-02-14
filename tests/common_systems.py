@@ -138,7 +138,7 @@ def system_Fe_W90_sparse(create_files_Fe_W90, system_Fe_W90):
     params = system_Fe_W90.get_sparse({X: -1 for X in system_Fe_W90._XX_R.keys()})
     system = wberri.system.SystemSparse(**params)
 
-    print ("use_wcc",params['use_wcc_phase'], system.use_wcc_phase)
+    print("use_wcc", params['use_wcc_phase'], system.use_wcc_phase)
     system.set_symmetry(symmetries_Fe)
     return system
 
@@ -258,6 +258,7 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
     system.set_symmetry(symmetries_GaAs)
     return system
 
+
 @pytest.fixture(scope="session")
 def system_GaAs_W90_wccFD(create_files_GaAs_W90):
     """Create system for GaAs using Wannier90 data with wcc phases"""
@@ -286,6 +287,7 @@ def system_GaAs_W90_wccJM(create_files_GaAs_W90):
                                       wcc_phase_fin_diff=False)
     system.set_symmetry(symmetries_GaAs)
     return system
+
 
 @pytest.fixture(scope="session")
 def system_GaAs_W90_JM(create_files_GaAs_W90):
@@ -398,7 +400,6 @@ def system_Haldane_TBmodels():
     system = wberri.system.System_TBmodels(model_tbmodels_Haldane)
     system.set_symmetry(["C3z"])
     return system
-
 
 
 # Haldane model from PythTB

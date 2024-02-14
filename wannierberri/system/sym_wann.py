@@ -66,9 +66,9 @@ class SymWann():
             DFT_code='qe'
     ):
 
-        self.soc=soc
-        self.magmom=magmom
-        self.DFT_code=DFT_code
+        self.soc = soc
+        self.magmom = magmom
+        self.DFT_code = DFT_code
         self.use_wcc_phase = use_wcc_phase
         self.wannier_centers_cart = wannier_centers_cart
         self.iRvec = [tuple(R) for R in iRvec]

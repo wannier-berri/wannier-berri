@@ -40,9 +40,9 @@ class System_ASE(System_R):
                 **parameters):
         if "name" not in parameters:
             parameters["name"] = "ASE"
-        super().__init__( force_internal_terms_only=True,
-                          use_wcc_phase=True,
-                          **parameters)
+        super().__init__(force_internal_terms_only=True,
+                         use_wcc_phase=True,
+                         **parameters)
         ase_wannier.translate_all_to_cell()
         self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=np.array(ase_wannier.unitcell_cc))
         mp_grid = ase_wannier.kptgrid

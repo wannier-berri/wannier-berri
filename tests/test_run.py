@@ -3,7 +3,6 @@ import os
 
 import numpy as np
 import pytest
-import pickle
 from pytest import approx
 
 import wannierberri as wberri
@@ -11,7 +10,7 @@ from wannierberri import calculators as calc
 from wannierberri.smoother import FermiDiracSmoother
 from wannierberri.result import EnergyResult
 
-from common import OUTPUT_DIR, REF_DIR
+from common import OUTPUT_DIR
 from common_comparers import compare_quant
 from common_systems import (
     Efermi_Fe,
@@ -857,21 +856,6 @@ def test_Haldane_TBmodels(check_run, system_Haldane_TBmodels, compare_any_result
     )
 
 
-def test_Haldane_PythTB(check_run, system_Haldane_PythTB, compare_any_result):
-    param = {'Efermi': Efermi_Haldane}
-    calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
-
-    check_run(
-        system_Haldane_PythTB,
-        calculators,
-        fout_name="berry_Haldane_tbmodels",
-        suffix="pythtb-run",
-        use_symmetry=False,
-        grid_param={
-            'NK': [10, 10, 1],
-            'NKFFT': [5, 5, 1]
-        }
-    )
 
 def test_Haldane_PythTB_sym(check_run, system_Haldane_PythTB, compare_any_result):
     param = {'Efermi': Efermi_Haldane}

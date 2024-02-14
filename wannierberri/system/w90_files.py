@@ -154,6 +154,7 @@ class CheckPoint:
 
     # --- A_a(q,b) matrix --- #
 
+
     def get_AA_qb(self, mmn, transl_inv=False):
         return self.get_AABB_qb(mmn, transl_inv=transl_inv)
 
@@ -194,8 +195,8 @@ class CheckPoint:
                         # Matrix for finite-difference schemes (takes symmetric piece only)
                         GG_q_ik_ib = CCW[:, :, None, None] * (
                                          mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                                         mmn.bk_cart[ik, ib1, :, None] *
-                                         mmn.bk_cart[ik, ib2, None, :]) ) [None, None, :, :]
+                                             mmn.bk_cart[ik, ib1, :, None] *
+                                             mmn.bk_cart[ik, ib2, None, :]))[None, None, :, :]
                         CC_qb[ik, :, :, ib1_unique, ib2_unique, :, :] = GG_q_ik_ib
         return CC_qb
 

@@ -239,7 +239,7 @@ class System_w90(System_R):
         def _reset_mat(key, phase, axis, Hermitian=True):
             if self.need_R_any(key):
                 XX_Rb = self.get_R_mat(key)
-                phase = np.reshape(phase,np.shape(phase)+(1,)*(XX_Rb.ndim-np.ndim(phase)))
+                phase = np.reshape(phase, np.shape(phase) + (1,) * (XX_Rb.ndim - np.ndim(phase)))
                 XX_R = np.sum(XX_Rb * phase, axis=axis)
                 self.set_R_mat(key, XX_R, reset=True, Hermitian=Hermitian)
 
@@ -259,14 +259,14 @@ class System_w90(System_R):
 
     ###########################################################################
     def recenter_JM(self, r0, centers):
-        known = ['Ham','AA','BB','CC','OO','GG','SS']
-        unknown = set(self._XX_R.keys())-set(known)
-        if len (unknown)>0:
+        known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS']
+        unknown = set(self._XX_R.keys()) - set(known)
+        if len(unknown) > 0:
             raise NotImplementedError(f"transl_inv_JM for {list(unknown)} is not implemented")
         if self.use_wcc_phase:
-            self.recenter_JM_I(r0,centers)
+            self.recenter_JM_I(r0, centers)
         else:
-            self.recenter_JM_II(r0,centers)
+            self.recenter_JM_II(r0, centers)
 
     def recenter_JM_I(self, r0, centers):
         """convention I"""
@@ -283,7 +283,7 @@ class System_w90(System_R):
         if self.need_R_any('CC'):
             assert BB_R0 is not None, 'Recentered B matrix is needed in Jae-Mo`s implementation of C'
             BB_R0_conj = self.conj_XX_R(BB_R0)
-            rc = 1j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None,:]
+            rc = 1j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None, :]
             CC_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
             self.set_R_mat('CC', CC_R_add, add=True, Hermitian=True)
         # --- O_a(R) matrix --- #
