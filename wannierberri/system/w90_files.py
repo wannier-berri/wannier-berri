@@ -130,9 +130,12 @@ class CheckPoint:
     # matrix elements for Wannier interpolation, independently of the
     # finite-difference scheme used.
 
-    def get_AABB_qb(self, mmn, transl_inv=False, eig=None):
+    def get_AABB_qb(self, mmn, transl_inv=False, eig=None, phase=None, sum_b=False):
         assert (not transl_inv) or eig is None
-        AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
+        if sum_b:
+            AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+        else:
+            AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
@@ -148,30 +151,37 @@ class CheckPoint:
                 if transl_inv:
                     AA_q_ik_ib[range(self.num_wann), range(self.num_wann)] = -np.log(
                         AAW.diagonal()).imag[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, :]
-                AA_qb[ik, :, :, ib_unique, :] = AA_q_ik_ib
+                if phase is not None:
+                    AA_q_ik_ib *= phase[:,:,ib_unique, None]
+                if sum_b:
+                    AA_qb[ik] += AA_q_ik_ib
+                else:
+                    AA_qb[ik, :, :, ib_unique, :] = AA_q_ik_ib
         return AA_qb
 
 
     # --- A_a(q,b) matrix --- #
 
 
-    def get_AA_qb(self, mmn, transl_inv=False):
-        return self.get_AABB_qb(mmn, transl_inv=transl_inv)
+    def get_AA_qb(self, mmn, transl_inv=False, phase=None, sum_b=False):
+        return self.get_AABB_qb(mmn, transl_inv=transl_inv, phase=phase, sum_b=sum_b)
 
     def get_AA_q(self, mmn, transl_inv=False):
         return self.get_AA_qb(mmn=mmn, transl_inv=transl_inv).sum(axis=3)
 
     # --- B_a(q,b) matrix --- #
-    def get_BB_qb(self, mmn, eig):
-        return self.get_AABB_qb(mmn, eig=eig)
+    def get_BB_qb(self, mmn, eig, phase=None, sum_b=False):
+        return self.get_AABB_qb(mmn, eig=eig, phase=phase, sum_b=sum_b)
 
 
-    def get_CCOOGG_qb(self, mmn, uhu, antisym=True):
-
-        if antisym:
-            CC_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
-        else:
-            CC_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3, 3), dtype=complex)
+    def get_CCOOGG_qb(self, mmn, uhu, antisym=True, phase=None, sum_b=False):
+        nd_cart = 1 if antisym else  2
+        shape_NNB = () if sum_b else (mmn.NNB, mmn.NNB)
+        shape = (self.num_kpts, self.num_wann, self.num_wann) + shape_NNB + (3,)*nd_cart
+        CC_qb = np.zeros(shape, dtype=complex)
+        if phase is not None:
+            #phase = np.reshape(phase, (self.num_wann, self.num_wann, mmn.NNB, mmn.NNB) + (1,)*nd_cart)
+            phase = np.reshape(phase, np.shape(phase)[:4] + (1,) * nd_cart)
         for ik in range(self.num_kpts):
             for ib1 in range(mmn.NNB):
                 iknb1 = mmn.neighbours[ik, ib1]
@@ -190,27 +200,31 @@ class CheckPoint:
                             mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
                                 mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
                                 - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
-                        CC_qb[ik, :, :, ib1_unique, ib2_unique, :] = CC_q_ik_ib
                     else:
                         # Matrix for finite-difference schemes (takes symmetric piece only)
-                        GG_q_ik_ib = CCW[:, :, None, None] * (
+                        CC_q_ik_ib = CCW[:, :, None, None] * (
                                          mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
                                              mmn.bk_cart[ik, ib1, :, None] *
                                              mmn.bk_cart[ik, ib2, None, :]))[None, None, :, :]
-                        CC_qb[ik, :, :, ib1_unique, ib2_unique, :, :] = GG_q_ik_ib
+                    if phase is not None:
+                        CC_q_ik_ib *= phase[:, :, ib1_unique, ib2_unique]
+                    if sum_b:
+                        CC_qb[ik] += CC_q_ik_ib
+                    else:
+                        CC_qb[ik, :, :, ib1_unique, ib2_unique] = CC_q_ik_ib
         return CC_qb
 
     # --- C_a(q,b1,b2) matrix --- #
-    def get_CC_qb(self, mmn, uhu):
-        return self.get_CCOOGG_qb(mmn, uhu)
+    def get_CC_qb(self, mmn, uhu, phase=None, sum_b=False):
+        return self.get_CCOOGG_qb(mmn, uhu, phase=phase, sum_b=sum_b)
 
     # --- O_a(q,b1,b2) matrix --- #
-    def get_OO_qb(self, mmn, uiu):
-        return self.get_CCOOGG_qb(mmn, uiu)
+    def get_OO_qb(self, mmn, uiu, phase=None, sum_b=False):
+        return self.get_CCOOGG_qb(mmn, uiu, phase=phase, sum_b=sum_b)
 
     # Symmetric G_bc(q,b1,b2) matrix
-    def get_GG_qb(self, mmn, uiu):
-        return self.get_CCOOGG_qb(mmn, uiu, antisym=False)
+    def get_GG_qb(self, mmn, uiu, phase=None, sum_b=False):
+        return self.get_CCOOGG_qb(mmn, uiu, antisym=False, phase=phase, sum_b=sum_b)
     ###########################################################################
 
     def get_SA_q(self, siu, mmn):

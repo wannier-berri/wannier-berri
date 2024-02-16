@@ -130,14 +130,38 @@ class System_w90(System_R):
         HHq = chk.get_HH_q(w90data.eig)
         self.set_R_mat('Ham', fourier_q_to_R_loc(HHq))
 
+        # Wannier centers
+        centers = chk.wannier_centers
+        # Unique set of nearest-neighbor vectors (cartesian)
+        bk_cart_unique = w90data.mmn.bk_cart_unique
+
+        if use_wcc_phase_findiff or transl_inv_JM:  # Phase convention I
+            if use_wcc_phase_findiff:
+                _r0 = centers[None, : ,:]
+                sum_b = True
+            elif transl_inv_JM:
+                _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
+                sum_b=False
+            expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0))
+            print(f"expjphase1 {expjphase1.shape}")
+            expjphase2 = expjphase1.swapaxes(0,1).conj()[:,:,:,None] * expjphase1[:, :, None, :]
+        else:
+            expjphase1 = None
+            expjphase2 = None
+            sum_b = True
+
+
         # A_a(R,b) matrix
         if self.need_R_any('AA'):
-            AA_qb = chk.get_AA_qb(w90data.mmn, transl_inv=transl_inv)
+            AA_qb = chk.get_AA_qb(w90data.mmn, transl_inv=transl_inv, sum_b=sum_b, phase=expjphase1)
             AA_Rb = fourier_q_to_R_loc(AA_qb)
-            self.set_R_mat('AA', AA_Rb)
-            if transl_inv:
-                wannier_centers_cart_new = np.diagonal(AA_Rb[:, :, self.iR0, :], axis1=0,
-                                                       axis2=1).sum(axis=0).T
+            self.set_R_mat('AA', AA_Rb, Hermitian=True)
+            # Checking Wannier_centers
+            if True:
+                AA_q = chk.get_AA_qb(w90data.mmn, transl_inv=True, sum_b=True, phase=None)
+#                AA_R0 = fourier_q_to_R_loc(AA_q)[:, :, self.iR0]
+                AA_R0 = AA_q.sum(axis=0)/np.prod(mp_grid)
+                wannier_centers_cart_new = np.diagonal(AA_R0, axis1=0,axis2=1).T
                 if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart) < 1e-6):
                     if guiding_centers:
                         print(
@@ -157,27 +181,28 @@ class System_w90(System_R):
 
         # B_a(R,b) matrix
         if 'BB' in self.needed_R_matrices:
-            BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig)
+            BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig, sum_b=sum_b, phase=expjphase1)
             BB_Rb = fourier_q_to_R_loc(BB_qb)
             self.set_R_mat('BB', BB_Rb)
 
         # C_a(R,b1,b2) matrix
         if 'CC' in self.needed_R_matrices:
-            CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu)
+            CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu, sum_b=sum_b, phase=expjphase2)
             CC_Rb = fourier_q_to_R_loc(CC_qb)
-            self.set_R_mat('CC', CC_Rb)
+            self.set_R_mat('CC', CC_Rb, Hermitian=True)
 
         # O_a(R,b1,b2) matrix
         if 'OO' in self.needed_R_matrices:
-            OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu)
+            OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
             OO_Rb = fourier_q_to_R_loc(OO_qb)
-            self.set_R_mat('OO', OO_Rb)
+            self.set_R_mat('OO', OO_Rb, Hermitian=True)
 
         # G_bc(R,b1,b2) matrix
         if 'GG' in self.needed_R_matrices:
-            GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu)
+            GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
             GG_Rb = fourier_q_to_R_loc(GG_qb)
-            self.set_R_mat('GG', GG_Rb)
+            self.set_R_mat('GG', GG_Rb, Hermitian=True)
+        del expjphase1, expjphase2
 
         #######################################################################
 
@@ -211,47 +236,28 @@ class System_w90(System_R):
         # nearest-neighbor vectors to finally obtain the real-space matrix
         # elements.
 
-        # Wannier centers
-        centers = chk.wannier_centers
-        # Unique set of nearest-neighbor vectors (cartesian)
-        bk_cart_unique = w90data.mmn.bk_cart_unique
-
-        if use_wcc_phase_findiff:  # Phase convention I
-            _expiphase = np.exp(1j * np.einsum('ba,ja->jb', bk_cart_unique, centers))
-            expiphase1 = _expiphase[None, :, None, :, None]
-            expiphase2 = (_expiphase[:, None, :, None].conj() * _expiphase[None, :, None, :]
-                                    )[:, :, None, :, :, None]
-            del _expiphase
-        elif transl_inv_JM:
-            # Optimal center in Jae-Mo's implementation
-            r0 = 0.5 * (centers[:, None, None, :] + centers[None, :, None, :] + self.cRvec[None, None, :, :])
-            phase = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None, None, :, :])
-            _expiphase = np.exp(1j * phase)
-            expiphase1 = _expiphase[:, :, :, :, None]
-            phase_1 = -np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0)
-            expiphase2 = (np.exp(1j * phase_1)[:, :, :, :, None] * _expiphase[:, :, :, None, :]
-                          )[:, :, :, :, :, None]
-            del phase_1, phase, _expiphase
-        else:
-            expiphase1 = 1
-            expiphase2 = 1
-
-        def _reset_mat(key, phase, axis, Hermitian=True):
-            if self.need_R_any(key):
-                XX_Rb = self.get_R_mat(key)
-                phase = np.reshape(phase, np.shape(phase) + (1,) * (XX_Rb.ndim - np.ndim(phase)))
-                XX_R = np.sum(XX_Rb * phase, axis=axis)
-                self.set_R_mat(key, XX_R, reset=True, Hermitian=Hermitian)
-
-        _reset_mat('AA', expiphase1, 3)
-        _reset_mat('BB', expiphase1, 3, Hermitian=False)
-        _reset_mat('CC', expiphase2, (3, 4))
-        _reset_mat('OO', expiphase2, (3, 4))
-        _reset_mat('GG', expiphase2, (3, 4))
-
-        del expiphase1, expiphase2
-
         if transl_inv_JM:
+
+            # Optimal center in Jae-Mo's implementation
+            phase = np.einsum('ba,Ra->Rb', bk_cart_unique,  - 0.5*self.cRvec)
+            expiphase1 = np.exp(1j * phase)
+            expiphase2 = expiphase1[:,:,None]*expiphase1[:,None,:]
+            def _reset_mat(key, phase, axis, Hermitian=True):
+                if self.need_R_any(key):
+                    XX_Rb = self.get_R_mat(key)
+                    phase = np.reshape(phase, (1,1)+np.shape(phase) + (1,) * (XX_Rb.ndim - 2 - np.ndim(phase)))
+                    XX_R = np.sum(XX_Rb * phase, axis=axis)
+                    self.set_R_mat(key, XX_R, reset=True, Hermitian=Hermitian)
+
+
+            _reset_mat('AA', expiphase1, 3)
+            _reset_mat('BB', expiphase1, 3, Hermitian=False)
+            _reset_mat('CC', expiphase2, (3, 4))
+            _reset_mat('OO', expiphase2, (3, 4))
+            _reset_mat('GG', expiphase2, (3, 4))
+
+            del expiphase1, expiphase2
+            r0 = 0.5 * (centers[:, None, None, :] + centers[None, :, None, :] + self.cRvec[None, None, :, :])
             self.recenter_JM(r0, centers)
 
         self.do_at_end_of_init(

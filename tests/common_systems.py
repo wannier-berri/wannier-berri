@@ -266,7 +266,8 @@ def system_GaAs_W90_wccFD(create_files_GaAs_W90):
     data_dir = create_files_GaAs_W90
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, morb=True,
+    system = wberri.system.System_w90(seedname, berry=True,
+                                      morb=True,
                                       transl_inv=True, spin=True,
                                       OSD=True,
                                       wcc_phase_fin_diff=True)
