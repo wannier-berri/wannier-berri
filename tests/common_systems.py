@@ -80,17 +80,19 @@ def create_files_Fe_W90():
 
     return data_dir
 
+
 @pytest.fixture(scope="session")
 def create_files_Fe_W90_npz():
     """Create data files for Fe: uHu, uIu, sHu, and sIu"""
 
     seedname = "Fe"
-    tags_needed = [] # ["uHu", "uIu", "sHu", "sIu"]  # Files to calculate if they do not exist
+    tags_needed = []  # ["uHu", "uIu", "sHu", "sIu"]  # Files to calculate if they do not exist
     data_dir = os.path.join(ROOT_DIR, "data", "Fe_Wannier90_npz")
 
     create_W90_files(seedname, tags_needed, data_dir, tags_untar=[])
 
     return data_dir
+
 
 @pytest.fixture(scope="session")
 def create_files_GaAs_W90():
@@ -141,6 +143,7 @@ def system_Fe_W90(create_files_Fe_W90):
     system.set_symmetry(symmetries_Fe)
     return system
 
+
 @pytest.fixture(scope="session")
 def system_Fe_W90_npz(create_files_Fe_W90_npz):
     """Create system for Fe using Wannier90 data"""
@@ -151,7 +154,7 @@ def system_Fe_W90_npz(create_files_Fe_W90_npz):
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.system.System_w90(
         seedname, berry=True,
-        #morb=True, SHCqiao=True, SHCryoo=True,
+        # morb=True, #SHCqiao=True, SHCryoo=True,
         transl_inv=False, use_wcc_phase=False)
     system.set_symmetry(symmetries_Fe)
     return system

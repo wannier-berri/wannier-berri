@@ -128,10 +128,11 @@ def test_system_Fe_W90(check_system, system_Fe_W90):
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA']
     )
 
+
 def test_system_Fe_W90_npz(check_system, system_Fe_W90_npz):
     check_system(
         system_Fe_W90_npz, "Fe_W90",
-        matrices=['Ham', 'AA', ], #'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA'],
+        matrices=['Ham', 'AA'],  # 'BB', 'CC'], #, 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA'],
         suffix="_npz"
     )
 

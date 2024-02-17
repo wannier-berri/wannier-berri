@@ -501,6 +501,17 @@ class Wannier90data:
 
 class W90_file:
 
+    def __init__(self, seedname, ext, tags=["data"], **parameters):
+        f_npz = f"{seedname}.{ext}.npz"
+        if os.path.exists(f_npz):
+            dic = np.load(f_npz)
+            for k in tags:
+                self.__setattr__(k, dic[k])
+        else:
+            self.from_w90_file(seedname, **parameters)
+            dic = {k: self.__getattribute__(k) for k in tags}
+            np.savez_compressed(f_npz, **dic)
+
     @property
     def n_neighb(self):
         return 0
@@ -535,27 +546,9 @@ class MMN(W90_file):
         return 1
 
     def __init__(self, seedname, npar=multiprocessing.cpu_count()):
-        if os.path.exists(seedname+".mmn.npz"):
-            self.load_npz(seedname)
-        else:
-            self.from_txt_file(seedname, npar)
-            self.save_npz(seedname)
+        super().__init__(seedname, "mmn", tags=['data', 'G', 'neighbours'], npar=npar)
 
-    def save_npz(self, seedname):
-        np.savez_compressed(seedname+".mmn.npz",
-                            data=self.data,
-                            G=self.G,
-                            neighbours=self.neighbours
-                            )
-
-    def load_npz(self, seedname):
-        dic = np.load(seedname+".mmn.npz")
-        self.data = dic['data']
-        self.G = dic['G']
-        self.neighbours = dic['neighbours']
-
-
-    def from_txt_file(self, seedname, npar):
+    def from_w90_file(self, seedname, npar):
         t0 = time()
         f_mmn_in = open(seedname + ".mmn", "r")
         f_mmn_in.readline()
@@ -691,20 +684,7 @@ class AMN(W90_file):
         return self.data.shape[2]
 
     def __init__(self, seedname, npar=multiprocessing.cpu_count()):
-        if os.path.exists(seedname + ".amn.npz"):
-            self.load_npz(seedname)
-        else:
-            self.from_txt_file(seedname, npar)
-            self.save_npz(seedname)
-
-    def save_npz(self, seedname):
-        np.savez_compressed(seedname + ".amn.npz",
-                            data=self.data,
-                            )
-
-    def load_npz(self, seedname):
-        dic = np.load(seedname + ".amn.npz")
-        self.data = dic['data']
+        super().__init__(seedname, "amn", tags=['data'], npar=npar)
 
     def from_txt_file(self, seedname, npar):
         f_mmn_in = open(seedname + ".amn", "r").readlines()
@@ -733,6 +713,9 @@ class AMN(W90_file):
 class EIG(W90_file):
 
     def __init__(self, seedname):
+        super().__init__(seedname=seedname, ext="eig")
+
+    def from_w90_file(self, seedname):
         data = np.loadtxt(seedname + ".eig")
         NB = int(round(data[:, 0].max()))
         NK = int(round(data[:, 1].max()))
@@ -791,6 +774,8 @@ class UXU(W90_file):
     @property
     def n_neighb(self):
         return 2
+
+
 
     def __init__(self, seedname='wannier90', formatted=False, suffix='uHu'):
         print("----------\n  {0}   \n---------".format(suffix))
