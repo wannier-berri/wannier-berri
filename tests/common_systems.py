@@ -31,14 +31,14 @@ omega_phonon = np.linspace(-0.01, 0.1, 23)
 Efermi_Mn3Sn = np.linspace(2, 3, 11)
 
 
-def create_W90_files(seedname, tags_needed, data_dir):
+def create_W90_files(seedname, tags_needed, data_dir, tags_untar=["mmn", "amn"]):
     """
     Extract the compressed amn and mmn data files.
     Create files listed in tags_needed using utils.mmn2uHu.
     """
 
     # Extract files if is not already done
-    for tag in ["mmn", "amn"]:
+    for tag in tags_untar:
         if not os.path.isfile(os.path.join(data_dir, "{}.{}".format(seedname, tag))):
             tar = tarfile.open(os.path.join(data_dir, "{}.{}.tar.gz".format(seedname, tag)))
             for tarinfo in tar:
@@ -80,6 +80,17 @@ def create_files_Fe_W90():
 
     return data_dir
 
+@pytest.fixture(scope="session")
+def create_files_Fe_W90_npz():
+    """Create data files for Fe: uHu, uIu, sHu, and sIu"""
+
+    seedname = "Fe"
+    tags_needed = [] # ["uHu", "uIu", "sHu", "sIu"]  # Files to calculate if they do not exist
+    data_dir = os.path.join(ROOT_DIR, "data", "Fe_Wannier90_npz")
+
+    create_W90_files(seedname, tags_needed, data_dir, tags_untar=[])
+
+    return data_dir
 
 @pytest.fixture(scope="session")
 def create_files_GaAs_W90():
@@ -127,6 +138,21 @@ def system_Fe_W90(create_files_Fe_W90):
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.system.System_w90(
         seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv=False, use_wcc_phase=False)
+    system.set_symmetry(symmetries_Fe)
+    return system
+
+@pytest.fixture(scope="session")
+def system_Fe_W90_npz(create_files_Fe_W90_npz):
+    """Create system for Fe using Wannier90 data"""
+
+    data_dir = create_files_Fe_W90_npz
+
+    # Load system
+    seedname = os.path.join(data_dir, "Fe")
+    system = wberri.system.System_w90(
+        seedname, berry=True,
+        #morb=True, SHCqiao=True, SHCryoo=True,
+        transl_inv=False, use_wcc_phase=False)
     system.set_symmetry(symmetries_Fe)
     return system
 

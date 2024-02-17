@@ -15,6 +15,8 @@
 import multiprocessing
 import gc
 import functools
+import os.path
+
 from scipy.constants import physical_constants
 from time import time
 from itertools import islice
@@ -533,6 +535,27 @@ class MMN(W90_file):
         return 1
 
     def __init__(self, seedname, npar=multiprocessing.cpu_count()):
+        if os.path.exists(seedname+".mmn.npz"):
+            self.load_npz(seedname)
+        else:
+            self.from_txt_file(seedname, npar)
+            self.save_npz(seedname)
+
+    def save_npz(self, seedname):
+        np.savez_compressed(seedname+".mmn.npz",
+                            data=self.data,
+                            G=self.G,
+                            neighbours=self.neighbours
+                            )
+
+    def load_npz(self, seedname):
+        dic = np.load(seedname+".mmn.npz")
+        self.data = dic['data']
+        self.G = dic['G']
+        self.neighbours = dic['neighbours']
+
+
+    def from_txt_file(self, seedname, npar):
         t0 = time()
         f_mmn_in = open(seedname + ".mmn", "r")
         f_mmn_in.readline()
@@ -668,6 +691,22 @@ class AMN(W90_file):
         return self.data.shape[2]
 
     def __init__(self, seedname, npar=multiprocessing.cpu_count()):
+        if os.path.exists(seedname + ".amn.npz"):
+            self.load_npz(seedname)
+        else:
+            self.from_txt_file(seedname, npar)
+            self.save_npz(seedname)
+
+    def save_npz(self, seedname):
+        np.savez_compressed(seedname + ".amn.npz",
+                            data=self.data,
+                            )
+
+    def load_npz(self, seedname):
+        dic = np.load(seedname + ".amn.npz")
+        self.data = dic['data']
+
+    def from_txt_file(self, seedname, npar):
         f_mmn_in = open(seedname + ".amn", "r").readlines()
         print("reading {}.amn: ".format(seedname) + f_mmn_in[0].strip())
         s = f_mmn_in[1]
