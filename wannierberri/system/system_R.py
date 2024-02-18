@@ -403,6 +403,7 @@ class System_R(System):
             print("using ws_dist for {}".format(key))
             self.set_R_mat(key, ws_map(val), reset=True)
         self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
+        self.clear_cached_R()
 
     def to_tb_file(self, tb_file=None):
         """
@@ -477,7 +478,7 @@ class System_R(System):
             return self.cRvec[None, None, :, :]
 
     def clear_cached_R(self):
-        clear_cached(self, ['cRvec', 'cRvec_p_wcc'])
+        clear_cached(self, ['cRvec', 'cRvec_p_wcc', 'reverseR'])
 
     @cached_property
     def diff_wcc_cart(self):

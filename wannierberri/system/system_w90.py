@@ -137,14 +137,14 @@ class System_w90(System_R):
 
         if use_wcc_phase_findiff or transl_inv_JM:  # Phase convention I
             if use_wcc_phase_findiff:
-                _r0 = centers[None, : ,:]
+                _r0 = centers[None, :, :]
                 sum_b = True
             elif transl_inv_JM:
                 _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
-                sum_b=False
+                sum_b = False
             expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0))
             print(f"expjphase1 {expjphase1.shape}")
-            expjphase2 = expjphase1.swapaxes(0,1).conj()[:,:,:,None] * expjphase1[:, :, None, :]
+            expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
         else:
             expjphase1 = None
             expjphase2 = None
@@ -160,8 +160,8 @@ class System_w90(System_R):
             if True:
                 AA_q = chk.get_AA_qb(w90data.mmn, transl_inv=True, sum_b=True, phase=None)
 #                AA_R0 = fourier_q_to_R_loc(AA_q)[:, :, self.iR0]
-                AA_R0 = AA_q.sum(axis=0)/np.prod(mp_grid)
-                wannier_centers_cart_new = np.diagonal(AA_R0, axis1=0,axis2=1).T
+                AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
+                wannier_centers_cart_new = np.diagonal(AA_R0, axis1=0, axis2=1).T
                 if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart) < 1e-6):
                     if guiding_centers:
                         print(
@@ -222,6 +222,7 @@ class System_w90(System_R):
 
         if self.use_ws:
             self.do_ws_dist(mp_grid=mp_grid)
+
         print("Real-space lattice:\n", self.real_lattice)
 
         #########
@@ -239,13 +240,14 @@ class System_w90(System_R):
         if transl_inv_JM:
 
             # Optimal center in Jae-Mo's implementation
-            phase = np.einsum('ba,Ra->Rb', bk_cart_unique,  - 0.5*self.cRvec)
+            phase = np.einsum('ba,Ra->Rb', bk_cart_unique, - 0.5 * self.cRvec)
             expiphase1 = np.exp(1j * phase)
-            expiphase2 = expiphase1[:,:,None]*expiphase1[:,None,:]
+            expiphase2 = expiphase1[:, :, None] * expiphase1[:, None, :]
+
             def _reset_mat(key, phase, axis, Hermitian=True):
                 if self.need_R_any(key):
                     XX_Rb = self.get_R_mat(key)
-                    phase = np.reshape(phase, (1,1)+np.shape(phase) + (1,) * (XX_Rb.ndim - 2 - np.ndim(phase)))
+                    phase = np.reshape(phase, (1, 1) + np.shape(phase) + (1,) * (XX_Rb.ndim - 2 - np.ndim(phase)))
                     XX_R = np.sum(XX_Rb * phase, axis=axis)
                     self.set_R_mat(key, XX_R, reset=True, Hermitian=Hermitian)
 

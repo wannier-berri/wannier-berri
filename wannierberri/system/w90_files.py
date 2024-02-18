@@ -152,7 +152,7 @@ class CheckPoint:
                     AA_q_ik_ib[range(self.num_wann), range(self.num_wann)] = -np.log(
                         AAW.diagonal()).imag[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, :]
                 if phase is not None:
-                    AA_q_ik_ib *= phase[:,:,ib_unique, None]
+                    AA_q_ik_ib *= phase[:, :, ib_unique, None]
                 if sum_b:
                     AA_qb[ik] += AA_q_ik_ib
                 else:
@@ -175,12 +175,11 @@ class CheckPoint:
 
 
     def get_CCOOGG_qb(self, mmn, uhu, antisym=True, phase=None, sum_b=False):
-        nd_cart = 1 if antisym else  2
+        nd_cart = 1 if antisym else 2
         shape_NNB = () if sum_b else (mmn.NNB, mmn.NNB)
-        shape = (self.num_kpts, self.num_wann, self.num_wann) + shape_NNB + (3,)*nd_cart
+        shape = (self.num_kpts, self.num_wann, self.num_wann) + shape_NNB + (3,) * nd_cart
         CC_qb = np.zeros(shape, dtype=complex)
         if phase is not None:
-            #phase = np.reshape(phase, (self.num_wann, self.num_wann, mmn.NNB, mmn.NNB) + (1,)*nd_cart)
             phase = np.reshape(phase, np.shape(phase)[:4] + (1,) * nd_cart)
         for ik in range(self.num_kpts):
             for ib1 in range(mmn.NNB):
