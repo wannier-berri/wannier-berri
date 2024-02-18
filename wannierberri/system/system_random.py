@@ -71,4 +71,4 @@ class SystemRandom(System_R):
                 AA[self.range_wann, self.range_wann, self.iR0] = 0
             else:
                 AA[self.range_wann, self.range_wann, self.iR0] = AA[self.range_wann, self.range_wann, self.iR0].real
-        self.do_at_end_of_init(convert_convention=False)
+        self.do_at_end_of_init()

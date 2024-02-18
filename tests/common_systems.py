@@ -270,6 +270,7 @@ def system_GaAs_W90_wccFD(create_files_GaAs_W90):
                                       morb=True,
                                       transl_inv=True, spin=True,
                                       OSD=True,
+                                      SHCqiao=True, SHCryoo=True,
                                       wcc_phase_fin_diff=True)
     system.set_symmetry(symmetries_GaAs)
     return system

@@ -226,64 +226,56 @@ class CheckPoint:
         return self.get_CCOOGG_qb(mmn, uiu, antisym=False, phase=phase, sum_b=sum_b)
     ###########################################################################
 
-    def get_SA_q(self, siu, mmn):
-        mmn.set_bk_chk(self)
-        SA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
-        assert siu.NNB == mmn.NNB
-        for ik in range(self.num_kpts):
-            for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                SAW = self.wannier_gauge(siu.data[ik, ib], ik, iknb)
-                SA_q_ik = 1.j * SAW[:, :, None, :] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :, None]
-                SA_q[ik] += SA_q_ik
-        return SA_q
 
-    def get_SHA_q(self, shu, mmn):
+
+    def get_SH_q(self, spn, eig):
+        SH_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
+        for ik in range(self.num_kpts):
+            SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik, :, :, :] * eig.data[ik, None, :, None], ik, ik)
+        return SH_q
+
+    def get_SHA_q(self, shu, mmn, phase=None):
+        """
+        SHA or SA (if siu is used instead of shu)
+        """
         mmn.set_bk_chk(self)
         SHA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert shu.NNB == mmn.NNB
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
+                ib_unique = mmn.ib_unique_map[ik, ib]
                 SHAW = self.wannier_gauge(shu.data[ik, ib], ik, iknb)
+                if phase is not None:
+                    SHAW = SHAW * phase[:, :, ib_unique, None]
                 SHA_q_ik = 1.j * SHAW[:, :, None, :] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :, None]
                 SHA_q[ik] += SHA_q_ik
         return SHA_q
 
-    def get_SR_q(self, spn, mmn):
-        mmn.set_bk_chk(self)
-        SR_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
-        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
-        for ik in range(self.num_kpts):
-            for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                for i in range(3):
-                    SM_i = spn.data[ik, :, :, i].dot(mmn.data[ik, ib, :, :])
-                    SRW = self.wannier_gauge(SM_i, ik, iknb) - self.wannier_gauge(spn.data[ik, :, :, i], ik, ik)
-                    SR_q[ik, :, :, :, i] += 1.j * SRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
-        return SR_q
 
-    def get_SH_q(self, spn, eig):
-        SH_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
-        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
-        for ik in range(self.num_kpts):
-            for i in range(3):
-                SH_q[ik, :, :, i] = self.wannier_gauge(spn.data[ik, :, :, i] * eig.data[ik, None, :], ik, ik)
-        return SH_q
 
-    def get_SHR_q(self, spn, mmn, eig):
+    def get_SHR_q(self, spn, mmn, eig=None, phase=None):
+        """
+        SHR or SR(if eig is None)
+        """
         mmn.set_bk_chk(self)
         SHR_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
         for ik in range(self.num_kpts):
+            SH = spn.data[ik, :, :, :]
+            if eig is not None:
+                SH = SH * eig.data[ik, None, :, None]
+            SHW = self.wannier_gauge(SH, ik, ik)
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
-                for i in range(3):
-                    SH_i = spn.data[ik, :, :, i] * eig.data[ik, None, :]
-                    SHM_i = SH_i.dot(mmn.data[ik, ib])
-                    SHRW = self.wannier_gauge(SHM_i, ik, iknb) - self.wannier_gauge(SH_i, ik, ik)
-                    SHR_q[ik, :, :, :,
-                    i] += 1.j * SHRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+                ib_unique = mmn.ib_unique_map[ik, ib]
+                SHM = np.tensordot(SH, mmn.data[ik, ib], axes=((1,), (0,))).swapaxes(-1, -2)
+                SHRW = self.wannier_gauge(SHM, ik, iknb)
+                if phase is not None:
+                    SHRW = SHRW * phase[:, :, ib_unique, None]
+                SHRW = SHRW - SHW
+                SHR_q[ik, :, :, :, :] += 1.j * SHRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :, None]
         return SHR_q
 
 

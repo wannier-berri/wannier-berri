@@ -20,6 +20,7 @@ from ..__utility import real_recip_lattice, fourier_q_to_R, alpha_A, beta_A
 from .system_R import System_R
 from .w90_files import Wannier90data
 from .ws_dist import wigner_seitz
+import warnings
 
 
 class System_w90(System_R):
@@ -67,11 +68,36 @@ class System_w90(System_R):
             kmesh_tol=1e-7,
             bk_complete_tol=1e-5,
             wcc_phase_fin_diff=True,
-            **parameters):
+            **parameters
+    ):
 
         if "name" not in parameters:
             parameters["name"] = os.path.split(seedname)[-1]
         super().__init__(**parameters)
+
+        use_wcc_phase_findiff = self.use_wcc_phase and wcc_phase_fin_diff
+        assert not (transl_inv_JM and use_wcc_phase_findiff)
+        if transl_inv_JM:
+            known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS']
+            unknown = set(self.needed_R_matrices) - set(known)
+            if len(unknown) > 0:
+                raise NotImplementedError(f"transl_inv_JM for {list(unknown)} is not implemented")
+            # Deactivate transl_inv if Jae-Mo's scheme is used
+            if transl_inv:
+                warnings.warn("Jae-Mo's scheme does not apply Marzari & Vanderbilt formula for"
+                      "the band-diagonal matrix elements of the position operator.")
+                transl_inv = False
+        if self.use_wcc_phase and not wcc_phase_fin_diff:
+            warnings.warn(" converting convention II to convention I is not recommended."
+                   "Better use 'wcc_phase_fin_dif=True' or `transl_inv_JM=True` "
+                   )
+        if use_wcc_phase_findiff:
+            known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS', 'SH', 'SHR', 'SHA', 'SA', 'SR']
+            unknown = set(self.needed_R_matrices) - set(known)
+            if len(unknown) > 0:
+                raise NotImplementedError(f"wcc_phase_fin_diff for {list(unknown)} is not implemented")
+
+
         self.npar = npar
         self.seedname = seedname
         if w90data is None:
@@ -86,16 +112,7 @@ class System_w90(System_R):
         self.num_wann = chk.num_wann
         self.wannier_centers_cart = w90data.wannier_centers
 
-        # Deactivate transl_inv if Jae-Mo's scheme is used
-        if transl_inv_JM:
-            if transl_inv:
-                print("WARNING : Jae-Mo's scheme does not apply Marzari & Vanderbilt formula for"
-                      "the band-diagonal matrix elements of the position operator.")
-                transl_inv = False
-        #######################################################################
 
-        use_wcc_phase_findiff = self.use_wcc_phase and wcc_phase_fin_diff
-        assert not (transl_inv_JM and use_wcc_phase_findiff)
         kpt_mp_grid = [
             tuple(k) for k in np.array(np.round(chk.kpt_latt * np.array(chk.mp_grid)[None, :]), dtype=int) % chk.mp_grid
         ]
@@ -202,23 +219,25 @@ class System_w90(System_R):
             GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
             GG_Rb = fourier_q_to_R_loc(GG_qb)
             self.set_R_mat('GG', GG_Rb, Hermitian=True)
-        del expjphase1, expjphase2
+
 
         #######################################################################
 
         if self.need_R_any('SS'):
             self.set_R_mat('SS', fourier_q_to_R_loc(chk.get_SS_q(w90data.spn)))
         if self.need_R_any('SR'):
-            self.set_R_mat('SR', fourier_q_to_R_loc(chk.get_SR_q(w90data.spn, w90data.mmn)))
+            self.set_R_mat('SR', fourier_q_to_R_loc(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, phase=expjphase1)))
         if self.need_R_any('SH'):
             self.set_R_mat('SH', fourier_q_to_R_loc(chk.get_SH_q(w90data.spn, w90data.eig)))
         if self.need_R_any('SHR'):
-            self.set_R_mat('SHR', fourier_q_to_R_loc(chk.get_SHR_q(w90data.spn, w90data.mmn, w90data.eig)))
+            self.set_R_mat('SHR', fourier_q_to_R_loc(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, eig=w90data.eig, phase=expjphase1)))
 
         if 'SA' in self.needed_R_matrices:
-            self.set_R_mat('SA', fourier_q_to_R_loc(chk.get_SA_q(w90data.siu, w90data.mmn)))
+            self.set_R_mat('SA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.siu, w90data.mmn, phase=expjphase1)))
         if 'SHA' in self.needed_R_matrices:
-            self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.shu, w90data.mmn)))
+            self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.shu, w90data.mmn, phase=expjphase1)))
+
+        del expjphase1, expjphase2
 
         if self.use_ws:
             self.do_ws_dist(mp_grid=mp_grid)
@@ -262,15 +281,12 @@ class System_w90(System_R):
             r0 = 0.5 * (centers[:, None, None, :] + centers[None, :, None, :] + self.cRvec[None, None, :, :])
             self.recenter_JM(r0, centers)
 
-        self.do_at_end_of_init(
-            convert_convention=((not transl_inv_JM) and self.use_wcc_phase and (not wcc_phase_fin_diff)))
+        self.do_at_end_of_init()
+        if (not transl_inv_JM) and self.use_wcc_phase and (not wcc_phase_fin_diff):
+            self.convention_II_to_I()
 
     ###########################################################################
     def recenter_JM(self, r0, centers):
-        known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS']
-        unknown = set(self._XX_R.keys()) - set(known)
-        if len(unknown) > 0:
-            raise NotImplementedError(f"transl_inv_JM for {list(unknown)} is not implemented")
         if self.use_wcc_phase:
             self.recenter_JM_I(r0, centers)
         else:

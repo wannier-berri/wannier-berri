@@ -87,5 +87,7 @@ class System_tb(System_R):
         f.close()
 
         self.do_at_end_of_init()
+        if self.use_wcc_phase:
+            self.convention_II_to_I()
 
         cprint("Reading the system from {} finished successfully".format(tb_file), 'green', attrs=['bold'])
