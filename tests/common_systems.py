@@ -8,6 +8,7 @@ import numpy as np
 import pickle
 import wannierberri as wberri
 import wannierberri.symmetry as SYM
+from pathlib import Path
 from wannierberri import models as wb_models
 
 from common import ROOT_DIR
@@ -82,16 +83,25 @@ def create_files_Fe_W90():
 
 
 @pytest.fixture(scope="session")
-def create_files_Fe_W90_npz(system_Fe_W90):
-    """Create data files for Fe: uHu, uIu, sHu, and sIu"""
+def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
+    """Create symbolic links to the npz files"""
 
     seedname = "Fe"
-    tags_needed = []  # ["uHu", "uIu", "sHu", "sIu"]  # Files to calculate if they do not exist
-    data_dir = os.path.join(ROOT_DIR, "data", "Fe_Wannier90_npz")
+    data_dir = Path(create_files_Fe_W90)
+    data_dir_new = data_dir.joinpath("NPZ")
+    data_dir_new.mkdir(exist_ok=True)
 
-    create_W90_files(seedname, tags_needed, data_dir, tags_untar=[])
+    def _link(ext):
+        f = seedname + "." + ext
+        try:
+            data_dir_new.joinpath(f).symlink_to(data_dir.joinpath(f))
+        except FileExistsError:
+            pass
 
-    return data_dir
+    _link("chk")
+    for ext in ["eig", "mmn", "spn", "uHu", "sHu", "sIu"]:
+        _link(ext + ".npz")
+    return data_dir_new
 
 
 @pytest.fixture(scope="session")
