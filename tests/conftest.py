@@ -6,10 +6,12 @@ from common import ROOT_DIR, OUTPUT_DIR, REF_DIR
 # WannierBerri Systems
 from common_systems import (
     create_files_Fe_W90,
+    create_files_Fe_W90_npz,
     create_files_GaAs_W90,
     create_files_Si_W90,
     create_W90_files,
     system_Fe_W90,
+    system_Fe_W90_npz,
     system_Fe_W90_sparse,
     system_Fe_W90_wcc,
     system_Fe_sym_W90_wcc,

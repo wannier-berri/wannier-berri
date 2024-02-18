@@ -8,6 +8,7 @@ import numpy as np
 import pickle
 import wannierberri as wberri
 import wannierberri.symmetry as SYM
+from pathlib import Path
 from wannierberri import models as wb_models
 
 from common import ROOT_DIR
@@ -31,14 +32,14 @@ omega_phonon = np.linspace(-0.01, 0.1, 23)
 Efermi_Mn3Sn = np.linspace(2, 3, 11)
 
 
-def create_W90_files(seedname, tags_needed, data_dir):
+def create_W90_files(seedname, tags_needed, data_dir, tags_untar=["mmn", "amn"]):
     """
     Extract the compressed amn and mmn data files.
     Create files listed in tags_needed using utils.mmn2uHu.
     """
 
     # Extract files if is not already done
-    for tag in ["mmn", "amn"]:
+    for tag in tags_untar:
         if not os.path.isfile(os.path.join(data_dir, "{}.{}".format(seedname, tag))):
             tar = tarfile.open(os.path.join(data_dir, "{}.{}.tar.gz".format(seedname, tag)))
             for tarinfo in tar:
@@ -79,6 +80,28 @@ def create_files_Fe_W90():
     create_W90_files(seedname, tags_needed, data_dir)
 
     return data_dir
+
+
+@pytest.fixture(scope="session")
+def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
+    """Create symbolic links to the npz files"""
+
+    seedname = "Fe"
+    data_dir = Path(create_files_Fe_W90)
+    data_dir_new = data_dir.joinpath("NPZ")
+    data_dir_new.mkdir(exist_ok=True)
+
+    def _link(ext):
+        f = seedname + "." + ext
+        try:
+            data_dir_new.joinpath(f).symlink_to(data_dir.joinpath(f))
+        except FileExistsError:
+            pass
+
+    _link("chk")
+    for ext in ["eig", "mmn", "spn", "uHu", "sHu", "sIu"]:
+        _link(ext + ".npz")
+    return data_dir_new
 
 
 @pytest.fixture(scope="session")
@@ -126,7 +149,26 @@ def system_Fe_W90(create_files_Fe_W90):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.system.System_w90(
-        seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv=False, use_wcc_phase=False)
+        seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv=False, use_wcc_phase=False,
+        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
+        write_npz_formatted=True)
+    system.set_symmetry(symmetries_Fe)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Fe_W90_npz(create_files_Fe_W90_npz):
+    """Create system for Fe using Wannier90 data"""
+
+    data_dir = create_files_Fe_W90_npz
+
+    # Load system
+    seedname = os.path.join(data_dir, "Fe")
+    system = wberri.system.System_w90(
+        seedname, berry=True,
+        morb=True, SHCqiao=True, SHCryoo=True,
+        transl_inv=False, use_wcc_phase=False,
+        read_npz=True, write_npz_list=[], overwrite_npz=False, write_npz_formatted=False)
     system.set_symmetry(symmetries_Fe)
     return system
 
