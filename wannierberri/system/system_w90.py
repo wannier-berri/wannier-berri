@@ -47,10 +47,15 @@ class System_w90(System_R):
         tolerance to consider the b_k vectors (connecting to neighbouring k-points on the grid) belonging to the same shell
     bk_complete_tol : float
         tolerance to consider the set of b_k shells as complete.
+    read_npz : bool
+    write_npz_list : list(str)
+    write_npz_formatted : bool
 
     Notes
     -----
-    see also  parameters of the :class:`~wannierberri.system.System`
+    * see also  parameters of the :class:`~wannierberri.system.System`
+
+    * for `npz` and `formatted` parameters see see `~wannierberri.system.w90_files.Wannier90data`
     """
 
     def __init__(
@@ -65,13 +70,21 @@ class System_w90(System_R):
             kmesh_tol=1e-7,
             bk_complete_tol=1e-5,
             wcc_phase_findiff=False,
+            read_npz=True,
+            write_npz_list=["eig", "mmn"],
+            write_npz_formatted=True,
+            overwrite_npz=False,
+            formatted=[],
             **parameters):
 
         super().__init__(**parameters)
         self.npar = npar
         self.seedname = seedname
         if w90data is None:
-            w90data = Wannier90data(self.seedname, read_chk=True, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+            w90data = Wannier90data(self.seedname, read_chk=True, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol,
+                                    write_npz_list=write_npz_list, read_npz=read_npz, overwrite_npz=overwrite_npz,
+                                    write_npz_formatted=write_npz_formatted,
+                                    formatted=formatted)
         w90data.check_wannierised(msg="creation of System_Wannierise")
         chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
