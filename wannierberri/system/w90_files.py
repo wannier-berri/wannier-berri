@@ -16,7 +16,7 @@ import multiprocessing
 import gc
 import functools
 import os.path
-
+import abc
 from scipy.constants import physical_constants
 from time import time
 from itertools import islice
@@ -359,14 +359,33 @@ class CheckPoint_bare(CheckPoint):
 
 class Wannier90data:
     """A class to describe all input files of wannier90, and to construct the Wannier functions
-     via disentanglement procedure"""
+     via disentanglement procedure
 
-    # todo :  rotatre uHu and spn
-    # todo : create a model from this
+    Parameters:
+        formatted : list(str)
+            list of files which should be read as formatted files (uHu, uIu, etc)
+        read_npz : bool
+            if True, try to read the files converted to npz (e.g. wanier90.mmn.npz instead of wannier90.
+        write_npz_list : list(str)
+            for which files npz will be written
+        write_npz_formatted : bool
+            write npz for all formatted files
+        overwrite_npz : bool
+            overwrite existing npz files  (incompatinble with read_npz)
+     """
+
+    # todo :  rotate uHu and spn
     # todo : symmetry
 
     def __init__(self, seedname="wannier90", read_chk=False,
-                 kmesh_tol=1e-7, bk_complete_tol=1e-5, ):  # ,sitesym=False):
+                 kmesh_tol=1e-7, bk_complete_tol=1e-5,
+                 read_npz=True,
+                 write_npz_list=['mmn', 'eig', 'amn'],
+                 write_npz_formatted=True,
+                 overwrite_npz=False,
+                 formatted=[],
+                 ):  # ,sitesym=False):
+        assert not (read_npz and overwrite_npz), "cannot read and overwrite npz files"
         self.seedname = copy(seedname)
         self.__files_classes = {'win': WIN,
                                 'eig': EIG,
@@ -379,6 +398,13 @@ class Wannier90data:
                                 'spn': SPN
                                 }
         self.__files = {}
+        self.read_npz = read_npz
+        self.write_npz_list = set([s.lower() for s in write_npz_list])
+        formatted = [s.lower() for s in formatted]
+        if write_npz_formatted:
+            self.write_npz_list.update(formatted)
+            self.write_npz_list.update(['mmn', 'eig', 'amn'])
+        self.formatted_list = formatted
         if read_chk:
             self.chk = CheckPoint(seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
             self.wannierised = True
@@ -397,17 +423,36 @@ class Wannier90data:
         # else:
         #    self.Dmn=DMN(None,num_wann=self.chk.num_wann,num_bands=self.chk.num_bands,nkpt=self.chk.num_kpts)
 
-    def set_file(self, key, val=None, overwrite=False):
-        if not overwrite:
-            assert key not in self.__files, f"file `{key}` was already set"
+    def set_file(self, key, val=None, overwrite=False,
+                 **kwargs):
+        """
+        Parameters:
+            overwrite : bool
+                if False and file already set, Error
+        """
+        kwargs_auto = self.auto_kwargs_files(key)
+        kwargs_auto.update(kwargs)
+        if not overwrite and key in self.__files:
+            raise RuntimeError(f"file '{key}' was already set")
         if val is None:
-            val = self.__files_classes[key](self.seedname)
+            val = self.__files_classes[key](self.seedname, **kwargs_auto)
         self.check_conform(key, val)
         self.__files[key] = val
 
-    def get_file(self, key):
+    def auto_kwargs_files(self, key):
+        kwargs = {}
+        if key in ["uhu", "uiu", "shu", "siu"]:
+            kwargs["formatted"] = key in self.formatted_list
+        if key not in ["chk", "win"]:
+            kwargs["read_npz"] = self.read_npz
+            kwargs["write_npz"] = key in self.write_npz_list
+        print(f"kwargs for {key} are {kwargs}")
+        return kwargs
+
+
+    def get_file(self, key, **kwargs):
         if key not in self.__files:
-            self.set_file(key)
+            self.set_file(key, **kwargs)
         return self.__files[key]
 
     def check_conform(self, key, this):
@@ -467,8 +512,8 @@ class Wannier90data:
         if not self.wannierised:
             raise RuntimeError(f"no wannieruisation was performed on the w90 input files, cannot proceed with {msg}")
 
-    def disentangle(self, **parameters):
-        disentangle(self, **parameters)
+    def disentangle(self, **kwargs):
+        disentangle(self, **kwargs)
 
     # TODO : allow k-dependent window (can it be useful?)
     # def apply_outer_window(self,
@@ -499,18 +544,25 @@ class Wannier90data:
     # TODO : allow k-dependent window (can it be useful?)
 
 
-class W90_file:
+class W90_file(abc.ABC):
 
-    def __init__(self, seedname, ext, tags=["data"], **parameters):
+    def __init__(self, seedname, ext, tags=["data"], read_npz=True, write_npz=True, **kwargs):
         f_npz = f"{seedname}.{ext}.npz"
-        if os.path.exists(f_npz):
+        print(f"calling w90 file with {seedname}, {ext}, tags={tags}, read_npz={read_npz}, write_npz={write_npz}, kwargs={kwargs}")
+        if os.path.exists(f_npz) and read_npz:
             dic = np.load(f_npz)
             for k in tags:
                 self.__setattr__(k, dic[k])
         else:
-            self.from_w90_file(seedname, **parameters)
+            self.from_w90_file(seedname, **kwargs)
             dic = {k: self.__getattribute__(k) for k in tags}
-            np.savez_compressed(f_npz, **dic)
+            if write_npz:
+                np.savez_compressed(f_npz, **dic)
+
+    @abc.abstractmethod
+    def from_w90_file(self, **kwargs):
+        self.data = None
+
 
     @property
     def n_neighb(self):
@@ -545,16 +597,15 @@ class MMN(W90_file):
     def n_neighb(self):
         return 1
 
-    def __init__(self, seedname, npar=multiprocessing.cpu_count()):
-        super().__init__(seedname, "mmn", tags=['data', 'G', 'neighbours'], npar=npar)
+    def __init__(self, seedname, npar=multiprocessing.cpu_count(), **kwargs):
+        super().__init__(seedname, "mmn", tags=['data', 'G', 'neighbours'], npar=npar, **kwargs)
 
     def from_w90_file(self, seedname, npar):
         t0 = time()
         f_mmn_in = open(seedname + ".mmn", "r")
         f_mmn_in.readline()
         NB, NK, NNB = np.array(f_mmn_in.readline().split(), dtype=int)
-        self.data = np.zeros((NK, NNB, NB, NB), dtype=complex)
-        block = 1 + self.NB * self.NB
+        block = 1 + NB * NB
         data = []
         headstring = []
         mult = 4
@@ -579,9 +630,9 @@ class MMN(W90_file):
         f_mmn_in.close()
         t1 = time()
         data = [d[:, 0] + 1j * d[:, 1] for d in data]
-        self.data = np.array(data).reshape(self.NK, self.NNB, self.NB, self.NB).transpose((0, 1, 3, 2))
-        headstring = np.array([s.split() for s in headstring], dtype=int).reshape(self.NK, self.NNB, 5)
-        assert np.all(headstring[:, :, 0] - 1 == np.arange(self.NK)[:, None])
+        self.data = np.array(data).reshape(NK, NNB, NB, NB).transpose((0, 1, 3, 2))
+        headstring = np.array([s.split() for s in headstring], dtype=int).reshape(NK, NNB, 5)
+        assert np.all(headstring[:, :, 0] - 1 == np.arange(NK)[:, None])
         self.neighbours = headstring[:, :, 1] - 1
         self.G = headstring[:, :, 2:]
         t2 = time()
@@ -683,19 +734,18 @@ class AMN(W90_file):
     def NW(self):
         return self.data.shape[2]
 
-    def __init__(self, seedname, npar=multiprocessing.cpu_count()):
-        super().__init__(seedname, "amn", tags=['data'], npar=npar)
+    def __init__(self, seedname, npar=multiprocessing.cpu_count(), **kwargs):
+        super().__init__(seedname, "amn", tags=['data'], npar=npar, **kwargs)
 
-    def from_txt_file(self, seedname, npar):
+    def from_w90_file(self, seedname, npar):
         f_mmn_in = open(seedname + ".amn", "r").readlines()
         print("reading {}.amn: ".format(seedname) + f_mmn_in[0].strip())
         s = f_mmn_in[1]
         NB, NK, NW = np.array(s.split(), dtype=int)
-        self.data = np.zeros((NK, NB, NW), dtype=complex)
-        block = self.NW * self.NB
-        allmmn = (f_mmn_in[2 + j * block:2 + (j + 1) * block] for j in range(self.NK))
+        block = NW * NB
+        allmmn = (f_mmn_in[2 + j * block:2 + (j + 1) * block] for j in range(NK))
         p = multiprocessing.Pool(npar)
-        self.data = np.array(p.map(str2arraymmn, allmmn)).reshape((self.NK, self.NW, self.NB)).transpose(0, 2, 1)
+        self.data = np.array(p.map(str2arraymmn, allmmn)).reshape((NK, NW, NB)).transpose(0, 2, 1)
 
     """
     def write(self,seedname,comment="written by WannierBerri"):
@@ -712,8 +762,8 @@ class AMN(W90_file):
 
 class EIG(W90_file):
 
-    def __init__(self, seedname):
-        super().__init__(seedname=seedname, ext="eig")
+    def __init__(self, seedname, **kwargs):
+        super().__init__(seedname=seedname, ext="eig", **kwargs)
 
     def from_w90_file(self, seedname):
         data = np.loadtxt(seedname + ".eig")
@@ -730,7 +780,10 @@ class SPN(W90_file):
     SPN.data[ik, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k}>
     """
 
-    def __init__(self, seedname='wannier90', formatted=False):
+    def __init__(self, seedname, **kwargs):
+        super().__init__(seedname=seedname, ext="spn", **kwargs)
+
+    def from_w90_file(self, seedname='wannier90', formatted=False):
         print("----------\n SPN  \n---------\n")
         if formatted:
             f_spn_in = open(seedname + ".spn", 'r')
@@ -776,8 +829,7 @@ class UXU(W90_file):
         return 2
 
 
-
-    def __init__(self, seedname='wannier90', formatted=False, suffix='uHu'):
+    def from_w90_file(self, seedname='wannier90', suffix='uXu', formatted=False):
         print("----------\n  {0}   \n---------".format(suffix))
         print('formatted == {}'.format(formatted))
         if formatted:
@@ -811,8 +863,8 @@ class UHU(UXU):
     UHU.data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|H(k)|u_{n,k+b2}>
     """
 
-    def __init__(self, seedname='wannier90', formatted=False):
-        super().__init__(seedname=seedname, formatted=formatted, suffix='uHu')
+    def __init__(self, seedname='wannier90', **kwargs):
+        super().__init__(seedname=seedname, ext='uHu', suffix='uHu', **kwargs)
 
 
 class UIU(UXU):
@@ -820,8 +872,8 @@ class UIU(UXU):
     UIU.data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|u_{n,k+b2}>
     """
 
-    def __init__(self, seedname='wannier90', formatted=False):
-        super().__init__(seedname=seedname, formatted=formatted, suffix='uIu')
+    def __init__(self, seedname='wannier90', **kwargs):
+        super().__init__(seedname=seedname, ext='uIu', suffix='uIu', **kwargs)
 
 
 class SXU(W90_file):
@@ -836,7 +888,7 @@ class SXU(W90_file):
     def n_neighb(self):
         return 1
 
-    def __init__(self, seedname='wannier90', formatted=False, suffix='sHu'):
+    def from_w90_file(self, seedname='wannier90', formatted=False, suffix='sHu', **kwargs):
         print("----------\n  {0}   \n---------".format(suffix))
 
         if formatted:
@@ -873,8 +925,8 @@ class SIU(SXU):
     SIU.data[ik, ib, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k+b}>
     """
 
-    def __init__(self, seedname='wannier90', formatted=False):
-        super().__init__(seedname=seedname, formatted=formatted, suffix='sIu')
+    def __init__(self, seedname='wannier90', formatted=False, **kwargs):
+        super().__init__(seedname=seedname, ext='sIu', formatted=formatted, suffix='sIu', **kwargs)
 
 
 class SHU(SXU):
@@ -882,17 +934,12 @@ class SHU(SXU):
     SHU.data[ik, ib, m, n, ipol] = <u_{m,k}|S_ipol*H(k)|u_{n,k+b}>
     """
 
-    def __init__(self, seedname='wannier90', formatted=False):
-        super().__init__(seedname=seedname, formatted=formatted, suffix='sHu')
+    def __init__(self, seedname='wannier90', formatted=False, **kwargs):
+        super().__init__(seedname=seedname, ext='sHu', formatted=formatted, suffix='sHu', **kwargs)
 
 
 def parse_win_raw(filename=None, text=None):
-    try:
-        import wannier90io as w90io
-    except ImportError as err:
-        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n"
-                          "please install it manually as \n"
-                          "`pip install git+https://github.com/jimustafa/wannier90io-python.git`")
+    import wannier90io as w90io
     if filename is not None:
         with open(filename) as f:
             return w90io.parse_win_raw(f.read())

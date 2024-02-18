@@ -82,7 +82,7 @@ def create_files_Fe_W90():
 
 
 @pytest.fixture(scope="session")
-def create_files_Fe_W90_npz():
+def create_files_Fe_W90_npz(system_Fe_W90):
     """Create data files for Fe: uHu, uIu, sHu, and sIu"""
 
     seedname = "Fe"
@@ -139,7 +139,9 @@ def system_Fe_W90(create_files_Fe_W90):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.system.System_w90(
-        seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv=False, use_wcc_phase=False)
+        seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv=False, use_wcc_phase=False,
+        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
+        write_npz_formatted=True)
     system.set_symmetry(symmetries_Fe)
     return system
 
@@ -154,8 +156,9 @@ def system_Fe_W90_npz(create_files_Fe_W90_npz):
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.system.System_w90(
         seedname, berry=True,
-        # morb=True, #SHCqiao=True, SHCryoo=True,
-        transl_inv=False, use_wcc_phase=False)
+        morb=True, SHCqiao=True, SHCryoo=True,
+        transl_inv=False, use_wcc_phase=False,
+        read_npz=True, write_npz_list=[], overwrite_npz=False, write_npz_formatted=False)
     system.set_symmetry(symmetries_Fe)
     return system
 
