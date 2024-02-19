@@ -13,7 +13,7 @@
 # This is an auxilary class for the __evaluate.py  module
 
 import numpy as np
-import lazy_property
+from functools import cached_property
 from ..symmetry import SYMMETRY_PRECISION
 
 
@@ -33,7 +33,7 @@ class KpointBZ():
     def set_res(self, res):
         self.res = res
 
-    @lazy_property.LazyProperty
+    @cached_property
     def Kp_fullBZ(self):
         return self.K / self.NKFFT
 
@@ -42,7 +42,7 @@ class KpointBZ():
             "coord in rec.lattice = [ {0:10.6f}  , {1:10.6f} ,  {2:10.6f} ], refinement level:{3}, factor = {4}".format(
                 self.K[0], self.K[1], self.K[2], self.refinement_level, self.factor))
 
-    @lazy_property.LazyProperty
+    @cached_property
     def _max(self):
         return self.res.max  # np.max(self.res_smooth)
 
@@ -92,15 +92,15 @@ class KpointBZparallel(KpointBZ):
 
     "describes a Kpoint and the surrounding parallelagramm of size dK x dK x dK"
 
-    @lazy_property.LazyProperty
+    @cached_property
     def dK_fullBZ(self):
         return self.dK / self.NKFFT
 
-    @lazy_property.LazyProperty
+    @cached_property
     def dK_fullBZ_cart(self):
         return self.dK_fullBZ[:, None] * self.symgroup.recip_lattice
 
-    @lazy_property.LazyProperty
+    @cached_property
     def star(self):
         if self.symgroup is None:
             return [self.K]
@@ -161,7 +161,7 @@ class KpointBZparallel(KpointBZ):
             exclude_equiv_points(K_list_add)
         return K_list_add
 
-    @lazy_property.LazyProperty
+    @cached_property
     def distGamma(self):
         shift_corners = np.arange(-3, 4)
         corners = np.array([[x, y, z] for x in shift_corners for y in shift_corners for z in shift_corners])

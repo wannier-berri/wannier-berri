@@ -4,7 +4,15 @@ import abc
 from ..symmetry import transform_ident, transform_odd, TransformProduct
 
 
-class Formula_ln(abc.ABC):
+class Formula(abc.ABC):
+    @abc.abstractmethod
+    def __init__(self, data_K, internal_terms=True, cross_terms=True, external_terms=True):
+        self.internal_terms = internal_terms
+        self.external_terms = external_terms and not data_K.force_internal_terms_only
+        self.cross_terms = cross_terms and not data_K.force_internal_terms_only
+
+
+class Formula_ln(Formula):
 
     """
     A "Formula" is a ground concept of our calculation. Assume that we have divided
@@ -15,9 +23,8 @@ class Formula_ln(abc.ABC):
     """
 
     @abc.abstractmethod
-    def __init__(self, data_K, internal_terms=True, external_terms=True, correction_wcc=False, dT_wcc=False):
-        self.internal_terms = internal_terms
-        self.external_terms = external_terms
+    def __init__(self, data_K, correction_wcc=False, dT_wcc=False, **parameters):
+        super().__init__(data_K, **parameters)
         self.correction_wcc = correction_wcc
         if self.correction_wcc:
             if not (self.external_terms and self.internal_terms):
@@ -140,6 +147,7 @@ class FormulaProduct(Formula_ln):
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
+
 
 from . import covariant
 from . import covariant_basic

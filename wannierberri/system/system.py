@@ -12,7 +12,6 @@
 # ------------------------------------------------------------
 
 import numpy as np
-import lazy_property
 from functools import cached_property
 from ..symmetry import Group
 from ..__utility import real_recip_lattice
@@ -38,22 +37,25 @@ class System:
         position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
     NKFFT :
         the FFT grid which further will be used in calculations by default
-    Notes
-    -----
-    + for tight-binding models it is recommended to use `use_wcc_phase = True`. In this case the external terms vanish, and
-    + one can safely use `berry=False, morb=False`, and also set `'external_terms':False` in the parameters of the calculation
-
+    force_only_internal_terms : bool
+        only internal terms will be evaluated in all formulae, the external or cross terms will be excluded.
+        the internal terms are defined only by the Hamiltonian and spin
+    name : str
+        name that will be used by default in names of output files
     """
 
     def __init__(self,
-        frozen_max=-np.Inf,
-        periodic=(True, True, True),
-        NKFFT=None
+                 frozen_max=-np.Inf,
+                 periodic=(True, True, True),
+                 NKFFT=None,
+                 force_internal_terms_only=False,
+                 name='wberri'
                  ):
 
         # TODO: move some initialization to child classes
         self.frozen_max = frozen_max
         self.periodic = periodic
+        self.name = name
 
         if NKFFT is not None:
             self._NKFFT_recommended = NKFFT
@@ -61,7 +63,7 @@ class System:
         self.periodic = np.zeros(3, dtype=bool)
         self.periodic[:len(self.periodic)] = periodic
         self.is_phonon = False
-
+        self.force_internal_terms_only = force_internal_terms_only
 
 
     def set_real_lattice(self, real_lattice=None, recip_lattice=None):
@@ -95,7 +97,7 @@ class System:
         self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
 
-    @lazy_property.LazyProperty
+    @cached_property
     def cell_volume(self):
         return abs(np.linalg.det(self.real_lattice))
 

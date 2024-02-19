@@ -1,5 +1,5 @@
 import numpy as np
-from lazy_property import LazyProperty as Lazy
+from functools import cached_property
 from ..symmetry import transform_from_dict
 from ..smoother import VoidSmoother
 from .__result import Result
@@ -107,7 +107,7 @@ class EnergyResult(Result):
         assert len(smoothers) == self.N_energies
         self.smoothers = [(VoidSmoother() if s is None else s) for s in smoothers]
 
-    @Lazy
+    @cached_property
     def dataSmooth(self):
         data_tmp = self.data.copy()
         for i in range(self.N_energies - 1, -1, -1):

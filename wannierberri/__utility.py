@@ -15,7 +15,7 @@ import scipy.io
 import fortio
 from termcolor import cprint
 from time import time
-from lazy_property import LazyProperty as Lazy
+from functools import cached_property
 import numpy as np
 import inspect
 from . import PYFFTW_IMPORTED
@@ -206,6 +206,7 @@ class FFT_R_to_k():
         return self.fft_plan(A)
 
     def transform(self, AAA_K):
+        assert np.iscomplexobj(AAA_K)
         if self.lib == 'numpy':
             AAA_K[...] = np.fft.ifftn(AAA_K, axes=(0, 1, 2))
         elif self.lib == 'fftw':
@@ -219,7 +220,7 @@ class FFT_R_to_k():
         elif self.lib == 'slow':
             raise RuntimeError("FFT.transform should not be called for slow FT")
 
-    @Lazy
+    @cached_property
     def exponent(self):
         '''
         exponent for Fourier transform exp(1j*k*R)

@@ -11,10 +11,9 @@
 #                                                            #
 # ------------------------------------------------------------
 
-# TODO : maybe to make some lazy_property's not so lazy to save some memory
 import numpy as np
 import abc
-import lazy_property
+from functools import cached_property
 from .parallel import pool
 from .system.system import System
 from .system.system_R import System_R
@@ -74,22 +73,7 @@ def get_transform_TR(name, der=0):
 
 
 class _Data_K(System, abc.ABC):
-    default_parameters = {
-        # Those are not used at the moment, but will be restored (TODO):
-        # 'frozen_max': -np.Inf,
-        # 'delta_fz':0.1,
-        'Emin': -np.Inf,
-        'Emax': np.Inf,
-        'use_wcc_phase': False,
-        'fftlib': 'fftw',
-        'npar_k': 1,
-        'random_gauge': False,
-        'degen_thresh_random_gauge': 1e-4,
-        '_FF_antisym': False,
-        '_CCab_antisym': False
-    }
-
-    __doc__ = """
+    """
     class to store many data calculated on a specific FFT grid.
     The stored data can be used to evaluate many quantities.
     Is destroyed after  everything is evaluated for the FFT grid
@@ -97,28 +81,46 @@ class _Data_K(System, abc.ABC):
     Parameters
     -----------
     random_gauge : bool
-        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge covariance is preserved. Default: ``{random_gauge}``
+        applies random unitary rotations to degenerate states. Needed only for testing, to make sure that gauge
+        covariance is preserved.
     degen_thresh_random_gauge : float
-        threshold to consider bands as degenerate for random_gauge Default: ``{degen_thresh_random_gauge}``
+        threshold to consider bands as degenerate for random_gauge
     fftlib :  str
         library used to perform fft : 'fftw' (defgault) or 'numpy' or 'slow'
-    """.format(**default_parameters)
+    """
 
     # Those are not used at the moment , but will be restored (TODO):
     #    frozen_max : float
     #        position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
-    #        If not specified, attempts to read this value from system. Othewise set to  ``{frozen_max}``
+    #        If not specified, attempts to read this value from system. Othewise set to
     #    delta_fz:float
-    #        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max. Default: ``{delta_fz}``
+    #        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max.
 
-    def __init__(self, system, dK, grid, Kpoint=None, **parameters):
+    def __init__(self, system, dK, grid, Kpoint=None,
+                 # Those are not used at the moment, but will be restored (TODO):
+                 # frozen_max = -np.Inf,
+                 # delta_fz = 0.1,
+                 Emin=-np.Inf,
+                 Emax=np.Inf,
+                 use_wcc_phase=False,
+                 fftlib='fftw',
+                 npar_k=1,
+                 random_gauge=False,
+                 degen_thresh_random_gauge=1e-4
+                 ):
         self.system = system
-        self.set_parameters(**parameters)
-
+        self.Emin = Emin
+        self.Emax = Emax
+        self.use_wcc_phase = use_wcc_phase
+        self.fftlib = fftlib
+        self.npar_k = npar_k
+        self.random_gauge = random_gauge
+        self.degen_threshold_random_gauge = degen_thresh_random_gauge
+        self.force_internal_terms_only = system.force_internal_terms_only
         self.grid = grid
         self.NKFFT = grid.FFT
         self.select_K = np.ones(self.nk, dtype=bool)
-        #        self.findif = grid.findif
+        #   self.findif = grid.findif
         self.real_lattice = system.real_lattice
         self.num_wann = self.system.num_wann
         self.Kpoint = Kpoint
@@ -135,19 +137,9 @@ class _Data_K(System, abc.ABC):
         self._bar_quantities = {}
         self._covariant_quantities = {}
 
-    def set_parameters(self, **parameters):
-        for param in self.default_parameters:
-            if param in parameters:
-                vars(self)[param] = parameters[param]
-            else:
-                vars(self)[param] = self.default_parameters[param]
-        for param in parameters:
-            if param not in self.default_parameters:
-                print(f"WARNING: parameter {param} was passed to data_K, which is not recognised")
-
     ###########################################
     #   Now the **_R objects are evaluated only on demand
-    # - as Lazy_property (if used more than once)
+    # - as cached_property (if used more than once)
     #   as property   - iif used only once
     #   let's write them explicitly, for better code readability
     ###########################
@@ -176,19 +168,19 @@ class _Data_K(System, abc.ABC):
     #  Basic variables  #
     #####################
 
-    @lazy_property.LazyProperty
+    @cached_property
     def nbands(self):
         return self.num_wann
 
-    @lazy_property.LazyProperty
+    @cached_property
     def kpoints_all(self):
         return (self.grid.points_FFT + self.dK[None]) % 1
 
-    @lazy_property.LazyProperty
+    @cached_property
     def nk(self):
         return np.prod(self.NKFFT)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def tetraWeights(self):
         if isinstance(self.Kpoint, KpointBZparallel):
             return TetraWeightsParal(eCenter=self.E_K, eCorners=self.E_K_corners_parallel())
@@ -233,7 +225,7 @@ class _Data_K(System, abc.ABC):
         self.nb_selected = self.select_B.sum()
         self.bands_selected = True
 
-    @lazy_property.LazyProperty
+    @cached_property
     def E_K(self):
         print_my_name_start()
         EUU = self.poolmap(np.linalg.eigh, self.HH_K)
@@ -260,7 +252,7 @@ class _Data_K(System, abc.ABC):
     def HH_K(self):
         """returns Wannier Hamiltonian for all points of the FFT grid"""
 
-    @lazy_property.LazyProperty
+    @cached_property
     def delE_K(self):
         print_my_name_start()
         delE_K = np.einsum("klla->kla", self.Xbar('Ham', 1))
@@ -311,11 +303,11 @@ class _Data_K(System, abc.ABC):
 
         return V(self.Xbar('Ham', der=1))
 
-    @lazy_property.LazyProperty
+    @cached_property
     def Dcov(self):
         return formula.covariant.Dcov(self)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def dEig_inv(self):
         dEig_threshold = 1e-7
         dEig = self.E_K[:, :, None] - self.E_K[:, None, :]
@@ -327,7 +319,7 @@ class _Data_K(System, abc.ABC):
 
     #    defining sets of degenerate states - needed only for testing with random_gauge
 
-    @lazy_property.LazyProperty
+    @cached_property
     def degen(self):
         A = [np.where(E[1:] - E[:-1] > self.degen_thresh_random_gauge)[0] + 1 for E in self.E_K]
         A = [[
@@ -335,7 +327,7 @@ class _Data_K(System, abc.ABC):
              ] + list(a) + [len(E)] for a, E in zip(A, self.E_K)]
         return [[(ib1, ib2) for ib1, ib2 in zip(a, a[1:]) if ib2 - ib1 > 1] for a in A]
 
-    @lazy_property.LazyProperty
+    @cached_property
     def UU_K(self):
         print_my_name_start()
         self.E_K
@@ -352,11 +344,11 @@ class _Data_K(System, abc.ABC):
         print_my_name_end()
         return self._UU
 
-    @lazy_property.LazyProperty
+    @cached_property
     def D_H(self):
         return -self.Xbar('Ham', 1) * self.dEig_inv[:, :, :, None]
 
-    @lazy_property.LazyProperty
+    @cached_property
     def A_H(self):
         '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
         return self.Xbar('AA') + 1j * self.D_H
@@ -372,14 +364,14 @@ class _Data_K(System, abc.ABC):
     ###########################################################################
 
 
-    @lazy_property.LazyProperty
+    @cached_property
     def kron(self):
         En = self.E_K
         kron = np.array(abs(En[:, :, None] - En[:, None, :]) < self.dEnm_threshold, dtype=int)
 
         return kron
 
-    @lazy_property.LazyProperty
+    @cached_property
     def E1(self):
         ''' Electric dipole moment '''
         # Basic covariant matrices in the Hamiltonian gauge
@@ -402,7 +394,7 @@ class _Data_K(System, abc.ABC):
         A_H = A_int + A_ext
         return -1 * A_H
 
-    @lazy_property.LazyProperty
+    @cached_property
     def E1_internal(self):
         ''' Electric dipole moment (only internal terms) '''
         # Other matrices
@@ -418,7 +410,7 @@ class _Data_K(System, abc.ABC):
         A_H = A_int
         return -1 * A_H
 
-    @lazy_property.LazyProperty
+    @cached_property
     def M1(self):
         ''' Magnetic dipole moment '''
         # Basic covariant matrices in the Hamiltonian gauge
@@ -476,7 +468,7 @@ class _Data_K(System, abc.ABC):
         O_H = O_int + O_ext + O_cross
         return -0.5 * (C_H - Eln_plus[:, :, :, None] * O_H)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def M1_internal(self):
         ''' Magnetic dipole moment (only internal terms) '''
         # Basic covariant matrices in the Hamiltonian gauge
@@ -504,7 +496,7 @@ class _Data_K(System, abc.ABC):
         O_H = O_int
         return -0.5 * (C_H - Eln_plus[:, :, :, None] * O_H)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def E2(self):
         ''' Electric quadrupole moment '''
         # Basic covariant matrices in the Hamiltonian gauge
@@ -544,7 +536,7 @@ class _Data_K(System, abc.ABC):
         G_H = G_int + G_ext + G_cross
         return -1. * G_H
 
-    @lazy_property.LazyProperty
+    @cached_property
     def E2_internal(self):
         ''' Electric quadrupole moment (only internal terms)'''
         # Other matrices
@@ -564,7 +556,7 @@ class _Data_K(System, abc.ABC):
         G_H = G_int
         return -1. * G_H
 
-    @lazy_property.LazyProperty
+    @cached_property
     def Bln(self):
         m = self.M1
         q = self.E2
@@ -578,7 +570,7 @@ class _Data_K(System, abc.ABC):
         B = B_m + B_q
         return B_m, B_q, B
 
-    @lazy_property.LazyProperty
+    @cached_property
     def Bln_internal(self):
         m = self.M1_internal
         q = self.E2_internal
@@ -592,7 +584,7 @@ class _Data_K(System, abc.ABC):
         B = B_m + B_q
         return B_m, B_q, B
 
-    @lazy_property.LazyProperty
+    @cached_property
     def Vn(self):
         ''' Band velocity '''
         V_H = self.Xbar('Ham', 1)  # (k, m, n, a)
@@ -607,8 +599,13 @@ class _Data_K(System, abc.ABC):
 class Data_K_R(_Data_K, System_R):
     """ The Data_K class for systems defined by R-space matrix elements (Wannier/TB)"""
 
-    def __init__(self, system, dK, grid, **parameters):
+    def __init__(self, system, dK, grid,
+                 _FF_antisym=False,
+                 _CCab_antisym=False,
+                 **parameters):
         super().__init__(system, dK, grid, **parameters)
+        self._FF_antisym = _FF_antisym
+        self._CCab_antisym = _CCab_antisym
 
         self.cRvec_wcc = self.system.cRvec_p_wcc
 

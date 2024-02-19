@@ -6,7 +6,8 @@ from ..symmetry import transform_ident, transform_odd
 
 class Identity(Formula_ln):
 
-    def __init__(self, data_K=None):
+    def __init__(self, data_K=None, **parameters):
+        super().__init__(data_K, **parameters)
         self.ndim = 0
         self.transformTR = transform_ident
         self.transformInv = transform_ident

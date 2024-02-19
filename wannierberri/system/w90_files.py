@@ -15,6 +15,7 @@
 import multiprocessing
 import gc
 import functools
+from functools import cached_property
 import os.path
 import abc
 from scipy.constants import physical_constants
@@ -22,7 +23,6 @@ from time import time
 from itertools import islice
 from copy import copy
 import numpy as np
-import lazy_property
 from .disentanglement import disentangle
 from ..__utility import FortranFileR, alpha_A, beta_A
 
@@ -132,60 +132,57 @@ class CheckPoint:
     # matrix elements for Wannier interpolation, independently of the
     # finite-difference scheme used.
 
-    # --- A_a(q,b) matrix --- #
-    def get_AA_qb(self, mmn, transl_inv=False):
-
-        AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
+    def get_AABB_qb(self, mmn, transl_inv=False, eig=None, phase=None, sum_b=False):
+        assert (not transl_inv) or eig is None
+        if sum_b:
+            AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+        else:
+            AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
                 ib_unique = mmn.ib_unique_map[ik, ib]
                 # Matrix < u_k | u_k+b > (mmn)
                 data = mmn.data[ik, ib]                   # Hamiltonian gauge
+                if eig is not None:
+                    data = data * eig.data[ik, :, None]  # Hamiltonian gauge (add energies)
                 AAW = self.wannier_gauge(data, ik, iknb)  # Wannier gauge
-
                 # Matrix for finite-difference schemes
                 AA_q_ik_ib = 1.j * AAW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
-
                 # Marzari & Vanderbilt formula for band-diagonal matrix elements
                 if transl_inv:
                     AA_q_ik_ib[range(self.num_wann), range(self.num_wann)] = -np.log(
                         AAW.diagonal()).imag[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, :]
-
-                AA_qb[ik, :, :, ib_unique, :] = AA_q_ik_ib
-
+                if phase is not None:
+                    AA_q_ik_ib *= phase[:, :, ib_unique, None]
+                if sum_b:
+                    AA_qb[ik] += AA_q_ik_ib
+                else:
+                    AA_qb[ik, :, :, ib_unique, :] = AA_q_ik_ib
         return AA_qb
+
+
+    # --- A_a(q,b) matrix --- #
+
+
+    def get_AA_qb(self, mmn, transl_inv=False, phase=None, sum_b=False):
+        return self.get_AABB_qb(mmn, transl_inv=transl_inv, phase=phase, sum_b=sum_b)
 
     def get_AA_q(self, mmn, transl_inv=False):
         return self.get_AA_qb(mmn=mmn, transl_inv=transl_inv).sum(axis=3)
 
-
     # --- B_a(q,b) matrix --- #
+    def get_BB_qb(self, mmn, eig, phase=None, sum_b=False):
+        return self.get_AABB_qb(mmn, eig=eig, phase=phase, sum_b=sum_b)
 
 
-    def get_BB_qb(self, mmn, eig):
-
-        BB_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
-        for ik in range(self.num_kpts):
-            for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                ib_unique = mmn.ib_unique_map[ik, ib]
-
-                # Matrix < u_k | H_k | u_k+b > (eig * mmn)
-                data = mmn.data[ik, ib]                   # Hamiltonian gauge (only mmn)
-                data = data * eig.data[ik, :, None]       # Hamiltonian gauge (add energies)
-                BBW = self.wannier_gauge(data, ik, iknb)  # Wannier gauge
-
-                # Matrix for finite-difference schemes
-                BB_q_ik_ib = 1j * BBW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
-                BB_qb[ik, :, :, ib_unique, :] = BB_q_ik_ib
-
-        return BB_qb
-
-    # --- C_a(q,b1,b2) matrix --- #
-    def get_CC_qb(self, mmn, uhu):
-
-        CC_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
+    def get_CCOOGG_qb(self, mmn, uhu, antisym=True, phase=None, sum_b=False):
+        nd_cart = 1 if antisym else 2
+        shape_NNB = () if sum_b else (mmn.NNB, mmn.NNB)
+        shape = (self.num_kpts, self.num_wann, self.num_wann) + shape_NNB + (3,) * nd_cart
+        CC_qb = np.zeros(shape, dtype=complex)
+        if phase is not None:
+            phase = np.reshape(phase, np.shape(phase)[:4] + (1,) * nd_cart)
         for ik in range(self.num_kpts):
             for ib1 in range(mmn.NNB):
                 iknb1 = mmn.neighbours[ik, ib1]
@@ -198,130 +195,89 @@ class CheckPoint:
                     data = uhu.data[ik, ib1, ib2]                 # Hamiltonian gauge
                     CCW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
 
-                    # Matrix for finite-difference schemes (takes antisymmetric piece only)
-                    CC_q_ik_ib = 1.j * CCW[:, :, None] * (
-                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                            mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
-                            - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
-
-                    CC_qb[ik, :, :, ib1_unique, ib2_unique, :] = CC_q_ik_ib
-
+                    if antisym:
+                        # Matrix for finite-difference schemes (takes antisymmetric piece only)
+                        CC_q_ik_ib = 1.j * CCW[:, :, None] * (
+                            mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
+                                mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
+                                - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
+                    else:
+                        # Matrix for finite-difference schemes (takes symmetric piece only)
+                        CC_q_ik_ib = CCW[:, :, None, None] * (
+                                         mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
+                                             mmn.bk_cart[ik, ib1, :, None] *
+                                             mmn.bk_cart[ik, ib2, None, :]))[None, None, :, :]
+                    if phase is not None:
+                        CC_q_ik_ib *= phase[:, :, ib1_unique, ib2_unique]
+                    if sum_b:
+                        CC_qb[ik] += CC_q_ik_ib
+                    else:
+                        CC_qb[ik, :, :, ib1_unique, ib2_unique] = CC_q_ik_ib
         return CC_qb
 
+    # --- C_a(q,b1,b2) matrix --- #
+    def get_CC_qb(self, mmn, uhu, phase=None, sum_b=False):
+        return self.get_CCOOGG_qb(mmn, uhu, phase=phase, sum_b=sum_b)
+
     # --- O_a(q,b1,b2) matrix --- #
-    def get_OO_qb(self, mmn, uiu):
-
-        OO_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
-        for ik in range(self.num_kpts):
-            for ib1 in range(mmn.NNB):
-                iknb1 = mmn.neighbours[ik, ib1]
-                ib1_unique = mmn.ib_unique_map[ik, ib1]
-                for ib2 in range(mmn.NNB):
-                    iknb2 = mmn.neighbours[ik, ib2]
-                    ib2_unique = mmn.ib_unique_map[ik, ib2]
-
-                    # Matrix < u_k+b1 | I | u_k+b2 > (uIu)
-                    data = uiu.data[ik, ib1, ib2]                 # Hamiltonian gauge
-                    OOW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
-
-                    # Matrix for finite-difference schemes (takes antisymmetric piece only)
-                    OO_q_ik_ib = 1.j * OOW[:, :, None] * (
-                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                            mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
-                            - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
-
-                    OO_qb[ik, :, :, ib1_unique, ib2_unique, :] = OO_q_ik_ib
-
-        return OO_qb
+    def get_OO_qb(self, mmn, uiu, phase=None, sum_b=False):
+        return self.get_CCOOGG_qb(mmn, uiu, phase=phase, sum_b=sum_b)
 
     # Symmetric G_bc(q,b1,b2) matrix
-    def get_GG_qb(self, mmn, uiu):
-
-        GG_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3, 3), dtype=complex)
-        for ik in range(self.num_kpts):
-            for ib1 in range(mmn.NNB):
-                iknb1 = mmn.neighbours[ik, ib1]
-                ib1_unique = mmn.ib_unique_map[ik, ib1]
-                for ib2 in range(mmn.NNB):
-                    iknb2 = mmn.neighbours[ik, ib2]
-                    ib2_unique = mmn.ib_unique_map[ik, ib2]
-
-                    # Matrix < u_k+b1 | I | u_k+b2 > (uIu)
-                    data = uiu.data[ik, ib1, ib2]                 # Hamiltonian gauge
-                    GGW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
-
-                    # Matrix for finite-difference schemes (takes symmetric piece only)
-                    GG_q_ik_ib = GGW[:, :, None, None] * (
-                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                            mmn.bk_cart[ik, ib1, :, None] * mmn.bk_cart[ik, ib2, None, :]))[None, None, :, :]
-
-                    GG_qb[ik, :, :, ib1_unique, ib2_unique, :, :] = GG_q_ik_ib
-
-        # G_bc is symmetric in the cartesian indices
-        GG_qb = 0.5 * (GG_qb + GG_qb.swapaxes(5, 6))
-
-        return GG_qb
-
+    def get_GG_qb(self, mmn, uiu, phase=None, sum_b=False):
+        return self.get_CCOOGG_qb(mmn, uiu, antisym=False, phase=phase, sum_b=sum_b)
     ###########################################################################
 
-    def get_SA_q(self, siu, mmn):
-        mmn.set_bk_chk(self)
-        SA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
-        assert siu.NNB == mmn.NNB
-        for ik in range(self.num_kpts):
-            for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                SAW = self.wannier_gauge(siu.data[ik, ib], ik, iknb)
-                SA_q_ik = 1.j * SAW[:, :, None, :] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :, None]
-                SA_q[ik] += SA_q_ik
-        return SA_q
 
-    def get_SHA_q(self, shu, mmn):
+
+    def get_SH_q(self, spn, eig):
+        SH_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
+        for ik in range(self.num_kpts):
+            SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik, :, :, :] * eig.data[ik, None, :, None], ik, ik)
+        return SH_q
+
+    def get_SHA_q(self, shu, mmn, phase=None):
+        """
+        SHA or SA (if siu is used instead of shu)
+        """
         mmn.set_bk_chk(self)
         SHA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert shu.NNB == mmn.NNB
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
+                ib_unique = mmn.ib_unique_map[ik, ib]
                 SHAW = self.wannier_gauge(shu.data[ik, ib], ik, iknb)
+                if phase is not None:
+                    SHAW = SHAW * phase[:, :, ib_unique, None]
                 SHA_q_ik = 1.j * SHAW[:, :, None, :] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :, None]
                 SHA_q[ik] += SHA_q_ik
         return SHA_q
 
-    def get_SR_q(self, spn, mmn):
-        mmn.set_bk_chk(self)
-        SR_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
-        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
-        for ik in range(self.num_kpts):
-            for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                for i in range(3):
-                    SM_i = spn.data[ik, :, :, i].dot(mmn.data[ik, ib, :, :])
-                    SRW = self.wannier_gauge(SM_i, ik, iknb) - self.wannier_gauge(spn.data[ik, :, :, i], ik, ik)
-                    SR_q[ik, :, :, :, i] += 1.j * SRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
-        return SR_q
 
-    def get_SH_q(self, spn, eig):
-        SH_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
-        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
-        for ik in range(self.num_kpts):
-            for i in range(3):
-                SH_q[ik, :, :, i] = self.wannier_gauge(spn.data[ik, :, :, i] * eig.data[ik, None, :], ik, ik)
-        return SH_q
 
-    def get_SHR_q(self, spn, mmn, eig):
+    def get_SHR_q(self, spn, mmn, eig=None, phase=None):
+        """
+        SHR or SR(if eig is None)
+        """
         mmn.set_bk_chk(self)
         SHR_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
         for ik in range(self.num_kpts):
+            SH = spn.data[ik, :, :, :]
+            if eig is not None:
+                SH = SH * eig.data[ik, None, :, None]
+            SHW = self.wannier_gauge(SH, ik, ik)
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
-                for i in range(3):
-                    SH_i = spn.data[ik, :, :, i] * eig.data[ik, None, :]
-                    SHM_i = SH_i.dot(mmn.data[ik, ib])
-                    SHRW = self.wannier_gauge(SHM_i, ik, iknb) - self.wannier_gauge(SH_i, ik, ik)
-                    SHR_q[ik, :, :, :,
-                    i] += 1.j * SHRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+                ib_unique = mmn.ib_unique_map[ik, ib]
+                SHM = np.tensordot(SH, mmn.data[ik, ib], axes=((1,), (0,))).swapaxes(-1, -2)
+                SHRW = self.wannier_gauge(SHM, ik, iknb)
+                if phase is not None:
+                    SHRW = SHRW * phase[:, :, ib_unique, None]
+                SHRW = SHRW - SHW
+                SHR_q[ik, :, :, :, :] += 1.j * SHRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :, None]
         return SHR_q
 
 
@@ -504,7 +460,7 @@ class Wannier90data:
     def iter_kpts(self):
         return range(self.chk.num_kpts)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def wannier_centers(self):
         return self.chk.wannier_centers
 

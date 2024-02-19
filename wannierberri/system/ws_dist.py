@@ -80,3 +80,24 @@ def ws_dist_stars(iRvec, cRvec, param):
             dist = np.linalg.norm(R_in[None, :] + shifts_int_all.dot(real_lattice), axis=1)
             irvec_new[(iw, jw)] = iRvec + shifts_int_all[dist - dist.min() < ws_distance_tol].copy()
     return irvec_new
+
+
+def wigner_seitz(real_lattice, mp_grid):
+    ws_search_size = np.array([1] * 3)
+    dist_dim = np.prod((ws_search_size + 1) * 2 + 1)
+    origin = divmod((dist_dim + 1), 2)[0] - 1
+    real_metric = real_lattice.dot(real_lattice.T)
+    mp_grid = np.array(mp_grid)
+    irvec = []
+    ndegen = []
+    for n in iterate3dpm(mp_grid * ws_search_size):
+        dist = []
+        for i in iterate3dpm((1, 1, 1) + ws_search_size):
+            ndiff = n - i * mp_grid
+            dist.append(ndiff.dot(real_metric.dot(ndiff)))
+        dist_min = np.min(dist)
+        if abs(dist[origin] - dist_min) < 1.e-7:
+            irvec.append(n)
+            ndegen.append(np.sum(abs(dist - dist_min) < 1.e-7))
+
+    return np.array(irvec), np.array(ndegen)

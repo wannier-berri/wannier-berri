@@ -1,7 +1,7 @@
 from ..__utility import find_degen
 
 import numpy as np
-from lazy_property import LazyProperty
+from functools import cached_property
 
 
 class FiniteDifferences():
@@ -12,7 +12,7 @@ class FiniteDifferences():
         self.wk, self.bki, self.neighbours = get_neighbours_FFT(self.recip_lattice, self.FFT)
         self.bk_cart = self.bki.dot(self.basis)
 
-    @LazyProperty
+    @cached_property
     def basis(self):
         return np.array(self.recip_lattice) / np.array(self.FFT)
 

@@ -43,15 +43,11 @@ class System_fplo(System_R):
     def __init__(self, hamdata="+hamdata",
                  mp_grid=None,
                  **parameters):
-
-        super().__init__(**parameters)
-        if not self.use_wcc_phase:
-            print(
-                "WARNING: It is highly recommended to use `use_wcc_phase=True` with System_fplo"
-                ", and further set parameters={`external_terms':False}"
-                "in any case, the external terms are evaluated using the diagonal approximation for position matrix elements (Tight-binding-like)"
-            )
-
+        if "name" not in parameters:
+            parameters["name"] = "ASE"
+        super().__init__(force_internal_terms_only=True,
+                         use_wcc_phase=True,
+                         **parameters)
         self.seedname = hamdata.split("/")[-1].split("_")[0]
         f = open(hamdata, "r")
         allread = False
@@ -118,8 +114,6 @@ class System_fplo(System_R):
 
         self.nRvec0 = len(iRvec)
         self.iRvec = np.array(iRvec, dtype=int)
-
-        self.getXX_only_wannier_centers(getSS=False)
 
         self.do_at_end_of_init()
         if self.use_ws:

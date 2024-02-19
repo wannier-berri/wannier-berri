@@ -25,7 +25,8 @@ class SystemRandom(System_R):
                  real_lattice=None,
                  max_R=5,
                  **parameters):
-
+        if "name" not in parameters:
+            parameters["name"] = "random"
         super().__init__(**parameters)
         if real_lattice is None:
             while True:
@@ -51,7 +52,10 @@ class SystemRandom(System_R):
         if len(iRvec) < nRvec:
             print(f"WARNING : required number of R-vectors {nRvec} was not achieved. got only {len(iRvec)}")
         print(f"iRvec2={iRvec}")
-        self.iRvec = np.array(list(iRvec)[:nRvec])
+        iRvec = np.array(list(iRvec), dtype=int)
+        norm = np.linalg.norm(iRvec, axis=1)
+        srt = np.argsort(norm)
+        self.iRvec = iRvec[srt][:nRvec]
         print(f"iRvec3={iRvec}")
         np.random.shuffle(self.iRvec)
         print(f"iRvec4={self.iRvec}")
@@ -67,4 +71,4 @@ class SystemRandom(System_R):
                 AA[self.range_wann, self.range_wann, self.iR0] = 0
             else:
                 AA[self.range_wann, self.range_wann, self.iR0] = AA[self.range_wann, self.range_wann, self.iR0].real
-        self.do_at_end_of_init(convert_convention=False)
+        self.do_at_end_of_init()
