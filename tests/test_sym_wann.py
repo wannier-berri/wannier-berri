@@ -26,10 +26,10 @@ from test_run import (
 @pytest.fixture
 def check_symmetry(check_run):
     def _inner(system,
-        calculators={},
-        precision=1e-7,
-        extra_precision={},
-        **kwargs,
+            calculators={},
+            precision=1e-7,
+            extra_precision={},
+            **kwargs,
             ):
         kwargs['do_not_compare'] = True
         result_irr_k = check_run(system, use_symmetry=True, calculators=calculators, suffix="irr_k", **kwargs)
@@ -50,8 +50,6 @@ def check_symmetry(check_run):
                                             f"data of {quant} with and without symmetries give a maximal "
                                             f"absolute difference of {diff} greater than the required precision {req_precision}"
                                         )
-
-
     return _inner
 
 
