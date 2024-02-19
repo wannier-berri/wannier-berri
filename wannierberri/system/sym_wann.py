@@ -118,7 +118,7 @@ class SymWann():
             'BB': 1,
             'CC': -1,
             'SS': -1,
-            'SA': 1, 'SHA': 1, 'SR': 1, 'SH': 1, 'SHR': 1,  # correct
+            'SA': -1, 'SHA': -1, 'SR': -1, 'SH': -1, 'SHR': -1,
             'OO': -1, 'GG': 1
         }
 
