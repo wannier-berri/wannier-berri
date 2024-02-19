@@ -1,9 +1,9 @@
 import numpy as np
 import os
-import lazy_property
 from functools import cached_property
 from termcolor import cprint
 from collections import defaultdict
+import warnings
 import glob
 import multiprocessing
 from .system import System, pauli_xyz
@@ -58,7 +58,7 @@ class System_R(System):
                  SHCqiao=False,
                  OSD=False,
                  use_ws=True,
-                 use_wcc_phase=False,
+                 use_wcc_phase=True,
                  npar=None,
                  _getFF=False,
                  **parameters):
@@ -68,7 +68,8 @@ class System_R(System):
         self.needed_R_matrices = set(['Ham'])
         self.npar = multiprocessing.cpu_count() if npar is None else npar
         self.use_wcc_phase = use_wcc_phase
-
+        if not self.use_wcc_phase:
+            warnings.warn("use_wcc_phase=False is not recommended")
 
         if morb:
             self.needed_R_matrices.update(['AA', 'BB', 'CC'])
@@ -84,6 +85,9 @@ class System_R(System):
             self.needed_R_matrices.update(['AA', 'SS', 'SR', 'SH', 'SHR'])
         if OSD:
             self.needed_R_matrices.update(['AA', 'BB', 'CC', 'GG', 'OO'])
+
+        if self.force_internal_terms_only:
+            self.needed_R_matrices = self.needed_R_matrices.intersection(['Ham', 'SS'])
 
         self._XX_R = dict()
 
@@ -136,9 +140,9 @@ class System_R(System):
             if self.has_R_mat(k):
                 return True
 
-    def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False):
+    def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False, Hermitian=False):
         """
-        Set real-space matrix specified by `key`. Either diagonal, specific R or full matix.  Useful for model calculations
+        Set real-space matrix specified by `key`. Either diagonal, specific R or full matrix.  Useful for model calculations
 
         Parameters
         ----------
@@ -150,13 +154,16 @@ class System_R(System):
             * `array(num_wann,num_wann,nRvec,...)` full spin matrix for all R
 
             `...` denotes the vector/tensor cartesian dimensions of the matrix element
+        diag : bool
+            set only the diagonal for a specific R-vector (if specified), or fpr R=[0,0,0]
         R : list(int)
             list of 3 integer values specifying R. if
         reset : bool
             allows to reset matrix if it is already set
         add : bool
             add matrix to the already existing
-
+        Hermitian : bool
+            force the value to be Hermitian (only if all vectors are set at once)
         """
         assert value.shape[0] == self.num_wann
         if diag:
@@ -170,6 +177,8 @@ class System_R(System):
             XX[:, :, self.iR(R)] = value
             self.set_R_mat(key, XX, reset=reset, add=add)
         else:
+            if Hermitian:
+                value = 0.5 * (value + self.conj_XX_R(value))
             if key in self._XX_R:
                 if reset:
                     self._XX_R[key] = value
@@ -360,39 +369,10 @@ class System_R(System):
             pairs = [(2 * i, 2 * i + 1) for i in range(nw2)]
         self.set_spin_pairs(pairs)
 
-    def getXX_only_wannier_centers(self, getSS=False):
-        """return AA_R, BB_R, CC_R containing only the diagonal matrix elements, evaluated from
-        the wannier_centers_cart variable (tight-binding approximation).
-        In practice, it is useless because corresponding terms vanish with use_wcc_phase = True.
-        but for testing may be used
-        Used with pythtb, tbmodels, and also fplo, ASE until proper evaluation of matrix elements is implemented for them.
-        """
 
-        iR0 = self.iR0
-        if 'AA' in self.needed_R_matrices:
-            self.set_R_mat('AA', np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex))
-            if not self.use_wcc_phase:
-                for i in range(self.num_wann):
-                    self.get_R_mat('AA')[i, i, iR0, :] = self.wannier_centers_cart[i]
-
-        if 'BB' in self.needed_R_matrices:
-            self.set_R_mat('BB', np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex))
-            if not self.use_wcc_phase:
-                for i in range(self.num_wann):
-                    self.get_R_mat('BB')[i, i, iR0, :] = self.get_R_mat('AA')[i, i, iR0, :] * self.get_R_mat('Ham')[
-                        i, i, iR0]
-
-        if 'CC' in self.needed_R_matrices:
-            self.set_R_mat('CC', np.zeros((self.num_wann, self.num_wann, self.nRvec0, 3), dtype=complex))
-
-        if 'SS' in self.needed_R_matrices and getSS:
-            raise NotImplementedError()
-
-    def do_at_end_of_init(self, convert_convention=True):
+    def do_at_end_of_init(self):
         self.set_symmetry()
         self.check_periodic()
-        if convert_convention:
-            self.convention_II_to_I()
         print("Number of wannier functions:", self.num_wann)
         print("Number of R points:", self.nRvec)
         print("Recommended size of FFT grid", self.NKFFT_recommended)
@@ -424,6 +404,7 @@ class System_R(System):
             print("using ws_dist for {}".format(key))
             self.set_R_mat(key, ws_map(val), reset=True)
         self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
+        self.clear_cached_R()
 
     def to_tb_file(self, tb_file=None):
         """
@@ -498,7 +479,7 @@ class System_R(System):
             return self.cRvec[None, None, :, :]
 
     def clear_cached_R(self):
-        clear_cached(self, ['cRvec', 'cRvec_p_wcc'])
+        clear_cached(self, ['cRvec', 'cRvec_p_wcc', 'reverseR'])
 
     @cached_property
     def diff_wcc_cart(self):
@@ -532,41 +513,41 @@ class System_R(System):
         return self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
 
     def convention_II_to_I(self):
-        if self.use_wcc_phase:
-            R_new = {}
-            if self.wannier_centers_cart is None:
-                raise ValueError("use_wcc_phase = True, but the wannier centers could not be determined")
-            if self.has_R_mat('AA'):
-                AA_R_new = np.copy(self.get_R_mat('AA'))
-                AA_R_new[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] -= self.wannier_centers_cart
-                R_new['AA'] = AA_R_new
-            if self.has_R_mat('BB'):
-                print("WARNING: orbital moment does not work with wcc_phase so far")
-                BB_R_new = self.get_R_mat('BB').copy() - self.get_R_mat('Ham')[:, :, :,
-                                                         None] * self.wannier_centers_cart[None, :, None, :]
-                R_new['BB'] = BB_R_new
-            if self.has_R_mat('CC'):
-                print("WARNING: orbital moment does not work with wcc_phase so far")
-                norm = np.linalg.norm(self.get_R_mat('CC') - self.conj_XX_R('CC'))
-                assert norm < 1e-10, f"CC_R is not Hermitian, norm={norm}"
-                assert self.has_R_mat('BB'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
-                T = self.wannier_centers_cart[:, None, None, :, None] * self.get_R_mat('BB')[:, :, :, None, :]
-                CC_R_new = self.get_R_mat('CC').copy() + 1.j * sum(
-                    s * (
-                            -T[:, :, :, a, b] -  # -t_i^a * B_{ij}^b(R)
-                            self.conj_XX_R(T[:, :, :, b, a]) +  # - B_{ji}^a(-R)^*  * t_j^b
-                            self.wannier_centers_cart[:, None, None, a] * self.Ham_R[:, :, :, None] *
-                            self.wannier_centers_cart[None, :, None, b]  # + t_i^a*H_ij(R)t_j^b
-                    ) for (s, a, b) in [(+1, alpha_A, beta_A), (-1, beta_A, alpha_A)])
-                norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
-                assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
-                R_new['CC'] = CC_R_new
-            if self.has_R_mat_any(['SA', 'SHA', 'SR', 'SH', 'SHR']):
-                raise NotImplementedError("use_wcc_phase=True for spin current matrix elements not implemented")
+        R_new = {}
+        if self.wannier_centers_cart is None:
+            raise ValueError("use_wcc_phase = True, but the wannier centers could not be determined")
+        if self.has_R_mat('AA'):
+            AA_R_new = np.copy(self.get_R_mat('AA'))
+            AA_R_new[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] -= self.wannier_centers_cart
+            R_new['AA'] = AA_R_new
+        if self.has_R_mat('BB'):
+            print("WARNING: orbital moment does not work with wcc_phase so far")
+            BB_R_new = self.get_R_mat('BB').copy() - self.get_R_mat('Ham')[:, :, :,
+                                                     None] * self.wannier_centers_cart[None, :, None, :]
+            R_new['BB'] = BB_R_new
+        if self.has_R_mat('CC'):
+            print("WARNING: orbital moment does not work with wcc_phase so far")
+            norm = np.linalg.norm(self.get_R_mat('CC') - self.conj_XX_R('CC'))
+            assert norm < 1e-10, f"CC_R is not Hermitian, norm={norm}"
+            assert self.has_R_mat('BB'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
+            T = self.wannier_centers_cart[:, None, None, :, None] * self.get_R_mat('BB')[:, :, :, None, :]
+            CC_R_new = self.get_R_mat('CC').copy() + 1.j * sum(
+                s * (
+                        -T[:, :, :, a, b] -  # -t_i^a * B_{ij}^b(R)
+                        self.conj_XX_R(T[:, :, :, b, a]) +  # - B_{ji}^a(-R)^*  * t_j^b
+                        self.wannier_centers_cart[:, None, None, a] * self.Ham_R[:, :, :, None] *
+                        self.wannier_centers_cart[None, :, None, b]  # + t_i^a*H_ij(R)t_j^b
+                ) for (s, a, b) in [(+1, alpha_A, beta_A), (-1, beta_A, alpha_A)])
+            norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
+            assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
+            R_new['CC'] = CC_R_new
+        unknown = set(self._XX_R.keys()) - set(['Ham', 'AA', 'BB', 'CC', 'SS'])
+        if len(unknown) > 0:
+            raise NotImplementedError(f"Convertion of conventions for {list(unknown)} is not implemented")
 
-            for X in ['AA', 'BB', 'CC']:
-                if self.has_R_mat(X):
-                    self.set_R_mat(X, R_new[X], reset=True)
+        for X in ['AA', 'BB', 'CC']:
+            if self.has_R_mat(X):
+                self.set_R_mat(X, R_new[X], reset=True)
 
     @property
     def iR0(self):
@@ -574,9 +555,9 @@ class System_R(System):
 
     def iR(self, R):
         R = np.array(np.round(R), dtype=int).tolist()
-        return self.iRvec.tolist().index([0, 0, 0])
+        return self.iRvec.tolist().index(R)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def reverseR(self):
         """indices of R vectors that has -R in irvec, and the indices of the corresponding -R vectors."""
         mapping = np.all(self.iRvec[:, None, :] + self.iRvec[None, :, :] == 0, axis=2)

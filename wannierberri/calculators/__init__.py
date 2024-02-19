@@ -32,5 +32,6 @@ class Calculator():
         if print_comment:
             cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
 
+
 from . import static, dynamic, tabulate
 from .tabulate import TabulatorAll

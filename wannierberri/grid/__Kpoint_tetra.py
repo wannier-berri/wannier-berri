@@ -13,7 +13,7 @@
 # This is an auxilary class for the __evaluate.py  module
 
 import numpy as np
-import lazy_property
+from functools import cached_property
 from .__Kpoint import KpointBZ
 
 # fixing the order of the edges by their vortices
@@ -41,12 +41,12 @@ class KpointBZtetra(KpointBZ):
     def vertices_fullBZ(self):
         return self.vertices / self.NKFFT
 
-    @lazy_property.LazyProperty
+    @cached_property
     def __edge_lengths(self):
         edges = np.array([self.vertices[i[1]] - self.vertices[i[0]] for i in EDGES]).dot(self.basis)
         return np.linalg.norm(edges, axis=1)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def __i_max_edge(self):
         """returns the index of the maximal edge.
         If there are equal edges, the edge with the smallest index (inthe EDGES array) is returned. This is done for reproducibility of the tests
@@ -58,7 +58,7 @@ class KpointBZtetra(KpointBZ):
 #        print ("srt",srt
         return min(srt_short)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def size(self):
         return max(self.__edge_lengths)
 

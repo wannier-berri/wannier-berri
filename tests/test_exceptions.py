@@ -37,7 +37,8 @@ def test_utility_FFT_R_to_k():
         with pytest.raises(AssertionError, match=f"fft lib '{lib.lower()}' is unknown/supported"):
             util.FFT_R_to_k(iRvec, NKFFT, num_wann, lib=lib)
 
-    AAA_K = np.random.random((num_wann, num_wann) + NKFFT + (3, 3, 3))
+    shape = (num_wann, num_wann) + NKFFT + (3, 3, 3)
+    AAA_K = np.random.random(shape) + 1j * np.random.random(shape)
 
     util.FFT_R_to_k(iRvec, NKFFT, num_wann, lib="numpy").transform(AAA_K)
     with pytest.raises(RuntimeError, match="FFT.transform should not be called for slow FT"):
@@ -105,7 +106,7 @@ def test_morb_fail():
     except (ImportError, ModuleNotFoundError):
         pytest.xfail("failed to import tbmodels")
     with pytest.raises(ValueError):
-        wberri.system.System_tb(wberri.models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15), spin=True)
+        wberri.system.System_TBmodels(wberri.models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15), spin=True)
 
 
 def test_system_GaAs_tb_morb_fail():

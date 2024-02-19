@@ -5,6 +5,7 @@ from ..__utility import Gaussian, Lorentzian, FermiDirac, alpha_A, beta_A
 from ..result import EnergyResult
 from . import Calculator
 from ..formula.covariant import SpinVelocity
+from ..formula import Formula
 from copy import copy
 from ..symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
 from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom
@@ -123,9 +124,10 @@ class DynamicCalculator(Calculator, abc.ABC):
 ###############################
 #              JDOS           #
 ###############################
-class Formula_dyn_ident():
+class Formula_dyn_ident(Formula):
 
     def __init__(self, data_K):
+        super().__init__(data_K)
         self.transformTR = transform_ident
         self.transformInv = transform_ident
         self.ndim = 0
@@ -158,10 +160,11 @@ class JDOS(DynamicCalculator):
 ################################
 
 
-class Formula_OptCond():
+class Formula_OptCond(Formula):
 
-    def __init__(self, data_K, external_terms=True):
-        if external_terms:
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        if self.external_terms:
             A = data_K.A_H
         else:
             A = data_K.A_H_internal
@@ -194,11 +197,12 @@ class OpticalConductivity(DynamicCalculator):
 ###############################
 
 
-class Formula_SHC():
+class Formula_SHC(Formula):
 
-    def __init__(self, data_K, SHC_type='ryoo', shc_abc=None, external_terms=True):
-        A = SpinVelocity(data_K, SHC_type, external_terms=external_terms).matrix
-        if external_terms:
+    def __init__(self, data_K, SHC_type='ryoo', shc_abc=None, **parameters):
+        super().__init__(data_K, **parameters)
+        A = SpinVelocity(data_K, SHC_type, external_terms=self.external_terms).matrix
+        if self.external_terms:
             B = -1j * data_K.A_H
         else:
             B = -1j * data_K.A_H_internal
@@ -260,11 +264,12 @@ class SDCT_asym(Calculator):
         return sum(cal(data_K) for cal in self.terms)
 
 
-class Formula_SDCT_asym_sea_I():
+class Formula_SDCT_asym_sea_I(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             A = -1. * data_K.E1
             B_M1, B_E2, B = data_K.Bln
             if spin:
@@ -317,11 +322,12 @@ class SDCT_asym_sea_I(DynamicCalculator):
         return omega * Zfac
 
 
-class Formula_SDCT_asym_sea_II():
+class Formula_SDCT_asym_sea_II(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             A = -1. * data_K.E1
         else:
             A = -1. * data_K.E1_internal
@@ -360,11 +366,12 @@ class SDCT_asym_sea_II(DynamicCalculator):
         return omega * (3.0 * (E2 - E1)**2 - omega**2) * Zfac**2
 
 
-class Formula_SDCT_asym_surf_I():
+class Formula_SDCT_asym_surf_I(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             A = -1. * data_K.E1
         else:
             A = -1. * data_K.E1_internal
@@ -405,11 +412,12 @@ class SDCT_asym_surf_I(DynamicCalculator):
         return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
 
 
-class Formula_SDCT_asym_surf_II():
+class Formula_SDCT_asym_surf_II(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             B_M1, B_E2, B = data_K.Bln
             if spin:
                 S = data_K.Xbar('SS')
@@ -472,11 +480,12 @@ class SDCT_sym(Calculator):
         return sum(cal(data_K) for cal in self.terms)
 
 
-class Formula_SDCT_sym_sea_I():
+class Formula_SDCT_sym_sea_I(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             A = -1. * data_K.E1
             B_M1, B_E2, B = data_K.Bln
             if spin:
@@ -529,11 +538,12 @@ class SDCT_sym_sea_I(DynamicCalculator):
         return 1.j * (E2 - E1) * Zfac
 
 
-class Formula_SDCT_sym_sea_II():
+class Formula_SDCT_sym_sea_II(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             A = -1. * data_K.E1
         else:
             A = -1. * data_K.E1_internal
@@ -572,11 +582,12 @@ class SDCT_sym_sea_II(DynamicCalculator):
         return 1.j * (E2 - E1)**3 * Zfac**2
 
 
-class Formula_SDCT_sym_surf_I():
+class Formula_SDCT_sym_surf_I(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             A = -1. * data_K.E1
         else:
             A = -1. * data_K.E1_internal
@@ -617,9 +628,10 @@ class SDCT_sym_surf_I(DynamicCalculator):
         return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
 
 
-class Formula_SDCT_sym_surf_II():
+class Formula_SDCT_sym_surf_II(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         Vn = data_K.Vn
 
         # Formula
@@ -659,11 +671,11 @@ class SDCT_sym_surf_II(DynamicCalculator):
 # ===============
 
 
-class ShiftCurrentFormula():
+class ShiftCurrentFormula(Formula):
 
-    def __init__(self, data_K, sc_eta, external_terms=True):
-
-        if external_terms:
+    def __init__(self, data_K, sc_eta, **parameters):
+        super().__init__(data_K, **parameters)
+        if self.external_terms:
             A_Hbar_der = data_K.Xbar('AA', 1)
             A_Hbar = data_K.Xbar('AA')
         D_H = data_K.D_H
@@ -680,7 +692,7 @@ class ShiftCurrentFormula():
         # commutators
         # ** the spatial index of D_H_Pval corresponds to generalized derivative direction
         # ** --> stored in the fourth column of output variables
-        if external_terms:
+        if self.external_terms:
             sum_AD = (np.einsum('knlc,klma->knmca', A_Hbar, D_H_Pval) -
                       np.einsum('knnc,knma->knmca', A_Hbar, D_H_Pval) -
                       np.einsum('knla,klmc->knmca', D_H_Pval, A_Hbar) +
@@ -692,7 +704,7 @@ class ShiftCurrentFormula():
 
         # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction
         # ** --> stored in the fourth column of output variables
-        if external_terms:
+        if self.external_terms:
             AD_bit = (np.einsum('knnc,knma->knmac', A_Hbar, D_H) -
                       np.einsum('kmmc,knma->knmac', A_Hbar, D_H) +
                       np.einsum('knna,knmc->knmac', A_Hbar, D_H) -
@@ -707,11 +719,11 @@ class ShiftCurrentFormula():
 
         # generalized derivative
         A_gen_der = (+ 1j * (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, :, np.newaxis, np.newaxis])
-        if external_terms:
+        if self.external_terms:
             A_gen_der += A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD
 
         # generalized derivative is fourth index of A, we put it into third index of Imn
-        if external_terms:
+        if self.external_terms:
             A_H = data_K.A_H
         else:
             A_H = data_K.A_H_internal
@@ -747,14 +759,15 @@ class ShiftCurrent(DynamicCalculator):
 # ===================
 
 
-class InjectionCurrentFormula():
+class InjectionCurrentFormula(Formula):
     """
     Eq. (10) of Lihm and Park, PRB 105, 045201 (2022)
     Use v_mn = i * r_mn * (e_m - e_n) / hbar to replace v with r.
     """
 
-    def __init__(self, data_K, external_terms=True):
-        if external_terms:
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        if self.external_terms:
             A_H = data_K.A_H
         else:
             A_H = data_K.A_H_internal

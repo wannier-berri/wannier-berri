@@ -178,7 +178,9 @@ def system_Fe_W90_sparse(create_files_Fe_W90, system_Fe_W90):
     """Create convert to sparse format (keeping all matrix elements) and back, to test interface"""
 
     params = system_Fe_W90.get_sparse({X: -1 for X in system_Fe_W90._XX_R.keys()})
-    system = wberri.system.SystemSparse(real_lattice=params['real_lattice'], matrices=params['matrices'])
+    system = wberri.system.SystemSparse(**params)
+
+    print("use_wcc", params['use_wcc_phase'], system.use_wcc_phase)
     system.set_symmetry(symmetries_Fe)
     return system
 
@@ -191,12 +193,13 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe")
-    system = wberri.system.System_w90(seedname, morb=True, spin=True, SHCqiao=False, SHCryoo=False, transl_inv=False, use_wcc_phase=True)
+    system = wberri.system.System_w90(seedname, morb=True, spin=True, SHCqiao=False, SHCryoo=False, transl_inv=False,
+                                      use_wcc_phase=True, wcc_phase_fin_diff=False)
     system.set_symmetry(symmetries_Fe)
     return system
 
 
-def get_system_Fe_sym_W90(method=None, use_wcc_phase=False, use_ws=False, **kwargs):
+def get_system_Fe_sym_W90(method=None, use_wcc_phase=True, wcc_phase_fin_diff=False, use_ws=False, **kwargs):
     """Create system for Fe symmetrization using Wannier90 data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
@@ -204,7 +207,9 @@ def get_system_Fe_sym_W90(method=None, use_wcc_phase=False, use_ws=False, **kwar
 
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, use_ws=use_ws, use_wcc_phase=use_wcc_phase, **kwargs)
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, use_ws=use_ws,
+                                      use_wcc_phase=use_wcc_phase, wcc_phase_fin_diff=wcc_phase_fin_diff,
+                                      **kwargs)
     system.set_symmetry(symmetries_Fe)
     if method is not None:
         system.symmetrize(
@@ -220,29 +225,29 @@ def get_system_Fe_sym_W90(method=None, use_wcc_phase=False, use_ws=False, **kwar
 
 @pytest.fixture(scope="session")
 def system_Fe_sym_W90_old_wcc():
-    return get_system_Fe_sym_W90(method="old", use_wcc_phase=True)
+    return get_system_Fe_sym_W90(method="old")
 
 
 @pytest.fixture(scope="session")
 def system_Fe_sym_W90_wcc():
-    return get_system_Fe_sym_W90(method="new", use_wcc_phase=True)
+    return get_system_Fe_sym_W90(method="new")
 
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj_set_spin(create_files_Fe_W90):
-    system = get_system_Fe_sym_W90()
+    system = get_system_Fe_sym_W90(use_wcc_phase=False)
     system.set_spin_from_code(DFT_code="qe")
     return system
 
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj(create_files_Fe_W90):
-    return get_system_Fe_sym_W90(SHCqiao=True)
+    return get_system_Fe_sym_W90(SHCqiao=True, use_wcc_phase=False, use_ws=False)
 
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj_ws(create_files_Fe_W90):
-    return get_system_Fe_sym_W90(use_ws=True)
+    return get_system_Fe_sym_W90(use_ws=True, use_wcc_phase=False)
 
 
 @pytest.fixture(scope="session")
@@ -262,7 +267,7 @@ def system_Fe_W90_disentangle(create_files_Fe_W90):
                  mix_ratio=0.9,
                  print_progress_every=100
                   )
-    system = wberri.system.System_w90(w90data=w90data, berry=True, morb=True)
+    system = wberri.system.System_w90(w90data=w90data, berry=True, morb=True, use_wcc_phase=False)
     del w90data
     return system
 
@@ -275,7 +280,8 @@ def system_GaAs_W90(create_files_GaAs_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, transl_inv=False)
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, transl_inv=False,
+                                      use_wcc_phase=False)
     system.set_symmetry(symmetries_GaAs)
 
     return system
@@ -288,14 +294,62 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
     data_dir = create_files_GaAs_W90
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, morb=True, OSD=True,
-                                      transl_inv=False, spin=True, use_wcc_phase=True)
+    system = wberri.system.System_w90(seedname, morb=True,
+                                      transl_inv=False, spin=True,
+                                      wcc_phase_fin_diff=False)
     system.set_symmetry(symmetries_GaAs)
-
     return system
 
 
-def get_system_GaAs_tb(method=None, use_wcc_phase=False, use_ws=False, symmetrize=True, berry=True):
+@pytest.fixture(scope="session")
+def system_GaAs_W90_wccFD(create_files_GaAs_W90):
+    """Create system for GaAs using Wannier90 data with wcc phases"""
+
+    data_dir = create_files_GaAs_W90
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs")
+    system = wberri.system.System_w90(seedname, berry=True,
+                                      morb=True,
+                                      transl_inv=True, spin=True,
+                                      OSD=True,
+                                      SHCqiao=True, SHCryoo=True,
+                                      wcc_phase_fin_diff=True)
+    system.set_symmetry(symmetries_GaAs)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90_wccJM(create_files_GaAs_W90):
+    """Create system for GaAs using Wannier90 data with wcc phases"""
+
+    data_dir = create_files_GaAs_W90
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs")
+    system = wberri.system.System_w90(seedname, morb=True,
+                                      transl_inv_JM=True, spin=True,
+                                      OSD=True,
+                                      wcc_phase_fin_diff=False)
+    system.set_symmetry(symmetries_GaAs)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90_JM(create_files_GaAs_W90):
+    """Create system for GaAs using Wannier90 data with wcc phases"""
+
+    data_dir = create_files_GaAs_W90
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs")
+    system = wberri.system.System_w90(seedname, morb=True,
+                                      transl_inv_JM=True, spin=True,
+                                      OSD=True,
+                                      use_wcc_phase=False,
+                                      wcc_phase_fin_diff=False)
+    system.set_symmetry(symmetries_GaAs)
+    return system
+
+
+def get_system_GaAs_tb(method=None, use_wcc_phase=True, use_ws=False, symmetrize=True, berry=True):
     """Create system for GaAs using sym_tb.dat data"""
     seedname = create_files_tb(dir="GaAs_Wannier90", file=f"GaAs{'_sym' if symmetrize else ''}_tb.dat")
     system = wberri.system.System_tb(seedname, berry=berry, use_ws=use_ws, use_wcc_phase=use_wcc_phase)
@@ -322,25 +376,25 @@ def system_GaAs_tb():
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb_old_wcc():
     """Create system for GaAs using sym_tb.dat data"""
-    return get_system_GaAs_tb(method="old", use_wcc_phase=True, use_ws=False, symmetrize=True)
+    return get_system_GaAs_tb(method="old", use_ws=False, symmetrize=True)
 
 
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb_wcc():
     """Create system for GaAs using sym_tb.dat data"""
-    return get_system_GaAs_tb(method="new", use_wcc_phase=True, use_ws=False, symmetrize=True)
+    return get_system_GaAs_tb(method="new", use_ws=False, symmetrize=True)
 
 
 @pytest.fixture(scope="session")
 def system_GaAs_tb_wcc():
     """Create system for GaAs using _tb_dat data"""
-    return get_system_GaAs_tb(method="new", use_wcc_phase=True, use_ws=False, symmetrize=False)
+    return get_system_GaAs_tb(method="new", use_ws=False, symmetrize=False)
 
 
 @pytest.fixture(scope="session")
 def system_GaAs_tb_wcc_ws():
     """Create system for GaAs using _tb_dat data"""
-    return get_system_GaAs_tb(method="new", use_wcc_phase=True, use_ws=True, symmetrize=False)
+    return get_system_GaAs_tb(method="new", use_ws=True, symmetrize=False)
 
 
 def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_phase_fin_diff=False):
@@ -353,10 +407,10 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
                 tar.extract(tarinfo, data_dir)
     # Load system
     seedname = os.path.join(data_dir, "Si")
-    system = wberri.system.System_w90(seedname, OSD=True, use_ws=True, use_wcc_phase=True,
+    system = wberri.system.System_w90(seedname, OSD=True, use_ws=True,
                                       transl_inv=transl_inv,
                                       transl_inv_JM=transl_inv_JM,
-                                      wcc_phase_findiff=wcc_phase_fin_diff,
+                                      wcc_phase_fin_diff=wcc_phase_fin_diff,
                                       guiding_centers=True)
 
     return system
@@ -387,21 +441,7 @@ def system_Haldane_TBmodels():
     except (ImportError, ModuleNotFoundError):
         pytest.xfail("failed to import tbmodels")
     model_tbmodels_Haldane = wb_models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15)
-    system = wberri.system.System_TBmodels(model_tbmodels_Haldane, berry=True)
-    system.set_symmetry(["C3z"])
-    return system
-
-
-@pytest.fixture(scope="session")
-def system_Haldane_TBmodels_internal():
-    # Load system
-    try:
-        import tbmodels
-        tbmodels  # just to avoid F401
-    except (ImportError, ModuleNotFoundError):
-        pytest.xfail("failed to import tbmodels")
-    model_tbmodels_Haldane = wb_models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15)
-    system = wberri.system.System_TBmodels(model_tbmodels_Haldane, berry=False)
+    system = wberri.system.System_TBmodels(model_tbmodels_Haldane)
     system.set_symmetry(["C3z"])
     return system
 
@@ -416,7 +456,7 @@ model_pythtb_Chiral_OSD = wb_models.Chiral_OSD()
 def system_Haldane_PythTB():
     """Create system for Haldane model using PythTB"""
     # Load system
-    system = wberri.system.System_PythTB(model_pythtb_Haldane, berry=True)
+    system = wberri.system.System_PythTB(model_pythtb_Haldane)
     system.set_symmetry(["C3z"])
     return system
 
@@ -425,7 +465,7 @@ def system_Haldane_PythTB():
 def system_KaneMele_odd_PythTB():
     """Create system for Haldane model using PythTB"""
     # Load system
-    system = wberri.system.System_PythTB(model_pythtb_KaneMele_odd, use_wcc_phase=True, spin=True)
+    system = wberri.system.System_PythTB(model_pythtb_KaneMele_odd, spin=True)
     system.set_symmetry(["C3z", "TimeReversal"])
     return system
 
@@ -434,7 +474,7 @@ def system_KaneMele_odd_PythTB():
 def system_Chiral_OSD():
     """Create system for Haldane model using PythTB"""
     # Load system
-    system = wberri.system.System_PythTB(model_pythtb_Chiral_OSD, use_wcc_phase=True, spin=True)
+    system = wberri.system.System_PythTB(model_pythtb_Chiral_OSD, spin=True)
     # system.set_symmetry(["C3z","TimeReversal"])
     return system
 
@@ -443,7 +483,7 @@ def system_Chiral_OSD():
 def system_Haldane_PythTB_wrong_mat():
     """Create system for Haldane model using PythTB - contains a wrong R-matrix to test exception"""
     # Load system
-    system = wberri.system.System_PythTB(model_pythtb_Haldane, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_pythtb_Haldane)
     system.set_R_mat('abracadabra', system.get_R_mat('Ham') * 4)
     return system
 
@@ -460,7 +500,7 @@ model_Chiral_right = wb_models.Chiral(
 
 @pytest.fixture(scope="session")
 def system_Chiral_left():
-    system = wberri.system.System_PythTB(model_Chiral_left, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_Chiral_left)
     system.set_symmetry(["C3z"])
     system.set_spin([1, -1])
     return system
@@ -468,7 +508,7 @@ def system_Chiral_left():
 
 @pytest.fixture(scope="session")
 def system_Chiral_left_TR():
-    system = wberri.system.System_PythTB(model_Chiral_left_TR, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_Chiral_left_TR)
     system.set_symmetry(["C3z"])
     system.set_spin([-1, 1])
     return system
@@ -476,29 +516,18 @@ def system_Chiral_left_TR():
 
 @pytest.fixture(scope="session")
 def system_Chiral_right():
-    system = wberri.system.System_PythTB(model_Chiral_right, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_Chiral_right)
     system.set_symmetry(["C3z"])
     system.set_spin([1, -1])
     return system
 
 
 # Systems from FPLO code interface
-
-
-@pytest.fixture(scope="session")
-def system_Fe_FPLO():
-    """Create system for Fe using  FPLO  data"""
-    path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.system.System_fplo(path, use_wcc_phase=False, morb=True, spin=True, use_ws=False)
-    system.set_symmetry(symmetries_Fe)
-    return system
-
-
 @pytest.fixture(scope="session")
 def system_Fe_FPLO_wcc():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.system.System_fplo(path, use_wcc_phase=True, morb=True, spin=True, use_ws=False)
+    system = wberri.system.System_fplo(path, morb=True, spin=True, use_ws=False)
     system.set_symmetry(symmetries_Fe)
     return system
 
@@ -507,7 +536,7 @@ def system_Fe_FPLO_wcc():
 def system_Fe_FPLO_wcc_ws():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.system.System_fplo(path, use_wcc_phase=True, morb=True, spin=True,
+    system = wberri.system.System_fplo(path, morb=True, spin=True,
                                        use_ws=True, mp_grid=2)
     system.set_symmetry(symmetries_Fe)
     return system
@@ -521,7 +550,7 @@ model_CuMnAs_2d_broken = wb_models.CuMnAs_2d(nx=0, ny=1, nz=0, hop1=1, hop2=0.08
 
 @pytest.fixture(scope="session")
 def system_CuMnAs_2d_broken():
-    system = wberri.system.System_PythTB(model_CuMnAs_2d_broken, use_wcc_phase=True)
+    system = wberri.system.System_PythTB(model_CuMnAs_2d_broken)
     return system
 
 
@@ -543,19 +572,10 @@ def data_Te_ASE():
 
 
 @pytest.fixture(scope="session")
-def system_Te_ASE(data_Te_ASE):
-    """Create system for Te using  ASE+GPAW data with use_wcc_phase=False"""
-    wan = data_Te_ASE
-    system = wberri.system.System_ASE(wan, use_wcc_phase=False, berry=True)
-    system.set_symmetry(symmetries_Te)
-    return system
-
-
-@pytest.fixture(scope="session")
 def system_Te_ASE_wcc(data_Te_ASE):
     """Create system for Te using  ASE+GPAW data with use_wcc_phase=True"""
     wan = data_Te_ASE
-    system = wberri.system.System_ASE(wan, use_wcc_phase=True, berry=False)
+    system = wberri.system.System_ASE(wan)
     system.set_symmetry(symmetries_Te)
     return system
 
@@ -590,7 +610,7 @@ def system_Phonons_GaAs():
 
 
 
-def get_system_Mn3Sn_sym_tb(method, use_wcc_phase=False, use_ws=False):
+def get_system_Mn3Sn_sym_tb(method, use_ws=False):
     data_dir = os.path.join(ROOT_DIR, "data", "Mn3Sn_Wannier90")
     if not os.path.isfile(os.path.join(data_dir, "Mn3Sn_tb.dat")):
         tar = tarfile.open(os.path.join(data_dir, "Mn3Sn_tb.dat.tar.gz"))
@@ -598,7 +618,7 @@ def get_system_Mn3Sn_sym_tb(method, use_wcc_phase=False, use_ws=False):
             tar.extract(tarinfo, data_dir)
 
     seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, use_ws=use_ws, use_wcc_phase=use_wcc_phase)
+    system = wberri.system.System_tb(seedname, berry=True, use_ws=use_ws)
     system.symmetrize(
             positions=np.array([
                 [0.6666667, 0.8333333, 0],
@@ -629,13 +649,13 @@ def get_system_Mn3Sn_sym_tb(method, use_wcc_phase=False, use_ws=False):
 @pytest.fixture(scope="session")
 def system_Mn3Sn_sym_tb_old_wcc():
     """Create system for Mn3Sn using _tb.dat data"""
-    return get_system_Mn3Sn_sym_tb(method="old", use_wcc_phase=True, use_ws=False)
+    return get_system_Mn3Sn_sym_tb(method="old", use_ws=False)
 
 
 @pytest.fixture(scope="session")
 def system_Mn3Sn_sym_tb_wcc():
     """Create system for Mn3Sn using _tb.dat data"""
-    return get_system_Mn3Sn_sym_tb(method="new", use_wcc_phase=True, use_ws=False)
+    return get_system_Mn3Sn_sym_tb(method="new", use_ws=False)
 
 
 ###################################

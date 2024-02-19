@@ -18,9 +18,6 @@ from ..__utility import real_recip_lattice
 from .__finite_differences import find_shells, Derivative3D
 
 
-# from lazy_property import LazyProperty
-
-
 class SystemKP(System_k):
     r"""
     A system to describe k.p Hamiltonians.
@@ -63,7 +60,9 @@ class SystemKP(System_k):
 
     def __init__(self, Ham, derHam=None, der2Ham=None, der3Ham=None, kmax=1., real_lattice=None, recip_lattice=None,
                  k_vector_cartesian=True, finite_diff_dk=1e-4, **parameters):
-        super().__init__(**parameters)
+        if "name" not in parameters:
+            parameters["name"] = "kp"
+        super().__init__(force_internal_terms_only=True, **parameters)
         if kmax is not None:
             assert real_lattice is None, "kmax and real_lattice should not be set tigether"
             assert recip_lattice is None, "kmax and recip_lattice should not be set tigether"

@@ -13,11 +13,14 @@
 # ------------------------------------------------------------#
 
 import numpy as np
+import os
 import functools
 import multiprocessing
-from ..__utility import iterate3dpm, real_recip_lattice, fourier_q_to_R, alpha_A, beta_A
+from ..__utility import real_recip_lattice, fourier_q_to_R, alpha_A, beta_A
 from .system_R import System_R
 from .w90_files import Wannier90data
+from .ws_dist import wigner_seitz
+import warnings
 
 
 class System_w90(System_R):
@@ -33,7 +36,7 @@ class System_w90(System_R):
         object that contains all Wannier90 input files and chk all together. If provided, overrides the `seedname`
     transl_inv : bool
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
-    transl_inv : bool
+    transl_inv_JM : bool
         translational-invariant scheme for diagonal and off-diagonal matrix elements for all matrices. Follows method of Jae-Mo Lihm
     guiding_centers : bool
         If True, enable overwriting the diagonal elements of the AA_R matrix at R=0 with the
@@ -69,15 +72,43 @@ class System_w90(System_R):
             npar=multiprocessing.cpu_count(),
             kmesh_tol=1e-7,
             bk_complete_tol=1e-5,
-            wcc_phase_findiff=False,
+            wcc_phase_fin_diff=True,
             read_npz=True,
             write_npz_list=["eig", "mmn"],
             write_npz_formatted=True,
             overwrite_npz=False,
             formatted=[],
-            **parameters):
+            **parameters
+    ):
 
+
+        if "name" not in parameters:
+            parameters["name"] = os.path.split(seedname)[-1]
         super().__init__(**parameters)
+
+        use_wcc_phase_findiff = self.use_wcc_phase and wcc_phase_fin_diff
+        assert not (transl_inv_JM and use_wcc_phase_findiff)
+        if transl_inv_JM:
+            known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS']
+            unknown = set(self.needed_R_matrices) - set(known)
+            if len(unknown) > 0:
+                raise NotImplementedError(f"transl_inv_JM for {list(unknown)} is not implemented")
+            # Deactivate transl_inv if Jae-Mo's scheme is used
+            if transl_inv:
+                warnings.warn("Jae-Mo's scheme does not apply Marzari & Vanderbilt formula for"
+                      "the band-diagonal matrix elements of the position operator.")
+                transl_inv = False
+        if self.use_wcc_phase and not wcc_phase_fin_diff:
+            warnings.warn(" converting convention II to convention I is not recommended."
+                   "Better use 'wcc_phase_fin_dif=True' or `transl_inv_JM=True` "
+                   )
+        if use_wcc_phase_findiff:
+            known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS', 'SH', 'SHR', 'SHA', 'SA', 'SR']
+            unknown = set(self.needed_R_matrices) - set(known)
+            if len(unknown) > 0:
+                raise NotImplementedError(f"wcc_phase_fin_diff for {list(unknown)} is not implemented")
+
+
         self.npar = npar
         self.seedname = seedname
         if w90data is None:
@@ -90,21 +121,12 @@ class System_w90(System_R):
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         mp_grid = chk.mp_grid
         self._NKFFT_recommended = mp_grid
-        self.iRvec, Ndegen = self.wigner_seitz(chk.mp_grid)
+        self.iRvec, Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=chk.mp_grid)
         self.nRvec0 = len(self.iRvec)
         self.num_wann = chk.num_wann
         self.wannier_centers_cart = w90data.wannier_centers
 
-        # Deactivate transl_inv if Jae-Mo's scheme is used
-        if transl_inv_JM:
-            if transl_inv:
-                print("WARNING : Jae-Mo's scheme does not apply Marzari & Vanderbilt formula for"
-                      "the band-diagonal matrix elements of the position operator.")
-                transl_inv = False
 
-        #######################################################################
-
-        use_wcc_phase_findiff = self.use_wcc_phase and wcc_phase_findiff
         kpt_mp_grid = [
             tuple(k) for k in np.array(np.round(chk.kpt_latt * np.array(chk.mp_grid)[None, :]), dtype=int) % chk.mp_grid
         ]
@@ -139,14 +161,38 @@ class System_w90(System_R):
         HHq = chk.get_HH_q(w90data.eig)
         self.set_R_mat('Ham', fourier_q_to_R_loc(HHq))
 
+        # Wannier centers
+        centers = chk.wannier_centers
+        # Unique set of nearest-neighbor vectors (cartesian)
+        bk_cart_unique = w90data.mmn.bk_cart_unique
+
+        if use_wcc_phase_findiff or transl_inv_JM:  # Phase convention I
+            if use_wcc_phase_findiff:
+                _r0 = centers[None, :, :]
+                sum_b = True
+            elif transl_inv_JM:
+                _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
+                sum_b = False
+            expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0))
+            print(f"expjphase1 {expjphase1.shape}")
+            expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
+        else:
+            expjphase1 = None
+            expjphase2 = None
+            sum_b = True
+
+
         # A_a(R,b) matrix
         if self.need_R_any('AA'):
-            AA_qb = chk.get_AA_qb(w90data.mmn, transl_inv=transl_inv)
+            AA_qb = chk.get_AA_qb(w90data.mmn, transl_inv=transl_inv, sum_b=sum_b, phase=expjphase1)
             AA_Rb = fourier_q_to_R_loc(AA_qb)
-            self.set_R_mat('AA', AA_Rb)
-            if transl_inv:
-                wannier_centers_cart_new = np.diagonal(AA_Rb[:, :, self.iR0, :], axis1=0,
-                                                       axis2=1).sum(axis=0).T
+            self.set_R_mat('AA', AA_Rb, Hermitian=True)
+            # Checking Wannier_centers
+            if True:
+                AA_q = chk.get_AA_qb(w90data.mmn, transl_inv=True, sum_b=True, phase=None)
+#                AA_R0 = fourier_q_to_R_loc(AA_q)[:, :, self.iR0]
+                AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
+                wannier_centers_cart_new = np.diagonal(AA_R0, axis1=0, axis2=1).T
                 if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart) < 1e-6):
                     if guiding_centers:
                         print(
@@ -166,46 +212,50 @@ class System_w90(System_R):
 
         # B_a(R,b) matrix
         if 'BB' in self.needed_R_matrices:
-            BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig)
+            BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig, sum_b=sum_b, phase=expjphase1)
             BB_Rb = fourier_q_to_R_loc(BB_qb)
             self.set_R_mat('BB', BB_Rb)
 
         # C_a(R,b1,b2) matrix
         if 'CC' in self.needed_R_matrices:
-            CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu)
+            CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu, sum_b=sum_b, phase=expjphase2)
             CC_Rb = fourier_q_to_R_loc(CC_qb)
-            self.set_R_mat('CC', CC_Rb)
+            self.set_R_mat('CC', CC_Rb, Hermitian=True)
 
         # O_a(R,b1,b2) matrix
         if 'OO' in self.needed_R_matrices:
-            OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu)
+            OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
             OO_Rb = fourier_q_to_R_loc(OO_qb)
-            self.set_R_mat('OO', OO_Rb)
+            self.set_R_mat('OO', OO_Rb, Hermitian=True)
 
         # G_bc(R,b1,b2) matrix
         if 'GG' in self.needed_R_matrices:
-            GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu)
+            GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
             GG_Rb = fourier_q_to_R_loc(GG_qb)
-            self.set_R_mat('GG', GG_Rb)
+            self.set_R_mat('GG', GG_Rb, Hermitian=True)
+
 
         #######################################################################
 
         if self.need_R_any('SS'):
             self.set_R_mat('SS', fourier_q_to_R_loc(chk.get_SS_q(w90data.spn)))
         if self.need_R_any('SR'):
-            self.set_R_mat('SR', fourier_q_to_R_loc(chk.get_SR_q(w90data.spn, w90data.mmn)))
+            self.set_R_mat('SR', fourier_q_to_R_loc(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, phase=expjphase1)))
         if self.need_R_any('SH'):
             self.set_R_mat('SH', fourier_q_to_R_loc(chk.get_SH_q(w90data.spn, w90data.eig)))
         if self.need_R_any('SHR'):
-            self.set_R_mat('SHR', fourier_q_to_R_loc(chk.get_SHR_q(w90data.spn, w90data.mmn, w90data.eig)))
+            self.set_R_mat('SHR', fourier_q_to_R_loc(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, eig=w90data.eig, phase=expjphase1)))
 
         if 'SA' in self.needed_R_matrices:
-            self.set_R_mat('SA', fourier_q_to_R_loc(chk.get_SA_q(w90data.siu, w90data.mmn)))
+            self.set_R_mat('SA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.siu, w90data.mmn, phase=expjphase1)))
         if 'SHA' in self.needed_R_matrices:
-            self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.shu, w90data.mmn)))
+            self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.shu, w90data.mmn, phase=expjphase1)))
+
+        del expjphase1, expjphase2
 
         if self.use_ws:
             self.do_ws_dist(mp_grid=mp_grid)
+
         print("Real-space lattice:\n", self.real_lattice)
 
         #########
@@ -220,241 +270,104 @@ class System_w90(System_R):
         # nearest-neighbor vectors to finally obtain the real-space matrix
         # elements.
 
-        # Wannier centers
-        centers = chk.wannier_centers
-        # Optimal center in Jae-Mo's implementation
-        r0 = 0.5 * (centers[:, None, None, :] + centers[None, :, None, :] + self.cRvec[None, None, :, :])
-        # Unique set of nearest-neighbor vectors (cartesian)
-        bk_cart_unique = w90data.mmn.bk_cart_unique
+        if transl_inv_JM:
 
-        # --- A_a(R) matrix --- #
-        if self.need_R_any('AA'):
-            AA_Rb = self.get_R_mat('AA')
+            # Optimal center in Jae-Mo's implementation
+            phase = np.einsum('ba,Ra->Rb', bk_cart_unique, - 0.5 * self.cRvec)
+            expiphase1 = np.exp(1j * phase)
+            expiphase2 = expiphase1[:, :, None] * expiphase1[:, None, :]
 
-            # Naive finite-difference scheme
-            if not transl_inv_JM:
-                if use_wcc_phase_findiff:  # Phase convention I
-                    phase = np.einsum('ba,ja->jb', bk_cart_unique, centers)
-                    AA_Rb *= np.exp(1.j * phase[None, :, None, :, None])
+            def _reset_mat(key, phase, axis, Hermitian=True):
+                if self.need_R_any(key):
+                    XX_Rb = self.get_R_mat(key)
+                    phase = np.reshape(phase, (1, 1) + np.shape(phase) + (1,) * (XX_Rb.ndim - 2 - np.ndim(phase)))
+                    XX_R = np.sum(XX_Rb * phase, axis=axis)
+                    self.set_R_mat(key, XX_R, reset=True, Hermitian=Hermitian)
 
-                AA_R = np.sum(AA_Rb, axis=3)
 
-                # Hermiticity is not preserved, but it can be enforced
-                AA_R = 0.5 * (AA_R + self.conj_XX_R(AA_R))
+            _reset_mat('AA', expiphase1, 3)
+            _reset_mat('BB', expiphase1, 3, Hermitian=False)
+            _reset_mat('CC', expiphase2, (3, 4))
+            _reset_mat('OO', expiphase2, (3, 4))
+            _reset_mat('GG', expiphase2, (3, 4))
 
-            # Jae-Mo's finite-difference scheme
-            else:
-                # Recentered matrix
-                phase = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None, None, :, :])
-                AA_R0b = AA_Rb * np.exp(1.j * phase[:, :, :, :, None])
-                AA_R0 = np.sum(AA_R0b, axis=3)
+            del expiphase1, expiphase2
+            r0 = 0.5 * (centers[:, None, None, :] + centers[None, :, None, :] + self.cRvec[None, None, :, :])
+            self.recenter_JM(r0, centers)
 
-                # Original matrix
-                AA_R = AA_R0
-                if not self.use_wcc_phase:  # Phase convention II
-                    AA_R[range(self.num_wann), range(self.num_wann), self.iR0] += centers
-                else:                      # Phase convention I
-                    pass
-
-            self.set_R_mat('AA', AA_R, reset=True)
-
-            # Check wannier centers if Marzari & Vanderbilt formula is used
-            if (transl_inv and not self.use_wcc_phase):
-                wannier_centers_cart_new = np.diagonal(self.get_R_mat('AA')[:, :, self.iR0, :], axis1=0, axis2=1).transpose()
-                if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart) < 1e-6):
-                    if guiding_centers:
-                        print(
-                            f"The read Wannier centers\n{self.wannier_centers_cart}\n"
-                            f"are different from the evaluated Wannier centers\n{wannier_centers_cart_new}\n"
-                            "This can happen if guiding_centres was set to true in Wannier90.\n"
-                            "Overwrite the evaluated centers using the read centers.")
-                        for iw in range(self.num_wann):
-                            self.get_R_mat('AA')[iw, iw, self.iR0, :] = self.wannier_centers_cart[iw, :]
-                    else:
-                        raise ValueError(
-                            f"the difference between read\n{self.wannier_centers_cart}\n"
-                            f"and evluated \n{wannier_centers_cart_new}\n wannier centers is\n"
-                            f"{self.wannier_centers_cart-wannier_centers_cart_new}\n"
-                            "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90."
-                        )
-
-        # --- B_a(R) matrix --- #
-        if 'BB' in self.needed_R_matrices:
-            BB_Rb = self.get_R_mat('BB')
-
-            # Naive finite-difference scheme
-            if not transl_inv_JM:
-                if not use_wcc_phase_findiff:  # Phase convention II
-                    pass
-                else:                      # Phase convention I
-                    phase = np.einsum('ba,ja->jb', bk_cart_unique, centers)
-                    BB_Rb *= np.exp(1.j * phase[None, :, None, :, None])
-
-                BB_R = np.sum(BB_Rb, axis=3)
-
-            # Jae-Mo's finite-difference scheme
-            else:
-                # Recentered matrix
-                phase = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None, None, :, :])
-                BB_R0b = BB_Rb * np.exp(1.j * phase[:, :, :, :, None])
-                BB_R0 = np.sum(BB_R0b, axis=3)
-
-                # Original matrix
-                HH_R = self.get_R_mat('Ham')
-                if not self.use_wcc_phase:  # Phase convention II
-                    rc = (r0 - self.cRvec[None, None, :, :]) * HH_R[:, :, :, None]
-                else:                      # Phase convention I
-                    rc = (r0 - self.cRvec[None, None, :, :] - centers[None, :, None, :]) * HH_R[:, :, :, None]
-
-                BB_R = BB_R0 + rc
-
-            self.set_R_mat('BB', BB_R, reset=True)
-
-        # --- C_a(R) matrix --- #
-        if 'CC' in self.needed_R_matrices:
-            CC_Rb = self.get_R_mat('CC')
-
-            # Naive finite-difference scheme
-            if not transl_inv_JM:
-                if not use_wcc_phase_findiff:  # Phase convention II
-                    pass
-                else:                      # Phase convention I
-                    phase_1 = -np.einsum('ba,ia->ib', bk_cart_unique, centers)
-                    phase_2 = np.einsum('ba,ja->jb', bk_cart_unique, centers)
-                    phase = phase_1[:, None, :, None] + phase_2[None, :, None, :]
-                    CC_Rb *= np.exp(1.j * phase[:, :, None, :, :, None])
-
-                CC_R = np.sum(CC_Rb, axis=(3, 4))
-
-                # Hermiticity is not preserved, but it can be enforced
-                CC_R = 0.5 * (CC_R + self.conj_XX_R(CC_R))
-
-            # Jae-Mo's finite-difference scheme
-            else:
-                # Recentered matrix
-                phase_1 = -np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0)
-                phase_2 = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None, None, :, :])
-                phase = phase_1[:, :, :, :, None] + phase_2[:, :, :, None, :]
-                CC_R0b = CC_Rb * np.exp(1.j * phase[:, :, :, :, :, None])
-                CC_R0 = np.sum(CC_R0b, axis=(3, 4))
-
-                # Original matrix
-                if BB_R0 is None:
-                    raise ValueError('Recentered B matrix is needed in Jae-Mo`s implementation of C')
-                BB_R0_conj = self.conj_XX_R(BB_R0)
-                if not self.use_wcc_phase:  # Phase convention II
-                    rc = 1j * r0[:, :, :, :, None] * BB_R0[:, :, :, None, :]
-                    rc -= 1j * (r0[:, :, :, :, None] - self.cRvec[None, None, :, :, None]) * BB_R0_conj[:, :, :, None, :]
-                    rc -= 0.5j * (centers[:, None, None, :, None] + centers[None, :, None, :, None]) * self.cRvec[None, None, :, None, :] * HH_R[:, :, :, None, None]
-                else:                      # Phase convention I
-                    rc = 1j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None, :]
-
-                CC_R = CC_R0 + rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
-
-            self.set_R_mat('CC', CC_R, reset=True)
-
-        # --- O_a(R) matrix --- #
-        if 'OO' in self.needed_R_matrices:
-            OO_Rb = self.get_R_mat('OO')
-
-            # Naive finite-difference scheme
-            if not transl_inv_JM:
-                if not use_wcc_phase_findiff:  # Phase convention II
-                    pass
-                else:                      # Phase convention I
-                    phase_1 = -np.einsum('ba,ia->ib', bk_cart_unique, centers)
-                    phase_2 = np.einsum('ba,ja->jb', bk_cart_unique, centers)
-                    phase = phase_1[:, None, :, None] + phase_2[None, :, None, :]
-                    OO_Rb *= np.exp(1.j * phase[:, :, None, :, :, None])
-
-                OO_R = np.sum(OO_Rb, axis=(3, 4))
-
-                # Hermiticity is not preserved, but it can be enforced
-                OO_R = 0.5 * (OO_R + self.conj_XX_R(OO_R))
-
-            # Jae-Mo's finite-difference scheme
-            else:
-                # Recentered matrix
-                phase_1 = -np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0)
-                phase_2 = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None, None, :, :])
-                phase = phase_1[:, :, :, :, None] + phase_2[:, :, :, None, :]
-                OO_R0b = OO_Rb * np.exp(1.j * phase[:, :, :, :, :, None])
-                OO_R0 = np.sum(OO_R0b, axis=(3, 4))
-
-                # Original matrix
-                if AA_R0 is None:
-                    raise ValueError('Recentered A matrix is needed in Jae-Mo`s implementation of O')
-                if not self.use_wcc_phase:  # Phase convention II
-                    rc = 1.j * self.cRvec[None, None, :, :, None] * AA_R0[:, :, :, None, :]
-                else:                      # Phase convention I
-                    rc = 1.j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * AA_R0[:, :, :, None, :]
-
-                OO_R = OO_R0 + rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
-
-            self.set_R_mat('OO', OO_R, reset=True)
-
-        # --- G_bc(R) matrix --- #
-        if 'GG' in self.needed_R_matrices:
-            GG_Rb = self.get_R_mat('GG')
-
-            # Naive finite-difference scheme
-            if not transl_inv_JM:
-                if use_wcc_phase_findiff:  # Phase convention II
-                    pass
-                else:                      # Phase convention I
-                    phase_1 = -np.einsum('ba,ia->ib', bk_cart_unique, centers)
-                    phase_2 = np.einsum('ba,ja->jb', bk_cart_unique, centers)
-                    phase = phase_1[:, None, :, None] + phase_2[None, :, None, :]
-                    GG_Rb *= np.exp(1.j * phase[:, :, None, :, :, None, None])
-
-                GG_R = np.sum(GG_Rb, axis=(3, 4))
-
-                # Hermiticity is not preserved, but it can be enforced
-                GG_R = 0.5 * (GG_R + self.conj_XX_R(GG_R))
-
-            # Jae-Mo's finite-difference scheme
-            else:
-                # Recentered matrix
-                phase_1 = -np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0)
-                phase_2 = np.einsum('ba,ijRa->ijRb', bk_cart_unique, r0 - self.cRvec[None, None, :, :])
-                phase = phase_1[:, :, :, :, None] + phase_2[:, :, :, None, :]
-                GG_R0b = GG_Rb * np.exp(1.j * phase[:, :, :, :, :, None, None])
-                GG_R0 = np.sum(GG_R0b, axis=(3, 4))
-
-                # Original matrix
-                if AA_R0 is None:
-                    raise ValueError('Recentered A matrix is needed in Jae-Mo`s implementation of G')
-                if not self.use_wcc_phase:  # Phase convention II
-                    rc = (centers[:, None, None, :, None] + centers[None, :, None, :, None]) * AA_R0[:, :, :, None, :]
-                    rc[range(self.num_wann), range(self.num_wann), self.iR0] += centers[range(self.num_wann), :, None] * centers[range(self.num_wann), None, :]
-                else:                      # Phase convention I
-                    rc = np.zeros((self.num_wann, self.num_wann, self.nRvec, 3, 3), dtype=complex)
-
-                GG_R = GG_R0 + 0.5 * (rc + rc.swapaxes(3, 4))
-
-            self.set_R_mat('GG', GG_R, reset=True)
-
-        self.do_at_end_of_init(
-                convert_convention=((not transl_inv_JM) and self.use_wcc_phase and (not wcc_phase_findiff)))
+        self.do_at_end_of_init()
+        if (not transl_inv_JM) and self.use_wcc_phase and (not wcc_phase_fin_diff):
+            self.convention_II_to_I()
 
     ###########################################################################
+    def recenter_JM(self, r0, centers):
+        if self.use_wcc_phase:
+            self.recenter_JM_I(r0, centers)
+        else:
+            self.recenter_JM_II(r0, centers)
 
-    def wigner_seitz(self, mp_grid):
-        ws_search_size = np.array([1] * 3)
-        dist_dim = np.prod((ws_search_size + 1) * 2 + 1)
-        origin = divmod((dist_dim + 1), 2)[0] - 1
-        real_metric = self.real_lattice.dot(self.real_lattice.T)
-        mp_grid = np.array(mp_grid)
-        irvec = []
-        ndegen = []
-        for n in iterate3dpm(mp_grid * ws_search_size):
-            dist = []
-            for i in iterate3dpm((1, 1, 1) + ws_search_size):
-                ndiff = n - i * mp_grid
-                dist.append(ndiff.dot(real_metric.dot(ndiff)))
-            dist_min = np.min(dist)
-            if abs(dist[origin] - dist_min) < 1.e-7:
-                irvec.append(n)
-                ndegen.append(np.sum(abs(dist - dist_min) < 1.e-7))
+    def recenter_JM_I(self, r0, centers):
+        """convention I"""
+        # --- A_a(R) matrix --- #
+        if self.need_R_any('AA'):
+            AA_R0 = self.get_R_mat('AA').copy()
+        # --- B_a(R) matrix --- #
+        if self.need_R_any('BB'):
+            BB_R0 = self.get_R_mat('BB').copy()
+            HH_R = self.get_R_mat('Ham')
+            rc = (r0 - self.cRvec[None, None, :, :] - centers[None, :, None, :]) * HH_R[:, :, :, None]
+            self.set_R_mat('BB', rc, add=True)
+        # --- C_a(R) matrix --- #
+        if self.need_R_any('CC'):
+            assert BB_R0 is not None, 'Recentered B matrix is needed in Jae-Mo`s implementation of C'
+            BB_R0_conj = self.conj_XX_R(BB_R0)
+            rc = 1j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None, :]
+            CC_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
+            self.set_R_mat('CC', CC_R_add, add=True, Hermitian=True)
+        # --- O_a(R) matrix --- #
+        if self.need_R_any('OO'):
+            assert AA_R0 is not None, 'Recentered A matrix is needed in Jae-Mo`s implementation of O'
+            rc = 1.j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * AA_R0[:, :, :, None, :]
+            OO_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
+            self.set_R_mat('OO', OO_R_add, add=True, Hermitian=True)
 
-        return np.array(irvec), np.array(ndegen)
+        # --- G_bc(R) matrix --- #
+        if self.need_R_any('GG'):
+            pass
+
+    def recenter_JM_II(self, r0, centers):
+        """convention II - will be eventually removed"""
+        # --- A_a(R) matrix --- #
+        if self.need_R_any('AA'):
+            AA_R0 = self.get_R_mat('AA').copy()
+            self.set_R_mat('AA', centers, R=[0, 0, 0], add=True, diag=True)
+        # --- B_a(R) matrix --- #
+        if self.need_R_any('BB'):
+            BB_R0 = self.get_R_mat('BB').copy()
+            HH_R = self.get_R_mat('Ham')
+            rc = (r0 - self.cRvec[None, None, :, :]) * HH_R[:, :, :, None]
+            self.set_R_mat('BB', rc, add=True)
+        # --- C_a(R) matrix --- #
+        if self.need_R_any('CC'):
+            assert BB_R0 is not None, 'Recentered B matrix is needed in Jae-Mo`s implementation of C'
+            BB_R0_conj = self.conj_XX_R(BB_R0)
+            rc = 1j * r0[:, :, :, :, None] * BB_R0[:, :, :, None, :]
+            rc -= 1j * (r0[:, :, :, :, None] - self.cRvec[None, None, :, :, None]) * BB_R0_conj[:, :, :, None, :]
+            rc -= 0.5j * (centers[:, None, None, :, None] + centers[None, :, None, :, None]
+                          ) * self.cRvec[None, None, :, None, :] * HH_R[:, :, :, None, None]
+            CC_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
+            self.set_R_mat('CC', CC_R_add, add=True, Hermitian=True)
+        # --- O_a(R) matrix --- #
+        if self.need_R_any('OO'):
+            assert AA_R0 is not None, 'Recentered A matrix is needed in Jae-Mo`s implementation of O'
+            rc = 1.j * self.cRvec[None, None, :, :, None] * AA_R0[:, :, :, None, :]
+            OO_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
+            self.set_R_mat('OO', OO_R_add, add=True, Hermitian=True)
+        # --- G_bc(R) matrix --- #
+        if self.need_R_any('GG'):
+            assert AA_R0 is not None, 'Recentered A matrix is needed in Jae-Mo`s implementation of G'
+            rc = (centers[:, None, None, :, None] + centers[None, :, None, :, None]) * AA_R0[:, :, :, None, :]
+            rc[self.range_wann, self.range_wann, self.iR0] += (
+                    centers[range(self.num_wann), :, None] * centers[range(self.num_wann), None, :])
+            self.set_R_mat('GG', 0.5 * (rc + rc.swapaxes(3, 4)),
+                           add=True, Hermitian=True)

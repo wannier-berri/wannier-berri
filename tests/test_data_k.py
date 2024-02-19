@@ -2,7 +2,6 @@
 
 import numpy as np
 from pytest import approx
-
 import wannierberri as wberri
 from wannierberri.grid.__Kpoint import KpointBZparallel
 from wannierberri.data_K import get_data_k
@@ -24,9 +23,9 @@ def test_fourier(system_Fe_W90):
 
     assert kpoint.Kp_fullBZ == approx(k / grid.FFT)
 
-    data_fftw = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='fftw', use_symmetry=False)
-    data_slow = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='slow', use_symmetry=False)
-    data_numpy = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar=0, fftlib='numpy', use_symmetry=False)
+    data_fftw = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar_k=0, fftlib='fftw')
+    data_slow = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar_k=0, fftlib='slow')
+    data_numpy = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar_k=0, fftlib='numpy')
 
     test_fields = ["E_K", "D_H", "A_H", "dEig_inv"]
 
