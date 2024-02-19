@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import spglib
 from .sym_wann_orbitals import Orbitals
@@ -22,7 +23,7 @@ class SymWann():
         Positions of each atom.
     atom_name: list
         Name of each atom.
-    proj: list
+    projections: list
         Should be the same with projections card in relative Wannier90.win.
 
         eg: ``['Te: s','Te:p']``
@@ -55,10 +56,10 @@ class SymWann():
             positions,
             atom_name,
             projections,
-            num_wann,
+            num_wann: int,
             lattice,
             iRvec,
-            XX_R,
+            XX_R: dict,
             wannier_centers_cart=None,
             use_wcc_phase=True,
             soc=False,
@@ -78,16 +79,22 @@ class SymWann():
         self.lattice = lattice
         self.positions = positions
         self.atom_name = atom_name
-        self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC',
-                                     '_WCC']  # ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
-        for k in XX_R:
-            if k not in self.possible_matrix_list:
-                raise NotImplementedError(f"symmetrization of matrix {k} is not implemented yet")
+        possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC', 'OO', 'GG',
+                                'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR']
+        tested_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC',
+                              'SS']
+        unknown = set(XX_R.keys()) - set(possible_matrix_list)
+        if unknown:
+            raise NotImplementedError(f"symmetrization of matrices {unknown} is not implemented yet")
+        unknown = set(XX_R.keys()) - set(tested_matrix_list)
+        if unknown:
+            warnings.warn(f"symmetrization of matrices {unknown} is not tested. use on your own risk")
+
         # this an overhead,  but reusing the routines developed for AA, so it is fine, o let's live with this
         if self.wannier_centers_cart is not None:
             WCC_R = np.zeros((self.num_wann, self.num_wann, self.nRvec, 3), dtype=complex)
-            WCC_R[np.arange(self.num_wann), np.arange(self.num_wann), self.index_R((0, 0, 0)),
-            :] = self.wannier_centers_cart
+            WCC_R[np.arange(self.num_wann), np.arange(self.num_wann), self.index_R((0, 0, 0)), :] \
+                = self.wannier_centers_cart
             XX_R["_WCC"] = WCC_R
         self.matrix_list = XX_R
 
@@ -100,16 +107,20 @@ class SymWann():
             '_WCC': 1,
             'BB': 1,
             'CC': -1,
-            'SS': -1
-        }  # {'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
+            'SS': -1,
+            'SA': 1, 'SHA': 1, 'SR': 1, 'SH': 1, 'SHR': 1,
+            'OO': -1, 'GG': 1
+        }
         self.parity_TR = {
             'Ham': 1,
             'AA': 1,
             '_WCC': 1,
             'BB': 1,
             'CC': -1,
-            'SS': -1
-        }  # {'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
+            'SS': -1,
+            'SA': 1, 'SHA': 1, 'SR': 1, 'SH': 1, 'SHR': 1,
+            'OO': -1, 'GG': 1
+        }
 
         self.orbitals = Orbitals()
 
@@ -337,10 +348,9 @@ class SymWann():
         tmp_R_list = []
         matrix_list_res = {}
         for k, v in self.matrix_list.items():
-            if k in self.possible_matrix_list:
-                shape = list(v.shape)
-                shape[2] = nRvec
-                matrix_list_res[k] = np.zeros(shape, dtype=complex)
+            shape = list(v.shape)
+            shape[2] = nRvec
+            matrix_list_res[k] = np.zeros(shape, dtype=complex)
 
         for irot, symop in enumerate(self.symmetry_operations):
             print('irot = ', irot + 1)
@@ -422,13 +432,6 @@ class SymWann():
             for X in return_dic_add.keys():
                 return_dic[X] = np.concatenate((return_dic[X], return_dic_add[X]), axis=2)
 
-        # for k, v in self.matrix_list.items():
-        #    if k not in self.possible_matrix_list:
-        #        shape = list(self.matrix_list[k].shape)
-        #        shape[2] = nRvec_add
-        #        return_dic_zero = np.zeros(shape, dtype=self.matrix_list[k].dtype)
-        #        return_dic[k] = np.concatenate((self.matrix_list[k], return_dic_zero), axis=2)
-
         for X in return_dic.values():
             self.spin_reorder(X, back=True)
 
@@ -451,11 +454,11 @@ class SymWann():
             for i in 0, 1:
                 for j in 0, 1:
                     if back:
-                        Mat_out[i:self.num_wann:2, j:self.num_wann:2, ...] = Mat_in[i * nw2:(i + 1) * nw2,
-                                                                             j * nw2:(j + 1) * nw2, ...]
+                        Mat_out[i:self.num_wann:2, j:self.num_wann:2, ...] = \
+                            Mat_in[i * nw2:(i + 1) * nw2, j * nw2:(j + 1) * nw2, ...]
                     else:
-                        Mat_out[i * nw2:(i + 1) * nw2, j * nw2:(j + 1) * nw2, ...] = Mat_in[i:self.num_wann:2,
-                                                                                     j:self.num_wann:2, ...]
+                        Mat_out[i * nw2:(i + 1) * nw2, j * nw2:(j + 1) * nw2, ...] = \
+                            Mat_in[i:self.num_wann:2, j:self.num_wann:2, ...]
             Mat_in[...] = Mat_out[...]
             return
         else:
@@ -499,8 +502,8 @@ class SymWann():
                         b1 = symop.rot_map[b]
                         if (a1, b1) >= (a, b):
                             R_map = np.dot(R_list, np.transpose(symop.rotation))
-                            atom_R_map = R_map[:, None, None, :] - symop.vec_shift[None, :, None, :] + symop.vec_shift[
-                                                                                                       None, None, :, :]
+                            atom_R_map = (R_map[:, None, None, :]
+                                          - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :])
                             for iR in range(self.nRvec):
                                 if irreducible[iR, a, b]:
                                     iR1 = self.index_R(atom_R_map[iR, a, b])
@@ -702,14 +705,9 @@ class SymmetryOperation_loc(SymmetryOperation):
 
 
 def _rotate_matrix(X, L, R):
-    if X.ndim == 2:
-        return L.dot(X).dot(R)
-    elif X.ndim == 3:
-        X_shift = X.transpose(2, 0, 1)
-        tmpX = L.dot(X_shift).dot(R)
-        return tmpX.transpose(0, 2, 1).reshape(X.shape)
-    else:
-        raise ValueError()
+    _ = np.tensordot(L, X, axes=((1,), (0,)))
+    _ = np.tensordot(R, _, axes=((0,), (1,)))
+    return _.swapaxes(0, 1)
 
 
 def _matrix_to_dict(mat, H_select, wann_atom_info):
