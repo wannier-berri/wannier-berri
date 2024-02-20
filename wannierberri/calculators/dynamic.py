@@ -394,7 +394,12 @@ class Formula_SDCT_asym_surf_I(Formula):
         return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
 
 
-class SDCT_asym_surf_I(DynamicCalculator):
+class SDCT_surf_gen(DynamicCalculator):
+
+    def factor_Efermi(self, E1, E2):
+        return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
+
+class SDCT_asym_surf_I(SDCT_surf_gen):
 
     def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **kwargs):
         super().__init__(**kwargs)
@@ -407,9 +412,6 @@ class SDCT_asym_surf_I(DynamicCalculator):
         Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
         return omega * (E2 - E1) * Zfac
-
-    def factor_Efermi(self, E1, E2):
-        return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
 
 
 class Formula_SDCT_asym_surf_II(Formula):
@@ -447,7 +449,7 @@ class Formula_SDCT_asym_surf_II(Formula):
         return self.summ[ik, inn1].sum(axis=0)
 
 
-class SDCT_asym_surf_II(DynamicCalculator):
+class SDCT_asym_surf_II(SDCT_surf_gen):
 
     def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **kwargs):
         super().__init__(**kwargs)
@@ -458,9 +460,6 @@ class SDCT_asym_surf_II(DynamicCalculator):
     def factor_omega(self, E1, E2):
         omega = self.omega + 1.j * self.smr_fixed_width
         return 1. / omega
-
-    def factor_Efermi(self, E1, E2):
-        return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
 
 # _____ Symmetric (time-odd) spatially-dispersive conductivity tensor _____ #
 
@@ -610,7 +609,7 @@ class Formula_SDCT_sym_surf_I(Formula):
         return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
 
 
-class SDCT_sym_surf_I(DynamicCalculator):
+class SDCT_sym_surf_I(SDCT_surf_gen):
 
     def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **kwargs):
         super().__init__(**kwargs)
@@ -624,9 +623,6 @@ class SDCT_sym_surf_I(DynamicCalculator):
         Zfac = 1. / Z_arg_12
         return 1.j * (E2 - E1)**2 * Zfac
 
-    def factor_Efermi(self, E1, E2):
-        return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
-
 
 class Formula_SDCT_sym_surf_II(Formula):
 
@@ -635,7 +631,7 @@ class Formula_SDCT_sym_surf_II(Formula):
         Vn = data_K.Vn
 
         # Formula
-        summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+        summ = np.zeros((data_K.nk, data_K.num_wann, 3, 3, 3), dtype=complex)
 
         if V_terms:
             summ = Vn[:, :, :, None, None] * Vn[:, :, None, :, None] * Vn[:, :, None, None, :]
@@ -649,7 +645,7 @@ class Formula_SDCT_sym_surf_II(Formula):
         return self.summ[ik, inn1].sum(axis=0)
 
 
-class SDCT_sym_surf_II(DynamicCalculator):
+class SDCT_sym_surf_II(SDCT_surf_gen):
 
     def __init__(self, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **kwargs):
         super().__init__(**kwargs)
@@ -660,10 +656,6 @@ class SDCT_sym_surf_II(DynamicCalculator):
     def factor_omega(self, E1, E2):
         omega = self.omega + 1.j * self.smr_fixed_width
         return -1.j / omega**2
-
-    def factor_Efermi(self, E1, E2):
-        return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
-
 ###############################################################################
 
 # ===============
