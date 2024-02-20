@@ -744,6 +744,7 @@ def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result):
              'kBT': 0.5, 'smr_fixed_width': 0.5,
              }
     calculators = {k: v(**param) for k, v in calculators_SDCT.items()}
+    calculators.update({k+"+spin":v(spin=True,**param) for k, v in calculators_SDCT.items()})
 
     check_run(
         system_Chiral_OSD,
@@ -772,6 +773,7 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
              'kwargs_formula': dict(external_terms=False)
              }
     calculators.update({k: v(**param) for k, v in calculators_SDCT.items()})
+    calculators.update({k+"+spin":v(spin=True,**param) for k, v in calculators_SDCT.items()})
 
     check_run(
         system_random_load_bare,
