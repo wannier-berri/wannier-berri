@@ -15,7 +15,7 @@ import scipy.io
 import fortio
 from termcolor import cprint
 from time import time
-from functools import cached_property
+from functools import cached_property, lru_cache
 import numpy as np
 import inspect
 from . import PYFFTW_IMPORTED
@@ -361,10 +361,38 @@ def FermiDirac(E, mu, kBT):
     else:
         res = np.zeros(mu.shape, dtype=float)
         res[mu > E + 30 * kBT] = 1.0
-        res[mu < E - 30 * kBT] = 0.0
+        # res[mu < E - 30 * kBT] = 0.0
         sel = abs(mu - E) <= 30 * kBT
         res[sel] = 1.0 / (np.exp((E - mu[sel]) / kBT) + 1)
         return res
+
+
+def FermiDiracDer(E, mu, kBT):
+    res = np.zeros(mu.shape, dtype=float)
+    sel = abs(mu - E) <= 30 * kBT
+    _exp = np.exp((E - mu[sel]) / kBT)
+    res[sel] = - _exp / (1 + _exp)**2 / kBT
+    return res
+
+    # return -FermiDirac(E, mu, kBT) ** 2 * np.exp((E - mu) / kBT) / kBT
+
+
+class CachedFermiDirac:
+
+    def __init__(self, Efermi, kBT):
+        self.Efermi = np.copy(Efermi)
+        self.kBT = kBT
+
+    @lru_cache()
+    def __call__(self, E):
+        return FermiDirac(E, self.Efermi, self.kBT)
+
+
+class CachedFermiDiracDer(CachedFermiDirac):
+
+    @lru_cache()
+    def __call__(self, E):
+        return FermiDiracDer(E, self.Efermi, self.kBT)
 
 
 def one2three(nk):

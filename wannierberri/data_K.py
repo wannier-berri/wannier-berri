@@ -13,12 +13,13 @@
 
 import numpy as np
 import abc
-from functools import cached_property
+from functools import cached_property, lru_cache
 from .parallel import pool
 from .system.system import System
 from .system.system_R import System_R
 from .system.system_kp import SystemKP
-from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A
+from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A, \
+    CachedFermiDirac, CachedFermiDiracDer
 from .grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
 from . import formula
 from .grid import KpointBZparallel, KpointBZtetra
@@ -163,6 +164,14 @@ class _Data_K(System, abc.ABC):
             for i in range(mat.shape[-1]):
                 mat[..., i] = self._rotate(mat[..., i])
             return mat
+
+    @lru_cache
+    def cachedFermiDirac(self, EFmin, EFmax, nEF, kBT):
+        return CachedFermiDirac(Efermi=np.linspace(EFmin, EFmax, nEF), kBT=kBT)
+
+    @lru_cache
+    def cachedFermiDiracSurf(self, EFmin, EFmax, nEF, kBT):
+        return CachedFermiDiracDer(Efermi=np.linspace(EFmin, EFmax, nEF), kBT=kBT)
 
     #####################
     #  Basic variables  #

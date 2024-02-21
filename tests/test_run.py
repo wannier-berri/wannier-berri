@@ -744,7 +744,7 @@ def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result):
              'kBT': 0.5, 'smr_fixed_width': 0.5,
              }
     calculators = {k: v(**param) for k, v in calculators_SDCT.items()}
-    calculators.update({k+"+spin":v(spin=True,**param) for k, v in calculators_SDCT.items()})
+    calculators.update({k + "+spin": v(spin=True, **param) for k, v in calculators_SDCT.items()})
 
     check_run(
         system_Chiral_OSD,
@@ -766,14 +766,14 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
     calculators['opt_conductivity'] = wberri.calculators.dynamic.OpticalConductivity(**parameters_optical)
     calculators['opt_SHCqiao'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
     calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
-
     param = {'Efermi': Efermi,
              'omega': np.linspace(0.0, 4, 5),
              'kBT': 0.5, 'smr_fixed_width': 0.5,
-             'kwargs_formula': dict(external_terms=False)
+             'kwargs_formula': dict(external_terms=False),
+             'cachedFermiDirac': True
              }
     calculators.update({k: v(**param) for k, v in calculators_SDCT.items()})
-    calculators.update({k+"+spin":v(spin=True,**param) for k, v in calculators_SDCT.items()})
+    calculators.update({k + "+spin": v(spin=True, **param) for k, v in calculators_SDCT.items()})
 
     check_run(
         system_random_load_bare,
