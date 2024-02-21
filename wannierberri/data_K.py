@@ -19,7 +19,9 @@ from .system.system import System
 from .system.system_R import System_R
 from .system.system_kp import SystemKP
 from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A, \
-    CachedFermiDirac, CachedFermiDiracDer
+    CachedFermiDirac, CachedFermiDiracDer, CachedPartial
+from collections import defaultdict
+from collections.abc import Iterable
 from .grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
 from . import formula
 from .grid import KpointBZparallel, KpointBZtetra
@@ -133,7 +135,7 @@ class _Data_K(System, abc.ABC):
         #######################################################################
 
         self.poolmap = pool(self.npar_k)[0]
-
+        self._cached_functions = defaultdict(lambda: [])
         self.dK = dK
         self._bar_quantities = {}
         self._covariant_quantities = {}
@@ -164,6 +166,25 @@ class _Data_K(System, abc.ABC):
             for i in range(mat.shape[-1]):
                 mat[..., i] = self._rotate(mat[..., i])
             return mat
+
+    def cached_function(self, function, name, **parameters):
+        for params, func in self._cached_functions[name]:
+            match = True
+            for key, val in params.items():
+                if isinstance(val, Iterable):
+                    if val is not parameters[key]:
+                        match = False
+                else:
+                    if val != parameters[key]:
+                        match = False
+                if not match:
+                    break
+            if match:
+                return func
+        new_function = CachedPartial(function, **parameters)
+        print("setting", name, (parameters, new_function))
+        self._cached_functions[name].append((parameters, new_function))
+        return new_function
 
     @lru_cache
     def cachedFermiDirac(self, EFmin, EFmax, nEF, kBT):

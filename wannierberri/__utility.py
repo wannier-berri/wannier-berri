@@ -353,6 +353,28 @@ def Gaussian(x, width, adpt_smr):
     return output
 
 
+def Smear(E: float, omega: np.ndarray, smr_type: str, width: float, adpt_smr=False):
+    """
+    Calculates smearing from E-omega
+    Parameters
+    ----------
+    E
+    omega
+    smr_type
+    kwargs
+
+    Returns
+    -------
+
+    """
+    if smr_type == 'Lorentzian':
+        return Lorentzian(E - omega, width=width)
+    elif smr_type == 'Gaussian':
+        return Gaussian(E - omega, width=width, adpt_smr=adpt_smr)
+    else:
+        raise ValueError("Invalid smearing type {self.smr_type}")
+
+
 # auxillary function"
 def FermiDirac(E, mu, kBT):
     "here E is a number, mu is an array"
@@ -386,6 +408,17 @@ class CachedFermiDirac:
     @lru_cache()
     def __call__(self, E):
         return FermiDirac(E, self.Efermi, self.kBT)
+
+
+class CachedPartial:
+
+    def __init__(self, function, **parameters):
+        self.function = function
+        self.parameters = parameters
+
+    @lru_cache()
+    def __call__(self, **kwargs):
+        return self.function(**kwargs, **self.parameters)
 
 
 class CachedFermiDiracDer(CachedFermiDirac):

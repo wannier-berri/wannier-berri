@@ -1,7 +1,6 @@
 import numpy as np
 import abc
-import functools
-from ..__utility import Gaussian, Lorentzian, FermiDirac, FermiDiracDer, alpha_A, beta_A
+from ..__utility import FermiDirac, FermiDiracDer, Smear, alpha_A, beta_A
 from ..result import EnergyResult
 from . import Calculator
 from ..formula.covariant import SpinVelocity
@@ -27,43 +26,38 @@ Ang_SI = angstrom
 class DynamicCalculator(Calculator, abc.ABC):
 
     def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', kwargs_formula={},
-                 cachedFermiDirac=True,
+                 cachedFermiDirac=True, cachedsmear=True,
                  **kwargs):
-
-        for k, v in locals().items():  # is it safe to do so?
-            if k not in ['self', 'kwargs']:
-                vars(self)[k] = v
         super().__init__(**kwargs)
+        self.Efermi = Efermi
+        self.omega = omega
+        self.kBT = kBT
+        self.smr_fixed_width = smr_fixed_width
+        self.smr_type = smr_type
+
+
         self.kwargs_formula = copy(kwargs_formula)
         self.Formula = None
         self.constant_factor = 1.
         self.dtype = complex
-        self.omegamin = self.omega.min()
-        self.omegamax = self.omega.max()
-        self.kBT = kBT
-
-        if self.smr_type == 'Lorentzian':
-            self.smear = functools.partial(Lorentzian, width=self.smr_fixed_width)
-        elif self.smr_type == 'Gaussian':
-            self.smear = functools.partial(Gaussian, width=self.smr_fixed_width, adpt_smr=False)
+        if cachedsmear:
+            self.smear = lambda E, data_K: data_K.cached_function(function=Smear, name="Smear",
+                                                                  omega=self.omega, smr_type=smr_type, width=smr_fixed_width, adpt_smr=False)(E=E)
         else:
-            raise ValueError("Invalid smearing type {self.smr_type}")
-        self.EFmin = self.Efermi.min()
-        self.EFmax = self.Efermi.max()
-        self.nEF = len(Efermi)
-        if not cachedFermiDirac:
-            self.FermiDirac = lambda E, data_K: FermiDirac(E=E, mu=self.Efermi, kBT=self.kBT)
-            self.FermiDiracDer = lambda E, data_K: FermiDiracDer(E=E, mu=self.Efermi, kBT=self.kBT)
+            self.smear = lambda E, data_K: Smear(E, omega=self.omega, smr_type=smr_type, width=smr_fixed_width, adpt_smr=False)
+        if cachedFermiDirac:
+            self.FermiDirac = lambda E, data_K: data_K.cached_function(
+                function=FermiDirac, name="FermiDirac", mu=self.Efermi, kBT=kBT)(E=E)
+            self.FermiDiracDer = lambda E, data_K: data_K.cached_function(
+                function=FermiDiracDer, name="FermiDiracDer", mu=self.Efermi, kBT=kBT)(E=E)
         else:
-            self.FermiDirac = lambda E, data_K: data_K.cachedFermiDirac(
-                EFmin=self.EFmin, EFmax=self.EFmax, nEF=self.nEF, kBT=self.kBT)(E)
-            self.FermiDiracDer = lambda E, data_K: data_K.cachedFermiDiracSurf(
-                EFmin=self.EFmin, EFmax=self.EFmax, nEF=self.nEF, kBT=self.kBT)(E)
-        self.eocc1max = self.EFmin - 30 * self.kBT
-        self.eocc0min = self.EFmax + 30 * self.kBT
+            self.FermiDirac = lambda E, data_K: FermiDirac(E=E, mu=self.Efermi, kBT=kBT)
+            self.FermiDiracDer = lambda E, data_K: FermiDiracDer(E=E, mu=self.Efermi, kBT=kBT)
+        self.eocc1max = self.Efermi.min() - 30 * kBT
+        self.eocc0min = self.Efermi.max() + 30 * kBT
 
     @abc.abstractmethod
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, data_K):
         "determines a frequency-dependent factor for bands with energies E1 and E2"
 
     def factor_Efermi(self, E1, E2, data_K):
@@ -99,7 +93,7 @@ class DynamicCalculator(Calculator, abc.ABC):
             matrix_elements = np.array(
                 [formula.trace_ln(ik, np.arange(*pair[0]), np.arange(*pair[1])) for pair in degen_group_pairs])
             factor_Efermi = np.array([self.factor_Efermi(pair[2], pair[3], data_K) for pair in degen_group_pairs])
-            factor_omega = np.array([self.factor_omega(pair[2], pair[3]) for pair in degen_group_pairs]).T
+            factor_omega = np.array([self.factor_omega(pair[2], pair[3], data_K) for pair in degen_group_pairs]).T
             restot += factor_omega @ (factor_Efermi[:, :, None] *
                                       matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
         restot = restot.reshape(restot_shape).swapaxes(0, 1)  # swap the axes to get EF,omega,a,b,...
@@ -162,11 +156,11 @@ class JDOS(DynamicCalculator):
         return (E1 < self.Efermi.max()) and (E2 > self.Efermi.min()) and (
                 self.omega.min() - 5 * self.smr_fixed_width < E2 - E1 < self.omega.max() + 5 * self.smr_fixed_width)
 
-    def energy_factor(self, E1, E2):
-        res = np.zeros((len(self.Efermi), len(self.omega)))
-        gauss = self.smear(E2 - E1 - self.omega, self.smr_fixed_width)
-        res[(E1 < self.Efermi) * (self.Efermi < E2)] = gauss[None, :]
-        return res
+    # def energy_factor(self, E1, E2):
+    #    res = np.zeros((len(self.Efermi), len(self.omega)))
+    #    gauss = self.smear(E2 - E1)
+    #    res[(E1 < self.Efermi) * (self.Efermi < E2)] = gauss[None, :]
+    #    return res
 
 
 ################################
@@ -195,11 +189,11 @@ class OpticalConductivity(DynamicCalculator):
         self.Formula = Formula_OptCond
         self.constant_factor = factors.factor_opt
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, data_K):
         delta_arg_12 = E2 - E1 - self.omega  # argument of delta function [iw, n, m]
         cfac = 1. / (delta_arg_12 - 1j * self.smr_fixed_width)
         if self.smr_type != 'Lorentzian':
-            cfac.imag = np.pi * self.smear(delta_arg_12)
+            cfac.imag = np.pi * self.smear(E2 - E1, data_K=data_K)
         return (E2 - E1) * cfac
 
 
@@ -237,11 +231,11 @@ class SHC(DynamicCalculator):
         self.Formula = Formula_SHC
         self.constant_factor = factors.factor_shc
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, data_K):
         delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
         cfac = 1. / (delta_arg_12 - 1j * self.smr_fixed_width)
         if self.smr_type != 'Lorentzian':
-            cfac.imag = np.pi * self.smear(delta_arg_12)
+            cfac.imag = np.pi * self.smear(E1 - E2, data_K=data_K)
         return cfac / 2
 
 
@@ -322,7 +316,7 @@ class SDCT_asym_sea_I(DynamicCalculator):
         self.Formula = Formula_SDCT_asym_sea_I
         self.constant_factor = factors.factor_SDCT
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, data_K):
         omega = self.omega + 1.j * self.smr_fixed_width
         Z_arg_12 = (E2 - E1) ** 2 - omega ** 2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
@@ -364,7 +358,7 @@ class SDCT_asym_sea_II(DynamicCalculator):
         self.Formula = Formula_SDCT_asym_sea_II
         self.constant_factor = factors.factor_SDCT
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, data_K):
         omega = self.omega + 1.j * self.smr_fixed_width
         Z_arg_12 = (E2 - E1) ** 2 - omega ** 2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
@@ -411,7 +405,7 @@ class SDCT_asym_surf_I(SDCT_surf_gen):
         self.Formula = Formula_SDCT_asym_surf_I
         self.constant_factor = factors.factor_SDCT
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, data_K):
         omega = self.omega + 1.j * self.smr_fixed_width
         Z_arg_12 = (E2 - E1) ** 2 - omega ** 2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
@@ -461,7 +455,7 @@ class SDCT_asym_surf_II(SDCT_surf_gen):
         self.Formula = Formula_SDCT_asym_surf_II
         self.constant_factor = factors.factor_SDCT
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, data_K):
         omega = self.omega + 1.j * self.smr_fixed_width
         return 1. / omega
 
@@ -533,7 +527,7 @@ class SDCT_sym_sea_I(DynamicCalculator):
         self.Formula = Formula_SDCT_sym_sea_I
         self.constant_factor = factors.factor_SDCT
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, data_K):
         omega = self.omega + 1.j * self.smr_fixed_width
         Z_arg_12 = (E2 - E1) ** 2 - omega ** 2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
@@ -575,7 +569,7 @@ class SDCT_sym_sea_II(DynamicCalculator):
         self.Formula = Formula_SDCT_sym_sea_II
         self.constant_factor = factors.factor_SDCT
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, data_K):
         omega = self.omega + 1.j * self.smr_fixed_width
         Z_arg_12 = (E2 - E1) ** 2 - omega ** 2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
@@ -616,7 +610,7 @@ class SDCT_sym_surf_I(SDCT_surf_gen):
         self.Formula = Formula_SDCT_sym_surf_I
         self.constant_factor = factors.factor_SDCT
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, data_K):
         omega = self.omega + 1.j * self.smr_fixed_width
         Z_arg_12 = (E2 - E1) ** 2 - omega ** 2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
@@ -652,7 +646,7 @@ class SDCT_sym_surf_II(SDCT_surf_gen):
         self.Formula = Formula_SDCT_sym_surf_II
         self.constant_factor = factors.factor_SDCT
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, data_K):
         omega = self.omega + 1.j * self.smr_fixed_width
         return -1.j / omega ** 2
 
@@ -738,10 +732,8 @@ class ShiftCurrent(DynamicCalculator):
         self.Formula = ShiftCurrentFormula
         self.constant_factor = factors.factor_shift_current
 
-    def factor_omega(self, E1, E2):
-        delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
-        delta_arg_21 = E2 - E1 - self.omega
-        return self.smear(delta_arg_12) + self.smear(delta_arg_21)
+    def factor_omega(self, E1, E2, data_K):
+        return self.smear(E1 - E2, data_K) + self.smear(E2 - E1, data_K)
 
 
 # ===================
@@ -782,6 +774,5 @@ class InjectionCurrent(DynamicCalculator):
         self.transformInv = transform_odd
         self.constant_factor = factors.factor_injection_current
 
-    def factor_omega(self, E1, E2):
-        delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
-        return self.smear(delta_arg_12)
+    def factor_omega(self, E1, E2, data_K):
+        return self.smear(E1 - E2, data_K)
