@@ -66,10 +66,10 @@ class SymWann():
             DFT_code='qe'
     ):
 
+        assert use_wcc_phase
         self.soc = soc
         self.magmom = magmom
         self.DFT_code = DFT_code
-        self.use_wcc_phase = use_wcc_phase
         self.wannier_centers_cart = wannier_centers_cart
         self.iRvec = [tuple(R) for R in iRvec]
         self.iRvec_index = {r: i for i, r in enumerate(self.iRvec)}
@@ -83,7 +83,6 @@ class SymWann():
         for k in XX_R:
             if k not in self.possible_matrix_list:
                 raise NotImplementedError(f"symmetrization of matrix {k} is not implemented yet")
-        # this an overhead,  but reusing the routines developed for AA, so it is fine, o let's live with this
         self.matrix_list = XX_R
 
         # This is confusing, actually the I-odd vectors have "+1" here, because the minus is already in the rotation matrix
