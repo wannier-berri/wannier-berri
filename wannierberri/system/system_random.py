@@ -1,5 +1,6 @@
 import numpy as np
-from .system_R import System_R, ndim_R
+from .system_R import System_R
+from .system import num_cart_dim
 
 
 class SystemRandom(System_R):
@@ -60,7 +61,7 @@ class SystemRandom(System_R):
         np.random.shuffle(self.iRvec)
         print(f"iRvec4={self.iRvec}")
         for key in self.needed_R_matrices:
-            shape = (self.num_wann, self.num_wann, self.nRvec,) + (3,) * ndim_R(key)
+            shape = (self.num_wann, self.num_wann, self.nRvec,) + (3,) * num_cart_dim(key)
             im, re = [np.random.random(shape) for _ in (0, 1)]
             self.set_R_mat(key, im + 1j * re)
         self.wannier_centers_cart = np.random.random((self.num_wann, 3))

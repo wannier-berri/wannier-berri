@@ -143,10 +143,6 @@ def checksym_Fe(check_run, compare_any_result, check_symmetry):
     return _inner
 
 
-def test_Fe_old_wcc(system_Fe_sym_W90_old_wcc, checksym_Fe):
-    checksym_Fe(system_Fe_sym_W90_old_wcc)
-
-
 def test_Fe_new_wcc(system_Fe_sym_W90_wcc, checksym_Fe):
     checksym_Fe(system_Fe_sym_W90_wcc)
 

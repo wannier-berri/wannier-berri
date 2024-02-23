@@ -7,10 +7,10 @@ import warnings
 import glob
 import multiprocessing
 from .system import System, pauli_xyz
-from .sym_wann import SymWann
 from ..__utility import alpha_A, beta_A, clear_cached, one2three
 from ..symmetry import Symmetry, Group, TimeReversal
 from .ws_dist import ws_dist_map
+from .sym_wann import SymWann
 
 
 class System_R(System):
@@ -193,7 +193,7 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', method="new"):
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe'):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
 
@@ -227,10 +227,9 @@ class System_R(System):
             Magnetic momens of each atoms.
         DFT_code: str
             DFT code used : ``'qe'`` or ``'vasp'`` . This is needed, because vasp and qe have different orbitals arrangement with SOC.(grouped by spin or by orbital type)
-        method : str
-            `new` or `old`. They give same result but `new` is faster. `old` will be eventually removed.
 
-        Notes:
+        Notes
+        -----
             Works only with phase convention I (`use_wcc_phase=True`)
         """
 
@@ -253,7 +252,7 @@ class System_R(System):
 
         print("Wannier Centers cart (raw):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (raw):\n", self.wannier_centers_reduced)
-        (self._XX_R, self.iRvec), self.wannier_centers_cart = symmetrize_wann.symmetrize(method=method)
+        (self._XX_R, self.iRvec), self.wannier_centers_cart = symmetrize_wann.symmetrize()
 
         if self.has_R_mat('AA'):
             A_diag = self.get_R_mat('AA')[:, :, self.iR0].diagonal()
@@ -798,17 +797,3 @@ class System_R(System):
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
             self.set_R_mat(key, a)
             print(" - Ok!")
-
-
-def ndim_R(key):
-    """
-    returns the number of cartesian dimensions of a matrix by key
-    """
-    if key in ["Ham"]:
-        return 0
-    elif key in ["AA", "BB", "CC", "SS", "SH", "OO"]:
-        return 1
-    elif key in ["SHA", "SA", "SR", "SHR", "GG", "FF"]:
-        return 2
-    else:
-        raise ValueError(f"unknown matrix {key}")
