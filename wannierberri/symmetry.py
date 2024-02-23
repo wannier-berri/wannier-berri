@@ -46,9 +46,9 @@ import numpy as np
 import scipy
 import scipy.spatial
 import scipy.spatial.transform
-from packaging import version as pversion
-
 from scipy.spatial.transform import Rotation as rotmat
+from packaging import version as pversion
+import warnings
 from copy import deepcopy
 from .__utility import real_recip_lattice
 from collections.abc import Iterable
@@ -501,7 +501,7 @@ def transform_from_dict(dic, key):
         if isinstance(d, dict):
             return Transform(**d)
         elif isinstance(d, str):
-            print("WARNING : transform read as string from file, recognized as None")
+            warnings.warn("transform read as string from file, recognized as None")
             return None
         else:
             return ValueError(f"wrong type of transform[{key}] in the npz file:{type(d)}")

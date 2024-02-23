@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from .system_R import System_R
 from .system import num_cart_dim
@@ -51,7 +52,7 @@ class SystemRandom(System_R):
             iRvec.update(R_try)
             print(f"iRvec1={iRvec}")
         if len(iRvec) < nRvec:
-            print(f"WARNING : required number of R-vectors {nRvec} was not achieved. got only {len(iRvec)}")
+            warnings.warn(f"required number of R-vectors {nRvec} was not achieved. got only {len(iRvec)}")
         print(f"iRvec2={iRvec}")
         iRvec = np.array(list(iRvec), dtype=int)
         norm = np.linalg.norm(iRvec, axis=1)

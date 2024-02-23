@@ -35,6 +35,7 @@
             |  norm=none      -   do not normalize WFs, take as they are.
 
 """
+import warnings
 
 
 def hlp():
@@ -96,9 +97,8 @@ def main(argv):
     if NBout <= 0:
         NBout = NBin
     if NBout + IBstart > NBin:
-        print(
-            ' WARNING: NB+IBstart-1=', NBout + IBstart,
-            ' exceeds the number of bands in WAVECAR NBin=' + str(NBin) + '. We set NBout=' + str(NBin - IBstart))
+        warnings.warn(f"NB+IBstart-1={NBout + IBstart} exceeds the number of bands in WAVECAR NBin={NBin}"
+                      f"We set NBout={NBin - IBstart}")
         NBout = NBin - IBstart
 
     print(

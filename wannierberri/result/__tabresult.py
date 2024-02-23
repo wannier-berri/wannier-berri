@@ -3,6 +3,7 @@ from time import time
 import multiprocessing
 import functools
 from collections.abc import Iterable
+import warnings
 from .__result import Result
 
 
@@ -103,7 +104,7 @@ class TABresult(Result):
             if on_grid[ik]:
                 k_map[ind_grid[ik]].append(ik)
             else:
-                print(f"WARNING: k-point {ik}={self.kpoints[ik]} is not on the grid, skipping.")
+                warnings.warn(f"k-point {ik}={self.kpoints[ik]} is not on the grid, skipping.")
         t0 = time()
         print("collecting")
         results = {r: self.results[r].to_grid(k_map) for r in self.results}

@@ -15,6 +15,7 @@ import numpy as np
 from time import time
 import abc
 from functools import cached_property
+import warnings
 from .. import symmetry
 from .__Kpoint import KpointBZparallel
 from ..__utility import one2three
@@ -183,7 +184,7 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, symgroup, length=
             NK = np.array(np.round(length / (2 * np.pi) * np.linalg.norm(symgroup.recip_lattice, axis=1)), dtype=int)
             print("length={} was converted into NK={}".format(length, NK))
         else:
-            print("WARNING : length is disregarded in presence of NK")
+            warnings.warn("length is disregarded in presence of NK")
 
     if length_FFT is not None:
         if NKFFT is None:
@@ -191,7 +192,7 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, symgroup, length=
                 np.round(length_FFT / (2 * np.pi) * np.linalg.norm(symgroup.recip_lattice, axis=1)), dtype=int)
             print("length_FFT={} was converted into NKFFT={}".format(length_FFT, NKFFT))
         else:
-            print("WARNING : length_FFT is disregarded in presence of NKFFT")
+            warnings.warn("length_FFT is disregarded in presence of NKFFT")
 
     for nkname in 'NKdiv', 'NK', 'NKFFT':
         nk = locals()[nkname]
@@ -200,12 +201,12 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, symgroup, length=
 
     if (NKdiv is not None) and (NKFFT is not None):
         if length is not None:
-            print("WARNING : length is disregarded in presence of NKdiv,NKFFT")
+            warnings.warn("length is disregarded in presence of NKdiv,NKFFT")
         elif NK is not None:
-            print("WARNING : NK is disregarded in presence of NKdiv,NKFFT")
+            warnings.warn("NK is disregarded in presence of NKdiv,NKFFT")
     elif NK is not None:
         if NKdiv is not None:
-            print("WARNING : NKdiv is disregarded in presence of NK or length")
+            warnings.warn("NKdiv is disregarded in presence of NK or length")
         if NKFFT is not None:
             NKdiv = np.array(np.round(NK / NKFFT), dtype=int)
             NKdiv[NKdiv <= 0] = 1
@@ -217,7 +218,7 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, symgroup, length=
             format(NK, NKdiv, NKFFT))
     if NK is not None:
         if not np.all(NK == NKFFT * NKdiv):
-            print("WARNING : the requested k-grid {} was adjusted to {}. ".format(NK, NKFFT * NKdiv))
+            warnings.warn(" the requested k-grid {} was adjusted to {}. ".format(NK, NKFFT * NKdiv))
 
     notperiodic = np.logical_not(periodic)
     NKdiv[notperiodic] = 1

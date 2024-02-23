@@ -17,6 +17,7 @@ from time import time
 import pickle
 import glob
 from termcolor import cprint
+import warnings
 
 from .data_K import get_data_k
 from .grid import exclude_equiv_points, Path, Grid, GridTetra
@@ -26,7 +27,6 @@ from .result import ResultDict
 
 def print_progress(count, total, t0, tprev, print_progress_step):
     t = time() - t0
-    t_remain = None
     if count == 0:
         t_remain = "unknown"
     else:
@@ -238,7 +238,7 @@ def run(
                     break
             print("{0} K-points were read from {1}".format(len(K_list), file_Klist))
             if len(K_list) == 0:
-                print("WARNING : {0} contains zero points starting from scrath".format(file_Klist))
+                warnings.warn(f"{file_Klist} contains zero points starting from scrath")
                 restart = False
             fr.close()
 
@@ -260,8 +260,6 @@ def run(
             except FileNotFoundError:
                 print(f"File with changed factors {file_Klist_factor_changed} not found, assume they were not changed")
         except Exception as err:
-            restart = False
-#            print("WARNING: {}".format(err))
             raise RuntimeError("{1}: reading from {0} failed, starting from scrath".format(file_Klist, err))
     else:
         K_list = grid.get_K_list(use_symmetry=use_irred_kpt)
@@ -288,7 +286,7 @@ def run(
                 sorted(glob.glob(fout_name + "*" + suffix + "_iter-*.dat"))[-1].split("-")[-1].split(".")[0])
             print(f"start_iter = {start_iter}")
         except Exception as err:
-            print("WARNING : {0} : failed to read start_iter. Setting to zero".format(err))
+            warnings.warn(f"{err} : failed to read start_iter. Setting to zero")
             start_iter = 0
 
     if adpt_num_iter < 0:

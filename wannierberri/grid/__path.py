@@ -1,6 +1,6 @@
 from .__grid import GridAbstract
 from .__Kpoint import KpointBZpath
-from ..__utility import warning
+import warnings
 from collections.abc import Iterable
 import numpy as np
 
@@ -122,7 +122,7 @@ class Path(GridAbstract):
             assert self.K_list.shape[0] > 0, "k_list should not be empty"
             for var in 'k_nodes', 'length', 'nk', 'dk':
                 if locals()[var] is not None:
-                    warning("k_list was entered manually, ignoring {}".format(var))
+                    warnings.warn("k_list was entered manually, ignoring {}".format(var))
             self.labels = {} if labels is None else labels
             self.breaks = [] if breaks is None else breaks
         self.div = np.shape(self.K_list)[0]
@@ -161,7 +161,7 @@ class Path(GridAbstract):
     def get_K_list(self, use_symmetry=False):
         """ returns the list of K-points"""
         if use_symmetry:
-            print("WARNING : symmetry is not used for a tabulation along path")
+            warnings.warn("symmetry is not used for a tabulation along path")
         print("generating K_list")
         K_list = [
             KpointBZpath(K=K, symgroup=self.symgroup)

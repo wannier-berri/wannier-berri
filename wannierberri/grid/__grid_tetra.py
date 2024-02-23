@@ -12,6 +12,7 @@
 # ------------------------------------------------------------
 
 import numpy as np
+import warnings
 from .__Kpoint_tetra import KpointBZtetra
 from .__grid import GridAbstract
 from ..__utility import angle_vectors_deg
@@ -56,7 +57,7 @@ class GridTetra(GridAbstract):
         self.recip_lattice_reduced = system.recip_lattice / self.FFT[:, None]
         print("reduced reciprocal lattice : \n", self.recip_lattice_reduced)
         if IBZ_tetra is None:   # divide the full reciprocal unit cell into 5 tetrahedra -
-            print("WARNING : irreducible wedge not provided, no use of symmetries")
+            warnings.warn("irreducible wedge not provided, no use of symmetries")
             tetrahedra = np.array([[[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]],
                                    [[1, 0, 1], [0, 0, 1], [1, 0, 0], [1, 1, 1]],
                                    [[1, 1, 0], [1, 0, 0], [0, 1, 0], [1, 1, 1]],

@@ -16,11 +16,11 @@ import numpy as np
 import os
 import functools
 import multiprocessing
+import warnings
 from ..__utility import real_recip_lattice, fourier_q_to_R, alpha_A, beta_A
 from .system_R import System_R
 from .w90_files import Wannier90data
 from .ws_dist import wigner_seitz
-import warnings
 
 
 class System_w90(System_R):
@@ -97,12 +97,11 @@ class System_w90(System_R):
             # Deactivate transl_inv if Jae-Mo's scheme is used
             if transl_inv:
                 warnings.warn("Jae-Mo's scheme does not apply Marzari & Vanderbilt formula for"
-                      "the band-diagonal matrix elements of the position operator.")
+                     "the band-diagonal matrix elements of the position operator.")
                 transl_inv = False
         if self.use_wcc_phase and not wcc_phase_fin_diff:
             warnings.warn("converting convention II to convention I is not recommended."
-                   "Better use 'wcc_phase_fin_dif=True' or `transl_inv_JM=True` "
-                   )
+                 "Better use 'wcc_phase_fin_dif=True' or `transl_inv_JM=True`")
         if use_wcc_phase_findiff:
             known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS', 'SH', 'SHR', 'SHA', 'SA', 'SR']
             unknown = set(self.needed_R_matrices) - set(known)
