@@ -992,9 +992,9 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         precision = 1e-14 * np.max(abs(data1))
         assert data1 == approx(
             data2, abs=precision), (
-                f"calculated data of {key}  of full and half sets of Fermi levels give a maximal " +
-                "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
-                    abs_err=np.max(abs(data1 - data2)), required_precision=precision))
+                f"calculated data of {key}  of full and half sets of Fermi levels give a maximal "
+                f"absolute difference of {np.max(abs(data1 - data2))} greater than"
+                f"the required precision {precision}. ")
 
 
 @pytest.mark.parametrize("tetra", [True, False])
@@ -1132,8 +1132,8 @@ def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result
     data1 = result.results.get("dos_trig_2").data[:-nshift]
     data2 = result.results.get("dos_trig").data[nshift:]
     assert data1.shape == data2.shape
-    assert data1 == approx(data2), "the result with the shifted set of Fermi levels is different by {}".format(
-        np.max(np.abs(data1 - data2)))
+    assert data1 == approx(data2), \
+        f"the result with the shifted set of Fermi levels is different by {np.max(np.abs(data1 - data2))}"
 
 
 def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, compare_any_result):
@@ -1229,9 +1229,9 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
             precision = 1e-14 * np.max(abs(data1))
             assert data1 == approx(
                 data2, abs=precision), (
-                    f"calcuylated data of {label1}  and {label2} give a maximal " +
-                    "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
-                        abs_err=np.max(abs(data1 - data2)), required_precision=precision))
+                    f"calcuylated data of {label1}  and {label2} give a maximal "
+                    f"absolute difference of {np.max(abs(data1 - data2))}"
+                    f"greater than the required precision {precision}. ")
 
 
 def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_result):

@@ -40,15 +40,15 @@ def create_W90_files(seedname, tags_needed, data_dir, tags_untar=["mmn", "amn"])
 
     # Extract files if is not already done
     for tag in tags_untar:
-        if not os.path.isfile(os.path.join(data_dir, "{}.{}".format(seedname, tag))):
-            tar = tarfile.open(os.path.join(data_dir, "{}.{}.tar.gz".format(seedname, tag)))
+        if not os.path.isfile(os.path.join(data_dir, f"{seedname}.{tag}")):
+            tar = tarfile.open(os.path.join(data_dir, f"{seedname}.{tag}.tar.gz"))
             for tarinfo in tar:
                 tar.extract(tarinfo, data_dir)
 
     # Compute tags only if the corresponding files do not exist
     tags_compute = []
     for tag in tags_needed:
-        if not os.path.isfile(os.path.join(data_dir, "{}.{}".format(seedname, tag))):
+        if not os.path.isfile(os.path.join(data_dir, f"{seedname}.{tag}")):
             tags_compute.append(tag)
 
     if len(tags_compute) > 0:
@@ -61,10 +61,10 @@ def create_W90_files(seedname, tags_needed, data_dir, tags_untar=["mmn", "amn"])
         nb_out = nb_out_list[0]
 
         for tag in tags_compute:
-            result_dir = os.path.join(data_dir, "reduced_NB={0}".format(nb_out))
+            result_dir = os.path.join(data_dir, f"reduced_NB={nb_out}")
             os.rename(
-                os.path.join(result_dir, "{0}_nbs={1}.{2}".format(seedname, nb_out, tag)),
-                os.path.join(data_dir, "{}.{}".format(seedname, tag)))
+                os.path.join(result_dir, f"{seedname}_nbs={nb_out}.{tag}"),
+                os.path.join(data_dir, f"{seedname}.{tag}"))
 
 
 
@@ -375,8 +375,8 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
 
     for tag in ('uHu', 'uIu'):
-        if not os.path.isfile(os.path.join(data_dir, "Si.{}".format(tag))):
-            tar = tarfile.open(os.path.join(data_dir, "Si.{}.tar.gz".format(tag)))
+        if not os.path.isfile(os.path.join(data_dir, f"Si.{tag}")):
+            tar = tarfile.open(os.path.join(data_dir, f"Si.{tag}.tar.gz"))
             for tarinfo in tar:
                 tar.extract(tarinfo, data_dir)
     # Load system
