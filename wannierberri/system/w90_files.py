@@ -96,7 +96,7 @@ class CheckPoint:
         self.wannier_spreads = readfloat().reshape((self.num_wann))
         del u_matrix, m_matrix
         gc.collect()
-        print("Time to read .chk : {}".format(time() - t0))
+        print(f"Time to read .chk : {time() - t0}")
 
     def wannier_gauge(self, mat, ik1, ik2):
         # data should be of form NBxNBx ...   - any form later
@@ -592,7 +592,7 @@ class MMN(W90_file):
         self.neighbours = headstring[:, :, 1] - 1
         self.G = headstring[:, :, 2:]
         t2 = time()
-        print("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2 - t0, t1 - t0, t2 - t1))
+        print(f"Time for MMN.__init__() : {t2 - t0} , read : {t1 - t0} , headstring {t2 - t1}")
 
     def set_bk(self, kpt_latt, mp_grid, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
         try:
@@ -632,9 +632,11 @@ class MMN(W90_file):
             tol = np.linalg.norm(check_eye - np.eye(3))
             if tol > bk_complete_tol:
                 raise RuntimeError(
-                    "Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\nweight_shell={}\n"
-                    .format(
-                        check_eye, tol, bk_latt_unique, bk_cart_unique, bk_cart_unique_length, shell_mat, weight_shell))
+                    f"Error while determining shell weights. the following matrix :\n {check_eye} \n"
+                    f"failed to be identity by an error of {tol}. Further debug information :  \n"
+                    f"bk_latt_unique={bk_latt_unique} \n bk_cart_unique={bk_cart_unique} \n"
+                    f"bk_cart_unique_length={bk_cart_unique_length}\n shell_mat={shell_mat}\n"
+                    f"weight_shell={weight_shell}\n")
             weight = np.array([w for w, b1, b2 in zip(weight_shell, brd, brd[1:]) for i in range(b1, b2)])
             weight_dict = {tuple(bk): w for bk, w in zip(bk_latt_unique, weight)}
             bk_cart_dict = {tuple(bk): bkcart for bk, bkcart in zip(bk_latt_unique, bk_cart_unique)}
@@ -695,7 +697,7 @@ class AMN(W90_file):
 
     def from_w90_file(self, seedname, npar):
         f_mmn_in = open(seedname + ".amn", "r").readlines()
-        print("reading {}.amn: ".format(seedname) + f_mmn_in[0].strip())
+        print(f"reading {seedname}.amn: " + f_mmn_in[0].strip())
         s = f_mmn_in[1]
         NB, NK, NW = np.array(s.split(), dtype=int)
         block = NW * NB
@@ -751,7 +753,7 @@ class SPN(W90_file):
             nbnd, NK = f_spn_in.read_record(dtype=np.int32)
             SPNheader = "".join(a.decode('ascii') for a in SPNheader)
 
-        print("reading {}.spn : {}".format(seedname, SPNheader))
+        print(f"reading {seedname}.spn : {SPNheader}")
 
         indm, indn = np.tril_indices(nbnd)
         self.data = np.zeros((NK, nbnd, nbnd, 3), dtype=complex)
@@ -767,7 +769,7 @@ class SPN(W90_file):
             check = np.einsum('ijj->', np.abs(A.imag))
             A[:, indm, indn] = A[:, indn, indm].conj()
             if check > 1e-10:
-                raise RuntimeError("REAL DIAG CHECK FAILED : {0}".format(check))
+                raise RuntimeError(f"REAL DIAG CHECK FAILED : {check}")
             self.data[ik] = A.transpose(1, 2, 0)
         print("----------\n SPN OK  \n---------\n")
 
@@ -786,8 +788,8 @@ class UXU(W90_file):
 
 
     def from_w90_file(self, seedname='wannier90', suffix='uXu', formatted=False):
-        print("----------\n  {0}   \n---------".format(suffix))
-        print('formatted == {}'.format(formatted))
+        print(f"----------\n  {suffix}   \n---------")
+        print(f'formatted == {formatted}')
         if formatted:
             f_uXu_in = open(seedname + "." + suffix, 'r')
             header = f_uXu_in.readline().strip()
@@ -797,7 +799,7 @@ class UXU(W90_file):
             header = readstr(f_uXu_in)
             NB, NK, NNB = f_uXu_in.read_record('i4')
 
-        print("reading {}.{} : <{}>".format(seedname, suffix, header))
+        print(f"reading {seedname}.{suffix} : <{header}>")
 
         self.data = np.zeros((NK, NNB, NNB, NB, NB), dtype=complex)
         if formatted:
@@ -810,7 +812,7 @@ class UXU(W90_file):
                     for ib1 in range(NNB):
                         tmp = f_uXu_in.read_record('f8').reshape((2, NB, NB), order='F').transpose(2, 1, 0)
                         self.data[ik, ib1, ib2] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
-        print("----------\n {0} OK  \n---------\n".format(suffix))
+        print(f"----------\n {suffix} OK  \n---------\n")
         f_uXu_in.close()
 
 
@@ -845,7 +847,7 @@ class SXU(W90_file):
         return 1
 
     def from_w90_file(self, seedname='wannier90', formatted=False, suffix='sHu', **kwargs):
-        print("----------\n  {0}   \n---------".format(suffix))
+        print(f"----------\n  {suffix}   \n---------")
 
         if formatted:
             f_sXu_in = open(seedname + "." + suffix, 'r')
@@ -856,7 +858,7 @@ class SXU(W90_file):
             header = readstr(f_sXu_in)
             NB, NK, NNB = f_sXu_in.read_record('i4')
 
-        print("reading {}.{} : <{}>".format(seedname, suffix, header))
+        print(f"reading {seedname}.{suffix} : <{header}>")
 
         self.data = np.zeros((NK, NNB, NB, NB, 3), dtype=complex)
 
@@ -872,7 +874,7 @@ class SXU(W90_file):
                         # tmp[m, n] = <u_{m,k}|S_ipol*X|u_{n,k+b}>
                         self.data[ik, ib, :, :, ipol] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
 
-        print("----------\n {0} OK  \n---------\n".format(suffix))
+        print(f"----------\n {suffix} OK  \n---------\n")
         f_sXu_in.close()
 
 

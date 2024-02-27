@@ -168,7 +168,7 @@ class System_R(System):
             if R is None:
                 R = [0, 0, 0]
             XX = np.zeros((self.num_wann, self.num_wann) + value.shape[1:], dtype=value.dtype)
-            XX[np.arange(self.num_wann), np.arange(self.num_wann)] = value
+            XX[self.range_wann, self.range_wann] = value
             self.set_R_mat(key, XX, R=R, reset=reset, add=add)
         elif R is not None:
             XX = np.zeros((self.num_wann, self.num_wann, self.nRvec) + value.shape[2:], dtype=value.dtype)
@@ -259,7 +259,7 @@ class System_R(System):
                 if A_diag_max > 1e-5:
                     warnings.warn(
                         f"the maximal value of diagonal position matrix elements is {A_diag_max}. This may signal a problem")
-                self.get_R_mat('AA')[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] = 0
+                self.get_R_mat('AA')[self.range_wann, self.range_wann, self.iR0, :] = 0
         print("Wannier Centers cart (symmetrized):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (symmetrized):\n", self.wannier_centers_reduced)
         self.clear_cached_R()
@@ -398,7 +398,7 @@ class System_R(System):
         ws_map = ws_dist_map(
             self.iRvec, wannier_centers_cart, mp_grid, self.real_lattice, npar=self.npar)
         for key, val in self._XX_R.items():
-            print("using ws_dist for {}".format(key))
+            print(f"using ws_dist for {key}")
             self.set_R_mat(key, ws_map(val), reset=True)
         self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
         self.clear_cached_R()
@@ -414,32 +414,33 @@ class System_R(System):
         f.write("written by wannier-berri form the chk file\n")
         cprint(f"writing TB file {tb_file}", 'green', attrs=['bold'])
         np.savetxt(f, self.real_lattice)
-        f.write("{}\n".format(self.num_wann))
-        f.write("{}\n".format(self.nRvec))
+        f.write(f"{self.num_wann}\n")
+        f.write(f"{self.nRvec}\n")
         Ndegen = np.ones(self.nRvec, dtype=int)
         for i in range(0, self.nRvec, 15):
             a = Ndegen[i:min(i + 15, self.nRvec)]
-            f.write("  ".join("{:2d}".format(x) for x in a) + "\n")
+            f.write("  ".join(f"{x:2d}" for x in a) + "\n")
         for iR in range(self.nRvec):
             f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
+            _ham = self.Ham_R[:, :, iR] * Ndegen[iR]
             f.write(
                 "".join(
-                    "{0:3d} {1:3d} {2:15.8e} {3:15.8e}\n".format(
-                        m + 1, n + 1, self.Ham_R[m, n, iR].real * Ndegen[iR], self.Ham_R[m, n, iR].imag *
-                        Ndegen[iR]) for n in range(self.num_wann) for m in range(self.num_wann)))
+                    f"{m+1:3d} {n+1:3d} {_ham[m,n].real:15.8e} {_ham[m,n].imag:15.8e}\n"
+                    for n in self.range_wann for m in self.range_wann)
+            )
         if self.has_R_mat('AA'):
             AA = np.copy(self.get_R_mat('AA'))
             if self.use_wcc_phase:
                 AA[self.range_wann, self.range_wann, self.iR0] += self.wannier_centers_cart
             for iR in range(self.nRvec):
                 f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
+                _aa = AA[:, :, iR] * Ndegen[iR]
                 f.write(
                     "".join(
-                        "{0:3d} {1:3d} ".format(m + 1, n + 1) + " ".join(
-                            "{:15.8e} {:15.8e}".format(a.real, a.imag)
-                            for a in AA[m, n, iR] * Ndegen[iR]) + "\n" for n in
-                        range(self.num_wann)
-                        for m in range(self.num_wann)))
+                        f"{m+1:3d} {n+1:3d} " + " ".join(f"{a.real:15.8e} {a.imag:15.8e}"for a in _aa[m, n]) + "\n"
+                        for n in self.range_wann for m in self.range_wann
+                    )
+                )
         f.close()
 
     def _FFT_compatible(self, FFT, iRvec):
@@ -515,7 +516,7 @@ class System_R(System):
             raise ValueError("use_wcc_phase = True, but the wannier centers could not be determined")
         if self.has_R_mat('AA'):
             AA_R_new = np.copy(self.get_R_mat('AA'))
-            AA_R_new[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] -= self.wannier_centers_cart
+            AA_R_new[self.range_wann, self.range_wann, self.iR0, :] -= self.wannier_centers_cart
             R_new['AA'] = AA_R_new
         if self.has_R_mat('BB'):
             BB_R_new = self.get_R_mat('BB').copy() - self.get_R_mat('Ham')[:, :, :,

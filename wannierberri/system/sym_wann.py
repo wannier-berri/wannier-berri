@@ -272,9 +272,9 @@ class SymWann():
                         if abs(np.linalg.norm(magmom + new_magmom)) > 0.0005:
                             sym_T = False
                 if sym_only:
-                    print('Symmetry operator {} respects magnetic moment'.format(symop.ind))
+                    print(f'Symmetry operator {symop.ind} respects magnetic moment')
                 if sym_T:
-                    print('Symmetry operator {}*T respects magnetic moment'.format(symop.ind))
+                    print(f'Symmetry operator {symop.ind}*T respects magnetic moment')
         else:
             sym_only = True
             sym_T = False
