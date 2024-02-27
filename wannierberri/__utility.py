@@ -23,8 +23,6 @@ from collections.abc import Iterable
 import datetime
 
 
-__debug = False
-
 if PYFFTW_IMPORTED:
     import pyfftw
 
@@ -41,7 +39,7 @@ class FortranFileR(fortio.FortranFile):
         try:
             super().__init__(filename, mode='r', header_dtype='uint32', auto_endian=True, check_file=True)
         except ValueError:
-            print("File '{}' contains subrecords - using header_dtype='int32'".format(filename))
+            print(f"File '{filename}' contains subrecords - using header_dtype='int32'")
             super().__init__(filename, mode='r', header_dtype='int32', auto_endian=True, check_file=True)
 
 
@@ -54,16 +52,6 @@ class FortranFileW(scipy.io.FortranFile):
 
 alpha_A = np.array([1, 2, 0])
 beta_A = np.array([2, 0, 1])
-
-
-def print_my_name_start():
-    if __debug:
-        print("DEBUG: Running {} ..".format(inspect.stack()[1][3]))
-
-
-def print_my_name_end():
-    if __debug:
-        print("DEBUG: Running {} - done ".format(inspect.stack()[1][3]))
 
 
 def conjugate_basis(basis):
@@ -162,7 +150,6 @@ def FFT(inp, axes, inverse=False, destroy=True, numthreads=1, fft='fftw'):
 
 
 def fourier_q_to_R(AA_q, mp_grid, kpt_mp_grid, iRvec, ndegen, numthreads=1, fft='fftw'):
-    print_my_name_start()
     mp_grid = tuple(mp_grid)
     shapeA = AA_q.shape[1:]  # remember the shapes after q
     AA_q_mp = np.zeros(tuple(mp_grid) + shapeA, dtype=complex)
@@ -171,7 +158,6 @@ def fourier_q_to_R(AA_q, mp_grid, kpt_mp_grid, iRvec, ndegen, numthreads=1, fft=
     AA_q_mp = FFT(AA_q_mp, axes=(0, 1, 2), numthreads=numthreads, fft=fft, destroy=False)
     AA_R = np.array([AA_q_mp[tuple(iR % mp_grid)] / nd for iR, nd in zip(iRvec, ndegen)]) / np.prod(mp_grid)
     AA_R = AA_R.transpose((1, 2, 0) + tuple(range(3, AA_R.ndim)))
-    print_my_name_end()
     return AA_R
 
 
@@ -179,7 +165,6 @@ class FFT_R_to_k():
 
     def __init__(self, iRvec, NKFFT, num_wann, numthreads=1, lib='fftw', name=None):
         t0 = time()
-        print_my_name_start()
         self.NKFFT = tuple(NKFFT)
         self.num_wann = num_wann
         lib = lib.lower()
