@@ -187,6 +187,8 @@ def run(
             symmetrize = False
     else:
         print("Calculation on  grid - checking calculators for compatibility")
+        if use_irred_kpt:
+            symmetrize = True
         for key, calc in calculators.items():
             print(key, calc)
             if not calc.allow_grid:
@@ -315,7 +317,7 @@ def run(
             paralfunc,
             K_list,
             parallel,
-            symgroup=system.symgroup if (symmetrize or use_irred_kpt) else None,
+            symgroup=system.symgroup if symmetrize else None,
             print_progress_step=print_progress_step,
             remote_parameters=remote_parameters)
 
