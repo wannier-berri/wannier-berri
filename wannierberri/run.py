@@ -315,7 +315,7 @@ def run(
             paralfunc,
             K_list,
             parallel,
-            symgroup=system.symgroup if symmetrize else None,
+            symgroup=system.symgroup if (symmetrize or use_irred_kpt) else None,
             print_progress_step=print_progress_step,
             remote_parameters=remote_parameters)
 
