@@ -20,10 +20,17 @@ import inspect
 import warnings
 from . import PYFFTW_IMPORTED
 from collections.abc import Iterable
+import datetime
+
+
 __debug = False
 
 if PYFFTW_IMPORTED:
     import pyfftw
+
+
+def timenowiso():
+    return datetime.datetime.now().isoformat()
 
 
 # inheriting just in order to have posibility to change default values, without changing the rest of the code
