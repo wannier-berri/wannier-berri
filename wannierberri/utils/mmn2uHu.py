@@ -149,7 +149,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
     print("----------\n MMN OK  \n---------\n")
 
     if not EIGrd:
-        EIG = np.loadtxt(outputpath + ".eig", usecols=(2,)).reshape((NK, NB_in), order='C')
+        EIG = np.loadtxt(inputpath + ".eig", usecols=(2,)).reshape((NK, NB_in), order='C')
         EIGrd = True
 
     if writeEIG:

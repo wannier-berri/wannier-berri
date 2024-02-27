@@ -127,6 +127,7 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
                 _data_ref = data_ref[(quant, "xx")] + data_ref[(quant, "yy")] + data_ref[(quant, "zz")]
             else:
                 _data_ref = data_ref[(quant, comp)]
+            assert _data.shape == _data_ref.shape
             assert _data == approx(_data_ref), (
                 f"tabulation along path gave a wrong result for quantity {quant} component {comp} " +
                 f"with a maximal difference {max(abs(_data - _data_ref))}")
