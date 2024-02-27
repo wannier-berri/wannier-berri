@@ -40,11 +40,12 @@ class TABresult(Result):
             return self
         assert self.mode == other.mode
         assert self.save_mode == other.save_mode
-        if self.nband != other.nband:
-            raise RuntimeError(
-                "Adding results with different number of bands {} and {} - not allowed".format(self.nband, other.nband))
+        assert self.nband == other.nband, \
+            f"Adding results with different number of bands {self.nband} and {other.nband} - not allowed"
         results = {r: self.results[r] + other.results[r] for r in self.results if r in other.results}
-        return TABresult(np.vstack((self.kpoints, other.kpoints)), recip_lattice=self.recip_lattice, results=results, mode=self.mode, save_mode=self.save_mode)
+        return TABresult(np.vstack((self.kpoints, other.kpoints)),
+                         recip_lattice=self.recip_lattice,
+                         results=results, mode=self.mode, save_mode=self.save_mode)
 
     def save(self, name):
         return  # do nothing so far
@@ -81,7 +82,8 @@ class TABresult(Result):
     def transform(self, sym):
         results = {r: self.results[r].transform(sym) for r in self.results}
         kpoints = [sym.transform_reduced_vector(k, self.recip_lattice) for k in self.kpoints]
-        return TABresult(kpoints=kpoints, recip_lattice=self.recip_lattice, results=results, mode=self.mode, save_mode=self.save_mode)
+        return TABresult(kpoints=kpoints, recip_lattice=self.recip_lattice, results=results, mode=self.mode,
+                         save_mode=self.save_mode)
 
     def to_grid(self, grid, order='C'):
         assert (self.mode == "grid")
@@ -109,14 +111,15 @@ class TABresult(Result):
         print("collecting")
         results = {r: self.results[r].to_grid(k_map) for r in self.results}
         t1 = time()
-        print("collecting: to_grid  : {}".format(t1 - t0))
-        res = TABresult(k_new, recip_lattice=self.recip_lattice, results=results, mode=self.mode, save_mode=self.save_mode)
+        print(f"collecting: to_grid  : {t1 - t0}")
+        res = TABresult(k_new, recip_lattice=self.recip_lattice, results=results, mode=self.mode,
+                        save_mode=self.save_mode)
         t2 = time()
-        print("collecting: TABresult  : {}".format(t2 - t1))
+        print(f"collecting: TABresult  : {t2 - t1}")
         res.grid = np.copy(grid)
         res.gridorder = order
         t3 = time()
-        print("collecting - OK : {} ({})".format(t3 - t0, t3 - t2))
+        print(f"collecting - OK : {t3 - t0} ({t3 - t2})")
         return res
 
     def self_to_grid(self):
@@ -127,7 +130,7 @@ class TABresult(Result):
         if quantity == 'Energy':
             return self.Enk.data[:, iband].reshape(self.grid)
         elif component is None:
-            return self.results[quantity].data[:, iband].reshape(tuple(self.grid) + (3, ) * self.results[quantity].rank)
+            return self.results[quantity].data[:, iband].reshape(tuple(self.grid) + (3,) * self.results[quantity].rank)
         else:
             return self.results[quantity].get_component(component)[:, iband].reshape(self.grid)
 
@@ -157,10 +160,10 @@ class TABresult(Result):
         if self.gridorder != 'C':
             raise RuntimeError("the data should be on a 'C'-ordered grid for generating FermiSurfer files")
         FSfile = ""
-        FSfile += (" {0}  {1}  {2} \n".format(self.grid[0], self.grid[1], self.grid[2]))
-        FSfile += ("1 \n")  # so far only this option of Fermisurfer is implemented
-        FSfile += ("{} \n".format(len(iband)))
-        FSfile += ("".join(["  ".join("{:14.8f}".format(x) for x in v) + "\n" for v in self.recip_lattice]))
+        FSfile += f" {self.grid[0]}  {self.grid[1]}  {self.grid[2]} \n"
+        FSfile += "1 \n"  # so far only this option of Fermisurfer is implemented
+        FSfile += f"{len(iband)} \n"
+        FSfile += "".join(["  ".join("f{x:14.8f}" for x in v) + "\n" for v in self.recip_lattice])
 
         FSfile += _savetxt(a=self.Enk.data[:, iband].flatten(order='F') - efermi, npar=npar)
 
@@ -168,7 +171,7 @@ class TABresult(Result):
             return FSfile
 
         if quantity not in self.results:
-            raise RuntimeError("requested quantity '{}' was not calculated".format(quantity))
+            raise RuntimeError(f"requested quantity '{quantity}' was not calculated")
             return FSfile
         FSfile += _savetxt(a=Xnk[:, iband].flatten(order='F'), npar=npar)
         if frmsf_name is not None:
@@ -196,7 +199,7 @@ class TABresult(Result):
             linecolor='black',
             close_fig=True,
             show_fig=True
-                    ):
+    ):
         """
         a routine to plot a result along the path
         The circle size (size of quantity) changes linearly below 2 and logarithmically above 2.
@@ -320,7 +323,7 @@ def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
 
 
 def _savetxt(limits=None, a=None, fmt=".8f", npar=0):
-    assert a.ndim == 1, "only 1D arrays are supported. found shape{}".format(a.shape)
+    assert a.ndim == 1, f"only 1D arrays are supported. found shape{a.shape}"
     if npar is None:
         npar = multiprocessing.cpu_count()
     if npar <= 0:
@@ -332,7 +335,7 @@ def _savetxt(limits=None, a=None, fmt=".8f", npar=0):
         if limits is not None:
             raise ValueError("limits shpould not be used in parallel mode")
         nppproc = a.shape[0] // npar + (1 if a.shape[0] % npar > 0 else 0)
-        print("using a pool of {} processes to write txt frmsf of {} points per process".format(npar, nppproc))
+        print(f"using a pool of {npar} processes to write txt frmsf of {nppproc} points per process")
         asplit = [(i, i + nppproc) for i in range(0, a.shape[0], nppproc)]
         p = multiprocessing.Pool(npar)
         res = p.map(functools.partial(_savetxt, a=a, fmt=fmt, npar=0), asplit)

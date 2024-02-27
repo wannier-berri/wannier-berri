@@ -122,7 +122,7 @@ class Path(GridAbstract):
             assert self.K_list.shape[0] > 0, "k_list should not be empty"
             for var in 'k_nodes', 'length', 'nk', 'dk':
                 if locals()[var] is not None:
-                    warnings.warn("k_list was entered manually, ignoring {}".format(var))
+                    warnings.warn(f"k_list was entered manually, ignoring {var}")
             self.labels = {} if labels is None else labels
             self.breaks = [] if breaks is None else breaks
         self.div = np.shape(self.K_list)[0]
@@ -145,7 +145,7 @@ class Path(GridAbstract):
 
     @property
     def str_short(self):
-        return "Path() with {} points and labels {}".format(len(self.K_list), self.labels)
+        return f"Path() with {len(self.K_list)} points and labels {self.labels}"
 
     @property
     def recip_lattice(self):
@@ -154,7 +154,7 @@ class Path(GridAbstract):
     def __str__(self):
         return (
             "\n" + "\n".join(
-                "  ".join("{:10.6f}".format(x)
+                "  ".join(f"{x:10.6f}"
                           for x in k) + ((" <--- " + self.labels[i]) if i in self.labels else "") + (
                               ("\n" + "-" * 20) if i in self.breaks else "") for i, k in enumerate(self.K_list)))
 

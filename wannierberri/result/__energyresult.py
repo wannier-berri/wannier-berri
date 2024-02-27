@@ -85,10 +85,10 @@ class EnergyResult(Result):
             self.rank = data.ndim - self.N_energies if rank is None else rank
             if self.rank > 0:
                 shape = data.shape[-self.rank:]
-                assert np.all(np.array(shape) == 3), "data.shape={}".format(data.shape)
+                assert np.all(np.array(shape) == 3), f"data.shape={data.shape}"
             for i in range(self.N_energies):
                 assert (
-                    Energies[i].shape[0] == data.shape[i]
+                        Energies[i].shape[0] == data.shape[i]
                 ), f"dimension of Energy[{i}] = {Energies[i].shape[0]} does not match do dimension of data {data.shape[i]}"
             self.Energies = Energies
             self.data = data
@@ -98,10 +98,9 @@ class EnergyResult(Result):
             self.set_save_mode(save_mode)
             self.comment = comment
 
-
     def set_smoother(self, smoothers):
         if smoothers is None:
-            smoothers = (None, ) * self.N_energies
+            smoothers = (None,) * self.N_energies
         if not isinstance(smoothers, (list, tuple)):
             smoothers = [smoothers]
         assert len(smoothers) == self.N_energies
@@ -116,12 +115,12 @@ class EnergyResult(Result):
 
     def mul_array(self, other, axes=None):
         if isinstance(axes, int):
-            axes = (axes, )
+            axes = (axes,)
         if axes is None:
             axes = tuple(range(other.ndim))
         for i, d in enumerate(other.shape):
-            assert d == self.data.shape[axes[i]], "shapes  {} should match the axes {} of {}".format(
-                other.shape, axes, self.data.shape)
+            assert d == self.data.shape[axes[i]], \
+                f"shapes  {other.shape} should match the axes {axes} of {self.data.shape}"
         reshape = tuple((self.data.shape[i] if i in axes else 1) for i in range(self.data.ndim))
         return self.__class__(
             Energies=self.Energies,
@@ -184,18 +183,16 @@ class EnergyResult(Result):
 
     def __write(self, data, datasm, i):
         if i > self.N_energies:
-            raise ValueError("not allowed value i={} > {}".format(i, self.N_energies))
+            raise ValueError(f"not allowed value i={i} > {self.N_energies}")
         elif i == self.N_energies:
             data_tmp = list(data.reshape(-1)) + list(datasm.reshape(-1))
             if data.dtype == complex:
-                return ["    " + "    ".join("{0:15.6e} {1:15.6e}".format(x.real, x.imag) for x in data_tmp)]
+                return ["    " + "    ".join(f"{x.real:15.6e} {x.imag:15.6e}" for x in data_tmp)]
             elif data.dtype == float:
-                return ["    " + "    ".join("{0:15.6e}".format(x) for x in data_tmp)]
+                return ["    " + "    ".join(f"{x:15.6e}" for x in data_tmp)]
         else:
-            return [
-                "{0:15.6e}    {1:s}".format(E, s) for j, E in enumerate(self.Energies[i])
-                for s in self.__write(data[j], datasm[j], i + 1)
-            ]
+            return [f"{E:15.6e}    {s:s}" for j, E in enumerate(self.Energies[i])
+                    for s in self.__write(data[j], datasm[j], i + 1)]
 
     def savetxt(self, name):
         frmt = "{0:^31s}" if self.data.dtype == complex else "{0:^15s}"
@@ -205,15 +202,13 @@ class EnergyResult(Result):
                 return ['  ']
             else:
                 return [a + b for a in 'xyz' for b in getHead(n - 1)]
+
         head = "".join("#### " + s + "\n" for s in self.comment.split("\n"))
-        head += "#" + "    ".join("{0:^15s}".format(s) for s in self.E_titles) + " " * 8 + "    ".join(
+        head += "#" + "    ".join(f"{s:^15s}" for s in self.E_titles) + " " * 8 + "    ".join(
             frmt.format(b) for b in getHead(self.rank) * 2) + "\n"
         name = name.format('')
 
         open(name, "w").write(head + "\n".join(self.__write(self.data, self.dataSmooth, i=0)))
-
-
-
 
     def as_dict(self):
         """
@@ -224,14 +219,13 @@ class EnergyResult(Result):
         """
         energ = {f'Energies_{i}': E for i, E in enumerate(self.Energies)}
         return dict(
-                E_titles=self.E_titles,
-                data=self.data,
-                rank=self.rank,
-                transformTR=self.transformTR.as_dict(),
-                transformInv=self.transformInv.as_dict(),
-                comment=self.comment,
-                **energ)
-
+            E_titles=self.E_titles,
+            data=self.data,
+            rank=self.rank,
+            transformTR=self.transformTR.as_dict(),
+            transformInv=self.transformInv.as_dict(),
+            comment=self.comment,
+            **energ)
 
     def savedata(self, name, prefix, suffix, i_iter):
         suffix = "-" + suffix if len(suffix) > 0 else ""

@@ -30,7 +30,7 @@ class Calculator():
             else:
                 self.comment = "calculator not described"
         if print_comment:
-            cprint("{}\n".format(self.comment), 'cyan', attrs=['bold'])
+            cprint(self.comment + "\n", 'cyan', attrs=['bold'])
 
 
 from . import static, dynamic, tabulate

@@ -16,7 +16,6 @@ import fortio
 from time import time
 from functools import cached_property
 import numpy as np
-import inspect
 import warnings
 from . import PYFFTW_IMPORTED
 from collections.abc import Iterable

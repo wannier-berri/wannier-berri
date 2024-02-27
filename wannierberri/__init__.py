@@ -59,4 +59,4 @@ def welcome():
 
     cprint("""\n  The Web page is :  HTTP://WANNIER-BERRI.ORG  \n""", 'yellow')
 
-    cprint("\nVersion: {}\n".format(__version__), 'cyan', attrs=['bold'])
+    cprint(f"\nVersion: {__version__}\n", 'cyan', attrs=['bold'])

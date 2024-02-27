@@ -91,8 +91,8 @@ def pool(npar):
         try:
             from multiprocessing import Pool
             pool = Pool(npar).imap
-            print('created a pool of {} workers'.format(npar))
+            print(f'created a pool of {npar} workers')
             return pool, npar
         except Exception as err:
-            print('failed to create a pool of {} workers : {}\n doing in serial'.format(npar, err))
+            print(f'failed to create a pool of {npar} workers : {err}\n doing in serial')
     return (lambda fun, lst: [fun(x) for x in lst]), 1

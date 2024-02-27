@@ -79,8 +79,8 @@ class K__Result(Result):
             axes = tuple(range(other.ndim))
         axes = tuple((a + 1) for a in axes)  # because 0th dimentsion is k here
         for i, d in enumerate(other.shape):
-            assert d == self.data_list[0].shape[axes[i]], "shapes  {} should match the axes {} of {}".format(
-                other.shape, axes, self.data_list[0].shape)
+            assert d == self.data_list[0].shape[axes[i]], \
+                f"shapes  {other.shape} should match the axes {axes} of {self.data_list[0].shape}"
         reshape = tuple((self.data.shape[i] if i in axes else 1) for i in range(self.data_list[0].ndim))
         other_reshape = other.reshape(reshape)
         return self.__class__(
@@ -223,4 +223,4 @@ class NoComponentError(RuntimeError):
 
     def __init__(self, comp, dim, err=""):
         # Call the base class constructor with the parameters it needs
-        super().__init__("component {} does not exist for tensor with dimension {} :\n{}".format(comp, dim, err))
+        super().__init__(f"component {comp} does not exist for tensor with dimension {dim} :\n{err}")
