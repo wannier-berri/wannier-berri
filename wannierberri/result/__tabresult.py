@@ -163,7 +163,7 @@ class TABresult(Result):
         FSfile += f" {self.grid[0]}  {self.grid[1]}  {self.grid[2]} \n"
         FSfile += "1 \n"  # so far only this option of Fermisurfer is implemented
         FSfile += f"{len(iband)} \n"
-        FSfile += "".join(["  ".join("f{x:14.8f}" for x in v) + "\n" for v in self.recip_lattice])
+        FSfile += "".join(["  ".join(f"{x:14.8f}" for x in v) + "\n" for v in self.recip_lattice])
 
         FSfile += _savetxt(a=self.Enk.data[:, iband].flatten(order='F') - efermi, npar=npar)
 

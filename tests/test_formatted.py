@@ -40,16 +40,6 @@ def generate_formatted_files(create_files_GaAs_W90):
         kwargs.append("IBstart=1")
         kwargs.append("IBstartSum=1")
         kwargs.append("NBsum=16,100")
-        #        for tag in tags_compute:
-        #            kwargs["write" + tag.upper()] = True
-        #            if tag == "spn":
-        #                kwargs[tag + "_formatted_in"] = False
-        #                kwargs[tag + "_formatted_out"] = True
-        #            else:
-        #                kwargs[tag + "_formatted"] = True
-
-        #        nb_out_list = wberri.utils.mmn2uHu.run_mmn2uHu(
-        #            "GaAs", INPUTDIR=data_dir, OUTDIR=str(data_dir) + "/reduced_formatted", **kwargs)
         print("kwargs = ", kwargs)
         nb_out_list = wberri.utils.mmn2uHu.main(["GaAs"] + kwargs)
 

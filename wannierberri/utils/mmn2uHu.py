@@ -351,7 +351,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
                                 SPN[ik][ipol][IBstart:IBstart + NB_out, IBstartSum:IBstartSum + NB_sum], eig_dum)
                     if (formatted):
                         f_sXu_out.write(
-                            "".join("{a.real:20.10e}   {a.imag:20.10e}\n" for a in A.reshape(-1, order='C')))
+                            "".join(f"{a.real:20.10e}   {a.imag:20.10e}\n" for a in A.reshape(-1, order='C')))
                     else:
                         for ib2 in range(NNB):
                             for ipol in range(3):

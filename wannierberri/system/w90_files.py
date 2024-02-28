@@ -709,11 +709,13 @@ class AMN(W90_file):
     def write(self,seedname,comment="written by WannierBerri"):
         comment=comment.strip()
         f_mmn_out=open(seedname+".amn","w")
-        print ("writing {}.amn: ".format(seedname)+comment+"\n")
+        print (f"writing {seedname}.amn: "+comment+"\n")
         f_mmn_out.write(comment+"\n")
-        f_mmn_out.write("  {:3d} {:3d} {:3d}  \n".format(self.NB,self.NK,self.NW))
+        f_mmn_out.write(f"  {self.NB:3d} {self.NK:3d} {self.NW:3d}  \n")
         for ik in range(self.NK):
-            f_mmn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(ib+1,iw+1,ik+1,self.data[ik,ib,iw].real,self.data[ik,ib,iw].imag) for iw in range(self.NW) for ib in range(self.NB)))
+            f_mmn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(
+                ib+1,iw+1,ik+1,self.data[ik,ib,iw].real,self.data[ik,ib,iw].imag) 
+                for iw in range(self.NW) for ib in range(self.NB)))
         f_mmn_out.close()
     """
 
@@ -983,6 +985,5 @@ class DMN:
             for j in range(self.Nsym):
                 print()
                 for M in self.D_band[i][j],self.d_wann[i][j]:
-                    print("\n".join(" ".join("{}".format("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
-#                   print("\n".join(" ".join("{:4.2f}".format(abs(x)**2) for x in m) for m in M)+"\n")
+                    print("\n".join(" ".join( ("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
 """
