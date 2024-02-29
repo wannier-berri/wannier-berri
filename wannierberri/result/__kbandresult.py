@@ -161,38 +161,7 @@ class K__Result(Result):
         return len(dims)
 
     def get_component(self, component=None):
-        xyz = {"x": 0, "y": 1, "z": 2}
-        ndim = self.ndim
-
-        if component is not None:
-            component = component.lower()
-        if component == "":
-            component = None
-        if ndim == 0:
-            if component is None:
-                return self.data
-            else:
-                raise NoComponentError(component, 0)
-        elif ndim == 1:
-            if component in ["x", "y", "z"]:
-                return self.data[..., xyz[component]]
-            elif component == 'norm':
-                return np.linalg.norm(self.data, axis=-1)
-            elif component == 'sq':
-                return np.linalg.norm(self.data, axis=-1)**2
-            else:
-                raise NoComponentError(component, 1)
-        else:
-            dims = tuple(np.arange(self.data.ndim))
-            _data = self.data.transpose(dims[-ndim:] + dims[:-ndim])
-            print(f"dims={dims}, data_shape={self.data.shape}, , _data_shape={_data.shape}")
-            if component == "trace":
-                return sum([_data[((i,) * ndim)] for i in range(3)])
-            else:
-                try:
-                    return _data[tuple([xyz[c] for c in component])]
-                except IndexError as err:
-                    raise NoComponentError(component, 2, err)
+        return get_component(data=self.data, ndim=self.ndim, component=component)
 
 
 class KBandResult(K__Result):
@@ -224,3 +193,43 @@ class NoComponentError(RuntimeError):
     def __init__(self, comp, dim, err=""):
         # Call the base class constructor with the parameters it needs
         super().__init__(f"component {comp} does not exist for tensor with dimension {dim} :\n{err}")
+
+
+def get_component(data, ndim, component=None):
+    xyz = {"x": 0, "y": 1, "z": 2}
+    if isinstance(component, tuple):
+        Xnk = np.copy(data)
+        for k in component[-1::-1]:
+            Xnk = Xnk[..., k]
+        return Xnk
+    elif isinstance(component, str) or component is None:
+        if component is not None:
+            component = component.lower()
+        if ndim == 0:
+            if component is None:
+                return data
+            else:
+                raise NoComponentError(component, 0)
+        elif ndim == 1:
+            if component in ["x", "y", "z"]:
+                return data[..., xyz[component]]
+            elif component == 'norm':
+                return np.linalg.norm(data, axis=-1)
+            elif component == 'sq':
+                return np.linalg.norm(data, axis=-1)**2
+            else:
+                raise NoComponentError(component, 1)
+        else:
+            dims = tuple(np.arange(data.ndim))
+            _data = data.transpose(dims[-ndim:] + dims[:-ndim])
+            print(f"dims={dims}, data_shape={data.shape}, , _data_shape={_data.shape}")
+            if component == "trace":
+                return sum([_data[((i,) * ndim)] for i in range(3)])
+            else:
+                try:
+                    return _data[tuple([xyz[c] for c in component])]
+                except IndexError as err:
+                    raise NoComponentError(component, 2, err)
+    else:
+        raise ValueError(
+            f"component is given by `{component}` of type {type(component)}. Should be str or tuple")

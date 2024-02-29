@@ -5,6 +5,7 @@ import functools
 from collections.abc import Iterable
 import warnings
 from .__result import Result
+from .__kbandresult import get_component
 
 
 class TABresult(Result):
@@ -379,11 +380,32 @@ def fermiSurfer(recip_lattice, Enk, data=None, efermi=0, npar=0, frmsf_name=None
     return FSfile
 
 
-def npz_to_fermisurfer(npz_file, quantity=None, frmsf_file=None):
+def npz_to_fermisurfer(npz_file, quantity=None, frmsf_file=None, component=None):
+    """
+    Convert npz file to frmsf
+
+    Parameters
+    ----------
+    npz_file : str
+        name of the npz file to read
+    frmsf_file : str
+        name of the frmsf file to write. If `None` - not written, just returned as str
+    quantity : str
+        name of the quantity to write to the frmsf file
+    component : str or tuple
+        cartesian component, e.g. `'x'`, `'xxz'`, `(0,2)`, `'trace'`, `'norm'`
+
+    Returns
+    -------
+    str
+        the text of the frmsf file
+    """
     res = np.load(npz_file)
     Enk = res['Energy']
     if quantity is not None:
         Xnk = res[quantity]
+        if component is not None:
+            Xnk = get_component(Xnk, ndim=Xnk.ndim - 4, component=component)
     else:
         Xnk = None
     recip_lattice = res['recip_lattice']

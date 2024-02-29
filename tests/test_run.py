@@ -274,21 +274,29 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             result_type=EnergyResult)
 
     extra_precision = {'Morb': 1e-6, 'Der_berry': 5e-8}
+    npz_tabulate = os.path.join(OUTPUT_DIR, "berry_Fe_W90-tabulate-run.npz")
     for quant in result.results.get("tabulate").results.keys():  # ["Energy", "berry","Der_berry","spin","morb"]:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
             _quant = "E" if quant == "Energy" else quant
             _comp = "-" + comp if comp != "" else ""
-            #            data=result.results.get(quant).data
-            #            assert data.shape[0] == len(Efermi)
-            #            assert np.all( np.array(data.shape[1:]) == 3)
             prec = extra_precision[quant] if quant in extra_precision else 2e-8
-            #            comparer(frmsf_name, quant+_comp+suffix,  suffix_ref=compare_quant(quant)+_comp+suffix_ref ,precision=prec )
-            compare_fermisurfer(
-                fout_name="berry_Fe_W90-tabulate",
-                suffix=_quant + _comp + "-run",
-                suffix_ref=_quant + _comp,
-                fout_name_ref="tabulate_Fe_W90",
-                precision=prec)
+            wberri.npz_to_fermisurfer(npz_file=npz_tabulate,
+                                      quantity=None if quant == "Energy" else quant,
+                                      component=comp,
+                                      frmsf_file=os.path.join(OUTPUT_DIR,
+                                                              "berry_Fe_W90-tabulate_" + _quant + _comp +
+                                                              "-run-from-npz.frmsf")
+                                      )
+            for end in "", "-from-npz":
+                compare_fermisurfer(
+                    fout_name="berry_Fe_W90-tabulate",
+                    suffix=_quant + _comp + "-run" + end,
+                    suffix_ref=_quant + _comp,
+                    fout_name_ref="tabulate_Fe_W90",
+                    precision=prec)
+
+
+
 
 
 def test_Fe_sparse(check_run, system_Fe_W90_sparse, compare_any_result):
