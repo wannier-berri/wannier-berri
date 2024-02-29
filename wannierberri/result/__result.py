@@ -3,8 +3,11 @@ import numpy as np
 
 class Result():
 
-    def __init__(self):
-        raise NotImplementedError()
+    def __init__(self, save_mode="bin+txt"):
+        self.save_mode = set()
+        for s in "bin", "txt":
+            if s in save_mode:
+                self.save_mode.add(s)
 
     #  multiplication by a number
     def __mul__(self, other):
@@ -34,9 +37,6 @@ class Result():
     @property
     def _maxval_raw(self):
         return np.abs(self.data).max()
-
-    def set_save_mode(self, set_mode):
-        self.save_modes = set_mode.split('+')
 
     #  how result transforms under symmetry operations
     def transform(self, sym):

@@ -9,7 +9,7 @@ from .__result import Result
 
 class TABresult(Result):
 
-    def __init__(self, kpoints, recip_lattice, results={}, mode="grid", save_mode="frmsf"):
+    def __init__(self, kpoints, recip_lattice, results={}, mode="grid", save_mode="bin"):
         self.nband = results['Energy'].nband
         self.mode = mode
         self.grid = None
@@ -58,10 +58,16 @@ class TABresult(Result):
             pass  # so far do nothing on iterations, chang in future
         elif self.mode == "grid":
             self.self_to_grid()
-            if "frmsf" in self.save_mode:
+            if "frmsf" in self.save_mode or "txt" in self.save_mode:
                 write_frmsf(
                     prefix + "-" + name, Ef0=0., numproc=None, quantities=self.results.keys(), res=self,
                     suffix=suffix)  # so far let it be the only mode, implement other modes in future
+            if "bin" in self.save_mode:
+                write_npz(prefix + "-" + name,
+                          quantities=self.results.keys(),
+                          res=self,
+                          suffix=suffix
+                          )
             # TODO : remove this messy call to external routine, which calls back an internal one
         else:
             pass  # so far . TODO : implement writing to a text file
@@ -127,12 +133,16 @@ class TABresult(Result):
         self.__dict__.update(res.__dict__)  # another dirty trick, TODO : clean it
 
     def __get_data_grid(self, quantity, iband, component=None, efermi=None):
-        if quantity == 'Energy':
-            return self.Enk.data[:, iband].reshape(self.grid)
-        elif component is None:
-            return self.results[quantity].data[:, iband].reshape(tuple(self.grid) + (3,) * self.results[quantity].rank)
+        if isinstance(iband, Iterable):
+            shape = tuple(self.grid) + (len(iband), )
         else:
-            return self.results[quantity].get_component(component)[:, iband].reshape(self.grid)
+            shape = tuple(self.grid)
+        if quantity == 'Energy':
+            return self.Enk.data[:, iband].reshape(shape)
+        elif component is None:
+            return self.results[quantity].data[:, iband].reshape(shape + (3,) * self.results[quantity].rank)
+        else:
+            return self.results[quantity].get_component(component)[:, iband].reshape(shape)
 
     def __get_data_path(self, quantity, iband, component=None, efermi=None):
         if quantity == 'Energy':
@@ -142,43 +152,35 @@ class TABresult(Result):
         else:
             return self.results[quantity].get_component(component)[:, iband]
 
-    def get_data(self, quantity, iband, component=None, efermi=None):
+    def get_data(self, quantity, iband=None, component=None, efermi=None):
+        if iband is None:
+            iband = np.arange(self.nband)
         if self.grid is None:
-            return self.__get_data_path(quantity, iband, component=component, efermi=efermi)
+            return self.__get_data_path(quantity, iband=iband, component=component, efermi=efermi)
         else:
-            return self.__get_data_grid(quantity, iband, component=component, efermi=efermi)
+            return self.__get_data_grid(quantity, iband=iband, component=component, efermi=efermi)
 
     def fermiSurfer(self, quantity=None, component=None, efermi=0, npar=0, iband=None, frmsf_name=None):
         if iband is None:
             iband = np.arange(self.nband)
         elif isinstance(iband, int):
             iband = [iband]
-        if not (quantity is None):
-            Xnk = self.results[quantity].get_component(component)
+        if quantity is not None:
+            Xnk = self.get_data(quantity=quantity, iband=iband, component=component)
+        else:
+            Xnk = None
         if self.grid is None:
             raise RuntimeError("the data should be on a grid before generating FermiSurfer files. use to_grid() method")
         if self.gridorder != 'C':
             raise RuntimeError("the data should be on a 'C'-ordered grid for generating FermiSurfer files")
-        FSfile = ""
-        FSfile += f" {self.grid[0]}  {self.grid[1]}  {self.grid[2]} \n"
-        FSfile += "1 \n"  # so far only this option of Fermisurfer is implemented
-        FSfile += f"{len(iband)} \n"
-        FSfile += "".join(["  ".join(f"{x:14.8f}" for x in v) + "\n" for v in self.recip_lattice])
+        return fermiSurfer(recip_lattice=self.recip_lattice,
+                    Enk=self.get_data(quantity="Energy", iband=iband),
+                    data=Xnk,
+                    efermi=efermi,
+                    npar=npar,
+                    frmsf_name=frmsf_name
+                    )
 
-        FSfile += _savetxt(a=self.Enk.data[:, iband].flatten(order='F') - efermi, npar=npar)
-
-        if quantity is None:
-            return FSfile
-
-        if quantity not in self.results:
-            raise RuntimeError(f"requested quantity '{quantity}' was not calculated")
-            return FSfile
-        FSfile += _savetxt(a=Xnk[:, iband].flatten(order='F'), npar=npar)
-        if frmsf_name is not None:
-            if not (frmsf_name.endswith(".frmsf")):
-                frmsf_name += ".frmsf"
-            open(frmsf_name, "w").write(FSfile)
-        return FSfile
 
     def plot_path_fat(
             self,
@@ -322,6 +324,16 @@ def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
     return ttxt, twrite
 
 
+def write_npz(npz_name, quantities, res, suffix=""):
+    dic = {Q: res.get_data(quantity=Q) for Q in quantities}
+    if len(suffix) > 0:
+        suffix = "-" + suffix
+    np.savez_compressed(f"{npz_name}{suffix}.npz",
+                        recip_lattice=res.recip_lattice,
+                        **dic
+                        )
+
+
 def _savetxt(limits=None, a=None, fmt=".8f", npar=0):
     assert a.ndim == 1, f"only 1D arrays are supported. found shape{a.shape}"
     if npar is None:
@@ -342,3 +354,37 @@ def _savetxt(limits=None, a=None, fmt=".8f", npar=0):
         p.close()
         p.join()
         return "".join(res)
+
+
+def fermiSurfer(recip_lattice, Enk, data=None, efermi=0, npar=0, frmsf_name=None):
+    print("Enk", Enk.shape)
+    grid = Enk.shape[:3]
+    nband = Enk.shape[3]
+    FSfile = ""
+    FSfile += f" {grid[0]}  {grid[1]}  {grid[2]} \n"
+    FSfile += "1 \n"  # so far only this option of Fermisurfer is implemented
+    FSfile += f"{nband} \n"
+    FSfile += "".join(["  ".join(f"{x:14.8f}" for x in v) + "\n" for v in recip_lattice])
+    for ib in range(nband):
+        FSfile += _savetxt(a=Enk[:, :, :, ib].flatten(order='C') - efermi, npar=npar)
+    if data is not None:
+        print("Xnk", data.shape)
+        assert data.shape[:4] == Enk.shape
+        for ib in range(nband):
+            FSfile += _savetxt(a=data[:, :, :, ib].flatten(order='C'), npar=npar)
+    if frmsf_name is not None:
+        if not (frmsf_name.endswith(".frmsf")):
+            frmsf_name += ".frmsf"
+        open(frmsf_name, "w").write(FSfile)
+    return FSfile
+
+
+def npz_to_fermisurfer(npz_file, quantity=None, frmsf_file=None):
+    res = np.load(npz_file)
+    Enk = res['Energy']
+    if quantity is not None:
+        Xnk = res[quantity]
+    else:
+        Xnk = None
+    recip_lattice = res['recip_lattice']
+    return fermiSurfer(recip_lattice=recip_lattice, Enk=Enk, data=Xnk, frmsf_name=frmsf_file)

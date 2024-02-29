@@ -47,9 +47,11 @@ class EnergyResult(Result):
             transformInv=None,
             rank=None,
             E_titles=["Efermi", "Omega"],
-            save_mode="txt+bin",
             file_npz=None,
-            comment="undocumented"):
+            comment="undocumented",
+            **kwargs
+    ):
+        super().__init__(**kwargs)
         if file_npz is not None:
             res = np.load(open(file_npz, "rb"), allow_pickle=True)
             energ = [
@@ -59,6 +61,10 @@ class EnergyResult(Result):
                 comment = str(res['comment'])
             except KeyError:
                 comment = "undocumented"
+            try:
+                save_mode = res['save_mode']
+            except KeyError:
+                save_mode = "bin+txt"
 
             self.__init__(
                 Energies=energ,
@@ -69,6 +75,7 @@ class EnergyResult(Result):
                 transformInv=transform_from_dict(res, 'transformInv'),
                 rank=res['rank'],
                 E_titles=list(res['E_titles']),
+                save_mode=save_mode,
                 comment=comment)
         else:
             if not isinstance(Energies, (list, tuple)):
@@ -95,7 +102,6 @@ class EnergyResult(Result):
             self.set_smoother(smoothers)
             self.transformTR = transformTR
             self.transformInv = transformInv
-            self.set_save_mode(save_mode)
             self.comment = comment
 
     def set_smoother(self, smoothers):
@@ -129,6 +135,7 @@ class EnergyResult(Result):
             transformTR=self.transformTR,
             transformInv=self.transformInv,
             rank=self.rank,
+            save_mode=self.save_mode,
             E_titles=self.E_titles)
 
     def __mul__(self, number):
@@ -141,6 +148,7 @@ class EnergyResult(Result):
                 transformInv=self.transformInv,
                 rank=self.rank,
                 E_titles=self.E_titles,
+                save_mode=self.save_mode,
                 comment=self.comment)
         else:
             raise TypeError("result can only be multiplied by a number")
@@ -173,6 +181,7 @@ class EnergyResult(Result):
             transformInv=self.transformInv,
             rank=self.rank,
             E_titles=self.E_titles,
+            save_mode=self.save_mode.union(other.save_mode),
             comment=comment)
 
     def add(self, other):
@@ -231,9 +240,9 @@ class EnergyResult(Result):
         suffix = "-" + suffix if len(suffix) > 0 else ""
         prefix = prefix + "-" if len(prefix) > 0 else ""
         filename = prefix + name + suffix + f"_iter-{i_iter:04d}"
-        if "bin" in self.save_modes:
+        if "bin" in self.save_mode:
             self.save(filename)
-        if "txt" in self.save_modes:
+        if "txt" in self.save_mode:
             self.savetxt(filename + ".dat")
 
     @property
@@ -263,4 +272,5 @@ class EnergyResult(Result):
             transformInv=self.transformInv,
             rank=self.rank,
             E_titles=self.E_titles,
+            save_mode=self.save_mode,
             comment=self.comment)

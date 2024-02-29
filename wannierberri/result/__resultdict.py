@@ -30,25 +30,29 @@ from .__result import Result
 class ResultDict(Result):
     """Stores a dictionary of instances of the class Result."""
 
-    def __init__(self, results):
+    def __init__(self, results, **kwargs):
         """
         Initialize instance with a dictionary of results with string keys and values of type Result.
         """
+        super().__init__(**kwargs)
         self.results = results
 
     #  multiplication by a number
     def __mul__(self, number):
-        return ResultDict({k: v * number for k, v in self.results.items()})
+        return ResultDict({k: v * number for k, v in self.results.items()},
+                          save_mode=self.save_mode)
 
     def __truediv__(self, number):
-        return ResultDict({k: v / number for k, v in self.results.items()})
+        return ResultDict({k: v / number for k, v in self.results.items()},
+                          save_mode=self.save_mode)
 
     # +
     def __add__(self, other):
         if other == 0:
             return self
         results = {k: self.results[k] + other.results[k] for k in self.results if k in other.results}
-        return ResultDict(results)
+        return ResultDict(results,
+                          save_mode=self.save_mode)
 
     # -
     def __sub__(self, other):
@@ -62,7 +66,8 @@ class ResultDict(Result):
     #  how result transforms under symmetry operations
     def transform(self, sym):
         results = {k: self.results[k].transform(sym) for k in self.results}
-        return ResultDict(results)
+        return ResultDict(results,
+                          save_mode=self.save_mode)
 
     # a list of numbers, by each of those the refinement points will be selected
     @property

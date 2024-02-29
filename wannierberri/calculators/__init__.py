@@ -7,7 +7,19 @@ receive :calss:`~wannierberri.data_K._Data_K` objects and yield
 from termcolor import cprint
 
 
-class Calculator():
+class Calculator:
+    """
+    Parameters
+    -----------
+    save_mode : str
+        'bin' or 'txt' or 'bin+txt' - save result in text format ('txt') or binary 'npz' files ('bin')
+    print_comment : bool
+        print the comment (or docstring) during initialization
+    degen_Kramers : bool
+        consider all bands as Kramers degenerate
+    degen_thresh : float
+        threshold (in eV) to consider bands as degenerate
+    """
 
     def __init__(self, degen_thresh=1e-4, degen_Kramers=False, save_mode="bin+txt", print_comment=False):
         self.degen_thresh = degen_thresh
@@ -17,11 +29,11 @@ class Calculator():
 
     @property
     def allow_path(self):
-        return False    # change for those who can be calculated on a path instead of a grid
+        return False  # change for those who can be calculated on a path instead of a grid
 
     @property
     def allow_grid(self):
-        return True    # change for those who can be calculated ONLY on a path
+        return True  # change for those who can be calculated ONLY on a path
 
     def _set_comment(self, print_comment=True):
         if not hasattr(self, 'comment'):

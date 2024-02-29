@@ -24,6 +24,7 @@ class StaticCalculator(Calculator):
 
     def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={},
                  Emin=-np.Inf, Emax=np.Inf, hole_like=False, k_resolved=False, Formula=None, fder=None, **kwargs):
+        super().__init__(**kwargs)
         self.Efermi = Efermi
         self.Emin = Emin
         self.Emax = Emax
@@ -49,8 +50,6 @@ class StaticCalculator(Calculator):
             self.EFmin = Efermi[0] - self.extraEf * self.dEF
             self.EFmax = Efermi[-1] + self.extraEf * self.dEF
             self.nEF_extra = Efermi.shape[0] + 2 * self.extraEf
-
-        super().__init__(**kwargs)
 
     def __call__(self, data_K):
 
@@ -153,13 +152,9 @@ class StaticCalculator(Calculator):
                              )
         else:
             res = EnergyResult(self.Efermi, restot[0], transformTR=formula.transformTR,
-                               transformInv=formula.transformInv, smoothers=[self.smoother], comment=self.comment)
-            res.set_save_mode(self.save_mode)
+                               transformInv=formula.transformInv, smoothers=[self.smoother], comment=self.comment,
+                               save_mode=self.save_mode)
         return res
-
-    @property
-    def require_energy(self):
-        return True
 
 
 ###############################################

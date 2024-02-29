@@ -241,7 +241,8 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             'morb': calc.tabulate.OrbitalMoment(**param_tab),
             'Der_morb': calc.tabulate.DerOrbitalMoment(**param_tab),
         },
-        ibands=[5, 6, 7, 8])
+        ibands=[5, 6, 7, 8],
+        save_mode="frmsf+bin")
 
     parameters_optical = dict(
         Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
