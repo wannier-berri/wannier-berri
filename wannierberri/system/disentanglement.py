@@ -117,20 +117,19 @@ def disentangle(w90data,
         Omega_I_list.append(Omega_I)
 
         if i_iter > 0:
-            delta = "{:15.8e}".format(Omega_I - Omega_I_list[-2])
+            delta = f"{Omega_I - Omega_I_list[-2]:15.8e}"
         else:
             delta = "--"
 
         if i_iter >= num_iter_converge:
             delta_std = np.std(Omega_I_list[-num_iter_converge:])
-            delta_std_str = "{:15.8e}".format(delta_std)
+            delta_std_str = f"{delta_std:15.8e}"
         else:
             delta_std = np.Inf
             delta_std_str = "--"
 
         if i_iter % print_progress_every == 0:
-            print("iteration {:4d}".format(i_iter) + " Omega_I = {:15.10f}".format(Omega_I) + f"  delta={delta}, "
-                  f"delta_std={delta_std_str}")
+            print(f"iteration {i_iter:4d} Omega_I = {Omega_I:15.10f}  delta={delta}, delta_std={delta_std_str}")
         if delta_std < conv_tol:
             break
         Z_old = deepcopy(Z)
@@ -145,8 +144,8 @@ def disentangle(w90data,
         nfrozen = sum(frozen[ik])
         nfree = sum(free[ik])
         assert nfree + nfrozen == nband
-        assert nfrozen <= w90data.chk.num_wann, ("number of frozen bands {} at k-point {} is greater than number of "
-                                              "wannier functions {}").format(nfrozen, ik + 1, w90data.chk.num_wann)
+        assert nfrozen <= w90data.chk.num_wann, (f"number of frozen bands {nfrozen} at k-point {ik+1}"
+            f"is greater than number of wannier functions {w90data.chk.num_wann}")
         U[frozen[ik], range(nfrozen)] = 1.
         U[free[ik], nfrozen:] = U_opt_free[ik]
         Z, D, V = np.linalg.svd(U.T.conj().dot(amn_list[ik]))
@@ -217,9 +216,8 @@ def get_max_eig(matrix, nvec, nBfree):
     Both matrix and nvec are lists by k-points with arbitrary size of matrices"""
     assert len(matrix) == len(nvec) == len(nBfree)
     assert np.all([m.shape[0] == m.shape[1] for m in matrix])
-    assert np.all([m.shape[0] >= nv for m, nv in zip(matrix, nvec)]), "nvec={}, m.shape={}".format(nvec,
-                                                                                                   [m.shape for m in
-                                                                                                    matrix])
+    assert np.all([m.shape[0] >= nv for m, nv in zip(matrix, nvec)]), \
+        f"nvec={nvec}, m.shape={[m.shape for m in matrix]}"
     EV = [np.linalg.eigh(M) for M in matrix]
     return [ev[1][:, np.argsort(ev[0])[nf - nv:nf]] for ev, nv, nf in zip(EV, nvec, nBfree)]
 

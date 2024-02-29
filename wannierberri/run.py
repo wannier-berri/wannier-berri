@@ -17,6 +17,7 @@ from time import time
 import pickle
 import glob
 from termcolor import cprint
+import warnings
 
 from .data_K import get_data_k
 from .grid import exclude_equiv_points, Path, Grid, GridTetra
@@ -26,14 +27,13 @@ from .result import ResultDict
 
 def print_progress(count, total, t0, tprev, print_progress_step):
     t = time() - t0
-    t_remain = None
     if count == 0:
         t_remain = "unknown"
     else:
         t_rem_s = t / count * (total - count)
-        t_remain = "{:22.1f}".format(t_rem_s)
+        t_remain = f"{t_rem_s:22.1f}"
     if t - tprev > print_progress_step:
-        print("{:20d}{:17.1f}{:>22s}".format(count, t, t_remain), flush=True)
+        print(f"{count:20d}{t:17.1f}{t_remain:>22s}", flush=True)
         tprev = t
     return tprev
 
@@ -52,12 +52,11 @@ def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}, pr
     if parallel.method == 'ray':
         remotes = [paralfunc.remote(dK, **remote_parameters) for dK in dK_list]
 
-
-    print("processing {0} K points :".format(len(dK_list)), end=" ")
+    print(f"processing {len(dK_list)} K points :", end=" ")
     if parallel.method == 'serial':
         print("in serial.")
     else:
-        print("using  {} processes.".format(parallel.npar_K))
+        print(f"using  {parallel.npar_K} processes.")
 
     print("# K-points calculated  Wall time (sec)  Est. remaining (sec)", flush=True)
     res = []
@@ -90,36 +89,34 @@ def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}, pr
 
     t = time() - t0
     if parallel.method == 'serial':
-        print("time for processing {0:6d} K-points in serial: ".format(numK), end="")
+        print(f"time for processing {numK:6d} K-points in serial: ", end="")
         nproc_ = 1
     else:
-        print("time for processing {0:6d} K-points on {1:3d} processes: ".format(numK, parallel.npar_K), end="")
+        print(f"time for processing {numK:6d} K-points on {parallel.npar_K:3d} processes: ", end="")
         nproc_ = parallel.npar_K
-    print(
-        "{0:10.4f} ; per K-point {1:15.4f} ; proc-sec per K-point {2:15.4f}".format(t, t / numK, t * nproc_ / numK),
-        flush=True)
+    print(f"{t:10.4f} ; per K-point {t / numK:15.4f} ; proc-sec per K-point {t * nproc_ / numK:15.4f}", flush=True)
     return len(dK_list)
 
 
 def run(
-    system,
-    grid,
-    calculators,
-    adpt_num_iter=0,
-    use_irred_kpt=True,
-    symmetrize=True,
-    fout_name="result",
-    suffix="",
-    parameters_K={},
-    file_Klist=None,
-    restart=False,
-    Klist_part=10,
-    parallel=Serial(),  # serial by default
-    print_Kpoints=True,
-    adpt_mesh=2,
-    adpt_fac=1,
-    fast_iter=True,
-    print_progress_step=5,
+        system,
+        grid,
+        calculators,
+        adpt_num_iter=0,
+        use_irred_kpt=True,
+        symmetrize=True,
+        fout_name="result",
+        suffix="",
+        parameters_K={},
+        file_Klist=None,
+        restart=False,
+        Klist_part=10,
+        parallel=Serial(),  # serial by default
+        print_Kpoints=True,
+        adpt_mesh=2,
+        adpt_fac=1,
+        fast_iter=True,
+        print_progress_step=5,
 ):
     """
     The function to run a calculation. Substitutes the old :func:`~wannierberri.integrate` and :func:`~wannierberri.tabulate`
@@ -180,17 +177,21 @@ def run(
         for key, calc in calculators.items():
             print(key, calc)
             if not calc.allow_path:
-                raise ValueError(f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path")
+                raise ValueError(
+                    f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path")
         print("All calculators are compatible")
         if symmetrize:
             print("Symmetrization switched off for Path")
             symmetrize = False
     else:
         print("Calculation on  grid - checking calculators for compatibility")
+        if use_irred_kpt:
+            symmetrize = True
         for key, calc in calculators.items():
             print(key, calc)
             if not calc.allow_grid:
-                raise ValueError(f"Calculation on Grid is running, but calculator `{key}` is not compatible with a Grid")
+                raise ValueError(
+                    f"Calculation on Grid is running, but calculator `{key}` is not compatible with a Grid")
         print("All calculators are compatible")
 
     if isinstance(grid, GridTetra):
@@ -234,11 +235,11 @@ def run(
                 try:
                     K_list += pickle.load(fr)
                 except EOFError:
-                    print("Finished reading Klist from file {0}".format(file_Klist))
+                    print(f"Finished reading Klist from file {file_Klist}")
                     break
-            print("{0} K-points were read from {1}".format(len(K_list), file_Klist))
+            print(f"{len(K_list)} K-points were read from {file_Klist}")
             if len(K_list) == 0:
-                print("WARNING : {0} contains zero points starting from scrath".format(file_Klist))
+                warnings.warn(f"{file_Klist} contains zero points starting from scrath")
                 restart = False
             fr.close()
 
@@ -255,14 +256,12 @@ def run(
 
                     factor_changed_K_list.append(iK)
                     K_list[iK].factor = fac
-                print("{0} K-points were read from {1}".format(len(factor_changed_K_list), file_Klist_factor_changed))
+                print(f"{len(factor_changed_K_list)} K-points were read from {file_Klist_factor_changed}")
                 fr_div.close()
             except FileNotFoundError:
                 print(f"File with changed factors {file_Klist_factor_changed} not found, assume they were not changed")
         except Exception as err:
-            restart = False
-#            print("WARNING: {}".format(err))
-            raise RuntimeError("{1}: reading from {0} failed, starting from scrath".format(file_Klist, err))
+            raise RuntimeError(f"{err}: reading from {file_Klist} failed, starting from scrath")
     else:
         K_list = grid.get_K_list(use_symmetry=use_irred_kpt)
         print("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
@@ -275,11 +274,11 @@ def run(
         def remove_file(filename):
             if filename is not None and os.path.exists(filename):
                 os.remove(filename)
+
         remove_file(file_Klist)
         remove_file(file_Klist_factor_changed)
 
-
-#    suffix="-"+suffix if len(suffix)>0 else ""
+    #    suffix="-"+suffix if len(suffix)>0 else ""
 
     if restart:
         print("searching for start_iter")
@@ -288,7 +287,7 @@ def run(
                 sorted(glob.glob(fout_name + "*" + suffix + "_iter-*.dat"))[-1].split("-")[-1].split(".")[0])
             print(f"start_iter = {start_iter}")
         except Exception as err:
-            print("WARNING : {0} : failed to read start_iter. Setting to zero".format(err))
+            warnings.warn(f"{err} : failed to read start_iter. Setting to zero")
             start_iter = 0
 
     if adpt_num_iter < 0:
@@ -308,11 +307,11 @@ def run(
 
     for i_iter in range(adpt_num_iter + 1):
         if print_Kpoints:
-            print(
-                "iteration {0} - {1} points. New points are:".format(i_iter + start_iter, len([K for K in K_list if K.res is None])))
+            print("iteration {0} - {1} points. New points are:".format(i_iter + start_iter,
+                                                                       len([K for K in K_list if K.res is None])))
             for i, K in enumerate(K_list):
                 if not K.evaluated:
-                    print(" K-point {0} : {1} ".format(i, K))
+                    print(f" K-point {i} : {K} ")
         counter += process(
             paralfunc,
             K_list,
@@ -331,7 +330,7 @@ def run(
                 fw.close()
 
         except Exception as err:
-            print("Warning: {0} \n the K_list was not pickled".format(err))
+            warnings.warn(f" {err} \n the K_list was not pickled")
 
         time0 = time()
 
@@ -374,9 +373,9 @@ def run(
                     result_excluded += results - K_list[iK].get_res
 
         if use_irred_kpt and isinstance(grid, Grid):
-            print("checking for equivalent points in all points (of new  {} points)".format(len(K_list) - l1))
+            print(f"checking for equivalent points in all points (of new  {len(K_list) - l1} points)")
             nexcl, weight_changed_old = exclude_equiv_points(K_list, new_points=len(K_list) - l1)
-            print(" excluded {0} points".format(nexcl))
+            print(f"excluded {nexcl} points")
         else:
             weight_changed_old = {}
 
@@ -389,13 +388,12 @@ def run(
             print(f"Writing file_Klist_factor_changed to {file_Klist_factor_changed}")
             fw_changed = open(file_Klist_factor_changed, "a")
             for iK in excluded_Klist:
-                fw_changed.write("{0} {1} # refined\n".format(iK, 0.0))
+                fw_changed.write(f"{iK} 0.0 # refined\n".format(iK, 0.0))
             for iK in weight_changed_old:
-                fw_changed.write("{0} {1} # changed\n".format(iK, K_list[iK].factor))
+                fw_changed.write(f"{iK} {K_list[iK].factor} # changed\n")
             fw_changed.close()
 
-
-    print("Totally processed {0} K-points ".format(counter))
+    print(f"Totally processed {counter} K-points ")
     print("run() finished")
 
     return result_all

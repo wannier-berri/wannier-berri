@@ -152,14 +152,6 @@ def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
     )
 
 
-def test_system_Fe_sym_W90_old(check_system, system_Fe_sym_W90_old_wcc):
-    check_system(
-        system_Fe_sym_W90_old_wcc, "Fe_sym_W90_wcc",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
-        sort_iR=True
-    )
-
-
 def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90_wcc):
     check_system(
         system_Fe_sym_W90_wcc, "Fe_sym_W90_wcc",
@@ -218,25 +210,10 @@ def test_system_GaAs_W90_wccJM(check_system, system_GaAs_W90_wccJM):
     )
 
 
-def test_system_GaAs_W90_JM(check_system, system_GaAs_W90_JM):
-    check_system(
-        system_GaAs_W90_JM, "GaAs_W90_JM",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'OO', 'GG'],
-    )
-
-
 def test_system_GaAs_tb(check_system, system_GaAs_tb):
     check_system(
         system_GaAs_tb, "GaAs_tb",
         matrices=['Ham', 'AA']
-    )
-
-
-def test_system_GaAs_sym_tb_old(check_system, system_GaAs_sym_tb_old_wcc):
-    check_system(
-        system_GaAs_sym_tb_old_wcc, "GaAs_sym_tb_wcc",
-        matrices=['Ham', 'AA'],
-        sort_iR=True,
     )
 
 
@@ -386,14 +363,6 @@ def test_system_Phonons_GaAs(check_system, system_Phonons_GaAs):
     check_system(
         system_Phonons_GaAs, "Phonons_GaAs",
         matrices=['Ham']
-    )
-
-
-def test_system_Mn3Sn_sym_tb_old(check_system, system_Mn3Sn_sym_tb_old_wcc):
-    check_system(
-        system_Mn3Sn_sym_tb_old_wcc, "Mn3Sn_sym_tb_wcc",
-        matrices=['Ham', 'AA'],
-        sort_iR=True
     )
 
 

@@ -1,16 +1,16 @@
+import warnings
 import numpy as np
 import os
 from functools import cached_property
 from termcolor import cprint
 from collections import defaultdict
-import warnings
 import glob
 import multiprocessing
 from .system import System, pauli_xyz
-from .sym_wann import SymWann
 from ..__utility import alpha_A, beta_A, clear_cached, one2three
 from ..symmetry import Symmetry, Group, TimeReversal
 from .ws_dist import ws_dist_map
+from .sym_wann import SymWann
 
 
 class System_R(System):
@@ -91,7 +91,6 @@ class System_R(System):
 
         self._XX_R = dict()
 
-
     def set_wannier_centers(self, wannier_centers_cart=None, wannier_centers_reduced=None):
         """
             set self.wannier_centers_cart. Only one of parameters should be provided.
@@ -111,7 +110,6 @@ class System_R(System):
             else:
                 self.wannier_centers_cart = np.zeros((self.num_wann, 3))
         self.clear_cached_wcc()
-
 
     def need_R_any(self, keys):
         """returns True is any of the listed matrices is needed in to be set
@@ -170,7 +168,7 @@ class System_R(System):
             if R is None:
                 R = [0, 0, 0]
             XX = np.zeros((self.num_wann, self.num_wann) + value.shape[1:], dtype=value.dtype)
-            XX[np.arange(self.num_wann), np.arange(self.num_wann)] = value
+            XX[self.range_wann, self.range_wann] = value
             self.set_R_mat(key, XX, R=R, reset=reset, add=add)
         elif R is not None:
             XX = np.zeros((self.num_wann, self.num_wann, self.nRvec) + value.shape[2:], dtype=value.dtype)
@@ -193,7 +191,7 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', method="new"):
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe'):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
 
@@ -227,10 +225,9 @@ class System_R(System):
             Magnetic momens of each atoms.
         DFT_code: str
             DFT code used : ``'qe'`` or ``'vasp'`` . This is needed, because vasp and qe have different orbitals arrangement with SOC.(grouped by spin or by orbital type)
-        method : str
-            `new` or `old`. They give same result but `new` is faster. `old` will be eventually removed.
 
-        Notes:
+        Notes
+        -----
             Works only with phase convention I (`use_wcc_phase=True`)
         """
 
@@ -253,15 +250,16 @@ class System_R(System):
 
         print("Wannier Centers cart (raw):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (raw):\n", self.wannier_centers_reduced)
-        (self._XX_R, self.iRvec), self.wannier_centers_cart = symmetrize_wann.symmetrize(method=method)
+        (self._XX_R, self.iRvec), self.wannier_centers_cart = symmetrize_wann.symmetrize()
 
         if self.has_R_mat('AA'):
             A_diag = self.get_R_mat('AA')[:, :, self.iR0].diagonal()
             if self.use_wcc_phase:
                 A_diag_max = abs(A_diag).max()
                 if A_diag_max > 1e-5:
-                    print(f"WARNING : the maximal value of diagonal position matrix elements is {A_diag_max}. This may signal a problem")
-                self.get_R_mat('AA')[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] = 0
+                    warnings.warn(
+                        f"the maximal value of diagonal position matrix elements is {A_diag_max}. This may signal a problem")
+                self.get_R_mat('AA')[self.range_wann, self.range_wann, self.iR0, :] = 0
         print("Wannier Centers cart (symmetrized):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (symmetrized):\n", self.wannier_centers_reduced)
         self.clear_cached_R()
@@ -275,10 +273,9 @@ class System_R(System):
             if not per:
                 sel = (self.iRvec[:, i] != 0)
                 if np.any(sel):
-                    print(
-                        """WARNING : you declared your system as non-periodic along direction {i}, but there are {nrexcl} of total {nr} R-vectors with R[{i}]!=0.
-        They will be excluded, please make sure you know what you are doing """.format(
-                            i=i, nrexcl=sum(sel), nr=self.nRvec))
+                    warnings.warn(f"you declared your system as non-periodic along direction {i},"
+                         f"but there are {sum(sel)} of total {self.nRvec} R-vectors with R[{i}]!=0."
+                         "They will be excluded, please make sure you know what you are doing")
                     exclude[sel] = True
         if np.any(exclude):
             notexclude = np.logical_not(exclude)
@@ -305,7 +302,7 @@ class System_R(System):
         """
         spins = np.array(spins)
         if max(abs(spins) - 1) > 1e-3:
-            print("WARNING : some of your spins are not +1 or -1, are you sure you want it like this?")
+            warnings.warn("some of your spins are not +1 or -1, are you sure you want it like this?")
         axis = np.array(axis) / np.linalg.norm(axis)
         value = np.array([s * axis for s in spins], dtype=complex)
         self.set_R_mat(key='SS', value=value, diag=True, **kwargs)
@@ -328,13 +325,13 @@ class System_R(System):
             f"indices of states should be 0<=i<num_wann-{self.num_wann}, found {pairs}")
         assert len(set(all_states)) == len(all_states), "some states appear more then once in pairs"
         if len(pairs) < self.num_wann / 2:
-            print(f"WARNING : number of spin pairs {len(pairs)} is less then num_wann/2 = {self.num_wann / 2}. " +
-                  "For other states spin properties will be set to zero. are yoiu sure ?")
+            warnings.warn(f"number of spin pairs {len(pairs)} is less then num_wann/2 = {self.num_wann / 2}."
+                 "For other states spin properties will be set to zero. are yoiu sure ?")
         SS_R0 = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
         for i, j in pairs:
             dist = np.linalg.norm(self.wannier_centers_cart[i] - self.wannier_centers_cart[j])
             if dist > 1e-3:
-                print(f"WARNING: setting spin pair for Wannier function {i} and {j}, distance between them {dist}")
+                warnings.warn(f"setting spin pair for Wannier function {i} and {j}, distance between them {dist}")
             SS_R0[i, i] = pauli_xyz[0, 0]
             SS_R0[i, j] = pauli_xyz[0, 1]
             SS_R0[j, i] = pauli_xyz[1, 0]
@@ -369,10 +366,10 @@ class System_R(System):
             pairs = [(2 * i, 2 * i + 1) for i in range(nw2)]
         self.set_spin_pairs(pairs)
 
-
     def do_at_end_of_init(self):
         self.set_symmetry()
         self.check_periodic()
+        print("Real-space lattice:\n", self.real_lattice)
         print("Number of wannier functions:", self.num_wann)
         print("Number of R points:", self.nRvec)
         print("Recommended size of FFT grid", self.NKFFT_recommended)
@@ -401,7 +398,7 @@ class System_R(System):
         ws_map = ws_dist_map(
             self.iRvec, wannier_centers_cart, mp_grid, self.real_lattice, npar=self.npar)
         for key, val in self._XX_R.items():
-            print("using ws_dist for {}".format(key))
+            print(f"using ws_dist for {key}")
             self.set_R_mat(key, ws_map(val), reset=True)
         self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
         self.clear_cached_R()
@@ -417,32 +414,33 @@ class System_R(System):
         f.write("written by wannier-berri form the chk file\n")
         cprint(f"writing TB file {tb_file}", 'green', attrs=['bold'])
         np.savetxt(f, self.real_lattice)
-        f.write("{}\n".format(self.num_wann))
-        f.write("{}\n".format(self.nRvec))
+        f.write(f"{self.num_wann}\n")
+        f.write(f"{self.nRvec}\n")
         Ndegen = np.ones(self.nRvec, dtype=int)
         for i in range(0, self.nRvec, 15):
             a = Ndegen[i:min(i + 15, self.nRvec)]
-            f.write("  ".join("{:2d}".format(x) for x in a) + "\n")
+            f.write("  ".join(f"{x:2d}" for x in a) + "\n")
         for iR in range(self.nRvec):
             f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
+            _ham = self.Ham_R[:, :, iR] * Ndegen[iR]
             f.write(
                 "".join(
-                    "{0:3d} {1:3d} {2:15.8e} {3:15.8e}\n".format(
-                        m + 1, n + 1, self.Ham_R[m, n, iR].real * Ndegen[iR], self.Ham_R[m, n, iR].imag *
-                        Ndegen[iR]) for n in range(self.num_wann) for m in range(self.num_wann)))
+                    f"{m+1:3d} {n+1:3d} {_ham[m,n].real:15.8e} {_ham[m,n].imag:15.8e}\n"
+                    for n in self.range_wann for m in self.range_wann)
+            )
         if self.has_R_mat('AA'):
             AA = np.copy(self.get_R_mat('AA'))
             if self.use_wcc_phase:
                 AA[self.range_wann, self.range_wann, self.iR0] += self.wannier_centers_cart
             for iR in range(self.nRvec):
                 f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
+                _aa = AA[:, :, iR] * Ndegen[iR]
                 f.write(
                     "".join(
-                        "{0:3d} {1:3d} ".format(m + 1, n + 1) + " ".join(
-                            "{:15.8e} {:15.8e}".format(a.real, a.imag)
-                            for a in AA[m, n, iR] * Ndegen[iR]) + "\n" for n in
-                        range(self.num_wann)
-                        for m in range(self.num_wann)))
+                        f"{m+1:3d} {n+1:3d} " + " ".join(f"{a.real:15.8e} {a.imag:15.8e}"for a in _aa[m, n]) + "\n"
+                        for n in self.range_wann for m in self.range_wann
+                    )
+                )
         f.close()
 
     def _FFT_compatible(self, FFT, iRvec):
@@ -518,15 +516,13 @@ class System_R(System):
             raise ValueError("use_wcc_phase = True, but the wannier centers could not be determined")
         if self.has_R_mat('AA'):
             AA_R_new = np.copy(self.get_R_mat('AA'))
-            AA_R_new[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] -= self.wannier_centers_cart
+            AA_R_new[self.range_wann, self.range_wann, self.iR0, :] -= self.wannier_centers_cart
             R_new['AA'] = AA_R_new
         if self.has_R_mat('BB'):
-            print("WARNING: orbital moment does not work with wcc_phase so far")
             BB_R_new = self.get_R_mat('BB').copy() - self.get_R_mat('Ham')[:, :, :,
                                                      None] * self.wannier_centers_cart[None, :, None, :]
             R_new['BB'] = BB_R_new
         if self.has_R_mat('CC'):
-            print("WARNING: orbital moment does not work with wcc_phase so far")
             norm = np.linalg.norm(self.get_R_mat('CC') - self.conj_XX_R('CC'))
             assert norm < 1e-10, f"CC_R is not Hermitian, norm={norm}"
             assert self.has_R_mat('BB'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
@@ -564,7 +560,7 @@ class System_R(System):
         # check if some R-vectors do not have partners
         notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
         for ir in notfound:
-            print(f"WARNING : R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
+            warnings.warn(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
         # check if some R-vectors have more then 1 partner
         morefound = np.where(np.sum(mapping, axis=1) > 1)[0]
         if len(morefound > 0):
@@ -670,16 +666,14 @@ class System_R(System):
         if self.magnetic_moments is None:
             symmetry_gen.append(TimeReversal)
         elif not tr_found:
-            print(
-                "WARNING: you specified magnetic moments but spglib did not detect symmetries involving time-reversal" +
-                f"proobably it is because you have an old spglib version {spglib.__version__}" +
-                "We suggest upgrading to spglib>=2.0.2")
+            warnings.warn("you specified magnetic moments but spglib did not detect symmetries involving time-reversal. "
+                 f"proobably it is because you have an old spglib version {spglib.__version__}."
+                 "We suggest upgrading to spglib>=2.0.2")
         else:
             if not all([len(x) for x in self.magnetic_moments]):
                 raise ValueError("magnetic_moments must be a list of 3d vector")
-            print(
-                "Warning: spglib does not find symmetries including time reversal "
-                "operation.\nTo include such symmetries, use set_symmetry.")
+            warnings.warn("spglib does not find symmetries including time reversal operation. "
+                          "To include such symmetries, use set_symmetry.")
 
         self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
@@ -714,7 +708,6 @@ class System_R(System):
     @cached_property
     def optional_properties(self):
         return ["positions", "magnetic_moments", "atom_labels"]
-
 
     def _R_mat_npz_filename(self, key):
         return "_XX_R_" + key + ".npz"
@@ -798,17 +791,3 @@ class System_R(System):
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
             self.set_R_mat(key, a)
             print(" - Ok!")
-
-
-def ndim_R(key):
-    """
-    returns the number of cartesian dimensions of a matrix by key
-    """
-    if key in ["Ham"]:
-        return 0
-    elif key in ["AA", "BB", "CC", "SS", "SH", "OO"]:
-        return 1
-    elif key in ["SHA", "SA", "SR", "SHR", "GG", "FF"]:
-        return 2
-    else:
-        raise ValueError(f"unknown matrix {key}")

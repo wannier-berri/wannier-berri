@@ -123,13 +123,20 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
     for quant in quantities:
         for comp in tab_result.results.get(quant).get_component_list():
             _data = data[(quant, comp)]
-            if comp == "trace" and (quant, comp) not in data_ref:
-                _data_ref = data_ref[(quant, "xx")] + data_ref[(quant, "yy")] + data_ref[(quant, "zz")]
-            else:
+            try:
                 _data_ref = data_ref[(quant, comp)]
+            except KeyError:
+                if comp == "trace":
+                    _data_ref = data_ref[(quant, "xx")] + data_ref[(quant, "yy")] + data_ref[(quant, "zz")]
+                elif comp is None:
+                    _data_ref = data_ref[(quant, "")]
+                else:
+                    raise KeyError(f"Component `{comp}` is not found for quantity `{quant}`")
+
+            assert _data.shape == _data_ref.shape
             assert _data == approx(_data_ref), (
                 f"tabulation along path gave a wrong result for quantity {quant} component {comp} " +
-                "with a maximal difference {}".format(max(abs(_data - _data_ref))))
+                f"with a maximal difference {max(abs(_data - _data_ref))}")
 
     # only checks that the plot runs without errors, not checking the result of the plot
     tab_result.plot_path_fat(

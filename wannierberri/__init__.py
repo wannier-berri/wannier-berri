@@ -14,6 +14,7 @@
 wannierberri - a module for Wannier interpolation
 """
 
+import warnings
 __version__ = "0.15.0"
 
 try:
@@ -21,7 +22,7 @@ try:
     PYFFTW_IMPORTED = True
 except Exception as err:
     PYFFTW_IMPORTED = False
-    print("WARNING : error importing  `pyfftw` : {} \n will use numpy instead \n".format(err))
+    warnings.warn(f"error importing  `pyfftw` : {err} \n will use numpy instead \n")
 
 from .run import run
 from . import symmetry
@@ -39,7 +40,7 @@ from .smoother import get_smoother
 from .evaluate_k import evaluate_k
 from . import utils
 from . import data_K
-
+from .result.__tabresult import npz_to_fermisurfer
 from termcolor import cprint
 
 
@@ -58,4 +59,4 @@ def welcome():
 
     cprint("""\n  The Web page is :  HTTP://WANNIER-BERRI.ORG  \n""", 'yellow')
 
-    cprint("\nVersion: {}\n".format(__version__), 'cyan', attrs=['bold'])
+    cprint(f"\nVersion: {__version__}\n", 'cyan', attrs=['bold'])

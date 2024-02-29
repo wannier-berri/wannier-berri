@@ -29,11 +29,12 @@ class DynamicCalculator(Calculator, abc.ABC):
     def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', kwargs_formula={},
                  **kwargs):
 
-        for k, v in locals().items():  # is it safe to do so?
-            if k not in ['self', 'kwargs']:
-                vars(self)[k] = v
         super().__init__(**kwargs)
-
+        self.Efermi = Efermi
+        self.omega = omega
+        self.kBT = kBT
+        self.smr_fixed_width = smr_fixed_width
+        self.smr_type = smr_type
         self.kwargs_formula = copy(kwargs_formula)
         self.Formula = None
         self.constant_factor = 1.
@@ -105,8 +106,22 @@ class DynamicCalculator(Calculator, abc.ABC):
             transformInv = formula.transformInv
 
         return EnergyResult(
-            [self.Efermi, self.omega], restot, transformTR=transformTR, transformInv=transformInv)
+            [self.Efermi, self.omega], restot,
+            transformTR=transformTR, transformInv=transformInv,
+            save_mode=self.save_mode
+        )
 
+
+class MultitermCalculator(DynamicCalculator):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.terms = []
+
+    def factor_omega(self, E1, E2):
+        raise NotImplementedError()
+
+    def __call__(self, data_K):
+        return sum(cal(data_K) for cal in self.terms)
 
 ###############################################
 ###############################################
@@ -248,20 +263,16 @@ m_spin_prefactor = electron_g_factor * hbar / electron_mass
 # _____ Antisymmetric (time-even) spatially-dispersive conductivity tensor _____ #
 
 
-class SDCT_asym(Calculator):
+class SDCT_asym(MultitermCalculator):
 
     def __init__(self, fermi_sea=True, fermi_surf=True, **kwargs):
-        self.comment = "calculator not described"
-        self.terms = []
+        super().__init__(**kwargs)
         # Fermi sea terms
         if fermi_sea:
             self.terms.extend([SDCT_asym_sea_I(**kwargs), SDCT_asym_sea_II(**kwargs)])
         # Fermi surface terms
         if fermi_surf:
             self.terms.extend([SDCT_asym_surf_I(**kwargs), SDCT_asym_surf_II(**kwargs)])
-
-    def __call__(self, data_K):
-        return sum(cal(data_K) for cal in self.terms)
 
 
 class Formula_SDCT_asym_sea_I(Formula):
@@ -465,19 +476,15 @@ class SDCT_asym_surf_II(DynamicCalculator):
 # _____ Symmetric (time-odd) spatially-dispersive conductivity tensor _____ #
 
 
-class SDCT_sym(Calculator):
+class SDCT_sym(MultitermCalculator):
     def __init__(self, fermi_sea=True, fermi_surf=True, **kwargs):
-        self.comment = "calculator not described"
-        self.terms = []
+        super().__init__(**kwargs)
         # Fermi sea terms
         if fermi_sea:
             self.terms.extend([SDCT_sym_sea_I(**kwargs), SDCT_sym_sea_II(**kwargs)])
         # Fermi surface terms
         if fermi_surf:
             self.terms.extend([SDCT_sym_surf_I(**kwargs), SDCT_sym_surf_II(**kwargs)])
-
-    def __call__(self, data_K):
-        return sum(cal(data_K) for cal in self.terms)
 
 
 class Formula_SDCT_sym_sea_I(Formula):
