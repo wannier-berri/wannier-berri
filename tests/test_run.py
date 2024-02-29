@@ -278,7 +278,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
     for quant in result.results.get("tabulate").results.keys():  # ["Energy", "berry","Der_berry","spin","morb"]:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
             _quant = "E" if quant == "Energy" else quant
-            _comp = "-" + comp if comp != "" else ""
+            _comp = "-" + comp if comp not in ("", None) else ""
             prec = extra_precision[quant] if quant in extra_precision else 2e-8
             wberri.npz_to_fermisurfer(npz_file=npz_tabulate,
                                       quantity=None if quant == "Energy" else quant,

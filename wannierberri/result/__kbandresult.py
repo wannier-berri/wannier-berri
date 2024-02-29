@@ -6,7 +6,6 @@ from ..symmetry import transform_from_dict
 
 class K__Result(Result):
 
-
     def __init__(self, data=None, transformTR=None, transformInv=None, file_npz=None, rank=None, other_properties={}):
         assert (data is not None) or (file_npz is not None)
         if file_npz is not None:
@@ -30,7 +29,6 @@ class K__Result(Result):
             self.rank = rank
         self.other_properties = other_properties
 
-
     def fit(self, other):
         for var in ['transformTR', 'transformInv', 'rank']:
             if getattr(self, var) != getattr(other, var):
@@ -44,8 +42,6 @@ class K__Result(Result):
             self.data_list = [np.vstack(self.data_list)]
         return self.data_list[0]
 
-
-
     @property
     def nk(self):
         return sum(data.shape[0] for data in self.data_list)
@@ -53,44 +49,41 @@ class K__Result(Result):
     def __add__(self, other):
         assert self.fit(other)
         return self.__class__(data=self.data_list + other.data_list,
-                            transformTR=self.transformTR,
-                            transformInv=self.transformInv,
-                            rank=self.rank,
-                            other_properties=self.other_properties
-                            )
+                              transformTR=self.transformTR,
+                              transformInv=self.transformInv,
+                              rank=self.rank,
+                              other_properties=self.other_properties
+                              )
 
     def add(self, other):
         self.data_list = [d1 + d2 for d1, d2 in zip(self.data_list, other.data_list)]
 
-
-
     def __mul__(self, number):
         return self.__class__(data=[d * number for d in self.data_list],
-                            transformTR=self.transformTR,
-                            transformInv=self.transformInv,
-                            rank=self.rank,
-                            other_properties=self.other_properties
-                            )
+                              transformTR=self.transformTR,
+                              transformInv=self.transformInv,
+                              rank=self.rank,
+                              other_properties=self.other_properties
+                              )
 
     def mul_array(self, other, axes=None):
         if isinstance(axes, int):
-            axes = (axes, )
+            axes = (axes,)
         if axes is None:
             axes = tuple(range(other.ndim))
-        axes = tuple((a + 1) for a in axes)  # because 0th dimentsion is k here
+        axes = tuple((a + 1) for a in axes)  # because 0th dimension is k here
         for i, d in enumerate(other.shape):
             assert d == self.data_list[0].shape[axes[i]], \
                 f"shapes  {other.shape} should match the axes {axes} of {self.data_list[0].shape}"
         reshape = tuple((self.data.shape[i] if i in axes else 1) for i in range(self.data_list[0].ndim))
         other_reshape = other.reshape(reshape)
         return self.__class__(
-                            data=[d * other_reshape for d in self.data_list],
-                            transformTR=self.transformTR,
-                            transformInv=self.transformInv,
-                            rank=self.rank,
-                            other_properties=self.other_properties
-                             )
-
+            data=[d * other_reshape for d in self.data_list],
+            transformTR=self.transformTR,
+            transformInv=self.transformInv,
+            rank=self.rank,
+            other_properties=self.other_properties
+        )
 
     def __sub__(self, other):
         if (self.transformTR is not None) and (other.transformTR is not None):
@@ -108,26 +101,26 @@ class K__Result(Result):
 
     def as_dict(self):
         """
-        returns a dictionary-like object with the folloing keys:
+        returns a dictionary-like object with the following keys:
         - 'E_titles' : list of str - titles of the energies on which the result depends
         - 'Energies_0', ['Energies_1', ... ] - corresponding arrays of energies
         - data : array of shape (len(Energies_0), [ len(Energies_1), ...] , [3  ,[ 3, ... ]] )
         """
         return dict(
-                data=self.data,
-                transformTR=self.transformTR.as_dict(),
-                transformInv=self.transformInv.as_dict()
+            data=self.data,
+            transformTR=self.transformTR.as_dict(),
+            transformInv=self.transformInv.as_dict()
         )
 
     def to_grid(self, k_map):
         dataall = self.data
         data = np.array([sum(dataall[ik] for ik in km) / len(km) for km in k_map])
         return self.__class__(data=data,
-                            transformTR=self.transformTR,
-                            transformInv=self.transformInv,
-                            rank=self.rank,
-                            other_properties=self.other_properties
-                             )
+                              transformTR=self.transformTR,
+                              transformInv=self.transformInv,
+                              rank=self.rank,
+                              other_properties=self.other_properties
+                              )
 
     def average_deg(self, deg):
         for i, D in enumerate(deg):
@@ -138,19 +131,23 @@ class K__Result(Result):
 
     def transform(self, sym):
         data = [sym.transform_tensor(data, rank=self.rank,
-                    transformTR=self.transformTR, transformInv=self.transformInv) for data in self.data_list]
+                                     transformTR=self.transformTR, transformInv=self.transformInv) for data in
+                self.data_list]
         return self.__class__(data,
-                            transformTR=self.transformTR,
-                            transformInv=self.transformInv,
-                            other_properties=self.other_properties,
-                            rank=self.rank
-                             )
+                              transformTR=self.transformTR,
+                              transformInv=self.transformInv,
+                              other_properties=self.other_properties,
+                              rank=self.rank
+                              )
 
     def get_component_list(self):
         dim = len(self.data.shape[2:])
         comp_list = ["".join(s) for s in itertools.product(*[("x", "y", "z")] * dim)]
+        comp_list = [s for s in comp_list if len(s) > 0]
         if self.ndim >= 2:
             comp_list.append("trace")
+        if len(comp_list) == 0:
+            comp_list = [None]
         return comp_list
 
     @property
@@ -181,18 +178,18 @@ class KBandResult(K__Result):
 
     def select_bands(self, ibands):
         return self.__class__(self.data[:, ibands],
-                            transformTR=self.transformTR,
-                            transformInv=self.transformInv,
-                            rank=self.rank,
-                            other_properties=self.other_properties
-                            )
+                              transformTR=self.transformTR,
+                              transformInv=self.transformInv,
+                              rank=self.rank,
+                              other_properties=self.other_properties
+                              )
 
 
 class NoComponentError(RuntimeError):
 
     def __init__(self, comp, dim, err=""):
         # Call the base class constructor with the parameters it needs
-        super().__init__(f"component {comp} does not exist for tensor with dimension {dim} :\n{err}")
+        super().__init__(f"component `{comp}` does not exist for tensor with dimension {dim} :\n{err}")
 
 
 def get_component(data, ndim, component=None):
@@ -216,7 +213,7 @@ def get_component(data, ndim, component=None):
             elif component == 'norm':
                 return np.linalg.norm(data, axis=-1)
             elif component == 'sq':
-                return np.linalg.norm(data, axis=-1)**2
+                return np.linalg.norm(data, axis=-1) ** 2
             else:
                 raise NoComponentError(component, 1)
         else:
@@ -229,7 +226,7 @@ def get_component(data, ndim, component=None):
                 try:
                     return _data[tuple([xyz[c] for c in component])]
                 except IndexError as err:
-                    raise NoComponentError(component, 2, err)
+                    raise NoComponentError(component, 2, str(err))
     else:
         raise ValueError(
             f"component is given by `{component}` of type {type(component)}. Should be str or tuple")
