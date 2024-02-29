@@ -22,6 +22,20 @@ pauli_z = [[1, 0], [0, -1]]
 pauli_xyz = np.array([pauli_x, pauli_y, pauli_z]).transpose((1, 2, 0))
 
 
+def num_cart_dim(key):
+    """
+    returns the number of cartesian dimensions of a matrix by key
+    """
+    if key in ["Ham"]:
+        return 0
+    elif key in ["AA", "BB", "CC", "SS", "SH", "OO"]:
+        return 1
+    elif key in ["SHA", "SA", "SR", "SHR", "GG", "FF"]:
+        return 2
+    else:
+        raise ValueError(f"unknown matrix {key}")
+
+
 class System:
 
     """

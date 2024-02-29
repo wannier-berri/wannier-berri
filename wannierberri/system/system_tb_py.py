@@ -53,7 +53,7 @@ class System_tb_py(System_R):
             self.num_wann = model.size
             if self.need_R_any(['SS', 'SHA', 'SA', 'SH', 'SRA', 'SR']):
                 raise ValueError(
-                    "System_{} class cannot be used for evaluation of spin properties".format(names[module]))
+                    f"System_{names[module]} class cannot be used for evaluation of spin properties")
             self.spinors = False
             positions = model.pos
             Rvec = np.array([R[0] for R in model.hop.items()], dtype=int)
@@ -72,7 +72,7 @@ class System_tb_py(System_R):
             print("number of wannier functions:", self.num_wann)
             Rvec = np.array([R[-1] for R in model._hoppings], dtype=int)
         else:
-            raise ValueError("unknown tight-binding module {}".format(module))
+            raise ValueError(f"unknown tight-binding module {module}")
 
         self.dimr = real.shape[1]
         self.norb = positions.shape[0]
@@ -102,7 +102,7 @@ class System_tb_py(System_R):
             R_all = np.column_stack((np.array([0, 0, 0]), R_all.T)).T
             index0 = 0
         elif index0.size == 1:
-            print("R=0 found at position(s) {}".format(index0))
+            print(f"R=0 found at position(s) {index0}")
             index0 = index0[0][0]
         else:
             raise RuntimeError(f"wrong value of index0={index0}, with R_all={R_all}")
@@ -147,7 +147,7 @@ class System_tb_py(System_R):
         self.set_R_mat('Ham', Ham_R)
 
         self.do_at_end_of_init()
-        cprint("Reading the system from {} finished successfully".format(names[module]), 'green', attrs=['bold'])
+        cprint(f"Reading the system from {names[module]} finished successfully", 'green', attrs=['bold'])
 
 
 class System_TBmodels(System_tb_py):

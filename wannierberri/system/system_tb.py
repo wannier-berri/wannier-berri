@@ -45,8 +45,8 @@ class System_tb(System_R):
 
         self.seedname = tb_file.split("/")[-1].split("_")[0]
         f = open(tb_file, "r")
-        l = f.readline()
-        cprint("reading TB file {0} ( {1} )".format(tb_file, l.strip()), 'green', attrs=['bold'])
+        line = f.readline().strip()
+        cprint(f"reading TB file {tb_file} ( {line} )", 'green', attrs=['bold'])
         self.real_lattice = np.array([f.readline().split()[:3] for i in range(3)], dtype=float)
 
         self.num_wann = int(f.readline())
@@ -90,4 +90,4 @@ class System_tb(System_R):
         if self.use_wcc_phase:
             self.convention_II_to_I()
 
-        cprint("Reading the system from {} finished successfully".format(tb_file), 'green', attrs=['bold'])
+        cprint(f"Reading the system from {tb_file} finished successfully", 'green', attrs=['bold'])

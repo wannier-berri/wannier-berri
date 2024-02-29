@@ -1,4 +1,5 @@
 import os
+import warnings
 
 
 class Parallel():
@@ -38,7 +39,7 @@ class Parallel():
                 if opt not in ray_init:
                     ray_init_loc[opt] = def_val()
                 else:
-                    print(f"WARNING: the ray cluster will use '{ray_init[opt]}' provided in ray_init")
+                    warnings.warn(f"the ray cluster will use '{ray_init[opt]}' provided in ray_init")
             set_opt('address', lambda: 'auto')
             set_opt('_node_ip_address', lambda: os.environ["ip_head"].split(":")[0])
             set_opt('_redis_password', lambda: os.environ["redis_password"])
@@ -90,8 +91,8 @@ def pool(npar):
         try:
             from multiprocessing import Pool
             pool = Pool(npar).imap
-            print('created a pool of {} workers'.format(npar))
+            print(f'created a pool of {npar} workers')
             return pool, npar
         except Exception as err:
-            print('failed to create a pool of {} workers : {}\n doing in serial'.format(npar, err))
+            print(f'failed to create a pool of {npar} workers : {err}\n doing in serial')
     return (lambda fun, lst: [fun(x) for x in lst]), 1

@@ -175,8 +175,7 @@ class Orbitals():
                 orb_rot_mat[0, i] = (2 * subs[0] - subs[1] - subs[2]) / sym.sqrt(3.0)
                 orb_rot_mat[2, i] = (subs[1] - subs[2]).evalf()
 
-        assert np.abs(np.linalg.det(
-            orb_rot_mat)) > 0.99, 'ERROR!!!!: Your crystal symmetry does not allow {} orbital exist. {}'.format(
-                orb_symbol, np.abs(np.linalg.det(orb_rot_mat)))
+        assert np.abs(np.linalg.det(orb_rot_mat)) > 0.99, \
+            f'Your crystal symmetry does not allow {orb_symbol} orbital to exist. {np.abs(np.linalg.det(orb_rot_mat))}'
 
         return orb_rot_mat

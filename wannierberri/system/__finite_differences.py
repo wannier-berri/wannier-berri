@@ -17,11 +17,11 @@ class FiniteDifferences():
         return np.array(self.recip_lattice) / np.array(self.FFT)
 
 
-def find_shells(basis, isearch=3):
+def find_shells(basis, isearch=3, isearchmax=6):
     """returns the weights of the bk vectors, and the bk vectors to the corresponding neighbour points"""
-    if isearch > 6:
+    if isearch > isearchmax:
         raise RuntimeError(
-            'Failed to sattisfy (B1) criteria of PRB 56, 12847 (1997) upto {} cells . Must be smth wrong'.format(6))
+            f'Failed to sattisfy (B1) criteria of PRB 56, 12847 (1997) upto {isearchmax} cells . Must be smth wrong')
     search = np.arange(-isearch, isearch + 1)
     bki = np.array(np.meshgrid(search, search, search)).reshape(3, -1, order='F').T
     bk = bki.dot(basis)
@@ -107,12 +107,6 @@ def get_neighbours_FFT(recip_lattice, FFT):
     ki = np.array([kindex // (FFT[1] * FFT[2]), (kindex // FFT[2]) % FFT[1], kindex % FFT[2]]).T
     neigh = np.array([(ki + b[None, :]) % FFT for b in bki])
     neighbours = (neigh[:, :, 0] * FFT[1] + neigh[:, :, 1]) * FFT[2] + neigh[:, :, 2]
-    # print ("neigh=",neigh)
-    # print ("the weights are:",wk)
-    # print ("the bki are:",bki)
-    # print ("the neighbours of 0th kp are:",neighbours[:,0])
-    # for i in np.array(np.random.random(10)*NFFT_tot,dtype=int):
-    #     print ("the neighbours of {}th kp are: {}".format(i,neighbours[:,i]))
     return wk, bki, neighbours
 
 

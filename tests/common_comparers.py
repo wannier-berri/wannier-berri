@@ -233,9 +233,11 @@ def compare_fermisurfer():
         assert ndata == ndata_ref, f"ndata {ndata} != {ndata_ref}"
         assert basis == approx(basis_ref, abs=1e-8), f"basis  vectors differ :\n {basis} \n and \n {basis_ref}"
 
-        assert data == approx(
-            data_ref, abs=precision), error_message(
-                fout_name, suffix, None, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref, precision)
+        data_srt = np.sort(data.flatten())
+        data_ref_srt = np.sort(data_ref.flatten())
+        assert data_srt == approx(data_ref_srt, abs=precision)
+        assert data == approx(data_ref, abs=precision), error_message(
+            fout_name, suffix, None, np.max(np.abs(data - data_ref)), path_filename, path_filename_ref, precision)
 
     return _inner
 

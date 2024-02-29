@@ -18,7 +18,7 @@ from .parallel import pool
 from .system.system import System
 from .system.system_R import System_R
 from .system.system_kp import SystemKP
-from .__utility import print_my_name_start, print_my_name_end, FFT_R_to_k, alpha_A, beta_A
+from .__utility import FFT_R_to_k, alpha_A, beta_A
 from .grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
 from . import formula
 from .grid import KpointBZparallel, KpointBZtetra
@@ -155,7 +155,6 @@ class _Data_K(System, abc.ABC):
     ###########
 
     def _rotate(self, mat):
-        print_my_name_start()
         assert mat.ndim > 2
         if mat.ndim == 3:
             return np.array(self.poolmap(_rotate_matrix, zip(mat, self.UU_K)))
@@ -227,13 +226,11 @@ class _Data_K(System, abc.ABC):
 
     @cached_property
     def E_K(self):
-        print_my_name_start()
         EUU = self.poolmap(np.linalg.eigh, self.HH_K)
         E_K = self.phonon_freq_from_square(np.array([euu[0] for euu in EUU]))
         #        print ("E_K = ",E_K.min(), E_K.max(), E_K.mean())
         self.select_bands(E_K)
         self._UU = np.array([euu[1] for euu in EUU])[self.select_K, :][:, self.select_B]
-        print_my_name_end()
         return E_K[self.select_K, :][:, self.select_B]
 
     # evaluate the energies in the corners of the parallelepiped, in order to use tetrahedron method
@@ -254,7 +251,6 @@ class _Data_K(System, abc.ABC):
 
     @cached_property
     def delE_K(self):
-        print_my_name_start()
         delE_K = np.einsum("klla->kla", self.Xbar('Ham', 1))
         check = np.abs(delE_K).imag.max()
         if check > 1e-10:
@@ -329,7 +325,6 @@ class _Data_K(System, abc.ABC):
 
     @cached_property
     def UU_K(self):
-        print_my_name_start()
         self.E_K
         # the following is needed only for testing :
         if self.random_gauge:
@@ -341,7 +336,6 @@ class _Data_K(System, abc.ABC):
                     self._UU[ik, :, ib1:ib2] = self._UU[ik, :, ib1:ib2].dot(unitary_group.rvs(ib2 - ib1))
                     cnt += 1
                     s += ib2 - ib1
-        print_my_name_end()
         return self._UU
 
     @cached_property
@@ -717,8 +711,6 @@ class Data_K_R(_Data_K, System_R):
         for iv, _exp in enumerate(expdK):
             Ecorners[:, iv, :] = _Ecorners[:, iv, :][self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
-        print_my_name_end()
-        #        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
         return Ecorners
 
     def E_K_corners_parallel(self):
@@ -737,8 +729,6 @@ class Data_K_R(_Data_K, System_R):
                     E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
                     Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
-        print_my_name_end()
-        #        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
         return Ecorners
 
 
@@ -779,8 +769,6 @@ class Data_K_k(_Data_K):
         for iv, v in enumerate(vertices):
             Ecorners[:, iv, :] = _Ecorners[:, iv, :][self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
-        print_my_name_end()
-        #        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
         return Ecorners
 
     def E_K_corners_parallel(self):
@@ -794,8 +782,6 @@ class Data_K_k(_Data_K):
                     E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
                     Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
-        print_my_name_end()
-        #        print ("Ecorners",Ecorners.min(),Ecorners.max(),Ecorners.mean())
         return Ecorners
 
 

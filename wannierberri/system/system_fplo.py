@@ -119,4 +119,4 @@ class System_fplo(System_R):
         if self.use_ws:
             self.do_ws_dist(mp_grid=mp_grid)
 
-        cprint("Reading the FPLO Wannier system from {} finished successfully".format(hamdata), 'green', attrs=['bold'])
+        cprint(f"Reading the FPLO Wannier system from {hamdata} finished successfully", 'green', attrs=['bold'])

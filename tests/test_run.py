@@ -241,7 +241,8 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             'morb': calc.tabulate.OrbitalMoment(**param_tab),
             'Der_morb': calc.tabulate.DerOrbitalMoment(**param_tab),
         },
-        ibands=[5, 6, 7, 8])
+        ibands=[5, 6, 7, 8],
+        save_mode="frmsf+bin")
 
     parameters_optical = dict(
         Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
@@ -273,21 +274,29 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             result_type=EnergyResult)
 
     extra_precision = {'Morb': 1e-6, 'Der_berry': 5e-8}
+    npz_tabulate = os.path.join(OUTPUT_DIR, "berry_Fe_W90-tabulate-run.npz")
     for quant in result.results.get("tabulate").results.keys():  # ["Energy", "berry","Der_berry","spin","morb"]:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
             _quant = "E" if quant == "Energy" else quant
-            _comp = "-" + comp if comp != "" else ""
-            #            data=result.results.get(quant).data
-            #            assert data.shape[0] == len(Efermi)
-            #            assert np.all( np.array(data.shape[1:]) == 3)
+            _comp = "-" + comp if comp not in ("", None) else ""
             prec = extra_precision[quant] if quant in extra_precision else 2e-8
-            #            comparer(frmsf_name, quant+_comp+suffix,  suffix_ref=compare_quant(quant)+_comp+suffix_ref ,precision=prec )
-            compare_fermisurfer(
-                fout_name="berry_Fe_W90-tabulate",
-                suffix=_quant + _comp + "-run",
-                suffix_ref=_quant + _comp,
-                fout_name_ref="tabulate_Fe_W90",
-                precision=prec)
+            wberri.npz_to_fermisurfer(npz_file=npz_tabulate,
+                                      quantity=None if quant == "Energy" else quant,
+                                      component=comp,
+                                      frmsf_file=os.path.join(OUTPUT_DIR,
+                                                              "berry_Fe_W90-tabulate_" + _quant + _comp +
+                                                              "-run-from-npz.frmsf")
+                                      )
+            for end in "", "-from-npz":
+                compare_fermisurfer(
+                    fout_name="berry_Fe_W90-tabulate",
+                    suffix=_quant + _comp + "-run" + end,
+                    suffix_ref=_quant + _comp,
+                    fout_name_ref="tabulate_Fe_W90",
+                    precision=prec)
+
+
+
 
 
 def test_Fe_sparse(check_run, system_Fe_W90_sparse, compare_any_result):
@@ -992,9 +1001,9 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         precision = 1e-14 * np.max(abs(data1))
         assert data1 == approx(
             data2, abs=precision), (
-                f"calculated data of {key}  of full and half sets of Fermi levels give a maximal " +
-                "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
-                    abs_err=np.max(abs(data1 - data2)), required_precision=precision))
+                f"calculated data of {key}  of full and half sets of Fermi levels give a maximal "
+                f"absolute difference of {np.max(abs(data1 - data2))} greater than"
+                f"the required precision {precision}. ")
 
 
 @pytest.mark.parametrize("tetra", [True, False])
@@ -1132,8 +1141,8 @@ def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result
     data1 = result.results.get("dos_trig_2").data[:-nshift]
     data2 = result.results.get("dos_trig").data[nshift:]
     assert data1.shape == data2.shape
-    assert data1 == approx(data2), "the result with the shifted set of Fermi levels is different by {}".format(
-        np.max(np.abs(data1 - data2)))
+    assert data1 == approx(data2), \
+        f"the result with the shifted set of Fermi levels is different by {np.max(np.abs(data1 - data2))}"
 
 
 def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, compare_any_result):
@@ -1229,9 +1238,9 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
             precision = 1e-14 * np.max(abs(data1))
             assert data1 == approx(
                 data2, abs=precision), (
-                    f"calcuylated data of {label1}  and {label2} give a maximal " +
-                    "absolute difference of {abs_err} greater than the required precision {required_precision}. ".format(
-                        abs_err=np.max(abs(data1 - data2)), required_precision=precision))
+                    f"calcuylated data of {label1}  and {label2} give a maximal "
+                    f"absolute difference of {np.max(abs(data1 - data2))}"
+                    f"greater than the required precision {precision}. ")
 
 
 def test_Te_ASE_wcc(check_run, system_Te_ASE_wcc, data_Te_ASE, compare_any_result):

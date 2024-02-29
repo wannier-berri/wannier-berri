@@ -16,9 +16,6 @@ class Tabulator(Calculator):
         self.kwargs_formula = kwargs_formula
         super().__init__(**kwargs)
 
-    @property
-    def require_energy(self):
-        return True
 
     def __call__(self, data_K):
         formula = self.Formula(data_K, **self.kwargs_formula)
@@ -59,7 +56,7 @@ class TabulatorAll(Calculator):
     TabulatorAll - a pack of all k-resolved calculators (Tabulators)
     """
 
-    def __init__(self, tabulators, ibands=None, mode="grid", save_mode="frmsf", print_comment=False):
+    def __init__(self, tabulators, ibands=None, mode="grid", save_mode="bin", print_comment=False):
         """ tabulators - dict 'key':tabulator
         one of them should be "Energy" """
         self.tabulators = tabulators
@@ -67,9 +64,8 @@ class TabulatorAll(Calculator):
         assert mode in ("grid", "path")
         self.mode = mode
         self.save_mode = save_mode
-        if self.require_energy():
-            if "Energy" not in self.tabulators.keys():
-                self.tabulators["Energy"] = Energy()
+        if "Energy" not in self.tabulators.keys():
+            self.tabulators["Energy"] = Energy()
         if ibands is not None:
             ibands = np.array(ibands)
         for k, v in self.tabulators.items():
@@ -88,11 +84,6 @@ class TabulatorAll(Calculator):
                     "\n" + "-" * 50 + "\n")
         self._set_comment(print_comment)
 
-    def require_energy(self):
-        if np.any([tab.require_energy for tab in self.tabulators.values()]) and "frmsf" in self.save_mode:
-            return True
-        else:
-            return False
 
     def __call__(self, data_K):
         return TABresult(
