@@ -83,6 +83,10 @@ class BerryCurvature(Tabulator):
     def __init__(self, **kwargs):
         super().__init__(frml.Omega, **kwargs)
 
+class BerryCurvature_kp(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.Omegakp, **kwargs)
 
 class Spin(Tabulator):
     r" Spin expectation :math:` \langle u | \mathbf{\sigma} | u \rangle`"
