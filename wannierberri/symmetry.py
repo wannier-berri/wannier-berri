@@ -56,7 +56,7 @@ from collections.abc import Iterable
 SYMMETRY_PRECISION = 1e-6
 
 
-class Symmetry():
+class Symmetry:
     """
     Symmetries that acts on reciprocal space objects, in Cartesian coordinates.
     A k-point vector ``k`` transform as ``self.iTR * self.iInv * (sym.R @ k)``.

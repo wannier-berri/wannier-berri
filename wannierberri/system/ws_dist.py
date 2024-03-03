@@ -5,7 +5,7 @@ import functools
 from ..__utility import iterate3dpm
 
 
-class ws_dist_map():
+class ws_dist_map:
 
     def __init__(self, iRvec, wannier_centers, mp_grid, real_lattice, npar=multiprocessing.cpu_count()):
         # Find the supercell translation (i.e. the translation by a integer number of
@@ -96,6 +96,7 @@ def wigner_seitz(real_lattice, mp_grid):
         for i in iterate3dpm((1, 1, 1) + ws_search_size):
             ndiff = n - i * mp_grid
             dist.append(ndiff.dot(real_metric.dot(ndiff)))
+        dist = np.array(dist)
         dist_min = np.min(dist)
         if abs(dist[origin] - dist_min) < 1.e-7:
             irvec.append(n)

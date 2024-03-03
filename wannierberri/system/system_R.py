@@ -1,3 +1,4 @@
+import copy
 import warnings
 import numpy as np
 import os
@@ -44,7 +45,7 @@ class System_R(System):
         _getFF : bool
             generate the FF_R matrix based on the uIu file. May be used for only testing so far. Default : ``{_getFF}``
         use_wcc_phase: bool
-            using wannier centers in Fourier transform. Correspoinding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
+            using wannier centers in Fourier transform. Corresponding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
         npar : int
             number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
 
@@ -65,7 +66,7 @@ class System_R(System):
 
         super().__init__(**parameters)
         self.use_ws = use_ws
-        self.needed_R_matrices = set(['Ham'])
+        self.needed_R_matrices = {'Ham'}
         self.npar = multiprocessing.cpu_count() if npar is None else npar
         self.use_wcc_phase = use_wcc_phase
         if not self.use_wcc_phase:
@@ -131,7 +132,7 @@ class System_R(System):
                              " but are required for the current calculation. please check parameters of the System() initializer")
 
     def has_R_mat(self, key):
-        return (key in self._XX_R)
+        return key in self._XX_R
 
     def has_R_mat_any(self, keys):
         for k in keys:
@@ -274,8 +275,8 @@ class System_R(System):
                 sel = (self.iRvec[:, i] != 0)
                 if np.any(sel):
                     warnings.warn(f"you declared your system as non-periodic along direction {i},"
-                         f"but there are {sum(sel)} of total {self.nRvec} R-vectors with R[{i}]!=0."
-                         "They will be excluded, please make sure you know what you are doing")
+                                  f"but there are {sum(sel)} of total {self.nRvec} R-vectors with R[{i}]!=0."
+                                  "They will be excluded, please make sure you know what you are doing")
                     exclude[sel] = True
         if np.any(exclude):
             notexclude = np.logical_not(exclude)
@@ -284,7 +285,7 @@ class System_R(System):
                 if X in self._XX_R:
                     self.set_R_mat(X, self.get_X_mat(X)[:, :, notexclude], reset=True)
 
-    def set_spin(self, spins, axis=[0, 0, 1], **kwargs):
+    def set_spin(self, spins, axis=(0, 0, 1), **kwargs):
         """
         Set spins along axis in  SS(R=0).  Useful for model calculations.
         Note : The spin matrix is purely diagonal, so that <up | sigma_x | down> = 0
@@ -312,10 +313,10 @@ class System_R(System):
         Parameters
         ----------
         pairs : list of tuple
-            list of pair of indices of bands ``[(up1,down1), (up2,down2), ..]``
+            list of pairs of indices of bands ``[(up1,down1), (up2,down2), ..]``
 
-        Notes:
-        -------
+        Notes
+        -----
         * For abinitio calculations this is a rough approximation, that may be used on own risk.
         See also :func:`~wannierberri.system.System.set_spin_from_code`
         """
@@ -326,7 +327,7 @@ class System_R(System):
         assert len(set(all_states)) == len(all_states), "some states appear more then once in pairs"
         if len(pairs) < self.num_wann / 2:
             warnings.warn(f"number of spin pairs {len(pairs)} is less then num_wann/2 = {self.num_wann / 2}."
-                 "For other states spin properties will be set to zero. are yoiu sure ?")
+                          "For other states spin properties will be set to zero. are yoiu sure ?")
         SS_R0 = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
         for i, j in pairs:
             dist = np.linalg.norm(self.wannier_centers_cart[i] - self.wannier_centers_cart[j])
@@ -350,7 +351,7 @@ class System_R(System):
                 *  ``'vasp'`` : if bands are grouped by spin : first come all spin-up, then all spin-down
 
 
-        Notes:
+        Notes
         -------
         * This is a rough approximation, that may be used on own risk
         * The pure-spin character may be broken by maximal localization. Recommended to use `num_iter=0` in Wannier90
@@ -364,6 +365,8 @@ class System_R(System):
             pairs = [(i, i + nw2) for i in range(nw2)]
         elif DFT_code.lower() in ['qe', 'quantum_espresso', 'espresso']:
             pairs = [(2 * i, 2 * i + 1) for i in range(nw2)]
+        else:
+            raise ValueError(f"unknown DFT code '{DFT_code}'")
         self.set_spin_pairs(pairs)
 
     def do_at_end_of_init(self):
@@ -425,7 +428,7 @@ class System_R(System):
             _ham = self.Ham_R[:, :, iR] * Ndegen[iR]
             f.write(
                 "".join(
-                    f"{m+1:3d} {n+1:3d} {_ham[m,n].real:15.8e} {_ham[m,n].imag:15.8e}\n"
+                    f"{m + 1:3d} {n + 1:3d} {_ham[m, n].real:15.8e} {_ham[m, n].imag:15.8e}\n"
                     for n in self.range_wann for m in self.range_wann)
             )
         if self.has_R_mat('AA'):
@@ -437,19 +440,19 @@ class System_R(System):
                 _aa = AA[:, :, iR] * Ndegen[iR]
                 f.write(
                     "".join(
-                        f"{m+1:3d} {n+1:3d} " + " ".join(f"{a.real:15.8e} {a.imag:15.8e}"for a in _aa[m, n]) + "\n"
+                        f"{m + 1:3d} {n + 1:3d} " + " ".join(f"{a.real:15.8e} {a.imag:15.8e}" for a in _aa[m, n]) + "\n"
                         for n in self.range_wann for m in self.range_wann
                     )
                 )
         f.close()
 
     def _FFT_compatible(self, FFT, iRvec):
-        "check if FFT is enough to fit all R-vectors"
+        """check if FFT is enough to fit all R-vectors"""
         return np.unique(iRvec % FFT, axis=0).shape[0] == iRvec.shape[0]
 
     @property
     def NKFFT_recommended(self):
-        "finds a minimal FFT grid on which different R-vectors do not overlap"
+        """finds a minimal FFT grid on which different R-vectors do not overlap"""
         if hasattr(self, '_NKFFT_recommended'):
             return self._NKFFT_recommended
         NKFFTrec = np.ones(3, dtype=int)
@@ -497,7 +500,7 @@ class System_R(System):
 
     @property
     def wannier_centers_cart_wcc_phase(self):
-        "returns zero array if use_wcc_phase = False"
+        """returns zero array if use_wcc_phase = False"""
         if self.use_wcc_phase:
             return self.wannier_centers_cart
         else:
@@ -539,7 +542,7 @@ class System_R(System):
             R_new['CC'] = CC_R_new
         unknown = set(self._XX_R.keys()) - set(['Ham', 'AA', 'BB', 'CC', 'SS'])
         if len(unknown) > 0:
-            raise NotImplementedError(f"Convertion of conventions for {list(unknown)} is not implemented")
+            raise NotImplementedError(f"Conversion of conventions for {list(unknown)} is not implemented")
 
         for X in ['AA', 'BB', 'CC']:
             if self.has_R_mat(X):
@@ -579,7 +582,7 @@ class System_R(System):
         assert np.all(self.iRvec[lst_R] + self.iRvec[lst_mR] == 0)
         return lst_R, lst_mR
 
-    def conj_XX_R(self, XX_R):
+    def conj_XX_R(self, XX_R: str | np.ndarray):
         """ reverses the R-vector and takes the hermitian conjugate """
         if isinstance(XX_R, str):
             XX_R = self.get_R_mat(XX_R)
@@ -630,9 +633,9 @@ class System_R(System):
             atom_labels_unique = list(set(self.atom_labels))
             atom_numbers = [atom_labels_unique.index(label) for label in self.atom_labels]
             if self.magnetic_moments is None:
-                return (self.real_lattice, self.positions, atom_numbers)
+                return self.real_lattice, self.positions, atom_numbers
             else:
-                return (self.real_lattice, self.positions, atom_numbers, self.magnetic_moments)
+                return self.real_lattice, self.positions, atom_numbers, self.magnetic_moments
         except AttributeError:
             raise AttributeError("set_structure must be called before get_spglib_cell")
 
@@ -666,9 +669,10 @@ class System_R(System):
         if self.magnetic_moments is None:
             symmetry_gen.append(TimeReversal)
         elif not tr_found:
-            warnings.warn("you specified magnetic moments but spglib did not detect symmetries involving time-reversal. "
-                 f"proobably it is because you have an old spglib version {spglib.__version__}."
-                 "We suggest upgrading to spglib>=2.0.2")
+            warnings.warn(
+                "you specified magnetic moments but spglib did not detect symmetries involving time-reversal. "
+                f"proobably it is because you have an old spglib version {spglib.__version__}."
+                "We suggest upgrading to spglib>=2.0.2")
         else:
             if not all([len(x) for x in self.magnetic_moments]):
                 raise ValueError("magnetic_moments must be a list of 3d vector")
@@ -678,6 +682,7 @@ class System_R(System):
         self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
     def get_sparse(self, min_values={'Ham': 1e-3}):
+        min_values = copy.copy(min_values)
         ret_dic = dict(
             real_lattice=self.real_lattice,
             wannier_centers_reduced=self.wannier_centers_reduced,
@@ -712,7 +717,7 @@ class System_R(System):
     def _R_mat_npz_filename(self, key):
         return "_XX_R_" + key + ".npz"
 
-    def save_npz(self, path, extra_properties=[], exclude_properties=[], R_matrices=None, overwrite=True):
+    def save_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
         """
         Save system to a directory of npz files
         Parameters
@@ -758,7 +763,7 @@ class System_R(System):
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
             print(" - Ok!")
 
-    def load_npz(self, path, load_all_XX_R=False, exclude_properties=[]):
+    def load_npz(self, path, load_all_XX_R=False, exclude_properties=()):
         """
         Save system to a directory of npz files
         Parameters

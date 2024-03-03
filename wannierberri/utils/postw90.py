@@ -1,7 +1,7 @@
 #                                                            #
 # This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the WannierBerri   #
+# file 'LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
 #                                                            #
 # The WannierBerri code is hosted on GitHub:                 #
@@ -14,7 +14,7 @@
     additional options starting with "__wb" can be provided"
 
 
-    **Note:** to use this module the user needs to manually install the wannier90io module from github:
+    **Note:** to use this module the user needs to manually install the wannier90io module from GitHub:
     `pip install git+https://github.com/jimustafa/wannier90io-python.git`
 
         Usage example: ::
@@ -31,8 +31,9 @@
                 | fftw3 (default) or numpy
 """
 
-from .. import run, Grid, calculators, System_w90, Parallel
 import numpy as np
+import sys
+from .. import run, Grid, calculators, System_w90, Parallel
 from ..system.w90_files import parse_win_raw
 
 # default parameters
@@ -99,6 +100,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    from sys import argv
-
-    main(argv[1:])
+    main(sys.argv[1:])

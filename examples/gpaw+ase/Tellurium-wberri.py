@@ -118,7 +118,7 @@ Efermi=np.linspace(-10,10,10001)
 #generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
 #system.set_symmetry(generators)
 grid=wberri.Grid(system,length=50,NKFFT=10)
-print ("grid : ",grid.FFT, grid.div)
+print ("grid : ", grid.execute_fft, grid.div)
 parallel=wberri.Parallel(method="ray",num_cpus=4)
 
 wberri.integrate(system,

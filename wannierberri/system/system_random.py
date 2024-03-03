@@ -7,7 +7,7 @@ from .system import num_cart_dim
 class SystemRandom(System_R):
     """
     Randomly generated system. Mainly for testing.
-    Further can be symmetrized to get generic system with certain symmmetries.
+    Further can be symmetrized to get generic system with certain symmetries.
 
     Parameters:
     -----------
@@ -32,20 +32,18 @@ class SystemRandom(System_R):
         super().__init__(**parameters)
         if real_lattice is None:
             while True:
-                self.real_lattice = np.random.random((3, 3))
-                d = np.linalg.det(self.real_lattice)
-                if d < 0:
-                    self.real_lattice *= -1
-                if abs(d) > 1e-3:
+                real_lattice = np.random.random((3, 3))
+                d = np.linalg.det(real_lattice)
+                if abs(d) > 1e-2:
+                    if d < 0:
+                        real_lattice *= -1
                     break
-        else:
-            self.real_lattice = real_lattice
-
+        self.set_real_lattice(real_lattice)
         self.num_wann = num_wann
 
         assert (max_R * 2 + 1)**3 >= nRvec, "too many Rvectors or max_R too small"
         count = 0
-        iRvec = set({(0, 0, 0)})
+        iRvec = {(0, 0, 0)}
         while len(iRvec) < nRvec and count < 10:
             R_try = np.random.randint(low=-max_R, high=max_R + 1, size=(nRvec, 3))
             R_try = set(tuple(R) for R in R_try)

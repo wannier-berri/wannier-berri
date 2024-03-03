@@ -18,7 +18,7 @@ import pickle
 import glob
 from termcolor import cprint
 import warnings
-
+from .__utility import remove_file
 from .data_K import get_data_k
 from .grid import exclude_equiv_points, Path, Grid, GridTetra
 from .parallel import Serial
@@ -38,7 +38,9 @@ def print_progress(count, total, t0, tprev, print_progress_step):
     return tprev
 
 
-def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}, print_progress_step=5):
+def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters=None, print_progress_step=5):
+    if remote_parameters is None:
+        remote_parameters = {}
     print(f"symgroup : {symgroup}")
     t0 = time()
     t_print_prev = t0
@@ -48,9 +50,6 @@ def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}, pr
     if len(dK_list) == 0:
         print("nothing to process now")
         return 0
-
-    if parallel.method == 'ray':
-        remotes = [paralfunc.remote(dK, **remote_parameters) for dK in dK_list]
 
     print(f"processing {len(dK_list)} K points :", end=" ")
     if parallel.method == 'serial':
@@ -67,6 +66,7 @@ def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters={}, pr
             if (count + 1) % nstep_print == 0:
                 t_print_prev = print_progress(count + 1, numK, t0, t_print_prev, print_progress_step)
     elif parallel.method == 'ray':
+        remotes = [paralfunc.remote(dK, **remote_parameters) for dK in dK_list]
         num_remotes = len(remotes)
         num_remotes_calculated = 0
         while True:
@@ -107,7 +107,7 @@ def run(
         symmetrize=True,
         fout_name="result",
         suffix="",
-        parameters_K={},
+        parameters_K=None,
         file_Klist=None,
         restart=False,
         Klist_part=10,
@@ -155,6 +155,8 @@ def run(
         if `True` : reads restart information from `file_Klist` and starts from there
     Klist_part : int
         write the file_Klist by portions. Increase for speed, decrease for memory saving
+    parameters_K: dict
+        parameters to be passed to :class:`~wannierberri.data_K.Data_K` class
     fast_iter : bool
         if under iterations appear peaks that arte not further removed, set this parameter to False.
     print_progress_step : float or int
@@ -170,6 +172,8 @@ def run(
     """
 
     cprint("Starting run()", 'red', attrs=['bold'])
+    if parameters_K is None:
+        parameters_K = {}
     print_calculators(calculators)
     # along a path only tabulating is possible
     if isinstance(grid, Path):
@@ -219,12 +223,12 @@ def run(
 
         @ray.remote
         def paralfunc(Kpoint, _system, _grid, _calculators, npar_k):
-            data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+            data = get_data_k(_system, Kpoint.Kp_fullBZ, npar_k=npar_k, grid=_grid, Kpoint=Kpoint, **parameters_K)
             return ResultDict({k: v(data) for k, v in _calculators.items()})
     else:
 
         def paralfunc(Kpoint, _system, _grid, _calculators, npar_k):
-            data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+            data = get_data_k(_system, Kpoint.Kp_fullBZ, npar_k=npar_k, grid=_grid, Kpoint=Kpoint, **parameters_K)
             return ResultDict({k: v(data) for k, v in _calculators.items()})
 
     if restart:
@@ -262,25 +266,6 @@ def run(
                 print(f"File with changed factors {file_Klist_factor_changed} not found, assume they were not changed")
         except Exception as err:
             raise RuntimeError(f"{err}: reading from {file_Klist} failed, starting from scrath")
-    else:
-        K_list = grid.get_K_list(use_symmetry=use_irred_kpt)
-        print("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
-        start_iter = 0
-        nk_prev = 0
-
-    if not restart:
-        import os
-
-        def remove_file(filename):
-            if filename is not None and os.path.exists(filename):
-                os.remove(filename)
-
-        remove_file(file_Klist)
-        remove_file(file_Klist_factor_changed)
-
-    #    suffix="-"+suffix if len(suffix)>0 else ""
-
-    if restart:
         print("searching for start_iter")
         try:
             start_iter = int(
@@ -289,6 +274,13 @@ def run(
         except Exception as err:
             warnings.warn(f"{err} : failed to read start_iter. Setting to zero")
             start_iter = 0
+    else:
+        K_list = grid.get_K_list(use_symmetry=use_irred_kpt)
+        print("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
+        start_iter = 0
+        nk_prev = 0
+        remove_file(file_Klist)
+        remove_file(file_Klist_factor_changed)
 
     if adpt_num_iter < 0:
         adpt_num_iter = -adpt_num_iter * np.prod(grid.div) / np.prod(adpt_mesh) / adpt_fac / 3
@@ -388,7 +380,7 @@ def run(
             print(f"Writing file_Klist_factor_changed to {file_Klist_factor_changed}")
             fw_changed = open(file_Klist_factor_changed, "a")
             for iK in excluded_Klist:
-                fw_changed.write(f"{iK} 0.0 # refined\n".format(iK, 0.0))
+                fw_changed.write(f"{iK} 0.0 # refined\n")
             for iK in weight_changed_old:
                 fw_changed.write(f"{iK} {K_list[iK].factor} # changed\n")
             fw_changed.close()

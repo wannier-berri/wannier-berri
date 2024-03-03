@@ -1,6 +1,6 @@
 import numpy as np
 from ..__utility import alpha_A, beta_A
-from . import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct
+from .formula import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct
 from ..symmetry import transform_ident, transform_odd
 
 
@@ -30,7 +30,7 @@ class Eavln(Matrix_ln):
 
 
 class DEinv_ln(Matrix_ln):
-    "DEinv_ln.matrix[ik, m, n] = 1 / (E_mk - E_nk)"
+    """DEinv_ln.matrix[ik, m, n] = 1 / (E_mk - E_nk)"""
 
     def __init__(self, data_K):
         super().__init__(data_K.dEig_inv)
@@ -238,7 +238,8 @@ class Velocity(Matrix_ln):
         v = data_K.covariant('Ham', gender=1)
         self.__dict__.update(v.__dict__)
         if external_terms:
-            self.matrix = self.matrix + 1j * data_K.Xbar('AA') * (data_K.E_K[:, :, None, None] - data_K.E_K[:, None, :, None])
+            self.matrix = self.matrix + 1j * data_K.Xbar('AA') * (
+                        data_K.E_K[:, :, None, None] - data_K.E_K[:, None, :, None])
 
 
 class Spin(Matrix_ln):
@@ -253,6 +254,7 @@ class DerSpin(Matrix_GenDer_ln):
     def __init__(self, data_K):
         s = data_K.covariant('SS', gender=1)
         self.__dict__.update(s.__dict__)
+
 
 ########################
 #   orbital moment     #
@@ -434,10 +436,8 @@ def _spin_velocity_einsum_opt(C, A, B):
         C[ik] += np.transpose(tmp_c, (0, 2, 3, 1))  # nsma -> nmas
 
 
-
-
 class SpinVelocity(Matrix_ln):
-    "spin current matrix elements. SpinVelocity.matrix[ik, m, n, a, s] = <u_mk|{v^a S^s}|u_nk> / 2"
+    """spin current matrix elements. SpinVelocity.matrix[ik, m, n, a, s] = <u_mk|{v^a S^s}|u_nk> / 2"""
 
     def __init__(self, data_K, spin_current_type, external_terms=True):
         if spin_current_type == "simple":
@@ -462,27 +462,27 @@ class SpinVelocity(Matrix_ln):
         J = np.einsum("klms,kmna->klnas", S, V)
         return (J + J.swapaxes(1, 2).conj()) / 2
 
-
     def _J_H_qiao(self, data_K, external_terms=True):
         if not external_terms:
-            raise NotImplementedError("spin Hall qiao without external terms is not implemented yet. Use `SHC_type='simple'`")
+            raise NotImplementedError(
+                "spin Hall qiao without external terms is not implemented yet. Use `SHC_type='simple'`")
         # Spin current operator, J. Qiao et al PRB (2019)
         # J_H_qiao[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
         SS_H = data_K.Xbar('SS')
         SH_H = data_K.Xbar("SH")
         shc_K_H = -1j * data_K.Xbar("SR")
         _spin_velocity_einsum_opt(shc_K_H, SS_H, data_K.D_H)
-        shc_L_H = -1j * data_K._R_to_k_H(data_K.get_R_mat('SHR'), hermitean=False)
+        shc_L_H = -1j * data_K._R_to_k_H(data_K.get_R_mat('SHR'), hermitian=False)
         _spin_velocity_einsum_opt(shc_L_H, SH_H, data_K.D_H)
         J = (
-            data_K.delE_K[:, None, :, :, None] * SS_H[:, :, :, None, :] +
-            data_K.E_K[:, None, :, None, None] * shc_K_H[:, :, :, :, :] - shc_L_H)
+                data_K.delE_K[:, None, :, :, None] * SS_H[:, :, :, None, :] +
+                data_K.E_K[:, None, :, None, None] * shc_K_H[:, :, :, :, :] - shc_L_H)
         return (J + J.swapaxes(1, 2).conj()) / 2
-
 
     def _J_H_ryoo(self, data_K, external_terms=True):
         if not external_terms:
-            raise NotImplementedError("spin Hall ryoo without external terms is not implemented yet. Use `SHC_type='simple'`")
+            raise NotImplementedError(
+                "spin Hall ryoo without external terms is not implemented yet. Use `SHC_type='simple'`")
         # Spin current operator, J. H. Ryoo et al PRB (2019)
         # J_H_ryoo[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
         SA_H = data_K.Xbar("SA")
@@ -492,9 +492,8 @@ class SpinVelocity(Matrix_ln):
         return (J + J.swapaxes(1, 2).conj()) / 2
 
 
-
 class SpinOmega(Formula_ln):
-    "spin Berry curvature"
+    """spin Berry curvature"""
 
     def __init__(self, data_K, spin_current_type="ryoo", **parameters):
         super().__init__(data_K, **parameters)
@@ -538,7 +537,8 @@ class VelOmega(FormulaProduct):
 class VelHplus(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
-        super().__init__([data_K.covariant('Ham', commader=1), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='VelHplus')
+        super().__init__([data_K.covariant('Ham', commader=1), Morb_Hpm(data_K, sign=+1, **kwargs_formula)],
+                         name='VelHplus')
 
 
 class VelSpin(FormulaProduct):
@@ -556,7 +556,8 @@ class VelVel(FormulaProduct):
 class VelVelVel(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
-        super().__init__([data_K.covariant('Ham', commader=1), data_K.covariant('Ham', commader=1), data_K.covariant('Ham', commader=1)], name='VelVelVel')
+        super().__init__([data_K.covariant('Ham', commader=1), data_K.covariant('Ham', commader=1),
+                          data_K.covariant('Ham', commader=1)], name='VelVelVel')
 
 
 class MassVel(FormulaProduct):
@@ -575,7 +576,7 @@ class VelMassVel(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([data_K.covariant('Ham', commader=1), InvMass(data_K),
-            data_K.covariant('Ham', commader=1)], name='VelMassVel')
+                          data_K.covariant('Ham', commader=1)], name='VelMassVel')
 
 
 class OmegaS(FormulaProduct):
@@ -593,4 +594,5 @@ class OmegaOmega(FormulaProduct):
 class OmegaHplus(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
-        super().__init__([Omega(data_K, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula)], name='OmegaHplus')
+        super().__init__([Omega(data_K, **kwargs_formula), Morb_Hpm(data_K, sign=+1, **kwargs_formula)],
+                         name='OmegaHplus')

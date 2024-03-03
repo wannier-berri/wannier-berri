@@ -336,10 +336,10 @@ class Wannier90data:
     def __init__(self, seedname="wannier90", read_chk=False,
                  kmesh_tol=1e-7, bk_complete_tol=1e-5,
                  read_npz=True,
-                 write_npz_list=['mmn', 'eig', 'amn'],
+                 write_npz_list=('mmn', 'eig', 'amn'),
                  write_npz_formatted=True,
                  overwrite_npz=False,
-                 formatted=[],
+                 formatted=tuple(),
                  ):  # ,sitesym=False):
         assert not (read_npz and overwrite_npz), "cannot read and overwrite npz files"
         self.seedname = copy(seedname)

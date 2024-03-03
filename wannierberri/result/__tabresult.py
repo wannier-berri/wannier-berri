@@ -10,7 +10,9 @@ from .__kbandresult import get_component
 
 class TABresult(Result):
 
-    def __init__(self, kpoints, recip_lattice, results={}, mode="grid", save_mode="bin"):
+    def __init__(self, kpoints, recip_lattice, results=None, mode="grid", save_mode="bin"):
+        if results is None:
+            results = {}
         self.nband = results['Energy'].nband
         self.mode = mode
         self.grid = None
@@ -47,6 +49,9 @@ class TABresult(Result):
         return TABresult(np.vstack((self.kpoints, other.kpoints)),
                          recip_lattice=self.recip_lattice,
                          results=results, mode=self.mode, save_mode=self.save_mode)
+
+    def as_dict(self):
+        raise NotImplementedError()
 
     def save(self, name):
         return  # do nothing so far
@@ -135,7 +140,7 @@ class TABresult(Result):
 
     def __get_data_grid(self, quantity, iband, component=None, efermi=None):
         if isinstance(iband, Iterable):
-            shape = tuple(self.grid) + (len(iband), )
+            shape = tuple(self.grid) + (len(iband),)
         else:
             shape = tuple(self.grid)
         if quantity == 'Energy':
@@ -175,13 +180,12 @@ class TABresult(Result):
         if self.gridorder != 'C':
             raise RuntimeError("the data should be on a 'C'-ordered grid for generating FermiSurfer files")
         return fermiSurfer(recip_lattice=self.recip_lattice,
-                    Enk=self.get_data(quantity="Energy", iband=iband),
-                    data=Xnk,
-                    efermi=efermi,
-                    npar=npar,
-                    frmsf_name=frmsf_name
-                    )
-
+                           Enk=self.get_data(quantity="Energy", iband=iband),
+                           data=Xnk,
+                           efermi=efermi,
+                           npar=npar,
+                           frmsf_name=frmsf_name
+                           )
 
     def plot_path_fat(
             self,

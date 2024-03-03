@@ -8,7 +8,7 @@ from functools import cached_property
 import copy
 
 
-class SymWann():
+class SymWann:
     """
     Symmetrize wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
 
@@ -22,7 +22,7 @@ class SymWann():
         Positions of each atom.
     atom_name: list
         Name of each atom.
-    proj: list
+    projections: list
         Should be the same with projections card in relative Wannier90.win.
 
         eg: ``['Te: s','Te:p']``
@@ -39,7 +39,7 @@ class SymWann():
     soc: bool
         Spin orbital coupling.
     magmom: 2D array
-        Magnetic momentom of each atoms.
+        Magnetic moment of each atom.
     DFT_code: str
         ``'qe'`` or ``'vasp'``
         vasp and qe have different orbitals arrangement with SOC.
@@ -124,7 +124,7 @@ class SymWann():
         '''
         proj_dic = defaultdict(lambda: [])
         orbital_index = 0
-        orbital_index_list = [[] for i in range(num_atom)]
+        orbital_index_list = [[] for _ in range(num_atom)]
         for proj in projections:
             name_str = proj.split(":")[0].split()[0]
             orb_str = proj.split(":")[1].strip('\n').strip().split(';')
@@ -207,11 +207,9 @@ class SymWann():
         for X in self.matrix_list.values():
             self.spin_reorder(X)
 
-
     # ==============================
-    # Find space group and symmetres
+    # Find space group and symmetries
     # ==============================
-
 
     def show_symmetry(self):
         for i, symop in enumerate(self.symmetry_operations):
@@ -233,10 +231,10 @@ class SymWann():
                 (trans[0], trans[1], trans[2], trans_cart[0], trans_cart[1], trans_cart[2]))
 
     def atom_rot_map(self, symop):
-        '''
+        """
         rot_map: A map to show which atom is the equivalent atom after rotation operation.
         vec_shift_map: Change of R vector after rotation operation.
-        '''
+        """
         wann_atom_positions = [self.wann_atom_info[i].position for i in range(self.num_wann_atom)]
         rot_map = []
         vec_shift_map = []
@@ -281,9 +279,9 @@ class SymWann():
         return np.array(rot_map, dtype=int), np.array(vec_shift_map, dtype=int), sym_only, sym_T
 
     def atom_p_mat(self, atom_info, symop):
-        '''
+        """
         Combining rotation matrix of Hamiltonian per orbital_quantum_number into per atom.  (num_wann,num_wann)
-        '''
+        """
         orbitals = atom_info.projection
         orb_position_dic = atom_info.orb_position_on_atom_dic
         num_wann_on_atom = atom_info.num_wann
@@ -323,13 +321,11 @@ class SymWann():
         print('number of symmetry oprations == ', self.nrot)
         return WCC_out.diagonal().T.real
 
-
     def index_R(self, R):
         try:
             return self.iRvec_index[tuple(R)]
         except KeyError:
             return None
-
 
     def symmetrize(self):
         res = self.symmetrize_new()
@@ -474,11 +470,11 @@ class SymWann():
         return matrix_dict_list_res, iRab_all
 
     def _rotate_XX_L(self, XX_L: np.ndarray, X: str,
-                    symop, atom_a, atom_b, mode="sum"):
-        '''
+                     symop, atom_a, atom_b, mode="sum"):
+        """
         H_ab_sym = P_dagger_a dot H_ab dot P_b
         H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
-        '''
+        """
         n_cart = num_cart_dim(X)  # number of cartesian indices
         for i in range(n_cart):
             # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure

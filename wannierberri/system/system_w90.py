@@ -51,7 +51,7 @@ class System_w90(System_R):
     bk_complete_tol : float
         tolerance to consider the set of b_k shells as complete.
     read_npz : bool
-    write_npz_list : list(str)
+    write_npz_list : tuple(str)
     write_npz_formatted : bool
 
     Notes
@@ -68,16 +68,16 @@ class System_w90(System_R):
             transl_inv=True,
             transl_inv_JM=False,
             guiding_centers=False,
-            fft='fftw',
+            fftlib='fftw',
             npar=multiprocessing.cpu_count(),
             kmesh_tol=1e-7,
             bk_complete_tol=1e-5,
             wcc_phase_fin_diff=True,
             read_npz=True,
-            write_npz_list=["eig", "mmn"],
+            write_npz_list=("eig", "mmn"),
             write_npz_formatted=True,
             overwrite_npz=False,
-            formatted=[],
+            formatted=tuple(),
             **parameters
     ):
 
@@ -142,7 +142,7 @@ class System_w90(System_R):
             iRvec=self.iRvec,
             ndegen=Ndegen,
             numthreads=npar,
-            fft=fft)
+            fftlib=fftlib)
 
         #########
         # Oscar #

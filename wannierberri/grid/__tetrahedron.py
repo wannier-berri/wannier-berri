@@ -1,7 +1,7 @@
 # ------------------------------------------------------------#
 # This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the WannierBerri   #
+# file 'LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
 #                                                            #
 #           Stepan Tsirkin, University of Zurich             #
@@ -22,9 +22,6 @@ def ones(n):
 
 @njit
 def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
-    e = [e0, e1, e2, e3]
-
-    #    print (e0,e1,e2,e3,der)
     e = np.array(sorted([e0, e1, e2, e3]))
     # a dirty trick to avoid divisions by zero
     diff_min = 1e-12
@@ -34,7 +31,7 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
     e1, e2, e3, e4 = e
 
     nEF = len(efall)
-    occ = np.zeros((nEF))
+    occ = np.zeros(nEF)
 
     # the accurate behaviour is a bit slower, but in some cases the faster implementation gives wrong results
     # in particular, when the energies e0,e1,e2,e3 are close to each other
@@ -180,7 +177,7 @@ def get_bands_above_range(emax, Eband, Ebandmin=None):
         return len(Eband)
 
 
-class TetraWeights():
+class TetraWeights:
     """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
        the Fermi level list remains the same throughout calculation"""
 
@@ -223,8 +220,6 @@ class TetraWeights():
             if eF is eFermi:
                 return i
         return -1
-
-    # this is for fermiocean
 
     def weights_all_band_groups(self, eFermi, der, degen_thresh=-1, degen_Kramers=False, Emin=-np.Inf, Emax=np.Inf):
         """
@@ -274,7 +269,7 @@ class TetraWeights():
 class TetraWeightsParal(TetraWeights):
 
     def weight_1k1b_priv(self, eFermi, ik, ib, der):
-        occ = np.zeros((eFermi.shape))
+        occ = np.zeros(eFermi.shape)
         eCorner = self.eCorners[ik, ..., ib]
         eCenter = self.eCenter[ik, ib]
 

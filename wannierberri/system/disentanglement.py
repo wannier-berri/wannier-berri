@@ -1,9 +1,7 @@
 from copy import deepcopy
 import numpy as np
 
-DEGEN_THRESH = 1e-2  # for safity - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
-
-
+DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
 
 
 def disentangle(w90data,
@@ -17,7 +15,7 @@ def disentangle(w90data,
                 ):
     r"""
     Performs disentanglement of the bands recorded in w90data, following the procedure described in
-    `Souza et al,PRB 2001 <https://doi.org/10.1103/PhysRevB.65.035109>`__
+    `Souza et al., PRB 2001 <https://doi.org/10.1103/PhysRevB.65.035109>`__
     At the end writes `w90data.chk.v_matrix` and sets `w90data.wannierised = True`
 
     Parameters
@@ -35,6 +33,8 @@ def disentangle(w90data,
     num_iter_converge : int
         the convergence is achieved when the standard deviation of the spread functional over the `num_iter_converge`
         iterations is less than conv_tol
+    mix_ratio : float
+        0 <= mix_ratio <=1  - mixing the previous itertions. 1 for max speed, smaller values are more stable
     print_progress_every
         frequency to print the progress
 
@@ -50,7 +50,7 @@ def disentangle(w90data,
         """define the indices of the frozen bands, making sure that degenerate bands were not split
         (unfreeze the degenerate bands together) """
         E = w90data.eig.data[ik]
-        ind = np.where((E <= froz_max) * (E >= froz_min))[0]
+        ind = list(np.where((E <= froz_max) * (E >= froz_min))[0])
         while len(ind) > 0 and ind[0] > 0 and E[ind[0]] - E[ind[0] - 1] < thresh:
             del ind[0]
         while len(ind) > 0 and ind[0] < len(E) and E[ind[-1] + 1] - E[ind[-1]] < thresh:
@@ -83,17 +83,16 @@ def disentangle(w90data,
 
     #        TODO : symmetrize (if needed)
 
-
-    def calc_Z(Mmn_loc, U=None):
-        if U is None:
+    def calc_Z(Mmn_loc, U_loc=None):
+        if U_loc is None:
             # Mmn_loc_opt=[Mmn_loc[ik] for ik in w90data.Dmn.kptirr]
             Mmn_loc_opt = [Mmn_loc[ik] for ik in w90data.iter_kpts]
         else:
             mmnff = Mmn_FF('free', 'free')
             # mmnff=[mmnff[ik] for ik in w90data.Dmn.kptirr]
             mmnff = [mmnff[ik] for ik in w90data.iter_kpts]
-            # Mmn_loc_opt=[[Mmn[ib].dot(U[ikb]) for ib,ikb in enumerate(neigh)] for Mmn,neigh in zip(mmnff,self.mmn.neighbours[irr])]
-            Mmn_loc_opt = [[Mmn[ib].dot(U[ikb]) for ib, ikb in enumerate(neigh)] for Mmn, neigh in
+            # Mmn_loc_opt=[[Mmn[ib].dot(U_loc[ikb]) for ib,ikb in enumerate(neigh)] for Mmn,neigh in zip(mmnff,self.mmn.neighbours[irr])]
+            Mmn_loc_opt = [[Mmn[ib].dot(U_loc[ikb]) for ib, ikb in enumerate(neigh)] for Mmn, neigh in
                            zip(mmnff, w90data.mmn.neighbours)]
         return [sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(wbk, Mmn)) for wbk, Mmn in
                 zip(w90data.mmn.wk, Mmn_loc_opt)]
@@ -144,8 +143,8 @@ def disentangle(w90data,
         nfrozen = sum(frozen[ik])
         nfree = sum(free[ik])
         assert nfree + nfrozen == nband
-        assert nfrozen <= w90data.chk.num_wann, (f"number of frozen bands {nfrozen} at k-point {ik+1}"
-            f"is greater than number of wannier functions {w90data.chk.num_wann}")
+        assert nfrozen <= w90data.chk.num_wann, (f"number of frozen bands {nfrozen} at k-point {ik + 1}"
+                                                 f"is greater than number of wannier functions {w90data.chk.num_wann}")
         U[frozen[ik], range(nfrozen)] = 1.
         U[free[ik], nfrozen:] = U_opt_free[ik]
         Z, D, V = np.linalg.svd(U.T.conj().dot(amn_list[ik]))
@@ -154,7 +153,7 @@ def disentangle(w90data,
     U_opt_full = U_opt_full_irr  # temporary, withour symmetries
     w90data.chk.v_matrix = np.array(U_opt_full).transpose((0, 2, 1))
     w90data.chk._wannier_centers = w90data.chk.get_AA_q(w90data.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(
-                axis=0).real.T / w90data.chk.num_kpts
+        axis=0).real.T / w90data.chk.num_kpts
 
     w90data.wannierised = True
     return w90data.chk.v_matrix

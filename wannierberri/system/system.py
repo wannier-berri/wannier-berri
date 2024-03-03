@@ -51,7 +51,7 @@ class System:
         position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
     NKFFT :
         the FFT grid which further will be used in calculations by default
-    force_only_internal_terms : bool
+    force_internal_terms_only : bool
         only internal terms will be evaluated in all formulae, the external or cross terms will be excluded.
         the internal terms are defined only by the Hamiltonian and spin
     name : str
@@ -71,6 +71,7 @@ class System:
         self.periodic = periodic
         self.name = name
 
+
         if NKFFT is not None:
             self._NKFFT_recommended = NKFFT
 
@@ -81,7 +82,9 @@ class System:
 
 
     def set_real_lattice(self, real_lattice=None, recip_lattice=None):
+        assert not hasattr(self, 'real_lattice')
         self.real_lattice, _ = real_recip_lattice(real_lattice=real_lattice, recip_lattice=recip_lattice)
+
 
 
     @cached_property
@@ -89,7 +92,7 @@ class System:
         real, recip = real_recip_lattice(real_lattice=self.real_lattice)
         return recip
 
-    def set_symmetry(self, symmetry_gen=[]):
+    def set_symmetry(self, symmetry_gen=()):
         """
         Set the symmetry group of the :class:`System`
 

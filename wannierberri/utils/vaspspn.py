@@ -8,7 +8,7 @@
 # Written by Stepan Tsirkin (University of the Basque Country)
 #    now at : Iniversity of Zurich
 import warnings
-from ..__utility import timenowiso
+from ..__utility import time_now_iso
 
 PAW_warning = """vaspspn uses pseudo-wavefunction instead of the full PAW
 (`Blöchl 1994 <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.50.17953>`__) wavefunction
@@ -121,7 +121,7 @@ def main(argv):
     print(f"WAVECAR contains {NK} k-points and {NBin} bands.\n Writing {NBout} bands in the output starting from")
 
     SPN = FortranFileW(fout)
-    header = f"Created from WAVECAR at {timenowiso()}"
+    header = f"Created from WAVECAR at {time_now_iso()}"
     header = header[:60]
     header += " " * (60 - len(header))
     SPN.write_record(bytearray(header, encoding='ascii'))

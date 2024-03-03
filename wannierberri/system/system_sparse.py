@@ -21,11 +21,13 @@ class SystemSparse(System_R):
     def __init__(self, real_lattice,
                  wannier_centers_reduced=None,
                  wannier_centers_cart=None,
-                 matrices={},
+                 matrices=None,
                  num_wann=None,
                  symmetrize_info=None,
                  **parameters):
 
+        if matrices is None:
+            matrices = {}
         super().__init__(**parameters)
         self.real_lattice = real_lattice
         if num_wann is None:

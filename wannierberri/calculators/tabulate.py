@@ -1,8 +1,9 @@
 import numpy as np
-from . import Calculator
+from .calculator import Calculator
 from ..formula import covariant as frml
 from ..formula import covariant_basic as frml_basic
 from ..result import KBandResult, TABresult
+
 
 # The base classes for Tabulating
 # particular calculators are below
@@ -10,12 +11,11 @@ from ..result import KBandResult, TABresult
 
 class Tabulator(Calculator):
 
-    def __init__(self, Formula, ibands=None, kwargs_formula={}, **kwargs):
+    def __init__(self, Formula, ibands=None, kwargs_formula=None, **kwargs):
         self.Formula = Formula
         self.ibands = np.array(ibands) if (ibands is not None) else None
-        self.kwargs_formula = kwargs_formula
+        self.kwargs_formula = kwargs_formula if kwargs_formula is not None else {}
         super().__init__(**kwargs)
-
 
     def __call__(self, data_K):
         formula = self.Formula(data_K, **self.kwargs_formula)
@@ -31,15 +31,15 @@ class Tabulator(Calculator):
         band_groups = [
             [n for n in groups.keys() if np.any((ibands >= n[0]) * (ibands < n[1]))] for groups in band_groups
         ]  # select only the needed groups
-        group = [[] for ik in range(nk)]
+        group = [[] for _ in range(nk)]
         for ik in range(nk):
             for ib in ibands:
                 for n in band_groups[ik]:
-                    if ib < n[1] and ib >= n[0]:
+                    if n[1] > ib >= n[0]:
                         group[ik].append(n)
                         break
 
-        rslt = np.zeros((nk, len(ibands)) + (3, ) * formula.ndim)
+        rslt = np.zeros((nk, len(ibands)) + (3,) * formula.ndim)
         for ik in range(nk):
             values = {}
             for n in band_groups[ik]:
@@ -75,15 +75,15 @@ class TabulatorAll(Calculator):
                         assert len(v.ibands) == len(ibands)
                         assert np.all(v.ibands == ibands)
                     except AssertionError:
-                        raise ValueError(f"tabulator {k} has ibands={v.ibands} not equal to ibands={ibands} required in TabulatorAll")
+                        raise ValueError(
+                            f"tabulator {k} has ibands={v.ibands} not equal to ibands={ibands} required in TabulatorAll")
                 else:
                     v.ibands = ibands
 
         self.comment = (self.__doc__ + "\n Includes the following tabulators : \n" + "-" * 50 + "\n" + "\n".join(
-                    f""" "{key}" : {val} : {val.comment}\n""" for key, val in self.tabulators.items()) +
-                    "\n" + "-" * 50 + "\n")
+            f""" "{key}" : {val} : {val.comment}\n""" for key, val in self.tabulators.items()) +
+                        "\n" + "-" * 50 + "\n")
         self._set_comment(print_comment)
-
 
     def __call__(self, data_K):
         return TABresult(
@@ -94,7 +94,6 @@ class TabulatorAll(Calculator):
             results={k: v(data_K)
                      for k, v in self.tabulators.items()})
 
-
     @property
     def allow_path(self):
         return self.mode == "path"
@@ -102,6 +101,7 @@ class TabulatorAll(Calculator):
     @property
     def allow_grid(self):
         return self.mode == "grid"
+
 
 ###############################################
 ###############################################
@@ -114,9 +114,6 @@ class TabulatorAll(Calculator):
 ###############################################
 ###############################################
 ###############################################
-
-
-
 
 
 class Energy(Tabulator):
@@ -138,14 +135,14 @@ class BerryCurvature(Tabulator):
 
 
 class Spin(Tabulator):
-    r" Spin expectation :math:` \langle u | \mathbf{\sigma} | u \rangle`"
+    r""" Spin expectation :math:` \langle u | \mathbf{\sigma} | u \rangle`"""
 
     def __init__(self, **kwargs):
         super().__init__(frml.Spin, **kwargs)
 
 
 class DerBerryCurvature(Tabulator):
-    r"Derivative of Berry curvature :math:`X_{ab}\partial_b\Omega_a`"
+    r"""Derivative of Berry curvature :math:`X_{ab}\partial_b\Omega_a`"""
 
     def __init__(self, **kwargs):
         super().__init__(frml.DerOmega, **kwargs)

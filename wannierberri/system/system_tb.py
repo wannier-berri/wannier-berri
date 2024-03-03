@@ -1,7 +1,7 @@
 #                                                            #
 # This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the WannierBerri   #
+# file 'LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
 #                                                            #
 # The WannierBerri code is hosted on GitHub:                 #
@@ -47,7 +47,7 @@ class System_tb(System_R):
         f = open(tb_file, "r")
         line = f.readline().strip()
         cprint(f"reading TB file {tb_file} ( {line} )", 'green', attrs=['bold'])
-        self.real_lattice = np.array([f.readline().split()[:3] for i in range(3)], dtype=float)
+        self.real_lattice = np.array([f.readline().split()[:3] for _ in range(3)], dtype=float)
 
         self.num_wann = int(f.readline())
         nRvec = int(f.readline())
@@ -65,7 +65,7 @@ class System_tb(System_R):
             f.readline()
             self.iRvec.append(f.readline().split())
             hh = np.array(
-                [[f.readline().split()[2:4] for n in range(self.num_wann)] for m in range(self.num_wann)],
+                [[f.readline().split()[2:4] for _ in range(self.num_wann)] for _ in range(self.num_wann)],
                 dtype=float).transpose((1, 0, 2))
             Ham_R[:, :, ir] = (hh[:, :, 0] + 1j * hh[:, :, 1]) / self.Ndegen[ir]
         self.set_R_mat('Ham', Ham_R)
@@ -76,7 +76,7 @@ class System_tb(System_R):
             AA_R = np.zeros((self.num_wann, self.num_wann, nRvec, 3), dtype=complex)
             for ir in range(nRvec):
                 f.readline()
-                assert (np.array(f.readline().split(), dtype=int) == self.iRvec[ir]).all()
+                assert np.all(np.array(f.readline().split(), dtype=int) == self.iRvec[ir])
                 aa = np.array(
                     [[f.readline().split()[2:8] for _ in range(self.num_wann)] for _ in range(self.num_wann)],
                     dtype=float)
