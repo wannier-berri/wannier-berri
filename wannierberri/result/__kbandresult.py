@@ -1,12 +1,16 @@
 import numpy as np
 from .__result import Result
 import itertools
+import abc
 from ..symmetry import transform_from_dict
 
 
-class K__Result(Result):
+class K__Result(Result, abc.ABC):
 
-    def __init__(self, data=None, transformTR=None, transformInv=None, file_npz=None, rank=None, other_properties={}):
+    def __init__(self, data=None, transformTR=None, transformInv=None, file_npz=None, rank=None,
+                 other_properties=None):
+        if other_properties is None:
+            other_properties = {}
         assert (data is not None) or (file_npz is not None)
         if file_npz is not None:
             res = np.load(open(file_npz, "rb"), allow_pickle=True)
@@ -28,6 +32,9 @@ class K__Result(Result):
         else:
             self.rank = rank
         self.other_properties = other_properties
+
+    def get_rank(self):
+        raise NotImplementedError()
 
     def fit(self, other):
         for var in ['transformTR', 'transformInv', 'rank']:

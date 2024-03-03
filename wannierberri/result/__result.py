@@ -1,7 +1,8 @@
 import numpy as np
+import abc
 
 
-class Result():
+class Result(abc.ABC):
 
     def __init__(self, save_mode="bin+txt"):
         self.save_mode = set()
@@ -10,16 +11,22 @@ class Result():
                 self.save_mode.add(s)
 
     #  multiplication by a number
+    @abc.abstractmethod
     def __mul__(self, other):
         raise NotImplementedError()
 
     # +
+    @abc.abstractmethod
     def __add__(self, other):
         raise NotImplementedError()
 
     # -
     def __sub__(self, other):
         raise NotImplementedError()
+
+    @abc.abstractmethod
+    def as_dict(self):
+        pass
 
     # writing to a file
     def savetxt(self, name):
@@ -28,7 +35,8 @@ class Result():
     # saving as binary
     def save(self, name):
         """
-        writes a dictionary-like objectto file called `name`  defined in :func:`~wannierberri.result.EnergyResult.as_dict`
+        writes a dictionary-like object to file called `name`  defined in
+        :func:`~wannierberri.result.EnergyResult.as_dict`
         """
         name = name.format('')
         with open(name + ".npz", "wb") as f:

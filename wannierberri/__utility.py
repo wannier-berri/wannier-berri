@@ -1,7 +1,7 @@
 #                                                            #
 # This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the WannierBerri   #
+# file 'LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
 #                                                            #
 # The WannierBerri code is hosted on GitHub:                 #
@@ -13,24 +13,24 @@
 
 import scipy.io
 import fortio
+import os
 from time import time
-from functools import cached_property
+from functools import cached_property, lru_cache
 import numpy as np
 import warnings
 from . import PYFFTW_IMPORTED
 from collections.abc import Iterable
 import datetime
 
-
 if PYFFTW_IMPORTED:
     import pyfftw
 
 
-def timenowiso():
+def time_now_iso():
     return datetime.datetime.now().isoformat()
 
 
-# inheriting just in order to have posibility to change default values, without changing the rest of the code
+# inheriting just in order to have possibility to change default values, without changing the rest of the code
 class FortranFileR(fortio.FortranFile):
 
     def __init__(self, filename):
@@ -38,7 +38,7 @@ class FortranFileR(fortio.FortranFile):
         try:
             super().__init__(filename, mode='r', header_dtype='uint32', auto_endian=True, check_file=True)
         except ValueError:
-            print(f"File '{filename}' contains subrecords - using header_dtype='int32'")
+            print(f"File '{filename}' contains sub-records - using header_dtype='int32'")
             super().__init__(filename, mode='r', header_dtype='int32', auto_endian=True, check_file=True)
 
 
@@ -61,7 +61,7 @@ def real_recip_lattice(real_lattice=None, recip_lattice=None):
     if recip_lattice is None:
         if real_lattice is None:
             warnings.warn("usually need to provide either with real or reciprocal lattice."
-                 "If you only want to generate a random symmetric tensor - that it fine")
+                          "If you only want to generate a random symmetric tensor - that it fine")
             return None, None
         else:
             recip_lattice = conjugate_basis(real_lattice)
@@ -75,16 +75,15 @@ def real_recip_lattice(real_lattice=None, recip_lattice=None):
     return np.array(real_lattice), np.array(recip_lattice)
 
 
-def clear_cached(obj, properties=[]):
+def clear_cached(obj, properties=()):
     for attr in properties:
         if hasattr(obj, attr):
             delattr(obj, attr)
 
 
-
 def str2bool(v):
     v1 = v.strip().lower()
-    if v1  in ("f", "false", ".false."):
+    if v1 in ("f", "false", ".false."):
         return False
     elif v1 in ("t", "true", ".true."):
         return True
@@ -94,38 +93,32 @@ def str2bool(v):
 
 def fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
     try:
-        return _fft_W(inp, axes, inverse=False, destroy=True, numthreads=1)
+        assert inp.dtype == complex
+        fft_in = pyfftw.empty_aligned(inp.shape, dtype='complex128')
+        fft_out = pyfftw.empty_aligned(inp.shape, dtype='complex128')
+        fft_object = pyfftw.FFTW(
+            fft_in,
+            fft_out,
+            axes=axes,
+            flags=('FFTW_ESTIMATE',) + (('FFTW_DESTROY_INPUT',) if destroy else ()),
+            direction='FFTW_BACKWARD' if inverse else 'FFTW_FORWARD',
+            threads=numthreads)
+        fft_object(inp)
+        return fft_out
     except RuntimeError as err:
         if "This is a bug" in str(err):
             raise RuntimeError(f"{err}\n Probably this can be fixed by importing wannierberri prior to numpy."
-                " See https://docs.wannier-berri.org/en/master/install.html#known-bug-with-pyfftw")
+                               " See https://docs.wannier-berri.org/en/master/install.html#known-bug-with-pyfftw")
         else:
             raise err
 
 
-def _fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
-    assert inp.dtype == complex
-    # t0=time()
-    fft_in = pyfftw.empty_aligned(inp.shape, dtype='complex128')
-    fft_out = pyfftw.empty_aligned(inp.shape, dtype='complex128')
-    # t01=time()
-    fft_object = pyfftw.FFTW(
-        fft_in,
-        fft_out,
-        axes=axes,
-        flags=('FFTW_ESTIMATE', ) + (('FFTW_DESTROY_INPUT', ) if destroy else ()),
-        direction='FFTW_BACKWARD' if inverse else 'FFTW_FORWARD',
-        threads=numthreads)
-    # t1=time()
-    fft_object(inp)
-    # t2=time()
-    return fft_out
-
-    def getHead(n):
-        if n <= 0:
-            return ['  ']
-        else:
-            return [a + b for a in 'xyz' for b in getHead(n - 1)]
+@lru_cache()
+def get_head(n):
+    if n <= 0:
+        return ['  ']
+    else:
+        return [a + b for a in 'xyz' for b in get_head(n - 1)]
 
 
 def fft_np(inp, axes, inverse=False):
@@ -136,42 +129,43 @@ def fft_np(inp, axes, inverse=False):
         return np.fft.fftn(inp, axes=axes)
 
 
-def FFT(inp, axes, inverse=False, destroy=True, numthreads=1, fft='fftw'):
-    fft = fft.lower()
-    if fft == 'fftw' and not PYFFTW_IMPORTED:
-        fft = 'numpy'
-    if fft == 'fftw':
+def execute_fft(inp, axes, inverse=False, destroy=True, numthreads=1, fftlib='fftw'):
+    fftlib = fftlib.lower()
+    if fftlib == 'fftw' and not PYFFTW_IMPORTED:
+        fftlib = 'numpy'
+    if fftlib == 'fftw':
         return fft_W(inp, axes, inverse=inverse, destroy=destroy, numthreads=numthreads)
-    elif fft == 'numpy':
+    elif fftlib == 'numpy':
         return fft_np(inp, axes, inverse=inverse)
     else:
-        raise ValueError(f"unknown type of fft : {fft}")
+        raise ValueError(f"unknown type of fftlib : {fftlib}")
 
 
-def fourier_q_to_R(AA_q, mp_grid, kpt_mp_grid, iRvec, ndegen, numthreads=1, fft='fftw'):
+def fourier_q_to_R(AA_q, mp_grid, kpt_mp_grid, iRvec, ndegen, numthreads=1, fftlib='fftw'):
     mp_grid = tuple(mp_grid)
     shapeA = AA_q.shape[1:]  # remember the shapes after q
     AA_q_mp = np.zeros(tuple(mp_grid) + shapeA, dtype=complex)
     for i, k in enumerate(kpt_mp_grid):
         AA_q_mp[k] = AA_q[i]
-    AA_q_mp = FFT(AA_q_mp, axes=(0, 1, 2), numthreads=numthreads, fft=fft, destroy=False)
+    AA_q_mp = execute_fft(AA_q_mp, axes=(0, 1, 2), numthreads=numthreads, fftlib=fftlib, destroy=False)
     AA_R = np.array([AA_q_mp[tuple(iR % mp_grid)] / nd for iR, nd in zip(iRvec, ndegen)]) / np.prod(mp_grid)
     AA_R = AA_R.transpose((1, 2, 0) + tuple(range(3, AA_R.ndim)))
     return AA_R
 
 
-class FFT_R_to_k():
+class FFT_R_to_k:
 
-    def __init__(self, iRvec, NKFFT, num_wann, numthreads=1, lib='fftw', name=None):
+    def __init__(self, iRvec, NKFFT, num_wann, numthreads=1, fftlib='fftw', name=None):
         t0 = time()
         self.NKFFT = tuple(NKFFT)
         self.num_wann = num_wann
-        lib = lib.lower()
-        assert lib in ('fftw', 'numpy', 'slow'), f"fft lib '{lib.lower()}' is unknown/supported"
-        if lib == 'fftw' and not PYFFTW_IMPORTED:
-            lib = 'numpy'
-        self.lib = lib
-        if lib == 'fftw':
+        self.name = name
+        fftlib = fftlib.lower()
+        assert fftlib in ('fftw', 'numpy', 'slow'), f"fftlib '{fftlib}' is unknown/not supported"
+        if fftlib == 'fftw' and not PYFFTW_IMPORTED:
+            fftlib = 'numpy'
+        self.lib = fftlib
+        if fftlib == 'fftw':
             shape = self.NKFFT + (self.num_wann, self.num_wann)
             fft_in = pyfftw.empty_aligned(shape, dtype='complex128')
             fft_out = pyfftw.empty_aligned(shape, dtype='complex128')
@@ -208,20 +202,19 @@ class FFT_R_to_k():
 
     @cached_property
     def exponent(self):
-        '''
+        """
         exponent for Fourier transform exp(1j*k*R)
-        '''
-        return [np.exp(2j * np.pi / self.NKFFT[i])**np.arange(self.NKFFT[i]) for i in range(3)]
+        """
+        return [np.exp(2j * np.pi / self.NKFFT[i]) ** np.arange(self.NKFFT[i]) for i in range(3)]
 
-    def __call__(self, AAA_R, hermitean=False, antihermitean=False, reshapeKline=True):
+    def __call__(self, AAA_R, hermitian=False, antihermitean=False, reshapeKline=True):
         t0 = time()
         # AAA_R is an array of dimension (  num_wann x num_wann x nRpts X... ) (any further dimensions allowed)
-        if hermitean and antihermitean:
-            raise ValueError("A matrix cannot be both hermitean and anti-hermitean, unless it is zero")
+        if hermitian and antihermitean:
+            raise ValueError("A matrix cannot be both hermitian and anti-hermitian, unless it is zero")
         AAA_R = AAA_R.transpose((2, 0, 1) + tuple(range(3, AAA_R.ndim)))
         shapeA = AAA_R.shape
         if self.lib == 'slow':
-            t0 = time()
             k = np.zeros(3, dtype=int)
             AAA_K = np.array(
                 [
@@ -234,7 +227,6 @@ class FFT_R_to_k():
                     ] for k[0] in range(self.NKFFT[0])
                 ])
         else:
-            t0 = time()
             assert self.nRvec == shapeA[0]
             assert self.num_wann == shapeA[1] == shapeA[2]
             AAA_K = np.zeros(self.NKFFT + shapeA[1:], dtype=complex)
@@ -244,14 +236,14 @@ class FFT_R_to_k():
             self.transform(AAA_K)
             AAA_K *= np.prod(self.NKFFT)
 
-        # TODO - think if fft transform of half of matrix makes sense
-        if hermitean:
+        # TODO - think if fftlib transform of half of matrix makes sense
+        if hermitian:
             AAA_K = 0.5 * (AAA_K + AAA_K.transpose((0, 1, 2, 4, 3) + tuple(range(5, AAA_K.ndim))).conj())
         elif antihermitean:
             AAA_K = 0.5 * (AAA_K - AAA_K.transpose((0, 1, 2, 4, 3) + tuple(range(5, AAA_K.ndim))).conj())
 
         if reshapeKline:
-            AAA_K = AAA_K.reshape((np.prod(self.NKFFT), ) + shapeA[1:])
+            AAA_K = AAA_K.reshape((np.prod(self.NKFFT),) + shapeA[1:])
         self.time_call += time() - t0
         self.n_call += 1
         return AAA_K
@@ -269,6 +261,8 @@ def iterate_nd(size, pm=False):
 def iterate3dpm(size):
     assert len(size) == 3
     return iterate_nd(size, pm=True)
+
+
 #   return (
 #       np.array([i, j, k]) for i in range(-size[0], size[0] + 1) for j in range(-size[1], size[1] + 1)
 #       for k in range(-size[2], size[2] + 1))
@@ -283,19 +277,17 @@ def iterate3dpm(size):
 def find_degen(arr, degen_thresh):
     """ finds shells of 'almost same' values in array arr, and returns a list o[(b1,b2),...]"""
     A = np.where(arr[1:] - arr[:-1] > degen_thresh)[0] + 1
-    A = [
-        0,
-    ] + list(A) + [len(arr)]
+    A = [0,] + list(A) + [len(arr)]
     return [(ib1, ib2) for ib1, ib2 in zip(A, A[1:])]
 
 
 def is_round(A, prec=1e-14):
     # returns true if all values in A are integers, at least within machine precision
-    return (np.linalg.norm(A - np.round(A)) < prec)
+    return np.linalg.norm(A - np.round(A)) < prec
 
 
 def get_angle(sina, cosa):
-    '''Get angle in radian from sin and cos.'''
+    """Get angle in radian from sin and cos."""
     if abs(cosa) > 1.0:
         cosa = np.round(cosa, decimals=1)
     alpha = np.arccos(cosa)
@@ -316,32 +308,32 @@ def angle_vectors_deg(vec1, vec2):
 
 # smearing functions
 def Lorentzian(x, width):
-    return 1.0 / (np.pi * width) * width**2 / (x**2 + width**2)
+    return 1.0 / (np.pi * width) * width ** 2 / (x ** 2 + width ** 2)
 
 
 def Gaussian(x, width, adpt_smr):
-    '''
+    """
     Compute 1 / (np.sqrt(pi) * width) * exp(-(x / width) ** 2)
     If the exponent is less than -200, return 0.
     An unoptimized version is the following.
         def Gaussian(x, width, adpt_smr):
             return 1 / (np.sqrt(pi) * width) * np.exp(-np.minimum(200.0, (x / width) ** 2))
-    '''
+    """
     inds = abs(x) < width * np.sqrt(200.0)
     output = np.zeros(x.shape, dtype=float)
     if adpt_smr:
         # width is array
         width_tile = np.tile(width, (x.shape[0], 1, 1))
-        output[inds] = 1.0 / (np.sqrt(np.pi) * width_tile[inds]) * np.exp(-(x[inds] / width_tile[inds])**2)
+        output[inds] = 1.0 / (np.sqrt(np.pi) * width_tile[inds]) * np.exp(-(x[inds] / width_tile[inds]) ** 2)
     else:
         # width is number
-        output[inds] = 1.0 / (np.sqrt(np.pi) * width) * np.exp(-(x[inds] / width)**2)
+        output[inds] = 1.0 / (np.sqrt(np.pi) * width) * np.exp(-(x[inds] / width) ** 2)
     return output
 
 
 # auxillary function"
 def FermiDirac(E, mu, kBT):
-    "here E is a number, mu is an array"
+    """here E is a number, mu is an array"""
     if kBT == 0:
         return 1.0 * (E <= mu)
     else:
@@ -362,3 +354,8 @@ def one2three(nk):
         nk = (nk,) * 3
     assert np.all([isinstance(n, (int, np.integer)) and n > 0 for n in nk])
     return np.array(nk)
+
+
+def remove_file(filename):
+    if filename is not None and os.path.exists(filename):
+        os.remove(filename)

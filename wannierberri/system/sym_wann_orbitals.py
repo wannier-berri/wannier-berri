@@ -2,7 +2,7 @@ import numpy as np
 import sympy as sym
 
 
-class Orbitals():
+class Orbitals:
 
     def __init__(self):
         x = sym.Symbol('x')

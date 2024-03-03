@@ -5,7 +5,8 @@
 
 
 Usage:
-   python -m wannierberri.cluster --batch-system <slurm or pbs> --exp-name <Job name>  --num-nodes <number of nodes> --partition cmt --command "<comand to run>"
+   python -m wannierberri.cluster --batch-system <slurm or pbs> --exp-name <Job name>  --num-nodes <number of nodes>
+   --partition cmt --command "<command to run>"
 
 
 """
@@ -44,7 +45,7 @@ def main():
         default="",
         help="The specified nodes to use. Same format as the return of 'sinfo'. Default: ''.")
     parser.add_argument("--num-cpus-per-node", nargs='?', type=int, help="Number of CPUs to use in each node. "
-        "(Default: None (use all available cpus))")
+                                                                         "(Default: None (use all available cpus))")
     parser.add_argument("--num-gpus", type=int, default=0, help="Number of GPUs to use in each node. (Default: 0)")
     parser.add_argument(
         "--partition",
@@ -59,7 +60,7 @@ def main():
         type=str,
         required=True,
         help="The command you wish to execute. For example: --command 'python "
-        "test.py' Note that the command must be a string.")
+             "test.py' Note that the command must be a string.")
     parser.add_argument(
         "--sleep-head",
         type=float,
@@ -69,7 +70,7 @@ def main():
         "--sleep-worker",
         type=float,
         default=5.,
-        help="Time to wait (sleep) after starting ray on every worker node (deconds, Default: 5.0)")
+        help="Time to wait (sleep) after starting ray on every worker node (seconds, Default: 5.0)")
     parser.add_argument(
         "--spilling-directory", type=str, default="", help="directory to spill objects in case of lack of memory"
     )  # see : https://docs.ray.io/en/master/memory-management.html#object-spilling
@@ -105,7 +106,7 @@ def main():
         # Note that `object_spilling_config`'s value should be json format.
         text = text.replace(
             SPILLING, '--system-config=\'{"object_spilling_config":"{"type":"filesystem",'
-            '"params":{"directory_path":"' + args.spilling_directory + '"}}"}\'')
+                      '"params":{"directory_path":"' + args.spilling_directory + '"}}"}\'')
 
     text = text.replace(JOB_NAME, job_name)
     text = text.replace(NUM_NODES, str(args.num_nodes))
@@ -131,7 +132,7 @@ def main():
     text = text.replace(
         "# THIS FILE IS A TEMPLATE AND IT SHOULD NOT BE DEPLOYED TO "
         "PRODUCTION!", "# THIS FILE IS MODIFIED AUTOMATICALLY FROM TEMPLATE AND SHOULD BE "
-        "RUNNABLE!")
+                       "RUNNABLE!")
     text = text.replace(SLEEP_HEAD, str(args.sleep_head))
     text = text.replace(SLEEP_WORKER, str(args.sleep_worker))
 

@@ -23,14 +23,15 @@ class Parallel():
             self,
             num_cpus=None,
             npar_k=0,
-            ray_init={},  # add extra parameters for ray.init()
+            ray_init=None,  # add extra parameters for ray.init()
             cluster=False,  # add parameters for ray.init() for the slurm cluster
             progress_step_percent=1,
                  ):
 
         self.method = "ray"
         self.progress_step_percent = progress_step_percent
-
+        if ray_init is None:
+            ray_init = {}
         ray_init_loc = {}
         if cluster:
             # The follwoing is done for testing, when __init__ is called with `cluster = True`,

@@ -13,7 +13,7 @@
 
 import numpy as np
 
-from ..__utility import str2bool, real_recip_lattice
+from ..__utility import str2bool
 from termcolor import cprint
 from .system_R import System_R
 from collections import defaultdict
@@ -52,44 +52,44 @@ class System_fplo(System_R):
         f = open(hamdata, "r")
         allread = False
         while not allread:
-            l = next(f)
-            if l.startswith("end spin:"):
+            line = next(f)
+            if line.startswith("end spin:"):
                 break
-            elif l.startswith("lattice_vectors:"):
+            elif line.startswith("lattice_vectors:"):
                 real_lattice_bohr = np.array([next(f).split() for _ in range(3)], dtype=float)
                 inv_real_lattice = np.linalg.inv(real_lattice_bohr)
-            elif l.startswith("nwan:"):
+            elif line.startswith("nwan:"):
                 self.num_wann = int(next(f))
-            elif l.startswith("nspin:"):
+            elif line.startswith("nspin:"):
                 nspin = int(next(f))
                 assert nspin == 1, "spin-polarized calculations arte not supported yeet"
-            elif l.startswith("have_spin_info:"):
+            elif line.startswith("have_spin_info:"):
                 have_spin = str2bool(next(f))
-                if (not have_spin) and self.spin:
+                if (not have_spin) and self.need_R_any(['SS', 'SHA', 'SR', 'SH', 'SHR', 'SA']):
                     raise ValueError("spin info required, but not contained in the file")
-            elif l.startswith("wancenters:"):
-                self.wannier_centers_cart = np.array([next(f).split() for i in range(self.num_wann)], dtype=float)
-            elif l.startswith("spin:"):
+            elif line.startswith("wancenters:"):
+                self.wannier_centers_cart = np.array([next(f).split() for _ in range(self.num_wann)], dtype=float)
+            elif line.startswith("spin:"):
                 ispin = int(next(f))
                 assert ispin == 1, f"spin = 1 expected, got {ispin}"
                 Ham_R = defaultdict(lambda: np.zeros((self.num_wann, self.num_wann), dtype=complex))
                 if self.need_R_any('SS'):
                     SS_R = defaultdict(lambda: np.zeros((self.num_wann, self.num_wann, 3), dtype=complex))
                 while True:
-                    l = next(f)
-                    if l.startswith("end spin:"):
+                    line = next(f)
+                    if line.startswith("end spin:"):
                         allread = True
                         break
-                    if l.startswith("Tij, Hij"):
+                    elif line.startswith("Tij, Hij"):
                         iw, jw = [int(x) for x in next(f).split()]
                         iw -= 1
                         jw -= 1
                         arread = []
                         while True:
-                            l = next(f)
-                            if l.startswith("end Tij, Hij"):
+                            line = next(f)
+                            if line.startswith("end Tij, Hij"):
                                 break
-                            arread.append(l.split())
+                            arread.append(line.split())
                         if len(arread) == 0:
                             continue
                         arread = np.array(arread, dtype=float)
@@ -106,7 +106,7 @@ class System_fplo(System_R):
         f.close()
         # Reading of file finished
 
-        self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=real_lattice_bohr * bohr)
+        self.set_real_lattice(real_lattice_bohr * bohr)
         iRvec = list(Ham_R.keys())
         self.set_R_mat('Ham', np.array([Ham_R[iR] for iR in iRvec]).transpose((1, 2, 0)))
         if self.need_R_any('SS'):

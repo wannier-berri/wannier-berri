@@ -337,7 +337,7 @@ def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
             par["kwargs_formula"] = {"external_terms": False}
         calculators[k] = v(**par)
 
-    grid = wberri.grid.GridTrigonalH(system_Te_sparse, length=50, NKFFT=[3, 3, 2], x=0.6)
+    grid = wberri.grid.GridTrigonalH(system_Te_sparse, length=50, NKFFT=1, x=0.6)
 
     check_run(
         system_Te_sparse,

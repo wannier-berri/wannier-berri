@@ -3,6 +3,7 @@ from functools import cached_property
 from ..symmetry import transform_from_dict
 from ..smoother import VoidSmoother
 from .__result import Result
+from ..__utility import get_head
 
 
 class EnergyResult(Result):
@@ -17,13 +18,13 @@ class EnergyResult(Result):
     data : array(float) or array(complex)
         | the data. The first dimensions should match the sizes of the Energies arrays. The rest should be equal to 3
     smoothers :  a list of :class:`~wannierberri.smoother.Smoother`
-        | smoothers, one per each energy variable (usually do not need to be set by the calculator function.
-        | but are set automaticaly for Fermi levels and Omega's , and during the further * and + operations
+        | smoothers, one per each energy variable (usually do not need to be set by the calculator function).
+        | but are set automatically for Fermi levels and Omega's , and during the further * and + operations
     transformTR : :class:~wannierberri.symmetry.Transform
-        | How the result trabsfrms  under time-reversal operation
+        | How the result transforms  under time-reversal operation
         | relevant if system has TimeReversal, either alone or in combination with spatial symmetyries
     transformInv : :class:~wannierberri.symmetry.Transform
-        | How the result trabsfrms  under inversion
+        | How the result transforms  under inversion
         | relevant if system has Inversion, either alone or as part of other symmetyries (e.g. Mx=C2x*I)
     rank : int
         | of the tensor, usually no need, to specify, it is set automatically to the number of dimensions
@@ -46,7 +47,7 @@ class EnergyResult(Result):
             transformTR=None,
             transformInv=None,
             rank=None,
-            E_titles=["Efermi", "Omega"],
+            E_titles=("Efermi", "Omega"),
             file_npz=None,
             comment="undocumented",
             **kwargs
@@ -205,16 +206,9 @@ class EnergyResult(Result):
 
     def savetxt(self, name):
         frmt = "{0:^31s}" if self.data.dtype == complex else "{0:^15s}"
-
-        def getHead(n):
-            if n <= 0:
-                return ['  ']
-            else:
-                return [a + b for a in 'xyz' for b in getHead(n - 1)]
-
         head = "".join("#### " + s + "\n" for s in self.comment.split("\n"))
         head += "#" + "    ".join(f"{s:^15s}" for s in self.E_titles) + " " * 8 + "    ".join(
-            frmt.format(b) for b in getHead(self.rank) * 2) + "\n"
+            frmt.format(b) for b in get_head(self.rank) * 2) + "\n"
         name = name.format('')
 
         open(name, "w").write(head + "\n".join(self.__write(self.data, self.dataSmooth, i=0)))

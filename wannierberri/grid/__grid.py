@@ -24,16 +24,17 @@ from ..__utility import one2three
 class GridAbstract(abc.ABC):
 
     @abc.abstractmethod
-    def __init__(self, **kwargs):
-        "init"
+    def __init__(self, system, use_symmetry, FFT=(1, 1, 1)):
+        self.symgroup = system.symgroup if use_symmetry else symmetry.Group(real_lattice=system.real_lattice)
+        self.FFT = np.array(FFT)
 
     @abc.abstractmethod
     def get_K_list(self, use_symmetry=False):
-        " get all K-points in the grid "
+        """ get all K-points in the grid """
 
-#    @property
-#    def recip_lattice(self):
-#        return self.symgroup.recip_lattice
+    #    @property
+    #    def recip_lattice(self):
+    #        return self.symgroup.recip_lattice
 
     @cached_property
     def points_FFT(self):
@@ -83,11 +84,12 @@ class Grid(GridAbstract):
 
     def __init__(self, system, length=None, NKdiv=None, NKFFT=None, NK=None, length_FFT=None, use_symmetry=True):
 
+        super().__init__(system=system, use_symmetry=use_symmetry)
         NKFFT_recommended = np.array(system.NKFFT_recommended)
-        self.symgroup = system.symgroup if use_symmetry else symmetry.Group(real_lattice=system.real_lattice)
         self.div, self.FFT = determineNK(
             system.periodic, NKdiv, NKFFT, NK, NKFFT_recommended, self.symgroup, length=length, length_FFT=length_FFT)
-#        self.findif = FiniteDifferences(self.recip_lattice, self.FFT)
+
+    #        self.findif = FiniteDifferences(self.recip_lattice, self.FFT)
 
     @property
     def str_short(self):
@@ -96,8 +98,6 @@ class Grid(GridAbstract):
     @property
     def dense(self):
         return self.div * self.FFT
-
-
 
     def get_K_list(self, use_symmetry=True):
         """ returns the list of Symmetry-irreducible K-points"""
@@ -127,7 +127,6 @@ class Grid(GridAbstract):
                     for x in range(self.div[0]):
                         KP = K_list[x][y][z]
                         if KP is not None:
-                            star = KP.star
                             star = [tuple(k) for k in np.array(np.round(KP.star * self.div), dtype=int) % self.div]
                             for k in star:
                                 if k != (x, y, z):
@@ -143,7 +142,6 @@ class Grid(GridAbstract):
         return K_list
 
 
-
 def iterate_vector(v1, v2):
     return ((x, y, z) for x in range(v1[0], v2[0]) for y in range(v1[1], v2[1]) for z in range(v1[2], v2[2]))
 
@@ -153,18 +151,15 @@ def autoNK(NK, NKFFTrec, symgroup):
     FFT_symmetric = np.array([fft for fft in iterate_vector(NKFFTrec, NKFFTrec * 3) if symgroup.symmetric_grid(fft)])
     NKFFTmin = FFT_symmetric[np.argmin(FFT_symmetric.prod(axis=1))]
     print("Minimal symmetric FFT grid : ", NKFFTmin)
-    if False:
-        FFT = NKFFTmin
-    else:
-        FFT_symmetric = np.array(
-            [fft for fft in iterate_vector(NKFFTmin, NKFFTmin * 2) if symgroup.symmetric_grid(fft)])
-        NKdiv_tmp = np.array(np.round(NK[None, :] / FFT_symmetric), dtype=int)
-        NKdiv_tmp[NKdiv_tmp <= 0] = 1
-        NKchange = NKdiv_tmp * FFT_symmetric / NK[None, :]
-        sel = (NKchange > 1)
-        NKchange[sel] = 1. / NKchange[sel]
-        NKchange = NKchange.min(axis=1)
-        FFT = FFT_symmetric[np.argmax(NKchange)]
+    FFT_symmetric = np.array(
+        [fft for fft in iterate_vector(NKFFTmin, NKFFTmin * 2) if symgroup.symmetric_grid(fft)])
+    NKdiv_tmp = np.array(np.round(NK[None, :] / FFT_symmetric), dtype=int)
+    NKdiv_tmp[NKdiv_tmp <= 0] = 1
+    NKchange = NKdiv_tmp * FFT_symmetric / NK[None, :]
+    sel = (NKchange > 1)
+    NKchange[sel] = 1. / NKchange[sel]
+    NKchange = NKchange.min(axis=1)
+    FFT = FFT_symmetric[np.argmax(NKchange)]
     NKdiv = np.array(np.round(NK / FFT), dtype=int)
     NKdiv[NKdiv <= 0] = 1
     return NKdiv, FFT
@@ -215,10 +210,10 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, symgroup, length=
 
     if NK is not None:
         if not np.all(NK == NKFFT * NKdiv):
-            warnings.warn(f" the requested k-grid {NK} was adjusted to {NKFFT*NKdiv}. ")
+            warnings.warn(f" the requested k-grid {NK} was adjusted to {NKFFT * NKdiv}. ")
 
     notperiodic = np.logical_not(periodic)
     NKdiv[notperiodic] = 1
     NKFFT[notperiodic] = 1
-    print(f"The grids were set to NKdiv={NKdiv}, NKFFT={NKFFT}, NKtot={NKdiv*NKFFT}")
+    print(f"The grids were set to NKdiv={NKdiv}, NKFFT={NKFFT}, NKtot={NKdiv * NKFFT}")
     return NKdiv, NKFFT

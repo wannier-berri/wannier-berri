@@ -1,6 +1,6 @@
 import numpy as np
 from ..__utility import alpha_A, beta_A
-from . import Formula_ln
+from .formula import Formula_ln
 from .covariant import DerDcov, Eavln
 from ..symmetry import transform_ident, transform_odd
 
@@ -185,8 +185,8 @@ class tildeHGab(Formula_ln):
 
 class tildeHab_d(Formula_ln):
 
-    def __init__(self, data_K, dT_wcc=True, **parameters):
-        super().__init__(data_K, **parameters)
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, dT_wcc=True, **parameters)
         self.dD = DerDcov(data_K)
         self.D = data_K.Dcov
         self.V = data_K.covariant('Ham', gender=1)

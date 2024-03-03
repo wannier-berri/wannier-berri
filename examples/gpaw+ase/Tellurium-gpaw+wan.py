@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 
-from ase import Atoms
 from gpaw import GPAW
-from ase.parallel import paropen
-
-
+from ase.dft import Wannier
 
 
 if False:
@@ -33,7 +30,6 @@ calc = GPAW("Te.gpw")
 
 print(calc.get_ibz_k_points())
 
-from ase.dft import Wannier
 wan = Wannier(nwannier=3, calc=calc, fixedstates=3)
 
 wan.localize() # Optimize rotation to give maximal localization

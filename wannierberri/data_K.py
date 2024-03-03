@@ -86,7 +86,7 @@ class _Data_K(System, abc.ABC):
     degen_thresh_random_gauge : float
         threshold to consider bands as degenerate for random_gauge
     fftlib :  str
-        library used to perform fft : 'fftw' (defgault) or 'numpy' or 'slow'
+        library used to perform fftlib : 'fftw' (defgault) or 'numpy' or 'slow'
     """
 
     # Those are not used at the moment , but will be restored (TODO):
@@ -608,7 +608,7 @@ class Data_K_R(_Data_K, System_R):
             self.NKFFT,
             self.num_wann,
             numthreads=self.npar_k if self.npar_k > 0 else 1,
-            lib=self.fftlib)
+            fftlib=self.fftlib)
 
         self.expdK = np.exp(2j * np.pi * self.system.iRvec.dot(dK))
         self.dK = dK
@@ -618,7 +618,7 @@ class Data_K_R(_Data_K, System_R):
 
     @property
     def HH_K(self):
-        return self.fft_R_to_k(self.Ham_R, hermitean=True)
+        return self.fft_R_to_k(self.Ham_R, hermitian=True)
 
     #########
     # Oscar #
@@ -681,21 +681,21 @@ class Data_K_R(_Data_K, System_R):
         key = (name, der)
         if key not in self._bar_quantities:
             self._bar_quantities[key] = self._R_to_k_H(
-                self.get_R_mat(name).copy(), der=der, hermitean=(name in ['AA', 'SS', 'OO']))
+                self.get_R_mat(name).copy(), der=der, hermitian=(name in ['AA', 'SS', 'OO']))
         return self._bar_quantities[key]
 
-    def _R_to_k_H(self, XX_R, der=0, hermitean=True):
+    def _R_to_k_H(self, XX_R, der=0, hermitian=True):
         """ converts from real-space matrix elements in Wannier gauge to
             k-space quantities in k-space.
             der [=0] - defines the order of comma-derivative
-            hermitean [=True] - consider the matrix hermitean
+            hermitian [=True] - consider the matrix hermitian
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
 
         for i in range(der):
             shape_cR = np.shape(self.cRvec_wcc)
             XX_R = 1j * XX_R.reshape((XX_R.shape) + (1,)) * self.cRvec_wcc.reshape(
                 (shape_cR[0], shape_cR[1], self.system.nRvec) + (1,) * len(XX_R.shape[3:]) + (3,))
-        return self._rotate((self.fft_R_to_k(XX_R, hermitean=hermitean))[self.select_K])
+        return self._rotate((self.fft_R_to_k(XX_R, hermitian=hermitian))[self.select_K])
 
     def E_K_corners_tetra(self):
         vertices = self.Kpoint.vertices_fullBZ
@@ -704,7 +704,7 @@ class Data_K_R(_Data_K, System_R):
         _Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
         for iv, _exp in enumerate(expdK):
             _Ham_R = self.Ham_R[:, :, :] * _exp[None, None, :]
-            _HH_K = self.fft_R_to_k(_Ham_R, hermitean=True)
+            _HH_K = self.fft_R_to_k(_Ham_R, hermitian=True)
             _Ecorners[:, iv, :] = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
         self.select_bands(_Ecorners)
         Ecorners = np.zeros((self.nk_selected, 4, self.nb_selected), dtype=float)
@@ -725,7 +725,7 @@ class Data_K_R(_Data_K, System_R):
                 for iz in 0, 1:
                     _expdK = expdK[ix, :, 0] * expdK[iy, :, 1] * expdK[iz, :, 2]
                     _Ham_R = self.Ham_R[:, :, :] * _expdK[None, None, :]
-                    _HH_K = self.fft_R_to_k(_Ham_R, hermitean=True)
+                    _HH_K = self.fft_R_to_k(_Ham_R, hermitian=True)
                     E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
                     Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)

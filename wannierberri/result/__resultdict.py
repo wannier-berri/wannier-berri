@@ -73,3 +73,6 @@ class ResultDict(Result):
     @property
     def max(self):
         return np.array([x for v in self.results.values() for x in v.max])
+
+    def as_dict(self):
+        raise NotImplementedError()

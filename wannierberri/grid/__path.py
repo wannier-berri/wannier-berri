@@ -58,8 +58,7 @@ class Path(GridAbstract):
             nphi=None,
             origin=None):
 
-        self.symgroup = system.symgroup
-        self.FFT = np.array([1, 1, 1])
+        super().__init__(system=system, use_symmetry=False)
 #        self.findif = None
         self.breaks = breaks
 

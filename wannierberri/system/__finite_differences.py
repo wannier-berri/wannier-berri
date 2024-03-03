@@ -45,7 +45,7 @@ def find_shells(basis, isearch=3, isearchmax=6):
             selected_ishells.append(ishell_try)
         if checkB1:
             break
-    wk = np.array([w for w, shell in zip(weights, selected_shells) for i in range(shell[0], shell[1]) if abs(w) > 1e-8])
+    wk = np.array([w for w, shell in zip(weights, selected_shells) for _ in range(shell[0], shell[1]) if abs(w) > 1e-8])
     bki = np.array(
         [bki[i] for w, shell in zip(weights, selected_shells) for i in range(shell[0], shell[1]) if abs(w) > 1e-8])
     return wk, bki

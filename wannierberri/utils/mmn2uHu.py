@@ -51,7 +51,7 @@
 
 import numpy as np
 import os
-from ..__utility import FortranFileR, FortranFileW, timenowiso
+from ..__utility import FortranFileR, FortranFileW, time_now_iso
 
 
 def hlp():
@@ -135,7 +135,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
 
     if writeMMN:
         f_mmn_out = open(outputpath + ".mmn", "w")
-        f_mmn_out.write(f"{MMNhead}, reduced to {NB_out} bands {timenowiso()} \n")
+        f_mmn_out.write(f"{MMNhead}, reduced to {NB_out} bands {time_now_iso()} \n")
         f_mmn_out.write(f"  {NB_out:10d}  {NK:10d}  {NNB:10d}\n")
         for ik in range(NK):
             print(f"k-point {ik} of {NK}")
@@ -177,7 +177,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
             f_amn_in.close()
 
         f_amn_out = open(outputpath + ".amn", "w")
-        f_amn_out.write(f"{head_AMN}, reduced to {NB_out} bands {timenowiso()} \n")
+        f_amn_out.write(f"{head_AMN}, reduced to {NB_out} bands {time_now_iso()} \n")
         f_amn_out.write(f"  {NB_out:10d}  {NK:10d}  {npr:10d}\n")
         for ik in range(nk):
             amn = AMN[IBstart:IBstart + NB_out, :, ik]
@@ -203,7 +203,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
                 print(f"----------\n  {UXU[0]}  NBsum={NB_sum} \n---------")
                 formatted = UXU[1]
 
-                header = f"{UXU[0]} from mmn red to {NB_out} sum {NB_sum} bnd {timenowiso()} "
+                header = f"{UXU[0]} from mmn red to {NB_out} sum {NB_sum} bnd {time_now_iso()} "
                 header = header[:60]
                 header += " " * (60 - len(header))
                 print(header)
@@ -316,7 +316,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
                 print(f"----------\n  {SXU[0]}  NBsum={NB_sum} \n---------")
                 formatted = SXU[1]
 
-                header = f"{SXU[0]} from mmn red to {NB_out} sum {NB_sum} bnd {timenowiso()} "
+                header = f"{SXU[0]} from mmn red to {NB_out} sum {NB_sum} bnd {time_now_iso()} "
                 header = header[:60]
                 header += " " * (60 - len(header))
                 print(header)

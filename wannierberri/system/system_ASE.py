@@ -1,7 +1,7 @@
 #                                                            #
 # This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the WannierBerri   #
+# file 'LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
 #                                                            #
 # The WannierBerri code is hosted on GitHub:                 #
@@ -13,7 +13,6 @@
 # ---------------------------------------------------------- #
 
 import numpy as np
-from ..__utility import real_recip_lattice
 from .system_R import System_R
 from .ws_dist import wigner_seitz
 from termcolor import cprint
@@ -44,7 +43,7 @@ class System_ASE(System_R):
                          use_wcc_phase=True,
                          **parameters)
         ase_wannier.translate_all_to_cell()
-        self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=np.array(ase_wannier.unitcell_cc))
+        self.set_real_lattice(np.array(ase_wannier.unitcell_cc))
         mp_grid = ase_wannier.kptgrid
 
         if not ase_R_vectors:
@@ -65,7 +64,7 @@ class System_ASE(System_R):
         self.num_wann = ase_wannier.nwannier
         self.num_kpts = ase_wannier.Nk
         self.wannier_centers_cart = ase_wannier.get_centers()
-        print(f"got the Wanier centers : {self.wannier_centers_cart}")
+        print(f"got the Wannier centers : {self.wannier_centers_cart}")
         self.kpt_red = ase_wannier.kpt_kc
 
         kpt_mp_grid = [
@@ -74,7 +73,7 @@ class System_ASE(System_R):
         ]
         if (0, 0, 0) not in kpt_mp_grid:
             raise ValueError(
-                "the grid of k-points read from .chk file is not Gamma-centerred. Please, use Gamma-centered grids in the ab initio calculation"
+                "the grid of k-points read from .chk file is not Gamma-centered. Please, use Gamma-centered grids in the ab initio calculation"
             )
 
         self.set_R_mat('Ham', np.array([ase_wannier.get_hopping(R) / nd for R, nd in zip(self.iRvec, self.Ndegen)]).transpose(

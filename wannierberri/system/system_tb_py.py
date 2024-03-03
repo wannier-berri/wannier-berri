@@ -1,7 +1,7 @@
 #                                                            #
 # This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the WannierBerri   #
+# file 'LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
 #                                                            #
 # The WannierBerri code is hosted on GitHub:                 #
@@ -18,7 +18,7 @@ from .system_R import System_R
 
 class System_tb_py(System_R):
     """This interface initializes the System class from a tight-binding
-    model packewd by one of the available python modules (see below)
+    model packed by one of the available python modules (see below)
 
 
     Parameters
@@ -88,7 +88,7 @@ class System_tb_py(System_R):
 
         nR = Rvecs.shape[0]
         for i in range(3 - self.dimr):
-            column = np.zeros((nR), dtype='int32')
+            column = np.zeros(nR, dtype='int32')
             Rvecs = np.column_stack((Rvecs, column))
 
         Rvecsneg = np.array([-r for r in Rvecs])
@@ -173,7 +173,7 @@ class System_TBmodels(System_tb_py):
 
 
 class System_PythTB(System_tb_py):
-    """This interface is an way to initialize the System class from a tight-binding
+    """This interface is a way to initialize the System class from a tight-binding
     model created with  `PythTB. <http://www.physics.rutgers.edu/pythtb/>`_
     It defines the Hamiltonian matrix Ham_R (from hoppings matrix elements)
     and the AA_R  matrix (from orbital coordinates) used to calculate
