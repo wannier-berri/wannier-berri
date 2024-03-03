@@ -725,7 +725,7 @@ class Data_K_R(_Data_K, System_R):
                 for iz in 0, 1:
                     _expdK = expdK[ix, :, 0] * expdK[iy, :, 1] * expdK[iz, :, 2]
                     _Ham_R = self.Ham_R[:, :, :] * _expdK[None, None, :]
-                    _HH_K = self.fft_R_to_k(_Ham_R, hermitean=True)
+                    _HH_K = self.fft_R_to_k(_Ham_R, hermitian=True)
                     E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
                     Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)

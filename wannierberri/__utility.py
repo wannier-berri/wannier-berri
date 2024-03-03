@@ -161,7 +161,7 @@ class FFT_R_to_k:
         self.num_wann = num_wann
         self.name = name
         fftlib = fftlib.lower()
-        assert fftlib in ('fftw', 'numpy', 'slow'), f"fftlib'{fftlib}' is unknown/supported"
+        assert fftlib in ('fftw', 'numpy', 'slow'), f"fftlib '{fftlib}' is unknown/not supported"
         if fftlib == 'fftw' and not PYFFTW_IMPORTED:
             fftlib = 'numpy'
         self.lib = fftlib

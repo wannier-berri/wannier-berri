@@ -77,7 +77,7 @@ def main(argv):
 
     system = System_w90(seedname, berry=parameters["berry"],
                         use_ws=parameters["use_ws_distance"],
-                        fft=parameters["__wb_fft_lib"],
+                        fftlib=parameters["__wb_fft_lib"],
                         transl_inv=parameters["transl_inv"],
                         use_wcc_phase=False,
                         wcc_phase_fin_diff=False

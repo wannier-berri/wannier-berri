@@ -33,9 +33,8 @@ class K__Result(Result, abc.ABC):
             self.rank = rank
         self.other_properties = other_properties
 
-    @abc.abstractmethod
     def get_rank(self):
-        pass
+        raise NotImplementedError()
 
     def fit(self, other):
         for var in ['transformTR', 'transformInv', 'rank']:

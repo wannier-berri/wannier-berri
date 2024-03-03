@@ -171,7 +171,8 @@ class GridTrigonal(GridTetra):
 
 
 class GridTrigonalH(GridTetra):
-    """ good choice for Tellurium conduction/valence band, only a small part near the H-point is considered, use NKFFT=1"""
+    """ good choice for Tellurium conduction/valence band, only a small part near the H-point is considered,
+    always use NKFFT=1"""
 
     def __init__(self, system, length, x=0.5, NKFFT=1, **kwargs):
         # these ones are for the case when the reciprocal lattice vectors form a 120deg angle
@@ -189,4 +190,4 @@ class GridTrigonalH(GridTetra):
         if angle_vectors_deg(b1, b2) == 60:
             IBZ_tetra[:, :, 0] = IBZ_tetra[:, :, 0] - IBZ_tetra[:, :, 1]
 
-        super().__init__(system, length, IBZ_tetra=IBZ_tetra, weights=[12, 12], NKFFT=NKFFT, **kwargs)
+        super().__init__(system, length, IBZ_tetra=IBZ_tetra, weights=[12, 12], NKFFT=1, **kwargs)

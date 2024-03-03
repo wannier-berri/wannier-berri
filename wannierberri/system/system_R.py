@@ -526,7 +526,7 @@ class System_R(System):
                                                      None] * self.wannier_centers_cart[None, :, None, :]
             R_new['BB'] = BB_R_new
         if self.has_R_mat('CC'):
-            norm = np.linalg.norm(self.get_R_mat('CC') - self.conj_XX_R('CC'))
+            norm = np.linalg.norm(self.get_R_mat('CC') - self.conj_XX_R(key='CC'))
             assert norm < 1e-10, f"CC_R is not Hermitian, norm={norm}"
             assert self.has_R_mat('BB'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
             T = self.wannier_centers_cart[:, None, None, :, None] * self.get_R_mat('BB')[:, :, :, None, :]
@@ -582,10 +582,13 @@ class System_R(System):
         assert np.all(self.iRvec[lst_R] + self.iRvec[lst_mR] == 0)
         return lst_R, lst_mR
 
-    def conj_XX_R(self, XX_R: str | np.ndarray):
+    def conj_XX_R(self, val: np.ndarray = None, key: str = None):
         """ reverses the R-vector and takes the hermitian conjugate """
-        if isinstance(XX_R, str):
-            XX_R = self.get_R_mat(XX_R)
+        assert (key is not None) != (val is not None)
+        if key is not None:
+            XX_R = self.get_R_mat(key)
+        else:
+            XX_R = val
         XX_R_new = np.zeros(XX_R.shape, dtype=complex)
         lst_R, lst_mR = self.reverseR
         XX_R_new[:, :, lst_R] = XX_R[:, :, lst_mR]
@@ -595,12 +598,12 @@ class System_R(System):
     def nRvec(self):
         return self.iRvec.shape[0]
 
-    def check_hermitian(self, XX):
-        if XX in self._XX_R:
-            _X = self.get_R_mat(XX).copy()
-            assert (np.max(abs(_X - self.conj_XX_R(XX))) < 1e-8), f"{XX} should obey X(-R) = X(R)^+"
+    def check_hermitian(self, key):
+        if key in self._XX_R.keys():
+            _X = self.get_R_mat(key).copy()
+            assert (np.max(abs(_X - self.conj_XX_R(key=key))) < 1e-8), f"{key} should obey X(-R) = X(R)^+"
         else:
-            print(f"{XX} is missing,nothing to check")
+            print(f"{key} is missing, nothing to check")
 
     def set_structure(self, positions, atom_labels, magnetic_moments=None):
         """
@@ -734,7 +737,7 @@ class System_R(System):
             if the directory already exiists, it will be overwritten
         """
 
-        properties = [x for x in self.essential_properties + extra_properties if x not in exclude_properties]
+        properties = [x for x in self.essential_properties + list(extra_properties) if x not in exclude_properties]
         if R_matrices is None:
             R_matrices = list(self._XX_R.keys())
 

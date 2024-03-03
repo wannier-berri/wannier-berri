@@ -34,7 +34,7 @@ def test_utility_FFT_R_to_k():
         util.FFT_R_to_k(iRvec, NKFFT, num_wann, fftlib=lib)
 
     for lib in 'unknonw', 'fftlib', 'nump', 'np', "NP":
-        with pytest.raises(AssertionError, match=f"fftlib lib '{lib.lower()}' is unknown/supported"):
+        with pytest.raises(AssertionError, match=f"fftlib '{lib.lower()}' is unknown/not supported"):
             util.FFT_R_to_k(iRvec, NKFFT, num_wann, fftlib=lib)
 
     shape = (num_wann, num_wann) + NKFFT + (3, 3, 3)
