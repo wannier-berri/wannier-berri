@@ -51,7 +51,15 @@ class FortranFileW(scipy.io.FortranFile):
 
 alpha_A = np.array([1, 2, 0])
 beta_A = np.array([2, 0, 1])
+delta_f =  np.eye(3)
 
+Levi_Civita = np.zeros((3,3,3))
+Levi_Civita[1,2,0] = 1
+Levi_Civita[2,1,0] = -1
+Levi_Civita[2,0,1] = 1
+Levi_Civita[0,2,1] = -1
+Levi_Civita[0,1,2] = 1
+Levi_Civita[1,0,2] = -1
 
 def conjugate_basis(basis):
     return 2 * np.pi * np.linalg.inv(basis).T
