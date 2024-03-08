@@ -173,12 +173,13 @@ class FormulaSum(Formula_ln):
         if type(formula_list) not in (list, tuple):
             formula_list = [formula_list]
         assert len(formula_list) > 0, 'formula_list is empty'
-        TRodd_list = [f.transformTR for f in formula_list]
-        Iodd_list = [f.transformInv for f in formula_list]
+        TRodd_list = [f.transformTR.factor for f in formula_list]
+        Iodd_list = [f.transformInv.factor for f in formula_list]
+        #assert only works for same transform_ident or transform_odd 
         assert len(set(TRodd_list)) == 1, 'formula in formula_list have different TRodd'
         assert len(set(Iodd_list)) == 1, 'formula in formula_list have different Iodd'
-        self.TRodd = TRodd_list[0]
-        self.Iodd = Iodd_list[0]
+        self.transformTR = formula_list[0].transformTR
+        self.transformInv = formula_list[0].transformInv
         self.name = name
         self.formulae = formula_list
         self.index = index_list
