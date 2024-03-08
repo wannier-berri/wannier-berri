@@ -94,6 +94,75 @@ class Der2Dcov(Formula_ln):
     def nn(self, ik, inn, out):
         raise ValueError("Dln should not be called within inner states")
 
+#TODO Der2A,B,O can be merged to one class.
+class Der2A(Formula_ln):
+    def __init__(self,data_K):
+        self.dD = DerDcov(data_K)
+        self.D = Dcov(data_K)
+        self.A  = data_K.covariant('AA')
+        self.dA = data_K.covariant('AA',gender=1)
+        self.Abar_de  = Matrix_GenDer_ln(data_K.covariant('AA',commader=1),data_K.covariant('AA',commader=2),
+                    Dcov(data_K))
+    def nn(self,ik,inn,out):
+        summ = self.Abar_de.nn(ik,inn,out)
+        summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.A.ln(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...e->mnb...de" , self.D.nl(ik,inn,out) , self.dA.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnde->mnb...de" , self.A.nl(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...e,lnd->mnb...de" , self.dA.nl(ik,inn,out) , self.D.ln(ik,inn,out) )
+        return summ
+
+    def ln(self,ik,inn,out):
+        summ = self.Abar_de.ln(ik,inn,out)
+        summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.ln(ik,inn,out) , self.A.nn(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...e->mnb...de" , self.D.ln(ik,inn,out) , self.dA.nn(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnde->mnb...de" , self.A.ll(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...e,lnd->mnb...de" , self.dA.ll(ik,inn,out) , self.D.ln(ik,inn,out) )
+        return summ
+
+class Der2B(Formula_ln):
+    def __init__(self,data_K):
+        self.dD = DerDcov(data_K)
+        self.D = Dcov(data_K)
+        self.B  = data_K.covariant('BB')
+        self.dB = data_K.covariant('BB',gender=1)
+        self.Bbar_de = Matrix_GenDer_ln(data_K.covariant('BB',commader=1),data_K.covariant('BB',commader=2),
+                    Dcov(data_K))
+    def nn(self,ik,inn,out):
+        summ = self.Bbar_de.nn(ik,inn,out)
+        summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.B.ln(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...e->mnb...de" , self.D.nl(ik,inn,out) , self.dB.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnde->mnb...de" , self.B.nl(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...e,lnd->mnb...de" , self.dB.nl(ik,inn,out) , self.D.ln(ik,inn,out) )
+        return summ
+
+    def ln(self,ik,inn,out):
+        summ = self.Bbar_de.ln(ik,inn,out)
+        summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.ln(ik,inn,out) , self.B.nn(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...e->mnb...de" , self.D.ln(ik,inn,out) , self.dB.nn(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnde->mnb...de" , self.B.ll(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...e,lnd->mnb...de" , self.dB.ll(ik,inn,out) , self.D.ln(ik,inn,out) )
+        return summ
+
+class Der2O(Formula_ln):
+    def __init__(self,data_K):
+        self.dD = DerDcov(data_K)
+        self.D = Dcov(data_K)
+        self.O  = data_K.covariant('OO')
+        self.dO = data_K.covariant('OO',gender=1)
+        self.Obar_de  = Matrix_GenDer_ln(data_K.covariant('OO',commader=1),data_K.covariant('OO',commader=2),
+                    Dcov(data_K))
+    def nn(self,ik,inn,out):
+        summ = self.Obar_de.nn(ik,inn,out)
+        summ -= np.einsum( "mlde,lnb...->mnb...de" , self.dD.nl(ik,inn,out) , self.O.ln(ik,inn,out) )
+        summ -= np.einsum( "mld,lnb...e->mnb...de" , self.D.nl(ik,inn,out) , self.dO.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...,lnde->mnb...de" , self.O.nl(ik,inn,out) , self.dD.ln(ik,inn,out) )
+        summ += np.einsum( "mlb...e,lnd->mnb...de" , self.dO.nl(ik,inn,out) , self.D.ln(ik,inn,out) )
+        return summ
+
+    def ln(self,ik,inn,out):
+        raise NotImplementedError()
+
+
 
 class InvMass(Matrix_GenDer_ln):
     r""" :math:`\overline{V}^{b:d}`"""
