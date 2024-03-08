@@ -314,7 +314,7 @@ class Der2Spin(Formula_ln):
         self.S  = data_K.covariant('SS')
         self.dS = data_K.covariant('SS',gender=1)
         self.Sbar_de  = Matrix_GenDer_ln(data_K.covariant('SS',commader=1),data_K.covariant('SS',commader=2),
-                    Dcov(data_K) ,Iodd=None,TRodd=None)
+                    Dcov(data_K))
         self.ndim=3
         self.transformTR = transform_odd
         self.transformInv = transform_ident
