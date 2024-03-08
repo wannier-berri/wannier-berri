@@ -548,13 +548,16 @@ class NLDrude_Fermider2(StaticCalculator):
         self.fder = 2
         super().__init__(constant_factor=constant_factor, **kwargs)
 
-#E^2 B^1
+# E^2 B^1
+
+
 class eMChA_FermiSurf(StaticCalculator):
     def __init__(self, **kwargs):
         self.Formula = frml.emcha_surf
         self.factor = factors.factor_emcha
         self.fder = 1
         super().__init__(**kwargs)
+
 
 class NLDrude_Zeeman_spin(StaticCalculator):
 
@@ -564,6 +567,7 @@ class NLDrude_Zeeman_spin(StaticCalculator):
         self.fder = 1
         super().__init__(**kwargs)
 
+
 class NLDrude_Zeeman_orb_Omega(StaticCalculator):
 
     def __init__(self, **kwargs):
@@ -572,6 +576,7 @@ class NLDrude_Zeeman_orb_Omega(StaticCalculator):
         self.fder = 1
         super().__init__(**kwargs)
 
+
 class NLDrude_Zeeman_orb(StaticCalculator):
 
     def __init__(self, **kwargs):
@@ -579,10 +584,11 @@ class NLDrude_Zeeman_orb(StaticCalculator):
         self.factor = 1
         self.fder = 1
         super().__init__(**kwargs)
+
     def __call__(self, data_K):
         Hplus = super().__call__(data_K)
         Omega = NLDrude_Zeeman_orb_Omega(Efermi=self.Efermi, tetra=self.tetra,
-                smoother=self.smoother,use_factor=False, print_comment=False,
+                smoother=self.smoother, use_factor=False, print_comment=False,
                 kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
         final_factor = factors.fac_orb_Z * factors.factor_nldrude
         if not self.use_factor:
@@ -591,6 +597,8 @@ class NLDrude_Zeeman_orb(StaticCalculator):
         return final_factor * (Hplus - 2 * Omega)
 
 # E^1 B^1
+
+
 class AHC_Zeeman_spin(StaticCalculator):
     r"""AHC conductivity Zeeman correction term spin part (:math:`S/m/T`)
 
@@ -632,7 +640,7 @@ class AHC_Zeeman_orb(StaticCalculator):
         return Hplus_res - 2 * Omega_res
 
 
-#others
+# others
 class SHC(StaticCalculator):
     r"""Spin Hall conductivity with dc (:math:`S/m`)
 

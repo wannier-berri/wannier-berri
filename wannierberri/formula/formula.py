@@ -163,19 +163,19 @@ class FormulaSum(Formula_ln):
     formula_list: list
         list of formulas
     index_list: list of string
-        Index of formulas. 
+        Index of formulas.
         All formulas will transpose to index of first formula in the list before sum together.
-    
-    return an array with same index with first formula. 
+
+    return an array with same index with first formula.
     """
 
-    def __init__(self, formula_list, sign, index_list, name="unknown",additive=True):
+    def __init__(self, formula_list, sign, index_list, name="unknown", additive=True):
         if type(formula_list) not in (list, tuple):
             formula_list = [formula_list]
         assert len(formula_list) > 0, 'formula_list is empty'
         TRodd_list = [f.transformTR.factor for f in formula_list]
         Iodd_list = [f.transformInv.factor for f in formula_list]
-        #assert only works for same transform_ident or transform_odd 
+        # assert only works for same transform_ident or transform_odd
         assert len(set(TRodd_list)) == 1, 'formula in formula_list have different TRodd'
         assert len(set(Iodd_list)) == 1, 'formula in formula_list have different Iodd'
         self.transformTR = formula_list[0].transformTR
@@ -200,6 +200,7 @@ class FormulaSum(Formula_ln):
     def additive(self):
         return self.additive
 
+
 class DeltaProduct(Formula_ln):
     """a class to store a product of formulae and delta function"""
 
@@ -218,4 +219,3 @@ class DeltaProduct(Formula_ln):
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
-

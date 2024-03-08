@@ -178,7 +178,7 @@ class Der2H(Formula_ln):
         self.H = data_K.covariant('CC')
         self.dH = data_K.covariant('CC', gender=1)
         self.Hbar_de = Matrix_GenDer_ln(data_K.covariant('CC', commader=1), data_K.covariant('CC', commader=2),
-                    Dcov(data_K), Iodd=False, TRodd=True)
+                    Dcov(data_K))
 
     def nn(self, ik, inn, out):
         summ = self.Hbar_de.nn(ik, inn, out)

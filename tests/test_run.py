@@ -652,14 +652,14 @@ def test_GaAs(check_run, system_GaAs_W90, compare_any_result):
     #    calculators.update({k: v(**param) for k, v in calculators_GaAs.items()})
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
     calculators.update({
-        'gyrotropic_Korb':calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs),
-        'gyrotropic_Kspin':calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
-        'gyrotropic_Kspin_fsurf':calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
-        'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),
-        'emcha_fsurf':wberri.calculators.static.eMChA_FermiSurf(Efermi=Efermi_GaAs),
-        'NLDrude_Zeeman_S':wberri.calculators.static.NLDrude_Zeeman_spin(Efermi=Efermi_GaAs),
-        'NLDrude_Zeeman_O':wberri.calculators.static.NLDrude_Zeeman_orb(Efermi=Efermi_GaAs)}
-        )
+        'gyrotropic_Korb': calc.static.GME_orb_FermiSea(Efermi=Efermi_GaAs),
+        'gyrotropic_Kspin': calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
+        'gyrotropic_Kspin_fsurf': calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
+        'gyrotropic_Korb_test': calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),
+        'emcha_fsurf': wberri.calculators.static.eMChA_FermiSurf(Efermi=Efermi_GaAs),
+        'NLDrude_Zeeman_S': wberri.calculators.static.NLDrude_Zeeman_spin(Efermi=Efermi_GaAs),
+        'NLDrude_Zeeman_O': wberri.calculators.static.NLDrude_Zeeman_orb(Efermi=Efermi_GaAs)}
+    )
 
     check_run(
         system_GaAs_W90,
