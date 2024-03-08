@@ -173,8 +173,8 @@ class FormulaSum(Formula_ln):
         if type(formula_list) not in (list, tuple):
             formula_list = [formula_list]
         assert len(formula_list) > 0, 'formula_list is empty'
-        TRodd_list = [f.TRodd for f in formula_list]
-        Iodd_list = [f.Iodd for f in formula_list]
+        TRodd_list = [f.transformTR for f in formula_list]
+        Iodd_list = [f.transformInv for f in formula_list]
         assert len(set(TRodd_list)) == 1, 'formula in formula_list have different TRodd'
         assert len(set(Iodd_list)) == 1, 'formula in formula_list have different Iodd'
         self.TRodd = TRodd_list[0]
@@ -205,8 +205,8 @@ class DeltaProduct(Formula_ln):
     def __init__(self, delta_f, formula, einsumstr):
         self.formula = formula
         self.delta_f = delta_f
-        self.TRodd =  self.formula.TRodd
-        self.Iodd =  self.formula.Iodd
+        self.transformTR = self.formula.transformTR
+        self.transformInv = self.formula.transformInv
         self.ndim = len(einsumstr.split('->')[1]) - 2
         self.einsumstr = einsumstr
 

@@ -1,5 +1,5 @@
 import numpy as np
-from ..__utility import alpha_A, beta_A,  delta_f, Levi_Civita
+from ..__utility import alpha_A, beta_A,  delta_f
 from .formula import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct, FormulaSum, DeltaProduct
 from ..symmetry import transform_ident, transform_odd
 
@@ -767,21 +767,20 @@ class emcha_surf(FormulaSum):
             name='mass-berry-vel (apus)(psua) ([au]bpbs) ([us]abbp)')
         formula2  = FormulaProduct ( [velocity,DerOmega(data_K,**kwargs_formula),velocity],
             name='v-derberry-vel (aups) ([au]bbps) ([us]abpb)')
-        tmp = FormulaSum([
-            formula2,
-            formula1
-            ],[1,1],['aups','apus'])
+        tmp = FormulaSum([formula2,formula1],[1,1],['aups','apus'])
         super().__init__([
             tmp,
             DeltaProduct(delta_f,formula1,'us,MLabbp->MLaups'),
             DeltaProduct(delta_f,tmp,'au,MLbbps->MLaups'),
             DeltaProduct(delta_f,formula2,'us,MLabpb->MLaups'),
             formula2,
-            DeltaProduct(Levi_Civita,
-                DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
-                'xub,MLaxpbs->MLaups')
+            #romove antisymmatric part
+            #DeltaProduct(Levi_Civita
+            #    DeltaProduct(Levi_Civita,tmp,'pta,MLxtbs->MLaxpbs'),
+            #    'xub,MLaxpbs->MLaups')
             ],
-            [2,-2,-1,1,-1,-1],['aups','aups','aups','aups','aups','aups'])
+            #[2,-2,-1,1,-1,-1],['aups','aups','aups','aups','aups','aups'])
+            [2,-2,-1,1,-1],['aups','aups','aups','aups','aups'])
 
 
 class NLDrude_Z_spin(FormulaSum):
