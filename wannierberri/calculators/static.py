@@ -552,7 +552,7 @@ class NLDrude_Fermider2(StaticCalculator):
 
 
 class eMChA_FermiSurf(StaticCalculator):
-    
+
     def __init__(self, **kwargs):
         self.Formula = frml.emcha_surf
         self.factor = factors.factor_emcha

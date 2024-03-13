@@ -127,10 +127,12 @@ class Velocity(Tabulator):
     def __init__(self, **kwargs):
         super().__init__(frml.Velocity, **kwargs)
 
+
 class W(Tabulator):
 
     def __init__(self, **kwargs):
         super().__init__(frml.InvMass, **kwargs)
+
 
 class WV(Tabulator):
 
@@ -146,12 +148,14 @@ class BerryCurvature(Tabulator):
 
 class DerBerryCurvature(Tabulator):
     r"Derivative of Berry curvature :math:`X_{ab}\partial_b\Omega_a`"
+
     def __init__(self, **kwargs):
         super().__init__(frml.DerOmega, **kwargs)
 
 
 class Der2BerryCurvature(Tabulator):
     r"Second Derivative of Berry curvature :math:`X_{ab}\partial_bc\Omega_a`"
+
     def __init__(self, **kwargs):
         super().__init__(frml.Der2Omega, **kwargs)
 
@@ -174,6 +178,7 @@ class Der2Spin(Tabulator):
     def __init__(self, **kwargs):
         super().__init__(frml.Der2Spin, **kwargs)
 
+
 class OrbitalMoment(Tabulator):
 
     def __init__(self, **kwargs):
@@ -183,14 +188,14 @@ class OrbitalMoment(Tabulator):
 class DerOrbitalMoment(Tabulator):
 
     def __init__(self, **kwargs):
-        super().__init__(frml.DerMorb, **kwargs)
+        super().__init__(frml.Dermorb, **kwargs)
         #super().__init__(frml_basic.Der_morb, **kwargs)
 
 
 class Der2OrbitalMoment(Tabulator):
 
     def __init__(self, **kwargs):
-        super().__init__(frml.Der2Morb, **kwargs)
+        super().__init__(frml.Der2morb, **kwargs)
 
 
 class SpinBerry(Tabulator):
