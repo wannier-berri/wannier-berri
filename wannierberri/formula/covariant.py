@@ -553,13 +553,12 @@ class morb(Morb_Hpm):
 #   orbital moment     #
 ########################
 
-
 class DerMorb(Formula_ln):
 
-    def __init__(self, data_K, **parameters):
+    def __init__(self, data_K,**parameters):
         super().__init__(data_K, **parameters)
         self.dD = DerDcov(data_K)
-        self.D = data_K.Dcov
+        self.D = Dcov(data_K)
         self.V = data_K.covariant('Ham', commader=1)
         self.E = data_K.E_K
         self.dO = DerOmega(data_K, **parameters)
@@ -568,11 +567,12 @@ class DerMorb(Formula_ln):
             self.A = data_K.covariant('AA')
             self.dA = data_K.covariant('AA', gender=1)
             self.B = data_K.covariant('BB')
-            self.dB = data_K.covariant('BB', gender=1)
-            self.dH = data_K.covariant('CC', gender=1)
-        self.ndim = 2
+            self.dB = data_K.covariant('BB',gender=1)
+            self.dH  = data_K.covariant('CC',gender=1)
+        self.ndim=2
         self.transformTR = transform_ident
         self.transformInv = transform_odd
+        self.sign= -1
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
@@ -605,12 +605,9 @@ class DerMorb(Formula_ln):
                     "mlc,lncd->mncd", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
                     self.dD.ln(ik, inn, out)[:, :, b, :])
 
-        summ += 1 * np.einsum("mlc,lnd->mncd", self.Omega.nn(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += 1 * self.E[ik][inn][:, None, None, None] * self.dO.nn(ik, inn, out)
+        summ += self.sign * np.einsum("mlc,lnd->mncd", self.Omega.nn(ik, inn, out), self.V.nn(ik, inn, out))
+        summ += self.sign * self.E[ik][inn][:, None, None, None] * self.dO.nn(ik, inn, out)
 
-        # Stepan: Shopuldn't we use the line below?
-        # TODO: check this formula
-        # summ+=summ.swapaxes(0,1).conj()
         return summ
 
     def ln(self, ik, inn, out):
@@ -620,6 +617,9 @@ class DerMorb(Formula_ln):
     def additive(self):
         return False
 
+
+
+
 ##############################
 ###  second derivative of ####
 ###   orbital moment      ####
@@ -627,7 +627,7 @@ class DerMorb(Formula_ln):
 
 
 class Der2Morb(Formula_ln):
-    def __init__(self, data_K, sign=+1, **parameters):
+    def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
         self.ddD = Der2Dcov(data_K)
         self.dD = DerDcov(data_K)
@@ -650,7 +650,7 @@ class Der2Morb(Formula_ln):
         self.ndim = 3
         self.transformTR = transform_odd
         self.transformInv = transform_ident
-        self.sign = sign
+        self.sign = -1
     # TODO merge term if possible.
 
     def nn(self, ik, inn, out):
@@ -707,6 +707,12 @@ class Der2Morb(Formula_ln):
     @property
     def additive(self):
         return False
+
+
+class Der2Morb_Tab(Der2Morb):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, sign=-1, **parameters)
 
 
 ########################
