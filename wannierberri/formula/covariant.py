@@ -349,8 +349,95 @@ class morb(Morb_Hpm):
 #   orbital moment     #
 ########################
 
+class DerMorb_H(Formula_ln):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        self.dD = DerDcov(data_K)
+        self.D = Dcov(data_K)
+        self.V = data_K.covariant('Ham', commader=1)
+        self.E = data_K.E_K
+        if self.external_terms:
+            self.A = data_K.covariant('AA')
+            self.dA = data_K.covariant('AA', gender=1)
+            self.B = data_K.covariant('BB')
+            self.dB = data_K.covariant('BB', gender=1)
+            self.dH = data_K.covariant('CC', gender=1)
+        self.ndim = 2
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
+
+    def nn(self, ik, inn, out):
+        summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
+        if self.internal_terms:
+            summ += -2j * np.einsum(
+                "mpc,pld,lnc->mncd",
+                self.D.nl(ik, inn, out)[:, :, alpha_A], self.V.ll(ik, inn, out),
+                self.D.ln(ik, inn, out)[:, :, beta_A])
+            for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
+                summ += -2j * s * np.einsum(
+                    "mlc,lncd->mncd",
+                    self.D.nl(ik, inn, out)[:, :, a],
+                    self.E[ik][out][:, None, None, None] * self.dD.ln(ik, inn, out)[:, :, b])
+        if self.external_terms:
+            summ += 1 * self.dH.nn(ik, inn, out)
+            summ += -2j * np.einsum(
+                "mpc,pld,lnc->mncd",
+                self.A.nn(ik, inn, out)[:, :, alpha_A], self.V.nn(ik, inn, out),
+                self.A.nn(ik, inn, out)[:, :, beta_A])
+            for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
+                summ += -2j * s * np.einsum(
+                    "mlc,lncd->mncd",
+                    self.A.nn(ik, inn, out)[:, :, a] * self.E[ik][inn][None, :, None],
+                    self.dA.nn(ik, inn, out)[:, :, b, :])
+                summ += -2 * s * np.einsum(
+                    "mlc,lncd->mncd",
+                    self.D.nl(ik, inn, out)[:, :, a],
+                    self.dB.ln(ik, inn, out)[:, :, b, :])
+                summ += -2 * s * np.einsum(
+                    "mlc,lncd->mncd", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
+                    self.dD.ln(ik, inn, out)[:, :, b, :])
+
+        return summ
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
 
 class DerMorb(Formula_ln):
+
+    def __init__(self, data_K, sign=+1, **parameters):
+        super().__init__(data_K, **parameters)
+        self.dermorb_H = DerMorb_H(data_K, **parameters)
+        self.sign = sign
+        if self.sign != 0:
+            self.V = data_K.covariant('Ham', commader=1)
+            self.dO = DerOmega(data_K, **parameters)
+            self.O = Omega(data_K, **parameters)
+            self.E = data_K.E_K
+        self.ndim = 2
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
+
+    def nn(self, ik, inn, out):
+        res = self.dermorb_H.nn(ik, inn, out)
+        if self.sign != 0:
+            res += self.sign * np.einsum("mlc,lnd->mncd", self.O.nn(ik, inn, out), self.V.nn(ik, inn, out))
+            res += self.sign * self.E[ik][inn][:, None, None, None] * self.dO.nn(ik, inn, out)
+        return res
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
+class Dermorb(DerMorb):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, sign=-1, **parameters)
+
+
+
+class DerMorb_old(Formula_ln):
 
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
