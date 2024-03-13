@@ -561,8 +561,6 @@ class DerMorb_H(Formula_ln):
         self.D = Dcov(data_K)
         self.V = data_K.covariant('Ham', commader=1)
         self.E = data_K.E_K
-        self.dO = DerOmega(data_K, **parameters)
-        #self.Omega = Omega(data_K, **parameters)
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.dA = data_K.covariant('AA', gender=1)
@@ -604,9 +602,6 @@ class DerMorb_H(Formula_ln):
                     "mlc,lncd->mncd", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
                     self.dD.ln(ik, inn, out)[:, :, b, :])
 
-        #summ += self.sign * np.einsum("mlc,lnd->mncd", self.Omega.nn(ik, inn, out), self.V.nn(ik, inn, out))
-        #summ += self.sign * self.E[ik][inn][:, None, None, None] * self.dO.nn(ik, inn, out)
-
         return summ
 
     def ln(self, ik, inn, out):
@@ -645,11 +640,61 @@ class Dermorb(DerMorb):
         super().__init__(data_K, sign=-1, **parameters)
 
 
+class DerMorb_test(Formula_ln):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        self.dD = DerDcov(data_K)
+        self.D = Dcov(data_K)
+        self.V = data_K.covariant('Ham', commader=1)
+        self.E = data_K.E_K
+        self.dO = DerOmega(data_K, **parameters)
+        self.Omega = Omega(data_K, **parameters)
+        if self.external_terms:
+            self.A = data_K.covariant('AA')
+            self.dA = data_K.covariant('AA', gender=1)
+            self.B = data_K.covariant('BB')
+            self.dB = data_K.covariant('BB', gender=1)
+            self.dH = data_K.covariant('CC', gender=1)
+        self.ndim = 2
+        self.Iodd = True
+        self.TRodd = False
+        self.sign = -1
+
+    def nn(self, ik, inn, out):
+        summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
+        if self.internal_terms:
+            summ += -1j * np.einsum("mpc,pld,lnc->mncd", self.D.nl(ik, inn, out)[:, :, alpha_A],
+                    self.V.ll(ik, inn, out), self.D.ln(ik, inn, out)[:, :, beta_A])
+            for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
+                summ += -1j * s * np.einsum("mlc,lncd->mncd", self.D.nl(ik, inn, out)[:, :, a],
+                        self.E[ik][out][:, None, None, None] * self.dD.ln(ik, inn, out)[:, :, b])
+
+        if self.external_terms:
+            summ += 0.5 * self.dH.nn(ik, inn, out)
+            summ += -1j * np.einsum("mpc,pld,lnc->mncd", self.A.nn(ik, inn, out)[:, :, alpha_A],
+                    self.V.nn(ik, inn, out), self.A.nn(ik, inn, out)[:, :, beta_A])
+            for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
+                summ += -1j * s * np.einsum("mlc,lncd->mncd", self.A.nn(ik, inn, out)[:, :, a] * self.E[ik][inn][None, :, None],
+                        self.dA.nn(ik, inn, out)[:, :, b, :])
+                summ += -1 * s * np.einsum("mlc,lncd->mncd", self.D.nl(ik, inn, out)[:, :, a], self.dB.ln(ik, inn, out)[:, :, b, :])
+                summ += -1 * s * np.einsum("mlc,lncd->mncd", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
+                        self.dD.ln(ik, inn, out)[:, :, b, :])
+
+        summ += self.sign * 0.5 * np.einsum("mlc,lnd->mncd", self.Omega.nn(ik, inn, out), self.V.nn(ik, inn, out))
+        summ += self.sign * 0.5 * self.E[ik][inn][:, None, None, None] * self.dO.nn(ik, inn, out)
+
+        summ += summ.swapaxes(0, 1).conj()
+        return summ
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
 ##############################
 ###  second derivative of ####
 ###   orbital moment      ####
 ##############################
-
 
 class Der2Morb_H(Formula_ln):
     def __init__(self, data_K, **parameters):
@@ -660,9 +705,6 @@ class Der2Morb_H(Formula_ln):
         self.dV = InvMass(data_K)
         self.V = data_K.covariant('Ham', commader=1)
         self.E = data_K.E_K
-        #self.dO = DerOmega(data_K, **parameters)
-        #self.ddO = Der2Omega(data_K)
-        #self.Omega = Omega(data_K, **parameters)
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.dA = data_K.covariant('AA', gender=1)
@@ -716,11 +758,6 @@ class Der2Morb_H(Formula_ln):
                         self.dD.ln(ik, inn, out)[:, :, b])
                 summ += -2 * s * np.einsum("mlc,lncde->mncde", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
                         self.ddD.ln(ik, inn, out)[:, :, b])
-
-        #summ += self.sign * 0.5 * np.einsum("mlce,lnd->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
-        #summ += self.sign * 0.5 * np.einsum("mlc,lnde->mncde", self.Omega.nn(ik, inn, out), self.dV.nn(ik, inn, out))
-        #summ += self.sign * 0.5 * np.einsum("mle,lncd->mncde", self.V.nn(ik, inn, out), self.dO.nn(ik, inn, out))
-        #summ += self.sign * 0.5 * self.E[ik][inn][:, None, None, None, None] * self.ddO.nn(ik, inn, out)
 
         return summ
 

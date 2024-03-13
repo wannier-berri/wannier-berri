@@ -189,7 +189,12 @@ class DerOrbitalMoment(Tabulator):
 
     def __init__(self, **kwargs):
         super().__init__(frml.Dermorb, **kwargs)
-        #super().__init__(frml_basic.Der_morb, **kwargs)
+
+
+class DerOrbitalMoment_test(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.DerMorb_test, **kwargs)
 
 
 class Der2OrbitalMoment(Tabulator):
