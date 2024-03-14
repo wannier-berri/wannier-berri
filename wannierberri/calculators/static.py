@@ -548,23 +548,54 @@ class NLDrude_Fermider2(StaticCalculator):
         self.fder = 2
         super().__init__(constant_factor=constant_factor, **kwargs)
 
+# E^2 B^1
 
-class SHC(StaticCalculator):
-    r"""Spin Hall conductivity with dc (:math:`S/m`)
 
-        | With Fermi sea integral. Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.235113>`_
-        | Qiao type : with kwargs_formula={'spin_current_type':'qiao'}. Eq(49,50) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.98.214402>`__
-        | Ryoo type : with kwargs_formula={'spin_current_type':'ryoo'}. Eq(17,26-29) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.235113>`__
-        | Output: :math:`\sigma_{\alpha\beta} = -e^2/\hbar \int [dk] Im(j_{nm,\alpha} v_{mn,\beta})/(\epsilon_n - \epsilon_m)^2 f`
-        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta`"""
+class eMChA_FermiSurf(StaticCalculator):
 
-    def __init__(self, constant_factor=-factors.factor_ahc / 2, **kwargs):
-        self.Formula = frml.SpinOmega
-        self.fder = 0
+    def __init__(self, constant_factor=factors.factor_emcha, **kwargs):
+        self.Formula = frml.emcha_surf
+        self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
 
 
+class NLDrude_Zeeman_spin(StaticCalculator):
+
+    def __init__(self, constant_factor=factors.fac_spin_Z * factors.factor_nldrude, **kwargs):
+        self.Formula = frml.NLDrude_Z_spin
+        self.fder = 1
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+class NLDrude_Zeeman_orb_Omega(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.NLDrude_Z_orb_Omega
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class NLDrude_Zeeman_orb(StaticCalculator):
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.NLDrude_Z_orb_Hplus
+        self.fder = 1
+        super().__init__(**kwargs)
+
+    def __call__(self, data_K):
+        Hplus = super().__call__(data_K)
+        Omega = NLDrude_Zeeman_orb_Omega(Efermi=self.Efermi, tetra=self.tetra,
+                smoother=self.smoother, use_factor=False, print_comment=False,
+                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
+        final_factor = factors.fac_orb_Z * factors.factor_nldrude
+        if not self.use_factor:
+            final_factor = np.sign(final_factor)
+
+        return final_factor * (Hplus - 2 * Omega)
+
 # E^1 B^1
+
+
 class AHC_Zeeman_spin(StaticCalculator):
     r"""AHC conductivity Zeeman correction term spin part (:math:`S/m/T`)
 
@@ -604,3 +635,19 @@ class AHC_Zeeman_orb(StaticCalculator):
         Hplus_res = super().__call__(data_K)
         Omega_res = self.OmegaOmega(data_K).mul_array(self.Efermi)
         return Hplus_res - 2 * Omega_res
+
+
+# others
+class SHC(StaticCalculator):
+    r"""Spin Hall conductivity with dc (:math:`S/m`)
+
+        | With Fermi sea integral. Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.235113>`_
+        | Qiao type : with kwargs_formula={'spin_current_type':'qiao'}. Eq(49,50) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.98.214402>`__
+        | Ryoo type : with kwargs_formula={'spin_current_type':'ryoo'}. Eq(17,26-29) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.235113>`__
+        | Output: :math:`\sigma_{\alpha\beta} = -e^2/\hbar \int [dk] Im(j_{nm,\alpha} v_{mn,\beta})/(\epsilon_n - \epsilon_m)^2 f`
+        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta`"""
+
+    def __init__(self, constant_factor=-factors.factor_ahc / 2, **kwargs):
+        self.Formula = frml.SpinOmega
+        self.fder = 0
+        super().__init__(constant_factor=constant_factor, **kwargs)

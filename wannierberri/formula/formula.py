@@ -153,3 +153,69 @@ class FormulaProduct(Formula_ln):
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
+
+
+
+class FormulaSum(Formula_ln):
+    """a class to store a sum of several formulae
+    Parameters
+    ----------
+    formula_list: list
+        list of formulas
+    index_list: list of string
+        Index of formulas.
+        All formulas will transpose to index of first formula in the list before sum together.
+
+    return an array with same index with first formula.
+    """
+
+    def __init__(self, formula_list, sign, index_list, name="unknown", additive=True):
+        if type(formula_list) not in (list, tuple):
+            formula_list = [formula_list]
+        assert len(formula_list) > 0, 'formula_list is empty'
+        TRodd_list = [f.transformTR.factor for f in formula_list]
+        Iodd_list = [f.transformInv.factor for f in formula_list]
+        # assert only works for same transform_ident or transform_odd
+        assert len(set(TRodd_list)) == 1, 'formula in formula_list have different TRodd'
+        assert len(set(Iodd_list)) == 1, 'formula in formula_list have different Iodd'
+        self.transformTR = formula_list[0].transformTR
+        self.transformInv = formula_list[0].transformInv
+        self.name = name
+        self.formulae = formula_list
+        self.index = index_list
+        self.sign = sign
+        self.ndim = formula_list[0].ndim
+        self.additive = additive
+
+    def nn(self, ik, inn, out):
+        matrices = [frml.nn(ik, inn, out) for frml in self.formulae]
+        res = self.sign[0] * matrices[0]
+        for mat, sign, index in zip(matrices[1:], self.sign[1:], self.index[1:]):
+            res += sign * np.einsum('MN' + index + '->MN' + self.index[0], mat)
+        return np.array(res, dtype=complex)
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+    def additive(self):
+        return self.additive
+
+
+class DeltaProduct(Formula_ln):
+    """a class to store a product of formulae and delta function"""
+
+    def __init__(self, delta_f, formula, einsumstr):
+        self.formula = formula
+        self.delta_f = delta_f
+        self.transformTR = self.formula.transformTR
+        self.transformInv = self.formula.transformInv
+        self.ndim = len(einsumstr.split('->')[1]) - 2
+        self.einsumstr = einsumstr
+
+    def nn(self, ik, inn, out):
+        matrix = self.formula.nn(ik, inn, out)
+        res = np.einsum(self.einsumstr, self.delta_f, matrix)
+        return np.array(res, dtype=complex)
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
