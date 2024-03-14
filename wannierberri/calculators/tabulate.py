@@ -127,13 +127,13 @@ class Velocity(Tabulator):
         super().__init__(frml.Velocity, **kwargs)
 
 
-class W(Tabulator):
+class InvMass(Tabulator):
 
     def __init__(self, **kwargs):
         super().__init__(frml.InvMass, **kwargs)
 
 
-class WV(Tabulator):
+class Der3E(Tabulator):
 
     def __init__(self, **kwargs):
         super().__init__(frml.Der3E, **kwargs)
