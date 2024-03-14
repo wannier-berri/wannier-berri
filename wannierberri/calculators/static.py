@@ -553,7 +553,7 @@ class NLDrude_Fermider2(StaticCalculator):
 
 class eMChA_FermiSurf(StaticCalculator):
 
-    def __init__(self,constant_factor=factors.factor_emcha, **kwargs):
+    def __init__(self, constant_factor=factors.factor_emcha, **kwargs):
         self.Formula = frml.emcha_surf
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -561,7 +561,7 @@ class eMChA_FermiSurf(StaticCalculator):
 
 class NLDrude_Zeeman_spin(StaticCalculator):
 
-    def __init__(self,constant_factor=factors.fac_spin_Z * factors.factor_nldrude, **kwargs):
+    def __init__(self, constant_factor=factors.fac_spin_Z * factors.factor_nldrude, **kwargs):
         self.Formula = frml.NLDrude_Z_spin
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)

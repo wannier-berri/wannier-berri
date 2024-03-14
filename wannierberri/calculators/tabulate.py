@@ -1,7 +1,6 @@
 import numpy as np
 from .calculator import Calculator
 from ..formula import covariant as frml
-from ..formula import covariant_basic as frml_basic
 from ..result import KBandResult, TABresult
 
 

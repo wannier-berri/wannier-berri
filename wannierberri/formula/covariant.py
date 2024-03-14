@@ -636,7 +636,7 @@ class DerMorb(Formula_ln):
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
-    
+
     @property
     def additive(self):
         return False
@@ -766,11 +766,9 @@ class Der2morb(Der2Morb):
         super().__init__(data_K, sign=-1, **parameters)
 
 
-
 ########################
 #   spin transport     #
 ########################
-
 
 def _spin_velocity_einsum_opt(C, A, B):
     # Optimized version of C += np.einsum('knls,klma->knmas', A, B). Used in shc_B_H.
