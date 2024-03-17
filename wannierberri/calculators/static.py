@@ -563,6 +563,17 @@ class SHC(StaticCalculator):
         super().__init__(constant_factor=constant_factor, **kwargs)
 
 
+
+class SCUM(StaticCalculator):
+
+    def __init__(self, constant_factor= 1 , **kwargs):
+        self.Formula = frml.SpinEGV
+        #self.Formula = frml.SpinCum
+        self.fder = 0
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+
 # E^1 B^1
 class AHC_Zeeman_spin(StaticCalculator):
     r"""AHC conductivity Zeeman correcton term spin part (:math:`S/m/T`)

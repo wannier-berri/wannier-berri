@@ -4,7 +4,7 @@ import functools
 from ..__utility import Gaussian, Lorentzian, FermiDirac, alpha_A, beta_A
 from ..result import EnergyResult
 from . import Calculator
-from ..formula.covariant import SpinVelocity
+from ..formula.covariant import SpinVelocity, Spin, Velocity
 from ..formula import Formula
 from copy import copy
 from ..symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
@@ -228,6 +228,45 @@ class SHC(DynamicCalculator):
         self.kwargs_formula.update(dict(SHC_type=SHC_type, shc_abc=shc_abc))
         self.Formula = Formula_SHC
         self.constant_factor = factors.factor_shc
+
+    def factor_omega(self, E1, E2):
+        delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
+        cfac = 1. / (delta_arg_12 - 1j * self.smr_fixed_width)
+        if self.smr_type != 'Lorentzian':
+            cfac.imag = np.pi * self.smear(delta_arg_12)
+        return cfac / 2
+
+
+class Formula_CUM(Formula):
+
+    def __init__(self, data_K, Gamma=0, Ef = 0, shc_abc=None, **parameters):
+        super().__init__(data_K, **parameters)
+        S = Spin(data_K).matrix
+        V = Velocity(data_K).matrix
+        Gamma2 = Gamma**2
+        E = data_K.E_K
+        delta_n = (Ef-E)**2 + Gamma2
+
+        self.reAB = np.real(S[:, :, :, :, None] * V.swapaxes(1, 2)[:, :, :, None, :])/ delta_n[:,:,None,None,None]/ delta_n[:,None,:,None,None]*Gamma2
+
+        self.ndim = 2
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
+
+
+
+    def trace_ln(self, ik, inn1, inn2):
+        
+        return self.reAB[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+
+class SCUM(DynamicCalculator):
+
+    def __init__(self, Gamma=0,Ef=0, shc_abc=None, **kwargs):
+        super().__init__(**kwargs)
+        self.kwargs_formula.update(dict(Gamma=Gamma, Ef=Ef))
+        self.Formula = Formula_CUM
+        self.constant_factor = 1#factors.factor_shc
 
     def factor_omega(self, E1, E2):
         delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]

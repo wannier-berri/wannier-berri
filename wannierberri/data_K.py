@@ -317,6 +317,21 @@ class _Data_K(System, abc.ABC):
         dEig[select] = 0.
         return dEig
 
+
+
+    @cached_property
+    def Ef_Emn_inv(self):
+        Gamma2 = 1
+        Ef = 4.97
+        dEig_threshold = 1e-7
+        Gamma_E = (Ef - self.E_K)*(Ef - self.E_K)+ Gamma2
+        dGamma_Emn = Gamma_E[:,:,None]*Gamma_E[:,None,:] 
+        select = abs(dGamma_Emn) < dEig_threshold
+        dGamma_Emn[select] = dEig_threshold
+        dGamma_Emn = 1. / dGamma_Emn
+        dGamma_Emn[select] = 0.
+        return dGamma_Emn[:,:,:,None] * self.covariant('Ham', commader=1).matrix
+
     #    defining sets of degenerate states - needed only for testing with random_gauge
 
     @cached_property

@@ -29,6 +29,19 @@ class Eavln(Matrix_ln):
         self.transformInv = transform_ident
 
 
+class EGV(Matrix_ln):
+    """ be careful : this is not a covariant matrix"""
+
+    def __init__(self, data_K):
+        super().__init__(
+                data_K.Ef_Emn_inv
+                )
+        self.ndim = 1
+        self.transformTR = transform_odd
+        self.transformInv = transform_odd
+
+
+
 class DEinv_ln(Matrix_ln):
     "DEinv_ln.matrix[ik, m, n] = 1 / (E_mk - E_nk)"
 
@@ -523,6 +536,35 @@ class SpinOmega(Formula_ln):
         raise NotImplementedError()
 
 
+class SpinCum(Formula_ln):
+
+    def __init__(self, data_K,Ef=0,Gamma=0, **parameters):
+        super().__init__(data_K, **parameters)
+        self.S = Spin(data_K)
+        self.V = Velocity(data_K)
+        self.Gamma2 = Gamma**2
+        self.Ef = Ef
+        self.E = data_K.E_K
+
+        self.ndim = 2
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
+
+    def nn(self, ik, inn, out):
+        summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
+        delta_n = 1./(self.Ef-self.E[ik][inn])**2 + self.Gamma2
+        delta_m = 1./(self.Ef-self.E[ik][inn])**2 + self.Gamma2
+        #print(np.shape(self.S.nn(ik,inn,out)), np.shape(self.V.nn(ik,inn,out)),np.shape(delta_n), np.shape(delta_m)  )
+
+        summ +=  np.einsum("mla,lnb,m,l->mnab", self.S.nl(ik,inn,out) , self.V.nl(ik,inn,out), delta_n, delta_m).real
+
+        return summ
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
+
 ####################################
 #                                  #
 #    Some Prooducts                #
@@ -545,6 +587,11 @@ class VelSpin(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([data_K.covariant('Ham', commader=1), Spin(data_K)], name='VelSpin')
+
+class SpinEGV(FormulaProduct):
+
+    def __init__(self, data_K,**kwargs_formula):
+        super().__init__([Spin(data_K), EGV(data_K)], name='EGV')
 
 
 class VelVel(FormulaProduct):
