@@ -605,6 +605,13 @@ class X1(StaticCalculator):
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
 
+class X1test(StaticCalculator):
+    def __init__(self, constant_factor=1., **kwargs):
+        self.Formula = frml.X1test
+        self.fder = 1
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
 class X2(StaticCalculator):
     def __init__(self, constant_factor=1., **kwargs):
         self.Formula = frml.X2
@@ -620,7 +627,7 @@ class X22(StaticCalculator):
 class X3(StaticCalculator):
     def __init__(self, constant_factor=1., **kwargs):
         self.Formula = frml.X3
-        self.fder = 1
+        self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
 
 

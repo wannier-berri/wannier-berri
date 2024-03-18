@@ -114,6 +114,14 @@ class Matrix_GenDer_ln(Formula_ln):
         summ += np.einsum("mlb...,lnd->mnb...d", self.A.ll(ik, inn, out), self.D.ln(ik, inn, out))
         return summ
 
+    def aa(self, ik, inn, out):
+        summ = self.dA.aa(ik, inn, out)
+        summ -= np.einsum("mld,lnb...->mnb...d", self.D.aa(ik, inn, out), self.A.aa(ik, inn, out))
+        summ += np.einsum("mlb...,lnd->mnb...d", self.A.aa(ik, inn, out), self.D.aa(ik, inn, out))
+
+        return summ
+
+
 
 class FormulaProduct(Formula_ln):
     """a class to store a product of several formulae"""

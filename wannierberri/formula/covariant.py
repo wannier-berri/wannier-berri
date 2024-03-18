@@ -55,7 +55,9 @@ class Dcov(Matrix_ln):
 
     def nn(self, ik, inn, out):
         raise ValueError("Dln should not be called within inner states")
-
+    
+    def aa(self, ik, inn, out):
+        return self.matrix[ik]
 
 class DerDcov(Dcov):
 
@@ -533,14 +535,15 @@ class Omegakp(Formula_ln):
         raise NotImplementedError()
 
 
-
 class X1(Formula_ln):
     def __init__(self, data_K, **parameters):
-        super().__init__(data_K, **parameters)    
-        self.E = data_K.E_K
-        self.GR = 1./(self.Ef - self.E + self.Gamma)
-        self.GA = 1./(self.Ef - self.E - self.Gamma)
-        self.V = data_K.covariant('Ham', commader=1)
+        super().__init__(data_K, **parameters)
+        self.Ham = data_K.HH_K
+        #print(self.Ham)
+        numwann = np.shape(self.Ham)[1]
+        self.GR = np.linalg.inv(self.Ef*np.eye(numwann)[None,:,:] - self.Ham + self.Gamma*np.eye(numwann)[None,:,:] )
+        self.GA = np.linalg.inv(self.Ef*np.eye(numwann)[None,:,:] - self.Ham - self.Gamma*np.eye(numwann)[None,:,:] )
+        self.V = data_K.covariant('Ham', gender=1)
         self.ndim = 3
         self.transformTR=transform_ident
         self.transformInv=transform_ident
@@ -548,7 +551,8 @@ class X1(Formula_ln):
     def nn(self, ik, inn, out):
         #summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
         #print(np.shape(self.GR) )
-        summ = -1*np.einsum("mqa,q,q,qxb,x,xnc,n->mnabc", 
+        #print(self.V.aa(ik,inn,out),'VVVVVVVVV')
+        summ = -0.5*np.einsum("mqa,ql,lk,kxb,xy,yzc,zn->mnabc",
                 self.V.aa(ik,inn,out),
                 self.GR[ik],
                 self.GR[ik],
@@ -559,7 +563,7 @@ class X1(Formula_ln):
                 ).imag
 
         return summ + summ.transpose(0,1,2,4,3)
-    
+
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
@@ -568,24 +572,26 @@ class X1(Formula_ln):
 class X2(Formula_ln):
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)    
-        self.E = data_K.E_K
-        self.GR = 1./(self.Ef - self.E + self.Gamma)
-        self.GA = 1./(self.Ef - self.E - self.Gamma)
-        self.V = data_K.covariant('Ham', commader=1)
-        self.W = data_K.covariant('Ham', commader=2)
+        self.Ham = data_K.HH_K
+        numwann = np.shape(self.Ham)[1]
+        self.GR = np.linalg.inv(self.Ef*np.eye(numwann)[None,:,:] - self.Ham + self.Gamma*np.eye(numwann)[None,:,:] )
+        self.GA = np.linalg.inv(self.Ef*np.eye(numwann)[None,:,:] - self.Ham - self.Gamma*np.eye(numwann)[None,:,:] )
+        self.V = data_K.covariant('Ham', gender=1)
+        #self.W = data_K.covariant('Ham', commader=2)
+        self.W = InvMass(data_K)
         self.ndim = 3
         self.transformTR=transform_ident
         self.transformInv=transform_ident
 
     def nn(self, ik, inn, out):
         #summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
-        summ = -np.einsum("mqa,q,q,qnbc,n->mnabc", 
+        summ = -0.5 * np.einsum("mqa,ql,lk,kxbc,xn->mnabc", 
                 self.V.aa(ik,inn,out),
                 self.GR[ik],
                 self.GR[ik],
                 self.W.aa(ik,inn,out),
                 self.GA[ik]
-            )
+            ).imag
 
         return summ + summ.transpose(0,1,2,4,3)
     
@@ -596,26 +602,30 @@ class X2(Formula_ln):
 class X3(Formula_ln):
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)    
-        self.E = data_K.E_K
-        self.GR = 1./(self.Ef - self.E + self.Gamma)
-        self.V = data_K.covariant('Ham', commader=1)
+        self.Ham = data_K.HH_K
+        numwann = np.shape(self.Ham)[1]
+        self.GR = np.linalg.inv(self.Ef*np.eye(numwann)[None,:,:] - self.Ham + self.Gamma*np.eye(numwann)[None,:,:] )
+        self.GA = np.linalg.inv(self.Ef*np.eye(numwann)[None,:,:] - self.Ham - self.Gamma*np.eye(numwann)[None,:,:] )
+        self.V = data_K.covariant('Ham', gender=1)
         self.W = data_K.covariant('Ham', commader=2)
+        #self.W = InvMass(data_K)
         self.ndim = 3
         self.transformTR=transform_ident
+        self.transformInv=transform_ident
         self.transformInv=transform_ident
 
     def nn(self, ik, inn, out):
         #summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
-        summ = 2*np.einsum("mqa,q,q,q,qnbc,n->mnabc", 
+        summ = -1*np.einsum("mqa,ql,lk,kx,xybc,yn->mnabc", 
                 self.V.aa(ik,inn,out),
                 self.GR[ik],
                 self.GR[ik],
                 self.GR[ik],
                 self.W.aa(ik,inn,out),
                 self.GR[ik]
-            )
+            ).imag
         
-        summ += 4*np.einsum("mqa,q,q,q,qyb,y,ync,n->mnabc", 
+        summ += -2*np.einsum("mqa,ql,lk,kx,xyb,yz,zic,in->mnabc", 
                 self.V.aa(ik,inn,out),
                 self.GR[ik],
                 self.GR[ik],
@@ -624,9 +634,9 @@ class X3(Formula_ln):
                 self.GR[ik],
                 self.V.aa(ik,inn,out),
                 self.GR[ik]
-            )
+            ).imag
 
-        summ += 2*np.einsum("mqa,q,q,qzb,z,z,znc,n->mnabc", 
+        summ += -1*np.einsum("mqa,ql,lk,kxb,xy,yz,zic,in->mnabc", 
                 self.V.aa(ik,inn,out),
                 self.GR[ik],
                 self.GR[ik],
@@ -635,7 +645,7 @@ class X3(Formula_ln):
                 self.GR[ik],
                 self.V.aa(ik,inn,out),
                 self.GR[ik]
-            )
+            ).imag
         return summ + summ.transpose(0,1,2,4,3)
     
     def ln(self, ik, inn, out):

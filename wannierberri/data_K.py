@@ -300,7 +300,7 @@ class _Data_K(System,abc.ABC):
 
             def ln(self, ik, inn, out):
                 return np.zeros((len(out), len(inn), 3), dtype=complex)
-
+            
         return V(self.Xbar('Ham', der=1))
 
 
