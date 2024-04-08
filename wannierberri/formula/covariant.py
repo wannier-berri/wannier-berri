@@ -449,8 +449,11 @@ class SpinVelocity(Matrix_ln):
         elif spin_current_type == "ryoo":
             # J. H. Ryoo et al PRB (2019)
             super().__init__(self._J_H_ryoo(data_K, external_terms=external_terms))
+        elif spin_current_type == "SJ"
+            # revised from J. H. Ryoo et al PRB (2019)
+            super().__init__(self._J_H_SJ(data_K, external_terms=external_terms))
         else:
-            raise ValueError(f"spin_current_type must be `qiao` or `ryoo` or `simple`, not {spin_current_type}")
+            raise ValueError(f"spin_current_type must be `qiao` or `ryoo` or `SJ` or `simple`, not {spin_current_type}")
         self.transformTR = transform_ident
         self.transformInv = transform_odd
 
@@ -491,6 +494,16 @@ class SpinVelocity(Matrix_ln):
         _spin_velocity_einsum_opt(J, data_K.Xbar('SS'), data_K.Xbar('Ham', 1))
         return (J + J.swapaxes(1, 2).conj()) / 2
 
+    def _J_H_SJ(self, data_K, external_terms=True):
+        if not external_terms:
+            raise NotImplementedError(
+                "spin Hall SJ without external terms is not implemented yet. Use `SHC_type='simple'`")
+        # Spin current operator, revised from J. H. Ryoo et al PRB (2019)
+        # J_H_SJ[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
+        SA_H = data_K.Xbar("SA")
+        SHA_H = data_K.Xbar("SHA")
+        J = -1j * (data_K.E_K[:, None, :, None, None] * SA_H - SHA_H) + data_K.Xbar('SH', 1)
+        return (J + J.swapaxes(1, 2).conj()) / 2
 
 class SpinOmega(Formula_ln):
     """spin Berry curvature"""
