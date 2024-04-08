@@ -449,7 +449,7 @@ class SpinVelocity(Matrix_ln):
         elif spin_current_type == "ryoo":
             # J. H. Ryoo et al PRB (2019)
             super().__init__(self._J_H_ryoo(data_K, external_terms=external_terms))
-        elif spin_current_type == "SJ"
+        elif spin_current_type == "SJ":
             # revised from J. H. Ryoo et al PRB (2019)
             super().__init__(self._J_H_SJ(data_K, external_terms=external_terms))
         else:
