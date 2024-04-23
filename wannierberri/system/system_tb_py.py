@@ -1,7 +1,7 @@
 #                                                            #
 # This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the WannierBerri   #
+# file 'LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
 #                                                            #
 # The WannierBerri code is hosted on GitHub:                 #
@@ -18,7 +18,7 @@ from .system_R import System_R
 
 class System_tb_py(System_R):
     """This interface initializes the System class from a tight-binding
-    model packewd by one of the available python modules (see below)
+    model packed by one of the available python modules (see below)
 
 
     Parameters
@@ -32,6 +32,7 @@ class System_tb_py(System_R):
 
     Notes
     -----
+    always uses use_wcc_phase=True, force_internal_terms_only=True
     see also  parameters of the :class:`~wannierberri.System`
     """
 
@@ -39,17 +40,20 @@ class System_tb_py(System_R):
                  spin=False,
                  **parameters
                  ):
-        super().__init__(**parameters)
         names = {'tbmodels': 'TBmodels', 'pythtb': 'PythTB'}
-        self.seedname = 'model_{}'.format(names[module])
+        super().__init__(spin=spin,
+                         force_internal_terms_only=True,
+                         use_wcc_phase=True,
+                         name=f'model_{names[module]}',
+                         **parameters)
 
         if module == 'tbmodels':
             # Extract the parameters from the model
             real = model.uc
             self.num_wann = model.size
-            if self.need_R_any('SS'):
+            if self.need_R_any(['SS', 'SHA', 'SA', 'SH', 'SRA', 'SR']):
                 raise ValueError(
-                    "System_{} class cannot be used for evaluation of spin properties".format(names[module]))
+                    f"System_{names[module]} class cannot be used for evaluation of spin properties")
             self.spinors = False
             positions = model.pos
             Rvec = np.array([R[0] for R in model.hop.items()], dtype=int)
@@ -68,7 +72,7 @@ class System_tb_py(System_R):
             print("number of wannier functions:", self.num_wann)
             Rvec = np.array([R[-1] for R in model._hoppings], dtype=int)
         else:
-            raise ValueError("unknown tight-binding module {}".format(module))
+            raise ValueError(f"unknown tight-binding module {module}")
 
         self.dimr = real.shape[1]
         self.norb = positions.shape[0]
@@ -84,7 +88,7 @@ class System_tb_py(System_R):
 
         nR = Rvecs.shape[0]
         for i in range(3 - self.dimr):
-            column = np.zeros((nR), dtype='int32')
+            column = np.zeros(nR, dtype='int32')
             Rvecs = np.column_stack((Rvecs, column))
 
         Rvecsneg = np.array([-r for r in Rvecs])
@@ -98,7 +102,7 @@ class System_tb_py(System_R):
             R_all = np.column_stack((np.array([0, 0, 0]), R_all.T)).T
             index0 = 0
         elif index0.size == 1:
-            print("R=0 found at position(s) {}".format(index0))
+            print(f"R=0 found at position(s) {index0}")
             index0 = index0[0][0]
         else:
             raise RuntimeError(f"wrong value of index0={index0}, with R_all={R_all}")
@@ -142,10 +146,8 @@ class System_tb_py(System_R):
 
         self.set_R_mat('Ham', Ham_R)
 
-
-        self.getXX_only_wannier_centers()
         self.do_at_end_of_init()
-        cprint("Reading the system from {} finished successfully".format(names[module]), 'green', attrs=['bold'])
+        cprint(f"Reading the system from {names[module]} finished successfully", 'green', attrs=['bold'])
 
 
 class System_TBmodels(System_tb_py):
@@ -171,7 +173,7 @@ class System_TBmodels(System_tb_py):
 
 
 class System_PythTB(System_tb_py):
-    """This interface is an way to initialize the System class from a tight-binding
+    """This interface is a way to initialize the System class from a tight-binding
     model created with  `PythTB. <http://www.physics.rutgers.edu/pythtb/>`_
     It defines the Hamiltonian matrix Ham_R (from hoppings matrix elements)
     and the AA_R  matrix (from orbital coordinates) used to calculate

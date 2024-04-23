@@ -1,7 +1,7 @@
 #                                                            #
 # This file is distributed as part of the WannierBerri code  #
 # under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the WannierBerri   #
+# file 'LICENSE' in the root directory of the WannierBerri   #
 # distribution, or http://www.gnu.org/copyleft/gpl.txt       #
 #                                                            #
 # The WannierBerri code is hosted on GitHub:                 #
@@ -14,11 +14,7 @@
 import numpy as np
 
 from .system import System_k
-from ..__utility import real_recip_lattice
 from .__finite_differences import find_shells, Derivative3D
-
-
-# from lazy_property import LazyProperty
 
 
 class SystemKP(System_k):
@@ -63,19 +59,16 @@ class SystemKP(System_k):
 
     def __init__(self, Ham, derHam=None, der2Ham=None, der3Ham=None, kmax=1., real_lattice=None, recip_lattice=None,
                  k_vector_cartesian=True, finite_diff_dk=1e-4, **parameters):
-        super().__init__(**parameters)
+        if "name" not in parameters:
+            parameters["name"] = "kp"
+        super().__init__(force_internal_terms_only=True, **parameters)
         if kmax is not None:
             assert real_lattice is None, "kmax and real_lattice should not be set tigether"
             assert recip_lattice is None, "kmax and recip_lattice should not be set tigether"
             recip_lattice = np.eye(3) * 2 * kmax
-        self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=real_lattice,
-                                                                   recip_lattice=recip_lattice)
+        self.set_real_lattice(real_lattice=real_lattice, recip_lattice=recip_lattice)
         self.recip_lattice_inv = np.linalg.inv(self.recip_lattice)
-
-        if not hasattr(self, 'num_wann') or self.num_wann is None:
-            self.num_wann = Ham([0, 0, 0]).shape[0]
-        else:
-            assert self.num_wann == Ham([0, 0, 0]).shape[0]
+        self.num_wann = Ham([0, 0, 0]).shape[0]
 
         self.k_to_1BZ = lambda k: (np.array(k) + 0.5) % 1 - 0.5
         # in is not actually 1BZ, rather a box [-0.5:0.5), but for simple cubic its the same.

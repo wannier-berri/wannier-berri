@@ -31,7 +31,6 @@ setuptools.setup(
      install_requires=[
                         'numpy<1.25,>=1.24', # upper limit reauired by numba . min 1.24 required by scipy.io
                         'scipy>=1.0',
-                        'lazy_property',
                         'colorama',
                         'termcolor',
                         'numba>=0.55.2',

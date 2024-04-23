@@ -10,9 +10,8 @@
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
 # ------------------------------------------------------------
-
+import warnings
 import numpy as np
-
 from .system_R import System_R
 
 
@@ -22,11 +21,13 @@ class SystemSparse(System_R):
     def __init__(self, real_lattice,
                  wannier_centers_reduced=None,
                  wannier_centers_cart=None,
-                 matrices={},
+                 matrices=None,
                  num_wann=None,
                  symmetrize_info=None,
                  **parameters):
 
+        if matrices is None:
+            matrices = {}
         super().__init__(**parameters)
         self.real_lattice = real_lattice
         if num_wann is None:
@@ -53,9 +54,9 @@ class SystemSparse(System_R):
                         X[j[0], j[1], iR] = h
                 self.set_R_mat(k, X)
             else:
-                print(f"WARNING: {k} is empty")
+                warnings.warn(f"{k} is empty")
 
-        self.do_at_end_of_init(convert_convention=False)
+        self.do_at_end_of_init()
         if symmetrize_info is not None:
             self.symmetrize(**symmetrize_info)
 

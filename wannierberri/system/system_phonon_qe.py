@@ -1,9 +1,12 @@
+import os.path
+
 import numpy as np
 import untangle
 import multiprocessing
-from ..__utility import real_recip_lattice, FFT
+from ..__utility import execute_fft
 from . import System_w90
 from .system_R import System_R
+from .ws_dist import wigner_seitz
 from scipy import constants as const
 from ..__factors import Ry_eV
 
@@ -37,7 +40,7 @@ class System_Phonon_QE(System_w90):
     Parameters
     ----------
     asr : bool
-        imposes a simple acoustic sum rule (equivalent to `zasr = 'simple'` in QuantumEspresson
+        imposes a simple acoustic sum rule (equivalent to `zasr = 'simple'` in QuantumEspresso)
 
     Notes
     -----
@@ -51,9 +54,11 @@ class System_Phonon_QE(System_w90):
                  npar=multiprocessing.cpu_count(),
                  asr=True,
                  **parameters):
-
+        if "name" not in parameters:
+            parameters["name"] = os.path.split(seedname)[-1]
         System_R.__init__(self, **parameters)
         self.is_phonon = True
+        self.use_wcc_phase = False
         with open(seedname + ".dyn0", "r") as f:
             mp_grid = np.array(f.readline().split(), dtype=int)
             nqirr = int(f.readline().strip())
@@ -79,7 +84,8 @@ class System_Phonon_QE(System_w90):
                                  dtype=int) - 1
                 masses = masses_tp[types]
                 self.num_wann = self.number_of_phonons
-                self.wannier_centers_reduced = np.array([atom for atom in self.atom_positions for i in range(3)])
+                self.set_wannier_centers(wannier_centers_reduced=np.array([atom for atom in self.atom_positions for _ in range(3)])
+                                         )
             number_of_q = int(geometry.number_of_q.cdata)
             for iq in range(number_of_q):
                 dynamical = data.__getattr__(f"dynamical_mat__{iq + 1}")
@@ -95,7 +101,6 @@ class System_Phonon_QE(System_w90):
                 dynamical_mat.append(dyn_mat)
                 q_points.append(q)
                 cnt += 1
-                self.real_lattice, self.recip_lattice = real_recip_lattice(real_lattice=self.real_lattice)
         self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
         qpoints_found = np.zeros(mp_grid, dtype=float)
         dynamical_matrix_q = np.zeros(tuple(mp_grid) + (self.number_of_phonons,) * 2, dtype=complex)
@@ -106,12 +111,12 @@ class System_Phonon_QE(System_w90):
             qpoints_found[iq] = True
         assert np.all(qpoints_found), ('some qpoints were not found in the files:\n' + '\n'.join(str(x / agrid))
                                        for x in np.where(np.logical_not(qpoints_found)))
-        Ham_R = FFT(dynamical_matrix_q, axes=(0, 1, 2), numthreads=npar, fft=fft, destroy=False)
-        self.iRvec, self.Ndegen = self.wigner_seitz(mp_grid)
+        Ham_R = execute_fft(dynamical_matrix_q, axes=(0, 1, 2), numthreads=npar, fftlib=fft, destroy=False)
+        self.iRvec, self.Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=mp_grid)
         Ham_R = np.array([Ham_R[tuple(iR % mp_grid)] / nd for iR, nd in zip(self.iRvec, self.Ndegen)]) / np.prod(
             mp_grid)
         Ham_R = Ham_R.transpose((1, 2, 0)) * (
-                    Ry_eV ** 2)  # now the units are eV**2, to be "kind of consistent" with electronic systems
+                Ry_eV ** 2)  # now the units are eV**2, to be "kind of consistent" with electronic systems
         self.set_R_mat('Ham', Ham_R)
 
         self.do_at_end_of_init()

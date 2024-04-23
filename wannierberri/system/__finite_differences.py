@@ -1,7 +1,7 @@
 from ..__utility import find_degen
 
 import numpy as np
-from lazy_property import LazyProperty
+from functools import cached_property
 
 
 class FiniteDifferences():
@@ -12,16 +12,16 @@ class FiniteDifferences():
         self.wk, self.bki, self.neighbours = get_neighbours_FFT(self.recip_lattice, self.FFT)
         self.bk_cart = self.bki.dot(self.basis)
 
-    @LazyProperty
+    @cached_property
     def basis(self):
         return np.array(self.recip_lattice) / np.array(self.FFT)
 
 
-def find_shells(basis, isearch=3):
+def find_shells(basis, isearch=3, isearchmax=6):
     """returns the weights of the bk vectors, and the bk vectors to the corresponding neighbour points"""
-    if isearch > 6:
+    if isearch > isearchmax:
         raise RuntimeError(
-            'Failed to sattisfy (B1) criteria of PRB 56, 12847 (1997) upto {} cells . Must be smth wrong'.format(6))
+            f'Failed to sattisfy (B1) criteria of PRB 56, 12847 (1997) upto {isearchmax} cells . Must be smth wrong')
     search = np.arange(-isearch, isearch + 1)
     bki = np.array(np.meshgrid(search, search, search)).reshape(3, -1, order='F').T
     bk = bki.dot(basis)
@@ -45,7 +45,7 @@ def find_shells(basis, isearch=3):
             selected_ishells.append(ishell_try)
         if checkB1:
             break
-    wk = np.array([w for w, shell in zip(weights, selected_shells) for i in range(shell[0], shell[1]) if abs(w) > 1e-8])
+    wk = np.array([w for w, shell in zip(weights, selected_shells) for _ in range(shell[0], shell[1]) if abs(w) > 1e-8])
     bki = np.array(
         [bki[i] for w, shell in zip(weights, selected_shells) for i in range(shell[0], shell[1]) if abs(w) > 1e-8])
     return wk, bki
@@ -107,12 +107,6 @@ def get_neighbours_FFT(recip_lattice, FFT):
     ki = np.array([kindex // (FFT[1] * FFT[2]), (kindex // FFT[2]) % FFT[1], kindex % FFT[2]]).T
     neigh = np.array([(ki + b[None, :]) % FFT for b in bki])
     neighbours = (neigh[:, :, 0] * FFT[1] + neigh[:, :, 1]) * FFT[2] + neigh[:, :, 2]
-    # print ("neigh=",neigh)
-    # print ("the weights are:",wk)
-    # print ("the bki are:",bki)
-    # print ("the neighbours of 0th kp are:",neighbours[:,0])
-    # for i in np.array(np.random.random(10)*NFFT_tot,dtype=int):
-    #     print ("the neighbours of {}th kp are: {}".format(i,neighbours[:,i]))
     return wk, bki, neighbours
 
 

@@ -20,10 +20,10 @@ def test_utility_FFT():
     inp = np.random.random((5, 4, 3, 5)) * (1 + 2.j)
     axes = (0, 2)
     for fft in "fftw", "numpy", "FfTw", "nUmPY":
-        util.FFT(inp, axes, fft=fft)
-    for fft in "fft", "np", "idkwhat", "dummy":
-        with pytest.raises(ValueError, match=f"unknown type of fft : {fft}"):
-            util.FFT(inp, axes, fft=fft)
+        util.execute_fft(inp, axes, fftlib=fft)
+    for fft in "fftlib", "np", "idkwhat", "dummy":
+        with pytest.raises(ValueError, match=f"unknown type of fftlib : {fft}"):
+            util.execute_fft(inp, axes, fftlib=fft)
 
 
 def test_utility_FFT_R_to_k():
@@ -31,17 +31,18 @@ def test_utility_FFT_R_to_k():
     iRvec = np.random.randint(100, size=(20, 3))
     num_wann = 5
     for lib in 'fftw', 'numpy', 'NuMpY', 'fftW':
-        util.FFT_R_to_k(iRvec, NKFFT, num_wann, lib=lib)
+        util.FFT_R_to_k(iRvec, NKFFT, num_wann, fftlib=lib)
 
-    for lib in 'unknonw', 'fft', 'nump', 'np', "NP":
-        with pytest.raises(AssertionError, match=f"fft lib '{lib.lower()}' is unknown/supported"):
-            util.FFT_R_to_k(iRvec, NKFFT, num_wann, lib=lib)
+    for lib in 'unknonw', 'fftlib', 'nump', 'np', "NP":
+        with pytest.raises(AssertionError, match=f"fftlib '{lib.lower()}' is unknown/not supported"):
+            util.FFT_R_to_k(iRvec, NKFFT, num_wann, fftlib=lib)
 
-    AAA_K = np.random.random((num_wann, num_wann) + NKFFT + (3, 3, 3))
+    shape = (num_wann, num_wann) + NKFFT + (3, 3, 3)
+    AAA_K = np.random.random(shape) + 1j * np.random.random(shape)
 
-    util.FFT_R_to_k(iRvec, NKFFT, num_wann, lib="numpy").transform(AAA_K)
+    util.FFT_R_to_k(iRvec, NKFFT, num_wann, fftlib="numpy").transform(AAA_K)
     with pytest.raises(RuntimeError, match="FFT.transform should not be called for slow FT"):
-        util.FFT_R_to_k(iRvec, NKFFT, num_wann, lib="slow").transform(AAA_K)
+        util.FFT_R_to_k(iRvec, NKFFT, num_wann, fftlib="slow").transform(AAA_K)
 
 
 @pytest.mark.parametrize("ibands", [[5, 6], [4, 6, 7, 8]])
@@ -105,7 +106,7 @@ def test_morb_fail():
     except (ImportError, ModuleNotFoundError):
         pytest.xfail("failed to import tbmodels")
     with pytest.raises(ValueError):
-        wberri.system.System_tb(wberri.models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15), spin=True)
+        wberri.system.System_TBmodels(wberri.models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15), spin=True)
 
 
 def test_system_GaAs_tb_morb_fail():

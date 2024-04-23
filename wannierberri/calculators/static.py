@@ -13,8 +13,9 @@ from ..formula import covariant as frml
 from ..formula import covariant_basic as frml_basic
 from .. import __factors as factors
 from ..result import EnergyResult, K__Result
-from . import Calculator
+from .calculator import Calculator
 from ..__utility import alpha_A, beta_A
+
 
 # The base class for Static Calculators
 # particular calculators are below
@@ -22,8 +23,11 @@ from ..__utility import alpha_A, beta_A
 
 class StaticCalculator(Calculator):
 
-    def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula={},
+    def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula=None,
                  Emin=-np.Inf, Emax=np.Inf, hole_like=False, k_resolved=False, Formula=None, fder=None, **kwargs):
+        super().__init__(**kwargs)
+        if kwargs_formula is None:
+            kwargs_formula = {}
         self.Efermi = Efermi
         self.Emin = Emin
         self.Emax = Emax
@@ -50,8 +54,6 @@ class StaticCalculator(Calculator):
             self.EFmax = Efermi[-1] + self.extraEf * self.dEF
             self.nEF_extra = Efermi.shape[0] + 2 * self.extraEf
 
-        super().__init__(**kwargs)
-
     def __call__(self, data_K):
 
         nk = data_K.nk
@@ -62,10 +64,14 @@ class StaticCalculator(Calculator):
         # when we do not need k-resolved, we assume as it is only one k-point,m and dump everything there
         if self.k_resolved:
             nk_result = nk
-            ik_to_result = lambda ik: ik
+
+            def ik_to_result(_ik):
+                return _ik
         else:
             nk_result = 1
-            ik_to_result = lambda ik: 0
+
+            def ik_to_result(_):
+                return 0
 
         # get a list [{(ib1,ib2):W} for ik in op:ed]
         if self.tetra:
@@ -87,8 +93,7 @@ class StaticCalculator(Calculator):
         #           bands = a list of lists of k-points for every
         shape = (3,) * ndim
 
-        lambdadic = lambda: np.zeros(((3,) * ndim), dtype=float)
-        values = [defaultdict(lambdadic) for ik in range(nk)]
+        values = [defaultdict(lambda: np.zeros(((3,) * ndim), dtype=float)) for _ in range(nk)]
         for ik, bnd in enumerate(weights):
             if formula.additive:
                 for n in bnd:
@@ -131,7 +136,7 @@ class StaticCalculator(Calculator):
                 restot = (restot[:, 2:] + restot[:, :-2] - 2 * restot[:, 1:-1]) / (self.dEF ** 2)
             elif self.fder == 3:
                 restot = (restot[:, 4:] - restot[:, :-4] - 2 * (restot[:, 3:-1] - restot[:, 1:-3])) / (
-                            2 * self.dEF ** 3)
+                        2 * self.dEF ** 3)
             else:
                 raise NotImplementedError(f"Derivatives  d^{self.fder}f/dE^{self.fder} is not implemented")
 
@@ -153,13 +158,9 @@ class StaticCalculator(Calculator):
                              )
         else:
             res = EnergyResult(self.Efermi, restot[0], transformTR=formula.transformTR,
-                               transformInv=formula.transformInv, smoothers=[self.smoother], comment=self.comment)
-            res.set_save_mode(self.save_mode)
+                               transformInv=formula.transformInv, smoothers=[self.smoother], comment=self.comment,
+                               save_mode=self.save_mode)
         return res
-
-    @property
-    def require_energy(self):
-        return True
 
 
 ###############################################
@@ -351,7 +352,7 @@ class AHC(StaticCalculator):
         | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta = \epsilon_{\alpha\beta\delta} O_\delta E_\beta`"""
 
     def __init__(self, constant_factor=factors.factor_ahc, **kwargs):
-        "describe input parameters here"
+        """describe input parameters here"""
         self.Formula = frml.Omega
         self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -565,7 +566,7 @@ class SHC(StaticCalculator):
 
 # E^1 B^1
 class AHC_Zeeman_spin(StaticCalculator):
-    r"""AHC conductivity Zeeman correcton term spin part (:math:`S/m/T`)
+    r"""AHC conductivity Zeeman correction term spin part (:math:`S/m/T`)
 
         | With Fermi surface integral.
         | Output: :math:`ZAHC^{spin}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * s_\mu f'`

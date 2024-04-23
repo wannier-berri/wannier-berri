@@ -12,7 +12,6 @@
 # ------------------------------------------------------------
 
 import numpy as np
-import lazy_property
 from functools import cached_property
 from ..symmetry import Group
 from ..__utility import real_recip_lattice
@@ -21,6 +20,20 @@ pauli_x = [[0, 1], [1, 0]]
 pauli_y = [[0, -1j], [1j, 0]]
 pauli_z = [[1, 0], [0, -1]]
 pauli_xyz = np.array([pauli_x, pauli_y, pauli_z]).transpose((1, 2, 0))
+
+
+def num_cart_dim(key):
+    """
+    returns the number of cartesian dimensions of a matrix by key
+    """
+    if key in ["Ham"]:
+        return 0
+    elif key in ["AA", "BB", "CC", "SS", "SH", "OO"]:
+        return 1
+    elif key in ["SHA", "SA", "SR", "SHR", "GG", "FF"]:
+        return 2
+    else:
+        raise ValueError(f"unknown matrix {key}")
 
 
 class System:
@@ -38,22 +51,26 @@ class System:
         position of the upper edge of the frozen window. Used in the evaluation of orbital moment. But not necessary.
     NKFFT :
         the FFT grid which further will be used in calculations by default
-    Notes
-    -----
-    + for tight-binding models it is recommended to use `use_wcc_phase = True`. In this case the external terms vanish, and
-    + one can safely use `berry=False, morb=False`, and also set `'external_terms':False` in the parameters of the calculation
-
+    force_internal_terms_only : bool
+        only internal terms will be evaluated in all formulae, the external or cross terms will be excluded.
+        the internal terms are defined only by the Hamiltonian and spin
+    name : str
+        name that will be used by default in names of output files
     """
 
     def __init__(self,
-        frozen_max=-np.Inf,
-        periodic=(True, True, True),
-        NKFFT=None
+                 frozen_max=-np.Inf,
+                 periodic=(True, True, True),
+                 NKFFT=None,
+                 force_internal_terms_only=False,
+                 name='wberri'
                  ):
 
         # TODO: move some initialization to child classes
         self.frozen_max = frozen_max
         self.periodic = periodic
+        self.name = name
+
 
         if NKFFT is not None:
             self._NKFFT_recommended = NKFFT
@@ -61,11 +78,13 @@ class System:
         self.periodic = np.zeros(3, dtype=bool)
         self.periodic[:len(self.periodic)] = periodic
         self.is_phonon = False
-
+        self.force_internal_terms_only = force_internal_terms_only
 
 
     def set_real_lattice(self, real_lattice=None, recip_lattice=None):
+        assert not hasattr(self, 'real_lattice')
         self.real_lattice, _ = real_recip_lattice(real_lattice=real_lattice, recip_lattice=recip_lattice)
+
 
 
     @cached_property
@@ -73,7 +92,7 @@ class System:
         real, recip = real_recip_lattice(real_lattice=self.real_lattice)
         return recip
 
-    def set_symmetry(self, symmetry_gen=[]):
+    def set_symmetry(self, symmetry_gen=()):
         """
         Set the symmetry group of the :class:`System`
 
@@ -95,7 +114,7 @@ class System:
         self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
 
-    @lazy_property.LazyProperty
+    @cached_property
     def cell_volume(self):
         return abs(np.linalg.det(self.real_lattice))
 

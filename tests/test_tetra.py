@@ -27,11 +27,11 @@ def check_tetra_derivatives(E, Efermi=np.linspace(-0.6, 0.6, 100001), acc1=1e-5,
     error = None
     try:
         assert (occ_der1_fd == approx(occ_der1, abs=acc1)), (
-            "finite-diff first derivative of weights_tetra did not match he analytic expression by" +
-            "{} > {}".format(max(abs(occ_der1 - occ_der1_fd)), acc1) + f"the energies were {Ecenter}, {Ecorn}")
+            "finite-diff first derivative of weights_tetra did not match he analytic expression by"
+            f"{max(abs(occ_der1 - occ_der1_fd))} > {acc1}, the energies were {Ecenter}, {Ecorn}")
         assert (occ_der2_fd == approx(occ_der2, abs=acc2)), (
             "finite-diff second derivative of weights_tetra did not match he analytic expression by" +
-            "{} > {}".format(max(abs(occ_der2 - occ_der2_fd)), acc2) + f"the energies were {Ecenter}, {Ecorn}")
+            f"{max(abs(occ_der2 - occ_der2_fd))} > {acc2}, the energies were {Ecenter}, {Ecorn}")
     except Exception as err:
         plot = True
         error = err

@@ -22,7 +22,7 @@ def generate_formatted_files(create_files_GaAs_W90):
 
     # Compute tags only if the corresponding files do not exist
     for tag in tags_needed:
-        if not os.path.isfile(os.path.join(data_dir, "GaAs_formatted.{}".format(tag))):
+        if not os.path.isfile(os.path.join(data_dir, f"GaAs_formatted.{tag}")):
             tags_compute.append(tag)
 
     if len(tags_compute) > 0:
@@ -40,31 +40,21 @@ def generate_formatted_files(create_files_GaAs_W90):
         kwargs.append("IBstart=1")
         kwargs.append("IBstartSum=1")
         kwargs.append("NBsum=16,100")
-        #        for tag in tags_compute:
-        #            kwargs["write" + tag.upper()] = True
-        #            if tag == "spn":
-        #                kwargs[tag + "_formatted_in"] = False
-        #                kwargs[tag + "_formatted_out"] = True
-        #            else:
-        #                kwargs[tag + "_formatted"] = True
-
-        #        nb_out_list = wberri.utils.mmn2uHu.run_mmn2uHu(
-        #            "GaAs", INPUTDIR=data_dir, OUTDIR=str(data_dir) + "/reduced_formatted", **kwargs)
         print("kwargs = ", kwargs)
         nb_out_list = wberri.utils.mmn2uHu.main(["GaAs"] + kwargs)
 
         nb_out = nb_out_list[0]
 
         for tag in tags_compute:
-            result_dir = os.path.join(data_dir, "reduced_formatted_NB={0}".format(nb_out))
+            result_dir = os.path.join(data_dir, f"reduced_formatted_NB={nb_out}")
             if tag == "spn":
                 os.rename(
-                    os.path.join(result_dir, "GaAs.{0}".format(tag)),
-                    os.path.join(data_dir, "GaAs_formatted.{0}".format(tag)))
+                    os.path.join(result_dir, f"GaAs.{tag}"),
+                    os.path.join(data_dir, f"GaAs_formatted.{tag}"))
             else:
                 os.rename(
-                    os.path.join(result_dir, "GaAs_nbs={0}.{1}".format(nb_out, tag)),
-                    os.path.join(data_dir, "GaAs_formatted.{0}".format(tag)))
+                    os.path.join(result_dir, f"GaAs_nbs={nb_out}.{tag}"),
+                    os.path.join(data_dir, f"GaAs_formatted.{tag}"))
 
     return data_dir
 

@@ -3,8 +3,9 @@ import abc
 import functools
 from ..__utility import Gaussian, Lorentzian, FermiDirac, alpha_A, beta_A
 from ..result import EnergyResult
-from . import Calculator
+from .calculator import Calculator
 from ..formula.covariant import SpinVelocity
+from ..formula import Formula
 from copy import copy
 from ..symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
 from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom
@@ -25,14 +26,17 @@ Ang_SI = angstrom
 
 class DynamicCalculator(Calculator, abc.ABC):
 
-    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', kwargs_formula={},
-                 **kwargs):
+    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian',
+                 kwargs_formula=None, **kwargs):
 
-        for k, v in locals().items():  # is it safe to do so?
-            if k not in ['self', 'kwargs']:
-                vars(self)[k] = v
+        if kwargs_formula is None:
+            kwargs_formula = {}
         super().__init__(**kwargs)
-
+        self.Efermi = Efermi
+        self.omega = omega
+        self.kBT = kBT
+        self.smr_fixed_width = smr_fixed_width
+        self.smr_type = smr_type
         self.kwargs_formula = copy(kwargs_formula)
         self.Formula = None
         self.constant_factor = 1.
@@ -54,7 +58,7 @@ class DynamicCalculator(Calculator, abc.ABC):
 
     @abc.abstractmethod
     def factor_omega(self, E1, E2):
-        "determines a frequency-dependent factor for bands with energies E1 and E2"
+        """determines a frequency-dependent factor for bands with energies E1 and E2"""
 
     def factor_Efermi(self, E1, E2):
         return self.FermiDirac(E2) - self.FermiDirac(E1)
@@ -104,8 +108,22 @@ class DynamicCalculator(Calculator, abc.ABC):
             transformInv = formula.transformInv
 
         return EnergyResult(
-            [self.Efermi, self.omega], restot, transformTR=transformTR, transformInv=transformInv)
+            [self.Efermi, self.omega], restot,
+            transformTR=transformTR, transformInv=transformInv,
+            save_mode=self.save_mode
+        )
 
+
+class MultitermCalculator(DynamicCalculator):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.terms = []
+
+    def factor_omega(self, E1, E2):
+        raise NotImplementedError()
+
+    def __call__(self, data_K):
+        return sum(cal(data_K) for cal in self.terms)
 
 ###############################################
 ###############################################
@@ -123,9 +141,10 @@ class DynamicCalculator(Calculator, abc.ABC):
 ###############################
 #              JDOS           #
 ###############################
-class Formula_dyn_ident():
+class Formula_dyn_ident(Formula):
 
     def __init__(self, data_K):
+        super().__init__(data_K)
         self.transformTR = transform_ident
         self.transformInv = transform_ident
         self.ndim = 0
@@ -158,10 +177,11 @@ class JDOS(DynamicCalculator):
 ################################
 
 
-class Formula_OptCond():
+class Formula_OptCond(Formula):
 
-    def __init__(self, data_K, external_terms=True):
-        if external_terms:
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        if self.external_terms:
             A = data_K.A_H
         else:
             A = data_K.A_H_internal
@@ -194,11 +214,12 @@ class OpticalConductivity(DynamicCalculator):
 ###############################
 
 
-class Formula_SHC():
+class Formula_SHC(Formula):
 
-    def __init__(self, data_K, SHC_type='ryoo', shc_abc=None, external_terms=True):
-        A = SpinVelocity(data_K, SHC_type, external_terms=external_terms).matrix
-        if external_terms:
+    def __init__(self, data_K, SHC_type='ryoo', shc_abc=None, **parameters):
+        super().__init__(data_K, **parameters)
+        A = SpinVelocity(data_K, SHC_type, external_terms=self.external_terms).matrix
+        if self.external_terms:
             B = -1j * data_K.A_H
         else:
             B = -1j * data_K.A_H_internal
@@ -244,11 +265,10 @@ m_spin_prefactor = electron_g_factor * hbar / electron_mass
 # _____ Antisymmetric (time-even) spatially-dispersive conductivity tensor _____ #
 
 
-class SDCT_asym(Calculator):
+class SDCT_asym(MultitermCalculator):
 
     def __init__(self, fermi_sea=True, fermi_surf=True, **kwargs):
-        self.comment = "calculator not described"
-        self.terms = []
+        super().__init__(**kwargs)
         # Fermi sea terms
         if fermi_sea:
             self.terms.extend([SDCT_asym_sea_I(**kwargs), SDCT_asym_sea_II(**kwargs)])
@@ -256,15 +276,13 @@ class SDCT_asym(Calculator):
         if fermi_surf:
             self.terms.extend([SDCT_asym_surf_I(**kwargs), SDCT_asym_surf_II(**kwargs)])
 
-    def __call__(self, data_K):
-        return sum(cal(data_K) for cal in self.terms)
 
+class Formula_SDCT_asym_sea_I(Formula):
 
-class Formula_SDCT_asym_sea_I():
-
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             A = -1. * data_K.E1
             B_M1, B_E2, B = data_K.Bln
             if spin:
@@ -317,11 +335,12 @@ class SDCT_asym_sea_I(DynamicCalculator):
         return omega * Zfac
 
 
-class Formula_SDCT_asym_sea_II():
+class Formula_SDCT_asym_sea_II(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             A = -1. * data_K.E1
         else:
             A = -1. * data_K.E1_internal
@@ -360,11 +379,12 @@ class SDCT_asym_sea_II(DynamicCalculator):
         return omega * (3.0 * (E2 - E1)**2 - omega**2) * Zfac**2
 
 
-class Formula_SDCT_asym_surf_I():
+class Formula_SDCT_asym_surf_I(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             A = -1. * data_K.E1
         else:
             A = -1. * data_K.E1_internal
@@ -405,11 +425,12 @@ class SDCT_asym_surf_I(DynamicCalculator):
         return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
 
 
-class Formula_SDCT_asym_surf_II():
+class Formula_SDCT_asym_surf_II(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             B_M1, B_E2, B = data_K.Bln
             if spin:
                 S = data_K.Xbar('SS')
@@ -457,10 +478,9 @@ class SDCT_asym_surf_II(DynamicCalculator):
 # _____ Symmetric (time-odd) spatially-dispersive conductivity tensor _____ #
 
 
-class SDCT_sym(Calculator):
+class SDCT_sym(MultitermCalculator):
     def __init__(self, fermi_sea=True, fermi_surf=True, **kwargs):
-        self.comment = "calculator not described"
-        self.terms = []
+        super().__init__(**kwargs)
         # Fermi sea terms
         if fermi_sea:
             self.terms.extend([SDCT_sym_sea_I(**kwargs), SDCT_sym_sea_II(**kwargs)])
@@ -468,15 +488,13 @@ class SDCT_sym(Calculator):
         if fermi_surf:
             self.terms.extend([SDCT_sym_surf_I(**kwargs), SDCT_sym_surf_II(**kwargs)])
 
-    def __call__(self, data_K):
-        return sum(cal(data_K) for cal in self.terms)
 
+class Formula_SDCT_sym_sea_I(Formula):
 
-class Formula_SDCT_sym_sea_I():
-
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             A = -1. * data_K.E1
             B_M1, B_E2, B = data_K.Bln
             if spin:
@@ -529,11 +547,12 @@ class SDCT_sym_sea_I(DynamicCalculator):
         return 1.j * (E2 - E1) * Zfac
 
 
-class Formula_SDCT_sym_sea_II():
+class Formula_SDCT_sym_sea_II(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             A = -1. * data_K.E1
         else:
             A = -1. * data_K.E1_internal
@@ -572,11 +591,12 @@ class SDCT_sym_sea_II(DynamicCalculator):
         return 1.j * (E2 - E1)**3 * Zfac**2
 
 
-class Formula_SDCT_sym_surf_I():
+class Formula_SDCT_sym_surf_I(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         # Intrinsic multipole moments
-        if external_terms:
+        if self.external_terms:
             A = -1. * data_K.E1
         else:
             A = -1. * data_K.E1_internal
@@ -617,9 +637,10 @@ class SDCT_sym_surf_I(DynamicCalculator):
         return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
 
 
-class Formula_SDCT_sym_surf_II():
+class Formula_SDCT_sym_surf_II(Formula):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, external_terms=True):
+    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, **parameters)
         Vn = data_K.Vn
 
         # Formula
@@ -659,13 +680,10 @@ class SDCT_sym_surf_II(DynamicCalculator):
 # ===============
 
 
-class ShiftCurrentFormula():
+class ShiftCurrentFormula(Formula):
 
-    def __init__(self, data_K, sc_eta, external_terms=True):
-
-        if external_terms:
-            A_Hbar_der = data_K.Xbar('AA', 1)
-            A_Hbar = data_K.Xbar('AA')
+    def __init__(self, data_K, sc_eta, **parameters):
+        super().__init__(data_K, **parameters)
         D_H = data_K.D_H
         V_H = data_K.Xbar('Ham', 1)
         del2E_H = data_K.Xbar('Ham', 2)
@@ -680,25 +698,11 @@ class ShiftCurrentFormula():
         # commutators
         # ** the spatial index of D_H_Pval corresponds to generalized derivative direction
         # ** --> stored in the fourth column of output variables
-        if external_terms:
-            sum_AD = (np.einsum('knlc,klma->knmca', A_Hbar, D_H_Pval) -
-                      np.einsum('knnc,knma->knmca', A_Hbar, D_H_Pval) -
-                      np.einsum('knla,klmc->knmca', D_H_Pval, A_Hbar) +
-                      np.einsum('knma,kmmc->knmca', D_H_Pval, A_Hbar))
         sum_HD = (np.einsum('knlc,klma->knmca', V_H, D_H_Pval) -
                   np.einsum('knnc,knma->knmca', V_H, D_H_Pval) -
                   np.einsum('knla,klmc->knmca', D_H_Pval, V_H) +
                   np.einsum('knma,kmmc->knmca', D_H_Pval, V_H))
 
-        # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction
-        # ** --> stored in the fourth column of output variables
-        if external_terms:
-            AD_bit = (np.einsum('knnc,knma->knmac', A_Hbar, D_H) -
-                      np.einsum('kmmc,knma->knmac', A_Hbar, D_H) +
-                      np.einsum('knna,knmc->knmac', A_Hbar, D_H) -
-                      np.einsum('kmma,knmc->knmac', A_Hbar, D_H))
-            AA_bit = (np.einsum('knnb,knma->knmab', A_Hbar, A_Hbar) -
-                      np.einsum('kmmb,knma->knmab', A_Hbar, A_Hbar))
         # ** this one is invariant under a<-->c
         DV_bit = (np.einsum('knmc,knna->knmca', D_H, V_H) -
                   np.einsum('knmc,kmma->knmca', D_H, V_H) +
@@ -707,11 +711,26 @@ class ShiftCurrentFormula():
 
         # generalized derivative
         A_gen_der = (+ 1j * (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, :, np.newaxis, np.newaxis])
-        if external_terms:
+        if self.external_terms:
+            # ** the spatial index of A_Hbar with diagonal terms corresponds to generalized derivative direction
+            # ** --> stored in the fourth column of output variables
+            A_Hbar = data_K.Xbar('AA')
+            A_Hbar_der = data_K.Xbar('AA', 1)
+            sum_AD = (np.einsum('knlc,klma->knmca', A_Hbar, D_H_Pval) -
+                      np.einsum('knnc,knma->knmca', A_Hbar, D_H_Pval) -
+                      np.einsum('knla,klmc->knmca', D_H_Pval, A_Hbar) +
+                      np.einsum('knma,kmmc->knmca', D_H_Pval, A_Hbar))
+            AD_bit = (np.einsum('knnc,knma->knmac', A_Hbar, D_H) -
+                      np.einsum('kmmc,knma->knmac', A_Hbar, D_H) +
+                      np.einsum('knna,knmc->knmac', A_Hbar, D_H) -
+                      np.einsum('kmma,knmc->knmac', A_Hbar, D_H))
+            AA_bit = (np.einsum('knnb,knma->knmab', A_Hbar, A_Hbar) -
+                      np.einsum('kmmb,knma->knmab', A_Hbar, A_Hbar))
+
             A_gen_der += A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD
 
         # generalized derivative is fourth index of A, we put it into third index of Imn
-        if external_terms:
+        if self.external_terms:
             A_H = data_K.A_H
         else:
             A_H = data_K.A_H_internal
@@ -747,14 +766,15 @@ class ShiftCurrent(DynamicCalculator):
 # ===================
 
 
-class InjectionCurrentFormula():
+class InjectionCurrentFormula(Formula):
     """
     Eq. (10) of Lihm and Park, PRB 105, 045201 (2022)
     Use v_mn = i * r_mn * (e_m - e_n) / hbar to replace v with r.
     """
 
-    def __init__(self, data_K, external_terms=True):
-        if external_terms:
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        if self.external_terms:
             A_H = data_K.A_H
         else:
             A_H = data_K.A_H_internal

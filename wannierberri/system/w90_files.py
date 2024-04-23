@@ -15,12 +15,14 @@
 import multiprocessing
 import gc
 import functools
+from functools import cached_property
+import os.path
+import abc
 from scipy.constants import physical_constants
 from time import time
 from itertools import islice
 from copy import copy
 import numpy as np
-import lazy_property
 from .disentanglement import disentangle
 from ..__utility import FortranFileR, alpha_A, beta_A
 
@@ -94,7 +96,7 @@ class CheckPoint:
         self.wannier_spreads = readfloat().reshape((self.num_wann))
         del u_matrix, m_matrix
         gc.collect()
-        print("Time to read .chk : {}".format(time() - t0))
+        print(f"Time to read .chk : {time() - t0}")
 
     def wannier_gauge(self, mat, ik1, ik2):
         # data should be of form NBxNBx ...   - any form later
@@ -130,60 +132,57 @@ class CheckPoint:
     # matrix elements for Wannier interpolation, independently of the
     # finite-difference scheme used.
 
-    # --- A_a(q,b) matrix --- #
-    def get_AA_qb(self, mmn, transl_inv=False):
-
-        AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
+    def get_AABB_qb(self, mmn, transl_inv=False, eig=None, phase=None, sum_b=False):
+        assert (not transl_inv) or eig is None
+        if sum_b:
+            AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+        else:
+            AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
                 ib_unique = mmn.ib_unique_map[ik, ib]
                 # Matrix < u_k | u_k+b > (mmn)
                 data = mmn.data[ik, ib]                   # Hamiltonian gauge
+                if eig is not None:
+                    data = data * eig.data[ik, :, None]  # Hamiltonian gauge (add energies)
                 AAW = self.wannier_gauge(data, ik, iknb)  # Wannier gauge
-
                 # Matrix for finite-difference schemes
                 AA_q_ik_ib = 1.j * AAW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
-
                 # Marzari & Vanderbilt formula for band-diagonal matrix elements
                 if transl_inv:
                     AA_q_ik_ib[range(self.num_wann), range(self.num_wann)] = -np.log(
                         AAW.diagonal()).imag[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, :]
-
-                AA_qb[ik, :, :, ib_unique, :] = AA_q_ik_ib
-
+                if phase is not None:
+                    AA_q_ik_ib *= phase[:, :, ib_unique, None]
+                if sum_b:
+                    AA_qb[ik] += AA_q_ik_ib
+                else:
+                    AA_qb[ik, :, :, ib_unique, :] = AA_q_ik_ib
         return AA_qb
+
+
+    # --- A_a(q,b) matrix --- #
+
+
+    def get_AA_qb(self, mmn, transl_inv=False, phase=None, sum_b=False):
+        return self.get_AABB_qb(mmn, transl_inv=transl_inv, phase=phase, sum_b=sum_b)
 
     def get_AA_q(self, mmn, transl_inv=False):
         return self.get_AA_qb(mmn=mmn, transl_inv=transl_inv).sum(axis=3)
 
-
     # --- B_a(q,b) matrix --- #
+    def get_BB_qb(self, mmn, eig, phase=None, sum_b=False):
+        return self.get_AABB_qb(mmn, eig=eig, phase=phase, sum_b=sum_b)
 
 
-    def get_BB_qb(self, mmn, eig):
-
-        BB_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
-        for ik in range(self.num_kpts):
-            for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                ib_unique = mmn.ib_unique_map[ik, ib]
-
-                # Matrix < u_k | H_k | u_k+b > (eig * mmn)
-                data = mmn.data[ik, ib]                   # Hamiltonian gauge (only mmn)
-                data = data * eig.data[ik, :, None]       # Hamiltonian gauge (add energies)
-                BBW = self.wannier_gauge(data, ik, iknb)  # Wannier gauge
-
-                # Matrix for finite-difference schemes
-                BB_q_ik_ib = 1j * BBW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
-                BB_qb[ik, :, :, ib_unique, :] = BB_q_ik_ib
-
-        return BB_qb
-
-    # --- C_a(q,b1,b2) matrix --- #
-    def get_CC_qb(self, mmn, uhu):
-
-        CC_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
+    def get_CCOOGG_qb(self, mmn, uhu, antisym=True, phase=None, sum_b=False):
+        nd_cart = 1 if antisym else 2
+        shape_NNB = () if sum_b else (mmn.NNB, mmn.NNB)
+        shape = (self.num_kpts, self.num_wann, self.num_wann) + shape_NNB + (3,) * nd_cart
+        CC_qb = np.zeros(shape, dtype=complex)
+        if phase is not None:
+            phase = np.reshape(phase, np.shape(phase)[:4] + (1,) * nd_cart)
         for ik in range(self.num_kpts):
             for ib1 in range(mmn.NNB):
                 iknb1 = mmn.neighbours[ik, ib1]
@@ -196,130 +195,89 @@ class CheckPoint:
                     data = uhu.data[ik, ib1, ib2]                 # Hamiltonian gauge
                     CCW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
 
-                    # Matrix for finite-difference schemes (takes antisymmetric piece only)
-                    CC_q_ik_ib = 1.j * CCW[:, :, None] * (
-                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                            mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
-                            - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
-
-                    CC_qb[ik, :, :, ib1_unique, ib2_unique, :] = CC_q_ik_ib
-
+                    if antisym:
+                        # Matrix for finite-difference schemes (takes antisymmetric piece only)
+                        CC_q_ik_ib = 1.j * CCW[:, :, None] * (
+                            mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
+                                mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
+                                - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
+                    else:
+                        # Matrix for finite-difference schemes (takes symmetric piece only)
+                        CC_q_ik_ib = CCW[:, :, None, None] * (
+                                         mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
+                                             mmn.bk_cart[ik, ib1, :, None] *
+                                             mmn.bk_cart[ik, ib2, None, :]))[None, None, :, :]
+                    if phase is not None:
+                        CC_q_ik_ib *= phase[:, :, ib1_unique, ib2_unique]
+                    if sum_b:
+                        CC_qb[ik] += CC_q_ik_ib
+                    else:
+                        CC_qb[ik, :, :, ib1_unique, ib2_unique] = CC_q_ik_ib
         return CC_qb
 
+    # --- C_a(q,b1,b2) matrix --- #
+    def get_CC_qb(self, mmn, uhu, phase=None, sum_b=False):
+        return self.get_CCOOGG_qb(mmn, uhu, phase=phase, sum_b=sum_b)
+
     # --- O_a(q,b1,b2) matrix --- #
-    def get_OO_qb(self, mmn, uiu):
-
-        OO_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3), dtype=complex)
-        for ik in range(self.num_kpts):
-            for ib1 in range(mmn.NNB):
-                iknb1 = mmn.neighbours[ik, ib1]
-                ib1_unique = mmn.ib_unique_map[ik, ib1]
-                for ib2 in range(mmn.NNB):
-                    iknb2 = mmn.neighbours[ik, ib2]
-                    ib2_unique = mmn.ib_unique_map[ik, ib2]
-
-                    # Matrix < u_k+b1 | I | u_k+b2 > (uIu)
-                    data = uiu.data[ik, ib1, ib2]                 # Hamiltonian gauge
-                    OOW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
-
-                    # Matrix for finite-difference schemes (takes antisymmetric piece only)
-                    OO_q_ik_ib = 1.j * OOW[:, :, None] * (
-                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                            mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A]
-                            - mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
-
-                    OO_qb[ik, :, :, ib1_unique, ib2_unique, :] = OO_q_ik_ib
-
-        return OO_qb
+    def get_OO_qb(self, mmn, uiu, phase=None, sum_b=False):
+        return self.get_CCOOGG_qb(mmn, uiu, phase=phase, sum_b=sum_b)
 
     # Symmetric G_bc(q,b1,b2) matrix
-    def get_GG_qb(self, mmn, uiu):
-
-        GG_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, mmn.NNB, 3, 3), dtype=complex)
-        for ik in range(self.num_kpts):
-            for ib1 in range(mmn.NNB):
-                iknb1 = mmn.neighbours[ik, ib1]
-                ib1_unique = mmn.ib_unique_map[ik, ib1]
-                for ib2 in range(mmn.NNB):
-                    iknb2 = mmn.neighbours[ik, ib2]
-                    ib2_unique = mmn.ib_unique_map[ik, ib2]
-
-                    # Matrix < u_k+b1 | I | u_k+b2 > (uIu)
-                    data = uiu.data[ik, ib1, ib2]                 # Hamiltonian gauge
-                    GGW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
-
-                    # Matrix for finite-difference schemes (takes symmetric piece only)
-                    GG_q_ik_ib = GGW[:, :, None, None] * (
-                        mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                            mmn.bk_cart[ik, ib1, :, None] * mmn.bk_cart[ik, ib2, None, :]))[None, None, :, :]
-
-                    GG_qb[ik, :, :, ib1_unique, ib2_unique, :, :] = GG_q_ik_ib
-
-        # G_bc is symmetric in the cartesian indices
-        GG_qb = 0.5 * (GG_qb + GG_qb.swapaxes(5, 6))
-
-        return GG_qb
-
+    def get_GG_qb(self, mmn, uiu, phase=None, sum_b=False):
+        return self.get_CCOOGG_qb(mmn, uiu, antisym=False, phase=phase, sum_b=sum_b)
     ###########################################################################
 
-    def get_SA_q(self, siu, mmn):
-        mmn.set_bk_chk(self)
-        SA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
-        assert siu.NNB == mmn.NNB
-        for ik in range(self.num_kpts):
-            for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                SAW = self.wannier_gauge(siu.data[ik, ib], ik, iknb)
-                SA_q_ik = 1.j * SAW[:, :, None, :] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :, None]
-                SA_q[ik] += SA_q_ik
-        return SA_q
 
-    def get_SHA_q(self, shu, mmn):
+
+    def get_SH_q(self, spn, eig):
+        SH_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
+        for ik in range(self.num_kpts):
+            SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik, :, :, :] * eig.data[ik, None, :, None], ik, ik)
+        return SH_q
+
+    def get_SHA_q(self, shu, mmn, phase=None):
+        """
+        SHA or SA (if siu is used instead of shu)
+        """
         mmn.set_bk_chk(self)
         SHA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert shu.NNB == mmn.NNB
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
+                ib_unique = mmn.ib_unique_map[ik, ib]
                 SHAW = self.wannier_gauge(shu.data[ik, ib], ik, iknb)
+                if phase is not None:
+                    SHAW = SHAW * phase[:, :, ib_unique, None]
                 SHA_q_ik = 1.j * SHAW[:, :, None, :] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :, None]
                 SHA_q[ik] += SHA_q_ik
         return SHA_q
 
-    def get_SR_q(self, spn, mmn):
-        mmn.set_bk_chk(self)
-        SR_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
-        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
-        for ik in range(self.num_kpts):
-            for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                for i in range(3):
-                    SM_i = spn.data[ik, :, :, i].dot(mmn.data[ik, ib, :, :])
-                    SRW = self.wannier_gauge(SM_i, ik, iknb) - self.wannier_gauge(spn.data[ik, :, :, i], ik, ik)
-                    SR_q[ik, :, :, :, i] += 1.j * SRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
-        return SR_q
 
-    def get_SH_q(self, spn, eig):
-        SH_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
-        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
-        for ik in range(self.num_kpts):
-            for i in range(3):
-                SH_q[ik, :, :, i] = self.wannier_gauge(spn.data[ik, :, :, i] * eig.data[ik, None, :], ik, ik)
-        return SH_q
 
-    def get_SHR_q(self, spn, mmn, eig):
+    def get_SHR_q(self, spn, mmn, eig=None, phase=None):
+        """
+        SHR or SR(if eig is None)
+        """
         mmn.set_bk_chk(self)
         SHR_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
         for ik in range(self.num_kpts):
+            SH = spn.data[ik, :, :, :]
+            if eig is not None:
+                SH = SH * eig.data[ik, None, :, None]
+            SHW = self.wannier_gauge(SH, ik, ik)
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
-                for i in range(3):
-                    SH_i = spn.data[ik, :, :, i] * eig.data[ik, None, :]
-                    SHM_i = SH_i.dot(mmn.data[ik, ib])
-                    SHRW = self.wannier_gauge(SHM_i, ik, iknb) - self.wannier_gauge(SH_i, ik, ik)
-                    SHR_q[ik, :, :, :,
-                    i] += 1.j * SHRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+                ib_unique = mmn.ib_unique_map[ik, ib]
+                SHM = np.tensordot(SH, mmn.data[ik, ib], axes=((1,), (0,))).swapaxes(-1, -2)
+                SHRW = self.wannier_gauge(SHM, ik, iknb)
+                if phase is not None:
+                    SHRW = SHRW * phase[:, :, ib_unique, None]
+                SHRW = SHRW - SHW
+                SHR_q[ik, :, :, :, :] += 1.j * SHRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :, None]
         return SHR_q
 
 
@@ -357,14 +315,33 @@ class CheckPoint_bare(CheckPoint):
 
 class Wannier90data:
     """A class to describe all input files of wannier90, and to construct the Wannier functions
-     via disentanglement procedure"""
+     via disentanglement procedure
 
-    # todo :  rotatre uHu and spn
-    # todo : create a model from this
+    Parameters:
+        formatted : list(str)
+            list of files which should be read as formatted files (uHu, uIu, etc)
+        read_npz : bool
+            if True, try to read the files converted to npz (e.g. wanier90.mmn.npz instead of wannier90.
+        write_npz_list : list(str)
+            for which files npz will be written
+        write_npz_formatted : bool
+            write npz for all formatted files
+        overwrite_npz : bool
+            overwrite existing npz files  (incompatinble with read_npz)
+     """
+
+    # todo :  rotate uHu and spn
     # todo : symmetry
 
     def __init__(self, seedname="wannier90", read_chk=False,
-                 kmesh_tol=1e-7, bk_complete_tol=1e-5, ):  # ,sitesym=False):
+                 kmesh_tol=1e-7, bk_complete_tol=1e-5,
+                 read_npz=True,
+                 write_npz_list=('mmn', 'eig', 'amn'),
+                 write_npz_formatted=True,
+                 overwrite_npz=False,
+                 formatted=tuple(),
+                 ):  # ,sitesym=False):
+        assert not (read_npz and overwrite_npz), "cannot read and overwrite npz files"
         self.seedname = copy(seedname)
         self.__files_classes = {'win': WIN,
                                 'eig': EIG,
@@ -377,6 +354,13 @@ class Wannier90data:
                                 'spn': SPN
                                 }
         self.__files = {}
+        self.read_npz = read_npz
+        self.write_npz_list = set([s.lower() for s in write_npz_list])
+        formatted = [s.lower() for s in formatted]
+        if write_npz_formatted:
+            self.write_npz_list.update(formatted)
+            self.write_npz_list.update(['mmn', 'eig', 'amn'])
+        self.formatted_list = formatted
         if read_chk:
             self.chk = CheckPoint(seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
             self.wannierised = True
@@ -395,17 +379,36 @@ class Wannier90data:
         # else:
         #    self.Dmn=DMN(None,num_wann=self.chk.num_wann,num_bands=self.chk.num_bands,nkpt=self.chk.num_kpts)
 
-    def set_file(self, key, val=None, overwrite=False):
-        if not overwrite:
-            assert key not in self.__files, f"file `{key}` was already set"
+    def set_file(self, key, val=None, overwrite=False,
+                 **kwargs):
+        """
+        Parameters:
+            overwrite : bool
+                if False and file already set, Error
+        """
+        kwargs_auto = self.auto_kwargs_files(key)
+        kwargs_auto.update(kwargs)
+        if not overwrite and key in self.__files:
+            raise RuntimeError(f"file '{key}' was already set")
         if val is None:
-            val = self.__files_classes[key](self.seedname)
+            val = self.__files_classes[key](self.seedname, **kwargs_auto)
         self.check_conform(key, val)
         self.__files[key] = val
 
-    def get_file(self, key):
+    def auto_kwargs_files(self, key):
+        kwargs = {}
+        if key in ["uhu", "uiu", "shu", "siu"]:
+            kwargs["formatted"] = key in self.formatted_list
+        if key not in ["chk", "win"]:
+            kwargs["read_npz"] = self.read_npz
+            kwargs["write_npz"] = key in self.write_npz_list
+        print(f"kwargs for {key} are {kwargs}")
+        return kwargs
+
+
+    def get_file(self, key, **kwargs):
         if key not in self.__files:
-            self.set_file(key)
+            self.set_file(key, **kwargs)
         return self.__files[key]
 
     def check_conform(self, key, this):
@@ -457,7 +460,7 @@ class Wannier90data:
     def iter_kpts(self):
         return range(self.chk.num_kpts)
 
-    @lazy_property.LazyProperty
+    @cached_property
     def wannier_centers(self):
         return self.chk.wannier_centers
 
@@ -465,8 +468,8 @@ class Wannier90data:
         if not self.wannierised:
             raise RuntimeError(f"no wannieruisation was performed on the w90 input files, cannot proceed with {msg}")
 
-    def disentangle(self, **parameters):
-        disentangle(self, **parameters)
+    def disentangle(self, **kwargs):
+        disentangle(self, **kwargs)
 
     # TODO : allow k-dependent window (can it be useful?)
     # def apply_outer_window(self,
@@ -497,7 +500,25 @@ class Wannier90data:
     # TODO : allow k-dependent window (can it be useful?)
 
 
-class W90_file:
+class W90_file(abc.ABC):
+
+    def __init__(self, seedname, ext, tags=["data"], read_npz=True, write_npz=True, **kwargs):
+        f_npz = f"{seedname}.{ext}.npz"
+        print(f"calling w90 file with {seedname}, {ext}, tags={tags}, read_npz={read_npz}, write_npz={write_npz}, kwargs={kwargs}")
+        if os.path.exists(f_npz) and read_npz:
+            dic = np.load(f_npz)
+            for k in tags:
+                self.__setattr__(k, dic[k])
+        else:
+            self.from_w90_file(seedname, **kwargs)
+            dic = {k: self.__getattribute__(k) for k in tags}
+            if write_npz:
+                np.savez_compressed(f_npz, **dic)
+
+    @abc.abstractmethod
+    def from_w90_file(self, **kwargs):
+        self.data = None
+
 
     @property
     def n_neighb(self):
@@ -532,13 +553,15 @@ class MMN(W90_file):
     def n_neighb(self):
         return 1
 
-    def __init__(self, seedname, npar=multiprocessing.cpu_count()):
+    def __init__(self, seedname, npar=multiprocessing.cpu_count(), **kwargs):
+        super().__init__(seedname, "mmn", tags=['data', 'G', 'neighbours'], npar=npar, **kwargs)
+
+    def from_w90_file(self, seedname, npar):
         t0 = time()
         f_mmn_in = open(seedname + ".mmn", "r")
         f_mmn_in.readline()
         NB, NK, NNB = np.array(f_mmn_in.readline().split(), dtype=int)
-        self.data = np.zeros((NK, NNB, NB, NB), dtype=complex)
-        block = 1 + self.NB * self.NB
+        block = 1 + NB * NB
         data = []
         headstring = []
         mult = 4
@@ -563,13 +586,13 @@ class MMN(W90_file):
         f_mmn_in.close()
         t1 = time()
         data = [d[:, 0] + 1j * d[:, 1] for d in data]
-        self.data = np.array(data).reshape(self.NK, self.NNB, self.NB, self.NB).transpose((0, 1, 3, 2))
-        headstring = np.array([s.split() for s in headstring], dtype=int).reshape(self.NK, self.NNB, 5)
-        assert np.all(headstring[:, :, 0] - 1 == np.arange(self.NK)[:, None])
+        self.data = np.array(data).reshape(NK, NNB, NB, NB).transpose((0, 1, 3, 2))
+        headstring = np.array([s.split() for s in headstring], dtype=int).reshape(NK, NNB, 5)
+        assert np.all(headstring[:, :, 0] - 1 == np.arange(NK)[:, None])
         self.neighbours = headstring[:, :, 1] - 1
         self.G = headstring[:, :, 2:]
         t2 = time()
-        print("Time for MMN.__init__() : {} , read : {} , headstring {}".format(t2 - t0, t1 - t0, t2 - t1))
+        print(f"Time for MMN.__init__() : {t2 - t0} , read : {t1 - t0} , headstring {t2 - t1}")
 
     def set_bk(self, kpt_latt, mp_grid, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
         try:
@@ -609,9 +632,11 @@ class MMN(W90_file):
             tol = np.linalg.norm(check_eye - np.eye(3))
             if tol > bk_complete_tol:
                 raise RuntimeError(
-                    "Error while determining shell weights. the following matrix :\n {} \n failed to be identity by an error of {} Further debug informstion :  \n bk_latt_unique={} \n bk_cart_unique={} \n bk_cart_unique_length={}\nshell_mat={}\nweight_shell={}\n"
-                    .format(
-                        check_eye, tol, bk_latt_unique, bk_cart_unique, bk_cart_unique_length, shell_mat, weight_shell))
+                    f"Error while determining shell weights. the following matrix :\n {check_eye} \n"
+                    f"failed to be identity by an error of {tol}. Further debug information :  \n"
+                    f"bk_latt_unique={bk_latt_unique} \n bk_cart_unique={bk_cart_unique} \n"
+                    f"bk_cart_unique_length={bk_cart_unique_length}\n shell_mat={shell_mat}\n"
+                    f"weight_shell={weight_shell}\n")
             weight = np.array([w for w, b1, b2 in zip(weight_shell, brd, brd[1:]) for i in range(b1, b2)])
             weight_dict = {tuple(bk): w for bk, w in zip(bk_latt_unique, weight)}
             bk_cart_dict = {tuple(bk): bkcart for bk, bkcart in zip(bk_latt_unique, bk_cart_unique)}
@@ -667,33 +692,40 @@ class AMN(W90_file):
     def NW(self):
         return self.data.shape[2]
 
-    def __init__(self, seedname, npar=multiprocessing.cpu_count()):
+    def __init__(self, seedname, npar=multiprocessing.cpu_count(), **kwargs):
+        super().__init__(seedname, "amn", tags=['data'], npar=npar, **kwargs)
+
+    def from_w90_file(self, seedname, npar):
         f_mmn_in = open(seedname + ".amn", "r").readlines()
-        print("reading {}.amn: ".format(seedname) + f_mmn_in[0].strip())
+        print(f"reading {seedname}.amn: " + f_mmn_in[0].strip())
         s = f_mmn_in[1]
         NB, NK, NW = np.array(s.split(), dtype=int)
-        self.data = np.zeros((NK, NB, NW), dtype=complex)
-        block = self.NW * self.NB
-        allmmn = (f_mmn_in[2 + j * block:2 + (j + 1) * block] for j in range(self.NK))
+        block = NW * NB
+        allmmn = (f_mmn_in[2 + j * block:2 + (j + 1) * block] for j in range(NK))
         p = multiprocessing.Pool(npar)
-        self.data = np.array(p.map(str2arraymmn, allmmn)).reshape((self.NK, self.NW, self.NB)).transpose(0, 2, 1)
+        self.data = np.array(p.map(str2arraymmn, allmmn)).reshape((NK, NW, NB)).transpose(0, 2, 1)
 
     """
     def write(self,seedname,comment="written by WannierBerri"):
         comment=comment.strip()
         f_mmn_out=open(seedname+".amn","w")
-        print ("writing {}.amn: ".format(seedname)+comment+"\n")
+        print (f"writing {seedname}.amn: "+comment+"\n")
         f_mmn_out.write(comment+"\n")
-        f_mmn_out.write("  {:3d} {:3d} {:3d}  \n".format(self.NB,self.NK,self.NW))
+        f_mmn_out.write(f"  {self.NB:3d} {self.NK:3d} {self.NW:3d}  \n")
         for ik in range(self.NK):
-            f_mmn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(ib+1,iw+1,ik+1,self.data[ik,ib,iw].real,self.data[ik,ib,iw].imag) for iw in range(self.NW) for ib in range(self.NB)))
+            f_mmn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(
+                ib+1,iw+1,ik+1,self.data[ik,ib,iw].real,self.data[ik,ib,iw].imag)
+                for iw in range(self.NW) for ib in range(self.NB)))
         f_mmn_out.close()
     """
 
 
 class EIG(W90_file):
 
-    def __init__(self, seedname):
+    def __init__(self, seedname, **kwargs):
+        super().__init__(seedname=seedname, ext="eig", **kwargs)
+
+    def from_w90_file(self, seedname):
         data = np.loadtxt(seedname + ".eig")
         NB = int(round(data[:, 0].max()))
         NK = int(round(data[:, 1].max()))
@@ -708,7 +740,10 @@ class SPN(W90_file):
     SPN.data[ik, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k}>
     """
 
-    def __init__(self, seedname='wannier90', formatted=False):
+    def __init__(self, seedname, **kwargs):
+        super().__init__(seedname=seedname, ext="spn", **kwargs)
+
+    def from_w90_file(self, seedname='wannier90', formatted=False):
         print("----------\n SPN  \n---------\n")
         if formatted:
             f_spn_in = open(seedname + ".spn", 'r')
@@ -720,7 +755,7 @@ class SPN(W90_file):
             nbnd, NK = f_spn_in.read_record(dtype=np.int32)
             SPNheader = "".join(a.decode('ascii') for a in SPNheader)
 
-        print("reading {}.spn : {}".format(seedname, SPNheader))
+        print(f"reading {seedname}.spn : {SPNheader}")
 
         indm, indn = np.tril_indices(nbnd)
         self.data = np.zeros((NK, nbnd, nbnd, 3), dtype=complex)
@@ -736,7 +771,7 @@ class SPN(W90_file):
             check = np.einsum('ijj->', np.abs(A.imag))
             A[:, indm, indn] = A[:, indn, indm].conj()
             if check > 1e-10:
-                raise RuntimeError("REAL DIAG CHECK FAILED : {0}".format(check))
+                raise RuntimeError(f"REAL DIAG CHECK FAILED : {check}")
             self.data[ik] = A.transpose(1, 2, 0)
         print("----------\n SPN OK  \n---------\n")
 
@@ -753,9 +788,10 @@ class UXU(W90_file):
     def n_neighb(self):
         return 2
 
-    def __init__(self, seedname='wannier90', formatted=False, suffix='uHu'):
-        print("----------\n  {0}   \n---------".format(suffix))
-        print('formatted == {}'.format(formatted))
+
+    def from_w90_file(self, seedname='wannier90', suffix='uXu', formatted=False):
+        print(f"----------\n  {suffix}   \n---------")
+        print(f'formatted == {formatted}')
         if formatted:
             f_uXu_in = open(seedname + "." + suffix, 'r')
             header = f_uXu_in.readline().strip()
@@ -765,7 +801,7 @@ class UXU(W90_file):
             header = readstr(f_uXu_in)
             NB, NK, NNB = f_uXu_in.read_record('i4')
 
-        print("reading {}.{} : <{}>".format(seedname, suffix, header))
+        print(f"reading {seedname}.{suffix} : <{header}>")
 
         self.data = np.zeros((NK, NNB, NNB, NB, NB), dtype=complex)
         if formatted:
@@ -778,7 +814,7 @@ class UXU(W90_file):
                     for ib1 in range(NNB):
                         tmp = f_uXu_in.read_record('f8').reshape((2, NB, NB), order='F').transpose(2, 1, 0)
                         self.data[ik, ib1, ib2] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
-        print("----------\n {0} OK  \n---------\n".format(suffix))
+        print(f"----------\n {suffix} OK  \n---------\n")
         f_uXu_in.close()
 
 
@@ -787,8 +823,8 @@ class UHU(UXU):
     UHU.data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|H(k)|u_{n,k+b2}>
     """
 
-    def __init__(self, seedname='wannier90', formatted=False):
-        super().__init__(seedname=seedname, formatted=formatted, suffix='uHu')
+    def __init__(self, seedname='wannier90', **kwargs):
+        super().__init__(seedname=seedname, ext='uHu', suffix='uHu', **kwargs)
 
 
 class UIU(UXU):
@@ -796,8 +832,8 @@ class UIU(UXU):
     UIU.data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|u_{n,k+b2}>
     """
 
-    def __init__(self, seedname='wannier90', formatted=False):
-        super().__init__(seedname=seedname, formatted=formatted, suffix='uIu')
+    def __init__(self, seedname='wannier90', **kwargs):
+        super().__init__(seedname=seedname, ext='uIu', suffix='uIu', **kwargs)
 
 
 class SXU(W90_file):
@@ -812,8 +848,8 @@ class SXU(W90_file):
     def n_neighb(self):
         return 1
 
-    def __init__(self, seedname='wannier90', formatted=False, suffix='sHu'):
-        print("----------\n  {0}   \n---------".format(suffix))
+    def from_w90_file(self, seedname='wannier90', formatted=False, suffix='sHu', **kwargs):
+        print(f"----------\n  {suffix}   \n---------")
 
         if formatted:
             f_sXu_in = open(seedname + "." + suffix, 'r')
@@ -824,7 +860,7 @@ class SXU(W90_file):
             header = readstr(f_sXu_in)
             NB, NK, NNB = f_sXu_in.read_record('i4')
 
-        print("reading {}.{} : <{}>".format(seedname, suffix, header))
+        print(f"reading {seedname}.{suffix} : <{header}>")
 
         self.data = np.zeros((NK, NNB, NB, NB, 3), dtype=complex)
 
@@ -840,7 +876,7 @@ class SXU(W90_file):
                         # tmp[m, n] = <u_{m,k}|S_ipol*X|u_{n,k+b}>
                         self.data[ik, ib, :, :, ipol] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
 
-        print("----------\n {0} OK  \n---------\n".format(suffix))
+        print(f"----------\n {suffix} OK  \n---------\n")
         f_sXu_in.close()
 
 
@@ -849,8 +885,8 @@ class SIU(SXU):
     SIU.data[ik, ib, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k+b}>
     """
 
-    def __init__(self, seedname='wannier90', formatted=False):
-        super().__init__(seedname=seedname, formatted=formatted, suffix='sIu')
+    def __init__(self, seedname='wannier90', formatted=False, **kwargs):
+        super().__init__(seedname=seedname, ext='sIu', formatted=formatted, suffix='sIu', **kwargs)
 
 
 class SHU(SXU):
@@ -858,17 +894,12 @@ class SHU(SXU):
     SHU.data[ik, ib, m, n, ipol] = <u_{m,k}|S_ipol*H(k)|u_{n,k+b}>
     """
 
-    def __init__(self, seedname='wannier90', formatted=False):
-        super().__init__(seedname=seedname, formatted=formatted, suffix='sHu')
+    def __init__(self, seedname='wannier90', formatted=False, **kwargs):
+        super().__init__(seedname=seedname, ext='sHu', formatted=formatted, suffix='sHu', **kwargs)
 
 
 def parse_win_raw(filename=None, text=None):
-    try:
-        import wannier90io as w90io
-    except ImportError as err:
-        raise ImportError(f"Failed to import `wannier90io` with error message `{err}`\n"
-                          "please install it manually as \n"
-                          "`pip install git+https://github.com/jimustafa/wannier90io-python.git`")
+    import wannier90io as w90io
     if filename is not None:
         with open(filename) as f:
             return w90io.parse_win_raw(f.read())
@@ -954,6 +985,5 @@ class DMN:
             for j in range(self.Nsym):
                 print()
                 for M in self.D_band[i][j],self.d_wann[i][j]:
-                    print("\n".join(" ".join("{}".format("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
-#                   print("\n".join(" ".join("{:4.2f}".format(abs(x)**2) for x in m) for m in M)+"\n")
+                    print("\n".join(" ".join( ("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
 """

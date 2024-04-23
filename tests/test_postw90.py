@@ -39,11 +39,11 @@ def create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_post
     os.mkdir(data_dir_tmp)
     assert "win" not in tags_needed, "tags_needed should not include win, as it is concatenated with the win_file_postw90"
     for tag in tags_needed:
-        fn = "{}.{}".format(seedname, tag)
+        fn = f"{seedname}.{tag}"
         os.symlink(os.path.join(data_dir_full, fn), os.path.join(data_dir_tmp, fn))
 #    os.symlink(os.path.join(ROOT_DIR,"../wannierberri"),os.path.join(data_dir_tmp,"wannierberri"))
 
-    fn = "{}.{}".format(seedname, "win")
+    fn = f"{seedname}.win"
     win_text = open(os.path.join(data_dir_full, fn), "r").read()
     print(win_text)
     win_text = win_file_postw90 + "\n\n" + "#" * 20 + "\n\n" + win_text

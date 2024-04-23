@@ -46,9 +46,9 @@ import numpy as np
 import scipy
 import scipy.spatial
 import scipy.spatial.transform
-from packaging import version as pversion
-
 from scipy.spatial.transform import Rotation as rotmat
+from packaging import version as pversion
+import warnings
 from copy import deepcopy
 from .__utility import real_recip_lattice
 from collections.abc import Iterable
@@ -56,7 +56,7 @@ from collections.abc import Iterable
 SYMMETRY_PRECISION = 1e-6
 
 
-class Symmetry():
+class Symmetry:
     """
     Symmetries that acts on reciprocal space objects, in Cartesian coordinates.
     A k-point vector ``k`` transform as ``self.iTR * self.iInv * (sym.R @ k)``.
@@ -116,7 +116,7 @@ class Symmetry():
         if rank > 0:
             if not np.all(np.array(res.shape[dim - rank:dim]) == 3):
                 raise RuntimeError(
-                    "all dimensions of rank-{} tensor should be 3, found: {}".format(rank, res.shape[dim - rank:dim]))
+                    f"all dimensions of rank-{rank} tensor should be 3, found: {res.shape[dim - rank:dim]}")
         for i in range(dim - rank, dim):
             res = self.rotate(
                 res.transpose(tuple(range(i)) + tuple(range(i + 1, dim)) +
@@ -151,7 +151,7 @@ class Rotation(Symmetry):
             raise ValueError("rotations with n=0 are nonsense")
         norm = np.linalg.norm(axis)
         if norm < 1e-10:
-            raise ValueError("the axis vector is too small : {0}. do you know what you are doing?".format(norm))
+            raise ValueError(f"the axis vector is too small : {norm}. do you know what you are doing?")
         axis = np.array(axis) / norm
         if pversion.parse(scipy.__version__) < pversion.parse("1.4.0"):
             R = rotmat.from_rotvec(2 * np.pi / n * axis / np.linalg.norm(axis)).as_dcm()
@@ -203,7 +203,7 @@ def from_string(string):
     try:
         res = globals()[string]
         if not isinstance(res, Symmetry):
-            raise RuntimeError("string '{}' produced not a Symmetry, but {} of type {}".format(string, res, type(res)))
+            raise RuntimeError(f"string '{string}' produced not a Symmetry, but {res} of type {type(res)}")
         return res
     except KeyError:
         raise ValueError(
@@ -395,8 +395,7 @@ class Group():
         if rank is None:
             rank = dim
         shape = np.array(data.shape)
-        assert np.all(shape[dim - rank:dim] == 3), "the last rank={} dimensions should be 3, found : {}".format(
-            rank, shape)
+        assert np.all(shape[dim - rank:dim] == 3), f"the last rank={rank} dimensions should be 3, found : {shape}"
         return sum(s.transform_tensor(data, rank=rank,
                                       transformTR=transformTR, transformInv=transformInv)
                    for s in self.symmetries) / self.size
@@ -501,7 +500,7 @@ def transform_from_dict(dic, key):
         if isinstance(d, dict):
             return Transform(**d)
         elif isinstance(d, str):
-            print("WARNING : transform read as string from file, recognized as None")
+            warnings.warn("transform read as string from file, recognized as None")
             return None
         else:
             return ValueError(f"wrong type of transform[{key}] in the npz file:{type(d)}")

@@ -51,3 +51,5 @@ Tabulating
    :undoc-members:
    :show-inheritance:
    :exclude-members: Tabulator
+
+.. autofunction:: wannierberri.npz_to_fermisurfer

@@ -1,22 +1,32 @@
 import numpy as np
+import abc
 
 
-class Result():
+class Result(abc.ABC):
 
-    def __init__(self):
-        raise NotImplementedError()
+    def __init__(self, save_mode="bin+txt"):
+        self.save_mode = set()
+        for s in "bin", "txt":
+            if s in save_mode:
+                self.save_mode.add(s)
 
     #  multiplication by a number
+    @abc.abstractmethod
     def __mul__(self, other):
         raise NotImplementedError()
 
     # +
+    @abc.abstractmethod
     def __add__(self, other):
         raise NotImplementedError()
 
     # -
     def __sub__(self, other):
         raise NotImplementedError()
+
+    @abc.abstractmethod
+    def as_dict(self):
+        pass
 
     # writing to a file
     def savetxt(self, name):
@@ -25,7 +35,8 @@ class Result():
     # saving as binary
     def save(self, name):
         """
-        writes a dictionary-like objectto file called `name`  defined in :func:`~wannierberri.result.EnergyResult.as_dict`
+        writes a dictionary-like object to file called `name`  defined in
+        :func:`~wannierberri.result.EnergyResult.as_dict`
         """
         name = name.format('')
         with open(name + ".npz", "wb") as f:
@@ -34,9 +45,6 @@ class Result():
     @property
     def _maxval_raw(self):
         return np.abs(self.data).max()
-
-    def set_save_mode(self, set_mode):
-        self.save_modes = set_mode.split('+')
 
     #  how result transforms under symmetry operations
     def transform(self, sym):

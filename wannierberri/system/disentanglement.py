@@ -1,9 +1,7 @@
 from copy import deepcopy
 import numpy as np
 
-DEGEN_THRESH = 1e-2  # for safity - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
-
-
+DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
 
 
 def disentangle(w90data,
@@ -17,7 +15,7 @@ def disentangle(w90data,
                 ):
     r"""
     Performs disentanglement of the bands recorded in w90data, following the procedure described in
-    `Souza et al,PRB 2001 <https://doi.org/10.1103/PhysRevB.65.035109>`__
+    `Souza et al., PRB 2001 <https://doi.org/10.1103/PhysRevB.65.035109>`__
     At the end writes `w90data.chk.v_matrix` and sets `w90data.wannierised = True`
 
     Parameters
@@ -35,6 +33,8 @@ def disentangle(w90data,
     num_iter_converge : int
         the convergence is achieved when the standard deviation of the spread functional over the `num_iter_converge`
         iterations is less than conv_tol
+    mix_ratio : float
+        0 <= mix_ratio <=1  - mixing the previous itertions. 1 for max speed, smaller values are more stable
     print_progress_every
         frequency to print the progress
 
@@ -50,7 +50,7 @@ def disentangle(w90data,
         """define the indices of the frozen bands, making sure that degenerate bands were not split
         (unfreeze the degenerate bands together) """
         E = w90data.eig.data[ik]
-        ind = np.where((E <= froz_max) * (E >= froz_min))[0]
+        ind = list(np.where((E <= froz_max) * (E >= froz_min))[0])
         while len(ind) > 0 and ind[0] > 0 and E[ind[0]] - E[ind[0] - 1] < thresh:
             del ind[0]
         while len(ind) > 0 and ind[0] < len(E) and E[ind[-1] + 1] - E[ind[-1]] < thresh:
@@ -83,17 +83,16 @@ def disentangle(w90data,
 
     #        TODO : symmetrize (if needed)
 
-
-    def calc_Z(Mmn_loc, U=None):
-        if U is None:
+    def calc_Z(Mmn_loc, U_loc=None):
+        if U_loc is None:
             # Mmn_loc_opt=[Mmn_loc[ik] for ik in w90data.Dmn.kptirr]
             Mmn_loc_opt = [Mmn_loc[ik] for ik in w90data.iter_kpts]
         else:
             mmnff = Mmn_FF('free', 'free')
             # mmnff=[mmnff[ik] for ik in w90data.Dmn.kptirr]
             mmnff = [mmnff[ik] for ik in w90data.iter_kpts]
-            # Mmn_loc_opt=[[Mmn[ib].dot(U[ikb]) for ib,ikb in enumerate(neigh)] for Mmn,neigh in zip(mmnff,self.mmn.neighbours[irr])]
-            Mmn_loc_opt = [[Mmn[ib].dot(U[ikb]) for ib, ikb in enumerate(neigh)] for Mmn, neigh in
+            # Mmn_loc_opt=[[Mmn[ib].dot(U_loc[ikb]) for ib,ikb in enumerate(neigh)] for Mmn,neigh in zip(mmnff,self.mmn.neighbours[irr])]
+            Mmn_loc_opt = [[Mmn[ib].dot(U_loc[ikb]) for ib, ikb in enumerate(neigh)] for Mmn, neigh in
                            zip(mmnff, w90data.mmn.neighbours)]
         return [sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(wbk, Mmn)) for wbk, Mmn in
                 zip(w90data.mmn.wk, Mmn_loc_opt)]
@@ -117,20 +116,19 @@ def disentangle(w90data,
         Omega_I_list.append(Omega_I)
 
         if i_iter > 0:
-            delta = "{:15.8e}".format(Omega_I - Omega_I_list[-2])
+            delta = f"{Omega_I - Omega_I_list[-2]:15.8e}"
         else:
             delta = "--"
 
         if i_iter >= num_iter_converge:
             delta_std = np.std(Omega_I_list[-num_iter_converge:])
-            delta_std_str = "{:15.8e}".format(delta_std)
+            delta_std_str = f"{delta_std:15.8e}"
         else:
             delta_std = np.Inf
             delta_std_str = "--"
 
         if i_iter % print_progress_every == 0:
-            print("iteration {:4d}".format(i_iter) + " Omega_I = {:15.10f}".format(Omega_I) + f"  delta={delta}, "
-                  f"delta_std={delta_std_str}")
+            print(f"iteration {i_iter:4d} Omega_I = {Omega_I:15.10f}  delta={delta}, delta_std={delta_std_str}")
         if delta_std < conv_tol:
             break
         Z_old = deepcopy(Z)
@@ -145,8 +143,8 @@ def disentangle(w90data,
         nfrozen = sum(frozen[ik])
         nfree = sum(free[ik])
         assert nfree + nfrozen == nband
-        assert nfrozen <= w90data.chk.num_wann, ("number of frozen bands {} at k-point {} is greater than number of "
-                                              "wannier functions {}").format(nfrozen, ik + 1, w90data.chk.num_wann)
+        assert nfrozen <= w90data.chk.num_wann, (f"number of frozen bands {nfrozen} at k-point {ik + 1}"
+                                                 f"is greater than number of wannier functions {w90data.chk.num_wann}")
         U[frozen[ik], range(nfrozen)] = 1.
         U[free[ik], nfrozen:] = U_opt_free[ik]
         Z, D, V = np.linalg.svd(U.T.conj().dot(amn_list[ik]))
@@ -155,7 +153,7 @@ def disentangle(w90data,
     U_opt_full = U_opt_full_irr  # temporary, withour symmetries
     w90data.chk.v_matrix = np.array(U_opt_full).transpose((0, 2, 1))
     w90data.chk._wannier_centers = w90data.chk.get_AA_q(w90data.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(
-                axis=0).real.T / w90data.chk.num_kpts
+        axis=0).real.T / w90data.chk.num_kpts
 
     w90data.wannierised = True
     return w90data.chk.v_matrix
@@ -217,9 +215,8 @@ def get_max_eig(matrix, nvec, nBfree):
     Both matrix and nvec are lists by k-points with arbitrary size of matrices"""
     assert len(matrix) == len(nvec) == len(nBfree)
     assert np.all([m.shape[0] == m.shape[1] for m in matrix])
-    assert np.all([m.shape[0] >= nv for m, nv in zip(matrix, nvec)]), "nvec={}, m.shape={}".format(nvec,
-                                                                                                   [m.shape for m in
-                                                                                                    matrix])
+    assert np.all([m.shape[0] >= nv for m, nv in zip(matrix, nvec)]), \
+        f"nvec={nvec}, m.shape={[m.shape for m in matrix]}"
     EV = [np.linalg.eigh(M) for M in matrix]
     return [ev[1][:, np.argsort(ev[0])[nf - nv:nf]] for ev, nv, nf in zip(EV, nvec, nBfree)]
 

@@ -26,10 +26,10 @@ from test_run import (
 @pytest.fixture
 def check_symmetry(check_run):
     def _inner(system,
-        calculators={},
-        precision=1e-7,
-        extra_precision={},
-        **kwargs,
+            calculators={},
+            precision=1e-7,
+            extra_precision={},
+            **kwargs,
             ):
         kwargs['do_not_compare'] = True
         result_irr_k = check_run(system, use_symmetry=True, calculators=calculators, suffix="irr_k", **kwargs)
@@ -50,8 +50,6 @@ def check_symmetry(check_run):
                                             f"data of {quant} with and without symmetries give a maximal "
                                             f"absolute difference of {diff} greater than the required precision {req_precision}"
                                         )
-
-
     return _inner
 
 
@@ -143,10 +141,6 @@ def checksym_Fe(check_run, compare_any_result, check_symmetry):
                    precision=-1e-8
                     )
     return _inner
-
-
-def test_Fe_old_wcc(system_Fe_sym_W90_old_wcc, checksym_Fe):
-    checksym_Fe(system_Fe_sym_W90_old_wcc)
 
 
 def test_Fe_new_wcc(system_Fe_sym_W90_wcc, checksym_Fe):
@@ -340,7 +334,7 @@ def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
             par["kwargs_formula"] = {"external_terms": False}
         calculators[k] = v(**par)
 
-    grid = wberri.grid.GridTrigonalH(system_Te_sparse, length=50, NKFFT=[3, 3, 2], x=0.6)
+    grid = wberri.grid.GridTrigonalH(system_Te_sparse, length=50, NKFFT=1, x=0.6)
 
     check_run(
         system_Te_sparse,
