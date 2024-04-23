@@ -242,6 +242,14 @@ class System_R(System):
             use_wcc_phase=self.use_wcc_phase,
             DFT_code=DFT_code)
 
+        if self.has_R_mat('AA'):
+            A_diag = self.get_R_mat('AA')[:, :, self.iR0].diagonal()
+            if self.use_wcc_phase:
+                A_diag_max = abs(A_diag).max()
+                if A_diag_max > 1e-5:
+                    print(f"WARNING : the maximal value of diagonal position matrix elements before symmetrization is {A_diag_max}. This may signal a problem:\n",A_diag)
+
+
         print("Wannier Centers cart (raw):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (raw):\n", self.wannier_centers_reduced)
         (self._XX_R, self.iRvec), self.wannier_centers_cart = symmetrize_wann.symmetrize(method=method)
@@ -251,7 +259,7 @@ class System_R(System):
             if self.use_wcc_phase:
                 A_diag_max = abs(A_diag).max()
                 if A_diag_max > 1e-5:
-                    print(f"WARNING : the maximal value of diagonal position matrix elements is {A_diag_max}. This may signal a problem")
+                    print(f"WARNING : the maximal value of diagonal position matrix elements after symmetrization is {A_diag_max}. This may signal a problem:\n",A_diag)
                 self.get_R_mat('AA')[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] = 0
         print("Wannier Centers cart (symmetrized):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (symmetrized):\n", self.wannier_centers_reduced)

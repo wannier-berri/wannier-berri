@@ -261,6 +261,18 @@ def test_system_Si_W90_wccFD(check_system, system_Si_W90_wccFD):
                 )
 
 
+def test_system_Si_W90_wccFD_sym(check_system, system_Si_W90_wccFD_sym):
+    check_system(
+            system_Si_W90_wccFD_sym, "Si_W90_wccFD_sym",
+            matrices=['Ham', 'AA', 'BB', 'CC'],#, 'GG', 'OO']
+                )
+
+def test_system_Si_W90_wccJM_sym(check_system, system_Si_W90_wccJM_sym):
+    check_system(
+            system_Si_W90_wccJM_sym, "Si_W90_wccJM_sym",
+            matrices=['Ham', 'AA', 'BB', 'CC'],#, 'GG', 'OO']
+                )
+
 def test_system_Haldane_TBmodels(check_system, system_Haldane_TBmodels):
     check_system(
         system_Haldane_TBmodels, "Haldane", suffix="TBmodels",
