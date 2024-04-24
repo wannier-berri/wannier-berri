@@ -169,7 +169,6 @@ class System_w90(System_R):
         if use_wcc_phase_findiff or transl_inv_JM:  # Phase convention I
             if use_wcc_phase_findiff:
                 _r0 = centers[None, :, :]
-                _r0_B = centers[None, :, :]
                 sum_b = True
             elif transl_inv_JM:
                 _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
