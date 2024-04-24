@@ -78,7 +78,7 @@ class SymWann:
         self.lattice = lattice
         self.positions = positions
         self.atom_name = atom_name
-        self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC',
+        self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'SH', 'SA', 'SHA'
                                      ]  # ['AA','BB','CC','SS','SA','SHA','SR','SH','SHR']
         for k in XX_R:
             if k not in self.possible_matrix_list:
@@ -93,14 +93,20 @@ class SymWann:
             'AA': 1,
             'BB': 1,
             'CC': -1,
-            'SS': -1
+            'SS': -1,
+            'SH': -1,
+            'SA': 1,
+            'SHA': 1
         }  # {'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
         self.parity_TR = {
             'Ham': 1,
             'AA': 1,
             'BB': 1,
             'CC': -1,
-            'SS': -1
+            'SS': -1,
+            'SH': -1,
+            'SA': -1,
+            'SHA': -1
         }  # {'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
 
         self.orbitals = Orbitals()
@@ -597,7 +603,9 @@ def _rotate_matrix(X, L, R):
         tmpX = L.dot(X_shift).dot(R)
         return tmpX.transpose(0, 2, 1).reshape(X.shape)
     else:
-        raise ValueError()
+        _rotated = np.tensordot(L, X, axes=((1,), (0,)))
+        _rotated = np.tensordot(R, _rotated, axes=((0,), (1,)))
+        return _rotated.swapaxes(0, 1)
 
 
 def _matrix_to_dict(mat, H_select, wann_atom_info):

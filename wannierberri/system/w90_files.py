@@ -237,23 +237,31 @@ class CheckPoint:
             SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik, :, :, :] * eig.data[ik, None, :, None], ik, ik)
         return SH_q
 
-    def get_SHA_q(self, shu, mmn, phase=None):
+    def get_SHA_q(self, shu, mmn, phase=None, sum_b=False):
         """
         SHA or SA (if siu is used instead of shu)
         """
         mmn.set_bk_chk(self)
-        SHA_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
+        if sum_b:
+            SHA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
+        else:
+            SHA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3, 3), dtype=complex)
         assert shu.NNB == mmn.NNB
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
                 ib_unique = mmn.ib_unique_map[ik, ib]
                 SHAW = self.wannier_gauge(shu.data[ik, ib], ik, iknb)
+                SHA_q_ik_ib = 1.j * SHAW[:, :, None, :] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :, None]
+
                 if phase is not None:
-                    SHAW = SHAW * phase[:, :, ib_unique, None]
-                SHA_q_ik = 1.j * SHAW[:, :, None, :] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :, None]
-                SHA_q[ik] += SHA_q_ik
-        return SHA_q
+                    SHA_q_ik_ib *= phase[:, :, ib_unique, None, None]
+                if sum_b:
+                    SHA_qb[ik] += SHA_q_ik_ib
+                else:
+                    SHA_qb[ik, :, :, ib_unique, :, :] = SHA_q_ik_ib
+        
+        return SHA_qb
 
 
 

@@ -500,7 +500,7 @@ class SpinVelocity(Matrix_ln):
                 "spin Hall SJ without external terms is not implemented yet. Use `SHC_type='simple'`")
         # Spin current operator, revised from J. H. Ryoo et al PRB (2019)
         # J_H_SJ[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
-        SA_H = data_K.Xbar("SA")
+        SA_H = data_K.Xbar("SA") - 1j * data_K.Xbar("SS", 1).swapaxes(3, 4)
         SHA_H = data_K.Xbar("SHA")
         J = -1j * (data_K.E_K[:, None, :, None, None] * SA_H - SHA_H) + data_K.Xbar('SH', 1).swapaxes(3, 4)
         return (J + J.swapaxes(1, 2).conj()) / 2

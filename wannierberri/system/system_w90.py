@@ -66,6 +66,7 @@ class System_w90(System_R):
             seedname="wannier90",
             w90data=None,
             transl_inv=True,
+            alpha = 0.5,
             transl_inv_JM=False,
             guiding_centers=False,
             fftlib='fftw',
@@ -90,7 +91,7 @@ class System_w90(System_R):
         assert not (transl_inv_JM and use_wcc_phase_findiff)
         if transl_inv_JM:
             assert self.use_wcc_phase, "transl_inv_JM is implemented only with convention I"
-            known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS']
+            known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS', 'SH', 'SA', 'SHA']
             unknown = set(self.needed_R_matrices) - set(known)
             if len(unknown) > 0:
                 raise NotImplementedError(f"transl_inv_JM for {list(unknown)} is not implemented")
@@ -169,15 +170,19 @@ class System_w90(System_R):
         if use_wcc_phase_findiff or transl_inv_JM:  # Phase convention I
             if use_wcc_phase_findiff:
                 _r0 = centers[None, :, :]
+                _r0_B = centers[None, :, :]
                 sum_b = True
             elif transl_inv_JM:
                 _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
+                _r0_B = (1 - alpha) * centers[:, None, :] + alpha * centers[None, :, :]
                 sum_b = False
             expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0))
+            expjphase1_B = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0_B))
             print(f"expjphase1 {expjphase1.shape}")
             expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
         else:
             expjphase1 = None
+            expjphase1_B = None
             expjphase2 = None
             sum_b = True
 
@@ -212,7 +217,7 @@ class System_w90(System_R):
 
         # B_a(R,b) matrix
         if 'BB' in self.needed_R_matrices:
-            BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig, sum_b=sum_b, phase=expjphase1)
+            BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig, sum_b=sum_b, phase=expjphase1_B)
             BB_Rb = fourier_q_to_R_loc(BB_qb)
             self.set_R_mat('BB', BB_Rb)
 
@@ -247,9 +252,9 @@ class System_w90(System_R):
             self.set_R_mat('SHR', fourier_q_to_R_loc(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, eig=w90data.eig, phase=expjphase1)))
 
         if 'SA' in self.needed_R_matrices:
-            self.set_R_mat('SA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.siu, w90data.mmn, phase=expjphase1)))
+            self.set_R_mat('SA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.siu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
         if 'SHA' in self.needed_R_matrices:
-            self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.shu, w90data.mmn, phase=expjphase1)))
+            self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.shu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
 
         del expjphase1, expjphase2
 
@@ -258,14 +263,14 @@ class System_w90(System_R):
 
 
         if transl_inv_JM:
-            self.recenter_JM(centers, bk_cart_unique)
+            self.recenter_JM(centers, bk_cart_unique, alpha)
 
         self.do_at_end_of_init()
         if (not transl_inv_JM) and self.use_wcc_phase and (not wcc_phase_fin_diff):
             self.convention_II_to_I()
 
     ###########################################################################
-    def recenter_JM(self, centers, bk_cart_unique):
+    def recenter_JM(self, centers, bk_cart_unique, alpha):
         """convention I"""
         assert self.use_wcc_phase
         #  Here we apply the phase factors associated with the
@@ -275,7 +280,9 @@ class System_w90(System_R):
 
         # Optimal center in Jae-Mo's implementation
         phase = np.einsum('ba,Ra->Rb', bk_cart_unique, - 0.5 * self.cRvec)
+        phase_B = np.einsum('ba,Ra->Rb', bk_cart_unique, (alpha - 1) * self.cRvec)
         expiphase1 = np.exp(1j * phase)
+        expiphase1_B = np.exp(1j * phase_B)
         expiphase2 = expiphase1[:, :, None] * expiphase1[:, None, :]
 
         def _reset_mat(key, phase, axis, Hermitian=True):
@@ -286,13 +293,16 @@ class System_w90(System_R):
                 self.set_R_mat(key, XX_R, reset=True, Hermitian=Hermitian)
 
         _reset_mat('AA', expiphase1, 3)
-        _reset_mat('BB', expiphase1, 3, Hermitian=False)
+        _reset_mat('BB', expiphase1_B, 3, Hermitian=False)
         _reset_mat('CC', expiphase2, (3, 4))
+        _reset_mat('SA', expiphase1, 3, Hermitian=False)
+        _reset_mat('SHA', expiphase1, 3, Hermitian=False)
         _reset_mat('OO', expiphase2, (3, 4))
         _reset_mat('GG', expiphase2, (3, 4))
 
         del expiphase1, expiphase2
         r0 = 0.5 * (centers[:, None, None, :] + centers[None, :, None, :] + self.cRvec[None, None, :, :])
+        r0_B = (1 - alpha) * centers[:, None, None, :] + alpha * (centers[None, :, None, :] + self.cRvec[None, None, :, :])
 
         # --- A_a(R) matrix --- #
         if self.need_R_any('AA'):
@@ -301,7 +311,7 @@ class System_w90(System_R):
         if self.need_R_any('BB'):
             BB_R0 = self.get_R_mat('BB').copy()
             HH_R = self.get_R_mat('Ham')
-            rc = (r0 - self.cRvec[None, None, :, :] - centers[None, :, None, :]) * HH_R[:, :, :, None]
+            rc = (r0_B - self.cRvec[None, None, :, :] - centers[None, :, None, :]) * HH_R[:, :, :, None]
             self.set_R_mat('BB', rc, add=True)
         # --- C_a(R) matrix --- #
         if self.need_R_any('CC'):
@@ -310,6 +320,14 @@ class System_w90(System_R):
             rc = 1j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None, :]
             CC_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
             self.set_R_mat('CC', CC_R_add, add=True, Hermitian=True)
+        if self.need_R_any('SA'):
+            SS_R = self.get_R_mat('SS')
+            rc = (r0[:, :, :, :, None] - self.cRvec[None, None, :, :, None] - centers[None, :, None, :, None]) * SS_R[:, :, :, None, :]
+            self.set_R_mat('SA', rc, add=True)
+        if self.need_R_any('SHA'):
+            SH_R = self.get_R_mat('SH')
+            rc = (r0[:, :, :, :, None] - self.cRvec[None, None, :, :, None] - centers[None, :, None, :, None]) * SH_R[:, :, :, None, :]
+            self.set_R_mat('SHA', rc, add=True)
         # --- O_a(R) matrix --- #
         if self.need_R_any('OO'):
             assert AA_R0 is not None, 'Recentered A matrix is needed in Jae-Mo`s implementation of O'
