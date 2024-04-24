@@ -491,6 +491,7 @@ class SpinVelocity(Matrix_ln):
         _spin_velocity_einsum_opt(J, data_K.Xbar('SS'), data_K.Xbar('Ham', 1))
         return (J + J.swapaxes(1, 2).conj()) / 2
 
+
 class SpinOmega(Formula_ln):
     """spin Berry curvature"""
 
