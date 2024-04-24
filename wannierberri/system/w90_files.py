@@ -260,7 +260,7 @@ class CheckPoint:
                     SHA_qb[ik] += SHA_q_ik_ib
                 else:
                     SHA_qb[ik, :, :, ib_unique, :, :] = SHA_q_ik_ib
-        
+
         return SHA_qb
 
 
