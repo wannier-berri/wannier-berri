@@ -211,7 +211,14 @@ def test_GaAs_random(check_symmetry, system_random_GaAs_load_ws_sym):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
-    calculators.update({'SHC-ryoo': calc.dynamic.SHC(SHC_type='ryoo', Efermi = np.array([8.0]), omega = np.array([0.0]))})
+    param = dict(
+        Efermi=Efermi_GaAs,
+        omega=np.arange(1.0, 5.1, 0.5),
+        smr_fixed_width=0.2,
+        smr_type='Gaussian',
+        kBT=0.01,
+    )
+    calculators.update({'SHC-ryoo': calc.dynamic.SHC(SHC_type='ryoo', **param)})
     check_symmetry(system=system, calculators=calculators)
 
 
