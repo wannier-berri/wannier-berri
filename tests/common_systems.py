@@ -322,7 +322,7 @@ def system_GaAs_W90_wccJM(create_files_GaAs_W90):
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.system.System_w90(seedname, morb=True,
                                       transl_inv_JM=True, spin=True,
-                                      OSD=True,
+                                      OSD=True, SHCryoo=True,
                                       wcc_phase_fin_diff=False)
     system.set_symmetry(symmetries_GaAs)
     return system
