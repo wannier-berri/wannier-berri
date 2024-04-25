@@ -596,16 +596,9 @@ class SymmetryOperation_loc(SymmetryOperation):
 
 
 def _rotate_matrix(X, L, R):
-    if X.ndim == 2:
-        return L.dot(X).dot(R)
-    elif X.ndim == 3:
-        X_shift = X.transpose(2, 0, 1)
-        tmpX = L.dot(X_shift).dot(R)
-        return tmpX.transpose(0, 2, 1).reshape(X.shape)
-    else:
-        _rotated = np.tensordot(L, X, axes=((1,), (0,)))
-        _rotated = np.tensordot(R, _rotated, axes=((0,), (1,)))
-        return _rotated.swapaxes(0, 1)
+    _rotated = np.tensordot(L, X, axes=((1,), (0,)))
+    _rotated = np.tensordot(R, _rotated, axes=((0,), (1,)))
+    return _rotated.swapaxes(0, 1)
 
 
 def _matrix_to_dict(mat, H_select, wann_atom_info):

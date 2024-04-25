@@ -28,7 +28,6 @@ from common_systems import (
     system_GaAs_W90_wcc,
     system_GaAs_W90_wccFD,
     system_GaAs_W90_wccJM,
-    system_GaAs_W90_wccJM_sym,
     system_GaAs_tb,
     system_GaAs_sym_tb_wcc,
     system_GaAs_tb_wcc,

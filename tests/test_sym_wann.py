@@ -121,7 +121,7 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90_wcc, compare_any_result, use_k_
 
 @pytest.fixture
 def checksym_Fe(check_run, compare_any_result, check_symmetry):
-    def _inner(system):
+    def _inner(system, extra_calculators={}):
         param = {'Efermi': Efermi_Fe}
         cals = {'dos': calc.static.DOS,
                 'cumdos': calc.static.CumDOS,
@@ -135,6 +135,7 @@ def checksym_Fe(check_run, compare_any_result, check_symmetry):
             'ahc_int': calc.static.AHC(Efermi=Efermi_Fe, kwargs_formula={"external_terms": False}),
             'ahc_ext': calc.static.AHC(Efermi=Efermi_Fe, kwargs_formula={"internal_terms": False}),
                         })
+        calculators.update(extra_calculators)
         check_symmetry(system=system,
                        grid_param=dict(NK=6, NKFFT=3),
                    calculators=calculators,
@@ -147,22 +148,12 @@ def test_Fe_new_wcc(system_Fe_sym_W90_wcc, checksym_Fe):
     checksym_Fe(system_Fe_sym_W90_wcc)
 
 
-def test_GaAs_sym_W90(check_symmetry, system_GaAs_W90_wccJM_sym):
-    param = {'Efermi': Efermi_Fe}
-    cals = {'ahc': calc.static.AHC,
-            'Morb': calc.static.Morb,
-            'spin': calc.static.Spin}
-    calculators = {k: v(**param) for k, v in cals.items()}
-    param = dict(
-        Efermi=Efermi_GaAs,
-        omega=np.arange(1.0, 5.1, 0.5),
-        smr_fixed_width=0.2,
-        smr_type='Gaussian',
-        kBT=0.01,
-    )
-    calculators.update({'SHC_ryoo': calc.dynamic.SHC(SHC_type='ryoo', **param)})
+def test_Fe_new_wcc_SHC(system_Fe_sym_W90_wcc, checksym_Fe):
+    extra_calculators = {}
+    extra_calculators['SHCryoo_static'] = \
+        wberri.calculators.static.SHC(Efermi=Efermi_Fe, kwargs_formula={'spin_current_type': 'ryoo'})
+    checksym_Fe(system_Fe_sym_W90_wcc, extra_calculators=extra_calculators)
 
-    check_symmetry(system=system_GaAs_W90_wccJM_sym, calculators=calculators)
 
 
 def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb_wcc, compare_any_result):
@@ -220,6 +211,7 @@ def test_GaAs_random(check_symmetry, system_random_GaAs_load_ws_sym):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
+    calculators.update({'SHC-ryoo': calc.dynamic.SHC(SHC_type='ryoo', Efermi = np.array([8.0]), omega = np.array([0.0]))})
     check_symmetry(system=system, calculators=calculators)
 
 
