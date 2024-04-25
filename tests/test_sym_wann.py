@@ -147,6 +147,24 @@ def test_Fe_new_wcc(system_Fe_sym_W90_wcc, checksym_Fe):
     checksym_Fe(system_Fe_sym_W90_wcc)
 
 
+def test_GaAs_sym_W90(check_symmetry, system_GaAs_W90_wccJM_sym):
+    param = {'Efermi': Efermi_Fe}
+    cals = {'ahc': calc.static.AHC,
+            'Morb': calc.static.Morb,
+            'spin': calc.static.Spin}
+    calculators = {k: v(**param) for k, v in cals.items()}
+    param = dict(
+        Efermi=Efermi_GaAs,
+        omega=np.arange(1.0, 5.1, 0.5),
+        smr_fixed_width=0.2,
+        smr_type='Gaussian',
+        kBT=0.01,
+    )
+    calculators.update({'SHC_ryoo': calc.dynamic.SHC(SHC_type='ryoo', **param)})
+
+    check_symmetry(system=system_GaAs_W90_wccJM_sym, calculators=calculators)
+
+
 def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb_wcc, compare_any_result):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}

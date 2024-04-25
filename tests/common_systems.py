@@ -328,6 +328,28 @@ def system_GaAs_W90_wccJM(create_files_GaAs_W90):
     return system
 
 
+@pytest.fixture(scope="session")
+def system_GaAs_W90_wccJM_sym(create_files_GaAs_W90):
+    """Create symmetrized system for GaAs using Wannier90 data with wcc phases"""
+
+    data_dir = create_files_GaAs_W90
+    # Load system
+    seedname = os.path.join(data_dir, "GaAs")
+    system = wberri.system.System_w90(seedname, morb=True,
+                                      transl_inv_JM=True, spin=True,
+                                      SHCryoo=True,
+                                      wcc_phase_fin_diff=False)
+    system.symmetrize(
+            proj=['As:sp3', 'Ga:sp3'],
+            atom_name=['Ga', 'As'],
+            positions=np.array([[0, 0, 0], [1 / 4, 1 / 4, 1 / 4]]),
+            soc=True,
+            DFT_code='qe',
+        )
+        
+    system.set_symmetry(symmetries_GaAs)
+    return system
+
 
 def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=True):
     """Create system for GaAs using sym_tb.dat data"""
