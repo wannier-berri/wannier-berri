@@ -314,7 +314,7 @@ def system_GaAs_W90_wccFD(create_files_GaAs_W90):
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_W90_wccJM(create_files_GaAs_sym_W90):
+def system_GaAs_W90_wccJM(create_files_GaAs_W90):
     """Create system for GaAs using Wannier90 data with wcc phases"""
 
     data_dir = create_files_GaAs_W90
