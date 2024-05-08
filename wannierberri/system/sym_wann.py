@@ -95,8 +95,8 @@ class SymWann:
             'CC': -1,
             'SS': -1,
             'SH': -1,
-            'SA': 1,
-            'SHA': 1
+            'SA': -1,
+            'SHA': -1
         }  # {'AA':1,'BB':1,'CC':1,'SS':-1,'SA':1,'SHA':1,'SR':1,'SH':1,'SHR':1}
         self.parity_TR = {
             'Ham': 1,

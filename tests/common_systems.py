@@ -746,7 +746,7 @@ def system_random_load_bare():
 def system_random_GaAs():
     return wberri.system.SystemRandom(num_wann=16, nRvec=30, max_R=4,
                                       real_lattice=np.ones(3) - np.eye(3),
-                                      berry=True, spin=True,
+                                      berry=True, spin=True, SHCryoo=True,
                                       use_wcc_phase=True)
 
 
@@ -754,7 +754,7 @@ def get_system_random_GaAs_load_ws_sym(use_ws=False, sym=False):
     system = wberri.system.System_R(berry=True, spin=True, SHCryoo=True)
     system.load_npz(path=os.path.join(ROOT_DIR, "data", "random_GaAs"))
     if use_ws:
-        system.do_ws_dist(mp_grid=2)
+        system.do_ws_dist(mp_grid=6)
     if sym:
         system.symmetrize(
             proj=['Ga:sp3', 'As:sp3'],
