@@ -51,6 +51,7 @@ class FortranFileW(scipy.io.FortranFile):
 
 alpha_A = np.array([1, 2, 0])
 beta_A = np.array([2, 0, 1])
+delta_f = np.eye(3)
 
 
 def conjugate_basis(basis):
@@ -277,7 +278,7 @@ def iterate3dpm(size):
 def find_degen(arr, degen_thresh):
     """ finds shells of 'almost same' values in array arr, and returns a list o[(b1,b2),...]"""
     A = np.where(arr[1:] - arr[:-1] > degen_thresh)[0] + 1
-    A = [0,] + list(A) + [len(arr)]
+    A = [0, ] + list(A) + [len(arr)]
     return [(ib1, ib2) for ib1, ib2 in zip(A, A[1:])]
 
 
