@@ -199,11 +199,12 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
     return system
 
 
-def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_diff=False, use_ws=False, **kwargs):
+def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_diff=False, use_ws=False,
+                          extra_tags=[], **kwargs):
     """Create system for Fe symmetrization using Wannier90 data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
-    create_W90_files('Fe_sym', ['uHu', 'sHu', 'sIu'], data_dir)
+    create_W90_files('Fe_sym', ['uHu', 'uIu', 'sHu', 'sIu'], data_dir)
 
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
@@ -226,6 +227,15 @@ def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_di
 @pytest.fixture(scope="session")
 def system_Fe_sym_W90_wcc():
     return get_system_Fe_sym_W90(symmetrize=True)
+
+
+@pytest.fixture(scope="session")
+def system_Fe_sym_W90_wcc_fd():
+    return get_system_Fe_sym_W90(symmetrize=True, use_ws=True,
+                                 OSD=True, SHCqiao=True,
+                                 extra_tags=['sIu', 'sHu'],
+                                 wcc_phase_fin_diff=True
+                                 )
 
 
 @pytest.fixture(scope="session")
@@ -449,15 +459,6 @@ def system_Chiral_OSD():
     # Load system
     system = wberri.system.System_PythTB(model_pythtb_Chiral_OSD, spin=True)
     # system.set_symmetry(["C3z","TimeReversal"])
-    return system
-
-
-@pytest.fixture(scope="session")
-def system_Haldane_PythTB_wrong_mat():
-    """Create system for Haldane model using PythTB - contains a wrong R-matrix to test exception"""
-    # Load system
-    system = wberri.system.System_PythTB(model_pythtb_Haldane)
-    system.set_R_mat('abracadabra', system.get_R_mat('Ham') * 4)
     return system
 
 

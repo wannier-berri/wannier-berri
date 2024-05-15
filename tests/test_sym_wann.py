@@ -149,6 +149,17 @@ def test_Fe_new_wcc(system_Fe_sym_W90_wcc, checksym_Fe):
     checksym_Fe(system_Fe_sym_W90_wcc)
 
 
+def test_Fe_new_wccFD(system_Fe_sym_W90_wcc_fd, checksym_Fe):
+    extra_calculators = {}
+    extra_calculators['SHCqiao_static'] = \
+        wberri.calculators.static.SHC(Efermi=Efermi_Fe, kwargs_formula={'spin_current_type': 'qiao'})
+    extra_calculators['SHCryoo_static'] = \
+        wberri.calculators.static.SHC(Efermi=Efermi_Fe, kwargs_formula={'spin_current_type': 'ryoo'})
+    extra_calculators['SHCryoo_simple'] = \
+        wberri.calculators.static.SHC(Efermi=Efermi_Fe, kwargs_formula={'spin_current_type': 'simple'})
+    checksym_Fe(system_Fe_sym_W90_wcc_fd, extra_calculators=extra_calculators)
+
+
 def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb_wcc, compare_any_result):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
@@ -223,15 +234,6 @@ def test_GaAs_sym_tb_fail_convII(check_symmetry, system_GaAs_tb):
             proj=['Ga:sp3', 'As:sp3'],
             soc=True,
             DFT_code='vasp')
-
-
-def test_wrong_mat_fail(check_symmetry, system_Haldane_PythTB_wrong_mat):
-    with pytest.raises(NotImplementedError, match="symmetrization of matrix"):
-        system_Haldane_PythTB_wrong_mat.symmetrize(
-            positions=np.array([[1. / 3., 1. / 3.], [2. / 3., 2. / 3.]]),
-            atom_name=['one', 'two'],
-            proj=['one:s', 'two:s'],
-            soc=False)
 
 
 def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb_wcc, compare_any_result):
@@ -402,7 +404,7 @@ def test_rotate_matrix():
     num_wann = 5
     L = np.random.random((num_wann, num_wann)) + 1j * np.random.random((num_wann, num_wann))
     R = np.random.random((num_wann, num_wann)) + 1j * np.random.random((num_wann, num_wann))
-    scal = np.random.random((num_wann, num_wann)) + 1j * np.random.random((num_wann, num_wann))
-    vec = np.random.random((num_wann, num_wann, 3)) + 1j * np.random.random((num_wann, num_wann, 3))
-    assert _rotate_matrix(scal, L, R) == approx(np.einsum("lm,mn,np->lp", L, scal, R))
-    assert _rotate_matrix(vec, L, R) == approx(np.einsum("lm,mna,np->lpa", L, vec, R))
+    for ndim in range(4):
+        shape = (num_wann,) * 2 + (3,) * ndim
+        X = np.random.random(shape) + 1j * np.random.random(shape)
+        assert _rotate_matrix(X, L, R) == approx(np.einsum("lm,mn...,np->lp...", L, X, R))

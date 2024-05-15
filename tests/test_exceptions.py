@@ -109,6 +109,7 @@ def test_morb_fail():
         wberri.system.System_TBmodels(wberri.models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15), spin=True)
 
 
+
 def test_system_GaAs_tb_morb_fail():
     """Create system for GaAs using _tb.dat data"""
 
@@ -116,3 +117,15 @@ def test_system_GaAs_tb_morb_fail():
     for tag in 'spin', 'morb', 'SHCqiao', 'SHCryoo':
         with pytest.raises(ValueError):
             wberri.system.System_tb(seedname, **{tag: True})
+
+
+def test_wrong_mat_fail():
+    from common_systems import model_pythtb_Haldane
+    system = wberri.system.System_PythTB(model_pythtb_Haldane)
+    system.set_R_mat('abracadabra', system.get_R_mat('Ham') * 4)
+    with pytest.raises(NotImplementedError, match="symmetrization of matrices"):
+        system.symmetrize(
+            positions=np.array([[1. / 3., 1. / 3.], [2. / 3., 2. / 3.]]),
+            atom_name=['one', 'two'],
+            proj=['one:s', 'two:s'],
+            soc=False)
