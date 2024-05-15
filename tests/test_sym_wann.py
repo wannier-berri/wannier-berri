@@ -134,7 +134,8 @@ def checksym_Fe(check_run, compare_any_result, check_symmetry):
         calculators.update({
             'ahc_int': calc.static.AHC(Efermi=Efermi_Fe, kwargs_formula={"external_terms": False}),
             'ahc_ext': calc.static.AHC(Efermi=Efermi_Fe, kwargs_formula={"internal_terms": False}),
-                        })
+            'SHCryoo_static': calc.static.SHC(Efermi=Efermi_Fe, kwargs_formula={'spin_current_type': 'ryoo'})
+        })
         calculators.update(extra_calculators)
         check_symmetry(system=system,
                        grid_param=dict(NK=6, NKFFT=3),
@@ -214,6 +215,14 @@ def test_GaAs_random(check_symmetry, system_random_GaAs_load_ws_sym):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
+    param = dict(
+        Efermi=Efermi_GaAs,
+        omega=np.arange(1.0, 5.1, 0.5),
+        smr_fixed_width=0.2,
+        smr_type='Gaussian',
+        kBT=0.01,
+    )
+    calculators.update({'SHC-ryoo': calc.dynamic.SHC(SHC_type='ryoo', **param)})
     check_symmetry(system=system, calculators=calculators)
 
 

@@ -82,7 +82,7 @@ class SymWann:
         possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC', 'OO', 'GG',
                                 'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR']
         tested_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC',
-                              'SS']
+                              'SS',  'SH', 'SA', 'SHA']
         unknown = set(XX_R.keys()) - set(possible_matrix_list)
         if unknown:
             raise NotImplementedError(f"symmetrization of matrices {unknown} is not implemented yet")
@@ -100,18 +100,28 @@ class SymWann:
             'BB': 1,
             'CC': -1,
             'SS': -1,
-            'SA': 1, 'SHA': 1, 'SR': 1, 'SH': 1, 'SHR': 1,
-            'OO': -1, 'GG': 1
-        }
+            'OO': -1, 
+            'GG': 1
+            'SH': -1,
+            'SA': -1,
+            'SHA': -1,
+            'SR': -1, 
+            'SHR': -1,
+        }  # 
         self.parity_TR = {
             'Ham': 1,
             'AA': 1,
             'BB': 1,
             'CC': -1,
             'SS': -1,
-            'SA': -1, 'SHA': -1, 'SR': -1, 'SH': -1, 'SHR': -1,
-            'OO': -1, 'GG': 1
-        }
+            'OO': -1, 
+            'GG': 1
+            'SH': -1,
+            'SA': -1,
+            'SHA': -1
+            'SR': -1,
+            'SHR': -1,
+        }  
 
         self.orbitals = Orbitals()
 

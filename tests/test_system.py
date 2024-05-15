@@ -206,7 +206,7 @@ def test_system_GaAs_W90_wccFD(check_system, system_GaAs_W90_wccFD):
 def test_system_GaAs_W90_wccJM(check_system, system_GaAs_W90_wccJM):
     check_system(
         system_GaAs_W90_wccJM, "GaAs_W90_wccJM",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'OO', 'GG'],
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA', 'OO', 'GG'],
     )
 
 
