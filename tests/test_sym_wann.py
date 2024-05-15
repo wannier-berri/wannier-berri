@@ -134,7 +134,8 @@ def checksym_Fe(check_run, compare_any_result, check_symmetry):
         calculators.update({
             'ahc_int': calc.static.AHC(Efermi=Efermi_Fe, kwargs_formula={"external_terms": False}),
             'ahc_ext': calc.static.AHC(Efermi=Efermi_Fe, kwargs_formula={"internal_terms": False}),
-                        })
+            'SHCryoo_static': calc.static.SHC(Efermi=Efermi_Fe, kwargs_formula={'spin_current_type': 'ryoo'})
+        })
         calculators.update(extra_calculators)
         check_symmetry(system=system,
                        grid_param=dict(NK=6, NKFFT=3),
@@ -146,14 +147,6 @@ def checksym_Fe(check_run, compare_any_result, check_symmetry):
 
 def test_Fe_new_wcc(system_Fe_sym_W90_wcc, checksym_Fe):
     checksym_Fe(system_Fe_sym_W90_wcc)
-
-
-def test_Fe_new_wcc_SHC(system_Fe_sym_W90_wcc, checksym_Fe):
-    extra_calculators = {}
-    extra_calculators['SHCryoo_static'] = \
-        wberri.calculators.static.SHC(Efermi=Efermi_Fe, kwargs_formula={'spin_current_type': 'ryoo'})
-    checksym_Fe(system_Fe_sym_W90_wcc, extra_calculators=extra_calculators)
-
 
 
 def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb_wcc, compare_any_result):
