@@ -16,7 +16,6 @@ from common_systems import (
     system_Fe_W90_wcc,
     system_Fe_sym_W90_wcc,
     system_Fe_sym_W90_wcc_fd,
-    system_Fe_sym_W90_old_wcc,
     system_Fe_W90_proj_set_spin,
     system_Fe_W90_proj,
     system_Fe_W90_proj_ws,

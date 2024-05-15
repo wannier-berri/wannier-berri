@@ -198,7 +198,7 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
     system.set_symmetry(symmetries_Fe)
     return system
 
-  
+
 def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_diff=False, use_ws=False,
                           extra_tags=[], **kwargs):
     """Create system for Fe symmetrization using Wannier90 data"""
@@ -231,8 +231,8 @@ def system_Fe_sym_W90_wcc():
 
 @pytest.fixture(scope="session")
 def system_Fe_sym_W90_wcc_fd():
-    return get_system_Fe_sym_W90(method="new", use_ws=True,
-                                 OSD=True, SHCqiao=True, SHCryoo=True,
+    return get_system_Fe_sym_W90(symmetrize=True, use_ws=True,
+                                 OSD=True, SHCqiao=True,
                                  extra_tags=['sIu', 'sHu'],
                                  wcc_phase_fin_diff=True
                                  )
