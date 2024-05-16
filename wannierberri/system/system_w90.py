@@ -58,7 +58,7 @@ class System_w90(System_R):
     -----
     * see also  parameters of the :class:`~wannierberri.system.System`
 
-    * for `npz` and `formatted` parameters see see `~wannierberri.system.w90_files.Wannier90data`
+    * for `npz` and `formatted` parameters see `~wannierberri.system.w90_files.Wannier90data`
     """
 
     def __init__(
@@ -85,9 +85,7 @@ class System_w90(System_R):
             parameters["name"] = os.path.split(seedname)[-1]
         super().__init__(**parameters)
 
-        use_wcc_phase_findiff = wcc_phase_fin_diff
-        if use_wcc_phase_findiff:
-            self.use_wcc_phase = True
+        use_wcc_phase_findiff = self.use_wcc_phase and wcc_phase_fin_diff
         assert not (transl_inv_JM and use_wcc_phase_findiff)
         if not (transl_inv_JM or transl_inv_MV):
             warnings.warn("It is highly recommended to use translational invairiance "
