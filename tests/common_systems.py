@@ -386,7 +386,7 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
     system = wberri.system.System_w90(seedname, use_ws=True, use_wcc_phase=True,
                                       transl_inv=transl_inv,
                                       transl_inv_JM=transl_inv_JM,
-                                      wcc_phase_findiff=wcc_phase_fin_diff,
+                                      wcc_phase_fin_diff=wcc_phase_fin_diff,
                                       guiding_centers=True,
                                       **matrices)
     if symmetrize:

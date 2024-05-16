@@ -209,6 +209,9 @@ class System_w90(System_R):
                             f"{self.wannier_centers_cart - wannier_centers_cart_new}\n"
                             "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90."
                         )
+        if self.use_wcc_phase:
+            self.check_AA_zero(msg="right after init", set_zero=False)
+
 
         # B_a(R,b) matrix
         if 'BB' in self.needed_R_matrices:
@@ -253,16 +256,25 @@ class System_w90(System_R):
 
         del expjphase1, expjphase2
 
+        if self.use_wcc_phase:
+            self.check_AA_zero(msg="before use_ws", set_zero=False)
         if self.use_ws:
             self.do_ws_dist(mp_grid=mp_grid)
-
+        if self.use_wcc_phase:
+            self.check_AA_zero(msg="after use_ws", set_zero=False)
 
         if transl_inv_JM:
             self.recenter_JM(centers, bk_cart_unique)
 
         self.do_at_end_of_init()
+        print("Wannier Centers", self.wannier_centers_cart)
+        if self.use_wcc_phase:
+            self.check_AA_zero(msg="after initialization 0", set_zero=False)
         if (not transl_inv_JM) and self.use_wcc_phase and (not wcc_phase_fin_diff):
             self.convention_II_to_I()
+        if self.use_wcc_phase:
+            self.check_AA_zero(msg="after initialization", set_zero=True)
+
 
     ###########################################################################
     def recenter_JM(self, centers, bk_cart_unique):
