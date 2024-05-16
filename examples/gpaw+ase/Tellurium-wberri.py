@@ -26,7 +26,7 @@ print(wan.kklst_dk)
 # for k,kpt in enumerate(wan.kpt_kc):
 #    for d,G in enumerate(wan.Gdir_dc):
 #        print (k,kpt,G,wan.kklst_dk[d,k],wan.kpt_kc[wan.kklst_dk[d,k]])
-# system = System_ASE(wan,ase_calc=calc,use_ws = False, berry=True,ase_R_vectors = False,transl_inv = True)
+# system = System_ASE(wan,ase_calc=calc,use_ws = False, berry=True,ase_R_vectors = False,transl_inv_MV = True)
 
 # for k,kpt in enumerate(system.kpt_red):
 #    for d,G in enumerate(system.mmn.bk_red):

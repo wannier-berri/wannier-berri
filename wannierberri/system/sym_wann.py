@@ -218,7 +218,6 @@ class SymWann:
                         symop.p_mat_atom_T.append(symop.p_mat_atom[atom].dot(ur))
                         symop.p_mat_atom_dagger_T.append(ul.dot(symop.p_mat_atom_dagger[atom]))
 
-        self.nsymm = len(self.symmetry_operations)
         self.show_symmetry()
         has_inv = np.any([(s.inversion and s.angle == 0) for s in self.symmetry_operations])  # has inversion or not
         if has_inv:
@@ -240,6 +239,8 @@ class SymWann:
             det = symop.det_cart
             print("  --------------- %4d ---------------" % (i + 1))
             print(" det = ", det)
+            print(f" respected by itself: {symop.sym_only}")
+            print(f" respected with TR: {symop.sym_T}")
             print("  rotation:                    cart:")
             for x in range(3):
                 print(
@@ -338,7 +339,6 @@ class SymWann:
                     XX_L, 'AA', symop, atom_a, atom_a, mode="sum").reshape(shape_flat)
         WCC_out /= self.nrot
         self.spin_reorder(WCC_out, back=True)
-        print('number of symmetry oprations == ', self.nrot)
         return WCC_out.diagonal().T.real
 
     def index_R(self, R):
@@ -411,7 +411,6 @@ class SymWann:
             for b in range(self.num_wann_atom):
                 for symop in self.symmetry_operations:
                     if symop.sym_only or symop.sym_T:
-                        print('symmetry operation  ', symop.ind)
                         a1 = symop.rot_map[a]
                         b1 = symop.rot_map[b]
                         if (a1, b1) >= (a, b):
@@ -486,7 +485,6 @@ class SymWann:
                 for d in x.values():
                     for k, v in d.items():
                         v /= self.nrot
-        print('number of symmetry operations == ', self.nrot)
         return matrix_dict_list_res, iRab_all
 
     def _rotate_XX_L(self, XX_L: np.ndarray, X: str,

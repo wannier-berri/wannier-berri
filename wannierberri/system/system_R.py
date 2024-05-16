@@ -249,7 +249,7 @@ class System_R(System):
             use_wcc_phase=self.use_wcc_phase,
             DFT_code=DFT_code)
 
-        self.check_AA_zero(msg="before symmetrization")
+        self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
 
 
         print("Wannier Centers cart (raw):\n", self.wannier_centers_cart)
@@ -260,10 +260,11 @@ class System_R(System):
         print("Wannier Centers red: (symmetrized):\n", self.wannier_centers_reduced)
         self.clear_cached_R()
         self.clear_cached_wcc()
-        self.check_AA_zero(msg="after symmetrization")
+        self.check_AA_diag_zero(msg="after symmetrization", set_zero=True)
         self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom,
                                     DFT_code=DFT_code)
-    def check_AA_zero(self,msg="",set_zero=True):
+
+    def check_AA_diag_zero(self, msg="", set_zero=True):
         if self.has_R_mat('AA') and self.use_wcc_phase:
             A_diag = self.get_R_mat('AA')[:, :, self.iR0].diagonal()
             A_diag_max = abs(A_diag).max()

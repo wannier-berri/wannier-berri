@@ -149,7 +149,7 @@ def system_Fe_W90(create_files_Fe_W90):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.system.System_w90(
-        seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv=False, use_wcc_phase=False,
+        seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv_MV=False, use_wcc_phase=False,
         read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
         write_npz_formatted=True)
     system.set_symmetry(symmetries_Fe)
@@ -167,7 +167,7 @@ def system_Fe_W90_npz(create_files_Fe_W90_npz):
     system = wberri.system.System_w90(
         seedname, berry=True,
         morb=True, SHCqiao=True, SHCryoo=True,
-        transl_inv=False, use_wcc_phase=False,
+        transl_inv_MV=False, use_wcc_phase=False,
         read_npz=True, write_npz_list=[], overwrite_npz=False, write_npz_formatted=False)
     system.set_symmetry(symmetries_Fe)
     return system
@@ -193,7 +193,7 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe")
-    system = wberri.system.System_w90(seedname, morb=True, spin=True, SHCqiao=False, SHCryoo=False, transl_inv=False,
+    system = wberri.system.System_w90(seedname, morb=True, spin=True, SHCqiao=False, SHCryoo=False, transl_inv_MV=False,
                                       use_wcc_phase=True, wcc_phase_fin_diff=False)
     system.set_symmetry(symmetries_Fe)
     return system
@@ -285,7 +285,7 @@ def system_GaAs_W90(create_files_GaAs_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, transl_inv=False,
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, transl_inv_MV=False,
                                       use_wcc_phase=False)
     system.set_symmetry(symmetries_GaAs)
 
@@ -300,7 +300,7 @@ def system_GaAs_W90_wcc(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.system.System_w90(seedname, morb=True,
-                                      transl_inv=False, spin=True,
+                                      transl_inv_MV=False, spin=True,
                                       wcc_phase_fin_diff=False)
     system.set_symmetry(symmetries_GaAs)
     return system
@@ -315,7 +315,7 @@ def system_GaAs_W90_wccFD(create_files_GaAs_W90):
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.system.System_w90(seedname, berry=True,
                                       morb=True,
-                                      transl_inv=True, spin=True,
+                                      transl_inv_MV=True, spin=True,
                                       OSD=True,
                                       SHCqiao=True, SHCryoo=True,
                                       wcc_phase_fin_diff=True)
@@ -393,7 +393,7 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
     # Load system
     seedname = os.path.join(data_dir, "Si")
     system = wberri.system.System_w90(seedname, use_ws=True, use_wcc_phase=True,
-                                      transl_inv=transl_inv,
+                                      transl_inv_MV=transl_inv,
                                       transl_inv_JM=transl_inv_JM,
                                       wcc_phase_fin_diff=wcc_phase_fin_diff,
                                       guiding_centers=True,
@@ -431,10 +431,11 @@ def system_Si_W90_wccFD_sym(create_files_Si_W90):
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
     data_dir = create_files_Si_W90
     system = get_system_Si_W90_JM(data_dir, transl_inv=True,
-                                  wcc_phase_fin_diff=True, matrices=dict(berry=True),
+                                  wcc_phase_fin_diff=True, matrices=dict(OSD=True),
                                   symmetrize=True)
     # system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True, matrices=dict(berry=True) )
     return system
+
 
 @pytest.fixture(scope="session")
 def system_Si_W90_wccJM_sym(create_files_Si_W90):
