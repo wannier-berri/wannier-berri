@@ -199,15 +199,16 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
     return system
 
 
-def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_diff=False, use_ws=False, **kwargs):
+def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_diff=False, use_ws=False,
+                          extra_tags=[], **kwargs):
     """Create system for Fe symmetrization using Wannier90 data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
-    create_W90_files('Fe_sym', ['uHu'], data_dir)
+    create_W90_files('Fe_sym', ['uHu', 'uIu', 'sHu', 'sIu'], data_dir)
 
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, use_ws=use_ws,
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, SHCryoo=True, use_ws=use_ws,
                                       use_wcc_phase=use_wcc_phase, wcc_phase_fin_diff=wcc_phase_fin_diff,
                                       **kwargs)
     system.set_symmetry(symmetries_Fe)
@@ -226,6 +227,15 @@ def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_di
 @pytest.fixture(scope="session")
 def system_Fe_sym_W90_wcc():
     return get_system_Fe_sym_W90(symmetrize=True)
+
+
+@pytest.fixture(scope="session")
+def system_Fe_sym_W90_wcc_fd():
+    return get_system_Fe_sym_W90(symmetrize=True, use_ws=True,
+                                 OSD=True, SHCqiao=True,
+                                 extra_tags=['sIu', 'sHu'],
+                                 wcc_phase_fin_diff=True
+                                 )
 
 
 @pytest.fixture(scope="session")
@@ -322,11 +332,10 @@ def system_GaAs_W90_wccJM(create_files_GaAs_W90):
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.system.System_w90(seedname, morb=True,
                                       transl_inv_JM=True, spin=True,
-                                      OSD=True,
+                                      OSD=True, SHCryoo=True,
                                       wcc_phase_fin_diff=False)
     system.set_symmetry(symmetries_GaAs)
     return system
-
 
 
 def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=True):
@@ -483,15 +492,6 @@ def system_Chiral_OSD():
     # Load system
     system = wberri.system.System_PythTB(model_pythtb_Chiral_OSD, spin=True)
     # system.set_symmetry(["C3z","TimeReversal"])
-    return system
-
-
-@pytest.fixture(scope="session")
-def system_Haldane_PythTB_wrong_mat():
-    """Create system for Haldane model using PythTB - contains a wrong R-matrix to test exception"""
-    # Load system
-    system = wberri.system.System_PythTB(model_pythtb_Haldane)
-    system.set_R_mat('abracadabra', system.get_R_mat('Ham') * 4)
     return system
 
 
@@ -780,15 +780,15 @@ def system_random_load_bare():
 def system_random_GaAs():
     return wberri.system.SystemRandom(num_wann=16, nRvec=30, max_R=4,
                                       real_lattice=np.ones(3) - np.eye(3),
-                                      berry=True, spin=True,
+                                      berry=True, spin=True, SHCryoo=True,
                                       use_wcc_phase=True)
 
 
 def get_system_random_GaAs_load_ws_sym(use_ws=False, sym=False):
-    system = wberri.system.System_R(berry=True, spin=True)
+    system = wberri.system.System_R(berry=True, spin=True, SHCryoo=True)
     system.load_npz(path=os.path.join(ROOT_DIR, "data", "random_GaAs"))
     if use_ws:
-        system.do_ws_dist(mp_grid=2)
+        system.do_ws_dist(mp_grid=6)
     if sym:
         system.symmetrize(
             proj=['Ga:sp3', 'As:sp3'],

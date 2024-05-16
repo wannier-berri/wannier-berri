@@ -6,4 +6,6 @@
    write_amn = .true.
    write_uHu = .true.
    write_spn = .true.
+   write_sHu = .true.
+   write_sIu = .true.
 /

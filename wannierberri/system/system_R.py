@@ -81,7 +81,7 @@ class System_R(System):
         if _getFF:
             self.needed_R_matrices.add('FF')
         if SHCryoo:
-            self.needed_R_matrices.update(['AA', 'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR'])
+            self.needed_R_matrices.update(['AA', 'SS', 'SA', 'SHA', 'SH'])
         if SHCqiao:
             self.needed_R_matrices.update(['AA', 'SS', 'SR', 'SH', 'SHR'])
         if OSD:
@@ -548,11 +548,20 @@ class System_R(System):
             norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
             assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
             R_new['CC'] = CC_R_new
-        unknown = set(self._XX_R.keys()) - set(['Ham', 'AA', 'BB', 'CC', 'SS'])
+        if self.has_R_mat('SA'):
+            SA_R_new = self.get_R_mat('SA').copy() - self.get_R_mat('SS')[:, :, :,
+                    None, :] * self.wannier_centers_cart[None, :, None, :, None]
+            R_new['SA'] = SA_R_new
+        if self.has_R_mat('SHA'):
+            SHA_R_new = self.get_R_mat('SHA').copy() - self.get_R_mat('SH')[:, :, :,
+                    None, :] * self.wannier_centers_cart[None, :, None, :, None]
+            R_new['SHA'] = SHA_R_new
+
+        unknown = set(self._XX_R.keys()) - set(['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA'])
         if len(unknown) > 0:
             raise NotImplementedError(f"Conversion of conventions for {list(unknown)} is not implemented")
 
-        for X in ['AA', 'BB', 'CC']:
+        for X in ['AA', 'BB', 'CC', 'SA', 'SHA']:
             if self.has_R_mat(X):
                 self.set_R_mat(X, R_new[X], reset=True)
 

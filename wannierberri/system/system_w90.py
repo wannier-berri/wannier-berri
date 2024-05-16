@@ -90,7 +90,7 @@ class System_w90(System_R):
         assert not (transl_inv_JM and use_wcc_phase_findiff)
         if transl_inv_JM:
             assert self.use_wcc_phase, "transl_inv_JM is implemented only with convention I"
-            known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS']
+            known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS', 'SH', 'SA', 'SHA']
             unknown = set(self.needed_R_matrices) - set(known)
             if len(unknown) > 0:
                 raise NotImplementedError(f"transl_inv_JM for {list(unknown)} is not implemented")
@@ -250,9 +250,9 @@ class System_w90(System_R):
             self.set_R_mat('SHR', fourier_q_to_R_loc(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, eig=w90data.eig, phase=expjphase1)))
 
         if 'SA' in self.needed_R_matrices:
-            self.set_R_mat('SA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.siu, w90data.mmn, phase=expjphase1)))
+            self.set_R_mat('SA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.siu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
         if 'SHA' in self.needed_R_matrices:
-            self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.shu, w90data.mmn, phase=expjphase1)))
+            self.set_R_mat('SHA', fourier_q_to_R_loc(chk.get_SHA_q(w90data.shu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
 
         del expjphase1, expjphase2
 
@@ -300,6 +300,8 @@ class System_w90(System_R):
         _reset_mat('AA', expiphase1, 3)
         _reset_mat('BB', expiphase1, 3, Hermitian=False)
         _reset_mat('CC', expiphase2, (3, 4))
+        _reset_mat('SA', expiphase1, 3, Hermitian=False)
+        _reset_mat('SHA', expiphase1, 3, Hermitian=False)
         _reset_mat('OO', expiphase2, (3, 4))
         _reset_mat('GG', expiphase2, (3, 4))
 
@@ -322,6 +324,14 @@ class System_w90(System_R):
             rc = 1j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None, :]
             CC_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
             self.set_R_mat('CC', CC_R_add, add=True, Hermitian=True)
+        if self.need_R_any('SA'):
+            SS_R = self.get_R_mat('SS')
+            rc = (r0[:, :, :, :, None] - self.cRvec[None, None, :, :, None] - centers[None, :, None, :, None]) * SS_R[:, :, :, None, :]
+            self.set_R_mat('SA', rc, add=True)
+        if self.need_R_any('SHA'):
+            SH_R = self.get_R_mat('SH')
+            rc = (r0[:, :, :, :, None] - self.cRvec[None, None, :, :, None] - centers[None, :, None, :, None]) * SH_R[:, :, :, None, :]
+            self.set_R_mat('SHA', rc, add=True)
         # --- O_a(R) matrix --- #
         if self.need_R_any('OO'):
             assert AA_R0 is not None, 'Recentered A matrix is needed in Jae-Mo`s implementation of O'
