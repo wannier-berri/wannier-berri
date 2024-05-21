@@ -1,8 +1,13 @@
 """Common constants shared by all tests"""
-import pyfftw
+import warnings
+
+try:
+    import pyfftw
+    print(f"pyfftw version : {pyfftw.__version__}")  # this is only to avoid lint error
+except ImportError as err:
+    warnings.warn(f"PyFFT was not imported:{err}")
 import os
 
-print(f"pyfftw version : {pyfftw.__version__}")  # this is only to avoid lint error
 
 # Root folder containing test scripts
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))

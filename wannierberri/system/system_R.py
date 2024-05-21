@@ -11,7 +11,7 @@ from .system import System, pauli_xyz
 from ..__utility import alpha_A, beta_A, clear_cached, one2three
 from ..symmetry import Symmetry, Group, TimeReversal
 from .ws_dist import ws_dist_map
-from .sym_wann import SymWann
+
 
 
 class System_R(System):
@@ -235,6 +235,7 @@ class System_R(System):
         if not self.use_wcc_phase:
             raise NotImplementedError("Symmetrization is implemented only for convention I")
 
+        from .sym_wann import SymWann
         symmetrize_wann = SymWann(
             num_wann=self.num_wann,
             lattice=self.real_lattice,
