@@ -15,7 +15,7 @@ wannierberri - a module for Wannier interpolation
 """
 
 import warnings
-__version__ = "0.15.0"
+__version__ = "0.17.0"
 
 try:
     import pyfftw
