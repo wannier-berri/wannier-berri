@@ -120,7 +120,7 @@ def test_system_GaAs_tb_morb_fail():
 
 
 def test_wrong_mat_fail():
-    from common_systems import model_pythtb_Haldane
+    model_pythtb_Haldane = wberri.models.Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15)
     system = wberri.system.System_PythTB(model_pythtb_Haldane)
     system.set_R_mat('abracadabra', system.get_R_mat('Ham') * 4)
     with pytest.raises(NotImplementedError, match="symmetrization of matrices"):

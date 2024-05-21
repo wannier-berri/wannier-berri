@@ -39,5 +39,7 @@ fac_ahc = factor_ahc
 factor_Hall_classic = elementary_charge ** 2 * Ang_SI / hbar ** 3  # first, transform to SI, not forgeting hbar in velocities - now in  m/(J*s^3)
 factor_Hall_classic *= elementary_charge ** 3 / hbar * TAU_UNIT ** 2  # multiply by a dimensional factor - now in A^3*s^5*cm/(J^2*tau_unit^2) = S/(T*m*tau_unit^2)
 fac_spin_hall = factor_ahc * -0.5
-factor_shift_current = 1j * hbar / elementary_charge * pi * elementary_charge ** 3 / (4 * hbar ** 2)
+
+# (stepan) I removed the 1j factor for shift current and took the -Im part of I_mn
+factor_shift_current = hbar / elementary_charge * pi * elementary_charge ** 3 / (4 * hbar ** 2)
 factor_injection_current = - pi * elementary_charge ** 3 / (hbar ** 2) * TAU_UNIT

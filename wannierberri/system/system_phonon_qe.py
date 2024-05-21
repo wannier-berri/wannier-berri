@@ -1,7 +1,6 @@
 import os.path
 
 import numpy as np
-import untangle
 import multiprocessing
 from ..__utility import execute_fft
 from . import System_w90
@@ -66,6 +65,7 @@ class System_Phonon_QE(System_w90):
         q_points = []
         dynamical_mat = []
         cnt = 0
+        import untangle
         for ifile in range(1, nqirr + 1):
             fname = f"{seedname}.dyn{ifile}.xml"
             data = untangle.parse(open(fname).read().lower()).root

@@ -27,7 +27,7 @@ Ang_SI = angstrom
 class DynamicCalculator(Calculator, abc.ABC):
 
     def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian',
-                 kwargs_formula=None, **kwargs):
+                 kwargs_formula=None, dtype=complex, **kwargs):
 
         if kwargs_formula is None:
             kwargs_formula = {}
@@ -40,7 +40,7 @@ class DynamicCalculator(Calculator, abc.ABC):
         self.kwargs_formula = copy(kwargs_formula)
         self.Formula = None
         self.constant_factor = 1.
-        self.dtype = complex
+        self.dtype = dtype
         self.EFmin = self.Efermi.min()
         self.EFmax = self.Efermi.max()
         self.omegamin = self.omega.min()
@@ -735,7 +735,8 @@ class ShiftCurrentFormula(Formula):
         else:
             A_H = data_K.A_H_internal
 
-        Imn = np.einsum('knmca,kmnb->knmabc', A_gen_der, A_H)
+        # here we take the -real part to eliminate the 1j factor in the final factor
+        Imn = - np.einsum('knmca,kmnb->knmabc', A_gen_der, A_H).imag
         Imn += Imn.swapaxes(4, 5)  # symmetrize b and c
 
         self.Imn = Imn
@@ -750,7 +751,7 @@ class ShiftCurrentFormula(Formula):
 class ShiftCurrent(DynamicCalculator):
 
     def __init__(self, sc_eta, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(dtype=float, **kwargs)
         self.kwargs_formula.update(dict(sc_eta=sc_eta))
         self.Formula = ShiftCurrentFormula
         self.constant_factor = factors.factor_shift_current

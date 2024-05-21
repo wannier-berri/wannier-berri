@@ -463,16 +463,13 @@ def system_Haldane_TBmodels():
     return system
 
 
-# Haldane model from PythTB
-model_pythtb_Haldane = wb_models.Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15)
-model_pythtb_KaneMele_odd = wb_models.KaneMele_ptb('odd')
-model_pythtb_Chiral_OSD = wb_models.Chiral_OSD()
 
 
 @pytest.fixture(scope="session")
 def system_Haldane_PythTB():
     """Create system for Haldane model using PythTB"""
     # Load system
+    model_pythtb_Haldane = wb_models.Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15)
     system = wberri.system.System_PythTB(model_pythtb_Haldane)
     system.set_symmetry(["C3z"])
     return system
@@ -482,6 +479,7 @@ def system_Haldane_PythTB():
 def system_KaneMele_odd_PythTB():
     """Create system for Haldane model using PythTB"""
     # Load system
+    model_pythtb_KaneMele_odd = wb_models.KaneMele_ptb('odd')
     system = wberri.system.System_PythTB(model_pythtb_KaneMele_odd, spin=True)
     system.set_symmetry(["C3z", "TimeReversal"])
     return system
@@ -491,6 +489,7 @@ def system_KaneMele_odd_PythTB():
 def system_Chiral_OSD():
     """Create system for Haldane model using PythTB"""
     # Load system
+    model_pythtb_Chiral_OSD = wb_models.Chiral_OSD()
     system = wberri.system.System_PythTB(model_pythtb_Chiral_OSD, spin=True)
     # system.set_symmetry(["C3z","TimeReversal"])
     return system
@@ -498,16 +497,12 @@ def system_Chiral_OSD():
 
 # Chiral model
 # A chiral system that also breaks time-reversal. It can be used to test almost any quantity.
-model_Chiral_left = wb_models.Chiral(
-    delta=2, hop1=1, hop2=1. / 3, phi=np.pi / 10, hopz_left=0.2, hopz_right=0.0, hopz_vert=0)
-model_Chiral_left_TR = wb_models.Chiral(
-    delta=2, hop1=1, hop2=1. / 3, phi=-np.pi / 10, hopz_left=0.2, hopz_right=0.0, hopz_vert=0)
-model_Chiral_right = wb_models.Chiral(
-    delta=2, hop1=1, hop2=1. / 3, phi=np.pi / 10, hopz_left=0.0, hopz_right=0.2, hopz_vert=0)
 
 
 @pytest.fixture(scope="session")
 def system_Chiral_left():
+    model_Chiral_left = wb_models.Chiral(
+        delta=2, hop1=1, hop2=1. / 3, phi=np.pi / 10, hopz_left=0.2, hopz_right=0.0, hopz_vert=0)
     system = wberri.system.System_PythTB(model_Chiral_left)
     system.set_symmetry(["C3z"])
     system.set_spin([1, -1])
@@ -516,6 +511,8 @@ def system_Chiral_left():
 
 @pytest.fixture(scope="session")
 def system_Chiral_left_TR():
+    model_Chiral_left_TR = wb_models.Chiral(
+        delta=2, hop1=1, hop2=1. / 3, phi=-np.pi / 10, hopz_left=0.2, hopz_right=0.0, hopz_vert=0)
     system = wberri.system.System_PythTB(model_Chiral_left_TR)
     system.set_symmetry(["C3z"])
     system.set_spin([-1, 1])
@@ -524,6 +521,8 @@ def system_Chiral_left_TR():
 
 @pytest.fixture(scope="session")
 def system_Chiral_right():
+    model_Chiral_right = wb_models.Chiral(
+        delta=2, hop1=1, hop2=1. / 3, phi=np.pi / 10, hopz_left=0.0, hopz_right=0.2, hopz_vert=0)
     system = wberri.system.System_PythTB(model_Chiral_right)
     system.set_symmetry(["C3z"])
     system.set_spin([1, -1])
@@ -550,14 +549,14 @@ def system_Fe_FPLO_wcc_ws():
     return system
 
 
-# CuMnAs 2D model
-# These parameters provide ~0.4eV gap between conduction and valence bands
-# and splitting into subbands is within 0.04 eV
-model_CuMnAs_2d_broken = wb_models.CuMnAs_2d(nx=0, ny=1, nz=0, hop1=1, hop2=0.08, l=0.8, J=1, dt=0.01)
 
 
 @pytest.fixture(scope="session")
 def system_CuMnAs_2d_broken():
+    # CuMnAs 2D model
+    # These parameters provide ~0.4eV gap between conduction and valence bands
+    # and splitting into subbands is within 0.04 eV
+    model_CuMnAs_2d_broken = wb_models.CuMnAs_2d(nx=0, ny=1, nz=0, hop1=1, hop2=0.08, l=0.8, J=1, dt=0.01)
     system = wberri.system.System_PythTB(model_CuMnAs_2d_broken)
     return system
 
