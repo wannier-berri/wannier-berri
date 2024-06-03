@@ -49,6 +49,41 @@ class System_R(System):
         npar : int
             number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
 
+        Notes
+        -----
+        + The system is described by its real lattice, symmetry group, and Hamiltonian and other real-space matrices.
+        + The lattice is given by the lattice vectors in the Cartesian coordinates.
+        + The system can be either periodic or confined in some directions.
+
+        Attributes
+        ----------
+        needed_R_matrices : set
+            the set of matrices that are needed for the current calculation. The matrices are set in the constructor.
+        use_ws : bool
+            minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
+            (Note: for :class:`System_tb` the method is not employed in the constructor. use `do_ws_dist()` if needed)
+        npar : int
+            number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
+        use_wcc_phase: bool
+            using wannier centers in Fourier transform. Corresponding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``    
+        _XX_R : dict(str:array)
+            dictionary of real-space matrices. The keys are the names of the matrices, the values are the matrices themselves.
+        wannier_centers_cart : array(float)
+            the positions of the Wannier centers in the Cartesian coordinates.
+        wannier_centers_reduced : array(float)
+            the positions of the Wannier centers in the reduced coordinates.
+        iRvec : array(int)
+            the array of the R-vectors in the reduced coordinates.
+        num_wann : int
+            the number of Wannier functions.
+        real_lattice : array(float, shape=(3,3))
+            the lattice vectors of the model.
+        nRvec : int
+            the number of R-vectors.
+        iR0 : int
+            the index of the R-vector [0,0,0] in the iRvec array.
+        NKFFT_recommended : int
+            the recommended size of the FFT grid to be used in the interpolation.
         """
 
     def __init__(self,

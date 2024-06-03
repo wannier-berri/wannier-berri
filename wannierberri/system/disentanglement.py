@@ -212,7 +212,22 @@ def disentangle(w90data,
 
 def get_max_eig(matrix, nvec, nBfree):
     """ return the nvec column-eigenvectors of matrix with maximal eigenvalues.
-    Both matrix and nvec are lists by k-points with arbitrary size of matrices"""
+    Both matrix and nvec are lists by k-points with arbitrary size of matrices
+    
+    Parameters
+    ----------
+    matrix : list of numpy.ndarray(n,n)
+        list of matrices
+    nvec : list of int
+        number of eigenvectors to return at each k-point
+    nBfree : list of int
+        number of free bands at each k-point
+
+    Returns
+    -------
+    list of numpy.ndarray(n,nvec)
+        list of eigenvectors
+    """
     assert len(matrix) == len(nvec) == len(nBfree)
     assert np.all([m.shape[0] == m.shape[1] for m in matrix])
     assert np.all([m.shape[0] >= nv for m, nv in zip(matrix, nvec)]), \
@@ -223,7 +238,41 @@ def get_max_eig(matrix, nvec, nBfree):
 
 class MmnFreeFrozen:
     # TODO : make use of irreducible kpoints (maybe)
-    """ a class to store and call the Mmn matrix between/inside the free and frozen subspaces, as well as to calculate the streads"""
+    """ a class to store and call the Mmn matrix between/inside the free and frozen subspaces, 
+        as well as to calculate the spreads
+        
+        Parameters
+        ----------
+        Mmn : list of numpy.ndarray(nnb,nb,nb)
+            list of Mmn matrices
+        free : list of numpy.ndarray(nk,nb)
+            list of free bands at each k-point
+        frozen : list of numpy.ndarray(nk,nb)
+            list of frozen bands at each k-point
+        neighbours : list of list of tuple
+            list of neighbours for each k-point
+        wb : list of numpy.ndarray(nnb)
+            list of weights for each neighbour (b-vector)
+        NW : int
+            number of Wannier functions
+
+        Attributes
+        ----------
+        Omega_I_0 : float   
+            the constant term of the spread functional
+        Omega_I_frozen : float
+            the spread of the frozen bands
+        data : dict((str,str),list of numpy.ndarray(nnb,nf,nf)
+            the data for the Mmn matrix for each pair of subspaces (free/frozen)
+        spaces : dict
+            the spaces (free/frozen)
+        neighbours : list of list of tuple
+            list of neighbours for each k-point
+        wk : list of numpy.ndarray(nnb)
+            list of weights for each neighbour (b-vector)
+        NK : int
+            number of k-points
+        """
 
     def __init__(self, Mmn, free, frozen, neighbours, wb, NW):
         self.NK = len(Mmn)
@@ -240,22 +289,74 @@ class MmnFreeFrozen:
                                    zip(self.wk, self('frozen', 'frozen'))) / self.NK
 
     def __call__(self, space1, space2):
+        """
+        return the Mmn matrix between the given subspaces
+
+        Parameters
+        ----------
+        space1, space2 : str
+            the two subspaces (free/frozen)
+        
+        Returns
+        -------
+        list of numpy.ndarray(nnb,nf,nf)
+            the Mmn matrix
+        """
         assert space1 in self.spaces
         assert space2 in self.spaces
         return self.data[(space1, space2)]
 
     def Omega_I_free_free(self, U_opt_free):
+        """
+        calculate the spread of the free bands
+
+        Parameters
+        ----------
+        U_opt_free : list of numpy.ndarray(nBfree,nW)
+            the optimized U matrix for the free bands
+
+        Returns
+        -------
+        float
+            the spread of the free bands (eq. 27 of SMV2001)
+        """
         U = U_opt_free
         Mmn = self('free', 'free')
         return -sum(self.wk[ik][ib] * np.sum(abs(U[ik].T.conj().dot(Mmn[ib]).dot(U[ikb])) ** 2)
                     for ik, Mmn in enumerate(Mmn) for ib, ikb in enumerate(self.neighbours[ik])) / self.NK
 
     def Omega_I_free_frozen(self, U_opt_free):
+        """
+        calculate the spread between the free and frozen bands
+        
+        Parameters
+        ----------
+        U_opt_free : list of numpy.ndarray(nBfree,nW)
+            the optimized U matrix for the free bands
+
+        Returns
+        -------
+        float
+            the spread between the free and frozen bands (eq. 27 of SMV2001)
+        """
         U = U_opt_free
         Mmn = self('free', 'frozen')
         return -sum(self.wk[ik][ib] * np.sum(abs(U[ik].T.conj().dot(Mmn[ib])) ** 2)
                     for ik, Mmn in enumerate(Mmn) for ib, ikb in enumerate(self.neighbours[ik])) / self.NK * 2
 
     def Omega_I(self, U_opt_free):
+        """
+        calculate the spread of the optimized U matrix
+
+        Parameters
+        ----------
+        U_opt_free : list of numpy.ndarray(nBfree,nW)
+            the optimized U matrix for the free bands
+
+        Returns
+        -------
+        float, float, float, float
+            the spreads: Omega_I_0, Omega_I_frozen, Omega_I_free_frozen, Omega_I_free_free
+        """
         return self.Omega_I_0, self.Omega_I_frozen, self.Omega_I_free_frozen(U_opt_free), self.Omega_I_free_free(
             U_opt_free)
