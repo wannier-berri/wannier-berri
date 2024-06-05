@@ -227,7 +227,7 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe'):
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', store_symm_wann = False):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
 
@@ -261,6 +261,9 @@ class System_R(System):
             Magnetic momens of each atoms.
         DFT_code: str
             DFT code used : ``'qe'`` or ``'vasp'`` . This is needed, because vasp and qe have different orbitals arrangement with SOC.(grouped by spin or by orbital type)
+        store_symm_wann: bool
+            Store the (temporary) SymWann object in the `sym_wann` attribute of the System object.
+            Can be useful for evaluating symmetry eigenvalues of wavefunctions, etc.
 
         Notes
         -----
@@ -283,14 +286,15 @@ class System_R(System):
             wannier_centers_cart=self.wannier_centers_cart,
             magmom=magmom,
             use_wcc_phase=self.use_wcc_phase,
-            DFT_code=DFT_code)
+            DFT_code=DFT_code,
+            )
 
         self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
 
 
         print("Wannier Centers cart (raw):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (raw):\n", self.wannier_centers_reduced)
-        (self._XX_R, self.iRvec), self.wannier_centers_cart = symmetrize_wann.symmetrize()
+        self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize()
 
         print("Wannier Centers cart (symmetrized):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (symmetrized):\n", self.wannier_centers_reduced)
@@ -299,6 +303,12 @@ class System_R(System):
         self.check_AA_diag_zero(msg="after symmetrization", set_zero=True)
         self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom,
                                     DFT_code=DFT_code)
+        
+        if store_symm_wann:
+            del symmetrize_wann.matrix_dict_list
+            del symmetrize_wann.matrix_list
+            self.sym_wann = symmetrize_wann
+
 
     def check_AA_diag_zero(self, msg="", set_zero=True):
         if self.has_R_mat('AA') and self.use_wcc_phase:

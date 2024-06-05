@@ -44,11 +44,18 @@ class SymWann:
     DFT_code: str
         ``'qe'`` or ``'vasp'``
         vasp and qe have different orbitals arrangement with SOC.
+    wannier_centers_cart: np.array(num_wann, 3)
+        Wannier centers in cartesian coordinates.
+    use_wcc_phase: bool
+        use wannier centers in phase factor or not. (convention I or II)
 
-    Return
-    ------
-    Dictionary of matrix after symmetrization.
-    Updated list of R vectors.
+    Returns
+    -------
+    dict(str, np.array(num_wann, num_wann, ...), dtype=complex)
+        Symmetrized matrices.
+    np.array((num_wann, 3), dtype=int)
+        New R vectors.
+
     """
 
     def __init__(
@@ -170,7 +177,8 @@ class SymWann:
         self.num_wann_atom = len(self.wann_atom_info)
 
         self.H_select = _get_H_select(self.num_wann, self.num_wann_atom, self.wann_atom_info)
-
+        self.H_select_1b = _get_H_select_1b(self.num_wann, self.num_wann_atom, self.wann_atom_info)
+ 
         print('Wannier atoms info')
         for item in self.wann_atom_info:
             print(item)
@@ -347,11 +355,6 @@ class SymWann:
         except KeyError:
             return None
 
-    def symmetrize(self):
-        res = self.symmetrize_new()
-        wcc = self.average_WCC()
-        return res, wcc
-
 
     def spin_reorder(self, Mat_in, back=False):
         """ rearranges the spins of the Wannier functions
@@ -390,22 +393,6 @@ class SymWann:
 
         R_list = np.array(self.iRvec, dtype=int)
         irreducible = np.ones((self.nRvec, self.num_wann_atom, self.num_wann_atom), dtype=bool)
-
-        #  Alternative implementation - not sure if it can behave differently
-        #        for symop in self.symmetry_operations:
-        #            if symop.sym_only or symop.sym_T:
-        #                print('symmetry operation  ', symop.ind)
-        #                R_map = np.dot(R_list, np.transpose(symop.rotation))
-        #                atom_R_map = R_map[:, None, None, :] - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :]
-        #                for a in range(self.num_wann_atom):
-        #                    a1 = symop.rot_map[a]
-        #                    for b in range(self.num_wann_atom):
-        #                        b1 = symop.rot_map[b]
-        #                        for iR in range(self.nRvec):
-        #                            if irreducible[iR,a,b]:
-        #                                iR1 = self.index_R(atom_R_map[iR, a, b])
-        #                                if iR1 is not None and not (a,b,iR) == (a1,b1,iR1):
-        #                                    irreducible[iR1,a1,b1]=False
 
         for a in range(self.num_wann_atom):
             for b in range(self.num_wann_atom):
@@ -509,7 +496,21 @@ class SymWann:
                                      ).conj() * self.parity_TR[X]
         return result
 
-    def symmetrize_new(self):
+    def symmetrize(self):
+        """
+        Symmetrize wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
+        and also WCC, and find the new R vectors
+
+        Returns
+        --------
+        dict {str: np.array(num_wann, num_wann, ...), dtype=complex}
+            Symmetrized matrices.
+        np.array((num_wann, 3), dtype=int)
+            New R vectors.
+        np.array((num_wann, 3), dtype=float)
+            Wannier centers in cartesian coordinates.
+        """
+
 
         # ========================================================
         # symmetrize existing R vectors and find additional R vectors
@@ -539,7 +540,9 @@ class SymWann:
 
         print('Symmetrizing Finished')
 
-        return return_dic, np.array(iRvec_new)
+        wcc = self.average_WCC()
+        return return_dic, np.array(iRvec_new), wcc
+
 
 
 class WannAtomInfo():
@@ -642,6 +645,24 @@ def _dict_to_matrix(dic, H_select, nRvec, ndimv):
 
 
 def _get_H_select(num_wann, num_wann_atom, wann_atom_info):
+    """
+    H_select is a bool matrix which can select a subspace of Hamiltonian between one atom and it's
+    equivalent atom after symmetry operation.
+
+    Parameters
+    ----------
+    num_wann: int
+        Number of wannier functions.
+    num_wann_atom: int
+        Number of atoms which contribute projections orbitals.
+    wann_atom_info: list
+        Wannier_atoms_information list.
+
+    Returns
+    -------
+    np.array(( num_wann_atom, num_wann_atom, num_wann, num_wann), dtype=bool)
+        H_select matrix.
+    """
     H_select = np.zeros((num_wann_atom, num_wann_atom, num_wann, num_wann), dtype=bool)
     for a, atom_a in enumerate(wann_atom_info):
         orb_list_a = atom_a.orbital_index
@@ -652,4 +673,31 @@ def _get_H_select(num_wann, num_wann_atom, wann_atom_info):
                     for ob_list in orb_list_b:
                         for oib in ob_list:
                             H_select[a, b, oia, oib] = True
+    return H_select
+
+
+def _get_H_select_1b(num_wann, num_wann_atom, wann_atom_info):
+    """
+    H_select is a bool matrix which can select a subspace of wavefunction corresponding to one atom.
+
+    Parameters
+    ----------
+    num_wann: int
+        Number of wannier functions.
+    num_wann_atom: int
+        Number of atoms which contribute projections orbitals.
+    wann_atom_info: list
+        Wannier_atoms_information list.
+
+    Returns
+    -------
+    np.array(( num_wann_atom, num_wann), dtype=bool)
+        H_select matrix.
+    """
+    H_select = np.zeros((num_wann_atom, num_wann), dtype=bool)
+    for a, atom_a in enumerate(wann_atom_info):
+        orb_list_a = atom_a.orbital_index
+        for oa_list in orb_list_a:
+            for oia in oa_list:
+                H_select[a, oia] = True
     return H_select
