@@ -99,6 +99,21 @@ class CheckPoint:
         print(f"Time to read .chk : {time() - t0}")
 
     def wannier_gauge(self, mat, ik1, ik2):
+        """
+        Returns the matrix elements in the Wannier gauge
+
+        Parameters
+        ----------
+        mat : np.ndarray
+            the matrix elements in the Hamiltonian gauge
+        ik1, ik2 : int
+            the indices of the k-points
+        
+        Returns
+        -------
+        np.ndarray
+            the matrix elements in the Wannier gauge
+        """
         # data should be of form NBxNBx ...   - any form later
         if len(mat.shape) == 1:
             mat = np.diag(mat)
@@ -113,11 +128,38 @@ class CheckPoint:
                                                                            ) + tuple(range(1, mat.ndim - 1)))
 
     def get_HH_q(self, eig):
+        """
+        Returns the Hamiltonian matrix in the Wannier gauge
+
+        Parameters
+        ----------
+        eig : `~wannierberri.system.w90_files.EIG`
+            the eigenvalues of the Hamiltonian
+        
+        Returns
+        -------
+        np.ndarray
+            the Hamiltonian matrix in the Wannier gauge
+        """
         assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands)
         HH_q = np.array([self.wannier_gauge(E, ik, ik) for ik, E in enumerate(eig.data)])
         return 0.5 * (HH_q + HH_q.transpose(0, 2, 1).conj())
 
     def get_SS_q(self, spn):
+        """
+        Returns the spin matrix in the Wannier gauge
+
+        Parameters
+        ----------
+        spn : `~wannierberri.system.w90_files.SPN`
+            the spin matrix  
+
+        Returns
+        -------
+        np.ndarray
+            the spin matrix in the Wannier gauge
+        """
+
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
         SS_q = np.array([self.wannier_gauge(S, ik, ik) for ik, S in enumerate(spn.data)])
         return 0.5 * (SS_q + SS_q.transpose(0, 2, 1, 3).conj())
@@ -133,6 +175,29 @@ class CheckPoint:
     # finite-difference scheme used.
 
     def get_AABB_qb(self, mmn, transl_inv=False, eig=None, phase=None, sum_b=False):
+        """
+        Returns the matrix elements AA or BB(if eig is not Flase) in the Wannier gauge
+
+        Parameters
+        ----------
+        mmn : `~wannierberri.system.w90_files.MMN`
+            the overlap matrix elements between the Wavefunctions at neighbouring k-points
+        transl_inv : bool
+            if True, the band-diagonal matrix elements are calculated using the Marzari & Vanderbilt 
+            translational invariant formula
+        eig : `~wannierberri.system.w90_files.EIG`
+            the eigenvalues of the Hamiltonian, needed to calculate BB (if None, the matrix elements are AA)
+        phase : np.ndarray(shape=(num_wann, num_wann, nnb), dtype=complex)
+            the phase factors to be applied to the matrix elements (if None, no phase factors are applied)
+        sum_b : bool
+            if True, the matrix elements are summed over the neighbouring k-points. Otherwise, the matrix elements are stored in a 5D array of shape (num_kpts, num_wann, num_wann, nnb, 3)
+        
+        Returns
+        -------
+        np.ndarray(shape=(num_kpts, num_wann, num_wann, nnb, 3), dtype=complex) (if sum_b=False)
+        or np.ndarray(shape=(num_kpts, num_wann, num_wann, nnb, 3), dtype=complex) (if sum_b=True)
+            the q-resolved matrix elements AA or BB in the Wannier gauge
+        """    
         assert (not transl_inv) or eig is None
         if sum_b:
             AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
@@ -166,17 +231,51 @@ class CheckPoint:
 
 
     def get_AA_qb(self, mmn, transl_inv=False, phase=None, sum_b=False):
+        """	
+         A wrapper for get_AABB_qb with eig=None
+         see '~wannierberri.system.w90_files.CheckPoint.get_AABB_qb' for more details  
+         """
         return self.get_AABB_qb(mmn, transl_inv=transl_inv, phase=phase, sum_b=sum_b)
 
     def get_AA_q(self, mmn, transl_inv=False):
+        """
+        A wrapper for get_AA_qb with sum_b=True
+        see '~wannierberri.system.w90_files.CheckPoint.get_AA_qb' for more details
+        """	
         return self.get_AA_qb(mmn=mmn, transl_inv=transl_inv).sum(axis=3)
 
     # --- B_a(q,b) matrix --- #
     def get_BB_qb(self, mmn, eig, phase=None, sum_b=False):
+        """	
+        a wrapper for get_AABB_qb to evaluate BB matrix elements. (transl_inv is disabled)
+        see '~wannierberri.system.w90_files.CheckPoint.get_AABB_qb' for more details
+        """
         return self.get_AABB_qb(mmn, eig=eig, phase=phase, sum_b=sum_b)
 
 
     def get_CCOOGG_qb(self, mmn, uhu, antisym=True, phase=None, sum_b=False):
+        """
+        Returns the matrix elements CC, OO or GG in the Wannier gauge
+
+        Parameters
+        ----------
+        mmn : `~wannierberri.system.w90_files.MMN`
+            the overlap matrix elements between the Wavefunctions at neighbouring k-points
+        uhu : `~wannierberri.system.w90_files.UHU` or `~wannierberri.system.w90_files.UIU`
+            the matrix elements uhu or uiu produced by pw2wannier90
+        antisym : bool
+            if True, the antisymmetric piece of the matrix elements is calculated. Otherwise, the full matrix is calculated
+        phase : np.ndarray(shape=(num_wann, num_wann, nnb), dtype=complex)
+            the phase factors to be applied to the matrix elements (if None, no phase factors are applied)
+        sum_b : bool
+            if True, the matrix elements are summed over the neighbouring k-points. Otherwise, the matrix elements are stored in a 6D array of shape (num_kpts, num_wann, num_wann, nnb, nnb, 3)
+        
+        Returns
+        -------
+        np.ndarray(shape=(num_kpts, num_wann, num_wann, nnb, nnb, 3), dtype=complex) (if sum_b=False)
+        or np.ndarray(shape=(num_kpts, num_wann, num_wann, nnb, nnb, 3), dtype=complex) (if sum_b=True)
+            the q-resolved matrix elements CC, OO or GG in the Wannier gauge
+        """
         nd_cart = 1 if antisym else 2
         shape_NNB = () if sum_b else (mmn.NNB, mmn.NNB)
         shape = (self.num_kpts, self.num_wann, self.num_wann) + shape_NNB + (3,) * nd_cart
@@ -217,14 +316,27 @@ class CheckPoint:
 
     # --- C_a(q,b1,b2) matrix --- #
     def get_CC_qb(self, mmn, uhu, phase=None, sum_b=False):
+        """
+        A wrapper for get_CCOOGG_qb with antisym=True
+        see '~wannierberri.system.w90_files.CheckPoint.get_CCOOGG_qb' for more details
+        """
         return self.get_CCOOGG_qb(mmn, uhu, phase=phase, sum_b=sum_b)
 
     # --- O_a(q,b1,b2) matrix --- #
     def get_OO_qb(self, mmn, uiu, phase=None, sum_b=False):
+        """
+        A wrapper for get_CCOOGG_qb with antisym=False
+        see '~wannierberri.system.w90_files.CheckPoint.get_CCOOGG_qb' for more details
+        (actually, the same as "~wannierberri.system.w90_files.CheckPoint.get_CC_qb")
+        """
         return self.get_CCOOGG_qb(mmn, uiu, phase=phase, sum_b=sum_b)
 
     # Symmetric G_bc(q,b1,b2) matrix
     def get_GG_qb(self, mmn, uiu, phase=None, sum_b=False):
+        """
+        A wrapper for get_CCOOGG_qb with antisym=False 
+        see '~wannierberri.system.w90_files.CheckPoint.get_CCOOGG_qb' for more details
+        """
         return self.get_CCOOGG_qb(mmn, uiu, antisym=False, phase=phase, sum_b=sum_b)
     ###########################################################################
 
@@ -326,7 +438,9 @@ class Wannier90data:
      via disentanglement procedure
 
     Parameters:
-        formatted : list(str)
+        seedname : str
+            the prefix of the file (including relative/absolute path, but not including the extensions, like `.chk`, `.mmn`, etc)	
+        formatted : tuple(str)
             list of files which should be read as formatted files (uHu, uIu, etc)
         read_npz : bool
             if True, try to read the files converted to npz (e.g. wanier90.mmn.npz instead of wannier90.
@@ -336,8 +450,13 @@ class Wannier90data:
             write npz for all formatted files
         overwrite_npz : bool
             overwrite existing npz files  (incompatinble with read_npz)
-     """
-
+        read_chk : bool
+            if True, read the checkpoint file, otherwise create a '~wannierberri.system.w90_files.CheckPoint_bare' object and prepare for disentanglement
+        kmesh_tol : float
+            see `~wannierberri.system.w90_files.CheckPoint`
+        bk_complete_tol : float
+            see `~wannierberri.system.w90_files.CheckPoint`
+    """
     # todo :  rotate uHu and spn
     # todo : symmetry
 
@@ -390,9 +509,21 @@ class Wannier90data:
     def set_file(self, key, val=None, overwrite=False,
                  **kwargs):
         """
-        Parameters:
-            overwrite : bool
-                if False and file already set, Error
+        Set the file with the key `key` to the value `val`
+
+        Parameters
+        ----------
+        key : str
+            the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
+        val : `~wannierberri.system.w90_files.W90_file`
+            the value of the file
+        overwrite : bool
+            if True, overwrite the file if it was already set, otherwise raise an error
+        kwargs : dict
+            the keyword arguments to be passed to the constructor of the file
+            see `~wannierberri.system.w90_files.W90_file`, 
+            `~wannierberri.system.w90_files.MMN`, `~wannierberri.system.w90_files.EIG`, `~wannierberri.system.w90_files.AMN`, `~wannierberri.system.w90_files.UIU`, `~wannierberri.system.w90_files.UHU`, `~wannierberri.system.w90_files.SIU`, `~wannierberri.system.w90_files.SHU`, `~wannierberri.system.w90_files.SPN`
+            for more details        
         """
         kwargs_auto = self.auto_kwargs_files(key)
         kwargs_auto.update(kwargs)
@@ -404,6 +535,19 @@ class Wannier90data:
         self.__files[key] = val
 
     def auto_kwargs_files(self, key):
+        """
+        Returns the default keyword arguments for the file with the key `key`
+
+        Parameters
+        ----------
+        key : str
+            the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
+
+        Returns
+        -------
+        dict(str, Any)
+            the keyword arguments for the file
+        """
         kwargs = {}
         if key in ["uhu", "uiu", "shu", "siu"]:
             kwargs["formatted"] = key in self.formatted_list
@@ -415,11 +559,44 @@ class Wannier90data:
 
 
     def get_file(self, key, **kwargs):
+        """
+        Get the file with the key `key`
+
+        Parameters
+        ----------
+        key : str
+            the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
+        kwargs : dict
+            the keyword arguments to be passed to the constructor of the file
+            see `~wannierberri.system.w90_files.W90_file`, 
+            `~wannierberri.system.w90_files.MMN`, `~wannierberri.system.w90_files.EIG`, `~wannierberri.system.w90_files.AMN`, `~wannierberri.system.w90_files.UIU`, `~wannierberri.system.w90_files.UHU`, `~wannierberri.system.w90_files.SIU`, `~wannierberri.system.w90_files.SHU`, `~wannierberri.system.w90_files.SPN`
+            for more details
+
+        Returns
+        -------
+        `~wannierberri.system.w90_files.W90_file`
+            the file with the key `key`
+        """
         if key not in self.__files:
             self.set_file(key, **kwargs)
         return self.__files[key]
 
     def check_conform(self, key, this):
+        """
+        Check if the file `this` conforms with the other files
+
+        Parameters
+        ----------
+        key : str
+            the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
+        this : `~wannierberri.system.w90_files.W90_file`
+            the file to be checked
+
+        Raises
+        ------
+        AssertionError
+            if the file `this` does not conform with the other files
+        """
         for key2, other in self.__files.items():
             for attr in ['NK', 'NB', 'NW', 'NNB']:
                 if hasattr(this, attr) and hasattr(other, attr):
@@ -430,53 +607,107 @@ class Wannier90data:
 
     @property
     def win(self):
+        """
+        Returns the WIN file
+        """
         return self.get_file('win')
 
     @property
     def amn(self):
+        """	
+        Returns the AMN file
+        """
         return self.get_file('amn')
 
     @property
     def eig(self):
+        """
+        Returns the EIG file
+        """
         return self.get_file('eig')
 
     @property
     def mmn(self):
+        """	
+        Returns the MMN file
+        """
         return self.get_file('mmn')
 
     @property
     def uhu(self):
+        """	
+        Returns the UHU file
+        """
         return self.get_file('uhu')
 
     @property
     def uiu(self):
+        """	
+        Returns the UIU file
+        """
         return self.get_file('uiu')
 
     @property
     def spn(self):
+        """
+        Returns the SPN file
+        """
         return self.get_file('spn')
 
     @property
     def siu(self):
+        """
+        Returns the SIU file
+        """
         return self.get_file('siu')
 
     @property
     def shu(self):
+        """
+        Returns the SHU file
+        """
         return self.get_file('shu')
 
     @property
     def iter_kpts(self):
+        """
+        Returns the iterator over the k-points
+        """
         return range(self.chk.num_kpts)
 
     @cached_property
     def wannier_centers(self):
+        """
+        Returns the Wannier centers stored in the checkpoint file
+        """
         return self.chk.wannier_centers
 
     def check_wannierised(self, msg=""):
+        """	
+        Check if the system was wannierised
+
+        Parameters
+        ----------
+        msg : str
+            the message to be printed in case of error
+
+        Raises
+        ------
+        RuntimeError
+            if the system was not wannierised
+        """
         if not self.wannierised:
             raise RuntimeError(f"no wannieruisation was performed on the w90 input files, cannot proceed with {msg}")
 
     def disentangle(self, **kwargs):
+        """
+        Perform the disentanglement procedure calling `~wannierberri.system.disentangle`
+
+        Parameters
+        ----------
+        kwargs : dict
+            the keyword arguments to be passed to `~wannierberri.system.disentangle`     
+        """
         disentangle(self, **kwargs)
 
     # TODO : allow k-dependent window (can it be useful?)
@@ -509,6 +740,26 @@ class Wannier90data:
 
 
 class W90_file(abc.ABC):
+    """
+    Abstract class for the files of wannier90
+
+    Parameters
+    ----------
+    seedname : str
+        the prefix of the file (including relative/absolute path, but not including the extensions, like `.chk`, `.mmn`, etc)
+    ext : str
+        the extension of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
+    tags : list(str)
+        the tags to be saved in the npz file
+    read_npz : bool
+        if True, try to read the files converted to npz (e.g. wanier90.mmn.npz instead of wannier90.mmn)
+    write_npz : bool
+        if True, write the files to npz
+    kwargs : dict
+        the keyword arguments to be passed to the constructor of the file
+        see `~wannierberri.system.w90_files.W90_file`, `~wannierberri.system.w90_files.MMN`, `~wannierberri.system.w90_files.EIG`, `~wannierberri.system.w90_files.AMN`, `~wannierberri.system.w90_files.UIU`, `~wannierberri.system.w90_files.UHU`, `~wannierberri.system.w90_files.SIU`, `~wannierberri.system.w90_files.SHU`, `~wannierberri.system.w90_files.SPN`
+        for more details
+    """
 
     def __init__(self, seedname, ext, tags=["data"], read_npz=True, write_npz=True, **kwargs):
         f_npz = f"{seedname}.{ext}.npz"
@@ -525,15 +776,22 @@ class W90_file(abc.ABC):
 
     @abc.abstractmethod
     def from_w90_file(self, **kwargs):
+        """
+        abstract method to read the necessary data from Wannier90 file
+        """
         self.data = None
 
 
     @property
     def n_neighb(self):
+        """
+        number of nearest neighbours indices
+        """
         return 0
 
     @property
     def NK(self):
+
         return self.data.shape[0]
 
     @property
@@ -549,6 +807,16 @@ class W90_file(abc.ABC):
 
 
 def convert(A):
+    """
+    Convert a list of strings (numbers separated by spaces) 
+    into a NumPy array of floats.
+
+    Parameters:
+    A (list): The list of strings to be converted.
+
+    Returns:
+    numpy.ndarray: The NumPy array of floats.
+    """
     return np.array([l.split() for l in A], dtype=float)
 
 
@@ -559,6 +827,9 @@ class MMN(W90_file):
 
     @property
     def n_neighb(self):
+        """
+        number of nearest neighbours indices
+        """
         return 1
 
     def __init__(self, seedname, npar=multiprocessing.cpu_count(), **kwargs):
@@ -794,6 +1065,9 @@ class UXU(W90_file):
 
     @property
     def n_neighb(self):
+        """	
+        number of nearest neighbours indices
+        """
         return 2
 
 
@@ -854,9 +1128,39 @@ class SXU(W90_file):
 
     @property
     def n_neighb(self):
+        """	
+        number of nearest neighbours indices
+        """
         return 1
 
     def from_w90_file(self, seedname='wannier90', formatted=False, suffix='sHu', **kwargs):
+        """	
+        Read the sHu or sIu file
+
+        Parameters
+        ----------
+        seedname : str
+            the prefix of the file (including relative/absolute path, but not including the extensions, like `.sHu`, `sIu`)   
+        formatted : bool
+            if True, the file is expected to be formatted, otherwise it is binary
+        suffix : str
+            the suffix of the file, e.g. 'sHu', 'sIu'
+        kwargs : dict(str, Any)
+            the keyword arguments to be passed to the constructor of the file
+            see `~wannierberri.system.w90_files.SIU`, `~wannierberri.system.w90_files.SHU`           
+            for more details
+
+        Raises
+        ------
+        AssertionError
+            if the file does not conform with the other files
+
+        Sets 
+        -----
+        self.data : numpy.ndarray(complex, shape=(NK, NNB, NB, NB, 3)
+            the data of the file
+        """
+
         print(f"----------\n  {suffix}   \n---------")
 
         if formatted:
@@ -891,6 +1195,16 @@ class SXU(W90_file):
 class SIU(SXU):
     """
     SIU.data[ik, ib, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k+b}>
+
+    Parameters
+    ----------
+    seedname : str
+        the prefix of the file (including relative/absolute path, but not including the extensions, like `.sIu`, `sHu`)
+    formatted : bool
+        if True, the file is expected to be formatted, otherwise it is binary
+    kwargs : dict(str, Any)
+        the keyword arguments to be passed to the parent constructor,
+        see `~wannierberri.system.w90_files.SXU` for more details
     """
 
     def __init__(self, seedname='wannier90', formatted=False, **kwargs):
@@ -900,6 +1214,16 @@ class SIU(SXU):
 class SHU(SXU):
     """
     SHU.data[ik, ib, m, n, ipol] = <u_{m,k}|S_ipol*H(k)|u_{n,k+b}>
+
+    Parameters
+    ----------
+    seedname : str
+        the prefix of the file (including relative/absolute path, but not including the extensions, like `.sHu`, `sIu`)
+    formatted : bool
+        if True, the file is expected to be formatted, otherwise it is binary
+    kwargs : dict(str, Any)
+        the keyword arguments to be passed to the parent constructor,
+        see `~wannierberri.system.w90_files.SXU` for more details
     """
 
     def __init__(self, seedname='wannier90', formatted=False, **kwargs):
@@ -907,6 +1231,21 @@ class SHU(SXU):
 
 
 def parse_win_raw(filename=None, text=None):
+    """
+    Parse the win file (from a file or from a string) using wannier90io
+
+    Parameters
+    ----------
+    filename : str
+        the name of the file to be read
+    text : str
+        the text to be parsed
+
+    Returns
+    -------
+    dict(str, Any)
+        the parsed data
+    """
     import wannier90io as w90io
     if filename is not None:
         with open(filename) as f:
@@ -916,6 +1255,23 @@ def parse_win_raw(filename=None, text=None):
 
 
 class WIN():
+    """
+    Class to read and store the wannier90.win input file
+
+    Parameters
+    ----------
+    seedname : str
+         the prefix of the file (including relative/absolute path, but not including the extensions, like `.win`)
+
+    Attributes
+    ----------
+    name : str
+        the name of the file
+    parsed : dict(str, Any)
+        the parsed data
+    units_length : dict(str, float)
+        the units of length (Angstrom or Bohr radius)  
+    """ 
 
     # TODO :use w90io to read win file
     def __init__(self, seedname='wannier90'):
@@ -925,16 +1281,45 @@ class WIN():
 
     @functools.lru_cache()
     def get_param(self, param):
+        """
+        Get the parameter from the parsed data
+
+        Parameters
+        ----------
+        param : str
+            the parameter to be retrieved   
+
+        Returns
+        -------
+        Any
+            the value of the parameter
+        """
         return self.parsed['parameters'][param]
 
     @functools.lru_cache()
     def get_unit_cell_cart_ang(self):
+        """
+        Get the unit cell in Angstrom in Cartesian coordinates
+
+        Returns
+        -------
+        numpy.ndarray(float, shape=(3, 3))
+            the unit cell in Angstrom in Cartesian coordinates
+        """
         cell = self.parsed['unit_cell_cart']
         A = np.array([cell['a1'], cell['a2'], cell['a3']])
         return A * self.units_length[cell['units']]
 
     @functools.lru_cache()
     def get_kpoints(self):
+        """
+        Get the kpoints in reciprocal coordinates
+
+        Returns
+        -------
+        numpy.ndarray(float, shape=(NK, 3))
+            the kpoints in reciprocal coordinates
+        """
         return np.array(self.parsed['kpoints']['kpoints'])
 
 

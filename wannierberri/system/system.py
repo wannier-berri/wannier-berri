@@ -56,6 +56,14 @@ class System:
         the internal terms are defined only by the Hamiltonian and spin
     name : str
         name that will be used by default in names of output files
+
+    Notes
+    -----
+    + The system is described by its real lattice, symmetry group, and Hamiltonian.
+    + The lattice is given by the lattice vectors in the Cartesian coordinates.
+    + The symmetry group is given by the generators of the group. The group is further evaluated by the code.
+    + The Hamiltonian is given by the hopping terms between the orbitals. The hopping terms are given in the real space. 
+    + The system can be either periodic or confined in some directions..
     """
 
     def __init__(self,
@@ -82,6 +90,20 @@ class System:
 
 
     def set_real_lattice(self, real_lattice=None, recip_lattice=None):
+        """
+        Set the real lattice of the :class:`System`
+
+        Parameters
+        ----------
+        real_lattice : np.ndarray(3,3)
+            The real lattice vectors in the Cartesian coordinates. If not provided, the code will evaluate it by the reciprocal lattice.
+        recip_lattice : np.ndarray(3,3)
+            The reciprocal lattice vectors in the Cartesian coordinates. If not provided, the code will evaluate it by the real lattice.
+
+        Notes
+        -----
+        + Only one of the parameters should be provided. The other will be evaluated by the code.
+        """
         assert not hasattr(self, 'real_lattice')
         self.real_lattice, _ = real_recip_lattice(real_lattice=real_lattice, recip_lattice=recip_lattice)
 
@@ -89,12 +111,19 @@ class System:
 
     @cached_property
     def recip_lattice(self):
-        real, recip = real_recip_lattice(real_lattice=self.real_lattice)
+        """	
+        Returns
+        -------
+        np.ndarray(3,3)
+            The reciprocal lattice vectors in the Cartesian coordinates
+        """
+        _, recip = real_recip_lattice(real_lattice=self.real_lattice)
         return recip
 
     def set_symmetry(self, symmetry_gen=()):
         """
-        Set the symmetry group of the :class:`System`
+        Set the symmetry group of the :class:`System`, which will be used for symmetrization
+        in k-space and for reducing the number of k-points in the BZ.
 
         Parameters
         ----------
@@ -109,21 +138,35 @@ class System:
         + Operations are given as objects of :class:`symmetry.Symmetry` or by name as `str`, e.g. ``'Inversion'`` , ``'C6z'``, or products like ``'TimeReversal*C2x'``.
         + ``symetyry_gen=[]`` is equivalent to not calling this function at all
         + Only the **point group** operations are important. Hence, for non-symmorphic operations, only the rotational part should be given, neglecting the translation.
-
         """
         self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
 
     @cached_property
     def cell_volume(self):
+        """
+        Returns
+        -------
+        float
+            The volume of the unit cell in Angstrom^3
+        """
         return abs(np.linalg.det(self.real_lattice))
 
     @cached_property
     def range_wann(self):
+        """
+        Returns
+        -------
+        np.ndarray(num_wann) = [0,1,2,...,num_wann-1]
+            The range of the Wannier functions in the Cartesian coordinates
+        """
         return np.arange(self.num_wann)
 
 
 
 class System_k(System):
-
+    """
+    The base class for describing a system in the k-space. Does not have its own constructor,
+    please use the child classes, e.g  :class:`SystemKP`.
+    """
     pass

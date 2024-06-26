@@ -48,23 +48,18 @@ class SystemRandom(System_R):
             R_try = np.random.randint(low=-max_R, high=max_R + 1, size=(nRvec, 3))
             R_try = set(tuple(R) for R in R_try)
             iRvec.update(R_try)
-            print(f"iRvec1={iRvec}")
         if len(iRvec) < nRvec:
             warnings.warn(f"required number of R-vectors {nRvec} was not achieved. got only {len(iRvec)}")
-        print(f"iRvec2={iRvec}")
         iRvec = np.array(list(iRvec), dtype=int)
         norm = np.linalg.norm(iRvec, axis=1)
         srt = np.argsort(norm)
         self.iRvec = iRvec[srt][:nRvec]
-        print(f"iRvec3={iRvec}")
         np.random.shuffle(self.iRvec)
-        print(f"iRvec4={self.iRvec}")
         for key in self.needed_R_matrices:
             shape = (self.num_wann, self.num_wann, self.nRvec,) + (3,) * num_cart_dim(key)
             im, re = [np.random.random(shape) for _ in (0, 1)]
             self.set_R_mat(key, im + 1j * re)
         self.wannier_centers_cart = np.random.random((self.num_wann, 3))
-        print("iR0=", self.iR0)
         if self.has_R_mat('AA'):
             AA = self.get_R_mat('AA')
             if self.use_wcc_phase:

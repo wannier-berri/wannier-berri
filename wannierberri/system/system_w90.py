@@ -38,6 +38,8 @@ class System_w90(System_R):
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
     transl_inv_JM : bool
         translational-invariant scheme for diagonal and off-diagonal matrix elements for all matrices. Follows method of Jae-Mo Lihm
+    wcc_phase_fin_diff : bool
+        Use the phase factors associated with the WCC in the finite-difference scheme (a "cheap" way to get translational invariance) 
     guiding_centers : bool
         If True, enable overwriting the diagonal elements of the AA_R matrix at R=0 with the
         Wannier centers calculated from Wannier90.
@@ -53,12 +55,50 @@ class System_w90(System_R):
     read_npz : bool
     write_npz_list : tuple(str)
     write_npz_formatted : bool
+        see `~wannierberri.system.w90_files.Wannier90data`
+    overwrite_npz : bool
+        see `~wannierberri.system.w90_files.Wannier90data`
+    formatted : tuple(str)
+        see `~wannierberri.system.w90_files.Wannier90data`
+    **parameters
+        see `~wannierberri.system.system.System`
 
     Notes
     -----
-    * see also  parameters of the :class:`~wannierberri.system.System`
+    The R-matrices are evaluated in the nearest-neighbor vectors of the finite-difference scheme chosen.
 
-    * for `npz` and `formatted` parameters see `~wannierberri.system.w90_files.Wannier90data`
+    Attributes
+    ----------
+    seedname : str
+        the seedname used in Wannier90
+    npar : int
+        number of processes used in the constructor
+    real_lattice : np.ndarray(shape=(3, 3))
+        real-space lattice vectors
+    recip_lattice : np.ndarray(shape=(3, 3))    
+        reciprocal-space lattice vectors
+    iRvec : np.ndarray(shape=(num_R, 3), dtype=int)
+        set R-vectors in the Wigner-Seitz supercell (in the basis of the real-space lattice vectors)
+    cRvec : np.ndarray(shape=(num_R, 3))
+        set R-vectors in the Wigner-Seitz supercell (in the cartesian coordinates)
+    nRvec0 : int
+        number of R-vectors, before applying the Wigner-Seitz distance
+    num_wann : int
+        number of Wannier functions
+    wannier_centers_cart : np.ndarray(shape=(num_wann, 3))
+        Wannier centers in Cartesian coordinates
+    _NKFFT_recommended : int
+        recommended size of the FFT grid in the interpolation
+    use_ws : bool
+        whether the Wigner-Seitz distance is applied
+    use_wcc_phase : bool
+        whether the phase factors associated with the WCC are used
+    needed_R_matrices : list(str)
+        list of the R-matrices, which will be evaluated
+    
+    See Also
+    --------
+    `~wannierberri.system.system.System_R`
     """
 
     def __init__(
@@ -268,7 +308,31 @@ class System_w90(System_R):
 
     ###########################################################################
     def recenter_JM(self, centers, bk_cart_unique):
-        """convention I"""
+        """"
+        Recenter the matrices in the Jae-Mo scheme
+        (only in convention I)
+
+        Parameters
+        ----------
+        centers : np.ndarray(shape=(num_wann, 3))
+            Wannier centers in Cartesian coordinates
+        bk_cart_unique : np.ndarray(shape=(num_bk, 3))
+            set of unique nearest-neighbor vectors (cartesian)
+
+        Notes
+        -----
+        The matrices are recentered in the following way:
+        - A_a(R) matrix: no recentering
+        - B_a(R) matrix: recentered by the Hamiltonian
+        - C_a(R) matrix: recentered by the B matrix
+        - O_a(R) matrix: recentered by the A matrix
+        - G_bc(R) matrix: no recentering
+        - S_a(R) matrix: recentered by the S matrix
+        - SH_a(R) matrix: recentered by the S matrix
+        - SR_a(R) matrix: recentered by the S matrix
+        - SA_a(R) matrix: recentered by the S matrix
+        - SHA_a(R) matrix: recentered by the S matrix
+        """
         assert self.use_wcc_phase
         #  Here we apply the phase factors associated with the
         # JM scheme not accounted above, and perform the sum over

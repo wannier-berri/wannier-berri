@@ -49,6 +49,41 @@ class System_R(System):
         npar : int
             number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
 
+        Notes
+        -----
+        + The system is described by its real lattice, symmetry group, and Hamiltonian and other real-space matrices.
+        + The lattice is given by the lattice vectors in the Cartesian coordinates.
+        + The system can be either periodic or confined in some directions.
+
+        Attributes
+        ----------
+        needed_R_matrices : set
+            the set of matrices that are needed for the current calculation. The matrices are set in the constructor.
+        use_ws : bool
+            minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
+            (Note: for :class:`System_tb` the method is not employed in the constructor. use `do_ws_dist()` if needed)
+        npar : int
+            number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
+        use_wcc_phase: bool
+            using wannier centers in Fourier transform. Corresponding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``    
+        _XX_R : dict(str:array)
+            dictionary of real-space matrices. The keys are the names of the matrices, the values are the matrices themselves.
+        wannier_centers_cart : array(float)
+            the positions of the Wannier centers in the Cartesian coordinates.
+        wannier_centers_reduced : array(float)
+            the positions of the Wannier centers in the reduced coordinates.
+        iRvec : array(int)
+            the array of the R-vectors in the reduced coordinates.
+        num_wann : int
+            the number of Wannier functions.
+        real_lattice : array(float, shape=(3,3))
+            the lattice vectors of the model.
+        nRvec : int
+            the number of R-vectors.
+        iR0 : int
+            the index of the R-vector [0,0,0] in the iRvec array.
+        NKFFT_recommended : int
+            the recommended size of the FFT grid to be used in the interpolation.
         """
 
     def __init__(self,
@@ -192,7 +227,8 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe'):
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', store_symm_wann = False,
+                   rotations=None, translations=None):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
 
@@ -226,10 +262,20 @@ class System_R(System):
             Magnetic momens of each atoms.
         DFT_code: str
             DFT code used : ``'qe'`` or ``'vasp'`` . This is needed, because vasp and qe have different orbitals arrangement with SOC.(grouped by spin or by orbital type)
+        store_symm_wann: bool
+            Store the (temporary) SymWann object in the `sym_wann` attribute of the System object.
+            Can be useful for evaluating symmetry eigenvalues of wavefunctions, etc.
+        rotations: array-like (shape=(N,3,3))
+            Rotations of the symmetry operations. (optional)
+        translations: array-like (shape=(N,3))
+            Translations of the symmetry operations. (optional)
 
         Notes
         -----
             Works only with phase convention I (`use_wcc_phase=True`)
+
+            rotations and translations should be either given together or not given at all. Make sense to preserve consistensy in the order
+            of the symmetry operations, when store_symm_wann is set to True.
         """
 
         if not self.use_wcc_phase:
@@ -248,14 +294,17 @@ class System_R(System):
             wannier_centers_cart=self.wannier_centers_cart,
             magmom=magmom,
             use_wcc_phase=self.use_wcc_phase,
-            DFT_code=DFT_code)
+            DFT_code=DFT_code,
+            rotations = rotations,
+            translations = translations
+            )
 
         self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
 
 
         print("Wannier Centers cart (raw):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (raw):\n", self.wannier_centers_reduced)
-        (self._XX_R, self.iRvec), self.wannier_centers_cart = symmetrize_wann.symmetrize()
+        self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize()
 
         print("Wannier Centers cart (symmetrized):\n", self.wannier_centers_cart)
         print("Wannier Centers red: (symmetrized):\n", self.wannier_centers_reduced)
@@ -264,6 +313,12 @@ class System_R(System):
         self.check_AA_diag_zero(msg="after symmetrization", set_zero=True)
         self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom,
                                     DFT_code=DFT_code)
+        
+        if store_symm_wann:
+            del symmetrize_wann.matrix_dict_list
+            del symmetrize_wann.matrix_list
+            self.sym_wann = symmetrize_wann
+
 
     def check_AA_diag_zero(self, msg="", set_zero=True):
         if self.has_R_mat('AA') and self.use_wcc_phase:
