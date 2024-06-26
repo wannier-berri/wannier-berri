@@ -71,9 +71,12 @@ class SymWann:
             use_wcc_phase=True,
             soc=False,
             magmom=None,
-            DFT_code='qe'
+            DFT_code='qe',
+            rotations=None,
+            translations=None,
     ):
 
+        assert (rotations is None) == (translations is None), "rotations and translations should be both None or both not None"
         assert use_wcc_phase
         self.soc = soc
         self.magmom = magmom
@@ -196,10 +199,12 @@ class SymWann:
         cell = (self.lattice, self.positions, numbers)
         print("[get_spacegroup]")
         print("  Spacegroup is %s." % spglib.get_spacegroup(cell))
-        dataset = spglib.get_symmetry_dataset(cell)
+        if rotations is None:
+            rotations, translations = spglib.get_symmetry(cell)
+        #dataset = spglib.get_symmetry_dataset(cell)
         all_symmetry_operations = [
-            SymmetryOperation_loc(rot, dataset['translations'][i], cell[0], ind=i + 1, spinor=self.soc)
-            for i, rot in enumerate(dataset['rotations'])
+            SymmetryOperation_loc(rot, translations[i], cell[0], ind=i + 1, spinor=self.soc)
+            for i, rot in enumerate(rotations)
         ]
         self.nrot = 0
         self.symmetry_operations = []

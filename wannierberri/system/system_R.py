@@ -227,7 +227,8 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', store_symm_wann = False):
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', store_symm_wann = False,
+                   rotations=None, translations=None):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
 
@@ -264,10 +265,17 @@ class System_R(System):
         store_symm_wann: bool
             Store the (temporary) SymWann object in the `sym_wann` attribute of the System object.
             Can be useful for evaluating symmetry eigenvalues of wavefunctions, etc.
+        rotations: array-like (shape=(N,3,3))
+            Rotations of the symmetry operations. (optional)
+        translations: array-like (shape=(N,3))
+            Translations of the symmetry operations. (optional)
 
         Notes
         -----
             Works only with phase convention I (`use_wcc_phase=True`)
+
+            rotations and translations should be either given together or not given at all. Make sense to preserve consistensy in the order
+            of the symmetry operations, when store_symm_wann is set to True.
         """
 
         if not self.use_wcc_phase:
@@ -287,6 +295,8 @@ class System_R(System):
             magmom=magmom,
             use_wcc_phase=self.use_wcc_phase,
             DFT_code=DFT_code,
+            rotations = rotations,
+            translations = translations
             )
 
         self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
