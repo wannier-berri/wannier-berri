@@ -1,3 +1,4 @@
+import sys
 import warnings
 import numpy as np
 import spglib
@@ -48,6 +49,8 @@ class SymWann:
         Wannier centers in cartesian coordinates.
     use_wcc_phase: bool
         use wannier centers in phase factor or not. (convention I or II)
+    logile: file
+        Log file. 
 
     Returns
     -------
@@ -74,11 +77,13 @@ class SymWann:
             DFT_code='qe',
             rotations=None,
             translations=None,
+            logfile=sys.stdout,
     ):
 
         assert (rotations is None) == (translations is None), "rotations and translations should be both None or both not None"
         assert use_wcc_phase
         self.soc = soc
+        self.logfile = logfile
         self.magmom = magmom
         self.DFT_code = DFT_code
         self.wannier_centers_cart = wannier_centers_cart
@@ -176,15 +181,17 @@ class SymWann:
                 self.wann_atom_info.append(WannAtomInfo(iatom=atom + 1, atom_name=self.atom_name[atom],
                                                         position=self.positions[atom], projection=projection,
                                                         orbital_index=orbital_index_list[atom], soc=self.soc,
-                                                        magmom=self.magmom[atom] if self.magmom is not None else None))
+                                                        magmom=self.magmom[atom] if self.magmom is not None else None,
+                                                        logfile=self.logfile)
+                                                        )
         self.num_wann_atom = len(self.wann_atom_info)
 
         self.H_select = _get_H_select(self.num_wann, self.num_wann_atom, self.wann_atom_info)
         self.H_select_1b = _get_H_select_1b(self.num_wann, self.num_wann_atom, self.wann_atom_info)
  
-        print('Wannier atoms info')
+        self.logfile.write('Wannier atoms info')
         for item in self.wann_atom_info:
-            print(item)
+            self.logfile.write(str(item))
 
         self.matrix_dict_list = {}
         for k, v1 in XX_R.items():
@@ -197,8 +204,8 @@ class SymWann:
         for name in self.atom_name:
             numbers.append(names.index(name) + 1)
         cell = (self.lattice, self.positions, numbers)
-        print("[get_spacegroup]")
-        print("  Spacegroup is %s." % spglib.get_spacegroup(cell))
+        self.logfile.write("[get_spacegroup]")
+        self.logfile.write("  Spacegroup is %s." % spglib.get_spacegroup(cell))
         if rotations is None:
             rotations, translations = spglib.get_symmetry(cell)
         #dataset = spglib.get_symmetry_dataset(cell)
@@ -234,7 +241,7 @@ class SymWann:
         self.show_symmetry()
         has_inv = np.any([(s.inversion and s.angle == 0) for s in self.symmetry_operations])  # has inversion or not
         if has_inv:
-            print('====================\nSystem has inversion symmetry\n====================')
+            self.logfile.write('====================\nSystem has inversion symmetry\n====================')
 
         for X in self.matrix_list.values():
             self.spin_reorder(X)
@@ -250,17 +257,17 @@ class SymWann:
             rot_cart = symop.rotation_cart
             trans_cart = symop.translation_cart
             det = symop.det_cart
-            print("  --------------- %4d ---------------" % (i + 1))
-            print(" det = ", det)
-            print(f" respected by itself: {symop.sym_only}")
-            print(f" respected with TR: {symop.sym_T}")
-            print("  rotation:                    cart:")
+            self.logfile.write("  --------------- %4d ---------------" % (i + 1))
+            self.logfile.write(f" det = {det}")
+            self.logfile.write(f" respected by itself: {symop.sym_only}")
+            self.logfile.write(f" respected with TR: {symop.sym_T}")
+            self.logfile.write("  rotation:                    cart:")
             for x in range(3):
-                print(
+                self.logfile.write(
                     "     [%2d %2d %2d]                    [%3.2f %3.2f %3.2f]" %
                     (rot[x, 0], rot[x, 1], rot[x, 2], rot_cart[x, 0], rot_cart[x, 1], rot_cart[x, 2]))
-            print("  translation:")
-            print(
+            self.logfile.write("  translation:")
+            self.logfile.write(
                 "     (%8.5f %8.5f %8.5f)  (%8.5f %8.5f %8.5f)" %
                 (trans[0], trans[1], trans[2], trans_cart[0], trans_cart[1], trans_cart[2]))
 
@@ -304,9 +311,9 @@ class SymWann:
                         if abs(np.linalg.norm(magmom + new_magmom)) > 0.0005:
                             sym_T = False
                 if sym_only:
-                    print(f'Symmetry operator {symop.ind} respects magnetic moment')
+                    self.logfile.write(f'Symmetry operator {symop.ind} respects magnetic moment')
                 if sym_T:
-                    print(f'Symmetry operator {symop.ind}*T respects magnetic moment')
+                    self.logfile.write(f'Symmetry operator {symop.ind}*T respects magnetic moment')
         else:
             sym_only = True
             sym_T = False
@@ -337,7 +344,7 @@ class SymWann:
         WCC_out = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
 
         for irot, symop in enumerate(self.symmetry_operations):
-            # print('irot = ', irot + 1)
+            # self.logfile.write('irot = ', irot + 1)
             # TODO try numba
             for atom_a in range(self.num_wann_atom):
                 num_w_a = self.wann_atom_info[atom_a].num_wann  # number of orbitals of atom_a
@@ -394,7 +401,7 @@ class SymWann:
         --------
         dict { (a,b):set([index of Rvecotr, if it is irreducible])}
         """
-        print("searching irreducible Rvectors for pairs of a,b")
+        self.logfile.write("searching irreducible Rvectors for pairs of a,b")
 
         R_list = np.array(self.iRvec, dtype=int)
         irreducible = np.ones((self.nRvec, self.num_wann_atom, self.num_wann_atom), dtype=bool)
@@ -415,7 +422,7 @@ class SymWann:
                                     if iR1 is not None and (a1, b1, iR1) > (a, b, iR):
                                         irreducible[iR1, a1, b1] = False
 
-        print(
+        self.logfile.write(
             f"Found {np.sum(irreducible)} sets of (R,a,b) out of the total {self.nRvec * self.num_wann_atom ** 2} ({self.nRvec}*{self.num_wann_atom}^2)")
         dic = {(a, b): set([iR for iR in range(self.nRvec) if irreducible[iR, a, b]])
                for a in range(self.num_wann_atom) for b in range(self.num_wann_atom)}
@@ -440,7 +447,7 @@ class SymWann:
         iRab_all = defaultdict(lambda: set())
         for symop in self.symmetry_operations:
             if symop.sym_only or symop.sym_T:
-                print('symmetry operation  ', symop.ind)
+                self.logfile.write(f"symmetry operation  {symop.ind}")
 
                 R_map = np.dot(iRvec_new_array, np.transpose(symop.rotation))
                 atom_R_map = (R_map[:, None, None, :]
@@ -520,13 +527,12 @@ class SymWann:
         # ========================================================
         # symmetrize existing R vectors and find additional R vectors
         # ========================================================
-        print('##########################')
-        print('Symmetrizing Started')
+        self.logfile.write('##########################')
+        self.logfile.write('Symmetrizing Started')
         iRab_irred = self.find_irreducible_Rab()
         matrix_dict_list_res, iRvec_ab_all = self.average_H_irreducible(iRab_new=iRab_irred,
                                                                         matrix_dict_in=self.matrix_dict_list,
                                                                         iRvec_new=self.iRvec, mode="sum")
-        #        print ("matrix_dict_list_res = ", matrix_dict_list_res)
         iRvec_new_set = set.union(*iRvec_ab_all.values())
         iRvec_new_set.add((0, 0, 0))
         iRvec_new = list(iRvec_new_set)
@@ -536,14 +542,13 @@ class SymWann:
         matrix_dict_list_res, iRab_all_2 = self.average_H_irreducible(iRab_new=iRab_new,
                                                                       matrix_dict_in=matrix_dict_list_res,
                                                                       iRvec_new=iRvec_new, mode="single")
-        #        print ("matrix_dict_list_res = ", matrix_dict_list_res)
 
         return_dic = {}
         for k, v in matrix_dict_list_res.items():
             return_dic[k] = _dict_to_matrix(v, H_select=self.H_select, nRvec=nRvec_new, ndimv=num_cart_dim(k))
             self.spin_reorder(return_dic[k], back=True)
 
-        print('Symmetrizing Finished')
+        self.logfile.write('Symmetrizing Finished')
 
         wcc = self.average_WCC()
         return return_dic, np.array(iRvec_new), wcc
@@ -552,7 +557,8 @@ class SymWann:
 
 class WannAtomInfo():
 
-    def __init__(self, iatom, atom_name, position, projection, orbital_index, magmom=None, soc=False):
+    def __init__(self, iatom, atom_name, position, projection, orbital_index, magmom=None, soc=False, 
+                 logfile=sys.stdout):
         self.iatom = iatom
         self.atom_name = atom_name
         self.position = position
@@ -563,11 +569,11 @@ class WannAtomInfo():
         self.soc = soc
         self.num_wann = len(sum(self.orbital_index, []))  # number of orbitals of atom_a
         allindex = sorted(sum(self.orbital_index, []))
-        print("allindex", allindex)
+        logfile.write(f"allindex {allindex}")
         self.orb_position_on_atom_dic = {}
         for pr, ind in zip(projection, orbital_index):
             indx = [allindex.index(i) for i in ind]
-            print(pr, ":", ind, ":", indx)
+            logfile.write(f"{pr} : {ind} : {indx}")
             orb_select = np.zeros((self.num_wann, self.num_wann), dtype=bool)
             for oi in indx:
                 for oj in indx:

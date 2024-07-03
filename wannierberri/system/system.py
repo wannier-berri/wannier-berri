@@ -11,6 +11,8 @@
 #                                                            #
 # ------------------------------------------------------------
 
+import os
+import sys
 import numpy as np
 from functools import cached_property
 from ..symmetry import Group
@@ -56,6 +58,8 @@ class System:
         the internal terms are defined only by the Hamiltonian and spin
     name : str
         name that will be used by default in names of output files
+    silent : bool
+        if ``True``, the code will not print any information about the system
 
     Notes
     -----
@@ -71,13 +75,18 @@ class System:
                  periodic=(True, True, True),
                  NKFFT=None,
                  force_internal_terms_only=False,
-                 name='wberri'
+                 name='wberri',
+                 silent=False,
                  ):
 
         # TODO: move some initialization to child classes
         self.frozen_max = frozen_max
         self.periodic = periodic
         self.name = name
+        if silent:
+            self.logfile = open(os.devnull, 'w')
+        else:
+            self.logfile = sys.stdout
 
 
         if NKFFT is not None:

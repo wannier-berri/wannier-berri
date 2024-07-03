@@ -1,4 +1,5 @@
 import copy
+import sys
 import warnings
 import numpy as np
 import os
@@ -269,7 +270,7 @@ class System_R(System):
             Rotations of the symmetry operations. (optional)
         translations: array-like (shape=(N,3))
             Translations of the symmetry operations. (optional)
-
+        
         Notes
         -----
             Works only with phase convention I (`use_wcc_phase=True`)
@@ -280,7 +281,8 @@ class System_R(System):
 
         if not self.use_wcc_phase:
             raise NotImplementedError("Symmetrization is implemented only for convention I")
-
+        
+        
         from .sym_wann import SymWann
         symmetrize_wann = SymWann(
             num_wann=self.num_wann,
@@ -296,18 +298,18 @@ class System_R(System):
             use_wcc_phase=self.use_wcc_phase,
             DFT_code=DFT_code,
             rotations = rotations,
-            translations = translations
+            translations = translations,
+            logfile=self.logfile
             )
 
         self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
 
-
-        print("Wannier Centers cart (raw):\n", self.wannier_centers_cart)
-        print("Wannier Centers red: (raw):\n", self.wannier_centers_reduced)
+        self.logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
+        self.logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
         self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize()
 
-        print("Wannier Centers cart (symmetrized):\n", self.wannier_centers_cart)
-        print("Wannier Centers red: (symmetrized):\n", self.wannier_centers_reduced)
+        self.logfile.write(f"Wannier Centers cart (symmetrized):\n {self.wannier_centers_cart}\n")
+        self.logfile.write(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_reduced}\n")
         self.clear_cached_R()
         self.clear_cached_wcc()
         self.check_AA_diag_zero(msg="after symmetrization", set_zero=True)
@@ -437,10 +439,10 @@ class System_R(System):
     def do_at_end_of_init(self):
         self.set_symmetry()
         self.check_periodic()
-        print("Real-space lattice:\n", self.real_lattice)
-        print("Number of wannier functions:", self.num_wann)
-        print("Number of R points:", self.nRvec)
-        print("Recommended size of FFT grid", self.NKFFT_recommended)
+        self.logfile.write(f"Real-space lattice:\n {self.real_lattice}\n")
+        self.logfile.write(f"Number of wannier functions: {self.num_wann}\n")
+        self.logfile.write(f"Number of R points: {self.nRvec}\n")
+        self.logfile.write(f"Recommended size of FFT grid {self.NKFFT_recommended}\n")
 
     def do_ws_dist(self, mp_grid, wannier_centers_cart=None):
         """
@@ -466,7 +468,7 @@ class System_R(System):
         ws_map = ws_dist_map(
             self.iRvec, wannier_centers_cart, mp_grid, self.real_lattice, npar=self.npar)
         for key, val in self._XX_R.items():
-            print(f"using ws_dist for {key}")
+            self.logfile.write(f"using ws_dist for {key}\n")
             self.set_R_mat(key, ws_map(val), reset=True)
         self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
         self.clear_cached_R()
@@ -480,7 +482,7 @@ class System_R(System):
             tb_file = self.seedname + "_fromchk_tb.dat"
         f = open(tb_file, "w")
         f.write("written by wannier-berri form the chk file\n")
-        cprint(f"writing TB file {tb_file}", 'green', attrs=['bold'])
+        self.logfile.write(f"writing TB file {tb_file}\n")
         np.savetxt(f, self.real_lattice)
         f.write(f"{self.num_wann}\n")
         f.write(f"{self.nRvec}\n")
@@ -677,7 +679,7 @@ class System_R(System):
             _X = self.get_R_mat(key).copy()
             assert (np.max(abs(_X - self.conj_XX_R(key=key))) < 1e-8), f"{key} should obey X(-R) = X(R)^+"
         else:
-            print(f"{key} is missing, nothing to check")
+            self.logfile.write(f"{key} is missing, nothing to check\n")
 
     def set_structure(self, positions, atom_labels, magnetic_moments=None):
         """
@@ -821,14 +823,14 @@ class System_R(System):
             raise FileExistsError(f"Directorry {path} already exists. To overwrite it set overwrite=True")
 
         for key in properties:
-            print(f"saving {key}", end="")
+            self.logfile.write(f"saving {key}\n")
             fullpath = os.path.join(path, key + ".npz")
             a = getattr(self, key)
             if key in ['symgroup']:
                 np.savez(fullpath, **a.as_dict())
             else:
                 np.savez(fullpath, a)
-            print(" - Ok!")
+            self.logfile.write(" - Ok!\n")
         for key in self.optional_properties:
             if key not in properties:
                 fullpath = os.path.join(path, key + ".npz")
@@ -836,9 +838,9 @@ class System_R(System):
                     a = getattr(self, key)
                     np.savez(fullpath, a)
         for key in R_matrices:
-            print(f"saving {key}", end="")
+            self.logfile.write(f"saving {key}")
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
-            print(" - Ok!")
+            self.logfile.write(" - Ok!\n")
 
     def load_npz(self, path, load_all_XX_R=False, exclude_properties=()):
         """
@@ -856,20 +858,20 @@ class System_R(System):
         all_names = [os.path.splitext(os.path.split(x)[-1])[0] for x in all_files]
         properties = [x for x in all_names if not x.startswith('_XX_R_') and x not in exclude_properties]
         for key in properties:
-            print(f"loading {key}", end="")
+            self.logfile.write(f"loading {key}")
             a = np.load(os.path.join(path, key + ".npz"), allow_pickle=False)
             if key == 'symgroup':
                 val = Group(dictionary=a)
             else:
                 val = a['arr_0']
             setattr(self, key, val)
-            print(" - Ok!")
+            self.logfile.write(" - Ok!\n")
         if load_all_XX_R:
             R_files = glob.glob(os.path.join(path, "_XX_R_*.npz"))
             R_matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
             self.needed_R_matrices.update(R_matrices)
         for key in self.needed_R_matrices:
-            print(f"loading R_matrix {key}", end="")
+            self.logfile.write(f"loading R_matrix {key}")
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
             self.set_R_mat(key, a)
-            print(" - Ok!")
+            self.logfile.write(" - Ok!\n")

@@ -166,7 +166,7 @@ def autoNK(NK, NKFFTrec, symgroup):
 
 
 def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, symgroup, length=None, length_FFT=None):
-    print(f"determining grids from NK={NK} ({type(NK)}), NKdiv={NKdiv} ({type(NKdiv)}), NKFFT={NKFFT} ({type(NKFFT)})")
+    # print(f"determining grids from NK={NK} ({type(NK)}), NKdiv={NKdiv} ({type(NKdiv)}), NKFFT={NKFFT} ({type(NKFFT)})")
     NKdiv = one2three(NKdiv)
     NKFFT = one2three(NKFFT)
     NK = one2three(NK)
@@ -174,7 +174,7 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, symgroup, length=
     if length is not None:
         if NK is None:
             NK = np.array(np.round(length / (2 * np.pi) * np.linalg.norm(symgroup.recip_lattice, axis=1)), dtype=int)
-            print(f"length={length} was converted into NK={NK}")
+            # print(f"length={length} was converted into NK={NK}")
         else:
             warnings.warn("length is disregarded in presence of NK")
 
@@ -182,7 +182,7 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, symgroup, length=
         if NKFFT is None:
             NKFFT = np.array(
                 np.round(length_FFT / (2 * np.pi) * np.linalg.norm(symgroup.recip_lattice, axis=1)), dtype=int)
-            print(f"length_FFT={length_FFT} was converted into NKFFT={NKFFT}")
+            # print(f"length_FFT={length_FFT} was converted into NKFFT={NKFFT}")
         else:
             warnings.warn("length_FFT is disregarded in presence of NKFFT")
 
@@ -215,5 +215,5 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, symgroup, length=
     notperiodic = np.logical_not(periodic)
     NKdiv[notperiodic] = 1
     NKFFT[notperiodic] = 1
-    print(f"The grids were set to NKdiv={NKdiv}, NKFFT={NKFFT}, NKtot={NKdiv * NKFFT}")
+    # print(f"The grids were set to NKdiv={NKdiv}, NKFFT={NKFFT}, NKtot={NKdiv * NKFFT}")
     return NKdiv, NKFFT
