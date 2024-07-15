@@ -28,7 +28,6 @@ from ..__utility import FortranFileR, alpha_A, beta_A
 
 readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip()
 
-
 class CheckPoint:
     """
     A class to store the data about wannierisation, written by Wannier90
@@ -761,7 +760,10 @@ class W90_file(abc.ABC):
         for more details
     """
 
-    def __init__(self, seedname, ext, tags=["data"], read_npz=True, write_npz=True, **kwargs):
+    def __init__(self, seedname="wannier90", ext="", tags=["data"], read_npz=True, write_npz=True, data=None, **kwargs):
+        if data is not None:
+            self.data = data
+            return
         f_npz = f"{seedname}.{ext}.npz"
         print(f"calling w90 file with {seedname}, {ext}, tags={tags}, read_npz={read_npz}, write_npz={write_npz}, kwargs={kwargs}")
         if os.path.exists(f_npz) and read_npz:
@@ -832,7 +834,7 @@ class MMN(W90_file):
         """
         return 1
 
-    def __init__(self, seedname, npar=multiprocessing.cpu_count(), **kwargs):
+    def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(), **kwargs):
         super().__init__(seedname, "mmn", tags=['data', 'G', 'neighbours'], npar=npar, **kwargs)
 
     def from_w90_file(self, seedname, npar):
@@ -971,37 +973,36 @@ class AMN(W90_file):
     def NW(self):
         return self.data.shape[2]
 
-    def __init__(self, seedname, npar=multiprocessing.cpu_count(), **kwargs):
+    def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(), **kwargs):
         super().__init__(seedname, "amn", tags=['data'], npar=npar, **kwargs)
 
     def from_w90_file(self, seedname, npar):
-        f_mmn_in = open(seedname + ".amn", "r").readlines()
-        print(f"reading {seedname}.amn: " + f_mmn_in[0].strip())
-        s = f_mmn_in[1]
+        f_amn_in = open(seedname + ".amn", "r").readlines()
+        print(f"reading {seedname}.amn: " + f_amn_in[0].strip())
+        s = f_amn_in[1]
         NB, NK, NW = np.array(s.split(), dtype=int)
         block = NW * NB
-        allmmn = (f_mmn_in[2 + j * block:2 + (j + 1) * block] for j in range(NK))
+        allmmn = (f_amn_in[2 + j * block:2 + (j + 1) * block] for j in range(NK))
         p = multiprocessing.Pool(npar)
         self.data = np.array(p.map(str2arraymmn, allmmn)).reshape((NK, NW, NB)).transpose(0, 2, 1)
 
-    """
+    
     def write(self,seedname,comment="written by WannierBerri"):
         comment=comment.strip()
-        f_mmn_out=open(seedname+".amn","w")
+        f_amn_out=open(seedname+".amn","w")
         print (f"writing {seedname}.amn: "+comment+"\n")
-        f_mmn_out.write(comment+"\n")
-        f_mmn_out.write(f"  {self.NB:3d} {self.NK:3d} {self.NW:3d}  \n")
+        f_amn_out.write(comment+"\n")
+        f_amn_out.write(f"  {self.NB:3d} {self.NK:3d} {self.NW:3d}  \n")
         for ik in range(self.NK):
-            f_mmn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(
+            f_amn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(
                 ib+1,iw+1,ik+1,self.data[ik,ib,iw].real,self.data[ik,ib,iw].imag)
                 for iw in range(self.NW) for ib in range(self.NB)))
-        f_mmn_out.close()
-    """
+        f_amn_out.close()
 
 
 class EIG(W90_file):
 
-    def __init__(self, seedname, **kwargs):
+    def __init__(self, seedname="wannier90", **kwargs):
         super().__init__(seedname=seedname, ext="eig", **kwargs)
 
     def from_w90_file(self, seedname):
@@ -1019,7 +1020,7 @@ class SPN(W90_file):
     SPN.data[ik, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k}>
     """
 
-    def __init__(self, seedname, **kwargs):
+    def __init__(self, seedname="wannier90", **kwargs):
         super().__init__(seedname=seedname, ext="spn", **kwargs)
 
     def from_w90_file(self, seedname='wannier90', formatted=False):
