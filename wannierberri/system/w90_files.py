@@ -1464,7 +1464,7 @@ class WIN():
 
 
 
-"""
+
 class DMN:
 
     def __init__(self,seedname="wannier90",num_wann=0,num_bands=None,nkpt=None):
@@ -1476,11 +1476,11 @@ class DMN:
     def read(self,seedname="wannier90",num_wann=0):
         fl=open(seedname+".dmn","r")
         self.comment=fl.readline().strip()
-        self.NB,self.Nsym,self.nkptirr,self.nkpt = read_numbers(fl,4)
-        self.num_wann=num_wann
-        self.kpt2kptirr              = read_numbers(fl,self.nkpt)-1
-        self.kptirr                  = read_numbers(fl,self.nkptirr)-1
-        self.kptirr2kpt= read_numbers(fl,(self.Nsym,self.nkptirr))-1
+        self.NB, self.Nsym, self.nkptirr, self.nkpt = readints(fl,4)
+        self.kpt2kptirr              = readints(fl,self.nkpt)-1
+        self.kptirr                  = readints(fl,self.nkptirr)-1
+        self.kptirr2kpt= np.array([readints(fl,self.Nsym) for _ in range(self.nkptirr)] ).T-1
+        print(self.kptirr2kpt.shape)
         # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
         self.kpt2kptirr_sym           = np.array([np.where(self.kptirr2kpt[:,self.kpt2kptirr[ik]]==ik)[0][0] for ik in range(self.nkpt)])
 
@@ -1488,7 +1488,13 @@ class DMN:
         data=[l.strip("() \n").split(",") for l in fl.readlines()]
         data=np.array([x for x in data if len(x)==2],dtype=float)
         data=data[:,0]+1j*data[:,1]
+        print (data.shape)
+        num_wann = np.sqrt(data.shape[0]//self.Nsym//self.nkptirr-self.NB**2)
+        assert abs(num_wann-int(num_wann))<1e-8, f"num_wann is not an integer : {num_wann}"
+        self.num_wann=int(num_wann)
+        assert data.shape[0]==(self.num_wann**2 + self.NB**2)*self.Nsym*self.nkptirr, f"wrong number of elements in dmn file"
         n1=self.num_wann**2*self.Nsym*self.nkptirr
+
         self.D_wann_dag=data[:n1].reshape(self.nkptirr,self.Nsym,self.num_wann,self.num_wann).transpose((0,1,3,2)).conj()
         self.d_band=data[n1:].reshape(self.nkptirr,self.Nsym,self.NB,self.NB)
 
@@ -1520,4 +1526,11 @@ class DMN:
                 print()
                 for M in self.D_band[i][j],self.d_wann[i][j]:
                     print("\n".join(" ".join( ("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
-"""
+
+
+def readints(fl,n):
+    lst = []
+    while len(lst)<n:
+        lst+= fl.readline().split()
+    assert len(lst)==n, f"expected {n} integers, got {len(lst)}"
+    return np.array(lst,dtype=int)
