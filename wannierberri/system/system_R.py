@@ -1,10 +1,8 @@
 import copy
-import sys
 import warnings
 import numpy as np
 import os
 from functools import cached_property
-from termcolor import cprint
 from collections import defaultdict
 import glob
 import multiprocessing
@@ -228,7 +226,7 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', store_symm_wann = False,
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', store_symm_wann=False,
                    rotations=None, translations=None):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
@@ -281,8 +279,8 @@ class System_R(System):
 
         if not self.use_wcc_phase:
             raise NotImplementedError("Symmetrization is implemented only for convention I")
-        
-        
+
+
         from .sym_wann import SymWann
         symmetrize_wann = SymWann(
             num_wann=self.num_wann,
@@ -297,25 +295,26 @@ class System_R(System):
             magmom=magmom,
             use_wcc_phase=self.use_wcc_phase,
             DFT_code=DFT_code,
-            rotations = rotations,
-            translations = translations,
-            logfile=self.logfile
+            rotations=rotations,
+            translations=translations,
+            silent=self.silent,
             )
 
         self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
+        logfile = self.logfile
 
-        self.logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
-        self.logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
+        logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
+        logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
         self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize()
 
-        self.logfile.write(f"Wannier Centers cart (symmetrized):\n {self.wannier_centers_cart}\n")
-        self.logfile.write(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_reduced}\n")
+        logfile.write(f"Wannier Centers cart (symmetrized):\n {self.wannier_centers_cart}\n")
+        logfile.write(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_reduced}\n")
         self.clear_cached_R()
         self.clear_cached_wcc()
         self.check_AA_diag_zero(msg="after symmetrization", set_zero=True)
         self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom,
                                     DFT_code=DFT_code)
-        
+
         if store_symm_wann:
             del symmetrize_wann.matrix_dict_list
             del symmetrize_wann.matrix_list
@@ -439,10 +438,11 @@ class System_R(System):
     def do_at_end_of_init(self):
         self.set_symmetry()
         self.check_periodic()
-        self.logfile.write(f"Real-space lattice:\n {self.real_lattice}\n")
-        self.logfile.write(f"Number of wannier functions: {self.num_wann}\n")
-        self.logfile.write(f"Number of R points: {self.nRvec}\n")
-        self.logfile.write(f"Recommended size of FFT grid {self.NKFFT_recommended}\n")
+        logfile = self.logfile
+        logfile.write(f"Real-space lattice:\n {self.real_lattice}\n")
+        logfile.write(f"Number of wannier functions: {self.num_wann}\n")
+        logfile.write(f"Number of R points: {self.nRvec}\n")
+        logfile.write(f"Recommended size of FFT grid {self.NKFFT_recommended}\n")
 
     def do_ws_dist(self, mp_grid, wannier_centers_cart=None):
         """
@@ -456,6 +456,7 @@ class System_R(System):
         mp_grid : [nk1,nk2,nk3] or int
             size of Monkhorst-Pack frid used in ab initio calculation.
         """
+        logfile = self.logfile
         try:
             mp_grid = one2three(mp_grid)
             assert mp_grid is not None
@@ -468,7 +469,7 @@ class System_R(System):
         ws_map = ws_dist_map(
             self.iRvec, wannier_centers_cart, mp_grid, self.real_lattice, npar=self.npar)
         for key, val in self._XX_R.items():
-            self.logfile.write(f"using ws_dist for {key}\n")
+            logfile.write(f"using ws_dist for {key}\n")
             self.set_R_mat(key, ws_map(val), reset=True)
         self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
         self.clear_cached_R()
@@ -478,11 +479,12 @@ class System_R(System):
         Write the system in the format of the wannier90_tb.dat file
         Note : it is always written in phase convention II
         """
+        logfile = self.logfile
         if tb_file is None:
             tb_file = self.seedname + "_fromchk_tb.dat"
         f = open(tb_file, "w")
         f.write("written by wannier-berri form the chk file\n")
-        self.logfile.write(f"writing TB file {tb_file}\n")
+        logfile.write(f"writing TB file {tb_file}\n")
         np.savetxt(f, self.real_lattice)
         f.write(f"{self.num_wann}\n")
         f.write(f"{self.nRvec}\n")
@@ -812,6 +814,7 @@ class System_R(System):
         overwrite : bool
             if the directory already exiists, it will be overwritten
         """
+        logfile = self.logfile
 
         properties = [x for x in self.essential_properties + list(extra_properties) if x not in exclude_properties]
         if R_matrices is None:
@@ -823,14 +826,14 @@ class System_R(System):
             raise FileExistsError(f"Directorry {path} already exists. To overwrite it set overwrite=True")
 
         for key in properties:
-            self.logfile.write(f"saving {key}\n")
+            logfile.write(f"saving {key}\n")
             fullpath = os.path.join(path, key + ".npz")
             a = getattr(self, key)
             if key in ['symgroup']:
                 np.savez(fullpath, **a.as_dict())
             else:
                 np.savez(fullpath, a)
-            self.logfile.write(" - Ok!\n")
+            logfile.write(" - Ok!\n")
         for key in self.optional_properties:
             if key not in properties:
                 fullpath = os.path.join(path, key + ".npz")
@@ -838,9 +841,9 @@ class System_R(System):
                     a = getattr(self, key)
                     np.savez(fullpath, a)
         for key in R_matrices:
-            self.logfile.write(f"saving {key}")
+            logfile.write(f"saving {key}")
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
-            self.logfile.write(" - Ok!\n")
+            logfile.write(" - Ok!\n")
 
     def load_npz(self, path, load_all_XX_R=False, exclude_properties=()):
         """
@@ -854,24 +857,25 @@ class System_R(System):
         exclude_properties : list of str
             dp not save certain properties - duse on your own risk
         """
+        logfile = self.logfile
         all_files = glob.glob(os.path.join(path, "*.npz"))
         all_names = [os.path.splitext(os.path.split(x)[-1])[0] for x in all_files]
         properties = [x for x in all_names if not x.startswith('_XX_R_') and x not in exclude_properties]
         for key in properties:
-            self.logfile.write(f"loading {key}")
+            logfile.write(f"loading {key}")
             a = np.load(os.path.join(path, key + ".npz"), allow_pickle=False)
             if key == 'symgroup':
                 val = Group(dictionary=a)
             else:
                 val = a['arr_0']
             setattr(self, key, val)
-            self.logfile.write(" - Ok!\n")
+            logfile.write(" - Ok!\n")
         if load_all_XX_R:
             R_files = glob.glob(os.path.join(path, "_XX_R_*.npz"))
             R_matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
             self.needed_R_matrices.update(R_matrices)
         for key in self.needed_R_matrices:
-            self.logfile.write(f"loading R_matrix {key}")
+            logfile.write(f"loading R_matrix {key}")
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
             self.set_R_mat(key, a)
-            self.logfile.write(" - Ok!\n")
+            logfile.write(" - Ok!\n")

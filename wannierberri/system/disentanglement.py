@@ -213,7 +213,7 @@ def disentangle(w90data,
 def get_max_eig(matrix, nvec, nBfree):
     """ return the nvec column-eigenvectors of matrix with maximal eigenvalues.
     Both matrix and nvec are lists by k-points with arbitrary size of matrices
-    
+
     Parameters
     ----------
     matrix : list of numpy.ndarray(n,n)
@@ -238,9 +238,9 @@ def get_max_eig(matrix, nvec, nBfree):
 
 class MmnFreeFrozen:
     # TODO : make use of irreducible kpoints (maybe)
-    """ a class to store and call the Mmn matrix between/inside the free and frozen subspaces, 
+    """ a class to store and call the Mmn matrix between/inside the free and frozen subspaces,
         as well as to calculate the spreads
-        
+
         Parameters
         ----------
         Mmn : list of numpy.ndarray(nnb,nb,nb)
@@ -258,7 +258,7 @@ class MmnFreeFrozen:
 
         Attributes
         ----------
-        Omega_I_0 : float   
+        Omega_I_0 : float
             the constant term of the spread functional
         Omega_I_frozen : float
             the spread of the frozen bands

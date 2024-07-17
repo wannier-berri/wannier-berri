@@ -83,10 +83,7 @@ class System:
         self.frozen_max = frozen_max
         self.periodic = periodic
         self.name = name
-        if silent:
-            self.logfile = open(os.devnull, 'w')
-        else:
-            self.logfile = sys.stdout
+        self.silent = silent
 
 
         if NKFFT is not None:
@@ -96,6 +93,14 @@ class System:
         self.periodic[:len(self.periodic)] = periodic
         self.is_phonon = False
         self.force_internal_terms_only = force_internal_terms_only
+
+    @property
+    def logfile(self):
+        if self.silent:
+            return open(os.devnull, 'w')
+        else:
+            return sys.stdout
+
 
 
     def set_real_lattice(self, real_lattice=None, recip_lattice=None):

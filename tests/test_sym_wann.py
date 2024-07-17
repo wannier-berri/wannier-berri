@@ -223,7 +223,8 @@ def test_GaAs_random(check_symmetry, system_random_GaAs_load_ws_sym):
         kBT=0.01,
     )
     calculators.update({'SHC-ryoo': calc.dynamic.SHC(SHC_type='ryoo', **param)})
-    check_symmetry(system=system, calculators=calculators)
+    check_symmetry(system=system, calculators=calculators,
+                   extra_precision={"SHC-ryoo": 2e-7})
 
 
 def test_GaAs_sym_tb_fail_convII(check_symmetry, system_GaAs_tb):

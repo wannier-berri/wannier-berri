@@ -30,6 +30,7 @@ from ..__utility import FortranFileR, alpha_A, beta_A
 
 readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip()
 
+
 class CheckPoint:
     """
     A class to store the data about wannierisation, written by Wannier90
@@ -198,7 +199,7 @@ class CheckPoint:
         np.ndarray(shape=(num_kpts, num_wann, num_wann, nnb, 3), dtype=complex) (if sum_b=False)
         or np.ndarray(shape=(num_kpts, num_wann, num_wann, nnb, 3), dtype=complex) (if sum_b=True)
             the q-resolved matrix elements AA or BB in the Wannier gauge
-        """    
+        """
         assert (not transl_inv) or eig is None
         if sum_b:
             AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
@@ -242,7 +243,7 @@ class CheckPoint:
         """
         A wrapper for get_AA_qb with sum_b=True
         see '~wannierberri.system.w90_files.CheckPoint.get_AA_qb' for more details
-        """	
+        """
         return self.get_AA_qb(mmn=mmn, transl_inv=transl_inv).sum(axis=3)
 
     # --- B_a(q,b) matrix --- #
@@ -988,16 +989,16 @@ class AMN(W90_file):
         p = multiprocessing.Pool(npar)
         self.data = np.array(p.map(str2arraymmn, allmmn)).reshape((NK, NW, NB)).transpose(0, 2, 1)
 
-    
-    def write(self,seedname,comment="written by WannierBerri"):
-        comment=comment.strip()
-        f_amn_out=open(seedname+".amn","w")
-        print (f"writing {seedname}.amn: "+comment+"\n")
-        f_amn_out.write(comment+"\n")
+
+    def write(self, seedname, comment="written by WannierBerri"):
+        comment = comment.strip()
+        f_amn_out = open(seedname + ".amn", "w")
+        print(f"writing {seedname}.amn: " + comment + "\n")
+        f_amn_out.write(comment + "\n")
         f_amn_out.write(f"  {self.NB:3d} {self.NK:3d} {self.NW:3d}  \n")
         for ik in range(self.NK):
             f_amn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(
-                ib+1,iw+1,ik+1,self.data[ik,ib,iw].real,self.data[ik,ib,iw].imag)
+                ib + 1, iw + 1, ik + 1, self.data[ik, ib, iw].real, self.data[ik, ib, iw].imag)
                 for iw in range(self.NW) for ib in range(self.NB)))
         f_amn_out.close()
 
@@ -1150,7 +1151,7 @@ class SXU(W90_file):
             the suffix of the file, e.g. 'sHu', 'sIu'
         kwargs : dict(str, Any)
             the keyword arguments to be passed to the constructor of the file
-            see `~wannierberri.system.w90_files.SIU`, `~wannierberri.system.w90_files.SHU`           
+            see `~wannierberri.system.w90_files.SIU`, `~wannierberri.system.w90_files.SHU`
             for more details
 
         Raises
@@ -1256,6 +1257,7 @@ def parse_win_raw(filename=None, text=None):
     elif text is not None:
         return w90io.parse_win_raw(text)
 
+
 def get_mp_grid(kpoints):
     """
     Get the Monkhorst-Pack grid from the kpoints
@@ -1272,24 +1274,25 @@ def get_mp_grid(kpoints):
     tuple(int)
         the Monkhorst-Pack grid
     """
-    kpoints =  np.round(np.array(kpoints),8)%1
+    kpoints = np.round(np.array(kpoints), 8) % 1
     assert kpoints.ndim == 2
     assert kpoints.shape[1] == 3
     mp_grid = np.array([None, None, None])
     for i in range(3):
         kfrac = [Fraction(k).limit_denominator(100) for k in kpoints[:, i]]
-        kfrac = [k for k in kfrac if k!=0]
+        kfrac = [k for k in kfrac if k != 0]
         if len(kfrac) == 0:
             mp_grid[i] = 1
         else:
             kmin = min(kfrac)
             assert kmin.numerator == 1, f"numerator of the smallest fraction is not 1 : {kmin}"
             mp_grid[i] = kmin.denominator
-    k1=np.array(kpoints * mp_grid[None,:],dtype=float)
-    assert np.allclose(np.round(k1,6)%1, 0), (
+    k1 = np.array(kpoints * mp_grid[None, :], dtype=float)
+    assert np.allclose(np.round(k1, 6) % 1, 0), (
         f"some kpoints are not on the Monkhorst-Pack grid {mp_grid}:\n {k1}")
     # assert kpoints.shape[0] == np.prod(mp_grid), "some kpoints are missing"
     return tuple(mp_grid)
+
 
 class WIN():
     """
@@ -1308,7 +1311,7 @@ class WIN():
         the parsed data
     units_length : dict(str, float)
         the units of length (Angstrom or Bohr radius)  
-    """ 
+    """
 
     def __init__(self, seedname='wannier90', data=None):
         self.data = {}
@@ -1322,9 +1325,9 @@ class WIN():
             self.data["unit_cell_cart"] = self.get_unit_cell_cart_ang()
             self.data["kpoints"] = self.get_kpoints()
             self.data["projections"] = self.get_projections()
-            self.data["atoms_frac"],self.data["atoms_names"] = self.get_atoms()
+            self.data["atoms_frac"], self.data["atoms_names"] = self.get_atoms()
         if data is not None:
-            for k,v in data.items():
+            for k, v in data.items():
                 self.data[k.lower()] = v
             for k in ["kpoints", "unit_cell_cart"]:
                 if k in data:
@@ -1357,7 +1360,7 @@ class WIN():
             the value of the parameter
         """
         return self.parsed['parameters'][param]
-    
+
     def write(self, seedname=None, comment="written by WannierBerri"):
         """
         Write the wannier90.win file
@@ -1372,14 +1375,14 @@ class WIN():
         """
         def list2str(l):
             if isinstance(l, Iterable):
-                return " ".join(str(x) for x in l) 
-            else :
+                return " ".join(str(x) for x in l)
+            else:
                 return str(l)
         if seedname is None:
             seedname = self.seedname
         f = open(seedname + ".win", "w")
-        f.write("#"+comment + "\n")
-        for k,v in self.data.items():
+        f.write("#" + comment + "\n")
+        for k, v in self.data.items():
             if v is not None and k not in ["atoms_names"]:
                 if k in self.blocks:
                     f.write(f"begin {k}\n")
@@ -1388,20 +1391,20 @@ class WIN():
                             f.write(l + "\n")
                     elif isinstance(v, np.ndarray):
                         assert v.ndim == 2
-                        assert v.dtype in [int, float]    
+                        assert v.dtype in [int, float]
                         if k == "unit_cell_cart":
-                                f.write(f"ang\n")                          
-                        if k=="atoms_frac":
+                            f.write("ang\n")
+                        if k == "atoms_frac":
                             names = self.data["atoms_names"]
                         else:
-                            names = [""]*v.shape[0]
-                        for l,name in zip(v,names):
-                            f.write(" "*5+name+ "   ".join([f"{x:16.12f}" for x in l]) + "\n")
+                            names = [""] * v.shape[0]
+                        for l, name in zip(v, names):
+                            f.write(" " * 5 + name + "   ".join([f"{x:16.12f}" for x in l]) + "\n")
                     f.write(f"end {k}\n")
                 else:
                     f.write(f"{k} = {list2str(v)}\n")
                 f.write("\n")
-        f.close()   
+        f.close()
 
     @functools.lru_cache()
     def get_unit_cell_cart_ang(self):
@@ -1430,11 +1433,11 @@ class WIN():
         numpy.ndarray(float, shape=(NK, 3))
             the kpoints in reciprocal coordinates
         """
-        try: 
+        try:
             return np.array(self.parsed['kpoints']['kpoints'])
         except KeyError:
             return None
-        
+
     def get_projections(self):
         """
         Get the projections
@@ -1448,18 +1451,18 @@ class WIN():
             return [l.strip() for l in self.parsed['projections']['projections']]
         except KeyError:
             return None
-        
+
     def get_atoms(self):
         if "atoms_frac" in self.parsed:
             atoms = self.parsed["atoms_frac"]["atoms"]
             atoms_names = [a["species"] for a in atoms]
             atoms_frac = np.array([a["basis_vector"] for a in atoms])
-            return atoms_frac,atoms_names
+            return atoms_frac, atoms_names
         else:
-            return None,None
-        
-    
-        
+            return None, None
+
+
+
 
 """
 class DMN:
