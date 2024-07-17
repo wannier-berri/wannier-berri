@@ -1272,7 +1272,7 @@ def get_mp_grid(kpoints):
     tuple(int)
         the Monkhorst-Pack grid
     """
-    kpoints =  np.round(np.array(kpoints),6)%1
+    kpoints =  np.round(np.array(kpoints),8)%1
     assert kpoints.ndim == 2
     assert kpoints.shape[1] == 3
     mp_grid = np.array([None, None, None])
@@ -1287,7 +1287,8 @@ def get_mp_grid(kpoints):
             mp_grid[i] = kmin.denominator
     k1=np.array(kpoints * mp_grid[None,:],dtype=float)
     assert np.allclose(np.round(k1,6)%1, 0), (
-        f"some kpoints are not on the Monkhorst-Pack grid {mp_grid}")
+        f"some kpoints are not on the Monkhorst-Pack grid {mp_grid}:\n {k1}")
+    # assert kpoints.shape[0] == np.prod(mp_grid), "some kpoints are missing"
     return tuple(mp_grid)
 
 class WIN():

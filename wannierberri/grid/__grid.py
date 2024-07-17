@@ -16,6 +16,8 @@ from time import time
 import abc
 from functools import cached_property
 import warnings
+
+from wannierberri.system.system import System
 from .. import symmetry
 from .__Kpoint import KpointBZparallel
 from ..__utility import one2three
@@ -25,7 +27,19 @@ class GridAbstract(abc.ABC):
 
     @abc.abstractmethod
     def __init__(self, system, use_symmetry, FFT=(1, 1, 1)):
-        self.symgroup = system.symgroup if use_symmetry else symmetry.Group(real_lattice=system.real_lattice)
+        if use_symmetry:
+            if isinstance(system, System):
+                self.symgroup = system.symgroup
+            elif isinstance(system, symmetry.Group):
+                self.symgroup = system
+        else:
+            if isinstance(system, System):
+                real_lattice = system.real_lattice
+            elif isinstance(system, symmetry.Group):
+                real_lattice = system.real_lattice
+            else:
+                real_lattice = system
+            self.symgroup = symmetry.Group(real_lattice=real_lattice)
         self.FFT = np.array(FFT)
 
     @abc.abstractmethod
