@@ -967,6 +967,32 @@ def str2arraymmn(A):
 
 
 class AMN(W90_file):
+    """
+    Class to store the projection of the wavefunctions on the initial Wannier functions
+    AMN.data[ik, ib, iw] = <u_{i,k}|w_{i,w}>
+
+    Parameters
+    ----------
+    seedname : str
+        the prefix of the file (including relative/absolute path, but not including the extension `.amn`)
+    npar : int
+        the number of parallel processes to be used for reading
+
+    Notes
+    -----
+
+
+    Attributes
+    ----------
+    NB : int
+        number of bands
+    NW : int
+        number of Wannier functions
+    NK : int
+        number of k-points
+    data : numpy.ndarray( (NK, NB, NW), dtype=complex)
+        the data projections
+    """
 
     @property
     def NB(self):
@@ -1466,8 +1492,51 @@ class WIN():
 
 
 class DMN:
+    """
+    Class to read and store the wannier90.dmn file
+    the symmetry transformation of the Wannier functions and ab initio bands
 
-    def __init__(self,seedname="wannier90",num_wann=0,num_bands=None,nkpt=None):
+    Parameters
+    ----------
+    seedname : str
+        the prefix of the file (including relative/absolute path, but not including the extensions, like `.dmn`)
+        if None, the object is initialized with void values (zeroes)
+    num_wann : int
+        the number of Wannier functions (in the case of void initialization)
+    num_bands : int
+        the number of ab initio bands (in the case of void initialization)
+    nkpt : int
+        the number of kpoints (in the case of void initialization)
+
+    Attributes
+    ----------
+    comment : str
+        the comment at the beginning of the file
+    NB : int
+        the number of ab initio bands
+    Nsym : int
+        the number of symmetries
+    NKirr : int
+        the number of irreducible kpoints
+    NK : int
+        the number of kpoints
+    num_wann : int
+        the number of Wannier functions
+    kptirr : numpy.ndarray(int, shape=(NKirr,))
+        the list of irreducible kpoints
+    kpt2kptirr : numpy.ndarray(int, shape=(NK,))
+        the mapping from kpoints to irreducible kpoints (each number denotes the index of the irreducible kpoint in kptirr)
+    kptirr2kpt : numpy.ndarray(int, shape=(Nsym, NKirr))
+        the mapping from irreducible kpoints to all kpoints 
+    kpt2kptirr_sym : numpy.ndarray(int, shape=(NK,))    
+        the symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
+    D_wann_dag : numpy.ndarray(complex, shape=(NKirr, Nsym, num_wann, num_wann))
+        the Wannier function transformation matrix (conjugate transpose)
+    d_band : list(numpy.ndarray(complex, shape=(NKirr, Nsym, NB, NB)))
+        the ab initio band transformation matrices  
+    """
+
+    def __init__(self,seedname="wannier90",num_wann=None,num_bands=None,nkpt=None):
         if seedname is not None:
             self.read(seedname,num_wann)
         else:
@@ -1476,39 +1545,39 @@ class DMN:
     def read(self,seedname="wannier90",num_wann=0):
         fl=open(seedname+".dmn","r")
         self.comment=fl.readline().strip()
-        self.NB, self.Nsym, self.nkptirr, self.nkpt = readints(fl,4)
-        self.kpt2kptirr              = readints(fl,self.nkpt)-1
-        self.kptirr                  = readints(fl,self.nkptirr)-1
-        self.kptirr2kpt= np.array([readints(fl,self.Nsym) for _ in range(self.nkptirr)] ).T-1
+        self.NB, self.Nsym, self.NKirr, self.NK = readints(fl,4)
+        self.kpt2kptirr              = readints(fl,self.NK)-1
+        self.kptirr                  = readints(fl,self.NKirr)-1
+        self.kptirr2kpt= np.array([readints(fl,self.Nsym) for _ in range(self.NKirr)] ).T-1
         print(self.kptirr2kpt.shape)
         # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
-        self.kpt2kptirr_sym           = np.array([np.where(self.kptirr2kpt[:,self.kpt2kptirr[ik]]==ik)[0][0] for ik in range(self.nkpt)])
+        self.kpt2kptirr_sym  = np.array([np.where(self.kptirr2kpt[:,self.kpt2kptirr[ik]]==ik)[0][0] for ik in range(self.NK)])
 
         # read the rest of lines and comvert to conplex array
         data=[l.strip("() \n").split(",") for l in fl.readlines()]
         data=np.array([x for x in data if len(x)==2],dtype=float)
         data=data[:,0]+1j*data[:,1]
         print (data.shape)
-        num_wann = np.sqrt(data.shape[0]//self.Nsym//self.nkptirr-self.NB**2)
+        num_wann = np.sqrt(data.shape[0]//self.Nsym//self.NKirr-self.NB**2)
         assert abs(num_wann-int(num_wann))<1e-8, f"num_wann is not an integer : {num_wann}"
         self.num_wann=int(num_wann)
-        assert data.shape[0]==(self.num_wann**2 + self.NB**2)*self.Nsym*self.nkptirr, f"wrong number of elements in dmn file"
-        n1=self.num_wann**2*self.Nsym*self.nkptirr
+        assert data.shape[0]==(self.num_wann**2 + self.NB**2)*self.Nsym*self.NKirr, f"wrong number of elements in dmn file"
+        n1=self.num_wann**2*self.Nsym*self.NKirr
 
-        self.D_wann_dag=data[:n1].reshape(self.nkptirr,self.Nsym,self.num_wann,self.num_wann).transpose((0,1,3,2)).conj()
-        self.d_band=data[n1:].reshape(self.nkptirr,self.Nsym,self.NB,self.NB)
+        self.D_wann_dag=data[:n1].reshape(self.NKirr,self.Nsym,self.num_wann,self.num_wann).transpose((0,1,3,2)).conj()
+        self.d_band=data[n1:].reshape(self.NKirr,self.Nsym,self.NB,self.NB)
 
     def void(self,num_wann,num_bands,nkpt):
         self.comment="only identity"
-        self.NB,self.Nsym,self.nkptirr,self.nkpt = num_bands,1,nkpt,nkpt
+        self.NB,self.Nsym,self.NKirr,self.NK = num_bands,1,nkpt,nkpt
         self.num_wann=num_wann
-        self.kpt2kptirr              = np.arange(self.nkpt)
+        self.kpt2kptirr              = np.arange(self.NK)
         self.kptirr                  = self.kpt2kptirr
         self.kptirr2kpt= np.array([self.kptirr])
-        self.kpt2kptirr_sym           = np.zeros(self.nkpt,dtype=int)
+        self.kpt2kptirr_sym           = np.zeros(self.NK,dtype=int)
         # read the rest of lines and comvert to conplex array
-        self.d_band=np.ones((self.nkptirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.NB)[None,None,:,:]
-        self.D_wann_dag=np.ones((self.nkptirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.num_wann)[None,None,:,:]
+        self.d_band=np.ones((self.NKirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.NB)[None,None,:,:]
+        self.D_wann_dag=np.ones((self.NKirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.num_wann)[None,None,:,:]
 
 
     def select_bands(self,win_index_irr):
@@ -1520,12 +1589,96 @@ class DMN:
 
     def write(self):
         print (self.comment)
-        print (self.NB,self.Nsym,self.nkptirr,self.nkpt,self.num_wann)
-        for i in range(self.nkptirr):
+        print (self.NB,self.Nsym,self.NKirr,self.NK,self.num_wann)
+        for i in range(self.NKirr):
             for j in range(self.Nsym):
                 print()
                 for M in self.D_band[i][j],self.d_wann[i][j]:
                     print("\n".join(" ".join( ("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
+
+    def check_unitary(self):
+        """
+        Check that the transformation matrices are unitary
+
+        Returns
+        -------
+        float
+            the maximum error for the bands 
+        float
+            the maximum error for the Wannier functions
+        """
+        maxerr_band = 0
+        maxerr_wann = 0
+        for ik in range(self.NK):
+            ikirr = self.kpt2kptirr[ik]
+            for isym in range(self.Nsym):
+                d = self.d_band[ikirr, isym]
+                w = self.D_wann_dag[ikirr, isym]
+                maxerr_band = max(maxerr_band, np.linalg.norm(d @ d.T.conj() - np.eye(self.NB)))
+                maxerr_wann = max(maxerr_wann, np.linalg.norm(w @ w.T.conj() - np.eye(self.num_wann)))
+        return maxerr_band, maxerr_wann
+
+    def check_eig(self, eig):
+        """
+        Check the symmetry of the eigenvlues
+
+        Parameters
+        ----------
+        eig : EIG object
+            the eigenvalues
+
+        Returns
+        -------
+        float
+            the maximum error
+        """
+        maxerr = 0
+        for ik in range(self.NK):
+            ikirr = self.kpt2kptirr[ik]
+            e1 = eig.data[ik]
+            e2 = eig.data[self.kptirr[ikirr]]
+            maxerr = max(maxerr, np.linalg.norm(e1-e2))
+
+        for ikirr in range(self.NKirr):
+            for isym in range(self.Nsym):
+                e1 = eig.data[self.kptirr[ikirr]]
+                e2 = eig.data[self.kptirr2kpt[isym, ikirr]]
+                maxerr = max(maxerr, np.linalg.norm(e1-e2))
+        return maxerr
+    
+    def check_amn(self, amn):
+        """
+        Check the symmetry of the amn
+
+        Parameters
+        ----------
+        amn : AMN object
+            the amn
+
+        Returns
+        -------
+        float
+            the maximum error
+        """
+        maxerr = 0
+
+        for ikirr in range(self.NKirr):
+            for isym in range(self.Nsym):
+                ik = self.kptirr2kpt[isym, ikirr]
+                a1 = amn.data[self.kptirr[ikirr]]
+                a2 = amn.data[ik]
+                right=self.D_wann_dag[ikirr,isym]
+                left = self.d_band[ikirr,isym]
+                # print (ikirr,isym)
+                l = left.conj()
+                r = right.conj()
+                # for i,l in enumerate( [ left, left.T.conj(),left.T, left.conj() ] ):
+                #     for j,r in enumerate( [ right, right.T.conj(),right.T, right.conj() ] ):
+                #         diff = a1-l @ a2 @ r
+                #         print ("   ",i,j,np.linalg.norm(diff))
+                diff = a1-l @ a2 @ r
+                maxerr = max(maxerr, np.linalg.norm(diff))   
+        return maxerr
 
 
 def readints(fl,n):
