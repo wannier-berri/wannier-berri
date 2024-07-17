@@ -3,7 +3,6 @@ import warnings
 import numpy as np
 import os
 from functools import cached_property
-from termcolor import cprint
 from collections import defaultdict
 import glob
 import multiprocessing
@@ -49,6 +48,41 @@ class System_R(System):
         npar : int
             number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
 
+        Notes
+        -----
+        + The system is described by its real lattice, symmetry group, and Hamiltonian and other real-space matrices.
+        + The lattice is given by the lattice vectors in the Cartesian coordinates.
+        + The system can be either periodic or confined in some directions.
+
+        Attributes
+        ----------
+        needed_R_matrices : set
+            the set of matrices that are needed for the current calculation. The matrices are set in the constructor.
+        use_ws : bool
+            minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
+            (Note: for :class:`System_tb` the method is not employed in the constructor. use `do_ws_dist()` if needed)
+        npar : int
+            number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
+        use_wcc_phase: bool
+            using wannier centers in Fourier transform. Corresponding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``    
+        _XX_R : dict(str:array)
+            dictionary of real-space matrices. The keys are the names of the matrices, the values are the matrices themselves.
+        wannier_centers_cart : array(float)
+            the positions of the Wannier centers in the Cartesian coordinates.
+        wannier_centers_reduced : array(float)
+            the positions of the Wannier centers in the reduced coordinates.
+        iRvec : array(int)
+            the array of the R-vectors in the reduced coordinates.
+        num_wann : int
+            the number of Wannier functions.
+        real_lattice : array(float, shape=(3,3))
+            the lattice vectors of the model.
+        nRvec : int
+            the number of R-vectors.
+        iR0 : int
+            the index of the R-vector [0,0,0] in the iRvec array.
+        NKFFT_recommended : int
+            the recommended size of the FFT grid to be used in the interpolation.
         """
 
     def __init__(self,
@@ -192,7 +226,8 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe'):
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', store_symm_wann=False,
+                   rotations=None, translations=None):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
 
@@ -226,14 +261,25 @@ class System_R(System):
             Magnetic momens of each atoms.
         DFT_code: str
             DFT code used : ``'qe'`` or ``'vasp'`` . This is needed, because vasp and qe have different orbitals arrangement with SOC.(grouped by spin or by orbital type)
-
+        store_symm_wann: bool
+            Store the (temporary) SymWann object in the `sym_wann` attribute of the System object.
+            Can be useful for evaluating symmetry eigenvalues of wavefunctions, etc.
+        rotations: array-like (shape=(N,3,3))
+            Rotations of the symmetry operations. (optional)
+        translations: array-like (shape=(N,3))
+            Translations of the symmetry operations. (optional)
+        
         Notes
         -----
             Works only with phase convention I (`use_wcc_phase=True`)
+
+            rotations and translations should be either given together or not given at all. Make sense to preserve consistensy in the order
+            of the symmetry operations, when store_symm_wann is set to True.
         """
 
         if not self.use_wcc_phase:
             raise NotImplementedError("Symmetrization is implemented only for convention I")
+
 
         from .sym_wann import SymWann
         symmetrize_wann = SymWann(
@@ -248,22 +294,32 @@ class System_R(System):
             wannier_centers_cart=self.wannier_centers_cart,
             magmom=magmom,
             use_wcc_phase=self.use_wcc_phase,
-            DFT_code=DFT_code)
+            DFT_code=DFT_code,
+            rotations=rotations,
+            translations=translations,
+            silent=self.silent,
+            )
 
         self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
+        logfile = self.logfile
 
+        logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
+        logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
+        self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize()
 
-        print("Wannier Centers cart (raw):\n", self.wannier_centers_cart)
-        print("Wannier Centers red: (raw):\n", self.wannier_centers_reduced)
-        (self._XX_R, self.iRvec), self.wannier_centers_cart = symmetrize_wann.symmetrize()
-
-        print("Wannier Centers cart (symmetrized):\n", self.wannier_centers_cart)
-        print("Wannier Centers red: (symmetrized):\n", self.wannier_centers_reduced)
+        logfile.write(f"Wannier Centers cart (symmetrized):\n {self.wannier_centers_cart}\n")
+        logfile.write(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_reduced}\n")
         self.clear_cached_R()
         self.clear_cached_wcc()
         self.check_AA_diag_zero(msg="after symmetrization", set_zero=True)
         self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom,
                                     DFT_code=DFT_code)
+
+        if store_symm_wann:
+            del symmetrize_wann.matrix_dict_list
+            del symmetrize_wann.matrix_list
+            self.sym_wann = symmetrize_wann
+
 
     def check_AA_diag_zero(self, msg="", set_zero=True):
         if self.has_R_mat('AA') and self.use_wcc_phase:
@@ -382,10 +438,11 @@ class System_R(System):
     def do_at_end_of_init(self):
         self.set_symmetry()
         self.check_periodic()
-        print("Real-space lattice:\n", self.real_lattice)
-        print("Number of wannier functions:", self.num_wann)
-        print("Number of R points:", self.nRvec)
-        print("Recommended size of FFT grid", self.NKFFT_recommended)
+        logfile = self.logfile
+        logfile.write(f"Real-space lattice:\n {self.real_lattice}\n")
+        logfile.write(f"Number of wannier functions: {self.num_wann}\n")
+        logfile.write(f"Number of R points: {self.nRvec}\n")
+        logfile.write(f"Recommended size of FFT grid {self.NKFFT_recommended}\n")
 
     def do_ws_dist(self, mp_grid, wannier_centers_cart=None):
         """
@@ -399,6 +456,7 @@ class System_R(System):
         mp_grid : [nk1,nk2,nk3] or int
             size of Monkhorst-Pack frid used in ab initio calculation.
         """
+        logfile = self.logfile
         try:
             mp_grid = one2three(mp_grid)
             assert mp_grid is not None
@@ -411,7 +469,7 @@ class System_R(System):
         ws_map = ws_dist_map(
             self.iRvec, wannier_centers_cart, mp_grid, self.real_lattice, npar=self.npar)
         for key, val in self._XX_R.items():
-            print(f"using ws_dist for {key}")
+            logfile.write(f"using ws_dist for {key}\n")
             self.set_R_mat(key, ws_map(val), reset=True)
         self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
         self.clear_cached_R()
@@ -421,11 +479,12 @@ class System_R(System):
         Write the system in the format of the wannier90_tb.dat file
         Note : it is always written in phase convention II
         """
+        logfile = self.logfile
         if tb_file is None:
             tb_file = self.seedname + "_fromchk_tb.dat"
         f = open(tb_file, "w")
         f.write("written by wannier-berri form the chk file\n")
-        cprint(f"writing TB file {tb_file}", 'green', attrs=['bold'])
+        logfile.write(f"writing TB file {tb_file}\n")
         np.savetxt(f, self.real_lattice)
         f.write(f"{self.num_wann}\n")
         f.write(f"{self.nRvec}\n")
@@ -622,7 +681,7 @@ class System_R(System):
             _X = self.get_R_mat(key).copy()
             assert (np.max(abs(_X - self.conj_XX_R(key=key))) < 1e-8), f"{key} should obey X(-R) = X(R)^+"
         else:
-            print(f"{key} is missing, nothing to check")
+            self.logfile.write(f"{key} is missing, nothing to check\n")
 
     def set_structure(self, positions, atom_labels, magnetic_moments=None):
         """
@@ -755,6 +814,7 @@ class System_R(System):
         overwrite : bool
             if the directory already exiists, it will be overwritten
         """
+        logfile = self.logfile
 
         properties = [x for x in self.essential_properties + list(extra_properties) if x not in exclude_properties]
         if R_matrices is None:
@@ -766,14 +826,14 @@ class System_R(System):
             raise FileExistsError(f"Directorry {path} already exists. To overwrite it set overwrite=True")
 
         for key in properties:
-            print(f"saving {key}", end="")
+            logfile.write(f"saving {key}\n")
             fullpath = os.path.join(path, key + ".npz")
             a = getattr(self, key)
             if key in ['symgroup']:
                 np.savez(fullpath, **a.as_dict())
             else:
                 np.savez(fullpath, a)
-            print(" - Ok!")
+            logfile.write(" - Ok!\n")
         for key in self.optional_properties:
             if key not in properties:
                 fullpath = os.path.join(path, key + ".npz")
@@ -781,9 +841,9 @@ class System_R(System):
                     a = getattr(self, key)
                     np.savez(fullpath, a)
         for key in R_matrices:
-            print(f"saving {key}", end="")
+            logfile.write(f"saving {key}")
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
-            print(" - Ok!")
+            logfile.write(" - Ok!\n")
 
     def load_npz(self, path, load_all_XX_R=False, exclude_properties=()):
         """
@@ -797,24 +857,25 @@ class System_R(System):
         exclude_properties : list of str
             dp not save certain properties - duse on your own risk
         """
+        logfile = self.logfile
         all_files = glob.glob(os.path.join(path, "*.npz"))
         all_names = [os.path.splitext(os.path.split(x)[-1])[0] for x in all_files]
         properties = [x for x in all_names if not x.startswith('_XX_R_') and x not in exclude_properties]
         for key in properties:
-            print(f"loading {key}", end="")
+            logfile.write(f"loading {key}")
             a = np.load(os.path.join(path, key + ".npz"), allow_pickle=False)
             if key == 'symgroup':
                 val = Group(dictionary=a)
             else:
                 val = a['arr_0']
             setattr(self, key, val)
-            print(" - Ok!")
+            logfile.write(" - Ok!\n")
         if load_all_XX_R:
             R_files = glob.glob(os.path.join(path, "_XX_R_*.npz"))
             R_matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
             self.needed_R_matrices.update(R_matrices)
         for key in self.needed_R_matrices:
-            print(f"loading R_matrix {key}", end="")
+            logfile.write(f"loading R_matrix {key}")
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
             self.set_R_mat(key, a)
-            print(" - Ok!")
+            logfile.write(" - Ok!\n")
