@@ -12,12 +12,14 @@
 # from the translation of Wannier90 code                     #
 # ------------------------------------------------------------#
 
+from fractions import Fraction
 import multiprocessing
 import gc
 import functools
 from functools import cached_property
 import os.path
 import abc
+from typing import Iterable
 from scipy.constants import physical_constants
 from time import time
 from itertools import islice
@@ -1254,6 +1256,40 @@ def parse_win_raw(filename=None, text=None):
     elif text is not None:
         return w90io.parse_win_raw(text)
 
+def get_mp_grid(kpoints):
+    """
+    Get the Monkhorst-Pack grid from the kpoints
+    also check that all the kpoints are on the grid
+    and no extra kpoints are present
+
+    Parameters
+    ----------
+    kpoints : numpy.ndarray(float, shape=(NK, 3))
+        the kpoints in reciprocal coordinates
+
+    Returns
+    -------
+    tuple(int)
+        the Monkhorst-Pack grid
+    """
+    kpoints =  np.round(np.array(kpoints),8)%1
+    assert kpoints.ndim == 2
+    assert kpoints.shape[1] == 3
+    mp_grid = np.array([None, None, None])
+    for i in range(3):
+        kfrac = [Fraction(k).limit_denominator(100) for k in kpoints[:, i]]
+        kfrac = [k for k in kfrac if k!=0]
+        if len(kfrac) == 0:
+            mp_grid[i] = 1
+        else:
+            kmin = min(kfrac)
+            assert kmin.numerator == 1, f"numerator of the smallest fraction is not 1 : {kmin}"
+            mp_grid[i] = kmin.denominator
+    k1=np.array(kpoints * mp_grid[None,:],dtype=float)
+    assert np.allclose(np.round(k1,6)%1, 0), (
+        f"some kpoints are not on the Monkhorst-Pack grid {mp_grid}:\n {k1}")
+    # assert kpoints.shape[0] == np.prod(mp_grid), "some kpoints are missing"
+    return tuple(mp_grid)
 
 class WIN():
     """
@@ -1274,11 +1310,36 @@ class WIN():
         the units of length (Angstrom or Bohr radius)  
     """ 
 
-    # TODO :use w90io to read win file
-    def __init__(self, seedname='wannier90'):
-        self.name = seedname + ".win"
-        self.parsed = parse_win_raw(self.name)
+    def __init__(self, seedname='wannier90', data=None):
+        self.data = {}
+        self.seedname = seedname
         self.units_length = {'ang': 1., 'bohr': physical_constants['Bohr radius'][0] * 1e10}
+        self.blocks = ["unit_cell_cart", "projections", "kpoints", "kpoint_path", "atoms_frac"]
+        if seedname is not None:
+            name = seedname + ".win"
+            self.parsed = parse_win_raw(name)
+            self.data.update(self.parsed["parameters"])
+            self.data["unit_cell_cart"] = self.get_unit_cell_cart_ang()
+            self.data["kpoints"] = self.get_kpoints()
+            self.data["projections"] = self.get_projections()
+            self.data["atoms_frac"],self.data["atoms_names"] = self.get_atoms()
+        if data is not None:
+            for k,v in data.items():
+                self.data[k.lower()] = v
+            for k in ["kpoints", "unit_cell_cart"]:
+                if k in data:
+                    self.data[k] = np.array(data[k], dtype=float)
+        if "kpoints" in self.data:
+            mp_grid = get_mp_grid(self.data["kpoints"])
+            if "mp_grid" in self.data:
+                assert tuple(mp_grid) == tuple(self.data["mp_grid"])
+            else:
+                self.data["mp_grid"] = mp_grid
+        for key in ["unit_cell_cart", "kpoints", "atoms_frac"]:
+            if key in self.data:
+                self.data[key] = np.array(self.data[key], dtype=float)
+
+
 
     @functools.lru_cache()
     def get_param(self, param):
@@ -1296,6 +1357,51 @@ class WIN():
             the value of the parameter
         """
         return self.parsed['parameters'][param]
+    
+    def write(self, seedname=None, comment="written by WannierBerri"):
+        """
+        Write the wannier90.win file
+
+        Parameters
+        ----------
+        seedname : str
+            the prefix of the file (including relative/absolute path, but not including the extensions, like `.win`)
+            if None, the file is written to self.seedname + ".win"
+        comment : str
+            the comment to be written at the beginning of the file
+        """
+        def list2str(l):
+            if isinstance(l, Iterable):
+                return " ".join(str(x) for x in l) 
+            else :
+                return str(l)
+        if seedname is None:
+            seedname = self.seedname
+        f = open(seedname + ".win", "w")
+        f.write("#"+comment + "\n")
+        for k,v in self.data.items():
+            if v is not None and k not in ["atoms_names"]:
+                if k in self.blocks:
+                    f.write(f"begin {k}\n")
+                    if isinstance(v, list):
+                        for l in v:
+                            f.write(l + "\n")
+                    elif isinstance(v, np.ndarray):
+                        assert v.ndim == 2
+                        assert v.dtype in [int, float]    
+                        if k == "unit_cell_cart":
+                                f.write(f"ang\n")                          
+                        if k=="atoms_frac":
+                            names = self.data["atoms_names"]
+                        else:
+                            names = [""]*v.shape[0]
+                        for l,name in zip(v,names):
+                            f.write(" "*5+name+ "   ".join([f"{x:16.12f}" for x in l]) + "\n")
+                    f.write(f"end {k}\n")
+                else:
+                    f.write(f"{k} = {list2str(v)}\n")
+                f.write("\n")
+        f.close()   
 
     @functools.lru_cache()
     def get_unit_cell_cart_ang(self):
@@ -1307,9 +1413,12 @@ class WIN():
         numpy.ndarray(float, shape=(3, 3))
             the unit cell in Angstrom in Cartesian coordinates
         """
-        cell = self.parsed['unit_cell_cart']
+        try:
+            cell = self.parsed['unit_cell_cart']
+        except KeyError:
+            return None
         A = np.array([cell['a1'], cell['a2'], cell['a3']])
-        return A * self.units_length[cell['units']]
+        return A * self.units_length[cell['units'].lower()]
 
     @functools.lru_cache()
     def get_kpoints(self):
@@ -1321,8 +1430,36 @@ class WIN():
         numpy.ndarray(float, shape=(NK, 3))
             the kpoints in reciprocal coordinates
         """
-        return np.array(self.parsed['kpoints']['kpoints'])
+        try: 
+            return np.array(self.parsed['kpoints']['kpoints'])
+        except KeyError:
+            return None
+        
+    def get_projections(self):
+        """
+        Get the projections
 
+        Returns
+        -------
+        list(str)
+            the projections in the wannier90 format
+        """
+        try:
+            return [l.strip() for l in self.parsed['projections']['projections']]
+        except KeyError:
+            return None
+        
+    def get_atoms(self):
+        if "atoms_frac" in self.parsed:
+            atoms = self.parsed["atoms_frac"]["atoms"]
+            atoms_names = [a["species"] for a in atoms]
+            atoms_frac = np.array([a["basis_vector"] for a in atoms])
+            return atoms_frac,atoms_names
+        else:
+            return None,None
+        
+    
+        
 
 """
 class DMN:
