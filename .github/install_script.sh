@@ -10,7 +10,7 @@ pip install -U pip setuptools wheel
 # install optional dependencies
 pip install pythtb # tbmodels spglib
 pip install ase
-pip install gpaw==24.1.0
+pip install gpaw
 gpaw info
 gpaw install-data --register ~/gpaw-data
 pip install -U wannierberri[all]
