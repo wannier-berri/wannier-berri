@@ -1,6 +1,9 @@
 from copy import deepcopy
 import numpy as np
 
+from ..__utility import vectorize
+from .sitesym import orthogonalize
+
 DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
 
 
@@ -11,7 +14,7 @@ def disentangle(w90data,
                 conv_tol=1e-9,
                 num_iter_converge=10,
                 mix_ratio=0.5,
-                print_progress_every=10
+                print_progress_every=10,
                 ):
     r"""
     Performs disentanglement of the bands recorded in w90data, following the procedure described in
@@ -46,10 +49,9 @@ def disentangle(w90data,
     froz_max = froz_max
     assert 0 < mix_ratio <= 1
 
-    def frozen_nondegen(ik, thresh=DEGEN_THRESH):
+    def frozen_nondegen(E, thresh=DEGEN_THRESH):
         """define the indices of the frozen bands, making sure that degenerate bands were not split
         (unfreeze the degenerate bands together) """
-        E = w90data.eig.data[ik]
         ind = list(np.where((E <= froz_max) * (E >= froz_min))[0])
         while len(ind) > 0 and ind[0] > 0 and E[ind[0]] - E[ind[0] - 1] < thresh:
             del ind[0]
@@ -59,25 +61,17 @@ def disentangle(w90data,
         froz[ind] = True
         return froz
 
-    # frozen_irr=[frozen_nondegen(ik) for ik in self.Dmn.kptirr]
-    # self.frozen=np.array([ frozen_irr[ik] for ik in self.Dmn.kpt2kptirr ])
-    frozen = np.array([frozen_nondegen(ik) for ik in w90data.iter_kpts])
-    free = np.array([np.logical_not(frozen) for frozen in frozen])
-    # self.Dmn.set_free(frozen_irr)
-    num_bands_free = np.array([np.sum(fr) for fr in free])
-    nWfree = np.array([w90data.chk.num_wann - np.sum(frz) for frz in frozen])
-    # irr=self.Dmn.kptirr
+    frozen = vectorize(frozen_nondegen, w90data.eig.data)
+    free = vectorize(np.logical_not, frozen, to_array=True)
+    num_bands_free = vectorize(np.sum, free, to_array=True)
+    nWfree = w90data.chk.num_wann - vectorize(np.sum, frozen, to_array=True)
 
-    # initial guess : eq 27 of SMV2001
-    # U_opt_free_irr=self.get_max_eig(  [ self.Amn[ik][free,:].dot(self.Amn[ik][free,:].T.conj())
-    # for ik,free in zip(irr,self.free[irr])]  ,self.nWfree[irr],self.chk.num_bandsfree[irr]) # nBfee x nWfree marrices
-    # U_opt_free=self.symmetrize_U_opt(U_opt_free_irr,free=True)
     mmn_list = [m for m in w90data.mmn.data]
     amn_list = [a for a in w90data.amn.data]
     eig_list = [e for e in w90data.eig.data]
 
-    U_opt_free = get_max_eig([amn_list[ik][fr, :].dot(amn_list[ik][fr, :].T.conj())
-                              for ik, fr in enumerate(free)], nWfree, num_bands_free)  # nBfee x nWfree marrices
+    lst = vectorize ( lambda amn,fr: amn[fr,:].dot(amn[fr,:].T.conj()), amn_list, free)
+    U_opt_free = vectorize(get_max_eig, lst, nWfree, num_bands_free)  # nBfee x nWfree marrices
 
     Mmn_FF = MmnFreeFrozen(mmn_list, free, frozen, w90data.mmn.neighbours, w90data.mmn.wk, w90data.chk.num_wann)
 
@@ -89,29 +83,22 @@ def disentangle(w90data,
             Mmn_loc_opt = [Mmn_loc[ik] for ik in w90data.iter_kpts]
         else:
             mmnff = Mmn_FF('free', 'free')
-            # mmnff=[mmnff[ik] for ik in w90data.Dmn.kptirr]
             mmnff = [mmnff[ik] for ik in w90data.iter_kpts]
-            # Mmn_loc_opt=[[Mmn[ib].dot(U_loc[ikb]) for ib,ikb in enumerate(neigh)] for Mmn,neigh in zip(mmnff,self.mmn.neighbours[irr])]
-            Mmn_loc_opt = [[Mmn[ib].dot(U_loc[ikb]) for ib, ikb in enumerate(neigh)] for Mmn, neigh in
-                           zip(mmnff, w90data.mmn.neighbours)]
-        return [sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(wbk, Mmn)) for wbk, Mmn in
-                zip(w90data.mmn.wk, Mmn_loc_opt)]
+            Mmn_loc_opt = vectorize( lambda Mmn,neigh: [Mmn[ib].dot(U_loc[ikb]) for ib, ikb in enumerate(neigh)], 
+                                    mmnff, w90data.mmn.neighbours)
+        return vectorize( lambda wbk,Mmn : sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(wbk, Mmn)), 
+                         w90data.mmn.wk, Mmn_loc_opt)
 
     Z_frozen = calc_Z(Mmn_FF('free', 'frozen'))  # only for irreducible
-
-    #        print ( '+---------------------------------------------------------------------+<-- DIS\n'+
-    #                '|  Iter     Omega_I(i-1)      Omega_I(i)      Delta (frac.)    Time   |<-- DIS\n'+
-    #                '+---------------------------------------------------------------------+<-- DIS'  )
 
     Omega_I_list = []
     Z_old = None
     for i_iter in range(num_iter):
         Z = [(z + zfr) for z, zfr in zip(calc_Z(Mmn_FF('free', 'free'), U_opt_free), Z_frozen)]  # only for irreducible
         if i_iter > 0 and mix_ratio < 1:
-            Z = [(mix_ratio * z + (1 - mix_ratio) * zo) for z, zo in zip(Z, Z_old)]  # only for irreducible
-        #            U_opt_free_irr=self.get_max_eig(Z,self.nWfree[irr],self.chk.num_bandsfree[irr]) #  only for irreducible
-        #            U_opt_free=self.symmetrize_U_opt(U_opt_free_irr,free=True)
-        U_opt_free = get_max_eig(Z, nWfree, num_bands_free)  #
+            Z = vectorize(lambda z, zo: mix_ratio * z + (1 - mix_ratio) * zo, 
+                          Z, Z_old) 
+        U_opt_free = vectorize(get_max_eig, Z, nWfree, num_bands_free)  #
         Omega_I = sum(Mmn_FF.Omega_I(U_opt_free))
         Omega_I_list.append(Omega_I)
 
@@ -135,8 +122,6 @@ def disentangle(w90data,
     del Z_old
 
     U_opt_full_irr = []
-    #        print (self.Dmn.kptirr
-    #        for ik in self.Dmn.kptirr:
     for ik in w90data.iter_kpts:
         nband = eig_list[ik].shape[0]
         U = np.zeros((nband, w90data.chk.num_wann), dtype=complex)
@@ -147,9 +132,8 @@ def disentangle(w90data,
                                                  f"is greater than number of wannier functions {w90data.chk.num_wann}")
         U[frozen[ik], range(nfrozen)] = 1.
         U[free[ik], nfrozen:] = U_opt_free[ik]
-        Z, D, V = np.linalg.svd(U.T.conj().dot(amn_list[ik]))
-        U_opt_full_irr.append(U.dot(Z.dot(V)))
-    #        U_opt_full=self.symmetrize_U_opt(U_opt_full_irr,free=False)
+        ZV = orthogonalize( U.T.conj().dot(amn_list[ik]) )  
+        U_opt_full_irr.append(U.dot(ZV))
     U_opt_full = U_opt_full_irr  # temporary, withour symmetries
     w90data.chk.v_matrix = np.array(U_opt_full).transpose((0, 2, 1))
     w90data.chk._wannier_centers = w90data.chk.get_AA_q(w90data.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(
@@ -210,30 +194,28 @@ def disentangle(w90data,
 #    MMN(data=Mmn,G=self.G,bk_cart=self.mmn.bk_cart,wk=self.mmn.wk,neighbours=self.mmn.neighbours).write(seedname)
 #    AMN(data=Amn).write(seedname)
 
+
 def get_max_eig(matrix, nvec, nBfree):
     """ return the nvec column-eigenvectors of matrix with maximal eigenvalues.
-    Both matrix and nvec are lists by k-points with arbitrary size of matrices
 
     Parameters
     ----------
-    matrix : list of numpy.ndarray(n,n)
+    matrix : numpy.ndarray(n,n)
         list of matrices
-    nvec : list of int
-        number of eigenvectors to return at each k-point
-    nBfree : list of int
-        number of free bands at each k-point
+    nvec : int
+        number of eigenvectors to return
+    nBfree : int
+        number of free bands
 
     Returns
     -------
-    list of numpy.ndarray(n,nvec)
-        list of eigenvectors
+    numpy.ndarray(n,nvec)
+        eigenvectors
     """
-    assert len(matrix) == len(nvec) == len(nBfree)
-    assert np.all([m.shape[0] == m.shape[1] for m in matrix])
-    assert np.all([m.shape[0] >= nv for m, nv in zip(matrix, nvec)]), \
-        f"nvec={nvec}, m.shape={[m.shape for m in matrix]}"
-    EV = [np.linalg.eigh(M) for M in matrix]
-    return [ev[1][:, np.argsort(ev[0])[nf - nv:nf]] for ev, nv, nf in zip(EV, nvec, nBfree)]
+    assert matrix.shape[0] == matrix.shape[1]
+    assert matrix.shape[0] >= nvec, f"nvec={nvec}, matrix.shape={matrix.shape}"
+    e,v = np.linalg.eigh(matrix) 
+    return v[:, np.argsort(e)[nBfree - nvec:nBfree] ]
 
 
 class MmnFreeFrozen:
@@ -282,8 +264,8 @@ class MmnFreeFrozen:
         self.spaces = {'free': free, 'frozen': frozen}
         for s1, sp1 in self.spaces.items():
             for s2, sp2 in self.spaces.items():
-                self.data[(s1, s2)] = [[Mmn[ik][ib][sp1[ik], :][:, sp2[ikb]]
-                                        for ib, ikb in enumerate(neigh)] for ik, neigh in enumerate(self.neighbours)]
+                self.data[(s1, s2)] = vectorize(lambda M, s1, neigh: [M[ib][s1, :][:, sp2[ikb]] for ib,ikb in enumerate(neigh)],
+                                                 Mmn, sp1, self.neighbours)
         self.Omega_I_0 = NW * self.wk[0].sum()
         self.Omega_I_frozen = -sum(sum(wb * np.sum(abs(mmn[ib]) ** 2) for ib, wb in enumerate(WB)) for WB, mmn in
                                    zip(self.wk, self('frozen', 'frozen'))) / self.NK
@@ -322,8 +304,10 @@ class MmnFreeFrozen:
         """
         U = U_opt_free
         Mmn = self('free', 'free')
+        # return -vectorize(lambda wk, Mmn, U: sum(wb*np.sum(abs(U.T.conj().dot(Mmnb).dot(U)) ** 2) for wb,Mmnb in zip(wk,Mmn)),
+        #                    self.wk, Mmn, U, sum=True) / self.NK
         return -sum(self.wk[ik][ib] * np.sum(abs(U[ik].T.conj().dot(Mmn[ib]).dot(U[ikb])) ** 2)
-                    for ik, Mmn in enumerate(Mmn) for ib, ikb in enumerate(self.neighbours[ik])) / self.NK
+                     for ik, Mmn in enumerate(Mmn) for ib, ikb in enumerate(self.neighbours[ik])) / self.NK
 
     def Omega_I_free_frozen(self, U_opt_free):
         """
