@@ -110,7 +110,7 @@ def disentangle(w90data,
     return w90data.chk.v_matrix, w90data.chk._wannier_centers, w90data.chk.spreads
 
 
-def rotate_to_projections(w90data, U_opt_free):
+def rotate_to_projections(w90data, U_opt_free, free, frozen):
     """
     rotate the U matrix to the projections of the bands
     to better match the initial guess

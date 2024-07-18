@@ -246,22 +246,43 @@ class CheckPoint:
         """
         return self.get_AA_qb(mmn=mmn, transl_inv=transl_inv).sum(axis=3)
     
-    def get_wannier_centers(self, mmn):
+    def get_wannier_centers(self, mmn, spreads = False):
         """
-        calculate wannier centers only, with the Marzarri-Vanderbilt translational invariant formula
+        calculate wannier centers  with the Marzarri-Vanderbilt translational invariant formula
+        and optionally the spreads
+
+        Parameters
+        ----------
+        mmn : `~wannierberri.system.w90_files.MMN`
+            the overlap matrix elements between the Wavefunctions at neighbouring k-points
+        spreads : bool
+            if True, the spreads are calculated
 
         Returns
         -------
         np.ndarray(shape=(num_wann, 3), dtype=float)
             the wannier centers
+        np.ndarray(shape=(num_wann,), dtype=float)
+            the wannier spreads (in Angstrom^2) (if spreads=True)
         """
         wcc = np.zeros((self.num_wann, 3), dtype=float)
+        if spreads:
+            r2 = np.zeros(self.num_wann, dtype=float)
         for ik in range(mmn.NK):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
-                dataw = self.wannier_gauge(mmn.data[ik, ib], ik, iknb)
-                wcc += -np.log(dataw.diagonal()).imag[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib]
-        return wcc/mmn.NK
+                mmn_loc = self.wannier_gauge(mmn.data[ik, ib], ik, iknb)
+                mmn_loc = mmn_loc.diagonal()
+                log_loc = np.angle(mmn_loc)
+                wcc += -log_loc[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib]
+                if spreads:
+                    r2 += (1 - np.abs(mmn_loc) ** 2 + log_loc ** 2) * mmn.wk[ik, ib]
+        wcc/=mmn.NK
+        if spreads:
+            return wcc, r2/mmn.NK - np.sum(wcc**2, axis=1)
+        else:
+            return wcc
+        
     
     # --- B_a(q,b) matrix --- #
     def get_BB_qb(self, mmn, eig, phase=None, sum_b=False):
@@ -1483,7 +1504,11 @@ class WIN():
         except KeyError:
             return None
         A = np.array([cell['a1'], cell['a2'], cell['a3']])
-        return A * self.units_length[cell['units'].lower()]
+        units = cell['units']
+        if units is None:
+            return A
+        else:
+            return A * self.units_length[units.lower()]
 
     @functools.lru_cache()
     def get_kpoints(self):
@@ -1585,6 +1610,9 @@ class DMN:
         self.kpt2kptirr              = readints(fl,self.NK)-1
         self.kptirr                  = readints(fl,self.NKirr)-1
         self.kptirr2kpt= np.array([readints(fl,self.Nsym) for _ in range(self.NKirr)] )-1
+        assert np.all(self.kptirr2kpt.flatten()>=0), "kptirr2kpt has negative values"
+        assert np.all(self.kptirr2kpt.flatten()<self.NK), "kptirr2kpt has values larger than NK"
+        assert (set(self.kptirr2kpt.flatten())==set(range(self.NK))), "kptirr2kpt does not cover all kpoints"
         self.isym_little = [np.where(self.kptirr2kpt[ik]==self.kptirr)[0] for ik in range(self.NKirr)]
         print(self.kptirr2kpt.shape)
         # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question

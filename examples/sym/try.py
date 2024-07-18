@@ -6,6 +6,23 @@ eig = wberri.system.w90_files.EIG('diamond')
 amn = wberri.system.w90_files.AMN('diamond')
 mmn = wberri.system.w90_files.MMN('diamond')
 
+w90data = wberri.system.Wannier90data(seedname='diamond')
+w90data.disentangle(
+            # froz_min=-8,
+            #      froz_max=20,
+                 num_iter=2000,
+                 conv_tol=5e-7,
+                 mix_ratio=0.9,
+                 print_progress_every=100
+                  )
+
+print ("wannier centers and spreads")
+for wcc,spread in zip(w90data.chk._wannier_centers, w90data.chk._wannier_spreads):
+    print (wcc, spread)
+exit()
+system = wberri.system.System_w90(w90data=w90data, berry=True, morb=True, use_wcc_phase=False)
+    
+
 print ( dmn.check_eig(eig) )
 print ( dmn.check_unitary() )
 print (dmn.check_amn(amn))
