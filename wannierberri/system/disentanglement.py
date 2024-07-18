@@ -1,7 +1,8 @@
 from copy import deepcopy
 import numpy as np
 
-from wannierberri.__utility import vectorize
+from ..__utility import vectorize
+from .sitesym import orthogonalize
 
 DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
 
@@ -13,7 +14,7 @@ def disentangle(w90data,
                 conv_tol=1e-9,
                 num_iter_converge=10,
                 mix_ratio=0.5,
-                print_progress_every=10
+                print_progress_every=10,
                 ):
     r"""
     Performs disentanglement of the bands recorded in w90data, following the procedure described in
@@ -131,8 +132,8 @@ def disentangle(w90data,
                                                  f"is greater than number of wannier functions {w90data.chk.num_wann}")
         U[frozen[ik], range(nfrozen)] = 1.
         U[free[ik], nfrozen:] = U_opt_free[ik]
-        Z, D, V = np.linalg.svd(U.T.conj().dot(amn_list[ik]))
-        U_opt_full_irr.append(U.dot(Z.dot(V)))
+        ZV = orthogonalize( U.T.conj().dot(amn_list[ik]) )  
+        U_opt_full_irr.append(U.dot(ZV))
     U_opt_full = U_opt_full_irr  # temporary, withour symmetries
     w90data.chk.v_matrix = np.array(U_opt_full).transpose((0, 2, 1))
     w90data.chk._wannier_centers = w90data.chk.get_AA_q(w90data.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(

@@ -1549,6 +1549,7 @@ class DMN:
         self.kpt2kptirr              = readints(fl,self.NK)-1
         self.kptirr                  = readints(fl,self.NKirr)-1
         self.kptirr2kpt= np.array([readints(fl,self.Nsym) for _ in range(self.NKirr)] ).T-1
+        self.isym_little = [np.where(self.kptirr2kpt[ik]==self.kptirr)[0] for ik in range(self.NKirr)]
         print(self.kptirr2kpt.shape)
         # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
         self.kpt2kptirr_sym  = np.array([np.where(self.kptirr2kpt[:,self.kpt2kptirr[ik]]==ik)[0][0] for ik in range(self.NK)])
