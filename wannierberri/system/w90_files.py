@@ -245,7 +245,24 @@ class CheckPoint:
         see '~wannierberri.system.w90_files.CheckPoint.get_AA_qb' for more details
         """
         return self.get_AA_qb(mmn=mmn, transl_inv=transl_inv).sum(axis=3)
+    
+    def get_wannier_centers(self, mmn):
+        """
+        calculate wannier centers only, with the Marzarri-Vanderbilt translational invariant formula
 
+        Returns
+        -------
+        np.ndarray(shape=(num_wann, 3), dtype=float)
+            the wannier centers
+        """
+        wcc = np.zeros((self.num_wann, 3), dtype=float)
+        for ik in range(mmn.NK):
+            for ib in range(mmn.NNB):
+                iknb = mmn.neighbours[ik, ib]
+                dataw = self.wannier_gauge(mmn.data[ik, ib], ik, iknb)
+                wcc += -np.log(dataw.diagonal()).imag[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib]
+        return wcc/mmn.NK
+    
     # --- B_a(q,b) matrix --- #
     def get_BB_qb(self, mmn, eig, phase=None, sum_b=False):
         """	
@@ -827,7 +844,26 @@ def convert(A):
 
 class MMN(W90_file):
     """
+    class to store overlaps between Bloch functions at neighbouring k-points
+    the MMN file of wannier90
+
     MMN.data[ik, ib, m, n] = <u_{m,k}|u_{n,k+b}>
+
+    Parameters
+    ----------
+    seedname : str
+        the prefix of the file (including relative/absolute path, but not including the extension  `.mmn`)
+    npar : int
+        the number of parallel processes to be used for reading the file
+
+    Attributes
+    ----------
+    data : np.ndarray(shape=(NK, NNB, NB, NB), dtype=complex)
+        the overlap matrix elements between the Wavefunctions at neighbouring k-points
+    neighbours : np.ndarray(shape=(NK, NNB), dtype=int)
+        the indices of the neighbouring k-points
+    G : np.ndarray(shape=(NK, NNB, 3), dtype=int)
+        the reciprocal lattice vectors connecting the k-points
     """
 
     @property
@@ -1526,7 +1562,7 @@ class DMN:
         the list of irreducible kpoints
     kpt2kptirr : numpy.ndarray(int, shape=(NK,))
         the mapping from kpoints to irreducible kpoints (each number denotes the index of the irreducible kpoint in kptirr)
-    kptirr2kpt : numpy.ndarray(int, shape=(Nsym, NKirr))
+    kptirr2kpt : numpy.ndarray(int, shape=(NKirr, Nsym))
         the mapping from irreducible kpoints to all kpoints 
     kpt2kptirr_sym : numpy.ndarray(int, shape=(NK,))    
         the symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
@@ -1548,10 +1584,11 @@ class DMN:
         self.NB, self.Nsym, self.NKirr, self.NK = readints(fl,4)
         self.kpt2kptirr              = readints(fl,self.NK)-1
         self.kptirr                  = readints(fl,self.NKirr)-1
-        self.kptirr2kpt= np.array([readints(fl,self.Nsym) for _ in range(self.NKirr)] ).T-1
+        self.kptirr2kpt= np.array([readints(fl,self.Nsym) for _ in range(self.NKirr)] )-1
         print(self.kptirr2kpt.shape)
         # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
-        self.kpt2kptirr_sym  = np.array([np.where(self.kptirr2kpt[:,self.kpt2kptirr[ik]]==ik)[0][0] for ik in range(self.NK)])
+        self.kpt2kptirr_sym  = np.array([np.where(self.kptirr2kpt[self.kpt2kptirr[ik],:]==ik)[0][0] for ik in range(self.NK)])
+       
 
         # read the rest of lines and comvert to conplex array
         data=[l.strip("() \n").split(",") for l in fl.readlines()]
@@ -1563,7 +1600,6 @@ class DMN:
         self.num_wann=int(num_wann)
         assert data.shape[0]==(self.num_wann**2 + self.NB**2)*self.Nsym*self.NKirr, f"wrong number of elements in dmn file"
         n1=self.num_wann**2*self.Nsym*self.NKirr
-
         self.D_wann_dag=data[:n1].reshape(self.NKirr,self.Nsym,self.num_wann,self.num_wann).transpose((0,1,3,2)).conj()
         self.d_band=data[n1:].reshape(self.NKirr,self.Nsym,self.NB,self.NB)
 
@@ -1573,7 +1609,7 @@ class DMN:
         self.num_wann=num_wann
         self.kpt2kptirr              = np.arange(self.NK)
         self.kptirr                  = self.kpt2kptirr
-        self.kptirr2kpt= np.array([self.kptirr])
+        self.kptirr2kpt= np.array([self.kptirr,self.Nsym])
         self.kpt2kptirr_sym           = np.zeros(self.NK,dtype=int)
         # read the rest of lines and comvert to conplex array
         self.d_band=np.ones((self.NKirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.NB)[None,None,:,:]
@@ -1642,7 +1678,7 @@ class DMN:
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
                 e1 = eig.data[self.kptirr[ikirr]]
-                e2 = eig.data[self.kptirr2kpt[isym, ikirr]]
+                e2 = eig.data[self.kptirr2kpt[ikirr,isym]]
                 maxerr = max(maxerr, np.linalg.norm(e1-e2))
         return maxerr
     
@@ -1664,7 +1700,7 @@ class DMN:
 
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
-                ik = self.kptirr2kpt[isym, ikirr]
+                ik = self.kptirr2kpt[ikirr, isym]
                 a1 = amn.data[self.kptirr[ikirr]]
                 a2 = amn.data[ik]
                 right=self.D_wann_dag[ikirr,isym]
@@ -1679,6 +1715,73 @@ class DMN:
                 diff = a1-l @ a2 @ r
                 maxerr = max(maxerr, np.linalg.norm(diff))   
         return maxerr
+
+    def check_mmn(self, mmn, f1,f2):
+        """
+        Check the symmetry of data in the mmn file
+
+        Parameters
+        ----------
+        mmn : MMN object
+            the mmn file data
+
+        Returns
+        -------
+        float
+            the maximum error
+        """
+        assert mmn.NK == self.NK
+        assert mmn.NB == self.NB
+
+        maxerr = 0
+        neighbours_irr = np.array([self.kpt2kptirr[neigh] for neigh in mmn.neighbours])
+        for i in range(self.NKirr):
+            ind1 = np.where(self.kpt2kptirr==i)[0]
+            kirr1 = self.kptirr[i]
+            neigh_irr = neighbours_irr[ind1]
+            for j in range(self.NKirr):
+                kirr2 = self.kptirr[j]
+                ind2x, ind2y = np.where(neigh_irr==j)
+                print (f"rreducible kpoints {kirr1} and {kirr2} are equivalent to {len(ind2x)} points")
+                ref = None
+                for x,y in zip(ind2x,ind2y):
+                    k1 = ind1[x]
+                    k2 = mmn.neighbours[k1][y]
+                    isym1 = self.kpt2kptirr_sym[k1]
+                    isym2 = self.kpt2kptirr_sym[k2]
+                    d1 = self.d_band[i,isym1]
+                    d2 = self.d_band[j,isym2]
+                    assert self.kptirr2kpt[i,isym1]==k1
+                    assert self.kptirr2kpt[j,isym2]==k2
+                    assert self.kpt2kptirr[k1]==i
+                    assert self.kpt2kptirr[k2]==j   
+                    ib = np.where(mmn.neighbours[k1]==k2)[0][0]
+                    assert mmn.neighbours[k1][ib]==k2
+                    data = mmn.data[k1,ib]
+                    data = f1(d1) @ data @ f2(d2)
+                    if ref is None:
+                        ref = data
+                        err = 0
+                    else:
+                        err = np.linalg.norm(data-ref)
+                    print (f"   {k1} -> {k2} : {err}")
+                    maxerr = max(maxerr, err)
+        return maxerr	
+    
+                        
+                    
+
+
+        #         ikirr = self.kpt2kptirr[ik]
+        #         m1 = mmn.data[ik, ib]
+        #         m2 = mmn.data[self.kptirr[ikirr], ib]
+        #         maxerr = max(maxerr, np.linalg.norm(m1-m2))
+        #     ikirr = self.kpt2kptirr[ik]
+        #     m1 = mmn.data[ik]
+        #     m2 = mmn.data[self.kptirr[ikirr]]
+        #     maxerr = max(maxerr, np.linalg.norm(m1-m2))
+        # return maxerr
+
 
 
 def readints(fl,n):
