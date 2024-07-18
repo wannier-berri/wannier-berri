@@ -14,6 +14,7 @@ w90data.disentangle(
                  conv_tol=5e-7,
                  mix_ratio=0.9,
                  print_progress_every=100
+                 sitesym=True
                   )
 
 print ("wannier centers and spreads")
