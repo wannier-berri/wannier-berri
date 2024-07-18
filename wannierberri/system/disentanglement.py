@@ -49,19 +49,7 @@ def disentangle(w90data,
     froz_max = froz_max
     assert 0 < mix_ratio <= 1
 
-    def frozen_nondegen(E, thresh=DEGEN_THRESH):
-        """define the indices of the frozen bands, making sure that degenerate bands were not split
-        (unfreeze the degenerate bands together) """
-        ind = list(np.where((E <= froz_max) * (E >= froz_min))[0])
-        while len(ind) > 0 and ind[0] > 0 and E[ind[0]] - E[ind[0] - 1] < thresh:
-            del ind[0]
-        while len(ind) > 0 and ind[0] < len(E) and E[ind[-1] + 1] - E[ind[-1]] < thresh:
-            del ind[-1]
-        froz = np.zeros(E.shape, dtype=bool)
-        froz[ind] = True
-        return froz
-
-    frozen = vectorize(frozen_nondegen, w90data.eig.data)
+    frozen = vectorize(frozen_nondegen, w90data.eig.data, froz_min=froz_min, froz_max=froz_max, to_array=True)
     free = vectorize(np.logical_not, frozen, to_array=True)
     num_bands_free = vectorize(np.sum, free, to_array=True)
     nWfree = w90data.chk.num_wann - vectorize(np.sum, frozen, to_array=True)
@@ -77,24 +65,12 @@ def disentangle(w90data,
 
     #        TODO : symmetrize (if needed)
 
-    def calc_Z(Mmn_loc, U_loc=None):
-        if U_loc is None:
-            # Mmn_loc_opt=[Mmn_loc[ik] for ik in w90data.Dmn.kptirr]
-            Mmn_loc_opt = [Mmn_loc[ik] for ik in w90data.iter_kpts]
-        else:
-            mmnff = Mmn_FF('free', 'free')
-            mmnff = [mmnff[ik] for ik in w90data.iter_kpts]
-            Mmn_loc_opt = vectorize( lambda Mmn,neigh: [Mmn[ib].dot(U_loc[ikb]) for ib, ikb in enumerate(neigh)], 
-                                    mmnff, w90data.mmn.neighbours)
-        return vectorize( lambda wbk,Mmn : sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(wbk, Mmn)), 
-                         w90data.mmn.wk, Mmn_loc_opt)
-
-    Z_frozen = calc_Z(Mmn_FF('free', 'frozen'))  # only for irreducible
+    Z_frozen = calc_Z(w90data, Mmn_FF('free', 'frozen'))  # only for irreducible
 
     Omega_I_list = []
     Z_old = None
     for i_iter in range(num_iter):
-        Z = [(z + zfr) for z, zfr in zip(calc_Z(Mmn_FF('free', 'free'), U_opt_free), Z_frozen)]  # only for irreducible
+        Z = [(z + zfr) for z, zfr in zip(calc_Z(w90data, Mmn_FF('free', 'free'), U_opt_free), Z_frozen)]  # only for irreducible
         if i_iter > 0 and mix_ratio < 1:
             Z = vectorize(lambda z, zo: mix_ratio * z + (1 - mix_ratio) * zo, 
                           Z, Z_old) 
@@ -142,6 +118,65 @@ def disentangle(w90data,
     w90data.wannierised = True
     return w90data.chk.v_matrix
 
+def calc_Z(w90data, mmn_ff, U_loc=None):
+    """
+    calculate the Z matrix for the given Mmn matrix and U matrix
+
+    Z = \sum_{b,k} w_{b,k} M_{b,k} M_{b,k}^{\dagger}
+    where M_{b,k} = M_{b,k}^{loc} U_{b,k}
+
+    Parameters
+    ----------
+    w90data : Wannier90data
+        the data (inputs of wannier90)
+    mmn_ff : list of numpy.ndarray(nnb,nb,nb)
+        the Mmn matrix (either free-free or free-frozen)
+
+    U_loc : list of numpy.ndarray(nBfree,nW)
+        the U matrix
+
+    Returns
+    -------
+    list of numpy.ndarray(nW,nW)
+        the Z matrix
+    """
+    if U_loc is None:
+        # Mmn_loc_opt=[Mmn_loc[ik] for ik in w90data.Dmn.kptirr]
+        Mmn_loc_opt = [mmn_ff[ik] for ik in w90data.iter_kpts]
+    else:
+        # mmnff=[mmnff[ik] for ik in w90data.Dmn.kptirr]
+        # mmnff = [mmnff[ik] for ik in w90data.iter_kpts]
+        # Mmn_loc_opt=[[Mmn[ib].dot(U_loc[ikb]) for ib,ikb in enumerate(neigh)] for Mmn,neigh in zip(mmnff,self.mmn.neighbours[irr])]
+        Mmn_loc_opt = [[Mmn[ib].dot(U_loc[ikb]) for ib, ikb in enumerate(neigh)] for Mmn, neigh in
+                        zip(mmn_ff, w90data.mmn.neighbours)]
+    return [sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(wbk, Mmn)) for wbk, Mmn in
+            zip(w90data.mmn.wk, Mmn_loc_opt)]
+
+
+def frozen_nondegen(E, thresh=DEGEN_THRESH, froz_min=np.inf, froz_max=-np.inf):
+    """define the indices of the frozen bands, making sure that degenerate bands were not split
+    (unfreeze the degenerate bands together)
+
+    Parameters
+    ----------
+    E : numpy.ndarray(nb, dtype=float)
+        the energies of the bands
+    thresh : float
+        the threshold for the degeneracy
+
+    Returns
+    -------
+    numpy.ndarray(bool)
+        the boolean array of the frozen bands  (True for frozen)
+    """
+    ind = list(np.where((E <= froz_max) * (E >= froz_min))[0])
+    while len(ind) > 0 and ind[0] > 0 and E[ind[0]] - E[ind[0] - 1] < thresh:
+        del ind[0]
+    while len(ind) > 0 and ind[0] < len(E) and E[ind[-1] + 1] - E[ind[-1]] < thresh:
+        del ind[-1]
+    froz = np.zeros(E.shape, dtype=bool)
+    froz[ind] = True
+    return froz
 
 # now rotating to the optimized space
 #        self.Hmn=[]

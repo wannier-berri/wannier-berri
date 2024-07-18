@@ -106,6 +106,7 @@ def disentangle(w90data,
     w90data.chk.spreads = w90data.chk.get_wannier_spreads(w90data.mmn)
 
     w90data.wannierised = True
+    
     return w90data.chk.v_matrix, w90data.chk._wannier_centers, w90data.chk.spreads
 
 
