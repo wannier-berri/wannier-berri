@@ -14,7 +14,7 @@ w90data.check_symmetry()
 w90data.disentangle(
             # froz_min=-8,
             #      froz_max=20,
-                 num_iter=10,
+                 num_iter=1000,
                  conv_tol=5e-7,
                  mix_ratio=0.9,
                  print_progress_every=100,

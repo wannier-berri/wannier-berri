@@ -80,8 +80,9 @@ def disentangle(w90data,
         if sitesym:
             Z = symmetrize_Z(Z, w90data.dmn, **kwargs_sitesym)
         U_opt_free = vectorize(get_max_eig, Z, nWfree, num_bands_free) 
-        # if sitesym:
-        #     U_opt_free = symmetrize_U(U_opt_free, w90data.dmn, **kwargs_sitesym)
+        if sitesym:
+            U_opt_free = rotate_to_projections(w90data, U_opt_free, free, frozen, num_bands_frozen)
+            U_opt_free = symmetrize_U(U_opt_free, w90data.dmn, **kwargs_sitesym)
 
         Omega_I_list.append( sum(Mmn_FF.Omega_I(U_opt_free)))
 
@@ -99,8 +100,6 @@ def disentangle(w90data,
         U_opt_full = symmetrize_U(U_opt_full, w90data.dmn, **kwargs_sitesym)
 
     w90data.chk.v_matrix = np.array(U_opt_full).transpose((0, 2, 1))
-    # w90data.chk._wannier_centers = w90data.chk.get_AA_q(w90data.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(
-    #     axis=0).real.T / w90data.chk.num_kpts
     w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
 
     w90data.wannierised = True
@@ -195,12 +194,8 @@ def calc_Z(w90data, mmn_ff, U_loc=None):
         the Z matrix
     """
     if U_loc is None:
-        # Mmn_loc_opt=[Mmn_loc[ik] for ik in w90data.dmn.kptirr]
         Mmn_loc_opt = [mmn_ff[ik] for ik in w90data.iter_kpts]
     else:
-        # mmnff=[mmnff[ik] for ik in w90data.dmn.kptirr]
-        # mmnff = [mmnff[ik] for ik in w90data.iter_kpts]
-        # Mmn_loc_opt=[[Mmn[ib].dot(U_loc[ikb]) for ib,ikb in enumerate(neigh)] for Mmn,neigh in zip(mmnff,self.mmn.neighbours[irr])]
         Mmn_loc_opt = [[Mmn[ib].dot(U_loc[ikb]) for ib, ikb in enumerate(neigh)] for Mmn, neigh in
                         zip(mmn_ff, w90data.mmn.neighbours)]
     return [sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(wbk, Mmn)) for wbk, Mmn in
@@ -231,58 +226,6 @@ def frozen_nondegen(E, thresh=DEGEN_THRESH, froz_min=np.inf, froz_max=-np.inf):
     froz = np.zeros(E.shape, dtype=bool)
     froz[ind] = True
     return froz
-
-# now rotating to the optimized space
-#        self.Hmn=[]
-#        print (self.Amn.shape)
-#        for ik in self.iter_kpts:
-#            U=U_opt_full[ik]
-#            Ud=U.T.conj()
-# hamiltonian is not diagonal anymore
-#            self.Hmn.append(Ud.dot(np.diag(self.Eig[ik])).dot(U))
-#            self.Amn[ik]=Ud.dot(self.Amn[ik])
-#            self.Mmn[ik]=[Ud.dot(M).dot(U_opt_full[ibk]) for M,ibk in zip (self.Mmn[ik],self.mmn.neighbours[ik])]
-
-
-# def symmetrize_U_opt(self,U_opt_free_irr,free=False):
-#     # TODO : first symmetrize by the little group
-#     # Now distribute to reducible points
-#     d_band=self.dmn.d_band_free if free else self.dmn.d_band
-#     U_opt_free=[d_band[ikirr][isym] @ U_opt_free_irr[ikirr] @ self.dmn.D_wann_dag[ikirr][isym] for isym,ikirr in zip(self.dmn.kpt2kptirr_sym,self.dmn.kpt2kptirr)  ]
-#     return U_opt_free
-#
-# def rotate(self,mat,ik1,ik2):
-#     # data should be of form NBxNBx ...   - any form later
-#     if len(mat.shape)==1:
-#         mat=np.diag(mat)
-#     assert mat.shape[:2]==(self.num_bands,)*2
-#     shape=mat.shape[2:]
-#     mat=mat.reshape(mat.shape[:2]+(-1,)).transpose(2,0,1)
-#     mat=mat[self.win_min[ik1]:self.win_max[ik1],self.win_min[ik2]:self.win_max[ik2]]
-#     v1=self.v_matrix[ik1].conj()
-#     v2=self.v_matrix[ik2].T
-#     return np.array( [v1.dot(m).dot(v2) for m in mat]).transpose( (1,2,0) ).reshape( (self.num_wann,)*2+shape )
-
-
-# def write_files(self,seedname="wannier90"):
-#    "Write the disentangled files , where num_wann==num_bands"
-#    Eig=[]
-#    Uham=[]
-#    Amn=[]
-#    Mmn=[]
-#    for H in self.Hmn:
-#        E,U=np.linalg.eigh(H)
-#        Eig.append(E)
-#        Uham.append(U)
-#    EIG(data=Eig).write(seedname)
-#    for ik in self.iter_kpts:
-#        U=Uham[ik]
-#        Ud=U.T.conj()
-#        Amn.append(Ud.dot(self.Amn[ik]))
-#        Mmn.append([Ud.dot(M).dot(Uham[ibk]) for M,ibk in zip (self.Mmn[ik],self.mmn.neighbours[ik])])
-#    MMN(data=Mmn,G=self.G,bk_cart=self.mmn.bk_cart,wk=self.mmn.wk,neighbours=self.mmn.neighbours).write(seedname)
-#    AMN(data=Amn).write(seedname)
-
 
 def get_max_eig(matrix, nvec, nBfree):
     """ return the nvec column-eigenvectors of matrix with maximal eigenvalues.
@@ -393,8 +336,6 @@ class MmnFreeFrozen:
         """
         U = U_opt_free
         Mmn = self('free', 'free')
-        # return -vectorize(lambda wk, Mmn, U: sum(wb*np.sum(abs(U.T.conj().dot(Mmnb).dot(U)) ** 2) for wb,Mmnb in zip(wk,Mmn)),
-        #                    self.wk, Mmn, U, sum=True) / self.NK
         return -sum(self.wk[ik][ib] * np.sum(abs(U[ik].T.conj().dot(Mmn[ib]).dot(U[ikb])) ** 2)
                      for ik, Mmn in enumerate(Mmn) for ib, ikb in enumerate(self.neighbours[ik])) / self.NK
 
