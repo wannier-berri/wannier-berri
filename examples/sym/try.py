@@ -24,7 +24,7 @@ w90data.disentangle(
 
 print ("wannier centers and spreads")
 for wcc,spread in zip(w90data.chk._wannier_centers, w90data.chk._wannier_spreads):
-    print (wcc, spread)
+    print (f"{wcc[0]:10.5f}  {wcc[1]:10.5f}  {wcc[2]:10.5f}   |   {spread:10.8f}")
 exit()
 system = wberri.system.System_w90(w90data=w90data, berry=True, morb=True, use_wcc_phase=False)
     

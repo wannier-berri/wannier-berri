@@ -63,8 +63,8 @@ def disentangle(w90data,
 
     lst = vectorize ( lambda amn,fr: amn[fr,:].dot(amn[fr,:].T.conj()), amn_list, free)
     U_opt_free = vectorize(get_max_eig, lst, nWfree, num_bands_free)  # nBfee x nWfree marrices
-    if sitesym:
-        U_opt_free = symmetrize_U(U_opt_free, w90data.dmn, **kwargs_sitesym)
+    # if sitesym:
+    #     U_opt_free = symmetrize_U(U_opt_free, w90data.dmn, **kwargs_sitesym)
 
     Mmn_FF = MmnFreeFrozen(mmn_list, free, frozen, w90data.mmn.neighbours, w90data.mmn.wk, w90data.chk.num_wann)
 
@@ -77,11 +77,11 @@ def disentangle(w90data,
         if i_iter > 0 and mix_ratio < 1:
             Z = vectorize(lambda z, zo: mix_ratio * z + (1 - mix_ratio) * zo, 
                           Z, Z_old) 
-        if sitesym:
-            Z = symmetrize_Z(Z, w90data.dmn, **kwargs_sitesym)
+        # if sitesym:
+        #     Z = symmetrize_Z(Z, w90data.dmn, **kwargs_sitesym)
         U_opt_free = vectorize(get_max_eig, Z, nWfree, num_bands_free) 
-        if sitesym:
-            U_opt_free = symmetrize_U(U_opt_free, w90data.dmn, **kwargs_sitesym)
+        # if sitesym:
+        #     U_opt_free = symmetrize_U(U_opt_free, w90data.dmn, **kwargs_sitesym)
 
         Omega_I_list.append( sum(Mmn_FF.Omega_I(U_opt_free)))
 
@@ -93,8 +93,9 @@ def disentangle(w90data,
     del Z_old, Z
 
     U_opt_full = rotate_to_projections(w90data, U_opt_free, free, frozen, num_bands_frozen)
-    if sitesym:
-        U_opt_full = symmetrize_U(U_opt_full, w90data.dmn, **kwargs_sitesym)
+    print("U_opt_full ", [u.shape for u in U_opt_full])
+    # if sitesym:
+    #     U_opt_full = symmetrize_U(U_opt_full, w90data.dmn, **kwargs_sitesym)
 
     w90data.chk.v_matrix = np.array(U_opt_full).transpose((0, 2, 1))
     # w90data.chk._wannier_centers = w90data.chk.get_AA_q(w90data.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(

@@ -1626,7 +1626,7 @@ class DMN:
         assert np.all(self.kptirr2kpt.flatten()>=0), "kptirr2kpt has negative values"
         assert np.all(self.kptirr2kpt.flatten()<self.NK), "kptirr2kpt has values larger than NK"
         assert (set(self.kptirr2kpt.flatten())==set(range(self.NK))), "kptirr2kpt does not cover all kpoints"
-        self.isym_little = [np.where(self.kptirr2kpt[ik]==self.kptirr)[0] for ik in range(self.NKirr)]
+        self.isym_little = [np.where(self.kptirr2kpt[ik]==self.kptirr[ik])[0] for ik in range(self.NKirr)]
         print(self.kptirr2kpt.shape)
         # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
         self.kpt2kptirr_sym  = np.array([np.where(self.kptirr2kpt[self.kpt2kptirr[ik],:]==ik)[0][0] for ik in range(self.NK)])
