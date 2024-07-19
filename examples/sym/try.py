@@ -7,15 +7,14 @@ import wannierberri as wberri
 # mmn = wberri.system.w90_files.MMN('diamond')
 
 w90data = wberri.system.Wannier90data(seedname='diamond')
-w90data.dmn 
 
-print (w90data._files)
+w90data.check_symmetry()
 
-# exit()
+
 w90data.disentangle(
             # froz_min=-8,
             #      froz_max=20,
-                 num_iter=2000,
+                 num_iter=10,
                  conv_tol=5e-7,
                  mix_ratio=0.9,
                  print_progress_every=100,
@@ -24,7 +23,8 @@ w90data.disentangle(
 
 print ("wannier centers and spreads")
 for wcc,spread in zip(w90data.chk._wannier_centers, w90data.chk._wannier_spreads):
-    print (f"{wcc[0]:10.5f}  {wcc[1]:10.5f}  {wcc[2]:10.5f}   |   {spread:10.8f}")
+    wcc = np.round(wcc, 6)
+    print (f"{wcc[0]:10.6f}  {wcc[1]:10.6f}  {wcc[2]:10.6f}   |   {spread:10.8f}")
 exit()
 system = wberri.system.System_w90(w90data=w90data, berry=True, morb=True, use_wcc_phase=False)
     

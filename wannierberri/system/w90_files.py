@@ -759,6 +759,18 @@ class Wannier90data:
         """
         disentangle(self, **kwargs)
 
+    def check_symmetry(self, silent=False):
+        """
+        Check the symmetry of the system
+        """
+
+        err_eig = self.dmn.check_eig(self.eig)
+        err_amn = self.dmn.check_amn(self.amn)
+        if not silent:
+            print(f"eig symmetry error : {err_eig}")
+            print(f"amn symmetry error : {err_amn}")
+        return err_eig, err_amn
+        
     # TODO : allow k-dependent window (can it be useful?)
     # def apply_outer_window(self,
     #                  win_min=-np.Inf,
@@ -785,7 +797,6 @@ class Wannier90data:
     #     self._Mmn=[[self._Mmn[ik][ib][win_index[ik],:][:,win_index[ikb]] for ib,ikb in enumerate(self.mmn.neighbours[ik])] for ik in self.iter_kpts]
     #     self._Amn=[self._Amn[ik][win_index[ik],:] for ik in self.iter_kpts]
 
-    # TODO : allow k-dependent window (can it be useful?)
 
 
 class W90_file(abc.ABC):
@@ -1632,7 +1643,7 @@ class DMN:
         self.kpt2kptirr_sym  = np.array([np.where(self.kptirr2kpt[self.kpt2kptirr[ik],:]==ik)[0][0] for ik in range(self.NK)])
        
 
-        # read the rest of lines and comvert to conplex array
+        # read the rest of lines and convert to conplex array
         data=[l.strip("() \n").split(",") for l in fl.readlines()]
         data=np.array([x for x in data if len(x)==2],dtype=float)
         data=data[:,0]+1j*data[:,1]
@@ -1642,8 +1653,11 @@ class DMN:
         self.num_wann=int(num_wann)
         assert data.shape[0]==(self.num_wann**2 + self.NB**2)*self.Nsym*self.NKirr, f"wrong number of elements in dmn file"
         n1=self.num_wann**2*self.Nsym*self.NKirr
-        self.D_wann_dag=data[:n1].reshape(self.NKirr,self.Nsym,self.num_wann,self.num_wann).transpose((0,1,3,2)).conj()
-        self.d_band=data[n1:].reshape(self.NKirr,self.Nsym,self.NB,self.NB)
+        # in fortran the order of indices is reversed. there for there is not transpose
+        # in D_wann_dag, but there is a transpose in d_band
+        self.D_wann_dag=data[:n1].reshape(self.NKirr, self.Nsym, self.num_wann, self.num_wann
+                                          ).conj()
+        self.d_band=data[n1:].reshape(self.NKirr,self.Nsym,self.NB,self.NB).transpose(0,1,3,2)
 
     def void(self,num_wann,num_bands,nkpt):
         self.comment="only identity"
@@ -1673,6 +1687,20 @@ class DMN:
                 print()
                 for M in self.D_band[i][j],self.d_wann[i][j]:
                     print("\n".join(" ".join( ("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
+
+    def rotate_U(self, U, ikirr, isym):
+        """
+        Rotates the umat matrix at the irreducible kpoint
+        U = D_band^+ @ U @ D_wann
+        """
+        return self.d_band[ikirr,isym] @ U @ self.D_wann_dag[ikirr,isym]
+
+    def rotate_Z(self, Z, isym, ikirr):
+        """
+        Rotates the zmat matrix at the irreducible kpoint
+        Z = d_band^+ @ Z @ d_band
+        """
+        return self.d_band[ikirr,isym].conj().T @ Z @ self.d_band[ikirr,isym]
 
     def check_unitary(self):
         """
@@ -1730,7 +1758,7 @@ class DMN:
 
         Parameters
         ----------
-        amn : AMN object
+        amn : AMN object of np.ndarray(complex, shape=(NK, NB, NW))
             the amn
 
         Returns
@@ -1738,29 +1766,23 @@ class DMN:
         float
             the maximum error
         """
+        if isinstance(amn, AMN):
+            amn = amn.data
         maxerr = 0
 
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
                 ik = self.kptirr2kpt[ikirr, isym]
-                a1 = amn.data[self.kptirr[ikirr]]
-                a2 = amn.data[ik]
-                right=self.D_wann_dag[ikirr,isym]
-                left = self.d_band[ikirr,isym]
-                # print (ikirr,isym)
-                l = left.conj()
-                r = right.conj()
-                # for i,l in enumerate( [ left, left.T.conj(),left.T, left.conj() ] ):
-                #     for j,r in enumerate( [ right, right.T.conj(),right.T, right.conj() ] ):
-                #         diff = a1-l @ a2 @ r
-                #         print ("   ",i,j,np.linalg.norm(diff))
-                diff = a1-l @ a2 @ r
+                a1 = amn[self.kptirr[ikirr]]
+                a2 = amn[ik]
+                diff = a2-self.rotate_U(a1,ikirr,isym)
                 maxerr = max(maxerr, np.linalg.norm(diff))   
         return maxerr
 
+
     def check_mmn(self, mmn, f1,f2):
         """
-        Check the symmetry of data in the mmn file
+        Check the symmetry of data in the mmn file (not working)
 
         Parameters
         ----------

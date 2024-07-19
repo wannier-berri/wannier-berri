@@ -8,32 +8,19 @@ def orthogonalize(u):
 
     Parameters
     ----------
-    u : np.ndarray(dtype=complex, shape = (m,n))
+    u : np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
         The input matrix to be orthogonalized.
 
     Returns
     -------
-    u : np.ndarray(dtype=complex, shape = (m,n))
+    u : np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
         The orthogonalized matrix.
     """
-    U, _, VT = svd(u, full_matrices=True)
+    U, _, VT = svd(u, full_matrices=False)
     return U @ VT
 
 import numpy as np
 
-def rotate_U(U, Dmn, ikirr, isym):
-    """
-    Rotates the umat matrix at the irreducible kpoint
-    U = D_band^+ @ U @ D_wann
-    """
-    return Dmn.d_band[ikirr,isym].conj().T @ U @ Dmn.D_wann_dag[ikirr,isym]
-
-def rotate_Z(Z, Dmn, isym, ikirr):
-    """
-    Rotates the zmat matrix at the irreducible kpoint
-    Z = d_band^+ @ Z @ d_band
-    """
-    return Dmn.d_band[ikirr,isym].conj().T @ Z @ Dmn.d_band[ikirr,isym]
 
 def symmetrize_U_kirr(U, Dmn, ikirr, n_iter=100, epsilon=1e-8):
     """
@@ -51,26 +38,33 @@ def symmetrize_U_kirr(U, Dmn, ikirr, n_iter=100, epsilon=1e-8):
     isym_little = Dmn.isym_little[ikirr]
     nsym_little = len(isym_little)
     ikpt = Dmn.kptirr[ikirr]
-    nw, nb = U.shape
-    print (f'kpoint {ikpt}, irreducible point {ikirr}, symmetrizing U matrix of shape {U.shape}')
-    print (f'little group symmetries: {isym_little} ({nsym_little}) ')
+    nb, nw = U.shape
+    # print (f'kpoint {ikpt}, irreducible point {ikirr}, symmetrizing U matrix of shape {U.shape} nbands={nb}, nwann={nw}')
+    # print (f'little group symmetries: {isym_little} ({nsym_little}) ')
+    # print (f'U matrix at irreducible point {ikirr} ({ikpt})\n {np.round(U,4)}')
+    
         
     for i in range(n_iter):
-        Usym = np.zeros(U.shape, dtype=complex)
-        for isym in isym_little:
-            Usym +=  rotate_U(U, Dmn, ikirr, isym)
-        Usym /= nsym_little
+        # print (f'iteration {i}, vialation of symmetries:')
+        # for isym in isym_little:
+        #     Usym =  Dmn.rotate_U(U, ikirr, isym)
+        #     print (f'isym={isym}, violation={np.sum(np.abs(Usym - U))}')
+        Usym = sum(Dmn.rotate_U(U, ikirr, isym) for isym in isym_little)/nsym_little
+        # print (f'U changed by {np.sum(np.abs(Usym - U))}')
+        #Usym = orthogonalize(Usym)
         diff = np.eye(nw) -  U.conj().T @ Usym
         diff = np.sum(np.abs(diff))
         if diff < epsilon:
-            print (f'simmetrization of U matrix at irreducible point {ikirr} ({ikpt}) converged after {i} iterations, diff={diff}')
+            # print (f'stmmetrization of U matrix at irreducible point {ikirr} ({ikpt}) converged after {i} iterations, diff={diff}')
             break
+        U = Usym
     else:
-        warnings.warn(f'simmetrization of U matrix at irreducible point {ikirr} ({ikpt})'
-                      f' did not converge after {n_iter} iterations, diff={diff}'
-                      'Either eps is too small or specified irreps is not compatible with the bands'
+        warnings.warn(f'symmetrization of U matrix at irreducible point {ikirr} ({ikpt})'+
+                      f' did not converge after {n_iter} iterations, diff={diff}'+
+                      'Either eps is too small or specified irreps is not compatible with the bands'+
                       f'diff{diff}, eps={epsilon}')
-    print (f'U symmetrized at irreducible point {ikirr} ({ikpt})\n {Usym}')
+    # print (f'U symmetrized at irreducible point {ikirr} ({ikpt})\n {Usym}')
+    # return Usym
     return  orthogonalize(Usym)
 
 def symmetrize_U(U, Dmn, n_iter=100, epsilon=1e-8):
@@ -86,7 +80,13 @@ def symmetrize_U(U, Dmn, n_iter=100, epsilon=1e-8):
         for isym in range(Dmn.Nsym):
             iRk = Dmn.kptirr2kpt[ikirr,isym]
             if Usym[iRk] is None:
-                Usym[iRk] = rotate_U(Usym[ik], Dmn, ikirr, isym)
+            # if iRk not in Dmn.kptirr:
+                Usym[iRk] = Dmn.rotate_U(Usym[ik], ikirr, isym)
+                # diff = np.sum(np.abs(Usym[iRk] - U[iRk]))
+                # print (f'U rotated from irreducible point {ikirr} ({ik},) to {iRk}  changed by {diff}')
+                # if diff > 1e-7:
+                #     print (f' Uold = \n{np.round(U[iRk],3)}')
+                #     print (f' Unew = \n{np.round(Usym[iRk],3)}')
     return Usym
 
 def symmetrize_Z(Z, Dmn):
@@ -99,12 +99,12 @@ def symmetrize_Z(Z, Dmn):
         ik = Dmn.kptirr[ikirr]
         Zsym[ik] = np.zeros(Z[ik].shape, dtype=complex)
         for isym in Dmn.isym_little[ikirr]:
-            Zsym[ik] += rotate_Z(Z[ik], Dmn, isym, ikirr)
+            Zsym[ik] += Dmn.rotate_Z(Z[ik], isym, ikirr)
         Zsym[ik] /= len(Dmn.isym_little[ikirr])
 
         for isym in range(1, Dmn.Nsym):
             irk = Dmn.kptirr2kpt[ikirr, isym]
             if Zsym[irk] is None:
-                Zsym[irk] = rotate_Z(Zsym[ik], Dmn, isym, ikirr)
+                Zsym[irk] = Dmn.rotate_Z(Zsym[ik], isym, ikirr)
     return Zsym
            

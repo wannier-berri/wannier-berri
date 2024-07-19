@@ -1,8 +1,6 @@
 num_wann        =  4
+num_bands       =  4
 num_iter        = 20
-
-wannier_plot=.true.
-wannier_plot_supercell = 3
 
 site_symmetry = T
 

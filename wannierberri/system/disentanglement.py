@@ -57,16 +57,16 @@ def disentangle(w90data,
     num_bands_frozen = vectorize(np.sum, frozen, to_array=True)
     nWfree = w90data.chk.num_wann - vectorize(np.sum, frozen, to_array=True)
 
-    mmn_list = [m for m in w90data.mmn.data]
-    amn_list = [a for a in w90data.amn.data]
-    eig_list = [e for e in w90data.eig.data]
-
-    lst = vectorize ( lambda amn,fr: amn[fr,:].dot(amn[fr,:].T.conj()), amn_list, free)
+    lst = vectorize ( lambda amn,fr: amn[fr,:].dot(amn[fr,:].T.conj()), 
+                     w90data.amn.data, free)
     U_opt_free = vectorize(get_max_eig, lst, nWfree, num_bands_free)  # nBfee x nWfree marrices
-    # if sitesym:
-    #     U_opt_free = symmetrize_U(U_opt_free, w90data.dmn, **kwargs_sitesym)
+    if sitesym:
+        # only wrks if nothing is frozen
+        U_opt_free = rotate_to_projections(w90data, U_opt_free, free, frozen, num_bands_frozen)
+        U_opt_free = symmetrize_U(U_opt_free, w90data.dmn, **kwargs_sitesym)
+        # exit()
 
-    Mmn_FF = MmnFreeFrozen(mmn_list, free, frozen, w90data.mmn.neighbours, w90data.mmn.wk, w90data.chk.num_wann)
+    Mmn_FF = MmnFreeFrozen(w90data.mmn.data, free, frozen, w90data.mmn.neighbours, w90data.mmn.wk, w90data.chk.num_wann)
 
     Z_frozen = calc_Z(w90data, Mmn_FF('free', 'frozen'))
 
@@ -77,8 +77,8 @@ def disentangle(w90data,
         if i_iter > 0 and mix_ratio < 1:
             Z = vectorize(lambda z, zo: mix_ratio * z + (1 - mix_ratio) * zo, 
                           Z, Z_old) 
-        # if sitesym:
-        #     Z = symmetrize_Z(Z, w90data.dmn, **kwargs_sitesym)
+        if sitesym:
+            Z = symmetrize_Z(Z, w90data.dmn, **kwargs_sitesym)
         U_opt_free = vectorize(get_max_eig, Z, nWfree, num_bands_free) 
         # if sitesym:
         #     U_opt_free = symmetrize_U(U_opt_free, w90data.dmn, **kwargs_sitesym)
@@ -90,12 +90,13 @@ def disentangle(w90data,
         if delta_std < conv_tol:
             break
         Z_old = deepcopy(Z)
-    del Z_old, Z
+    if num_iter>0:
+        del Z_old, Z
 
     U_opt_full = rotate_to_projections(w90data, U_opt_free, free, frozen, num_bands_frozen)
     print("U_opt_full ", [u.shape for u in U_opt_full])
-    # if sitesym:
-    #     U_opt_full = symmetrize_U(U_opt_full, w90data.dmn, **kwargs_sitesym)
+    if sitesym:
+        U_opt_full = symmetrize_U(U_opt_full, w90data.dmn, **kwargs_sitesym)
 
     w90data.chk.v_matrix = np.array(U_opt_full).transpose((0, 2, 1))
     # w90data.chk._wannier_centers = w90data.chk.get_AA_q(w90data.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(
