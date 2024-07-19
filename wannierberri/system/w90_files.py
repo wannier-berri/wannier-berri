@@ -1653,10 +1653,9 @@ class DMN:
         self.num_wann=int(num_wann)
         assert data.shape[0]==(self.num_wann**2 + self.NB**2)*self.Nsym*self.NKirr, f"wrong number of elements in dmn file"
         n1=self.num_wann**2*self.Nsym*self.NKirr
-        # in fortran the order of indices is reversed. there for there is not transpose
-        # in D_wann_dag, but there is a transpose in d_band
-        self.D_wann_dag=data[:n1].reshape(self.NKirr, self.Nsym, self.num_wann, self.num_wann
-                                          ).conj()
+        # in fortran the order of indices is reversed. therefor transpose
+        self.D_wann=data[:n1].reshape(self.NKirr, self.Nsym, self.num_wann, self.num_wann
+                                          ).transpose(0,1,3,2)
         self.d_band=data[n1:].reshape(self.NKirr,self.Nsym,self.NB,self.NB).transpose(0,1,3,2)
 
     def void(self,num_wann,num_bands,nkpt):
@@ -1667,9 +1666,9 @@ class DMN:
         self.kptirr                  = self.kpt2kptirr
         self.kptirr2kpt= np.array([self.kptirr,self.Nsym])
         self.kpt2kptirr_sym           = np.zeros(self.NK,dtype=int)
-        # read the rest of lines and comvert to conplex array
+        # read the rest of lines and convert to conplex array
         self.d_band=np.ones((self.NKirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.NB)[None,None,:,:]
-        self.D_wann_dag=np.ones((self.NKirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.num_wann)[None,None,:,:]
+        self.D_wann=np.ones((self.NKirr,self.Nsym),dtype=complex)[:,:,None,None]*np.eye(self.num_wann)[None,None,:,:]
 
 
     def select_bands(self,win_index_irr):
@@ -1688,12 +1687,15 @@ class DMN:
                 for M in self.D_band[i][j],self.d_wann[i][j]:
                     print("\n".join(" ".join( ("X" if abs(x)**2>0.1 else ".") for x in m) for m in M)+"\n")
 
-    def rotate_U(self, U, ikirr, isym):
+    def rotate_U(self, U, ikirr, isym, forward=True):
         """
         Rotates the umat matrix at the irreducible kpoint
         U = D_band^+ @ U @ D_wann
         """
-        return self.d_band[ikirr,isym] @ U @ self.D_wann_dag[ikirr,isym]
+        if forward:
+            return self.d_band[ikirr,isym] @ U @ self.D_wann[ikirr,isym].conj().T
+        else:
+            return self.d_band[ikirr,isym].conj().T @ U @ self.D_wann[ikirr,isym]
 
     def rotate_Z(self, Z, isym, ikirr):
         """
@@ -1719,10 +1721,43 @@ class DMN:
             ikirr = self.kpt2kptirr[ik]
             for isym in range(self.Nsym):
                 d = self.d_band[ikirr, isym]
-                w = self.D_wann_dag[ikirr, isym]
+                w = self.D_wann[ikirr, isym]
                 maxerr_band = max(maxerr_band, np.linalg.norm(d @ d.T.conj() - np.eye(self.NB)))
                 maxerr_wann = max(maxerr_wann, np.linalg.norm(w @ w.T.conj() - np.eye(self.num_wann)))
         return maxerr_band, maxerr_wann
+    
+    def check_group(self, matrices = "wann"):
+        """
+        check that D_wann_dag is a group
+
+        Parameters
+        ----------
+        matrices : str
+            the type of matrices to be checked, either "wann" or "band"
+
+        Returns
+        -------
+        float
+            the maximum error
+        """
+        if matrices == "wann":
+            check_matrices = self.D_wann
+        elif matrices == "band":
+            check_matrices = self.d_band
+        maxerr = 0
+        for ikirr in range(self.NKirr):
+            Dw = [check_matrices[ikirr, isym] for isym in self.isym_little[ikirr]]
+            print (f'ikirr={ikirr} : {len(Dw)} matrices')
+            for i1, d1 in enumerate(Dw):
+                for i2, d2 in enumerate(Dw):
+                    d = d1 @ d2
+                    err = [np.linalg.norm(d - _d)**2 for _d in Dw]
+                    j = np.argmin(err)
+                    print (f"({i1}) * ({i2}) -> ({j})" +(f"err={err[j]}" if err[j]>1e-10 else ""))
+                    maxerr = max(maxerr, err[j])
+        return maxerr
+    
+
 
     def check_eig(self, eig):
         """

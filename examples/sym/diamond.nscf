@@ -6,7 +6,7 @@
  /
  &system    
     ibrav=  2, celldm(1) =6.1, nat=  2, ntyp= 1,
-    ecutwfc =40.0, nbnd = 6,
+    ecutwfc =40.0, nbnd = 10,
  /
  &electrons
     conv_thr =  1.0d-11

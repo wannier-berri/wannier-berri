@@ -2,7 +2,7 @@ from copy import deepcopy
 import numpy as np
 
 from ..__utility import vectorize
-from .sitesym import orthogonalize, symmetrize_U, symmetrize_Z
+from .sitesym import VoidSymmetrizer, orthogonalize, Symmetrizer
 
 DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
 
@@ -49,8 +49,12 @@ def disentangle(w90data,
     assert 0 < mix_ratio <= 1
     if sitesym:
         assert froz_min == np.Inf and froz_max == -np.Inf, "frozen bands are not supported with sitesym yet"
+        symmetrizer = Symmetrizer(w90data.dmn, **kwargs_sitesym)
+    else:
+        symmetrizer = VoidSymmetrizer(NK=w90data.dmn.NK)
+    kptirr = symmetrizer.kptirr
 
-    frozen = vectorize(frozen_nondegen, w90data.eig.data, to_array=True, 
+    frozen = vectorize(frozen_nondegen, w90data.eig.data[kptirr], to_array=True, 
                        kwargs=dict(froz_min=froz_min, froz_max=froz_max))
     free = vectorize(np.logical_not, frozen, to_array=True)
     num_bands_free = vectorize(np.sum, free, to_array=True)
@@ -58,54 +62,71 @@ def disentangle(w90data,
     nWfree = w90data.chk.num_wann - vectorize(np.sum, frozen, to_array=True)
 
     lst = vectorize ( lambda amn,fr: amn[fr,:].dot(amn[fr,:].T.conj()), 
-                     w90data.amn.data, free)
+                     w90data.amn.data[kptirr], free)
     U_opt_free = vectorize(get_max_eig, lst, nWfree, num_bands_free)  # nBfee x nWfree marrices
-    if sitesym:
-        # only wrks if nothing is frozen
-        U_opt_free = rotate_to_projections(w90data, U_opt_free, free, frozen, num_bands_frozen)
-        U_opt_free = symmetrize_U(U_opt_free, w90data.dmn, **kwargs_sitesym)
-        # exit()
 
-    Mmn_FF = MmnFreeFrozen(w90data.mmn.data, free, frozen, w90data.mmn.neighbours, w90data.mmn.wk, w90data.chk.num_wann)
+    # Maybe too much of rotation and symmetrization...
+    if sitesym:
+        # only works if nothing is frozen
+        U_opt_free = rotate_to_projections(w90data, U_opt_free, 
+                                           free, frozen, num_bands_frozen,
+                                           kptirr)
+    U_opt_free_BZ = symmetrizer.symmetrize_U(U_opt_free)
+    
+    neighbours_irreducible = np.array([
+        [symmetrizer.kpt2kptirr[ik] for ik in neigh]
+            for neigh in w90data.mmn.neighbours[kptirr]])
+    Mmn_FF = MmnFreeFrozen(w90data.mmn.data[kptirr], 
+                           free, frozen, 
+                           neighbours_irreducible,
+                        #    w90data.mmn.neighbours[kptirr], 
+                           w90data.mmn.wk[kptirr], 
+                           w90data.chk.num_wann)
 
     Z_frozen = calc_Z(w90data, Mmn_FF('free', 'frozen'))
 
     Omega_I_list = []
     Z_old = None
     for i_iter in range(num_iter):
-        Z = [(z + zfr) for z, zfr in zip(calc_Z(w90data, Mmn_FF('free', 'free'), U_opt_free), Z_frozen)]
+        Z = [(z + zfr) for z, zfr in zip(calc_Z(w90data, Mmn_FF('free', 'free'), U_opt_free_BZ), Z_frozen)]
         if i_iter > 0 and mix_ratio < 1:
             Z = vectorize(lambda z, zo: mix_ratio * z + (1 - mix_ratio) * zo, 
                           Z, Z_old) 
-        if sitesym:
-            Z = symmetrize_Z(Z, w90data.dmn, **kwargs_sitesym)
+        symmetrizer.symmetrize_Z(Z) 
+        symmetrizer.symmetrize_Z(Z) 
+        symmetrizer.symmetrize_Z(Z) 
+        
         U_opt_free = vectorize(get_max_eig, Z, nWfree, num_bands_free) 
         if sitesym:
-            U_opt_free = rotate_to_projections(w90data, U_opt_free, free, frozen, num_bands_frozen)
-            U_opt_free = symmetrize_U(U_opt_free, w90data.dmn, **kwargs_sitesym)
-
+            U_opt_free = rotate_to_projections(w90data, U_opt_free, free, frozen, num_bands_frozen, kptirr)
+        U_opt_free_BZ = symmetrizer.symmetrize_U(U_opt_free)
+        
         Omega_I_list.append( sum(Mmn_FF.Omega_I(U_opt_free)))
 
-        delta_std = print_progress(Omega_I_list, num_iter_converge, print_progress_every)
+        delta_std = print_progress(Omega_I_list, num_iter_converge, print_progress_every,
+                                   w90data, U_opt_free_BZ)
+        
 
         if delta_std < conv_tol:
+            print(f"Converged after {i_iter} iterations")
             break
         Z_old = deepcopy(Z)
     if num_iter>0:
         del Z_old, Z
 
-    U_opt_full = rotate_to_projections(w90data, U_opt_free, free, frozen, num_bands_frozen)
+    U_opt_full = rotate_to_projections(w90data, U_opt_free, 
+                                       free, frozen, num_bands_frozen,
+                                       kptirr)
     print("U_opt_full ", [u.shape for u in U_opt_full])
-    if sitesym:
-        U_opt_full = symmetrize_U(U_opt_full, w90data.dmn, **kwargs_sitesym)
+    U_opt_full_BZ =symmetrizer.symmetrize_U(U_opt_full)
 
-    w90data.chk.v_matrix = np.array(U_opt_full).transpose((0, 2, 1))
+    w90data.chk.v_matrix = np.array(U_opt_full_BZ).transpose((0, 2, 1))
     w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
 
     w90data.wannierised = True
     return w90data.chk.v_matrix
 
-def rotate_to_projections(w90data, U_opt_free, free, frozen, nfrozen):
+def rotate_to_projections(w90data, U_opt_free, free, frozen, nfrozen, kptirr):
     """
     rotate the U matrix to the projections of the bands
     to better match the initial guess
@@ -129,11 +150,34 @@ def rotate_to_projections(w90data, U_opt_free, free, frozen, nfrozen):
         U[free, nfrozen:] = U_opt
         ZV = orthogonalize( U.T.conj().dot(amn) )  
         return U.dot(ZV)
-    return vectorize(inner, U_opt_free, w90data.eig.data, w90data.amn.data, free, frozen, nfrozen, 
+    return vectorize(inner, U_opt_free, w90data.eig.data[kptirr], 
+                     w90data.amn.data[kptirr], free, frozen, nfrozen, 
                      kwargs={"num_wann": w90data.chk.num_wann})
 
+def print_centers_and_spreads(w90data, U_opt_full_BZ):
+    """
+    print the centers and spreads of the Wannier functions
 
-def print_progress(Omega_I_list, num_iter_converge, print_progress_every):
+    Parameters
+    ----------
+    w90data : Wannier90data
+        the data (inputs of wannier90)
+    U_opt_free_BZ : list of numpy.ndarray(nBfree,nW)
+        the optimized U matrix for the free bands and wannier functions
+    """
+    w90data.chk.v_matrix = np.array(U_opt_full_BZ).transpose((0, 2, 1))
+    w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
+
+    wcc, spread = w90data.chk._wannier_centers, w90data.chk._wannier_spreads
+    print("wannier centers and spreads")
+    print ("-"*80)
+    for wcc, spread in zip(wcc, spread):
+        wcc = np.round(wcc, 6)
+        print(f"{wcc[0]:10.6f}  {wcc[1]:10.6f}  {wcc[2]:10.6f}   |   {spread:10.8f}")
+    print ("-"*80)
+
+def print_progress(Omega_I_list, num_iter_converge, print_progress_every,
+                   w90data=None, U_opt_free_BZ=None):
     """
     print the progress of the disentanglement
 
@@ -153,6 +197,7 @@ def print_progress(Omega_I_list, num_iter_converge, print_progress_every):
     """
     Omega_I = Omega_I_list[-1]
     i_iter = len(Omega_I_list)
+    print (i_iter)
     if i_iter > 1:
         delta = f"{Omega_I - Omega_I_list[-2]:15.8e}"
     else:
@@ -167,6 +212,8 @@ def print_progress(Omega_I_list, num_iter_converge, print_progress_every):
 
     if i_iter % print_progress_every == 0:
         print(f"iteration {i_iter:4d} Omega_I = {Omega_I:15.10f}  delta={delta}, delta_std={delta_std_str}")
+        if w90data is not None and U_opt_free_BZ is not None:
+            print_centers_and_spreads(w90data, U_opt_free_BZ)
 
     return delta_std
 
@@ -194,7 +241,7 @@ def calc_Z(w90data, mmn_ff, U_loc=None):
         the Z matrix
     """
     if U_loc is None:
-        Mmn_loc_opt = [mmn_ff[ik] for ik in w90data.iter_kpts]
+        Mmn_loc_opt = mmn_ff
     else:
         Mmn_loc_opt = [[Mmn[ib].dot(U_loc[ikb]) for ib, ikb in enumerate(neigh)] for Mmn, neigh in
                         zip(mmn_ff, w90data.mmn.neighbours)]

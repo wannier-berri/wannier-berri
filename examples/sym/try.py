@@ -9,22 +9,36 @@ import wannierberri as wberri
 w90data = wberri.system.Wannier90data(seedname='diamond')
 
 w90data.check_symmetry()
+# w90data.dmn.check_group("band")
+# exit(
 
+system2 = wberri.system.System_w90('diamond')
+system0 = wberri.system.System_w90('ref/diamond')
 
 w90data.disentangle(
             # froz_min=-8,
             #      froz_max=20,
                  num_iter=1000,
                  conv_tol=5e-7,
-                 mix_ratio=0.9,
-                 print_progress_every=100,
+                 mix_ratio=0.4,
+                 print_progress_every=1,
                  sitesym=True
                   )
+system1 = wberri.system.System_w90(w90data=w90data)
+path = wberri.Path(system2, k_nodes=[[0,0,0],[0.5,0.5,0.5]], labels=['G','X'], length=100)
+tabulator = wberri.calculators.TabulatorAll(tabulators = {}, mode='path')
+calculators = {'tabulate': tabulator}
+result0 = wberri.run(system0, grid=path, calculators=calculators)
+result1 = wberri.run(system1, grid=path, calculators=calculators)
+result2 = wberri.run(system2, grid=path, calculators=calculators)
 
-print ("wannier centers and spreads")
-for wcc,spread in zip(w90data.chk._wannier_centers, w90data.chk._wannier_spreads):
-    wcc = np.round(wcc, 6)
-    print (f"{wcc[0]:10.6f}  {wcc[1]:10.6f}  {wcc[2]:10.6f}   |   {spread:10.8f}")
+result0.results['tabulate'].plot_path_fat(path, close_fig=False, show_fig=False, linecolor='black')
+result1.results['tabulate'].plot_path_fat(path, close_fig=False, show_fig=False, linecolor='blue')
+result2.results['tabulate'].plot_path_fat(path, close_fig=False, show_fig=True, linecolor = 'red')
+
+exit()
+
+
 exit()
 system = wberri.system.System_w90(w90data=w90data, berry=True, morb=True, use_wcc_phase=False)
     
