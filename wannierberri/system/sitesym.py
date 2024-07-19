@@ -7,7 +7,7 @@ class Symmetrizer:
 
     def __init__(self, Dmn=None, neighbours=None,
                  free=None,
-                  n_iter=100, epsilon=1e-8):
+                 n_iter=100, epsilon=1e-8):
         if free is None:
             self.free = np.ones(Dmn.NB, dtype=bool)
         else:
@@ -50,7 +50,7 @@ class Symmetrizer:
         U : list of NKirr(if to_full_BZ=False) or  np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
             The symmetrized matrix.
         """
-        for ikirr in range(self.Dmn.NKirr ):
+        for ikirr in range(self.Dmn.NKirr):
             U[ikirr][:] = self.symmetrize_U_kirr(U[ikirr], ikirr)
         if to_full_BZ:
             U = self.U_to_full_BZ(U, all_k=all_k)
@@ -72,10 +72,10 @@ class Symmetrizer:
         U : list of NK np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
             The expanded matrix.
         """
-        Ufull = [None]*self.NK
+        Ufull = [None] * self.NK
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
-                iRk = self.Dmn.kptirr2kpt[ikirr,isym]
+                iRk = self.Dmn.kptirr2kpt[ikirr, isym]
                 if Ufull[iRk] is None and (self.include_k[iRk] or all_k):
                     Ufull[iRk] = self.Dmn.rotate_U(U[ikirr], ikirr, isym)
         return Ufull
@@ -85,11 +85,11 @@ class Symmetrizer:
         symmetrizes Z in-place
         Z(k) <- \sum_{R} d^{+}(R,k) Z(Rk) d(R,k)
         """
-        for ikirr,z in enumerate(Z):
+        for ikirr, z in enumerate(Z):
             # Zold=Z[ikirr].copy()
             for i in range(self.n_iter):
                 Zsym = sum(self.Dmn.rotate_Z(Z[ikirr], isym, ikirr, self.free[ikirr]) 
-                           for isym in self.Dmn.isym_little[ikirr])/len(self.Dmn.isym_little[ikirr])
+                           for isym in self.Dmn.isym_little[ikirr]) / len(self.Dmn.isym_little[ikirr])
                 diff = np.max(abs(Zsym - Z[ikirr]))
                 if diff < self.epsilon:
                     break
@@ -117,18 +117,18 @@ class Symmetrizer:
         nb, nw = U.shape
             
         for i in range(self.n_iter):
-            Usym = sum(Dmn.rotate_U(U, ikirr, isym, forward=False) for isym in isym_little)/nsym_little
-            diff = np.eye(nw) -  U.conj().T @ Usym
+            Usym = sum(Dmn.rotate_U(U, ikirr, isym, forward=False) for isym in isym_little) / nsym_little
+            diff = np.eye(nw) - U.conj().T @ Usym
             diff = np.sum(np.abs(diff))
             if diff < self.epsilon:
                 break
             U = Usym
         else:
-            warnings.warn(f'symmetrization of U matrix at irreducible point {ikirr} ({ikpt})'+
-                        f' did not converge after {self.n_iter} iterations, diff={diff}'+
-                        'Either eps is too small or specified irreps is not compatible with the bands'+
+            warnings.warn(f'symmetrization of U matrix at irreducible point {ikirr} ({ikpt})' +
+                        f' did not converge after {self.n_iter} iterations, diff={diff}' +
+                        'Either eps is too small or specified irreps is not compatible with the bands' +
                         f'diff{diff}, eps={self.epsilon}')
-        return  orthogonalize(Usym)
+        return orthogonalize(Usym)
 
 
 
@@ -137,7 +137,7 @@ class VoidSymmetrizer(Symmetrizer):
         self.NKirr = NK
         self.NK = NK
         self.kptirr = np.arange(NK)
-        self.kptirr2kpt = self.kptirr[:,None]
+        self.kptirr2kpt = self.kptirr[:, None]
         self.Nsym = 1
 
     def symmetrize_U(self, U):
@@ -148,6 +148,7 @@ class VoidSymmetrizer(Symmetrizer):
     
     def U_to_full_BZ(self, U):
         return U
+
 
 def orthogonalize(u):
     """
@@ -165,7 +166,3 @@ def orthogonalize(u):
     """
     U, _, VT = svd(u, full_matrices=False)
     return U @ VT
-
-import numpy as np
-
-

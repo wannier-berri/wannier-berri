@@ -362,7 +362,7 @@ def remove_file(filename):
         os.remove(filename)
 
 
-def vectorize(func, *args, kwargs={}, sum = False, to_array=False):
+def vectorize(func, *args, kwargs={}, sum=False, to_array=False):
     """decorator to vectorize the function over the positional arguments
     
     TODO : make parallel
