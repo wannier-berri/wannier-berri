@@ -5,7 +5,13 @@ from scipy.linalg import svd
 
 class Symmetrizer:
 
-    def __init__(self, Dmn=None, neighbours=None, n_iter=100, epsilon=1e-8):
+    def __init__(self, Dmn=None, neighbours=None,
+                 free=None,
+                  n_iter=100, epsilon=1e-8):
+        if free is None:
+            self.free = np.ones(Dmn.NB, dtype=bool)
+        else:
+            self.free = free
         self.n_iter = n_iter
         self.epsilon = epsilon
         self.Dmn = Dmn
@@ -82,7 +88,7 @@ class Symmetrizer:
         for ikirr,z in enumerate(Z):
             # Zold=Z[ikirr].copy()
             for i in range(self.n_iter):
-                Zsym = sum(self.Dmn.rotate_Z(Z[ikirr], isym, ikirr) 
+                Zsym = sum(self.Dmn.rotate_Z(Z[ikirr], isym, ikirr, self.free[ikirr]) 
                            for isym in self.Dmn.isym_little[ikirr])/len(self.Dmn.isym_little[ikirr])
                 diff = np.max(abs(Zsym - Z[ikirr]))
                 if diff < self.epsilon:

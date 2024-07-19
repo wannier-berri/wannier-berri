@@ -1697,12 +1697,15 @@ class DMN:
         else:
             return self.d_band[ikirr,isym].conj().T @ U @ self.D_wann[ikirr,isym]
 
-    def rotate_Z(self, Z, isym, ikirr):
+    def rotate_Z(self, Z, isym, ikirr, free=None):
         """
         Rotates the zmat matrix at the irreducible kpoint
         Z = d_band^+ @ Z @ d_band
         """
-        return self.d_band[ikirr,isym].conj().T @ Z @ self.d_band[ikirr,isym]
+        d_band = self.d_band[ikirr,isym]
+        if free is not None:
+            d_band = d_band[free,:][:,free]
+        return d_band.conj().T @ Z @ d_band
 
     def check_unitary(self):
         """

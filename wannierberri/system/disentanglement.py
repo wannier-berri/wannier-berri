@@ -10,7 +10,7 @@ DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states b
 def disentangle(w90data,
                 froz_min=np.Inf,
                 froz_max=-np.Inf,
-                num_iter=100,
+                num_iter=1000,
                 conv_tol=1e-9,
                 num_iter_converge=10,
                 mix_ratio=0.5,
@@ -48,7 +48,7 @@ def disentangle(w90data,
     """
     assert 0 < mix_ratio <= 1
     if sitesym:
-        assert froz_min == np.Inf and froz_max == -np.Inf, "frozen bands are not supported with sitesym yet"
+        # assert froz_min == np.Inf and froz_max == -np.Inf, "frozen bands are not supported with sitesym yet"
         symmetrizer = Symmetrizer(w90data.dmn, neighbours=w90data.mmn.neighbours,
                                     **kwargs_sitesym)
     else:
@@ -58,6 +58,15 @@ def disentangle(w90data,
     frozen = vectorize(frozen_nondegen, w90data.eig.data[kptirr], to_array=True, 
                        kwargs=dict(froz_min=froz_min, froz_max=froz_max))
     free = vectorize(np.logical_not, frozen, to_array=True)
+    if sitesym:
+        # assert froz_min == np.Inf and froz_max == -np.Inf, "frozen bands are not supported with sitesym yet"
+        symmetrizer = Symmetrizer(w90data.dmn, neighbours=w90data.mmn.neighbours,
+                                    free=free,
+                                    **kwargs_sitesym)
+    else:
+        symmetrizer = VoidSymmetrizer(NK=w90data.dmn.NK)
+    kptirr = symmetrizer.kptirr
+
     num_bands_free = vectorize(np.sum, free, to_array=True)
     num_bands_frozen = vectorize(np.sum, frozen, to_array=True)
     nWfree = w90data.chk.num_wann - vectorize(np.sum, frozen, to_array=True)
@@ -67,12 +76,12 @@ def disentangle(w90data,
     U_opt_free = vectorize(get_max_eig, lst, nWfree, num_bands_free)  # nBfee x nWfree marrices
 
     # Maybe too much of rotation and symmetrization...
-    if sitesym:
+    # if sitesym:
         # only works if nothing is frozen
-        U_opt_free = rotate_to_projections(w90data, U_opt_free, 
-                                           free, frozen, num_bands_frozen,
-                                           kptirr)
-    U_opt_free_BZ = symmetrizer.symmetrize_U(U_opt_free)
+    U_opt_full = rotate_to_projections(w90data, U_opt_free, 
+                                        free, frozen, num_bands_frozen,
+                                        kptirr)
+    U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full)
     
     neighbours_irreducible = np.array([
         [symmetrizer.kpt2kptirr[ik] for ik in neigh]
@@ -85,11 +94,12 @@ def disentangle(w90data,
                            w90data.chk.num_wann)
 
     Z_frozen = calc_Z(w90data, Mmn_FF('free', 'frozen'))
-    symmetrizer.symmetrize_Z(Z_frozen)
+    # symmetrizer.symmetrize_Z(Z_frozen)
 
     Omega_I_list = []
     Z_old = None
     for i_iter in range(num_iter):
+        U_opt_free_BZ = U_opt_full_to_free_BZ(U_opt_full_BZ,free,symmetrizer.kpt2kptirr)
         Z = [(z + zfr) for z, zfr in zip(calc_Z(w90data, Mmn_FF('free', 'free'), 
                                                 U_loc=U_opt_free_BZ, kptirr=kptirr), Z_frozen)]
         if i_iter > 0 and mix_ratio < 1:
@@ -98,15 +108,14 @@ def disentangle(w90data,
         symmetrizer.symmetrize_Z(Z) 
         
         U_opt_free = vectorize(get_max_eig, Z, nWfree, num_bands_free) 
-        if sitesym:
-            U_opt_free = rotate_to_projections(w90data, U_opt_free, free, frozen, num_bands_frozen, kptirr)
+        U_opt_full = rotate_to_projections(w90data, U_opt_free, free, frozen, num_bands_frozen, kptirr)
         # todo : get rid of need for all_k
         
         Omega_I_list.append( sum(Mmn_FF.Omega_I(U_opt_free)))
-        U_opt_free_BZ = symmetrizer.symmetrize_U(U_opt_free, all_k=(i_iter%print_progress_every==0))
+        U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full, all_k=(i_iter%print_progress_every==0))
 
         delta_std = print_progress(i_iter, Omega_I_list, num_iter_converge, print_progress_every,
-                                   w90data, U_opt_free_BZ)
+                                   w90data, U_opt_full_BZ)
         
 
         if delta_std < conv_tol:
@@ -124,9 +133,40 @@ def disentangle(w90data,
 
     w90data.chk.v_matrix = np.array(U_opt_full_BZ).transpose((0, 2, 1))
     w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
+    print_centers_and_spreads(w90data, U_opt_full_BZ)
 
     w90data.wannierised = True
     return w90data.chk.v_matrix
+
+def U_opt_full_to_free_BZ(U_opt_full_BZ, free, kpt2kptirr):
+    """
+    return the U matrix for the free bands
+
+    Parameters
+    ----------
+    U_opt_full_BZ : list of numpy.ndarray(nB,nW)
+        the optimized U matrix for the bands and wannier functions
+    free : list of numpy.ndarray(nb, dtype=bool)
+        the boolean array of the free bands  (True for free), for each irreducible k-point
+    kpt2kptirr : numpy.ndarray(nk)
+        the mapping from k-point to irreducible k-point
+    
+    Returns
+    -------
+    list of numpy.ndarray(nBfree,nW)
+        the optimized U matrix for the free bands and wannier functions
+
+    Note: Some entries of the U_opt_full_BZ list are set to None. 
+          The corresponding entries in the output list are set to None as well.
+    """
+    lst = []
+    for ik,U in enumerate(U_opt_full_BZ):
+        if U is None:
+            lst.append(None)
+        else:
+            lst.append(U[free[kpt2kptirr[ik]]])
+    return lst
+
 
 def rotate_to_projections(w90data, U_opt_free, free, frozen, nfrozen, kptirr):
     """
@@ -145,13 +185,14 @@ def rotate_to_projections(w90data, U_opt_free, free, frozen, nfrozen, kptirr):
     list of numpy.ndarray(nBfree,nW)
         the rotated U matrix
     """
-    def inner(U_opt,E,amn,free,frozen,nfrozen, num_wann):
+    def inner(U_opt,E,amn,free,frozen,nfrozen, num_wann, return_free_only=False):
         nband = E.shape[0]
         U = np.zeros((nband, num_wann), dtype=complex)
         U[frozen, range(nfrozen)] = 1.
         U[free, nfrozen:] = U_opt
         ZV = orthogonalize( U.T.conj().dot(amn) )  
-        return U.dot(ZV)
+        U_out =  U.dot(ZV)
+        return U_out
     return vectorize(inner, U_opt_free, w90data.eig.data[kptirr], 
                      w90data.amn.data[kptirr], free, frozen, nfrozen, 
                      kwargs={"num_wann": w90data.chk.num_wann})
@@ -179,7 +220,7 @@ def print_centers_and_spreads(w90data, U_opt_full_BZ):
     print ("-"*80)
 
 def print_progress(i_iter, Omega_I_list, num_iter_converge, print_progress_every,
-                   w90data=None, U_opt_free_BZ=None):
+                   w90data=None, U_opt_full_BZ=None):
     """
     print the progress of the disentanglement
 
@@ -212,8 +253,8 @@ def print_progress(i_iter, Omega_I_list, num_iter_converge, print_progress_every
 
     if i_iter % print_progress_every == 0:
         print(f"iteration {i_iter:4d} Omega_I = {Omega_I:15.10f}  delta={delta}, delta_std={delta_std_str}")
-        if w90data is not None and U_opt_free_BZ is not None:
-            print_centers_and_spreads(w90data, U_opt_free_BZ)
+        if w90data is not None and U_opt_full_BZ is not None:
+            print_centers_and_spreads(w90data, U_opt_full_BZ)
 
     return delta_std
 

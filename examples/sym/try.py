@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 import numpy as np
 import wannierberri as wberri
 
@@ -16,8 +17,8 @@ system2 = wberri.system.System_w90('diamond')
 system0 = wberri.system.System_w90('ref/diamond')
 
 w90data.disentangle(
-            # froz_min=-8,
-            #      froz_max=20,
+                 froz_min=-8,
+                 froz_max=10,
                  num_iter=1000,
                  conv_tol=1e-10,
                  mix_ratio=1.0,
@@ -25,17 +26,28 @@ w90data.disentangle(
                  sitesym=True
                   )
 system1 = wberri.system.System_w90(w90data=w90data)
-path = wberri.Path(system2, k_nodes=[[0,0,0],[0.5,0.5,0.5]], labels=['G','X'], length=100)
+path = wberri.Path(system2, k_nodes=[[0,0,0],
+                                     [0.5,0,0],
+                                     [0.5,0.5,0],
+                                        [0,0,0] 
+                                     ], labels=['G','L','X','G'
+                                                ], length=100)
 tabulator = wberri.calculators.TabulatorAll(tabulators = {}, mode='path')
 calculators = {'tabulate': tabulator}
 result0 = wberri.run(system0, grid=path, calculators=calculators)
 result1 = wberri.run(system1, grid=path, calculators=calculators)
 result2 = wberri.run(system2, grid=path, calculators=calculators)
 
+#reference
 result0.results['tabulate'].plot_path_fat(path, close_fig=False, show_fig=False, linecolor='black')
-result1.results['tabulate'].plot_path_fat(path, close_fig=False, show_fig=False, linecolor='blue')
-result2.results['tabulate'].plot_path_fat(path, close_fig=False, show_fig=True, linecolor = 'red')
 
+# wberri disentranglement
+result1.results['tabulate'].plot_path_fat(path, close_fig=False, show_fig=False, linecolor='red', kwargs_line={'linestyle':'--'})
+
+# w90 disentranglement
+result2.results['tabulate'].plot_path_fat(path, close_fig=False, show_fig=False, linecolor = 'blue')
+plt.ylim(-10,30)
+plt.show()
 exit()
 
 
