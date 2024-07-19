@@ -20,6 +20,7 @@ from functools import cached_property
 import os.path
 import abc
 from typing import Iterable
+import warnings
 from scipy.constants import physical_constants
 from time import time
 from itertools import islice
@@ -518,9 +519,10 @@ class Wannier90data:
                                 'uhu': UHU,
                                 'siu': SIU,
                                 'shu': SHU,
-                                'spn': SPN
+                                'spn': SPN,
+                                'dmn': DMN,
                                 }
-        self.__files = {}
+        self._files = {}
         self.read_npz = read_npz
         self.write_npz_list = set([s.lower() for s in write_npz_list])
         formatted = [s.lower() for s in formatted]
@@ -554,7 +556,7 @@ class Wannier90data:
         Parameters
         ----------
         key : str
-            the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
+            the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn', 'dmn'
         val : `~wannierberri.system.w90_files.W90_file`
             the value of the file
         overwrite : bool
@@ -567,12 +569,12 @@ class Wannier90data:
         """
         kwargs_auto = self.auto_kwargs_files(key)
         kwargs_auto.update(kwargs)
-        if not overwrite and key in self.__files:
+        if not overwrite and key in self._files:
             raise RuntimeError(f"file '{key}' was already set")
         if val is None:
             val = self.__files_classes[key](self.seedname, **kwargs_auto)
         self.check_conform(key, val)
-        self.__files[key] = val
+        self._files[key] = val
 
     def auto_kwargs_files(self, key):
         """
@@ -617,9 +619,9 @@ class Wannier90data:
         `~wannierberri.system.w90_files.W90_file`
             the file with the key `key`
         """
-        if key not in self.__files:
+        if key not in self._files:
             self.set_file(key, **kwargs)
-        return self.__files[key]
+        return self._files[key]
 
     def check_conform(self, key, this):
         """
@@ -637,7 +639,7 @@ class Wannier90data:
         AssertionError
             if the file `this` does not conform with the other files
         """
-        for key2, other in self.__files.items():
+        for key2, other in self._files.items():
             for attr in ['NK', 'NB', 'NW', 'NNB']:
                 if hasattr(this, attr) and hasattr(other, attr):
                     a = getattr(this, attr)
@@ -672,6 +674,13 @@ class Wannier90data:
         Returns the MMN file
         """
         return self.get_file('mmn')
+    
+    @property
+    def dmn(self):
+        """
+        Returns the DMN file
+        """
+        return self.get_file('dmn')
 
     @property
     def uhu(self):
@@ -1597,7 +1606,11 @@ class DMN:
         the ab initio band transformation matrices  
     """
 
-    def __init__(self,seedname="wannier90",num_wann=None,num_bands=None,nkpt=None):
+    def __init__(self,seedname="wannier90",num_wann=None,num_bands=None,nkpt=None,
+                 read_npz=True, write_npz=True):
+        if read_npz or write_npz:
+            warnings.warn("DMN: read_npz and write_npz are not implemented")
+
         if seedname is not None:
             self.read(seedname,num_wann)
         else:

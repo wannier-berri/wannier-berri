@@ -35,7 +35,7 @@ def rotate_Z(Z, Dmn, isym, ikirr):
     """
     return Dmn.d_band[ikirr,isym].conj().T @ Z @ Dmn.d_band[ikirr,isym]
 
-def symmetrize_U_kirr(U, Dmn, ikirr, niter=100, epsilon=1e-8):
+def symmetrize_U_kirr(U, Dmn, ikirr, n_iter=100, epsilon=1e-8):
     """
     Symmetrizes the umat matrix at the irreducible kpoint
 
@@ -53,7 +53,7 @@ def symmetrize_U_kirr(U, Dmn, ikirr, niter=100, epsilon=1e-8):
     ikpt = Dmn.kptirr[ikirr]
     nw, nb = U.shape
         
-    for _ in range(niter):
+    for _ in range(n_iter):
         Usym = np.zeros(U.shape, dtype=complex)
         for isym in isym_little:
             Usym +=  rotate_U(U, Dmn, ikirr, isym,ikpt)
@@ -64,7 +64,7 @@ def symmetrize_U_kirr(U, Dmn, ikirr, niter=100, epsilon=1e-8):
             break
     else:
         warnings.warn(f'simmetrization of U matrix at irreducible point {ikirr} ({ikpt})'
-                      f' did not converge after {niter} iterations, diff={diff}'
+                      f' did not converge after {n_iter} iterations, diff={diff}'
                       'Either eps is too small or specified irreps is not compatible with the bands'
                       f'diff{diff}, eps={epsilon}')
     return  orthogonalize(Usym)
@@ -75,8 +75,8 @@ def symmetrize_U(U, Dmn, n_iter=100, epsilon=1e-8):
     First, the matrix is symmetrized at the irreducible kpoints, 
     then it is rotated to the other kpoints using the symmetry operations.
     """
-    Usym = [None]*Dmn.nkpt
-    for ikirr in range(Dmn.nkptirr ):
+    Usym = [None]*Dmn.NK
+    for ikirr in range(Dmn.NKirr ):
         ik = Dmn.kptirr[ikirr]
         Usym[ik] = symmetrize_U_kirr(U[ik], Dmn, ikirr, n_iter=n_iter, epsilon=epsilon)
         for isym in range(Dmn.nsym):

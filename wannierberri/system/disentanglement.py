@@ -64,7 +64,7 @@ def disentangle(w90data,
     lst = vectorize ( lambda amn,fr: amn[fr,:].dot(amn[fr,:].T.conj()), amn_list, free)
     U_opt_free = vectorize(get_max_eig, lst, nWfree, num_bands_free)  # nBfee x nWfree marrices
     if sitesym:
-        U_opt_free = symmetrize_U(U_opt_free, w90data.Dmn, **kwargs_sitesym)
+        U_opt_free = symmetrize_U(U_opt_free, w90data.dmn, **kwargs_sitesym)
 
     Mmn_FF = MmnFreeFrozen(mmn_list, free, frozen, w90data.mmn.neighbours, w90data.mmn.wk, w90data.chk.num_wann)
 
@@ -78,10 +78,10 @@ def disentangle(w90data,
             Z = vectorize(lambda z, zo: mix_ratio * z + (1 - mix_ratio) * zo, 
                           Z, Z_old) 
         if sitesym:
-            Z = symmetrize_Z(Z, w90data.Dmn, **kwargs_sitesym)
+            Z = symmetrize_Z(Z, w90data.dmn, **kwargs_sitesym)
         U_opt_free = vectorize(get_max_eig, Z, nWfree, num_bands_free) 
         if sitesym:
-            U_opt_free = symmetrize_U(U_opt_free, w90data.Dmn, **kwargs_sitesym)
+            U_opt_free = symmetrize_U(U_opt_free, w90data.dmn, **kwargs_sitesym)
 
         Omega_I_list.append( sum(Mmn_FF.Omega_I(U_opt_free)))
 
@@ -94,7 +94,7 @@ def disentangle(w90data,
 
     U_opt_full = rotate_to_projections(w90data, U_opt_free, free, frozen, num_bands_frozen)
     if sitesym:
-        U_opt_full = symmetrize_U(U_opt_full, w90data.Dmn, **kwargs_sitesym)
+        U_opt_full = symmetrize_U(U_opt_full, w90data.dmn, **kwargs_sitesym)
 
     w90data.chk.v_matrix = np.array(U_opt_full).transpose((0, 2, 1))
     # w90data.chk._wannier_centers = w90data.chk.get_AA_q(w90data.mmn, transl_inv=True).diagonal(axis1=1, axis2=2).sum(
@@ -193,10 +193,10 @@ def calc_Z(w90data, mmn_ff, U_loc=None):
         the Z matrix
     """
     if U_loc is None:
-        # Mmn_loc_opt=[Mmn_loc[ik] for ik in w90data.Dmn.kptirr]
+        # Mmn_loc_opt=[Mmn_loc[ik] for ik in w90data.dmn.kptirr]
         Mmn_loc_opt = [mmn_ff[ik] for ik in w90data.iter_kpts]
     else:
-        # mmnff=[mmnff[ik] for ik in w90data.Dmn.kptirr]
+        # mmnff=[mmnff[ik] for ik in w90data.dmn.kptirr]
         # mmnff = [mmnff[ik] for ik in w90data.iter_kpts]
         # Mmn_loc_opt=[[Mmn[ib].dot(U_loc[ikb]) for ib,ikb in enumerate(neigh)] for Mmn,neigh in zip(mmnff,self.mmn.neighbours[irr])]
         Mmn_loc_opt = [[Mmn[ib].dot(U_loc[ikb]) for ib, ikb in enumerate(neigh)] for Mmn, neigh in
@@ -245,8 +245,8 @@ def frozen_nondegen(E, thresh=DEGEN_THRESH, froz_min=np.inf, froz_max=-np.inf):
 # def symmetrize_U_opt(self,U_opt_free_irr,free=False):
 #     # TODO : first symmetrize by the little group
 #     # Now distribute to reducible points
-#     d_band=self.Dmn.d_band_free if free else self.Dmn.d_band
-#     U_opt_free=[d_band[ikirr][isym] @ U_opt_free_irr[ikirr] @ self.Dmn.D_wann_dag[ikirr][isym] for isym,ikirr in zip(self.Dmn.kpt2kptirr_sym,self.Dmn.kpt2kptirr)  ]
+#     d_band=self.dmn.d_band_free if free else self.dmn.d_band
+#     U_opt_free=[d_band[ikirr][isym] @ U_opt_free_irr[ikirr] @ self.dmn.D_wann_dag[ikirr][isym] for isym,ikirr in zip(self.dmn.kpt2kptirr_sym,self.dmn.kpt2kptirr)  ]
 #     return U_opt_free
 #
 # def rotate(self,mat,ik1,ik2):

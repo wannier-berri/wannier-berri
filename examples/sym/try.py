@@ -1,19 +1,24 @@
 import numpy as np
 import wannierberri as wberri
 
-dmn = wberri.system.w90_files.DMN('diamond')
-eig = wberri.system.w90_files.EIG('diamond')
-amn = wberri.system.w90_files.AMN('diamond')
-mmn = wberri.system.w90_files.MMN('diamond')
+# dmn = wberri.system.w90_files.DMN('diamond')
+# eig = wberri.system.w90_files.EIG('diamond')
+# amn = wberri.system.w90_files.AMN('diamond')
+# mmn = wberri.system.w90_files.MMN('diamond')
 
 w90data = wberri.system.Wannier90data(seedname='diamond')
+w90data.dmn 
+
+print (w90data._files)
+
+# exit()
 w90data.disentangle(
             # froz_min=-8,
             #      froz_max=20,
                  num_iter=2000,
                  conv_tol=5e-7,
                  mix_ratio=0.9,
-                 print_progress_every=100
+                 print_progress_every=100,
                  sitesym=True
                   )
 
