@@ -5,7 +5,7 @@ from scipy.linalg import svd
 
 class Symmetrizer:
 
-    def __init__(self, Dmn=None, n_iter=100, epsilon=1e-8 ):
+    def __init__(self, Dmn=None, neighbours=None, n_iter=100, epsilon=1e-8):
         self.n_iter = n_iter
         self.epsilon = epsilon
         self.Dmn = Dmn
@@ -15,9 +15,17 @@ class Symmetrizer:
         self.kptirr2kpt = Dmn.kptirr2kpt
         self.kpt2kptirr = Dmn.kpt2kptirr
         self.Nsym = Dmn.Nsym
+        if neighbours is None:
+            self.include_k = np.ones(self.NK, dtype=bool)
+        else:
+            self.include_k = np.zeros(self.NK, dtype=bool)
+            for ik in self.kptirr:
+                self.include_k[ik] = True
+                self.include_k[neighbours[ik]] = True
+
 
         
-    def symmetrize_U(self, U, to_full_BZ=True):
+    def symmetrize_U(self, U, to_full_BZ=True, all_k=False):
         """
         Symmetrizes the umat matrix (in-place) at irreducible kpoints
         and treturns the U matrices at the full BZ
@@ -28,6 +36,8 @@ class Symmetrizer:
             The input matrix to be symmetrized
         to_full_BZ : bool
             If True, the U matrices are expanded to the full BZ in the return
+        all_k : bool
+            If True, the U matrices are symmetrized at all reducible kpoints (self.include_k is ignored)
 
         Returns
         -------
@@ -37,10 +47,10 @@ class Symmetrizer:
         for ikirr in range(self.Dmn.NKirr ):
             U[ikirr][:] = self.symmetrize_U_kirr(U[ikirr], ikirr)
         if to_full_BZ:
-            U = self.U_to_full_BZ(U)
+            U = self.U_to_full_BZ(U, all_k=all_k)
         return U
 
-    def U_to_full_BZ(self, U):
+    def U_to_full_BZ(self, U, all_k=False):
         """
         Expands the U matrix from the irreducible to the full BZ
 
@@ -48,6 +58,8 @@ class Symmetrizer:
         ----------
         U : list of NKirr np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
             The input matrix to be expanded
+        all_k : bool
+            If True, the U matrices are expanded at all reducible kpoints (self.include_k is ignored)
 
         Returns
         -------
@@ -58,37 +70,25 @@ class Symmetrizer:
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
                 iRk = self.Dmn.kptirr2kpt[ikirr,isym]
-                if Ufull[iRk] is None:
+                if Ufull[iRk] is None and (self.include_k[iRk] or all_k):
                     Ufull[iRk] = self.Dmn.rotate_U(U[ikirr], ikirr, isym)
         return Ufull
 
-    def symmetrize_Z(self, Z, check_changes=False):
+    def symmetrize_Z(self, Z):
         """
         symmetrizes Z in-place
         Z(k) <- \sum_{R} d^{+}(R,k) Z(Rk) d(R,k)
         """
-        if check_changes:
-            Zold = [z.copy() for z in Z]    
         for ikirr,z in enumerate(Z):
-            z=Z[ikirr].copy()
+            # Zold=Z[ikirr].copy()
             for i in range(self.n_iter):
-                Zsym = sum(self.Dmn.rotate_Z(z, isym, ikirr) 
+                Zsym = sum(self.Dmn.rotate_Z(Z[ikirr], isym, ikirr) 
                            for isym in self.Dmn.isym_little[ikirr])/len(self.Dmn.isym_little[ikirr])
-                diff = np.max(abs(Zsym - z))
+                diff = np.max(abs(Zsym - Z[ikirr]))
                 if diff < self.epsilon:
                     break
-                z = Zsym
+                Z[ikirr][:] = Zsym
             Z[ikirr][:] = Zsym
-
-        if check_changes:
-            diff = [np.max(np.abs(z - zold)) for z,zold in zip(Z, Zold)]
-            if max(diff) > 1e-8:
-                print(f'Z matrix changed by {max(diff)} after symmetrization\n'
-                              f'    {diff}\n'
-                              f'    mean values are {np.mean([np.mean(np.abs(z)) for z in Z])}\n'
-                              f'    max value is are {np.max([np.max(np.abs(z)) for z in Z])}\n')
-            else: 
-                print('Z matrix unchanged after symmetrization')
         return Z
     
     def symmetrize_U_kirr(self, U, ikirr):

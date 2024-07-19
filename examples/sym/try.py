@@ -19,9 +19,9 @@ w90data.disentangle(
             # froz_min=-8,
             #      froz_max=20,
                  num_iter=1000,
-                 conv_tol=5e-7,
-                 mix_ratio=0.4,
-                 print_progress_every=1,
+                 conv_tol=1e-10,
+                 mix_ratio=1.0,
+                 print_progress_every=20,
                  sitesym=True
                   )
 system1 = wberri.system.System_w90(w90data=w90data)

@@ -49,7 +49,8 @@ def disentangle(w90data,
     assert 0 < mix_ratio <= 1
     if sitesym:
         assert froz_min == np.Inf and froz_max == -np.Inf, "frozen bands are not supported with sitesym yet"
-        symmetrizer = Symmetrizer(w90data.dmn, **kwargs_sitesym)
+        symmetrizer = Symmetrizer(w90data.dmn, neighbours=w90data.mmn.neighbours,
+                                    **kwargs_sitesym)
     else:
         symmetrizer = VoidSymmetrizer(NK=w90data.dmn.NK)
     kptirr = symmetrizer.kptirr
@@ -84,26 +85,27 @@ def disentangle(w90data,
                            w90data.chk.num_wann)
 
     Z_frozen = calc_Z(w90data, Mmn_FF('free', 'frozen'))
+    symmetrizer.symmetrize_Z(Z_frozen)
 
     Omega_I_list = []
     Z_old = None
     for i_iter in range(num_iter):
-        Z = [(z + zfr) for z, zfr in zip(calc_Z(w90data, Mmn_FF('free', 'free'), U_opt_free_BZ), Z_frozen)]
+        Z = [(z + zfr) for z, zfr in zip(calc_Z(w90data, Mmn_FF('free', 'free'), 
+                                                U_loc=U_opt_free_BZ, kptirr=kptirr), Z_frozen)]
         if i_iter > 0 and mix_ratio < 1:
             Z = vectorize(lambda z, zo: mix_ratio * z + (1 - mix_ratio) * zo, 
                           Z, Z_old) 
-        symmetrizer.symmetrize_Z(Z) 
-        symmetrizer.symmetrize_Z(Z) 
         symmetrizer.symmetrize_Z(Z) 
         
         U_opt_free = vectorize(get_max_eig, Z, nWfree, num_bands_free) 
         if sitesym:
             U_opt_free = rotate_to_projections(w90data, U_opt_free, free, frozen, num_bands_frozen, kptirr)
-        U_opt_free_BZ = symmetrizer.symmetrize_U(U_opt_free)
+        # todo : get rid of need for all_k
         
         Omega_I_list.append( sum(Mmn_FF.Omega_I(U_opt_free)))
+        U_opt_free_BZ = symmetrizer.symmetrize_U(U_opt_free, all_k=(i_iter%print_progress_every==0))
 
-        delta_std = print_progress(Omega_I_list, num_iter_converge, print_progress_every,
+        delta_std = print_progress(i_iter, Omega_I_list, num_iter_converge, print_progress_every,
                                    w90data, U_opt_free_BZ)
         
 
@@ -118,7 +120,7 @@ def disentangle(w90data,
                                        free, frozen, num_bands_frozen,
                                        kptirr)
     print("U_opt_full ", [u.shape for u in U_opt_full])
-    U_opt_full_BZ =symmetrizer.symmetrize_U(U_opt_full)
+    U_opt_full_BZ =symmetrizer.symmetrize_U(U_opt_full, all_k=True)
 
     w90data.chk.v_matrix = np.array(U_opt_full_BZ).transpose((0, 2, 1))
     w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
@@ -176,7 +178,7 @@ def print_centers_and_spreads(w90data, U_opt_full_BZ):
         print(f"{wcc[0]:10.6f}  {wcc[1]:10.6f}  {wcc[2]:10.6f}   |   {spread:10.8f}")
     print ("-"*80)
 
-def print_progress(Omega_I_list, num_iter_converge, print_progress_every,
+def print_progress(i_iter, Omega_I_list, num_iter_converge, print_progress_every,
                    w90data=None, U_opt_free_BZ=None):
     """
     print the progress of the disentanglement
@@ -196,9 +198,7 @@ def print_progress(Omega_I_list, num_iter_converge, print_progress_every,
         the standard deviation of the spread functional over the last `num_iter_converge` iterations
     """
     Omega_I = Omega_I_list[-1]
-    i_iter = len(Omega_I_list)
-    print (i_iter)
-    if i_iter > 1:
+    if i_iter > 0:
         delta = f"{Omega_I - Omega_I_list[-2]:15.8e}"
     else:
         delta = "--"
@@ -218,7 +218,7 @@ def print_progress(Omega_I_list, num_iter_converge, print_progress_every,
     return delta_std
 
 
-def calc_Z(w90data, mmn_ff, U_loc=None):
+def calc_Z(w90data, mmn_ff, kptirr=None, U_loc=None):
     """
     calculate the Z matrix for the given Mmn matrix and U matrix
 
@@ -243,8 +243,9 @@ def calc_Z(w90data, mmn_ff, U_loc=None):
     if U_loc is None:
         Mmn_loc_opt = mmn_ff
     else:
+        assert kptirr is not None
         Mmn_loc_opt = [[Mmn[ib].dot(U_loc[ikb]) for ib, ikb in enumerate(neigh)] for Mmn, neigh in
-                        zip(mmn_ff, w90data.mmn.neighbours)]
+                        zip(mmn_ff, w90data.mmn.neighbours[kptirr])]
     return [sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(wbk, Mmn)) for wbk, Mmn in
             zip(w90data.mmn.wk, Mmn_loc_opt)]
 
