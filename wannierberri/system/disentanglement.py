@@ -50,15 +50,21 @@ def disentangle(w90data,
         print ("froz_min > froz_max, nothing will be frozen")
     assert 0 < mix_ratio <= 1
     if sitesym:
-        symmetrizer = Symmetrizer(w90data.dmn, neighbours=w90data.mmn.neighbours,
-                                  **kwargs_sitesym)
+        kptirr = w90data.dmn.kptirr
     else:
-        symmetrizer = VoidSymmetrizer(NK=w90data.mmn.NK)
-    kptirr = symmetrizer.kptirr
+        kptirr = np.arange(w90data.mmn.NK)  
 
     frozen = vectorize(frozen_nondegen, w90data.eig.data[kptirr], to_array=True, 
                        kwargs=dict(froz_min=froz_min, froz_max=froz_max))
     free = vectorize(np.logical_not, frozen, to_array=True)
+    
+    if sitesym:
+        symmetrizer = Symmetrizer(w90data.dmn, neighbours=w90data.mmn.neighbours,
+                                  free=free,
+                                  **kwargs_sitesym)
+    else:
+        symmetrizer = VoidSymmetrizer(NK=w90data.mmn.NK)
+    
     
     num_bands_free = vectorize(np.sum, free, to_array=True)
     num_bands_frozen = vectorize(np.sum, frozen, to_array=True)
@@ -83,8 +89,9 @@ def disentangle(w90data,
                            w90data.chk.num_wann)
 
     Z_frozen = calc_Z(w90data, Mmn_FF('free', 'frozen'))
+    print ("Z_frozen ", [z.shape for z in Z_frozen])
     symmetrizer.symmetrize_Z(Z_frozen)
-
+    
     Omega_I_list = []
     Z_old = None
     for i_iter in range(num_iter):

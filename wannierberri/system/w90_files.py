@@ -12,7 +12,6 @@
 # from the translation of Wannier90 code                     #
 # ------------------------------------------------------------#
 
-import datetime
 from fractions import Fraction
 import multiprocessing
 import gc
@@ -533,7 +532,7 @@ class Wannier90data:
         self._files = {}
         for key, val in files.items():
             self.set_file(key, val)
-        
+
         if read_chk:
             self.chk = CheckPoint(seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
             self.wannierised = True
@@ -898,7 +897,7 @@ class W90_file(abc.ABC):
 
     def disentangled(self, v_matrix_dagger, v_matrix):
         """
-        Assumed to reduce number of bands
+        reduce number of bands
 
         Parameters
         ----------
@@ -1799,6 +1798,34 @@ class DMN(W90_file):
                                           ).transpose(0, 1, 3, 2)
         self.d_band = data[n1:].reshape(self.NKirr, self.Nsym, self.NB, self.NB).transpose(0, 1, 3, 2)
 
+    def to_w90_file(self, seedname):
+        f = open(seedname + ".dmn", "w")
+        print (f"writing {seedname}.dmn:  comment = {self.comment}")
+        f.write(f"{self.comment}\n")
+        f.write(f"{self.NB} {self.Nsym} {self.NKirr} {self.NK}\n\n")
+        f.write(writeints(self.kpt2kptirr+1)+"\n")
+        f.write(writeints(self.kptirr+1) + "\n")
+        for i in range(self.NKirr):
+            f.write(writeints(self.kptirr2kpt[i] + 1) + "\n")
+                # " ".join(str(x + 1) for x in self.kptirr2kpt[i]) + "\n")
+        # f.write("\n".join(" ".join(str(x + 1) for x in l) for l in self.kptirr2kpt) + "\n")
+        for M in self.D_wann, self.d_band:
+            for m in M: # loop over irreducible kpoints
+                for s in m: # loop over symmetries
+                    f.write("\n".join("({:17.12e},{:17.12e})".format(x.real, x.imag) for x in s.flatten(order='F')) + "\n\n")
+
+    def disentangled(self, v_matrix_dagger, v_matrix):
+        NBnew = v_matrix.shape[2]
+        d_band_new = np.zeros((self.NKirr, self.Nsym, NBnew, NBnew), dtype=complex)
+        for ikirr,ik in enumerate(self.kptirr):
+            for isym in range(self.Nsym):
+                ik2 = self.kptirr2kpt[ikirr, isym]  
+                d_band_new[ikirr, isym] = v_matrix_dagger[ik2] @ self.d_band[ikirr, isym] @ v_matrix[ik]
+        other = deepcopy(self)
+        other._NB = d_band_new.shape[2]
+        other.d_band = d_band_new
+        return other
+        
     def void(self, num_wann, num_bands, nkpt):
         self.comment = "only identity"
         self.NB, self.Nsym, self.NKirr, self.NK = num_bands, 1, nkpt, nkpt
@@ -2018,3 +2045,15 @@ def readints(fl, n):
         lst += fl.readline().split()
     assert len(lst) == n, f"expected {n} integers, got {len(lst)}"
     return np.array(lst, dtype=int)
+
+
+def writeints(lst, perlinbe=10):
+    """
+    returns a string with integers separated by spaces
+    each line has at most perline integers
+    """
+    n = len(lst)
+    s = ""
+    for i in range(0, n, perlinbe):
+        s += " ".join(f"{x:4d}" for x in lst[i:i + perlinbe]) + "\n"
+    return s

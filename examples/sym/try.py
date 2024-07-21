@@ -2,13 +2,23 @@ from matplotlib import pyplot as plt
 import wannierberri as wberri
 
 dmn = wberri.system.w90_files.DMN(seedname='diamond')
+print (dmn.NB, dmn.check_unitary())
+dmn = wberri.system.w90_files.DMN(seedname='diamond_disentangled')
+print (dmn.NB, dmn.check_unitary())
+
+
 w90data = wberri.system.Wannier90data(seedname='diamond')
+dmn = w90data.dmn
+
+
+
+w90data.write(seedname="diamond_disentangled", files=['eig','amn','mmn','dmn'])
 w90data.dmn
 
 w90data.check_symmetry()
 
-system2 = wberri.system.System_w90('diamond')
-system0 = wberri.system.System_w90('ref/diamond')
+# system2 = wberri.system.System_w90('diamond')
+# system0 = wberri.system.System_w90('ref/diamond')
 
 froz_min = -0
 froz_max =  20
@@ -21,6 +31,10 @@ w90data.disentangle(
                  print_progress_every=20,
                  sitesym=True
                   )
+w90data = w90data.get_disentangled(files = ['eig','amn','mmn','dmn'])
+
+w90data.write(seedname="diamond_disentangled", files=['eig','amn','mmn','dmn'])
+exit()
 system1 = wberri.system.System_w90(w90data=w90data)
 path = wberri.Path(system2, k_nodes=[[0, 0, 0],
                                      [0.5, 0, 0],
