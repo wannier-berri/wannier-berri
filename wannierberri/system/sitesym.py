@@ -5,6 +5,40 @@ from scipy.linalg import svd
 
 class Symmetrizer:
 
+    """	
+    Class to symmetrize the U and Z matrices
+
+    Parameters
+    ----------
+    Dmn : DMN object
+    neighbours : list of NKirr np.ndarray(dtype=int, shape=(NNB,))
+        The list of neighbours for each irreducible kpoint. 
+        Used to determine the kpoints in full BZ that are neighbours to at least one irreducible kpoint.
+        U_opt at other kpoints are not calculated 9set to None)
+    free : list of NKirr np.ndarray(dtype=bool, shape=(NB,))
+        The list of free bands at each kpoint (True if the band is free, False if it is frozen)
+        the default is all bands are free
+    n_iter : int
+        The maximum number of iterations for the symmetrization of U and Z
+    epsilon : float
+        The convergence criterion for the symmetrization of U and Z
+    
+    Attributes
+    ----------
+    free : list of NKirr np.ndarray(dtype=bool, shape=(NB,))
+    n_iter : int
+    epsilon : float
+    Dmn : DMN object
+    kptirr : np.ndarray(dtype=int, shape=(NKirr,))
+    NK : int
+    NKirr : int
+    kptirr2kpt : np.ndarray(dtype=int, shape=(NKirr,Nsym))
+    kpt2kptirr : np.ndarray(dtype=int, shape=(NK,))
+    Nsym : int
+    include_k : np.ndarray(dtype=bool, shape=(NK,))
+        marks which kpoints in the full Bz are needed for evaluation of the Z matrix
+        - the irreducible points and their neighbours are included
+    """
     def __init__(self, Dmn=None, neighbours=None,
                  free=None,
                  n_iter=100, epsilon=1e-8):
@@ -72,7 +106,7 @@ class Symmetrizer:
         U : list of NK np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
             The expanded matrix.
         """
-        Ufull = [None] * self.NK
+        Ufull = [None for _ in range(self.NK)]
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
                 iRk = self.Dmn.kptirr2kpt[ikirr, isym]
@@ -133,14 +167,20 @@ class Symmetrizer:
 
 
 class VoidSymmetrizer(Symmetrizer):
+
+    """
+    A fake symmetrizer that does nothing
+    Just to be able to use the same with and without site-symmetry
+    """
     def __init__(self, NK):
         self.NKirr = NK
         self.NK = NK
         self.kptirr = np.arange(NK)
         self.kptirr2kpt = self.kptirr[:, None]
+        self.kpt2kptirr = np.arange(NK)
         self.Nsym = 1
 
-    def symmetrize_U(self, U):
+    def symmetrize_U(self, U, **kwargs):
         return U
 
     def symmetrize_Z(self, Z):

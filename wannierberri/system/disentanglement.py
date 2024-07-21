@@ -46,26 +46,20 @@ def disentangle(w90data,
     -------
     w90data.chk.v_matrix : numpy.ndarray
     """
+    if froz_min > froz_max:
+        print ("froz_min > froz_max, nothing will be frozen")
     assert 0 < mix_ratio <= 1
     if sitesym:
-        # assert froz_min == np.Inf and froz_max == -np.Inf, "frozen bands are not supported with sitesym yet"
         symmetrizer = Symmetrizer(w90data.dmn, neighbours=w90data.mmn.neighbours,
                                   **kwargs_sitesym)
     else:
-        symmetrizer = VoidSymmetrizer(NK=w90data.dmn.NK)
+        symmetrizer = VoidSymmetrizer(NK=w90data.mmn.NK)
     kptirr = symmetrizer.kptirr
 
     frozen = vectorize(frozen_nondegen, w90data.eig.data[kptirr], to_array=True, 
                        kwargs=dict(froz_min=froz_min, froz_max=froz_max))
     free = vectorize(np.logical_not, frozen, to_array=True)
-    if sitesym:
-        symmetrizer = Symmetrizer(w90data.dmn, neighbours=w90data.mmn.neighbours,
-                                  free=free,
-                                  **kwargs_sitesym)
-    else:
-        symmetrizer = VoidSymmetrizer(NK=w90data.dmn.NK)
-    kptirr = symmetrizer.kptirr
-
+    
     num_bands_free = vectorize(np.sum, free, to_array=True)
     num_bands_frozen = vectorize(np.sum, frozen, to_array=True)
     nWfree = w90data.chk.num_wann - vectorize(np.sum, frozen, to_array=True)
@@ -104,7 +98,6 @@ def disentangle(w90data,
         
         U_opt_free = vectorize(get_max_eig, Z, nWfree, num_bands_free) 
         U_opt_full = rotate_to_projections(w90data, U_opt_free, free, frozen, num_bands_frozen, kptirr)
-        # todo : get rid of need for all_k
         
         Omega_I_list.append(sum(Mmn_FF.Omega_I(U_opt_free)))
         U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full, all_k=(i_iter % print_progress_every == 0))
@@ -126,11 +119,11 @@ def disentangle(w90data,
     print("U_opt_full ", [u.shape for u in U_opt_full])
     U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full, all_k=True)
 
-    w90data.chk.v_matrix = np.array(U_opt_full_BZ).transpose((0, 2, 1))
+    w90data.chk.v_matrix = np.array(U_opt_full_BZ)
     w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
     print_centers_and_spreads(w90data, U_opt_full_BZ)
 
-    w90data.wannierised = True
+    w90data.disentangled = True
     return w90data.chk.v_matrix
 
 
@@ -205,7 +198,7 @@ def print_centers_and_spreads(w90data, U_opt_full_BZ):
     U_opt_free_BZ : list of numpy.ndarray(nBfree,nW)
         the optimized U matrix for the free bands and wannier functions
     """
-    w90data.chk.v_matrix = np.array(U_opt_full_BZ).transpose((0, 2, 1))
+    w90data.chk.v_matrix = np.array(U_opt_full_BZ)
     w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
 
     wcc, spread = w90data.chk._wannier_centers, w90data.chk._wannier_spreads
