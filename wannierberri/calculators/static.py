@@ -136,7 +136,7 @@ class StaticCalculator(Calculator):
                 restot = (restot[:, 2:] + restot[:, :-2] - 2 * restot[:, 1:-1]) / (self.dEF ** 2)
             elif self.fder == 3:
                 restot = (restot[:, 4:] - restot[:, :-4] - 2 * (restot[:, 3:-1] - restot[:, 1:-3])) / (
-                        2 * self.dEF ** 3)
+                    2 * self.dEF ** 3)
             else:
                 raise NotImplementedError(f"Derivatives  d^{self.fder}f/dE^{self.fder} is not implemented")
 
@@ -154,8 +154,8 @@ class StaticCalculator(Calculator):
                              other_properties=dict(
                                  comment=self.comment,
                                  efermi=self.Efermi
-                             )
-                             )
+            )
+            )
         else:
             res = EnergyResult(self.Efermi, restot[0], transformTR=formula.transformTR,
                                transformInv=formula.transformInv, smoothers=[self.smoother], comment=self.comment,

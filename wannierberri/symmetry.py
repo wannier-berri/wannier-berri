@@ -271,8 +271,8 @@ class Group():
 
             self.symmetries = sym_list
             msg_not_symmetric = (
-                    " : please check if  the symmetries are consistent with the lattice vectors," +
-                    " and that  enough digits were written for the lattice vectors (at least 6-7 after coma)")
+                " : please check if  the symmetries are consistent with the lattice vectors," +
+                " and that  enough digits were written for the lattice vectors (at least 6-7 after coma)")
             if real_lattice is not None:
                 assert self.check_basis_symmetry(self.real_lattice), "real_lattice is not symmetric" + msg_not_symmetric
             if real_lattice is not None:

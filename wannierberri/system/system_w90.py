@@ -95,7 +95,7 @@ class System_w90(System_R):
         whether the phase factors associated with the WCC are used
     needed_R_matrices : list(str)
         list of the R-matrices, which will be evaluated
-    
+
     See Also
     --------
     `~wannierberri.system.system.System_R`
@@ -385,8 +385,8 @@ class System_w90(System_R):
             self.set_R_mat('SA', rc, add=True)
         if self.need_R_any('SHA'):
             SH_R = self.get_R_mat('SH')
-            rc = (r0[:, :, :, :, None] - self.cRvec[None, None, :, :, None]
-                  - centers[None, :, None, :, None]) * SH_R[:, :, :, None, :]
+            rc = (r0[:, :, :, :, None] - self.cRvec[None, None, :, :, None] -
+                  centers[None, :, None, :, None]) * SH_R[:, :, :, None, :]
             self.set_R_mat('SHA', rc, add=True)
         # --- O_a(R) matrix --- #
         if self.need_R_any('OO'):

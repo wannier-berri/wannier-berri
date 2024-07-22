@@ -430,8 +430,8 @@ class SymWann:
                         b1 = symop.rot_map[b]
                         if (a1, b1) >= (a, b):
                             R_map = np.dot(R_list, np.transpose(symop.rotation))
-                            atom_R_map = (R_map[:, None, None, :]
-                                          - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :])
+                            atom_R_map = (R_map[:, None, None, :] -
+                                          symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :])
                             for iR in range(self.nRvec):
                                 if irreducible[iR, a, b]:
                                     iR1 = self.index_R(atom_R_map[iR, a, b])
@@ -467,8 +467,8 @@ class SymWann:
                 logfile.write(f"symmetry operation  {symop.ind}")
 
                 R_map = np.dot(iRvec_new_array, np.transpose(symop.rotation))
-                atom_R_map = (R_map[:, None, None, :]
-                              - symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :])
+                atom_R_map = (R_map[:, None, None, :] -
+                              symop.vec_shift[None, :, None, :] + symop.vec_shift[None, None, :, :])
                 for (atom_a, atom_b), iR_new_list in iRab_new.items():
                     exclude_set = set()
                     for iR in iR_new_list:

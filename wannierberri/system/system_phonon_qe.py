@@ -116,7 +116,7 @@ class System_Phonon_QE(System_w90):
         Ham_R = np.array([Ham_R[tuple(iR % mp_grid)] / nd for iR, nd in zip(self.iRvec, self.Ndegen)]) / np.prod(
             mp_grid)
         Ham_R = Ham_R.transpose((1, 2, 0)) * (
-                Ry_eV ** 2)  # now the units are eV**2, to be "kind of consistent" with electronic systems
+            Ry_eV ** 2)  # now the units are eV**2, to be "kind of consistent" with electronic systems
         self.set_R_mat('Ham', Ham_R)
 
         self.do_at_end_of_init()

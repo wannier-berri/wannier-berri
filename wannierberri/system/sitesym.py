@@ -22,7 +22,7 @@ class Symmetrizer:
         The maximum number of iterations for the symmetrization of U and Z
     epsilon : float
         The convergence criterion for the symmetrization of U and Z
-    
+
     Attributes
     ----------
     free : list of NKirr np.ndarray(dtype=bool, shape=(NB,))
@@ -39,6 +39,7 @@ class Symmetrizer:
         marks which kpoints in the full Bz are needed for evaluation of the Z matrix
         - the irreducible points and their neighbours are included
     """
+
     def __init__(self, Dmn=None, neighbours=None,
                  free=None,
                  n_iter=100, epsilon=1e-8):
@@ -64,7 +65,7 @@ class Symmetrizer:
                 self.include_k[neighbours[ik]] = True
 
 
-        
+
     def symmetrize_U(self, U, to_full_BZ=True, all_k=False):
         """
         Symmetrizes the umat matrix (in-place) at irreducible kpoints
@@ -123,7 +124,7 @@ class Symmetrizer:
             if z.shape[0] == 0:
                 continue
             for i in range(self.n_iter):
-                Zsym = sum(self.Dmn.rotate_Z(Z[ikirr], isym, ikirr, self.free[ikirr]) 
+                Zsym = sum(self.Dmn.rotate_Z(Z[ikirr], isym, ikirr, self.free[ikirr])
                            for isym in self.Dmn.isym_little[ikirr]) / len(self.Dmn.isym_little[ikirr])
                 diff = np.max(abs(Zsym - Z[ikirr]))
                 if diff < self.epsilon:
@@ -131,7 +132,7 @@ class Symmetrizer:
                 Z[ikirr][:] = Zsym
             Z[ikirr][:] = Zsym
         return Z
-    
+
     def symmetrize_U_kirr(self, U, ikirr):
         """
         Symmetrizes the umat matrix at the irreducible kpoint
@@ -140,17 +141,17 @@ class Symmetrizer:
         - U: The matrix to be symmetrized.
         - Dmn : The DMN object
         - ir: The index of the irreducible kpoint (in the list of irreducible kpoints in dmn)
-        
+
         Returns:
         - U: The symmetrized matrix.
         """
-        
+
         Dmn = self.Dmn
         isym_little = Dmn.isym_little[ikirr]
         nsym_little = len(isym_little)
         ikpt = Dmn.kptirr[ikirr]
         nb, nw = U.shape
-            
+
         for i in range(self.n_iter):
             Usym = sum(Dmn.rotate_U(U, ikirr, isym, forward=False) for isym in isym_little) / nsym_little
             diff = np.eye(nw) - U.conj().T @ Usym
@@ -173,6 +174,7 @@ class VoidSymmetrizer(Symmetrizer):
     A fake symmetrizer that does nothing
     Just to be able to use the same with and without site-symmetry
     """
+
     def __init__(self, NK):
         self.NKirr = NK
         self.NK = NK
@@ -186,7 +188,7 @@ class VoidSymmetrizer(Symmetrizer):
 
     def symmetrize_Z(self, Z):
         return Z
-    
+
     def U_to_full_BZ(self, U):
         return U
 

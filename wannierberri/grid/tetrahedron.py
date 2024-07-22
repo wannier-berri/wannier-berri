@@ -75,10 +75,10 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
     if der <= 1:
         c11 = 3 * e1 ** 2 * denom1
         c21 = (
-                  -2 * e1 * ((e3 - e2) * (e4 - e2)) + (2 * e2 * e4 + e2 ** 2) * (e1 - e3) + (
-                      e1 * e2 + e2 * e3 + e1 * e3) *
-                  (e2 - e4)
-              ) * denom2
+            -2 * e1 * ((e3 - e2) * (e4 - e2)) + (2 * e2 * e4 + e2 ** 2) * (e1 - e3) + (
+                e1 * e2 + e2 * e3 + e1 * e3) *
+            (e2 - e4)
+        ) * denom2
         c31 = 3 * e4 ** 2 * denom3
 
     if der == 0:

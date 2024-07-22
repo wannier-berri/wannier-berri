@@ -37,8 +37,8 @@ class KpointBZ():
 
     def __str__(self):
         return (
-                "coord in rec.lattice = [ " + " , ".join(f"{x:10.6f}" for x in self.K) +
-                f" ], refinement level:{self.refinement_level}, factor = {self.factor}"
+            "coord in rec.lattice = [ " + " , ".join(f"{x:10.6f}" for x in self.K) +
+            f" ], refinement level:{self.refinement_level}, factor = {self.factor}"
         )
 
     @cached_property

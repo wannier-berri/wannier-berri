@@ -418,7 +418,7 @@ class Velocity(Matrix_ln):
         self.__dict__.update(v.__dict__)
         if external_terms:
             self.matrix = self.matrix + 1j * data_K.Xbar('AA') * (
-                        data_K.E_K[:, :, None, None] - data_K.E_K[:, None, :, None])
+                data_K.E_K[:, :, None, None] - data_K.E_K[:, None, :, None])
 
 
 class Spin(Matrix_ln):
@@ -823,8 +823,8 @@ class SpinVelocity(Matrix_ln):
         shc_L_H = -1j * data_K._R_to_k_H(data_K.get_R_mat('SHR'), hermitian=False)
         _spin_velocity_einsum_opt(shc_L_H, SH_H, data_K.D_H)
         J = (
-                data_K.delE_K[:, None, :, :, None] * SS_H[:, :, :, None, :] +
-                data_K.E_K[:, None, :, None, None] * shc_K_H[:, :, :, :, :] - shc_L_H)
+            data_K.delE_K[:, None, :, :, None] * SS_H[:, :, :, None, :] +
+            data_K.E_K[:, None, :, None, None] * shc_K_H[:, :, :, :, :] - shc_L_H)
         return (J + J.swapaxes(1, 2).conj()) / 2
 
     def _J_H_ryoo(self, data_K, external_terms=True):

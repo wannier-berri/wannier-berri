@@ -81,7 +81,7 @@ class TabulatorAll(Calculator):
 
         self.comment = (self.__doc__ + "\n Includes the following tabulators : \n" + "-" * 50 + "\n" + "\n".join(
             f""" "{key}" : {val} : {val.comment}\n""" for key, val in self.tabulators.items()) +
-                        "\n" + "-" * 50 + "\n")
+            "\n" + "-" * 50 + "\n")
         self._set_comment(print_comment)
 
     def __call__(self, data_K):
