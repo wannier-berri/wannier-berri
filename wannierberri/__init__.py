@@ -35,6 +35,7 @@ from .system import (System_w90, System_fplo, System_tb,
 from .grid import Grid, Path
 from . import calculators
 from . import result
+from . import wannierise
 from .parallel import Parallel, Serial
 from .smoother import get_smoother
 from .evaluate_k import evaluate_k

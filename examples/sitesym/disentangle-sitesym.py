@@ -16,7 +16,7 @@ subprocess.run(["wannier90.x", "diamond"])
 systems["w90"] = wberri.system.System_w90(seedname='diamond')
 
 # Read the data from the Wanier90 inputs 
-w90data = wberri.system.Wannier90data(seedname='diamond')
+w90data = wberri.w90files.Wannier90data(seedname='diamond')
 
 #Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
 w90data.disentangle(
@@ -39,7 +39,7 @@ w90data_reduced.write("diamond_disentangled", files = ["eig","mmn","amn","dmn"])
 
 # Now write the diamond_disentangled.win file
 # first take the existing file
-win_file = wberri.system.w90_files.WIN(seedname='diamond')
+win_file = wberri.w90files.WIN(seedname='diamond')
 # and modify some parameters
 win_file["num_bands"] = win_file["num_wann"]
 win_file["dis_num_iter"] = 0

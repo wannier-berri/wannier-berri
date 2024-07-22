@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 import wannierberri as wberri
-from wannierberri.system.w90_files import UHU, UIU, SHU, SIU, SPN
+from wannierberri.w90files import UHU, UIU, SHU, SIU, SPN
 
 
 @pytest.fixture(scope="module")

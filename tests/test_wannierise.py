@@ -74,7 +74,7 @@ def test_disentangle_sym():
     # record the system from the Wanier90 output ('diamond.chk' file)
     systems["w90"] = wberri.system.System_w90(seedname=prefix)
     # Read the data from the Wanier90 inputs
-    w90data = wberri.system.Wannier90data(seedname=prefix)
+    w90data = wberri.w90files.Wannier90data(seedname=prefix)
     # Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
     w90data.disentangle(
         froz_min=-8,
@@ -107,7 +107,7 @@ def test_disentangle_sym():
     w90data_reduced.write(prefix_dis, files=["eig", "mmn", "amn", "dmn"])
     # Now write the diamond_disentangled.win file
     # first take the existing file
-    win_file = wberri.system.w90_files.WIN(seedname=prefix)
+    win_file = wberri.w90files.WIN(seedname=prefix)
     # and modify some parameters
     win_file["num_bands"] = win_file["num_wann"]
     win_file["dis_num_iter"] = 0

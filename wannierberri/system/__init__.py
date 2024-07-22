@@ -21,7 +21,4 @@ from .system_tb_py import System_PythTB, System_TBmodels
 from .system_ASE import System_ASE
 from .system_sparse import SystemSparse
 from .system_random import SystemRandom
-from . import w90_files
-from .w90_files import Wannier90data
-from .disentanglement import disentangle
 from .system_phonon_qe import System_Phonon_QE
