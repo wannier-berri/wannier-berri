@@ -1,12 +1,11 @@
 from pytest import approx
-from common import ROOT_DIR
 import wannierberri as wberri
 import numpy as np
 import subprocess
 from matplotlib import pyplot as plt
-import wannierberri as wberri
-import shutil
 import os
+import shutil
+from common import TMP_DATA_DIR
 
 
 def test_disentangle(system_Fe_W90_disentangle, system_Fe_W90_proj_ws):
@@ -58,13 +57,11 @@ def test_disentangle_sym():
     # Just fot Reference : run the Wannier90 with sitesym, but instead of frozen window use outer window
     # to exclude valence bands
     # os.system("wannier90.x diamond")
+    tmp_data_rel = os.path.join(os.path.relpath(TMP_DATA_DIR), "diamond")
     prefix_data = os.path.join("./" "data", "diamond", "diamond")
-    try:
-        os.mkdir("./_dat_files/diamond")
-    except FileExistsError:
-        pass
-    prefix = os.path.join("./_dat_files", "diamond", "diamond")
-    prefix_dis = os.path.join("./_dat_files", "diamond", "diamond_disentangled")
+    os.makedirs(tmp_data_rel, exist_ok=True)
+    prefix = os.path.join(tmp_data_rel, "diamond")
+    prefix_dis = os.path.join(tmp_data_rel, "diamond_disentangled")
     for ext in ["mmn", "amn", "dmn", "eig", "win"]:
         shutil.copy(prefix_data + "." + ext, prefix + "." + ext)
     print("prefix = ", prefix)
@@ -133,7 +130,7 @@ def test_disentangle_sym():
                                                 linecolor=linecolors.pop(0), label=key,
                                                 kwargs_line={"ls": linestyles.pop(0)})
         energies[key] = result.results['tabulate'].get_data(quantity="Energy", iband=np.arange(0, 4))
-    plt.savefig("_dat_files/diamond_disentangled.png")
+    plt.savefig(os.path.join(tmp_data_rel, "diamond_disentangled.png"))
     for k1 in energies:
         for k2 in energies:
             if k1 == k2:

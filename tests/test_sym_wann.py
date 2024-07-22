@@ -16,9 +16,9 @@ from common_systems import (
 
 
 from test_run import (
-        calculators_GaAs_internal,
-        calculators_Te,
-                        )
+    calculators_GaAs_internal,
+    calculators_Te,
+)
 
 
 
@@ -47,9 +47,9 @@ def check_symmetry(check_run):
             else:
                 req_precision = prec
             assert diff <= req_precision, (
-                                            f"data of {quant} with and without symmetries give a maximal "
-                                            f"absolute difference of {diff} greater than the required precision {req_precision}"
-                                        )
+                f"data of {quant} with and without symmetries give a maximal "
+                f"absolute difference of {diff} greater than the required precision {req_precision}"
+            )
     return _inner
 
 
@@ -63,10 +63,10 @@ def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb_wcc):
         smr_fixed_width=0.2,
         smr_type='Gaussian',
         kBT=0.01,
-                )
+    )
     calculators = dict(
         shift_current=calc.dynamic.ShiftCurrent(sc_eta=0.1, **param),
-                        )
+    )
 
     check_symmetry(system=system_GaAs_sym_tb_wcc,
                    grid_param=dict(NK=6, NKFFT=3),
@@ -85,7 +85,7 @@ def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb_wcc):
         'ahc_int': calc.static.AHC(Efermi=Efermi_Mn3Sn, kwargs_formula={"external_terms": False}),
         'ahc_ext': calc.static.AHC(Efermi=Efermi_Mn3Sn, kwargs_formula={"internal_terms": False}),
         'ahc': calc.static.AHC(Efermi=Efermi_Mn3Sn, kwargs_formula={"external_terms": True}),
-                        })
+    })
     check_symmetry(system=system_Mn3Sn_sym_tb_wcc, calculators=calculators)
 
 
@@ -169,7 +169,7 @@ def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb_wcc, com
         'gyrotropic_Kspin': calc.static.GME_spin_FermiSea(Efermi=Efermi_GaAs),
         # 'gyrotropic_Kspin_fsurf':calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
         # 'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),
-                        })
+    })
 
     check_run(
         system_GaAs_sym_tb_wcc,
@@ -178,7 +178,7 @@ def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb_wcc, com
         precision=1e-5,
         compare_zero=True,
         suffix="sym-zero",
-                )
+    )
 
 
 def test_GaAs_random_zero(check_symmetry, check_run, system_random_GaAs_load_ws_sym, compare_any_result):
@@ -191,7 +191,7 @@ def test_GaAs_random_zero(check_symmetry, check_run, system_random_GaAs_load_ws_
         'ahc': calc.static.AHC(Efermi=Efermi_GaAs),
         # 'gyrotropic_Kspin_fsurf':calc.static.GME_spin_FermiSurf(Efermi=Efermi_GaAs),
         # 'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),
-                    })
+    })
 
     check_run(
         system_random_GaAs_load_ws_sym,
@@ -200,7 +200,7 @@ def test_GaAs_random_zero(check_symmetry, check_run, system_random_GaAs_load_ws_
         precision=2e-5,
         compare_zero=True,
         suffix="sym-zero",
-                )
+    )
 
 
 def test_GaAs_sym_tb(check_symmetry, system_GaAs_sym_tb_wcc):
@@ -263,7 +263,7 @@ def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb_wcc, compare_any_result)
         },
         use_symmetry=False,
         do_not_compare=True,
-            )
+    )
 
     result_irr_k = check_run(
         system_GaAs_sym_tb_wcc,
@@ -369,10 +369,10 @@ def test_KaneMele_sym(check_symmetry, system_KaneMele_odd_PythTB):
     calculators = {}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
     calculators.update({
-            'berry_dipole': calc.static.BerryDipole_FermiSea(**param, kwargs_formula={"external_terms": False}),
-            'gyrotropic_Korb': calc.static.GME_orb_FermiSea(**param, kwargs_formula={"external_terms": False}),
-            'gyrotropic_Kspin': calc.static.GME_spin_FermiSea(**param),
-                })
+        'berry_dipole': calc.static.BerryDipole_FermiSea(**param, kwargs_formula={"external_terms": False}),
+        'gyrotropic_Korb': calc.static.GME_orb_FermiSea(**param, kwargs_formula={"external_terms": False}),
+        'gyrotropic_Kspin': calc.static.GME_spin_FermiSea(**param),
+    })
 
     check_symmetry(system=system_KaneMele_odd_PythTB,
                    grid_param=dict(NK=(6, 6, 1), NKFFT=(3, 3, 1)),
