@@ -5,7 +5,7 @@ import subprocess
 from matplotlib import pyplot as plt
 import os
 import shutil
-from common import TMP_DATA_DIR
+from common import TMP_DATA_DIR, ROOT_DIR
 
 
 def test_disentangle(system_Fe_W90_disentangle, system_Fe_W90_proj_ws):
@@ -57,13 +57,17 @@ def test_disentangle_sym():
     # Just fot Reference : run the Wannier90 with sitesym, but instead of frozen window use outer window
     # to exclude valence bands
     # os.system("wannier90.x diamond")
-    tmp_data_rel = os.path.join(os.path.relpath(TMP_DATA_DIR), "diamond")
-    prefix_data = os.path.join("./" "data", "diamond", "diamond")
-    os.makedirs(tmp_data_rel, exist_ok=True)
-    prefix = os.path.join(tmp_data_rel, "diamond")
-    prefix_dis = os.path.join(tmp_data_rel, "diamond_disentangled")
+    tmp_dir = os.path.join(os.path.relpath(TMP_DATA_DIR), "diamond")
+    cwd = os.getcwd()
+    os.chdir(tmp_dir)
+
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
+    os.makedirs(tmp_dir, exist_ok=True)
+    prefix = "diamond"
+    prefix_dis = "diamond_disentangled"
     for ext in ["mmn", "amn", "dmn", "eig", "win"]:
-        shutil.copy(prefix_data + "." + ext, prefix + "." + ext)
+        shutil.copy(os.path.join(data_dir, prefix + "." + ext),
+                    os.path.join(tmp_dir, prefix + "." + ext))
     print("prefix = ", prefix)
     subprocess.run(["wannier90.x", prefix])
     # record the system from the Wanier90 output ('diamond.chk' file)
@@ -130,7 +134,7 @@ def test_disentangle_sym():
                                                 linecolor=linecolors.pop(0), label=key,
                                                 kwargs_line={"ls": linestyles.pop(0)})
         energies[key] = result.results['tabulate'].get_data(quantity="Energy", iband=np.arange(0, 4))
-    plt.savefig(os.path.join(tmp_data_rel, "diamond_disentangled.png"))
+    plt.savefig("bands_disentangled.png")
     for k1 in energies:
         for k2 in energies:
             if k1 == k2:
@@ -141,3 +145,4 @@ def test_disentangle_sym():
             assert d < acc, f"the interpolated bands {k1} and {k2} differ from w90 interpolation by max {d}>{acc}"
 
     # One can see that results do not differ much. Also, the maximal localization does not have much effect.
+    os.chdir(cwd)
