@@ -9,6 +9,7 @@ API reference
 .. toctree::
    :maxdepth: 2
 
+   docs/wannierisation
    docs/system
    docs/run
    docs/calculators

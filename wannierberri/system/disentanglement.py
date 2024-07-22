@@ -41,10 +41,23 @@ def disentangle(w90data,
         0 <= mix_ratio <=1  - mixing the previous itertions. 1 for max speed, smaller values are more stable
     print_progress_every
         frequency to print the progress
+    sitesym : bool
+        whether to use the site symmetry (if True, the seedname.dmn file should be present)
 
     Returns
     -------
     w90data.chk.v_matrix : numpy.ndarray
+
+    Sets
+    ------
+    w90data.chk.v_matrix : numpy.ndarray
+        the optimized U matrix
+    w90data.wannierised : bool
+        True
+    w90data.chk._wannier_centers : numpy.ndarray (nW,3)
+        the centers of the Wannier functions
+    w90data.chk._wannier_spreads : numpy.ndarray (nW)
+        the spreads of the Wannier functions
     """
     if froz_min > froz_max:
         print ("froz_min > froz_max, nothing will be frozen")

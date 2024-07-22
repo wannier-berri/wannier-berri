@@ -59,6 +59,7 @@ this should be done in the beginning of the script, before importing
 Windows OS
 ----------
 
+(probably outdated, and not needed anymore)
 
 On Windows the subprocesses, initated within WannierBerri  will import (i.e. execute) the main module (the user's python script) at start. 
 Hence, to execute WannierBerri in parallel on Windows one has to start the script from a  ``if __name__ == '__main__':`` guard to avoid creating subprocesses recursively : 
