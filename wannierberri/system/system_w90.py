@@ -19,7 +19,7 @@ import multiprocessing
 import warnings
 from ..__utility import real_recip_lattice, fourier_q_to_R, alpha_A, beta_A
 from .system_R import System_R
-from .w90_files import Wannier90data
+from ..w90files import Wannier90data
 from .ws_dist import wigner_seitz
 
 

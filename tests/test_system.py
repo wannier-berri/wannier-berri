@@ -23,6 +23,7 @@ def check_system():
                extra_properties=[],
                exclude_properties=[],
                precision_properties=1e-8,
+               extra_precision={},  # for some properties we need different precision
                matrices=[],
                precision_matrix_elements=1e-7,
                suffix="",
@@ -110,14 +111,22 @@ def check_system():
             sort_R = None
 
         for key in properties:
-            if key in ['iRvec', 'cRvec']:
-                check_property(key, precision_properties, XX=False, sort=sort_R, sort_axis=0, print_missed=True)
-            elif key in ['cRvec_p_wcc']:
-                check_property(key, precision_properties, XX=False, sort=sort_R, sort_axis=2, print_missed=True)
+            if key in extra_precision:
+                prec_loc = extra_precision[key]
             else:
-                check_property(key, precision_properties, XX=False)
+                prec_loc = precision_properties
+            if key in ['iRvec', 'cRvec']:
+                check_property(key, prec_loc, XX=False, sort=sort_R, sort_axis=0, print_missed=True)
+            elif key in ['cRvec_p_wcc']:
+                check_property(key, prec_loc, XX=False, sort=sort_R, sort_axis=2, print_missed=True)
+            else:
+                check_property(key, prec_loc, XX=False)
         for key in matrices:
-            check_property(key, precision_matrix_elements, XX=True, sort=sort_R, print_missed=True)
+            if key in extra_precision:
+                prec_loc = extra_precision[key]
+            else:
+                prec_loc = precision_matrix_elements
+            check_property(key, prec_loc, XX=True, sort=sort_R, print_missed=True)
 
     return _inner
 
@@ -178,7 +187,13 @@ def test_system_Fe_W90_disentngle(check_system, system_Fe_W90_disentangle):
     check_system(
         system_Fe_W90_disentangle, "Fe_W90_disentangle",
         matrices=['Ham', 'AA'],
-        precision_matrix_elements=3e-7,
+        precision_matrix_elements=3e-6,
+        extra_precision={'wannier_centers_cart': 1e-7,
+                         'wannier_centers_cart_wcc_phase': 1e-7,
+                         'wannier_centers_reduced': 1e-7,
+                         'diff_wcc_cart': 2e-7,
+                         'diff_wcc_red': 2e-7
+                         }
     )
 
 

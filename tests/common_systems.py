@@ -261,7 +261,7 @@ def system_Fe_W90_disentangle(create_files_Fe_W90):
 
     data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
     create_W90_files('Fe_sym', ['uHu'], data_dir)
-    w90data = wberri.system.Wannier90data(seedname=os.path.join(data_dir, 'Fe_sym'))
+    w90data = wberri.w90files.Wannier90data(seedname=os.path.join(data_dir, 'Fe_sym'))
     with pytest.raises(RuntimeError):
         wberri.system.System_w90(w90data=w90data)
     # aidata.apply_outer_window(win_min=-8,win_max= 100 )

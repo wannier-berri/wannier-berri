@@ -2,7 +2,7 @@ import wannierberri as wberri
 import numpy as np
 from matplotlib import pyplot as plt
 path_data = "../../tests/data/Fe_sym_Wannier90/"
-aidata=wberri.system.Wannier90data(seedname=path_data+"Fe_sym")
+aidata=wberri.w90files.Wannier90data(seedname=path_data+"Fe_sym")
 aidata.write(seedname="Fe_sym_orig", files=['eig','amn','mmn'])
 
 #aidata.apply_outer_window(win_min=-8,win_max= 100 )
@@ -18,7 +18,6 @@ print (aidata.wannier_centers)
 aidata.write(seedname="Fe_sym_orig2", files=['eig','amn','mmn'])
 w90data = aidata.get_disentangled(files = ['amn','mmn','eig'])
 w90data.write(seedname="Fe_sym_disentangled", files=['eig','amn','mmn'])
-exit()
 #system=aidata.getSystem(berry=True)
 system=wberri.system.System_w90(w90data= aidata)
 tabulators = { "Energy": wberri.calculators.tabulate.Energy(),
@@ -61,11 +60,11 @@ EF = 12.6
 path_result = result.results["tabulate"]
 path_result2 = result2.results["tabulate"]
 # Import the pre-computed bands from quantum espresso
-A = np.loadtxt(open(path_data+"Fe_sym_band.dat","r"))
+# A = np.loadtxt(open(path_data+"Fe_sym_band.dat","r"))
 #bohr_ang = scipy.constants.physical_constants['Bohr radius'][0] / 1e-10
 #alatt = 5.4235* bohr_ang
 #A[:,0]*= 2*np.pi/alatt
-A[:,1]-=EF
+# A[:,1]-=EF
 # plot it as dots
 #plt.scatter (A[:,0], A[:,1], s=5, label="W90")
 

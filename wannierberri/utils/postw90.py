@@ -14,9 +14,6 @@
     additional options starting with "__wb" can be provided"
 
 
-    **Note:** to use this module the user needs to manually install the wannier90io module from GitHub:
-    `pip install git+https://github.com/jimustafa/wannier90io-python.git`
-
         Usage example: ::
 
                 python3 -m wannierberri.utils.postw90 seedname [parameters] [ __wb_fft_lib=<value> ]
@@ -34,7 +31,7 @@
 import numpy as np
 import sys
 from .. import run, Grid, calculators, System_w90, Parallel
-from ..system.w90_files import parse_win_raw
+from ..w90files.win import parse_win_raw
 
 # default parameters
 parameters = {

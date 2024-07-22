@@ -48,13 +48,14 @@ def disentangle(w90data,
     -------
     w90data.chk.v_matrix : numpy.ndarray
 
+
     Sets
-    ------
+    ------------
     w90data.chk.v_matrix : numpy.ndarray
         the optimized U matrix
     w90data.wannierised : bool
         True
-    w90data.chk._wannier_centers : numpy.ndarray (nW,3)
+    sets w90data.chk._wannier_centers : numpy.ndarray (nW,3)
         the centers of the Wannier functions
     w90data.chk._wannier_spreads : numpy.ndarray (nW)
         the spreads of the Wannier functions

@@ -18,8 +18,8 @@ def Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2):
     phi : float
         phase of next nearest-neighbour hopping
 
-    Note:
-    --------
+    Notes
+    -----
     TBmodels  should be installed to use this (`pip install tbmodels`)
 
     """
@@ -49,8 +49,8 @@ def Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2):
 def Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2):
     """same as :func:`~wannierberri.models.Haldane_tbm`, but uses `PythTB <http://www.physics.rutgers.edu/pythtb/>`__
 
-    Note:
-    --------
+    Notes
+    -----
     PythTB should be installed to use this (`pip install pythtb`)
     """
     import pythtb
@@ -103,8 +103,8 @@ def Chiral(delta=2, hop1=1, hop2=1 / 3, phi=np.pi / 10, hopz_right=0.0, hopz_lef
     hopz_left : float or complex
         chiral left-handed  hopping in the z direction
 
-    Note:
-    --------
+    Notes
+    -----
     PythTB should be installed to use this (`pip install pythtb`)
 
     """
@@ -196,8 +196,8 @@ def CuMnAs_2d(
     dt : float
         PT-breaking term making the A-A and B-B hoppings different
 
-    Note:
-    --------
+    Notes
+    -----
     PythTB should be installed to use this (`pip install pythtb`)
 
     """
