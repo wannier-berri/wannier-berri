@@ -5,7 +5,7 @@ import subprocess
 from matplotlib import pyplot as plt
 import os
 import shutil
-from common import TMP_DATA_DIR, ROOT_DIR
+from common import OUTPUT_DIR, ROOT_DIR
 
 
 def test_disentangle(system_Fe_W90_disentangle, system_Fe_W90_proj_ws):
@@ -57,12 +57,13 @@ def test_disentangle_sym():
     # Just fot Reference : run the Wannier90 with sitesym, but instead of frozen window use outer window
     # to exclude valence bands
     # os.system("wannier90.x diamond")
-    tmp_dir = os.path.join(os.path.relpath(TMP_DATA_DIR), "diamond")
     cwd = os.getcwd()
+
+    tmp_dir = os.path.join(OUTPUT_DIR, "diamond")
+    os.makedirs(tmp_dir, exist_ok=True)
     os.chdir(tmp_dir)
 
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
-    os.makedirs(tmp_dir, exist_ok=True)
     prefix = "diamond"
     prefix_dis = "diamond_disentangled"
     for ext in ["mmn", "amn", "dmn", "eig", "win"]:
