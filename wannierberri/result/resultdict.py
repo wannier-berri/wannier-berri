@@ -16,7 +16,7 @@
 #  child classes can be defined specifically in each module
 
 import numpy as np
-from .__result import Result
+from .result import Result
 
 
 # A class to contain results or a calculation:

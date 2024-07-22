@@ -360,3 +360,36 @@ def one2three(nk):
 def remove_file(filename):
     if filename is not None and os.path.exists(filename):
         os.remove(filename)
+
+
+def vectorize(func, *args, kwargs={}, sum=False, to_array=False):
+    """decorator to vectorize the function over the positional arguments
+
+    TODO : make parallel
+
+    Parameters
+    ----------
+    func : function
+        the function to vectorize over all the arguments
+    args : list
+        list of arguments
+    kwargs : dict
+        keyword arguments
+    to_array : bool
+        if True, return the result as numpy array, otherwise as list
+    sum : bool
+        if True, sum the results (after transforming to numpy array, if to_array is True)
+
+    Returns
+    -------
+    list or np.array
+        list of results of the function applied to all the arguments
+    """
+    l = [len(a) for a in args]
+    assert all([_ == l[0] for _ in l]), f"length of all arguments should be the same, got {l}"
+    lst = [func(*a, **kwargs) for a in zip(*args)]
+    if to_array:
+        lst = np.array(lst)
+    if sum:
+        lst = sum(lst)
+    return lst

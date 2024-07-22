@@ -14,7 +14,7 @@
 
 import numpy as np
 from functools import cached_property
-from .__Kpoint import KpointBZ
+from .Kpoint import KpointBZ
 
 # fixing the order of the edges by their vortices
 EDGES = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]

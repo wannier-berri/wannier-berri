@@ -268,7 +268,7 @@ class System_R(System):
             Rotations of the symmetry operations. (optional)
         translations: array-like (shape=(N,3))
             Translations of the symmetry operations. (optional)
-        
+
         Notes
         -----
             Works only with phase convention I (`use_wcc_phase=True`)
@@ -298,7 +298,7 @@ class System_R(System):
             rotations=rotations,
             translations=translations,
             silent=self.silent,
-            )
+        )
 
         self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
         logfile = self.logfile
@@ -601,10 +601,10 @@ class System_R(System):
             T = self.wannier_centers_cart[:, None, None, :, None] * self.get_R_mat('BB')[:, :, :, None, :]
             CC_R_new = self.get_R_mat('CC').copy() + 1.j * sum(
                 s * (
-                        -T[:, :, :, a, b] -  # -t_i^a * B_{ij}^b(R)
-                        self.conj_XX_R(T[:, :, :, b, a]) +  # - B_{ji}^a(-R)^*  * t_j^b
-                        self.wannier_centers_cart[:, None, None, a] * self.Ham_R[:, :, :, None] *
-                        self.wannier_centers_cart[None, :, None, b]  # + t_i^a*H_ij(R)t_j^b
+                    -T[:, :, :, a, b] -  # -t_i^a * B_{ij}^b(R)
+                    self.conj_XX_R(T[:, :, :, b, a]) +  # - B_{ji}^a(-R)^*  * t_j^b
+                    self.wannier_centers_cart[:, None, None, a] * self.Ham_R[:, :, :, None] *
+                    self.wannier_centers_cart[None, :, None, b]  # + t_i^a*H_ij(R)t_j^b
                 ) for (s, a, b) in [(+1, alpha_A, beta_A), (-1, beta_A, alpha_A)])
             norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
             assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"

@@ -41,27 +41,9 @@ Wannier90
 
 Wanierisation inside WannierBerri
 +++++++++++++++++++++++++++++++++++
-.. _sec-wannierisation:
 
-.. automethod:: wannierberri.system.disentangle
 
-Example:
-
-.. code:: python
-
-   import wannierberri as wberri
-   # assume that files are in folder ./path/to and the seedname is `Fe` (files `Fe.win`, `Fe.chk`, etc)
-   w90data = wberri.system.Wannier90data(sedname="path/to/Fe")
-   wberri.system.disentangle(w90data,
-                 froz_min=-8,
-                 froz_max=20,
-                 num_iter=2000,
-                 conv_tol=5e-7,
-                 mix_ratio=0.9,
-                 print_progress_every=100
-   )
-   system=wberri.system.System_w90(w90data=w90data,berry=True, morb=True)
-   del w90data # recommended to save memory,  we may not need it anymore
+Now WannierBerri can construct wannier functions on its own.see :ref:`sec-wannierisation`
 
 
 

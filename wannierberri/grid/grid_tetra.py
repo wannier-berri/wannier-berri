@@ -13,8 +13,8 @@
 
 import numpy as np
 import warnings
-from .__Kpoint_tetra import KpointBZtetra
-from .__grid import GridAbstract, determineNK
+from .Kpoint_tetra import KpointBZtetra
+from .grid import GridAbstract, determineNK
 from ..__utility import angle_vectors_deg
 
 

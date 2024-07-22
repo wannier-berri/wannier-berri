@@ -1,5 +1,5 @@
-from .__grid import GridAbstract
-from .__Kpoint import KpointBZpath
+from .grid import GridAbstract
+from .Kpoint import KpointBZpath
 import warnings
 from collections.abc import Iterable
 import numpy as np

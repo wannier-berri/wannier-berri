@@ -19,7 +19,7 @@ import warnings
 
 from wannierberri.system.system import System
 from .. import symmetry
-from .__Kpoint import KpointBZparallel
+from .Kpoint import KpointBZparallel
 from ..__utility import one2three
 
 

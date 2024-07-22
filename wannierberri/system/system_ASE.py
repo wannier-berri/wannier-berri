@@ -33,10 +33,10 @@ class System_ASE(System_R):
     """
 
     def __init__(
-                self,
-                ase_wannier,
-                ase_R_vectors=False,  # for testing vs ASE
-                **parameters):
+            self,
+            ase_wannier,
+            ase_R_vectors=False,  # for testing vs ASE
+            **parameters):
         if "name" not in parameters:
             parameters["name"] = "ASE"
         super().__init__(force_internal_terms_only=True,

@@ -1,0 +1,10 @@
+&inputpp 
+   outdir = './'
+   prefix = 'di'
+   seedname = 'diamond'
+   spin_component = 'none'
+   write_mmn = .true.
+   write_amn = .true.
+   write_dmn = .true.
+   write_unk = .false.
+/

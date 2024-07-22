@@ -2,7 +2,7 @@ import numpy as np
 from functools import cached_property
 from ..symmetry import transform_from_dict
 from ..smoother import VoidSmoother
-from .__result import Result
+from .result import Result
 from ..__utility import get_head
 
 
@@ -96,7 +96,7 @@ class EnergyResult(Result):
                 assert np.all(np.array(shape) == 3), f"data.shape={data.shape}"
             for i in range(self.N_energies):
                 assert (
-                        Energies[i].shape[0] == data.shape[i]
+                    Energies[i].shape[0] == data.shape[i]
                 ), f"dimension of Energy[{i}] = {Energies[i].shape[0]} does not match do dimension of data {data.shape[i]}"
             self.Energies = Energies
             self.data = data

@@ -319,8 +319,8 @@ class _Data_K(System, abc.ABC):
     def degen(self):
         A = [np.where(E[1:] - E[:-1] > self.degen_thresh_random_gauge)[0] + 1 for E in self.E_K]
         A = [[
-                 0,
-             ] + list(a) + [len(E)] for a, E in zip(A, self.E_K)]
+            0,
+        ] + list(a) + [len(E)] for a, E in zip(A, self.E_K)]
         return [[(ib1, ib2) for ib1, ib2 in zip(a, a[1:]) if ib2 - ib1 > 1] for a in A]
 
     @cached_property
@@ -659,8 +659,8 @@ class Data_K_R(_Data_K, System_R):
     def _OO_R(self):
         # We do not multiply by expdK, because it is already accounted in AA_R
         return 1j * (
-                self.cRvec_wcc[:, :, :, alpha_A] * self.get_R_mat('AA')[:, :, :, beta_A] -
-                self.cRvec_wcc[:, :, :, beta_A] * self.get_R_mat('AA')[:, :, :, alpha_A])
+            self.cRvec_wcc[:, :, :, alpha_A] * self.get_R_mat('AA')[:, :, :, beta_A] -
+            self.cRvec_wcc[:, :, :, beta_A] * self.get_R_mat('AA')[:, :, :, alpha_A])
 
     def _CCab_R(self):
         if self._CCab_antisym:

@@ -1,5 +1,5 @@
 import numpy as np
-from .__result import Result
+from .result import Result
 import itertools
 import abc
 from ..symmetry import transform_from_dict

@@ -110,9 +110,9 @@ transl_inv={ti}
 use_ws_distance = {uws}
 """
     check_postw90(
-                    data_dir="Fe_Wannier90",
-                    seedname="Fe",
-                    win_file_postw90=parameters,
-                    precision=-1e-6,
-                    argv=["__wb_fft_lib=numpy"]
-                 )
+        data_dir="Fe_Wannier90",
+        seedname="Fe",
+        win_file_postw90=parameters,
+        precision=-1e-6,
+        argv=["__wb_fft_lib=numpy"]
+    )

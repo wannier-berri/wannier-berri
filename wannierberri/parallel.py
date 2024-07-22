@@ -20,13 +20,13 @@ class Parallel():
 """
 
     def __init__(
-            self,
-            num_cpus=None,
-            npar_k=0,
-            ray_init=None,  # add extra parameters for ray.init()
-            cluster=False,  # add parameters for ray.init() for the slurm cluster
-            progress_step_percent=1,
-                 ):
+        self,
+        num_cpus=None,
+        npar_k=0,
+        ray_init=None,  # add extra parameters for ray.init()
+        cluster=False,  # add parameters for ray.init() for the slurm cluster
+        progress_step_percent=1,
+    ):
 
         self.method = "ray"
         self.progress_step_percent = progress_step_percent
