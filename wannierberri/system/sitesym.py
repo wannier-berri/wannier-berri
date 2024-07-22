@@ -120,7 +120,8 @@ class Symmetrizer:
         Z(k) <- \sum_{R} d^{+}(R,k) Z(Rk) d(R,k)
         """
         for ikirr, z in enumerate(Z):
-            # Zold=Z[ikirr].copy()
+            if z.shape[0] == 0:
+                continue
             for i in range(self.n_iter):
                 Zsym = sum(self.Dmn.rotate_Z(Z[ikirr], isym, ikirr, self.free[ikirr]) 
                            for isym in self.Dmn.isym_little[ikirr]) / len(self.Dmn.isym_little[ikirr])

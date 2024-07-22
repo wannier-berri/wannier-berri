@@ -40,7 +40,7 @@ from .smoother import get_smoother
 from .evaluate_k import evaluate_k
 from . import utils
 from . import data_K
-from .result.__tabresult import npz_to_fermisurfer
+from .result.tabresult import npz_to_fermisurfer
 from termcolor import cprint
 
 

@@ -308,7 +308,7 @@ def frozen_nondegen(E, thresh=DEGEN_THRESH, froz_min=np.inf, froz_max=-np.inf):
     ind = list(np.where((E <= froz_max) * (E >= froz_min))[0])
     while len(ind) > 0 and ind[0] > 0 and E[ind[0]] - E[ind[0] - 1] < thresh:
         del ind[0]
-    while len(ind) > 0 and ind[0] < len(E) and E[ind[-1] + 1] - E[ind[-1]] < thresh:
+    while len(ind) > 0 and ind[-1] < len(E)-1 and E[ind[-1] + 1] - E[ind[-1]] < thresh:
         del ind[-1]
     froz = np.zeros(E.shape, dtype=bool)
     froz[ind] = True

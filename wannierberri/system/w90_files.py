@@ -78,11 +78,13 @@ class CheckPoint:
         self.num_wann = readint()[0]
         self.checkpoint = readstr(FIN)
         self.have_disentangled = bool(readint()[0])
+        print (f"have_disentangled={self.have_disentangled}")
         if self.have_disentangled:
             self.omega_invariant = readfloat()[0]
             lwindow = np.array(readint().reshape((self.num_kpts, self.num_bands)), dtype=bool)
             ndimwin = readint()
-            u_matrix_opt = readcomplex().reshape((self.num_kpts, self.num_wann, self.num_bands))
+            print(f"ndimwin={ndimwin}")
+            u_matrix_opt = readcomplex().reshape((self.num_kpts, self.num_wann, self.num_bands)).swapaxes(1, 2)
             self.win_min = np.array([np.where(lwin)[0].min() for lwin in lwindow])
             self.win_max = np.array([wm + nd for wm, nd in zip(self.win_min, ndimwin)])
         else:
@@ -92,7 +94,7 @@ class CheckPoint:
         u_matrix = readcomplex().reshape((self.num_kpts, self.num_wann, self.num_wann)).swapaxes(1, 2)
         m_matrix = readcomplex().reshape((self.num_kpts, self.nntot, self.num_wann, self.num_wann)).swapaxes(2, 3)
         if self.have_disentangled:
-            self.v_matrix = [u.dot(u_opt[:nd, : ]) for u, u_opt, nd in zip(u_matrix, u_matrix_opt, ndimwin)]
+            self.v_matrix = [u_opt[:nd, :].dot(u) for u, u_opt, nd in zip(u_matrix, u_matrix_opt, ndimwin)]
         else:
             self.v_matrix = [u for u in u_matrix]
         self._wannier_centers = readfloat().reshape((self.num_wann, 3))
@@ -461,7 +463,7 @@ class CheckPoint_bare(CheckPoint):
             """
 
     def __init__(self, win, eig, amn, mmn):
-        self.mp_grid = np.array(win.get_param("mp_grid"))
+        self.mp_grid = np.array(win.data["mp_grid"])
         self.kpt_latt = win.get_kpoints()
         self.real_lattice = win.get_unit_cell_cart_ang()
         self.num_kpts = eig.NK
@@ -576,7 +578,7 @@ class Wannier90data:
 
     def write(self, seedname, files=None):
         """
-        wwrites the files on disk
+        writes the files on disk
 
         Parameters
         ----------
@@ -588,7 +590,7 @@ class Wannier90data:
         if files is None:
             files = self._files.keys()
         for key in files:
-            self._files[key].to_w90_file(seedname)
+            self.get_file(key).to_w90_file(seedname)
 
     def auto_kwargs_files(self, key):
         """
@@ -790,7 +792,8 @@ class Wannier90data:
         ham_tmp = np.einsum('kml,km,kmn->kln', v.conj(), self.eig.data, v)
         EV = [np.linalg.eigh(h_tmp) for h_tmp in ham_tmp]
         eig_new = EIG(data=np.array([ev[0] for ev in EV]))
-        v_right = np.array([_v @ ev[1].T.conj() for ev, _v in zip(EV,v)])
+        # v_right = np.array([_v @ ev[1].T.conj() for ev, _v in zip(EV,v)])
+        v_right = np.array([_v @ ev[1] for ev, _v in zip(EV,v)])
 
         v_left = v_right.conj().transpose(0, 2, 1)
         
@@ -1550,17 +1553,19 @@ class WIN():
             name = seedname + ".win"
             self.parsed = parse_win_raw(name)
             self.data.update(self.parsed["parameters"])
-            self.data["unit_cell_cart"] = self.get_unit_cell_cart_ang()
-            self.data["kpoints"] = self.get_kpoints()
-            self.data["projections"] = self.get_projections()
-            self.data["atoms_frac"], self.data["atoms_names"] = self.get_atoms()
+            self["unit_cell_cart"] = self.get_unit_cell_cart_ang()
+            self["kpoints"] = self.get_kpoints()
+            self["projections"] = self.get_projections()
+            self["atoms_frac"], self.data["atoms_names"] = self.get_atoms()
         if data is not None:
             for k, v in data.items():
                 self.data[k.lower()] = v
             for k in ["kpoints", "unit_cell_cart"]:
                 if k in data:
-                    self.data[k] = np.array(data[k], dtype=float)
+                    self[k] = np.array(data[k], dtype=float)
         if "kpoints" in self.data:
+            if self.data["kpoints"].shape[1] > 3:
+                self.data["kpoints"] = self.data["kpoints"][:, :3]
             mp_grid = get_mp_grid(self.data["kpoints"])
             if "mp_grid" in self.data:
                 assert tuple(mp_grid) == tuple(self.data["mp_grid"])
@@ -1572,22 +1577,66 @@ class WIN():
 
 
 
-    @functools.lru_cache()
-    def get_param(self, param):
-        """
-        Get the parameter from the parsed data
+    # @functools.lru_cache()
+    # def _get_param(self, param):
+    #     """
+    #     Get the parameter from the parsed data
 
-        Parameters
-        ----------
-        param : str
-            the parameter to be retrieved   
+    #     Parameters
+    #     ----------
+    #     param : str
+    #         the parameter to be retrieved   
 
-        Returns
-        -------
-        Any
-            the value of the parameter
+    #     Returns
+    #     -------
+    #     Any
+    #         the value of the parameter
+    #     """
+    #     return self.parsed['parameters'][param]
+    
+    # def __getitem__(self, key):
+    #     return self.data[key]
+
+        # self.data[key] = value
+
+    def __getitem__(self, key):
         """
-        return self.parsed['parameters'][param]
+        get the value of a parameter
+
+        Parameters:
+        -----------
+        key(str) : the key of the parameter
+
+        Returns:
+        --------
+        Any : the value of the parameter
+        """
+        return self.data[key]
+    
+    def __setitem__(self, key, value):
+        """
+        Set the value of a parameter
+
+        Parameters:
+        -----------
+        key(str) : the key of the parameter
+        value(Any) : the value of the parameter
+            the key of the parameter
+        """
+        self.data[key] = value
+    
+    def __delitem__(self, key):
+        """
+        Delete a parameter
+
+        Parameters:
+        -----------
+        key(str) : the key of the parameter
+        """
+        if key in self.data:
+            del self.data[key]
+        else:
+            warnings.warn(f"key {key} not found in the data, nothing to delete")
 
     def write(self, seedname=None, comment="written by WannierBerri"):
         """
@@ -1666,7 +1715,9 @@ class WIN():
             the kpoints in reciprocal coordinates
         """
         try:
-            return np.array(self.parsed['kpoints']['kpoints'])
+            kpoints = self.parsed['kpoints']['kpoints']
+            kpoints = np.array([k[:3] for k in kpoints])
+            return kpoints
         except KeyError:
             return None
 

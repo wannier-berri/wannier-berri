@@ -3,7 +3,7 @@
 import numpy as np
 from pytest import approx
 import wannierberri as wberri
-from wannierberri.grid.__Kpoint import KpointBZparallel
+from wannierberri.grid.Kpoint import KpointBZparallel
 from wannierberri.data_K import get_data_k
 
 

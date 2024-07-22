@@ -4,8 +4,8 @@ import multiprocessing
 import functools
 from collections.abc import Iterable
 import warnings
-from .__result import Result
-from .__kbandresult import get_component
+from .result import Result
+from .kbandresult import get_component
 
 
 class TABresult(Result):

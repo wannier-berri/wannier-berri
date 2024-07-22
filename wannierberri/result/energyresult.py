@@ -2,7 +2,7 @@ import numpy as np
 from functools import cached_property
 from ..symmetry import transform_from_dict
 from ..smoother import VoidSmoother
-from .__result import Result
+from .result import Result
 from ..__utility import get_head
 
 
