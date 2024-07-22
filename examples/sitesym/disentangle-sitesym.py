@@ -1,6 +1,10 @@
 import subprocess
 from matplotlib import pyplot as plt
 import wannierberri as wberri
+import shutil, os
+for ext in  ["mmn","amn","dmn","eig","win"]:
+    shutil.copy(os.path.join("../../tests/data/diamond","diamond." + ext),
+                 "diamond." + ext) 
 
 systems = {}
 

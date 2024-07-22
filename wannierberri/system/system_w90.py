@@ -157,7 +157,7 @@ class System_w90(System_R):
                                     write_npz_list=write_npz_list, read_npz=read_npz, overwrite_npz=overwrite_npz,
                                     write_npz_formatted=write_npz_formatted,
                                     formatted=formatted)
-        w90data.check_wannierised(msg="creation of System_Wannierise")
+        w90data.check_wannierised(msg="creation of System_w90")
         chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         mp_grid = chk.mp_grid

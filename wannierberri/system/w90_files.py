@@ -498,6 +498,25 @@ class Wannier90data:
             see `~wannierberri.system.w90_files.CheckPoint`
         bk_complete_tol : float
             see `~wannierberri.system.w90_files.CheckPoint`
+
+    Attributes
+    ----------
+    chk : `~wannierberri.system.w90_files.CheckPoint` or `~wannierberri.system.w90_files.CheckPoint_bare`
+        the checkpoint file
+    seedname : str
+        the prefix of the file (including relative/absolute path, but not including the extensions, like `.chk`, `.mmn`, etc)
+    wannierised : bool
+        if True, the data is already wannierised (so, it can be used to create a System_w90 object)
+    read_npz : bool
+        if True, try to read the files converted to npz (e.g. wanier90.mmn.npz instead of wannier90.
+    write_npz_list : set(str)
+        for which files npz will be written
+    write_npz_formatted : bool
+        write npz for all formatted files
+    formatted_list : list(str)
+        list of files which should be read as formatted files (uHu, uIu, etc)
+    _files : dict(str, `~wannierberri.system.w90_files.W90_file`)
+        the dictionary of the files (e.g. the keys are 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn', 'dmn')
     """
     # todo :  rotate uHu and spn
     # todo : symmetry
@@ -761,7 +780,7 @@ class Wannier90data:
         RuntimeError
             if the system was not wannierised
         """
-        if not (self.wannierised or self.disentangled):
+        if not (self.wannierised):
             raise RuntimeError(f"no wannieruisation was performed on the w90 input files, cannot proceed with {msg}")
 
     def disentangle(self, **kwargs):
@@ -785,7 +804,7 @@ class Wannier90data:
         files : list(str)
             the extensions of the files to be read (e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn', 'dmn')
         """
-        assert self.disentangled, "disentanglement was not performed"
+        assert self.wannierised, "wannierisation was not performed"
         new_files = {}
 
         v = self.chk.v_matrix
@@ -802,7 +821,7 @@ class Wannier90data:
             if file == 'eig':
                 new_files['eig'] = eig_new
             else:   
-                new_files[file] = self.get_file(file).disentangled(v_left, v_right)
+                new_files[file] = self.get_file(file).get_disentangled(v_left, v_right)
                 if file == 'mmn':
                     new_files[file].neighbours = self.mmn.neighbours
                     new_files[file].ib_unique_map = self.mmn.ib_unique_map
@@ -898,7 +917,7 @@ class W90_file(abc.ABC):
         """
         self.data = None
 
-    def disentangled(self, v_matrix_dagger, v_matrix):
+    def get_disentangled(self, v_matrix_dagger, v_matrix):
         """
         reduce number of bands
 
@@ -1033,7 +1052,7 @@ class MMN(W90_file):
                         f_mmn_out.write(f"{self.data[ik, ib, n, m].real} {self.data[ik, ib, n, m].imag}\n")
         f_mmn_out.close()
 
-    def disentangled(self, v_left, v_right):
+    def get_disentangled(self, v_left, v_right):
         """
         Reduce number of bands
 
@@ -1204,7 +1223,7 @@ class AMN(W90_file):
                 for ib in range(self.NB):
                     f_amn_out.write(f"{ib+1:4d} {iw+1:4d} {ik+1:4d} {self.data[ik, ib, iw].real:17.12f} {self.data[ik, ib, iw].imag:17.12f}\n")
 
-    def disentangled(self, v_left, v_right):
+    def get_disentangled(self, v_left, v_right):
         print (f"v shape  {v_left.shape}  {v_right.shape} , amn shape {self.data.shape} ")
         data =  np.einsum("klm,kmn->kln", v_left, self.data) 
         print (f"shape of data {data.shape} , old {self.data.shape}")
@@ -1244,7 +1263,7 @@ class EIG(W90_file):
             for ib in range(self.NB):
                 file.write(f" {ib + 1:4d} {ik + 1:4d} {self.data[ik, ib]:17.12f}\n")
 
-    def disentangled(self, v_left, v_right):
+    def get_disentangled(self, v_left, v_right):
         data =  np.einsum("klm,km...,kml->kl",v_left, self.data, v_right ).real
         return self.__class__(data=data)
 
@@ -1865,7 +1884,7 @@ class DMN(W90_file):
                 for s in m: # loop over symmetries
                     f.write("\n".join("({:17.12e},{:17.12e})".format(x.real, x.imag) for x in s.flatten(order='F')) + "\n\n")
 
-    def disentangled(self, v_matrix_dagger, v_matrix):
+    def get_disentangled(self, v_matrix_dagger, v_matrix):
         NBnew = v_matrix.shape[2]
         d_band_new = np.zeros((self.NKirr, self.Nsym, NBnew, NBnew), dtype=complex)
         for ikirr,ik in enumerate(self.kptirr):
