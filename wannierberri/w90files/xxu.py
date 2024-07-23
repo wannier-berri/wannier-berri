@@ -20,7 +20,8 @@ class UXU(W90_file):
         return 2
 
 
-    def from_w90_file(self, seedname='wannier90', suffix='uXu', formatted=False):
+    def from_w90_file(self, seedname='wannier90', suffix='uXu', formatted=False, reorder_bk=None):
+        assert reorder_bk is not None, "reorder_bk must be provided"
         print(f"----------\n  {suffix}   \n---------")
         print(f'formatted == {formatted}')
         if formatted:
@@ -31,6 +32,8 @@ class UXU(W90_file):
             f_uXu_in = FortranFileR(seedname + "." + suffix)
             header = readstr(f_uXu_in)
             NB, NK, NNB = f_uXu_in.read_record('i4')
+
+        assert reorder_bk.shape == (NK, NNB), f"reorder_bk.shape = {reorder_bk.shape} != ({NK}, {NNB}) = (NK, NNB)"
 
         print(f"reading {seedname}.{suffix} : <{header}>")
 
@@ -45,6 +48,7 @@ class UXU(W90_file):
                     for ib1 in range(NNB):
                         tmp = f_uXu_in.read_record('f8').reshape((2, NB, NB), order='F').transpose(2, 1, 0)
                         self.data[ik, ib1, ib2] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
+                self.data[ik] = self.data[ik, reorder_bk[ik], :][ :, reorder_bk[ik]]
         print(f"----------\n {suffix} OK  \n---------\n")
         f_uXu_in.close()
 
@@ -82,7 +86,7 @@ class SXU(W90_file):
         """
         return 1
 
-    def from_w90_file(self, seedname='wannier90', formatted=False, suffix='sHu', **kwargs):
+    def from_w90_file(self, seedname='wannier90', formatted=False, suffix='sHu', reorder_bk=None):
         """	
         Read the sHu or sIu file
 
@@ -94,10 +98,6 @@ class SXU(W90_file):
             if True, the file is expected to be formatted, otherwise it is binary
         suffix : str
             the suffix of the file, e.g. 'sHu', 'sIu'
-        kwargs : dict(str, Any)
-            the keyword arguments to be passed to the constructor of the file
-            see `~wannierberri.system.w90_files.SIU`, `~wannierberri.system.w90_files.SHU`
-            for more details
 
         Raises
         ------
@@ -109,6 +109,7 @@ class SXU(W90_file):
         self.data : numpy.ndarray(complex, shape=(NK, NNB, NB, NB, 3)
             the data of the file
         """
+        assert reorder_bk is not None, "reorder_bk must be provided"
 
         print(f"----------\n  {suffix}   \n---------")
 
@@ -121,6 +122,7 @@ class SXU(W90_file):
             header = readstr(f_sXu_in)
             NB, NK, NNB = f_sXu_in.read_record('i4')
 
+        assert reorder_bk.shape == (NK, NNB), f"reorder_bk.shape = {reorder_bk.shape} != ({NK}, {NNB}) = (NK, NNB)"
         print(f"reading {seedname}.{suffix} : <{header}>")
 
         self.data = np.zeros((NK, NNB, NB, NB, 3), dtype=complex)
@@ -136,6 +138,7 @@ class SXU(W90_file):
                         tmp = f_sXu_in.read_record('f8').reshape((2, NB, NB), order='F').transpose(2, 1, 0)
                         # tmp[m, n] = <u_{m,k}|S_ipol*X|u_{n,k+b}>
                         self.data[ik, ib, :, :, ipol] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
+                self.data[ik] = self.data[ik, reorder_bk[ik]]
 
         print(f"----------\n {suffix} OK  \n---------\n")
         f_sXu_in.close()

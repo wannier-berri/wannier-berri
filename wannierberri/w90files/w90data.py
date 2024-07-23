@@ -139,11 +139,11 @@ class Wannier90data:
             `~wannierberri.system.w90_files.MMN`, `~wannierberri.system.w90_files.EIG`, `~wannierberri.system.w90_files.AMN`, `~wannierberri.system.w90_files.UIU`, `~wannierberri.system.w90_files.UHU`, `~wannierberri.system.w90_files.SIU`, `~wannierberri.system.w90_files.SHU`, `~wannierberri.system.w90_files.SPN`
             for more details        
         """
-        kwargs_auto = self.auto_kwargs_files(key)
-        kwargs_auto.update(kwargs)
         if not overwrite and key in self._files:
             raise RuntimeError(f"file '{key}' was already set")
         if val is None:
+            kwargs_auto = self.auto_kwargs_files(key)
+            kwargs_auto.update(kwargs)
             val = self.__files_classes[key](self.seedname, **kwargs_auto)
         self.check_conform(key, val)
         self._files[key] = val
@@ -181,6 +181,7 @@ class Wannier90data:
         kwargs = {}
         if key in ["uhu", "uiu", "shu", "siu"]:
             kwargs["formatted"] = key in self.formatted_list
+            kwargs["reorder_bk"] = self.mmn.reorder_bk
         if key not in ["chk", "win"]:
             kwargs["read_npz"] = self.read_npz
             kwargs["write_npz"] = key in self.write_npz_list
