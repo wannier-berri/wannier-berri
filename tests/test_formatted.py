@@ -61,12 +61,12 @@ def generate_formatted_files(create_files_GaAs_W90):
 
 def test_formatted_uXu(generate_formatted_files):
     data_dir = generate_formatted_files
-    uHu_unformatted = UHU(os.path.join(data_dir, "GaAs"))
-    uHu_formatted = UHU(os.path.join(data_dir, "GaAs_formatted"), formatted=True)
+    uHu_unformatted = UHU(os.path.join(data_dir, "GaAs"), reorder_bk="do not reorder")
+    uHu_formatted = UHU(os.path.join(data_dir, "GaAs_formatted"), formatted=True, reorder_bk="do not reorder")
     assert np.allclose(uHu_unformatted.data, uHu_formatted.data)
 
-    uIu_unformatted = UIU(os.path.join(data_dir, "GaAs"))
-    uIu_formatted = UIU(os.path.join(data_dir, "GaAs_formatted"), formatted=True)
+    uIu_unformatted = UIU(os.path.join(data_dir, "GaAs"), reorder_bk="do not reorder")
+    uIu_formatted = UIU(os.path.join(data_dir, "GaAs_formatted"), formatted=True, reorder_bk="do not reorder")
     assert np.allclose(uIu_unformatted.data, uIu_formatted.data)
 
 
@@ -79,10 +79,10 @@ def test_formatted_spn(generate_formatted_files):
 
 def test_formatted_sXu(generate_formatted_files):
     data_dir = generate_formatted_files
-    sHu_unformatted = SHU(os.path.join(data_dir, "GaAs"))
-    sHu_formatted = SHU(os.path.join(data_dir, "GaAs_formatted"), formatted=True)
+    sHu_unformatted = SHU(os.path.join(data_dir, "GaAs"), reorder_bk="do not reorder")
+    sHu_formatted = SHU(os.path.join(data_dir, "GaAs_formatted"), formatted=True, reorder_bk="do not reorder")
     assert np.allclose(sHu_unformatted.data, sHu_formatted.data)
 
-    sIu_unformatted = SIU(os.path.join(data_dir, "GaAs"))
-    sIu_formatted = SIU(os.path.join(data_dir, "GaAs_formatted"), formatted=True)
+    sIu_unformatted = SIU(os.path.join(data_dir, "GaAs"), reorder_bk="do not reorder")
+    sIu_formatted = SIU(os.path.join(data_dir, "GaAs_formatted"), formatted=True, reorder_bk="do not reorder")
     assert np.allclose(sIu_unformatted.data, sIu_formatted.data)

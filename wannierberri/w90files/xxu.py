@@ -33,6 +33,9 @@ class UXU(W90_file):
             header = readstr(f_uXu_in)
             NB, NK, NNB = f_uXu_in.read_record('i4')
 
+        if reorder_bk.lower() == "do not reorder":
+            reorder_bk = np.array([np.arange(NNB)] * NK)
+        
         assert reorder_bk.shape == (NK, NNB), f"reorder_bk.shape = {reorder_bk.shape} != ({NK}, {NNB}) = (NK, NNB)"
 
         print(f"reading {seedname}.{suffix} : <{header}>")
@@ -121,6 +124,9 @@ class SXU(W90_file):
             f_sXu_in = FortranFileR(seedname + "." + suffix)
             header = readstr(f_sXu_in)
             NB, NK, NNB = f_sXu_in.read_record('i4')
+
+        if reorder_bk.lower() == "do not reorder":
+            reorder_bk = np.array([np.arange(NNB)] * NK)
 
         assert reorder_bk.shape == (NK, NNB), f"reorder_bk.shape = {reorder_bk.shape} != ({NK}, {NNB}) = (NK, NNB)"
         print(f"reading {seedname}.{suffix} : <{header}>")
