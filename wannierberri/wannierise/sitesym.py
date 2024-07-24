@@ -137,6 +137,7 @@ class Symmetrizer:
             self.symmetrize_Zk(z, ikirr)
         return Z
 
+
     def symmetrize_U_kirr(self, U, ikirr):
         """
         Symmetrizes the umat matrix at the irreducible kpoint
@@ -158,6 +159,7 @@ class Symmetrizer:
 
         for i in range(self.n_iter):
             Usym = sum(Dmn.rotate_U(U, ikirr, isym, forward=False) for isym in isym_little) / nsym_little
+            Usym = orthogonalize(Usym)
             diff = np.eye(nw) - U.conj().T @ Usym
             diff = np.sum(np.abs(diff))
             if diff < self.epsilon:
@@ -169,7 +171,6 @@ class Symmetrizer:
                         'Either eps is too small or specified irreps is not compatible with the bands' +
                         f'diff{diff}, eps={self.epsilon}')
         return orthogonalize(Usym)
-    
 
 
 
@@ -193,6 +194,9 @@ class VoidSymmetrizer(Symmetrizer):
         return U
 
     def symmetrize_Z(self, Z):
+        return Z
+    
+    def symmetrize_Zk(self, Z, ikirr):
         return Z
 
     def U_to_full_BZ(self, U):
