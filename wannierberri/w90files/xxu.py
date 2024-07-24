@@ -33,9 +33,10 @@ class UXU(W90_file):
             header = readstr(f_uXu_in)
             NB, NK, NNB = f_uXu_in.read_record('i4')
 
-        if reorder_bk.lower() == "do not reorder":
+        if isinstance(reorder_bk, str) and reorder_bk == "do not reorder":
+            print("!!not reordering!!")
             reorder_bk = np.array([np.arange(NNB)] * NK)
-        
+
         assert reorder_bk.shape == (NK, NNB), f"reorder_bk.shape = {reorder_bk.shape} != ({NK}, {NNB}) = (NK, NNB)"
 
         print(f"reading {seedname}.{suffix} : <{header}>")
@@ -51,7 +52,7 @@ class UXU(W90_file):
                     for ib1 in range(NNB):
                         tmp = f_uXu_in.read_record('f8').reshape((2, NB, NB), order='F').transpose(2, 1, 0)
                         self.data[ik, ib1, ib2] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
-                self.data[ik] = self.data[ik, reorder_bk[ik], :][ :, reorder_bk[ik]]
+                self.data[ik] = self.data[ik, reorder_bk[ik], :][:, reorder_bk[ik]]
         print(f"----------\n {suffix} OK  \n---------\n")
         f_uXu_in.close()
 
@@ -125,7 +126,8 @@ class SXU(W90_file):
             header = readstr(f_sXu_in)
             NB, NK, NNB = f_sXu_in.read_record('i4')
 
-        if reorder_bk.lower() == "do not reorder":
+        if isinstance(reorder_bk, str) and reorder_bk == "do not reorder":
+            print("!!not reordering!!")
             reorder_bk = np.array([np.arange(NNB)] * NK)
 
         assert reorder_bk.shape == (NK, NNB), f"reorder_bk.shape = {reorder_bk.shape} != ({NK}, {NNB}) = (NK, NNB)"

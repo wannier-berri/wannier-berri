@@ -115,7 +115,7 @@ class MMN(W90_file):
         return self.__class__(data=data)
 
     def set_bk(self, kpt_latt, mp_grid, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
-        if all(hasattr(self, attr) for attr in ['bk_cart', 'wk', 'bk_latt_unique', 'bk_cart_unique', 'ib_unique_map']):
+        if all(hasattr(self, attr) for attr in ['bk_cart', 'wk', 'bk_latt', 'reorder_bk']):
             return
         else:
             # these are bk read from the mmn file
@@ -126,11 +126,11 @@ class MMN(W90_file):
                         for nbrs, G in zip(self.neighbours.T, self.G.transpose(1, 0, 2))
                     ]).transpose(1, 0, 2),
                 dtype=int)
-            # in the mmn file the bk are ordered in a different way for each k-point. 
+            # in the mmn file the bk are ordered in a different way for each k-point.
             # further we reorder them in the same way for all k-points
             # the order is also in the ascending order of the length of the vectors
             # vectors of same lengths are orderted in an arbitrary way, but consistently for all k-points
-            print ("bk_latt\n",bk_latt)
+            # print ("bk_latt\n",bk_latt)
             bk_latt_unique = np.array([b for b in set(tuple(bk) for bk in bk_latt.reshape(-1, 3))], dtype=int)
             assert len(bk_latt_unique) == self.NNB
             bk_cart_unique = bk_latt_unique.dot(recip_lattice / mp_grid[:, None])
@@ -139,8 +139,8 @@ class MMN(W90_file):
             bk_latt_unique = bk_latt_unique[srt]
             bk_cart_unique = bk_cart_unique[srt]
             bk_cart_unique_length = bk_cart_unique_length[srt]
-            brd = ( [0,] 
-                   + list(np.where(bk_cart_unique_length[1:] - bk_cart_unique_length[:-1] > kmesh_tol)[0] + 1) + 
+            brd = ([0,] +
+                   list(np.where(bk_cart_unique_length[1:] - bk_cart_unique_length[:-1] > kmesh_tol)[0] + 1) +
                    [self.NNB,])
             shell_mat = np.array([bk_cart_unique[b1:b2].T.dot(bk_cart_unique[b1:b2]) for b1, b2 in zip(brd, brd[1:])])
             shell_mat_line = shell_mat.reshape(-1, 9)
@@ -163,56 +163,26 @@ class MMN(W90_file):
             # k_cart = np.array([[bk_cart_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
             self.wk = np.array([[weight_dict[tuple(bkl)] for bkl in bklk] for bklk in bk_latt])
 
-            self.reorder_bk = []
+            reorder_bk = []
             bk_latt_unique_tuples = [tuple(b) for b in bk_latt_unique]
             for ik in range(self.NK):
                 bk_latt_ik = [tuple(b) for b in bk_latt[ik]]
-                self.reorder_bk.append([bk_latt_ik.index(b) for b in bk_latt_unique_tuples])
-            self.reorder_bk = np.array(self.reorder_bk)
-            print ("bk_latt_unique\n",bk_latt_unique)
-            print ("self.reorder_bk\n",self.reorder_bk)
+                reorder_bk.append([bk_latt_ik.index(b) for b in bk_latt_unique_tuples])
+            self.reorder_bk = np.array(reorder_bk)
+            # print(f"reorder_bk set to = {self.reorder_bk}")
 
             for ik in range(self.NK):
-                self.data[ik] = self.data[ik,self.reorder_bk[ik]]
-                self.G[ik] = self.G[ik,self.reorder_bk[ik]]
-                self.neighbours[ik] = self.neighbours[ik,self.reorder_bk[ik]]
-                self.wk[ik] = self.wk[ik,self.reorder_bk[ik]]
-            
-            self.bk_cart = np.array([bk_cart_unique for _ in range(self.NK)])
+                self.data[ik] = self.data[ik, self.reorder_bk[ik]]
+                self.G[ik] = self.G[ik, self.reorder_bk[ik]]
+                self.neighbours[ik] = self.neighbours[ik, self.reorder_bk[ik]]
+
+            self.wk = self.wk[0, self.reorder_bk[0]]
+
+            # self.bk_cart = np.array([bk_cart_unique for _ in range(self.NK)])
             # so far we keep these long arrays bk_cart and wk_cart, although they contain copies of the same data
-            self.bk_latt_unique = bk_latt_unique
-            self.bk_cart_unique = bk_cart_unique
-            self.ib_unique_map = np.array([np.arange(self.NNB) for _ in range(self.NK)])
+            self.bk_latt = bk_latt_unique
+            self.bk_cart = bk_cart_unique
 
-            #############
-            ### Oscar ###
-            ###################################################################
-
-            # Wannier90 provides a list of nearest-neighbor vectors b for every
-            # q point. For Jae-Mo's finite-difference scheme it is convenient
-            # to evaluate the Fourier transform of the matrix elements in the
-            # original ab-initio mesh before performing the sum over
-            # nearest-neighbor vectors. This requires defining a mapping from
-            # any pair {q,b} to a unique list of b vectors that is independent
-            # of q.
-
-            bk_latt = np.rint((self.bk_cart @ np.linalg.inv(recip_lattice)) * mp_grid[None, None, :]).astype(int)
-            bk_latt_unique = np.unique(bk_latt.reshape(-1, 3), axis=0)
-            bk_cart_unique = (bk_latt_unique / mp_grid[None, :]) @ recip_lattice
-            assert bk_latt_unique.shape == (self.NNB, 3)
-
-            ib_unique_map = np.zeros((self.NK, self.NNB), dtype=int)
-            for ik in range(self.NK):
-                for ib in range(self.NNB):
-                    b_latt = np.rint((self.bk_cart[ik, ib, :] @ np.linalg.inv(recip_lattice)) * mp_grid).astype(int)
-                    ib_unique = [tuple(b) for b in bk_latt_unique].index(tuple(b_latt))
-                    assert np.allclose(bk_cart_unique[ib_unique, :], self.bk_cart[ik, ib, :])
-                    ib_unique_map[ik, ib] = ib_unique
-
-            self.bk_latt_unique = bk_latt_unique
-            self.bk_cart_unique = bk_cart_unique
-            self.ib_unique_map = ib_unique_map
-            ###################################################################
 
     def set_bk_chk(self, chk, **argv):
         self.set_bk(chk.kpt_latt, chk.mp_grid, chk.recip_lattice, **argv)

@@ -204,7 +204,7 @@ class System_w90(System_R):
         # Wannier centers
         centers = chk.wannier_centers
         # Unique set of nearest-neighbor vectors (cartesian)
-        bk_cart_unique = w90data.mmn.bk_cart_unique
+        bk_cart = w90data.mmn.bk_cart
 
         if use_wcc_phase_findiff or transl_inv_JM:  # Phase convention I
             if use_wcc_phase_findiff:
@@ -213,7 +213,7 @@ class System_w90(System_R):
             elif transl_inv_JM:
                 _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
                 sum_b = False
-            expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0))
+            expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart, _r0))
             print(f"expjphase1 {expjphase1.shape}")
             expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
         else:
@@ -297,7 +297,7 @@ class System_w90(System_R):
             self.do_ws_dist(mp_grid=mp_grid)
 
         if transl_inv_JM:
-            self.recenter_JM(centers, bk_cart_unique)
+            self.recenter_JM(centers, bk_cart)
 
         self.do_at_end_of_init()
         if (not transl_inv_JM) and self.use_wcc_phase and (not wcc_phase_fin_diff):

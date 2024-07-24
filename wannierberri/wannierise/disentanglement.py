@@ -99,7 +99,7 @@ def disentangle(w90data,
     Mmn_FF = MmnFreeFrozen(w90data.mmn.data[kptirr],
                            free, frozen,
                            neighbours_irreducible,
-                           w90data.mmn.wk[kptirr],
+                           w90data.mmn.wk,
                            w90data.chk.num_wann)
 
     Z_frozen = calc_Z(w90data, Mmn_FF('free', 'frozen'))
@@ -299,8 +299,8 @@ def calc_Z(w90data, mmn_ff, kptirr=None, U_loc=None):
         assert kptirr is not None
         Mmn_loc_opt = [[Mmn[ib].dot(U_loc[ikb]) for ib, ikb in enumerate(neigh)] for Mmn, neigh in
                        zip(mmn_ff, w90data.mmn.neighbours[kptirr])]
-    return [sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(wbk, Mmn)) for wbk, Mmn in
-            zip(w90data.mmn.wk, Mmn_loc_opt)]
+    return [sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(w90data.mmn.wk, Mmn)) for Mmn in
+            Mmn_loc_opt]
 
 
 def frozen_nondegen(E, thresh=DEGEN_THRESH, froz_min=np.inf, froz_max=-np.inf):
@@ -401,8 +401,8 @@ class MmnFreeFrozen:
                 self.data[(s1, s2)] = vectorize(lambda M, s1, neigh: [M[ib][s1, :][:, sp2[ikb]] for ib, ikb in enumerate(neigh)],
                                                 Mmn, sp1, self.neighbours)
         self.Omega_I_0 = NW * self.wk[0].sum()
-        self.Omega_I_frozen = -sum(sum(wb * np.sum(abs(mmn[ib]) ** 2) for ib, wb in enumerate(WB)) for WB, mmn in
-                                   zip(self.wk, self('frozen', 'frozen'))) / self.NK
+        self.Omega_I_frozen = -sum(sum(wb * np.sum(abs(mmn[ib]) ** 2) for ib, wb in enumerate(self.wk)) for mmn in
+                                   self('frozen', 'frozen')) / self.NK
 
     def __call__(self, space1, space2):
         """
@@ -438,7 +438,7 @@ class MmnFreeFrozen:
         """
         U = U_opt_free
         Mmn = self('free', 'free')
-        return -sum(self.wk[ik][ib] * np.sum(abs(U[ik].T.conj().dot(Mmn[ib]).dot(U[ikb])) ** 2)
+        return -sum(self.wk[ib] * np.sum(abs(U[ik].T.conj().dot(Mmn[ib]).dot(U[ikb])) ** 2)
                     for ik, Mmn in enumerate(Mmn) for ib, ikb in enumerate(self.neighbours[ik])) / self.NK
 
     def Omega_I_free_frozen(self, U_opt_free):
@@ -457,7 +457,7 @@ class MmnFreeFrozen:
         """
         U = U_opt_free
         Mmn = self('free', 'frozen')
-        return -sum(self.wk[ik][ib] * np.sum(abs(U[ik].T.conj().dot(Mmn[ib])) ** 2)
+        return -sum(self.wk[ib] * np.sum(abs(U[ik].T.conj().dot(Mmn[ib])) ** 2)
                     for ik, Mmn in enumerate(Mmn) for ib, ikb in enumerate(self.neighbours[ik])) / self.NK * 2
 
     def Omega_I(self, U_opt_free):
@@ -474,5 +474,5 @@ class MmnFreeFrozen:
         float, float, float, float
             the spreads: Omega_I_0, Omega_I_frozen, Omega_I_free_frozen, Omega_I_free_free
         """
-        return self.Omega_I_0, self.Omega_I_frozen, self.Omega_I_free_frozen(U_opt_free), self.Omega_I_free_free(
-            U_opt_free)
+        return (self.Omega_I_0, self.Omega_I_frozen,
+                self.Omega_I_free_frozen(U_opt_free), self.Omega_I_free_free(U_opt_free))

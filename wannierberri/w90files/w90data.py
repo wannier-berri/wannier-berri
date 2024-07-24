@@ -182,10 +182,11 @@ class Wannier90data:
         if key in ["uhu", "uiu", "shu", "siu"]:
             kwargs["formatted"] = key in self.formatted_list
             kwargs["reorder_bk"] = self.mmn.reorder_bk
+            # print ("in kwargs_auto using reorder_bk",self.mmn.reorder_bk)
         if key not in ["chk", "win"]:
             kwargs["read_npz"] = self.read_npz
             kwargs["write_npz"] = key in self.write_npz_list
-        print(f"kwargs for {key} are {kwargs}")
+        # print(f"kwargs for {key} are {kwargs}")
         return kwargs
 
 
@@ -378,7 +379,6 @@ class Wannier90data:
                 new_files[file] = self.get_file(file).get_disentangled(v_left, v_right)
                 if file == 'mmn':
                     new_files[file].neighbours = self.mmn.neighbours
-                    new_files[file].ib_unique_map = self.mmn.ib_unique_map
                     new_files[file].G = self.mmn.G
         win = deepcopy(self.win)
         win.NB = self.chk.num_wann

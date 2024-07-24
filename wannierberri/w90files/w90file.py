@@ -30,7 +30,8 @@ class W90_file(abc.ABC):
             self.data = data
             return
         f_npz = f"{seedname}.{ext}.npz"
-        print(f"calling w90 file with {seedname}, {ext}, tags={tags}, read_npz={read_npz}, write_npz={write_npz}, kwargs={kwargs}")
+        kwargs_str = "; ".join([f"{k}={v}" for k, v in kwargs.items() if k not in ["reorder_bk", ]])
+        print(f"calling w90 file with {seedname}, {ext}, tags={tags}, read_npz={read_npz}, write_npz={write_npz}, kwargs={kwargs_str}")
         if os.path.exists(f_npz) and read_npz:
             dic = np.load(f_npz)
             for k in tags:
