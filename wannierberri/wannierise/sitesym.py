@@ -115,22 +115,26 @@ class Symmetrizer:
                     Ufull[iRk] = self.Dmn.rotate_U(U[ikirr], ikirr, isym)
         return Ufull
 
+    def symmetrize_Zk(self, Z, ikirr):
+        if Z.shape[0] == 0:
+            return
+        for i in range(self.n_iter):
+            Zsym = sum(self.Dmn.rotate_Z(Z, isym, ikirr, self.free[ikirr])
+                        for isym in self.Dmn.isym_little[ikirr]) / len(self.Dmn.isym_little[ikirr])
+            diff = np.max(abs(Zsym - Z))
+            if diff < self.epsilon:
+                break
+            Z[:] = Zsym
+        Z[:] = Zsym
+        return Z
+
     def symmetrize_Z(self, Z):
         """
         symmetrizes Z in-place
         Z(k) <- \sum_{R} d^{+}(R,k) Z(Rk) d(R,k)
         """
         for ikirr, z in enumerate(Z):
-            if z.shape[0] == 0:
-                continue
-            for i in range(self.n_iter):
-                Zsym = sum(self.Dmn.rotate_Z(Z[ikirr], isym, ikirr, self.free[ikirr])
-                           for isym in self.Dmn.isym_little[ikirr]) / len(self.Dmn.isym_little[ikirr])
-                diff = np.max(abs(Zsym - Z[ikirr]))
-                if diff < self.epsilon:
-                    break
-                Z[ikirr][:] = Zsym
-            Z[ikirr][:] = Zsym
+            self.symmetrize_Zk(z, ikirr)
         return Z
 
     def symmetrize_U_kirr(self, U, ikirr):
@@ -165,6 +169,8 @@ class Symmetrizer:
                         'Either eps is too small or specified irreps is not compatible with the bands' +
                         f'diff{diff}, eps={self.epsilon}')
         return orthogonalize(Usym)
+    
+
 
 
 
