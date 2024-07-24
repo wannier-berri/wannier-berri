@@ -1,3 +1,4 @@
+from functools import lru_cache
 import warnings
 import numpy as np
 from scipy.linalg import svd
@@ -63,6 +64,10 @@ class Symmetrizer:
             for ik in self.kptirr:
                 self.include_k[ik] = True
                 self.include_k[neighbours[ik]] = True
+
+    @lru_cache
+    def ndegen(self, ikirr):
+        return len(set(self.kptirr2kpt[ikirr]))
 
 
 

@@ -264,6 +264,7 @@ def print_progress(i_iter, Omega_I_list, num_iter_converge, print_progress_every
         delta_std_str = "--"
 
     if i_iter % print_progress_every == 0:
+        
         print(f"iteration {i_iter:4d} Omega_I = {Omega_I:15.10f}  delta={delta}, delta_std={delta_std_str}")
         if w90data is not None and U_opt_full_BZ is not None:
             print_centers_and_spreads(w90data, U_opt_full_BZ)
