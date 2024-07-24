@@ -17,7 +17,7 @@ import abc
 from functools import cached_property
 import warnings
 
-from wannierberri.system.system import System
+from ..system.system import System
 from .. import symmetry
 from .Kpoint import KpointBZparallel
 from ..__utility import one2three
