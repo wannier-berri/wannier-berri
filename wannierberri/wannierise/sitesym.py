@@ -122,7 +122,7 @@ class Symmetrizer:
 
     def symmetrize_Zk(self, Z, ikirr):
         if Z.shape[0] == 0:
-            return
+            return Z
         for i in range(self.n_iter):
             Zsym = sum(self.Dmn.rotate_Z(Z, isym, ikirr, self.free[ikirr])
                         for isym in self.Dmn.isym_little[ikirr]) / len(self.Dmn.isym_little[ikirr])
@@ -196,6 +196,9 @@ class VoidSymmetrizer(Symmetrizer):
         self.Nsym = 1
 
     def symmetrize_U(self, U, **kwargs):
+        return U
+
+    def symmetrize_U_kirr(self, U, ikirr):
         return U
 
     def symmetrize_Z(self, Z):

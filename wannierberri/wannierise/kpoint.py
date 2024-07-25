@@ -59,7 +59,9 @@ class Kpoint_and_neighbours:
         self.freefree = [Mmn[ib][self.free, :][:, self.free_nb[ib]] for ib in range(nnb)]
         self.freefrozen = [Mmn[ib][self.free, :][:, frozen_nb[ib]] for ib in  range(nnb)]
         self.symmmetrize_Z = lambda Z: symmetrizer.symmetrize_Zk(Z, ikirr)
+        self.symmetrize_U = lambda U: symmetrizer.symmetrize_U_kirr(U, ikirr)
         self.Zfrozen = self.calc_Z()
+        print ("Zfrozen", self.Zfrozen.shape)
         self.Zold = None
 
         # initialize the U matrix with projections
@@ -93,6 +95,7 @@ class Kpoint_and_neighbours:
             U_opt_full = np.zeros((self.nband, self.num_wann), dtype=complex)
             U_opt_full[self.frozen, range(self.nfrozen)] = 1.
             U_opt_full[self.free, self.nfrozen:] = self.U_opt_free
+            print ("U_opt_full", U_opt_full)
             Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib]) 
                                 for ib in range(self.nnb)])
             Mmn_loc_sumb = sum(mm*wb for mm, wb in zip(Mmn_loc, self.wb))/sum(self.wb)
@@ -107,6 +110,9 @@ class Kpoint_and_neighbours:
         else:
             self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
         # self.update_Mmn_opt()
+        print ("U_opt_full before symmetrization", self.U_opt_full)
+        self.U_opt_full = self.symmetrize_U(self.U_opt_full)
+        print ("U_opt_full after symmetrization", self.U_opt_full)
         return self.U_opt_full
 
         
@@ -131,8 +137,10 @@ class Kpoint_and_neighbours:
             Mmn_loc_opt = self.freefrozen
         else:
             Mmn_loc_opt = [self.freefree[ib].dot(U_nb[ib]) for ib in range(len(self.wb))]
-        Z = sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(self.wb, Mmn_loc_opt))
+        Z = np.array(sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(self.wb, Mmn_loc_opt)))
+        print ("Z1",Z)
         Z = self.symmmetrize_Z(Z)
+        print ("Z2",Z)
         return Z
         
 
