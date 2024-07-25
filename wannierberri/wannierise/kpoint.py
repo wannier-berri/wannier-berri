@@ -32,10 +32,10 @@ class Kpoint_and_neighbours:
     def __init__(self, Mmn, frozen, frozen_nb,  wb, bk,
                  symmetrizer, ikirr,
                  amn,
-                 mix_ratio=0.5,
-                 weight=1
+                 weight=1,
                  ):
         nnb, nb = Mmn.shape[:2]
+        self.nnb = nnb
         self.Mmn = Mmn
         assert Mmn.shape[2] == nb
         assert len(frozen) == nb
@@ -45,7 +45,6 @@ class Kpoint_and_neighbours:
         self.nband = amn.shape[0]
         self.wb = wb
         self.bk = bk
-        self.mix_ratio = mix_ratio
         self.weight=weight
 
         self.data = {}
@@ -68,7 +67,7 @@ class Kpoint_and_neighbours:
         self.U_opt_free = get_max_eig(amn2,  self.nWfree, self.NBfree)  # nBfee x nWfree marrices
         self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
 
-    def update(self, U_nb):
+    def update(self, U_nb, localise=True, mix_ratio=1.0):
         """
         update the Z matrix
 
@@ -82,14 +81,31 @@ class Kpoint_and_neighbours:
         numpy.ndarray(NB, nW)
             the updated U matrix
         """
+        assert 0 <= mix_ratio <= 1
         self.U_nb = U_nb
         U_nb_free = [U_nb[ib][f] for ib, f in enumerate(self.free_nb)]
         Z = self.calc_Z(U_nb_free) + self.Zfrozen
-        if self.Zold is not None:
-            Z = self.mix_ratio * Z + (1 - self.mix_ratio) * self.Zold
+        if self.Zold is not None and mix_ratio != 1:
+            Z = mix_ratio * Z + (1 - mix_ratio) * self.Zold
         self.Zold=Z
         self.U_opt_free = get_max_eig(Z, self.nWfree, self.num_bands_free)
-        self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
+        if localise:
+            U_opt_full = np.zeros((self.nband, self.num_wann), dtype=complex)
+            U_opt_full[self.frozen, range(self.nfrozen)] = 1.
+            U_opt_full[self.free, self.nfrozen:] = self.U_opt_free
+            Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib]) 
+                                for ib in range(self.nnb)])
+            Mmn_loc_sumb = sum(mm*wb for mm, wb in zip(Mmn_loc, self.wb))/sum(self.wb)
+            # print ("Mmn_loc_sumb", Mmn_loc_sumb.shape)
+            # symmetrizer.symmetrize_Zk(Mmn_loc_sumb, ikirr)  # this actually makes thing worse, so not using it
+            U=np.linalg.inv(Mmn_loc_sumb)
+            U=U.T.conj()
+            U = orthogonalize(U)
+            U_opt_full = U_opt_full.dot(U)
+            U_opt_full = orthogonalize(U_opt_full)
+            self.U_opt_full = U_opt_full
+        else:
+            self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
         # self.update_Mmn_opt()
         return self.U_opt_full
 

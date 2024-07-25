@@ -19,6 +19,7 @@ def wannierise(w90data,
                 mix_ratio=0.5,
                 print_progress_every=10,
                 sitesym=False,
+                localise=False,
                 kwargs_sitesym={}):
     r"""
     Performs disentanglement of the bands recorded in w90data, following the procedure described in
@@ -92,8 +93,7 @@ def wannierise(w90data,
                            w90data.mmn.wk[kpt], w90data.mmn.bk_cart[kpt],
                            symmetrizer, ik,
                            amn = w90data.amn.data[kpt],
-                           weight=symmetrizer.ndegen(ik)/symmetrizer.NK,
-                           mix_ratio=mix_ratio
+                           weight=symmetrizer.ndegen(ik)/symmetrizer.NK
                            ) 
                 for ik, kpt in enumerate(kptirr)
                 ]
@@ -118,7 +118,7 @@ def wannierise(w90data,
     for i_iter in range(num_iter):
         for ikirr,_ in enumerate(kptirr):
             U_neigh = [U_opt_full_BZ[neigh] for neigh in neighbours_irreducible[ikirr]]
-            U_opt_full_IR[ikirr] = kpoints[ikirr].update(U_neigh)
+            U_opt_full_IR[ikirr] = kpoints[ikirr].update(U_neigh, mix_ratio=mix_ratio, localise=localise)
 
         # spreads = getSpreads(kpoints)
         Omega_list.append(spreads["Omega_tot"]) # so far fake values
