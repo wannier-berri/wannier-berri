@@ -42,7 +42,7 @@ def print_centers_and_spreads(w90data, U_opt_full_BZ,
 
 
 
-def print_progress(i_iter, Omega_list, num_iter_converge, print_progress_every,
+def print_progress(i_iter, Omega_list, num_iter_converge, 
                    spread_functional=None, spreads=None,
                    w90data=None, U_opt_full_BZ=None):
     """
@@ -54,8 +54,6 @@ def print_progress(i_iter, Omega_list, num_iter_converge, print_progress_every,
         the list of the spread functional
     num_iter_converge : int
         the number of iterations to check the convergence
-    print_progress_every : int
-        the frequency to print the progress
 
     Returns
     -------
@@ -73,7 +71,7 @@ def print_progress(i_iter, Omega_list, num_iter_converge, print_progress_every,
     else:
         delta = "--"
 
-    if i_iter >= num_iter_converge:
+    if len(Omega_list) > num_iter_converge:
         delta_max = np.abs(Omega_list[-num_iter_converge:] - np.mean(Omega_list[-num_iter_converge:])).max()
         delta_max_str = f"{delta_max:15.8e}"
         slope = (Omega_list[-1] - Omega_list[-num_iter_converge - 1]) / num_iter_converge
@@ -83,9 +81,8 @@ def print_progress(i_iter, Omega_list, num_iter_converge, print_progress_every,
         delta_max_str = "--"
         slope_str = "--"
 
-    if i_iter % print_progress_every == 0:
-        comment = f"iteration {i_iter:4d} Omega= {Omega:15.10f}  delta={delta}, max({num_iter_converge})={delta_max_str}, slope={slope_str}"
-        print_centers_and_spreads(w90data, U_opt_full_BZ, spreads=spreads, comment=comment)
+    comment = f"iteration {i_iter:4d} Omega= {Omega:15.10f}  delta={delta}, max({num_iter_converge})={delta_max_str}, slope={slope_str}"
+    print_centers_and_spreads(w90data, U_opt_full_BZ, spreads=spreads, comment=comment)
 
     return delta_max
 

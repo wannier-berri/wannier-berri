@@ -10,11 +10,11 @@ from .spreadfunctional import SpreadFunctional
 
 
 def wannierise(w90data,
-               froz_min=np.Inf,
-               froz_max=-np.Inf,
+               froz_min=np.inf,
+               froz_max=-np.inf,
                num_iter=1000,
                conv_tol=1e-9,
-               num_iter_converge=10,
+               num_iter_converge=3,
                mix_ratio_z=0.5,
                mix_ratio_u=0.5,
                print_progress_every=10,
@@ -39,7 +39,7 @@ def wannierise(w90data,
     conv_tol : float
         tolerance for convergence of the spread functional  (in :math:`\mathring{\rm A}^{2}`)
     num_iter_converge : int
-        the convergence is achieved when the standard deviation of the spread functional over the `num_iter_converge`
+        the convergence is achieved when the standard deviation of the spread functional over the `num_iter_converge*print_progress_every`
         iterations is less than conv_tol
     mix_ratio_z : float
         0 <= mix_ratio <=1  - mixing the Z matrix (disentanglement) from previous itertions. 1 for max speed, smaller values are more stable
@@ -128,12 +128,14 @@ def wannierise(w90data,
                                                        localise=localise))
 
         U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=True)
-        delta_std = print_progress(i_iter, Omega_list, num_iter_converge, print_progress_every,
-                                   spread_functional=SpreadFunctional_loc, w90data=w90data, U_opt_full_BZ=U_opt_full_BZ)
 
-        if delta_std < conv_tol:
-            print(f"Converged after {i_iter} iterations")
-            break
+        if i_iter % print_progress_every == 0:
+            delta_std = print_progress(i_iter, Omega_list, num_iter_converge, 
+                                    spread_functional=SpreadFunctional_loc, w90data=w90data, U_opt_full_BZ=U_opt_full_BZ)
+
+            if delta_std < conv_tol:
+                print(f"Converged after {i_iter} iterations")
+                break
 
     U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=True)
 
