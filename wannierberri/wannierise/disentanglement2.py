@@ -84,7 +84,7 @@ def wannierise(w90data,
         symmetrizer = VoidSymmetrizer(NK=w90data.mmn.NK)
 
     
-    
+    neighbours_all = w90data.mmn.neighbours
     neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ik] for ik in neigh]
                                        for neigh in w90data.mmn.neighbours[kptirr]])
     
@@ -106,26 +106,30 @@ def wannierise(w90data,
     # The _IR suffix is used to denote that the U matrix is defined only on k-points in the irreducible BZ
     U_opt_full_IR = [kpoint.U_opt_full for kpoint in kpoints]
     # the _BZ suffix is used to denote that the U matrix is defined on all k-points in the full BZ
-    U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=True)
+    U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=False)
 
     # spreads = getSpreads(kpoints, U_opt_full_BZ, neighbours_irreducible)
-    spreads = SpreadFunctional_loc(U_opt_full_BZ)
-    print ("Initial state. Spread : ", spreads)
-    print ("  |  ".join(f"{key} = {value:16.8f}" for key, value in spreads.items()))
+    # spreads = SpreadFunctional_loc(U_opt_full_BZ)
+    # print ("Initial state. Spread : ", spreads)
+    # print ("  |  ".join(f"{key} = {value:16.8f}" for key, value in spreads.items()))
 
 
     Omega_list = []
     for i_iter in range(num_iter):
-        for ikirr,_ in enumerate(kptirr):
-            U_neigh = [U_opt_full_BZ[neigh] for neigh in neighbours_irreducible[ikirr]]
-            U_opt_full_IR[ikirr] = kpoints[ikirr].update(U_neigh, mix_ratio=mix_ratio, localise=localise)
+        U_opt_full_IR = []
+        for ikirr,kpt in enumerate(kptirr):
+            U_neigh = np.copy([U_opt_full_BZ[ib] for ib in neighbours_all[kpt]])
+            U_opt_full_IR.append(kpoints[ikirr].update(U_neigh, mix_ratio=mix_ratio, localise=localise))
+        
 
-        # spreads = getSpreads(kpoints)
-        Omega_list.append(spreads["Omega_tot"]) # so far fake values
+        # spreads = SpreadFunctional_loc
+        # Omega_list.append(spreads["Omega_tot"]) # so far fake values
         do_print_progress = i_iter % print_progress_every == 0
-        U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=do_print_progress)
+        U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=True)
+        spreads = SpreadFunctional_loc(U_opt_full_BZ)
+        Omega_list.append(spreads["Omega_tot"])
+           
         if do_print_progress:
-            spreads = SpreadFunctional_loc(U_opt_full_BZ)
             print ("  |  ".join(f"{key} = {value:16.8f}" for key, value in spreads.items()))
         
 
@@ -136,7 +140,6 @@ def wannierise(w90data,
             print(f"Converged after {i_iter} iterations")
             break
     
-    print("U_opt_full ", [u.shape for u in U_opt_full_IR])
     U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=True)
 
     w90data.chk.v_matrix = np.array(U_opt_full_BZ)

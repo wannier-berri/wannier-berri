@@ -1,3 +1,4 @@
+from copy import deepcopy
 import numpy as np
 from .disentanglement import get_max_eig
 from .sitesym import orthogonalize
@@ -61,7 +62,6 @@ class Kpoint_and_neighbours:
         self.symmmetrize_Z = lambda Z: symmetrizer.symmetrize_Zk(Z, ikirr)
         self.symmetrize_U = lambda U: symmetrizer.symmetrize_U_kirr(U, ikirr)
         self.Zfrozen = self.calc_Z()
-        print ("Zfrozen", self.Zfrozen.shape)
         self.Zold = None
 
         # initialize the U matrix with projections
@@ -84,8 +84,8 @@ class Kpoint_and_neighbours:
             the updated U matrix
         """
         assert 0 <= mix_ratio <= 1
-        self.U_nb = U_nb
-        U_nb_free = [U_nb[ib][f] for ib, f in enumerate(self.free_nb)]
+        self.U_nb = deepcopy(U_nb)
+        U_nb_free = [self.U_nb[ib][f] for ib, f in enumerate(self.free_nb)]
         Z = self.calc_Z(U_nb_free) + self.Zfrozen
         if self.Zold is not None and mix_ratio != 1:
             Z = mix_ratio * Z + (1 - mix_ratio) * self.Zold
@@ -95,7 +95,6 @@ class Kpoint_and_neighbours:
             U_opt_full = np.zeros((self.nband, self.num_wann), dtype=complex)
             U_opt_full[self.frozen, range(self.nfrozen)] = 1.
             U_opt_full[self.free, self.nfrozen:] = self.U_opt_free
-            print ("U_opt_full", U_opt_full)
             Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib]) 
                                 for ib in range(self.nnb)])
             Mmn_loc_sumb = sum(mm*wb for mm, wb in zip(Mmn_loc, self.wb))/sum(self.wb)
@@ -110,9 +109,7 @@ class Kpoint_and_neighbours:
         else:
             self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
         # self.update_Mmn_opt()
-        print ("U_opt_full before symmetrization", self.U_opt_full)
         self.U_opt_full = self.symmetrize_U(self.U_opt_full)
-        print ("U_opt_full after symmetrization", self.U_opt_full)
         return self.U_opt_full
 
         
@@ -138,9 +135,7 @@ class Kpoint_and_neighbours:
         else:
             Mmn_loc_opt = [self.freefree[ib].dot(U_nb[ib]) for ib in range(len(self.wb))]
         Z = np.array(sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(self.wb, Mmn_loc_opt)))
-        print ("Z1",Z)
-        Z = self.symmmetrize_Z(Z)
-        print ("Z2",Z)
+        self.symmmetrize_Z(Z)
         return Z
         
 

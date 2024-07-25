@@ -138,8 +138,8 @@ class Symmetrizer:
         symmetrizes Z in-place
         Z(k) <- \sum_{R} d^{+}(R,k) Z(Rk) d(R,k)
         """
-        for ikirr, z in enumerate(Z):
-            self.symmetrize_Zk(z, ikirr)
+        for ikirr, _ in enumerate(Z):
+            self.symmetrize_Zk(Z[ikirr], ikirr)
         return Z
 
 
