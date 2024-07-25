@@ -19,16 +19,17 @@ systems["w90"] = wberri.system.System_w90(seedname='diamond')
 w90data = wberri.w90files.Wannier90data(seedname='diamond')
 
 #Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
-w90data.disentangle(
+w90data.wannierise(
                 froz_min=-8,
                 froz_max=20,
                 num_iter=1000,
                 conv_tol=1e-10,
-                mix_ratio=1.0,
+                mix_ratio_z=0.8,
+                mix_ratio_u=0.7,
                 print_progress_every=20,
                 sitesym=True
                 )
-systems["disentangled"] = wberri.system.System_w90(w90data=w90data)
+systems["wberri"] = wberri.system.System_w90(w90data=w90data)
 
 # If needed - perform maximal localization using Wannier90
 
@@ -65,6 +66,6 @@ for key,sys in systems.items():
     result.results['tabulate'].plot_path_fat(path, close_fig=False, show_fig=False, 
                                              linecolor=linecolors.pop(0), label=key,
                                              kwargs_line={"ls":linestyles.pop(0)})
-plt.savefig("diamond_disentangled.png")
+plt.savefig("diamond-bands.png")
 
 # One can see that results do not differ much. Also, the maximal localization does not have much effect.

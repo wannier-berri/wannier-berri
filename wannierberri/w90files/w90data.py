@@ -15,7 +15,7 @@
 from functools import cached_property
 from copy import copy, deepcopy
 import numpy as np
-from ..wannierise import disentangle
+from ..wannierise import wannierise
 
 from .win import WIN
 from .eig import EIG
@@ -334,9 +334,9 @@ class Wannier90data:
             if the system was not wannierised
         """
         if not (self.wannierised):
-            raise RuntimeError(f"no wannieruisation was performed on the w90 input files, cannot proceed with {msg}")
+            raise RuntimeError(f"no wannierisation was performed on the w90 input files, cannot proceed with {msg}")
 
-    def disentangle(self, **kwargs):
+    def wannierise(self, **kwargs):
         """
         Perform the disentanglement procedure calling `~wannierberri.system.disentangle`
 
@@ -345,7 +345,7 @@ class Wannier90data:
         kwargs : dict
             the keyword arguments to be passed to `~wannierberri.system.disentangle`     
         """
-        disentangle(self, **kwargs)
+        wannierise(self, **kwargs)
 
     def get_disentangled(self, files=[]):
         """

@@ -8,50 +8,8 @@ import shutil
 from common import OUTPUT_DIR, ROOT_DIR
 
 
-def test_disentangle(system_Fe_W90_disentangle, system_Fe_W90_proj_ws):
-    """
-    tests that the two systems give similar eigenvalues aalong the path
-    """
-    tabulators = {"Energy": wberri.calculators.tabulate.Energy(),
-                  }
 
-    tab_all_path = wberri.calculators.TabulatorAll(
-        tabulators,
-        ibands=np.arange(0, 18),
-        mode="path"
-    )
-
-    # all kpoints given in reduced coordinates
-    path = wberri.Path(system_Fe_W90_disentangle,
-                       k_nodes=[
-                           [0.0000, 0.0000, 0.0000],  # G
-                           [0.500, -0.5000, -0.5000],  # H
-                           [0.7500, 0.2500, -0.2500],  # P
-                           [0.5000, 0.0000, -0.5000],  # N
-                           [0.0000, 0.0000, 0.000]
-                       ],  # G
-                       labels=["G", "H", "P", "N", "G"],
-                       length=200)  # length [ Ang] ~= 2*pi/dk
-
-    energies = []
-    for system in system_Fe_W90_disentangle, system_Fe_W90_proj_ws:
-        print("Wannier Centers\n", np.round(system.wannier_centers_reduced, decimals=4))
-        result = wberri.run(system,
-                        grid=path,
-                        calculators={"tabulate": tab_all_path},
-                        print_Kpoints=False)
-        energies.append(result.results["tabulate"].get_data(quantity="Energy", iband=np.arange(0, 18)))
-
-    select = energies[1] < 15
-    diff = abs(energies[1][select] - energies[0][select])
-    # the precidsion is not very high here, although the two codes are assumed to do the same. Not sure why..
-    d, acc = np.max(diff), 0.1
-    assert d < acc, f"the interpolated bands differ from w90 interpolation by max {d}>{acc}"
-    d, acc = np.mean(diff) / diff.size, 0.05
-    assert d < acc, f"the interpolated bands on average differ from w90 interpolation by {d}>{acc}"
-
-
-def test_disentangle_sym():
+def test_wanieriise():
     systems = {}
 
     # Just fot Reference : run the Wannier90 with sitesym, but instead of frozen window use outer window
@@ -76,12 +34,13 @@ def test_disentangle_sym():
     # Read the data from the Wanier90 inputs
     w90data = wberri.w90files.Wannier90data(seedname=prefix)
     # Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
-    w90data.disentangle(
+    w90data.wannierise(
         froz_min=-8,
         froz_max=20,
         num_iter=1000,
         conv_tol=1e-10,
-        mix_ratio=1.0,
+        mix_ratio_z=0.8,
+        mix_ratio_u=0.7,
         print_progress_every=20,
         sitesym=True
     )

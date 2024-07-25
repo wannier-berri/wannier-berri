@@ -1,7 +1,7 @@
 from functools import lru_cache
 import warnings
 import numpy as np
-from scipy.linalg import svd
+from .utility import orthogonalize
 
 
 class Symmetrizer:
@@ -125,7 +125,7 @@ class Symmetrizer:
             return Z
         for i in range(self.n_iter):
             Zsym = sum(self.Dmn.rotate_Z(Z, isym, ikirr, self.free[ikirr])
-                        for isym in self.Dmn.isym_little[ikirr]) / len(self.Dmn.isym_little[ikirr])
+                       for isym in self.Dmn.isym_little[ikirr]) / len(self.Dmn.isym_little[ikirr])
             diff = np.max(abs(Zsym - Z))
             if diff < self.epsilon:
                 break
@@ -203,27 +203,9 @@ class VoidSymmetrizer(Symmetrizer):
 
     def symmetrize_Z(self, Z):
         return Z
-    
+
     def symmetrize_Zk(self, Z, ikirr):
         return Z
 
     def U_to_full_BZ(self, U):
         return U
-
-
-def orthogonalize(u):
-    """
-    Orthogonalizes the matrix u using Singular Value Decomposition (SVD).
-
-    Parameters
-    ----------
-    u : np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
-        The input matrix to be orthogonalized.
-
-    Returns
-    -------
-    u : np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
-        The orthogonalized matrix.
-    """
-    U, _, VT = svd(u, full_matrices=False)
-    return U @ VT

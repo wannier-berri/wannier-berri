@@ -1,4 +1,5 @@
 from copy import deepcopy
+import warnings
 import numpy as np
 
 from ..__utility import vectorize
@@ -18,9 +19,12 @@ def disentangle(w90data,
                 sitesym=False,
                 kwargs_sitesym={}):
     r"""
+    Deprecated - use wannierise() instead
+
     Performs disentanglement of the bands recorded in w90data, following the procedure described in
     `Souza et al., PRB 2001 <https://doi.org/10.1103/PhysRevB.65.035109>`__
     At the end writes `w90data.chk.v_matrix` and sets `w90data.wannierised = True`
+
 
     Parameters
     ----------
@@ -60,6 +64,7 @@ def disentangle(w90data,
     w90data.chk._wannier_spreads : numpy.ndarray (nW)
         the spreads of the Wannier functions
     """
+    warnings.warn("This function is deprecated, use wannierise() instead", DeprecationWarning)
     if froz_min > froz_max:
         print("froz_min > froz_max, nothing will be frozen")
     assert 0 < mix_ratio <= 1
@@ -265,7 +270,7 @@ def print_progress(i_iter, Omega_I_list, num_iter_converge, print_progress_every
 
     if i_iter % print_progress_every == 0:
 
-        print(f"iteration {i_iter:4d} Omega_I = {Omega_I:15.10f}  delta={delta}, delta_std={delta_std_str}")
+        print(f"iteration {i_iter:4d} Omega= {Omega_I:15.10f}  delta={delta}, delta_std={delta_std_str}")
         if w90data is not None and U_opt_full_BZ is not None:
             print_centers_and_spreads(w90data, U_opt_full_BZ)
 
