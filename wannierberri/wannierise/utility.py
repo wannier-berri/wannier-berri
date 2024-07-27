@@ -1,3 +1,5 @@
+import sys
+from typing import Any
 import numpy as np
 DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
 
@@ -152,3 +154,81 @@ def orthogonalize(u):
     """
     U, _, VT = np.linalg.svd(u, full_matrices=False)
     return U @ VT
+
+
+class unique_list(list):
+        """	
+        A list that only allows unique elements.
+        uniqueness is determined by the == operator.
+        Thus, non-hashable elements are also allowed.
+        unlike set, the order of elements is preserved.
+        """
+
+        def __init__(self, iterator=[]):
+            super().__init__()
+            for x in iterator:
+                self.append(x)
+
+        def append(self, item):
+            for i in self:
+                if i == item:
+                    break
+            else:
+                super().append(item)
+
+        def index(self, value: Any, start = 0, stop = sys.maxsize) -> int:
+            for i in range(start, stop):
+                if self[i] == value:
+                    return i
+            raise ValueError(f"{value} not in list")
+        
+        def __contains__(self, item):
+            for i in self:
+                if i == item:
+                    return True
+            return False
+        
+        def remove(self, value: Any) -> None:
+            for i in range(len(self)):
+                if self[i] == value:
+                    del self[i]
+                    return
+                
+class unique_list_mod1(unique_list):
+
+    def __init__(self, iterator=[], tol=1e-5):
+        self.tol = tol
+        self.appended_indices = []
+        self.last_try_append = -1
+        super().__init__(iterator)
+
+    def append(self, item):
+        self.last_try_append += 1
+        for i in self:
+            if all_close_mod1(i, item, tol=self.tol):
+                break
+        else:
+            list.append(self,item)
+            self.appended_indices.append(self.last_try_append)
+
+    def __contains__(self, item):
+        for i in self:
+            if all_close_mod1(i, item, tol=self.tol):
+                return True
+        return False
+
+    def index(self, value: Any, start = 0, stop = sys.maxsize) -> int:
+        stop = min(stop, len(self))
+        for i in range(start, stop):
+            if all_close_mod1(self[i], value):
+                return i
+        raise ValueError(f"{value} not in list")
+
+
+                
+def all_close_mod1(a,b,tol=1e-5):
+    """check if two vectors are equal modulo 1"""
+    if  not np.shape(a)==() and not np.shape(b)==() and (np.shape(a) != np.shape(b)):
+        return False
+    diff = a-b
+    return np.allclose(np.round(diff), diff , atol=tol)
