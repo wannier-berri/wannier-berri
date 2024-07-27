@@ -296,6 +296,46 @@ class DMN(W90_file):
                 maxerr = max(maxerr, np.linalg.norm(diff))
         return maxerr
 
+    def symmetrize_amn(self, amn):
+        """
+        Symmetrize the amn
+
+        Parameters
+        ----------
+        amn : AMN object of np.ndarray(complex, shape=(NK, NB, NW))
+            the amn
+
+        Returns
+        -------
+        AMN
+            the symmetrized amn
+        """
+        if isinstance(amn, AMN):
+            amn = amn.data
+        assert amn.shape == (self.NK, self.NB, self.num_wann)
+
+        amn_sym_irr = np.zeros((self.NKirr, self.NB, self.num_wann), dtype=complex)
+        for ikirr in range(self.NKirr):
+            for isym in range(self.Nsym):
+                amn_sym_irr[ikirr] += self.rotate_U(amn[self.kptirr2kpt[ikirr,isym]], ikirr, isym, forward=False)
+        amn_sym_irr /= self.Nsym
+        lfound = np.zeros(self.NK, dtype=bool)
+        amn_sym = np.zeros((self.NK, self.NB, self.num_wann), dtype=complex)
+        for ikirr in range(self.NKirr):
+            for isym in range(self.Nsym):
+                ik = self.kptirr2kpt[ikirr, isym]
+                if not lfound[ik]:
+                    amn_sym[ik] = self.rotate_U(amn_sym_irr[ikirr], ikirr, isym, forward=True)
+                    lfound[ik] = True
+        return amn_sym
+    
+    def get_random_amn(self):
+        " generate a random amn file that is comaptible with the symmetries of the Wanier functions in the DMN object"
+        shape = (self.NK, self.NB, self.num_wann)
+        amn = np.random.random(shape) + 1j * np.random.random(shape)
+        return AMN(data=self.symmetrize_amn(amn))
+
+        
 
     # def check_mmn(self, mmn, f1, f2):
     #     """
