@@ -29,6 +29,7 @@ w90data.wannierise(
                 print_progress_every=20,
                 sitesym=True
                 )
+
 systems["wberri"] = wberri.system.System_w90(w90data=w90data)
 
 # If needed - perform maximal localization using Wannier90

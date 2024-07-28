@@ -86,13 +86,16 @@ def wannierise(w90data,
         symmetrizer = VoidSymmetrizer(NK=w90data.mmn.NK)
 
 
-    neighbours_all = w90data.mmn.neighbours
+    neighbours_all = w90data.mmn.neighbours_unique
     neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ik] for ik in neigh]
-                                       for neigh in w90data.mmn.neighbours[kptirr]])
+                                       for neigh in w90data.mmn.neighbours_unique[kptirr]])
 
-    kpoints = [Kpoint_and_neighbours(w90data.mmn.data[kpt],
+    wk = w90data.mmn.wk_unique
+    bk_cart = w90data.mmn.bk_cart_unique
+    mmn_data_ordered = np.array([data[order] for data, order in zip(w90data.mmn.data, w90data.mmn.ib_unique_map_inverse)])
+    kpoints = [Kpoint_and_neighbours(mmn_data_ordered[kpt],
                            frozen[ik], frozen[neighbours_irreducible[ik]],
-        w90data.mmn.wk[kpt], w90data.mmn.bk_cart[kpt],
+        w90data.mmn.wk_unique, w90data.mmn.bk_cart_unique,
         symmetrizer, ik,
         amn=w90data.amn.data[kpt],
         weight=symmetrizer.ndegen(ik) / symmetrizer.NK
@@ -100,10 +103,11 @@ def wannierise(w90data,
         for ik, kpt in enumerate(kptirr)
     ]
     SpreadFunctional_loc = SpreadFunctional(
-        w=w90data.mmn.wk / w90data.mmn.NK,
-        bk=w90data.mmn.bk_cart,
-        neigh=w90data.mmn.neighbours,
-        Mmn=w90data.mmn.data)
+        w=w90data.mmn.wk_unique / w90data.mmn.NK,
+        bk=w90data.mmn.bk_cart_unique,
+        neigh=w90data.mmn.neighbours_unique,
+        Mmn=mmn_data_ordered)
+
 
     # The _IR suffix is used to denote that the U matrix is defined only on k-points in the irreducible BZ
     U_opt_full_IR = [kpoint.U_opt_full for kpoint in kpoints]
@@ -115,7 +119,6 @@ def wannierise(w90data,
                               spread_functional=SpreadFunctional_loc,
                               comment="Initial  State")
     # print ("  |  ".join(f"{key} = {value:16.8f}" for key, value in spreads.items() if key.startswith("Omega")))
-
 
     Omega_list = []
     for i_iter in range(num_iter):
