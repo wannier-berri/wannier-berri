@@ -19,7 +19,7 @@ def wannierise(w90data,
                mix_ratio_u=0.5,
                print_progress_every=10,
                sitesym=False,
-               localise=False,
+               localise=True,
                kwargs_sitesym={}):
     r"""
     Performs disentanglement of the bands recorded in w90data, following the procedure described in
