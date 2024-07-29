@@ -20,7 +20,10 @@ def wannierise(w90data,
                print_progress_every=10,
                sitesym=False,
                localise=False,
-               kwargs_sitesym={}):
+               init="amn",
+               kwargs_sitesym={},
+               num_wann=None,
+               ):
     r"""
     Performs disentanglement of the bands recorded in w90data, following the procedure described in
     `Souza et al., PRB 2001 <https://doi.org/10.1103/PhysRevB.65.035109>`__
@@ -85,7 +88,24 @@ def wannierise(w90data,
     else:
         symmetrizer = VoidSymmetrizer(NK=w90data.mmn.NK)
 
-
+    if init == "amn":
+        amn = w90data.amn.data
+    elif init == "random":
+        assert num_wann is not None, "num_wann should be provided for random initialization"
+        amnshape = (w90data.mmn.NK, w90data.mmn.NB, num_wann)
+        amn = np.random.random(amnshape) + 1j * np.random.random(amnshape)
+    elif init == "restart":
+        assert w90data.wannierised, "The data is not wannierised"
+        amn = np.zeros((w90data.mmn.NK, w90data.mmn.NB, w90data.chk.num_wann), dtype=np.complex128)
+        for ik in range(w90data.mmn.NK):
+            amn[ik][w90data.chk.win_min[ik]:w90data.chk.win_max[ik]] = w90data.chk.v_matrix[ik]
+            w90data.chk.win_min[ik] = 0
+            w90data.chk.win_max[ik] = w90data.chk.num_bands
+        # amn = np.array(w90data.chk.v_matrix)
+        print ("Restarting from the previous state", amn.shape)
+    else:
+        raise ValueError("init should be 'amn' or 'random'")
+    
     neighbours_all = w90data.mmn.neighbours_unique
     neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ik] for ik in neigh]
                                        for neigh in w90data.mmn.neighbours_unique[kptirr]])
@@ -97,7 +117,7 @@ def wannierise(w90data,
                            frozen[ik], frozen[neighbours_irreducible[ik]],
         w90data.mmn.wk_unique, w90data.mmn.bk_cart_unique,
         symmetrizer, ik,
-        amn=w90data.amn.data[kpt],
+        amn=amn[kpt],
         weight=symmetrizer.ndegen(ik) / symmetrizer.NK
     )
         for ik, kpt in enumerate(kptirr)
@@ -123,12 +143,16 @@ def wannierise(w90data,
     Omega_list = []
     for i_iter in range(num_iter):
         U_opt_full_IR = []
+        wcc = SpreadFunctional_loc.get_wcc(U_opt_full_BZ)
+        wcc_bk_phase = np.exp(1j * wcc.dot(bk_cart.T))
         for ikirr, kpt in enumerate(kptirr):
             U_neigh = ([U_opt_full_BZ[ib] for ib in neighbours_all[kpt]])
             U_opt_full_IR.append(kpoints[ikirr].update(U_neigh,
                                                        mix_ratio=mix_ratio_z,
                                                        mix_ratio_u=mix_ratio_u,
-                                                       localise=localise))
+                                                       localise=localise,
+                                                       wcc_bk_phase=wcc_bk_phase,
+                                                       ))
 
         U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=True)
 

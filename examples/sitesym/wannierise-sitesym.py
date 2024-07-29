@@ -21,15 +21,19 @@ w90data = wberri.w90files.Wannier90data(seedname='diamond')
 #Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
 w90data.wannierise(
                 froz_min=-8,
-                froz_max=20,
-                num_iter=1000,
+                froz_max=17,
+                num_iter=000,
                 conv_tol=1e-10,
-                mix_ratio_z=0.8,
-                mix_ratio_u=0.7,
+                mix_ratio_z=1.0,
+                mix_ratio_u=1.0,
                 print_progress_every=20,
                 sitesym=False,
-                localise=True,
+                localise=False,
                 )
+
+print (w90data.mmn.bk_cart_unique)
+print (w90data.mmn.bk_latt_unique)
+print (w90data.mmn.wk_unique)
 exit()
 systems["wberri"] = wberri.system.System_w90(w90data=w90data)
 
