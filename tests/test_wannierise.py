@@ -1,4 +1,6 @@
+from irrep.spacegroup import SpaceGroup
 from pytest import approx
+import scipy
 import wannierberri as wberri
 import numpy as np
 import subprocess
@@ -6,6 +8,9 @@ from matplotlib import pyplot as plt
 import os
 import shutil
 from common import OUTPUT_DIR, ROOT_DIR
+from wannierberri.w90files import DMN, WIN
+from wannierberri.wannierise.Dwann import Dwann
+from irrep.bandstructure import BandStructure
 
 
 
@@ -106,3 +111,64 @@ def test_wanieriise():
 
     # One can see that results do not differ much. Also, the maximal localization does not have much effect.
     os.chdir(cwd)
+
+
+def test_Dwann():
+    cwd = os.getcwd()
+
+    tmp_dir = os.path.join(OUTPUT_DIR, "diamond-dwann")
+    os.makedirs(tmp_dir, exist_ok=True)
+    os.chdir(tmp_dir)
+
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
+    prefix = "diamond"
+    prefix_dis = "diamond_disentangled"
+    for ext in ["sym", "dmn", "win"]:
+        shutil.copy(os.path.join(data_dir, prefix + "." + ext),
+                    os.path.join(tmp_dir, prefix + "." + ext))
+    print("prefix = ", prefix)
+
+    bohr_ang = scipy.constants.physical_constants["Bohr radius"][0]*1e10
+    alat = 6.1
+    lattice = np.array([[-1,0,1],[0,1,1],[-1,1,0,]])/2*alat*bohr_ang
+    atom_pos = np.array([[-1,-1,-1],[1,1,1]])/8
+
+    spacegroup = SpaceGroup(cell = (lattice,atom_pos, [1,1]),
+                            alat = alat,
+                            from_sym_file="diamond.sym"
+                            )
+
+
+    # spacegroup.show()
+    # exit()
+
+    orbit = np.array([[0,0,0],[0,0,1],[0,1,0],[1,0,0]])/2
+
+    # orbit = np.array([[1,1,1]])/4
+    # orbit = np.array([  [0.25, 0.25, 0.25],
+    #                     [0.25, 0.25, 0.75],
+    #                     [0.75, 0.25, 0.25],
+    #                     [0.25, 0.75, 0.25],
+    #                     [0.75, 0.75, 0.75],
+    #                     [0.75, 0.75, 0.25],
+    #                     [0.75, 0.25, 0.75],
+    #                     [0.25, 0.75, 0.75]])
+
+
+    dwann = Dwann(spacegroup,  orbit )
+
+
+    # print (repr(np.array(dwann.orbit)))
+
+    dmn = DMN(seedname="diamond")
+    win = WIN(seedname="diamond")
+    kpoints = win["kpoints"]
+
+    dwann_all = dwann.get_on_points_all(kpoints, dmn.kptirr, dmn.kptirr2kpt)
+
+    diff = dmn.D_wann-dwann_all
+    diffmax = np.max(abs(diff))
+    assert diffmax < 1e-10, f"maximal difference for Dwann is {diffmax} > {1e-10}"
+    os.chdir(cwd)
+
+

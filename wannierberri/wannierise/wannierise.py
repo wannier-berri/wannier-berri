@@ -19,9 +19,9 @@ def wannierise(w90data,
                mix_ratio_u=0.5,
                print_progress_every=10,
                sitesym=False,
-               localise=False,
-               init="amn",
+               localise=True,
                kwargs_sitesym={},
+               init="amn",
                num_wann=None,
                ):
     r"""

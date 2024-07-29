@@ -15,7 +15,7 @@
 from functools import cached_property
 from copy import copy, deepcopy
 import numpy as np
-from ..wannierise import wannierise
+from ..wannierise import wannierise, Dwann
 
 from .win import WIN
 from .eig import EIG
@@ -395,7 +395,33 @@ class Wannier90data:
         if not silent:
             print(f"eig symmetry error : {err_eig}")
             print(f"amn symmetry error : {err_amn}")
-        return err_eig, err_amn
+        return err_eig, err_amn        
+
+    def set_random_symmetric_projections(self):
+        """
+        Set random symmetric projections for the system,
+        according to the dmn file
+        """
+        self.set_file("amn", self.dmn.get_random_amn(), overwrite=True)
+
+    def set_D_wann_orbit(self, positions, spacegroup):
+        """
+        Set the Dwann matrix from the positions of the Wamnnier centers (only s-orbitals so far)
+        the symmetries are applied to restore all the points belonging to this wyckoff position
+    
+        Parameters
+        ----------
+        positions : np.array(npoints,3, dtype=float) or np.array(3)
+            the positions of the wannier centers.  The symmetries are applied to restore all the 
+            points belonging to this wyckoff position
+        spacegroup: irrep.SpaceGroup
+            the spacegroup of the crystal
+        """
+        dwann = Dwann(spacegroup, positions=positions)
+        kpoints = self.chk.kpt_latt
+        self.dmn.set_D_wann(dwann.get_on_points_all(kpoints=kpoints,
+                                                    ikptirr=self.dmn.kptirr, 
+                                                    ikptirr2kpt=self.dmn.kptirr2kpt))
 
     # TODO : allow k-dependent window (can it be useful?)
     # def apply_outer_window(self,

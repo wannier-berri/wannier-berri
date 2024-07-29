@@ -3,6 +3,8 @@ from functools import cached_property
 import numpy as np
 from copy import deepcopy
 
+from wannierberri.wannierise.Dwann import Dwann
+
 from .utility import writeints, readints
 from .w90file import W90_file
 from .amn import AMN
@@ -47,7 +49,7 @@ class DMN(W90_file):
         the mapping from irreducible kpoints to all kpoints 
     kpt2kptirr_sym : numpy.ndarray(int, shape=(NK,))    
         the symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
-    D_wann_dag : numpy.ndarray(complex, shape=(NKirr, Nsym, num_wann, num_wann))
+    D_wann : numpy.ndarray(complex, shape=(NKirr, Nsym, num_wann, num_wann))
         the Wannier function transformation matrix (conjugate transpose)
     d_band : list(numpy.ndarray(complex, shape=(NKirr, Nsym, NB, NB)))
         the ab initio band transformation matrices  
@@ -210,7 +212,7 @@ class DMN(W90_file):
 
     def check_group(self, matrices="wann"):
         """
-        check that D_wann_dag is a group
+        check that D_wann is a group
 
         Parameters
         ----------
@@ -335,7 +337,25 @@ class DMN(W90_file):
         amn = np.random.random(shape) + 1j * np.random.random(shape)
         return AMN(data=self.symmetrize_amn(amn))
 
-        
+    def set_D_wann(self, D_wann):
+        """
+        set the D_wann matrix
+
+        Parameters
+        ----------
+        D_wann : np.array(complex, shape=(NKirr, Nsym, num_wann, num_wann))
+            the Wannier function transformation matrix (conjugate transpose
+
+        Notes
+        -----
+          also updates the num_wann attribute
+        """
+        assert D_wann.shape[0] == self.NKirr
+        assert D_wann.shape[1] == self.Nsym
+        assert D_wann.shape[2] == D_wann.shape[3]
+        self.num_wann = D_wann.shape[2]
+        self.D_wann = D_wann
+
 
     # def check_mmn(self, mmn, f1, f2):
     #     """
