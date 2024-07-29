@@ -124,6 +124,14 @@ class SpreadFunctional:
         Mmn_loc = np.array([[ (UT[ik].dot(self.Mmn[ik][ib].dot(U[ikb]))  ).diagonal() *wcc_phase[:,ib]
                             for ib, ikb in enumerate(neigh)]
                                 for ik, neigh in enumerate(self.neigh)])
+        
+        # Mmn_loc_check = np.array([[ (UT[ik].dot(self.Mmn[ik][ib].dot(U[ikb]))  ) *wcc_phase[:,ib]
+        #                     for ib, ikb in enumerate(neigh)]
+        #                         for ik, neigh in enumerate(self.neigh)])
+        # Mmn_loc_check = sum(Mmn_loc_check[:,ib]*w for ib,w in enumerate(self.w))/np.sum(self.w)
+        # check = abs(Mmn_loc_check - np.eye(NW)[None,:,:]).max()
+        # print ("Check", check)
+
         absnkb2 = np.sum(np.abs(Mmn_loc)**2,axis=0)
         phinkb2 = -np.sum(np.angle(Mmn_loc)**2, axis=0)
         spreads = sum(w*(NK-absnkb2[ib]+phinkb2[ib]) for ib,w in enumerate(self.w) ) # Eq 32 from MV-97
