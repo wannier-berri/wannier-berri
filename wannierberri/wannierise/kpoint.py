@@ -71,7 +71,7 @@ class Kpoint_and_neighbours:
         self.U_opt_free = get_max_eig(amn2, self.nWfree, self.NBfree)  # nBfee x nWfree marrices
         self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
 
-    def update(self, U_nb, localise=True, mix_ratio=1.0, mix_ratio_u=1.0):
+    def update(self, U_nb, wcc_bk_phase, localise=True, mix_ratio=1.0, mix_ratio_u=1.0):
         """
         update the Z matrix
 
@@ -97,11 +97,11 @@ class Kpoint_and_neighbours:
             U_opt_full = np.zeros((self.nband, self.num_wann), dtype=complex)
             U_opt_full[self.frozen, range(self.nfrozen)] = 1.
             U_opt_full[self.free, self.nfrozen:] = self.U_opt_free
-            Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib])
+            Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib])*wcc_bk_phase[None,:,ib] 
                                 for ib in range(self.nnb)])
             Mmn_loc_sumb = sum(mm * wb for mm, wb in zip(Mmn_loc, self.wb)) / sum(self.wb)
-            # print ("Mmn_loc_sumb", Mmn_loc_sumb.shape)
             # symmetrizer.symmetrize_Zk(Mmn_loc_sumb, ikirr)  # this actually makes thing worse, so not using it
+            # print ("Mmn_loc_sumb-1", np.abs(Mmn_loc_sumb-np.eye(Mmn_loc_sumb.shape[0])).max())
             U = np.linalg.inv(Mmn_loc_sumb)
             U = U.T.conj()
             U = orthogonalize(U)

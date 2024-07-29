@@ -118,9 +118,12 @@ class MMN(W90_file):
         try:
             self.bk_cart
             self.wk
+            self.wk_unique
             self.bk_latt_unique
             self.bk_cart_unique
             self.ib_unique_map
+            self.ib_unique_map_inverse
+            self.neighbours_unique
             return
         except AttributeError:
             bk_latt = np.array(
@@ -181,17 +184,32 @@ class MMN(W90_file):
             assert bk_latt_unique.shape == (self.NNB, 3)
 
             ib_unique_map = np.zeros((self.NK, self.NNB), dtype=int)
+            ib_unique_map_inverse = np.zeros((self.NK, self.NNB), dtype=int)
+            
+            bk_latt_unique_tuples = [tuple(b) for b in bk_latt_unique]
             for ik in range(self.NK):
                 for ib in range(self.NNB):
                     b_latt = np.rint((self.bk_cart[ik, ib, :] @ np.linalg.inv(recip_lattice)) * mp_grid).astype(int)
-                    ib_unique = [tuple(b) for b in bk_latt_unique].index(tuple(b_latt))
+                    ib_unique = bk_latt_unique_tuples.index(tuple(b_latt))
                     assert np.allclose(bk_cart_unique[ib_unique, :], self.bk_cart[ik, ib, :])
                     ib_unique_map[ik, ib] = ib_unique
+                    ib_unique_map_inverse[ik, ib_unique] = ib
 
             self.bk_latt_unique = bk_latt_unique
             self.bk_cart_unique = bk_cart_unique
             self.ib_unique_map = ib_unique_map
             ###################################################################
+            self.ib_unique_map_inverse = ib_unique_map_inverse
+            self.wk_unique = self.wk[0,ib_unique_map_inverse[0]]
+            self.neighbours_unique = np.array([neigh[order] for neigh, order in 
+                                               zip(self.neighbours, self.ib_unique_map_inverse)])
+            for ik in range(0, self.NK):
+                order = ib_unique_map_inverse[ik]
+                assert np.allclose(self.wk[ik,order], self.wk_unique)
+                assert np.allclose(self.neighbours[ik,order], self.neighbours_unique[ik])
 
+            self.bk_dot_bk = self.bk_cart_unique @ self.bk_cart_unique.T
+  
+                
     def set_bk_chk(self, chk, **argv):
         self.set_bk(chk.kpt_latt, chk.mp_grid, chk.recip_lattice, **argv)

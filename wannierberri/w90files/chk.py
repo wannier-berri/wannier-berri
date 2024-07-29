@@ -69,8 +69,9 @@ class CheckPoint:
         m_matrix = readcomplex().reshape((self.num_kpts, self.nntot, self.num_wann, self.num_wann)).swapaxes(2, 3)
         if self.have_disentangled:
             self.v_matrix = [u_opt[:nd, :].dot(u) for u, u_opt, nd in zip(u_matrix, u_matrix_opt, ndimwin)]
+            # self.v_matrix = [u_opt.dot(u) for u, u_opt in zip(u_matrix, u_matrix_opt)]
         else:
-            self.v_matrix = [u for u in u_matrix]
+            self.v_matrix = u_matrix
         self._wannier_centers = readfloat().reshape((self.num_wann, 3))
         self.wannier_spreads = readfloat().reshape((self.num_wann))
         del u_matrix, m_matrix
