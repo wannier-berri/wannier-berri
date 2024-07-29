@@ -17,7 +17,8 @@ def print_centers_and_spreads(w90data, U_opt_full_BZ,
     """
     if spreads is None:
         if spread_functional is not None:
-            spreads = spread_functional(U_opt_full_BZ)
+            wcc = spread_functional.get_wcc(U_opt_full_BZ)
+            spreads = spread_functional(U_opt_full_BZ, wcc=wcc)
 
     w90data.chk.v_matrix = np.array(U_opt_full_BZ)
     w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
@@ -63,7 +64,9 @@ def print_progress(i_iter, Omega_list, num_iter_converge,
 
     if spreads is None:
         assert spread_functional is not None
-        spreads = spread_functional(U_opt_full_BZ)
+        wcc = spread_functional.get_wcc(U_opt_full_BZ)
+        spreads = spread_functional(U_opt_full_BZ, wcc=wcc)
+
     Omega_list.append(spreads["Omega_tot"])
     Omega = Omega_list[-1]
     if i_iter > 0:

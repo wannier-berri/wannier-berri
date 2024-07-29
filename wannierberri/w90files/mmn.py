@@ -207,6 +207,9 @@ class MMN(W90_file):
                 order = ib_unique_map_inverse[ik]
                 assert np.allclose(self.wk[ik,order], self.wk_unique)
                 assert np.allclose(self.neighbours[ik,order], self.neighbours_unique[ik])
+
+            self.bk_dot_bk = self.bk_cart_unique @ self.bk_cart_unique.T
+  
                 
     def set_bk_chk(self, chk, **argv):
         self.set_bk(chk.kpt_latt, chk.mp_grid, chk.recip_lattice, **argv)
