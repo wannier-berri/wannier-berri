@@ -1,8 +1,7 @@
 
 import numpy as np
 
-from .utility import unique_list_mod1
-
+from ..__utility import UniqueListMod1
 
 class Dwann:
 
@@ -20,8 +19,9 @@ class Dwann:
         may be initialized with only one position. Then the other positions in the orbit will be generated
         by applying the symmetry operations of the spacegroup.
     projection : str
-        The projection type. Default is "s". 
+        The projection type. Default is "_" which means "s". 
         (not implemented yet, but should be implemented in the future)
+    orbitals : wannierberri.system.sym_wann_orbitals.Orbitals object
 
     Attributes
     ----------
@@ -37,17 +37,26 @@ class Dwann:
         A matrix that maps the orbit points to each other by the symmetry operations of the spacegroup.
     """
 
-    def __init__(self, spacegroup, positions, projection="s"):
+    def __init__(self, spacegroup, positions, projection="_",
+                 orbitals=None):
 
-        if projection!="s":
-            raise NotImplementedError("Only s projection is implemented.")
+
+        self.nsym = spacegroup.size
+        if projection!="_":
+            assert orbitals is not None
+            self.rot_orb = [orbitals.rot_orb(projection, symop.rotation_cart) 
+                       for symop in spacegroup.symmetries] 
+            self.num_orbitals = orbitals.num_orbitals(projection)
+        else:
+            self.rot_orb = [np.eye(1) for _ in range (self.nsym)]
+            self.num_orbitals = 1
         positions = np.array(positions)
         assert positions.ndim in [1,2]
         if positions.ndim==1:
             positions = positions[None,:]
         assert positions.shape[-1]==3
 
-        self.orbit = unique_list_mod1()
+        self.orbit = UniqueListMod1()
         for p in positions:
             self.orbit.append(p)
         for symop in spacegroup.symmetries:
@@ -56,7 +65,7 @@ class Dwann:
         self.spacegroup = spacegroup
 
         self.num_points = len(self.orbit)
-        self.nsym = spacegroup.size
+        self.num_wann = self.num_points * self.num_orbitals
         self.atommap = -np.ones((self.num_points, self.nsym), dtype=int)
         self.T = np.zeros((self.num_points, self.nsym, 3), dtype=float)
         
@@ -95,10 +104,13 @@ class Dwann:
         symop = self.spacegroup.symmetries[isym]
         k1p = symop.transform_k(kpt)
         g = k1p-kptirr
-        assert np.all(abs(g-np.round(g))<1e-7), f"g={g}, k1={kpt}, k2={kptirr}"
-        Dwann = np.zeros((self.num_points,self.num_points), dtype=complex)
+        assert np.all(abs(g-np.round(g))<1e-7), f"isym={isym}, g={g}, k1={kpt}, k1p={k1p}, k2={kptirr}"
+        Dwann = np.zeros((self.num_wann,self.num_wann), dtype=complex)
         for ip, _ in enumerate(self.orbit):
-            Dwann[ip, self.atommap[ip,isym]] = np.exp(2j*np.pi*(np.dot(k1p, self.T[ip,isym])  ) ) 
+            jp = self.atommap[ip,isym]
+            Dwann[ip*self.num_orbitals:(ip+1)*self.num_orbitals,
+                  jp*self.num_orbitals:(jp+1)*self.num_orbitals
+                  ] = np.exp(2j*np.pi*(np.dot(k1p, self.T[ip,isym]))) * self.rot_orb[isym].T.conj() 
         return Dwann * np.exp(-2j*np.pi*(np.dot(g,symop.translation) ))
 
     def get_on_points_all(self, kpoints, ikptirr, ikptirr2kpt):
@@ -121,9 +133,9 @@ class Dwann:
         Dwann : np.ndarray(shape=(NKirr,nsym, num_points,num_points), dtype=complex)
             The Wannier transformation matrices D_wann.
         """
-        Dwann = np.zeros((len(ikptirr),self.nsym, self.num_points,self.num_points), dtype=complex)
-        for ik,k in enumerate(ikptirr):
+        Dwann = np.zeros((len(ikptirr),self.nsym, self.num_wann,self.num_wann), dtype=complex)
+        for ikirr,ik in enumerate(ikptirr):
             for isym in range(self.nsym):
-                Dwann[ik,isym] = self.get_on_points(kpoints[k],kpoints[ikptirr2kpt[ik,isym]],isym)
+                Dwann[ikirr, isym] = self.get_on_points(kpoints[ik], kpoints[ikptirr2kpt[ikirr,isym]], isym)
         return Dwann
         

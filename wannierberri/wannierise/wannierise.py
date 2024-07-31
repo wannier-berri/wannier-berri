@@ -2,7 +2,7 @@ import numpy as np
 
 from .kpoint import Kpoint_and_neighbours
 
-from .utility import frozen_nondegen, print_centers_and_spreads, print_progress
+from .utility import select_window_degen, print_centers_and_spreads, print_progress
 
 from ..__utility import vectorize
 from .sitesym import VoidSymmetrizer, Symmetrizer
@@ -77,7 +77,7 @@ def wannierise(w90data,
     else:
         kptirr = np.arange(w90data.mmn.NK)
 
-    frozen = vectorize(frozen_nondegen, w90data.eig.data[kptirr], to_array=True,
+    frozen = vectorize(select_window_degen, w90data.eig.data[kptirr], to_array=True,
                        kwargs=dict(froz_min=froz_min, froz_max=froz_max))
     free = vectorize(np.logical_not, frozen, to_array=True)
 

@@ -1,5 +1,4 @@
-import sys
-from typing import Any
+
 import numpy as np
 DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
 
@@ -93,30 +92,56 @@ def print_progress(i_iter, Omega_list, num_iter_converge,
     return delta_max
 
 
-def frozen_nondegen(E, thresh=DEGEN_THRESH, froz_min=np.inf, froz_max=-np.inf):
-    """define the indices of the frozen bands, making sure that degenerate bands were not split
-    (unfreeze the degenerate bands together)
+def select_window_degen(E, thresh=DEGEN_THRESH, win_min=np.inf, win_max=-np.inf, 
+                        include_degen=False,
+                        return_indices=False):
+    """define the indices of the bands inside the window, making sure that degenerate bands were not split
+    
 
     Parameters
     ----------
     E : numpy.ndarray(nb, dtype=float)
-        the energies of the bands
+        the energies of the bands (sorted ascending)
     thresh : float
         the threshold for the degeneracy
+    include_degen : bool
+        if True, the degenerate bands are included in the window
 
     Returns
     -------
     numpy.ndarray(bool)
         the boolean array of the frozen bands  (True for frozen)
     """
-    ind = list(np.where((E <= froz_max) * (E >= froz_min))[0])
-    while len(ind) > 0 and ind[0] > 0 and E[ind[0]] - E[ind[0] - 1] < thresh:
-        del ind[0]
-    while len(ind) > 0 and ind[-1] < len(E) - 1 and E[ind[-1] + 1] - E[ind[-1]] < thresh:
-        del ind[-1]
-    froz = np.zeros(E.shape, dtype=bool)
-    froz[ind] = True
-    return froz
+    NB = len(E)
+    ind = list(np.where((E <= win_max) * (E >= win_min))[0])
+
+    # The upper bound
+    for i in range(ind[-1],NB-1):
+        if E[i+1] - E[i] < thresh:
+            if include_degen:
+                ind[i+1] = True
+            else:
+                ind[i] = False
+                break
+        else:
+            break
+            
+    # The lower bound
+    for i in range(ind[0],1,-1):
+        if E[i] - E[i-1] < thresh:
+            if include_degen:
+                ind[i-1] = True
+            else:
+                ind[i] = False
+                break
+        else:
+            break
+    if return_indices:
+        return ind
+    else:
+        inside = np.zeros(E.shape, dtype=bool)
+        inside[ind] = True
+        return inside
 
 
 def get_max_eig(matrix, nvec, nBfree):
@@ -160,79 +185,3 @@ def orthogonalize(u):
     return U @ VT
 
 
-class unique_list(list):
-        """	
-        A list that only allows unique elements.
-        uniqueness is determined by the == operator.
-        Thus, non-hashable elements are also allowed.
-        unlike set, the order of elements is preserved.
-        """
-
-        def __init__(self, iterator=[]):
-            super().__init__()
-            for x in iterator:
-                self.append(x)
-
-        def append(self, item):
-            for i in self:
-                if i == item:
-                    break
-            else:
-                super().append(item)
-
-        def index(self, value: Any, start = 0, stop = sys.maxsize) -> int:
-            for i in range(start, stop):
-                if self[i] == value:
-                    return i
-            raise ValueError(f"{value} not in list")
-        
-        def __contains__(self, item):
-            for i in self:
-                if i == item:
-                    return True
-            return False
-        
-        def remove(self, value: Any) -> None:
-            for i in range(len(self)):
-                if self[i] == value:
-                    del self[i]
-                    return
-                
-class unique_list_mod1(unique_list):
-
-    def __init__(self, iterator=[], tol=1e-5):
-        self.tol = tol
-        self.appended_indices = []
-        self.last_try_append = -1
-        super().__init__(iterator)
-
-    def append(self, item):
-        self.last_try_append += 1
-        for i in self:
-            if all_close_mod1(i, item, tol=self.tol):
-                break
-        else:
-            list.append(self,item)
-            self.appended_indices.append(self.last_try_append)
-
-    def __contains__(self, item):
-        for i in self:
-            if all_close_mod1(i, item, tol=self.tol):
-                return True
-        return False
-
-    def index(self, value: Any, start = 0, stop = sys.maxsize) -> int:
-        stop = min(stop, len(self))
-        for i in range(start, stop):
-            if all_close_mod1(self[i], value):
-                return i
-        raise ValueError(f"{value} not in list")
-
-
-                
-def all_close_mod1(a,b,tol=1e-5):
-    """check if two vectors are equal modulo 1"""
-    if  not np.shape(a)==() and not np.shape(b)==() and (np.shape(a) != np.shape(b)):
-        return False
-    diff = a-b
-    return np.allclose(np.round(diff), diff , atol=tol)

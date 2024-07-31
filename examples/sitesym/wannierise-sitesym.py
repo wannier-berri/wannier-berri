@@ -31,10 +31,6 @@ w90data.wannierise(
                 localise=False,
                 )
 
-print (w90data.mmn.bk_cart_unique)
-print (w90data.mmn.bk_latt_unique)
-print (w90data.mmn.wk_unique)
-exit()
 systems["wberri"] = wberri.system.System_w90(w90data=w90data)
 
 # If needed - perform maximal localization using Wannier90

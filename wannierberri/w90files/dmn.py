@@ -3,8 +3,6 @@ from functools import cached_property
 import numpy as np
 from copy import deepcopy
 
-from wannierberri.wannierise.Dwann import Dwann
-
 from .utility import writeints, readints
 from .w90file import W90_file
 from .amn import AMN

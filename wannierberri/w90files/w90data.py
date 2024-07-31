@@ -15,7 +15,8 @@
 from functools import cached_property
 from copy import copy, deepcopy
 import numpy as np
-from ..wannierise import wannierise, Dwann
+from ..wannierise import wannierise
+from .Dwann import Dwann
 
 from .win import WIN
 from .eig import EIG

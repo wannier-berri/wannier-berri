@@ -9,7 +9,7 @@ import os
 import shutil
 from common import OUTPUT_DIR, ROOT_DIR
 from wannierberri.w90files import DMN, WIN
-from wannierberri.wannierise.Dwann import Dwann
+from wannierberri.w90files.Dwann import Dwann
 from irrep.bandstructure import BandStructure
 
 
