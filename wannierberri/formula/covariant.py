@@ -44,8 +44,8 @@ class DEinv_ln(Matrix_ln):
     def __init__(self, data_K):
         super().__init__(data_K.dEig_inv)
 
-    def nn(self, ik, inn, out):
-        raise NotImplementedError("dEinv_ln should not be called within inner states")
+    #def nn(self, ik, inn, out):
+    #    raise NotImplementedError("dEinv_ln should not be called within inner states")
 
 
 class Dcov(Matrix_ln):
@@ -534,6 +534,23 @@ class Omegakp(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+class BCP_G_kp(Formula_ln):
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)    
+        self.Omega = Omegakp
+        self.dEinv = DEinv_ln(data_K)
+        self.ndim = 1
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+
+    def nn(self, ik, inn, out):
+        summ = -2 * np.einsum("mna,mn,lna->mna", self.Omega.nn(ik,inn,out), 
+                self.dEinv.nn(ik,inn,out))
+        return summ
+    
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
 
 class X1(Formula_ln):
     def __init__(self, data_K, **parameters):
@@ -667,6 +684,11 @@ class VelOmegakp(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([data_K.covariant('Ham', commader=1), Omegakp(data_K, **kwargs_formula)], name='VelOmegakp')
+
+class BCPkp(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([data_K.covariant('Ham', commader=1), BCP_G_kp(data_K, **kwargs_formula)], name='VelOmegakp')
 
 class VelHplus(FormulaProduct):
 

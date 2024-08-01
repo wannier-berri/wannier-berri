@@ -339,6 +339,21 @@ class AHCkp(StaticCalculator):
         self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
 
+class BCP_kp_FermiSurf(StaticCalculator):
+    r"""Anomalous Hall conductivity (:math:`s^3 \cdot A^2 / (kg \cdot m^3) = S/m`)
+
+        | With Fermi sea integral Eq(11) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
+        | Output: :math:`O = -e^2/\hbar \int [dk] \Omega f`
+        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta = \epsilon_{\alpha\beta\delta} O_\delta E_\beta`"""
+
+    #def __init__(self, constant_factor=factors.factor_ahc, **kwargs):
+    def __init__(self, constant_factor=1, **kwargs):
+        "describe input parameters here"
+        self.Formula = frml.BCPkp
+        self.fder = 1
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
 class AHC_test(StaticCalculator):
     r"""Anomalous Hall conductivity for testing (:math:`s^3 \cdot A^2 / (kg \cdot m^3) = S/m`)
 
