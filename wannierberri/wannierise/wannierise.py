@@ -78,7 +78,7 @@ def wannierise(w90data,
         kptirr = np.arange(w90data.mmn.NK)
 
     frozen = vectorize(select_window_degen, w90data.eig.data[kptirr], to_array=True,
-                       kwargs=dict(froz_min=froz_min, froz_max=froz_max))
+                       kwargs=dict(win_min=froz_min, win_max=froz_max))
     free = vectorize(np.logical_not, frozen, to_array=True)
 
     if sitesym:

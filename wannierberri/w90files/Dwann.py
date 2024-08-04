@@ -46,7 +46,7 @@ class Dwann:
         self.nsym = spacegroup.size
         if projection!="_":
             assert orbitals is not None
-            self.rot_orb = [orbitals.rot_orb(projection, symop.rotation_cart) 
+            self.rot_orb = [orbitals.rot_orb(projection, symop.rotation_cart)
                        for symop in spacegroup.symmetries] 
             self.num_orbitals = orbitals.num_orbitals(projection)
         else:

@@ -279,10 +279,18 @@ class DMN(W90_file):
         Rotates the umat matrix at the irreducible kpoint
         U = D_band^+ @ U @ D_wann
         """
+        d = self.d_band[ikirr, isym]
+        D = self.D_wann[ikirr, isym]
+        # forward = not forward
         if forward:
-            return self.d_band[ikirr, isym].conj().T @ U @ self.D_wann[ikirr, isym]
+            return d @ U @ D.conj().T
         else:
-            return self.d_band[ikirr, isym] @ U @ self.D_wann[ikirr, isym].conj().T
+            return d.conj().T @ U @ D
+
+        # if forward:
+        #     return self.d_band[ikirr, isym].conj().T @ U @ self.D_wann[ikirr, isym]
+        # else:
+        #     return self.d_band[ikirr, isym] @ U @ self.D_wann[ikirr, isym].conj().T
 
     def rotate_Z(self, Z, isym, ikirr, free=None):
         """
@@ -377,7 +385,7 @@ class DMN(W90_file):
                 maxerr = max(maxerr, np.linalg.norm(e1 - e2))
         return maxerr
 
-    def check_amn(self, amn, warning_precision=1e-5, ignore_upper_bands=0):
+    def check_amn(self, amn, warning_precision=1e-5, ignore_upper_bands=None):
         """
         Check the symmetry of the amn
 
@@ -394,16 +402,19 @@ class DMN(W90_file):
         if isinstance(amn, AMN):
             amn = amn.data
         maxerr = 0
+        if ignore_upper_bands is not None:
+            assert abs(ignore_upper_bands) < self.num_wann
+            ignore_upper_bands = -abs(int(ignore_upper_bands))
 
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
                 ik = self.kptirr2kpt[ikirr, isym]
                 a1 = amn[ik]
                 a2 = amn[self.kptirr[ikirr]]
-                a1p=self.rotate_U(a1, ikirr, isym, forward=True)
-                a1=a1[:-ignore_upper_bands]
-                a1p=a1p[:-ignore_upper_bands]
-                a2=a2[:-ignore_upper_bands]
+                a1p=self.rotate_U(a1, ikirr, isym, forward=False)
+                a1=a1[:ignore_upper_bands]
+                a1p=a1p[:ignore_upper_bands]
+                a2=a2[:ignore_upper_bands]
                 diff = a2 - a1p
                 diff = np.max(abs(diff))
                 maxerr = max(maxerr, np.linalg.norm(diff))

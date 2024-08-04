@@ -117,7 +117,7 @@ class Symmetrizer:
             for isym in range(self.Nsym):
                 iRk = self.Dmn.kptirr2kpt[ikirr, isym]
                 if Ufull[iRk] is None and (self.include_k[iRk] or all_k):
-                    Ufull[iRk] = self.Dmn.rotate_U(U[ikirr], ikirr, isym)
+                    Ufull[iRk] = self.Dmn.rotate_U(U[ikirr], ikirr, isym, forward=True)
         return Ufull
 
     def symmetrize_Zk(self, Z, ikirr):
@@ -163,7 +163,7 @@ class Symmetrizer:
         nb, nw = U.shape
 
         for i in range(self.n_iter):
-            Usym = sum(Dmn.rotate_U(U, ikirr, isym, forward=False) for isym in isym_little) / nsym_little
+            Usym = sum(Dmn.rotate_U(U, ikirr, isym, forward=True) for isym in isym_little) / nsym_little
             Usym = orthogonalize(Usym)
             diff = np.eye(nw) - U.conj().T @ Usym
             diff = np.sum(np.abs(diff))
