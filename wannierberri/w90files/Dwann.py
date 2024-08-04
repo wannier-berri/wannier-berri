@@ -18,6 +18,8 @@ class Dwann:
         List of positions of Wannier centers in reduced coordinates.
         may be initialized with only one position. Then the other positions in the orbit will be generated
         by applying the symmetry operations of the spacegroup.
+        if the file will be used with an already generated .amn file, 
+        the positions should be the same as the .amn file, including the order.
     projection : str
         The projection type. Default is "_" which means "s". 
         (not implemented yet, but should be implemented in the future)
