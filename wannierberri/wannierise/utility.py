@@ -114,6 +114,11 @@ def select_window_degen(E, thresh=DEGEN_THRESH, win_min=np.inf, win_max=-np.inf,
     """
     NB = len(E)
     ind = list(np.where((E <= win_max) * (E >= win_min))[0])
+    if len(ind) == 0:
+        if return_indices:
+            return []
+        else:
+            return np.zeros(E.shape, dtype=bool)
 
     # The upper bound
     for i in range(ind[-1],NB-1):

@@ -149,62 +149,58 @@ class DMN(W90_file):
             return bandstructure.kpoints[self.selected_kpoints[ik]]
     
         # First determine which kpoints are irreducible
-        kpoints_unique = UniqueListMod1(self.kpoints)
-        irreducible_kpoints = np.ones(self.NK, dtype=bool)
-        for i,k1 in enumerate(self.kpoints):
-            if not irreducible_kpoints[i]:
-                continue
-            for symop in bandstructure.spacegroup.symmetries:
-                k2 = symop.transform_k(k1)
-                if k2 not in kpoints_unique:
-                    raise RuntimeError("Symmetry operation maps k-point outside the grid. Masybe the grid is incompatible with the symmetry operations")
-                j = kpoints_unique.index(k2)
-                if j!=i:
-                    irreducible_kpoints[j] = False
-        self.kptirr = np.where(irreducible_kpoints)[0]
-        self.NKirr = len(self.kptirr)
-       
-        # Now determine the kptirr2kpt and kpt2kptirr mappings
-        # 
-        # kptirr2kpt[i,isym]=j means that the j-th kpoint of full grid is transformed into 
-        # the i-th irreducible kpoint by the isym-th symmetry operation.
-        # 
-        # At least I  understand so the convention of dmn. We'll see if it works, or needs to be reversed
-        # 
-        # the G vectors mean that 
-        # symop.transform(kj) = ki + G
-        self.kptirr2kpt = -np.ones((self.NKirr, self.Nsym), dtype=int)
+        # and set mapping from irreducible to full grid and back
+        #
+        # kptirr2kpt[i,isym]=j means that the i-th irreducible kpoint
+        # is transformed to the j-th kpoint of full grid  
+        #  by the isym-th symmetry operation.
+        #
+        # This is consistent with w90 documentations, but seemd to be opposite to what pw2wannier90 does
+         
+        kpoints_mod1 = UniqueListMod1(self.kpoints)
+        assert len(kpoints_mod1) == len(self.kpoints)
+        is_irreducible = np.ones(self.NK, dtype=bool)
+        self.kptirr = []
+        self.kptirr2kpt = []
         self.kpt2kptirr = -np.ones(self.NK, dtype=int)
-        self.G = np.zeros((self.NKirr, self.Nsym, 3), dtype=complex)
-
-        kpoints_unique_irr = UniqueListMod1(self.kpoints[self.kptirr])
-        for j in range(self.NK):
-            kj = self.kpoints[j]
-            for isym,symop in enumerate(bandstructure.spacegroup.symmetries):
-                kj1 = symop.transform_k(kj)
-                if kj1 in kpoints_unique_irr:
-                    i = kpoints_unique_irr.index(kj1)
-                    G = kj1 - kpoints_unique_irr[i]
-                    if self.kptirr2kpt[i,isym] == -1:
-                        self.kptirr2kpt[i,isym] = j
-                        self.G[i,isym] = G
-                    else:
-                        assert self.kptirr2kpt[i,isym] == j, f" same symmetry operation maps two different kpoints to the same irreducible kpoint {j} and {self.kptirr2kpt[i,isym]}"
-                        assert np.all(self.G[j,isym] == G), f"symmetry {isym} maps kpoint {j} to irreducible kpoint {i} with two different G vectors {self.G[j,isym]} and {G}"
+        self.G = []
+        self.NKirr = 0
+        for i,k1 in enumerate(self.kpoints):
+            if is_irreducible[i]:
+                self.kptirr.append(i)
+                self.kptirr2kpt.append(np.zeros(self.Nsym, dtype=int))
+                self.G.append(np.zeros((self.Nsym, 3), dtype=int))
+                self.NKirr +=1
+                ikirr = self.NKirr - 1
+                for isym, symop in enumerate(bandstructure.spacegroup.symmetries):
+                    k1p = symop.transform_k(k1)
+                    if k1p not in kpoints_mod1:
+                        raise RuntimeError("Symmetry operation maps k-point outside the grid. Maybe the grid is incompatible with the symmetry operations")
+                    j = kpoints_mod1.index(k1p)
+                    k2= self.kpoints[j]
+                    if isym!=i:
+                        is_irreducible[j] = False
+                    self.kptirr2kpt[ikirr][isym] = j
+                    # the G vectors mean that 
+                    # symop.transform(ki) = kj + G
+                    self.G[ikirr][isym] = k1p - k2
                     if self.kpt2kptirr[j] == -1:
-                        self.kpt2kptirr[j] = i
+                        self.kpt2kptirr[j] = ikirr
                     else:
-                        assert self.kpt2kptirr[j] == i, f"two different irreducible kpoints {i} and {self.kpt2kptirr[j]} are mapped to the same kpoint {j}"
-        del kpoints_unique_irr
+                        assert self.kpt2kptirr[j] == ikirr, f"two different irreducible kpoints {ikirr} and {self.kpt2kptirr[j]} are mapped to the same kpoint {j}"
+        self.kptirr = np.array(self.kptirr)
+        self.kptirr2kpt = np.array(self.kptirr2kpt)
+        self.G = np.array(self.G)
+        del kpoints_mod1
 
         assert np.all(self.kptirr2kpt>=0)
         assert np.all(self.kpt2kptirr>=0)
 
         self.d_band = np.zeros((self.NKirr, self.Nsym, self.NB, self.NB), dtype=complex)
         for i, ikirr in enumerate(self.kptirr):
+            K1 = get_K(ikirr)
             for isym, symop in enumerate(bandstructure.spacegroup.symmetries):
-                K1 = get_K(self.kptirr2kpt[i,isym])
-                K2 = get_K(ikirr)
+                K2 = get_K(self.kptirr2kpt[i,isym])
                 self.d_band[i, isym] = symm_matrix(
                                                     K=K1.k,
                                                     K_other=K2.k,
@@ -216,8 +212,23 @@ class DMN(W90_file):
                                                     S=symop.spinor_rotation,
                                                     T=symop.translation,
                                                     spinor = K1.spinor,
-                                                )
-                
+                                                ).T  
+                #transposed because in irrep WF is row vector, while in dmn it is column vector
+            # check the symmetry of the transformation matrices
+            if hasattr(K1,'char'):
+                E = K1.Energy_raw
+                borders = [0]+ (np.where(E[1:]- E[:-1]>1e-4)[0]+1).tolist() + [len(E)]
+                characters = []
+                for isym in range(self.Nsym):
+                    if self.kptirr2kpt[i, isym] == ikirr:
+                        characters.append(self.d_band[i, isym].diagonal())
+                characters = np.array(characters).T
+                characters = np.array([characters[b1:b2].sum(axis=0) for b1, b2 in zip(borders[:-1], borders[1:])])
+                if np.max(np.abs(characters - K1.char)) > 1e-3:
+                    print (f"characters = {characters}")
+                    raise RuntimeError(f"characters do not match for irreducible kpoint {ikirr}, from dmn {characters} vs from irrep {K1.char}")
+                # print (f"characters = {characters}")
+                    
 
     def get_disentangled(self, v_matrix_dagger, v_matrix):
         NBnew = v_matrix.shape[2]
@@ -269,9 +280,9 @@ class DMN(W90_file):
         U = D_band^+ @ U @ D_wann
         """
         if forward:
-            return self.d_band[ikirr, isym] @ U @ self.D_wann[ikirr, isym].conj().T
-        else:
             return self.d_band[ikirr, isym].conj().T @ U @ self.D_wann[ikirr, isym]
+        else:
+            return self.d_band[ikirr, isym] @ U @ self.D_wann[ikirr, isym].conj().T
 
     def rotate_Z(self, Z, isym, ikirr, free=None):
         """
@@ -366,7 +377,7 @@ class DMN(W90_file):
                 maxerr = max(maxerr, np.linalg.norm(e1 - e2))
         return maxerr
 
-    def check_amn(self, amn):
+    def check_amn(self, amn, warning_precision=1e-5, ignore_upper_bands=0):
         """
         Check the symmetry of the amn
 
@@ -387,10 +398,24 @@ class DMN(W90_file):
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
                 ik = self.kptirr2kpt[ikirr, isym]
-                a1 = amn[self.kptirr[ikirr]]
-                a2 = amn[ik]
-                diff = a2 - self.rotate_U(a1, ikirr, isym)
+                a1 = amn[ik]
+                a2 = amn[self.kptirr[ikirr]]
+                a1p=self.rotate_U(a1, ikirr, isym, forward=True)
+                a1=a1[:-ignore_upper_bands]
+                a1p=a1p[:-ignore_upper_bands]
+                a2=a2[:-ignore_upper_bands]
+                diff = a2 - a1p
+                diff = np.max(abs(diff))
                 maxerr = max(maxerr, np.linalg.norm(diff))
+                if diff > warning_precision:
+                    print (f"ikirr={ikirr}, isym={isym} : {diff}")
+                    for aaa in zip(a1, a1p, a2, a1p-a2,a1p/a2):
+                        string = ""
+                        for a in aaa:
+                            _abs = ", ".join(f"{np.abs(_):.4f}" for _ in a)
+                            _angle = ", ".join(f"{np.angle(_)/np.pi*180:7.2f}" for _ in a)   
+                            string+= f"[{_abs}] [{_angle}]   |    "
+                        print (string)    
         return maxerr
 
     def symmetrize_amn(self, amn):
@@ -419,6 +444,9 @@ class DMN(W90_file):
         lfound = np.zeros(self.NK, dtype=bool)
         amn_sym = np.zeros((self.NK, self.NB, self.num_wann), dtype=complex)
         for ikirr in range(self.NKirr):
+            ik = self.kptirr[ikirr]
+            amn_sym[ik] = amn_sym_irr[ikirr]
+            lfound[ik] = True
             for isym in range(self.Nsym):
                 ik = self.kptirr2kpt[ikirr, isym]
                 if not lfound[ik]:

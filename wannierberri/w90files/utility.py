@@ -108,18 +108,19 @@ def grid_from_kpoints(kpoints, grid=None):
     """
     if grid is None:
         grid = tuple(np.lcm.reduce([Fraction(k).limit_denominator(100).denominator for k in kp]) for kp in kpoints.T)        
-    npgrid = np.array(grid)    
+    npgrid = np.array(grid)
+    print (f"mpgrid = {npgrid}, {len(kpoints)}")
     kpoints_unique = UniqueListMod1()
     selected_kpoints = []
     for i,k in enumerate(kpoints):
-        if is_round(k*npgrid):
+        if is_round(k*npgrid,prec=1e-5):
             if k not in kpoints_unique:
                 kpoints_unique.append(k)
                 selected_kpoints.append(i)
             else : 
                 warnings.warn(f"k-point {k} is repeated")
     if len(kpoints_unique) < np.prod(grid):
-        raise ValueError("Some k-points are missing")
+        raise ValueError(f"Some k-points are missing {len(kpoints_unique)}< {np.prod(grid)}")
     if len(kpoints_unique) > np.prod(grid):
         raise RuntimeError("Some k-points are taken twice - this must be a bug")
     if len(kpoints_unique) < len(kpoints):
