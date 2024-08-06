@@ -2,6 +2,7 @@
 # and then use it to generate a Wannier90 output.
 # It uses Irrep, and may be used with any DFT code that is supported by Irrep (QE, VASP, AINIT, ...)
 
+import datetime
 import subprocess
 from matplotlib import pyplot as plt
 import wannierberri as wberri
@@ -45,8 +46,8 @@ print ("amn_symmetry", dmn_new.check_amn(w90data.amn.data, warning_precision=1e-
 
 #Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
 w90data.wannierise(
-                froz_min=-8,
-                froz_max=20,
+                froz_min=0,
+                froz_max=4,
                 num_iter=1000,
                 conv_tol=1e-10,
                 mix_ratio_z=1.0,
@@ -93,6 +94,7 @@ for key,sys in systems.items():
     result.results['tabulate'].plot_path_fat(path, close_fig=False, show_fig=False, 
                                              linecolor=linecolors.pop(0), label=key,
                                              kwargs_line={"ls":linestyles.pop(0)})
+plt.title(f"time now {datetime.datetime.now()}")
 plt.savefig("diamond-bands-2.png")
 
 # One can see that results do not differ much. Also, the maximal localization does not have much effect.

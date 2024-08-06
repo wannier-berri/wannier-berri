@@ -164,21 +164,21 @@ class DMN(W90_file):
         self.kptirr2kpt = []
         self.kpt2kptirr = -np.ones(self.NK, dtype=int)
         self.G = []
-        self.NKirr = 0
+        ikirr = -1
         for i,k1 in enumerate(self.kpoints):
             if is_irreducible[i]:
                 self.kptirr.append(i)
                 self.kptirr2kpt.append(np.zeros(self.Nsym, dtype=int))
                 self.G.append(np.zeros((self.Nsym, 3), dtype=int))
-                self.NKirr +=1
-                ikirr = self.NKirr - 1
+                ikirr +=1
+                
                 for isym, symop in enumerate(bandstructure.spacegroup.symmetries):
                     k1p = symop.transform_k(k1)
                     if k1p not in kpoints_mod1:
                         raise RuntimeError("Symmetry operation maps k-point outside the grid. Maybe the grid is incompatible with the symmetry operations")
                     j = kpoints_mod1.index(k1p)
                     k2= self.kpoints[j]
-                    if isym!=i:
+                    if j!=i:
                         is_irreducible[j] = False
                     self.kptirr2kpt[ikirr][isym] = j
                     # the G vectors mean that 
@@ -187,8 +187,10 @@ class DMN(W90_file):
                     if self.kpt2kptirr[j] == -1:
                         self.kpt2kptirr[j] = ikirr
                     else:
-                        assert self.kpt2kptirr[j] == ikirr, f"two different irreducible kpoints {ikirr} and {self.kpt2kptirr[j]} are mapped to the same kpoint {j}"
+                        assert self.kpt2kptirr[j] == ikirr, (f"two different irreducible kpoints {ikirr} and {self.kpt2kptirr[j]} are mapped to the same kpoint {j}"
+                                                             f"kptirr= {self.kptirr}, \nkpt2kptirr= {self.kpt2kptirr}\n kptirr2kpt= {self.kptirr2kpt}")
         self.kptirr = np.array(self.kptirr)
+        self.NKirr = len(self.kptirr)
         self.kptirr2kpt = np.array(self.kptirr2kpt)
         self.G = np.array(self.G)
         del kpoints_mod1

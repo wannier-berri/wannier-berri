@@ -2,8 +2,11 @@ from collections import defaultdict
 import os
 import pickle
 import shutil
+from typing import Iterable
+from irrep.bandstructure import BandStructure
 from matplotlib import pyplot as plt
 import numpy as np
+from wannierberri.w90files.dmn import DMN
 from ..w90files import WIN, Wannier90data
 from .. parallel import Serial as wbSerial
 from .ase import write_espresso_in
@@ -293,7 +296,7 @@ class WorkflowQE:
         self.flags = FlagsCalculated(['gs', 'nscf', 'pw2wannier', 'wannier_w90', 
                                       'bands_qe', 'bands_wannier_w90',
                                       'wannierise_wberri', 'bands_wannier_wberri',
-                                      'win','projections'],
+                                      'win','projections','dmn'],
                             depend=dict(nscf=['gs'],
                                         pw2wannier=['nscf','win'],
                                         win = ['nscf','projections'],
@@ -369,9 +372,25 @@ class WorkflowQE:
             l: int
                 The angular momentum of the projection
         """
+        def num_wann(proj):
+            num_wann_spdf = {'s':0, 'p':1, 'd':2, 'f':3}
+            if isinstance(proj,int):
+                return 2*proj+1
+            elif isinstance(proj,str):
+                return sum(num_wann_spdf[x.strip()] for x in proj.split(';'))
+            elif isinstance(proj,Iterable):
+                return sum([2*l+1 for l in proj])
+        def to_str(proj):
+            if isinstance(proj,str):
+                return proj
+            elif isinstance(proj,int):
+                return f"{'spdf'[proj]}"
+            elif isinstance(proj,Iterable):
+                return " ".join([f"{'spdf'[l]}" for l in proj])
         self.projections = projections
-        self.num_wann = sum([proj[1]*2+1 for proj in self.projections])
-        self.projections_str = [f"f = {x[0][0]:16.12f}, {x[0][1]:16.12f}, {x[0][2]:16.12f} : {'spdf'[x[1]]}" for x in projections]
+        self.num_wann = sum(num_wann(proj[1]) for proj in self.projections)
+        projections = [(np.array(x[0]), x[1]) for x in projections]
+        self.projections_str = [f"f = {x[0][0]:16.12f}, {x[0][1]:16.12f}, {x[0][2]:16.12f} : {to_str(x[1])}" for x in projections]
         self.flags.on('projections')
         self.pickle()
 
@@ -433,6 +452,44 @@ class WorkflowQE:
         self.system_wberri = System_w90(w90data=w90data)
         self.flags.on('wannierise_wberri')
         self.pickle()
+
+    def create_dmn(self, projections, Ecut=100, enforce=False):
+        """
+        Create the DMN file for Wannier90
+
+        Parameters
+        ----------
+        projections: list(tuple)
+            List of tuples with the projections
+            [(f, l), ...]
+            f: np.array(3) or list(np.array(3))
+                The fractional coordinates of the atom (one or more of the orbit)
+            l: str
+                The angular momentum of the projection, e.g. 's', 'p', 'd', 'sp3'
+        Ecut: float
+            The energy cutoff for the plane waves in wave functions
+        enforce: bool
+            If True, recalculate the DMN file even if it has been calculated before
+
+        Notes
+        -----
+        projections here are given again, because previously projections were given as separate, not as orbits
+        TODO : unify his with set_projections
+        """
+
+        bandstructure = BandStructure(code='espresso', 
+                                      prefix=self.prefix, 
+                                      Ecut=Ecut,
+                                      normalize=False
+                                    )
+        bandstructure.spacegroup.show()
+        if enforce or not self.flags.check('dmn'):
+            dmn_new = DMN(empty=True)
+            dmn_new.from_irrep(bandstructure)
+            dmn_new.set_D_wann_from_projections(projections=projections)
+            dmn_new.to_w90_file(self.prefix)
+            self.flags.on('dmn')
+
     
     
     def calc_bands_wannier_w90(self, kdensity=1000,enforce=False):
@@ -487,16 +544,20 @@ class WorkflowQE:
         self.flags.on('bands_qe')
         self.pickle()
 
-    def plot(self):
+    def plot(self, show=True, savefig=None, ylim=None):
         if self.flags['bands_qe']:
             for band in self.bands_qe:
-                plt.scatter(self.kline_qe, band, c='g')
+                plt.scatter(self.kline_qe, band, c='g', s=4)
         if self.flags['bands_wannier_w90']:
             self.bands_wannier_w90.plot_path_fat(self.path_wannier, show_fig=False, close_fig=False, linecolor='b', label="w90")
         if self.flags['bands_wannier_wberri']:
             self.bands_wannier_wberri.plot_path_fat(self.path_wannier, show_fig=False, close_fig=False, linecolor='r', label="wberri")
-            
-        plt.show()
+        if ylim is not None:
+            plt.ylim(ylim)
+        if savefig is not None:
+            plt.savefig(savefig)
+        if show:
+            plt.show()
 
 
 def get_wannier_band_structure(system, k_nodes, length=1000,npar=0,parallel=None):
