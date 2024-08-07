@@ -1,4 +1,5 @@
 from functools import cached_property
+import warnings
 
 from irrep.bandstructure import BandStructure
 from irrep.gvectors import symm_matrix
@@ -6,7 +7,8 @@ from irrep.utility import get_block_indices
 import numpy as np
 from copy import deepcopy
 
-from wannierberri.__utility import UniqueListMod1
+from ..__utility import UniqueListMod1
+from ..wannierise.projections import ProjectionsSet
 
 from .utility import grid_from_kpoints, writeints, readints
 from .w90file import W90_file
@@ -215,7 +217,8 @@ class DMN(W90_file):
         assert np.all(self.kptirr2kpt>=0)
         assert np.all(self.kpt2kptirr>=0)
 
-        self.d_band = np.zeros((self.NKirr, self.Nsym, self.NB, self.NB), dtype=complex)
+        NB = bandstructure.num_bands
+        self.d_band = np.zeros((self.NKirr, self.Nsym, NB, NB), dtype=complex)
         for i, ikirr in enumerate(self.kptirr):
             K1 = get_K(ikirr)
             block_indices = get_block_indices(K1.Energy_raw, thresh=degen_thresh, cyclic=False)
@@ -530,6 +533,7 @@ class DMN(W90_file):
     def set_D_wann_from_projections(self,
                                         spacegroup=None, 
                                         projections=[],
+                                        projections_obj=[],
                                         win=None,
                                         kpoints=None):
         """
@@ -537,21 +541,21 @@ class DMN(W90_file):
         ----------
         spacegroup : SpaceGroup
             the spacegroup of the system
-        projections : list( tuple(np.array(float, shape=(npoints,3,)), str) )
-            the list of projections to be passed to Dwann
-            first element = the positions (or one position)
-            second element = the projection type, e.g "s", "px", "py", "pz", "dxy", "dyz", "dz2", "dxz", "dx2-y2"
+        projections : list( wannierberri.wannierise.projections.Projection)
+            the list of projections. Note that if some
         win : WIN object
             the win file, just ot get the k-points
         kpoints : np.array(float, shape=(npoints,3,))
             the kpoints in fractional coordinates. Overrides the kpoints in the win file (if provided)
+        projections_obj : ProjectionsSet or list(Projection)
+            alternative way to provide the projections
 
         Note: 
         -----
 
         """
         from ..system.sym_wann_orbitals import Orbitals
-        orbitals = Orbitals()
+        ORBITALS = Orbitals()
         if spacegroup is None:
             spacegroup = self.spacegroup
         else:
@@ -569,8 +573,16 @@ class DMN(W90_file):
             self.kpoints = kpoints
             self._NK = len(kpoints)
         D_wann_list = []
+        if isinstance(projections_obj, ProjectionsSet):
+            projections_obj = projections_obj.projections
+        for proj in projections_obj:
+            orbitals = proj.orbitals
+            if len(orbitals) > 1:
+                warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
+            for orb in orbitals:
+                projections.append((proj.positions, orb))
         for positions, proj in projections:
-            _Dwann = Dwann(spacegroup, positions, proj, orbitals)
+            _Dwann = Dwann(spacegroup, positions, proj, ORBITALS=ORBITALS)
             _dwann = _Dwann.get_on_points_all(kpoints, self.kptirr, self.kptirr2kpt)
             D_wann_list.append(_dwann)
         self.set_D_wann(D_wann_list)

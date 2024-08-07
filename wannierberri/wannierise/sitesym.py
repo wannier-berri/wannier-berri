@@ -43,7 +43,7 @@ class Symmetrizer:
 
     def __init__(self, Dmn=None, neighbours=None,
                  free=None,
-                 n_iter=100, epsilon=1e-8):
+                 n_iter=20, epsilon=1e-8):
         if free is None:
             self.free = np.ones((Dmn.NK, Dmn.NB), dtype=bool)
         else:

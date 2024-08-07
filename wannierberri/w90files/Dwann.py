@@ -47,18 +47,18 @@ class Dwann:
         A matrix that maps the orbit points to each other by the symmetry operations of the spacegroup.
     """
 
-    def __init__(self, spacegroup, positions, projection="_",
-                 orbitals=None,
+    def __init__(self, spacegroup, positions, orbital="_",
+                 ORBITALS=None,
                  spinor=False,
                  spin_ordering="block"):
 
         self.nsym = spacegroup.size
         
-        if projection!="_":
-            assert orbitals is not None
-            self.rot_orb = [orbitals.rot_orb(projection, symop.rotation_cart)
+        if orbital!="_":
+            assert ORBITALS is not None
+            self.rot_orb = [ORBITALS.rot_orb(orbital, symop.rotation_cart)
                        for symop in spacegroup.symmetries] 
-            self.num_orbitals = orbitals.num_orbitals(projection)
+            self.num_orbitals = ORBITALS.num_orbitals(orbital)
         else:
             self.rot_orb = [np.eye(1) for _ in range (self.nsym)]
             self.num_orbitals = 1

@@ -1,12 +1,13 @@
 from collections import defaultdict
+from functools import cached_property
 import os
 import pickle
 import shutil
-from typing import Iterable
 from irrep.bandstructure import BandStructure
 from matplotlib import pyplot as plt
 import numpy as np
-from wannierberri.w90files.dmn import DMN
+from ..w90files.dmn import DMN
+from ..wannierise.projections import ProjectionsSet
 from ..w90files import WIN, Wannier90data
 from .. parallel import Serial as wbSerial
 from .ase import write_espresso_in
@@ -193,6 +194,26 @@ class FlagsCalculated:
         for f in self.map_backward.get(flag, []):
             assert self.calculated[f], f"Flag {f} not calculated, needed for {flag}"
         return self.calculated[flag]
+    
+class FlagsCalculatedVoid(FlagsCalculated):
+
+    def __init__(self):
+        self.calculated = {"anything": False}	
+        pass
+
+    def on(self, flag):
+        pass
+
+    def off(self, flag):
+        pass
+
+    def check(self, flag):
+        return False
+    
+    def __getitem__(self, flag):
+        return False
+    
+
 
 
 class WorkflowQE:
@@ -229,6 +250,7 @@ class WorkflowQE:
                 pickle_file=None,
                 try_unpickle=True,
                 k_nodes=[[0,0,0],[0.5,0.5,0.5]],
+                use_flags = False,
                 kwargs_gen={}, kwargs_gs={}, kwargs_nscf={}, kwargs_bands={}, kwargs_wannier={},
                 ):
         path_to_files = os.path.dirname(prefix)
@@ -293,7 +315,10 @@ class WorkflowQE:
         self.kwargs_nscf.update(kwargs_nscf)
         self.kwargs_nscf["nbnd"] = num_bands
 
-        self.flags = FlagsCalculated(['gs', 'nscf', 'pw2wannier', 'wannier_w90', 
+
+        if use_flags:
+            self.flags = FlagsCalculated(
+                                    ['gs', 'nscf', 'pw2wannier', 'wannier_w90', 
                                       'bands_qe', 'bands_wannier_w90',
                                       'wannierise_wberri', 'bands_wannier_wberri',
                                       'win','projections','dmn'],
@@ -313,12 +338,14 @@ class WorkflowQE:
                                             wannierise_wberri=['bands_wannier_wberri'],
                                             projections=['win','pw2wannier'],
                                             win=['wannier_w90'],
-                                    )
-        )
+                                    ))
+        else:
+            self.flags = FlagsCalculatedVoid()
+                
         self.pickle()
 
     
-    def ground_state(self, kpts = (8,8,8), enforce=False, **kwargs):
+    def ground_state(self, kpts = (8,8,8), enforce=False, run=True, **kwargs):
         if self.flags.check('gs') and not enforce:
             return
         message("Ground state")
@@ -328,7 +355,8 @@ class WorkflowQE:
         write_espresso_in(f_in, self.atoms, kpts=kpts, 
                           pseudopotentials=self.pseudopotentials,
                             input_data=self.kwargs_gs)
-        self.executables.run_pw(f_in, f_out)
+        if run:
+            self.executables.run_pw(f_in, f_out)
         message("Done")
         self.flags.on('gs')
         self.pickle()
@@ -341,7 +369,7 @@ class WorkflowQE:
             file = self.pickle_file
         pickle.dump(self, open(file,'wb'))
     
-    def nscf(self, mp_grid=(4,4,4), enforce=False, **kwargs):
+    def nscf(self, mp_grid=(4,4,4), enforce=False, run=True, **kwargs):
         if self.flags.check('nscf') and not enforce:
             return
         message("NSCF")
@@ -353,7 +381,8 @@ class WorkflowQE:
         write_espresso_in(f_in, self.atoms, kpoints_array=self.kpoints_nscf, 
                           pseudopotentials=self.pseudopotentials,
                           input_data=self.kwargs_nscf)
-        self.executables.run_pw(f_in, f_out)
+        if run:
+            self.executables.run_pw(f_in, f_out)
         message("Done")
         self.flags.on('nscf')
         self.pickle()
@@ -364,33 +393,16 @@ class WorkflowQE:
 
         Parameters
         ----------
-        projections: list(tuple)
-            List of tuples with the projections
-            [(f, l), ...]
-            f: tuple(float)
-                The fractional coordinates of the atom
-            l: int
-                The angular momentum of the projection
+        projections: ProjectionsSet or list(Projection)
+            the projections to set
         """
-        def num_wann(proj):
-            num_wann_spdf = {'s':0, 'p':1, 'd':2, 'f':3}
-            if isinstance(proj,int):
-                return 2*proj+1
-            elif isinstance(proj,str):
-                return sum(num_wann_spdf[x.strip()] for x in proj.split(';'))
-            elif isinstance(proj,Iterable):
-                return sum([2*l+1 for l in proj])
-        def to_str(proj):
-            if isinstance(proj,str):
-                return proj
-            elif isinstance(proj,int):
-                return f"{'spdf'[proj]}"
-            elif isinstance(proj,Iterable):
-                return " ".join([f"{'spdf'[l]}" for l in proj])
+        if isinstance(projections, list):
+            projections = ProjectionsSet(projections)
+        projections = projections.as_numeric().split_orbitals()
+        print ("projections are", projections)
         self.projections = projections
-        self.num_wann = sum(num_wann(proj[1]) for proj in self.projections)
-        projections = [(np.array(x[0]), x[1]) for x in projections]
-        self.projections_str = [f"f = {x[0][0]:16.12f}, {x[0][1]:16.12f}, {x[0][2]:16.12f} : {to_str(x[1])}" for x in projections]
+        self.num_wann = projections.num_wann
+        self.projections_str = projections.write_wannier90(mod1=False, beginend=False, numwann=False)
         self.flags.on('projections')
         self.pickle()
 
@@ -420,7 +432,7 @@ class WorkflowQE:
         self.flags.on('win')
         self.pickle()
         
-    def pw2wannier(self, targets=['eig', 'mmn', 'amn'], enforce=False, **kwargs):
+    def pw2wannier(self, targets=['eig', 'mmn', 'amn'], enforce=False, run=True, **kwargs):
         if self.flags.check('pw2wannier') and not enforce:
             return
         message("pw2wannier")
@@ -430,7 +442,8 @@ class WorkflowQE:
         open(f_in,'w').write(f"""&inputpp\n  outdir = './'\n  prefix = '{self.prefix}'\n  seedname = '{self.prefix}'\n"""+
                           "\n".join([f"write_{x} = .{x in targets}." for x in self.pw2wannier_full_list])+"\n/\n"
                           )
-        self.executables.run_pw2wannier(f_in, f_out)
+        if run:
+            self.executables.run_pw2wannier(f_in, f_out)
         message("Done")
         self.flags.on('pw2wannier')
         self.pickle()
@@ -456,7 +469,15 @@ class WorkflowQE:
         self.flags.on('wannierise_wberri')
         self.pickle()
 
-    def create_dmn(self, projections, Ecut=100, enforce=False):
+    @cached_property
+    def get_spacegroup(self):
+        bandstructure = BandStructure(code='espresso', 
+                                      prefix=self.prefix, 
+                                      onlysym=True
+                                    )
+        return bandstructure.spacegroup
+
+    def create_dmn(self, Ecut=30, enforce=False):
         """
         Create the DMN file for Wannier90
 
@@ -489,7 +510,7 @@ class WorkflowQE:
         if enforce or not self.flags.check('dmn'):
             dmn_new = DMN(empty=True)
             dmn_new.from_irrep(bandstructure)
-            dmn_new.set_D_wann_from_projections(projections=projections)
+            dmn_new.set_D_wann_from_projections(projections_obj=self.projections)
             dmn_new.to_w90_file(self.prefix)
             self.flags.on('dmn')
 
@@ -514,7 +535,7 @@ class WorkflowQE:
         self.pickle()
 
 
-    def calc_bands_qe(self, kdensity, enforce=False, **kargs):
+    def calc_bands_qe(self, kdensity, enforce=False, run=True, **kargs):
         if self.flags.check('bands_qe') and not enforce:
             return
         self.kwargs_bands.update(kargs)
@@ -534,7 +555,8 @@ class WorkflowQE:
         write_espresso_in(f_in, self.atoms, kpoints_array=self.path_qe.K_list, 
                           pseudopotentials=self.pseudopotentials,
                           input_data=self.kwargs_bands)
-        self.executables.run_pw(f_in, f_out)
+        if run:
+            self.executables.run_pw(f_in, f_out)
         f_in = f'{self.prefix}.bandsx.in'
         f_out = f'{self.prefix}.bandsx.out'
         open(f_in,'w').write(f"""&bands\n  prefix = '{prefix_tmp}'\n  outdir = './'\n  lsym = .false.\n  filband = '{self.prefix}.bands.dat'\n/\n""")
@@ -548,13 +570,22 @@ class WorkflowQE:
         self.pickle()
 
     def plot(self, show=True, savefig=None, ylim=None):
-        if self.flags['bands_qe']:
+        try:
             for band in self.bands_qe:
                 plt.scatter(self.kline_qe, band, c='g', s=4)
-        if self.flags['bands_wannier_w90']:
+        except:
+            pass
+        
+        try:
             self.bands_wannier_w90.plot_path_fat(self.path_wannier, show_fig=False, close_fig=False, linecolor='b', label="w90")
-        if self.flags['bands_wannier_wberri']:
+        except:
+            pass
+
+        try:
             self.bands_wannier_wberri.plot_path_fat(self.path_wannier, show_fig=False, close_fig=False, linecolor='r', label="wberri")
+        except:
+            pass
+
         if ylim is not None:
             plt.ylim(ylim)
         if savefig is not None:

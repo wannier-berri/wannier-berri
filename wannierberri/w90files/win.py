@@ -160,6 +160,10 @@ class WIN:
                             names = [""] * v.shape[0]
                         for l, name in zip(v, names):
                             f.write(" " * 5 + name + "   ".join([f"{x:16.12f}" for x in l]) + "\n")
+                    elif isinstance(v, str):
+                        f.write(v)
+                        if v[-1] != "\n":
+                            f.write("\n")   
                     f.write(f"end {k}\n")
                 else:
                     f.write(f"{k} = {list2str(v)}\n")

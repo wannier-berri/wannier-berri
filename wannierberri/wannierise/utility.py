@@ -1,4 +1,6 @@
 
+from functools import lru_cache
+import sys
 import numpy as np
 DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
 
@@ -88,7 +90,7 @@ def print_progress(i_iter, Omega_list, num_iter_converge,
 
     comment = f"iteration {i_iter:4d} Omega= {Omega:15.10f}  delta={delta}, max({num_iter_converge})={delta_max_str}, slope={slope_str}"
     print_centers_and_spreads(w90data, U_opt_full_BZ, spreads=spreads, comment=comment)
-
+    sys.stdout.flush()
     return delta_max
 
 
@@ -190,3 +192,94 @@ def orthogonalize(u):
     return U @ VT
 
 
+def find_solution_mod1(A, B, max_shift=2):
+    """
+    Find a solution such that A@x = B mod 1
+
+    Parameters
+    ----------
+    A : np.ndarray (n,m)
+        The matrix of the system.   
+    B : np.ndarray (n,)
+        The right hand side.
+    max_shift : int
+        The maximum shift.
+
+    Returns
+    -------
+    list of np.ndarray
+        The shifts that are compatible with the system.
+    """
+    A=np.array(A)
+    B=np.array(B)
+    r1 = np.linalg.matrix_rank(A)
+    assert (r1==A.shape[1]), f"overdetermined system {r1} != {A.shape}[1]"
+    dim = A.shape[0]
+    for shift in get_shifts(max_shift, ndim=dim):
+        B_loc = B + shift   
+        if np.linalg.matrix_rank(np.hstack([A,B_loc[:,None]])) == r1:
+            x, residuals, rank, s = np.linalg.lstsq(A, B_loc, rcond=None)
+            if len(residuals)>0:
+                assert np.max(np.abs(residuals)) < 1e-7
+            assert rank==r1
+            return x
+    return None
+
+@lru_cache
+def get_shifts(max_shift, ndim=3):
+    """return all possible shifts of a 3-component vector with integer components
+    recursively by number of dimensions
+    
+    Parameters
+    ----------
+    max_shift : int
+        The maximum absolute value of the shift.
+    ndim : int
+        The number of dimensions.
+
+    Returns
+    -------
+    array_like(n, ndim)
+        The shifts. n=(max_shift*2+1)**ndim
+        sorted by the norm of the shift
+    """
+    if ndim == 1:
+        shifts =  np.arange(-max_shift, max_shift+1)[:,None]
+    else:
+        shift_1 = get_shifts(max_shift, ndim-1)
+        shift1 = get_shifts(max_shift, 1)
+        shifts =  np.vstack([np.hstack([shift_1, [s1]*shift_1.shape[0] ]) for s1 in shift1])
+    # more probably that equality happens at smaller shift, so sort by norm
+    srt = np.linalg.norm(shifts, axis=1).argsort()
+    return shifts[srt]
+
+def find_distance_periodic(positions, real_lattice, max_shift=2):
+    """
+    find the distances between the pairs of atoms in a list of positions
+    the distance to the closest image in the periodic lattice is returned
+
+    Parameters
+    ----------
+    positions : np.ndarray( (num_atoms,3), dtype=float)
+        The list of atomic positions in reduced coordinates.
+    real_lattice : np.ndarray((3,3), dtype=float)
+        The lattice vectors.
+
+    Returns
+    -------
+    np.ndarray( (num_atoms,num_atoms), dtype=float)
+        The distance between the pairs atoms.
+    """
+    if len(positions) == 0:
+        return np.array([[np.inf]])
+    positions = np.array(positions)%1
+    shifts = get_shifts(max_shift)
+    diff = positions[:,None,None,:] - positions[None,:,None,:] + shifts[None,None,:,:]
+    metric = real_lattice @ real_lattice.T
+    prod = np.einsum('ijla,ab,ijlb->ijl', diff, metric, diff)
+    
+    rng = np.arange(len(positions))
+    prod[rng,rng,0] = np.inf  # distance to itself is not interesting, so the distance to its nearest image is counted
+    
+    distances2 = np.min(prod, axis=2)
+    return np.sqrt(distances2)
