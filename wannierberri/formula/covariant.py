@@ -539,18 +539,70 @@ class BCP_G_kp(Formula_ln):
         super().__init__(data_K, **parameters)    
         self.Omega = Omegakp
         self.dEinv = DEinv_ln(data_K)
+        self.V = data_K.covariant('Ham', commader=1)
         self.ndim = 1
         self.transformTR=transform_ident
         self.transformInv=transform_ident
 
     def nn(self, ik, inn, out):
-        summ = -2 * np.einsum("mna,mn,lna->mna", self.Omega.nn(ik,inn,out), 
-                self.dEinv.nn(ik,inn,out))
+        summ = 2 * np.einsum("mla,ml,nl,lna,ml->mna", self.V.nl(ik,inn,out)[:, :, alpha_A] , 
+                self.dEinv.nl(ik,inn,out), 
+                self.dEinv.nl(ik,inn,out), 
+                self.V.ln(ik,inn,out)[:, :, beta_A],
+                self.dEinv.nl(ik,inn,out) ) 
         return summ
     
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+class BCP_G(Formula_ln):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        self.D = data_K.Dcov
+        self.dEinv = DEinv_ln(data_K)
+
+        if self.external_terms:
+            self.A = data_K.covariant('AA')
+            self.O = data_K.covariant('OO')
+
+        self.ndim = 1
+        self.transformTR=transform_odd
+        self.transformInv=transform_ident
+
+    def nn(self, ik, inn, out):
+        summ = np.zeros((len(inn), len(inn), 3), dtype=complex)
+
+        if self.internal_terms:
+            summ += np.einsum(
+                "nl,mlc,lnc->mnc",
+                self.dEinv.nl(ik,inn,out), 
+                self.D.nl(ik, inn, out)[:, :, alpha_A],
+                self.D.ln(ik, inn, out)[:, :, beta_A])
+
+        if self.external_terms:
+            summ += -0.5j * self.O.nn(ik, inn, out)
+            summ += 1j * np.einsum(
+                "ml,mlc,lnc->mnc",
+                self.dEinv.nl(ik,inn,out), 
+                self.D.nl(ik, inn, out)[:, :, alpha_A],
+                self.A.ln(ik, inn, out)[:, :, beta_A])
+            summ += -1j * np.einsum(
+                "ml,mlc,lnc->mnc",
+                self.dEinv.nl(ik,inn,out), 
+                self.D.nl(ik, inn, out)[:, :, beta_A],
+                self.A.ln(ik, inn, out)[:, :, alpha_A])
+            summ +=  np.einsum(
+                "ml,mlc,lnc->mnc",
+                self.dEinv.nl(ik,inn,out), 
+                self.A.nn(ik, inn, out)[:, :, alpha_A],
+                self.A.nn(ik, inn, out)[:, :, beta_A])
+
+        summ += summ.swapaxes(0, 1).conj()
+        return summ
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
 
 class X1(Formula_ln):
     def __init__(self, data_K, **parameters):
@@ -689,6 +741,11 @@ class BCPkp(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([data_K.covariant('Ham', commader=1), BCP_G_kp(data_K, **kwargs_formula)], name='VelOmegakp')
+
+class BCP(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([data_K.covariant('Ham', commader=1), BCP_G(data_K, **kwargs_formula)], name='VelOmegakp')
 
 class VelHplus(FormulaProduct):
 

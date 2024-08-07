@@ -22,6 +22,8 @@ factor_hall_classic = -(elementary_charge**3 /hbar**2 * Ang_SI * TAU_UNIT**2  # 
 factor_nldrude = -(elementary_charge**3 /hbar**2 * TAU_UNIT**2  # with tau^2 E^2 B^0
                 * elementary_charge / hbar) # change velocity unit from eV*m to m/s
 
+factor_bcp = elementary_charge**2 /hbar
+
 factor_opt = -factor_ahc
 factor_shc = -factor_ahc
 #####################
