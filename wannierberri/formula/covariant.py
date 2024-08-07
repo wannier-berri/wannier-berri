@@ -44,8 +44,8 @@ class DEinv_ln(Matrix_ln):
     def __init__(self, data_K):
         super().__init__(data_K.dEig_inv)
 
-    #def nn(self, ik, inn, out):
-    #    raise NotImplementedError("dEinv_ln should not be called within inner states")
+    def nn(self, ik, inn, out):
+        raise NotImplementedError("dEinv_ln should not be called within inner states")
 
 
 class Dcov(Matrix_ln):
@@ -580,23 +580,6 @@ class BCP_G(Formula_ln):
                 self.D.nl(ik, inn, out)[:, :, alpha_A],
                 self.D.ln(ik, inn, out)[:, :, beta_A])
 
-        if self.external_terms:
-            summ += -0.5j * self.O.nn(ik, inn, out)
-            summ += 1j * np.einsum(
-                "ml,mlc,lnc->mnc",
-                self.dEinv.nl(ik,inn,out), 
-                self.D.nl(ik, inn, out)[:, :, alpha_A],
-                self.A.ln(ik, inn, out)[:, :, beta_A])
-            summ += -1j * np.einsum(
-                "ml,mlc,lnc->mnc",
-                self.dEinv.nl(ik,inn,out), 
-                self.D.nl(ik, inn, out)[:, :, beta_A],
-                self.A.ln(ik, inn, out)[:, :, alpha_A])
-            summ +=  np.einsum(
-                "ml,mlc,lnc->mnc",
-                self.dEinv.nl(ik,inn,out), 
-                self.A.nn(ik, inn, out)[:, :, alpha_A],
-                self.A.nn(ik, inn, out)[:, :, beta_A])
 
         summ += summ.swapaxes(0, 1).conj()
         return summ
