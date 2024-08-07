@@ -22,6 +22,11 @@ class EIG(W90_file):
             for ib in range(self.NB):
                 file.write(f" {ib + 1:4d} {ik + 1:4d} {self.data[ik, ib]:17.12f}\n")
 
+    def apply_window(self, selected_bands):
+        if selected_bands is not None:
+            self.data = self.data[:, selected_bands]
+            
+
     # def get_disentangled(self, v_left, v_right):
     #     data = np.einsum("klm,km...,kml->kl", v_left, self.data, v_right).real
     #     return self.__class__(data=data)

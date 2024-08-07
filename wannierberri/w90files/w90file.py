@@ -25,7 +25,7 @@ class W90_file(abc.ABC):
         for more details
     """
 
-    def __init__(self, seedname="wannier90", ext="", tags=["data"], read_npz=True, write_npz=True, data=None, **kwargs):
+    def __init__(self, seedname="wannier90", ext="", tags=["data"], read_npz=True, write_npz=True, data=None, selected_bands=None, **kwargs):
         if data is not None:
             self.data = data
             return
@@ -40,6 +40,9 @@ class W90_file(abc.ABC):
             dic = {k: self.__getattribute__(k) for k in tags}
             if write_npz:
                 np.savez_compressed(f_npz, **dic)
+        # window is applied after, so that npz contains same data as original file
+        self.apply_window(selected_bands)
+            
 
     @abc.abstractmethod
     def from_w90_file(self, **kwargs):
@@ -47,6 +50,10 @@ class W90_file(abc.ABC):
         abstract method to read the necessary data from Wannier90 file
         """
         self.data = None
+
+    @abc.abstractmethod
+    def apply_window(self, selected_bands):
+        pass
 
     def get_disentangled(self, v_matrix_dagger, v_matrix):
         """

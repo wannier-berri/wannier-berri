@@ -185,6 +185,8 @@ class Wannier90data:
         if key not in ["chk", "win"]:
             kwargs["read_npz"] = self.read_npz
             kwargs["write_npz"] = key in self.write_npz_list
+        if key != "win":
+            kwargs["selected_bands"] = self.selected_bands
         print(f"kwargs for {key} are {kwargs}")
         return kwargs
 
@@ -312,7 +314,6 @@ class Wannier90data:
         Returns the iterator over the k-points
         """
         return range(self.chk.num_kpts)
-
     @cached_property
     def wannier_centers(self):
         """
@@ -348,6 +349,76 @@ class Wannier90data:
         """
         wannierise(self, **kwargs)
 
+    @property
+    def selected_bands(self):
+        if hasattr(self, '_selected_bands'):
+            return self._selected_bands 
+        else:
+            return None
+    
+    @selected_bands.setter
+    def selected_bands(self, value):
+        self._selected_bands = value
+        
+    def apply_window(self, win_min=-np.Inf, win_max=np.Inf, band_start=None, band_end=None):
+        """
+        Apply the window to the system
+        Unlike w90, only bands are removed which are fully out of window (at all k-points)
+
+        Parameters
+        ----------
+        win_min, win_max : float
+            the minimum and maximum energy of the window
+        band_start, band_end : int
+            the range of bands to be included (the numeration in the current system, not in the original (if window is applied more than once))
+        """
+        new_selected_bands = np.all((self.eig.data >= win_min) * (self.eig.data <= win_max), axis=0)
+        print (f"new_selected_bands = {new_selected_bands}")
+        if band_end is not None:
+            new_selected_bands[band_end:] = False
+        if band_start is not None:
+            new_selected_bands[:band_start] = False
+        print (f"new_selected_bands = {new_selected_bands}")
+        
+        print (f"new_selected_bands = {new_selected_bands.shape}")
+        _selected_bands = self.selected_bands
+        print (f"_selected_bands = {_selected_bands}")
+        # if window is applied for the firstr time, the selected bands are all bands
+        # and self.selected_bands is bool (=True)
+        print ("eig", self.eig.data.shape)
+        if _selected_bands is None: 
+            _selected_bands = np.ones(self.eig.NB, dtype=bool)
+        print (f"_selected_bands = {_selected_bands}")
+        _tmp_selected_bands = _selected_bands[_selected_bands].copy()
+        print (f"_tmp_selected_bands = {_tmp_selected_bands}")
+        _tmp_selected_bands[np.logical_not(new_selected_bands)] = False
+        self.selected_bands = _tmp_selected_bands
+        assert np.sum(self.selected_bands) == np.sum(new_selected_bands), "error in applying window"
+        print (f"self.selected_bands = {self.selected_bands}")
+        for key,val in self._files.items():
+            if key != 'win' and key != 'chk':
+                print (f"key = {key} ,number of bands = {val.NB}")
+            if key == 'chk':
+                print (f"key = {key} ,number of bands = {val.num_bands}")
+        self.chk.apply_window(new_selected_bands)
+        for key in self.__files_classes.keys():
+            if key in self._files:
+                if key == 'win':
+                    win = self._files['win']
+                    win['dis_win_min'] = win_min
+                    win['dis_win_max'] = win_max
+                else:
+                    print (f"applying window to {key} {val}")
+                    self.get_file(key).apply_window(new_selected_bands)
+        for key,val in self._files.items():
+            if key != 'win' and key != 'chk':
+                print (f"key = {key} ,number of bands = {val.NB}")
+                if hasattr(val, 'data'):
+                    print (f"key = {key} ,number of bands = {val.data.shape}")
+            if key == 'chk':
+                print (f"key = {key} ,number of bands = {val.num_bands}")
+            
+        
     def get_disentangled(self, files=[]):
         """
         after disentanglement, get the Wannier90data object with 

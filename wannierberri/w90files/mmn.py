@@ -90,6 +90,10 @@ class MMN(W90_file):
                         f_mmn_out.write(f"{self.data[ik, ib, n, m].real} {self.data[ik, ib, n, m].imag}\n")
         f_mmn_out.close()
 
+    def apply_window(self, selected_bands):
+        if selected_bands is not None:
+            self.data = self.data[:, :, selected_bands, :][:,:, :, selected_bands]
+
     def get_disentangled(self, v_left, v_right):
         """
         Reduce number of bands
