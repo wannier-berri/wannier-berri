@@ -264,7 +264,7 @@ class DMN(W90_file):
         other = deepcopy(self)
         other.d_band = d_band_new
         return other
-
+    
     def set_identiy(self, num_wann, num_bands, nkpt):
         """
         set the object to contain only the  transformation matrices
@@ -535,7 +535,8 @@ class DMN(W90_file):
                                         projections=[],
                                         projections_obj=[],
                                         win=None,
-                                        kpoints=None):
+                                        kpoints=None,
+                                        spinor=False):
         """
         Parameters
         ----------
@@ -582,7 +583,7 @@ class DMN(W90_file):
             for orb in orbitals:
                 projections.append((proj.positions, orb))
         for positions, proj in projections:
-            _Dwann = Dwann(spacegroup, positions, proj, ORBITALS=ORBITALS)
+            _Dwann = Dwann(spacegroup, positions, proj, ORBITALS=ORBITALS, spinor=spinor)
             _dwann = _Dwann.get_on_points_all(kpoints, self.kptirr, self.kptirr2kpt)
             D_wann_list.append(_dwann)
         self.set_D_wann(D_wann_list)

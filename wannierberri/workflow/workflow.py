@@ -1,4 +1,5 @@
 from collections import defaultdict
+import copy
 from functools import cached_property
 import os
 import pickle
@@ -246,6 +247,7 @@ class WorkflowQE:
                  prefix='crystal',
                  pseudo_dir='./',
                  executables=None,
+                 spinor = False,
                 num_bands=20,
                 pickle_file=None,
                 try_unpickle=True,
@@ -292,6 +294,12 @@ class WorkflowQE:
                 )
         self.kwargs_gen.update(kwargs_gen)
         self.kwargs_gen["prefix"] = prefix
+        self.kwargs_wannier = copy.copy(kwargs_wannier)
+        if spinor:
+            self.kwargs_gen["lspinorb"] = True
+            self.kwargs_gen["noncolin"] = True
+            self.kwargs_wannier["spinors"] = True
+        self.spinor = spinor
 
         self.kwargs_gs = dict(calculation='scf', 
                             kpts=(6,6,4),
@@ -401,7 +409,7 @@ class WorkflowQE:
         projections = projections.as_numeric().split_orbitals()
         print ("projections are", projections)
         self.projections = projections
-        self.num_wann = projections.num_wann
+        self.num_wann = projections.num_wann*(2 if self.spinor else 1)
         self.projections_str = projections.write_wannier90(mod1=False, beginend=False, numwann=False)
         self.flags.on('projections')
         self.pickle()
@@ -424,8 +432,10 @@ class WorkflowQE:
                 num_bands = self.num_bands,
                 projections = self.projections_str,
                 num_iter=0,
-                dis_num_iter=0
+                dis_num_iter=0,
+                spinors=self.spinor,
                 )
+        data.update(self.kwargs_wannier)
         data.update(kwargs)
         win = WIN(seedname=None,data=data)
         win.write(self.prefix)
@@ -510,7 +520,7 @@ class WorkflowQE:
         if enforce or not self.flags.check('dmn'):
             dmn_new = DMN(empty=True)
             dmn_new.from_irrep(bandstructure)
-            dmn_new.set_D_wann_from_projections(projections_obj=self.projections)
+            dmn_new.set_D_wann_from_projections(projections_obj=self.projections, spinor=self.spinor)
             dmn_new.to_w90_file(self.prefix)
             self.flags.on('dmn')
 
@@ -549,6 +559,8 @@ class WorkflowQE:
         os.mkdir(dir2)
         for f in ["charge-density.dat", "data-file-schema.xml"]:
             shutil.copy(dir1+'/'+f, dir2+'/'+f)
+        if os.path.exists(dir1+'/paw.txt'):
+            shutil.copy(dir1+'/paw.txt', dir2+'/paw.txt')   
         self.path_qe = Path(system = self.atoms.get_cell() , k_nodes = self.k_nodes, length=kdensity)    
         f_in = f'{self.prefix}.bands.in'
         f_out = f'{self.prefix}.bands.out'
