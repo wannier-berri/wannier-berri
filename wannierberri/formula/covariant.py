@@ -869,6 +869,124 @@ class SpinOmega(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+class BCP_G(Formula_ln):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        self.D = data_K.Dcov
+        self.dEinv = DEinv_ln(data_K)
+
+        if self.external_terms:
+            self.A = data_K.covariant('AA')
+            self.O = data_K.covariant('OO')
+
+        self.ndim = 1
+        self.transformTR=transform_odd
+        self.transformInv=transform_ident
+
+    def nn(self, ik, inn, out):
+        summ = np.zeros((len(inn), len(inn), 3), dtype=complex)
+
+        if self.internal_terms:
+            summ += np.einsum(
+                "nl,mlc,lnc->mnc",
+                self.dEinv.nl(ik,inn,out), 
+                self.D.nl(ik, inn, out)[:, :, alpha_A],
+                self.D.ln(ik, inn, out)[:, :, beta_A])
+
+
+        summ += summ.swapaxes(0, 1).conj()
+        return summ
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+class Omegakp(Formula_ln):
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        self.dEinv = DEinv_ln(data_K)
+        self.V = data_K.covariant('Ham', commader=1)
+        self.ndim = 1
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+
+    def nn(self, ik, inn, out):
+        summ = -2j * np.einsum("mla,ml,nl,lna->mna", self.V.nl(ik,inn,out)[:, :, alpha_A] ,
+                self.dEinv.nl(ik,inn,out),
+                self.dEinv.nl(ik,inn,out),
+                self.V.ln(ik,inn,out)[:, :, beta_A] )
+        return summ
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+class BCP_G_kp(Formula_ln):
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)    
+        self.Omega = Omegakp
+        self.dEinv = DEinv_ln(data_K)
+        self.V = data_K.covariant('Ham', commader=1)
+        self.ndim = 1
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+
+    def nn(self, ik, inn, out):
+        summ = 2 * np.einsum("mla,ml,nl,lna,ml->mna", self.V.nl(ik,inn,out)[:, :, alpha_A] , 
+                self.dEinv.nl(ik,inn,out), 
+                self.dEinv.nl(ik,inn,out), 
+                self.V.ln(ik,inn,out)[:, :, beta_A],
+                self.dEinv.nl(ik,inn,out) ) 
+        return summ
+    
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+class Quantum_M(Formula_ln):
+    
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        self.D = data_K.Dcov
+        
+        if self.external_terms:
+            self.A = data_K.covariant('AA')
+            self.O = data_K.covariant('OO')
+        
+        self.ndim = 1
+        self.transformTR = transform_odd
+        self.transformInv = transform_ident
+                
+    def nn(self, ik, inn, out):
+        summ = np.zeros((len(inn), len(inn), 3), dtype=complex)
+                         
+        if self.internal_terms:
+            summ += 1 * np.einsum(
+                "mlc,lnc->mnc",
+                self.D.nl(ik, inn, out)[:, :, alpha_A],
+                self.D.ln(ik, inn, out)[:, :, beta_A])
+        
+        if self.external_terms:
+            summ += -0.5j * self.O.nn(ik, inn, out)
+            summ += 1j * np.einsum(
+                "mlc,lnc->mnc",
+                self.D.nl(ik, inn, out)[:, :, alpha_A],
+                self.A.ln(ik, inn, out)[:, :, beta_A])
+            summ += -1j * np.einsum(
+                "mlc,lnc->mnc",
+                self.D.nl(ik, inn, out)[:, :, beta_A],
+                self.A.ln(ik, inn, out)[:, :, alpha_A])
+            summ += 1 * np.einsum(
+                "mlc,lnc->mnc",
+                self.A.nn(ik, inn, out)[:, :, alpha_A],
+                self.A.nn(ik, inn, out)[:, :, beta_A])
+
+        summ += summ.swapaxes(0, 1).conj()
+        return summ
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
+
 
 ####################################
 #                                  #
@@ -992,3 +1110,18 @@ class NLDrude_Z_orb_Omega(FormulaSum):
         term1 = FormulaProduct([Der3E(data_K), Omega(data_K, **kwargs_formula)], name='Der3EOmega')
         term2 = FormulaProduct([Der2Omega(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='Der2OmegaVel')
         super().__init__([term1, term2], [-1, 1], ['apsu', 'uaps'])
+
+class VelOmegakp(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([data_K.covariant('Ham', commader=1), Omegakp(data_K, **kwargs_formula)], name='VelOmegakp')
+
+class BCPkp(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([data_K.covariant('Ham', commader=1), BCP_G_kp(data_K, **kwargs_formula)], name='VelOmegakp')
+
+class BCP(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([data_K.covariant('Ham', commader=1), BCP_G(data_K, **kwargs_formula)], name='VelOmegakp')

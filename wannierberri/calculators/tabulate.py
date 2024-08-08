@@ -206,3 +206,28 @@ class SpinBerry(Tabulator):
 
     def __init__(self, **kwargs):
         super().__init__(frml.SpinOmega, **kwargs)
+
+class Quantum_M(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.Quantum_M, **kwargs)
+
+class Quantum_M_kp(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.Quantum_M_kp, **kwargs)
+
+class BerryCurvature_kp(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.Omega_kp, **kwargs)
+
+class BCP_G(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.BCP_G_kp, **kwargs)
+
+class BCP_G_kp(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.BCP_G_kp, **kwargs)
