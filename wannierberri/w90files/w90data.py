@@ -145,7 +145,15 @@ class Wannier90data:
         if not overwrite and key in self._files:
             raise RuntimeError(f"file '{key}' was already set")
         if val is None:
-            val = self.__files_classes[key](self.seedname, **kwargs_auto)
+            if key =='dmn':
+                try:
+                    eigenvalues = self.eig.data
+                except:
+                    eigenvalues = None
+                val = self.dmn(self.seedname, eigenvalues=eigenvalues,
+                                **kwargs_auto, spacegroup=self.chk.spacegroup)
+            else:
+                val = self.__files_classes[key](self.seedname, **kwargs_auto)
         self.check_conform(key, val)
         self._files[key] = val
 

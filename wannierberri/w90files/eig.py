@@ -5,6 +5,7 @@ import numpy as np
 class EIG(W90_file):
 
     def __init__(self, seedname="wannier90", **kwargs):
+        self.npz_tags = ["data"]
         super().__init__(seedname=seedname, ext="eig", **kwargs)
 
     def from_w90_file(self, seedname):

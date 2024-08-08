@@ -46,7 +46,8 @@ x,y,z = sympy.symbols('x y z')
 # They are given in the reference unit cell, so we need to convert them to the primitive unit cell
 F12 = Fraction(1,2)
 F14 = Fraction(1,4)
-WP_refuc =[ [0,0,F12],[0,F12,0],[0,F12,F14], [0,0,x], [F14,F14,F14], [0,F12,x],[x,y,0],[x,y,z] ]
+WP_refuc =[ [0,0,0], [0,0,F12],[0,F12,0],[0,F12,F14], [0,0,x], 
+           [F14,F14,F14], [0,F12,x],[x,y,0],[x,y,z] ]
 
 # the vectors of the reference unit cell
 # are expressed in the primitive unit cell
@@ -58,7 +59,7 @@ WP_prim = np.dot(WP_refuc, refuc)
 positions = [",".join(str(y) for y in x) for x in WP_prim]
 print (positions)
 # exit()
-orbitals = ['s']
+orbitals = ['s','p']
 
 for p in positions:
     for o in orbitals:

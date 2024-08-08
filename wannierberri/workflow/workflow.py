@@ -472,8 +472,8 @@ class WorkflowQE:
             return
         w90data = Wannier90data(seedname=self.prefix, read_chk=False)
         w90data.apply_window(**kwargs_window)
-        for key in ["amn", "mmn", "eig", "dmn"]:
-            print (f"w90data[{key}].NB = {w90data.get_file(key).NB}")
+        # for key in ["amn", "mmn", "eig", "dmn"]:
+        #     print (f"w90data[{key}].NB = {w90data.get_file(key).NB}")
         w90data.wannierise(**kwargs)
         self.system_wberri = System_w90(w90data=w90data, **kwargs_system)
         self.flags.on('wannierise_wberri')
@@ -516,7 +516,7 @@ class WorkflowQE:
                                       Ecut=Ecut,
                                       normalize=False
                                     )
-        bandstructure.spacegroup.show()
+        # bandstructure.spacegroup.show()
         if enforce or not self.flags.check('dmn'):
             dmn_new = DMN(empty=True)
             dmn_new.from_irrep(bandstructure)

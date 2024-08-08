@@ -36,7 +36,7 @@ atoms_frac = np.array( [[ 0.20074946,  0.19952625,  0.4002757 ],
 a=2.8685210414
 ca=1.7762410759/a
 structure = ase.Atoms(symbols='Ni4W',
-                scaled_positions = atoms_frac,
+                      scaled_positions = atoms_frac,
                 cell=a*np.array([ [-1,1,ca], [1,1,ca], [1,1,-ca] ] ),
                 pbc=True)
 
@@ -60,7 +60,7 @@ k_nodes = [high_symmetry_points[k] for k in path]
 
 workflow = WorkflowQE(atoms=structure, 
                       prefix="./tmp2/Ni4W",
-                      pseudopotentials=pseudopotentials, 
+                          pseudopotentials=pseudopotentials,
                       pseudo_dir='../fromEleni/Ni4W',
                       executables=executables,
                       num_bands=140,
@@ -100,32 +100,32 @@ projections = ProjectionsSet([ proj_Ni_d, proj_W_d, proj_1, proj_2, proj_3])
 workflow.set_projections(projections)
 
 
-workflow.write_win(
-                    # dis_win_min=8,dis_win_max=100,
-                    # dis_froz_min=8,dis_froz_max=25,
-                    # dis_num_iter=1000, 
-                    # num_iter=1000,
-                    # site_symmetry=False,symmetrize_eps=1e-9,
-                    enforce=True,
-                    )
+# workflow.write_win(
+#                     # dis_win_min=8,dis_win_max=100,
+#                     # dis_froz_min=8,dis_froz_max=25,
+#                     # dis_num_iter=1000, 
+#                     # num_iter=1000,
+#                     # site_symmetry=False,symmetrize_eps=1e-9,
+#                     enforce=True,
+#                     )
 
 
 # workflow.pw2wannier(targets=["eig", "mmn", "amn"], enforce=False, run=True)
-try:
-  os.remove(workflow.prefix+'.dmn.npz')
-except:
-  pass
-try:
-  os.remove(workflow.prefix+'.amn.npz')
-except:
-  pass
-workflow.pw2wannier(targets=["amn"], enforce=False, run=True)
-workflow.create_dmn(enforce=True)
+# try:
+#   os.remove(workflow.prefix+'.dmn.npz')
+# except:
+#   pass
+# try:
+#   os.remove(workflow.prefix+'.amn.npz')
+# except:
+#   pass
+# # workflow.pw2wannier(targets=["amn"], enforce=False, run=True)
+# workflow.create_dmn(enforce=True)
 
 # workflow.wannierise_w90(enforce=True)
 
 # workflow.calc_bands_wannier_w90(kdensity=1000)
-# workflow.calc_bands_qe(kdensity=300, enforce=False, disk_io='low', run=False)
+workflow.calc_bands_qe(kdensity=300, enforce=False, disk_io='low', run=False)
 
 
 

@@ -48,7 +48,8 @@ class AMN(W90_file):
         return self.data.shape[2]
 
     def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(), **kwargs):
-        super().__init__(seedname, "amn", tags=['data'], npar=npar, **kwargs)
+        self.npz_tags = ["data"]
+        super().__init__(seedname, "amn", npar=npar, **kwargs)
 
     def from_w90_file(self, seedname, npar):
         f_amn_in = open(seedname + ".amn", "r").readlines()
