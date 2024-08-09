@@ -1,6 +1,6 @@
 from functools import cached_property, lru_cache
 import warnings
-
+from numba import njit  
 from irrep.bandstructure import BandStructure
 from irrep.gvectors import symm_matrix
 from irrep.utility import get_block_indices
@@ -151,7 +151,7 @@ class DMN(W90_file):
         assert np.all(self.kptirr2kpt.flatten() >= 0), "kptirr2kpt has negative values"
         assert np.all(self.kptirr2kpt.flatten() < self.NK), "kptirr2kpt has values larger than NK"
         assert (set(self.kptirr2kpt.flatten()) == set(range(self.NK))), "kptirr2kpt does not cover all kpoints"
-        print(self.kptirr2kpt.shape)
+        # print(self.kptirr2kpt.shape)
         # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
 
 
@@ -159,7 +159,10 @@ class DMN(W90_file):
         data = [l.strip("() \n").split(",") for l in fl.readlines()]
         data = np.array([x for x in data if len(x) == 2], dtype=float)
         data = data[:, 0] + 1j * data[:, 1]
-        print(data.shape)
+        print("number of numbers in the dmn file :", data.shape)
+        print("of those > 1e-8 :", np.sum(np.abs(data) > 1e-8))
+        print("of those > 1e-5 :", np.sum(np.abs(data) > 1e-5))
+        
         num_wann = np.sqrt(data.shape[0] // self.Nsym // self.NKirr - self.NB**2)
         assert abs(num_wann - int(num_wann)) < 1e-8, f"num_wann is not an integer : {num_wann}"
         self.num_wann = int(num_wann)
@@ -176,7 +179,7 @@ class DMN(W90_file):
             print ("DMN: eigenvalues are used to determine the block structure")
             self.d_band_block_indices = [get_block_indices(eigenvalues[ik], thresh=1e-2, cyclic=False) for ik in self.kptirr]
         else:
-            print ("DMN: eigenvalues are not provided, the bands are considered as one block")
+            print ("DMN: eigenvalues are NOT provided, the bands are considered as one block")
             self.d_band_block_indices = [ [(0, self.NB)] for _ in range(self.NKirr)]
         self.d_band_block_indices = [np.array(self.d_band_block_indices[ik]) for ik in range(self.NKirr)]
         # np.ascontinousarray is used to speedup with Numba
@@ -203,8 +206,19 @@ class DMN(W90_file):
         # np.ascontinousarray is used to speedup with Numba
         self.D_wann_blocks = [[[np.ascontiguousarray(D_wann[ik, isym, start:end, start:end]) for start, end in self.D_wann_block_indices]
                                 for isym in range(self.Nsym)] for ik in range(self.NKirr)]
-
+        
     @lru_cache
+    def d_band_diagonal(self,ikirr,isym):
+        if ikirr is None:
+            return np.array([self.d_band_diagonal(ikirr, isym) for ikirr in range(self.NKirr)])
+        if isym is None:
+            return np.array([self.d_band_diagonal(ikirr, isym) for isym in range(self.Nsym)])
+        
+        result = np.zeros(self.NB, dtype=complex)
+        for (start, end),block in zip(self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr][isym]):
+            result[start:end] = block.diagonal()
+        return result
+
     def d_band_full_matrix(self, ikirr=None, isym=None):
         """
         Returns the full matrix of the ab initio bands transformation matrix
@@ -219,7 +233,6 @@ class DMN(W90_file):
             result[start:end, start:end] = block
         return result
     
-    @lru_cache
     def D_wann_full_matrix(self, ikirr=None, isym=None):
         """
         Returns the full matrix of the Wannier function transformation matrix
@@ -426,28 +439,70 @@ class DMN(W90_file):
         Rotates the umat matrix at the irreducible kpoint
         U = D_band^+ @ U @ D_wann
         """
-        d = self.d_band[ikirr, isym]
-        D = self.D_wann[ikirr, isym]
+        d_blocks = self.d_band_blocks[ikirr][isym]
+        D_blocks = self.D_wann_blocks[ikirr][isym]
+        d_indices = self.d_band_block_indices[ikirr]
+        D_indices = self.D_wann_block_indices
         # forward = not forward
+        U1 = np.zeros(U.shape, dtype=complex)
         if forward:
-            return d @ U @ D.conj().T
+            return rotate_block_matrix(U, lblocks=d_blocks, lindices=d_indices,
+                                        rblocks=D_blocks, rindices=D_indices,
+                                        conj_left=False, conj_right=True,
+                                        result=U1)
+            # return d @ U @ D.conj().T
         else:
-            return d.conj().T @ U @ D
+            return rotate_block_matrix(U, lblocks=d_blocks, lindices=d_indices,
+                                        rblocks=D_blocks, rindices=D_indices,
+                                        conj_left=True, conj_right=False,
+                                        result=U1)
+            # return d.conj().T @ U @ D
 
         # if forward:
         #     return self.d_band[ikirr, isym].conj().T @ U @ self.D_wann[ikirr, isym]
         # else:
         #     return self.d_band[ikirr, isym] @ U @ self.D_wann[ikirr, isym].conj().T
 
+    def clear_free_bands(self):
+        if hasattr(self, 'free_bands_defined'):
+            del self.free_bands_defined
+            del self.d_band_blocks_free
+            del self.d_band_block_indices_free
+        
+    def set_free_bands(self, ikirr, free_bands):
+        assert free_bands is not None
+        if not hasattr(self, 'free_bands_defined'):
+            self.free_bands_defined = np.zeros(self.NK, dtype=bool)
+            self.d_band_blocks_free = [None for _ in range(self.NKirr)]
+            self.d_band_block_indices_free = [None for _ in range(self.NKirr)]
+        if not self.free_bands_defined[ikirr]:
+            self.free_bands_defined[ikirr] = True
+            (
+                self.d_band_block_indices_free[ikirr],
+                self.d_band_blocks_free[ikirr]
+            ) = self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], free_bands)
+            
+
     def rotate_Z(self, Z, isym, ikirr, free=None):
         """
         Rotates the zmat matrix at the irreducible kpoint
         Z = d_band^+ @ Z @ d_band
         """
-        d_band = self.d_band[ikirr, isym]
         if free is not None:
-            d_band = d_band[free, :][:, free]
-        return d_band.conj().T @ Z @ d_band
+            self.set_free_bands(ikirr, free)
+            blocks = self.d_band_blocks_free[ikirr][isym]
+            indices = self.d_band_block_indices_free[ikirr]
+        else:
+            blocks = self.d_band_blocks[ikirr][isym]
+            indices = self.d_band_block_indices[ikirr]
+
+        Z1 = np.zeros(Z.shape, dtype=complex)
+        Z1 = rotate_block_matrix(Z, lblocks=blocks, lindices=indices,
+                                    rblocks=blocks, rindices=indices,
+                                    conj_left=True, conj_right=False,
+                                    result=Z1)
+        return Z1
+        # return d_band.conj().T @ Z @ d_band
 
     def check_unitary(self):
         """
@@ -503,9 +558,40 @@ class DMN(W90_file):
         return maxerr
 
     def apply_window(self, selected_bands):
-        if selected_bands is not None:
-            self.d_band = self.d_band[:, :, selected_bands, :][:, :, :, selected_bands]
+        if selected_bands is None:
+            return
+        print (f"applying window to select {sum(selected_bands)} bands from {self.NB}\n",selected_bands)
+        for ikirr in range(self.NKirr):
+            self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr] = \
+                self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], selected_bands)
+        for i,block_ind in enumerate(self.d_band_block_indices):
+            if i == 0:
+                self._NB = block_ind[-1,-1]
+            assert block_ind[0,0] == 0
+            assert np.all(block_ind[1:,0]==block_ind[:-1,1])
+            assert block_ind[-1,-1] == self.NB
+        print (f"new NB = {self.NB}")
 
+        
+
+    def select_window(self, d_band_blocks_ik, d_band_block_indices_ik, selected_bands):
+        if selected_bands is None:
+            return d_band_blocks_ik, d_band_block_indices_ik
+        
+        new_block_indices = []
+        new_blocks = [[] for _ in range(self.Nsym)]
+        st = 0
+        for iblock,(start, end) in enumerate(d_band_block_indices_ik):
+            select = selected_bands[start:end]
+            nsel = np.sum(select)
+            if nsel > 0:
+                new_block_indices.append((st, st + nsel))
+                st += nsel
+                for isym in range(self.Nsym):
+                    new_blocks[isym].append(
+                        np.ascontiguousarray(d_band_blocks_ik[isym][iblock][:, select][select, :]))
+        return np.array(new_block_indices), new_blocks
+                
     def check_eig(self, eig):
         """
         Check the symmetry of the eigenvlues
@@ -768,3 +854,48 @@ class DMN(W90_file):
     #                 print(f"   {k1} -> {k2} : {err}")
     #                 maxerr = max(maxerr, err)
     #     return maxerr
+
+
+# @njit
+def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices, conj_left, conj_right, result):
+    """
+    Rotates the matrix Z using the block-diagonal rotation matrices
+
+    Parameters
+    ----------
+    Z : np.array(complex, shape=(M,N))
+        the matrix to be rotated
+    lblocks : list(np.array(complex, shape=(m,m)))
+        the blocks of hte left matrix. sum(m) = M
+    lindices : list(tuple(int))
+        the indices of the blocks of the left matrix
+    rblocks : list(np.array(complex, shape=(n,n)))
+        the blocks of hte right matrix. sum(n) = N
+    rindices : list(tuple(int))
+        the indices of the blocks of the right matrix
+    conj_left : bool
+        whether to Hermitean conjugate the left blocks
+    conj_right : bool
+        whether to Hermitean conjugate the right blocks
+
+    Returns
+    -------
+    np.array(complex, shape=(M,N))
+        the rotated matrix
+    """
+    if conj_left:
+        for (start, end), block in zip(lindices, lblocks):
+            result[start:end,:] = block.T.conj() @ Z[start:end, :]
+    else:
+        for (start, end), block in zip(lindices, lblocks):
+            result[start:end,:] = block @ Z[start:end, :]
+    
+    if conj_right:
+        for (start, end), block in zip(rindices, rblocks):
+            result[:,start:end] = result[:, start:end] @ block.T.conj()
+    else:
+        for (start, end), block in zip(rindices, rblocks):
+            result[:,start:end] = result[:, start:end] @ block
+
+    return result
+        

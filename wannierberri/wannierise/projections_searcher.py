@@ -123,12 +123,12 @@ class EBRsearcher:
             outer = select_window_degen(self.eig[ik], thresh=degen_thresh, 
                                      win_min=outer_min, win_max=outer_max, return_indices=True)
             nfrozen = len(frozen)
-            char_outer_conj = np.array([dmn.d_band[ik][isym][outer,outer].sum() for isym in dmn.isym_little[ik]]).conj()
-            char_frozen_conj = np.array([dmn.d_band[ik][isym][frozen,frozen].sum() for isym in dmn.isym_little[ik]]).conj()
+            char_outer_conj = np.array([dmn.d_band_diagonal(ik,isym)[outer].sum() for isym in dmn.isym_little[ik]]).conj()
+            char_frozen_conj = np.array([dmn.d_band_diagonal(ik,isym)[frozen].sum() for isym in dmn.isym_little[ik]]).conj()
             print (f"ik= {ik} nfrozen={nfrozen} char_outer={char_outer_conj} char_frozen={char_frozen_conj}")
             print (f"isym_little={dmn.isym_little[ik]}")
             print (f"""all eigenvalues = \n{np.array([
-                dmn.d_band[ik][isym].diagonal() for isym in dmn.isym_little[ik]]).round(4).T} """)
+                dmn.d_band_diagonal(ik,isym) for isym in dmn.isym_little[ik]]).round(4).T} """)
             vector_frozen = np.zeros(len(self.all_possible_irreps[ik]), dtype=float)
             vector_outer = np.zeros(len(self.all_possible_irreps[ik]), dtype=float)
             

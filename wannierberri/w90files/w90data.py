@@ -150,8 +150,8 @@ class Wannier90data:
                     eigenvalues = self.eig.data
                 except:
                     eigenvalues = None
-                val = self.dmn(self.seedname, eigenvalues=eigenvalues,
-                                **kwargs_auto, spacegroup=self.chk.spacegroup)
+                val = DMN(self.seedname, eigenvalues=eigenvalues,
+                                **kwargs_auto)
             else:
                 val = self.__files_classes[key](self.seedname, **kwargs_auto)
         self.check_conform(key, val)
