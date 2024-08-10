@@ -60,8 +60,8 @@ workflow = WorkflowQE(atoms=structure,
                       )
 
 
-workflow.ground_state(kpts=(6,6,8), enforce=False, verbosity="'high'", run=True)
-workflow.nscf(mp_grid=(3,3,4), nosym=True, enforce=False, run=True)
+# workflow.ground_state(kpts=(6,6,8), enforce=False, verbosity="'high'", run=True)
+# workflow.nscf(mp_grid=(3,3,4), nosym=True, enforce=False, run=True)
 
 spacegroup = workflow.get_spacegroup
 #proj_Ni_d = Projection(position_num=[ 0.20074946,  0.19952625,  0.4002757 ] , orbital='d', spacegroup=spacegroup)
@@ -76,21 +76,21 @@ proj_1 = Projection(position_num=[x,x,0], orbital='s;p', spacegroup=spacegroup)
 # proj_4 = Projection(position_num=[0.798005163329, 0.958557153188, 0.756562316517], orbital='s', spacegroup=spacegroup)
 
 
-projections = ProjectionsSet([proj_1])
-# projections.maximize_distance()
+# projections = ProjectionsSet([proj_1])
+# # projections.maximize_distance()
 
 
-workflow.set_projections(projections)
+# workflow.set_projections(projections)
 
 
-workflow.write_win(
-                    # dis_win_min=8,dis_win_max=100,
-                    # dis_froz_min=8,dis_froz_max=25,
-                    # dis_num_iter=1000, 
-                    # num_iter=1000,
-                    # site_symmetry=False,symmetrize_eps=1e-9,
-                    enforce=True,
-                    )
+# workflow.write_win(
+#                     # dis_win_min=8,dis_win_max=100,
+#                     # dis_froz_min=8,dis_froz_max=25,
+#                     # dis_num_iter=1000, 
+#                     # num_iter=1000,
+#                     # site_symmetry=False,symmetrize_eps=1e-9,
+#                     enforce=True,
+#                     )
 
 
 # try:
@@ -101,13 +101,13 @@ workflow.write_win(
 #   os.remove(workflow.prefix+'.amn.npz')
 # except:
 #   pass
-workflow.pw2wannier(targets=["amn", "mmn", "eig"], enforce=False, run=True)
-workflow.create_dmn(enforce=True)
+# workflow.pw2wannier(targets=["amn", "mmn", "eig"], enforce=False, run=True)
+# workflow.create_dmn(enforce=True)
 
 # workflow.wannierise_w90(enforce=True)
 
 # workflow.calc_bands_wannier_w90(kdensity=1000)
-workflow.calc_bands_qe(kdensity=300, enforce=False, disk_io='low', run=False)
+# workflow.calc_bands_qe(kdensity=300, enforce=False, disk_io='low', run=False)
 
 
 
@@ -118,6 +118,6 @@ workflow.wannierise_wberri(enforce=True,
                             print_progress_every=20, sitesym=True, localise=True,
                             kwargs_sitesym={'epsilon':1e-6},)
 
-# workflow.flags.on('wannierise_wberri')
-workflow.calc_bands_wannier_wberri(kdensity=1000)
-workflow.plot(savefig='Te.png', show=False, ylim=(8,10))
+# # workflow.flags.on('wannierise_wberri')
+# workflow.calc_bands_wannier_wberri(kdensity=1000)
+# workflow.plot(savefig='Te.png', show=False, ylim=(8,10))

@@ -76,9 +76,9 @@ ebrsearcher = EBRsearcher(
     spacegroup=spacegroup,
     trial_projections=trial_projections,
     froz_min=10,
-    froz_max=25,
+    froz_max=30,
     outer_min=10,
-    outer_max=100,
+    outer_max=50,
 )
 
 combinations = ebrsearcher.find_combinations(max_num_wann=40,fixed=(0,1))
