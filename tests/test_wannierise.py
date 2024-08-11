@@ -17,7 +17,7 @@ from irrep.bandstructure import BandStructure
 
 
 
-def test_wanieriise():
+def test_wanierise():
     systems = {}
 
     # Just fot Reference : run the Wannier90 with sitesym, but instead of frozen window use outer window
@@ -103,7 +103,7 @@ def test_wanieriise():
                                                 linecolor=linecolors.pop(0), label=key,
                                                 kwargs_line={"ls": linestyles.pop(0)})
         energies[key] = result.results['tabulate'].get_data(quantity="Energy", iband=np.arange(0, 4))
-    plt.savefig("bands_disentangled.png")
+    plt.savefig("bands.png")
     for k1 in energies:
         for k2 in energies:
             if k1 == k2:
@@ -141,8 +141,21 @@ def test_create_dmn():
                 f"new: {getattr(dmn_new, key)}\n"
                 )
 
-    assert dmn_ref.D_wann.shape == dmn_new.D_wann.shape, f"shape of D_wann differs between reference and new DMN file. Reference: {dmn_ref.D_wann.shape}, new: {dmn_new.D_wann.shape}"
-    assert dmn_ref.D_wann == approx(dmn_new.D_wann, abs=1e-6), f"D_wann differs between reference and new DMN file by a maximum of {np.max(np.abs(dmn_ref.D_wann - dmn_new.D_wann))} > 1e-6"
-    assert dmn_ref.d_band.shape == dmn_new.d_band.shape, f"shape of d_bands differs between reference and new DMN file. Reference: {dmn_ref.d_band.shape}, new: {dmn_new.d_bands.shape}"
-    assert dmn_ref.d_band == approx(dmn_new.d_band, abs=1e-6), f"d_bands differs between reference and new DMN file by a maximum of {np.max(np.abs(dmn_ref.d_bands - dmn_new.d_bands))} > 1e-6"
-
+    assert np.all(dmn_ref.D_wann_block_indices == dmn_new.D_wann_block_indices), (
+            f"D_wann_block_indices differs between reference and new DMN file\n"
+            f"reference: {dmn_ref.D_wann_block_indices}\n"
+            f"new: {dmn_new.D_wann_block_indices}\n"
+            )
+    for ikirr in range(dmn_ref.NKirr):
+        assert np.all(dmn_ref.d_band_block_indices[ikirr] == dmn_new.d_band_block_indices[ikirr]), (
+            f"d_band_block_indices differs  at ikirr={ikirr} between reference and new DMN file\n"
+            f"reference: {dmn_ref.d_band_block_indices}\n"
+            f"new: {dmn_new.d_band_block_indices}\n"
+            )
+    
+        for isym in range(dmn_ref.Nsym):
+            for blockref,blocknew in zip(dmn_ref.D_wann_blocks[ikirr][isym], dmn_new.D_wann_blocks[ikirr][isym]):
+                assert blockref == approx(blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+            for blockref,blocknew in zip(dmn_ref.d_band_blocks[ikirr][isym], dmn_new.d_band_blocks[ikirr][isym]):
+                assert blockref == approx(blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+    
