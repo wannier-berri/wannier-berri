@@ -48,6 +48,7 @@ class Parallel():
         ray_init_loc.update(ray_init)
         ray_init_loc['num_cpus'] = num_cpus
         import ray
+        print ("initializing ray with ", ray_init_loc)
         ray.init(**ray_init_loc)
         self.num_cpus = int(round(ray.available_resources()['CPU']))
         self.ray = ray

@@ -1,3 +1,4 @@
+import irrep
 from irrep.spacegroup import SpaceGroup
 from pytest import approx
 import scipy
@@ -7,6 +8,8 @@ import subprocess
 from matplotlib import pyplot as plt
 import os
 import shutil
+
+from wannierberri.wannierise.projections import Projection
 from common import OUTPUT_DIR, ROOT_DIR
 from wannierberri.w90files import DMN, WIN
 from wannierberri.w90files.Dwann import Dwann
@@ -47,7 +50,8 @@ def test_wanieriise():
         mix_ratio_z=0.8,
         mix_ratio_u=0.7,
         print_progress_every=20,
-        sitesym=True
+        sitesym=True,
+        localise=True
     )
     wannier_centers = w90data.chk._wannier_centers
     wannier_spreads = w90data.chk._wannier_spreads
@@ -61,7 +65,7 @@ def test_wanieriise():
                                                ]).dot(w90data.chk.real_lattice) / 2,
                                      abs=1e-6)
 
-    systems["disentangled"] = wberri.system.System_w90(w90data=w90data)
+    systems["wberri"] = wberri.system.System_w90(w90data=w90data)
 
     # If needed - perform maximal localization using Wannier90
 
@@ -80,8 +84,8 @@ def test_wanieriise():
     del win_file["dis_froz_max"]
     win_file["site_symmetry"] = True
     win_file.write(prefix_dis)
-    subprocess.run(["wannier90.x", prefix_dis])
-    systems["mlwf"] = wberri.system.System_w90(seedname=prefix_dis)
+    # subprocess.run(["wannier90.x", prefix_dis])
+    # systems["mlwf"] = wberri.system.System_w90(seedname=prefix_dis)
 
     # Now calculate bandstructure for each of the systems
     # for creating a path any of the systems will do the job
@@ -113,62 +117,32 @@ def test_wanieriise():
     os.chdir(cwd)
 
 
-def test_Dwann():
-    cwd = os.getcwd()
-
-    tmp_dir = os.path.join(OUTPUT_DIR, "diamond-dwann")
-    os.makedirs(tmp_dir, exist_ok=True)
-    os.chdir(tmp_dir)
-
+def test_create_dmn():
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
-    prefix = "diamond"
-    prefix_dis = "diamond_disentangled"
-    for ext in ["sym", "dmn", "win"]:
-        shutil.copy(os.path.join(data_dir, prefix + "." + ext),
-                    os.path.join(tmp_dir, prefix + "." + ext))
-    print("prefix = ", prefix)
+    tmp_dmn_path = os.path.join(OUTPUT_DIR, "diamond")
 
-    bohr_ang = scipy.constants.physical_constants["Bohr radius"][0]*1e10
-    alat = 6.1
-    lattice = np.array([[-1,0,1],[0,1,1],[-1,1,0,]])/2*alat*bohr_ang
-    atom_pos = np.array([[-1,-1,-1],[1,1,1]])/8
+    bandstructure = irrep.bandstructure.BandStructure(prefix = data_dir + "/di", Ecut=100,
+                                                      code="espresso", 
+                                                      from_sym_file=data_dir+"/diamond.sym")
+    dmn = DMN(empty=True)
+    dmn.from_irrep(bandstructure)
+    projection = Projection(position_num=[0,0,0], orbital='s', spacegroup=bandstructure.spacegroup)
+    dmn.set_D_wann_from_projections(projections_obj=[projection])
+    dmn.to_w90_file(tmp_dmn_path)
+    
 
-    spacegroup = SpaceGroup(cell = (lattice,atom_pos, [1,1]),
-                            alat = alat,
-                            from_sym_file="diamond.sym"
-                            )
+    dmn_ref = DMN(seedname=os.path.join(data_dir, "diamond"),read_npz=False)
+    dmn_new = DMN(seedname=tmp_dmn_path, read_npz=False)
 
+    for key in ['NB', "num_wann", "NK", "NKirr", "kptirr", "kptirr2kpt", "kpt2kptirr"]:
+        assert np.all(getattr(dmn_ref, key) == getattr(dmn_new, key)), (
+                f"key {key} differs between reference and new DMN file\n"
+                f"reference: {getattr(dmn_ref, key)}\n"
+                f"new: {getattr(dmn_new, key)}\n"
+                )
 
-    # spacegroup.show()
-    # exit()
-
-    orbit = np.array([[0,0,0],[0,0,1],[0,1,0],[1,0,0]])/2
-
-    # orbit = np.array([[1,1,1]])/4
-    # orbit = np.array([  [0.25, 0.25, 0.25],
-    #                     [0.25, 0.25, 0.75],
-    #                     [0.75, 0.25, 0.25],
-    #                     [0.25, 0.75, 0.25],
-    #                     [0.75, 0.75, 0.75],
-    #                     [0.75, 0.75, 0.25],
-    #                     [0.75, 0.25, 0.75],
-    #                     [0.25, 0.75, 0.75]])
-
-
-    dwann = Dwann(spacegroup,  orbit )
-
-
-    # print (repr(np.array(dwann.orbit)))
-
-    dmn = DMN(seedname="diamond")
-    win = WIN(seedname="diamond")
-    kpoints = win["kpoints"]
-
-    dwann_all = dwann.get_on_points_all(kpoints, dmn.kptirr, dmn.kptirr2kpt)
-
-    diff = dmn.D_wann-dwann_all
-    diffmax = np.max(abs(diff))
-    assert diffmax < 1e-10, f"maximal difference for Dwann is {diffmax} > {1e-10}"
-    os.chdir(cwd)
-
+    assert dmn_ref.D_wann.shape == dmn_new.D_wann.shape, f"shape of D_wann differs between reference and new DMN file. Reference: {dmn_ref.D_wann.shape}, new: {dmn_new.D_wann.shape}"
+    assert dmn_ref.D_wann == approx(dmn_new.D_wann, abs=1e-6), f"D_wann differs between reference and new DMN file by a maximum of {np.max(np.abs(dmn_ref.D_wann - dmn_new.D_wann))} > 1e-6"
+    assert dmn_ref.d_band.shape == dmn_new.d_band.shape, f"shape of d_bands differs between reference and new DMN file. Reference: {dmn_ref.d_band.shape}, new: {dmn_new.d_bands.shape}"
+    assert dmn_ref.d_band == approx(dmn_new.d_band, abs=1e-6), f"d_bands differs between reference and new DMN file by a maximum of {np.max(np.abs(dmn_ref.d_bands - dmn_new.d_bands))} > 1e-6"
 

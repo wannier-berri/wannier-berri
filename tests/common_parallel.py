@@ -24,6 +24,7 @@ def parallel_ray():
     ray_init['address'] = None
     ray_init['_node_ip_address'] = "0.0.0.0"
     ray_init['_redis_password'] = 'some_password'
+    ray_init['num_gpus'] = 0 # otherwise failing with NVIDIA-555 driver.
 
     parallel = Parallel(
         num_cpus=4,

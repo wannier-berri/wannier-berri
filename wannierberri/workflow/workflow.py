@@ -479,15 +479,15 @@ class WorkflowQE:
         self.flags.on('wannierise_wberri')
         self.pickle()
 
-    @cached_property
-    def get_spacegroup(self):
+    def get_spacegroup(self, from_sym_file=None):
         bandstructure = BandStructure(code='espresso', 
                                       prefix=self.prefix, 
-                                      onlysym=True
+                                      onlysym=True,
+                                    from_sym_file=from_sym_file
                                     )
         return bandstructure.spacegroup
 
-    def create_dmn(self, Ecut=30, enforce=False):
+    def create_dmn(self, Ecut=30, enforce=False, from_sym_file=None):
         """
         Create the DMN file for Wannier90
 
@@ -514,7 +514,8 @@ class WorkflowQE:
         bandstructure = BandStructure(code='espresso', 
                                       prefix=self.prefix, 
                                       Ecut=Ecut,
-                                      normalize=False
+                                      normalize=False,
+                                      from_sym_file=from_sym_file
                                     )
         bandstructure.spacegroup.show()
         if enforce or not self.flags.check('dmn'):
