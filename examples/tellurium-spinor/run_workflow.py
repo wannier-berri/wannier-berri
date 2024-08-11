@@ -63,7 +63,7 @@ workflow = WorkflowQE(atoms=structure,
 # workflow.ground_state(kpts=(6,6,8), enforce=False, verbosity="'high'", run=True)
 # workflow.nscf(mp_grid=(3,3,4), nosym=True, enforce=False, run=True)
 
-spacegroup = workflow.get_spacegroup
+spacegroup = workflow.get_spacegroup()
 #proj_Ni_d = Projection(position_num=[ 0.20074946,  0.19952625,  0.4002757 ] , orbital='d', spacegroup=spacegroup)
 #proj_W_d = Projection(position_num=[ 0,0,0 ] , orbital='d', spacegroup=spacegroup)
 # proj_1 = Projection(position_num=[0,1/2,-1/2], orbital='s', spacegroup=spacegroup)

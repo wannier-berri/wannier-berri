@@ -755,15 +755,15 @@ class DMN(W90_file):
         ----------
         spacegroup : SpaceGroup
             the spacegroup of the system
-        projections : list( wannierberri.wannierise.projections.Projection)
-            the list of projections. Note that if some
+        projections : list( (np.array(float, shape=(3,)), str) )
+            the list of projections. Each projection is a tuple of the position and the orbital name
+        projections_obj : ProjectionsSet or list(Projection)
+            alternative way to provide the projections. Will be appended to the projections list
         win : WIN object
             the win file, just ot get the k-points
         kpoints : np.array(float, shape=(npoints,3,))
             the kpoints in fractional coordinates. Overrides the kpoints in the win file (if provided)
-        projections_obj : ProjectionsSet or list(Projection)
-            alternative way to provide the projections
-
+        
         Note: 
         -----
 
