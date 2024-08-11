@@ -1,7 +1,5 @@
 import irrep
-from irrep.spacegroup import SpaceGroup
 from pytest import approx
-import scipy
 import wannierberri as wberri
 import numpy as np
 import subprocess
@@ -26,7 +24,13 @@ def test_wanieriise():
     cwd = os.getcwd()
 
     tmp_dir = os.path.join(OUTPUT_DIR, "diamond")
-    os.makedirs(tmp_dir, exist_ok=True)
+
+    # Check if the directory exists
+    if os.path.exists(tmp_dir):
+        # Remove the directory and all its contents
+        shutil.rmtree(tmp_dir)
+        print(f"Directory {tmp_dir} has been removed.")
+    os.makedirs(tmp_dir)
     os.chdir(tmp_dir)
 
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
@@ -48,7 +52,7 @@ def test_wanieriise():
         num_iter=1000,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
-        mix_ratio_u=0.7,
+        mix_ratio_u=1,
         print_progress_every=20,
         sitesym=True,
         localise=True
@@ -84,8 +88,8 @@ def test_wanieriise():
     del win_file["dis_froz_max"]
     win_file["site_symmetry"] = True
     win_file.write(prefix_dis)
-    # subprocess.run(["wannier90.x", prefix_dis])
-    # systems["mlwf"] = wberri.system.System_w90(seedname=prefix_dis)
+    subprocess.run(["wannier90.x", prefix_dis])
+    systems["wberri+mlwf"] = wberri.system.System_w90(seedname=prefix_dis)
 
     # Now calculate bandstructure for each of the systems
     # for creating a path any of the systems will do the job
@@ -103,7 +107,7 @@ def test_wanieriise():
                                                 linecolor=linecolors.pop(0), label=key,
                                                 kwargs_line={"ls": linestyles.pop(0)})
         energies[key] = result.results['tabulate'].get_data(quantity="Energy", iband=np.arange(0, 4))
-    plt.savefig("bands_disentangled.png")
+    plt.savefig("bands.png")
     for k1 in energies:
         for k2 in energies:
             if k1 == k2:
@@ -123,10 +127,12 @@ def test_create_dmn():
 
     bandstructure = irrep.bandstructure.BandStructure(prefix = data_dir + "/di", Ecut=100,
                                                       code="espresso", 
-                                                      from_sym_file=data_dir+"/diamond.sym")
+                                                    from_sym_file=data_dir+"/diamond.sym"
+                                                      )
     dmn = DMN(empty=True)
     dmn.from_irrep(bandstructure)
-    projection = Projection(position_num=[0,0,0], orbital='s', spacegroup=bandstructure.spacegroup)
+    projection = Projection(position_num=[[0,0,0],[0,0,1/2],[0,1/2,0],[1/2,0,0]], orbital='s', spacegroup=bandstructure.spacegroup)
+    print("all positions:",projection.positions)
     dmn.set_D_wann_from_projections(projections_obj=[projection])
     dmn.to_w90_file(tmp_dmn_path)
     
