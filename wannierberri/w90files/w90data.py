@@ -441,7 +441,9 @@ class Wannier90data:
         new_files = {}
 
         v = self.chk.v_matrix
+        print ("v.shape", v.shape)
         ham_tmp = np.einsum('kml,km,kmn->kln', v.conj(), self.eig.data, v)
+        print ("ham_tmp.shape", ham_tmp.shape)
         EV = [np.linalg.eigh(h_tmp) for h_tmp in ham_tmp]
         eig_new = EIG(data=np.array([ev[0] for ev in EV]))
         # v_right = np.array([_v @ ev[1].T.conj() for ev, _v in zip(EV,v)])

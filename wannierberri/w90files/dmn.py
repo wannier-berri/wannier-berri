@@ -92,11 +92,11 @@ class DMN(W90_file):
                 for i in range(len(self.D_wann_block_indices)):
                     dic[f'D_wann_blocks_{ik}_{isym}_{i}'] = self.D_wann_blocks[ik][isym][i]
         print (f"saving to {f_npz} : ")
-        for k in dic:
-            try:
-                print (f"{k} : {dic[k].shape}")
-            except:
-                print (f"{k} : {dic[k]}")	
+        # for k in dic:
+        #     try:
+        #         print (f"{k} : {dic[k].shape}")
+        #     except:
+        #         print (f"{k} : {dic[k]}")	
         np.savez_compressed(f_npz, **dic)
 
     def from_npz(self, f_npz):
@@ -390,14 +390,31 @@ class DMN(W90_file):
                     
 
     def get_disentangled(self, v_matrix_dagger, v_matrix):
+        """	
+        Here we will loose the block-diagonal structure of the d_band matrix.
+        It is ok, w90 anyway does not use it. This function is only used to finish 
+        the maximal localization procedure with Wannier90
+        """ 
         NBnew = v_matrix.shape[2]
-        d_band_new = np.zeros((self.NKirr, self.Nsym, NBnew, NBnew), dtype=complex)
+        d_band_block_indices_new = [np.array([[0,NBnew]]) for _ in range(self.NKirr)]
+        d_band_blocks_new = []
         for ikirr, ik in enumerate(self.kptirr):
+            d_band_blocks_new.append([])
             for isym in range(self.Nsym):
                 ik2 = self.kptirr2kpt[ikirr, isym]
-                d_band_new[ikirr, isym] = v_matrix_dagger[ik2] @ self.d_band[ikirr, isym] @ v_matrix[ik]
+                result = np.zeros((NBnew, NBnew), dtype=complex)
+                # print (f"ikirr = {ikirr}, isym = {isym}")
+                # print (f"d_band_block_indices[ikirr] = {self.d_band_block_indices[ikirr]}")
+                for (start, end), block in zip(self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr][isym]):
+                    result[:,:]+=v_matrix_dagger[ik2][:,start:end] @ block @ v_matrix[ik][start:end,:]
+                # result = v_matrix_dagger[ik2] @ self.d_band_full_matrix(ikirr=ikirr, isym=isym) @ v_matrix[ik]
+                assert result.shape == (NBnew, NBnew)
+                d_band_blocks_new[ikirr].append([result.copy()])
+                # d_band_new[ikirr, isym] = v_matrix_dagger[ik2] @ self.d_band[ikirr, isym] @ v_matrix[ik]
         other = deepcopy(self)
-        other.d_band = d_band_new
+        other.d_band_block_indices = d_band_block_indices_new
+        other.d_band_blocks = d_band_blocks_new
+        other._NB = NBnew
         return other
     
     def set_identiy(self, num_wann, num_bands, nkpt):

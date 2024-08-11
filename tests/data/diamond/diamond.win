@@ -4,7 +4,7 @@ num_iter        = 1000
 dis_num_iter = 1000
 num_print_cycles = 20
 
-site_symmetry = F
+site_symmetry = T
 
 dis_win_max=22.0
 

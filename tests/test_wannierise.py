@@ -76,6 +76,19 @@ def test_wanierise():
     # first generate the reduced files - where num_bands is reduced to num_wann,
     # by taking the optimized subspace
     w90data_reduced = w90data.get_disentangled(files=["eig", "mmn", "amn", "dmn"])
+    w90data_reduced.wannierise(
+        froz_min=-8,
+        froz_max=20,
+        num_iter=1000,
+        conv_tol=1e-10,
+        mix_ratio_z=0.8,
+        mix_ratio_u=1,
+        print_progress_every=20,
+        sitesym=True,
+        localise=True
+    )
+
+
     w90data_reduced.write(prefix_dis, files=["eig", "mmn", "amn", "dmn"])
     # Now write the diamond_disentangled.win file
     # first take the existing file
