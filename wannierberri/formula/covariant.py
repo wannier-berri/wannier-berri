@@ -920,6 +920,28 @@ class Omegakp(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+class Morbkp(Formula_ln):
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        self.dEinv = DEinv_ln(data_K)
+        self.V = data_K.covariant('Ham', commader=1)
+        self.ndim = 1
+        self.E = data_K.E_K
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+
+    def nn(self, ik, inn, out):
+        summ = -2j * np.einsum("mla,ml,nl,lna->mna", self.V.nl(ik,inn,out)[:, :, alpha_A]*self.E[ik][out][None, :, None],
+                self.dEinv.nl(ik,inn,out),
+                self.dEinv.nl(ik,inn,out),
+                self.V.ln(ik,inn,out)[:, :, beta_A],
+                               )
+        return summ
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
 class BCP_G_kp(Formula_ln):
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)    
@@ -940,6 +962,28 @@ class BCP_G_kp(Formula_ln):
     
     def ln(self, ik, inn, out):
         raise NotImplementedError()
+
+
+class Quantum_M_kp(Formula_ln):
+    
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        self.dEinv = DEinv_ln(data_K)
+        self.V = data_K.covariant('Ham', commader=1)
+        self.ndim = 1
+        self.transformTR=transform_ident
+        self.transformInv=transform_ident
+
+    def nn(self, ik, inn, out):
+        summ = 2 * np.einsum("mla,ml,nl,lna->mna", self.V.nl(ik,inn,out)[:, :, alpha_A] ,
+                self.dEinv.nl(ik,inn,out),
+                self.dEinv.nl(ik,inn,out),
+                self.V.ln(ik,inn,out)[:, :, beta_A] )
+        return summ
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
 
 class Quantum_M(Formula_ln):
     

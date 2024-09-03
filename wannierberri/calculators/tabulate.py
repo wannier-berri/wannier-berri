@@ -220,7 +220,13 @@ class Quantum_M_kp(Tabulator):
 class BerryCurvature_kp(Tabulator):
 
     def __init__(self, **kwargs):
-        super().__init__(frml.Omega_kp, **kwargs)
+        super().__init__(frml.Omegakp, **kwargs)
+
+class OrbitalMoment_kp(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.Morbkp, **kwargs)
+
 
 class BCP_G(Tabulator):
 
