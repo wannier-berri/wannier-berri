@@ -33,7 +33,7 @@ class SpreadFunctional:
                             for ik, neigh in enumerate(self.neigh)])
         phinkb = -np.array([[[np.angle(mnnb[n, n]) for n in range(NW)] for mnnb in mnn] for mnn in Mmn_loc])
         return np.array(sum(self.w[ib] * phinkb[ik, ib][:, None] * self.bk[ib]  for ib in range(NNB) for ik in range(NK)))
-        
+
     def __call__(self, U, wcc):
         """
         calculate the spread functional
@@ -82,7 +82,7 @@ class SpreadFunctional:
         # print ("wannier centers\n", rn)
         Omega_D = sum(self.w[ib] * (phinkb[ik, ib, n] - self.bk[ib] @ wcc[n])**2 for n in range(NW) for ib in range(NNB) for ik in range(NK))
         Omega_tot = sum(self.w[ib] * (-absnkb[ik, ib, n]**2 + phinkb[ik, ib, n]**2)  for n in range(NW) for ib in range(NNB) for ik in range(NK))
-        Omega_tot += NW * np.sum(self.w)*NK - rm2sum
+        Omega_tot += NW * np.sum(self.w) * NK - rm2sum
         Omega_I = Omega_tot - Omega_OD - Omega_D
         return dict(Omega_D=Omega_D, Omega_OD=Omega_OD, Omega_I=Omega_I, Omega_tot=Omega_tot)
         # return Omega_D, Omega_OD, Omega_I, Omega_tot
@@ -116,15 +116,15 @@ class SpreadFunctional:
         NK = len(self.neigh)
         NW = U[0].shape[1]
         NNB = len(self.neigh[0])
-        wcc_phase = np.exp( 1j * wcc @ self.bk.T)[:,:]
+        wcc_phase = np.exp(1j * wcc @ self.bk.T)[:, :]
         # wcc_phase = np.ones(wcc_phase.shape, dtype=complex)
 
         UT = [u.T.conj() for u in U]
 
-        Mmn_loc = np.array([[ (UT[ik].dot(self.Mmn[ik][ib].dot(U[ikb]))  ).diagonal() *wcc_phase[:,ib]
+        Mmn_loc = np.array([[(UT[ik].dot(self.Mmn[ik][ib].dot(U[ikb]))).diagonal() * wcc_phase[:, ib]
                             for ib, ikb in enumerate(neigh)]
-                                for ik, neigh in enumerate(self.neigh)])
-        
+                            for ik, neigh in enumerate(self.neigh)])
+
         # Mmn_loc_check = np.array([[ (UT[ik].dot(self.Mmn[ik][ib].dot(U[ikb]))  ) *wcc_phase[:,ib]
         #                     for ib, ikb in enumerate(neigh)]
         #                         for ik, neigh in enumerate(self.neigh)])
@@ -132,9 +132,9 @@ class SpreadFunctional:
         # check = abs(Mmn_loc_check - np.eye(NW)[None,:,:]).max()
         # print ("Check", check)
 
-        absnkb2 = np.sum(np.abs(Mmn_loc)**2,axis=0)
+        absnkb2 = np.sum(np.abs(Mmn_loc)**2, axis=0)
         phinkb2 = -np.sum(np.angle(Mmn_loc)**2, axis=0)
-        spreads = sum(w*(NK-absnkb2[ib]+phinkb2[ib]) for ib,w in enumerate(self.w) ) # Eq 32 from MV-97
+        spreads = sum(w * (NK - absnkb2[ib] + phinkb2[ib]) for ib, w in enumerate(self.w))  # Eq 32 from MV-97
         # spreads = 2*sum(w*(1-Mmn_loc[ik,ib].real) for ib,w in enumerate(self.w) for ik in range(NK)) # Eq 23 from MV-97
         result = dict()
         result["Omega_tot"] = sum(spreads)

@@ -93,7 +93,7 @@ class MMN(W90_file):
 
     def apply_window(self, selected_bands):
         if selected_bands is not None:
-            self.data = self.data[:, :, selected_bands, :][:,:, :, selected_bands]
+            self.data = self.data[:, :, selected_bands, :][:, :, :, selected_bands]
 
     def get_disentangled(self, v_left, v_right):
         """
@@ -190,7 +190,7 @@ class MMN(W90_file):
 
             ib_unique_map = np.zeros((self.NK, self.NNB), dtype=int)
             ib_unique_map_inverse = np.zeros((self.NK, self.NNB), dtype=int)
-            
+
             bk_latt_unique_tuples = [tuple(b) for b in bk_latt_unique]
             for ik in range(self.NK):
                 for ib in range(self.NNB):
@@ -205,16 +205,16 @@ class MMN(W90_file):
             self.ib_unique_map = ib_unique_map
             ###################################################################
             self.ib_unique_map_inverse = ib_unique_map_inverse
-            self.wk_unique = self.wk[0,ib_unique_map_inverse[0]]
-            self.neighbours_unique = np.array([neigh[order] for neigh, order in 
+            self.wk_unique = self.wk[0, ib_unique_map_inverse[0]]
+            self.neighbours_unique = np.array([neigh[order] for neigh, order in
                                                zip(self.neighbours, self.ib_unique_map_inverse)])
             for ik in range(0, self.NK):
                 order = ib_unique_map_inverse[ik]
-                assert np.allclose(self.wk[ik,order], self.wk_unique)
-                assert np.allclose(self.neighbours[ik,order], self.neighbours_unique[ik])
+                assert np.allclose(self.wk[ik, order], self.wk_unique)
+                assert np.allclose(self.neighbours[ik, order], self.neighbours_unique[ik])
 
             self.bk_dot_bk = self.bk_cart_unique @ self.bk_cart_unique.T
-  
-                
+
+
     def set_bk_chk(self, chk, **argv):
         self.set_bk(chk.kpt_latt, chk.mp_grid, chk.recip_lattice, **argv)

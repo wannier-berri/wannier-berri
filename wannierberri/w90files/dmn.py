@@ -1,6 +1,6 @@
 from functools import cached_property, lru_cache
 import warnings
-from numba import njit  
+from numba import njit
 from irrep.bandstructure import BandStructure
 from irrep.gvectors import symm_matrix
 from irrep.utility import get_block_indices
@@ -68,13 +68,13 @@ class DMN(W90_file):
     def __init__(self, seedname="wannier90", num_wann=None, num_bands=None, nkpt=None,
                  empty=False,
                  **kwargs):
-        self.npz_tags = [ 'D_wann_block_indices', '_NB',
+        self.npz_tags = ['D_wann_block_indices', '_NB',
                     'kpt2kptirr', 'kptirr', 'kptirr2kpt', 'kpt2kptirr_sym',
                    '_NK', 'num_wann', 'comment', 'NKirr', 'Nsym',]
-        
+
         if empty:
             self._NB = 0
-            self.num_wann =0 
+            self.num_wann = 0
             return
         if seedname is None:
             self.set_identiy(num_wann, num_bands, nkpt)
@@ -91,12 +91,12 @@ class DMN(W90_file):
                     dic[f'd_band_blocks_{ik}_{isym}_{i}'] = self.d_band_blocks[ik][isym][i]
                 for i in range(len(self.D_wann_block_indices)):
                     dic[f'D_wann_blocks_{ik}_{isym}_{i}'] = self.D_wann_blocks[ik][isym][i]
-        print (f"saving to {f_npz} : ")
+        print(f"saving to {f_npz} : ")
         # for k in dic:
         #     try:
         #         print (f"{k} : {dic[k].shape}")
         #     except:
-        #         print (f"{k} : {dic[k]}")	
+        #         print (f"{k} : {dic[k]}")
         np.savez_compressed(f_npz, **dic)
 
     def from_npz(self, f_npz):
@@ -111,7 +111,7 @@ class DMN(W90_file):
             for isym in range(self.Nsym):
                 for i in range(len(self.d_band_block_indices[ik])):
                     self.d_band_blocks[ik][isym].append(np.ascontiguousarray(dic[f'd_band_blocks_{ik}_{isym}_{i}']))
-                for i in range(len(self.D_wann_block_indices)): 
+                for i in range(len(self.D_wann_block_indices)):
                     self.D_wann_blocks[ik][isym].append(np.ascontiguousarray(dic[f'D_wann_blocks_{ik}_{isym}_{i}']))
 
 
@@ -162,7 +162,7 @@ class DMN(W90_file):
         print("number of numbers in the dmn file :", data.shape)
         print("of those > 1e-8 :", np.sum(np.abs(data) > 1e-8))
         print("of those > 1e-5 :", np.sum(np.abs(data) > 1e-5))
-        
+
         num_wann = np.sqrt(data.shape[0] // self.Nsym // self.NKirr - self.NB**2)
         assert abs(num_wann - int(num_wann)) < 1e-8, f"num_wann is not an integer : {num_wann}"
         self.num_wann = int(num_wann)
@@ -176,25 +176,25 @@ class DMN(W90_file):
 
         # arranging d_band in the block form
         if eigenvalues is not None:
-            print ("DMN: eigenvalues are used to determine the block structure")
+            print("DMN: eigenvalues are used to determine the block structure")
             self.d_band_block_indices = [get_block_indices(eigenvalues[ik], thresh=1e-2, cyclic=False) for ik in self.kptirr]
         else:
-            print ("DMN: eigenvalues are NOT provided, the bands are considered as one block")
-            self.d_band_block_indices = [ [(0, self.NB)] for _ in range(self.NKirr)]
+            print("DMN: eigenvalues are NOT provided, the bands are considered as one block")
+            self.d_band_block_indices = [[(0, self.NB)] for _ in range(self.NKirr)]
         self.d_band_block_indices = [np.array(self.d_band_block_indices[ik]) for ik in range(self.NKirr)]
         # np.ascontinousarray is used to speedup with Numba
-        self.d_band_blocks = [[[np.ascontiguousarray(d_band[ik, isym, start:end, start:end]) 
-                                for start, end in self.d_band_block_indices[ik] ] 
-                                for isym in range(self.Nsym)] for ik in range(self.NKirr)]
+        self.d_band_blocks = [[[np.ascontiguousarray(d_band[ik, isym, start:end, start:end])
+                                for start, end in self.d_band_block_indices[ik]]
+                               for isym in range(self.Nsym)] for ik in range(self.NKirr)]
 
         # arranging D_wann in the block form
-        self.wann_block_indices=[]
-        #determine the block indices from the D_wann, excluding areas with only zeros
+        self.wann_block_indices = []
+        # determine the block indices from the D_wann, excluding areas with only zeros
         start = 0
         thresh = 1e-5
         while start < self.num_wann:
-            for end in range(start+1, self.num_wann):
-                if np.all( abs(D_wann[:,:,start:end,end:])<thresh) and np.all( abs(D_wann[:,:,end:,start:end])<thresh):
+            for end in range(start + 1, self.num_wann):
+                if np.all(abs(D_wann[:, :, start:end, end:]) < thresh) and np.all(abs(D_wann[:, :, end:, start:end]) < thresh):
                     self.wann_block_indices.append((start, end))
                     start = end
                     break
@@ -205,17 +205,17 @@ class DMN(W90_file):
         self.D_wann_block_indices = np.array(self.wann_block_indices)
         # np.ascontinousarray is used to speedup with Numba
         self.D_wann_blocks = [[[np.ascontiguousarray(D_wann[ik, isym, start:end, start:end]) for start, end in self.D_wann_block_indices]
-                                for isym in range(self.Nsym)] for ik in range(self.NKirr)]
-        
+                               for isym in range(self.Nsym)] for ik in range(self.NKirr)]
+
     @lru_cache
-    def d_band_diagonal(self,ikirr,isym):
+    def d_band_diagonal(self, ikirr, isym):
         if ikirr is None:
             return np.array([self.d_band_diagonal(ikirr, isym) for ikirr in range(self.NKirr)])
         if isym is None:
             return np.array([self.d_band_diagonal(ikirr, isym) for isym in range(self.Nsym)])
-        
+
         result = np.zeros(self.NB, dtype=complex)
-        for (start, end),block in zip(self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr][isym]):
+        for (start, end), block in zip(self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr][isym]):
             result[start:end] = block.diagonal()
         return result
 
@@ -227,26 +227,26 @@ class DMN(W90_file):
             return np.array([self.d_band_full_matrix(ikirr, isym) for ikirr in range(self.NKirr)])
         if isym is None:
             return np.array([self.d_band_full_matrix(ikirr, isym) for isym in range(self.Nsym)])
-        
+
         result = np.zeros((self.NB, self.NB), dtype=complex)
-        for (start, end),block in zip(self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr][isym]):
+        for (start, end), block in zip(self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr][isym]):
             result[start:end, start:end] = block
         return result
-    
+
     def D_wann_full_matrix(self, ikirr=None, isym=None):
         """
         Returns the full matrix of the Wannier function transformation matrix
-        """ 
+        """
         if ikirr is None:
             return np.array([self.D_wann_full_matrix(ikirr, isym) for ikirr in range(self.NKirr)])
         if isym is None:
             return np.array([self.D_wann_full_matrix(ikirr, isym) for isym in range(self.Nsym)])
-        
+
         result = np.zeros((self.num_wann, self.num_wann), dtype=complex)
         for (start, end), block in zip(self.D_wann_block_indices, self.D_wann_blocks[ikirr][isym]):
             result[start:end, start:end] = block
         return result
-        
+
 
     def to_w90_file(self, seedname):
         f = open(seedname + ".dmn", "w")
@@ -260,15 +260,15 @@ class DMN(W90_file):
             # " ".join(str(x + 1) for x in self.kptirr2kpt[i]) + "\n")
         # f.write("\n".join(" ".join(str(x + 1) for x in l) for l in self.kptirr2kpt) + "\n")
         mat_fun_list = []
-        if self.num_wann>0:
+        if self.num_wann > 0:
             mat_fun_list.append(self.D_wann_full_matrix)
-        if self.NB>0:
+        if self.NB > 0:
             mat_fun_list.append(self.d_band_full_matrix)
 
         for M in mat_fun_list:
             for ik in range(self.NKirr):
                 for isym in range(self.Nsym):
-                    f.write("\n".join("({:17.12e},{:17.12e})".format(x.real, x.imag) for x in M(ik,isym).flatten(order='F')) + "\n\n")
+                    f.write("\n".join("({:17.12e},{:17.12e})".format(x.real, x.imag) for x in M(ik, isym).flatten(order='F')) + "\n\n")
 
     def from_irrep(self, bandstructure: BandStructure,
                  grid=None, degen_thresh=1e-2):
@@ -295,18 +295,19 @@ class DMN(W90_file):
         self.kpoints = kpoints[self.selected_kpoints]
         self._NK = len(self.kpoints)
         self.Nsym = bandstructure.spacegroup.size
+
         def get_K(ik):
             return bandstructure.kpoints[self.selected_kpoints[ik]]
-    
+
         # First determine which kpoints are irreducible
         # and set mapping from irreducible to full grid and back
         #
         # kptirr2kpt[i,isym]=j means that the i-th irreducible kpoint
-        # is transformed to the j-th kpoint of full grid  
+        # is transformed to the j-th kpoint of full grid
         #  by the isym-th symmetry operation.
         #
         # This is consistent with w90 documentations, but seemd to be opposite to what pw2wannier90 does
-         
+
         kpoints_mod1 = UniqueListMod1(self.kpoints)
         assert len(kpoints_mod1) == len(self.kpoints)
         is_irreducible = np.ones(self.NK, dtype=bool)
@@ -315,23 +316,23 @@ class DMN(W90_file):
         self.kpt2kptirr = -np.ones(self.NK, dtype=int)
         self.G = []
         ikirr = -1
-        for i,k1 in enumerate(self.kpoints):
+        for i, k1 in enumerate(self.kpoints):
             if is_irreducible[i]:
                 self.kptirr.append(i)
                 self.kptirr2kpt.append(np.zeros(self.Nsym, dtype=int))
                 self.G.append(np.zeros((self.Nsym, 3), dtype=int))
-                ikirr +=1
-                
+                ikirr += 1
+
                 for isym, symop in enumerate(bandstructure.spacegroup.symmetries):
                     k1p = symop.transform_k(k1)
                     if k1p not in kpoints_mod1:
                         raise RuntimeError("Symmetry operation maps k-point outside the grid. Maybe the grid is incompatible with the symmetry operations")
                     j = kpoints_mod1.index(k1p)
-                    k2= self.kpoints[j]
-                    if j!=i:
+                    k2 = self.kpoints[j]
+                    if j != i:
                         is_irreducible[j] = False
                     self.kptirr2kpt[ikirr][isym] = j
-                    # the G vectors mean that 
+                    # the G vectors mean that
                     # symop.transform(ki) = kj + G
                     self.G[ikirr][isym] = k1p - k2
                     if self.kpt2kptirr[j] == -1:
@@ -345,8 +346,8 @@ class DMN(W90_file):
         self.G = np.array(self.G)
         del kpoints_mod1
 
-        assert np.all(self.kptirr2kpt>=0)
-        assert np.all(self.kpt2kptirr>=0)
+        assert np.all(self.kptirr2kpt >= 0)
+        assert np.all(self.kpt2kptirr >= 0)
 
         self._NB = bandstructure.num_bands
         self.d_band_blocks = [[[] for _ in range(self.Nsym)] for _ in range(self.NKirr)]
@@ -356,27 +357,27 @@ class DMN(W90_file):
             block_indices = get_block_indices(K1.Energy_raw, thresh=degen_thresh, cyclic=False)
             self.d_band_block_indices.append(block_indices)
             for isym, symop in enumerate(bandstructure.spacegroup.symmetries):
-                K2 = get_K(self.kptirr2kpt[i,isym])
+                K2 = get_K(self.kptirr2kpt[i, isym])
                 block_list = symm_matrix(
-                                        K=K1.k,
-                                        K_other=K2.k,
-                                        WF=K1.WF,
-                                        WF_other=K2.WF,
-                                        igall=K1.ig,
-                                        igall_other=K2.ig,
-                                        A=symop.rotation,
-                                        S=symop.spinor_rotation,
-                                        T=symop.translation,
-                                        spinor = K1.spinor,
-                                        block_ind=block_indices,
-                                        return_blocks=True
-                                        )
-                self.d_band_blocks[i][isym] = [np.ascontiguousarray(b.T) for b in block_list] 
-                #transposed because in irrep WF is row vector, while in dmn it is column vector
+                    K=K1.k,
+                    K_other=K2.k,
+                    WF=K1.WF,
+                    WF_other=K2.WF,
+                    igall=K1.ig,
+                    igall_other=K2.ig,
+                    A=symop.rotation,
+                    S=symop.spinor_rotation,
+                    T=symop.translation,
+                    spinor=K1.spinor,
+                    block_ind=block_indices,
+                    return_blocks=True
+                )
+                self.d_band_blocks[i][isym] = [np.ascontiguousarray(b.T) for b in block_list]
+                # transposed because in irrep WF is row vector, while in dmn it is column vector
             # check the symmetry of the transformation matrices
-            if hasattr(K1,'char'):
+            if hasattr(K1, 'char'):
                 E = K1.Energy_raw
-                borders = [0]+ (np.where(E[1:]- E[:-1]>1e-4)[0]+1).tolist() + [len(E)]
+                borders = [0] + (np.where(E[1:] - E[:-1] > 1e-4)[0] + 1).tolist() + [len(E)]
                 characters = []
                 for isym in range(self.Nsym):
                     if self.kptirr2kpt[i, isym] == ikirr:
@@ -384,19 +385,19 @@ class DMN(W90_file):
                 characters = np.array(characters).T
                 characters = np.array([characters[b1:b2].sum(axis=0) for b1, b2 in zip(borders[:-1], borders[1:])])
                 if np.max(np.abs(characters - K1.char)) > 1e-3:
-                    print (f"characters = {characters}")
+                    print(f"characters = {characters}")
                     raise RuntimeError(f"characters do not match for irreducible kpoint {ikirr}, from dmn {characters} vs from irrep {K1.char}")
                 # print (f"characters = {characters}")
-                    
+
 
     def get_disentangled(self, v_matrix_dagger, v_matrix):
         """	
         Here we will loose the block-diagonal structure of the d_band matrix.
         It is ok, w90 anyway does not use it. This function is only used to finish 
         the maximal localization procedure with Wannier90
-        """ 
+        """
         NBnew = v_matrix.shape[2]
-        d_band_block_indices_new = [np.array([[0,NBnew]]) for _ in range(self.NKirr)]
+        d_band_block_indices_new = [np.array([[0, NBnew]]) for _ in range(self.NKirr)]
         d_band_blocks_new = []
         for ikirr, ik in enumerate(self.kptirr):
             d_band_blocks_new.append([])
@@ -406,7 +407,7 @@ class DMN(W90_file):
                 # print (f"ikirr = {ikirr}, isym = {isym}")
                 # print (f"d_band_block_indices[ikirr] = {self.d_band_block_indices[ikirr]}")
                 for (start, end), block in zip(self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr][isym]):
-                    result[:,:]+=v_matrix_dagger[ik2][:,start:end] @ block @ v_matrix[ik][start:end,:]
+                    result[:, :] += v_matrix_dagger[ik2][:, start:end] @ block @ v_matrix[ik][start:end, :]
                 # result = v_matrix_dagger[ik2] @ self.d_band_full_matrix(ikirr=ikirr, isym=isym) @ v_matrix[ik]
                 assert result.shape == (NBnew, NBnew)
                 d_band_blocks_new[ikirr].append([result.copy()])
@@ -416,7 +417,7 @@ class DMN(W90_file):
         other.d_band_blocks = d_band_blocks_new
         other._NB = NBnew
         return other
-    
+
     def set_identiy(self, num_wann, num_bands, nkpt):
         """
         set the object to contain only the  transformation matrices
@@ -428,13 +429,13 @@ class DMN(W90_file):
         self.kptirr = self.kpt2kptirr
         self.kptirr2kpt = np.array([self.kptirr, self.Nsym])
         self.kpt2kptirr_sym = np.zeros(self.NK, dtype=int)
-        self.d_band_block_indices = [np.array([(i,i+1) for i in range (self.NB) ])]*self.NKirr
-        self.D_wann_block_indices = np.array([(i,i+1) for i in range (self.num_wann) ])
-        self.d_band_blocks = [[[np.eye(end-start) for start,end in self.d_band_block_indicespik]
+        self.d_band_block_indices = [np.array([(i, i + 1) for i in range(self.NB)])] * self.NKirr
+        self.D_wann_block_indices = np.array([(i, i + 1) for i in range(self.num_wann)])
+        self.d_band_blocks = [[[np.eye(end - start) for start, end in self.d_band_block_indicespik]
                               for isym in range(self.Nsym)] for ik in range(self.NKirr)]
-        self.D_wann_blocks = [[[np.eye(end-start) for start,end in self.D_wann_block_indices]
-                                for isym in range(self.Nsym)] for ik in range(self.NKirr)]
-                              
+        self.D_wann_blocks = [[[np.eye(end - start) for start, end in self.D_wann_block_indices]
+                               for isym in range(self.Nsym)] for ik in range(self.NKirr)]
+
     def select_bands(self, win_index_irr):
         self.d_band = [D[:, wi, :][:, :, wi] for D, wi in zip(self.d_band, win_index_irr)]
 
@@ -464,15 +465,15 @@ class DMN(W90_file):
         U1 = np.zeros(U.shape, dtype=complex)
         if forward:
             return rotate_block_matrix(U, lblocks=d_blocks, lindices=d_indices,
-                                        rblocks=D_blocks, rindices=D_indices,
-                                        conj_left=False, conj_right=True,
-                                        result=U1)
+                                       rblocks=D_blocks, rindices=D_indices,
+                                       conj_left=False, conj_right=True,
+                                       result=U1)
             # return d @ U @ D.conj().T
         else:
             return rotate_block_matrix(U, lblocks=d_blocks, lindices=d_indices,
-                                        rblocks=D_blocks, rindices=D_indices,
-                                        conj_left=True, conj_right=False,
-                                        result=U1)
+                                       rblocks=D_blocks, rindices=D_indices,
+                                       conj_left=True, conj_right=False,
+                                       result=U1)
             # return d.conj().T @ U @ D
 
         # if forward:
@@ -485,7 +486,7 @@ class DMN(W90_file):
             del self.free_bands_defined
             del self.d_band_blocks_free
             del self.d_band_block_indices_free
-        
+
     def set_free_bands(self, ikirr, free_bands):
         assert free_bands is not None
         if not hasattr(self, 'free_bands_defined'):
@@ -498,7 +499,7 @@ class DMN(W90_file):
                 self.d_band_block_indices_free[ikirr],
                 self.d_band_blocks_free[ikirr]
             ) = self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], free_bands)
-            
+
 
     def rotate_Z(self, Z, isym, ikirr, free=None):
         """
@@ -515,9 +516,9 @@ class DMN(W90_file):
 
         Z1 = np.zeros(Z.shape, dtype=complex)
         Z1 = rotate_block_matrix(Z, lblocks=blocks, lindices=indices,
-                                    rblocks=blocks, rindices=indices,
-                                    conj_left=True, conj_right=False,
-                                    result=Z1)
+                                 rblocks=blocks, rindices=indices,
+                                 conj_left=True, conj_right=False,
+                                 result=Z1)
         return Z1
         # return d_band.conj().T @ Z @ d_band
 
@@ -577,28 +578,28 @@ class DMN(W90_file):
     def apply_window(self, selected_bands):
         if selected_bands is None:
             return
-        print (f"applying window to select {sum(selected_bands)} bands from {self.NB}\n",selected_bands)
+        print(f"applying window to select {sum(selected_bands)} bands from {self.NB}\n", selected_bands)
         for ikirr in range(self.NKirr):
             self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr] = \
                 self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], selected_bands)
-        for i,block_ind in enumerate(self.d_band_block_indices):
+        for i, block_ind in enumerate(self.d_band_block_indices):
             if i == 0:
-                self._NB = block_ind[-1,-1]
-            assert block_ind[0,0] == 0
-            assert np.all(block_ind[1:,0]==block_ind[:-1,1])
-            assert block_ind[-1,-1] == self.NB
-        print (f"new NB = {self.NB}")
+                self._NB = block_ind[-1, -1]
+            assert block_ind[0, 0] == 0
+            assert np.all(block_ind[1:, 0] == block_ind[:-1, 1])
+            assert block_ind[-1, -1] == self.NB
+        print(f"new NB = {self.NB}")
 
-        
+
 
     def select_window(self, d_band_blocks_ik, d_band_block_indices_ik, selected_bands):
         if selected_bands is None:
             return d_band_blocks_ik, d_band_block_indices_ik
-        
+
         new_block_indices = []
         new_blocks = [[] for _ in range(self.Nsym)]
         st = 0
-        for iblock,(start, end) in enumerate(d_band_block_indices_ik):
+        for iblock, (start, end) in enumerate(d_band_block_indices_ik):
             select = selected_bands[start:end]
             nsel = np.sum(select)
             if nsel > 0:
@@ -608,7 +609,7 @@ class DMN(W90_file):
                     new_blocks[isym].append(
                         np.ascontiguousarray(d_band_blocks_ik[isym][iblock][:, select][select, :]))
         return np.array(new_block_indices), new_blocks
-                
+
     def check_eig(self, eig):
         """
         Check the symmetry of the eigenvlues
@@ -663,22 +664,22 @@ class DMN(W90_file):
                 ik = self.kptirr2kpt[ikirr, isym]
                 a1 = amn[ik]
                 a2 = amn[self.kptirr[ikirr]]
-                a1p=self.rotate_U(a1, ikirr, isym, forward=False)
-                a1=a1[:ignore_upper_bands]
-                a1p=a1p[:ignore_upper_bands]
-                a2=a2[:ignore_upper_bands]
+                a1p = self.rotate_U(a1, ikirr, isym, forward=False)
+                a1 = a1[:ignore_upper_bands]
+                a1p = a1p[:ignore_upper_bands]
+                a2 = a2[:ignore_upper_bands]
                 diff = a2 - a1p
                 diff = np.max(abs(diff))
                 maxerr = max(maxerr, np.linalg.norm(diff))
                 if diff > warning_precision:
-                    print (f"ikirr={ikirr}, isym={isym} : {diff}")
-                    for aaa in zip(a1, a1p, a2, a1p-a2,a1p/a2):
+                    print(f"ikirr={ikirr}, isym={isym} : {diff}")
+                    for aaa in zip(a1, a1p, a2, a1p - a2, a1p / a2):
                         string = ""
                         for a in aaa:
                             _abs = ", ".join(f"{np.abs(_):.4f}" for _ in a)
-                            _angle = ", ".join(f"{np.angle(_)/np.pi*180:7.2f}" for _ in a)   
-                            string+= f"[{_abs}] [{_angle}]   |    "
-                        print (string)    
+                            _angle = ", ".join(f"{np.angle(_)/np.pi*180:7.2f}" for _ in a)
+                            string += f"[{_abs}] [{_angle}]   |    "
+                        print(string)
         return maxerr
 
     def symmetrize_amn(self, amn):
@@ -702,7 +703,7 @@ class DMN(W90_file):
         amn_sym_irr = np.zeros((self.NKirr, self.NB, self.num_wann), dtype=complex)
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
-                amn_sym_irr[ikirr] += self.rotate_U(amn[self.kptirr2kpt[ikirr,isym]], ikirr, isym, forward=False)
+                amn_sym_irr[ikirr] += self.rotate_U(amn[self.kptirr2kpt[ikirr, isym]], ikirr, isym, forward=False)
         amn_sym_irr /= self.Nsym
         lfound = np.zeros(self.NK, dtype=bool)
         amn_sym = np.zeros((self.NK, self.NB, self.num_wann), dtype=complex)
@@ -716,7 +717,7 @@ class DMN(W90_file):
                     amn_sym[ik] = self.rotate_U(amn_sym_irr[ikirr], ikirr, isym, forward=True)
                     lfound[ik] = True
         return amn_sym
-    
+
     def get_random_amn(self):
         " generate a random amn file that is comaptible with the symmetries of the Wanier functions in the DMN object"
         shape = (self.NK, self.NB, self.num_wann)
@@ -739,7 +740,7 @@ class DMN(W90_file):
         """
         if not isinstance(D_wann, list):
             D_wann = [D_wann]
-        print ("D.shape", [D.shape for D in D_wann])
+        print("D.shape", [D.shape for D in D_wann])
         self.D_wann_block_indices = []
         num_wann = 0
         self.D_wann_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
@@ -754,19 +755,19 @@ class DMN(W90_file):
                     self.D_wann_blocks[ik][isym].append(D[ik, isym])
         self.D_wann_block_indices = np.array(self.D_wann_block_indices)
         self.num_wann = num_wann
-        print ("num_wann", num_wann)    
-        print ("D_wann_block_indices", self.D_wann_block_indices)
+        print("num_wann", num_wann)
+        print("D_wann_block_indices", self.D_wann_block_indices)
         for ik in range(self.NKirr):
             for isym in range(self.Nsym):
-                print ("D_wann_blocks", [b.shape for b in self.D_wann_blocks[ik][isym]])
-        
+                print("D_wann_blocks", [b.shape for b in self.D_wann_blocks[ik][isym]])
+
     def set_D_wann_from_projections(self,
-                                        spacegroup=None, 
-                                        projections=[],
-                                        projections_obj=[],
-                                        win=None,
-                                        kpoints=None,
-                                        spinor=False):
+                                    spacegroup=None,
+                                    projections=[],
+                                    projections_obj=[],
+                                    win=None,
+                                    kpoints=None,
+                                    spinor=False):
         """
         Parameters
         ----------
@@ -780,7 +781,7 @@ class DMN(W90_file):
             the win file, just ot get the k-points
         kpoints : np.array(float, shape=(npoints,3,))
             the kpoints in fractional coordinates. Overrides the kpoints in the win file (if provided)
-        
+
         Note: 
         -----
 
@@ -902,17 +903,16 @@ def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices, conj_left, conj
     """
     if conj_left:
         for (start, end), block in zip(lindices, lblocks):
-            result[start:end,:] = block.T.conj() @ Z[start:end, :]
+            result[start:end, :] = block.T.conj() @ Z[start:end, :]
     else:
         for (start, end), block in zip(lindices, lblocks):
-            result[start:end,:] = block @ Z[start:end, :]
-    
+            result[start:end, :] = block @ Z[start:end, :]
+
     if conj_right:
         for (start, end), block in zip(rindices, rblocks):
-            result[:,start:end] = result[:, start:end] @ block.T.conj()
+            result[:, start:end] = result[:, start:end] @ block.T.conj()
     else:
         for (start, end), block in zip(rindices, rblocks):
-            result[:,start:end] = result[:, start:end] @ block
+            result[:, start:end] = result[:, start:end] @ block
 
     return result
-        

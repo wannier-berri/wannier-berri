@@ -22,7 +22,7 @@ def print_centers_and_spreads(w90data, U_opt_full_BZ,
         if spread_functional is not None:
             wcc1 = spread_functional.get_wcc(U_opt_full_BZ)
             spreads = spread_functional(U_opt_full_BZ, wcc=wcc1)
-            print( "wannier centers from spread functional: \n", wcc1)
+            print("wannier centers from spread functional: \n", wcc1)
 
     w90data.chk.v_matrix = np.array(U_opt_full_BZ)
     w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
@@ -47,7 +47,7 @@ def print_centers_and_spreads(w90data, U_opt_full_BZ,
 
 
 
-def print_progress(i_iter, Omega_list, num_iter_converge, 
+def print_progress(i_iter, Omega_list, num_iter_converge,
                    spread_functional=None, spreads=None,
                    w90data=None, U_opt_full_BZ=None):
     """
@@ -94,11 +94,11 @@ def print_progress(i_iter, Omega_list, num_iter_converge,
     return delta_max
 
 
-def select_window_degen(E, thresh=DEGEN_THRESH, win_min=np.inf, win_max=-np.inf, 
+def select_window_degen(E, thresh=DEGEN_THRESH, win_min=np.inf, win_max=-np.inf,
                         include_degen=False,
                         return_indices=False):
     """define the indices of the bands inside the window, making sure that degenerate bands were not split
-    
+
 
     Parameters
     ----------
@@ -123,21 +123,21 @@ def select_window_degen(E, thresh=DEGEN_THRESH, win_min=np.inf, win_max=-np.inf,
             return np.zeros(E.shape, dtype=bool)
 
     # The upper bound
-    for i in range(ind[-1],NB-1):
-        if E[i+1] - E[i] < thresh:
+    for i in range(ind[-1], NB - 1):
+        if E[i + 1] - E[i] < thresh:
             if include_degen:
-                ind[i+1] = True
+                ind[i + 1] = True
             else:
                 ind[i] = False
                 break
         else:
             break
-            
+
     # The lower bound
-    for i in range(ind[0],1,-1):
-        if E[i] - E[i-1] < thresh:
+    for i in range(ind[0], 1, -1):
+        if E[i] - E[i - 1] < thresh:
             if include_degen:
-                ind[i-1] = True
+                ind[i - 1] = True
             else:
                 ind[i] = False
                 break
@@ -210,26 +210,27 @@ def find_solution_mod1(A, B, max_shift=2):
     list of np.ndarray
         The shifts that are compatible with the system.
     """
-    A=np.array(A)
-    B=np.array(B)
+    A = np.array(A)
+    B = np.array(B)
     r1 = np.linalg.matrix_rank(A)
-    assert (r1==A.shape[1]), f"overdetermined system {r1} != {A.shape}[1]"
+    assert (r1 == A.shape[1]), f"overdetermined system {r1} != {A.shape}[1]"
     dim = A.shape[0]
     for shift in get_shifts(max_shift, ndim=dim):
-        B_loc = B + shift   
-        if np.linalg.matrix_rank(np.hstack([A,B_loc[:,None]])) == r1:
+        B_loc = B + shift
+        if np.linalg.matrix_rank(np.hstack([A, B_loc[:, None]])) == r1:
             x, residuals, rank, s = np.linalg.lstsq(A, B_loc, rcond=None)
-            if len(residuals)>0:
+            if len(residuals) > 0:
                 assert np.max(np.abs(residuals)) < 1e-7
-            assert rank==r1
+            assert rank == r1
             return x
     return None
+
 
 @lru_cache
 def get_shifts(max_shift, ndim=3):
     """return all possible shifts of a 3-component vector with integer components
     recursively by number of dimensions
-    
+
     Parameters
     ----------
     max_shift : int
@@ -244,14 +245,15 @@ def get_shifts(max_shift, ndim=3):
         sorted by the norm of the shift
     """
     if ndim == 1:
-        shifts =  np.arange(-max_shift, max_shift+1)[:,None]
+        shifts = np.arange(-max_shift, max_shift + 1)[:, None]
     else:
-        shift_1 = get_shifts(max_shift, ndim-1)
+        shift_1 = get_shifts(max_shift, ndim - 1)
         shift1 = get_shifts(max_shift, 1)
-        shifts =  np.vstack([np.hstack([shift_1, [s1]*shift_1.shape[0] ]) for s1 in shift1])
+        shifts = np.vstack([np.hstack([shift_1, [s1] * shift_1.shape[0]]) for s1 in shift1])
     # more probably that equality happens at smaller shift, so sort by norm
     srt = np.linalg.norm(shifts, axis=1).argsort()
     return shifts[srt]
+
 
 def find_distance_periodic(positions, real_lattice, max_shift=2):
     """
@@ -272,14 +274,14 @@ def find_distance_periodic(positions, real_lattice, max_shift=2):
     """
     if len(positions) == 0:
         return np.array([[np.inf]])
-    positions = np.array(positions)%1
+    positions = np.array(positions) % 1
     shifts = get_shifts(max_shift)
-    diff = positions[:,None,None,:] - positions[None,:,None,:] + shifts[None,None,:,:]
+    diff = positions[:, None, None, :] - positions[None, :, None, :] + shifts[None, None, :, :]
     metric = real_lattice @ real_lattice.T
     prod = np.einsum('ijla,ab,ijlb->ijl', diff, metric, diff)
-    
+
     rng = np.arange(len(positions))
-    prod[rng,rng,0] = np.inf  # distance to itself is not interesting, so the distance to its nearest image is counted
-    
+    prod[rng, rng, 0] = np.inf  # distance to itself is not interesting, so the distance to its nearest image is counted
+
     distances2 = np.min(prod, axis=2)
     return np.sqrt(distances2)

@@ -52,6 +52,7 @@ class UXU(W90_file):
         if selected_bands is not None:
             self.data = self.data[:, :, :, selected_bands, :][:, :, :, :, selected_bands]
 
+
 class UHU(UXU):
     """
     UHU.data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|H(k)|u_{n,k+b2}>
@@ -146,6 +147,7 @@ class SXU(W90_file):
     def apply_window(self, selected_bands):
         if selected_bands is not None:
             self.data = self.data[:, :, :, selected_bands, :][:, :, :, :, selected_bands]
+
 
 class SIU(SXU):
     """

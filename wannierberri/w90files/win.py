@@ -163,7 +163,7 @@ class WIN:
                     elif isinstance(v, str):
                         f.write(v)
                         if v[-1] != "\n":
-                            f.write("\n")   
+                            f.write("\n")
                     f.write(f"end {k}\n")
                 else:
                     f.write(f"{k} = {list2str(v)}\n")

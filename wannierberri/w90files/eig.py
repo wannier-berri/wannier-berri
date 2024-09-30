@@ -26,7 +26,7 @@ class EIG(W90_file):
     def apply_window(self, selected_bands):
         if selected_bands is not None:
             self.data = self.data[:, selected_bands]
-            
+
 
     # def get_disentangled(self, v_left, v_right):
     #     data = np.einsum("klm,km...,kml->kl", v_left, self.data, v_right).real

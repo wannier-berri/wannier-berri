@@ -26,9 +26,9 @@ class WyckoffPosition:
 
     """
 
-    xdef = 1/np.e
-    ydef = 1/np.pi
-    zdef = 1/np.sqrt(2)
+    xdef = 1 / np.e
+    ydef = 1 / np.pi
+    zdef = 1 / np.sqrt(2)
 
     def __init__(self, position_str, spacegroup, free_var_values=None):
         self.string = position_str
@@ -36,23 +36,23 @@ class WyckoffPosition:
         self.sympy = sympy.sympify(self.string)
         self.free_vars = set.union(*[s.free_symbols for s in self.sympy])
         self.free_vars = list(self.free_vars)
-        self.free_vars.sort(key = lambda x: x.name)
+        self.free_vars.sort(key=lambda x: x.name)
         self.num_free_vars = len(self.free_vars)
         self.free_var_values = free_var_values
         self.wyckoff_position_lambda = sympy.lambdify(self.free_vars, self.sympy)
         orbit, self.rotations, self.translations = orbit_and_rottrans(spacegroup, self.position_numeric())
         self.num_points = orbit.shape[0]
 
-    def vars_dict_to_array(self,d):
-        return np.array([d[v] for v in self.free_vars],dtype=float) 
+    def vars_dict_to_array(self, d):
+        return np.array([d[v] for v in self.free_vars], dtype=float)
 
     def __eq__(self, other):
         assert isinstance(other, WyckoffPosition), "other has to be a WyckoffPosition"
         return self.string == other.string
-    
 
-    def position_numeric(self,x=xdef,y=ydef,z=zdef):
-        return np.array([s.subs({"x":x,"y":y,"z":z}) for s in self.sympy],dtype=float) 
+
+    def position_numeric(self, x=xdef, y=ydef, z=zdef):
+        return np.array([s.subs({"x": x, "y": y, "z": z}) for s in self.sympy], dtype=float)
 
     @cached_property
     def map_on_free_vars(self):
@@ -73,8 +73,8 @@ class WyckoffPosition:
             s = self.sympy[i].as_coefficients_dict()
             rot.append([s[v]for v in self.free_vars])
             trans.append(s[1])
-        return np.array(rot,dtype=float), np.array(trans,dtype=float)
-    
+        return np.array(rot, dtype=float), np.array(trans, dtype=float)
+
     @cached_property
     def map_orbit_on_free_vars(self):
         """
@@ -88,9 +88,9 @@ class WyckoffPosition:
         np.ndarray(shape=(self.num_points, 3), dtype=float)
             The translation vectors (values when all free variables are 0)
         """
-        rot,trans = self.map_on_free_vars
+        rot, trans = self.map_on_free_vars
         return self.rotations.dot(rot), self.rotations.dot(trans) + self.translations
-    
+
     @property
     def positions(self):
         rot, trans = self.map_orbit_on_free_vars
@@ -99,25 +99,25 @@ class WyckoffPosition:
     # @cached_property
     # def numeric_lambda(self):
     #     return sympy.lambdify(self.free_vars, self.wyckoff_position_sympy)
-    
+
     # @cached_property
     # def orbit_lambda(self):
     #     return lambda *args: self.rotations.dot(self.wyckoff_position_lambda(*args)) + self.translations
-  
+
 
     @cached_property
     def free_vars(self):
         free_vars = set.union(*[s.free_symbols for s in self.wyckoff_position_sympy])
         free_vars = list(free_vars)
-        free_vars.sort(key = lambda x: x.name)
+        free_vars.sort(key=lambda x: x.name)
         return free_vars
-    
+
     @property
     def free_var_values(self):
         if not hasattr(self, "_free_var_values"):
-            self._free_var_values=np.random.rand(self.num_free_vars)
+            self._free_var_values = np.random.rand(self.num_free_vars)
         return self._free_var_values
-        
+
     @free_var_values.setter
     def free_var_values(self, values):
         if values is None:
@@ -126,27 +126,27 @@ class WyckoffPosition:
         else:
             assert len(values) == self.num_free_vars, f"Values has to have length {self.num_free_vars}"
             self._free_var_values = values
-    
+
     @cached_property
     def num_free_vars(self):
         return len(self.free_vars)
-    
-   
+
+
     def orbit_str(self):
         string = ""
-        for rot,trans in zip(self.rotations, self.translations):
-            pos = (np.dot(rot, self.sympy)+trans)
-            if self.num_free_vars==0:
-                pos = pos%1
-            string += ", ".join(f"{x}" for x in pos)     +"\n"
+        for rot, trans in zip(self.rotations, self.translations):
+            pos = (np.dot(rot, self.sympy) + trans)
+            if self.num_free_vars == 0:
+                pos = pos % 1
+            string += ", ".join(f"{x}" for x in pos) + "\n"
         return string
 
-    
+
     def contains_position(self, position):
         position = np.array(position)
-        rot,trans = self.map_orbit_on_free_vars
-        for r,t in zip(rot, trans):
-            sol = find_solution_mod1(r,position-t)
+        rot, trans = self.map_orbit_on_free_vars
+        for r, t in zip(rot, trans):
+            sol = find_solution_mod1(r, position - t)
             if sol is not None:
                 return sol
         return None
@@ -154,12 +154,12 @@ class WyckoffPosition:
     def __str__(self):
         var = np.random.rand(self.num_free_vars)
         orbit = self.orbit_lambda(*var)
-        s = ("\n"+
-                "\n".join(str(l) for l in orbit)+
-                "\n"
+        s = ("\n" +
+             "\n".join(str(l) for l in orbit) +
+             "\n"
             )
         return s
-    
+
     def stick_to_atoms(self, atoms, atoms_filled):
         """
         ccheck if any of the atoms belong to this wyckoff position
@@ -178,7 +178,7 @@ class WyckoffPosition:
             The free variables corresponding to the atom.
         """
         # print ("looking to stick wyckoff position {self.string} to atoms {atoms} (filled {atoms_filled})")
-        for iat,atom in enumerate(atoms):
+        for iat, atom in enumerate(atoms):
             orbit_atom = get_orbit(self.spacegroup, atom)
             # print ("orbit_atom",orbit_atom, orbit_atom.shape, self.num_points)
             if not atoms_filled[iat]:
@@ -189,7 +189,7 @@ class WyckoffPosition:
                     if sol is not None:
                         atoms_filled[iat] = True
                         orbit = self.orbit_lambda(*sol)
-                        for iat1,at1 in enumerate(atoms):
+                        for iat1, at1 in enumerate(atoms):
                             if not atoms_filled[iat1]:
                                 for orb in orbit:
                                     if all_close_mod1(at1, orb):
@@ -197,16 +197,16 @@ class WyckoffPosition:
                                         break
                         return sol
         return None
-    
+
     def as_numeric(self):
-        return WyckoffPositionNumeric(self.positions%1, self.spacegroup)
+        return WyckoffPositionNumeric(self.positions % 1, self.spacegroup)
 
 
 class WyckoffPositionNumeric(WyckoffPosition):
 
     def __init__(self, positions, spacegroup):
         self.spacegroup = spacegroup
-        self.string = ", ".join(f"{x}" for x in positions[0])	
+        self.string = ", ".join(f"{x}" for x in positions[0])
         positions = np.array(positions)
         orbit0 = get_orbit(spacegroup, positions[0])
         orbit = UniqueListMod1()
@@ -225,26 +225,26 @@ class WyckoffPositionNumeric(WyckoffPosition):
     def __str__(self):
         var = np.random.rand(self.num_free_vars)
         orbit = self.orbit_lambda(*var)
-        s = ("\n"+
-                "\n".join(str(l) for l in orbit)+
-                "\n"
+        s = ("\n" +
+             "\n".join(str(l) for l in orbit) +
+             "\n"
             )
         return s
-    
+
     def orbit_str(self):
         string = ""
         for pos in self._positions:
-            string += ", ".join(f"{x}" for x in pos)     +"\n"
+            string += ", ".join(f"{x}" for x in pos) + "\n"
         return string
-    
+
     @property
     def num_free_vars(self):
         return 0
-    
+
     @cached_property
     def map_orbit_on_free_vars(self):
         return np.zeros((self.num_points, 3, 0)), self._positions
-    
+
     def as_numeric(self):
         return self
 
@@ -267,7 +267,8 @@ def get_orbit(spacegroup, p, tol=1e-5):
     UniqueListMod1 of np.ndarray(shape=(3,), dtype=float)
         The orbit of v under the symmetry operations of the structure.
     """
-    return UniqueListMod1( [symop.transform_r(p) % 1 for symop in spacegroup.symmetries], tol=tol )
+    return UniqueListMod1([symop.transform_r(p) % 1 for symop in spacegroup.symmetries], tol=tol)
+
 
 def orbit_and_rottrans(spacegroup, p):
     """

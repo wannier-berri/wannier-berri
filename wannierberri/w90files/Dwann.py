@@ -3,6 +3,7 @@ import numpy as np
 
 from ..__utility import UniqueListMod1
 
+
 class Dwann:
 
     """
@@ -57,18 +58,18 @@ class Dwann:
             self.spinor = True
             assert spin_ordering in ["block", "interlace"]
             self.spin_ordering = spin_ordering
-            self.nspinor=2
+            self.nspinor = 2
         else:
             self.spinor = False
-            self.nspinor=1
-    
-        if orbital!="_":
+            self.nspinor = 1
+
+        if orbital != "_":
             assert ORBITALS is not None
             self.rot_orb = [ORBITALS.rot_orb(orbital, symop.rotation_cart)
-                       for symop in spacegroup.symmetries] 
+                       for symop in spacegroup.symmetries]
             self.num_orbitals = ORBITALS.num_orbitals(orbital)
         else:
-            self.rot_orb = [np.eye(1) for _ in range (self.nsym)]
+            self.rot_orb = [np.eye(1) for _ in range(self.nsym)]
             self.num_orbitals = 1
         self.orbit = orbit_from_positions(spacegroup, positions)
         self.spacegroup = spacegroup
@@ -78,21 +79,21 @@ class Dwann:
         self.num_wann = self.num_wann_scal * self.nspinor
         self.atommap = -np.ones((self.num_points, self.nsym), dtype=int)
         self.T = np.zeros((self.num_points, self.nsym, 3), dtype=float)
-        
-        for ip,p in enumerate(self.orbit):
-            for isym,symop in enumerate(spacegroup.symmetries):
-                p2=symop.transform_r(p)
-                # print (f"ip={ip}, p={p}, isym={isym}, p2={p2}")
-                ip2=self.orbit.index(p2)
-                self.atommap[ip,isym] = ip2
+
+        for ip, p in enumerate(self.orbit):
+            for isym, symop in enumerate(spacegroup.symmetries):
                 p2 = symop.transform_r(p)
-                p2a = self.orbit[self.atommap[ip,isym]]
-                self.T[ip,isym] = p2-p2a
+                # print (f"ip={ip}, p={p}, isym={isym}, p2={p2}")
+                ip2 = self.orbit.index(p2)
+                self.atommap[ip, isym] = ip2
+                p2 = symop.transform_r(p)
+                p2a = self.orbit[self.atommap[ip, isym]]
+                self.T[ip, isym] = p2 - p2a
 
-        
 
 
-    def get_on_points(self,kptirr, kpt,isym):
+
+    def get_on_points(self, kptirr, kpt, isym):
         """
         Get the Wannier transformation matrix D_wann between a given 
         irreducible k-point and a given k-point.
@@ -114,20 +115,20 @@ class Dwann:
         """
         symop = self.spacegroup.symmetries[isym]
         kptirr1 = symop.transform_k(kptirr)
-        g = kpt-kptirr1
-        assert np.all(abs(g-np.round(g))<1e-7), f"isym={isym}, g={g}, k1={kptirr}, k1p={kptirr1}, k2={kpt}"
-        Dwann = np.zeros((self.num_wann_scal,self.num_wann_scal), dtype=complex)
+        g = kpt - kptirr1
+        assert np.all(abs(g - np.round(g)) < 1e-7), f"isym={isym}, g={g}, k1={kptirr}, k1p={kptirr1}, k2={kpt}"
+        Dwann = np.zeros((self.num_wann_scal, self.num_wann_scal), dtype=complex)
         for ip, _ in enumerate(self.orbit):
-            jp = self.atommap[ip,isym]
-            Dwann[jp*self.num_orbitals:(jp+1)*self.num_orbitals,
-                  ip*self.num_orbitals:(ip+1)*self.num_orbitals
-                  ] = np.exp(-2j*np.pi*(np.dot(kptirr1, self.T[ip,isym]))) * self.rot_orb[isym]
+            jp = self.atommap[ip, isym]
+            Dwann[jp * self.num_orbitals:(jp + 1) * self.num_orbitals,
+                  ip * self.num_orbitals:(ip + 1) * self.num_orbitals
+                  ] = np.exp(-2j * np.pi * (np.dot(kptirr1, self.T[ip, isym]))) * self.rot_orb[isym]
         if self.spinor:
             S = symop.spinor_rotation
-            if self.spin_ordering=="block":
-                Dwann = np.kron(S,Dwann)
+            if self.spin_ordering == "block":
+                Dwann = np.kron(S, Dwann)
             else:
-                Dwann = np.kron(Dwann,S)
+                Dwann = np.kron(Dwann, S)
             return Dwann
         else:
             return Dwann
@@ -152,12 +153,13 @@ class Dwann:
         Dwann : np.ndarray(shape=(NKirr,nsym, num_points,num_points), dtype=complex)
             The Wannier transformation matrices D_wann.
         """
-        Dwann = np.zeros((len(ikptirr),self.nsym, self.num_wann,self.num_wann), dtype=complex)
-        for ikirr,ik in enumerate(ikptirr):
+        Dwann = np.zeros((len(ikptirr), self.nsym, self.num_wann, self.num_wann), dtype=complex)
+        for ikirr, ik in enumerate(ikptirr):
             for isym in range(self.nsym):
-                Dwann[ikirr, isym] = self.get_on_points(kpoints[ik], kpoints[ikptirr2kpt[ikirr,isym]], isym)
+                Dwann[ikirr, isym] = self.get_on_points(kpoints[ik], kpoints[ikptirr2kpt[ikirr, isym]], isym)
         return Dwann
-        
+
+
 def orbit_from_positions(spacegroup, positions):
     """
     Generate the orbit of Wannier centers from a list of positions
@@ -177,13 +179,13 @@ def orbit_from_positions(spacegroup, positions):
     """
     orbit = UniqueListMod1()
     positions = np.array(positions)
-    assert positions.ndim in [1,2]
-    if positions.ndim==1:
-        positions = positions[None,:]
-    assert positions.shape[-1]==3
+    assert positions.ndim in [1, 2]
+    if positions.ndim == 1:
+        positions = positions[None, :]
+    assert positions.shape[-1] == 3
     for p in positions:
         orbit.append(p)
     for symop in spacegroup.symmetries:
         for p in positions:
-            orbit.append((symop.transform_r(p))%1)
+            orbit.append((symop.transform_r(p)) % 1)
     return orbit

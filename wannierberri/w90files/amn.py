@@ -37,9 +37,9 @@ class AMN(W90_file):
     @property
     def NB(self):
         return self.data.shape[1]
-    
+
     def apply_window(self, selected_bands):
-        print (f"apply_window amn, selected_bands={selected_bands}")
+        print(f"apply_window amn, selected_bands={selected_bands}")
         if selected_bands is not None:
             self.data = self.data[:, selected_bands, :]
 

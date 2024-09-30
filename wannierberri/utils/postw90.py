@@ -80,7 +80,7 @@ def main(argv):
                         wcc_phase_fin_diff=False
                         )
     grid = Grid(system, NK=parameters["berry_kmesh"])
-    parallel = Parallel(ray_init={"num_gpus":0})  # parallel with  "ray",num_cpus - auto
+    parallel = Parallel(ray_init={"num_gpus": 0})  # parallel with  "ray",num_cpus - auto
 
     run(system,
         grid=grid,

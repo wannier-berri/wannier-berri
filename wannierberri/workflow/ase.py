@@ -4,6 +4,8 @@ from ase.constraints import FixAtoms, FixCartesian
 from ase.io.espresso import format_atom_position, kspacing_to_grid, kpts2sizeandoffsets, kpts2ndarray, ibrav_error_message
 from ase.io.espresso_namelist.namelist import Namelist
 import numpy as np
+
+
 @writer
 def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
                       kspacing=None, kpts=None, koffset=(0, 0, 0), kpoints_array=None,
@@ -202,7 +204,7 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
         pwi.append(f"{kpoints_array.shape[0]}\n")
         kpoints_array = np.array(kpoints_array)
         if kpoints_array.shape[1] == 3:
-            kpoints_array = np.hstack((kpoints_array, np.ones((len(kpoints_array), 1))/kpoints_array.shape[0]))
+            kpoints_array = np.hstack((kpoints_array, np.ones((len(kpoints_array), 1)) / kpoints_array.shape[0]))
         for k in kpoints_array:
             pwi.append(f"{k[0]:.14f} {k[1]:.14f} {k[2]:.14f} {k[3]:.14f}\n")
         pwi.append('\n')

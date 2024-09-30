@@ -97,7 +97,7 @@ class Kpoint_and_neighbours:
             U_opt_full = np.zeros((self.nband, self.num_wann), dtype=complex)
             U_opt_full[self.frozen, range(self.nfrozen)] = 1.
             U_opt_full[self.free, self.nfrozen:] = self.U_opt_free
-            Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib])*wcc_bk_phase[None,:,ib] 
+            Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib]) * wcc_bk_phase[None, :, ib]
                                 for ib in range(self.nnb)])
             Mmn_loc_sumb = sum(mm * wb for mm, wb in zip(Mmn_loc, self.wb)) / sum(self.wb)
             # symmetrizer.symmetrize_Zk(Mmn_loc_sumb, ikirr)  # this actually makes thing worse, so not using it

@@ -421,18 +421,18 @@ class CheckPoint:
     @property
     def wannier_centers(self):
         return self._wannier_centers
-    
+
     def apply_window(self, selected_bands):
         if selected_bands is not None:
             self.num_bands = sum(selected_bands)
             for ik in range(self.num_kpts):
                 if hasattr(self, "v_matrix"):
                     self.v_matrix[ik] = self.v_matrix[ik][:, selected_bands]
-            print (np.min(np.where(selected_bands)[0]))
+            print(np.min(np.where(selected_bands)[0]))
             win_min = np.min(np.where(selected_bands)[0])
             win_max = np.max(np.where(selected_bands)[0]) + 1
-            self.win_min = np.max([self.win_min-win_min,[0]*self.num_kpts], axis=0)
-            self.win_max = self.num_bands-np.max([win_max-self.win_max,[0]*self.num_kpts], axis=0)
+            self.win_min = np.max([self.win_min - win_min, [0] * self.num_kpts], axis=0)
+            self.win_max = self.num_bands - np.max([win_max - self.win_max, [0] * self.num_kpts], axis=0)
 
 
 
@@ -451,7 +451,7 @@ class CheckPoint_bare(CheckPoint):
             """
 
     def __init__(self, win, eig, amn, mmn):
-        print ("creating CheckPoint_bare")
+        print("creating CheckPoint_bare")
         self.mp_grid = np.array(win.data["mp_grid"])
         self.kpt_latt = win.get_kpoints()
         self.real_lattice = win.get_unit_cell_cart_ang()
@@ -461,4 +461,3 @@ class CheckPoint_bare(CheckPoint):
         self.win_min = np.array([0] * self.num_kpts)
         self.win_max = np.array([self.num_bands] * self.num_kpts)
         self.recip_lattice = 2 * np.pi * np.linalg.inv(self.real_lattice).T
-

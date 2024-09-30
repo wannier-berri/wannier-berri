@@ -102,10 +102,10 @@ def wannierise(w90data,
             w90data.chk.win_min[ik] = 0
             w90data.chk.win_max[ik] = w90data.chk.num_bands
         # amn = np.array(w90data.chk.v_matrix)
-        print ("Restarting from the previous state", amn.shape)
+        print("Restarting from the previous state", amn.shape)
     else:
         raise ValueError("init should be 'amn' or 'random'")
-    
+
     neighbours_all = w90data.mmn.neighbours_unique
     neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ik] for ik in neigh]
                                        for neigh in w90data.mmn.neighbours_unique[kptirr]])
@@ -157,7 +157,7 @@ def wannierise(w90data,
         U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=True)
 
         if i_iter % print_progress_every == 0:
-            delta_std = print_progress(i_iter, Omega_list, num_iter_converge, 
+            delta_std = print_progress(i_iter, Omega_list, num_iter_converge,
                                     spread_functional=SpreadFunctional_loc, w90data=w90data, U_opt_full_BZ=U_opt_full_BZ)
 
             if delta_std < conv_tol:

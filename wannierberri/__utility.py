@@ -399,57 +399,58 @@ def vectorize(func, *args, kwargs={}, sum=False, to_array=False):
 
 
 class UniqueList(list):
-        """	
-        A list that only allows unique elements.
-        uniqueness is determined by the == operator.
-        Thus, non-hashable elements are also allowed.
-        unlike set, the order of elements is preserved.
-        """
+    """	
+    A list that only allows unique elements.
+    uniqueness is determined by the == operator.
+    Thus, non-hashable elements are also allowed.
+    unlike set, the order of elements is preserved.
+    """
 
-        def __init__(self, iterator=[], count=False):
-            super().__init__()
-            self.do_count = count
-            if self.do_count : 
-                self.counts = []
-            for x in iterator:
-                self.append(x)
+    def __init__(self, iterator=[], count=False):
+        super().__init__()
+        self.do_count = count
+        if self.do_count:
+            self.counts = []
+        for x in iterator:
+            self.append(x)
 
-        def append(self, item, count=1):
-            for j,i in enumerate(self):
-                if i == item:
-                    if self.do_count:
-                        self.counts[self.index(i)] += count
-                    break
-            else:
-                super().append(item)
+    def append(self, item, count=1):
+        for j, i in enumerate(self):
+            if i == item:
                 if self.do_count:
-                    self.counts.append(1)
+                    self.counts[self.index(i)] += count
+                break
+        else:
+            super().append(item)
+            if self.do_count:
+                self.counts.append(1)
 
-        def index(self, value: Any, start = 0, stop = sys.maxsize) -> int:
-            for i in range(start, stop):
-                if self[i] == value:
-                    return i
-            raise ValueError(f"{value} not in list")
-        
-        def __contains__(self, item):
-            for i in self:
-                if i == item:
-                    return True
-            return False
-        
-        def remove(self, value: Any, all=False) -> None:
-            for i in range(len(self)):
-                if self[i] == value:
-                    if all or not self.do_count:
+    def index(self, value: Any, start=0, stop=sys.maxsize) -> int:
+        for i in range(start, stop):
+            if self[i] == value:
+                return i
+        raise ValueError(f"{value} not in list")
+
+    def __contains__(self, item):
+        for i in self:
+            if i == item:
+                return True
+        return False
+
+    def remove(self, value: Any, all=False) -> None:
+        for i in range(len(self)):
+            if self[i] == value:
+                if all or not self.do_count:
+                    del self[i]
+                    del self.counts[i]
+                else:
+                    self.counts[i] -= 1
+                    if self.counts[i] == 0:
                         del self[i]
                         del self.counts[i]
-                    else:
-                        self.counts[i] -= 1
-                        if self.counts[i] == 0:
-                            del self[i]
-                            del self.counts[i]
-                    return
-                
+                return
+
+
 class UniqueListMod1(UniqueList):
 
     def __init__(self, iterator=[], tol=1e-5):
@@ -464,7 +465,7 @@ class UniqueListMod1(UniqueList):
             if all_close_mod1(i, item, tol=self.tol):
                 break
         else:
-            list.append(self,item)
+            list.append(self, item)
             self.appended_indices.append(self.last_try_append)
 
     def __contains__(self, item):
@@ -473,18 +474,17 @@ class UniqueListMod1(UniqueList):
                 return True
         return False
 
-    def index(self, value: Any, start = 0, stop = sys.maxsize) -> int:
+    def index(self, value: Any, start=0, stop=sys.maxsize) -> int:
         stop = min(stop, len(self))
         for i in range(start, stop):
             if all_close_mod1(self[i], value):
                 return i
         raise ValueError(f"{value} not in list")
 
-                
-def all_close_mod1(a,b,tol=1e-5):
-    """check if two vectors are equal modulo 1"""
-    if  not np.shape(a)==() and not np.shape(b)==() and (np.shape(a) != np.shape(b)):
-        return False
-    diff = a-b
-    return np.allclose(np.round(diff), diff , atol=tol)
 
+def all_close_mod1(a, b, tol=1e-5):
+    """check if two vectors are equal modulo 1"""
+    if not np.shape(a) == () and not np.shape(b) == () and (np.shape(a) != np.shape(b)):
+        return False
+    diff = a - b
+    return np.allclose(np.round(diff), diff, atol=tol)

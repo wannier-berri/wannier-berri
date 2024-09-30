@@ -145,13 +145,13 @@ class Wannier90data:
         if not overwrite and key in self._files:
             raise RuntimeError(f"file '{key}' was already set")
         if val is None:
-            if key =='dmn':
+            if key == 'dmn':
                 try:
                     eigenvalues = self.eig.data
                 except:
                     eigenvalues = None
                 val = DMN(self.seedname, eigenvalues=eigenvalues,
-                                **kwargs_auto)
+                          **kwargs_auto)
             else:
                 val = self.__files_classes[key](self.seedname, **kwargs_auto)
         self.check_conform(key, val)
@@ -322,6 +322,7 @@ class Wannier90data:
         Returns the iterator over the k-points
         """
         return range(self.chk.num_kpts)
+
     @cached_property
     def wannier_centers(self):
         """
@@ -360,14 +361,14 @@ class Wannier90data:
     @property
     def selected_bands(self):
         if hasattr(self, '_selected_bands'):
-            return self._selected_bands 
+            return self._selected_bands
         else:
             return None
-    
+
     @selected_bands.setter
     def selected_bands(self, value):
         self._selected_bands = value
-        
+
     def apply_window(self, win_min=-np.Inf, win_max=np.Inf, band_start=None, band_end=None):
         """
         Apply the window to the system
@@ -381,33 +382,33 @@ class Wannier90data:
             the range of bands to be included (the numeration in the current system, not in the original (if window is applied more than once))
         """
         new_selected_bands = np.all((self.eig.data >= win_min) * (self.eig.data <= win_max), axis=0)
-        print (f"new_selected_bands = {new_selected_bands}")
+        print(f"new_selected_bands = {new_selected_bands}")
         if band_end is not None:
             new_selected_bands[band_end:] = False
         if band_start is not None:
             new_selected_bands[:band_start] = False
-        print (f"new_selected_bands = {new_selected_bands}")
-        
-        print (f"new_selected_bands = {new_selected_bands.shape}")
+        print(f"new_selected_bands = {new_selected_bands}")
+
+        print(f"new_selected_bands = {new_selected_bands.shape}")
         _selected_bands = self.selected_bands
-        print (f"_selected_bands = {_selected_bands}")
+        print(f"_selected_bands = {_selected_bands}")
         # if window is applied for the firstr time, the selected bands are all bands
         # and self.selected_bands is bool (=True)
-        print ("eig", self.eig.data.shape)
-        if _selected_bands is None: 
+        print("eig", self.eig.data.shape)
+        if _selected_bands is None:
             _selected_bands = np.ones(self.eig.NB, dtype=bool)
-        print (f"_selected_bands = {_selected_bands}")
+        print(f"_selected_bands = {_selected_bands}")
         _tmp_selected_bands = _selected_bands[_selected_bands].copy()
-        print (f"_tmp_selected_bands = {_tmp_selected_bands}")
+        print(f"_tmp_selected_bands = {_tmp_selected_bands}")
         _tmp_selected_bands[np.logical_not(new_selected_bands)] = False
         self.selected_bands = _tmp_selected_bands
         assert np.sum(self.selected_bands) == np.sum(new_selected_bands), "error in applying window"
-        print (f"self.selected_bands = {self.selected_bands}")
-        for key,val in self._files.items():
+        print(f"self.selected_bands = {self.selected_bands}")
+        for key, val in self._files.items():
             if key != 'win' and key != 'chk':
-                print (f"key = {key} ,number of bands = {val.NB}")
+                print(f"key = {key} ,number of bands = {val.NB}")
             if key == 'chk':
-                print (f"key = {key} ,number of bands = {val.num_bands}")
+                print(f"key = {key} ,number of bands = {val.num_bands}")
         self.chk.apply_window(new_selected_bands)
         for key in self.__files_classes.keys():
             if key in self._files:
@@ -416,17 +417,17 @@ class Wannier90data:
                     win['dis_win_min'] = win_min
                     win['dis_win_max'] = win_max
                 else:
-                    print (f"applying window to {key} {val}")
+                    print(f"applying window to {key} {val}")
                     self.get_file(key).apply_window(new_selected_bands)
-        for key,val in self._files.items():
+        for key, val in self._files.items():
             if key != 'win' and key != 'chk':
-                print (f"key = {key} ,number of bands = {val.NB}")
+                print(f"key = {key} ,number of bands = {val.NB}")
                 if hasattr(val, 'data'):
-                    print (f"key = {key} ,number of bands = {val.data.shape}")
+                    print(f"key = {key} ,number of bands = {val.data.shape}")
             if key == 'chk':
-                print (f"key = {key} ,number of bands = {val.num_bands}")
-            
-        
+                print(f"key = {key} ,number of bands = {val.num_bands}")
+
+
     def get_disentangled(self, files=[]):
         """
         after disentanglement, get the Wannier90data object with 
@@ -441,9 +442,9 @@ class Wannier90data:
         new_files = {}
 
         v = self.chk.v_matrix
-        print ("v.shape", v.shape)
+        print("v.shape", v.shape)
         ham_tmp = np.einsum('kml,km,kmn->kln', v.conj(), self.eig.data, v)
-        print ("ham_tmp.shape", ham_tmp.shape)
+        print("ham_tmp.shape", ham_tmp.shape)
         EV = [np.linalg.eigh(h_tmp) for h_tmp in ham_tmp]
         eig_new = EIG(data=np.array([ev[0] for ev in EV]))
         # v_right = np.array([_v @ ev[1].T.conj() for ev, _v in zip(EV,v)])
@@ -477,7 +478,7 @@ class Wannier90data:
         if not silent:
             print(f"eig symmetry error : {err_eig}")
             print(f"amn symmetry error : {err_amn}")
-        return err_eig, err_amn        
+        return err_eig, err_amn
 
     def set_random_symmetric_projections(self):
         """
@@ -490,7 +491,7 @@ class Wannier90data:
         """
         Set the Dwann matrix from the positions of the Wamnnier centers (only s-orbitals so far)
         the symmetries are applied to restore all the points belonging to this wyckoff position
-    
+
         Parameters
         ----------
         positions : np.array(npoints,3, dtype=float) or np.array(3)
@@ -502,7 +503,7 @@ class Wannier90data:
         dwann = Dwann(spacegroup, positions=positions)
         kpoints = self.chk.kpt_latt
         self.dmn.set_D_wann(dwann.get_on_points_all(kpoints=kpoints,
-                                                    ikptirr=self.dmn.kptirr, 
+                                                    ikptirr=self.dmn.kptirr,
                                                     ikptirr2kpt=self.dmn.kptirr2kpt))
 
     # TODO : allow k-dependent window (can it be useful?)
