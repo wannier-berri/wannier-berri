@@ -148,7 +148,7 @@ class Wannier90data:
             if key == 'dmn':
                 try:
                     eigenvalues = self.eig.data
-                except:
+                except AttributeError:
                     eigenvalues = None
                 val = DMN(self.seedname, eigenvalues=eigenvalues,
                           **kwargs_auto)

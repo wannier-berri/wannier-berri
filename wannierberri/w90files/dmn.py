@@ -1,6 +1,5 @@
 from functools import cached_property, lru_cache
 import warnings
-from numba import njit
 from irrep.bandstructure import BandStructure
 from irrep.gvectors import symm_matrix
 from irrep.utility import get_block_indices
@@ -818,9 +817,7 @@ class DMN(W90_file):
             _dwann = _Dwann.get_on_points_all(kpoints, self.kptirr, self.kptirr2kpt)
             D_wann_list.append(_dwann)
         self.set_D_wann(D_wann_list)
-
-
-
+    # 
     # def check_mmn(self, mmn, f1, f2):
     #     """
     #     Check the symmetry of data in the mmn file (not working)
@@ -874,7 +871,6 @@ class DMN(W90_file):
     #     return maxerr
 
 
-# @njit
 def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices, conj_left, conj_right, result):
     """
     Rotates the matrix Z using the block-diagonal rotation matrices

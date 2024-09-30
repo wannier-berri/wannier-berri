@@ -1,7 +1,6 @@
 import copy
 from functools import cached_property
 import itertools
-import warnings
 import numpy as np
 
 try:
@@ -124,7 +123,6 @@ class Projection:
                # + self.wyckoff_position.__str__()
         )
 
-
     def write_wannier90(self, mod1=False):
         string = ""
         for o in self.orbitals:
@@ -133,10 +131,6 @@ class Projection:
                     pos = pos % 1
                 string += f"f={pos[0]:.12f}, {pos[1]:.12f}, {pos[2]:.12f}: {o}\n"
         return string
-
-    @cached_property
-    def num_points(self):
-        return self.wyckoff_position.num_points
 
     @cached_property
     def str_short(self):

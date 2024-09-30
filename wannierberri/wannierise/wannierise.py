@@ -110,7 +110,7 @@ def wannierise(w90data,
     neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ik] for ik in neigh]
                                        for neigh in w90data.mmn.neighbours_unique[kptirr]])
 
-    wk = w90data.mmn.wk_unique
+    # wk = w90data.mmn.wk_unique
     bk_cart = w90data.mmn.bk_cart_unique
     mmn_data_ordered = np.array([data[order] for data, order in zip(w90data.mmn.data, w90data.mmn.ib_unique_map_inverse)])
     kpoints = [Kpoint_and_neighbours(mmn_data_ordered[kpt],

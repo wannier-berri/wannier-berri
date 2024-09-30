@@ -1,6 +1,5 @@
 from collections import defaultdict
 import copy
-from functools import cached_property
 import os
 import pickle
 import shutil
@@ -591,17 +590,17 @@ class WorkflowQE:
         try:
             for band in self.bands_qe:
                 plt.scatter(self.kline_qe, band, c='g', s=4)
-        except:
+        except AttributeError:
             pass
 
         try:
             self.bands_wannier_w90.plot_path_fat(self.path_wannier, show_fig=False, close_fig=False, linecolor='b', label="w90")
-        except:
+        except AttributeError:
             pass
 
         try:
             self.bands_wannier_wberri.plot_path_fat(self.path_wannier, show_fig=False, close_fig=False, linecolor='r', label="wberri")
-        except:
+        except AttributeError:
             pass
 
         if ylim is not None:

@@ -9,9 +9,7 @@ import shutil
 
 from wannierberri.wannierise.projections import Projection
 from common import OUTPUT_DIR, ROOT_DIR
-from wannierberri.w90files import DMN, WIN
-from wannierberri.w90files.Dwann import Dwann
-from irrep.bandstructure import BandStructure
+from wannierberri.w90files import DMN
 
 
 
@@ -138,43 +136,42 @@ def test_create_dmn():
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
     tmp_dmn_path = os.path.join(OUTPUT_DIR, "diamond")
 
-    bandstructure = irrep.bandstructure.BandStructure(prefix = data_dir + "/di", Ecut=100,
-                                                      code="espresso", 
-                                                    from_sym_file=data_dir+"/diamond.sym"
+    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
+                                                      code="espresso",
+                                                    from_sym_file=data_dir + "/diamond.sym"
                                                       )
     dmn = DMN(empty=True)
     dmn.from_irrep(bandstructure)
-    projection = Projection(position_num=[[0,0,0],[0,0,1/2],[0,1/2,0],[1/2,0,0]], orbital='s', spacegroup=bandstructure.spacegroup)
-    print("all positions:",projection.positions)
+    projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
+    print("all positions:", projection.positions)
     dmn.set_D_wann_from_projections(projections_obj=[projection])
     dmn.to_w90_file(tmp_dmn_path)
-    
 
-    dmn_ref = DMN(seedname=os.path.join(data_dir, "diamond"),read_npz=False)
+
+    dmn_ref = DMN(seedname=os.path.join(data_dir, "diamond"), read_npz=False)
     dmn_new = DMN(seedname=tmp_dmn_path, read_npz=False)
 
     for key in ['NB', "num_wann", "NK", "NKirr", "kptirr", "kptirr2kpt", "kpt2kptirr"]:
         assert np.all(getattr(dmn_ref, key) == getattr(dmn_new, key)), (
-                f"key {key} differs between reference and new DMN file\n"
-                f"reference: {getattr(dmn_ref, key)}\n"
-                f"new: {getattr(dmn_new, key)}\n"
-                )
+            f"key {key} differs between reference and new DMN file\n"
+            f"reference: {getattr(dmn_ref, key)}\n"
+            f"new: {getattr(dmn_new, key)}\n"
+        )
 
     assert np.all(dmn_ref.D_wann_block_indices == dmn_new.D_wann_block_indices), (
-            f"D_wann_block_indices differs between reference and new DMN file\n"
-            f"reference: {dmn_ref.D_wann_block_indices}\n"
-            f"new: {dmn_new.D_wann_block_indices}\n"
-            )
+        f"D_wann_block_indices differs between reference and new DMN file\n"
+        f"reference: {dmn_ref.D_wann_block_indices}\n"
+        f"new: {dmn_new.D_wann_block_indices}\n"
+    )
     for ikirr in range(dmn_ref.NKirr):
         assert np.all(dmn_ref.d_band_block_indices[ikirr] == dmn_new.d_band_block_indices[ikirr]), (
             f"d_band_block_indices differs  at ikirr={ikirr} between reference and new DMN file\n"
             f"reference: {dmn_ref.d_band_block_indices}\n"
             f"new: {dmn_new.d_band_block_indices}\n"
-            )
-    
+        )
+
         for isym in range(dmn_ref.Nsym):
-            for blockref,blocknew in zip(dmn_ref.D_wann_blocks[ikirr][isym], dmn_new.D_wann_blocks[ikirr][isym]):
+            for blockref, blocknew in zip(dmn_ref.D_wann_blocks[ikirr][isym], dmn_new.D_wann_blocks[ikirr][isym]):
                 assert blockref == approx(blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
-            for blockref,blocknew in zip(dmn_ref.d_band_blocks[ikirr][isym], dmn_new.d_band_blocks[ikirr][isym]):
+            for blockref, blocknew in zip(dmn_ref.d_band_blocks[ikirr][isym], dmn_new.d_band_blocks[ikirr][isym]):
                 assert blockref == approx(blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
-    

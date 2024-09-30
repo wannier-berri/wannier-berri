@@ -114,8 +114,8 @@ class SpreadFunctional:
         """
         # NK = len(U)
         NK = len(self.neigh)
-        NW = U[0].shape[1]
-        NNB = len(self.neigh[0])
+        # NW = U[0].shape[1]
+        # NNB = len(self.neigh[0])
         wcc_phase = np.exp(1j * wcc @ self.bk.T)[:, :]
         # wcc_phase = np.ones(wcc_phase.shape, dtype=complex)
 
