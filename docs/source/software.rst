@@ -16,6 +16,10 @@ External software used
 
 + |ray| - used for multi-node parallelization
 
++ |irrep| - a Python package for finding irreducible representations of space groups
+
++ Spglib - a Python wrapper for the C library `spglib <https://spglib.readthedocs.io/en/stable/python-interface.html>`_ for finding and handling crystal symmetries.
+
 + |tbmodels| - a Python package for evaluating tight-binding models, part of |Z2pack| code.
 
 + `PythTB <https://www.physics.rutgers.edu/pythtb/>`_  a package for manipulating tight-binding models, 
@@ -69,5 +73,9 @@ External software used
      :alt: Ray
      :width: 100px 
 
+.. |irrep| image:: https://irrep.dipc.org/_images/irrep_logo_color.png
+     :target: https://irrep.dipc.org/
+     :alt: irrep
+     :width: 100px
 
 

@@ -762,8 +762,8 @@ class DMN(W90_file):
 
     def set_D_wann_from_projections(self,
                                     spacegroup=None,
-                                    projections=[],
-                                    projections_obj=[],
+                                    projections=None,
+                                    projections_obj=None,
                                     win=None,
                                     kpoints=None,
                                     spinor=False):
@@ -781,11 +781,14 @@ class DMN(W90_file):
         kpoints : np.array(float, shape=(npoints,3,))
             the kpoints in fractional coordinates. Overrides the kpoints in the win file (if provided)
 
-        Note: 
+        Note 
         -----
+        win or kpoints must be provided ONLY if the kpoints are not stored in the object. If the object is set via from_irrep, the kpoints are already stored.
 
         """
         from ..system.sym_wann_orbitals import Orbitals
+        if projections is None:
+            projections = []
         ORBITALS = Orbitals()
         if spacegroup is None:
             spacegroup = self.spacegroup
@@ -804,20 +807,25 @@ class DMN(W90_file):
             self.kpoints = kpoints
             self._NK = len(kpoints)
         D_wann_list = []
-        if isinstance(projections_obj, ProjectionsSet):
-            projections_obj = projections_obj.projections
-        for proj in projections_obj:
-            orbitals = proj.orbitals
-            if len(orbitals) > 1:
-                warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
-            for orb in orbitals:
-                projections.append((proj.positions, orb))
+        print(f"len(D_wann_list) = {len(D_wann_list)}")
+        if projections_obj is not None:
+            if isinstance(projections_obj, ProjectionsSet):
+                projections_obj = projections_obj.projections
+            for proj in projections_obj:
+                orbitals = proj.orbitals
+                print(f"orbitals = {orbitals}")
+                if len(orbitals) > 1:
+                    warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
+                for orb in orbitals:
+                    projections.append((proj.positions, orb))
         for positions, proj in projections:
+            print(f"calculating Wannier functions for {proj} at {positions}")
             _Dwann = Dwann(spacegroup, positions, proj, ORBITALS=ORBITALS, spinor=spinor)
             _dwann = _Dwann.get_on_points_all(kpoints, self.kptirr, self.kptirr2kpt)
             D_wann_list.append(_dwann)
+        print(f"len(D_wann_list) = {len(D_wann_list)}")
         self.set_D_wann(D_wann_list)
-    # 
+    #
     # def check_mmn(self, mmn, f1, f2):
     #     """
     #     Check the symmetry of data in the mmn file (not working)

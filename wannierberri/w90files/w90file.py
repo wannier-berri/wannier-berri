@@ -21,7 +21,10 @@ class W90_file(abc.ABC):
         if True, write the files to npz
     kwargs : dict
         the keyword arguments to be passed to the constructor of the file
-        see `~wannierberri.system.w90_files.W90_file`, `~wannierberri.system.w90_files.MMN`, `~wannierberri.system.w90_files.EIG`, `~wannierberri.system.w90_files.AMN`, `~wannierberri.system.w90_files.UIU`, `~wannierberri.system.w90_files.UHU`, `~wannierberri.system.w90_files.SIU`, `~wannierberri.system.w90_files.SHU`, `~wannierberri.system.w90_files.SPN`
+        see :class:`~wannierberri.w90files.MMN`, :class:`~wannierberri.w90files.EIG`, :class:`~wannierberri.w90files.AMN`, 
+        :class:`~wannierberri.w90files.UIU`, :class:`~wannierberri.w90files.UHU`, :class:`~wannierberri.w90files.SIU`, 
+        :class:`~wannierberri.w90files.SHU`, :class:`~wannierberri.w90files.SPN`, :class:`~wannierberri.w90files.WIN`
+        :class:'wannierberri.w90files.DMN'	
         for more details
 
     Attributes

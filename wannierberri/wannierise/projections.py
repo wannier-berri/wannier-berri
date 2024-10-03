@@ -21,7 +21,6 @@ from wannierberri.__utility import UniqueListMod1
 from ..system.sym_wann_orbitals import Orbitals
 from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric
 
-
 ORBITALS = Orbitals()
 
 
@@ -39,7 +38,8 @@ class Projection:
     orbital : str
         The orbital of the projection.  e.g. "s", "p", "sp3 etc. or several separated by a semicolon (e.g. "s;p")	
     spacegroup : irrep.spacegroup.SpaceGroup
-        The spacegroup of the structure. If provided, all points equivalent to the given ones are also added 
+        The spacegroup of the structure. All points equivalent to the given ones are also added 
+        (not needed if wyckoff_position is provided)
     void : bool
         if true, create an empty object, to be filled later
     wyckoff_position : WyckoffPosition or WyckoffPositionNumeric
@@ -61,13 +61,14 @@ class Projection:
         if wyckoff_position is not None:
             self.wyckoff_position = wyckoff_position
         else:
+            assert spacegroup is not None, "either wyckoff_position or spacegroup should be provided"
             if position_num is None:
-                assert position_sym is not None, "either position_list or position_str should be provided"
+                assert position_sym is not None, "either position_num or position_str should be provided"
                 self.wyckoff_position = WyckoffPosition(position_str=position_sym,
                                                     spacegroup=spacegroup,
                                                     free_var_values=free_var_values)
             else:
-                assert position_sym is None, "either position_list or position_str should be provided, not both"
+                assert position_sym is None, "position_num and position_str should NOT be provided together"
                 position_num = np.array(position_num)
                 if position_num.ndim == 1:
                     position_num = position_num[None, :]

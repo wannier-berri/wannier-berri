@@ -28,6 +28,7 @@ from .run import run
 from . import symmetry
 from . import system
 from . import models
+from . import w90files
 from .system import (System_w90, System_fplo, System_tb,
                      System_PythTB, System_TBmodels, System_ASE,
                      System_Phonon_QE, System_R

@@ -119,7 +119,7 @@ def run(
         print_progress_step=5,
 ):
     """
-    The function to run a calculation. Substitutes the old :func:`~wannierberri.integrate` and :func:`~wannierberri.tabulate`
+    The function to run a calculation. Substitutes the old (obsolete and removed) `integrate()` and `tabulate()`
     and allows to integrate and tabulate in one run.
 
     Parameters

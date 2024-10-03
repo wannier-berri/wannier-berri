@@ -71,7 +71,7 @@ class WyckoffPosition:
         trans = []
         for i in range(3):
             s = self.sympy[i].as_coefficients_dict()
-            rot.append([s[v]for v in self.free_vars])
+            rot.append([s[v] for v in self.free_vars])
             trans.append(s[1])
         return np.array(rot, dtype=float), np.array(trans, dtype=float)
 
@@ -143,6 +143,11 @@ class WyckoffPosition:
 
 
     def contains_position(self, position):
+        if self.num_free_vars == 0:
+            if all_close_mod1(position, self.positions[0]):
+                return []
+            else:
+                return None
         position = np.array(position)
         rot, trans = self.map_orbit_on_free_vars
         for r, t in zip(rot, trans):
@@ -152,13 +157,13 @@ class WyckoffPosition:
         return None
 
     def __str__(self):
-        var = np.random.rand(self.num_free_vars)
-        orbit = self.orbit_lambda(*var)
-        s = ("\n" +
-             "\n".join(str(l) for l in orbit) +
-             "\n"
-            )
-        return s
+        # var = np.random.rand(self.num_free_vars)
+        return self.orbit_str()
+        # s = ("\n" +
+        #      "\n".join(str(l) for l in orbit) +
+        #      "\n"
+        #     )
+        # return s
 
     def stick_to_atoms(self, atoms, atoms_filled):
         """
@@ -205,6 +210,9 @@ class WyckoffPosition:
 class WyckoffPositionNumeric(WyckoffPosition):
 
     def __init__(self, positions, spacegroup):
+        positions = np.array(positions)
+        if positions.ndim == 1:
+            positions = positions.reshape(-1, 3)
         self.spacegroup = spacegroup
         self.string = ", ".join(f"{x}" for x in positions[0])
         positions = np.array(positions)
@@ -258,7 +266,7 @@ def get_orbit(spacegroup, p, tol=1e-5):
     Parameters
     ----------
     spacegroup : irrep.spacegroup.SpaceGroup
-        The spacegroup of the structure.
+        The spacegroup of the structure. If None, the orbit is just the point p.
     p : np.ndarray(shape=(3,), dtype=float)
         Point for which to calculate the orbit in the reduced coordinates.
 
