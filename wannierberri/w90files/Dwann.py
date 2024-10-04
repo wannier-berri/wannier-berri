@@ -65,7 +65,7 @@ class Dwann:
 
         if orbital != "_":
             assert ORBITALS is not None
-            self.rot_orb = [ORBITALS.rot_orb(orbital, symop.rotation_cart)
+            self.rot_orb  = [ORBITALS.rot_orb(orbital, symop.rotation_cart)
                        for symop in spacegroup.symmetries]
             self.num_orbitals = ORBITALS.num_orbitals(orbital)
         else:
@@ -123,8 +123,11 @@ class Dwann:
             Dwann[jp * self.num_orbitals:(jp + 1) * self.num_orbitals,
                   ip * self.num_orbitals:(ip + 1) * self.num_orbitals
                   ] = np.exp(-2j * np.pi * (np.dot(kptirr1, self.T[ip, isym]))) * self.rot_orb[isym]
+        # Here we assume that all the orbitals are real, so we don't need to take the complex conjugate
         if self.spinor:
             S = symop.spinor_rotation
+            if symop.time_reversal:
+                S =  np.array([[0,1],[-1,0]]) @ S.conj()
             if self.spin_ordering == "block":
                 Dwann = np.kron(S, Dwann)
             else:

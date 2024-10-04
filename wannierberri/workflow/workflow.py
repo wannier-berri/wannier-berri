@@ -3,6 +3,7 @@ import copy
 import os
 import pickle
 import shutil
+import warnings
 from irrep.bandstructure import BandStructure
 from matplotlib import pyplot as plt
 import numpy as np
@@ -25,7 +26,6 @@ def message(msg):
 
 
 class Executables:
-
     """
     Class to keep track of the paths, executables and parallel options for
     the Quantum Espresso and Wannier90 executables
@@ -259,6 +259,9 @@ class WorkflowQE:
                 use_flags=False,
                 kwargs_gen={}, kwargs_gs={}, kwargs_nscf={}, kwargs_bands={}, kwargs_wannier={},
                 ):
+        
+        warnings.warn("Workflow is not fully implemented yet. It is experimental and may not work as expected. Use it on your own risk")
+
         path_to_files = os.path.dirname(prefix)
         if not os.path.exists(path_to_files):
             os.mkdir(path_to_files)

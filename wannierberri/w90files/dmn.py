@@ -367,6 +367,7 @@ class DMN(W90_file):
                     A=symop.rotation,
                     S=symop.spinor_rotation,
                     T=symop.translation,
+                    time_reversal=symop.time_reversal,
                     spinor=K1.spinor,
                     block_ind=block_indices,
                     return_blocks=True

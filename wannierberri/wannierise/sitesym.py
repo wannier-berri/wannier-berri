@@ -70,7 +70,6 @@ class Symmetrizer:
         return len(set(self.kptirr2kpt[ikirr]))
 
 
-
     def symmetrize_U(self, U, to_full_BZ=True, all_k=False):
         """
         Symmetrizes the umat matrix (in-place) at irreducible kpoints

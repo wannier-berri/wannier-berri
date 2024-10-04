@@ -10,9 +10,8 @@ see examples in `examples/sitesym` and `examples/wannierise`
 
 .. automethod:: wannierberri.wannierise.wannierise
 
-Example:
+Example
 --------
-
 
 
 .. code-block:: python
@@ -61,7 +60,34 @@ Example:
 
    # Now do whatever you want with the system, as if it was created with Wannier90
 
+Symmetry-adapted Wannier functions
+-----------------------------------
 
+.. automodule:: wannierberri.wannierise.sitesym
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Searching for suitable projections
+-----------------------------------
+
+.. automodule:: wannierberri.wannierise.projections_searcher
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Projections and Wyckoff positions
+-----------------------------------
+
+.. automodule:: wannierberri.wannierise.projections
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: wannierberri.wannierise.wyckoff_position
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 .. |NEW| image:: ../imag/new.png
    :width: 100px
