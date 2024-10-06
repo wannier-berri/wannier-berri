@@ -24,7 +24,7 @@ except:
     dmn_new.set_D_wann_from_projections(projections=[(pos, 's') ])
     dmn_new.to_w90_file("mydmn")
 
-
+exit()
 systems = {}
 
 # Just fot Reference : run the Wannier90 with sitesym, but instead of frozen window use outer window
