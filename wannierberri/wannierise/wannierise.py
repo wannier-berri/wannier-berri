@@ -63,6 +63,8 @@ def wannierise(w90data,
         additional the keyword arguments to be passed to the constructor of the :class:`~wannierberri.wannierise.sitesym.Symmetrizer`
     init : str
         the initialization of the U matrix. "amn" for the current state, "random" for random initialization, "restart" for restarting from the previous state
+    num_wann : int
+        the number of Wannier functions. Required for random initialization only without sitesymmetry
 
     Returns
     -------
@@ -109,8 +111,11 @@ def wannierise(w90data,
     if init == "amn":
         amn = w90data.amn.data
     elif init == "random":
-        assert num_wann is not None, "num_wann should be provided for random initialization"
-        amnshape = (w90data.mmn.NK, w90data.mmn.NB, num_wann)
+        if sitesym:
+            num_wann = w90data.dmn.num_wann
+        else:
+            assert num_wann is not None, "num_wann should be provided for random initialization without sitesymmetry"
+        amnshape = (w90data.mmn.NK, w90data.mmn.NB, num_wann)   
         amn = np.random.random(amnshape) + 1j * np.random.random(amnshape)
     elif init == "restart":
         assert w90data.wannierised, "The data is not wannierised"

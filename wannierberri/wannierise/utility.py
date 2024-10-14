@@ -1,6 +1,7 @@
 
 from functools import lru_cache
 import sys
+import warnings
 import numpy as np
 DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
 
@@ -188,8 +189,12 @@ def orthogonalize(u):
     u : np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
         The orthogonalized matrix.
     """
-    U, _, VT = np.linalg.svd(u, full_matrices=False)
-    return U @ VT
+    try:
+        U, _, VT = np.linalg.svd(u, full_matrices=False)
+        return U @ VT
+    except np.linalg.LinAlgError as e:
+        warnings.warn(f"SVD failed with error '{e}', using non-orthogonalized matrix")
+        return u
 
 
 def find_solution_mod1(A, B, max_shift=2):

@@ -127,7 +127,8 @@ class Dwann:
         if self.spinor:
             S = symop.spinor_rotation
             if symop.time_reversal:
-                S =  np.array([[0,1],[-1,0]]) @ S.conj()
+                S =  -np.array([[0,1],[-1,0]]) @ S.conj()
+                # Dwann = Dwann.conj()
             if self.spin_ordering == "block":
                 Dwann = np.kron(S, Dwann)
             else:
