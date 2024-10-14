@@ -1,6 +1,7 @@
 from functools import cached_property, lru_cache
 import warnings
 from irrep.bandstructure import BandStructure
+from irrep.utility import get_block_indices
 import numpy as np
 from copy import deepcopy
 
