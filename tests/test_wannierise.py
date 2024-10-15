@@ -1,4 +1,5 @@
 import irrep
+from irrep.bandstructure import BandStructure
 from pytest import approx
 import wannierberri as wberri
 import numpy as np
@@ -175,3 +176,38 @@ def test_create_dmn():
                 assert blockref == approx(blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
             for blockref, blocknew in zip(dmn_ref.d_band_blocks[ikirr][isym], dmn_new.d_band_blocks[ikirr][isym]):
                 assert blockref == approx(blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+
+
+def test_sitesym_Fe_noTR():
+    path_data = os.path.join(ROOT_DIR, "data", "Fe-sitesym")
+    w90data = wberri.w90files.Wannier90data(seedname=path_data + "/Fe")
+
+    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
+                                normalize=False, magmom=[[0, 0, 1]], include_TR=False)
+
+    bandstructure.spacegroup.show()
+    dmn_new = DMN(empty=True)
+    dmn_new.from_irrep(bandstructure)
+    pos = [[0, 0, 0]]
+    dmn_new.set_D_wann_from_projections(projections=[(pos, 's'), (pos, 'p'), (pos, 'd')])
+    w90data.set_file("dmn", dmn_new)
+    froz_max = 30
+    w90data.wannierise(init="random",
+                       froz_min=-8,
+                    froz_max=froz_max,
+                    print_progress_every=20,
+                    num_iter=101,
+                    conv_tol=1e-6,
+                    mix_ratio_z=1.0,
+                    localise=True,
+                    sitesym=True,
+                    )
+    assert np.allclose(w90data.wannier_centers, 0, atol=1e-6)
+    spreads = w90data.chk._wannier_spreads
+    assert np.all(spreads < 1)
+    atol = 1e-9
+    assert spreads[4] == approx(spreads[6], abs=atol)
+    assert spreads[5] == approx(spreads[7], abs=atol)
+    assert spreads[10] == approx(spreads[12], abs=atol)
+    assert spreads[11] == approx(spreads[13], abs=atol)
+    
