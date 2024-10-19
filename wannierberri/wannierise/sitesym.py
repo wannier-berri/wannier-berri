@@ -120,6 +120,7 @@ class Symmetrizer:
         return Ufull
 
     def symmetrize_Zk(self, Z, ikirr):
+        # return Z # temporary for testing
         if Z.shape[0] == 0:
             return Z
         for i in range(self.n_iter):

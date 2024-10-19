@@ -60,6 +60,8 @@ class DMN(W90_file):
         the Wannier function transformation matrices in the block form. Within the same irreducible representation of WFs
     D_wann_block_indices : np.array(int, shape=(Nblocks, 2))
         the indices of the blocks in the Wannier function transformation matrices
+    time_reversals : array(bool, shape=(Nsym,))
+        weather the symmetry operation includes time reversal or not
     """
 
     def __init__(self, seedname="wannier90", num_wann=None, num_bands=None, nkpt=None,
@@ -67,7 +69,7 @@ class DMN(W90_file):
                  **kwargs):
         self.npz_tags = ['D_wann_block_indices', '_NB',
                     'kpt2kptirr', 'kptirr', 'kptirr2kpt', 'kpt2kptirr_sym',
-                   '_NK', 'num_wann', 'comment', 'NKirr', 'Nsym',]
+                   '_NK', 'num_wann', 'comment', 'NKirr', 'Nsym', 'time_reversals']
 
         if empty:
             self._NB = 0
@@ -133,15 +135,23 @@ class DMN(W90_file):
     def kpt2kptirr_sym(self):
         return np.array([np.where(self.kptirr2kpt[self.kpt2kptirr[ik], :] == ik)[0][0] for ik in range(self.NK)])
 
-    def from_w90_file(self, seedname="wannier90", num_wann=0, eigenvalues=None):
+    def from_w90_file(self, seedname="wannier90", eigenvalues=None):
         """
         eigenvalues np.array(shape=(NK,NB))
         The eigenvalues used to determine the degeneracy of the bandsm and the corresponding blocks
         of matrices which are non-zero
+
+        Parameters
+        ----------
+        seedname : str
+            the prefix of the file (including relative/absolute path, but not including the extensions, like `.dmn`)
+        eigenvalues : np.array(shape=(NK,NB)), optional
+            The Energies used to determine the degenerecy of the bands
         """
         fl = open(seedname + ".dmn", "r")
         self.comment = fl.readline().strip()
         self._NB, self.Nsym, self.NKirr, self._NK = readints(fl, 4)
+        self.time_reversals = np.zeros(self.Nsym, dtype=bool) # w90 file does not have time reversal information
         self.kpt2kptirr = readints(fl, self.NK) - 1
         self.kptirr = readints(fl, self.NKirr) - 1
         self.kptirr2kpt = np.array([readints(fl, self.Nsym) for _ in range(self.NKirr)]) - 1
@@ -150,7 +160,7 @@ class DMN(W90_file):
         assert (set(self.kptirr2kpt.flatten()) == set(range(self.NK))), "kptirr2kpt does not cover all kpoints"
         # print(self.kptirr2kpt.shape)
         # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
-
+        
 
         # read the rest of lines and convert to conplex array
         data = [l.strip("() \n").split(",") for l in fl.readlines()]
@@ -246,6 +256,8 @@ class DMN(W90_file):
 
 
     def to_w90_file(self, seedname):
+        if np.any(self.time_reversals):
+            raise ValueError("time reversal information is not supported in wannier90 files")
         f = open(seedname + ".dmn", "w")
         print(f"writing {seedname}.dmn:  comment = {self.comment}")
         f.write(f"{self.comment}\n")
@@ -283,7 +295,7 @@ class DMN(W90_file):
             the threshold for the degeneracy of the bands. Only transformations between bands
              with energy difference smaller than this value are considered
         """
-        data = bandstructure.get_dmn(grid=grid, degen_thresh=degen_thresh)
+        data = bandstructure.get_dmn(grid=grid, degen_thresh=degen_thresh, unitary=True)
         self.grid = data["grid"]
         self.kpoints = data["kpoints"]
         self.kpt2kptirr = data["kpt2kptirr"]
@@ -296,6 +308,7 @@ class DMN(W90_file):
         self.D_wann = []
         self.spacegroup = bandstructure.spacegroup
         self.Nsym = bandstructure.spacegroup.size
+        self.time_reversals = np.array([symop.time_reversal for symop in self.spacegroup.symmetries])
         self.NKirr = len(self.kptirr)
         self._NK = len(self.kpoints)
         self._NB = bandstructure.num_bands
@@ -373,18 +386,27 @@ class DMN(W90_file):
         D_indices = self.D_wann_block_indices
         # forward = not forward
         U1 = np.zeros(U.shape, dtype=complex)
+        Uloc = U.copy()
         if forward:
-            return rotate_block_matrix(U, lblocks=d_blocks, lindices=d_indices,
+            if self.time_reversals[isym]:
+                Uloc = Uloc.conj()
+            Uloc = rotate_block_matrix(Uloc, lblocks=d_blocks, lindices=d_indices,
                                        rblocks=D_blocks, rindices=D_indices,
-                                       conj_left=False, conj_right=True,
+                                       inv_left=False, inv_right=True,
                                        result=U1)
+
             # return d @ U @ D.conj().T
         else:
-            return rotate_block_matrix(U, lblocks=d_blocks, lindices=d_indices,
+            Uloc = rotate_block_matrix(Uloc, lblocks=d_blocks, lindices=d_indices,
                                        rblocks=D_blocks, rindices=D_indices,
-                                       conj_left=True, conj_right=False,
+                                       inv_left=True, inv_right=False,
                                        result=U1)
+            if self.time_reversals[isym]:
+                Uloc = Uloc.conj()
+            
             # return d.conj().T @ U @ D
+        
+        return Uloc
 
         # if forward:
         #     return self.d_band[ikirr, isym].conj().T @ U @ self.D_wann[ikirr, isym]
@@ -425,9 +447,13 @@ class DMN(W90_file):
             indices = self.d_band_block_indices[ikirr]
 
         Z1 = np.zeros(Z.shape, dtype=complex)
+        if self.time_reversals[isym]:
+            Zloc = Z.conj()
+        else:
+            Zloc = Z
         Z1 = rotate_block_matrix(Z, lblocks=blocks, lindices=indices,
                                  rblocks=blocks, rindices=indices,
-                                 conj_left=True, conj_right=False,
+                                 inv_left=True, inv_right=False,
                                  result=Z1)
         return Z1
         # return d_band.conj().T @ Z @ d_band
@@ -789,7 +815,7 @@ class DMN(W90_file):
     #     return maxerr
 
 
-def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices, conj_left, conj_right, result):
+def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices, inv_left, inv_right, result):
     """
     Rotates the matrix Z using the block-diagonal rotation matrices
 
@@ -805,26 +831,26 @@ def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices, conj_left, conj
         the blocks of hte right matrix. sum(n) = N
     rindices : list(tuple(int))
         the indices of the blocks of the right matrix
-    conj_left : bool
-        whether to Hermitean conjugate the left blocks
-    conj_right : bool
-        whether to Hermitean conjugate the right blocks
+    inv_left : bool
+        whether the left blocks are taken inverse
+    inv_right : bool
+        whether the right blocks are taken inverse
 
     Returns
     -------
     np.array(complex, shape=(M,N))
         the rotated matrix
     """
-    if conj_left:
+    if inv_left:
         for (start, end), block in zip(lindices, lblocks):
-            result[start:end, :] = block.T.conj() @ Z[start:end, :]
+            result[start:end, :] = np.linalg.inv(block) @ Z[start:end, :]
     else:
         for (start, end), block in zip(lindices, lblocks):
             result[start:end, :] = block @ Z[start:end, :]
 
-    if conj_right:
+    if inv_right:
         for (start, end), block in zip(rindices, rblocks):
-            result[:, start:end] = result[:, start:end] @ block.T.conj()
+            result[:, start:end] = result[:, start:end] @ np.linalg.inv(block)
     else:
         for (start, end), block in zip(rindices, rblocks):
             result[:, start:end] = result[:, start:end] @ block
