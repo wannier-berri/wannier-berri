@@ -698,9 +698,9 @@ class DMN(W90_file):
         #         print("D_wann_blocks", [b.shape for b in self.D_wann_blocks[ik][isym]])
 
     def set_D_wann_from_projections(self,
-                                    spacegroup=None,
                                     projections=None,
                                     projections_obj=None,
+                                    spacegroup=None,
                                     win=None,
                                     kpoints=None):
         """

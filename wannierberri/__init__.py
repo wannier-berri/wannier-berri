@@ -25,7 +25,7 @@ except Exception as err:
     warnings.warn(f"error importing  `pyfftw` : {err} \n will use numpy instead \n")
 
 from .run import run
-from . import symmetry
+from . import point_symmetry
 from . import system
 from . import models
 from . import w90files

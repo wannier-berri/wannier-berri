@@ -1,7 +1,7 @@
 import numpy as np
 from ..__utility import alpha_A, beta_A, delta_f
 from .formula import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct, FormulaSum, DeltaProduct
-from ..symmetry import transform_ident, transform_odd
+from ..point_symmetry import transform_ident, transform_odd
 
 
 class Identity(Formula_ln):

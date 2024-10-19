@@ -4,7 +4,7 @@ from copy import deepcopy
 import numpy as np
 import pytest
 from packaging.version import parse as pversion
-import wannierberri.symmetry as sym
+import wannierberri.point_symmetry as sym
 
 from common_systems import symmetries_GaAs, symmetries_Fe
 
@@ -21,17 +21,17 @@ def check_symgroup_equal():
 
 
 def test_symmetry_group():
-    assert sym.Group([sym.Inversion, sym.TimeReversal]).size == 4
-    assert sym.Group([sym.C3z, sym.C6z]).size == 6
-    assert sym.Group([sym.Inversion, sym.C4z, sym.TimeReversal * sym.C2x]).size == 16
+    assert sym.PointGroup([sym.Inversion, sym.TimeReversal]).size == 4
+    assert sym.PointGroup([sym.C3z, sym.C6z]).size == 6
+    assert sym.PointGroup([sym.Inversion, sym.C4z, sym.TimeReversal * sym.C2x]).size == 16
 
 
 def test_symmetry_as_dict(check_symgroup_equal):
-    for sg1 in (sym.Group([sym.Inversion, sym.TimeReversal]),
-               sym.Group([sym.C3z, sym.C6z]),
-               sym.Group([sym.Inversion, sym.C4z, sym.TimeReversal * sym.C2x])
+    for sg1 in (sym.PointGroup([sym.Inversion, sym.TimeReversal]),
+               sym.PointGroup([sym.C3z, sym.C6z]),
+               sym.PointGroup([sym.Inversion, sym.C4z, sym.TimeReversal * sym.C2x])
                ):
-        sg2 = sym.Group(dictionary=sg1.as_dict())
+        sg2 = sym.PointGroup(dictionary=sg1.as_dict())
         check_symgroup_equal(sg1, sg2)
 
 
@@ -40,7 +40,7 @@ def test_symmetry_group_failure():
     with pytest.raises(RuntimeError):
         c = np.cos(0.1)
         s = np.sin(0.1)
-        sym.Group([sym.Symmetry(np.array([[1, 0, 0], [0, c, s], [0, -s, c]]))])
+        sym.PointGroup([sym.PointSymmetry(np.array([[1, 0, 0], [0, c, s], [0, -s, c]]))])
 
 
 def test_symmetry_spglib_GaAs(system_GaAs_W90, check_symgroup_equal):

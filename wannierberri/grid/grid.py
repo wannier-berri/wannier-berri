@@ -18,7 +18,7 @@ from functools import cached_property
 import warnings
 
 from ..system.system import System
-from .. import symmetry
+from .. import point_symmetry
 from .Kpoint import KpointBZparallel
 from ..__utility import one2three
 
@@ -29,17 +29,17 @@ class GridAbstract(abc.ABC):
     def __init__(self, system, use_symmetry, FFT=(1, 1, 1)):
         if use_symmetry:
             if isinstance(system, System):
-                self.symgroup = system.symgroup
-            elif isinstance(system, symmetry.Group):
+                self.symgroup = system.pointgroup
+            elif isinstance(system, point_symmetry.PointGroup):
                 self.symgroup = system
         else:
             if isinstance(system, System):
                 real_lattice = system.real_lattice
-            elif isinstance(system, symmetry.Group):
+            elif isinstance(system, point_symmetry.PointGroup):
                 real_lattice = system.real_lattice
             else:
                 real_lattice = system
-            self.symgroup = symmetry.Group(real_lattice=real_lattice)
+            self.symgroup = point_symmetry.PointGroup(real_lattice=real_lattice)
         self.FFT = np.array(FFT)
 
     @abc.abstractmethod

@@ -8,7 +8,7 @@ import glob
 import multiprocessing
 from .system import System, pauli_xyz
 from ..__utility import alpha_A, beta_A, clear_cached, one2three
-from ..symmetry import Symmetry, Group, TimeReversal
+from ..point_symmetry import PointSymmetry, PointGroup, TimeReversal
 from .ws_dist import ws_dist_map
 
 
@@ -745,7 +745,7 @@ class System_R(System):
             except KeyError:
                 TR = False
                 tr_found = False
-            symmetry_gen.append(Symmetry(R, TR=TR))
+            symmetry_gen.append(PointSymmetry(R, TR=TR))
 
         if self.magnetic_moments is None:
             symmetry_gen.append(TimeReversal)
@@ -760,7 +760,7 @@ class System_R(System):
             warnings.warn("spglib does not find symmetries including time reversal operation. "
                           "To include such symmetries, use set_symmetry.")
 
-        self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
+        self.symgroup = PointGroup(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
     def get_sparse(self, min_values={'Ham': 1e-3}):
         min_values = copy.copy(min_values)
@@ -865,7 +865,7 @@ class System_R(System):
             logfile.write(f"loading {key}")
             a = np.load(os.path.join(path, key + ".npz"), allow_pickle=False)
             if key == 'symgroup':
-                val = Group(dictionary=a)
+                val = PointGroup(dictionary=a)
             else:
                 val = a['arr_0']
             setattr(self, key, val)

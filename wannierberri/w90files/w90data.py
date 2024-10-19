@@ -15,6 +15,7 @@
 from functools import cached_property
 from copy import copy, deepcopy
 import numpy as np
+from ..point_symmetry import PointGroup
 from ..wannierise import wannierise
 from .Dwann import Dwann
 
@@ -47,15 +48,15 @@ class Wannier90data:
         overwrite_npz : bool
             overwrite existing npz files  (incompatinble with read_npz)
         read_chk : bool
-            if True, read the checkpoint file, otherwise create a '~wannierberri.system.w90_files.CheckPoint_bare' object and prepare for disentanglement
+            if True, read the checkpoint file, otherwise create a '~wannierberri.w90files.CheckPoint_bare' object and prepare for disentanglement
         kmesh_tol : float
-            see `~wannierberri.system.w90_files.CheckPoint`
+            see `~wannierberri.w90files.CheckPoint`
         bk_complete_tol : float
-            see `~wannierberri.system.w90_files.CheckPoint`
+            see `~wannierberri.w90files.CheckPoint`
 
     Attributes
     ----------
-    chk : `~wannierberri.system.w90_files.CheckPoint` or `~wannierberri.system.w90_files.CheckPoint_bare`
+    chk : `~wannierberri.w90files.CheckPoint` or `~wannierberri.w90files.CheckPoint_bare`
         the checkpoint file
     seedname : str
         the prefix of the file (including relative/absolute path, but not including the extensions, like `.chk`, `.mmn`, etc)
@@ -69,7 +70,7 @@ class Wannier90data:
         write npz for all formatted files
     formatted_list : list(str)
         list of files which should be read as formatted files (uHu, uIu, etc)
-    _files : dict(str, `~wannierberri.system.w90_files.W90_file`)
+    _files : dict(str, `~wannierberri.w90files.W90_file`)
         the dictionary of the files (e.g. the keys are 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn', 'dmn')
     """
     # todo :  rotate uHu and spn
@@ -130,14 +131,14 @@ class Wannier90data:
         ----------
         key : str
             the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn', 'dmn'
-        val : `~wannierberri.system.w90_files.W90_file`
+        val : `~wannierberri.w90files.W90_file`
             the value of the file
         overwrite : bool
             if True, overwrite the file if it was already set, otherwise raise an error
         kwargs : dict
             the keyword arguments to be passed to the constructor of the file
-            see `~wannierberri.system.w90_files.W90_file`, 
-            `~wannierberri.system.w90_files.MMN`, `~wannierberri.system.w90_files.EIG`, `~wannierberri.system.w90_files.AMN`, `~wannierberri.system.w90_files.UIU`, `~wannierberri.system.w90_files.UHU`, `~wannierberri.system.w90_files.SIU`, `~wannierberri.system.w90_files.SHU`, `~wannierberri.system.w90_files.SPN`
+            see `~wannierberri.w90files.W90_file`, 
+            `~wannierberri.w90files.MMN`, `~wannierberri.w90files.EIG`, `~wannierberri.w90files.AMN`, `~wannierberri.w90files.UIU`, `~wannierberri.w90files.UHU`, `~wannierberri.w90files.SIU`, `~wannierberri.w90files.SHU`, `~wannierberri.w90files.SPN`
             for more details        
         """
         kwargs_auto = self.auto_kwargs_files(key)
@@ -209,13 +210,13 @@ class Wannier90data:
             the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
         kwargs : dict
             the keyword arguments to be passed to the constructor of the file
-            see `~wannierberri.system.w90_files.W90_file`, 
-            `~wannierberri.system.w90_files.MMN`, `~wannierberri.system.w90_files.EIG`, `~wannierberri.system.w90_files.AMN`, `~wannierberri.system.w90_files.UIU`, `~wannierberri.system.w90_files.UHU`, `~wannierberri.system.w90_files.SIU`, `~wannierberri.system.w90_files.SHU`, `~wannierberri.system.w90_files.SPN`
+            see `~wannierberri.w90files.W90_file`, 
+            `~wannierberri.w90files.MMN`, `~wannierberri.w90files.EIG`, `~wannierberri.w90files.AMN`, `~wannierberri.w90files.UIU`, `~wannierberri.w90files.UHU`, `~wannierberri.w90files.SIU`, `~wannierberri.w90files.SHU`, `~wannierberri.w90files.SPN`
             for more details
 
         Returns
         -------
-        `~wannierberri.system.w90_files.W90_file`
+        `~wannierberri.w90files.W90_file`
             the file with the key `key`
         """
         if key not in self._files:
@@ -230,7 +231,7 @@ class Wannier90data:
         ----------
         key : str
             the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
-        this : `~wannierberri.system.w90_files.W90_file`
+        this : `~wannierberri.w90files.W90_file`
             the file to be checked
 
         Raises
@@ -487,24 +488,58 @@ class Wannier90data:
         """
         self.set_file("amn", self.dmn.get_random_amn(), overwrite=True)
 
-    def set_D_wann_orbit(self, positions, spacegroup):
+    #  TODO : remove ?
+    # def set_D_wann_orbit(self, positions, spacegroup):
+    #     """
+    #     Set the Dwann matrix from the positions of the Wamnnier centers (only s-orbitals so far)
+    #     the symmetries are applied to restore all the points belonging to this wyckoff position
+
+    #     Parameters
+    #     ----------
+    #     positions : np.array(npoints,3, dtype=float) or np.array(3)
+    #         the positions of the wannier centers.  The symmetries are applied to restore all the 
+    #         points belonging to this wyckoff position
+    #     spacegroup: irrep.SpaceGroup
+    #         the spacegroup of the crystal
+    #     """
+    #     dwann = Dwann(spacegroup, positions=positions)
+    #     kpoints = self.chk.kpt_latt
+    #     self.dmn.set_D_wann(dwann.get_on_points_all(kpoints=kpoints,
+    #                                                 ikptirr=self.dmn.kptirr,
+    #                                                 ikptirr2kpt=self.dmn.kptirr2kpt))
+
+    def set_d_band(self, bandstructure, overwrite=False):
         """
-        Set the Dwann matrix from the positions of the Wamnnier centers (only s-orbitals so far)
-        the symmetries are applied to restore all the points belonging to this wyckoff position
+        Set the d-band from the bandstructure object
 
         Parameters
         ----------
-        positions : np.array(npoints,3, dtype=float) or np.array(3)
-            the positions of the wannier centers.  The symmetries are applied to restore all the 
-            points belonging to this wyckoff position
-        spacegroup: irrep.SpaceGroup
-            the spacegroup of the crystal
+        bandstructure : irrep.bandstructure.BandStructure
+            the bandstructure object
+        overwrite : bool
+            if False and the dmn file already exists, raise an error
         """
-        dwann = Dwann(spacegroup, positions=positions)
-        kpoints = self.chk.kpt_latt
-        self.dmn.set_D_wann(dwann.get_on_points_all(kpoints=kpoints,
-                                                    ikptirr=self.dmn.kptirr,
-                                                    ikptirr2kpt=self.dmn.kptirr2kpt))
+        dmn_new = DMN(empty=True)
+        dmn_new.from_irrep(bandstructure)
+        self.set_file("dmn", dmn_new, overwrite=overwrite)  
+        self.spacegroup = bandstructure.spacegroup
+        self.pointgroup = PointGroup(spacegroup=self.spacegroup)
+
+    def set_D_wann_from_projections(self, projections):
+        """
+        Set the Dwann matrix from the projections
+
+        Parameters
+        ----------
+        projections : list(tuple(np.array(3), str))
+            the list of projections, each element is a tuple of the position of the projection and the orbital type
+        """
+        if "dmn" not in self._files:
+            raise RuntimeError("First set the bands part of dmn file")
+        self.dmn.set_D_wann_from_projections(projections=projections)
+        
+
+        
 
     # TODO : allow k-dependent window (can it be useful?)
     # def apply_outer_window(self,

@@ -15,7 +15,7 @@ import os
 import sys
 import numpy as np
 from functools import cached_property
-from ..symmetry import Group
+from ..point_symmetry import PointGroup
 from ..__utility import real_recip_lattice
 
 pauli_x = [[0, 1], [1, 0]]
@@ -134,7 +134,7 @@ class System:
         _, recip = real_recip_lattice(real_lattice=self.real_lattice)
         return recip
 
-    def set_symmetry(self, symmetry_gen=()):
+    def set_symmetry(self, symmetry_gen=(), spacegroup=None, pointgroup=None):
         """
         Set the symmetry group of the :class:`System`, which will be used for symmetrization
         in k-space and for reducing the number of k-points in the BZ.
@@ -143,6 +143,10 @@ class System:
         ----------
         symmetry_gen : list of :class:`symmetry.Symmetry` or str
             The generators of the symmetry group.
+        spacegroup : :class:`irrep.spacegroup.SpaceGroup`
+            The space group of the system. The point group will be evaluated by the space group.
+        pointgroup : :class:`~wannieberri.point_symmetry.PointGroup`
+            The point group of the system. If provided, the code will use it as the symmetry group.
 
         Notes
         -----
@@ -153,7 +157,13 @@ class System:
         + ``symetyry_gen=[]`` is equivalent to not calling this function at all
         + Only the **point group** operations are important. Hence, for non-symmorphic operations, only the rotational part should be given, neglecting the translation.
         """
-        self.symgroup = Group(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
+        if pointgroup is not None:
+            self.pointgroup = pointgroup
+        if spacegroup is not None:
+            assert np.allclose(spacegroup.Lattice, self.real_lattice)
+            self.pointgroup = PointGroup(spacegroup=spacegroup, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
+        else:
+            self.pointgroup = PointGroup(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
 
     @cached_property
