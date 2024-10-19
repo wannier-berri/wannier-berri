@@ -451,7 +451,7 @@ class DMN(W90_file):
             Zloc = Z.conj()
         else:
             Zloc = Z
-        Z1 = rotate_block_matrix(Z, lblocks=blocks, lindices=indices,
+        Z1 = rotate_block_matrix(Zloc, lblocks=blocks, lindices=indices,
                                  rblocks=blocks, rindices=indices,
                                  inv_left=True, inv_right=False,
                                  result=Z1)
