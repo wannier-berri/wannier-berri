@@ -54,10 +54,14 @@ class DMN(W90_file):
         the symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
     d_band_blocks : list(list(numpy.ndarray(complex, shape=(NB, NB))))
         the ab initio band transformation matrices in the block form (between almost degenerate bands)
+    d_band_blocks_inverse : list(list(numpy.ndarray(complex, shape=(NB, NB))))
+        the inverse matrices of d_band_blocks
     d_band_block_indices : list(np.array(int, shape=(Nblocks, 2)))
         the indices of the blocks in the ab initio band transformation matrices
     D_wann_blocks : list(list(numpy.ndarray(complex, shape=(num_wann, num_wann))))
         the Wannier function transformation matrices in the block form. Within the same irreducible representation of WFs
+    D_wann_blocks_inverse : list(list(numpy.ndarray(complex, shape=(num_wann, num_wann))))
+        the inverse matrices of D_wann_blocks
     D_wann_block_indices : np.array(int, shape=(Nblocks, 2))
         the indices of the blocks in the Wannier function transformation matrices
     time_reversals : array(bool, shape=(Nsym,))
@@ -78,8 +82,16 @@ class DMN(W90_file):
         if seedname is None:
             self.set_identiy(num_wann, num_bands, nkpt)
             return
-
         super().__init__(seedname, "dmn", **kwargs)
+
+    @cached_property
+    def d_band_blocks_inverse(self):
+        return _get_d_inverse(self.d_band_blocks)
+    
+    @cached_property
+    def D_wann_blocks_inverse(self):
+        return _get_d_inverse(self.D_wann_blocks)
+    
 
     def to_npz(self, f_npz):
         dic = {k: self.__getattribute__(k) for k in self.npz_tags}
@@ -112,9 +124,6 @@ class DMN(W90_file):
                     self.d_band_blocks[ik][isym].append(np.ascontiguousarray(dic[f'd_band_blocks_{ik}_{isym}_{i}']))
                 for i in range(len(self.D_wann_block_indices)):
                     self.D_wann_blocks[ik][isym].append(np.ascontiguousarray(dic[f'D_wann_blocks_{ik}_{isym}_{i}']))
-
-
-
 
     @property
     def NK(self):
@@ -213,7 +222,8 @@ class DMN(W90_file):
         # np.ascontinousarray is used to speedup with Numba
         self.D_wann_blocks = [[[np.ascontiguousarray(D_wann[ik, isym, start:end, start:end]) for start, end in self.D_wann_block_indices]
                                for isym in range(self.Nsym)] for ik in range(self.NKirr)]
-
+        self.clear_inverse()
+        
     @lru_cache
     def d_band_diagonal(self, ikirr, isym):
         if ikirr is None:
@@ -312,6 +322,7 @@ class DMN(W90_file):
         self.NKirr = len(self.kptirr)
         self._NK = len(self.kpoints)
         self._NB = bandstructure.num_bands
+        self.clear_inverse()
 
     def get_disentangled(self, v_matrix_dagger, v_matrix):
         """	
@@ -358,6 +369,7 @@ class DMN(W90_file):
                               for isym in range(self.Nsym)] for ik in range(self.NKirr)]
         self.D_wann_blocks = [[[np.eye(end - start) for start, end in self.D_wann_block_indices]
                                for isym in range(self.Nsym)] for ik in range(self.NKirr)]
+        self.clear_inverse()
 
     def select_bands(self, win_index_irr):
         self.d_band = [D[:, wi, :][:, :, wi] for D, wi in zip(self.d_band, win_index_irr)]
@@ -390,16 +402,22 @@ class DMN(W90_file):
         if forward:
             if self.time_reversals[isym]:
                 Uloc = Uloc.conj()
-            Uloc = rotate_block_matrix(Uloc, lblocks=d_blocks, lindices=d_indices,
-                                       rblocks=D_blocks, rindices=D_indices,
-                                       inv_left=False, inv_right=True,
+            Uloc = rotate_block_matrix(Uloc, 
+                                       lblocks=self.d_band_blocks[ikirr][isym],
+                                       lindices=d_indices,
+                                       rblocks=self.D_wann_blocks_inverse[ikirr][isym], 
+                                       rindices=D_indices,
+                                    #    inv_left=False, inv_right=True,
                                        result=U1)
 
             # return d @ U @ D.conj().T
         else:
-            Uloc = rotate_block_matrix(Uloc, lblocks=d_blocks, lindices=d_indices,
-                                       rblocks=D_blocks, rindices=D_indices,
-                                       inv_left=True, inv_right=False,
+            Uloc = rotate_block_matrix(Uloc, 
+                                       lblocks=self.d_band_blocks_inverse[ikirr][isym], 
+                                       lindices=d_indices,
+                                       rblocks=self.D_wann_blocks[ikirr][isym], 
+                                       rindices=D_indices,
+                                    #    inv_left=True, inv_right=False,
                                        result=U1)
             if self.time_reversals[isym]:
                 Uloc = Uloc.conj()
@@ -417,13 +435,23 @@ class DMN(W90_file):
         if hasattr(self, 'free_bands_defined'):
             del self.free_bands_defined
             del self.d_band_blocks_free
+            del self.d_band_blocks_free_inverse
             del self.d_band_block_indices_free
+    
+    def clear_inverse(self, d=True, D=True):
+        if d:
+            if hasattr(self, 'd_band_blocks_inverse'):
+                del self.d_band_blocks_inverse
+        if D:
+            if hasattr(self, 'D_wann_blocks_inverse'):
+                del self.D_wann_blocks_inverse
 
     def set_free_bands(self, ikirr, free_bands):
         assert free_bands is not None
         if not hasattr(self, 'free_bands_defined'):
             self.free_bands_defined = np.zeros(self.NK, dtype=bool)
             self.d_band_blocks_free = [None for _ in range(self.NKirr)]
+            self.d_band_blocks_free_inverse = [None for _ in range(self.NKirr)]
             self.d_band_block_indices_free = [None for _ in range(self.NKirr)]
         if not self.free_bands_defined[ikirr]:
             self.free_bands_defined[ikirr] = True
@@ -431,6 +459,7 @@ class DMN(W90_file):
                 self.d_band_block_indices_free[ikirr],
                 self.d_band_blocks_free[ikirr]
             ) = self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], free_bands)
+            self.d_band_blocks_free_inverse[ikirr] = _get_d_inverse(self.d_band_blocks_free[ikirr])
 
 
     def rotate_Z(self, Z, isym, ikirr, free=None):
@@ -440,10 +469,12 @@ class DMN(W90_file):
         """
         if free is not None:
             self.set_free_bands(ikirr, free)
-            blocks = self.d_band_blocks_free[ikirr][isym]
+            lblocks = self.d_band_blocks_free_inverse[ikirr][isym]
+            rblocks = self.d_band_blocks_free[ikirr][isym]
             indices = self.d_band_block_indices_free[ikirr]
         else:
-            blocks = self.d_band_blocks[ikirr][isym]
+            lblocks = self.d_band_blocks_inverse[ikirr][isym], 
+            rblocks = self.d_band_blocks[ikirr][isym]
             indices = self.d_band_block_indices[ikirr]
 
         Z1 = np.zeros(Z.shape, dtype=complex)
@@ -451,9 +482,11 @@ class DMN(W90_file):
             Zloc = Z.conj()
         else:
             Zloc = Z
-        Z1 = rotate_block_matrix(Zloc, lblocks=blocks, lindices=indices,
-                                 rblocks=blocks, rindices=indices,
-                                 inv_left=True, inv_right=False,
+        Z1 = rotate_block_matrix(Zloc, lblocks=lblocks, 
+                                 lindices=indices,
+                                 rblocks=rblocks, 
+                                 rindices=indices,
+                                #  inv_left=True, inv_right=False,
                                  result=Z1)
         return Z1
         # return d_band.conj().T @ Z @ d_band
@@ -674,6 +707,7 @@ class DMN(W90_file):
         -----
           also updates the num_wann attribute
         """
+        self.clear_inverse(d=False, D=True)
         if not isinstance(D_wann, list):
             D_wann = [D_wann]
         print("D.shape", [D.shape for D in D_wann])
@@ -814,8 +848,21 @@ class DMN(W90_file):
     #                 maxerr = max(maxerr, err)
     #     return maxerr
 
+def _get_d_inverse(D):
+    """
+    Get the inverse of the transformation matrix
+    """
+    if isinstance(D,list):
+        return [_get_d_inverse(d) for d in D]
+    elif isinstance(D, np.ndarray):
+        return np.linalg.inv(D)
+    else:
+        raise ValueError(f"Unknown type {type(D)}")
+    
 
-def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices, inv_left, inv_right, result):
+def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices, 
+                        # inv_left, inv_right, 
+                        result):
     """
     Rotates the matrix Z using the block-diagonal rotation matrices
 
@@ -831,28 +878,16 @@ def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices, inv_left, inv_r
         the blocks of hte right matrix. sum(n) = N
     rindices : list(tuple(int))
         the indices of the blocks of the right matrix
-    inv_left : bool
-        whether the left blocks are taken inverse
-    inv_right : bool
-        whether the right blocks are taken inverse
-
+    
     Returns
     -------
     np.array(complex, shape=(M,N))
         the rotated matrix
     """
-    if inv_left:
-        for (start, end), block in zip(lindices, lblocks):
-            result[start:end, :] = np.linalg.inv(block) @ Z[start:end, :]
-    else:
-        for (start, end), block in zip(lindices, lblocks):
-            result[start:end, :] = block @ Z[start:end, :]
+    for (start, end), block in zip(lindices, lblocks):
+        result[start:end, :] = block @ Z[start:end, :]
 
-    if inv_right:
-        for (start, end), block in zip(rindices, rblocks):
-            result[:, start:end] = result[:, start:end] @ np.linalg.inv(block)
-    else:
-        for (start, end), block in zip(rindices, rblocks):
-            result[:, start:end] = result[:, start:end] @ block
+    for (start, end), block in zip(rindices, rblocks):
+        result[:, start:end] = result[:, start:end] @ block
 
     return result
