@@ -139,7 +139,8 @@ def test_create_dmn():
 
     bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
                                                       code="espresso",
-                                                    from_sym_file=data_dir + "/diamond.sym"
+                                                    from_sym_file=data_dir + "/diamond.sym",
+                                                    include_TR=False,
                                                       )
     dmn = DMN(empty=True)
     dmn.from_irrep(bandstructure)
