@@ -160,7 +160,7 @@ class DMN(W90_file):
         fl = open(seedname + ".dmn", "r")
         self.comment = fl.readline().strip()
         self._NB, self.Nsym, self.NKirr, self._NK = readints(fl, 4)
-        self.time_reversals = np.zeros(self.Nsym, dtype=bool) # w90 file does not have time reversal information
+        self.time_reversals = np.zeros(self.Nsym, dtype=bool)  # w90 file does not have time reversal information
         self.kpt2kptirr = readints(fl, self.NK) - 1
         self.kptirr = readints(fl, self.NKirr) - 1
         self.kptirr2kpt = np.array([readints(fl, self.Nsym) for _ in range(self.NKirr)]) - 1
@@ -392,8 +392,6 @@ class DMN(W90_file):
         Rotates the umat matrix at the irreducible kpoint
         U = D_band^+ @ U @ D_wann
         """
-        d_blocks = self.d_band_blocks[ikirr][isym]
-        D_blocks = self.D_wann_blocks[ikirr][isym]
         d_indices = self.d_band_block_indices[ikirr]
         D_indices = self.D_wann_block_indices
         # forward = not forward
@@ -848,11 +846,12 @@ class DMN(W90_file):
     #                 maxerr = max(maxerr, err)
     #     return maxerr
 
+
 def _get_d_inverse(D):
     """
     Get the inverse of the transformation matrix
     """
-    if isinstance(D,list):
+    if isinstance(D, list):
         return [_get_d_inverse(d) for d in D]
     elif isinstance(D, np.ndarray):
         return np.linalg.inv(D)
