@@ -40,6 +40,7 @@ extensions = [
     'nbsphinx',
 ]
 
+napoleon_custom_sections = ["Sets"]
 nbsphinx_allow_errors = True
 
 html_baseurl = 'https://wannier-berri.org'

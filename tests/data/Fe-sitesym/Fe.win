@@ -1,0 +1,45 @@
+
+num_bands    =   32
+num_wann     =   18
+
+dis_win_min  = -8.0d0
+dis_win_max  = 70.0d0
+dis_froz_min = -8.0d0
+dis_froz_max =  30.0d0
+dis_num_iter =  2000
+dis_mix_ratio = 1.0
+dis_conv_tol = 1.d-10
+
+num_iter     = 2000
+conv_tol     = 1.d-10
+conv_window  = 5
+
+spinors = T
+begin projections
+Fe: s
+Fe: p
+Fe: d
+end projections
+
+begin unit_cell_cart
+bohr
+ 2.71175  2.71175 2.71175
+-2.71175  2.71175 2.71175
+-2.71175 -2.71175 2.71175
+end unit_cell_cart
+
+begin atoms_frac
+Fe  0.000  0.000  0.000
+end atoms_frac
+
+mp_grid =      2 2 2
+begin kpoints
+  0.00000000  0.00000000  0.00000000  1.250000e-01
+   0.00000000  0.00000000  0.50000000  1.250000e-01
+   0.00000000  0.50000000  0.00000000  1.250000e-01
+   0.00000000  0.50000000  0.50000000  1.250000e-01
+   0.50000000  0.00000000  0.00000000  1.250000e-01
+   0.50000000  0.00000000  0.50000000  1.250000e-01
+   0.50000000  0.50000000  0.00000000  1.250000e-01
+   0.50000000  0.50000000  0.50000000  1.250000e-01
+end kpoints

@@ -9,6 +9,7 @@ class SPN(W90_file):
     """
 
     def __init__(self, seedname="wannier90", **kwargs):
+        self.npz_tags = ["data"]
         super().__init__(seedname=seedname, ext="spn", **kwargs)
 
     def from_w90_file(self, seedname='wannier90', formatted=False):
@@ -42,3 +43,7 @@ class SPN(W90_file):
                 raise RuntimeError(f"REAL DIAG CHECK FAILED : {check}")
             self.data[ik] = A.transpose(1, 2, 0)
         print("----------\n SPN OK  \n---------\n")
+
+    def apply_window(self, selected_bands):
+        if selected_bands is not None:
+            self.data = self.data[:, selected_bands, :, :][:, :, selected_bands, :]

@@ -23,7 +23,7 @@ import wannierberri as wberri
 import numpy as np
 
 
-SYM=wberri.symmetry
+SYM=wberri.point_symmetry
 
 Efermi=np.linspace(12.,13.,1001)
 system=wberri.system.System_w90('../../tests/data/Fe_Wannier90/Fe',berry=True)

@@ -2,24 +2,25 @@ import wannierberri as wberri
 import numpy as np
 from matplotlib import pyplot as plt
 path_data = "../../tests/data/Fe_sym_Wannier90/"
-aidata=wberri.w90files.Wannier90data(seedname=path_data+"Fe_sym")
-aidata.write(seedname="Fe_sym_orig", files=['eig','amn','mmn'])
+w90data=wberri.w90files.Wannier90data(seedname=path_data+"Fe_sym")
+w90data.write(seedname="Fe_sym_orig", files=['eig','amn','mmn'])
 
 #aidata.apply_outer_window(win_min=-8,win_max= 100 )
 froz_max=20
-aidata.disentangle( froz_min=-8,
+w90data.wannierise( froz_min=-8,
                  froz_max=froz_max,
-                print_progress_every=20,
-                 num_iter=41,
-                 conv_tol=1e-9,
-                 mix_ratio=1.0
+                print_progress_every=50,
+                 num_iter=1001,
+                 conv_tol=1e-6,
+                 mix_ratio_z=0.7,
+                 localise=False
                   )
-print (aidata.wannier_centers)
-aidata.write(seedname="Fe_sym_orig2", files=['eig','amn','mmn'])
-w90data = aidata.get_disentangled(files = ['amn','mmn','eig'])
+print (w90data.wannier_centers)
+system=wberri.system.System_w90(w90data= w90data)
+w90data.write(seedname="Fe_sym_orig2", files=['eig','amn','mmn'])
+w90data = w90data.get_disentangled(files = ['amn','mmn','eig'])
 w90data.write(seedname="Fe_sym_disentangled", files=['eig','amn','mmn'])
 #system=aidata.getSystem(berry=True)
-system=wberri.system.System_w90(w90data= aidata)
 tabulators = { "Energy": wberri.calculators.tabulate.Energy(),
              }
 

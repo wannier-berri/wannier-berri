@@ -1,6 +1,7 @@
+from functools import lru_cache
 import warnings
 import numpy as np
-from scipy.linalg import svd
+from .utility import orthogonalize
 
 
 class Symmetrizer:
@@ -42,7 +43,7 @@ class Symmetrizer:
 
     def __init__(self, Dmn=None, neighbours=None,
                  free=None,
-                 n_iter=100, epsilon=1e-8):
+                 n_iter=20, epsilon=1e-8):
         if free is None:
             self.free = np.ones((Dmn.NK, Dmn.NB), dtype=bool)
         else:
@@ -64,6 +65,9 @@ class Symmetrizer:
                 self.include_k[ik] = True
                 self.include_k[neighbours[ik]] = True
 
+    @lru_cache
+    def ndegen(self, ikirr):
+        return len(set(self.kptirr2kpt[ikirr]))
 
 
     def symmetrize_U(self, U, to_full_BZ=True, all_k=False):
@@ -112,26 +116,32 @@ class Symmetrizer:
             for isym in range(self.Nsym):
                 iRk = self.Dmn.kptirr2kpt[ikirr, isym]
                 if Ufull[iRk] is None and (self.include_k[iRk] or all_k):
-                    Ufull[iRk] = self.Dmn.rotate_U(U[ikirr], ikirr, isym)
+                    Ufull[iRk] = self.Dmn.rotate_U(U[ikirr], ikirr, isym, forward=True)
         return Ufull
+
+    def symmetrize_Zk(self, Z, ikirr):
+        # return Z # temporary for testing
+        if Z.shape[0] == 0:
+            return Z
+        for i in range(self.n_iter):
+            Zsym = sum(self.Dmn.rotate_Z(Z, isym, ikirr, self.free[ikirr])
+                       for isym in self.Dmn.isym_little[ikirr]) / len(self.Dmn.isym_little[ikirr])
+            diff = np.max(abs(Zsym - Z))
+            if diff < self.epsilon:
+                break
+            Z[:] = Zsym
+        Z[:] = Zsym
+        return Z
 
     def symmetrize_Z(self, Z):
         """
         symmetrizes Z in-place
         Z(k) <- \sum_{R} d^{+}(R,k) Z(Rk) d(R,k)
         """
-        for ikirr, z in enumerate(Z):
-            if z.shape[0] == 0:
-                continue
-            for i in range(self.n_iter):
-                Zsym = sum(self.Dmn.rotate_Z(Z[ikirr], isym, ikirr, self.free[ikirr])
-                           for isym in self.Dmn.isym_little[ikirr]) / len(self.Dmn.isym_little[ikirr])
-                diff = np.max(abs(Zsym - Z[ikirr]))
-                if diff < self.epsilon:
-                    break
-                Z[ikirr][:] = Zsym
-            Z[ikirr][:] = Zsym
+        for ikirr, _ in enumerate(Z):
+            self.symmetrize_Zk(Z[ikirr], ikirr)
         return Z
+
 
     def symmetrize_U_kirr(self, U, ikirr):
         """
@@ -153,7 +163,8 @@ class Symmetrizer:
         nb, nw = U.shape
 
         for i in range(self.n_iter):
-            Usym = sum(Dmn.rotate_U(U, ikirr, isym, forward=False) for isym in isym_little) / nsym_little
+            Usym = sum(Dmn.rotate_U(U, ikirr, isym, forward=True) for isym in isym_little) / nsym_little
+            Usym = orthogonalize(Usym)
             diff = np.eye(nw) - U.conj().T @ Usym
             diff = np.sum(np.abs(diff))
             if diff < self.epsilon:
@@ -165,6 +176,7 @@ class Symmetrizer:
                         'Either eps is too small or specified irreps is not compatible with the bands' +
                         f'diff{diff}, eps={self.epsilon}')
         return orthogonalize(Usym)
+
 
 
 
@@ -186,26 +198,14 @@ class VoidSymmetrizer(Symmetrizer):
     def symmetrize_U(self, U, **kwargs):
         return U
 
+    def symmetrize_U_kirr(self, U, ikirr):
+        return U
+
     def symmetrize_Z(self, Z):
+        return Z
+
+    def symmetrize_Zk(self, Z, ikirr):
         return Z
 
     def U_to_full_BZ(self, U):
         return U
-
-
-def orthogonalize(u):
-    """
-    Orthogonalizes the matrix u using Singular Value Decomposition (SVD).
-
-    Parameters
-    ----------
-    u : np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
-        The input matrix to be orthogonalized.
-
-    Returns
-    -------
-    u : np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
-        The orthogonalized matrix.
-    """
-    U, _, VT = svd(u, full_matrices=False)
-    return U @ VT

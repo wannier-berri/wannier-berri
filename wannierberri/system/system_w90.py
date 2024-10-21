@@ -160,6 +160,12 @@ class System_w90(System_R):
         w90data.check_wannierised(msg="creation of System_w90")
         chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
+        if hasattr(w90data, 'pointgroup'):
+            self.set_symmetry(pointgroup=w90data.pointgroup)
+        elif hasattr(w90data, 'spacegroup'):
+            self.set_symmetry(spacegroup=w90data.spacegroup)
+        
+        
         mp_grid = chk.mp_grid
         self._NKFFT_recommended = mp_grid
         self.iRvec, Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=chk.mp_grid)

@@ -38,12 +38,18 @@ class AMN(W90_file):
     def NB(self):
         return self.data.shape[1]
 
+    def apply_window(self, selected_bands):
+        print(f"apply_window amn, selected_bands={selected_bands}")
+        if selected_bands is not None:
+            self.data = self.data[:, selected_bands, :]
+
     @property
     def NW(self):
         return self.data.shape[2]
 
     def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(), **kwargs):
-        super().__init__(seedname, "amn", tags=['data'], npar=npar, **kwargs)
+        self.npz_tags = ["data"]
+        super().__init__(seedname, ext="amn", npar=npar, **kwargs)
 
     def from_w90_file(self, seedname, npar):
         f_amn_in = open(seedname + ".amn", "r").readlines()

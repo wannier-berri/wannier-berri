@@ -49,7 +49,7 @@ class GridTetra(GridAbstract):
 
         _, self.FFT = determineNK(periodic=system.periodic, NK=None,
                                   NKdiv=1, NKFFT=NKFFT, NKFFT_recommended=system.NKFFT_recommended,
-                                  symgroup=system.symgroup, length=None, length_FFT=length_FFT)
+                                  pointgroup=system.pointgroup, length=None, length_FFT=length_FFT)
 
         self.recip_lattice_reduced = system.recip_lattice / self.FFT[:, None]
         print("reduced reciprocal lattice : \n", self.recip_lattice_reduced)

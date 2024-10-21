@@ -183,19 +183,6 @@ def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
     )
 
 
-def test_system_Fe_W90_disentngle(check_system, system_Fe_W90_disentangle):
-    check_system(
-        system_Fe_W90_disentangle, "Fe_W90_disentangle",
-        matrices=['Ham', 'AA'],
-        precision_matrix_elements=3e-6,
-        extra_precision={'wannier_centers_cart': 1e-7,
-                         'wannier_centers_cart_wcc_phase': 1e-7,
-                         'wannier_centers_reduced': 1e-7,
-                         'diff_wcc_cart': 2e-7,
-                         'diff_wcc_red': 2e-7
-                         }
-    )
-
 
 def test_system_GaAs_W90(check_system, system_GaAs_W90):
     check_system(

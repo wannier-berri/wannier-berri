@@ -103,7 +103,7 @@ exit()
 # system = System_ASE(wan)
 
 
-SYM = wberri.symmetry
+SYM = wberri.point_symmetry
 
 Efermi = np.linspace(-10, 10, 10001)
 

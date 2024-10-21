@@ -21,25 +21,44 @@ class W90_file(abc.ABC):
         if True, write the files to npz
     kwargs : dict
         the keyword arguments to be passed to the constructor of the file
-        see `~wannierberri.system.w90_files.W90_file`, `~wannierberri.system.w90_files.MMN`, `~wannierberri.system.w90_files.EIG`, `~wannierberri.system.w90_files.AMN`, `~wannierberri.system.w90_files.UIU`, `~wannierberri.system.w90_files.UHU`, `~wannierberri.system.w90_files.SIU`, `~wannierberri.system.w90_files.SHU`, `~wannierberri.system.w90_files.SPN`
+        see :class:`~wannierberri.w90files.MMN`, :class:`~wannierberri.w90files.EIG`, :class:`~wannierberri.w90files.AMN`, 
+        :class:`~wannierberri.w90files.UIU`, :class:`~wannierberri.w90files.UHU`, :class:`~wannierberri.w90files.SIU`, 
+        :class:`~wannierberri.w90files.SHU`, :class:`~wannierberri.w90files.SPN`, :class:`~wannierberri.w90files.WIN`
+        :class:'wannierberri.w90files.DMN'	
         for more details
+
+    Attributes
+    ----------
+    npz_tags : list(str)
+        the tags to be saved/loaded in the npz file
     """
 
-    def __init__(self, seedname="wannier90", ext="", tags=["data"], read_npz=True, write_npz=True, data=None, **kwargs):
+    def __init__(self, seedname="wannier90", ext="", read_npz=True, write_npz=True, data=None, selected_bands=None, **kwargs):
+        if not hasattr(self, "npz_tags"):
+            self.npz_tags = ["data"]
         if data is not None:
             self.data = data
             return
         f_npz = f"{seedname}.{ext}.npz"
-        print(f"calling w90 file with {seedname}, {ext}, tags={tags}, read_npz={read_npz}, write_npz={write_npz}, kwargs={kwargs}")
+        print(f"calling w90 file with {seedname}, {ext}, tags={self.npz_tags}, read_npz={read_npz}, write_npz={write_npz}, kwargs={kwargs}")
         if os.path.exists(f_npz) and read_npz:
-            dic = np.load(f_npz)
-            for k in tags:
-                self.__setattr__(k, dic[k])
+            self.from_npz(f_npz)
         else:
             self.from_w90_file(seedname, **kwargs)
-            dic = {k: self.__getattribute__(k) for k in tags}
             if write_npz:
-                np.savez_compressed(f_npz, **dic)
+                self.to_npz(f_npz)
+        # window is applied after, so that npz contains same data as original file
+        self.apply_window(selected_bands)
+
+    def to_npz(self, f_npz):
+        dic = {k: self.__getattribute__(k) for k in self.npz_tags}
+        np.savez_compressed(f_npz, **dic)
+
+    def from_npz(self, f_npz):
+        dic = np.load(f_npz)
+        for k in self.npz_tags:
+            self.__setattr__(k, dic[k])
+
 
     @abc.abstractmethod
     def from_w90_file(self, **kwargs):
@@ -47,6 +66,10 @@ class W90_file(abc.ABC):
         abstract method to read the necessary data from Wannier90 file
         """
         self.data = None
+
+    @abc.abstractmethod
+    def apply_window(self, selected_bands):
+        pass
 
     def get_disentangled(self, v_matrix_dagger, v_matrix):
         """

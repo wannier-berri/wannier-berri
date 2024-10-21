@@ -5,9 +5,7 @@
 
 
 Usage:
-   python -m wannierberri.cluster --batch-system <slurm or pbs> --exp-name <Job name>  --num-nodes <number of nodes>
-   --partition cmt --command "<command to run>"
-
+        python -m wannierberri.cluster --batch-system <slurm or pbs> --exp-name <Job name>  --num-nodes <number of nodes> --partition cmt --command "<command to run>" 
 
 """
 

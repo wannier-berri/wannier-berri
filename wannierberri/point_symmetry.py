@@ -10,7 +10,9 @@
 #           Stepan Tsirkin, University of Zurich             #
 #                                                            #
 # ------------------------------------------------------------
-""" module to define the Symmetry operations. Contains a general class for Rotation, Mirror, and also some pre-defined shortcuts:
+""" module to define the Pointgroup Symmetry operations, acting on the tensors in the reciprocal space
+
+Contains a general class for Rotation, Mirror, and also some pre-defined shortcuts:
 
 + Identity =Symmetry( np.eye(3))
 
@@ -56,7 +58,7 @@ from collections.abc import Iterable
 SYMMETRY_PRECISION = 1e-6
 
 
-class Symmetry:
+class PointSymmetry:
     """
     Symmetries that acts on reciprocal space objects, in Cartesian coordinates.
     A k-point vector ``k`` transform as ``self.iTR * self.iInv * (sym.R @ k)``.
@@ -96,7 +98,7 @@ class Symmetry:
         return f"rotation:\n{np.round(self.R, decimals=4)} , TR: {self.TR} , I: {self.Inv}"
 
     def __mul__(self, other):
-        return Symmetry((self.R @ other.R) * (self.iInv * other.iInv), self.TR != other.TR)
+        return PointSymmetry((self.R @ other.R) * (self.iInv * other.iInv), self.TR != other.TR)
 
     def __eq__(self, other):
         return np.linalg.norm(self.R - other.R) < 1e-12 and self.TR == other.TR and self.Inv == other.Inv
@@ -133,7 +135,7 @@ class Symmetry:
         return res
 
 
-class Rotation(Symmetry):
+class Rotation(PointSymmetry):
     r""" n-fold rotation around the ``axis``
 
     Parameters
@@ -160,7 +162,7 @@ class Rotation(Symmetry):
         super().__init__(R)
 
 
-class Mirror(Symmetry):
+class Mirror(PointSymmetry):
     r""" mirror plane perpendicular to ``axis``
 
     Parameters
@@ -174,20 +176,36 @@ class Mirror(Symmetry):
 
 
 # some typically used symmetries
-Identity = Symmetry(np.eye(3))
-Inversion = Symmetry(-np.eye(3))
-TimeReversal = Symmetry(np.eye(3), True)
+Identity = PointSymmetry(np.eye(3))
+Inversion = PointSymmetry(-np.eye(3))
+TimeReversal = PointSymmetry(np.eye(3), True)
 Mx = Mirror([1, 0, 0])
 My = Mirror([0, 1, 0])
 Mz = Mirror([0, 0, 1])
+C2x = Rotation(2, [1, 0, 0])
+C2y = Rotation(2, [0, 1, 0])
 C2z = Rotation(2, [0, 0, 1])
 C3z = Rotation(3, [0, 0, 1])
 C4x = Rotation(4, [1, 0, 0])
 C4y = Rotation(4, [0, 1, 0])
 C4z = Rotation(4, [0, 0, 1])
 C6z = Rotation(6, [0, 0, 1])
-C2x = Rotation(2, [1, 0, 0])
-C2y = Rotation(2, [0, 1, 0])
+
+dict_sym = {"Identity": Identity,
+            "Inversion": Inversion,
+            "TimeReversal": TimeReversal,
+            "Mx": Mx,
+            "My": My,
+            "Mz": Mz,
+            "C2x": C2x,
+            "C2y": C2y,
+            "C2z": C2z,
+            "C3z": C3z,
+            "C4x": C4x,
+            "C4y": C4y,
+            "C4z": C4z,
+            "C6z": C6z
+            }
 
 
 def product(lst):
@@ -201,8 +219,8 @@ def product(lst):
 
 def from_string(string):
     try:
-        res = globals()[string]
-        if not isinstance(res, Symmetry):
+        res = dict_sym[string]
+        if not isinstance(res, PointSymmetry):
             raise RuntimeError(f"string '{string}' produced not a Symmetry, but {res} of type {type(res)}")
         return res
     except KeyError:
@@ -213,12 +231,12 @@ def from_string(string):
 
 def from_string_prod(string):
     try:
-        return product([globals()[s] for s in string.split("*")])
-    except Exception:
-        raise ValueError(f"The symmetry {string} could not be recognized")
+        return product([from_string(s) for s in string.split("*")])
+    except Exception as e:
+        raise ValueError(f"The symmetry {string} could not be recognized:  {e}")
 
 
-class Group():
+class PointGroup():
     r"""Class to store a symmetry point group.
 
     Parameters
@@ -229,6 +247,10 @@ class Group():
         3x3 array with rows giving the reciprocal lattice basis
     real_lattice : `~numpy.array`
         3x3 array with rows giving the real lattice basis
+    dictionary : dict
+        dictionary with the symmetry operations and the lattice vectors
+    spacegroup : irrep.SpaceGroup
+        the spacegroup to which the pointgroup belongs. If provided, other parameters are ignored.
 
     Notes
     ----------
@@ -238,8 +260,17 @@ class Group():
       + if you only want to generate a symmetric tensor, or to find independent components,  `recip_lattice` and `real_latice`, are not needed
     """
 
-    def __init__(self, generator_list=[], recip_lattice=None, real_lattice=None, dictionary=None):
-        if dictionary is not None:
+    def __init__(self, generator_list=[], recip_lattice=None, real_lattice=None, dictionary=None,
+                 spacegroup=None):
+        if spacegroup is not None:
+            point_symmetries = []
+            for symop in spacegroup.symmetries:
+                R = symop.rotation_cart
+                TR = symop.time_reversal
+                point_symmetries.append(PointSymmetry(R, TR))
+            self.__init__(generator_list=point_symmetries, 
+                          real_lattice=spacegroup.Lattice)
+        elif dictionary is not None:
             nsym = dictionary['nsym']
             gen_lst = []
             for i in range(nsym):
@@ -248,12 +279,12 @@ class Group():
                     l = self._symm_dict_prefix(i)
                     if k.startswith(l):
                         d[k[len(l):]] = v
-                gen_lst.append(Symmetry(**d))
+                gen_lst.append(PointSymmetry(**d))
             self.__init__(generator_list=gen_lst, real_lattice=dictionary['real_lattice'], dictionary=None)
         else:
             self.real_lattice, self.recip_lattice = real_recip_lattice(
                 real_lattice=real_lattice, recip_lattice=recip_lattice)
-            sym_list = [(op if isinstance(op, Symmetry) else from_string_prod(op)) for op in generator_list]
+            sym_list = [(op if isinstance(op, PointSymmetry) else from_string_prod(op)) for op in generator_list]
             if len(sym_list) == 0:
                 sym_list = [Identity]
 

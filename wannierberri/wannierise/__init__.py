@@ -1,1 +1,1 @@
-from .disentanglement import disentangle
+from .wannierise import wannierise

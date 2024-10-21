@@ -8,7 +8,7 @@ import wannierberri as wberri
 import numpy as np
 
 
-SYM=wberri.symmetry
+SYM=wberri.point_symmetry
 
 Efermi=np.linspace(12.,13.,11)
 omega = np.linspace(0,1.,1001)

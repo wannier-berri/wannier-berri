@@ -38,10 +38,10 @@ def print_progress(count, total, t0, tprev, print_progress_step):
     return tprev
 
 
-def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters=None, print_progress_step=5):
+def process(paralfunc, K_list, parallel, pointgroup=None, remote_parameters=None, print_progress_step=5):
     if remote_parameters is None:
         remote_parameters = {}
-    print(f"symgroup : {symgroup}")
+    # print(f"pointgroup : {pointgroup}")
     t0 = time()
     t_print_prev = t0
     selK = [ik for ik, k in enumerate(K_list) if k.res is None]
@@ -82,8 +82,8 @@ def process(paralfunc, K_list, parallel, symgroup=None, remote_parameters=None, 
     else:
         raise RuntimeError(f"unsupported parallel method : '{parallel.method}'")
 
-    if not (symgroup is None):
-        res = [symgroup.symmetrize(r) for r in res]
+    if not (pointgroup is None):
+        res = [pointgroup.symmetrize(r) for r in res]
     for i, ik in enumerate(selK):
         K_list[ik].set_res(res[i])
 
@@ -119,7 +119,7 @@ def run(
         print_progress_step=5,
 ):
     """
-    The function to run a calculation. Substitutes the old :func:`~wannierberri.integrate` and :func:`~wannierberri.tabulate`
+    The function to run a calculation. Substitutes the old (obsolete and removed) `integrate()` and `tabulate()`
     and allows to integrate and tabulate in one run.
 
     Parameters
@@ -308,7 +308,7 @@ def run(
             paralfunc,
             K_list,
             parallel,
-            symgroup=system.symgroup if symmetrize else None,
+            pointgroup=system.pointgroup if symmetrize else None,
             print_progress_step=print_progress_step,
             remote_parameters=remote_parameters)
 
