@@ -159,7 +159,7 @@ class System:
         """
         if pointgroup is not None:
             self.pointgroup = pointgroup
-        if spacegroup is not None:
+        elif spacegroup is not None:
             assert np.allclose(spacegroup.Lattice, self.real_lattice)
             self.pointgroup = PointGroup(spacegroup=spacegroup, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
         else:

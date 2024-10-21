@@ -41,7 +41,7 @@ def print_progress(count, total, t0, tprev, print_progress_step):
 def process(paralfunc, K_list, parallel, pointgroup=None, remote_parameters=None, print_progress_step=5):
     if remote_parameters is None:
         remote_parameters = {}
-    print(f"pointgroup : {pointgroup}")
+    # print(f"pointgroup : {pointgroup}")
     t0 = time()
     t_print_prev = t0
     selK = [ik for ik, k in enumerate(K_list) if k.res is None]

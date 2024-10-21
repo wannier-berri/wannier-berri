@@ -1,6 +1,7 @@
 import irrep
 from irrep.bandstructure import BandStructure
-from pytest import approx
+from pytest import approx, fixture
+import pytest
 import wannierberri as wberri
 import numpy as np
 import subprocess
@@ -9,7 +10,7 @@ import os
 import shutil
 
 from wannierberri.wannierise.projections import Projection
-from common import OUTPUT_DIR, ROOT_DIR
+from common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.w90files import DMN
 
 
@@ -133,53 +134,78 @@ def test_wanierise():
     os.chdir(cwd)
 
 
-def test_create_dmn():
-    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
-    tmp_dmn_path = os.path.join(OUTPUT_DIR, "diamond")
+@fixture
+def check_create_dmn():
+    def _inner(dmn_new, dmn_ref):
+        
+        for key in ['NB', "num_wann", "NK", "NKirr", "kptirr", "kptirr2kpt", "kpt2kptirr", "time_reversals"]:
+            assert np.all(getattr(dmn_ref, key) == getattr(dmn_new, key)), (
+                f"key {key} differs between reference and new DMN file\n"
+                f"reference: {getattr(dmn_ref, key)}\n"
+                f"new: {getattr(dmn_new, key)}\n"
+            )
 
+        assert np.all(dmn_ref.D_wann_block_indices == dmn_new.D_wann_block_indices), (
+            f"D_wann_block_indices differs between reference and new DMN file\n"
+            f"reference: {dmn_ref.D_wann_block_indices}\n"
+            f"new: {dmn_new.D_wann_block_indices}\n"
+        )
+        for ikirr in range(dmn_ref.NKirr):
+            assert np.all(dmn_ref.d_band_block_indices[ikirr] == dmn_new.d_band_block_indices[ikirr]), (
+                f"d_band_block_indices differs  at ikirr={ikirr} between reference and new DMN file\n"
+                f"reference: {dmn_ref.d_band_block_indices}\n"
+                f"new: {dmn_new.d_band_block_indices}\n"
+            )
+
+            for isym in range(dmn_ref.Nsym):
+                for blockref, blocknew in zip(dmn_ref.D_wann_blocks[ikirr][isym], dmn_new.D_wann_blocks[ikirr][isym]):
+                    assert blockref == approx(blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+                for blockref, blocknew in zip(dmn_ref.d_band_blocks[ikirr][isym], dmn_new.d_band_blocks[ikirr][isym]):
+                    assert blockref == approx(blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+    return _inner
+
+
+def test_create_dmn_diamond(check_create_dmn):
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
+    
     bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
                                                       code="espresso",
                                                     from_sym_file=data_dir + "/diamond.sym",
                                                     include_TR=False,
                                                       )
-    dmn = DMN(empty=True)
-    dmn.from_irrep(bandstructure)
+    
     projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
-    print("all positions:", projection.positions)
-    dmn.set_D_wann_from_projections(projections_obj=[projection])
-    dmn.to_w90_file(tmp_dmn_path)
+    dmn_new = DMN(empty=True)
+    dmn_new.from_irrep(bandstructure)
+    dmn_new.set_D_wann_from_projections(projections_obj=[projection])
 
-
-    dmn_ref = DMN(seedname=os.path.join(data_dir, "diamond"), read_npz=False)
+    tmp_dmn_path = os.path.join(OUTPUT_DIR, "diamond")	    
+    dmn_new.to_w90_file(tmp_dmn_path)
     dmn_new = DMN(seedname=tmp_dmn_path, read_npz=False)
 
-    for key in ['NB', "num_wann", "NK", "NKirr", "kptirr", "kptirr2kpt", "kpt2kptirr"]:
-        assert np.all(getattr(dmn_ref, key) == getattr(dmn_new, key)), (
-            f"key {key} differs between reference and new DMN file\n"
-            f"reference: {getattr(dmn_ref, key)}\n"
-            f"new: {getattr(dmn_new, key)}\n"
-        )
-
-    assert np.all(dmn_ref.D_wann_block_indices == dmn_new.D_wann_block_indices), (
-        f"D_wann_block_indices differs between reference and new DMN file\n"
-        f"reference: {dmn_ref.D_wann_block_indices}\n"
-        f"new: {dmn_new.D_wann_block_indices}\n"
-    )
-    for ikirr in range(dmn_ref.NKirr):
-        assert np.all(dmn_ref.d_band_block_indices[ikirr] == dmn_new.d_band_block_indices[ikirr]), (
-            f"d_band_block_indices differs  at ikirr={ikirr} between reference and new DMN file\n"
-            f"reference: {dmn_ref.d_band_block_indices}\n"
-            f"new: {dmn_new.d_band_block_indices}\n"
-        )
-
-        for isym in range(dmn_ref.Nsym):
-            for blockref, blocknew in zip(dmn_ref.D_wann_blocks[ikirr][isym], dmn_new.D_wann_blocks[ikirr][isym]):
-                assert blockref == approx(blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
-            for blockref, blocknew in zip(dmn_ref.d_band_blocks[ikirr][isym], dmn_new.d_band_blocks[ikirr][isym]):
-                assert blockref == approx(blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+    dmn_ref = DMN(seedname=os.path.join(data_dir, "diamond"), read_npz=False)
+    check_create_dmn(dmn_new, dmn_ref)
 
 
-def test_sitesym_Fe_noTR():
+@pytest.mark.parametrize("include_TR", [True, False])
+def test_create_dmn_Fe(check_create_dmn, include_TR):
+    path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
+    
+    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
+                                normalize=False, magmom=[[0, 0, 1]], include_TR=include_TR)
+    dmn_new = DMN(empty=True)
+    dmn_new.from_irrep(bandstructure)
+    pos = [[0, 0, 0]]
+    dmn_new.set_D_wann_from_projections(projections=[(pos, 's'), (pos, 'p'), (pos, 'd')])
+    tmp_dmn_path = os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}.dmn.npz")
+    dmn_new.to_npz(tmp_dmn_path)
+    dmn_ref = DMN(seedname=os.path.join(REF_DIR, "dmn", f"Fe_TR={include_TR}"), read_npz=True)
+    check_create_dmn(dmn_new, dmn_ref)
+
+
+
+
+def _test_sitesym_Fe_noTR():
     path_data = os.path.join(ROOT_DIR, "data", "Fe-sitesym")
     w90data = wberri.w90files.Wannier90data(seedname=path_data + "/Fe")
 
