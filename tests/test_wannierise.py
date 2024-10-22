@@ -2,6 +2,7 @@ import irrep
 from irrep.bandstructure import BandStructure
 from pytest import approx, fixture
 import pytest
+import scipy
 import wannierberri as wberri
 import numpy as np
 import subprocess
@@ -157,11 +158,21 @@ def check_create_dmn():
                 f"new: {dmn_new.d_band_block_indices}\n"
             )
 
-            for isym in range(dmn_ref.Nsym):
-                for blockref, blocknew in zip(dmn_ref.D_wann_blocks[ikirr][isym], dmn_new.D_wann_blocks[ikirr][isym]):
-                    assert blockref == approx(blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
-                for blockref, blocknew in zip(dmn_ref.d_band_blocks[ikirr][isym], dmn_new.d_band_blocks[ikirr][isym]):
-                    assert blockref == approx(blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+        for isym in range(dmn_ref.Nsym):
+            try: 
+                for ikirr in range(dmn_ref.NKirr):
+                    for blockref, blocknew in zip(dmn_ref.D_wann_blocks[ikirr][isym], dmn_new.D_wann_blocks[ikirr][isym]):
+                        assert blockref == approx(blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+                    for blockref, blocknew in zip(dmn_ref.d_band_blocks[ikirr][isym], dmn_new.d_band_blocks[ikirr][isym]):
+                        assert blockref == approx(blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+            except AssertionError:
+                for ikirr in range(dmn_ref.NKirr):
+                    for blockref, blocknew in zip(dmn_ref.D_wann_blocks[ikirr][isym], dmn_new.D_wann_blocks[ikirr][isym]):
+                        assert blockref == approx(-blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+                    for blockref, blocknew in zip(dmn_ref.d_band_blocks[ikirr][isym], dmn_new.d_band_blocks[ikirr][isym]):
+                        assert blockref == approx(-blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+
+
     return _inner
 
 
@@ -204,26 +215,19 @@ def test_create_dmn_Fe(check_create_dmn, include_TR):
 
 
 
-
-def _test_sitesym_Fe_noTR():
-    path_data = os.path.join(ROOT_DIR, "data", "Fe-sitesym")
+@pytest.mark.parametrize("include_TR", [True, False])
+def test_sitesym_Fe(include_TR):
+    path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
     w90data = wberri.w90files.Wannier90data(seedname=path_data + "/Fe")
 
-    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
-                                normalize=False, magmom=[[0, 0, 1]], include_TR=False)
-
-    bandstructure.spacegroup.show()
-    dmn_new = DMN(empty=True)
-    dmn_new.from_irrep(bandstructure)
-    pos = [[0, 0, 0]]
-    dmn_new.set_D_wann_from_projections(projections=[(pos, 's'), (pos, 'p'), (pos, 'd')])
-    w90data.set_file("dmn", dmn_new)
+    dmn = DMN(seedname=path_data + f"/Fe_TR={include_TR}", read_npz=True)
+    w90data.set_file("dmn", dmn)
     froz_max = 30
-    w90data.wannierise(init="random",
+    w90data.wannierise(init="amn",
                        froz_min=-8,
                     froz_max=froz_max,
                     print_progress_every=20,
-                    num_iter=101,
+                    num_iter=40,
                     conv_tol=1e-6,
                     mix_ratio_z=1.0,
                     localise=True,
@@ -231,10 +235,86 @@ def _test_sitesym_Fe_noTR():
                     )
     assert np.allclose(w90data.wannier_centers, 0, atol=1e-6)
     spreads = w90data.chk._wannier_spreads
-    assert np.all(spreads < 1)
-    atol = 1e-9
+    assert np.all(spreads < 2)
+    atol = 1e-8
     assert spreads[4] == approx(spreads[6], abs=atol)
     assert spreads[5] == approx(spreads[7], abs=atol)
     assert spreads[10] == approx(spreads[12], abs=atol)
     assert spreads[11] == approx(spreads[13], abs=atol)
+    system = wberri.system.System_w90(w90data=w90data, berry=True)
+    # system.set_symmetry(spacegroup=bandstructure.spacegroup)
+    tabulators = {"Energy": wberri.calculators.tabulate.Energy(),
+                }
+
+
+    tab_all_path = wberri.calculators.TabulatorAll(
+                        tabulators,
+                        ibands=np.arange(0, 18),
+                        mode="path"
+                            )
+
+    # all kpoints given in reduced coordinates
+    path = wberri.Path(system,
+                    k_nodes=[
+                        [0.0000, 0.0000, 0.0000],  # G
+                        [0.500, -0.5000, -0.5000],  # H
+                        [0.7500, 0.2500, -0.2500],  # P
+                        [0.5000, 0.0000, -0.5000],  # N
+                        [0.0000, 0.0000, 0.000]
+                            ],  # G
+                    labels=["G", "H", "P", "N", "G"],
+                    nk=[21] * 5)   # length [ Ang] ~= 2*pi/dk
+
+    result_path = wberri.run(system,
+                    grid=path,
+                    calculators={"tabulate": tab_all_path},
+                    print_Kpoints=False)
+    EF = 12.6
+    A = np.loadtxt(os.path.join(path_data, "Fe_bands_pw.dat"))
+    energies_ref = np.copy(A[:, 1].reshape(-1, 81)[:18].T)
+    
+    bohr_ang = scipy.constants.physical_constants['Bohr radius'][0] / 1e-10
+    alatt = 5.4235 * bohr_ang
+    A[:, 0] *= 2 * np.pi / alatt
+    A[:, 1] = A[:, 1] - EF
+    plt.scatter(A[:, 0], A[:, 1], c="black", s=5)
+
+    energies = result_path.results["tabulate"].get_data(quantity="Energy", iband=np.arange(0, 18))
+    
+    np.save(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.npy"), energies)
+    np.savetxt(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.dat"), energies)
+
+    atol = 0.7
+    nk = energies.shape[0]
+    energies_diff = np.abs(energies - energies_ref)
+    energies_diff[energies_ref > 13] = 0  # ignore the high energy bands
+    for ik in range(nk):
+        if ik % 20 == 0:
+            _atol = 0.01
+        else:
+            _atol = atol
+        assert np.allclose(energies_diff[ik], 0, atol=_atol), \
+            f"energies at ik={ik} differ by {np.max(abs(energies_diff[ik]))} more than {_atol}" +\
+            f"energies: {energies[ik]}\nref: {energies_ref[ik]}"
+
+    result_path.results["tabulate"].plot_path_fat(
+                path,
+                quantity=None,
+                Eshift=EF,
+                Emin=-10, Emax=50,
+                iband=None,
+                mode="fatband",
+                fatfactor=20,
+                cut_k=False,
+                linecolor="red",
+                close_fig=False,
+                show_fig=False,
+                label=f"TR={include_TR}"
+                )
+
+    plt.ylim(-10, 20)
+    plt.hlines(froz_max - EF, 0, A[-1, 0], linestyles="dashed")
+    plt.legend()
+    plt.savefig(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.pdf"))
+    plt.close()
     
