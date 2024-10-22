@@ -10,7 +10,7 @@ from wannierberri import calculators as calc
 from wannierberri.smoother import FermiDiracSmoother
 from wannierberri.result import EnergyResult
 
-from common import OUTPUT_DIR
+from common import OUTPUT_DIR_RUN, OUTPUT_DIR
 from common_comparers import compare_quant
 from common_systems import (
     Efermi_Fe,
@@ -63,7 +63,7 @@ def check_run(parallel_serial, compare_any_result):
             use_irred_kpt=use_symmetry,
             symmetrize=use_symmetry,
             parameters_K=parameters_K,
-            fout_name=os.path.join(OUTPUT_DIR, fout_name),
+            fout_name=os.path.join(OUTPUT_DIR_RUN, fout_name),
             suffix=suffix,
             restart=restart,
             file_Klist=file_Klist,
@@ -274,7 +274,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             result_type=EnergyResult)
 
     extra_precision = {'Morb': 1e-6, 'Der_berry': 5e-8}
-    npz_tabulate = os.path.join(OUTPUT_DIR, "berry_Fe_W90-tabulate-run.npz")
+    npz_tabulate = os.path.join(OUTPUT_DIR_RUN, "berry_Fe_W90-tabulate-run.npz")
     for quant in result.results.get("tabulate").results.keys():  # ["Energy", "berry","Der_berry","spin","morb"]:
         for comp in result.results.get("tabulate").results.get(quant).get_component_list():
             _quant = "E" if quant == "Energy" else quant
@@ -283,7 +283,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             wberri.npz_to_fermisurfer(npz_file=npz_tabulate,
                                       quantity=None if quant == "Energy" else quant,
                                       component=comp,
-                                      frmsf_file=os.path.join(OUTPUT_DIR,
+                                      frmsf_file=os.path.join(OUTPUT_DIR_RUN,
                                                               "berry_Fe_W90-tabulate_" + _quant + _comp +
                                                               "-run-from-npz.frmsf")
                                       )

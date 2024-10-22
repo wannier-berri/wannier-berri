@@ -13,6 +13,8 @@ import os
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Folder containing output dat files of tests
-OUTPUT_DIR = os.path.join(ROOT_DIR, "_dat_files")
+OUTPUT_DIR = os.path.join(ROOT_DIR, "_output")
+OUTPUT_DIR_RUN = os.path.join(OUTPUT_DIR, 'integrate_files')
 REF_DIR = os.path.join(ROOT_DIR, 'reference')
+REF_DIR_INTEGRATE = os.path.join(REF_DIR, 'integrate_files')
 TMP_DATA_DIR = os.path.join(ROOT_DIR, "_tmp_data_postw90")

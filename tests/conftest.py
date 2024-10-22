@@ -1,7 +1,7 @@
 """pytest configuration file for WannierBerri tests."""
 
 import pytest
-from common import ROOT_DIR, OUTPUT_DIR, REF_DIR
+from common import ROOT_DIR, OUTPUT_DIR, REF_DIR, OUTPUT_DIR_RUN, REF_DIR_INTEGRATE
 
 # WannierBerri Systems
 from common_systems import (
@@ -82,3 +82,4 @@ def create_output_dir():
     # Create folder OUTPUT_DIR
     from pathlib import Path
     Path(OUTPUT_DIR).mkdir(exist_ok=True)
+    Path(OUTPUT_DIR_RUN).mkdir(exist_ok=True)

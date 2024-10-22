@@ -7,7 +7,7 @@ import pytest
 from pytest import approx
 from wannierberri.result import EnergyResult
 
-from common import REF_DIR, OUTPUT_DIR, ROOT_DIR
+from common import REF_DIR, OUTPUT_DIR, ROOT_DIR, REF_DIR_INTEGRATE, OUTPUT_DIR_RUN
 
 
 def compare_quant(quantity):
@@ -94,7 +94,7 @@ def compare_energyresult():
             suffix_ref = suffix
         for i_iter in range(adpt_num_iter + 1):
             filename = fout_name + f"-{suffix}_iter-{i_iter:04d}" + ext
-            path_filename = os.path.join(OUTPUT_DIR, filename)
+            path_filename = os.path.join(OUTPUT_DIR_RUN, filename)
             E_titles, data_energy, data, data_smooth = read_energyresult_dat(path_filename, mode=mode)
 
             if compare_zero:
@@ -105,7 +105,7 @@ def compare_energyresult():
             else:
                 if data_reference is None:
                     filename_ref = fout_name + f"-{suffix_ref}_iter-{i_iter:04d}" + ext
-                    path_filename_ref = os.path.join(REF_DIR, filename_ref)
+                    path_filename_ref = os.path.join(REF_DIR_INTEGRATE, filename_ref)
                     E_titles_ref, data_energy_ref, data_ref, data_smooth_ref = read_energyresult_dat(
                         path_filename_ref, mode=mode)
                 else:
@@ -161,13 +161,13 @@ def compare_any_result():
         if fout_name_ref is None:
             fout_name_ref = fout_name
         if ref_dir is None:
-            path_ref = REF_DIR
+            path_ref = REF_DIR_INTEGRATE
         else:
             path_ref = os.path.join(ROOT_DIR, ref_dir)
         ext = ".npz"
         for i_iter in range(adpt_num_iter + 1):
             filename = fout_name + f"-{suffix}_iter-{i_iter:04d}" + ext
-            path_filename = os.path.join(OUTPUT_DIR, filename)
+            path_filename = os.path.join(OUTPUT_DIR_RUN, filename)
             result = result_type(file_npz=path_filename)
 
             if compare_zero:
@@ -218,7 +218,7 @@ def compare_fermisurfer():
 
         filename = fout_name + f"_{suffix}.frmsf"
         filename_ref = fout_name_ref + f"_{suffix_ref}.frmsf"
-        path_filename = os.path.join(OUTPUT_DIR, filename)
+        path_filename = os.path.join(OUTPUT_DIR_RUN, filename)
         path_filename_ref = os.path.join(REF_DIR, 'frmsf', filename_ref)
         grid, nband, basis, ndata, data = read_frmsf(path_filename)
         grid_ref, nband_ref, basis_ref, ndata_ref, data_ref = read_frmsf(path_filename_ref)
@@ -251,15 +251,15 @@ def compare_sym_asym():
         name = fout_name + "-" + quantity
         for i_iter in range(adpt_num_iter + 1):
             filename_ref = name + "^sep-sym" + f"_iter-{i_iter:04d}.npz"
-            path_filename_ref = os.path.join(REF_DIR, filename_ref)
+            path_filename_ref = os.path.join(REF_DIR_INTEGRATE, filename_ref)
             E_titles_ref, data_energy_ref, data_ref_sym, data_smooth_ref = read_energyresult_dat(
                 path_filename_ref, mode=mode)
             filename_ref = name + "^sep-asym" + f"_iter-{i_iter:04d}.npz"
-            path_filename_ref = os.path.join(REF_DIR, filename_ref)
+            path_filename_ref = os.path.join(REF_DIR_INTEGRATE, filename_ref)
             E_titles_ref, data_energy_ref, data_ref_asym, data_smooth_ref = read_energyresult_dat(
                 path_filename_ref, mode=mode)
             filename_ref = name + f"_iter-{i_iter:04d}.npz"
-            path_filename_ref = os.path.join(REF_DIR, filename_ref)
+            path_filename_ref = os.path.join(REF_DIR_INTEGRATE, filename_ref)
             E_titles_ref, data_energy_ref, data_new, data_smooth_ref = read_energyresult_dat(
                 path_filename_ref, mode=mode)
             assert data_new == approx(data_ref_sym + data_ref_asym, abs=1e-8)
