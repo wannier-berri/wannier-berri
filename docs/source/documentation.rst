@@ -17,7 +17,7 @@ API reference
    docs/result
    docs/parallel
    docs/grid
-   docs/symmetries
+   docs/point_symmetries
    docs/smoother
    docs/w90_files
    docs/data_K

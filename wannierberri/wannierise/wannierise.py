@@ -26,9 +26,9 @@ def wannierise(w90data,
                ):
     r"""
     Performs disentanglement and maximal localization of the bands recorded in w90data.
-     The disentanglement is done following the procedure described in
-    `Souza et al., PRB 2001 <https://doi.org/10.1103/PhysRevB.65.035109>`__. 
+    The disentanglement is done following the procedure described in `Souza et al., PRB 2001 <https://doi.org/10.1103/PhysRevB.65.035109>`__. 
     The localization is done following a simplified procedure, avoiding gradient descent of the spread functional.
+
     At the end writes :attr:`w90data.chk.v_matrix` and sets :attr:`w90data.wannierised = True`
 
     Parameters
@@ -69,20 +69,21 @@ def wannierise(w90data,
     Returns
     -------
     w90data.chk.v_matrix : numpy.ndarray
+        the optimized U matrices
 
-    Sets
-    ----
-    w90data.chk.v_matrix : numpy.ndarray
-        the optimized U matrix
-    w90data.wannierised : bool
-        True
-    w90data.chk._wannier_centers : numpy.ndarray (nW,3)
-        the centers of the Wannier functions
-    w90data.chk._wannier_spreads : numpy.ndarray (nW)
-        the spreads of the Wannier functions
 
     Note
-    ----
+    -----
+    * Also sets the following attributes of chk:
+        - w90data.chk.v_matrix : numpy.ndarray
+            the optimized U matrices
+        - w90data.wannierised : bool
+            True
+        - w90data.chk._wannier_centers : numpy.ndarray (nW,3)
+            the centers of the Wannier functions
+        - w90data.chk._wannier_spreads : numpy.ndarray (nW)
+            the spreads of the Wannier functions
+
     * If the outer window is needed, use :func:`~wannierberri.w90files.Wannier90data.apply_window` of the :class:`~wannierberri.w90files.Wannier90data` before calling this function. 
     * The function is not parallelized yet 
     * Disentanglement and localization are done in the irreducible BZ (if sitesym=True) and then symmetrized to the full BZ

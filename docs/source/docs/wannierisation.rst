@@ -1,4 +1,4 @@
-|NEW| Wanierisation inside WannierBerri
+|NEW| Wannierisation inside WannierBerri
 ========================================
 .. _sec-wannierisation
 
@@ -6,7 +6,7 @@ Now WannierBerri can construct wannier functions on its own. Bith disentanglemen
 
 Wannierisation can be performed with both `sitesym=True` and **frozen window** (this feature is currently not available in Wannier90).
 
-see examples in `examples/sitesym` and `examples/wannierise`
+see examples in `examples/wannierise+sitesym-Fe` and `examples/wannierise+sitesym-diamond`
 
 .. automethod:: wannierberri.wannierise.wannierise
 
@@ -70,6 +70,8 @@ Symmetry-adapted Wannier functions
 
 Searching for suitable projections
 -----------------------------------
+
+Note: work on this functionality is in progress
 
 .. automodule:: wannierberri.wannierise.projections_searcher
    :members:
