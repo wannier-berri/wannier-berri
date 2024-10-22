@@ -42,6 +42,8 @@ Contains a general class for Rotation, Mirror, and also some pre-defined shortcu
 
 + C2y=Rotation(2,[0,1,0])
 
++ dict_sym = {"C2x": C2x, ...} - a dictionary with the pre-defined symmetries
+
 """
 
 import numpy as np

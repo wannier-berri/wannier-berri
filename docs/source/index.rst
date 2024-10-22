@@ -11,6 +11,7 @@
    :maxdepth: 4
 
    documentation
+   symmetries
    docs/utils
    install
    benchmark
