@@ -19,7 +19,6 @@ from common_systems import (
     system_Fe_W90_proj_set_spin,
     system_Fe_W90_proj,
     system_Fe_W90_proj_ws,
-    system_Fe_W90_disentangle,
     system_Fe_FPLO_wcc,
     system_Fe_FPLO_wcc_ws,
     data_Te_ASE,

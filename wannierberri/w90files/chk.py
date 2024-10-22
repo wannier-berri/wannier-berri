@@ -69,8 +69,9 @@ class CheckPoint:
         m_matrix = readcomplex().reshape((self.num_kpts, self.nntot, self.num_wann, self.num_wann)).swapaxes(2, 3)
         if self.have_disentangled:
             self.v_matrix = [u_opt[:nd, :].dot(u) for u, u_opt, nd in zip(u_matrix, u_matrix_opt, ndimwin)]
+            # self.v_matrix = [u_opt.dot(u) for u, u_opt in zip(u_matrix, u_matrix_opt)]
         else:
-            self.v_matrix = [u for u in u_matrix]
+            self.v_matrix = u_matrix
         self._wannier_centers = readfloat().reshape((self.num_wann, 3))
         self.wannier_spreads = readfloat().reshape((self.num_wann))
         del u_matrix, m_matrix
@@ -421,6 +422,19 @@ class CheckPoint:
     def wannier_centers(self):
         return self._wannier_centers
 
+    def apply_window(self, selected_bands):
+        if selected_bands is not None:
+            self.num_bands = sum(selected_bands)
+            for ik in range(self.num_kpts):
+                if hasattr(self, "v_matrix"):
+                    self.v_matrix[ik] = self.v_matrix[ik][:, selected_bands]
+            print(np.min(np.where(selected_bands)[0]))
+            win_min = np.min(np.where(selected_bands)[0])
+            win_max = np.max(np.where(selected_bands)[0]) + 1
+            self.win_min = np.max([self.win_min - win_min, [0] * self.num_kpts], axis=0)
+            self.win_max = self.num_bands - np.max([win_max - self.win_max, [0] * self.num_kpts], axis=0)
+
+
 
 
 class CheckPoint_bare(CheckPoint):
@@ -437,6 +451,7 @@ class CheckPoint_bare(CheckPoint):
             """
 
     def __init__(self, win, eig, amn, mmn):
+        print("creating CheckPoint_bare")
         self.mp_grid = np.array(win.data["mp_grid"])
         self.kpt_latt = win.get_kpoints()
         self.real_lattice = win.get_unit_cell_cart_ang()

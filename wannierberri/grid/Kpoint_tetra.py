@@ -26,7 +26,7 @@ class KpointBZtetra(KpointBZ):
 
     def __init__(self, vertices, basis=np.eye(3), K=0, NKFFT=np.ones(3), factor=1., refinement_level=0, split_level=0):
         cntr = np.mean(vertices, axis=0)
-        super().__init__(K=np.array(K) + cntr, NKFFT=NKFFT, factor=factor, symgroup=None,
+        super().__init__(K=np.array(K) + cntr, NKFFT=NKFFT, factor=factor, pointgroup=None,
                          refinement_level=refinement_level)
         assert (vertices.shape == (4, 3))
         self.basis = basis

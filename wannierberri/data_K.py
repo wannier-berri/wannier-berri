@@ -22,7 +22,7 @@ from .__utility import FFT_R_to_k, alpha_A, beta_A
 from .grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
 from . import formula
 from .grid import KpointBZparallel, KpointBZtetra
-from .symmetry import transform_ident, transform_odd
+from .point_symmetry import transform_ident, transform_odd
 
 
 def _rotate_matrix(X):

@@ -24,6 +24,7 @@ def parallel_ray():
     ray_init['address'] = None
     ray_init['_node_ip_address'] = "0.0.0.0"
     ray_init['_redis_password'] = 'some_password'
+    ray_init['num_gpus'] = 0  # otherwise failing with NVIDIA-555 driver.
 
     parallel = Parallel(
         num_cpus=4,
@@ -36,11 +37,14 @@ def parallel_ray():
     parallel.shutdown()
 
     # Now create a proper parallel environment to be used
+    ray_init = {}
+    ray_init['num_gpus'] = 0  # otherwise failing with NVIDIA-555 driver.
+
 
     return Parallel(
         num_cpus=4,
         npar_k=0,
-        ray_init={},  # add extra parameters for ray.init()
+        ray_init=ray_init,  # add extra parameters for ray.init()
         cluster=False,  # add parameters for ray.init() for the slurm cluster
         progress_step_percent=1,
     )

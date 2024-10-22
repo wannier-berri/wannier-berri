@@ -23,7 +23,7 @@ import wannierberri as wberri
 import numpy as np
 
 
-SYM=wberri.symmetry
+SYM=wberri.point_symmetry
 
 #Efermi=np.linspace(12.,13.,1001)
 Efermi=np.linspace(-0.5,0.5,1001)

@@ -19,7 +19,7 @@ def test_fourier(system_Fe_W90):
     NKFFT = grid.FFT
     factor = 1. / np.prod(grid.div)
 
-    kpoint = KpointBZparallel(K=k, dK=dK, NKFFT=NKFFT, factor=factor, symgroup=None)
+    kpoint = KpointBZparallel(K=k, dK=dK, NKFFT=NKFFT, factor=factor, pointgroup=None)
 
     assert kpoint.Kp_fullBZ == approx(k / grid.FFT)
 

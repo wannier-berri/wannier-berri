@@ -1,6 +1,6 @@
 import numpy as np
 from functools import cached_property
-from ..symmetry import transform_from_dict
+from ..point_symmetry import transform_from_dict
 from ..smoother import VoidSmoother
 from .result import Result
 from ..__utility import get_head

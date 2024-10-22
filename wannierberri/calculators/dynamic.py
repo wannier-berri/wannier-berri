@@ -7,7 +7,7 @@ from .calculator import Calculator
 from ..formula.covariant import SpinVelocity
 from ..formula import Formula
 from copy import copy
-from ..symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
+from ..point_symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
 from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom
 from .. import __factors as factors
 
