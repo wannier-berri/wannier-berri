@@ -226,7 +226,7 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, DFT_code='qe', store_symm_wann=False,
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, spin_ordering='qe', store_symm_wann=False,
                    rotations=None, translations=None):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
@@ -259,8 +259,10 @@ class System_R(System):
             Spin orbital coupling.
         magmom: 2D array
             Magnetic momens of each atoms.
-        DFT_code: str
-            DFT code used : ``'qe'`` or ``'vasp'`` . This is needed, because vasp and qe have different orbitals arrangement with SOC.(grouped by spin or by orbital type)
+        spin_ordering : str, "block" or "interlace"
+            The ordering of the wannier functions in the spinor case.
+            "block" means that first all the orbitals of the first spin are written, then the second spin. (like in the amn file old versions of VASP)
+            "interlace" means that the orbitals of the two spins are interlaced. (like in the amn file of QE and new versions of VASP)
         store_symm_wann: bool
             Store the (temporary) SymWann object in the `sym_wann` attribute of the System object.
             Can be useful for evaluating symmetry eigenvalues of wavefunctions, etc.
@@ -294,7 +296,7 @@ class System_R(System):
             wannier_centers_cart=self.wannier_centers_cart,
             magmom=magmom,
             use_wcc_phase=self.use_wcc_phase,
-            DFT_code=DFT_code,
+            spin_ordering=spin_ordering,
             rotations=rotations,
             translations=translations,
             silent=self.silent,
@@ -313,7 +315,7 @@ class System_R(System):
         self.clear_cached_wcc()
         self.check_AA_diag_zero(msg="after symmetrization", set_zero=True)
         self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom,
-                                    DFT_code=DFT_code)
+                                    spin_ordering=spin_ordering)
 
         if store_symm_wann:
             del symmetrize_wann.matrix_dict_list
@@ -405,34 +407,31 @@ class System_R(System):
             SS_R0[j, j] = pauli_xyz[1, 1]
             self.set_R_mat(key='SS', value=SS_R0, diag=False, R=[0, 0, 0], reset=True)
 
-    def set_spin_from_code(self, DFT_code="qe"):
+    def set_spin_from_projections(self, spin_ordering="interlace"):
         """set SS_R, assuming that each Wannier function is an eigenstate of Sz,
          according to the ordering of the ab-initio code
 
         Parameters
         ----------
-        DFT_code: str
-            DFT code used :
-                *  ``'qe'`` : if bands are grouped by orbital type, in each pair first comes spin-up,then spin-down
-                *  ``'vasp'`` : if bands are grouped by spin : first come all spin-up, then all spin-down
-
+        spin_ordering : str, "block" or "interlace"
+            The ordering of the wannier functions in the spinor case.
+             * "block" means that first all the orbitals of the first spin are written, then the second spin. (like in the amn file old versions of VASP)
+             * "interlace" means that the orbitals of the two spins are interlaced. (like in the amn file of QE and new versions of VASP)
 
         Notes
         -------
         * This is a rough approximation, that may be used on own risk
         * The pure-spin character may be broken by maximal localization. Recommended to use `num_iter=0` in Wannier90
-        * if your DFT code has a different name, but uses the same spin ordering as `qe` or `vasp` - set `DFT_code='qe'` or `DFT_code='vasp'` correspondingly
         * if your DFT code has a different spin ordering, use   :func:`~wannierberri.system.System.set_spin_pairs`
-
         """
         assert self.num_wann % 2 == 0, f"odd number of Wannier functions {self.num_wann} cannot be grouped into spin pairs"
         nw2 = self.num_wann // 2
-        if DFT_code.lower() == 'vasp':
+        if spin_ordering.lower() == 'block':
             pairs = [(i, i + nw2) for i in range(nw2)]
-        elif DFT_code.lower() in ['qe', 'quantum_espresso', 'espresso']:
+        elif spin_ordering.lower() == 'interlace':
             pairs = [(2 * i, 2 * i + 1) for i in range(nw2)]
         else:
-            raise ValueError(f"unknown DFT code '{DFT_code}'")
+            raise ValueError(f"unknown spin ordering {spin_ordering}. expected 'block' or 'interlace'")
         self.set_spin_pairs(pairs)
 
     def do_at_end_of_init(self):
