@@ -43,9 +43,10 @@ class SymWann:
         Spin orbital coupling.
     magmom: 2D array
         Magnetic moment of each atom.
-    DFT_code: str
-        ``'qe'`` or ``'vasp'``
-        vasp and qe have different orbitals arrangement with SOC.
+    spin_ordering : str, "block" or "interlace"
+        The ordering of the wannier functions in the spinor case.
+        "block" means that first all the orbitals of the first spin are written, then the second spin. (like in the amn file old versions of VASP)
+        "interlace" means that the orbitals of the two spins are interlaced. (like in the amn file of QE and new versions of VASP)
     wannier_centers_cart: np.array(num_wann, 3)
         Wannier centers in cartesian coordinates.
     use_wcc_phase: bool
@@ -75,7 +76,7 @@ class SymWann:
             use_wcc_phase=True,
             soc=False,
             magmom=None,
-            DFT_code='qe',
+            spin_ordering="interlace",
             rotations=None,
             translations=None,
             silent=False,
@@ -87,7 +88,7 @@ class SymWann:
         self.silent = silent
         logfile = self.logfile
         self.magmom = magmom
-        self.DFT_code = DFT_code
+        self.spin_ordering = spin_ordering
         self.wannier_centers_cart = wannier_centers_cart
         self.iRvec = [tuple(R) for R in iRvec]
         self.iRvec_index = {r: i for i, r in enumerate(self.iRvec)}
@@ -390,9 +391,9 @@ class SymWann:
         """
         if not self.soc:
             return
-        elif self.DFT_code.lower() == 'vasp':
+        elif self.spin_ordering.lower() == 'block':
             return
-        elif self.DFT_code.lower() in ['qe', 'quantum_espresso', 'espresso']:
+        elif self.spin_ordering.lower() == 'interlace':	
             Mat_out = np.zeros(np.shape(Mat_in), dtype=complex)
             nw2 = self.num_wann // 2
             for i in 0, 1:
@@ -406,7 +407,7 @@ class SymWann:
             Mat_in[...] = Mat_out[...]
             return
         else:
-            raise ValueError(f"does not work for DFT_code  '{self.DFT_code}' so far")
+            raise ValueError(f"unexpected value of spin_ordering  '{self.spin_ordering}'. expected 'block' or 'interlace'")
 
     def find_irreducible_Rab(self):
         """

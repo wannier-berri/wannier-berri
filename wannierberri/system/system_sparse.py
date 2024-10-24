@@ -58,6 +58,18 @@ class SystemSparse(System_R):
 
         self.do_at_end_of_init()
         if symmetrize_info is not None:
+
+            # for backward compatibility with old saved systems in tests
+            if "DFT_code" in symmetrize_info:
+                code = symmetrize_info["DFT_code"].lower()
+                del symmetrize_info["DFT_code"]
+                if code == "vasp":
+                    symmetrize_info["spin_ordering"] = "block"
+                elif code in ["qe", "espresso", "quantumespresso", "abinit"]:
+                    symmetrize_info["spin_ordering"] = "interlace"
+                else:
+                    raise ValueError(f"Unknown DFT code {code}")
+                
             self.symmetrize(**symmetrize_info)
 
 

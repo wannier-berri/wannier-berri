@@ -39,14 +39,14 @@ class CheckPoint:
         self.num_bands = readint()[0]
         num_exclude_bands = readint()[0]
         self.exclude_bands = readint()
-        assert len(self.exclude_bands) == num_exclude_bands
+        assert len(self.exclude_bands) == num_exclude_bands, f"read exclude_bands are {self.exclude_bands}, length={len(self.exclude_bands)} while num_exclude_bands={num_exclude_bands}"
         self.real_lattice = readfloat().reshape((3, 3), order='F')
         self.recip_lattice = readfloat().reshape((3, 3), order='F')
-        assert np.linalg.norm(self.real_lattice.dot(self.recip_lattice.T) / (2 * np.pi) - np.eye(3)) < 1e-14
+        assert np.linalg.norm(self.real_lattice.dot(self.recip_lattice.T) / (2 * np.pi) - np.eye(3)) < 1e-14, f"the read real and reciprocal lattices are not consistent {self.real_lattice.dot(self.recip_lattice.T) / (2 * np.pi)}!=identiy"
         self.num_kpts = readint()[0]
         self.mp_grid = readint()
         assert len(self.mp_grid) == 3
-        assert self.num_kpts == np.prod(self.mp_grid)
+        assert self.num_kpts == np.prod(self.mp_grid), f"the number of k-points is not consistent with the mesh {self.num_kpts}!={np.prod(self.mp_grid)}"
         self.kpt_latt = readfloat().reshape((self.num_kpts, 3))
         self.nntot = readint()[0]
         self.num_wann = readint()[0]
@@ -118,7 +118,7 @@ class CheckPoint:
         np.ndarray
             the Hamiltonian matrix in the Wannier gauge
         """
-        assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands)
+        assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands), f"eig file has NK={eig.NK}, NB={eig.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         HH_q = np.array([self.wannier_gauge(E, ik, ik) for ik, E in enumerate(eig.data)])
         return 0.5 * (HH_q + HH_q.transpose(0, 2, 1).conj())
 
@@ -137,7 +137,7 @@ class CheckPoint:
             the spin matrix in the Wannier gauge
         """
 
-        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
+        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands), f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         SS_q = np.array([self.wannier_gauge(S, ik, ik) for ik, S in enumerate(spn.data)])
         return 0.5 * (SS_q + SS_q.transpose(0, 2, 1, 3).conj())
 
@@ -175,7 +175,7 @@ class CheckPoint:
         or np.ndarray(shape=(num_kpts, num_wann, num_wann, nnb, 3), dtype=complex) (if sum_b=True)
             the q-resolved matrix elements AA or BB in the Wannier gauge
         """
-        assert (not transl_inv) or eig is None
+        assert (not transl_inv) or eig is None, "transl_inv cannot be used for BB matrix elements"
         if sum_b:
             AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
         else:
@@ -361,7 +361,8 @@ class CheckPoint:
 
     def get_SH_q(self, spn, eig):
         SH_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
-        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
+        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands), f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
+        assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands), f"eig file has NK={eig.NK}, NB={eig.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         for ik in range(self.num_kpts):
             SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik, :, :, :] * eig.data[ik, None, :, None], ik, ik)
         return SH_q
@@ -375,7 +376,7 @@ class CheckPoint:
             SHA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         else:
             SHA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3, 3), dtype=complex)
-        assert shu.NNB == mmn.NNB
+        assert shu.NNB == mmn.NNB, f"shu.NNB={shu.NNB}, mmn.NNB={mmn.NNB} - mismatch"
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik, ib]
@@ -400,7 +401,8 @@ class CheckPoint:
         """
         mmn.set_bk_chk(self)
         SHR_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
-        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands)
+        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands), f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
+        assert (mmn.NK, mmn.NB) == (self.num_kpts, self.num_bands), f"mmn file has NK={mmn.NK}, NB={mmn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         for ik in range(self.num_kpts):
             SH = spn.data[ik, :, :, :]
             if eig is not None:

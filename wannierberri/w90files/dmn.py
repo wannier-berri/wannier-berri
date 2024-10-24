@@ -323,6 +323,7 @@ class DMN(W90_file):
         self._NK = len(self.kpoints)
         self._NB = bandstructure.num_bands
         self.clear_inverse()
+        
 
     def get_disentangled(self, v_matrix_dagger, v_matrix):
         """	
