@@ -402,7 +402,6 @@ class ProjectionsSet:
             string += p.write_wannier90(mod1=mod1)
         if beginend:
             string += "end projections\n"
-        print(string)
         return string
 
     def write_with_multiplicities(self, multiplicities=None, orbit=False):
@@ -430,7 +429,7 @@ class ProjectionsSet:
                 string += f"{m}  X  | {p.str_short}  \n"
                 num_wann += m * p.num_wann
                 if orbit:
-                    string += p.wyckoff_position.orbit_str()
+                    string += p.wyckoff_position.orbit_str()+"\n"
         string += f"total number of Wannier functions = {num_wann}\n"
         string += breakline
         return string

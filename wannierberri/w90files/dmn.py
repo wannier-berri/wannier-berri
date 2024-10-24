@@ -78,6 +78,7 @@ class DMN(W90_file):
         if empty:
             self._NB = 0
             self.num_wann = 0
+            self.D_wann_block_indices = np.zeros((0, 2), dtype=int)
             return
         if seedname is None:
             self.set_identiy(num_wann, num_bands, nkpt)
