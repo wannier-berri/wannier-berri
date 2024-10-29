@@ -57,7 +57,7 @@ ebrsearcher = EBRsearcher(
     spacegroup=spacegroup,
     trial_projections=trial_projections,
     froz_min=-10,
-    froz_max=30,
+    froz_max=20,
     outer_min=-20,
     outer_max=50,
     debug=False
@@ -71,4 +71,4 @@ for c in combinations:
     newset = trial_projections.get_combination(c)
     newset.join_same_wyckoff()
     newset.maximize_distance()
-    print(newset.write_wannier90())
+    print(newset.write_wannier90(mod1=True))

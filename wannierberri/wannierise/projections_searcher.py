@@ -46,6 +46,11 @@ class EBRsearcher:
     nsym_little : list of int (length=NKirr)
         The number of little group symmetries for each irreducible k-point
 
+    Notes
+    -----
+    * So far it does not work with time-reversal symmetry, and was not tested with spinor wavefuncitons.
+      It is recommended to search for projections on a scalar calculation (no spin). 
+      The projections found this way are usually good for spinful calculations as well.
     """
 
     def __init__(self, spacegroup,
@@ -58,6 +63,8 @@ class EBRsearcher:
                  trial_projections=None,
                  debug=False
                 ):
+        if spacegroup.spinor:
+            raise NotImplementedError("EBRsearcher does not work with spinors")
         if trial_positions is None:
             trial_positions = []
         if trial_orbitals is None:
@@ -193,6 +200,22 @@ class EBRsearcher:
                     debug_msg(f"  j={j} {self.irreps_per_projection_vectors[i][j]}")
 
     def find_combinations(self, max_num_wann=None, fixed=[]):
+        """
+        find all possible combinations of trial projections that cover all the irreps inside the frozen window
+        and fit into the outer window
+
+        Parameters
+        ----------
+        max_num_wann : int
+            The maximum number of wannier functions
+        fixed : list of int
+            The indices of the trial projections that are fixed and should be taken exactly once
+
+        Returns
+        -------
+        combinations : np.ndarray(shape=(K,M), dtype=int)
+            The K combinations of coefficients that denote multip[licity of each irrep
+        """
 
         lfixed = np.zeros(self.num_trial_proj, dtype=bool)
         lfixed[np.array(fixed, dtype=int)] = True
@@ -287,6 +310,20 @@ def get_irreps_wann(symmetry_matrices):
 
 
 def group_by_TR(irreps):
+    """
+    Group the irreps by time-reversal symmetry
+
+    Parameters
+    ----------
+    irreps : list of Irrep
+        The irreducible representations
+
+    Returns
+    -------
+    irreps_TR : list of Irrep
+        The irreducible representations grouped by time-reversal symmetry
+    """	
+
     # pair by time-reversal symmetry
     irreps_TR = UniqueList(count=True)
     while len(irreps) > 0:

@@ -358,7 +358,7 @@ class System_R(System):
         Set spins along axis in  SS(R=0).  Useful for model calculations.
         Note : The spin matrix is purely diagonal, so that <up | sigma_x | down> = 0
         For more cversatility use :func:`~wannierberri.system.System.set_R_mat`
-        :func:`~wannierberri.system.System.set_spin_pairs`, :func:`~wannierberri.system.System.set_spin_from_code`
+        :func:`~wannierberri.system.System.set_spin_pairs`, :func:`~wannierberri.system.System.set_spin_from_projections`
 
         Parameters
         ----------
@@ -378,15 +378,17 @@ class System_R(System):
 
     def set_spin_pairs(self, pairs):
         """set SS_R, assuming that each Wannier function is an eigenstate of Sz,
+
         Parameters
         ----------
         pairs : list of tuple
-            list of pairs of indices of bands ``[(up1,down1), (up2,down2), ..]``
-
+            list of pairs of indices of bands `[(up1,down1), (up2,down2), ..]`
+            
         Notes
         -----
         * For abinitio calculations this is a rough approximation, that may be used on own risk.
-        See also :func:`~wannierberri.system.System.set_spin_from_code`
+        * See also :func:`~wannierberri.system.System.set_spin_from_projections`
+
         """
         assert all(len(p) == 2 for p in pairs)
         all_states = np.array(sum((list(p) for p in pairs), []))
