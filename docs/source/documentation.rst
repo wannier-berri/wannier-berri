@@ -10,6 +10,7 @@ API reference
    :maxdepth: 2
 
    docs/wannierisation
+   docs/projections_searcher
    docs/system
    docs/run
    docs/calculators

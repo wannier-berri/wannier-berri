@@ -78,6 +78,7 @@ class DMN(W90_file):
         if empty:
             self._NB = 0
             self.num_wann = 0
+            self.D_wann_block_indices = np.zeros((0, 2), dtype=int)
             return
         if seedname is None:
             self.set_identiy(num_wann, num_bands, nkpt)
@@ -323,6 +324,7 @@ class DMN(W90_file):
         self._NK = len(self.kpoints)
         self._NB = bandstructure.num_bands
         self.clear_inverse()
+        
 
     def get_disentangled(self, v_matrix_dagger, v_matrix):
         """	

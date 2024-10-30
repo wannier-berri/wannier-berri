@@ -30,8 +30,8 @@ class Dwann:
         Whether the Wannier functions are spinors.
     spin_ordering : str, "block" or "interlace"
         The ordering of the wannier functions in the spinor case.
-        "block" means that first all the orbitals of the first spin are written, then the second spin.
-        "interlace" means that the orbitals of the two spins are interlaced.
+        "block" means that first all the orbitals of the first spin are written, then the second spin. (like in the amn file old versions of VASP)
+        "interlace" means that the orbitals of the two spins are interlaced. (like in the amn file of QE and new versions of VASP)
 
 
     Attributes
