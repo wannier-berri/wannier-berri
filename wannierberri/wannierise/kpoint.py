@@ -1,11 +1,12 @@
 from copy import deepcopy
 import numpy as np
+import ray
 from .utility import get_max_eig
 from .sitesym import orthogonalize
 
 SPREAD = True
 
-
+@ray.remote
 class Kpoint_and_neighbours:
     """ a class to store the data on a single k-point
 
@@ -70,6 +71,9 @@ class Kpoint_and_neighbours:
         amn2 = amn[self.free, :].dot(amn[self.free, :].T.conj())
         self.U_opt_free = get_max_eig(amn2, self.nWfree, self.NBfree)  # nBfee x nWfree marrices
         self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
+
+    def get_U_opt_full(self):
+        return self.U_opt_full
 
     def update(self, U_nb, wcc_bk_phase, localise=True, mix_ratio=1.0, mix_ratio_u=1.0):
         """

@@ -52,7 +52,7 @@ def print_progress(i_iter, Omega_list, num_iter_converge,
                    spread_functional=None, spreads=None,
                    w90data=None, U_opt_full_BZ=None):
     """
-    print the progress of the disentanglement
+    print the progress of the wannierisation
 
     Parameters
     ----------

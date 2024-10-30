@@ -1,4 +1,5 @@
 import numpy as np
+import ray
 
 from .kpoint import Kpoint_and_neighbours
 
@@ -90,6 +91,7 @@ def wannierise(w90data,
     * Disentanglement and localization are done together, in the same loop. Therefore only one parameter `num_iter` is used for both
 
     """
+    ray.init(num_gpus=0)
     if froz_min > froz_max:
         print("froz_min > froz_max, nothing will be frozen")
     assert 0 < mix_ratio_z <= 1
@@ -137,7 +139,7 @@ def wannierise(w90data,
     # wk = w90data.mmn.wk_unique
     bk_cart = w90data.mmn.bk_cart_unique
     mmn_data_ordered = np.array([data[order] for data, order in zip(w90data.mmn.data, w90data.mmn.ib_unique_map_inverse)])
-    kpoints = [Kpoint_and_neighbours(mmn_data_ordered[kpt],
+    kpoints = [Kpoint_and_neighbours.remote(mmn_data_ordered[kpt],
                            frozen[ik], frozen[neighbours_irreducible[ik]],
         w90data.mmn.wk_unique, w90data.mmn.bk_cart_unique,
         symmetrizer, ik,
@@ -154,9 +156,11 @@ def wannierise(w90data,
 
 
     # The _IR suffix is used to denote that the U matrix is defined only on k-points in the irreducible BZ
-    U_opt_full_IR = [kpoint.U_opt_full for kpoint in kpoints]
+    U_opt_full_IR = np.array([ray.get(kpoint.get_U_opt_full.remote()) for kpoint in kpoints])
+    symmetrizer.symmetrize_U(U_opt_full_IR)
     # the _BZ suffix is used to denote that the U matrix is defined on all k-points in the full BZ
-    U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=True)
+    U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=True)
+    
 
     # spreads = getSpreads(kpoints, U_opt_full_BZ, neighbours_irreducible)
     print_centers_and_spreads(w90data, U_opt_full_BZ,
@@ -165,21 +169,22 @@ def wannierise(w90data,
     # print ("  |  ".join(f"{key} = {value:16.8f}" for key, value in spreads.items() if key.startswith("Omega")))
 
     Omega_list = []
+
     for i_iter in range(num_iter):
         U_opt_full_IR = []
         wcc = SpreadFunctional_loc.get_wcc(U_opt_full_BZ)
         wcc_bk_phase = np.exp(1j * wcc.dot(bk_cart.T))
         for ikirr, kpt in enumerate(kptirr):
             U_neigh = ([U_opt_full_BZ[ib] for ib in neighbours_all[kpt]])
-            U_opt_full_IR.append(kpoints[ikirr].update(U_neigh,
+            U_opt_full_IR.append(ray.get(kpoints[ikirr].update.remote(U_neigh,
                                                        mix_ratio=mix_ratio_z,
                                                        mix_ratio_u=mix_ratio_u,
                                                        localise=localise,
                                                        wcc_bk_phase=wcc_bk_phase,
-                                                       ))
+                                                       )).copy() )
 
-        U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=True)
-
+        U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=True)
+        
         if i_iter % print_progress_every == 0:
             delta_std = print_progress(i_iter, Omega_list, num_iter_converge,
                                     spread_functional=SpreadFunctional_loc, w90data=w90data, U_opt_full_BZ=U_opt_full_BZ)
@@ -187,8 +192,6 @@ def wannierise(w90data,
             if delta_std < conv_tol:
                 print(f"Converged after {i_iter} iterations")
                 break
-
-    U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=True)
 
     print_centers_and_spreads(w90data, U_opt_full_BZ,
                               spread_functional=SpreadFunctional_loc,

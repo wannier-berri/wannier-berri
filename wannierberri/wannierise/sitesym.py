@@ -70,7 +70,7 @@ class Symmetrizer:
         return len(set(self.kptirr2kpt[ikirr]))
 
 
-    def symmetrize_U(self, U, to_full_BZ=True, all_k=False):
+    def symmetrize_U(self, U):
         """
         Symmetrizes the umat matrix (in-place) at irreducible kpoints
         and treturns the U matrices at the full BZ
@@ -83,6 +83,9 @@ class Symmetrizer:
             If True, the U matrices are expanded to the full BZ in the return
         all_k : bool
             If True, the U matrices are symmetrized at all reducible kpoints (self.include_k is ignored)
+        symmetrize_irred : bool
+            If True, the U matrices  at the irreducible kpoints are symmetrized (otherwise they are assumed to be already symmetrized)
+
 
         Returns
         -------
@@ -91,8 +94,6 @@ class Symmetrizer:
         """
         for ikirr in range(self.Dmn.NKirr):
             U[ikirr][:] = self.symmetrize_U_kirr(U[ikirr], ikirr)
-        if to_full_BZ:
-            U = self.U_to_full_BZ(U, all_k=all_k)
         return U
 
     def U_to_full_BZ(self, U, all_k=False):
