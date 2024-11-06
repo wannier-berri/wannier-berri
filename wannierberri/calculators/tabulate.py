@@ -24,7 +24,7 @@ class Tabulator(Calculator):
         if ibands is None:
             ibands = np.arange(NB)
         band_groups = data_K.get_bands_in_range_groups(
-            -np.Inf, np.Inf, degen_thresh=self.degen_thresh, degen_Kramers=self.degen_Kramers, sea=False)
+            -np.inf, np.inf, degen_thresh=self.degen_thresh, degen_Kramers=self.degen_Kramers, sea=False)
         # bands_groups  is a digtionary (ib1,ib2):E
         # now select only the needed groups
         band_groups = [

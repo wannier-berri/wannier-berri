@@ -69,7 +69,7 @@ class AMN(W90_file):
         for ik in range(self.NK):
             for iw in range(self.NW):
                 for ib in range(self.NB):
-                    f_amn_out.write(f"{ib+1:4d} {iw+1:4d} {ik+1:4d} {self.data[ik, ib, iw].real:17.12f} {self.data[ik, ib, iw].imag:17.12f}\n")
+                    f_amn_out.write(f"{ib + 1:4d} {iw + 1:4d} {ik + 1:4d} {self.data[ik, ib, iw].real:17.12f} {self.data[ik, ib, iw].imag:17.12f}\n")
 
     def get_disentangled(self, v_left, v_right):
         print(f"v shape  {v_left.shape}  {v_right.shape} , amn shape {self.data.shape} ")

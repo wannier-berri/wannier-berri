@@ -71,7 +71,7 @@ class System:
     """
 
     def __init__(self,
-                 frozen_max=-np.Inf,
+                 frozen_max=-np.inf,
                  periodic=(True, True, True),
                  NKFFT=None,
                  force_internal_terms_only=False,

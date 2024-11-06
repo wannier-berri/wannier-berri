@@ -9,8 +9,8 @@ DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states b
 
 
 def disentangle(w90data,
-                froz_min=np.Inf,
-                froz_max=-np.Inf,
+                froz_min=np.inf,
+                froz_max=-np.inf,
                 num_iter=1000,
                 conv_tol=1e-9,
                 num_iter_converge=10,
@@ -265,7 +265,7 @@ def print_progress(i_iter, Omega_I_list, num_iter_converge, print_progress_every
         delta_std = np.std(Omega_I_list[-num_iter_converge:])
         delta_std_str = f"{delta_std:15.8e}"
     else:
-        delta_std = np.Inf
+        delta_std = np.inf
         delta_std_str = "--"
 
     if i_iter % print_progress_every == 0:
