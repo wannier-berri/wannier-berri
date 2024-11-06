@@ -71,8 +71,9 @@ def check_postw90(check_command_output):
         check_command_output(["postw90.x", seedname], cwd=tmp_dir)
         try:
             data_pw90 = np.loadtxt(os.path.join(tmp_dir, seedname + "-ahc-fermiscan.dat"))
-        except:
-            data_pw90 = 0
+        except Exception as err:
+            warnings.warn(f"Could not read the file {seedname}-ahc-fermiscan.dat : {err}")
+            data_pw90 = np.zeros((11, 4), dtype=float)
 
 #        out = os.path.join(tmp_dir,"stdout_wberri")
 #        check_command_output(["python3","-m","wannierberri.utils.postw90",seedname], cwd=tmp_dir,stdout_filename=out)
