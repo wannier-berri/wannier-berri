@@ -98,10 +98,10 @@ class _Data_K(System, abc.ABC):
 
     def __init__(self, system, dK, grid, Kpoint=None,
                  # Those are not used at the moment, but will be restored (TODO):
-                 # frozen_max = -np.Inf,
+                 # frozen_max = -np.inf,
                  # delta_fz = 0.1,
-                 Emin=-np.Inf,
-                 Emax=np.Inf,
+                 Emin=-np.inf,
+                 Emax=np.inf,
                  use_wcc_phase=False,
                  fftlib='fftw',
                  npar_k=1,
@@ -189,7 +189,7 @@ class _Data_K(System, abc.ABC):
             raise RuntimeError()
 
     def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False,
-                                     Emin=-np.Inf, Emax=np.Inf):
+                                     Emin=-np.inf, Emax=np.inf):
         bands_in_range = get_bands_in_range(
             emin, emax, self.E_K[ik], degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)
         weights = {(ib1, ib2): self.E_K[ik, ib1:ib2].mean() for ib1, ib2 in bands_in_range}
@@ -198,11 +198,11 @@ class _Data_K(System, abc.ABC):
             if len(bands_in_range) > 0:
                 bandmax = min(bandmax, bands_in_range[0][0])
             if bandmax > 0:
-                weights[(0, bandmax)] = -np.Inf
+                weights[(0, bandmax)] = -np.inf
         return weights
 
-    def get_bands_in_range_groups(self, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False, Emin=-np.Inf,
-                                  Emax=np.Inf):
+    def get_bands_in_range_groups(self, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False, Emin=-np.inf,
+                                  Emax=np.inf):
         res = []
         for ik in range(self.nk):
             res.append(self.get_bands_in_range_groups_ik(ik, emin, emax, degen_thresh, degen_Kramers, sea, Emin=Emin,

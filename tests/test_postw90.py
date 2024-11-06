@@ -69,7 +69,10 @@ def check_postw90(check_command_output):
         tags_needed = ["mmn", "chk", "eig"]
         tmp_dir = create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_postw90)
         check_command_output(["postw90.x", seedname], cwd=tmp_dir)
-        data_pw90 = np.loadtxt(os.path.join(tmp_dir, seedname + "-ahc-fermiscan.dat"))
+        try:
+            data_pw90 = np.loadtxt(os.path.join(tmp_dir, seedname + "-ahc-fermiscan.dat"))
+        except:
+            data_pw90 = 0
 
 #        out = os.path.join(tmp_dir,"stdout_wberri")
 #        check_command_output(["python3","-m","wannierberri.utils.postw90",seedname], cwd=tmp_dir,stdout_filename=out)

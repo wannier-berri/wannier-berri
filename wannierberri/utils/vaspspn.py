@@ -95,7 +95,7 @@ def main(argv):
     WAV = open(fin, "rb")
     RECL = 3
 
-    def record(irec, cnt=np.Inf, dtype=float):
+    def record(irec, cnt=np.inf, dtype=float):
         WAV.seek(irec * RECL)
         return np.fromfile(WAV, dtype=dtype, count=min(RECL, cnt))
 

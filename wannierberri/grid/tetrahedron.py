@@ -221,7 +221,7 @@ class TetraWeights:
                 return i
         return -1
 
-    def weights_all_band_groups(self, eFermi, der, degen_thresh=-1, degen_Kramers=False, Emin=-np.Inf, Emax=np.Inf):
+    def weights_all_band_groups(self, eFermi, der, degen_thresh=-1, degen_Kramers=False, Emin=-np.inf, Emax=np.inf):
         """
              here  the key of the return dict is a pair of integers (ib1,ib2)
         """

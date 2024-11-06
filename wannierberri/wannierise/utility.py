@@ -85,7 +85,7 @@ def print_progress(i_iter, Omega_list, num_iter_converge,
         slope = (Omega_list[-1] - Omega_list[-num_iter_converge - 1]) / num_iter_converge
         slope_str = f"{slope:15.8e}"
     else:
-        delta_max = np.Inf
+        delta_max = np.inf
         delta_max_str = "--"
         slope_str = "--"
 
