@@ -125,7 +125,7 @@ def compare_energyresult():
                 if isinstance(data_energy, list):
                     for i, E in enumerate(zip(data_energy, data_energy_ref)):
                         assert E[0] == approx(
-                            E[1]), f"energy array {i} with title {E_titles[i]} differ by {np.max(abs(E[0]-E[1]))}"
+                            E[1]), f"energy array {i} with title {E_titles[i]} differ by {np.max(abs(E[0] - E[1]))}"
                 else:
                     assert data_energy == approx(data_energy_ref, abs=precision)
             assert data == approx(

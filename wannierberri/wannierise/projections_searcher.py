@@ -167,8 +167,8 @@ class EBRsearcher:
             char_frozen_conj = np.array([dmn.d_band_diagonal(ik, isym)[frozen].sum() for isym in dmn.isym_little[ik]]).conj()
             debug_msg(f"ik= {ik} contains {nfrozen} frozen states\n" + 
                   f"the little group contains {len(dmn.isym_little[ik])} symmetries: \n {dmn.isym_little[ik]}\n" +
-                  f"characters in outer window : {np.round(char_outer_conj,3)}\n" +
-                  f"characters in frozen window: {np.round(char_frozen_conj,3)}") 
+                  f"characters in outer window : {np.round(char_outer_conj, 3)}\n" +
+                  f"characters in frozen window: {np.round(char_frozen_conj, 3)}") 
             # if self.debug:
             #     print(f"""all eigenvalues = \n{np.array([
             #         dmn.d_band_diagonal(ik,isym) for isym in dmn.isym_little[ik]]).round(4).T} """)

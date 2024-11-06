@@ -646,7 +646,7 @@ class DMN(W90_file):
                         string = ""
                         for a in aaa:
                             _abs = ", ".join(f"{np.abs(_):.4f}" for _ in a)
-                            _angle = ", ".join(f"{np.angle(_)/np.pi*180:7.2f}" for _ in a)
+                            _angle = ", ".join(f"{np.angle(_) / np.pi * 180:7.2f}" for _ in a)
                             string += f"[{_abs}] [{_angle}]   |    "
                         print(string)
         return maxerr
