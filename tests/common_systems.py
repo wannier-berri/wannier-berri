@@ -358,6 +358,12 @@ def system_GaAs_tb_wcc_ws():
     return get_system_GaAs_tb(use_ws=True, symmetrize=False)
 
 
+@pytest.fixture(scope="session")
+def system_GaAs_tb_wcc_ws_noAA():
+    """Create system for GaAs using _tb_dat data"""
+    return get_system_GaAs_tb(use_ws=True, symmetrize=False, berry=False)
+
+
 def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_phase_fin_diff=False,
                          matrices=dict(OSD=True),
                          symmetrize=False):

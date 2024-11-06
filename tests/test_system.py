@@ -242,6 +242,13 @@ def test_system_GaAs_tb_wcc_ws(check_system, system_GaAs_tb_wcc_ws):
     )
 
 
+def test_system_GaAs_tb_wcc_ws_noAA(check_system, system_GaAs_tb_wcc_ws_noAA):
+    check_system(
+        system_GaAs_tb_wcc_ws_noAA, "GaAs_tb_wcc_ws",
+        matrices=['Ham',]
+    )
+
+
 def test_system_GaAs_tb_wcc_ws_save_load(check_system, system_GaAs_tb_wcc_ws):
     name = "GaAs_tb_wcc_ws_save"
     path = os.path.join(OUTPUT_DIR, name)
