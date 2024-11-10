@@ -29,8 +29,8 @@ setuptools.setup(
      long_description_content_type="text/markdown",
      python_requires='>=3.7',
      install_requires=[
-                        'numpy>=2.0', # min 1.24 required by scipy.io
-                        'scipy>=1.13',
+                        'numpy>=1.20', # min 1.24 required by scipy.io
+                        #'scipy>=1.13',
                         'colorama',
                         'termcolor',
                         'numba>=0.55.2',
