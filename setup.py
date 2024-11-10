@@ -30,7 +30,7 @@ setuptools.setup(
      python_requires='>=3.7',
      install_requires=[
                         'numpy>=1.21, <1.24', # min 1.24 required by scipy.io
-                        #'scipy>=1.13',
+                        'scipy>=1.13',
                         'colorama',
                         'termcolor',
                         'numba>=0.55.2',
