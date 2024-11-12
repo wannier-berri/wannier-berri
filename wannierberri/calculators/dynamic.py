@@ -161,15 +161,13 @@ class JDOS(DynamicCalculator):
         self.Formula = Formula_dyn_ident
         self.dtype = float
 
+    
+    def factor_omega(self, E1, E2):
+        return self.smear(E2 - E1 - self.omega) 
+    
     def nonzero(self, E1, E2):
         return (E1 < self.Efermi.max()) and (E2 > self.Efermi.min()) and (
             self.omega.min() - 5 * self.smr_fixed_width < E2 - E1 < self.omega.max() + 5 * self.smr_fixed_width)
-
-    def energy_factor(self, E1, E2):
-        res = np.zeros((len(self.Efermi), len(self.omega)))
-        gauss = self.smear(E2 - E1 - self.omega, self.smr_fixed_width)
-        res[(E1 < self.Efermi) * (self.Efermi < E2)] = gauss[None, :]
-        return res
 
 
 ################################
