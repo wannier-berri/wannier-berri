@@ -1,7 +1,9 @@
+from time import time
+import warnings
 import numpy as np
 import ray
 
-from .kpoint import Kpoint_and_neighbours
+from .kpoint import Kpoint_and_neighbours, Kpoint_and_neighbours_ray, Wannierizer
 
 from .utility import select_window_degen, print_centers_and_spreads, print_progress
 
@@ -24,6 +26,7 @@ def wannierise(w90data,
                kwargs_sitesym={},
                init="amn",
                num_wann=None,
+               parallel=True
                ):
     r"""
     Performs disentanglement and maximal localization of the bands recorded in w90data.
@@ -66,6 +69,8 @@ def wannierise(w90data,
         the initialization of the U matrix. "amn" for the current state, "random" for random initialization, "restart" for restarting from the previous state
     num_wann : int
         the number of Wannier functions. Required for random initialization only without sitesymmetry
+    parallel : bool
+        if True - tries to run in parallel using ray. ray should be initialized before calling this function. If it was not initialized, the function will run in serial mode
 
     Returns
     -------
@@ -91,7 +96,7 @@ def wannierise(w90data,
     * Disentanglement and localization are done together, in the same loop. Therefore only one parameter `num_iter` is used for both
 
     """
-    ray.init(num_gpus=0)
+    t0= time()
     if froz_min > froz_max:
         print("froz_min > froz_max, nothing will be frozen")
     assert 0 < mix_ratio_z <= 1
@@ -139,15 +144,20 @@ def wannierise(w90data,
     # wk = w90data.mmn.wk_unique
     bk_cart = w90data.mmn.bk_cart_unique
     mmn_data_ordered = np.array([data[order] for data, order in zip(w90data.mmn.data, w90data.mmn.ib_unique_map_inverse)])
-    kpoints = [Kpoint_and_neighbours.remote(mmn_data_ordered[kpt],
-                           frozen[ik], frozen[neighbours_irreducible[ik]],
-        w90data.mmn.wk_unique, w90data.mmn.bk_cart_unique,
-        symmetrizer, ik,
-        amn=amn[kpt],
-        weight=symmetrizer.ndegen(ik) / symmetrizer.NK
-    )
-        for ik, kpt in enumerate(kptirr)
-    ]
+    t1 = time()
+    wannierizer = Wannierizer(parallel=parallel)
+    for ik, kpt in enumerate(kptirr):
+        wannierizer.add_kpoint(Mmn=mmn_data_ordered[kpt],
+                            frozen=frozen[ik], 
+                            frozen_nb=frozen[neighbours_irreducible[ik]],
+                            wb=w90data.mmn.wk_unique, 
+                            bk=w90data.mmn.bk_cart_unique,
+                            symmetrizer=symmetrizer, 
+                            ikirr=ik,
+                            amn=amn[kpt],
+                            weight=symmetrizer.ndegen(ik) / symmetrizer.NK
+                            )
+    t2=time()
     SpreadFunctional_loc = SpreadFunctional(
         w=w90data.mmn.wk_unique / w90data.mmn.NK,
         bk=w90data.mmn.bk_cart_unique,
@@ -156,7 +166,7 @@ def wannierise(w90data,
 
 
     # The _IR suffix is used to denote that the U matrix is defined only on k-points in the irreducible BZ
-    U_opt_full_IR = np.array([ray.get(kpoint.get_U_opt_full.remote()) for kpoint in kpoints])
+    U_opt_full_IR = wannierizer.get_U_opt_full()
     symmetrizer.symmetrize_U(U_opt_full_IR)
     # the _BZ suffix is used to denote that the U matrix is defined on all k-points in the full BZ
     U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=True)
@@ -170,18 +180,28 @@ def wannierise(w90data,
 
     Omega_list = []
 
+    t_update = 0
+    t01 = time()
     for i_iter in range(num_iter):
         U_opt_full_IR = []
         wcc = SpreadFunctional_loc.get_wcc(U_opt_full_BZ)
         wcc_bk_phase = np.exp(1j * wcc.dot(bk_cart.T))
-        for ikirr, kpt in enumerate(kptirr):
-            U_neigh = ([U_opt_full_BZ[ib] for ib in neighbours_all[kpt]])
-            U_opt_full_IR.append(ray.get(kpoints[ikirr].update.remote(U_neigh,
-                                                       mix_ratio=mix_ratio_z,
-                                                       mix_ratio_u=mix_ratio_u,
-                                                       localise=localise,
-                                                       wcc_bk_phase=wcc_bk_phase,
-                                                       )).copy() )
+        U_neigh = [[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr]
+        tx = time()
+        U_opt_full_IR = wannierizer.update_all(U_neigh, mix_ratio=mix_ratio_z,
+                                               mix_ratio_u=mix_ratio_u,
+                                               localise=localise,
+                                               wcc_bk_phase=wcc_bk_phase)
+        t_update += time()-tx
+        
+        # for ikirr, kpt in enumerate(kptirr):
+        #     U_neigh = [U_opt_full_BZ[ib] for ib in neighbours_all[kpt]]
+        #     U_opt_full_IR.append( wannierizer.update(ikirr, U_neigh, 
+        #                                             mix_ratio=mix_ratio_z,
+        #                                             mix_ratio_u=mix_ratio_u,
+        #                                             localise=localise,
+        #                                             wcc_bk_phase=wcc_bk_phase,
+        #                                              ) )
 
         U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=True)
         
@@ -192,9 +212,15 @@ def wannierise(w90data,
             if delta_std < conv_tol:
                 print(f"Converged after {i_iter} iterations")
                 break
+    t02 = time()
+    
 
     print_centers_and_spreads(w90data, U_opt_full_BZ,
                               spread_functional=SpreadFunctional_loc,
                               comment="Final State")
     w90data.wannierised = True
+    print (f"time for creating wannierrizer {t2-t1}")
+    print (f"time for iterations {t02-t01}")
+    print (f"time for updating {t_update}")
+    print (f"total time for wannierization {time()-t0}")
     return w90data.chk.v_matrix

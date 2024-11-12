@@ -197,16 +197,16 @@ class VoidSymmetrizer(Symmetrizer):
         self.Nsym = 1
 
     def symmetrize_U(self, U, **kwargs):
-        return U
+        return np.copy(U)
 
     def symmetrize_U_kirr(self, U, ikirr):
-        return U
+        return np.copy(U)
 
     def symmetrize_Z(self, Z):
-        return Z
+        return np.copy(Z)
 
     def symmetrize_Zk(self, Z, ikirr):
-        return Z
+        return np.copy(Z)
 
-    def U_to_full_BZ(self, U):
-        return U
+    def U_to_full_BZ(self, U, all_k=False):
+        return np.copy(U)

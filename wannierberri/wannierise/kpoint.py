@@ -1,4 +1,5 @@
 from copy import deepcopy
+import warnings
 import numpy as np
 import ray
 from .utility import get_max_eig
@@ -6,7 +7,6 @@ from .sitesym import orthogonalize
 
 SPREAD = True
 
-@ray.remote
 class Kpoint_and_neighbours:
     """ a class to store the data on a single k-point
 
@@ -295,3 +295,41 @@ def getSpreads(kpoints, U_opt_full_BZ=None, neighbours=None):
     Omega_tot -= np.linalg.norm(rn)**2
     Omega_I = Omega_tot - Omega_OD - Omega_D
     return dict(Omega_D=Omega_D, Omega_OD=Omega_OD, Omega_I=Omega_I, Omega_tot=Omega_tot, wannier_centers=rn)
+
+
+@ray.remote
+class Kpoint_and_neighbours_ray(Kpoint_and_neighbours):
+    
+    pass
+
+class Wannierizer:
+
+    def __init__(self, parallel = True):
+        self.kpoints = []
+        if parallel and not ray.is_initialized():
+            warnings.warn("Ray is not initialized, running in serial mode")
+            parallel = False
+        self.parallel = parallel
+
+    def add_kpoint(self, **kwargs):
+        if self.parallel:
+            kpoint = Kpoint_and_neighbours_ray.remote(**kwargs)	
+        else:
+            kpoint = Kpoint_and_neighbours(**kwargs)
+        self.kpoints.append(kpoint)
+
+    def get_U_opt_full(self):
+        if self.parallel: 
+            return np.array(ray.get([kpoint.get_U_opt_full.remote() for kpoint in self.kpoints]))
+        else:
+            return np.array([kpoint.get_U_opt_full() for kpoint in self.kpoints])  
+        
+    def update_all(self, U_neigh, **kwargs):
+        if self.parallel:
+            remotes = [kpoint.update.remote(U, **kwargs) for kpoint,U in zip(self.kpoints, U_neigh)]
+            return ray.get(remotes)
+        else:
+            return [kpoint.update(U, **kwargs) for kpoint,U in zip(self.kpoints, U_neigh)]
+        # do we need copy in both/any of the cases?
+    
+        
