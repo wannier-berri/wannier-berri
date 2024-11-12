@@ -12,7 +12,7 @@ No jobs are submitted in the test.
 def check_command_output():
     from sys import version_info
     assert version_info.major == 3
-    assert version_info.minor >= 7
+    assert version_info.minor >= 9
     from subprocess import run
 
     def _inner(command, cwd=None, stdout_filename=None):

@@ -14,19 +14,6 @@ pip install pythtb # tbmodels spglib
 # pip install gpaw
 # gpaw info
 # gpaw install-data --register ~/gpaw-data
-pip install -U wannierberri[all]
+pip install -U .[all]
 sudo apt-get install wannier90
 
-case "$INSTALL_TYPE" in
-    dev)
-        pip install -e .
-        ;;
-    dev_sdist)
-    #     python setup.py sdist
-    #     ls -1 dist/ | xargs -I % pip install dist/%[dev]
-    #     ;;
-    # dev_bdist_wheel)
-    #     python setup.py bdist_wheel
-    #     ls -1 dist/ | xargs -I % pip install dist/%[dev]
-    #     ;;
-esac

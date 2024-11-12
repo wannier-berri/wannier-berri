@@ -79,7 +79,7 @@ class DynamicCalculator(Calculator, abc.ABC):
 
         for ik in range(data_K.nk):
             degen_groups = data_K.get_bands_in_range_groups_ik(
-                ik, -np.Inf, np.Inf, degen_thresh=self.degen_thresh, degen_Kramers=self.degen_Kramers)
+                ik, -np.inf, np.inf, degen_thresh=self.degen_thresh, degen_Kramers=self.degen_Kramers)
             # now find needed pairs:
             # as a dictionary {((ibm1,ibm2),(ibn1,ibn2)):(Em,En)}
             degen_group_pairs = [

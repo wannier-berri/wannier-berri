@@ -90,7 +90,7 @@ def check_system():
                             f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])}"
                             for i in zip(*missed)) + "\n\n")
                     else:
-                        all_i = np.where(abs(data - data_ref) >= -np.Inf)
+                        all_i = np.where(abs(data - data_ref) >= -np.inf)
                         ratio = np.zeros(data_ref.shape)
                         select = abs(data_ref) > 1e-12
                         ratio[select] = data[select] / data_ref[select]
@@ -239,6 +239,13 @@ def test_system_GaAs_tb_wcc_ws(check_system, system_GaAs_tb_wcc_ws):
     check_system(
         system_GaAs_tb_wcc_ws, "GaAs_tb_wcc_ws",
         matrices=['Ham', 'AA']
+    )
+
+
+def test_system_GaAs_tb_wcc_ws_noAA(check_system, system_GaAs_tb_wcc_ws_noAA):
+    check_system(
+        system_GaAs_tb_wcc_ws_noAA, "GaAs_tb_wcc_ws",
+        matrices=['Ham',]
     )
 
 

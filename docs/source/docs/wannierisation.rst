@@ -1,6 +1,8 @@
+.. _sec-wannierisation:
+
+========================================
 |NEW| Wannierisation inside WannierBerri
 ========================================
-.. _sec-wannierisation
 
 Now WannierBerri can construct wannier functions on its own. Bith disentanglement and localisation.
 
@@ -11,8 +13,7 @@ see examples in `examples/wannierise+sitesym-Fe` and `examples/wannierise+sitesy
 .. automethod:: wannierberri.wannierise.wannierise
 
 Example
---------
-
+====================
 
 .. code-block:: python
 
@@ -60,36 +61,6 @@ Example
 
    # Now do whatever you want with the system, as if it was created with Wannier90
 
-Symmetry-adapted Wannier functions
------------------------------------
-
-.. automodule:: wannierberri.wannierise.sitesym
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Searching for suitable projections
------------------------------------
-
-Note: work on this functionality is in progress
-
-.. automodule:: wannierberri.wannierise.projections_searcher
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Projections and Wyckoff positions
------------------------------------
-
-.. automodule:: wannierberri.wannierise.projections
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: wannierberri.wannierise.wyckoff_position
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 .. |NEW| image:: ../imag/new.png
    :width: 100px

@@ -17,6 +17,8 @@ but is known to give wrong results for spin hall conductivity in spin-degenerate
 bandstructures (see `Issue #274 <https://github.com/wannier-berri/wannier-berri/issues/274>`__)
 
 A better alternative is provided by `Chengcheng Xiao <https://github.com/Chengcheng-Xiao/VASP2WAN90_v2_fix>`__
+
+New versions of VASP compute the spn file directly, so this utility is mostly obsolete. see `LWRITE_SPN <https://www.vasp.at/wiki/index.php/LWRITE_SPN>`__ 
 """
 
 __doc__ = r"""
@@ -93,7 +95,7 @@ def main(argv):
     WAV = open(fin, "rb")
     RECL = 3
 
-    def record(irec, cnt=np.Inf, dtype=float):
+    def record(irec, cnt=np.inf, dtype=float):
         WAV.seek(irec * RECL)
         return np.fromfile(WAV, dtype=dtype, count=min(RECL, cnt))
 

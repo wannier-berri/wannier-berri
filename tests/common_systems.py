@@ -219,7 +219,7 @@ def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_di
             positions=np.array([[0, 0, 0]]),
             magmom=[[0., 0., -2.31]],
             soc=True,
-            DFT_code='qe'
+            spin_ordering='interlace'
         )
     return system
 
@@ -241,7 +241,7 @@ def system_Fe_sym_W90_wcc_fd():
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj_set_spin(create_files_Fe_W90):
     system = get_system_Fe_sym_W90(use_wcc_phase=False)
-    system.set_spin_from_code(DFT_code="qe")
+    system.set_spin_from_projections(spin_ordering="interlace")
     return system
 
 
@@ -326,7 +326,7 @@ def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=
             atom_name=['Ga', 'As'],
             proj=['Ga:sp3', 'As:sp3'],
             soc=True,
-            DFT_code='vasp',
+            spin_ordering='block',
         )
     if use_ws:
         system.do_ws_dist(mp_grid=(2, 2, 2))
@@ -358,6 +358,12 @@ def system_GaAs_tb_wcc_ws():
     return get_system_GaAs_tb(use_ws=True, symmetrize=False)
 
 
+@pytest.fixture(scope="session")
+def system_GaAs_tb_wcc_ws_noAA():
+    """Create system for GaAs using _tb_dat data"""
+    return get_system_GaAs_tb(use_ws=True, symmetrize=False, berry=False)
+
+
 def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_phase_fin_diff=False,
                          matrices=dict(OSD=True),
                          symmetrize=False):
@@ -385,7 +391,7 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
             atom_name=['bond'] * 4,
             proj=['bond:s'],
             soc=False,
-            DFT_code='qe')
+            spin_ordering='interlace')
 
     return system
 
@@ -626,7 +632,7 @@ def get_system_Mn3Sn_sym_tb(use_ws=False):
             [-np.sqrt(3), -1, 0],
             [0, 0, 0],
             [0, 0, 0]],
-        DFT_code='vasp',
+        spin_ordering='block',
     )
     return system
 
@@ -773,7 +779,7 @@ def get_system_random_GaAs_load_ws_sym(use_ws=False, sym=False):
             atom_name=['Ga', 'As'],
             positions=np.array([[0, 0, 0], [1 / 4, 1 / 4, 1 / 4]]),
             soc=True,
-            DFT_code='qe',
+            spin_ordering='interlace',
         )
         system.set_structure(
             atom_labels=['Ga', 'As'],

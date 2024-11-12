@@ -15,7 +15,7 @@ The system may come either from :ref:`Wanier functions <sec-wan-fun>`  construct
 Real-space systems
 ======================
 .. autoclass:: wannierberri.system.System_R
-   :members: set_structure, set_symmetry_from_structure, set_R_mat, set_spin, set_spin_pairs, set_spin_from_code
+   :members: set_structure, set_symmetry_from_structure, set_R_mat, set_spin, set_spin_pairs, set_spin_from_projections
    :undoc-members:
    :show-inheritance:
    :member-order: bysource

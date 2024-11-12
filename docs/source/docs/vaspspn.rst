@@ -4,6 +4,8 @@
 vaspspn
 ======================
 
+**Note**: New versions of VASP compute the spn file directly, so this utility is mostly obsolete. see `LWRITE_SPN <https://www.vasp.at/wiki/index.php/LWRITE_SPN>`__ 
+
 To interpolate the spin operator expectation value, the matrix
 :math:`s_{mn}({\bf q})=\langle u_{m{\bf q}}\vert\hat{\sigma}\vert u_{n{\bf q}}\rangle`
 is needed. To facilitate study of spin-dependent properties within `VASP <https://www.vasp.at/>`_

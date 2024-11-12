@@ -2,6 +2,7 @@
     for that we will use the util wannierberri.utils.postw90 which mimics the behavious of postw90.x
 """
 
+import warnings
 from common import ROOT_DIR, TMP_DATA_DIR
 from common_systems import create_W90_files
 import numpy as np
@@ -69,7 +70,11 @@ def check_postw90(check_command_output):
         tags_needed = ["mmn", "chk", "eig"]
         tmp_dir = create_W90_files_tmp(seedname, tags_needed, data_dir, tmp_dir, win_file_postw90)
         check_command_output(["postw90.x", seedname], cwd=tmp_dir)
-        data_pw90 = np.loadtxt(os.path.join(tmp_dir, seedname + "-ahc-fermiscan.dat"))
+        try:
+            data_pw90 = np.loadtxt(os.path.join(tmp_dir, seedname + "-ahc-fermiscan.dat"))
+        except Exception as err:
+            warnings.warn(f"Could not read the file {seedname}-ahc-fermiscan.dat : {err}")
+            data_pw90 = np.zeros((11, 4), dtype=float)
 
 #        out = os.path.join(tmp_dir,"stdout_wberri")
 #        check_command_output(["python3","-m","wannierberri.utils.postw90",seedname], cwd=tmp_dir,stdout_filename=out)

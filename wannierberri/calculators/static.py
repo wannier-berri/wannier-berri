@@ -24,7 +24,7 @@ from ..__utility import alpha_A, beta_A
 class StaticCalculator(Calculator):
 
     def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula=None,
-                 Emin=-np.Inf, Emax=np.Inf, hole_like=False, k_resolved=False, Formula=None, fder=None, **kwargs):
+                 Emin=-np.inf, Emax=np.inf, hole_like=False, k_resolved=False, Formula=None, fder=None, **kwargs):
         super().__init__(**kwargs)
         if kwargs_formula is None:
             kwargs_formula = {}

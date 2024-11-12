@@ -369,7 +369,7 @@ class Wannier90data:
     def selected_bands(self, value):
         self._selected_bands = value
 
-    def apply_window(self, win_min=-np.Inf, win_max=np.Inf, band_start=None, band_end=None):
+    def apply_window(self, win_min=-np.inf, win_max=np.inf, band_start=None, band_end=None):
         """
         Apply the window to the system
         Unlike w90, only bands are removed which are fully out of window (at all k-points)
@@ -522,8 +522,8 @@ class Wannier90data:
 
     # TODO : allow k-dependent window (can it be useful?)
     # def apply_outer_window(self,
-    #                  win_min=-np.Inf,
-    #                  win_max=np.Inf ):
+    #                  win_min=-np.inf,
+    #                  win_max=np.inf ):
     #     raise NotImplementedError("outer window does not work so far")
     #     "Excludes the bands from outside the outer window"
     #

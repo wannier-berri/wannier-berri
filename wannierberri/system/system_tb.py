@@ -83,7 +83,22 @@ class System_tb(System_R):
                 AA_R[:, :, ir, :] = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / self.Ndegen[ir]
             self.wannier_centers_cart = np.diagonal(AA_R[:, :, self.iR0, :], axis1=0, axis2=1).T
             self.set_R_mat('AA', AA_R)
-
+        elif self.use_wcc_phase:
+            self.wannier_centers_cart = np.zeros((3, self.num_wann), dtype=float)
+            for ir in range(self.iR0):
+                f.readline()
+                assert np.all(np.array(f.readline().split(), dtype=int) == self.iRvec[ir])
+                for _ in range(self.num_wann**2):
+                    f.readline()
+            ir = self.iR0
+            f.readline()
+            assert np.all(np.array(f.readline().split(), dtype=int) == self.iRvec[ir])
+            aa = np.array(
+                [[f.readline().split()[2:8] for _ in range(self.num_wann)] for _ in range(self.num_wann)],
+                dtype=float)
+            aa = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / self.Ndegen[ir]
+            self.wannier_centers_cart = np.diagonal(aa, axis1=0, axis2=1).T
+            # print (f"wannier_centers_cart = {self.wannier_centers_cart}")
         f.close()
 
         self.do_at_end_of_init()
