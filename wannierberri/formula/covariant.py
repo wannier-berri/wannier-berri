@@ -915,6 +915,8 @@ class Omegakp(Formula_ln):
                 self.dEinv.nl(ik,inn,out),
                 self.dEinv.nl(ik,inn,out),
                 self.V.ln(ik,inn,out)[:, :, beta_A] )
+        print(self.V.nl(ik,inn,out))
+        print(self.dEinv.nl(ik,inn,out))
         return summ
 
     def ln(self, ik, inn, out):
