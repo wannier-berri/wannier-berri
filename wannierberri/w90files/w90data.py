@@ -15,7 +15,6 @@
 from functools import cached_property
 from copy import copy, deepcopy
 import numpy as np
-from ..point_symmetry import PointGroup
 from ..wannierise import wannierise
 
 from .win import WIN
@@ -119,7 +118,25 @@ class Wannier90data:
             self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
             self.win_index = [np.arange(self.eig.NB)] * self.chk.num_kpts
             self.wannierised = False
+            
         self.set_file(key='chk', val=self.chk)
+
+    def get_spacegroup(self):
+        """
+        Get the spacegroup of the system from the dmn file
+        if the dmn file is not set and cannot be read from the npz file, return None
+
+        Returns
+        -------
+        `~irrep.spacegroup.SpaceGroupBare`
+            the spacegroup of the system
+        """
+        try:
+            dmn = self.get_file('dmn')
+            return dmn.get_spacegroup()
+        except FileNotFoundError:
+            return None
+        
 
     def set_file(self, key, val=None, overwrite=False,
                  **kwargs):
@@ -501,8 +518,6 @@ class Wannier90data:
         dmn_new = DMN(empty=True)
         dmn_new.from_irrep(bandstructure)
         self.set_file("dmn", dmn_new, overwrite=overwrite)  
-        self.spacegroup = bandstructure.spacegroup
-        self.pointgroup = PointGroup(spacegroup=self.spacegroup)
 
     def set_D_wann_from_projections(self, projections):
         """

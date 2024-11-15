@@ -47,7 +47,8 @@ class AMN(W90_file):
     def NW(self):
         return self.data.shape[2]
 
-    def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(), **kwargs):
+    def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(), 
+                 **kwargs):
         self.npz_tags = ["data"]
         super().__init__(seedname, ext="amn", npar=npar, **kwargs)
 
@@ -77,7 +78,22 @@ class AMN(W90_file):
         print(f"shape of data {data.shape} , old {self.data.shape}")
         return self.__class__(data=data)
 
+    def spin_order_block_to_interlace(self):
+        """
+        If you are using an old VASP version, you should change the spin_ordering from block to interlace
+        """
+        data = np.zeros((self.NK, self.NB, self.NW), dtype=complex)
+        data[:, :, 0::2] = self.data[:, :, :self.NW // 2]
+        data[:, :, 1::2] = self.data[:, :, self.NW // 2:]
+        self.data = data
 
+    def spin_order_interlace_to_block(self):
+        """ the reverse of spin_order_block_to_interlace"""
+        data = np.zeros((self.NK, self.NB, self.NW), dtype=complex)
+        data[:, :, :self.NW // 2] = self.data[:, :, 0::2]
+        data[:, :, self.NW // 2:] = self.data[:, :, 1::2]
+        self.data = data
+    
     # def write(self, seedname, comment="written by WannierBerri"):
     #     comment = comment.strip()
     #     f_amn_out = open(seedname + ".amn", "w")

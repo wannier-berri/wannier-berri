@@ -1,5 +1,8 @@
 """Common constants shared by all tests"""
 import warnings
+import sys
+print (f"sys.version: {sys.version}")  
+print (f"sys.path: {sys.path}")  
 
 try:
     import pyfftw

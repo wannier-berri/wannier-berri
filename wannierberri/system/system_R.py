@@ -225,6 +225,29 @@ class System_R(System):
     @property
     def Ham_R(self):
         return self.get_R_mat('Ham')
+    
+    def symmetrize2(self, dmn):
+        if not self.use_wcc_phase:
+            raise NotImplementedError("Symmetrization is implemented only for convention I")
+
+
+        from .sym_wann_2 import SymWann
+        symmetrize_wann = SymWann(
+            dmn=dmn,
+            iRvec=self.iRvec,
+            wannier_centers_cart=self.wannier_centers_cart,
+            use_wcc_phase=self.use_wcc_phase,
+            silent=self.silent,
+        )
+
+        
+        self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
+        logfile = self.logfile
+
+        logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
+        logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
+        self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
+
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, spin_ordering='qe', store_symm_wann=False,
                    rotations=None, translations=None):
@@ -436,8 +459,22 @@ class System_R(System):
             raise ValueError(f"unknown spin ordering {spin_ordering}. expected 'block' or 'interlace'")
         self.set_spin_pairs(pairs)
 
+    def set_spacegroup(self, spacegroup):
+        """
+        Set the space group of the :class:`System`, which will be used for symmetrization
+        R-space and k-space 
+        Also sets the pointgroup
+
+        Parameters
+        ----------
+        spacegroup : :class:`irrep.spacegroup.SpaceGroup`
+            The space group of the system. The point group will be evaluated by the space group.
+        """
+        self.spacegroup = spacegroup
+        self.set_pointgroup(spacegroup=spacegroup)
+
     def do_at_end_of_init(self):
-        self.set_symmetry()
+        self.set_pointgroup()
         self.check_periodic()
         logfile = self.logfile
         logfile.write(f"Real-space lattice:\n {self.real_lattice}\n")

@@ -13,6 +13,7 @@
 
 import os
 import sys
+import warnings
 import numpy as np
 from functools import cached_property
 from ..point_symmetry import PointGroup
@@ -133,8 +134,18 @@ class System:
         """
         _, recip = real_recip_lattice(real_lattice=self.real_lattice)
         return recip
+    
+    def set_symmetry(self, symmetry_gen=(), pointgroup=None, spacegroup=None):
+        """
+        a wrapper for the :meth:`set_pointgroup` method, to keep backward compatibility. 
+        Will be removed in the future.
+        """
+        # deprecation warning
+        warnings.warn("The method `set_symmetry` is deprecated. Use `set_pointgroup` instead", DeprecationWarning)
+        self.set_pointgroup(symmetry_gen=symmetry_gen, pointgroup=pointgroup, spacegroup=spacegroup)
 
-    def set_symmetry(self, symmetry_gen=(), spacegroup=None, pointgroup=None):
+
+    def set_pointgroup(self, symmetry_gen=(), pointgroup=None, spacegroup=None):
         """
         Set the symmetry group of the :class:`System`, which will be used for symmetrization
         in k-space and for reducing the number of k-points in the BZ.

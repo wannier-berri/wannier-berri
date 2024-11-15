@@ -304,14 +304,22 @@ class Kpoint_and_neighbours_ray(Kpoint_and_neighbours):
 
 class Wannierizer:
 
-    def __init__(self, parallel = True):
+    def __init__(self, parallel = True, spacegroup=None):
         self.kpoints = []
         if parallel and not ray.is_initialized():
             warnings.warn("Ray is not initialized, running in serial mode")
             parallel = False
         self.parallel = parallel
+        self.spacegroup = spacegroup
 
     def add_kpoint(self, **kwargs):
+        """
+        add a k-point to the list of k-points
+
+        Parameters
+        ----------
+        same as :class:`Kpoint_and_neighbours`
+        """
         if self.parallel:
             kpoint = Kpoint_and_neighbours_ray.remote(**kwargs)	
         else:
@@ -331,5 +339,13 @@ class Wannierizer:
         else:
             return [kpoint.update(U, **kwargs) for kpoint,U in zip(self.kpoints, U_neigh)]
         # do we need copy in both/any of the cases?
-    
+
+    def get_wcc(self):
+        if self.parallel:
+            wcc_k =  ray.get([kpoint.get_centers.remote() for kpoint in self.kpoints])
+        else:
+            wcc_k = [kpoint.get_centers() for kpoint in self.kpoints]
+        wcc = sum(wcc_k)
+        return wcc
+
         

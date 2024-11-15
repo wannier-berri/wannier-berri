@@ -160,10 +160,7 @@ class System_w90(System_R):
         w90data.check_wannierised(msg="creation of System_w90")
         chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
-        if hasattr(w90data, 'pointgroup'):
-            self.set_symmetry(pointgroup=w90data.pointgroup)
-        elif hasattr(w90data, 'spacegroup'):
-            self.set_symmetry(spacegroup=w90data.spacegroup)
+        self.set_pointgroup(spacegroup=w90data.get_spacegroup())
         
         
         mp_grid = chk.mp_grid

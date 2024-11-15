@@ -26,7 +26,8 @@ def wannierise(w90data,
                kwargs_sitesym={},
                init="amn",
                num_wann=None,
-               parallel=True
+               parallel=True,
+               spacegroup=None,
                ):
     r"""
     Performs disentanglement and maximal localization of the bands recorded in w90data.
@@ -145,7 +146,7 @@ def wannierise(w90data,
     bk_cart = w90data.mmn.bk_cart_unique
     mmn_data_ordered = np.array([data[order] for data, order in zip(w90data.mmn.data, w90data.mmn.ib_unique_map_inverse)])
     t1 = time()
-    wannierizer = Wannierizer(parallel=parallel)
+    wannierizer = Wannierizer(parallel=parallel, spacegroup=spacegroup)
     for ik, kpt in enumerate(kptirr):
         wannierizer.add_kpoint(Mmn=mmn_data_ordered[kpt],
                             frozen=frozen[ik], 
