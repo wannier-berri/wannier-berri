@@ -846,6 +846,27 @@ class DMN(W90_file):
     def rot_orb_dagger_list(self):
         return [rot_orb.swapaxes(1, 2).conj()
             for rot_orb in self.rot_orb_list]
+    
+    def symmetrize_WCC(self, wannier_centers_cart):
+        WCC_in = wannier_centers_cart.copy()
+        WCC_out = np.zeros((self.num_wann, 3), dtype=complex)
+        for isym, symop in enumerate(self.spacegroup.symmetries):
+            for block, (ws,_) in enumerate(self.D_wann_block_indices):
+                norb = self.rot_orb_list[block][0].shape[0]
+                T = self.T_list[block][:,isym]
+                num_points = T.shape[0]
+                atom_a_map = self.atommap_list[block][:,isym]
+                for atom_a in range(num_points):
+                    start_a = ws + atom_a * norb
+                    atom_b = atom_a_map[atom_a]
+                    start_b = ws + atom_b * norb
+                    v_tmp = (T[atom_b] - symop.translation).dot(self.spacegroup.lattice)
+                    XX_L  = WCC_in[start_a:start_a+norb, :] + v_tmp
+                    XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=((1,), (0,)))
+                    WCC_out[start_b:start_b+norb] += np.einsum("ij,ja,ji->ia", self.rot_orb_dagger_list[block][isym], XX_L, self.rot_orb_list[block][isym])
+        return WCC_out.real/self.spacegroup.size
+
+
     #
     # def check_mmn(self, mmn, f1, f2):
     #     """

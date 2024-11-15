@@ -211,7 +211,7 @@ class SymWann:
             cutoff_dict=None):
         """
         Symmetrize wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
-        and also WCC, and find the new R vectors
+        and find the new R vectors
 
         Returns
         --------
@@ -310,39 +310,12 @@ class SymWann:
                     
         logfile.write('Symmetrizing Finished\n')
 
-        print ("wcc before symmetrization = ", self.wannier_centers_cart)
-        wcc = self.average_WCC()
+        print ("wcc before symmetrization = \n", self.wannier_centers_cart)
+        wcc = self.dmn.symmetrize_WCC(self.wannier_centers_cart)
         logfile.write('Symmetrizing WCC Finished\n')
-        print ("wcc after symmetrization = ", wcc)
+        print ("wcc after symmetrization = \n", wcc)
         return return_dic, np.array(iRvec_new), wcc
 
-
-    def average_WCC(self):
-       
-        WCC_in = self.wannier_centers_cart.copy()
-        WCC_out = np.zeros((self.num_wann, 3), dtype=complex)
-        for isym, symop in enumerate(self.spacegroup.symmetries):
-            for block in range(self.num_blocks):
-                self.logfile.write(f"Symmetrizing WCC for block {block}\n")
-                ws,we = self.dmn.D_wann_block_indices[block]
-                norb = self.num_orb_list[block]
-                T = self.dmn.T_list[block][:,isym]
-                atom_a_map = self.dmn.atommap_list[block][:,isym]
-                for atom_a in range(self.num_points_list[block]):
-                    start_a = ws + atom_a * self.num_orb_list[block]
-                    end_a = ws + norb 
-                    atom_b = atom_a_map[atom_a]
-                    start_b = ws + atom_b * self.num_orb_list[block]
-                    end_b = ws + norb
-                    v_tmp = (T[atom_b] - symop.translation).dot(self.lattice)
-                    XX_L  = WCC_in[start_a:end_a, :] + v_tmp
-                    self.logfile.write(f"XX_L.shape = {XX_L.shape}\n")
-                    self.logfile.write(f"a = {atom_a}, b = {atom_b}\n")
-                    self.logfile.write(f"start_a = {start_a}, end_a = {end_a}, start_b = {start_b}, end_b = {end_b}\n")
-                    WCC_out[start_b:end_b, :] += self._rotate_XX_L(
-                        XX_L, 'AA', isym,  block1=block, diagonal=True)
-        WCC_out /= self.spacegroup.size
-        return WCC_out.real
 
     def average_XX_block(self, iRab_new, matrix_dict_in, iRvec_new, mode, block1, block2):
         """
@@ -406,8 +379,7 @@ class SymWann:
         return matrix_dict_list_res, iRab_all
 
 
-    def _rotate_XX_L(self, XX_L: np.ndarray, X: str,
-                     isym, block1, block2=None, diagonal=False):
+    def _rotate_XX_L(self, XX_L: np.ndarray, X: str, isym, block1, block2):
         """
         H_ab_sym = P_dagger_a dot H_ab dot P_b
         H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
@@ -417,27 +389,17 @@ class SymWann:
         XX_L : np.ndarray
             Matrix to be rotated
         X : str
-            Matrix type, e.g. "Ham", "AA", "BB", "SS", "CC", "OO", "GG", "SH", "SA", "SHA", "SR", "SHR", "WCC"
+            Matrix type, e.g. "Ham", "AA", "BB", "SS", "CC", "OO", "GG", "SH", "SA", "SHA", "SR", "SHR"
         isym : int
             Index of symmetry operation
         block1, block2 : int
             Block indices
-        diagonal : bool
-            If True, it is assumed to be not a matrix, but a vector in WF indices
 
         Returns
         -------
         np.ndarray
             Rotated matrix
         """
-        if diagonal:
-            if block2 is None:
-                assert block1 is not None
-                block2 = block1
-            else:
-                assert block2 is not None
-        else:
-            assert block2 is not None
         
         n_cart = num_cart_dim(X)  # number of cartesian indices
         symop = self.spacegroup.symmetries[isym]
@@ -447,37 +409,35 @@ class SymWann:
             XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=((-n_cart,), (0,)))
         if symop.inversion:
             XX_L *= self.parity_I[X]
-        result = _rotate_matrix(XX_L, self.dmn.rot_orb_dagger_list[block1][isym], self.dmn.rot_orb_list[block2][isym], diagonal = diagonal)
+        result = _rotate_matrix(XX_L, self.dmn.rot_orb_dagger_list[block1][isym], self.dmn.rot_orb_list[block2][isym])
         if symop.time_reversal: 
             result = result.conj() * self.parity_TR[X]
         return result
 
     
+def _rotate_matrix(X, L, R):
+    """
+    Rotate a matrix X[m,n,iR,...] with L[m,n] and R[m,n] matrices
+    comptes L.dot(X).dot(R) where X can have additional dimensions in the end, which are not touched
+    assumed to be a faster version of np.einsum("ij,jk...,kl->il...", L, X, R)
+    """
 
-def _rotate_matrix(X, L, R, diagonal=False):
-    if diagonal:
-        return np.einsum("ij,j...,ji->i...", L, X, R)
-    else:
-        _ = np.tensordot(L, X, axes=((1,), (0,)))
-        _ = np.tensordot(R, _, axes=((0,), (1,)))
-        return _.swapaxes(0, 1)
+    _ = np.tensordot(L, X, axes=((1,), (0,)))
+    _ = np.tensordot(R, _, axes=((0,), (1,)))
+    return _.swapaxes(0, 1)
     
 def test_rotate_matrix():
     for num_wann in 1,2,5,7:
         for num_cart in 0,1,2,3:
-            for diagonal in False,True:
-                shape_LR = (num_wann, num_wann) 
-                shape_X = (num_wann,) * (1 if diagonal else 2) + (3,) * num_cart
-                L = np.random.rand(*shape_LR) + 1j * np.random.rand(*shape_LR)
-                R = np.random.rand(*shape_LR) + 1j * np.random.rand(*shape_LR)
-                X = np.random.rand(*shape_X) + 1j * np.random.rand(*shape_X)
-                Y = _rotate_matrix(X, L, R, diagonal=diagonal)
-                assert Y.shape == X.shape
-                if diagonal:
-                    Z = np.einsum("ij,j...,ji->i...", L, X, R)
-                else:
-                    Z = np.einsum("ij,jk...,kl->il...", L, X, R)
-                assert np.allclose(Y, Z), f"for num_wann={num_wann}, num_cart={num_cart}, diagonal={diagonal} the difference is {np.max(np.abs(Y-Z))} Y.shape={Y.shape} X.shape = {X.shape}\nX={X}\nY={Y}\nZ={Z}"
+            shape_LR = (num_wann, num_wann) 
+            shape_X = (num_wann,) * 2 + (3,) * num_cart
+            L = np.random.rand(*shape_LR) + 1j * np.random.rand(*shape_LR)
+            R = np.random.rand(*shape_LR) + 1j * np.random.rand(*shape_LR)
+            X = np.random.rand(*shape_X) + 1j * np.random.rand(*shape_X)
+            Y = _rotate_matrix(X, L, R)
+            assert Y.shape == X.shape
+            Z = np.einsum("ij,jk...,kl->il...", L, X, R)
+            assert np.allclose(Y, Z), f"for num_wann={num_wann}, num_cart={num_cart}, the difference is {np.max(np.abs(Y-Z))} Y.shape={Y.shape} X.shape = {X.shape}\nX={X}\nY={Y}\nZ={Z}"
 
 
 
