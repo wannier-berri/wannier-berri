@@ -869,6 +869,58 @@ class SpinOmega(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+class Inj_k(Formula_ln):
+    
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        self.A_H = data_K.A_H
+        V_H = data_K.Xbar('Ham', 1)  # (k, m, n, a)
+        V_H_diag = np.diagonal(V_H, axis1=1, axis2=2).transpose(0, 2, 1)  # (k, m, a)
+        self.delta_V = V_H_diag[:, :, None, :] - V_H_diag[:, None, :, :]  # (k, m, n, a)
+        self.ndim = 3
+        self.transformTR = transform_ident
+        self.transformInv = transform_ident
+
+    def nn(self, ik, inn, out):
+        A_H_n = self.A_H[ik][inn]
+        A_H_l = self.A_H[ik][out] 
+        A_H_nl = A_H_n[:,out] 
+        A_H_ln = A_H_l[:,inn] 
+        summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
+        delta_V = self.delta_V[ik,inn,:,:]
+        summ += np.einsum('mla,mlb,lnc->mnabc',delta_V[:,out,:], A_H_nl, A_H_ln).imag
+        #summ += np.einsum('mla,mlb,lnc->mnabc', delta_V[:,out,:], self.A_H.nl(ik, inn, out), self.A_H.ln(ik, inn, out))
+        return summ 
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+class RR(Formula_ln):
+    
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        self.A_H = data_K.A_H
+        V_H = data_K.Xbar('Ham', 1)  # (k, m, n, a)
+        V_H_diag = np.diagonal(V_H, axis1=1, axis2=2).transpose(0, 2, 1)  # (k, m, a)
+        self.delta_V = V_H_diag[:, :, None, :] - V_H_diag[:, None, :, :]  # (k, m, n, a)
+        self.ndim = 2
+        self.transformTR = transform_ident
+        self.transformInv = transform_ident
+
+    def nn(self, ik, inn, out):
+        summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
+        delta_V = self.delta_V[ik,inn,:,:]
+        A_H_n = self.A_H[ik][inn]
+        A_H_l = self.A_H[ik][out] 
+        A_H_nl = A_H_n[:,out] 
+        A_H_ln = A_H_l[:,inn] 
+        summ += np.einsum('mlb,lnc->mnbc', A_H_nl, A_H_ln)
+        return summ 
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
 
 ####################################
 #                                  #

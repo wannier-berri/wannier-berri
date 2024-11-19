@@ -10,6 +10,7 @@ from copy import copy
 from ..symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
 from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom
 from .. import __factors as factors
+import pickle
 
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom
@@ -76,7 +77,7 @@ class DynamicCalculator(Calculator, abc.ABC):
             len(self.omega), len(self.Efermi) * 3 ** formula.ndim)  # we will first get it in this shape, then transpose
 
         restot = np.zeros(restot_shape_tmp, self.dtype)
-
+        res_k = []
         for ik in range(data_K.nk):
             degen_groups = data_K.get_bands_in_range_groups_ik(
                 ik, -np.Inf, np.Inf, degen_thresh=self.degen_thresh, degen_Kramers=self.degen_Kramers)
@@ -94,8 +95,13 @@ class DynamicCalculator(Calculator, abc.ABC):
                 [formula.trace_ln(ik, np.arange(*pair[0]), np.arange(*pair[1])) for pair in degen_group_pairs])
             factor_Efermi = np.array([self.factor_Efermi(pair[2], pair[3]) for pair in degen_group_pairs])
             factor_omega = np.array([self.factor_omega(pair[2], pair[3]) for pair in degen_group_pairs]).T
-            restot += factor_omega @ (factor_Efermi[:, :, None] *
+            tmp = factor_omega @ (factor_Efermi[:, :, None] *
                                       matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
+            print('nk==========',data_K.nk)
+            res_k.append(tmp)
+            restot += tmp
+        with open('inj_k.pickle','wb') as f:
+            pickle.dump(res_k,f)
         restot = restot.reshape(restot_shape).swapaxes(0, 1)  # swap the axes to get EF,omega,a,b,...
         restot *= self.constant_factor / (data_K.nk * data_K.cell_volume)
         try:

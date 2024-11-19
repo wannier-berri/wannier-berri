@@ -206,3 +206,13 @@ class SpinBerry(Tabulator):
 
     def __init__(self, **kwargs):
         super().__init__(frml.SpinOmega, **kwargs)
+
+class Inj_k(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.Inj_k, **kwargs)
+
+class RR(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.RR, **kwargs)
