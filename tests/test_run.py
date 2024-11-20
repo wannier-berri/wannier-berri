@@ -166,6 +166,7 @@ calculators_Chiral = {
     'opt_conductivity': wberri.calculators.dynamic.OpticalConductivity(**parameters_Chiral_optical),
     'opt_shiftcurrent': wberri.calculators.dynamic.ShiftCurrent(**parameters_Chiral_shiftcurrent,
                                                                 **parameters_Chiral_optical),
+    'jdos': wberri.calculators.dynamic.JDOS(**parameters_Chiral_optical),
 }
 
 calculators_SDCT = {
