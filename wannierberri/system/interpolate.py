@@ -18,9 +18,11 @@ class SystemInterpolator:
         The first system (corresponds to alpha = 0)
     system1 : System_R
         The second system (corresponds to alpha = 1) 
+    use_pointgroup : int
+        If 0, the pointgroup of system0 will be used, if 1, the pointgroup of the system1 will be used. If -1, no pointgroup will be used. 
     """
 
-    def __init__(self, system0, system1):
+    def __init__(self, system0, system1, use_pointgroup=1):
         self.system0 = copy.deepcopy(system0)
         self.system1 = copy.deepcopy(system1)
         iRvec0_list = [tuple(ir) for ir in self.system0.iRvec]
@@ -29,7 +31,14 @@ class SystemInterpolator:
         iRvec_index = {ir: i for i, ir in enumerate(iRvec_new_list)}
         iRvec_map_0 = [iRvec_index[ir] for ir in iRvec0_list]
         iRvec_map_1 = [iRvec_index[ir] for ir in iRvec1_list]
-        
+        if use_pointgroup == 1:
+            self.pointgroup = self.system1.pointgroup
+        elif use_pointgroup == 0:
+            self.pointgroup = self.system0.pointgroup
+        elif use_pointgroup <0:
+            self.pointgroup = None
+        else:
+            raise ValueError("use_pointgroup should be 0, 1 or -1") 
         iRvec_array = np.array(iRvec_new_list)
         
         matrix_keys0 = set(self.system0._XX_R.keys())
@@ -57,7 +66,7 @@ class SystemInterpolator:
         new_system.wannier_centers_cart = (1-alpha)*self.system0.wannier_centers_cart + alpha*self.system1.wannier_centers_cart
         for key in self.system0._XX_R:
             new_system._XX_R[key] = (1-alpha)*self.system0._XX_R[key] + alpha*self.system1._XX_R[key]
-
+        new_system.set_pointgroup(pointgroup=self.pointgroup)
         return new_system
         
 

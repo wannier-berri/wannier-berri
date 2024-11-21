@@ -11,7 +11,7 @@ import numpy as np
 system=wberri.System_tb(tb_file='Fe_tb.dat',getAA=True)
 
 generators=['Inversion','C4z','TimeReversal*C2x']
-system.set_symmetry(generators)
+system.set_pointgroup(generators)
 
 grid=wberri.Grid(system,length=100)
 

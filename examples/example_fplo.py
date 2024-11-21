@@ -30,7 +30,7 @@ Efermi=np.linspace(-0.5,0.5,1001)
 system=wberri.System_fplo('../tests/data/Fe_FPLO/+hamdata',berry=False,spin=False)
 
 generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
-system.set_symmetry(generators)
+system.set_pointgroup(generators)
 grid=wberri.Grid(system,length=300,length_FFT=50)
 parallel=wberri.parallel.Parallel(num_cpus=num_proc)
 

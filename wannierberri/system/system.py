@@ -133,8 +133,11 @@ class System:
         """
         _, recip = real_recip_lattice(real_lattice=self.real_lattice)
         return recip
+    
+    def set_symmetry(self, *args, **kwargs):
+        return self.set_pointgroup(*args, **kwargs)
 
-    def set_symmetry(self, symmetry_gen=(), spacegroup=None, pointgroup=None):
+    def set_pointgroup(self, symmetry_gen=(), spacegroup=None, pointgroup=None):
         """
         Set the symmetry group of the :class:`System`, which will be used for symmetrization
         in k-space and for reducing the number of k-points in the BZ.

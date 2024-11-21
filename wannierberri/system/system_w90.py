@@ -161,9 +161,9 @@ class System_w90(System_R):
         chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         if hasattr(w90data, 'pointgroup'):
-            self.set_symmetry(pointgroup=w90data.pointgroup)
+            self.set_pointgroup(pointgroup=w90data.pointgroup)
         elif hasattr(w90data, 'spacegroup'):
-            self.set_symmetry(spacegroup=w90data.spacegroup)
+            self.set_pointgroup(spacegroup=w90data.spacegroup)
         
         
         mp_grid = chk.mp_grid

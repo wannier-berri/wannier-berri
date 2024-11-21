@@ -437,7 +437,7 @@ class System_R(System):
         self.set_spin_pairs(pairs)
 
     def do_at_end_of_init(self):
-        self.set_symmetry()
+        self.set_pointgroup()
         self.check_periodic()
         logfile = self.logfile
         logfile.write(f"Real-space lattice:\n {self.real_lattice}\n")
