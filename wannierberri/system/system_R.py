@@ -247,6 +247,7 @@ class System_R(System):
         logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
         logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
         self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
+        self.set_symmetry(spacegroup = dmn.spacegroup)
 
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, spin_ordering='qe', store_symm_wann=False,

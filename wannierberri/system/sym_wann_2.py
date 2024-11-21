@@ -99,18 +99,17 @@ class SymWann:
                               'SS', 'SH', 'SA', 'SHA']
         
 
-        # This is confusing, actually the I-odd vectors have "+1" here, because the minus is already in the rotation matrix
-        # but Ham is a scalar, so +1
+        # Now the I-odd vectors have "-1" here (in contrast to the old confusing notation)
         # TODO: change it
         self.parity_I = {
             'Ham': 1,
-            'AA': 1,
-            'BB': 1,
-            'CC': -1,
-            'SS': -1,
-            'OO': -1,
+            'AA': -1,
+            'BB': -1,
+            'CC': 1,
+            'SS': 1,
+            'OO': 1,
             'GG': 1,
-            'SH': -1,
+            'SH': 1,
             'SA': -1,
             'SHA': -1,
             'SR': -1,
@@ -192,7 +191,6 @@ class SymWann:
                         for iR in range(self.nRvec):
                             if irreducible[iR, a, b]:
                                 iR1 = self.index_R(atom_R_map[iR, a, b])
-                                print (f"iR1 = {iR1}")
                                 if iR1 is not None and (a1, b1, iR1) > (a, b, iR):
                                     irreducible[iR1, a1, b1] = False
             logfile.write(f"irreducible = {irreducible}\n")
@@ -408,7 +406,7 @@ class SymWann:
             # n_cart times puts dimensions on the right place
             XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=((-n_cart,), (0,)))
         if symop.inversion:
-            XX_L *= self.parity_I[X]
+            XX_L *= self.parity_I[X] * (-1)**n_cart
         result = _rotate_matrix(XX_L, self.dmn.rot_orb_dagger_list[block1][isym], self.dmn.rot_orb_list[block2][isym])
         if symop.time_reversal: 
             result = result.conj() * self.parity_TR[X]
@@ -441,7 +439,6 @@ def test_rotate_matrix():
 
 
 
-
 def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
     """transforms a matrix X[m,n,iR,...] into a dictionary like
         {(a,b): {iR: np.array(num_w_a.num_w_b,...)}}
@@ -462,15 +459,4 @@ def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
             if len(result_ab) > 0:
                 result[(a, b)] = result_ab
     return result
-
-
-def _dict_to_matrix(dic, np1, norb1, np2, norb2, nRvec, ndimv):
-    num_wann = H_select.shape[2]
-    mat = np.zeros((num_wann, num_wann, nRvec) + (3,) * ndimv, dtype=complex)
-    for (a, b), irX in dic.items():
-        for iR, X in irX.items():
-            mat[H_select[a, b], iR] = X.reshape((-1,) + X.shape[2:])
-    return mat
-
-
 
