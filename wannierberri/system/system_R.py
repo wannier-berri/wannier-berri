@@ -248,9 +248,11 @@ class System_R(System):
         logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
         self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
         self.set_symmetry(spacegroup = dmn.spacegroup)
+        self.clear_cached_R()
+        self.clear_cached_wcc()
 
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, spin_ordering='qe', store_symm_wann=False,
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, spin_ordering='interlace', store_symm_wann=False,
                    rotations=None, translations=None):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
@@ -588,7 +590,7 @@ class System_R(System):
             return self.cRvec[None, None, :, :]
 
     def clear_cached_R(self):
-        clear_cached(self, ['cRvec', 'cRvec_p_wcc', 'reverseR'])
+        clear_cached(self, ['cRvec', 'cRvec_p_wcc', 'reverseR', 'index_R'])
 
     @cached_property
     def diff_wcc_cart(self):
@@ -668,6 +670,10 @@ class System_R(System):
     @property
     def iR0(self):
         return self.iRvec.tolist().index([0, 0, 0])
+    
+    @cached_property
+    def index_R(self):
+        return {tuple(R): i for i, R in enumerate(self.iRvec)}
 
     def iR(self, R):
         R = np.array(np.round(R), dtype=int).tolist()
