@@ -2,12 +2,11 @@
 
 import os
 import tarfile
-
 import pytest
 import numpy as np
 import pickle
 import wannierberri as wberri
-import wannierberri.point_symmetry as SYM
+from wannierberri import point_symmetry as SYM
 from pathlib import Path
 from wannierberri import models as wb_models
 
