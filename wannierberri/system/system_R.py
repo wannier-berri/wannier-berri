@@ -222,6 +222,34 @@ class System_R(System):
             else:
                 self._XX_R[key] = value
 
+    def spin_block2interlace(self, backward=False):
+        """
+        Convert the spin ordering from block (like in the amn file old versions of VASP) to interlace (like in the amn file of QE and new versions of VASP)
+        """
+        nw2 = self.num_wann // 2
+        mapping = np.zeros(self.num_wann, dtype=int)
+            
+        if backward:
+            mapping[:nw2] = np.arange(nw2)*2
+            mapping[nw2:] = np.arange(nw2)*2 + 1
+        else:
+            mapping[::2] = np.arange(nw2)
+            mapping[1::2] = np.arange(nw2) + nw2
+
+        for key, val in self._XX_R.items():
+            self._XX_R[key] = val[:, mapping][mapping, :]
+        self.wannier_centers_cart = self.wannier_centers_cart[mapping]
+        self.clear_cached_R()
+        self.clear_cached_wcc()
+
+
+    def spin_interlace2block(self, backward=False):
+        """
+        Convert the spin ordering from interlace (like in the amn file of QE and new versions of VASP) to block (like in the amn file old versions of VASP)
+        """
+        self.spin_block2interlace(backward=not backward)
+
+
     @property
     def Ham_R(self):
         return self.get_R_mat('Ham')

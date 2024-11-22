@@ -323,18 +323,26 @@ def system_GaAs_W90_wccJM(create_files_GaAs_W90):
     return system
 
 
-def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=True):
+def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=True, 
+                       sym_wann_method = "old", reorder_spin=False):
     """Create system for GaAs using sym_tb.dat data"""
     seedname = create_files_tb(dir="GaAs_Wannier90", file=f"GaAs{'_sym' if symmetrize else ''}_tb.dat")
     system = wberri.system.System_tb(seedname, berry=berry, use_ws=use_ws, use_wcc_phase=use_wcc_phase)
+    if not reorder_spin and sym_wann_method == "new":
+        raise ValueError("sum_wann_method='new' requires reorder_spin=True (because the original ordering is block, but new method requires interlace)")
+    if reorder_spin:
+        system.spin_block2interlace()
     if symmetrize:
         system.symmetrize(
             positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
             atom_name=['Ga', 'As'],
             proj=['Ga:sp3', 'As:sp3'],
             soc=True,
-            spin_ordering='block',
+            spin_ordering='interlace' if reorder_spin else 'block',
+            method = sym_wann_method
         )
+    if reorder_spin:
+        system.spin_interlace2block()
     if use_ws:
         system.do_ws_dist(mp_grid=(2, 2, 2))
     system.set_pointgroup(symmetries_GaAs)
@@ -351,6 +359,16 @@ def system_GaAs_tb():
 def system_GaAs_sym_tb_wcc():
     """Create system for GaAs using sym_tb.dat data"""
     return get_system_GaAs_tb(use_ws=False, symmetrize=True)
+
+@pytest.fixture(scope="session")
+def system_GaAs_sym_tb_wcc_reorder():
+    """Create system for GaAs using sym_tb.dat data"""
+    return get_system_GaAs_tb(use_ws=False, symmetrize=True, reorder_spin=True)
+
+@pytest.fixture(scope="session")
+def system_GaAs_sym_tb_wcc_reorder_new():
+    """Create system for GaAs using sym_tb.dat data"""
+    return get_system_GaAs_tb(use_ws=False, symmetrize=True, sym_wann_method="new", reorder_spin=True)
 
 
 @pytest.fixture(scope="session")

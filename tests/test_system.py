@@ -231,7 +231,23 @@ def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb_wcc):
         system_GaAs_sym_tb_wcc, "GaAs_sym_tb_wcc",
         matrices=['Ham', 'AA'],
         sort_iR=True,
-        suffix="new"
+        suffix="old"
+    )
+
+def test_system_GaAs_sym_tb_reorder(check_system, system_GaAs_sym_tb_wcc_reorder):
+    check_system(
+        system_GaAs_sym_tb_wcc_reorder, "GaAs_sym_tb_wcc",
+        matrices=['Ham', 'AA'],
+        sort_iR=True,
+        suffix="reorder"
+    )
+
+def test_system_GaAs_sym_tb_reorder_new(check_system, system_GaAs_sym_tb_wcc_reorder_new):
+    check_system(
+        system_GaAs_sym_tb_wcc_reorder_new, "GaAs_sym_tb_wcc",
+        matrices=['Ham', 'AA'],
+        sort_iR=True,
+        suffix="reorder_new"
     )
 
 

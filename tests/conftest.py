@@ -31,6 +31,8 @@ from common_systems import (
     system_GaAs_W90_wccJM,
     system_GaAs_tb,
     system_GaAs_sym_tb_wcc,
+    system_GaAs_sym_tb_wcc_reorder,
+    system_GaAs_sym_tb_wcc_reorder_new,
     system_GaAs_tb_wcc,
     system_GaAs_tb_wcc_ws,
     system_GaAs_tb_wcc_ws_noAA,
