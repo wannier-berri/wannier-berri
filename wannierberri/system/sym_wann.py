@@ -1,3 +1,6 @@
+# Thisa file contains the original implementation by Xiaoxiong Liu
+# This is to be eventually replaced by a newer implementation sym_wann_2.py
+
 import os
 import sys
 import warnings

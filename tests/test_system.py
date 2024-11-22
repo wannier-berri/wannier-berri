@@ -168,6 +168,13 @@ def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90_wcc):
         sort_iR=True
     )
 
+def test_system_Fe_sym_W90_new(check_system, system_Fe_sym_W90_wcc_new):
+    check_system(
+        system_Fe_sym_W90_wcc_new, "Fe_sym_W90_wcc",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
+        sort_iR=True
+    )
+
 
 def test_system_Fe_W90_proj_set_spin(check_system, system_Fe_W90_proj_set_spin):
     check_system(

@@ -230,7 +230,6 @@ class System_R(System):
         if not self.use_wcc_phase:
             raise NotImplementedError("Symmetrization is implemented only for convention I")
 
-
         from .sym_wann_2 import SymWann
         symmetrize_wann = SymWann(
             dmn=dmn,
@@ -239,7 +238,6 @@ class System_R(System):
             use_wcc_phase=self.use_wcc_phase,
             silent=self.silent,
         )
-
         
         self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
         logfile = self.logfile
@@ -253,6 +251,7 @@ class System_R(System):
 
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, spin_ordering='interlace', store_symm_wann=False,
+                   method = "old",
                    rotations=None, translations=None):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
@@ -304,6 +303,26 @@ class System_R(System):
             rotations and translations should be either given together or not given at all. Make sense to preserve consistensy in the order
             of the symmetry operations, when store_symm_wann is set to True.
         """
+        if method == "new":
+            assert spin_ordering == "interlace", "Symmetrization method 'new' is implemented only for spin_ordering='interlace'"
+            from irrep.spacegroup import SpaceGroup
+            from ..w90files.dmn import DMN
+            from ..wannierise.projections import Projection
+
+            index = {key:i for i,key in enumerate(set(atom_name))}
+            atom_num = np.array([index[key] for key in atom_name])
+
+            spacegroup = SpaceGroup( cell = ( self.real_lattice, positions, atom_num ) , magmom = magmom , include_TR=True)
+            dmn = DMN(empty=True)
+            proj1 = Projection( position_num=np.array([0,0,0]),orbital = "sp3d2" , spacegroup=spacegroup)
+            proj2 = Projection( position_num=np.array([0,0,0]),orbital = "t2g" , spacegroup=spacegroup)
+            dmn.set_spacegroup(spacegroup)
+            dmn.set_D_wann_from_projections( projections_obj=[proj1,proj2])
+            self.symmetrize2(dmn)
+            return dmn
+        else:
+            assert method == "old", f"unknown symmetrization method {method}. expected 'old' or 'new'"
+
 
         if not self.use_wcc_phase:
             raise NotImplementedError("Symmetrization is implemented only for convention I")

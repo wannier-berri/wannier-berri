@@ -71,11 +71,9 @@ class SymWann:
             use_wcc_phase=True,
             silent=False,
     ):
-
+        
         assert use_wcc_phase
         self.silent = silent
-        logfile = self.logfile
-        
         self.wannier_centers_cart = wannier_centers_cart
         self.iRvec = [tuple(R) for R in iRvec]
         self.iRvec_index = {r: i for i, r in enumerate(self.iRvec)}
@@ -308,10 +306,10 @@ class SymWann:
                     
         logfile.write('Symmetrizing Finished\n')
 
-        print ("wcc before symmetrization = \n", self.wannier_centers_cart)
+        logfile.write(f"wcc before symmetrization = \n {self.wannier_centers_cart}\n" )
         wcc = self.dmn.symmetrize_WCC(self.wannier_centers_cart)
+        logfile.write(f"wcc after symmetrization = \n {wcc}\n" )
         logfile.write('Symmetrizing WCC Finished\n')
-        print ("wcc after symmetrization = \n", wcc)
         return return_dic, np.array(iRvec_new), wcc
 
 

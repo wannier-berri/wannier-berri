@@ -199,7 +199,9 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
 
 
 def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_diff=False, use_ws=False,
-                          extra_tags=[], **kwargs):
+                          extra_tags=[], 
+                          sym_wann_method = "old",
+                          **kwargs):
     """Create system for Fe symmetrization using Wannier90 data"""
 
     data_dir = os.path.join(ROOT_DIR, "data", "Fe_sym_Wannier90")
@@ -218,14 +220,20 @@ def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_di
             positions=np.array([[0, 0, 0]]),
             magmom=[[0., 0., -2.31]],
             soc=True,
-            spin_ordering='interlace'
-        )
+            spin_ordering='interlace',
+            method = sym_wann_method)
+            
     return system
 
 
 @pytest.fixture(scope="session")
 def system_Fe_sym_W90_wcc():
     return get_system_Fe_sym_W90(symmetrize=True)
+
+
+@pytest.fixture(scope="session")
+def system_Fe_sym_W90_wcc_new():
+    return get_system_Fe_sym_W90(symmetrize=True, sym_wann_method="new")
 
 
 @pytest.fixture(scope="session")
