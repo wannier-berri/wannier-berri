@@ -489,6 +489,7 @@ def all_close_mod1(a, b, tol=1e-5):
     diff = a - b
     return np.allclose(np.round(diff), diff, atol=tol)
 
+
 def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices, 
                         # inv_left, inv_right, 
                         result=None):

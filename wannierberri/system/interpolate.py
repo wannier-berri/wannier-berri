@@ -27,7 +27,7 @@ class SystemInterpolator:
         self.system1 = copy.deepcopy(system1)
         iRvec0_list = [tuple(ir) for ir in self.system0.iRvec]
         iRvec1_list = [tuple(ir) for ir in self.system1.iRvec]
-        iRvec_new_list = list( set(iRvec0_list).union(set(iRvec1_list)) )
+        iRvec_new_list = list(set(iRvec0_list).union(set(iRvec1_list)))
         iRvec_index = {ir: i for i, ir in enumerate(iRvec_new_list)}
         iRvec_map_0 = [iRvec_index[ir] for ir in iRvec0_list]
         iRvec_map_1 = [iRvec_index[ir] for ir in iRvec1_list]
@@ -35,7 +35,7 @@ class SystemInterpolator:
             self.pointgroup = self.system1.pointgroup
         elif use_pointgroup == 0:
             self.pointgroup = self.system0.pointgroup
-        elif use_pointgroup <0:
+        elif use_pointgroup < 0:
             self.pointgroup = None
         else:
             raise ValueError("use_pointgroup should be 0, 1 or -1") 
@@ -45,16 +45,16 @@ class SystemInterpolator:
         matrix_keys1 = set(self.system1._XX_R.keys())
         # set of keys that are present in only one of the systems
         matrix_keys_common = matrix_keys0.intersection(matrix_keys1)
-        matrix_keys_exclude  = matrix_keys_common - matrix_keys0.intersection(matrix_keys1)
-        if len (matrix_keys_exclude) > 0:
+        matrix_keys_exclude = matrix_keys_common - matrix_keys0.intersection(matrix_keys1)
+        if len(matrix_keys_exclude) > 0:
             warnings.warn(f"The following matrix elements are present in only one of the systems: {matrix_keys_exclude} , they will be excluded from the interpolation")
-        for sys, iRmap  in zip( [self.system0, self.system1], [iRvec_map_0, iRvec_map_1]):
+        for sys, iRmap  in zip([self.system0, self.system1], [iRvec_map_0, iRvec_map_1]):
             for key in sys._XX_R:
                 if key in matrix_keys_exclude:
                     del sys._XX_R[key]
                 else:
                     shape = sys._XX_R[key].shape
-                    new_matrix = np.zeros( shape[:2]+(len(iRvec_new_list),)+shape[3:], dtype=complex)
+                    new_matrix = np.zeros(shape[:2] + (len(iRvec_new_list),) + shape[3:], dtype=complex)
                     new_matrix[:, :, iRmap] = sys._XX_R[key]
                     sys._XX_R[key] = new_matrix
             sys.iRvec = iRvec_array
@@ -63,13 +63,8 @@ class SystemInterpolator:
 
     def interpolate(self, alpha):
         new_system = copy.deepcopy(self.system0)
-        new_system.wannier_centers_cart = (1-alpha)*self.system0.wannier_centers_cart + alpha*self.system1.wannier_centers_cart
+        new_system.wannier_centers_cart = (1 - alpha) * self.system0.wannier_centers_cart + alpha * self.system1.wannier_centers_cart
         for key in self.system0._XX_R:
-            new_system._XX_R[key] = (1-alpha)*self.system0._XX_R[key] + alpha*self.system1._XX_R[key]
+            new_system._XX_R[key] = (1 - alpha) * self.system0._XX_R[key] + alpha * self.system1._XX_R[key]
         new_system.set_pointgroup(pointgroup=self.pointgroup)
         return new_system
-        
-
-    
-
-

@@ -230,8 +230,8 @@ class System_R(System):
         mapping = np.zeros(self.num_wann, dtype=int)
             
         if backward:
-            mapping[:nw2] = np.arange(nw2)*2
-            mapping[nw2:] = np.arange(nw2)*2 + 1
+            mapping[:nw2] = np.arange(nw2) * 2
+            mapping[nw2:] = np.arange(nw2) * 2 + 1
         else:
             mapping[::2] = np.arange(nw2)
             mapping[1::2] = np.arange(nw2) + nw2
@@ -274,13 +274,13 @@ class System_R(System):
         logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
 
         self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
-        self.set_symmetry(spacegroup = dmn.spacegroup)
+        self.set_symmetry(spacegroup=dmn.spacegroup)
         self.clear_cached_R()
         self.clear_cached_wcc()
 
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, spin_ordering='interlace', store_symm_wann=False,
-                   method = "old",
+                   method="old",
                    rotations=None, translations=None):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
@@ -338,11 +338,11 @@ class System_R(System):
             from ..w90files.dmn import DMN
             from ..wannierise.projections import Projection
 
-            index = {key:i for i,key in enumerate(set(atom_name))}
+            index = {key: i for i, key in enumerate(set(atom_name))}
             atom_num = np.array([index[key] for key in atom_name])
 
-            spacegroup = SpaceGroup( cell = ( self.real_lattice, positions, atom_num ) , 
-                                    magmom = magmom , include_TR=True,
+            spacegroup = SpaceGroup(cell=(self.real_lattice, positions, atom_num), 
+                                    magmom=magmom, include_TR=True,
                                     spinor=soc)
 
             assert len(atom_name) == len(positions), "atom_name and positions should have the same length"
@@ -357,7 +357,7 @@ class System_R(System):
                     # print (f"adding projection {proj} ({pos} {suborbital})")
                     proj_list.append(proj)
             dmn.set_spacegroup(spacegroup)
-            dmn.set_D_wann_from_projections( projections_obj=proj_list)
+            dmn.set_D_wann_from_projections(projections_obj=proj_list)
             self.symmetrize2(dmn)
             return dmn
         else:

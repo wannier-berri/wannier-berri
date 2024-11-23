@@ -212,10 +212,10 @@ class Symmetrizer_Uirr(Symmetrizer):
         if self.time_reversals[isym]:
             Uloc = Uloc.conj()
         Uloc = rotate_block_matrix(Uloc, 
-                                    lblocks=self.d_band_blocks[isym],
-                                    lindices=self.d_indices,
-                                    rblocks=self.D_wann_blocks_inverse[isym], 
-                                    rindices=self.D_indices)
+                                   lblocks=self.d_band_blocks[isym],
+                                   lindices=self.d_indices,
+                                   rblocks=self.D_wann_blocks_inverse[isym], 
+                                   rindices=self.D_indices)
         return Uloc
 
 
@@ -241,7 +241,7 @@ class Symmetrizer_Uirr(Symmetrizer):
 
 class symmetrizer_Zirr(Symmetrizer):
 
-    def __init__(self, dmn, ikirr, free,  n_iter=20, epsilon=1e-8):
+    def __init__(self, dmn, ikirr, free, n_iter=20, epsilon=1e-8):
         self.ikirr = ikirr
         self.n_iter = n_iter
         self.epsilon = epsilon
@@ -298,6 +298,7 @@ class symmetrizer_Zirr(Symmetrizer):
                                  rblocks=self.rblocks[isym], 
                                  rindices=self.indices,
                                 )
+
 
 class VoidSymmetrizer(Symmetrizer):
 

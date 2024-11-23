@@ -1,12 +1,8 @@
-from functools import cached_property
 import os
 import sys
 import warnings
 import numpy as np
-import spglib
-from .sym_wann_orbitals import Orbitals
 from .system import num_cart_dim
-from irrep.spacegroup import SymmetryOperation
 from collections import defaultdict
 import copy
 
@@ -142,7 +138,7 @@ class SymWann:
         except KeyError:
             return None
 
-    def find_irreducible_Rab(self, block1,block2):
+    def find_irreducible_Rab(self, block1, block2):
         """
         Finds which Rvectors can be chosen as an irreducible set for each pair of atoms (a,b)
         where a is in block1 and b is in block2.
@@ -171,13 +167,13 @@ class SymWann:
         R_map = [np.dot(R_list, np.transpose(symop.rotation)) for symop in self.spacegroup.symmetries]
         
         for isym in range(self.dmn.Nsym):
-            T1 = self.dmn.T_list[block1][:,isym]
-            T2 = self.dmn.T_list[block2][:,isym]
+            T1 = self.dmn.T_list[block1][:, isym]
+            T2 = self.dmn.T_list[block2][:, isym]
             logfile.write(f"symmetry operation  {isym+1}/{len(self.spacegroup.symmetries)}\n")
             logfile.write(f"T1 = {T1}\n")
             logfile.write(f"T2 = {T2}\n")
         
-            atom_R_map = R_map[isym][:, None, None, :] -T1[None, :, None, :] + T2[None, None, :, :]
+            atom_R_map = R_map[isym][:, None, None, :] - T1[None, :, None, :] + T2[None, None, :, :]
             logfile.write(f"R_map = {R_map[isym]}\n")
             logfile.write(f"np1 = {np1}, np2 = {np2}\n")
             for a in range(np1):
@@ -243,18 +239,18 @@ class SymWann:
         full_iRvec_list = {}
         full_iRvec_set = set()
         for block1 in range(self.num_blocks):
-            ws1,we1 = self.dmn.D_wann_block_indices[block1]
+            ws1, we1 = self.dmn.D_wann_block_indices[block1]
             norb1 = self.num_orb_list[block1]
             np1 = self.num_points_list[block1]
             for block2 in range(self.num_blocks):
                 logfile.write(f"Symmetrizing blocks {block1} and {block2}\n")
-                ws2,we2 = self.dmn.D_wann_block_indices[block2]
+                ws2, we2 = self.dmn.D_wann_block_indices[block2]
                 norb2 = self.num_orb_list[block2]
                 np2 = self.num_points_list[block2]
                 iRab_irred = self.find_irreducible_Rab(block1=block1, block2=block2)
                 matrix_dict_list = {}
                 for k, v1 in XX_R.items():
-                    v = np.copy(v1)[ws1:we1,ws2:we2]
+                    v = np.copy(v1)[ws1:we1, ws2:we2]
                     matrix_dict_list[k] = _matrix_to_dict(v, np1=np1, norb1=norb1, np2=np2, norb2=norb2,
                                                           cutoff=cutoff_dict[k])
                 matrix_dict_list_res, iRvec_ab_all = self.average_XX_block(iRab_new=iRab_irred,
@@ -269,9 +265,9 @@ class SymWann:
                 iRvec_new_index = {r: i for i, r in enumerate(iRvec_new)}
                 iRab_new = {k: set([iRvec_new_index[irvec] for irvec in v]) for k, v in iRvec_ab_all.items()}
                 matrix_dict_list_res, iRab_all_2 = self.average_XX_block(iRab_new=iRab_new,
-                                                                            matrix_dict_in=matrix_dict_list_res,
-                                                                            iRvec_new=iRvec_new, mode="single",
-                                                                            block1=block1, block2=block2)
+                                                                         matrix_dict_in=matrix_dict_list_res,
+                                                                         iRvec_new=iRvec_new, mode="single",
+                                                                         block1=block1, block2=block2)
                 
                 full_matrix_dict_list[(block1, block2)] = matrix_dict_list_res
                 full_iRvec_list[(block1, block2)] = iRvec_new
@@ -285,9 +281,9 @@ class SymWann:
         return_dic = {k: np.zeros((self.num_wann, self.num_wann, nRvec_new) + (3,) * num_cart_dim(k), dtype=complex)
                       for k in XX_R}
         for block1 in range(self.num_blocks):
-            ws1,we1 = self.dmn.D_wann_block_indices[block1]
+            ws1, we1 = self.dmn.D_wann_block_indices[block1]
             for block2 in range(self.num_blocks):
-                ws2,we2 = self.dmn.D_wann_block_indices[block2]
+                ws2, we2 = self.dmn.D_wann_block_indices[block2]
                 norb1 = self.num_orb_list[block1]
                 norb2 = self.num_orb_list[block2]
                 iRvec_block = full_iRvec_list[(block1, block2)]
@@ -296,7 +292,7 @@ class SymWann:
                     logfile.write(f"Symmetrizing blocks {block1} and {block2} for matrix {k}\n")
                     logfile.write(f"ws1 = {ws1}, we1 = {we1}, ws2 = {ws2}, we2 = {we2}\n")
                     logfile.write(f"full_matrix_dict_list[(block1, block2)][k] = {full_matrix_dict_list[(block1, block2)][k][(0,0)].keys()}\n")
-                    for (a,b),X in full_matrix_dict_list[(block1, block2)][k].items():
+                    for (a, b), X in full_matrix_dict_list[(block1, block2)][k].items():
                         ws1a = ws1 + a * norb1
                         we1a = ws1a + norb1
                         ws2b = ws2 + b * norb2
@@ -306,9 +302,9 @@ class SymWann:
                     
         logfile.write('Symmetrizing Finished\n')
 
-        logfile.write(f"wcc before symmetrization = \n {self.wannier_centers_cart}\n" )
+        logfile.write(f"wcc before symmetrization = \n {self.wannier_centers_cart}\n")
         wcc = self.dmn.symmetrize_WCC(self.wannier_centers_cart)
-        logfile.write(f"wcc after symmetrization = \n {wcc}\n" )
+        logfile.write(f"wcc after symmetrization = \n {wcc}\n")
         logfile.write('Symmetrizing WCC Finished\n')
         return return_dic, np.array(iRvec_new), wcc
 
@@ -331,10 +327,10 @@ class SymWann:
         logfile = self.logfile
         
         for isym, symop in enumerate(self.spacegroup.symmetries):
-            T1 = self.dmn.T_list[block1][:,isym]
-            T2 = self.dmn.T_list[block2][:,isym]
-            atommap1 = self.dmn.atommap_list[block1][:,isym]
-            atommap2 = self.dmn.atommap_list[block2][:,isym]
+            T1 = self.dmn.T_list[block1][:, isym]
+            T2 = self.dmn.T_list[block2][:, isym]
+            atommap1 = self.dmn.atommap_list[block1][:, isym]
+            atommap2 = self.dmn.atommap_list[block2][:, isym]
             logfile.write(f"symmetry operation  {isym+1}/{len(self.spacegroup.symmetries)}")
             R_map = iRvec_new_array @ np.transpose(symop.rotation)
             atom_R_map = (R_map[:, None, None, :] - T1[None, :, None, :] + T2[None, None, :, :])
@@ -422,9 +418,10 @@ def _rotate_matrix(X, L, R):
     _ = np.tensordot(R, _, axes=((0,), (1,)))
     return _.swapaxes(0, 1)
     
+
 def test_rotate_matrix():
-    for num_wann in 1,2,5,7:
-        for num_cart in 0,1,2,3:
+    for num_wann in 1, 2, 5, 7:
+        for num_cart in 0, 1, 2, 3:
             shape_LR = (num_wann, num_wann) 
             shape_X = (num_wann,) * 2 + (3,) * num_cart
             L = np.random.rand(*shape_LR) + 1j * np.random.rand(*shape_LR)
@@ -444,17 +441,16 @@ def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
     result = defaultdict(lambda: {})    
     for a in range(np1):
         s1 = a * norb1
-        e1 = s1+norb1
+        e1 = s1 + norb1
         for b in range(np2):
             s2 = b * norb2
-            e2 = s2+norb2
+            e2 = s2 + norb2
             result_ab = {}
             X = mat[s1:e1, s2:e2]
             for iR in range(mat.shape[2]):
                 x = X[:, :, iR]
-                if np.any( abs(x) > cutoff):
+                if np.any(abs(x) > cutoff):
                     result_ab[iR] = X[:, :, iR]
             if len(result_ab) > 0:
                 result[(a, b)] = result_ab
     return result
-

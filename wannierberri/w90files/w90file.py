@@ -61,7 +61,7 @@ class W90_file(abc.ABC):
         for k in self.npz_tags:
             try:
                 self.__setattr__(k, dic[k])
-            except KeyError :
+            except KeyError:
                 self.__setattr__(k, self.default_tags[k])
 
 

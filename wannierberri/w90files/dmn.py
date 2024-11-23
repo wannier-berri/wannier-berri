@@ -109,7 +109,7 @@ class DMN(W90_file):
         
     def set_spacegroup(self, spacegroup):
         self.spacegroup = spacegroup
-        if self.Nsym<=0:
+        if self.Nsym <= 0:
             self.Nsym = spacegroup.size
         else:
             assert self.Nsym == spacegroup.size, f"spacegroup size mismatch {self.Nsym} != {spacegroup.size}"
@@ -124,11 +124,11 @@ class DMN(W90_file):
                 for i in range(len(self.D_wann_block_indices)):
                     dic[f'D_wann_blocks_{ik}_{isym}_{i}'] = self.D_wann_blocks[ik][isym][i]
         if hasattr(self, 'spacegroup'):
-            for k,val in self.spacegroup.as_dict().items():
+            for k, val in self.spacegroup.as_dict().items():
                 dic["spacegroup_" + k] = val
-        for attrname in ["T", "atommap","rot_orb"]:
-            if hasattr(self, attrname+"_list"):
-                for i,t in enumerate(self.__getattribute__(attrname+"_list")):
+        for attrname in ["T", "atommap", "rot_orb"]:
+            if hasattr(self, attrname + "_list"):
+                for i, t in enumerate(self.__getattribute__(attrname + "_list")):
                     dic[f'{attrname}_{i}'] = t
         print(f"saving to {f_npz} : ")
         np.savez_compressed(f_npz, **dic)
@@ -151,15 +151,15 @@ class DMN(W90_file):
         l = len(prefix)
         for k in dic:
             if k.startswith(prefix):
-                print (k)
-                print (dic[k])
-        dic_spacegroup = {k[l:]:v for k,v in dic.items() if k.startswith(prefix)}
-        if len(dic_spacegroup)>0:
+                print(k)
+                print(dic[k])
+        dic_spacegroup = {k[l:]: v for k, v in dic.items() if k.startswith(prefix)}
+        if len(dic_spacegroup) > 0:
             self.spacegroup = SpaceGroupBare(**dic_spacegroup)
         for prefix in ["T", "atommap", "rot_orb"]:
-            keys =  sorted([k for k in dic.keys() if k.startswith(prefix)])
+            keys = sorted([k for k in dic.keys() if k.startswith(prefix)])
             lst = [dic[k] for k in keys]
-            self.__setattr__(prefix+"list", lst)
+            self.__setattr__(prefix + "list", lst)
 
     @property
     def NK(self):
@@ -855,21 +855,21 @@ class DMN(W90_file):
         WCC_in = wannier_centers_cart.copy()
         WCC_out = np.zeros((self.num_wann, 3), dtype=complex)
         for isym, symop in enumerate(self.spacegroup.symmetries):
-            for block, (ws,_) in enumerate(self.D_wann_block_indices):
+            for block, (ws, _) in enumerate(self.D_wann_block_indices):
                 norb = self.rot_orb_list[block][0].shape[0]
-                T = self.T_list[block][:,isym]
+                T = self.T_list[block][:, isym]
                 num_points = T.shape[0]
-                atom_a_map = self.atommap_list[block][:,isym]
+                atom_a_map = self.atommap_list[block][:, isym]
                 for atom_a in range(num_points):
                     start_a = ws + atom_a * norb
                     atom_b = atom_a_map[atom_a]
                     start_b = ws + atom_b * norb
                     v_tmp = (T[atom_b] - symop.translation).dot(self.spacegroup.lattice)
-                    XX_L  = WCC_in[start_a:start_a+norb, :] + v_tmp
+                    XX_L = WCC_in[start_a:start_a + norb, :] + v_tmp
                     XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=((1,), (0,)))
-                    print (f"XX_L: {XX_L.shape}, rot_orb_dagger: {self.rot_orb_dagger_list[block][isym].shape}, rot_orb: {self.rot_orb_list[block][isym].shape}, WCC_out: {WCC_out.shape}, start_b: {start_b}, norb: {norb}")
-                    WCC_out[start_b:start_b+norb] += np.einsum("ij,ja,ji->ia", self.rot_orb_dagger_list[block][isym], XX_L, self.rot_orb_list[block][isym])
-        return WCC_out.real/self.spacegroup.size
+                    print(f"XX_L: {XX_L.shape}, rot_orb_dagger: {self.rot_orb_dagger_list[block][isym].shape}, rot_orb: {self.rot_orb_list[block][isym].shape}, WCC_out: {WCC_out.shape}, start_b: {start_b}, norb: {norb}")
+                    WCC_out[start_b:start_b + norb] += np.einsum("ij,ja,ji->ia", self.rot_orb_dagger_list[block][isym], XX_L, self.rot_orb_list[block][isym])
+        return WCC_out.real / self.spacegroup.size
 
 
     #
@@ -924,8 +924,3 @@ class DMN(W90_file):
     #                 print(f"   {k1} -> {k2} : {err}")
     #                 maxerr = max(maxerr, err)
     #     return maxerr
-
-
-
-    
-

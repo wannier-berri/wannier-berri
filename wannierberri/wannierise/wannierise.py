@@ -1,9 +1,7 @@
 from time import time
-import warnings
 import numpy as np
-import ray
 
-from .kpoint import Kpoint_and_neighbours, Kpoint_and_neighbours_ray, Wannierizer
+from .kpoint import Wannierizer
 
 from .utility import select_window_degen, print_centers_and_spreads, print_progress
 
@@ -97,7 +95,7 @@ def wannierise(w90data,
     * Disentanglement and localization are done together, in the same loop. Therefore only one parameter `num_iter` is used for both
 
     """
-    t0= time()
+    t0 = time()
     if froz_min > froz_max:
         print("froz_min > froz_max, nothing will be frozen")
     assert 0 < mix_ratio_z <= 1
@@ -159,7 +157,7 @@ def wannierise(w90data,
                             amn=amn[kpt],
                             weight=symmetrizer.ndegen(ik) / symmetrizer.NK
                             )
-    t2=time()
+    t2 = time()
     SpreadFunctional_loc = SpreadFunctional(
         w=w90data.mmn.wk_unique / w90data.mmn.NK,
         bk=w90data.mmn.bk_cart_unique,
@@ -194,7 +192,7 @@ def wannierise(w90data,
                                                mix_ratio_u=mix_ratio_u,
                                                localise=localise,
                                                wcc_bk_phase=wcc_bk_phase)
-        t_update += time()-tx
+        t_update += time() - tx
         
         # for ikirr, kpt in enumerate(kptirr):
         #     U_neigh = [U_opt_full_BZ[ib] for ib in neighbours_all[kpt]]
@@ -221,8 +219,8 @@ def wannierise(w90data,
                               spread_functional=SpreadFunctional_loc,
                               comment="Final State")
     w90data.wannierised = True
-    print (f"time for creating wannierrizer {t2-t1}")
-    print (f"time for iterations {t02-t01}")
-    print (f"time for updating {t_update}")
-    print (f"total time for wannierization {time()-t0}")
+    print(f"time for creating wannierrizer {t2-t1}")
+    print(f"time for iterations {t02-t01}")
+    print(f"time for updating {t_update}")
+    print(f"total time for wannierization {time()-t0}")
     return w90data.chk.v_matrix

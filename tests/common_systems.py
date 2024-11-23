@@ -200,7 +200,7 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
 
 def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_diff=False, use_ws=False,
                           extra_tags=[], 
-                          sym_wann_method = "old",
+                          sym_wann_method="old",
                           **kwargs):
     """Create system for Fe symmetrization using Wannier90 data"""
 
@@ -221,7 +221,7 @@ def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_di
             magmom=[[0., 0., -2.31]],
             soc=True,
             spin_ordering='interlace',
-            method = sym_wann_method)
+            method=sym_wann_method)
             
     return system
 
@@ -324,7 +324,7 @@ def system_GaAs_W90_wccJM(create_files_GaAs_W90):
 
 
 def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=True, 
-                       sym_wann_method = "old", reorder_spin=False):
+                       sym_wann_method="old", reorder_spin=False):
     """Create system for GaAs using sym_tb.dat data"""
     seedname = create_files_tb(dir="GaAs_Wannier90", file=f"GaAs{'_sym' if symmetrize else ''}_tb.dat")
     system = wberri.system.System_tb(seedname, berry=berry, use_ws=use_ws, use_wcc_phase=use_wcc_phase)
@@ -339,7 +339,7 @@ def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=
             proj=['Ga:sp3', 'As:sp3'],
             soc=True,
             spin_ordering='interlace' if reorder_spin else 'block',
-            method = sym_wann_method
+            method=sym_wann_method
         )
     if reorder_spin:
         system.spin_interlace2block()
@@ -360,10 +360,12 @@ def system_GaAs_sym_tb_wcc():
     """Create system for GaAs using sym_tb.dat data"""
     return get_system_GaAs_tb(use_ws=False, symmetrize=True)
 
+
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb_wcc_reorder():
     """Create system for GaAs using sym_tb.dat data"""
     return get_system_GaAs_tb(use_ws=False, symmetrize=True, reorder_spin=True)
+
 
 @pytest.fixture(scope="session")
 def system_GaAs_sym_tb_wcc_reorder_new():

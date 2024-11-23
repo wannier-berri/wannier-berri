@@ -168,6 +168,7 @@ def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90_wcc):
         sort_iR=True
     )
 
+
 def test_system_Fe_sym_W90_new(check_system, system_Fe_sym_W90_wcc_new):
     check_system(
         system_Fe_sym_W90_wcc_new, "Fe_sym_W90_wcc",
@@ -234,6 +235,7 @@ def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb_wcc):
         suffix="old"
     )
 
+
 def test_system_GaAs_sym_tb_reorder(check_system, system_GaAs_sym_tb_wcc_reorder):
     check_system(
         system_GaAs_sym_tb_wcc_reorder, "GaAs_sym_tb_wcc",
@@ -241,6 +243,7 @@ def test_system_GaAs_sym_tb_reorder(check_system, system_GaAs_sym_tb_wcc_reorder
         sort_iR=True,
         suffix="reorder"
     )
+
 
 def test_system_GaAs_sym_tb_reorder_new(check_system, system_GaAs_sym_tb_wcc_reorder_new):
     check_system(

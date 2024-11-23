@@ -7,6 +7,7 @@ from .sitesym import orthogonalize
 
 SPREAD = True
 
+
 class Kpoint_and_neighbours:
     """ a class to store the data on a single k-point
 
@@ -305,9 +306,10 @@ class Kpoint_and_neighbours_ray(Kpoint_and_neighbours):
     
     pass
 
+
 class Wannierizer:
 
-    def __init__(self, parallel = True, spacegroup=None):
+    def __init__(self, parallel=True, spacegroup=None):
         self.kpoints = []
         if parallel and not ray.is_initialized():
             warnings.warn("Ray is not initialized, running in serial mode")
@@ -337,18 +339,16 @@ class Wannierizer:
         
     def update_all(self, U_neigh, **kwargs):
         if self.parallel:
-            remotes = [kpoint.update.remote(U, **kwargs) for kpoint,U in zip(self.kpoints, U_neigh)]
+            remotes = [kpoint.update.remote(U, **kwargs) for kpoint, U in zip(self.kpoints, U_neigh)]
             return ray.get(remotes)
         else:
-            return [kpoint.update(U, **kwargs) for kpoint,U in zip(self.kpoints, U_neigh)]
+            return [kpoint.update(U, **kwargs) for kpoint, U in zip(self.kpoints, U_neigh)]
         # do we need copy in both/any of the cases?
 
     def get_wcc(self):
         if self.parallel:
-            wcc_k =  ray.get([kpoint.get_centers.remote() for kpoint in self.kpoints])
+            wcc_k = ray.get([kpoint.get_centers.remote() for kpoint in self.kpoints])
         else:
             wcc_k = [kpoint.get_centers() for kpoint in self.kpoints]
         wcc = sum(wcc_k)
         return wcc
-
-        
