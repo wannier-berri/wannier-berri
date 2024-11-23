@@ -2,8 +2,7 @@ from copy import deepcopy
 import warnings
 import numpy as np
 import ray
-from .utility import get_max_eig
-from .sitesym import orthogonalize
+from ..__utility import get_max_eig, orthogonalize
 
 SPREAD = True
 

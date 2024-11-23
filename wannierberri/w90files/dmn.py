@@ -410,9 +410,9 @@ class DMN(W90_file):
     def select_bands(self, win_index_irr):
         self.d_band = [D[:, wi, :][:, :, wi] for D, wi in zip(self.d_band, win_index_irr)]
 
-    def set_free(self, frozen_irr):
-        free = np.logical_not(frozen_irr)
-        self.d_band_free = [d[:, f, :][:, :, f] for d, f in zip(self.d_band, free)]
+    # def set_free(self, frozen_irr):
+    #     free = np.logical_not(frozen_irr)
+    #     self.d_band_free = [d[:, f, :][:, :, f] for d, f in zip(self.d_band, free)]
 
     def write(self):
         print(self.comment)
@@ -468,12 +468,12 @@ class DMN(W90_file):
 
 
 
-    def clear_free_bands(self):
-        if hasattr(self, 'free_bands_defined'):
-            del self.free_bands_defined
-            del self.d_band_blocks_free
-            del self.d_band_blocks_free_inverse
-            del self.d_band_block_indices_free
+    # def clear_free_bands(self):
+    #     if hasattr(self, 'free_bands_defined'):
+    #         del self.free_bands_defined
+    #         del self.d_band_blocks_free
+    #         del self.d_band_blocks_free_inverse
+    #         del self.d_band_block_indices_free
     
     def clear_inverse(self, d=True, D=True):
         if d:
@@ -483,50 +483,50 @@ class DMN(W90_file):
             if hasattr(self, 'D_wann_blocks_inverse'):
                 del self.D_wann_blocks_inverse
 
-    def set_free_bands(self, ikirr, free_bands):
-        assert free_bands is not None
-        if not hasattr(self, 'free_bands_defined'):
-            self.free_bands_defined = np.zeros(self.NK, dtype=bool)
-            self.d_band_blocks_free = [None for _ in range(self.NKirr)]
-            self.d_band_blocks_free_inverse = [None for _ in range(self.NKirr)]
-            self.d_band_block_indices_free = [None for _ in range(self.NKirr)]
-        if not self.free_bands_defined[ikirr]:
-            self.free_bands_defined[ikirr] = True
-            (
-                self.d_band_block_indices_free[ikirr],
-                self.d_band_blocks_free[ikirr]
-            ) = self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], free_bands)
-            self.d_band_blocks_free_inverse[ikirr] = get_inverse_block(self.d_band_blocks_free[ikirr])
+    # def set_free_bands(self, ikirr, free_bands):
+    #     assert free_bands is not None
+    #     if not hasattr(self, 'free_bands_defined'):
+    #         self.free_bands_defined = np.zeros(self.NK, dtype=bool)
+    #         self.d_band_blocks_free = [None for _ in range(self.NKirr)]
+    #         self.d_band_blocks_free_inverse = [None for _ in range(self.NKirr)]
+    #         self.d_band_block_indices_free = [None for _ in range(self.NKirr)]
+    #     if not self.free_bands_defined[ikirr]:
+    #         self.free_bands_defined[ikirr] = True
+    #         (
+    #             self.d_band_block_indices_free[ikirr],
+    #             self.d_band_blocks_free[ikirr]
+    #         ) = self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], free_bands)
+    #         self.d_band_blocks_free_inverse[ikirr] = get_inverse_block(self.d_band_blocks_free[ikirr])
 
 
-    def rotate_Z(self, Z, isym, ikirr, free=None):
-        """
-        Rotates the zmat matrix at the irreducible kpoint
-        Z = d_band^+ @ Z @ d_band
-        """
-        if free is not None:
-            self.set_free_bands(ikirr, free)
-            lblocks = self.d_band_blocks_free_inverse[ikirr][isym]
-            rblocks = self.d_band_blocks_free[ikirr][isym]
-            indices = self.d_band_block_indices_free[ikirr]
-        else:
-            lblocks = self.d_band_blocks_inverse[ikirr][isym], 
-            rblocks = self.d_band_blocks[ikirr][isym]
-            indices = self.d_band_block_indices[ikirr]
+    # def rotate_Z(self, Z, isym, ikirr, free=None):
+    #     """
+    #     Rotates the zmat matrix at the irreducible kpoint
+    #     Z = d_band^+ @ Z @ d_band
+    #     """
+    #     if free is not None:
+    #         self.set_free_bands(ikirr, free)
+    #         lblocks = self.d_band_blocks_free_inverse[ikirr][isym]
+    #         rblocks = self.d_band_blocks_free[ikirr][isym]
+    #         indices = self.d_band_block_indices_free[ikirr]
+    #     else:
+    #         lblocks = self.d_band_blocks_inverse[ikirr][isym], 
+    #         rblocks = self.d_band_blocks[ikirr][isym]
+    #         indices = self.d_band_block_indices[ikirr]
 
-        Z1 = np.zeros(Z.shape, dtype=complex)
-        if self.time_reversals[isym]:
-            Zloc = Z.conj()
-        else:
-            Zloc = Z
-        Z1 = rotate_block_matrix(Zloc, lblocks=lblocks, 
-                                 lindices=indices,
-                                 rblocks=rblocks, 
-                                 rindices=indices,
-                                #  inv_left=True, inv_right=False,
-                                 result=Z1)
-        return Z1
-        # return d_band.conj().T @ Z @ d_band
+    #     Z1 = np.zeros(Z.shape, dtype=complex)
+    #     if self.time_reversals[isym]:
+    #         Zloc = Z.conj()
+    #     else:
+    #         Zloc = Z
+    #     Z1 = rotate_block_matrix(Zloc, lblocks=lblocks, 
+    #                              lindices=indices,
+    #                              rblocks=rblocks, 
+    #                              rindices=indices,
+    #                             #  inv_left=True, inv_right=False,
+    #                              result=Z1)
+    #     return Z1
+    #     # return d_band.conj().T @ Z @ d_band
 
     def check_unitary(self):
         """

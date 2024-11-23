@@ -1,8 +1,7 @@
 from functools import lru_cache
 import warnings
 import numpy as np
-from ..__utility import get_inverse_block, rotate_block_matrix
-from .utility import orthogonalize
+from ..__utility import get_inverse_block, rotate_block_matrix, orthogonalize
 
 
 class Symmetrizer:
@@ -221,8 +220,7 @@ class Symmetrizer_Uirr(Symmetrizer):
 
 
     def __call__(self, U):
-              
-        
+                
         for _ in range(self.n_iter):
             Usym = sum(self.rotate_U(U, isym) for isym in self.isym_little) / self.nsym_little
             Usym = orthogonalize(Usym)

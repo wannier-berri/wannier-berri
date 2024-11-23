@@ -535,3 +535,47 @@ def get_inverse_block(D):
         return np.linalg.inv(D)
     else:
         raise ValueError(f"Unknown type {type(D)}")
+
+def get_max_eig(matrix, nvec, nBfree):
+    """ return the nvec column-eigenvectors of matrix with maximal eigenvalues.
+
+    Parameters
+    ----------
+    matrix : numpy.ndarray(n,n)
+        list of matrices
+    nvec : int
+        number of eigenvectors to return
+    nBfree : int
+        number of free bands
+
+    Returns
+    -------
+    numpy.ndarray(n,nvec)
+        eigenvectors
+    """
+    assert matrix.shape[0] == matrix.shape[1]
+    assert matrix.shape[0] >= nvec, f"nvec={nvec}, matrix.shape={matrix.shape}"
+    e, v = np.linalg.eigh(matrix)
+    return v[:, np.argsort(e)[nBfree - nvec:nBfree]]
+
+
+def orthogonalize(u):
+    """
+    Orthogonalizes the matrix u using Singular Value Decomposition (SVD).
+
+    Parameters
+    ----------
+    u : np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
+        The input matrix to be orthogonalized.
+
+    Returns
+    -------
+    u : np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
+        The orthogonalized matrix.
+    """
+    try:
+        U, _, VT = np.linalg.svd(u, full_matrices=False)
+        return U @ VT
+    except np.linalg.LinAlgError as e:
+        warnings.warn(f"SVD failed with error '{e}', using non-orthogonalized matrix")
+        return u
