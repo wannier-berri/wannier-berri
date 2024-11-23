@@ -34,7 +34,9 @@ class Kpoint_and_neighbours:
         """
 
     def __init__(self, Mmn, frozen, frozen_nb, wb, bk,
-                 symmetrizer, ikirr,
+                 ikirr,
+                 symmetrizer_Zirr,
+                 symmetrizer_Uirr,
                  amn,
                  weight=1,
                  ):
@@ -62,8 +64,8 @@ class Kpoint_and_neighbours:
         self.spaces = {'free': self.free_nb, 'frozen': frozen_nb}
         self.freefree = [Mmn[ib][self.free, :][:, self.free_nb[ib]] for ib in range(nnb)]
         self.freefrozen = [Mmn[ib][self.free, :][:, frozen_nb[ib]] for ib in range(nnb)]
-        self.symmmetrize_Z = lambda Z: symmetrizer.symmetrize_Zk(Z, ikirr)
-        self.symmetrize_U = lambda U: symmetrizer.symmetrize_U_kirr(U, ikirr)
+        self.symmmetrizer_Zirr = symmetrizer_Zirr
+        self.symmetrizer_Uirr = symmetrizer_Uirr
         self.Zfrozen = self.calc_Z()
         self.Zold = None
 
@@ -104,6 +106,7 @@ class Kpoint_and_neighbours:
             Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib]) * wcc_bk_phase[None, :, ib]
                                 for ib in range(self.nnb)])
             Mmn_loc_sumb = sum(mm * wb for mm, wb in zip(Mmn_loc, self.wb)) / sum(self.wb)
+            # self.symmmetrizer_Zirr(Mmn_loc_sumb) # did not try it
             # symmetrizer.symmetrize_Zk(Mmn_loc_sumb, ikirr)  # this actually makes thing worse, so not using it
             # print ("Mmn_loc_sumb-1", np.abs(Mmn_loc_sumb-np.eye(Mmn_loc_sumb.shape[0])).max())
             U = np.linalg.inv(Mmn_loc_sumb)
@@ -124,7 +127,7 @@ class Kpoint_and_neighbours:
             self.U_opt_full = U_opt_full
         else:
             self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
-        self.U_opt_full = self.symmetrize_U(self.U_opt_full)
+        self.U_opt_full = self.symmetrizer_Uirr(self.U_opt_full)
         self.update_Mmn_opt()
         return self.U_opt_full
 
@@ -151,7 +154,7 @@ class Kpoint_and_neighbours:
         else:
             Mmn_loc_opt = [self.freefree[ib].dot(U_nb[ib]) for ib in range(len(self.wb))]
         Z = np.array(sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(self.wb, Mmn_loc_opt)))
-        self.symmmetrize_Z(Z)
+        self.symmmetrizer_Zirr(Z)
         return Z
 
 

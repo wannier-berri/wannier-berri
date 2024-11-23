@@ -153,7 +153,8 @@ def wannierise(w90data,
                             frozen_nb=frozen[neighbours_irreducible[ik]],
                             wb=w90data.mmn.wk_unique, 
                             bk=w90data.mmn.bk_cart_unique,
-                            symmetrizer=symmetrizer, 
+                            symmetrizer_Zirr=symmetrizer.get_symmetrizer_Zirr(ik),
+                            symmetrizer_Uirr=symmetrizer.get_symmetrizer_Uirr(ik),
                             ikirr=ik,
                             amn=amn[kpt],
                             weight=symmetrizer.ndegen(ik) / symmetrizer.NK
@@ -168,7 +169,7 @@ def wannierise(w90data,
 
     # The _IR suffix is used to denote that the U matrix is defined only on k-points in the irreducible BZ
     U_opt_full_IR = wannierizer.get_U_opt_full()
-    symmetrizer.symmetrize_U(U_opt_full_IR)
+    # symmetrizer.symmetrize_U(U_opt_full_IR)
     # the _BZ suffix is used to denote that the U matrix is defined on all k-points in the full BZ
     U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=True)
     

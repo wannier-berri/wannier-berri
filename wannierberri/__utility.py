@@ -488,3 +488,49 @@ def all_close_mod1(a, b, tol=1e-5):
         return False
     diff = a - b
     return np.allclose(np.round(diff), diff, atol=tol)
+
+def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices, 
+                        # inv_left, inv_right, 
+                        result=None):
+    """
+    Rotates the matrix Z using the block-diagonal rotation matrices
+
+    Parameters
+    ----------
+    Z : np.array(complex, shape=(M,N))
+        the matrix to be rotated
+    lblocks : list(np.array(complex, shape=(m,m)))
+        the blocks of hte left matrix. sum(m) = M
+    lindices : list(tuple(int))
+        the indices of the blocks of the left matrix
+    rblocks : list(np.array(complex, shape=(n,n)))
+        the blocks of hte right matrix. sum(n) = N
+    rindices : list(tuple(int))
+        the indices of the blocks of the right matrix
+    
+    Returns
+    -------
+    np.array(complex, shape=(M,N))
+        the rotated matrix
+    """
+    if result is None:
+        result = np.zeros(Z.shape, dtype=Z.dtype)
+    for (start, end), block in zip(lindices, lblocks):
+        result[start:end, :] = block @ Z[start:end, :]
+
+    for (start, end), block in zip(rindices, rblocks):
+        result[:, start:end] = result[:, start:end] @ block
+
+    return result
+
+
+def get_inverse_block(D):
+    """
+    Get the inverse of a block-diagonal matrix (given as a nested list of numpy arrays)
+    """
+    if isinstance(D, list):
+        return [get_inverse_block(d) for d in D]
+    elif isinstance(D, np.ndarray):
+        return np.linalg.inv(D)
+    else:
+        raise ValueError(f"Unknown type {type(D)}")

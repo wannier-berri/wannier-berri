@@ -6,6 +6,7 @@ from irrep.utility import get_block_indices
 import numpy as np
 from copy import deepcopy
 
+from ..__utility import get_inverse_block, rotate_block_matrix
 from ..wannierise.projections import ProjectionsSet
 
 from .utility import writeints, readints
@@ -94,11 +95,11 @@ class DMN(W90_file):
 
     @cached_property
     def d_band_blocks_inverse(self):
-        return _get_d_inverse(self.d_band_blocks)
+        return get_inverse_block(self.d_band_blocks)
     
     @cached_property
     def D_wann_blocks_inverse(self):
-        return _get_d_inverse(self.D_wann_blocks)
+        return get_inverse_block(self.D_wann_blocks)
     
     def get_spacegroup(self):
         if hasattr(self, 'spacegroup'):
@@ -464,6 +465,9 @@ class DMN(W90_file):
         # else:
         #     return self.d_band[ikirr, isym] @ U @ self.D_wann[ikirr, isym].conj().T
 
+
+
+
     def clear_free_bands(self):
         if hasattr(self, 'free_bands_defined'):
             del self.free_bands_defined
@@ -492,7 +496,7 @@ class DMN(W90_file):
                 self.d_band_block_indices_free[ikirr],
                 self.d_band_blocks_free[ikirr]
             ) = self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], free_bands)
-            self.d_band_blocks_free_inverse[ikirr] = _get_d_inverse(self.d_band_blocks_free[ikirr])
+            self.d_band_blocks_free_inverse[ikirr] = get_inverse_block(self.d_band_blocks_free[ikirr])
 
 
     def rotate_Z(self, Z, isym, ikirr, free=None):
@@ -922,46 +926,6 @@ class DMN(W90_file):
     #     return maxerr
 
 
-def _get_d_inverse(D):
-    """
-    Get the inverse of the transformation matrix
-    """
-    if isinstance(D, list):
-        return [_get_d_inverse(d) for d in D]
-    elif isinstance(D, np.ndarray):
-        return np.linalg.inv(D)
-    else:
-        raise ValueError(f"Unknown type {type(D)}")
+
     
 
-def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices, 
-                        # inv_left, inv_right, 
-                        result):
-    """
-    Rotates the matrix Z using the block-diagonal rotation matrices
-
-    Parameters
-    ----------
-    Z : np.array(complex, shape=(M,N))
-        the matrix to be rotated
-    lblocks : list(np.array(complex, shape=(m,m)))
-        the blocks of hte left matrix. sum(m) = M
-    lindices : list(tuple(int))
-        the indices of the blocks of the left matrix
-    rblocks : list(np.array(complex, shape=(n,n)))
-        the blocks of hte right matrix. sum(n) = N
-    rindices : list(tuple(int))
-        the indices of the blocks of the right matrix
-    
-    Returns
-    -------
-    np.array(complex, shape=(M,N))
-        the rotated matrix
-    """
-    for (start, end), block in zip(lindices, lblocks):
-        result[start:end, :] = block @ Z[start:end, :]
-
-    for (start, end), block in zip(rindices, rblocks):
-        result[:, start:end] = result[:, start:end] @ block
-
-    return result
