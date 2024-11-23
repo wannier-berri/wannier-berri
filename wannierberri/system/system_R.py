@@ -272,6 +272,7 @@ class System_R(System):
 
         logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
         logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
+
         self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
         self.set_symmetry(spacegroup = dmn.spacegroup)
         self.clear_cached_R()
@@ -340,12 +341,23 @@ class System_R(System):
             index = {key:i for i,key in enumerate(set(atom_name))}
             atom_num = np.array([index[key] for key in atom_name])
 
-            spacegroup = SpaceGroup( cell = ( self.real_lattice, positions, atom_num ) , magmom = magmom , include_TR=True)
+            spacegroup = SpaceGroup( cell = ( self.real_lattice, positions, atom_num ) , 
+                                    magmom = magmom , include_TR=True,
+                                    spinor=soc)
+
+            assert len(atom_name) == len(positions), "atom_name and positions should have the same length"
             dmn = DMN(empty=True)
-            proj1 = Projection( position_num=np.array([0,0,0]),orbital = "sp3d2" , spacegroup=spacegroup)
-            proj2 = Projection( position_num=np.array([0,0,0]),orbital = "t2g" , spacegroup=spacegroup)
+            proj_list = []
+            for proj_str in proj:
+                atom, orbital = [l.strip() for l in proj_str.split(':')]
+                pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
+                for suborbital in orbital.split(';'):
+                    suborbital = suborbital.strip()
+                    proj = Projection(position_num=pos, orbital=suborbital, spacegroup=spacegroup)
+                    # print (f"adding projection {proj} ({pos} {suborbital})")
+                    proj_list.append(proj)
             dmn.set_spacegroup(spacegroup)
-            dmn.set_D_wann_from_projections( projections_obj=[proj1,proj2])
+            dmn.set_D_wann_from_projections( projections_obj=proj_list)
             self.symmetrize2(dmn)
             return dmn
         else:

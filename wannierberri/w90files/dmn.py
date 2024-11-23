@@ -863,6 +863,7 @@ class DMN(W90_file):
                     v_tmp = (T[atom_b] - symop.translation).dot(self.spacegroup.lattice)
                     XX_L  = WCC_in[start_a:start_a+norb, :] + v_tmp
                     XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=((1,), (0,)))
+                    print (f"XX_L: {XX_L.shape}, rot_orb_dagger: {self.rot_orb_dagger_list[block][isym].shape}, rot_orb: {self.rot_orb_list[block][isym].shape}, WCC_out: {WCC_out.shape}, start_b: {start_b}, norb: {norb}")
                     WCC_out[start_b:start_b+norb] += np.einsum("ij,ja,ji->ia", self.rot_orb_dagger_list[block][isym], XX_L, self.rot_orb_list[block][isym])
         return WCC_out.real/self.spacegroup.size
 

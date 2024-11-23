@@ -441,7 +441,7 @@ def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
     """transforms a matrix X[m,n,iR,...] into a dictionary like
         {(a,b): {iR: np.array(num_w_a.num_w_b,...)}}
     """
-    result = {}
+    result = defaultdict(lambda: {})    
     for a in range(np1):
         s1 = a * norb1
         e1 = s1+norb1

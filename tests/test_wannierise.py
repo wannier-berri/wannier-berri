@@ -1,3 +1,4 @@
+import copy
 import irrep
 from irrep.bandstructure import BandStructure
 from pytest import approx, fixture
@@ -72,6 +73,17 @@ def test_wanierise():
 
     systems["wberri"] = wberri.system.System_w90(w90data=w90data)
 
+
+    systems["wberri_symmetrized"] = copy.deepcopy(systems["wberri"])
+
+    
+    systems["wberri_symmetrized"].symmetrize(atom_name=["C"]*4,
+                                             positions=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]],
+                                             proj=["C:s"],
+                                             magmom=None,
+                                             soc=False,
+                                            method="new")
+
     # If needed - perform maximal localization using Wannier90
 
     # first generate the reduced files - where num_bands is reduced to num_wann,
@@ -126,6 +138,7 @@ def test_wanierise():
         for k2 in energies:
             if k1 == k2:
                 continue
+            print (f"comparing {k1} and {k2}")
             diff = abs(energies[k1] - energies[k2])
             # the precidsion is not very high here, although the two codes are assumed to do the same. Not sure why..
             d, acc = np.max(diff), 0.0005
