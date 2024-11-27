@@ -433,7 +433,6 @@ def test_rotate_matrix():
             assert np.allclose(Y, Z), f"for num_wann={num_wann}, num_cart={num_cart}, the difference is {np.max(np.abs(Y-Z))} Y.shape={Y.shape} X.shape = {X.shape}\nX={X}\nY={Y}\nZ={Z}"
 
 
-
 def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
     """transforms a matrix X[m,n,iR,...] into a dictionary like
         {(a,b): {iR: np.array(num_w_a.num_w_b,...)}}

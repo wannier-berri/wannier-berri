@@ -536,6 +536,7 @@ def get_inverse_block(D):
     else:
         raise ValueError(f"Unknown type {type(D)}")
 
+
 def get_max_eig(matrix, nvec, nBfree):
     """ return the nvec column-eigenvectors of matrix with maximal eigenvalues.
 

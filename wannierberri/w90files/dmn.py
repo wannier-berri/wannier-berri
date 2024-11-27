@@ -1,4 +1,5 @@
 from functools import cached_property, lru_cache
+from time import time
 import warnings
 from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroupBare
@@ -18,7 +19,13 @@ from .Dwann import Dwann
 class DMN(W90_file):
     """
     Class to read and store the wannier90.dmn file
-    the symmetry transformation of the Wannier functions and ab initio bands
+    
+    Note : the class actually contains more information than can be stored in the wannier90.dmn file
+    Now the wannierisation in wannier-berri is NOT compatible with the format of the wannier90.dmn file,
+    therefore  the dmn object should be created from the BandStructure object, and then the Wannier functions,
+    the symmetry transformation of the Wannier functions and ab initio bands.
+
+    Thus the name "dmn" is kept for historical reasons, but the class is not compatible with the wannier90.dmn file
 
     Parameters
     ----------
@@ -118,11 +125,16 @@ class DMN(W90_file):
         dic = {k: self.__getattribute__(k) for k in self.npz_tags}
         for ik in range(self.NKirr):
             dic[f'd_band_block_indices_{ik}'] = self.d_band_block_indices[ik]
-            for isym in range(self.Nsym):
-                for i in range(len(self.d_band_block_indices[ik])):
-                    dic[f'd_band_blocks_{ik}_{isym}_{i}'] = self.d_band_blocks[ik][isym][i]
-                for i in range(len(self.D_wann_block_indices)):
-                    dic[f'D_wann_blocks_{ik}_{isym}_{i}'] = self.D_wann_blocks[ik][isym][i]
+            # for isym in range(self.Nsym):
+            #     for i in range(len(self.d_band_block_indices[ik])):
+            #         dic[f'd_band_blocks_{ik}_{isym}_{i}'] = self.d_band_blocks[ik][isym][i]
+            #     for i in range(len(self.D_wann_block_indices)):
+            #         dic[f'D_wann_blocks_{ik}_{isym}_{i}'] = self.D_wann_blocks[ik][isym][i]
+            for i in range(len(self.d_band_block_indices[ik])):
+                dic[f'd_band_blocks_{ik}_{i}'] = np.array([self.d_band_blocks[ik][isym][i] for isym in range(self.Nsym)])
+        for i in range(len(self.D_wann_block_indices)):
+            dic[f'D_wann_blocks_{i}'] = np.array([[self.D_wann_blocks[ik][isym][i] for isym in range(self.Nsym)]
+                                            for ik in range(self.NKirr)])    
         if hasattr(self, 'spacegroup'):
             for k, val in self.spacegroup.as_dict().items():
                 dic["spacegroup_" + k] = val
@@ -135,18 +147,29 @@ class DMN(W90_file):
 
     def from_npz(self, f_npz):
         dic = np.load(f_npz)
+        t0 = time()
         for k in self.npz_tags:
             self.__setattr__(k, dic[k])
-        self.d_band_block_indices = [[] for _ in range(self.NKirr)]
+        t01 = time()
+        self.d_band_block_indices = [dic[f'd_band_block_indices_{ik}'] for ik in range(self.NKirr)]
         self.d_band_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
         self.D_wann_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
+        d_band_num_blocks = [self.d_band_block_indices[ik].shape[0] for ik in range(self.NKirr)]
+        D_wann_num_blocks = self.D_wann_block_indices.shape[0]
+        
+
+        d_band_blocks_tmp = [[dic[f"d_band_blocks_{ik}_{i}"] for i in range(nblock)] 
+                             for ik, nblock in enumerate(d_band_num_blocks)]
+        D_wann_blocks_tmp = [dic[f"D_wann_blocks_{i}"] 
+                             for i in range(D_wann_num_blocks) ] 
+
         for ik in range(self.NKirr):
-            self.d_band_block_indices[ik] = dic[f'd_band_block_indices_{ik}']
             for isym in range(self.Nsym):
-                for i in range(len(self.d_band_block_indices[ik])):
-                    self.d_band_blocks[ik][isym].append(np.ascontiguousarray(dic[f'd_band_blocks_{ik}_{isym}_{i}']))
-                for i in range(len(self.D_wann_block_indices)):
-                    self.D_wann_blocks[ik][isym].append(np.ascontiguousarray(dic[f'D_wann_blocks_{ik}_{isym}_{i}']))
+                self.d_band_blocks[ik][isym] = [np.ascontiguousarray(d_band_blocks_tmp[ik][i][isym]) 
+                                                                     for i in range(d_band_num_blocks[ik])]
+                self.D_wann_blocks[ik][isym] = [np.ascontiguousarray(D_wann_blocks_tmp[i][ik,isym])
+                                                                        for i in range(D_wann_num_blocks)]     
+        t1 = time()
         prefix = "spacegroup_"
         l = len(prefix)
         for k in dic:
@@ -156,10 +179,13 @@ class DMN(W90_file):
         dic_spacegroup = {k[l:]: v for k, v in dic.items() if k.startswith(prefix)}
         if len(dic_spacegroup) > 0:
             self.spacegroup = SpaceGroupBare(**dic_spacegroup)
+        t2 = time()
         for prefix in ["T", "atommap", "rot_orb"]:
             keys = sorted([k for k in dic.keys() if k.startswith(prefix)])
             lst = [dic[k] for k in keys]
-            self.__setattr__(prefix + "list", lst)
+            self.__setattr__(prefix + "_list", lst)
+        t3 = time()
+        print (f"time for read_npz dmn {t3-t0}\n init {t01-t0} \n d_blocks {t1-t01} \n spacegroup {t2-t1}\n  T {t3-t2} ")
 
     @property
     def NK(self):
@@ -475,6 +501,7 @@ class DMN(W90_file):
     #         del self.d_band_blocks_free_inverse
     #         del self.d_band_block_indices_free
     
+    
     def clear_inverse(self, d=True, D=True):
         if d:
             if hasattr(self, 'd_band_blocks_inverse'):
@@ -527,6 +554,7 @@ class DMN(W90_file):
     #                              result=Z1)
     #     return Z1
     #     # return d_band.conj().T @ Z @ d_band
+
 
     def check_unitary(self):
         """
@@ -867,7 +895,7 @@ class DMN(W90_file):
                     v_tmp = (T[atom_b] - symop.translation).dot(self.spacegroup.lattice)
                     XX_L = WCC_in[start_a:start_a + norb, :] + v_tmp
                     XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=((1,), (0,)))
-                    print(f"XX_L: {XX_L.shape}, rot_orb_dagger: {self.rot_orb_dagger_list[block][isym].shape}, rot_orb: {self.rot_orb_list[block][isym].shape}, WCC_out: {WCC_out.shape}, start_b: {start_b}, norb: {norb}")
+                    # print(f"XX_L: {XX_L.shape}, rot_orb_dagger: {self.rot_orb_dagger_list[block][isym].shape}, rot_orb: {self.rot_orb_list[block][isym].shape}, WCC_out: {WCC_out.shape}, start_b: {start_b}, norb: {norb}")
                     WCC_out[start_b:start_b + norb] += np.einsum("ij,ja,ji->ia", self.rot_orb_dagger_list[block][isym], XX_L, self.rot_orb_list[block][isym])
         return WCC_out.real / self.spacegroup.size
 

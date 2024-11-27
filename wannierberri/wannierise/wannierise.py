@@ -158,7 +158,7 @@ def wannierise(w90data,
                             weight=symmetrizer.ndegen(ik) / symmetrizer.NK
                             )
     t2 = time()
-    SpreadFunctional_loc = SpreadFunctional(
+    spread_functional = SpreadFunctional(
         w=w90data.mmn.wk_unique / w90data.mmn.NK,
         bk=w90data.mmn.bk_cart_unique,
         neigh=w90data.mmn.neighbours_unique,
@@ -174,7 +174,7 @@ def wannierise(w90data,
 
     # spreads = getSpreads(kpoints, U_opt_full_BZ, neighbours_irreducible)
     print_centers_and_spreads(w90data, U_opt_full_BZ,
-                              spread_functional=SpreadFunctional_loc,
+                              spread_functional=spread_functional,
                               comment="Initial  State")
     # print ("  |  ".join(f"{key} = {value:16.8f}" for key, value in spreads.items() if key.startswith("Omega")))
 
@@ -183,8 +183,9 @@ def wannierise(w90data,
     t_update = 0
     t01 = time()
     for i_iter in range(num_iter):
-        U_opt_full_IR = []
-        wcc = SpreadFunctional_loc.get_wcc(U_opt_full_BZ)
+        wcc = spread_functional.get_wcc(U_opt_full_BZ)
+        if sitesym:
+            wcc = w90data.dmn.symmetrize_WCC(wcc)
         wcc_bk_phase = np.exp(1j * wcc.dot(bk_cart.T))
         U_neigh = [[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr]
         tx = time()
@@ -207,7 +208,7 @@ def wannierise(w90data,
         
         if i_iter % print_progress_every == 0:
             delta_std = print_progress(i_iter, Omega_list, num_iter_converge,
-                                    spread_functional=SpreadFunctional_loc, w90data=w90data, U_opt_full_BZ=U_opt_full_BZ)
+                                    spread_functional=spread_functional, w90data=w90data, U_opt_full_BZ=U_opt_full_BZ)
 
             if delta_std < conv_tol:
                 print(f"Converged after {i_iter} iterations")
@@ -216,7 +217,7 @@ def wannierise(w90data,
     
 
     print_centers_and_spreads(w90data, U_opt_full_BZ,
-                              spread_functional=SpreadFunctional_loc,
+                              spread_functional=spread_functional,
                               comment="Final State")
     w90data.wannierised = True
     print(f"time for creating wannierrizer {t2-t1}")

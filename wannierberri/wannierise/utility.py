@@ -1,7 +1,6 @@
 
 from functools import lru_cache
 import sys
-import warnings
 import numpy as np
 DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
 
