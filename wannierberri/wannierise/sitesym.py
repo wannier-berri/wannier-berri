@@ -43,7 +43,8 @@ class Symmetrizer:
 
     def __init__(self, Dmn=None, neighbours=None,
                  free=None,
-                 n_iter=20, epsilon=1e-8):
+                 symmetrize_Z=True,
+                 n_iter=10, epsilon=1e-7):
         if free is None:
             self.free = np.ones((Dmn.NK, Dmn.NB), dtype=bool)
         else:
@@ -57,6 +58,7 @@ class Symmetrizer:
         self.kptirr2kpt = Dmn.kptirr2kpt
         self.kpt2kptirr = Dmn.kpt2kptirr
         self.Nsym = Dmn.Nsym
+        self.symmetrize_Z = symmetrize_Z
         if neighbours is None:
             self.include_k = np.ones(self.NK, dtype=bool)
         else:
@@ -148,8 +150,11 @@ class Symmetrizer:
         return Symmetrizer_Uirr(self.Dmn, ikirr, n_iter=self.n_iter, epsilon=self.epsilon)
     
     def get_symmetrizer_Zirr(self, ikirr):
-        return symmetrizer_Zirr(self.Dmn, ikirr, free=self.free, n_iter=self.n_iter, epsilon=self.epsilon)
-
+        if self.symmetrize_Z:
+            return symmetrizer_Zirr(self.Dmn, ikirr, free=self.free, n_iter=self.n_iter, epsilon=self.epsilon)
+        else:
+            return VoidSymmetrizer()
+        
     # def symmetrize_U_kirr(self, U, ikirr):
     #     """
     #     Symmetrizes the umat matrix at the irreducible kpoint
@@ -231,7 +236,7 @@ class Symmetrizer_Uirr(Symmetrizer):
             U = Usym
         else:
             warnings.warn(f'symmetrization of U matrix at irreducible point {self.ikirr} ({self.ikpt})' +
-                        f' did not converge after {self.n_iter} iterations, diff={diff}' +
+                        f' did not converge after {self.n_iter} iterations, ' +
                         'Either eps is too small or specified irreps is not compatible with the bands' +
                         f'diff{diff}, eps={self.epsilon}')
         return orthogonalize(Usym)
@@ -239,7 +244,7 @@ class Symmetrizer_Uirr(Symmetrizer):
 
 class symmetrizer_Zirr(Symmetrizer):
 
-    def __init__(self, dmn, ikirr, free, n_iter=20, epsilon=1e-8):
+    def __init__(self, dmn, ikirr, free, n_iter=5, epsilon=1e-7):
         self.ikirr = ikirr
         self.n_iter = n_iter
         self.epsilon = epsilon
@@ -272,12 +277,20 @@ class symmetrizer_Zirr(Symmetrizer):
         # return Z # temporary for testing
         if Z.shape[0] == 0:
             return Z
-        for i in range(self.n_iter):
-            Zsym = sum(self.rotate_Z(Z, isym) for isym in self.isym_little) / self.nsym_little
-            diff = np.max(abs(Zsym - Z))
+        # diff_list = []
+        for _ in range(self.n_iter):
+            Z_rotated = [self.rotate_Z(Z, isym) for isym in self.isym_little]
+            Zsym = sum(Z_rotated) / self.nsym_little
+            diff = np.max(np.max(abs(Zsym-Z)))
             if diff < self.epsilon:
                 break
             Z[:] = Zsym
+        else:
+            warnings.warn(f"symmetrization of Z matrix at irreducible point {self.ikirr} ({self.ikpt}) " +
+                          f" did not converge after {self.n_iter} iterations. " +
+                          "Either eps is too small or specified irreps is not compatible with the bands" +
+                          f" diff={diff} > eps={self.epsilon}")
+        # print (f"symmetrized Z  to precision {diff} (nsym = {self.isym_little}) in {i+1} iterations ({diff_list})")
         Z[:] = Zsym
         return Z
     
@@ -286,16 +299,18 @@ class symmetrizer_Zirr(Symmetrizer):
         Rotates the zmat matrix at the irreducible kpoint
         Z = d_band^+ @ Z @ d_band
         """
-
-        if self.time_reversals[isym]:
-            Zloc = Z.conj()
-        else:
-            Zloc = Z
-        return rotate_block_matrix(Zloc, lblocks=self.lblocks[isym], 
+        Zloc = Z.copy()
+        # if self.time_reversals[isym]:
+        #     Zloc = Zloc.conj()
+        Zloc = rotate_block_matrix(Zloc, lblocks=self.lblocks[isym], 
                                  lindices=self.indices,
                                  rblocks=self.rblocks[isym], 
                                  rindices=self.indices,
                                 )
+        if self.time_reversals[isym]:
+            Zloc = Zloc.conj()
+                                
+        return Zloc
 
 
 class VoidSymmetrizer(Symmetrizer):

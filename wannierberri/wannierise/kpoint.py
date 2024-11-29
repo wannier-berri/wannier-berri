@@ -4,8 +4,6 @@ import numpy as np
 import ray
 from ..__utility import get_max_eig, orthogonalize
 
-SPREAD = True
-
 
 class Kpoint_and_neighbours:
     """ a class to store the data on a single k-point
@@ -73,6 +71,7 @@ class Kpoint_and_neighbours:
         amn2 = amn[self.free, :].dot(amn[self.free, :].T.conj())
         self.U_opt_free = get_max_eig(amn2, self.nWfree, self.NBfree)  # nBfee x nWfree marrices
         self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
+        # self.update_Mmn_opt()
 
     def get_U_opt_full(self):
         return self.U_opt_full
@@ -184,8 +183,6 @@ class Kpoint_and_neighbours:
         """
         update the Mmn matrix for the optimized U matrix
         """
-        if not SPREAD:
-            return
         if self.U_opt_full is None or self.U_nb is None:
             return
         UT = self.U_opt_full.T.conj()
@@ -200,8 +197,6 @@ class Kpoint_and_neighbours:
         U_nb : list of nnb matrices numpy.ndarray(nBfree,nWfree)
             the U matrix at neighbouring k-points
         """
-        if not SPREAD:
-            return
         if U_nb is not None:
             self.U_nb = U_nb
             self.update_Mmn_opt()
@@ -314,7 +309,7 @@ class Wannierizer:
             warnings.warn("Ray is not initialized, running in serial mode")
             parallel = False
         self.parallel = parallel
-        self.spacegroup = spacegroup
+        # self.spacegroup = spacegroup
 
     def add_kpoint(self, **kwargs):
         """

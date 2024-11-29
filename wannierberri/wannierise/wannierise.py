@@ -26,6 +26,7 @@ def wannierise(w90data,
                num_wann=None,
                parallel=True,
                spacegroup=None,
+               symmetrize_Z=True,
                ):
     r"""
     Performs disentanglement and maximal localization of the bands recorded in w90data.
@@ -70,7 +71,8 @@ def wannierise(w90data,
         the number of Wannier functions. Required for random initialization only without sitesymmetry
     parallel : bool
         if True - tries to run in parallel using ray. ray should be initialized before calling this function. If it was not initialized, the function will run in serial mode
-
+    symmetrize_Z : bool
+        whether to symmetrize the disentangled Z matrix. If False, the Z matrix is not symmetrized whoch may lead to inaccuracy and slower convergence, but may be a faster calculation. Use it on your own risk.
     Returns
     -------
     w90data.chk.v_matrix : numpy.ndarray
@@ -110,7 +112,7 @@ def wannierise(w90data,
 
     if sitesym:
         symmetrizer = Symmetrizer(w90data.dmn, neighbours=w90data.mmn.neighbours,
-                                  free=free,
+                                  free=free, symmetrize_Z=symmetrize_Z,
                                   **kwargs_sitesym)
     else:
         symmetrizer = VoidSymmetrizer(NK=w90data.mmn.NK)
@@ -170,7 +172,6 @@ def wannierise(w90data,
     # symmetrizer.symmetrize_U(U_opt_full_IR)
     # the _BZ suffix is used to denote that the U matrix is defined on all k-points in the full BZ
     U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=True)
-    
 
     # spreads = getSpreads(kpoints, U_opt_full_BZ, neighbours_irreducible)
     print_centers_and_spreads(w90data, U_opt_full_BZ,
@@ -185,7 +186,17 @@ def wannierise(w90data,
     for i_iter in range(num_iter):
         wcc = spread_functional.get_wcc(U_opt_full_BZ)
         if sitesym:
-            wcc = w90data.dmn.symmetrize_WCC(wcc)
+           wcc_sym = w90data.dmn.symmetrize_WCC(wcc)
+        else:
+            wcc_sym = wcc
+        if i_iter >0:
+            wcc_wannierizer = wannierizer.get_wcc()
+            if sitesym:
+                wcc_wannierizer = w90data.dmn.symmetrize_WCC(wcc_wannierizer)
+            print ("comparison of wcc")
+            for wan1, wan_s, wan2 in zip(wcc, wcc_sym, wcc_wannierizer):
+                print (wan1, wan_s, wan2)
+        
         wcc_bk_phase = np.exp(1j * wcc.dot(bk_cart.T))
         U_neigh = [[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr]
         tx = time()

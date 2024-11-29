@@ -107,37 +107,18 @@ class DMN(W90_file):
     @cached_property
     def D_wann_blocks_inverse(self):
         return get_inverse_block(self.D_wann_blocks)
-    
-    def get_spacegroup(self):
-        if hasattr(self, 'spacegroup'):
-            return self.spacegroup
-        else:
-            return None
-        
-    def set_spacegroup(self, spacegroup):
-        self.spacegroup = spacegroup
-        if self.Nsym <= 0:
-            self.Nsym = spacegroup.size
-        else:
-            assert self.Nsym == spacegroup.size, f"spacegroup size mismatch {self.Nsym} != {spacegroup.size}"
-
+            
     def to_npz(self, f_npz):
         dic = {k: self.__getattribute__(k) for k in self.npz_tags}
         for ik in range(self.NKirr):
             dic[f'd_band_block_indices_{ik}'] = self.d_band_block_indices[ik]
-            # for isym in range(self.Nsym):
-            #     for i in range(len(self.d_band_block_indices[ik])):
-            #         dic[f'd_band_blocks_{ik}_{isym}_{i}'] = self.d_band_blocks[ik][isym][i]
-            #     for i in range(len(self.D_wann_block_indices)):
-            #         dic[f'D_wann_blocks_{ik}_{isym}_{i}'] = self.D_wann_blocks[ik][isym][i]
             for i in range(len(self.d_band_block_indices[ik])):
                 dic[f'd_band_blocks_{ik}_{i}'] = np.array([self.d_band_blocks[ik][isym][i] for isym in range(self.Nsym)])
         for i in range(len(self.D_wann_block_indices)):
             dic[f'D_wann_blocks_{i}'] = np.array([[self.D_wann_blocks[ik][isym][i] for isym in range(self.Nsym)]
                                             for ik in range(self.NKirr)])    
-        if hasattr(self, 'spacegroup'):
-            for k, val in self.spacegroup.as_dict().items():
-                dic["spacegroup_" + k] = val
+        for k, val in self.spacegroup.as_dict().items():
+            dic["spacegroup_" + k] = val
         for attrname in ["T", "atommap", "rot_orb"]:
             if hasattr(self, attrname + "_list"):
                 for i, t in enumerate(self.__getattribute__(attrname + "_list")):
@@ -172,10 +153,6 @@ class DMN(W90_file):
         t1 = time()
         prefix = "spacegroup_"
         l = len(prefix)
-        for k in dic:
-            if k.startswith(prefix):
-                print(k)
-                print(dic[k])
         dic_spacegroup = {k[l:]: v for k, v in dic.items() if k.startswith(prefix)}
         if len(dic_spacegroup) > 0:
             self.spacegroup = SpaceGroupBare(**dic_spacegroup)
@@ -219,6 +196,7 @@ class DMN(W90_file):
         eigenvalues : np.array(shape=(NK,NB)), optional
             The Energies used to determine the degenerecy of the bands
         """
+        DeprecationWarning("w90 format for dmn is deprecated is deprecated, use dmn.npz instead")
         fl = open(seedname + ".dmn", "r")
         self.comment = fl.readline().strip()
         self._NB, self.Nsym, self.NKirr, self._NK = readints(fl, 4)
@@ -229,7 +207,6 @@ class DMN(W90_file):
         assert np.all(self.kptirr2kpt.flatten() >= 0), "kptirr2kpt has negative values"
         assert np.all(self.kptirr2kpt.flatten() < self.NK), "kptirr2kpt has values larger than NK"
         assert (set(self.kptirr2kpt.flatten()) == set(range(self.NK))), "kptirr2kpt does not cover all kpoints"
-        # print(self.kptirr2kpt.shape)
         # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
         
 
@@ -301,6 +278,8 @@ class DMN(W90_file):
     def d_band_full_matrix(self, ikirr=None, isym=None):
         """
         Returns the full matrix of the ab initio bands transformation matrix
+
+        Note: this funcion is used only for w90 format, which is deprecated. TODO: remove it
         """
         if ikirr is None:
             return np.array([self.d_band_full_matrix(ikirr, isym) for ikirr in range(self.NKirr)])
@@ -315,6 +294,9 @@ class DMN(W90_file):
     def D_wann_full_matrix(self, ikirr=None, isym=None):
         """
         Returns the full matrix of the Wannier function transformation matrix
+        
+        Note: this funcion is used only for w90 format, which is deprecated. TODO: remove it
+        
         """
         if ikirr is None:
             return np.array([self.D_wann_full_matrix(ikirr, isym) for ikirr in range(self.NKirr)])
@@ -880,24 +862,21 @@ class DMN(W90_file):
             for rot_orb in self.rot_orb_list]
     
     def symmetrize_WCC(self, wannier_centers_cart):
-        WCC_in = wannier_centers_cart.copy()
-        WCC_out = np.zeros((self.num_wann, 3), dtype=complex)
+        wcc_red_in = wannier_centers_cart @ self.spacegroup.lattice_inv
+        WCC_red_out = np.zeros((self.num_wann, 3), dtype=float)
         for isym, symop in enumerate(self.spacegroup.symmetries):
             for block, (ws, _) in enumerate(self.D_wann_block_indices):
                 norb = self.rot_orb_list[block][0].shape[0]
                 T = self.T_list[block][:, isym]
                 num_points = T.shape[0]
-                atom_a_map = self.atommap_list[block][:, isym]
+                atom_map = self.atommap_list[block][:, isym]
                 for atom_a in range(num_points):
                     start_a = ws + atom_a * norb
-                    atom_b = atom_a_map[atom_a]
+                    atom_b = atom_map[atom_a]
                     start_b = ws + atom_b * norb
-                    v_tmp = (T[atom_b] - symop.translation).dot(self.spacegroup.lattice)
-                    XX_L = WCC_in[start_a:start_a + norb, :] + v_tmp
-                    XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=((1,), (0,)))
-                    # print(f"XX_L: {XX_L.shape}, rot_orb_dagger: {self.rot_orb_dagger_list[block][isym].shape}, rot_orb: {self.rot_orb_list[block][isym].shape}, WCC_out: {WCC_out.shape}, start_b: {start_b}, norb: {norb}")
-                    WCC_out[start_b:start_b + norb] += np.einsum("ij,ja,ji->ia", self.rot_orb_dagger_list[block][isym], XX_L, self.rot_orb_list[block][isym])
-        return WCC_out.real / self.spacegroup.size
+                    XX_L = symop.transform_r(wcc_red_in[start_a:start_a + norb]) - T[atom_a]
+                    WCC_red_out[start_b:start_b + norb] += np.einsum("ij,ja,ji->ia", self.rot_orb_dagger_list[block][isym], XX_L, self.rot_orb_list[block][isym]).real
+        return (WCC_red_out @ self.spacegroup.lattice)/ self.spacegroup.size
 
 
     #

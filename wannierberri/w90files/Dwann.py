@@ -96,7 +96,7 @@ class Dwann:
                 ip2 = self.orbit.index(p2)
                 self.atommap[ip, isym] = ip2
                 p2 = symop.transform_r(p)
-                p2a = self.orbit[self.atommap[ip, isym]]
+                p2a = self.orbit[ip2]
                 self.T[ip, isym] = p2 - p2a
         T_round = np.round(self.T)
         assert np.allclose(self.T, T_round, atol=1e-7), f"T=\n{self.T}, \nT_round=\n{T_round}, \n max_diff={np.max(np.abs(self.T - T_round))}"
@@ -134,7 +134,7 @@ class Dwann:
         Dwann = np.zeros((self.num_wann, self.num_wann), dtype=complex)
         for ip, _ in enumerate(self.orbit):
             jp = self.atommap[ip, isym]
-            print(f"Dwann.shpape={Dwann.shape}, rot_orb.shape={self.rot_orb[isym].shape}, num_orbitals={self.num_orbitals}, spinor={self.spinor}")
+            # print(f"Dwann.shpape={Dwann.shape}, rot_orb.shape={self.rot_orb[isym].shape}, num_orbitals={self.num_orbitals}, spinor={self.spinor}")
             Dwann[jp * self.num_orbitals:(jp + 1) * self.num_orbitals,
                   ip * self.num_orbitals:(ip + 1) * self.num_orbitals
                   ] = np.exp(-2j * np.pi * (np.dot(kptirr1, self.T[ip, isym]))) * self.rot_orb[isym]

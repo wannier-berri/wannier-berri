@@ -23,7 +23,7 @@ from collections.abc import Iterable
 import datetime
 import sys
 from typing import Any
-
+from numba import njit
 
 if PYFFTW_IMPORTED:
     import pyfftw
@@ -522,6 +522,42 @@ def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices,
     for (start, end), block in zip(rindices, rblocks):
         result[:, start:end] = result[:, start:end] @ block
 
+    return result
+
+def block_matrix_to_diagonals(blocks, indices=None):
+    """
+    Extracts the blocks of a block-diagonal matrix
+
+    Parameters
+    ----------
+    blocks : list(np.array(complex, shape=(m,m)))
+        the blocks of hte left matrix. sum(m) = M
+    indices : list(tuple(int))
+        the indices of the blocks of the left matrix
+    
+    Returns
+    -------
+    list(np.array(complex, shape=(m,m)))
+        the blocks of the matrix
+    """
+    if indices is None:
+        indices = []
+        start = 0
+        for block in blocks:
+            indices.append((start, start + block.shape[0]))
+            start += block.shape[0]
+
+    size = indices[-1][1] - indices[0][0]
+    tmp = np.zeros((size, size), dtype=blocks[0].dtype)
+    max_block_size = max(block.shape[0] for block in blocks)
+    for (start, end), block in zip(indices, blocks):
+        tmp[start:end, start:end] = block
+    result = np.zeros((2*max_block_size-1, size), dtype=blocks[0].dtype)
+    rng = np.arange(size)
+    result[0] = tmp[rng, rng]
+    for l in range(1,max_block_size):
+        result[l,:-l] = tmp[rng[:-l], rng[l:]]
+        result[-l,:-l] = tmp[rng[l:], rng[:-l]]
     return result
 
 
