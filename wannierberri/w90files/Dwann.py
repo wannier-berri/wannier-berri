@@ -97,7 +97,7 @@ class Dwann:
                 self.atommap[ip, isym] = ip2
                 p2 = symop.transform_r(p)
                 p2a = self.orbit[ip2]
-                self.T[ip, isym] = p2 - p2a
+                self.T[ip, isym] = p2a - p2
         T_round = np.round(self.T)
         assert np.allclose(self.T, T_round, atol=1e-7), f"T=\n{self.T}, \nT_round=\n{T_round}, \n max_diff={np.max(np.abs(self.T - T_round))}"
         self.T = T_round.astype(int)

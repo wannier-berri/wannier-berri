@@ -173,7 +173,7 @@ class SymWann:
             logfile.write(f"T1 = {T1}\n")
             logfile.write(f"T2 = {T2}\n")
         
-            atom_R_map = R_map[isym][:, None, None, :] - T1[None, :, None, :] + T2[None, None, :, :]
+            atom_R_map = R_map[isym][:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :]
             logfile.write(f"R_map = {R_map[isym]}\n")
             logfile.write(f"np1 = {np1}, np2 = {np2}\n")
             for a in range(np1):
@@ -333,7 +333,7 @@ class SymWann:
             atommap2 = self.dmn.atommap_list[block2][:, isym]
             logfile.write(f"symmetry operation  {isym+1}/{len(self.spacegroup.symmetries)}")
             R_map = iRvec_new_array @ np.transpose(symop.rotation)
-            atom_R_map = (R_map[:, None, None, :] - T1[None, :, None, :] + T2[None, None, :, :])
+            atom_R_map = (R_map[:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :])
             for (atom_a, atom_b), iR_new_list in iRab_new.items():
                 atom_a_map = atommap1[atom_a]
                 atom_b_map = atommap2[atom_b]

@@ -861,6 +861,7 @@ class DMN(W90_file):
         return [rot_orb.swapaxes(1, 2).conj()
             for rot_orb in self.rot_orb_list]
     
+
     def symmetrize_WCC(self, wannier_centers_cart):
         wcc_red_in = wannier_centers_cart @ self.spacegroup.lattice_inv
         WCC_red_out = np.zeros((self.num_wann, 3), dtype=float)
@@ -874,7 +875,7 @@ class DMN(W90_file):
                     start_a = ws + atom_a * norb
                     atom_b = atom_map[atom_a]
                     start_b = ws + atom_b * norb
-                    XX_L = symop.transform_r(wcc_red_in[start_a:start_a + norb]) - T[atom_a]
+                    XX_L = symop.transform_r(wcc_red_in[start_a:start_a + norb]) + T[atom_a]
                     WCC_red_out[start_b:start_b + norb] += np.einsum("ij,ja,ji->ia", self.rot_orb_dagger_list[block][isym], XX_L, self.rot_orb_list[block][isym]).real
         return (WCC_red_out @ self.spacegroup.lattice)/ self.spacegroup.size
 
