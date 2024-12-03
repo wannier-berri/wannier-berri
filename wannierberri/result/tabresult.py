@@ -245,6 +245,7 @@ class TABresult(Result):
             e = E[:, ib]
             selE = (e <= Emax) * (e >= Emin)
             e[~selE] = None
+            _line = None
             if np.any(selE):
                 klineselE = kline[selE]
                 klineall.append(klineselE)
@@ -253,7 +254,7 @@ class TABresult(Result):
                 if 'c' in _kwargs and 'color' in _kwargs:
                     del _kwargs['c']
                 _line, = axes.plot(kline, e, **_kwargs)
-        if label is not None:
+        if None not in [label, _line]:
             _line.set_label(label)
             axes.legend()
         if cut_k:

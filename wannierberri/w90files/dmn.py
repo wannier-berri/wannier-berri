@@ -103,7 +103,8 @@ class DMN(W90_file):
                 dic[f'd_band_blocks_{ik}_{i}'] = np.array([self.d_band_blocks[ik][isym][i] for isym in range(self.Nsym)])
         for i in range(len(self.D_wann_block_indices)):
             dic[f'D_wann_blocks_{i}'] = np.array([[self.D_wann_blocks[ik][isym][i] for isym in range(self.Nsym)]
-                                            for ik in range(self.NKirr)])    
+                                            for ik in range(self.NKirr)])
+        return dic    
 
         
     def to_npz(self, f_npz):

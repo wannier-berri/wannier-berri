@@ -1,13 +1,13 @@
 from time import time
+import warnings
 import numpy as np
 
 from .wannierizer import Wannierizer
 
-from .utility import select_window_degen, print_centers_and_spreads, print_progress
-
+from .utility import select_window_degen, print_centers_and_spreads, print_centers_and_spreads_chk
 from ..__utility import vectorize
 from .symmetrizer_SAWF import VoidSymmetrizer, Symmetrizer
-from .spreadfunctional import SpreadFunctional
+# from .spreadfunctional import SpreadFunctional
 
 
 def wannierise(w90data,
@@ -162,11 +162,11 @@ def wannierise(w90data,
                             weight=symmetrizer.ndegen(ik) / symmetrizer.NK
                             )
     t2 = time()
-    spread_functional = SpreadFunctional(
-        w=w90data.mmn.wk_unique / w90data.mmn.NK,
-        bk=w90data.mmn.bk_cart_unique,
-        neigh=w90data.mmn.neighbours_unique,
-        Mmn=mmn_data_ordered)
+    # spread_functional = SpreadFunctional(
+    #     w=w90data.mmn.wk_unique / w90data.mmn.NK,
+    #     bk=w90data.mmn.bk_cart_unique,
+    #     neigh=w90data.mmn.neighbours_unique,
+    #     Mmn=mmn_data_ordered)
 
 
     # The _IR suffix is used to denote that the U matrix is defined only on k-points in the irreducible BZ
@@ -180,15 +180,19 @@ def wannierise(w90data,
         wannierizer.kpoints[ik].update_Unb(U_neigh)
 
     # spreads = getSpreads(kpoints, U_opt_full_BZ, neighbours_irreducible)
-    print_centers_and_spreads(w90data, U_opt_full_BZ,
-                              spread_functional=spread_functional,
-                              comment="Initial  State")
-    # print ("  |  ".join(f"{key} = {value:16.8f}" for key, value in spreads.items() if key.startswith("Omega")))
+    # print_centers_and_spreads(w90data, U_opt_full_BZ,
+    #                           spread_functional=spread_functional,
+    #                           comment="Initial  State")
+    # # print ("  |  ".join(f"{key} = {value:16.8f}" for key, value in spreads.items() if key.startswith("Omega")))
+            # print_centers_and_spreads(wcc=wcc, spreads=spreads, comment=f"Iteration {i_iter} (from wannierizer)")
+    print_centers_and_spreads_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, comment=f"starting WFs (from chk)")
 
-    Omega_list = []
 
+    converge_list = []
+    delta_std = np.inf
     t_update = 0
     t01 = time()
+    wcc = wannierizer.get_wcc()
     for i_iter in range(num_iter):
         wcc = wannierizer.get_wcc()
         wcc_bk_phase = np.exp(1j * wcc.dot(bk_cart.T))
@@ -200,36 +204,33 @@ def wannierise(w90data,
                                                wcc_bk_phase=wcc_bk_phase)
         t_update += time() - tx
         
-        # for ikirr, kpt in enumerate(kptirr):
-        #     U_neigh = [U_opt_full_BZ[ib] for ib in neighbours_all[kpt]]
-        #     U_opt_full_IR.append( wannierizer.update(ikirr, U_neigh, 
-        #                                             mix_ratio=mix_ratio_z,
-        #                                             mix_ratio_u=mix_ratio_u,
-        #                                             localise=localise,
-        #                                             wcc_bk_phase=wcc_bk_phase,
-        #                                              ) )
+        U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=False)
 
-        U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k= (i_iter % print_progress_every == 0))
+        wcc = wannierizer.get_wcc()
+        spreads = wannierizer.get_spreads(wcc = wcc)
+        converge_list.append(np.hstack((wcc,spreads[:,None])) )
+        delta_std = np.std(converge_list[-num_iter_converge:],axis=0).max()
         
         if i_iter % print_progress_every == 0:
-            wcc = wannierizer.get_wcc()
-            spreads = wannierizer.get_spreads(wcc = wcc)
-            print ("from wannierizer:")
-            for w,s in zip(wcc, spreads):
-                print (w,"| ", s)
-            print ("-----------------")
-            delta_std = print_progress(i_iter, Omega_list, num_iter_converge,
-                                    spread_functional=spread_functional, w90data=w90data, U_opt_full_BZ=U_opt_full_BZ)
+            print_centers_and_spreads(wcc=wcc, spreads=spreads, comment=f"Iteration {i_iter} (from wannierizer)")
+            # print_centers_and_spreads_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, comment=f"Iteration {i_iter} (from chk)")
+        
+        
+        if i_iter> num_iter_converge and delta_std < conv_tol:
+            print(f"Converged after {i_iter} iterations")
+            break
 
-            if delta_std < conv_tol:
-                print(f"Converged after {i_iter} iterations")
-                break
     t02 = time()
     
+    U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=True)
+    print_centers_and_spreads(wcc=wcc, spreads=spreads, comment=f"Final state (from wannierizer)")
+    wcc_chk, spreads_chk = print_centers_and_spreads_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, comment=f"Final state (from chk)")
+    if not np.allclose(wcc, wcc_chk, atol=1e-4):
+        warnings.warn(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc-wcc_chk).max()}")
+    if not np.allclose(spreads, spreads_chk, atol=1e-4):
+        warnings.warn(f"The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = {np.abs(spreads-spreads_chk).max()}")
 
-    print_centers_and_spreads(w90data, U_opt_full_BZ,
-                              spread_functional=spread_functional,
-                              comment="Final State")
+
     w90data.wannierised = True
     print(f"time for creating wannierrizer {t2-t1}")
     print(f"time for iterations {t02-t01}")

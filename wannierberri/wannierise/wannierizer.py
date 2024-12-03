@@ -130,7 +130,7 @@ class Kpoint_and_neighbours:
             self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
         self.U_opt_full = self.symmetrizer_Uirr(self.U_opt_full)
         self.update_Mmn_opt()
-        return self.U_opt_full
+        return self.U_opt_full, self._wcc, self._r2
 
 
     def calc_Z(self, U_nb=None):
@@ -189,9 +189,10 @@ class Kpoint_and_neighbours:
             return
         UT = self.U_opt_full.T.conj()
         self.Mmn_opt = np.array([UT @ mmn @ Ub for mmn, Ub in zip(self.Mmn, self.U_nb)])
-        self.Mmn_opt_diag = self.Mmn_opt[:, range(self.num_wann), range(self.num_wann)]
-        self.Mmn_opt_diag_sq = abs(self.Mmn_opt_diag)**2
-        self.Mmn_opt_diag_angle = np.angle(self.Mmn_opt_diag)
+        Mmn_opt_diag = self.Mmn_opt[:, range(self.num_wann), range(self.num_wann)]
+        Mmn_opt_diag_angle = np.angle(Mmn_opt_diag)
+        self._wcc = -Mmn_opt_diag_angle.T @ self.wbk * self.weight
+        self._r2 = self.wb @ (1 - abs(Mmn_opt_diag)**2 + Mmn_opt_diag_angle ** 2) * self.weight
 
     def update_Unb(self, U_nb=None):
         """
@@ -215,23 +216,14 @@ class Kpoint_and_neighbours:
         -------
         numpy.ndarray(nW,3)
             the centers of the Wannier functions
-
-        Notes
-        -----
-        does not work precisely whith sitesymmetry
         """
-        # rangew = np.arange(self.num_wann)
-        # phinb = -np.angle(self.Mmn_opt[:, rangew, rangew])
-        # phinb = -self.Mmn_opt_diag_angle
-        # return sum(w * phin[:, None] * bk for w, phin, bk in zip(self.wb, phinb, self.bk)) * self.weight
-        # return sum(  phin[:, None] * wbk for phin, wbk in zip(phinb, self.wbk)) * self.weight
-        return -self.Mmn_opt_diag_angle.T @ self.wbk * self.weight 
+        return self._wcc
     
     def get_r2(self):
         """"
         get the contribution of this k-point to the mean value of the r^2
         """
-        return self.wb @ (1 - self.Mmn_opt_diag_sq + self.Mmn_opt_diag_angle ** 2) *  self.weight
+        return self._r2
 
     
                 
@@ -316,12 +308,22 @@ class Wannierizer:
     def update_all(self, U_neigh, **kwargs):
         if self.parallel:
             remotes = [kpoint.update.remote(U, **kwargs) for kpoint, U in zip(self.kpoints, U_neigh)]
-            return ray.get(remotes)
+            list = ray.get(remotes)
         else:
-            return [kpoint.update(U, **kwargs) for kpoint, U in zip(self.kpoints, U_neigh)]
+            list = [kpoint.update(U, **kwargs) for kpoint, U in zip(self.kpoints, U_neigh)]
+        U_k = [x[0] for x in list]
+        wcc_k = [x[1] for x in list]
+        r2_k = [x[2] for x in list]
+        self._wcc = self.symmetrizer.symmetrize_WCC(sum(wcc_k))
+        self._spreads = self.symmetrizer.symmetrize_spreads(sum(r2_k) - np.linalg.norm(self._wcc, axis=1)**2 )
+        return U_k
+        
+
         # do we need copy in both/any of the cases?
 
     def get_wcc(self):
+        if hasattr(self, "_wcc"):
+            return self._wcc
         if self.parallel:
             wcc_k = ray.get([kpoint.get_centers.remote() for kpoint in self.kpoints])
         else:
@@ -336,10 +338,11 @@ class Wannierizer:
         else:
             r2_k = [kpoint.get_r2() for kpoint in self.kpoints] 
         r2 = sum(r2_k)
-        # r2 = self.symmetrizer.symmetrize_spreads(r2)
         return r2
     
     def get_spreads(self, wcc=None):
+        if hasattr(self, "_spreads"):
+            return self._spreads
         if wcc is None:
             wcc = self.get_wcc()
         spreads =  self.get_r2() - np.linalg.norm(wcc, axis=1)**2

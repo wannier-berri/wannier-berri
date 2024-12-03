@@ -5,9 +5,8 @@ import numpy as np
 DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
 
 
-def print_centers_and_spreads(w90data, U_opt_full_BZ,
-                              spread_functional=None, spreads=None,
-                              comment=None):
+def print_centers_and_spreads_chk(w90data, U_opt_full_BZ,
+                              comment=""):
     """
     print the centers and spreads of the Wannier functions
 
@@ -18,33 +17,37 @@ def print_centers_and_spreads(w90data, U_opt_full_BZ,
     U_opt_free_BZ : list of numpy.ndarray(nBfree,nW)
         the optimized U matrix for the free bands and wannier functions
     """
-    if spreads is None:
-        if spread_functional is not None:
-            wcc1 = spread_functional.get_wcc(U_opt_full_BZ)
-            spreads = spread_functional(U_opt_full_BZ, wcc=wcc1)
-            print("wannier centers from spread functional: \n", wcc1)
-
+    
     w90data.chk.v_matrix = np.array(U_opt_full_BZ)
     w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
+    print_centers_and_spreads(w90data.chk._wannier_centers, w90data.chk._wannier_spreads, comment=comment+": from chk")  
+    return w90data.chk._wannier_centers, w90data.chk._wannier_spreads
 
+
+def print_centers_and_spreads(wcc, spreads, comment=None):
+    """
+    print the centers and spreads of the Wannier functions
+
+    Parameters
+    ----------
+    wcc: np.ndarray(nW,3)
+        the centers of the Wannier functions
+    spreads: np.ndarray(nW,)
+        the spreads of the Wannier functions
+    """
     breakline = "-" * 100
     startline = "#" * 100
     endline = startline
-    wcc, spread = w90data.chk._wannier_centers, w90data.chk._wannier_spreads
     print(startline)
     if comment is not None:
         print(comment)
         print(breakline)
     print("wannier centers and spreads")
     print(breakline)
-    for wcc, spread in zip(wcc, spread):
-        wcc = np.round(wcc, 6)
-        print(f"{wcc[0]:16.12f}  {wcc[1]:16.12f}  {wcc[2]:16.12f}   |   {spread:16.12f}")
-    if spreads is not None:
-        print(breakline)
-        print(" | ".join(f"{key} = {value:12.8f}" for key, value in spreads.items() if key.startswith("Omega")))
+    for w, s in zip(wcc, spreads):
+        w = np.round(w, 6)
+        print(f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f}")
     print(endline)
-
 
 
 def print_progress(i_iter, Omega_list, num_iter_converge,
