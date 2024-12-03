@@ -18,7 +18,7 @@ except ImportError:
 
 from .utility import find_distance_periodic
 from wannierberri.__utility import UniqueListMod1
-from ..system.sym_wann_orbitals import Orbitals
+from ..symmetry.sym_wann_orbitals import Orbitals
 from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric
 
 ORBITALS = Orbitals()

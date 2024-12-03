@@ -1,32 +1,19 @@
 from functools import cached_property, lru_cache
 from time import time
-import warnings
-from irrep.bandstructure import BandStructure
-from irrep.spacegroup import SpaceGroupBare
 from irrep.utility import get_block_indices
 import numpy as np
 from copy import deepcopy
-
 from ..__utility import get_inverse_block, rotate_block_matrix
-from ..wannierise.projections import ProjectionsSet
-
 from .utility import writeints, readints
 from .w90file import W90_file
 from .amn import AMN
-from .Dwann import Dwann
 
 
 class DMN(W90_file):
     """
     Class to read and store the wannier90.dmn file
     
-    Note : the class actually contains more information than can be stored in the wannier90.dmn file
-    Now the wannierisation in wannier-berri is NOT compatible with the format of the wannier90.dmn file,
-    therefore  the dmn object should be created from the BandStructure object, and then the Wannier functions,
-    the symmetry transformation of the Wannier functions and ab initio bands.
-
-    Thus the name "dmn" is kept for historical reasons, but the class is not compatible with the wannier90.dmn file
-
+    
     Parameters
     ----------
     seedname : str
@@ -108,7 +95,7 @@ class DMN(W90_file):
     def D_wann_blocks_inverse(self):
         return get_inverse_block(self.D_wann_blocks)
             
-    def to_npz(self, f_npz):
+    def as_dict(self):
         dic = {k: self.__getattribute__(k) for k in self.npz_tags}
         for ik in range(self.NKirr):
             dic[f'd_band_block_indices_{ik}'] = self.d_band_block_indices[ik]
@@ -117,17 +104,18 @@ class DMN(W90_file):
         for i in range(len(self.D_wann_block_indices)):
             dic[f'D_wann_blocks_{i}'] = np.array([[self.D_wann_blocks[ik][isym][i] for isym in range(self.Nsym)]
                                             for ik in range(self.NKirr)])    
-        for k, val in self.spacegroup.as_dict().items():
-            dic["spacegroup_" + k] = val
-        for attrname in ["T", "atommap", "rot_orb"]:
-            if hasattr(self, attrname + "_list"):
-                for i, t in enumerate(self.__getattribute__(attrname + "_list")):
-                    dic[f'{attrname}_{i}'] = t
+
+        
+    def to_npz(self, f_npz):
+        dic = self.as_dict()
         print(f"saving to {f_npz} : ")
         np.savez_compressed(f_npz, **dic)
 
     def from_npz(self, f_npz):
         dic = np.load(f_npz)
+        self.from_dict(dic)
+
+    def from_dict(self, dic):
         t0 = time()
         for k in self.npz_tags:
             self.__setattr__(k, dic[k])
@@ -142,27 +130,16 @@ class DMN(W90_file):
         d_band_blocks_tmp = [[dic[f"d_band_blocks_{ik}_{i}"] for i in range(nblock)] 
                              for ik, nblock in enumerate(d_band_num_blocks)]
         D_wann_blocks_tmp = [dic[f"D_wann_blocks_{i}"] 
-                             for i in range(D_wann_num_blocks) ] 
+                             for i in range(D_wann_num_blocks)] 
 
         for ik in range(self.NKirr):
             for isym in range(self.Nsym):
                 self.d_band_blocks[ik][isym] = [np.ascontiguousarray(d_band_blocks_tmp[ik][i][isym]) 
-                                                                     for i in range(d_band_num_blocks[ik])]
-                self.D_wann_blocks[ik][isym] = [np.ascontiguousarray(D_wann_blocks_tmp[i][ik,isym])
-                                                                        for i in range(D_wann_num_blocks)]     
+                                                for i in range(d_band_num_blocks[ik])]
+                self.D_wann_blocks[ik][isym] = [np.ascontiguousarray(D_wann_blocks_tmp[i][ik, isym])
+                                                for i in range(D_wann_num_blocks)]     
         t1 = time()
-        prefix = "spacegroup_"
-        l = len(prefix)
-        dic_spacegroup = {k[l:]: v for k, v in dic.items() if k.startswith(prefix)}
-        if len(dic_spacegroup) > 0:
-            self.spacegroup = SpaceGroupBare(**dic_spacegroup)
-        t2 = time()
-        for prefix in ["T", "atommap", "rot_orb"]:
-            keys = sorted([k for k in dic.keys() if k.startswith(prefix)])
-            lst = [dic[k] for k in keys]
-            self.__setattr__(prefix + "_list", lst)
-        t3 = time()
-        print (f"time for read_npz dmn {t3-t0}\n init {t01-t0} \n d_blocks {t1-t01} \n spacegroup {t2-t1}\n  T {t3-t2} ")
+        print(f"time for read_npz dmn {t1-t0}\n init {t01-t0} \n d_blocks {t1-t01}")
 
     @property
     def NK(self):
@@ -333,40 +310,6 @@ class DMN(W90_file):
                 for isym in range(self.Nsym):
                     f.write("\n".join("({:17.12e},{:17.12e})".format(x.real, x.imag) for x in M(ik, isym).flatten(order='F')) + "\n\n")
 
-    def from_irrep(self, bandstructure: BandStructure,
-                 grid=None, degen_thresh=1e-2):
-        """
-        Initialize the object from the BandStructure object
-
-        Parameters
-        ----------
-        bandstructure : irrep.bandstructure.BandStructure
-            the object containing the band structure
-        grid : tuple(int), optional
-            the grid of kpoints (3 integers), if None, the grid is determined from the kpoints
-            may be used to reduce the grid (by an integer factor) for the symmetry analysis
-        degen_thresh : float, optional
-            the threshold for the degeneracy of the bands. Only transformations between bands
-             with energy difference smaller than this value are considered
-        """
-        data = bandstructure.get_dmn(grid=grid, degen_thresh=degen_thresh, unitary=True)
-        self.grid = data["grid"]
-        self.kpoints = data["kpoints"]
-        self.kpt2kptirr = data["kpt2kptirr"]
-        self.kptirr = data["kptirr"]
-        self.kptirr2kpt = data["kptirr2kpt"]
-        self.d_band_blocks = data["d_band_blocks"]
-        self.d_band_block_indices = data["d_band_block_indices"]
-        
-        self.comment = "Generated by wannierberri with irrep"
-        self.D_wann = []
-        self.spacegroup = bandstructure.spacegroup
-        self.Nsym = bandstructure.spacegroup.size
-        self.time_reversals = np.array([symop.time_reversal for symop in self.spacegroup.symmetries])
-        self.NKirr = len(self.kptirr)
-        self._NK = len(self.kpoints)
-        self._NB = bandstructure.num_bands
-        self.clear_inverse()
         
     def get_disentangled(self, v_matrix_dagger, v_matrix):
         """	
@@ -418,10 +361,6 @@ class DMN(W90_file):
     def select_bands(self, win_index_irr):
         self.d_band = [D[:, wi, :][:, :, wi] for D, wi in zip(self.d_band, win_index_irr)]
 
-    # def set_free(self, frozen_irr):
-    #     free = np.logical_not(frozen_irr)
-    #     self.d_band_free = [d[:, f, :][:, :, f] for d, f in zip(self.d_band, free)]
-
     def write(self):
         print(self.comment)
         print(self.NB, self.Nsym, self.NKirr, self.NK, self.num_wann)
@@ -464,25 +403,8 @@ class DMN(W90_file):
             if self.time_reversals[isym]:
                 Uloc = Uloc.conj()
             
-            # return d.conj().T @ U @ D
-        
         return Uloc
 
-        # if forward:
-        #     return self.d_band[ikirr, isym].conj().T @ U @ self.D_wann[ikirr, isym]
-        # else:
-        #     return self.d_band[ikirr, isym] @ U @ self.D_wann[ikirr, isym].conj().T
-
-
-
-
-    # def clear_free_bands(self):
-    #     if hasattr(self, 'free_bands_defined'):
-    #         del self.free_bands_defined
-    #         del self.d_band_blocks_free
-    #         del self.d_band_blocks_free_inverse
-    #         del self.d_band_block_indices_free
-    
     
     def clear_inverse(self, d=True, D=True):
         if d:
@@ -491,51 +413,6 @@ class DMN(W90_file):
         if D:
             if hasattr(self, 'D_wann_blocks_inverse'):
                 del self.D_wann_blocks_inverse
-
-    # def set_free_bands(self, ikirr, free_bands):
-    #     assert free_bands is not None
-    #     if not hasattr(self, 'free_bands_defined'):
-    #         self.free_bands_defined = np.zeros(self.NK, dtype=bool)
-    #         self.d_band_blocks_free = [None for _ in range(self.NKirr)]
-    #         self.d_band_blocks_free_inverse = [None for _ in range(self.NKirr)]
-    #         self.d_band_block_indices_free = [None for _ in range(self.NKirr)]
-    #     if not self.free_bands_defined[ikirr]:
-    #         self.free_bands_defined[ikirr] = True
-    #         (
-    #             self.d_band_block_indices_free[ikirr],
-    #             self.d_band_blocks_free[ikirr]
-    #         ) = self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], free_bands)
-    #         self.d_band_blocks_free_inverse[ikirr] = get_inverse_block(self.d_band_blocks_free[ikirr])
-
-
-    # def rotate_Z(self, Z, isym, ikirr, free=None):
-    #     """
-    #     Rotates the zmat matrix at the irreducible kpoint
-    #     Z = d_band^+ @ Z @ d_band
-    #     """
-    #     if free is not None:
-    #         self.set_free_bands(ikirr, free)
-    #         lblocks = self.d_band_blocks_free_inverse[ikirr][isym]
-    #         rblocks = self.d_band_blocks_free[ikirr][isym]
-    #         indices = self.d_band_block_indices_free[ikirr]
-    #     else:
-    #         lblocks = self.d_band_blocks_inverse[ikirr][isym], 
-    #         rblocks = self.d_band_blocks[ikirr][isym]
-    #         indices = self.d_band_block_indices[ikirr]
-
-    #     Z1 = np.zeros(Z.shape, dtype=complex)
-    #     if self.time_reversals[isym]:
-    #         Zloc = Z.conj()
-    #     else:
-    #         Zloc = Z
-    #     Z1 = rotate_block_matrix(Zloc, lblocks=lblocks, 
-    #                              lindices=indices,
-    #                              rblocks=rblocks, 
-    #                              rindices=indices,
-    #                             #  inv_left=True, inv_right=False,
-    #                              result=Z1)
-    #     return Z1
-    #     # return d_band.conj().T @ Z @ d_band
 
 
     def check_unitary(self):
@@ -778,106 +655,8 @@ class DMN(W90_file):
         self.num_wann = num_wann
         print("num_wann", num_wann)
         print("D_wann_block_indices", self.D_wann_block_indices)
-        # for ik in range(self.NKirr):
-        #     for isym in range(self.Nsym):
-        #         print("D_wann_blocks", [b.shape for b in self.D_wann_blocks[ik][isym]])
 
-    def set_D_wann_from_projections(self,
-                                    projections=None,
-                                    projections_obj=None,
-                                    spacegroup=None,
-                                    win=None,
-                                    kpoints=None):
-        """
-        Parameters
-        ----------
-        spacegroup : SpaceGroup
-            the spacegroup of the system
-        projections : list( (np.array(float, shape=(3,)), str) )
-            the list of projections. Each projection is a tuple of the position and the orbital name
-        projections_obj : ProjectionsSet or list(Projection)
-            alternative way to provide the projections. Will be appended to the projections list
-        win : WIN object
-            the win file, just ot get the k-points
-        kpoints : np.array(float, shape=(npoints,3,))
-            the kpoints in fractional coordinates. Overrides the kpoints in the win file (if provided)
-
-
-        Note 
-        -----
-        win or kpoints must be provided ONLY if the kpoints are not stored in the object. If the object is set via from_irrep, the kpoints are already stored.
-
-        """
-        from ..system.sym_wann_orbitals import Orbitals
-        if projections is None:
-            projections = []
-        ORBITALS = Orbitals()
-        if spacegroup is None:
-            spacegroup = self.spacegroup
-        else:
-            self.spacegroup = spacegroup
-        if kpoints is None:
-            if win is not None:
-                kpoints = win.data["kpoints"]
-        if kpoints is None:
-            if hasattr(self, "kpoints"):
-                kpoints = self.kpoints
-            else:
-                warnings.warn("kpoints are not provided, neither stored in the object. Assuming Gamma point only")
-                kpoints = np.array([[0, 0, 0]])
-                self._NK = 1
-        else:
-            assert kpoints.shape == (self.NK, 3)
-            self.kpoints = kpoints
-            self._NK = len(kpoints)
-        if projections_obj is not None:
-            if isinstance(projections_obj, ProjectionsSet):
-                projections_obj = projections_obj.projections
-            for proj in projections_obj:
-                orbitals = proj.orbitals
-                print(f"orbitals = {orbitals}")
-                if len(orbitals) > 1:
-                    warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
-                for orb in orbitals:
-                    projections.append((proj.positions, orb))
-        
-        D_wann_list = []
-        self.T_list = []
-        self.atommap_list = []
-        self.rot_orb_list = []
-        for positions, proj in projections:
-            print(f"calculating Wannier functions for {proj} at {positions}")
-            _Dwann = Dwann(spacegroup, positions, proj, ORBITALS=ORBITALS, spinor=spacegroup.spinor)
-            _dwann = _Dwann.get_on_points_all(kpoints, self.kptirr, self.kptirr2kpt)
-            D_wann_list.append(_dwann)
-            self.T_list.append(_Dwann.T)
-            self.atommap_list.append(_Dwann.atommap)
-            self.rot_orb_list.append(_Dwann.rot_orb)
-        print(f"len(D_wann_list) = {len(D_wann_list)}")
-        self.set_D_wann(D_wann_list)
-
-    @cached_property
-    def rot_orb_dagger_list(self):
-        return [rot_orb.swapaxes(1, 2).conj()
-            for rot_orb in self.rot_orb_list]
     
-
-    def symmetrize_WCC(self, wannier_centers_cart):
-        wcc_red_in = wannier_centers_cart @ self.spacegroup.lattice_inv
-        WCC_red_out = np.zeros((self.num_wann, 3), dtype=float)
-        for isym, symop in enumerate(self.spacegroup.symmetries):
-            for block, (ws, _) in enumerate(self.D_wann_block_indices):
-                norb = self.rot_orb_list[block][0].shape[0]
-                T = self.T_list[block][:, isym]
-                num_points = T.shape[0]
-                atom_map = self.atommap_list[block][:, isym]
-                for atom_a in range(num_points):
-                    start_a = ws + atom_a * norb
-                    atom_b = atom_map[atom_a]
-                    start_b = ws + atom_b * norb
-                    XX_L = symop.transform_r(wcc_red_in[start_a:start_a + norb]) + T[atom_a]
-                    WCC_red_out[start_b:start_b + norb] += np.einsum("ij,ja,ji->ia", self.rot_orb_dagger_list[block][isym], XX_L, self.rot_orb_list[block][isym]).real
-        return (WCC_red_out @ self.spacegroup.lattice)/ self.spacegroup.size
 
 
     #

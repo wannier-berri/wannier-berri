@@ -1,5 +1,5 @@
 """Test symmetrization of Wannier models"""
-from wannierberri.system.sym_wann import _dict_to_matrix, _matrix_to_dict, _get_H_select, _rotate_matrix
+from wannierberri.symmetry.sym_wann import _dict_to_matrix, _matrix_to_dict, _get_H_select, _rotate_matrix
 import numpy as np
 import pytest
 from pytest import approx

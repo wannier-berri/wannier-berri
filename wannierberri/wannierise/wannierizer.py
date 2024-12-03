@@ -3,6 +3,7 @@ import warnings
 import numpy as np
 import ray
 from ..__utility import get_max_eig, orthogonalize
+from ..symmetry.symmetrizer_dmn import SymmetrizerDMNvoid
 
 
 class Kpoint_and_neighbours:
@@ -49,6 +50,7 @@ class Kpoint_and_neighbours:
         self.nband = amn.shape[0]
         self.wb = wb
         self.bk = bk
+        self.wbk = wb[:, None] * bk
         self.weight = weight
 
         self.data = {}
@@ -187,6 +189,9 @@ class Kpoint_and_neighbours:
             return
         UT = self.U_opt_full.T.conj()
         self.Mmn_opt = np.array([UT @ mmn @ Ub for mmn, Ub in zip(self.Mmn, self.U_nb)])
+        self.Mmn_opt_diag = self.Mmn_opt[:, range(self.num_wann), range(self.num_wann)]
+        self.Mmn_opt_diag_sq = abs(self.Mmn_opt_diag)**2
+        self.Mmn_opt_diag_angle = np.angle(self.Mmn_opt_diag)
 
     def update_Unb(self, U_nb=None):
         """
@@ -202,7 +207,7 @@ class Kpoint_and_neighbours:
             self.update_Mmn_opt()
 
 
-    def get_centers(self, U_nb=None):
+    def get_centers(self):
         """
         get the centers of the Wannier functions
 
@@ -215,84 +220,58 @@ class Kpoint_and_neighbours:
         -----
         does not work precisely whith sitesymmetry
         """
-        self.update_Unb(U_nb)
-        rangew = np.arange(self.num_wann)
-        phinb = -np.angle(self.Mmn_opt[:, rangew, rangew])
-        return sum(w * phin[:, None] * bk for w, phin, bk in zip(self.wb, phinb, self.bk)) * self.weight
-
-
-    def getSpreads(self, rn, U_nb=None):
+        # rangew = np.arange(self.num_wann)
+        # phinb = -np.angle(self.Mmn_opt[:, rangew, rangew])
+        # phinb = -self.Mmn_opt_diag_angle
+        # return sum(w * phin[:, None] * bk for w, phin, bk in zip(self.wb, phinb, self.bk)) * self.weight
+        # return sum(  phin[:, None] * wbk for phin, wbk in zip(phinb, self.wbk)) * self.weight
+        return -self.Mmn_opt_diag_angle.T @ self.wbk * self.weight 
+    
+    def get_r2(self):
+        """"
+        get the contribution of this k-point to the mean value of the r^2
         """
-        calculate contributions of this k-point to the spread functional
-        and the Wannier Centers
+        return self.wb @ (1 - self.Mmn_opt_diag_sq + self.Mmn_opt_diag_angle ** 2) *  self.weight
 
-        Parameters
-        ----------
-        rn : numpy.ndarray(nW,3)
-            the centers of the Wannier functions
-        U_nb : list of nnb matrices numpy.ndarray(NB, NW) or None
-            the U matrix at neighbouring k-points. Also sets self.U_nb to the given value
-            if not provided - the ones from the previous iteration are used
+    
+                
 
-        Returns
-        -------
-        numpy.ndarray(3)
-            the contributions to the spread functional (Omega_D, Omega_OD, Omega_tot)
+    # def getSpreads(self, rn, U_nb=None):
+    #     """
+    #     calculate contributions of this k-point to the spread functional
+    #     and the Wannier Centers
 
+    #     Parameters
+    #     ----------
+    #     rn : numpy.ndarray(nW,3)
+    #         the centers of the Wannier functions
+    #     U_nb : list of nnb matrices numpy.ndarray(NB, NW) or None
+    #         the U matrix at neighbouring k-points. Also sets self.U_nb to the given value
+    #         if not provided - the ones from the previous iteration are used
 
-        Notes
-        -----
-        does not work precisely whith sitesymmetry
-
-        """
-        self.update_Unb(U_nb)
-        Mmn2 = abs(self.Mmn_opt)**2
-        rangew = np.arange(self.num_wann)
-        Mmn2[:, rangew, rangew] = 0
-        Mmn2 = Mmn2.sum(axis=(1, 2))
-        Omega_OD = sum(self.wb * Mmn2)
-        phinb = -np.angle(self.Mmn_opt[:, rangew, rangew])
-        absnb = np.abs(self.Mmn_opt[:, rangew, rangew])
-        Omega_D = sum(w * (phin[n] - bk @ rn[n])**2 for n in range(self.num_wann) for w, phin, bk in zip(self.wb, phinb, self.bk))
-        Omega_tot = sum(w * (-absn[n]**2 + phin[n]**2)  for n in range(self.num_wann) for w, absn, phin in zip(self.wb, absnb, phinb))
-        Omega_tot += self.num_wann * np.sum(self.wb)
-        return np.array([Omega_D, Omega_OD, Omega_tot]) * self.weight
+    #     Returns
+    #     -------
+    #     numpy.ndarray(3)
+    #         the contributions to the spread functional (Omega_D, Omega_OD, Omega_tot)
 
 
-def getSpreads(kpoints, U_opt_full_BZ=None, neighbours=None):
-    """
-    calculate the spread functional
-    using only irredusiible k-points (when sitesymmetry is used)
+    #     Notes
+    #     -----
+    #     does not work precisely whith sitesymmetry
 
-    Parameters
-    ----------
-    kpoints : list of Kpoint_and_neighbours
-        the data for the k-points
-    U_opt_full_BZ : list of NK numpy.ndarray(nW,nW) or None
-        the U matrix at neighbouring k-points
-        for the points which are reducible and are not neighbours of the irreducible points,
-        the entry may be None
-    neighbours : list of list of int
-        the list of neighbours(indices in the full BZ list) for each irreducible k-point
-
-    Returns
-    -------
-    dict(str, float)
-        the spread functional ('Omega_D', 'Omega_OD', 'Omega_I', 'Omega_tot', 'wannier_centers')
-
-    Notes
-    -----
-    does not work precisely whith sitesymmetry
-    """
-    if U_opt_full_BZ is None:
-        U_nb_list = [None] * len(kpoints)
-    else:
-        U_nb_list = [[U_opt_full_BZ[n] for n in neigh] for neigh in neighbours]
-    rn = sum(kpoint.get_centers(U_nb) for kpoint, U_nb in zip(kpoints, U_nb_list))
-    Omega_D, Omega_OD, Omega_tot = sum(kpoint.getSpreads(rn) for kpoint in kpoints)
-    Omega_tot -= np.linalg.norm(rn)**2
-    Omega_I = Omega_tot - Omega_OD - Omega_D
-    return dict(Omega_D=Omega_D, Omega_OD=Omega_OD, Omega_I=Omega_I, Omega_tot=Omega_tot, wannier_centers=rn)
+    #     """
+        # self.update_Unb(U_nb)
+        # Mmn2 = abs(self.Mmn_opt)**2
+        # rangew = np.arange(self.num_wann)
+        # Mmn2[:, rangew, rangew] = 0
+        # Mmn2 = Mmn2.sum(axis=(1, 2))
+        # Omega_OD = sum(self.wb * Mmn2)
+        # phinb = -np.angle(self.Mmn_opt[:, rangew, rangew])
+        # absnb = np.abs(self.Mmn_opt[:, rangew, rangew])
+        # Omega_D = sum(w * (phin[n] - bk @ rn[n])**2 for n in range(self.num_wann) for w, phin, bk in zip(self.wb, phinb, self.bk))
+        # Omega_tot = sum(w * (-absn[n]**2 + phin[n]**2)  for n in range(self.num_wann) for w, absn, phin in zip(self.wb, absnb, phinb))
+        # Omega_tot += self.num_wann * np.sum(self.wb)
+        # return np.array([Omega_D, Omega_OD, Omega_tot]) * self.weight
 
 
 @ray.remote
@@ -303,12 +282,15 @@ class Kpoint_and_neighbours_ray(Kpoint_and_neighbours):
 
 class Wannierizer:
 
-    def __init__(self, parallel=True, spacegroup=None):
+    def __init__(self, parallel=True, symmetrizer=None):
         self.kpoints = []
         if parallel and not ray.is_initialized():
             warnings.warn("Ray is not initialized, running in serial mode")
             parallel = False
         self.parallel = parallel
+        if symmetrizer is None:
+            symmetrizer = SymmetrizerDMNvoid()
+        self.symmetrizer = symmetrizer
         # self.spacegroup = spacegroup
 
     def add_kpoint(self, **kwargs):
@@ -345,4 +327,21 @@ class Wannierizer:
         else:
             wcc_k = [kpoint.get_centers() for kpoint in self.kpoints]
         wcc = sum(wcc_k)
+        wcc = self.symmetrizer.symmetrize_WCC(wcc)
         return wcc
+
+    def get_r2(self):
+        if self.parallel:
+            r2_k = ray.get([kpoint.get_r2.remote() for kpoint in self.kpoints])
+        else:
+            r2_k = [kpoint.get_r2() for kpoint in self.kpoints] 
+        r2 = sum(r2_k)
+        # r2 = self.symmetrizer.symmetrize_spreads(r2)
+        return r2
+    
+    def get_spreads(self, wcc=None):
+        if wcc is None:
+            wcc = self.get_wcc()
+        spreads =  self.get_r2() - np.linalg.norm(wcc, axis=1)**2
+        spreads = self.symmetrizer.symmetrize_spreads(spreads)
+        return spreads

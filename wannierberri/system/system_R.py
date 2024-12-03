@@ -8,7 +8,7 @@ import glob
 import multiprocessing
 from .system import System, pauli_xyz
 from ..__utility import alpha_A, beta_A, clear_cached, one2three
-from ..point_symmetry import PointSymmetry, PointGroup, TimeReversal
+from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
 from .ws_dist import ws_dist_map
 
 
@@ -258,7 +258,7 @@ class System_R(System):
         if not self.use_wcc_phase:
             raise NotImplementedError("Symmetrization is implemented only for convention I")
 
-        from .sym_wann_2 import SymWann
+        from ..symmetry.sym_wann_2 import SymWann
         symmetrize_wann = SymWann(
             dmn=dmn,
             iRvec=self.iRvec,
@@ -368,7 +368,7 @@ class System_R(System):
             raise NotImplementedError("Symmetrization is implemented only for convention I")
 
 
-        from .sym_wann import SymWann
+        from ..symmetry.sym_wann import SymWann
         symmetrize_wann = SymWann(
             num_wann=self.num_wann,
             lattice=self.real_lattice,
@@ -744,8 +744,9 @@ class System_R(System):
         mapping = np.all(self.iRvec[:, None, :] + self.iRvec[None, :, :] == 0, axis=2)
         # check if some R-vectors do not have partners
         notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
-        for ir in notfound:
-            warnings.warn(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
+        if len(notfound) > 0 and not self.ignore_mR_not_found:
+            for ir in notfound:
+                warnings.warn(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
         # check if some R-vectors have more then 1 partner
         morefound = np.where(np.sum(mapping, axis=1) > 1)[0]
         if len(morefound > 0):
@@ -764,7 +765,7 @@ class System_R(System):
         assert np.all(self.iRvec[lst_R] + self.iRvec[lst_mR] == 0)
         return lst_R, lst_mR
 
-    def conj_XX_R(self, val: np.ndarray = None, key: str = None):
+    def conj_XX_R(self, val: np.ndarray = None, key: str = None, ignore_mR_not_found=False):
         """ reverses the R-vector and takes the hermitian conjugate """
         assert (key is not None) != (val is not None)
         if key is not None:
@@ -772,6 +773,7 @@ class System_R(System):
         else:
             XX_R = val
         XX_R_new = np.zeros(XX_R.shape, dtype=complex)
+        self.ignore_mR_not_found = ignore_mR_not_found
         lst_R, lst_mR = self.reverseR
         XX_R_new[:, :, lst_R] = XX_R[:, :, lst_mR]
         return XX_R_new.swapaxes(0, 1).conj()

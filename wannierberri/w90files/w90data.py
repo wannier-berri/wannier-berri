@@ -133,7 +133,7 @@ class Wannier90data:
         """
         try:
             dmn = self.get_file('dmn')
-            return dmn.get_spacegroup()
+            return dmn.spacegroup
         except FileNotFoundError:
             return None
         

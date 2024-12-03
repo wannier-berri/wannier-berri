@@ -54,7 +54,7 @@ from scipy.spatial.transform import Rotation as rotmat
 from packaging import version as pversion
 import warnings
 from copy import deepcopy
-from .__utility import real_recip_lattice
+from ..__utility import real_recip_lattice
 from collections.abc import Iterable
 
 SYMMETRY_PRECISION = 1e-6

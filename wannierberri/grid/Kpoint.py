@@ -14,7 +14,7 @@
 
 import numpy as np
 from functools import cached_property
-from ..point_symmetry import SYMMETRY_PRECISION
+from ..symmetry.point_symmetry import SYMMETRY_PRECISION
 
 
 class KpointBZ():

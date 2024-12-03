@@ -2,7 +2,7 @@ import os
 import sys
 import warnings
 import numpy as np
-from .system import num_cart_dim
+from ..system.system import num_cart_dim
 from collections import defaultdict
 import copy
 
@@ -413,7 +413,6 @@ def _rotate_matrix(X, L, R):
     comptes L.dot(X).dot(R) where X can have additional dimensions in the end, which are not touched
     assumed to be a faster version of np.einsum("ij,jk...,kl->il...", L, X, R)
     """
-
     _ = np.tensordot(L, X, axes=((1,), (0,)))
     _ = np.tensordot(R, _, axes=((0,), (1,)))
     return _.swapaxes(0, 1)

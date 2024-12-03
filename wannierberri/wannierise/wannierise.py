@@ -1,12 +1,12 @@
 from time import time
 import numpy as np
 
-from .kpoint import Wannierizer
+from .wannierizer import Wannierizer
 
 from .utility import select_window_degen, print_centers_and_spreads, print_progress
 
 from ..__utility import vectorize
-from .sitesym import VoidSymmetrizer, Symmetrizer
+from .symmetrizer_SAWF import VoidSymmetrizer, Symmetrizer
 from .spreadfunctional import SpreadFunctional
 
 
@@ -103,15 +103,17 @@ def wannierise(w90data,
     assert 0 < mix_ratio_z <= 1
     if sitesym:
         kptirr = w90data.dmn.kptirr
+        symmetrizer_dmn = w90data.dmn
     else:
         kptirr = np.arange(w90data.mmn.NK)
+        symmetrizer_dmn = None
 
     frozen = vectorize(select_window_degen, w90data.eig.data[kptirr], to_array=True,
                        kwargs=dict(win_min=froz_min, win_max=froz_max))
     free = vectorize(np.logical_not, frozen, to_array=True)
 
     if sitesym:
-        symmetrizer = Symmetrizer(w90data.dmn, neighbours=w90data.mmn.neighbours,
+        symmetrizer = Symmetrizer(symmetrizer_dmn, neighbours=w90data.mmn.neighbours,
                                   free=free, symmetrize_Z=symmetrize_Z,
                                   **kwargs_sitesym)
     else:
@@ -121,7 +123,7 @@ def wannierise(w90data,
         amn = w90data.amn.data
     elif init == "random":
         if sitesym:
-            num_wann = w90data.dmn.num_wann
+            num_wann = symmetrizer_dmn.num_wann
         else:
             assert num_wann is not None, "num_wann should be provided for random initialization without sitesymmetry"
         amnshape = (w90data.mmn.NK, w90data.mmn.NB, num_wann)   
@@ -146,7 +148,7 @@ def wannierise(w90data,
     bk_cart = w90data.mmn.bk_cart_unique
     mmn_data_ordered = np.array([data[order] for data, order in zip(w90data.mmn.data, w90data.mmn.ib_unique_map_inverse)])
     t1 = time()
-    wannierizer = Wannierizer(parallel=parallel, spacegroup=spacegroup)
+    wannierizer = Wannierizer(parallel=parallel, symmetrizer=symmetrizer_dmn)
     for ik, kpt in enumerate(kptirr):
         wannierizer.add_kpoint(Mmn=mmn_data_ordered[kpt],
                             frozen=frozen[ik], 
@@ -173,6 +175,10 @@ def wannierise(w90data,
     # the _BZ suffix is used to denote that the U matrix is defined on all k-points in the full BZ
     U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=True)
 
+    for ik, kpt in enumerate(kptirr):
+        U_neigh = [U_opt_full_BZ[ib] for ib in neighbours_all[kpt]]
+        wannierizer.kpoints[ik].update_Unb(U_neigh)
+
     # spreads = getSpreads(kpoints, U_opt_full_BZ, neighbours_irreducible)
     print_centers_and_spreads(w90data, U_opt_full_BZ,
                               spread_functional=spread_functional,
@@ -184,19 +190,7 @@ def wannierise(w90data,
     t_update = 0
     t01 = time()
     for i_iter in range(num_iter):
-        wcc = spread_functional.get_wcc(U_opt_full_BZ)
-        if sitesym:
-           wcc_sym = w90data.dmn.symmetrize_WCC(wcc)
-        else:
-            wcc_sym = wcc
-        if i_iter >0:
-            wcc_wannierizer = wannierizer.get_wcc()
-            if sitesym:
-                wcc_wannierizer = w90data.dmn.symmetrize_WCC(wcc_wannierizer)
-            print ("comparison of wcc")
-            for wan1, wan_s, wan2 in zip(wcc, wcc_sym, wcc_wannierizer):
-                print (wan1, wan_s, wan2)
-        
+        wcc = wannierizer.get_wcc()
         wcc_bk_phase = np.exp(1j * wcc.dot(bk_cart.T))
         U_neigh = [[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr]
         tx = time()
@@ -215,9 +209,15 @@ def wannierise(w90data,
         #                                             wcc_bk_phase=wcc_bk_phase,
         #                                              ) )
 
-        U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=True)
+        U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k= (i_iter % print_progress_every == 0))
         
         if i_iter % print_progress_every == 0:
+            wcc = wannierizer.get_wcc()
+            spreads = wannierizer.get_spreads(wcc = wcc)
+            print ("from wannierizer:")
+            for w,s in zip(wcc, spreads):
+                print (w,"| ", s)
+            print ("-----------------")
             delta_std = print_progress(i_iter, Omega_list, num_iter_converge,
                                     spread_functional=spread_functional, w90data=w90data, U_opt_full_BZ=U_opt_full_BZ)
 

@@ -7,7 +7,7 @@ import warnings
 import numpy as np
 import spglib
 from .sym_wann_orbitals import Orbitals
-from .system import num_cart_dim
+from ..system.system import num_cart_dim
 from irrep.spacegroup import SymmetryOperation
 from collections import defaultdict
 import copy

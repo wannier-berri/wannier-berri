@@ -1,5 +1,4 @@
 from functools import lru_cache
-import warnings
 import numpy as np
 from ..__utility import get_inverse_block, rotate_block_matrix, orthogonalize
 
@@ -19,16 +18,10 @@ class Symmetrizer:
     free : list of NKirr np.ndarray(dtype=bool, shape=(NB,))
         The list of free bands at each kpoint (True if the band is free, False if it is frozen)
         the default is all bands are free
-    n_iter : int
-        The maximum number of iterations for the symmetrization of U and Z
-    epsilon : float
-        The convergence criterion for the symmetrization of U and Z
-
+    
     Attributes
     ----------
     free : list of NKirr np.ndarray(dtype=bool, shape=(NB,))
-    n_iter : int
-    epsilon : float
     Dmn : DMN object
     kptirr : np.ndarray(dtype=int, shape=(NKirr,))
     NK : int
@@ -43,14 +36,12 @@ class Symmetrizer:
 
     def __init__(self, Dmn=None, neighbours=None,
                  free=None,
-                 symmetrize_Z=True,
-                 n_iter=10, epsilon=1e-7):
+                 symmetrize_Z=True
+                 ):
         if free is None:
             self.free = np.ones((Dmn.NK, Dmn.NB), dtype=bool)
         else:
             self.free = free
-        self.n_iter = n_iter
-        self.epsilon = epsilon
         self.Dmn = Dmn
         self.kptirr = Dmn.kptirr
         self.NK = Dmn.NK
@@ -122,81 +113,20 @@ class Symmetrizer:
                     Ufull[iRk] = self.Dmn.rotate_U(U[ikirr], ikirr, isym, forward=True)
         return Ufull
 
-    # def symmetrize_Zk(self, Z, ikirr):
-    #     # return Z # temporary for testing
-    #     if Z.shape[0] == 0:
-    #         return Z
-    #     for i in range(self.n_iter):
-    #         Zsym = sum(self.Dmn.rotate_Z(Z, isym, ikirr, self.free[ikirr])
-    #                    for isym in self.Dmn.isym_little[ikirr]) / len(self.Dmn.isym_little[ikirr])
-    #         diff = np.max(abs(Zsym - Z))
-    #         if diff < self.epsilon:
-    #             break
-    #         Z[:] = Zsym
-    #     Z[:] = Zsym
-    #     return Z
-
-    # def symmetrize_Z(self, Z):
-    #     """
-    #     symmetrizes Z in-place
-    #     Z(k) <- \sum_{R} d^{+}(R,k) Z(Rk) d(R,k)
-    #     """
-    #     for ikirr, _ in enumerate(Z):
-    #         self.symmetrize_Zk(Z[ikirr], ikirr)
-    #     return Z
-
-
     def get_symmetrizer_Uirr(self, ikirr):
-        return Symmetrizer_Uirr(self.Dmn, ikirr, n_iter=self.n_iter, epsilon=self.epsilon)
+        return Symmetrizer_Uirr(self.Dmn, ikirr)
     
     def get_symmetrizer_Zirr(self, ikirr):
         if self.symmetrize_Z:
-            return symmetrizer_Zirr(self.Dmn, ikirr, free=self.free, n_iter=self.n_iter, epsilon=self.epsilon)
+            return Symmetrizer_Zirr(self.Dmn, ikirr, free=self.free)
         else:
             return VoidSymmetrizer()
         
-    # def symmetrize_U_kirr(self, U, ikirr):
-    #     """
-    #     Symmetrizes the umat matrix at the irreducible kpoint
-
-    #     Parameters:
-    #     - U: The matrix to be symmetrized.
-    #     - Dmn : The DMN object
-    #     - ir: The index of the irreducible kpoint (in the list of irreducible kpoints in dmn)
-
-    #     Returns:
-    #     - U: The symmetrized matrix.
-    #     """
-
-    #     Dmn = self.Dmn
-    #     isym_little = Dmn.isym_little[ikirr]
-    #     nsym_little = len(isym_little)
-    #     ikpt = Dmn.kptirr[ikirr]
-    #     nb, nw = U.shape
-
-    #     for i in range(self.n_iter):
-    #         Usym = sum(Dmn.rotate_U(U, ikirr, isym, forward=True) for isym in isym_little) / nsym_little
-    #         Usym = orthogonalize(Usym)
-    #         diff = np.eye(nw) - U.conj().T @ Usym
-    #         diff = np.sum(np.abs(diff))
-    #         if diff < self.epsilon:
-    #             break
-    #         U = Usym
-    #     else:
-    #         warnings.warn(f'symmetrization of U matrix at irreducible point {ikirr} ({ikpt})' +
-    #                     f' did not converge after {self.n_iter} iterations, diff={diff}' +
-    #                     'Either eps is too small or specified irreps is not compatible with the bands' +
-    #                     f'diff{diff}, eps={self.epsilon}')
-    #     return orthogonalize(Usym)
-
-
 
 class Symmetrizer_Uirr(Symmetrizer):
 
-    def __init__(self, dmn, ikirr, n_iter=20, epsilon=1e-8):
+    def __init__(self, dmn, ikirr):
         self.ikirr = ikirr
-        self.n_iter = n_iter
-        self.epsilon = epsilon
         self.isym_little = dmn.isym_little[ikirr]
         self.nsym_little = len(self.isym_little)
         self.ikpt = dmn.kptirr[ikirr]
@@ -224,30 +154,15 @@ class Symmetrizer_Uirr(Symmetrizer):
 
 
 
-    def __call__(self, U):
-                
-        for _ in range(self.n_iter):
-            Usym = sum(self.rotate_U(U, isym) for isym in self.isym_little) / self.nsym_little
-            Usym = orthogonalize(Usym)
-            diff = np.eye(self.num_wann) - U.conj().T @ Usym
-            diff = np.sum(np.abs(diff))
-            if diff < self.epsilon:
-                break
-            U = Usym
-        else:
-            warnings.warn(f'symmetrization of U matrix at irreducible point {self.ikirr} ({self.ikpt})' +
-                        f' did not converge after {self.n_iter} iterations, ' +
-                        'Either eps is too small or specified irreps is not compatible with the bands' +
-                        f'diff{diff}, eps={self.epsilon}')
+    def __call__(self, U):        
+        Usym = sum(self.rotate_U(U, isym) for isym in self.isym_little) / self.nsym_little
         return orthogonalize(Usym)
 
 
-class symmetrizer_Zirr(Symmetrizer):
+class Symmetrizer_Zirr(Symmetrizer):
 
-    def __init__(self, dmn, ikirr, free, n_iter=5, epsilon=1e-7):
+    def __init__(self, dmn, ikirr, free):
         self.ikirr = ikirr
-        self.n_iter = n_iter
-        self.epsilon = epsilon
         self.isym_little = dmn.isym_little[ikirr]
         self.nsym_little = len(self.isym_little)
         self.ikpt = dmn.kptirr[ikirr]
@@ -277,22 +192,10 @@ class symmetrizer_Zirr(Symmetrizer):
         # return Z # temporary for testing
         if Z.shape[0] == 0:
             return Z
-        # diff_list = []
-        for _ in range(self.n_iter):
-            Z_rotated = [self.rotate_Z(Z, isym) for isym in self.isym_little]
-            Zsym = sum(Z_rotated) / self.nsym_little
-            diff = np.max(np.max(abs(Zsym-Z)))
-            if diff < self.epsilon:
-                break
-            Z[:] = Zsym
         else:
-            warnings.warn(f"symmetrization of Z matrix at irreducible point {self.ikirr} ({self.ikpt}) " +
-                          f" did not converge after {self.n_iter} iterations. " +
-                          "Either eps is too small or specified irreps is not compatible with the bands" +
-                          f" diff={diff} > eps={self.epsilon}")
-        # print (f"symmetrized Z  to precision {diff} (nsym = {self.isym_little}) in {i+1} iterations ({diff_list})")
-        Z[:] = Zsym
-        return Z
+            Z_rotated = [self.rotate_Z(Z, isym) for isym in self.isym_little]
+            Z[:] = sum(Z_rotated) / self.nsym_little
+            return Z
     
     def rotate_Z(self, Z, isym):
         """

@@ -98,6 +98,8 @@ def check_system():
                         err_msg += "\n" + ("\n".join(
                             f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {ratio[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
                             for i in zip(*all_i)) + "\n\n")
+                elif key in properties_wcc:
+                    err_msg += f"new data : {data} \n ref data : {data_ref}"
                 raise ValueError(err_msg)
 
             print(" - Ok!")

@@ -1,7 +1,7 @@
 import numpy as np
 from termcolor import cprint
 from ..__utility import UniqueList
-from ..w90files.Dwann import Dwann
+from ..symmetry.Dwann import Dwann
 from .utility import select_window_degen
 
 from .projections import ORBITALS, ProjectionsSet

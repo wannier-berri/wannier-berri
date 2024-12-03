@@ -23,7 +23,6 @@ from collections.abc import Iterable
 import datetime
 import sys
 from typing import Any
-from numba import njit
 
 if PYFFTW_IMPORTED:
     import pyfftw
@@ -524,6 +523,7 @@ def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices,
 
     return result
 
+
 def block_matrix_to_diagonals(blocks, indices=None):
     """
     Extracts the blocks of a block-diagonal matrix
@@ -552,12 +552,12 @@ def block_matrix_to_diagonals(blocks, indices=None):
     max_block_size = max(block.shape[0] for block in blocks)
     for (start, end), block in zip(indices, blocks):
         tmp[start:end, start:end] = block
-    result = np.zeros((2*max_block_size-1, size), dtype=blocks[0].dtype)
+    result = np.zeros((2 * max_block_size - 1, size), dtype=blocks[0].dtype)
     rng = np.arange(size)
     result[0] = tmp[rng, rng]
-    for l in range(1,max_block_size):
-        result[l,:-l] = tmp[rng[:-l], rng[l:]]
-        result[-l,:-l] = tmp[rng[l:], rng[:-l]]
+    for l in range(1, max_block_size):
+        result[l, :-l] = tmp[rng[:-l], rng[l:]]
+        result[-l, :-l] = tmp[rng[l:], rng[:-l]]
     return result
 
 
