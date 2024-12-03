@@ -1,4 +1,5 @@
 from copy import deepcopy
+import copy
 import warnings
 import numpy as np
 import ray
@@ -206,64 +207,9 @@ class Kpoint_and_neighbours:
         if U_nb is not None:
             self.U_nb = U_nb
             self.update_Mmn_opt()
+        return self._wcc, self._r2
 
 
-    def get_centers(self):
-        """
-        get the centers of the Wannier functions
-
-        Returns
-        -------
-        numpy.ndarray(nW,3)
-            the centers of the Wannier functions
-        """
-        return self._wcc
-    
-    def get_r2(self):
-        """"
-        get the contribution of this k-point to the mean value of the r^2
-        """
-        return self._r2
-
-    
-                
-
-    # def getSpreads(self, rn, U_nb=None):
-    #     """
-    #     calculate contributions of this k-point to the spread functional
-    #     and the Wannier Centers
-
-    #     Parameters
-    #     ----------
-    #     rn : numpy.ndarray(nW,3)
-    #         the centers of the Wannier functions
-    #     U_nb : list of nnb matrices numpy.ndarray(NB, NW) or None
-    #         the U matrix at neighbouring k-points. Also sets self.U_nb to the given value
-    #         if not provided - the ones from the previous iteration are used
-
-    #     Returns
-    #     -------
-    #     numpy.ndarray(3)
-    #         the contributions to the spread functional (Omega_D, Omega_OD, Omega_tot)
-
-
-    #     Notes
-    #     -----
-    #     does not work precisely whith sitesymmetry
-
-    #     """
-        # self.update_Unb(U_nb)
-        # Mmn2 = abs(self.Mmn_opt)**2
-        # rangew = np.arange(self.num_wann)
-        # Mmn2[:, rangew, rangew] = 0
-        # Mmn2 = Mmn2.sum(axis=(1, 2))
-        # Omega_OD = sum(self.wb * Mmn2)
-        # phinb = -np.angle(self.Mmn_opt[:, rangew, rangew])
-        # absnb = np.abs(self.Mmn_opt[:, rangew, rangew])
-        # Omega_D = sum(w * (phin[n] - bk @ rn[n])**2 for n in range(self.num_wann) for w, phin, bk in zip(self.wb, phinb, self.bk))
-        # Omega_tot = sum(w * (-absn[n]**2 + phin[n]**2)  for n in range(self.num_wann) for w, absn, phin in zip(self.wb, absnb, phinb))
-        # Omega_tot += self.num_wann * np.sum(self.wb)
-        # return np.array([Omega_D, Omega_OD, Omega_tot]) * self.weight
 
 
 @ray.remote
@@ -294,7 +240,8 @@ class Wannierizer:
         same as :class:`Kpoint_and_neighbours`
         """
         if self.parallel:
-            kpoint = Kpoint_and_neighbours_ray.remote(**kwargs)	
+            # kpoint = Kpoint_and_neighbours_ray.remote(**kwargs)	
+            kpoint = Kpoint_and_neighbours_ray.remote(**{k:copy.deepcopy(v) for k,v in kwargs.items()})	
         else:
             kpoint = Kpoint_and_neighbours(**kwargs)
         self.kpoints.append(kpoint)
@@ -312,39 +259,20 @@ class Wannierizer:
         else:
             list = [kpoint.update(U, **kwargs) for kpoint, U in zip(self.kpoints, U_neigh)]
         U_k = [x[0] for x in list]
-        wcc_k = [x[1] for x in list]
-        r2_k = [x[2] for x in list]
-        self._wcc = self.symmetrizer.symmetrize_WCC(sum(wcc_k))
-        self._spreads = self.symmetrizer.symmetrize_spreads(sum(r2_k) - np.linalg.norm(self._wcc, axis=1)**2 )
+        self.update_wcc([x[1] for x in list], [x[2] for x in list])
         return U_k
-        
-
-        # do we need copy in both/any of the cases?
-
-    def get_wcc(self):
-        if hasattr(self, "_wcc"):
-            return self._wcc
-        if self.parallel:
-            wcc_k = ray.get([kpoint.get_centers.remote() for kpoint in self.kpoints])
-        else:
-            wcc_k = [kpoint.get_centers() for kpoint in self.kpoints]
-        wcc = sum(wcc_k)
-        wcc = self.symmetrizer.symmetrize_WCC(wcc)
-        return wcc
-
-    def get_r2(self):
-        if self.parallel:
-            r2_k = ray.get([kpoint.get_r2.remote() for kpoint in self.kpoints])
-        else:
-            r2_k = [kpoint.get_r2() for kpoint in self.kpoints] 
-        r2 = sum(r2_k)
-        return r2
     
-    def get_spreads(self, wcc=None):
-        if hasattr(self, "_spreads"):
-            return self._spreads
-        if wcc is None:
-            wcc = self.get_wcc()
-        spreads =  self.get_r2() - np.linalg.norm(wcc, axis=1)**2
-        spreads = self.symmetrizer.symmetrize_spreads(spreads)
-        return spreads
+    def update_Unb_all(self, U_neigh):
+        if self.parallel:
+            remotes = [kpoint.update_Unb.remote(U) for kpoint, U in zip(self.kpoints, U_neigh)]
+            list = ray.get(remotes)
+        else:
+            list = [kpoint.update_Unb(U) for kpoint, U in zip(self.kpoints, U_neigh)]
+        self.update_wcc([x[0] for x in list], [x[1] for x in list])
+        
+    
+    def update_wcc(self, wcc_k, r2_k):
+        self.wcc = self.symmetrizer.symmetrize_WCC(sum(wcc_k))
+        self.spreads = self.symmetrizer.symmetrize_spreads(sum(r2_k) - np.linalg.norm(self.wcc, axis=1)**2 )
+        return self.wcc, self.spreads
+        
