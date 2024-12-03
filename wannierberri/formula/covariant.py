@@ -845,9 +845,10 @@ class SpinOmega(Formula_ln):
 
     def __init__(self, data_K, spin_current_type="ryoo", **parameters):
         super().__init__(data_K, **parameters)
-        self.A = data_K.covariant('AA')
+        if self.external_terms:
+            self.A = data_K.covariant('AA')
         self.D = data_K.Dcov
-        self.J = SpinVelocity(data_K, spin_current_type)
+        self.J = SpinVelocity(data_K, spin_current_type, external_terms=self.external_terms)
         self.dEinv = DEinv_ln(data_K)
         self.ndim = 3
         self.transformTR = transform_ident
@@ -857,7 +858,9 @@ class SpinOmega(Formula_ln):
         summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
 
         # v_over_de[l,n,b] = v[l,n,b] / (e[n] - e[l]) = D[l,n,b] - 1j * A[l,n,b]
-        v_over_de = self.D.ln(ik, inn, out) - 1j * self.A.ln(ik, inn, out)
+        v_over_de = self.D.ln(ik, inn, out)
+        if self.external_terms:
+            v_over_de += - 1j * self.A.ln(ik, inn, out)
 
         # j_over_de[m,l,a,s] = j[m,l,a,s] / (e[m] - e[l])
         j_over_de = self.J.nl(ik, inn, out) * self.dEinv.nl(ik, inn, out)[:, :, None, None]

@@ -116,7 +116,7 @@ def wannierise(w90data,
             num_wann = w90data.dmn.num_wann
         else:
             assert num_wann is not None, "num_wann should be provided for random initialization without sitesymmetry"
-        amnshape = (w90data.mmn.NK, w90data.mmn.NB, num_wann)   
+        amnshape = (w90data.mmn.NK, w90data.mmn.NB, num_wann)
         amn = np.random.random(amnshape) + 1j * np.random.random(amnshape)
     elif init == "restart":
         assert w90data.wannierised, "The data is not wannierised"

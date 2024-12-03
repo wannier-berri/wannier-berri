@@ -383,7 +383,7 @@ class System_R(System):
         ----------
         pairs : list of tuple
             list of pairs of indices of bands `[(up1,down1), (up2,down2), ..]`
-            
+
         Notes
         -----
         * For abinitio calculations this is a rough approximation, that may be used on own risk.
@@ -871,7 +871,7 @@ class System_R(System):
                 key_loc = 'pointgroup'
             else:
                 key_loc = key
-                
+
             if key_loc == 'pointgroup':
                 val = PointGroup(dictionary=a)
             else:

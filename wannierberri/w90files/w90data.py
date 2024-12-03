@@ -500,7 +500,7 @@ class Wannier90data:
         """
         dmn_new = DMN(empty=True)
         dmn_new.from_irrep(bandstructure)
-        self.set_file("dmn", dmn_new, overwrite=overwrite)  
+        self.set_file("dmn", dmn_new, overwrite=overwrite)
         self.spacegroup = bandstructure.spacegroup
         self.pointgroup = PointGroup(spacegroup=self.spacegroup)
 
@@ -516,9 +516,9 @@ class Wannier90data:
         if "dmn" not in self._files:
             raise RuntimeError("First set the bands part of dmn file")
         self.dmn.set_D_wann_from_projections(projections=projections)
-        
 
-        
+
+
 
     # TODO : allow k-dependent window (can it be useful?)
     # def apply_outer_window(self,
