@@ -395,7 +395,7 @@ class SymWann:
             return
         elif self.spin_ordering.lower() == 'block':
             return
-        elif self.spin_ordering.lower() == 'interlace':	
+        elif self.spin_ordering.lower() == 'interlace':
             Mat_out = np.zeros(np.shape(Mat_in), dtype=complex)
             nw2 = self.num_wann // 2
             for i in 0, 1:
@@ -637,7 +637,7 @@ class WannAtomInfo():
 #     def _lattice_inv_T(self):
 #         return np.linalg.inv(np.transpose(self.Lattice))
 
-    
+
 
 def _rotate_matrix(X, L, R):
     _ = np.tensordot(L, X, axes=((1,), (0,)))

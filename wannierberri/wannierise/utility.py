@@ -17,14 +17,14 @@ def print_centers_and_spreads_chk(w90data, U_opt_full_BZ,
     U_opt_free_BZ : list of numpy.ndarray(nBfree,nW)
         the optimized U matrix for the free bands and wannier functions
     """
-    
+
     w90data.chk.v_matrix = np.array(U_opt_full_BZ)
     w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
-    print_centers_and_spreads(w90data.chk._wannier_centers, w90data.chk._wannier_spreads, comment=comment+": from chk")  
+    print_centers_and_spreads(w90data.chk._wannier_centers, w90data.chk._wannier_spreads, comment=comment + ": from chk")
     return w90data.chk._wannier_centers, w90data.chk._wannier_spreads
 
 
-def print_centers_and_spreads(wcc, spreads, comment=None):
+def print_centers_and_spreads(wcc, spreads, comment=None, std=None):
     """
     print the centers and spreads of the Wannier functions
 
@@ -47,6 +47,13 @@ def print_centers_and_spreads(wcc, spreads, comment=None):
     for w, s in zip(wcc, spreads):
         w = np.round(w, 6)
         print(f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f}")
+    print(breakline)
+    w = wcc.sum(axis=0)
+    s = np.sum(spreads)
+    print((f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f} <- sum"))
+    print( f"  {' '*38}  maximal spread = {np.max(spreads):16.12f}")
+    if std is not None:
+        print(f"standard deviation = {std}")
     print(endline)
 
 

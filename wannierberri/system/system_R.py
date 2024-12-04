@@ -228,7 +228,7 @@ class System_R(System):
         """
         nw2 = self.num_wann // 2
         mapping = np.zeros(self.num_wann, dtype=int)
-            
+
         if backward:
             mapping[:nw2] = np.arange(nw2) * 2
             mapping[nw2:] = np.arange(nw2) * 2 + 1
@@ -253,7 +253,7 @@ class System_R(System):
     @property
     def Ham_R(self):
         return self.get_R_mat('Ham')
-    
+
     def symmetrize2(self, dmn):
         if not self.use_wcc_phase:
             raise NotImplementedError("Symmetrization is implemented only for convention I")
@@ -266,7 +266,7 @@ class System_R(System):
             use_wcc_phase=self.use_wcc_phase,
             silent=self.silent,
         )
-        
+
         self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
         logfile = self.logfile
 
@@ -341,7 +341,7 @@ class System_R(System):
             index = {key: i for i, key in enumerate(set(atom_name))}
             atom_num = np.array([index[key] for key in atom_name])
 
-            spacegroup = SpaceGroup(cell=(self.real_lattice, positions, atom_num), 
+            spacegroup = SpaceGroup(cell=(self.real_lattice, positions, atom_num),
                                     magmom=magmom, include_TR=True,
                                     spinor=soc)
 
@@ -468,7 +468,7 @@ class System_R(System):
         ----------
         pairs : list of tuple
             list of pairs of indices of bands `[(up1,down1), (up2,down2), ..]`
-            
+
         Notes
         -----
         * For abinitio calculations this is a rough approximation, that may be used on own risk.
@@ -729,7 +729,7 @@ class System_R(System):
     @property
     def iR0(self):
         return self.iRvec.tolist().index([0, 0, 0])
-    
+
     @cached_property
     def index_R(self):
         return {tuple(R): i for i, R in enumerate(self.iRvec)}
@@ -976,7 +976,7 @@ class System_R(System):
                 key_loc = 'pointgroup'
             else:
                 key_loc = key
-                
+
             if key_loc == 'pointgroup':
                 val = PointGroup(dictionary=a)
             else:

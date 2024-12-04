@@ -218,7 +218,7 @@ class ProjectionsSet:
     @property
     def num_free_vars(self):
         return self.map_free_vars[0].shape[2]
-    
+
 
     @cached_property
     def num_wann_per_site(self):

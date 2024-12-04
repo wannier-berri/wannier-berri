@@ -489,8 +489,8 @@ def all_close_mod1(a, b, tol=1e-5):
     return np.allclose(np.round(diff), diff, atol=tol)
 
 
-def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices, 
-                        # inv_left, inv_right, 
+def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices,
+                        # inv_left, inv_right,
                         result=None):
     """
     Rotates the matrix Z using the block-diagonal rotation matrices
@@ -507,7 +507,7 @@ def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices,
         the blocks of hte right matrix. sum(n) = N
     rindices : list(tuple(int))
         the indices of the blocks of the right matrix
-    
+
     Returns
     -------
     np.array(complex, shape=(M,N))
@@ -534,7 +534,7 @@ def block_matrix_to_diagonals(blocks, indices=None):
         the blocks of hte left matrix. sum(m) = M
     indices : list(tuple(int))
         the indices of the blocks of the left matrix
-    
+
     Returns
     -------
     list(np.array(complex, shape=(m,m)))

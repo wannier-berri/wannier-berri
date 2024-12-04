@@ -47,7 +47,7 @@ class AMN(W90_file):
     def NW(self):
         return self.data.shape[2]
 
-    def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(), 
+    def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(),
                  **kwargs):
         self.npz_tags = ["data"]
         super().__init__(seedname, ext="amn", npar=npar, **kwargs)
@@ -93,7 +93,7 @@ class AMN(W90_file):
         data[:, :, :self.NW // 2] = self.data[:, :, 0::2]
         data[:, :, self.NW // 2:] = self.data[:, :, 1::2]
         self.data = data
-    
+
     # def write(self, seedname, comment="written by WannierBerri"):
     #     comment = comment.strip()
     #     f_amn_out = open(seedname + ".amn", "w")

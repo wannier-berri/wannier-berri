@@ -259,7 +259,7 @@ class WorkflowQE:
                 use_flags=False,
                 kwargs_gen={}, kwargs_gs={}, kwargs_nscf={}, kwargs_bands={}, kwargs_wannier={},
                 ):
-        
+
         warnings.warn("Workflow is not fully implemented yet. It is experimental and may not work as expected. Use it on your own risk")
 
         path_to_files = os.path.dirname(prefix)

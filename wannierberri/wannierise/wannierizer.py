@@ -214,7 +214,7 @@ class Kpoint_and_neighbours:
 
 @ray.remote
 class Kpoint_and_neighbours_ray(Kpoint_and_neighbours):
-    
+
     pass
 
 
@@ -240,18 +240,18 @@ class Wannierizer:
         same as :class:`Kpoint_and_neighbours`
         """
         if self.parallel:
-            # kpoint = Kpoint_and_neighbours_ray.remote(**kwargs)	
-            kpoint = Kpoint_and_neighbours_ray.remote(**{k:copy.deepcopy(v) for k,v in kwargs.items()})	
+            # kpoint = Kpoint_and_neighbours_ray.remote(**kwargs)
+            kpoint = Kpoint_and_neighbours_ray.remote(**{k: copy.deepcopy(v) for k, v in kwargs.items()})
         else:
             kpoint = Kpoint_and_neighbours(**kwargs)
         self.kpoints.append(kpoint)
 
     def get_U_opt_full(self):
-        if self.parallel: 
+        if self.parallel:
             return np.array(ray.get([kpoint.get_U_opt_full.remote() for kpoint in self.kpoints]))
         else:
-            return np.array([kpoint.get_U_opt_full() for kpoint in self.kpoints])  
-        
+            return np.array([kpoint.get_U_opt_full() for kpoint in self.kpoints])
+
     def update_all(self, U_neigh, **kwargs):
         if self.parallel:
             remotes = [kpoint.update.remote(U, **kwargs) for kpoint, U in zip(self.kpoints, U_neigh)]
@@ -261,7 +261,7 @@ class Wannierizer:
         U_k = [x[0] for x in list]
         self.update_wcc([x[1] for x in list], [x[2] for x in list])
         return U_k
-    
+
     def update_Unb_all(self, U_neigh):
         if self.parallel:
             remotes = [kpoint.update_Unb.remote(U) for kpoint, U in zip(self.kpoints, U_neigh)]
@@ -269,10 +269,9 @@ class Wannierizer:
         else:
             list = [kpoint.update_Unb(U) for kpoint, U in zip(self.kpoints, U_neigh)]
         self.update_wcc([x[0] for x in list], [x[1] for x in list])
-        
-    
+
+
     def update_wcc(self, wcc_k, r2_k):
         self.wcc = self.symmetrizer.symmetrize_WCC(sum(wcc_k))
-        self.spreads = self.symmetrizer.symmetrize_spreads(sum(r2_k) - np.linalg.norm(self.wcc, axis=1)**2 )
+        self.spreads = self.symmetrizer.symmetrize_spreads(sum(r2_k) - np.linalg.norm(self.wcc, axis=1)**2)
         return self.wcc, self.spreads
-        

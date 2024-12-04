@@ -12,8 +12,8 @@ from .amn import AMN
 class DMN(W90_file):
     """
     Class to read and store the wannier90.dmn file
-    
-    
+
+
     Parameters
     ----------
     seedname : str
@@ -90,11 +90,11 @@ class DMN(W90_file):
     @cached_property
     def d_band_blocks_inverse(self):
         return get_inverse_block(self.d_band_blocks)
-    
+
     @cached_property
     def D_wann_blocks_inverse(self):
         return get_inverse_block(self.D_wann_blocks)
-            
+
     def as_dict(self):
         dic = {k: self.__getattribute__(k) for k in self.npz_tags}
         for ik in range(self.NKirr):
@@ -104,9 +104,9 @@ class DMN(W90_file):
         for i in range(len(self.D_wann_block_indices)):
             dic[f'D_wann_blocks_{i}'] = np.array([[self.D_wann_blocks[ik][isym][i] for isym in range(self.Nsym)]
                                             for ik in range(self.NKirr)])
-        return dic    
+        return dic
 
-        
+
     def to_npz(self, f_npz):
         dic = self.as_dict()
         print(f"saving to {f_npz} : ")
@@ -126,19 +126,19 @@ class DMN(W90_file):
         self.D_wann_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
         d_band_num_blocks = [self.d_band_block_indices[ik].shape[0] for ik in range(self.NKirr)]
         D_wann_num_blocks = self.D_wann_block_indices.shape[0]
-        
 
-        d_band_blocks_tmp = [[dic[f"d_band_blocks_{ik}_{i}"] for i in range(nblock)] 
+
+        d_band_blocks_tmp = [[dic[f"d_band_blocks_{ik}_{i}"] for i in range(nblock)]
                              for ik, nblock in enumerate(d_band_num_blocks)]
-        D_wann_blocks_tmp = [dic[f"D_wann_blocks_{i}"] 
-                             for i in range(D_wann_num_blocks)] 
+        D_wann_blocks_tmp = [dic[f"D_wann_blocks_{i}"]
+                             for i in range(D_wann_num_blocks)]
 
         for ik in range(self.NKirr):
             for isym in range(self.Nsym):
-                self.d_band_blocks[ik][isym] = [np.ascontiguousarray(d_band_blocks_tmp[ik][i][isym]) 
+                self.d_band_blocks[ik][isym] = [np.ascontiguousarray(d_band_blocks_tmp[ik][i][isym])
                                                 for i in range(d_band_num_blocks[ik])]
                 self.D_wann_blocks[ik][isym] = [np.ascontiguousarray(D_wann_blocks_tmp[i][ik, isym])
-                                                for i in range(D_wann_num_blocks)]     
+                                                for i in range(D_wann_num_blocks)]
         t1 = time()
         print(f"time for read_npz dmn {t1-t0}\n init {t01-t0} \n d_blocks {t1-t01}")
 
@@ -186,7 +186,7 @@ class DMN(W90_file):
         assert np.all(self.kptirr2kpt.flatten() < self.NK), "kptirr2kpt has values larger than NK"
         assert (set(self.kptirr2kpt.flatten()) == set(range(self.NK))), "kptirr2kpt does not cover all kpoints"
         # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
-        
+
 
         # read the rest of lines and convert to conplex array
         data = [l.strip("() \n").split(",") for l in fl.readlines()]
@@ -240,7 +240,7 @@ class DMN(W90_file):
         self.D_wann_blocks = [[[np.ascontiguousarray(D_wann[ik, isym, start:end, start:end]) for start, end in self.D_wann_block_indices]
                                for isym in range(self.Nsym)] for ik in range(self.NKirr)]
         self.clear_inverse()
-        
+
     @lru_cache
     def d_band_diagonal(self, ikirr, isym):
         if ikirr is None:
@@ -272,9 +272,9 @@ class DMN(W90_file):
     def D_wann_full_matrix(self, ikirr=None, isym=None):
         """
         Returns the full matrix of the Wannier function transformation matrix
-        
+
         Note: this funcion is used only for w90 format, which is deprecated. TODO: remove it
-        
+
         """
         if ikirr is None:
             return np.array([self.D_wann_full_matrix(ikirr, isym) for ikirr in range(self.NKirr)])
@@ -311,7 +311,7 @@ class DMN(W90_file):
                 for isym in range(self.Nsym):
                     f.write("\n".join("({:17.12e},{:17.12e})".format(x.real, x.imag) for x in M(ik, isym).flatten(order='F')) + "\n\n")
 
-        
+
     def get_disentangled(self, v_matrix_dagger, v_matrix):
         """	
         Here we will loose the block-diagonal structure of the d_band matrix.
@@ -384,29 +384,29 @@ class DMN(W90_file):
         if forward:
             if self.time_reversals[isym]:
                 Uloc = Uloc.conj()
-            Uloc = rotate_block_matrix(Uloc, 
+            Uloc = rotate_block_matrix(Uloc,
                                        lblocks=self.d_band_blocks[ikirr][isym],
                                        lindices=d_indices,
-                                       rblocks=self.D_wann_blocks_inverse[ikirr][isym], 
+                                       rblocks=self.D_wann_blocks_inverse[ikirr][isym],
                                        rindices=D_indices,
                                     #    inv_left=False, inv_right=True,
                                        result=U1)
 
             # return d @ U @ D.conj().T
         else:
-            Uloc = rotate_block_matrix(Uloc, 
-                                       lblocks=self.d_band_blocks_inverse[ikirr][isym], 
+            Uloc = rotate_block_matrix(Uloc,
+                                       lblocks=self.d_band_blocks_inverse[ikirr][isym],
                                        lindices=d_indices,
-                                       rblocks=self.D_wann_blocks[ikirr][isym], 
+                                       rblocks=self.D_wann_blocks[ikirr][isym],
                                        rindices=D_indices,
                                     #    inv_left=True, inv_right=False,
                                        result=U1)
             if self.time_reversals[isym]:
                 Uloc = Uloc.conj()
-            
+
         return Uloc
 
-    
+
     def clear_inverse(self, d=True, D=True):
         if d:
             if hasattr(self, 'd_band_blocks_inverse'):
@@ -630,7 +630,7 @@ class DMN(W90_file):
             the mapping of atoms under the symmetry operations
         T : np.array(int, shape=(num_points,Nsym))
             the translation lattice vector that brings the original atom in position atommap[ip,isym] to the transform of atom ip
-            
+
         Notes
         -----
         the parameters can be given as lists, in that case the lengths of lists must be equal
@@ -657,7 +657,7 @@ class DMN(W90_file):
         print("num_wann", num_wann)
         print("D_wann_block_indices", self.D_wann_block_indices)
 
-    
+
 
 
     #

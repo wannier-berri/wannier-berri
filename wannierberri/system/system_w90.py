@@ -161,8 +161,8 @@ class System_w90(System_R):
         chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         self.set_pointgroup(spacegroup=w90data.get_spacegroup())
-        
-        
+
+
         mp_grid = chk.mp_grid
         self._NKFFT_recommended = mp_grid
         self.iRvec, Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=chk.mp_grid)

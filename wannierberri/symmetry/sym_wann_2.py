@@ -67,7 +67,7 @@ class SymWann:
             use_wcc_phase=True,
             silent=False,
     ):
-        
+
         assert use_wcc_phase
         self.silent = silent
         self.wannier_centers_cart = wannier_centers_cart
@@ -86,12 +86,12 @@ class SymWann:
         points_index = np.cumsum([0] + self.num_points_list)
         self.points_index_start = points_index[:-1]
         self.points_index_end = points_index[1:]
-        
+
         self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC', 'OO', 'GG',
                                 'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR']
         self.tested_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC',
                               'SS', 'SH', 'SA', 'SHA']
-        
+
 
         # Now the I-odd vectors have "-1" here (in contrast to the old confusing notation)
         # TODO: change it
@@ -131,7 +131,7 @@ class SymWann:
         else:
             return sys.stdout
 
-    
+
     def index_R(self, R):
         try:
             return self.iRvec_index[tuple(R)]
@@ -165,14 +165,14 @@ class SymWann:
         R_list = np.array(self.iRvec, dtype=int)
         logfile.write(f"R_list = {R_list}\n")
         R_map = [np.dot(R_list, np.transpose(symop.rotation)) for symop in self.spacegroup.symmetries]
-        
+
         for isym in range(self.dmn.Nsym):
             T1 = self.dmn.T_list[block1][:, isym]
             T2 = self.dmn.T_list[block2][:, isym]
             logfile.write(f"symmetry operation  {isym+1}/{len(self.spacegroup.symmetries)}\n")
             logfile.write(f"T1 = {T1}\n")
             logfile.write(f"T2 = {T2}\n")
-        
+
             atom_R_map = R_map[isym][:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :]
             logfile.write(f"R_map = {R_map[isym]}\n")
             logfile.write(f"np1 = {np1}, np2 = {np2}\n")
@@ -188,7 +188,7 @@ class SymWann:
                                 if iR1 is not None and (a1, b1, iR1) > (a, b, iR):
                                     irreducible[iR1, a1, b1] = False
             logfile.write(f"irreducible = {irreducible}\n")
-                
+
         logfile.write(
             f"Found {np.sum(irreducible)} sets of (R,a,b) out of the total {self.nRvec * np1 * np2} ({self.nRvec}*{np1}*{np2})")
         dic = {(a, b): set([iR for iR in range(self.nRvec) if irreducible[iR, a, b]])
@@ -198,7 +198,7 @@ class SymWann:
 
 
 
-    def symmetrize(self, XX_R, 
+    def symmetrize(self, XX_R,
             cutoff=-1,
             cutoff_dict=None):
         """
@@ -227,7 +227,7 @@ class SymWann:
         for k in XX_R:
             if k not in cutoff_dict:
                 cutoff_dict[k] = cutoff
-    
+
 
         # ========================================================
         # symmetrize existing R vectors and find additional R vectors
@@ -257,7 +257,7 @@ class SymWann:
                                                                         matrix_dict_in=matrix_dict_list,
                                                                         iRvec_new=self.iRvec, mode="sum",
                                                                         block1=block1, block2=block2)
-     
+
                 iRvec_new_set = set.union(*iRvec_ab_all.values())
                 iRvec_new_set.add((0, 0, 0))
                 iRvec_new = list(iRvec_new_set)
@@ -268,7 +268,7 @@ class SymWann:
                                                                          matrix_dict_in=matrix_dict_list_res,
                                                                          iRvec_new=iRvec_new, mode="single",
                                                                          block1=block1, block2=block2)
-                
+
                 full_matrix_dict_list[(block1, block2)] = matrix_dict_list_res
                 full_iRvec_list[(block1, block2)] = iRvec_new
                 full_iRvec_set = set.union(full_iRvec_set, iRvec_new_set)
@@ -299,7 +299,7 @@ class SymWann:
                         we2b = ws2b + norb2
                         for iR, XX_L in X.items():
                             return_dic[k][ws1a:we1a, ws2b:we2b, iRvec_map[iR]] += XX_L
-                    
+
         logfile.write('Symmetrizing Finished\n')
 
         logfile.write(f"wcc before symmetrization = \n {self.wannier_centers_cart}\n")
@@ -325,7 +325,7 @@ class SymWann:
 
         iRab_all = defaultdict(lambda: set())
         logfile = self.logfile
-        
+
         for isym, symop in enumerate(self.spacegroup.symmetries):
             T1 = self.dmn.T_list[block1][:, isym]
             T2 = self.dmn.T_list[block2][:, isym]
@@ -392,7 +392,7 @@ class SymWann:
         np.ndarray
             Rotated matrix
         """
-        
+
         n_cart = num_cart_dim(X)  # number of cartesian indices
         symop = self.spacegroup.symmetries[isym]
         for _ in range(n_cart):
@@ -402,11 +402,11 @@ class SymWann:
         if symop.inversion:
             XX_L *= self.parity_I[X] * (-1)**n_cart
         result = _rotate_matrix(XX_L, self.dmn.rot_orb_dagger_list[block1][isym], self.dmn.rot_orb_list[block2][isym])
-        if symop.time_reversal: 
+        if symop.time_reversal:
             result = result.conj() * self.parity_TR[X]
         return result
 
-    
+
 def _rotate_matrix(X, L, R):
     """
     Rotate a matrix X[m,n,iR,...] with L[m,n] and R[m,n] matrices
@@ -416,12 +416,12 @@ def _rotate_matrix(X, L, R):
     _ = np.tensordot(L, X, axes=((1,), (0,)))
     _ = np.tensordot(R, _, axes=((0,), (1,)))
     return _.swapaxes(0, 1)
-    
+
 
 def test_rotate_matrix():
     for num_wann in 1, 2, 5, 7:
         for num_cart in 0, 1, 2, 3:
-            shape_LR = (num_wann, num_wann) 
+            shape_LR = (num_wann, num_wann)
             shape_X = (num_wann,) * 2 + (3,) * num_cart
             L = np.random.rand(*shape_LR) + 1j * np.random.rand(*shape_LR)
             R = np.random.rand(*shape_LR) + 1j * np.random.rand(*shape_LR)
@@ -436,7 +436,7 @@ def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
     """transforms a matrix X[m,n,iR,...] into a dictionary like
         {(a,b): {iR: np.array(num_w_a.num_w_b,...)}}
     """
-    result = defaultdict(lambda: {})    
+    result = defaultdict(lambda: {})
     for a in range(np1):
         s1 = a * norb1
         e1 = s1 + norb1

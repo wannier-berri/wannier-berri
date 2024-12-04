@@ -38,9 +38,9 @@ class SystemInterpolator:
         elif use_pointgroup < 0:
             self.pointgroup = None
         else:
-            raise ValueError("use_pointgroup should be 0, 1 or -1") 
+            raise ValueError("use_pointgroup should be 0, 1 or -1")
         iRvec_array = np.array(iRvec_new_list)
-        
+
         matrix_keys0 = set(self.system0._XX_R.keys())
         matrix_keys1 = set(self.system1._XX_R.keys())
         # set of keys that are present in only one of the systems

@@ -118,7 +118,7 @@ class Wannier90data:
             self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
             self.win_index = [np.arange(self.eig.NB)] * self.chk.num_kpts
             self.wannierised = False
-            
+
         self.set_file(key='chk', val=self.chk)
 
     def get_spacegroup(self):
@@ -136,7 +136,7 @@ class Wannier90data:
             return dmn.spacegroup
         except FileNotFoundError:
             return None
-        
+
 
     def set_file(self, key, val=None, overwrite=False,
                  **kwargs):
@@ -517,7 +517,7 @@ class Wannier90data:
         """
         dmn_new = DMN(empty=True)
         dmn_new.from_irrep(bandstructure)
-        self.set_file("dmn", dmn_new, overwrite=overwrite)  
+        self.set_file("dmn", dmn_new, overwrite=overwrite)
 
     def set_D_wann_from_projections(self, projections):
         """
@@ -531,9 +531,9 @@ class Wannier90data:
         if "dmn" not in self._files:
             raise RuntimeError("First set the bands part of dmn file")
         self.dmn.set_D_wann_from_projections(projections=projections)
-        
 
-        
+
+
 
     # TODO : allow k-dependent window (can it be useful?)
     # def apply_outer_window(self,

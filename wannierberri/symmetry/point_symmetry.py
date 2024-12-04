@@ -270,7 +270,7 @@ class PointGroup():
                 R = symop.rotation_cart
                 TR = symop.time_reversal
                 point_symmetries.append(PointSymmetry(R, TR))
-            self.__init__(generator_list=point_symmetries, 
+            self.__init__(generator_list=point_symmetries,
                           real_lattice=spacegroup.Lattice)
         elif dictionary is not None:
             nsym = dictionary['nsym']

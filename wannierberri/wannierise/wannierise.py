@@ -113,7 +113,7 @@ def wannierise(w90data,
 
     if sitesym:
         symmetrizer = Symmetrizer(symmetrizer_dmn, neighbours=w90data.mmn.neighbours,
-                                  free=free, symmetrize_Z=symmetrize_Z,
+                                  symmetrize_Z=symmetrize_Z,
                                   **kwargs_sitesym)
     else:
         symmetrizer = VoidSymmetrizer(NK=w90data.mmn.NK)
@@ -125,7 +125,7 @@ def wannierise(w90data,
             num_wann = symmetrizer_dmn.num_wann
         else:
             assert num_wann is not None, "num_wann should be provided for random initialization without sitesymmetry"
-        amnshape = (w90data.mmn.NK, w90data.mmn.NB, num_wann)   
+        amnshape = (w90data.mmn.NK, w90data.mmn.NB, num_wann)
         amn = np.random.random(amnshape) + 1j * np.random.random(amnshape)
     elif init == "restart":
         assert w90data.wannierised, "The data is not wannierised"
@@ -149,33 +149,29 @@ def wannierise(w90data,
     wannierizer = Wannierizer(parallel=parallel, symmetrizer=symmetrizer_dmn)
     for ik, kpt in enumerate(kptirr):
         wannierizer.add_kpoint(Mmn=mmn_data_ordered[kpt],
-                            frozen=frozen[ik], 
+                            frozen=frozen[ik],
                             frozen_nb=frozen[neighbours_irreducible[ik]],
-                            wb=w90data.mmn.wk_unique, 
+                            wb=w90data.mmn.wk_unique,
                             bk=w90data.mmn.bk_cart_unique,
-                            symmetrizer_Zirr=symmetrizer.get_symmetrizer_Zirr(ik),
+                            symmetrizer_Zirr=symmetrizer.get_symmetrizer_Zirr(ik, free[ik]),
                             symmetrizer_Uirr=symmetrizer.get_symmetrizer_Uirr(ik),
                             ikirr=ik,
                             amn=amn[kpt],
                             weight=symmetrizer.ndegen(ik) / symmetrizer.NK
                             )
     t2 = time()
-    
+
     # The _IR suffix is used to denote that the U matrix is defined only on k-points in the irreducible BZ
     U_opt_full_IR = wannierizer.get_U_opt_full()
     # the _BZ suffix is used to denote that the U matrix is defined on all k-points in the full BZ
     U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=True)
 
-    # for ik, kpt in enumerate(kptirr):
-    #     U_neigh = [U_opt_full_BZ[ib] for ib in neighbours_all[kpt]]
-    #     wannierizer.kpoints[ik].update_Unb(U_neigh)
-
-    wannierizer.update_Unb_all( [[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr] )
+    wannierizer.update_Unb_all([[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr])
 
 
     # wcc, spreads = print_centers_and_spreads_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, comment=f"starting WFs (from chk)")
     wcc = wannierizer.wcc
-    print_centers_and_spreads(wcc=wcc, spreads=wannierizer.spreads, comment=f"starting WFs")
+    print_centers_and_spreads(wcc=wcc, spreads=wannierizer.spreads, comment="starting WFs")
 
     converge_list = []
     delta_std = np.inf
@@ -190,26 +186,26 @@ def wannierise(w90data,
                                                localise=localise,
                                                wcc_bk_phase=wcc_bk_phase)
         t_update += time() - tx
-        
+
         U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=False)
 
         wcc = wannierizer.wcc
         spreads = wannierizer.spreads
-        converge_list.append(np.hstack((wcc,spreads[:,None])) )
-        delta_std = np.std(converge_list[-num_iter_converge:],axis=0).max()
-        
+        converge_list.append(np.hstack((wcc, spreads[:, None])))
+        delta_std = np.std(converge_list[-num_iter_converge:], axis=0).max()
+
         if i_iter % print_progress_every == 0:
-            print_centers_and_spreads(wcc=wcc, spreads=spreads, comment=f"Iteration {i_iter} (from wannierizer)")
-        
-        if i_iter> num_iter_converge and delta_std < conv_tol:
+            print_centers_and_spreads(wcc=wcc, spreads=spreads, comment=f"Iteration {i_iter} (from wannierizer)", std=delta_std)
+
+        if i_iter > num_iter_converge and delta_std < conv_tol:
             print(f"Converged after {i_iter} iterations")
             break
 
     t02 = time()
-    
+
     U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=True)
-    print_centers_and_spreads(wcc=wcc, spreads=spreads, comment=f"Final state (from wannierizer)")
-    wcc_chk, spreads_chk = print_centers_and_spreads_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, comment=f"Final state (from chk)")
+    print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="Final state (from wannierizer)", std=delta_std)
+    wcc_chk, spreads_chk = print_centers_and_spreads_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, comment="Final state (from chk)")
     if not np.allclose(wcc, wcc_chk, atol=1e-4):
         warnings.warn(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc-wcc_chk).max()}")
     if not np.allclose(spreads, spreads_chk, atol=1e-4):
@@ -217,7 +213,7 @@ def wannierise(w90data,
 
 
     w90data.wannierised = True
-    print(f"time for creating wannierrizer {t2-t1}")
+    print(f"time for creating wannierizer {t2-t1}")
     print(f"time for iterations {t02-t01}")
     print(f"time for updating {t_update}")
     print(f"total time for wannierization {time()-t0}")

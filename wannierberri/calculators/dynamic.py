@@ -155,7 +155,7 @@ class Formula_dyn_ident(Formula):
 
 class JDOS(DynamicCalculator):
     r"""Joint Density of States
-    
+
     :math:`\rho(\omega) = \sum_{\mathbf{k}} \sum_{m,n} \delta(E_{m\mathbf{k}} - E_{n\mathbf{k}} - \omega) \times \left(f(E_{n\mathbf{k}}) - f(E_{m\mathbf{k}})\right)` 	
     """
 
@@ -164,10 +164,10 @@ class JDOS(DynamicCalculator):
         self.sigma = self.smr_fixed_width
         self.Formula = Formula_dyn_ident
         self.dtype = float
-    
+
     def factor_omega(self, E1, E2):
-        return self.smear(E2 - E1 - self.omega) 
-    
+        return self.smear(E2 - E1 - self.omega)
+
     def nonzero(self, E1, E2):
         return (E1 < self.Efermi.max()) and (E2 > self.Efermi.min()) and (
             self.omega.min() - 5 * self.smr_fixed_width < E2 - E1 < self.omega.max() + 5 * self.smr_fixed_width)

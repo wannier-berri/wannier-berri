@@ -77,7 +77,7 @@ class Dwann:
                     S = np.array([[0, 1], [-1, 0]]) @ S.conj()
                 self.rot_orb[isym] = np.kron(self.rot_orb[isym], S)
         self.rot_orb = np.array(self.rot_orb)
-        
+
         self.num_orbitals = self.num_orbitals_scal * self.nspinor
 
         self.orbit = orbit_from_positions(spacegroup, positions)
@@ -140,7 +140,7 @@ class Dwann:
                   ] = np.exp(2j * np.pi * (np.dot(kptirr1, self.T[ip, isym]))) * self.rot_orb[isym]
         # Here we assume that all the orbitals are real, so we don't need to take the complex conjugate
         return Dwann
-        
+
     def get_on_points_all(self, kpoints, ikptirr, ikptirr2kpt):
         """
         generate the Wannier transformation matrices D_wann for all k-points

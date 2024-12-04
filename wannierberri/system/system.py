@@ -134,7 +134,7 @@ class System:
         """
         _, recip = real_recip_lattice(real_lattice=self.real_lattice)
         return recip
-    
+
     def set_symmetry(self, symmetry_gen=(), pointgroup=None, spacegroup=None):
         """
         a wrapper for the :meth:`set_pointgroup` method, to keep backward compatibility. 
