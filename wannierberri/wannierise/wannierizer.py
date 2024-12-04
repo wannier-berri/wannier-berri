@@ -4,8 +4,7 @@ import warnings
 import numpy as np
 import ray
 from ..__utility import get_max_eig, orthogonalize
-from ..symmetry.symmetrizer_dmn import SymmetrizerDMNvoid
-
+from ..symmetry.symmetrizer_sawf import VoidSymmetrizer
 
 class Kpoint_and_neighbours:
     """ a class to store the data on a single k-point
@@ -227,7 +226,7 @@ class Wannierizer:
             parallel = False
         self.parallel = parallel
         if symmetrizer is None:
-            symmetrizer = SymmetrizerDMNvoid()
+            symmetrizer = VoidSymmetrizer()
         self.symmetrizer = symmetrizer
         # self.spacegroup = spacegroup
 

@@ -6,9 +6,7 @@ from .wannierizer import Wannierizer
 
 from .utility import select_window_degen, print_centers_and_spreads, print_centers_and_spreads_chk
 from ..__utility import vectorize
-from .symmetrizer_SAWF import VoidSymmetrizer, Symmetrizer
-# from .spreadfunctional import SpreadFunctional
-
+from ..symmetry.symmetrizer_sawf import VoidSymmetrizer
 
 def wannierise(w90data,
                froz_min=np.inf,
@@ -100,23 +98,29 @@ def wannierise(w90data,
     if froz_min > froz_max:
         print("froz_min > froz_max, nothing will be frozen")
     assert 0 < mix_ratio_z <= 1
+    NK = w90data.mmn.NK
     if sitesym:
         kptirr = w90data.dmn.kptirr
         symmetrizer_dmn = w90data.dmn
+        include_k = np.zeros(NK, dtype=bool)
+        neighbours=w90data.mmn.neighbours
+        for ik in kptirr:
+            include_k[ik] = True
+            include_k[neighbours[ik]] = True
     else:
-        kptirr = np.arange(w90data.mmn.NK)
-        symmetrizer_dmn = None
+        kptirr = np.arange(NK)
+        symmetrizer_dmn = VoidSymmetrizer(NK=NK)
+        include_k = np.ones(NK, dtype=bool)
 
     frozen = vectorize(select_window_degen, w90data.eig.data[kptirr], to_array=True,
                        kwargs=dict(win_min=froz_min, win_max=froz_max))
     free = vectorize(np.logical_not, frozen, to_array=True)
 
-    if sitesym:
-        symmetrizer = Symmetrizer(symmetrizer_dmn, neighbours=w90data.mmn.neighbours,
-                                  symmetrize_Z=symmetrize_Z,
-                                  **kwargs_sitesym)
-    else:
-        symmetrizer = VoidSymmetrizer(NK=w90data.mmn.NK)
+    # if sitesym:
+    #     symmetrizer = Symmetrizer(symmetrizer_dmn, neighbours=w90data.mmn.neighbours,
+    #                               **kwargs_sitesym)
+    # else:
+    #     symmetrizer = VoidSymmetrizer(NK=w90data.mmn.NK)
 
     if init == "amn":
         amn = w90data.amn.data
@@ -139,7 +143,7 @@ def wannierise(w90data,
         raise ValueError("init should be 'amn' or 'random'")
 
     neighbours_all = w90data.mmn.neighbours_unique
-    neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ik] for ik in neigh]
+    neighbours_irreducible = np.array([[symmetrizer_dmn.kpt2kptirr[ik] for ik in neigh]
                                        for neigh in w90data.mmn.neighbours_unique[kptirr]])
 
     # wk = w90data.mmn.wk_unique
@@ -153,23 +157,21 @@ def wannierise(w90data,
                             frozen_nb=frozen[neighbours_irreducible[ik]],
                             wb=w90data.mmn.wk_unique,
                             bk=w90data.mmn.bk_cart_unique,
-                            symmetrizer_Zirr=symmetrizer.get_symmetrizer_Zirr(ik, free[ik]),
-                            symmetrizer_Uirr=symmetrizer.get_symmetrizer_Uirr(ik),
+                            symmetrizer_Zirr=symmetrizer_dmn.get_symmetrizer_Zirr(ik, free[ik]) if symmetrize_Z else VoidSymmetrizer(NK=1),
+                            symmetrizer_Uirr=symmetrizer_dmn.get_symmetrizer_Uirr(ik),
                             ikirr=ik,
                             amn=amn[kpt],
-                            weight=symmetrizer.ndegen(ik) / symmetrizer.NK
+                            weight=symmetrizer_dmn.ndegen(ik) / symmetrizer_dmn.NK
                             )
     t2 = time()
 
     # The _IR suffix is used to denote that the U matrix is defined only on k-points in the irreducible BZ
     U_opt_full_IR = wannierizer.get_U_opt_full()
     # the _BZ suffix is used to denote that the U matrix is defined on all k-points in the full BZ
-    U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=True)
+    U_opt_full_BZ = symmetrizer_dmn.U_to_full_BZ(U_opt_full_IR, include_k=include_k)
 
     wannierizer.update_Unb_all([[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr])
 
-
-    # wcc, spreads = print_centers_and_spreads_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, comment=f"starting WFs (from chk)")
     wcc = wannierizer.wcc
     print_centers_and_spreads(wcc=wcc, spreads=wannierizer.spreads, comment="starting WFs")
 
@@ -187,7 +189,7 @@ def wannierise(w90data,
                                                wcc_bk_phase=wcc_bk_phase)
         t_update += time() - tx
 
-        U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=False)
+        U_opt_full_BZ = symmetrizer_dmn.U_to_full_BZ(U_opt_full_IR, include_k=include_k)
 
         wcc = wannierizer.wcc
         spreads = wannierizer.spreads
@@ -203,7 +205,7 @@ def wannierise(w90data,
 
     t02 = time()
 
-    U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, all_k=True)
+    U_opt_full_BZ = symmetrizer_dmn.U_to_full_BZ(U_opt_full_IR)
     print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="Final state (from wannierizer)", std=delta_std)
     wcc_chk, spreads_chk = print_centers_and_spreads_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, comment="Final state (from chk)")
     if not np.allclose(wcc, wcc_chk, atol=1e-4):

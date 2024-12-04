@@ -35,7 +35,6 @@ class Symmetrizer:
     """
 
     def __init__(self, Dmn=None, neighbours=None,
-                 symmetrize_Z=True
                  ):
         self.Dmn = Dmn
         self.kptirr = Dmn.kptirr
@@ -44,21 +43,14 @@ class Symmetrizer:
         self.kptirr2kpt = Dmn.kptirr2kpt
         self.kpt2kptirr = Dmn.kpt2kptirr
         self.Nsym = Dmn.Nsym
-        self.symmetrize_Z = symmetrize_Z
-        if neighbours is None:
-            self.include_k = np.ones(self.NK, dtype=bool)
-        else:
-            self.include_k = np.zeros(self.NK, dtype=bool)
-            for ik in self.kptirr:
-                self.include_k[ik] = True
-                self.include_k[neighbours[ik]] = True
+        
 
     @lru_cache
     def ndegen(self, ikirr):
         return len(set(self.kptirr2kpt[ikirr]))
 
 
-    def U_to_full_BZ(self, U, all_k=False):
+    def U_to_full_BZ(self, U, include_k=None):
         """
         Expands the U matrix from the irreducible to the full BZ
 
@@ -76,11 +68,12 @@ class Symmetrizer:
         U : list of NK np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
             The expanded matrix. if all_k is False, the U matrices at the kpoints not included in self.include_k are set to None
         """
+        all_k = include_k is None
         Ufull = [None for _ in range(self.NK)]
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
                 iRk = self.Dmn.kptirr2kpt[ikirr, isym]
-                if Ufull[iRk] is None and (self.include_k[iRk] or all_k):
+                if Ufull[iRk] is None and (all_k or include_k[iRk]):
                     Ufull[iRk] = self.Dmn.rotate_U(U[ikirr], ikirr, isym, forward=True)
         return Ufull
 
@@ -88,13 +81,10 @@ class Symmetrizer:
         return Symmetrizer_Uirr(self.Dmn, ikirr)
 
     def get_symmetrizer_Zirr(self, ikirr, free=None):
-        if self.symmetrize_Z:
-            if free is None:
-                free = np.ones(self.Dmn.NB, dtype=bool)
-            return Symmetrizer_Zirr(self.Dmn, ikirr, free=free)
-        else:
-            return VoidSymmetrizer()
-
+        if free is None:
+            free = np.ones(self.Dmn.NB, dtype=bool)
+        return Symmetrizer_Zirr(self.Dmn, ikirr, free=free)
+    
 
 class Symmetrizer_Uirr(Symmetrizer):
 
