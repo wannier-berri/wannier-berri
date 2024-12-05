@@ -138,7 +138,7 @@ class GridTetra(GridAbstract):
     @property
     def str_short(self):
         return f"GridTetra() with {len(self.K_list)} tetrahedrons, " \
-               f"NKFFT={self.FFT}, NKtot={np.prod(self.FFT) * len(self.K_list)}"
+            f"NKFFT={self.FFT}, NKtot={np.prod(self.FFT) * len(self.K_list)}"
 
     def get_K_list(self, use_symmetry=True):
         """ returns the list of Symmetry-irreducible K-points"""

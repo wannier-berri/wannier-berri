@@ -188,6 +188,7 @@ class DMN(W90_file):
         # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
 
 
+
         # read the rest of lines and convert to conplex array
         data = [l.strip("() \n").split(",") for l in fl.readlines()]
         data = np.array([x for x in data if len(x) == 2], dtype=float)
@@ -240,6 +241,7 @@ class DMN(W90_file):
         self.D_wann_blocks = [[[np.ascontiguousarray(D_wann[ik, isym, start:end, start:end]) for start, end in self.D_wann_block_indices]
                                for isym in range(self.Nsym)] for ik in range(self.NKirr)]
         self.clear_inverse()
+
 
     @lru_cache
     def d_band_diagonal(self, ikirr, isym):
@@ -396,7 +398,10 @@ class DMN(W90_file):
         else:
             Uloc = rotate_block_matrix(Uloc,
                                        lblocks=self.d_band_blocks_inverse[ikirr][isym],
+            Uloc = rotate_block_matrix(Uloc,
+                                       lblocks=self.d_band_blocks_inverse[ikirr][isym],
                                        lindices=d_indices,
+                                       rblocks=self.D_wann_blocks[ikirr][isym],
                                        rblocks=self.D_wann_blocks[ikirr][isym],
                                        rindices=D_indices,
                                     #    inv_left=True, inv_right=False,
