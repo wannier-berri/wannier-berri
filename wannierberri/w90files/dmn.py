@@ -45,8 +45,8 @@ class DMN(W90_file):
     kpt2kptirr : numpy.ndarray(int, shape=(NK,))
         the mapping from kpoints to irreducible kpoints (each number denotes the index of the irreducible kpoint in kptirr)
     kptirr2kpt : numpy.ndarray(int, shape=(NKirr, Nsym))
-        the mapping from irreducible kpoints to all kpoints 
-    kpt2kptirr_sym : numpy.ndarray(int, shape=(NK,))    
+        the mapping from irreducible kpoints to all kpoints
+    kpt2kptirr_sym : numpy.ndarray(int, shape=(NK,))
         the symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
     d_band_blocks : list(list(numpy.ndarray(complex, shape=(NB, NB))))
         the ab initio band transformation matrices in the block form (between almost degenerate bands)
@@ -315,9 +315,9 @@ class DMN(W90_file):
 
 
     def get_disentangled(self, v_matrix_dagger, v_matrix):
-        """	
+        """
         Here we will loose the block-diagonal structure of the d_band matrix.
-        It is ok, w90 anyway does not use it. This function is only used to finish 
+        It is ok, w90 anyway does not use it. This function is only used to finish
         the maximal localization procedure with Wannier90
         """
         NBnew = v_matrix.shape[2]
@@ -397,15 +397,13 @@ class DMN(W90_file):
             # return d @ U @ D.conj().T
         else:
             Uloc = rotate_block_matrix(Uloc,
-                                       lblocks=self.d_band_blocks_inverse[ikirr][isym],
-            Uloc = rotate_block_matrix(Uloc,
-                                       lblocks=self.d_band_blocks_inverse[ikirr][isym],
-                                       lindices=d_indices,
-                                       rblocks=self.D_wann_blocks[ikirr][isym],
-                                       rblocks=self.D_wann_blocks[ikirr][isym],
-                                       rindices=D_indices,
+                                     lblocks=self.d_band_blocks_inverse[ikirr][isym],
+                                     lindices=d_indices,
+                                     rblocks=self.D_wann_blocks[ikirr][isym],
+                                     rblocks=self.D_wann_blocks[ikirr][isym],
+                                     rindices=D_indices,
                                     #    inv_left=True, inv_right=False,
-                                       result=U1)
+                                     result=U1)
             if self.time_reversals[isym]:
                 Uloc = Uloc.conj()
 
@@ -428,7 +426,7 @@ class DMN(W90_file):
         Returns
         -------
         float
-            the maximum error for the bands 
+            the maximum error for the bands
         float
             the maximum error for the Wannier functions
         """
@@ -479,8 +477,7 @@ class DMN(W90_file):
             return
         print(f"applying window to select {sum(selected_bands)} bands from {self.NB}\n", selected_bands)
         for ikirr in range(self.NKirr):
-            self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr] = \
-                self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], selected_bands)
+            self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr] = self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], selected_bands)
         for i, block_ind in enumerate(self.d_band_block_indices):
             if i == 0:
                 self._NB = block_ind[-1, -1]

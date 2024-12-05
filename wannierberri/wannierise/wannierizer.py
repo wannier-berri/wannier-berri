@@ -6,6 +6,7 @@ import ray
 from ..__utility import get_max_eig, orthogonalize
 from ..symmetry.symmetrizer_sawf import VoidSymmetrizer
 
+
 class Kpoint_and_neighbours:
     """ a class to store the data on a single k-point
 

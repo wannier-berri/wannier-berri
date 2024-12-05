@@ -43,7 +43,7 @@ class Symmetrizer:
         self.kptirr2kpt = Dmn.kptirr2kpt
         self.kpt2kptirr = Dmn.kpt2kptirr
         self.Nsym = Dmn.Nsym
-        
+
 
     @lru_cache
     def ndegen(self, ikirr):
@@ -84,7 +84,7 @@ class Symmetrizer:
         if free is None:
             free = np.ones(self.Dmn.NB, dtype=bool)
         return Symmetrizer_Zirr(self.Dmn, ikirr, free=free)
-    
+
 
 class Symmetrizer_Uirr(Symmetrizer):
 

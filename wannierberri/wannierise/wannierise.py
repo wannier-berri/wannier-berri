@@ -8,6 +8,7 @@ from .utility import select_window_degen, print_centers_and_spreads, print_cente
 from ..__utility import vectorize
 from ..symmetry.symmetrizer_sawf import VoidSymmetrizer
 
+
 def wannierise(w90data,
                froz_min=np.inf,
                froz_max=-np.inf,
@@ -103,7 +104,7 @@ def wannierise(w90data,
         kptirr = w90data.dmn.kptirr
         symmetrizer_dmn = w90data.dmn
         include_k = np.zeros(NK, dtype=bool)
-        neighbours=w90data.mmn.neighbours
+        neighbours = w90data.mmn.neighbours
         for ik in kptirr:
             include_k[ik] = True
             include_k[neighbours[ik]] = True
