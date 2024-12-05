@@ -393,7 +393,7 @@ class SymWann:
             return
         elif self.spin_ordering.lower() == 'block':
             return
-        elif self.spin_ordering.lower() == 'interlace':	
+        elif self.spin_ordering.lower() == 'interlace':
             Mat_out = np.zeros(np.shape(Mat_in), dtype=complex)
             nw2 = self.num_wann // 2
             for i in 0, 1:

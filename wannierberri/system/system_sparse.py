@@ -69,7 +69,7 @@ class SystemSparse(System_R):
                     symmetrize_info["spin_ordering"] = "interlace"
                 else:
                     raise ValueError(f"Unknown DFT code {code}")
-                
+
             self.symmetrize(**symmetrize_info)
 
 

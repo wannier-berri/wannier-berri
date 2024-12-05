@@ -164,8 +164,8 @@ class System_w90(System_R):
             self.set_symmetry(pointgroup=w90data.pointgroup)
         elif hasattr(w90data, 'spacegroup'):
             self.set_symmetry(spacegroup=w90data.spacegroup)
-        
-        
+
+
         mp_grid = chk.mp_grid
         self._NKFFT_recommended = mp_grid
         self.iRvec, Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=chk.mp_grid)
