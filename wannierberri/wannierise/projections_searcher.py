@@ -54,7 +54,7 @@ class EBRsearcher:
     """
 
     def __init__(self, spacegroup,
-                 win, eig, dmn,
+                 win, eig, symmetrizer,
                  froz_min=np.inf, froz_max=-np.inf,
                  outer_min=-np.inf, outer_max=np.inf,
                  degen_thresh=1e-8,
@@ -70,10 +70,10 @@ class EBRsearcher:
         if trial_orbitals is None:
             trial_orbitals = []
         assert len(trial_positions) == len(trial_orbitals), "The number of trial positions and orbitals must be the same"
-        self.eig = eig.data[dmn.kptirr]
+        self.eig = eig.data[symmetrizer.kptirr]
         self.Dwann_list = []
-        self.NKirr = dmn.NKirr
-        self.nsym_little = [len(l) for l in dmn.isym_little]
+        self.NKirr = symmetrizer.NKirr
+        self.nsym_little = [len(l) for l in symmetrizer.isym_little]
         self.debug = debug
 
         # if projections are specified as a list of Projection objects (overriding trial_positions and trial_orbitals)
@@ -105,13 +105,13 @@ class EBRsearcher:
                           positions=wyckoff,
                           orbital=orbital,
                           ORBITALS=ORBITALS).get_on_points_all(kpoints=win.data['kpoints'],
-                                                           ikptirr=dmn.kptirr,
-                                                           ikptirr2kpt=dmn.kptirr2kpt)
+                                                           ikptirr=symmetrizer.kptirr,
+                                                           ikptirr2kpt=symmetrizer.kptirr2kpt)
             self.num_wann_per_projection.append(dwann.shape[2])
             self.Dwann_list.append(dwann)
             irrs = []
             for ik, D in enumerate(dwann):
-                irr = get_irreps_wann(D[dmn.isym_little[ik]])
+                irr = get_irreps_wann(D[symmetrizer.isym_little[ik]])
                 if self.debug:
                     debug_msg(f"kpoint={ik} has the following irreducible representations:")
                     for i, ir in enumerate(irr):
@@ -163,10 +163,10 @@ class EBRsearcher:
             outer = select_window_degen(self.eig[ik], thresh=degen_thresh,
                                      win_min=outer_min, win_max=outer_max, return_indices=True)
             nfrozen = len(frozen)
-            char_outer_conj = np.array([dmn.d_band_diagonal(ik, isym)[outer].sum() for isym in dmn.isym_little[ik]]).conj()
-            char_frozen_conj = np.array([dmn.d_band_diagonal(ik, isym)[frozen].sum() for isym in dmn.isym_little[ik]]).conj()
+            char_outer_conj = np.array([symmetrizer.d_band_diagonal(ik, isym)[outer].sum() for isym in symmetrizer.isym_little[ik]]).conj()
+            char_frozen_conj = np.array([symmetrizer.d_band_diagonal(ik, isym)[frozen].sum() for isym in symmetrizer.isym_little[ik]]).conj()
             debug_msg(f"ik= {ik} contains {nfrozen} frozen states\n" +
-                  f"the little group contains {len(dmn.isym_little[ik])} symmetries: \n {dmn.isym_little[ik]}\n" +
+                  f"the little group contains {len(symmetrizer.isym_little[ik])} symmetries: \n {symmetrizer.isym_little[ik]}\n" +
                   f"characters in outer window : {np.round(char_outer_conj, 3)}\n" +
                   f"characters in frozen window: {np.round(char_frozen_conj, 3)}")
             # if self.debug:

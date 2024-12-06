@@ -61,7 +61,7 @@ class SymWann:
 
     def __init__(
             self,
-            dmn,
+            symmetrizer,
             iRvec,
             wannier_centers_cart=None,
             use_wcc_phase=True,
@@ -74,14 +74,14 @@ class SymWann:
         self.iRvec = [tuple(R) for R in iRvec]
         self.iRvec_index = {r: i for i, r in enumerate(self.iRvec)}
         self.nRvec = len(self.iRvec)
-        self.num_wann = dmn.num_wann
-        self.spacegroup = dmn.spacegroup
+        self.num_wann = symmetrizer.num_wann
+        self.spacegroup = symmetrizer.spacegroup
         self.lattice = self.spacegroup.lattice
 
-        self.dmn = dmn
-        self.num_blocks = len(dmn.D_wann_block_indices)
-        self.num_orb_list = [dmn.rot_orb_list[i][0].shape[0] for i in range(self.num_blocks)]
-        self.num_points_list = [dmn.atommap_list[i].shape[0] for i in range(self.num_blocks)]
+        self.dmn = symmetrizer
+        self.num_blocks = len(symmetrizer.D_wann_block_indices)
+        self.num_orb_list = [symmetrizer.rot_orb_list[i][0].shape[0] for i in range(self.num_blocks)]
+        self.num_points_list = [symmetrizer.atommap_list[i].shape[0] for i in range(self.num_blocks)]
         self.num_points_tot = sum(self.num_points_list)
         points_index = np.cumsum([0] + self.num_points_list)
         self.points_index_start = points_index[:-1]
@@ -169,7 +169,7 @@ class SymWann:
         for isym in range(self.dmn.Nsym):
             T1 = self.dmn.T_list[block1][:, isym]
             T2 = self.dmn.T_list[block2][:, isym]
-            logfile.write(f"symmetry operation  {isym+1}/{len(self.spacegroup.symmetries)}\n")
+            logfile.write(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}\n")
             logfile.write(f"T1 = {T1}\n")
             logfile.write(f"T2 = {T2}\n")
 
@@ -291,7 +291,7 @@ class SymWann:
                 for k in return_dic:
                     logfile.write(f"Symmetrizing blocks {block1} and {block2} for matrix {k}\n")
                     logfile.write(f"ws1 = {ws1}, we1 = {we1}, ws2 = {ws2}, we2 = {we2}\n")
-                    logfile.write(f"full_matrix_dict_list[(block1, block2)][k] = {full_matrix_dict_list[(block1, block2)][k][(0,0)].keys()}\n")
+                    logfile.write(f"full_matrix_dict_list[(block1, block2)][k] = {full_matrix_dict_list[(block1, block2)][k][(0, 0)].keys()}\n")
                     for (a, b), X in full_matrix_dict_list[(block1, block2)][k].items():
                         ws1a = ws1 + a * norb1
                         we1a = ws1a + norb1
@@ -331,7 +331,7 @@ class SymWann:
             T2 = self.dmn.T_list[block2][:, isym]
             atommap1 = self.dmn.atommap_list[block1][:, isym]
             atommap2 = self.dmn.atommap_list[block2][:, isym]
-            logfile.write(f"symmetry operation  {isym+1}/{len(self.spacegroup.symmetries)}")
+            logfile.write(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}")
             R_map = iRvec_new_array @ np.transpose(symop.rotation)
             atom_R_map = (R_map[:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :])
             for (atom_a, atom_b), iR_new_list in iRab_new.items():
@@ -429,7 +429,7 @@ def test_rotate_matrix():
             Y = _rotate_matrix(X, L, R)
             assert Y.shape == X.shape
             Z = np.einsum("ij,jk...,kl->il...", L, X, R)
-            assert np.allclose(Y, Z), f"for num_wann={num_wann}, num_cart={num_cart}, the difference is {np.max(np.abs(Y-Z))} Y.shape={Y.shape} X.shape = {X.shape}\nX={X}\nY={Y}\nZ={Z}"
+            assert np.allclose(Y, Z), f"for num_wann={num_wann}, num_cart={num_cart}, the difference is {np.max(np.abs(Y - Z))} Y.shape={Y.shape} X.shape = {X.shape}\nX={X}\nY={Y}\nZ={Z}"
 
 
 def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):

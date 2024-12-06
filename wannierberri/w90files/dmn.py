@@ -111,10 +111,12 @@ class DMN(W90_file):
         dic = self.as_dict()
         print(f"saving to {f_npz} : ")
         np.savez_compressed(f_npz, **dic)
+        return self
 
     def from_npz(self, f_npz):
         dic = np.load(f_npz)
         self.from_dict(dic)
+        return self
 
     def from_dict(self, dic):
         t0 = time()
@@ -140,7 +142,9 @@ class DMN(W90_file):
                 self.D_wann_blocks[ik][isym] = [np.ascontiguousarray(D_wann_blocks_tmp[i][ik, isym])
                                                 for i in range(D_wann_num_blocks)]
         t1 = time()
-        print(f"time for read_npz dmn {t1-t0}\n init {t01-t0} \n d_blocks {t1-t01}")
+        print(f"time for read_npz dmn {t1 - t0}\n init {t01 - t0} \n d_blocks {t1 - t01}")
+        return self
+
 
     @property
     def NK(self):
@@ -241,6 +245,7 @@ class DMN(W90_file):
         self.D_wann_blocks = [[[np.ascontiguousarray(D_wann[ik, isym, start:end, start:end]) for start, end in self.D_wann_block_indices]
                                for isym in range(self.Nsym)] for ik in range(self.NKirr)]
         self.clear_inverse()
+        return self
 
 
     @lru_cache
@@ -400,9 +405,7 @@ class DMN(W90_file):
                                      lblocks=self.d_band_blocks_inverse[ikirr][isym],
                                      lindices=d_indices,
                                      rblocks=self.D_wann_blocks[ikirr][isym],
-                                     rblocks=self.D_wann_blocks[ikirr][isym],
                                      rindices=D_indices,
-                                    #    inv_left=True, inv_right=False,
                                      result=U1)
             if self.time_reversals[isym]:
                 Uloc = Uloc.conj()

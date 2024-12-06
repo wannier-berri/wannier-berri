@@ -11,8 +11,8 @@ except ImportError as err:
 
 import wannierberri as wberri
 
-print(f"sys.version: {sys.version}")  
-print(f"sys.path: {sys.path}")  
+print(f"sys.version: {sys.version}")
+print(f"sys.path: {sys.path}")
 
 
 print("sys.path: ", sys.path)

@@ -199,7 +199,7 @@ def system_Fe_W90_wcc(create_files_Fe_W90):
 
 
 def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_diff=False, use_ws=False,
-                          extra_tags=[], 
+                          extra_tags=[],
                           sym_wann_method="old",
                           **kwargs):
     """Create system for Fe symmetrization using Wannier90 data"""
@@ -222,7 +222,7 @@ def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_di
             soc=True,
             spin_ordering='interlace',
             method=sym_wann_method)
-            
+
     return system
 
 
@@ -323,7 +323,7 @@ def system_GaAs_W90_wccJM(create_files_GaAs_W90):
     return system
 
 
-def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=True, 
+def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=True,
                        sym_wann_method="old", reorder_spin=False):
     """Create system for GaAs using sym_tb.dat data"""
     seedname = create_files_tb(dir="GaAs_Wannier90", file=f"GaAs{'_sym' if symmetrize else ''}_tb.dat")

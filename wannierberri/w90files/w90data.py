@@ -13,7 +13,7 @@
 # ------------------------------------------------------------#
 
 from functools import cached_property
-from copy import copy, deepcopy
+from copy import copy
 import numpy as np
 from ..wannierise import wannierise
 
@@ -23,7 +23,7 @@ from .mmn import MMN
 from .amn import AMN
 from .xxu import UIU, UHU, SIU, SHU
 from .spn import SPN
-from .dmn import DMN
+# from .dmn import DMN
 from .chk import CheckPoint, CheckPoint_bare
 
 
@@ -69,7 +69,7 @@ class Wannier90data:
     formatted_list : list(str)
         list of files which should be read as formatted files (uHu, uIu, etc)
     _files : dict(str, `~wannierberri.w90files.W90_file`)
-        the dictionary of the files (e.g. the keys are 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn', 'dmn')
+        the dictionary of the files (e.g. the keys are 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn')
     """
     # todo :  rotate uHu and spn
     # todo : symmetry
@@ -77,7 +77,7 @@ class Wannier90data:
     def __init__(self, seedname="wannier90", read_chk=False,
                  kmesh_tol=1e-7, bk_complete_tol=1e-5,
                  read_npz=True,
-                 write_npz_list=('mmn', 'eig', 'amn', 'dmn'),
+                 write_npz_list=('mmn', 'eig', 'amn'),
                  write_npz_formatted=True,
                  overwrite_npz=False,
                  formatted=tuple(),
@@ -94,14 +94,14 @@ class Wannier90data:
                                 'siu': SIU,
                                 'shu': SHU,
                                 'spn': SPN,
-                                'dmn': DMN,
+                                # 'dmn': DMN,
                                 }
         self.read_npz = read_npz
         self.write_npz_list = set([s.lower() for s in write_npz_list])
         formatted = [s.lower() for s in formatted]
         if write_npz_formatted:
             self.write_npz_list.update(formatted)
-            self.write_npz_list.update(['mmn', 'eig', 'amn', 'dmn'])
+            self.write_npz_list.update(['mmn', 'eig', 'amn'])
         self.formatted_list = formatted
         self._files = {}
         for key, val in files.items():
@@ -123,7 +123,7 @@ class Wannier90data:
 
     def get_spacegroup(self):
         """
-        Get the spacegroup of the system from the dmn file
+        Get the spacegroup of the system from the symmetrizer object
         if the dmn file is not set and cannot be read from the npz file, return None
 
         Returns
@@ -131,12 +131,21 @@ class Wannier90data:
         `~irrep.spacegroup.SpaceGroupBare`
             the spacegroup of the system
         """
-        try:
-            dmn = self.get_file('dmn')
-            return dmn.spacegroup
-        except FileNotFoundError:
+        if hasattr(self, "symmetrizer") and self.symmetrizer is not None:
+            return self.symmetrizer.spacegroup
+        else:
             return None
 
+    def set_symmetrizer(self, symmetrizer):
+        """
+        Set the symmetrizer of the system
+
+        Parameters
+        ----------
+        symmetrizer : `~wanierberri.symmetry.symmetrizer_sawf.SymmetrizerSAWF`
+            the symmetrizer object
+        """
+        self.symmetrizer = symmetrizer
 
     def set_file(self, key, val=None, overwrite=False,
                  **kwargs):
@@ -146,7 +155,7 @@ class Wannier90data:
         Parameters
         ----------
         key : str
-            the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn', 'dmn'
+            the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
         val : `~wannierberri.w90files.W90_file`
             the value of the file
         overwrite : bool
@@ -162,15 +171,7 @@ class Wannier90data:
         if not overwrite and key in self._files:
             raise RuntimeError(f"file '{key}' was already set")
         if val is None:
-            if key == 'dmn':
-                try:
-                    eigenvalues = self.eig.data
-                except AttributeError:
-                    eigenvalues = None
-                val = DMN(self.seedname, eigenvalues=eigenvalues,
-                          **kwargs_auto)
-            else:
-                val = self.__files_classes[key](self.seedname, **kwargs_auto)
+            val = self.__files_classes[key](self.seedname, **kwargs_auto)
         self.check_conform(key, val)
         self._files[key] = val
 
@@ -290,13 +291,6 @@ class Wannier90data:
         Returns the MMN file
         """
         return self.get_file('mmn')
-
-    @property
-    def dmn(self):
-        """
-        Returns the DMN file
-        """
-        return self.get_file('dmn')
 
     @property
     def uhu(self):
@@ -445,53 +439,54 @@ class Wannier90data:
                 print(f"key = {key} ,number of bands = {val.num_bands}")
 
 
-    def get_disentangled(self, files=[]):
-        """
-        after disentanglement, get the Wannier90data object with 
-        num_wann == num_bands
+    # def get_disentangled(self, files=[]):
+    #     """
+    #     after disentanglement, get the Wannier90data object with
+    #     num_wann == num_bands
 
-        Parameters
-        ----------
-        files : list(str)
-            the extensions of the files to be read (e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn', 'dmn')
-        """
-        assert self.wannierised, "wannierisation was not performed"
-        new_files = {}
+    #     Parameters
+    #     ----------
+    #     files : list(str)
+    #         the extensions of the files to be read (e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn', 'dmn')
+    #     """
+    #     assert self.wannierised, "wannierisation was not performed"
+    #     new_files = {}
 
-        v = self.chk.v_matrix
-        print("v.shape", v.shape)
-        ham_tmp = np.einsum('kml,km,kmn->kln', v.conj(), self.eig.data, v)
-        print("ham_tmp.shape", ham_tmp.shape)
-        EV = [np.linalg.eigh(h_tmp) for h_tmp in ham_tmp]
-        eig_new = EIG(data=np.array([ev[0] for ev in EV]))
-        # v_right = np.array([_v @ ev[1].T.conj() for ev, _v in zip(EV,v)])
-        v_right = np.array([_v @ ev[1] for ev, _v in zip(EV, v)])
+    #     v = self.chk.v_matrix
+    #     print("v.shape", v.shape)
+    #     ham_tmp = np.einsum('kml,km,kmn->kln', v.conj(), self.eig.data, v)
+    #     print("ham_tmp.shape", ham_tmp.shape)
+    #     EV = [np.linalg.eigh(h_tmp) for h_tmp in ham_tmp]
+    #     eig_new = EIG(data=np.array([ev[0] for ev in EV]))
+    #     # v_right = np.array([_v @ ev[1].T.conj() for ev, _v in zip(EV,v)])
+    #     v_right = np.array([_v @ ev[1] for ev, _v in zip(EV, v)])
 
-        v_left = v_right.conj().transpose(0, 2, 1)
+    #     v_left = v_right.conj().transpose(0, 2, 1)
 
 
-        for file in files:
-            if file == 'eig':
-                new_files['eig'] = eig_new
-            else:
-                new_files[file] = self.get_file(file).get_disentangled(v_left, v_right)
-                if file == 'mmn':
-                    new_files[file].neighbours = self.mmn.neighbours
-                    new_files[file].ib_unique_map = self.mmn.ib_unique_map
-                    new_files[file].G = self.mmn.G
-        win = deepcopy(self.win)
-        win.NB = self.chk.num_wann
-        new_files['win'] = win
-        other = Wannier90data(read_chk=False, files=new_files)
-        return other
+    #     for file in files:
+    #         if file == 'eig':
+    #             new_files['eig'] = eig_new
+    #         else:
+    #             new_files[file] = self.get_file(file).get_disentangled(v_left, v_right)
+    #             if file == 'mmn':
+    #                 new_files[file].neighbours = self.mmn.neighbours
+    #                 new_files[file].ib_unique_map = self.mmn.ib_unique_map
+    #                 new_files[file].G = self.mmn.G
+    #     win = deepcopy(self.win)
+    #     win.NB = self.chk.num_wann
+    #     new_files['win'] = win
+    #     other = Wannier90data(read_chk=False, files=new_files)
+    #     return other
+
 
     def check_symmetry(self, silent=False):
         """
         Check the symmetry of the system
         """
 
-        err_eig = self.dmn.check_eig(self.eig)
-        err_amn = self.dmn.check_amn(self.amn)
+        err_eig = self.symmetrizer.check_eig(self.eig)
+        err_amn = self.symmetrizer.check_amn(self.amn)
         if not silent:
             print(f"eig symmetry error : {err_eig}")
             print(f"amn symmetry error : {err_amn}")
@@ -504,33 +499,33 @@ class Wannier90data:
         """
         self.set_file("amn", self.dmn.get_random_amn(), overwrite=True)
 
-    def set_d_band(self, bandstructure, overwrite=False):
-        """
-        Set the d-band from the bandstructure object
+    # def set_d_band(self, bandstructure, overwrite=False):
+    #     """
+    #     Set the d-band from the bandstructure object
 
-        Parameters
-        ----------
-        bandstructure : irrep.bandstructure.BandStructure
-            the bandstructure object
-        overwrite : bool
-            if False and the dmn file already exists, raise an error
-        """
-        dmn_new = DMN(empty=True)
-        dmn_new.from_irrep(bandstructure)
-        self.set_file("dmn", dmn_new, overwrite=overwrite)
+    #     Parameters
+    #     ----------
+    #     bandstructure : irrep.bandstructure.BandStructure
+    #         the bandstructure object
+    #     overwrite : bool
+    #         if False and the dmn file already exists, raise an error
+    #     """
+    #     dmn_new = DMN(empty=True)
+    #     dmn_new.from_irrep(bandstructure)
+    #     self.set_file("dmn", dmn_new, overwrite=overwrite)
 
-    def set_D_wann_from_projections(self, projections):
-        """
-        Set the Dwann matrix from the projections
+    # def set_D_wann_from_projections(self, projections):
+    #     """
+    #     Set the Dwann matrix from the projections
 
-        Parameters
-        ----------
-        projections : list(tuple(np.array(3), str))
-            the list of projections, each element is a tuple of the position of the projection and the orbital type
-        """
-        if "dmn" not in self._files:
-            raise RuntimeError("First set the bands part of dmn file")
-        self.dmn.set_D_wann_from_projections(projections=projections)
+    #     Parameters
+    #     ----------
+    #     projections : list(tuple(np.array(3), str))
+    #         the list of projections, each element is a tuple of the position of the projection and the orbital type
+    #     """
+    #     if "dmn" not in self._files:
+    #         raise RuntimeError("First set the bands part of dmn file")
+    #     self.dmn.set_D_wann_from_projections(projections=projections)
 
 
 

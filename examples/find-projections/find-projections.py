@@ -52,7 +52,7 @@ print(trial_projections.write_with_multiplicities(orbit=False))
 
 ebrsearcher = EBRsearcher(
     win=win,
-    dmn=dmn,
+    symmetrizer=dmn,
     eig=eig,
     spacegroup=spacegroup,
     trial_projections=trial_projections,

@@ -254,13 +254,13 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize2(self, dmn):
+    def symmetrize2(self, symmetrizer):
         if not self.use_wcc_phase:
             raise NotImplementedError("Symmetrization is implemented only for convention I")
 
         from ..symmetry.sym_wann_2 import SymWann
         symmetrize_wann = SymWann(
-            dmn=dmn,
+            symmetrizer=symmetrizer,
             iRvec=self.iRvec,
             wannier_centers_cart=self.wannier_centers_cart,
             use_wcc_phase=self.use_wcc_phase,
@@ -274,7 +274,7 @@ class System_R(System):
         logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
 
         self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
-        self.set_symmetry(spacegroup=dmn.spacegroup)
+        self.set_symmetry(spacegroup=symmetrizer.spacegroup)
         self.clear_cached_R()
         self.clear_cached_wcc()
 
@@ -335,7 +335,7 @@ class System_R(System):
         if method == "new":
             assert spin_ordering == "interlace", "Symmetrization method 'new' is implemented only for spin_ordering='interlace'"
             from irrep.spacegroup import SpaceGroup
-            from ..w90files.dmn import DMN
+            from ..symmetry.symmetrizer_sawf import SymmetrizerSAWF
             from ..wannierise.projections import Projection
 
             index = {key: i for i, key in enumerate(set(atom_name))}
@@ -346,7 +346,7 @@ class System_R(System):
                                     spinor=soc)
 
             assert len(atom_name) == len(positions), "atom_name and positions should have the same length"
-            dmn = DMN(empty=True)
+
             proj_list = []
             for proj_str in proj:
                 atom, orbital = [l.strip() for l in proj_str.split(':')]
@@ -356,10 +356,9 @@ class System_R(System):
                     proj = Projection(position_num=pos, orbital=suborbital, spacegroup=spacegroup)
                     # print (f"adding projection {proj} ({pos} {suborbital})")
                     proj_list.append(proj)
-            dmn.set_spacegroup(spacegroup)
-            dmn.set_D_wann_from_projections(projections_obj=proj_list)
-            self.symmetrize2(dmn)
-            return dmn
+            symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections_obj=proj_list)
+            self.symmetrize2(symmetrizer)
+            return symmetrizer
         else:
             assert method == "old", f"unknown symmetrization method {method}. expected 'old' or 'new'"
 

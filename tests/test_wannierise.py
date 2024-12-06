@@ -11,9 +11,10 @@ from matplotlib import pyplot as plt
 import os
 import shutil
 
+from wannierberri.w90files.dmn import DMN
 from wannierberri.wannierise.projections import Projection
 from common import OUTPUT_DIR, ROOT_DIR, REF_DIR
-from wannierberri.w90files import DMN
+from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF
 
 
 
@@ -37,16 +38,19 @@ def test_wanierise():
 
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
     prefix = "diamond"
-    prefix_dis = "diamond_disentangled"
-    for ext in ["mmn", "amn", "dmn", "eig", "win"]:
+    for ext in ["mmn", "amn", "eig", "win", "sawf.npz"]:
         shutil.copy(os.path.join(data_dir, prefix + "." + ext),
                     os.path.join(tmp_dir, prefix + "." + ext))
     print("prefix = ", prefix)
+    symmetrizer = SymmetrizerSAWF().from_npz(prefix + ".sawf.npz")
+    symmetrizer.spacegroup.show()
+    symmetrizer.to_w90_file(prefix)
     subprocess.run(["wannier90.x", prefix])
     # record the system from the Wanier90 output ('diamond.chk' file)
     systems["w90"] = wberri.system.System_w90(seedname=prefix)
     # Read the data from the Wanier90 inputs
     w90data = wberri.w90files.Wannier90data(seedname=prefix)
+    w90data.set_symmetrizer(symmetrizer=symmetrizer)
     # Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
     w90data.wannierise(
         froz_min=-8,
@@ -76,7 +80,7 @@ def test_wanierise():
 
     systems["wberri_symmetrized"] = copy.deepcopy(systems["wberri"])
 
-    
+
     systems["wberri_symmetrized"].symmetrize(atom_name=["C"] * 4,
                                              positions=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]],
                                              proj=["C:s"],
@@ -84,38 +88,6 @@ def test_wanierise():
                                              soc=False,
                                             method="new")
 
-    # If needed - perform maximal localization using Wannier90
-
-    # first generate the reduced files - where num_bands is reduced to num_wann,
-    # by taking the optimized subspace
-    w90data_reduced = w90data.get_disentangled(files=["eig", "mmn", "amn", "dmn"])
-    w90data_reduced.wannierise(
-        froz_min=-8,
-        froz_max=20,
-        num_iter=1000,
-        conv_tol=1e-10,
-        mix_ratio_z=0.8,
-        mix_ratio_u=1,
-        print_progress_every=20,
-        sitesym=True,
-        localise=True
-    )
-
-
-    w90data_reduced.write(prefix_dis, files=["eig", "mmn", "amn", "dmn"])
-    # Now write the diamond_disentangled.win file
-    # first take the existing file
-    win_file = wberri.w90files.WIN(seedname=prefix)
-    # and modify some parameters
-    win_file["num_bands"] = win_file["num_wann"]
-    win_file["dis_num_iter"] = 0
-    win_file["num_iter"] = 1000
-    del win_file["dis_froz_win"]
-    del win_file["dis_froz_max"]
-    win_file["site_symmetry"] = True
-    win_file.write(prefix_dis)
-    subprocess.run(["wannier90.x", prefix_dis])
-    systems["wberri+mlwf"] = wberri.system.System_w90(seedname=prefix_dis)
 
     # Now calculate bandstructure for each of the systems
     # for creating a path any of the systems will do the job
@@ -149,82 +121,81 @@ def test_wanierise():
 
 
 @fixture
-def check_create_dmn():
-    def _inner(dmn_new, dmn_ref):
-        
+def check_sawf():
+    def _inner(sawf_new, sawf_ref):
+
         for key in ['NB', "num_wann", "NK", "NKirr", "kptirr", "kptirr2kpt", "kpt2kptirr", "time_reversals"]:
-            assert np.all(getattr(dmn_ref, key) == getattr(dmn_new, key)), (
-                f"key {key} differs between reference and new DMN file\n"
-                f"reference: {getattr(dmn_ref, key)}\n"
-                f"new: {getattr(dmn_new, key)}\n"
+            assert np.all(getattr(sawf_ref, key) == getattr(sawf_new, key)), (
+                f"key {key} differs between reference and new SymmetrizerSAWF\n"
+                f"reference: {getattr(sawf_ref, key)}\n"
+                f"new: {getattr(sawf_new, key)}\n"
             )
 
-        assert np.all(dmn_ref.D_wann_block_indices == dmn_new.D_wann_block_indices), (
-            f"D_wann_block_indices differs between reference and new DMN file\n"
-            f"reference: {dmn_ref.D_wann_block_indices}\n"
-            f"new: {dmn_new.D_wann_block_indices}\n"
+        assert np.all(sawf_ref.D_wann_block_indices == sawf_new.D_wann_block_indices), (
+            f"D_wann_block_indices differs between reference and new SymmetrizerSAWF\n"
+            f"reference: {sawf_ref.D_wann_block_indices}\n"
+            f"new: {sawf_new.D_wann_block_indices}\n"
         )
-        for ikirr in range(dmn_ref.NKirr):
-            assert np.all(dmn_ref.d_band_block_indices[ikirr] == dmn_new.d_band_block_indices[ikirr]), (
-                f"d_band_block_indices differs  at ikirr={ikirr} between reference and new DMN file\n"
-                f"reference: {dmn_ref.d_band_block_indices}\n"
-                f"new: {dmn_new.d_band_block_indices}\n"
+        for ikirr in range(sawf_ref.NKirr):
+            assert np.all(sawf_ref.d_band_block_indices[ikirr] == sawf_new.d_band_block_indices[ikirr]), (
+                f"d_band_block_indices differs  at ikirr={ikirr} between reference and new SymmetrizerSAWF\n"
+                f"reference: {sawf_ref.d_band_block_indices}\n"
+                f"new: {sawf_new.d_band_block_indices}\n"
             )
 
-        for isym in range(dmn_ref.Nsym):
-            try: 
-                for ikirr in range(dmn_ref.NKirr):
-                    for blockref, blocknew in zip(dmn_ref.D_wann_blocks[ikirr][isym], dmn_new.D_wann_blocks[ikirr][isym]):
-                        assert blockref == approx(blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
-                    for blockref, blocknew in zip(dmn_ref.d_band_blocks[ikirr][isym], dmn_new.d_band_blocks[ikirr][isym]):
-                        assert blockref == approx(blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+        for isym in range(sawf_ref.Nsym):
+            try:
+                for ikirr in range(sawf_ref.NKirr):
+                    for blockref, blocknew in zip(sawf_ref.D_wann_blocks[ikirr][isym], sawf_new.D_wann_blocks[ikirr][isym]):
+                        assert blockref == approx(blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+                    for blockref, blocknew in zip(sawf_ref.d_band_blocks[ikirr][isym], sawf_new.d_band_blocks[ikirr][isym]):
+                        assert blockref == approx(blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
             except AssertionError:
-                for ikirr in range(dmn_ref.NKirr):
-                    for blockref, blocknew in zip(dmn_ref.D_wann_blocks[ikirr][isym], dmn_new.D_wann_blocks[ikirr][isym]):
-                        assert blockref == approx(-blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
-                    for blockref, blocknew in zip(dmn_ref.d_band_blocks[ikirr][isym], dmn_new.d_band_blocks[ikirr][isym]):
-                        assert blockref == approx(-blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new DMN file by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+                for ikirr in range(sawf_ref.NKirr):
+                    for blockref, blocknew in zip(sawf_ref.D_wann_blocks[ikirr][isym], sawf_new.D_wann_blocks[ikirr][isym]):
+                        assert blockref == approx(-blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+                    for blockref, blocknew in zip(sawf_ref.d_band_blocks[ikirr][isym], sawf_new.d_band_blocks[ikirr][isym]):
+                        assert blockref == approx(-blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
 
 
     return _inner
 
 
-def test_create_dmn_diamond(check_create_dmn):
+def test_create_sawf_diamond(check_sawf):
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
-    
+
     bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
                                                       code="espresso",
-                                                    from_sym_file=data_dir + "/diamond.sym",
                                                     include_TR=False,
                                                       )
-    
-    projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
-    dmn_new = DMN(empty=True)
-    dmn_new.from_irrep(bandstructure)
-    dmn_new.set_D_wann_from_projections(projections_obj=[projection])
 
-    tmp_dmn_path = os.path.join(OUTPUT_DIR, "diamond")	    
-    dmn_new.to_w90_file(tmp_dmn_path)
-    dmn_new = DMN(seedname=tmp_dmn_path, read_npz=False)
+    projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
+    sawf_new = SymmetrizerSAWF().from_irrep(bandstructure).set_D_wann_from_projections(projections_obj=[projection])
+
+    tmp_sawf_path = os.path.join(OUTPUT_DIR, "diamond")
+    sawf_new.to_npz(tmp_sawf_path + ".sawf.npz")
+    sawf_ref = SymmetrizerSAWF().from_npz(data_dir + "/diamond.sawf.npz")
+    check_sawf(sawf_new, sawf_ref)
+    sawf_new.to_w90_file(tmp_sawf_path)
+    dmn_new = DMN(seedname=tmp_sawf_path, read_npz=False)
 
     dmn_ref = DMN(seedname=os.path.join(data_dir, "diamond"), read_npz=False)
-    check_create_dmn(dmn_new, dmn_ref)
+    check_sawf(dmn_new, dmn_ref)
 
 
 @pytest.mark.parametrize("include_TR", [True, False])
-def test_create_dmn_Fe(check_create_dmn, include_TR):
+def test_create_sawf_Fe(check_sawf, include_TR):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
-    
+
     bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
                                 normalize=False, magmom=[[0, 0, 1]], include_TR=include_TR)
-    dmn_new = DMN(empty=True)
-    dmn_new.from_irrep(bandstructure)
+    sawf_new = SymmetrizerSAWF().from_irrep(bandstructure)
     pos = [[0, 0, 0]]
-    dmn_new.set_D_wann_from_projections(projections=[(pos, 's'), (pos, 'p'), (pos, 'd')])
-    tmp_dmn_path = os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}.dmn.npz")
-    dmn_new.to_npz(tmp_dmn_path)
-    dmn_ref = DMN(seedname=os.path.join(REF_DIR, "dmn", f"Fe_TR={include_TR}"), read_npz=True)
-    check_create_dmn(dmn_new, dmn_ref)
+    sawf_new.set_D_wann_from_projections(projections=[(pos, 's'), (pos, 'p'), (pos, 'd')])
+    tmp_sawf_path = os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}.sawf.npz")
+    sawf_new.to_npz(tmp_sawf_path)
+    sawf_ref = SymmetrizerSAWF().from_npz(os.path.join(REF_DIR, "sawf", f"Fe_TR={include_TR}.sawf.npz"))
+    check_sawf(sawf_new, sawf_ref)
 
 
 
@@ -233,8 +204,8 @@ def test_sitesym_Fe(include_TR):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
     w90data = wberri.w90files.Wannier90data(seedname=path_data + "/Fe")
 
-    dmn = DMN(seedname=path_data + f"/Fe_TR={include_TR}", read_npz=True)
-    w90data.set_file("dmn", dmn)
+    symmetrizer = SymmetrizerSAWF().from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
+    w90data.set_symmetrizer(symmetrizer)
     froz_max = 30
     w90data.wannierise(init="amn",
                        froz_min=-8,
@@ -261,10 +232,10 @@ def test_sitesym_Fe(include_TR):
 
 
     tab_all_path = wberri.calculators.TabulatorAll(
-                        tabulators,
-                        ibands=np.arange(0, 18),
-                        mode="path"
-                            )
+        tabulators,
+        ibands=np.arange(0, 18),
+        mode="path"
+    )
 
     # all kpoints given in reduced coordinates
     path = wberri.Path(system,
@@ -274,9 +245,9 @@ def test_sitesym_Fe(include_TR):
                         [0.7500, 0.2500, -0.2500],  # P
                         [0.5000, 0.0000, -0.5000],  # N
                         [0.0000, 0.0000, 0.000]
-                            ],  # G
-                    labels=["G", "H", "P", "N", "G"],
-                    nk=[21] * 5)   # length [ Ang] ~= 2*pi/dk
+                    ],  # G
+        labels=["G", "H", "P", "N", "G"],
+        nk=[21] * 5)   # length [ Ang] ~= 2*pi/dk
 
     result_path = wberri.run(system,
                     grid=path,
@@ -285,7 +256,7 @@ def test_sitesym_Fe(include_TR):
     EF = 12.6
     A = np.loadtxt(os.path.join(path_data, "Fe_bands_pw.dat"))
     energies_ref = np.copy(A[:, 1].reshape(-1, 81)[:18].T)
-    
+
     bohr_ang = scipy.constants.physical_constants['Bohr radius'][0] / 1e-10
     alatt = 5.4235 * bohr_ang
     A[:, 0] *= 2 * np.pi / alatt
@@ -293,7 +264,7 @@ def test_sitesym_Fe(include_TR):
     plt.scatter(A[:, 0], A[:, 1], c="black", s=5)
 
     energies = result_path.results["tabulate"].get_data(quantity="Energy", iband=np.arange(0, 18))
-    
+
     np.save(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.npy"), energies)
     np.savetxt(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.dat"), energies)
 
@@ -311,23 +282,22 @@ def test_sitesym_Fe(include_TR):
             f"energies: {energies[ik]}\nref: {energies_ref[ik]}"
 
     result_path.results["tabulate"].plot_path_fat(
-                path,
-                quantity=None,
-                Eshift=EF,
-                Emin=-10, Emax=50,
-                iband=None,
-                mode="fatband",
-                fatfactor=20,
-                cut_k=False,
-                linecolor="red",
-                close_fig=False,
-                show_fig=False,
-                label=f"TR={include_TR}"
-                )
+        path,
+        quantity=None,
+        Eshift=EF,
+        Emin=-10, Emax=50,
+        iband=None,
+        mode="fatband",
+        fatfactor=20,
+        cut_k=False,
+        linecolor="red",
+        close_fig=False,
+        show_fig=False,
+        label=f"TR={include_TR}"
+    )
 
     plt.ylim(-10, 20)
     plt.hlines(froz_max - EF, 0, A[-1, 0], linestyles="dashed")
     plt.legend()
     plt.savefig(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.pdf"))
     plt.close()
-    

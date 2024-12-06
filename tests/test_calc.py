@@ -148,7 +148,7 @@ def test_save_EnergyResult(system_Haldane_PythTB, check_save_result):
 
 
 def test_get_transform():
-    from wannierberri.point_symmetry import transform_from_dict
+    from wannierberri.symmetry.point_symmetry import transform_from_dict
     assert transform_from_dict({"asdasd": "aasd"}, "transformTR") is None
     assert transform_from_dict({"transformTR": np.array("transform()", dtype=object)}, "transformTR") is None
     assert transform_from_dict({"transformTR": None}, "transformTR") is None

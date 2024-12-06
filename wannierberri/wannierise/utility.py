@@ -51,7 +51,7 @@ def print_centers_and_spreads(wcc, spreads, comment=None, std=None):
     w = wcc.sum(axis=0)
     s = np.sum(spreads)
     print((f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f} <- sum"))
-    print(f"  {' '*38}  maximal spread = {np.max(spreads):16.12f}")
+    print(f"  {' ' * 38}  maximal spread = {np.max(spreads):16.12f}")
     if std is not None:
         print(f"standard deviation = {std}")
     print(endline)

@@ -135,7 +135,7 @@ class Kpoint_and_neighbours:
 
 
     def calc_Z(self, U_nb=None):
-        """
+        r"""
         calculate the Z matrix for the given U matrix
 
         Z = \sum_{b} w_{b,k} M_{b,k} M_{b,k}^{\dagger}
