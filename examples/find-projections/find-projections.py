@@ -1,7 +1,8 @@
 from irrep.bandstructure import BandStructure
 from fractions import Fraction
 import sympy
-from wannierberri.w90files import DMN, EIG, WIN
+from wannierberri.w90files import EIG, WIN
+from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF as SAWF
 
 
 from wannierberri.wannierise.projections_searcher import EBRsearcher
@@ -18,11 +19,10 @@ spacegroup = bandstructure.spacegroup
 # spacegroup.show()
 
 try:
-    dmn = DMN("diamond-only-bands")
+    symmetrizer = SAWF().from_npz("diamond.sawf.npz")
 except FileNotFoundError:
-    dmn = DMN(empty=True)
-    dmn.from_irrep(bandstructure)
-    dmn.to_npz("diamond-only-bands.dmn")
+    symmetrizer = SAWF().from_irrep(bandstructure)
+    symmetrizer.to_npz("diamond.sawf.npz")
 
 prefix = path + "diamond"
 eig = EIG(prefix)
@@ -52,7 +52,7 @@ print(trial_projections.write_with_multiplicities(orbit=False))
 
 ebrsearcher = EBRsearcher(
     win=win,
-    symmetrizer=dmn,
+    symmetrizer=symmetrizer,
     eig=eig,
     spacegroup=spacegroup,
     trial_projections=trial_projections,

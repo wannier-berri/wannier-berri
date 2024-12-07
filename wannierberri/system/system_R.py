@@ -280,7 +280,7 @@ class System_R(System):
 
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, spin_ordering='interlace', store_symm_wann=False,
-                   method="old",
+                   method="new",
                    rotations=None, translations=None):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers

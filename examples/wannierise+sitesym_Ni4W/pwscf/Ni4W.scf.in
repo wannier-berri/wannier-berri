@@ -1,0 +1,51 @@
+&CONTROL
+   calculation      = 'scf'
+   verbosity        = "'high'"
+   restart_mode     = 'from_scratch'
+   outdir           = './'
+   prefix           = './tmp1/Ni4W'
+   pseudo_dir       = '../fromEleni/Ni4W'
+/
+&SYSTEM
+   ecutwfc          = 50
+   occupations      = 'smearing'
+   degauss          = 0.02
+   smearing         = 'cold'
+   noncolin         = .false.
+   lspinorb         = .false.
+   ntyp             = 2
+   nat              = 5
+   ibrav            = 0
+/
+&ELECTRONS
+   conv_thr         = 1e-10
+   diagonalization  = 'cg'
+   startingwfc      = 'random'
+/
+&IONS
+/
+&CELL
+/
+&FCP
+/
+&RISM
+/
+ATOMIC_SPECIES
+Ni 58.6934 Ni.upf
+W 183.84 W.upf
+
+K_POINTS automatic
+8 8 8  0 0 0
+
+CELL_PARAMETERS angstrom
+-2.86852104140000 2.86852104140000 1.77624107590000
+2.86852104140000 2.86852104140000 1.77624107590000
+2.86852104140000 2.86852104140000 -1.77624107590000
+
+ATOMIC_POSITIONS crystal
+Ni 0.2007494600 0.1995262500 0.4002757000  
+Ni 0.5998019500 0.5997243000 0.1995262500  
+Ni -0.5998019500 1.4002757000 -0.1995262500  
+Ni -0.2007494600 0.8004737500 0.5997243000  
+W -0.0000000000 0.0000000000 -0.0000000000  
+

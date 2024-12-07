@@ -5,6 +5,7 @@
 import os, shutil
 from time import time
 import wannierberri as wberri
+from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF
 
 data_dir = "../../tests/data/diamond"
 
@@ -16,7 +17,7 @@ for ext in ["mmn","amn","dmn","eig","win"]:
 
 # if the dmn file needs to be geneated, (if False - will be read from the file)
 generate_dmn = True
-sitesym = False
+sitesym = True
 
 # Read the data from the Wanier90 inputs 
 
@@ -29,20 +30,20 @@ if sitesym and generate_dmn:
                                 prefix=os.path.join(data_dir, "di"),
                                 Ecut=100,
                                 normalize=False, include_TR=False)
-    w90data.set_d_band(bandstructure)
     pos = [[0,0,0],[0,0,1/2],[0,1/2,0],[1/2,0,0]]
-    w90data.set_D_wann_from_projections(projections=[(pos, 's') ])
+    symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure).set_D_wann_from_projections(projections=[(pos, 's') ])
+else:
+    symmetrizer = SymmetrizerSAWF().from_npz(os.path.join(data_dir, "diamond.sawf.npz"))
 t2 = time()
 amn = w90data.amn
 t3 = time()
 if sitesym:
-    dmn = w90data.dmn
+    w90data.set_symmetrizer(symmetrizer)
 t4 = time()
-# print (amn.data.shape)
 if sitesym:
-    print ("amn_symmetry", dmn.check_amn(w90data.amn.data, warning_precision=1e-4))
+    print ("amn_symmetry", symmetrizer.check_amn(w90data.amn.data, warning_precision=1e-4))
 t5 = time()
-#Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
+
 w90data.wannierise(
                 froz_min=0,
                 froz_max=4,

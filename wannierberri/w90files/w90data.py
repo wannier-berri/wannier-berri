@@ -430,6 +430,8 @@ class Wannier90data:
                 else:
                     print(f"applying window to {key} {val}")
                     self.get_file(key).apply_window(new_selected_bands)
+        if hasattr(self, 'symmetrizer'):
+            self.symmetrizer.apply_window(new_selected_bands)
         for key, val in self._files.items():
             if key != 'win' and key != 'chk':
                 print(f"key = {key} ,number of bands = {val.NB}")
