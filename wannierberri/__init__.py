@@ -15,7 +15,7 @@ wannierberri - a module for Wannier interpolation
 """
 
 import warnings
-__version__ = "1.0.3"
+__version__ = "1.0.4a"
 
 try:
     import pyfftw
@@ -25,7 +25,7 @@ except Exception as err:
     warnings.warn(f"error importing  `pyfftw` : {err} \n will use numpy instead \n")
 
 from .run import run
-from . import point_symmetry
+from .symmetry import point_symmetry
 from . import system
 from . import models
 from . import w90files

@@ -499,7 +499,7 @@ def test_Fe_FPLO_wcc(check_run, system_Fe_FPLO_wcc, compare_any_result):
         },
         ibands=[5, 6, 7, 8],
         save_mode="frmsf+bin")
-    
+
     check_run(
         system_Fe_FPLO_wcc,
         calculators,

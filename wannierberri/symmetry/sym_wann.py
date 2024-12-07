@@ -1,13 +1,15 @@
+# Thisa file contains the original implementation by Xiaoxiong Liu
+# This is to be eventually replaced by a newer implementation sym_wann_2.py
+
 import os
 import sys
 import warnings
 import numpy as np
 import spglib
 from .sym_wann_orbitals import Orbitals
-from .system import num_cart_dim
+from ..system.system import num_cart_dim
 from irrep.spacegroup import SymmetryOperation
 from collections import defaultdict
-from functools import cached_property
 import copy
 
 
@@ -215,7 +217,7 @@ class SymWann:
             translations = dataset['translations']
         # dataset = spglib.get_symmetry_dataset(cell)
         all_symmetry_operations = [
-            SymmetryOperation_loc(rot, translations[i], cell[0], ind=i + 1, spinor=self.soc)
+            SymmetryOperation(rot, translations[i], cell[0], ind=i + 1, spinor=self.soc)
             for i, rot in enumerate(rotations)
         ]
         self.nrot = 0
@@ -612,32 +614,29 @@ class WannAtomInfo():
         return "; ".join(f"{key}:{value}" for key, value in self.__dict__.items() if key != "orb_position_dic")
 
 
-# TODO : move to irrep?
-class SymmetryOperation_loc(SymmetryOperation):
+# # TODO : move to irrep?
+# class SymmetryOperation_loc(SymmetryOperation):
 
-    @cached_property
-    def rotation_cart(self):
-        return np.dot(np.dot(self._lattice_T, self.rotation), self._lattice_inv_T)
+#     @cached_property
+#     def rotation_cart(self):
+#         return np.dot(np.dot(self.lattice.T, self.rotation), self._lattice_inv_T)
 
-    @cached_property
-    def translation_cart(self):
-        return np.dot(np.dot(self._lattice_T, self.translation), self._lattice_inv_T)
+#     @cached_property
+#     def translation_cart(self):
+#         return np.dot(np.dot(self.lattice.T, self.translation), self._lattice_inv_T)
 
-    @cached_property
-    def det_cart(self):
-        return np.linalg.det(self.rotation_cart)
+#     @cached_property
+#     def det_cart(self):
+#         return np.linalg.det(self.rotation_cart)
 
-    @cached_property
-    def det(self):
-        return np.linalg.det(self.rotation)
+#     @cached_property
+#     def det(self):
+#         return np.linalg.det(self.rotation)
 
-    @cached_property
-    def _lattice_inv_T(self):
-        return np.linalg.inv(np.transpose(self.Lattice))
+#     @cached_property
+#     def _lattice_inv_T(self):
+#         return np.linalg.inv(np.transpose(self.Lattice))
 
-    @cached_property
-    def _lattice_T(self):
-        return np.transpose(self.Lattice)
 
 
 def _rotate_matrix(X, L, R):

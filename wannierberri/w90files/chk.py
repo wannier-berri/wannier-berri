@@ -78,6 +78,25 @@ class CheckPoint:
         gc.collect()
         print(f"Time to read .chk : {time() - t0}")
 
+    def spin_order_block_to_interlace(self):
+        """
+        If the chk was obtain from a block ordering (like in old VASP versions), the ordering should be changed to interlace
+        """
+        v_matrix = np.zeros((self.num_kpts, self.num_bands, self.num_wann), dtype=complex)
+        v_matrix[:, :, 0::2] = self.v_matrix[:, :, :self.num_wann // 2]
+        v_matrix[:, :, 1::2] = self.v_matrix[:, :, self.num_wann // 2:]
+        self.v_matrix = v_matrix
+
+    def spin_order_interlace_to_block(self):
+        """
+        If the chk was obtain from an interlace ordering, one may want to change the ordering to block
+        """
+        v_matrix = np.zeros((self.num_kpts, self.num_bands, self.num_wann), dtype=complex)
+        v_matrix[:, :, :self.num_wann // 2] = self.v_matrix[:, :, 0::2]
+        v_matrix[:, :, self.num_wann // 2:] = self.v_matrix[:, :, 1::2]
+        self.v_matrix = v_matrix
+
+
     def wannier_gauge(self, mat, ik1, ik2):
         """
         Returns the matrix elements in the Wannier gauge

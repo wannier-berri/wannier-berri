@@ -6,6 +6,7 @@ import os, shutil
 import subprocess
 from matplotlib import pyplot as plt
 import wannierberri as wberri
+from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF
 
 data_dir = "../../tests/data/diamond"
 
@@ -43,18 +44,12 @@ if generate_dmn:
                                 prefix=os.path.join(data_dir, "di"),
                                 Ecut=100,
                                 normalize=False, include_TR=False)
-    w90data.set_d_band(bandstructure)
     pos = [[0,0,0],[0,0,1/2],[0,1/2,0],[1/2,0,0]]
+    symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure).set_D_wann_from_projections(projections=[(pos, 's') ])
+else:
+    symmetrizer = SymmetrizerSAWF().from_npz(os.path.join(data_dir, "diamond.sawf.npz"))
 
-    w90data.set_D_wann_from_projections(projections=[(pos, 's') ])
-
-    # Alternatively, one can use the DMN class to generate
-    # from wannierberri.w90files import DMN
-    # dmn_new = DMN(empty=True)
-    # dmn_new.from_irrep(bandstructure)
-    # dmn_new.set_D_wann_from_projections(projections=[(pos, 's') ])
-    # dmn_new.to_w90_file("mydmn")
-
+w90data.set_symmetrizer(symmetrizer)
 systems = {}
 
 # Just fot Reference : run the Wannier90 with sitesym, but instead of frozen window use outer window
@@ -63,8 +58,6 @@ subprocess.run(["wannier90.x", "diamond"])
 #record the system from the Wanier90 output ('diamond.chk' file)
 systems["w90"] = wberri.system.System_w90(seedname='diamond')
 
-
-# Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
 w90data.wannierise(
                 froz_min=frozen_min,
                 froz_max=frozen_max,
@@ -90,28 +83,6 @@ w90data.wannierise(
                 localise=True,
                 )
 systems["wberri-random"] = wberri.system.System_w90(w90data=w90data)
-
-
-# Optionally
-# one may generate the reduced files - where num_bands is reduced to num_wann,
-# by taking the optimized subspace
-# Further those files may be used to perform more localization woth Wannier90
-if write_disentangled:
-    w90data_reduced = w90data.get_disentangled(files = ["eig","mmn","amn","dmn"])
-    w90data_reduced.write("diamond_disentangled", files = ["eig","mmn","amn","dmn"])#
-    # Now write the diamond_disentangled.win file
-    # first take the existing file
-    win_file = wberri.w90files.WIN(seedname='diamond')
-    # # and modify some parameters
-    win_file["num_bands"] = win_file["num_wann"]
-    win_file["dis_num_iter"] = 0
-    win_file["num_iter"] = 1000
-    del win_file["dis_froz_win"]
-    del win_file["dis_froz_max"] 
-    win_file["site_symmetry"] =True
-    win_file.write("diamond_disentangled")
-    subprocess.run(["wannier90.x", "diamond_disentangled"])
-    systems["mlwf"] = wberri.system.System_w90(seedname="diamond_disentangled")
 
 
 # Now calculate bandstructure for each of the systems

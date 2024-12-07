@@ -22,3 +22,4 @@ from .system_ASE import System_ASE
 from .system_sparse import SystemSparse
 from .system_random import SystemRandom
 from .system_phonon_qe import System_Phonon_QE
+from .interpolate import SystemInterpolator

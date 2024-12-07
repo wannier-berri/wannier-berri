@@ -18,7 +18,7 @@ except ImportError:
 
 from .utility import find_distance_periodic
 from wannierberri.__utility import UniqueListMod1
-from ..system.sym_wann_orbitals import Orbitals
+from ..symmetry.sym_wann_orbitals import Orbitals
 from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric
 
 ORBITALS = Orbitals()
@@ -218,6 +218,7 @@ class ProjectionsSet:
     @property
     def num_free_vars(self):
         return self.map_free_vars[0].shape[2]
+
 
     @cached_property
     def num_wann_per_site(self):

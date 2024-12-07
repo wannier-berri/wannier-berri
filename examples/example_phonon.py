@@ -24,7 +24,7 @@ omega  = np.linspace(-0.01,0.1,1101)
 system = wberri.System_Phonon_QE('../tests/data/Si_phonons/si',asr=True)
 
 generators=["C4z","C4x","TimeReversal"]
-system.set_symmetry(generators)
+system.set_pointgroup(generators)
 grid=wberri.Grid(system,length=10,NKFFT=4)
 
 #parallel=wberri.Serial() # serial execution

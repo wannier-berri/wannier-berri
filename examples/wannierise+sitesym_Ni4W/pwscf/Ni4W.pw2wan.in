@@ -1,0 +1,13 @@
+&inputpp
+  outdir = './'
+  prefix = './Ni4W'
+  seedname = './Ni4W'
+write_eig = .False.
+write_mmn = .False.
+write_amn = .True.
+write_spn = .False.
+write_uhu = .False.
+write_uiu = .False.
+write_unk = .False.
+write_dmn = .False.
+/

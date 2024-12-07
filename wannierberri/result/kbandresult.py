@@ -2,7 +2,7 @@ import numpy as np
 from .result import Result
 import itertools
 import abc
-from ..point_symmetry import transform_from_dict
+from ..symmetry.point_symmetry import transform_from_dict
 
 
 class K__Result(Result, abc.ABC):

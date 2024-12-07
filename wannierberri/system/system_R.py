@@ -8,7 +8,7 @@ import glob
 import multiprocessing
 from .system import System, pauli_xyz
 from ..__utility import alpha_A, beta_A, clear_cached, one2three
-from ..point_symmetry import PointSymmetry, PointGroup, TimeReversal
+from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
 from .ws_dist import ws_dist_map
 
 
@@ -222,11 +222,65 @@ class System_R(System):
             else:
                 self._XX_R[key] = value
 
+    def spin_block2interlace(self, backward=False):
+        """
+        Convert the spin ordering from block (like in the amn file old versions of VASP) to interlace (like in the amn file of QE and new versions of VASP)
+        """
+        nw2 = self.num_wann // 2
+        mapping = np.zeros(self.num_wann, dtype=int)
+
+        if backward:
+            mapping[:nw2] = np.arange(nw2) * 2
+            mapping[nw2:] = np.arange(nw2) * 2 + 1
+        else:
+            mapping[::2] = np.arange(nw2)
+            mapping[1::2] = np.arange(nw2) + nw2
+
+        for key, val in self._XX_R.items():
+            self._XX_R[key] = val[:, mapping][mapping, :]
+        self.wannier_centers_cart = self.wannier_centers_cart[mapping]
+        self.clear_cached_R()
+        self.clear_cached_wcc()
+
+
+    def spin_interlace2block(self, backward=False):
+        """
+        Convert the spin ordering from interlace (like in the amn file of QE and new versions of VASP) to block (like in the amn file old versions of VASP)
+        """
+        self.spin_block2interlace(backward=not backward)
+
+
     @property
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, spin_ordering='qe', store_symm_wann=False,
+    def symmetrize2(self, symmetrizer):
+        if not self.use_wcc_phase:
+            raise NotImplementedError("Symmetrization is implemented only for convention I")
+
+        from ..symmetry.sym_wann_2 import SymWann
+        symmetrize_wann = SymWann(
+            symmetrizer=symmetrizer,
+            iRvec=self.iRvec,
+            wannier_centers_cart=self.wannier_centers_cart,
+            use_wcc_phase=self.use_wcc_phase,
+            silent=self.silent,
+        )
+
+        self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
+        logfile = self.logfile
+
+        logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
+        logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
+
+        self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
+        self.set_symmetry(spacegroup=symmetrizer.spacegroup)
+        self.clear_cached_R()
+        self.clear_cached_wcc()
+
+
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, spin_ordering='interlace', store_symm_wann=False,
+                   method="new",
                    rotations=None, translations=None):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
@@ -278,12 +332,42 @@ class System_R(System):
             rotations and translations should be either given together or not given at all. Make sense to preserve consistensy in the order
             of the symmetry operations, when store_symm_wann is set to True.
         """
+        if method == "new":
+            assert spin_ordering == "interlace", "Symmetrization method 'new' is implemented only for spin_ordering='interlace'"
+            from irrep.spacegroup import SpaceGroup
+            from ..symmetry.symmetrizer_sawf import SymmetrizerSAWF
+            from ..wannierise.projections import Projection
+
+            index = {key: i for i, key in enumerate(set(atom_name))}
+            atom_num = np.array([index[key] for key in atom_name])
+
+            spacegroup = SpaceGroup(cell=(self.real_lattice, positions, atom_num),
+                                    magmom=magmom, include_TR=True,
+                                    spinor=soc)
+
+            assert len(atom_name) == len(positions), "atom_name and positions should have the same length"
+
+            proj_list = []
+            for proj_str in proj:
+                atom, orbital = [l.strip() for l in proj_str.split(':')]
+                pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
+                for suborbital in orbital.split(';'):
+                    suborbital = suborbital.strip()
+                    proj = Projection(position_num=pos, orbital=suborbital, spacegroup=spacegroup)
+                    # print (f"adding projection {proj} ({pos} {suborbital})")
+                    proj_list.append(proj)
+            symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections_obj=proj_list)
+            self.symmetrize2(symmetrizer)
+            return symmetrizer
+        else:
+            assert method == "old", f"unknown symmetrization method {method}. expected 'old' or 'new'"
+
 
         if not self.use_wcc_phase:
             raise NotImplementedError("Symmetrization is implemented only for convention I")
 
 
-        from .sym_wann import SymWann
+        from ..symmetry.sym_wann import SymWann
         symmetrize_wann = SymWann(
             num_wann=self.num_wann,
             lattice=self.real_lattice,
@@ -436,8 +520,22 @@ class System_R(System):
             raise ValueError(f"unknown spin ordering {spin_ordering}. expected 'block' or 'interlace'")
         self.set_spin_pairs(pairs)
 
+    def set_spacegroup(self, spacegroup):
+        """
+        Set the space group of the :class:`System`, which will be used for symmetrization
+        R-space and k-space 
+        Also sets the pointgroup
+
+        Parameters
+        ----------
+        spacegroup : :class:`irrep.spacegroup.SpaceGroup`
+            The space group of the system. The point group will be evaluated by the space group.
+        """
+        self.spacegroup = spacegroup
+        self.set_pointgroup(spacegroup=spacegroup)
+
     def do_at_end_of_init(self):
-        self.set_symmetry()
+        self.set_pointgroup()
         self.check_periodic()
         logfile = self.logfile
         logfile.write(f"Real-space lattice:\n {self.real_lattice}\n")
@@ -550,7 +648,7 @@ class System_R(System):
             return self.cRvec[None, None, :, :]
 
     def clear_cached_R(self):
-        clear_cached(self, ['cRvec', 'cRvec_p_wcc', 'reverseR'])
+        clear_cached(self, ['cRvec', 'cRvec_p_wcc', 'reverseR', 'index_R'])
 
     @cached_property
     def diff_wcc_cart(self):
@@ -631,6 +729,10 @@ class System_R(System):
     def iR0(self):
         return self.iRvec.tolist().index([0, 0, 0])
 
+    @cached_property
+    def index_R(self):
+        return {tuple(R): i for i, R in enumerate(self.iRvec)}
+
     def iR(self, R):
         R = np.array(np.round(R), dtype=int).tolist()
         return self.iRvec.tolist().index(R)
@@ -641,8 +743,9 @@ class System_R(System):
         mapping = np.all(self.iRvec[:, None, :] + self.iRvec[None, :, :] == 0, axis=2)
         # check if some R-vectors do not have partners
         notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
-        for ir in notfound:
-            warnings.warn(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
+        if len(notfound) > 0 and not self.ignore_mR_not_found:
+            for ir in notfound:
+                warnings.warn(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
         # check if some R-vectors have more then 1 partner
         morefound = np.where(np.sum(mapping, axis=1) > 1)[0]
         if len(morefound > 0):
@@ -661,7 +764,7 @@ class System_R(System):
         assert np.all(self.iRvec[lst_R] + self.iRvec[lst_mR] == 0)
         return lst_R, lst_mR
 
-    def conj_XX_R(self, val: np.ndarray = None, key: str = None):
+    def conj_XX_R(self, val: np.ndarray = None, key: str = None, ignore_mR_not_found=False):
         """ reverses the R-vector and takes the hermitian conjugate """
         assert (key is not None) != (val is not None)
         if key is not None:
@@ -669,6 +772,7 @@ class System_R(System):
         else:
             XX_R = val
         XX_R_new = np.zeros(XX_R.shape, dtype=complex)
+        self.ignore_mR_not_found = ignore_mR_not_found
         lst_R, lst_mR = self.reverseR
         XX_R_new[:, :, lst_R] = XX_R[:, :, lst_mR]
         return XX_R_new.swapaxes(0, 1).conj()

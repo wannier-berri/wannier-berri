@@ -128,4 +128,5 @@ def test_wrong_mat_fail():
             positions=np.array([[1. / 3., 1. / 3.], [2. / 3., 2. / 3.]]),
             atom_name=['one', 'two'],
             proj=['one:s', 'two:s'],
-            soc=False)
+            soc=False,
+            method="old")

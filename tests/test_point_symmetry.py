@@ -4,8 +4,7 @@ from copy import deepcopy
 import numpy as np
 import pytest
 from packaging.version import parse as pversion
-import wannierberri.point_symmetry as sym
-
+from wannierberri import point_symmetry as sym
 from common_systems import symmetries_GaAs, symmetries_Fe
 
 

@@ -98,6 +98,8 @@ def check_system():
                         err_msg += "\n" + ("\n".join(
                             f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {ratio[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
                             for i in zip(*all_i)) + "\n\n")
+                elif key in properties_wcc:
+                    err_msg += f"new data : {data} \n ref data : {data_ref}"
                 raise ValueError(err_msg)
 
             print(" - Ok!")
@@ -169,6 +171,14 @@ def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90_wcc):
     )
 
 
+def test_system_Fe_sym_W90_new(check_system, system_Fe_sym_W90_wcc_new):
+    check_system(
+        system_Fe_sym_W90_wcc_new, "Fe_sym_W90_wcc",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
+        sort_iR=True
+    )
+
+
 def test_system_Fe_W90_proj_set_spin(check_system, system_Fe_W90_proj_set_spin):
     check_system(
         system_Fe_W90_proj_set_spin, "Fe_W90_proj_set_spin",
@@ -224,7 +234,25 @@ def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb_wcc):
         system_GaAs_sym_tb_wcc, "GaAs_sym_tb_wcc",
         matrices=['Ham', 'AA'],
         sort_iR=True,
-        suffix="new"
+        suffix="old"
+    )
+
+
+def test_system_GaAs_sym_tb_reorder(check_system, system_GaAs_sym_tb_wcc_reorder):
+    check_system(
+        system_GaAs_sym_tb_wcc_reorder, "GaAs_sym_tb_wcc",
+        matrices=['Ham', 'AA'],
+        sort_iR=True,
+        suffix="reorder"
+    )
+
+
+def test_system_GaAs_sym_tb_reorder_new(check_system, system_GaAs_sym_tb_wcc_reorder_new):
+    check_system(
+        system_GaAs_sym_tb_wcc_reorder_new, "GaAs_sym_tb_wcc",
+        matrices=['Ham', 'AA'],
+        sort_iR=True,
+        suffix="reorder_new"
     )
 
 

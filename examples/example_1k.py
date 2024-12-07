@@ -15,7 +15,7 @@ omega = np.linspace(0,1.,1001)
 system=wberri.system.System_w90('../tests/data/Fe_Wannier90/Fe',berry=True)
 
 generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
-system.set_symmetry(generators)
+system.set_pointgroup(generators)
 
 
 result = wberri.evaluate_k(

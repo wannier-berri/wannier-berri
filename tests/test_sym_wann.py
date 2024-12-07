@@ -1,5 +1,5 @@
 """Test symmetrization of Wannier models"""
-from wannierberri.system.sym_wann import _dict_to_matrix, _matrix_to_dict, _get_H_select, _rotate_matrix
+from wannierberri.symmetry.sym_wann import _dict_to_matrix, _matrix_to_dict, _get_H_select, _rotate_matrix
 import numpy as np
 import pytest
 from pytest import approx
@@ -90,7 +90,14 @@ def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb_wcc):
 
 
 @pytest.mark.parametrize("use_k_sym", [False, True])
-def test_Fe_sym_W90(check_run, system_Fe_sym_W90_wcc, compare_any_result, use_k_sym):
+@pytest.mark.parametrize("sym_method", ["old", "new"])
+def test_Fe_sym_W90(check_run, system_Fe_sym_W90_wcc, system_Fe_sym_W90_wcc_new, compare_any_result, use_k_sym, sym_method):
+    if sym_method == "old":
+        system = system_Fe_sym_W90_wcc
+    elif sym_method == "new":
+        system = system_Fe_sym_W90_wcc_new
+    else:
+        raise ValueError("sym_method should be 'old' or 'new'")
     param = {'Efermi': Efermi_Fe}
     cals = {'ahc': calc.static.AHC,
             'Morb': calc.static.Morb,
@@ -98,7 +105,7 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90_wcc, compare_any_result, use_k_
     calculators = {k: v(**param) for k, v in cals.items()}
 
     check_run(
-        system_Fe_sym_W90_wcc,
+        system,
         calculators,
         fout_name="berry_Fe_sym_W90",
         suffix="-run",
@@ -109,7 +116,7 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90_wcc, compare_any_result, use_k_
             'gyrotropic_Kspin': calc.static.GME_spin_FermiSea}
     calculators = {k: v(**param) for k, v in cals.items()}
     check_run(
-        system_Fe_sym_W90_wcc,
+        system,
         calculators,
         fout_name="berry_Fe_sym_W90",
         precision=1e-8,
@@ -234,7 +241,8 @@ def test_GaAs_sym_tb_fail_convII(check_symmetry, system_GaAs_tb):
             atom_name=['Ga', 'As'],
             proj=['Ga:sp3', 'As:sp3'],
             soc=True,
-            spin_ordering="block",)
+            spin_ordering="block",
+            method="old",)
 
 
 def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb_wcc, compare_any_result):
