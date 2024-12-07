@@ -65,8 +65,10 @@ class SystemSparse(System_R):
                 del symmetrize_info["DFT_code"]
                 if code == "vasp":
                     symmetrize_info["spin_ordering"] = "block"
+                    symmetrize_info["method"] = "old"
                 elif code in ["qe", "espresso", "quantumespresso", "abinit"]:
                     symmetrize_info["spin_ordering"] = "interlace"
+                    symmetrize_info["method"] = "new"
                 else:
                     raise ValueError(f"Unknown DFT code {code}")
 

@@ -418,7 +418,8 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
             atom_name=['bond'] * 4,
             proj=['bond:s'],
             soc=False,
-            spin_ordering='interlace')
+            spin_ordering='interlace',
+            method='old')
 
     return system
 
@@ -660,6 +661,7 @@ def get_system_Mn3Sn_sym_tb(use_ws=False):
             [0, 0, 0],
             [0, 0, 0]],
         spin_ordering='block',
+        method='old'
     )
     return system
 

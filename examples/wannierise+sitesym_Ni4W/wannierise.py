@@ -133,10 +133,8 @@ w90data.wannierise( init = "amn",
                     num_iter=30,
                     conv_tol=1e-6,
                     mix_ratio_z=1.0,
-                    localise=True,
                     sitesym=sitesym,
-                    parallel=parallel,
-                    symmetrize_Z=True
+                    parallel=parallel
                     )
 t5 = time()
 print("Time elapsed: ", time()-t0)

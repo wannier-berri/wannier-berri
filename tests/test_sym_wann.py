@@ -241,7 +241,8 @@ def test_GaAs_sym_tb_fail_convII(check_symmetry, system_GaAs_tb):
             atom_name=['Ga', 'As'],
             proj=['Ga:sp3', 'As:sp3'],
             soc=True,
-            spin_ordering="block",)
+            spin_ordering="block",
+            method="old",)
 
 
 def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb_wcc, compare_any_result):
