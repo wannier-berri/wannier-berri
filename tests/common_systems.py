@@ -809,6 +809,7 @@ def get_system_random_GaAs_load_ws_sym(use_ws=False, sym=False):
             positions=np.array([[0, 0, 0], [1 / 4, 1 / 4, 1 / 4]]),
             soc=True,
             spin_ordering='interlace',
+            method='old'
         )
         system.set_structure(
             atom_labels=['Ga', 'As'],
