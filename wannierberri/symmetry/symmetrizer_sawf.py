@@ -22,20 +22,22 @@ class SymmetrizerSAWF(DMN):
     def __init__(self, NK=1):
         self.npz_tags = ['D_wann_block_indices', '_NB',
                     'kpt2kptirr', 'kptirr', 'kptirr2kpt', 'kpt2kptirr_sym',
-                   '_NK', 'num_wann', 'comment', 'NKirr', 'Nsym', 'time_reversals']
+                   '_NK', 'num_wann', 'comment', 'NKirr', 'Nsym', 'time_reversals',]
+        self.npz_tags_optional = ["eig_irr", "kpoints_all"]
+        self.default_tags = {}
         self._NB = 0
         self.num_wann = 0
         self.D_wann_block_indices = np.zeros((0, 2), dtype=int)
         self.NKirr = 0
         self.Nsym = 0
-        self.kpoints = np.zeros((0, 3), dtype=float)
+        self.kpoints_all = np.zeros((0, 3), dtype=float)
         self.kpt2kptirr = np.zeros(0, dtype=int)
         self.kptirr = np.zeros(0, dtype=int)
         self.kptirr2kpt = np.zeros((0, 0), dtype=int)
 
 
     def from_irrep(self, bandstructure: BandStructure,
-                 grid=None, degen_thresh=1e-2):
+                 grid=None, degen_thresh=1e-2, store_eig=True):
         """
         Initialize the object from the BandStructure object
 
@@ -52,7 +54,7 @@ class SymmetrizerSAWF(DMN):
         """
         data = bandstructure.get_dmn(grid=grid, degen_thresh=degen_thresh, unitary=True)
         self.grid = data["grid"]
-        self.kpoints = data["kpoints"]
+        self.kpoints_all = data["kpoints"]
         self.kpt2kptirr = data["kpt2kptirr"]
         self.kptirr = data["kptirr"]
         self.kptirr2kpt = data["kptirr2kpt"]
@@ -65,9 +67,11 @@ class SymmetrizerSAWF(DMN):
         self.Nsym = bandstructure.spacegroup.size
         self.time_reversals = np.array([symop.time_reversal for symop in self.spacegroup.symmetries])
         self.NKirr = len(self.kptirr)
-        self._NK = len(self.kpoints)
+        self._NK = len(self.kpoints_all)
         self._NB = bandstructure.num_bands
         self.clear_inverse()
+        if store_eig:
+            self.set_eig([bandstructure.kpoints[ik].Energy_raw for ik in self.kptirr])
         return self
 
 
@@ -89,11 +93,11 @@ class SymmetrizerSAWF(DMN):
         if projections is None:
             projections = []
         ORBITALS = Orbitals()
-        if not hasattr(self, "kpoints") or self.kpoints is None:
+        if not hasattr(self, "kpoints_all") or self.kpoints_all is None:
             if kpoints is None:
                 warnings.warn("kpoints are not provided, neither stored in the object. Assuming Gamma point only")
                 kpoints = np.array([[0, 0, 0]])
-            self.kpoints = kpoints
+            self.kpoints_all = kpoints
             self._NK = len(kpoints)
 
         if projections_obj is not None:
@@ -113,8 +117,8 @@ class SymmetrizerSAWF(DMN):
         self.rot_orb_list = []
         for positions, proj in projections:
             print(f"calculating Wannier functions for {proj} at {positions}")
-            _Dwann = Dwann(self.spacegroup, positions, proj, ORBITALS=ORBITALS, spinor=self.spacegroup.spinor)
-            _dwann = _Dwann.get_on_points_all(self.kpoints, self.kptirr, self.kptirr2kpt)
+            _Dwann = Dwann(spacegroup=self.spacegroup, positions=positions, orbital=proj, ORBITALS=ORBITALS, spinor=self.spacegroup.spinor)
+            _dwann = _Dwann.get_on_points_all(kpoints=self.kpoints_all, ikptirr=self.kptirr, ikptirr2kpt=self.kptirr2kpt)
             D_wann_list.append(_dwann)
             self.T_list.append(_Dwann.T)
             self.atommap_list.append(_Dwann.atommap)
@@ -158,6 +162,17 @@ class SymmetrizerSAWF(DMN):
         if ncart > 0:
             WCC_red_out = WCC_red_out @ self.spacegroup.lattice
         return WCC_red_out / self.spacegroup.size
+
+    def set_eig(self, eig):
+        eig = np.array(eig, dtype=float)
+        assert eig.ndim == 2
+        assert eig.shape[1] == self.NB
+        if eig.shape[0] == self.NK:
+            self.eig_irr = eig[self.kptirr]
+        elif eig.shape[0] == self.NKirr:
+            self.eig_irr = eig
+        else:
+            raise ValueError(f"The shape of eig should be either ({self.NK}, {self.NB}) or ({self.NKirr}, {self.NB}), not {eig.shape}")
 
     def symmetrize_WCC(self, wannier_centers_cart):
         return self.symmetrize_smth(wannier_centers_cart)

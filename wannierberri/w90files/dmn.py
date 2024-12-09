@@ -96,7 +96,7 @@ class DMN(W90_file):
         return get_inverse_block(self.D_wann_blocks)
 
     def as_dict(self):
-        dic = {k: self.__getattribute__(k) for k in self.npz_tags}
+        dic = super().as_dict()
         for ik in range(self.NKirr):
             dic[f'd_band_block_indices_{ik}'] = self.d_band_block_indices[ik]
             for i in range(len(self.d_band_block_indices[ik])):
@@ -107,21 +107,23 @@ class DMN(W90_file):
         return dic
 
 
-    def to_npz(self, f_npz):
-        dic = self.as_dict()
-        print(f"saving to {f_npz} : ")
-        np.savez_compressed(f_npz, **dic)
-        return self
+    # def to_npz(self, f_npz):
+    #     dic = self.as_dict()
+    #     print(f"saving to {f_npz} : ")
+    #     np.savez_compressed(f_npz, **dic)
+    #     return self
 
-    def from_npz(self, f_npz):
-        dic = np.load(f_npz)
-        self.from_dict(dic)
-        return self
+    # def from_npz(self, f_npz):
+    #     dic = np.load(f_npz)
+    #     self.from_dict(dic)
+    #     return self
+
 
     def from_dict(self, dic):
         t0 = time()
-        for k in self.npz_tags:
-            self.__setattr__(k, dic[k])
+        super().from_dict(dic)
+        # for k in self.npz_tags:
+        #     self.__setattr__(k, dic[k])
         t01 = time()
         self.d_band_block_indices = [dic[f'd_band_block_indices_{ik}'] for ik in range(self.NKirr)]
         self.d_band_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]

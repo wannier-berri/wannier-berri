@@ -18,7 +18,7 @@ t0 = time()
 path_data = Path("./pwscf/")  # adjust path if needed to point to the data in the tests fo wannier-berri repository
 
 includeTR = False
-w90data=wberri.w90files.Wannier90data(seedname=str(path_data/"Ni4W")) 
+w90data = wberri.w90files.Wannier90data(seedname=str(path_data / "Ni4W"))
 t1 = time()
 sitesym = True
 
@@ -27,9 +27,9 @@ if sitesym:
         symmetrizer = SAWF().from_npz("Ni4W.sawf.npz")
         assert symmetrizer.num_wann == 34
     except (FileNotFoundError, AssertionError) as e:
-        print (f"SAWF file not found ({e}), creating it")
+        print(f"SAWF file not found ({e}), creating it")
         from irrep.bandstructure import BandStructure
-        bandstructure = BandStructure(code='espresso', 
+        bandstructure = BandStructure(code='espresso',
                                     prefix=os.path.join(path_data, "Ni4W"),
                                     Ecut=100,
                                     normalize=False, include_TR=includeTR)
@@ -40,14 +40,14 @@ if sitesym:
         positions = [[0.200749460000, 0.199526250000, 0.400275700000],
                     [0.799250540000, 0.800473750000, 0.599724300000],
                     [0.599801950000, 0.599724300000, 0.199526240000],
-                    [0.400198050000, 0.400275700000, 0.800473760000] ]
-        projection1 = Projection(position_num=positions , orbital='d', spacegroup=spacegroup)
+                    [0.400198050000, 0.400275700000, 0.800473760000]]
+        projection1 = Projection(position_num=positions, orbital='d', spacegroup=spacegroup)
 
-        positions = [[0,0,0],]
-        projection2 = Projection(position_num=positions , orbital='d', spacegroup=spacegroup)
+        positions = [[0, 0, 0],]
+        projection2 = Projection(position_num=positions, orbital='d', spacegroup=spacegroup)
 
-        positions = [[0,1/2,1/2],]
-        projection3 = Projection(position_num=positions , orbital='s', spacegroup=spacegroup)
+        positions = [[0, 1 / 2, 1 / 2],]
+        projection3 = Projection(position_num=positions, orbital='s', spacegroup=spacegroup)
 
         positions = [[0.394108623296, 0.408884501503, 0.432352882355],
                     [0.605891376704, 0.591115498497, 0.567647117645],
@@ -56,11 +56,11 @@ if sitesym:
                     [0.605891376704, 0.961755740941, 0.197006875201],
                     [0.394108623296, 0.038244259059, 0.802993124799],
                     [0.158762616142, 0.802993124799, 0.591115498497],
-                    [0.841237383858, 0.197006875201, 0.408884501503] ]
-        projection4 = Projection(position_num=positions , orbital='s', spacegroup=spacegroup)
+                    [0.841237383858, 0.197006875201, 0.408884501503]]
+        projection4 = Projection(position_num=positions, orbital='s', spacegroup=spacegroup)
 
 
-        projections = ProjectionsSet([ projection1, projection2, projection3, projection4])
+        projections = ProjectionsSet([projection1, projection2, projection3, projection4])
         symmetrizer.set_D_wann_from_projections(projections_obj=projections)
         symmetrizer.to_npz("Ni4W.dmn.npz")
     w90data.set_symmetrizer(symmetrizer)
@@ -91,16 +91,16 @@ for line in proj_str.split("\n"):
         wcc.append(pos)
 
 wcc = np.array(wcc)
-print ("wcc_red = \n", wcc)
+print("wcc_red = \n", wcc)
 wcc = wcc @ symmetrizer.spacegroup.lattice
-print ("wcc_cart = \n", wcc)
-print (f"symmetrizer.num_wann = {symmetrizer.num_wann}, symmetrizer.NB = {symmetrizer.NB}")
+print("wcc_cart = \n", wcc)
+print(f"symmetrizer.num_wann = {symmetrizer.num_wann}, symmetrizer.NB = {symmetrizer.NB}")
 wcc_sym = symmetrizer.symmetrize_WCC(wcc)
-print ("wcc_sym = \n", wcc_sym)
+print("wcc_sym = \n", wcc_sym)
 
 diff = abs(wcc_sym - wcc).max()
 assert diff < 1e-6, f"diff = {diff}"
-print( f"symmetrization OK, diff = {diff}")
+print(f"symmetrization OK, diff = {diff}")
 
 symmetrizer.spacegroup.show()
 
@@ -108,7 +108,7 @@ symmetrizer.spacegroup.show()
 
 t2 = time()
 
-print (f"dmn.num_wann = {symmetrizer.num_wann}, dmn.NB = {symmetrizer.NB}")
+print(f"dmn.num_wann = {symmetrizer.num_wann}, dmn.NB = {symmetrizer.NB}")
 w90data.set_file("dmn", symmetrizer)
 
 # print(f"check amn: {dmn.check_amn(w90data.amn)}")
@@ -116,40 +116,40 @@ w90data.set_file("dmn", symmetrizer)
 
 t2a = time()
 if parallel:
-    import ray 
-    ray.init(num_gpus=0,num_cpus=16)
+    import ray
+    ray.init(num_gpus=0, num_cpus=16)
 
 
-froz_max=24
+froz_max = 24
 t3 = time()
 
-w90data.apply_window( win_min=8, )
+w90data.apply_window(win_min=8, )
 t4 = time()
-w90data.wannierise( init = "amn",
+w90data.wannierise(init="amn",
                    num_wann=34,
-                    froz_min=8,
-                    froz_max=froz_max,
-                    print_progress_every=10,
-                    num_iter=30,
-                    conv_tol=1e-6,
-                    mix_ratio_z=1.0,
-                    sitesym=sitesym,
-                    parallel=parallel
+                   froz_min=8,
+                   froz_max=froz_max,
+                   print_progress_every=10,
+                   num_iter=30,
+                   conv_tol=1e-6,
+                   mix_ratio_z=1.0,
+                   sitesym=sitesym,
+                   parallel=parallel
                     )
 t5 = time()
-print("Time elapsed: ", time()-t0)
-print("Time elapsed (DMN): ", t2-t1)
-print("Time elapsed (set dmn): ", t2a-t2)
-print("Time elapsed (Wannierisation): ", t5-t4)
-print("Time elapsed (ray init): ", t3-t2a)
-print("Time elapsed (Window): ", t4-t3)
-print("Time elapsed (read data): ", t1-t0)
+print("Time elapsed: ", time() - t0)
+print("Time elapsed (DMN): ", t2 - t1)
+print("Time elapsed (set dmn): ", t2a - t2)
+print("Time elapsed (Wannierisation): ", t5 - t4)
+print("Time elapsed (ray init): ", t3 - t2a)
+print("Time elapsed (Window): ", t4 - t3)
+print("Time elapsed (read data): ", t1 - t0)
 
 exit()
 system = wberri.system.System_w90(w90data=w90data, silent=True)
 
-path = wberri.Path(system, k_nodes=[[0,0,0],[1/2,0,0],[1,0,0]], labels=['G','L','G'], length=100)
-tabulator = wberri.calculators.TabulatorAll(tabulators = {}, mode='path')
+path = wberri.Path(system, k_nodes=[[0, 0, 0], [1 / 2, 0, 0], [1, 0, 0]], labels=['G', 'L', 'G'], length=100)
+tabulator = wberri.calculators.TabulatorAll(tabulators={}, mode='path')
 calculators = {'tabulate': tabulator}
 
 result = wberri.run(system, grid=path, calculators=calculators)
@@ -158,5 +158,3 @@ result.results['tabulate'].plot_path_fat(path,
                                          close_fig=True,
                                          show_fig=False,
                                          )
-
-
