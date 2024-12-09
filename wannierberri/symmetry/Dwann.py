@@ -134,7 +134,6 @@ class Dwann:
         Dwann = np.zeros((self.num_wann, self.num_wann), dtype=complex)
         for ip, _ in enumerate(self.orbit):
             jp = self.atommap[ip, isym]
-            # print(f"Dwann.shpape={Dwann.shape}, rot_orb.shape={self.rot_orb[isym].shape}, num_orbitals={self.num_orbitals}, spinor={self.spinor}")
             Dwann[jp * self.num_orbitals:(jp + 1) * self.num_orbitals,
                   ip * self.num_orbitals:(ip + 1) * self.num_orbitals
                   ] = np.exp(2j * np.pi * (np.dot(kptirr1, self.T[ip, isym]))) * self.rot_orb[isym]

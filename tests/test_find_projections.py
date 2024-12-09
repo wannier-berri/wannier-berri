@@ -3,7 +3,6 @@ from irrep.bandstructure import BandStructure
 from fractions import Fraction
 import numpy as np
 import sympy
-from wannierberri.w90files import EIG, WIN
 from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF
 
 from wannierberri.wannierise.projections_searcher import EBRsearcher
@@ -20,12 +19,7 @@ def test_find_projections_diamond():
     # spacegroup.show()
 
     symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure)
-    symmetrizer.to_npz(OUTPUT_DIR + "/diamond-only-bands.dmn")
-
-    prefix = data_dir + "/diamond"
-    eig = EIG(prefix)
-    win = WIN(prefix)
-
+    symmetrizer.to_npz(OUTPUT_DIR + "/diamond-only-bands.sawf.npz")
 
     trial_projections = ProjectionsSet()
 
@@ -49,10 +43,7 @@ def test_find_projections_diamond():
     print(trial_projections.write_with_multiplicities(orbit=False))
 
     ebrsearcher = EBRsearcher(
-        win=win,
         symmetrizer=symmetrizer,
-        eig=eig,
-        spacegroup=spacegroup,
         trial_projections=trial_projections,
         froz_min=-10,
         froz_max=30,
@@ -66,10 +57,7 @@ def test_find_projections_diamond():
     assert np.all(combinations[0] == [0, 0, 0, 1, 0, 0]), f"combinations[0] = {combinations[0]}, expected [0,0,0,1,0,0]"
 
     ebrsearcher = EBRsearcher(
-        win=win,
         symmetrizer=symmetrizer,
-        eig=eig,
-        spacegroup=spacegroup,
         trial_projections=trial_projections,
         froz_min=-10,
         froz_max=20,

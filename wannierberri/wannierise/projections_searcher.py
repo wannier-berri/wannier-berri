@@ -13,13 +13,7 @@ class EBRsearcher:
 
     Parameters
     ----------
-    spacegroup : irrep.SpaceGroup
-        A space group object.
-    win : wannierberri.w90files.WIN
-        The object containing the win file (just for k-points for now)
-    eig : wannierberri.w90files.EIG
-        The file of eigenvalues
-    dmn : wannierberri.w90files.DMN
+    symmetrizer : `~wannierberri.symmetry.symmetrizer_sawf.SymmetrizerSAWF`
         The file of symmetry properties (only the band part is used, the wann part may be anything or empty)
     froz_min, froz_max : float
         The minimum and maximum energy of the frozen window
@@ -53,8 +47,8 @@ class EBRsearcher:
       The projections found this way are usually good for spinful calculations as well.
     """
 
-    def __init__(self, spacegroup,
-                 win, eig, symmetrizer,
+    def __init__(self,
+                 symmetrizer,
                  froz_min=np.inf, froz_max=-np.inf,
                  outer_min=-np.inf, outer_max=np.inf,
                  degen_thresh=1e-8,
@@ -63,6 +57,7 @@ class EBRsearcher:
                  trial_projections=None,
                  debug=False
                 ):
+        spacegroup = symmetrizer.spacegroup
         if spacegroup.spinor:
             raise NotImplementedError("EBRsearcher does not work with spinors")
         if trial_positions is None:
@@ -70,7 +65,7 @@ class EBRsearcher:
         if trial_orbitals is None:
             trial_orbitals = []
         assert len(trial_positions) == len(trial_orbitals), "The number of trial positions and orbitals must be the same"
-        self.eig = eig.data[symmetrizer.kptirr]
+        self.eig = symmetrizer.eig_irr
         self.Dwann_list = []
         self.NKirr = symmetrizer.NKirr
         self.nsym_little = [len(l) for l in symmetrizer.isym_little]
@@ -104,7 +99,7 @@ class EBRsearcher:
             dwann = Dwann(spacegroup=spacegroup,
                           positions=wyckoff,
                           orbital=orbital,
-                          ORBITALS=ORBITALS).get_on_points_all(kpoints=win.data['kpoints'],
+                          ORBITALS=ORBITALS).get_on_points_all(kpoints=symmetrizer.kpoints_all,
                                                            ikptirr=symmetrizer.kptirr,
                                                            ikptirr2kpt=symmetrizer.kptirr2kpt)
             self.num_wann_per_projection.append(dwann.shape[2])

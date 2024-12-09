@@ -36,6 +36,8 @@ class W90_file(abc.ABC):
     def __init__(self, seedname="wannier90", ext="", read_npz=True, write_npz=True, data=None, selected_bands=None, **kwargs):
         if not hasattr(self, "npz_tags"):
             self.npz_tags = ["data"]
+        if not hasattr(self, "npz_tags_optional"):
+            self.npz_tags_optional = []
         if not hasattr(self, "default_tags"):
             self.default_tags = {}
         if data is not None:
@@ -52,18 +54,36 @@ class W90_file(abc.ABC):
         # window is applied after, so that npz contains same data as original file
         self.apply_window(selected_bands)
 
-    def to_npz(self, f_npz):
+    def as_dict(self):
         dic = {k: self.__getattribute__(k) for k in self.npz_tags}
+        for k in self.npz_tags_optional:
+            if hasattr(self, k):
+                dic[k] = self.__getattribute__(k)
+        return dic
+
+    def from_dict(self, dic):
+        for k in self.npz_tags:
+            if k in dic:
+                self.__setattr__(k, dic[k])
+            else:
+                self.__setattr__(k, self.default_tags[k])
+        for k in self.npz_tags_optional:
+            if k in dic:
+                self.__setattr__(k, dic[k])
+            elif k in self.default_tags:
+                self.__setattr__(k, self.default_tags[k])
+
+
+    def to_npz(self, f_npz):
+        dic = self.as_dict()
+        print(f"saving to {f_npz} : ")
         np.savez_compressed(f_npz, **dic)
+        return self
 
     def from_npz(self, f_npz):
         dic = np.load(f_npz)
-        for k in self.npz_tags:
-            try:
-                self.__setattr__(k, dic[k])
-            except KeyError:
-                self.__setattr__(k, self.default_tags[k])
-
+        self.from_dict(dic)
+        return self
 
     @abc.abstractmethod
     def from_w90_file(self, **kwargs):

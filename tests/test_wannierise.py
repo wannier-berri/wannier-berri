@@ -170,7 +170,8 @@ def test_create_sawf_diamond(check_sawf):
                                                       )
 
     projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
-    sawf_new = SymmetrizerSAWF().from_irrep(bandstructure).set_D_wann_from_projections(projections_obj=[projection])
+    sawf_new = SymmetrizerSAWF().from_irrep(bandstructure)
+    sawf_new.set_D_wann_from_projections(projections_obj=[projection])
 
     tmp_sawf_path = os.path.join(OUTPUT_DIR, "diamond")
     sawf_new.to_npz(tmp_sawf_path + ".sawf.npz")
