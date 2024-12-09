@@ -56,6 +56,7 @@ ebrsearcher = EBRsearcher(
     debug=False
 )
 
+
 combinations = ebrsearcher.find_combinations(max_num_wann=40)
 
 for c in combinations:
