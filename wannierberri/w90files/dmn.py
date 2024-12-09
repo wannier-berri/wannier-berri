@@ -1,22 +1,18 @@
 from functools import cached_property, lru_cache
-import warnings
-from irrep.bandstructure import BandStructure
+from time import time
 from irrep.utility import get_block_indices
 import numpy as np
 from copy import deepcopy
-
-from ..wannierise.projections import ProjectionsSet
-
+from ..__utility import get_inverse_block, rotate_block_matrix
 from .utility import writeints, readints
 from .w90file import W90_file
 from .amn import AMN
-from .Dwann import Dwann
 
 
 class DMN(W90_file):
     """
     Class to read and store the wannier90.dmn file
-    the symmetry transformation of the Wannier functions and ab initio bands
+
 
     Parameters
     ----------
@@ -49,8 +45,8 @@ class DMN(W90_file):
     kpt2kptirr : numpy.ndarray(int, shape=(NK,))
         the mapping from kpoints to irreducible kpoints (each number denotes the index of the irreducible kpoint in kptirr)
     kptirr2kpt : numpy.ndarray(int, shape=(NKirr, Nsym))
-        the mapping from irreducible kpoints to all kpoints 
-    kpt2kptirr_sym : numpy.ndarray(int, shape=(NK,))    
+        the mapping from irreducible kpoints to all kpoints
+    kpt2kptirr_sym : numpy.ndarray(int, shape=(NK,))
         the symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
     d_band_blocks : list(list(numpy.ndarray(complex, shape=(NB, NB))))
         the ab initio band transformation matrices in the block form (between almost degenerate bands)
@@ -79,6 +75,12 @@ class DMN(W90_file):
             self._NB = 0
             self.num_wann = 0
             self.D_wann_block_indices = np.zeros((0, 2), dtype=int)
+            self.NKirr = 0
+            self.Nsym = 0
+            self.kpoints = np.zeros((0, 3), dtype=float)
+            self.kpt2kptirr = np.zeros(0, dtype=int)
+            self.kptirr = np.zeros(0, dtype=int)
+            self.kptirr2kpt = np.zeros((0, 0), dtype=int)
             return
         if seedname is None:
             self.set_identiy(num_wann, num_bands, nkpt)
@@ -87,44 +89,62 @@ class DMN(W90_file):
 
     @cached_property
     def d_band_blocks_inverse(self):
-        return _get_d_inverse(self.d_band_blocks)
+        return get_inverse_block(self.d_band_blocks)
 
     @cached_property
     def D_wann_blocks_inverse(self):
-        return _get_d_inverse(self.D_wann_blocks)
+        return get_inverse_block(self.D_wann_blocks)
 
-
-    def to_npz(self, f_npz):
+    def as_dict(self):
         dic = {k: self.__getattribute__(k) for k in self.npz_tags}
         for ik in range(self.NKirr):
             dic[f'd_band_block_indices_{ik}'] = self.d_band_block_indices[ik]
-            for isym in range(self.Nsym):
-                for i in range(len(self.d_band_block_indices[ik])):
-                    dic[f'd_band_blocks_{ik}_{isym}_{i}'] = self.d_band_blocks[ik][isym][i]
-                for i in range(len(self.D_wann_block_indices)):
-                    dic[f'D_wann_blocks_{ik}_{isym}_{i}'] = self.D_wann_blocks[ik][isym][i]
+            for i in range(len(self.d_band_block_indices[ik])):
+                dic[f'd_band_blocks_{ik}_{i}'] = np.array([self.d_band_blocks[ik][isym][i] for isym in range(self.Nsym)])
+        for i in range(len(self.D_wann_block_indices)):
+            dic[f'D_wann_blocks_{i}'] = np.array([[self.D_wann_blocks[ik][isym][i] for isym in range(self.Nsym)]
+                                            for ik in range(self.NKirr)])
+        return dic
+
+
+    def to_npz(self, f_npz):
+        dic = self.as_dict()
         print(f"saving to {f_npz} : ")
-        # for k in dic:
-        #     try:
-        #         print (f"{k} : {dic[k].shape}")
-        #     except:
-        #         print (f"{k} : {dic[k]}")
         np.savez_compressed(f_npz, **dic)
+        return self
 
     def from_npz(self, f_npz):
         dic = np.load(f_npz)
+        self.from_dict(dic)
+        return self
+
+    def from_dict(self, dic):
+        t0 = time()
         for k in self.npz_tags:
             self.__setattr__(k, dic[k])
-        self.d_band_block_indices = [[] for _ in range(self.NKirr)]
+        t01 = time()
+        self.d_band_block_indices = [dic[f'd_band_block_indices_{ik}'] for ik in range(self.NKirr)]
         self.d_band_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
         self.D_wann_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
+        d_band_num_blocks = [self.d_band_block_indices[ik].shape[0] for ik in range(self.NKirr)]
+        D_wann_num_blocks = self.D_wann_block_indices.shape[0]
+
+
+        d_band_blocks_tmp = [[dic[f"d_band_blocks_{ik}_{i}"] for i in range(nblock)]
+                             for ik, nblock in enumerate(d_band_num_blocks)]
+        D_wann_blocks_tmp = [dic[f"D_wann_blocks_{i}"]
+                             for i in range(D_wann_num_blocks)]
+
         for ik in range(self.NKirr):
-            self.d_band_block_indices[ik] = dic[f'd_band_block_indices_{ik}']
             for isym in range(self.Nsym):
-                for i in range(len(self.d_band_block_indices[ik])):
-                    self.d_band_blocks[ik][isym].append(np.ascontiguousarray(dic[f'd_band_blocks_{ik}_{isym}_{i}']))
-                for i in range(len(self.D_wann_block_indices)):
-                    self.D_wann_blocks[ik][isym].append(np.ascontiguousarray(dic[f'D_wann_blocks_{ik}_{isym}_{i}']))
+                self.d_band_blocks[ik][isym] = [np.ascontiguousarray(d_band_blocks_tmp[ik][i][isym])
+                                                for i in range(d_band_num_blocks[ik])]
+                self.D_wann_blocks[ik][isym] = [np.ascontiguousarray(D_wann_blocks_tmp[i][ik, isym])
+                                                for i in range(D_wann_num_blocks)]
+        t1 = time()
+        print(f"time for read_npz dmn {t1 - t0}\n init {t01 - t0} \n d_blocks {t1 - t01}")
+        return self
+
 
     @property
     def NK(self):
@@ -158,6 +178,7 @@ class DMN(W90_file):
         eigenvalues : np.array(shape=(NK,NB)), optional
             The Energies used to determine the degenerecy of the bands
         """
+        DeprecationWarning("w90 format for dmn is deprecated is deprecated, use dmn.npz instead")
         fl = open(seedname + ".dmn", "r")
         self.comment = fl.readline().strip()
         self._NB, self.Nsym, self.NKirr, self._NK = readints(fl, 4)
@@ -168,8 +189,8 @@ class DMN(W90_file):
         assert np.all(self.kptirr2kpt.flatten() >= 0), "kptirr2kpt has negative values"
         assert np.all(self.kptirr2kpt.flatten() < self.NK), "kptirr2kpt has values larger than NK"
         assert (set(self.kptirr2kpt.flatten()) == set(range(self.NK))), "kptirr2kpt does not cover all kpoints"
-        # print(self.kptirr2kpt.shape)
         # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
+
 
 
         # read the rest of lines and convert to conplex array
@@ -224,6 +245,8 @@ class DMN(W90_file):
         self.D_wann_blocks = [[[np.ascontiguousarray(D_wann[ik, isym, start:end, start:end]) for start, end in self.D_wann_block_indices]
                                for isym in range(self.Nsym)] for ik in range(self.NKirr)]
         self.clear_inverse()
+        return self
+
 
     @lru_cache
     def d_band_diagonal(self, ikirr, isym):
@@ -240,6 +263,8 @@ class DMN(W90_file):
     def d_band_full_matrix(self, ikirr=None, isym=None):
         """
         Returns the full matrix of the ab initio bands transformation matrix
+
+        Note: this funcion is used only for w90 format, which is deprecated. TODO: remove it
         """
         if ikirr is None:
             return np.array([self.d_band_full_matrix(ikirr, isym) for ikirr in range(self.NKirr)])
@@ -254,6 +279,9 @@ class DMN(W90_file):
     def D_wann_full_matrix(self, ikirr=None, isym=None):
         """
         Returns the full matrix of the Wannier function transformation matrix
+
+        Note: this funcion is used only for w90 format, which is deprecated. TODO: remove it
+
         """
         if ikirr is None:
             return np.array([self.D_wann_full_matrix(ikirr, isym) for ikirr in range(self.NKirr)])
@@ -290,46 +318,11 @@ class DMN(W90_file):
                 for isym in range(self.Nsym):
                     f.write("\n".join("({:17.12e},{:17.12e})".format(x.real, x.imag) for x in M(ik, isym).flatten(order='F')) + "\n\n")
 
-    def from_irrep(self, bandstructure: BandStructure,
-                 grid=None, degen_thresh=1e-2):
-        """
-        Initialize the object from the BandStructure object
-
-        Parameters
-        ----------
-        bandstructure : irrep.bandstructure.BandStructure
-            the object containing the band structure
-        grid : tuple(int), optional
-            the grid of kpoints (3 integers), if None, the grid is determined from the kpoints
-            may be used to reduce the grid (by an integer factor) for the symmetry analysis
-        degen_thresh : float, optional
-            the threshold for the degeneracy of the bands. Only transformations between bands
-             with energy difference smaller than this value are considered
-        """
-        data = bandstructure.get_dmn(grid=grid, degen_thresh=degen_thresh, unitary=True)
-        self.grid = data["grid"]
-        self.kpoints = data["kpoints"]
-        self.kpt2kptirr = data["kpt2kptirr"]
-        self.kptirr = data["kptirr"]
-        self.kptirr2kpt = data["kptirr2kpt"]
-        self.d_band_blocks = data["d_band_blocks"]
-        self.d_band_block_indices = data["d_band_block_indices"]
-
-        self.comment = "Generated by wannierberri with irrep"
-        self.D_wann = []
-        self.spacegroup = bandstructure.spacegroup
-        self.Nsym = bandstructure.spacegroup.size
-        self.time_reversals = np.array([symop.time_reversal for symop in self.spacegroup.symmetries])
-        self.NKirr = len(self.kptirr)
-        self._NK = len(self.kpoints)
-        self._NB = bandstructure.num_bands
-        self.clear_inverse()
-
 
     def get_disentangled(self, v_matrix_dagger, v_matrix):
-        """	
+        """
         Here we will loose the block-diagonal structure of the d_band matrix.
-        It is ok, w90 anyway does not use it. This function is only used to finish 
+        It is ok, w90 anyway does not use it. This function is only used to finish
         the maximal localization procedure with Wannier90
         """
         NBnew = v_matrix.shape[2]
@@ -376,10 +369,6 @@ class DMN(W90_file):
     def select_bands(self, win_index_irr):
         self.d_band = [D[:, wi, :][:, :, wi] for D, wi in zip(self.d_band, win_index_irr)]
 
-    def set_free(self, frozen_irr):
-        free = np.logical_not(frozen_irr)
-        self.d_band_free = [d[:, f, :][:, :, f] for d, f in zip(self.d_band, free)]
-
     def write(self):
         print(self.comment)
         print(self.NB, self.Nsym, self.NKirr, self.NK, self.num_wann)
@@ -413,30 +402,16 @@ class DMN(W90_file):
             # return d @ U @ D.conj().T
         else:
             Uloc = rotate_block_matrix(Uloc,
-                                       lblocks=self.d_band_blocks_inverse[ikirr][isym],
-                                       lindices=d_indices,
-                                       rblocks=self.D_wann_blocks[ikirr][isym],
-                                       rindices=D_indices,
-                                    #    inv_left=True, inv_right=False,
-                                       result=U1)
+                                     lblocks=self.d_band_blocks_inverse[ikirr][isym],
+                                     lindices=d_indices,
+                                     rblocks=self.D_wann_blocks[ikirr][isym],
+                                     rindices=D_indices,
+                                     result=U1)
             if self.time_reversals[isym]:
                 Uloc = Uloc.conj()
 
-            # return d.conj().T @ U @ D
-
         return Uloc
 
-        # if forward:
-        #     return self.d_band[ikirr, isym].conj().T @ U @ self.D_wann[ikirr, isym]
-        # else:
-        #     return self.d_band[ikirr, isym] @ U @ self.D_wann[ikirr, isym].conj().T
-
-    def clear_free_bands(self):
-        if hasattr(self, 'free_bands_defined'):
-            del self.free_bands_defined
-            del self.d_band_blocks_free
-            del self.d_band_blocks_free_inverse
-            del self.d_band_block_indices_free
 
     def clear_inverse(self, d=True, D=True):
         if d:
@@ -446,50 +421,6 @@ class DMN(W90_file):
             if hasattr(self, 'D_wann_blocks_inverse'):
                 del self.D_wann_blocks_inverse
 
-    def set_free_bands(self, ikirr, free_bands):
-        assert free_bands is not None
-        if not hasattr(self, 'free_bands_defined'):
-            self.free_bands_defined = np.zeros(self.NK, dtype=bool)
-            self.d_band_blocks_free = [None for _ in range(self.NKirr)]
-            self.d_band_blocks_free_inverse = [None for _ in range(self.NKirr)]
-            self.d_band_block_indices_free = [None for _ in range(self.NKirr)]
-        if not self.free_bands_defined[ikirr]:
-            self.free_bands_defined[ikirr] = True
-            (
-                self.d_band_block_indices_free[ikirr],
-                self.d_band_blocks_free[ikirr]
-            ) = self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], free_bands)
-            self.d_band_blocks_free_inverse[ikirr] = _get_d_inverse(self.d_band_blocks_free[ikirr])
-
-
-    def rotate_Z(self, Z, isym, ikirr, free=None):
-        """
-        Rotates the zmat matrix at the irreducible kpoint
-        Z = d_band^+ @ Z @ d_band
-        """
-        if free is not None:
-            self.set_free_bands(ikirr, free)
-            lblocks = self.d_band_blocks_free_inverse[ikirr][isym]
-            rblocks = self.d_band_blocks_free[ikirr][isym]
-            indices = self.d_band_block_indices_free[ikirr]
-        else:
-            lblocks = self.d_band_blocks_inverse[ikirr][isym],
-            rblocks = self.d_band_blocks[ikirr][isym]
-            indices = self.d_band_block_indices[ikirr]
-
-        Z1 = np.zeros(Z.shape, dtype=complex)
-        if self.time_reversals[isym]:
-            Zloc = Z.conj()
-        else:
-            Zloc = Z
-        Z1 = rotate_block_matrix(Zloc, lblocks=lblocks,
-                                 lindices=indices,
-                                 rblocks=rblocks,
-                                 rindices=indices,
-                                #  inv_left=True, inv_right=False,
-                                 result=Z1)
-        return Z1
-        # return d_band.conj().T @ Z @ d_band
 
     def check_unitary(self):
         """
@@ -498,7 +429,7 @@ class DMN(W90_file):
         Returns
         -------
         float
-            the maximum error for the bands 
+            the maximum error for the bands
         float
             the maximum error for the Wannier functions
         """
@@ -549,8 +480,7 @@ class DMN(W90_file):
             return
         print(f"applying window to select {sum(selected_bands)} bands from {self.NB}\n", selected_bands)
         for ikirr in range(self.NKirr):
-            self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr] = \
-                self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], selected_bands)
+            self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr] = self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], selected_bands)
         for i, block_ind in enumerate(self.d_band_block_indices):
             if i == 0:
                 self._NB = block_ind[-1, -1]
@@ -700,11 +630,15 @@ class DMN(W90_file):
         Parameters
         ----------
         D_wann : np.array(complex, shape=(NKirr, Nsym, num_wann, num_wann))
-            the Wannier function transformation matrix (conjugate transpose
-        or list of np.array(complex, shape=(NKirr, Nsym, num_wann, num_wann))
-            if it is a list, the matrices are considered to be the diagonal blocks of the D_wann matrix
+                the Wannier function transformation matrix (conjugate transpose)
+        atommap : np.array(int, shape=(num_points,Nsym))
+            the mapping of atoms under the symmetry operations
+        T : np.array(int, shape=(num_points,Nsym))
+            the translation lattice vector that brings the original atom in position atommap[ip,isym] to the transform of atom ip
+
         Notes
         -----
+        the parameters can be given as lists, in that case the lengths of lists must be equal
           also updates the num_wann attribute
         """
         self.clear_inverse(d=False, D=True)
@@ -727,74 +661,10 @@ class DMN(W90_file):
         self.num_wann = num_wann
         print("num_wann", num_wann)
         print("D_wann_block_indices", self.D_wann_block_indices)
-        # for ik in range(self.NKirr):
-        #     for isym in range(self.Nsym):
-        #         print("D_wann_blocks", [b.shape for b in self.D_wann_blocks[ik][isym]])
 
-    def set_D_wann_from_projections(self,
-                                    projections=None,
-                                    projections_obj=None,
-                                    spacegroup=None,
-                                    win=None,
-                                    kpoints=None):
-        """
-        Parameters
-        ----------
-        spacegroup : SpaceGroup
-            the spacegroup of the system
-        projections : list( (np.array(float, shape=(3,)), str) )
-            the list of projections. Each projection is a tuple of the position and the orbital name
-        projections_obj : ProjectionsSet or list(Projection)
-            alternative way to provide the projections. Will be appended to the projections list
-        win : WIN object
-            the win file, just ot get the k-points
-        kpoints : np.array(float, shape=(npoints,3,))
-            the kpoints in fractional coordinates. Overrides the kpoints in the win file (if provided)
 
-        Note 
-        -----
-        win or kpoints must be provided ONLY if the kpoints are not stored in the object. If the object is set via from_irrep, the kpoints are already stored.
 
-        """
-        from ..system.sym_wann_orbitals import Orbitals
-        if projections is None:
-            projections = []
-        ORBITALS = Orbitals()
-        if spacegroup is None:
-            spacegroup = self.spacegroup
-        else:
-            self.spacegroup = spacegroup
-        if kpoints is None:
-            if win is not None:
-                kpoints = win.data["kpoints"]
-        if kpoints is None:
-            if hasattr(self, "kpoints"):
-                kpoints = self.kpoints
-            else:
-                raise RuntimeError("kpoints are not provided, neither stored in the object")
-        else:
-            assert kpoints.shape == (self.NK, 3)
-            self.kpoints = kpoints
-            self._NK = len(kpoints)
-        D_wann_list = []
-        print(f"len(D_wann_list) = {len(D_wann_list)}")
-        if projections_obj is not None:
-            if isinstance(projections_obj, ProjectionsSet):
-                projections_obj = projections_obj.projections
-            for proj in projections_obj:
-                orbitals = proj.orbitals
-                print(f"orbitals = {orbitals}")
-                if len(orbitals) > 1:
-                    warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
-                for orb in orbitals:
-                    projections.append((proj.positions, orb))
-        for positions, proj in projections:
-            print(f"calculating Wannier functions for {proj} at {positions}")
-            _Dwann = Dwann(spacegroup, positions, proj, ORBITALS=ORBITALS, spinor=spacegroup.spinor)
-            _dwann = _Dwann.get_on_points_all(kpoints, self.kptirr, self.kptirr2kpt)
-            D_wann_list.append(_dwann)
-        print(f"len(D_wann_list) = {len(D_wann_list)}")
-        self.set_D_wann(D_wann_list)
+
     #
     # def check_mmn(self, mmn, f1, f2):
     #     """
@@ -847,48 +717,3 @@ class DMN(W90_file):
     #                 print(f"   {k1} -> {k2} : {err}")
     #                 maxerr = max(maxerr, err)
     #     return maxerr
-
-
-def _get_d_inverse(D):
-    """
-    Get the inverse of the transformation matrix
-    """
-    if isinstance(D, list):
-        return [_get_d_inverse(d) for d in D]
-    elif isinstance(D, np.ndarray):
-        return np.linalg.inv(D)
-    else:
-        raise ValueError(f"Unknown type {type(D)}")
-
-
-def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices,
-                        # inv_left, inv_right,
-                        result):
-    """
-    Rotates the matrix Z using the block-diagonal rotation matrices
-
-    Parameters
-    ----------
-    Z : np.array(complex, shape=(M,N))
-        the matrix to be rotated
-    lblocks : list(np.array(complex, shape=(m,m)))
-        the blocks of hte left matrix. sum(m) = M
-    lindices : list(tuple(int))
-        the indices of the blocks of the left matrix
-    rblocks : list(np.array(complex, shape=(n,n)))
-        the blocks of hte right matrix. sum(n) = N
-    rindices : list(tuple(int))
-        the indices of the blocks of the right matrix
-
-    Returns
-    -------
-    np.array(complex, shape=(M,N))
-        the rotated matrix
-    """
-    for (start, end), block in zip(lindices, lblocks):
-        result[start:end, :] = block @ Z[start:end, :]
-
-    for (start, end), block in zip(rindices, rblocks):
-        result[:, start:end] = result[:, start:end] @ block
-
-    return result

@@ -1,7 +1,7 @@
 import numpy as np
 import abc
 """some basic classes to construct formulae for evaluation"""
-from ..point_symmetry import TransformProduct
+from ..symmetry.point_symmetry import TransformProduct
 
 
 class Formula(abc.ABC):

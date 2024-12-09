@@ -205,17 +205,21 @@ class TABresult(Result):
             cut_k=True,
             linecolor='black',
             close_fig=True,
-            show_fig=True
+            show_fig=True,
+            axes=None,
+            fig=None
     ):
         """
         a routine to plot a result along the path
         The circle size (size of quantity) changes linearly below 2 and logarithmically above 2.
         """
+        import matplotlib.pyplot as plt
+        if axes is None:
+            axes = plt.gca()
 
         if fatmax is None:
             fatmax = fatfactor * 10
 
-        import matplotlib.pyplot as plt
         if iband is None:
             iband = np.arange(self.nband)
         elif isinstance(iband, int):
@@ -230,7 +234,7 @@ class TABresult(Result):
         kline = path.getKline()
         E = self.get_data(quantity='Energy', iband=iband) - Eshift
 
-        plt.ylabel(r"$E$, eV")
+        axes.set_ylabel(r"$E$, eV")
         if Emin is None:
             Emin = E.min() - 0.5
         if Emax is None:
@@ -241,6 +245,7 @@ class TABresult(Result):
             e = E[:, ib]
             selE = (e <= Emax) * (e >= Emin)
             e[~selE] = None
+            _line = None
             if np.any(selE):
                 klineselE = kline[selE]
                 klineall.append(klineselE)
@@ -248,10 +253,10 @@ class TABresult(Result):
                 _kwargs.update(kwargs_line)
                 if 'c' in _kwargs and 'color' in _kwargs:
                     del _kwargs['c']
-                _line, = plt.plot(kline, e, **_kwargs)
-        if label is not None:
+                _line, = axes.plot(kline, e, **_kwargs)
+        if None not in [label, _line]:
             _line.set_label(label)
-            plt.legend()
+            axes.legend()
         if cut_k:
             klineall = [k for kl in klineall for k in kl]
             kmin = min(klineall)
@@ -275,7 +280,7 @@ class TABresult(Result):
                     for col, sel in [("red", (y > 0)), ("blue", (y < 0))]:
                         sz = abs(y[sel]) * fatfactor
                         sz[sz > fatmax] = fatmax
-                        plt.scatter(klineselE[sel], e1[sel], s=sz, color=col)
+                        axes.scatter(klineselE[sel], e1[sel], s=sz, color=col)
             else:
                 raise ValueError("So far only fatband mode is implemented")
 
@@ -284,18 +289,19 @@ class TABresult(Result):
         for k, v in path.labels.items():
             x_ticks_labels.append(v)
             x_ticks_positions.append(kline[k])
-            plt.axvline(x=kline[k])
-        plt.xticks(x_ticks_positions, x_ticks_labels)
-        plt.ylim([Emin, Emax])
-        plt.xlim([kmin, kmax])
+            axes.axvline(x=kline[k])
+        axes.set_xticks(x_ticks_positions, x_ticks_labels)
+        axes.set_ylim([Emin, Emax])
+        axes.set_xlim([kmin, kmax])
 
-        fig = plt.gcf()
+        if fig is None:
+            fig = plt.gcf()
 
         if save_file is not None:
             fig.savefig(save_file)
 
         if show_fig:
-            plt.show()
+            fig.show()
 
         if close_fig:
             plt.close(fig)

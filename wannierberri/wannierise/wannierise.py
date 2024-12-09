@@ -1,12 +1,12 @@
+from time import time
+import warnings
 import numpy as np
 
-from .kpoint import Kpoint_and_neighbours
+from .wannierizer import Wannierizer
 
-from .utility import select_window_degen, print_centers_and_spreads, print_progress
-
+from .utility import select_window_degen, print_centers_and_spreads, print_centers_and_spreads_chk
 from ..__utility import vectorize
-from .sitesym import VoidSymmetrizer, Symmetrizer
-from .spreadfunctional import SpreadFunctional
+from ..symmetry.symmetrizer_sawf import VoidSymmetrizer
 
 
 def wannierise(w90data,
@@ -23,6 +23,8 @@ def wannierise(w90data,
                kwargs_sitesym={},
                init="amn",
                num_wann=None,
+               parallel=True,
+               symmetrize_Z=True,
                ):
     r"""
     Performs disentanglement and maximal localization of the bands recorded in w90data.
@@ -65,7 +67,10 @@ def wannierise(w90data,
         the initialization of the U matrix. "amn" for the current state, "random" for random initialization, "restart" for restarting from the previous state
     num_wann : int
         the number of Wannier functions. Required for random initialization only without sitesymmetry
-
+    parallel : bool
+        if True - tries to run in parallel using ray. ray should be initialized before calling this function. If it was not initialized, the function will run in serial mode
+    symmetrize_Z : bool
+        whether to symmetrize the disentangled Z matrix. If False, the Z matrix is not symmetrized whoch may lead to inaccuracy and slower convergence, but may be a faster calculation. Use it on your own risk.
     Returns
     -------
     w90data.chk.v_matrix : numpy.ndarray
@@ -90,30 +95,40 @@ def wannierise(w90data,
     * Disentanglement and localization are done together, in the same loop. Therefore only one parameter `num_iter` is used for both
 
     """
+
+    t0 = time()
     if froz_min > froz_max:
         print("froz_min > froz_max, nothing will be frozen")
     assert 0 < mix_ratio_z <= 1
+    NK = w90data.mmn.NK
     if sitesym:
-        kptirr = w90data.dmn.kptirr
+        kptirr = w90data.symmetrizer.kptirr
+        symmetrizer = w90data.symmetrizer
+        include_k = np.zeros(NK, dtype=bool)
+        neighbours = w90data.mmn.neighbours
+        for ik in kptirr:
+            include_k[ik] = True
+            include_k[neighbours[ik]] = True
     else:
-        kptirr = np.arange(w90data.mmn.NK)
+        kptirr = np.arange(NK)
+        symmetrizer = VoidSymmetrizer(NK=NK)
+        include_k = np.ones(NK, dtype=bool)
 
     frozen = vectorize(select_window_degen, w90data.eig.data[kptirr], to_array=True,
                        kwargs=dict(win_min=froz_min, win_max=froz_max))
     free = vectorize(np.logical_not, frozen, to_array=True)
 
-    if sitesym:
-        symmetrizer = Symmetrizer(w90data.dmn, neighbours=w90data.mmn.neighbours,
-                                  free=free,
-                                  **kwargs_sitesym)
-    else:
-        symmetrizer = VoidSymmetrizer(NK=w90data.mmn.NK)
+    # if sitesym:
+    #     symmetrizer = Symmetrizer(symmetrizer_dmn, neighbours=w90data.mmn.neighbours,
+    #                               **kwargs_sitesym)
+    # else:
+    #     symmetrizer = VoidSymmetrizer(NK=w90data.mmn.NK)
 
     if init == "amn":
         amn = w90data.amn.data
     elif init == "random":
         if sitesym:
-            num_wann = w90data.dmn.num_wann
+            num_wann = symmetrizer.num_wann
         else:
             assert num_wann is not None, "num_wann should be provided for random initialization without sitesymmetry"
         amnshape = (w90data.mmn.NK, w90data.mmn.NB, num_wann)
@@ -125,7 +140,6 @@ def wannierise(w90data,
             amn[ik][w90data.chk.win_min[ik]:w90data.chk.win_max[ik]] = w90data.chk.v_matrix[ik]
             w90data.chk.win_min[ik] = 0
             w90data.chk.win_max[ik] = w90data.chk.num_bands
-        # amn = np.array(w90data.chk.v_matrix)
         print("Restarting from the previous state", amn.shape)
     else:
         raise ValueError("init should be 'amn' or 'random'")
@@ -137,61 +151,74 @@ def wannierise(w90data,
     # wk = w90data.mmn.wk_unique
     bk_cart = w90data.mmn.bk_cart_unique
     mmn_data_ordered = np.array([data[order] for data, order in zip(w90data.mmn.data, w90data.mmn.ib_unique_map_inverse)])
-    kpoints = [Kpoint_and_neighbours(mmn_data_ordered[kpt],
-                           frozen[ik], frozen[neighbours_irreducible[ik]],
-        w90data.mmn.wk_unique, w90data.mmn.bk_cart_unique,
-        symmetrizer, ik,
-        amn=amn[kpt],
-        weight=symmetrizer.ndegen(ik) / symmetrizer.NK
-    )
-        for ik, kpt in enumerate(kptirr)
-    ]
-    SpreadFunctional_loc = SpreadFunctional(
-        w=w90data.mmn.wk_unique / w90data.mmn.NK,
-        bk=w90data.mmn.bk_cart_unique,
-        neigh=w90data.mmn.neighbours_unique,
-        Mmn=mmn_data_ordered)
-
+    t1 = time()
+    wannierizer = Wannierizer(parallel=parallel, symmetrizer=symmetrizer)
+    for ik, kpt in enumerate(kptirr):
+        wannierizer.add_kpoint(Mmn=mmn_data_ordered[kpt],
+                            frozen=frozen[ik],
+                            frozen_nb=frozen[neighbours_irreducible[ik]],
+                            wb=w90data.mmn.wk_unique,
+                            bk=w90data.mmn.bk_cart_unique,
+                            symmetrizer_Zirr=symmetrizer.get_symmetrizer_Zirr(ik, free[ik]) if symmetrize_Z else VoidSymmetrizer(NK=1),
+                            symmetrizer_Uirr=symmetrizer.get_symmetrizer_Uirr(ik),
+                            ikirr=ik,
+                            amn=amn[kpt],
+                            weight=symmetrizer.ndegen(ik) / symmetrizer.NK
+                            )
+    t2 = time()
 
     # The _IR suffix is used to denote that the U matrix is defined only on k-points in the irreducible BZ
-    U_opt_full_IR = [kpoint.U_opt_full for kpoint in kpoints]
+    U_opt_full_IR = wannierizer.get_U_opt_full()
     # the _BZ suffix is used to denote that the U matrix is defined on all k-points in the full BZ
-    U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=True)
+    U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, include_k=include_k)
 
-    # spreads = getSpreads(kpoints, U_opt_full_BZ, neighbours_irreducible)
-    print_centers_and_spreads(w90data, U_opt_full_BZ,
-                              spread_functional=SpreadFunctional_loc,
-                              comment="Initial  State")
-    # print ("  |  ".join(f"{key} = {value:16.8f}" for key, value in spreads.items() if key.startswith("Omega")))
+    wannierizer.update_Unb_all([[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr])
 
-    Omega_list = []
+    wcc = wannierizer.wcc
+    print_centers_and_spreads(wcc=wcc, spreads=wannierizer.spreads, comment="starting WFs")
+
+    converge_list = []
+    delta_std = np.inf
+    t_update = 0
+    t01 = time()
     for i_iter in range(num_iter):
-        U_opt_full_IR = []
-        wcc = SpreadFunctional_loc.get_wcc(U_opt_full_BZ)
         wcc_bk_phase = np.exp(1j * wcc.dot(bk_cart.T))
-        for ikirr, kpt in enumerate(kptirr):
-            U_neigh = ([U_opt_full_BZ[ib] for ib in neighbours_all[kpt]])
-            U_opt_full_IR.append(kpoints[ikirr].update(U_neigh,
-                                                       mix_ratio=mix_ratio_z,
-                                                       mix_ratio_u=mix_ratio_u,
-                                                       localise=localise,
-                                                       wcc_bk_phase=wcc_bk_phase,
-                                                       ))
+        U_neigh = [[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr]
+        tx = time()
+        U_opt_full_IR = wannierizer.update_all(U_neigh, mix_ratio=mix_ratio_z,
+                                               mix_ratio_u=mix_ratio_u,
+                                               localise=localise,
+                                               wcc_bk_phase=wcc_bk_phase)
+        t_update += time() - tx
 
-        U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=True)
+        U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, include_k=include_k)
+
+        wcc = wannierizer.wcc
+        spreads = wannierizer.spreads
+        converge_list.append(np.hstack((wcc, spreads[:, None])))
+        delta_std = np.std(converge_list[-num_iter_converge:], axis=0).max()
 
         if i_iter % print_progress_every == 0:
-            delta_std = print_progress(i_iter, Omega_list, num_iter_converge,
-                                    spread_functional=SpreadFunctional_loc, w90data=w90data, U_opt_full_BZ=U_opt_full_BZ)
+            print_centers_and_spreads(wcc=wcc, spreads=spreads, comment=f"Iteration {i_iter} (from wannierizer)", std=delta_std)
 
-            if delta_std < conv_tol:
-                print(f"Converged after {i_iter} iterations")
-                break
+        if i_iter > num_iter_converge and delta_std < conv_tol:
+            print(f"Converged after {i_iter} iterations")
+            break
 
-    U_opt_full_BZ = symmetrizer.symmetrize_U(U_opt_full_IR, all_k=True)
+    t02 = time()
 
-    print_centers_and_spreads(w90data, U_opt_full_BZ,
-                              spread_functional=SpreadFunctional_loc,
-                              comment="Final State")
+    U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR)
+    print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="Final state (from wannierizer)", std=delta_std)
+    wcc_chk, spreads_chk = print_centers_and_spreads_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, comment="Final state (from chk)")
+    if not np.allclose(wcc, wcc_chk, atol=1e-4):
+        warnings.warn(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
+    if not np.allclose(spreads, spreads_chk, atol=1e-4):
+        warnings.warn(f"The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = {np.abs(spreads - spreads_chk).max()}")
+
+
     w90data.wannierised = True
+    print(f"time for creating wannierizer {t2 - t1}")
+    print(f"time for iterations {t02 - t01}")
+    print(f"time for updating {t_update}")
+    print(f"total time for wannierization {time() - t0}")
     return w90data.chk.v_matrix

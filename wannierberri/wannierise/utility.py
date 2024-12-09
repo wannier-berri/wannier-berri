@@ -1,14 +1,12 @@
 
 from functools import lru_cache
 import sys
-import warnings
 import numpy as np
 DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
 
 
-def print_centers_and_spreads(w90data, U_opt_full_BZ,
-                              spread_functional=None, spreads=None,
-                              comment=None):
+def print_centers_and_spreads_chk(w90data, U_opt_full_BZ,
+                              comment=""):
     """
     print the centers and spreads of the Wannier functions
 
@@ -19,40 +17,51 @@ def print_centers_and_spreads(w90data, U_opt_full_BZ,
     U_opt_free_BZ : list of numpy.ndarray(nBfree,nW)
         the optimized U matrix for the free bands and wannier functions
     """
-    if spreads is None:
-        if spread_functional is not None:
-            wcc1 = spread_functional.get_wcc(U_opt_full_BZ)
-            spreads = spread_functional(U_opt_full_BZ, wcc=wcc1)
-            print("wannier centers from spread functional: \n", wcc1)
 
     w90data.chk.v_matrix = np.array(U_opt_full_BZ)
     w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
+    print_centers_and_spreads(w90data.chk._wannier_centers, w90data.chk._wannier_spreads, comment=comment + ": from chk")
+    return w90data.chk._wannier_centers, w90data.chk._wannier_spreads
 
+
+def print_centers_and_spreads(wcc, spreads, comment=None, std=None):
+    """
+    print the centers and spreads of the Wannier functions
+
+    Parameters
+    ----------
+    wcc: np.ndarray(nW,3)
+        the centers of the Wannier functions
+    spreads: np.ndarray(nW,)
+        the spreads of the Wannier functions
+    """
     breakline = "-" * 100
     startline = "#" * 100
     endline = startline
-    wcc, spread = w90data.chk._wannier_centers, w90data.chk._wannier_spreads
     print(startline)
     if comment is not None:
         print(comment)
         print(breakline)
     print("wannier centers and spreads")
     print(breakline)
-    for wcc, spread in zip(wcc, spread):
-        wcc = np.round(wcc, 6)
-        print(f"{wcc[0]:16.12f}  {wcc[1]:16.12f}  {wcc[2]:16.12f}   |   {spread:16.12f}")
-    if spreads is not None:
-        print(breakline)
-        print(" | ".join(f"{key} = {value:12.8f}" for key, value in spreads.items() if key.startswith("Omega")))
+    for w, s in zip(wcc, spreads):
+        w = np.round(w, 6)
+        print(f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f}")
+    print(breakline)
+    w = wcc.sum(axis=0)
+    s = np.sum(spreads)
+    print((f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f} <- sum"))
+    print(f"  {' ' * 38}  maximal spread = {np.max(spreads):16.12f}")
+    if std is not None:
+        print(f"standard deviation = {std}")
     print(endline)
-
 
 
 def print_progress(i_iter, Omega_list, num_iter_converge,
                    spread_functional=None, spreads=None,
                    w90data=None, U_opt_full_BZ=None):
     """
-    print the progress of the disentanglement
+    print the progress of the wannierisation
 
     Parameters
     ----------
@@ -151,50 +160,6 @@ def select_window_degen(E, thresh=DEGEN_THRESH, win_min=np.inf, win_max=-np.inf,
         inside[ind] = True
         return inside
 
-
-def get_max_eig(matrix, nvec, nBfree):
-    """ return the nvec column-eigenvectors of matrix with maximal eigenvalues.
-
-    Parameters
-    ----------
-    matrix : numpy.ndarray(n,n)
-        list of matrices
-    nvec : int
-        number of eigenvectors to return
-    nBfree : int
-        number of free bands
-
-    Returns
-    -------
-    numpy.ndarray(n,nvec)
-        eigenvectors
-    """
-    assert matrix.shape[0] == matrix.shape[1]
-    assert matrix.shape[0] >= nvec, f"nvec={nvec}, matrix.shape={matrix.shape}"
-    e, v = np.linalg.eigh(matrix)
-    return v[:, np.argsort(e)[nBfree - nvec:nBfree]]
-
-
-def orthogonalize(u):
-    """
-    Orthogonalizes the matrix u using Singular Value Decomposition (SVD).
-
-    Parameters
-    ----------
-    u : np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
-        The input matrix to be orthogonalized.
-
-    Returns
-    -------
-    u : np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
-        The orthogonalized matrix.
-    """
-    try:
-        U, _, VT = np.linalg.svd(u, full_matrices=False)
-        return U @ VT
-    except np.linalg.LinAlgError as e:
-        warnings.warn(f"SVD failed with error '{e}', using non-orthogonalized matrix")
-        return u
 
 
 def find_solution_mod1(A, B, max_shift=2):

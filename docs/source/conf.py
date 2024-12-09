@@ -43,7 +43,7 @@ extensions = [
 napoleon_custom_sections = ["Sets"]
 nbsphinx_allow_errors = True
 
-html_baseurl = 'https://wannier-berri.org'
+html_baseurl = 'https://docs.wannier-berri.org'
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -100,7 +100,7 @@ pygments_style = 'sphinx'
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the
 # base URL from which the finished HTML is served.
-html_use_opensearch = 'https://wannier-berri.org'
+html_use_opensearch = 'https://docs.wannier-berri.org'
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.

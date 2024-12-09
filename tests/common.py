@@ -10,6 +10,11 @@ except ImportError as err:
     warnings.warn(f"PyFFT was not imported:{err}")
 
 import wannierberri as wberri
+
+print(f"sys.version: {sys.version}")
+print(f"sys.path: {sys.path}")
+
+
 print("sys.path: ", sys.path)
 print(f"imported wberri from {wberri.__file__} version {wberri.__version__}")
 

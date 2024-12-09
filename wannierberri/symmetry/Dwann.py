@@ -28,10 +28,6 @@ class Dwann:
         The orbitals object that contains the orbitals information.
     spinor : bool
         Whether the Wannier functions are spinors.
-    spin_ordering : str, "block" or "interlace"
-        The ordering of the wannier functions in the spinor case.
-        "block" means that first all the orbitals of the first spin are written, then the second spin. (like in the amn file old versions of VASP)
-        "interlace" means that the orbitals of the two spins are interlaced. (like in the amn file of QE and new versions of VASP)
 
 
     Attributes
@@ -46,18 +42,20 @@ class Dwann:
         Number of symmetry operations in the spacegroup.
     atommap : np.ndarray(shape=(num_points, nsym), dtype=int)
         A matrix that maps the orbit points to each other by the symmetry operations of the spacegroup.
+
+    Notes
+    -----
+    * the spin ordering is always assumed "iterlaced", i.e. like in QE (or new VASP). If you are using an old VASP version,
+    you should change the spin_ordering to "block" in the of w90data.amn object.
     """
 
     def __init__(self, spacegroup, positions, orbital="_",
                  ORBITALS=None,
-                 spinor=False,
-                 spin_ordering="interlace"):
+                 spinor=False):
 
         self.nsym = spacegroup.size
         if spinor:
             self.spinor = True
-            assert spin_ordering in ["block", "interlace"]
-            self.spin_ordering = spin_ordering
             self.nspinor = 2
         else:
             self.spinor = False
@@ -67,15 +65,26 @@ class Dwann:
             assert ORBITALS is not None
             self.rot_orb = [ORBITALS.rot_orb(orbital, symop.rotation_cart)
                        for symop in spacegroup.symmetries]
-            self.num_orbitals = ORBITALS.num_orbitals(orbital)
+            self.num_orbitals_scal = ORBITALS.num_orbitals(orbital)
         else:
             self.rot_orb = [np.eye(1) for _ in range(self.nsym)]
-            self.num_orbitals = 1
+            self.num_orbitals_scal = 1
+
+        if self.spinor:
+            for isym, symop in enumerate(spacegroup.symmetries):
+                S = symop.spinor_rotation
+                if symop.time_reversal:
+                    S = np.array([[0, 1], [-1, 0]]) @ S.conj()
+                self.rot_orb[isym] = np.kron(self.rot_orb[isym], S)
+        self.rot_orb = np.array(self.rot_orb)
+
+        self.num_orbitals = self.num_orbitals_scal * self.nspinor
+
         self.orbit = orbit_from_positions(spacegroup, positions)
         self.spacegroup = spacegroup
 
         self.num_points = len(self.orbit)
-        self.num_wann_scal = self.num_points * self.num_orbitals
+        self.num_wann_scal = self.num_points * self.num_orbitals_scal
         self.num_wann = self.num_wann_scal * self.nspinor
         self.atommap = -np.ones((self.num_points, self.nsym), dtype=int)
         self.T = np.zeros((self.num_points, self.nsym, 3), dtype=float)
@@ -87,8 +96,13 @@ class Dwann:
                 ip2 = self.orbit.index(p2)
                 self.atommap[ip, isym] = ip2
                 p2 = symop.transform_r(p)
-                p2a = self.orbit[self.atommap[ip, isym]]
-                self.T[ip, isym] = p2 - p2a
+                p2a = self.orbit[ip2]
+                self.T[ip, isym] = p2a - p2
+        T_round = np.round(self.T)
+        assert np.allclose(self.T, T_round, atol=1e-7), f"T=\n{self.T}, \nT_round=\n{T_round}, \n max_diff={np.max(np.abs(self.T - T_round))}"
+        self.T = T_round.astype(int)
+
+        assert np.all(self.atommap >= 0), f"atommap={self.atommap}"
 
 
 
@@ -117,25 +131,15 @@ class Dwann:
         kptirr1 = symop.transform_k(kptirr)
         g = kpt - kptirr1
         assert np.all(abs(g - np.round(g)) < 1e-7), f"isym={isym}, g={g}, k1={kptirr}, k1p={kptirr1}, k2={kpt}"
-        Dwann = np.zeros((self.num_wann_scal, self.num_wann_scal), dtype=complex)
+        Dwann = np.zeros((self.num_wann, self.num_wann), dtype=complex)
         for ip, _ in enumerate(self.orbit):
             jp = self.atommap[ip, isym]
+            # print(f"Dwann.shpape={Dwann.shape}, rot_orb.shape={self.rot_orb[isym].shape}, num_orbitals={self.num_orbitals}, spinor={self.spinor}")
             Dwann[jp * self.num_orbitals:(jp + 1) * self.num_orbitals,
                   ip * self.num_orbitals:(ip + 1) * self.num_orbitals
-                  ] = np.exp(-2j * np.pi * (np.dot(kptirr1, self.T[ip, isym]))) * self.rot_orb[isym]
+                  ] = np.exp(2j * np.pi * (np.dot(kptirr1, self.T[ip, isym]))) * self.rot_orb[isym]
         # Here we assume that all the orbitals are real, so we don't need to take the complex conjugate
-        if self.spinor:
-            S = symop.spinor_rotation
-            if symop.time_reversal:
-                S = np.array([[0, 1], [-1, 0]]) @ S.conj()
-                # Dwann = Dwann.conj()
-            if self.spin_ordering == "block":
-                Dwann = np.kron(S, Dwann)
-            else:
-                Dwann = np.kron(Dwann, S)
-            return Dwann
-        else:
-            return Dwann
+        return Dwann
 
     def get_on_points_all(self, kpoints, ikptirr, ikptirr2kpt):
         """

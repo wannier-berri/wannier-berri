@@ -36,6 +36,8 @@ class W90_file(abc.ABC):
     def __init__(self, seedname="wannier90", ext="", read_npz=True, write_npz=True, data=None, selected_bands=None, **kwargs):
         if not hasattr(self, "npz_tags"):
             self.npz_tags = ["data"]
+        if not hasattr(self, "default_tags"):
+            self.default_tags = {}
         if data is not None:
             self.data = data
             return
@@ -57,7 +59,10 @@ class W90_file(abc.ABC):
     def from_npz(self, f_npz):
         dic = np.load(f_npz)
         for k in self.npz_tags:
-            self.__setattr__(k, dic[k])
+            try:
+                self.__setattr__(k, dic[k])
+            except KeyError:
+                self.__setattr__(k, self.default_tags[k])
 
 
     @abc.abstractmethod

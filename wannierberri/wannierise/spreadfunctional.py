@@ -5,6 +5,7 @@ class SpreadFunctional:
 
     """
     calculate the spread functional
+    Note used anymore. The spread functional is calculated in the wannirizer class
 
     Parameters
     ---------

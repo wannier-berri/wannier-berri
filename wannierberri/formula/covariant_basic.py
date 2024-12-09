@@ -2,7 +2,7 @@ import numpy as np
 from ..__utility import alpha_A, beta_A
 from .formula import Formula_ln
 from .covariant import DerDcov, Eavln
-from ..point_symmetry import transform_ident, transform_odd
+from ..symmetry.point_symmetry import transform_ident, transform_odd
 
 """ The following  Formulue are fundamental. They can be used to construct all
 quantities relatred to Berry curvature and orbital magnetic moment. They are written

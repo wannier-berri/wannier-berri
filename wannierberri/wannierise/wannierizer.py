@@ -1,9 +1,10 @@
 from copy import deepcopy
+import copy
+import warnings
 import numpy as np
-from .utility import get_max_eig
-from .sitesym import orthogonalize
-
-SPREAD = True
+import ray
+from ..__utility import get_max_eig, orthogonalize
+from ..symmetry.symmetrizer_sawf import VoidSymmetrizer
 
 
 class Kpoint_and_neighbours:
@@ -33,7 +34,9 @@ class Kpoint_and_neighbours:
         """
 
     def __init__(self, Mmn, frozen, frozen_nb, wb, bk,
-                 symmetrizer, ikirr,
+                 ikirr,
+                 symmetrizer_Zirr,
+                 symmetrizer_Uirr,
                  amn,
                  weight=1,
                  ):
@@ -48,6 +51,7 @@ class Kpoint_and_neighbours:
         self.nband = amn.shape[0]
         self.wb = wb
         self.bk = bk
+        self.wbk = wb[:, None] * bk
         self.weight = weight
 
         self.data = {}
@@ -61,8 +65,8 @@ class Kpoint_and_neighbours:
         self.spaces = {'free': self.free_nb, 'frozen': frozen_nb}
         self.freefree = [Mmn[ib][self.free, :][:, self.free_nb[ib]] for ib in range(nnb)]
         self.freefrozen = [Mmn[ib][self.free, :][:, frozen_nb[ib]] for ib in range(nnb)]
-        self.symmmetrize_Z = lambda Z: symmetrizer.symmetrize_Zk(Z, ikirr)
-        self.symmetrize_U = lambda U: symmetrizer.symmetrize_U_kirr(U, ikirr)
+        self.symmmetrizer_Zirr = symmetrizer_Zirr
+        self.symmetrizer_Uirr = symmetrizer_Uirr
         self.Zfrozen = self.calc_Z()
         self.Zold = None
 
@@ -70,6 +74,10 @@ class Kpoint_and_neighbours:
         amn2 = amn[self.free, :].dot(amn[self.free, :].T.conj())
         self.U_opt_free = get_max_eig(amn2, self.nWfree, self.NBfree)  # nBfee x nWfree marrices
         self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
+        # self.update_Mmn_opt()
+
+    def get_U_opt_full(self):
+        return self.U_opt_full
 
     def update(self, U_nb, wcc_bk_phase, localise=True, mix_ratio=1.0, mix_ratio_u=1.0):
         """
@@ -100,6 +108,7 @@ class Kpoint_and_neighbours:
             Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib]) * wcc_bk_phase[None, :, ib]
                                 for ib in range(self.nnb)])
             Mmn_loc_sumb = sum(mm * wb for mm, wb in zip(Mmn_loc, self.wb)) / sum(self.wb)
+            # self.symmmetrizer_Zirr(Mmn_loc_sumb) # did not try it
             # symmetrizer.symmetrize_Zk(Mmn_loc_sumb, ikirr)  # this actually makes thing worse, so not using it
             # print ("Mmn_loc_sumb-1", np.abs(Mmn_loc_sumb-np.eye(Mmn_loc_sumb.shape[0])).max())
             U = np.linalg.inv(Mmn_loc_sumb)
@@ -120,13 +129,13 @@ class Kpoint_and_neighbours:
             self.U_opt_full = U_opt_full
         else:
             self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
-        self.U_opt_full = self.symmetrize_U(self.U_opt_full)
+        self.U_opt_full = self.symmetrizer_Uirr(self.U_opt_full)
         self.update_Mmn_opt()
-        return self.U_opt_full
+        return self.U_opt_full, self._wcc, self._r2
 
 
     def calc_Z(self, U_nb=None):
-        """
+        r"""
         calculate the Z matrix for the given U matrix
 
         Z = \sum_{b} w_{b,k} M_{b,k} M_{b,k}^{\dagger}
@@ -147,7 +156,7 @@ class Kpoint_and_neighbours:
         else:
             Mmn_loc_opt = [self.freefree[ib].dot(U_nb[ib]) for ib in range(len(self.wb))]
         Z = np.array(sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(self.wb, Mmn_loc_opt)))
-        self.symmmetrize_Z(Z)
+        self.symmmetrizer_Zirr(Z)
         return Z
 
 
@@ -177,12 +186,14 @@ class Kpoint_and_neighbours:
         """
         update the Mmn matrix for the optimized U matrix
         """
-        if not SPREAD:
-            return
         if self.U_opt_full is None or self.U_nb is None:
             return
         UT = self.U_opt_full.T.conj()
         self.Mmn_opt = np.array([UT @ mmn @ Ub for mmn, Ub in zip(self.Mmn, self.U_nb)])
+        Mmn_opt_diag = self.Mmn_opt[:, range(self.num_wann), range(self.num_wann)]
+        Mmn_opt_diag_angle = np.angle(Mmn_opt_diag)
+        self._wcc = -Mmn_opt_diag_angle.T @ self.wbk * self.weight
+        self._r2 = self.wb @ (1 - abs(Mmn_opt_diag)**2 + Mmn_opt_diag_angle ** 2) * self.weight
 
     def update_Unb(self, U_nb=None):
         """
@@ -193,101 +204,74 @@ class Kpoint_and_neighbours:
         U_nb : list of nnb matrices numpy.ndarray(nBfree,nWfree)
             the U matrix at neighbouring k-points
         """
-        if not SPREAD:
-            return
         if U_nb is not None:
             self.U_nb = U_nb
             self.update_Mmn_opt()
+        return self._wcc, self._r2
 
 
-    def get_centers(self, U_nb=None):
+
+
+@ray.remote
+class Kpoint_and_neighbours_ray(Kpoint_and_neighbours):
+
+    pass
+
+
+class Wannierizer:
+
+    def __init__(self, parallel=True, symmetrizer=None):
+        self.kpoints = []
+        if parallel and not ray.is_initialized():
+            warnings.warn("Ray is not initialized, running in serial mode")
+            parallel = False
+        self.parallel = parallel
+        if symmetrizer is None:
+            symmetrizer = VoidSymmetrizer()
+        self.symmetrizer = symmetrizer
+        # self.spacegroup = spacegroup
+
+    def add_kpoint(self, **kwargs):
         """
-        get the centers of the Wannier functions
-
-        Returns
-        -------
-        numpy.ndarray(nW,3)
-            the centers of the Wannier functions
-
-        Notes
-        -----
-        does not work precisely whith sitesymmetry
-        """
-        self.update_Unb(U_nb)
-        rangew = np.arange(self.num_wann)
-        phinb = -np.angle(self.Mmn_opt[:, rangew, rangew])
-        return sum(w * phin[:, None] * bk for w, phin, bk in zip(self.wb, phinb, self.bk)) * self.weight
-
-
-    def getSpreads(self, rn, U_nb=None):
-        """
-        calculate contributions of this k-point to the spread functional
-        and the Wannier Centers
+        add a k-point to the list of k-points
 
         Parameters
         ----------
-        rn : numpy.ndarray(nW,3)
-            the centers of the Wannier functions
-        U_nb : list of nnb matrices numpy.ndarray(NB, NW) or None
-            the U matrix at neighbouring k-points. Also sets self.U_nb to the given value
-            if not provided - the ones from the previous iteration are used
-
-        Returns
-        -------
-        numpy.ndarray(3)
-            the contributions to the spread functional (Omega_D, Omega_OD, Omega_tot)
-
-
-        Notes
-        -----
-        does not work precisely whith sitesymmetry
-
+        same as :class:`Kpoint_and_neighbours`
         """
-        self.update_Unb(U_nb)
-        Mmn2 = abs(self.Mmn_opt)**2
-        rangew = np.arange(self.num_wann)
-        Mmn2[:, rangew, rangew] = 0
-        Mmn2 = Mmn2.sum(axis=(1, 2))
-        Omega_OD = sum(self.wb * Mmn2)
-        phinb = -np.angle(self.Mmn_opt[:, rangew, rangew])
-        absnb = np.abs(self.Mmn_opt[:, rangew, rangew])
-        Omega_D = sum(w * (phin[n] - bk @ rn[n])**2 for n in range(self.num_wann) for w, phin, bk in zip(self.wb, phinb, self.bk))
-        Omega_tot = sum(w * (-absn[n]**2 + phin[n]**2)  for n in range(self.num_wann) for w, absn, phin in zip(self.wb, absnb, phinb))
-        Omega_tot += self.num_wann * np.sum(self.wb)
-        return np.array([Omega_D, Omega_OD, Omega_tot]) * self.weight
+        if self.parallel:
+            # kpoint = Kpoint_and_neighbours_ray.remote(**kwargs)
+            kpoint = Kpoint_and_neighbours_ray.remote(**{k: copy.deepcopy(v) for k, v in kwargs.items()})
+        else:
+            kpoint = Kpoint_and_neighbours(**kwargs)
+        self.kpoints.append(kpoint)
+
+    def get_U_opt_full(self):
+        if self.parallel:
+            return np.array(ray.get([kpoint.get_U_opt_full.remote() for kpoint in self.kpoints]))
+        else:
+            return np.array([kpoint.get_U_opt_full() for kpoint in self.kpoints])
+
+    def update_all(self, U_neigh, **kwargs):
+        if self.parallel:
+            remotes = [kpoint.update.remote(U, **kwargs) for kpoint, U in zip(self.kpoints, U_neigh)]
+            list = ray.get(remotes)
+        else:
+            list = [kpoint.update(U, **kwargs) for kpoint, U in zip(self.kpoints, U_neigh)]
+        U_k = [x[0] for x in list]
+        self.update_wcc([x[1] for x in list], [x[2] for x in list])
+        return U_k
+
+    def update_Unb_all(self, U_neigh):
+        if self.parallel:
+            remotes = [kpoint.update_Unb.remote(U) for kpoint, U in zip(self.kpoints, U_neigh)]
+            list = ray.get(remotes)
+        else:
+            list = [kpoint.update_Unb(U) for kpoint, U in zip(self.kpoints, U_neigh)]
+        self.update_wcc([x[0] for x in list], [x[1] for x in list])
 
 
-def getSpreads(kpoints, U_opt_full_BZ=None, neighbours=None):
-    """
-    calculate the spread functional
-    using only irredusiible k-points (when sitesymmetry is used)
-
-    Parameters
-    ----------
-    kpoints : list of Kpoint_and_neighbours
-        the data for the k-points
-    U_opt_full_BZ : list of NK numpy.ndarray(nW,nW) or None
-        the U matrix at neighbouring k-points
-        for the points which are reducible and are not neighbours of the irreducible points,
-        the entry may be None
-    neighbours : list of list of int
-        the list of neighbours(indices in the full BZ list) for each irreducible k-point
-
-    Returns
-    -------
-    dict(str, float)
-        the spread functional ('Omega_D', 'Omega_OD', 'Omega_I', 'Omega_tot', 'wannier_centers')
-
-    Notes
-    -----
-    does not work precisely whith sitesymmetry
-    """
-    if U_opt_full_BZ is None:
-        U_nb_list = [None] * len(kpoints)
-    else:
-        U_nb_list = [[U_opt_full_BZ[n] for n in neigh] for neigh in neighbours]
-    rn = sum(kpoint.get_centers(U_nb) for kpoint, U_nb in zip(kpoints, U_nb_list))
-    Omega_D, Omega_OD, Omega_tot = sum(kpoint.getSpreads(rn) for kpoint in kpoints)
-    Omega_tot -= np.linalg.norm(rn)**2
-    Omega_I = Omega_tot - Omega_OD - Omega_D
-    return dict(Omega_D=Omega_D, Omega_OD=Omega_OD, Omega_I=Omega_I, Omega_tot=Omega_tot, wannier_centers=rn)
+    def update_wcc(self, wcc_k, r2_k):
+        self.wcc = self.symmetrizer.symmetrize_WCC(sum(wcc_k))
+        self.spreads = self.symmetrizer.symmetrize_spreads(sum(r2_k) - np.linalg.norm(self.wcc, axis=1)**2)
+        return self.wcc, self.spreads
