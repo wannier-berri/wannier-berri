@@ -48,6 +48,13 @@ class WyckoffPosition:
 
     def __eq__(self, other):
         assert isinstance(other, WyckoffPosition), "other has to be a WyckoffPosition"
+        if self.num_free_vars != other.num_free_vars:
+            return False
+        if self.num_free_vars == 0 and other.num_free_vars == 0:
+            for p1 in self.positions:
+                for p2 in other.positions:
+                    if all_close_mod1(p1, p2):
+                        return True
         return self.string == other.string
 
 

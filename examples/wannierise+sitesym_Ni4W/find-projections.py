@@ -7,18 +7,15 @@ from wannierberri.wannierise.projections_searcher import EBRsearcher
 from wannierberri.wannierise.projections import Projection, ProjectionsSet
 
 
-print("calculating DMN")
+print("calculating symmetrizer")
 
 path = "pwscf/"
-
-bandstructure = BandStructure(prefix=path + "Ni4W", code="espresso",
-                            Ecut=100, include_TR=False)
-spacegroup = bandstructure.spacegroup
-# spacegroup.show()
 
 try:
     symmetrizer = SAWF().from_npz("Ni4W.sawf.npz")
 except FileNotFoundError:
+    bandstructure = BandStructure(prefix=path + "Ni4W", code="espresso",
+                                Ecut=100, include_TR=False)
     symmetrizer = SAWF().from_irrep(bandstructure)
     symmetrizer.to_npz("Ni4W.sawf.npz")
 
@@ -52,34 +49,31 @@ for p in positions:
         trial_projections.add(proj)
 
 print("trial_projections")
-print(trial_projections.write_with_multiplicities(orbit=True))
-
-
-for p in positions:
-    for o in ['s']:
-        proj = Projection(position_sym=p, orbital=o, spacegroup=spacegroup)
-        trial_projections.add(proj)
-
-print("trial_projections")
 print(trial_projections.write_with_multiplicities(orbit=False))
+
 
 ebrsearcher = EBRsearcher(
     symmetrizer=symmetrizer,
-    trial_projections=trial_projections,
+    trial_projections_set=trial_projections,
     froz_min=-10,
     froz_max=25,
     outer_min=-10,
     outer_max=60,
-    debug=False
+    debug=True
 )
 
 print("searching for combinations")
-combinations = ebrsearcher.find_combinations(max_num_wann=35, fixed=(0, 1))
+combinations = ebrsearcher.find_combinations(num_wann_max=40, num_wann_min=36, fixed=(0, 1))
+
+print (f"found {len(combinations)} combinations")
 
 for c in combinations:
     print(("+" * 80 + "\n") * 2)
     print(trial_projections.write_with_multiplicities(c))
     newset = trial_projections.get_combination(c)
     newset.join_same_wyckoff()
+    print ("after merging: >>" )
+    print(newset.write_with_multiplicities(orbit=False))
+    print ("<<")
     newset.maximize_distance()
     print(newset.write_wannier90(mod1=True))

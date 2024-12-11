@@ -2,7 +2,7 @@ import numpy as np
 from termcolor import cprint
 from ..symmetry.Dwann import Dwann
 from .utility import char_to_vector, get_irreps, select_window_degen
-from .projections import ORBITALS, ProjectionsSet
+from .projections import ORBITALS
 
 
 class EBRsearcher:
@@ -19,13 +19,8 @@ class EBRsearcher:
         The minimum and maximum energy of the outer window
     degen_thresh : float
         The threshold to consider bands as degenerate
-    trial_positions : list of np.ndarray(shape=(3,), dtype=float)
-        The trial projections to be tested. Only one point of the orbit is needed to determine the Wyckoff position
-    trial_orbitals : list of str
-        The orbitals of the trial projections, e.g. 's', 'p', 'sp3', etc.
-    trial_projections : list of Projection
-        alternaitvely, may be specified instead as a list of Projection objects
-        appended to trial_positions and trial_orbitals (if they are not empty)
+    trial_projections_set : ProjectionsSet
+        The set of trial projections
     debug : bool
         If True, print debug information
 
@@ -42,25 +37,19 @@ class EBRsearcher:
       It is recommended to search for projections on a scalar calculation (no spin). 
       The projections found this way are usually good for spinful calculations as well.
     """
+
     def __init__(self,
                  symmetrizer,
                  froz_min=np.inf, froz_max=-np.inf,
                  outer_min=-np.inf, outer_max=np.inf,
                  degen_thresh=1e-8,
-                 trial_positions=None,
-                 trial_orbitals=None,
-                 trial_projections=None,
+                 trial_projections_set=[],
                  debug=False
                 ):
         from spgrep.representation import get_character
         spacegroup = symmetrizer.spacegroup
         if spacegroup.spinor:
             raise NotImplementedError("EBRsearcher does not work with spinors")
-        if trial_positions is None:
-            trial_positions = []
-        if trial_orbitals is None:
-            trial_orbitals = []
-        assert len(trial_positions) == len(trial_orbitals), "The number of trial positions and orbitals must be the same"
         self.eig = symmetrizer.eig_irr
         self.NKirr = symmetrizer.NKirr
         self.nsym_little = [len(l) for l in symmetrizer.isym_little]
@@ -79,50 +68,50 @@ class EBRsearcher:
         all_possible_irreps_conj = []
         for ik in range(self.NKirr):
             kpoint = symmetrizer.kpoints_all[symmetrizer.kptirr[ik]]
-            irreps, mapping = get_irreps(spacegroup=spacegroup, kpoint=kpoint)
+            irreps, mapping = get_irreps(spacegroup=spacegroup, kpoint=kpoint, atol=1e-5)
             assert np.all(mapping == symmetrizer.isym_little[ik]), f"{mapping} != {symmetrizer.isym_little[ik]}"
             all_possible_irreps_conj.append(irreps.conj())
 
-
-
-            
-
-        # if projections are specified as a list of Projection objects (overriding trial_positions and trial_orbitals)
-        if trial_projections is not None:
-            if isinstance(trial_projections, ProjectionsSet):
-                trial_projections = trial_projections.projections
-            for projs in trial_projections:
-                for proj in projs.split():
-                    trial_positions.append(proj.positions)
-                    trial_orbitals.append(proj.orbitals[0])
-        self.num_trial_proj = len(trial_positions)
-
-
+        self.trial_projections_set = trial_projections_set
+        trial_projections_loc = trial_projections_set.projections
+        self.num_trial_projections = len(trial_projections_loc)
 
         highlight("detecting irreps genberated by each projections")
 
         self.num_wann_per_projection = []
-        
+        self.proj_max_multiplicity = []
+
         # find which charagters are produced by each projection
-        characters_wann = [ [] for _ in range(self.NKirr)]
-        for wyckoff, orbital in zip(trial_positions, trial_orbitals):
-            debug_msg(f"detecting irreps by position {wyckoff} and orbital {orbital}")
-            dwann = Dwann(spacegroup=spacegroup,
-                          positions=wyckoff,
-                          orbital=orbital,
-                          ORBITALS=ORBITALS).get_on_points_all( kpoints=symmetrizer.kpoints_all,
-                                                                ikptirr=symmetrizer.kptirr,
-                                                            	ikptirr2kpt=symmetrizer.kptirr2kpt)
-            self.num_wann_per_projection.append(dwann.shape[2])
+        characters_wann = [[] for _ in range(self.NKirr)]
+        for projection in trial_projections_loc:
+            positions = projection.positions
+            num_wann_p = 0
+            char_p = [np.zeros(len(symmetrizer.isym_little[ik]), dtype=complex) for ik in range(self.NKirr)]
+            for orb in projection.orbitals:
+                dwann = Dwann(spacegroup=spacegroup,
+                            positions=positions,
+                            orbital=orb,
+                            ORBITALS=ORBITALS).get_on_points_all(kpoints=symmetrizer.kpoints_all,
+                                                                 ikptirr=symmetrizer.kptirr,
+                                                                 ikptirr2kpt=symmetrizer.kptirr2kpt)
+                num_wann_p += dwann.shape[2]
+                for ik in range(self.NKirr):
+                    char_p[ik] += get_character(dwann[ik][symmetrizer.isym_little[ik]])
+            self.num_wann_per_projection.append(num_wann_p)
+            # debug_msg(f"wyckoff={wyckoff} (type {type(wyckoff)}) , orbital={orbital} produced {dwann}")
             for ik in range(self.NKirr):
-                characters_wann[ik].append(get_character(dwann[ik][symmetrizer.isym_little[ik]]))
-        characters_wann = [ np.array(char) for char in characters_wann]
+                characters_wann[ik].append(char_p[ik])
+            if projection.wyckoff_position.num_free_vars == 0:
+                self.proj_max_multiplicity.append(1)
+            else:
+                self.proj_max_multiplicity.append(np.inf)
+        characters_wann = [np.array(char) for char in characters_wann]
 
 
         # Now for each k-point characterize each projection as a vector
         # of the number of times each irrep (from all possible ones) appears in the projection
         # [ik][iproj]
-        
+
         debug_msg(f"num_wann_per_projection={self.num_wann_per_projection}")
 
         highlight(" deternine the irreps in the DFT bands")
@@ -141,10 +130,10 @@ class EBRsearcher:
                   f"the little group contains {len(symmetrizer.isym_little[ik])} symmetries: \n {symmetrizer.isym_little[ik]}\n" +
                   f"characters in outer window : {np.round(char_outer, 3)}\n" +
                   f"characters in frozen window: {np.round(char_frozen, 3)}")
-            
+
             vector_frozen = char_to_vector(char_frozen, all_possible_irreps_conj[ik])
             vector_outer = char_to_vector(char_outer, all_possible_irreps_conj[ik])
-            vector_wann =  char_to_vector(characters_wann[ik], all_possible_irreps_conj[ik])
+            vector_wann = char_to_vector(characters_wann[ik], all_possible_irreps_conj[ik], froce_int=True)
 
             self.irreps_frozen_vectors.append(vector_frozen)
             self.irreps_outer_vectors.append(vector_outer)
@@ -164,18 +153,18 @@ class EBRsearcher:
             for i in range(self.NKirr):
                 debug_msg(f"ik={i} \n frozen={self.irreps_frozen_vectors[i]} \n"
                     f" outer={self.irreps_outer_vectors[i]} \n")
-                for j in range(self.num_trial_proj):
+                for j in range(self.num_trial_projections):
                     debug_msg(f"  j={j} {self.irreps_per_projection_vectors[i][j]}")
 
-    def find_combinations(self, max_num_wann=None, fixed=[]):
+    def find_combinations(self, num_wann_min=0, num_wann_max=None, fixed=[]):
         """
         find all possible combinations of trial projections that cover all the irreps inside the frozen window
         and fit into the outer window
 
         Parameters
         ----------
-        max_num_wann : int
-            The maximum number of wannier functions
+        num_wann_min, num_wann_max : int
+            The minimum and maximum maximum number of wannier functions
         fixed : list of int
             The indices of the trial projections that are fixed and should be taken exactly once
 
@@ -185,18 +174,23 @@ class EBRsearcher:
             The K combinations of coefficients that denote multip[licity of each irrep
         """
 
-        lfixed = np.zeros(self.num_trial_proj, dtype=bool)
+        lfixed = np.zeros(self.num_trial_projections, dtype=bool)
         lfixed[np.array(fixed, dtype=int)] = True
         combinations = find_combinations_max(vectors=self.irreps_per_projection_vectors[0],
                                              vector_max=self.irreps_outer_vectors[0],
-                                             max_num_wann=max_num_wann,
+                                             num_wann_max=num_wann_max,
                                              num_wann_per_projection=self.num_wann_per_projection,
                                              lfixed=lfixed,
+                                             proj_max_multiplicity=self.proj_max_multiplicity,
                                                 )
+        num_wann_per_comb = np.dot(combinations, self.num_wann_per_projection)
+        combinations = combinations[num_wann_per_comb >= num_wann_min]
+
         if self.debug:
             print(f"From first point within outer window {len(combinations)} are valid")
             print(combinations)
-        for ik in range(self.NKirr):
+        iksrt = np.argsort(self.nsym_little)[::-1]  # start from highest symmetry points, because they exclude more
+        for ik in iksrt:
             combinations = check_combinations_min_max(combinations=combinations,
                                                       vectors=self.irreps_per_projection_vectors[ik],
                                                       vector_min=self.irreps_frozen_vectors[ik],
@@ -209,7 +203,11 @@ class EBRsearcher:
 
 
 
-def find_combinations_max(vectors, vector_max, lfixed, max_num_wann=None, num_wann_per_projection=None, rec=False):
+def find_combinations_max(vectors, vector_max, lfixed,
+                          num_wann_max=None,
+                          num_wann_per_projection=None,
+                          proj_max_multiplicity=None,
+                          rec=False):
     """
     Find all combinations of integer coefficients that satisfy the constraints
     sum( c*v for c,v in zip (coeffeicients,vectors) <= vector_max
@@ -227,26 +225,31 @@ def find_combinations_max(vectors, vector_max, lfixed, max_num_wann=None, num_wa
     Returns
     -------
     combinations : np.ndarray(shape=(K,M), dtype=int)
-        The K combinations of coefficients that denote multip[licity of each irrep
+        The K combinations of coefficients that denote multiplicity of each irrep
     """
-    if max_num_wann is None:
-        max_num_wann = np.inf
+    if num_wann_max is None:
+        num_wann_max = np.inf
         num_wann_per_projection = np.ones(vectors.shape[0], dtype=int)
         print("unlimited number of wannier functions")
     else:
         assert num_wann_per_projection is not None, "The number of wannier functions per projection must be specified if max_num_wann is specified"
         assert len(num_wann_per_projection) == vectors.shape[0], "The number of wannier functions per projection must be specified for each projection"
+    if proj_max_multiplicity is None:
+        proj_max_multiplicity = np.ones(vectors.shape[0], dtype=int) * np.inf
     if vectors.shape[0] == 0:
         return [[]]
+    # elif np.any(vector_max < 0):
+    #     return []
     else:
         i = 0 if not lfixed[0] else 1
         combinations = []
-        while np.all(i * vectors[0] <= vector_max) and i * num_wann_per_projection[0] <= max_num_wann:
+        while i <= proj_max_multiplicity[0] and np.all(i * vectors[0] <= vector_max) and i * num_wann_per_projection[0] <= num_wann_max:
             for comb in find_combinations_max(vector_max=vector_max - i * vectors[0],
                                               vectors=np.copy(vectors[1:, :]),
                                               lfixed=lfixed[1:],
-                                              max_num_wann=max_num_wann - i * num_wann_per_projection[0],
+                                              num_wann_max=num_wann_max - i * num_wann_per_projection[0],
                                               num_wann_per_projection=num_wann_per_projection[1:],
+                                              proj_max_multiplicity=proj_max_multiplicity[1:],
                                               rec=True):
                 combinations.append([i] + comb)
             if lfixed[0]:

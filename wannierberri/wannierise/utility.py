@@ -1,14 +1,7 @@
 
 from functools import lru_cache
 import sys
-from typing import Literal
 import numpy as np
-
-from spgrep.transform import (
-    get_primitive_transformation_matrix,
-    transform_symmetry_and_kpoint,
-    unique_primitive_symmetry,
-)
 DEGEN_THRESH = 1e-2  # for safety - avoid splitting (almost) degenerate states between free/frozen  inner/outer subspaces  (probably too much)
 
 
@@ -265,9 +258,9 @@ def find_distance_periodic(positions, real_lattice, max_shift=2):
 
 
 def get_irreps(spacegroup,
-    kpoint, 
-    **kwargs
-    ):
+        kpoint,
+        **kwargs
+        ):
     r"""Compute all irreducible representations of space group (interface to spgrep)
 
     Parameters
@@ -288,7 +281,7 @@ def get_irreps(spacegroup,
         ``(rotations[i], translations[i])`` belongs to the little group of given space space group and kpoint.
     """
 
-    from spgrep.core import get_spacegroup_irreps_from_primitive_symmetry #, _adjust_phase_for_centering_translations
+    from spgrep.core import get_spacegroup_irreps_from_primitive_symmetry  # , _adjust_phase_for_centering_translations
     from spgrep.representation import get_character
     rotations = [sym.rotation for sym in spacegroup.symmetries]
     translations = [sym.translation for sym in spacegroup.symmetries]
@@ -297,15 +290,17 @@ def get_irreps(spacegroup,
         rotations=rotations,
         translations=translations,
         kpoint=kpoint,
+        method='random',
         **kwargs
     )
     irreps = np.array([get_character(ir) for ir in irreps])  # take only characters
-    srt = np.argsort(mapping_little_group) # not sure if spgrep returns the little group in the same order as the input, so sort it to be sure
-    return irreps[:,srt], mapping_little_group[srt]
+    srt = np.argsort(mapping_little_group)  # not sure if spgrep returns the little group in the same order as the input, so sort it to be sure
+    return irreps[:, srt], mapping_little_group[srt]
 
-def char_to_vector(characters,irreps_conj, froce_int=False, atol=1e-3):
+
+def char_to_vector(characters, irreps_conj, froce_int=False, atol=1e-3):
     """convert characters to a vector of the number of times each irrep appears
-    
+
     Parameters
     ----------
     characters : np.ndarray(shape=(...,Nsym_little), dtype=complex)
@@ -320,7 +315,7 @@ def char_to_vector(characters,irreps_conj, froce_int=False, atol=1e-3):
     """
     nsym = characters.shape[-1]
     assert nsym == irreps_conj.shape[-1], f"the number of symmetries is different {nsym} != {irreps_conj.shape[-1]}"
-    vec =  np.tensordot(characters, irreps_conj, axes=([-1], [-1]))/ nsym
+    vec = np.tensordot(characters, irreps_conj, axes=([-1], [-1])) / nsym
     assert np.allclose(vec.imag, 0, atol=atol), f"the number of irreps is not real {vec.imag}"
     vec = vec.real
     vec_round = np.round(vec.real)

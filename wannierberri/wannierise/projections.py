@@ -435,7 +435,7 @@ class ProjectionsSet:
         string += breakline
         return string
 
-    def get_combination(self, multiplicities):
+    def get_combination(self, multiplicities, dcopy=True):
         """
         get the combination of projections
 
@@ -455,6 +455,8 @@ class ProjectionsSet:
             assert m >= 0, f"multiplicity {m} should be non-negative"
             for _ in range(m):
                 new_projections.append(p)
+        if dcopy:
+            new_projections = [copy.deepcopy(p) for p in new_projections]
         return ProjectionsSet(projections=new_projections)
 
 
@@ -550,7 +552,7 @@ class RepulsivePotential:
         self.Ug = jnp.exp(-g**2 * r0**2 / 2.0)
 
     def potential_jax(self, free_vars):
-        V = self.rotation @ free_vars + self.translation
+        V = (self.rotation @ free_vars + self.translation) % 1
         diff = (V[None, :] - V[:, None])
         return jnp.sum((jnp.cos(2 * np.pi * jnp.dot(diff, self.G.T)) @ self.Ug) * self.weights)
 
