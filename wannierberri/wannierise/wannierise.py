@@ -175,7 +175,8 @@ def wannierise(w90data,
     wannierizer.update_Unb_all([[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr])
 
     wcc = wannierizer.wcc
-    print_centers_and_spreads(wcc=wcc, spreads=wannierizer.spreads, comment="starting WFs")
+    spreads=wannierizer.spreads
+    print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="starting WFs")
 
     converge_list = []
     delta_std = np.inf

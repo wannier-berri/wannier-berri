@@ -23,10 +23,20 @@ from .mmn import MMN
 from .amn import AMN
 from .xxu import UIU, UHU, SIU, SHU
 from .spn import SPN
-# from .dmn import DMN
+from .dmn import DMN
 from .chk import CheckPoint, CheckPoint_bare
 
-
+FILES_CLASSES = {'win': WIN,
+                'eig': EIG,
+                'mmn': MMN,
+                'amn': AMN,
+                'uiu': UIU,
+                'uhu': UHU,
+                'siu': SIU,
+                'shu': SHU,
+                'spn': SPN,
+                'dmn': DMN,
+                }
 
 class Wannier90data:
     """A class to describe all input files of wannier90, and to construct the Wannier functions
