@@ -9,6 +9,7 @@ from ..wannierise.projections import ProjectionsSet
 
 from ..w90files import DMN
 from .Dwann import Dwann
+from .orbitals import OrbitalRotator
 
 
 class SymmetrizerSAWF(DMN):
@@ -74,11 +75,16 @@ class SymmetrizerSAWF(DMN):
             self.set_eig([bandstructure.kpoints[ik].Energy_raw for ik in self.kptirr])
         return self
 
+    @cached_property
+    def orbital_rotator(self):
+        return OrbitalRotator([symop.rotation_cart for symop in self.spacegroup.symmetries])
+
 
     def set_D_wann_from_projections(self,
                                     projections=None,
                                     projections_obj=None,
-                                    kpoints=None):
+                                    kpoints=None,
+                                    ):
         """
         Parameters
         ----------
@@ -89,10 +95,8 @@ class SymmetrizerSAWF(DMN):
         kpoints : np.array(float, shape=(npoints,3,))
             the kpoints in fractional coordinates (neede only if the kpoints are not stored in the object yet) 
         """
-        from .sym_wann_orbitals import Orbitals
         if projections is None:
             projections = []
-        ORBITALS = Orbitals()
         if not hasattr(self, "kpoints_all") or self.kpoints_all is None:
             if kpoints is None:
                 warnings.warn("kpoints are not provided, neither stored in the object. Assuming Gamma point only")
@@ -117,7 +121,7 @@ class SymmetrizerSAWF(DMN):
         self.rot_orb_list = []
         for positions, proj in projections:
             print(f"calculating Wannier functions for {proj} at {positions}")
-            _Dwann = Dwann(spacegroup=self.spacegroup, positions=positions, orbital=proj, ORBITALS=ORBITALS, spinor=self.spacegroup.spinor)
+            _Dwann = Dwann(spacegroup=self.spacegroup, positions=positions, orbital=proj, orbital_rotator=self.orbital_rotator, spinor=self.spacegroup.spinor)
             _dwann = _Dwann.get_on_points_all(kpoints=self.kpoints_all, ikptirr=self.kptirr, ikptirr2kpt=self.kptirr2kpt)
             D_wann_list.append(_dwann)
             self.T_list.append(_Dwann.T)

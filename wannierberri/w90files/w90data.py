@@ -38,6 +38,7 @@ FILES_CLASSES = {'win': WIN,
                 'dmn': DMN,
                 }
 
+
 class Wannier90data:
     """A class to describe all input files of wannier90, and to construct the Wannier functions
      via disentanglement procedure
@@ -121,7 +122,11 @@ class Wannier90data:
             self.chk = CheckPoint(seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
             self.wannierised = True
         else:
-            self.chk = CheckPoint_bare(win=self.win, eig=self.eig, mmn=self.mmn, amn=self.amn)
+            if 'amn' in self._files:
+                num_wann_loc = self.get_file('amn').NW
+            else:
+                num_wann_loc = None
+            self.chk = CheckPoint_bare(win=self.win, eig=self.eig, mmn=self.mmn, num_wann=num_wann_loc)
             self.kpt_mp_grid = [tuple(k) for k in
                                 np.array(np.round(self.chk.kpt_latt * np.array(self.chk.mp_grid)[None, :]),
                                          dtype=int) % self.chk.mp_grid]
@@ -182,6 +187,8 @@ class Wannier90data:
             raise RuntimeError(f"file '{key}' was already set")
         if val is None:
             val = self.__files_classes[key](self.seedname, **kwargs_auto)
+        if key == "amn":
+            self.chk.num_wann = val.NW
         self.check_conform(key, val)
         self._files[key] = val
 

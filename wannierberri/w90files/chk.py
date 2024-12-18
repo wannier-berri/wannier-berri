@@ -467,17 +467,16 @@ class CheckPoint_bare(CheckPoint):
             ----------
             win : `~wannierberri.system.w90_files.WIN`
             eig : `~wannierberri.system.w90_files.EIG`
-            amn : `~wannierberri.system.w90_files.AMN`
             mmn : `~wannierberri.system.w90_files.MMN`
             """
 
-    def __init__(self, win, eig, amn, mmn):
+    def __init__(self, win, eig, mmn, num_wann=None):
         print("creating CheckPoint_bare")
         self.mp_grid = np.array(win.data["mp_grid"])
         self.kpt_latt = win.get_kpoints()
         self.real_lattice = win.get_unit_cell_cart_ang()
         self.num_kpts = eig.NK
-        self.num_wann = amn.NW
+        self.num_wann = num_wann
         self.num_bands = mmn.NB
         self.win_min = np.array([0] * self.num_kpts)
         self.win_max = np.array([self.num_bands] * self.num_kpts)

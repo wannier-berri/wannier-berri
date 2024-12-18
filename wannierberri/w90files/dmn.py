@@ -563,9 +563,9 @@ class DMN(W90_file):
         else:
             ignore_lower_bands = 0
         if ignore_upper_bands is not None:
-            assert abs(ignore_upper_bands) < self.NB-ignore_lower_bands
+            assert abs(ignore_upper_bands) < self.NB - ignore_lower_bands
             ignore_upper_bands = -abs(int(ignore_upper_bands))
-        
+
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
                 ik = self.kptirr2kpt[ikirr, isym]
@@ -587,8 +587,6 @@ class DMN(W90_file):
                             _angle = ", ".join(f"{np.angle(_) / np.pi * 180:7.2f}" for _ in a)
                             string += f"[{_abs}] [{_angle}]   |    "
                         print(string)
-                else:
-                    print(f"ikirr={ikirr}, isym={isym} : {diff} - ok")
         return maxerr
 
     def symmetrize_amn(self, amn):

@@ -1,6 +1,6 @@
 
 import numpy as np
-
+from .orbitals import num_orbitals
 from ..__utility import UniqueListMod1
 
 
@@ -50,7 +50,7 @@ class Dwann:
     """
 
     def __init__(self, spacegroup, positions, orbital="_",
-                 ORBITALS=None,
+                orbital_rotator=None,
                  spinor=False):
 
         self.nsym = spacegroup.size
@@ -62,10 +62,10 @@ class Dwann:
             self.nspinor = 1
 
         if orbital != "_":
-            assert ORBITALS is not None
-            self.rot_orb = [ORBITALS.rot_orb(orbital, symop.rotation_cart)
-                       for symop in spacegroup.symmetries]
-            self.num_orbitals_scal = ORBITALS.num_orbitals(orbital)
+            assert orbital_rotator is not None
+            self.rot_orb = [orbital_rotator(orbital, i)
+                       for i in range(self.nsym)]
+            self.num_orbitals_scal = num_orbitals(orbital)
         else:
             self.rot_orb = [np.eye(1) for _ in range(self.nsym)]
             self.num_orbitals_scal = 1
