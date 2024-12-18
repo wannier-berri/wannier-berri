@@ -3,10 +3,15 @@ from functools import cached_property
 import multiprocessing
 
 import numpy as np
-from scipy import special
+from scipy.special import spherical_jn
+import numpy as np
+from scipy.interpolate import CubicSpline
+from scipy.integrate import trapezoid
 from .utility import str2arraymmn
 from .w90file import W90_file
 from irrep.bandstructure import BandStructure
+from scipy.constants import physical_constants
+bohr_radius_angstrom = physical_constants["Bohr radius"][0]*1e10 
 
 
 class AMN(W90_file):
@@ -162,73 +167,92 @@ def amn_from_bandstructure(bandstructure: BandStructure, positions, orbitals, no
     return_object : bool
         if True, return an AMN object, otherwise return the data as a numpy array
     """
+    print (f"creating amn with \n positions = \n{positions}\n orbitals = \n{orbitals}")
     data = []
+    assert len(positions) == len(orbitals), f"the number of positions and orbitals should be the same. Provided: {len(positions)} positions and {len(orbitals)} orbitals:\n positions = \n{positions}\n orbitals = \n{orbitals}"
     pos = np.array(positions)
     rec_latt = bandstructure.RecLattice
-    needed_lm = set()
-    orb_to_l = {'s': 0, 'p': 1, 'd': 2, 'f': 3}
-    for orb in orbitals:
-        if orb in orb_to_l:
-            l = orb_to_l[orb]
-            for m in range(-l, l+1):
-                needed_lm.add((l, m))
-        else:
-            raise ValueError(f"orbital {orb} not implemented")
-    needed_l = set(l for l, m in needed_lm)
-    needed_m = set(m for l, m in needed_lm)
+    bessel = Bessel_j_exp_int()
     for kp in bandstructure.kpoints:
         igk = kp.ig[:3,:]+kp.k[:,None]
-        exppgk = np.exp(-2j*np.pi*(pos @ igk))
+        print(f"k={kp.k} igk=\n{igk}\n")
+        expgk = np.exp(-2j*np.pi*(pos @ igk))
         wf = kp.WF.conj()
         if normalize:
             wf /= np.linalg.norm(wf, axis=1)[:,None]
-        datak = wf @ exppgk.T
         gk = igk.T @ rec_latt
-        g_abs = np.linalg.norm(gk, axis=1)
-        g_costheta = gk[:,2]/g_abs
-        g_sintheta = np.sqrt(1-g_costheta**2)
-        g_phi = np.arctan2(gk[:,1], gk[:,0])
-        exp_phi_m = {}
-        if 0 in needed_m:
-            exp_phi_m[0] = np.ones(g_phi.shape[0])
-        if len (needed_m- set([0])) > 0:
-            exp_phi_m[1] = np.exp(1j*g_phi)
-            for m in needed_m - set([0, 1]):
-                exp_phi_m[m] = exp_phi_m[1]**m
-        
-            
-        
+        print (f"gk=\n{gk}\n")
+        print (f"WF[0] = {wf[0]}" )
+        projector = Projector(gk, bessel)
+        proj_gk = np.array([projector(orb) for orb in orbitals])*expgk
+        data.append(wf @ proj_gk.T)
     data = np.array(data)
     if return_object:
         return AMN(data=data)
     else:
         return data
-    
 
-class LegendrePolynomials:
-    def __init__(self, costheta, sintheta):
-        self.costheta = costheta
-        self.sintheta = sintheta
-        self.P = {}
+from numpy import sqrt as sq
+            
+hybrids_coef = {
+    'sp-1': {"s": 1/sq(2), "px": 1/sq(2)},
+    'sp-2': {"s": 1/sq(2), "px": -1/sq(2)},
+    'sp2-1': {"s": 1/sq(3), "px": -1/sq(6), "py": 1/sq(2)},
+    'sp2-2': {"s": 1/sq(3), "px": -1/sq(6), "py": -1/sq(2)},
+    'sp2-3': {"s": 1/sq(3), "px": 2/sq(6)},
+    'sp3-1': {"s": 1/sq(2), "px": 1/sq(2), "py": 1/sq(2), "pz": 1/sq(2)},
+    'sp3-2': {"s": 1/sq(2), "px": 1/sq(2), "py": -1/sq(2), "pz": -1/sq(2)},
+    'sp3-3': {"s": 1/sq(2), "px": -1/sq(2), "py": 1/sq(2), "pz": -1/sq(2)},
+    'sp3-4': {"s": 1/sq(2), "px": -1/sq(2), "py": -1/sq(2), "pz": 1/sq(2)},
+    'sp3d2-1': {"s": 1/sq(6), "px": -1/sq(2), "dz2": -1/sq(12), "dx2_y2": 1/2},
+    'sp3d2-2': {"s": 1/sq(6), "px": 1/sq(2), "dz2": -1/sq(12), "dx2_y2": 1/2},
+    'sp3d2-3': {"s": 1/sq(6), "py": -1/sq(2), "dz2": -1/sq(12), "dx2_y2": -1/2},
+    'sp3d2-4': {"s": 1/sq(6), "py": 1/sq(2), "dz2": -1/sq(12), "dx2_y2": -1/2},
+    'sp3d2-5': {"s": 1/sq(6), "pz": -1/sq(2), "dz2": 1/sq(3)},
+    'sp3d2-6': {"s": 1/sq(6), "pz": 1/sq(2), "dz2": 1/sq(3)} 
+}        
 
-    def __call__(self, l, m):
-        if (l, m) not in self.P:
-            self.P[(l, m)] = self._legendre(l, m)
-        return self.P[(l, m)]
+class Projector:
+    """
+    a class to calculate the projection of the wavefunctions on the plane vectors
+    """
+
+    def __init__(self, gk , bessel, a0=bohr_radius_angstrom):
+        self.gk = gk
+        self.projectors = {}
+        gk_abs = np.linalg.norm(gk, axis=1)
+        print ("gk_abs", gk_abs)
+        self.gka_abs = gk_abs*a0
+        g_costheta = gk[:,2]/gk_abs
+        g_costheta[gk_abs<1e-8] = 0
+        g_phi = np.arctan2(gk[:,1], gk[:,0])
+        print ("phi", g_phi)
+        print ("costheta", g_costheta)
+        self.sph = SphericalHarmonics(costheta=g_costheta, phi=g_phi)
+        self.bessel = bessel
+        self.bessel_l = {}
+        self.coef = 4*np.sqrt(np.pi/a0)
+
+    def get_bessel_l(self, l):
+        if l not in self.bessel_l:
+            self.bessel_l[l] = self.bessel(l, self.gka_abs)*self.coef*(-1j)**l
+        return self.bessel_l[l]
+
+    def __call__(self, orbital):
+        if orbital not in self.projectors:
+            self.projectors[orbital] = self._projector(orbital)
+        return self.projectors[orbital]
     
-    def _legendre(self, l, m):
-        if m < 0:
-            return (-1)**m * np.sqrt(2) * self._legendre(l, -m)
-        if m == 0:
-            return np.real(special.lpmv(m, l, self.costheta))
+    def _projector(self, orbital):
+        if orbital in hybrids_coef:
+            return sum(self(orb)*coef for orb, coef in hybrids_coef[orbital].items())
         else:
-            return np.sqrt(2) * np.real(special.lpmv(m, l, self.costheta) * np.cos(m*self.sintheta))
-    
-
-from scipy.special import spherical_jn
-import numpy as np
-from scipy.interpolate import CubicSpline
-from scipy.integrate import trapezoid
+            l = {'s': 0, 'p': 1, 'd': 2, 'f': 3}[orbital[0]]
+            bessel_j_exp_int = self.get_bessel_l(l)
+            spherical = self.sph(orbital)
+            return bessel_j_exp_int * spherical
+        
+        
 
 class Bessel_j_exp_int:
     """
@@ -237,7 +261,7 @@ class Bessel_j_exp_int:
     :math:`\int_0^{\infty} j_l(k*x) e^{-x} dx`
     """
 
-    def __init__(self, l_list, 
+    def __init__(self, 
                  k0=5, kmax=100, dk=0.01, dtk=0.2, kmin = 1e-3,
                  x0=5, xmax=100, dx=0.01, dtx=0.2,
                  ):
@@ -248,8 +272,6 @@ class Bessel_j_exp_int:
         print (f"the xgrid has {len(self.xgrid)} points")
         print (f"the kgrid has {len(self.kgrid)} points")
         self.kmin = kmin
-        for l in l_list:
-            self.set_spline(l)
         
     def _get_grid(self, x0, xmax, dx, dt):
         xgrid = list(np.arange(0, x0, dx ))
@@ -288,10 +310,13 @@ class SphericalHarmonics:
 
     def __init__(self, costheta, phi):
         self.costheta = costheta
-        self.sintheta = np.sqrt(1-costheta**2)
         self.phi = phi
         self.harmonics = {}
         self.sqpi = 1/np.sqrt(np.pi)
+
+    @cached_property
+    def sintheta(self):
+        return np.sqrt(1-self.costheta**2)  
         
     @cached_property
     def cosphi(self):
@@ -328,55 +353,30 @@ class SphericalHarmonics:
         hybrids - according to Wannier90 manual"""
         from numpy import sqrt as sq
         from numpy import pi
-        match orbital:
-            case 's':
-                return 1/(2*sq(pi))
-            case 'pz':
-                return sq(3/(4*pi)) * self.costheta
-            case 'px':
-                return sq(3/(4*pi)) * self.sintheta * self.cosphi
-            case 'py':
-                return sq(3/(4*pi)) * self.sintheta * self.sinphi
-            case 'dz2':
-                return sq(5/(16*pi)) * (3*self.costheta**2 - 1)
-            case 'dx2_y2':
-                return sq(15/(16*pi)) * self.sintheta**2 * self.cos2phi
-            case 'dxy':
-                return sq(15/(16*pi)) * self.sintheta**2 * self.sin2phi        
-            case 'dxz':
-                return sq(15/(16*pi)) * self.sin2theta * self.cosphi
-            case 'dyz':
-                return sq(15/(16*pi)) * self.sin2theta * self.sinphi
-            case 'sp-1':
-                return (self('s')+self('px'))/sq(2)
-            case 'sp-2':
-                return (self('s')-self('px'))/sq(2)
-            case 'sp2-1':
-                return self('s')/sq(3) - self('px')/sq(6) + self('py')/sq(2)
-            case 'sp2-2':
-                return self('s')/sq(3) - self('px')/sq(6) - self('py')/sq(2)
-            case 'sp2-3':
-                return self('s'/sq(3) + 2*self('px')/sq(6))
-            case 'sp3-1':
-                return (self('s')+self('px')+self('py')+self('pz'))/2
-            case 'sp3-2':
-                return (self('s')+self('px')-self('py')-self('pz'))/2
-            case 'sp3-3':
-                return (self('s')-self('px')+self('py')-self('pz'))/2
-            case 'sp3-4':
-                return (self('s')-self('px')-self('py')+self('pz'))/2
-            case 'sp3d2-1':
-                return self('s')/sq(6) - self('px')/sq(2)-self('dz2')/sq(12)+self('dx2_y2')/2
-            case 'sp3d2-2':
-                return self('s')/sq(6) + self('px')/sq(2)-self('dz2')/sq(12)+self('dx2_y2')/2
-            case 'sp3d2-3':
-                return self('s')/sq(6) - self('py')/sq(2)-self('dz2')/sq(12)+self('dx2_y2')/2
-            case 'sp3d2-4':
-                return self('s')/sq(6) + self('py')/sq(2)-self('dz2')/sq(12)+self('dx2_y2')/2
-            case 'sp3d2-5':
-                return self('s')/sq(6) - self('pz')/sq(2)+self('dz2')/sq(3)
-            case 'sp3d2-6':
-                return self('s')/sq(6) + self('pz')/sq(2)+self('dz2')/sq(3)
-            
+        if orbital in hybrids_coef:
+            return sum(self(orb)*coef for orb, coef in hybrids_coef[orbital].items())
+        else:
+            match orbital:
+                case 's':
+                    return 1/(2*sq(pi))* np.ones_like(self.costheta)
+                case 'pz':
+                    return sq(3/(4*pi)) * self.costheta
+                case 'px':
+                    return sq(3/(4*pi)) * self.sintheta * self.cosphi
+                case 'py':
+                    return sq(3/(4*pi)) * self.sintheta * self.sinphi
+                case 'dz2':
+                    return sq(5/(16*pi)) * (3*self.costheta**2 - 1)
+                case 'dx2_y2':
+                    return sq(15/(16*pi)) * self.sintheta**2 * self.cos2phi
+                case 'dxy':
+                    return sq(15/(16*pi)) * self.sintheta**2 * self.sin2phi        
+                case 'dxz':
+                    return sq(15/(16*pi)) * self.sin2theta * self.cosphi
+                case 'dyz':
+                    return sq(15/(16*pi)) * self.sin2theta * self.sinphi
+                case _:
+                    raise ValueError(f"orbital {orbital} not implemented")
+
 
 
