@@ -1,13 +1,11 @@
 from datetime import datetime
 import multiprocessing
-
 import numpy as np
-import numpy as np
+from irrep.bandstructure import BandStructure
 
-from wannierberri.symmetry.orbitals import Bessel_j_exp_int, Projector
+from ..symmetry.orbitals import Bessel_j_exp_int, Projector
 from .utility import str2arraymmn
 from .w90file import W90_file
-from irrep.bandstructure import BandStructure
 
 
 class AMN(W90_file):
@@ -149,7 +147,7 @@ def amn_from_bandstructure_s_delta(bandstructure: BandStructure, positions, norm
         return data
 
 
-def amn_from_bandstructure(bandstructure: BandStructure, positions, orbitals, normalize=True, return_object=True):
+def amn_from_bandstructure(bandstructure: BandStructure, positions=None, orbitals=None, projections_set=None, normalize=True, return_object=True, spinor=False):
     """
     Create an AMN object from a BandStructure object
     So far only delta-localised s-orbitals are implemented
@@ -168,8 +166,22 @@ def amn_from_bandstructure(bandstructure: BandStructure, positions, orbitals, no
         if True, return an AMN object, otherwise return the data as a numpy array
     """
     print(f"creating amn with \n positions = \n{positions}\n orbitals = \n{orbitals}")
+    has_proj_set = projections_set is not None
+    has_pos_orb = positions is not None and orbitals is not None
+    assert has_proj_set != has_pos_orb, "either provide a projections_set or positions and orbitals"
+    if has_proj_set:
+        positions = []
+        orbitals = []
+        print(f"Creating amn. Using projections_set \n{projections_set}")
+        for proj in projections_set.projections:
+            pos, orb = proj.get_positions_and_orbitals()
+            positions += pos
+            orbitals += orb
+        spinor = projections_set.spinor
+    print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals}")
     data = []
     assert len(positions) == len(orbitals), f"the number of positions and orbitals should be the same. Provided: {len(positions)} positions and {len(orbitals)} orbitals:\n positions = \n{positions}\n orbitals = \n{orbitals}"
+    assert len(orbitals) > 0, "No orbitals provided"
     pos = np.array(positions)
     rec_latt = bandstructure.RecLattice
     bessel = Bessel_j_exp_int()
@@ -179,10 +191,23 @@ def amn_from_bandstructure(bandstructure: BandStructure, positions, orbitals, no
         wf = kp.WF.conj()
         if normalize:
             wf /= np.linalg.norm(wf, axis=1)[:, None]
+        if spinor:
+            wf_up = wf[:, :wf.shape[1] // 2]
+            wf_down = wf[:, wf.shape[1] // 2:]
+
         gk = igk.T @ rec_latt
         projector = Projector(gk, bessel)
         proj_gk = np.array([projector(orb) for orb in orbitals]) * expgk
-        data.append(wf @ proj_gk.T)
+        if spinor:
+            proj_up = wf_up @ proj_gk.T
+            proj_down = wf_down @ proj_gk.T
+            datak = []
+            for u, d in zip(proj_up.T, proj_down.T):
+                datak.append(u)
+                datak.append(d)
+            data.append(np.array(datak).T)
+        else:
+            data.append(wf @ proj_gk.T)
     data = np.array(data)
     if return_object:
         return AMN(data=data)
