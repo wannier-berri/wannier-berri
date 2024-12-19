@@ -2,14 +2,14 @@ import wannierberri as wberri
 from wannierberri.calculators import static
 from wannierberri.formula import covariant as frml
 from wannierberri.result import EnergyResult, KBandResult
-from common import OUTPUT_DIR, REF_DIR
-from common_comparers import error_message
+from .common import OUTPUT_DIR, REF_DIR
+from .common_comparers import error_message
 import numpy as np
 import os
 import pytest
 
 
-from common_systems import Efermi_Fe
+from .common_systems import Efermi_Fe
 
 
 @pytest.fixture

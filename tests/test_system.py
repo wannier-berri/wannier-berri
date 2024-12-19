@@ -2,9 +2,9 @@
 import numpy as np
 import pytest
 import os
-from common import OUTPUT_DIR, REF_DIR
+from .common import OUTPUT_DIR, REF_DIR
 
-from common_systems import model_1d_pythtb
+from .common_systems import model_1d_pythtb
 import wannierberri as wberri
 
 from wannierberri.system.system_R import System_R

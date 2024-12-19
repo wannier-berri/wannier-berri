@@ -1,10 +1,10 @@
 """pytest configuration file for WannierBerri tests."""
 
 import pytest
-from common import ROOT_DIR, OUTPUT_DIR, REF_DIR, OUTPUT_DIR_RUN, REF_DIR_INTEGRATE
+from .common import ROOT_DIR, OUTPUT_DIR, REF_DIR, OUTPUT_DIR_RUN, REF_DIR_INTEGRATE
 
 # WannierBerri Systems
-from common_systems import (
+from .common_systems import (
     create_files_Fe_W90,
     create_files_Fe_W90_npz,
     create_files_GaAs_W90,
@@ -66,7 +66,7 @@ from common_systems import (
 )
 
 # Comparers for tests
-from common_comparers import (
+from .common_comparers import (
     compare_any_result,
     compare_energyresult,
     compare_fermisurfer,
@@ -74,11 +74,11 @@ from common_comparers import (
 )
 
 
-from test_cluster import check_command_output
-from test_run import check_run
+from .test_cluster import check_command_output
+from .test_run import check_run
 
 # Parallel objects
-from common_parallel import parallel_serial, parallel_ray
+from .common_parallel import parallel_serial, parallel_ray
 
 
 @pytest.fixture(scope="session", autouse=True)

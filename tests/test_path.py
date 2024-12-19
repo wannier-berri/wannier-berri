@@ -8,7 +8,7 @@ import wannierberri as wberri
 from wannierberri.calculators import tabulate as caltab
 from wannierberri.calculators import TabulatorAll
 
-from common import OUTPUT_DIR, REF_DIR
+from .common import OUTPUT_DIR, REF_DIR
 
 
 def test_path_1(system_Haldane_PythTB):

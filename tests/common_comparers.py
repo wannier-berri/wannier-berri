@@ -7,7 +7,7 @@ import pytest
 from pytest import approx
 from wannierberri.result import EnergyResult
 
-from common import REF_DIR, ROOT_DIR, REF_DIR_INTEGRATE, OUTPUT_DIR_RUN
+from .common import REF_DIR, ROOT_DIR, REF_DIR_INTEGRATE, OUTPUT_DIR_RUN
 
 
 def compare_quant(quantity):
