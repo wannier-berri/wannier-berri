@@ -7,8 +7,8 @@ import pytest
 import wannierberri as wberri
 from wannierberri import calculators as calc
 import numpy as np
-from common import OUTPUT_DIR, REF_DIR
-from common_systems import Efermi_Fe
+from .common import OUTPUT_DIR, REF_DIR
+from .common_systems import Efermi_Fe
 
 
 k = np.array([0.1, 0.2, 0.3])

@@ -2,7 +2,7 @@ from wannierberri import __utility as util
 import pytest
 import numpy as np
 import wannierberri as wberri
-from common_systems import create_files_tb
+from .common_systems import create_files_tb
 from wannierberri import calculators as calc
 
 

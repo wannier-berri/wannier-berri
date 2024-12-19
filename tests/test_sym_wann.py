@@ -7,7 +7,7 @@ from pytest import approx
 import wannierberri as wberri
 from wannierberri import calculators as calc
 
-from common_systems import (
+from .common_systems import (
     Efermi_GaAs,
     Efermi_Fe,
     Efermi_Mn3Sn,
@@ -15,7 +15,7 @@ from common_systems import (
 )
 
 
-from test_run import (
+from .test_run import (
     calculators_GaAs_internal,
     calculators_Te,
 )

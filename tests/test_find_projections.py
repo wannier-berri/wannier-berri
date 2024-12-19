@@ -8,7 +8,7 @@ from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF
 from wannierberri.wannierise.projections_searcher import EBRsearcher
 from wannierberri.wannierise.projections import Projection, ProjectionsSet
 
-from common import OUTPUT_DIR, ROOT_DIR
+from .common import OUTPUT_DIR, ROOT_DIR
 
 
 def test_find_projections_diamond():
