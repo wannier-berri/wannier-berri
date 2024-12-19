@@ -10,9 +10,9 @@ from wannierberri import calculators as calc
 from wannierberri.smoother import FermiDiracSmoother
 from wannierberri.result import EnergyResult
 
-from common import OUTPUT_DIR_RUN, OUTPUT_DIR
-from common_comparers import compare_quant
-from common_systems import (
+from .common import OUTPUT_DIR_RUN, OUTPUT_DIR
+from .common_comparers import compare_quant
+from .common_systems import (
     Efermi_Fe,
     Efermi_Fe_FPLO,
     Efermi_GaAs,
