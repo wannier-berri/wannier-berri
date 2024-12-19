@@ -6,7 +6,7 @@ import sys
 import warnings
 import numpy as np
 import spglib
-from .sym_wann_orbitals import Orbitals
+from .orbitals import Orbitals, num_orbitals
 from ..system.system import num_cart_dim
 from irrep.spacegroup import SymmetryOperation
 from collections import defaultdict
@@ -172,7 +172,7 @@ class SymWann:
             for iatom, atom_name in enumerate(self.atom_name):
                 if atom_name == name_str:
                     for iorb in orb_str:
-                        num_orb = self.orbitals.num_orbitals(iorb)
+                        num_orb = num_orbitals(iorb)
                         orb_list = [orbital_index + i for i in range(num_orb)]
                         if self.soc:
                             orb_list += [i + self.num_wann // 2 for i in orb_list]

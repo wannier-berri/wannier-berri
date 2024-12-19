@@ -62,7 +62,7 @@ class TabulatorAll(Calculator):
         mode = mode.lower()
         assert mode in ("grid", "path")
         self.mode = mode
-        
+
         self.save_mode = save_mode
         if "Energy" not in self.tabulators.keys():
             self.tabulators["Energy"] = Energy()

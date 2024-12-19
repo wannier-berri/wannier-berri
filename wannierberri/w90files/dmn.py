@@ -539,7 +539,7 @@ class DMN(W90_file):
                 maxerr = max(maxerr, np.linalg.norm(e1 - e2))
         return maxerr
 
-    def check_amn(self, amn, warning_precision=1e-5, ignore_upper_bands=None):
+    def check_amn(self, amn, warning_precision=1e-5, ignore_upper_bands=None, ignore_lower_bands=None):
         """
         Check the symmetry of the amn
 
@@ -556,8 +556,14 @@ class DMN(W90_file):
         if isinstance(amn, AMN):
             amn = amn.data
         maxerr = 0
+        assert amn.shape == (self.NK, self.NB, self.num_wann), f"amn.shape = {amn.shape} != (NK={self.NK}, NB={self.NB}, num_wann={self.num_wann}) "
+        if ignore_lower_bands is not None:
+            assert abs(ignore_lower_bands) < self.NB
+            ignore_lower_bands = abs(int(ignore_lower_bands))
+        else:
+            ignore_lower_bands = 0
         if ignore_upper_bands is not None:
-            assert abs(ignore_upper_bands) < self.num_wann
+            assert abs(ignore_upper_bands) < self.NB - ignore_lower_bands
             ignore_upper_bands = -abs(int(ignore_upper_bands))
 
         for ikirr in range(self.NKirr):
@@ -566,9 +572,9 @@ class DMN(W90_file):
                 a1 = amn[ik]
                 a2 = amn[self.kptirr[ikirr]]
                 a1p = self.rotate_U(a1, ikirr, isym, forward=False)
-                a1 = a1[:ignore_upper_bands]
-                a1p = a1p[:ignore_upper_bands]
-                a2 = a2[:ignore_upper_bands]
+                a1 = a1[ignore_lower_bands:ignore_upper_bands]
+                a1p = a1p[ignore_lower_bands:ignore_upper_bands]
+                a2 = a2[ignore_lower_bands:ignore_upper_bands]
                 diff = a2 - a1p
                 diff = np.max(abs(diff))
                 maxerr = max(maxerr, np.linalg.norm(diff))

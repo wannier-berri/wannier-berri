@@ -48,7 +48,7 @@ print(trial_projections.write_with_multiplicities(orbit=False))
 
 ebrsearcher = EBRsearcher(
     symmetrizer=symmetrizer,
-    trial_projections=trial_projections,
+    trial_projections_set=trial_projections,
     froz_min=-10,
     froz_max=20,
     outer_min=-20,
@@ -56,7 +56,8 @@ ebrsearcher = EBRsearcher(
     debug=False
 )
 
-combinations = ebrsearcher.find_combinations(max_num_wann=40)
+
+combinations = ebrsearcher.find_combinations(num_wann_max=10)
 
 for c in combinations:
     print(("+" * 80 + "\n") * 2)

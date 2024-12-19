@@ -7,8 +7,9 @@ import warnings
 from irrep.bandstructure import BandStructure
 from matplotlib import pyplot as plt
 import numpy as np
+from wannierberri.w90files.w90data import FILES_CLASSES
 from ..w90files.dmn import DMN
-from ..wannierise.projections import ProjectionsSet
+from ..wannierise.projections import ORBITALS, ProjectionsSet
 from ..w90files import WIN, Wannier90data
 from .. parallel import Serial as wbSerial
 from .ase import write_espresso_in
@@ -78,9 +79,7 @@ class Executables:
                 park = ""
             self.pwx = f'{mpi} -np {npar} {self.pwx} {park}'
             self.pw2wanx = f'{mpi} -np {npar} {self.pw2wanx} '
-            # self.wannierx = f'{mpi} -np {npar} {self.wannierx}'
             self.bandsx = f'{mpi} -np {npar} {self.bandsx}'
-            # self.parallel_wb = wb.parallel.Parallel(npar)
         self.parallel_wb = parallel_wb
         if parallel_wb is None:
             self.parallel_wb = wbSerial()
@@ -637,3 +636,47 @@ def get_wannier_band_structure(system, k_nodes, length=1000, npar=0, parallel=No
     calculators = dict(tabulate=wbcalculators.TabulatorAll(tabulators={}, mode='path'))
     result = wbrun(system, grid=path, calculators=calculators, parallel=parallel)
     return path, result.results['tabulate']
+
+
+
+
+
+
+def run_pw2wannier(projections=[],
+                   win=None,
+                   prefix='pwscf',
+                   outdir='./',
+                   seedname='pwscf',
+                   targets=['eig', 'mmn', 'amn'],
+                   pw2wan_cmd='pw2wannier90.x',
+                   w90_cmd='wannier90.x',
+                   kwargs_wannier={},
+                   return_dict=False):
+    pw2wan_full_list = ['eig', 'mmn', 'amn', 'spn', 'uhu', 'uiu', 'unk', 'dmn']
+    if win is None:
+        win = WIN(seedname)
+
+    if projections is not None:
+        win["projections"] = projections
+    num_wann = 0
+    for x in projections:
+        num_wann += ORBITALS.num_orbitals(x.split(":")[1])
+    win["num_wann"] = num_wann
+    win.update(kwargs_wannier)
+    win.write(seedname)
+    os.system(f'{w90_cmd} -pp {seedname}')
+    fname = f'{seedname}-{"+".join(targets)}.pw2wan'
+    f_in = fname + '.in'
+    f_out = fname + '.out'
+    f_in_txt = f"""&inputpp\n  outdir = '{outdir}'\n  prefix = '{prefix}'\n  seedname = '{seedname}'\n"""
+    for x in pw2wan_full_list:
+        f_in_txt += f"write_{x} = .{x in targets}.\n"
+    f_in_txt += "/\n"
+    open(f_in, 'w').write(f_in_txt)
+    os.system(f'{pw2wan_cmd} < {f_in}  > {f_out}')
+    return_dict = {}
+    for x in targets:
+        return_dict[x] = FILES_CLASSES[x](seedname)
+    if len(targets) == 1 and not return_dict:
+        return return_dict[targets[0]]
+    return return_dict

@@ -121,6 +121,16 @@ class WIN:
         else:
             warnings.warn(f"key {key} not found in the data, nothing to delete")
 
+    def update(self, dic):
+        """
+        Update the parameters with a dictionary
+
+        Parameters:
+        -----------
+        dic(dict) : the dictionary with the new parameters
+        """
+        self.data.update(dic)
+
     def write(self, seedname=None, comment="written by WannierBerri"):
         """
         Write the wannier90.win file

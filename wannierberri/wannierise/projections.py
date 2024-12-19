@@ -2,6 +2,7 @@ import copy
 from functools import cached_property
 import itertools
 import numpy as np
+from ..symmetry.orbitals import orbitals_sets_dic
 
 try:
     from jax import config
@@ -18,7 +19,7 @@ except ImportError:
 
 from .utility import find_distance_periodic
 from wannierberri.__utility import UniqueListMod1
-from ..symmetry.sym_wann_orbitals import Orbitals
+from ..symmetry.orbitals import Orbitals, num_orbitals
 from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric
 
 ORBITALS = Orbitals()
@@ -53,7 +54,8 @@ class Projection:
                  wyckoff_position=None,
                  orbital='s',
                  void=False,
-                 free_var_values=None):
+                 free_var_values=None,
+                 spinor=False):
         if void:
             return
         self.orbitals = orbital.split(";")
@@ -74,6 +76,8 @@ class Projection:
                     position_num = position_num[None, :]
                 self.wyckoff_position = WyckoffPositionNumeric(positions=position_num,
                                                     spacegroup=spacegroup)
+            spinor = spacegroup.spinor
+        self.spinor = spinor
 
     @property
     def positions(self):
@@ -81,7 +85,7 @@ class Projection:
 
     @property
     def num_wann_per_site(self):
-        return sum(ORBITALS.num_orbitals(o) for o in self.orbitals)
+        return sum(num_orbitals(o) for o in self.orbitals)
 
     @property
     def num_points(self):
@@ -137,6 +141,23 @@ class Projection:
     def str_short(self):
         return f"{self.wyckoff_position.string}:{self.orbitals}"
 
+    def get_positions_and_orbitals(self):
+        """
+        Returns
+        -------
+        list(np.ndarray(shape=(3,), dtype=float))
+            The positions of the projections
+        list(str)
+            The orbitals of the projections (each orbital , e.g. pz, sp3-2, dx2-y2, etc.)
+        """
+        orbitals = []
+        positions = []
+        for pos in self.positions:
+            for orb in self.orbitals:
+                for o in orbitals_sets_dic[orb]:
+                    orbitals.append(o)
+                    positions.append(pos)
+        return positions, orbitals
 
 
 class ProjectionsSet:
@@ -147,12 +168,21 @@ class ProjectionsSet:
 
     def __init__(self,
                  projections=[]):
+        self.spinor = None
         for i, p in enumerate(projections):
             assert isinstance(p, Projection), f"element {i} of list 'projections' should be a Projection, not {p}"
+            self.set_spinor(p.spinor)
         self.projections = copy.copy(projections)
 
     def copy(self):
         return ProjectionsSet(projections=[p.copy() for p in self.projections])
+
+    def set_spinor(self, spinor: bool):
+        self.spinor = spinor
+        if self.spinor is None:
+            self.spinor = spinor
+        else:
+            assert self.spinor == spinor, f"spinor should be the same for all projections. Previously set to {self.spinor}, now trying to set to {spinor}"
 
     @property
     def num_proj(self):
@@ -172,6 +202,7 @@ class ProjectionsSet:
 
     def add(self, projection):
         self.projections.append(projection)
+        self.set_spinor(projection.spinor)
 
     def __add__(self, other):
         new = ProjectionsSet(projections=self.projections + other.projections)
@@ -435,7 +466,7 @@ class ProjectionsSet:
         string += breakline
         return string
 
-    def get_combination(self, multiplicities):
+    def get_combination(self, multiplicities, dcopy=True):
         """
         get the combination of projections
 
@@ -455,6 +486,8 @@ class ProjectionsSet:
             assert m >= 0, f"multiplicity {m} should be non-negative"
             for _ in range(m):
                 new_projections.append(p)
+        if dcopy:
+            new_projections = [copy.deepcopy(p) for p in new_projections]
         return ProjectionsSet(projections=new_projections)
 
 
@@ -550,7 +583,7 @@ class RepulsivePotential:
         self.Ug = jnp.exp(-g**2 * r0**2 / 2.0)
 
     def potential_jax(self, free_vars):
-        V = self.rotation @ free_vars + self.translation
+        V = (self.rotation @ free_vars + self.translation) % 1
         diff = (V[None, :] - V[:, None])
         return jnp.sum((jnp.cos(2 * np.pi * jnp.dot(diff, self.G.T)) @ self.Ug) * self.weights)
 

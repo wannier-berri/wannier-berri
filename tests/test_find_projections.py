@@ -44,7 +44,7 @@ def test_find_projections_diamond():
 
     ebrsearcher = EBRsearcher(
         symmetrizer=symmetrizer,
-        trial_projections=trial_projections,
+        trial_projections_set=trial_projections,
         froz_min=-10,
         froz_max=30,
         outer_min=-20,
@@ -52,13 +52,13 @@ def test_find_projections_diamond():
         debug=False
     )
 
-    combinations = ebrsearcher.find_combinations(max_num_wann=10)
+    combinations = ebrsearcher.find_combinations(num_wann_max=10)
     assert len(combinations) == 1
     assert np.all(combinations[0] == [0, 0, 0, 1, 0, 0]), f"combinations[0] = {combinations[0]}, expected [0,0,0,1,0,0]"
 
     ebrsearcher = EBRsearcher(
         symmetrizer=symmetrizer,
-        trial_projections=trial_projections,
+        trial_projections_set=trial_projections,
         froz_min=-10,
         froz_max=20,
         outer_min=-20,
@@ -66,6 +66,6 @@ def test_find_projections_diamond():
         debug=False
     )
 
-    combinations = ebrsearcher.find_combinations(max_num_wann=10)
+    combinations = ebrsearcher.find_combinations(num_wann_max=10)
     assert len(combinations) == 1
     assert np.all(combinations[0] == [1, 0, 0, 0, 0, 0]), f"combinations[0] = {combinations[0]}, expected [1,0,0,0,0,0]"

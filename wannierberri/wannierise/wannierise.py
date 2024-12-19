@@ -20,7 +20,6 @@ def wannierise(w90data,
                print_progress_every=10,
                sitesym=False,
                localise=True,
-               kwargs_sitesym={},
                init="amn",
                num_wann=None,
                parallel=True,
@@ -126,6 +125,7 @@ def wannierise(w90data,
 
     if init == "amn":
         amn = w90data.amn.data
+        w90data.chk.num_wann = w90data.amn.NW
     elif init == "random":
         if sitesym:
             num_wann = symmetrizer.num_wann
@@ -133,6 +133,7 @@ def wannierise(w90data,
             assert num_wann is not None, "num_wann should be provided for random initialization without sitesymmetry"
         amnshape = (w90data.mmn.NK, w90data.mmn.NB, num_wann)
         amn = np.random.random(amnshape) + 1j * np.random.random(amnshape)
+        w90data.chk.num_wann = num_wann
     elif init == "restart":
         assert w90data.wannierised, "The data is not wannierised"
         amn = np.zeros((w90data.mmn.NK, w90data.mmn.NB, w90data.chk.num_wann), dtype=np.complex128)
@@ -175,7 +176,8 @@ def wannierise(w90data,
     wannierizer.update_Unb_all([[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr])
 
     wcc = wannierizer.wcc
-    print_centers_and_spreads(wcc=wcc, spreads=wannierizer.spreads, comment="starting WFs")
+    spreads = wannierizer.spreads
+    print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="starting WFs")
 
     converge_list = []
     delta_std = np.inf
