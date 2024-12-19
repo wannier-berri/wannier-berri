@@ -6,7 +6,6 @@ import pytest
 import scipy
 import wannierberri as wberri
 import numpy as np
-import subprocess
 from matplotlib import pyplot as plt
 import os
 import shutil
@@ -21,9 +20,6 @@ from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF
 def test_wanierise():
     systems = {}
 
-    # Just fot Reference : run the Wannier90 with sitesym, but instead of frozen window use outer window
-    # to exclude valence bands
-    # os.system("wannier90.x diamond")
     cwd = os.getcwd()
 
     tmp_dir = os.path.join(OUTPUT_DIR, "diamond")
@@ -45,9 +41,6 @@ def test_wanierise():
     symmetrizer = SymmetrizerSAWF().from_npz(prefix + ".sawf.npz")
     symmetrizer.spacegroup.show()
     symmetrizer.to_w90_file(prefix)
-    subprocess.run(["wannier90.x", prefix])
-    # record the system from the Wanier90 output ('diamond.chk' file)
-    systems["w90"] = wberri.system.System_w90(seedname=prefix)
     # Read the data from the Wanier90 inputs
     w90data = wberri.w90files.Wannier90data(seedname=prefix)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
@@ -81,14 +74,8 @@ def test_wanierise():
     systems["wberri_symmetrized"] = copy.deepcopy(systems["wberri"])
 
 
-    systems["wberri_symmetrized"].symmetrize(atom_name=["C"] * 4,
-                                             positions=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]],
-                                             proj=["C:s"],
-                                             magmom=None,
-                                             soc=False,
-                                            method="new")
-
-
+    systems["wberri_symmetrized"].symmetrize2(symmetrizer=symmetrizer)
+    
     # Now calculate bandstructure for each of the systems
     # for creating a path any of the systems will do the job
     system0 = list(systems.values())[0]
@@ -105,16 +92,15 @@ def test_wanierise():
                                                 linecolor=linecolors.pop(0), label=key,
                                                 kwargs_line={"ls": linestyles.pop(0)})
         energies[key] = result.results['tabulate'].get_data(quantity="Energy", iband=np.arange(0, 4))
+    np.save(os.path.join(OUTPUT_DIR, "bands_wannierize.npy"), energies["wberri_symmetrized"])
+    energies_ref = np.load(os.path.join(REF_DIR, "bands_wannierize.npy"))
     plt.savefig("bands.png")
     for k1 in energies:
-        for k2 in energies:
-            if k1 == k2:
-                continue
-            print(f"comparing {k1} and {k2}")
-            diff = abs(energies[k1] - energies[k2])
-            # the precidsion is not very high here, although the two codes are assumed to do the same. Not sure why..
-            d, acc = np.max(diff), 0.0005
-            assert d < acc, f"the interpolated bands {k1} and {k2} differ from w90 interpolation by max {d}>{acc}"
+        print(f"comparing {k1} and reference")
+        diff = abs(energies[k1] - energies_ref)
+        # the precidsion is not very high here, although the two codes are assumed to do the same. Not sure why..
+        d, acc = np.max(diff), 0.0005
+        assert d < acc, f"the interpolated bands {k1}  differ from reference by max {d}>{acc}"
 
     # One can see that results do not differ much. Also, the maximal localization does not have much effect.
     os.chdir(cwd)
