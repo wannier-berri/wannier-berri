@@ -36,6 +36,7 @@ FILES_CLASSES = {'win': WIN,
                 'shu': SHU,
                 'spn': SPN,
                 'dmn': DMN,
+                'chk': CheckPoint,
                 }
 
 
@@ -85,8 +86,7 @@ class Wannier90data:
     # todo :  rotate uHu and spn
     # todo : symmetry
 
-    def __init__(self, seedname="wannier90", read_chk=False,
-                 kmesh_tol=1e-7, bk_complete_tol=1e-5,
+    def __init__(self, seedname="wannier90",
                  read_npz=True,
                  write_npz_list=('mmn', 'eig', 'amn'),
                  write_npz_formatted=True,
@@ -96,17 +96,6 @@ class Wannier90data:
                  ):  # ,sitesym=False):
         assert not (read_npz and overwrite_npz), "cannot read and overwrite npz files"
         self.seedname = copy(seedname)
-        self.__files_classes = {'win': WIN,
-                                'eig': EIG,
-                                'mmn': MMN,
-                                'amn': AMN,
-                                'uiu': UIU,
-                                'uhu': UHU,
-                                'siu': SIU,
-                                'shu': SHU,
-                                'spn': SPN,
-                                # 'dmn': DMN,
-                                }
         self.read_npz = read_npz
         self.write_npz_list = set([s.lower() for s in write_npz_list])
         formatted = [s.lower() for s in formatted]
@@ -115,26 +104,7 @@ class Wannier90data:
             self.write_npz_list.update(['mmn', 'eig', 'amn'])
         self.formatted_list = formatted
         self._files = {}
-        for key, val in files.items():
-            self.set_file(key, val)
 
-        if read_chk:
-            self.chk = CheckPoint(seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
-            self.wannierised = True
-        else:
-            if 'amn' in self._files:
-                num_wann_loc = self.get_file('amn').NW
-            else:
-                num_wann_loc = None
-            self.chk = CheckPoint_bare(win=self.win, eig=self.eig, mmn=self.mmn, num_wann=num_wann_loc)
-            self.kpt_mp_grid = [tuple(k) for k in
-                                np.array(np.round(self.chk.kpt_latt * np.array(self.chk.mp_grid)[None, :]),
-                                         dtype=int) % self.chk.mp_grid]
-            self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
-            self.win_index = [np.arange(self.eig.NB)] * self.chk.num_kpts
-            self.wannierised = False
-
-        self.set_file(key='chk', val=self.chk)
 
     def get_spacegroup(self):
         """
@@ -181,16 +151,76 @@ class Wannier90data:
             `~wannierberri.w90files.MMN`, `~wannierberri.w90files.EIG`, `~wannierberri.w90files.AMN`, `~wannierberri.w90files.UIU`, `~wannierberri.w90files.UHU`, `~wannierberri.w90files.SIU`, `~wannierberri.w90files.SHU`, `~wannierberri.w90files.SPN`
             for more details        
         """
+        if key == "chk":
+            self.set_chk(val=val, overwrite=overwrite, **kwargs)
+            return
         kwargs_auto = self.auto_kwargs_files(key)
         kwargs_auto.update(kwargs)
-        if not overwrite and key in self._files:
+        if not overwrite and self.has_file(key):
             raise RuntimeError(f"file '{key}' was already set")
         if val is None:
-            val = self.__files_classes[key](self.seedname, **kwargs_auto)
-        if key == "amn":
-            self.chk.num_wann = val.NW
+            val = FILES_CLASSES[key](self.seedname, **kwargs_auto)
         self.check_conform(key, val)
         self._files[key] = val
+
+    def has_file(self, key):
+        """
+        Check if the file with the key `key` is set
+
+        Parameters
+        ----------
+        key : str
+            the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
+
+        Returns
+        -------
+        bool
+            True if the file is set, False otherwise
+        """
+        return key in self._files
+
+    def set_chk(self, val=None, kmesh_tol=1e-7, bk_complete_tol=1e-5, read=False, overwrite=False):
+        if not overwrite and self.has_file("chk"):
+            raise RuntimeError("chk file was already set")
+        if not read:
+            val = CheckPoint_bare(win=self.win)
+        elif val is None:
+            val = CheckPoint(self.seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+        self._files['chk'] = val
+        self.wannierised = read
+        self.kpt_mp_grid = [tuple(k) for k in
+                            np.array(np.round(self.chk.kpt_latt * np.array(self.chk.mp_grid)[None, :]),
+                                     dtype=int) % self.chk.mp_grid]
+        self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
+        self.win_index = [np.arange(self.eig.NB)] * self.chk.num_kpts
+
+    def set_amn(self, val=None, **kwargs):
+        self.set_file("amn", val=val, **kwargs)
+
+    def set_eig(self, val=None, **kwargs):
+        self.set_file("eig", val=val, **kwargs)
+
+    def set_mmn(self, val=None, **kwargs):
+        self.set_file("mmn", val=val, **kwargs)
+
+    def set_uiu(self, val=None, **kwargs):
+        self.set_file("uiu", val=val, **kwargs)
+
+    def set_uhu(self, val=None, **kwargs):
+        self.set_file("uhu", val=val, **kwargs)
+
+    def set_siu(self, val=None, **kwargs):
+        self.set_file("siu", val=val, **kwargs)
+
+    def set_shu(self, val=None, **kwargs):
+        self.set_file("shu", val=val, **kwargs)
+
+    def set_spn(self, val=None, **kwargs):
+        self.set_file("spn", val=val, **kwargs)
+
+    def set_win(self, val=None, **kwargs):
+        self.set_file("win", val=val, **kwargs)
+
 
     def write(self, seedname, files=None):
         """
@@ -228,8 +258,11 @@ class Wannier90data:
         if key not in ["chk", "win"]:
             kwargs["read_npz"] = self.read_npz
             kwargs["write_npz"] = key in self.write_npz_list
-        if key != "win":
+        if key not in ["win", "chk"]:
             kwargs["selected_bands"] = self.selected_bands
+        if key == "chk":
+            kwargs["bk_complete_tol"] = 1e-5
+            kwargs["kmesh_tol"] = 1e-7
         print(f"kwargs for {key} are {kwargs}")
         return kwargs
 
@@ -338,6 +371,13 @@ class Wannier90data:
         return self.get_file('siu')
 
     @property
+    def chk(self):
+        """
+        Returns the checkpoint file
+        """
+        return self.get_file('chk')
+
+    @property
     def shu(self):
         """
         Returns the SHU file
@@ -438,7 +478,7 @@ class Wannier90data:
             if key == 'chk':
                 print(f"key = {key} ,number of bands = {val.num_bands}")
         self.chk.apply_window(new_selected_bands)
-        for key in self.__files_classes.keys():
+        for key in FILES_CLASSES:
             if key in self._files:
                 if key == 'win':
                     win = self._files['win']

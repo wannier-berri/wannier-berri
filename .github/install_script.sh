@@ -15,5 +15,5 @@ pip install pythtb # tbmodels spglib
 # gpaw info
 # gpaw install-data --register ~/gpaw-data
 pip install -U .[all]
-sudo apt-get install wannier90
+# sudo apt-get install wannier90
 

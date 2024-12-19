@@ -79,9 +79,7 @@ class Executables:
                 park = ""
             self.pwx = f'{mpi} -np {npar} {self.pwx} {park}'
             self.pw2wanx = f'{mpi} -np {npar} {self.pw2wanx} '
-            # self.wannierx = f'{mpi} -np {npar} {self.wannierx}'
             self.bandsx = f'{mpi} -np {npar} {self.bandsx}'
-            # self.parallel_wb = wb.parallel.Parallel(npar)
         self.parallel_wb = parallel_wb
         if parallel_wb is None:
             self.parallel_wb = wbSerial()
