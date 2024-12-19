@@ -30,7 +30,7 @@ jobs:
       run: .github/install_script.sh
     - name: Test with pytest, generate coverage report
       run: |
-        pytest --cov=./ --cov-report=xml
+        pytest --cov=./wannierberri --cov-report=xml
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       env:
