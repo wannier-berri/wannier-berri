@@ -80,8 +80,8 @@ class Wannier90data:
         write npz for all formatted files
     formatted_list : list(str)
         list of files which should be read as formatted files (uHu, uIu, etc)
-    _files : dict(str, `~wannierberri.w90files.W90_file`)
-        the dictionary of the files (e.g. the keys are 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn')
+    readfiles : list(str)
+        the list of files to be read durint the initialization. Others may be read later.
     """
     # todo :  rotate uHu and spn
     # todo : symmetry
@@ -92,7 +92,7 @@ class Wannier90data:
                  write_npz_formatted=True,
                  overwrite_npz=False,
                  formatted=tuple(),
-                 files={},
+                 readfiles=[],
                  ):  # ,sitesym=False):
         assert not (read_npz and overwrite_npz), "cannot read and overwrite npz files"
         self.seedname = copy(seedname)
@@ -104,6 +104,8 @@ class Wannier90data:
             self.write_npz_list.update(['mmn', 'eig', 'amn'])
         self.formatted_list = formatted
         self._files = {}
+        for f in readfiles:
+            self.set_file(f)
 
 
     def get_spacegroup(self):

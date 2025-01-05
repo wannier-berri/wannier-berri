@@ -1,6 +1,6 @@
 from irrep.bandstructure import BandStructure
 import numpy as np
-from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF as SAWF
+from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
 
 
 from wannierberri.wannierise.projections_searcher import EBRsearcher

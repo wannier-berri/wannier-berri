@@ -335,7 +335,7 @@ class System_R(System):
         if method == "new":
             assert spin_ordering == "interlace", "Symmetrization method 'new' is implemented only for spin_ordering='interlace'"
             from irrep.spacegroup import SpaceGroup
-            from ..symmetry.symmetrizer_sawf import SymmetrizerSAWF
+            from ..symmetry.sawf import SymmetrizerSAWF
             from ..wannierise.projections import Projection
 
             index = {key: i for i, key in enumerate(set(atom_name))}

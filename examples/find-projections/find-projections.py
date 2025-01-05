@@ -1,7 +1,7 @@
 from irrep.bandstructure import BandStructure
 from fractions import Fraction
 import sympy
-from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF as SAWF
+from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
 
 
 from wannierberri.wannierise.projections_searcher import EBRsearcher

@@ -6,7 +6,7 @@ from .wannierizer import Wannierizer
 
 from .utility import select_window_degen, print_centers_and_spreads, print_centers_and_spreads_chk
 from ..__utility import vectorize
-from ..symmetry.symmetrizer_sawf import VoidSymmetrizer
+from ..symmetry.sawf import VoidSymmetrizer
 
 
 def wannierise(w90data,

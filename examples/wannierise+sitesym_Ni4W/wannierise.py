@@ -1,7 +1,7 @@
 import os
 
 import numpy as np
-from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF as SAWF
+from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
 from wannierberri.wannierise.projections import Projection, ProjectionsSet
 
 

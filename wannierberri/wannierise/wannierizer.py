@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 import ray
 from ..__utility import get_max_eig, orthogonalize
-from ..symmetry.symmetrizer_sawf import VoidSymmetrizer
+from ..symmetry.sawf import VoidSymmetrizer
 
 
 class Kpoint_and_neighbours:

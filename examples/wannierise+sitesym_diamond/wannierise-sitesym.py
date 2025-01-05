@@ -5,7 +5,7 @@
 import os, shutil
 from time import time
 import wannierberri as wberri
-from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF
+from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 data_dir = "../../tests/data/diamond"
 
