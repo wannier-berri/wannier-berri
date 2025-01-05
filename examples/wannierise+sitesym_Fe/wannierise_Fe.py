@@ -11,6 +11,7 @@ bandstructure = BandStructure(code='espresso',
                             magmom=[[0,0,1]],
                             include_TR=True)
 spacegroup = bandstructure.spacegroup
+symmetrizer = wb.symmetry.sawf.SymmetrizerSAWF().from_irrep(bandstructure)
 
 from wannierberri.wannierise.projections import Projection, ProjectionsSet
 projection_s = Projection(orbital='s', position_num=[0,0,0], spacegroup=spacegroup)
@@ -22,7 +23,7 @@ projection_t2g = Projection(orbital='t2g', position_num=[0,0,0], spacegroup=spac
 # projections_set = ProjectionsSet(projections=[projection_s, projection_p, projection_d])
 projections_set = ProjectionsSet(projections=[projection_sp3d2, projection_t2g])
 
-symmetrizer = wb.symmetry.sawf.SymmetrizerSAWF().from_irrep(bandstructure).set_D_wann_from_projections(projections_obj=projections_set)
+symmetrizer.set_D_wann_from_projections(projections_obj=projections_set)
 amn = wb.w90files.amn_from_bandstructure(bandstructure, projections_set=projections_set)
 w90data.set_symmetrizer(symmetrizer)
 w90data.set_file("amn", amn)
