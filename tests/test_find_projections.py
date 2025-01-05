@@ -3,7 +3,7 @@ from irrep.bandstructure import BandStructure
 from fractions import Fraction
 import numpy as np
 import sympy
-from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF
+from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 from wannierberri.wannierise.projections_searcher import EBRsearcher
 from wannierberri.wannierise.projections import Projection, ProjectionsSet

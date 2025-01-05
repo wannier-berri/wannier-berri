@@ -13,7 +13,7 @@ import shutil
 from wannierberri.w90files.dmn import DMN
 from wannierberri.wannierise.projections import Projection
 from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
-from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF
+from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 
 

@@ -10,7 +10,7 @@ from matplotlib import pyplot
 import numpy as np
 import wannierberri as wberri
 from wannierberri.system import System_w90
-from wannierberri.symmetry.symmetrizer_sawf import SymmetrizerSAWF
+from wannierberri.symmetry.sawf import SymmetrizerSAWF
 from wannierberri.wannierise.projections import Projection
 from time import time
 
