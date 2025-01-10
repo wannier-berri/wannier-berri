@@ -1,4 +1,5 @@
 
+import pickle
 import numpy as np
 from wannierberri.calculators.degensearch import DegenSearcher, DegenSearcherKP
 import wannierberri as wb
@@ -38,23 +39,31 @@ def test_degensearch_simple():
     assert dk < 1e-8, f"the k  deviates from {k0} by {dk}>=1e-8"
 
 
-def test_degensearch_calculator():
+def test_degensearch_calculator(parallel_ray):
     chiral = wb.models.Chiral(delta=1,hop1=1,hop2=1)
     system = wb.System_PythTB(chiral)
-    grid = wb.Grid(system, NKFFT=3, NKdiv=4)
+    grid = wb.Grid(system, length=20, NKFFT=8)
     print (f"reciprocal lattice {system.recip_lattice}")
     print (f"real lattice {system.real_lattice}")
     calculators={}
     calculators["degen"] = DegenSearcher(iband=0, thresh=1e-9, gap=1, kmax=1.1, 
                          kstep_max=0.1, resolution=1e-5)
+    # degen_searcher = calculators["degen"]
+    # try:
+    #     serialized = pickle.dumps(degen_searcher)
+    #     deserialized = pickle.loads(serialized)
+    #     print("DegenSearcher is serializable")
+    # except Exception as e:
+    #     print(f"DegenSearcher is not serializable: {e}")
     Efermi = np.arange(-10, 10, 0.01)
-    # calculators["dos"] = wb.calculators.static.DOS(tetra=True,
-    #                                                Efermi=Efermi)
-    
+    calculators["dos"] = wb.calculators.static.DOS(tetra=True,
+                                                   Efermi=Efermi)
     results = wb.run(system=system,
            grid=grid,
            calculators=calculators,
-           use_irred_kpt=False)
+           use_irred_kpt=False,
+           print_progress_step=1,
+           parallel=parallel_ray)
     
     if "dos" in results.results:
         import matplotlib.pyplot as plt

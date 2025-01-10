@@ -26,14 +26,15 @@ from .result import ResultDict
 
 
 def print_progress(count, total, t0, tprev, print_progress_step):
-    t = time() - t0
+    t = time()
+    # print(f"{count:20d}-t={t:4.2f}  t_prev={tprev:.2f}  step={print_progress_step}\n")
     if count == 0:
         t_remain = "unknown"
     else:
-        t_rem_s = t / count * (total - count)
+        t_rem_s = (t-t0) / count * (total - count)
         t_remain = f"{t_rem_s:22.1f}"
     if t - tprev > print_progress_step:
-        print(f"{count:20d}{t:17.1f}{t_remain:>22s}", flush=True)
+        print(f"{count:20d}{t-t0:17.1f}{t_remain:>22s}", flush=True)
         tprev = t
     return tprev
 

@@ -137,7 +137,7 @@ class DegenSearcher(Calculator):
 
     def call_1k(self, ik, iband, E_K, H1, k0, r):
         E = E_K[ik]
-        print (f"ik={ik} E={E} k0={k0}")
+        # print (f"ik={ik} E={E} k0={k0}")
         # first, find the group of bands well separated by a gap
         for i in range(iband - 1, -1, -1):
             if E[i + 1] - E[i] > self.gap:
@@ -170,14 +170,12 @@ class DegenSearcher(Calculator):
             print (f"degenerate points found: {degen_kpoints}")
             return degen_kpoints
 
-
     def __call__(self, data_K):
         H1 = data_K.covariant("Ham", gender=1)
         E_K = data_K.E_K
         degeneracies = []
         kp = data_K.kpoints_all_cart
         r = data_K.Kpoint.radius
-        print (f"radius = {r}")
         for ik in range(len(E_K)):
             newk = self.call_1k(ik, self.iband, E_K=E_K, H1=H1, k0=kp[ik], r=r)
             if newk is not None:
