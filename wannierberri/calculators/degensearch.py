@@ -1,7 +1,7 @@
 import warnings
 import numpy as np
 
-from ..result.degenresult import DegenResult, DegenResultEmpty
+from ..result.degenresult import DegenResult, DegenResultEmpty, clean_repeat
 
 from .calculator import Calculator
 
@@ -126,8 +126,9 @@ class DegenSearcherKP:
 
 class DegenSearcher(Calculator):
 
-    def __init__(self, iband, thresh=1e-8, gap=1,
+    def __init__(self, iband, thresh=1e-9, gap=1,
                  kmax=1, kstep_max=0.1,
+                 resolution = 1e-6,
                  **kwargs):
         super().__init__(**kwargs)
         self.iband = iband
@@ -135,6 +136,7 @@ class DegenSearcher(Calculator):
         self.gap = gap
         self.kmax = kmax
         self.kstep_max = kstep_max
+        self.resolution = resolution
 
     def call_1k(self, ik, iband, E_K, H1, k0, r):
         E = E_K[ik]
@@ -164,7 +166,7 @@ class DegenSearcher(Calculator):
         else:
             # print (f"degenerate points found: {degen_kpoints}")
             degen_kpoints[:, :3] += k0[None, :]
-            return degen_kpoints
+            return clean_repeat(degen_kpoints, resolution=self.resolution)
 
 
     def __call__(self, data_K):
@@ -181,6 +183,10 @@ class DegenSearcher(Calculator):
             degeneracies = np.vstack(degeneracies)
             # Transform kpoints from cartesian to the reciprocal lattice
             degeneracies[:, :3] = degeneracies[:, :3].dot(np.linalg.inv(data_K.Kpoint.pointgroup.recip_lattice))
-            return DegenResult(dic={self.iband: degeneracies}, recip_lattice=data_K.Kpoint.pointgroup.recip_lattice, save_mode=self.save_mode)
+            return DegenResult(dic={self.iband: degeneracies}, recip_lattice=data_K.Kpoint.pointgroup.recip_lattice, 
+                               save_mode=self.save_mode,
+                               resolution=self.resolution)
         else:
-            return DegenResultEmpty()
+            return DegenResultEmpty(save_mode=self.save_mode)
+        
+

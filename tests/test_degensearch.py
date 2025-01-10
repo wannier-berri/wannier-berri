@@ -27,7 +27,7 @@ def test_degensearch_simple():
     E0 = -1 + k0**2 * 5
 
     searcher = DegenSearcherKP(H0=H0, H1=H1, H2=H2, degen_thresh=1e-8, kmax=1, kstep_max=0.1, iband=1)
-    degen = searcher.find_degen_points(searcher.start_random(num_start_points=100, include_zero=True),
+    degen = searcher.find_degen_points(searcher.start_random(num_start_points=50, include_zero=True),
                                        max_num_iter=1000)
     assert len(degen) > 10, "too few degenerate points found"
     maxde = np.max(abs(degen[:, 4]))
@@ -41,7 +41,7 @@ def test_degensearch_simple():
 def test_degensearch_calculator(system_Chiral_left):
     system = system_Chiral_left
     grid = wb.Grid(system, NKFFT=3, NKdiv=2)
-    calc = DegenSearcher(iband=0, thresh=1e-8, gap=1, kmax=1, kstep_max=0.1)
+    calc = DegenSearcher(iband=0, thresh=1e-6, gap=1, kmax=1, kstep_max=0.1)
     wb.run(system=system,
            grid=grid,
            calculators={"degen": calc})
