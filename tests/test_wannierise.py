@@ -75,7 +75,7 @@ def test_wanierise():
 
 
     systems["wberri_symmetrized"].symmetrize2(symmetrizer=symmetrizer)
-    
+
     # Now calculate bandstructure for each of the systems
     # for creating a path any of the systems will do the job
     system0 = list(systems.values())[0]

@@ -61,7 +61,7 @@ class TABresult(Result):
 
     def savedata(self, name, prefix, suffix, i_iter):
         if i_iter > 0:
-            pass  # so far do nothing on iterations, chang in future
+            pass  # so far do nothing on iterations, change in future
         elif self.mode == "grid":
             self.self_to_grid()
             if "frmsf" in self.save_mode or "txt" in self.save_mode:

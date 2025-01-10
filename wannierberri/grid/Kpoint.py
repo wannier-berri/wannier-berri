@@ -74,6 +74,21 @@ class KpointBZ():
         self.check_evaluated
         return self.res * self.factor
 
+    @cached_property
+    def dK_fullBZ(self):
+        return self.dK / self.NKFFT
+
+    @cached_property
+    def dK_fullBZ_cart(self):
+        return self.dK_fullBZ[:, None] * self.pointgroup.recip_lattice
+
+    @cached_property
+    def radius(self):
+        """maximum distance from the K-point to any of the corners of the surroundin parallelagram"""
+        dk = self.dK_fullBZ_cart / 2
+        k_list = [dk[0] * i + dk[1] * j + dk[2] * k for i in [-1, 1] for j in [-1, 1] for k in [-1, 1]]
+        return np.linalg.norm(k_list, axis=1).max()
+
 
 class KpointBZpath(KpointBZ):
 
@@ -86,14 +101,6 @@ class KpointBZpath(KpointBZ):
 
 class KpointBZparallel(KpointBZ):
     "describes a Kpoint and the surrounding parallelagramm of size dK x dK x dK"
-
-    @cached_property
-    def dK_fullBZ(self):
-        return self.dK / self.NKFFT
-
-    @cached_property
-    def dK_fullBZ_cart(self):
-        return self.dK_fullBZ[:, None] * self.pointgroup.recip_lattice
 
     @cached_property
     def star(self):
