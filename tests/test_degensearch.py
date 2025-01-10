@@ -38,10 +38,30 @@ def test_degensearch_simple():
     assert dk < 1e-8, f"the k  deviates from {k0} by {dk}>=1e-8"
 
 
-def test_degensearch_calculator(system_Chiral_left):
-    system = system_Chiral_left
-    grid = wb.Grid(system, NKFFT=3, NKdiv=2)
-    calc = DegenSearcher(iband=0, thresh=1e-6, gap=1, kmax=1, kstep_max=0.1)
-    wb.run(system=system,
+def test_degensearch_calculator():
+    chiral = wb.models.Chiral(delta=1,hop1=1,hop2=1)
+    system = wb.System_PythTB(chiral)
+    grid = wb.Grid(system, NKFFT=3, NKdiv=4)
+    print (f"reciprocal lattice {system.recip_lattice}")
+    print (f"real lattice {system.real_lattice}")
+    calculators={}
+    calculators["degen"] = DegenSearcher(iband=0, thresh=1e-9, gap=1, kmax=1.1, 
+                         kstep_max=0.1, resolution=1e-5)
+    Efermi = np.arange(-10, 10, 0.01)
+    # calculators["dos"] = wb.calculators.static.DOS(tetra=True,
+    #                                                Efermi=Efermi)
+    
+    results = wb.run(system=system,
            grid=grid,
-           calculators={"degen": calc})
+           calculators=calculators,
+           use_irred_kpt=False)
+    
+    if "dos" in results.results:
+        import matplotlib.pyplot as plt
+        plt.plot(Efermi, results.results["dos"].data)
+        plt.show()
+    
+    kp = results.results["degen"].dic[0][:,:3]
+    for k in kp:
+        r=wb.evaluate_k(system, k=k, quantities=["energy"])
+        print (k,r, r[1]-r[0])

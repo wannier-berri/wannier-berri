@@ -111,17 +111,14 @@ class DegenSearcherKP:
     def start_random(self, num_start_points=100, include_zero=True):
         if include_zero:
             return np.vstack(([[0] * self.ndim], self.start_random(num_start_points=num_start_points, include_zero=False)))
-        if self.ndim == 1:
-            return (np.random.random(num_start_points) - 0.5) * 2 * self.kmax
-        r = np.random.random(num_start_points) * self.kmax
-        phi = np.random.random(num_start_points) * 2 * np.pi
-        kx, ky = np.cos(phi), np.sin(phi)
-        if self.ndim == 2:
-            return np.array([kx, ky]).T * r
-        elif self.ndim == 3:
-            theta = np.random.random(num_start_points) * np.pi
-            sintheta = np.sin(theta)
-            return r[:, None] * np.array([sintheta * kx, sintheta * ky, np.cos(theta)]).T
+        if self.ndim == 3:
+            num_start_points = int(np.ceil(6/np.pi*num_start_points))
+        elif self.ndim == 2: 
+            num_start_points =  int(np.ceil(4/np.pi*num_start_points))
+        k = np.random.random( (num_start_points,self.ndim)) * 2 - 1
+        k = k[np.linalg.norm(k, axis=1) < 1]*self.kmax
+        return k
+        
 
 
 class DegenSearcher(Calculator):
@@ -140,6 +137,7 @@ class DegenSearcher(Calculator):
 
     def call_1k(self, ik, iband, E_K, H1, k0, r):
         E = E_K[ik]
+        print (f"ik={ik} E={E} k0={k0}")
         # first, find the group of bands well separated by a gap
         for i in range(iband - 1, -1, -1):
             if E[i + 1] - E[i] > self.gap:
@@ -153,28 +151,33 @@ class DegenSearcher(Calculator):
                 break
         else:
             imax = len(E)
+        assert imax - imin >=2 , f"at least 2 bands must be included in the hamiltonian found {imin}:{imax}"
         # print (f"out of energies {E} for bands {iband},{iband+1} included {imin}:{imax}")
         inn = np.arange(imin, imax)
         out = np.concatenate((np.arange(0, imin), np.arange(imax, len(E))))
         h0 = np.diag(E[inn])
         h1 = H1.nn(ik, inn, out)
-        searcher = DegenSearcherKP(h0, h1, iband=iband - imin, degen_thresh=self.thresh,
+        searcher = DegenSearcherKP(H0=h0, H1=h1, iband=iband - imin, degen_thresh=self.thresh,
                                    kmax=r, kstep_max=self.kstep_max * r,)
-        degen_kpoints = searcher.find_degen_points(searcher.start_random())
+        degen_kpoints = searcher.find_degen_points(
+                    searcher.start_random())
         if len(degen_kpoints) == 0:
             return None
         else:
             # print (f"degenerate points found: {degen_kpoints}")
             degen_kpoints[:, :3] += k0[None, :]
-            return clean_repeat(degen_kpoints, resolution=self.resolution)
+            degen_kpoints = clean_repeat(degen_kpoints, resolution=self.resolution)
+            print (f"degenerate points found: {degen_kpoints}")
+            return degen_kpoints
 
 
     def __call__(self, data_K):
         H1 = data_K.covariant("Ham", gender=1)
         E_K = data_K.E_K
         degeneracies = []
-        kp = data_K.kpoints_all
+        kp = data_K.kpoints_all_cart
         r = data_K.Kpoint.radius
+        print (f"radius = {r}")
         for ik in range(len(E_K)):
             newk = self.call_1k(ik, self.iband, E_K=E_K, H1=H1, k0=kp[ik], r=r)
             if newk is not None:
@@ -182,7 +185,7 @@ class DegenSearcher(Calculator):
         if len(degeneracies) > 0:
             degeneracies = np.vstack(degeneracies)
             # Transform kpoints from cartesian to the reciprocal lattice
-            degeneracies[:, :3] = degeneracies[:, :3].dot(np.linalg.inv(data_K.Kpoint.pointgroup.recip_lattice))
+            degeneracies[:, :3] = data_K.k_cartesian_to_reduced(degeneracies[:, :3])
             return DegenResult(dic={self.iband: degeneracies}, recip_lattice=data_K.Kpoint.pointgroup.recip_lattice, 
                                save_mode=self.save_mode,
                                resolution=self.resolution)

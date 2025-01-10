@@ -70,6 +70,8 @@ def get_transform_TR(name, der=0):
         return transform_odd
     else:
         return transform_ident
+    
+        
 
 
 class _Data_K(System, abc.ABC):
@@ -122,6 +124,8 @@ class _Data_K(System, abc.ABC):
         self.select_K = np.ones(self.nk, dtype=bool)
         #   self.findif = grid.findif
         self.real_lattice = system.real_lattice
+        self.recip_lattice = system.recip_lattice
+        self.recip_lattice_inv = np.linalg.inv(self.recip_lattice)
         self.num_wann = self.system.num_wann
         self.Kpoint = Kpoint
         self.nkptot = self.NKFFT[0] * self.NKFFT[1] * self.NKFFT[2]
@@ -150,6 +154,11 @@ class _Data_K(System, abc.ABC):
 
     ###############################################################
 
+    def k_cartesian_to_reduced(self, k_cart):
+        k = np.dot(k_cart, self.recip_lattice_inv) %1
+        k[1-k< 1e-8] = 0
+        return k
+
     ###########
     #  TOOLS  #
     ###########
@@ -174,6 +183,11 @@ class _Data_K(System, abc.ABC):
     @cached_property
     def kpoints_all(self):
         return (self.grid.points_FFT + self.dK[None]) % 1
+    
+    @cached_property
+    def kpoints_all_cart(self):
+        return self.kpoints_all.dot(self.recip_lattice)
+    
 
     @cached_property
     def nk(self):

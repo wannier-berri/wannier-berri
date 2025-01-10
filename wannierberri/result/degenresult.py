@@ -60,7 +60,7 @@ class DegenResult(Result):
         f = open(name, "w")
         for k, v in self.dic.items():
             f.write(f"#degeneracies between bands {k} nad {k + 1}\n")
-            f.write("k1, k2, k3, E, gap\n")
+            f.write("# k1, k2, k3, E, gap\n")
             np.savetxt(f, v)
             f.write("\n\n")
         f.close()
@@ -77,9 +77,11 @@ class DegenResult(Result):
     def transform(self, sym):
         dic = {}
         for k, v in self.dic.items():
-            v1 = v.copy()
-            v1[:, :3] = sym.transform_reduced_vector(v1[:, :3], self.recip_lattice)
-            dic[k] = v1
+            v1 = sym.transform_reduced_vector(v[:, :3], self.recip_lattice) %1
+            v1[1-v1<1e-8]=0
+            v2 = np.copy(v)
+            v2[:, :3] = v1
+            dic[k] = v2
         return DegenResult(dic=dic, save_mode=self.save_mode, recip_lattice=self.recip_lattice,
                            resolution=self.resolution)
 
@@ -108,11 +110,6 @@ def clean_repeat(array, resolution=1e-6):
     """
     if len(array) == 0:
         return array
-    # return array
     array_i = np.round(array[:,:3] / resolution).astype(int)
-    print ("array\n",array)
-    print ("array_i\n",array_i)
     _, idx = np.unique(array_i, axis=0, return_index=True)
-    print("idx:",idx)
-    print ("reduced array\n", array[idx])
     return array[idx]
