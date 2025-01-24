@@ -446,9 +446,10 @@ class CheckPoint:
     def apply_window(self, selected_bands):
         if selected_bands is not None:
             self.num_bands = sum(selected_bands)
-            for ik in range(self.num_kpts):
-                if hasattr(self, "v_matrix"):
-                    self.v_matrix[ik] = self.v_matrix[ik][:, selected_bands]
+            if hasattr(self, "v_matrix"):
+                for ik in range(self.num_kpts):
+                    if hasattr(self, "v_matrix"):
+                        self.v_matrix[ik] = self.v_matrix[ik][:, selected_bands]
             print(np.min(np.where(selected_bands)[0]))
             win_min = np.min(np.where(selected_bands)[0])
             win_max = np.max(np.where(selected_bands)[0]) + 1

@@ -42,7 +42,7 @@ def test_wanierise():
     symmetrizer.spacegroup.show()
     symmetrizer.to_w90_file(prefix)
     # Read the data from the Wanier90 inputs
-    w90data = wberri.w90files.Wannier90data(seedname=prefix)
+    w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["amn", "mmn", "eig", "win"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     # Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
     w90data.wannierise(
@@ -189,7 +189,7 @@ def test_create_sawf_Fe(check_sawf, include_TR):
 @pytest.mark.parametrize("include_TR", [True, False])
 def test_sitesym_Fe(include_TR):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
-    w90data = wberri.w90files.Wannier90data(seedname=path_data + "/Fe")
+    w90data = wberri.w90files.Wannier90data(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"])
 
     symmetrizer = SymmetrizerSAWF().from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
     w90data.set_symmetrizer(symmetrizer)
