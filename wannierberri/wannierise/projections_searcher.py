@@ -48,6 +48,7 @@ class EBRsearcher:
                 ):
         from spgrep.representation import get_character
         spacegroup = symmetrizer.spacegroup
+        self.eig = symmetrizer.eig_irr.copy()
         assert not spacegroup.spinor, "EBRsearcher does not work with spinors"
         assert 0 < spacegroup.number <= 230, f"EBRsearcher works only with non-magnetic spacegroups which are numbered 1-230, not {spacegroup.number}"
         assert "magnetic" not in spacegroup.name, "EBRsearcher does not work with magnetic spacegroups"
