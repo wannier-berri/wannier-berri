@@ -443,7 +443,7 @@ class CheckPoint:
     def wannier_centers(self):
         return self._wannier_centers
 
-    
+
 
 
 
