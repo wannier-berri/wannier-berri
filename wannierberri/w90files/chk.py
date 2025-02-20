@@ -481,7 +481,9 @@ class CheckPoint_bare(CheckPoint):
         if selected_bands is not None:
             assert np.any(selected_bands), "No bands selected"
             self.num_bands = sum(selected_bands)
+            print(f"before applying window\n      win_min = {self.win_min}, \n     win_max = {self.win_max}")
             win_min = np.min(np.where(selected_bands)[0])
             win_max = np.max(np.where(selected_bands)[0]) + 1
             self.win_min = np.max([self.win_min - win_min, [0] * self.num_kpts], axis=0)
             self.win_max = self.num_bands - np.max([win_max - self.win_max, [0] * self.num_kpts], axis=0)
+            print(f"after applying window\n      win_min = {self.win_min}, \n     win_max = {self.win_max}")
