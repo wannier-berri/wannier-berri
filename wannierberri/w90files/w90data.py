@@ -501,7 +501,7 @@ class Wannier90data:
                 print(f"key = {key} ,number of bands = {val.NB}")
             if key == 'chk':
                 print(f"key = {key} ,number of bands = {val.num_bands}")
-        self.chk.apply_window(new_selected_bands)
+        # self.chk.apply_window(new_selected_bands)
         for key in FILES_CLASSES:
             if key in self._files:
                 if key == 'win':
