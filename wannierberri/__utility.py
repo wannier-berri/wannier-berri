@@ -405,8 +405,15 @@ class UniqueList(list):
     unlike set, the order of elements is preserved.
     """
 
-    def __init__(self, iterator=[], count=False):
+    def _equal(self, a, b):
+        if self.tolerance > 0:
+            return np.allclose(a, b, atol=self.tolerance)
+        else:
+            return a == b
+
+    def __init__(self, iterator=[], count=False, tolerance=-1):
         super().__init__()
+        self.tolerance = tolerance
         self.do_count = count
         if self.do_count:
             self.counts = []
@@ -415,7 +422,7 @@ class UniqueList(list):
 
     def append(self, item, count=1):
         for j, i in enumerate(self):
-            if i == item:
+            if self._equal(i,item):
                 if self.do_count:
                     self.counts[self.index(i)] += count
                 break
@@ -425,20 +432,28 @@ class UniqueList(list):
                 self.counts.append(1)
 
     def index(self, value: Any, start=0, stop=sys.maxsize) -> int:
+        stop = min(stop, len(self))
         for i in range(start, stop):
-            if self[i] == value:
+            if self._equal(self[i],value):
                 return i
         raise ValueError(f"{value} not in list")
+    
+    def index_or_None(self, value: Any, start=0, stop=sys.maxsize) -> int:
+        stop = min(stop, len(self))
+        for i in range(start, stop):
+            if self._equal(self[i],value):
+                return i
+        return None
 
     def __contains__(self, item):
         for i in self:
-            if i == item:
+            if self._equal(i,item):
                 return True
         return False
 
     def remove(self, value: Any, all=False) -> None:
         for i in range(len(self)):
-            if self[i] == value:
+            if self._equal(self[i], value):
                 if all or not self.do_count:
                     del self[i]
                     del self.counts[i]

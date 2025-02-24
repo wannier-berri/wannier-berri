@@ -111,6 +111,11 @@ class WyckoffPosition:
     # def orbit_lambda(self):
     #     return lambda *args: self.rotations.dot(self.wyckoff_position_lambda(*args)) + self.translations
 
+    @cached_property
+    def rotations_cart(self):
+        lattice_T = self.spacegroup.lattice.T
+        lattice_inv_T = np.linalg.inv(lattice_T)
+        return [ lattice_T @ R @ lattice_inv_T for R in self.rotations]
 
     @cached_property
     def free_vars(self):
@@ -222,14 +227,25 @@ class WyckoffPositionNumeric(WyckoffPosition):
             positions = positions.reshape(-1, 3)
         self.spacegroup = spacegroup
         self.string = ", ".join(f"{x}" for x in positions[0])
-        positions = np.array(positions)
-        orbit0 = get_orbit(spacegroup, positions[0])
+        orbit0, rotations, translations = orbit_and_rottrans(spacegroup, positions[0])
+        self.rotations=[]
+        self.translations=[]
+        orbit0 = UniqueListMod1(orbit0)
         orbit = UniqueListMod1()
+
+        def add_pos_and_rottrans(pos):
+            ind = orbit0.index(pos)
+            l = len(orbit)
+            orbit.append(pos)
+            if len(orbit)>l:
+                self.rotations.append(rotations[ind])
+                self.translations.append(translations[ind])
+
         for pos in positions:
             assert pos in orbit0, f"Position {pos} is not in the orbit of the first position {positions[0]}"
-            orbit.append(pos)
+            add_pos_and_rottrans(pos)
         for pos in orbit0:
-            orbit.append(pos)
+            add_pos_and_rottrans(pos)
         self._positions = np.array(orbit)
         self.num_points = self._positions.shape[0]
 

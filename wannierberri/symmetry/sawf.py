@@ -9,7 +9,7 @@ from ..wannierise.projections import ProjectionsSet
 
 from ..w90files import DMN
 from .Dwann import Dwann
-from .orbitals import OrbitalRotator
+from .orbitals import OrbitalRotator, OrbitalRotator2
 
 
 class SymmetrizerSAWF(DMN):
@@ -77,26 +77,25 @@ class SymmetrizerSAWF(DMN):
 
     @cached_property
     def orbital_rotator(self):
-        return OrbitalRotator([symop.rotation_cart for symop in self.spacegroup.symmetries])
+        return OrbitalRotator2()
+        # return OrbitalRotator([symop.rotation_cart for symop in self.spacegroup.symmetries])
 
 
     def set_D_wann_from_projections(self,
-                                    projections=None,
-                                    projections_obj=None,
+                                    projections,
                                     kpoints=None,
                                     ):
         """
         Parameters
         ----------
-        projections : list( (np.array(float, shape=(3,)), str) )
-            the list of projections. Each projection is a tuple of the position and the orbital name. e.g [(np.array([0, 0, 0]), "s"), (np.array([0, 0.5, 0.5]), "p")]
-        projections_obj : ProjectionsSet or list(Projection)
+        projections : ProjectionsSet or list(Projection)
             alternative way to provide the projections. Will be appended to the projections list
         kpoints : np.array(float, shape=(npoints,3,))
             the kpoints in fractional coordinates (neede only if the kpoints are not stored in the object yet) 
         """
-        if projections is None:
-            projections = []
+        # a list of tuples (positions, orbital_string, basis_list)
+        projections_list = []
+
         if not hasattr(self, "kpoints_all") or self.kpoints_all is None:
             if kpoints is None:
                 warnings.warn("kpoints are not provided, neither stored in the object. Assuming Gamma point only")
@@ -104,24 +103,26 @@ class SymmetrizerSAWF(DMN):
             self.kpoints_all = kpoints
             self._NK = len(kpoints)
 
-        if projections_obj is not None:
-            if isinstance(projections_obj, ProjectionsSet):
-                projections_obj = projections_obj.projections
-            for proj in projections_obj:
-                orbitals = proj.orbitals
-                print(f"orbitals = {orbitals}")
-                if len(orbitals) > 1:
-                    warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
-                for orb in orbitals:
-                    projections.append((proj.positions, orb))
+        if isinstance(projections, ProjectionsSet):
+            projections = projections.projections
+        for proj in projections:
+            orbitals = proj.orbitals
+            basis_list = proj.basis_list
+            print(f"orbitals = {orbitals}")
+            if len(orbitals) > 1:
+                warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
+            for orb in orbitals:
+                projections_list.append((proj.positions, orb, basis_list))
 
         D_wann_list = []
         self.T_list = []
         self.atommap_list = []
         self.rot_orb_list = []
-        for positions, proj in projections:
+        for positions, proj, basis_list in projections_list:
             print(f"calculating Wannier functions for {proj} at {positions}")
-            _Dwann = Dwann(spacegroup=self.spacegroup, positions=positions, orbital=proj, orbital_rotator=self.orbital_rotator, spinor=self.spacegroup.spinor)
+            _Dwann = Dwann(spacegroup=self.spacegroup, positions=positions, orbital=proj, orbital_rotator=self.orbital_rotator, 
+                           spinor=self.spacegroup.spinor,
+                           basis_list=basis_list)
             _dwann = _Dwann.get_on_points_all(kpoints=self.kpoints_all, ikptirr=self.kptirr, ikptirr2kpt=self.kptirr2kpt)
             D_wann_list.append(_dwann)
             self.T_list.append(_Dwann.T)

@@ -527,7 +527,7 @@ class WorkflowQE:
         if enforce or not self.flags.check('dmn'):
             dmn_new = DMN(empty=True)
             dmn_new.from_irrep(bandstructure)
-            dmn_new.set_D_wann_from_projections(projections_obj=self.projections, spinor=self.spinor)
+            dmn_new.set_D_wann_from_projections(self.projections)
             dmn_new.to_w90_file(self.prefix)
             self.flags.on('dmn')
 

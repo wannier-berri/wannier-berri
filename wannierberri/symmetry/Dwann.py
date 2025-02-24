@@ -51,6 +51,7 @@ class Dwann:
 
     def __init__(self, spacegroup, positions, orbital="_",
                 orbital_rotator=None,
+                basis_list=None,
                  spinor=False):
 
         self.nsym = spacegroup.size
@@ -63,7 +64,8 @@ class Dwann:
 
         if orbital != "_":
             assert orbital_rotator is not None
-            self.rot_orb = [orbital_rotator(orbital, i)
+            assert basis_list is not None
+            self.rot_orb = [orbital_rotator(orbital, spacegroup.symmetries[i].rotation_cart)
                        for i in range(self.nsym)]
             self.num_orbitals_scal = num_orbitals(orbital)
         else:

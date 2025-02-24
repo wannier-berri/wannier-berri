@@ -6,6 +6,8 @@ from scipy.special import spherical_jn
 from scipy.interpolate import CubicSpline
 from scipy.integrate import trapezoid
 from scipy.constants import physical_constants
+
+from wannierberri.__utility import UniqueList
 bohr_radius_angstrom = physical_constants["Bohr radius"][0] * 1e10
 
 # Note: in the Dwann it is assumed that all orbitals are REAL, so under TR one does not need to take complex conjugate
@@ -224,6 +226,25 @@ class OrbitalRotator:
             rot_glb = self.rotations_cart[isym]
             self.results_dict[(isym, orb_symbol)] = self.orbitals.rot_orb(orb_symbol, rot_glb)
         return self.results_dict[(isym, orb_symbol)]
+
+class OrbitalRotator2:
+
+    def __init__(self):
+        self.calcualted_matrices = UniqueList(tolerance=1e-4)
+        self.orbitals = get_orbitals()
+        self.results_dict = {}
+
+    def __call__(self, orb_symbol, rot_cart):
+        irot = self.calcualted_matrices.index_or_None(rot_cart)
+        if irot is None:
+            irot = len(self.calcualted_matrices)
+            self.calcualted_matrices.append(rot_cart)
+        if (irot, orb_symbol) not in self.results_dict:
+            self.results_dict[(irot, orb_symbol)] = self.orbitals.rot_orb(orb_symbol, rot_cart)
+            print (f"not found {irot, orb_symbol}: rot_cart = {rot_cart}")
+        else:
+            print (f"found {irot, orb_symbol}")
+        return self.results_dict[(irot, orb_symbol)]
 
 
 class Projector:

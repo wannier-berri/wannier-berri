@@ -324,3 +324,6 @@ def char_to_vector(characters, irreps_conj, froce_int=False, atol=1e-3):
         return vec_round.astype(int)
     else:
         return np.ceil(np.round(vec, 3)).astype(int)
+
+
+

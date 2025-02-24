@@ -157,7 +157,7 @@ def test_create_sawf_diamond(check_sawf):
 
     projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
     sawf_new = SymmetrizerSAWF().from_irrep(bandstructure)
-    sawf_new.set_D_wann_from_projections(projections_obj=[projection])
+    sawf_new.set_D_wann_from_projections([projection])
 
     tmp_sawf_path = os.path.join(OUTPUT_DIR, "diamond")
     sawf_new.to_npz(tmp_sawf_path + ".sawf.npz")
@@ -178,7 +178,10 @@ def test_create_sawf_Fe(check_sawf, include_TR):
                                 normalize=False, magmom=[[0, 0, 1]], include_TR=include_TR)
     sawf_new = SymmetrizerSAWF().from_irrep(bandstructure)
     pos = [[0, 0, 0]]
-    sawf_new.set_D_wann_from_projections(projections=[(pos, 's'), (pos, 'p'), (pos, 'd')])
+    proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
+    proj_p = Projection(position_num=pos, orbital='p', spacegroup=bandstructure.spacegroup)
+    proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
+    sawf_new.set_D_wann_from_projections(projections=[proj_s, proj_p, proj_d])
     tmp_sawf_path = os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}.sawf.npz")
     sawf_new.to_npz(tmp_sawf_path)
     sawf_ref = SymmetrizerSAWF().from_npz(os.path.join(REF_DIR, "sawf", f"Fe_TR={include_TR}.sawf.npz"))

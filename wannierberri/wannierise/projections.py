@@ -45,6 +45,13 @@ class Projection:
         if true, create an empty object, to be filled later
     wyckoff_position : WyckoffPosition or WyckoffPositionNumeric
         The wyckoff position of the projection. If provided, the position_num and position_str nd spacegroup are ignored
+    free_var_values : np.array(shape=(n,), dtype=float)
+        The values of the free variables in the position_str
+    spinor : bool
+        If True, the projection is a spinor (overrides the spacegroup.spinor)
+    Attributes
+    ----------
+
     """
 
     def __init__(self,
@@ -55,7 +62,13 @@ class Projection:
                  orbital='s',
                  void=False,
                  free_var_values=None,
-                 spinor=False):
+                 spinor=None,
+                 rotate_basis=False,
+                 zaxis=None,
+                 xaxis=None):
+        
+        
+
         if void:
             return
         self.orbitals = orbital.split(";")
@@ -76,8 +89,20 @@ class Projection:
                     position_num = position_num[None, :]
                 self.wyckoff_position = WyckoffPositionNumeric(positions=position_num,
                                                     spacegroup=spacegroup)
-            spinor = spacegroup.spinor
+        if spinor is None:
+            if spacegroup is not None:
+                spinor = spacegroup.spinor
+            elif wyckoff_position is not None:
+                spinor = wyckoff_position.spacegroup.spinor 
+            else:
+                spinor = False
         self.spinor = spinor
+
+        if rotate_basis:
+            basis0 = read_xzaxis(xaxis, zaxis)
+            self.basis_list = [np.dot(rot,basis0) for rot in self.wyckoff_position.rotations_cart]
+        else:
+            self.basis_list = [np.eye(3, dtype=float)]  * self.wyckoff_position.num_points
 
     @property
     def positions(self):
@@ -660,3 +685,53 @@ def orbit_and_rottrans(spacegroup, p):
         rotations.append(symop.rotation)
         translations.append(symop.translation)
     return np.array(orbit), np.array(rotations), np.array(translations)
+
+
+def read_xzaxis(xaxis, zaxis):
+    if zaxis is not None:
+        zaxis = np.array (zaxis)
+        assert zaxis.shape == (3,), f"zaxis should be a 3-vector, not an array of {zaxis.shape}"
+        assert np.linalg.norm(zaxis) > 1e-3, f"zaxis should be a non-zero vector, found length {np.linalg.norm(zaxis)}"
+        zaxis = zaxis / np.linalg.norm(zaxis)
+    if xaxis is not None:
+        xaxis = np.array (xaxis)
+        assert xaxis.shape == (3,), f"xaxis should be a 3-vector, not an array of {xaxis.shape}"
+        assert np.linalg.norm(xaxis) > 1e-3, f"xaxis should be a non-zero vector, found length {np.linalg.norm(xaxis)}"
+        xaxis = xaxis / np.linalg.norm(xaxis)
+    
+    match (xaxis, zaxis):
+        case (None, None):    
+            return np.eye(3, dtype=float)
+        case (None, _):
+            xaxis = get_perpendicular_coplanar_vector(zaxis, np.array([1, 0, 0]))
+        case (_, None):
+            zaxis = get_perpendicular_coplanar_vector(xaxis, np.array([0, 0, 1]))
+        case (_,_):
+            assert np.abs(np.dot(xaxis, zaxis)) < 1e-3, f"xaxis and zaxis should be orthogonal, found dot product of normalized vectors : {np.dot(xaxis, zaxis)}"
+    yaxis = np.cross(zaxis, xaxis)
+    return np.array( [xaxis, yaxis, zaxis])
+
+
+
+def get_perpendicular_coplanar_vector(a,b):
+    """return a vector c perpendicular to a and coplanar with both a and b and such that (b.c)>0
+
+    Parameters
+    ----------
+    a : np.ndarray(3,)
+        The first vector
+    b : np.ndarray(3,)
+        The second vector
+
+    Returns
+    -------
+    np.ndarray(3,)
+        The perpendicular vector(normalized)
+    """
+    c = np.cross(a, b)
+    if np.linalg.norm(c) > 1e-5:
+        c = np.cross(c,a)
+        return c/np.linalg.norm(c)
+    else:
+        raise ValueError(f"the vectors {a} and {b} are collinear, their cross product is {c}, norm {np.linalg.norm(c)}")
+    
