@@ -227,6 +227,7 @@ class OrbitalRotator:
             self.results_dict[(isym, orb_symbol)] = self.orbitals.rot_orb(orb_symbol, rot_glb)
         return self.results_dict[(isym, orb_symbol)]
 
+
 class OrbitalRotator2:
 
     def __init__(self):
@@ -241,9 +242,9 @@ class OrbitalRotator2:
             self.calcualted_matrices.append(rot_cart)
         if (irot, orb_symbol) not in self.results_dict:
             self.results_dict[(irot, orb_symbol)] = self.orbitals.rot_orb(orb_symbol, rot_cart)
-            print (f"not found {irot, orb_symbol}: rot_cart = {rot_cart}")
-        else:
-            print (f"found {irot, orb_symbol}")
+            # print(f"not found {irot, orb_symbol}: rot_cart = {rot_cart}")
+        # else:
+            # print(f"found {irot, orb_symbol}")
         return self.results_dict[(irot, orb_symbol)]
 
 

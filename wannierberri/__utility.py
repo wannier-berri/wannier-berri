@@ -422,7 +422,7 @@ class UniqueList(list):
 
     def append(self, item, count=1):
         for j, i in enumerate(self):
-            if self._equal(i,item):
+            if self._equal(i, item):
                 if self.do_count:
                     self.counts[self.index(i)] += count
                 break
@@ -434,20 +434,20 @@ class UniqueList(list):
     def index(self, value: Any, start=0, stop=sys.maxsize) -> int:
         stop = min(stop, len(self))
         for i in range(start, stop):
-            if self._equal(self[i],value):
+            if self._equal(self[i], value):
                 return i
         raise ValueError(f"{value} not in list")
-    
+
     def index_or_None(self, value: Any, start=0, stop=sys.maxsize) -> int:
         stop = min(stop, len(self))
         for i in range(start, stop):
-            if self._equal(self[i],value):
+            if self._equal(self[i], value):
                 return i
         return None
 
     def __contains__(self, item):
         for i in self:
-            if self._equal(i,item):
+            if self._equal(i, item):
                 return True
         return False
 

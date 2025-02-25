@@ -115,7 +115,7 @@ class WyckoffPosition:
     def rotations_cart(self):
         lattice_T = self.spacegroup.lattice.T
         lattice_inv_T = np.linalg.inv(lattice_T)
-        return [ lattice_T @ R @ lattice_inv_T for R in self.rotations]
+        return [lattice_T @ R @ lattice_inv_T for R in self.rotations]
 
     @cached_property
     def free_vars(self):
@@ -228,8 +228,8 @@ class WyckoffPositionNumeric(WyckoffPosition):
         self.spacegroup = spacegroup
         self.string = ", ".join(f"{x}" for x in positions[0])
         orbit0, rotations, translations = orbit_and_rottrans(spacegroup, positions[0])
-        self.rotations=[]
-        self.translations=[]
+        self.rotations = []
+        self.translations = []
         orbit0 = UniqueListMod1(orbit0)
         orbit = UniqueListMod1()
 
@@ -237,7 +237,7 @@ class WyckoffPositionNumeric(WyckoffPosition):
             ind = orbit0.index(pos)
             l = len(orbit)
             orbit.append(pos)
-            if len(orbit)>l:
+            if len(orbit) > l:
                 self.rotations.append(rotations[ind])
                 self.translations.append(translations[ind])
 

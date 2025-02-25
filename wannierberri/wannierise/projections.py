@@ -49,9 +49,20 @@ class Projection:
         The values of the free variables in the position_str
     spinor : bool
         If True, the projection is a spinor (overrides the spacegroup.spinor)
-    Attributes
-    ----------
+    rotate_basis : bool
+        If True, the basis for the projection is rotated for each site according to the spacegroup (experimental)
+        If False, the basis is the same for all sites (old behaviour)
+    zaxis : np.array(shape=(3,), dtype=float)
+        The z-axis of the basis, if rotate_basis is True
+    xaxis : np.array(shape=(3,), dtype=float)
+        The x-axis of the basis, if rotate_basis is True
 
+    Notes
+    -----
+    * if both xaxis and zaxis are provided, they should be orthogonal
+    * if only one of xaxis and zaxis is provided, the other is calculated as the perpendicular vector, coplanar with the provided one and the default one
+    * if neither xaxis nor zaxis are provided, the default basis is used
+    * the yaxis is calculated as the cross product of zaxis and xaxis
     """
 
     def __init__(self,
@@ -66,8 +77,8 @@ class Projection:
                  rotate_basis=False,
                  zaxis=None,
                  xaxis=None):
-        
-        
+
+
 
         if void:
             return
@@ -93,16 +104,16 @@ class Projection:
             if spacegroup is not None:
                 spinor = spacegroup.spinor
             elif wyckoff_position is not None:
-                spinor = wyckoff_position.spacegroup.spinor 
+                spinor = wyckoff_position.spacegroup.spinor
             else:
                 spinor = False
         self.spinor = spinor
 
         if rotate_basis:
             basis0 = read_xzaxis(xaxis, zaxis)
-            self.basis_list = [np.dot(rot,basis0) for rot in self.wyckoff_position.rotations_cart]
+            self.basis_list = [np.dot(rot, basis0) for rot in self.wyckoff_position.rotations_cart]
         else:
-            self.basis_list = [np.eye(3, dtype=float)]  * self.wyckoff_position.num_points
+            self.basis_list = [np.eye(3, dtype=float)] * self.wyckoff_position.num_points
 
     @property
     def positions(self):
@@ -689,31 +700,31 @@ def orbit_and_rottrans(spacegroup, p):
 
 def read_xzaxis(xaxis, zaxis):
     if zaxis is not None:
-        zaxis = np.array (zaxis)
+        zaxis = np.array(zaxis)
         assert zaxis.shape == (3,), f"zaxis should be a 3-vector, not an array of {zaxis.shape}"
         assert np.linalg.norm(zaxis) > 1e-3, f"zaxis should be a non-zero vector, found length {np.linalg.norm(zaxis)}"
         zaxis = zaxis / np.linalg.norm(zaxis)
     if xaxis is not None:
-        xaxis = np.array (xaxis)
+        xaxis = np.array(xaxis)
         assert xaxis.shape == (3,), f"xaxis should be a 3-vector, not an array of {xaxis.shape}"
         assert np.linalg.norm(xaxis) > 1e-3, f"xaxis should be a non-zero vector, found length {np.linalg.norm(xaxis)}"
         xaxis = xaxis / np.linalg.norm(xaxis)
-    
+
     match (xaxis, zaxis):
-        case (None, None):    
+        case (None, None):
             return np.eye(3, dtype=float)
         case (None, _):
             xaxis = get_perpendicular_coplanar_vector(zaxis, np.array([1, 0, 0]))
         case (_, None):
             zaxis = get_perpendicular_coplanar_vector(xaxis, np.array([0, 0, 1]))
-        case (_,_):
+        case (_, _):
             assert np.abs(np.dot(xaxis, zaxis)) < 1e-3, f"xaxis and zaxis should be orthogonal, found dot product of normalized vectors : {np.dot(xaxis, zaxis)}"
     yaxis = np.cross(zaxis, xaxis)
-    return np.array( [xaxis, yaxis, zaxis])
+    return np.array([xaxis, yaxis, zaxis])
 
 
 
-def get_perpendicular_coplanar_vector(a,b):
+def get_perpendicular_coplanar_vector(a, b):
     """return a vector c perpendicular to a and coplanar with both a and b and such that (b.c)>0
 
     Parameters
@@ -730,8 +741,7 @@ def get_perpendicular_coplanar_vector(a,b):
     """
     c = np.cross(a, b)
     if np.linalg.norm(c) > 1e-5:
-        c = np.cross(c,a)
-        return c/np.linalg.norm(c)
+        c = np.cross(c, a)
+        return c / np.linalg.norm(c)
     else:
         raise ValueError(f"the vectors {a} and {b} are collinear, their cross product is {c}, norm {np.linalg.norm(c)}")
-    
