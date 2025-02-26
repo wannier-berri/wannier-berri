@@ -258,18 +258,16 @@ class Projector:
             self.bessel_l[l] = self.bessel(l, self.gka_abs) * self.coef * (-1j)**l
         return self.bessel_l[l]
 
-    def __call__(self, orbital):
-        if orbital not in self.projectors:
-            self.projectors[orbital] = self._projector(orbital)
-        return self.projectors[orbital]
 
-    def _projector(self, orbital):
+    def __call__(self, orbital, basis=None):
         if orbital in hybrids_coef and orbital not in basis_orbital_list:
-            return sum(self(orb) * coef for orb, coef in hybrids_coef[orbital].items())
+            print("projector for hybrid")
+            return sum(self(orb, basis) * coef for orb, coef in hybrids_coef[orbital].items())
         else:
             l = {'s': 0, 'p': 1, 'd': 2, 'f': 3}[orbital[0]]
+            print(f"projector for orbital l={l}")
             bessel_j_exp_int = self.get_bessel_l(l)
-            spherical = self.sph(orbital)
+            spherical = self.sph(orbital, basis)
             return bessel_j_exp_int * spherical
 
 
@@ -334,6 +332,7 @@ class SphericalHarmonics:
         self.phi = phi
         self.harmonics = {}
         self.sqpi = 1 / np.sqrt(np.pi)
+        self.calcualted_basices = UniqueList(tolerance=1e-4)
 
     @cached_property
     def sintheta(self):
@@ -363,12 +362,23 @@ class SphericalHarmonics:
     def sin2theta(self):
         return 2 * self.costheta * self.sintheta
 
-    def __call__(self, orbital):
-        if orbital not in self.harmonics:
-            self.harmonics[orbital] = self._harmonics(orbital)
-        return self.harmonics[orbital]
+    @cached_property
+    def orbitalrotator(self):
+        return OrbitalRotator()
 
-    def _harmonics(self, orbital):
+    def __call__(self, orbital, basis=None):
+        if basis is None:
+            basis = np.eye(3)
+        if basis in self.calcualted_basices:
+            ibasis = self.calcualted_basices.index(basis)
+        else:
+            ibasis = len(self.calcualted_basices)
+            self.calcualted_basices.append(basis)
+        if (orbital, ibasis) not in self.harmonics:
+            self.harmonics[(orbital, ibasis)] = self._harmonics(orbital, basis)
+        return self.harmonics[(orbital, ibasis)]
+
+    def _harmonics(self, orbital, basis):
         """from here https://en.wikipedia.org/wiki/Table_of_spherical_harmonics#Real_spherical_harmonics
 
         hybrids - according to Wannier90 manual"""
@@ -378,24 +388,37 @@ class SphericalHarmonics:
             assert orbital in hybrids_coef, f"orbital {orbital} not in basis_orbital_list or hybrids_coef"
             return sum(self(orb) * coef for orb, coef in hybrids_coef[orbital].items())
         else:
-            match orbital:
-                case 's':
-                    return 1 / (2 * sq(pi)) * np.ones_like(self.costheta)
-                case 'pz':
-                    return sq(3 / (4 * pi)) * self.costheta
-                case 'px':
-                    return sq(3 / (4 * pi)) * self.sintheta * self.cosphi
-                case 'py':
-                    return sq(3 / (4 * pi)) * self.sintheta * self.sinphi
-                case 'dz2':
-                    return sq(5 / (16 * pi)) * (3 * self.costheta**2 - 1)
-                case 'dx2-y2':
-                    return sq(15 / (16 * pi)) * self.sintheta**2 * self.cos2phi
-                case 'dxy':
-                    return sq(15 / (16 * pi)) * self.sintheta**2 * self.sin2phi
-                case 'dxz':
-                    return sq(15 / (16 * pi)) * self.sin2theta * self.cosphi
-                case 'dyz':
-                    return sq(15 / (16 * pi)) * self.sin2theta * self.sinphi
-                case _:
-                    raise ValueError(f"orbital {orbital} not implemented")
+            if not np.allclose(basis, np.eye(3), atol=1e-4):
+                shell = orbital[0]
+                assert shell in basis_shells_list, f"shell {shell} not in basis_shells_list"
+                shell_list = orbitals_sets_dic[shell]
+                assert orbital in shell_list, f"orbital {orbital} not in shell {shell}"
+                shell_pos = shell_list.index(orbital)
+                print(f"basis = \n{basis}")
+                matrix = self.orbitalrotator(orbital, basis)
+                print(f"matrix = \n{matrix}")
+                vector = matrix[:, shell_pos]
+                print(f" orbital {orbital} basis = \n{basis}\n,   vector = {vector}, shell_list = {shell_list}")
+                return sum(self(o, basis=None) * k for k, o in zip(vector, shell_list))
+            else:
+                match orbital:
+                    case 's':
+                        return 1 / (2 * sq(pi)) * np.ones_like(self.costheta)
+                    case 'pz':
+                        return sq(3 / (4 * pi)) * self.costheta
+                    case 'px':
+                        return sq(3 / (4 * pi)) * self.sintheta * self.cosphi
+                    case 'py':
+                        return sq(3 / (4 * pi)) * self.sintheta * self.sinphi
+                    case 'dz2':
+                        return sq(5 / (16 * pi)) * (3 * self.costheta**2 - 1)
+                    case 'dx2-y2':
+                        return sq(15 / (16 * pi)) * self.sintheta**2 * self.cos2phi
+                    case 'dxy':
+                        return sq(15 / (16 * pi)) * self.sintheta**2 * self.sin2phi
+                    case 'dxz':
+                        return sq(15 / (16 * pi)) * self.sin2theta * self.cosphi
+                    case 'dyz':
+                        return sq(15 / (16 * pi)) * self.sin2theta * self.sinphi
+                    case _:
+                        raise ValueError(f"orbital {orbital} not implemented")

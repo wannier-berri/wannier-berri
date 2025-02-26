@@ -153,7 +153,7 @@ class SymmetrizerSAWF(DMN):
         for isym, symop in enumerate(self.spacegroup.symmetries):
             for block, (ws, _) in enumerate(self.D_wann_block_indices):
                 norb = self.rot_orb_list[block][0, 0].shape[0]
-                print(f"block={block}, isym={isym} rot_orb_list[block].shape={self.rot_orb_list[block].shape} norb={norb}")
+                # print(f"block={block}, isym={isym} rot_orb_list[block].shape={self.rot_orb_list[block].shape} norb={norb}")
                 T = self.T_list[block][:, isym]
                 num_points = T.shape[0]
                 atom_map = self.atommap_list[block][:, isym]
@@ -161,15 +161,15 @@ class SymmetrizerSAWF(DMN):
                     start_a = ws + atom_a * norb
                     atom_b = atom_map[atom_a]
                     start_b = ws + atom_b * norb
-                    print(f"block={block}, isym={isym}, atom_a={atom_a}, atom_b={atom_b}, start_a={start_a}, start_b={start_b}, norb={norb}")
+                    # print(f"block={block}, isym={isym}, atom_a={atom_a}, atom_b={atom_b}, start_a={start_a}, start_b={start_b}, norb={norb}")
                     XX_L = wcc_red_in[start_a:start_a + norb]
-                    print(f"XX_L.shape={XX_L.shape}")
+                    # print(f"XX_L.shape={XX_L.shape}")
                     if ncart > 0:
                         XX_L = symop.transform_r(XX_L) + T[atom_a]
-                    print(f"XX_L.shape={XX_L.shape}")
+                    # print(f"XX_L.shape={XX_L.shape}")
                     # XX_L = symop.transform_r(wcc_red_in[start_a:start_a + norb]) + T[atom_a]
                     # NOTE : I do not fully understand why the transpose are needed here but it works TODO  : check
-                    print(f"shapes : {self.rot_orb_dagger_list[block][atom_a,isym].shape}, {XX_L.shape}, {self.rot_orb_list[block][atom_a,isym].shape}")
+                    # print(f"shapes : {self.rot_orb_dagger_list[block][atom_a,isym].shape}, {XX_L.shape}, {self.rot_orb_list[block][atom_a,isym].shape}")
                     transformed = np.einsum("ij,j...,ji->i...", self.rot_orb_dagger_list[block][atom_a, isym].T, XX_L, self.rot_orb_list[block][atom_a, isym].T).real
                     WCC_red_out[start_b:start_b + norb] += transformed
         if ncart > 0:

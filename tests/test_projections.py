@@ -1,10 +1,16 @@
 """test auxilary functions"""
 
+import os
+import shutil
+import irrep
 import numpy as np
 from pytest import approx
 
-from wannierberri.wannierise.projections import Projection, get_perpendicular_coplanar_vector, read_xzaxis
+from tests.common import OUTPUT_DIR, ROOT_DIR
+from wannierberri.w90files.amn import amn_from_bandstructure
+from wannierberri.wannierise.projections import Projection, ProjectionsSet, get_perpendicular_coplanar_vector, read_xzaxis
 from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
+import wannierberri as wberri
 from irrep.spacegroup import SpaceGroup
 sq2 = np.sqrt(2)
 
@@ -251,3 +257,119 @@ def test_orbital_rotator_random():
         0.30418194, -0.29782511],
         [0.31348092, 0.36286243, -0.48646235, -0.56236123, 0.17347102,
         0.28107202, 0.32874179]]), abs=1e-6)
+
+
+def test_create_amn_diamond_s_bond():
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
+
+    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
+                                                      code="espresso",
+                                                    include_TR=False,
+                                                      )
+
+    projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
+
+    amn = amn_from_bandstructure(bandstructure=bandstructure, projections_set=ProjectionsSet([projection]),
+                           normalize=True, return_object=True, spinor=False)
+
+    tmp_dir = os.path.join(OUTPUT_DIR, "diamond+create_amn")
+
+    # Check if the directory exists
+    if os.path.exists(tmp_dir):
+        # Remove the directory and all its contents
+        shutil.rmtree(tmp_dir)
+        print(f"Directory {tmp_dir} has been removed.")
+    os.makedirs(tmp_dir)
+    os.chdir(tmp_dir)
+
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
+    prefix = "diamond"
+    for ext in ["mmn", "eig", "win", "sawf.npz"]:
+        shutil.copy(os.path.join(data_dir, prefix + "." + ext),
+                    os.path.join(tmp_dir, prefix + "." + ext))
+    print("prefix = ", prefix)
+    symmetrizer = SAWF().from_npz(prefix + ".sawf.npz")
+    symmetrizer.spacegroup.show()
+    w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
+    w90data.set_amn(amn)
+    w90data.set_symmetrizer(symmetrizer=symmetrizer)
+    # Now wannierise the system
+    w90data.wannierise(
+        froz_min=-8,
+        froz_max=20,
+        num_iter=0,
+        conv_tol=1e-10,
+        mix_ratio_z=0.8,
+        mix_ratio_u=1,
+        print_progress_every=20,
+        sitesym=True,
+        localise=True
+    )
+
+    wannier_centers = w90data.chk._wannier_centers
+    print("wannierr_centers = ", wannier_centers)
+    assert wannier_centers == approx(0.806995 * np.array([[0, 0, 0], [-1, 1, 0], [0, 1, 1], [-1, 0, 1]]), abs=1e-6)
+    wannier_spreads = w90data.chk._wannier_spreads
+    print("wannier_spreads = ", wannier_spreads)
+    assert wannier_spreads == approx(.398647548, abs=1e-5)
+
+
+
+def test_create_amn_diamond_p_bond():
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
+
+    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
+                                                      code="espresso",
+                                                    include_TR=False,
+                                                      )
+    lattice = bandstructure.lattice
+    positions = np.array([[1, 1, 1], [-1, -1, -1]])
+    zaxis = (positions[0] - positions[1]) @ lattice
+
+
+    projection = Projection(position_num=[0, 0, 0], orbital='pz', zaxis=zaxis, spacegroup=bandstructure.spacegroup, rotate_basis=True)
+
+    amn = amn_from_bandstructure(bandstructure=bandstructure, projections_set=ProjectionsSet([projection]),
+                           normalize=True, return_object=True, spinor=False)
+    symmetrizer = SAWF().from_irrep(bandstructure)
+    symmetrizer.set_D_wann_from_projections([projection])
+
+    tmp_dir = os.path.join(OUTPUT_DIR, "diamond+create_amn")
+
+    # Check if the directory exists
+    if os.path.exists(tmp_dir):
+        # Remove the directory and all its contents
+        shutil.rmtree(tmp_dir)
+        print(f"Directory {tmp_dir} has been removed.")
+    os.makedirs(tmp_dir)
+    os.chdir(tmp_dir)
+
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
+    prefix = "diamond"
+    for ext in ["mmn", "eig", "win"]:
+        shutil.copy(os.path.join(data_dir, prefix + "." + ext),
+                    os.path.join(tmp_dir, prefix + "." + ext))
+    print("prefix = ", prefix)
+    symmetrizer.spacegroup.show()
+    w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
+    w90data.set_amn(amn)
+    w90data.set_symmetrizer(symmetrizer=symmetrizer)
+    # Now wannierise the system
+    w90data.wannierise(
+        froz_min=-8,
+        froz_max=20,
+        num_iter=0,
+        conv_tol=1e-10,
+        mix_ratio_z=0.8,
+        mix_ratio_u=1,
+        print_progress_every=20,
+        sitesym=False,
+        localise=True
+    )
+
+    wannier_centers = w90data.chk._wannier_centers
+    print("wannierr_centers = ", wannier_centers)
+    # assert wannier_centers == approx(0.806995*np.array([[0, 0, 0], [-1,1,0], [0,1,1], [-1,0,1]]), abs=1e-6)
+    wannier_spreads = w90data.chk._wannier_spreads
+    print("wannier_spreads = ", wannier_spreads)
+    # assert wannier_spreads == approx(.398647548, abs=1e-5)
