@@ -63,6 +63,7 @@ class Projection:
     * if only one of xaxis and zaxis is provided, the other is calculated as the perpendicular vector, coplanar with the provided one and the default one
     * if neither xaxis nor zaxis are provided, the default basis is used
     * the yaxis is calculated as the cross product of zaxis and xaxis
+    * the spinor basis is NOT rotated, i.e. all wannier functions are in the sigma-z basis
 
     Attributes
     ----------

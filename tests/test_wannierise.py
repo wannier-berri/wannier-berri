@@ -218,7 +218,7 @@ def _test_create_sawf_Fe_444(check_sawf, include_TR):
 @pytest.mark.parametrize("use_window", [True, False])
 def test_sitesym_Fe(include_TR, use_window):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
-    w90data = wberri.w90files.Wannier90data(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"], read_npz=False)
+    w90data = wberri.w90files.Wannier90data(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"], read_npz=True)
 
     symmetrizer = SymmetrizerSAWF().from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
     w90data.set_symmetrizer(symmetrizer)
