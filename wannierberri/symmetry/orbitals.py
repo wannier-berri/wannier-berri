@@ -73,8 +73,6 @@ for k in basis_orbital_list:
 
 
 
-
-
 class Orbitals:
 
     def __init__(self):
@@ -214,37 +212,23 @@ def get_orbitals():
 
 class OrbitalRotator:
 
-    def __init__(self, rotations_cart):
-        self.rotations_cart = np.copy(rotations_cart)
-        if len(self.rotations_cart.shape) == 2:
-            self.rotations_cart = np.array([rotations_cart])
-        self.orbitals = get_orbitals()
-        self.results_dict = {}
-
-    def __call__(self, orb_symbol, isym=0):
-        if (isym, orb_symbol) not in self.results_dict:
-            rot_glb = self.rotations_cart[isym]
-            self.results_dict[(isym, orb_symbol)] = self.orbitals.rot_orb(orb_symbol, rot_glb)
-        return self.results_dict[(isym, orb_symbol)]
-
-
-class OrbitalRotator2:
-
     def __init__(self):
         self.calcualted_matrices = UniqueList(tolerance=1e-4)
         self.orbitals = get_orbitals()
         self.results_dict = {}
 
-    def __call__(self, orb_symbol, rot_cart):
+    def __call__(self, orb_symbol, rot_cart, basis1=None, basis2=None):
+        assert (basis1 is None) == (basis2 is None), "basis1 and basis2 should be both provided or both None"
+        if basis1 is not None:
+            print ("basis taken into account")
+            rot_cart =  basis2 @rot_cart @ basis1.T
+        print (f"rot_cart with basis= \n{rot_cart}")
         irot = self.calcualted_matrices.index_or_None(rot_cart)
         if irot is None:
             irot = len(self.calcualted_matrices)
             self.calcualted_matrices.append(rot_cart)
         if (irot, orb_symbol) not in self.results_dict:
             self.results_dict[(irot, orb_symbol)] = self.orbitals.rot_orb(orb_symbol, rot_cart)
-            # print(f"not found {irot, orb_symbol}: rot_cart = {rot_cart}")
-        # else:
-            # print(f"found {irot, orb_symbol}")
         return self.results_dict[(irot, orb_symbol)]
 
 

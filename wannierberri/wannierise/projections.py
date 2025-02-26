@@ -63,6 +63,27 @@ class Projection:
     * if only one of xaxis and zaxis is provided, the other is calculated as the perpendicular vector, coplanar with the provided one and the default one
     * if neither xaxis nor zaxis are provided, the default basis is used
     * the yaxis is calculated as the cross product of zaxis and xaxis
+
+    Attributes
+    ----------
+    orbitals : list(str)
+        The orbitals of the projection
+    wyckoff_position : WyckoffPosition or WyckoffPositionNumeric
+        The wyckoff position of the projection
+    spinor : bool
+        If True, the projection is a spinor
+    basis_list : list(np.array(shape=(3,3), dtype=float))
+        The basis for each site (row-vectors)
+    positions : np.array(shape=(n,3), dtype=float)
+        The positions of the projections
+    num_wann_per_site : int
+        The number of Wannier functions per site
+    num_points : int
+        The number of points
+    num_wann : int
+        The total number of Wannier functions
+    orbitals_str : str
+        The orbitals of the projection as one string separated by semicolons `;`
     """
 
     def __init__(self,
@@ -111,7 +132,7 @@ class Projection:
 
         if rotate_basis:
             basis0 = read_xzaxis(xaxis, zaxis)
-            self.basis_list = [np.dot(rot, basis0) for rot in self.wyckoff_position.rotations_cart]
+            self.basis_list = [np.dot(basis0, rot.T) for rot in self.wyckoff_position.rotations_cart]
         else:
             self.basis_list = [np.eye(3, dtype=float)] * self.wyckoff_position.num_points
 

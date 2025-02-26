@@ -532,7 +532,6 @@ class WorkflowQE:
             self.flags.on('dmn')
 
 
-
     def calc_bands_wannier_w90(self, kdensity=1000, enforce=False):
         if self.flags.check('bands_wannier_w90') and not enforce:
             return

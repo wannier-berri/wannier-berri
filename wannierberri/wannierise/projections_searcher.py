@@ -2,7 +2,7 @@ import numpy as np
 from termcolor import cprint
 from ..symmetry.Dwann import Dwann
 from .utility import char_to_vector, get_irreps, select_window_degen
-from ..symmetry.orbitals import OrbitalRotator2
+from ..symmetry.orbitals import OrbitalRotator
 
 
 class EBRsearcher:
@@ -56,7 +56,7 @@ class EBRsearcher:
         self.NKirr = symmetrizer.NKirr
         self.nsym_little = [len(l) for l in symmetrizer.isym_little]
         self.debug = debug
-        orbitalrotator = OrbitalRotator2()
+        orbitalrotator = OrbitalRotator()
 
         # list of list of UniqueList of Irreps for each projection [iproj][ik]
         def highlight(line):
@@ -95,7 +95,7 @@ class EBRsearcher:
                             positions=positions,
                             orbital=orb,
                             basis_list=[np.eye(3) for _ in range(len(positions))],
-                            orbital_rotator=orbitalrotator
+                            orbitalrotator=orbitalrotator
                             ).get_on_points_all(kpoints=symmetrizer.kpoints_all,
                                                 ikptirr=symmetrizer.kptirr,
                                                 ikptirr2kpt=symmetrizer.kptirr2kpt)

@@ -5,11 +5,11 @@ from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroupBare
 import numpy as np
 from ..__utility import get_inverse_block, rotate_block_matrix, orthogonalize
-from ..wannierise.projections import ProjectionsSet
+from ..wannierise.projections import Projection, ProjectionsSet
 
 from ..w90files import DMN
 from .Dwann import Dwann
-from .orbitals import OrbitalRotator2
+from .orbitals import OrbitalRotator
 
 
 class SymmetrizerSAWF(DMN):
@@ -20,7 +20,7 @@ class SymmetrizerSAWF(DMN):
     Thus the name "dmn" is kept for historical reasons, but the class is not compatible with the wannier90.dmn file
     """
 
-    def __init__(self, NK=1):
+    def __init__(self):
         self.npz_tags = ['D_wann_block_indices', '_NB',
                     'kpt2kptirr', 'kptirr', 'kptirr2kpt', 'kpt2kptirr_sym',
                    '_NK', 'num_wann', 'comment', 'NKirr', 'Nsym', 'time_reversals',]
@@ -76,14 +76,13 @@ class SymmetrizerSAWF(DMN):
         return self
 
     @cached_property
-    def orbital_rotator(self):
-        return OrbitalRotator2()
+    def orbitalrotator(self):
+        return OrbitalRotator()
         # return OrbitalRotator([symop.rotation_cart for symop in self.spacegroup.symmetries])
 
 
     def set_D_wann_from_projections(self,
                                     projections,
-                                    kpoints=None,
                                     ):
         """
         Parameters
@@ -96,14 +95,9 @@ class SymmetrizerSAWF(DMN):
         # a list of tuples (positions, orbital_string, basis_list)
         projections_list = []
 
-        if not hasattr(self, "kpoints_all") or self.kpoints_all is None:
-            if kpoints is None:
-                warnings.warn("kpoints are not provided, neither stored in the object. Assuming Gamma point only")
-                kpoints = np.array([[0, 0, 0]])
-            self.kpoints_all = kpoints
-            self._NK = len(kpoints)
-
-        if isinstance(projections, ProjectionsSet):
+        if isinstance(projections, Projection):
+            projections = [projections]
+        elif isinstance(projections, ProjectionsSet):
             projections = projections.projections
         for proj in projections:
             orbitals = proj.orbitals
@@ -120,7 +114,7 @@ class SymmetrizerSAWF(DMN):
         self.rot_orb_list = []
         for positions, proj, basis_list in projections_list:
             print(f"calculating Wannier functions for {proj} at {positions}")
-            _Dwann = Dwann(spacegroup=self.spacegroup, positions=positions, orbital=proj, orbital_rotator=self.orbital_rotator,
+            _Dwann = Dwann(spacegroup=self.spacegroup, positions=positions, orbital=proj, orbitalrotator=self.orbitalrotator,
                            spinor=self.spacegroup.spinor,
                            basis_list=basis_list)
             _dwann = _Dwann.get_on_points_all(kpoints=self.kpoints_all, ikptirr=self.kptirr, ikptirr2kpt=self.kptirr2kpt)

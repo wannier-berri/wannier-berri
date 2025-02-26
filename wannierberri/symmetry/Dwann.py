@@ -47,7 +47,7 @@ class Dwann:
     """
 
     def __init__(self, spacegroup, positions, orbital="_",
-                orbital_rotator=None,
+                orbitalrotator=None,
                 basis_list=None,
                 spinor=False):
 
@@ -66,7 +66,7 @@ class Dwann:
         self.num_points = len(self.orbit)
 
         if orbital != "_":
-            assert orbital_rotator is not None
+            assert orbitalrotator is not None
             assert basis_list is not None
             self.num_orbitals_scal = num_orbitals(orbital)
         else:
@@ -85,13 +85,13 @@ class Dwann:
         for ip, p in enumerate(self.orbit):
             for isym, symop in enumerate(spacegroup.symmetries):
                 p2 = symop.transform_r(p)
-                # print (f"ip={ip}, p={p}, isym={isym}, p2={p2}")
+                print (f"ip={ip}, p={p}, isym={isym}, p2={p2} rot_cart={symop.rotation_cart}")
                 ip2 = self.orbit.index(p2)
+                print (f"ip = {ip} basis = \n{basis_list[ip]}")
+                print (f"ip2 = {ip2} basis = \n{basis_list[ip2]}")
                 self.atommap[ip, isym] = ip2
-                rot_basis = symop.rotation_cart @ basis_list[ip] @ np.linalg.inv(basis_list[ip2])
                 if orbital != "_":
-                    self.rot_orb[ip][isym] = orbital_rotator(orbital, rot_basis)
-                p2 = symop.transform_r(p)
+                    self.rot_orb[ip][isym] = orbitalrotator(orbital, symop.rotation_cart, basis_list[ip], basis_list[ip2])
                 p2a = self.orbit[ip2]
                 self.T[ip, isym] = p2a - p2
         T_round = np.round(self.T)

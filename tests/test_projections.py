@@ -4,6 +4,7 @@ import numpy as np
 from pytest import approx
 
 from wannierberri.wannierise.projections import Projection, get_perpendicular_coplanar_vector, read_xzaxis
+from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
 from irrep.spacegroup import SpaceGroup
 sq2 = np.sqrt(2)
 
@@ -92,43 +93,171 @@ def test_readxzaxis():
 
 
 
-def test_projection_basis():
+def test_projection_basis_Telike_gen():
     lattice = np.array([[1, 0, 0], [-1 / 2, np.sqrt(3) / 2, 0], [0, 0, 1.2]])
     x = 0.2
-    y = 0.01
-    positions = np.array([[x, 0, y], [0, x, y + 1 / 3], [-x, -x, y + 2 / 3]])
+    positions = np.array([[x, 0, 0], [0, x, 1 / 3], [-x, -x, 2 / 3]])
     numbers = [1, 1, 1]
-    spacegroup = SpaceGroup(cell=(lattice, positions, numbers))
+    spacegroup = SpaceGroup(cell=(lattice, positions, numbers), spinor=False)
+    spacegroup.show()
+    for i,s in enumerate(spacegroup.symmetries):
+        print(i+1, "\n",s.rotation_cart)
     # wyckoff_pos = WyckoffPosition("x,0,0",spacegroup=spacegroup)
     # wyckoff_pos = WyckoffPositionNumeric([x,0,0],spacegroup=spacegroup)
     # for rot,tr in zip( wyckoff_pos.rotations, wyckoff_pos.translations):
     #     print (rot.dot([0.1,0,0])+tr)
     # print (wyckoff_pos.rotations)
     # print (wyckoff_pos.rotations_cart)
-    proj = Projection(position_num=[0.1, 0, 0], spacegroup=spacegroup, rotate_basis=True)
+    proj = Projection(orbital="p", position_num=[0.1, 0, 0.01], spacegroup=spacegroup, rotate_basis=True, xaxis=[1,0,0])
     print(repr(np.array(proj.basis_list)))
-    print(repr(np.array(proj.basis_list)))
-    reference = np.array([[[1., 0., 0.],
-        [0., 1., 0.],
-        [0., 0., 1.]],
+    reference = np.array([[[ 1.       ,  0.       ,  0.       ],
+        [ 0.       ,  1.       ,  0.       ],
+        [ 0.       ,  0.       ,  1.       ]],
 
-        [[-0.5, -0.8660254, 0.],
-        [0.8660254, -0.5, 0.],
-        [0., 0., 1.]],
+       [[-0.5      ,  0.8660254,  0.       ],
+        [-0.8660254, -0.5      ,  0.       ],
+        [ 0.       ,  0.       ,  1.       ]],
 
-        [[-0.5, 0.8660254, 0.],
-        [-0.8660254, -0.5, 0.],
-        [0., 0., 1.]],
+       [[-0.5      , -0.8660254,  0.       ],
+        [ 0.8660254, -0.5      ,  0.       ],
+        [ 0.       ,  0.       ,  1.       ]],
 
-        [[-0.5, 0.8660254, 0.],
-        [0.8660254, 0.5, 0.],
-        [0., 0., -1.]],
+       [[-0.5      ,  0.8660254,  0.       ],
+        [ 0.8660254,  0.5      ,  0.       ],
+        [ 0.       ,  0.       , -1.       ]],
 
-        [[1., 0., 0.],
-        [0., -1., 0.],
-        [0., 0., -1.]],
+       [[ 1.       ,  0.       ,  0.       ],
+        [ 0.       , -1.       ,  0.       ],
+        [ 0.       ,  0.       , -1.       ]],
 
-        [[-0.5, -0.8660254, 0.],
-        [-0.8660254, 0.5, 0.],
-        [0., 0., -1.]]])
+       [[-0.5      , -0.8660254,  0.       ],
+        [-0.8660254,  0.5      ,  0.       ],
+        [ 0.       ,  0.       , -1.       ]]])
     assert reference == approx(np.array(proj.basis_list), abs=1e-6)
+    symmetrizer = SAWF()
+    symmetrizer.set_spacegroup(spacegroup)
+    symmetrizer.set_D_wann_from_projections([proj])
+    print (symmetrizer.rot_orb_list[0].shape)
+    assert symmetrizer.rot_orb_list[0] - np.eye(3)[None,None,:,:] == approx(0, abs=1e-6)
+    assert symmetrizer.rot_orb_dagger_list[0] - np.eye(3)[None,None,:,:] == approx(0, abs=1e-6)
+    print (symmetrizer.D_wann_blocks)
+    print (symmetrizer.kpoints_all)
+
+
+def test_projection_basis_Telike_onatom():
+    lattice = np.array([[1, 0, 0], [-1 / 2, np.sqrt(3) / 2, 0], [0, 0, 1.2]])
+    x = 0.2
+    positions = np.array([[x, 0, 0], [0, x, 1 / 3], [-x, -x,  2 / 3]])
+    numbers = [1, 1, 1]
+    spacegroup = SpaceGroup(cell=(lattice, positions, numbers), spinor=False)
+    spacegroup.show()
+    for i,s in enumerate(spacegroup.symmetries):
+        print(i+1, "\n",s.rotation_cart)
+    # wyckoff_pos = WyckoffPosition("x,0,0",spacegroup=spacegroup)
+    # wyckoff_pos = WyckoffPositionNumeric([x,0,0],spacegroup=spacegroup)
+    # for rot,tr in zip( wyckoff_pos.rotations, wyckoff_pos.translations):
+    #     print (rot.dot([0.1,0,0])+tr)
+    # print (wyckoff_pos.rotations)
+    # print (wyckoff_pos.rotations_cart)
+    proj = Projection(orbital="p", position_num=[0.1, 0, 0], spacegroup=spacegroup, rotate_basis=True, xaxis=[1,0,0])
+    print(repr(np.array(proj.basis_list)))
+    reference = np.array([[[ 1.       ,  0.       ,  0.       ],
+        [ 0.       ,  1.       ,  0.       ],
+        [ 0.       ,  0.       ,  1.       ]],
+
+       [[-0.5      ,  0.8660254,  0.       ],
+        [-0.8660254, -0.5      ,  0.       ],
+        [ 0.       ,  0.       ,  1.       ]],
+
+       [[-0.5      , -0.8660254,  0.       ],
+        [ 0.8660254, -0.5      ,  0.       ],
+        [ 0.       ,  0.       ,  1.       ]]])
+    assert reference == approx(np.array(proj.basis_list), abs=1e-6)
+    symmetrizer = SAWF()
+    symmetrizer.set_spacegroup(spacegroup)
+    symmetrizer.set_D_wann_from_projections([proj])
+    print (symmetrizer.rot_orb_list[0].shape)
+    print (symmetrizer.rot_orb_list[0])
+    assert abs(symmetrizer.rot_orb_list[0]) - np.eye(3)[None,None,:,:] == approx(0, abs=1e-6)
+    # assert symmetrizer.rot_orb_list[0] - np.eye(3)[None,None,:,:] == approx(0, abs=1e-6)
+    # assert symmetrizer.rot_orb_daggerlist[0] - np.eye(3)[None,None,:,:] == approx(0, abs=1e-6)
+    # print (symmetrizer.D_wann_list[0])
+
+
+def test_orbital_rotator():
+    from wannierberri.symmetry.orbitals import OrbitalRotator
+    rotator = OrbitalRotator()
+    rot_matrix = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])
+    R = rotator("s", rot_matrix)
+    assert R == approx(np.eye(1), abs=1e-6)
+    R = rotator("p", rot_matrix)
+    assert R == approx(rot_matrix, abs=1e-6)
+    rot_matrix = np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]])
+    R = rotator("p", rot_matrix)
+    assert R == approx(np.array([[1,0,0],[0,0,1],[0,-1,0]]), abs=1e-6)
+    R = rotator("d", rot_matrix)
+    assert R == approx(np.array( [[ 1,  0,  0,  0,  0],
+                                  [ 0,  0,  1,  0,  0],
+                                  [ 0, -1,  0,  0,  0],
+                                  [ 0,  0,  0, -1,  0],
+                                  [ 0,  0,  0,  0, -1]] ), abs=1e-6)
+    R = rotator("f", rot_matrix)
+    assert R == approx(np.array([[ 1,  0,  0,  0,  0,  0,  0.],
+                                 [ 0,  0,  1,  0,  0,  0,  0.],
+                                 [ 0, -1,  0,  0,  0,  0,  0.],
+                                 [ 0,  0,  0, -1,  0,  0,  0.],
+                                 [ 0,  0,  0,  0, -1,  0,  0.],
+                                 [ 0,  0,  0,  0,  0,  0, -1.],
+                                 [ 0,  0,  0,  0,  0,  1,  0.]]), abs=1e-6)
+    
+def test_orbital_rotator_random():
+    from wannierberri.symmetry.orbitals import OrbitalRotator
+    rotator = OrbitalRotator()
+    rot_matrix = np.array([[ 0.89395259, -0.36868402, -0.25479574],
+       [ 0.        ,  0.56853546, -0.82265875],
+       [ 0.44816155,  0.73541792,  0.50824375]])
+    R = rotator("s", rot_matrix)
+    print (repr(R))
+    assert R == approx(np.eye(1), abs=1e-6)
+    R = rotator("p", rot_matrix)
+    assert R @ R.T == approx(np.eye(3), abs=1e-6)
+    assert R == approx(np.array([[ 5.08243747e-01,  4.48161549e-01,  7.35417921e-01],
+       [-2.54795733e-01,  8.93952582e-01, -3.68684021e-01],
+       [-8.22658757e-01, -4.24578578e-09,  5.68535471e-01]]) , abs=1e-6)
+    print (repr(R))
+    R = rotator("d", rot_matrix)
+    print (repr(R))
+    assert R @ R.T == approx(np.eye(5), abs=1e-6)
+    assert R == approx(np.array([[-0.11253244,  0.3945184 ,  0.64739134, -0.29444062,  0.57085976],
+       [-0.2242977 ,  0.34015616, -0.3747627 ,  0.67177201,  0.49219875],
+       [-0.72418979, -0.36868402, -0.31604339, -0.41811118,  0.25479573],
+       [-0.52987466, -0.22777531,  0.5616498 ,  0.49322795, -0.32958603],
+       [ 0.36305507, -0.73541792,  0.15844073,  0.20960994,  0.50824375]]) , abs=1e-6)
+    R = rotator("f", rot_matrix)
+    print (repr(R))
+    assert R @ R.T == approx(np.eye(7), abs=1e-6)
+    assert R == approx(np.array([[-0.43415235,  0.08001584,  0.13130329, -0.33462222,  0.6487636 ,
+        -0.5037016 ,  0.03587627],
+       [-0.04549184, -0.07993056, -0.26496174,  0.60832422,  0.26275337,
+        -0.05897527,  0.69192564],
+       [-0.14687948, -0.46845337, -0.72727578, -0.11487639, -0.22395013,
+        -0.36286242, -0.18715882],
+       [-0.60218537, -0.39982008,  0.09561705, -0.26444744, -0.08331024,
+         0.56758262,  0.26334572],
+       [ 0.41260031, -0.44245394,  0.37105758, -0.33957324, -0.21152077,
+        -0.34272336,  0.46776217],
+       [ 0.39589407, -0.52959349, -0.01235803,  0.05727529,  0.61493005,
+         0.30418194, -0.29782511],
+       [ 0.31348092,  0.36286243, -0.48646235, -0.56236123,  0.17347102,
+         0.28107202,  0.32874179]]) , abs=1e-6)
+    
+
+
+    
+def test_readxzaxis():
+    from wannierberri.wannierise.projections import read_xzaxis
+    zaxis = np.array([0.58468234, 0.95944391, 0.66306702])
+    basis = read_xzaxis(None, zaxis=zaxis)
+    assert basis @ basis.T == approx(np.eye(3))
+    assert basis[2] == approx(zaxis/np.linalg.norm(zaxis))
+    assert basis[1] @ basis[0] == approx(0)
