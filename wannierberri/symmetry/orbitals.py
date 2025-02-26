@@ -220,9 +220,9 @@ class OrbitalRotator:
     def __call__(self, orb_symbol, rot_cart, basis1=None, basis2=None):
         assert (basis1 is None) == (basis2 is None), "basis1 and basis2 should be both provided or both None"
         if basis1 is not None:
-            print ("basis taken into account")
-            rot_cart =  basis2 @rot_cart @ basis1.T
-        print (f"rot_cart with basis= \n{rot_cart}")
+            print("basis taken into account")
+            rot_cart = basis2 @ rot_cart @ basis1.T
+        print(f"rot_cart with basis= \n{rot_cart}")
         irot = self.calcualted_matrices.index_or_None(rot_cart)
         if irot is None:
             irot = len(self.calcualted_matrices)
