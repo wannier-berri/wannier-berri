@@ -326,6 +326,7 @@ def test_create_amn_diamond_p_bond():
     lattice = bandstructure.lattice
     positions = np.array([[1, 1, 1], [-1, -1, -1]])
     zaxis = (positions[0] - positions[1]) @ lattice
+    print("zaxis = ", zaxis)
 
 
     projection = Projection(position_num=[0, 0, 0], orbital='pz', zaxis=zaxis, spacegroup=bandstructure.spacegroup, rotate_basis=True)
@@ -352,13 +353,13 @@ def test_create_amn_diamond_p_bond():
                     os.path.join(tmp_dir, prefix + "." + ext))
     print("prefix = ", prefix)
     symmetrizer.spacegroup.show()
-    amn_symm_prec = symmetrizer.check_amn(amn)
-    print (f"amn is symmetric with accuracy {amn_symm_prec}")
 
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
     w90data.set_amn(amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
-    w90data.apply_window(win_min=20, win_max=90)
+    amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)
+    w90data.apply_window(win_min=20, win_max=100)
+    print(f"amn is symmetric with accuracy {amn_symm_prec}")
     # Now wannierise the system
     w90data.wannierise(
         froz_min=22,
@@ -369,6 +370,70 @@ def test_create_amn_diamond_p_bond():
         mix_ratio_u=1,
         print_progress_every=1,
         sitesym=False,
+        localise=True
+    )
+
+    wannier_centers = w90data.chk._wannier_centers
+    print("wannierr_centers = ", wannier_centers)
+    # assert wannier_centers == approx(0.806995*np.array([[0, 0, 0], [-1,1,0], [0,1,1], [-1,0,1]]), abs=1e-6)
+    wannier_spreads = w90data.chk._wannier_spreads
+    print("wannier_spreads = ", wannier_spreads)
+    # assert wannier_spreads == approx(.398647548, abs=1e-5)
+
+
+def test_create_amn_diamond_sp3():
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond-444")
+
+    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
+                                                      code="espresso",
+                                                    include_TR=False,
+                                                      )
+    lattice = bandstructure.lattice
+    positions = np.array([[1, 1, 1], [-1, -1, -1]])
+    zaxis = (positions[0] - positions[1]) @ lattice
+
+
+    projection = Projection(position_num=[1 / 8, 1 / 8, 1 / 8], orbital='sp3', zaxis=zaxis, spacegroup=bandstructure.spacegroup, rotate_basis=True)
+    print("positions_cart = ", projection.positions @ lattice)
+
+    amn = amn_from_bandstructure(bandstructure=bandstructure, projections_set=ProjectionsSet([projection]),
+                           normalize=True, return_object=True, spinor=False)
+    symmetrizer = SAWF().from_irrep(bandstructure)
+    symmetrizer.set_D_wann_from_projections([projection])
+
+    tmp_dir = os.path.join(OUTPUT_DIR, "diamond+create_amn")
+
+    # Check if the directory exists
+    if os.path.exists(tmp_dir):
+        # Remove the directory and all its contents
+        shutil.rmtree(tmp_dir)
+        print(f"Directory {tmp_dir} has been removed.")
+    os.makedirs(tmp_dir)
+    os.chdir(tmp_dir)
+
+    prefix = "diamond"
+    for ext in ["mmn", "eig", "win"]:
+        shutil.copy(os.path.join(data_dir, prefix + "." + ext),
+                    os.path.join(tmp_dir, prefix + "." + ext))
+    print("prefix = ", prefix)
+    symmetrizer.spacegroup.show()
+
+    w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
+    w90data.set_amn(amn)
+    w90data.set_symmetrizer(symmetrizer=symmetrizer)
+    amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)
+    # w90data.apply_window(win_min=20, win_max=100)
+    print(f"amn is symmetric with accuracy {amn_symm_prec}")
+    # Now wannierise the system
+    w90data.wannierise(
+        froz_min=-20,
+        froz_max=35,
+        num_iter=100,
+        conv_tol=1e-10,
+        mix_ratio_z=0.8,
+        mix_ratio_u=1,
+        print_progress_every=1,
+        sitesym=True,
         localise=True
     )
 

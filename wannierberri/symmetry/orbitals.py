@@ -389,7 +389,7 @@ class SphericalHarmonics:
             return sum(self(orb) * coef for orb, coef in hybrids_coef[orbital].items())
         else:
             if not np.allclose(basis, np.eye(3), atol=1e-4):
-                print (f"evaluating orbital {orbital} in basis \n{basis}")
+                print(f"evaluating orbital {orbital} in basis \n{basis}")
                 shell = orbital[0]
                 assert shell in basis_shells_list, f"shell {shell} not in basis_shells_list"
                 shell_list = orbitals_sets_dic[shell]
