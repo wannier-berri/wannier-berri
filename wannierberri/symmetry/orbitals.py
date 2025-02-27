@@ -389,15 +389,16 @@ class SphericalHarmonics:
             return sum(self(orb) * coef for orb, coef in hybrids_coef[orbital].items())
         else:
             if not np.allclose(basis, np.eye(3), atol=1e-4):
+                print (f"evaluating orbital {orbital} in basis \n{basis}")
                 shell = orbital[0]
                 assert shell in basis_shells_list, f"shell {shell} not in basis_shells_list"
                 shell_list = orbitals_sets_dic[shell]
                 assert orbital in shell_list, f"orbital {orbital} not in shell {shell}"
                 shell_pos = shell_list.index(orbital)
                 print(f"basis = \n{basis}")
-                matrix = self.orbitalrotator(orbital, basis)
+                matrix = self.orbitalrotator(shell, basis)
                 print(f"matrix = \n{matrix}")
-                vector = matrix[:, shell_pos]
+                vector = matrix[shell_pos, :]
                 print(f" orbital {orbital} basis = \n{basis}\n,   vector = {vector}, shell_list = {shell_list}")
                 return sum(self(o, basis=None) * k for k, o in zip(vector, shell_list))
             else:

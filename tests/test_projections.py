@@ -260,7 +260,7 @@ def test_orbital_rotator_random():
 
 
 def test_create_amn_diamond_s_bond():
-    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond-444")
 
     bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
                                                       code="espresso",
@@ -297,10 +297,11 @@ def test_create_amn_diamond_s_bond():
     w90data.wannierise(
         froz_min=-8,
         froz_max=20,
-        num_iter=0,
+        num_iter=100,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
         mix_ratio_u=1,
+        num_iter_converge=20,
         print_progress_every=20,
         sitesym=True,
         localise=True
@@ -316,7 +317,7 @@ def test_create_amn_diamond_s_bond():
 
 
 def test_create_amn_diamond_p_bond():
-    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond-444")
 
     bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
                                                       code="espresso",
@@ -328,6 +329,7 @@ def test_create_amn_diamond_p_bond():
 
 
     projection = Projection(position_num=[0, 0, 0], orbital='pz', zaxis=zaxis, spacegroup=bandstructure.spacegroup, rotate_basis=True)
+    print("positions_cart = ", projection.positions @ lattice)
 
     amn = amn_from_bandstructure(bandstructure=bandstructure, projections_set=ProjectionsSet([projection]),
                            normalize=True, return_object=True, spinor=False)
@@ -344,25 +346,28 @@ def test_create_amn_diamond_p_bond():
     os.makedirs(tmp_dir)
     os.chdir(tmp_dir)
 
-    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
     prefix = "diamond"
     for ext in ["mmn", "eig", "win"]:
         shutil.copy(os.path.join(data_dir, prefix + "." + ext),
                     os.path.join(tmp_dir, prefix + "." + ext))
     print("prefix = ", prefix)
     symmetrizer.spacegroup.show()
+    amn_symm_prec = symmetrizer.check_amn(amn)
+    print (f"amn is symmetric with accuracy {amn_symm_prec}")
+
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
     w90data.set_amn(amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
+    w90data.apply_window(win_min=20, win_max=90)
     # Now wannierise the system
     w90data.wannierise(
-        froz_min=-8,
-        froz_max=20,
-        num_iter=0,
+        froz_min=22,
+        froz_max=35,
+        num_iter=100,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
         mix_ratio_u=1,
-        print_progress_every=20,
+        print_progress_every=1,
         sitesym=False,
         localise=True
     )
