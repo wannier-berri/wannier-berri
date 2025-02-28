@@ -1,3 +1,4 @@
+from functools import cached_property
 from time import time
 import numpy as np
 from .utility import readstr
@@ -95,6 +96,13 @@ class CheckPoint:
         v_matrix[:, :, :self.num_wann // 2] = self.v_matrix[:, :, 0::2]
         v_matrix[:, :, self.num_wann // 2:] = self.v_matrix[:, :, 1::2]
         self.v_matrix = v_matrix
+
+    @cached_property
+    def kpt_latt_int(self):
+        """
+        Returns the k-points in the lattice basis
+        """
+        return np.array(np.round(self.kpt_latt*self.mp_grid[None, :]), dtype=int)
 
 
     def wannier_gauge(self, mat, ik1, ik2):

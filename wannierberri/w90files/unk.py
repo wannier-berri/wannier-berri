@@ -25,8 +25,10 @@ class UNK(W90_file):
             NKmax = NK
 
         self.data = []
+        self.spinor = spinor
 
         nspinor = 2 if spinor else 1
+        self.grid_size = None
 
         # readint = lambda: FIN.read_record('i4')
         # readfloat = lambda: FIN.read_record('f8')
@@ -39,6 +41,10 @@ class UNK(W90_file):
                     print(f"reading {filename}")
                     f = FortranFileR(filename)
                     nr1, nr2, nr3, ikr, _NB = f.read_record(dtype=np.int32)
+                    if self.grid_size is None:
+                        self.grid_size = (nr1, nr2, nr3)
+                    else:
+                        assert self.grid_size == (nr1, nr2, nr3), f"NK={i} : grid_size={self.grid_size} != {(nr1, nr2, nr3)}"
                     assert ikr == i + 1, f"read ik = {ikr} from file {filename}, expected {i+1}"
                     if selected_bands is None:
                         selected_bands = np.arange(_NB)

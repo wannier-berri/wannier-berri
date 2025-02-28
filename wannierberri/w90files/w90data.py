@@ -407,6 +407,13 @@ class Wannier90data:
         Returns the SHU file
         """
         return self.get_file('shu')
+    
+    @property
+    def unk(self):
+        """
+        Returns the UNK files
+        """
+        return self.get_file('unk')
 
     @property
     def iter_kpts(self):
@@ -525,8 +532,6 @@ class Wannier90data:
         self.window_applied = True
 
 
-
-
     def check_symmetry(self, silent=False):
         """
         Check the symmetry of the system
@@ -545,3 +550,58 @@ class Wannier90data:
         according to the symmetrizer object
         """
         self.set_file("amn", self.symmetrizer.get_random_amn(), overwrite=True)
+
+    def plotWF(self, sc_max_size=1, select_WF=None):
+        """
+        calculate Wanier functions on a real-space grid
+        """
+        assert self.wannierised, "system was not wannierised"
+        assert self.has_file("unk"), "UNK files are not set"
+
+        if isinstance(sc_max_size, int):
+            sc_max_size_vec = np.array([sc_max_size]*3)
+        else:
+            sc_max_size_vec = np.array(sc_max_size)
+
+        sc_size_vec = 2*sc_max_size_vec+1
+
+        if select_WF is None:
+            select_WF = range(self.chk.num_wann)
+
+        mp_grid = np.array(self.chk.mp_grid)
+        real_grid = np.array(self.unk.grid_size)
+        kpoints = self.chk.kpt_latt
+        kpoints_int = self.chk.kpt_latt_int
+
+        exp_one = np.exp(2j * np.pi/(mp_grid*real_grid))
+
+        exp_grid = [np.cumprod([exp_one[i]]*real_grid[i]) for i in range(3)]
+        
+        output_grid_size = np.array(self.unk.grid_size) * sc_size_vec
+
+        nr0, nr1, nr2 = self.unk.grid_size
+        nspinor = 2 if self.unk.spinor else 1
+
+        WF = np.zeros( tuple(output_grid_size)+(nspinor,len(select_WF),), dtype=complex)
+
+        for ik, U in enumerate(self.unk.data):
+            if U is None:
+                raise NotImplementedError("plotWF from irreducible kpoints is not implemented yet")
+            U = np.einsum("m...,mn->...n", U, self.chk.v_matrix[ik][:, select_WF])
+            k_int = kpoints_int[ik]
+            k_latt = kpoints[ik]
+            exp_loc = [exp_grid[i]**k_int[i] for i in range(3)]
+            U[:] *= exp_loc[0][:, None, None, None, None]
+            U[:] *= exp_loc[1][None, :, None, None, None]
+            U[:] *= exp_loc[2][None, None, :, None, None]
+            for i0 in range(sc_size_vec[0]):
+                for i1 in range(sc_size_vec[1]):
+                    for i2 in range(sc_size_vec[2]):
+                        iR = np.array([i0,i1,i2])-sc_max_size_vec
+                        phase = np.exp(2j*np.pi*np.dot(iR, k_latt))
+                        WF[i0*nr0:(i0+1)*nr0, i1*nr1:(i1+1)*nr1, i2*nr2:(i2+1)*nr2, :,:] += U*phase
+
+        WF = WF.transpose((4,0,1,2,3))/np.prod(mp_grid)/np.sqrt(np.prod(real_grid))
+        return WF
+            
+
