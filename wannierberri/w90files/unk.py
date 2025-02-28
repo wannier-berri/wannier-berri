@@ -35,10 +35,10 @@ class UNK(W90_file):
         self._NB = None
         for i in range(NKmax):
             filename = os.path.join(path, f"UNK{i+1:05d}.1")
-            print(f"trying to read {filename}")
+            # print(f"trying to read {filename}")
             if (kptirr is None or i in kptirr):
                 if os.path.exists(filename):
-                    print(f"reading {filename}")
+                    # print(f"reading {filename}")
                     f = FortranFileR(filename)
                     nr1, nr2, nr3, ikr, _NB = f.read_record(dtype=np.int32)
                     if self.grid_size is None:

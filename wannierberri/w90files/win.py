@@ -121,6 +121,20 @@ class WIN:
         else:
             warnings.warn(f"key {key} not found in the data, nothing to delete")
 
+    def __contains__(self, key):
+        """
+        Check if a parameter is present
+
+        Parameters:
+        -----------
+        key(str) : the key of the parameter
+
+        Returns:
+        --------
+        bool : True if the parameter is present, False otherwise
+        """
+        return key in self.data
+
     def update(self, dic):
         """
         Update the parameters with a dictionary
