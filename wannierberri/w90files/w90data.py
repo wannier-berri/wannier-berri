@@ -24,6 +24,7 @@ from .mmn import MMN
 from .amn import AMN
 from .xxu import UIU, UHU, SIU, SHU
 from .spn import SPN
+from .unk import UNK
 from .chk import CheckPoint, CheckPoint_bare
 
 FILES_CLASSES = {'win': WIN,
@@ -35,6 +36,7 @@ FILES_CLASSES = {'win': WIN,
                 'siu': SIU,
                 'shu': SHU,
                 'spn': SPN,
+                'unk': UNK,
                 'chk': CheckPoint,
                 }
 
@@ -49,7 +51,7 @@ class Wannier90data:
         formatted : tuple(str)
             list of files which should be read as formatted files (uHu, uIu, etc)
         read_npz : bool
-            if True, try to read the files converted to npz (e.g. wanier90.mmn.npz instead of wannier90.
+            if True, try to read the files converted to npz (e.g. wanier90.mmn.npz instead of wannier90.mmn)
         write_npz_list : list(str)
             for which files npz will be written
         write_npz_formatted : bool
@@ -280,7 +282,7 @@ class Wannier90data:
         kwargs = {}
         if key in ["uhu", "uiu", "shu", "siu"]:
             kwargs["formatted"] = key in self.formatted_list
-        if key not in ["chk", "win"]:
+        if key not in ["chk", "win", "unk"]:
             kwargs["read_npz"] = self.read_npz
             kwargs["write_npz"] = key in self.write_npz_list
         if key not in ["win", "chk"]:
