@@ -102,7 +102,7 @@ class CheckPoint:
         """
         Returns the k-points in the lattice basis
         """
-        return np.array(np.round(self.kpt_latt*self.mp_grid[None, :]), dtype=int)
+        return np.array(np.round(self.kpt_latt * self.mp_grid[None, :]), dtype=int)
 
 
     def wannier_gauge(self, mat, ik1, ik2):

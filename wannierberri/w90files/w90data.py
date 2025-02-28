@@ -15,7 +15,6 @@
 import datetime
 from functools import cached_property
 from copy import copy
-import os
 import warnings
 import numpy as np
 from ..wannierise import wannierise
@@ -137,7 +136,7 @@ class Wannier90data:
                 self._atomic_positions_red = win.atoms_cart @ np.linalg.inv(win.lattice)
             self._atomic_positions_red = win.atomic_positions
         return self.chk.atomic_positions_red
-    
+
     def set_atomic_positions_red(self, atomic_positions_red):
         self._atomic_positions_red = atomic_positions_red
 
@@ -425,7 +424,7 @@ class Wannier90data:
         Returns the SHU file
         """
         return self.get_file('shu')
-    
+
     @property
     def unk(self):
         """
@@ -569,9 +568,9 @@ class Wannier90data:
         """
         self.set_file("amn", self.symmetrizer.get_random_amn(), overwrite=True)
 
-    def calc_WF_real_space(self, 
-                           sc_min=-1, sc_max=1, 
-                           select_WF=None, 
+    def calc_WF_real_space(self,
+                           sc_min=-1, sc_max=1,
+                           select_WF=None,
                            reduce_r_points=1,
                            make_real=True):
         """
@@ -580,44 +579,44 @@ class Wannier90data:
         assert self.wannierised, "system was not wannierised"
         assert self.has_file("unk"), "UNK files are not set"
 
-        def to_3array(x : int):
+        def to_3array(x: int):
             if isinstance(x, int):
-                return np.array([x]*3)
+                return np.array([x] * 3)
             else:
                 return np.array(x)
 
         sc_min_vec = to_3array(sc_min)
-        sc_max_vec = to_3array(sc_max+1)
+        sc_max_vec = to_3array(sc_max + 1)
         mp_grid = np.array(self.chk.mp_grid)
-        sc_min_vec = np.maximum(sc_min_vec, -mp_grid//2)
-        sc_max_vec = np.minimum(sc_max_vec, (mp_grid+1)//2)
-        sc_size_vec = sc_max_vec-sc_min_vec
+        sc_min_vec = np.maximum(sc_min_vec, -mp_grid // 2)
+        sc_max_vec = np.minimum(sc_max_vec, (mp_grid + 1) // 2)
+        sc_size_vec = sc_max_vec - sc_min_vec
 
-        reduce_r_points = to_3array(reduce_r_points)        
-        
-        real_grid = np.array(self.unk.grid_size)//reduce_r_points
-        nr0, nr1, nr2 = real_grid        
+        reduce_r_points = to_3array(reduce_r_points)
+
+        real_grid = np.array(self.unk.grid_size) // reduce_r_points
+        nr0, nr1, nr2 = real_grid
 
         if select_WF is None:
             select_WF = range(self.chk.num_wann)
 
         mp_grid = np.array(self.chk.mp_grid)
-        
+
         kpoints = self.chk.kpt_latt
         kpoints_int = self.chk.kpt_latt_int
 
-        exp_one = np.exp(2j * np.pi/(mp_grid*real_grid))
+        exp_one = np.exp(2j * np.pi / (mp_grid * real_grid))
 
-        exp_grid = [np.cumprod([exp_one[i]]*real_grid[i]) for i in range(3)]
-        
+        exp_grid = [np.cumprod([exp_one[i]] * real_grid[i]) for i in range(3)]
+
         output_grid_size = real_grid * sc_size_vec
 
         nspinor = 2 if self.unk.spinor else 1
         real_lattice = self.chk.real_lattice
 
-        WF = np.zeros( tuple(output_grid_size)+(nspinor,len(select_WF),), dtype=complex)
+        WF = np.zeros(tuple(output_grid_size) + (nspinor, len(select_WF),), dtype=complex)
         sc_origin = sc_min_vec @ real_lattice
-        sc_basis = (sc_size_vec*(output_grid_size-1)/(output_grid_size-1) )[:,None] * real_lattice
+        sc_basis = (sc_size_vec * (output_grid_size - 1) / (output_grid_size - 1))[:, None] * real_lattice
 
         for ik, U in enumerate(self.unk.data):
             if U is None:
@@ -633,11 +632,11 @@ class Wannier90data:
             for i0 in range(sc_size_vec[0]):
                 for i1 in range(sc_size_vec[1]):
                     for i2 in range(sc_size_vec[2]):
-                        iR = np.array([i0,i1,i2])+sc_min_vec
-                        phase = np.exp(2j*np.pi*np.dot(iR, k_latt))
-                        WF[i0*nr0:(i0+1)*nr0, i1*nr1:(i1+1)*nr1, i2*nr2:(i2+1)*nr2, :,:] += U*phase
+                        iR = np.array([i0, i1, i2]) + sc_min_vec
+                        phase = np.exp(2j * np.pi * np.dot(iR, k_latt))
+                        WF[i0 * nr0:(i0 + 1) * nr0, i1 * nr1:(i1 + 1) * nr1, i2 * nr2:(i2 + 1) * nr2, :, :] += U * phase
 
-        WF = WF.transpose((4,0,1,2,3))/np.prod(mp_grid)
+        WF = WF.transpose((4, 0, 1, 2, 3)) / np.prod(mp_grid)
 
         if make_real and not self.unk.spinor:
             for i in range(WF.shape[0]):
@@ -646,28 +645,28 @@ class Wannier90data:
                 data = data.reshape(-1)
                 pos = np.argmax(abs(data))
                 w = data[pos]
-                data *= w.conj()/abs(w)
+                data *= w.conj() / abs(w)
                 imag_max = abs(data.imag).max()
-                print( f"wannier function {select_WF[i]} : Im/Re ratio {imag_max/abs(w)}")
+                print(f"wannier function {select_WF[i]} : Im/Re ratio {imag_max/abs(w)}")
                 WF[i] = data.reshape(shape).real
             WF = WF.real
-                
-                
-        rho = np.sum((WF*WF.conj()).real,axis = 4)
 
-        x = np.arange(sc_min,sc_max,1./real_grid[0])
-        y = np.arange(sc_min,sc_max,1./real_grid[1])
-        z = np.arange(sc_min,sc_max,1./real_grid[2])
+
+        rho = np.sum((WF * WF.conj()).real, axis=4)
+
+        x = np.arange(sc_min, sc_max, 1. / real_grid[0])
+        y = np.arange(sc_min, sc_max, 1. / real_grid[1])
+        z = np.arange(sc_min, sc_max, 1. / real_grid[2])
 
         nr = real_grid.prod()
-        wcc_x = np.sum(rho* x[None,:,None,None],axis = (1,2,3))/nr
-        wcc_y = np.sum(rho* y[None,None,:,None],axis = (1,2,3))/nr
-        wcc_z = np.sum(rho* z[None,None,None,:],axis = (1,2,3))/nr
-        wcc_red = np.array([wcc_x,wcc_y,wcc_z]).T
+        wcc_x = np.sum(rho * x[None, :, None, None], axis=(1, 2, 3)) / nr
+        wcc_y = np.sum(rho * y[None, None, :, None], axis=(1, 2, 3)) / nr
+        wcc_z = np.sum(rho * z[None, None, None, :], axis=(1, 2, 3)) / nr
+        wcc_red = np.array([wcc_x, wcc_y, wcc_z]).T
         wcc_cart = np.dot(wcc_red, real_lattice)
 
         return sc_origin, sc_basis, WF, rho, wcc_red, wcc_cart
-    
+
     def get_xsf(self, sc_origin=None, sc_basis=None, data=None, atoms_cart=None, atoms_names=None, conv_cell=None, ):
         """
         get the XSF file from the data
@@ -683,14 +682,14 @@ class Wannier90data:
             elif "atoms_frac" in self.win:
                 atoms_cart = self.win["atoms_frac"] @ A
             else:
-                atoms_cart=[]
+                atoms_cart = []
         if atoms_names is None:
             if hasattr(self, "atomic_names"):
                 atoms_names = self.atomic_names
             elif "atoms_names" in self.win:
                 atoms_names = self.win["atoms_names"]
             else:
-                atoms_names=["X"]*len(atoms_cart)
+                atoms_names = ["X"] * len(atoms_cart)
 
         out = f"""  #
         # Produced by WannierBerri https://wannier-berri.org
@@ -711,7 +710,7 @@ PRIMVEC
         out += f"""PRIMCOORD
 {len(atoms_cart)} 1
 """
-        for a,c in zip(atoms_names,atoms_cart):
+        for a, c in zip(atoms_names, atoms_cart):
             out += f"{a} {c[0]: 20.10f} {c[1]: 20.10f} {c[2]: 20.10f}\n"
         out += "\n\n\n"
 
@@ -726,47 +725,46 @@ PRIMVEC
             dat = dat.reshape(-1, order='F')
             num_per_string = 6
             for i in range(0, len(dat), num_per_string):
-                out_loc +=  " ".join(f"{x: 20.10f}" for x in dat[i:i + num_per_string])+"\n"
+                out_loc += " ".join(f"{x: 20.10f}" for x in dat[i:i + num_per_string]) + "\n"
             out_loc += f"END_DATAGRID_3D_wannier_function_{ind}\n"
             return out_loc
 
 
         if data is not None:
-            out += f"BEGIN_BLOCK_DATAGRID_3D\nwannier_functions\n"
+            out += "BEGIN_BLOCK_DATAGRID_3D\nwannier_functions\n"
             if data.ndim == 3:
                 data = data[None, ...]
             for i, dat in enumerate(data):
                 out += get_data_block(i, dat)
-            out += f"END_BLOCK_DATAGRID_3D\n"
+            out += "END_BLOCK_DATAGRID_3D\n"
 
         return out
-    
-    def plotWF(self, 
-               sc_min=-1, sc_max=1, 
-                           select_WF=None, 
-                           reduce_r_points=1,
-                           make_real=True,
-                           atoms_cart=None, atoms_names=None,
-                           path=None
+
+    def plotWF(self,
+               sc_min=-1, sc_max=1,
+               select_WF=None,
+               reduce_r_points=1,
+               make_real=True,
+               atoms_cart=None, atoms_names=None,
+               path=None
                            ):
         if path is None:
             path = f"{self.seedname}.WF"
         if select_WF is None:
             select_WF = range(self.chk.num_wann)
 
-        sc_origin, sc_basis, WF, rho, wcc_red, wcc_cart = self.calc_WF_real_space(sc_min=sc_min, sc_max=sc_max, 
+        sc_origin, sc_basis, WF, rho, wcc_red, wcc_cart = self.calc_WF_real_space(sc_min=sc_min, sc_max=sc_max,
                                                                                   select_WF=select_WF,
                                                                                   reduce_r_points=reduce_r_points,
                                                                                   make_real=make_real)
         assert not self.unk.spinor, "plotting Wannier functions is not implemented for spinors"
-        WF = WF[...,0] # take the only spinor component
-        for i,j in enumerate(select_WF):
-            filename = path+f"{j:04d}.xsf"
+        WF = WF[..., 0]  # take the only spinor component
+        for i, j in enumerate(select_WF):
+            filename = path + f"{j:04d}.xsf"
             xsf_str = self.get_xsf(sc_origin=sc_origin, sc_basis=sc_basis,
                                    atoms_cart=atoms_cart, atoms_names=atoms_names,
                                    data=WF[i])
-            with open(filename,"w") as f:
+            with open(filename, "w") as f:
                 f.write(xsf_str)
 
         return sc_origin, sc_basis, WF, rho, wcc_red, wcc_cart
-    
