@@ -551,7 +551,7 @@ class Wannier90data:
         """
         self.set_file("amn", self.symmetrizer.get_random_amn(), overwrite=True)
 
-    def plotWF(self, sc_max_size=1, select_WF=None):
+    def plotWF(self, sc_max_size=1, select_WF=None, reduce_r_points=1):
         """
         calculate Wanier functions on a real-space grid
         """
@@ -562,6 +562,11 @@ class Wannier90data:
             sc_max_size_vec = np.array([sc_max_size]*3)
         else:
             sc_max_size_vec = np.array(sc_max_size)
+
+        if isinstance(reduce_r_points, int):
+            reduce_r_points = np.array([reduce_r_points]*3)
+        else:
+            reduce_r_points = np.array(reduce_r_points)
 
         sc_size_vec = 2*sc_max_size_vec+1
 
@@ -579,7 +584,7 @@ class Wannier90data:
         
         output_grid_size = np.array(self.unk.grid_size) * sc_size_vec
 
-        nr0, nr1, nr2 = self.unk.grid_size
+        nr0, nr1, nr2 = self.unk.grid_size//reduce_r_points
         nspinor = 2 if self.unk.spinor else 1
 
         WF = np.zeros( tuple(output_grid_size)+(nspinor,len(select_WF),), dtype=complex)
@@ -587,6 +592,7 @@ class Wannier90data:
         for ik, U in enumerate(self.unk.data):
             if U is None:
                 raise NotImplementedError("plotWF from irreducible kpoints is not implemented yet")
+            U = U[:, ::reduce_r_points[0], ::reduce_r_points[1], ::reduce_r_points[2], :]
             U = np.einsum("m...,mn->...n", U, self.chk.v_matrix[ik][:, select_WF])
             k_int = kpoints_int[ik]
             k_latt = kpoints[ik]
