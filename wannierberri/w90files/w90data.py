@@ -572,9 +572,11 @@ class Wannier90data:
                            sc_min=-1, sc_max=1,
                            select_WF=None,
                            reduce_r_points=1,
-                           make_real=True):
+                           make_close_to_real_real=True):
         """
         calculate Wanier functions on a real-space grid
+
+        the norm is such that sum_r |WF|^2 = 1
         """
         assert self.wannierised, "system was not wannierised"
         assert self.has_file("unk"), "UNK files are not set"
@@ -593,9 +595,14 @@ class Wannier90data:
         sc_size_vec = sc_max_vec - sc_min_vec
 
         reduce_r_points = to_3array(reduce_r_points)
-
-        real_grid = np.array(self.unk.grid_size) // reduce_r_points
+        print(f"self.unk.grid_size={self.unk.grid_size}")
+        print(f"reduc_r_points = {reduce_r_points}")
+        real_grid = np.array(self.unk.grid_size)
+        assert np.all(real_grid % reduce_r_points == 0), f"cannot reduce grid {real_grid} by factors {reduce_r_points} - not divisible"
+        real_grid = real_grid // reduce_r_points
         nr0, nr1, nr2 = real_grid
+
+        nr_tot = nr0 * nr1 * nr2
 
         if select_WF is None:
             select_WF = range(self.chk.num_wann)
@@ -616,7 +623,7 @@ class Wannier90data:
 
         WF = np.zeros(tuple(output_grid_size) + (nspinor, len(select_WF),), dtype=complex)
         sc_origin = sc_min_vec @ real_lattice
-        sc_basis = (sc_size_vec * (output_grid_size - 1) / (output_grid_size - 1))[:, None] * real_lattice
+        sc_basis = sc_size_vec[:, None] * real_lattice
 
         for ik, U in enumerate(self.unk.data):
             if U is None:
@@ -636,9 +643,9 @@ class Wannier90data:
                         phase = np.exp(2j * np.pi * np.dot(iR, k_latt))
                         WF[i0 * nr0:(i0 + 1) * nr0, i1 * nr1:(i1 + 1) * nr1, i2 * nr2:(i2 + 1) * nr2, :, :] += U * phase
 
-        WF = WF.transpose((4, 0, 1, 2, 3)) / np.prod(mp_grid)
+        WF = WF.transpose((4, 0, 1, 2, 3)) / np.prod(mp_grid) / np.sqrt(nr_tot)
 
-        if make_real and not self.unk.spinor:
+        if make_close_to_real_real and not self.unk.spinor:
             for i in range(WF.shape[0]):
                 data = WF[i].copy()
                 shape = data.shape
@@ -647,25 +654,12 @@ class Wannier90data:
                 w = data[pos]
                 data *= w.conj() / abs(w)
                 imag_max = abs(data.imag).max()
-                print(f"wannier function {select_WF[i]} : Im/Re ratio {imag_max/abs(w)}")
-                WF[i] = data.reshape(shape).real
-            WF = WF.real
-
+                print(f"wannier function {select_WF[i]} : Im/Re ratio {imag_max/abs(w)} ({data[pos]})")
+                WF[i] = data.reshape(shape)
 
         rho = np.sum((WF * WF.conj()).real, axis=4)
 
-        x = np.arange(sc_min, sc_max, 1. / real_grid[0])
-        y = np.arange(sc_min, sc_max, 1. / real_grid[1])
-        z = np.arange(sc_min, sc_max, 1. / real_grid[2])
-
-        nr = real_grid.prod()
-        wcc_x = np.sum(rho * x[None, :, None, None], axis=(1, 2, 3)) / nr
-        wcc_y = np.sum(rho * y[None, None, :, None], axis=(1, 2, 3)) / nr
-        wcc_z = np.sum(rho * z[None, None, None, :], axis=(1, 2, 3)) / nr
-        wcc_red = np.array([wcc_x, wcc_y, wcc_z]).T
-        wcc_cart = np.dot(wcc_red, real_lattice)
-
-        return sc_origin, sc_basis, WF, rho, wcc_red, wcc_cart
+        return sc_origin, sc_basis, WF, rho
 
     def get_xsf(self, sc_origin=None, sc_basis=None, data=None, atoms_cart=None, atoms_names=None, conv_cell=None, ):
         """
@@ -714,13 +708,17 @@ PRIMVEC
             out += f"{a} {c[0]: 20.10f} {c[1]: 20.10f} {c[2]: 20.10f}\n"
         out += "\n\n\n"
 
+        # in order to get the "non-periodic" grid for xcrysden
+        shape = np.array(data.shape[:3])
+        sc_basis_loc = sc_basis * ((shape - 1) / shape)[:, None]
+
         def get_data_block(ind, dat):
             out_loc = f"""BEGIN_DATAGRID_3D_wannier_function_{ind}
 {dat.shape[0]} {dat.shape[1]} {dat.shape[2]}
 {sc_origin[0]: 20.10f} {sc_origin[1]: 20.10f} {sc_origin[2]: 20.10f}
-{sc_basis[0,0]: 20.10f} {sc_basis[0,1]: 20.10f} {sc_basis[0,2]: 20.10f}
-{sc_basis[1,0]: 20.10f} {sc_basis[1,1]: 20.10f} {sc_basis[1,2]: 20.10f}
-{sc_basis[2,0]: 20.10f} {sc_basis[2,1]: 20.10f} {sc_basis[2,2]: 20.10f}
+{sc_basis_loc[0,0]: 20.10f} {sc_basis_loc[0,1]: 20.10f} {sc_basis_loc[0,2]: 20.10f}
+{sc_basis_loc[1,0]: 20.10f} {sc_basis_loc[1,1]: 20.10f} {sc_basis_loc[1,2]: 20.10f}
+{sc_basis_loc[2,0]: 20.10f} {sc_basis_loc[2,1]: 20.10f} {sc_basis_loc[2,2]: 20.10f}
 """
             dat = dat.reshape(-1, order='F')
             num_per_string = 6
@@ -753,18 +751,18 @@ PRIMVEC
         if select_WF is None:
             select_WF = range(self.chk.num_wann)
 
-        sc_origin, sc_basis, WF, rho, wcc_red, wcc_cart = self.calc_WF_real_space(sc_min=sc_min, sc_max=sc_max,
-                                                                                  select_WF=select_WF,
-                                                                                  reduce_r_points=reduce_r_points,
-                                                                                  make_real=make_real)
+        sc_origin, sc_basis, WF, rho = self.calc_WF_real_space(sc_min=sc_min, sc_max=sc_max,
+                                                               select_WF=select_WF,
+                                                               reduce_r_points=reduce_r_points,
+                                                               make_close_to_real_real=make_real)
         assert not self.unk.spinor, "plotting Wannier functions is not implemented for spinors"
         WF = WF[..., 0]  # take the only spinor component
         for i, j in enumerate(select_WF):
             filename = path + f"{j:04d}.xsf"
             xsf_str = self.get_xsf(sc_origin=sc_origin, sc_basis=sc_basis,
                                    atoms_cart=atoms_cart, atoms_names=atoms_names,
-                                   data=WF[i])
+                                   data=WF[i].real)
             with open(filename, "w") as f:
                 f.write(xsf_str)
 
-        return sc_origin, sc_basis, WF, rho, wcc_red, wcc_cart
+        return sc_origin, sc_basis, WF, rho
