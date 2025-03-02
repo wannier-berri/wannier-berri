@@ -16,8 +16,13 @@ from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 
+<<<<<<< HEAD
 @pytest.mark.parametrize("outer_window", [None, (-100, 100), (-10, 40), (-10, 22), (10, 40)])
 def test_wanierise(outer_window):
+=======
+
+def test_wannierise():
+>>>>>>> master
     systems = {}
 
     cwd = os.getcwd()
@@ -37,12 +42,15 @@ def test_wanierise(outer_window):
     for ext in ["mmn", "amn", "eig", "win", "sawf.npz"]:
         shutil.copy(os.path.join(data_dir, prefix + "." + ext),
                     os.path.join(tmp_dir, prefix + "." + ext))
+    for i in range(8):
+        shutil.copy(os.path.join(data_dir, f"UNK{i+1:05d}.1"),
+                    os.path.join(tmp_dir, f"UNK{i+1:05d}.1"))
     print("prefix = ", prefix)
     symmetrizer = SymmetrizerSAWF().from_npz(prefix + ".sawf.npz")
     symmetrizer.spacegroup.show()
     symmetrizer.to_w90_file(prefix)
     # Read the data from the Wanier90 inputs
-    w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["amn", "mmn", "eig", "win"])
+    w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     check_results = True
     if outer_window is not None:
@@ -65,6 +73,7 @@ def test_wanierise(outer_window):
     wannier_centers = w90data.chk._wannier_centers
     wannier_spreads = w90data.chk._wannier_spreads
     wannier_spreads_mean = np.mean(wannier_spreads)
+<<<<<<< HEAD
     if check_results:
         assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
         assert wannier_spreads == approx(0.39864755, abs=1e-7)
@@ -74,6 +83,31 @@ def test_wanierise(outer_window):
             [1, 0, 0]
         ]).dot(w90data.chk.real_lattice) / 2,
             abs=1e-6)
+=======
+    assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
+    assert wannier_spreads == approx(0.39864755, abs=1e-7)
+    assert wannier_centers == approx(np.array([[0, 0, 0],
+                                               [0, 0, 1],
+                                               [0, 1, 0],
+                                               [1, 0, 0]
+                                               ]).dot(w90data.chk.real_lattice) / 2,
+                                     abs=1e-6)
+    sc_origin, sc_basis, WF, rho = w90data.plotWF(select_WF=[1, 2], reduce_r_points=[3, 9, 1])
+    assert WF.shape == (2, 6, 2, 18)
+    assert rho.shape == (2, 6, 2, 18)
+    wf_file_name = "WF_12_red.npy"
+    np.save(wf_file_name, WF)
+    ref = np.load(os.path.join(REF_DIR, wf_file_name))
+    assert WF == approx(ref)
+
+    sc_origin, sc_basis, WF, rho = w90data.plotWF(select_WF=[1, 2], reduce_r_points=[1, 1, 1])
+    lattice = w90data.chk.real_lattice
+    assert sc_origin == approx(-lattice.sum(axis=0))
+    assert sc_basis == approx(2 * lattice)
+    assert WF.shape == (2, 18, 18, 18)
+    assert rho.shape == (2, 18, 18, 18)
+    assert rho.sum(axis=(1, 2, 3)) == approx(1)
+>>>>>>> master
 
     systems["wberri"] = wberri.system.System_w90(w90data=w90data)
 
