@@ -16,13 +16,8 @@ from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 
-<<<<<<< HEAD
 @pytest.mark.parametrize("outer_window", [None, (-100, 100), (-10, 40), (-10, 22), (10, 40)])
-def test_wanierise(outer_window):
-=======
-
-def test_wannierise():
->>>>>>> master
+def test_wannierise(outer_window):
     systems = {}
 
     cwd = os.getcwd()
@@ -73,7 +68,6 @@ def test_wannierise():
     wannier_centers = w90data.chk._wannier_centers
     wannier_spreads = w90data.chk._wannier_spreads
     wannier_spreads_mean = np.mean(wannier_spreads)
-<<<<<<< HEAD
     if check_results:
         assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
         assert wannier_spreads == approx(0.39864755, abs=1e-7)
@@ -83,7 +77,6 @@ def test_wannierise():
             [1, 0, 0]
         ]).dot(w90data.chk.real_lattice) / 2,
             abs=1e-6)
-=======
     assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
     assert wannier_spreads == approx(0.39864755, abs=1e-7)
     assert wannier_centers == approx(np.array([[0, 0, 0],
@@ -107,7 +100,6 @@ def test_wannierise():
     assert WF.shape == (2, 18, 18, 18)
     assert rho.shape == (2, 18, 18, 18)
     assert rho.sum(axis=(1, 2, 3)) == approx(1)
->>>>>>> master
 
     systems["wberri"] = wberri.system.System_w90(w90data=w90data)
 
