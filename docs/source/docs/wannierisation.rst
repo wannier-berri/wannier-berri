@@ -38,7 +38,9 @@ Example
       dmn_new = DMN(empty=True)
       dmn_new.from_irrep(bandstructure)
       pos = [[0,0,0],[0,0,1/2],[0,1/2,0],[1/2,0,0]]
-      dmn_new.set_D_wann_from_projections(projections=[(pos, 's') ])
+      spacegroup = bandstructure.spacegroup
+      proj_s = Projection(position_num=pos, orbital='s', spacegroup=spacegroup)
+      dmn_new.set_D_wann_from_projections([proj_s])
       dmn_new.to_w90_file("mydmn")
 
    # Read the data from the Wanier90 inputs 

@@ -56,7 +56,7 @@ class EBRsearcher:
         self.NKirr = symmetrizer.NKirr
         self.nsym_little = [len(l) for l in symmetrizer.isym_little]
         self.debug = debug
-        orbitalrotator = OrbitalRotator([symop.rotation_cart for symop in spacegroup.symmetries])
+        orbitalrotator = OrbitalRotator()
 
         # list of list of UniqueList of Irreps for each projection [iproj][ik]
         def highlight(line):
@@ -94,7 +94,8 @@ class EBRsearcher:
                 dwann = Dwann(spacegroup=spacegroup,
                             positions=positions,
                             orbital=orb,
-                            orbital_rotator=orbitalrotator
+                            basis_list=[np.eye(3) for _ in range(len(positions))],
+                            orbitalrotator=orbitalrotator
                             ).get_on_points_all(kpoints=symmetrizer.kpoints_all,
                                                 ikptirr=symmetrizer.kptirr,
                                                 ikptirr2kpt=symmetrizer.kptirr2kpt)

@@ -16,8 +16,8 @@ from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 
-
-def test_wannierise():
+@pytest.mark.parametrize("outer_window", [None, (-100, 100), (-10, 40), (-10, 22), (10, 40)])
+def test_wannierise(outer_window):
     systems = {}
 
     cwd = os.getcwd()
@@ -47,6 +47,12 @@ def test_wannierise():
     # Read the data from the Wanier90 inputs
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
+    check_results = True
+    if outer_window is not None:
+        w90data.apply_window(win_min=outer_window[0], win_max=outer_window[1])
+        if outer_window[0] > -8:
+            check_results = False
+    print(f"num_bands: eig:{w90data.eig.NB}, mmn:{w90data.mmn.NB}, amn:{w90data.amn.NB}")
     # Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
     w90data.wannierise(
         froz_min=-8,
@@ -62,6 +68,15 @@ def test_wannierise():
     wannier_centers = w90data.chk._wannier_centers
     wannier_spreads = w90data.chk._wannier_spreads
     wannier_spreads_mean = np.mean(wannier_spreads)
+    if check_results:
+        assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
+        assert wannier_spreads == approx(0.39864755, abs=1e-7)
+        assert wannier_centers == approx(np.array([[0, 0, 0],
+                                                [0, 0, 1],
+            [0, 1, 0],
+            [1, 0, 0]
+        ]).dot(w90data.chk.real_lattice) / 2,
+            abs=1e-6)
     assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
     assert wannier_spreads == approx(0.39864755, abs=1e-7)
     assert wannier_centers == approx(np.array([[0, 0, 0],
@@ -118,7 +133,8 @@ def test_wannierise():
         diff = abs(energies[k1] - energies_ref)
         # the precidsion is not very high here, although the two codes are assumed to do the same. Not sure why..
         d, acc = np.max(diff), 0.0005
-        assert d < acc, f"the interpolated bands {k1}  differ from reference by max {d}>{acc}"
+        if check_results:
+            assert d < acc, f"the interpolated bands {k1}  differ from reference by max {d}>{acc}"
 
     # One can see that results do not differ much. Also, the maximal localization does not have much effect.
     os.chdir(cwd)
@@ -126,7 +142,7 @@ def test_wannierise():
 
 @fixture
 def check_sawf():
-    def _inner(sawf_new, sawf_ref):
+    def _inner(sawf_new, sawf_ref, dmn_only=False):
 
         for key in ['NB', "num_wann", "NK", "NKirr", "kptirr", "kptirr2kpt", "kpt2kptirr", "time_reversals"]:
             assert np.all(getattr(sawf_ref, key) == getattr(sawf_new, key)), (
@@ -146,6 +162,13 @@ def check_sawf():
                 f"reference: {sawf_ref.d_band_block_indices}\n"
                 f"new: {sawf_new.d_band_block_indices}\n"
             )
+
+        if not dmn_only:
+            for i, blockpair in enumerate(zip(sawf_ref.rot_orb_list, sawf_new.rot_orb_list)):
+                blockref, blocknew = blockpair
+                assert blockref.shape == blocknew.shape, f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF\n"
+                assert blockref == approx(blocknew, abs=1e-6), f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+
 
         for isym in range(sawf_ref.Nsym):
             try:
@@ -175,7 +198,7 @@ def test_create_sawf_diamond(check_sawf):
 
     projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
     sawf_new = SymmetrizerSAWF().from_irrep(bandstructure)
-    sawf_new.set_D_wann_from_projections(projections_obj=[projection])
+    sawf_new.set_D_wann_from_projections([projection])
 
     tmp_sawf_path = os.path.join(OUTPUT_DIR, "diamond")
     sawf_new.to_npz(tmp_sawf_path + ".sawf.npz")
@@ -185,7 +208,7 @@ def test_create_sawf_diamond(check_sawf):
     dmn_new = DMN(seedname=tmp_sawf_path, read_npz=False)
 
     dmn_ref = DMN(seedname=os.path.join(data_dir, "diamond"), read_npz=False)
-    check_sawf(dmn_new, dmn_ref)
+    check_sawf(dmn_new, dmn_ref, dmn_only=True)
 
 
 @pytest.mark.parametrize("include_TR", [True, False])
@@ -196,19 +219,40 @@ def test_create_sawf_Fe(check_sawf, include_TR):
                                 normalize=False, magmom=[[0, 0, 1]], include_TR=include_TR)
     sawf_new = SymmetrizerSAWF().from_irrep(bandstructure)
     pos = [[0, 0, 0]]
-    sawf_new.set_D_wann_from_projections(projections=[(pos, 's'), (pos, 'p'), (pos, 'd')])
+    proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
+    proj_p = Projection(position_num=pos, orbital='p', spacegroup=bandstructure.spacegroup)
+    proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
+    sawf_new.set_D_wann_from_projections(projections=[proj_s, proj_p, proj_d])
     tmp_sawf_path = os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}.sawf.npz")
     sawf_new.to_npz(tmp_sawf_path)
     sawf_ref = SymmetrizerSAWF().from_npz(os.path.join(REF_DIR, "sawf", f"Fe_TR={include_TR}.sawf.npz"))
     check_sawf(sawf_new, sawf_ref)
 
 
+@pytest.mark.parametrize("include_TR", [True, False])
+def _test_create_sawf_Fe_444(check_sawf, include_TR):
+    "this test is disabled, because the necessary data is not included into repo, but need to be generated with QE"
+    path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym", "pwscf")
+
+    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
+                                normalize=False, magmom=[[0, 0, 1]], include_TR=include_TR)
+    sawf_new = SymmetrizerSAWF().from_irrep(bandstructure)
+    pos = [[0, 0, 0]]
+    proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
+    proj_p = Projection(position_num=pos, orbital='p', spacegroup=bandstructure.spacegroup)
+    proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
+    sawf_new.set_D_wann_from_projections(projections=[proj_s, proj_p, proj_d])
+    tmp_sawf_path = os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}.sawf.npz")
+    sawf_new.to_npz(tmp_sawf_path)
+    sawf_ref = SymmetrizerSAWF().from_npz(os.path.join(REF_DIR, "sawf", f"Fe_TR={include_TR}.sawf.npz"))
+    check_sawf(sawf_new, sawf_ref)
+
 
 @pytest.mark.parametrize("include_TR", [True, False])
 @pytest.mark.parametrize("use_window", [True, False])
 def test_sitesym_Fe(include_TR, use_window):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
-    w90data = wberri.w90files.Wannier90data(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"])
+    w90data = wberri.w90files.Wannier90data(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"], read_npz=True)
 
     symmetrizer = SymmetrizerSAWF().from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
     w90data.set_symmetrizer(symmetrizer)

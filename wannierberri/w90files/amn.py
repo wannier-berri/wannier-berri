@@ -147,7 +147,9 @@ def amn_from_bandstructure_s_delta(bandstructure: BandStructure, positions, norm
         return data
 
 
-def amn_from_bandstructure(bandstructure: BandStructure, positions=None, orbitals=None, projections_set=None, normalize=True, return_object=True, spinor=False):
+def amn_from_bandstructure(bandstructure: BandStructure, projections_set=None,
+                           positions=None, orbitals=None, basis_list=None,
+                           normalize=True, return_object=True, spinor=False):
     """
     Create an AMN object from a BandStructure object
     So far only delta-localised s-orbitals are implemented
@@ -156,10 +158,14 @@ def amn_from_bandstructure(bandstructure: BandStructure, positions=None, orbital
     ----------
     bandstructure : BandStructure
         the band structure object
+    projections_set : ProjectionsSet
+        the projections set as an object
     positions : array( (N, 3), dtype=float)
-        the positions of the orbitals
+        the positions of the orbitals (if projections_set is not provided)
     orbitals : list of str
-        the orbitals to be projected (e.g. ['s', 'px', 'py', 'pz', dxy', 'dxz', 'dyz', 'dz2', 'dx2_y2'])
+        the orbitals to be projected (e.g. ['s', 'px', 'py', 'pz', dxy', 'dxz', 'dyz', 'dz2', 'dx2_y2']) (if projections_set is not provided)
+    basis_list : list of array( (3, 3), dtype=float)
+        optional the basis vectors of the orbitals (if projections_set is not provided). Default is the identity matrix for all positions
     normalize : bool
         if True, the wavefunctions are normalised
     return_object : bool
@@ -172,15 +178,23 @@ def amn_from_bandstructure(bandstructure: BandStructure, positions=None, orbital
     if has_proj_set:
         positions = []
         orbitals = []
+        basis_list = []
         print(f"Creating amn. Using projections_set \n{projections_set}")
         for proj in projections_set.projections:
             pos, orb = proj.get_positions_and_orbitals()
             positions += pos
             orbitals += orb
+            basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site)]
         spinor = projections_set.spinor
-    print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals}")
+    else:
+        if basis_list is None:
+            basis_list = [np.eye(3) * len(positions)]
+
+
+    print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
     data = []
     assert len(positions) == len(orbitals), f"the number of positions and orbitals should be the same. Provided: {len(positions)} positions and {len(orbitals)} orbitals:\n positions = \n{positions}\n orbitals = \n{orbitals}"
+    assert len(basis_list) == len(positions), f"the number of basis_list and positions should be the same. Provided: {len(basis_list)} basis_list and {len(positions)} positions"
     assert len(orbitals) > 0, "No orbitals provided"
     pos = np.array(positions)
     rec_latt = bandstructure.RecLattice
@@ -197,7 +211,7 @@ def amn_from_bandstructure(bandstructure: BandStructure, positions=None, orbital
 
         gk = igk.T @ rec_latt
         projector = Projector(gk, bessel)
-        proj_gk = np.array([projector(orb) for orb in orbitals]) * expgk
+        proj_gk = np.array([projector(orb, basis) for orb, basis in zip(orbitals, basis_list)]) * expgk
         if spinor:
             proj_up = wf_up @ proj_gk.T
             proj_down = wf_down @ proj_gk.T

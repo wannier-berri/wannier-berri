@@ -7,6 +7,7 @@ import subprocess
 from matplotlib import pyplot as plt
 import wannierberri as wberri
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
+from wannierberri.wannierise.projections import Projection
 
 data_dir = "../../tests/data/diamond"
 
@@ -45,7 +46,9 @@ if generate_dmn:
                                 Ecut=100,
                                 normalize=False, include_TR=False)
     pos = [[0,0,0],[0,0,1/2],[0,1/2,0],[1/2,0,0]]
-    symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure).set_D_wann_from_projections(projections=[(pos, 's') ])
+    spacegroup = bandstructure.spacegroup
+    proj_s = Projection(position_num=pos, orbital='s', spacegroup=spacegroup)
+    symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure).set_D_wann_from_projections([proj_s])
 else:
     symmetrizer = SymmetrizerSAWF().from_npz(os.path.join(data_dir, "diamond.sawf.npz"))
 
