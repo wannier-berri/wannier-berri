@@ -8,6 +8,28 @@ from .w90file import W90_file
 
 class UNK(W90_file):
 
+    """
+    A class that stores all UNK files
+    
+    Parameters
+    ----------
+    seedname : str
+        the seedname of the wannier90 calculation (including the path. where only the directory is used)
+        if seedname is ||path/to/wannier90 the fiiles should be in path/to/UNK00????.1
+    selected_bands : list of int
+        the list of bands to be read from the UNK files
+    path : str
+        the path to the UNK files
+    NK : int
+        the number of UNK files to be read
+    NKmax : int
+        the maximum number of UNK files to be read (if NK is not provided)
+    kptirr : list of int
+        the list of kpoints to be read from the UNK files (not implemented yet)
+    spinor : bool
+        if True, the wavefunctions are expected to be spinors
+    """
+    
     def __init__(self, seedname=None, **parameters):
         self.from_w90_file(seedname, **parameters)
 
@@ -58,7 +80,7 @@ class UNK(W90_file):
                             U[i, :, :, :, j] = f.read_record(dtype=np.complex128).reshape(nr1, nr2, nr3, order='F')
                     self.data.append(U)
                 else:
-                    print(f"{filename} not found")
+                    print(f"{filename} not found, stopping reading UNK files, read {len(self.data)} files")
                     NK = i
                     break
             else:

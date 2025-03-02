@@ -17,7 +17,7 @@ from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 
 
-def test_wanierise():
+def test_wannierise():
     systems = {}
 
     cwd = os.getcwd()

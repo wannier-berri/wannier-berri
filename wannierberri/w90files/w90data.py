@@ -576,6 +576,32 @@ class Wannier90data:
         """
         calculate Wanier functions on a real-space grid
 
+        Parameters
+        ----------
+        sc_min, sc_max : int or array-like
+            the minimum and maximum supercell indices in the real space (sc_min is typically negative)
+            if sc_max+1-sc_min exceeds the mp_grid, the grid is truncated
+        select_WF : list(int)
+            the list of Wannier functions to be calculated
+        reduce_r_points : int or array-like
+            the factor by which the grid is reduced in each direction (the grid shopuld be divisible by this factor)
+        make_close_to_real_real : bool
+            if True, apply to each Wannier function a phase such that the value at the maximum density is real
+            
+        Returns
+        -------
+        sc_origin : array((3,))
+            the origin of the supercell in the real space
+        sc_basis : array((3,3))
+            the basis of the supercell in the real space
+        WF : array((nWF, nr0, nr1, nr2, nspinor))
+            the Wannier functions on the real space grid
+        rho : array((nWF,nr0, nr1, nr2))
+            the density of the Wannier functions on the real space grid (rho = |WF|^2)
+
+        Note
+        ----
+
         the norm is such that sum_r |WF|^2 = 1
         """
         assert self.wannierised, "system was not wannierised"
@@ -663,7 +689,25 @@ class Wannier90data:
 
     def get_xsf(self, sc_origin=None, sc_basis=None, data=None, atoms_cart=None, atoms_names=None, conv_cell=None, ):
         """
-        get the XSF file from the data
+        get the string for XSF file from the data
+
+        sc_origin, sc_basis 
+            see calc_WF_real_space()
+        data : array((nr0, nr1, nr2))
+            the data to be plotted (only one spinor component is acepted)
+        atoms_cart : array((natoms, 3))
+            the atomic positions in cartesian coordinates (if None, the atomic positions are taken from the WIN file)
+        atoms_names : list(str)
+            the atomic names (if None, the atomic names are taken from the WIN file)
+        conv_cell : array((3,3))
+            the conventional cell (if None, the conventional cell is not written)
+
+        Returns
+        -------
+        str
+            the string for the XSF file
+
+
         """
         A = self.chk.real_lattice
         if atoms_cart is None:
@@ -745,7 +789,41 @@ PRIMVEC
                make_real=True,
                atoms_cart=None, atoms_names=None,
                path=None
-                           ):
+               ):
+        """
+        plot the Wannier functions on the real space grid and save them in the XSF format
+        the output files are named as `path` + `index`.xsf
+
+        Parameters
+        ----------
+        sc_min, sc_max : int or array-like
+            the minimum and maximum supercell indices in the real space (sc_min is typically negative)
+            if sc_max+1-sc_min exceeds the mp_grid, the grid is truncated
+        select_WF : list(int)
+            the list of Wannier functions to be calculated
+        reduce_r_points : int or array-like
+            the factor by which the grid is reduced in each direction (the grid shopuld be divisible by this factor)
+        make_real : bool
+            if True, apply to each Wannier function a phase such that the value at the maximum density is real
+        atoms_cart : array((natoms, 3))
+            the atomic positions in cartesian coordinates (if None, the atomic positions are taken from the WIN file)
+        atoms_names : list(str)
+            the atomic names (if None, the atomic names are taken from the WIN file)
+        path : str
+            the path to save the files (the files are named as `path` + `index`.xsf)
+            if None, the files are saved as `seedname`.WF`index`.xsf
+
+        Returns
+        -------
+        sc_origin : array((3,))
+            the origin of the supercell in the real space
+        sc_basis : array((3,3))
+            the basis of the supercell in the real space
+        WF : array((nWF, nr0, nr1, nr2, nspinor))
+            the Wannier functions on the real space grid
+        rho : array((nWF,nr0, nr1, nr2))
+            the density of the Wannier functions on the real space grid (rho = |WF|^2)
+        """
         if path is None:
             path = f"{self.seedname}.WF"
         if select_WF is None:
