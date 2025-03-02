@@ -12,6 +12,7 @@
 # from the translation of Wannier90 code                     #
 # ------------------------------------------------------------#
 
+import datetime
 from functools import cached_property
 from copy import copy
 import warnings
@@ -24,6 +25,7 @@ from .mmn import MMN
 from .amn import AMN
 from .xxu import UIU, UHU, SIU, SHU
 from .spn import SPN
+from .unk import UNK
 from .chk import CheckPoint, CheckPoint_bare
 
 FILES_CLASSES = {'win': WIN,
@@ -35,6 +37,7 @@ FILES_CLASSES = {'win': WIN,
                 'siu': SIU,
                 'shu': SHU,
                 'spn': SPN,
+                'unk': UNK,
                 'chk': CheckPoint,
                 }
 
@@ -49,7 +52,7 @@ class Wannier90data:
         formatted : tuple(str)
             list of files which should be read as formatted files (uHu, uIu, etc)
         read_npz : bool
-            if True, try to read the files converted to npz (e.g. wanier90.mmn.npz instead of wannier90.
+            if True, try to read the files converted to npz (e.g. wanier90.mmn.npz instead of wannier90.mmn)
         write_npz_list : list(str)
             for which files npz will be written
         write_npz_formatted : bool
@@ -120,6 +123,22 @@ class Wannier90data:
             self.wannierised = False
 
 
+    @cached_property
+    def atomic_positions_red(self):
+        """
+        Returns the atomic positions in reduced coordinates
+        """
+        if not hasattr(self, "_atomic_positions_red"):
+            win = self.get_file("win")
+            if "atoms_frac" in win:
+                self._atomic_positions_red = win.atoms_frac
+            elif "atoms_cart" in win:
+                self._atomic_positions_red = win.atoms_cart @ np.linalg.inv(win.lattice)
+            self._atomic_positions_red = win.atomic_positions
+        return self.chk.atomic_positions_red
+
+    def set_atomic_positions_red(self, atomic_positions_red):
+        self._atomic_positions_red = atomic_positions_red
 
     def get_spacegroup(self):
         """
@@ -280,7 +299,7 @@ class Wannier90data:
         kwargs = {}
         if key in ["uhu", "uiu", "shu", "siu"]:
             kwargs["formatted"] = key in self.formatted_list
-        if key not in ["chk", "win"]:
+        if key not in ["chk", "win", "unk"]:
             kwargs["read_npz"] = self.read_npz
             kwargs["write_npz"] = key in self.write_npz_list
         if key not in ["win", "chk"]:
@@ -407,6 +426,13 @@ class Wannier90data:
         return self.get_file('shu')
 
     @property
+    def unk(self):
+        """
+        Returns the UNK files
+        """
+        return self.get_file('unk')
+
+    @property
     def iter_kpts(self):
         """
         Returns the iterator over the k-points
@@ -523,8 +549,6 @@ class Wannier90data:
         self.window_applied = True
 
 
-
-
     def check_symmetry(self, silent=False):
         """
         Check the symmetry of the system
@@ -543,3 +567,280 @@ class Wannier90data:
         according to the symmetrizer object
         """
         self.set_file("amn", self.symmetrizer.get_random_amn(), overwrite=True)
+
+    def calc_WF_real_space(self,
+                           sc_min=-1, sc_max=1,
+                           select_WF=None,
+                           reduce_r_points=1,
+                           make_close_to_real_real=True):
+        """
+        calculate Wanier functions on a real-space grid
+
+        Parameters
+        ----------
+        sc_min, sc_max : int or array-like
+            the minimum and maximum supercell indices in the real space (sc_min is typically negative)
+            if sc_max+1-sc_min exceeds the mp_grid, the grid is truncated
+        select_WF : list(int)
+            the list of Wannier functions to be calculated
+        reduce_r_points : int or array-like
+            the factor by which the grid is reduced in each direction (the grid shopuld be divisible by this factor)
+        make_close_to_real_real : bool
+            if True, apply to each Wannier function a phase such that the value at the maximum density is real
+            
+        Returns
+        -------
+        sc_origin : array((3,))
+            the origin of the supercell in the real space
+        sc_basis : array((3,3))
+            the basis of the supercell in the real space
+        WF : array((nWF, nr0, nr1, nr2, nspinor))
+            the Wannier functions on the real space grid
+        rho : array((nWF,nr0, nr1, nr2))
+            the density of the Wannier functions on the real space grid (rho = |WF|^2)
+
+        Note
+        ----
+
+        the norm is such that sum_r |WF|^2 = 1
+        """
+        assert self.wannierised, "system was not wannierised"
+        assert self.has_file("unk"), "UNK files are not set"
+
+        def to_3array(x: int):
+            if isinstance(x, int):
+                return np.array([x] * 3)
+            else:
+                return np.array(x)
+
+        sc_min_vec = to_3array(sc_min)
+        sc_max_vec = to_3array(sc_max + 1)
+        mp_grid = np.array(self.chk.mp_grid)
+        sc_min_vec = np.maximum(sc_min_vec, -mp_grid // 2)
+        sc_max_vec = np.minimum(sc_max_vec, (mp_grid + 1) // 2)
+        sc_size_vec = sc_max_vec - sc_min_vec
+
+        reduce_r_points = to_3array(reduce_r_points)
+        print(f"self.unk.grid_size={self.unk.grid_size}")
+        print(f"reduc_r_points = {reduce_r_points}")
+        real_grid = np.array(self.unk.grid_size)
+        assert np.all(real_grid % reduce_r_points == 0), f"cannot reduce grid {real_grid} by factors {reduce_r_points} - not divisible"
+        real_grid = real_grid // reduce_r_points
+        nr0, nr1, nr2 = real_grid
+
+        nr_tot = nr0 * nr1 * nr2
+
+        if select_WF is None:
+            select_WF = range(self.chk.num_wann)
+
+        mp_grid = np.array(self.chk.mp_grid)
+
+        kpoints = self.chk.kpt_latt
+        kpoints_int = self.chk.kpt_latt_int
+
+        exp_one = np.exp(2j * np.pi / (mp_grid * real_grid))
+
+        exp_grid = [np.cumprod([exp_one[i]] * real_grid[i]) for i in range(3)]
+
+        output_grid_size = real_grid * sc_size_vec
+
+        nspinor = 2 if self.unk.spinor else 1
+        real_lattice = self.chk.real_lattice
+
+        WF = np.zeros(tuple(output_grid_size) + (nspinor, len(select_WF),), dtype=complex)
+        sc_origin = sc_min_vec @ real_lattice
+        sc_basis = sc_size_vec[:, None] * real_lattice
+
+        for ik, U in enumerate(self.unk.data):
+            if U is None:
+                raise NotImplementedError("plotWF from irreducible kpoints is not implemented yet")
+            U = U[:, ::reduce_r_points[0], ::reduce_r_points[1], ::reduce_r_points[2], :]
+            U = np.einsum("m...,mn->...n", U, self.chk.v_matrix[ik][:, select_WF])
+            k_int = kpoints_int[ik]
+            k_latt = kpoints[ik]
+            exp_loc = [exp_grid[i]**k_int[i] for i in range(3)]
+            U[:] *= exp_loc[0][:, None, None, None, None]
+            U[:] *= exp_loc[1][None, :, None, None, None]
+            U[:] *= exp_loc[2][None, None, :, None, None]
+            for i0 in range(sc_size_vec[0]):
+                for i1 in range(sc_size_vec[1]):
+                    for i2 in range(sc_size_vec[2]):
+                        iR = np.array([i0, i1, i2]) + sc_min_vec
+                        phase = np.exp(2j * np.pi * np.dot(iR, k_latt))
+                        WF[i0 * nr0:(i0 + 1) * nr0, i1 * nr1:(i1 + 1) * nr1, i2 * nr2:(i2 + 1) * nr2, :, :] += U * phase
+
+        WF = WF.transpose((4, 0, 1, 2, 3)) / np.prod(mp_grid) / np.sqrt(nr_tot)
+
+        if make_close_to_real_real and not self.unk.spinor:
+            for i in range(WF.shape[0]):
+                data = WF[i].copy()
+                shape = data.shape
+                data = data.reshape(-1)
+                pos = np.argmax(abs(data))
+                w = data[pos]
+                data *= w.conj() / abs(w)
+                imag_max = abs(data.imag).max()
+                print(f"wannier function {select_WF[i]} : Im/Re ratio {imag_max/abs(w)} ({data[pos]})")
+                WF[i] = data.reshape(shape)
+
+        rho = np.sum((WF * WF.conj()).real, axis=4)
+
+        return sc_origin, sc_basis, WF, rho
+
+    def get_xsf(self, sc_origin=None, sc_basis=None, data=None, atoms_cart=None, atoms_names=None, conv_cell=None, ):
+        """
+        get the string for XSF file from the data
+
+        sc_origin, sc_basis 
+            see calc_WF_real_space()
+        data : array((nr0, nr1, nr2))
+            the data to be plotted (only one spinor component is acepted)
+        atoms_cart : array((natoms, 3))
+            the atomic positions in cartesian coordinates (if None, the atomic positions are taken from the WIN file)
+        atoms_names : list(str)
+            the atomic names (if None, the atomic names are taken from the WIN file)
+        conv_cell : array((3,3))
+            the conventional cell (if None, the conventional cell is not written)
+
+        Returns
+        -------
+        str
+            the string for the XSF file
+
+
+        """
+        A = self.chk.real_lattice
+        if atoms_cart is None:
+            if hasattr(self, "atomic_positions_frac"):
+                atoms_cart = self.atomic_positions_frac @ A
+            elif hasattr(self, "atomic_positions_cart"):
+                atoms_cart = self.atomic_positions_cart
+            elif "atoms_cart" in self.win:
+                atoms_cart = self.win["atoms_cart"]
+            elif "atoms_frac" in self.win:
+                atoms_cart = self.win["atoms_frac"] @ A
+            else:
+                atoms_cart = []
+        if atoms_names is None:
+            if hasattr(self, "atomic_names"):
+                atoms_names = self.atomic_names
+            elif "atoms_names" in self.win:
+                atoms_names = self.win["atoms_names"]
+            else:
+                atoms_names = ["X"] * len(atoms_cart)
+
+        out = f"""  #
+        # Produced by WannierBerri https://wannier-berri.org
+        # On {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        #
+CRYSTAL
+PRIMVEC
+{A[0,0]: 20.10f} {A[0,1]: 20.10f} {A[0,2]: 20.10f}
+{A[1,0]: 20.10f} {A[1,1]: 20.10f} {A[1,2]: 20.10f}
+{A[2,0]: 20.10f} {A[2,1]: 20.10f} {A[2,2]: 20.10f}
+"""
+        if conv_cell is not None:
+            out += f"""CONVVEC
+{conv_cell[0,0]: 20.10f} {conv_cell[0,1]: 20.10f} {conv_cell[0,2]: 20.10f}
+{conv_cell[1,0]: 20.10f} {conv_cell[1,1]: 20.10f} {conv_cell[1,2]: 20.10f}
+{conv_cell[2,0]: 20.10f} {conv_cell[2,1]: 20.10f} {conv_cell[2,2]: 20.10f}
+        """
+        out += f"""PRIMCOORD
+{len(atoms_cart)} 1
+"""
+        for a, c in zip(atoms_names, atoms_cart):
+            out += f"{a} {c[0]: 20.10f} {c[1]: 20.10f} {c[2]: 20.10f}\n"
+        out += "\n\n\n"
+
+        # in order to get the "non-periodic" grid for xcrysden
+        shape = np.array(data.shape[:3])
+        sc_basis_loc = sc_basis * ((shape - 1) / shape)[:, None]
+
+        def get_data_block(ind, dat):
+            out_loc = f"""BEGIN_DATAGRID_3D_wannier_function_{ind}
+{dat.shape[0]} {dat.shape[1]} {dat.shape[2]}
+{sc_origin[0]: 20.10f} {sc_origin[1]: 20.10f} {sc_origin[2]: 20.10f}
+{sc_basis_loc[0,0]: 20.10f} {sc_basis_loc[0,1]: 20.10f} {sc_basis_loc[0,2]: 20.10f}
+{sc_basis_loc[1,0]: 20.10f} {sc_basis_loc[1,1]: 20.10f} {sc_basis_loc[1,2]: 20.10f}
+{sc_basis_loc[2,0]: 20.10f} {sc_basis_loc[2,1]: 20.10f} {sc_basis_loc[2,2]: 20.10f}
+"""
+            dat = dat.reshape(-1, order='F')
+            num_per_string = 6
+            for i in range(0, len(dat), num_per_string):
+                out_loc += " ".join(f"{x: 20.10f}" for x in dat[i:i + num_per_string]) + "\n"
+            out_loc += f"END_DATAGRID_3D_wannier_function_{ind}\n"
+            return out_loc
+
+
+        if data is not None:
+            out += "BEGIN_BLOCK_DATAGRID_3D\nwannier_functions\n"
+            if data.ndim == 3:
+                data = data[None, ...]
+            for i, dat in enumerate(data):
+                out += get_data_block(i, dat)
+            out += "END_BLOCK_DATAGRID_3D\n"
+
+        return out
+
+    def plotWF(self,
+               sc_min=-1, sc_max=1,
+               select_WF=None,
+               reduce_r_points=1,
+               make_real=True,
+               atoms_cart=None, atoms_names=None,
+               path=None
+               ):
+        """
+        plot the Wannier functions on the real space grid and save them in the XSF format
+        the output files are named as `path` + `index`.xsf
+
+        Parameters
+        ----------
+        sc_min, sc_max : int or array-like
+            the minimum and maximum supercell indices in the real space (sc_min is typically negative)
+            if sc_max+1-sc_min exceeds the mp_grid, the grid is truncated
+        select_WF : list(int)
+            the list of Wannier functions to be calculated
+        reduce_r_points : int or array-like
+            the factor by which the grid is reduced in each direction (the grid shopuld be divisible by this factor)
+        make_real : bool
+            if True, apply to each Wannier function a phase such that the value at the maximum density is real
+        atoms_cart : array((natoms, 3))
+            the atomic positions in cartesian coordinates (if None, the atomic positions are taken from the WIN file)
+        atoms_names : list(str)
+            the atomic names (if None, the atomic names are taken from the WIN file)
+        path : str
+            the path to save the files (the files are named as `path` + `index`.xsf)
+            if None, the files are saved as `seedname`.WF`index`.xsf
+
+        Returns
+        -------
+        sc_origin : array((3,))
+            the origin of the supercell in the real space
+        sc_basis : array((3,3))
+            the basis of the supercell in the real space
+        WF : array((nWF, nr0, nr1, nr2, nspinor))
+            the Wannier functions on the real space grid
+        rho : array((nWF,nr0, nr1, nr2))
+            the density of the Wannier functions on the real space grid (rho = |WF|^2)
+        """
+        if path is None:
+            path = f"{self.seedname}.WF"
+        if select_WF is None:
+            select_WF = range(self.chk.num_wann)
+
+        sc_origin, sc_basis, WF, rho = self.calc_WF_real_space(sc_min=sc_min, sc_max=sc_max,
+                                                               select_WF=select_WF,
+                                                               reduce_r_points=reduce_r_points,
+                                                               make_close_to_real_real=make_real)
+        assert not self.unk.spinor, "plotting Wannier functions is not implemented for spinors"
+        WF = WF[..., 0]  # take the only spinor component
+        for i, j in enumerate(select_WF):
+            filename = path + f"{j:04d}.xsf"
+            xsf_str = self.get_xsf(sc_origin=sc_origin, sc_basis=sc_basis,
+                                   atoms_cart=atoms_cart, atoms_names=atoms_names,
+                                   data=WF[i].real)
+            with open(filename, "w") as f:
+                f.write(xsf_str)
+
+        return sc_origin, sc_basis, WF, rho

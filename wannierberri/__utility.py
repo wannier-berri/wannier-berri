@@ -36,7 +36,7 @@ def time_now_iso():
 class FortranFileR(fortio.FortranFile):
 
     def __init__(self, filename):
-        print("using fortio to read")
+        # print("using fortio to read")
         try:
             super().__init__(filename, mode='r', header_dtype='uint32', auto_endian=True, check_file=True)
         except ValueError:

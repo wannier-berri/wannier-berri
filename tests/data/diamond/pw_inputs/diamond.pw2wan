@@ -6,5 +6,6 @@
    write_mmn = .true.
    write_amn = .true.
    write_dmn = .False.
-   write_unk = .false.
+   write_unk = .true.
+   reduce_unk = .true.
 /
