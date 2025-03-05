@@ -10,7 +10,7 @@ class UNK(W90_file):
 
     """
     A class that stores all UNK files
-    
+
     Parameters
     ----------
     seedname : str
@@ -29,7 +29,7 @@ class UNK(W90_file):
     spinor : bool
         if True, the wavefunctions are expected to be spinors
     """
-    
+
     def __init__(self, seedname=None, **parameters):
         self.from_w90_file(seedname, **parameters)
 
@@ -93,9 +93,9 @@ class UNK(W90_file):
 
     def apply_window(self, selected_bands):
         self._NB = len(selected_bands)
-        for u in self.data:
+        for i, u in enumerate(self.data):
             if u is not None:
-                u = u[selected_bands]
+                self.data[i] = u[selected_bands]
 
     @property
     def NB(self):
