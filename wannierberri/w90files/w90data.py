@@ -527,7 +527,7 @@ class Wannier90data:
                 print(f"key = {key} ,number of bands = {val.NB}")
             if key == 'chk':
                 print(f"key = {key} ,number of bands = {val.num_bands}")
-        self.chk.apply_window(new_selected_bands)
+        # self.chk.apply_window(new_selected_bands)
         for key in FILES_CLASSES:
             if key in self._files:
                 if key == 'win':
@@ -542,7 +542,7 @@ class Wannier90data:
         for key, val in self._files.items():
             if key != 'win' and key != 'chk':
                 print(f"key = {key} ,number of bands = {val.NB}")
-                if hasattr(val, 'data'):
+                if hasattr(val, 'data') and key != 'unk':
                     print(f"key = {key} ,shape of data= {val.data.shape}")
             if key == 'chk':
                 print(f"key = {key} ,number of bands = {val.num_bands}")
@@ -587,7 +587,7 @@ class Wannier90data:
             the factor by which the grid is reduced in each direction (the grid shopuld be divisible by this factor)
         make_close_to_real_real : bool
             if True, apply to each Wannier function a phase such that the value at the maximum density is real
-            
+
         Returns
         -------
         sc_origin : array((3,))

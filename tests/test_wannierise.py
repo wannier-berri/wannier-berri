@@ -16,8 +16,9 @@ from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 
-
-def test_wannierise():
+@pytest.mark.parametrize("outer_window", [None, (-100, 100), (-10, 40), (-10, 22), (10, 40)])
+def test_wannierise(outer_window):
+    check_WF = (outer_window is None or outer_window[0] < -9)
     systems = {}
 
     cwd = os.getcwd()
@@ -47,6 +48,12 @@ def test_wannierise():
     # Read the data from the Wanier90 inputs
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
+    check_results = True
+    if outer_window is not None:
+        w90data.apply_window(win_min=outer_window[0], win_max=outer_window[1])
+        if outer_window[0] > -8:
+            check_results = False
+    print(f"num_bands: eig:{w90data.eig.NB}, mmn:{w90data.mmn.NB}, amn:{w90data.amn.NB}")
     # Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
     w90data.wannierise(
         froz_min=-8,
@@ -62,21 +69,32 @@ def test_wannierise():
     wannier_centers = w90data.chk._wannier_centers
     wannier_spreads = w90data.chk._wannier_spreads
     wannier_spreads_mean = np.mean(wannier_spreads)
-    assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
-    assert wannier_spreads == approx(0.39864755, abs=1e-7)
-    assert wannier_centers == approx(np.array([[0, 0, 0],
-                                               [0, 0, 1],
-                                               [0, 1, 0],
-                                               [1, 0, 0]
-                                               ]).dot(w90data.chk.real_lattice) / 2,
-                                     abs=1e-6)
+    if check_results:
+        assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
+        assert wannier_spreads == approx(0.39864755, abs=1e-7)
+        assert wannier_centers == approx(np.array([[0, 0, 0],
+                                                [0, 0, 1],
+            [0, 1, 0],
+            [1, 0, 0]
+        ]).dot(w90data.chk.real_lattice) / 2,
+            abs=1e-6)
+    if check_WF:
+        assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
+        assert wannier_spreads == approx(0.39864755, abs=1e-7)
+        assert wannier_centers == approx(np.array([[0, 0, 0],
+                                                [0, 0, 1],
+                                                [0, 1, 0],
+                                                [1, 0, 0]
+                                                ]).dot(w90data.chk.real_lattice) / 2,
+                                        abs=1e-6)
     sc_origin, sc_basis, WF, rho = w90data.plotWF(select_WF=[1, 2], reduce_r_points=[3, 9, 1])
     assert WF.shape == (2, 6, 2, 18)
     assert rho.shape == (2, 6, 2, 18)
-    wf_file_name = "WF_12_red.npy"
-    np.save(wf_file_name, WF)
-    ref = np.load(os.path.join(REF_DIR, wf_file_name))
-    assert WF == approx(ref)
+    if check_WF:
+        wf_file_name = "WF_12_red.npy"
+        np.save(wf_file_name, WF)
+        ref = np.load(os.path.join(REF_DIR, wf_file_name))
+        assert WF == approx(ref)
 
     sc_origin, sc_basis, WF, rho = w90data.plotWF(select_WF=[1, 2], reduce_r_points=[1, 1, 1])
     lattice = w90data.chk.real_lattice
@@ -84,7 +102,8 @@ def test_wannierise():
     assert sc_basis == approx(2 * lattice)
     assert WF.shape == (2, 18, 18, 18)
     assert rho.shape == (2, 18, 18, 18)
-    assert rho.sum(axis=(1, 2, 3)) == approx(1)
+    if check_WF:    
+        assert rho.sum(axis=(1, 2, 3)) == approx(1)
 
     systems["wberri"] = wberri.system.System_w90(w90data=w90data)
 
@@ -118,7 +137,8 @@ def test_wannierise():
         diff = abs(energies[k1] - energies_ref)
         # the precidsion is not very high here, although the two codes are assumed to do the same. Not sure why..
         d, acc = np.max(diff), 0.0005
-        assert d < acc, f"the interpolated bands {k1}  differ from reference by max {d}>{acc}"
+        if check_results:
+            assert d < acc, f"the interpolated bands {k1}  differ from reference by max {d}>{acc}"
 
     # One can see that results do not differ much. Also, the maximal localization does not have much effect.
     os.chdir(cwd)
