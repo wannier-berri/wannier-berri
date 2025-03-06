@@ -19,10 +19,8 @@ except ImportError:
 
 from .utility import find_distance_periodic
 from wannierberri.__utility import UniqueListMod1
-from ..symmetry.orbitals import Orbitals, num_orbitals
+from ..symmetry.orbitals import num_orbitals
 from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric
-
-ORBITALS = Orbitals()
 
 
 class Projection:
@@ -110,6 +108,7 @@ class Projection:
         new = Projection(void=True)
         new.orbitals = self.orbitals
         new.wyckoff_position = self.wyckoff_position
+        new.spinor = self.spinor
         return new
 
     def __add__(self, other):

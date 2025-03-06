@@ -21,11 +21,11 @@ class Dwann:
         by applying the symmetry operations of the spacegroup.
         if the file will be used with an already generated .amn file, 
         the positions should be the same as the .amn file, including the order.
-    projection : str
+    orbital : str
         The projection type. Default is "_" which means "s". 
         (not implemented yet, but should be implemented in the future)
-    orbitals : wannierberri.system.sym_wann_orbitals.Orbitals object
-        The orbitals object that contains the orbitals information.
+    orbital_rotator : function
+    
     spinor : bool
         Whether the Wannier functions are spinors.
 

@@ -7,9 +7,11 @@ import warnings
 from irrep.bandstructure import BandStructure
 from matplotlib import pyplot as plt
 import numpy as np
-from wannierberri.w90files.w90data import FILES_CLASSES
+from ..w90files.w90data import FILES_CLASSES
 from ..w90files.dmn import DMN
-from ..wannierise.projections import ORBITALS, ProjectionsSet
+from ..symmetry.sawf import SymmetrizerSAWF as SAWF
+from ..symmetry.orbitals import num_orbitals
+from ..wannierise.projections import  ProjectionsSet
 from ..w90files import WIN, Wannier90data
 from .. parallel import Serial as wbSerial
 from .ase import write_espresso_in
@@ -330,6 +332,9 @@ class WorkflowQE:
         self.kwargs_nscf["nbnd"] = num_bands
 
 
+        self.symmetrizer = None
+
+
         if use_flags:
             self.flags = FlagsCalculated(
                 ['gs', 'nscf', 'pw2wannier', 'wannier_w90',
@@ -359,9 +364,7 @@ class WorkflowQE:
         self.pickle()
 
 
-    def ground_state(self, kpts=(8, 8, 8), enforce=False, run=True, **kwargs):
-        if self.flags.check('gs') and not enforce:
-            return
+    def ground_state(self, kpts=(8, 8, 8),  run=True, **kwargs):
         message("Ground state")
         self.kwargs_gs.update(kwargs)
         f_in = f'{self.prefix}.scf.in'
@@ -383,9 +386,7 @@ class WorkflowQE:
             file = self.pickle_file
         pickle.dump(self, open(file, 'wb'))
 
-    def nscf(self, mp_grid=(4, 4, 4), enforce=False, run=True, **kwargs):
-        if self.flags.check('nscf') and not enforce:
-            return
+    def nscf(self, mp_grid=(4, 4, 4), run=True, **kwargs):
         message("NSCF")
         self.mp_grid = mp_grid
         self.kwargs_nscf.update(kwargs)
@@ -427,9 +428,7 @@ class WorkflowQE:
             except AttributeError:
                 pass
 
-    def write_win(self, enforce=False, **kwargs):
-        if self.flags.check('win') and not enforce:
-            return
+    def write_win(self, **kwargs):
         data = dict(kpoints=self.kpoints_nscf,
                 unit_cell_cart=self.atoms.get_cell(),
                 atoms_frac=self.atoms.get_scaled_positions(),
@@ -448,9 +447,7 @@ class WorkflowQE:
         self.flags.on('win')
         self.pickle()
 
-    def pw2wannier(self, targets=['eig', 'mmn', 'amn'], enforce=False, run=True, **kwargs):
-        if self.flags.check('pw2wannier') and not enforce:
-            return
+    def pw2wannier(self, targets=['eig', 'mmn', 'amn'],  run=True, **kwargs):
         message("pw2wannier")
         self.executables.run_wannier(self.prefix, pp=True)
         f_in = f'{self.prefix}.pw2wan.in'
@@ -464,19 +461,36 @@ class WorkflowQE:
         self.flags.on('pw2wannier')
         self.pickle()
 
-    def wannierise_w90(self, enforce=False):
-        if self.flags.check('wannier_w90') and not enforce:
-            return
+    def wannierise_w90(self):
         message("Wannier-w90")
         self.executables.run_wannier(self.prefix)
         message("Done")
         self.flags.on('wannier_w90')
         self.pickle()
 
-    def wannierise_wberri(self, enforce=False, kwargs_system={}, kwargs_window={}, **kwargs):
-        if self.flags.check('wannierise_wberri') and not enforce:
-            return
-        w90data = Wannier90data(seedname=self.prefix, read_chk=False)
+    def wannierise_wberri(self, kwargs_system={}, kwargs_window={},
+                          readfiles=None, 
+                          files_dict = None,
+                          **kwargs):
+        if readfiles is None:
+            readfiles = ["amn", "mmn", "eig", "win"]
+        if files_dict is None:
+            files_dict = {}
+        readfiles = [f for f in readfiles if f not in files_dict]
+        w90data = Wannier90data(seedname=self.prefix, readfiles=readfiles)
+        for f in files_dict:
+            w90data.set_file(f, files_dict[f])
+        self.pickle()
+
+        if self.symmetrizer is not None:
+            symmetrizer = self.symmetrizer
+            self.pickle()
+            symmetrizer.set_D_wann_from_projections(projections_obj=self.projections)
+            self.pickle()
+            w90data.set_symmetrizer(symmetrizer)
+        self.pickle()
+
+
         w90data.apply_window(**kwargs_window)
         # for key in ["amn", "mmn", "eig", "dmn"]:
         #     print (f"w90data[{key}].NB = {w90data.get_file(key).NB}")
@@ -493,7 +507,7 @@ class WorkflowQE:
                                     )
         return bandstructure.spacegroup
 
-    def create_dmn(self, Ecut=30, enforce=False, from_sym_file=None):
+    def create_dmn(self, Ecut=30, from_sym_file=None):
         """
         Create the DMN file for Wannier90
 
@@ -508,9 +522,7 @@ class WorkflowQE:
                 The angular momentum of the projection, e.g. 's', 'p', 'd', 'sp3'
         Ecut: float
             The energy cutoff for the plane waves in wave functions
-        enforce: bool
-            If True, recalculate the DMN file even if it has been calculated before
-
+        
         Notes
         -----
         projections here are given again, because previously projections were given as separate, not as orbits
@@ -524,12 +536,22 @@ class WorkflowQE:
                                       from_sym_file=from_sym_file
                                     )
         # bandstructure.spacegroup.show()
-        if enforce or not self.flags.check('dmn'):
-            dmn_new = DMN(empty=True)
-            dmn_new.from_irrep(bandstructure)
-            dmn_new.set_D_wann_from_projections(projections_obj=self.projections, spinor=self.spinor)
-            dmn_new.to_w90_file(self.prefix)
-            self.flags.on('dmn')
+    
+        dmn_new = DMN(empty=True)
+        dmn_new.from_irrep(bandstructure)
+        dmn_new.set_D_wann_from_projections(projections_obj=self.projections, spinor=self.spinor)
+        dmn_new.to_w90_file(self.prefix)
+        self.flags.on('dmn')
+
+    def set_symmetrizer(self, try_read=True, **kwargs):
+        symmetrizer_file_name = self.prefix+'.sawf.npz'
+        if try_read and os.path.exists(symmetrizer_file_name):
+            symmetrizer = SAWF().from_npz(symmetrizer_file_name)
+        else:
+            bandstructure = BandStructure(code='espresso', prefix=self.prefix, **kwargs) 
+            symmetrizer = SAWF().from_irrep(bandstructure)
+            symmetrizer.to_npz(symmetrizer_file_name)
+        self.symmetrizer = symmetrizer
 
 
 
@@ -550,6 +572,8 @@ class WorkflowQE:
                                                                            parallel=self.executables.parallel_wb)
         self.flags.on('bands_wannier_wberri')
         self.pickle()
+
+    
 
 
     def calc_bands_qe(self, kdensity, enforce=False, run=True, **kargs):
@@ -660,7 +684,7 @@ def run_pw2wannier(projections=[],
         win["projections"] = projections
     num_wann = 0
     for x in projections:
-        num_wann += ORBITALS.num_orbitals(x.split(":")[1])
+        num_wann += num_orbitals(x.split(":")[1])
     win["num_wann"] = num_wann
     win.update(kwargs_wannier)
     win.write(seedname)

@@ -101,8 +101,8 @@ def wannierise(w90data,
     assert 0 < mix_ratio_z <= 1
     NK = w90data.mmn.NK
     if sitesym:
-        kptirr = w90data.symmetrizer.kptirr
         symmetrizer = w90data.symmetrizer
+        kptirr = w90data.symmetrizer.kptirr
         include_k = np.zeros(NK, dtype=bool)
         neighbours = w90data.mmn.neighbours
         for ik in kptirr:

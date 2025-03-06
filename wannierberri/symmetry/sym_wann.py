@@ -6,7 +6,7 @@ import sys
 import warnings
 import numpy as np
 import spglib
-from .orbitals import Orbitals, num_orbitals
+from .orbitals import num_orbitals, rot_orb
 from ..system.system import num_cart_dim
 from irrep.spacegroup import SymmetryOperation
 from collections import defaultdict
@@ -143,7 +143,6 @@ class SymWann:
             'SHR': -1,
         }
 
-        self.orbitals = Orbitals()
 
         self.wann_atom_info = []
 
@@ -347,7 +346,7 @@ class SymWann:
         p_mat = np.zeros((num_wann_on_atom, num_wann_on_atom), dtype=complex)
         p_mat_dagger = np.zeros(p_mat.shape, dtype=complex)
         for orb_name in orbitals:
-            rot_orbital = self.orbitals.rot_orb(orb_name, symop.rotation_cart)
+            rot_orbital = rot_orb(orb_name, symop.rotation_cart)
             if self.soc:
                 rot_orbital = np.kron(symop.spinor_rotation, rot_orbital)
             orb_position = orb_position_dic[orb_name]
