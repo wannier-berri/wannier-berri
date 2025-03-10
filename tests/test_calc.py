@@ -15,7 +15,7 @@ from .common_systems import Efermi_Fe
 @pytest.fixture
 def check_calculator(compare_any_result):
     """
-    
+
     """
 
     def _inner(system, calc, name, dK=[0.1, 0.2, 0.3], NKFFT=[3, 3, 3], param_K={},
@@ -122,18 +122,19 @@ def check_save_result():
         assert str(result.transformInv) == str(result_read.transformInv)
     return _inner
 
+
 def test_SDCT(system_random_load_bare, check_calculator):
     calculators_SDCT = {
-    'SDCT_sym_sea_I': wberri.calculators.dynamic.SDCT_sym_sea_I,
-    'SDCT_sym_sea_II': wberri.calculators.dynamic.SDCT_sym_sea_II,
-    'SDCT_asym_sea_I': wberri.calculators.dynamic.SDCT_asym_sea_I,
-    'SDCT_asym_sea_II': wberri.calculators.dynamic.SDCT_asym_sea_II,
-    'SDCT_asym_surf_I': wberri.calculators.dynamic.SDCT_asym_surf_I,
-    'SDCT_asym_surf_II': wberri.calculators.dynamic.SDCT_asym_surf_II,
-    'SDCT_sym_surf_I': wberri.calculators.dynamic.SDCT_sym_surf_I,
-    'SDCT_sym_surf_II': wberri.calculators.dynamic.SDCT_sym_surf_II,
-    'SDCT_sym': wberri.calculators.dynamic.SDCT_sym,
-    'SDCT_asym': wberri.calculators.dynamic.SDCT_asym}
+        'SDCT_sym_sea_I': wberri.calculators.dynamic.SDCT_sym_sea_I,
+        'SDCT_sym_sea_II': wberri.calculators.dynamic.SDCT_sym_sea_II,
+        'SDCT_asym_sea_I': wberri.calculators.dynamic.SDCT_asym_sea_I,
+        'SDCT_asym_sea_II': wberri.calculators.dynamic.SDCT_asym_sea_II,
+        'SDCT_asym_surf_I': wberri.calculators.dynamic.SDCT_asym_surf_I,
+        'SDCT_asym_surf_II': wberri.calculators.dynamic.SDCT_asym_surf_II,
+        'SDCT_sym_surf_I': wberri.calculators.dynamic.SDCT_sym_surf_I,
+        'SDCT_sym_surf_II': wberri.calculators.dynamic.SDCT_sym_surf_II,
+        'SDCT_sym': wberri.calculators.dynamic.SDCT_sym,
+        'SDCT_asym': wberri.calculators.dynamic.SDCT_asym}
     from .test_run import Efermi_GaAs
     param = {'Efermi': Efermi_GaAs,
              'omega': np.linspace(0.0, 7, 8),
@@ -142,16 +143,16 @@ def test_SDCT(system_random_load_bare, check_calculator):
 
     for key, calculator in calculators_SDCT.items():
         for term in ["M1", "E2", "V", "all"]:
-            param_terms = {f"{t}_terms": (t=="all") for t in ["M1", "E2", "V"]}
+            param_terms = {f"{t}_terms": (t == "all") for t in ["M1", "E2", "V"]}
             if term != "all":
                 param_terms[f"{term}_terms"] = True
             name = f"random-{key}-{term}_terms"
-            print (name)
+            print(name)
             calc = calculator(**param_terms, **param)
             check_calculator(system_random_load_bare, calc, name, do_not_compare=False)
-                    
-        
-    
+
+
+
 
 def test_save_KBandResult(system_Haldane_PythTB, check_save_result):
     calc = wberri.calculators.tabulate.Energy()

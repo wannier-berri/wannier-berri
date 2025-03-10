@@ -268,8 +268,8 @@ m_spin_prefactor = electron_g_factor * hbar / electron_mass
 
 class SDCT_asym(MultitermCalculator):
 
-    def __init__(self, fermi_sea=True, fermi_surf=True, 
-                 M1_terms=True, E2_terms=True, V_terms=True,  spin=False,              
+    def __init__(self, fermi_sea=True, fermi_surf=True,
+                 M1_terms=True, E2_terms=True, V_terms=True, spin=False,
                  **kwargs):
         super().__init__(**kwargs)
         params_terms = dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, spin=spin)
@@ -650,10 +650,10 @@ class Formula_SDCT_sym_surf_II(Formula):
 
         # Formula
         summ = np.zeros((data_K.nk, data_K.num_wann, 3, 3, 3), dtype=complex)
-        
+
         if V_terms:
             summ = Vn[:, :, :, None, None] * Vn[:, :, None, :, None] * Vn[:, :, None, None, :]
-        
+
         self.summ = summ
         self.ndim = 3
         self.transformTR = transform_odd
