@@ -83,10 +83,10 @@ def test_wannierise(outer_window):
         assert wannier_spreads == approx(0.39864755, abs=1e-7)
         assert wannier_centers == approx(np.array([[0, 0, 0],
                                                 [0, 0, 1],
-                                                [0, 1, 0],
-                                                [1, 0, 0]
-                                                ]).dot(w90data.chk.real_lattice) / 2,
-                                        abs=1e-6)
+            [0, 1, 0],
+            [1, 0, 0]
+        ]).dot(w90data.chk.real_lattice) / 2,
+            abs=1e-6)
     sc_origin, sc_basis, WF, rho = w90data.plotWF(select_WF=[1, 2], reduce_r_points=[3, 9, 1])
     assert WF.shape == (2, 6, 2, 18)
     assert rho.shape == (2, 6, 2, 18)
@@ -102,7 +102,7 @@ def test_wannierise(outer_window):
     assert sc_basis == approx(2 * lattice)
     assert WF.shape == (2, 18, 18, 18)
     assert rho.shape == (2, 18, 18, 18)
-    if check_WF:    
+    if check_WF:
         assert rho.sum(axis=(1, 2, 3)) == approx(1)
 
     systems["wberri"] = wberri.system.System_w90(w90data=w90data)
