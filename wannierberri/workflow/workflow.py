@@ -257,6 +257,7 @@ class WorkflowQE:
                 pickle_file=None,
                 try_unpickle=True,
                 k_nodes=[[0, 0, 0], [0.5, 0.5, 0.5]],
+                k_labels = None,
                 use_flags=False,
                 kwargs_gen={}, kwargs_gs={}, kwargs_nscf={}, kwargs_bands={}, kwargs_wannier={},
                 ):
@@ -283,6 +284,11 @@ class WorkflowQE:
         self.prefix = prefix
         self.executables = Executables() if executables is None else executables
         self.k_nodes = k_nodes
+        if k_labels is None:
+            k_labels = [f'K{i}' for i in range(len(k_nodes))]
+        else:
+            assert len(k_labels) == len(k_nodes), f"Number of labels ({k_labels}) should be equal to the number of k_nodes {k_nodes}"
+        self.k_node_labels = k_labels
         self.num_bands = num_bands
 
         self.kwargs_gen = dict(
@@ -560,7 +566,7 @@ class WorkflowQE:
             return
         system = System_w90(self.prefix)
         self.path_wannier, self.bands_wannier_w90 = get_wannier_band_structure(system, self.k_nodes, length=kdensity,
-                                                                           parallel=self.executables.parallel_wb)
+                                                                           parallel=self.executables.parallel_wb, k_labels=self.k_node_labels)
         self.flags.on('bands_wannier_w90')
         self.pickle()
 
@@ -569,7 +575,8 @@ class WorkflowQE:
             return
         system = self.system_wberri
         self.path_wannier, self.bands_wannier_wberri = get_wannier_band_structure(system, self.k_nodes, length=kdensity,
-                                                                           parallel=self.executables.parallel_wb)
+                                                                           parallel=self.executables.parallel_wb,
+                                                                           k_labels=self.k_node_labels)
         self.flags.on('bands_wannier_wberri')
         self.pickle()
 
@@ -592,7 +599,7 @@ class WorkflowQE:
             shutil.copy(dir1 + '/' + f, dir2 + '/' + f)
         if os.path.exists(dir1 + '/paw.txt'):
             shutil.copy(dir1 + '/paw.txt', dir2 + '/paw.txt')
-        self.path_qe = Path(system=self.atoms.get_cell(), k_nodes=self.k_nodes, length=kdensity)
+        self.path_qe = Path(system=self.atoms.get_cell(), k_nodes=self.k_nodes, length=kdensity, labels = self.k_node_labels)
         f_in = f'{self.prefix}.bands.in'
         f_out = f'{self.prefix}.bands.out'
         write_espresso_in(f_in, self.atoms, kpoints_array=self.path_qe.K_list,
@@ -612,20 +619,20 @@ class WorkflowQE:
         self.flags.on('bands_qe')
         self.pickle()
 
-    def plot(self, show=True, savefig=None, ylim=None):
+    def plot(self, show=True, savefig=None, ylim=None, Eshift=0):
         try:
             for band in self.bands_qe:
-                plt.scatter(self.kline_qe, band, c='g', s=4)
+                plt.scatter(self.kline_qe, band+Eshift, c='g', s=4)
         except AttributeError:
             pass
 
         try:
-            self.bands_wannier_w90.plot_path_fat(self.path_wannier, show_fig=False, close_fig=False, linecolor='b', label="w90")
+            self.bands_wannier_w90.plot_path_fat(self.path_wannier, show_fig=False, close_fig=False, linecolor='b', label="w90", Eshift=Eshift)
         except AttributeError:
             pass
 
         try:
-            self.bands_wannier_wberri.plot_path_fat(self.path_wannier, show_fig=False, close_fig=False, linecolor='r', label="wberri")
+            self.bands_wannier_wberri.plot_path_fat(self.path_wannier, show_fig=False, close_fig=False, linecolor='r', label="wberri", Eshift=Eshift)
         except AttributeError:
             pass
 
@@ -637,7 +644,7 @@ class WorkflowQE:
             plt.show()
 
 
-def get_wannier_band_structure(system, k_nodes, length=1000, npar=0, parallel=None):
+def get_wannier_band_structure(system, k_nodes, length=1000, npar=0, parallel=None, k_labels=None):
     """
     Calculate or (try to) read the band structure using wannierberri
 
@@ -654,7 +661,7 @@ def get_wannier_band_structure(system, k_nodes, length=1000, npar=0, parallel=No
     wb.Path object
     wb.reslut.TABresult object
     """
-    path = Path(system, k_nodes=k_nodes, length=length)
+    path = Path(system, k_nodes=k_nodes, length=length, labels=k_labels)
     if parallel is None:
         parallel = parallel.Serial()
     calculators = dict(tabulate=wbcalculators.TabulatorAll(tabulators={}, mode='path'))

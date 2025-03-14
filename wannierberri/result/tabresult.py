@@ -232,7 +232,7 @@ class TABresult(Result):
             raise ValueError("iband should be either an integer, or array of intergers, or None")
 
         kline = path.getKline()
-        E = self.get_data(quantity='Energy', iband=iband) - Eshift
+        E = self.get_data(quantity='Energy', iband=iband) + Eshift
 
         axes.set_ylabel(r"$E$, eV")
         if Emin is None:

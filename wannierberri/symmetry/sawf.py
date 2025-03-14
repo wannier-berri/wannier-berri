@@ -38,7 +38,7 @@ class SymmetrizerSAWF(DMN):
 
 
     def from_irrep(self, bandstructure: BandStructure,
-                 grid=None, degen_thresh=1e-2, store_eig=True):
+                 grid=None, degen_thresh=1e-2, store_eig=True, unitary_params=None):
         """
         Initialize the object from the BandStructure object
 
@@ -53,7 +53,7 @@ class SymmetrizerSAWF(DMN):
             the threshold for the degeneracy of the bands. Only transformations between bands
              with energy difference smaller than this value are considered
         """
-        data = bandstructure.get_dmn(grid=grid, degen_thresh=degen_thresh, unitary=True)
+        data = bandstructure.get_dmn(grid=grid, degen_thresh=degen_thresh, unitary=True, unitary_params=unitary_params)
         self.grid = data["grid"]
         self.kpoints_all = data["kpoints"]
         self.kpt2kptirr = data["kpt2kptirr"]
