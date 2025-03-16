@@ -2,16 +2,18 @@
 Here I will put some utility functions that are not directly related to the WannierBerri code, but may be useful (at least to myself)
 please use on your own risk, and report if you find any bugs
 """
+import time
 from matplotlib import pyplot as plt
 import numpy as np
 
 
 
-def plot_data_BZ(data, basis, vmax, axes, to_BZ=True):
+def plot_data_BZ(data, basis, vmin=0, vmax=1, axes=None, to_BZ=True, return_vertices=False,
+                 levels=None):
     """
     Plot data, given on a regular grid in the reciprocal space, 
     in the first Brillouin zone of the reciprocal lattice.
-    
+
     Parameters
     ----------
     data : 2D array
@@ -33,7 +35,8 @@ def plot_data_BZ(data, basis, vmax, axes, to_BZ=True):
     K1, K2 = np.meshgrid(k1, k2)
     KX = K1 * g1[0] + K2 * g2[0]
     KY = K1 * g1[1] + K2 * g2[1]
-
+    if axes is None:
+        axes = plt.gca()
     if to_BZ:
         for i in range(10):
             finish = True
@@ -60,15 +63,24 @@ def plot_data_BZ(data, basis, vmax, axes, to_BZ=True):
     jdos0_flat = data.flatten()
 
     # plt.figure(figsize=(8, 6))
-    tricontour = axes.tricontourf(KX_flat, KY_flat, jdos0_flat, levels=100, cmap='viridis', vmin=0, vmax=vmax)
-    plt.colorbar(tricontour,label='JDOS')
+    tricontour = axes.tricontourf(KX_flat, KY_flat, jdos0_flat, levels=100, cmap='viridis',
+                                  levels=levels, 
+                                  vmin=vmin, vmax=vmax)
+    print(f"tricontour : {dir(tricontour)}")
+    print(tricontour.levels)
+    vertices = np.array(p.vertices for p in tricontour.get_paths())
+    
+    plt.colorbar(tricontour, label='JDOS')
     axes.set_xlabel('KX')
     axes.set_ylabel('KY')
     axes.set_title('Colormap of JDOS')
+    if return_vertices:
+        return axes, vertices
+    else:
+        return axes
 
 
-import time
-from joblib import Parallel, delayed
+
 
 def JDOSq(Enk, grid, Emin, Emax, nE=100, smear=0.1, use_FFT=True, use_smoother=False):
     """
@@ -104,60 +116,61 @@ def JDOSq(Enk, grid, Emin, Emax, nE=100, smear=0.1, use_FFT=True, use_smoother=F
         The joint density of states. Shape (*grid,nE)   
     """
     nd = len(grid)
-    grid = tuple(grid) + (1,)*(3-nd)
+    grid = tuple(grid) + (1,) * (3 - nd)
     E = np.linspace(Emin, Emax, nE)
     nk = Enk.shape[0]
+
     def broaden(_E):
         return np.exp(-(_E / smear) ** 2) / smear / np.sqrt(np.pi)
-    print ("calculating DOS")
+    print("calculating DOS")
     DOS = []
     if use_smoother:
-        nE_loc = 
+        # nE_loc =
         for En in Enk:
             dos = np.zeros(nE)
             for e in En:
-                dos += broaden(e-E)
+                dos += broaden(e - E)
     else:
         for En in Enk:
             dos = np.zeros(nE)
             for e in En:
-                dos += broaden(e-E)
+                dos += broaden(e - E)
             DOS.append(dos)
         DOS = np.array(DOS)
     DOS = np.reshape(DOS, grid + (nE,))
     DOS_roll = DOS.copy()
     JDOS = np.zeros(grid + (nE,))
-    print ("calculating JDOS")
+    print("calculating JDOS")
     t0 = time.time()
     if use_FFT:
-        DOS_r = np.fft.fftn(DOS, axes=(0,1,2))
-        DOS_mr = np.fft.ifftn(DOS, axes=(0,1,2))
+        DOS_r = np.fft.fftn(DOS, axes=(0, 1, 2))
+        DOS_mr = np.fft.ifftn(DOS, axes=(0, 1, 2))
         DOS_rr = DOS_r * DOS_mr
-        JDOS = np.fft.ifftn(DOS_rr, axes=(0,1,2))
+        JDOS = np.fft.ifftn(DOS_rr, axes=(0, 1, 2))
         JDOS_real = np.real(JDOS)
         JDOS_imag = np.imag(JDOS)
-        print (f"minimum of JDOS_real = {JDOS_real.min()}")
-        print (f"maximum of JDOS_real = {JDOS_real.max()}")
-        print (f"maximum abs of JDOS_imag = {np.abs(JDOS_imag).max()}")
+        print(f"minimum of JDOS_real = {JDOS_real.min()}")
+        print(f"maximum of JDOS_real = {JDOS_real.max()}")
+        print(f"maximum abs of JDOS_imag = {np.abs(JDOS_imag).max()}")
         JDOS = np.real(JDOS)
         JDOS[JDOS < 0] = 0
-    
+
     else:
         for k1 in range(grid[0]):
-            print (f" k1 = {k1} of {grid[0]}")
+            print(f" k1 = {k1} of {grid[0]}")
             DOS_roll = np.roll(DOS_roll, 1, axis=0)
             for k2 in range(grid[1]):
                 DOS_roll = np.roll(DOS_roll, 1, axis=1)
                 for k3 in range(grid[2]):
                     DOS_roll = np.roll(DOS_roll, 1, axis=2)
                     JDOS[k1, k2, k3] = np.einsum('ijkl,ijkl->l', DOS, DOS_roll)
-            print (f"time per k1 = {time.time()-t0}")
+            print(f"time per k1 = {time.time()-t0}")
             t0 = time.time()
         JDOS /= nk
-    
+
     # Reshape the results back into the JDOS array
     JDOS = JDOS.reshape(grid + (nE,))
-    
+
     DOS = np.reshape(DOS, grid[:nd] + (nE,))
     JDOS = np.reshape(JDOS, (grid[:nd]) + (nE,))
     return E, DOS, JDOS

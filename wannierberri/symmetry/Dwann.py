@@ -25,7 +25,7 @@ class Dwann:
         The projection type. Default is "_" which means "s". 
         (not implemented yet, but should be implemented in the future)
     orbital_rotator : function
-    
+
     spinor : bool
         Whether the Wannier functions are spinors.
 

@@ -11,7 +11,7 @@ from ..w90files.w90data import FILES_CLASSES
 from ..w90files.dmn import DMN
 from ..symmetry.sawf import SymmetrizerSAWF as SAWF
 from ..symmetry.orbitals import num_orbitals
-from ..wannierise.projections import  ProjectionsSet
+from ..wannierise.projections import ProjectionsSet
 from ..w90files import WIN, Wannier90data
 from .. parallel import Serial as wbSerial
 from .ase import write_espresso_in
@@ -257,7 +257,7 @@ class WorkflowQE:
                 pickle_file=None,
                 try_unpickle=True,
                 k_nodes=[[0, 0, 0], [0.5, 0.5, 0.5]],
-                k_labels = None,
+                k_labels=None,
                 use_flags=False,
                 kwargs_gen={}, kwargs_gs={}, kwargs_nscf={}, kwargs_bands={}, kwargs_wannier={},
                 ):
@@ -370,7 +370,7 @@ class WorkflowQE:
         self.pickle()
 
 
-    def ground_state(self, kpts=(8, 8, 8),  run=True, **kwargs):
+    def ground_state(self, kpts=(8, 8, 8), run=True, **kwargs):
         message("Ground state")
         self.kwargs_gs.update(kwargs)
         f_in = f'{self.prefix}.scf.in'
@@ -453,7 +453,7 @@ class WorkflowQE:
         self.flags.on('win')
         self.pickle()
 
-    def pw2wannier(self, targets=['eig', 'mmn', 'amn'],  run=True, **kwargs):
+    def pw2wannier(self, targets=['eig', 'mmn', 'amn'], run=True, **kwargs):
         message("pw2wannier")
         self.executables.run_wannier(self.prefix, pp=True)
         f_in = f'{self.prefix}.pw2wan.in'
@@ -475,8 +475,8 @@ class WorkflowQE:
         self.pickle()
 
     def wannierise_wberri(self, kwargs_system={}, kwargs_window={},
-                          readfiles=None, 
-                          files_dict = None,
+                          readfiles=None,
+                          files_dict=None,
                           **kwargs):
         if readfiles is None:
             readfiles = ["amn", "mmn", "eig", "win"]
@@ -528,7 +528,7 @@ class WorkflowQE:
                 The angular momentum of the projection, e.g. 's', 'p', 'd', 'sp3'
         Ecut: float
             The energy cutoff for the plane waves in wave functions
-        
+
         Notes
         -----
         projections here are given again, because previously projections were given as separate, not as orbits
@@ -542,7 +542,7 @@ class WorkflowQE:
                                       from_sym_file=from_sym_file
                                     )
         # bandstructure.spacegroup.show()
-    
+
         dmn_new = DMN(empty=True)
         dmn_new.from_irrep(bandstructure)
         dmn_new.set_D_wann_from_projections(projections_obj=self.projections, spinor=self.spinor)
@@ -550,11 +550,11 @@ class WorkflowQE:
         self.flags.on('dmn')
 
     def set_symmetrizer(self, try_read=True, **kwargs):
-        symmetrizer_file_name = self.prefix+'.sawf.npz'
+        symmetrizer_file_name = self.prefix + '.sawf.npz'
         if try_read and os.path.exists(symmetrizer_file_name):
             symmetrizer = SAWF().from_npz(symmetrizer_file_name)
         else:
-            bandstructure = BandStructure(code='espresso', prefix=self.prefix, **kwargs) 
+            bandstructure = BandStructure(code='espresso', prefix=self.prefix, **kwargs)
             symmetrizer = SAWF().from_irrep(bandstructure)
             symmetrizer.to_npz(symmetrizer_file_name)
         self.symmetrizer = symmetrizer
@@ -580,7 +580,7 @@ class WorkflowQE:
         self.flags.on('bands_wannier_wberri')
         self.pickle()
 
-    
+
 
 
     def calc_bands_qe(self, kdensity, enforce=False, run=True, **kargs):
@@ -599,7 +599,7 @@ class WorkflowQE:
             shutil.copy(dir1 + '/' + f, dir2 + '/' + f)
         if os.path.exists(dir1 + '/paw.txt'):
             shutil.copy(dir1 + '/paw.txt', dir2 + '/paw.txt')
-        self.path_qe = Path(system=self.atoms.get_cell(), k_nodes=self.k_nodes, length=kdensity, labels = self.k_node_labels)
+        self.path_qe = Path(system=self.atoms.get_cell(), k_nodes=self.k_nodes, length=kdensity, labels=self.k_node_labels)
         f_in = f'{self.prefix}.bands.in'
         f_out = f'{self.prefix}.bands.out'
         write_espresso_in(f_in, self.atoms, kpoints_array=self.path_qe.K_list,
@@ -622,7 +622,7 @@ class WorkflowQE:
     def plot(self, show=True, savefig=None, ylim=None, Eshift=0):
         try:
             for band in self.bands_qe:
-                plt.scatter(self.kline_qe, band+Eshift, c='g', s=4)
+                plt.scatter(self.kline_qe, band + Eshift, c='g', s=4)
         except AttributeError:
             pass
 

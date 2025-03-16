@@ -79,7 +79,7 @@ xyz = np.transpose([x, y, z])
 
 
 def init():
-    
+
     orbitals = {}
     orbitals['s'] = lambda x, y, z: 1 + 0 * x
 
@@ -151,10 +151,11 @@ def init():
 
     return orb_function_dic, orb_chara_dic, hybrid_matrix_dic, hybrid_matrix_shells_dic, hybrid_matrix_shells_start
 
-(orb_function_dic, 
- orb_chara_dic, 
- hybrid_matrix_dic, 
- hybrid_matrix_shells_dic, 
+
+(orb_function_dic,
+ orb_chara_dic,
+ hybrid_matrix_dic,
+ hybrid_matrix_shells_dic,
  hybrid_matrix_shells_start) = init()
 
 
