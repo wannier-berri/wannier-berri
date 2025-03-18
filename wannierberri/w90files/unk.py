@@ -56,7 +56,7 @@ class UNK(W90_file):
         # readfloat = lambda: FIN.read_record('f8')
         self._NB = None
         for i in range(NKmax):
-            filename = os.path.join(path, f"UNK{i+1:05d}.1")
+            filename = os.path.join(path, f"UNK{i + 1:05d}.1")
             # print(f"trying to read {filename}")
             if (kptirr is None or i in kptirr):
                 if os.path.exists(filename):
@@ -67,7 +67,7 @@ class UNK(W90_file):
                         self.grid_size = (nr1, nr2, nr3)
                     else:
                         assert self.grid_size == (nr1, nr2, nr3), f"NK={i} : grid_size={self.grid_size} != {(nr1, nr2, nr3)}"
-                    assert ikr == i + 1, f"read ik = {ikr} from file {filename}, expected {i+1}"
+                    assert ikr == i + 1, f"read ik = {ikr} from file {filename}, expected {i + 1}"
                     if selected_bands is None:
                         selected_bands = np.arange(_NB)
                     if self._NB is None:
