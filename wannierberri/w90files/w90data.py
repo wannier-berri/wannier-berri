@@ -680,7 +680,7 @@ class Wannier90data:
                 w = data[pos]
                 data *= w.conj() / abs(w)
                 imag_max = abs(data.imag).max()
-                print(f"wannier function {select_WF[i]} : Im/Re ratio {imag_max/abs(w)} ({data[pos]})")
+                print(f"wannier function {select_WF[i]} : Im/Re ratio {imag_max / abs(w)} ({data[pos]})")
                 WF[i] = data.reshape(shape)
 
         rho = np.sum((WF * WF.conj()).real, axis=4)
@@ -735,15 +735,15 @@ class Wannier90data:
         #
 CRYSTAL
 PRIMVEC
-{A[0,0]: 20.10f} {A[0,1]: 20.10f} {A[0,2]: 20.10f}
-{A[1,0]: 20.10f} {A[1,1]: 20.10f} {A[1,2]: 20.10f}
-{A[2,0]: 20.10f} {A[2,1]: 20.10f} {A[2,2]: 20.10f}
+{A[0, 0]: 20.10f} {A[0, 1]: 20.10f} {A[0, 2]: 20.10f}
+{A[1, 0]: 20.10f} {A[1, 1]: 20.10f} {A[1, 2]: 20.10f}
+{A[2, 0]: 20.10f} {A[2, 1]: 20.10f} {A[2, 2]: 20.10f}
 """
         if conv_cell is not None:
             out += f"""CONVVEC
-{conv_cell[0,0]: 20.10f} {conv_cell[0,1]: 20.10f} {conv_cell[0,2]: 20.10f}
-{conv_cell[1,0]: 20.10f} {conv_cell[1,1]: 20.10f} {conv_cell[1,2]: 20.10f}
-{conv_cell[2,0]: 20.10f} {conv_cell[2,1]: 20.10f} {conv_cell[2,2]: 20.10f}
+{conv_cell[0, 0]: 20.10f} {conv_cell[0, 1]: 20.10f} {conv_cell[0, 2]: 20.10f}
+{conv_cell[1, 0]: 20.10f} {conv_cell[1, 1]: 20.10f} {conv_cell[1, 2]: 20.10f}
+{conv_cell[2, 0]: 20.10f} {conv_cell[2, 1]: 20.10f} {conv_cell[2, 2]: 20.10f}
         """
         out += f"""PRIMCOORD
 {len(atoms_cart)} 1
@@ -760,9 +760,9 @@ PRIMVEC
             out_loc = f"""BEGIN_DATAGRID_3D_wannier_function_{ind}
 {dat.shape[0]} {dat.shape[1]} {dat.shape[2]}
 {sc_origin[0]: 20.10f} {sc_origin[1]: 20.10f} {sc_origin[2]: 20.10f}
-{sc_basis_loc[0,0]: 20.10f} {sc_basis_loc[0,1]: 20.10f} {sc_basis_loc[0,2]: 20.10f}
-{sc_basis_loc[1,0]: 20.10f} {sc_basis_loc[1,1]: 20.10f} {sc_basis_loc[1,2]: 20.10f}
-{sc_basis_loc[2,0]: 20.10f} {sc_basis_loc[2,1]: 20.10f} {sc_basis_loc[2,2]: 20.10f}
+{sc_basis_loc[0, 0]: 20.10f} {sc_basis_loc[0, 1]: 20.10f} {sc_basis_loc[0, 2]: 20.10f}
+{sc_basis_loc[1, 0]: 20.10f} {sc_basis_loc[1, 1]: 20.10f} {sc_basis_loc[1, 2]: 20.10f}
+{sc_basis_loc[2, 0]: 20.10f} {sc_basis_loc[2, 1]: 20.10f} {sc_basis_loc[2, 2]: 20.10f}
 """
             dat = dat.reshape(-1, order='F')
             num_per_string = 6
