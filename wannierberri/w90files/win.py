@@ -288,4 +288,3 @@ def parse_win_raw(filename=None, text=None):
             return w90io.parse_win_raw(f.read())
     elif text is not None:
         return w90io.parse_win_raw(text)
-    

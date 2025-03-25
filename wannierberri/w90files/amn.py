@@ -12,7 +12,7 @@ class AMN(W90_file):
     """
     Class to store the projection of the wavefunctions on the initial Wannier functions
     AMN.data[ik, ib, iw] = <u_{ik,ib}|w_{iw}> 
-    
+
 
     Parameters
     ----------
@@ -102,12 +102,12 @@ class AMN(W90_file):
         self.data = data
 
     def set_soc(self, eigenvalues, eigenvectors):
-        assert eigenvalues.shape == (self.NK, 2*self.NB), f"eigenvalues shape {eigenvalues.shape} should be {(self.NK, 2*self.NB)}"
-        assert eigenvectors.shape == (self.NK, 2*self.NB, 2*self.NB), f"eigenvectors shape {eigenvectors.shape} should be {(self.NK, 2*self.NB, 2*self.NB)}"
-        data_new = np.zeros((self.NK, 2*self.NB, 2*self.NW), dtype=complex)
+        assert eigenvalues.shape == (self.NK, 2 * self.NB), f"eigenvalues shape {eigenvalues.shape} should be {(self.NK, 2*self.NB)}"
+        assert eigenvectors.shape == (self.NK, 2 * self.NB, 2 * self.NB), f"eigenvectors shape {eigenvectors.shape} should be {(self.NK, 2*self.NB, 2*self.NB)}"
+        data_new = np.zeros((self.NK, 2 * self.NB, 2 * self.NW), dtype=complex)
         for i in range(2):
-            data_new[:,i::2,i::2] = self.data
-        self.data = np.einsum("klm,kmn->kln", eigenvectors.conj().swapaxes(1,2), data_new)
+            data_new[:, i::2, i::2] = self.data
+        self.data = np.einsum("klm,kmn->kln", eigenvectors.conj().swapaxes(1, 2), data_new)
 
     # def write(self, seedname, comment="written by WannierBerri"):
     #     comment = comment.strip()

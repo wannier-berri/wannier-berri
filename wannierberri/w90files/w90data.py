@@ -310,14 +310,14 @@ class Wannier90data:
         assert (eigenvalues is None) != (soc_gpaw is None), "either eigenvalues and eigenvectors should be set or soc_gpaw, not both"
         if soc_gpaw is not None:
             eigenvalues = soc_gpaw.eigenvalues()
-            eigenvectors = soc_gpaw.eigenvectors().swapaxes(1, 2) # gpaw stores iegenvectors as row-vectores, but later we assume column-vectors
-        eigenvalues = np.array(eigenvalues, dtype = float)
-        eigenvectors = np.array(eigenvectors, dtype = complex) 
+            eigenvectors = soc_gpaw.eigenvectors().swapaxes(1, 2)  # gpaw stores iegenvectors as row-vectores, but later we assume column-vectors
+        eigenvalues = np.array(eigenvalues, dtype=float)
+        eigenvectors = np.array(eigenvectors, dtype=complex)
         for key in self._files:
             self.get_file(key).set_soc(eigenvalues, eigenvectors)
         if hasattr(self, "symmetrizer"):
             self.symmetrizer.set_soc(eigenvalues=eigenvalues, eigenvectors=eigenvectors)
-        
+
     def auto_kwargs_files(self, key):
         """
         Returns the default keyword arguments for the file with the key `key`

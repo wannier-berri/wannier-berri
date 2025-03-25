@@ -19,7 +19,7 @@ def print_centers_and_spreads_chk(w90data, U_opt_full_BZ,
     """
 
     w90data.chk.v_matrix = np.array(U_opt_full_BZ)
-    print (f"w90data.mmn : {w90data.mmn.data.shape}")
+    print(f"w90data.mmn : {w90data.mmn.data.shape}")
     w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
     print_centers_and_spreads(w90data.chk._wannier_centers, w90data.chk._wannier_spreads, comment=comment + ": from chk")
     return w90data.chk._wannier_centers, w90data.chk._wannier_spreads

@@ -166,8 +166,8 @@ class DMN(W90_file):
     @cached_property
     def kpt2kptirr_sym(self):
         return np.array([np.where(self.kptirr2kpt[self.kpt2kptirr[ik], :] == ik)[0][0] for ik in range(self.NK)])
-    
-    def to_blocks(self,d_band_full, eigenvalues=None, degen_threshold = 1e-2):
+
+    def to_blocks(self, d_band_full, eigenvalues=None, degen_threshold=1e-2):
         # arranging d_band in the block form
         if eigenvalues is not None:
             print("DMN: eigenvalues are used to determine the block structure")
@@ -178,8 +178,8 @@ class DMN(W90_file):
         d_band_block_indices = [np.array(self.d_band_block_indices[ik]) for ik in range(self.NKirr)]
         # np.ascontinousarray is used to speedup with Numba
         d_band_blocks = [[[np.ascontiguousarray(d_band_full[ik, isym, start:end, start:end])
-                                for start, end in d_band_block_indices[ik]]
-                               for isym in range(self.Nsym)] for ik in range(self.NKirr)]
+                           for start, end in d_band_block_indices[ik]]
+                          for isym in range(self.Nsym)] for ik in range(self.NKirr)]
         return d_band_block_indices, d_band_blocks
 
 
@@ -233,7 +233,7 @@ class DMN(W90_file):
 
 
         self.d_band_block_indices, self.d_band_blocks = self.to_blocks(d_band, eigenvalues)
-        
+
         # arranging D_wann in the block form
         self.wann_block_indices = []
         # determine the block indices from the D_wann, excluding areas with only zeros
@@ -682,7 +682,7 @@ class DMN(W90_file):
         print("num_wann", num_wann)
         print("D_wann_block_indices", self.D_wann_block_indices)
 
-        
+
 
 
 

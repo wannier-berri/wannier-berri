@@ -28,7 +28,7 @@ class EIG(W90_file):
             self.data = self.data[:, selected_bands]
 
     def set_soc(self, eigenvalues, eigenvectors):
-        assert eigenvalues.shape == (self.NK, 2*self.NB)
+        assert eigenvalues.shape == (self.NK, 2 * self.NB)
         self.data = eigenvalues
 
 

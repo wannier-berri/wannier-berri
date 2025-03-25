@@ -64,12 +64,12 @@ def plot_data_BZ(data, basis, vmin=0, vmax=1, axes=None, to_BZ=True, return_vert
 
     # plt.figure(figsize=(8, 6))
     tricontour = axes.tricontourf(KX_flat, KY_flat, jdos0_flat, levels=100, cmap='viridis',
-                                  levels=levels, 
+                                  levels=levels,
                                   vmin=vmin, vmax=vmax)
     print(f"tricontour : {dir(tricontour)}")
     print(tricontour.levels)
     vertices = np.array(p.vertices for p in tricontour.get_paths())
-    
+
     plt.colorbar(tricontour, label='JDOS')
     axes.set_xlabel('KX')
     axes.set_ylabel('KY')
