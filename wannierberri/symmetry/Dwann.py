@@ -1,7 +1,7 @@
 
 import numpy as np
 from .orbitals import num_orbitals
-from ..__utility import UniqueListMod1
+from ..__utility import UniqueListMod1, spinor_rotation_TR
 
 
 class Dwann:
@@ -72,10 +72,7 @@ class Dwann:
 
         if self.spinor:
             for isym, symop in enumerate(spacegroup.symmetries):
-                S = symop.spinor_rotation
-                if symop.time_reversal:
-                    S = np.array([[0, 1], [-1, 0]]) @ S.conj()
-                self.rot_orb[isym] = np.kron(self.rot_orb[isym], S)
+                self.rot_orb[isym] = np.kron(self.rot_orb[isym], spinor_rotation_TR(symop))
         self.rot_orb = np.array(self.rot_orb)
 
         self.num_orbitals = self.num_orbitals_scal * self.nspinor

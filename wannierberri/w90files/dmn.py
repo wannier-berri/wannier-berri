@@ -3,7 +3,7 @@ from time import time
 from irrep.utility import get_block_indices
 import numpy as np
 from copy import deepcopy
-from ..__utility import get_inverse_block, rotate_block_matrix
+from ..__utility import clear_cached_property, get_inverse_block, rotate_block_matrix
 from .utility import writeints, readints
 from .w90file import W90_file
 from .amn import AMN
@@ -171,15 +171,18 @@ class DMN(W90_file):
         # arranging d_band in the block form
         if eigenvalues is not None:
             print("DMN: eigenvalues are used to determine the block structure")
+            # print (f"d_band_full.shape = {d_band_full.shape}, eigenvalues = {eigenvalues}")
             d_band_block_indices = [get_block_indices(eigenvalues[ik], thresh=degen_threshold, cyclic=False) for ik in self.kptirr]
+            # print (f"d_band_block_indices = {d_band_block_indices}")
         else:
             print("DMN: eigenvalues are NOT provided, the bands are considered as one block")
             d_band_block_indices = [[(0, self.NB)] for _ in range(self.NKirr)]
-        d_band_block_indices = [np.array(self.d_band_block_indices[ik]) for ik in range(self.NKirr)]
+        # d_band_block_indices = [np.array(self.d_band_block_indices[ik]) for ik in range(self.NKirr)]
         # np.ascontinousarray is used to speedup with Numba
         d_band_blocks = [[[np.ascontiguousarray(d_band_full[ik, isym, start:end, start:end])
                            for start, end in d_band_block_indices[ik]]
                           for isym in range(self.Nsym)] for ik in range(self.NKirr)]
+        # print (f"returning d_band_block_indices = {d_band_block_indices}")
         return d_band_block_indices, d_band_blocks
 
 
@@ -429,11 +432,9 @@ class DMN(W90_file):
         Clear the cached inverse matrices
         """
         if d:
-            if hasattr(self, 'd_band_blocks_inverse'):
-                del self.d_band_blocks_inverse
+            clear_cached_property(self, 'd_band_blocks_inverse')
         if D:
-            if hasattr(self, 'D_wann_blocks_inverse'):
-                del self.D_wann_blocks_inverse
+            clear_cached_property(self, 'D_wann_blocks_inverse')
 
 
     def check_unitary(self):

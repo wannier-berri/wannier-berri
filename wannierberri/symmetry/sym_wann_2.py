@@ -187,7 +187,7 @@ class SymWann:
                                 iR1 = self.index_R(atom_R_map[iR, a, b])
                                 if iR1 is not None and (a1, b1, iR1) > (a, b, iR):
                                     irreducible[iR1, a1, b1] = False
-            logfile.write(f"irreducible = {irreducible}\n")
+            # logfile.write(f"irreducible = {irreducible}\n")
 
         logfile.write(
             f"Found {np.sum(irreducible)} sets of (R,a,b) out of the total {self.nRvec * np1 * np2} ({self.nRvec}*{np1}*{np2})")

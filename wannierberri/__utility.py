@@ -568,7 +568,10 @@ def get_inverse_block(D):
     if isinstance(D, list):
         return [get_inverse_block(d) for d in D]
     elif isinstance(D, np.ndarray):
-        return np.linalg.inv(D)
+        try:
+            return np.linalg.inv(D)
+        except np.linalg.LinAlgError:
+            raise RuntimeError(f"Matrix is singular \n{D}")
     else:
         raise ValueError(f"Unknown type {type(D)}")
 
@@ -616,3 +619,28 @@ def orthogonalize(u):
     except np.linalg.LinAlgError as e:
         warnings.warn(f"SVD failed with error '{e}', using non-orthogonalized matrix")
         return u
+
+
+def clear_cached_property(instance, property_name):
+    """
+    Clears the cache of a cached_property if it exists.
+
+    Parameters:
+    - instance: The object instance containing the cached_property.
+    - property_name: The name of the cached_property as a string.
+    """
+    if property_name in instance.__dict__:
+        del instance.__dict__[property_name]
+        return True  # Cache was cleared
+    return False  # Cache was not set
+
+
+def spinor_rotation_TR(symop):
+    """
+    Returns spinor rotation matrix for a given symmetry operation,
+    accounting for time-reversal symmetry.
+    """
+    S = symop.spinor_rotation
+    if symop.time_reversal:
+        S = np.array([[0, 1], [-1, 0]]) @ S.conj()
+    return S

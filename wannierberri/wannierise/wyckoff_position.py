@@ -1,7 +1,7 @@
 from functools import cached_property
 import numpy as np
 import sympy
-from ..__utility import UniqueListMod1, all_close_mod1
+from ..__utility import UniqueListMod1, all_close_mod1, clear_cached_property
 from .utility import find_solution_mod1
 
 
@@ -128,8 +128,7 @@ class WyckoffPosition:
     @free_var_values.setter
     def free_var_values(self, values):
         if values is None:
-            if hasattr(self, "_free_var_values"):
-                del self._free_var_values
+            clear_cached_property(self, "_free_var_values")
         else:
             assert len(values) == self.num_free_vars, f"Values has to have length {self.num_free_vars}"
             self._free_var_values = values

@@ -4,7 +4,7 @@ import warnings
 from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroupBare
 import numpy as np
-from ..__utility import get_inverse_block, rotate_block_matrix, orthogonalize
+from ..__utility import clear_cached_property, get_inverse_block, rotate_block_matrix, orthogonalize, spinor_rotation_TR
 from ..wannierise.projections import ProjectionsSet
 
 from ..w90files import DMN
@@ -89,13 +89,15 @@ class SymmetrizerSAWF(DMN):
         d_band_full_spinor = np.zeros((self.NKirr, self.Nsym, 2 * self._NB, 2 * self._NB), dtype=complex)
         for ik in range(self.NKirr):
             for isym, symop in enumerate(self.spacegroup.symmetries):
-                S = symop.spinor_rotation
+                S = spinor_rotation_TR(symop)
                 block_spinor = np.kron(d_band_full[ik][isym], S)
                 v_left = eigenvectors[ik].conj().T
                 v_right = eigenvectors[self.kptirr2kpt[ik, isym]]
                 block_spinor = v_left @ block_spinor @ v_right
+                print("block_spinor.shape = ", block_spinor.shape)
                 d_band_full_spinor[ik, isym] = block_spinor
         self.d_band_block_indices, self.d_band_blocks = self.to_blocks(d_band_full_spinor, eigenvalues=eigenvalues)
+        self._NB = 2 * self._NB
         self.clear_inverse(d=True, D=False)
 
 
@@ -172,15 +174,22 @@ class SymmetrizerSAWF(DMN):
         if not hasattr(self, 'D_wann_blocks'):
             return
         D_wann_block_indices_soc = [(2 * a, 2 * b) for a, b in self.D_wann_block_indices]
+        S_list = [spinor_rotation_TR(symop) for symop in self.spacegroup.symmetries]
+        rot_orb_list_soc = []
+        for rot_orb in self.rot_orb_list:
+            rot_orb_list_soc.append(np.array([np.kron(rot, S) for rot, S in zip(rot_orb, S_list)]))
+
         D_wann_blocks_soc = []
         for block_list in self.D_wann_blocks:
             D_wann_blocks_soc.append([])
-            for isym, symop in enumerate(self.spacegroup.symmetries):
-                S = symop.spinor_rotation
-                D_wann_blocks_soc[-1].append([np.kron(block, S) for block in block_list[isym]])
+            for block_list_ik in block_list:
+                D_wann_blocks_soc[-1].append([np.kron(block, S) for block, S in zip(block_list_ik, S_list)])
+
         self.D_wann_blocks = D_wann_blocks_soc
         self.D_wann_block_indices = D_wann_block_indices_soc
+        self.rot_orb_list = rot_orb_list_soc
         self.clear_inverse(D=True, d=False)
+        clear_cached_property(self, "rot_orb_dagger_list")
         self.num_wann *= 2
 
 
