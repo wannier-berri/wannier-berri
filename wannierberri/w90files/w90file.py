@@ -1,4 +1,5 @@
 import abc
+import warnings
 import numpy as np
 import os
 
@@ -84,6 +85,9 @@ class W90_file(abc.ABC):
         dic = np.load(f_npz)
         self.from_dict(dic)
         return self
+    
+    def set_soc(self, eigenvalues, eigenvectors):
+        warnings.warn( "Setting soc for {self.__class__.__name__} is not implemented. If this file will be used further - an error will occur")
 
     @abc.abstractmethod
     def from_w90_file(self, **kwargs):

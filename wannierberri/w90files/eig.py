@@ -27,6 +27,10 @@ class EIG(W90_file):
         if selected_bands is not None:
             self.data = self.data[:, selected_bands]
 
+    def set_soc(self, eigenvalues, eigenvectors):
+        assert eigenvalues.shape == (self.NK, 2*self.NB)
+        self.data = eigenvalues
+
 
     # def get_disentangled(self, v_left, v_right):
     #     data = np.einsum("klm,km...,kml->kl", v_left, self.data, v_right).real

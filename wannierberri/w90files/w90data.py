@@ -265,6 +265,15 @@ class Wannier90data:
     def set_win(self, val=None, **kwargs):
         self.set_file("win", val=val, **kwargs)
 
+    @property
+    def spinor(self):
+        if "win" in self._files:
+            return self.win.spinor
+        elif "unk" in self._files:
+            return self.unk.spinor
+        else:
+            return None
+
 
     def write(self, seedname, files=None):
         """
@@ -282,6 +291,33 @@ class Wannier90data:
         for key in files:
             self.get_file(key).to_w90_file(seedname)
 
+    def set_soc(self, eigenvalues=None, eigenvectors=None, soc_gpaw=None):
+        """
+        Turn the w90 data from non-spinor to spinor. The numebr of bands and WFs are doubled after this operation
+
+        Parameters
+        ----------
+        eigenvalues : np.ndarray (NK, 2*NB)
+            the eigenvalues of the bands with SOC
+        eigenvectors : np.ndarray (NK, 2*NB, 2*NB)
+            the egenstates of the SOC bands, expressed in the basis of the non-SOC bands (with spins ordered as [up,down,up,down,...] )
+            the eigenvectors are stored as column-vectors
+        soc_gpaw : `~gpaw.BZWaveFunctions' object covering the whole BZ.
+            the object returned by `gpaw.spinorbit.soc_eigenstates`
+        """
+        assert not self.spinor, "w90 data are already spinores, cannot set SOC again"
+        assert (eigenvalues is None) == (eigenvectors is None), "eigenvalues and eigenvectors should be set together"
+        assert (eigenvalues is None) != (soc_gpaw is None), "either eigenvalues and eigenvectors should be set or soc_gpaw, not both"
+        if soc_gpaw is not None:
+            eigenvalues = soc_gpaw.eigenvalues()
+            eigenvectors = soc_gpaw.eigenvectors().swapaxes(1, 2) # gpaw stores iegenvectors as row-vectores, but later we assume column-vectors
+        eigenvalues = np.array(eigenvalues, dtype = float)
+        eigenvectors = np.array(eigenvectors, dtype = complex) 
+        for key in self._files:
+            self.get_file(key).set_soc(eigenvalues, eigenvectors)
+        if hasattr(self, "symmetrizer"):
+            self.symmetrizer.set_soc(eigenvalues=eigenvalues, eigenvectors=eigenvectors)
+        
     def auto_kwargs_files(self, key):
         """
         Returns the default keyword arguments for the file with the key `key`

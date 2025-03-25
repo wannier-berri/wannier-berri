@@ -255,6 +255,16 @@ class WIN:
         else:
             return None, None
 
+    def set_soc(self, eigenvalues, eigenvectors):
+        self["spinors"] = True
+
+    @property
+    def spinor(self):
+        try:
+            return self["spinors"]
+        except KeyError:
+            return None
+
 
 def parse_win_raw(filename=None, text=None):
     """
@@ -278,3 +288,4 @@ def parse_win_raw(filename=None, text=None):
             return w90io.parse_win_raw(f.read())
     elif text is not None:
         return w90io.parse_win_raw(text)
+    

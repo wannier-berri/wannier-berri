@@ -74,11 +74,45 @@ class SymmetrizerSAWF(DMN):
         if store_eig:
             self.set_eig([bandstructure.kpoints[ik].Energy_raw for ik in self.kptirr])
         return self
+    
+    def set_soc_d_band(self, eigenvalues, eigenvectors):
+        """
+        convert the scalar d-band blocks to spinor blocks
+
+        Note:
+
+        eigenvalues are not used here. 
+
+        TODO : (maybe) use them to separate further into smaller blocks - not sure if this is needed
+        """
+        d_band_full = self.d_band_full_matrix()
+        d_band_full_spinor = np.zeros((self.NKirr, self.Nsym, 2*self._NB, 2*self._NB), dtype=complex)
+        for ik in range(self.NKirr):
+            for isym,symop in enumerate(self.spacegroup.symmetries):
+                S = symop.spinor_rotation
+                block_spinor = np.kron(d_band_full[ik][isym], S)
+                v_left = eigenvectors[ik].conj().T
+                v_right = eigenvectors[self.kptirr2kpt[ik,isym]]
+                block_spinor =  v_left @ block_spinor @ v_right
+                d_band_full_spinor[ik, isym] = block_spinor 
+        self.d_band_block_indices, self.d_band_blocks = self.to_blocks(d_band_full_spinor, eigenvalues=eigenvalues)
+        self.clear_inverse(d=True, D=False)
+        
+
 
     @cached_property
     def orbital_rotator(self):
         return OrbitalRotator([symop.rotation_cart for symop in self.spacegroup.symmetries])
 
+    def set_soc(self, eigenvalues, eigenvectors):
+        assert not self.spinor, "The object is already spinor, cannot set the SOC again"
+        self.spacegroup.to_spinor()
+        self.set_soc_d_band(eigenvalues = eigenvalues, eigenvectors = eigenvectors)
+        self.set_soc_D_wann()
+
+    @property
+    def spinor(self):
+        return self.spacegroup.spinor  
 
     def set_D_wann_from_projections(self,
                                     projections=None,
@@ -130,6 +164,25 @@ class SymmetrizerSAWF(DMN):
         print(f"len(D_wann_list) = {len(D_wann_list)}")
         self.set_D_wann(D_wann_list)
         return self
+    
+    def set_soc_D_wann(self):
+        """
+        set the D_wann matrix for SOC case
+        """
+        if not hasattr(self, 'D_wann_blocks'):
+            return 
+        D_wann_block_indices_soc = [(2*a,2*b) for a, b in self.D_wann_block_indices]
+        D_wann_blocks_soc = []
+        for block_list in self.D_wann_blocks:
+            D_wann_blocks_soc.append([])
+            for isym,symop in enumerate(self.spacegroup.symmetries):
+                S = symop.spinor_rotation
+                D_wann_blocks_soc[-1].append( [ np.kron(block, S) for block in block_list[isym]])
+        self.D_wann_blocks = D_wann_blocks_soc
+        self.D_wann_block_indices = D_wann_block_indices_soc    
+        self.clear_inverse(D=True, d=False)
+        self.num_wann *= 2
+    
 
     @cached_property
     def rot_orb_dagger_list(self):

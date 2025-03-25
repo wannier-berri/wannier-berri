@@ -35,6 +35,7 @@ class CheckPoint:
             a = readfloat()
             return a[::2] + 1j * a[1::2]
 
+        self.spinor = True
         print('Reading restart information from file ' + seedname + '.chk :')
         self.comment = readstr(FIN)
         self.num_bands = readint()[0]
@@ -78,6 +79,7 @@ class CheckPoint:
         del u_matrix, m_matrix
         gc.collect()
         print(f"Time to read .chk : {time() - t0}")
+    
 
     def spin_order_block_to_interlace(self):
         """
@@ -122,8 +124,11 @@ class CheckPoint:
             the matrix elements in the Wannier gauge
         """
         # data should be of form NBxNBx ...   - any form later
-        if len(mat.shape) == 1:
+        NB = self.v_matrix.shape[1]
+        if mat.ndim == 1:
+            assert len(mat) == NB, f"received matrix of shape {mat.shape}, but NB = {NB}, v_matrix:{self.v_matrix.shape}"
             mat = np.diag(mat)
+        assert mat.shape == (NB, NB),  f"received matrix of shape {mat.shape}, but NB = {NB}, v_matrix:{self.v_matrix.shape}"
         assert mat.shape[:2] == (self.num_bands,) * 2, f"mat.shape={mat.shape}, num_bands={self.num_bands}"
         mat = mat[self.win_min[ik1]:self.win_max[ik1], self.win_min[ik2]:self.win_max[ik2]]
         v1 = self.v_matrix[ik1].conj().T
@@ -473,6 +478,7 @@ class CheckPoint_bare(CheckPoint):
         self.kpt_latt = win.get_kpoints()
         self.real_lattice = win.get_unit_cell_cart_ang()
         self.num_kpts = self.kpt_latt.shape[0]
+        self.spinor = None
         try:
             self.num_wann = win["num_wann"]
         except KeyError:
@@ -495,3 +501,14 @@ class CheckPoint_bare(CheckPoint):
             self.win_min = np.max([self.win_min - win_min, [0] * self.num_kpts], axis=0)
             self.win_max = self.num_bands - np.max([win_max - self.win_max, [0] * self.num_kpts], axis=0)
             print(f"after applying window\n      win_min = {self.win_min}, \n     win_max = {self.win_max}")
+
+    def set_soc(self, eig, vec):
+        self.spinor = True
+        self.num_bands *= 2
+        self.num_wann *= 2
+        self.win_min = 2*np.array(self.win_min)
+        self.win_max = 2*np.array(self.win_max)
+        
+        assert not hasattr(self, "v_matrix"), "v_matrix already exists - cannot set SOC"
+        assert not hasattr(self, "u_matrix"), "u_matrix already exists - cannot set SOC"
+    

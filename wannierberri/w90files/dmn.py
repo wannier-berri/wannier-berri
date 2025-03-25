@@ -166,6 +166,23 @@ class DMN(W90_file):
     @cached_property
     def kpt2kptirr_sym(self):
         return np.array([np.where(self.kptirr2kpt[self.kpt2kptirr[ik], :] == ik)[0][0] for ik in range(self.NK)])
+    
+    def to_blocks(self,d_band_full, eigenvalues=None, degen_threshold = 1e-2):
+        # arranging d_band in the block form
+        if eigenvalues is not None:
+            print("DMN: eigenvalues are used to determine the block structure")
+            d_band_block_indices = [get_block_indices(eigenvalues[ik], thresh=degen_threshold, cyclic=False) for ik in self.kptirr]
+        else:
+            print("DMN: eigenvalues are NOT provided, the bands are considered as one block")
+            d_band_block_indices = [[(0, self.NB)] for _ in range(self.NKirr)]
+        d_band_block_indices = [np.array(self.d_band_block_indices[ik]) for ik in range(self.NKirr)]
+        # np.ascontinousarray is used to speedup with Numba
+        d_band_blocks = [[[np.ascontiguousarray(d_band_full[ik, isym, start:end, start:end])
+                                for start, end in d_band_block_indices[ik]]
+                               for isym in range(self.Nsym)] for ik in range(self.NKirr)]
+        return d_band_block_indices, d_band_blocks
+
+
 
     def from_w90_file(self, seedname="wannier90", eigenvalues=None):
         """
@@ -214,19 +231,9 @@ class DMN(W90_file):
                                           ).transpose(0, 1, 3, 2)
         d_band = data[n1:].reshape(self.NKirr, self.Nsym, self.NB, self.NB).transpose(0, 1, 3, 2)
 
-        # arranging d_band in the block form
-        if eigenvalues is not None:
-            print("DMN: eigenvalues are used to determine the block structure")
-            self.d_band_block_indices = [get_block_indices(eigenvalues[ik], thresh=1e-2, cyclic=False) for ik in self.kptirr]
-        else:
-            print("DMN: eigenvalues are NOT provided, the bands are considered as one block")
-            self.d_band_block_indices = [[(0, self.NB)] for _ in range(self.NKirr)]
-        self.d_band_block_indices = [np.array(self.d_band_block_indices[ik]) for ik in range(self.NKirr)]
-        # np.ascontinousarray is used to speedup with Numba
-        self.d_band_blocks = [[[np.ascontiguousarray(d_band[ik, isym, start:end, start:end])
-                                for start, end in self.d_band_block_indices[ik]]
-                               for isym in range(self.Nsym)] for ik in range(self.NKirr)]
 
+        self.d_band_block_indices, self.d_band_blocks = self.to_blocks(d_band, eigenvalues)
+        
         # arranging D_wann in the block form
         self.wann_block_indices = []
         # determine the block indices from the D_wann, excluding areas with only zeros
@@ -266,7 +273,9 @@ class DMN(W90_file):
         """
         Returns the full matrix of the ab initio bands transformation matrix
 
-        Note: this funcion is used only for w90 format, which is deprecated. TODO: remove it
+        Note: this funcion is used only for w90 format, which is deprecated.
+
+        Also, to apply spin-orbit coupling
         """
         if ikirr is None:
             return np.array([self.d_band_full_matrix(ikirr, isym) for ikirr in range(self.NKirr)])
@@ -416,6 +425,9 @@ class DMN(W90_file):
 
 
     def clear_inverse(self, d=True, D=True):
+        """
+        Clear the cached inverse matrices
+        """
         if d:
             if hasattr(self, 'd_band_blocks_inverse'):
                 del self.d_band_blocks_inverse
@@ -670,6 +682,7 @@ class DMN(W90_file):
         print("num_wann", num_wann)
         print("D_wann_block_indices", self.D_wann_block_indices)
 
+        
 
 
 
