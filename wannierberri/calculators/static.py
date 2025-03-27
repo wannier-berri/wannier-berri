@@ -713,3 +713,19 @@ class SHC(StaticCalculator):
         self.Formula = frml.SpinOmega
         self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+class NLOG1(StaticCalculator):
+    
+    def __init__(self, constant_factor= 1, **kwargs):
+        self.Formula = frml.FOV1
+        self.fder = 1
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+class NLOG2(StaticCalculator):
+    
+    def __init__(self, constant_factor= 1, **kwargs):
+        self.Formula = frml.FOV2
+        self.fder = 1
+        super().__init__(constant_factor=constant_factor, **kwargs)

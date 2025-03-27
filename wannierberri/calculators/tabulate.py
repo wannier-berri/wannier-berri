@@ -212,15 +212,15 @@ class Quantum_M(Tabulator):
     def __init__(self, **kwargs):
         super().__init__(frml.Quantum_M, **kwargs)
 
-class Quantum_M_kp(Tabulator):
+class QB_test(Tabulator):
 
     def __init__(self, **kwargs):
-        super().__init__(frml.Quantum_M_kp, **kwargs)
+        super().__init__(frml.QB_test, **kwargs)
 
-class BerryCurvature_kp(Tabulator):
+class DerQuantum_M(Tabulator):
 
     def __init__(self, **kwargs):
-        super().__init__(frml.Omegakp, **kwargs)
+        super().__init__(frml.DerQuantum_M, **kwargs)
 
 class OrbitalMoment_kp(Tabulator):
 
@@ -237,3 +237,13 @@ class BCP_G_kp(Tabulator):
 
     def __init__(self, **kwargs):
         super().__init__(frml.BCP_G_kp, **kwargs)
+
+
+class FO1(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.FO1, **kwargs)
+class FO2(Tabulator):
+
+    def __init__(self, **kwargs):
+        super().__init__(frml.FO2, **kwargs)

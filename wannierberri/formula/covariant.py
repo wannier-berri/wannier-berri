@@ -3,6 +3,14 @@ from ..__utility import alpha_A, beta_A, delta_f
 from .formula import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct, FormulaSum, DeltaProduct
 from ..symmetry import transform_ident, transform_odd
 
+Levi_Civita = np.zeros((3,3,3))
+Levi_Civita[1,2,0] = 1
+Levi_Civita[2,1,0] = -1
+Levi_Civita[2,0,1] = 1
+Levi_Civita[0,2,1] = -1
+Levi_Civita[0,1,2] = 1
+Levi_Civita[1,0,2] = -1
+
 
 class Identity(Formula_ln):
 
@@ -28,6 +36,15 @@ class Eavln(Matrix_ln):
         self.transformTR = transform_ident
         self.transformInv = transform_ident
 
+class Ediff(Matrix_ln):
+    """ be careful : this is not a covariant matrix"""
+
+    def __init__(self, data_K):
+        super().__init__((data_K.E_K[:, :, None] - data_K.E_K[:, None, :]))
+        self.ndim = 0
+        self.transformTR = transform_ident
+        self.transformInv = transform_ident
+
 
 class DEinv_ln(Matrix_ln):
     """DEinv_ln.matrix[ik, m, n] = 1 / (E_mk - E_nk)"""
@@ -44,8 +61,8 @@ class Dcov(Matrix_ln):
     def __init__(self, data_K):
         super().__init__(data_K.D_H)
 
-    def nn(self, ik, inn, out):
-        raise ValueError("Dln should not be called within inner states")
+    #def nn(self, ik, inn, out):
+    #    raise ValueError("Dln should not be called within inner states")
 
 
 class DerDcov(Dcov):
@@ -344,7 +361,6 @@ class DerOmega(Formula_ln):
                     self.A.nn(ik, inn, out)[:, :, a],
                     self.dA.nn(ik, inn, out)[:, :, b, :])
                 pass
-
         summ += summ.swapaxes(0, 1).conj()
         return summ
 
@@ -476,6 +492,8 @@ class Morb_H(Formula_ln):
             self.C = data_K.covariant('CC')
         self.D = data_K.Dcov
         self.E = data_K.E_K
+        self.V = data_K.covariant('Ham', commader=1)
+        self.Ediff = Ediff(data_K)
         self.ndim = 1
         self.transformTR = transform_odd
         self.transformInv = transform_ident
@@ -507,7 +525,20 @@ class Morb_H(Formula_ln):
         return summ
 
     def ln(self, ik, inn, out):
-        raise NotImplementedError()
+        summ = np.zeros((len(inn), len(inn), 3), dtype=complex)
+
+        if self.internal_terms:
+            summ += 1j * np.einsum(
+                "lpc,pnc,np->lnc",
+                self.D.ll(ik, inn, out)[:, :, alpha_A],
+                self.D.ln(ik, inn, out)[:, :, beta_A], self.Ediff.nl(ik,inn,out)
+            )
+            summ += 1j * np.einsum(
+                "nnc,lnc,nl->lnc",
+                self.D.nn(ik, inn, out)[:, :, alpha_A],
+                self.D.ln(ik, inn, out)[:, :, beta_A], self.Ediff.nl(ik,inn,out)
+            )
+        return summ
 
     @property
     def additive(self):
@@ -901,48 +932,77 @@ class BCP_G(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
-class Omegakp(Formula_ln):
+
+
+class FO1(Formula_ln):
+
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
+        self.D = data_K.Dcov
         self.dEinv = DEinv_ln(data_K)
+        self.dEinvm = DEinv_ln(data_K).matrix
         self.V = data_K.covariant('Ham', commader=1)
-        self.ndim = 1
-        self.transformTR=transform_ident
-        self.transformInv=transform_ident
+        self.Vm = data_K.covariant('Ham', commader=1).matrix
+        self.Ediff = Ediff(data_K)
+        self.ndim = 2
+        self.transformTR = transform_odd
+        self.transformInv = transform_ident
+        self.U = data_K._UU
 
     def nn(self, ik, inn, out):
-        summ = -2j * np.einsum("mla,ml,nl,lna->mna", self.V.nl(ik,inn,out)[:, :, alpha_A] ,
-                self.dEinv.nl(ik,inn,out),
-                self.dEinv.nl(ik,inn,out),
-                self.V.ln(ik,inn,out)[:, :, beta_A] )
-        print(self.V.nl(ik,inn,out))
-        print(self.dEinv.nl(ik,inn,out))
-        return summ
+            summ = np.zeros((len(inn), len(out), 3,3), dtype=complex)
+            #print(self.U)
+            if self.internal_terms:
+                 summ += np.einsum(
+                     "npa,plb->nlab",
+                     self.V.nn(ik, inn, out),
+                     self.D.nl(ik, inn, out)
+                 )
+                 summ += np.einsum(
+                     "npa,plb->nlab",
+                     self.V.nl(ik, inn, out),
+                     self.D.ll(ik, inn, out)
+                 )
+                 summ += np.einsum(
+                     "lla,nlb->nlab",
+                     self.V.ll(ik, inn, out),
+                     self.D.nl(ik, inn, out) 
+                 )
+            morb_nl = np.einsum('abc,nlbc->nla', Levi_Civita, summ*0.5j )
+            res = np.einsum('nlc,lmd,nl->nmcd',morb_nl,self.D.ln(ik,inn,out),2*self.dEinv.nl(ik,inn,out)).imag
+            return res
 
+    
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
-class Morbkp(Formula_ln):
+
+class FO2(Formula_ln):
+
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
-        self.dEinv = DEinv_ln(data_K)
-        self.V = data_K.covariant('Ham', commader=1)
-        self.ndim = 1
-        self.E = data_K.E_K
-        self.transformTR=transform_ident
-        self.transformInv=transform_ident
+        self.dD = DerDcov(data_K)
+        self.D = data_K.Dcov
+        self.ndim = 2
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
 
     def nn(self, ik, inn, out):
-        summ = -2j * np.einsum("mla,ml,nl,lna->mna", self.V.nl(ik,inn,out)[:, :, alpha_A]*self.E[ik][out][None, :, None],
-                self.dEinv.nl(ik,inn,out),
-                self.dEinv.nl(ik,inn,out),
-                self.V.ln(ik,inn,out)[:, :, beta_A],
-                               )
-        return summ
+        summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
+        if self.internal_terms:
+            summ += np.einsum(
+                "mla,lnbc->mnabc",
+                self.D.nl(ik, inn, out),
+                self.dD.ln(ik, inn, out) )
+            summ += np.einsum(
+                "mlac,lnb->mnabc",
+                self.dD.nl(ik, inn, out),
+                self.D.ln(ik, inn, out) )
+        res = np.einsum('dca,mnabc->mndb', Levi_Civita, summ.real)
+        return res
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
-
 
 class BCP_G_kp(Formula_ln):
     def __init__(self, data_K, **parameters):
@@ -966,57 +1026,36 @@ class BCP_G_kp(Formula_ln):
         raise NotImplementedError()
 
 
-class Quantum_M_kp(Formula_ln):
-    
-    def __init__(self, data_K, **parameters):
-        super().__init__(data_K, **parameters)
-        self.dEinv = DEinv_ln(data_K)
-        self.V = data_K.covariant('Ham', commader=1)
-        self.ndim = 1
-        self.transformTR=transform_ident
-        self.transformInv=transform_ident
-
-    def nn(self, ik, inn, out):
-        summ = 2 * np.einsum("mla,ml,nl,lna->mna", self.V.nl(ik,inn,out)[:, :, alpha_A] ,
-                self.dEinv.nl(ik,inn,out),
-                self.dEinv.nl(ik,inn,out),
-                self.V.ln(ik,inn,out)[:, :, beta_A] )
-        return summ
-
-    def ln(self, ik, inn, out):
-        raise NotImplementedError()
-
 
 class Quantum_M(Formula_ln):
-    
+
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
         self.D = data_K.Dcov
-        
+
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.O = data_K.covariant('OO')
         
         self.ndim = 1
         self.transformTR = transform_odd
-        self.transformInv = transform_ident
-                
+
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3), dtype=complex)
-                         
+
         if self.internal_terms:
             summ += 1 * np.einsum(
                 "mlc,lnc->mnc",
                 self.D.nl(ik, inn, out)[:, :, alpha_A],
                 self.D.ln(ik, inn, out)[:, :, beta_A])
-        
+
         if self.external_terms:
-            summ += -0.5j * self.O.nn(ik, inn, out)
-            summ += 1j * np.einsum(
+            summ += 0.5j * self.O.nn(ik, inn, out)
+            summ += -1j * np.einsum(
                 "mlc,lnc->mnc",
                 self.D.nl(ik, inn, out)[:, :, alpha_A],
                 self.A.ln(ik, inn, out)[:, :, beta_A])
-            summ += -1j * np.einsum(
+            summ += +1j * np.einsum(
                 "mlc,lnc->mnc",
                 self.D.nl(ik, inn, out)[:, :, beta_A],
                 self.A.ln(ik, inn, out)[:, :, alpha_A])
@@ -1030,6 +1069,76 @@ class Quantum_M(Formula_ln):
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
+
+class QB_test(Formula_ln):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        self.D = data_K.Dcov
+
+        if self.external_terms:
+            self.A = data_K.covariant('AA')
+            self.O = data_K.covariant('OO')
+        
+        self.ndim = 1
+        self.transformTR = transform_odd
+        self.transformInv = transform_ident
+                
+    def nn(self, ik, inn, out):
+        tmp1 = np.zeros((len(inn), len(inn), 3), dtype=complex)
+        tmp2 = np.zeros((len(inn), len(inn), 3), dtype=complex)
+                
+        if self.internal_terms:
+            tmp1 += 1 * np.einsum(
+                "mlc,lnc->mnc",
+                self.D.nl(ik, inn, out)[:, :, alpha_A],
+                self.D.ln(ik, inn, out)[:, :, beta_A])
+            tmp1 += tmp1.swapaxes(0, 1).conj()
+            
+            tmp1 += 1 * np.einsum(
+                "mlc,lnc->mnc",
+                self.D.nl(ik, inn, out)[:, :, alpha_A],
+                self.D.ln(ik, inn, out)[:, :, beta_A])
+            tmp1 += tmp1.swapaxes(0, 1).conj()
+        
+
+        print('all',summ[0,0,2])
+        return summ
+
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
+
+class DerQuantum_M(Formula_ln):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        self.dD = DerDcov(data_K)
+        self.D = data_K.Dcov
+        self.ndim = 2
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
+
+    def nn(self, ik, inn, out):
+        summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
+
+        for s, a, b in (+1, alpha_A, beta_A), (1, beta_A, alpha_A):
+            summ += 1 * s * np.einsum(
+                    "mlc,lndc->mncd",
+                    self.D.nl(ik, inn, out)[:, :, a],
+                    self.dD.ln(ik, inn, out)[:, :, b])
+
+
+        summ += summ.swapaxes(0, 1).conj()
+        return summ
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
+
 
 
 
@@ -1058,6 +1167,15 @@ class VelSpin(FormulaProduct):
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([data_K.covariant('Ham', commader=1), Spin(data_K)], name='VelSpin')
 
+class FOV1(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([FO1(data_K),data_K.covariant('Ham', commader=1)], name='VelSpin')
+
+class FOV2(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([FO2(data_K),data_K.covariant('Ham', commader=1)], name='VelSpin')
 
 class VelVel(FormulaProduct):
 

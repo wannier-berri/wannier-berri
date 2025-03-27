@@ -784,6 +784,24 @@ class Data_K_k(_Data_K):
         Ecorners = self.phonon_freq_from_square(Ecorners)
         return Ecorners
 
+    @cached_property
+    def D_H(self):
+        return -self.Xbar('Ham', 1) * self.dEig_inv[:, :, :, None]
+
+    @cached_property
+    def dEig_inv(self):
+        dEig_threshold = 1e-7
+        dEig = self.E_K[:, :, None] - self.E_K[:, None, :]
+        select = abs(dEig) < dEig_threshold
+        dEig[select] = dEig_threshold
+        dEig = 1. / dEig
+        dEig[select] = 0.
+        return dEig
+
+    @cached_property
+    def Dcov(self):
+        return formula.covariant.Dcov(self)
+
 
 def get_data_k(system, dK, grid, **parameters):
     if isinstance(system, SystemKP):
