@@ -43,6 +43,9 @@ def test_wannierise(outer_window):
                     os.path.join(tmp_dir, f"UNK{i + 1:05d}.1"))
     print("prefix = ", prefix)
     symmetrizer = SymmetrizerSAWF().from_npz(prefix + ".sawf.npz")
+
+    # because of changes in irrep 2.1 - and to avoid re-creating symmetrizer
+    symmetrizer.spacegroup.number_str = str(symmetrizer.spacegroup.number) 
     symmetrizer.spacegroup.show()
     symmetrizer.to_w90_file(prefix)
     # Read the data from the Wanier90 inputs
