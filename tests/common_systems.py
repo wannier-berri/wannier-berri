@@ -267,10 +267,12 @@ def system_GaAs_W90_JM(create_files_GaAs_W90):
     return system
 
 
-def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=True):
+def get_system_GaAs_tb(use_wcc_phase=True, symmetrize=True, berry=True):
     """Create system for GaAs using sym_tb.dat data"""
     seedname = create_files_tb(dir="GaAs_Wannier90", file=f"GaAs{'_sym' if symmetrize else ''}_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=berry, use_ws=use_ws, use_wcc_phase=use_wcc_phase)
+    system = wberri.system.System_tb(seedname, berry=berry, use_wcc_phase=use_wcc_phase)
+    system.do_ws_dist(mp_grid=(2, 2, 2))
+    
     system.spin_block2interlace() # the stored system is from old VASP, with spin-block ordering
     if symmetrize:
         system.symmetrize(
@@ -278,12 +280,10 @@ def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=
             atom_name=['Ga', 'As'],
             proj=['Ga:sp3', 'As:sp3'],
             soc=True,
-            spin_ordering='interlace' if reorder_spin else 'block',
+            spin_ordering='interlace',
             method="new"
         )
     system.spin_interlace2block()
-    if use_ws:
-        system.do_ws_dist(mp_grid=(2, 2, 2))
     system.set_pointgroup(symmetries_GaAs)
     return system
 
@@ -700,7 +700,7 @@ def system_random_GaAs():
                                       berry=True, spin=True, SHCryoo=True)
 
 
-def get_system_random_GaAs_load_ws_sym(use_ws=False, sym=False):
+def get_system_random_GaAs_load_sym(sym=False, use_ws=True):
     system = wberri.system.System_R(berry=True, spin=True, SHCryoo=True)
     system.load_npz(path=os.path.join(ROOT_DIR, "data", "random_GaAs"))
     if use_ws:
@@ -724,9 +724,9 @@ def get_system_random_GaAs_load_ws_sym(use_ws=False, sym=False):
 
 @pytest.fixture(scope="session")
 def system_random_GaAs_load_bare():
-    return get_system_random_GaAs_load_ws_sym(use_ws=False, sym=False)
+    return get_system_random_GaAs_load_sym(use_ws=False, sym=False)
 
 
 @pytest.fixture(scope="session")
 def system_random_GaAs_load_sym():
-    return get_system_random_GaAs_load_ws_sym(use_ws=True, sym=True)
+    return get_system_random_GaAs_load_sym(use_ws=True, sym=True)

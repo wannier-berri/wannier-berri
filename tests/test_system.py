@@ -188,7 +188,7 @@ def test_system_GaAs_W90(check_system, system_GaAs_W90):
 
 def test_system_GaAs_W90_JM(check_system, system_GaAs_W90_JM):
     check_system(
-        system_GaAs_W90_wccJM, "GaAs_W90_wccJM",
+        system_GaAs_W90_JM, "GaAs_W90_JM",
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA', 'OO', 'GG'],
     )
 
@@ -200,62 +200,30 @@ def test_system_GaAs_tb(check_system, system_GaAs_tb):
     )
 
 
-def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb_wcc):
+def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb):
     check_system(
-        system_GaAs_sym_tb_wcc, "GaAs_sym_tb_wcc",
+        system_GaAs_sym_tb, "GaAs_sym_tb",
         matrices=['Ham', 'AA'],
         sort_iR=True,
-        suffix="old"
     )
 
 
-def test_system_GaAs_sym_tb_reorder(check_system, system_GaAs_sym_tb_wcc_reorder):
+
+def test_system_GaAs_tb_noAA(check_system, system_GaAs_tb_noAA):
     check_system(
-        system_GaAs_sym_tb_wcc_reorder, "GaAs_sym_tb_wcc",
-        matrices=['Ham', 'AA'],
-        sort_iR=True,
-        suffix="reorder"
-    )
-
-
-def test_system_GaAs_sym_tb_reorder_new(check_system, system_GaAs_sym_tb_wcc_reorder_new):
-    check_system(
-        system_GaAs_sym_tb_wcc_reorder_new, "GaAs_sym_tb_wcc",
-        matrices=['Ham', 'AA'],
-        sort_iR=True,
-        suffix="reorder_new"
-    )
-
-
-def test_system_GaAs_tb_wcc(check_system, system_GaAs_tb_wcc):
-    check_system(
-        system_GaAs_tb_wcc, "GaAs_tb_wcc",
-        matrices=['Ham', 'AA']
-    )
-
-
-def test_system_GaAs_tb_wcc_ws(check_system, system_GaAs_tb_wcc_ws):
-    check_system(
-        system_GaAs_tb_wcc_ws, "GaAs_tb_wcc_ws",
-        matrices=['Ham', 'AA']
-    )
-
-
-def test_system_GaAs_tb_wcc_ws_noAA(check_system, system_GaAs_tb_wcc_ws_noAA):
-    check_system(
-        system_GaAs_tb_wcc_ws_noAA, "GaAs_tb_wcc_ws",
+        system_GaAs_tb_noAA, "GaAs_tb",
         matrices=['Ham',]
     )
 
 
-def test_system_GaAs_tb_wcc_ws_save_load(check_system, system_GaAs_tb_wcc_ws):
-    name = "GaAs_tb_wcc_ws_save"
+def test_system_GaAs_tb_save_load(check_system, system_GaAs_tb):
+    name = "GaAs_tb_save"
     path = os.path.join(OUTPUT_DIR, name)
-    system_GaAs_tb_wcc_ws.save_npz(path)
+    system_GaAs_tb.save_npz(path)
     system = System_R()
     system.load_npz(path, load_all_XX_R=True)
     check_system(
-        system, "GaAs_tb_wcc_ws",
+        system, "GaAs_tb",
         suffix="save-load",
         matrices=['Ham', 'AA']
     )
@@ -443,17 +411,17 @@ def test_system_random_GaAs_load_bare(check_system, system_random_GaAs_load_bare
     )
 
 
-def test_system_random_GaAs_load_ws(check_system, system_random_GaAs_load_ws):
+def test_system_random_GaAs_load(check_system, system_random_GaAs_load_bare):
     check_system(
-        system_random_GaAs_load_ws, "random_GaAs_ws",
+        system_random_GaAs_load_bare, "random_GaAs_bare",
         matrices=['Ham', 'AA', 'SS'],
         sort_iR=False
     )
 
 
-def test_system_random_GaAs_load_ws_sym(check_system, system_random_GaAs_load_ws_sym):
+def test_system_random_GaAs_load_sym(check_system, system_random_GaAs_load_sym):
     check_system(
-        system_random_GaAs_load_ws_sym, "random_GaAs_ws_sym",
+        system_random_GaAs_load_sym, "random_GaAs_sym",
         matrices=['Ham', 'AA', 'SS'],
         sort_iR=False
     )
