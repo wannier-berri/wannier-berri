@@ -6,6 +6,7 @@ from scipy.special import spherical_jn
 from scipy.interpolate import CubicSpline
 from scipy.integrate import trapezoid
 from scipy.constants import physical_constants
+from scipy.linalg import block_diag
 bohr_radius_angstrom = physical_constants["Bohr radius"][0] * 1e10
 
 # Note: in the Dwann it is assumed that all orbitals are REAL, so under TR one does not need to take complex conjugate
@@ -43,8 +44,10 @@ def orb_to_shell(orb):
 
 
 @lru_cache
-def num_orbitals(shell_symbol: str):
-    return len(orbitals_sets_dic[shell_symbol])
+def num_orbitals(shell_symbol:str):
+    if ";" in shell_symbol:
+        return sum([num_orbitals(s) for s in shell_symbol.split(";")])
+    return len(orbitals_sets_dic[shell_symbol.strip()])
 
 
 hybrids_coef = {
@@ -221,8 +224,14 @@ class OrbitalRotator:
 
     def __call__(self, orb_symbol, isym=0):
         if (isym, orb_symbol) not in self.results_dict:
+            orb_symbol = orb_symbol.strip()
             rot_glb = self.rotations_cart[isym]
-            self.results_dict[(isym, orb_symbol)] = self.orbitals.rot_orb(orb_symbol, rot_glb)
+            if ";" in orb_symbol:
+                mat_list = [self(orb, isym) for orb in orb_symbol.split(";")]
+            else :
+                mat_list = [self.orbitals.rot_orb(orb_symbol, rot_glb)]
+            self.results_dict[(isym, orb_symbol)] = block_diag(*mat_list)
+        print (f"orb_symbol = {orb_symbol}, isym = {isym}  rotation matrix = \n{self.results_dict[(isym, orb_symbol)]}")
         return self.results_dict[(isym, orb_symbol)]
 
 

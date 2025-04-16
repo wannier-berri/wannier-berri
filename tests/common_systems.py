@@ -325,6 +325,9 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
                                       guiding_centers=True,
                                       **matrices)
     if symmetrize:
+        iRold = [tuple(R) for R in system.iRvec]
+        print ("Rvectors before symmetrization", system.nRvec, "\n", system.iRvec)
+        print (f"wannier-diff {system.wannier_centers_reduced[:,None,:]-system.wannier_centers_reduced[None,:,:]}")
         system.symmetrize(
             positions=np.array([[-0.125, -0.125, 0.375],
                                 [0.375, -0.125, -0.125],
@@ -334,7 +337,16 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
             proj=['bond:s'],
             soc=False,
             spin_ordering='interlace',
-            method='old')
+            method='new')
+        print("Rvectors after symmetrization", system.nRvec, "\n", system.iRvec)
+        iRnew = [tuple(R) for R in system.iRvec]
+        for rnew in iRnew:
+            if rnew not in iRold:
+                print("New Rvector", rnew)
+                for r in iRold:
+                    if np.all(np.array(rnew) - np.array(r)%2 == 0):
+                        print("    Old Rvector", r)
+                        
 
     return system
 
@@ -347,13 +359,14 @@ def system_Si_W90_JM(create_files_Si_W90):
                                 transl_inv_JM=True, 
                                 wcc_phase_fin_diff=False,)
 
+
+
 @pytest.fixture(scope="session")
 def system_Si_W90_JM_sym(create_files_Si_W90):
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
     data_dir = create_files_Si_W90
     system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
                                   wcc_phase_fin_diff=False,
-                                  matrices=dict(berry=True),
                                   symmetrize=True)
     return system
 
@@ -370,7 +383,8 @@ def system_Si_W90_sym(create_files_Si_W90):
     """Create system for Si using Wannier90 data with symmetrization"""
     data_dir = create_files_Si_W90
     system = get_system_Si_W90_JM(data_dir, transl_inv=True,
-                                 matrices=dict(OSD=True),
+                                #  matrices=dict(OSD=True)
+                                wcc_phase_fin_diff=True,
                                   symmetrize=True)
     # system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True, matrices=dict(berry=True) )
     return system
@@ -534,7 +548,7 @@ def system_Phonons_GaAs():
     return system
 
 
-def get_system_Mn3Sn_sym_tb():
+def get_system_Mn3Sn_sym_tb(method="new"):
     data_dir = os.path.join(ROOT_DIR, "data", "Mn3Sn_Wannier90")
     if not os.path.isfile(os.path.join(data_dir, "Mn3Sn_tb.dat")):
         tar = tarfile.open(os.path.join(data_dir, "Mn3Sn_tb.dat.tar.gz"))
@@ -543,17 +557,18 @@ def get_system_Mn3Sn_sym_tb():
 
     seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
     system = wberri.system.System_tb(seedname, berry=True)
+    system.do_ws_dist(mp_grid=(2,2,2))
     system.spin_block2interlace() # the stored system is from old VASP, with spin-block ordering
     system.symmetrize(
         positions=np.array([
-            [0.666666667, 0.833333333, 0],
-            [0.166666667, 0.333333333, 0],
-            [0.666666667, 0.333333333, 0],
-            [0.333333333, 0.166666667, 0.5],
-            [0.833333333, 0.666666667, 0.5],
-            [0.333333333, 0.666666667, 0.5],
-            [0.833333333, 0.166666667, 0.5],
-            [0.166666667, 0.833333333, 0]]),
+            [0.6666666666667, 0.8333333333333, 0],
+            [0.1666666666667, 0.3333333333333, 0],
+            [0.6666666666667, 0.3333333333333, 0],
+            [0.3333333333333, 0.1666666666667, 0.5],
+            [0.8333333333333, 0.6666666666667, 0.5],
+            [0.3333333333333, 0.6666666666667, 0.5],
+            [0.8333333333333, 0.1666666666667, 0.5],
+            [0.1666666666667, 0.8333333333333, 0]]),
         atom_name=['Mn'] * 6 + ['Sn'] * 2,
         proj=['Mn:s;d', 'Sn:p'],
         soc=True,
@@ -567,16 +582,16 @@ def get_system_Mn3Sn_sym_tb():
             [0, 0, 0],
             [0, 0, 0]],
         spin_ordering='interlace',
-        method='new'
+        method=method
     )
-    system.spin_interlace2block()
     return system
 
 
 @pytest.fixture(scope="session")
 def system_Mn3Sn_sym_tb():
     """Create system for Mn3Sn using _tb.dat data"""
-    return get_system_Mn3Sn_sym_tb()
+    return get_system_Mn3Sn_sym_tb(method="new")
+
 
 
 ###################################

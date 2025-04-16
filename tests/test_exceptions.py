@@ -129,4 +129,4 @@ def test_wrong_mat_fail():
             atom_name=['one', 'two'],
             proj=['one:s', 'two:s'],
             soc=False,
-            method="old")
+            method="new")

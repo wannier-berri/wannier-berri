@@ -21,11 +21,12 @@ class Dwann:
         by applying the symmetry operations of the spacegroup.
         if the file will be used with an already generated .amn file, 
         the positions should be the same as the .amn file, including the order.
-    projection : str
-        The projection type. Default is "_" which means "s". 
-        (not implemented yet, but should be implemented in the future)
-    orbitals : wannierberri.system.sym_wann_orbitals.Orbitals object
-        The orbitals object that contains the orbitals information.
+    orbital : str
+        The projection type. Default is "_" which means "s". may contain ";" to separate the orbitals.
+    orbital_rotator : callable
+        A function that takes an orbital and a symmetry operation and returns the rotated orbital.
+        This is used to generate the rotated orbitals for each symmetry operation.
+        The function should take two arguments: the orbital and the symmetry operation.
     spinor : bool
         Whether the Wannier functions are spinors.
 
@@ -52,7 +53,7 @@ class Dwann:
     def __init__(self, spacegroup, positions, orbital="_",
                 orbital_rotator=None,
                  spinor=False):
-
+        
         self.nsym = spacegroup.size
         if spinor:
             self.spinor = True

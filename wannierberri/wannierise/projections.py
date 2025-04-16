@@ -56,10 +56,14 @@ class Projection:
                  void=False,
                  free_var_values=None,
                  allow_multiple_orbits=False,
+                 do_not_split_projections=False,
                  spinor=False):
         if void:
             return
-        self.orbitals = orbital.split(";")
+        if do_not_split_projections:
+            self.orbitals = [orbital]
+        else:
+            self.orbitals = orbital.split(";")
 
         if wyckoff_position is not None:
             self.wyckoff_position = wyckoff_position

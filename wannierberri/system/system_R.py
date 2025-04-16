@@ -355,11 +355,13 @@ class System_R(System):
             for proj_str in proj:
                 atom, orbital = [l.strip() for l in proj_str.split(':')]
                 pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
-                for suborbital in orbital.split(';'):
-                    suborbital = suborbital.strip()
-                    proj = Projection(position_num=pos, orbital=suborbital, spacegroup=spacegroup, allow_multiple_orbits=True)
-                    # print (f"adding projection {proj} ({pos} {suborbital})")
-                    proj_list.append(proj)
+                if ";" in orbital:
+                    warnings.warn(f"for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
+                                  "But you need to do it consistently in wannier90 ")
+                proj = Projection(position_num=pos, orbital=orbital, spacegroup=spacegroup, allow_multiple_orbits=True,
+                                  do_not_split_projections=True)
+                # print (f"adding projection {proj} ({pos} {suborbital})")
+                proj_list.append(proj)
             symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections_obj=proj_list)
             self.symmetrize2(symmetrizer)
             return symmetrizer
