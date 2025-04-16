@@ -39,8 +39,8 @@ def test_wannierise(outer_window):
         shutil.copy(os.path.join(data_dir, prefix + "." + ext),
                     os.path.join(tmp_dir, prefix + "." + ext))
     for i in range(8):
-        shutil.copy(os.path.join(data_dir, f"UNK{i+1:05d}.1"),
-                    os.path.join(tmp_dir, f"UNK{i+1:05d}.1"))
+        shutil.copy(os.path.join(data_dir, f"UNK{i + 1:05d}.1"),
+                    os.path.join(tmp_dir, f"UNK{i + 1:05d}.1"))
     print("prefix = ", prefix)
     symmetrizer = SymmetrizerSAWF().from_npz(prefix + ".sawf.npz")
     symmetrizer.spacegroup.show()
