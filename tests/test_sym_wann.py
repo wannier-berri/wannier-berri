@@ -90,14 +90,8 @@ def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb):
 
 
 @pytest.mark.parametrize("use_k_sym", [False, True])
-@pytest.mark.parametrize("sym_method", ["old", "new"])
-def test_Fe_sym_W90(check_run, system_Fe_sym_W90_wcc, system_Fe_sym_W90_wcc_new, compare_any_result, use_k_sym, sym_method):
-    if sym_method == "old":
-        system = system_Fe_sym_W90_wcc
-    elif sym_method == "new":
-        system = system_Fe_sym_W90_wcc_new
-    else:
-        raise ValueError("sym_method should be 'old' or 'new'")
+def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result, use_k_sym, sym_method):
+    system = system_Fe_sym_W90
     param = {'Efermi': Efermi_Fe}
     cals = {'ahc': calc.static.AHC,
             'Morb': calc.static.Morb,
@@ -120,7 +114,7 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90_wcc, system_Fe_sym_W90_wcc_new,
         calculators,
         fout_name="berry_Fe_sym_W90",
         precision=1e-8,
-        suffix="-run",
+        suffix=f"-use_k_sym-{use_k_sym}",
         compare_zero=True,
         use_symmetry=use_k_sym
     )
@@ -152,11 +146,8 @@ def checksym_Fe(check_run, compare_any_result, check_symmetry):
     return _inner
 
 
-def test_Fe_new_wcc(system_Fe_sym_W90_wcc, checksym_Fe):
-    checksym_Fe(system_Fe_sym_W90_wcc)
 
-
-def test_Fe_new_wccFD(system_Fe_sym_W90_wcc_fd, checksym_Fe):
+def test_Fe_new(system_Fe_sym_W90, checksym_Fe):
     extra_calculators = {}
     extra_calculators['SHCqiao_static'] = \
         wberri.calculators.static.SHC(Efermi=Efermi_Fe, kwargs_formula={'spin_current_type': 'qiao'})
@@ -164,10 +155,10 @@ def test_Fe_new_wccFD(system_Fe_sym_W90_wcc_fd, checksym_Fe):
         wberri.calculators.static.SHC(Efermi=Efermi_Fe, kwargs_formula={'spin_current_type': 'ryoo'})
     extra_calculators['SHCryoo_simple'] = \
         wberri.calculators.static.SHC(Efermi=Efermi_Fe, kwargs_formula={'spin_current_type': 'simple'})
-    checksym_Fe(system_Fe_sym_W90_wcc_fd, extra_calculators=extra_calculators)
+    checksym_Fe(system_Fe_sym_W90, extra_calculators=extra_calculators)
 
 
-def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb_wcc, compare_any_result):
+def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb, compare_any_result):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
     calculators.update({
@@ -179,7 +170,7 @@ def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb_wcc, com
     })
 
     check_run(
-        system_GaAs_sym_tb_wcc,
+        system_GaAs_sym_tb,
         {'ahc': calc.static.AHC(Efermi=Efermi_GaAs)},
         fout_name="berry_GaAs_sym_tb",
         precision=1e-5,
@@ -188,7 +179,7 @@ def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb_wcc, com
     )
 
 
-def test_GaAs_random_zero(check_symmetry, check_run, system_random_GaAs_load_ws_sym, compare_any_result):
+def test_GaAs_random_zero(check_symmetry, check_run, system_random_GaAs_load_sym, compare_any_result):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
     calculators.update({
@@ -201,7 +192,7 @@ def test_GaAs_random_zero(check_symmetry, check_run, system_random_GaAs_load_ws_
     })
 
     check_run(
-        system_random_GaAs_load_ws_sym,
+        system_random_GaAs_load_sym,
         calculators,
         fout_name="berry_GaAs_sym_random",
         precision=2e-5,

@@ -248,6 +248,7 @@ class WyckoffPositionNumeric(WyckoffPosition):
             else:
                 assert pos in orbit0, f"Position {pos} is not in the orbit of the first position {positions[0]}"
             orbit.append(pos)
+        # now add the positions that are pot in the input
         for pos in orbit0:
             orbit.append(pos)
         self._positions = np.array(orbit)

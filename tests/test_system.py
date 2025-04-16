@@ -435,5 +435,5 @@ def test_system_random_GaAs_load_sym(check_system, system_random_GaAs_load_sym):
     check_system(
         system_random_GaAs_load_sym, "random_GaAs_sym",
         matrices=['Ham', 'AA', 'SS'],
-        sort_iR=False
+        sort_iR=True
     )
