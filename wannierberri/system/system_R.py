@@ -281,11 +281,12 @@ class System_R(System):
         self.clear_cached_wcc()
 
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, spin_ordering='interlace', store_symm_wann=False,
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=True, spin_ordering='interlace', store_symm_wann=False,
                    method="new",
                    rotations=None, translations=None):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
+        Also sets the pointgroup (with method "new")
 
 
         Parameters

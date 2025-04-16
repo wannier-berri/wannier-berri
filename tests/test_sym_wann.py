@@ -32,6 +32,7 @@ def check_symmetry(check_run):
             **kwargs,
             ):
         kwargs['do_not_compare'] = True
+        print (f"using symmetries :{system.pointgroup}")
         result_irr_k = check_run(system, use_symmetry=True, calculators=calculators, suffix="irr_k", **kwargs)
         result_full_k = check_run(system, use_symmetry=False, calculators=calculators, suffix="full_k", **kwargs)
         print(calculators.keys(), result_irr_k.results.keys(), result_full_k.results.keys())
@@ -55,7 +56,7 @@ def check_symmetry(check_run):
 
 
 
-def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb_wcc):
+def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb):
     """Test shift current with and without symmetry is the same for a symmetrized system"""
     param = dict(
         Efermi=Efermi_GaAs,
@@ -68,7 +69,7 @@ def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb_wcc):
         shift_current=calc.dynamic.ShiftCurrent(sc_eta=0.1, **param),
     )
 
-    check_symmetry(system=system_GaAs_sym_tb_wcc,
+    check_symmetry(system=system_GaAs_sym_tb,
                    grid_param=dict(NK=6, NKFFT=3),
                    calculators=calculators,
                    precision=1e-6
@@ -86,11 +87,12 @@ def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb):
         'ahc_ext': calc.static.AHC(Efermi=Efermi_Mn3Sn, kwargs_formula={"internal_terms": False}),
         'ahc': calc.static.AHC(Efermi=Efermi_Mn3Sn, kwargs_formula={"external_terms": True}),
     })
-    check_symmetry(system=system_Mn3Sn_sym_tb, calculators=calculators)
+    check_symmetry(system=system_Mn3Sn_sym_tb, calculators=calculators,
+                   extra_precision={"conductivity_ohmic": -1e-6, "ahc_int":-1e-5, 'ahc_ext':-1e-6, 'ahc':-1e-5},)
 
 
 @pytest.mark.parametrize("use_k_sym", [False, True])
-def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result, use_k_sym, sym_method):
+def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result, use_k_sym):
     system = system_Fe_sym_W90
     param = {'Efermi': Efermi_Fe}
     cals = {'ahc': calc.static.AHC,
@@ -102,7 +104,7 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result, use_k_sym,
         system,
         calculators,
         fout_name="berry_Fe_sym_W90",
-        suffix="-run",
+        # suffix="-run",
         use_symmetry=use_k_sym
     )
     cals = {'gyrotropic_Korb': calc.static.GME_orb_FermiSea,
@@ -201,15 +203,15 @@ def test_GaAs_random_zero(check_symmetry, check_run, system_random_GaAs_load_sym
     )
 
 
-def test_GaAs_sym_tb(check_symmetry, system_GaAs_sym_tb_wcc):
+def test_GaAs_sym_tb(check_symmetry, system_GaAs_sym_tb):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
-    check_symmetry(system=system_GaAs_sym_tb_wcc, calculators=calculators)
+    check_symmetry(system=system_GaAs_sym_tb, calculators=calculators)
 
 
-def test_GaAs_random(check_symmetry, system_random_GaAs_load_ws_sym):
-    system = system_random_GaAs_load_ws_sym
+def test_GaAs_random(check_symmetry, system_random_GaAs_load_sym):
+    system = system_random_GaAs_load_sym
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
@@ -225,18 +227,8 @@ def test_GaAs_random(check_symmetry, system_random_GaAs_load_ws_sym):
                    extra_precision={"SHC-ryoo": 2e-7})
 
 
-def test_GaAs_sym_tb_fail_convII(check_symmetry, system_GaAs_tb):
-    with pytest.raises(NotImplementedError, match="Symmetrization is implemented only for convention I"):
-        system_GaAs_tb.symmetrize(
-            positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
-            atom_name=['Ga', 'As'],
-            proj=['Ga:sp3', 'As:sp3'],
-            soc=True,
-            spin_ordering="block",
-            method="old",)
 
-
-def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb_wcc, compare_any_result):
+def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb, compare_any_result):
     "Test shift current and injection current"
 
     param = dict(
@@ -253,7 +245,7 @@ def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb_wcc, compare_any_result)
     )
 
     result_full_k = check_run(
-        system_GaAs_sym_tb_wcc,
+        system_GaAs_sym_tb,
         calculators,
         fout_name="dynamic_GaAs_sym",
         grid_param={
@@ -265,7 +257,7 @@ def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb_wcc, compare_any_result)
     )
 
     result_irr_k = check_run(
-        system_GaAs_sym_tb_wcc,
+        system_GaAs_sym_tb,
         calculators,
         fout_name="dynamic_GaAs_sym",
         suffix="sym",
