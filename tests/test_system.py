@@ -148,13 +148,6 @@ def test_system_Fe_W90_npz(check_system, system_Fe_W90_npz):
     )
 
 
-def test_system_Fe_W90_wcc(check_system, system_Fe_W90_wcc):
-    check_system(
-        system_Fe_W90_wcc, "Fe_W90_wcc",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
-    )
-
-
 def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
     check_system(
         system_Fe_W90_sparse, "Fe_W90_sparse",
@@ -163,17 +156,9 @@ def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
     )
 
 
-def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90_wcc):
+def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90):
     check_system(
-        system_Fe_sym_W90_wcc, "Fe_sym_W90_wcc",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
-        sort_iR=True
-    )
-
-
-def test_system_Fe_sym_W90_new(check_system, system_Fe_sym_W90_wcc_new):
-    check_system(
-        system_Fe_sym_W90_wcc_new, "Fe_sym_W90_wcc",
+        system_Fe_sym_W90, "Fe_sym_W90",
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
         sort_iR=True
     )
@@ -201,21 +186,7 @@ def test_system_GaAs_W90(check_system, system_GaAs_W90):
     )
 
 
-def test_system_GaAs_W90_wcc(check_system, system_GaAs_W90_wcc):
-    check_system(
-        system_GaAs_W90_wcc, "GaAs_W90_wcc",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
-    )
-
-
-def test_system_GaAs_W90_wccFD(check_system, system_GaAs_W90_wccFD):
-    check_system(
-        system_GaAs_W90_wccFD, "GaAs_W90_wccFD",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'OO', 'GG']
-    )
-
-
-def test_system_GaAs_W90_wccJM(check_system, system_GaAs_W90_wccJM):
+def test_system_GaAs_W90_JM(check_system, system_GaAs_W90_JM):
     check_system(
         system_GaAs_W90_wccJM, "GaAs_W90_wccJM",
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA', 'OO', 'GG'],
@@ -354,16 +325,9 @@ def test_system_Chiral_right(check_system, system_Chiral_right):
     )
 
 
-def test_system_Fe_FPLO_wcc(check_system, system_Fe_FPLO_wcc):
+def test_system_Fe_FPLO(check_system, system_Fe_FPLO):
     check_system(
-        system_Fe_FPLO_wcc, "Fe_FPLO_wcc",
-        matrices=['Ham', 'SS']
-    )
-
-
-def test_system_Fe_FPLO_wcc_ws(check_system, system_Fe_FPLO_wcc_ws):
-    check_system(
-        system_Fe_FPLO_wcc_ws, "Fe_FPLO_wcc_ws",
+        system_Fe_FPLO, "Fe_FPLO",
         matrices=['Ham', 'SS']
     )
 

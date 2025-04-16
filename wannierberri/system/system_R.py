@@ -98,6 +98,8 @@ class System_R(System):
                  _getFF=False,
                  **parameters):
 
+        assert use_ws, "ws_distanced is forced to be used now"
+        assert use_wcc_phase, "use_wcc_phase is forced to be used now"
         super().__init__(**parameters)
         self.use_ws = use_ws
         self.needed_R_matrices = {'Ham'}
@@ -332,6 +334,7 @@ class System_R(System):
             rotations and translations should be either given together or not given at all. Make sense to preserve consistensy in the order
             of the symmetry operations, when store_symm_wann is set to True.
         """
+        assert method == "new", "Symmetrization with old method is not supported anymore"
         if method == "new":
             assert spin_ordering == "interlace", "Symmetrization method 'new' is implemented only for spin_ordering='interlace'"
             from irrep.spacegroup import SpaceGroup

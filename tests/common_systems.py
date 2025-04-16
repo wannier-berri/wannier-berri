@@ -148,7 +148,7 @@ def system_Fe_W90(create_files_Fe_W90):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.system.System_w90(
-        seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv_MV=False, use_wcc_phase=False,
+        seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv_MV=False, 
         read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
         write_npz_formatted=True)
     system.set_pointgroup(symmetries_Fe)
@@ -166,7 +166,7 @@ def system_Fe_W90_npz(create_files_Fe_W90_npz):
     system = wberri.system.System_w90(
         seedname, berry=True,
         morb=True, SHCqiao=True, SHCryoo=True,
-        transl_inv_MV=False, use_wcc_phase=False,
+        transl_inv_MV=False, 
         read_npz=True, write_npz_list=[], overwrite_npz=False, write_npz_formatted=False)
     system.set_pointgroup(symmetries_Fe)
     return system
@@ -184,23 +184,21 @@ def system_Fe_W90_sparse(create_files_Fe_W90, system_Fe_W90):
     return system
 
 
-@pytest.fixture(scope="session")
-def system_Fe_W90_wcc(create_files_Fe_W90):
-    """Create system for Fe using Wannier90 data"""
+# @pytest.fixture(scope="session")777
+# def system_Fe_W90_wcc(create_files_Fe_W90):
+#     """Create system for Fe using Wannier90 data"""
 
-    data_dir = create_files_Fe_W90
+#     data_dir = create_files_Fe_W90
 
-    # Load system
-    seedname = os.path.join(data_dir, "Fe")
-    system = wberri.system.System_w90(seedname, morb=True, spin=True, SHCqiao=False, SHCryoo=False, transl_inv_MV=False,
-                                      use_wcc_phase=True, wcc_phase_fin_diff=False)
-    system.set_pointgroup(symmetries_Fe)
-    return system
+#     # Load system
+#     seedname = os.path.join(data_dir, "Fe")
+#     system = wberri.system.System_w90(seedname, morb=True, spin=True, SHCqiao=False, SHCryoo=False, transl_inv_MV=False,
+#                                       use_wcc_phase=True, wcc_phase_fin_diff=False)
+#     system.set_pointgroup(symmetries_Fe)
+#     return system
 
 
-def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_diff=False, use_ws=False,
-                          extra_tags=[],
-                          sym_wann_method="old",
+def get_system_Fe_sym_W90(symmetrize=False, 
                           **kwargs):
     """Create system for Fe symmetrization using Wannier90 data"""
 
@@ -209,8 +207,8 @@ def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_di
 
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, SHCryoo=True, use_ws=use_ws,
-                                      use_wcc_phase=use_wcc_phase, wcc_phase_fin_diff=wcc_phase_fin_diff,
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, SHCryoo=True, 
+                                      OSD=True, SHCqiao=True,
                                       **kwargs)
     system.set_pointgroup(symmetries_Fe)
     if symmetrize:
@@ -221,45 +219,24 @@ def get_system_Fe_sym_W90(symmetrize=False, use_wcc_phase=True, wcc_phase_fin_di
             magmom=[[0., 0., -2.31]],
             soc=True,
             spin_ordering='interlace',
-            method=sym_wann_method)
-
+            method="new")
     return system
 
 
 @pytest.fixture(scope="session")
-def system_Fe_sym_W90_wcc():
+def system_Fe_sym_W90():
     return get_system_Fe_sym_W90(symmetrize=True)
-
-
-@pytest.fixture(scope="session")
-def system_Fe_sym_W90_wcc_new():
-    return get_system_Fe_sym_W90(symmetrize=True, sym_wann_method="new")
-
-
-@pytest.fixture(scope="session")
-def system_Fe_sym_W90_wcc_fd():
-    return get_system_Fe_sym_W90(symmetrize=True, use_ws=True,
-                                 OSD=True, SHCqiao=True,
-                                 extra_tags=['sIu', 'sHu'],
-                                 wcc_phase_fin_diff=True
-                                 )
-
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj_set_spin(create_files_Fe_W90):
-    system = get_system_Fe_sym_W90(use_wcc_phase=False)
+    system = get_system_Fe_sym_W90()
     system.set_spin_from_projections(spin_ordering="interlace")
     return system
 
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj(create_files_Fe_W90):
-    return get_system_Fe_sym_W90(SHCqiao=True, use_wcc_phase=False, use_ws=False)
-
-
-@pytest.fixture(scope="session")
-def system_Fe_W90_proj_ws(create_files_Fe_W90):
-    return get_system_Fe_sym_W90(use_ws=True, use_wcc_phase=False)
+    return get_system_Fe_sym_W90()
 
 
 @pytest.fixture(scope="session")
@@ -270,46 +247,13 @@ def system_GaAs_W90(create_files_GaAs_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, transl_inv_MV=False,
-                                      use_wcc_phase=False)
-    system.set_pointgroup(symmetries_GaAs)
-
-    return system
-
-
-@pytest.fixture(scope="session")
-def system_GaAs_W90_wcc(create_files_GaAs_W90):
-    """Create system for GaAs using Wannier90 data with wcc phases"""
-
-    data_dir = create_files_GaAs_W90
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, morb=True,
-                                      transl_inv_MV=False, spin=True,
-                                      wcc_phase_fin_diff=False)
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True)
     system.set_pointgroup(symmetries_GaAs)
     return system
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_W90_wccFD(create_files_GaAs_W90):
-    """Create system for GaAs using Wannier90 data with wcc phases"""
-
-    data_dir = create_files_GaAs_W90
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, berry=True,
-                                      morb=True,
-                                      transl_inv_MV=True, spin=True,
-                                      OSD=True,
-                                      SHCqiao=True, SHCryoo=True,
-                                      wcc_phase_fin_diff=True)
-    system.set_pointgroup(symmetries_GaAs)
-    return system
-
-
-@pytest.fixture(scope="session")
-def system_GaAs_W90_wccJM(create_files_GaAs_W90):
+def system_GaAs_W90_JM(create_files_GaAs_W90):
     """Create system for GaAs using Wannier90 data with wcc phases"""
 
     data_dir = create_files_GaAs_W90
@@ -323,15 +267,11 @@ def system_GaAs_W90_wccJM(create_files_GaAs_W90):
     return system
 
 
-def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=True,
-                       sym_wann_method="old", reorder_spin=False):
+def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=True):
     """Create system for GaAs using sym_tb.dat data"""
     seedname = create_files_tb(dir="GaAs_Wannier90", file=f"GaAs{'_sym' if symmetrize else ''}_tb.dat")
     system = wberri.system.System_tb(seedname, berry=berry, use_ws=use_ws, use_wcc_phase=use_wcc_phase)
-    if not reorder_spin and sym_wann_method == "new":
-        raise ValueError("sum_wann_method='new' requires reorder_spin=True (because the original ordering is block, but new method requires interlace)")
-    if reorder_spin:
-        system.spin_block2interlace()
+    system.spin_block2interlace() # the stored system is from old VASP, with spin-block ordering
     if symmetrize:
         system.symmetrize(
             positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
@@ -339,10 +279,9 @@ def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=
             proj=['Ga:sp3', 'As:sp3'],
             soc=True,
             spin_ordering='interlace' if reorder_spin else 'block',
-            method=sym_wann_method
+            method="new"
         )
-    if reorder_spin:
-        system.spin_interlace2block()
+    system.spin_interlace2block()
     if use_ws:
         system.do_ws_dist(mp_grid=(2, 2, 2))
     system.set_pointgroup(symmetries_GaAs)
@@ -352,43 +291,19 @@ def get_system_GaAs_tb(use_wcc_phase=True, use_ws=False, symmetrize=True, berry=
 @pytest.fixture(scope="session")
 def system_GaAs_tb():
     """Create system for GaAs using _tb.dat data"""
-    return get_system_GaAs_tb(use_wcc_phase=False, use_ws=False, symmetrize=False)
+    return get_system_GaAs_tb(symmetrize=False)
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_sym_tb_wcc():
+def system_GaAs_sym_tb():
     """Create system for GaAs using sym_tb.dat data"""
-    return get_system_GaAs_tb(use_ws=False, symmetrize=True)
+    return get_system_GaAs_tb(symmetrize=True)
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_sym_tb_wcc_reorder():
-    """Create system for GaAs using sym_tb.dat data"""
-    return get_system_GaAs_tb(use_ws=False, symmetrize=True, sym_wann_method="old", reorder_spin=True)
-
-
-@pytest.fixture(scope="session")
-def system_GaAs_sym_tb_wcc_reorder_new():
-    """Create system for GaAs using sym_tb.dat data"""
-    return get_system_GaAs_tb(use_ws=False, symmetrize=True, sym_wann_method="new", reorder_spin=True)
-
-
-@pytest.fixture(scope="session")
-def system_GaAs_tb_wcc():
+def system_GaAs_tb_noAA():
     """Create system for GaAs using _tb_dat data"""
-    return get_system_GaAs_tb(use_ws=False, symmetrize=False)
-
-
-@pytest.fixture(scope="session")
-def system_GaAs_tb_wcc_ws():
-    """Create system for GaAs using _tb_dat data"""
-    return get_system_GaAs_tb(use_ws=True, symmetrize=False)
-
-
-@pytest.fixture(scope="session")
-def system_GaAs_tb_wcc_ws_noAA():
-    """Create system for GaAs using _tb_dat data"""
-    return get_system_GaAs_tb(use_ws=True, symmetrize=False, berry=False)
+    return get_system_GaAs_tb(symmetrize=False, berry=False)
 
 
 def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_phase_fin_diff=False,
@@ -403,7 +318,7 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
                 tar.extract(tarinfo, data_dir)
     # Load system
     seedname = os.path.join(data_dir, "Si")
-    system = wberri.system.System_w90(seedname, use_ws=True, use_wcc_phase=True,
+    system = wberri.system.System_w90(seedname, 
                                       transl_inv_MV=transl_inv,
                                       transl_inv_JM=transl_inv_JM,
                                       wcc_phase_fin_diff=wcc_phase_fin_diff,
@@ -428,35 +343,39 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
 def system_Si_W90_JM(create_files_Si_W90):
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
     data_dir = create_files_Si_W90
-    return get_system_Si_W90_JM(data_dir, transl_inv_JM=True)
-
+    return get_system_Si_W90_JM(data_dir, 
+                                transl_inv_JM=True, 
+                                wcc_phase_fin_diff=False,)
 
 @pytest.fixture(scope="session")
-def system_Si_W90_wccFD(create_files_Si_W90):
+def system_Si_W90_JM_sym(create_files_Si_W90):
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
     data_dir = create_files_Si_W90
-    return get_system_Si_W90_JM(data_dir, transl_inv=True, wcc_phase_fin_diff=True)
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  wcc_phase_fin_diff=False,
+                                  matrices=dict(berry=True),
+                                  symmetrize=True)
+    return system
 
 
 @pytest.fixture(scope="session")
-def system_Si_W90_wccFD_sym(create_files_Si_W90):
-    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+def system_Si_W90(create_files_Si_W90):
+    """Create system for Si using Wannier90 data without Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    return get_system_Si_W90_JM(data_dir, transl_inv=True)
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_sym(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with symmetrization"""
     data_dir = create_files_Si_W90
     system = get_system_Si_W90_JM(data_dir, transl_inv=True,
-                                  wcc_phase_fin_diff=True, matrices=dict(OSD=True),
+                                 matrices=dict(OSD=True),
                                   symmetrize=True)
     # system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True, matrices=dict(berry=True) )
     return system
 
 
-@pytest.fixture(scope="session")
-def system_Si_W90_wccJM_sym(create_files_Si_W90):
-    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
-    data_dir = create_files_Si_W90
-    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
-                                matrices=dict(berry=True),
-                                  symmetrize=True)
-    return system
 
 # Haldane model from TBmodels
 
@@ -543,24 +462,12 @@ def system_Chiral_right():
 
 # Systems from FPLO code interface
 @pytest.fixture(scope="session")
-def system_Fe_FPLO_wcc():
+def system_Fe_FPLO():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.system.System_fplo(path, morb=True, spin=True, use_ws=False)
+    system = wberri.system.System_fplo(path, morb=True, spin=True, mp_grid=2)
     system.set_pointgroup(symmetries_Fe)
     return system
-
-
-@pytest.fixture(scope="session")
-def system_Fe_FPLO_wcc_ws():
-    """Create system for Fe using  FPLO  data"""
-    path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.system.System_fplo(path, morb=True, spin=True,
-                                       use_ws=True, mp_grid=2)
-    system.set_pointgroup(symmetries_Fe)
-    return system
-
-
 
 
 @pytest.fixture(scope="session")
@@ -591,7 +498,7 @@ def data_Te_ASE():
 
 
 @pytest.fixture(scope="session")
-def system_Te_ASE_wcc(data_Te_ASE):
+def system_Te_ASE(data_Te_ASE):
     """Create system for Te using  ASE+GPAW data with use_wcc_phase=True"""
     wan = data_Te_ASE
     system = wberri.system.System_ASE(wan)
@@ -627,9 +534,7 @@ def system_Phonons_GaAs():
     return system
 
 
-
-
-def get_system_Mn3Sn_sym_tb(use_ws=False):
+def get_system_Mn3Sn_sym_tb():
     data_dir = os.path.join(ROOT_DIR, "data", "Mn3Sn_Wannier90")
     if not os.path.isfile(os.path.join(data_dir, "Mn3Sn_tb.dat")):
         tar = tarfile.open(os.path.join(data_dir, "Mn3Sn_tb.dat.tar.gz"))
@@ -637,7 +542,7 @@ def get_system_Mn3Sn_sym_tb(use_ws=False):
             tar.extract(tarinfo, data_dir)
 
     seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, use_ws=use_ws)
+    system = wberri.system.System_tb(seedname, berry=True)
     system.symmetrize(
         positions=np.array([
             [0.6666667, 0.8333333, 0],
@@ -661,7 +566,7 @@ def get_system_Mn3Sn_sym_tb(use_ws=False):
             [0, 0, 0],
             [0, 0, 0]],
         spin_ordering='block',
-        method='old'
+        method='new'
     )
     return system
 
@@ -669,7 +574,7 @@ def get_system_Mn3Sn_sym_tb(use_ws=False):
 @pytest.fixture(scope="session")
 def system_Mn3Sn_sym_tb_wcc():
     """Create system for Mn3Sn using _tb.dat data"""
-    return get_system_Mn3Sn_sym_tb(use_ws=False)
+    return get_system_Mn3Sn_sym_tb()
 
 
 ###################################
@@ -774,7 +679,6 @@ def model_1d_pythtb():
 @pytest.fixture(scope="session")
 def system_random():
     system = wberri.system.SystemRandom(num_wann=6, nRvec=20, max_R=4,
-                                        use_wcc_phase=True,
                                         berry=True, morb=True, spin=True,
                                         SHCryoo=True, SHCqiao=True, OSD=True)
     # system.save_npz("randomsys")
@@ -793,8 +697,7 @@ def system_random_load_bare():
 def system_random_GaAs():
     return wberri.system.SystemRandom(num_wann=16, nRvec=30, max_R=4,
                                       real_lattice=np.ones(3) - np.eye(3),
-                                      berry=True, spin=True, SHCryoo=True,
-                                      use_wcc_phase=True)
+                                      berry=True, spin=True, SHCryoo=True)
 
 
 def get_system_random_GaAs_load_ws_sym(use_ws=False, sym=False):
@@ -809,7 +712,7 @@ def get_system_random_GaAs_load_ws_sym(use_ws=False, sym=False):
             positions=np.array([[0, 0, 0], [1 / 4, 1 / 4, 1 / 4]]),
             soc=True,
             spin_ordering='interlace',
-            method='old'
+            method='new'
         )
         system.set_structure(
             atom_labels=['Ga', 'As'],
@@ -825,10 +728,5 @@ def system_random_GaAs_load_bare():
 
 
 @pytest.fixture(scope="session")
-def system_random_GaAs_load_ws():
-    return get_system_random_GaAs_load_ws_sym(use_ws=True, sym=False)
-
-
-@pytest.fixture(scope="session")
-def system_random_GaAs_load_ws_sym():
+def system_random_GaAs_load_sym():
     return get_system_random_GaAs_load_ws_sym(use_ws=True, sym=True)
