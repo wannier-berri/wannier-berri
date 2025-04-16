@@ -77,7 +77,7 @@ def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb_wcc):
 
 
 
-def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb_wcc):
+def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb):
     param = {'Efermi': Efermi_Mn3Sn}
     calculators = {}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
@@ -86,7 +86,7 @@ def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb_wcc):
         'ahc_ext': calc.static.AHC(Efermi=Efermi_Mn3Sn, kwargs_formula={"internal_terms": False}),
         'ahc': calc.static.AHC(Efermi=Efermi_Mn3Sn, kwargs_formula={"external_terms": True}),
     })
-    check_symmetry(system=system_Mn3Sn_sym_tb_wcc, calculators=calculators)
+    check_symmetry(system=system_Mn3Sn_sym_tb, calculators=calculators)
 
 
 @pytest.mark.parametrize("use_k_sym", [False, True])

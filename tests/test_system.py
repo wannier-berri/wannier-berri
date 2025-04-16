@@ -236,9 +236,9 @@ def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
     )
 
 
-def test_system_Si_W90_wccFD(check_system, system_Si_W90_wccFD):
+def test_system_Si_W90(check_system, system_Si_W90):
     check_system(
-        system_Si_W90_wccFD, "Si_W90_wccFD",
+        system_Si_W90, "Si_W90",
         matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO']
     )
 
@@ -307,9 +307,9 @@ def test_system_CuMnAs_2d_broken(check_system, system_CuMnAs_2d_broken):
     )
 
 
-def test_system_Te_ASE_wcc(check_system, system_Te_ASE_wcc):
+def test_system_Te_ASE_wcc(check_system, system_Te_ASE):
     check_system(
-        system_Te_ASE_wcc, "Te_ASE_wcc",
+        system_Te_ASE, "Te_ASE_wcc",
         matrices=['Ham']
     )
 
@@ -336,9 +336,9 @@ def test_system_Phonons_GaAs(check_system, system_Phonons_GaAs):
     )
 
 
-def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb_wcc):
+def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb):
     check_system(
-        system_Mn3Sn_sym_tb_wcc, "Mn3Sn_sym_tb_wcc",
+        system_Mn3Sn_sym_tb, "Mn3Sn_sym_tb",
         matrices=['Ham', 'AA'],
         sort_iR=True
     )

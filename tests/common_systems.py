@@ -362,7 +362,7 @@ def system_Si_W90_JM_sym(create_files_Si_W90):
 def system_Si_W90(create_files_Si_W90):
     """Create system for Si using Wannier90 data without Jae-Mo's approach for real-space matrix elements"""
     data_dir = create_files_Si_W90
-    return get_system_Si_W90_JM(data_dir, transl_inv=True)
+    return get_system_Si_W90_JM(data_dir, transl_inv=True, wcc_phase_fin_diff=True,)
 
 
 @pytest.fixture(scope="session")
@@ -543,16 +543,17 @@ def get_system_Mn3Sn_sym_tb():
 
     seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
     system = wberri.system.System_tb(seedname, berry=True)
+    system.spin_block2interlace() # the stored system is from old VASP, with spin-block ordering
     system.symmetrize(
         positions=np.array([
-            [0.6666667, 0.8333333, 0],
-            [0.1666667, 0.3333333, 0],
-            [0.6666667, 0.3333333, 0],
-            [0.3333333, 0.1666667, 0.5],
-            [0.8333333, 0.6666667, 0.5],
-            [0.3333333, 0.6666667, 0.5],
-            [0.8333333, 0.1666667, 0.5],
-            [0.1666667, 0.8333333, 0]]),
+            [0.666666667, 0.833333333, 0],
+            [0.166666667, 0.333333333, 0],
+            [0.666666667, 0.333333333, 0],
+            [0.333333333, 0.166666667, 0.5],
+            [0.833333333, 0.666666667, 0.5],
+            [0.333333333, 0.666666667, 0.5],
+            [0.833333333, 0.166666667, 0.5],
+            [0.166666667, 0.833333333, 0]]),
         atom_name=['Mn'] * 6 + ['Sn'] * 2,
         proj=['Mn:s;d', 'Sn:p'],
         soc=True,
@@ -565,14 +566,15 @@ def get_system_Mn3Sn_sym_tb():
             [-np.sqrt(3), -1, 0],
             [0, 0, 0],
             [0, 0, 0]],
-        spin_ordering='block',
+        spin_ordering='interlace',
         method='new'
     )
+    system.spin_interlace2block()
     return system
 
 
 @pytest.fixture(scope="session")
-def system_Mn3Sn_sym_tb_wcc():
+def system_Mn3Sn_sym_tb():
     """Create system for Mn3Sn using _tb.dat data"""
     return get_system_Mn3Sn_sym_tb()
 

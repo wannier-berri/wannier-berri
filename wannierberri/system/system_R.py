@@ -276,7 +276,7 @@ class System_R(System):
         logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
 
         self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
-        self.set_symmetry(spacegroup=symmetrizer.spacegroup)
+        self.set_pointgroup(spacegroup=symmetrizer.spacegroup)
         self.clear_cached_R()
         self.clear_cached_wcc()
 
@@ -357,7 +357,7 @@ class System_R(System):
                 pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
                 for suborbital in orbital.split(';'):
                     suborbital = suborbital.strip()
-                    proj = Projection(position_num=pos, orbital=suborbital, spacegroup=spacegroup)
+                    proj = Projection(position_num=pos, orbital=suborbital, spacegroup=spacegroup, allow_multiple_orbits=True)
                     # print (f"adding projection {proj} ({pos} {suborbital})")
                     proj_list.append(proj)
             symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections_obj=proj_list)

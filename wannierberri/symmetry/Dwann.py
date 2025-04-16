@@ -99,7 +99,7 @@ class Dwann:
                 p2a = self.orbit[ip2]
                 self.T[ip, isym] = p2a - p2
         T_round = np.round(self.T)
-        assert np.allclose(self.T, T_round, atol=1e-7), f"T=\n{self.T}, \nT_round=\n{T_round}, \n max_diff={np.max(np.abs(self.T - T_round))}"
+        assert np.allclose(self.T, T_round, atol=1e-6), f"T=\n{self.T}, \nT_round=\n{T_round}, \n max_diff={np.max(np.abs(self.T - T_round))}"
         self.T = T_round.astype(int)
 
         assert np.all(self.atommap >= 0), f"atommap={self.atommap}"

@@ -55,6 +55,7 @@ class Projection:
                  orbital='s',
                  void=False,
                  free_var_values=None,
+                 allow_multiple_orbits=False,
                  spinor=False):
         if void:
             return
@@ -75,6 +76,7 @@ class Projection:
                 if position_num.ndim == 1:
                     position_num = position_num[None, :]
                 self.wyckoff_position = WyckoffPositionNumeric(positions=position_num,
+                                                               allow_multiple_orbits=allow_multiple_orbits,
                                                     spacegroup=spacegroup)
             spinor = spacegroup.spinor
         self.spinor = spinor
