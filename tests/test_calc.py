@@ -14,6 +14,9 @@ from .common_systems import Efermi_Fe
 
 @pytest.fixture
 def check_calculator(compare_any_result):
+    """
+
+    """
 
     def _inner(system, calc, name, dK=[0.1, 0.2, 0.3], NKFFT=[3, 3, 3], param_K={},
                precision=-1e-8,
@@ -37,7 +40,7 @@ def check_calculator(compare_any_result):
             path_filename_ref = "ZERO"
             assert precision > 0, "comparing with zero is possible only with absolute precision"
         else:
-            path_filename_ref = os.path.join(REF_DIR, filename + ".npz")
+            path_filename_ref = os.path.join(REF_DIR, 'calculators', filename + ".npz")
             result_ref = result_type(file_npz=path_filename_ref)
         maxval = result_ref._maxval_raw
         if precision is None:
@@ -118,6 +121,37 @@ def check_save_result():
         assert str(result.transformTR) == str(result_read.transformTR)
         assert str(result.transformInv) == str(result_read.transformInv)
     return _inner
+
+
+def test_SDCT(system_random_load_bare, check_calculator):
+    calculators_SDCT = {
+        'SDCT_sym_sea_I': wberri.calculators.dynamic.SDCT_sym_sea_I,
+        'SDCT_sym_sea_II': wberri.calculators.dynamic.SDCT_sym_sea_II,
+        'SDCT_asym_sea_I': wberri.calculators.dynamic.SDCT_asym_sea_I,
+        'SDCT_asym_sea_II': wberri.calculators.dynamic.SDCT_asym_sea_II,
+        'SDCT_asym_surf_I': wberri.calculators.dynamic.SDCT_asym_surf_I,
+        'SDCT_asym_surf_II': wberri.calculators.dynamic.SDCT_asym_surf_II,
+        'SDCT_sym_surf_I': wberri.calculators.dynamic.SDCT_sym_surf_I,
+        'SDCT_sym_surf_II': wberri.calculators.dynamic.SDCT_sym_surf_II,
+        'SDCT_sym': wberri.calculators.dynamic.SDCT_sym,
+        'SDCT_asym': wberri.calculators.dynamic.SDCT_asym}
+    from .test_run import Efermi_GaAs
+    param = {'Efermi': Efermi_GaAs,
+             'omega': np.linspace(0.0, 7, 8),
+             'kBT': 0.05, 'smr_fixed_width': 0.1,
+             }
+
+    for key, calculator in calculators_SDCT.items():
+        for term in ["M1", "E2", "V", "all"]:
+            param_terms = {f"{t}_terms": (t == "all") for t in ["M1", "E2", "V"]}
+            if term != "all":
+                param_terms[f"{term}_terms"] = True
+            name = f"random-{key}-{term}_terms"
+            print(name)
+            calc = calculator(**param_terms, **param)
+            check_calculator(system_random_load_bare, calc, name, do_not_compare=False)
+
+
 
 
 def test_save_KBandResult(system_Haldane_PythTB, check_save_result):
