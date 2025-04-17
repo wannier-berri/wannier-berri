@@ -313,7 +313,7 @@ def test_Fe_sparse(check_run, system_Fe_W90_sparse, compare_any_result):
         fout_name="Fe_W90",
         grid_param=grid_param_Fe,
         
-        suffix="run-sparse",
+        suffix="sparse",
         parameters_K={
             '_FF_antisym': True,
             '_CCab_antisym': True
@@ -532,126 +532,41 @@ def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_
     parallel_ray.shutdown()
 
 
-def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result):
+@pytest.mark.parametrize("adpt_num_iter_list", [(3,),(1,2),(0,2,1)])
+def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_iter_list):
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items() if k != 'spin'}
-    # We do not include spin here, because it was not there in the beginning
-    # adding another calculator may change the behaviour of the refinement procedure, and hence we would
-    # have to replace reference files for all calculators
-    check_run(
-        system_Fe_W90,
-        calculators,
-        fout_name="Fe_W90_sym",
-        grid_param=grid_param_Fe,
-        
-        adpt_num_iter=3,
-        use_symmetry=True,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
-    )
-
-
-def test_Fe_pickle_Klist_12(check_run, system_Fe_W90, compare_any_result):
-    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
-    #  First, remove the
-    try:
-        os.remove("Klist.pickle")
-    except FileNotFoundError:
-        pass
+    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    suffix = "refine-"+'-'.join([str(i) for i in adpt_num_iter_list])
+    fKl = f"Klist-{suffix}.pickle"
+    fKl_ch = f"Klist-{suffix}.changed_factors"
+    if os.path.exists(fKl_ch):
+        os.remove(fKl_ch)
+    if os.path.exists(fKl):
+        os.remove(fKl)
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items() if k != 'spin'}
-    # We do not include spin here, because it was not there in the beginning
-    # adding another calculator may change the behaviour of the refinement procedure, and hence we would
-    # have to replace reference files for all calculators
-    check_run(
-        system_Fe_W90,
-        calculators,
-        fout_name="Fe_W90_sym",
-        suffix="pickle",
-        adpt_num_iter=1,
-        grid_param=grid_param_Fe,
-        
-        use_symmetry=True,
-        file_Klist="Klist.pickle",
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
-    )
-    check_run(
-        system_Fe_W90,
-        calculators,
-        fout_name="Fe_W90_sym",
-        suffix="pickle",
-        adpt_num_iter=2,
-        use_symmetry=True,
-        file_Klist="Klist.pickle",
-        restart=True,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
-    )
+    calculators = {k: v(**param) for k, v in calculators_Fe.items() }
+    
+    restart = False
+    for adpt_num_iter in adpt_num_iter_list:
+        print(f"adpt_num_iter={adpt_num_iter}, restart={restart}")
+        check_run(
+            system_Fe_W90,
+            calculators,
+            grid_param=grid_param_Fe,
+            fout_name="Fe_W90_sym",
+            suffix=suffix,
+            adpt_num_iter=adpt_num_iter,
+            restart=restart,
+            use_symmetry=True,
+            file_Klist=fKl,
+            parameters_K={
+                '_FF_antisym': True,
+                '_CCab_antisym': True
+            },
+        )
+        restart = True
+    
 
-
-def test_Fe_pickle_Klist_021(check_run, system_Fe_W90, compare_any_result):
-    """Test anomalous Hall conductivity , ohmic conductivity, dos, cumdos"""
-    #  First, remove the
-    try:
-        os.remove("Klist.pickle")
-    except FileNotFoundError:
-        pass
-    param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items() if k != 'spin'}
-    # We do not include spin here, because it was not there in the beginning
-    # adding another calculator may change the behaviour of the refinement procedure, and hence we would
-    # have to replace reference files for all calculators
-    check_run(
-        system_Fe_W90,
-        calculators,
-        grid_param=grid_param_Fe,
-        fout_name="Fe_W90_sym",
-        suffix="pickle-fch",
-        adpt_num_iter=0,
-        use_symmetry=True,
-        file_Klist="Klist.pickle",
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
-    )
-    check_run(
-        system_Fe_W90,
-        calculators,
-        grid_param=grid_param_Fe,
-        fout_name="Fe_W90_sym",
-        suffix="pickle-fch",
-        adpt_num_iter=2,
-        use_symmetry=True,
-        file_Klist="Klist.pickle",
-        restart=True,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
-    )
-    check_run(
-        system_Fe_W90,
-        calculators,
-        grid_param=grid_param_Fe,
-        fout_name="Fe_W90_sym",
-        suffix="pickle-fch",
-        adpt_num_iter=1,
-        use_symmetry=True,
-        file_Klist="Klist.pickle",
-        restart=True,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
-    )
 
 
 
@@ -742,93 +657,34 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
     )
 
 
-
-
-def test_Haldane_PythTB(check_run, system_Haldane_PythTB, compare_any_result):
+def check_Haldane(check_run, system, code, use_symmetry):
     param = {'Efermi': Efermi_Haldane}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
     check_run(
-        system_Haldane_PythTB,
+        system,
         calculators,
-        fout_name="Haldane_tbmodels",
-        suffix="pythtb",
+        fout_name="Haldane",
+        suffix=code+("-sym" if use_symmetry else ""),
+        adpt_num_iter=1 if use_symmetry else 0,
+        use_symmetry=use_symmetry,
         grid_param={
             'NK': [10, 10, 1],
             'NKFFT': [5, 5, 1]
         })
 
+@pytest.mark.parametrize("use_symmetry", [True,False])
+def test_Haldane_PythTB(check_run, compare_any_result, use_symmetry, system_Haldane_PythTB):
+    check_Haldane(check_run, system_Haldane_PythTB, "PythTB", use_symmetry)
+
+@pytest.mark.parametrize("use_symmetry", [True, False])
+def test_Haldane_TBmodels(check_run, system, compare_any_result, use_symmetry, system_Haldane_TBmodels):
+    check_Haldane(check_run, system_Haldane_TBmodels, "TBmodels", use_symmetry)
+    
+    
 
 
-def test_Haldane_TBmodels(check_run, system_Haldane_TBmodels, compare_any_result):
-    param = {'Efermi': Efermi_Haldane}
-    calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
-
-    check_run(
-        system_Haldane_TBmodels,
-        calculators,
-        fout_name="Haldane_tbmodels",
-        grid_param={
-            'NK': [10, 10, 1],
-            'NKFFT': [5, 5, 1]
-        }
-    )
-
-
-
-def test_Haldane_PythTB_sym(check_run, system_Haldane_PythTB, compare_any_result):
-    param = {'Efermi': Efermi_Haldane}
-    calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
-
-    check_run(
-        system_Haldane_PythTB,
-        calculators,
-        fout_name="Haldane_tbmodels",
-        suffix="pythtb_sym",
-        use_symmetry=True,
-        grid_param={
-            'NK': [10, 10, 1],
-            'NKFFT': [5, 5, 1]
-        }
-    )
-
-
-def test_Haldane_TBmodels_sym(check_run, system_Haldane_TBmodels, compare_any_result):
-    param = {'Efermi': Efermi_Haldane}
-    calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
-
-    check_run(
-        system_Haldane_TBmodels,
-        calculators,
-        fout_name="Haldane_tbmodels",
-        suffix="sym",
-        use_symmetry=True,
-        grid_param={
-            'NK': [10, 10, 1],
-            'NKFFT': [5, 5, 1]
-        }
-    )
-
-
-def test_Haldane_TBmodels_sym_refine(check_run, system_Haldane_TBmodels, compare_any_result):
-    param = {'Efermi': Efermi_Haldane}
-    calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
-
-    check_run(
-        system_Haldane_TBmodels,
-        calculators,
-        fout_name="Haldane_tbmodels",
-        suffix="sym",
-        adpt_num_iter=1,
-        use_symmetry=True,
-        grid_param={
-            'NK': [10, 10, 1],
-            'NKFFT': [5, 5, 1]
-        }
-    )
-
-
-def test_Chiral_left(check_run, system_Chiral_left, compare_any_result, compare_energyresult):
+def test_Chiral_left(check_run, compare_any_result, compare_energyresult, system_Chiral_left):
     grid_param = {'NK': [10, 10, 4], 'NKFFT': [5, 5, 2]}
 
     check_run(
