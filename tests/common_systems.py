@@ -19,7 +19,8 @@ symmetries_Si = ["C4z", "C4x", "TimeReversal"]
 
 Efermi_Fe = np.linspace(17, 18, 11)
 Efermi_Te_gpaw = np.linspace(4, 8, 11)
-Efermi_Te_sparse = np.linspace(4, 8, 11)
+Efermi_Te_qe = np.linspace(4, 8, 11)
+Efermi_Te_sparse = Efermi_Te_qe
 Efermi_Fe_FPLO = np.linspace(-0.5, 0.5, 11)
 Efermi_GaAs = np.linspace(7, 9, 11)
 Efermi_Haldane = np.linspace(-3, 3, 11)
@@ -743,3 +744,12 @@ def system_random_GaAs_load_bare():
 @pytest.fixture(scope="session")
 def system_random_GaAs_load_sym():
     return get_system_random_GaAs_load_sym(use_ws=True, sym=True)
+
+
+@pytest.fixture(scope="session")
+def system_Te_QE():
+    """Create system for Te using QE data"""
+    system = wberri.system.System_R(berry=True, morb=True, spin=True,
+                                    ).load_npz(os.path.join(ROOT_DIR, "data", "Te_qe", "system"))
+    system.set_pointgroup(symmetries_Te)
+    return system

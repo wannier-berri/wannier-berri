@@ -20,6 +20,7 @@ from .common_systems import (
     Efermi_CuMnAs_2d,
     Efermi_Chiral,
     Efermi_Te_gpaw,
+    Efermi_Te_qe,
     omega_chiral,
     omega_phonon,
     mass_kp_iso
@@ -135,6 +136,25 @@ calculators_Te = {
     'cumdos': calc.static.CumDOS,
     'berry_dipole': calc.static.NLAHC_FermiSea,
 }
+
+calculators_Te_all = {
+    'dos': calc.static.DOS,
+    'cumdos': calc.static.CumDOS,
+    'berry_dipole': calc.static.NLAHC_FermiSea,
+    'GME_orb_FermiSurf': calc.static.GME_orb_FermiSurf,
+    'GME_orb_FermiSea': calc.static.GME_orb_FermiSea,
+    'GME_orb_FermiSea_test': calc.static.GME_orb_FermiSea_test,
+    'BerryDipole_FermiSea': calc.static.BerryDipole_FermiSea,
+    'BerryDipole_FermiSea_test': calc.static.BerryDipole_FermiSea_test,
+    'NLDrude_FermiSea': calc.static.NLDrude_FermiSea,
+    'NLDrude_FermiSurf': calc.static.NLDrude_FermiSurf,
+    'NLDrude_Fermider2': calc.static.NLDrude_Fermider2,
+    'eMChA_FermiSurf': calc.static.eMChA_FermiSurf,
+    'NLDrude_Zeeman_spin': calc.static.NLDrude_Zeeman_spin,
+    'NLDrude_Zeeman_orb': calc.static.NLDrude_Zeeman_orb,
+    'AHC_Zeeman_spin': calc.static.AHC_Zeeman_spin,
+}
+
 
 calculators_CuMnAs_2d = {
     'dos': calc.static.DOS,
@@ -1004,6 +1024,30 @@ def test_Te_ASE(check_run, system_Te_ASE, data_Te_ASE, compare_any_result):
         system_Te_ASE,
         calculators,
         fout_name="Te_ASE",
+        use_symmetry=True,
+        parameters_K={
+            '_FF_antisym': True,
+            '_CCab_antisym': True
+        },
+    )
+
+
+def test_Te_QE(check_run, system_Te_QE, compare_any_result):
+    param = {'Efermi': Efermi_Te_qe, "tetra": True}
+    calculators = {}
+    for k, v in calculators_Te_all.items():
+        par = {}
+        par.update(param)
+        calculators[k] = v(**par)
+
+    check_run(
+        system_Te_QE,
+        calculators,
+        fout_name="Te_QE",
+        grid_param={
+            'NK': [3, 3, 4],
+            'NKFFT': [1, 1, 4]
+        },
         use_symmetry=True,
         parameters_K={
             '_FF_antisym': True,

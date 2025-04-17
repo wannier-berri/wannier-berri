@@ -18,7 +18,9 @@ def compare_quant(quantity):
         'berry_dipole_test': 'berry_dipole',
         'Morb_test': 'Morb',
         'gyrotropic_Korb_test': 'gyrotropic_Korb',
-        'Energy': 'E'
+        'Energy': 'E',
+        'GME_orb_FermiSea_test': 'GME_orb_FermiSea',
+        'BerryDipole_FermiSea_test': 'BerryDipole_FermiSea',
     }
     if quantity in compare:
         return compare[quantity]

@@ -998,3 +998,4 @@ class System_R(System):
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
             self.set_R_mat(key, a)
             logfile.write(" - Ok!\n")
+        return self

@@ -83,6 +83,8 @@ class Projection:
                                                                allow_multiple_orbits=allow_multiple_orbits,
                                                     spacegroup=spacegroup)
             spinor = spacegroup.spinor
+        if spacegroup is not None:
+            spinor = spacegroup.spinor
         self.spinor = spinor
 
     @property
@@ -115,6 +117,7 @@ class Projection:
     def copy(self):
         new = Projection(void=True)
         new.orbitals = self.orbitals
+        new.spinor = self.spinor
         new.wyckoff_position = self.wyckoff_position
         return new
 
