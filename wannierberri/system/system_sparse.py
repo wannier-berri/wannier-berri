@@ -64,15 +64,20 @@ class SystemSparse(System_R):
                 code = symmetrize_info["DFT_code"].lower()
                 del symmetrize_info["DFT_code"]
                 if code == "vasp":
-                    symmetrize_info["spin_ordering"] = "block"
-                    symmetrize_info["method"] = "old"
+                    spin_reorder = True
                 elif code in ["qe", "espresso", "quantumespresso", "abinit"]:
-                    symmetrize_info["spin_ordering"] = "interlace"
-                    symmetrize_info["method"] = "new"
+                    spin_reorder = False
                 else:
                     raise ValueError(f"Unknown DFT code {code}")
 
+            symmetrize_info["spin_ordering"] = "interlace"
+            symmetrize_info["method"] = "new"
+
+            if spin_reorder:
+                self.spin_block2interlace()
             self.symmetrize(**symmetrize_info)
+            if spin_reorder:
+                self.spin_interlace2block()
 
 
 def getshape(dic):

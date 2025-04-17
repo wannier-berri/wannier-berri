@@ -45,6 +45,7 @@ def test_evaluate_k_all(system_Fe_W90):
     )
     result["kpoint"] = k
 
+
     result_ref = np.load(os.path.join(REF_DIR, "evaluate_k.npz"))
     acc = 1e-8
     for key, res in result.items():
@@ -57,6 +58,7 @@ def test_evaluate_k_all(system_Fe_W90):
             raise ValueError(f"Uncomparable type of result : {type(res)}")
         # continue # uncomment to generate a new reference file
         data_ref = result_ref[key]
+
         assert data == pytest.approx(data_ref, rel=acc), (
             f"the result of evaluate_k for {key} is different from the reference data "
             f"by {np.max(abs(data - data_ref))} "
@@ -91,7 +93,7 @@ def test_evaluate_k_all_1band(system_Fe_W90):
         assert data[0] == pytest.approx(data_ref[0], rel=acc), (
             f"the result of evaluate_k for {key} is different from the reference data"
             f"by {np.max(abs(data - data_ref))}, greater than the required accuracy {acc}")
-    np.savez_compressed(os.path.join(OUTPUT_DIR, "evaluate_k.npz"), **result)
+    # np.savez_compressed(os.path.join(OUTPUT_DIR, "evaluate_k.npz"), **result)
 
 
 
@@ -110,7 +112,7 @@ def test_evaluate_k_1q(system_Fe_W90):
         acc = 1e-8
         assert result == pytest.approx(data_ref[key], rel=acc), (
             f"the result of evaluate_k for {key} is different from the reference data "
-            f"by {np.max(abs(result[key] - data_ref[key]))} greater than the required accuracy {acc}")
+            f"by {np.max(abs(result - data_ref[key]))} greater than the required accuracy {acc}")
 
 
 def test_evaluate_k_1f(system_Fe_W90):
@@ -127,7 +129,7 @@ def test_evaluate_k_1f(system_Fe_W90):
         acc = 1e-8
         assert result == pytest.approx(data_ref[key], rel=acc), (
             f"the result of evaluate_k for {key} is different from the reference data "
-            f"by {np.max(abs(result[key] - data_ref[key]))} greater than the required accuracy {acc}")
+            f"by {np.max(abs(result - data_ref[key]))} greater than the required accuracy {acc}")
 
 
 def test_evaluate_k_hlp():

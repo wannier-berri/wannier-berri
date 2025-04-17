@@ -98,6 +98,8 @@ class System_R(System):
                  _getFF=False,
                  **parameters):
 
+        assert use_ws, "ws_distanced is forced to be used now"
+        assert use_wcc_phase, "use_wcc_phase is forced to be used now"
         super().__init__(**parameters)
         self.use_ws = use_ws
         self.needed_R_matrices = {'Ham'}
@@ -274,16 +276,17 @@ class System_R(System):
         logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
 
         self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
-        self.set_symmetry(spacegroup=symmetrizer.spacegroup)
+        self.set_pointgroup(spacegroup=symmetrizer.spacegroup)
         self.clear_cached_R()
         self.clear_cached_wcc()
 
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=None, spin_ordering='interlace', store_symm_wann=False,
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=True, spin_ordering='interlace', store_symm_wann=False,
                    method="new",
                    rotations=None, translations=None):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
+        Also sets the pointgroup (with method "new")
 
 
         Parameters
@@ -332,6 +335,7 @@ class System_R(System):
             rotations and translations should be either given together or not given at all. Make sense to preserve consistensy in the order
             of the symmetry operations, when store_symm_wann is set to True.
         """
+        assert method == "new", "Symmetrization with old method is not supported anymore"
         if method == "new":
             assert spin_ordering == "interlace", "Symmetrization method 'new' is implemented only for spin_ordering='interlace'"
             from irrep.spacegroup import SpaceGroup
@@ -343,7 +347,7 @@ class System_R(System):
 
             spacegroup = SpaceGroup(cell=(self.real_lattice, positions, atom_num),
                                     magmom=magmom, include_TR=True,
-                                    spinor=soc)
+                                    spinor=soc,)
             spacegroup.show()
 
             assert len(atom_name) == len(positions), "atom_name and positions should have the same length"
@@ -352,11 +356,13 @@ class System_R(System):
             for proj_str in proj:
                 atom, orbital = [l.strip() for l in proj_str.split(':')]
                 pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
-                for suborbital in orbital.split(';'):
-                    suborbital = suborbital.strip()
-                    proj = Projection(position_num=pos, orbital=suborbital, spacegroup=spacegroup)
-                    # print (f"adding projection {proj} ({pos} {suborbital})")
-                    proj_list.append(proj)
+                if ";" in orbital:
+                    warnings.warn("for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
+                                  "But you need to do it consistently in wannier90 ")
+                proj = Projection(position_num=pos, orbital=orbital, spacegroup=spacegroup, allow_multiple_orbits=True,
+                                  do_not_split_projections=True)
+                # print (f"adding projection {proj} ({pos} {suborbital})")
+                proj_list.append(proj)
             symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections_obj=proj_list)
             self.symmetrize2(symmetrizer)
             return symmetrizer
@@ -992,3 +998,4 @@ class System_R(System):
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
             self.set_R_mat(key, a)
             logfile.write(" - Ok!\n")
+        return self

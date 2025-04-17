@@ -136,6 +136,7 @@ class System_w90(System_R):
             **parameters
     ):
 
+        assert wcc_phase_fin_diff or transl_inv_JM, "the old-fasioned convention II is not supported anymore"
         if "name" not in parameters:
             parameters["name"] = os.path.split(seedname)[-1]
         super().__init__(**parameters)

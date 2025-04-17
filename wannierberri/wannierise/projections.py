@@ -55,10 +55,15 @@ class Projection:
                  orbital='s',
                  void=False,
                  free_var_values=None,
+                 allow_multiple_orbits=False,
+                 do_not_split_projections=False,
                  spinor=False):
         if void:
             return
-        self.orbitals = orbital.split(";")
+        if do_not_split_projections:
+            self.orbitals = [orbital]
+        else:
+            self.orbitals = orbital.split(";")
 
         if wyckoff_position is not None:
             self.wyckoff_position = wyckoff_position
@@ -75,7 +80,10 @@ class Projection:
                 if position_num.ndim == 1:
                     position_num = position_num[None, :]
                 self.wyckoff_position = WyckoffPositionNumeric(positions=position_num,
+                                                               allow_multiple_orbits=allow_multiple_orbits,
                                                     spacegroup=spacegroup)
+            spinor = spacegroup.spinor
+        if spacegroup is not None:
             spinor = spacegroup.spinor
         self.spinor = spinor
 
@@ -109,6 +117,7 @@ class Projection:
     def copy(self):
         new = Projection(void=True)
         new.orbitals = self.orbitals
+        new.spinor = self.spinor
         new.wyckoff_position = self.wyckoff_position
         return new
 
