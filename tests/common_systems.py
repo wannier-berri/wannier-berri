@@ -16,7 +16,6 @@ symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
 symmetries_Te = ["C3z", "C2x", "TimeReversal"]
 symmetries_GaAs = [SYM.C4z * SYM.Inversion, SYM.TimeReversal, SYM.Rotation(3, [1, 1, 1])]
 symmetries_Si = ["C4z", "C4x", "TimeReversal"]
-symmetries_Mn3Sn = ["C3z"]
 
 Efermi_Fe = np.linspace(17, 18, 11)
 Efermi_Te_gpaw = np.linspace(4, 8, 11)
