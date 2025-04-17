@@ -19,7 +19,7 @@ def check_system():
     def _inner(system, name,
                properties=['num_wann', 'recip_lattice', 'real_lattice', 'use_ws', 'periodic',
                            'use_wcc_phase', 'cell_volume', 'is_phonon',
-                           ] + properties_wcc +['nRvec', 'iRvec', 'cRvec'],
+                           ] + properties_wcc + ['nRvec', 'iRvec', 'cRvec'],
                extra_properties=[],
                exclude_properties=[],
                precision_properties=1e-8,
@@ -235,6 +235,7 @@ def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
         matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO']
     )
 
+
 def test_system_Si_W90_JM_sym(check_system, system_Si_W90_JM_sym):
     check_system(
         system_Si_W90_JM_sym, "Si_W90_JM_sym",
@@ -247,6 +248,7 @@ def test_system_Si_W90(check_system, system_Si_W90):
         system_Si_W90, "Si_W90",
         matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO']
     )
+
 
 def test_system_Si_W90_sym(check_system, system_Si_W90_sym):
     check_system(

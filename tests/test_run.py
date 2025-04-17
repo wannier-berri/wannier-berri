@@ -26,9 +26,10 @@ from .common_systems import (
 )
 
 grid_param_Fe = {
-                'NK': [4,4,4],
-                'NKFFT': [2,2,2]
-            }
+    'NK': [4, 4, 4],
+    'NKFFT': [2, 2, 2]
+}
+
 
 @pytest.fixture
 def check_run(parallel_serial, compare_any_result):
@@ -288,7 +289,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             for end in "", "-from-npz":
                 compare_fermisurfer(
                     fout_name="Fe_W90-tabulate",
-                    suffix=_quant + _comp  + end,
+                    suffix=_quant + _comp + end,
                     suffix_ref=_quant + _comp,
                     precision=prec)
 
@@ -312,7 +313,7 @@ def test_Fe_sparse(check_run, system_Fe_W90_sparse, compare_any_result):
         calculators,
         fout_name="Fe_W90",
         grid_param=grid_param_Fe,
-        
+
         suffix="sparse",
         parameters_K={
             '_FF_antisym': True,
@@ -353,7 +354,7 @@ def test_Fe_dynamic_noband(check_run, system_Fe_W90, compare_any_result):
 
 
 def test_Fe_save_load(check_run, system_Fe_W90, compare_any_result):
-    param_kwargs = {'Efermi': Efermi_Fe }
+    param_kwargs = {'Efermi': Efermi_Fe}
     param = {'Efermi': Efermi_Fe}
     calculators = {}
     for k, v in calculators_Fe.items():
@@ -410,7 +411,7 @@ def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
     for quant in 'opt_conductivity', 'opt_SHCryoo', 'opt_SHCryoo':
         compare_any_result(
             "Fe_W90_sym",
-            quant ,
+            quant,
             0,
             suffix_ref=quant,
             precision=-1e-8,
@@ -437,7 +438,7 @@ def test_Fe_set_spin(check_run, system_Fe_W90_proj_set_spin, compare_any_result)
         system_Fe_W90_proj_set_spin,
         calculators,
         grid_param=grid_param_Fe,
-        
+
         fout_name="Fe_set_spin",
         use_symmetry=False,
     )
@@ -521,7 +522,7 @@ def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_
         calculators,
         fout_name="Fe_W90",
         grid_param=grid_param_Fe,
-        
+
         suffix="paral-ray-4",
         parallel=parallel_ray,
         parameters_K={
@@ -532,11 +533,11 @@ def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_
     parallel_ray.shutdown()
 
 
-@pytest.mark.parametrize("adpt_num_iter_list", [(3,),(1,2),(0,2,1)])
+@pytest.mark.parametrize("adpt_num_iter_list", [(3,), (1, 2), (0, 2, 1)])
 def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_iter_list):
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
-    suffix = "refine-"+'-'.join([str(i) for i in adpt_num_iter_list])
+    suffix = "refine-" + '-'.join([str(i) for i in adpt_num_iter_list])
     fKl = f"Klist-{suffix}.pickle"
     fKl_ch = f"Klist-{suffix}.changed_factors"
     if os.path.exists(fKl_ch):
@@ -544,8 +545,8 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_it
     if os.path.exists(fKl):
         os.remove(fKl)
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items() }
-    
+    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+
     restart = False
     for adpt_num_iter in adpt_num_iter_list:
         print(f"adpt_num_iter={adpt_num_iter}, restart={restart}")
@@ -565,7 +566,7 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_it
             },
         )
         restart = True
-    
+
 
 
 
@@ -665,7 +666,7 @@ def check_Haldane(check_run, system, code, use_symmetry):
         system,
         calculators,
         fout_name="Haldane",
-        suffix=code+("-sym" if use_symmetry else ""),
+        suffix=code + ("-sym" if use_symmetry else ""),
         adpt_num_iter=1 if use_symmetry else 0,
         use_symmetry=use_symmetry,
         grid_param={
@@ -673,15 +674,17 @@ def check_Haldane(check_run, system, code, use_symmetry):
             'NKFFT': [5, 5, 1]
         })
 
-@pytest.mark.parametrize("use_symmetry", [True,False])
+
+@pytest.mark.parametrize("use_symmetry", [True, False])
 def test_Haldane_PythTB(check_run, compare_any_result, use_symmetry, system_Haldane_PythTB):
     check_Haldane(check_run, system_Haldane_PythTB, "PythTB", use_symmetry)
+
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
 def test_Haldane_TBmodels(check_run, system, compare_any_result, use_symmetry, system_Haldane_TBmodels):
     check_Haldane(check_run, system_Haldane_TBmodels, "TBmodels", use_symmetry)
-    
-    
+
+
 
 
 def test_Chiral_left(check_run, compare_any_result, compare_energyresult, system_Chiral_left):

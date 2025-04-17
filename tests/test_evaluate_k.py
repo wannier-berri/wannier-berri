@@ -44,9 +44,9 @@ def test_evaluate_k_all(system_Fe_W90):
         iband=[4, 5]
     )
     result["kpoint"] = k
-    
 
-    result_ref = np.load(os.path.join(REF_DIR, "evaluate_k.npz") )
+
+    result_ref = np.load(os.path.join(REF_DIR, "evaluate_k.npz"))
     acc = 1e-8
     for key, res in result.items():
         if isinstance(res, np.ndarray):
@@ -58,7 +58,7 @@ def test_evaluate_k_all(system_Fe_W90):
             raise ValueError(f"Uncomparable type of result : {type(res)}")
         # continue # uncomment to generate a new reference file
         data_ref = result_ref[key]
-        
+
         assert data == pytest.approx(data_ref, rel=acc), (
             f"the result of evaluate_k for {key} is different from the reference data "
             f"by {np.max(abs(data - data_ref))} "

@@ -32,7 +32,7 @@ def check_symmetry(check_run):
             **kwargs,
             ):
         kwargs['do_not_compare'] = True
-        print (f"using symmetries :{system.pointgroup}")
+        print(f"using symmetries :{system.pointgroup}")
         result_irr_k = check_run(system, use_symmetry=True, calculators=calculators, suffix="irr_k", **kwargs)
         result_full_k = check_run(system, use_symmetry=False, calculators=calculators, suffix="full_k", **kwargs)
         print(calculators.keys(), result_irr_k.results.keys(), result_full_k.results.keys())
@@ -88,7 +88,7 @@ def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb):
         'ahc': calc.static.AHC(Efermi=Efermi_Mn3Sn, kwargs_formula={"external_terms": True}),
     })
     check_symmetry(system=system_Mn3Sn_sym_tb, calculators=calculators,
-                   extra_precision={"conductivity_ohmic": -1e-6, "ahc_int":-1e-5, 'ahc_ext':-1e-6, 'ahc':-1e-5},)
+                   extra_precision={"conductivity_ohmic": -1e-6, "ahc_int": -1e-5, 'ahc_ext': -1e-6, 'ahc': -1e-5},)
 
 
 @pytest.mark.parametrize("use_k_sym", [False, True])

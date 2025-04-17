@@ -335,7 +335,7 @@ class System_R(System):
             rotations and translations should be either given together or not given at all. Make sense to preserve consistensy in the order
             of the symmetry operations, when store_symm_wann is set to True.
         """
-        # assert method == "new", "Symmetrization with old method is not supported anymore"
+        assert method == "new", "Symmetrization with old method is not supported anymore"
         if method == "new":
             assert spin_ordering == "interlace", "Symmetrization method 'new' is implemented only for spin_ordering='interlace'"
             from irrep.spacegroup import SpaceGroup
@@ -357,7 +357,7 @@ class System_R(System):
                 atom, orbital = [l.strip() for l in proj_str.split(':')]
                 pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
                 if ";" in orbital:
-                    warnings.warn(f"for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
+                    warnings.warn("for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
                                   "But you need to do it consistently in wannier90 ")
                 proj = Projection(position_num=pos, orbital=orbital, spacegroup=spacegroup, allow_multiple_orbits=True,
                                   do_not_split_projections=True)

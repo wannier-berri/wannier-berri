@@ -53,7 +53,7 @@ class Dwann:
     def __init__(self, spacegroup, positions, orbital="_",
                 orbital_rotator=None,
                  spinor=False):
-        
+
         self.nsym = spacegroup.size
         if spinor:
             self.spinor = True

@@ -125,7 +125,7 @@ def test_wrong_mat_fail():
     system.set_R_mat('abracadabra', system.get_R_mat('Ham') * 4)
     with pytest.raises(NotImplementedError, match="symmetrization of matrices"):
         system.symmetrize(
-            positions=np.array([[1/3, 1./3,0], [2./3., 2./3.,0]]),
+            positions=np.array([[1 / 3, 1. / 3, 0], [2. / 3., 2. / 3., 0]]),
             atom_name=['one', 'two'],
             proj=['one:s', 'two:s'],
             soc=False,

@@ -147,7 +147,7 @@ def system_Fe_W90(create_files_Fe_W90):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.system.System_w90(
-        seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv_MV=False, 
+        seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv_MV=False,
         read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
         write_npz_formatted=True)
     system.set_pointgroup(symmetries_Fe)
@@ -165,7 +165,7 @@ def system_Fe_W90_npz(create_files_Fe_W90_npz):
     system = wberri.system.System_w90(
         seedname, berry=True,
         morb=True, SHCqiao=True, SHCryoo=True,
-        transl_inv_MV=False, 
+        transl_inv_MV=False,
         read_npz=True, write_npz_list=[], overwrite_npz=False, write_npz_formatted=False)
     system.set_pointgroup(symmetries_Fe)
     return system
@@ -197,7 +197,7 @@ def system_Fe_W90_sparse(create_files_Fe_W90, system_Fe_W90):
 #     return system
 
 
-def get_system_Fe_sym_W90(symmetrize=False, 
+def get_system_Fe_sym_W90(symmetrize=False,
                           **kwargs):
     """Create system for Fe symmetrization using Wannier90 data"""
 
@@ -206,7 +206,7 @@ def get_system_Fe_sym_W90(symmetrize=False,
 
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, SHCryoo=True, 
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, SHCryoo=True,
                                       OSD=True, SHCqiao=True,
                                       **kwargs)
     system.set_pointgroup(symmetries_Fe)
@@ -225,6 +225,7 @@ def get_system_Fe_sym_W90(symmetrize=False,
 @pytest.fixture(scope="session")
 def system_Fe_sym_W90():
     return get_system_Fe_sym_W90(symmetrize=True)
+
 
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj_set_spin(create_files_Fe_W90):
@@ -271,8 +272,8 @@ def get_system_GaAs_tb(use_wcc_phase=True, symmetrize=True, berry=True):
     seedname = create_files_tb(dir="GaAs_Wannier90", file=f"GaAs{'_sym' if symmetrize else ''}_tb.dat")
     system = wberri.system.System_tb(seedname, berry=berry, use_wcc_phase=use_wcc_phase)
     system.do_ws_dist(mp_grid=(2, 2, 2))
-    
-    system.spin_block2interlace() # the stored system is from old VASP, with spin-block ordering
+
+    system.spin_block2interlace()  # the stored system is from old VASP, with spin-block ordering
     if symmetrize:
         system.symmetrize(
             positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
@@ -317,7 +318,7 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
                 tar.extract(tarinfo, data_dir)
     # Load system
     seedname = os.path.join(data_dir, "Si")
-    system = wberri.system.System_w90(seedname, 
+    system = wberri.system.System_w90(seedname,
                                       transl_inv_MV=transl_inv,
                                       transl_inv_JM=transl_inv_JM,
                                       wcc_phase_fin_diff=wcc_phase_fin_diff,
@@ -325,8 +326,8 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
                                       **matrices)
     if symmetrize:
         iRold = [tuple(R) for R in system.iRvec]
-        print ("Rvectors before symmetrization", system.nRvec, "\n", system.iRvec)
-        print (f"wannier-diff {system.wannier_centers_reduced[:,None,:]-system.wannier_centers_reduced[None,:,:]}")
+        print("Rvectors before symmetrization", system.nRvec, "\n", system.iRvec)
+        print(f"wannier-diff {system.wannier_centers_reduced[:,None,:]-system.wannier_centers_reduced[None,:,:]}")
         system.symmetrize(
             positions=np.array([[-0.125, -0.125, 0.375],
                                 [0.375, -0.125, -0.125],
@@ -343,9 +344,9 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
             if rnew not in iRold:
                 print("New Rvector", rnew)
                 for r in iRold:
-                    if np.all(np.array(rnew) - np.array(r)%2 == 0):
+                    if np.all(np.array(rnew) - np.array(r) % 2 == 0):
                         print("    Old Rvector", r)
-                        
+
 
     return system
 
@@ -354,8 +355,8 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False, wcc_ph
 def system_Si_W90_JM(create_files_Si_W90):
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
     data_dir = create_files_Si_W90
-    return get_system_Si_W90_JM(data_dir, 
-                                transl_inv_JM=True, 
+    return get_system_Si_W90_JM(data_dir,
+                                transl_inv_JM=True,
                                 wcc_phase_fin_diff=False,)
 
 
@@ -556,8 +557,8 @@ def get_system_Mn3Sn_sym_tb(method="new"):
 
     seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
     system = wberri.system.System_tb(seedname, berry=True)
-    system.do_ws_dist(mp_grid=(2,2,2))
-    system.spin_block2interlace() # the stored system is from old VASP, with spin-block ordering
+    system.do_ws_dist(mp_grid=(2, 2, 2))
+    system.spin_block2interlace()  # the stored system is from old VASP, with spin-block ordering
     system.symmetrize(
         positions=np.array([
             [0.6666666666667, 0.8333333333333, 0],
@@ -590,7 +591,6 @@ def get_system_Mn3Sn_sym_tb(method="new"):
 def system_Mn3Sn_sym_tb():
     """Create system for Mn3Sn using _tb.dat data"""
     return get_system_Mn3Sn_sym_tb(method="new")
-
 
 
 ###################################

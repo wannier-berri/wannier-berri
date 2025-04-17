@@ -44,7 +44,7 @@ def orb_to_shell(orb):
 
 
 @lru_cache
-def num_orbitals(shell_symbol:str):
+def num_orbitals(shell_symbol: str):
     if ";" in shell_symbol:
         return sum([num_orbitals(s) for s in shell_symbol.split(";")])
     return len(orbitals_sets_dic[shell_symbol.strip()])
@@ -228,10 +228,10 @@ class OrbitalRotator:
             rot_glb = self.rotations_cart[isym]
             if ";" in orb_symbol:
                 mat_list = [self(orb, isym) for orb in orb_symbol.split(";")]
-            else :
+            else:
                 mat_list = [self.orbitals.rot_orb(orb_symbol, rot_glb)]
             self.results_dict[(isym, orb_symbol)] = block_diag(*mat_list)
-        print (f"orb_symbol = {orb_symbol}, isym = {isym}  rotation matrix = \n{self.results_dict[(isym, orb_symbol)]}")
+        print(f"orb_symbol = {orb_symbol}, isym = {isym}  rotation matrix = \n{self.results_dict[(isym, orb_symbol)]}")
         return self.results_dict[(isym, orb_symbol)]
 
 

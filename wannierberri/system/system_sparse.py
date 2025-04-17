@@ -72,7 +72,7 @@ class SystemSparse(System_R):
 
             symmetrize_info["spin_ordering"] = "interlace"
             symmetrize_info["method"] = "new"
-                    
+
             if spin_reorder:
                 self.spin_block2interlace()
             self.symmetrize(**symmetrize_info)
