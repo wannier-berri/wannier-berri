@@ -390,10 +390,7 @@ def system_Si_W90_sym(create_files_Si_W90):
     return system
 
 
-
 # Haldane model from TBmodels
-
-
 @pytest.fixture(scope="session")
 def system_Haldane_TBmodels():
     # Load system

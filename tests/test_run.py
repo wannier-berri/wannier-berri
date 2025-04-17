@@ -461,24 +461,6 @@ def test_Fe_FPLO(check_run, system_Fe_FPLO, compare_any_result):
     calculators['opt_conductivity'] = wberri.calculators.dynamic.OpticalConductivity(**parameters_optical)
     calculators['opt_SHCsimple'] = wberri.calculators.dynamic.SHC(SHC_type="simple", **parameters_optical)
 
-    noext = {"kwargs_formula": {"external_terms": False}}
-    noextsimple = {"kwargs_formula": {"external_terms": False, "spin_current_type": "simple"}}
-    param_tab = {'degen_thresh': 5e-2}
-    # calculators["tabulate"] = calc.TabulatorAll(
-    #     {
-    #         "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
-    #         # but not to energies
-    #         "V": calc.tabulate.Velocity(**param_tab),
-    #         "Der_berry": calc.tabulate.DerBerryCurvature(**param_tab, **noext),
-    #         # "berry": calc.tabulate.BerryCurvature(ibands=[5, 6, 7, 8], **param_tab),
-    #         'spin': calc.tabulate.Spin(**param_tab),
-    #         'spin_berry': calc.tabulate.SpinBerry(**param_tab, **noextsimple),
-    #         # 'morb': calc.tabulate.OrbitalMoment(**param_tab),
-    #         # 'Der_morb': calc.tabulate.DerOrbitalMoment(**param_tab),
-    #     },
-    #     ibands=[5, 6, 7, 8],
-    #     save_mode="frmsf+bin")
-
     check_run(
         system_Fe_FPLO,
         calculators,

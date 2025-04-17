@@ -103,7 +103,7 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result, use_k_sym)
     check_run(
         system,
         calculators,
-        fout_name="berry_Fe_sym_W90",
+        fout_name="Fe_sym_W90",
         # suffix="-run",
         use_symmetry=use_k_sym
     )
@@ -114,7 +114,7 @@ def test_Fe_sym_W90(check_run, system_Fe_sym_W90, compare_any_result, use_k_sym)
     check_run(
         system,
         calculators,
-        fout_name="berry_Fe_sym_W90",
+        fout_name="Fe_sym_W90",
         precision=1e-8,
         suffix=f"-use_k_sym-{use_k_sym}",
         compare_zero=True,
@@ -174,7 +174,7 @@ def test_GaAs_sym_tb_zero(check_symmetry, check_run, system_GaAs_sym_tb, compare
     check_run(
         system_GaAs_sym_tb,
         {'ahc': calc.static.AHC(Efermi=Efermi_GaAs)},
-        fout_name="berry_GaAs_sym_tb",
+        fout_name="GaAs_sym_tb",
         precision=1e-5,
         compare_zero=True,
         suffix="sym-zero",
@@ -196,7 +196,7 @@ def test_GaAs_random_zero(check_symmetry, check_run, system_random_GaAs_load_sym
     check_run(
         system_random_GaAs_load_sym,
         calculators,
-        fout_name="berry_GaAs_sym_random",
+        fout_name="GaAs_sym_random",
         precision=2e-5,
         compare_zero=True,
         suffix="sym-zero",
@@ -316,7 +316,7 @@ def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):
     check_run(
         system_Te_sparse,
         calculators,
-        fout_name="berry_Te_sparse_tetragrid",
+        fout_name="Te_sparse_tetragrid",
         use_symmetry=True,
         grid=grid,
         # temporarily weakened precision here. Will restrict it later with new data
@@ -343,7 +343,7 @@ def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
     check_run(
         system_Te_sparse,
         calculators,
-        fout_name="berry_Te_sparse_tetragridH",
+        fout_name="Te_sparse_tetragridH",
         use_symmetry=True,
         grid=grid,
         # temporarily weakened precision here. Will restrict it later with new data
