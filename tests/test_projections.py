@@ -1,5 +1,6 @@
 """test auxilary functions"""
 
+import glob
 import os
 import shutil
 import irrep
@@ -351,10 +352,12 @@ def test_create_amn_diamond_p_bond():
     for ext in ["mmn", "eig", "win"]:
         shutil.copy(os.path.join(data_dir, prefix + "." + ext),
                     os.path.join(tmp_dir, prefix + "." + ext))
+    for f in glob.glob(data_dir + "/UNK*"):
+        shutil.copy(f, tmp_dir)
     print("prefix = ", prefix)
     symmetrizer.spacegroup.show()
 
-    w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
+    w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win", "unk"])
     w90data.set_amn(amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)
@@ -372,6 +375,7 @@ def test_create_amn_diamond_p_bond():
         sitesym=False,
         localise=True
     )
+    w90data.plotWF()
 
     wannier_centers = w90data.chk._wannier_centers
     print("wannierr_centers = ", wannier_centers)

@@ -46,7 +46,7 @@ class UNK(W90_file):
         else:
             NKmax = NK
 
-        self.data = []
+        self.data_unk = []
         self.spinor = spinor
 
         nspinor = 2 if spinor else 1
@@ -78,14 +78,14 @@ class UNK(W90_file):
                     for i in range(self.NB):
                         for j in range(nspinor):
                             U[i, :, :, :, j] = f.read_record(dtype=np.complex128).reshape(nr1, nr2, nr3, order='F')
-                    self.data.append(U)
+                    self.data_unk.append(U)
                 else:
-                    print(f"{filename} not found, stopping reading UNK files, read {len(self.data)} files")
+                    print(f"{filename} not found, stopping reading UNK files, read {len(self.data_unk)} files")
                     NK = i
                     break
             else:
                 print(f"skipping {filename}")
-                self.data.append(None)
+                self.data_unk.append(None)
                 continue
         print(f"NK={NK}")
 
@@ -93,7 +93,7 @@ class UNK(W90_file):
 
     def apply_window(self, selected_bands):
         self._NB = len(selected_bands)
-        for u in self.data:
+        for u in self.data_unk:
             if u is not None:
                 u = u[selected_bands]
 
