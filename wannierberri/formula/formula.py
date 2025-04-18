@@ -33,7 +33,7 @@ class Formula_ln(Formula):
     @abc.abstractmethod
     def __init__(self, data_K=None, **parameters):
         super().__init__(data_K, **parameters)
-        
+
     @abc.abstractmethod
     def ln(self, ik, inn, out):
         r"""Returns the submatrix :math:`X_{ln}` at point `ik`, where

@@ -643,7 +643,7 @@ class Data_K_R(_Data_K, System_R):
 
     #  this is a bit ovberhead, but to maintain uniformity of the code let's use this
 
-    
+
     def _OO_R(self):
         # We do not multiply by expdK, because it is already accounted in AA_R
         return 1j * (

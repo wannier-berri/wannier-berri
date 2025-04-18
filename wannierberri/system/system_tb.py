@@ -92,7 +92,7 @@ class System_tb(System_R):
                 wannier_centers_cart = np.diagonal(AA_R[:, :, self.iR0, :], axis1=0, axis2=1).T.copy()
             if convention_II_to_I:
                 # convert to convention I
-                print (f"convention_II_to_I = {convention_II_to_I} wannier_centers_cart = \n{wannier_centers_cart}\n num_wann = {self.num_wann}, A.shape = {AA_R.shape}")
+                print(f"convention_II_to_I = {convention_II_to_I} wannier_centers_cart = \n{wannier_centers_cart}\n num_wann = {self.num_wann}, A.shape = {AA_R.shape}")
                 AA_R[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] -= wannier_centers_cart
             self.set_R_mat('AA', AA_R)
         elif wannier_centers_cart is None:
@@ -110,10 +110,10 @@ class System_tb(System_R):
                 dtype=float)
             aa = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / self.Ndegen[ir]
             wannier_centers_cart = np.diagonal(aa, axis1=0, axis2=1).T
-            
+
         self.wannier_centers_cart = wannier_centers_cart
         f.close()
 
         self.do_at_end_of_init()
-        
+
         cprint(f"Reading the system from {tb_file} finished successfully", 'green', attrs=['bold'])

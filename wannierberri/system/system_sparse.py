@@ -25,10 +25,10 @@ class SystemSparse(System_R):
                  num_wann=None,
                  symmetrize_info=None,
                  **parameters):
-        
-        deprecated_parameters = ["use_wcc_phase" ]
+
+        deprecated_parameters = ["use_wcc_phase"]
         parameters_loc = {}
-        for key,val in parameters.items():
+        for key, val in parameters.items():
             if key in deprecated_parameters:
                 warnings.warn(f"Parameter {key} is deprecated, not used anymore,  and will be frobidden in future versions. (value: {val})")
             else:

@@ -7,7 +7,7 @@ from collections import defaultdict
 import glob
 import multiprocessing
 from .system import System, pauli_xyz
-from ..__utility import alpha_A, beta_A, clear_cached, one2three
+from ..__utility import clear_cached, one2three
 from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
 from .ws_dist import ws_dist_map
 
@@ -89,7 +89,7 @@ class System_R(System):
         super().__init__(**parameters)
         self.needed_R_matrices = {'Ham'}
         self.npar = multiprocessing.cpu_count() if npar is None else npar
-        
+
         if morb:
             self.needed_R_matrices.update(['AA', 'BB', 'CC'])
         if berry:
@@ -330,15 +330,15 @@ class System_R(System):
             pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
             if ";" in orbital:
                 warnings.warn("for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
-                                "But you need to do it consistently in wannier90 ")
+                              "But you need to do it consistently in wannier90 ")
             proj = Projection(position_num=pos, orbital=orbital, spacegroup=spacegroup, allow_multiple_orbits=True,
-                                do_not_split_projections=True)
+                              do_not_split_projections=True)
             # print (f"adding projection {proj} ({pos} {suborbital})")
             proj_list.append(proj)
         symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections_obj=proj_list)
         self.symmetrize2(symmetrizer)
         return symmetrizer
-        
+
 
 
     def check_AA_diag_zero(self, msg="", set_zero=True):
@@ -563,7 +563,7 @@ class System_R(System):
         R+tj-ti.
         """
         return self.cRvec[None, None, :, :] + self.diff_wcc_cart[:, :, None, :]
-        
+
     def clear_cached_R(self):
         clear_cached(self, ['cRvec', 'cRvec_p_wcc', 'reverseR', 'index_R'])
 
@@ -802,7 +802,7 @@ class System_R(System):
     @cached_property
     def essential_properties(self):
         return ['num_wann', 'real_lattice', 'iRvec', 'periodic',
-                 'is_phonon', 'wannier_centers_cart', 'pointgroup']
+                'is_phonon', 'wannier_centers_cart', 'pointgroup']
 
     @cached_property
     def optional_properties(self):

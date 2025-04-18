@@ -358,4 +358,3 @@ def test_KaneMele_sym(check_symmetry, system_KaneMele_odd_PythTB):
     check_symmetry(system=system_KaneMele_odd_PythTB,
                    grid_param=dict(NK=(6, 6, 1), NKFFT=(3, 3, 1)),
                    calculators=calculators)
-

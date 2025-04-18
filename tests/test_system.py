@@ -10,7 +10,7 @@ import wannierberri as wberri
 from wannierberri.system.system_R import System_R
 from wannierberri.system.system_tb import System_tb
 
-properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced', 
+properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced',
                   'diff_wcc_cart', 'diff_wcc_red']  # , 'cRvec_p_wcc']
 
 
@@ -18,7 +18,7 @@ properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced',
 def check_system():
     def _inner(system, name,
                properties=['num_wann', 'recip_lattice', 'real_lattice', 'periodic',
-                            'cell_volume', 'is_phonon',
+                           'cell_volume', 'is_phonon',
                            ] + properties_wcc + ['nRvec', 'iRvec', 'cRvec'],
                extra_properties=[],
                exclude_properties=[],

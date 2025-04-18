@@ -222,11 +222,11 @@ class System_w90(System_R):
         else:
             _r0 = centers[None, :, :]
             sum_b = True
-        
+
         expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0))
         print(f"expjphase1 {expjphase1.shape}")
         expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
-        
+
 
         # A_a(R,b) matrix
         if self.need_R_any('AA'):
