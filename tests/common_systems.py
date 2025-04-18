@@ -493,7 +493,7 @@ def system_Te_ASE(data_Te_ASE):
 @pytest.fixture(scope="session")
 def system_Te_sparse():
     """Create system for Te using symmetrized Wannier functions through a sparse interface"""
-    path = os.path.join(ROOT_DIR, "data", "Te_sparse", "parameters_Te_low.pickle")
+    path = os.path.join(ROOT_DIR, "data", "Te_sparse", "parameters_Te_low_interlaced.pickle")
     param = pickle.load(open(path, "rb"))
     system = wberri.system.SystemSparse(**param)
     system.set_pointgroup(symmetries_Te)
