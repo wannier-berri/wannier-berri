@@ -53,8 +53,6 @@ class System_w90(System_R):
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
     transl_inv_JM : bool
         translational-invariant scheme for diagonal and off-diagonal matrix elements for all matrices. Follows method of Jae-Mo Lihm
-    wcc_phase_fin_diff : bool
-        Use the phase factors associated with the WCC in the finite-difference scheme (a "cheap" way to get translational invariance) 
     guiding_centers : bool
         If True, enable overwriting the diagonal elements of the AA_R matrix at R=0 with the
         Wannier centers calculated from Wannier90.

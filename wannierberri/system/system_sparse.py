@@ -26,17 +26,11 @@ class SystemSparse(System_R):
                  symmetrize_info=None,
                  **parameters):
 
-        deprecated_parameters = ["use_wcc_phase"]
-        parameters_loc = {}
-        for key, val in parameters.items():
-            if key in deprecated_parameters:
-                warnings.warn(f"Parameter {key} is deprecated, not used anymore,  and will be frobidden in future versions. (value: {val})")
-            else:
-                parameters_loc[key] = val
-
+        parameters = {}
+        
         if matrices is None:
             matrices = {}
-        super().__init__(**parameters_loc)
+        super().__init__(**parameters)
         self.real_lattice = real_lattice
         if num_wann is None:
             self.num_wann = max(getnband(m) for m in matrices.values())
@@ -66,14 +60,7 @@ class SystemSparse(System_R):
 
         self.do_at_end_of_init()
         if symmetrize_info is not None:
-            symmetrize_info_loc = {}
-            deprecated_parameters = ["DFT_code", "spin_ordering", "use_wcc_phase"]
-            for key, val in symmetrize_info.items():
-                if key in deprecated_parameters:
-                    warnings.warn(f"Parameter {key} is deprecated, not used anymore,  and will be frobidden in future versions. (value: {val})")
-                else:
-                    symmetrize_info_loc[key] = val
-            self.symmetrize(**symmetrize_info_loc)
+            self.symmetrize(**symmetrize_info)
 
 
 

@@ -4,6 +4,7 @@ import numpy as np
 parameters = pickle.load(open("parameters_Te_low.pickle", "rb"))
 
 del parameters['symmetrize_info']['DFT_code']
+del parameters['use_wcc_phase']
 print(parameters.keys())
 print(parameters['symmetrize_info'])
 print(parameters['wannier_centers_reduced'])

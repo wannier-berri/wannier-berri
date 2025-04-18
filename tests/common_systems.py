@@ -518,7 +518,7 @@ def system_Phonons_GaAs():
     return system
 
 
-def get_system_Mn3Sn_sym_tb(method="new"):
+def get_system_Mn3Sn_sym_tb():
     data_dir = os.path.join(ROOT_DIR, "data", "Mn3Sn_Wannier90")
     if not os.path.isfile(os.path.join(data_dir, "Mn3Sn_tb.dat")):
         tar = tarfile.open(os.path.join(data_dir, "Mn3Sn_tb.dat.tar.gz"))
@@ -558,7 +558,7 @@ def get_system_Mn3Sn_sym_tb(method="new"):
 @pytest.fixture(scope="session")
 def system_Mn3Sn_sym_tb():
     """Create system for Mn3Sn using _tb.dat data"""
-    return get_system_Mn3Sn_sym_tb(method="new")
+    return get_system_Mn3Sn_sym_tb()
 
 
 ###################################
