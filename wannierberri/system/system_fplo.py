@@ -31,8 +31,7 @@ class System_fplo(System_R):
     hamdata : str
         name (and path) of the "+hamdata" file to be read
     mp_grid : [nk1,nk2,nk3]
-        size of Monkhorst-Pack frid used in ab initio calculation. Needed when use_ws=True, which is default and highly
-        recommended
+        size of Monkhorst-Pack frid used in ab initio calculation. Needed for MDRS
 
 
     Notes
@@ -46,7 +45,6 @@ class System_fplo(System_R):
         if "name" not in parameters:
             parameters["name"] = "ASE"
         super().__init__(force_internal_terms_only=True,
-                         use_wcc_phase=True,
                          **parameters)
         self.seedname = hamdata.split("/")[-1].split("_")[0]
         f = open(hamdata, "r")
@@ -116,7 +114,7 @@ class System_fplo(System_R):
         self.iRvec = np.array(iRvec, dtype=int)
 
         self.do_at_end_of_init()
-        if self.use_ws:
+        if mp_grid is not None:
             self.do_ws_dist(mp_grid=mp_grid)
 
         cprint(f"Reading the FPLO Wannier system from {hamdata} finished successfully", 'green', attrs=['bold'])

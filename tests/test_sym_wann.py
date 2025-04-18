@@ -1,5 +1,4 @@
 """Test symmetrization of Wannier models"""
-from wannierberri.symmetry.sym_wann import _dict_to_matrix, _matrix_to_dict, _get_H_select, _rotate_matrix
 import numpy as np
 import pytest
 from pytest import approx
@@ -193,15 +192,6 @@ def test_GaAs_random_zero(check_symmetry, check_run, system_random_GaAs_load_sym
         # 'gyrotropic_Korb_test':calc.static.GME_orb_FermiSea_test(Efermi=Efermi_GaAs),
     })
 
-    check_run(
-        system_random_GaAs_load_sym,
-        calculators,
-        fout_name="GaAs_sym_random",
-        precision=2e-5,
-        compare_zero=True,
-        suffix="sym-zero",
-    )
-
 
 def test_GaAs_sym_tb(check_symmetry, system_GaAs_sym_tb):
     param = {'Efermi': Efermi_GaAs}
@@ -369,34 +359,3 @@ def test_KaneMele_sym(check_symmetry, system_KaneMele_odd_PythTB):
                    grid_param=dict(NK=(6, 6, 1), NKFFT=(3, 3, 1)),
                    calculators=calculators)
 
-
-
-class AtomInfo():
-    """fake AtomInfo for test"""
-
-    def __init__(self, orbital_index):
-        self.num_wann = sum(len(oi) for oi in orbital_index)
-        self.orbital_index = orbital_index
-
-
-def test_matrix_to_dict():
-    wann_atom_info = [AtomInfo(n) for n in ([[1, 3], [5, 6]], [[0, 2, 4]])]
-    num_wann = sum((at.num_wann for at in wann_atom_info))
-    num_wann_atom = len(wann_atom_info)
-    nRvec = 8
-    ndimv = 2
-    mat = np.random.random((num_wann, num_wann, nRvec) + (3,) * ndimv)
-    H_select = _get_H_select(num_wann, num_wann_atom, wann_atom_info)
-    dic = _matrix_to_dict(mat, H_select, wann_atom_info)
-    mat_new = _dict_to_matrix(dic, H_select, nRvec, ndimv)
-    assert mat_new == approx(mat, abs=1e-8)
-
-
-def test_rotate_matrix():
-    num_wann = 5
-    L = np.random.random((num_wann, num_wann)) + 1j * np.random.random((num_wann, num_wann))
-    R = np.random.random((num_wann, num_wann)) + 1j * np.random.random((num_wann, num_wann))
-    for ndim in range(4):
-        shape = (num_wann,) * 2 + (3,) * ndim
-        X = np.random.random(shape) + 1j * np.random.random(shape)
-        assert _rotate_matrix(X, L, R) == approx(np.einsum("lm,mn...,np->lp...", L, X, R))

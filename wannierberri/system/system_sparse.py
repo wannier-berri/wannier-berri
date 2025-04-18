@@ -25,10 +25,18 @@ class SystemSparse(System_R):
                  num_wann=None,
                  symmetrize_info=None,
                  **parameters):
+        
+        deprecated_parameters = ["use_wcc_phase" ]
+        parameters_loc = {}
+        for key,val in parameters.items():
+            if key in deprecated_parameters:
+                warnings.warn(f"Parameter {key} is deprecated, not used anymore,  and will be frobidden in future versions. (value: {val})")
+            else:
+                parameters_loc[key] = val
 
         if matrices is None:
             matrices = {}
-        super().__init__(**parameters)
+        super().__init__(**parameters_loc)
         self.real_lattice = real_lattice
         if num_wann is None:
             self.num_wann = max(getnband(m) for m in matrices.values())
@@ -58,26 +66,15 @@ class SystemSparse(System_R):
 
         self.do_at_end_of_init()
         if symmetrize_info is not None:
-
-            # for backward compatibility with old saved systems in tests
-            if "DFT_code" in symmetrize_info:
-                code = symmetrize_info["DFT_code"].lower()
-                del symmetrize_info["DFT_code"]
-                if code == "vasp":
-                    spin_reorder = True
-                elif code in ["qe", "espresso", "quantumespresso", "abinit"]:
-                    spin_reorder = False
+            symmetrize_info_loc = {}
+            deprecated_parameters = ["DFT_code", "spin_ordering", "use_wcc_phase"]
+            for key, val in symmetrize_info.items():
+                if key in deprecated_parameters:
+                    warnings.warn(f"Parameter {key} is deprecated, not used anymore,  and will be frobidden in future versions. (value: {val})")
                 else:
-                    raise ValueError(f"Unknown DFT code {code}")
+                    symmetrize_info_loc[key] = val
+            self.symmetrize(**symmetrize_info_loc)
 
-            symmetrize_info["spin_ordering"] = "interlace"
-            symmetrize_info["method"] = "new"
-
-            if spin_reorder:
-                self.spin_block2interlace()
-            self.symmetrize(**symmetrize_info)
-            if spin_reorder:
-                self.spin_interlace2block()
 
 
 def getshape(dic):

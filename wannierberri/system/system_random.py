@@ -62,8 +62,5 @@ class SystemRandom(System_R):
         self.wannier_centers_cart = np.random.random((self.num_wann, 3))
         if self.has_R_mat('AA'):
             AA = self.get_R_mat('AA')
-            if self.use_wcc_phase:
-                AA[self.range_wann, self.range_wann, self.iR0] = 0
-            else:
-                AA[self.range_wann, self.range_wann, self.iR0] = AA[self.range_wann, self.range_wann, self.iR0].real
+            AA[self.range_wann, self.range_wann, self.iR0] = 0
         self.do_at_end_of_init()

@@ -31,21 +31,9 @@ class Formula_ln(Formula):
     """
 
     @abc.abstractmethod
-    def __init__(self, data_K=None, correction_wcc=False, dT_wcc=False, **parameters):
+    def __init__(self, data_K=None, **parameters):
         super().__init__(data_K, **parameters)
-        self.correction_wcc = correction_wcc
-        if self.correction_wcc:
-            if not (self.external_terms and self.internal_terms):
-                raise ValueError(
-                    f"correction_wcc makes sense only with all terms, but called with "
-                    f"internal:{self.internal_terms}"
-                    f"external:{self.external_terms}")
-            if data_K is None:
-                raise ValueError("correction_wcc requested but data_K is not provided")
-            self.T_wcc = data_K.covariant('T_wcc')
-            if dT_wcc:
-                self.dT_wcc = data_K.covariant('T_wcc', gender=1)
-
+        
     @abc.abstractmethod
     def ln(self, ik, inn, out):
         r"""Returns the submatrix :math:`X_{ln}` at point `ik`, where

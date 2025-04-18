@@ -104,10 +104,6 @@ class System_w90(System_R):
         Wannier centers in Cartesian coordinates
     _NKFFT_recommended : int
         recommended size of the FFT grid in the interpolation
-    use_ws : bool
-        whether the Wigner-Seitz distance is applied
-    use_wcc_phase : bool
-        whether the phase factors associated with the WCC are used
     needed_R_matrices : list(str)
         list of the R-matrices, which will be evaluated
 
@@ -127,7 +123,6 @@ class System_w90(System_R):
             npar=multiprocessing.cpu_count(),
             kmesh_tol=1e-7,
             bk_complete_tol=1e-5,
-            wcc_phase_fin_diff=True,
             read_npz=True,
             write_npz_list=("eig", "mmn"),
             write_npz_formatted=True,
@@ -136,18 +131,11 @@ class System_w90(System_R):
             **parameters
     ):
 
-        assert wcc_phase_fin_diff or transl_inv_JM, "the old-fasioned convention II is not supported anymore"
         if "name" not in parameters:
             parameters["name"] = os.path.split(seedname)[-1]
         super().__init__(**parameters)
 
-        use_wcc_phase_findiff = self.use_wcc_phase and wcc_phase_fin_diff
-        assert not (transl_inv_JM and use_wcc_phase_findiff)
-        if not (transl_inv_JM or transl_inv_MV):
-            warnings.warn("It is highly recommended to use translational invairiance "
-                          "(either transl_inv_JM or transl_inv_MV) ")
         if transl_inv_JM:
-            assert self.use_wcc_phase, "transl_inv_JM is implemented only with convention I"
             known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS', 'SH', 'SA', 'SHA']
             unknown = set(self.needed_R_matrices) - set(known)
             if len(unknown) > 0:
@@ -157,14 +145,11 @@ class System_w90(System_R):
                 warnings.warn("Jae-Mo's scheme does not apply Marzari & Vanderbilt formula for"
                               "the band-diagonal matrix elements of the position operator.")
                 transl_inv_MV = False
-        if self.use_wcc_phase and not wcc_phase_fin_diff:
-            warnings.warn("converting convention II to convention I is not recommended."
-                          "Better use 'wcc_phase_fin_dif=True' or `transl_inv_JM=True`")
-        if use_wcc_phase_findiff:
+        else:
             known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS', 'SH', 'SHR', 'SHA', 'SA', 'SR']
             unknown = set(self.needed_R_matrices) - set(known)
             if len(unknown) > 0:
-                raise NotImplementedError(f"wcc_phase_fin_diff for {list(unknown)} is not implemented")
+                raise NotImplementedError(f"unknown matrices requested: {list(unknown)} is not implemented")
 
         self.npar = npar
         self.seedname = seedname
@@ -231,20 +216,17 @@ class System_w90(System_R):
         # Unique set of nearest-neighbor vectors (cartesian)
         bk_cart_unique = w90data.mmn.bk_cart_unique
 
-        if use_wcc_phase_findiff or transl_inv_JM:  # Phase convention I
-            if use_wcc_phase_findiff:
-                _r0 = centers[None, :, :]
-                sum_b = True
-            elif transl_inv_JM:
-                _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
-                sum_b = False
-            expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0))
-            print(f"expjphase1 {expjphase1.shape}")
-            expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
+        if transl_inv_JM:
+            _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
+            sum_b = False
         else:
-            expjphase1 = None
-            expjphase2 = None
+            _r0 = centers[None, :, :]
             sum_b = True
+        
+        expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0))
+        print(f"expjphase1 {expjphase1.shape}")
+        expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
+        
 
         # A_a(R,b) matrix
         if self.need_R_any('AA'):
@@ -318,15 +300,12 @@ class System_w90(System_R):
 
         del expjphase1, expjphase2
 
-        if self.use_ws:
-            self.do_ws_dist(mp_grid=mp_grid)
+        self.do_ws_dist(mp_grid=mp_grid)
 
         if transl_inv_JM:
             self.recenter_JM(centers, bk_cart_unique)
 
         self.do_at_end_of_init()
-        if (not transl_inv_JM) and self.use_wcc_phase and (not wcc_phase_fin_diff):
-            self.convention_II_to_I()
         self.check_AA_diag_zero(msg="after conversion of conventions with "
                                     f"transl_inv_MV={transl_inv_MV}, transl_inv_JM={transl_inv_JM}",
                                 set_zero=transl_inv_MV or transl_inv_JM)
@@ -358,7 +337,6 @@ class System_w90(System_R):
         - SA_a(R) matrix: recentered by the S matrix
         - SHA_a(R) matrix: recentered by the S matrix
         """
-        assert self.use_wcc_phase
         #  Here we apply the phase factors associated with the
         # JM scheme not accounted above, and perform the sum over
         # nearest-neighbor vectors to finally obtain the real-space matrix
