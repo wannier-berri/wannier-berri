@@ -46,7 +46,7 @@ class UNK(W90_file):
         else:
             NKmax = NK
 
-        self.data_unk = []
+        self.data = []
         self.spinor = spinor
 
         nspinor = 2 if spinor else 1
@@ -78,14 +78,14 @@ class UNK(W90_file):
                     for i in range(self.NB):
                         for j in range(nspinor):
                             U[i, :, :, :, j] = f.read_record(dtype=np.complex128).reshape(nr1, nr2, nr3, order='F')
-                    self.data_unk.append(U)
+                    self.data.append(U)
                 else:
-                    print(f"{filename} not found, stopping reading UNK files, read {len(self.data_unk)} files")
+                    print(f"{filename} not found, stopping reading UNK files, read {len(self.data)} files")
                     NK = i
                     break
             else:
                 print(f"skipping {filename}")
-                self.data_unk.append(None)
+                self.data.append(None)
                 continue
         print(f"NK={NK}")
 

@@ -290,7 +290,10 @@ def test_create_amn_diamond_s_bond():
                     os.path.join(tmp_dir, prefix + "." + ext))
     print("prefix = ", prefix)
     symmetrizer = SAWF().from_npz(prefix + ".sawf.npz")
+    # try:
     symmetrizer.spacegroup.show()
+    # except AttributeError as err:
+    #     print("Error: ", err, " spacegroup could not be shown")
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
     w90data.set_amn(amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)

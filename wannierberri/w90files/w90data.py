@@ -651,7 +651,7 @@ class Wannier90data:
         sc_origin = sc_min_vec @ real_lattice
         sc_basis = sc_size_vec[:, None] * real_lattice
 
-        for ik, U in enumerate(self.unk.data_unk):
+        for ik, U in enumerate(self.unk.data):
             if U is None:
                 raise NotImplementedError("plotWF from irreducible kpoints is not implemented yet")
             U = U[:, ::reduce_r_points[0], ::reduce_r_points[1], ::reduce_r_points[2], :]

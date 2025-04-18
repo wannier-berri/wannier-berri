@@ -335,7 +335,7 @@ class System_R(System):
                               do_not_split_projections=True)
             # print (f"adding projection {proj} ({pos} {suborbital})")
             proj_list.append(proj)
-        symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections_obj=proj_list)
+        symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections=proj_list)
         self.symmetrize2(symmetrizer)
         return symmetrizer
 

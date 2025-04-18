@@ -95,7 +95,7 @@ class Dwann:
                 print(f"ip2 = {ip2} basis = \n{basis_list[ip2]}")
                 self.atommap[ip, isym] = ip2
                 if orbital != "_":
-                    self.rot_orb[ip][isym] = orbitalrotator(orbital, symop.rotation_cart, basis_list[ip], basis_list[ip2])
+                    self.rot_orb[ip][isym] = orbitalrotator(orb_symbol=orbital, rot_cart=symop.rotation_cart, basis1=basis_list[ip], basis2=basis_list[ip2])
                 p2a = self.orbit[ip2]
                 self.T[ip, isym] = p2a - p2
         T_round = np.round(self.T)

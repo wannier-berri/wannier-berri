@@ -222,7 +222,7 @@ class OrbitalRotator:
 
     def __call__(self, orb_symbol, rot_cart=None, irot=None, basis1=None, basis2=None):
         assert (basis1 is None) == (basis2 is None), "basis1 and basis2 should be both provided or both None"
-        assert irot is None != rot_cart is None, f"either irot or rot_cart should be provided, not both, got irot={irot}, rot_cart={rot_cart}"
+        assert (irot is None) != (rot_cart is None), f"either irot or rot_cart should be provided, not both, got irot={irot}, rot_cart={rot_cart}"
         if irot is None:
             if basis1 is not None:
                 print("basis taken into account")
@@ -232,12 +232,14 @@ class OrbitalRotator:
             if irot is None:
                 irot = len(self.calcualted_matrices)
                 self.calcualted_matrices.append(rot_cart)
+        if rot_cart is None:
+            rot_cart = self.calcualted_matrices[irot]
         if (irot, orb_symbol) not in self.results_dict:
             orb_symbol = orb_symbol.strip()
             if ";" in orb_symbol:
                 mat_list = [self(orb, irot=irot) for orb in orb_symbol.split(";")]
             else:
-                mat_list = [self.orbitals.rot_orb(orb_symbol, irot=irot)]
+                mat_list = [self.orbitals.rot_orb(orb_symbol=orb_symbol, rot_glb=rot_cart)]
             self.results_dict[(irot, orb_symbol)] = block_diag(*mat_list)
         return self.results_dict[(irot, orb_symbol)]
 
