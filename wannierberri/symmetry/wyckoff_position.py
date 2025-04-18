@@ -1,8 +1,7 @@
-from functools import cached_property
+from functools import cached_property, lru_cache
 import numpy as np
 import sympy
 from ..__utility import UniqueListMod1, all_close_mod1
-from .utility import find_solution_mod1
 
 
 
@@ -352,3 +351,66 @@ def orbit_and_rottrans(spacegroup, p):
         rotations.append(symop.rotation)
         translations.append(symop.translation)
     return np.array(orbit), np.array(rotations), np.array(translations)
+
+
+def find_solution_mod1(A, B, max_shift=2):
+    """
+    Find a solution such that A@x = B mod 1
+
+    Parameters
+    ----------
+    A : np.ndarray (n,m)
+        The matrix of the system.   
+    B : np.ndarray (n,)
+        The right hand side.
+    max_shift : int
+        The maximum shift.
+
+    Returns
+    -------
+    list of np.ndarray
+        The shifts that are compatible with the system.
+    """
+    A = np.array(A)
+    B = np.array(B)
+    r1 = np.linalg.matrix_rank(A)
+    assert (r1 == A.shape[1]), f"overdetermined system {r1} != {A.shape}[1]"
+    dim = A.shape[0]
+    for shift in get_shifts(max_shift, ndim=dim):
+        B_loc = B + shift
+        if np.linalg.matrix_rank(np.hstack([A, B_loc[:, None]])) == r1:
+            x, residuals, rank, s = np.linalg.lstsq(A, B_loc, rcond=None)
+            if len(residuals) > 0:
+                assert np.max(np.abs(residuals)) < 1e-7
+            assert rank == r1
+            return x
+    return None
+
+
+@lru_cache
+def get_shifts(max_shift, ndim=3):
+    """return all possible shifts of a 3-component vector with integer components
+    recursively by number of dimensions
+
+    Parameters
+    ----------
+    max_shift : int
+        The maximum absolute value of the shift.
+    ndim : int
+        The number of dimensions.
+
+    Returns
+    -------
+    array_like(n, ndim)
+        The shifts. n=(max_shift*2+1)**ndim
+        sorted by the norm of the shift
+    """
+    if ndim == 1:
+        shifts = np.arange(-max_shift, max_shift + 1)[:, None]
+    else:
+        shift_1 = get_shifts(max_shift, ndim - 1)
+        shift1 = get_shifts(max_shift, 1)
+        shifts = np.vstack([np.hstack([shift_1, [s1] * shift_1.shape[0]]) for s1 in shift1])
+    # more probably that equality happens at smaller shift, so sort by norm
+    srt = np.linalg.norm(shifts, axis=1).argsort()
+    return shifts[srt]

@@ -1,4 +1,4 @@
-# This tutorial shows how to generate a DMN file inside Wanier Berri code (without pw2wannier90)
+# This tutorial shows how to generate a symmetrizer
 # and then use it to generate a Wannier90 output.
 # It uses Irrep, and may be used with any DFT code that is supported by Irrep (QE, VASP, AINIT, ...)
 

@@ -5,9 +5,9 @@ from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroupBare
 import numpy as np
 from ..__utility import get_inverse_block, rotate_block_matrix, orthogonalize
-from ..wannierise.projections import Projection, ProjectionsSet
+from .projections import Projection, ProjectionsSet
 
-from ..w90files import DMN
+from .dmn import DMN
 from .Dwann import Dwann
 from .orbitals import OrbitalRotator
 

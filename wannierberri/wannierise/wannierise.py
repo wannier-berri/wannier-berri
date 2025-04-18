@@ -4,8 +4,7 @@ import numpy as np
 
 from .wannierizer import Wannierizer
 
-from .utility import select_window_degen, print_centers_and_spreads, print_centers_and_spreads_chk
-from ..__utility import vectorize
+from ..__utility import vectorize, select_window_degen
 from ..symmetry.sawf import VoidSymmetrizer
 
 
@@ -224,3 +223,104 @@ def wannierise(w90data,
     print(f"time for updating {t_update}")
     print(f"total time for wannierization {time() - t0}")
     return w90data.chk.v_matrix
+
+
+
+
+def print_centers_and_spreads_chk(w90data, U_opt_full_BZ,
+                              comment=""):
+    """
+    print the centers and spreads of the Wannier functions
+
+    Parameters
+    ----------
+    w90data : Wannier90data
+        the data (inputs of wannier90)
+    U_opt_free_BZ : list of numpy.ndarray(nBfree,nW)
+        the optimized U matrix for the free bands and wannier functions
+    """
+
+    w90data.chk.v_matrix = np.array(U_opt_full_BZ)
+    w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
+    print_centers_and_spreads(w90data.chk._wannier_centers, w90data.chk._wannier_spreads, comment=comment + ": from chk")
+    return w90data.chk._wannier_centers, w90data.chk._wannier_spreads
+
+
+def print_centers_and_spreads(wcc, spreads, comment=None, std=None):
+    """
+    print the centers and spreads of the Wannier functions
+
+    Parameters
+    ----------
+    wcc: np.ndarray(nW,3)
+        the centers of the Wannier functions
+    spreads: np.ndarray(nW,)
+        the spreads of the Wannier functions
+    """
+    breakline = "-" * 100
+    startline = "#" * 100
+    endline = startline
+    print(startline)
+    if comment is not None:
+        print(comment)
+        print(breakline)
+    print("wannier centers and spreads")
+    print(breakline)
+    for w, s in zip(wcc, spreads):
+        w = np.round(w, 6)
+        print(f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f}")
+    print(breakline)
+    w = wcc.sum(axis=0)
+    s = np.sum(spreads)
+    print((f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f} <- sum"))
+    print(f"  {' ' * 38}  maximal spread = {np.max(spreads):16.12f}")
+    if std is not None:
+        print(f"standard deviation = {std}")
+    print(endline)
+
+
+# def print_progress(i_iter, Omega_list, num_iter_converge,
+#                    spread_functional=None, spreads=None,
+#                    w90data=None, U_opt_full_BZ=None):
+#     """
+#     print the progress of the wannierisation
+
+#     Parameters
+#     ----------
+#     Omega_I_list : list of float
+#         the list of the spread functional
+#     num_iter_converge : int
+#         the number of iterations to check the convergence
+
+#     Returns
+#     -------
+#     float
+#         the standard deviation of the spread functional over the last `num_iter_converge` iterations
+#     """
+
+#     if spreads is None:
+#         assert spread_functional is not None
+#         wcc = spread_functional.get_wcc(U_opt_full_BZ)
+#         spreads = spread_functional(U_opt_full_BZ, wcc=wcc)
+
+#     Omega_list.append(spreads["Omega_tot"])
+#     Omega = Omega_list[-1]
+#     if i_iter > 0:
+#         delta = f"{Omega - Omega_list[-2]:15.8e}"
+#     else:
+#         delta = "--"
+
+#     if len(Omega_list) > num_iter_converge:
+#         delta_max = np.abs(Omega_list[-num_iter_converge:] - np.mean(Omega_list[-num_iter_converge:])).max()
+#         delta_max_str = f"{delta_max:15.8e}"
+#         slope = (Omega_list[-1] - Omega_list[-num_iter_converge - 1]) / num_iter_converge
+#         slope_str = f"{slope:15.8e}"
+#     else:
+#         delta_max = np.inf
+#         delta_max_str = "--"
+#         slope_str = "--"
+
+#     comment = f"iteration {i_iter:4d} Omega= {Omega:15.10f}  delta={delta}, max({num_iter_converge})={delta_max_str}, slope={slope_str}"
+#     print_centers_and_spreads(w90data, U_opt_full_BZ, spreads=spreads, comment=comment)
+#     sys.stdout.flush()
+#     return delta_max

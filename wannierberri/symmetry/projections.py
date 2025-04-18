@@ -17,10 +17,9 @@ except ImportError:
     from functools import partial as jjit
 
 
-from .utility import find_distance_periodic
-from wannierberri.__utility import UniqueListMod1
+from ..__utility import UniqueListMod1
 from ..symmetry.orbitals import Orbitals, num_orbitals
-from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric
+from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric, get_shifts
 
 ORBITALS = Orbitals()
 
@@ -771,3 +770,35 @@ def get_perpendicular_coplanar_vector(a, b):
         return c / np.linalg.norm(c)
     else:
         raise ValueError(f"the vectors {a} and {b} are collinear, their cross product is {c}, norm {np.linalg.norm(c)}")
+
+
+def find_distance_periodic(positions, real_lattice, max_shift=2):
+    """
+    find the distances between the pairs of atoms in a list of positions
+    the distance to the closest image in the periodic lattice is returned
+
+    Parameters
+    ----------
+    positions : np.ndarray( (num_atoms,3), dtype=float)
+        The list of atomic positions in reduced coordinates.
+    real_lattice : np.ndarray((3,3), dtype=float)
+        The lattice vectors.
+
+    Returns
+    -------
+    np.ndarray( (num_atoms,num_atoms), dtype=float)
+        The distance between the pairs atoms.
+    """
+    if len(positions) == 0:
+        return np.array([[np.inf]])
+    positions = np.array(positions) % 1
+    shifts = get_shifts(max_shift)
+    diff = positions[:, None, None, :] - positions[None, :, None, :] + shifts[None, None, :, :]
+    metric = real_lattice @ real_lattice.T
+    prod = np.einsum('ijla,ab,ijlb->ijl', diff, metric, diff)
+
+    rng = np.arange(len(positions))
+    prod[rng, rng, 0] = np.inf  # distance to itself is not interesting, so the distance to its nearest image is counted
+
+    distances2 = np.min(prod, axis=2)
+    return np.sqrt(distances2)

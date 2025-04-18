@@ -9,7 +9,7 @@ from pytest import approx
 
 from tests.common import OUTPUT_DIR, ROOT_DIR
 from wannierberri.w90files.amn import amn_from_bandstructure
-from wannierberri.wannierise.projections import Projection, ProjectionsSet, get_perpendicular_coplanar_vector, read_xzaxis
+from wannierberri.symmetry.projections import Projection, ProjectionsSet, get_perpendicular_coplanar_vector, read_xzaxis
 from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
 import wannierberri as wberri
 from irrep.spacegroup import SpaceGroup
@@ -261,7 +261,7 @@ def test_orbital_rotator_random():
 
 
 def test_create_amn_diamond_s_bond():
-    data_dir = os.path.join(ROOT_DIR, "data", "diamond-444")
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
 
     bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
                                                       code="espresso",
@@ -270,7 +270,7 @@ def test_create_amn_diamond_s_bond():
 
     projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
 
-    amn = amn_from_bandstructure(bandstructure=bandstructure, projections_set=ProjectionsSet([projection]),
+    amn = amn_from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
                            normalize=True, return_object=True, spinor=False)
 
     tmp_dir = os.path.join(OUTPUT_DIR, "diamond+create_amn")
@@ -295,6 +295,9 @@ def test_create_amn_diamond_s_bond():
     # except AttributeError as err:
     #     print("Error: ", err, " spacegroup could not be shown")
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
+    print ("amn.shape = ", amn.data.shape)
+    print("mmn.shape = ", w90data.mmn.data.shape)
+    print("eig.shape = ", w90data.eig.data.shape)
     w90data.set_amn(amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     # Now wannierise the system
@@ -321,7 +324,7 @@ def test_create_amn_diamond_s_bond():
 
 
 def test_create_amn_diamond_p_bond():
-    data_dir = os.path.join(ROOT_DIR, "data", "diamond-444")
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
 
     bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
                                                       code="espresso",
@@ -336,7 +339,7 @@ def test_create_amn_diamond_p_bond():
     projection = Projection(position_num=[0, 0, 0], orbital='pz', zaxis=zaxis, spacegroup=bandstructure.spacegroup, rotate_basis=True)
     print("positions_cart = ", projection.positions @ lattice)
 
-    amn = amn_from_bandstructure(bandstructure=bandstructure, projections_set=ProjectionsSet([projection]),
+    amn = amn_from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
                            normalize=True, return_object=True, spinor=False)
     symmetrizer = SAWF().from_irrep(bandstructure)
     symmetrizer.set_D_wann_from_projections([projection])
@@ -403,7 +406,7 @@ def test_create_amn_diamond_sp3():
     projection = Projection(position_num=[1 / 8, 1 / 8, 1 / 8], orbital='sp3', zaxis=zaxis, spacegroup=bandstructure.spacegroup, rotate_basis=True)
     print("positions_cart = ", projection.positions @ lattice)
 
-    amn = amn_from_bandstructure(bandstructure=bandstructure, projections_set=ProjectionsSet([projection]),
+    amn = amn_from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
                            normalize=True, return_object=True, spinor=False)
     symmetrizer = SAWF().from_irrep(bandstructure)
     symmetrizer.set_D_wann_from_projections([projection])

@@ -110,7 +110,7 @@ class Dwann:
                 for ip, p in enumerate(self.orbit):
                     self.rot_orb[ip][isym] = np.kron(self.rot_orb[ip][isym], S)
         self.rot_orb = np.array(self.rot_orb)
-        
+
         self.num_orbitals = self.num_orbitals_scal * self.nspinor
 
         self.orbit = orbit_from_positions(spacegroup, positions)

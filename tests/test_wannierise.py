@@ -10,8 +10,7 @@ from matplotlib import pyplot as plt
 import os
 import shutil
 
-from wannierberri.w90files.dmn import DMN
-from wannierberri.wannierise.projections import Projection
+from wannierberri.symmetry.projections import Projection
 from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
@@ -47,7 +46,7 @@ def test_wannierise(outer_window):
     # because of changes in irrep 2.1 - and to avoid re-creating symmetrizer
     # symmetrizer.spacegroup.number_str = str(symmetrizer.spacegroup.number)
     symmetrizer.spacegroup.show()
-    symmetrizer.to_w90_file(prefix)
+    # symmetrizer.to_w90_file(prefix)
     # Read the data from the Wanier90 inputs
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
@@ -199,12 +198,7 @@ def test_create_sawf_diamond(check_sawf):
     sawf_new.to_npz(tmp_sawf_path + ".sawf.npz")
     sawf_ref = SymmetrizerSAWF().from_npz(data_dir + "/diamond.sawf.npz")
     check_sawf(sawf_new, sawf_ref)
-    sawf_new.to_w90_file(tmp_sawf_path)
-    dmn_new = DMN(seedname=tmp_sawf_path, read_npz=False)
-
-    dmn_ref = DMN(seedname=os.path.join(data_dir, "diamond"), read_npz=False)
-    check_sawf(dmn_new, dmn_ref, dmn_only=True)
-
+    
 
 @pytest.mark.parametrize("include_TR", [True, False])
 def test_create_sawf_Fe(check_sawf, include_TR):

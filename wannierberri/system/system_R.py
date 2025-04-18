@@ -312,7 +312,7 @@ class System_R(System):
         """
         from irrep.spacegroup import SpaceGroup
         from ..symmetry.sawf import SymmetrizerSAWF
-        from ..wannierise.projections import Projection
+        from ..symmetry.projections import Projection
 
         index = {key: i for i, key in enumerate(set(atom_name))}
         atom_num = np.array([index[key] for key in atom_name])

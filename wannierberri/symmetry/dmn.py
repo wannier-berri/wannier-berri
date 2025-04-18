@@ -3,13 +3,10 @@ from time import time
 from irrep.utility import get_block_indices
 import numpy as np
 from copy import deepcopy
-from ..__utility import get_inverse_block, rotate_block_matrix
-from .utility import writeints, readints
-from .w90file import W90_file
-from .amn import AMN
+from ..__utility import get_inverse_block, rotate_block_matrix, SavableNPZ
 
 
-class DMN(W90_file):
+class DMN(SavableNPZ):
     """
     Class to read and store the wannier90.dmn file
 
@@ -107,16 +104,6 @@ class DMN(W90_file):
         return dic
 
 
-    # def to_npz(self, f_npz):
-    #     dic = self.as_dict()
-    #     print(f"saving to {f_npz} : ")
-    #     np.savez_compressed(f_npz, **dic)
-    #     return self
-
-    # def from_npz(self, f_npz):
-    #     dic = np.load(f_npz)
-    #     self.from_dict(dic)
-    #     return self
 
 
     def from_dict(self, dic):
@@ -167,88 +154,98 @@ class DMN(W90_file):
     def kpt2kptirr_sym(self):
         return np.array([np.where(self.kptirr2kpt[self.kpt2kptirr[ik], :] == ik)[0][0] for ik in range(self.NK)])
 
-    def from_w90_file(self, seedname="wannier90", eigenvalues=None):
-        """
-        eigenvalues np.array(shape=(NK,NB))
-        The eigenvalues used to determine the degeneracy of the bandsm and the corresponding blocks
-        of matrices which are non-zero
+    # def from_w90_file(self, seedname="wannier90", eigenvalues=None):
+    #     """
+    #     eigenvalues np.array(shape=(NK,NB))
+    #     The eigenvalues used to determine the degeneracy of the bandsm and the corresponding blocks
+    #     of matrices which are non-zero
 
-        Parameters
-        ----------
-        seedname : str
-            the prefix of the file (including relative/absolute path, but not including the extensions, like `.dmn`)
-        eigenvalues : np.array(shape=(NK,NB)), optional
-            The Energies used to determine the degenerecy of the bands
-        """
-        DeprecationWarning("w90 format for dmn is deprecated is deprecated, use dmn.npz instead")
-        fl = open(seedname + ".dmn", "r")
-        self.comment = fl.readline().strip()
-        self._NB, self.Nsym, self.NKirr, self._NK = readints(fl, 4)
-        self.time_reversals = np.zeros(self.Nsym, dtype=bool)  # w90 file does not have time reversal information
-        self.kpt2kptirr = readints(fl, self.NK) - 1
-        self.kptirr = readints(fl, self.NKirr) - 1
-        self.kptirr2kpt = np.array([readints(fl, self.Nsym) for _ in range(self.NKirr)]) - 1
-        assert np.all(self.kptirr2kpt.flatten() >= 0), "kptirr2kpt has negative values"
-        assert np.all(self.kptirr2kpt.flatten() < self.NK), "kptirr2kpt has values larger than NK"
-        assert (set(self.kptirr2kpt.flatten()) == set(range(self.NK))), "kptirr2kpt does not cover all kpoints"
-        # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
+    #     Parameters
+    #     ----------
+    #     seedname : str
+    #         the prefix of the file (including relative/absolute path, but not including the extensions, like `.dmn`)
+    #     eigenvalues : np.array(shape=(NK,NB)), optional
+    #         The Energies used to determine the degenerecy of the bands
+    #     """
+    #     DeprecationWarning("w90 format for dmn is deprecated is deprecated, use dmn.npz instead")
+    #     fl = open(seedname + ".dmn", "r")
+    #     self.comment = fl.readline().strip()
+    #     self._NB, self.Nsym, self.NKirr, self._NK = readints(fl, 4)
+    #     self.time_reversals = np.zeros(self.Nsym, dtype=bool)  # w90 file does not have time reversal information
+    #     self.kpt2kptirr = readints(fl, self.NK) - 1
+    #     self.kptirr = readints(fl, self.NKirr) - 1
+    #     self.kptirr2kpt = np.array([readints(fl, self.Nsym) for _ in range(self.NKirr)]) - 1
+    #     assert np.all(self.kptirr2kpt.flatten() >= 0), "kptirr2kpt has negative values"
+    #     assert np.all(self.kptirr2kpt.flatten() < self.NK), "kptirr2kpt has values larger than NK"
+    #     assert (set(self.kptirr2kpt.flatten()) == set(range(self.NK))), "kptirr2kpt does not cover all kpoints"
+    #     # find an symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
 
 
 
-        # read the rest of lines and convert to conplex array
-        data = [l.strip("() \n").split(",") for l in fl.readlines()]
-        data = np.array([x for x in data if len(x) == 2], dtype=float)
-        data = data[:, 0] + 1j * data[:, 1]
-        print("number of numbers in the dmn file :", data.shape)
-        print("of those > 1e-8 :", np.sum(np.abs(data) > 1e-8))
-        print("of those > 1e-5 :", np.sum(np.abs(data) > 1e-5))
+    #     # read the rest of lines and convert to conplex array
+    #     data = [l.strip("() \n").split(",") for l in fl.readlines()]
+    #     data = np.array([x for x in data if len(x) == 2], dtype=float)
+    #     data = data[:, 0] + 1j * data[:, 1]
+    #     print("number of numbers in the dmn file :", data.shape)
+    #     print("of those > 1e-8 :", np.sum(np.abs(data) > 1e-8))
+    #     print("of those > 1e-5 :", np.sum(np.abs(data) > 1e-5))
 
-        num_wann = np.sqrt(data.shape[0] // self.Nsym // self.NKirr - self.NB**2)
-        assert abs(num_wann - int(num_wann)) < 1e-8, f"num_wann is not an integer : {num_wann}"
-        self.num_wann = int(num_wann)
-        assert data.shape[0] == (self.num_wann**2 + self.NB**2) * self.Nsym * self.NKirr, \
-            f"wrong number of elements in dmn file found {data.shape[0]} expected {(self.num_wann**2 + self.NB**2) * self.Nsym * self.NKirr}"
-        n1 = self.num_wann**2 * self.Nsym * self.NKirr
-        # in fortran the order of indices is reversed. therefor transpose
-        D_wann = data[:n1].reshape(self.NKirr, self.Nsym, self.num_wann, self.num_wann
-                                          ).transpose(0, 1, 3, 2)
-        d_band = data[n1:].reshape(self.NKirr, self.Nsym, self.NB, self.NB).transpose(0, 1, 3, 2)
+    #     num_wann = np.sqrt(data.shape[0] // self.Nsym // self.NKirr - self.NB**2)
+    #     assert abs(num_wann - int(num_wann)) < 1e-8, f"num_wann is not an integer : {num_wann}"
+    #     self.num_wann = int(num_wann)
+    #     assert data.shape[0] == (self.num_wann**2 + self.NB**2) * self.Nsym * self.NKirr, \
+    #         f"wrong number of elements in dmn file found {data.shape[0]} expected {(self.num_wann**2 + self.NB**2) * self.Nsym * self.NKirr}"
+    #     n1 = self.num_wann**2 * self.Nsym * self.NKirr
+    #     # in fortran the order of indices is reversed. therefor transpose
+    #     D_wann = data[:n1].reshape(self.NKirr, self.Nsym, self.num_wann, self.num_wann
+    #                                       ).transpose(0, 1, 3, 2)
+    #     d_band = data[n1:].reshape(self.NKirr, self.Nsym, self.NB, self.NB).transpose(0, 1, 3, 2)
 
-        # arranging d_band in the block form
-        if eigenvalues is not None:
-            print("DMN: eigenvalues are used to determine the block structure")
-            self.d_band_block_indices = [get_block_indices(eigenvalues[ik], thresh=1e-2, cyclic=False) for ik in self.kptirr]
-        else:
-            print("DMN: eigenvalues are NOT provided, the bands are considered as one block")
-            self.d_band_block_indices = [[(0, self.NB)] for _ in range(self.NKirr)]
-        self.d_band_block_indices = [np.array(self.d_band_block_indices[ik]) for ik in range(self.NKirr)]
-        # np.ascontinousarray is used to speedup with Numba
-        self.d_band_blocks = [[[np.ascontiguousarray(d_band[ik, isym, start:end, start:end])
-                                for start, end in self.d_band_block_indices[ik]]
-                               for isym in range(self.Nsym)] for ik in range(self.NKirr)]
+    #     # arranging d_band in the block form
+    #     if eigenvalues is not None:
+    #         print("DMN: eigenvalues are used to determine the block structure")
+    #         self.d_band_block_indices = [get_block_indices(eigenvalues[ik], thresh=1e-2, cyclic=False) for ik in self.kptirr]
+    #     else:
+    #         print("DMN: eigenvalues are NOT provided, the bands are considered as one block")
+    #         self.d_band_block_indices = [[(0, self.NB)] for _ in range(self.NKirr)]
+    #     self.d_band_block_indices = [np.array(self.d_band_block_indices[ik]) for ik in range(self.NKirr)]
+    #     # np.ascontinousarray is used to speedup with Numba
+    #     self.d_band_blocks = [[[np.ascontiguousarray(d_band[ik, isym, start:end, start:end])
+    #                             for start, end in self.d_band_block_indices[ik]]
+    #                            for isym in range(self.Nsym)] for ik in range(self.NKirr)]
 
-        # arranging D_wann in the block form
-        self.wann_block_indices = []
-        # determine the block indices from the D_wann, excluding areas with only zeros
-        start = 0
-        thresh = 1e-5
-        while start < self.num_wann:
-            for end in range(start + 1, self.num_wann):
-                if np.all(abs(D_wann[:, :, start:end, end:]) < thresh) and np.all(abs(D_wann[:, :, end:, start:end]) < thresh):
-                    self.wann_block_indices.append((start, end))
-                    start = end
-                    break
-            else:
-                self.wann_block_indices.append((start, self.num_wann))
-                break
-        # arange blocks
-        self.D_wann_block_indices = np.array(self.wann_block_indices)
-        # np.ascontinousarray is used to speedup with Numba
-        self.D_wann_blocks = [[[np.ascontiguousarray(D_wann[ik, isym, start:end, start:end]) for start, end in self.D_wann_block_indices]
-                               for isym in range(self.Nsym)] for ik in range(self.NKirr)]
-        self.clear_inverse()
+    #     # arranging D_wann in the block form
+    #     self.wann_block_indices = []
+    #     # determine the block indices from the D_wann, excluding areas with only zeros
+    #     start = 0
+    #     thresh = 1e-5
+    #     while start < self.num_wann:
+    #         for end in range(start + 1, self.num_wann):
+    #             if np.all(abs(D_wann[:, :, start:end, end:]) < thresh) and np.all(abs(D_wann[:, :, end:, start:end]) < thresh):
+    #                 self.wann_block_indices.append((start, end))
+    #                 start = end
+    #                 break
+    #         else:
+    #             self.wann_block_indices.append((start, self.num_wann))
+    #             break
+    #     # arange blocks
+    #     self.D_wann_block_indices = np.array(self.wann_block_indices)
+    #     # np.ascontinousarray is used to speedup with Numba
+    #     self.D_wann_blocks = [[[np.ascontiguousarray(D_wann[ik, isym, start:end, start:end]) for start, end in self.D_wann_block_indices]
+    #                            for isym in range(self.Nsym)] for ik in range(self.NKirr)]
+    #     self.clear_inverse()
+    #     return self
+
+    def to_npz(self, f_npz):
+        dic = self.as_dict()
+        print(f"saving to {f_npz} : ")
+        np.savez_compressed(f_npz, **dic)
         return self
 
+    def from_npz(self, f_npz):
+        dic = np.load(f_npz)
+        self.from_dict(dic)
+        return self
 
     @lru_cache
     def d_band_diagonal(self, ikirr, isym):
@@ -296,29 +293,29 @@ class DMN(W90_file):
         return result
 
 
-    def to_w90_file(self, seedname):
-        if np.any(self.time_reversals):
-            raise ValueError("time reversal information is not supported in wannier90 files")
-        f = open(seedname + ".dmn", "w")
-        print(f"writing {seedname}.dmn:  comment = {self.comment}")
-        f.write(f"{self.comment}\n")
-        f.write(f"{self.NB} {self.Nsym} {self.NKirr} {self.NK}\n\n")
-        f.write(writeints(self.kpt2kptirr + 1) + "\n")
-        f.write(writeints(self.kptirr + 1) + "\n")
-        for i in range(self.NKirr):
-            f.write(writeints(self.kptirr2kpt[i] + 1) + "\n")
-            # " ".join(str(x + 1) for x in self.kptirr2kpt[i]) + "\n")
-        # f.write("\n".join(" ".join(str(x + 1) for x in l) for l in self.kptirr2kpt) + "\n")
-        mat_fun_list = []
-        if self.num_wann > 0:
-            mat_fun_list.append(self.D_wann_full_matrix)
-        if self.NB > 0:
-            mat_fun_list.append(self.d_band_full_matrix)
+    # def to_w90_file(self, seedname):
+    #     if np.any(self.time_reversals):
+    #         raise ValueError("time reversal information is not supported in wannier90 files")
+    #     f = open(seedname + ".dmn", "w")
+    #     print(f"writing {seedname}.dmn:  comment = {self.comment}")
+    #     f.write(f"{self.comment}\n")
+    #     f.write(f"{self.NB} {self.Nsym} {self.NKirr} {self.NK}\n\n")
+    #     f.write(writeints(self.kpt2kptirr + 1) + "\n")
+    #     f.write(writeints(self.kptirr + 1) + "\n")
+    #     for i in range(self.NKirr):
+    #         f.write(writeints(self.kptirr2kpt[i] + 1) + "\n")
+    #         # " ".join(str(x + 1) for x in self.kptirr2kpt[i]) + "\n")
+    #     # f.write("\n".join(" ".join(str(x + 1) for x in l) for l in self.kptirr2kpt) + "\n")
+    #     mat_fun_list = []
+    #     if self.num_wann > 0:
+    #         mat_fun_list.append(self.D_wann_full_matrix)
+    #     if self.NB > 0:
+    #         mat_fun_list.append(self.d_band_full_matrix)
 
-        for M in mat_fun_list:
-            for ik in range(self.NKirr):
-                for isym in range(self.Nsym):
-                    f.write("\n".join("({:17.12e},{:17.12e})".format(x.real, x.imag) for x in M(ik, isym).flatten(order='F')) + "\n\n")
+    #     for M in mat_fun_list:
+    #         for ik in range(self.NKirr):
+    #             for isym in range(self.Nsym):
+    #                 f.write("\n".join("({:17.12e},{:17.12e})".format(x.real, x.imag) for x in M(ik, isym).flatten(order='F')) + "\n\n")
 
 
     def get_disentangled(self, v_matrix_dagger, v_matrix):
@@ -553,7 +550,7 @@ class DMN(W90_file):
         float
             the maximum error
         """
-        if isinstance(amn, AMN):
+        if not isinstance(amn, np.ndarray):
             amn = amn.data
         maxerr = 0
         assert amn.shape == (self.NK, self.NB, self.num_wann), f"amn.shape = {amn.shape} != (NK={self.NK}, NB={self.NB}, num_wann={self.num_wann}) "

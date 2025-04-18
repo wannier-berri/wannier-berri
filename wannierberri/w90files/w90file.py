@@ -1,9 +1,9 @@
 import abc
 import numpy as np
 import os
+from ..__utility import SavableNPZ
 
-
-class W90_file(abc.ABC):
+class W90_file(SavableNPZ):
     """
     Abstract class for the files of wannier90
 
@@ -24,7 +24,6 @@ class W90_file(abc.ABC):
         see :class:`~wannierberri.w90files.MMN`, :class:`~wannierberri.w90files.EIG`, :class:`~wannierberri.w90files.AMN`, 
         :class:`~wannierberri.w90files.UIU`, :class:`~wannierberri.w90files.UHU`, :class:`~wannierberri.w90files.SIU`, 
         :class:`~wannierberri.w90files.SHU`, :class:`~wannierberri.w90files.SPN`, :class:`~wannierberri.w90files.WIN`
-        :class:'wannierberri.w90files.DMN'	
         for more details
 
     Attributes
@@ -54,36 +53,7 @@ class W90_file(abc.ABC):
         # window is applied after, so that npz contains same data as original file
         self.apply_window(selected_bands)
 
-    def as_dict(self):
-        dic = {k: self.__getattribute__(k) for k in self.npz_tags}
-        for k in self.npz_tags_optional:
-            if hasattr(self, k):
-                dic[k] = self.__getattribute__(k)
-        return dic
 
-    def from_dict(self, dic):
-        for k in self.npz_tags:
-            if k in dic:
-                self.__setattr__(k, dic[k])
-            else:
-                self.__setattr__(k, self.default_tags[k])
-        for k in self.npz_tags_optional:
-            if k in dic:
-                self.__setattr__(k, dic[k])
-            elif k in self.default_tags:
-                self.__setattr__(k, self.default_tags[k])
-
-
-    def to_npz(self, f_npz):
-        dic = self.as_dict()
-        print(f"saving to {f_npz} : ")
-        np.savez_compressed(f_npz, **dic)
-        return self
-
-    def from_npz(self, f_npz):
-        dic = np.load(f_npz)
-        self.from_dict(dic)
-        return self
 
     @abc.abstractmethod
     def from_w90_file(self, **kwargs):
