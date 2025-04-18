@@ -221,7 +221,24 @@ class WyckoffPosition:
 
 class WyckoffPositionNumeric(WyckoffPosition):
 
-    def __init__(self, positions, spacegroup):
+    def __init__(self, positions, spacegroup, allow_multiple_orbits=False):
+        """
+        Wyckoff position defined by a list of positions
+        Parameters
+        ----------
+        positions : list of np.ndarray(shape=(3,), dtype=float) or np.ndarray(shape=(3), dtype=float)
+            List of positions or only first position
+        spacegroup : irrep.spacegroup.SpaceGroup
+            The spacegroup which transforms the coordinates
+        allow_multiple_orbits : bool
+            If True, the positions are not checked to be in the same orbit. 
+            If False - the orbits of all initial positions are merged 
+
+        Note
+        ----
+        In the resulting position thw order is the following : first come the positions given by the user, them the positions in the orbit os positions[1] (which are not yet in the list), then the positions in the orbit of positions[2] and so on.
+        """
+
         positions = np.array(positions)
         if positions.ndim == 1:
             positions = positions.reshape(-1, 3)
@@ -242,8 +259,12 @@ class WyckoffPositionNumeric(WyckoffPosition):
                 self.translations.append(translations[ind])
 
         for pos in positions:
-            assert pos in orbit0, f"Position {pos} is not in the orbit of the first position {positions[0]}"
-            add_pos_and_rottrans(pos)
+            if allow_multiple_orbits:
+                orbit0 += get_orbit(spacegroup, pos)
+            else:
+                assert pos in orbit0, f"Position {pos} is not in the orbit of the first position {positions[0]}"
+            orbit.append(pos)
+        # now add the positions that are pot in the input
         for pos in orbit0:
             add_pos_and_rottrans(pos)
         self._positions = np.array(orbit)

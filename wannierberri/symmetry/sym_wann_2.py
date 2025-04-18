@@ -39,14 +39,8 @@ class SymWann:
         Spin orbital coupling.
     magmom: 2D array
         Magnetic moment of each atom.
-    spin_ordering : str, "block" or "interlace"
-        The ordering of the wannier functions in the spinor case.
-        "block" means that first all the orbitals of the first spin are written, then the second spin. (like in the amn file old versions of VASP)
-        "interlace" means that the orbitals of the two spins are interlaced. (like in the amn file of QE and new versions of VASP)
     wannier_centers_cart: np.array(num_wann, 3)
         Wannier centers in cartesian coordinates.
-    use_wcc_phase: bool
-        use wannier centers in phase factor or not. (convention I or II)
     logile: file
         Log file. 
 
@@ -64,11 +58,9 @@ class SymWann:
             symmetrizer,
             iRvec,
             wannier_centers_cart=None,
-            use_wcc_phase=True,
             silent=False,
     ):
 
-        assert use_wcc_phase
         self.silent = silent
         self.wannier_centers_cart = wannier_centers_cart
         self.iRvec = [tuple(R) for R in iRvec]

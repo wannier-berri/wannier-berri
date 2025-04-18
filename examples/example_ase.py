@@ -51,7 +51,7 @@ k1 = k2 = 1. / 3
 
 if do_wberri:
     import wannierberri as wberri
-    system = wberri.System_ASE(wan, ase_calc=calc, use_wcc_phase=True, berry=True)
+    system = wberri.System_ASE(wan, ase_calc=calc, berry=True)
 
     parallel = wberri.parallel.Parallel(num_cpus=4)
 #    parallel = wberri.parallel.Serial()

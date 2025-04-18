@@ -45,12 +45,6 @@ class tildeFab(Formula_ln):
             #            summ += 1j * np.einsum("mla,lnb->mnab", self.A.nl (ik,inn,out),Dln   )
             summ += -1 * np.einsum("mla,lnb->mnab", self.A.nn(ik, inn, out), self.A.nn(ik, inn, out))
 
-#  Terms (a<->b, m<-n> )*   are accounted above by factor 2
-
-#        if self.correction_wcc:
-#            summ -= 2*np.einsum("mla,lnb->mnab" ,self.T.nl(ik,inn,out),
-#                                                 self.T.ln(ik,inn,out) )
-
         summ = 0.5 * (summ + summ.transpose((1, 0, 3, 2)).conj())
         return summ
 
@@ -134,17 +128,6 @@ class tildeHab(Formula_ln):
                 "mla,lnb->mnab",
                 self.D.nl(ik, inn, out) * self.E[ik][out][None, :, None], self.D.ln(ik, inn, out))
 
-        if self.correction_wcc:
-            summ += 2 * np.einsum(
-                "mla,lnb->mnab", self.T_wcc.nn(ik, inn, out),
-                self.B.nn(ik, inn, out) - self.E[ik][inn][:, None, None] * self.A.nn(ik, inn, out))
-
-
-#            Stepan: I do noot remember, what this line meant, but correction_wcc is not fully working yet
-#            maybe we need to restore it
-#            summ -= 2*np.einsum("mla,lnb->mnab" ,self.T.nl(ik,inn,out),
-#                         self.E[ik][out][:,None,None]*self.T.ln(ik,inn,out) )
-
         if self.external_terms:
             summ += self.H.nn(ik, inn, out)
             summ += 2j * np.einsum("mla,lnb->mnab", self.D.nl(ik, inn, out), self.B.ln(ik, inn, out))
@@ -186,7 +169,7 @@ class tildeHGab(Formula_ln):
 class tildeHab_d(Formula_ln):
 
     def __init__(self, data_K, **parameters):
-        super().__init__(data_K, dT_wcc=True, **parameters)
+        super().__init__(data_K, **parameters)
         self.dD = DerDcov(data_K)
         self.D = data_K.Dcov
         self.V = data_K.covariant('Ham', gender=1)
@@ -219,15 +202,6 @@ class tildeHab_d(Formula_ln):
                 self.A.nn(ik, inn, out) * self.E[ik][inn][None, :, None], self.dA.nn(ik, inn, out))
             summ += 2j * np.einsum("mla,lnbd->mnabd", self.D.nl(ik, inn, out), self.dB.ln(ik, inn, out))
             summ += 2j * np.einsum("lma,lnbd->mnabd", (self.B.ln(ik, inn, out)).conj(), self.dD.ln(ik, inn, out))
-
-        if self.correction_wcc:
-            summ += 2 * np.einsum(
-                "mlad,lnb->mnabd", self.dT_wcc.nn(ik, inn, out),
-                self.B.nn(ik, inn, out) - self.E[ik][inn][:, None, None] * self.A.nn(ik, inn, out))
-            summ += 2 * np.einsum(
-                "mla,lnbd->mnabd", self.T_wcc.nn(ik, inn, out),
-                self.dB.nn(ik, inn, out) - self.E[ik][inn][:, None, None] * self.dA.nn(ik, inn, out) -
-                np.einsum("mld,lnb->mnbd", self.V.nn(ik, inn, out), self.A.nn(ik, inn, out)))
 
         summ = 0.5 * (summ + summ.transpose((1, 0, 3, 2, 4)).conj())
         return summ

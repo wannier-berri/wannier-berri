@@ -43,7 +43,6 @@ class System_tb_py(System_R):
         names = {'tbmodels': 'TBmodels', 'pythtb': 'PythTB'}
         super().__init__(spin=spin,
                          force_internal_terms_only=True,
-                         use_wcc_phase=True,
                          name=f'model_{names[module]}',
                          **parameters)
 

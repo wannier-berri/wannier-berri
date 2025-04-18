@@ -22,7 +22,11 @@ class Dwann:
         if the file will be used with an already generated .amn file, 
         the positions should be the same as the .amn file, including the order.
     orbital : str
-        The projection type. Default is "_" which means "s". 
+        The projection type. Default is "_" which means "s". may contain ";" to separate the orbitals.
+    orbital_rotator : callable
+        A function that takes an orbital and a symmetry operation and returns the rotated orbital.
+        This is used to generate the rotated orbitals for each symmetry operation.
+        The function should take two arguments: the orbital and the symmetry operation.
     spinor : bool
         Whether the Wannier functions are spinors.
 
@@ -106,7 +110,30 @@ class Dwann:
                 for ip, p in enumerate(self.orbit):
                     self.rot_orb[ip][isym] = np.kron(self.rot_orb[ip][isym], S)
         self.rot_orb = np.array(self.rot_orb)
-        print(f"self.rot_orb.shape={self.rot_orb.shape}")
+        
+        self.num_orbitals = self.num_orbitals_scal * self.nspinor
+
+        self.orbit = orbit_from_positions(spacegroup, positions)
+        self.spacegroup = spacegroup
+
+        self.num_points = len(self.orbit)
+        self.num_wann_scal = self.num_points * self.num_orbitals_scal
+        self.num_wann = self.num_wann_scal * self.nspinor
+        self.atommap = -np.ones((self.num_points, self.nsym), dtype=int)
+        self.T = np.zeros((self.num_points, self.nsym, 3), dtype=float)
+
+        for ip, p in enumerate(self.orbit):
+            for isym, symop in enumerate(spacegroup.symmetries):
+                p2 = symop.transform_r(p)
+                # print (f"ip={ip}, p={p}, isym={isym}, p2={p2}")
+                ip2 = self.orbit.index(p2)
+                self.atommap[ip, isym] = ip2
+                p2 = symop.transform_r(p)
+                p2a = self.orbit[ip2]
+                self.T[ip, isym] = p2a - p2
+        T_round = np.round(self.T)
+        assert np.allclose(self.T, T_round, atol=1e-6), f"T=\n{self.T}, \nT_round=\n{T_round}, \n max_diff={np.max(np.abs(self.T - T_round))}"
+        self.T = T_round.astype(int)
 
         assert np.all(self.atommap >= 0), f"atommap={self.atommap}"
 

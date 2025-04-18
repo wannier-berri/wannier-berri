@@ -1,0 +1,13 @@
+&inputpp
+  outdir = './'
+  prefix = './tmp1/tellurium'
+  seedname = './tmp1/tellurium'
+write_eig = .True.
+write_mmn = .True.
+write_amn = .True.
+write_spn = .True.
+write_uhu = .True.
+write_uiu = .False.
+write_unk = .False.
+write_dmn = .False.
+/

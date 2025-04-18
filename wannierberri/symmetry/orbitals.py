@@ -8,6 +8,7 @@ from scipy.integrate import trapezoid
 from scipy.constants import physical_constants
 
 from wannierberri.__utility import UniqueList
+from scipy.linalg import block_diag
 bohr_radius_angstrom = physical_constants["Bohr radius"][0] * 1e10
 
 # Note: in the Dwann it is assumed that all orbitals are REAL, so under TR one does not need to take complex conjugate
@@ -46,7 +47,9 @@ def orb_to_shell(orb):
 
 @lru_cache
 def num_orbitals(shell_symbol: str):
-    return len(orbitals_sets_dic[shell_symbol])
+    if ";" in shell_symbol:
+        return sum([num_orbitals(s) for s in shell_symbol.split(";")])
+    return len(orbitals_sets_dic[shell_symbol.strip()])
 
 
 hybrids_coef = {
@@ -217,18 +220,25 @@ class OrbitalRotator:
         self.orbitals = get_orbitals()
         self.results_dict = {}
 
-    def __call__(self, orb_symbol, rot_cart, basis1=None, basis2=None):
+    def __call__(self, orb_symbol, rot_cart=None, irot=None, basis1=None, basis2=None):
         assert (basis1 is None) == (basis2 is None), "basis1 and basis2 should be both provided or both None"
-        if basis1 is not None:
-            print("basis taken into account")
-            rot_cart = basis2 @ rot_cart @ basis1.T
-        print(f"rot_cart with basis= \n{rot_cart}")
-        irot = self.calcualted_matrices.index_or_None(rot_cart)
+        assert irot is None != rot_cart is None, f"either irot or rot_cart should be provided, not both, got irot={irot}, rot_cart={rot_cart}"
         if irot is None:
-            irot = len(self.calcualted_matrices)
-            self.calcualted_matrices.append(rot_cart)
+            if basis1 is not None:
+                print("basis taken into account")
+                rot_cart = basis2 @ rot_cart @ basis1.T
+            print(f"rot_cart with basis= \n{rot_cart}")
+            irot = self.calcualted_matrices.index_or_None(rot_cart)
+            if irot is None:
+                irot = len(self.calcualted_matrices)
+                self.calcualted_matrices.append(rot_cart)
         if (irot, orb_symbol) not in self.results_dict:
-            self.results_dict[(irot, orb_symbol)] = self.orbitals.rot_orb(orb_symbol, rot_cart)
+            orb_symbol = orb_symbol.strip()
+            if ";" in orb_symbol:
+                mat_list = [self(orb, irot=irot) for orb in orb_symbol.split(";")]
+            else:
+                mat_list = [self.orbitals.rot_orb(orb_symbol, irot=irot)]
+            self.results_dict[(irot, orb_symbol)] = block_diag(*mat_list)
         return self.results_dict[(irot, orb_symbol)]
 
 

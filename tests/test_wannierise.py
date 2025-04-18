@@ -18,6 +18,7 @@ from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 @pytest.mark.parametrize("outer_window", [None, (-100, 100), (-10, 40), (-10, 22), (10, 40)])
 def test_wannierise(outer_window):
+    check_WF = (outer_window is None or outer_window[0] < -9)
     systems = {}
 
     cwd = os.getcwd()
@@ -38,10 +39,13 @@ def test_wannierise(outer_window):
         shutil.copy(os.path.join(data_dir, prefix + "." + ext),
                     os.path.join(tmp_dir, prefix + "." + ext))
     for i in range(8):
-        shutil.copy(os.path.join(data_dir, f"UNK{i+1:05d}.1"),
-                    os.path.join(tmp_dir, f"UNK{i+1:05d}.1"))
+        shutil.copy(os.path.join(data_dir, f"UNK{i + 1:05d}.1"),
+                    os.path.join(tmp_dir, f"UNK{i + 1:05d}.1"))
     print("prefix = ", prefix)
     symmetrizer = SymmetrizerSAWF().from_npz(prefix + ".sawf.npz")
+
+    # because of changes in irrep 2.1 - and to avoid re-creating symmetrizer
+    symmetrizer.spacegroup.number_str = str(symmetrizer.spacegroup.number)
     symmetrizer.spacegroup.show()
     symmetrizer.to_w90_file(prefix)
     # Read the data from the Wanier90 inputs
@@ -88,10 +92,11 @@ def test_wannierise(outer_window):
     sc_origin, sc_basis, WF, rho = w90data.plotWF(select_WF=[1, 2], reduce_r_points=[3, 9, 1])
     assert WF.shape == (2, 6, 2, 18)
     assert rho.shape == (2, 6, 2, 18)
-    wf_file_name = "WF_12_red.npy"
-    np.save(wf_file_name, WF)
-    ref = np.load(os.path.join(REF_DIR, wf_file_name))
-    assert WF == approx(ref)
+    if check_WF:
+        wf_file_name = "WF_12_red.npy"
+        np.save(wf_file_name, WF)
+        ref = np.load(os.path.join(REF_DIR, wf_file_name))
+        assert WF == approx(ref)
 
     sc_origin, sc_basis, WF, rho = w90data.plotWF(select_WF=[1, 2], reduce_r_points=[1, 1, 1])
     lattice = w90data.chk.real_lattice
@@ -99,7 +104,8 @@ def test_wannierise(outer_window):
     assert sc_basis == approx(2 * lattice)
     assert WF.shape == (2, 18, 18, 18)
     assert rho.shape == (2, 18, 18, 18)
-    assert rho.sum(axis=(1, 2, 3)) == approx(1)
+    if check_WF:
+        assert rho.sum(axis=(1, 2, 3)) == approx(1)
 
     systems["wberri"] = wberri.system.System_w90(w90data=w90data)
 

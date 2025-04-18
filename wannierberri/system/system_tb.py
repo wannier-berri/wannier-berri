@@ -28,6 +28,11 @@ class System_tb(System_R):
     ----------
     tb_file : str
         name (and path) of file to be read
+    convention_II_to_I : bool
+        By default, the tb file in wannier90 format is in the convention II, which is different from the convention I used in wannierberri.
+        If the file is already in the convention I, set this parameter to False.
+    wannier_centers_cart : np.ndarray(num_wann, 3)
+        If provided, will override the wannier centers read from the file. (and hence they will be subtracted from the AA_R matrix if convention_II_to_I is True)
 
     Notes
     -----
@@ -35,6 +40,8 @@ class System_tb(System_R):
     """
 
     def __init__(self, tb_file="wannier90_tb.dat",
+                 convention_II_to_I=True,
+                 wannier_centers_cart=None,
                  **parameters):
         if "name" not in parameters:
             parameters["name"] = os.path.splitext(os.path.split(tb_file)[-1])[0]
@@ -81,10 +88,15 @@ class System_tb(System_R):
                     [[f.readline().split()[2:8] for _ in range(self.num_wann)] for _ in range(self.num_wann)],
                     dtype=float)
                 AA_R[:, :, ir, :] = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / self.Ndegen[ir]
-            self.wannier_centers_cart = np.diagonal(AA_R[:, :, self.iR0, :], axis1=0, axis2=1).T
+            if wannier_centers_cart is None:
+                wannier_centers_cart = np.diagonal(AA_R[:, :, self.iR0, :], axis1=0, axis2=1).T.copy()
+            if convention_II_to_I:
+                # convert to convention I
+                print(f"convention_II_to_I = {convention_II_to_I} wannier_centers_cart = \n{wannier_centers_cart}\n num_wann = {self.num_wann}, A.shape = {AA_R.shape}")
+                AA_R[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] -= wannier_centers_cart
             self.set_R_mat('AA', AA_R)
-        elif self.use_wcc_phase:
-            self.wannier_centers_cart = np.zeros((3, self.num_wann), dtype=float)
+        elif wannier_centers_cart is None:
+            wannier_centers_cart = np.zeros((3, self.num_wann), dtype=float)
             for ir in range(self.iR0):
                 f.readline()
                 assert np.all(np.array(f.readline().split(), dtype=int) == self.iRvec[ir])
@@ -97,12 +109,11 @@ class System_tb(System_R):
                 [[f.readline().split()[2:8] for _ in range(self.num_wann)] for _ in range(self.num_wann)],
                 dtype=float)
             aa = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / self.Ndegen[ir]
-            self.wannier_centers_cart = np.diagonal(aa, axis1=0, axis2=1).T
-            # print (f"wannier_centers_cart = {self.wannier_centers_cart}")
+            wannier_centers_cart = np.diagonal(aa, axis1=0, axis2=1).T
+
+        self.wannier_centers_cart = wannier_centers_cart
         f.close()
 
         self.do_at_end_of_init()
-        if self.use_wcc_phase:
-            self.convention_II_to_I()
 
         cprint(f"Reading the system from {tb_file} finished successfully", 'green', attrs=['bold'])

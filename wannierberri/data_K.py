@@ -38,8 +38,6 @@ def get_transform_Inv(name, der=0):
     if name in ['Ham', 'CC', 'FF', 'OO', 'GG', 'SS']:  # even before derivative
         p = 0
     ###########################################################################
-    elif name in ['T_wcc']:  # odd before derivative
-        p = 1
     elif name in ['D', 'AA', 'BB', 'CCab']:
         return None
     else:
@@ -54,7 +52,7 @@ def get_transform_TR(name, der=0):
     """returns transformation of quantity is under TR, (after a real trace is taken, if appropriate)
     False otherwise
     raises ValueError for unknown quantities"""
-    if name in ['Ham', 'T_wcc']:  # even before derivative
+    if name in ['Ham']:  # even before derivative
         p = 0
     #########
     # Oscar #
@@ -102,7 +100,6 @@ class _Data_K(System, abc.ABC):
                  # delta_fz = 0.1,
                  Emin=-np.inf,
                  Emax=np.inf,
-                 use_wcc_phase=False,
                  fftlib='fftw',
                  npar_k=1,
                  random_gauge=False,
@@ -111,7 +108,6 @@ class _Data_K(System, abc.ABC):
         self.system = system
         self.Emin = Emin
         self.Emax = Emax
-        self.use_wcc_phase = use_wcc_phase
         self.fftlib = fftlib
         self.npar_k = npar_k
         self.random_gauge = random_gauge
@@ -634,8 +630,6 @@ class Data_K_R(_Data_K, System_R):
                 res = self._CCab_R()
             elif key == 'FF':
                 res = self._FF_R()
-            elif key == 'T_wcc':
-                res = self._T_wcc_R()
             else:
                 X_R = self.system.get_R_mat(key)
                 shape = [1] * X_R.ndim
@@ -649,12 +643,6 @@ class Data_K_R(_Data_K, System_R):
 
     #  this is a bit ovberhead, but to maintain uniformity of the code let's use this
 
-
-    def _T_wcc_R(self):
-        nw = self.num_wann
-        res = np.zeros((nw, nw, self.system.nRvec, 3), dtype=complex)
-        res[np.arange(nw), np.arange(nw), self.system.iR0, :] = self.system.wannier_centers_cart_wcc_phase
-        return res
 
     def _OO_R(self):
         # We do not multiply by expdK, because it is already accounted in AA_R

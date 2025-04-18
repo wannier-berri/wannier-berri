@@ -10,16 +10,16 @@ import wannierberri as wberri
 from wannierberri.system.system_R import System_R
 from wannierberri.system.system_tb import System_tb
 
-properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced', 'wannier_centers_cart_wcc_phase',
-                  'diff_wcc_cart', 'diff_wcc_red']  # , 'cRvec_p_wcc']
+properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced',
+                  'diff_wcc_cart', 'diff_wcc_red']
 
 
 @pytest.fixture
 def check_system():
     def _inner(system, name,
-               properties=['num_wann', 'recip_lattice', 'real_lattice', 'use_ws', 'periodic',
-                           'use_wcc_phase', 'cell_volume', 'is_phonon',
-                           'nRvec', 'iRvec', 'cRvec'] + properties_wcc,
+               properties=['num_wann', 'recip_lattice', 'real_lattice', 'periodic',
+                           'cell_volume', 'is_phonon',
+                           ] + properties_wcc + ['nRvec', 'iRvec', 'cRvec'],
                extra_properties=[],
                exclude_properties=[],
                precision_properties=1e-8,
@@ -148,13 +148,6 @@ def test_system_Fe_W90_npz(check_system, system_Fe_W90_npz):
     )
 
 
-def test_system_Fe_W90_wcc(check_system, system_Fe_W90_wcc):
-    check_system(
-        system_Fe_W90_wcc, "Fe_W90_wcc",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
-    )
-
-
 def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
     check_system(
         system_Fe_W90_sparse, "Fe_W90_sparse",
@@ -163,17 +156,9 @@ def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
     )
 
 
-def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90_wcc):
+def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90):
     check_system(
-        system_Fe_sym_W90_wcc, "Fe_sym_W90_wcc",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
-        sort_iR=True
-    )
-
-
-def test_system_Fe_sym_W90_new(check_system, system_Fe_sym_W90_wcc_new):
-    check_system(
-        system_Fe_sym_W90_wcc_new, "Fe_sym_W90_wcc",
+        system_Fe_sym_W90, "Fe_sym_W90",
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
         sort_iR=True
     )
@@ -201,23 +186,9 @@ def test_system_GaAs_W90(check_system, system_GaAs_W90):
     )
 
 
-def test_system_GaAs_W90_wcc(check_system, system_GaAs_W90_wcc):
+def test_system_GaAs_W90_JM(check_system, system_GaAs_W90_JM):
     check_system(
-        system_GaAs_W90_wcc, "GaAs_W90_wcc",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
-    )
-
-
-def test_system_GaAs_W90_wccFD(check_system, system_GaAs_W90_wccFD):
-    check_system(
-        system_GaAs_W90_wccFD, "GaAs_W90_wccFD",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'OO', 'GG']
-    )
-
-
-def test_system_GaAs_W90_wccJM(check_system, system_GaAs_W90_wccJM):
-    check_system(
-        system_GaAs_W90_wccJM, "GaAs_W90_wccJM",
+        system_GaAs_W90_JM, "GaAs_W90_JM",
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA', 'OO', 'GG'],
     )
 
@@ -229,62 +200,30 @@ def test_system_GaAs_tb(check_system, system_GaAs_tb):
     )
 
 
-def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb_wcc):
+def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb):
     check_system(
-        system_GaAs_sym_tb_wcc, "GaAs_sym_tb_wcc",
+        system_GaAs_sym_tb, "GaAs_sym_tb",
         matrices=['Ham', 'AA'],
         sort_iR=True,
-        suffix="old"
     )
 
 
-def test_system_GaAs_sym_tb_reorder(check_system, system_GaAs_sym_tb_wcc_reorder):
+
+def test_system_GaAs_tb_noAA(check_system, system_GaAs_tb_noAA):
     check_system(
-        system_GaAs_sym_tb_wcc_reorder, "GaAs_sym_tb_wcc",
-        matrices=['Ham', 'AA'],
-        sort_iR=True,
-        suffix="reorder"
-    )
-
-
-def test_system_GaAs_sym_tb_reorder_new(check_system, system_GaAs_sym_tb_wcc_reorder_new):
-    check_system(
-        system_GaAs_sym_tb_wcc_reorder_new, "GaAs_sym_tb_wcc",
-        matrices=['Ham', 'AA'],
-        sort_iR=True,
-        suffix="reorder_new"
-    )
-
-
-def test_system_GaAs_tb_wcc(check_system, system_GaAs_tb_wcc):
-    check_system(
-        system_GaAs_tb_wcc, "GaAs_tb_wcc",
-        matrices=['Ham', 'AA']
-    )
-
-
-def test_system_GaAs_tb_wcc_ws(check_system, system_GaAs_tb_wcc_ws):
-    check_system(
-        system_GaAs_tb_wcc_ws, "GaAs_tb_wcc_ws",
-        matrices=['Ham', 'AA']
-    )
-
-
-def test_system_GaAs_tb_wcc_ws_noAA(check_system, system_GaAs_tb_wcc_ws_noAA):
-    check_system(
-        system_GaAs_tb_wcc_ws_noAA, "GaAs_tb_wcc_ws",
+        system_GaAs_tb_noAA, "GaAs_tb",
         matrices=['Ham',]
     )
 
 
-def test_system_GaAs_tb_wcc_ws_save_load(check_system, system_GaAs_tb_wcc_ws):
-    name = "GaAs_tb_wcc_ws_save"
+def test_system_GaAs_tb_save_load(check_system, system_GaAs_tb):
+    name = "GaAs_tb_save"
     path = os.path.join(OUTPUT_DIR, name)
-    system_GaAs_tb_wcc_ws.save_npz(path)
+    system_GaAs_tb.save_npz(path)
     system = System_R()
     system.load_npz(path, load_all_XX_R=True)
     check_system(
-        system, "GaAs_tb_wcc_ws",
+        system, "GaAs_tb",
         suffix="save-load",
         matrices=['Ham', 'AA']
     )
@@ -297,10 +236,24 @@ def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
     )
 
 
-def test_system_Si_W90_wccFD(check_system, system_Si_W90_wccFD):
+def test_system_Si_W90_JM_sym(check_system, system_Si_W90_JM_sym):
     check_system(
-        system_Si_W90_wccFD, "Si_W90_wccFD",
+        system_Si_W90_JM_sym, "Si_W90_JM_sym",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
+    )
+
+
+def test_system_Si_W90(check_system, system_Si_W90):
+    check_system(
+        system_Si_W90, "Si_W90",
         matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO']
+    )
+
+
+def test_system_Si_W90_sym(check_system, system_Si_W90_sym):
+    check_system(
+        system_Si_W90_sym, "Si_W90_sym",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
     )
 
 
@@ -354,16 +307,9 @@ def test_system_Chiral_right(check_system, system_Chiral_right):
     )
 
 
-def test_system_Fe_FPLO_wcc(check_system, system_Fe_FPLO_wcc):
+def test_system_Fe_FPLO(check_system, system_Fe_FPLO):
     check_system(
-        system_Fe_FPLO_wcc, "Fe_FPLO_wcc",
-        matrices=['Ham', 'SS']
-    )
-
-
-def test_system_Fe_FPLO_wcc_ws(check_system, system_Fe_FPLO_wcc_ws):
-    check_system(
-        system_Fe_FPLO_wcc_ws, "Fe_FPLO_wcc_ws",
+        system_Fe_FPLO, "Fe_FPLO",
         matrices=['Ham', 'SS']
     )
 
@@ -375,9 +321,9 @@ def test_system_CuMnAs_2d_broken(check_system, system_CuMnAs_2d_broken):
     )
 
 
-def test_system_Te_ASE_wcc(check_system, system_Te_ASE_wcc):
+def test_system_Te_ASE_wcc(check_system, system_Te_ASE):
     check_system(
-        system_Te_ASE_wcc, "Te_ASE_wcc",
+        system_Te_ASE, "Te_ASE_wcc",
         matrices=['Ham']
     )
 
@@ -404,9 +350,9 @@ def test_system_Phonons_GaAs(check_system, system_Phonons_GaAs):
     )
 
 
-def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb_wcc):
+def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb):
     check_system(
-        system_Mn3Sn_sym_tb_wcc, "Mn3Sn_sym_tb_wcc",
+        system_Mn3Sn_sym_tb, "Mn3Sn_sym_tb",
         matrices=['Ham', 'AA'],
         sort_iR=True
     )
@@ -451,7 +397,7 @@ def test_system_random_load_bare(check_system, system_random_load_bare):
 def test_system_random_to_tb_back(check_system, system_random_GaAs_load_bare):
     path = os.path.join(OUTPUT_DIR, "random_GaAS_tb")
     system_random_GaAs_load_bare.to_tb_file(path)
-    system_tb = System_tb(path, berry=True, use_wcc_phase=True)
+    system_tb = System_tb(path, berry=True)
     print(system_tb.wannier_centers_cart)
     print(system_random_GaAs_load_bare.wannier_centers_cart)
 
@@ -479,17 +425,17 @@ def test_system_random_GaAs_load_bare(check_system, system_random_GaAs_load_bare
     )
 
 
-def test_system_random_GaAs_load_ws(check_system, system_random_GaAs_load_ws):
+def test_system_random_GaAs_load(check_system, system_random_GaAs_load_bare):
     check_system(
-        system_random_GaAs_load_ws, "random_GaAs_ws",
+        system_random_GaAs_load_bare, "random_GaAs_bare",
         matrices=['Ham', 'AA', 'SS'],
         sort_iR=False
     )
 
 
-def test_system_random_GaAs_load_ws_sym(check_system, system_random_GaAs_load_ws_sym):
+def test_system_random_GaAs_load_sym(check_system, system_random_GaAs_load_sym):
     check_system(
-        system_random_GaAs_load_ws_sym, "random_GaAs_ws_sym",
+        system_random_GaAs_load_sym, "random_GaAs_sym",
         matrices=['Ham', 'AA', 'SS'],
-        sort_iR=False
+        sort_iR=True
     )

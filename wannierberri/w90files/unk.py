@@ -10,7 +10,7 @@ class UNK(W90_file):
 
     """
     A class that stores all UNK files
-    
+
     Parameters
     ----------
     seedname : str
@@ -29,7 +29,7 @@ class UNK(W90_file):
     spinor : bool
         if True, the wavefunctions are expected to be spinors
     """
-    
+
     def __init__(self, seedname=None, **parameters):
         self.from_w90_file(seedname, **parameters)
 
@@ -56,7 +56,7 @@ class UNK(W90_file):
         # readfloat = lambda: FIN.read_record('f8')
         self._NB = None
         for i in range(NKmax):
-            filename = os.path.join(path, f"UNK{i+1:05d}.1")
+            filename = os.path.join(path, f"UNK{i + 1:05d}.1")
             # print(f"trying to read {filename}")
             if (kptirr is None or i in kptirr):
                 if os.path.exists(filename):
@@ -67,7 +67,7 @@ class UNK(W90_file):
                         self.grid_size = (nr1, nr2, nr3)
                     else:
                         assert self.grid_size == (nr1, nr2, nr3), f"NK={i} : grid_size={self.grid_size} != {(nr1, nr2, nr3)}"
-                    assert ikr == i + 1, f"read ik = {ikr} from file {filename}, expected {i+1}"
+                    assert ikr == i + 1, f"read ik = {ikr} from file {filename}, expected {i + 1}"
                     if selected_bands is None:
                         selected_bands = np.arange(_NB)
                     if self._NB is None:
@@ -93,9 +93,9 @@ class UNK(W90_file):
 
     def apply_window(self, selected_bands):
         self._NB = len(selected_bands)
-        for u in self.data_unk:
+        for i, u in enumerate(self.data):
             if u is not None:
-                u = u[selected_bands]
+                self.data[i] = u[selected_bands]
 
     @property
     def NB(self):

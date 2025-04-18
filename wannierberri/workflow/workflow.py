@@ -452,6 +452,7 @@ class WorkflowQE:
         if self.flags.check('pw2wannier') and not enforce:
             return
         message("pw2wannier")
+        targets = [t.lower() for t in targets]
         self.executables.run_wannier(self.prefix, pp=True)
         f_in = f'{self.prefix}.pw2wan.in'
         f_out = f'{self.prefix}.pw2wan.out'
@@ -473,10 +474,10 @@ class WorkflowQE:
         self.flags.on('wannier_w90')
         self.pickle()
 
-    def wannierise_wberri(self, enforce=False, kwargs_system={}, kwargs_window={}, **kwargs):
+    def wannierise_wberri(self, enforce=False, kwargs_system={}, kwargs_window={}, readfiles=["mmn", "amn", "eig", "win"], **kwargs):
         if self.flags.check('wannierise_wberri') and not enforce:
             return
-        w90data = Wannier90data(seedname=self.prefix, read_chk=False)
+        w90data = Wannier90data(seedname=self.prefix, readfiles=readfiles)
         w90data.apply_window(**kwargs_window)
         # for key in ["amn", "mmn", "eig", "dmn"]:
         #     print (f"w90data[{key}].NB = {w90data.get_file(key).NB}")
