@@ -11,7 +11,7 @@ from wannierberri.system.system_R import System_R
 from wannierberri.system.system_tb import System_tb
 
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced',
-                  'diff_wcc_cart', 'diff_wcc_red']  # , 'cRvec_p_wcc']
+                  'diff_wcc_cart', 'diff_wcc_red']
 
 
 @pytest.fixture
