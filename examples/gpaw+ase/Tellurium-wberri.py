@@ -26,7 +26,7 @@ print(wan.kklst_dk)
 # for k,kpt in enumerate(wan.kpt_kc):
 #    for d,G in enumerate(wan.Gdir_dc):
 #        print (k,kpt,G,wan.kklst_dk[d,k],wan.kpt_kc[wan.kklst_dk[d,k]])
-# system = System_ASE(wan,ase_calc=calc,use_ws = False, berry=True,ase_R_vectors = False,transl_inv_MV = True)
+# system = System_ASE(wan,ase_calc=calc, berry=True,ase_R_vectors = False,transl_inv_MV = True)
 
 # for k,kpt in enumerate(system.kpt_red):
 #    for d,G in enumerate(system.mmn.bk_red):
@@ -37,7 +37,7 @@ print(wan.kklst_dk)
 # for kz in np.linspace(0,1,21):
 #    print (f"{kz:8.5f}",np.linalg.eigvalsh(wan.get_hamiltonian_kpoint([1./3,1./3,kz])))
 
-# system = System_ASE(wan,ase_calc=calc,use_ws = False, berry=False)
+# system = System_ASE(wan,ase_calc=calc, berry=False)
 # exit()
 
 

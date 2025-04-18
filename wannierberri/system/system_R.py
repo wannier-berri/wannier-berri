@@ -7,7 +7,7 @@ from collections import defaultdict
 import glob
 import multiprocessing
 from .system import System, pauli_xyz
-from ..__utility import alpha_A, beta_A, clear_cached, one2three
+from ..__utility import clear_cached, one2three
 from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
 from .ws_dist import ws_dist_map
 
@@ -38,13 +38,8 @@ class System_R(System):
             set ``True`` if quantities derived from Ryoo's spin-current elements will be used. (RPS 2019)
         SHCqiao : bool
             set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018).
-        use_ws : bool
-            minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
-            (Note: for :class:`System_tb` the method is not employed in the constructor. use `do_ws_dist()` if needed)
         _getFF : bool
             generate the FF_R matrix based on the uIu file. May be used for only testing so far. Default : ``{_getFF}``
-        use_wcc_phase: bool
-            using wannier centers in Fourier transform. Corresponding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``
         npar : int
             number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
 
@@ -58,13 +53,8 @@ class System_R(System):
         ----------
         needed_R_matrices : set
             the set of matrices that are needed for the current calculation. The matrices are set in the constructor.
-        use_ws : bool
-            minimal distance replica selection method :ref:`sec-replica`.  equivalent of ``use_ws_distance`` in Wannier90.
-            (Note: for :class:`System_tb` the method is not employed in the constructor. use `do_ws_dist()` if needed)
         npar : int
             number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
-        use_wcc_phase: bool
-            using wannier centers in Fourier transform. Corresponding to Convention I (True), II (False) in Ref."Tight-binding formalism in the context of the PythTB package". Default: ``{use_wcc_phase}``    
         _XX_R : dict(str:array)
             dictionary of real-space matrices. The keys are the names of the matrices, the values are the matrices themselves.
         wannier_centers_cart : array(float)
@@ -92,21 +82,13 @@ class System_R(System):
                  SHCryoo=False,
                  SHCqiao=False,
                  OSD=False,
-                 use_ws=True,
-                 use_wcc_phase=True,
                  npar=None,
                  _getFF=False,
                  **parameters):
 
-        assert use_ws, "ws_distanced is forced to be used now"
-        assert use_wcc_phase, "use_wcc_phase is forced to be used now"
         super().__init__(**parameters)
-        self.use_ws = use_ws
         self.needed_R_matrices = {'Ham'}
         self.npar = multiprocessing.cpu_count() if npar is None else npar
-        self.use_wcc_phase = use_wcc_phase
-        if not self.use_wcc_phase:
-            warnings.warn("use_wcc_phase=False is not recommended")
 
         if morb:
             self.needed_R_matrices.update(['AA', 'BB', 'CC'])
@@ -257,15 +239,11 @@ class System_R(System):
         return self.get_R_mat('Ham')
 
     def symmetrize2(self, symmetrizer):
-        if not self.use_wcc_phase:
-            raise NotImplementedError("Symmetrization is implemented only for convention I")
-
         from ..symmetry.sym_wann_2 import SymWann
         symmetrize_wann = SymWann(
             symmetrizer=symmetrizer,
             iRvec=self.iRvec,
             wannier_centers_cart=self.wannier_centers_cart,
-            use_wcc_phase=self.use_wcc_phase,
             silent=self.silent,
         )
 
@@ -281,9 +259,7 @@ class System_R(System):
         self.clear_cached_wcc()
 
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=True, spin_ordering='interlace', store_symm_wann=False,
-                   method="new",
-                   rotations=None, translations=None):
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=True):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
         Also sets the pointgroup (with method "new")
@@ -316,10 +292,6 @@ class System_R(System):
             Spin orbital coupling.
         magmom: 2D array
             Magnetic momens of each atoms.
-        spin_ordering : str, "block" or "interlace"
-            The ordering of the wannier functions in the spinor case.
-            "block" means that first all the orbitals of the first spin are written, then the second spin. (like in the amn file old versions of VASP)
-            "interlace" means that the orbitals of the two spins are interlaced. (like in the amn file of QE and new versions of VASP)
         store_symm_wann: bool
             Store the (temporary) SymWann object in the `sym_wann` attribute of the System object.
             Can be useful for evaluating symmetry eigenvalues of wavefunctions, etc.
@@ -328,94 +300,49 @@ class System_R(System):
         translations: array-like (shape=(N,3))
             Translations of the symmetry operations. (optional)
 
+        Returns
+        -------
+        symmetrizer : :class:`wanierberri.symmetry.sawf.SymmetrizerSAWF`
+            the symmetrizer object that was used for symmetrization. Can be used for further analysis of the symmetry properties of the system.
+
         Notes
         -----
-            Works only with phase convention I (`use_wcc_phase=True`)
-
-            rotations and translations should be either given together or not given at all. Make sense to preserve consistensy in the order
-            of the symmetry operations, when store_symm_wann is set to True.
+            Works only with phase convention I (`use_wcc_phase=True`) (which anyway is now the ONLY option)
+            Spin ordering is assumed to be interlaced (like in the amn file of QE and new versions of VASP). If it is not, use :func:`~wannierberri.system.System.spin_block2interlace` to convert it.
         """
-        assert method == "new", "Symmetrization with old method is not supported anymore"
-        if method == "new":
-            assert spin_ordering == "interlace", "Symmetrization method 'new' is implemented only for spin_ordering='interlace'"
-            from irrep.spacegroup import SpaceGroup
-            from ..symmetry.sawf import SymmetrizerSAWF
-            from ..wannierise.projections import Projection
+        from irrep.spacegroup import SpaceGroup
+        from ..symmetry.sawf import SymmetrizerSAWF
+        from ..wannierise.projections import Projection
 
-            index = {key: i for i, key in enumerate(set(atom_name))}
-            atom_num = np.array([index[key] for key in atom_name])
+        index = {key: i for i, key in enumerate(set(atom_name))}
+        atom_num = np.array([index[key] for key in atom_name])
 
-            spacegroup = SpaceGroup(cell=(self.real_lattice, positions, atom_num),
-                                    magmom=magmom, include_TR=True,
-                                    spinor=soc,)
-            spacegroup.show()
+        spacegroup = SpaceGroup(cell=(self.real_lattice, positions, atom_num),
+                                magmom=magmom, include_TR=True,
+                                spinor=soc,)
+        spacegroup.show()
 
-            assert len(atom_name) == len(positions), "atom_name and positions should have the same length"
+        assert len(atom_name) == len(positions), "atom_name and positions should have the same length"
 
-            proj_list = []
-            for proj_str in proj:
-                atom, orbital = [l.strip() for l in proj_str.split(':')]
-                pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
-                if ";" in orbital:
-                    warnings.warn("for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
-                                  "But you need to do it consistently in wannier90 ")
-                proj = Projection(position_num=pos, orbital=orbital, spacegroup=spacegroup, allow_multiple_orbits=True,
-                                  do_not_split_projections=True)
-                # print (f"adding projection {proj} ({pos} {suborbital})")
-                proj_list.append(proj)
-            symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections_obj=proj_list)
-            self.symmetrize2(symmetrizer)
-            return symmetrizer
-        else:
-            assert method == "old", f"unknown symmetrization method {method}. expected 'old' or 'new'"
+        proj_list = []
+        for proj_str in proj:
+            atom, orbital = [l.strip() for l in proj_str.split(':')]
+            pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
+            if ";" in orbital:
+                warnings.warn("for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
+                              "But you need to do it consistently in wannier90 ")
+            proj = Projection(position_num=pos, orbital=orbital, spacegroup=spacegroup, allow_multiple_orbits=True,
+                              do_not_split_projections=True)
+            # print (f"adding projection {proj} ({pos} {suborbital})")
+            proj_list.append(proj)
+        symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections_obj=proj_list)
+        self.symmetrize2(symmetrizer)
+        return symmetrizer
 
-
-        if not self.use_wcc_phase:
-            raise NotImplementedError("Symmetrization is implemented only for convention I")
-
-
-        from ..symmetry.sym_wann import SymWann
-        symmetrize_wann = SymWann(
-            num_wann=self.num_wann,
-            lattice=self.real_lattice,
-            positions=positions,
-            atom_name=atom_name,
-            projections=proj,
-            iRvec=self.iRvec,
-            XX_R=self._XX_R,
-            soc=soc,
-            wannier_centers_cart=self.wannier_centers_cart,
-            magmom=magmom,
-            use_wcc_phase=self.use_wcc_phase,
-            spin_ordering=spin_ordering,
-            rotations=rotations,
-            translations=translations,
-            silent=self.silent,
-        )
-
-        self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
-        logfile = self.logfile
-
-        logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
-        logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
-        self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize()
-
-        logfile.write(f"Wannier Centers cart (symmetrized):\n {self.wannier_centers_cart}\n")
-        logfile.write(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_reduced}\n")
-        self.clear_cached_R()
-        self.clear_cached_wcc()
-        self.check_AA_diag_zero(msg="after symmetrization", set_zero=True)
-        self.symmetrize_info = dict(proj=proj, positions=positions, atom_name=atom_name, soc=soc, magmom=magmom,
-                                    spin_ordering=spin_ordering)
-
-        if store_symm_wann:
-            del symmetrize_wann.matrix_dict_list
-            del symmetrize_wann.matrix_list
-            self.sym_wann = symmetrize_wann
 
 
     def check_AA_diag_zero(self, msg="", set_zero=True):
-        if self.has_R_mat('AA') and self.use_wcc_phase:
+        if self.has_R_mat('AA'):
             A_diag = self.get_R_mat('AA')[:, :, self.iR0].diagonal()
             A_diag_max = abs(A_diag).max()
             if A_diag_max > 1e-5:
@@ -500,31 +427,19 @@ class System_R(System):
             SS_R0[j, j] = pauli_xyz[1, 1]
             self.set_R_mat(key='SS', value=SS_R0, diag=False, R=[0, 0, 0], reset=True)
 
-    def set_spin_from_projections(self, spin_ordering="interlace"):
+    def set_spin_from_projections(self):
         """set SS_R, assuming that each Wannier function is an eigenstate of Sz,
-         according to the ordering of the ab-initio code
-
-        Parameters
-        ----------
-        spin_ordering : str, "block" or "interlace"
-            The ordering of the wannier functions in the spinor case.
-             * "block" means that first all the orbitals of the first spin are written, then the second spin. (like in the amn file old versions of VASP)
-             * "interlace" means that the orbitals of the two spins are interlaced. (like in the amn file of QE and new versions of VASP)
+         with interlaced spin ordering, which  means that the orbitals of the two spins are interlaced. (like in the amn file of QE and new versions of VASP)
 
         Notes
         -------
         * This is a rough approximation, that may be used on own risk
         * The pure-spin character may be broken by maximal localization. Recommended to use `num_iter=0` in Wannier90
-        * if your DFT code has a different spin ordering, use   :func:`~wannierberri.system.System.set_spin_pairs`
+        also see   :func:`~wannierberri.system.System.set_spin_pairs`
         """
         assert self.num_wann % 2 == 0, f"odd number of Wannier functions {self.num_wann} cannot be grouped into spin pairs"
         nw2 = self.num_wann // 2
-        if spin_ordering.lower() == 'block':
-            pairs = [(i, i + nw2) for i in range(nw2)]
-        elif spin_ordering.lower() == 'interlace':
-            pairs = [(2 * i, 2 * i + 1) for i in range(nw2)]
-        else:
-            raise ValueError(f"unknown spin ordering {spin_ordering}. expected 'block' or 'interlace'")
+        pairs = [(2 * i, 2 * i + 1) for i in range(nw2)]
         self.set_spin_pairs(pairs)
 
     def set_spacegroup(self, spacegroup):
@@ -553,8 +468,7 @@ class System_R(System):
     def do_ws_dist(self, mp_grid, wannier_centers_cart=None):
         """
         Perform the minimal-distance replica selection method
-        As a side effect - it sets the variable _NKFFT_recommended to mp_grid and self.use_ws=True
-
+        As a side effect - it sets the variable _NKFFT_recommended to mp_grid
         Parameters:
         -----------
         wannier_centers_cart : array(float)
@@ -569,7 +483,6 @@ class System_R(System):
         except AssertionError:
             raise ValueError(f"mp_greid should be one integer, of three integers. found {mp_grid}")
         self._NKFFT_recommended = mp_grid
-        self.use_ws = True
         if wannier_centers_cart is None:
             wannier_centers_cart = self.wannier_centers_cart
         ws_map = ws_dist_map(
@@ -580,10 +493,10 @@ class System_R(System):
         self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
         self.clear_cached_R()
 
-    def to_tb_file(self, tb_file=None):
+    def to_tb_file(self, tb_file=None, use_convention_II=True):
         """
         Write the system in the format of the wannier90_tb.dat file
-        Note : it is always written in phase convention II
+        Note : it is written in phase convention II (as inb wannier90), unless use_convention_II=False
         """
         logfile = self.logfile
         if tb_file is None:
@@ -608,7 +521,7 @@ class System_R(System):
             )
         if self.has_R_mat('AA'):
             AA = np.copy(self.get_R_mat('AA'))
-            if self.use_wcc_phase:
+            if use_convention_II:
                 AA[self.range_wann, self.range_wann, self.iR0] += self.wannier_centers_cart
             for iR in range(self.nRvec):
                 f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
@@ -647,12 +560,9 @@ class System_R(System):
     @cached_property
     def cRvec_p_wcc(self):
         """
-        With self.use_wcc_phase=True it is R+tj-ti. With self.use_wcc_phase=False it is R. [i,j,iRvec,a] (Cartesian)
+        R+tj-ti.
         """
-        if self.use_wcc_phase:
-            return self.cRvec[None, None, :, :] + self.diff_wcc_cart[:, :, None, :]
-        else:
-            return self.cRvec[None, None, :, :]
+        return self.cRvec[None, None, :, :] + self.diff_wcc_cart[:, :, None, :]
 
     def clear_cached_R(self):
         clear_cached(self, ['cRvec', 'cRvec_p_wcc', 'reverseR', 'index_R'])
@@ -660,7 +570,7 @@ class System_R(System):
     @cached_property
     def diff_wcc_cart(self):
         """
-        With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [i,j,a] (Cartesian)
+        tj-ti. 
         """
         wannier_centers = self.wannier_centers_cart
         return wannier_centers[None, :, :] - wannier_centers[:, None, :]
@@ -668,18 +578,10 @@ class System_R(System):
     @cached_property
     def diff_wcc_red(self):
         """
-        With self.use_wcc_phase=True it is tj-ti. With self.use_wcc_phase=False it is 0. [i,j,a] (Reduced)
+        tj-ti. 
         """
         wannier_centers = self.wannier_centers_reduced
         return wannier_centers[None, :, :] - wannier_centers[:, None, :]
-
-    @property
-    def wannier_centers_cart_wcc_phase(self):
-        """returns zero array if use_wcc_phase = False"""
-        if self.use_wcc_phase:
-            return self.wannier_centers_cart
-        else:
-            return np.zeros((self.num_wann, 3), dtype=float)
 
     def clear_cached_wcc(self):
         clear_cached(self, ['diff_wcc_cart', 'cRvec_p_wcc', 'diff_wcc_red', "wannier_centers_reduced"])
@@ -688,49 +590,49 @@ class System_R(System):
     def wannier_centers_reduced(self):
         return self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
 
-    def convention_II_to_I(self):
-        R_new = {}
-        if self.wannier_centers_cart is None:
-            raise ValueError("use_wcc_phase = True, but the wannier centers could not be determined")
-        if self.has_R_mat('AA'):
-            AA_R_new = np.copy(self.get_R_mat('AA'))
-            AA_R_new[self.range_wann, self.range_wann, self.iR0, :] -= self.wannier_centers_cart
-            R_new['AA'] = AA_R_new
-        if self.has_R_mat('BB'):
-            BB_R_new = self.get_R_mat('BB').copy() - self.get_R_mat('Ham')[:, :, :,
-                                                     None] * self.wannier_centers_cart[None, :, None, :]
-            R_new['BB'] = BB_R_new
-        if self.has_R_mat('CC'):
-            norm = np.linalg.norm(self.get_R_mat('CC') - self.conj_XX_R(key='CC'))
-            assert norm < 1e-10, f"CC_R is not Hermitian, norm={norm}"
-            assert self.has_R_mat('BB'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
-            T = self.wannier_centers_cart[:, None, None, :, None] * self.get_R_mat('BB')[:, :, :, None, :]
-            CC_R_new = self.get_R_mat('CC').copy() + 1.j * sum(
-                s * (
-                    -T[:, :, :, a, b] -  # -t_i^a * B_{ij}^b(R)
-                    self.conj_XX_R(T[:, :, :, b, a]) +  # - B_{ji}^a(-R)^*  * t_j^b
-                    self.wannier_centers_cart[:, None, None, a] * self.Ham_R[:, :, :, None] *
-                    self.wannier_centers_cart[None, :, None, b]  # + t_i^a*H_ij(R)t_j^b
-                ) for (s, a, b) in [(+1, alpha_A, beta_A), (-1, beta_A, alpha_A)])
-            norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
-            assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
-            R_new['CC'] = CC_R_new
-        if self.has_R_mat('SA'):
-            SA_R_new = self.get_R_mat('SA').copy() - self.get_R_mat('SS')[:, :, :,
-                    None, :] * self.wannier_centers_cart[None, :, None, :, None]
-            R_new['SA'] = SA_R_new
-        if self.has_R_mat('SHA'):
-            SHA_R_new = self.get_R_mat('SHA').copy() - self.get_R_mat('SH')[:, :, :,
-                    None, :] * self.wannier_centers_cart[None, :, None, :, None]
-            R_new['SHA'] = SHA_R_new
+    # def convention_II_to_I(self):
+    #     R_new = {}
+    #     if self.wannier_centers_cart is None:
+    #         raise ValueError("use_wcc_phase = True, but the wannier centers could not be determined")
+    #     if self.has_R_mat('AA'):
+    #         AA_R_new = np.copy(self.get_R_mat('AA'))
+    #         AA_R_new[self.range_wann, self.range_wann, self.iR0, :] -= self.wannier_centers_cart
+    #         R_new['AA'] = AA_R_new
+    #     if self.has_R_mat('BB'):
+    #         BB_R_new = self.get_R_mat('BB').copy() - self.get_R_mat('Ham')[:, :, :,
+    #                                                  None] * self.wannier_centers_cart[None, :, None, :]
+    #         R_new['BB'] = BB_R_new
+    #     if self.has_R_mat('CC'):
+    #         norm = np.linalg.norm(self.get_R_mat('CC') - self.conj_XX_R(key='CC'))
+    #         assert norm < 1e-10, f"CC_R is not Hermitian, norm={norm}"
+    #         assert self.has_R_mat('BB'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
+    #         T = self.wannier_centers_cart[:, None, None, :, None] * self.get_R_mat('BB')[:, :, :, None, :]
+    #         CC_R_new = self.get_R_mat('CC').copy() + 1.j * sum(
+    #             s * (
+    #                 -T[:, :, :, a, b] -  # -t_i^a * B_{ij}^b(R)
+    #                 self.conj_XX_R(T[:, :, :, b, a]) +  # - B_{ji}^a(-R)^*  * t_j^b
+    #                 self.wannier_centers_cart[:, None, None, a] * self.Ham_R[:, :, :, None] *
+    #                 self.wannier_centers_cart[None, :, None, b]  # + t_i^a*H_ij(R)t_j^b
+    #             ) for (s, a, b) in [(+1, alpha_A, beta_A), (-1, beta_A, alpha_A)])
+    #         norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
+    #         assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
+    #         R_new['CC'] = CC_R_new
+    #     if self.has_R_mat('SA'):
+    #         SA_R_new = self.get_R_mat('SA').copy() - self.get_R_mat('SS')[:, :, :,
+    #                 None, :] * self.wannier_centers_cart[None, :, None, :, None]
+    #         R_new['SA'] = SA_R_new
+    #     if self.has_R_mat('SHA'):
+    #         SHA_R_new = self.get_R_mat('SHA').copy() - self.get_R_mat('SH')[:, :, :,
+    #                 None, :] * self.wannier_centers_cart[None, :, None, :, None]
+    #         R_new['SHA'] = SHA_R_new
 
-        unknown = set(self._XX_R.keys()) - set(['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA'])
-        if len(unknown) > 0:
-            raise NotImplementedError(f"Conversion of conventions for {list(unknown)} is not implemented")
+    #     unknown = set(self._XX_R.keys()) - set(['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA'])
+    #     if len(unknown) > 0:
+    #         raise NotImplementedError(f"Conversion of conventions for {list(unknown)} is not implemented")
 
-        for X in ['AA', 'BB', 'CC', 'SA', 'SHA']:
-            if self.has_R_mat(X):
-                self.set_R_mat(X, R_new[X], reset=True)
+    #     for X in ['AA', 'BB', 'CC', 'SA', 'SHA']:
+    #         if self.has_R_mat(X):
+    #             self.set_R_mat(X, R_new[X], reset=True)
 
     @property
     def iR0(self):
@@ -880,7 +782,6 @@ class System_R(System):
             real_lattice=self.real_lattice,
             wannier_centers_reduced=self.wannier_centers_reduced,
             matrices={},
-            use_wcc_phase=self.use_wcc_phase
         )
         if hasattr(self, 'symmetrize_info'):
             ret_dic['symmetrize_info'] = self.symmetrize_info
@@ -901,7 +802,7 @@ class System_R(System):
     @cached_property
     def essential_properties(self):
         return ['num_wann', 'real_lattice', 'iRvec', 'periodic',
-                'use_wcc_phase', 'is_phonon', 'wannier_centers_cart', 'pointgroup']
+                'is_phonon', 'wannier_centers_cart', 'pointgroup']
 
     @cached_property
     def optional_properties(self):

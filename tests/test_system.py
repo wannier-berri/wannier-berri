@@ -10,15 +10,15 @@ import wannierberri as wberri
 from wannierberri.system.system_R import System_R
 from wannierberri.system.system_tb import System_tb
 
-properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced', 'wannier_centers_cart_wcc_phase',
-                  'diff_wcc_cart', 'diff_wcc_red']  # , 'cRvec_p_wcc']
+properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced',
+                  'diff_wcc_cart', 'diff_wcc_red']
 
 
 @pytest.fixture
 def check_system():
     def _inner(system, name,
-               properties=['num_wann', 'recip_lattice', 'real_lattice', 'use_ws', 'periodic',
-                           'use_wcc_phase', 'cell_volume', 'is_phonon',
+               properties=['num_wann', 'recip_lattice', 'real_lattice', 'periodic',
+                           'cell_volume', 'is_phonon',
                            ] + properties_wcc + ['nRvec', 'iRvec', 'cRvec'],
                extra_properties=[],
                exclude_properties=[],
@@ -397,7 +397,7 @@ def test_system_random_load_bare(check_system, system_random_load_bare):
 def test_system_random_to_tb_back(check_system, system_random_GaAs_load_bare):
     path = os.path.join(OUTPUT_DIR, "random_GaAS_tb")
     system_random_GaAs_load_bare.to_tb_file(path)
-    system_tb = System_tb(path, berry=True, use_wcc_phase=True)
+    system_tb = System_tb(path, berry=True)
     print(system_tb.wannier_centers_cart)
     print(system_random_GaAs_load_bare.wannier_centers_cart)
 

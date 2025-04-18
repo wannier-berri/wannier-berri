@@ -16,7 +16,6 @@ system0.symmetrize(
     positions=np.array([[0, 0, 0]]),
     magmom=[[0., 0., -2.31]],
     soc=True,
-    spin_ordering='interlace'
 )
 
 system1 = copy.deepcopy(system0)
@@ -27,7 +26,6 @@ system0.symmetrize(
     positions=np.array([[0, 0, 0]]),
     magmom=[[0., 0., 0]],
     soc=True,
-    spin_ordering='interlace'
 )
 
 interpolator = wberri.system.interpolate.SystemInterpolator(system0, system1)

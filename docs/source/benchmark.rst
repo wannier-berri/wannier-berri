@@ -38,7 +38,7 @@ For example, the WannierBerri script:
 .. code:: python
 
     import wannierberri as wberri
-    system = wberri.System_w90(seedname='Fe',berry=True,use_ws=True,transl_inv=False )
+    system = wberri.System_w90(seedname='Fe',berry=True,transl_inv=False )
     grid   = wberri.Grid ( system,
                            NKFFT = [10,10,10],
                            NKdiv = [5,5,5] )

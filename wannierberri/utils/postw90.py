@@ -73,11 +73,8 @@ def main(argv):
             calc["ahc"] = calculators.static.AHC(Efermi=efermi, tetra=False)
 
     system = System_w90(seedname, berry=parameters["berry"],
-                        use_ws=parameters["use_ws_distance"],
                         fftlib=parameters["__wb_fft_lib"],
-                        transl_inv_MV=parameters["transl_inv"],
-                        use_wcc_phase=False,
-                        wcc_phase_fin_diff=False
+                        transl_inv_MV=parameters["transl_inv"]
                         )
     grid = Grid(system, NK=parameters["berry_kmesh"])
     parallel = Parallel(ray_init={"num_gpus": 0})  # parallel with  "ray",num_cpus - auto
