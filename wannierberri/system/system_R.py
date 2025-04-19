@@ -9,6 +9,7 @@ import multiprocessing
 from .system import System, pauli_xyz
 from ..__utility import clear_cached, one2three
 from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
+from ..symmetry.wyckoff_position import split_into_orbits
 from .ws_dist import ws_dist_map
 
 
@@ -223,7 +224,6 @@ class System_R(System):
         for key, val in self._XX_R.items():
             self._XX_R[key] = val[:, mapping][mapping, :]
         self.wannier_centers_cart = self.wannier_centers_cart[mapping]
-        self.clear_cached_R()
         self.clear_cached_wcc()
 
 
@@ -238,13 +238,23 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize2(self, symmetrizer):
+    def symmetrize2(self, symmetrizer, silent=True):
+        """
+        Symmetrize the system according to the Symmetrizer object.
+
+        Parameters
+        ----------
+        symmetrizer : :class:`wanierberri.symmetry.sawf.SymmetrizerSAWF`
+            The symmetrizer object that will be used for symmetrization. (make sure it is consistent with the order of projections)
+        silent : bool
+            If True, do not print the symmetrization process. (set to False to see more debug information)
+        """
         from ..symmetry.sym_wann_2 import SymWann
         symmetrize_wann = SymWann(
             symmetrizer=symmetrizer,
             iRvec=self.iRvec,
             wannier_centers_cart=self.wannier_centers_cart,
-            silent=self.silent,
+            silent=self.silent or silent,
         )
 
         self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
@@ -259,7 +269,8 @@ class System_R(System):
         self.clear_cached_wcc()
 
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=True):
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=True, silent=True,
+                   reorder_back=False):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
         Also sets the pointgroup (with method "new")
@@ -299,6 +310,10 @@ class System_R(System):
             Rotations of the symmetry operations. (optional)
         translations: array-like (shape=(N,3))
             Translations of the symmetry operations. (optional)
+        silent: bool
+            If True, do not print the symmetrization process.
+        reorder_back: bool
+            If True, reorder the wannier functions back to the original order after symmetrization. (if the order happened to be changed (see note below))
 
         Returns
         -------
@@ -307,8 +322,12 @@ class System_R(System):
 
         Notes
         -----
-            Works only with phase convention I (`use_wcc_phase=True`) (which anyway is now the ONLY option)
-            Spin ordering is assumed to be interlaced (like in the amn file of QE and new versions of VASP). If it is not, use :func:`~wannierberri.system.System.spin_block2interlace` to convert it.
+        * after symmetrization, the wannier functions may be reordered, to group the atoms 
+        by same wyckoff positions. In this case, the symmetrizer is not returned, because it would be 
+        inconsistent with the order of the projections.
+
+        * Works only with phase convention I (`use_wcc_phase=True`) (which anyway is now the ONLY option)
+        Spin ordering is assumed to be interlaced (like in the amn file of QE and new versions of VASP). If it is not, use :func:`~wannierberri.system.System.spin_block2interlace` to convert it.
         """
         from irrep.spacegroup import SpaceGroup
         from ..symmetry.sawf import SymmetrizerSAWF
@@ -325,20 +344,67 @@ class System_R(System):
         assert len(atom_name) == len(positions), "atom_name and positions should have the same length"
 
         proj_list = []
+        new_wann_indices = []
+        num_wann_loc = 0
         for proj_str in proj:
             atom, orbital = [l.strip() for l in proj_str.split(':')]
+            # pos = []
+            # ipos = []
+            # for ia, a in enumerate(atom_name):
+            #     if a == atom:
+            #         pos.append(positions[ia])
+            #         ipos.append(ia)
             pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
+            suborbit_list = split_into_orbits(pos, spacegroup=spacegroup)
+            if len(suborbit_list) > 1:
+                warnings.warn(f"Positions of  {atom} belong to different wyckoff positions. This case is not much tested."
+                         "it is recommentded to name atoms at different wyckoff positions differently:\n"
+                         "\n".join(f"{atom}{i+1}:" + ";".join(str(pos[j]) for j in suborbit) for i, suborbit in enumerate(suborbit_list))
+                )
+            print(f"pos_list: {suborbit_list}")
             if ";" in orbital:
                 warnings.warn("for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
                               "But you need to do it consistently in wannier90 ")
-            proj = Projection(position_num=pos, orbital=orbital, spacegroup=spacegroup, allow_multiple_orbits=True,
-                              do_not_split_projections=True)
-            # print (f"adding projection {proj} ({pos} {suborbital})")
-            proj_list.append(proj)
-        symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections=proj_list)
-        self.symmetrize2(symmetrizer)
-        return symmetrizer
+            for suborbit in suborbit_list:
+                pos_loc = pos[suborbit]
+                proj = Projection(position_num=pos_loc, orbital=orbital, spacegroup=spacegroup,
+                                  do_not_split_projections=True)
+                proj_list.append(proj)
+                num_wann_per_position = proj.num_wann_per_site_spinor
+                print(f"orbital = {orbital}, num wann per site = {num_wann_per_position}")
+                for i in suborbit:
+                    for j in range(num_wann_per_position):
+                        new_wann_indices.append(num_wann_loc + i * num_wann_per_position + j)
+            num_wann_loc = len(new_wann_indices)
 
+        print(f"new_wann_indices: {new_wann_indices}")
+        self.reorder(new_wann_indices)
+        symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections=proj_list)
+        self.symmetrize2(symmetrizer, silent=silent)
+        if reorder_back:
+            self.reorder(np.argsort(new_wann_indices))
+            if np.all(np.array(new_wann_indices) == np.arange(self.num_wann)):
+                return symmetrizer
+            else:
+                return None
+        else:
+            return symmetrizer
+
+    def reorder(self, new_wann_indices):
+        """
+        Reorder the wannier functions according to the new indices
+
+        Parameters
+        ----------
+        new_wann_indices : list
+            list of new indices for the wannier functions. The length should be equal to the number of wannier functions.
+        """
+        assert len(new_wann_indices) == self.num_wann, f"new_wann_indices should have length {self.num_wann}, found {len(new_wann_indices)}"
+        self.wannier_centers_cart = self.wannier_centers_cart[new_wann_indices]
+        for key, val in self._XX_R.items():
+            self._XX_R[key] = val[:, new_wann_indices][new_wann_indices, :]
+        self.clear_cached_wcc()
+        self.clear_cached_R()
 
 
     def check_AA_diag_zero(self, msg="", set_zero=True):

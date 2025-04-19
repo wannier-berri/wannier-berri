@@ -98,7 +98,6 @@ class Projection:
                  rotate_basis=False,
                  zaxis=None,
                  xaxis=None,
-                 allow_multiple_orbits=False,
                  do_not_split_projections=False):
         if void:
             return
@@ -122,7 +121,6 @@ class Projection:
                 if position_num.ndim == 1:
                     position_num = position_num[None, :]
                 self.wyckoff_position = WyckoffPositionNumeric(positions=position_num,
-                                                               allow_multiple_orbits=allow_multiple_orbits,
                                                     spacegroup=spacegroup)
         if spinor is None:
             if spacegroup is not None:
@@ -145,7 +143,13 @@ class Projection:
 
     @property
     def num_wann_per_site(self):
+        """number of wannier functions per site (without spin)"""
         return sum(num_orbitals(o) for o in self.orbitals)
+
+    @property
+    def num_wann_per_site_spinor(self):
+        """number of wannier functions per site (with spin)"""
+        return self.num_wann_per_site * (2 if self.spinor else self.num_wann_per_site)
 
     @property
     def num_points(self):
@@ -593,9 +597,6 @@ class ProjectionsSet:
             end = start + proj.wyckoff_position.num_free_vars
             proj.wyckoff_position.free_var_values = value[start:end]
             start = end
-
-
-
 
 
 

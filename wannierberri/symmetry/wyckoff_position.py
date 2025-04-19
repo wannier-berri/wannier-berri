@@ -220,7 +220,7 @@ class WyckoffPosition:
 
 class WyckoffPositionNumeric(WyckoffPosition):
 
-    def __init__(self, positions, spacegroup, allow_multiple_orbits=False):
+    def __init__(self, positions, spacegroup):
         """
         Wyckoff position defined by a list of positions
         Parameters
@@ -229,13 +229,11 @@ class WyckoffPositionNumeric(WyckoffPosition):
             List of positions or only first position
         spacegroup : irrep.spacegroup.SpaceGroup
             The spacegroup which transforms the coordinates
-        allow_multiple_orbits : bool
-            If True, the positions are not checked to be in the same orbit. 
-            If False - the orbits of all initial positions are merged 
 
         Note
         ----
-        In the resulting position thw order is the following : first come the positions given by the user, them the positions in the orbit os positions[1] (which are not yet in the list), then the positions in the orbit of positions[2] and so on.
+        positions shouls transform into each other under the symmetry operations of the spacegroup
+        (multiple orbits are not allowed)
         """
 
         positions = np.array(positions)
@@ -258,12 +256,9 @@ class WyckoffPositionNumeric(WyckoffPosition):
                 self.translations.append(translations[ind])
 
         for pos in positions:
-            if allow_multiple_orbits:
-                orbit0 += get_orbit(spacegroup, pos)
-            else:
-                assert pos in orbit0, f"Position {pos} is not in the orbit of the first position {positions[0]}"
+            assert pos in orbit0, f"Position {pos} is not in the orbit of the first position {positions[0]}"
             add_pos_and_rottrans(pos)
-        # now add the positions that are pot in the input
+        # now add the positions that are not in the input
         for pos in orbit0:
             add_pos_and_rottrans(pos)
         assert len(orbit) == len(self.rotations), f"len(orbit) {len(orbit)} != len(rotations) {len(self.rotations)}"
@@ -416,3 +411,33 @@ def get_shifts(max_shift, ndim=3):
     # more probably that equality happens at smaller shift, so sort by norm
     srt = np.linalg.norm(shifts, axis=1).argsort()
     return shifts[srt]
+
+
+def split_into_orbits(positions, spacegroup):
+    """
+    Split a list of positions into orbits under the symmetry operations of a structure.
+
+    Parameters
+    ----------
+    positions : list of np.ndarray(shape=(3,), dtype=float)
+        The positions to split into orbits.
+    spacegroup : irrep.spacegroup.SpaceGroup
+        The spacegroup of the structure.
+
+    Returns
+    -------
+    list of list of int
+        the indices of the positions in the input list that belong to the same orbit.
+    """
+    orbits = []
+    orbits_ind = []
+    for ip, pos in enumerate(positions):
+        for io, orb in enumerate(orbits):
+            if pos in orb:
+                orbits_ind[io].append(ip)
+                break
+        else:
+            orb = get_orbit(spacegroup, pos)
+            orbits.append(orb)
+            orbits_ind.append([ip])
+    return orbits_ind

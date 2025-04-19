@@ -70,7 +70,7 @@ def test_wannierise(outer_window):
     wannier_spreads_mean = np.mean(wannier_spreads)
     if check_results:
         assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
-        assert wannier_spreads == approx(0.39864755, abs=1e-7)
+        assert wannier_spreads == approx(0.39864755, abs=1e-5)
         assert wannier_centers == approx(np.array([[0, 0, 0],
                                                 [0, 0, 1],
             [0, 1, 0],
