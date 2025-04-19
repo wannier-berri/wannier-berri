@@ -196,8 +196,8 @@ def amn_from_bandstructure(bandstructure: BandStructure, projections: Projection
         gk = igk.T @ rec_latt
         projector = Projector(gk, bessel)
         prj = list([projector(orb, basis) for orb, basis in zip(orbitals, basis_list)])
-        print(f"expgk shape {expgk.shape} igk shape {igk.shape} pos shape {pos.shape}")
-        print(f"prj shapes {[p.shape for p in prj]} total {np.array(prj).shape}")
+        # print(f"expgk shape {expgk.shape} igk shape {igk.shape} pos shape {pos.shape}")
+        # print(f"prj shapes {[p.shape for p in prj]} total {np.array(prj).shape}")
         proj_gk = np.array(prj) * expgk
         if spinor:
             proj_up = wf_up @ proj_gk.T

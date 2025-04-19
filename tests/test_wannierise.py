@@ -45,7 +45,7 @@ def test_wannierise(outer_window):
 
     # because of changes in irrep 2.1 - and to avoid re-creating symmetrizer
     # symmetrizer.spacegroup.number_str = str(symmetrizer.spacegroup.number)
-    symmetrizer.spacegroup.show()
+    # symmetrizer.spacegroup.show()
     # symmetrizer.to_w90_file(prefix)
     # Read the data from the Wanier90 inputs
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])

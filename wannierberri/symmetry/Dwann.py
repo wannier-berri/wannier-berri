@@ -89,10 +89,7 @@ class Dwann:
         for ip, p in enumerate(self.orbit):
             for isym, symop in enumerate(spacegroup.symmetries):
                 p2 = symop.transform_r(p)
-                print(f"ip={ip}, p={p}, isym={isym}, p2={p2} rot_cart={symop.rotation_cart}")
                 ip2 = self.orbit.index(p2)
-                print(f"ip = {ip} basis = \n{basis_list[ip]}")
-                print(f"ip2 = {ip2} basis = \n{basis_list[ip2]}")
                 self.atommap[ip, isym] = ip2
                 if orbital != "_":
                     self.rot_orb[ip][isym] = orbitalrotator(orb_symbol=orbital, rot_cart=symop.rotation_cart, basis1=basis_list[ip], basis2=basis_list[ip2])

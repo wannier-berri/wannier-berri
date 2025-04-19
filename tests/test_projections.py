@@ -291,7 +291,7 @@ def test_create_amn_diamond_s_bond():
     print("prefix = ", prefix)
     symmetrizer = SAWF().from_npz(prefix + ".sawf.npz")
     # try:
-    symmetrizer.spacegroup.show()
+    # symmetrizer.spacegroup.show()
     # except AttributeError as err:
     #     print("Error: ", err, " spacegroup could not be shown")
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
@@ -324,7 +324,7 @@ def test_create_amn_diamond_s_bond():
 
 
 def test_create_amn_diamond_p_bond():
-    data_dir = os.path.join(ROOT_DIR, "data", "diamond-444")
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
 
     bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
                                                       code="espresso",
@@ -397,14 +397,14 @@ def test_create_amn_diamond_p_bond():
     assert wannier_centers == approx(wannier_centers_ab, abs=1e-6)
     assert wannier_spreads == approx(wannier_spreads.mean(), abs=1e-6)
 
-    expected_spread = 1.50741348946
+    expected_spread = 1.574684543725
     expected_a = -lattice[0, 0] / 2
     assert a == approx(expected_a, abs=1e-6)
     assert wannier_spreads == approx(expected_spread, abs=1e-2)
 
 
 def test_create_amn_diamond_sp3():
-    data_dir = os.path.join(ROOT_DIR, "data", "diamond-444")
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
 
     bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
                                                       code="espresso",
@@ -477,9 +477,9 @@ def test_create_amn_diamond_sp3():
     assert wannier_spreads == approx(wannier_spreads.mean(), abs=1e-6)
 
 
-    expected_spread = 0.30252846
-    expected_a = 0.23647622
-    expected_b = 0.57051903
+    expected_spread = 0.432977363501
+    expected_a = 0.2504700607869765
+    expected_b = 0.55652500
     assert a == approx(expected_a, abs=1e-2)
     assert b == approx(expected_b, abs=1e-2)
     assert wannier_spreads == approx(expected_spread, abs=1e-2)

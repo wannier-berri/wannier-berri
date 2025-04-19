@@ -655,8 +655,6 @@ class Wannier90data:
             if U is None:
                 raise NotImplementedError("plotWF from irreducible kpoints is not implemented yet")
             U = U[:, ::reduce_r_points[0], ::reduce_r_points[1], ::reduce_r_points[2], :]
-            print(f"U.shape = {U.shape}")
-            print(f"v_matrix.shape = {self.chk.v_matrix[ik].shape}")
             U = np.einsum("m...,mn->...n", U, self.chk.v_matrix[ik][:, select_WF])
             k_int = kpoints_int[ik]
             k_latt = kpoints[ik]

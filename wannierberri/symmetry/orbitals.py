@@ -225,9 +225,7 @@ class OrbitalRotator:
         assert (irot is None) != (rot_cart is None), f"either irot or rot_cart should be provided, not both, got irot={irot}, rot_cart={rot_cart}"
         if irot is None:
             if basis1 is not None:
-                print("basis taken into account")
                 rot_cart = basis2 @ rot_cart @ basis1.T
-            print(f"rot_cart with basis= \n{rot_cart}")
             irot = self.calcualted_matrices.index_or_None(rot_cart)
             if irot is None:
                 irot = len(self.calcualted_matrices)
@@ -273,11 +271,9 @@ class Projector:
 
     def __call__(self, orbital, basis=None):
         if orbital in hybrids_coef and orbital not in basis_orbital_list:
-            print("projector for hybrid")
             return sum(self(orb, basis) * coef for orb, coef in hybrids_coef[orbital].items())
         else:
             l = {'s': 0, 'p': 1, 'd': 2, 'f': 3}[orbital[0]]
-            print(f"projector for orbital l={l}")
             bessel_j_exp_int = self.get_bessel_l(l)
             spherical = self.sph(orbital, basis)
             return bessel_j_exp_int * spherical
@@ -401,17 +397,17 @@ class SphericalHarmonics:
             return sum(self(orb) * coef for orb, coef in hybrids_coef[orbital].items())
         else:
             if not np.allclose(basis, np.eye(3), atol=1e-4):
-                print(f"evaluating orbital {orbital} in basis \n{basis}")
+                # print(f"evaluating orbital {orbital} in basis \n{basis}")
                 shell = orbital[0]
                 assert shell in basis_shells_list, f"shell {shell} not in basis_shells_list"
                 shell_list = orbitals_sets_dic[shell]
                 assert orbital in shell_list, f"orbital {orbital} not in shell {shell}"
                 shell_pos = shell_list.index(orbital)
-                print(f"basis = \n{basis}")
+                # print(f"basis = \n{basis}")
                 matrix = self.orbitalrotator(shell, basis)
-                print(f"matrix = \n{matrix}")
+                # print(f"matrix = \n{matrix}")
                 vector = matrix[shell_pos, :]
-                print(f" orbital {orbital} basis = \n{basis}\n,   vector = {vector}, shell_list = {shell_list}")
+                # print(f" orbital {orbital} basis = \n{basis}\n,   vector = {vector}, shell_list = {shell_list}")
                 return sum(self(o, basis=None) * k for k, o in zip(vector, shell_list))
             else:
                 match orbital:
