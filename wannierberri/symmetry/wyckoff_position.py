@@ -262,10 +262,12 @@ class WyckoffPositionNumeric(WyckoffPosition):
                 orbit0 += get_orbit(spacegroup, pos)
             else:
                 assert pos in orbit0, f"Position {pos} is not in the orbit of the first position {positions[0]}"
-            orbit.append(pos)
+            add_pos_and_rottrans(pos)
         # now add the positions that are pot in the input
         for pos in orbit0:
             add_pos_and_rottrans(pos)
+        assert len(orbit) == len(self.rotations), f"len(orbit) {len(orbit)} != len(rotations) {len(self.rotations)}"
+        assert len(orbit) == len(self.translations), f"len(orbit) {len(orbit)} != len(translations) {len(self.translations)}"
         self._positions = np.array(orbit)
         self.num_points = self._positions.shape[0]
 

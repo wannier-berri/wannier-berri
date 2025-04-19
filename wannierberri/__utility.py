@@ -710,7 +710,7 @@ class SavableNPZ(abc.ABC):
         dic = np.load(f_npz)
         self.from_dict(dic)
         return self
-    
+
     def as_dict(self):
         dic = {k: self.__getattribute__(k) for k in self.npz_tags}
         for k in self.npz_tags_optional:
@@ -729,4 +729,3 @@ class SavableNPZ(abc.ABC):
                 self.__setattr__(k, dic[k])
             elif k in self.default_tags:
                 self.__setattr__(k, self.default_tags[k])
-

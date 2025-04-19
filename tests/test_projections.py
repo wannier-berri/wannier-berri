@@ -295,7 +295,7 @@ def test_create_amn_diamond_s_bond():
     # except AttributeError as err:
     #     print("Error: ", err, " spacegroup could not be shown")
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
-    print ("amn.shape = ", amn.data.shape)
+    print("amn.shape = ", amn.data.shape)
     print("mmn.shape = ", w90data.mmn.data.shape)
     print("eig.shape = ", w90data.eig.data.shape)
     w90data.set_amn(amn)
@@ -324,7 +324,7 @@ def test_create_amn_diamond_s_bond():
 
 
 def test_create_amn_diamond_p_bond():
-    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond-444")
 
     bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
                                                       code="espresso",
@@ -363,7 +363,8 @@ def test_create_amn_diamond_p_bond():
     print("prefix = ", prefix)
     symmetrizer.spacegroup.show()
 
-    w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win", "unk"])
+    w90data = wberri.w90files.Wannier90data(seedname=os.path.join(tmp_dir, prefix),
+                                            readfiles=["mmn", "eig", "win", "unk"])
     w90data.set_amn(amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)
@@ -373,12 +374,12 @@ def test_create_amn_diamond_p_bond():
     w90data.wannierise(
         froz_min=22,
         froz_max=35,
-        num_iter=100,
+        num_iter=20,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
         mix_ratio_u=1,
         print_progress_every=1,
-        sitesym=False,
+        sitesym=True,
         localise=True
     )
     w90data.plotWF()
@@ -390,6 +391,17 @@ def test_create_amn_diamond_p_bond():
     print("wannier_spreads = ", wannier_spreads)
     # assert wannier_spreads == approx(.398647548, abs=1e-5)
 
+    a = -wannier_centers[1, 0]
+
+    wannier_centers_ab = np.array([[0, 0, 0], [-1, 0, 1], [-1, 1, 0], [0, 1, 1]]) * a
+    assert wannier_centers == approx(wannier_centers_ab, abs=1e-6)
+    assert wannier_spreads == approx(wannier_spreads.mean(), abs=1e-6)
+
+    expected_spread = 1.50741348946
+    expected_a = -lattice[0, 0] / 2
+    assert a == approx(expected_a, abs=1e-6)
+    assert wannier_spreads == approx(expected_spread, abs=1e-2)
+
 
 def test_create_amn_diamond_sp3():
     data_dir = os.path.join(ROOT_DIR, "data", "diamond-444")
@@ -399,17 +411,15 @@ def test_create_amn_diamond_sp3():
                                                     include_TR=False,
                                                       )
     lattice = bandstructure.lattice
-    positions = np.array([[1, 1, 1], [-1, -1, -1]])
-    zaxis = (positions[0] - positions[1]) @ lattice
-
-
-    projection = Projection(position_num=[1 / 8, 1 / 8, 1 / 8], orbital='sp3', zaxis=zaxis, spacegroup=bandstructure.spacegroup, rotate_basis=True)
-    print("positions_cart = ", projection.positions @ lattice)
-
-    amn = amn_from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
+    positions = np.array([[1, 1, 1], [-1, -1, -1]]) / 8
+    projection_sp3 = Projection(position_num=positions, orbital='sp3',
+                            spacegroup=bandstructure.spacegroup, rotate_basis=True)
+    projections = ProjectionsSet([projection_sp3])
+    print(f"lattice = {lattice}")
+    amn = amn_from_bandstructure(bandstructure=bandstructure, projections=projections,
                            normalize=True, return_object=True, spinor=False)
     symmetrizer = SAWF().from_irrep(bandstructure)
-    symmetrizer.set_D_wann_from_projections([projection])
+    symmetrizer.set_D_wann_from_projections(projections)
 
     tmp_dir = os.path.join(OUTPUT_DIR, "diamond+create_amn")
 
@@ -425,7 +435,6 @@ def test_create_amn_diamond_sp3():
     for ext in ["mmn", "eig", "win"]:
         shutil.copy(os.path.join(data_dir, prefix + "." + ext),
                     os.path.join(tmp_dir, prefix + "." + ext))
-    print("prefix = ", prefix)
     symmetrizer.spacegroup.show()
 
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
@@ -436,20 +445,43 @@ def test_create_amn_diamond_sp3():
     print(f"amn is symmetric with accuracy {amn_symm_prec}")
     # Now wannierise the system
     w90data.wannierise(
-        froz_min=-20,
-        froz_max=35,
-        num_iter=100,
+        # froz_min=-20,
+        # froz_max=35,
+        num_iter=20,
         conv_tol=1e-10,
-        mix_ratio_z=0.8,
+        mix_ratio_z=1,
         mix_ratio_u=1,
         print_progress_every=1,
         sitesym=True,
         localise=True
     )
 
+
     wannier_centers = w90data.chk._wannier_centers
     print("wannierr_centers = ", wannier_centers)
     # assert wannier_centers == approx(0.806995*np.array([[0, 0, 0], [-1,1,0], [0,1,1], [-1,0,1]]), abs=1e-6)
     wannier_spreads = w90data.chk._wannier_spreads
     print("wannier_spreads = ", wannier_spreads)
+
+    a = -wannier_centers[0, 0]
+    b = wannier_centers[0, 1]
+    wannier_centers_ab = np.array([[-a, b, b],
+                                   [-a, a, a],
+                                   [-b, b, a],
+                                   [-b, a, b],
+                                   [a, -a, -a],
+                                   [b, -a, -b],
+                                   [a, -b, -b],
+                                   [b, -b, -a]])
+    assert wannier_centers == approx(wannier_centers_ab, abs=1e-6)
+    assert wannier_spreads == approx(wannier_spreads.mean(), abs=1e-6)
+
+
+    expected_spread = 0.30252846
+    expected_a = 0.23647622
+    expected_b = 0.57051903
+    assert a == approx(expected_a, abs=1e-2)
+    assert b == approx(expected_b, abs=1e-2)
+    assert wannier_spreads == approx(expected_spread, abs=1e-2)
+
     # assert wannier_spreads == approx(.398647548, abs=1e-5)

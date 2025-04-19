@@ -137,7 +137,7 @@ class Projection:
             basis0 = read_xzaxis(xaxis, zaxis)
             self.basis_list = [np.dot(basis0, rot.T) for rot in self.wyckoff_position.rotations_cart]
         else:
-            self.basis_list = [np.eye(3, dtype=float)] * self.wyckoff_position.num_points
+            self.basis_list = [np.eye(3, dtype=float)] * self.num_points
 
     @property
     def positions(self):

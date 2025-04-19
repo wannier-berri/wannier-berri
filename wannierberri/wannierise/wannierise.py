@@ -1,5 +1,4 @@
 from time import time
-import warnings
 import numpy as np
 
 from .wannierizer import Wannierizer
@@ -210,11 +209,12 @@ def wannierise(w90data,
 
     U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR)
     print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="Final state (from wannierizer)", std=delta_std)
-    wcc_chk, spreads_chk = print_centers_and_spreads_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, comment="Final state (from chk)")
-    if not np.allclose(wcc, wcc_chk, atol=1e-4):
-        warnings.warn(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
-    if not np.allclose(spreads, spreads_chk, atol=1e-4):
-        warnings.warn(f"The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = {np.abs(spreads - spreads_chk).max()}")
+    update_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, wcc=wcc, spreads=spreads)
+    #    comment="Final state (from chk)")
+    # if not np.allclose(wcc, wcc_chk, atol=1e-4):
+    #     warnings.warn(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
+    # if not np.allclose(spreads, spreads_chk, atol=1e-4):
+    #     warnings.warn(f"The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = {np.abs(spreads - spreads_chk).max()}")
 
 
     w90data.wannierised = True
@@ -227,8 +227,9 @@ def wannierise(w90data,
 
 
 
-def print_centers_and_spreads_chk(w90data, U_opt_full_BZ,
-                              comment=""):
+def update_chk(w90data, U_opt_full_BZ,
+               wcc=None, spreads=None,
+               comment="", print_wcc=False):
     """
     print the centers and spreads of the Wannier functions
 
@@ -241,9 +242,16 @@ def print_centers_and_spreads_chk(w90data, U_opt_full_BZ,
     """
 
     w90data.chk.v_matrix = np.array(U_opt_full_BZ)
-    w90data.chk._wannier_centers, w90data.chk._wannier_spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
-    print_centers_and_spreads(w90data.chk._wannier_centers, w90data.chk._wannier_spreads, comment=comment + ": from chk")
-    return w90data.chk._wannier_centers, w90data.chk._wannier_spreads
+    if (wcc is None) or (spreads is None):
+        wcc_new, spreads_new = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
+        if wcc is None:
+            wcc = wcc_new
+        if spreads is None:
+            spreads = spreads_new
+    w90data.chk._wannier_centers, w90data.chk._wannier_spreads = wcc, spreads
+    if print_wcc:
+        print_centers_and_spreads(wcc, spreads, comment=comment + ": from chk")
+    return wcc, spreads
 
 
 def print_centers_and_spreads(wcc, spreads, comment=None, std=None):
@@ -256,6 +264,12 @@ def print_centers_and_spreads(wcc, spreads, comment=None, std=None):
         the centers of the Wannier functions
     spreads: np.ndarray(nW,)
         the spreads of the Wannier functions
+    comment: str
+        the comment to print
+    std: float
+        the standard deviation of the spread functional over the last `num_iter_converge` iterations
+    set_wcc_chk: bool
+        whether to set the wcc and spreads to the chk file
     """
     breakline = "-" * 100
     startline = "#" * 100

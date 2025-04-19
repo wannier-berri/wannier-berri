@@ -198,7 +198,7 @@ def test_create_sawf_diamond(check_sawf):
     sawf_new.to_npz(tmp_sawf_path + ".sawf.npz")
     sawf_ref = SymmetrizerSAWF().from_npz(data_dir + "/diamond.sawf.npz")
     check_sawf(sawf_new, sawf_ref)
-    
+
 
 @pytest.mark.parametrize("include_TR", [True, False])
 def test_create_sawf_Fe(check_sawf, include_TR):

@@ -1,6 +1,5 @@
 from functools import cached_property, lru_cache
 from time import time
-from irrep.utility import get_block_indices
 import numpy as np
 from copy import deepcopy
 from ..__utility import get_inverse_block, rotate_block_matrix, SavableNPZ
@@ -8,7 +7,10 @@ from ..__utility import get_inverse_block, rotate_block_matrix, SavableNPZ
 
 class DMN(SavableNPZ):
     """
-    Class to read and store the wannier90.dmn file
+    Initially, this class was intended to read, write and handle the wannier90.dmn file.
+    Now it developed into a more general class "SymmetrizerSAWF"
+    the present class serveces as a base class for the SymmetrizerSAWF class
+    TODO : merge the two classes into one
 
 
     Parameters
@@ -235,6 +237,7 @@ class DMN(SavableNPZ):
     #                            for isym in range(self.Nsym)] for ik in range(self.NKirr)]
     #     self.clear_inverse()
     #     return self
+
 
     def to_npz(self, f_npz):
         dic = self.as_dict()
@@ -600,7 +603,7 @@ class DMN(SavableNPZ):
         AMN
             the symmetrized amn
         """
-        if isinstance(amn, AMN):
+        if not isinstance(amn, np.ndarray):
             amn = amn.data
         assert amn.shape == (self.NK, self.NB, self.num_wann)
 
@@ -623,10 +626,16 @@ class DMN(SavableNPZ):
         return amn_sym
 
     def get_random_amn(self):
-        " generate a random amn file that is comaptible with the symmetries of the Wanier functions in the DMN object"
+        """ generate a random amn array that is comaptible with the symmetries of the Wanier functions in the DMN object
+
+        Returns
+        -------
+        np.ndarray(complex, shape=(NK, NB, num_wann))
+            the random amn, respecting the symmetries of the DMN object
+        """
         shape = (self.NK, self.NB, self.num_wann)
         amn = np.random.random(shape) + 1j * np.random.random(shape)
-        return AMN(data=self.symmetrize_amn(amn))
+        return self.symmetrize_amn(amn)
 
     def set_D_wann(self, D_wann):
         """
