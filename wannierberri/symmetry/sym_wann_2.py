@@ -72,7 +72,7 @@ class SymWann:
 
         self.dmn = symmetrizer
         self.num_blocks = len(symmetrizer.D_wann_block_indices)
-        self.num_orb_list = [symmetrizer.rot_orb_list[i][0].shape[0] for i in range(self.num_blocks)]
+        self.num_orb_list = [symmetrizer.rot_orb_list[i][0][0].shape[0] for i in range(self.num_blocks)]
         self.num_points_list = [symmetrizer.atommap_list[i].shape[0] for i in range(self.num_blocks)]
         self.num_points_tot = sum(self.num_points_list)
         points_index = np.cumsum([0] + self.num_points_list)
@@ -290,6 +290,7 @@ class SymWann:
                         ws2b = ws2 + b * norb2
                         we2b = ws2b + norb2
                         for iR, XX_L in X.items():
+                            # print (f"iR = {iR}, blocks: {block1, block2} \n   iRvec_map[iR] = {iRvec_map[iR]} ws1a = {ws1a}, we1a = {we1a}, ws2b = {ws2b}, we2b = {we2b}, XX_L.shap={XX_L.shape}")
                             return_dic[k][ws1a:we1a, ws2b:we2b, iRvec_map[iR]] += XX_L
 
         logfile.write('Symmetrizing Finished\n')
@@ -343,8 +344,7 @@ class SymWann:
                                 XX_L = matrix_dict_in[X][(atom_a_map, atom_b_map)][
                                     new_Rvec_index]
                                 matrix_dict_list_res[X][(atom_a, atom_b)][iR] += self._rotate_XX_L(
-                                    XX_L, X, isym, block1=block1, block2=block2
-                                )
+                                    XX_L, X, isym, block1=block1, block2=block2, atom_a=atom_a_map, atom_b=atom_b_map)
                 # in single mode we need to determine it only once
                 if mode == "single":
                     iR_new_list -= exclude_set
@@ -363,7 +363,7 @@ class SymWann:
         return matrix_dict_list_res, iRab_all
 
 
-    def _rotate_XX_L(self, XX_L: np.ndarray, X: str, isym, block1, block2):
+    def _rotate_XX_L(self, XX_L: np.ndarray, X: str, isym, block1, block2, atom_a, atom_b):
         """
         H_ab_sym = P_dagger_a dot H_ab dot P_b
         H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
@@ -393,7 +393,7 @@ class SymWann:
             XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=((-n_cart,), (0,)))
         if symop.inversion:
             XX_L *= self.parity_I[X] * (-1)**n_cart
-        result = _rotate_matrix(XX_L, self.dmn.rot_orb_dagger_list[block1][isym], self.dmn.rot_orb_list[block2][isym])
+        result = _rotate_matrix(XX_L, self.dmn.rot_orb_dagger_list[block1][atom_a, isym], self.dmn.rot_orb_list[block2][atom_b, isym])
         if symop.time_reversal:
             result = result.conj() * self.parity_TR[X]
         return result

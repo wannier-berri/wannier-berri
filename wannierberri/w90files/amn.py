@@ -2,6 +2,7 @@ from datetime import datetime
 import multiprocessing
 import numpy as np
 from irrep.bandstructure import BandStructure
+from ..symmetry.projections import ProjectionsSet
 
 from ..symmetry.orbitals import Bessel_j_exp_int, Projector
 from .utility import str2arraymmn
@@ -147,7 +148,8 @@ def amn_from_bandstructure_s_delta(bandstructure: BandStructure, positions, norm
         return data
 
 
-def amn_from_bandstructure(bandstructure: BandStructure, positions=None, orbitals=None, projections_set=None, normalize=True, return_object=True, spinor=False):
+def amn_from_bandstructure(bandstructure: BandStructure, projections: ProjectionsSet,
+                           normalize=True, return_object=True, spinor=False):
     """
     Create an AMN object from a BandStructure object
     So far only delta-localised s-orbitals are implemented
@@ -156,32 +158,28 @@ def amn_from_bandstructure(bandstructure: BandStructure, positions=None, orbital
     ----------
     bandstructure : BandStructure
         the band structure object
-    positions : array( (N, 3), dtype=float)
-        the positions of the orbitals
-    orbitals : list of str
-        the orbitals to be projected (e.g. ['s', 'px', 'py', 'pz', dxy', 'dxz', 'dyz', 'dz2', 'dx2_y2'])
+    projections : ProjectionsSet
+        the projections set as an object
     normalize : bool
         if True, the wavefunctions are normalised
     return_object : bool
         if True, return an AMN object, otherwise return the data as a numpy array
     """
-    print(f"creating amn with \n positions = \n{positions}\n orbitals = \n{orbitals}")
-    has_proj_set = projections_set is not None
-    has_pos_orb = positions is not None and orbitals is not None
-    assert has_proj_set != has_pos_orb, "either provide a projections_set or positions and orbitals"
-    if has_proj_set:
-        positions = []
-        orbitals = []
-        print(f"Creating amn. Using projections_set \n{projections_set}")
-        for proj in projections_set.projections:
-            pos, orb = proj.get_positions_and_orbitals()
-            positions += pos
-            orbitals += orb
-        spinor = projections_set.spinor
-    print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals}")
+    positions = []
+    orbitals = []
+    basis_list = []
+    print(f"Creating amn. Using projections_set \n{projections}")
+    for proj in projections.projections:
+        pos, orb = proj.get_positions_and_orbitals()
+        positions += pos
+        orbitals += orb
+        basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site)]
+        print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
+    spinor = projections.spinor
+
+
+    print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
     data = []
-    assert len(positions) == len(orbitals), f"the number of positions and orbitals should be the same. Provided: {len(positions)} positions and {len(orbitals)} orbitals:\n positions = \n{positions}\n orbitals = \n{orbitals}"
-    assert len(orbitals) > 0, "No orbitals provided"
     pos = np.array(positions)
     rec_latt = bandstructure.RecLattice
     bessel = Bessel_j_exp_int()
@@ -197,7 +195,10 @@ def amn_from_bandstructure(bandstructure: BandStructure, positions=None, orbital
 
         gk = igk.T @ rec_latt
         projector = Projector(gk, bessel)
-        proj_gk = np.array([projector(orb) for orb in orbitals]) * expgk
+        prj = list([projector(orb, basis) for orb, basis in zip(orbitals, basis_list)])
+        # print(f"expgk shape {expgk.shape} igk shape {igk.shape} pos shape {pos.shape}")
+        # print(f"prj shapes {[p.shape for p in prj]} total {np.array(prj).shape}")
+        proj_gk = np.array(prj) * expgk
         if spinor:
             proj_up = wf_up @ proj_gk.T
             proj_down = wf_down @ proj_gk.T

@@ -61,7 +61,7 @@ if sitesym:
 
 
         projections = ProjectionsSet([projection1, projection2, projection3, projection4])
-        symmetrizer.set_D_wann_from_projections(projections_obj=projections)
+        symmetrizer.set_D_wann_from_projections(projections)
         symmetrizer.to_npz("Ni4W.dmn.npz")
     w90data.set_symmetrizer(symmetrizer)
 

@@ -27,7 +27,7 @@ class SystemSparse(System_R):
                  **parameters):
 
         parameters = {}
-        
+
         if matrices is None:
             matrices = {}
         super().__init__(**parameters)

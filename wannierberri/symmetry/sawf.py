@@ -5,9 +5,9 @@ from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroupBare
 import numpy as np
 from ..__utility import get_inverse_block, rotate_block_matrix, orthogonalize
-from ..wannierise.projections import ProjectionsSet
+from .projections import Projection, ProjectionsSet
 
-from ..w90files import DMN
+from .dmn import DMN
 from .Dwann import Dwann
 from .orbitals import OrbitalRotator
 
@@ -20,7 +20,7 @@ class SymmetrizerSAWF(DMN):
     Thus the name "dmn" is kept for historical reasons, but the class is not compatible with the wannier90.dmn file
     """
 
-    def __init__(self, NK=1):
+    def __init__(self):
         self.npz_tags = ['D_wann_block_indices', '_NB',
                     'kpt2kptirr', 'kptirr', 'kptirr2kpt', 'kpt2kptirr_sym',
                    '_NK', 'num_wann', 'comment', 'NKirr', 'Nsym', 'time_reversals',]
@@ -76,52 +76,47 @@ class SymmetrizerSAWF(DMN):
         return self
 
     @cached_property
-    def orbital_rotator(self):
-        return OrbitalRotator([symop.rotation_cart for symop in self.spacegroup.symmetries])
+    def orbitalrotator(self):
+        return OrbitalRotator()
+        # return OrbitalRotator([symop.rotation_cart for symop in self.spacegroup.symmetries])
 
 
     def set_D_wann_from_projections(self,
-                                    projections=None,
-                                    projections_obj=None,
-                                    kpoints=None,
+                                    projections,
                                     ):
         """
         Parameters
         ----------
-        projections : list( (np.array(float, shape=(3,)), str) )
-            the list of projections. Each projection is a tuple of the position and the orbital name. e.g [(np.array([0, 0, 0]), "s"), (np.array([0, 0.5, 0.5]), "p")]
-        projections_obj : ProjectionsSet or list(Projection)
+        projections : ProjectionsSet or list(Projection)
             alternative way to provide the projections. Will be appended to the projections list
         kpoints : np.array(float, shape=(npoints,3,))
             the kpoints in fractional coordinates (neede only if the kpoints are not stored in the object yet) 
         """
-        if projections is None:
-            projections = []
-        if not hasattr(self, "kpoints_all") or self.kpoints_all is None:
-            if kpoints is None:
-                warnings.warn("kpoints are not provided, neither stored in the object. Assuming Gamma point only")
-                kpoints = np.array([[0, 0, 0]])
-            self.kpoints_all = kpoints
-            self._NK = len(kpoints)
+        # a list of tuples (positions, orbital_string, basis_list)
+        projections_list = []
 
-        if projections_obj is not None:
-            if isinstance(projections_obj, ProjectionsSet):
-                projections_obj = projections_obj.projections
-            for proj in projections_obj:
-                orbitals = proj.orbitals
-                print(f"orbitals = {orbitals}")
-                if len(orbitals) > 1:
-                    warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
-                for orb in orbitals:
-                    projections.append((proj.positions, orb))
+        if isinstance(projections, Projection):
+            projections = [projections]
+        elif isinstance(projections, ProjectionsSet):
+            projections = projections.projections
+        for proj in projections:
+            orbitals = proj.orbitals
+            basis_list = proj.basis_list
+            print(f"orbitals = {orbitals}")
+            if len(orbitals) > 1:
+                warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
+            for orb in orbitals:
+                projections_list.append((proj.positions, orb, basis_list))
 
         D_wann_list = []
         self.T_list = []
         self.atommap_list = []
         self.rot_orb_list = []
-        for positions, proj in projections:
+        for positions, proj, basis_list in projections_list:
             print(f"calculating Wannier functions for {proj} at {positions}")
-            _Dwann = Dwann(spacegroup=self.spacegroup, positions=positions, orbital=proj, orbital_rotator=self.orbital_rotator, spinor=self.spacegroup.spinor)
+            _Dwann = Dwann(spacegroup=self.spacegroup, positions=positions, orbital=proj, orbitalrotator=self.orbitalrotator,
+                           spinor=self.spacegroup.spinor,
+                           basis_list=basis_list)
             _dwann = _Dwann.get_on_points_all(kpoints=self.kpoints_all, ikptirr=self.kptirr, ikptirr2kpt=self.kptirr2kpt)
             D_wann_list.append(_dwann)
             self.T_list.append(_Dwann.T)
@@ -133,11 +128,20 @@ class SymmetrizerSAWF(DMN):
 
     @cached_property
     def rot_orb_dagger_list(self):
-        return [rot_orb.swapaxes(1, 2).conj()
+        return [rot_orb.swapaxes(-2, -1).conj()
             for rot_orb in self.rot_orb_list]
 
 
-    def symmetrize_smth(self, wannier_property):
+    def symmetrize_wannier_property(self, wannier_property):
+        """
+        Symmetrizes a property of the Wannier functions (single-WF property) over the spacegroup
+
+        Parameters
+        ----------
+        wannier_property : np.ndarray(dtype=float, shape=(num_wann, ...))
+            The property of the Wannier functions to be symmetrized. The first axis should be the Wannier function index,
+            the second [optional] should be the cartesian coordinates
+        """
         ncart = (wannier_property.ndim - 1)
         if ncart == 0:
             wcc_red_in = wannier_property
@@ -148,7 +152,8 @@ class SymmetrizerSAWF(DMN):
         WCC_red_out = np.zeros((self.num_wann,) + (3,) * ncart, dtype=float)
         for isym, symop in enumerate(self.spacegroup.symmetries):
             for block, (ws, _) in enumerate(self.D_wann_block_indices):
-                norb = self.rot_orb_list[block][0].shape[0]
+                norb = self.rot_orb_list[block][0, 0].shape[0]
+                # print(f"block={block}, isym={isym} rot_orb_list[block].shape={self.rot_orb_list[block].shape} norb={norb}")
                 T = self.T_list[block][:, isym]
                 num_points = T.shape[0]
                 atom_map = self.atommap_list[block][:, isym]
@@ -156,12 +161,16 @@ class SymmetrizerSAWF(DMN):
                     start_a = ws + atom_a * norb
                     atom_b = atom_map[atom_a]
                     start_b = ws + atom_b * norb
+                    # print(f"block={block}, isym={isym}, atom_a={atom_a}, atom_b={atom_b}, start_a={start_a}, start_b={start_b}, norb={norb}")
                     XX_L = wcc_red_in[start_a:start_a + norb]
+                    # print(f"XX_L.shape={XX_L.shape}")
                     if ncart > 0:
                         XX_L = symop.transform_r(XX_L) + T[atom_a]
+                    # print(f"XX_L.shape={XX_L.shape}")
                     # XX_L = symop.transform_r(wcc_red_in[start_a:start_a + norb]) + T[atom_a]
                     # NOTE : I do not fully understand why the transpose are needed here but it works TODO  : check
-                    transformed = np.einsum("ij,j...,ji->i...", self.rot_orb_dagger_list[block][isym].T, XX_L, self.rot_orb_list[block][isym].T).real
+                    # print(f"shapes : {self.rot_orb_dagger_list[block][atom_a,isym].shape}, {XX_L.shape}, {self.rot_orb_list[block][atom_a,isym].shape}")
+                    transformed = np.einsum("ij,j...,ji->i...", self.rot_orb_dagger_list[block][atom_a, isym].T, XX_L, self.rot_orb_list[block][atom_a, isym].T).real
                     WCC_red_out[start_b:start_b + norb] += transformed
         if ncart > 0:
             WCC_red_out = WCC_red_out @ self.spacegroup.lattice
@@ -179,10 +188,10 @@ class SymmetrizerSAWF(DMN):
             raise ValueError(f"The shape of eig should be either ({self.NK}, {self.NB}) or ({self.NKirr}, {self.NB}), not {eig.shape}")
 
     def symmetrize_WCC(self, wannier_centers_cart):
-        return self.symmetrize_smth(wannier_centers_cart)
+        return self.symmetrize_wannier_property(wannier_centers_cart)
 
     def symmetrize_spreads(self, wannier_spreads):
-        return self.symmetrize_smth(wannier_spreads)
+        return self.symmetrize_wannier_property(wannier_spreads)
 
     def set_spacegroup(self, spacegroup):
         self.spacegroup = spacegroup
@@ -388,5 +397,5 @@ class VoidSymmetrizer(SymmetrizerSAWF):
     def get_symmetrizer_Zirr(self, ikirr, free=None):
         return VoidSymmetrizer()
 
-    def symmetrize_smth(self, wannier_property):
+    def symmetrize_wannier_property(self, wannier_property):
         return wannier_property

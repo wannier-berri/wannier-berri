@@ -203,6 +203,13 @@ class Kpoint_and_neighbours:
         ----------
         U_nb : list of nnb matrices numpy.ndarray(nBfree,nWfree)
             the U matrix at neighbouring k-points
+
+        Returns
+        -------
+        numpy.ndarray(nW, 3)
+            the contriibution of the k-point to the WCC
+        numpy.ndarray(nW)
+            the contribution of the k-point to the r2 (part of the spread)
         """
         if U_nb is not None:
             self.U_nb = U_nb

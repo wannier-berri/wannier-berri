@@ -1,4 +1,4 @@
-# This tutorial shows how to generate a DMN file inside Wanier Berri code (without pw2wannier90)
+# This tutorial shows how to generate a symmetrizer
 # and then use it to generate a Wannier90 output.
 # It uses Irrep, and may be used with any DFT code that is supported by Irrep (QE, VASP, AINIT, ...)
 
@@ -6,6 +6,7 @@ import os, shutil
 from time import time
 import wannierberri as wberri
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
+from wannierberri.wannierise.projections import Projection
 
 data_dir = "../../tests/data/diamond"
 
@@ -31,6 +32,8 @@ if sitesym and generate_dmn:
                                 Ecut=100,
                                 normalize=False, include_TR=False)
     pos = [[0,0,0],[0,0,1/2],[0,1/2,0],[1/2,0,0]]
+    spacegroup = bandstructure.spacegroup
+    proj_s = Projection(position_num=pos, orbital='s', spacegroup=spacegroup)
     symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure).set_D_wann_from_projections(projections=[(pos, 's') ])
 else:
     symmetrizer = SymmetrizerSAWF().from_npz(os.path.join(data_dir, "diamond.sawf.npz"))

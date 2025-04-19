@@ -312,7 +312,7 @@ class System_R(System):
         """
         from irrep.spacegroup import SpaceGroup
         from ..symmetry.sawf import SymmetrizerSAWF
-        from ..wannierise.projections import Projection
+        from ..symmetry.projections import Projection
 
         index = {key: i for i, key in enumerate(set(atom_name))}
         atom_num = np.array([index[key] for key in atom_name])
@@ -335,7 +335,7 @@ class System_R(System):
                               do_not_split_projections=True)
             # print (f"adding projection {proj} ({pos} {suborbital})")
             proj_list.append(proj)
-        symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections_obj=proj_list)
+        symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections=proj_list)
         self.symmetrize2(symmetrizer)
         return symmetrizer
 

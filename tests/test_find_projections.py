@@ -5,8 +5,8 @@ import numpy as np
 import sympy
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
-from wannierberri.wannierise.projections_searcher import EBRsearcher
-from wannierberri.wannierise.projections import Projection, ProjectionsSet
+from wannierberri.symmetry.projections_searcher import EBRsearcher
+from wannierberri.symmetry.projections import Projection, ProjectionsSet
 
 from .common import OUTPUT_DIR, ROOT_DIR
 

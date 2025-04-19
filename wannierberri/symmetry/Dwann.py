@@ -51,8 +51,9 @@ class Dwann:
     """
 
     def __init__(self, spacegroup, positions, orbital="_",
-                orbital_rotator=None,
-                 spinor=False):
+                orbitalrotator=None,
+                basis_list=None,
+                spinor=False):
 
         self.nsym = spacegroup.size
         if spinor:
@@ -62,21 +63,49 @@ class Dwann:
             self.spinor = False
             self.nspinor = 1
 
+
+        self.orbit = orbit_from_positions(spacegroup, positions)
+        self.spacegroup = spacegroup
+
+        self.num_points = len(self.orbit)
+
         if orbital != "_":
-            assert orbital_rotator is not None
-            self.rot_orb = [orbital_rotator(orbital, i)
-                       for i in range(self.nsym)]
+            assert orbitalrotator is not None
+            assert basis_list is not None
             self.num_orbitals_scal = num_orbitals(orbital)
         else:
-            self.rot_orb = [np.eye(1) for _ in range(self.nsym)]
             self.num_orbitals_scal = 1
+
+
+        self.num_wann_scal = self.num_points * self.num_orbitals_scal
+        self.num_wann = self.num_wann_scal * self.nspinor
+        self.num_orbitals = self.num_orbitals_scal * self.nspinor
+
+        self.atommap = -np.ones((self.num_points, self.nsym), dtype=int)
+        self.rot_basis = np.zeros((self.num_points, self.nsym, 3, 3), dtype=float)
+        self.T = np.zeros((self.num_points, self.nsym, 3), dtype=float)
+
+        self.rot_orb = [[np.eye(self.num_orbitals_scal) for _ in range(self.nsym)] for _ in range(self.num_points)]
+        for ip, p in enumerate(self.orbit):
+            for isym, symop in enumerate(spacegroup.symmetries):
+                p2 = symop.transform_r(p)
+                ip2 = self.orbit.index(p2)
+                self.atommap[ip, isym] = ip2
+                if orbital != "_":
+                    self.rot_orb[ip][isym] = orbitalrotator(orb_symbol=orbital, rot_cart=symop.rotation_cart, basis1=basis_list[ip], basis2=basis_list[ip2])
+                p2a = self.orbit[ip2]
+                self.T[ip, isym] = p2a - p2
+        T_round = np.round(self.T)
+        assert np.allclose(self.T, T_round, atol=1e-7), f"T=\n{self.T}, \nT_round=\n{T_round}, \n max_diff={np.max(np.abs(self.T - T_round))}"
+        self.T = T_round.astype(int)
 
         if self.spinor:
             for isym, symop in enumerate(spacegroup.symmetries):
                 S = symop.spinor_rotation
                 if symop.time_reversal:
                     S = np.array([[0, 1], [-1, 0]]) @ S.conj()
-                self.rot_orb[isym] = np.kron(self.rot_orb[isym], S)
+                for ip, p in enumerate(self.orbit):
+                    self.rot_orb[ip][isym] = np.kron(self.rot_orb[ip][isym], S)
         self.rot_orb = np.array(self.rot_orb)
 
         self.num_orbitals = self.num_orbitals_scal * self.nspinor
@@ -137,7 +166,7 @@ class Dwann:
             jp = self.atommap[ip, isym]
             Dwann[jp * self.num_orbitals:(jp + 1) * self.num_orbitals,
                   ip * self.num_orbitals:(ip + 1) * self.num_orbitals
-                  ] = np.exp(2j * np.pi * (np.dot(kptirr1, self.T[ip, isym]))) * self.rot_orb[isym]
+                  ] = np.exp(2j * np.pi * (np.dot(kptirr1, self.T[ip, isym]))) * self.rot_orb[ip, isym]
         # Here we assume that all the orbitals are real, so we don't need to take the complex conjugate
         return Dwann
 

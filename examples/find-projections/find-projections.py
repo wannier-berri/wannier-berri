@@ -8,7 +8,7 @@ from wannierberri.wannierise.projections_searcher import EBRsearcher
 from wannierberri.wannierise.projections import Projection, ProjectionsSet
 
 
-print("calculating DMN")
+print("calculating symmetrizer")
 
 path = "../../tests/data/diamond/"
 
