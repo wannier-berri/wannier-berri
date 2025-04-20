@@ -62,7 +62,7 @@ class SystemRandom(System_R):
             iRvec=list(iRvec),
             shifts_left_red=self.wannier_centers_reduced,
         )
-        
+
         for key in self.needed_R_matrices:
             shape = (self.num_wann, self.num_wann, self.rvec.nRvec,) + (3,) * num_cart_dim(key)
             im, re = [np.random.random(shape) for _ in (0, 1)]

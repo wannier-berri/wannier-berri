@@ -58,7 +58,7 @@ class SystemSparse(System_R):
                 print((self.num_wann, self.num_wann, self.rvec.nRvec) + shape)
                 X = np.zeros((self.num_wann, self.num_wann, self.rvec.nRvec) + shape, dtype=complex)
                 for R, v1 in v.items():
-                    iR = self.rvec.iR(R) #  iRvec.tolist().index(list(R))
+                    iR = self.rvec.iR(R)  # iRvec.tolist().index(list(R))
                     for j, h in v1.items():
                         X[j[0], j[1], iR] = h
                 self.set_R_mat(k, X)

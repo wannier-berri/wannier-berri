@@ -122,7 +122,7 @@ class System_Phonon_QE(System_w90):
         self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec,
                              shifts_left_red=self.wannier_centers_reduced,
                              )
-        
+
         self.do_at_end_of_init()
         self.do_ws_dist(mp_grid=mp_grid)
 

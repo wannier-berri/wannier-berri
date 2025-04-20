@@ -603,7 +603,7 @@ class Data_K_R(_Data_K, System_R):
                           numthreads=self.npar_k if self.npar_k > 0 else 1,
                             fftlib=self.fftlib)
         self.cRvec_wcc = self.rvec.cRvec_shifted
-        
+
         # self.fft_R_to_k = FFT_R_to_k(
         #     rvec.iRvec,
         #     self.NKFFT,

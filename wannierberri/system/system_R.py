@@ -367,7 +367,7 @@ class System_R(System):
             if len(suborbit_list) > 1:
                 warnings.warn(f"Positions of  {atom} belong to different wyckoff positions. This case is not much tested."
                          "it is recommentded to name atoms at different wyckoff positions differently:\n"
-                         "\n".join(f"{atom}{i+1}:" + ";".join(str(pos[j]) for j in suborbit) for i, suborbit in enumerate(suborbit_list))
+                         "\n".join(f"{atom}{i + 1}:" + ";".join(str(pos[j]) for j in suborbit) for i, suborbit in enumerate(suborbit_list))
                 )
             print(f"pos_list: {suborbit_list}")
             if ";" in orbital:
@@ -565,8 +565,8 @@ class System_R(System):
             logfile.write(f"using ws_dist for {key}\n")
             self.set_R_mat(key, ws_map(val), reset=True)
         iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
-        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec,shifts_left_red=self.wannier_centers_reduced)
-        
+        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec, shifts_left_red=self.wannier_centers_reduced)
+
     def to_tb_file(self, tb_file=None, use_convention_II=True):
         """
         Write the system in the format of the wannier90_tb.dat file
@@ -638,7 +638,7 @@ class System_R(System):
     # @cached_property
     # def diff_wcc_cart(self):
     #     """
-    #     tj-ti. 
+    #     tj-ti.
     #     """
     #     wannier_centers = self.wannier_centers_cart
     #     return wannier_centers[None, :, :] - wannier_centers[:, None, :]
@@ -646,16 +646,16 @@ class System_R(System):
     # @cached_property
     # def diff_wcc_red(self):
     #     """
-    #     tj-ti. 
+    #     tj-ti.
     #     """
     #     wannier_centers = self.wannier_centers_reduced
     #     return wannier_centers[None, :, :] - wannier_centers[:, None, :]
 
     def clear_cached_wcc(self):
-        clear_cached(self, [ "wannier_centers_reduced"])
-        if hasattr(self,'rvec'):
+        clear_cached(self, ["wannier_centers_reduced"])
+        if hasattr(self, 'rvec'):
             self.rvec.clear_cached()
-        
+
 
     @cached_property
     def wannier_centers_reduced(self):
@@ -868,7 +868,7 @@ class System_R(System):
         for key in properties:
             logfile.write(f"saving {key}\n")
             fullpath = os.path.join(path, key + ".npz")
-            if key =='iRvec':
+            if key == 'iRvec':
                 val = self.rvec.iRvec
             else:
                 val = getattr(self, key)
@@ -905,7 +905,7 @@ class System_R(System):
         all_names = [os.path.splitext(os.path.split(x)[-1])[0] for x in all_files]
         properties = [x for x in all_names if not x.startswith('_XX_R_') and x not in exclude_properties]
         assert "real_lattice" in properties, "real_lattice is required to load the system"
-        properties = ["real_lattice", "wannier_centers_cart"]+ properties
+        properties = ["real_lattice", "wannier_centers_cart"] + properties
         keys_processed = set()
         for key in properties:
             if key in keys_processed:
@@ -923,17 +923,17 @@ class System_R(System):
                 val = PointGroup(dictionary=a)
             else:
                 val = a['arr_0']
-            
+
             if key == "iRvec":
-                self.rvec = Rvectors(lattice=self.real_lattice, 
-                                     iRvec=val, 
+                self.rvec = Rvectors(lattice=self.real_lattice,
+                                     iRvec=val,
                                      shifts_left_red=self.wannier_centers_reduced
                                      )
             else:
                 setattr(self, key_loc, val)
             logfile.write(" - Ok!\n")
             keys_processed.add(key)
-            
+
         if load_all_XX_R:
             R_files = glob.glob(os.path.join(path, "_XX_R_*.npz"))
             R_matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]

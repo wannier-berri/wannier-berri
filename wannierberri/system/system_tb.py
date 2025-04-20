@@ -65,7 +65,7 @@ class System_tb(System_R):
             Ndegen += f.readline().split()
         Ndegen = np.array(Ndegen, dtype=int)
 
-        
+
 
         iRvec = []
 
@@ -80,9 +80,9 @@ class System_tb(System_R):
             Ham_R[:, :, ir] = (hh[:, :, 0] + 1j * hh[:, :, 1]) / Ndegen[ir]
         self.set_R_mat('Ham', Ham_R)
         iRvec = np.array(iRvec, dtype=int)
-        iR0 = Rvectors(lattice=self.real_lattice,iRvec=iRvec).iR0
+        iR0 = Rvectors(lattice=self.real_lattice, iRvec=iRvec).iR0
 
-        
+
         if 'AA' in self.needed_R_matrices:
             AA_R = np.zeros((self.num_wann, self.num_wann, nRvec, 3), dtype=complex)
             for ir in range(nRvec):
@@ -122,10 +122,10 @@ class System_tb(System_R):
             iRvec=iRvec,
             shifts_left_red=self.wannier_centers_reduced,
         )
-        
+
         f.close()
 
-        
+
         self.do_at_end_of_init()
 
         cprint(f"Reading the system from {tb_file} finished successfully", 'green', attrs=['bold'])

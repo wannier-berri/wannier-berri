@@ -15,12 +15,11 @@
 from collections import defaultdict
 import numpy as np
 import os
-import functools
 import multiprocessing
 import warnings
 
 from .rvectors import Rvectors
-from ..__utility import real_recip_lattice, fourier_q_to_R, alpha_A, beta_A
+from ..__utility import real_recip_lattice, alpha_A, beta_A
 from .system_R import System_R
 from ..w90files import Wannier90data
 from .ws_dist import wigner_seitz
@@ -171,7 +170,7 @@ class System_w90(System_R):
         mp_grid = chk.mp_grid
         self._NKFFT_recommended = mp_grid
         iRvec, Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=chk.mp_grid)
-        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec, shifts_left_red=[[0,0,0]])
+        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec, shifts_left_red=[[0, 0, 0]])
         self.num_wann = chk.num_wann
         self.wannier_centers_cart = w90data.wannier_centers
 
@@ -190,7 +189,7 @@ class System_w90(System_R):
             fftlib=fftlib,
             Ndegen=Ndegen
         )
-        
+
         #########
         # Oscar #
         #######################################################################

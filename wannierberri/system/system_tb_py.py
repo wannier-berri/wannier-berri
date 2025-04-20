@@ -112,7 +112,7 @@ class System_tb_py(System_R):
         self.rvec = Rvectors(lattice=self.real_lattice,
                          iRvec=iRvec,
                          shifts_left_red=wannier_centers_reduced,
-                         dim =self.dimr)
+                         dim=self.dimr)
         # Define Ham_R matrix from hoppings
         nRvec = self.rvec.nRvec
         Ham_R = np.zeros((self.num_wann, self.num_wann, nRvec), dtype=complex)

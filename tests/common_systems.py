@@ -306,7 +306,7 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
     if symmetrize:
         iRold = [tuple(R) for R in system.rvec.iRvec]
         print("Rvectors before symmetrization", system.rvec.nRvec, "\n", system.rvec.iRvec)
-        print(f"wannier-diff {system.wannier_centers_reduced[:,None,:]-system.wannier_centers_reduced[None,:,:]}")
+        print(f"wannier-diff {system.wannier_centers_reduced[:, None, :] - system.wannier_centers_reduced[None, :, :]}")
         system.symmetrize(
             positions=np.array([[-0.125, -0.125, 0.375],
                                 [0.375, -0.125, -0.125],

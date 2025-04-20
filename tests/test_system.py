@@ -44,7 +44,7 @@ def check_system():
         # rewrite the old files, so that the changes in a PR will be clearly visible
         for key in properties:
             print(f"saving {key}", end="")
-            if key=='iRvec':
+            if key == 'iRvec':
                 val = system.rvec.iRvec
             else:
                 val = getattr(system, key)
@@ -60,7 +60,7 @@ def check_system():
             data_ref = np.load(os.path.join(REF_DIR, "systems", name, key + ".npz"))['arr_0']
             if XX:
                 data = system.get_R_mat(key)
-            elif key=='iRvec':
+            elif key == 'iRvec':
                 data = system.rvec.iRvec
             else:
                 data = getattr(system, key)
