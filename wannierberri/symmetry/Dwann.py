@@ -1,4 +1,5 @@
 
+import warnings
 import numpy as np
 from .orbitals import num_orbitals
 from ..__utility import UniqueListMod1
@@ -95,8 +96,16 @@ class Dwann:
                     self.rot_orb[ip][isym] = orbitalrotator(orb_symbol=orbital, rot_cart=symop.rotation_cart, basis1=basis_list[ip], basis2=basis_list[ip2])
                 p2a = self.orbit[ip2]
                 self.T[ip, isym] = p2a - p2
+        assert np.all(self.atommap >= 0), f"atommap={self.atommap}"
+
         T_round = np.round(self.T)
-        assert np.allclose(self.T, T_round, atol=1e-7), f"T=\n{self.T}, \nT_round=\n{T_round}, \n max_diff={np.max(np.abs(self.T - T_round))}"
+        T_diff = np.abs(self.T - T_round).max()
+        if T_diff > 1e-6:
+            msg = f"the T vectors should result integer values, but the maximal deviation from in=teger is {T_diff} T=\n{self.T}, \nT_round=\n{T_round}, \n max_diff={T_diff}"
+            if T_diff > 1e-3:
+                raise ValueError(msg)
+            else:
+                warnings.warn(msg)
         self.T = T_round.astype(int)
 
         if self.spinor:
@@ -107,33 +116,6 @@ class Dwann:
                 for ip, p in enumerate(self.orbit):
                     self.rot_orb[ip][isym] = np.kron(self.rot_orb[ip][isym], S)
         self.rot_orb = np.array(self.rot_orb)
-
-        self.num_orbitals = self.num_orbitals_scal * self.nspinor
-
-        self.orbit = orbit_from_positions(spacegroup, positions)
-        self.spacegroup = spacegroup
-
-        self.num_points = len(self.orbit)
-        self.num_wann_scal = self.num_points * self.num_orbitals_scal
-        self.num_wann = self.num_wann_scal * self.nspinor
-        self.atommap = -np.ones((self.num_points, self.nsym), dtype=int)
-        self.T = np.zeros((self.num_points, self.nsym, 3), dtype=float)
-
-        for ip, p in enumerate(self.orbit):
-            for isym, symop in enumerate(spacegroup.symmetries):
-                p2 = symop.transform_r(p)
-                # print (f"ip={ip}, p={p}, isym={isym}, p2={p2}")
-                ip2 = self.orbit.index(p2)
-                self.atommap[ip, isym] = ip2
-                p2 = symop.transform_r(p)
-                p2a = self.orbit[ip2]
-                self.T[ip, isym] = p2a - p2
-        T_round = np.round(self.T)
-        assert np.allclose(self.T, T_round, atol=1e-6), f"T=\n{self.T}, \nT_round=\n{T_round}, \n max_diff={np.max(np.abs(self.T - T_round))}"
-        self.T = T_round.astype(int)
-
-        assert np.all(self.atommap >= 0), f"atommap={self.atommap}"
-
 
 
 

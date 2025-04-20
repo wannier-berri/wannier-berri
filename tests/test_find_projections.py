@@ -16,7 +16,7 @@ def test_find_projections_diamond():
     bandstructure = BandStructure(prefix=data_dir + "/di", code="espresso",
                             Ecut=100, include_TR=False)
     spacegroup = bandstructure.spacegroup
-    # spacegroup.show()
+    spacegroup.show()
 
     symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure)
     symmetrizer.to_npz(OUTPUT_DIR + "/diamond-only-bands.sawf.npz")
