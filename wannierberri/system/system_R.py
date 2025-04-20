@@ -265,10 +265,16 @@ class System_R(System):
         logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
         logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
 
-        self._XX_R, self.iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
-        self.set_pointgroup(spacegroup=symmetrizer.spacegroup)
-        self.clear_cached_R()
+        self._XX_R, iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
         self.clear_cached_wcc()
+        self.rvec = Rvectors(
+            lattice=self.real_lattice,
+            iRvec=iRvec,
+            shifts_left_red=self.wannier_centers_reduced,
+        )
+        self.set_pointgroup(spacegroup=symmetrizer.spacegroup)
+        # self.clear_cached_R()
+        # self.clear_cached_wcc()
 
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=True, silent=True,
@@ -574,13 +580,13 @@ class System_R(System):
         logfile.write(f"writing TB file {tb_file}\n")
         np.savetxt(f, self.real_lattice)
         f.write(f"{self.num_wann}\n")
-        f.write(f"{self.nRvec}\n")
-        Ndegen = np.ones(self.nRvec, dtype=int)
-        for i in range(0, self.nRvec, 15):
-            a = Ndegen[i:min(i + 15, self.nRvec)]
+        f.write(f"{self.rvec.nRvec}\n")
+        Ndegen = np.ones(self.rvec.nRvec, dtype=int)
+        for i in range(0, self.rvec.nRvec, 15):
+            a = Ndegen[i:min(i + 15, self.rvec.nRvec)]
             f.write("  ".join(f"{x:2d}" for x in a) + "\n")
-        for iR in range(self.nRvec):
-            f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
+        for iR in range(self.rvec.nRvec):
+            f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.rvec.iRvec[iR])))
             _ham = self.Ham_R[:, :, iR] * Ndegen[iR]
             f.write(
                 "".join(
@@ -590,9 +596,9 @@ class System_R(System):
         if self.has_R_mat('AA'):
             AA = np.copy(self.get_R_mat('AA'))
             if use_convention_II:
-                AA[self.range_wann, self.range_wann, self.iR0] += self.wannier_centers_cart
-            for iR in range(self.nRvec):
-                f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.iRvec[iR])))
+                AA[self.range_wann, self.range_wann, self.rvec.iR0] += self.wannier_centers_cart
+            for iR in range(self.rvec.nRvec):
+                f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.rvec.iRvec[iR])))
                 _aa = AA[:, :, iR] * Ndegen[iR]
                 f.write(
                     "".join(
@@ -812,7 +818,7 @@ class System_R(System):
             wh = np.argwhere(A_tmp >= minval)
             dic = defaultdict(lambda: dict())
             for w in wh:
-                iR = tuple(self.iRvec[w[2]])
+                iR = tuple(self.rvec.iRvec[w[2]])
                 dic[iR][(w[0], w[1])] = A[tuple(w)]
             return dict(dic)
 
@@ -862,18 +868,21 @@ class System_R(System):
         for key in properties:
             logfile.write(f"saving {key}\n")
             fullpath = os.path.join(path, key + ".npz")
-            a = getattr(self, key)
-            if key in ['pointgroup']:
-                np.savez(fullpath, **a.as_dict())
+            if key =='iRvec':
+                val = self.rvec.iRvec
             else:
-                np.savez(fullpath, a)
+                val = getattr(self, key)
+            if key in ['pointgroup']:
+                np.savez(fullpath, **val.as_dict())
+            else:
+                np.savez(fullpath, val)
             logfile.write(" - Ok!\n")
         for key in self.optional_properties:
             if key not in properties:
                 fullpath = os.path.join(path, key + ".npz")
                 if hasattr(self, key):
-                    a = getattr(self, key)
-                    np.savez(fullpath, a)
+                    val = getattr(self, key)
+                    np.savez(fullpath, val)
         for key in R_matrices:
             logfile.write(f"saving {key}")
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))

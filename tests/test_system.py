@@ -92,7 +92,7 @@ def check_system():
                 if XX or print_missed:
                     if n_missed < data.size / 10:
                         err_msg += "\n" + ("\n".join(
-                            f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])}"
+                            f"{i} | {system.rvec.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])}"
                             for i in zip(*missed)) + "\n\n")
                     else:
                         all_i = np.where(abs(data - data_ref) >= -np.inf)
@@ -101,7 +101,7 @@ def check_system():
                         ratio[select] = data[select] / data_ref[select]
                         ratio[np.logical_not(select)] = None
                         err_msg += "\n" + ("\n".join(
-                            f"{i} | {system.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {ratio[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
+                            f"{i} | {system.rvec.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {ratio[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
                             for i in zip(*all_i)) + "\n\n")
                 elif key in properties_wcc:
                     err_msg += f"new data : {data} \n ref data : {data_ref}"
@@ -112,7 +112,7 @@ def check_system():
         if sort_iR:
             iRvec_ref = np.load(os.path.join(REF_DIR, "systems", name, "iRvec.npz"), allow_pickle=True)[
                 'arr_0'].tolist()
-            iRvec_new = system.iRvec.tolist()
+            iRvec_new = system.rvec.iRvec.tolist()
             sort_R = [iRvec_ref.index(iR) for iR in iRvec_new]
         else:
             sort_R = None
@@ -386,7 +386,7 @@ def test_system_pythtb_spinor():
 def test_system_random(check_system, system_random):
     system = system_random
     assert system.wannier_centers_cart.shape == (system.num_wann, 3)
-    assert system.get_R_mat('AA')[:, :, system.iR0].diagonal().imag == pytest.approx(0)
+    assert system.get_R_mat('AA')[:, :, system.rvec.iR0].diagonal().imag == pytest.approx(0)
     system.save_npz(os.path.join(OUTPUT_DIR, "randomsys"))
 
 

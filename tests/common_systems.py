@@ -304,8 +304,8 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
                                       guiding_centers=True,
                                       **matrices)
     if symmetrize:
-        iRold = [tuple(R) for R in system.iRvec]
-        print("Rvectors before symmetrization", system.nRvec, "\n", system.iRvec)
+        iRold = [tuple(R) for R in system.rvec.iRvec]
+        print("Rvectors before symmetrization", system.rvec.nRvec, "\n", system.rvec.iRvec)
         print(f"wannier-diff {system.wannier_centers_reduced[:,None,:]-system.wannier_centers_reduced[None,:,:]}")
         system.symmetrize(
             positions=np.array([[-0.125, -0.125, 0.375],
@@ -315,8 +315,8 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
             atom_name=['bond'] * 4,
             proj=['bond:s'],
             soc=False,)
-        print("Rvectors after symmetrization", system.nRvec, "\n", system.iRvec)
-        iRnew = [tuple(R) for R in system.iRvec]
+        print("Rvectors after symmetrization", system.rvec.nRvec, "\n", system.rvec.iRvec)
+        iRnew = [tuple(R) for R in system.rvec.iRvec]
         for rnew in iRnew:
             if rnew not in iRold:
                 print("New Rvector", rnew)
