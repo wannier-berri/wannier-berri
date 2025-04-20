@@ -226,6 +226,7 @@ class System_R(System):
         for key, val in self._XX_R.items():
             self._XX_R[key] = val[:, mapping][mapping, :]
         self.wannier_centers_cart = self.wannier_centers_cart[mapping]
+        self.rvec.reorder(mapping)
         self.clear_cached_wcc()
 
 
@@ -411,6 +412,7 @@ class System_R(System):
         self.wannier_centers_cart = self.wannier_centers_cart[new_wann_indices]
         for key, val in self._XX_R.items():
             self._XX_R[key] = val[:, new_wann_indices][new_wann_indices, :]
+        self.rvec.reorder(new_wann_indices)
         self.clear_cached_wcc()
         self.clear_cached_R()
 

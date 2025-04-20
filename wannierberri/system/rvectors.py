@@ -43,6 +43,7 @@ class Rvectors:
             self.shifts_right_red = np.array(shifts_right_red)
 
         self.dim = dim
+        print(f"created {self.nRvec} Rvectors with shilts left \n reduced coordinates {self.shifts_left_red} \n and right shifts \n reduced coordinates \n{self.shifts_right_red}\n cartesian coordinates \n{self.shifts_left_cart} \n and \n{self.shifts_right_cart}\n")
 
     def NKFFT_recommended(self):
         NKFFTrec = np.ones(3, dtype=int)
@@ -55,6 +56,27 @@ class Rvectors:
         # check if FFT is enough to fit all R-vectors
         assert np.unique(self.iRvec % NKFFTrec, axis=0).shape[0] == self.iRvec.shape[0]
         return NKFFTrec
+
+    def reorder(self, order_left=None, order_right=None):
+        """
+        Reorder the Rvectors according to the given order.
+
+        Parameters
+        ----------
+        order : list
+            The new order of the Rvectors.
+        """
+        if order_left is None and order_right is None:
+            order = np.arange(self.nRvec)
+            order_left = order
+            order_right = order
+        if order_right is None:
+            order_right = order_left
+        if order_left is None:
+            order_left = order_right
+        self.shifts_left_red = self.shifts_left_red[order_left]
+        self.shifts_right_red = self.shifts_right_red[order_right]
+        self.clear_cached()
 
 
     @property
@@ -100,7 +122,7 @@ class Rvectors:
 
     def clear_cached(self):
         clear_cached(self, ['diff_wcc_cart', 'cRvec_p_wcc', 'diff_wcc_red',
-                            "wannier_centers_reduced", 'cRvec', 'cRvec_p_wcc',
+                            "wannier_centers_reduced", 'cRvec', 'cRvec_p_wcc', 'iR0',
                             'reverseR', 'index_R', 'shifts_diff_red', 'shifts_diff_cart',
                             'shifts_left_cart', 'shifts_right_cart', 'cRvec_shifted'])
 
@@ -112,7 +134,7 @@ class Rvectors:
     def shifts_right_cart(self):
         return self.shifts_right_red.dot(self.lattice)
 
-    @property
+    @cached_property
     def iR0(self):
         return self.iRvec.tolist().index([0, 0, 0])
 
