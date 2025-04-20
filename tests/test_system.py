@@ -10,8 +10,7 @@ import wannierberri as wberri
 from wannierberri.system.system_R import System_R
 from wannierberri.system.system_tb import System_tb
 
-properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced',
-                  'diff_wcc_cart', 'diff_wcc_red']
+properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced']
 
 
 @pytest.fixture
@@ -19,7 +18,7 @@ def check_system():
     def _inner(system, name,
                properties=['num_wann', 'recip_lattice', 'real_lattice', 'periodic',
                            'cell_volume', 'is_phonon',
-                           ] + properties_wcc + ['nRvec', 'iRvec', 'cRvec'],
+                           ] + properties_wcc + ['iRvec'],
                extra_properties=[],
                exclude_properties=[],
                precision_properties=1e-8,
@@ -45,7 +44,11 @@ def check_system():
         # rewrite the old files, so that the changes in a PR will be clearly visible
         for key in properties:
             print(f"saving {key}", end="")
-            np.savez(os.path.join(out_dir, key + ".npz"), getattr(system, key))
+            if key=='iRvec':
+                val = system.rvec.iRvec
+            else:
+                val = getattr(system, key)
+            np.savez(os.path.join(out_dir, key + ".npz"), val)
             print(" - Ok!")
         for key in matrices:
             print(f"saving {key}", end="")
@@ -57,6 +60,8 @@ def check_system():
             data_ref = np.load(os.path.join(REF_DIR, "systems", name, key + ".npz"))['arr_0']
             if XX:
                 data = system.get_R_mat(key)
+            elif key=='iRvec':
+                data = system.rvec.iRvec
             else:
                 data = getattr(system, key)
             data = np.array(data)
@@ -413,7 +418,7 @@ def test_system_random_GaAs(check_system, system_random_GaAs):
     system = system_random_GaAs
     assert system.wannier_centers_cart.shape == (system.num_wann, 3)
     assert system.num_wann == 16
-    assert system.get_R_mat('AA')[:, :, system.iR0].diagonal() == pytest.approx(0)
+    assert system.get_R_mat('AA')[:, :, system.rvec.iR0].diagonal() == pytest.approx(0)
     system.save_npz(os.path.join(OUTPUT_DIR, "randomsys_GaAs"))
 
 

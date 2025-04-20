@@ -11,6 +11,7 @@
 #                                                            #
 # ------------------------------------------------------------
 
+from .rvectors import Rvectors
 from .system import System
 from .system_R import System_R
 from .system_w90 import System_w90

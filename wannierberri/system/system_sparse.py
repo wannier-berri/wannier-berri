@@ -12,6 +12,8 @@
 # ------------------------------------------------------------
 import warnings
 import numpy as np
+
+from .rvectors import Rvectors
 from .system_R import System_R
 
 
@@ -43,7 +45,12 @@ class SystemSparse(System_R):
         irvec_set.add((0, 0, 0))
         for m in matrices.values():
             irvec_set.update(set(list(m.keys())))
-        self.iRvec = np.array(list(irvec_set))
+        iRvec = np.array(list(irvec_set))
+        self.rvec = Rvectors(
+            lattice=self.real_lattice,
+            iRvec=iRvec,
+            shifts_left_red=self.wannier_centers_reduced,
+        )
 
         for k, v in matrices.items():
             shape = getshape(v)

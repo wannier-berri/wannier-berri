@@ -6,6 +6,8 @@ from functools import cached_property
 from collections import defaultdict
 import glob
 import multiprocessing
+
+from .rvectors import Rvectors
 from .system import System, pauli_xyz
 from ..__utility import clear_cached, one2three
 from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
@@ -191,12 +193,12 @@ class System_R(System):
             XX[self.range_wann, self.range_wann] = value
             self.set_R_mat(key, XX, R=R, reset=reset, add=add)
         elif R is not None:
-            XX = np.zeros((self.num_wann, self.num_wann, self.nRvec) + value.shape[2:], dtype=value.dtype)
-            XX[:, :, self.iR(R)] = value
+            XX = np.zeros((self.num_wann, self.num_wann, self.rvec.nRvec) + value.shape[2:], dtype=value.dtype)
+            XX[:, :, self.rvec.iR(R)] = value
             self.set_R_mat(key, XX, reset=reset, add=add)
         else:
             if Hermitian:
-                value = 0.5 * (value + self.conj_XX_R(value))
+                value = 0.5 * (value + self.rvec.conj_XX_R(value))
             if key in self._XX_R:
                 if reset:
                     self._XX_R[key] = value
@@ -252,7 +254,7 @@ class System_R(System):
         from ..symmetry.sym_wann_2 import SymWann
         symmetrize_wann = SymWann(
             symmetrizer=symmetrizer,
-            iRvec=self.iRvec,
+            iRvec=self.rvec.iRvec,
             wannier_centers_cart=self.wannier_centers_cart,
             silent=self.silent or silent,
         )
@@ -409,7 +411,7 @@ class System_R(System):
 
     def check_AA_diag_zero(self, msg="", set_zero=True):
         if self.has_R_mat('AA'):
-            A_diag = self.get_R_mat('AA')[:, :, self.iR0].diagonal()
+            A_diag = self.get_R_mat('AA')[:, :, self.rvec.iR0].diagonal()
             A_diag_max = abs(A_diag).max()
             if A_diag_max > 1e-5:
                 warnings.warn(
@@ -418,13 +420,13 @@ class System_R(System):
                 if set_zero:
                     warnings.warn("setting AA diagonal to zero")
             if set_zero:
-                self.get_R_mat('AA')[self.range_wann, self.range_wann, self.iR0, :] = 0
+                self.get_R_mat('AA')[self.range_wann, self.range_wann, self.rvec.iR0, :] = 0
 
     def check_periodic(self):
-        exclude = np.zeros(self.nRvec, dtype=bool)
+        exclude = np.zeros(self.rvec.nRvec, dtype=bool)
         for i, per in enumerate(self.periodic):
             if not per:
-                sel = (self.iRvec[:, i] != 0)
+                sel = (self.rvec.iRvec[:, i] != 0)
                 if np.any(sel):
                     warnings.warn(f"you declared your system as non-periodic along direction {i},"
                                   f"but there are {sum(sel)} of total {self.nRvec} R-vectors with R[{i}]!=0."
@@ -528,7 +530,7 @@ class System_R(System):
         logfile = self.logfile
         logfile.write(f"Real-space lattice:\n {self.real_lattice}\n")
         logfile.write(f"Number of wannier functions: {self.num_wann}\n")
-        logfile.write(f"Number of R points: {self.nRvec}\n")
+        logfile.write(f"Number of R points: {self.rvec.nRvec}\n")
         logfile.write(f"Recommended size of FFT grid {self.NKFFT_recommended}\n")
 
     def do_ws_dist(self, mp_grid, wannier_centers_cart=None):
@@ -552,13 +554,13 @@ class System_R(System):
         if wannier_centers_cart is None:
             wannier_centers_cart = self.wannier_centers_cart
         ws_map = ws_dist_map(
-            self.iRvec, wannier_centers_cart, mp_grid, self.real_lattice, npar=self.npar)
+            self.rvec.iRvec, wannier_centers_cart, mp_grid, self.real_lattice, npar=self.npar)
         for key, val in self._XX_R.items():
             logfile.write(f"using ws_dist for {key}\n")
             self.set_R_mat(key, ws_map(val), reset=True)
-        self.iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
-        self.clear_cached_R()
-
+        iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
+        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec,shifts_left_red=self.wannier_centers_reduced)
+        
     def to_tb_file(self, tb_file=None, use_convention_II=True):
         """
         Write the system in the format of the wannier90_tb.dat file
@@ -600,168 +602,121 @@ class System_R(System):
                 )
         f.close()
 
-    def _FFT_compatible(self, FFT, iRvec):
-        """check if FFT is enough to fit all R-vectors"""
-        return np.unique(iRvec % FFT, axis=0).shape[0] == iRvec.shape[0]
+    # def _FFT_compatible(self, FFT, iRvec):
+    #     """check if FFT is enough to fit all R-vectors"""
+    #     return np.unique(iRvec % FFT, axis=0).shape[0] == iRvec.shape[0]
 
     @property
     def NKFFT_recommended(self):
         """finds a minimal FFT grid on which different R-vectors do not overlap"""
         if hasattr(self, '_NKFFT_recommended'):
             return self._NKFFT_recommended
-        NKFFTrec = np.ones(3, dtype=int)
-        for i in range(3):
-            R = self.iRvec[:, i]
-            if len(R[R > 0]) > 0:
-                NKFFTrec[i] += R.max()
-            if len(R[R < 0]) > 0:
-                NKFFTrec[i] -= R.min()
-        assert self._FFT_compatible(NKFFTrec, self.iRvec)
-        return NKFFTrec
+        else:
+            return self.rvec.NKFFT_recommended()
 
-    @cached_property
-    def cRvec(self):
-        return self.iRvec.dot(self.real_lattice)
+    # @cached_property
+    # def cRvec(self):
+    #     return self.iRvec.dot(self.real_lattice)
 
-    @cached_property
-    def cRvec_p_wcc(self):
-        """
-        R+tj-ti.
-        """
-        return self.cRvec[None, None, :, :] + self.diff_wcc_cart[:, :, None, :]
+    # @cached_property
+    # def cRvec_p_wcc(self):
+    #     """
+    #     R+tj-ti.
+    #     """
+    #     return self.cRvec[None, None, :, :] + self.diff_wcc_cart[:, :, None, :]
 
     def clear_cached_R(self):
-        clear_cached(self, ['cRvec', 'cRvec_p_wcc', 'reverseR', 'index_R'])
+        self.rvec.clear_cached()
+        # clear_cached(self, ['cRvec', 'cRvec_p_wcc', 'reverseR', 'index_R'])
 
-    @cached_property
-    def diff_wcc_cart(self):
-        """
-        tj-ti. 
-        """
-        wannier_centers = self.wannier_centers_cart
-        return wannier_centers[None, :, :] - wannier_centers[:, None, :]
+    # @cached_property
+    # def diff_wcc_cart(self):
+    #     """
+    #     tj-ti. 
+    #     """
+    #     wannier_centers = self.wannier_centers_cart
+    #     return wannier_centers[None, :, :] - wannier_centers[:, None, :]
 
-    @cached_property
-    def diff_wcc_red(self):
-        """
-        tj-ti. 
-        """
-        wannier_centers = self.wannier_centers_reduced
-        return wannier_centers[None, :, :] - wannier_centers[:, None, :]
+    # @cached_property
+    # def diff_wcc_red(self):
+    #     """
+    #     tj-ti. 
+    #     """
+    #     wannier_centers = self.wannier_centers_reduced
+    #     return wannier_centers[None, :, :] - wannier_centers[:, None, :]
 
     def clear_cached_wcc(self):
-        clear_cached(self, ['diff_wcc_cart', 'cRvec_p_wcc', 'diff_wcc_red', "wannier_centers_reduced"])
+        clear_cached(self, [ "wannier_centers_reduced"])
+        if hasattr(self,'rvec'):
+            self.rvec.clear_cached()
+        
 
     @cached_property
     def wannier_centers_reduced(self):
         return self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
 
-    # def convention_II_to_I(self):
-    #     R_new = {}
-    #     if self.wannier_centers_cart is None:
-    #         raise ValueError("use_wcc_phase = True, but the wannier centers could not be determined")
-    #     if self.has_R_mat('AA'):
-    #         AA_R_new = np.copy(self.get_R_mat('AA'))
-    #         AA_R_new[self.range_wann, self.range_wann, self.iR0, :] -= self.wannier_centers_cart
-    #         R_new['AA'] = AA_R_new
-    #     if self.has_R_mat('BB'):
-    #         BB_R_new = self.get_R_mat('BB').copy() - self.get_R_mat('Ham')[:, :, :,
-    #                                                  None] * self.wannier_centers_cart[None, :, None, :]
-    #         R_new['BB'] = BB_R_new
-    #     if self.has_R_mat('CC'):
-    #         norm = np.linalg.norm(self.get_R_mat('CC') - self.conj_XX_R(key='CC'))
-    #         assert norm < 1e-10, f"CC_R is not Hermitian, norm={norm}"
-    #         assert self.has_R_mat('BB'), "if you use CC_R and use_wcc_phase=True, you need also BB_R"
-    #         T = self.wannier_centers_cart[:, None, None, :, None] * self.get_R_mat('BB')[:, :, :, None, :]
-    #         CC_R_new = self.get_R_mat('CC').copy() + 1.j * sum(
-    #             s * (
-    #                 -T[:, :, :, a, b] -  # -t_i^a * B_{ij}^b(R)
-    #                 self.conj_XX_R(T[:, :, :, b, a]) +  # - B_{ji}^a(-R)^*  * t_j^b
-    #                 self.wannier_centers_cart[:, None, None, a] * self.Ham_R[:, :, :, None] *
-    #                 self.wannier_centers_cart[None, :, None, b]  # + t_i^a*H_ij(R)t_j^b
-    #             ) for (s, a, b) in [(+1, alpha_A, beta_A), (-1, beta_A, alpha_A)])
-    #         norm = np.linalg.norm(CC_R_new - self.conj_XX_R(CC_R_new))
-    #         assert norm < 1e-10, f"CC_R after applying wcc_phase is not Hermitian, norm={norm}"
-    #         R_new['CC'] = CC_R_new
-    #     if self.has_R_mat('SA'):
-    #         SA_R_new = self.get_R_mat('SA').copy() - self.get_R_mat('SS')[:, :, :,
-    #                 None, :] * self.wannier_centers_cart[None, :, None, :, None]
-    #         R_new['SA'] = SA_R_new
-    #     if self.has_R_mat('SHA'):
-    #         SHA_R_new = self.get_R_mat('SHA').copy() - self.get_R_mat('SH')[:, :, :,
-    #                 None, :] * self.wannier_centers_cart[None, :, None, :, None]
-    #         R_new['SHA'] = SHA_R_new
+    # @property
+    # def iR0(self):
+    #     return self.iRvec.tolist().index([0, 0, 0])
 
-    #     unknown = set(self._XX_R.keys()) - set(['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA'])
-    #     if len(unknown) > 0:
-    #         raise NotImplementedError(f"Conversion of conventions for {list(unknown)} is not implemented")
+    # @cached_property
+    # def index_R(self):
+    #     return {tuple(R): i for i, R in enumerate(self.iRvec)}
 
-    #     for X in ['AA', 'BB', 'CC', 'SA', 'SHA']:
-    #         if self.has_R_mat(X):
-    #             self.set_R_mat(X, R_new[X], reset=True)
+    # def iR(self, R):
+    #     R = np.array(np.round(R), dtype=int).tolist()
+    #     return self.iRvec.tolist().index(R)
 
-    @property
-    def iR0(self):
-        return self.iRvec.tolist().index([0, 0, 0])
+    # @cached_property
+    # def reverseR(self):
+    #     """indices of R vectors that has -R in irvec, and the indices of the corresponding -R vectors."""
+    #     mapping = np.all(self.iRvec[:, None, :] + self.iRvec[None, :, :] == 0, axis=2)
+    #     # check if some R-vectors do not have partners
+    #     notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
+    #     if len(notfound) > 0 and not self.ignore_mR_not_found:
+    #         for ir in notfound:
+    #             warnings.warn(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
+    #     # check if some R-vectors have more then 1 partner
+    #     morefound = np.where(np.sum(mapping, axis=1) > 1)[0]
+    #     if len(morefound > 0):
+    #         raise RuntimeError(
+    #             f"R vectors number {morefound} have more then one negative partner : "
+    #             f"\n{self.iRvec[morefound]} \n{np.sum(mapping, axis=1)}")
+    #     lst_R, lst_mR = [], []
+    #     for ir1 in range(self.nRvec):
+    #         ir2 = np.where(mapping[ir1])[0]
+    #         if len(ir2) == 1:
+    #             lst_R.append(ir1)
+    #             lst_mR.append(ir2[0])
+    #     lst_R = np.array(lst_R)
+    #     lst_mR = np.array(lst_mR)
+    #     # Check whether the result is correct
+    #     assert np.all(self.iRvec[lst_R] + self.iRvec[lst_mR] == 0)
+    #     return lst_R, lst_mR
 
-    @cached_property
-    def index_R(self):
-        return {tuple(R): i for i, R in enumerate(self.iRvec)}
+    # def conj_XX_R(self, val: np.ndarray = None, key: str = None, ignore_mR_not_found=False):
+    #     """ reverses the R-vector and takes the hermitian conjugate """
+    #     assert (key is not None) != (val is not None)
+    #     if key is not None:
+    #         XX_R = self.get_R_mat(key)
+    #     else:
+    #         XX_R = val
+    #     XX_R_new = np.zeros(XX_R.shape, dtype=complex)
+    #     self.ignore_mR_not_found = ignore_mR_not_found
+    #     lst_R, lst_mR = self.reverseR
+    #     XX_R_new[:, :, lst_R] = XX_R[:, :, lst_mR]
+    #     return XX_R_new.swapaxes(0, 1).conj()
 
-    def iR(self, R):
-        R = np.array(np.round(R), dtype=int).tolist()
-        return self.iRvec.tolist().index(R)
+    # @property
+    # def nRvec(self):
+    #     return self.iRvec.shape[0]
 
-    @cached_property
-    def reverseR(self):
-        """indices of R vectors that has -R in irvec, and the indices of the corresponding -R vectors."""
-        mapping = np.all(self.iRvec[:, None, :] + self.iRvec[None, :, :] == 0, axis=2)
-        # check if some R-vectors do not have partners
-        notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
-        if len(notfound) > 0 and not self.ignore_mR_not_found:
-            for ir in notfound:
-                warnings.warn(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
-        # check if some R-vectors have more then 1 partner
-        morefound = np.where(np.sum(mapping, axis=1) > 1)[0]
-        if len(morefound > 0):
-            raise RuntimeError(
-                f"R vectors number {morefound} have more then one negative partner : "
-                f"\n{self.iRvec[morefound]} \n{np.sum(mapping, axis=1)}")
-        lst_R, lst_mR = [], []
-        for ir1 in range(self.nRvec):
-            ir2 = np.where(mapping[ir1])[0]
-            if len(ir2) == 1:
-                lst_R.append(ir1)
-                lst_mR.append(ir2[0])
-        lst_R = np.array(lst_R)
-        lst_mR = np.array(lst_mR)
-        # Check whether the result is correct
-        assert np.all(self.iRvec[lst_R] + self.iRvec[lst_mR] == 0)
-        return lst_R, lst_mR
-
-    def conj_XX_R(self, val: np.ndarray = None, key: str = None, ignore_mR_not_found=False):
-        """ reverses the R-vector and takes the hermitian conjugate """
-        assert (key is not None) != (val is not None)
-        if key is not None:
-            XX_R = self.get_R_mat(key)
-        else:
-            XX_R = val
-        XX_R_new = np.zeros(XX_R.shape, dtype=complex)
-        self.ignore_mR_not_found = ignore_mR_not_found
-        lst_R, lst_mR = self.reverseR
-        XX_R_new[:, :, lst_R] = XX_R[:, :, lst_mR]
-        return XX_R_new.swapaxes(0, 1).conj()
-
-    @property
-    def nRvec(self):
-        return self.iRvec.shape[0]
-
-    def check_hermitian(self, key):
-        if key in self._XX_R.keys():
-            _X = self.get_R_mat(key).copy()
-            assert (np.max(abs(_X - self.conj_XX_R(key=key))) < 1e-8), f"{key} should obey X(-R) = X(R)^+"
-        else:
-            self.logfile.write(f"{key} is missing, nothing to check\n")
+    # def check_hermitian(self, key):
+    #     if key in self._XX_R.keys():
+    #         _X = self.get_R_mat(key).copy()
+    #         assert (np.max(abs(_X - self.conj_XX_R(key=key))) < 1e-8), f"{key} should obey X(-R) = X(R)^+"
+    #     else:
+    #         self.logfile.write(f"{key} is missing, nothing to check\n")
 
     def set_structure(self, positions, atom_labels, magnetic_moments=None):
         """
@@ -940,7 +895,12 @@ class System_R(System):
         all_files = glob.glob(os.path.join(path, "*.npz"))
         all_names = [os.path.splitext(os.path.split(x)[-1])[0] for x in all_files]
         properties = [x for x in all_names if not x.startswith('_XX_R_') and x not in exclude_properties]
+        assert "real_lattice" in properties, "real_lattice is required to load the system"
+        properties = ["real_lattice", "wannier_centers_cart"]+ properties
+        keys_processed = set()
         for key in properties:
+            if key in keys_processed:
+                continue
             logfile.write(f"loading {key}")
             a = np.load(os.path.join(path, key + ".npz"), allow_pickle=False)
 
@@ -954,8 +914,17 @@ class System_R(System):
                 val = PointGroup(dictionary=a)
             else:
                 val = a['arr_0']
-            setattr(self, key_loc, val)
+            
+            if key == "iRvec":
+                self.rvec = Rvectors(lattice=self.real_lattice, 
+                                     iRvec=val, 
+                                     shifts_left_red=self.wannier_centers_reduced
+                                     )
+            else:
+                setattr(self, key_loc, val)
             logfile.write(" - Ok!\n")
+            keys_processed.add(key)
+            
         if load_all_XX_R:
             R_files = glob.glob(os.path.join(path, "_XX_R_*.npz"))
             R_matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
