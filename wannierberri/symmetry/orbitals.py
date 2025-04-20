@@ -6,6 +6,8 @@ from scipy.special import spherical_jn
 from scipy.interpolate import CubicSpline
 from scipy.integrate import trapezoid
 from scipy.constants import physical_constants
+
+from wannierberri.__utility import UniqueList
 from scipy.linalg import block_diag
 bohr_radius_angstrom = physical_constants["Bohr radius"][0] * 1e10
 
@@ -69,8 +71,6 @@ hybrids_coef = {
 }
 for k in basis_orbital_list:
     hybrids_coef[k] = {k: 1}
-
-
 
 
 
@@ -215,24 +215,31 @@ def get_orbitals():
 
 class OrbitalRotator:
 
-    def __init__(self, rotations_cart):
-        self.rotations_cart = np.copy(rotations_cart)
-        if len(self.rotations_cart.shape) == 2:
-            self.rotations_cart = np.array([rotations_cart])
+    def __init__(self):
+        self.calcualted_matrices = UniqueList(tolerance=1e-4)
         self.orbitals = get_orbitals()
         self.results_dict = {}
 
-    def __call__(self, orb_symbol, isym=0):
-        if (isym, orb_symbol) not in self.results_dict:
+    def __call__(self, orb_symbol, rot_cart=None, irot=None, basis1=None, basis2=None):
+        assert (basis1 is None) == (basis2 is None), "basis1 and basis2 should be both provided or both None"
+        assert (irot is None) != (rot_cart is None), f"either irot or rot_cart should be provided, not both, got irot={irot}, rot_cart={rot_cart}"
+        if irot is None:
+            if basis1 is not None:
+                rot_cart = basis2 @ rot_cart @ basis1.T
+            irot = self.calcualted_matrices.index_or_None(rot_cart)
+            if irot is None:
+                irot = len(self.calcualted_matrices)
+                self.calcualted_matrices.append(rot_cart)
+        if rot_cart is None:
+            rot_cart = self.calcualted_matrices[irot]
+        if (irot, orb_symbol) not in self.results_dict:
             orb_symbol = orb_symbol.strip()
-            rot_glb = self.rotations_cart[isym]
             if ";" in orb_symbol:
-                mat_list = [self(orb, isym) for orb in orb_symbol.split(";")]
+                mat_list = [self(orb, irot=irot) for orb in orb_symbol.split(";")]
             else:
-                mat_list = [self.orbitals.rot_orb(orb_symbol, rot_glb)]
-            self.results_dict[(isym, orb_symbol)] = block_diag(*mat_list)
-        print(f"orb_symbol = {orb_symbol}, isym = {isym}  rotation matrix = \n{self.results_dict[(isym, orb_symbol)]}")
-        return self.results_dict[(isym, orb_symbol)]
+                mat_list = [self.orbitals.rot_orb(orb_symbol=orb_symbol, rot_glb=rot_cart)]
+            self.results_dict[(irot, orb_symbol)] = block_diag(*mat_list)
+        return self.results_dict[(irot, orb_symbol)]
 
 
 class Projector:
@@ -261,18 +268,14 @@ class Projector:
             self.bessel_l[l] = self.bessel(l, self.gka_abs) * self.coef * (-1j)**l
         return self.bessel_l[l]
 
-    def __call__(self, orbital):
-        if orbital not in self.projectors:
-            self.projectors[orbital] = self._projector(orbital)
-        return self.projectors[orbital]
 
-    def _projector(self, orbital):
+    def __call__(self, orbital, basis=None):
         if orbital in hybrids_coef and orbital not in basis_orbital_list:
-            return sum(self(orb) * coef for orb, coef in hybrids_coef[orbital].items())
+            return sum(self(orb, basis) * coef for orb, coef in hybrids_coef[orbital].items())
         else:
             l = {'s': 0, 'p': 1, 'd': 2, 'f': 3}[orbital[0]]
             bessel_j_exp_int = self.get_bessel_l(l)
-            spherical = self.sph(orbital)
+            spherical = self.sph(orbital, basis)
             return bessel_j_exp_int * spherical
 
 
@@ -337,6 +340,7 @@ class SphericalHarmonics:
         self.phi = phi
         self.harmonics = {}
         self.sqpi = 1 / np.sqrt(np.pi)
+        self.calcualted_basices = UniqueList(tolerance=1e-4)
 
     @cached_property
     def sintheta(self):
@@ -366,12 +370,23 @@ class SphericalHarmonics:
     def sin2theta(self):
         return 2 * self.costheta * self.sintheta
 
-    def __call__(self, orbital):
-        if orbital not in self.harmonics:
-            self.harmonics[orbital] = self._harmonics(orbital)
-        return self.harmonics[orbital]
+    @cached_property
+    def orbitalrotator(self):
+        return OrbitalRotator()
 
-    def _harmonics(self, orbital):
+    def __call__(self, orbital, basis=None):
+        if basis is None:
+            basis = np.eye(3)
+        if basis in self.calcualted_basices:
+            ibasis = self.calcualted_basices.index(basis)
+        else:
+            ibasis = len(self.calcualted_basices)
+            self.calcualted_basices.append(basis)
+        if (orbital, ibasis) not in self.harmonics:
+            self.harmonics[(orbital, ibasis)] = self._harmonics(orbital, basis)
+        return self.harmonics[(orbital, ibasis)]
+
+    def _harmonics(self, orbital, basis):
         """from here https://en.wikipedia.org/wiki/Table_of_spherical_harmonics#Real_spherical_harmonics
 
         hybrids - according to Wannier90 manual"""
@@ -381,24 +396,38 @@ class SphericalHarmonics:
             assert orbital in hybrids_coef, f"orbital {orbital} not in basis_orbital_list or hybrids_coef"
             return sum(self(orb) * coef for orb, coef in hybrids_coef[orbital].items())
         else:
-            match orbital:
-                case 's':
-                    return 1 / (2 * sq(pi)) * np.ones_like(self.costheta)
-                case 'pz':
-                    return sq(3 / (4 * pi)) * self.costheta
-                case 'px':
-                    return sq(3 / (4 * pi)) * self.sintheta * self.cosphi
-                case 'py':
-                    return sq(3 / (4 * pi)) * self.sintheta * self.sinphi
-                case 'dz2':
-                    return sq(5 / (16 * pi)) * (3 * self.costheta**2 - 1)
-                case 'dx2-y2':
-                    return sq(15 / (16 * pi)) * self.sintheta**2 * self.cos2phi
-                case 'dxy':
-                    return sq(15 / (16 * pi)) * self.sintheta**2 * self.sin2phi
-                case 'dxz':
-                    return sq(15 / (16 * pi)) * self.sin2theta * self.cosphi
-                case 'dyz':
-                    return sq(15 / (16 * pi)) * self.sin2theta * self.sinphi
-                case _:
-                    raise ValueError(f"orbital {orbital} not implemented")
+            if not np.allclose(basis, np.eye(3), atol=1e-4):
+                # print(f"evaluating orbital {orbital} in basis \n{basis}")
+                shell = orbital[0]
+                assert shell in basis_shells_list, f"shell {shell} not in basis_shells_list"
+                shell_list = orbitals_sets_dic[shell]
+                assert orbital in shell_list, f"orbital {orbital} not in shell {shell}"
+                shell_pos = shell_list.index(orbital)
+                # print(f"basis = \n{basis}")
+                matrix = self.orbitalrotator(shell, basis)
+                # print(f"matrix = \n{matrix}")
+                vector = matrix[shell_pos, :]
+                # print(f" orbital {orbital} basis = \n{basis}\n,   vector = {vector}, shell_list = {shell_list}")
+                return sum(self(o, basis=None) * k for k, o in zip(vector, shell_list))
+            else:
+                match orbital:
+                    case 's':
+                        return 1 / (2 * sq(pi)) * np.ones_like(self.costheta)
+                    case 'pz':
+                        return sq(3 / (4 * pi)) * self.costheta
+                    case 'px':
+                        return sq(3 / (4 * pi)) * self.sintheta * self.cosphi
+                    case 'py':
+                        return sq(3 / (4 * pi)) * self.sintheta * self.sinphi
+                    case 'dz2':
+                        return sq(5 / (16 * pi)) * (3 * self.costheta**2 - 1)
+                    case 'dx2-y2':
+                        return sq(15 / (16 * pi)) * self.sintheta**2 * self.cos2phi
+                    case 'dxy':
+                        return sq(15 / (16 * pi)) * self.sintheta**2 * self.sin2phi
+                    case 'dxz':
+                        return sq(15 / (16 * pi)) * self.sin2theta * self.cosphi
+                    case 'dyz':
+                        return sq(15 / (16 * pi)) * self.sin2theta * self.sinphi
+                    case _:
+                        raise ValueError(f"orbital {orbital} not implemented")

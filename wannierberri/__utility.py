@@ -11,6 +11,7 @@
 #                                                            #
 # ------------------------------------------------------------
 
+import abc
 import scipy.io
 import fortio
 import os
@@ -405,8 +406,15 @@ class UniqueList(list):
     unlike set, the order of elements is preserved.
     """
 
-    def __init__(self, iterator=[], count=False):
+    def _equal(self, a, b):
+        if self.tolerance > 0:
+            return np.allclose(a, b, atol=self.tolerance)
+        else:
+            return a == b
+
+    def __init__(self, iterator=[], count=False, tolerance=-1):
         super().__init__()
+        self.tolerance = tolerance
         self.do_count = count
         if self.do_count:
             self.counts = []
@@ -415,7 +423,7 @@ class UniqueList(list):
 
     def append(self, item, count=1):
         for j, i in enumerate(self):
-            if i == item:
+            if self._equal(i, item):
                 if self.do_count:
                     self.counts[self.index(i)] += count
                 break
@@ -425,20 +433,28 @@ class UniqueList(list):
                 self.counts.append(1)
 
     def index(self, value: Any, start=0, stop=sys.maxsize) -> int:
+        stop = min(stop, len(self))
         for i in range(start, stop):
-            if self[i] == value:
+            if self._equal(self[i], value):
                 return i
         raise ValueError(f"{value} not in list")
 
+    def index_or_None(self, value: Any, start=0, stop=sys.maxsize) -> int:
+        stop = min(stop, len(self))
+        for i in range(start, stop):
+            if self._equal(self[i], value):
+                return i
+        return None
+
     def __contains__(self, item):
         for i in self:
-            if i == item:
+            if self._equal(i, item):
                 return True
         return False
 
     def remove(self, value: Any, all=False) -> None:
         for i in range(len(self)):
-            if self[i] == value:
+            if self._equal(self[i], value):
                 if all or not self.do_count:
                     del self[i]
                     del self.counts[i]
@@ -616,3 +632,100 @@ def orthogonalize(u):
     except np.linalg.LinAlgError as e:
         warnings.warn(f"SVD failed with error '{e}', using non-orthogonalized matrix")
         return u
+
+
+def select_window_degen(E, thresh=1e-2, win_min=np.inf, win_max=-np.inf,
+                        include_degen=False,
+                        return_indices=False):
+    """define the indices of the bands inside the window, making sure that degenerate bands were not split
+
+
+    Parameters
+    ----------
+    E : numpy.ndarray(nb, dtype=float)
+        the energies of the bands (sorted ascending)
+    thresh : float
+        the threshold for the degeneracy
+    include_degen : bool
+        if True, the degenerate bands are included in the window
+
+    Returns
+    -------
+    numpy.ndarray(bool)
+        the boolean array of the frozen bands  (True for frozen)
+    """
+    NB = len(E)
+    ind = list(np.where((E <= win_max) * (E >= win_min))[0])
+    if len(ind) == 0:
+        if return_indices:
+            return []
+        else:
+            return np.zeros(E.shape, dtype=bool)
+
+    # The upper bound
+    for i in range(ind[-1], NB - 1):
+        if E[i + 1] - E[i] < thresh:
+            if include_degen:
+                ind[i + 1] = True
+            else:
+                ind[i] = False
+                break
+        else:
+            break
+
+    # The lower bound
+    for i in range(ind[0], 1, -1):
+        if E[i] - E[i - 1] < thresh:
+            if include_degen:
+                ind[i - 1] = True
+            else:
+                ind[i] = False
+                break
+        else:
+            break
+    if return_indices:
+        return ind
+    else:
+        inside = np.zeros(E.shape, dtype=bool)
+        inside[ind] = True
+        return inside
+
+
+class SavableNPZ(abc.ABC):
+    """
+    A class that can be saved to a npz file and loaded from it.
+    """
+
+    def __init__(self, **kwargs):
+        self.npz_tags = []
+        self.from_dict(kwargs)
+
+    def to_npz(self, f_npz):
+        dic = self.as_dict()
+        print(f"saving to {f_npz} : ")
+        np.savez_compressed(f_npz, **dic)
+        return self
+
+    def from_npz(self, f_npz):
+        dic = np.load(f_npz)
+        self.from_dict(dic)
+        return self
+
+    def as_dict(self):
+        dic = {k: self.__getattribute__(k) for k in self.npz_tags}
+        for k in self.npz_tags_optional:
+            if hasattr(self, k):
+                dic[k] = self.__getattribute__(k)
+        return dic
+
+    def from_dict(self, dic):
+        for k in self.npz_tags:
+            if k in dic:
+                self.__setattr__(k, dic[k])
+            else:
+                self.__setattr__(k, self.default_tags[k])
+        for k in self.npz_tags_optional:
+            if k in dic:
+                self.__setattr__(k, dic[k])
+            elif k in self.default_tags:
+                self.__setattr__(k, self.default_tags[k])

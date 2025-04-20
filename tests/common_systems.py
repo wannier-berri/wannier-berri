@@ -551,6 +551,7 @@ def get_system_Mn3Sn_sym_tb():
             [-np.sqrt(3), -1, 0],
             [0, 0, 0],
             [0, 0, 0]],
+        reorder_back=True,
     )
     return system
 
