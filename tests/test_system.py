@@ -26,7 +26,7 @@ def check_system():
                matrices=[],
                precision_matrix_elements=1e-7,
                suffix="",
-               sort_iR=False
+               sort_iR=True
                ):
         if len(suffix) > 0:
             suffix = "_" + suffix
@@ -100,17 +100,22 @@ def check_system():
                             for i in zip(*missed)) + "\n\n")
                     else:
                         all_i = np.where(abs(data - data_ref) >= -np.inf)
+                        print(f"all_i = {repr(all_i)}")
                         ratio = np.zeros(data_ref.shape)
                         select = abs(data_ref) > 1e-12
                         ratio[select] = data[select] / data_ref[select]
                         ratio[np.logical_not(select)] = None
-                        err_msg += "\n" + ("\n".join(
-                            f"{i} | {system.rvec.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {ratio[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
-                            for i in zip(*all_i)) + "\n\n")
-                    XX_R_sumR = data.sum(axis=2)
-                    XX_R_sumR_ref = data_ref.sum(axis=2)
-                    err_msg += f"\n the control sum differs by {XX_R_sumR.sum()- XX_R_sumR_ref.sum()} \n"
-                    err_msg += f"maximal element-wise difference {abs(XX_R_sumR - XX_R_sumR_ref).max()} \n"
+                        if XX:
+                            err_msg += "\n" + ("\n".join(
+                                f"{i} | {system.rvec.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {ratio[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
+                                for i in zip(*all_i)) + "\n\n")
+                            XX_R_sumR = data.sum(axis=2)
+                            XX_R_sumR_ref = data_ref.sum(axis=2)
+                            err_msg += f"\n the control sum differs by {XX_R_sumR.sum() - XX_R_sumR_ref.sum()} \n"
+                            err_msg += f"maximal element-wise difference {abs(XX_R_sumR - XX_R_sumR_ref).max()} \n"
+                        else:
+                            err_msg += "\n" + "\n".join(f"{a} | {data[a]}  |  {data[b]} " for a, b in zip(*all_i))
+
                 elif key in properties_wcc:
                     err_msg += f"new data : {data} \n ref data : {data_ref}"
                 raise ValueError(err_msg)
@@ -121,7 +126,18 @@ def check_system():
             iRvec_ref = np.load(os.path.join(REF_DIR, "systems", name, "iRvec.npz"), allow_pickle=True)[
                 'arr_0'].tolist()
             iRvec_new = system.rvec.iRvec.tolist()
-            sort_R = [iRvec_ref.index(iR) for iR in iRvec_new]
+            try:
+                assert len(iRvec_ref) == len(iRvec_new), f"iRvec_ref and iRvec_new have different lengths {len(iRvec_ref)} {len(iRvec_new)}"
+                # assert len(set(iRvec_ref)) == len(iRvec_ref), f"iRvec_ref has duplicates {iRvec_ref}"
+                # assert len(set(iRvec_new)) == len(iRvec_new), f"iRvec_new has duplicates {iRvec_new}"
+                sort_R = [iRvec_ref.index(iR) for iR in iRvec_new]
+            except (ValueError, AssertionError) as e:
+                print(f"iRvec_ref : {iRvec_ref}")
+                print(f"iRvec_new : {iRvec_new}")
+                print(f"cRvec_new_lengths : {np.linalg.norm(system.rvec.cRvec, axis=1)}")
+                cRvec_ref = np.load(os.path.join(REF_DIR, "systems", name, "cRvec.npz"), allow_pickle=True)["arr_0"]
+                print(f"cRvec_ref_length : {np.linalg.norm(cRvec_ref, axis=1)}")
+                raise ValueError(f"{e} : \n iRvec_ref and iRvec_new have different values {iRvec_ref} {iRvec_new}") from e
         else:
             sort_R = None
 
@@ -211,7 +227,7 @@ def test_system_GaAs_tb(check_system, system_GaAs_tb):
         system_GaAs_tb, "GaAs_tb",
         matrices=['Ham', 'AA'],
         sort_iR=True,
-        precision_matrix_elements=1e-6,
+        # extra_precision={'Ham': 1e-5, 'AA': 5e-4}
     )
 
 
@@ -247,7 +263,8 @@ def test_system_GaAs_tb_save_load(check_system, system_GaAs_tb):
 def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
     check_system(
         system_Si_W90_JM, "Si_W90_JM",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
+        sort_iR=True
     )
 
 
@@ -255,13 +272,15 @@ def test_system_Si_W90_JM_sym(check_system, system_Si_W90_JM_sym):
     check_system(
         system_Si_W90_JM_sym, "Si_W90_JM_sym",
         matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
+        sort_iR=True
     )
 
 
 def test_system_Si_W90(check_system, system_Si_W90):
     check_system(
         system_Si_W90, "Si_W90",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
+        sort_iR=True
     )
 
 
@@ -269,6 +288,7 @@ def test_system_Si_W90_sym(check_system, system_Si_W90_sym):
     check_system(
         system_Si_W90_sym, "Si_W90_sym",
         matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
+        sort_iR=True
     )
 
 
@@ -348,13 +368,14 @@ def test_system_Te_sparse(check_system, system_Te_sparse):
         system_Te_sparse, "Te_sparse",
         matrices=['Ham'],
         sort_iR=True
-    ) 
+    )
 
 
 def test_system_Phonons_Si(check_system, system_Phonons_Si):
     check_system(
         system_Phonons_Si, "Phonons_Si",
-        matrices=['Ham']
+        matrices=['Ham'],
+        sort_iR=True
     )
 
 

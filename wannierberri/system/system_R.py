@@ -87,6 +87,7 @@ class System_R(System):
                  OSD=False,
                  npar=None,
                  _getFF=False,
+                 ws_dist_tol=1e-5,
                  **parameters):
 
         super().__init__(**parameters)
@@ -112,6 +113,7 @@ class System_R(System):
             self.needed_R_matrices = self.needed_R_matrices.intersection(['Ham', 'SS'])
 
         self._XX_R = dict()
+        self.ws_dist_tol = ws_dist_tol
 
     def set_wannier_centers(self, wannier_centers_cart=None, wannier_centers_reduced=None):
         """
@@ -557,12 +559,14 @@ class System_R(System):
             wannier_centers_cart = self.wannier_centers_cart
         iRvec_old = self.rvec.iRvec
         self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_reduced)
-        self.rvec.set_Rvec(mp_grid,ws_tolerance=1e-4)
+        self.rvec.set_Rvec(mp_grid, ws_tolerance=self.ws_dist_tol)
         for key, val in self._XX_R.items():
             logfile.write(f"using new ws_dist for {key}\n")
-            self.set_R_mat(key, self.rvec.remap_XX_R(val,iRvec_old=iRvec_old), reset=True)
-        
-       
+            self.set_R_mat(key, self.rvec.remap_XX_R(val, iRvec_old=iRvec_old), reset=True)
+        self._XX_R, self.rvec = self.rvec.exclude_zeros(self._XX_R)
+
+
+
 
     def do_ws_dist_old(self, mp_grid, wannier_centers_cart=None):
         """
@@ -580,7 +584,7 @@ class System_R(System):
             mp_grid = one2three(mp_grid)
             assert mp_grid is not None
         except AssertionError:
-            raise ValueError(f"mp_greid should be one integer, of three integers. found {mp_grid}")
+            raise ValueError(f"mp_grid should be one integer, or three integers. found {mp_grid}")
         self._NKFFT_recommended = mp_grid
         if wannier_centers_cart is None:
             wannier_centers_cart = self.wannier_centers_cart

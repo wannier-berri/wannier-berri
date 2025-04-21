@@ -442,11 +442,13 @@ class UniqueList(list):
         """
         for j, i in enumerate(self):
             if self._equal(i, item):
+                # print (f"{item} already in list")
                 if self.do_count:
                     self.counts[self.index(i)] += count
                 return j
         else:
             super().append(item)
+            # print (f"adding {item} to list, length now {len(self)}")
             if self.do_count:
                 self.counts.append(1)
             return len(self) - 1

@@ -5,7 +5,7 @@ from typing import Iterable
 import warnings
 
 import numpy as np
-from ..__utility import FFT_R_to_k, clear_cached, fourier_q_to_R, UniqueList, iterate3dpm, iterate_nd
+from ..__utility import FFT_R_to_k, clear_cached, fourier_q_to_R, iterate3dpm, iterate_nd
 
 
 class Rvectors:
@@ -40,62 +40,72 @@ class Rvectors:
         self._NKFFTrec = None
         if iRvec is not None:
             self.iRvec = np.array(iRvec)
-            
+
         self.dim = dim
-        
+
         # print(f"created {self.nRvec} Rvectors with shilts left \n reduced coordinates {self.shifts_left_red} \n and right shifts \n reduced coordinates \n{self.shifts_right_red}\n cartesian coordinates \n{self.shifts_left_cart} \n and \n{self.shifts_right_cart}\n")
 
     def set_Rvec(self, mp_grid, ws_tolerance=1e-3):
+        print("setting Rvec")
         assert len(mp_grid) == 3, "NK should be a list of 3 integers"
         self.mp_grid = mp_grid
         self._NKFFTrec = mp_grid
 
-        # TODO so far set high precision. Later increase, 
+        # TODO so far set high precision. Later increase,
         # but it may require modification of dest data
-        self.all_shifts_red = UniqueList(tolerance=1e-8) #
-
-        self.shift_index = -np.ones((self.nshifts_left, self.nshifts_right), dtype=int)
-        for il, shift_left in enumerate(self.shifts_left_red):
-            for ir, shift_right in enumerate(self.shifts_right_red):
-                shift = - shift_left + shift_right
-                self.shift_index[il,ir] = self.all_shifts_red.append(shift)
-        print (f"all different shifts {self.all_shifts_red}")
+        # self.all_shifts_red = UniqueList(tolerance=1e-2
+        # but for low-precision data, higher tolerance may be beneficial
+        num_digits_tol = 8
+        self.all_shifts_red, self.shift_index = np.unique(
+            np.round(-self.shifts_left_red[:, None] + self.shifts_right_red[None, :], num_digits_tol).reshape(-1, 3),
+            axis=0, return_inverse=True)
+        self.shift_index = self.shift_index.reshape(self.nshifts_left, self.nshifts_right)
         self.iRvec_list = []
         self.Ndegen_list = []
         self.iRvec_mod_list = []
-        # make iRvec0 a (NK[0],NK[1],NK[2]) array of integers, with all possible combinations in the range
-        # [0,NK[0]-1],[0,NK[1]-1],[0,NK[2]-1]
         wigner = WignerSeitz(self.lattice, mp_grid=mp_grid, tolerance=ws_tolerance)
-        # self.iRvec0, self.Ndegen0 = wigner(self.all_shifts_red)
-        self.iRvec_index_list = [] # indices of every shift in the 
+        self.iRvec_index_list = []  # indices of every shift in the
         for shift in self.all_shifts_red:
-            iRvec, Ndegen, iRvec_mod= wigner(shift_reduced=shift)
+            iRvec, Ndegen, iRvec_mod = wigner(shift_reduced=shift)
             self.iRvec_list.append(iRvec)
             self.Ndegen_list.append(Ndegen)
             self.iRvec_mod_list.append(iRvec_mod)
         self.iRvec = np.array(list(set(tuple(a) for a in np.concatenate(self.iRvec_list))))
-        print (f"new iRvec {self.iRvec}")
         self.clear_cached()
         for i, iRvec in enumerate(self.iRvec_list):
             self.iRvec_index_list.append(np.array([self.iR(R) for R in iRvec]))
 
-        
-        
-        
 
-    def remap_XX_R(self,XX_R, iRvec_old):
+
+    def exclude_zeros(self, XX_R_dic={}, tolerance=1e-8):
+        """
+        Exclude the zero R-vectors from the list of R-vectors.
+        """
+        if len(XX_R_dic) == 0:
+            return XX_R_dic, self
+        include_R = np.ones(self.nRvec, dtype=bool)
+        for iR in range(self.nRvec):
+            include_R[iR] = any(np.any(np.abs(XX_R[:, :, iR]) > tolerance) for XX_R in XX_R_dic.values())
+        XX_R_dic = {key: XX_R[:, :, include_R] for key, XX_R in XX_R_dic.items()}
+        rvec_new = Rvectors(lattice=self.lattice, shifts_left_red=self.shifts_left_red,
+                            shifts_right_red=self.shifts_right_red, iRvec=self.iRvec[include_R])
+        return XX_R_dic, rvec_new
+
+
+    def remap_XX_R(self, XX_R, iRvec_old):
         """
         remap an old matrix XX_R, from old Rvec, to the current ones
 
         XX_R should have dimensions (num_wann, num_wann, len(iRvec_old), ....)
         """
-        assert (XX_R.shape[0] == self.nshifts_left) or (self.nshifts_left==1)
-        assert (XX_R.shape[1] == self.nshifts_right) or (self.nshifts_right==1)
+        print(f"remapping {XX_R.shape} ")
+        assert (XX_R.shape[0] == self.nshifts_left) or (self.nshifts_left == 1)
+        assert (XX_R.shape[1] == self.nshifts_right) or (self.nshifts_right == 1)
         XX_R_sum_R_old = XX_R.sum(axis=2)
-        XX_R_tmp = np.zeros( tuple(self.mp_grid)+XX_R.shape[:2]+XX_R.shape[3:], dtype=XX_R.dtype)
-        for i, iR in enumerate(iRvec_old):
-            XX_R_tmp[tuple(iR)] += XX_R[:,:,i]
-        XX_R_sum_T_tmp = XX_R_tmp.sum(axis=(0,1,2))
+        XX_R_tmp = np.zeros(tuple(self.mp_grid) + XX_R.shape[:2] + XX_R.shape[3:], dtype=XX_R.dtype)
+        for i, iR in enumerate(iRvec_old % self.mp_grid):
+            XX_R_tmp[tuple(iR)] += XX_R[:, :, i]
+        XX_R_sum_T_tmp = XX_R_tmp.sum(axis=(0, 1, 2))
         assert np.allclose(XX_R_sum_T_tmp, XX_R_sum_R_old), f"XX_R_sum_T_tmp {XX_R_sum_T_tmp} != XX_R_sum_R_old {XX_R_sum_R_old}"
         shape_new = list(XX_R.shape)
         shape_new[2] = self.nRvec
@@ -105,10 +115,10 @@ class Rvectors:
             for b in range(XX_R.shape[1]):
                 ib = 1 if self.nshifts_right == 1 else b
                 ishift = self.shift_index[ia, ib]
-                for iRi, iRm, nd in zip (self.iRvec_index_list[ishift], 
-                                         self.iRvec_mod_list[ishift], 
-                                         self.Ndegen_list[ishift]):
-                    XX_R_final[a,b,iRi] += XX_R_tmp[tuple(iRm)+(a,b)]/nd
+                for iRi, iRm, nd in zip(self.iRvec_index_list[ishift],
+                                        self.iRvec_mod_list[ishift],
+                                        self.Ndegen_list[ishift]):
+                    XX_R_final[a, b, iRi] += XX_R_tmp[tuple(iRm) + (a, b)] / nd
         XX_R_sum_R_new = XX_R_final.sum(axis=2)
         assert np.allclose(XX_R_sum_R_new, XX_R_sum_T_tmp), f"XX_R_sum_R_new {XX_R_sum_R_new} != XX_R_sum_T_tmp {XX_R_sum_T_tmp}"
         return XX_R_final
@@ -313,12 +323,12 @@ class WignerSeitz:
         # print (f"iRvec0 : \n{repr(self.iRvec0)}")
         self.cRvec0 = self.iRvec0.dot(self.real_lattice)
         # superlattice = self.real_lattice * np.array(ws_search_size)[:, None]
-        super_vectors_i = np.array([ijk for ijk in iterate3dpm(ws_search_size)])*self.mp_grid[None, :]
+        super_vectors_i = np.array([ijk for ijk in iterate3dpm(ws_search_size)]) * self.mp_grid[None, :]
         # print (f"super_vectors_i : \n{repr(super_vectors_i)}")
         super_vectors_c = super_vectors_i.dot(self.real_lattice)
-        self.iRvec_search = np.array([self.iRvec0 + ijk[None,:] 
+        self.iRvec_search = np.array([self.iRvec0 + ijk[None, :]
                                  for ijk in super_vectors_i]).swapaxes(0, 1)
-        self.cRvec_search = np.array([self.cRvec0 + ijk[None,:]
+        self.cRvec_search = np.array([self.cRvec0 + ijk[None, :]
                                  for ijk in super_vectors_c]).swapaxes(0, 1)
 
 
@@ -332,16 +342,16 @@ class WignerSeitz:
             # print (f"{i} : {repr(iRs)}  : {dist[i]}")
             dist_min = dist[i].min()
             select = np.where(abs(dist[i] - dist_min) < self.tolerance)[0]
-            print (f"selecting {select} with distance {dist[i][select]} and min {dist_min}")
+            # print (f"selecting {select} with distance {dist[i][select]} and min {dist_min}")
             ndeg = len(select)
             for j in select:
-                print (f"    {iRs[j]} : {dist[i][j]} {ndeg}")
+                # print (f"    {iRs[j]} : {dist[i][j]} {ndeg}")
                 iRvec.append(iRs[j])
                 Ndegen.append(ndeg)
         iRvec = np.array(iRvec)
         Ndegen = np.array(Ndegen)
         return iRvec, Ndegen, iRvec % self.mp_grid
-            
+
 
 # def wigner_seitz(real_lattice, iRvec0, cRvec0):
 #     ws_search_size = np.array([1] * 3)
