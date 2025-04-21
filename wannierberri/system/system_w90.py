@@ -189,7 +189,7 @@ class System_w90(System_R):
         # factors depending on the lattice vectors R can be added, and the sum
         # over nearest-neighbor vectors can be finally performed.
 
-        w90data.mmn.set_bk_chk(chk)
+        w90data.mmn.set_bk_chk(chk, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
 
         # H(R) matrix
         HHq = chk.get_HH_q(w90data.eig)
@@ -283,8 +283,6 @@ class System_w90(System_R):
                            self.rvec.q_to_R(chk.get_SHA_q(w90data.shu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
 
         del expjphase1, expjphase2
-
-        # self.do_ws_dist(mp_grid=mp_grid) # not needed anymore
 
         if transl_inv_JM:
             self.recenter_JM(centers, bk_cart_unique)

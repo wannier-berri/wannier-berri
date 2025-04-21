@@ -316,7 +316,7 @@ class Rvectors:
                 (shape_cR[0], shape_cR[1], self.nRvec) + (1,) * len(XX_R.shape[3:]) + (3,))
         return self.fft_R_to_k(XX_R, hermitian=hermitian)
 
-    def set_fft_q_to_R(self, kpt_red, numthreads, fftlib='pyfftw'):
+    def set_fft_q_to_R(self, kpt_red, numthreads=1, fftlib='pyfftw'):
         """
         set the FFT for the q to R conversion
 
@@ -329,7 +329,8 @@ class Rvectors:
         fftlib : str
             The FFT library to use ('pyfftw' or 'numpy' or 'slow')
         """
-        kpt_red_mp = np.array(kpt_red) * self.mp_grid[None, :]
+        kpt_red = np.array(kpt_red)
+        kpt_red_mp = kpt_red * self.mp_grid[None, :]
         kpt_red_mp_int = np.round(kpt_red_mp).astype(int)
         assert kpt_red.shape == (np.prod(self.mp_grid), 3), f"kpt_red {kpt_red} should be an array of shape NK_mp x 3 (NK_mp={np.prod(self.mp_grid)})"
         assert np.allclose(kpt_red_mp_int, kpt_red_mp), f"kpt_red {kpt_red} should be a uniform grid of  {self.mp_grid} kpoints"

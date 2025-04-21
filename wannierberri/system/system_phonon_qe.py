@@ -4,10 +4,8 @@ import numpy as np
 import multiprocessing
 
 from .rvectors import Rvectors
-from ..__utility import execute_fft
 from . import System_w90
 from .system_R import System_R
-from .ws_dist import wigner_seitz
 from scipy import constants as const
 from ..__factors import Ry_eV
 
@@ -51,7 +49,7 @@ class System_Phonon_QE(System_w90):
 
     def __init__(self,
                  seedname,
-                 fft='fftw',
+                 fftlib='fftw',
                  npar=multiprocessing.cpu_count(),
                  asr=True,
                  **parameters):
@@ -103,28 +101,30 @@ class System_Phonon_QE(System_w90):
                 q_points.append(q)
                 cnt += 1
         self.wannier_centers_cart = self.wannier_centers_red.dot(self.real_lattice)
-        qpoints_found = np.zeros(mp_grid, dtype=float)
-        dynamical_matrix_q = np.zeros(tuple(mp_grid) + (self.number_of_phonons,) * 2, dtype=complex)
-        agrid = np.array(mp_grid)
-        for q, dyn_mat in zip(q_points, dynamical_mat):
-            iq = tuple(np.array(np.round(q * agrid), dtype=int) % agrid)
-            dynamical_matrix_q[iq] = dyn_mat
-            qpoints_found[iq] = True
-        assert np.all(qpoints_found), ('some qpoints were not found in the files:\n' + '\n'.join(str(x / agrid))
-                                       for x in np.where(np.logical_not(qpoints_found)))
-        Ham_R = execute_fft(dynamical_matrix_q, axes=(0, 1, 2), numthreads=npar, fftlib=fft, destroy=False)
-        iRvec, Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=mp_grid)
-        Ham_R = np.array([Ham_R[tuple(iR % mp_grid)] / nd for iR, nd in zip(iRvec, Ndegen)]) / np.prod(
-            mp_grid)
-        Ham_R = Ham_R.transpose((1, 2, 0)) * (
-            Ry_eV ** 2)  # now the units are eV**2, to be "kind of consistent" with electronic systems
-        self.set_R_mat('Ham', Ham_R)
-        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec,
+
+
+
+        self.rvec = Rvectors(lattice=self.real_lattice,
                              shifts_left_red=self.wannier_centers_red,
                              )
+        self.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=self.ws_dist_tol)
+        self.rvec.set_fft_q_to_R(
+            kpt_red=q_points,
+            fftlib=fftlib,
+            numthreads=npar,
+        )
+
+        qpoints_found = np.zeros(mp_grid, dtype=float)
+        for iq in self.rvec.kpt_mp_grid[i]:
+            qpoints_found[iq] = True
+        assert np.all(qpoints_found), ('some qpoints were not found in the files:\n' + '\n'.join(str(x))
+                                       for x in np.where(np.logical_not(qpoints_found)))
+
+        Ham_R = self.rvec.q_to_R(np.array(dynamical_mat))
+
+        self.set_R_mat('Ham', Ham_R * Ry_eV ** 2)
 
         self.do_at_end_of_init()
-        self.do_ws_dist(mp_grid=mp_grid)
 
         iR0 = self.rvec.iR0
         if asr:
