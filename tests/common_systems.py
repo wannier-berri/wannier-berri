@@ -150,7 +150,8 @@ def system_Fe_W90(create_files_Fe_W90):
     system = wberri.system.System_w90(
         seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv_MV=False,
         read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
-        write_npz_formatted=True)
+        write_npz_formatted=True,
+        ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_Fe)
     return system
 
@@ -167,7 +168,8 @@ def system_Fe_W90_npz(create_files_Fe_W90_npz):
         seedname, berry=True,
         morb=True, SHCqiao=True, SHCryoo=True,
         transl_inv_MV=False,
-        read_npz=True, write_npz_list=[], overwrite_npz=False, write_npz_formatted=False)
+        read_npz=True, write_npz_list=[], overwrite_npz=False, write_npz_formatted=False,
+        ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_Fe)
     return system
 
@@ -193,6 +195,7 @@ def get_system_Fe_sym_W90(symmetrize=False,
     seedname = os.path.join(data_dir, "Fe_sym")
     system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, SHCryoo=True,
                                       OSD=True, SHCqiao=True,
+                                      ws_dist_tol=1e-5,
                                       **kwargs)
     system.set_pointgroup(symmetries_Fe)
     if symmetrize:
@@ -230,7 +233,8 @@ def system_GaAs_W90(create_files_GaAs_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True)
+    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True,
+                                      ws_dist_tol=-1e-5)
     system.set_pointgroup(symmetries_GaAs)
     return system
 
@@ -244,7 +248,8 @@ def system_GaAs_W90_JM(create_files_GaAs_W90):
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.system.System_w90(seedname, morb=True,
                                       transl_inv_JM=True, spin=True,
-                                      OSD=True, SHCryoo=True)
+                                      OSD=True, SHCryoo=True,
+                                      ws_dist_tol=-1e-5)
     system.set_pointgroup(symmetries_GaAs)
     return system
 
@@ -252,7 +257,7 @@ def system_GaAs_W90_JM(create_files_GaAs_W90):
 def get_system_GaAs_tb(symmetrize=True, berry=True):
     """Create system for GaAs using sym_tb.dat data"""
     seedname = create_files_tb(dir="GaAs_Wannier90", file=f"GaAs{'_sym' if symmetrize else ''}_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=berry)
+    system = wberri.system.System_tb(seedname, berry=berry, ws_dist_tol=-1e-5,)
     system.do_ws_dist(mp_grid=(2, 2, 2))
 
     system.spin_block2interlace()  # the stored system is from old VASP, with spin-block ordering
@@ -485,7 +490,7 @@ def data_Te_ASE():
 def system_Te_ASE(data_Te_ASE):
     """Create system for Te using  ASE+GPAW data"""
     wan = data_Te_ASE
-    system = wberri.system.System_ASE(wan)
+    system = wberri.system.System_ASE(wan, ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_Te)
     return system
 
@@ -504,7 +509,7 @@ def system_Te_sparse():
 def system_Phonons_Si():
     """Create system of phonons of Si using  QE data"""
     path = os.path.join(ROOT_DIR, "data", "Si_phonons/si")
-    system = wberri.system.System_Phonon_QE(path, asr=True)
+    system = wberri.system.System_Phonon_QE(path, asr=True, ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_Si)
     return system
 
@@ -513,7 +518,7 @@ def system_Phonons_Si():
 def system_Phonons_GaAs():
     """Create system of phonons of Si using  QE data"""
     path = os.path.join(ROOT_DIR, "data", "GaAs_phonons/GaAs")
-    system = wberri.system.System_Phonon_QE(path, asr=True)
+    system = wberri.system.System_Phonon_QE(path, asr=True, ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_GaAs)
     return system
 
@@ -526,7 +531,7 @@ def get_system_Mn3Sn_sym_tb():
             tar.extract(tarinfo, data_dir)
 
     seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True)
+    system = wberri.system.System_tb(seedname, berry=True, ws_dist_tol=-1e-5)
     system.do_ws_dist(mp_grid=(2, 2, 2))
     system.spin_block2interlace()  # the stored system is from old VASP, with spin-block ordering
     system.symmetrize(
@@ -665,7 +670,8 @@ def model_1d_pythtb():
 def system_random():
     system = wberri.system.SystemRandom(num_wann=6, nRvec=20, max_R=4,
                                         berry=True, morb=True, spin=True,
-                                        SHCryoo=True, SHCqiao=True, OSD=True)
+                                        SHCryoo=True, SHCqiao=True, OSD=True,
+                                        ws_dist_tol=-1e-5,)
     # system.save_npz("randomsys")
     return system
 
@@ -673,7 +679,8 @@ def system_random():
 @pytest.fixture(scope="session")
 def system_random_load_bare():
     system = wberri.system.System_R(berry=True, morb=True, spin=True,
-                                    SHCryoo=True, SHCqiao=True, OSD=True)
+                                    SHCryoo=True, SHCqiao=True, OSD=True,
+                                    ws_dist_tol=-1e-5)
     system.load_npz(path=os.path.join(ROOT_DIR, "data", "random"))
     return system
 
@@ -682,11 +689,13 @@ def system_random_load_bare():
 def system_random_GaAs():
     return wberri.system.SystemRandom(num_wann=16, nRvec=30, max_R=4,
                                       real_lattice=np.ones(3) - np.eye(3),
-                                      berry=True, spin=True, SHCryoo=True)
+                                      berry=True, spin=True, SHCryoo=True,
+                                      ws_dist_tol=-1e-5,
+                                      )
 
 
 def get_system_random_GaAs_load_sym(sym=False, use_ws=True):
-    system = wberri.system.System_R(berry=True, spin=True, SHCryoo=True)
+    system = wberri.system.System_R(berry=True, spin=True, SHCryoo=True, ws_dist_tol=-1e-5)
     system.load_npz(path=os.path.join(ROOT_DIR, "data", "random_GaAs"))
     if use_ws:
         system.do_ws_dist(mp_grid=6)

@@ -45,6 +45,8 @@ class System_R(System):
             generate the FF_R matrix based on the uIu file. May be used for only testing so far. Default : ``{_getFF}``
         npar : int
             number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
+        ws_dist_tol : float
+            the tolerance for the Wigner-Seitz distance. Default: 1e-5
 
         Notes
         -----
@@ -64,16 +66,10 @@ class System_R(System):
             the positions of the Wannier centers in the Cartesian coordinates.
         wannier_centers_reduced : array(float)
             the positions of the Wannier centers in the reduced coordinates.
-        iRvec : array(int)
-            the array of the R-vectors in the reduced coordinates.
         num_wann : int
             the number of Wannier functions.
         real_lattice : array(float, shape=(3,3))
             the lattice vectors of the model.
-        nRvec : int
-            the number of R-vectors.
-        iR0 : int
-            the index of the R-vector [0,0,0] in the iRvec array.
         NKFFT_recommended : int
             the recommended size of the FFT grid to be used in the interpolation.
         """
@@ -87,7 +83,7 @@ class System_R(System):
                  OSD=False,
                  npar=None,
                  _getFF=False,
-                 ws_dist_tol=1e-5,
+                 ws_dist_tol=0.05,
                  **parameters):
 
         super().__init__(**parameters)

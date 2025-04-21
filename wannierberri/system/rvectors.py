@@ -46,6 +46,20 @@ class Rvectors:
         # print(f"created {self.nRvec} Rvectors with shilts left \n reduced coordinates {self.shifts_left_red} \n and right shifts \n reduced coordinates \n{self.shifts_right_red}\n cartesian coordinates \n{self.shifts_left_cart} \n and \n{self.shifts_right_cart}\n")
 
     def set_Rvec(self, mp_grid, ws_tolerance=1e-3):
+        """
+        set the Rvectors for all the shifts (MDRS method)
+
+        Parameters
+        ----------
+        mp_grid : list
+            The Monkhorst-Pack grid
+        ws_tolerance : float
+            The tolerance for the Wigner-Seitz search
+
+        Note:
+            if ws_toleranece is negative, the absolute value is used and all shifts are considered different with tolerance 1e-8 (This is mainly to comply with legacy tests)
+            TODO: this should be removed in the future, and test data should be updated
+        """
         print("setting Rvec")
         assert len(mp_grid) == 3, "NK should be a list of 3 integers"
         self.mp_grid = mp_grid
@@ -55,7 +69,11 @@ class Rvectors:
         # but it may require modification of dest data
         # self.all_shifts_red = UniqueList(tolerance=1e-2
         # but for low-precision data, higher tolerance may be beneficial
-        num_digits_tol = 8
+        if ws_tolerance > 0:
+            num_digits_tol = int(np.ceil(-np.log10(ws_tolerance))) + 1
+        else:
+            ws_tolerance = abs(ws_tolerance)
+            num_digits_tol = 8
         self.all_shifts_red, self.shift_index = np.unique(
             np.round(-self.shifts_left_red[:, None] + self.shifts_right_red[None, :], num_digits_tol).reshape(-1, 3),
             axis=0, return_inverse=True)
