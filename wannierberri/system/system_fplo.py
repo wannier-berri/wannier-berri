@@ -115,6 +115,9 @@ class System_fplo(System_R):
         self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec, shifts_left_red=self.wannier_centers_reduced)
 
         self.do_at_end_of_init()
+        print("FPLO system initialized")
+        print(f"wannier_centers_cart: {self.wannier_centers_cart}")
+        print(f"wannier_centers_reduced: {self.wannier_centers_reduced}")
         if mp_grid is not None:
             self.do_ws_dist(mp_grid=mp_grid)
 

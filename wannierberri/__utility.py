@@ -422,15 +422,36 @@ class UniqueList(list):
             self.append(x)
 
     def append(self, item, count=1):
+        """Add an item to the list, if it is not already present.
+        If it is already present, increase the count of the item by 1.
+
+        Parameters
+        ----------
+        item : object
+            The item to add to the list.
+        count : int
+            The number of times to add the item to the list.
+            If the item is already present, this is ignored.
+
+        Returns
+        -------
+        int
+            The index of the item in the list.
+            If the item is not already present, it is added to the end of the list.
+            If the item is already present, its index is returned. 
+        """
         for j, i in enumerate(self):
             if self._equal(i, item):
+                # print (f"{item} already in list")
                 if self.do_count:
                     self.counts[self.index(i)] += count
-                break
+                return j
         else:
             super().append(item)
+            # print (f"adding {item} to list, length now {len(self)}")
             if self.do_count:
                 self.counts.append(1)
+            return len(self) - 1
 
     def index(self, value: Any, start=0, stop=sys.maxsize) -> int:
         stop = min(stop, len(self))
