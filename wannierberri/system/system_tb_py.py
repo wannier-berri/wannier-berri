@@ -13,7 +13,10 @@
 
 import numpy as np
 from termcolor import cprint
+
+from .rvectors import Rvectors
 from .system_R import System_R
+# from .Rvec import Rvec
 
 
 class System_tb_py(System_R):
@@ -55,7 +58,7 @@ class System_tb_py(System_R):
                     f"System_{names[module]} class cannot be used for evaluation of spin properties")
             self.spinors = False
             positions = model.pos
-            Rvec = np.array([R[0] for R in model.hop.items()], dtype=int)
+            iRvec = np.array([R[0] for R in model.hop.items()], dtype=int)
         elif module == 'pythtb':
             real = model._lat
             positions = model._orb
@@ -69,7 +72,7 @@ class System_tb_py(System_R):
             else:
                 raise Exception("\n\nWrong value of nspin!")
             print("number of wannier functions:", self.num_wann)
-            Rvec = np.array([R[-1] for R in model._hoppings], dtype=int)
+            iRvec = np.array([R[-1] for R in model._hoppings], dtype=int)
         else:
             raise ValueError(f"unknown tight-binding module {module}")
 
@@ -82,49 +85,52 @@ class System_tb_py(System_R):
         self.wannier_centers_cart = wannier_centers_reduced.dot(self.real_lattice)
 
         self.periodic[self.dimr:] = False
-        Rvec = [tuple(row) for row in Rvec]
-        Rvecs = np.unique(Rvec, axis=0).astype('int32')
+        iRvec = [tuple(row) for row in iRvec]
+        iRvec = np.unique(iRvec, axis=0).astype('int32')
 
-        nR = Rvecs.shape[0]
+        nR = iRvec.shape[0]
         for i in range(3 - self.dimr):
             column = np.zeros(nR, dtype='int32')
-            Rvecs = np.column_stack((Rvecs, column))
+            iRvec = np.column_stack((iRvec, column))
 
-        Rvecsneg = np.array([-r for r in Rvecs])
-        R_all = np.concatenate((Rvecs, Rvecsneg), axis=0)
-        R_all = np.unique(R_all, axis=0)
+        iRvec_neg = np.array([-r for r in iRvec])
+        iRvec = np.concatenate((iRvec, iRvec_neg), axis=0)
+        iRvec = np.unique(iRvec, axis=0)
         # Find the R=[000] index (used later)
-        index0 = np.argwhere(np.all(([0, 0, 0] - R_all) == 0, axis=1))
+        index0 = np.argwhere(np.all(([0, 0, 0] - iRvec) == 0, axis=1))
         # make sure it exists; otherwise, add it manually
         # add it manually
         if index0.size == 0:
-            R_all = np.column_stack((np.array([0, 0, 0]), R_all.T)).T
+            iRvec = np.column_stack((np.array([0, 0, 0]), iRvec.T)).T
             index0 = 0
         elif index0.size == 1:
             print(f"R=0 found at position(s) {index0}")
             index0 = index0[0][0]
         else:
-            raise RuntimeError(f"wrong value of index0={index0}, with R_all={R_all}")
+            raise RuntimeError(f"wrong value of index0={index0}, with R_all={iRvec}")
 
-        self.iRvec = R_all
-        nRvec = self.iRvec.shape[0]
-        self.nRvec0 = nRvec
+        self.rvec = Rvectors(lattice=self.real_lattice,
+                         iRvec=iRvec,
+                         shifts_left_red=wannier_centers_reduced,
+                         dim=self.dimr)
         # Define Ham_R matrix from hoppings
-        Ham_R = np.zeros((self.num_wann, self.num_wann, self.nRvec0), dtype=complex)
+        nRvec = self.rvec.nRvec
+        Ham_R = np.zeros((self.num_wann, self.num_wann, nRvec), dtype=complex)
+        iRvec = self.rvec.iRvec
         if module == 'tbmodels':
             for hop in model.hop.items():
                 R = np.array(hop[0], dtype=int)
                 hops = np.array(hop[1]).reshape((self.num_wann, self.num_wann))
-                iR = int(np.argwhere(np.all((R - R_all[:, :self.dimr]) == 0, axis=1)))
-                inR = int(np.argwhere(np.all((-R - R_all[:, :self.dimr]) == 0, axis=1)))
+                iR = int(np.argwhere(np.all((R - iRvec[:, :self.dimr]) == 0, axis=1)))
+                inR = int(np.argwhere(np.all((-R - iRvec[:, :self.dimr]) == 0, axis=1)))
                 Ham_R[:, :, iR] += hops
                 Ham_R[:, :, inR] += np.conjugate(hops.T)
         elif module == 'pythtb':
             for nhop in model._hoppings:
                 i = nhop[1]
                 j = nhop[2]
-                iR = np.argwhere(np.all((nhop[-1] - self.iRvec[:, :self.dimr]) == 0, axis=1))[0][0]
-                inR = np.argwhere(np.all((-nhop[-1] - self.iRvec[:, :self.dimr]) == 0, axis=1))[0][0]
+                iR = np.argwhere(np.all((nhop[-1] - self.rvec.iRvec[:, :self.dimr]) == 0, axis=1))[0][0]
+                inR = np.argwhere(np.all((-nhop[-1] - self.rvec.iRvec[:, :self.dimr]) == 0, axis=1))[0][0]
                 if model._nspin == 1:
                     Ham_R[i, j, iR] += nhop[0]
                     Ham_R[j, i, inR] += np.conjugate(nhop[0])

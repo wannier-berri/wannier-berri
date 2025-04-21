@@ -11,6 +11,7 @@
 #                                                            #
 # ------------------------------------------------------------
 
+import copy
 import numpy as np
 import abc
 from functools import cached_property
@@ -18,7 +19,7 @@ from .parallel import pool
 from .system.system import System
 from .system.system_R import System_R
 from .system.system_kp import SystemKP
-from .__utility import FFT_R_to_k, alpha_A, beta_A
+from .__utility import alpha_A, beta_A
 from .grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
 from . import formula
 from .grid import KpointBZparallel, KpointBZtetra
@@ -597,16 +598,20 @@ class Data_K_R(_Data_K, System_R):
         self._FF_antisym = _FF_antisym
         self._CCab_antisym = _CCab_antisym
 
-        self.cRvec_wcc = self.system.cRvec_p_wcc
+        self.rvec = copy.deepcopy(system.rvec)
+        self.rvec.set_fft_R_to_k(NK=self.NKFFT, num_wann=self.num_wann,
+                          numthreads=self.npar_k if self.npar_k > 0 else 1,
+                            fftlib=self.fftlib)
+        self.cRvec_wcc = self.rvec.cRvec_shifted
 
-        self.fft_R_to_k = FFT_R_to_k(
-            self.system.iRvec,
-            self.NKFFT,
-            self.num_wann,
-            numthreads=self.npar_k if self.npar_k > 0 else 1,
-            fftlib=self.fftlib)
+        # self.fft_R_to_k = FFT_R_to_k(
+        #     rvec.iRvec,
+        #     self.NKFFT,
+        #     self.num_wann,
+        #     numthreads=self.npar_k if self.npar_k > 0 else 1,
+        #     fftlib=self.fftlib)
 
-        self.expdK = np.exp(2j * np.pi * self.system.iRvec.dot(dK))
+        self.expdK = np.exp(2j * np.pi * self.rvec.iRvec.dot(dK))
         self.dK = dK
         self._bar_quantities = {}
         self._covariant_quantities = {}
@@ -614,7 +619,7 @@ class Data_K_R(_Data_K, System_R):
 
     @property
     def HH_K(self):
-        return self.fft_R_to_k(self.Ham_R, hermitian=True)
+        return self.rvec.R_to_k(self.Ham_R, hermitian=True)
 
     #########
     # Oscar #
@@ -652,7 +657,7 @@ class Data_K_R(_Data_K, System_R):
 
     def _CCab_R(self):
         if self._CCab_antisym:
-            CCab = np.zeros((self.num_wann, self.num_wann, self.system.nRvec, 3, 3), dtype=complex)
+            CCab = np.zeros((self.num_wann, self.num_wann, self.rvec.nRvec, 3, 3), dtype=complex)
             CCab[:, :, :, alpha_A, beta_A] = -0.5j * self.get_R_mat('CC')
             CCab[:, :, :, beta_A, alpha_A] = 0.5j * self.get_R_mat('CC')
             return CCab
@@ -678,21 +683,16 @@ class Data_K_R(_Data_K, System_R):
             der [=0] - defines the order of comma-derivative
             hermitian [=True] - consider the matrix hermitian
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
-
-        for i in range(der):
-            shape_cR = np.shape(self.cRvec_wcc)
-            XX_R = 1j * XX_R.reshape((XX_R.shape) + (1,)) * self.cRvec_wcc.reshape(
-                (shape_cR[0], shape_cR[1], self.system.nRvec) + (1,) * len(XX_R.shape[3:]) + (3,))
-        return self._rotate((self.fft_R_to_k(XX_R, hermitian=hermitian))[self.select_K])
+        return self._rotate((self.rvec.R_to_k(XX_R, hermitian=hermitian, der=der))[self.select_K])
 
     def E_K_corners_tetra(self):
         vertices = self.Kpoint.vertices_fullBZ
-        expdK = np.exp(2j * np.pi * self.system.iRvec.dot(
+        expdK = np.exp(2j * np.pi * self.rvec.iRvec.dot(
             vertices.T)).T  # we omit the wcc phases here, because they do not affect the energies
         _Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
         for iv, _exp in enumerate(expdK):
             _Ham_R = self.Ham_R[:, :, :] * _exp[None, None, :]
-            _HH_K = self.fft_R_to_k(_Ham_R, hermitian=True)
+            _HH_K = self.rvec.R_to_k(_Ham_R, hermitian=True)
             _Ecorners[:, iv, :] = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
         self.select_bands(_Ecorners)
         Ecorners = np.zeros((self.nk_selected, 4, self.nb_selected), dtype=float)
@@ -704,7 +704,7 @@ class Data_K_R(_Data_K, System_R):
     def E_K_corners_parallel(self):
         dK2 = self.Kpoint.dK_fullBZ / 2
         expdK = np.exp(
-            2j * np.pi * self.system.iRvec *
+            2j * np.pi * self.rvec.iRvec *
             dK2[None, :])  # we omit the wcc phases here, because they do not affect the energies
         expdK = np.array([1. / expdK, expdK])
         Ecorners = np.zeros((self.nk_selected, 2, 2, 2, self.nb_selected), dtype=float)
@@ -713,7 +713,7 @@ class Data_K_R(_Data_K, System_R):
                 for iz in 0, 1:
                     _expdK = expdK[ix, :, 0] * expdK[iy, :, 1] * expdK[iz, :, 2]
                     _Ham_R = self.Ham_R[:, :, :] * _expdK[None, None, :]
-                    _HH_K = self.fft_R_to_k(_Ham_R, hermitian=True)
+                    _HH_K = self.rvec.R_to_k(_Ham_R, hermitian=True)
                     E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
                     Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)

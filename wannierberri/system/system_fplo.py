@@ -13,6 +13,8 @@
 
 import numpy as np
 
+from .rvectors import Rvectors
+
 from ..__utility import str2bool
 from termcolor import cprint
 from .system_R import System_R
@@ -91,11 +93,11 @@ class System_fplo(System_R):
                         if len(arread) == 0:
                             continue
                         arread = np.array(arread, dtype=float)
-                        Rvec = arread[:, :3] + (
+                        Rvec_loc = arread[:, :3] + (
                             self.wannier_centers_cart[None, iw] - self.wannier_centers_cart[None, jw])
-                        Rvec = Rvec.dot(inv_real_lattice)  # should be integer now
-                        iRvec = np.array(np.round(Rvec), dtype=int)
-                        assert (abs(iRvec - Rvec).max() < 1e-8)
+                        Rvec_loc = Rvec_loc.dot(inv_real_lattice)  # should be integer now
+                        iRvec = np.array(np.round(Rvec_loc), dtype=int)
+                        assert (abs(iRvec - Rvec_loc).max() < 1e-8)
                         iRvec = [tuple(ir) for ir in iRvec]
                         for iR, a in zip(iRvec, arread):
                             Ham_R[iR][iw, jw] = a[3] + 1j * a[4]
@@ -110,8 +112,7 @@ class System_fplo(System_R):
         if self.need_R_any('SS'):
             self.set_R_mat('SS', np.array([SS_R[iR] for iR in iRvec]).transpose((1, 2, 0, 3)))
 
-        self.nRvec0 = len(iRvec)
-        self.iRvec = np.array(iRvec, dtype=int)
+        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec, shifts_left_red=self.wannier_centers_reduced)
 
         self.do_at_end_of_init()
         if mp_grid is not None:

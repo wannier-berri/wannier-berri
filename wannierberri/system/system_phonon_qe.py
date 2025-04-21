@@ -2,6 +2,8 @@ import os.path
 
 import numpy as np
 import multiprocessing
+
+from .rvectors import Rvectors
 from ..__utility import execute_fft
 from . import System_w90
 from .system_R import System_R
@@ -111,17 +113,20 @@ class System_Phonon_QE(System_w90):
         assert np.all(qpoints_found), ('some qpoints were not found in the files:\n' + '\n'.join(str(x / agrid))
                                        for x in np.where(np.logical_not(qpoints_found)))
         Ham_R = execute_fft(dynamical_matrix_q, axes=(0, 1, 2), numthreads=npar, fftlib=fft, destroy=False)
-        self.iRvec, self.Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=mp_grid)
-        Ham_R = np.array([Ham_R[tuple(iR % mp_grid)] / nd for iR, nd in zip(self.iRvec, self.Ndegen)]) / np.prod(
+        iRvec, Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=mp_grid)
+        Ham_R = np.array([Ham_R[tuple(iR % mp_grid)] / nd for iR, nd in zip(iRvec, Ndegen)]) / np.prod(
             mp_grid)
         Ham_R = Ham_R.transpose((1, 2, 0)) * (
             Ry_eV ** 2)  # now the units are eV**2, to be "kind of consistent" with electronic systems
         self.set_R_mat('Ham', Ham_R)
+        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec,
+                             shifts_left_red=self.wannier_centers_reduced,
+                             )
 
         self.do_at_end_of_init()
         self.do_ws_dist(mp_grid=mp_grid)
 
-        iR0 = self.iR0
+        iR0 = self.rvec.iR0
         if asr:
             for i in range(3):
                 for j in range(3):

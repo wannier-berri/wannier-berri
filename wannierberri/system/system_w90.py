@@ -15,10 +15,11 @@
 from collections import defaultdict
 import numpy as np
 import os
-import functools
 import multiprocessing
 import warnings
-from ..__utility import real_recip_lattice, fourier_q_to_R, alpha_A, beta_A
+
+from .rvectors import Rvectors
+from ..__utility import real_recip_lattice, alpha_A, beta_A
 from .system_R import System_R
 from ..w90files import Wannier90data
 from .ws_dist import wigner_seitz
@@ -94,8 +95,6 @@ class System_w90(System_R):
         set R-vectors in the Wigner-Seitz supercell (in the basis of the real-space lattice vectors)
     cRvec : np.ndarray(shape=(num_R, 3))
         set R-vectors in the Wigner-Seitz supercell (in the cartesian coordinates)
-    nRvec0 : int
-        number of R-vectors, before applying the Wigner-Seitz distance
     num_wann : int
         number of Wannier functions
     wannier_centers_cart : np.ndarray(shape=(num_wann, 3))
@@ -170,8 +169,8 @@ class System_w90(System_R):
 
         mp_grid = chk.mp_grid
         self._NKFFT_recommended = mp_grid
-        self.iRvec, Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=chk.mp_grid)
-        self.nRvec0 = len(self.iRvec)
+        iRvec, Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=chk.mp_grid)
+        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec, shifts_left_red=[[0, 0, 0]])
         self.num_wann = chk.num_wann
         self.wannier_centers_cart = w90data.wannier_centers
 
@@ -183,14 +182,13 @@ class System_w90(System_R):
                 "the grid of k-points read from .chk file is not Gamma-centered. Please, use Gamma-centered grids in the ab initio calculation"
             )
 
-        fourier_q_to_R_loc = functools.partial(
-            fourier_q_to_R,
-            mp_grid=chk.mp_grid,
+        self.rvec.set_fft_q_to_R(
+            mp_grid=mp_grid,
             kpt_mp_grid=kpt_mp_grid,
-            iRvec=self.iRvec,
-            ndegen=Ndegen,
-            numthreads=npar,
-            fftlib=fftlib)
+            numthreads=self.npar,
+            fftlib=fftlib,
+            Ndegen=Ndegen
+        )
 
         #########
         # Oscar #
@@ -207,7 +205,7 @@ class System_w90(System_R):
 
         # H(R) matrix
         HHq = chk.get_HH_q(w90data.eig)
-        self.set_R_mat('Ham', fourier_q_to_R_loc(HHq))
+        self.set_R_mat('Ham', self.rvec.q_to_R(HHq))
 
         # Wannier centers
         centers = chk.wannier_centers
@@ -229,7 +227,7 @@ class System_w90(System_R):
         # A_a(R,b) matrix
         if self.need_R_any('AA'):
             AA_qb = chk.get_AA_qb(w90data.mmn, transl_inv=transl_inv_MV, sum_b=sum_b, phase=expjphase1)
-            AA_Rb = fourier_q_to_R_loc(AA_qb)
+            AA_Rb = self.rvec.q_to_R(AA_qb)
             self.set_R_mat('AA', AA_Rb, Hermitian=True)
             # Checking Wannier_centers
             if True:
@@ -256,45 +254,45 @@ class System_w90(System_R):
         # B_a(R,b) matrix
         if 'BB' in self.needed_R_matrices:
             BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig, sum_b=sum_b, phase=expjphase1)
-            BB_Rb = fourier_q_to_R_loc(BB_qb)
+            BB_Rb = self.rvec.q_to_R(BB_qb)
             self.set_R_mat('BB', BB_Rb)
 
         # C_a(R,b1,b2) matrix
         if 'CC' in self.needed_R_matrices:
             CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu, sum_b=sum_b, phase=expjphase2)
-            CC_Rb = fourier_q_to_R_loc(CC_qb)
+            CC_Rb = self.rvec.q_to_R(CC_qb)
             self.set_R_mat('CC', CC_Rb, Hermitian=True)
 
         # O_a(R,b1,b2) matrix
         if 'OO' in self.needed_R_matrices:
             OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
-            OO_Rb = fourier_q_to_R_loc(OO_qb)
+            OO_Rb = self.rvec.q_to_R(OO_qb)
             self.set_R_mat('OO', OO_Rb, Hermitian=True)
 
         # G_bc(R,b1,b2) matrix
         if 'GG' in self.needed_R_matrices:
             GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
-            GG_Rb = fourier_q_to_R_loc(GG_qb)
+            GG_Rb = self.rvec.q_to_R(GG_qb)
             self.set_R_mat('GG', GG_Rb, Hermitian=True)
 
         #######################################################################
 
         if self.need_R_any('SS'):
-            self.set_R_mat('SS', fourier_q_to_R_loc(chk.get_SS_q(w90data.spn)))
+            self.set_R_mat('SS', self.rvec.q_to_R(chk.get_SS_q(w90data.spn)))
         if self.need_R_any('SR'):
-            self.set_R_mat('SR', fourier_q_to_R_loc(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, phase=expjphase1)))
+            self.set_R_mat('SR', self.rvec.q_to_R(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, phase=expjphase1)))
         if self.need_R_any('SH'):
-            self.set_R_mat('SH', fourier_q_to_R_loc(chk.get_SH_q(w90data.spn, w90data.eig)))
+            self.set_R_mat('SH', self.rvec.q_to_R(chk.get_SH_q(w90data.spn, w90data.eig)))
         if self.need_R_any('SHR'):
-            self.set_R_mat('SHR', fourier_q_to_R_loc(
+            self.set_R_mat('SHR', self.rvec.q_to_R(
                 chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, eig=w90data.eig, phase=expjphase1)))
 
         if 'SA' in self.needed_R_matrices:
             self.set_R_mat('SA',
-                           fourier_q_to_R_loc(chk.get_SHA_q(w90data.siu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
+                           self.rvec.q_to_R(chk.get_SHA_q(w90data.siu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
         if 'SHA' in self.needed_R_matrices:
             self.set_R_mat('SHA',
-                           fourier_q_to_R_loc(chk.get_SHA_q(w90data.shu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
+                           self.rvec.q_to_R(chk.get_SHA_q(w90data.shu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
 
         del expjphase1, expjphase2
 
@@ -341,7 +339,7 @@ class System_w90(System_R):
         # elements.
 
         # Optimal center in Jae-Mo's implementation
-        phase = np.einsum('ba,Ra->Rb', bk_cart_unique, - 0.5 * self.cRvec)
+        phase = np.einsum('ba,Ra->Rb', bk_cart_unique, - 0.5 * self.rvec.cRvec)
         expiphase1 = np.exp(1j * phase)
         expiphase2 = expiphase1[:, :, None] * expiphase1[:, None, :]
 
@@ -361,7 +359,7 @@ class System_w90(System_R):
         _reset_mat('GG', expiphase2, (3, 4))
 
         del expiphase1, expiphase2
-        r0 = 0.5 * (centers[:, None, None, :] + centers[None, :, None, :] + self.cRvec[None, None, :, :])
+        r0 = 0.5 * (centers[:, None, None, :] + centers[None, :, None, :] + self.rvec.cRvec[None, None, :, :])
 
         # --- A_a(R) matrix --- #
         if self.need_R_any('AA'):
@@ -370,23 +368,23 @@ class System_w90(System_R):
         if self.need_R_any('BB'):
             BB_R0 = self.get_R_mat('BB').copy()
             HH_R = self.get_R_mat('Ham')
-            rc = (r0 - self.cRvec[None, None, :, :] - centers[None, :, None, :]) * HH_R[:, :, :, None]
+            rc = (r0 - self.rvec.cRvec[None, None, :, :] - centers[None, :, None, :]) * HH_R[:, :, :, None]
             self.set_R_mat('BB', rc, add=True)
         # --- C_a(R) matrix --- #
         if self.need_R_any('CC'):
             assert BB_R0 is not None, 'Recentered B matrix is needed in Jae-Mo`s implementation of C'
-            BB_R0_conj = self.conj_XX_R(BB_R0)
+            BB_R0_conj = self.rvec.conj_XX_R(BB_R0)
             rc = 1j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None, :]
             CC_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
             self.set_R_mat('CC', CC_R_add, add=True, Hermitian=True)
         if self.need_R_any('SA'):
             SS_R = self.get_R_mat('SS')
-            rc = (r0[:, :, :, :, None] - self.cRvec[None, None, :, :, None] - centers[None, :, None, :, None]
+            rc = (r0[:, :, :, :, None] - self.rvec.cRvec[None, None, :, :, None] - centers[None, :, None, :, None]
                   ) * SS_R[:, :, :, None, :]
             self.set_R_mat('SA', rc, add=True)
         if self.need_R_any('SHA'):
             SH_R = self.get_R_mat('SH')
-            rc = (r0[:, :, :, :, None] - self.cRvec[None, None, :, :, None] -
+            rc = (r0[:, :, :, :, None] - self.rvec.cRvec[None, None, :, :, None] -
                   centers[None, :, None, :, None]) * SH_R[:, :, :, None, :]
             self.set_R_mat('SHA', rc, add=True)
         # --- O_a(R) matrix --- #

@@ -223,6 +223,9 @@ def run(
 
         @ray.remote
         def paralfunc(Kpoint, _system, _grid, _calculators, npar_k):
+            # import sys
+            # print("Worker sys.path:", sys.path)
+            # from wannierberri.system.rvectors import Rvectors
             data = get_data_k(_system, Kpoint.Kp_fullBZ, npar_k=npar_k, grid=_grid, Kpoint=Kpoint, **parameters_K)
             return ResultDict({k: v(data) for k, v in _calculators.items()})
     else:

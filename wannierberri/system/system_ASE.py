@@ -16,6 +16,7 @@ import numpy as np
 from .system_R import System_R
 from .ws_dist import wigner_seitz
 from termcolor import cprint
+from .rvectors import Rvectors
 
 
 class System_ASE(System_R):
@@ -46,24 +47,22 @@ class System_ASE(System_R):
         mp_grid = ase_wannier.kptgrid
 
         if not ase_R_vectors:
-            self.iRvec, self.Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=mp_grid)
+            iRvec, Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=mp_grid)
         else:  # enable to do ase-like R-vectors
             N1, N2, N3 = (mp_grid - 1) // 2
-            self.iRvec = np.array(
+            iRvec = np.array(
                 [[n1, n2, n3] for n1 in range(-N1, N1 + 1) for n2 in range(-N2, N2 + 1) for n3 in range(-N3, N3 + 1)],
                 dtype=int)
-            self.Ndegen = np.ones(self.iRvec.shape[0], dtype=int)
+            Ndegen = np.ones(self.iRvec.shape[0], dtype=int)
 
-        for i, R in enumerate(self.iRvec):
-            if np.all(R == [0, 0, 0]):
-                self.iRvec0 = i
-                break
 
-        self.nRvec0 = len(self.iRvec)
         self.num_wann = ase_wannier.nwannier
         self.num_kpts = ase_wannier.Nk
         self.wannier_centers_cart = ase_wannier.get_centers()
         print(f"got the Wannier centers : {self.wannier_centers_cart}")
+        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec,
+                         shifts_left_red=self.wannier_centers_reduced,
+                         )
         self.kpt_red = ase_wannier.kpt_kc
 
         kpt_mp_grid = [
@@ -75,7 +74,7 @@ class System_ASE(System_R):
                 "the grid of k-points read from .chk file is not Gamma-centered. Please, use Gamma-centered grids in the ab initio calculation"
             )
 
-        self.set_R_mat('Ham', np.array([ase_wannier.get_hopping(R) / nd for R, nd in zip(self.iRvec, self.Ndegen)]).transpose(
+        self.set_R_mat('Ham', np.array([ase_wannier.get_hopping(R) / nd for R, nd in zip(iRvec, Ndegen)]).transpose(
             (1, 2, 0)))
 
         self.do_at_end_of_init()

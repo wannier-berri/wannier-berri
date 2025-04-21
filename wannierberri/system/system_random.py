@@ -2,6 +2,7 @@ import warnings
 import numpy as np
 from .system_R import System_R
 from .system import num_cart_dim
+from .rvectors import Rvectors
 
 
 class SystemRandom(System_R):
@@ -50,17 +51,23 @@ class SystemRandom(System_R):
             iRvec.update(R_try)
         if len(iRvec) < nRvec:
             warnings.warn(f"required number of R-vectors {nRvec} was not achieved. got only {len(iRvec)}")
-        iRvec = np.array(list(iRvec), dtype=int)
+        iRvec = np.array(list(iRvec))
         norm = np.linalg.norm(iRvec, axis=1)
         srt = np.argsort(norm)
         self.iRvec = iRvec[srt][:nRvec]
         np.random.shuffle(self.iRvec)
+        self.wannier_centers_cart = np.random.random((self.num_wann, 3))
+        self.rvec = Rvectors(
+            lattice=self.real_lattice,
+            iRvec=list(iRvec),
+            shifts_left_red=self.wannier_centers_reduced,
+        )
+
         for key in self.needed_R_matrices:
-            shape = (self.num_wann, self.num_wann, self.nRvec,) + (3,) * num_cart_dim(key)
+            shape = (self.num_wann, self.num_wann, self.rvec.nRvec,) + (3,) * num_cart_dim(key)
             im, re = [np.random.random(shape) for _ in (0, 1)]
             self.set_R_mat(key, im + 1j * re)
-        self.wannier_centers_cart = np.random.random((self.num_wann, 3))
         if self.has_R_mat('AA'):
             AA = self.get_R_mat('AA')
-            AA[self.range_wann, self.range_wann, self.iR0] = 0
+            AA[self.range_wann, self.range_wann, self.rvec.iR0] = 0
         self.do_at_end_of_init()

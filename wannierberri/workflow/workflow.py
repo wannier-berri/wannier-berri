@@ -7,7 +7,7 @@ import warnings
 from irrep.bandstructure import BandStructure
 from matplotlib import pyplot as plt
 import numpy as np
-from wannierberri.w90files.w90data import FILES_CLASSES
+from ..w90files.w90data import FILES_CLASSES
 from ..w90files.dmn import DMN
 from ..wannierise.projections import ORBITALS, ProjectionsSet
 from ..w90files import WIN, Wannier90data

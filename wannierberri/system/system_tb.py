@@ -14,6 +14,8 @@
 import numpy as np
 import os
 from termcolor import cprint
+
+from .rvectors import Rvectors
 from .system_R import System_R
 
 
@@ -58,61 +60,74 @@ class System_tb(System_R):
 
         self.num_wann = int(f.readline())
         nRvec = int(f.readline())
-        self.nRvec0 = nRvec
-        self.Ndegen = []
-        while len(self.Ndegen) < nRvec:
-            self.Ndegen += f.readline().split()
-        self.Ndegen = np.array(self.Ndegen, dtype=int)
+        Ndegen = []
+        while len(Ndegen) < nRvec:
+            Ndegen += f.readline().split()
+        Ndegen = np.array(Ndegen, dtype=int)
 
-        self.iRvec = []
+
+
+        iRvec = []
 
         Ham_R = np.zeros((self.num_wann, self.num_wann, nRvec), dtype=complex)
 
         for ir in range(nRvec):
             f.readline()
-            self.iRvec.append(f.readline().split())
+            iRvec.append(f.readline().split())
             hh = np.array(
                 [[f.readline().split()[2:4] for _ in range(self.num_wann)] for _ in range(self.num_wann)],
                 dtype=float).transpose((1, 0, 2))
-            Ham_R[:, :, ir] = (hh[:, :, 0] + 1j * hh[:, :, 1]) / self.Ndegen[ir]
+            Ham_R[:, :, ir] = (hh[:, :, 0] + 1j * hh[:, :, 1]) / Ndegen[ir]
         self.set_R_mat('Ham', Ham_R)
+        iRvec = np.array(iRvec, dtype=int)
+        iR0 = Rvectors(lattice=self.real_lattice, iRvec=iRvec).iR0
 
-        self.iRvec = np.array(self.iRvec, dtype=int)
 
         if 'AA' in self.needed_R_matrices:
             AA_R = np.zeros((self.num_wann, self.num_wann, nRvec, 3), dtype=complex)
             for ir in range(nRvec):
                 f.readline()
-                assert np.all(np.array(f.readline().split(), dtype=int) == self.iRvec[ir])
+                assert np.all(np.array(f.readline().split(), dtype=int) == iRvec[ir])
                 aa = np.array(
                     [[f.readline().split()[2:8] for _ in range(self.num_wann)] for _ in range(self.num_wann)],
                     dtype=float)
-                AA_R[:, :, ir, :] = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / self.Ndegen[ir]
+                AA_R[:, :, ir, :] = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / Ndegen[ir]
             if wannier_centers_cart is None:
-                wannier_centers_cart = np.diagonal(AA_R[:, :, self.iR0, :], axis1=0, axis2=1).T.copy()
+                wannier_centers_cart = np.diagonal(AA_R[:, :, iR0, :], axis1=0, axis2=1).T.copy()
             if convention_II_to_I:
                 # convert to convention I
                 # print(f"convention_II_to_I = {convention_II_to_I} wannier_centers_cart = \n{wannier_centers_cart}\n num_wann = {self.num_wann}, A.shape = {AA_R.shape}")
-                AA_R[np.arange(self.num_wann), np.arange(self.num_wann), self.iR0, :] -= wannier_centers_cart
+                AA_R[np.arange(self.num_wann), np.arange(self.num_wann), iR0, :] -= wannier_centers_cart
             self.set_R_mat('AA', AA_R)
         elif wannier_centers_cart is None:
             wannier_centers_cart = np.zeros((3, self.num_wann), dtype=float)
-            for ir in range(self.iR0):
+            for ir in range(iR0):
                 f.readline()
-                assert np.all(np.array(f.readline().split(), dtype=int) == self.iRvec[ir])
+                assert np.all(np.array(f.readline().split(), dtype=int) == iRvec[ir])
                 for _ in range(self.num_wann**2):
                     f.readline()
-            ir = self.iR0
+            ir = iR0
             f.readline()
-            assert np.all(np.array(f.readline().split(), dtype=int) == self.iRvec[ir])
+            assert np.all(np.array(f.readline().split(), dtype=int) == iRvec[ir])
             aa = np.array(
                 [[f.readline().split()[2:8] for _ in range(self.num_wann)] for _ in range(self.num_wann)],
                 dtype=float)
-            aa = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / self.Ndegen[ir]
+            aa = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / Ndegen[ir]
             wannier_centers_cart = np.diagonal(aa, axis1=0, axis2=1).T
 
+
+        # self.set_wannier_centers(wannier_centers_cart=wannier_centers_cart)
         self.wannier_centers_cart = wannier_centers_cart
+        # wannier_centers_reduced = np.dot(self.wannier_centers_cart, np.linalg.inv(self.real_lattice))
+        self.clear_cached_wcc()
+        self.rvec = Rvectors(
+            lattice=self.real_lattice,
+            iRvec=iRvec,
+            shifts_left_red=self.wannier_centers_reduced,
+        )
+
         f.close()
+
 
         self.do_at_end_of_init()
 

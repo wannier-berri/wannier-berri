@@ -43,8 +43,8 @@ def test_perpedicular_coplanar():
     ]:
         c1 = get_perpendicular_coplanar_vector(a, b)
         assert np.dot(c1, a) == approx(0), f"c1 expected to be perpendicular to a but got a.c1={c1}"
-        assert np.linalg.det([a, b, c1]) == approx(0), f"c1 expected to be coplanar with a,b but got det(a,b,c1)={np.linalg.det([a,b,c1])}"
-        assert np.dot(c1, b) > 1e-3, f"c1 expected to project on positive b but got c1.b={np.dot(c1,b)}<=0"
+        assert np.linalg.det([a, b, c1]) == approx(0), f"c1 expected to be coplanar with a,b but got det(a,b,c1)={np.linalg.det([a, b, c1])}"
+        assert np.dot(c1, b) > 1e-3, f"c1 expected to project on positive b but got c1.b={np.dot(c1, b)}<=0"
         if c is not None:
             assert c1 == approx(c), f"input {a},{b}, Expected output {c} but got {c1}"
 
@@ -92,10 +92,10 @@ def test_readxzaxis():
         assert np.dot(basis[1, :], basis[2, :]) == approx(0), f"basis vectors y={basis[1]} and z={basis[2]} are not orthogonal"
         if xaxis is not None:
             xaxis = xaxis / np.linalg.norm(xaxis)
-            assert xaxis == approx(basis[0, :], abs=1e-6), f"Expected xaxis {xaxis} but got {basis[0,:]} ({basis})"
+            assert xaxis == approx(basis[0, :], abs=1e-6), f"Expected xaxis {xaxis} but got {basis[0, :]} ({basis})"
         if zaxis is not None:
             zaxis = zaxis / np.linalg.norm(zaxis)
-            assert zaxis == approx(basis[2, :], abs=1e-6), f"Expected zaxis {zaxis} but got {basis[2,:]}  ({basis})"
+            assert zaxis == approx(basis[2, :], abs=1e-6), f"Expected zaxis {zaxis} but got {basis[2, :]}  ({basis})"
 
 
 
