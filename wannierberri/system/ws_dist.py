@@ -17,7 +17,7 @@ class ws_dist_map:
         # is on the edge of the WS of w_i,0. The results are stored
         # a dictionary shifts_iR[(iR,i,j)]
         ws_search_size = np.array([2] * 3)
-        ws_distance_tol = 1e-5
+        ws_distance_tol = 1e-4
         cRvec = iRvec.dot(real_lattice)
         mp_grid = np.array(mp_grid)
         shifts_int_all = np.array([ijk for ijk in iterate3dpm(ws_search_size + 1)]) * np.array(mp_grid[None, :])

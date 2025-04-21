@@ -541,7 +541,30 @@ class System_R(System):
         logfile.write(f"Number of R points: {self.rvec.nRvec}\n")
         logfile.write(f"Recommended size of FFT grid {self.NKFFT_recommended}\n")
 
+
     def do_ws_dist(self, mp_grid, wannier_centers_cart=None):
+        self.do_ws_dist_new(mp_grid, wannier_centers_cart)
+
+    def do_ws_dist_new(self, mp_grid, wannier_centers_cart=None):
+        logfile = self.logfile
+        try:
+            mp_grid = one2three(mp_grid)
+            assert mp_grid is not None
+        except AssertionError:
+            raise ValueError(f"mp_greid should be one integer, of three integers. found {mp_grid}")
+        self._NKFFT_recommended = mp_grid
+        if wannier_centers_cart is None:
+            wannier_centers_cart = self.wannier_centers_cart
+        iRvec_old = self.rvec.iRvec
+        self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_reduced)
+        self.rvec.set_Rvec(mp_grid,ws_tolerance=1e-4)
+        for key, val in self._XX_R.items():
+            logfile.write(f"using new ws_dist for {key}\n")
+            self.set_R_mat(key, self.rvec.remap_XX_R(val,iRvec_old=iRvec_old), reset=True)
+        
+       
+
+    def do_ws_dist_old(self, mp_grid, wannier_centers_cart=None):
         """
         Perform the minimal-distance replica selection method
         As a side effect - it sets the variable _NKFFT_recommended to mp_grid

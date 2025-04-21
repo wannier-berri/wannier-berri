@@ -1,10 +1,11 @@
 
 from functools import cached_property
 import functools
+from typing import Iterable
 import warnings
 
 import numpy as np
-from ..__utility import FFT_R_to_k, clear_cached, fourier_q_to_R
+from ..__utility import FFT_R_to_k, clear_cached, fourier_q_to_R, UniqueList, iterate3dpm, iterate_nd
 
 
 class Rvectors:
@@ -13,23 +14,17 @@ class Rvectors:
 
     """
 
-    def __init__(self, lattice, shifts_left_red=None, shifts_right_red=None, NK=None, iRvec=None, dim=3):
+    def __init__(self, lattice, shifts_left_red=None, shifts_right_red=None, iRvec=None, dim=3):
         """
         Initialize the Rvec object.
 
         Parameters
         ----------
-        NK : int
-            The number of k-points in the system.
         shift_left : int
             The left shift value for the Rvector (in reduced coordinates).
         shift_right : int
             The right shift value for the Rvector (in reduced coordinates).
         """
-        assert (NK is not None) or (iRvec is not None), "Either NK or iRvec must be provided"
-        if iRvec is not None:
-            self.iRvec = np.array(iRvec)
-        self.NK = NK
         self.lattice = np.array(lattice)
 
         if shifts_left_red is None:
@@ -42,10 +37,86 @@ class Rvectors:
         else:
             self.shifts_right_red = np.array(shifts_right_red)
 
+        self._NKFFTrec = None
+        if iRvec is not None:
+            self.iRvec = np.array(iRvec)
+            
         self.dim = dim
-        print(f"created {self.nRvec} Rvectors with shilts left \n reduced coordinates {self.shifts_left_red} \n and right shifts \n reduced coordinates \n{self.shifts_right_red}\n cartesian coordinates \n{self.shifts_left_cart} \n and \n{self.shifts_right_cart}\n")
+        
+        # print(f"created {self.nRvec} Rvectors with shilts left \n reduced coordinates {self.shifts_left_red} \n and right shifts \n reduced coordinates \n{self.shifts_right_red}\n cartesian coordinates \n{self.shifts_left_cart} \n and \n{self.shifts_right_cart}\n")
+
+    def set_Rvec(self, mp_grid, ws_tolerance=1e-3):
+        assert len(mp_grid) == 3, "NK should be a list of 3 integers"
+        self.mp_grid = mp_grid
+        self._NKFFTrec = mp_grid
+
+        # TODO so far set high precision. Later increase, 
+        # but it may require modification of dest data
+        self.all_shifts_red = UniqueList(tolerance=1e-8) #
+
+        self.shift_index = -np.ones((self.nshifts_left, self.nshifts_right), dtype=int)
+        for il, shift_left in enumerate(self.shifts_left_red):
+            for ir, shift_right in enumerate(self.shifts_right_red):
+                shift = - shift_left + shift_right
+                self.shift_index[il,ir] = self.all_shifts_red.append(shift)
+        print (f"all different shifts {self.all_shifts_red}")
+        self.iRvec_list = []
+        self.Ndegen_list = []
+        self.iRvec_mod_list = []
+        # make iRvec0 a (NK[0],NK[1],NK[2]) array of integers, with all possible combinations in the range
+        # [0,NK[0]-1],[0,NK[1]-1],[0,NK[2]-1]
+        wigner = WignerSeitz(self.lattice, mp_grid=mp_grid, tolerance=ws_tolerance)
+        # self.iRvec0, self.Ndegen0 = wigner(self.all_shifts_red)
+        self.iRvec_index_list = [] # indices of every shift in the 
+        for shift in self.all_shifts_red:
+            iRvec, Ndegen, iRvec_mod= wigner(shift_reduced=shift)
+            self.iRvec_list.append(iRvec)
+            self.Ndegen_list.append(Ndegen)
+            self.iRvec_mod_list.append(iRvec_mod)
+        self.iRvec = np.array(list(set(tuple(a) for a in np.concatenate(self.iRvec_list))))
+        print (f"new iRvec {self.iRvec}")
+        self.clear_cached()
+        for i, iRvec in enumerate(self.iRvec_list):
+            self.iRvec_index_list.append(np.array([self.iR(R) for R in iRvec]))
+
+        
+        
+        
+
+    def remap_XX_R(self,XX_R, iRvec_old):
+        """
+        remap an old matrix XX_R, from old Rvec, to the current ones
+
+        XX_R should have dimensions (num_wann, num_wann, len(iRvec_old), ....)
+        """
+        assert (XX_R.shape[0] == self.nshifts_left) or (self.nshifts_left==1)
+        assert (XX_R.shape[1] == self.nshifts_right) or (self.nshifts_right==1)
+        XX_R_sum_R_old = XX_R.sum(axis=2)
+        XX_R_tmp = np.zeros( tuple(self.mp_grid)+XX_R.shape[:2]+XX_R.shape[3:], dtype=XX_R.dtype)
+        for i, iR in enumerate(iRvec_old):
+            XX_R_tmp[tuple(iR)] += XX_R[:,:,i]
+        XX_R_sum_T_tmp = XX_R_tmp.sum(axis=(0,1,2))
+        assert np.allclose(XX_R_sum_T_tmp, XX_R_sum_R_old), f"XX_R_sum_T_tmp {XX_R_sum_T_tmp} != XX_R_sum_R_old {XX_R_sum_R_old}"
+        shape_new = list(XX_R.shape)
+        shape_new[2] = self.nRvec
+        XX_R_final = np.zeros(shape_new, dtype=XX_R.dtype)
+        for a in range(XX_R.shape[0]):
+            ia = 1 if self.nshifts_left == 1 else a
+            for b in range(XX_R.shape[1]):
+                ib = 1 if self.nshifts_right == 1 else b
+                ishift = self.shift_index[ia, ib]
+                for iRi, iRm, nd in zip (self.iRvec_index_list[ishift], 
+                                         self.iRvec_mod_list[ishift], 
+                                         self.Ndegen_list[ishift]):
+                    XX_R_final[a,b,iRi] += XX_R_tmp[tuple(iRm)+(a,b)]/nd
+        XX_R_sum_R_new = XX_R_final.sum(axis=2)
+        assert np.allclose(XX_R_sum_R_new, XX_R_sum_T_tmp), f"XX_R_sum_R_new {XX_R_sum_R_new} != XX_R_sum_T_tmp {XX_R_sum_T_tmp}"
+        return XX_R_final
+
 
     def NKFFT_recommended(self):
+        if self._NKFFTrec is not None:
+            return self._NKFFTrec
         NKFFTrec = np.ones(3, dtype=int)
         for i in range(3):
             R = self.iRvec[:, i]
@@ -228,3 +299,67 @@ class Rvectors:
 
     def q_to_R(self, XXq):
         return self.fft_q_to_R(XXq)
+
+
+class WignerSeitz:
+
+    def __init__(self, real_lattice, mp_grid, ws_search_size=3, tolerance=1e-5):
+        if not isinstance(ws_search_size, Iterable):
+            ws_search_size = [ws_search_size] * 3
+        self.mp_grid = np.array(mp_grid)
+        self.tolerance = tolerance
+        self.real_lattice = np.array(real_lattice)
+        self.iRvec0 = iterate_nd(self.mp_grid)
+        # print (f"iRvec0 : \n{repr(self.iRvec0)}")
+        self.cRvec0 = self.iRvec0.dot(self.real_lattice)
+        # superlattice = self.real_lattice * np.array(ws_search_size)[:, None]
+        super_vectors_i = np.array([ijk for ijk in iterate3dpm(ws_search_size)])*self.mp_grid[None, :]
+        # print (f"super_vectors_i : \n{repr(super_vectors_i)}")
+        super_vectors_c = super_vectors_i.dot(self.real_lattice)
+        self.iRvec_search = np.array([self.iRvec0 + ijk[None,:] 
+                                 for ijk in super_vectors_i]).swapaxes(0, 1)
+        self.cRvec_search = np.array([self.cRvec0 + ijk[None,:]
+                                 for ijk in super_vectors_c]).swapaxes(0, 1)
+
+
+    def __call__(self, shift_reduced):
+        shift_cartesian = shift_reduced.dot(self.real_lattice)
+        dist = np.linalg.norm(self.cRvec_search + shift_cartesian, axis=2)
+        # print (f"distances : \n{repr(dist)}")
+        Ndegen = []
+        iRvec = []
+        for i, iRs in enumerate(self.iRvec_search):
+            # print (f"{i} : {repr(iRs)}  : {dist[i]}")
+            dist_min = dist[i].min()
+            select = np.where(abs(dist[i] - dist_min) < self.tolerance)[0]
+            print (f"selecting {select} with distance {dist[i][select]} and min {dist_min}")
+            ndeg = len(select)
+            for j in select:
+                print (f"    {iRs[j]} : {dist[i][j]} {ndeg}")
+                iRvec.append(iRs[j])
+                Ndegen.append(ndeg)
+        iRvec = np.array(iRvec)
+        Ndegen = np.array(Ndegen)
+        return iRvec, Ndegen, iRvec % self.mp_grid
+            
+
+# def wigner_seitz(real_lattice, iRvec0, cRvec0):
+#     ws_search_size = np.array([1] * 3)
+#     dist_dim = np.prod((ws_search_size + 1) * 2 + 1)
+#     origin = divmod((dist_dim + 1), 2)[0] - 1
+#     real_metric = real_lattice.dot(real_lattice.T)
+#     mp_grid = np.array(mp_grid)
+#     irvec = []
+#     ndegen = []
+#     for n in iterate3dpm(mp_grid * ws_search_size):
+#         dist = []
+#         for i in iterate3dpm((1, 1, 1) + ws_search_size):
+#             ndiff = n - i * mp_grid
+#             dist.append(ndiff.dot(real_metric.dot(ndiff)))
+#         dist = np.array(dist)
+#         dist_min = np.min(dist)
+#         if abs(dist[origin] - dist_min) < 1.e-7:
+#             irvec.append(n)
+#             ndegen.append(np.sum(abs(dist - dist_min) < 1.e-7))
+
+#     return np.array(irvec), np.array(ndegen)

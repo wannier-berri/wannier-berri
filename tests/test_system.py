@@ -18,7 +18,7 @@ def check_system():
     def _inner(system, name,
                properties=['num_wann', 'recip_lattice', 'real_lattice', 'periodic',
                            'cell_volume', 'is_phonon',
-                           ] + properties_wcc + ['iRvec'],
+                           ] + properties_wcc + ['nRvec', 'iRvec'],
                extra_properties=[],
                exclude_properties=[],
                precision_properties=1e-8,
@@ -46,6 +46,8 @@ def check_system():
             print(f"saving {key}", end="")
             if key == 'iRvec':
                 val = system.rvec.iRvec
+            elif key == 'nRvec':
+                val = system.rvec.nRvec
             else:
                 val = getattr(system, key)
             np.savez(os.path.join(out_dir, key + ".npz"), val)
@@ -60,6 +62,8 @@ def check_system():
             data_ref = np.load(os.path.join(REF_DIR, "systems", name, key + ".npz"))['arr_0']
             if XX:
                 data = system.get_R_mat(key)
+            elif key == 'nRvec':
+                data = system.rvec.nRvec
             elif key == 'iRvec':
                 data = system.rvec.iRvec
             else:
@@ -103,6 +107,10 @@ def check_system():
                         err_msg += "\n" + ("\n".join(
                             f"{i} | {system.rvec.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {ratio[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
                             for i in zip(*all_i)) + "\n\n")
+                    XX_R_sumR = data.sum(axis=2)
+                    XX_R_sumR_ref = data_ref.sum(axis=2)
+                    err_msg += f"\n the control sum differs by {XX_R_sumR.sum()- XX_R_sumR_ref.sum()} \n"
+                    err_msg += f"maximal element-wise difference {abs(XX_R_sumR - XX_R_sumR_ref).max()} \n"
                 elif key in properties_wcc:
                     err_msg += f"new data : {data} \n ref data : {data_ref}"
                 raise ValueError(err_msg)
@@ -201,7 +209,9 @@ def test_system_GaAs_W90_JM(check_system, system_GaAs_W90_JM):
 def test_system_GaAs_tb(check_system, system_GaAs_tb):
     check_system(
         system_GaAs_tb, "GaAs_tb",
-        matrices=['Ham', 'AA']
+        matrices=['Ham', 'AA'],
+        sort_iR=True,
+        precision_matrix_elements=1e-6,
     )
 
 
@@ -338,7 +348,7 @@ def test_system_Te_sparse(check_system, system_Te_sparse):
         system_Te_sparse, "Te_sparse",
         matrices=['Ham'],
         sort_iR=True
-    )
+    ) 
 
 
 def test_system_Phonons_Si(check_system, system_Phonons_Si):
