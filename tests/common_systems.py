@@ -500,6 +500,8 @@ def system_Te_sparse():
     """Create system for Te using symmetrized Wannier functions through a sparse interface"""
     path = os.path.join(ROOT_DIR, "data", "Te_sparse", "parameters_Te_low_interlaced.pickle")
     param = pickle.load(open(path, "rb"))
+    param["wannier_centers_red"] = param["wannier_centers_reduced"]
+    del param["wannier_centers_reduced"]
     system = wberri.system.SystemSparse(**param)
     system.set_pointgroup(symmetries_Te)
     return system
