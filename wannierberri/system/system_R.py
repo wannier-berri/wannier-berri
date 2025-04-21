@@ -12,8 +12,6 @@ from .system import System, pauli_xyz
 from ..__utility import clear_cached, one2three
 from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
 from ..symmetry.wyckoff_position import split_into_orbits
-from .ws_dist import ws_dist_map
-
 
 
 class System_R(System):
@@ -541,9 +539,6 @@ class System_R(System):
 
 
     def do_ws_dist(self, mp_grid, wannier_centers_cart=None):
-        self.do_ws_dist_new(mp_grid, wannier_centers_cart)
-
-    def do_ws_dist_new(self, mp_grid, wannier_centers_cart=None):
         logfile = self.logfile
         try:
             mp_grid = one2three(mp_grid)
@@ -561,36 +556,6 @@ class System_R(System):
             self.set_R_mat(key, self.rvec.remap_XX_R(val, iRvec_old=iRvec_old), reset=True)
         self._XX_R, self.rvec = self.rvec.exclude_zeros(self._XX_R)
 
-
-
-
-    def do_ws_dist_old(self, mp_grid, wannier_centers_cart=None):
-        """
-        Perform the minimal-distance replica selection method
-        As a side effect - it sets the variable _NKFFT_recommended to mp_grid
-        Parameters:
-        -----------
-        wannier_centers_cart : array(float)
-            Wannier centers used (if None -- use those already stored in the system)
-        mp_grid : [nk1,nk2,nk3] or int
-            size of Monkhorst-Pack frid used in ab initio calculation.
-        """
-        logfile = self.logfile
-        try:
-            mp_grid = one2three(mp_grid)
-            assert mp_grid is not None
-        except AssertionError:
-            raise ValueError(f"mp_grid should be one integer, or three integers. found {mp_grid}")
-        self._NKFFT_recommended = mp_grid
-        if wannier_centers_cart is None:
-            wannier_centers_cart = self.wannier_centers_cart
-        ws_map = ws_dist_map(
-            self.rvec.iRvec, wannier_centers_cart, mp_grid, self.real_lattice, npar=self.npar)
-        for key, val in self._XX_R.items():
-            logfile.write(f"using ws_dist for {key}\n")
-            self.set_R_mat(key, ws_map(val), reset=True)
-        iRvec = np.array(ws_map._iRvec_ordered, dtype=int)
-        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec, shifts_left_red=self.wannier_centers_reduced)
 
     def to_tb_file(self, tb_file=None, use_convention_II=True):
         """
@@ -633,10 +598,6 @@ class System_R(System):
                 )
         f.close()
 
-    # def _FFT_compatible(self, FFT, iRvec):
-    #     """check if FFT is enough to fit all R-vectors"""
-    #     return np.unique(iRvec % FFT, axis=0).shape[0] == iRvec.shape[0]
-
     @property
     def NKFFT_recommended(self):
         """finds a minimal FFT grid on which different R-vectors do not overlap"""
@@ -645,36 +606,8 @@ class System_R(System):
         else:
             return self.rvec.NKFFT_recommended()
 
-    # @cached_property
-    # def cRvec(self):
-    #     return self.iRvec.dot(self.real_lattice)
-
-    # @cached_property
-    # def cRvec_p_wcc(self):
-    #     """
-    #     R+tj-ti.
-    #     """
-    #     return self.cRvec[None, None, :, :] + self.diff_wcc_cart[:, :, None, :]
-
     def clear_cached_R(self):
         self.rvec.clear_cached()
-        # clear_cached(self, ['cRvec', 'cRvec_p_wcc', 'reverseR', 'index_R'])
-
-    # @cached_property
-    # def diff_wcc_cart(self):
-    #     """
-    #     tj-ti.
-    #     """
-    #     wannier_centers = self.wannier_centers_cart
-    #     return wannier_centers[None, :, :] - wannier_centers[:, None, :]
-
-    # @cached_property
-    # def diff_wcc_red(self):
-    #     """
-    #     tj-ti.
-    #     """
-    #     wannier_centers = self.wannier_centers_reduced
-    #     return wannier_centers[None, :, :] - wannier_centers[:, None, :]
 
     def clear_cached_wcc(self):
         clear_cached(self, ["wannier_centers_reduced"])
@@ -685,69 +618,6 @@ class System_R(System):
     @cached_property
     def wannier_centers_reduced(self):
         return self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
-
-    # @property
-    # def iR0(self):
-    #     return self.iRvec.tolist().index([0, 0, 0])
-
-    # @cached_property
-    # def index_R(self):
-    #     return {tuple(R): i for i, R in enumerate(self.iRvec)}
-
-    # def iR(self, R):
-    #     R = np.array(np.round(R), dtype=int).tolist()
-    #     return self.iRvec.tolist().index(R)
-
-    # @cached_property
-    # def reverseR(self):
-    #     """indices of R vectors that has -R in irvec, and the indices of the corresponding -R vectors."""
-    #     mapping = np.all(self.iRvec[:, None, :] + self.iRvec[None, :, :] == 0, axis=2)
-    #     # check if some R-vectors do not have partners
-    #     notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
-    #     if len(notfound) > 0 and not self.ignore_mR_not_found:
-    #         for ir in notfound:
-    #             warnings.warn(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
-    #     # check if some R-vectors have more then 1 partner
-    #     morefound = np.where(np.sum(mapping, axis=1) > 1)[0]
-    #     if len(morefound > 0):
-    #         raise RuntimeError(
-    #             f"R vectors number {morefound} have more then one negative partner : "
-    #             f"\n{self.iRvec[morefound]} \n{np.sum(mapping, axis=1)}")
-    #     lst_R, lst_mR = [], []
-    #     for ir1 in range(self.nRvec):
-    #         ir2 = np.where(mapping[ir1])[0]
-    #         if len(ir2) == 1:
-    #             lst_R.append(ir1)
-    #             lst_mR.append(ir2[0])
-    #     lst_R = np.array(lst_R)
-    #     lst_mR = np.array(lst_mR)
-    #     # Check whether the result is correct
-    #     assert np.all(self.iRvec[lst_R] + self.iRvec[lst_mR] == 0)
-    #     return lst_R, lst_mR
-
-    # def conj_XX_R(self, val: np.ndarray = None, key: str = None, ignore_mR_not_found=False):
-    #     """ reverses the R-vector and takes the hermitian conjugate """
-    #     assert (key is not None) != (val is not None)
-    #     if key is not None:
-    #         XX_R = self.get_R_mat(key)
-    #     else:
-    #         XX_R = val
-    #     XX_R_new = np.zeros(XX_R.shape, dtype=complex)
-    #     self.ignore_mR_not_found = ignore_mR_not_found
-    #     lst_R, lst_mR = self.reverseR
-    #     XX_R_new[:, :, lst_R] = XX_R[:, :, lst_mR]
-    #     return XX_R_new.swapaxes(0, 1).conj()
-
-    # @property
-    # def nRvec(self):
-    #     return self.iRvec.shape[0]
-
-    # def check_hermitian(self, key):
-    #     if key in self._XX_R.keys():
-    #         _X = self.get_R_mat(key).copy()
-    #         assert (np.max(abs(_X - self.conj_XX_R(key=key))) < 1e-8), f"{key} should obey X(-R) = X(R)^+"
-    #     else:
-    #         self.logfile.write(f"{key} is missing, nothing to check\n")
 
     def set_structure(self, positions, atom_labels, magnetic_moments=None):
         """
