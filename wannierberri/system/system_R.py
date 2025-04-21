@@ -62,7 +62,7 @@ class System_R(System):
             dictionary of real-space matrices. The keys are the names of the matrices, the values are the matrices themselves.
         wannier_centers_cart : array(float)
             the positions of the Wannier centers in the Cartesian coordinates.
-        wannier_centers_reduced : array(float)
+        wannier_centers_red : array(float)
             the positions of the Wannier centers in the reduced coordinates.
         num_wann : int
             the number of Wannier functions.
@@ -109,15 +109,15 @@ class System_R(System):
         self._XX_R = dict()
         self.ws_dist_tol = ws_dist_tol
 
-    def set_wannier_centers(self, wannier_centers_cart=None, wannier_centers_reduced=None):
+    def set_wannier_centers(self, wannier_centers_cart=None, wannier_centers_red=None):
         """
             set self.wannier_centers_cart. Only one of parameters should be provided.
             If both are None: self.wannier_centers_cart is set to zero.
         """
         lcart = (wannier_centers_cart is not None)
-        lred = (wannier_centers_reduced is not None)
+        lred = (wannier_centers_red is not None)
         if lred:
-            _wannier_centers_cart = wannier_centers_reduced.dot(self.real_lattice)
+            _wannier_centers_cart = wannier_centers_red.dot(self.real_lattice)
             if lcart:
                 assert abs(wannier_centers_cart - _wannier_centers_cart).max() < 1e-8
             else:
@@ -260,14 +260,14 @@ class System_R(System):
         logfile = self.logfile
 
         logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
-        logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_reduced}\n")
+        logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
 
         self._XX_R, iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
         self.clear_cached_wcc()
         self.rvec = Rvectors(
             lattice=self.real_lattice,
             iRvec=iRvec,
-            shifts_left_red=self.wannier_centers_reduced,
+            shifts_left_red=self.wannier_centers_red,
         )
         self.set_pointgroup(spacegroup=symmetrizer.spacegroup)
         # self.clear_cached_R()
@@ -549,7 +549,7 @@ class System_R(System):
         if wannier_centers_cart is None:
             wannier_centers_cart = self.wannier_centers_cart
         iRvec_old = self.rvec.iRvec
-        self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_reduced)
+        self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
         self.rvec.set_Rvec(mp_grid, ws_tolerance=self.ws_dist_tol)
         for key, val in self._XX_R.items():
             logfile.write(f"using new ws_dist for {key}\n")
@@ -610,13 +610,13 @@ class System_R(System):
         self.rvec.clear_cached()
 
     def clear_cached_wcc(self):
-        clear_cached(self, ["wannier_centers_reduced"])
+        clear_cached(self, ["wannier_centers_red"])
         if hasattr(self, 'rvec'):
             self.rvec.clear_cached()
 
 
     @cached_property
-    def wannier_centers_reduced(self):
+    def wannier_centers_red(self):
         return self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
 
     def set_structure(self, positions, atom_labels, magnetic_moments=None):
@@ -702,7 +702,7 @@ class System_R(System):
         min_values = copy.copy(min_values)
         ret_dic = dict(
             real_lattice=self.real_lattice,
-            wannier_centers_reduced=self.wannier_centers_reduced,
+            wannier_centers_red=self.wannier_centers_red,
             matrices={},
         )
         if hasattr(self, 'symmetrize_info'):
@@ -822,7 +822,7 @@ class System_R(System):
             if key == "iRvec":
                 self.rvec = Rvectors(lattice=self.real_lattice,
                                      iRvec=val,
-                                     shifts_left_red=self.wannier_centers_reduced
+                                     shifts_left_red=self.wannier_centers_red
                                      )
             else:
                 setattr(self, key_loc, val)

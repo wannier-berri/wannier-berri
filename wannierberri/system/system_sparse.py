@@ -21,7 +21,7 @@ class SystemSparse(System_R):
     """"""
 
     def __init__(self, real_lattice,
-                 wannier_centers_reduced=None,
+                 wannier_centers_red=None,
                  wannier_centers_cart=None,
                  matrices=None,
                  num_wann=None,
@@ -37,7 +37,7 @@ class SystemSparse(System_R):
         if num_wann is None:
             self.num_wann = max(getnband(m) for m in matrices.values())
         self.set_wannier_centers(wannier_centers_cart=wannier_centers_cart,
-                                 wannier_centers_reduced=wannier_centers_reduced)
+                                 wannier_centers_red=wannier_centers_red)
         self.num_wann = self.wannier_centers_cart.shape[0]
 
         assert 'Ham' in matrices, "Hamiltonian ('Ham') should be provided in matrices"
@@ -49,7 +49,7 @@ class SystemSparse(System_R):
         self.rvec = Rvectors(
             lattice=self.real_lattice,
             iRvec=iRvec,
-            shifts_left_red=self.wannier_centers_reduced,
+            shifts_left_red=self.wannier_centers_red,
         )
 
         for k, v in matrices.items():

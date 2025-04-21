@@ -61,7 +61,7 @@ class System_ASE(System_R):
         self.wannier_centers_cart = ase_wannier.get_centers()
         print(f"got the Wannier centers : {self.wannier_centers_cart}")
         self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec,
-                         shifts_left_red=self.wannier_centers_reduced,
+                         shifts_left_red=self.wannier_centers_red,
                          )
         self.kpt_red = ase_wannier.kpt_kc
 

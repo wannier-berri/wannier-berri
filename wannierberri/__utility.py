@@ -145,16 +145,16 @@ def execute_fft(inp, axes, inverse=False, destroy=True, numthreads=1, fftlib='ff
         raise ValueError(f"unknown type of fftlib : {fftlib}")
 
 
-def fourier_q_to_R(AA_q, mp_grid, kpt_mp_grid, iRvec, ndegen, numthreads=1, fftlib='fftw'):
-    mp_grid = tuple(mp_grid)
-    shapeA = AA_q.shape[1:]  # remember the shapes after q
-    AA_q_mp = np.zeros(tuple(mp_grid) + shapeA, dtype=complex)
-    for i, k in enumerate(kpt_mp_grid):
-        AA_q_mp[k] = AA_q[i]
-    AA_q_mp = execute_fft(AA_q_mp, axes=(0, 1, 2), numthreads=numthreads, fftlib=fftlib, destroy=False)
-    AA_R = np.array([AA_q_mp[tuple(iR % mp_grid)] / nd for iR, nd in zip(iRvec, ndegen)]) / np.prod(mp_grid)
-    AA_R = AA_R.transpose((1, 2, 0) + tuple(range(3, AA_R.ndim)))
-    return AA_R
+# def fourier_q_to_R(AA_q, mp_grid, kpt_mp_grid, iRvec, ndegen, numthreads=1, fftlib='fftw'):
+#     mp_grid = tuple(mp_grid)
+#     shapeA = AA_q.shape[1:]  # remember the shapes after q
+#     AA_q_mp = np.zeros(tuple(mp_grid) + shapeA, dtype=complex)
+#     for i, k in enumerate(kpt_mp_grid):
+#         AA_q_mp[k] = AA_q[i]
+#     AA_q_mp = execute_fft(AA_q_mp, axes=(0, 1, 2), numthreads=numthreads, fftlib=fftlib, destroy=False)
+#     AA_R = np.array([AA_q_mp[tuple(iR % mp_grid)] / nd for iR, nd in zip(iRvec, ndegen)]) / np.prod(mp_grid)
+#     AA_R = AA_R.transpose((1, 2, 0) + tuple(range(3, AA_R.ndim)))
+#     return AA_R
 
 
 class FFT_R_to_k:

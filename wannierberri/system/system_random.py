@@ -60,7 +60,7 @@ class SystemRandom(System_R):
         self.rvec = Rvectors(
             lattice=self.real_lattice,
             iRvec=list(iRvec),
-            shifts_left_red=self.wannier_centers_reduced,
+            shifts_left_red=self.wannier_centers_red,
         )
 
         for key in self.needed_R_matrices:

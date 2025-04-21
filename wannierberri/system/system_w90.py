@@ -22,7 +22,6 @@ from .rvectors import Rvectors
 from ..__utility import real_recip_lattice, alpha_A, beta_A
 from .system_R import System_R
 from ..w90files import Wannier90data
-from .ws_dist import wigner_seitz
 
 
 needed_files = defaultdict(lambda: [])
@@ -165,29 +164,18 @@ class System_w90(System_R):
         chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         self.set_pointgroup(spacegroup=w90data.get_spacegroup())
-
+        self.wannier_centers_cart = chk.wannier_centers
 
         mp_grid = chk.mp_grid
         self._NKFFT_recommended = mp_grid
-        iRvec, Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=chk.mp_grid)
-        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec, shifts_left_red=[[0, 0, 0]])
+        self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
+        self.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=self.ws_dist_tol)
         self.num_wann = chk.num_wann
-        self.wannier_centers_cart = w90data.wannier_centers
-
-        kpt_mp_grid = [
-            tuple(k) for k in np.array(np.round(chk.kpt_latt * np.array(chk.mp_grid)[None, :]), dtype=int) % chk.mp_grid
-        ]
-        if (0, 0, 0) not in kpt_mp_grid:
-            raise ValueError(
-                "the grid of k-points read from .chk file is not Gamma-centered. Please, use Gamma-centered grids in the ab initio calculation"
-            )
 
         self.rvec.set_fft_q_to_R(
-            mp_grid=mp_grid,
-            kpt_mp_grid=kpt_mp_grid,
+            kpt_red=chk.kpt_latt,
             numthreads=self.npar,
             fftlib=fftlib,
-            Ndegen=Ndegen
         )
 
         #########
@@ -296,7 +284,7 @@ class System_w90(System_R):
 
         del expjphase1, expjphase2
 
-        self.do_ws_dist(mp_grid=mp_grid)
+        # self.do_ws_dist(mp_grid=mp_grid) # not needed anymore
 
         if transl_inv_JM:
             self.recenter_JM(centers, bk_cart_unique)

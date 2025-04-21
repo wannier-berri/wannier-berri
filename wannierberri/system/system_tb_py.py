@@ -78,11 +78,11 @@ class System_tb_py(System_R):
 
         self.dimr = real.shape[1]
         self.norb = positions.shape[0]
-        wannier_centers_reduced = np.zeros((self.norb, 3))
-        wannier_centers_reduced[:, :self.dimr] = positions
+        wannier_centers_red = np.zeros((self.norb, 3))
+        wannier_centers_red[:, :self.dimr] = positions
         self.real_lattice = np.eye(3, dtype=float)
         self.real_lattice[:self.dimr, :self.dimr] = np.array(real)
-        self.wannier_centers_cart = wannier_centers_reduced.dot(self.real_lattice)
+        self.wannier_centers_cart = wannier_centers_red.dot(self.real_lattice)
 
         self.periodic[self.dimr:] = False
         iRvec = [tuple(row) for row in iRvec]
@@ -111,7 +111,7 @@ class System_tb_py(System_R):
 
         self.rvec = Rvectors(lattice=self.real_lattice,
                          iRvec=iRvec,
-                         shifts_left_red=wannier_centers_reduced,
+                         shifts_left_red=wannier_centers_red,
                          dim=self.dimr)
         # Define Ham_R matrix from hoppings
         nRvec = self.rvec.nRvec

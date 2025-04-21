@@ -85,7 +85,7 @@ class System_Phonon_QE(System_w90):
                                  dtype=int) - 1
                 masses = masses_tp[types]
                 self.num_wann = self.number_of_phonons
-                self.set_wannier_centers(wannier_centers_reduced=np.array([atom for atom in self.atom_positions for _ in range(3)])
+                self.set_wannier_centers(wannier_centers_red=np.array([atom for atom in self.atom_positions for _ in range(3)])
                                          )
             number_of_q = int(geometry.number_of_q.cdata)
             for iq in range(number_of_q):
@@ -102,7 +102,7 @@ class System_Phonon_QE(System_w90):
                 dynamical_mat.append(dyn_mat)
                 q_points.append(q)
                 cnt += 1
-        self.wannier_centers_cart = self.wannier_centers_reduced.dot(self.real_lattice)
+        self.wannier_centers_cart = self.wannier_centers_red.dot(self.real_lattice)
         qpoints_found = np.zeros(mp_grid, dtype=float)
         dynamical_matrix_q = np.zeros(tuple(mp_grid) + (self.number_of_phonons,) * 2, dtype=complex)
         agrid = np.array(mp_grid)
@@ -120,7 +120,7 @@ class System_Phonon_QE(System_w90):
             Ry_eV ** 2)  # now the units are eV**2, to be "kind of consistent" with electronic systems
         self.set_R_mat('Ham', Ham_R)
         self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec,
-                             shifts_left_red=self.wannier_centers_reduced,
+                             shifts_left_red=self.wannier_centers_red,
                              )
 
         self.do_at_end_of_init()

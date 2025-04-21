@@ -112,12 +112,12 @@ class System_fplo(System_R):
         if self.need_R_any('SS'):
             self.set_R_mat('SS', np.array([SS_R[iR] for iR in iRvec]).transpose((1, 2, 0, 3)))
 
-        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec, shifts_left_red=self.wannier_centers_reduced)
+        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec, shifts_left_red=self.wannier_centers_red)
 
         self.do_at_end_of_init()
         print("FPLO system initialized")
         print(f"wannier_centers_cart: {self.wannier_centers_cart}")
-        print(f"wannier_centers_reduced: {self.wannier_centers_reduced}")
+        print(f"wannier_centers_red: {self.wannier_centers_red}")
         if mp_grid is not None:
             self.do_ws_dist(mp_grid=mp_grid)
 
