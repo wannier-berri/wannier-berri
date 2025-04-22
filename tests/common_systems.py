@@ -311,7 +311,7 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
     if symmetrize:
         iRold = [tuple(R) for R in system.rvec.iRvec]
         print("Rvectors before symmetrization", system.rvec.nRvec, "\n", system.rvec.iRvec)
-        print(f"wannier-diff {system.wannier_centers_reduced[:, None, :] - system.wannier_centers_reduced[None, :, :]}")
+        print(f"wannier-diff {system.wannier_centers_red[:, None, :] - system.wannier_centers_red[None, :, :]}")
         system.symmetrize(
             positions=np.array([[-0.125, -0.125, 0.375],
                                 [0.375, -0.125, -0.125],
@@ -500,6 +500,8 @@ def system_Te_sparse():
     """Create system for Te using symmetrized Wannier functions through a sparse interface"""
     path = os.path.join(ROOT_DIR, "data", "Te_sparse", "parameters_Te_low_interlaced.pickle")
     param = pickle.load(open(path, "rb"))
+    param["wannier_centers_red"] = param["wannier_centers_reduced"]
+    del param["wannier_centers_reduced"]
     system = wberri.system.SystemSparse(**param)
     system.set_pointgroup(symmetries_Te)
     return system

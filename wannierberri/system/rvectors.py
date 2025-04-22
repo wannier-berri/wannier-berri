@@ -1,11 +1,10 @@
 
 from functools import cached_property
-import functools
 from typing import Iterable
 import warnings
 
 import numpy as np
-from ..__utility import FFT_R_to_k, clear_cached, fourier_q_to_R, iterate3dpm, iterate_nd
+from ..__utility import FFT_R_to_k, clear_cached, execute_fft, iterate3dpm, iterate_nd
 
 
 class Rvectors:
@@ -119,27 +118,32 @@ class Rvectors:
         print(f"remapping {XX_R.shape} ")
         assert (XX_R.shape[0] == self.nshifts_left) or (self.nshifts_left == 1)
         assert (XX_R.shape[1] == self.nshifts_right) or (self.nshifts_right == 1)
-        XX_R_sum_R_old = XX_R.sum(axis=2)
+        XX_R_sum_old = XX_R.sum(axis=2)
         XX_R_tmp = np.zeros(tuple(self.mp_grid) + XX_R.shape[:2] + XX_R.shape[3:], dtype=XX_R.dtype)
         for i, iR in enumerate(iRvec_old % self.mp_grid):
             XX_R_tmp[tuple(iR)] += XX_R[:, :, i]
-        XX_R_sum_T_tmp = XX_R_tmp.sum(axis=(0, 1, 2))
-        assert np.allclose(XX_R_sum_T_tmp, XX_R_sum_R_old), f"XX_R_sum_T_tmp {XX_R_sum_T_tmp} != XX_R_sum_R_old {XX_R_sum_R_old}"
-        shape_new = list(XX_R.shape)
-        shape_new[2] = self.nRvec
-        XX_R_final = np.zeros(shape_new, dtype=XX_R.dtype)
-        for a in range(XX_R.shape[0]):
+        XX_R_sum_tmp = XX_R_tmp.sum(axis=(0, 1, 2))
+        assert np.allclose(XX_R_sum_tmp, XX_R_sum_old), f"XX_R_sum_T_tmp {XX_R_sum_tmp} != XX_R_sum_R_old {XX_R_sum_old}"
+        return self.remap_XX_from_grid_to_R(XX_R_tmp)
+
+    def remap_XX_from_grid_to_R(self, XX_R_grid):
+        XX_R_sum_grid = XX_R_grid.sum(axis=(0, 1, 2))
+        shape_new = XX_R_grid.shape[3:5] + (self.nRvec,) + XX_R_grid.shape[5:]
+        num_wann_l = XX_R_grid.shape[3]
+        num_wann_r = XX_R_grid.shape[4]
+        XX_R_new = np.zeros(shape_new, dtype=XX_R_grid.dtype)
+        for a in range(num_wann_l):
             ia = 1 if self.nshifts_left == 1 else a
-            for b in range(XX_R.shape[1]):
+            for b in range(num_wann_r):
                 ib = 1 if self.nshifts_right == 1 else b
                 ishift = self.shift_index[ia, ib]
                 for iRi, iRm, nd in zip(self.iRvec_index_list[ishift],
                                         self.iRvec_mod_list[ishift],
                                         self.Ndegen_list[ishift]):
-                    XX_R_final[a, b, iRi] += XX_R_tmp[tuple(iRm) + (a, b)] / nd
-        XX_R_sum_R_new = XX_R_final.sum(axis=2)
-        assert np.allclose(XX_R_sum_R_new, XX_R_sum_T_tmp), f"XX_R_sum_R_new {XX_R_sum_R_new} != XX_R_sum_T_tmp {XX_R_sum_T_tmp}"
-        return XX_R_final
+                    XX_R_new[a, b, iRi] += XX_R_grid[tuple(iRm) + (a, b)] / nd
+        XX_R_sum_new = XX_R_new.sum(axis=2)
+        assert np.allclose(XX_R_sum_new, XX_R_sum_grid), f"XX_R_sum_R_new {XX_R_sum_new} != XX_R_sum_T_tmp {XX_R_sum_grid}"
+        return XX_R_new
 
 
     def NKFFT_recommended(self):
@@ -221,7 +225,7 @@ class Rvectors:
 
     def clear_cached(self):
         clear_cached(self, ['diff_wcc_cart', 'cRvec_p_wcc', 'diff_wcc_red',
-                            "wannier_centers_reduced", 'cRvec', 'cRvec_p_wcc', 'iR0',
+                            "wannier_centers_red", 'cRvec', 'cRvec_p_wcc', 'iR0',
                             'reverseR', 'index_R', 'shifts_diff_red', 'shifts_diff_cart',
                             'shifts_left_cart', 'shifts_right_cart', 'cRvec_shifted'])
 
@@ -312,21 +316,42 @@ class Rvectors:
                 (shape_cR[0], shape_cR[1], self.nRvec) + (1,) * len(XX_R.shape[3:]) + (3,))
         return self.fft_R_to_k(XX_R, hermitian=hermitian)
 
-    def set_fft_q_to_R(self, mp_grid, kpt_mp_grid, numthreads, fftlib='pyfftw',
-                       Ndegen=None):
-        if Ndegen is None:
-            Ndegen = np.ones(self.nRvec, dtype=int)
-        self.fft_q_to_R = functools.partial(
-            fourier_q_to_R,
-            mp_grid=mp_grid,
-            kpt_mp_grid=kpt_mp_grid,
-            iRvec=self.iRvec,
-            ndegen=Ndegen,
-            numthreads=numthreads,
-            fftlib=fftlib)
+    def set_fft_q_to_R(self, kpt_red, numthreads=1, fftlib='pyfftw'):
+        """
+        set the FFT for the q to R conversion
 
-    def q_to_R(self, XXq):
-        return self.fft_q_to_R(XXq)
+        Parameters
+        ----------
+        kpt_red : list
+            The k-point of Monkhorst-Pack grid in reduced coordinates
+        numthreads : int
+            The number of threads for the FFT
+        fftlib : str
+            The FFT library to use ('pyfftw' or 'numpy' or 'slow')
+        """
+        kpt_red = np.array(kpt_red)
+        kpt_red_mp = kpt_red * self.mp_grid[None, :]
+        kpt_red_mp_int = np.round(kpt_red_mp).astype(int)
+        assert kpt_red.shape == (np.prod(self.mp_grid), 3), f"kpt_red {kpt_red} should be an array of shape NK_mp x 3 (NK_mp={np.prod(self.mp_grid)})"
+        assert np.allclose(kpt_red_mp_int, kpt_red_mp), f"kpt_red {kpt_red} should be a uniform grid of  {self.mp_grid} kpoints"
+        self.kpt_mp_grid = [tuple(k) for k in kpt_red_mp_int % self.mp_grid]
+        if (0, 0, 0) not in self.kpt_mp_grid:
+            raise ValueError(
+                "the grid of k-points read from .chk file is not Gamma-centered. Please, use Gamma-centered grids in the ab initio calculation"
+            )
+        assert len(self.kpt_mp_grid) == np.prod(self.mp_grid), f"the grid of k-points read from .chk file is not {self.mp_grid} kpoints"
+        assert len(self.kpt_mp_grid) == len(set(self.kpt_mp_grid)), "the grid of k-points read from .chk file has duplicates"
+        self.fft_num_threads = numthreads
+        self.fftlib_q2R = fftlib
+
+
+    def q_to_R(self, AA_q):
+        shapeA = AA_q.shape[1:]  # remember the shapes after q
+        AA_q_mp = np.zeros(tuple(self.mp_grid) + shapeA, dtype=complex)
+        for i, k in enumerate(self.kpt_mp_grid):
+            AA_q_mp[k] = AA_q[i]
+        AA_q_mp = execute_fft(AA_q_mp, axes=(0, 1, 2), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False) / np.prod(self.mp_grid)
+        return self.remap_XX_from_grid_to_R(AA_q_mp)
 
 
 class WignerSeitz:

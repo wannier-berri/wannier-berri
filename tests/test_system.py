@@ -10,7 +10,7 @@ import wannierberri as wberri
 from wannierberri.system.system_R import System_R
 from wannierberri.system.system_tb import System_tb
 
-properties_wcc = ['wannier_centers_cart', 'wannier_centers_reduced']
+properties_wcc = ['wannier_centers_cart', 'wannier_centers_red']
 
 
 @pytest.fixture
@@ -356,9 +356,9 @@ def test_system_CuMnAs_2d_broken(check_system, system_CuMnAs_2d_broken):
     )
 
 
-def test_system_Te_ASE_wcc(check_system, system_Te_ASE):
+def test_system_Te_ASE(check_system, system_Te_ASE):
     check_system(
-        system_Te_ASE, "Te_ASE_wcc",
+        system_Te_ASE, "Te_ASE2",
         matrices=['Ham']
     )
 

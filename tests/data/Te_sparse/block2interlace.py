@@ -7,8 +7,8 @@ del parameters['symmetrize_info']['DFT_code']
 del parameters['use_wcc_phase']
 print(parameters.keys())
 print(parameters['symmetrize_info'])
-print(parameters['wannier_centers_reduced'])
-num_wann = parameters['wannier_centers_reduced'].shape[0]
+print(parameters['wannier_centers_red'])
+num_wann = parameters['wannier_centers_red'].shape[0]
 nw2 = num_wann // 2
 mapping = np.zeros(num_wann, dtype=int)
 
@@ -31,13 +31,11 @@ for key, XX in parameters['matrices'].items():
 
 parameters['matrices'] = matrices_new
 
-# parameters['matrices'][key] = val[:, mapping][mapping, :]
-# parameters['wannier_centers_reduced'] = parameters['wannier_centers_reduced'][mapping, :]
-wannier_centers_reduced = parameters['wannier_centers_reduced']
-wannier_centers_reduced_new = np.zeros_like(wannier_centers_reduced)
+wannier_centers_red = parameters['wannier_centers_red']
+wannier_centers_red_new = np.zeros_like(wannier_centers_red)
 for i in range(num_wann):
-    wannier_centers_reduced_new[mapping[i]] = wannier_centers_reduced[i]
+    wannier_centers_red_new[mapping[i]] = wannier_centers_red[i]
 
-print(wannier_centers_reduced_new)
-parameters['wannier_centers_reduced'] = wannier_centers_reduced_new
+print(wannier_centers_red_new)
+parameters['wannier_centers_red'] = wannier_centers_red_new
 pickle.dump(parameters, open("parameters_Te_low_interlaced.pickle", "wb"))

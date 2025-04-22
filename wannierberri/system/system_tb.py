@@ -116,14 +116,12 @@ class System_tb(System_R):
             wannier_centers_cart = np.diagonal(aa, axis1=0, axis2=1).T.real
 
 
-        # self.set_wannier_centers(wannier_centers_cart=wannier_centers_cart)
         self.wannier_centers_cart = wannier_centers_cart
-        # wannier_centers_reduced = np.dot(self.wannier_centers_cart, np.linalg.inv(self.real_lattice))
         self.clear_cached_wcc()
         self.rvec = Rvectors(
             lattice=self.real_lattice,
             iRvec=iRvec,
-            shifts_left_red=self.wannier_centers_reduced,
+            shifts_left_red=self.wannier_centers_red,
         )
 
         f.close()

@@ -13,9 +13,9 @@
 # ---------------------------------------------------------- #
 
 import numpy as np
-from .system_R import System_R
-from .ws_dist import wigner_seitz
 from termcolor import cprint
+
+from .system_R import System_R
 from .rvectors import Rvectors
 
 
@@ -36,7 +36,6 @@ class System_ASE(System_R):
     def __init__(
             self,
             ase_wannier,
-            ase_R_vectors=False,  # for testing vs ASE
             **parameters):
         if "name" not in parameters:
             parameters["name"] = "ASE"
@@ -46,38 +45,27 @@ class System_ASE(System_R):
         self.set_real_lattice(np.array(ase_wannier.unitcell_cc))
         mp_grid = ase_wannier.kptgrid
 
-        if not ase_R_vectors:
-            iRvec, Ndegen = wigner_seitz(real_lattice=self.real_lattice, mp_grid=mp_grid)
-        else:  # enable to do ase-like R-vectors
-            N1, N2, N3 = (mp_grid - 1) // 2
-            iRvec = np.array(
-                [[n1, n2, n3] for n1 in range(-N1, N1 + 1) for n2 in range(-N2, N2 + 1) for n3 in range(-N3, N3 + 1)],
-                dtype=int)
-            Ndegen = np.ones(self.iRvec.shape[0], dtype=int)
-
 
         self.num_wann = ase_wannier.nwannier
         self.num_kpts = ase_wannier.Nk
         self.wannier_centers_cart = ase_wannier.get_centers()
         print(f"got the Wannier centers : {self.wannier_centers_cart}")
-        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec,
-                         shifts_left_red=self.wannier_centers_reduced,
-                         )
-        self.kpt_red = ase_wannier.kpt_kc
 
-        kpt_mp_grid = [
-            tuple(k)
-            for k in np.array(np.round(self.kpt_red * np.array(mp_grid)[None, :]), dtype=int) % mp_grid
-        ]
-        if (0, 0, 0) not in kpt_mp_grid:
-            raise ValueError(
-                "the grid of k-points read from .chk file is not Gamma-centered. Please, use Gamma-centered grids in the ab initio calculation"
-            )
+        self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
+        self.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=self.ws_dist_tol)
 
-        self.set_R_mat('Ham', np.array([ase_wannier.get_hopping(R) / nd for R, nd in zip(iRvec, Ndegen)]).transpose(
-            (1, 2, 0)))
+        self.rvec.set_fft_q_to_R(
+            kpt_red=ase_wannier.kpt_kc
+        )
+
+        Ham = np.zeros(tuple(mp_grid) + (self.num_wann, self.num_wann), dtype=complex)
+        for i in range(mp_grid[0]):
+            for j in range(mp_grid[1]):
+                for k in range(mp_grid[2]):
+                    Ham[i, j, k] = ase_wannier.get_hopping([i, j, k])
+
+        self.set_R_mat('Ham', self.rvec.remap_XX_from_grid_to_R(Ham))
 
         self.do_at_end_of_init()
-        self.do_ws_dist(mp_grid=mp_grid)
 
         cprint("Reading the ASE system finished successfully", 'green', attrs=['bold'])
