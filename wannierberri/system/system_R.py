@@ -224,7 +224,7 @@ class System_R(System):
             mapping[1::2] = np.arange(nw2) + nw2
 
         for key, val in self._XX_R.items():
-            self._XX_R[key] = val[:,:, mapping][:,mapping, :]
+            self._XX_R[key] = val[:, :, mapping][:, mapping, :]
         self.wannier_centers_cart = self.wannier_centers_cart[mapping]
         self.rvec.reorder(mapping)
         self.clear_cached_wcc()

@@ -27,7 +27,7 @@ def check_system():
                precision_matrix_elements=1e-7,
                suffix="",
                sort_iR=True,
-               legacy = False
+               legacy=False
                ):
         if len(suffix) > 0:
             suffix = "_" + suffix
@@ -66,7 +66,7 @@ def check_system():
             if XX:
                 data = system.get_R_mat(key)
                 if legacy:
-                    data_ref = data_ref.transpose( (2, 0, 1) +tuple(i for i in range(3, data.ndim)))
+                    data_ref = data_ref.transpose((2, 0, 1) + tuple(i for i in range(3, data.ndim)))
             elif key == 'nRvec':
                 data = system.rvec.nRvec
             elif key == 'iRvec':

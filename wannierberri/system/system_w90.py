@@ -371,7 +371,7 @@ class System_w90(System_R):
         if self.need_R_any('SHA'):
             SH_R = self.get_R_mat('SH')
             rc = (r0[:, :, :, :, None] - self.rvec.cRvec[:, None, None, :, None] -
-                  centers[None,  None, :, :, None]) * SH_R[:, :, :, None, :]
+                  centers[None, None, :, :, None]) * SH_R[:, :, :, None, :]
             self.set_R_mat('SHA', rc, add=True)
         # --- O_a(R) matrix --- #
         if self.need_R_any('OO'):

@@ -291,7 +291,7 @@ class SymWann:
                         we2b = ws2b + norb2
                         for iR, XX_L in X.items():
                             # print (f"iR = {iR}, blocks: {block1, block2} \n   iRvec_map[iR] = {iRvec_map[iR]} ws1a = {ws1a}, we1a = {we1a}, ws2b = {ws2b}, we2b = {we2b}, XX_L.shap={XX_L.shape}")
-                            return_dic[k][ iRvec_map[iR],ws1a:we1a, ws2b:we2b] += XX_L
+                            return_dic[k][iRvec_map[iR], ws1a:we1a, ws2b:we2b] += XX_L
 
         logfile.write('Symmetrizing Finished\n')
 

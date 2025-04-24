@@ -637,7 +637,7 @@ class Data_K_R(_Data_K, System_R):
                 res = self._FF_R()
             else:
                 X_R = self.system.get_R_mat(key)
-                shape = [self.expdK.shape[0]] + [1] * (X_R.ndim-1)
+                shape = [self.expdK.shape[0]] + [1] * (X_R.ndim - 1)
                 res = X_R * self.expdK.reshape(shape)
             if key in memoize_R:
                 self.set_R_mat(key, res)
@@ -687,7 +687,7 @@ class Data_K_R(_Data_K, System_R):
     def E_K_corners_tetra(self):
         vertices = self.Kpoint.vertices_fullBZ
         # we omit the wcc phases here, because they do not affect the energies
-        expdK = np.exp(2j * np.pi * self.rvec.iRvec.dot(vertices.T)).T  
+        expdK = np.exp(2j * np.pi * self.rvec.iRvec.dot(vertices.T)).T
         _Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
         for iv, _exp in enumerate(expdK):
             _Ham_R = self.Ham_R[:, :, :] * _exp[:, None, None]
@@ -703,7 +703,7 @@ class Data_K_R(_Data_K, System_R):
     def E_K_corners_parallel(self):
         dK2 = self.Kpoint.dK_fullBZ / 2
         # we omit the wcc phases here, because they do not affect the energies
-        expdK = np.exp(2j * np.pi * self.rvec.iRvec * dK2[None, :])  
+        expdK = np.exp(2j * np.pi * self.rvec.iRvec * dK2[None, :])
         expdK = np.array([1. / expdK, expdK])
         Ecorners = np.zeros((self.nk_selected, 2, 2, 2, self.nb_selected), dtype=float)
         for ix in 0, 1:

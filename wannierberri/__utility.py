@@ -260,9 +260,9 @@ class FFT_R_to_k:
 
         # TODO - think if fftlib transform of half of matrix makes sense
         if hermitian:
-            AAA_K = 0.5 * (AAA_K + AAA_K.swapaxes(3,4).conj())
+            AAA_K = 0.5 * (AAA_K + AAA_K.swapaxes(3, 4).conj())
         elif antihermitean:
-            AAA_K = 0.5 * (AAA_K - AAA_K.swapaxes(3,4).conj())
+            AAA_K = 0.5 * (AAA_K - AAA_K.swapaxes(3, 4).conj())
 
         if reshapeKline:
             AAA_K = AAA_K.reshape((np.prod(self.NKFFT),) + shapeA[1:])

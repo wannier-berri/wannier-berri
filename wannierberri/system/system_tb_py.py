@@ -132,7 +132,7 @@ class System_tb_py(System_R):
                 iR = np.argwhere(np.all((nhop[-1] - self.rvec.iRvec[:, :self.dimr]) == 0, axis=1))[0][0]
                 inR = np.argwhere(np.all((-nhop[-1] - self.rvec.iRvec[:, :self.dimr]) == 0, axis=1))[0][0]
                 if model._nspin == 1:
-                    Ham_R[iR , i, j] += nhop[0]
+                    Ham_R[iR, i, j] += nhop[0]
                     Ham_R[inR, j, i] += np.conjugate(nhop[0])
                 elif model._nspin == 2:
                     print("hopping :", nhop[0].shape, Ham_R.shape, iR,
@@ -150,7 +150,7 @@ class System_tb_py(System_R):
                 self.set_spin_pairs([(i, i + 1) for i in range(0, self.num_wann, 2)])
 
         self.set_R_mat('Ham', Ham_R)
-        print (f"shape of Ham_R = {Ham_R.shape}")   
+        print(f"shape of Ham_R = {Ham_R.shape}")
 
         self.do_at_end_of_init()
         cprint(f"Reading the system from {names[module]} finished successfully", 'green', attrs=['bold'])

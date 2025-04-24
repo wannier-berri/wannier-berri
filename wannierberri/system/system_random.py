@@ -64,7 +64,7 @@ class SystemRandom(System_R):
         )
 
         for key in self.needed_R_matrices:
-            shape = (self.rvec.nRvec, self.num_wann, self.num_wann ) + (3,) * num_cart_dim(key)
+            shape = (self.rvec.nRvec, self.num_wann, self.num_wann) + (3,) * num_cart_dim(key)
             im, re = [np.random.random(shape) for _ in (0, 1)]
             self.set_R_mat(key, im + 1j * re)
         if self.has_R_mat('AA'):
