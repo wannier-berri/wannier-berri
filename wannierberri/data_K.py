@@ -637,8 +637,7 @@ class Data_K_R(_Data_K, System_R):
                 res = self._FF_R()
             else:
                 X_R = self.system.get_R_mat(key)
-                shape = [1] * X_R.ndim
-                shape[2] = self.expdK.shape[0]
+                shape = [self.expdK.shape[0]] + [1] * (X_R.ndim-1)
                 res = X_R * self.expdK.reshape(shape)
             if key in memoize_R:
                 self.set_R_mat(key, res)

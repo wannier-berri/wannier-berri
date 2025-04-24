@@ -26,7 +26,8 @@ def check_system():
                matrices=[],
                precision_matrix_elements=1e-7,
                suffix="",
-               sort_iR=True
+               sort_iR=True,
+               legacy = False
                ):
         if len(suffix) > 0:
             suffix = "_" + suffix
@@ -57,11 +58,15 @@ def check_system():
             np.savez_compressed(os.path.join(out_dir, key + ".npz"), system.get_R_mat(key))
             print(" - Ok!")
 
-        def check_property(key, prec, XX=False, sort=None, sort_axis=2, print_missed=False):
+        def check_property(key, prec, XX=False, sort=None, print_missed=False, legacy=False):
+            if key in exclude_properties:
+                return
             print(f"checking {key} prec={prec} XX={XX}", end="")
             data_ref = np.load(os.path.join(REF_DIR, "systems", name, key + ".npz"))['arr_0']
             if XX:
                 data = system.get_R_mat(key)
+                if legacy:
+                    data_ref = data_ref.transpose( (2, 0, 1) +tuple(i for i in range(3, data.ndim)))
             elif key == 'nRvec':
                 data = system.rvec.nRvec
             elif key == 'iRvec':
@@ -69,14 +74,9 @@ def check_system():
             else:
                 data = getattr(system, key)
             data = np.array(data)
-            print("sort = ", sort)
+            # print("sort = ", sort)
             if sort is not None:
-                if sort_axis == 0:
-                    data_ref = data_ref[sort]
-                elif sort_axis == 2:
-                    data_ref = data_ref[:, :, sort]
-                else:
-                    raise ValueError(f"sorting only along axis 0 or 2, but {sort_axis} is requested")
+                data_ref = data_ref[sort]
             if data.dtype == bool:
                 data = np.array(data, dtype=int)
                 data_ref = np.array(data_ref, dtype=int)
@@ -147,9 +147,9 @@ def check_system():
             else:
                 prec_loc = precision_properties
             if key in ['iRvec', 'cRvec']:
-                check_property(key, prec_loc, XX=False, sort=sort_R, sort_axis=0, print_missed=True)
+                check_property(key, prec_loc, XX=False, sort=sort_R, print_missed=True)
             elif key in ['cRvec_p_wcc']:
-                check_property(key, prec_loc, XX=False, sort=sort_R, sort_axis=2, print_missed=True)
+                check_property(key, prec_loc, XX=False, sort=sort_R, print_missed=True)
             else:
                 check_property(key, prec_loc, XX=False)
         for key in matrices:
@@ -157,7 +157,7 @@ def check_system():
                 prec_loc = extra_precision[key]
             else:
                 prec_loc = precision_matrix_elements
-            check_property(key, prec_loc, XX=True, sort=sort_R, print_missed=True)
+            check_property(key, prec_loc, XX=True, sort=sort_R, print_missed=True, legacy=legacy)
 
     return _inner
 
@@ -165,7 +165,8 @@ def check_system():
 def test_system_Fe_W90(check_system, system_Fe_W90):
     check_system(
         system_Fe_W90, "Fe_W90",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA'],
+        legacy=True,
     )
 
 
@@ -173,7 +174,8 @@ def test_system_Fe_W90_npz(check_system, system_Fe_W90_npz):
     check_system(
         system_Fe_W90_npz, "Fe_W90",
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA'],
-        suffix="_npz"
+        suffix="_npz",
+        legacy=True,
     )
 
 
@@ -181,7 +183,8 @@ def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
     check_system(
         system_Fe_W90_sparse, "Fe_W90_sparse",
         exclude_properties=properties_wcc,
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA'],
+        legacy=True,
     )
 
 
@@ -189,21 +192,24 @@ def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90):
     check_system(
         system_Fe_sym_W90, "Fe_sym_W90",
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
-        sort_iR=True
+        sort_iR=True,
+        legacy=True,
     )
 
 
 def test_system_Fe_W90_proj_set_spin(check_system, system_Fe_W90_proj_set_spin):
     check_system(
         system_Fe_W90_proj_set_spin, "Fe_W90_proj_set_spin",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
+        legacy=True,
     )
 
 
 def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
     check_system(
         system_Fe_W90_proj, "Fe_W90_proj",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR'],
+        legacy=True,
     )
 
 
@@ -211,7 +217,8 @@ def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
 def test_system_GaAs_W90(check_system, system_GaAs_W90):
     check_system(
         system_GaAs_W90, "GaAs_W90",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS']
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
+        legacy=True,
     )
 
 
@@ -219,6 +226,7 @@ def test_system_GaAs_W90_JM(check_system, system_GaAs_W90_JM):
     check_system(
         system_GaAs_W90_JM, "GaAs_W90_JM",
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA', 'OO', 'GG'],
+        legacy=True,
     )
 
 
@@ -227,6 +235,7 @@ def test_system_GaAs_tb(check_system, system_GaAs_tb):
         system_GaAs_tb, "GaAs_tb",
         matrices=['Ham', 'AA'],
         sort_iR=True,
+        legacy=True,
         # extra_precision={'Ham': 1e-5, 'AA': 5e-4}
     )
 
@@ -236,6 +245,7 @@ def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb):
         system_GaAs_sym_tb, "GaAs_sym_tb",
         matrices=['Ham', 'AA'],
         sort_iR=True,
+        legacy=True,
     )
 
 
@@ -243,7 +253,8 @@ def test_system_GaAs_sym_tb(check_system, system_GaAs_sym_tb):
 def test_system_GaAs_tb_noAA(check_system, system_GaAs_tb_noAA):
     check_system(
         system_GaAs_tb_noAA, "GaAs_tb",
-        matrices=['Ham',]
+        matrices=['Ham',],
+        legacy=True,
     )
 
 
@@ -256,7 +267,8 @@ def test_system_GaAs_tb_save_load(check_system, system_GaAs_tb):
     check_system(
         system, "GaAs_tb",
         suffix="save-load",
-        matrices=['Ham', 'AA']
+        matrices=['Ham', 'AA'],
+        legacy=True,
     )
 
 
@@ -264,7 +276,8 @@ def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
     check_system(
         system_Si_W90_JM, "Si_W90_JM",
         matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True
+        sort_iR=True,
+        legacy=True,
     )
 
 
@@ -272,7 +285,8 @@ def test_system_Si_W90_JM_sym(check_system, system_Si_W90_JM_sym):
     check_system(
         system_Si_W90_JM_sym, "Si_W90_JM_sym",
         matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True
+        sort_iR=True,
+        legacy=True,
     )
 
 
@@ -280,7 +294,8 @@ def test_system_Si_W90(check_system, system_Si_W90):
     check_system(
         system_Si_W90, "Si_W90",
         matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True
+        sort_iR=True,
+        legacy=True,
     )
 
 
@@ -288,7 +303,8 @@ def test_system_Si_W90_sym(check_system, system_Si_W90_sym):
     check_system(
         system_Si_W90_sym, "Si_W90_sym",
         matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True
+        sort_iR=True,
+        legacy=True,
     )
 
 
@@ -296,70 +312,80 @@ def test_system_Si_W90_sym(check_system, system_Si_W90_sym):
 def test_system_Haldane_TBmodels(check_system, system_Haldane_TBmodels):
     check_system(
         system_Haldane_TBmodels, "Haldane", suffix="TBmodels",
-        matrices=['Ham']
+        matrices=['Ham'],
+        legacy=True,
     )
 
 
 def test_system_Haldane_PythTB(check_system, system_Haldane_PythTB):
     check_system(
         system_Haldane_PythTB, "Haldane", suffix="PythTB",
-        matrices=['Ham']
+        matrices=['Ham'],
+        legacy=True,
     )
 
 
 def test_system_KaneMele_odd_PythTB(check_system, system_KaneMele_odd_PythTB):
     check_system(
         system_KaneMele_odd_PythTB, "KaneMele", suffix="PythTB",
-        matrices=['Ham', 'SS']
+        matrices=['Ham', 'SS'],
+        legacy=True,
     )
 
 
 def test_system_Chiral_OSD(check_system, system_Chiral_OSD):
     check_system(
         system_Chiral_OSD, "Chiral_OSD",
-        matrices=['Ham', 'SS']
+        matrices=['Ham', 'SS'],
+        legacy=True,
     )
 
 
 def test_system_Chiral_left(check_system, system_Chiral_left):
     check_system(
         system_Chiral_left, "Chiral_left",
-        matrices=['Ham']
+        matrices=['Ham'],
+        legacy=True,
     )
 
 
 def test_system_Chiral_left_TR(check_system, system_Chiral_left_TR):
     check_system(
         system_Chiral_left_TR, "Chiral_left_TR",
-        matrices=['Ham']
+        matrices=['Ham'],
+        legacy=True,
     )
 
 
 def test_system_Chiral_right(check_system, system_Chiral_right):
     check_system(
         system_Chiral_right, "Chiral_right",
-        matrices=['Ham']
+        matrices=['Ham'],
+        legacy=True,
     )
 
 
 def test_system_Fe_FPLO(check_system, system_Fe_FPLO):
     check_system(
         system_Fe_FPLO, "Fe_FPLO",
-        matrices=['Ham', 'SS']
+        matrices=['Ham', 'SS'],
+        legacy=True,
     )
 
 
 def test_system_CuMnAs_2d_broken(check_system, system_CuMnAs_2d_broken):
     check_system(
         system_CuMnAs_2d_broken, "CuMnAs_2d_broken",
-        matrices=['Ham']
+        matrices=['Ham'],
+        legacy=True,
     )
 
 
 def test_system_Te_ASE(check_system, system_Te_ASE):
     check_system(
         system_Te_ASE, "Te_ASE2",
-        matrices=['Ham']
+        matrices=['Ham'],
+        legacy=True,
     )
 
 
@@ -367,7 +393,8 @@ def test_system_Te_sparse(check_system, system_Te_sparse):
     check_system(
         system_Te_sparse, "Te_sparse",
         matrices=['Ham'],
-        sort_iR=True
+        sort_iR=True,
+        legacy=True,
     )
 
 
@@ -375,14 +402,16 @@ def test_system_Phonons_Si(check_system, system_Phonons_Si):
     check_system(
         system_Phonons_Si, "Phonons_Si",
         matrices=['Ham'],
-        sort_iR=True
+        sort_iR=True,
+        legacy=True,
     )
 
 
 def test_system_Phonons_GaAs(check_system, system_Phonons_GaAs):
     check_system(
         system_Phonons_GaAs, "Phonons_GaAs",
-        matrices=['Ham']
+        matrices=['Ham'],
+        legacy=True,
     )
 
 
@@ -390,7 +419,8 @@ def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb):
     check_system(
         system_Mn3Sn_sym_tb, "Mn3Sn_sym_tb",
         matrices=['Ham', 'AA'],
-        sort_iR=True
+        sort_iR=True,
+        legacy=True,
     )
 
 
@@ -417,7 +447,7 @@ def test_system_pythtb_spinor():
 def test_system_random(check_system, system_random):
     system = system_random
     assert system.wannier_centers_cart.shape == (system.num_wann, 3)
-    assert system.get_R_mat('AA')[:, :, system.rvec.iR0].diagonal().imag == pytest.approx(0)
+    assert system.get_R_mat('AA')[system.rvec.iR0].diagonal().imag == pytest.approx(0)
     system.save_npz(os.path.join(OUTPUT_DIR, "randomsys"))
 
 
@@ -426,7 +456,8 @@ def test_system_random_load_bare(check_system, system_random_load_bare):
     check_system(
         system_random_load_bare, "random_bare",
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'GG', 'OO'],
-        sort_iR=False
+        sort_iR=False,
+        legacy=True,
     )
 
 
@@ -441,7 +472,8 @@ def test_system_random_to_tb_back(check_system, system_random_GaAs_load_bare):
         system_tb, "random_GaAs_bare",
         suffix="_tb",
         matrices=['Ham', 'AA'],
-        sort_iR=False
+        sort_iR=False,
+        legacy=True,
     )
 
 
@@ -449,7 +481,7 @@ def test_system_random_GaAs(check_system, system_random_GaAs):
     system = system_random_GaAs
     assert system.wannier_centers_cart.shape == (system.num_wann, 3)
     assert system.num_wann == 16
-    assert system.get_R_mat('AA')[:, :, system.rvec.iR0].diagonal() == pytest.approx(0)
+    assert system.get_R_mat('AA')[system.rvec.iR0].diagonal() == pytest.approx(0)
     system.save_npz(os.path.join(OUTPUT_DIR, "randomsys_GaAs"))
 
 
@@ -457,7 +489,8 @@ def test_system_random_GaAs_load_bare(check_system, system_random_GaAs_load_bare
     check_system(
         system_random_GaAs_load_bare, "random_GaAs_bare",
         matrices=['Ham', 'AA', 'SS'],
-        sort_iR=False
+        sort_iR=False,
+        legacy=True,
     )
 
 
@@ -465,7 +498,8 @@ def test_system_random_GaAs_load(check_system, system_random_GaAs_load_bare):
     check_system(
         system_random_GaAs_load_bare, "random_GaAs_bare",
         matrices=['Ham', 'AA', 'SS'],
-        sort_iR=False
+        sort_iR=False,
+        legacy=True,
     )
 
 
@@ -473,5 +507,6 @@ def test_system_random_GaAs_load_sym(check_system, system_random_GaAs_load_sym):
     check_system(
         system_random_GaAs_load_sym, "random_GaAs_sym",
         matrices=['Ham', 'AA', 'SS'],
-        sort_iR=True
+        sort_iR=True,
+        legacy=True,
     )

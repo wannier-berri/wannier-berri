@@ -69,7 +69,7 @@ class System_tb(System_R):
 
         iRvec = []
 
-        Ham_R = np.zeros((self.num_wann, self.num_wann, nRvec), dtype=complex)
+        Ham_R = np.zeros((nRvec, self.num_wann, self.num_wann), dtype=complex)
 
         for ir in range(nRvec):
             f.readline()
@@ -77,27 +77,27 @@ class System_tb(System_R):
             hh = np.array(
                 [[f.readline().split()[2:4] for _ in range(self.num_wann)] for _ in range(self.num_wann)],
                 dtype=float).transpose((1, 0, 2))
-            Ham_R[:, :, ir] = (hh[:, :, 0] + 1j * hh[:, :, 1]) / Ndegen[ir]
+            Ham_R[ir] = (hh[:, :, 0] + 1j * hh[:, :, 1]) / Ndegen[ir]
         self.set_R_mat('Ham', Ham_R)
         iRvec = np.array(iRvec, dtype=int)
         iR0 = Rvectors(lattice=self.real_lattice, iRvec=iRvec).iR0
 
 
         if 'AA' in self.needed_R_matrices:
-            AA_R = np.zeros((self.num_wann, self.num_wann, nRvec, 3), dtype=complex)
+            AA_R = np.zeros((nRvec, self.num_wann, self.num_wann, 3), dtype=complex)
             for ir in range(nRvec):
                 f.readline()
                 assert np.all(np.array(f.readline().split(), dtype=int) == iRvec[ir])
                 aa = np.array(
                     [[f.readline().split()[2:8] for _ in range(self.num_wann)] for _ in range(self.num_wann)],
                     dtype=float)
-                AA_R[:, :, ir, :] = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / Ndegen[ir]
+                AA_R[ir] = (aa[:, :, 0::2] + 1j * aa[:, :, 1::2]).transpose((1, 0, 2)) / Ndegen[ir]
             if wannier_centers_cart is None:
-                wannier_centers_cart = np.diagonal(AA_R[:, :, iR0, :], axis1=0, axis2=1).T.copy().real
+                wannier_centers_cart = np.diagonal(AA_R[iR0], axis1=0, axis2=1).T.copy().real
             if convention_II_to_I:
                 # convert to convention I
                 # print(f"convention_II_to_I = {convention_II_to_I} wannier_centers_cart = \n{wannier_centers_cart}\n num_wann = {self.num_wann}, A.shape = {AA_R.shape}")
-                AA_R[np.arange(self.num_wann), np.arange(self.num_wann), iR0, :] -= wannier_centers_cart
+                AA_R[iR0, np.arange(self.num_wann), np.arange(self.num_wann), :] -= wannier_centers_cart
             self.set_R_mat('AA', AA_R)
         elif wannier_centers_cart is None:
             wannier_centers_cart = np.zeros((3, self.num_wann), dtype=float)

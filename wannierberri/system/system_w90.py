@@ -326,13 +326,13 @@ class System_w90(System_R):
 
         # Optimal center in Jae-Mo's implementation
         phase = np.einsum('ba,Ra->Rb', bk_cart_unique, - 0.5 * self.rvec.cRvec)
-        expiphase1 = np.exp(1j * phase)
-        expiphase2 = expiphase1[:, :, None] * expiphase1[:, None, :]
+        expiphase1 = np.exp(1j * phase)[:, None, None, :]
+        expiphase2 = expiphase1[:, :, :, :, None] * expiphase1[:, :, :, None, :]
 
         def _reset_mat(key, phase, axis, Hermitian=True):
             if self.need_R_any(key):
                 XX_Rb = self.get_R_mat(key)
-                phase = np.reshape(phase, (1, 1) + np.shape(phase) + (1,) * (XX_Rb.ndim - 2 - np.ndim(phase)))
+                phase = np.reshape(phase, np.shape(phase) + (1,) * (XX_Rb.ndim - np.ndim(phase)))
                 XX_R = np.sum(XX_Rb * phase, axis=axis)
                 self.set_R_mat(key, XX_R, reset=True, Hermitian=Hermitian)
 
@@ -345,7 +345,7 @@ class System_w90(System_R):
         _reset_mat('GG', expiphase2, (3, 4))
 
         del expiphase1, expiphase2
-        r0 = 0.5 * (centers[:, None, None, :] + centers[None, :, None, :] + self.rvec.cRvec[None, None, :, :])
+        r0 = 0.5 * (centers[None, :, None, :] + centers[None, None, :, :] + self.rvec.cRvec[:, None, None, :])
 
         # --- A_a(R) matrix --- #
         if self.need_R_any('AA'):
@@ -354,29 +354,29 @@ class System_w90(System_R):
         if self.need_R_any('BB'):
             BB_R0 = self.get_R_mat('BB').copy()
             HH_R = self.get_R_mat('Ham')
-            rc = (r0 - self.rvec.cRvec[None, None, :, :] - centers[None, :, None, :]) * HH_R[:, :, :, None]
+            rc = (r0 - self.rvec.cRvec[:, None, None, :] - centers[None, None, :, :]) * HH_R[:, :, :, None]
             self.set_R_mat('BB', rc, add=True)
         # --- C_a(R) matrix --- #
         if self.need_R_any('CC'):
             assert BB_R0 is not None, 'Recentered B matrix is needed in Jae-Mo`s implementation of C'
             BB_R0_conj = self.rvec.conj_XX_R(BB_R0)
-            rc = 1j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None, :]
+            rc = 1j * (r0[:, :, :, :, None] - centers[None, :, None, :, None]) * (BB_R0 + BB_R0_conj)[:, :, :, None, :]
             CC_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
             self.set_R_mat('CC', CC_R_add, add=True, Hermitian=True)
         if self.need_R_any('SA'):
             SS_R = self.get_R_mat('SS')
-            rc = (r0[:, :, :, :, None] - self.rvec.cRvec[None, None, :, :, None] - centers[None, :, None, :, None]
+            rc = (r0[:, :, :, :, None] - self.rvec.cRvec[:, None, None, :, None] - centers[None, None, :, :, None]
                   ) * SS_R[:, :, :, None, :]
             self.set_R_mat('SA', rc, add=True)
         if self.need_R_any('SHA'):
             SH_R = self.get_R_mat('SH')
-            rc = (r0[:, :, :, :, None] - self.rvec.cRvec[None, None, :, :, None] -
-                  centers[None, :, None, :, None]) * SH_R[:, :, :, None, :]
+            rc = (r0[:, :, :, :, None] - self.rvec.cRvec[:, None, None, :, None] -
+                  centers[None,  None, :, :, None]) * SH_R[:, :, :, None, :]
             self.set_R_mat('SHA', rc, add=True)
         # --- O_a(R) matrix --- #
         if self.need_R_any('OO'):
             assert AA_R0 is not None, 'Recentered A matrix is needed in Jae-Mo`s implementation of O'
-            rc = 1.j * (r0[:, :, :, :, None] - centers[:, None, None, :, None]) * AA_R0[:, :, :, None, :]
+            rc = 1.j * (r0[:, :, :, :, None] - centers[None, :, None, :, None]) * AA_R0[:, :, :, None, :]
             OO_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
             self.set_R_mat('OO', OO_R_add, add=True, Hermitian=True)
         # --- G_bc(R) matrix --- #

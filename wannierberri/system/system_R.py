@@ -167,7 +167,7 @@ class System_R(System):
         value : array
             * `array(num_wann,...)` if `diag=True` . Sets the diagonal part ( if `R` not set, `R=[0,0,0]`)
             * `array(num_wann,num_wann,..)`  matrix for `R` (`R` should be set )
-            * `array(num_wann,num_wann,nRvec,...)` full spin matrix for all R
+            * `array(Rvec, num_wann,num_wann,...)` full spin matrix for all R
 
             `...` denotes the vector/tensor cartesian dimensions of the matrix element
         diag : bool
@@ -181,18 +181,22 @@ class System_R(System):
         Hermitian : bool
             force the value to be Hermitian (only if all vectors are set at once)
         """
-        assert value.shape[0] == self.num_wann
         if diag:
+            assert value.shape[0] == self.num_wann, f"the 0th dimension for 'diag=True' of value should be {self.num_wann}, found {value.shape[0]}"
             if R is None:
                 R = [0, 0, 0]
             XX = np.zeros((self.num_wann, self.num_wann) + value.shape[1:], dtype=value.dtype)
             XX[self.range_wann, self.range_wann] = value
             self.set_R_mat(key, XX, R=R, reset=reset, add=add)
         elif R is not None:
-            XX = np.zeros((self.num_wann, self.num_wann, self.rvec.nRvec) + value.shape[2:], dtype=value.dtype)
-            XX[:, :, self.rvec.iR(R)] = value
+            assert value.shape[0:2] == (self.num_wann, self.num_wann), f"the 0th and 1st dimensions of value for R={R}!=None should be nW={self.num_wann}, found {value.shape[0:2]}"
+            XX = np.zeros((self.rvec.nRvec, self.num_wann, self.num_wann) + value.shape[2:], dtype=value.dtype)
+            XX[self.rvec.iR(R), :, :] = value
             self.set_R_mat(key, XX, reset=reset, add=add)
         else:
+            assert value.shape[1:3] == (self.num_wann, self.num_wann), f"for R=None  the 1st and 2nd dimensions should be nw={self.num_wann}, found {value.shape[1:3]}"
+            if hasattr(self, 'rvec'):
+                assert value.shape[0] == self.rvec.nRvec, f"the 0th dimension of value should be nR={self.rvec.nRvec}, found {value.shape[0]}"
             if Hermitian:
                 value = 0.5 * (value + self.rvec.conj_XX_R(value))
             if key in self._XX_R:
@@ -220,7 +224,7 @@ class System_R(System):
             mapping[1::2] = np.arange(nw2) + nw2
 
         for key, val in self._XX_R.items():
-            self._XX_R[key] = val[:, mapping][mapping, :]
+            self._XX_R[key] = val[:,:, mapping][:,mapping, :]
         self.wannier_centers_cart = self.wannier_centers_cart[mapping]
         self.rvec.reorder(mapping)
         self.clear_cached_wcc()
@@ -407,7 +411,7 @@ class System_R(System):
         assert len(new_wann_indices) == self.num_wann, f"new_wann_indices should have length {self.num_wann}, found {len(new_wann_indices)}"
         self.wannier_centers_cart = self.wannier_centers_cart[new_wann_indices]
         for key, val in self._XX_R.items():
-            self._XX_R[key] = val[:, new_wann_indices][new_wann_indices, :]
+            self._XX_R[key] = val[:, :, new_wann_indices][:, new_wann_indices, :]
         self.rvec.reorder(new_wann_indices)
         self.clear_cached_wcc()
         self.clear_cached_R()
@@ -415,7 +419,7 @@ class System_R(System):
 
     def check_AA_diag_zero(self, msg="", set_zero=True):
         if self.has_R_mat('AA'):
-            A_diag = self.get_R_mat('AA')[:, :, self.rvec.iR0].diagonal()
+            A_diag = self.get_R_mat('AA')[self.rvec.iR0].diagonal()
             A_diag_max = abs(A_diag).max()
             if A_diag_max > 1e-5:
                 warnings.warn(
@@ -424,7 +428,7 @@ class System_R(System):
                 if set_zero:
                     warnings.warn("setting AA diagonal to zero")
             if set_zero:
-                self.get_R_mat('AA')[self.range_wann, self.range_wann, self.rvec.iR0, :] = 0
+                self.get_R_mat('AA')[self.rvec.iR0, self.range_wann, self.range_wann, :] = 0
 
     def check_periodic(self):
         exclude = np.zeros(self.rvec.nRvec, dtype=bool)
@@ -577,7 +581,7 @@ class System_R(System):
             f.write("  ".join(f"{x:2d}" for x in a) + "\n")
         for iR in range(self.rvec.nRvec):
             f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.rvec.iRvec[iR])))
-            _ham = self.Ham_R[:, :, iR] * Ndegen[iR]
+            _ham = self.Ham_R[iR] * Ndegen[iR]
             f.write(
                 "".join(
                     f"{m + 1:3d} {n + 1:3d} {_ham[m, n].real:15.8e} {_ham[m, n].imag:15.8e}\n"
@@ -586,10 +590,10 @@ class System_R(System):
         if self.has_R_mat('AA'):
             AA = np.copy(self.get_R_mat('AA'))
             if use_convention_II:
-                AA[self.range_wann, self.range_wann, self.rvec.iR0] += self.wannier_centers_cart
+                AA[self.rvec.iR0, self.range_wann, self.range_wann] += self.wannier_centers_cart
             for iR in range(self.rvec.nRvec):
                 f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.rvec.iRvec[iR])))
-                _aa = AA[:, :, iR] * Ndegen[iR]
+                _aa = AA[iR] * Ndegen[iR]
                 f.write(
                     "".join(
                         f"{m + 1:3d} {n + 1:3d} " + " ".join(f"{a.real:15.8e} {a.imag:15.8e}" for a in _aa[m, n]) + "\n"
@@ -713,8 +717,8 @@ class System_R(System):
             wh = np.argwhere(A_tmp >= minval)
             dic = defaultdict(lambda: dict())
             for w in wh:
-                iR = tuple(self.rvec.iRvec[w[2]])
-                dic[iR][(w[0], w[1])] = A[tuple(w)]
+                iR = tuple(self.rvec.iRvec[w[0]])
+                dic[iR][(w[1], w[2])] = A[tuple(w)]
             return dict(dic)
 
         for k, v in min_values.items():
@@ -783,7 +787,7 @@ class System_R(System):
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
             logfile.write(" - Ok!\n")
 
-    def load_npz(self, path, load_all_XX_R=False, exclude_properties=()):
+    def load_npz(self, path, load_all_XX_R=False, exclude_properties=(), legacy=False):
         """
         Save system to a directory of npz files
         Parameters
@@ -794,6 +798,9 @@ class System_R(System):
             load all matrices which were saved
         exclude_properties : list of str
             dp not save certain properties - duse on your own risk
+        legacy : bool
+            if True, the order of indices in the XX_R matrices will be expected as in older verisons of wannierberri : [m,n,iR, ...]
+            in the newer versions the order is [iR, m ,n,...]
         """
         logfile = self.logfile
         all_files = glob.glob(os.path.join(path, "*.npz"))
@@ -836,6 +843,8 @@ class System_R(System):
         for key in self.needed_R_matrices:
             logfile.write(f"loading R_matrix {key}")
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
+            if legacy:
+                a = np.transpose(a, (2, 0, 1) + tuple(range(3, a.ndim)))
             self.set_R_mat(key, a)
             logfile.write(" - Ok!\n")
         return self
