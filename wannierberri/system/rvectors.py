@@ -102,8 +102,8 @@ class Rvectors:
             return XX_R_dic, self
         include_R = np.ones(self.nRvec, dtype=bool)
         for iR in range(self.nRvec):
-            include_R[iR] = any(np.any(np.abs(XX_R[:, :, iR]) > tolerance) for XX_R in XX_R_dic.values())
-        XX_R_dic = {key: XX_R[:, :, include_R] for key, XX_R in XX_R_dic.items()}
+            include_R[iR] = any(np.any(np.abs(XX_R[iR]) > tolerance) for XX_R in XX_R_dic.values())
+        XX_R_dic = {key: XX_R[include_R] for key, XX_R in XX_R_dic.items()}
         rvec_new = Rvectors(lattice=self.lattice, shifts_left_red=self.shifts_left_red,
                             shifts_right_red=self.shifts_right_red, iRvec=self.iRvec[include_R])
         return XX_R_dic, rvec_new
@@ -116,19 +116,19 @@ class Rvectors:
         XX_R should have dimensions (num_wann, num_wann, len(iRvec_old), ....)
         """
         print(f"remapping {XX_R.shape} ")
-        assert (XX_R.shape[0] == self.nshifts_left) or (self.nshifts_left == 1)
-        assert (XX_R.shape[1] == self.nshifts_right) or (self.nshifts_right == 1)
-        XX_R_sum_old = XX_R.sum(axis=2)
-        XX_R_tmp = np.zeros(tuple(self.mp_grid) + XX_R.shape[:2] + XX_R.shape[3:], dtype=XX_R.dtype)
+        assert (XX_R.shape[1] == self.nshifts_left) or (self.nshifts_left == 1)
+        assert (XX_R.shape[2] == self.nshifts_right) or (self.nshifts_right == 1)
+        XX_R_sum_old = XX_R.sum(axis=0)
+        XX_R_tmp = np.zeros(tuple(self.mp_grid) + XX_R.shape[1:], dtype=XX_R.dtype)
         for i, iR in enumerate(iRvec_old % self.mp_grid):
-            XX_R_tmp[tuple(iR)] += XX_R[:, :, i]
+            XX_R_tmp[tuple(iR)] += XX_R[i]
         XX_R_sum_tmp = XX_R_tmp.sum(axis=(0, 1, 2))
         assert np.allclose(XX_R_sum_tmp, XX_R_sum_old), f"XX_R_sum_T_tmp {XX_R_sum_tmp} != XX_R_sum_R_old {XX_R_sum_old}"
         return self.remap_XX_from_grid_to_R(XX_R_tmp)
 
     def remap_XX_from_grid_to_R(self, XX_R_grid):
         XX_R_sum_grid = XX_R_grid.sum(axis=(0, 1, 2))
-        shape_new = XX_R_grid.shape[3:5] + (self.nRvec,) + XX_R_grid.shape[5:]
+        shape_new = (self.nRvec,) + XX_R_grid.shape[3:]
         num_wann_l = XX_R_grid.shape[3]
         num_wann_r = XX_R_grid.shape[4]
         XX_R_new = np.zeros(shape_new, dtype=XX_R_grid.dtype)
@@ -140,8 +140,8 @@ class Rvectors:
                 for iRi, iRm, nd in zip(self.iRvec_index_list[ishift],
                                         self.iRvec_mod_list[ishift],
                                         self.Ndegen_list[ishift]):
-                    XX_R_new[a, b, iRi] += XX_R_grid[tuple(iRm) + (a, b)] / nd
-        XX_R_sum_new = XX_R_new.sum(axis=2)
+                    XX_R_new[iRi, a, b] += XX_R_grid[tuple(iRm) + (a, b)] / nd
+        XX_R_sum_new = XX_R_new.sum(axis=0)
         assert np.allclose(XX_R_sum_new, XX_R_sum_grid), f"XX_R_sum_R_new {XX_R_sum_new} != XX_R_sum_T_tmp {XX_R_sum_grid}"
         return XX_R_new
 
@@ -212,7 +212,7 @@ class Rvectors:
         """
         R+tj-ti.
         """
-        return self.cRvec[None, None, :, :] + self.shifts_diff_cart[:, :, None, :]
+        return self.cRvec[:, None, None, :] + self.shifts_diff_cart[None, :, :, :]
 
 
     @cached_property
@@ -281,8 +281,8 @@ class Rvectors:
         XX_R_new = np.zeros(XX_R.shape, dtype=complex)
         self.ignore_mR_not_found = ignore_mR_not_found
         lst_R, lst_mR = self.reverseR
-        XX_R_new[:, :, lst_R] = XX_R[:, :, lst_mR]
-        return XX_R_new.swapaxes(0, 1).conj()
+        XX_R_new[lst_R] = XX_R[lst_mR]
+        return XX_R_new.swapaxes(1, 2).conj()
 
     @property
     def nRvec(self):
@@ -313,7 +313,7 @@ class Rvectors:
         for i in range(der):
             shape_cR = np.shape(self.cRvec_shifted)
             XX_R = 1j * XX_R.reshape((XX_R.shape) + (1,)) * self.cRvec_shifted.reshape(
-                (shape_cR[0], shape_cR[1], self.nRvec) + (1,) * len(XX_R.shape[3:]) + (3,))
+                (self.nRvec, shape_cR[1], shape_cR[2]) + (1,) * len(XX_R.shape[3:]) + (3,))
         return self.fft_R_to_k(XX_R, hermitian=hermitian)
 
     def set_fft_q_to_R(self, kpt_red, numthreads=1, fftlib='pyfftw'):

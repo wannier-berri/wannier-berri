@@ -683,7 +683,7 @@ def system_random_load_bare():
     system = wberri.system.System_R(berry=True, morb=True, spin=True,
                                     SHCryoo=True, SHCqiao=True, OSD=True,
                                     ws_dist_tol=-1e-5)
-    system.load_npz(path=os.path.join(ROOT_DIR, "data", "random"))
+    system.load_npz(path=os.path.join(ROOT_DIR, "data", "random"), legacy=True)
     return system
 
 
@@ -698,7 +698,7 @@ def system_random_GaAs():
 
 def get_system_random_GaAs_load_sym(sym=False, use_ws=True):
     system = wberri.system.System_R(berry=True, spin=True, SHCryoo=True, ws_dist_tol=-1e-5)
-    system.load_npz(path=os.path.join(ROOT_DIR, "data", "random_GaAs"))
+    system.load_npz(path=os.path.join(ROOT_DIR, "data", "random_GaAs"), legacy=True)
     if use_ws:
         system.do_ws_dist(mp_grid=6)
     if sym:
@@ -730,6 +730,6 @@ def system_random_GaAs_load_sym():
 def system_Te_QE():
     """Create system for Te using QE data"""
     system = wberri.system.System_R(berry=True, morb=True, spin=True,
-                                    ).load_npz(os.path.join(ROOT_DIR, "data", "Te_qe", "system"))
+                                    ).load_npz(os.path.join(ROOT_DIR, "data", "Te_qe", "system"), legacy=True)
     system.set_pointgroup(symmetries_Te)
     return system

@@ -46,7 +46,7 @@ class SymWann:
 
     Returns
     -------
-    dict(str, np.array(num_wann, num_wann, ...), dtype=complex)
+    dict(str, np.array(nRvec, num_wann, num_wann, ...), dtype=complex)
         Symmetrized matrices.
     np.array((num_wann, 3), dtype=int)
         New R vectors.
@@ -70,7 +70,7 @@ class SymWann:
         self.spacegroup = symmetrizer.spacegroup
         self.lattice = self.spacegroup.lattice
 
-        self.dmn = symmetrizer
+        self.symmetrizer = symmetrizer
         self.num_blocks = len(symmetrizer.D_wann_block_indices)
         self.num_orb_list = [symmetrizer.rot_orb_list[i][0][0].shape[0] for i in range(self.num_blocks)]
         self.num_points_list = [symmetrizer.atommap_list[i].shape[0] for i in range(self.num_blocks)]
@@ -150,17 +150,17 @@ class SymWann:
 
         np1 = self.num_points_list[block1]
         np2 = self.num_points_list[block2]
-        map1 = self.dmn.atommap_list[block1]
-        map2 = self.dmn.atommap_list[block2]
+        map1 = self.symmetrizer.atommap_list[block1]
+        map2 = self.symmetrizer.atommap_list[block2]
         irreducible = np.ones((self.nRvec, np1, np2), dtype=bool)
 
         R_list = np.array(self.iRvec, dtype=int)
         logfile.write(f"R_list = {R_list}\n")
         R_map = [np.dot(R_list, np.transpose(symop.rotation)) for symop in self.spacegroup.symmetries]
 
-        for isym in range(self.dmn.Nsym):
-            T1 = self.dmn.T_list[block1][:, isym]
-            T2 = self.dmn.T_list[block2][:, isym]
+        for isym in range(self.symmetrizer.Nsym):
+            T1 = self.symmetrizer.T_list[block1][:, isym]
+            T2 = self.symmetrizer.T_list[block2][:, isym]
             logfile.write(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}\n")
             logfile.write(f"T1 = {T1}\n")
             logfile.write(f"T2 = {T2}\n")
@@ -199,7 +199,7 @@ class SymWann:
 
         Returns
         --------
-        dict {str: np.array(num_wann, num_wann, ...), dtype=complex}
+        dict {str: np.array(nRvec, num_wann, num_wann, ...), dtype=complex}
             Symmetrized matrices.
         np.array((num_wann, 3), dtype=int)
             New R vectors.
@@ -231,18 +231,18 @@ class SymWann:
         full_iRvec_list = {}
         full_iRvec_set = set()
         for block1 in range(self.num_blocks):
-            ws1, we1 = self.dmn.D_wann_block_indices[block1]
+            ws1, we1 = self.symmetrizer.D_wann_block_indices[block1]
             norb1 = self.num_orb_list[block1]
             np1 = self.num_points_list[block1]
             for block2 in range(self.num_blocks):
                 logfile.write(f"Symmetrizing blocks {block1} and {block2}\n")
-                ws2, we2 = self.dmn.D_wann_block_indices[block2]
+                ws2, we2 = self.symmetrizer.D_wann_block_indices[block2]
                 norb2 = self.num_orb_list[block2]
                 np2 = self.num_points_list[block2]
                 iRab_irred = self.find_irreducible_Rab(block1=block1, block2=block2)
                 matrix_dict_list = {}
                 for k, v1 in XX_R.items():
-                    v = np.copy(v1)[ws1:we1, ws2:we2]
+                    v = np.copy(v1)[:, ws1:we1, ws2:we2]
                     matrix_dict_list[k] = _matrix_to_dict(v, np1=np1, norb1=norb1, np2=np2, norb2=norb2,
                                                           cutoff=cutoff_dict[k])
                 matrix_dict_list_res, iRvec_ab_all = self.average_XX_block(iRab_new=iRab_irred,
@@ -270,12 +270,12 @@ class SymWann:
         nRvec_new = len(iRvec_new)
         iRvec_new_index = {r: i for i, r in enumerate(iRvec_new)}
 
-        return_dic = {k: np.zeros((self.num_wann, self.num_wann, nRvec_new) + (3,) * num_cart_dim(k), dtype=complex)
+        return_dic = {k: np.zeros((nRvec_new, self.num_wann, self.num_wann) + (3,) * num_cart_dim(k), dtype=complex)
                       for k in XX_R}
         for block1 in range(self.num_blocks):
-            ws1, we1 = self.dmn.D_wann_block_indices[block1]
+            ws1, we1 = self.symmetrizer.D_wann_block_indices[block1]
             for block2 in range(self.num_blocks):
-                ws2, we2 = self.dmn.D_wann_block_indices[block2]
+                ws2, we2 = self.symmetrizer.D_wann_block_indices[block2]
                 norb1 = self.num_orb_list[block1]
                 norb2 = self.num_orb_list[block2]
                 iRvec_block = full_iRvec_list[(block1, block2)]
@@ -291,12 +291,12 @@ class SymWann:
                         we2b = ws2b + norb2
                         for iR, XX_L in X.items():
                             # print (f"iR = {iR}, blocks: {block1, block2} \n   iRvec_map[iR] = {iRvec_map[iR]} ws1a = {ws1a}, we1a = {we1a}, ws2b = {ws2b}, we2b = {we2b}, XX_L.shap={XX_L.shape}")
-                            return_dic[k][ws1a:we1a, ws2b:we2b, iRvec_map[iR]] += XX_L
+                            return_dic[k][iRvec_map[iR], ws1a:we1a, ws2b:we2b] += XX_L
 
         logfile.write('Symmetrizing Finished\n')
 
         logfile.write(f"wcc before symmetrization = \n {self.wannier_centers_cart}\n")
-        wcc = self.dmn.symmetrize_WCC(self.wannier_centers_cart)
+        wcc = self.symmetrizer.symmetrize_WCC(self.wannier_centers_cart)
         logfile.write(f"wcc after symmetrization = \n {wcc}\n")
         logfile.write('Symmetrizing WCC Finished\n')
         return return_dic, np.array(iRvec_new), wcc
@@ -320,10 +320,10 @@ class SymWann:
         logfile = self.logfile
 
         for isym, symop in enumerate(self.spacegroup.symmetries):
-            T1 = self.dmn.T_list[block1][:, isym]
-            T2 = self.dmn.T_list[block2][:, isym]
-            atommap1 = self.dmn.atommap_list[block1][:, isym]
-            atommap2 = self.dmn.atommap_list[block2][:, isym]
+            T1 = self.symmetrizer.T_list[block1][:, isym]
+            T2 = self.symmetrizer.T_list[block2][:, isym]
+            atommap1 = self.symmetrizer.atommap_list[block1][:, isym]
+            atommap2 = self.symmetrizer.atommap_list[block2][:, isym]
             logfile.write(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}")
             R_map = iRvec_new_array @ np.transpose(symop.rotation)
             atom_R_map = (R_map[:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :])
@@ -393,7 +393,7 @@ class SymWann:
             XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=((-n_cart,), (0,)))
         if symop.inversion:
             XX_L *= self.parity_I[X] * (-1)**n_cart
-        result = _rotate_matrix(XX_L, self.dmn.rot_orb_dagger_list[block1][atom_a, isym], self.dmn.rot_orb_list[block2][atom_b, isym])
+        result = _rotate_matrix(XX_L, self.symmetrizer.rot_orb_dagger_list[block1][atom_a, isym], self.symmetrizer.rot_orb_list[block2][atom_b, isym])
         if symop.time_reversal:
             result = result.conj() * self.parity_TR[X]
         return result
@@ -401,7 +401,7 @@ class SymWann:
 
 def _rotate_matrix(X, L, R):
     """
-    Rotate a matrix X[m,n,iR,...] with L[m,n] and R[m,n] matrices
+    Rotate a matrix X[m,n,...] with L[m,n] and R[m,n] matrices
     comptes L.dot(X).dot(R) where X can have additional dimensions in the end, which are not touched
     assumed to be a faster version of np.einsum("ij,jk...,kl->il...", L, X, R)
     """
@@ -425,7 +425,7 @@ def test_rotate_matrix():
 
 
 def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
-    """transforms a matrix X[m,n,iR,...] into a dictionary like
+    """transforms a matrix X[iR, m,n,...] into a dictionary like
         {(a,b): {iR: np.array(num_w_a.num_w_b,...)}}
     """
     result = defaultdict(lambda: {})
@@ -436,11 +436,9 @@ def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
             s2 = b * norb2
             e2 = s2 + norb2
             result_ab = {}
-            X = mat[s1:e1, s2:e2]
-            for iR in range(mat.shape[2]):
-                x = X[:, :, iR]
-                if np.any(abs(x) > cutoff):
-                    result_ab[iR] = X[:, :, iR]
+            for iR, X in enumerate(mat[:, s1:e1, s2:e2]):
+                if np.any(abs(X) > cutoff):
+                    result_ab[iR] = X
             if len(result_ab) > 0:
                 result[(a, b)] = result_ab
     return result

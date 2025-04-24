@@ -55,12 +55,11 @@ class SystemSparse(System_R):
         for k, v in matrices.items():
             shape = getshape(v)
             if shape is not None:
-                print((self.num_wann, self.num_wann, self.rvec.nRvec) + shape)
-                X = np.zeros((self.num_wann, self.num_wann, self.rvec.nRvec) + shape, dtype=complex)
+                X = np.zeros((self.rvec.nRvec, self.num_wann, self.num_wann) + shape, dtype=complex)
                 for R, v1 in v.items():
-                    iR = self.rvec.iR(R)  # iRvec.tolist().index(list(R))
+                    iR = self.rvec.iR(R)
                     for j, h in v1.items():
-                        X[j[0], j[1], iR] = h
+                        X[iR, j[0], j[1]] = h
                 self.set_R_mat(k, X)
             else:
                 warnings.warn(f"{k} is empty")

@@ -131,8 +131,8 @@ class System_Phonon_QE(System_w90):
             for i in range(3):
                 for j in range(3):
                     for a in range(self.number_of_atoms):
-                        self.Ham_R[3 * a + i, 3 * a + j, iR0] -= self.Ham_R[3 * a + i, j::3, :].sum()
+                        self.Ham_R[iR0, 3 * a + i, 3 * a + j] -= self.Ham_R[:, 3 * a + i, j::3].sum()
 
         for i in range(self.number_of_atoms):
             for j in range(self.number_of_atoms):
-                self.Ham_R[3 * i:3 * i + 3, 3 * j:3 * j + 3, :] /= np.sqrt(masses[i] * masses[j]) * AMU_RY
+                self.Ham_R[:, 3 * i:3 * i + 3, 3 * j:3 * j + 3] /= np.sqrt(masses[i] * masses[j]) * AMU_RY

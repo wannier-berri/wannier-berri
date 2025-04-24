@@ -212,11 +212,29 @@ class FFT_R_to_k:
         return [np.exp(2j * np.pi / self.NKFFT[i]) ** np.arange(self.NKFFT[i]) for i in range(3)]
 
     def __call__(self, AAA_R, hermitian=False, antihermitean=False, reshapeKline=True):
+        """
+        perform the FFT from R vectors to k vectors
+
+        Parameters
+        ----------
+        AAA_R : np.ndarray(complex, shape=(nRvec, num_wann, num_wann, ...))
+            the matrix to be transformed
+        hermitian : bool
+            if True, the matrix is forced to be hermitian in the 3rd and 4th dimensions
+        antihermitean : bool
+            if True, the matrix is forced to be anti-hermitian in the 3rd and 4th dimensions
+        reshapeKline : bool
+            if True, the output is reshaped to (NKFFT[0]*NKFFT[1]*NKFFT[2], num_wann, num_wann, ...)
+
+        Returns
+        -------
+        AAA_K : np.ndarray(complex, shape=(NKFFT[0], NKFFT[1], NKFFT[2], num_wann, num_wann, ...))
+            the transformed matrix
+        """
         t0 = time()
         # AAA_R is an array of dimension (  num_wann x num_wann x nRpts X... ) (any further dimensions allowed)
         if hermitian and antihermitean:
             raise ValueError("A matrix cannot be both hermitian and anti-hermitian, unless it is zero")
-        AAA_R = AAA_R.transpose((2, 0, 1) + tuple(range(3, AAA_R.ndim)))
         shapeA = AAA_R.shape
         if self.lib == 'slow':
             k = np.zeros(3, dtype=int)
@@ -242,9 +260,9 @@ class FFT_R_to_k:
 
         # TODO - think if fftlib transform of half of matrix makes sense
         if hermitian:
-            AAA_K = 0.5 * (AAA_K + AAA_K.transpose((0, 1, 2, 4, 3) + tuple(range(5, AAA_K.ndim))).conj())
+            AAA_K = 0.5 * (AAA_K + AAA_K.swapaxes(3, 4).conj())
         elif antihermitean:
-            AAA_K = 0.5 * (AAA_K - AAA_K.transpose((0, 1, 2, 4, 3) + tuple(range(5, AAA_K.ndim))).conj())
+            AAA_K = 0.5 * (AAA_K - AAA_K.swapaxes(3, 4).conj())
 
         if reshapeKline:
             AAA_K = AAA_K.reshape((np.prod(self.NKFFT),) + shapeA[1:])

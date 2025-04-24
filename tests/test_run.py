@@ -683,7 +683,7 @@ def test_Haldane_PythTB(check_run, compare_any_result, use_symmetry, system_Hald
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
-def test_Haldane_TBmodels(check_run, system, compare_any_result, use_symmetry, system_Haldane_TBmodels):
+def test_Haldane_TBmodels(check_run, compare_any_result, use_symmetry, system_Haldane_TBmodels):
     check_Haldane(check_run, system_Haldane_TBmodels, "TBmodels", use_symmetry)
 
 
