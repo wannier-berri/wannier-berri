@@ -212,7 +212,7 @@ class Rvectors:
         """
         R+tj-ti.
         """
-        return self.cRvec[None, None, :, :] + self.shifts_diff_cart[:, :, None, :]
+        return self.cRvec[:, None, None, :] + self.shifts_diff_cart[None, :, :, :]
 
 
     @cached_property
@@ -313,7 +313,7 @@ class Rvectors:
         for i in range(der):
             shape_cR = np.shape(self.cRvec_shifted)
             XX_R = 1j * XX_R.reshape((XX_R.shape) + (1,)) * self.cRvec_shifted.reshape(
-                (shape_cR[0], shape_cR[1], self.nRvec) + (1,) * len(XX_R.shape[3:]) + (3,))
+                (self.nRvec, shape_cR[1], shape_cR[2]) + (1,) * len(XX_R.shape[3:]) + (3,))
         return self.fft_R_to_k(XX_R, hermitian=hermitian)
 
     def set_fft_q_to_R(self, kpt_red, numthreads=1, fftlib='pyfftw'):

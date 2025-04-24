@@ -656,7 +656,7 @@ class Data_K_R(_Data_K, System_R):
 
     def _CCab_R(self):
         if self._CCab_antisym:
-            CCab = np.zeros((self.num_wann, self.num_wann, self.rvec.nRvec, 3, 3), dtype=complex)
+            CCab = np.zeros((self.rvec.nRvec, self.num_wann, self.num_wann, 3, 3), dtype=complex)
             CCab[:, :, :, alpha_A, beta_A] = -0.5j * self.get_R_mat('CC')
             CCab[:, :, :, beta_A, alpha_A] = 0.5j * self.get_R_mat('CC')
             return CCab
@@ -686,11 +686,11 @@ class Data_K_R(_Data_K, System_R):
 
     def E_K_corners_tetra(self):
         vertices = self.Kpoint.vertices_fullBZ
-        expdK = np.exp(2j * np.pi * self.rvec.iRvec.dot(
-            vertices.T)).T  # we omit the wcc phases here, because they do not affect the energies
+        # we omit the wcc phases here, because they do not affect the energies
+        expdK = np.exp(2j * np.pi * self.rvec.iRvec.dot(vertices.T)).T  
         _Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
         for iv, _exp in enumerate(expdK):
-            _Ham_R = self.Ham_R[:, :, :] * _exp[None, None, :]
+            _Ham_R = self.Ham_R[:, :, :] * _exp[:, None, None]
             _HH_K = self.rvec.R_to_k(_Ham_R, hermitian=True)
             _Ecorners[:, iv, :] = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
         self.select_bands(_Ecorners)
@@ -702,16 +702,15 @@ class Data_K_R(_Data_K, System_R):
 
     def E_K_corners_parallel(self):
         dK2 = self.Kpoint.dK_fullBZ / 2
-        expdK = np.exp(
-            2j * np.pi * self.rvec.iRvec *
-            dK2[None, :])  # we omit the wcc phases here, because they do not affect the energies
+        # we omit the wcc phases here, because they do not affect the energies
+        expdK = np.exp(2j * np.pi * self.rvec.iRvec * dK2[None, :])  
         expdK = np.array([1. / expdK, expdK])
         Ecorners = np.zeros((self.nk_selected, 2, 2, 2, self.nb_selected), dtype=float)
         for ix in 0, 1:
             for iy in 0, 1:
                 for iz in 0, 1:
                     _expdK = expdK[ix, :, 0] * expdK[iy, :, 1] * expdK[iz, :, 2]
-                    _Ham_R = self.Ham_R[:, :, :] * _expdK[None, None, :]
+                    _Ham_R = self.Ham_R[:, :, :] * _expdK[:, None, None]
                     _HH_K = self.rvec.R_to_k(_Ham_R, hermitian=True)
                     E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
                     Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
