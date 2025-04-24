@@ -133,9 +133,9 @@ class Rvectors:
         num_wann_r = XX_R_grid.shape[4]
         XX_R_new = np.zeros(shape_new, dtype=XX_R_grid.dtype)
         for a in range(num_wann_l):
-            ia = 1 if self.nshifts_left == 1 else a
+            ia = 0 if self.nshifts_left == 1 else a
             for b in range(num_wann_r):
-                ib = 1 if self.nshifts_right == 1 else b
+                ib = 0 if self.nshifts_right == 1 else b
                 ishift = self.shift_index[ia, ib]
                 for iRi, iRm, nd in zip(self.iRvec_index_list[ishift],
                                         self.iRvec_mod_list[ishift],
