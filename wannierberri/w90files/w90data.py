@@ -96,7 +96,7 @@ class Wannier90data:
                  readfiles=tuple(),
                  ):  # ,sitesym=False):
         assert not (read_npz and overwrite_npz), "cannot read and overwrite npz files"
-        self.window_applied = False
+        self.bands_were_selected = False
         self.seedname = copy(seedname)
         self.read_npz = read_npz
         self.write_npz_list = set([s.lower() for s in write_npz_list])
@@ -184,7 +184,7 @@ class Wannier90data:
             `~wannierberri.w90files.MMN`, `~wannierberri.w90files.EIG`, `~wannierberri.w90files.AMN`, `~wannierberri.w90files.UIU`, `~wannierberri.w90files.UHU`, `~wannierberri.w90files.SIU`, `~wannierberri.w90files.SHU`, `~wannierberri.w90files.SPN`
             for more details        
         """
-        if self.window_applied:
+        if self.bands_were_selected:
             if allow_applied_window:
                 warnings.warn("window was applied, so new added files may be inconsistent with the window. It is your responsibility to check it")
             else:
@@ -301,8 +301,6 @@ class Wannier90data:
         if key not in ["chk", "win", "unk"]:
             kwargs["read_npz"] = self.read_npz
             kwargs["write_npz"] = key in self.write_npz_list
-        if key not in ["win", "chk"]:
-            kwargs["selected_bands"] = self.selected_bands
         if key == "chk":
             kwargs["bk_complete_tol"] = 1e-5
             kwargs["kmesh_tol"] = 1e-7
@@ -473,60 +471,78 @@ class Wannier90data:
         """
         wannierise(self, **kwargs)
 
-    @property
-    def selected_bands(self):
-        if hasattr(self, '_selected_bands'):
-            return self._selected_bands
-        else:
-            return None
+    # @property
+    # def selected_bands(self):
+    #     if hasattr(self, '_selected_bands'):
+    #         return self._selected_bands
+    #     else:
+    #         return None
 
-    @selected_bands.setter
-    def selected_bands(self, value):
-        self._selected_bands = value
+    # @selected_bands.setter
+    # def selected_bands(self, value):
+    #     self._selected_bands = value
 
-    def apply_window(self, win_min=-np.inf, win_max=np.inf, band_start=None, band_end=None):
+    def apply_window(self, *args, **kwargs):
+        raise NotImplementedError("apply_window is deprecated. Use select_bands instead")
+
+    def select_bands(self,
+                     win_min=-np.inf, win_max=np.inf,
+                     band_start=None, band_end=None,
+                     selected_bands=None,
+                     allow_again=False):
         """
-        Apply the window to the system
-        Unlike w90, only bands are removed which are fully out of window (at all k-points)
+        exclude some bands from the data
 
         Parameters
         ----------
         win_min, win_max : float
-            the minimum and maximum energy of the window
+            the minimum and maximum energy of the window. Only the bands that are ENTIRELY below win_min or ENTIRELY above win_max are EXCLUDED
         band_start, band_end : int
-            the range of bands to be included (the numeration in the current system, not in the original (if window is applied more than once))
+            the range of bands to be included (the numeration in the current system, not in the original (if bands are selected more than once))
+            note : the pythonic indexing is used, so the included bands are [band_start, band_start+1, ... band_end-1]
+        selected_bands : array((NB,), dtype=bool) or list of int
+            if present, the those bands are selected, and the other parameters are ignored
+        allow_again : bool
+            if False, but bands were already selected, raise an error. 
+
+        Returns
+        -------
+        new_selected_bands : list of int
+            the indices of bands that were actually selected. If data files are added to the dataset later, one should manually select those bands 
+            before adding, using the `select_bands` method of those objects
         """
-        assert self.has_file('eig'), "eig file is not set - needed to apply window"
+        if self.bands_were_selected and not allow_again:
+            raise RuntimeError("bands were already selected, cannot select them again. To allow it, set allow_again=True (on your own risk)")
+        if selected_bands is not None:
+            if isinstance(selected_bands, list):
+                selected_bands = np.array(selected_bands)
+            if selected_bands.dtype == np.bool:
+                selected_bands = np.where(selected_bands)[0]
+                assert selected_bands.shape == (self.eig.NB,), f"selected bands should be of shape (NB,), not {selected_bands.shape}"
+            else:
+                assert selected_bands.dtype == np.int, f"selected_bands should be a list of int or a boolean array, not {selected_bands.dtype}"
+                assert np.all(selected_bands >= 0), f"selected bands should be non-negative, not {selected_bands}"
+                assert np.all(selected_bands < self.eig.NB), f"selected bands should be less than {self.eig.NB}, not {selected_bands}"
+        else:
+            selected_bands_bool = np.ones((self.eig.NB), dtype=bool)
+            if band_end is not None:
+                selected_bands_bool[band_end:] = False
+            if band_start is not None:
+                selected_bands_bool[:band_start] = False
+            if win_min > -np.inf or win_max < np.inf:
+                assert self.has_file('eig'), "eig file is not set - needed to apply window"
+                select_energy = (self.eig.data < win_max) * (self.eig.data > win_min)
+                select_energy = np.any(select_energy, axis=0)
+                selected_bands_bool = selected_bands_bool * select_energy
+            selected_bands = np.where(selected_bands_bool)[0]
 
-        new_selected_bands = np.ones((self.eig.NB), dtype=bool)
-        if band_end is not None:
-            new_selected_bands[band_end:] = False
-        if band_start is not None:
-            new_selected_bands[:band_start] = False
-        select_energy = (self.eig.data < win_max) * (self.eig.data > win_min)
-        select_energy = np.any(select_energy, axis=0)
-        new_selected_bands = new_selected_bands * select_energy
-
-        print(f"new_selected_bands = {new_selected_bands}")
-        _selected_bands = self.selected_bands
-        print(f"_selected_bands = {_selected_bands}")
-        # if window is applied for the firstr time, the selected bands are all bands
-        # and self.selected_bands is bool (=True)
-        if _selected_bands is None:
-            _selected_bands = np.ones(self.eig.NB, dtype=bool)
-        print(f"_selected_bands = {_selected_bands}")
-        _tmp_selected_bands = _selected_bands[_selected_bands].copy()
-        print(f"_tmp_selected_bands = {_tmp_selected_bands}")
-        _tmp_selected_bands[np.logical_not(new_selected_bands)] = False
-        self.selected_bands = _tmp_selected_bands
-        assert np.sum(self.selected_bands) == np.sum(new_selected_bands), "error in applying window"
-        print(f"self.selected_bands = {self.selected_bands}")
+        print(f"selected_bands = {selected_bands}")
+        print("before selecting bands")
         for key, val in self._files.items():
             if key != 'win' and key != 'chk':
                 print(f"key = {key} ,number of bands = {val.NB}")
             if key == 'chk':
                 print(f"key = {key} ,number of bands = {val.num_bands}")
-        # self.chk.apply_window(new_selected_bands)
         for key in FILES_CLASSES:
             if key in self._files:
                 if key == 'win':
@@ -535,9 +551,10 @@ class Wannier90data:
                     win['dis_win_max'] = win_max
                 else:
                     print(f"applying window to {key} {val}")
-                    self.get_file(key).apply_window(new_selected_bands)
+                    self.get_file(key).select_bands(selected_bands)
         if hasattr(self, 'symmetrizer'):
-            self.symmetrizer.apply_window(new_selected_bands)
+            self.symmetrizer.select_bands(selected_bands)
+        print("after selecting bands")
         for key, val in self._files.items():
             if key != 'win' and key != 'chk':
                 print(f"key = {key} ,number of bands = {val.NB}")
@@ -545,7 +562,8 @@ class Wannier90data:
                     print(f"key = {key} ,shape of data= {val.data.shape}")
             if key == 'chk':
                 print(f"key = {key} ,number of bands = {val.num_bands}")
-        self.window_applied = True
+        self.bands_were_selected = True
+        return selected_bands
 
 
     def check_symmetry(self, silent=False):

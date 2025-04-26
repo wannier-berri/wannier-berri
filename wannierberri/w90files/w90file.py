@@ -51,7 +51,7 @@ class W90_file(SavableNPZ):
             if write_npz:
                 self.to_npz(f_npz)
         # window is applied after, so that npz contains same data as original file
-        self.apply_window(selected_bands)
+        self.select_bands(selected_bands)
 
 
 
@@ -63,13 +63,23 @@ class W90_file(SavableNPZ):
         self.data = None
 
     @abc.abstractmethod
-    def apply_window(self, selected_bands):
+    def select_bands(self, selected_bands):
+        """
+        abstract method to select the bands from the data
+
+        Select the bands to be used in the calculation, the rest are excluded
+
+        Parameters
+        ----------
+        selected_bands : list of int
+            the list of bands to be used in the calculation
+        """
         pass
 
     @property
     def n_neighb(self):
         """
-        number of nearest neighbours indices
+        number of nearest neighbours (in the k grid) indices 
         """
         return 0
 

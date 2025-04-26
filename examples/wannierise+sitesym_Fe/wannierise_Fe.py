@@ -28,7 +28,7 @@ amn = wb.w90files.amn_from_bandstructure(bandstructure, projections_set=projecti
 w90data.set_symmetrizer(symmetrizer)
 w90data.set_file("amn", amn)
 
-w90data.apply_window(win_min=-8,win_max= 50 )
+w90data.select_bands(win_min=-8,win_max= 50 )
 
 w90data.wannierise( init = "amn",
                     froz_min=-8,

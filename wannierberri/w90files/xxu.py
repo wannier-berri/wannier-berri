@@ -48,7 +48,7 @@ class UXU(W90_file):
         print(f"----------\n {suffix} OK  \n---------\n")
         f_uXu_in.close()
 
-    def apply_window(self, selected_bands):
+    def select_bands(self, selected_bands):
         if selected_bands is not None:
             self.data = self.data[:, :, :, selected_bands, :][:, :, :, :, selected_bands]
 
@@ -144,7 +144,7 @@ class SXU(W90_file):
         print(f"----------\n {suffix} OK  \n---------\n")
         f_sXu_in.close()
 
-    def apply_window(self, selected_bands):
+    def select_bands(self, selected_bands):
         if selected_bands is not None:
             self.data = self.data[:, :, :, selected_bands, :][:, :, :, :, selected_bands]
 

@@ -47,7 +47,7 @@ if sitesym:
     print ("amn_symmetry", symmetrizer.check_amn(w90data.amn.data, warning_precision=1e-4))
 t5 = time()
 
-w90data.apply_window(win_min=-5, win_max=25)
+w90data.select_bands(win_min=-5, win_max=25)
 
 w90data.wannierise(
                 froz_min=0,

@@ -123,7 +123,7 @@ if parallel:
 froz_max = 24
 t3 = time()
 
-w90data.apply_window(win_min=8, )
+w90data.select_bands(win_min=8, )
 t4 = time()
 w90data.wannierise(init="amn",
                    num_wann=34,

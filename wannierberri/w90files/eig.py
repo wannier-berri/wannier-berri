@@ -23,7 +23,7 @@ class EIG(W90_file):
             for ib in range(self.NB):
                 file.write(f" {ib + 1:4d} {ik + 1:4d} {self.data[ik, ib]:17.12f}\n")
 
-    def apply_window(self, selected_bands):
+    def select_bands(self, selected_bands):
         if selected_bands is not None:
             self.data = self.data[:, selected_bands]
 

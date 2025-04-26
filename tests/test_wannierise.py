@@ -51,7 +51,7 @@ def test_wannierise(outer_window):
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     if outer_window is not None:
-        w90data.apply_window(win_min=outer_window[0], win_max=outer_window[1])
+        w90data.select_bands(win_min=outer_window[0], win_max=outer_window[1])
     print(f"num_bands: eig:{w90data.eig.NB}, mmn:{w90data.mmn.NB}, amn:{w90data.amn.NB}")
     # Now wannierise with sitesym and frozen window (the part that is not implemented in Wanier90)
     w90data.wannierise(
@@ -245,7 +245,7 @@ def test_sitesym_Fe(include_TR, use_window):
     symmetrizer = SymmetrizerSAWF().from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
     w90data.set_symmetrizer(symmetrizer)
     if use_window:
-        w90data.apply_window(win_min=-8, win_max=50)
+        w90data.select_bands(win_min=-8, win_max=50)
     froz_max = 30
     w90data.wannierise(init="amn",
                        froz_min=-8,

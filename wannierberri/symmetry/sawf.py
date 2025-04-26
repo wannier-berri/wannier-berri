@@ -464,12 +464,21 @@ class SymmetrizerSAWF(SavableNPZ):
             # if hasattr(self, 'D_wann_blocks_inverse'):
             #     del self.D_wann_blocks_inverse
 
-    def apply_window(self, selected_bands):
+    def select_bands(self, selected_bands):
+        """select the bands to be used in the calculation, the rest are excluded
+
+            Parameters
+            ----------
+            selected_bands : list of int or bool
+                the indices of the bands to be used, NOT a boolean mask
+        """
         if selected_bands is None:
             return
-        print(f"applying window to select {sum(selected_bands)} bands from {self.NB}\n", selected_bands)
+        selected_bands_bool = np.zeros(self.NB, dtype=bool)
+        selected_bands_bool[selected_bands] = True
+        print(f"applying window to select {sum(selected_bands_bool)} bands from {self.NB}\n", selected_bands_bool)
         for ikirr in range(self.NKirr):
-            self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr] = self.select_window(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], selected_bands)
+            self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr] = self.select_bands_in_blocks(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], selected_bands_bool)
         for i, block_ind in enumerate(self.d_band_block_indices):
             if i == 0:
                 self._NB = block_ind[-1, -1]
@@ -480,15 +489,15 @@ class SymmetrizerSAWF(SavableNPZ):
 
 
 
-    def select_window(self, d_band_blocks_ik, d_band_block_indices_ik, selected_bands):
-        if selected_bands is None:
+    def select_bands_in_blocks(self, d_band_blocks_ik, d_band_block_indices_ik, selected_bands_bool):
+        if selected_bands_bool is None:
             return d_band_blocks_ik, d_band_block_indices_ik
 
         new_block_indices = []
         new_blocks = [[] for _ in range(self.Nsym)]
         st = 0
         for iblock, (start, end) in enumerate(d_band_block_indices_ik):
-            select = selected_bands[start:end]
+            select = selected_bands_bool[start:end]
             nsel = np.sum(select)
             if nsel > 0:
                 new_block_indices.append((st, st + nsel))

@@ -368,7 +368,7 @@ def test_create_amn_diamond_p_bond():
     w90data.set_amn(amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)
-    w90data.apply_window(win_min=20, win_max=100)
+    w90data.select_bands(win_min=20, win_max=100)
     print(f"amn is symmetric with accuracy {amn_symm_prec}")
     # Now wannierise the system
     w90data.wannierise(

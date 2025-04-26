@@ -71,7 +71,7 @@ class Symmetrizer_Zirr(SymmetrizerSAWF):
             (
                 d_band_block_indices_free,
                 d_band_blocks_free
-            ) = symmetrizer.select_window(symmetrizer.d_band_blocks[ikirr], symmetrizer.d_band_block_indices[ikirr], free)
+            ) = symmetrizer.select_bands_in_blocks(symmetrizer.d_band_blocks[ikirr], symmetrizer.d_band_block_indices[ikirr], free)
             d_band_blocks_free_inverse = get_inverse_block(d_band_blocks_free)
 
             self.lblocks = d_band_blocks_free_inverse

@@ -41,8 +41,16 @@ class AMN(W90_file):
     def NB(self):
         return self.data.shape[1]
 
-    def apply_window(self, selected_bands):
-        print(f"apply_window amn, selected_bands={selected_bands}")
+    def select_bands(self, selected_bands):
+        """
+        Select the bands to be used in the calculation, the rest are excluded
+
+        Parameters
+        ----------
+        selected_bands : list of int or bool
+            the indices of the bands to be used, or a boolean mask
+        """
+        print(f"selecting bands {selected_bands} in amn")
         if selected_bands is not None:
             self.data = self.data[:, selected_bands, :]
 

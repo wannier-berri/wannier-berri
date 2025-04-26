@@ -2,7 +2,7 @@ storing and handling Wannier90 input and output files
 =====================================================
 
 .. autoclass:: wannierberri.w90files.Wannier90data
-   :members: __init__, wannierised, write, apply_window, set_random_symmetric_projections, set_D_wann_orbit, 
+   :members: __init__, wannierised, write, select_bands, set_random_symmetric_projections, set_D_wann_orbit, 
    :show-inheritance:
 
 .. autoclass:: wannierberri.w90files.w90file.W90_file

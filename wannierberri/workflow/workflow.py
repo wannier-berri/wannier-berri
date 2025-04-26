@@ -478,7 +478,7 @@ class WorkflowQE:
         if self.flags.check('wannierise_wberri') and not enforce:
             return
         w90data = Wannier90data(seedname=self.prefix, readfiles=readfiles)
-        w90data.apply_window(**kwargs_window)
+        w90data.select_bands(**kwargs_window)
         w90data.wannierise(**kwargs)
         self.system_wberri = System_w90(w90data=w90data, **kwargs_system)
         self.flags.on('wannierise_wberri')

@@ -91,7 +91,7 @@ class UNK(W90_file):
 
 
 
-    def apply_window(self, selected_bands):
+    def select_bands(self, selected_bands):
         self._NB = len(selected_bands)
         for i, u in enumerate(self.data):
             if u is not None:
