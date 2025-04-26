@@ -33,12 +33,14 @@ def fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
         else:
             raise err
 
+
 def fft_np(inp, axes, inverse=False):
     assert inp.dtype == complex
     if inverse:
         return np.fft.ifftn(inp, axes=axes)
     else:
         return np.fft.fftn(inp, axes=axes)
+
 
 def execute_fft(inp, axes, inverse=False, destroy=True, numthreads=1, fftlib='fftw'):
     fftlib = fftlib.lower()
@@ -50,6 +52,7 @@ def execute_fft(inp, axes, inverse=False, destroy=True, numthreads=1, fftlib='ff
         return fft_np(inp, axes, inverse=inverse)
     else:
         raise ValueError(f"unknown type of fftlib : {fftlib}")
+
 
 class FFT_R_to_k:
 

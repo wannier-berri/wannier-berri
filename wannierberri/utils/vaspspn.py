@@ -67,7 +67,7 @@ def hlp():
 
 def main(argv):
     warnings.warn(PAW_warning)
-    
+
     fin = "WAVECAR"
     fout = "wannier90.spn"
     NBout = 0

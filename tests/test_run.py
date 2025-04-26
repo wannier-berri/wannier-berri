@@ -189,16 +189,16 @@ calculators_Chiral = {
 }
 
 calculators_SDCT = {
-    'SDCT_sym_sea_I': wberri.calculators.dynamic.SDCT_sym_sea_I,
-    'SDCT_sym_sea_II': wberri.calculators.dynamic.SDCT_sym_sea_II,
-    'SDCT_asym_sea_I': wberri.calculators.dynamic.SDCT_asym_sea_I,
-    'SDCT_asym_sea_II': wberri.calculators.dynamic.SDCT_asym_sea_II,
-    'SDCT_asym_surf_I': wberri.calculators.dynamic.SDCT_asym_surf_I,
-    'SDCT_asym_surf_II': wberri.calculators.dynamic.SDCT_asym_surf_II,
-    'SDCT_sym_surf_I': wberri.calculators.dynamic.SDCT_sym_surf_I,
-    'SDCT_sym_surf_II': wberri.calculators.dynamic.SDCT_sym_surf_II,
-    'SDCT_sym': wberri.calculators.dynamic.SDCT_sym,
-    'SDCT_asym': wberri.calculators.dynamic.SDCT_asym,
+    'SDCT_sym_sea_I': wberri.calculators.sdct.SDCT_sym_sea_I,
+    'SDCT_sym_sea_II': wberri.calculators.sdct.SDCT_sym_sea_II,
+    'SDCT_asym_sea_I': wberri.calculators.sdct.SDCT_asym_sea_I,
+    'SDCT_asym_sea_II': wberri.calculators.sdct.SDCT_asym_sea_II,
+    'SDCT_asym_surf_I': wberri.calculators.sdct.SDCT_asym_surf_I,
+    'SDCT_asym_surf_II': wberri.calculators.sdct.SDCT_asym_surf_II,
+    'SDCT_sym_surf_I': wberri.calculators.sdct.SDCT_sym_surf_I,
+    'SDCT_sym_surf_II': wberri.calculators.sdct.SDCT_sym_surf_II,
+    'SDCT_sym': wberri.calculators.sdct.SDCT_sym,
+    'SDCT_asym': wberri.calculators.sdct.SDCT_asym,
 }
 
 calculators_Chiral_tetra = {

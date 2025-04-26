@@ -23,6 +23,7 @@ class FortranFileW(scipy.io.FortranFile):
         print("using scipy.io to write")
         super().__init__(filename, mode='w')
 
+
 class SavableNPZ(abc.ABC):
     """
     A class that can be saved to a npz file and loaded from it.

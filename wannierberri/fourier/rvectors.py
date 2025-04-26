@@ -42,6 +42,8 @@ class Rvectors:
             self.iRvec = np.array(iRvec)
 
         self.dim = dim
+        self.fft_R2k_set = False
+        self.fft_q2R_set = False
 
         # print(f"created {self.nRvec} Rvectors with shilts left \n reduced coordinates {self.shifts_left_red} \n and right shifts \n reduced coordinates \n{self.shifts_right_red}\n cartesian coordinates \n{self.shifts_left_cart} \n and \n{self.shifts_right_cart}\n")
 
@@ -94,11 +96,11 @@ class Rvectors:
         """
         Return a copy of the Rvector object.
         """
-        return Rvectors(lattice=np.copy(self.lattice), 
+        return Rvectors(lattice=np.copy(self.lattice),
                         shifts_left_red=np.copy(self.shifts_left_red),
                         shifts_right_red=np.copy(self.shifts_right_red),
                         iRvec=np.copy(self.iRvec))
-    
+
     def exclude_zeros(self, XX_R_dic={}, tolerance=1e-8):
         """
         Exclude the zero R-vectors from the list of R-vectors.
@@ -185,18 +187,18 @@ class Rvectors:
         XX_R_new : np.ndarray(shape=(num_wann_r, num_wann_l, num_wann_r, nRvec, nRvec, ...))
             The matrix in the list of R-vectors representation.
         """
-        XX_RR_sum_grid = XX_RR_grid.sum(axis=(0, 1, 2,3,4,5))
+        XX_RR_sum_grid = XX_RR_grid.sum(axis=(0, 1, 2, 3, 4, 5))
         num_wann_r = XX_RR_grid.shape[6]
         num_wann_l = XX_RR_grid.shape[8]
-        print (f"remapping {XX_RR_grid.shape} num_wann_r={num_wann_r}, num_wann_l={num_wann_l}")
+        print(f"remapping {XX_RR_grid.shape} num_wann_r={num_wann_r}, num_wann_l={num_wann_l}")
         nl = self.nshifts_left
         nr = self.nshifts_right
         assert (nr == 1) or (XX_RR_grid.shape[6] == nr), f"XX_RR_grid {XX_RR_grid.shape} should have {nr} WFs"
         assert (nr == 1) or (XX_RR_grid.shape[7] == nr), f"XX_RR_grid {XX_RR_grid.shape} should have {nr} WFs"
         assert (nl == 1) or (XX_RR_grid.shape[8] == nl), f"XX_RR_grid {XX_RR_grid.shape} should have {nl} right shifts"
 
-        shape_new = XX_RR_grid.shape[6:9] + (self.nRvec,)*2 + XX_RR_grid.shape[9:]
-        print (f"shape_new {shape_new}")
+        shape_new = XX_RR_grid.shape[6:9] + (self.nRvec,) * 2 + XX_RR_grid.shape[9:]
+        print(f"shape_new {shape_new}")
         XX_RR_new = np.zeros(shape_new, dtype=XX_RR_grid.dtype)
         for a in range(num_wann_r):
             ia = 0 if self.nshifts_right == 1 else a
@@ -206,7 +208,7 @@ class Rvectors:
                     ic = 0 if self.nshifts_left == 1 else c
                     ishift1 = self.shift_index[ic, ia]
                     ishift2 = self.shift_index[ic, ib]
-                    print (f"a,b,c = {a},{b},{c} : {ishift1}, {ishift2}")
+                    print(f"a,b,c = {a},{b},{c} : {ishift1}, {ishift2}")
                     for iRi1, iRm1, nd1 in zip(self.iRvec_index_list[ishift1],
                                             self.iRvec_mod_list[ishift1],
                                             self.Ndegen_list[ishift1]):
@@ -368,13 +370,50 @@ class Rvectors:
         else:
             self.logfile.write(f"{key} is missing, nothing to check\n")
 
-    def set_fft_R_to_k(self, NK, num_wann, numthreads, fftlib='fftw'):
+    def set_fft_R_to_k(self, NK, num_wann, numthreads, fftlib='fftw', dK=(0, 0, 0)):
+        """
+        set the FFT for the R to k conversion
+
+        Parameters
+        ----------
+        NK : tuple of 3 integers
+            The number of k-points in the Monkhorst-Pack grid
+        num_wann : int
+            The number of Wannier functions
+        numthreads : int
+            The number of threads to paralize the FFT (if possible)
+        fftlib : str
+            The FFT library to use ('fftw' or 'numpy' or 'slow')
+        dK : tuple of 3 floats in range [0,1)
+            the shift of the grid in coordinates of the reciprocal lattice divided by the grid
+        """
+        self.dK = np.array(dK)
+        self. expdK = np.exp(2j * np.pi * self.iRvec.dot(self.dK))
+
         self.fft_R_to_k = FFT_R_to_k(
             self.iRvec,
             NK,
             num_wann,
             numthreads,
             fftlib=fftlib)
+        self.fft_R2k_set = True
+
+    def apply_expdK(self, XX_R):
+        """ apply the exp(2 pi i dK R) to the matrix elements in real space
+            XX_R should be of shape (num_wann, num_wann, nRvec, ...)
+            """
+        assert XX_R.shape[0] == self.nRvec, f"XX_R {XX_R.shape} should have {self.nRvec} R-vectors"
+        shape = [self.expdK.shape[0]] + [1] * (XX_R.ndim - 1)
+        return XX_R * self.expdK.reshape(shape)
+
+    def derivative(self, XX_R):
+        """ apply the derivative to the matrix elements in real space
+            XX_R should be of shape (num_wann, num_wann, nRvec, ...)
+            the returned array has one more *last) dimension, with size 3
+            """
+        shape_cR = np.shape(self.cRvec_shifted)
+        return 1j * XX_R.reshape((XX_R.shape) + (1,)) * self.cRvec_shifted.reshape(
+            (self.nRvec, shape_cR[1], shape_cR[2]) + (1,) * len(XX_R.shape[3:]) + (3,))
 
     def R_to_k(self, XX_R, der=0, hermitian=True):
         """ converts from real-space matrix elements in Wannier gauge to
@@ -383,10 +422,9 @@ class Rvectors:
             hermitian [=True] - consider the matrix hermitian
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
 
+        assert self.fft_R2k_set, "FFT_R_to_k is not set, please set it first"
         for i in range(der):
-            shape_cR = np.shape(self.cRvec_shifted)
-            XX_R = 1j * XX_R.reshape((XX_R.shape) + (1,)) * self.cRvec_shifted.reshape(
-                (self.nRvec, shape_cR[1], shape_cR[2]) + (1,) * len(XX_R.shape[3:]) + (3,))
+            XX_R = self.derivative(XX_R)
         return self.fft_R_to_k(XX_R, hermitian=hermitian)
 
     def set_fft_q_to_R(self, kpt_red, numthreads=1, fftlib='fftw'):
@@ -416,26 +454,29 @@ class Rvectors:
         assert len(self.kpt_mp_grid) == len(set(self.kpt_mp_grid)), "the grid of k-points read from .chk file has duplicates"
         self.fft_num_threads = numthreads
         self.fftlib_q2R = fftlib
+        self.fft_q2R_set = True
 
 
     def q_to_R(self, AA_q):
+        assert self.fft_q2R_set, "FFT_q_to_R is not set, please set it first using set_fft_q_to_R"
         shapeA = AA_q.shape[1:]  # remember the shapes after q
         AA_q_mp = np.zeros(tuple(self.mp_grid) + shapeA, dtype=complex)
         for i, k in enumerate(self.kpt_mp_grid):
             AA_q_mp[k] = AA_q[i]
         AA_q_mp = execute_fft(AA_q_mp, axes=(0, 1, 2), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False) / np.prod(self.mp_grid)
         return self.remap_XX_from_grid_to_list_R(AA_q_mp)
-    
+
     def qq_to_RR(self, AA_qq):
+        assert self.fft_q2R_set, "FFT_q_to_R is not set, please set it first using set_fft_q_to_R"
         shapeA = AA_qq.shape[2:]  # remember the shapes after q
-        AA_qq_mp = np.zeros(tuple(self.mp_grid)*2 + shapeA, dtype=complex)
+        AA_qq_mp = np.zeros(tuple(self.mp_grid) * 2 + shapeA, dtype=complex)
         for i, k1 in enumerate(self.kpt_mp_grid):
             for j, k2 in enumerate(self.kpt_mp_grid):
                 AA_qq_mp[k1 + k2] = AA_qq[i, j]
-        AA_qq_mp = execute_fft(AA_qq_mp, axes=(0, 1, 2), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False, inverse=True ) / np.prod(self.mp_grid)
+        AA_qq_mp = execute_fft(AA_qq_mp, axes=(0, 1, 2), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False, inverse=True) / np.prod(self.mp_grid)
         AA_qq_mp = execute_fft(AA_qq_mp, axes=(3, 4, 5), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False, inverse=False) / np.prod(self.mp_grid)
         return self.remap_XX_from_grid_to_list_RR(AA_qq_mp)
-    
+
 
 
 

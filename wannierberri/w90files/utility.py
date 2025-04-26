@@ -2,10 +2,8 @@ from fractions import Fraction
 import warnings
 import numpy as np
 
-from ..symmetry.unique_list import UniqueListMod1
-
-
 readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip()
+
 
 def is_round(A, prec=1e-14):
     # returns true if all values in A are integers, at least within machine precision

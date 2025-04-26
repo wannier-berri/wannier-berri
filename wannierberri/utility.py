@@ -310,5 +310,3 @@ def select_window_degen(E, thresh=1e-2, win_min=np.inf, win_max=-np.inf,
         inside = np.zeros(E.shape, dtype=bool)
         inside[ind] = True
         return inside
-
-
