@@ -17,12 +17,6 @@ wannierberri - a module for Wannier interpolation
 import warnings
 __version__ = "1.1.0"
 
-try:
-    import pyfftw
-    PYFFTW_IMPORTED = True
-except Exception as err:
-    PYFFTW_IMPORTED = False
-    warnings.warn(f"error importing  `pyfftw` : {err} \n will use numpy instead \n")
 
 from .run import run
 from .symmetry import point_symmetry
@@ -41,7 +35,7 @@ from .parallel import Parallel, Serial
 from .smoother import get_smoother
 from .evaluate_k import evaluate_k
 from . import utils
-from . import data_K
+# from . import data_K
 from .result.tabresult import npz_to_fermisurfer
 from termcolor import cprint
 

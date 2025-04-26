@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 
-from ..__utility import FortranFileR
+from ..io import FortranFileR
 from .w90file import W90_file
 
 

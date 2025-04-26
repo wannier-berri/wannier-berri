@@ -5,5 +5,5 @@ receive :class:`~wannierberri.data_K._Data_K` objects and yield
 """
 
 from .calculator import Calculator
-from . import static, dynamic, tabulate
+from . import static, dynamic, tabulate, sdct
 from .tabulate import TabulatorAll

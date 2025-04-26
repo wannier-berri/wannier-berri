@@ -2,9 +2,9 @@ from functools import cached_property
 from time import time
 import numpy as np
 from .utility import readstr
-from ..__utility import FortranFileR
+from ..io import FortranFileR
 import gc
-from ..__utility import alpha_A, beta_A
+from ..utility import alpha_A, beta_A
 
 
 class CheckPoint:

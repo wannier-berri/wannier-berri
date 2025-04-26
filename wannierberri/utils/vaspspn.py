@@ -8,7 +8,9 @@
 # Written by Stepan Tsirkin (University of the Basque Country)
 #    now at : Iniversity of Zurich
 import warnings
-from ..__utility import time_now_iso
+import numpy as np
+from ..io import FortranFileW
+from ..utility import time_now_iso
 
 PAW_warning = """vaspspn uses pseudo-wavefunction instead of the full PAW
 (`Blöchl 1994 <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.50.17953>`__) wavefunction
@@ -65,8 +67,6 @@ def hlp():
 
 def main(argv):
     warnings.warn(PAW_warning)
-    from ..__utility import FortranFileW
-    import numpy as np
 
     fin = "WAVECAR"
     fout = "wannier90.spn"

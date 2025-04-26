@@ -1,7 +1,7 @@
 import numpy as np
 from termcolor import cprint
 from ..symmetry.Dwann import Dwann
-from ..__utility import select_window_degen
+from ..utility import select_window_degen
 from ..symmetry.orbitals import OrbitalRotator
 
 

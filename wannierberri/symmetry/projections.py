@@ -17,8 +17,8 @@ except ImportError:
     from functools import partial as jjit
 
 
-from ..__utility import UniqueListMod1
 from ..symmetry.orbitals import Orbitals, num_orbitals
+from .unique_list import UniqueListMod1
 from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric, get_shifts
 
 ORBITALS = Orbitals()

@@ -39,3 +39,18 @@ class Calculator:
                 self.comment = "calculator not described"
         if print_comment:
             cprint(self.comment + "\n", 'cyan', attrs=['bold'])
+
+
+class MultitermCalculator(Calculator):
+
+    def __init__(self, **kwargs):
+        kwargs_new = {}
+        for k, v in kwargs.items():
+            if k in ['save_mode', 'print_comment', 'degen_thresh', 'degen_Kramers']:
+                kwargs_new[k] = v
+        super().__init__(**kwargs_new)
+        self.terms = []
+
+
+    def __call__(self, data_K):
+        return sum(cal(data_K) for cal in self.terms)

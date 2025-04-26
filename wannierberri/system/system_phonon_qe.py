@@ -3,11 +3,11 @@ import os.path
 import numpy as np
 import multiprocessing
 
-from .rvectors import Rvectors
+from ..fourier.rvectors import Rvectors
 from . import System_w90
 from .system_R import System_R
 from scipy import constants as const
-from ..__factors import Ry_eV
+from ..factors import Ry_eV
 
 # from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom  #, Boltzmann
 

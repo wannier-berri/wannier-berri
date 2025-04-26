@@ -1,6 +1,6 @@
 import numpy as np
 from .w90file import W90_file
-from ..__utility import FortranFileR
+from ..io import FortranFileR
 
 
 class SPN(W90_file):

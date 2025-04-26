@@ -14,7 +14,7 @@
 import numpy as np
 from termcolor import cprint
 
-from .rvectors import Rvectors
+from ..fourier.rvectors import Rvectors
 from .system_R import System_R
 # from .Rvec import Rvec
 

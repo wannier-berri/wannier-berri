@@ -15,7 +15,7 @@ import numpy as np
 import warnings
 from .Kpoint_tetra import KpointBZtetra
 from .grid import GridAbstract, determineNK
-from ..__utility import angle_vectors_deg
+from ..utility import angle_vectors_deg
 
 
 class GridTetra(GridAbstract):

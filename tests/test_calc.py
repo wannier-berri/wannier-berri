@@ -80,8 +80,8 @@ def test_tab_fit(system_Haldane_PythTB):
     noext = dict(kwargs_formula={"external_terms": False})
     calculators = [[cal(ibands=ib, **noext) for ib in ([0,], [0, 1])] for cal in (berry, morb)]
     results = [[cal[b](data_K) for b in range(2)] for cal in calculators]
-    for ical1, ib1 in wberri.__utility.iterate_nd((2, 2)):
-        for ical2, ib2 in wberri.__utility.iterate_nd((2, 2)):
+    for ical1, ib1 in wberri.utility.iterate_nd((2, 2)):
+        for ical2, ib2 in wberri.utility.iterate_nd((2, 2)):
             r1 = results[ical1][ib1]
             r2 = results[ical2][ib2]
             check = r1.fit(r2)
@@ -124,18 +124,8 @@ def check_save_result():
 
 
 def test_SDCT(system_random_load_bare, check_calculator):
-    calculators_SDCT = {
-        'SDCT_sym_sea_I': wberri.calculators.dynamic.SDCT_sym_sea_I,
-        'SDCT_sym_sea_II': wberri.calculators.dynamic.SDCT_sym_sea_II,
-        'SDCT_asym_sea_I': wberri.calculators.dynamic.SDCT_asym_sea_I,
-        'SDCT_asym_sea_II': wberri.calculators.dynamic.SDCT_asym_sea_II,
-        'SDCT_asym_surf_I': wberri.calculators.dynamic.SDCT_asym_surf_I,
-        'SDCT_asym_surf_II': wberri.calculators.dynamic.SDCT_asym_surf_II,
-        'SDCT_sym_surf_I': wberri.calculators.dynamic.SDCT_sym_surf_I,
-        'SDCT_sym_surf_II': wberri.calculators.dynamic.SDCT_sym_surf_II,
-        'SDCT_sym': wberri.calculators.dynamic.SDCT_sym,
-        'SDCT_asym': wberri.calculators.dynamic.SDCT_asym}
-    from .test_run import Efermi_GaAs
+
+    from .test_run import Efermi_GaAs, calculators_SDCT
     param = {'Efermi': Efermi_GaAs,
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1,

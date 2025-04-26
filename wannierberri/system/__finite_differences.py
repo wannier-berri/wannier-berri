@@ -1,4 +1,4 @@
-from ..__utility import find_degen
+from ..utility import find_degen
 
 import numpy as np
 from functools import cached_property

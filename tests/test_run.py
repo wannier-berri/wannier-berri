@@ -189,16 +189,16 @@ calculators_Chiral = {
 }
 
 calculators_SDCT = {
-    'SDCT_sym_sea_I': wberri.calculators.dynamic.SDCT_sym_sea_I,
-    'SDCT_sym_sea_II': wberri.calculators.dynamic.SDCT_sym_sea_II,
-    'SDCT_asym_sea_I': wberri.calculators.dynamic.SDCT_asym_sea_I,
-    'SDCT_asym_sea_II': wberri.calculators.dynamic.SDCT_asym_sea_II,
-    'SDCT_asym_surf_I': wberri.calculators.dynamic.SDCT_asym_surf_I,
-    'SDCT_asym_surf_II': wberri.calculators.dynamic.SDCT_asym_surf_II,
-    'SDCT_sym_surf_I': wberri.calculators.dynamic.SDCT_sym_surf_I,
-    'SDCT_sym_surf_II': wberri.calculators.dynamic.SDCT_sym_surf_II,
-    'SDCT_sym': wberri.calculators.dynamic.SDCT_sym,
-    'SDCT_asym': wberri.calculators.dynamic.SDCT_asym,
+    'SDCT_sym_sea_I': wberri.calculators.sdct.SDCT_sym_sea_I,
+    'SDCT_sym_sea_II': wberri.calculators.sdct.SDCT_sym_sea_II,
+    'SDCT_asym_sea_I': wberri.calculators.sdct.SDCT_asym_sea_I,
+    'SDCT_asym_sea_II': wberri.calculators.sdct.SDCT_asym_sea_II,
+    'SDCT_asym_surf_I': wberri.calculators.sdct.SDCT_asym_surf_I,
+    'SDCT_asym_surf_II': wberri.calculators.sdct.SDCT_asym_surf_II,
+    'SDCT_sym_surf_I': wberri.calculators.sdct.SDCT_sym_surf_I,
+    'SDCT_sym_surf_II': wberri.calculators.sdct.SDCT_sym_surf_II,
+    'SDCT_sym': wberri.calculators.sdct.SDCT_sym,
+    'SDCT_asym': wberri.calculators.sdct.SDCT_asym,
 }
 
 calculators_Chiral_tetra = {
@@ -863,7 +863,7 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
 
     iEF = np.argmin(abs(Efermi_Haldane))
     ahc_k = result.results["tabulate"].results["AHC"].data[:, iEF]
-    berry_k = result.results["tabulate"].results["berry"].data[:, 0] * wberri.__factors.factor_ahc / system.cell_volume
+    berry_k = result.results["tabulate"].results["berry"].data[:, 0] * wberri.factors.factor_ahc / system.cell_volume
     prec = 1e-8 * np.max(abs(berry_k))
     assert abs(berry_k - ahc_k).max() <= prec
 
@@ -1105,7 +1105,7 @@ def test_phonons_GaAs_tetra(check_run, system_Phonons_GaAs):
 def test_factor_nlahc(check_run, system_GaAs_W90):
     "Test whether constant_factor for NLAHC works as expected"
 
-    from wannierberri.__factors import factor_nlahc
+    from wannierberri.factors import factor_nlahc
 
     calculators = dict(
         bcd=calc.static.BerryDipole_FermiSurf(Efermi=Efermi_GaAs),
@@ -1166,8 +1166,8 @@ def check_kp_mass_isotropic(check_run):
             cumdos = result.results["cumdos"].data / system.cell_volume
             dos = result.results["dos"].data / system.cell_volume
             ohmic = {}
-            ohmic["sea"] = result.results["ohmic_sea"].data / wberri.__factors.factor_ohmic
-            ohmic["surf"] = result.results["ohmic_surf"].data / wberri.__factors.factor_ohmic
+            ohmic["sea"] = result.results["ohmic_sea"].data / wberri.factors.factor_ohmic
+            ohmic["surf"] = result.results["ohmic_surf"].data / wberri.factors.factor_ohmic
 
             precision = 1e-8
             try:

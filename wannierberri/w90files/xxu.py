@@ -1,7 +1,7 @@
 import numpy as np
 from .w90file import W90_file
 from .utility import readstr
-from ..__utility import FortranFileR
+from ..io import FortranFileR
 
 
 class UXU(W90_file):
