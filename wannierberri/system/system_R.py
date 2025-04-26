@@ -7,9 +7,9 @@ from collections import defaultdict
 import glob
 import multiprocessing
 
-from .rvectors import Rvectors
+from ..fourier.rvectors import Rvectors
 from .system import System, pauli_xyz
-from ..__utility import clear_cached, one2three
+from ..utility import clear_cached, one2three
 from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
 from ..symmetry.wyckoff_position import split_into_orbits
 

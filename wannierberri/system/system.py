@@ -17,7 +17,7 @@ import warnings
 import numpy as np
 from functools import cached_property
 from ..symmetry.point_symmetry import PointGroup
-from ..__utility import real_recip_lattice
+from ..utility import real_recip_lattice
 
 pauli_x = [[0, 1], [1, 0]]
 pauli_y = [[0, -1j], [1j, 0]]

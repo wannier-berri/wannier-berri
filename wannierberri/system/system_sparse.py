@@ -13,7 +13,7 @@
 import warnings
 import numpy as np
 
-from .rvectors import Rvectors
+from ..fourier.rvectors import Rvectors
 from .system_R import System_R
 
 

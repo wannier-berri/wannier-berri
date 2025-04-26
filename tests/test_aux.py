@@ -3,7 +3,7 @@
 import numpy as np
 from pytest import approx
 from wannierberri.formula.covariant import _spin_velocity_einsum_opt
-from wannierberri.__utility import vectorize
+from wannierberri.utility import vectorize
 
 
 def test_spin_velocity_einsum_opt():

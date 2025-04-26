@@ -1,10 +1,15 @@
 from fractions import Fraction
 import warnings
 import numpy as np
-from ..__utility import UniqueListMod1, is_round
+
+from ..symmetry.unique_list import UniqueListMod1
 
 
 readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip()
+
+def is_round(A, prec=1e-14):
+    # returns true if all values in A are integers, at least within machine precision
+    return np.linalg.norm(A - np.round(A)) < prec
 
 
 def readints(fl, n):
@@ -110,18 +115,22 @@ def grid_from_kpoints(kpoints, grid=None):
         grid = tuple(np.lcm.reduce([Fraction(k).limit_denominator(100).denominator for k in kp]) for kp in kpoints.T)
     npgrid = np.array(grid)
     print(f"mpgrid = {npgrid}, {len(kpoints)}")
-    kpoints_unique = UniqueListMod1()
+    kpoints_unique = set()
     selected_kpoints = []
     for i, k in enumerate(kpoints):
         if is_round(k * npgrid, prec=1e-5):
-            if k not in kpoints_unique:
-                kpoints_unique.append(k)
+            kint = np.round(k * npgrid).astype(int)
+            if kint not in kpoints_unique:
+                kpoints_unique.append(kint)
                 selected_kpoints.append(i)
             else:
                 warnings.warn(f"k-point {k} is repeated")
-    if len(kpoints_unique) < np.prod(grid):
-        raise ValueError(f"Some k-points are missing {len(kpoints_unique)}< {np.prod(grid)}")
-    if len(kpoints_unique) > np.prod(grid):
+
+    num_selected = len(selected_kpoints)
+    num_k_grid = np.prod(npgrid)
+    if num_selected < num_k_grid:
+        raise ValueError(f"Some k-points are missing {num_selected} < {num_k_grid}")
+    if num_selected > num_k_grid:
         raise RuntimeError("Some k-points are taken twice - this must be a bug")
     if len(kpoints_unique) < len(kpoints):
         warnings.warn("Some k-points are not on the grid or are repeated")

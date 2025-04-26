@@ -20,7 +20,7 @@ import warnings
 from ..system.system import System
 from ..symmetry.point_symmetry import PointGroup
 from .Kpoint import KpointBZparallel
-from ..__utility import one2three
+from ..utility import one2three
 
 
 class GridAbstract(abc.ABC):

@@ -18,8 +18,8 @@ import os
 import multiprocessing
 import warnings
 
-from .rvectors import Rvectors
-from ..__utility import real_recip_lattice, alpha_A, beta_A
+from ..fourier.rvectors import Rvectors
+from ..utility import real_recip_lattice, alpha_A, beta_A
 from .system_R import System_R
 from ..w90files import Wannier90data
 

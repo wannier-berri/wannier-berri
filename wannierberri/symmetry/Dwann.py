@@ -2,7 +2,7 @@
 import warnings
 import numpy as np
 from .orbitals import num_orbitals
-from ..__utility import UniqueListMod1
+from .unique_list import UniqueListMod1
 
 
 class Dwann:

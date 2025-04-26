@@ -4,7 +4,8 @@ from typing import Iterable
 import warnings
 
 import numpy as np
-from ..__utility import FFT_R_to_k, clear_cached, execute_fft, iterate3dpm, iterate_nd
+from ..utility import clear_cached, iterate3dpm, iterate_nd
+from .fft import FFT_R_to_k, execute_fft
 
 
 class Rvectors:
@@ -64,10 +65,6 @@ class Rvectors:
         self.mp_grid = mp_grid
         self._NKFFTrec = mp_grid
 
-        # TODO so far set high precision. Later increase,
-        # but it may require modification of dest data
-        # self.all_shifts_red = UniqueList(tolerance=1e-2
-        # but for low-precision data, higher tolerance may be beneficial
         if ws_tolerance > 0:
             num_digits_tol = int(np.ceil(-np.log10(ws_tolerance))) + 1
         else:
@@ -93,7 +90,15 @@ class Rvectors:
             self.iRvec_index_list.append(np.array([self.iR(R) for R in iRvec]))
 
 
-
+    def copy(self):
+        """
+        Return a copy of the Rvector object.
+        """
+        return Rvectors(lattice=np.copy(self.lattice), 
+                        shifts_left_red=np.copy(self.shifts_left_red),
+                        shifts_right_red=np.copy(self.shifts_right_red),
+                        iRvec=np.copy(self.iRvec))
+    
     def exclude_zeros(self, XX_R_dic={}, tolerance=1e-8):
         """
         Exclude the zero R-vectors from the list of R-vectors.
@@ -124,9 +129,28 @@ class Rvectors:
             XX_R_tmp[tuple(iR)] += XX_R[i]
         XX_R_sum_tmp = XX_R_tmp.sum(axis=(0, 1, 2))
         assert np.allclose(XX_R_sum_tmp, XX_R_sum_old), f"XX_R_sum_T_tmp {XX_R_sum_tmp} != XX_R_sum_R_old {XX_R_sum_old}"
-        return self.remap_XX_from_grid_to_R(XX_R_tmp)
+        return self.remap_XX_from_grid_to_list_R(XX_R_tmp)
 
-    def remap_XX_from_grid_to_R(self, XX_R_grid):
+    def remap_XX_from_grid_to_list_R(self, XX_R_grid):
+        """
+        remap the matrix from the grid to the list of R-vectors,
+        taking into account the wannier centers
+
+        Parameters
+        ----------
+        XX_R_grid : np.ndarray(shape=(mp_grid[0], mp_grid[1], mp_grid[2], num_wann_l, num_wann_r, ...))
+            The matrix in the grid representation.
+
+        Returns
+        -------
+        XX_R_new : np.ndarray(shape=(num_wann_l, num_wann_r, nRvec, ...))
+            The matrix in the list of R-vectors representation.
+        """
+        assert XX_R_grid.shape[0:3] == tuple(self.mp_grid), f"XX_R_grid {XX_R_grid.shape} should be {self.mp_grid}"
+        nl = self.nshifts_left
+        nr = self.nshifts_right
+        assert (nl == 1) or (XX_R_grid.shape[3] == nl), f"XX_R_grid {XX_R_grid.shape} should have {nl} lWFs"
+        assert (nr == 1) or (XX_R_grid.shape[4] == nr), f"XX_R_grid {XX_R_grid.shape} should have {nr} rWFs"
         XX_R_sum_grid = XX_R_grid.sum(axis=(0, 1, 2))
         shape_new = (self.nRvec,) + XX_R_grid.shape[3:]
         num_wann_l = XX_R_grid.shape[3]
@@ -144,6 +168,55 @@ class Rvectors:
         XX_R_sum_new = XX_R_new.sum(axis=0)
         assert np.allclose(XX_R_sum_new, XX_R_sum_grid), f"XX_R_sum_R_new {XX_R_sum_new} != XX_R_sum_T_tmp {XX_R_sum_grid}"
         return XX_R_new
+
+
+    def remap_XX_from_grid_to_list_RR(self, XX_RR_grid):
+        """
+        remap the matrix from the double grid to the double list of R-vectors,
+        taking into account the wannier centers (the "left" are used as the central, and the "right" are used asboth left and right, if you understand what I mean)
+
+        Parameters
+        ----------
+        XX_RR_grid : np.ndarray(shape=(mp_grid[0], mp_grid[1], mp_grid[2], mp_grid[0], mp_grid[1], mp_grid[2], num_wann_r, num_wann_l, num_wann_r, ...))
+            The matrix in the grid representation.
+
+        Returns
+        -------
+        XX_R_new : np.ndarray(shape=(num_wann_r, num_wann_l, num_wann_r, nRvec, nRvec, ...))
+            The matrix in the list of R-vectors representation.
+        """
+        XX_RR_sum_grid = XX_RR_grid.sum(axis=(0, 1, 2,3,4,5))
+        num_wann_r = XX_RR_grid.shape[6]
+        num_wann_l = XX_RR_grid.shape[8]
+        print (f"remapping {XX_RR_grid.shape} num_wann_r={num_wann_r}, num_wann_l={num_wann_l}")
+        nl = self.nshifts_left
+        nr = self.nshifts_right
+        assert (nr == 1) or (XX_RR_grid.shape[6] == nr), f"XX_RR_grid {XX_RR_grid.shape} should have {nr} WFs"
+        assert (nr == 1) or (XX_RR_grid.shape[7] == nr), f"XX_RR_grid {XX_RR_grid.shape} should have {nr} WFs"
+        assert (nl == 1) or (XX_RR_grid.shape[8] == nl), f"XX_RR_grid {XX_RR_grid.shape} should have {nl} right shifts"
+
+        shape_new = XX_RR_grid.shape[6:9] + (self.nRvec,)*2 + XX_RR_grid.shape[9:]
+        print (f"shape_new {shape_new}")
+        XX_RR_new = np.zeros(shape_new, dtype=XX_RR_grid.dtype)
+        for a in range(num_wann_r):
+            ia = 0 if self.nshifts_right == 1 else a
+            for b in range(num_wann_r):
+                ib = 0 if self.nshifts_right == 1 else b
+                for c in range(num_wann_l):
+                    ic = 0 if self.nshifts_left == 1 else c
+                    ishift1 = self.shift_index[ic, ia]
+                    ishift2 = self.shift_index[ic, ib]
+                    print (f"a,b,c = {a},{b},{c} : {ishift1}, {ishift2}")
+                    for iRi1, iRm1, nd1 in zip(self.iRvec_index_list[ishift1],
+                                            self.iRvec_mod_list[ishift1],
+                                            self.Ndegen_list[ishift1]):
+                        for iRi2, iRm2, nd2 in zip(self.iRvec_index_list[ishift2],
+                                                self.iRvec_mod_list[ishift2],
+                                                self.Ndegen_list[ishift2]):
+                            XX_RR_new[a, b, c, iRi1, iRi2] += XX_RR_grid[tuple(iRm1) + tuple(iRm2) + (a, b, c)] / (nd1 * nd2)
+        XX_R_sum_new = XX_RR_new.sum(axis=(3, 4))
+        assert np.allclose(XX_R_sum_new, XX_RR_sum_grid), f"XX_R_sum_R_new {XX_R_sum_new} != XX_R_sum_T_tmp {XX_RR_sum_grid}"
+        return XX_RR_new
 
 
     def NKFFT_recommended(self):
@@ -295,7 +368,7 @@ class Rvectors:
         else:
             self.logfile.write(f"{key} is missing, nothing to check\n")
 
-    def set_fft_R_to_k(self, NK, num_wann, numthreads, fftlib='pyfftw'):
+    def set_fft_R_to_k(self, NK, num_wann, numthreads, fftlib='fftw'):
         self.fft_R_to_k = FFT_R_to_k(
             self.iRvec,
             NK,
@@ -316,7 +389,7 @@ class Rvectors:
                 (self.nRvec, shape_cR[1], shape_cR[2]) + (1,) * len(XX_R.shape[3:]) + (3,))
         return self.fft_R_to_k(XX_R, hermitian=hermitian)
 
-    def set_fft_q_to_R(self, kpt_red, numthreads=1, fftlib='pyfftw'):
+    def set_fft_q_to_R(self, kpt_red, numthreads=1, fftlib='fftw'):
         """
         set the FFT for the q to R conversion
 
@@ -327,7 +400,7 @@ class Rvectors:
         numthreads : int
             The number of threads for the FFT
         fftlib : str
-            The FFT library to use ('pyfftw' or 'numpy' or 'slow')
+            The FFT library to use ('fftw' or 'numpy' or 'slow')
         """
         kpt_red = np.array(kpt_red)
         kpt_red_mp = kpt_red * self.mp_grid[None, :]
@@ -351,7 +424,19 @@ class Rvectors:
         for i, k in enumerate(self.kpt_mp_grid):
             AA_q_mp[k] = AA_q[i]
         AA_q_mp = execute_fft(AA_q_mp, axes=(0, 1, 2), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False) / np.prod(self.mp_grid)
-        return self.remap_XX_from_grid_to_R(AA_q_mp)
+        return self.remap_XX_from_grid_to_list_R(AA_q_mp)
+    
+    def qq_to_RR(self, AA_qq):
+        shapeA = AA_qq.shape[2:]  # remember the shapes after q
+        AA_qq_mp = np.zeros(tuple(self.mp_grid)*2 + shapeA, dtype=complex)
+        for i, k1 in enumerate(self.kpt_mp_grid):
+            for j, k2 in enumerate(self.kpt_mp_grid):
+                AA_qq_mp[k1 + k2] = AA_qq[i, j]
+        AA_qq_mp = execute_fft(AA_qq_mp, axes=(0, 1, 2), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False, inverse=True ) / np.prod(self.mp_grid)
+        AA_qq_mp = execute_fft(AA_qq_mp, axes=(3, 4, 5), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False, inverse=False) / np.prod(self.mp_grid)
+        return self.remap_XX_from_grid_to_list_RR(AA_qq_mp)
+    
+
 
 
 class WignerSeitz:

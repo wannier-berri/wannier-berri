@@ -3,7 +3,7 @@ from functools import cached_property
 from ..symmetry.point_symmetry import transform_from_dict
 from ..smoother import VoidSmoother
 from .result import Result
-from ..__utility import get_head
+from ..utility import get_head
 
 
 class EnergyResult(Result):

@@ -11,10 +11,10 @@ from math import ceil
 from copy import copy
 from ..formula import covariant as frml
 from ..formula import covariant_basic as frml_basic
-from .. import __factors as factors
+from .. import factors as factors
 from ..result import EnergyResult, K__Result
 from .calculator import Calculator
-from ..__utility import alpha_A, beta_A
+from ..utility import alpha_A, beta_A
 
 
 # The base class for Static Calculators

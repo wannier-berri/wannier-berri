@@ -2,7 +2,7 @@ import warnings
 import numpy as np
 from .system_R import System_R
 from .system import num_cart_dim
-from .rvectors import Rvectors
+from ..fourier.rvectors import Rvectors
 
 
 class SystemRandom(System_R):

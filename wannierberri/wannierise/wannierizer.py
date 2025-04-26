@@ -3,7 +3,7 @@ import copy
 import warnings
 import numpy as np
 import ray
-from ..__utility import get_max_eig, orthogonalize
+from ..utility import get_max_eig, orthogonalize
 from ..symmetry.sawf import VoidSymmetrizer
 
 

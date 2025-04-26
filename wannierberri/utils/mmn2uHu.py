@@ -51,7 +51,8 @@
 
 import numpy as np
 import os
-from ..__utility import FortranFileR, FortranFileW, time_now_iso
+from ..io import FortranFileR, FortranFileW
+from ..utility import time_now_iso
 
 
 def hlp():

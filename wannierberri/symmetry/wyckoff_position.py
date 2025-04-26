@@ -1,7 +1,7 @@
 from functools import cached_property, lru_cache
 import numpy as np
 import sympy
-from ..__utility import UniqueListMod1, all_close_mod1
+from .unique_list import UniqueListMod1, all_close_mod1
 
 
 

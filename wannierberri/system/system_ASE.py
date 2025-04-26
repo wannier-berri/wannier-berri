@@ -16,7 +16,7 @@ import numpy as np
 from termcolor import cprint
 
 from .system_R import System_R
-from .rvectors import Rvectors
+from ..fourier.rvectors import Rvectors
 
 
 class System_ASE(System_R):
@@ -64,7 +64,7 @@ class System_ASE(System_R):
                 for k in range(mp_grid[2]):
                     Ham[i, j, k] = ase_wannier.get_hopping([i, j, k])
 
-        self.set_R_mat('Ham', self.rvec.remap_XX_from_grid_to_R(Ham))
+        self.set_R_mat('Ham', self.rvec.remap_XX_from_grid_to_list_R(Ham))
 
         self.do_at_end_of_init()
 

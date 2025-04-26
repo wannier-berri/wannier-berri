@@ -4,7 +4,8 @@ import warnings
 from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroupBare
 import numpy as np
-from ..__utility import get_inverse_block, rotate_block_matrix, orthogonalize
+from ..utility import orthogonalize
+from .utility import get_inverse_block, rotate_block_matrix
 from .projections import Projection, ProjectionsSet
 
 from .dmn import DMN

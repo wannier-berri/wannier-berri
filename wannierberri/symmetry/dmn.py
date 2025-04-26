@@ -2,7 +2,8 @@ from functools import cached_property, lru_cache
 from time import time
 import numpy as np
 from copy import deepcopy
-from ..__utility import get_inverse_block, rotate_block_matrix, SavableNPZ
+from ..io import SavableNPZ
+from .utility import get_inverse_block, rotate_block_matrix
 
 
 class DMN(SavableNPZ):

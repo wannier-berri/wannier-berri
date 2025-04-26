@@ -1,5 +1,5 @@
 import numpy as np
-from ..__utility import alpha_A, beta_A, delta_f
+from ..utility import alpha_A, beta_A, delta_f
 from .formula import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct, FormulaSum, DeltaProduct
 from ..symmetry.point_symmetry import transform_ident, transform_odd
 

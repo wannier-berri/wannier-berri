@@ -19,7 +19,7 @@ from .parallel import pool
 from .system.system import System
 from .system.system_R import System_R
 from .system.system_kp import SystemKP
-from .__utility import alpha_A, beta_A
+from .utility import alpha_A, beta_A
 from .grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
 from . import formula
 from .grid import KpointBZparallel, KpointBZtetra

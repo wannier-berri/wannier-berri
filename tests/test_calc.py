@@ -80,8 +80,8 @@ def test_tab_fit(system_Haldane_PythTB):
     noext = dict(kwargs_formula={"external_terms": False})
     calculators = [[cal(ibands=ib, **noext) for ib in ([0,], [0, 1])] for cal in (berry, morb)]
     results = [[cal[b](data_K) for b in range(2)] for cal in calculators]
-    for ical1, ib1 in wberri.__utility.iterate_nd((2, 2)):
-        for ical2, ib2 in wberri.__utility.iterate_nd((2, 2)):
+    for ical1, ib1 in wberri.utility.iterate_nd((2, 2)):
+        for ical2, ib2 in wberri.utility.iterate_nd((2, 2)):
             r1 = results[ical1][ib1]
             r2 = results[ical2][ib2]
             check = r1.fit(r2)

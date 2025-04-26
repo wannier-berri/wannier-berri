@@ -13,9 +13,9 @@
 
 import numpy as np
 
-from .rvectors import Rvectors
+from ..fourier.rvectors import Rvectors
 
-from ..__utility import str2bool
+from ..utility import str2bool
 from termcolor import cprint
 from .system_R import System_R
 from collections import defaultdict

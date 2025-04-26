@@ -1,5 +1,5 @@
 import numpy as np
-from ..__utility import alpha_A, beta_A
+from ..utility import alpha_A, beta_A
 from .formula import Formula_ln
 from .covariant import DerDcov, Eavln
 from ..symmetry.point_symmetry import transform_ident, transform_odd

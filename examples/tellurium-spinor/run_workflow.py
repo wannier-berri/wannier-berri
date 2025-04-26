@@ -9,7 +9,7 @@ import numpy as np
 
 from wannierberri.wannierise.projections import Projection, ProjectionsSet
 from wannierberri.workflow import WorkflowQE, Executables
-from wannierberri.__factors import bohr
+from wannierberri.factors import bohr
 
 x=0.274
 ca = 1.3368

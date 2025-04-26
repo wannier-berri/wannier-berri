@@ -7,7 +7,7 @@ from scipy.interpolate import CubicSpline
 from scipy.integrate import trapezoid
 from scipy.constants import physical_constants
 
-from wannierberri.__utility import UniqueList
+from .unique_list import UniqueList
 from scipy.linalg import block_diag
 bohr_radius_angstrom = physical_constants["Bohr radius"][0] * 1e10
 

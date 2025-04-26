@@ -1,7 +1,7 @@
 import numpy as np
 import abc
 import functools
-from ..__utility import Gaussian, Lorentzian, FermiDirac, alpha_A, beta_A
+from ..utility import Gaussian, Lorentzian, FermiDirac, alpha_A, beta_A
 from ..result import EnergyResult
 from .calculator import Calculator
 from ..formula.covariant import SpinVelocity
@@ -9,7 +9,7 @@ from ..formula import Formula
 from copy import copy
 from ..symmetry.point_symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
 from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom
-from .. import __factors as factors
+from .. import factors as factors
 
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom

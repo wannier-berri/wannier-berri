@@ -18,7 +18,7 @@ import pickle
 import glob
 from termcolor import cprint
 import warnings
-from .__utility import remove_file
+from .utility import remove_file
 from .data_K import get_data_k
 from .grid import exclude_equiv_points, Path, Grid, GridTetra
 from .parallel import Serial

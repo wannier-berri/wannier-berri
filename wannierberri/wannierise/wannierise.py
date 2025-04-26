@@ -3,7 +3,7 @@ import numpy as np
 
 from .wannierizer import Wannierizer
 
-from ..__utility import vectorize, select_window_degen
+from ..utility import vectorize, select_window_degen
 from ..symmetry.sawf import VoidSymmetrizer
 
 
