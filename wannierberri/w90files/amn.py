@@ -79,11 +79,11 @@ class AMN(W90_file):
                 for ib in range(self.NB):
                     f_amn_out.write(f"{ib + 1:4d} {iw + 1:4d} {ik + 1:4d} {self.data[ik, ib, iw].real:17.12f} {self.data[ik, ib, iw].imag:17.12f}\n")
 
-    def get_disentangled(self, v_left, v_right):
-        print(f"v shape  {v_left.shape}  {v_right.shape} , amn shape {self.data.shape} ")
-        data = np.einsum("klm,kmn->kln", v_left, self.data)
-        print(f"shape of data {data.shape} , old {self.data.shape}")
-        return self.__class__(data=data)
+    # def get_disentangled(self, v_left, v_right):
+    #     print(f"v shape  {v_left.shape}  {v_right.shape} , amn shape {self.data.shape} ")
+    #     data = np.einsum("klm,kmn->kln", v_left, self.data)
+    #     print(f"shape of data {data.shape} , old {self.data.shape}")
+    #     return self.__class__(data=data)
 
     def spin_order_block_to_interlace(self):
         """

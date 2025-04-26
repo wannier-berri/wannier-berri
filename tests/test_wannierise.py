@@ -53,7 +53,7 @@ def test_wannierise(outer_window):
     if outer_window is not None:
         w90data.apply_window(win_min=outer_window[0], win_max=outer_window[1])
     print(f"num_bands: eig:{w90data.eig.NB}, mmn:{w90data.mmn.NB}, amn:{w90data.amn.NB}")
-    # Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
+    # Now wannierise with sitesym and frozen window (the part that is not implemented in Wanier90)
     w90data.wannierise(
         froz_min=-8,
         froz_max=20,
@@ -136,7 +136,7 @@ def test_wannierise(outer_window):
 
 @fixture
 def check_sawf():
-    def _inner(sawf_new, sawf_ref, dmn_only=False):
+    def _inner(sawf_new, sawf_ref):
 
         for key in ['NB', "num_wann", "NK", "NKirr", "kptirr", "kptirr2kpt", "kpt2kptirr", "time_reversals"]:
             assert np.all(getattr(sawf_ref, key) == getattr(sawf_new, key)), (
@@ -157,11 +157,10 @@ def check_sawf():
                 f"new: {sawf_new.d_band_block_indices}\n"
             )
 
-        if not dmn_only:
-            for i, blockpair in enumerate(zip(sawf_ref.rot_orb_list, sawf_new.rot_orb_list)):
-                blockref, blocknew = blockpair
-                assert blockref.shape == blocknew.shape, f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF\n"
-                assert blockref == approx(blocknew, abs=1e-6), f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+        for i, blockpair in enumerate(zip(sawf_ref.rot_orb_list, sawf_new.rot_orb_list)):
+            blockref, blocknew = blockpair
+            assert blockref.shape == blocknew.shape, f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF\n"
+            assert blockref == approx(blocknew, abs=1e-6), f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
 
 
         for isym in range(sawf_ref.Nsym):

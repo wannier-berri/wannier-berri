@@ -1,5 +1,4 @@
 import abc
-import numpy as np
 import os
 from ..io import SavableNPZ
 
@@ -66,19 +65,6 @@ class W90_file(SavableNPZ):
     @abc.abstractmethod
     def apply_window(self, selected_bands):
         pass
-
-    def get_disentangled(self, v_matrix_dagger, v_matrix):
-        """
-        reduce number of bands
-
-        Parameters
-        ----------
-        v_matrix : np.ndarray(NB,num_wann)
-            the matrix of column vectors defining the Wannier gauge
-
-        """
-        data = np.einsum("klm,kmn...,kno->klo", v_matrix_dagger, self.data, v_matrix)
-        return self.__class__(data=data)
 
     @property
     def n_neighb(self):

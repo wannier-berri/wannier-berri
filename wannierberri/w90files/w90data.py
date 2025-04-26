@@ -44,7 +44,6 @@ FILES_CLASSES = {'win': WIN,
 
 class Wannier90data:
     """A class to describe all input files of wannier90, and to construct the Wannier functions
-     via disentanglement procedure
 
     Parameters:
         seedname : str
@@ -60,7 +59,7 @@ class Wannier90data:
         overwrite_npz : bool
             overwrite existing npz files  (incompatinble with read_npz)
         read_chk : bool
-            if True, read the checkpoint file, otherwise create a '~wannierberri.w90files.CheckPoint_bare' object and prepare for disentanglement
+            if True, read the checkpoint file, otherwise create a '~wannierberri.w90files.CheckPoint_bare' object and prepare for wannierisation
         kmesh_tol : float
             see `~wannierberri.w90files.CheckPoint`
         bk_complete_tol : float
@@ -465,12 +464,12 @@ class Wannier90data:
 
     def wannierise(self, **kwargs):
         """
-        Perform the disentanglement procedure calling `~wannierberri.system.disentangle`
+        Perform the wannierisation procedure calling `~wannierberri.wannierise.wannierise`
 
         Parameters
         ----------
         kwargs : dict
-            the keyword arguments to be passed to `~wannierberri.system.disentangle`     
+            the keyword arguments to be passed to `~wannierberri.wannierise.wannierise`
         """
         wannierise(self, **kwargs)
 

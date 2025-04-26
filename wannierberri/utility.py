@@ -101,15 +101,14 @@ def find_degen(arr, degen_thresh):
     return [(ib1, ib2) for ib1, ib2 in zip(A, A[1:])]
 
 
-
-def get_angle(sina, cosa):
-    """Get angle in radian from sin and cos."""
-    if abs(cosa) > 1.0:
-        cosa = np.round(cosa, decimals=1)
-    alpha = np.arccos(cosa)
-    if sina < 0.0:
-        alpha = 2.0 * np.pi - alpha
-    return alpha
+# def get_angle(sina, cosa):
+#     """Get angle in radian from sin and cos."""
+#     if abs(cosa) > 1.0:
+#         cosa = np.round(cosa, decimals=1)
+#     alpha = np.arccos(cosa)
+#     if sina < 0.0:
+#         alpha = 2.0 * np.pi - alpha
+#     return alpha
 
 
 def angle_vectors(vec1, vec2):

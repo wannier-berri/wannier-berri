@@ -52,9 +52,9 @@ class CheckPoint:
         self.nntot = readint()[0]
         self.num_wann = readint()[0]
         self.checkpoint = readstr(FIN)
-        self.have_disentangled = bool(readint()[0])
-        print(f"have_disentangled={self.have_disentangled}")
-        if self.have_disentangled:
+        have_disentangled = bool(readint()[0])
+        print(f"have_disentangled={have_disentangled}")
+        if have_disentangled:
             self.omega_invariant = readfloat()[0]
             lwindow = np.array(readint().reshape((self.num_kpts, self.num_bands)), dtype=bool)
             ndimwin = readint()
@@ -68,7 +68,7 @@ class CheckPoint:
 
         u_matrix = readcomplex().reshape((self.num_kpts, self.num_wann, self.num_wann)).swapaxes(1, 2)
         m_matrix = readcomplex().reshape((self.num_kpts, self.nntot, self.num_wann, self.num_wann)).swapaxes(2, 3)
-        if self.have_disentangled:
+        if have_disentangled:
             self.v_matrix = [u_opt[:nd, :].dot(u) for u, u_opt, nd in zip(u_matrix, u_matrix_opt, ndimwin)]
             # self.v_matrix = [u_opt.dot(u) for u, u_opt in zip(u_matrix, u_matrix_opt)]
         else:
@@ -458,7 +458,7 @@ class CheckPoint:
 class CheckPoint_bare(CheckPoint):
     """
             Class to store data from Wanierisationm obtained internally
-            Initialize without the v_matrix (to be written later by `~wannierberri.system.disentangle`)
+            Initialize without the v_matrix (to be written later by `~wannierberri.wannierise.wannierise`)
 
             Parameters
             ----------

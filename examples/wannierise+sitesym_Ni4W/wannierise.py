@@ -62,7 +62,7 @@ if sitesym:
 
         projections = ProjectionsSet([projection1, projection2, projection3, projection4])
         symmetrizer.set_D_wann_from_projections(projections)
-        symmetrizer.to_npz("Ni4W.dmn.npz")
+        symmetrizer.to_npz("Ni4W.sawf.npz")
     w90data.set_symmetrizer(symmetrizer)
 
 proj_str = """0.200749460000, 0.199526250000, 0.400275700000: d
@@ -108,10 +108,10 @@ symmetrizer.spacegroup.show()
 
 t2 = time()
 
-print(f"dmn.num_wann = {symmetrizer.num_wann}, dmn.NB = {symmetrizer.NB}")
-w90data.set_file("dmn", symmetrizer)
+print(f"symmetrizer.num_wann = {symmetrizer.num_wann}, symmetrizer.NB = {symmetrizer.NB}")
+w90data.set_symmetrizer(symmetrizer)
 
-# print(f"check amn: {dmn.check_amn(w90data.amn)}")
+# print(f"check amn: {symmetrizer.check_amn(w90data.amn)}")
 # exit()
 
 t2a = time()
@@ -138,8 +138,8 @@ w90data.wannierise(init="amn",
                     )
 t5 = time()
 print("Time elapsed: ", time() - t0)
-print("Time elapsed (DMN): ", t2 - t1)
-print("Time elapsed (set dmn): ", t2a - t2)
+print("Time elapsed (symmetrizer): ", t2 - t1)
+print("Time elapsed (set symmetrizer): ", t2a - t2)
 print("Time elapsed (Wannierisation): ", t5 - t4)
 print("Time elapsed (ray init): ", t3 - t2a)
 print("Time elapsed (Window): ", t4 - t3)
