@@ -6,7 +6,6 @@ from irrep.spacegroup import SpaceGroupBare
 import numpy as np
 
 
-
 from ..utility import clear_cached
 from ..io import SavableNPZ
 from .utility import get_inverse_block, rotate_block_matrix
