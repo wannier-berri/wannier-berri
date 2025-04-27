@@ -26,7 +26,7 @@ from .amn import AMN
 from .xxu import UIU, UHU, SIU, SHU
 from .spn import SPN
 from .unk import UNK
-from .chk import CheckPoint, CheckPoint_bare
+from .chk import CheckPoint
 
 FILES_CLASSES = {'win': WIN,
                 'eig': EIG,
@@ -114,12 +114,9 @@ class Wannier90data:
             readfiles = tuple(_readfiles)
         for f in readfiles:
             self.set_file(f)
-        if 'chk' in readfiles:
-            self.wannierised = True
-        else:
+        if 'chk' not in readfiles:
             assert "win" in readfiles, "either 'chk' or 'win' should be in readfiles"
             self.set_chk(read=False)
-            self.wannierised = False
 
 
     @cached_property
@@ -199,7 +196,7 @@ class Wannier90data:
         if not overwrite and self.has_file(key):
             raise RuntimeError(f"file '{key}' was already set")
         if val is None:
-            if key in FILES_CLASSES:
+            if key not in FILES_CLASSES:
                 raise ValueError(f"key '{key}' is not a valid w90 file")
             val = FILES_CLASSES[key](self.seedname, autoread=True, **kwargs_auto)
         self.check_conform(key, val)
@@ -224,10 +221,12 @@ class Wannier90data:
     def set_chk(self, val=None, kmesh_tol=1e-7, bk_complete_tol=1e-5, read=False, overwrite=False):
         if not overwrite and self.has_file("chk"):
             raise RuntimeError("chk file was already set")
-        if not read:
-            val = CheckPoint_bare(win=self.win)
-        elif val is None:
-            val = CheckPoint(self.seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+        if val is None:
+            if read:
+                val = CheckPoint().from_w90_file(self.seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+            else:
+                val = CheckPoint().from_win(win=self.win)
+
         self._files['chk'] = val
         self.wannierised = read
         self.kpt_mp_grid = [tuple(k) for k in
@@ -410,11 +409,11 @@ class Wannier90data:
         return range(self.chk.num_kpts)
 
     @cached_property
-    def wannier_centers(self):
+    def wannier_centers_cart(self):
         """
         Returns the Wannier centers stored in the checkpoint file
         """
-        return self.chk.wannier_centers
+        return self.chk.wannier_centers_cart
 
     def check_wannierised(self, msg=""):
         """	

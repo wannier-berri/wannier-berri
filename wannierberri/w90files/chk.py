@@ -3,7 +3,6 @@ from time import time
 import numpy as np
 from .utility import readstr
 from ..io import FortranFileR
-import gc
 from ..utility import alpha_A, beta_A
 
 
@@ -21,10 +20,89 @@ class CheckPoint:
         tolerance for the completeness relation for finite-difference scheme
     """
 
-    def __init__(self, seedname, kmesh_tol=1e-7, bk_complete_tol=1e-5):
+    def __init__(self,
+                real_lattice=None,
+                num_wann=None,
+                num_bands=None,
+                num_kpts=None,
+                wannier_centers_cart=None,
+                wannier_spreads=None,
+                v_matrix=None,
+                kpt_latt=None,
+                mp_grid=None,
+                kmesh_tol=1e-7,
+                bk_complete_tol=1e-5,
+                win_min=None,
+                win_max=None,
+    ):
+        if real_lattice is not None:
+            real_lattice = np.array(real_lattice, dtype=float)
+            assert real_lattice.shape == (3, 3), f"real_lattice should be of shape (3, 3), but got {real_lattice.shape}"
+            self.recip_lattice = 2 * np.pi * np.linalg.inv(real_lattice).T
+            self.real_lattice = real_lattice
+        else:
+            self.recip_lattice = None
+            self.real_lattice = None
 
-        self.kmesh_tol = kmesh_tol  # will be used in set_bk
-        self.bk_complete_tol = bk_complete_tol  # will be used in set_bk
+        if wannier_centers_cart is not None:
+            wannier_centers_cart = np.array(wannier_centers_cart, dtype=float)
+            if num_wann is None:
+                num_wann = wannier_centers_cart.shape[0]
+            else:
+                assert wannier_centers_cart.shape == (num_wann, 3), f"wannier_centers should be of shape ({num_wann}, 3), but got {wannier_centers_cart.shape}"
+        self.wannier_centers_cart = wannier_centers_cart
+
+        if wannier_spreads is not None:
+            if num_wann is None:
+                num_wann = wannier_spreads.shape[0]
+            else:
+                assert len(wannier_spreads) == num_wann, f"wannier_spreads should be of shape ({num_wann},), but got {len(wannier_spreads)}"
+        self.wannier_spreads = wannier_spreads
+
+        if kpt_latt is not None:
+            kpt_latt = np.array(kpt_latt, dtype=float)
+            if num_kpts is None:
+                num_kpts = kpt_latt.shape[0]
+            assert kpt_latt.shape == (num_kpts, 3), f"kpt_latt should be of shape ({num_kpts}, 3), but got {kpt_latt.shape}"
+        self.kpt_latt = kpt_latt
+
+        if mp_grid is not None:
+            mp_grid = np.array(mp_grid, dtype=int)
+            assert mp_grid.shape == (3,), f"mp_grid should be of shape (3,), but got {mp_grid.shape}"
+        self.mp_grid = mp_grid
+
+        if v_matrix is not None:
+            v_matrix = np.array(v_matrix, dtype=complex)
+            if num_kpts is None:
+                num_kpts = v_matrix.shape[0]
+            else:
+                assert v_matrix.shape[0] == num_kpts, f"v_matrix should be of shape ({num_kpts}, num_bands, num_wann), but got {v_matrix.shape}"
+            if num_bands is None:
+                num_bands = v_matrix.shape[1]
+            else:
+                assert v_matrix.shape[1] == num_bands, f"v_matrix should be of shape (num_kpts, {num_bands}, num_wann), but got {v_matrix.shape}"
+            if num_wann is None:
+                num_wann = v_matrix.shape[2]
+            else:
+                assert v_matrix.shape[2] == num_wann, f"v_matrix should be of shape (num_kpts, num_bands, {num_wann}), but got {v_matrix.shape}"
+
+        self.v_matrix = v_matrix
+        self.kmesh_tol = kmesh_tol
+        self.bk_complete_tol = bk_complete_tol
+        self.num_wann = num_wann
+        self.num_bands = num_bands
+        self.num_kpts = num_kpts
+        if win_min is None and self.num_kpts is not None:
+            win_min = np.array([0] * self.num_kpts)
+        if win_max is None and self.num_kpts is not None:
+            win_max = np.array([self.num_bands] * self.num_kpts)
+        self.win_min = win_min
+        self.win_max = win_max
+
+    def from_w90_file(self, seedname, kmesh_tol=1e-7, bk_complete_tol=1e-5):
+
+        kmesh_tol = kmesh_tol  # will be used in set_bk
+        bk_complete_tol = bk_complete_tol  # will be used in set_bk
         t0 = time()
         seedname = seedname.strip()
         FIN = FortranFileR(seedname + '.chk')
@@ -36,48 +114,61 @@ class CheckPoint:
             return a[::2] + 1j * a[1::2]
 
         print('Reading restart information from file ' + seedname + '.chk :')
-        self.comment = readstr(FIN)
-        self.num_bands = readint()[0]
+        readstr(FIN)  # comment line
+        num_bands = readint()[0]
         num_exclude_bands = readint()[0]
-        self.exclude_bands = readint()
-        assert len(self.exclude_bands) == num_exclude_bands, f"read exclude_bands are {self.exclude_bands}, length={len(self.exclude_bands)} while num_exclude_bands={num_exclude_bands}"
-        self.real_lattice = readfloat().reshape((3, 3), order='F')
-        self.recip_lattice = readfloat().reshape((3, 3), order='F')
-        assert np.linalg.norm(self.real_lattice.dot(self.recip_lattice.T) / (2 * np.pi) - np.eye(3)) < 1e-14, f"the read real and reciprocal lattices are not consistent {self.real_lattice.dot(self.recip_lattice.T) / (2 * np.pi)}!=identiy"
-        self.num_kpts = readint()[0]
-        self.mp_grid = readint()
-        assert len(self.mp_grid) == 3
-        assert self.num_kpts == np.prod(self.mp_grid), f"the number of k-points is not consistent with the mesh {self.num_kpts}!={np.prod(self.mp_grid)}"
-        self.kpt_latt = readfloat().reshape((self.num_kpts, 3))
-        self.nntot = readint()[0]
-        self.num_wann = readint()[0]
-        self.checkpoint = readstr(FIN)
+        exclude_bands = readint()
+        assert len(exclude_bands) == num_exclude_bands, f"read exclude_bands are {exclude_bands}, length={len(exclude_bands)} while num_exclude_bands={num_exclude_bands}"
+        real_lattice = readfloat().reshape((3, 3), order='F')
+        recip_lattice = readfloat().reshape((3, 3), order='F')
+        assert np.linalg.norm(real_lattice.dot(recip_lattice.T) / (2 * np.pi) - np.eye(3)) < 1e-14, f"the read real and reciprocal lattices are not consistent {self.real_lattice.dot(self.recip_lattice.T) / (2 * np.pi)}!=identiy"
+        num_kpts = readint()[0]
+        mp_grid = readint()
+        assert len(mp_grid) == 3
+        assert num_kpts == np.prod(mp_grid), f"the number of k-points is not consistent with the mesh {num_kpts}!={np.prod(mp_grid)}"
+        kpt_latt = readfloat().reshape((num_kpts, 3))
+        nntot = readint()[0]
+        num_wann = readint()[0]
+        readstr(FIN)  # checkpoint string
         have_disentangled = bool(readint()[0])
         print(f"have_disentangled={have_disentangled}")
         if have_disentangled:
             self.omega_invariant = readfloat()[0]
-            lwindow = np.array(readint().reshape((self.num_kpts, self.num_bands)), dtype=bool)
+            lwindow = np.array(readint().reshape((num_kpts, num_bands)), dtype=bool)
             ndimwin = readint()
             print(f"ndimwin={ndimwin}")
-            u_matrix_opt = readcomplex().reshape((self.num_kpts, self.num_wann, self.num_bands)).swapaxes(1, 2)
-            self.win_min = np.array([np.where(lwin)[0].min() for lwin in lwindow])
-            self.win_max = np.array([wm + nd for wm, nd in zip(self.win_min, ndimwin)])
+            u_matrix_opt = readcomplex().reshape((num_kpts, num_wann, num_bands)).swapaxes(1, 2)
+            win_min = np.array([np.where(lwin)[0].min() for lwin in lwindow])
+            win_max = np.array([wm + nd for wm, nd in zip(win_min, ndimwin)])
         else:
-            self.win_min = np.array([0] * self.num_kpts)
-            self.win_max = np.array([self.num_wann] * self.num_kpts)
+            win_min, win_max = None, None
 
-        u_matrix = readcomplex().reshape((self.num_kpts, self.num_wann, self.num_wann)).swapaxes(1, 2)
-        m_matrix = readcomplex().reshape((self.num_kpts, self.nntot, self.num_wann, self.num_wann)).swapaxes(2, 3)
+        u_matrix = readcomplex().reshape((num_kpts, num_wann, num_wann)).swapaxes(1, 2)
+        readcomplex().reshape((num_kpts, nntot, num_wann, num_wann)).swapaxes(2, 3)  # m_matrix
         if have_disentangled:
-            self.v_matrix = [u_opt[:nd, :].dot(u) for u, u_opt, nd in zip(u_matrix, u_matrix_opt, ndimwin)]
+            v_matrix = [u_opt[:nd, :].dot(u) for u, u_opt, nd in zip(u_matrix, u_matrix_opt, ndimwin)]
             # self.v_matrix = [u_opt.dot(u) for u, u_opt in zip(u_matrix, u_matrix_opt)]
         else:
-            self.v_matrix = u_matrix
-        self._wannier_centers = readfloat().reshape((self.num_wann, 3))
-        self.wannier_spreads = readfloat().reshape((self.num_wann))
-        del u_matrix, m_matrix
-        gc.collect()
+            v_matrix = u_matrix
+        wannier_centers_cart = readfloat().reshape((num_wann, 3))
+        wannier_spreads = readfloat().reshape((num_wann))
         print(f"Time to read .chk : {time() - t0}")
+        self.__init__(real_lattice=real_lattice,
+                      v_matrix=v_matrix,
+                      wannier_centers_cart=wannier_centers_cart, wannier_spreads=wannier_spreads,
+                      kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol,
+                      kpt_latt=kpt_latt, mp_grid=mp_grid,
+                      win_min=win_min, win_max=win_max,)
+        return self
+
+    @property
+    def wannierised(self):
+        if not hasattr(self, "v_matrix"):
+            return False
+        elif self.v_matrix is None:
+            return False
+        else:
+            return True
 
     def spin_order_block_to_interlace(self):
         """
@@ -447,46 +538,31 @@ class CheckPoint:
         return SHR_q
 
 
-    @property
-    def wannier_centers(self):
-        return self._wannier_centers
 
 
-
-
-
-class CheckPoint_bare(CheckPoint):
-    """
-            Class to store data from Wanierisationm obtained internally
-            Initialize without the v_matrix (to be written later by `~wannierberri.wannierise.wannierise`)
-
-            Parameters
-            ----------
-            win : `~wannierberri.system.w90_files.WIN`
-            eig : `~wannierberri.system.w90_files.EIG`
-            mmn : `~wannierberri.system.w90_files.MMN`
-            """
-
-    def __init__(self, win):
-        print("creating CheckPoint_bare")
-        self.mp_grid = np.array(win.data["mp_grid"])
-        self.kpt_latt = win.get_kpoints()
-        self.real_lattice = win.get_unit_cell_cart_ang()
-        self.num_kpts = self.kpt_latt.shape[0]
+    def from_win(self, win):
+        print("creating empty CheckPoint from Win file")
+        mp_grid = np.array(win.data["mp_grid"])
+        kpt_latt = win.get_kpoints()
+        real_lattice = win.get_unit_cell_cart_ang()
         try:
-            self.num_wann = win["num_wann"]
+            num_wann = win["num_wann"]
         except KeyError:
-            self.num_wann = None
+            num_wann = None
         try:
-            self.num_bands = win["num_bands"]
+            num_bands = win["num_bands"]
         except KeyError:
-            self.num_bands = None
-        self.win_min = np.array([0] * self.num_kpts)
-        self.win_max = np.array([self.num_bands] * self.num_kpts)
-        self.recip_lattice = 2 * np.pi * np.linalg.inv(self.real_lattice).T
+            num_bands = None
+        self.__init__(real_lattice=real_lattice,
+                      num_wann=num_wann,
+                      num_bands=num_bands,
+                      kpt_latt=kpt_latt,
+                      mp_grid=mp_grid,)
+        return self
 
     def select_bands(self, selected_bands):
         if selected_bands is not None:
+            assert not self.wannierised, "v_matrix already set, cannot select bands"
             selected_bands_bool = np.zeros(self.num_bands, dtype=bool)
             selected_bands_bool[selected_bands] = True
             assert np.any(selected_bands_bool), "No bands selected"

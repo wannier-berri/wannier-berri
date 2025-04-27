@@ -65,8 +65,8 @@ def test_wannierise(outer_window):
         sitesym=True,
         localise=True
     )
-    wannier_centers = w90data.chk._wannier_centers
-    wannier_spreads = w90data.chk._wannier_spreads
+    wannier_centers = w90data.chk.wannier_centers_cart
+    wannier_spreads = w90data.chk.wannier_spreads
     wannier_spreads_mean = np.mean(wannier_spreads)
     if check_results:
         assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
@@ -257,8 +257,8 @@ def test_sitesym_Fe(include_TR, use_window):
                     localise=True,
                     sitesym=True,
                     )
-    assert np.allclose(w90data.wannier_centers, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(w90data.wannier_centers))} \n{w90data.wannier_centers}"
-    spreads = w90data.chk._wannier_spreads
+    assert np.allclose(w90data.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(w90data.wannier_centers_cart))} \n{w90data.wannier_centers_cart}"
+    spreads = w90data.chk.wannier_spreads
     assert np.all(spreads < 2)
     atol = 1e-8
     assert spreads[4] == approx(spreads[6], abs=atol)

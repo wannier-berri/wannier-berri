@@ -83,9 +83,9 @@ def wannierise(w90data,
             the optimized U matrices
         - w90data.wannierised : bool
             True
-        - w90data.chk._wannier_centers : numpy.ndarray (nW,3)
+        - w90data.chk.wannier_centers_cart : numpy.ndarray (nW,3)
             the centers of the Wannier functions
-        - w90data.chk._wannier_spreads : numpy.ndarray (nW)
+        - w90data.chk.wannier_spreads : numpy.ndarray (nW)
             the spreads of the Wannier functions
 
     * If the outer window is needed, use :func:`~wannierberri.w90files.Wannier90data.select_bands` before calling this function. 
@@ -244,7 +244,7 @@ def update_chk(w90data, U_opt_full_BZ,
             wcc = wcc_new
         if spreads is None:
             spreads = spreads_new
-    w90data.chk._wannier_centers, w90data.chk._wannier_spreads = wcc, spreads
+    w90data.chk.wannier_centers_cart, w90data.chk.wannier_spreads = wcc, spreads
     if print_wcc:
         print_centers_and_spreads(wcc, spreads, comment=comment + ": from chk")
     return wcc, spreads

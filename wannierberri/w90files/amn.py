@@ -219,6 +219,6 @@ def amn_from_bandstructure(bandstructure: BandStructure, projections: Projection
             data.append(wf @ proj_gk.T)
     data = np.array(data)
     if return_object:
-        return AMN(data=data)
+        return AMN().from_dict(data=data)
     else:
         return data
