@@ -51,9 +51,9 @@ def test_wannierise(outer_window):
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     if outer_window is not None:
-        w90data.apply_window(win_min=outer_window[0], win_max=outer_window[1])
+        w90data.select_bands(win_min=outer_window[0], win_max=outer_window[1])
     print(f"num_bands: eig:{w90data.eig.NB}, mmn:{w90data.mmn.NB}, amn:{w90data.amn.NB}")
-    # Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
+    # Now wannierise with sitesym and frozen window (the part that is not implemented in Wanier90)
     w90data.wannierise(
         froz_min=-8,
         froz_max=20,
@@ -65,8 +65,8 @@ def test_wannierise(outer_window):
         sitesym=True,
         localise=True
     )
-    wannier_centers = w90data.chk._wannier_centers
-    wannier_spreads = w90data.chk._wannier_spreads
+    wannier_centers = w90data.chk.wannier_centers_cart
+    wannier_spreads = w90data.chk.wannier_spreads
     wannier_spreads_mean = np.mean(wannier_spreads)
     if check_results:
         assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
@@ -136,7 +136,7 @@ def test_wannierise(outer_window):
 
 @fixture
 def check_sawf():
-    def _inner(sawf_new, sawf_ref, dmn_only=False):
+    def _inner(sawf_new, sawf_ref):
 
         for key in ['NB', "num_wann", "NK", "NKirr", "kptirr", "kptirr2kpt", "kpt2kptirr", "time_reversals"]:
             assert np.all(getattr(sawf_ref, key) == getattr(sawf_new, key)), (
@@ -157,11 +157,10 @@ def check_sawf():
                 f"new: {sawf_new.d_band_block_indices}\n"
             )
 
-        if not dmn_only:
-            for i, blockpair in enumerate(zip(sawf_ref.rot_orb_list, sawf_new.rot_orb_list)):
-                blockref, blocknew = blockpair
-                assert blockref.shape == blocknew.shape, f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF\n"
-                assert blockref == approx(blocknew, abs=1e-6), f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+        for i, blockpair in enumerate(zip(sawf_ref.rot_orb_list, sawf_new.rot_orb_list)):
+            blockref, blocknew = blockpair
+            assert blockref.shape == blocknew.shape, f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF\n"
+            assert blockref == approx(blocknew, abs=1e-6), f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
 
 
         for isym in range(sawf_ref.Nsym):
@@ -246,7 +245,7 @@ def test_sitesym_Fe(include_TR, use_window):
     symmetrizer = SymmetrizerSAWF().from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
     w90data.set_symmetrizer(symmetrizer)
     if use_window:
-        w90data.apply_window(win_min=-8, win_max=50)
+        w90data.select_bands(win_min=-8, win_max=50)
     froz_max = 30
     w90data.wannierise(init="amn",
                        froz_min=-8,
@@ -258,8 +257,8 @@ def test_sitesym_Fe(include_TR, use_window):
                     localise=True,
                     sitesym=True,
                     )
-    assert np.allclose(w90data.wannier_centers, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(w90data.wannier_centers))} \n{w90data.wannier_centers}"
-    spreads = w90data.chk._wannier_spreads
+    assert np.allclose(w90data.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(w90data.wannier_centers_cart))} \n{w90data.wannier_centers_cart}"
+    spreads = w90data.chk.wannier_spreads
     assert np.all(spreads < 2)
     atol = 1e-8
     assert spreads[4] == approx(spreads[6], abs=atol)

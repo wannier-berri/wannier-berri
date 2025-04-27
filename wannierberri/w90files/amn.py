@@ -41,8 +41,16 @@ class AMN(W90_file):
     def NB(self):
         return self.data.shape[1]
 
-    def apply_window(self, selected_bands):
-        print(f"apply_window amn, selected_bands={selected_bands}")
+    def select_bands(self, selected_bands):
+        """
+        Select the bands to be used in the calculation, the rest are excluded
+
+        Parameters
+        ----------
+        selected_bands : list of int or bool
+            the indices of the bands to be used, or a boolean mask
+        """
+        print(f"selecting bands {selected_bands} in amn")
         if selected_bands is not None:
             self.data = self.data[:, selected_bands, :]
 
@@ -57,7 +65,7 @@ class AMN(W90_file):
     def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(),
                  **kwargs):
         self.npz_tags = ["data"]
-        super().__init__(seedname, ext="amn", npar=npar, **kwargs)
+        super().__init__(seedname=seedname, ext="amn", npar=npar, **kwargs)
 
     def from_w90_file(self, seedname, npar):
         f_amn_in = open(seedname + ".amn", "r").readlines()
@@ -79,11 +87,11 @@ class AMN(W90_file):
                 for ib in range(self.NB):
                     f_amn_out.write(f"{ib + 1:4d} {iw + 1:4d} {ik + 1:4d} {self.data[ik, ib, iw].real:17.12f} {self.data[ik, ib, iw].imag:17.12f}\n")
 
-    def get_disentangled(self, v_left, v_right):
-        print(f"v shape  {v_left.shape}  {v_right.shape} , amn shape {self.data.shape} ")
-        data = np.einsum("klm,kmn->kln", v_left, self.data)
-        print(f"shape of data {data.shape} , old {self.data.shape}")
-        return self.__class__(data=data)
+    # def get_disentangled(self, v_left, v_right):
+    #     print(f"v shape  {v_left.shape}  {v_right.shape} , amn shape {self.data.shape} ")
+    #     data = np.einsum("klm,kmn->kln", v_left, self.data)
+    #     print(f"shape of data {data.shape} , old {self.data.shape}")
+    #     return self.__class__(data=data)
 
     def spin_order_block_to_interlace(self):
         """
@@ -211,6 +219,6 @@ def amn_from_bandstructure(bandstructure: BandStructure, projections: Projection
             data.append(wf @ proj_gk.T)
     data = np.array(data)
     if return_object:
-        return AMN(data=data)
+        return AMN().from_dict(data=data)
     else:
         return data

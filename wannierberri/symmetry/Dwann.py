@@ -14,8 +14,7 @@ class Dwann:
     Parameters
     ----------
     spacegroup : irrep.SpaceGroup
-        A space group object. (note, the order of operations should coincide with dmn file,
-        so it should be initialized with reading the .sym file)
+        A space group object. 
     positions : list(np.ndarray(shape=(3,), dtype=float))
         List of positions of Wannier centers in reduced coordinates.
         may be initialized with only one position. Then the other positions in the orbit will be generated

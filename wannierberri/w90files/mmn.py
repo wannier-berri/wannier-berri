@@ -39,7 +39,7 @@ class MMN(W90_file):
 
     def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(), **kwargs):
         self.npz_tags = ["data", "neighbours", "G"]
-        super().__init__(seedname, ext="mmn", npar=npar, **kwargs)
+        super().__init__(seedname=seedname, ext="mmn", npar=npar, **kwargs)
 
     def from_w90_file(self, seedname, npar):
         t0 = time()
@@ -91,33 +91,33 @@ class MMN(W90_file):
                         f_mmn_out.write(f"{self.data[ik, ib, n, m].real} {self.data[ik, ib, n, m].imag}\n")
         f_mmn_out.close()
 
-    def apply_window(self, selected_bands):
+    def select_bands(self, selected_bands):
         if selected_bands is not None:
             self.data = self.data[:, :, selected_bands, :][:, :, :, selected_bands]
 
-    def get_disentangled(self, v_left, v_right):
-        """
-        Reduce number of bands
+    # def get_disentangled(self, v_left, v_right):
+    #     """
+    #     Reduce number of bands
 
-        Parameters
-        ----------
-        v_matrix : np.ndarray(NB,num_wann)
-            the matrix of column vectors defining the Wannier gauge
-        v_matrix_dagger : np.ndarray(num_wann,NB)
-            the Hermitian conjugate of `v_matrix`
+    #     Parameters
+    #     ----------
+    #     v_matrix : np.ndarray(NB,num_wann)
+    #         the matrix of column vectors defining the Wannier gauge
+    #     v_matrix_dagger : np.ndarray(num_wann,NB)
+    #         the Hermitian conjugate of `v_matrix`
 
-        Returns
-        -------
-        `~wannierberri.system.w90_files.MMN`
-            the disentangled MMN object
-        """
-        print(f"v shape {v_left.shape}  {v_right.shape}")
-        data = np.zeros((self.NK, self.NNB, v_right.shape[2], v_right.shape[2]), dtype=complex)
-        print(f"shape of data {data.shape} , old {self.data.shape}")
-        for ik in range(self.NK):
-            for ib, iknb in enumerate(self.neighbours[ik]):
-                data[ik, ib] = v_left[ik] @ self.data[ik, ib] @ v_right[iknb]
-        return self.__class__(data=data)
+    #     Returns
+    #     -------
+    #     `~wannierberri.system.w90_files.MMN`
+    #         the disentangled MMN object
+    #     """
+    #     print(f"v shape {v_left.shape}  {v_right.shape}")
+    #     data = np.zeros((self.NK, self.NNB, v_right.shape[2], v_right.shape[2]), dtype=complex)
+    #     print(f"shape of data {data.shape} , old {self.data.shape}")
+    #     for ik in range(self.NK):
+    #         for ib, iknb in enumerate(self.neighbours[ik]):
+    #             data[ik, ib] = v_left[ik] @ self.data[ik, ib] @ v_right[iknb]
+    #     return self.__class__(data=data)
 
     def set_bk(self, kpt_latt, mp_grid, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
         try:

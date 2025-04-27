@@ -4,7 +4,7 @@
 |NEW| Wannierisation inside WannierBerri
 ========================================
 
-Now WannierBerri can construct wannier functions on its own. Bith disentanglement and localisation.
+Now WannierBerri can construct wannier functions on its own. Both disentanglement and localisation.
 
 Wannierisation can be performed with both `sitesym=True` and **frozen window** (this feature is currently not available in Wannier90).
 
@@ -47,7 +47,7 @@ Example
    w90data = wberri.w90files.Wannier90data(seedname='diamond')
    w90data.set_file("dmn", dmn_new)
 
-   #Now disentangle with sitesym and frozen window (the part that is not implemented in Wanier90)
+   #Now wannierise with sitesym and frozen window (the part that is not implemented in Wanier90)
    w90data.wannierise(
                   froz_min=0,
                   froz_max=4,

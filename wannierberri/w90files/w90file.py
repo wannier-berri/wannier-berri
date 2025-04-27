@@ -1,5 +1,4 @@
 import abc
-import numpy as np
 import os
 from ..io import SavableNPZ
 
@@ -33,13 +32,16 @@ class W90_file(SavableNPZ):
         the tags to be saved/loaded in the npz file
     """
 
-    def __init__(self, seedname="wannier90", ext="", read_npz=True, write_npz=True, data=None, selected_bands=None, **kwargs):
+    def __init__(self, autoread=False, **kwargs):
         if not hasattr(self, "npz_tags"):
             self.npz_tags = ["data"]
-        if not hasattr(self, "npz_tags_optional"):
-            self.npz_tags_optional = []
-        if not hasattr(self, "default_tags"):
-            self.default_tags = {}
+        super().__init__()
+        if autoread:
+            self.init_auto(**kwargs)
+
+    def init_auto(self, seedname="wannier90", ext="", read_npz=True, write_npz=True, data=None, selected_bands=None, **kwargs):
+        if not hasattr(self, "npz_tags"):
+            self.npz_tags = ["data"]
         if data is not None:
             self.data = data
             return
@@ -52,7 +54,7 @@ class W90_file(SavableNPZ):
             if write_npz:
                 self.to_npz(f_npz)
         # window is applied after, so that npz contains same data as original file
-        self.apply_window(selected_bands)
+        self.select_bands(selected_bands)
 
 
 
@@ -64,26 +66,23 @@ class W90_file(SavableNPZ):
         self.data = None
 
     @abc.abstractmethod
-    def apply_window(self, selected_bands):
-        pass
-
-    def get_disentangled(self, v_matrix_dagger, v_matrix):
+    def select_bands(self, selected_bands):
         """
-        reduce number of bands
+        abstract method to select the bands from the data
+
+        Select the bands to be used in the calculation, the rest are excluded
 
         Parameters
         ----------
-        v_matrix : np.ndarray(NB,num_wann)
-            the matrix of column vectors defining the Wannier gauge
-
+        selected_bands : list of int
+            the list of bands to be used in the calculation
         """
-        data = np.einsum("klm,kmn...,kno->klo", v_matrix_dagger, self.data, v_matrix)
-        return self.__class__(data=data)
+        pass
 
     @property
     def n_neighb(self):
         """
-        number of nearest neighbours indices
+        number of nearest neighbours (in the k grid) indices 
         """
         return 0
 

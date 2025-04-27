@@ -7,7 +7,7 @@ import ase
 from matplotlib import pyplot as plt
 import numpy as np
 
-from wannierberri.wannierise.projections import Projection, ProjectionsSet
+from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from wannierberri.workflow import WorkflowQE, Executables
 from wannierberri.factors import bohr
 

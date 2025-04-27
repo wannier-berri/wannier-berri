@@ -7,7 +7,7 @@ import subprocess
 from matplotlib import pyplot as plt
 import wannierberri as wberri
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
-from wannierberri.wannierise.projections import Projection
+from wannierberri.symmetry.projections import Projection
 
 data_dir = "../../tests/data/diamond"
 
@@ -33,8 +33,6 @@ win_file.write("diamond")
 # if the dmn file needs to be geneated, (if False - will be read from the file)
 generate_dmn = True
 
-# if the disentangled files need to be written
-write_disentangled = True
 
 # Read the data from the Wanier90 inputs 
 w90data = wberri.w90files.Wannier90data(seedname='diamond')

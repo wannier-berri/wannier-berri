@@ -8,8 +8,8 @@ from irrep.bandstructure import BandStructure
 from matplotlib import pyplot as plt
 import numpy as np
 from ..w90files.w90data import FILES_CLASSES
-from ..w90files.dmn import DMN
-from ..wannierise.projections import ORBITALS, ProjectionsSet
+# from ..symmetry.sawf import SymmetrizerSAWF
+from ..symmetry.projections import ORBITALS, ProjectionsSet
 from ..w90files import WIN, Wannier90data
 from .. parallel import Serial as wbSerial
 from .ase import write_espresso_in
@@ -320,7 +320,7 @@ class WorkflowQE:
         self.kwargs_bands.update(self.kwargs_gen)
         self.kwargs_bands.update(kwargs_bands)
 
-        self.pw2wannier_full_list = ['eig', 'mmn', 'amn', 'spn', 'uhu', 'uiu', 'unk', 'dmn']
+        self.pw2wannier_full_list = ['eig', 'mmn', 'amn', 'spn', 'uhu', 'uiu', 'unk']
 
         self.kwargs_nscf = dict(calculation='nscf',
                                 nosym=True,
@@ -335,7 +335,7 @@ class WorkflowQE:
                 ['gs', 'nscf', 'pw2wannier', 'wannier_w90',
                  'bands_qe', 'bands_wannier_w90',
                  'wannierise_wberri', 'bands_wannier_wberri',
-                 'win', 'projections', 'dmn'],
+                 'win', 'projections', 'symmetrizer'],
                 depend=dict(nscf=['gs'],
                             pw2wannier=['nscf', 'win'],
                             win=['nscf', 'projections'],
@@ -478,9 +478,7 @@ class WorkflowQE:
         if self.flags.check('wannierise_wberri') and not enforce:
             return
         w90data = Wannier90data(seedname=self.prefix, readfiles=readfiles)
-        w90data.apply_window(**kwargs_window)
-        # for key in ["amn", "mmn", "eig", "dmn"]:
-        #     print (f"w90data[{key}].NB = {w90data.get_file(key).NB}")
+        w90data.select_bands(**kwargs_window)
         w90data.wannierise(**kwargs)
         self.system_wberri = System_w90(w90data=w90data, **kwargs_system)
         self.flags.on('wannierise_wberri')
@@ -494,43 +492,43 @@ class WorkflowQE:
                                     )
         return bandstructure.spacegroup
 
-    def create_dmn(self, Ecut=30, enforce=False, from_sym_file=None):
-        """
-        Create the DMN file for Wannier90
+    # def create_symmetrizer(self, Ecut=30, enforce=False, from_sym_file=None):
+    #     """
+    #     Create the DMN file for Wannier90
 
-        Parameters
-        ----------
-        projections: list(tuple)
-            List of tuples with the projections
-            [(f, l), ...]
-            f: np.array(3) or list(np.array(3))
-                The fractional coordinates of the atom (one or more of the orbit)
-            l: str
-                The angular momentum of the projection, e.g. 's', 'p', 'd', 'sp3'
-        Ecut: float
-            The energy cutoff for the plane waves in wave functions
-        enforce: bool
-            If True, recalculate the DMN file even if it has been calculated before
+    #     Parameters
+    #     ----------
+    #     projections: list(tuple)
+    #         List of tuples with the projections
+    #         [(f, l), ...]
+    #         f: np.array(3) or list(np.array(3))
+    #             The fractional coordinates of the atom (one or more of the orbit)
+    #         l: str
+    #             The angular momentum of the projection, e.g. 's', 'p', 'd', 'sp3'
+    #     Ecut: float
+    #         The energy cutoff for the plane waves in wave functions
+    #     enforce: bool
+    #         If True, recalculate the DMN file even if it has been calculated before
 
-        Notes
-        -----
-        projections here are given again, because previously projections were given as separate, not as orbits
-        TODO : unify his with set_projections
-        """
+    #     Notes
+    #     -----
+    #     projections here are given again, because previously projections were given as separate, not as orbits
+    #     TODO : unify his with set_projections
+    #     """
 
-        bandstructure = BandStructure(code='espresso',
-                                      prefix=self.prefix,
-                                      Ecut=Ecut,
-                                      normalize=False,
-                                      from_sym_file=from_sym_file
-                                    )
-        # bandstructure.spacegroup.show()
-        if enforce or not self.flags.check('dmn'):
-            dmn_new = DMN(empty=True)
-            dmn_new.from_irrep(bandstructure)
-            dmn_new.set_D_wann_from_projections(self.projections)
-            dmn_new.to_w90_file(self.prefix)
-            self.flags.on('dmn')
+    #     bandstructure = BandStructure(code='espresso',
+    #                                   prefix=self.prefix,
+    #                                   Ecut=Ecut,
+    #                                   normalize=False,
+    #                                   from_sym_file=from_sym_file
+    #                                 )
+    #     # bandstructure.spacegroup.show()
+    #     if enforce or not self.flags.check('dmn'):
+    #         dmn_new = DMN(empty=True)
+    #         dmn_new.from_irrep(bandstructure)
+    #         dmn_new.set_D_wann_from_projections(self.projections)
+    #         dmn_new.to_w90_file(self.prefix)
+    #         self.flags.on('dmn')
 
 
     def calc_bands_wannier_w90(self, kdensity=1000, enforce=False):
@@ -652,7 +650,7 @@ def run_pw2wannier(projections=[],
                    w90_cmd='wannier90.x',
                    kwargs_wannier={},
                    return_dict=False):
-    pw2wan_full_list = ['eig', 'mmn', 'amn', 'spn', 'uhu', 'uiu', 'unk', 'dmn']
+    pw2wan_full_list = ['eig', 'mmn', 'amn', 'spn', 'uhu', 'uiu', 'unk']
     if win is None:
         win = WIN(seedname)
 

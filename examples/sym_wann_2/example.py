@@ -138,5 +138,5 @@ for R in system_1.iRvec:
       print(f"cRvec_diff = \n{system_1.cRvec[iR0_1]-system_2.cRvec[iR0_2]}")
 
 print (f"time symmetrize system_1 = {t11-t10}")
-print (f"time symmetrize system_2 = {t23-t20}, where time to create spacegroup = {t21-t20}, time to create dmn = {t22-t21} and time to symmetrize = {t23-t22}")
+print (f"time symmetrize system_2 = {t23-t20}, where time to create spacegroup = {t21-t20}, time to create symmetrizer = {t22-t21} and time to symmetrize = {t23-t22}")
 print (f"{t221-t21}, {t222-t221}, {t223-t222}, {t22-t223}")

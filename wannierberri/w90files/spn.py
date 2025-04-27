@@ -44,6 +44,6 @@ class SPN(W90_file):
             self.data[ik] = A.transpose(1, 2, 0)
         print("----------\n SPN OK  \n---------\n")
 
-    def apply_window(self, selected_bands):
+    def select_bands(self, selected_bands):
         if selected_bands is not None:
             self.data = self.data[:, selected_bands, :, :][:, :, selected_bands, :]

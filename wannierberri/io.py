@@ -29,9 +29,14 @@ class SavableNPZ(abc.ABC):
     A class that can be saved to a npz file and loaded from it.
     """
 
-    def __init__(self, **kwargs):
-        self.npz_tags = []
-        self.from_dict(kwargs)
+    def __init__(self):
+        if not hasattr(self, "npz_tags_optional"):
+            self.npz_tags_optional = []
+        if not hasattr(self, "default_tags"):
+            self.default_tags = {}
+        if not hasattr(self, "npz_tags"):
+            self.npz_tags = []
+
 
     def to_npz(self, f_npz):
         dic = self.as_dict()
@@ -51,7 +56,13 @@ class SavableNPZ(abc.ABC):
                 dic[k] = self.__getattribute__(k)
         return dic
 
-    def from_dict(self, dic):
+    def from_dict(self, dic=None, **kwargs):
+        if dic is None:
+            dic = {}
+        else:
+            dic = dict(dic)
+        
+        dic.update(kwargs)
         for k in self.npz_tags:
             if k in dic:
                 self.__setattr__(k, dic[k])
@@ -62,3 +73,4 @@ class SavableNPZ(abc.ABC):
                 self.__setattr__(k, dic[k])
             elif k in self.default_tags:
                 self.__setattr__(k, self.default_tags[k])
+        return self

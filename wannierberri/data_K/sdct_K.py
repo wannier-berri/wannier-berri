@@ -179,7 +179,6 @@ class SDCT_K:
     @cached_property
     def E2_internal(self):
         ''' Electric quadrupole moment (only internal terms)'''
-        
         # _____ 1. Internal terms _____ #
 
         A_int = 1.j * self.data_K.D_H

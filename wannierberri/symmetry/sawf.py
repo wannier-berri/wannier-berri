@@ -4,21 +4,69 @@ import warnings
 from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroupBare
 import numpy as np
-from ..utility import orthogonalize
+
+
+from ..utility import clear_cached
+from ..io import SavableNPZ
 from .utility import get_inverse_block, rotate_block_matrix
 from .projections import Projection, ProjectionsSet
 
-from .dmn import DMN
 from .Dwann import Dwann
 from .orbitals import OrbitalRotator
 
 
-class SymmetrizerSAWF(DMN):
+class SymmetrizerSAWF(SavableNPZ):
     """
-    An extended class for DMN object, which cannot be written to a w90 file, because it 
-    contains more information than can be stored in the wannier90.dmn file
-    Now the wannierisation in wannier-berri is NOT compatible with the format of the wannier90.dmn file,
-    Thus the name "dmn" is kept for historical reasons, but the class is not compatible with the wannier90.dmn file
+    A class to handle the symmetry of the Wannier functions and the ab initio bands
+
+    Parameters
+    ----------
+    seedname : str
+        the prefix of the file (including relative/absolute path, but not including the extensions, like `.sawf`
+        if None, the object is initialized with void values (zeroes)
+    num_wann : int
+        the number of Wannier functions (in the case of void initialization)
+    num_bands : int
+        the number of ab initio bands (in the case of void initialization)
+    nkpt : int
+        the number of kpoints (in the case of void initialization)
+
+    Attributes
+    ----------
+    comment : str
+        the comment at the beginning of the file
+    NB : int
+        the number of ab initio bands
+    Nsym : int
+        the number of symmetries
+    NKirr : int
+        the number of irreducible kpoints
+    NK : int
+        the number of kpoints
+    num_wann : int
+        the number of Wannier functions
+    kptirr : numpy.ndarray(int, shape=(NKirr,))
+        the list of irreducible kpoints
+    kpt2kptirr : numpy.ndarray(int, shape=(NK,))
+        the mapping from kpoints to irreducible kpoints (each number denotes the index of the irreducible kpoint in kptirr)
+    kptirr2kpt : numpy.ndarray(int, shape=(NKirr, Nsym))
+        the mapping from irreducible kpoints to all kpoints
+    kpt2kptirr_sym : numpy.ndarray(int, shape=(NK,))
+        the symmetry that brings the irreducible kpoint from self.kpt2kptirr into the reducible kpoint in question
+    d_band_blocks : list(list(numpy.ndarray(complex, shape=(NB, NB))))
+        the ab initio band transformation matrices in the block form (between almost degenerate bands)
+    d_band_blocks_inverse : list(list(numpy.ndarray(complex, shape=(NB, NB))))
+        the inverse matrices of d_band_blocks
+    d_band_block_indices : list(np.array(int, shape=(Nblocks, 2)))
+        the indices of the blocks in the ab initio band transformation matrices
+    D_wann_blocks : list(list(numpy.ndarray(complex, shape=(num_wann, num_wann))))
+        the Wannier function transformation matrices in the block form. Within the same irreducible representation of WFs
+    D_wann_blocks_inverse : list(list(numpy.ndarray(complex, shape=(num_wann, num_wann))))
+        the inverse matrices of D_wann_blocks
+    D_wann_block_indices : np.array(int, shape=(Nblocks, 2))
+        the indices of the blocks in the Wannier function transformation matrices
+    time_reversals : array(bool, shape=(Nsym,))
+        weather the symmetry operation includes time reversal or not
     """
 
     def __init__(self):
@@ -77,6 +125,35 @@ class SymmetrizerSAWF(DMN):
         return self
 
     @cached_property
+    def d_band_blocks_inverse(self):
+        return get_inverse_block(self.d_band_blocks)
+
+    @cached_property
+    def D_wann_blocks_inverse(self):
+        return get_inverse_block(self.D_wann_blocks)
+
+    @property
+    def NK(self):
+        return self._NK
+
+    @property
+    def NB(self):
+        if hasattr(self, '_NB'):
+            return self._NB
+        else:
+            return 0
+
+    @cached_property
+    def isym_little(self):
+        return [np.where(self.kptirr2kpt[ik] == self.kptirr[ik])[0] for ik in range(self.NKirr)]
+
+    @cached_property
+    def kpt2kptirr_sym(self):
+        return np.array([np.where(self.kptirr2kpt[self.kpt2kptirr[ik], :] == ik)[0][0] for ik in range(self.NK)])
+
+
+
+    @cached_property
     def orbitalrotator(self):
         return OrbitalRotator()
         # return OrbitalRotator([symop.rotation_cart for symop in self.spacegroup.symmetries])
@@ -132,6 +209,45 @@ class SymmetrizerSAWF(DMN):
         return [rot_orb.swapaxes(-2, -1).conj()
             for rot_orb in self.rot_orb_list]
 
+    def set_D_wann(self, D_wann):
+        """
+        set the D_wann matrix
+
+        Parameters
+        ----------
+        D_wann : np.array(complex, shape=(NKirr, Nsym, num_wann, num_wann))
+                the Wannier function transformation matrix (conjugate transpose)
+        atommap : np.array(int, shape=(num_points,Nsym))
+            the mapping of atoms under the symmetry operations
+        T : np.array(int, shape=(num_points,Nsym))
+            the translation lattice vector that brings the original atom in position atommap[ip,isym] to the transform of atom ip
+
+        Notes
+        -----
+        the parameters can be given as lists, in that case the lengths of lists must be equal
+          also updates the num_wann attribute
+        """
+        self.clear_inverse(d=False, D=True)
+        if not isinstance(D_wann, list):
+            D_wann = [D_wann]
+        print("D.shape", [D.shape for D in D_wann])
+        self.D_wann_block_indices = []
+        num_wann = 0
+        self.D_wann_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
+        for D in D_wann:
+            assert D.shape[0] == self.NKirr
+            assert D.shape[1] == self.Nsym
+            assert D.shape[2] == D.shape[3]
+            self.D_wann_block_indices.append((num_wann, num_wann + D.shape[2]))
+            num_wann += D.shape[2]
+            for ik in range(self.NKirr):
+                for isym in range(self.Nsym):
+                    self.D_wann_blocks[ik][isym].append(D[ik, isym])
+        self.D_wann_block_indices = np.array(self.D_wann_block_indices)
+        self.num_wann = num_wann
+        print("num_wann", num_wann)
+        print("D_wann_block_indices", self.D_wann_block_indices)
+
 
     def symmetrize_wannier_property(self, wannier_property):
         """
@@ -177,6 +293,18 @@ class SymmetrizerSAWF(DMN):
             WCC_red_out = WCC_red_out @ self.spacegroup.lattice
         return WCC_red_out / self.spacegroup.size
 
+    @lru_cache
+    def d_band_diagonal(self, ikirr, isym):
+        if ikirr is None:
+            return np.array([self.d_band_diagonal(ikirr, isym) for ikirr in range(self.NKirr)])
+        if isym is None:
+            return np.array([self.d_band_diagonal(ikirr, isym) for isym in range(self.Nsym)])
+
+        result = np.zeros(self.NB, dtype=complex)
+        for (start, end), block in zip(self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr][isym]):
+            result[start:end] = block.diagonal()
+        return result
+
     def set_eig(self, eig):
         eig = np.array(eig, dtype=float)
         assert eig.ndim == 2
@@ -202,6 +330,14 @@ class SymmetrizerSAWF(DMN):
 
     def as_dict(self):
         dic = super().as_dict()
+        for ik in range(self.NKirr):
+            dic[f'd_band_block_indices_{ik}'] = self.d_band_block_indices[ik]
+            for i in range(len(self.d_band_block_indices[ik])):
+                dic[f'd_band_blocks_{ik}_{i}'] = np.array([self.d_band_blocks[ik][isym][i] for isym in range(self.Nsym)])
+        for i in range(len(self.D_wann_block_indices)):
+            dic[f'D_wann_blocks_{i}'] = np.array([[self.D_wann_blocks[ik][isym][i] for isym in range(self.Nsym)]
+                                            for ik in range(self.NKirr)])
+
         for k, val in self.spacegroup.as_dict().items():
             dic["spacegroup_" + k] = val
         for attrname in ["T", "atommap", "rot_orb"]:
@@ -214,6 +350,25 @@ class SymmetrizerSAWF(DMN):
     def from_dict(self, dic):
         t0 = time()
         super().from_dict(dic)
+        t01 = time()
+        self.d_band_block_indices = [dic[f'd_band_block_indices_{ik}'] for ik in range(self.NKirr)]
+        self.d_band_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
+        self.D_wann_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
+        d_band_num_blocks = [self.d_band_block_indices[ik].shape[0] for ik in range(self.NKirr)]
+        D_wann_num_blocks = self.D_wann_block_indices.shape[0]
+
+
+        d_band_blocks_tmp = [[dic[f"d_band_blocks_{ik}_{i}"] for i in range(nblock)]
+                             for ik, nblock in enumerate(d_band_num_blocks)]
+        D_wann_blocks_tmp = [dic[f"D_wann_blocks_{i}"]
+                             for i in range(D_wann_num_blocks)]
+
+        for ik in range(self.NKirr):
+            for isym in range(self.Nsym):
+                self.d_band_blocks[ik][isym] = [np.ascontiguousarray(d_band_blocks_tmp[ik][i][isym])
+                                                for i in range(d_band_num_blocks[ik])]
+                self.D_wann_blocks[ik][isym] = [np.ascontiguousarray(D_wann_blocks_tmp[i][ik, isym])
+                                                for i in range(D_wann_num_blocks)]
         t1 = time()
         prefix = "spacegroup_"
         l = len(prefix)
@@ -226,13 +381,16 @@ class SymmetrizerSAWF(DMN):
             lst = [dic[k] for k in keys]
             self.__setattr__(prefix + "_list", lst)
         t3 = time()
-        print(f"time for read_npz dmn {t3 - t0}\n super {t1 - t0} \n spacegroup {t2 - t1}\n  T {t3 - t2} ")
+        print(f"time to convert dict into SAWF {t3 - t0}\n super {t01 - t0} \n D {t1 - t01} \n spacegroup {t2 - t1}\n  T {t3 - t2} ")
         return self
 
 
     @lru_cache
     def ndegen(self, ikirr):
         return len(set(self.kptirr2kpt[ikirr]))
+
+    def __call__(self, *args, **kwds):
+        raise RuntimeError("The SymmetrizerSAWF is not callable, only its child classes are")
 
 
     def U_to_full_BZ(self, U, include_k=None):
@@ -262,111 +420,282 @@ class SymmetrizerSAWF(DMN):
                     Ufull[iRk] = self.rotate_U(U[ikirr], ikirr, isym, forward=True)
         return Ufull
 
-    def get_symmetrizer_Uirr(self, ikirr):
-        return Symmetrizer_Uirr(self, ikirr)
-
-    def get_symmetrizer_Zirr(self, ikirr, free=None):
-        if free is None:
-            free = np.ones(self.NB, dtype=bool)
-        return Symmetrizer_Zirr(self, ikirr, free=free)
-
-
-class Symmetrizer_Uirr(SymmetrizerSAWF):
-
-    def __init__(self, dmn, ikirr):
-        self.ikirr = ikirr
-        self.isym_little = dmn.isym_little[ikirr]
-        self.nsym_little = len(self.isym_little)
-        self.ikpt = dmn.kptirr[ikirr]
-        self.d_indices = dmn.d_band_block_indices[ikirr]
-        self.D_indices = dmn.D_wann_block_indices
-        self.d_band_blocks = dmn.d_band_blocks[ikirr]
-        self.D_wann_blocks_inverse = dmn.D_wann_blocks_inverse[ikirr]
-        self.nb = dmn.NB
-        self.num_wann = dmn.num_wann
-        self.time_reversals = dmn.time_reversals
-
-
-
-    def rotate_U(self, U, isym):
+    def rotate_U(self, U, ikirr, isym, forward=True):
+        """
+        Rotates the umat matrix at the irreducible kpoint
+        U = D_band^+ @ U @ D_wann
+        """
+        d_indices = self.d_band_block_indices[ikirr]
+        D_indices = self.D_wann_block_indices
         # forward = not forward
+        U1 = np.zeros(U.shape, dtype=complex)
         Uloc = U.copy()
-        if self.time_reversals[isym]:
-            Uloc = Uloc.conj()
-        Uloc = rotate_block_matrix(Uloc,
-                                   lblocks=self.d_band_blocks[isym],
-                                   lindices=self.d_indices,
-                                   rblocks=self.D_wann_blocks_inverse[isym],
-                                   rindices=self.D_indices)
+        if forward:
+            if self.time_reversals[isym]:
+                Uloc = Uloc.conj()
+            Uloc = rotate_block_matrix(Uloc,
+                                       lblocks=self.d_band_blocks[ikirr][isym],
+                                       lindices=d_indices,
+                                       rblocks=self.D_wann_blocks_inverse[ikirr][isym],
+                                       rindices=D_indices,
+                                    #    inv_left=False, inv_right=True,
+                                       result=U1)
+
+            # return d @ U @ D.conj().T
+        else:
+            Uloc = rotate_block_matrix(Uloc,
+                                     lblocks=self.d_band_blocks_inverse[ikirr][isym],
+                                     lindices=d_indices,
+                                     rblocks=self.D_wann_blocks[ikirr][isym],
+                                     rindices=D_indices,
+                                     result=U1)
+            if self.time_reversals[isym]:
+                Uloc = Uloc.conj()
+
         return Uloc
 
+    def clear_inverse(self, d=True, D=True):
+        if d:
+            clear_cached(self, 'd_band_blocks_inverse')
+            # if hasattr(self, 'd_band_blocks_inverse'):
+            #     del self.d_band_blocks_inverse
+        if D:
+            clear_cached(self, 'D_wann_blocks_inverse')
+            # if hasattr(self, 'D_wann_blocks_inverse'):
+            #     del self.D_wann_blocks_inverse
 
+    def select_bands(self, selected_bands):
+        """select the bands to be used in the calculation, the rest are excluded
 
-    def __call__(self, U):
-        Usym = sum(self.rotate_U(U, isym) for isym in self.isym_little) / self.nsym_little
-        return orthogonalize(Usym)
-
-
-class Symmetrizer_Zirr(SymmetrizerSAWF):
-
-    def __init__(self, dmn, ikirr, free):
-        self.ikirr = ikirr
-        self.isym_little = dmn.isym_little[ikirr]
-        self.nsym_little = len(self.isym_little)
-        self.ikpt = dmn.kptirr[ikirr]
-        self.nb = dmn.NB
-        self.num_wann = dmn.num_wann
-        self.time_reversals = dmn.time_reversals
-
-        if free is not None:
-            (
-                d_band_block_indices_free,
-                d_band_blocks_free
-            ) = dmn.select_window(dmn.d_band_blocks[ikirr], dmn.d_band_block_indices[ikirr], free)
-            d_band_blocks_free_inverse = get_inverse_block(d_band_blocks_free)
-
-            self.lblocks = d_band_blocks_free_inverse
-            self.rblocks = d_band_blocks_free
-            self.indices = d_band_block_indices_free
-        else:
-            self.lblocks = dmn.d_band_blocks_inverse,
-            self.rblocks = dmn.d_band_blocks
-            self.indices = dmn.d_band_block_indices
-
-
-    def __call__(self, Z):
-        # return Z # temporary for testing
-        if Z.shape[0] == 0:
-            return Z
-        else:
-            Z_rotated = [self.rotate_Z(Z, isym) for isym in self.isym_little]
-            Z[:] = sum(Z_rotated) / self.nsym_little
-            return Z
-
-    def rotate_Z(self, Z, isym):
+            Parameters
+            ----------
+            selected_bands : list of int or bool
+                the indices of the bands to be used, NOT a boolean mask
         """
-        Rotates the zmat matrix at the irreducible kpoint
-        Z = d_band^+ @ Z @ d_band
-        """
-        Zloc = Z.copy()
-        # if self.time_reversals[isym]:
-        #     Zloc = Zloc.conj()
-        Zloc = rotate_block_matrix(Zloc, lblocks=self.lblocks[isym],
-                                 lindices=self.indices,
-                                 rblocks=self.rblocks[isym],
-                                 rindices=self.indices,
-                                )
-        if self.time_reversals[isym]:
-            Zloc = Zloc.conj()
+        if selected_bands is None:
+            return
+        selected_bands_bool = np.zeros(self.NB, dtype=bool)
+        selected_bands_bool[selected_bands] = True
+        print(f"applying window to select {sum(selected_bands_bool)} bands from {self.NB}\n", selected_bands_bool)
+        for ikirr in range(self.NKirr):
+            self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr] = self.select_bands_in_blocks(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], selected_bands_bool)
+        for i, block_ind in enumerate(self.d_band_block_indices):
+            if i == 0:
+                self._NB = block_ind[-1, -1]
+            assert block_ind[0, 0] == 0
+            assert np.all(block_ind[1:, 0] == block_ind[:-1, 1])
+            assert block_ind[-1, -1] == self.NB
+        print(f"new NB = {self.NB}")
 
-        return Zloc
+
+
+    def select_bands_in_blocks(self, d_band_blocks_ik, d_band_block_indices_ik, selected_bands_bool):
+        if selected_bands_bool is None:
+            return d_band_blocks_ik, d_band_block_indices_ik
+
+        new_block_indices = []
+        new_blocks = [[] for _ in range(self.Nsym)]
+        st = 0
+        for iblock, (start, end) in enumerate(d_band_block_indices_ik):
+            select = selected_bands_bool[start:end]
+            nsel = np.sum(select)
+            if nsel > 0:
+                new_block_indices.append((st, st + nsel))
+                st += nsel
+                for isym in range(self.Nsym):
+                    new_blocks[isym].append(
+                        np.ascontiguousarray(d_band_blocks_ik[isym][iblock][:, select][select, :]))
+        return np.array(new_block_indices), new_blocks
+
+
+
+    def check_eig(self, eig):
+        """
+        Check the symmetry of the eigenvlues
+
+        Parameters
+        ----------
+        eig : EIG object
+            the eigenvalues
+
+        Returns
+        -------
+        float
+            the maximum error
+        """
+        maxerr = 0
+        for ik in range(self.NK):
+            ikirr = self.kpt2kptirr[ik]
+            e1 = eig.data[ik]
+            e2 = eig.data[self.kptirr[ikirr]]
+            maxerr = max(maxerr, np.linalg.norm(e1 - e2))
+
+        for ikirr in range(self.NKirr):
+            for isym in range(self.Nsym):
+                e1 = eig.data[self.kptirr[ikirr]]
+                e2 = eig.data[self.kptirr2kpt[ikirr, isym]]
+                maxerr = max(maxerr, np.linalg.norm(e1 - e2))
+        return maxerr
+
+    def check_amn(self, amn, warning_precision=1e-5, ignore_upper_bands=None, ignore_lower_bands=None):
+        """
+        Check the symmetry of the amn
+
+        Parameters
+        ----------
+        amn : AMN object of np.ndarray(complex, shape=(NK, NB, NW))
+            the amn
+
+        Returns
+        -------
+        float
+            the maximum error
+        """
+        if not isinstance(amn, np.ndarray):
+            amn = amn.data
+        maxerr = 0
+        assert amn.shape == (self.NK, self.NB, self.num_wann), f"amn.shape = {amn.shape} != (NK={self.NK}, NB={self.NB}, num_wann={self.num_wann}) "
+        if ignore_lower_bands is not None:
+            assert abs(ignore_lower_bands) < self.NB
+            ignore_lower_bands = abs(int(ignore_lower_bands))
+        else:
+            ignore_lower_bands = 0
+        if ignore_upper_bands is not None:
+            assert abs(ignore_upper_bands) < self.NB - ignore_lower_bands
+            ignore_upper_bands = -abs(int(ignore_upper_bands))
+
+        for ikirr in range(self.NKirr):
+            for isym in range(self.Nsym):
+                ik = self.kptirr2kpt[ikirr, isym]
+                a1 = amn[ik]
+                a2 = amn[self.kptirr[ikirr]]
+                a1p = self.rotate_U(a1, ikirr, isym, forward=False)
+                a1 = a1[ignore_lower_bands:ignore_upper_bands]
+                a1p = a1p[ignore_lower_bands:ignore_upper_bands]
+                a2 = a2[ignore_lower_bands:ignore_upper_bands]
+                diff = a2 - a1p
+                diff = np.max(abs(diff))
+                maxerr = max(maxerr, np.linalg.norm(diff))
+                if diff > warning_precision:
+                    print(f"ikirr={ikirr}, isym={isym} : {diff}")
+                    for aaa in zip(a1, a1p, a2, a1p - a2, a1p / a2):
+                        string = ""
+                        for a in aaa:
+                            _abs = ", ".join(f"{np.abs(_):.4f}" for _ in a)
+                            _angle = ", ".join(f"{np.angle(_) / np.pi * 180:7.2f}" for _ in a)
+                            string += f"[{_abs}] [{_angle}]   |    "
+                        print(string)
+        return maxerr
+
+    def symmetrize_amn(self, amn):
+        """
+        Symmetrize the amn
+
+        Parameters
+        ----------
+        amn : AMN object of np.ndarray(complex, shape=(NK, NB, NW))
+            the amn
+
+        Returns
+        -------
+        AMN
+            the symmetrized amn
+        """
+        if not isinstance(amn, np.ndarray):
+            amn = amn.data
+        assert amn.shape == (self.NK, self.NB, self.num_wann)
+
+        amn_sym_irr = np.zeros((self.NKirr, self.NB, self.num_wann), dtype=complex)
+        for ikirr in range(self.NKirr):
+            for isym in range(self.Nsym):
+                amn_sym_irr[ikirr] += self.rotate_U(amn[self.kptirr2kpt[ikirr, isym]], ikirr, isym, forward=False)
+        amn_sym_irr /= self.Nsym
+        lfound = np.zeros(self.NK, dtype=bool)
+        amn_sym = np.zeros((self.NK, self.NB, self.num_wann), dtype=complex)
+        for ikirr in range(self.NKirr):
+            ik = self.kptirr[ikirr]
+            amn_sym[ik] = amn_sym_irr[ikirr]
+            lfound[ik] = True
+            for isym in range(self.Nsym):
+                ik = self.kptirr2kpt[ikirr, isym]
+                if not lfound[ik]:
+                    amn_sym[ik] = self.rotate_U(amn_sym_irr[ikirr], ikirr, isym, forward=True)
+                    lfound[ik] = True
+        return amn_sym
+
+    def get_random_amn(self):
+        """ generate a random amn array that is comaptible with the symmetries of the Wanier functions in thesymmetrizer object
+
+        Returns
+        -------
+        np.ndarray(complex, shape=(NK, NB, num_wann))
+            the random amn, respecting the symmetries of the DMN object
+        """
+        shape = (self.NK, self.NB, self.num_wann)
+        amn = np.random.random(shape) + 1j * np.random.random(shape)
+        return self.symmetrize_amn(amn)
+
+
+    #
+    # def check_mmn(self, mmn, f1, f2):
+    #     """
+    #     Check the symmetry of data in the mmn file (not working)
+
+    #     Parameters
+    #     ----------
+    #     mmn : MMN object
+    #         the mmn file data
+
+    #     Returns
+    #     -------
+    #     float
+    #         the maximum error
+    #     """
+    #     assert mmn.NK == self.NK
+    #     assert mmn.NB == self.NB
+
+    #     maxerr = 0
+    #     neighbours_irr = np.array([self.kpt2kptirr[neigh] for neigh in mmn.neighbours])
+    #     for i in range(self.NKirr):
+    #         ind1 = np.where(self.kpt2kptirr == i)[0]
+    #         kirr1 = self.kptirr[i]
+    #         neigh_irr = neighbours_irr[ind1]
+    #         for j in range(self.NKirr):
+    #             kirr2 = self.kptirr[j]
+    #             ind2x, ind2y = np.where(neigh_irr == j)
+    #             print(f"rreducible kpoints {kirr1} and {kirr2} are equivalent to {len(ind2x)} points")
+    #             ref = None
+    #             for x, y in zip(ind2x, ind2y):
+    #                 k1 = ind1[x]
+    #                 k2 = mmn.neighbours[k1][y]
+    #                 isym1 = self.kpt2kptirr_sym[k1]
+    #                 isym2 = self.kpt2kptirr_sym[k2]
+    #                 d1 = self.d_band[i, isym1]
+    #                 d2 = self.d_band[j, isym2]
+    #                 assert self.kptirr2kpt[i, isym1] == k1
+    #                 assert self.kptirr2kpt[j, isym2] == k2
+    #                 assert self.kpt2kptirr[k1] == i
+    #                 assert self.kpt2kptirr[k2] == j
+    #                 ib = np.where(mmn.neighbours[k1] == k2)[0][0]
+    #                 assert mmn.neighbours[k1][ib] == k2
+    #                 data = mmn.data[k1, ib]
+    #                 data = f1(d1) @ data @ f2(d2)
+    #                 if ref is None:
+    #                     ref = data
+    #                     err = 0
+    #                 else:
+    #                     err = np.linalg.norm(data - ref)
+    #                 print(f"   {k1} -> {k2} : {err}")
+    #                 maxerr = max(maxerr, err)
+    #     return maxerr
+
 
 
 class VoidSymmetrizer(SymmetrizerSAWF):
 
     """
     A fake symmetrizer that does nothing
-    Just to be able to use the same with and without site-symmetry
+    Just to be able to use the same code with and without site-symmetry
     """
 
     def __init__(self, *args, NK=1, **kwargs):
@@ -377,26 +706,11 @@ class VoidSymmetrizer(SymmetrizerSAWF):
         self.kpt2kptirr = np.arange(NK)
         self.Nsym = 1
 
-    def symmetrize_U_kirr(self, U, ikirr):
-        return np.copy(U)
-
-    def symmetrize_Z(self, Z):
-        return np.copy(Z)
-
-    def symmetrize_Zk(self, Z, ikirr):
-        return np.copy(Z)
-
     def U_to_full_BZ(self, U, include_k=None):
         return np.copy(U)
 
     def __call__(self, X):
         return np.copy(X)
-
-    def get_symmetrizer_Uirr(self, ikirr):
-        return VoidSymmetrizer()
-
-    def get_symmetrizer_Zirr(self, ikirr, free=None):
-        return VoidSymmetrizer()
 
     def symmetrize_wannier_property(self, wannier_property):
         return wannier_property

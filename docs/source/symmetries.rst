@@ -14,8 +14,7 @@ Symmetries may be involved in WannierBerri on three different levels
 3. NEW! Symmetry adapted Wannier functions. 
     following the paper by R. Sakuma `Phys. Rev. B 87, 235109 (2013) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.87.235109>`__
     the wannier functions can be kept symmetric on every step of wannierisation. See the `sitesym` parameter of
-    :func:`~wannierberri.wannierise.wannierise` and :class:`~wannierberri.w90files.dmn.DMN` class. 
-
+    :func:`~wannierberri.wannierise.wannierise` and :class:`~wannierberri.symmetry.sawf.SymmetrizerSAWF` class.
 Note:
 
     * Any combination can be used in one workflow, and it is best to use all of them.  

@@ -298,7 +298,7 @@ def test_create_amn_diamond_s_bond():
     print("amn.shape = ", amn.data.shape)
     print("mmn.shape = ", w90data.mmn.data.shape)
     print("eig.shape = ", w90data.eig.data.shape)
-    w90data.set_amn(amn)
+    w90data.set_file("amn", amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     # Now wannierise the system
     w90data.wannierise(
@@ -314,10 +314,10 @@ def test_create_amn_diamond_s_bond():
         localise=True
     )
 
-    wannier_centers = w90data.chk._wannier_centers
+    wannier_centers = w90data.chk.wannier_centers_cart
     print("wannierr_centers = ", wannier_centers)
     assert wannier_centers == approx(0.806995 * np.array([[0, 0, 0], [-1, 1, 0], [0, 1, 1], [-1, 0, 1]]), abs=1e-6)
-    wannier_spreads = w90data.chk._wannier_spreads
+    wannier_spreads = w90data.chk.wannier_spreads
     print("wannier_spreads = ", wannier_spreads)
     assert wannier_spreads == approx(.398647548, abs=1e-5)
 
@@ -365,10 +365,10 @@ def test_create_amn_diamond_p_bond():
 
     w90data = wberri.w90files.Wannier90data(seedname=os.path.join(tmp_dir, prefix),
                                             readfiles=["mmn", "eig", "win", "unk"])
-    w90data.set_amn(amn)
+    w90data.set_file("amn", amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)
-    w90data.apply_window(win_min=20, win_max=100)
+    w90data.select_bands(win_min=20, win_max=100)
     print(f"amn is symmetric with accuracy {amn_symm_prec}")
     # Now wannierise the system
     w90data.wannierise(
@@ -384,10 +384,10 @@ def test_create_amn_diamond_p_bond():
     )
     w90data.plotWF()
 
-    wannier_centers = w90data.chk._wannier_centers
+    wannier_centers = w90data.chk.wannier_centers_cart
     print("wannierr_centers = ", wannier_centers)
     # assert wannier_centers == approx(0.806995*np.array([[0, 0, 0], [-1,1,0], [0,1,1], [-1,0,1]]), abs=1e-6)
-    wannier_spreads = w90data.chk._wannier_spreads
+    wannier_spreads = w90data.chk.wannier_spreads
     print("wannier_spreads = ", wannier_spreads)
     # assert wannier_spreads == approx(.398647548, abs=1e-5)
 
@@ -438,7 +438,7 @@ def test_create_amn_diamond_sp3():
     symmetrizer.spacegroup.show()
 
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
-    w90data.set_amn(amn)
+    w90data.set_file("amn", amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)
     # w90data.apply_window(win_min=20, win_max=100)
@@ -457,10 +457,10 @@ def test_create_amn_diamond_sp3():
     )
 
 
-    wannier_centers = w90data.chk._wannier_centers
+    wannier_centers = w90data.chk.wannier_centers_cart
     print("wannierr_centers = ", wannier_centers)
     # assert wannier_centers == approx(0.806995*np.array([[0, 0, 0], [-1,1,0], [0,1,1], [-1,0,1]]), abs=1e-6)
-    wannier_spreads = w90data.chk._wannier_spreads
+    wannier_spreads = w90data.chk.wannier_spreads
     print("wannier_spreads = ", wannier_spreads)
 
     a = -wannier_centers[0, 0]

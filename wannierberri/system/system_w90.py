@@ -164,7 +164,7 @@ class System_w90(System_R):
         chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         self.set_pointgroup(spacegroup=w90data.get_spacegroup())
-        self.wannier_centers_cart = chk.wannier_centers
+        self.wannier_centers_cart = chk.wannier_centers_cart
 
         mp_grid = chk.mp_grid
         self._NKFFT_recommended = mp_grid
@@ -196,7 +196,7 @@ class System_w90(System_R):
         self.set_R_mat('Ham', self.rvec.q_to_R(HHq))
 
         # Wannier centers
-        centers = chk.wannier_centers
+        centers = chk.wannier_centers_cart
         # Unique set of nearest-neighbor vectors (cartesian)
         bk_cart_unique = w90data.mmn.bk_cart_unique
 

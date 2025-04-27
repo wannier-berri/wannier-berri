@@ -10,14 +10,14 @@ from wannierberri.wannierise.projections import Projection
 
 data_dir = "../../tests/data/diamond"
 
-for ext in ["mmn","amn","dmn","eig","win"]:
+for ext in ["mmn","amn","eig","win"]:
     shutil.copy(os.path.join(data_dir, "diamond." + ext),
                  os.path.join("./", "diamond." + ext))
     
 
 
-# if the dmn file needs to be geneated, (if False - will be read from the file)
-generate_dmn = True
+# if the symmetrizer file needs to be geneated, (if False - will be read from the file)
+generate_symmetrizer = True
 sitesym = True
 
 # Read the data from the Wanier90 inputs 
@@ -25,7 +25,7 @@ sitesym = True
 t0 = time()
 w90data = wberri.w90files.Wannier90data(seedname='diamond', readfiles=['mmn','amn','eig','win'])
 t1 = time()
-if sitesym and generate_dmn:
+if sitesym and generate_symmetrizer:
     from irrep.bandstructure import BandStructure
     bandstructure = BandStructure(code='espresso', 
                                 prefix=os.path.join(data_dir, "di"),
@@ -47,7 +47,7 @@ if sitesym:
     print ("amn_symmetry", symmetrizer.check_amn(w90data.amn.data, warning_precision=1e-4))
 t5 = time()
 
-w90data.apply_window(win_min=-5, win_max=25)
+w90data.select_bands(win_min=-5, win_max=25)
 
 w90data.wannierise(
                 froz_min=0,
@@ -62,9 +62,9 @@ w90data.wannierise(
                 )
 t6 = time()
 print ("Time to read w90data", t1-t0)
-print ("Time to generate dmn", t2-t1)
+print ("Time to generate symmetrizer", t2-t1)
 print ("Time to read amn", t3-t2)
-print ("Time to read dmn", t4-t3)
+print ("Time to read symmetrizer", t4-t3)
 print ("Time to check amn", t5-t4)
 print ("Time to wannierise", t6-t5)
 print ("Total time", t6-t0)
