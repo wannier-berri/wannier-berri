@@ -165,7 +165,7 @@ class Wannier90data:
         """
         self.symmetrizer = symmetrizer
 
-    def set_file(self, key, val=None, overwrite=False, allow_applied_window=False,
+    def set_file(self, key, val=None, overwrite=False, allow_selected_bands=False,
                  **kwargs):
         """
         Set the file with the key `key` to the value `val`
@@ -175,9 +175,11 @@ class Wannier90data:
         key : str
             the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
         val : `~wannierberri.w90files.W90_file`
-            the value of the file
+            the value of the file. If None, the file is read from the disk: first try from the npz file (if available), then from the w90 file
         overwrite : bool
             if True, overwrite the file if it was already set, otherwise raise an error
+        allow_selected_bands : bool
+            if True, allow to set the file even if the bands were already selected, otherwise raise an error
         kwargs : dict
             the keyword arguments to be passed to the constructor of the file
             see `~wannierberri.w90files.W90_file`, 
@@ -185,7 +187,7 @@ class Wannier90data:
             for more details        
         """
         if self.bands_were_selected:
-            if allow_applied_window:
+            if allow_selected_bands:
                 warnings.warn("window was applied, so new added files may be inconsistent with the window. It is your responsibility to check it")
             else:
                 raise RuntimeError("window was applied, so new added files may be inconsistent with the window. To allow it, set allow_applied_window=True (on your own risk)")
@@ -197,11 +199,9 @@ class Wannier90data:
         if not overwrite and self.has_file(key):
             raise RuntimeError(f"file '{key}' was already set")
         if val is None:
-            if key == "dmn":
-                raise ValueError("dmn file should not be set anymore. Use the set_symmetrizer method")
-            elif key not in FILES_CLASSES:
+            if key in FILES_CLASSES:
                 raise ValueError(f"key '{key}' is not a valid w90 file")
-            val = FILES_CLASSES[key](self.seedname, **kwargs_auto)
+            val = FILES_CLASSES[key](self.seedname, autoread=True, **kwargs_auto)
         self.check_conform(key, val)
         self._files[key] = val
 
@@ -236,33 +236,6 @@ class Wannier90data:
         if self.has_file("mmn"):
             self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
         self.win_index = [np.arange(self.eig.NB)] * self.chk.num_kpts
-
-    def set_amn(self, val=None, **kwargs):
-        self.set_file("amn", val=val, **kwargs)
-
-    def set_eig(self, val=None, **kwargs):
-        self.set_file("eig", val=val, **kwargs)
-
-    def set_mmn(self, val=None, **kwargs):
-        self.set_file("mmn", val=val, **kwargs)
-
-    def set_uiu(self, val=None, **kwargs):
-        self.set_file("uiu", val=val, **kwargs)
-
-    def set_uhu(self, val=None, **kwargs):
-        self.set_file("uhu", val=val, **kwargs)
-
-    def set_siu(self, val=None, **kwargs):
-        self.set_file("siu", val=val, **kwargs)
-
-    def set_shu(self, val=None, **kwargs):
-        self.set_file("shu", val=val, **kwargs)
-
-    def set_spn(self, val=None, **kwargs):
-        self.set_file("spn", val=val, **kwargs)
-
-    def set_win(self, val=None, **kwargs):
-        self.set_file("win", val=val, **kwargs)
 
 
     def write(self, seedname, files=None):
@@ -308,7 +281,7 @@ class Wannier90data:
         return kwargs
 
 
-    def get_file(self, key, **kwargs):
+    def get_file(self, key):
         """
         Get the file with the key `key`
 
@@ -471,16 +444,6 @@ class Wannier90data:
         """
         wannierise(self, **kwargs)
 
-    # @property
-    # def selected_bands(self):
-    #     if hasattr(self, '_selected_bands'):
-    #         return self._selected_bands
-    #     else:
-    #         return None
-
-    # @selected_bands.setter
-    # def selected_bands(self, value):
-    #     self._selected_bands = value
 
     def apply_window(self, *args, **kwargs):
         raise NotImplementedError("apply_window is deprecated. Use select_bands instead")

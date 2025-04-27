@@ -39,7 +39,7 @@ class MMN(W90_file):
 
     def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(), **kwargs):
         self.npz_tags = ["data", "neighbours", "G"]
-        super().__init__(seedname, ext="mmn", npar=npar, **kwargs)
+        super().__init__(seedname=seedname, ext="mmn", npar=npar, **kwargs)
 
     def from_w90_file(self, seedname, npar):
         t0 = time()

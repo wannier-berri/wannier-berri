@@ -29,9 +29,14 @@ class SavableNPZ(abc.ABC):
     A class that can be saved to a npz file and loaded from it.
     """
 
-    def __init__(self, **kwargs):
-        self.npz_tags = []
-        self.from_dict(kwargs)
+    def __init__(self):
+        if not hasattr(self, "npz_tags_optional"):
+            self.npz_tags_optional = []
+        if not hasattr(self, "default_tags"):
+            self.default_tags = {}
+        if not hasattr(self, "npz_tags"):
+            self.npz_tags = []
+
 
     def to_npz(self, f_npz):
         dic = self.as_dict()

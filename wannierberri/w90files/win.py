@@ -26,7 +26,9 @@ class WIN:
         the units of length (Angstrom or Bohr radius)  
     """
 
-    def __init__(self, seedname='wannier90', data=None):
+    def __init__(self, seedname='wannier90', data=None, autoread=False):
+        if not autoread:
+            return
         self.data = {}
         self.seedname = seedname
         self.units_length = {'ang': 1., 'bohr': physical_constants['Bohr radius'][0] * 1e10}

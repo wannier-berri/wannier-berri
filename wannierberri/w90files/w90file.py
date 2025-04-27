@@ -32,13 +32,16 @@ class W90_file(SavableNPZ):
         the tags to be saved/loaded in the npz file
     """
 
-    def __init__(self, seedname="wannier90", ext="", read_npz=True, write_npz=True, data=None, selected_bands=None, **kwargs):
+    def __init__(self, autoread=False, **kwargs):
         if not hasattr(self, "npz_tags"):
             self.npz_tags = ["data"]
-        if not hasattr(self, "npz_tags_optional"):
-            self.npz_tags_optional = []
-        if not hasattr(self, "default_tags"):
-            self.default_tags = {}
+        super().__init__()
+        if autoread:
+            self.init_auto(**kwargs)
+
+    def init_auto(self, seedname="wannier90", ext="", read_npz=True, write_npz=True, data=None, selected_bands=None, **kwargs):
+        if not hasattr(self, "npz_tags"):
+            self.npz_tags = ["data"]
         if data is not None:
             self.data = data
             return

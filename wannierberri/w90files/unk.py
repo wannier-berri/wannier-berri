@@ -30,8 +30,10 @@ class UNK(W90_file):
         if True, the wavefunctions are expected to be spinors
     """
 
-    def __init__(self, seedname=None, **parameters):
-        self.from_w90_file(seedname, **parameters)
+    def __init__(self, seedname=None, autoread=False, **parameters):
+        super().__init__(seedname=seedname, autoread=autoread, **parameters)
+        # if autoread:
+        #     self.from_w90_file(seedname, **parameters)
 
     "a class that stores all UNK files"
 
@@ -92,10 +94,11 @@ class UNK(W90_file):
 
 
     def select_bands(self, selected_bands):
-        self._NB = len(selected_bands)
-        for i, u in enumerate(self.data):
-            if u is not None:
-                self.data[i] = u[selected_bands]
+        if selected_bands is not None:
+            self._NB = len(selected_bands)
+            for i, u in enumerate(self.data):
+                if u is not None:
+                    self.data[i] = u[selected_bands]
 
     @property
     def NB(self):
