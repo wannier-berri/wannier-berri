@@ -1,3 +1,35 @@
+
+
+Version 1.2.0
+++++++++++++++++++
+## What's Changed
+Extensive refactoring of the code base, including:
+
+    * removed the DMN class instead only the  SymmetriserSAWF should be used
+    * select_bands instead of apply_window
+    * allowed to init w90 file without reading
+    * joined classes CheckPoint with CheckPointBare
+    * reorganized into submodules:
+        - fourier
+        - data_K
+        - calculators.sdct
+    * Reorder xxr (#390) : the order of indices for all R-space matrices is now [iR, WF1, WF2, ....]. Earlier it was [WF1 ,WF2, iR, ...]
+    * Mdrs is applied from beginning (no need to call do_ws_dist for System_w90, System_phonon. )
+    * The tolerance for MDRS is raised to 0.1
+    * separated Rvectors into a separate class.
+    * Forces the following parameters (they are not parameters anymore):
+        - use_wcc_phase = True
+        - use_ws = True
+        - wcc_phase_fin_diff = True (unless) transl_inv_JM = True)
+    * cleaned the old code for
+     - sym_wann.py (old implementation)
+     - use_wcc_phase=False
+     - use_ws = False
+     - matrix elements in R space are ALWAYS evaluated in convention I (Oscar's or JaeMo's scheme)
+    
+    
+    
+
 Version 0.15.0
 ++++++++++++++++++
 ## What's Changed
@@ -42,7 +74,64 @@ Version 0.14.0
 * fixed a bug for tetrahedron method by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/232
 * SystemSparse by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/240
 * Tetrahedron grids by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/233
-* fixed rename of w90io by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/246
+* fixed rename of w90io bycommit 88f556ca99f288d9086796946b2f4fcc015c2d55 (HEAD -> v1.2.0, origin/master, origin/HEAD, master)
+Author: Stepan Tsirkin <stepan.tsirkin@ehu.eus>
+Date:   Sun Apr 27 13:37:19 2025 +0200
+
+    remove dmn (#392)
+    
+    * reorganized
+    * removed the DMN class - only symmetriser, more organizing
+    * select_bands instead of apply_window
+    * allowed to init w90 file without reading
+    * CheckPoint with CheckPointBare
+
+commit ec4fe6936a468050fbec0ac27073ed9296ea2077
+Author: Stepan Tsirkin <stepan.tsirkin@ehu.eus>
+Date:   Sat Apr 26 23:53:32 2025 +0200
+
+    Reorganiza submodules (#391)
+    
+    *  fourier
+    * data_K
+         -   separate sdct_K
+    * calculators.sdct
+
+commit b2ba22d7db3385646c21675029b7496881a10e53
+Author: Stepan Tsirkin <stepan.tsirkin@ehu.eus>
+Date:   Thu Apr 24 18:14:30 2025 +0200
+
+    Reorder xxr (#390)
+    
+    the order of indices for all R-space matrices is now [iR, WF1, WF2, ....]. Earlier it was [WF1 ,WF2, iR, ...]
+
+commit b836cb981220c43f76a212d72d04c2f18ee48436
+Author: Stepan Tsirkin <stepan.tsirkin@ehu.eus>
+Date:   Thu Apr 24 13:13:30 2025 +0200
+
+     small fix (#389)
+    
+    Co-authored-by: Stepan Tsirkin <stepan.tsirkin@epfl.ch>
+
+commit 077fd73eebce3335095eb93e82948eee214ca756
+Author: Stepan Tsirkin <stepan.tsirkin@ehu.eus>
+Date:   Tue Apr 22 20:17:23 2025 +0200
+
+    Mdrs from start (#388)
+    
+    * in System_w90, ASE, phonon, the old WignerSeitz is not used - mdrs is applied from beginning
+
+commit 9a02cc3cad1a6f4249a8e16a822b3fa00728b061
+Author: Stepan Tsirkin <stepan.tsirkin@ehu.eus>
+Date:   Mon Apr 21 21:11:33 2025 +0200
+
+    new method for  MDRS (#387)
+    
+    *This PR implements the MDRS via the Rvectors class.
+    *The tolerance is raised to 0.1
+    *Data for GaAs_tb are updated (the old implementation was not precise for systems with noisy wannier centers)
+    *the unused reference data removed
+ @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/246
 * rearrangements in sym_wann by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/245
 * created docs index by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/259
 * adding documentation to the main repository by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/260
@@ -50,7 +139,8 @@ Version 0.14.0
 * documentation for kdotp by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/261
 * added test for dynamical caclculators with symmetrising results by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/262
 * changes TRodd, Iodd, TRtrans to more general transformations by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/263
-* Implement shift current and injection current via Calculator by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/197
+* Implement shift current and injection current via Calculator bization, it is recommended to give orbitals separately, not combined by a ';' sign."
+                              "But you need to do it consistently in way @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/197
 
 
 **Full Changelog**: https://github.com/wannier-berri/wannier-berri/compare/v0.13.5...v0.14.0
@@ -65,7 +155,8 @@ Version 0.13.5
 * Fix ray cluster script for pbs, add num-cpus-per-node argument by @jaemolihm in https://github.com/wannier-berri/wannier-berri/pull/205
 * added test python 3.10, removed 3.7 by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/212
 * symmetrization of magnetic system works for multi_atom unit cells. by @Liu-Xiaoxiong in https://github.com/wannier-berri/wannier-berri/pull/179
-* fixed spglib<2 by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/213
+* fixed spglib<2 by @stepan-tsirkin in https://github.com/wannieization, it is recommended to give orbitals separately, not combined by a ';' sign."
+                              "But you need to do it consistently in war-berri/wannier-berri/pull/213
 * Bump protobuf from 3.20.1 to 3.20.2 by @dependabot in https://github.com/wannier-berri/wannier-berri/pull/211
 * Phonons by @stepan-tsirkin in https://github.com/wannier-berri/wannier-berri/pull/191
 * Change the attribute KpointBZ._max into a lazy property by @jhryoo in https://github.com/wannier-berri/wannier-berri/pull/218
