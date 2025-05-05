@@ -6,6 +6,7 @@ import copy
 import warnings
 
 import numpy as np
+from ..fourier.rvectors import Rvectors
 
 
 class SystemInterpolator:
@@ -25,8 +26,8 @@ class SystemInterpolator:
     def __init__(self, system0, system1, use_pointgroup=1):
         self.system0 = copy.deepcopy(system0)
         self.system1 = copy.deepcopy(system1)
-        iRvec0_list = [tuple(ir) for ir in self.system0.iRvec]
-        iRvec1_list = [tuple(ir) for ir in self.system1.iRvec]
+        iRvec0_list = [tuple(ir) for ir in self.system0.rvec.iRvec]
+        iRvec1_list = [tuple(ir) for ir in self.system1.rvec.iRvec]
         iRvec_new_list = list(set(iRvec0_list).union(set(iRvec1_list)))
         iRvec_index = {ir: i for i, ir in enumerate(iRvec_new_list)}
         iRvec_map_0 = [iRvec_index[ir] for ir in iRvec0_list]
@@ -54,10 +55,10 @@ class SystemInterpolator:
                     del sys._XX_R[key]
                 else:
                     shape = sys._XX_R[key].shape
-                    new_matrix = np.zeros(shape[:2] + (len(iRvec_new_list),) + shape[3:], dtype=complex)
-                    new_matrix[:, :, iRmap] = sys._XX_R[key]
+                    new_matrix = np.zeros((len(iRvec_new_list),) + shape[1:], dtype=complex)
+                    new_matrix[iRmap] = sys._XX_R[key]
                     sys._XX_R[key] = new_matrix
-            sys.iRvec = iRvec_array
+            sys.rvectors = Rvectors(lattice=sys.rvec.lattice, iRvec=iRvec_array, shifts_left_red=sys.rvec.shifts_left_red, shifts_right_red=sys.rvec.shifts_right_red)
             sys.clear_cached_R()
 
 

@@ -15,7 +15,7 @@ wannierberri - a module for Wannier interpolation
 """
 
 import warnings
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 from .run import run
 from .symmetry import point_symmetry
@@ -32,7 +32,7 @@ from . import result
 from . import wannierise
 from .parallel import Parallel, Serial
 from .smoother import get_smoother
-from .evaluate_k import evaluate_k
+from .evaluate_k import evaluate_k, evaluate_k_path
 from . import utils
 # from . import data_K
 from .result.tabresult import npz_to_fermisurfer

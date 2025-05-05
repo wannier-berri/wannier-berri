@@ -3,8 +3,8 @@ import numpy as np
 from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
 
 
-from wannierberri.wannierise.projections_searcher import EBRsearcher
-from wannierberri.wannierise.projections import Projection, ProjectionsSet
+from wannierberri.symmetry.projections_searcher import EBRsearcher
+from wannierberri.symmetry.projections import Projection, ProjectionsSet
 
 
 print("calculating symmetrizer")
@@ -65,15 +65,15 @@ ebrsearcher = EBRsearcher(
 print("searching for combinations")
 combinations = ebrsearcher.find_combinations(num_wann_max=40, num_wann_min=36, fixed=(0, 1))
 
-print (f"found {len(combinations)} combinations")
+print(f"found {len(combinations)} combinations")
 
 for c in combinations:
     print(("+" * 80 + "\n") * 2)
     print(trial_projections.write_with_multiplicities(c))
     newset = trial_projections.get_combination(c)
     newset.join_same_wyckoff()
-    print ("after merging: >>" )
+    print("after merging: >>")
     print(newset.write_with_multiplicities(orbit=False))
-    print ("<<")
+    print("<<")
     newset.maximize_distance()
     print(newset.write_wannier90(mod1=True))
