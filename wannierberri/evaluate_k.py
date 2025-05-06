@@ -127,7 +127,7 @@ def evaluate_k(system=None,
     return result
 
 
-def evaluate_k_path(system, k_nodes, labels=None, length=500, k_path=None,
+def evaluate_k_path(system, k_nodes=None, labels=None, length=500, k_path=None,
                     tabulators=None,
                     quantities=(),):
     """Evaluate a quantity along a path in the reciprocal space

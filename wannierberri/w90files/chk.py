@@ -32,8 +32,6 @@ class CheckPoint:
                 mp_grid=None,
                 kmesh_tol=1e-7,
                 bk_complete_tol=1e-5,
-                win_min=None,
-                win_max=None,
     ):
         if real_lattice is not None:
             real_lattice = np.array(real_lattice, dtype=float)
@@ -71,33 +69,31 @@ class CheckPoint:
             assert mp_grid.shape == (3,), f"mp_grid should be of shape (3,), but got {mp_grid.shape}"
         self.mp_grid = mp_grid
 
-        if v_matrix is not None:
-            v_matrix = np.array(v_matrix, dtype=complex)
-            if num_kpts is None:
-                num_kpts = v_matrix.shape[0]
-            else:
-                assert v_matrix.shape[0] == num_kpts, f"v_matrix should be of shape ({num_kpts}, num_bands, num_wann), but got {v_matrix.shape}"
-            if num_bands is None:
-                num_bands = v_matrix.shape[1]
-            else:
-                assert v_matrix.shape[1] == num_bands, f"v_matrix should be of shape (num_kpts, {num_bands}, num_wann), but got {v_matrix.shape}"
-            if num_wann is None:
-                num_wann = v_matrix.shape[2]
-            else:
-                assert v_matrix.shape[2] == num_wann, f"v_matrix should be of shape (num_kpts, num_bands, {num_wann}), but got {v_matrix.shape}"
 
-        self.v_matrix = v_matrix
         self.kmesh_tol = kmesh_tol
         self.bk_complete_tol = bk_complete_tol
+
+        if v_matrix is not None:
+            self.v_matrix = np.array(v_matrix, dtype=complex)
+            if num_kpts is None:
+                num_kpts = self.v_matrix.shape[0]
+            else:
+                assert self.v_matrix.shape[0] == num_kpts, f"v_matrix should be of shape ({num_kpts}, num_bands, num_wann), but got {v_matrix.shape}"
+            if num_bands is None:
+                num_bands = self.v_matrix.shape[1]
+            else:
+                assert self.v_matrix.shape[1] == num_bands, f"v_matrix should be of shape (num_kpts, {num_bands}, num_wann), but got {v_matrix.shape}"
+            if num_wann is None:
+                num_wann = self.v_matrix.shape[2]
+            else:
+                assert self.v_matrix.shape[2] == num_wann, f"v_matrix should be of shape (num_kpts, num_bands, {num_wann}), but got {v_matrix.shape}"
+
         self.num_wann = num_wann
         self.num_bands = num_bands
         self.num_kpts = num_kpts
-        if win_min is None and self.num_kpts is not None:
-            win_min = np.array([0] * self.num_kpts)
-        if win_max is None and self.num_kpts is not None:
-            win_max = np.array([self.num_bands] * self.num_kpts)
-        self.win_min = win_min
-        self.win_max = win_max
+
+
+
 
     def from_w90_file(self, seedname, kmesh_tol=1e-7, bk_complete_tol=1e-5):
 
@@ -131,23 +127,33 @@ class CheckPoint:
         num_wann = readint()[0]
         readstr(FIN)  # checkpoint string
         have_disentangled = bool(readint()[0])
-        print(f"have_disentangled={have_disentangled}")
+        # print(f"have_disentangled={have_disentangled}")
         if have_disentangled:
             self.omega_invariant = readfloat()[0]
             lwindow = np.array(readint().reshape((num_kpts, num_bands)), dtype=bool)
             ndimwin = readint()
-            print(f"ndimwin={ndimwin}")
+            # print(f"ndimwin={ndimwin}")
             u_matrix_opt = readcomplex().reshape((num_kpts, num_wann, num_bands)).swapaxes(1, 2)
             win_min = np.array([np.where(lwin)[0].min() for lwin in lwindow])
-            win_max = np.array([wm + nd for wm, nd in zip(win_min, ndimwin)])
-        else:
-            win_min, win_max = None, None
-
+            win_max = np.array([np.where(lwin)[0].max() for lwin in lwindow])
+            for ik in range(num_kpts):
+                assert win_max[ik] - win_min[ik] + 1 == ndimwin[ik], f"win_max={win_max}, win_min={win_min}, ndimwin={ndimwin} - inconsistent"
+                assert np.sum(lwindow[ik]) == ndimwin[ik], f"lwindow={lwindow}, ndimwin={ndimwin} - inconsistent"
+                assert np.all(lwindow[ik, win_min[ik]:win_max[ik] + 1])
+                if win_min[ik] > 0:
+                    assert np.all(np.logical_not(lwindow[ik, :win_min[ik]]))
+                if win_max[ik] < num_bands - 1:
+                    assert np.all(np.logical_not(lwindow[ik, win_max[ik] + 1:]))
         u_matrix = readcomplex().reshape((num_kpts, num_wann, num_wann)).swapaxes(1, 2)
         readcomplex().reshape((num_kpts, nntot, num_wann, num_wann)).swapaxes(2, 3)  # m_matrix
         if have_disentangled:
-            v_matrix = [u_opt[:nd, :].dot(u) for u, u_opt, nd in zip(u_matrix, u_matrix_opt, ndimwin)]
-            # self.v_matrix = [u_opt.dot(u) for u, u_opt in zip(u_matrix, u_matrix_opt)]
+            v_matrix = np.zeros((num_kpts, num_bands, num_wann), dtype=complex)
+            for ik in range(num_kpts):
+                u = u_matrix[ik]
+                u_opt = u_matrix_opt[ik]
+                nd = ndimwin[ik]
+                assert np.linalg.norm(u_opt[nd:]) < 1e-12, f"u_opt[nd:]={u_opt[nd:]} - not zero"
+                v_matrix[ik, lwindow[ik], :] = u_opt[:nd, :].dot(u)
         else:
             v_matrix = u_matrix
         wannier_centers_cart = readfloat().reshape((num_wann, 3))
@@ -158,7 +164,8 @@ class CheckPoint:
                       wannier_centers_cart=wannier_centers_cart, wannier_spreads=wannier_spreads,
                       kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol,
                       kpt_latt=kpt_latt, mp_grid=mp_grid,
-                      win_min=win_min, win_max=win_max,)
+        )
+
         return self
 
     @property
@@ -216,7 +223,6 @@ class CheckPoint:
         if len(mat.shape) == 1:
             mat = np.diag(mat)
         assert mat.shape[:2] == (self.num_bands,) * 2, f"mat.shape={mat.shape}, num_bands={self.num_bands}"
-        mat = mat[self.win_min[ik1]:self.win_max[ik1], self.win_min[ik2]:self.win_max[ik2]]
         v1 = self.v_matrix[ik1].conj().T
         v2 = self.v_matrix[ik2]
         return np.tensordot(np.tensordot(v1, mat, axes=(1, 0)), v2, axes=(1, 0)).transpose(
@@ -567,9 +573,3 @@ class CheckPoint:
             selected_bands_bool[selected_bands] = True
             assert np.any(selected_bands_bool), "No bands selected"
             self.num_bands = sum(selected_bands_bool)
-            print(f"before applying window\n      win_min = {self.win_min}, \n     win_max = {self.win_max}")
-            win_min = np.min(np.where(selected_bands_bool)[0])
-            win_max = np.max(np.where(selected_bands_bool)[0]) + 1
-            self.win_min = np.max([self.win_min - win_min, [0] * self.num_kpts], axis=0)
-            self.win_max = self.num_bands - np.max([win_max - self.win_max, [0] * self.num_kpts], axis=0)
-            print(f"after applying window\n      win_min = {self.win_min}, \n     win_max = {self.win_max}")

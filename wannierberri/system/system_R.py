@@ -274,6 +274,10 @@ class System_R(System):
             shifts_left_red=self.wannier_centers_red,
         )
         self.set_pointgroup(spacegroup=symmetrizer.spacegroup)
+
+        logfile.write(f"Wannier Centers cart (symetrized):\n {self.wannier_centers_cart}\n")
+        logfile.write(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_red}\n")
+
         # self.clear_cached_R()
         # self.clear_cached_wcc()
 
@@ -377,8 +381,9 @@ class System_R(System):
             for suborbit in suborbit_list:
                 pos_loc = pos[suborbit]
                 proj = Projection(position_num=pos_loc, orbital=orbital, spacegroup=spacegroup,
-                                  do_not_split_projections=True)
+                                  do_not_split_projections=True, rotate_basis=False)
                 proj_list.append(proj)
+                print(f"proj: {proj}")
                 num_wann_per_position = proj.num_wann_per_site_spinor
                 print(f"orbital = {orbital}, num wann per site = {num_wann_per_position}")
                 for i in suborbit:

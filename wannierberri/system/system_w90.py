@@ -189,104 +189,107 @@ class System_w90(System_R):
         # factors depending on the lattice vectors R can be added, and the sum
         # over nearest-neighbor vectors can be finally performed.
 
-        w90data.mmn.set_bk_chk(chk, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
 
         # H(R) matrix
         HHq = chk.get_HH_q(w90data.eig)
         self.set_R_mat('Ham', self.rvec.q_to_R(HHq))
 
+        if self.need_R_any('SS'):
+            self.set_R_mat('SS', self.rvec.q_to_R(chk.get_SS_q(w90data.spn)))
+
         # Wannier centers
         centers = chk.wannier_centers_cart
         # Unique set of nearest-neighbor vectors (cartesian)
-        bk_cart_unique = w90data.mmn.bk_cart_unique
+        if w90data.has_file('mmn'):
+            w90data.mmn.set_bk_chk(chk, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+            bk_cart_unique = w90data.mmn.bk_cart_unique
 
-        if transl_inv_JM:
-            _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
-            sum_b = False
-        else:
-            _r0 = centers[None, :, :]
-            sum_b = True
+            if transl_inv_JM:
+                _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
+                sum_b = False
+            else:
+                _r0 = centers[None, :, :]
+                sum_b = True
 
-        expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0))
-        print(f"expjphase1 {expjphase1.shape}")
-        expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
+            expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0))
+            print(f"expjphase1 {expjphase1.shape}")
+            expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
 
 
-        # A_a(R,b) matrix
-        if self.need_R_any('AA'):
-            AA_qb = chk.get_AA_qb(w90data.mmn, transl_inv=transl_inv_MV, sum_b=sum_b, phase=expjphase1)
-            AA_Rb = self.rvec.q_to_R(AA_qb)
-            self.set_R_mat('AA', AA_Rb, Hermitian=True)
-            # Checking Wannier_centers
-            if True:
-                AA_q = chk.get_AA_qb(w90data.mmn, transl_inv=True, sum_b=True, phase=None)
-                AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
-                wannier_centers_cart_new = np.diagonal(AA_R0, axis1=0, axis2=1).T
-                if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart) < 1e-6):
-                    if guiding_centers:
-                        print(
-                            f"The read Wannier centers\n{self.wannier_centers_cart}\n"
-                            f"are different from the evaluated Wannier centers\n{wannier_centers_cart_new}\n"
-                            "This can happen if guiding_centres was set to true in Wannier90.\n"
-                            "Overwrite the evaluated centers using the read centers.")
-                        for iw in range(self.num_wann):
-                            self.get_R_mat('AA')[iw, iw, self.iR0, :] = self.wannier_centers_cart[iw, :]
-                    else:
-                        raise ValueError(
-                            f"the difference between read\n{self.wannier_centers_cart}\n"
-                            f"and evaluated \n{wannier_centers_cart_new}\n wannier centers is\n"
-                            f"{self.wannier_centers_cart - wannier_centers_cart_new}\n"
-                            "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90."
-                        )
+            # A_a(R,b) matrix
+            if self.need_R_any('AA'):
+                AA_qb = chk.get_AA_qb(w90data.mmn, transl_inv=transl_inv_MV, sum_b=sum_b, phase=expjphase1)
+                AA_Rb = self.rvec.q_to_R(AA_qb)
+                self.set_R_mat('AA', AA_Rb, Hermitian=True)
+                # Checking Wannier_centers
+                if True:
+                    AA_q = chk.get_AA_qb(w90data.mmn, transl_inv=True, sum_b=True, phase=None)
+                    AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
+                    wannier_centers_cart_new = np.diagonal(AA_R0, axis1=0, axis2=1).T
+                    if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart) < 1e-6):
+                        if guiding_centers:
+                            print(
+                                f"The read Wannier centers\n{self.wannier_centers_cart}\n"
+                                f"are different from the evaluated Wannier centers\n{wannier_centers_cart_new}\n"
+                                "This can happen if guiding_centres was set to true in Wannier90.\n"
+                                "Overwrite the evaluated centers using the read centers.")
+                            for iw in range(self.num_wann):
+                                self.get_R_mat('AA')[iw, iw, self.iR0, :] = self.wannier_centers_cart[iw, :]
+                        else:
+                            raise ValueError(
+                                f"the difference between read\n{self.wannier_centers_cart}\n"
+                                f"and evaluated \n{wannier_centers_cart_new}\n wannier centers is\n"
+                                f"{self.wannier_centers_cart - wannier_centers_cart_new}\n"
+                                "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90."
+                            )
 
-        # B_a(R,b) matrix
-        if 'BB' in self.needed_R_matrices:
-            BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig, sum_b=sum_b, phase=expjphase1)
-            BB_Rb = self.rvec.q_to_R(BB_qb)
-            self.set_R_mat('BB', BB_Rb)
+            # B_a(R,b) matrix
+            if 'BB' in self.needed_R_matrices:
+                BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig, sum_b=sum_b, phase=expjphase1)
+                BB_Rb = self.rvec.q_to_R(BB_qb)
+                self.set_R_mat('BB', BB_Rb)
 
-        # C_a(R,b1,b2) matrix
-        if 'CC' in self.needed_R_matrices:
-            CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu, sum_b=sum_b, phase=expjphase2)
-            CC_Rb = self.rvec.q_to_R(CC_qb)
-            self.set_R_mat('CC', CC_Rb, Hermitian=True)
+            # C_a(R,b1,b2) matrix
+            if 'CC' in self.needed_R_matrices:
+                CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu, sum_b=sum_b, phase=expjphase2)
+                CC_Rb = self.rvec.q_to_R(CC_qb)
+                self.set_R_mat('CC', CC_Rb, Hermitian=True)
 
-        # O_a(R,b1,b2) matrix
-        if 'OO' in self.needed_R_matrices:
-            OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
-            OO_Rb = self.rvec.q_to_R(OO_qb)
-            self.set_R_mat('OO', OO_Rb, Hermitian=True)
+            # O_a(R,b1,b2) matrix
+            if 'OO' in self.needed_R_matrices:
+                OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
+                OO_Rb = self.rvec.q_to_R(OO_qb)
+                self.set_R_mat('OO', OO_Rb, Hermitian=True)
 
-        # G_bc(R,b1,b2) matrix
-        if 'GG' in self.needed_R_matrices:
-            GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
-            GG_Rb = self.rvec.q_to_R(GG_qb)
-            self.set_R_mat('GG', GG_Rb, Hermitian=True)
+            # G_bc(R,b1,b2) matrix
+            if 'GG' in self.needed_R_matrices:
+                GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
+                GG_Rb = self.rvec.q_to_R(GG_qb)
+                self.set_R_mat('GG', GG_Rb, Hermitian=True)
 
-        #######################################################################
+            #######################################################################
 
-        if self.need_R_any('SS'):
-            self.set_R_mat('SS', self.rvec.q_to_R(chk.get_SS_q(w90data.spn)))
-        if self.need_R_any('SR'):
-            self.set_R_mat('SR', self.rvec.q_to_R(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, phase=expjphase1)))
-        if self.need_R_any('SH'):
-            self.set_R_mat('SH', self.rvec.q_to_R(chk.get_SH_q(w90data.spn, w90data.eig)))
-        if self.need_R_any('SHR'):
-            self.set_R_mat('SHR', self.rvec.q_to_R(
-                chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, eig=w90data.eig, phase=expjphase1)))
+            if self.need_R_any('SR'):
+                self.set_R_mat('SR', self.rvec.q_to_R(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, phase=expjphase1)))
+            if self.need_R_any('SH'):
+                self.set_R_mat('SH', self.rvec.q_to_R(chk.get_SH_q(w90data.spn, w90data.eig)))
+            if self.need_R_any('SHR'):
+                self.set_R_mat('SHR', self.rvec.q_to_R(
+                    chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, eig=w90data.eig, phase=expjphase1)))
 
-        if 'SA' in self.needed_R_matrices:
-            self.set_R_mat('SA',
-                           self.rvec.q_to_R(chk.get_SHA_q(w90data.siu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
-        if 'SHA' in self.needed_R_matrices:
-            self.set_R_mat('SHA',
-                           self.rvec.q_to_R(chk.get_SHA_q(w90data.shu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
+            if 'SA' in self.needed_R_matrices:
+                self.set_R_mat('SA',
+                            self.rvec.q_to_R(chk.get_SHA_q(w90data.siu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
+            if 'SHA' in self.needed_R_matrices:
+                self.set_R_mat('SHA',
+                            self.rvec.q_to_R(chk.get_SHA_q(w90data.shu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
 
-        del expjphase1, expjphase2
+            del expjphase1, expjphase2
 
-        if transl_inv_JM:
-            self.recenter_JM(centers, bk_cart_unique)
+            if transl_inv_JM:
+                self.recenter_JM(centers, bk_cart_unique)
 
+        
         self.do_at_end_of_init()
         self.check_AA_diag_zero(msg="after conversion of conventions with "
                                     f"transl_inv_MV={transl_inv_MV}, transl_inv_JM={transl_inv_JM}",
