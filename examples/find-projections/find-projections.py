@@ -4,8 +4,8 @@ import sympy
 from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
 
 
-from wannierberri.wannierise.projections_searcher import EBRsearcher
-from wannierberri.wannierise.projections import Projection, ProjectionsSet
+from wannierberri.symmetry.projections_searcher import EBRsearcher
+from wannierberri.symmetry.projections import Projection, ProjectionsSet
 
 
 print("calculating symmetrizer")
@@ -22,7 +22,6 @@ try:
 except FileNotFoundError:
     symmetrizer = SAWF().from_irrep(bandstructure)
     symmetrizer.to_npz("diamond.sawf.npz")
-
 
 
 trial_projections = ProjectionsSet()

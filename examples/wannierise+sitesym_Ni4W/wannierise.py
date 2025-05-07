@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
-from wannierberri.wannierise.projections import Projection, ProjectionsSet
+from wannierberri.symmetry.projections import Projection, ProjectionsSet
 
 
 # os.environ['OPENBLAS_NUM_THREADS'] = '1'

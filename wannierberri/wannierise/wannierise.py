@@ -130,11 +130,7 @@ def wannierise(w90data,
         w90data.chk.num_wann = num_wann
     elif init == "restart":
         assert w90data.wannierised, "The data is not wannierised"
-        amn = np.zeros((w90data.mmn.NK, w90data.mmn.NB, w90data.chk.num_wann), dtype=np.complex128)
-        for ik in range(w90data.mmn.NK):
-            amn[ik][w90data.chk.win_min[ik]:w90data.chk.win_max[ik]] = w90data.chk.v_matrix[ik]
-            w90data.chk.win_min[ik] = 0
-            w90data.chk.win_max[ik] = w90data.chk.num_bands
+        amn = w90data.chk.v_matrix.copy()
         print("Restarting from the previous state", amn.shape)
     else:
         raise ValueError("init should be 'amn' or 'random'")

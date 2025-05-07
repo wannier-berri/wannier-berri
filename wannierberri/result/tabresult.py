@@ -259,8 +259,12 @@ class TABresult(Result):
             axes.legend()
         if cut_k:
             klineall = [k for kl in klineall for k in kl]
-            kmin = min(klineall)
-            kmax = max(klineall)
+            if len(klineall) == 0:
+                kmin = kline.min()
+                kmax = kline.max()
+            else:
+                kmin = min(klineall)
+                kmax = max(klineall)
         else:
             kmin = kline.min()
             kmax = kline.max()

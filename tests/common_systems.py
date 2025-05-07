@@ -306,7 +306,6 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
     system = wberri.system.System_w90(seedname,
                                       transl_inv_MV=transl_inv,
                                       transl_inv_JM=transl_inv_JM,
-                                      guiding_centers=True,
                                       **matrices)
     if symmetrize:
         iRold = [tuple(R) for R in system.rvec.iRvec]

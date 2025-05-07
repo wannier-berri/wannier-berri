@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-from ase import Atoms
+from matplotlib import pyplot as plt
 from gpaw import GPAW
 from wannierberri import System_ASE
 import wannierberri as wberri
 import numpy as np
 
-from ase.dft import Wannier
+from ase.dft.wannier import Wannier
 
 calc = GPAW('Te.gpw')
 ik1 = 7
@@ -18,7 +18,7 @@ NB = 3
 # exit()
 
 
-wan = Wannier(nwannier=3, calc=calc, file='wannier-s.pickle')
+wan = Wannier(nwannier=12, calc=calc, file='wannier-sp.pickle')
 
 print(wan.Gdir_dc)
 print(wan.kklst_dk)
@@ -46,82 +46,41 @@ print(wan.kklst_dk)
 
 k1 = k2 = 1. / 3
 
-system = System_ASE(wan, ase_calc=calc, use_ws=False, berry=True, ase_R_vectors=False, transl_inv=True)
+system = System_ASE(wan, berry=True)
 
-print(system.wannier_centres_cart)
-print(system.AA_R[:, :, system.iRvec0, 0].diagonal())
-print(system.AA_R[:, :, system.iRvec0, 1].diagonal())
-print(system.AA_R[:, :, system.iRvec0, 2].diagonal())
+print(system.wannier_centers_cart)
 
-exit()
 
-path = wberri.Path(system,
-                   #                 k_nodes=[[1./3,1./3,0],[1./3,1./3,0.5],None,[1./3,1./3,0.5],[1./3,1./3,1],],
-                   k_nodes=[[k1, k2, 0.35], [k1, k2, 0.5], [k1, k2, 0.65]],
-                   labels=["K", "H", "K"],
-                   #                 labels=["K1","H","H","K2"],
-                   length=5000)
-path_result = wberri.tabulate(system,
-                              grid=path,
-                              quantities=["berry"])
+path, bands = wberri.evaluate_k_path(system, k_nodes=[[k1, k2, 0], [k1, k2, 0.5], [k1, k2, 1.]],
+                   labels=["K<-", "H", "->K"],
+    quantities=["berry_curvature"]
+)
 
-path_result.plot_path_fat(path,
-                          quantity='berry',
-                          component='z',
-                          save_file="Te-berry-VB.pdf",
-                          Eshift=0,
-                          Emin=5, Emax=6,
-                          iband=None,
-                          mode="fatband",
-                          fatfactor=0.01,
-                          fatmax=200,
-                          cut_k=True
+
+bands.plot_path_fat(path,
+                    quantity='berry_curvature',
+                    component='z',
+                    # save_file="Te-berry-VB.pdf",
+                    close_fig=False,
+                    show_fig=False,
+                    Eshift=0,
+                    Emin=5, Emax=6,
+                    iband=None,
+                    mode="fatband",
+                    fatfactor=20,
+                    fatmax=200,
+                    cut_k=True
                           )
 
-exit()
-from matplotlib import pyplot as plt
 
-kz = np.linspace(0, 1, 101)
+kz = np.linspace(0, 1., 101)
+fac = system.recip_lattice[2, 2]
 E = np.array([np.linalg.eigvalsh(wan.get_hamiltonian_kpoint([k1, k2, _])) for _ in kz])
 for e in E.T:
-    plt.plot(kz, e, c='blue')
-    plt.plot(1. - kz, e, c='red')
+    plt.plot(kz * fac, e, '--', c='blue')
+    plt.plot((1. - kz) * fac, e, '--', c='red')
 
-plt.ylim(5, 6)
-plt.xlim(0.35, 0.65)
+# plt.ylim(5, 6)
+# plt.xlim(0.35, 0.65)
 
-plt.show()
-
-exit()
-
-k = path.getKline()
-E = path_result.get_data(quantity='E', iband=np.arange(12))
-for _k, _e in zip(k, E):
-    print(_k, _e)
-
-exit()
-# system = System_ASE(wan)
-
-
-SYM = wberri.point_symmetry
-
-Efermi = np.linspace(-10, 10, 10001)
-
-# generators=[SYM.Inversion,SYM.C4z,SYM.TimeReversal*SYM.C2x]
-# system.set_symmetry(generators)
-grid = wberri.Grid(system, length=50, NKFFT=10)
-print("grid : ", grid.FFT, grid.div)
-parallel = wberri.Parallel(method="ray", num_cpus=4)
-
-wberri.integrate(system,
-                 grid=grid,
-                 Efermi=Efermi,
-                 smearEf=300,
-                 quantities=["dos", "cumdos"],
-                 parallel=parallel,
-                 adpt_num_iter=10,
-                 fftlib='fftw',  # default.  alternative  option - 'numpy'
-                 fout_name='Fe',
-                 file_Klist=None,
-                 restart=False,
-                 )
+plt.savefig('Te-berry-VB_ase.pdf')
