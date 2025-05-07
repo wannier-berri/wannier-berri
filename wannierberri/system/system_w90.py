@@ -53,9 +53,8 @@ class System_w90(System_R):
         Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
     transl_inv_JM : bool
         translational-invariant scheme for diagonal and off-diagonal matrix elements for all matrices. Follows method of Jae-Mo Lihm
-    guiding_centers : bool
-        If True, enable overwriting the diagonal elements of the AA_R matrix at R=0 with the
-        Wannier centers calculated from Wannier90.
+    wannier_centers_from_chk : bool
+        If True, the centers of the Wannier functions are read from the ``.chk`` file. If False, the centers are recalculated from the ``.mmn`` file.
     npar : int
         number of processes used in the constructor
     fft : str
@@ -114,11 +113,11 @@ class System_w90(System_R):
             w90data=None,
             transl_inv_MV=True,
             transl_inv_JM=False,
-            guiding_centers=False,
             fftlib='fftw',
             npar=multiprocessing.cpu_count(),
             kmesh_tol=1e-7,
             bk_complete_tol=1e-5,
+            wannier_centers_from_chk=True,
             read_npz=True,
             write_npz_list=("eig", "mmn"),
             write_npz_formatted=True,
@@ -197,6 +196,14 @@ class System_w90(System_R):
         if self.need_R_any('SS'):
             self.set_R_mat('SS', self.rvec.q_to_R(chk.get_SS_q(w90data.spn)))
 
+
+        if not wannier_centers_from_chk:
+            assert w90data.has_file('mmn'), "mmn file is needed to calculate the centers of the Wannier functions"
+            AA_q = chk.get_AA_qb(w90data.mmn, transl_inv=True, sum_b=True, phase=None)
+            AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
+            self.wannier_centers_cart = np.diagonal(AA_R0, axis1=0, axis2=1).T
+
+
         # Wannier centers
         centers = chk.wannier_centers_cart
         # Unique set of nearest-neighbor vectors (cartesian)
@@ -220,28 +227,7 @@ class System_w90(System_R):
             if self.need_R_any('AA'):
                 AA_qb = chk.get_AA_qb(w90data.mmn, transl_inv=transl_inv_MV, sum_b=sum_b, phase=expjphase1)
                 AA_Rb = self.rvec.q_to_R(AA_qb)
-                self.set_R_mat('AA', AA_Rb, Hermitian=True)
-                # Checking Wannier_centers
-                if True:
-                    AA_q = chk.get_AA_qb(w90data.mmn, transl_inv=True, sum_b=True, phase=None)
-                    AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
-                    wannier_centers_cart_new = np.diagonal(AA_R0, axis1=0, axis2=1).T
-                    if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart) < 1e-6):
-                        if guiding_centers:
-                            print(
-                                f"The read Wannier centers\n{self.wannier_centers_cart}\n"
-                                f"are different from the evaluated Wannier centers\n{wannier_centers_cart_new}\n"
-                                "This can happen if guiding_centres was set to true in Wannier90.\n"
-                                "Overwrite the evaluated centers using the read centers.")
-                            for iw in range(self.num_wann):
-                                self.get_R_mat('AA')[iw, iw, self.iR0, :] = self.wannier_centers_cart[iw, :]
-                        else:
-                            raise ValueError(
-                                f"the difference between read\n{self.wannier_centers_cart}\n"
-                                f"and evaluated \n{wannier_centers_cart_new}\n wannier centers is\n"
-                                f"{self.wannier_centers_cart - wannier_centers_cart_new}\n"
-                                "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90."
-                            )
+                self.set_R_mat('AA', AA_Rb, Hermitian=True)                    
 
             # B_a(R,b) matrix
             if 'BB' in self.needed_R_matrices:
