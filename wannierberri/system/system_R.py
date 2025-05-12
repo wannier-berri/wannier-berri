@@ -5,7 +5,6 @@ import os
 from functools import cached_property
 from collections import defaultdict
 import glob
-import multiprocessing
 
 from ..fourier.rvectors import Rvectors
 from .system import System, pauli_xyz
@@ -79,15 +78,13 @@ class System_R(System):
                  SHCryoo=False,
                  SHCqiao=False,
                  OSD=False,
-                 npar=None,
                  _getFF=False,
                  ws_dist_tol=0.05,
                  **parameters):
 
         super().__init__(**parameters)
         self.needed_R_matrices = {'Ham'}
-        self.npar = multiprocessing.cpu_count() if npar is None else npar
-
+        
         if morb:
             self.needed_R_matrices.update(['AA', 'BB', 'CC'])
         if berry:

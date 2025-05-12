@@ -196,6 +196,7 @@ def get_system_Fe_sym_W90(symmetrize=False,
     system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, SHCryoo=True,
                                       OSD=True, SHCqiao=True,
                                       ws_dist_tol=1e-5,
+                                      transl_inv_MV=True,  # legacy
                                       **kwargs)
     system.set_pointgroup(symmetries_Fe)
     if symmetrize:
@@ -234,6 +235,7 @@ def system_GaAs_W90(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True,
+                                      transl_inv_MV=True,
                                       ws_dist_tol=-1e-5)
     system.set_pointgroup(symmetries_GaAs)
     return system

@@ -49,8 +49,6 @@ class System_w90(System_R):
         the seedname used in Wannier90
     w90data : `~wannierberri.system.Wannier90data`
         object that contains all Wannier90 input files and chk all together. If provided, overrides the `seedname`
-    transl_inv_MV : bool
-        Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
     transl_inv_JM : bool
         translational-invariant scheme for diagonal and off-diagonal matrix elements for all matrices. Follows method of Jae-Mo Lihm
     wannier_centers_from_chk : bool
@@ -72,8 +70,15 @@ class System_w90(System_R):
         see `~wannierberri.system.w90_files.Wannier90data`
     formatted : tuple(str)
         see `~wannierberri.system.w90_files.Wannier90data`
+    symmetrize : bool
+        if True, the R-matrices and wannier centers are symmetrized (highly recommended, False is for debugging only)
+        works only if initialized from the w90data object, and that object has the symmetrizer
+    transl_inv_MV : bool
+        Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
+        Note : it applies only to the `AA` matrix for R+!=[0,0,0] and only if `transl_inv_JM` is False
+        Kept for legacy reasons, as it is not used recommended to use. 
     **parameters
-        see `~wannierberri.system.system.System`
+        see `~wannierberri.system.System_R` and `~wannierberri.system.system.System` for the rest of the parameters
 
     Notes
     -----
@@ -83,27 +88,9 @@ class System_w90(System_R):
     ----------
     seedname : str
         the seedname used in Wannier90
-    npar : int
-        number of processes used in the constructor
-    real_lattice : np.ndarray(shape=(3, 3))
-        real-space lattice vectors
-    recip_lattice : np.ndarray(shape=(3, 3))    
-        reciprocal-space lattice vectors
-    iRvec : np.ndarray(shape=(num_R, 3), dtype=int)
-        set R-vectors in the Wigner-Seitz supercell (in the basis of the real-space lattice vectors)
-    cRvec : np.ndarray(shape=(num_R, 3))
-        set R-vectors in the Wigner-Seitz supercell (in the cartesian coordinates)
-    num_wann : int
-        number of Wannier functions
-    wannier_centers_cart : np.ndarray(shape=(num_wann, 3))
-        Wannier centers in Cartesian coordinates
     _NKFFT_recommended : int
         recommended size of the FFT grid in the interpolation
-    needed_R_matrices : list(str)
-        list of the R-matrices, which will be evaluated
-    symmetrize : bool
-        if True, the R-matrices and wannier centers are symmetrized (highly recommended, False is for debugging only)
-        works only if initialized from the w90data object, and that object has the symmetrizer
+    
 
     See Also
     --------
@@ -114,10 +101,10 @@ class System_w90(System_R):
             self,
             seedname="wannier90",
             w90data=None,
-            transl_inv_MV=True,
+            transl_inv_MV=False,
             transl_inv_JM=False,
             fftlib='fftw',
-            npar=multiprocessing.cpu_count(),
+            npar=None,
             kmesh_tol=1e-7,
             bk_complete_tol=1e-5,
             wannier_centers_from_chk=True,
@@ -130,6 +117,11 @@ class System_w90(System_R):
             **parameters
     ):
 
+        if npar is None:
+            npar = multiprocessing.cpu_count()
+        if transl_inv_MV:
+            warnings.warn("transl_inv_MV is deprecated and will be removed in the future. "
+                          "Use transl_inv_JM instead.")
         if "name" not in parameters:
             parameters["name"] = os.path.split(seedname)[-1]
         super().__init__(**parameters)
@@ -150,7 +142,6 @@ class System_w90(System_R):
             if len(unknown) > 0:
                 raise NotImplementedError(f"unknown matrices requested: {list(unknown)} is not implemented")
 
-        self.npar = npar
         self.seedname = seedname
         if w90data is None:
             _needed_files = set(["eig", "chk"])
@@ -177,7 +168,7 @@ class System_w90(System_R):
 
         self.rvec.set_fft_q_to_R(
             kpt_red=chk.kpt_latt,
-            numthreads=self.npar,
+            numthreads=npar,
             fftlib=fftlib,
         )
 
@@ -203,7 +194,7 @@ class System_w90(System_R):
 
         if w90data.has_file('mmn'):
             w90data.mmn.set_bk_chk(chk, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
-        
+
         if wannier_centers_from_chk:
             self.wannier_centers_cart = chk.wannier_centers_cart
         else:
@@ -236,7 +227,7 @@ class System_w90(System_R):
             if self.need_R_any('AA'):
                 AA_qb = chk.get_AA_qb(w90data.mmn, transl_inv=transl_inv_MV, sum_b=sum_b, phase=expjphase1)
                 AA_Rb = self.rvec.q_to_R(AA_qb)
-                self.set_R_mat('AA', AA_Rb, Hermitian=True)                    
+                self.set_R_mat('AA', AA_Rb, Hermitian=True)
 
             # B_a(R,b) matrix
             if 'BB' in self.needed_R_matrices:
@@ -284,15 +275,15 @@ class System_w90(System_R):
             if transl_inv_JM:
                 self.recenter_JM(centers, bk_cart_unique)
 
-        
+
         self.do_at_end_of_init()
         self.check_AA_diag_zero(msg="after conversion of conventions with "
                            f"transl_inv_MV={transl_inv_MV}, transl_inv_JM={transl_inv_JM}",
-                                set_zero=transl_inv_MV or transl_inv_JM, 
+                                set_zero=transl_inv_MV or transl_inv_JM,
                                 threshold=0.1 if transl_inv_JM else 1e5)
         if symmetrize and hasattr(w90data, 'symmetrizer'):
             self.symmetrize2(w90data.symmetrizer)
-        
+
     ###########################################################################
     def recenter_JM(self, centers, bk_cart_unique):
         """"
