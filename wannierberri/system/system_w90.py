@@ -49,13 +49,10 @@ class System_w90(System_R):
         the seedname used in Wannier90
     w90data : `~wannierberri.system.Wannier90data`
         object that contains all Wannier90 input files and chk all together. If provided, overrides the `seedname`
-    transl_inv_MV : bool
-        Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
     transl_inv_JM : bool
         translational-invariant scheme for diagonal and off-diagonal matrix elements for all matrices. Follows method of Jae-Mo Lihm
-    guiding_centers : bool
-        If True, enable overwriting the diagonal elements of the AA_R matrix at R=0 with the
-        Wannier centers calculated from Wannier90.
+    wannier_centers_from_chk : bool
+        If True, the centers of the Wannier functions are read from the ``.chk`` file. If False, the centers are recalculated from the ``.mmn`` file.
     npar : int
         number of processes used in the constructor
     fft : str
@@ -73,8 +70,15 @@ class System_w90(System_R):
         see `~wannierberri.system.w90_files.Wannier90data`
     formatted : tuple(str)
         see `~wannierberri.system.w90_files.Wannier90data`
+    symmetrize : bool
+        if True, the R-matrices and wannier centers are symmetrized (highly recommended, False is for debugging only)
+        works only if initialized from the w90data object, and that object has the symmetrizer
+    transl_inv_MV : bool
+        Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
+        Note : it applies only to the `AA` matrix for R+!=[0,0,0] and only if `transl_inv_JM` is False
+        Kept for legacy reasons, as it is not used recommended to use. 
     **parameters
-        see `~wannierberri.system.system.System`
+        see `~wannierberri.system.System_R` and `~wannierberri.system.system.System` for the rest of the parameters
 
     Notes
     -----
@@ -84,24 +88,9 @@ class System_w90(System_R):
     ----------
     seedname : str
         the seedname used in Wannier90
-    npar : int
-        number of processes used in the constructor
-    real_lattice : np.ndarray(shape=(3, 3))
-        real-space lattice vectors
-    recip_lattice : np.ndarray(shape=(3, 3))    
-        reciprocal-space lattice vectors
-    iRvec : np.ndarray(shape=(num_R, 3), dtype=int)
-        set R-vectors in the Wigner-Seitz supercell (in the basis of the real-space lattice vectors)
-    cRvec : np.ndarray(shape=(num_R, 3))
-        set R-vectors in the Wigner-Seitz supercell (in the cartesian coordinates)
-    num_wann : int
-        number of Wannier functions
-    wannier_centers_cart : np.ndarray(shape=(num_wann, 3))
-        Wannier centers in Cartesian coordinates
     _NKFFT_recommended : int
         recommended size of the FFT grid in the interpolation
-    needed_R_matrices : list(str)
-        list of the R-matrices, which will be evaluated
+    
 
     See Also
     --------
@@ -112,21 +101,27 @@ class System_w90(System_R):
             self,
             seedname="wannier90",
             w90data=None,
-            transl_inv_MV=True,
+            transl_inv_MV=False,
             transl_inv_JM=False,
-            guiding_centers=False,
             fftlib='fftw',
-            npar=multiprocessing.cpu_count(),
+            npar=None,
             kmesh_tol=1e-7,
             bk_complete_tol=1e-5,
+            wannier_centers_from_chk=True,
             read_npz=True,
             write_npz_list=("eig", "mmn"),
             write_npz_formatted=True,
             overwrite_npz=False,
             formatted=tuple(),
+            symmetrize=True,
             **parameters
     ):
 
+        if npar is None:
+            npar = multiprocessing.cpu_count()
+        if transl_inv_MV:
+            warnings.warn("transl_inv_MV is deprecated and will be removed in the future. "
+                          "Use transl_inv_JM instead.")
         if "name" not in parameters:
             parameters["name"] = os.path.split(seedname)[-1]
         super().__init__(**parameters)
@@ -147,7 +142,6 @@ class System_w90(System_R):
             if len(unknown) > 0:
                 raise NotImplementedError(f"unknown matrices requested: {list(unknown)} is not implemented")
 
-        self.npar = npar
         self.seedname = seedname
         if w90data is None:
             _needed_files = set(["eig", "chk"])
@@ -174,7 +168,7 @@ class System_w90(System_R):
 
         self.rvec.set_fft_q_to_R(
             kpt_red=chk.kpt_latt,
-            numthreads=self.npar,
+            numthreads=npar,
             fftlib=fftlib,
         )
 
@@ -189,108 +183,106 @@ class System_w90(System_R):
         # factors depending on the lattice vectors R can be added, and the sum
         # over nearest-neighbor vectors can be finally performed.
 
-        w90data.mmn.set_bk_chk(chk, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
 
         # H(R) matrix
         HHq = chk.get_HH_q(w90data.eig)
         self.set_R_mat('Ham', self.rvec.q_to_R(HHq))
 
-        # Wannier centers
-        centers = chk.wannier_centers_cart
-        # Unique set of nearest-neighbor vectors (cartesian)
-        bk_cart_unique = w90data.mmn.bk_cart_unique
-
-        if transl_inv_JM:
-            _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
-            sum_b = False
-        else:
-            _r0 = centers[None, :, :]
-            sum_b = True
-
-        expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0))
-        print(f"expjphase1 {expjphase1.shape}")
-        expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
-
-
-        # A_a(R,b) matrix
-        if self.need_R_any('AA'):
-            AA_qb = chk.get_AA_qb(w90data.mmn, transl_inv=transl_inv_MV, sum_b=sum_b, phase=expjphase1)
-            AA_Rb = self.rvec.q_to_R(AA_qb)
-            self.set_R_mat('AA', AA_Rb, Hermitian=True)
-            # Checking Wannier_centers
-            if True:
-                AA_q = chk.get_AA_qb(w90data.mmn, transl_inv=True, sum_b=True, phase=None)
-                AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
-                wannier_centers_cart_new = np.diagonal(AA_R0, axis1=0, axis2=1).T
-                if not np.all(abs(wannier_centers_cart_new - self.wannier_centers_cart) < 1e-6):
-                    if guiding_centers:
-                        print(
-                            f"The read Wannier centers\n{self.wannier_centers_cart}\n"
-                            f"are different from the evaluated Wannier centers\n{wannier_centers_cart_new}\n"
-                            "This can happen if guiding_centres was set to true in Wannier90.\n"
-                            "Overwrite the evaluated centers using the read centers.")
-                        for iw in range(self.num_wann):
-                            self.get_R_mat('AA')[iw, iw, self.iR0, :] = self.wannier_centers_cart[iw, :]
-                    else:
-                        raise ValueError(
-                            f"the difference between read\n{self.wannier_centers_cart}\n"
-                            f"and evaluated \n{wannier_centers_cart_new}\n wannier centers is\n"
-                            f"{self.wannier_centers_cart - wannier_centers_cart_new}\n"
-                            "If guiding_centres was set to true in Wannier90, pass guiding_centers = True to System_w90."
-                        )
-
-        # B_a(R,b) matrix
-        if 'BB' in self.needed_R_matrices:
-            BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig, sum_b=sum_b, phase=expjphase1)
-            BB_Rb = self.rvec.q_to_R(BB_qb)
-            self.set_R_mat('BB', BB_Rb)
-
-        # C_a(R,b1,b2) matrix
-        if 'CC' in self.needed_R_matrices:
-            CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu, sum_b=sum_b, phase=expjphase2)
-            CC_Rb = self.rvec.q_to_R(CC_qb)
-            self.set_R_mat('CC', CC_Rb, Hermitian=True)
-
-        # O_a(R,b1,b2) matrix
-        if 'OO' in self.needed_R_matrices:
-            OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
-            OO_Rb = self.rvec.q_to_R(OO_qb)
-            self.set_R_mat('OO', OO_Rb, Hermitian=True)
-
-        # G_bc(R,b1,b2) matrix
-        if 'GG' in self.needed_R_matrices:
-            GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
-            GG_Rb = self.rvec.q_to_R(GG_qb)
-            self.set_R_mat('GG', GG_Rb, Hermitian=True)
-
-        #######################################################################
-
         if self.need_R_any('SS'):
             self.set_R_mat('SS', self.rvec.q_to_R(chk.get_SS_q(w90data.spn)))
-        if self.need_R_any('SR'):
-            self.set_R_mat('SR', self.rvec.q_to_R(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, phase=expjphase1)))
-        if self.need_R_any('SH'):
-            self.set_R_mat('SH', self.rvec.q_to_R(chk.get_SH_q(w90data.spn, w90data.eig)))
-        if self.need_R_any('SHR'):
-            self.set_R_mat('SHR', self.rvec.q_to_R(
-                chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, eig=w90data.eig, phase=expjphase1)))
 
-        if 'SA' in self.needed_R_matrices:
-            self.set_R_mat('SA',
-                           self.rvec.q_to_R(chk.get_SHA_q(w90data.siu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
-        if 'SHA' in self.needed_R_matrices:
-            self.set_R_mat('SHA',
-                           self.rvec.q_to_R(chk.get_SHA_q(w90data.shu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
 
-        del expjphase1, expjphase2
+        if w90data.has_file('mmn'):
+            w90data.mmn.set_bk_chk(chk, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
 
-        if transl_inv_JM:
-            self.recenter_JM(centers, bk_cart_unique)
+        if wannier_centers_from_chk:
+            self.wannier_centers_cart = chk.wannier_centers_cart
+        else:
+            assert w90data.has_file('mmn'), "mmn file is needed to calculate the centers of the Wannier functions"
+            AA_q = chk.get_AA_qb(w90data.mmn, transl_inv=True, sum_b=True, phase=None)
+            AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
+            self.wannier_centers_cart = np.diagonal(AA_R0, axis1=0, axis2=1).T
+
+
+        # Wannier centers
+        centers = self.wannier_centers_cart
+        # Unique set of nearest-neighbor vectors (cartesian)
+        if w90data.has_file('mmn'):
+            # w90data.mmn.set_bk_chk(chk, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+            bk_cart_unique = w90data.mmn.bk_cart_unique
+
+            if transl_inv_JM:
+                _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
+                sum_b = False
+            else:
+                _r0 = centers[None, :, :]
+                sum_b = True
+
+            expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0))
+            print(f"expjphase1 {expjphase1.shape}")
+            expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
+
+
+            # A_a(R,b) matrix
+            if self.need_R_any('AA'):
+                AA_qb = chk.get_AA_qb(w90data.mmn, transl_inv=transl_inv_MV, sum_b=sum_b, phase=expjphase1)
+                AA_Rb = self.rvec.q_to_R(AA_qb)
+                self.set_R_mat('AA', AA_Rb, Hermitian=True)
+
+            # B_a(R,b) matrix
+            if 'BB' in self.needed_R_matrices:
+                BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig, sum_b=sum_b, phase=expjphase1)
+                BB_Rb = self.rvec.q_to_R(BB_qb)
+                self.set_R_mat('BB', BB_Rb)
+
+            # C_a(R,b1,b2) matrix
+            if 'CC' in self.needed_R_matrices:
+                CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu, sum_b=sum_b, phase=expjphase2)
+                CC_Rb = self.rvec.q_to_R(CC_qb)
+                self.set_R_mat('CC', CC_Rb, Hermitian=True)
+
+            # O_a(R,b1,b2) matrix
+            if 'OO' in self.needed_R_matrices:
+                OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
+                OO_Rb = self.rvec.q_to_R(OO_qb)
+                self.set_R_mat('OO', OO_Rb, Hermitian=True)
+
+            # G_bc(R,b1,b2) matrix
+            if 'GG' in self.needed_R_matrices:
+                GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
+                GG_Rb = self.rvec.q_to_R(GG_qb)
+                self.set_R_mat('GG', GG_Rb, Hermitian=True)
+
+            #######################################################################
+
+            if self.need_R_any('SR'):
+                self.set_R_mat('SR', self.rvec.q_to_R(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, phase=expjphase1)))
+            if self.need_R_any('SH'):
+                self.set_R_mat('SH', self.rvec.q_to_R(chk.get_SH_q(w90data.spn, w90data.eig)))
+            if self.need_R_any('SHR'):
+                self.set_R_mat('SHR', self.rvec.q_to_R(
+                    chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, eig=w90data.eig, phase=expjphase1)))
+
+            if 'SA' in self.needed_R_matrices:
+                self.set_R_mat('SA',
+                            self.rvec.q_to_R(chk.get_SHA_q(w90data.siu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
+            if 'SHA' in self.needed_R_matrices:
+                self.set_R_mat('SHA',
+                            self.rvec.q_to_R(chk.get_SHA_q(w90data.shu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
+
+            del expjphase1, expjphase2
+
+            if transl_inv_JM:
+                self.recenter_JM(centers, bk_cart_unique)
+
 
         self.do_at_end_of_init()
         self.check_AA_diag_zero(msg="after conversion of conventions with "
-                                    f"transl_inv_MV={transl_inv_MV}, transl_inv_JM={transl_inv_JM}",
-                                set_zero=transl_inv_MV or transl_inv_JM)
+                           f"transl_inv_MV={transl_inv_MV}, transl_inv_JM={transl_inv_JM}",
+                                set_zero=transl_inv_MV or transl_inv_JM,
+                                threshold=0.1 if transl_inv_JM else 1e5)
+        if symmetrize and hasattr(w90data, 'symmetrizer'):
+            self.symmetrize2(w90data.symmetrizer)
 
     ###########################################################################
     def recenter_JM(self, centers, bk_cart_unique):

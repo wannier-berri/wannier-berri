@@ -61,7 +61,7 @@ class SavableNPZ(abc.ABC):
             dic = {}
         else:
             dic = dict(dic)
-        
+
         dic.update(kwargs)
         for k in self.npz_tags:
             if k in dic:

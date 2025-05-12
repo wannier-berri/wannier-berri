@@ -149,7 +149,7 @@ class Projection:
     @property
     def num_wann_per_site_spinor(self):
         """number of wannier functions per site (with spin)"""
-        return self.num_wann_per_site * (2 if self.spinor else self.num_wann_per_site)
+        return self.num_wann_per_site * (2 if self.spinor else 1)
 
     @property
     def num_points(self):
@@ -316,15 +316,16 @@ class ProjectionsSet:
         return self.map_free_vars[0].shape[2]
 
 
-    @cached_property
-    def num_wann_per_site(self):
-        """	
-        Returns:
-        --------
-        np.array(int, shape=(num_points))
-            The number of Wannier functions per site
-        """
-        return np.array(sum(([p.num_wann_per_site] * p.num_points for p in self.projections), []))
+    # @cached_property
+    # def num_wann_per_site(self):
+    #     """
+    #     Returns:
+    #     --------
+    #     np.array(int, shape=(num_points))
+    #         The number of Wannier functions per site
+    #     """
+    #     return np.array(sum(([p.num_wann_per_site] * p.num_points for p in self.projections), []))
+
 
     @property
     def vars_end(self):

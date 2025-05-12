@@ -5,7 +5,6 @@ import os
 from functools import cached_property
 from collections import defaultdict
 import glob
-import multiprocessing
 
 from ..fourier.rvectors import Rvectors
 from .system import System, pauli_xyz
@@ -79,15 +78,13 @@ class System_R(System):
                  SHCryoo=False,
                  SHCqiao=False,
                  OSD=False,
-                 npar=None,
                  _getFF=False,
                  ws_dist_tol=0.05,
                  **parameters):
 
         super().__init__(**parameters)
         self.needed_R_matrices = {'Ham'}
-        self.npar = multiprocessing.cpu_count() if npar is None else npar
-
+        
         if morb:
             self.needed_R_matrices.update(['AA', 'BB', 'CC'])
         if berry:
@@ -260,11 +257,12 @@ class System_R(System):
             silent=self.silent or silent,
         )
 
-        self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
+        # self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
         logfile = self.logfile
 
-        logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
-        logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
+        if not silent:
+            logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
+            logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
 
         self._XX_R, iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
         self.clear_cached_wcc()
@@ -274,6 +272,11 @@ class System_R(System):
             shifts_left_red=self.wannier_centers_red,
         )
         self.set_pointgroup(spacegroup=symmetrizer.spacegroup)
+
+        if not silent:
+            logfile.write(f"Wannier Centers cart (symetrized):\n {self.wannier_centers_cart}\n")
+            logfile.write(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_red}\n")
+
         # self.clear_cached_R()
         # self.clear_cached_wcc()
 
@@ -377,8 +380,9 @@ class System_R(System):
             for suborbit in suborbit_list:
                 pos_loc = pos[suborbit]
                 proj = Projection(position_num=pos_loc, orbital=orbital, spacegroup=spacegroup,
-                                  do_not_split_projections=True)
+                                  do_not_split_projections=True, rotate_basis=False)
                 proj_list.append(proj)
+                print(f"proj: {proj}")
                 num_wann_per_position = proj.num_wann_per_site_spinor
                 print(f"orbital = {orbital}, num wann per site = {num_wann_per_position}")
                 for i in suborbit:
@@ -417,11 +421,11 @@ class System_R(System):
         self.clear_cached_R()
 
 
-    def check_AA_diag_zero(self, msg="", set_zero=True):
+    def check_AA_diag_zero(self, msg="", set_zero=True, threshold=1e-5):
         if self.has_R_mat('AA'):
-            A_diag = self.get_R_mat('AA')[self.rvec.iR0].diagonal()
+            A_diag = self.get_R_mat('AA')[self.rvec.iR0].diagonal().T
             A_diag_max = abs(A_diag).max()
-            if A_diag_max > 1e-5:
+            if A_diag_max > threshold:
                 warnings.warn(
                     f"the maximal value of diagonal position matrix elements {msg} is {A_diag_max}."
                     f"This may signal a problem\n {A_diag}")

@@ -111,8 +111,8 @@ def run(
         file_Klist=None,
         restart=False,
         Klist_part=10,
-        parallel=Serial(),  # serial by default
-        print_Kpoints=True,
+        parallel=None,  # serial by default
+        print_Kpoints=False,
         adpt_mesh=2,
         adpt_fac=1,
         fast_iter=True,
@@ -170,6 +170,8 @@ def run(
     -----
     Results are also printed to ASCII files
     """
+    if parallel is None:
+        parallel = Serial()
 
     cprint("Starting run()", 'red', attrs=['bold'])
     if parameters_K is None:
