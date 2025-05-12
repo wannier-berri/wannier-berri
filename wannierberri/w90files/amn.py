@@ -50,7 +50,7 @@ class AMN(W90_file):
         selected_bands : list of int or bool
             the indices of the bands to be used, or a boolean mask
         """
-        print(f"selecting bands {selected_bands} in amn")
+        # print(f"selecting bands {selected_bands} in amn")
         if selected_bands is not None:
             self.data = self.data[:, selected_bands, :]
 
@@ -157,7 +157,7 @@ def amn_from_bandstructure_s_delta(bandstructure: BandStructure, positions, norm
 
 
 def amn_from_bandstructure(bandstructure: BandStructure, projections: ProjectionsSet,
-                           normalize=True, return_object=True, spinor=False):
+                           normalize=True, return_object=True, spinor=False, verbose=False):
     """
     Create an AMN object from a BandStructure object
     So far only delta-localised s-orbitals are implemented
@@ -182,11 +182,13 @@ def amn_from_bandstructure(bandstructure: BandStructure, projections: Projection
         positions += pos
         orbitals += orb
         basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site)]
-        print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
+        if verbose:
+            print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
     spinor = projections.spinor
 
 
-    print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
+    if verbose:
+        print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
     data = []
     pos = np.array(positions)
     rec_latt = bandstructure.RecLattice

@@ -476,7 +476,7 @@ class SymmetrizerSAWF(SavableNPZ):
             return
         selected_bands_bool = np.zeros(self.NB, dtype=bool)
         selected_bands_bool[selected_bands] = True
-        print(f"applying window to select {sum(selected_bands_bool)} bands from {self.NB}\n", selected_bands_bool)
+        # print(f"applying window to select {sum(selected_bands_bool)} bands from {self.NB}\n", selected_bands_bool)
         for ikirr in range(self.NKirr):
             self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr] = self.select_bands_in_blocks(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], selected_bands_bool)
         for i, block_ind in enumerate(self.d_band_block_indices):
@@ -485,7 +485,7 @@ class SymmetrizerSAWF(SavableNPZ):
             assert block_ind[0, 0] == 0
             assert np.all(block_ind[1:, 0] == block_ind[:-1, 1])
             assert block_ind[-1, -1] == self.NB
-        print(f"new NB = {self.NB}")
+        # print(f"new NB = {self.NB}")
 
 
 

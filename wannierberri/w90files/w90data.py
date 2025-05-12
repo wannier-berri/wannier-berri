@@ -512,7 +512,7 @@ class Wannier90data:
                     win['dis_win_min'] = win_min
                     win['dis_win_max'] = win_max
                 else:
-                    print(f"applying window to {key} {val}")
+                    # print(f"applying window to {key} {val}")
                     self.get_file(key).select_bands(selected_bands)
         if hasattr(self, 'symmetrizer'):
             self.symmetrizer.select_bands(selected_bands)

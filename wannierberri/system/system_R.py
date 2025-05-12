@@ -260,11 +260,12 @@ class System_R(System):
             silent=self.silent or silent,
         )
 
-        self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
+        # self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
         logfile = self.logfile
 
-        logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
-        logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
+        if not silent:
+            logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
+            logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
 
         self._XX_R, iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
         self.clear_cached_wcc()
@@ -275,8 +276,9 @@ class System_R(System):
         )
         self.set_pointgroup(spacegroup=symmetrizer.spacegroup)
 
-        logfile.write(f"Wannier Centers cart (symetrized):\n {self.wannier_centers_cart}\n")
-        logfile.write(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_red}\n")
+        if not silent:
+            logfile.write(f"Wannier Centers cart (symetrized):\n {self.wannier_centers_cart}\n")
+            logfile.write(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_red}\n")
 
         # self.clear_cached_R()
         # self.clear_cached_wcc()
@@ -422,11 +424,11 @@ class System_R(System):
         self.clear_cached_R()
 
 
-    def check_AA_diag_zero(self, msg="", set_zero=True):
+    def check_AA_diag_zero(self, msg="", set_zero=True, threshold=1e-5):
         if self.has_R_mat('AA'):
-            A_diag = self.get_R_mat('AA')[self.rvec.iR0].diagonal()
+            A_diag = self.get_R_mat('AA')[self.rvec.iR0].diagonal().T
             A_diag_max = abs(A_diag).max()
-            if A_diag_max > 1e-5:
+            if A_diag_max > threshold:
                 warnings.warn(
                     f"the maximal value of diagonal position matrix elements {msg} is {A_diag_max}."
                     f"This may signal a problem\n {A_diag}")

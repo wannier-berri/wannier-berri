@@ -101,6 +101,9 @@ class System_w90(System_R):
         recommended size of the FFT grid in the interpolation
     needed_R_matrices : list(str)
         list of the R-matrices, which will be evaluated
+    symmetrize : bool
+        if True, the R-matrices and wannier centers are symmetrized (highly recommended, False is for debugging only)
+        works only if initialized from the w90data object, and that object has the symmetrizer
 
     See Also
     --------
@@ -123,6 +126,7 @@ class System_w90(System_R):
             write_npz_formatted=True,
             overwrite_npz=False,
             formatted=tuple(),
+            symmetrize=True,
             **parameters
     ):
 
@@ -197,7 +201,12 @@ class System_w90(System_R):
             self.set_R_mat('SS', self.rvec.q_to_R(chk.get_SS_q(w90data.spn)))
 
 
-        if not wannier_centers_from_chk:
+        if w90data.has_file('mmn'):
+            w90data.mmn.set_bk_chk(chk, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+        
+        if wannier_centers_from_chk:
+            self.wannier_centers_cart = chk.wannier_centers_cart
+        else:
             assert w90data.has_file('mmn'), "mmn file is needed to calculate the centers of the Wannier functions"
             AA_q = chk.get_AA_qb(w90data.mmn, transl_inv=True, sum_b=True, phase=None)
             AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
@@ -205,10 +214,10 @@ class System_w90(System_R):
 
 
         # Wannier centers
-        centers = chk.wannier_centers_cart
+        centers = self.wannier_centers_cart
         # Unique set of nearest-neighbor vectors (cartesian)
         if w90data.has_file('mmn'):
-            w90data.mmn.set_bk_chk(chk, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+            # w90data.mmn.set_bk_chk(chk, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
             bk_cart_unique = w90data.mmn.bk_cart_unique
 
             if transl_inv_JM:
@@ -278,9 +287,12 @@ class System_w90(System_R):
         
         self.do_at_end_of_init()
         self.check_AA_diag_zero(msg="after conversion of conventions with "
-                                    f"transl_inv_MV={transl_inv_MV}, transl_inv_JM={transl_inv_JM}",
-                                set_zero=transl_inv_MV or transl_inv_JM)
-
+                           f"transl_inv_MV={transl_inv_MV}, transl_inv_JM={transl_inv_JM}",
+                                set_zero=transl_inv_MV or transl_inv_JM, 
+                                threshold=0.1 if transl_inv_JM else 1e5)
+        if symmetrize and hasattr(w90data, 'symmetrizer'):
+            self.symmetrize2(w90data.symmetrizer)
+        
     ###########################################################################
     def recenter_JM(self, centers, bk_cart_unique):
         """"

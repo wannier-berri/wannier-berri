@@ -144,14 +144,11 @@ class Projection:
     @property
     def num_wann_per_site(self):
         """number of wannier functions per site (without spin)"""
-        for i, o in enumerate(self.orbitals):
-            print(f"num_wann_per_site for {i}, {o} = {num_orbitals(o)}")
         return sum(num_orbitals(o) for o in self.orbitals)
 
     @property
     def num_wann_per_site_spinor(self):
         """number of wannier functions per site (with spin)"""
-        print(f"spinor = {self.spinor}")
         return self.num_wann_per_site * (2 if self.spinor else 1)
 
     @property

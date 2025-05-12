@@ -129,7 +129,9 @@ def evaluate_k(system=None,
 
 def evaluate_k_path(system, k_nodes=None, labels=None, length=500, k_path=None,
                     tabulators=None,
-                    quantities=(),):
+                    quantities=(),
+                    parallel=None,
+                    ):
     """Evaluate a quantity along a path in the reciprocal space
 
     Parameters
@@ -168,5 +170,5 @@ def evaluate_k_path(system, k_nodes=None, labels=None, length=500, k_path=None,
         tabulators_loc[q] = available_quantities[q]
 
     tabulator_all = tabulate.TabulatorAll(tabulators=tabulators_loc, mode='path')
-    result = run(system, grid=k_path, calculators={'tabulate': tabulator_all})
+    result = run(system, grid=k_path, calculators={'tabulate': tabulator_all}, parallel=parallel)
     return k_path, result.results['tabulate']
