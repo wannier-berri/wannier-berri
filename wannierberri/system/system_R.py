@@ -47,9 +47,10 @@ class System_R(System):
 
         Notes
         -----
-        + The system is described by its real lattice, symmetry group, and Hamiltonian and other real-space matrices.
-        + The lattice is given by the lattice vectors in the Cartesian coordinates.
-        + The system can be either periodic or confined in some directions.
+        * The system is described by its real lattice, symmetry group, and Hamiltonian and other real-space matrices.
+        * The lattice is given by the lattice vectors in the Cartesian coordinates.
+        * The system can be either periodic or confined in some directions.
+
 
         Attributes
         ----------

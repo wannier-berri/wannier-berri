@@ -5,7 +5,7 @@ Symmetries may be involved in WannierBerri on three different levels
 
 1. Point group symmetries
     are used in the :func:`~wannierberri.run` function to reduce the number of k-points and to make the 
-    resulting tensor symmetric.  See :func:`~wannierberri.system.System.set_symmetry`
+    resulting tensor symmetric.  See :func:`~wannierberri.system.System.set_pointtgroup`
 
 2. Symmetrization of  the Hamiltonian and matrix elements
     typically the Wannier modelcreated by Wannier90 slightly (or strongly) breaks the symmetries. 
