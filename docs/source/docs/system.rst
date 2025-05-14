@@ -1,12 +1,12 @@
 System
 ======================
 
-The first step in the ``wannierberri`` calculation is initialising the System.  This is done by means of child classes :class:`~wannierberri.__system.System` described below. 
-They all have an important common method :func:`~wannierberri.System.set_symmetry`.
-The system may come either from :ref:`Wanier functions <sec-wan-fun>`  constructed by `Wannier90 <http://wannier90.org>`_, or from ref:`tight binding <sec-tb-models>` models. 
+The first step in the ``wannierberri`` calculation is initialising the System.  This is done by means of child classes :class:`~wannierberri.system.System` described below. 
+The system may either be constructed bu :ref:`wannierisation in WannierBerri <sec-wannierisation>`, or come either from :ref:`Wanier functions <sec-wan-fun>`  constructed by `Wannier90 <http://wannier90.org>`_, 
+or from ref:`tight binding <sec-tb-models>` models. Also k.p models are supported, see :class:`~wannierberri.system.SystemKP`.
 
 .. autoclass:: wannierberri.system.System
-   :members: set_symmetry
+   :members: set_pointgroup, cell_volume, recip_lattice
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
@@ -24,7 +24,13 @@ Real-space systems
 Symmetrization of the system
 -----------------------------
 
+There are two interfaces: one with explicit specification of the struvcture (old interface) and one with :class:`~wannierberri.symmetry.sawf.SymmetrizerSAWF` (new interface).
+
+
 .. automethod:: wannierberri.system.System_R.symmetrize
+
+
+.. automethod:: wannierberri.system.System_R.symmetrize2
 
 
 .. _sec-wan-fun:
