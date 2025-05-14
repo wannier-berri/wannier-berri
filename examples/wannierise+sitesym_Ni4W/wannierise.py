@@ -148,7 +148,7 @@ print("Time elapsed (read data): ", t1 - t0)
 exit()
 system = wberri.system.System_w90(w90data=w90data, silent=True)
 
-path = wberri.Path(system, k_nodes=[[0, 0, 0], [1 / 2, 0, 0], [1, 0, 0]], labels=['G', 'L', 'G'], length=100)
+path = wberri.Path(system, nodes=[[0, 0, 0], [1 / 2, 0, 0], [1, 0, 0]], labels=['G', 'L', 'G'], length=100)
 tabulator = wberri.calculators.TabulatorAll(tabulators={}, mode='path')
 calculators = {'tabulate': tabulator}
 

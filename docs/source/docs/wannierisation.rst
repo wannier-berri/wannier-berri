@@ -20,47 +20,57 @@ Example
    # This tutorial shows how to generate a DMN file inside Wanier Berri code (without pw2wannier90)
    # and then use it to generate a Wannier90 output.
    # It may be used with any DFT code that is supported by IrRep (QE, VASP, AINIT, ...)
-   # the .dmn file is not needed before the calculation, it is generated on the fly
+   # the .dmn and .amn files are NOT needed before the calculation, they is generated on the fly
 
-   import wannierberri as wberri
-   from wannierberri.w90files import DMN
+   from wannierberri.symmetry.projections import Projection, ProjectionsSet
    from irrep.bandstructure import BandStructure
+   import wannierberri as wb
 
-   # Create the dmn file
-   try:
-      dmn_new = DMN("mydmn")
-   except:
-         # see documentation of irrep for usage with other codes
-      bandstructure = BandStructure(code='espresso', prefix='di', Ecut=100,
-                                 normalize=False)
+   path_data = "../../tests/data/Fe-222-pw/"
+   w90data = wb.w90files.Wannier90data(seedname=path_data + "Fe", readfiles=["mmn", "eig", "win", ], read_npz=True)
 
-      bandstructure.spacegroup.show()
-      dmn_new = DMN(empty=True)
-      dmn_new.from_irrep(bandstructure)
-      pos = [[0,0,0],[0,0,1/2],[0,1/2,0],[1/2,0,0]]
-      spacegroup = bandstructure.spacegroup
-      proj_s = Projection(position_num=pos, orbital='s', spacegroup=spacegroup)
-      dmn_new.set_D_wann_from_projections([proj_s])
-      dmn_new.to_w90_file("mydmn")
 
-   # Read the data from the Wanier90 inputs 
-   w90data = wberri.w90files.Wannier90data(seedname='diamond')
-   w90data.set_file("dmn", dmn_new)
+   bandstructure = BandStructure(code='espresso',
+                              prefix=path_data + "/Fe",
+                              Ecut=200,
+                              normalize=True,
+                              magmom=[[0, 0, 1.]],
+                              include_TR=True,
+                              )
+   spacegroup = bandstructure.spacegroup
+   spacegroup.show()
+   # exit()
+   # symmetrizer = wb.symmetry.sawf.SymmetrizerSAWF().from_npz(path_data + f"/Fe_TR={False}.sawf.npz")
+   symmetrizer = wb.symmetry.sawf.SymmetrizerSAWF().from_irrep(bandstructure)
 
-   #Now wannierise with sitesym and frozen window (the part that is not implemented in Wanier90)
-   w90data.wannierise(
-                  froz_min=0,
-                  froz_max=4,
-                  num_iter=1000,
-                  conv_tol=1e-6,
-                  mix_ratio_z=1.0,
-                  print_progress_every=20,
-                  sitesym=True,
-                  localise=True,
-                  )
+   projection_s = Projection(orbital='s', position_num=[0, 0, 0], spacegroup=spacegroup)
+   projection_p = Projection(orbital='p', position_num=[0, 0, 0], spacegroup=spacegroup)
+   projection_d = Projection(orbital='d', position_num=[0, 0, 0], spacegroup=spacegroup)
+   projection_sp3d2 = Projection(orbital='sp3d2', position_num=[0, 0, 0], spacegroup=spacegroup)
+   projection_t2g = Projection(orbital='t2g', position_num=[0, 0, 0], spacegroup=spacegroup)
 
-   system = wberri.system.System_w90(w90data=w90data)
+   # projections_set = ProjectionsSet(projections=[projection_s, projection_p, projection_d])
+   projections_set = ProjectionsSet(projections=[projection_sp3d2, projection_t2g])
 
+   symmetrizer.set_D_wann_from_projections(projections_set)
+   amn = wb.w90files.amn_from_bandstructure(bandstructure, projections=projections_set)
+   w90data.set_symmetrizer(symmetrizer)
+   w90data.set_file("amn", amn)
+
+   w90data.select_bands(win_min=-8, win_max=50)
+
+   w90data.wannierise(init="amn",
+                     froz_min=-10,
+                     froz_max=20,
+                     print_progress_every=10,
+                     num_iter=101,
+                     conv_tol=1e-10,
+                     mix_ratio_z=1.0,
+                     sitesym=True,
+                     parallel=False
+                     )
+
+   system = wb.system.System_w90(w90data=w90data, berry=True)
    # Now do whatever you want with the system, as if it was created with Wannier90
 
 

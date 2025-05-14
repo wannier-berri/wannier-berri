@@ -51,7 +51,7 @@ system = System_ASE(wan, berry=True)
 print(system.wannier_centers_cart)
 
 
-path, bands = wberri.evaluate_k_path(system, k_nodes=[[k1, k2, 0], [k1, k2, 0.5], [k1, k2, 1.]],
+path, bands = wberri.evaluate_k_path(system, nodes=[[k1, k2, 0], [k1, k2, 0.5], [k1, k2, 1.]],
                    labels=["K<-", "H", "->K"],
     quantities=["berry_curvature"]
 )

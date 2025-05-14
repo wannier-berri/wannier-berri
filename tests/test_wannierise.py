@@ -43,10 +43,6 @@ def test_wannierise(outer_window):
     print("prefix = ", prefix)
     symmetrizer = SymmetrizerSAWF().from_npz(prefix + ".sawf.npz")
 
-    # because of changes in irrep 2.1 - and to avoid re-creating symmetrizer
-    # symmetrizer.spacegroup.number_str = str(symmetrizer.spacegroup.number)
-    # symmetrizer.spacegroup.show()
-    # symmetrizer.to_w90_file(prefix)
     # Read the data from the Wanier90 inputs
     w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
@@ -106,7 +102,7 @@ def test_wannierise(outer_window):
     # Now calculate bandstructure for each of the systems
     # for creating a path any of the systems will do the job
     system0 = list(systems.values())[0]
-    path = wberri.Path(system0, k_nodes=[[0, 0, 0], [1 / 2, 0, 0]], labels=['G', 'L'], length=100)
+    path = wberri.Path(system0, nodes=[[0, 0, 0], [1 / 2, 0, 0]], labels=['G', 'L'], length=100)
     tabulator = wberri.calculators.TabulatorAll(tabulators={}, mode='path')
     calculators = {'tabulate': tabulator}
 
@@ -279,7 +275,7 @@ def test_sitesym_Fe(include_TR, use_window):
 
     # all kpoints given in reduced coordinates
     path = wberri.Path(system,
-                    k_nodes=[
+                    nodes=[
                         [0.0000, 0.0000, 0.0000],  # G
                         [0.500, -0.5000, -0.5000],  # H
                         [0.7500, 0.2500, -0.2500],  # P

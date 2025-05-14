@@ -66,7 +66,7 @@ wberri.run(system,
 
 
 path = wberri.Path(system,
-                k_nodes=[
+                nodes=[
                     [0.0000, 0.0000, 0.0000],  # 30 !Gamma
                     [-0.500, 0.0000, -0.500],  # 10 !X
                     [0.0000, 0.3750, -0.375],  # 20 !K

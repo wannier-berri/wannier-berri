@@ -5,19 +5,19 @@ Searching for suitable projections
 
 Note: work on this functionality is in progress
 
-.. autoclass:: wannierberri.wannierise.EBRsearcher
+.. autoclass:: wannierberri.symmetry.projections_searcher.EBRsearcher
    :members: 
    :no-undoc-members:
    
 Projections and Wyckoff positions
 +++++++++++++++++++++++++++++++++
 
-.. automodule:: wannierberri.wannierise.projections
+.. automodule:: wannierberri.symmetry.projections
    :members: 
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: wannierberri.wannierise.wyckoff_position
+.. automodule:: wannierberri.symmetry.wyckoff_position
    :members:
    :undoc-members:
    :show-inheritance:

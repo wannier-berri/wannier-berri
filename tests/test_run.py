@@ -10,7 +10,7 @@ from wannierberri import calculators as calc
 from wannierberri.smoother import FermiDiracSmoother
 from wannierberri.result import EnergyResult
 
-from .common import OUTPUT_DIR_RUN, OUTPUT_DIR
+from .common import OUTPUT_DIR_RUN, OUTPUT_DIR, REF_DIR_INTEGRATE
 from .common_comparers import compare_quant
 from .common_systems import (
     Efermi_Fe,
@@ -262,7 +262,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
             'Der_morb': calc.tabulate.DerOrbitalMoment(**param_tab),
         },
         ibands=[5, 6],
-        save_mode="frmsf+bin")
+        save_mode="bin")
 
     parameters_optical = dict(
         Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
@@ -294,25 +294,39 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
 
     extra_precision = {'Morb': 1e-6, 'Der_berry': 5e-8}
     npz_tabulate = os.path.join(OUTPUT_DIR_RUN, "Fe_W90-tabulate.npz")
-    for quant in result.results.get("tabulate").results.keys():  # ["Energy", "berry","Der_berry","spin","morb"]:
-        for comp in result.results.get("tabulate").results.get(quant).get_component_list():
-            _quant = "E" if quant == "Energy" else quant
-            _comp = "-" + comp if comp not in ("", None) else ""
-            prec = extra_precision[quant] if quant in extra_precision else 2e-8
-            wberri.npz_to_fermisurfer(npz_file=npz_tabulate,
-                                      quantity=None if quant == "Energy" else quant,
-                                      component=comp,
-                                      frmsf_file=os.path.join(OUTPUT_DIR_RUN,
-                                                              "Fe_W90-tabulate_" + _quant + _comp +
-                                                              "-from-npz.frmsf")
-                                      )
-            for end in "", "-from-npz":
-                compare_fermisurfer(
-                    fout_name="Fe_W90-tabulate",
-                    suffix=_quant + _comp + end,
-                    suffix_ref=_quant + _comp,
-                    precision=prec)
+    npz_tabulate_ref = os.path.join(REF_DIR_INTEGRATE, "Fe_W90-tabulate.npz")
 
+    for quant, comp in [("berry", "z"), ("Der_berry", "xx"), ]:
+        # result.results.get("tabulate").results.keys():  # ["Energy", "berry","Der_berry","spin","morb"]:
+        # for comp in result.results.get("tabulate").results.get(quant).get_component_list():
+        _quant = "E" if quant == "Energy" else quant
+        _comp = "-" + comp if comp not in ("", None) else ""
+        prec = extra_precision[quant] if quant in extra_precision else 2e-8
+
+        wberri.npz_to_fermisurfer(npz_file=npz_tabulate,
+                                  quantity=None if quant == "Energy" else quant,
+                                  component=comp,
+                                  frmsf_file=os.path.join(OUTPUT_DIR_RUN,
+                                                            "Fe_W90-tabulate_" + _quant + _comp +
+                                                            "-from-npz.frmsf")
+                               )
+        result.results.get("tabulate").write_frmsf(name=os.path.join(OUTPUT_DIR_RUN, "Fe_W90-tabulate"), quantity=quant, components=[comp])
+        for end in "", "-from-npz":
+            compare_fermisurfer(
+                fout_name="Fe_W90-tabulate",
+                suffix=_quant + _comp + end,
+                suffix_ref=_quant + _comp,
+                precision=prec)
+
+    npz_tabulate = np.load(os.path.join(OUTPUT_DIR_RUN, "Fe_W90-tabulate.npz"))
+    npz_tabulate_ref = np.load(os.path.join(REF_DIR_INTEGRATE, "Fe_W90-tabulate.npz"))
+
+
+    for quant in result.results.get("tabulate").results.keys():  # ["Energy", "berry","Der_berry","spin","morb"]:
+        data = npz_tabulate[quant]
+        data_ref = npz_tabulate_ref[quant]
+        assert data.shape == data_ref.shape, f"Shape of {quant} is not equal to reference : {data.shape} and {data_ref.shape}"
+        assert data == approx(data_ref, rel=1e-5), f"Data of {quant} is not equal to reference. the maximal difference is {np.max(np.abs(data - data_ref))}"
 
 
 

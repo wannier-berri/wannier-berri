@@ -1,4 +1,4 @@
-Initializing a System
+System
 ======================
 
 The first step in the ``wannierberri`` calculation is initialising the System.  This is done by means of child classes :class:`~wannierberri.__system.System` described below. 
@@ -32,18 +32,21 @@ Symmetrization of the system
 From Wannier functions 
 -----------------------------
 
+Wanierisation inside WannierBerri
++++++++++++++++++++++++++++++++++++
+
+
+Now WannierBerri can construct wannier functions on its own.see :ref:`sec-wannierisation`
+
+
+
+
 Wannier90
 +++++++++++++++++++++++++
 
 .. autoclass:: wannierberri.system.System_w90
    :show-inheritance:
 
-
-Wanierisation inside WannierBerri
-+++++++++++++++++++++++++++++++++++
-
-
-Now WannierBerri can construct wannier functions on its own.see :ref:`sec-wannierisation`
 
 
 

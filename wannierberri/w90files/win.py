@@ -22,8 +22,6 @@ class WIN:
         the name of the file
     parsed : dict(str, Any)
         the parsed data
-    units_length : dict(str, float)
-        the units of length (Angstrom or Bohr radius)  
     """
 
     def __init__(self, seedname='wannier90', data=None, autoread=False):
@@ -31,7 +29,6 @@ class WIN:
             return
         self.data = {}
         self.seedname = seedname
-        self.units_length = {'ang': 1., 'bohr': physical_constants['Bohr radius'][0] * 1e10}
         self.blocks = ["unit_cell_cart", "projections", "kpoints", "kpoint_path", "atoms_frac"]
         if seedname is not None:
             name = seedname + ".win"
@@ -212,10 +209,7 @@ class WIN:
             return None
         A = np.array([cell['a1'], cell['a2'], cell['a3']])
         units = cell['units']
-        if units is None:
-            return A
-        else:
-            return A * self.units_length[units.lower()]
+        return A * units_length(units)
 
     @functools.lru_cache()
     def get_kpoints(self):
@@ -254,6 +248,13 @@ class WIN:
             atoms_names = [a["species"] for a in atoms]
             atoms_frac = np.array([a["basis_vector"] for a in atoms])
             return atoms_frac, atoms_names
+        elif "atoms_cart" in self.parsed:
+            units = self.parsed["atoms_cart"]["units"]
+            atoms = self.parsed["atoms_cart"]["atoms"]
+            atoms_names = [a["species"] for a in atoms]
+            atoms_cart = np.array([a["basis_vector"] for a in atoms]) * units_length(units)
+            atoms_frac = atoms_cart @ np.linalg.inv(self["unit_cell_cart"])
+            return atoms_frac, atoms_names
         else:
             return None, None
 
@@ -280,3 +281,18 @@ def parse_win_raw(filename=None, text=None):
             return w90io.parse_win_raw(f.read())
     elif text is not None:
         return w90io.parse_win_raw(text)
+
+
+def units_length(units_str):
+    if units_str is None:
+        return units_length("ang")
+    else:
+        units_str = units_str.lower()
+        if units_str == "ang":
+            return 1.
+        elif units_str == "bohr":
+            return physical_constants['Bohr radius'][0] * 1e10
+        elif units_str == "angstrom":
+            return 1.
+        elif units_str == "bohr radius":
+            raise ValueError(f"units {units_str} not recognized, use 'ang' or 'bohr'")
