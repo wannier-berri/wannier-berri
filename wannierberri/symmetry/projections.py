@@ -628,6 +628,7 @@ class RepulsivePotential:
     same_site : np.ndarray(shape=(num_points, num_points), dtype=bool)
 
     """
+
     def __init__(self, rotation, translation,
                  weights=None, same_site=None,
                  r0=1, real_lattice=jnp.eye(3), max_G_r0=5):

@@ -1,5 +1,4 @@
 from functools import cached_property, lru_cache
-from time import time
 import warnings
 from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroupBare
@@ -347,9 +346,7 @@ class SymmetrizerSAWF(SavableNPZ):
 
 
     def from_dict(self, dic):
-        t0 = time()
         super().from_dict(dic)
-        t01 = time()
         self.d_band_block_indices = [dic[f'd_band_block_indices_{ik}'] for ik in range(self.NKirr)]
         self.d_band_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
         self.D_wann_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
@@ -368,19 +365,15 @@ class SymmetrizerSAWF(SavableNPZ):
                                                 for i in range(d_band_num_blocks[ik])]
                 self.D_wann_blocks[ik][isym] = [np.ascontiguousarray(D_wann_blocks_tmp[i][ik, isym])
                                                 for i in range(D_wann_num_blocks)]
-        t1 = time()
         prefix = "spacegroup_"
         l = len(prefix)
         dic_spacegroup = {k[l:]: v for k, v in dic.items() if k.startswith(prefix)}
         if len(dic_spacegroup) > 0:
             self.spacegroup = SpaceGroupBare(**dic_spacegroup)
-        t2 = time()
         for prefix in ["T", "atommap", "rot_orb"]:
             keys = sorted([k for k in dic.keys() if k.startswith(prefix)])
             lst = [dic[k] for k in keys]
             self.__setattr__(prefix + "_list", lst)
-        t3 = time()
-        # print(f"time to convert dict into SAWF {t3 - t0}\n super {t01 - t0} \n D {t1 - t01} \n spacegroup {t2 - t1}\n  T {t3 - t2} ")
         return self
 
 
@@ -536,8 +529,8 @@ class SymmetrizerSAWF(SavableNPZ):
                 maxerr = max(maxerr, np.linalg.norm(e1 - e2))
         return maxerr
 
-    def check_amn(self, amn, warning_precision=1e-5, 
-                  ignore_upper_bands=None, 
+    def check_amn(self, amn, warning_precision=1e-5,
+                  ignore_upper_bands=None,
                   ignore_lower_bands=None,
                   verbose=False):
         """

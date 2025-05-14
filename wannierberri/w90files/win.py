@@ -253,7 +253,7 @@ class WIN:
             atoms = self.parsed["atoms_cart"]["atoms"]
             atoms_names = [a["species"] for a in atoms]
             atoms_cart = np.array([a["basis_vector"] for a in atoms]) * units_length(units)
-            atoms_frac =  atoms_cart @ np.linalg.inv( self["unit_cell_cart"] )
+            atoms_frac = atoms_cart @ np.linalg.inv(self["unit_cell_cart"])
             return atoms_frac, atoms_names
         else:
             return None, None
@@ -296,4 +296,3 @@ def units_length(units_str):
             return 1.
         elif units_str == "bohr radius":
             raise ValueError(f"units {units_str} not recognized, use 'ang' or 'bohr'")
-        

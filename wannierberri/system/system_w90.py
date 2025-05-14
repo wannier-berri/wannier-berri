@@ -90,7 +90,7 @@ class System_w90(System_R):
         the seedname used in Wannier90
     _NKFFT_recommended : int
         recommended size of the FFT grid in the interpolation
-    
+
 
     See Also
     --------

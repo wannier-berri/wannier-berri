@@ -66,9 +66,9 @@ class TABresult(Result):
             self.self_to_grid()
             if "frmsf" in self.save_mode or "txt" in self.save_mode:
                 write_frmsf(
-                    frmsf_name=prefix + "-" + name, 
-                    Ef0=0., numproc=None, 
-                    quantities=self.results.keys(), 
+                    frmsf_name=prefix + "-" + name,
+                    Ef0=0., numproc=None,
+                    quantities=self.results.keys(),
                     res=self,
                     suffix=suffix)  # so far let it be the only mode, implement other modes in future
             if "bin" in self.save_mode:
@@ -81,11 +81,11 @@ class TABresult(Result):
         else:
             pass  # so far . TODO : implement writing to a text file
 
-    def write_frmsf(self, 
-                    name, 
+    def write_frmsf(self,
+                    name,
                     quantity,
-                    Ef0=0., 
-                    numproc=None, 
+                    Ef0=0.,
+                    numproc=None,
                     components=None):
         """
         Write the frmsf file for the given quantities and components
@@ -107,10 +107,10 @@ class TABresult(Result):
         see `write_frmsf()`
 
         """
-        return write_frmsf(name, Ef0=Ef0, numproc=numproc, 
-                           quantities=[quantity], 
-                           res=self, 
-                           components=components)
+        return write_frmsf(name, Ef0=Ef0, numproc=numproc,
+                           quantities=[quantity],
+                           res=self,
+                           components=[components])
 
     @property
     def find_grid(self):
@@ -351,13 +351,13 @@ class TABresult(Result):
         return np.array([-1.])  # tabulating does not contribute to adaptive refinement
 
 
-def write_frmsf(frmsf_name, 
-                Ef0, 
-                numproc, 
+def write_frmsf(frmsf_name,
+                Ef0,
+                numproc,
                 quantities,
-                res, 
+                res,
                 components=None,
-                 suffix=""):
+                suffix=""):
     """
     Write the frmsf file for the given quantities and components
 
@@ -388,7 +388,7 @@ def write_frmsf(frmsf_name,
     twrite : float
         time taken to write the binary part of the frmsf file
     """
-    if len(suffix) > 0:    
+    if len(suffix) > 0:
         suffix = "-" + suffix
     if frmsf_name is not None:
         if components is None:

@@ -84,7 +84,7 @@ class System_R(System):
 
         super().__init__(**parameters)
         self.needed_R_matrices = {'Ham'}
-        
+
         if morb:
             self.needed_R_matrices.update(['AA', 'BB', 'CC'])
         if berry:
