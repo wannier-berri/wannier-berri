@@ -143,12 +143,12 @@ def evaluate_k_path(system, nodes=None, labels=None, length=500, path=None,
     system : :class:`~wannierberri.system.System`
         system for which the calculation is performed
     nodes : list of tuples
-        list of k-points in reduced coordinates (3 numbers)
+        list of k-points in reduced coordinates (3 numbers for each point) (see also :class:`~wannierberri.grid.path.Path`)
     labels : list of str
-        labels for the k-points
+        labels for the k-points (see also :class:`~wannierberri.grid.path.Path`)
     length : int
-        number of points along the path
-    path : :class:`~wannierberri.path.Path`
+        number of points along the path (see also :class:`~wannierberri.grid.path.Path`)
+    path : :class:`~wannierberri.grid.path.Path`
         if provided, then the path is not created, but used as is (overriding nodes and labels)
     return_path : bool
         if True, then the path object is returned as well. If None - it is set to True if k_path is None (i.e. when the path is created here)
@@ -158,10 +158,14 @@ def evaluate_k_path(system, nodes=None, labels=None, length=500, path=None,
 
     Returns
     -------
-    path : :class:`~wannierberri.path.Path`
+    path : :class:`~wannierberri.grid.path.Path`
         the path object (if `return_path=True`)
     result : :class:`~wannierberri.result.TABresult`
         the result of the calculation
+
+    Notes
+    -----
+    See also :class:`~wannierberri.grid.path.Path` for the description of the path object (parameters `nodes`, `labels`, `length`)
     """
     if return_path is None:
         return_path = (path is None)
