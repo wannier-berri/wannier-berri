@@ -12,6 +12,7 @@ available_quantities = {
     "berry_curvature": tabulate.BerryCurvature(print_comment=False),
     "berry_curvature_internal_terms": tabulate.BerryCurvature(kwargs_formula={"external_terms": False}, print_comment=False),
     "berry_curvature_external_terms": tabulate.BerryCurvature(kwargs_formula={"internal_terms": False}, print_comment=False),
+    "spin": tabulate.Spin(print_comment=False),
 }
 
 comments = {
@@ -127,10 +128,13 @@ def evaluate_k(system=None,
     return result
 
 
-def evaluate_k_path(system, k_nodes=None, labels=None, length=500, k_path=None,
+def evaluate_k_path(system, nodes=None, labels=None, length=500, path=None,
                     tabulators=None,
+                    ibands=None,
                     quantities=(),
                     parallel=None,
+                    return_path=None,
+                    **kwargs
                     ):
     """Evaluate a quantity along a path in the reciprocal space
 
@@ -138,28 +142,32 @@ def evaluate_k_path(system, k_nodes=None, labels=None, length=500, k_path=None,
     ----------
     system : :class:`~wannierberri.system.System`
         system for which the calculation is performed
-    k_nodes : list of tuples
+    nodes : list of tuples
         list of k-points in reduced coordinates (3 numbers)
     labels : list of str
         labels for the k-points
     length : int
         number of points along the path
-    k_path : :class:`~wannierberri.path.Path`
-        if provided, then the path is not created, but used as is (overriding k_nodes and labels)
+    path : :class:`~wannierberri.path.Path`
+        if provided, then the path is not created, but used as is (overriding nodes and labels)
+    return_path : bool
+        if True, then the path object is returned as well. If None - it is set to True if k_path is None (i.e. when the path is created here)
     kwargs :
-        additional parameters to be passed to `evaluate_k()`
+        additional parameters to be passed to `run()`
 
 
     Returns
     -------
-    dict or array
-        Returns a dictionary {key:array} where keys are strings identifying the calculated quantities,
-        if only one quantity is calculated and  `return_single_as_dict=False`, then only an array is returned,
-        without packing into dict
+    path : :class:`~wannierberri.path.Path`
+        the path object (if `return_path=True`)
+    result : :class:`~wannierberri.result.TABresult`
+        the result of the calculation
     """
-    if k_path is None:
+    if return_path is None:
+        return_path = (path is None)
+    if path is None:
         from .grid import Path
-        k_path = Path(system, k_nodes=k_nodes, labels=labels, length=length)
+        path = Path(system, nodes=nodes, labels=labels, length=length)
 
     tabulators_loc = {}
     if tabulators is not None:
@@ -169,6 +177,9 @@ def evaluate_k_path(system, k_nodes=None, labels=None, length=500, k_path=None,
             raise ValueError(f"unknown quantity {q}. known quantities are {available_quantities.keys()}")
         tabulators_loc[q] = available_quantities[q]
 
-    tabulator_all = tabulate.TabulatorAll(tabulators=tabulators_loc, mode='path')
-    result = run(system, grid=k_path, calculators={'tabulate': tabulator_all}, parallel=parallel)
-    return k_path, result.results['tabulate']
+    tabulator_all = tabulate.TabulatorAll(tabulators=tabulators_loc, mode='path', ibands=ibands)
+    result = run(system, grid=path, calculators={'tabulate': tabulator_all}, parallel=parallel, **kwargs)
+    if return_path:
+        return path, result.results['tabulate']
+    else:
+        return result.results['tabulate']

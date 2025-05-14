@@ -95,7 +95,7 @@ system = list(systems.values())[0]
 # K 0.37500 -0.37500 0.0000 G 0.00000  0.00000 0.0000
 # esite
 
-path = wberri.Path(system, k_nodes=[[1 / 2, 0, 0],
+path = wberri.Path(system, nodes=[[1 / 2, 0, 0],
                 [0, 0, 0],
     [1 / 2, 0, 1 / 2],
     [3 / 8, -3 / 8, 0],

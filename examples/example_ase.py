@@ -57,7 +57,7 @@ if do_wberri:
 #    parallel = wberri.parallel.Serial()
 
     path = wberri.Path(
-        system, k_nodes=[[k1, k2, 0.35], [k1, k2, 0.5], [k1, k2, 0.65]], labels=["K<-", "H", "->K"], length=500)
+        system, nodes=[[k1, k2, 0.35], [k1, k2, 0.5], [k1, k2, 0.65]], labels=["K<-", "H", "->K"], length=500)
 
 
     calculators = {"tabulate": wberri.calculators.TabulatorAll({

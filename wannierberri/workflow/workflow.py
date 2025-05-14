@@ -566,7 +566,7 @@ class WorkflowQE:
             shutil.copy(dir1 + '/' + f, dir2 + '/' + f)
         if os.path.exists(dir1 + '/paw.txt'):
             shutil.copy(dir1 + '/paw.txt', dir2 + '/paw.txt')
-        self.path_qe = Path(system=self.atoms.get_cell(), k_nodes=self.k_nodes, length=kdensity)
+        self.path_qe = Path(system=self.atoms.get_cell(), nodes=self.k_nodes, length=kdensity)
         f_in = f'{self.prefix}.bands.in'
         f_out = f'{self.prefix}.bands.out'
         write_espresso_in(f_in, self.atoms, kpoints_array=self.path_qe.K_list,
@@ -628,7 +628,7 @@ def get_wannier_band_structure(system, k_nodes, length=1000, npar=0, parallel=No
     wb.Path object
     wb.reslut.TABresult object
     """
-    path = Path(system, k_nodes=k_nodes, length=length)
+    path = Path(system, nodes=k_nodes, length=length)
     if parallel is None:
         parallel = parallel.Serial()
     calculators = dict(tabulate=wbcalculators.TabulatorAll(tabulators={}, mode='path'))

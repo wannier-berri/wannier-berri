@@ -294,6 +294,17 @@ class ProjectionsSet:
 
     @property
     def map_free_vars(self):
+        """
+        get the mapping from free variables to positions of the points
+
+        Returns
+        -------
+        np.ndarray(shape=(num_points, 3, num_free_vars_wyckoff), dtype=float)
+            The rotation matrices of the symmetry operations
+        np.ndarray(shape=(num_points, 3), dtype=float)
+            The translation vectors of the symmetry operations
+        """
+
         if not hasattr(self, "map_free_vars_cached"):
             # print ("mapping free vars"	)
             maps = [p.wyckoff_position.map_orbit_on_free_vars for p in self.projections]
@@ -316,15 +327,15 @@ class ProjectionsSet:
         return self.map_free_vars[0].shape[2]
 
 
-    # @cached_property
-    # def num_wann_per_site(self):
-    #     """
-    #     Returns:
-    #     --------
-    #     np.array(int, shape=(num_points))
-    #         The number of Wannier functions per site
-    #     """
-    #     return np.array(sum(([p.num_wann_per_site] * p.num_points for p in self.projections), []))
+    @cached_property
+    def num_wann_per_site_list(self):
+        """
+        Returns:
+        --------
+        np.array(int, shape=(num_points))
+            for each point - a value od how many wannier functioons there are on this point
+        """
+        return np.array(sum(([p.num_wann_per_site] * p.num_points for p in self.projections), []))
 
 
     @property
@@ -564,7 +575,7 @@ class ProjectionsSet:
         same_site = np.eye(self.num_points, dtype=bool)
         # not_same_site = np.logical_not(same_site)
         repulsive_potential = RepulsivePotential(rotation=rot, translation=trans,
-                                                 weights=self.num_wann_per_site,
+                                                 weights=self.num_wann_per_site_list,
                                                  same_site=same_site,
                                                  r0=r0, real_lattice=real_lattice)
         jit_potential = jjit(repulsive_potential.potential_jax)
@@ -603,6 +614,20 @@ class ProjectionsSet:
 
 class RepulsivePotential:
 
+    """
+    A class to store the repulsive potential between the projections
+
+    Parameters
+    ----------
+    rotation : np.ndarray(shape=(num_points, 3, nfree_vars), dtype=float)
+        The rotation matrices to get the symmetry operations
+    translation : np.ndarray(shape=(num_points, 3), dtype=float)
+        The translation vectors of the symmetry operations
+    weights : np.ndarray(shape=(num_points, dtype=float)
+        The weights of the symmetry operations
+    same_site : np.ndarray(shape=(num_points, num_points), dtype=bool)
+
+    """
     def __init__(self, rotation, translation,
                  weights=None, same_site=None,
                  r0=1, real_lattice=jnp.eye(3), max_G_r0=5):

@@ -200,7 +200,6 @@ class SymmetrizerSAWF(SavableNPZ):
             self.T_list.append(_Dwann.T)
             self.atommap_list.append(_Dwann.atommap)
             self.rot_orb_list.append(_Dwann.rot_orb)
-        print(f"len(D_wann_list) = {len(D_wann_list)}")
         self.set_D_wann(D_wann_list)
         return self
 
@@ -381,7 +380,7 @@ class SymmetrizerSAWF(SavableNPZ):
             lst = [dic[k] for k in keys]
             self.__setattr__(prefix + "_list", lst)
         t3 = time()
-        print(f"time to convert dict into SAWF {t3 - t0}\n super {t01 - t0} \n D {t1 - t01} \n spacegroup {t2 - t1}\n  T {t3 - t2} ")
+        # print(f"time to convert dict into SAWF {t3 - t0}\n super {t01 - t0} \n D {t1 - t01} \n spacegroup {t2 - t1}\n  T {t3 - t2} ")
         return self
 
 
@@ -537,7 +536,10 @@ class SymmetrizerSAWF(SavableNPZ):
                 maxerr = max(maxerr, np.linalg.norm(e1 - e2))
         return maxerr
 
-    def check_amn(self, amn, warning_precision=1e-5, ignore_upper_bands=None, ignore_lower_bands=None):
+    def check_amn(self, amn, warning_precision=1e-5, 
+                  ignore_upper_bands=None, 
+                  ignore_lower_bands=None,
+                  verbose=False):
         """
         Check the symmetry of the amn
 
@@ -578,13 +580,14 @@ class SymmetrizerSAWF(SavableNPZ):
                 maxerr = max(maxerr, np.linalg.norm(diff))
                 if diff > warning_precision:
                     print(f"ikirr={ikirr}, isym={isym} : {diff}")
-                    for aaa in zip(a1, a1p, a2, a1p - a2, a1p / a2):
-                        string = ""
-                        for a in aaa:
-                            _abs = ", ".join(f"{np.abs(_):.4f}" for _ in a)
-                            _angle = ", ".join(f"{np.angle(_) / np.pi * 180:7.2f}" for _ in a)
-                            string += f"[{_abs}] [{_angle}]   |    "
-                        print(string)
+                    if verbose:
+                        for aaa in zip(a1, a1p, a2, a1p - a2, a1p / a2):
+                            string = ""
+                            for a in aaa:
+                                _abs = ", ".join(f"{np.abs(_):.4f}" for _ in a)
+                                _angle = ", ".join(f"{np.angle(_) / np.pi * 180:7.2f}" for _ in a)
+                                string += f"[{_abs}] [{_angle}]   |    "
+                            print(string)
         return maxerr
 
     def symmetrize_amn(self, amn):

@@ -56,7 +56,7 @@ tab_all_path = wberri.calculators.TabulatorAll(
 )
 
 path = wberri.Path(system_1,
-                 k_nodes=[
+                 nodes=[
                      [0.0000, 0.0000, 0.0000],  # G
                      [0.500, -0.5000, -0.5000],  # H
                      [0.7500, 0.2500, -0.2500],  # P

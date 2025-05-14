@@ -16,7 +16,7 @@ class Path(GridAbstract):
         (angstroms) -- in this case the grid is NK[i]=length*||B[i]||/2pi  B- reciprocal lattice
     dk :  float
         (inverse angstroms) -- in this case the grid is NK[i]=length*||B[i]||/2pi  B- reciprocal lattice
-    k_nodes : list
+    nodes : list
         cordinates of the nodes in the the reduced coordinates. Some entries may be None - which means that the segment should be skipped
         | No labels or nk's should be assigned to None nodes
     nk : int  or list or numpy.array(3)
@@ -27,7 +27,7 @@ class Path(GridAbstract):
         | if k_list = 'spheroid' - Automatically generate k-points on a spheroid (request r1 r2 origin ntheta nphi)
     labels : list  of dict
         | if k_list is set - it is a dict {i:lab} with i - index of k-point, lab - corresponding label (not all kpoints need to be labeled
-        | if k_nodes is set - it is a list of labels, one for every node
+        | if nodes is set - it is a list of labels, one for every node
     r1,r2 : float
         radius.
         sphere: x^2+y^2+z^2 = r1^2
@@ -38,7 +38,7 @@ class Path(GridAbstract):
         number of k-points along each angle in polar coordinates
     Notes
     -----
-    user needs to specify either `k_list` or (`k_nodes` + (`length` or `nk` or dk))
+    user needs to specify either `k_list` or (`nodes` + (`length` or `nk` or dk))
 
     """
 
@@ -46,7 +46,7 @@ class Path(GridAbstract):
             self,
             system,
             k_list=None,
-            k_nodes=None,
+            nodes=None,
             length=None,
             dk=None,
             nk=None,
@@ -70,13 +70,13 @@ class Path(GridAbstract):
             self.labels = ['spheroid']
 
         elif k_list is None:
-            if k_nodes is None:
-                raise ValueError("need to specify either 'k_list' of 'k_nodes'")
+            if nodes is None:
+                raise ValueError("need to specify either 'k_list' of 'nodes'")
 
             if labels is None:
-                labels = [str(i + 1) for i, k in enumerate([k for k in k_nodes if k is not None])]
+                labels = [str(i + 1) for i, k in enumerate([k for k in nodes if k is not None])]
             labels = (l for l in labels)
-            labels = [None if k is None else next(labels) for k in k_nodes]
+            labels = [None if k is None else next(labels) for k in nodes]
 
             if length is not None:
                 assert length > 0
@@ -90,12 +90,12 @@ class Path(GridAbstract):
             if isinstance(nk, Iterable):
                 nkgen = (x for x in nk)
             else:
-                nkgen = (nk for x in k_nodes)
+                nkgen = (nk for x in nodes)
 
             self.K_list = np.zeros((0, 3))
             self.labels = {}
             self.breaks = []
-            for start, end, l1, l2 in zip(k_nodes, k_nodes[1:], labels, labels[1:]):
+            for start, end, l1, l2 in zip(nodes, nodes[1:], labels, labels[1:]):
                 if start is not None and end is not None:
                     self.labels[self.K_list.shape[0]] = l1
                     start = np.array(start)
@@ -113,13 +113,13 @@ class Path(GridAbstract):
                             (end - start)[None, :]))
                 elif end is None:
                     self.breaks.append(self.K_list.shape[0] - 1)
-            self.K_list = np.vstack((self.K_list, k_nodes[-1]))
+            self.K_list = np.vstack((self.K_list, nodes[-1]))
             self.labels[self.K_list.shape[0] - 1] = labels[-1]
         else:
             self.K_list = np.array(k_list)
             assert self.K_list.shape[1] == 3, "k_list should contain 3-vectors"
             assert self.K_list.shape[0] > 0, "k_list should not be empty"
-            for var in 'k_nodes', 'length', 'nk', 'dk':
+            for var in 'nodes', 'length', 'nk', 'dk':
                 if locals()[var] is not None:
                     warnings.warn(f"k_list was entered manually, ignoring {var}")
             self.labels = {} if labels is None else labels

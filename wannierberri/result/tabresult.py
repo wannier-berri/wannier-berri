@@ -66,7 +66,10 @@ class TABresult(Result):
             self.self_to_grid()
             if "frmsf" in self.save_mode or "txt" in self.save_mode:
                 write_frmsf(
-                    prefix + "-" + name, Ef0=0., numproc=None, quantities=self.results.keys(), res=self,
+                    frmsf_name=prefix + "-" + name, 
+                    Ef0=0., numproc=None, 
+                    quantities=self.results.keys(), 
+                    res=self,
                     suffix=suffix)  # so far let it be the only mode, implement other modes in future
             if "bin" in self.save_mode:
                 write_npz(prefix + "-" + name,
@@ -77,6 +80,37 @@ class TABresult(Result):
             # TODO : remove this messy call to external routine, which calls back an internal one
         else:
             pass  # so far . TODO : implement writing to a text file
+
+    def write_frmsf(self, 
+                    name, 
+                    quantity,
+                    Ef0=0., 
+                    numproc=None, 
+                    components=None):
+        """
+        Write the frmsf file for the given quantities and components
+        Parameters
+        ----------
+        name : str
+            name of the frmsf file to write (without .frmsf)
+        quantity: str
+            name of the quantity to write to the frmsf file.
+            if None, only the energy is written
+        components : list of str
+            list of components to write to the frmsf file. if None, all components are written
+        Ef0 : float
+            Fermi energy
+        numproc : int
+            number of processes to use for writing the frmsf file
+        Returns
+        -------
+        see `write_frmsf()`
+
+        """
+        return write_frmsf(name, Ef0=Ef0, numproc=numproc, 
+                           quantities=[quantity], 
+                           res=self, 
+                           components=components)
 
     @property
     def find_grid(self):
@@ -317,15 +351,57 @@ class TABresult(Result):
         return np.array([-1.])  # tabulating does not contribute to adaptive refinement
 
 
-def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
-    if len(suffix) > 0:
+def write_frmsf(frmsf_name, 
+                Ef0, 
+                numproc, 
+                quantities,
+                res, 
+                components=None,
+                 suffix=""):
+    """
+    Write the frmsf file for the given quantities and components
+
+    Parameters
+    ----------
+    frmsf_name : str
+        name of the frmsf file to write (without .frmsf)
+    Ef0 : float
+        Fermi energy
+    numproc : int
+        number of processes to use for writing the frmsf file
+    quantities : list of str
+        list of quantities to write to the frmsf file
+    components : list of list of str
+        list of components to write to the frmsf file. 
+        a list of components for each quantity.
+        if None, all components are written
+    res : TABresult
+        TABresult object containing the data to write
+    suffix : str
+        suffix to add to the frmsf file name. if empty, no suffix is added
+        the resulting filename will be {frmsf_name}_{Q}-{comp}{suffix}.frmsf
+
+    Returns
+    -------
+    ttxt : float
+        time taken to write the text part of the frmsf file
+    twrite : float
+        time taken to write the binary part of the frmsf file
+    """
+    if len(suffix) > 0:    
         suffix = "-" + suffix
     if frmsf_name is not None:
-        open(f"{frmsf_name}_E{suffix}.frmsf", "w").write(res.fermiSurfer(quantity=None, efermi=Ef0, npar=numproc))
+        if components is None:
+            components = [None] * len(quantities)
+        # open(f"{frmsf_name}_E{suffix}.frmsf", "w").write(res.fermiSurfer(quantity=None, efermi=Ef0, npar=numproc))
         ttxt = 0
         twrite = 0
-        for Q in quantities:
-            for comp in res.results[Q].get_component_list():
+        for Q, c in zip(quantities, components):
+            if c is None:
+                comp_loc = res.results[Q].get_component_list()
+            else:
+                comp_loc = c
+            for comp in comp_loc:
                 t31 = time()
                 txt = res.fermiSurfer(quantity=Q, component=comp, efermi=Ef0, npar=numproc)
                 t32 = time()
@@ -340,6 +416,26 @@ def write_frmsf(frmsf_name, Ef0, numproc, quantities, res, suffix=""):
 
 
 def write_npz(npz_name, quantities, res, suffix=""):
+    """
+    Write the data to a npz file
+
+    Parameters
+    ----------
+    npz_name : str
+        name of the npz file to write (without .npz)
+    quantities : list of str
+        list of quantities to write to the npz file
+    res : TABresult
+        TABresult object containing the data to write
+    suffix : str
+        suffix to add to the npz file name. if empty, no suffix is added
+        the resulting filename will be {npz_name}{suffix}.npz
+
+    Returns
+    -------
+    None
+    """
+
     dic = {Q: res.get_data(quantity=Q) for Q in quantities}
     if len(suffix) > 0:
         suffix = "-" + suffix
