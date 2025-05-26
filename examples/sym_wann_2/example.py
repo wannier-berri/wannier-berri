@@ -11,7 +11,7 @@ import numpy as np
 import wannierberri as wberri
 from wannierberri.system import System_w90
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
-from wannierberri.wannierise.projections import Projection
+from wannierberri.symmetry.projections import Projection
 from time import time
 
 path_data = "../../tests/data/Fe_sym_Wannier90/Fe_sym."
@@ -113,29 +113,31 @@ print("Wannier centers system_1")
 print(system_1.wannier_centers_cart)
 print("Wannier centers system_2")
 print(system_2.wannier_centers_cart)
-setRvec1 = set([tuple(x) for x in system_1.iRvec])
-setRvec2 = set([tuple(x) for x in system_2.iRvec])
+setRvec1 = set([tuple(x) for x in system_1.rvec.iRvec])
+setRvec2 = set([tuple(x) for x in system_2.rvec.iRvec])
 
-print(f"system_1.iRvec = \n{system_1.iRvec}")
-print(f"system_2.iRvec = \n{system_2.iRvec}")
+print(f"system_1.iRvec = \n{system_1.rvec.iRvec}")
+print(f"system_2.iRvec = \n{system_2.rvec.iRvec}")
 
-print(f"system_1.nRvec = \n{system_1.nRvec}")
-print(f"system_2.nRvec = \n{system_2.nRvec}")
+print(f"system_1.nRvec = \n{system_1.rvec.nRvec}")
+print(f"system_2.nRvec = \n{system_2.rvec.nRvec}")
 
 
-for R in system_1.iRvec:
+for R in system_1.rvec.iRvec:
     iR = tuple(R)
-    iR0_1 = system_1.index_R[iR]
-    iR0_2 = system_2.index_R[iR]
+    iR0_1 = system_1.rvec.index_R[iR]
+    iR0_2 = system_2.rvec.index_R[iR]
 
-    H01 = system_1.Ham_R[:, :, iR0_1]
-    H02 = system_2.Ham_R[:, :, iR0_2]
+    H01 = system_1.Ham_R[iR0_1, :, :]
+    H02 = system_2.Ham_R[iR0_2, :, :]
     diff = abs(H01 - H02).max()
 
     if diff > 1e-10:
         print(f"iR0_1 = {iR0_1}, iR0_2 = {iR0_2}")
         print(f"H0_diff = \n{abs(diff).max()}")
-        print(f"cRvec_diff = \n{system_1.cRvec[iR0_1] - system_2.cRvec[iR0_2]}")
+        print(f"cRvec_diff = \n{system_1.rvec.cRvec[iR0_1] - system_2.rvec.cRvec[iR0_2]}")
+    else:
+        print(f"iR0_1 = {iR0_1}, iR0_2 = {iR0_2} -> H0_diff = 0")
 
 print(f"time symmetrize system_1 = {t11 - t10}")
 print(f"time symmetrize system_2 = {t23 - t20}, where time to create spacegroup = {t21 - t20}, time to create symmetrizer = {t22 - t21} and time to symmetrize = {t23 - t22}")
