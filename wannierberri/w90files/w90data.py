@@ -59,11 +59,12 @@ class Wannier90data:
         overwrite_npz : bool
             overwrite existing npz files  (incompatinble with read_npz)
         read_chk : bool
-            if True, read the checkpoint file, otherwise create a '~wannierberri.w90files.CheckPoint_bare' object and prepare for wannierisation
+            if True, read the :class:`~wannierberri.w90files.CheckPoint` file, 
+            otherwise create a "bare" :class:`~wannierberri.w90files.chk.CheckPoint` object and prepare for wannierisation
         kmesh_tol : float
-            see `~wannierberri.w90files.CheckPoint`
+            see :class:`~wannierberri.w90files.chk.CheckPoint`
         bk_complete_tol : float
-            see `~wannierberri.w90files.CheckPoint`
+            see :class:`~wannierberri.w90files.chk.CheckPoint`
 
     Attributes
     ----------

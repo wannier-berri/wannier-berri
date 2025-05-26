@@ -234,7 +234,7 @@ class CheckPoint:
 
         Parameters
         ----------
-        eig : `~wannierberri.system.w90_files.EIG`
+        eig : `~wannierberri.w90files.EIG`
             the eigenvalues of the Hamiltonian
 
         Returns
@@ -252,7 +252,7 @@ class CheckPoint:
 
         Parameters
         ----------
-        spn : `~wannierberri.system.w90_files.SPN`
+        spn : `~wannierberri.w90files.SPN`
             the spin matrix  
 
         Returns
@@ -281,12 +281,12 @@ class CheckPoint:
 
         Parameters
         ----------
-        mmn : `~wannierberri.system.w90_files.MMN`
+        mmn : `~wannierberri.w90files.MMN`
             the overlap matrix elements between the Wavefunctions at neighbouring k-points
         transl_inv : bool
             if True, the band-diagonal matrix elements are calculated using the Marzari & Vanderbilt 
             translational invariant formula
-        eig : `~wannierberri.system.w90_files.EIG`
+        eig : `~wannierberri.w90files.EIG`
             the eigenvalues of the Hamiltonian, needed to calculate BB (if None, the matrix elements are AA)
         phase : np.ndarray(shape=(num_wann, num_wann, nnb), dtype=complex)
             the phase factors to be applied to the matrix elements (if None, no phase factors are applied)
@@ -334,16 +334,16 @@ class CheckPoint:
     def get_AA_qb(self, mmn, transl_inv=False, phase=None, sum_b=False):
         """	
          A wrapper for get_AABB_qb with eig=None
-         see '~wannierberri.system.w90_files.CheckPoint.get_AABB_qb' for more details  
+         see :meth:`~wannierberri.w90files.CheckPoint.get_AABB_qb` for more details  
          """
         return self.get_AABB_qb(mmn, transl_inv=transl_inv, phase=phase, sum_b=sum_b)
 
     def get_AA_q(self, mmn, transl_inv=False):
         """
         A wrapper for get_AA_qb with sum_b=True
-        see '~wannierberri.system.w90_files.CheckPoint.get_AA_qb' for more details
+        see :meth:`~wannierberri.w90files.CheckPoint.get_AA_qb` for more details
         """
-        return self.get_AA_qb(mmn=mmn, transl_inv=transl_inv).sum(axis=3)
+        return self.get_AA_qb(mmn=mmn, transl_inv=transl_inv, sum_b=True).sum(axis=3)
 
     def get_wannier_centers(self, mmn, spreads=False):
         """
@@ -352,7 +352,7 @@ class CheckPoint:
 
         Parameters
         ----------
-        mmn : `~wannierberri.system.w90_files.MMN`
+        mmn : :class:`~wannierberri.w90files.MMN`
             the overlap matrix elements between the Wavefunctions at neighbouring k-points
         spreads : bool
             if True, the spreads are calculated
@@ -389,7 +389,7 @@ class CheckPoint:
     def get_BB_qb(self, mmn, eig, phase=None, sum_b=False):
         """	
         a wrapper for get_AABB_qb to evaluate BB matrix elements. (transl_inv is disabled)
-        see '~wannierberri.system.w90_files.CheckPoint.get_AABB_qb' for more details
+        see :meth:`~wannierberri.w90files.CheckPoint.get_AABB_qb` for more details
         """
         return self.get_AABB_qb(mmn, eig=eig, phase=phase, sum_b=sum_b)
 
@@ -400,9 +400,9 @@ class CheckPoint:
 
         Parameters
         ----------
-        mmn : `~wannierberri.system.w90_files.MMN`
+        mmn : :class:`~wannierberri.w90files.MMN`
             the overlap matrix elements between the Wavefunctions at neighbouring k-points
-        uhu : `~wannierberri.system.w90_files.UHU` or `~wannierberri.system.w90_files.UIU`
+        uhu : :class:`~wannierberri.w90files.UHU` or :class:`~wannierberri.w90files.UIU`
             the matrix elements uhu or uiu produced by pw2wannier90
         antisym : bool
             if True, the antisymmetric piece of the matrix elements is calculated. Otherwise, the full matrix is calculated
@@ -459,7 +459,7 @@ class CheckPoint:
     def get_CC_qb(self, mmn, uhu, phase=None, sum_b=False):
         """
         A wrapper for get_CCOOGG_qb with antisym=True
-        see '~wannierberri.system.w90_files.CheckPoint.get_CCOOGG_qb' for more details
+        see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
         """
         return self.get_CCOOGG_qb(mmn, uhu, phase=phase, sum_b=sum_b)
 
@@ -467,8 +467,8 @@ class CheckPoint:
     def get_OO_qb(self, mmn, uiu, phase=None, sum_b=False):
         """
         A wrapper for get_CCOOGG_qb with antisym=False
-        see '~wannierberri.system.w90_files.CheckPoint.get_CCOOGG_qb' for more details
-        (actually, the same as "~wannierberri.system.w90_files.CheckPoint.get_CC_qb")
+        see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
+        (actually, the same as :meth:`~wannierberri.w90files.CheckPoint.get_CC_qb`)
         """
         return self.get_CCOOGG_qb(mmn, uiu, phase=phase, sum_b=sum_b)
 
@@ -476,7 +476,7 @@ class CheckPoint:
     def get_GG_qb(self, mmn, uiu, phase=None, sum_b=False):
         """
         A wrapper for get_CCOOGG_qb with antisym=False 
-        see '~wannierberri.system.w90_files.CheckPoint.get_CCOOGG_qb' for more details
+        see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
         """
         return self.get_CCOOGG_qb(mmn, uiu, antisym=False, phase=phase, sum_b=sum_b)
     ###########################################################################
