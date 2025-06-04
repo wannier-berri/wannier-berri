@@ -12,6 +12,7 @@
 # ------------------------------------------------------------
 # This is an auxiliary class for the __evaluate.py  module
 
+from typing import Iterable
 import numpy as np
 from functools import cached_property
 from .Kpoint import KpointBZ
@@ -43,13 +44,14 @@ class KpointBZtetra(KpointBZ):
 
     @cached_property
     def __edge_lengths(self):
+        """returns the lengths of the edges of the tetrahedron"""
         edges = np.array([self.vertices[i[1]] - self.vertices[i[0]] for i in EDGES]).dot(self.basis)
         return np.linalg.norm(edges, axis=1)
 
     @cached_property
     def __i_max_edge(self):
-        """returns the index of the maximal edge.
-        If there are equal edges, the edge with the smallest index (inthe EDGES array) is returned. This is done for reproducibility of the tests
+        """returns the index of the edge with maximal edge.
+        If there are equal edges, the edge with the smallest index (in the EDGES array) is returned. This is done for reproducibility of the tests
         """
         lengths = self.__edge_lengths
         srt = np.argsort(lengths)
@@ -69,6 +71,8 @@ class KpointBZtetra(KpointBZ):
         """
         if not np.all(periodic):
             raise ValueError("tetrahedron grid can be used only for 3D-periodic systems")
+        if isinstance(ndiv, Iterable):
+            ndiv = ndiv[0] 
         i_edge = self.__i_max_edge
         edge = EDGES[i_edge]
         edge_comp = EDGES_COMPLEMENT[i_edge]

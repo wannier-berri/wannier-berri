@@ -161,9 +161,9 @@ class GridTrigonal(GridTetra):
         ])
 
         b1, b2, b3 = system.recip_lattice
-        assert angle_vectors_deg(b1, b3) == 90
-        assert angle_vectors_deg(b2, b3) == 90
-        assert angle_vectors_deg(b1, b2) in (60, 120)
+        assert angle_vectors_deg(b1, b3) == 90, f"Trigonal grid expects b1 and b3 to be orthogonal, got angle {angle_vectors_deg(b1, b3)}"
+        assert angle_vectors_deg(b2, b3) == 90, f"Trigonal grid expects b2 and b3 to be orthogonal, got angle {angle_vectors_deg(b2, b3)}"
+        assert angle_vectors_deg(b1, b2) in (60, 120), f"Trigonal grid expects b1 and b2 to form 60 or 120 degrees, got angle {angle_vectors_deg(b1, b2)}"
         if angle_vectors_deg(b1, b2) == 60:
             IBZ_tetra[:, :, 0] = IBZ_tetra[:, :, 0] - IBZ_tetra[:, :, 1]
 
