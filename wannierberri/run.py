@@ -361,7 +361,7 @@ def run(
 
         for iK in select_points:
             results = K_list[iK].get_res
-            K_list += K_list[iK].divide(adpt_mesh, periodic=system.periodic, use_symmetry=use_irred_kpt)
+            K_list += K_list[iK].divide(ndiv=adpt_mesh, periodic=system.periodic, use_symmetry=use_irred_kpt)
             if abs(K_list[iK].factor) < 1.e-10:
                 excluded_Klist.append(iK)
                 if result_excluded is None:
