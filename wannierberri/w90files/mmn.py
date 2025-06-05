@@ -78,6 +78,7 @@ class MMN(W90_file):
         self.G = headstring[:, :, 2:]
         t2 = time()
         print(f"Time for MMN.__init__() : {t2 - t0} , read : {t1 - t0} , headstring {t2 - t1}")
+        return self
 
     def to_w90_file(self, seedname):
         f_mmn_out = open(seedname + ".mmn", "w")

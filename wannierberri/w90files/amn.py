@@ -1,7 +1,6 @@
 from datetime import datetime
 import multiprocessing
 import numpy as np
-from irrep.bandstructure import BandStructure
 from ..symmetry.projections import ProjectionsSet
 
 from ..symmetry.orbitals import Bessel_j_exp_int, Projector
@@ -76,6 +75,7 @@ class AMN(W90_file):
         allmmn = (f_amn_in[2 + j * block:2 + (j + 1) * block] for j in range(NK))
         p = multiprocessing.Pool(npar)
         self.data = np.array(p.map(str2arraymmn, allmmn)).reshape((NK, NW, NB)).transpose(0, 2, 1)
+        return self
 
     def to_w90_file(self, seedname):
         f_amn_out = open(seedname + ".amn", "w")
@@ -122,7 +122,7 @@ class AMN(W90_file):
     #     f_amn_out.close()
 
 
-def amn_from_bandstructure_s_delta(bandstructure: BandStructure, positions, normalize=True, return_object=True):
+def amn_from_bandstructure_s_delta(bandstructure, positions, normalize=True, return_object=True):
     """
     Create an AMN object from a BandStructure object
     NOTE!!: Only for delta-localised s-orbitals
@@ -131,7 +131,7 @@ def amn_from_bandstructure_s_delta(bandstructure: BandStructure, positions, norm
 
     Parameters
     ----------
-    bandstructure : BandStructure
+    bandstructure : irrep.bandstructure.BandStructure
         the band structure object
     positions : array( (N, 3), dtype=float)
         the positions of the orbitals
@@ -156,8 +156,8 @@ def amn_from_bandstructure_s_delta(bandstructure: BandStructure, positions, norm
         return data
 
 
-def amn_from_bandstructure(bandstructure: BandStructure, projections: ProjectionsSet,
-                           normalize=True, return_object=True, spinor=False, verbose=False):
+def amn_from_bandstructure(bandstructure, projections: ProjectionsSet,
+                           normalize=True, return_object=True, verbose=False):
     """
     Create an AMN object from a BandStructure object
     So far only delta-localised s-orbitals are implemented

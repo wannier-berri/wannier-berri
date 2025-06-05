@@ -13,6 +13,8 @@ from wannierberri.symmetry.projections import Projection, ProjectionsSet, get_pe
 from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
 import wannierberri as wberri
 from irrep.spacegroup import SpaceGroup
+
+from wannierberri.w90files.eig import EIG, eig_from_bandstructure
 sq2 = np.sqrt(2)
 
 
@@ -485,3 +487,13 @@ def test_create_amn_diamond_sp3():
     assert wannier_spreads == approx(expected_spread, abs=1e-2)
 
     # assert wannier_spreads == approx(.398647548, abs=1e-5)
+
+
+def test_create_eig_diamond():
+    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
+
+    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
+                                                      code="espresso")
+    eig_new = eig_from_bandstructure(bandstructure=bandstructure, return_object=True, verbose=True)
+    eig_ref = EIG().from_w90_file(os.path.join(data_dir, "diamond"))
+    assert np.allclose(eig_new.data, eig_ref.data, atol=1e-6), "EIG data does not match reference"

@@ -43,6 +43,7 @@ class SPN(W90_file):
                 raise RuntimeError(f"REAL DIAG CHECK FAILED : {check}")
             self.data[ik] = A.transpose(1, 2, 0)
         print("----------\n SPN OK  \n---------\n")
+        return self
 
     def select_bands(self, selected_bands):
         if selected_bands is not None:

@@ -16,6 +16,7 @@ class EIG(W90_file):
         assert np.linalg.norm(data[:, :, 0] - 1 - np.arange(NB)[None, :]) < 1e-15
         assert np.linalg.norm(data[:, :, 1] - 1 - np.arange(NK)[:, None]) < 1e-15
         self.data = data[:, :, 2]
+        return self
 
     def to_w90_file(self, seedname):
         file = open(seedname + ".eig", "w")
@@ -26,8 +27,39 @@ class EIG(W90_file):
     def select_bands(self, selected_bands):
         if selected_bands is not None:
             self.data = self.data[:, selected_bands]
+        return self
 
 
     # def get_disentangled(self, v_left, v_right):
     #     data = np.einsum("klm,km...,kml->kl", v_left, self.data, v_right).real
     #     return self.__class__(data=data)
+
+
+def eig_from_bandstructure(bandstructure, return_object=True, verbose=False):
+    """
+    Create an EIG object from a BandStructure object
+    So far only delta-localised s-orbitals are implemented
+
+    Parameters
+    ----------
+    bandstructure : bandstructure : irrep.bandstructure.BandStructure
+    
+        the band structure object
+    projections : ProjectionsSet
+        the projections set as an object
+    normalize : bool
+        if True, the wavefunctions are normalised
+    return_object : bool
+        if True, return an EIG object, otherwise return the data as a numpy array
+    """
+    
+    if verbose:
+        print("Creating eig.")
+    data = []
+    for kp in bandstructure.kpoints:
+        data.append(kp.Energy_raw)
+    data = np.array(data)
+    if return_object:
+        return EIG().from_dict(data=data)
+    else:
+        return data

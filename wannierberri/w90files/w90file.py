@@ -64,6 +64,7 @@ class W90_file(SavableNPZ):
         abstract method to read the necessary data from Wannier90 file
         """
         self.data = None
+        return self
 
     @abc.abstractmethod
     def select_bands(self, selected_bands):

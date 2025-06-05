@@ -47,6 +47,7 @@ class UXU(W90_file):
                         self.data[ik, ib1, ib2] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
         print(f"----------\n {suffix} OK  \n---------\n")
         f_uXu_in.close()
+        return self
 
     def select_bands(self, selected_bands):
         if selected_bands is not None:
@@ -143,6 +144,7 @@ class SXU(W90_file):
 
         print(f"----------\n {suffix} OK  \n---------\n")
         f_sXu_in.close()
+        return self
 
     def select_bands(self, selected_bands):
         if selected_bands is not None:

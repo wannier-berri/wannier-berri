@@ -90,6 +90,7 @@ class UNK(W90_file):
                 self.data.append(None)
                 continue
         print(f"NK={NK}")
+        return self
 
 
 
