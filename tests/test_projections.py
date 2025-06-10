@@ -497,3 +497,44 @@ def test_create_eig_diamond():
     eig_new = eig_from_bandstructure(bandstructure=bandstructure, return_object=True, verbose=True)
     eig_ref = EIG().from_w90_file(os.path.join(data_dir, "diamond"))
     assert np.allclose(eig_new.data, eig_ref.data, atol=1e-6), "EIG data does not match reference"
+
+
+
+
+def test_find_shells():
+    from wannierberri.w90files.mmn import find_shells
+
+
+    nkxy=5
+    nkz=4
+    recip_lattice = np.array([[1, 0, 0], [-1/2, np.sqrt(3)/2, 0], [0, 0, 1.8]])
+    wk, bk_cart, bk_latt  = find_shells(recip_lattice=recip_lattice, mp_grid=(nkxy, nkxy, nkz))
+    print ("wk = for hex ", wk)
+    assert len(wk) == 8
+    assert wk[:6] == approx(wk[:6].mean())
+    assert wk[6:] == approx(wk[6:].mean())
+
+    recip_lattice = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    wk, bk_cart, bk_latt = find_shells(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
+    print("wk = for simple cubic ", wk)
+    assert len(wk) == 6
+    assert wk == approx(wk.mean())
+
+    recip_lattice = np.ones((3, 3)) - np.eye(3)
+    wk, bk_cart, bk_latt = find_shells(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
+    print("wk = for bcc ", wk)
+    assert len(wk) == 12
+    assert wk == approx(wk.mean())
+
+    recip_lattice = np.ones((3, 3)) - 2*np.eye(3)
+    wk, bk_cart, bk_latt = find_shells(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
+    print("wk = for fcc ", wk)
+    assert len(wk) == 8
+    assert wk == approx(wk.mean())
+
+
+
+
+
+    
+    

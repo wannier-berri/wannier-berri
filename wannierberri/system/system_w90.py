@@ -209,7 +209,7 @@ class System_w90(System_R):
         # Unique set of nearest-neighbor vectors (cartesian)
         if w90data.has_file('mmn'):
             # w90data.mmn.set_bk_chk(chk, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
-            bk_cart_unique = w90data.mmn.bk_cart_unique
+            bk_cart = w90data.mmn.bk_cart
 
             if transl_inv_JM:
                 _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
@@ -218,7 +218,7 @@ class System_w90(System_R):
                 _r0 = centers[None, :, :]
                 sum_b = True
 
-            expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart_unique, _r0))
+            expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart, _r0))
             print(f"expjphase1 {expjphase1.shape}")
             expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
 
@@ -273,7 +273,7 @@ class System_w90(System_R):
             del expjphase1, expjphase2
 
             if transl_inv_JM:
-                self.recenter_JM(centers, bk_cart_unique)
+                self.recenter_JM(centers, bk_cart)
 
 
         self.do_at_end_of_init()
@@ -285,7 +285,7 @@ class System_w90(System_R):
             self.symmetrize2(w90data.symmetrizer)
 
     ###########################################################################
-    def recenter_JM(self, centers, bk_cart_unique):
+    def recenter_JM(self, centers, bk_cart):
         """"
         Recenter the matrices in the Jae-Mo scheme
         (only in convention I)
@@ -294,8 +294,8 @@ class System_w90(System_R):
         ----------
         centers : np.ndarray(shape=(num_wann, 3))
             Wannier centers in Cartesian coordinates
-        bk_cart_unique : np.ndarray(shape=(num_bk, 3))
-            set of unique nearest-neighbor vectors (cartesian)
+        bk_cart : np.ndarray(shape=(num_bk, 3))
+            set of nearest-neighbor vectors (cartesian)
 
         Notes
         -----
@@ -317,7 +317,7 @@ class System_w90(System_R):
         # elements.
 
         # Optimal center in Jae-Mo's implementation
-        phase = np.einsum('ba,Ra->Rb', bk_cart_unique, - 0.5 * self.rvec.cRvec)
+        phase = np.einsum('ba,Ra->Rb', bk_cart, - 0.5 * self.rvec.cRvec)
         expiphase1 = np.exp(1j * phase)[:, None, None, :]
         expiphase2 = expiphase1[:, :, :, :, None] * expiphase1[:, :, :, None, :]
 

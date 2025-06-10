@@ -107,17 +107,23 @@ class Wannier90data:
             self.write_npz_list.update(['mmn', 'eig', 'amn'])
         self.formatted_list = formatted
         self._files = {}
-        # chk should be set last
-        if 'chk' in readfiles:
-            _readfiles = copy(readfiles)
-            _readfiles.remove('chk')
-            _readfiles.append('chk')
-            readfiles = tuple(_readfiles)
-        for f in readfiles:
-            self.set_file(f)
-        if 'chk' not in readfiles:
-            assert "win" in readfiles, "either 'chk' or 'win' should be in readfiles"
+
+        _read_files_loc = [ f.lower() for f in readfiles ] 
+        assert 'win' in _read_files_loc or 'chk' in _read_files_loc, "either 'win' or 'chk' should be in readfiles"
+        if 'win' in _read_files_loc: 
+            self.set_file('win')
+            _read_files_loc.remove('win')
+        if 'chk' in _read_files_loc:
+            self.set_chk(read=True)
+            _read_files_loc.remove('chk')
+        else:
             self.set_chk(read=False)
+        if 'mmn' in _read_files_loc:
+            self.set_file('mmn')
+            self.get_file('mmn').set_bk_chk(self.chk)
+            _read_files_loc.remove('mmn')
+        for f in _read_files_loc:
+            self.set_file(f)
 
 
     @cached_property
@@ -192,13 +198,19 @@ class Wannier90data:
         if key == "chk":
             self.set_chk(val=val, read=True, overwrite=overwrite, **kwargs)
             return
-        kwargs_auto = self.auto_kwargs_files(key)
-        kwargs_auto.update(kwargs)
         if not overwrite and self.has_file(key):
             raise RuntimeError(f"file '{key}' was already set")
         if val is None:
             if key not in FILES_CLASSES:
                 raise ValueError(f"key '{key}' is not a valid w90 file")
+            kwargs_auto = self.auto_kwargs_files(key)
+            kwargs_auto.update(kwargs)
+            if key in ['uhu', 'uiu', 'shu', 'siu']:
+                assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"
+                assert self.has_file('chk'), "cannot read uHu/uIu/sHu/sIu without chk file"
+                self.get_file('mmn').set_bk_chk(self.chk)
+                kwargs_auto['bk_reorder'] = self.get_file('mmn').bk_reorder
+        
             val = FILES_CLASSES[key](self.seedname, autoread=True, **kwargs_auto)
         self.check_conform(key, val)
         self._files[key] = val
@@ -234,8 +246,9 @@ class Wannier90data:
                             np.array(np.round(self.chk.kpt_latt * np.array(self.chk.mp_grid)[None, :]),
                                      dtype=int) % self.chk.mp_grid]
         if self.has_file("mmn"):
-            self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
-        self.win_index = [np.arange(self.eig.NB)] * self.chk.num_kpts
+            # self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
+            self.mmn.set_bk_chk(self)
+        self.win_index = [np.arange(self.chk.num_bands)] * self.chk.num_kpts
 
 
     def write(self, seedname, files=None):

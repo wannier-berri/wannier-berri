@@ -45,8 +45,6 @@ def eig_from_bandstructure(bandstructure, return_object=True, verbose=False):
     bandstructure : bandstructure : irrep.bandstructure.BandStructure
     
         the band structure object
-    projections : ProjectionsSet
-        the projections set as an object
     normalize : bool
         if True, the wavefunctions are normalised
     return_object : bool

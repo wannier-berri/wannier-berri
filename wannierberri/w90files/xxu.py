@@ -20,7 +20,7 @@ class UXU(W90_file):
         return 2
 
 
-    def from_w90_file(self, seedname='wannier90', suffix='uXu', formatted=False):
+    def from_w90_file(self, seedname='wannier90', suffix='uXu', formatted=False, bk_reorder=None):
         print(f"----------\n  {suffix}   \n---------")
         print(f'formatted == {formatted}')
         if formatted:
@@ -45,6 +45,9 @@ class UXU(W90_file):
                     for ib1 in range(NNB):
                         tmp = f_uXu_in.read_record('f8').reshape((2, NB, NB), order='F').transpose(2, 1, 0)
                         self.data[ik, ib1, ib2] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
+        if bk_reorder is not None:
+            for ik in range(NK):
+                self.data[ik,:,:,:] = self.data[ik,bk_reorder[ik],:,:][:, bk_reorder[ik], :, :]
         print(f"----------\n {suffix} OK  \n---------\n")
         f_uXu_in.close()
         return self
@@ -87,7 +90,8 @@ class SXU(W90_file):
         """
         return 1
 
-    def from_w90_file(self, seedname='wannier90', formatted=False, suffix='sHu', **kwargs):
+    def from_w90_file(self, seedname='wannier90', formatted=False, suffix='sHu', bk_reorder=None,
+                      **kwargs):
         """	
         Read the sHu or sIu file
 
@@ -142,6 +146,9 @@ class SXU(W90_file):
                         # tmp[m, n] = <u_{m,k}|S_ipol*X|u_{n,k+b}>
                         self.data[ik, ib, :, :, ipol] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
 
+        if bk_reorder is not None:
+            for ik in range(NK):
+                self.data[ik, :, :, :] = self.data[ik, bk_reorder[ik], :, :]
         print(f"----------\n {suffix} OK  \n---------\n")
         f_sXu_in.close()
         return self
