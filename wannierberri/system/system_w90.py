@@ -191,10 +191,6 @@ class System_w90(System_R):
         if self.need_R_any('SS'):
             self.set_R_mat('SS', self.rvec.q_to_R(chk.get_SS_q(w90data.spn)))
 
-
-        if w90data.has_file('mmn'):
-            w90data.mmn.set_bk_chk(chk, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
-
         if wannier_centers_from_chk:
             self.wannier_centers_cart = chk.wannier_centers_cart
         else:
@@ -203,12 +199,10 @@ class System_w90(System_R):
             AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
             self.wannier_centers_cart = np.diagonal(AA_R0, axis1=0, axis2=1).T
 
-
         # Wannier centers
         centers = self.wannier_centers_cart
         # Unique set of nearest-neighbor vectors (cartesian)
         if w90data.has_file('mmn'):
-            # w90data.mmn.set_bk_chk(chk, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
             bk_cart = w90data.mmn.bk_cart
 
             if transl_inv_JM:

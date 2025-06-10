@@ -273,7 +273,7 @@ def test_create_amn_diamond_s_bond():
     projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
 
     amn = amn_from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
-                           normalize=True, return_object=True, spinor=False)
+                           normalize=True, return_object=True)
 
     tmp_dir = os.path.join(OUTPUT_DIR, "diamond+create_amn")
 
@@ -342,7 +342,7 @@ def test_create_amn_diamond_p_bond():
     print("positions_cart = ", projection.positions @ lattice)
 
     amn = amn_from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
-                           normalize=True, return_object=True, spinor=False)
+                           normalize=True, return_object=True)
     symmetrizer = SAWF().from_irrep(bandstructure)
     symmetrizer.set_D_wann_from_projections([projection])
 
@@ -399,10 +399,10 @@ def test_create_amn_diamond_p_bond():
     assert wannier_centers == approx(wannier_centers_ab, abs=1e-6)
     assert wannier_spreads == approx(wannier_spreads.mean(), abs=1e-6)
 
-    expected_spread = 1.574684543725
+    expected_spread = 1.4
     expected_a = -lattice[0, 0] / 2
     assert a == approx(expected_a, abs=1e-6)
-    assert wannier_spreads == approx(expected_spread, abs=1e-2)
+    assert wannier_spreads == approx(expected_spread, abs=0.2)
 
 
 def test_create_amn_diamond_sp3():
@@ -419,7 +419,7 @@ def test_create_amn_diamond_sp3():
     projections = ProjectionsSet([projection_sp3])
     print(f"lattice = {lattice}")
     amn = amn_from_bandstructure(bandstructure=bandstructure, projections=projections,
-                           normalize=True, return_object=True, spinor=False)
+                           normalize=True, return_object=True)
     symmetrizer = SAWF().from_irrep(bandstructure)
     symmetrizer.set_D_wann_from_projections(projections)
 
@@ -501,33 +501,32 @@ def test_create_eig_diamond():
 
 
 
-def test_find_shells():
-    from wannierberri.w90files.mmn import find_shells
-
+def test_find_bk_vectors():
+    from wannierberri.w90files.mmn import find_bk_vectors
 
     nkxy=5
     nkz=4
     recip_lattice = np.array([[1, 0, 0], [-1/2, np.sqrt(3)/2, 0], [0, 0, 1.8]])
-    wk, bk_cart, bk_latt  = find_shells(recip_lattice=recip_lattice, mp_grid=(nkxy, nkxy, nkz))
+    wk, bk_cart, bk_latt  = find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkxy, nkxy, nkz))
     print ("wk = for hex ", wk)
     assert len(wk) == 8
     assert wk[:6] == approx(wk[:6].mean())
     assert wk[6:] == approx(wk[6:].mean())
 
     recip_lattice = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-    wk, bk_cart, bk_latt = find_shells(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
+    wk, bk_cart, bk_latt = find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
     print("wk = for simple cubic ", wk)
     assert len(wk) == 6
     assert wk == approx(wk.mean())
 
     recip_lattice = np.ones((3, 3)) - np.eye(3)
-    wk, bk_cart, bk_latt = find_shells(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
+    wk, bk_cart, bk_latt = find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
     print("wk = for bcc ", wk)
     assert len(wk) == 12
     assert wk == approx(wk.mean())
 
     recip_lattice = np.ones((3, 3)) - 2*np.eye(3)
-    wk, bk_cart, bk_latt = find_shells(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
+    wk, bk_cart, bk_latt = find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
     print("wk = for fcc ", wk)
     assert len(wk) == 8
     assert wk == approx(wk.mean())

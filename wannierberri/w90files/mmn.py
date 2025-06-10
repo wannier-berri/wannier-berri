@@ -2,7 +2,7 @@ from itertools import islice
 import multiprocessing
 from time import time
 import numpy as np
-from .utility import convert, get_mp_grid
+from .utility import convert, get_mp_grid, grid_from_kpoints
 from .w90file import W90_file
 
 
@@ -38,10 +38,10 @@ class MMN(W90_file):
         return 1
 
     def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(), **kwargs):
-        self.npz_tags = ["data", "neighbours", "G"]
+        self.npz_tags = ["data", "neighbours", "G", "bk_cart", "bk_latt", "bk_reorder", "wk"]
         super().__init__(seedname=seedname, ext="mmn", npar=npar, **kwargs)
 
-    def from_w90_file(self, seedname, npar):
+    def from_w90_file(self, seedname, kpt_latt, recip_lattice, npar=1):
         t0 = time()
         f_mmn_in = open(seedname + ".mmn", "r")
         f_mmn_in.readline()
@@ -78,6 +78,7 @@ class MMN(W90_file):
         self.G = headstring[:, :, 2:]
         t2 = time()
         print(f"Time for MMN.__init__() : {t2 - t0} , read : {t1 - t0} , headstring {t2 - t1}")
+        self.set_bk(kpt_latt=kpt_latt, recip_lattice=recip_lattice)
         return self
 
     def to_w90_file(self, seedname):
@@ -121,7 +122,7 @@ class MMN(W90_file):
     #     return self.__class__(data=data)
 
     
-    def set_bk(self, kpt_latt, mp_grid, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
+    def set_bk(self, kpt_latt, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
         try:
             self.bk_cart
             self.bk_latt
@@ -129,6 +130,7 @@ class MMN(W90_file):
             self.wk
             return
         except AttributeError:
+            mp_grid = np.array(grid_from_kpoints(kpt_latt))
             bk_latt_all = np.array(
                 np.round(
                     [
@@ -184,8 +186,8 @@ class MMN(W90_file):
             print (f"the weights of the bk vectors are {self.wk} ")
             
 
-    def set_bk_chk(self, chk, **argv):
-        self.set_bk(kpt_latt=chk.kpt_latt, mp_grid=chk.mp_grid, recip_lattice=chk.recip_lattice, **argv)
+    # def set_bk_chk(self, chk, **argv):
+    #     self.set_bk(kpt_latt=chk.kpt_latt, recip_lattice=chk.recip_lattice, **argv)
 
 
 

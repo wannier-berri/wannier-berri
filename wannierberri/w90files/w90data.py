@@ -119,8 +119,7 @@ class Wannier90data:
         else:
             self.set_chk(read=False)
         if 'mmn' in _read_files_loc:
-            self.set_file('mmn')
-            self.get_file('mmn').set_bk_chk(self.chk)
+            self.set_file('mmn', kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
             self.set_file(f)
@@ -208,7 +207,6 @@ class Wannier90data:
             if key in ['uhu', 'uiu', 'shu', 'siu']:
                 assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"
                 assert self.has_file('chk'), "cannot read uHu/uIu/sHu/sIu without chk file"
-                self.get_file('mmn').set_bk_chk(self.chk)
                 kwargs_auto['bk_reorder'] = self.get_file('mmn').bk_reorder
         
             val = FILES_CLASSES[key](self.seedname, autoread=True, **kwargs_auto)
@@ -245,9 +243,6 @@ class Wannier90data:
         self.kpt_mp_grid = [tuple(k) for k in
                             np.array(np.round(self.chk.kpt_latt * np.array(self.chk.mp_grid)[None, :]),
                                      dtype=int) % self.chk.mp_grid]
-        if self.has_file("mmn"):
-            # self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
-            self.mmn.set_bk_chk(self)
         self.win_index = [np.arange(self.chk.num_bands)] * self.chk.num_kpts
 
 
