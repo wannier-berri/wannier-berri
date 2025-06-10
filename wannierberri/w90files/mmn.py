@@ -97,7 +97,7 @@ class MMN(W90_file):
         if selected_bands is not None:
             self.data = self.data[:, :, selected_bands, :][:, :, :, selected_bands]
 
-    
+
     def set_bk(self, kpt_latt, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
         mp_grid = np.array(grid_from_kpoints(kpt_latt))
         bk_latt_all = np.array(
@@ -107,7 +107,7 @@ class MMN(W90_file):
                     for nbrs, G in zip(self.neighbours.T, self.G.transpose(1, 0, 2))
                 ]).transpose(1, 0, 2),
             dtype=int)
-        
+
         self.bk_latt = bk_latt_all[0]
 
         ## Reorder the bk_latt vectors to match the order of the first k-point
@@ -120,9 +120,9 @@ class MMN(W90_file):
             assert np.all(self.bk_latt == bk_latt_all[ik, srt]), \
                 f"Reordering failed for k-point {ik}. Expected {self.bk_latt}, got {bk_latt_all[ik, srt]}"
             self.bk_reorder.append(srt)
-            self.data[ik,:] = self.data[ik,srt, :]
-            self.G[ik,:] = self.G[ik,srt]
-            self.neighbours[ik,:] = self.neighbours[ik,srt]
+            self.data[ik, :] = self.data[ik, srt, :]
+            self.G[ik, :] = self.G[ik, srt]
+            self.neighbours[ik, :] = self.neighbours[ik, srt]
         self.bk_reorder = np.array(self.bk_reorder, dtype=int)
 
         self.bk_cart = self.bk_latt.dot(recip_lattice / mp_grid[:, None])
@@ -152,109 +152,124 @@ class MMN(W90_file):
                 f"weight_shell={weight_shell}, srt={srt}\n")
         weight = np.array([w for w, b1, b2 in zip(weight_shell, brd, brd[1:]) for i in range(b1, b2)])
         self.wk = weight[srt_inv]
-        print (f"the weights of the bk vectors are {self.wk} ")
-            
+        print(f"the weights of the bk vectors are {self.wk} ")
 
 
-def mmn_from_bandstructure(bandstructure,
-                           normalize=True, return_object=True, verbose=False,
+
+    def from_bandstructure(self, bandstructure,
+                           normalize=True,
+                           verbose=False,
                            param_search_bk={}):
-    """
-    Create an AMN object from a BandStructure object
-    So far only delta-localised s-orbitals are implemented
+        """
+        Create an AMN object from a BandStructure object
+        So far only delta-localised s-orbitals are implemented
 
-    Parameters
-    ----------
-    bandstructure : BandStructure
-        the band structure object
-    normalize : bool
-        if True, the wavefunctions are normalised
-    return_object : bool
-        if True, return an MMN object, otherwise return the data as a numpy array
-    param_search_bk : dict
-        additional parameters for `:func:find_bk_vectors`
+        Parameters
+        ----------
+        bandstructure : BandStructure
+            the band structure object
+        normalize : bool
+            if True, the wavefunctions are normalised
+        return_object : bool
+            if True, return an MMN object, otherwise return the data as a numpy array
+        param_search_bk : dict
+            additional parameters for `:func:find_bk_vectors`
 
-    Returns
-    -------
-    MMN or np.ndarray
-        the MMN object ( if `return_object` is True ) or the data as a numpy array ( if `return_object` is False )
-    """
-    spinor = bandstructure.spinor
+        Returns
+        -------
+        MMN or np.ndarray
+            the MMN object ( if `return_object` is True ) or the data as a numpy array ( if `return_object` is False )
+        """
+        spinor = bandstructure.spinor
+        nspinor = 2 if spinor else 1
 
-    if verbose:
-        print("Creating mmn. ")
-    data = []
+        if verbose:
+            print("Creating mmn. ")
 
-    kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
-    NK = kpt_latt.shape[0]
-    mp_grid = get_mp_grid(kpt_latt)
-    rec_latt = bandstructure.RecLattice
-    
-    wk, bk_cart, bk_latt = find_bk_vectors(
-        recip_lattice=bandstructure.RecLattice, 
-        mp_grid=mp_grid,
-        **param_search_bk
+        kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
+        NK = kpt_latt.shape[0]
+        mp_grid = np.array(grid_from_kpoints(kpt_latt))
+
+        self.wk, self.bk_cart, self.bk_latt = find_bk_vectors(
+            recip_lattice=bandstructure.RecLattice,
+            mp_grid=mp_grid,
+            **param_search_bk
         )
-    
-    NNB = len(wk)
-    NB = bandstructure.NB
-    
-    k_latt_int = np.rint(kpt_latt * mp_grid[:, None]).astype(int)
-
-    G = np.zeros( (NK, NNB, 3), dtype=int)
-    ik_nb = np.zeros((NK, NNB), dtype=int)
-    for ik in range(NK):
-        for ib in range(NNB):
-            k_latt_int_nb = k_latt_int[ik] + bk_latt[ib]
-            for ik_nb in range(NK):
-                g = k_latt_int_nb - k_latt_int[ik_nb]
-                if np.all( g % mp_grid == 0):
-                    ik_nb[ik, ib] = ik_nb
-                    G[ik, ib] = g // mp_grid
-                    break
-            else:
-                raise RuntimeError(
-                    f"Could not find a neighbour for k-point {ik} with k-lattice {k_latt_int[ik]} and "
-                    f"bk-lattice {bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
-                    f"Check the parameters of `find_bk_vectors`."
-                )
-            
-
-    igmin_k = [kp.ig[:3, :].min(axis=1) for kp in bandstructure.kpoints]
-    igmax_k = [kp.ig[:3, :].max(axis=1) for kp in bandstructure.kpoints]
-
-    
-    igmin_glob = np.array(igmin_k).min(axis=0) -G.max(axis=0)
-    igmax_glob = np.array(igmax_k).max(axis=0) -G.min(axis=0)
-
-    ig_grid = igmax_glob - igmin_glob + 1
 
 
-    bra = np.zeros((NB, ) + tuple(ig_grid), dtype=complex)
-    ket = np.zeros((NB, ) + tuple(ig_grid), dtype=complex)
+        NNB = len(self.wk)
+        NB = bandstructure.num_bands
 
-    data = np.zeros((NK, NNB, NB, NB), dtype=complex)
+        k_latt_int = np.rint(kpt_latt * mp_grid[ None, :]).astype(int)
 
-    for ik1, kp1 in enumerate(bandstructure.kpoints):
-        for ig, g in enumerate(kp1.ig.T):
-            g_loc = g - igmin_glob
-            assert np.all(g_loc >= 0) and np.all(g_loc < ig_grid), \
-                f"g_loc {g_loc} out of bounds for ig_grid {ig_grid} at ik1={ik1}, ig={ig}"
-            bra[ :, g_loc[0], g_loc[1], g_loc[2] ] = kp1.WF[:, ig].conj()
-        for inb, ik2 in enumerate (ik_nb[ik1]):
-            kp2 = bandstructure.kpoints[ik2]
-            for ig, g in enumerate(kp2.ig.T):
-                g_loc = g - igmin_glob - G[ik1, inb]
+        self.G = np.zeros((NK, NNB, 3), dtype=int)
+        self.neighbours = np.zeros((NK, NNB), dtype=int)
+        for ik in range(NK):
+            for ib in range(NNB):
+                k_latt_int_nb = k_latt_int[ik] + self.bk_latt[ib]
+                for ik2 in range(NK):
+                    g = k_latt_int_nb - k_latt_int[ik2]
+                    if np.all(g % mp_grid == 0):
+                        self.neighbours[ik, ib] = ik2
+                        self.G[ik, ib] = g // mp_grid
+                        break
+                else:
+                    raise RuntimeError(
+                        f"Could not find a neighbour for k-point {ik} with k-lattice {k_latt_int[ik]} and "
+                        f"bk-lattice {self.bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
+                        f"Check the parameters of `find_bk_vectors`."
+                    )
+
+
+        igmin_k = np.array([kp.ig[:3, :].min(axis=1) for kp in bandstructure.kpoints])
+        igmax_k = np.array([kp.ig[:3, :].max(axis=1) for kp in bandstructure.kpoints])
+
+        print (f"igmin_k = {igmin_k}, igmax_k = {igmax_k}")
+
+        igmin_glob = igmin_k.min(axis=0) - self.G.max(axis=(0,1))
+        igmax_glob = igmax_k.max(axis=0) - self.G.min(axis=(0,1))
+
+        ig_grid = igmax_glob - igmin_glob + 1
+        print (f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
+
+
+        bra = np.zeros((NB, nspinor) + tuple(ig_grid), dtype=complex)
+        ket = np.zeros((NB, nspinor) + tuple(ig_grid), dtype=complex)
+
+        self.data = np.zeros((NK, NNB, NB, NB), dtype=complex)
+
+        if normalize:
+            norm = [np.linalg.norm(kp.WF, axis=1) for kp in bandstructure.kpoints]
+        else:
+            norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in bandstructure.kpoints]
+
+        einsum_path = None
+        for ik1, kp1 in enumerate(bandstructure.kpoints):
+            for ig, g in enumerate(kp1.ig.T):
+                g_loc = g[:3] - igmin_glob
                 assert np.all(g_loc >= 0) and np.all(g_loc < ig_grid), \
-                    f"g_loc {g_loc} out of bounds for ig_grid {ig_grid} at ik1={ik1}, inb={inb}, ik2={ik2}"
-                ket[:, g_loc[0], g_loc[1], g_loc[2]] = kp2.WF[:, ig]
-            data[ik1, inb] = np.einsum('aijk,bijk->ab', bra, ket, optimize='greedy')
-        
-        
-    if return_object:
-        return MMN().from_dict(data=data, neighbours=ik_nb, G=G,)
-    else:
-        return data
+                    f"g_loc {g_loc} out of bounds for ig_grid {ig_grid} at ik1={ik1}, ig={ig}"
+                for ispinor in range(nspinor):
+                    bra[:, ispinor, g_loc[0], g_loc[1], g_loc[2]] = kp1.WF[:, ig + kp1.NG * ispinor].conj()
+            if normalize:
+                bra[:] = bra / norm[ik1][:, None, None, None, None]
+            for ik2, ik2 in enumerate(self.neighbours[ik1]):
+                kp2 = bandstructure.kpoints[ik2]
+                for ig, g in enumerate(kp2.ig.T):
+                    g_loc = g[:3] - igmin_glob - self.G[ik1, ik2]
+                    assert np.all(g_loc >= 0) and np.all(g_loc < ig_grid), \
+                        f"g_loc {g_loc} out of bounds for ig_grid {ig_grid} at ik1={ik1}, inb={ik2}, ik2={ik2}"
+                    for ispinor in range(nspinor):
+                        ket[:, ispinor, g_loc[0], g_loc[1], g_loc[2]] = kp2.WF[:, ig + kp2.NG * ispinor]
+                if normalize:
+                    ket[:] = ket / norm[ik2][:, None, None, None, None]
+                if einsum_path is None:
+                    path_info = np.einsum_path('asijk,bsijk->ab', bra, ket, optimize='greedy')
+                    einsum_path = path_info[0]  # The actual path
+                self.data[ik1, ik2] = np.einsum('asijk,bsijk->ab', bra, ket, optimize=einsum_path)
+
+        self.bk_reorder = None
+        return self
 
 
 
@@ -287,7 +302,7 @@ def find_bk_vectors(recip_lattice, mp_grid, kmesh_tol=1e-7, bk_complete_tol=1e-5
     mp_grid = np.array(mp_grid, dtype=int)
     basis = recip_lattice / mp_grid[:, None]
     search_limit = search_supercell * np.array(mp_grid)
-    k_latt = np.array([(i,j,k) for i in range(-search_limit[0], search_limit[0] + 1)
+    k_latt = np.array([(i, j, k) for i in range(-search_limit[0], search_limit[0] + 1)
                        for j in range(-search_limit[1], search_limit[1] + 1)
                        for k in range(-search_limit[2], search_limit[2] + 1)])
     k_cart = k_latt @ basis
@@ -298,8 +313,7 @@ def find_bk_vectors(recip_lattice, mp_grid, kmesh_tol=1e-7, bk_complete_tol=1e-5
     k_length = k_length[srt]
     brd = [0] + list(np.where(k_length[1:] - k_length[:-1] > kmesh_tol)[0] + 1) + [len(k_cart)]
 
-    k_length_shell = np.array([k_length[b1:b2].mean() for b1, b2 in zip(brd, brd[1:])])
-    shell_kcart = [k_cart[b1:b2] for b1, b2 in zip(brd, brd[1:])] 
+    shell_kcart = [k_cart[b1:b2] for b1, b2 in zip(brd, brd[1:])]
     shell_klatt = [k_latt[b1:b2] for b1, b2 in zip(brd, brd[1:])]
     num_shells = len(shell_kcart)
     del brd, k_length, k_cart, k_latt
@@ -308,7 +322,7 @@ def find_bk_vectors(recip_lattice, mp_grid, kmesh_tol=1e-7, bk_complete_tol=1e-5
     k_cart_selected = np.zeros((0, 3), dtype=float)
     matrix_rank = 0
     for i_shell in range(num_shells):
-        k_cart_selected_try = np.vstack( [k_cart_selected, shell_kcart[i_shell]])
+        k_cart_selected_try = np.vstack([k_cart_selected, shell_kcart[i_shell]])
         matrix_rank_try = np.linalg.matrix_rank(k_cart_selected_try)
         if matrix_rank_try > matrix_rank:
             # print(f"Adding shell {i_shell} with length {k_length_shell[i_shell]} and k_cart {shell_kcart[i_shell]}")
@@ -365,7 +379,7 @@ def get_shell_weights(shell_klatt, shell_kcart, bk_complete_tol=1e-5):
             f"shell_klatt={shell_klatt}\n"
             f"shell_kcart={shell_kcart}\n")
 
-    print (f"Shells found with weights {weight_shell} and tolerance {tol}")
+    print(f"Shells found with weights {weight_shell} and tolerance {tol}")
     bk_latt = []
     bk_cart = []
     wk = []
@@ -379,5 +393,3 @@ def get_shell_weights(shell_klatt, shell_kcart, bk_complete_tol=1e-5):
     bk_cart = np.array(bk_cart)
     bk_latt = np.array(bk_latt, dtype=int)
     return wk, bk_cart, bk_latt
-            
-    

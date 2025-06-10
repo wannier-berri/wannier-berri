@@ -69,7 +69,7 @@ for data_dir in ['diamond-444']:
 
         amn = amn_from_bandstructure(bandstructure, projections=projset)
 
-        w90data = wberri.w90files.Wannier90data(seedname='../../tests/data/' + data_dir + '/diamond', readfiles=['mmn', 'eig', 'win'], read_npz=False)
+        w90data = wberri.w90files.Wannier90data().from_w90_files(seedname='../../tests/data/' + data_dir + '/diamond', readfiles=['mmn', 'eig', 'win'], read_npz=False)
         w90data.set_file("amn", amn)
         # w90data.set_symmetrizer(symmetrizer)
         # w90data.select_bands(win_min=win_min, win_max=win_max)

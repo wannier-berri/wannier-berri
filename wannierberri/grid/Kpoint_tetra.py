@@ -72,7 +72,7 @@ class KpointBZtetra(KpointBZ):
         if not np.all(periodic):
             raise ValueError("tetrahedron grid can be used only for 3D-periodic systems")
         if isinstance(ndiv, Iterable):
-            ndiv = ndiv[0] 
+            ndiv = ndiv[0]
         i_edge = self.__i_max_edge
         edge = EDGES[i_edge]
         edge_comp = EDGES_COMPLEMENT[i_edge]

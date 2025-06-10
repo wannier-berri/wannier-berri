@@ -35,29 +35,22 @@ class EIG(W90_file):
     #     return self.__class__(data=data)
 
 
-def eig_from_bandstructure(bandstructure, return_object=True, verbose=False):
-    """
-    Create an EIG object from a BandStructure object
-    So far only delta-localised s-orbitals are implemented
+    def from_bandstructure(self, bandstructure, verbose=False):
+        """
+        Create an EIG object from a BandStructure object
+        
+        Parameters
+        ----------
+        bandstructure : bandstructure : irrep.bandstructure.BandStructure
 
-    Parameters
-    ----------
-    bandstructure : bandstructure : irrep.bandstructure.BandStructure
-    
-        the band structure object
-    normalize : bool
-        if True, the wavefunctions are normalised
-    return_object : bool
-        if True, return an EIG object, otherwise return the data as a numpy array
-    """
-    
-    if verbose:
-        print("Creating eig.")
-    data = []
-    for kp in bandstructure.kpoints:
-        data.append(kp.Energy_raw)
-    data = np.array(data)
-    if return_object:
-        return EIG().from_dict(data=data)
-    else:
-        return data
+            the band structure object
+        """
+
+        if verbose:
+            print("Creating eig.")
+        data = []
+        for kp in bandstructure.kpoints:
+            data.append(kp.Energy_raw)
+        self.data = np.array(data)
+        return self
+        

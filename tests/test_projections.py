@@ -296,7 +296,7 @@ def test_create_amn_diamond_s_bond():
     # symmetrizer.spacegroup.show()
     # except AttributeError as err:
     #     print("Error: ", err, " spacegroup could not be shown")
-    w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
+    w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=prefix, readfiles=["mmn", "eig", "win"])
     print("amn.shape = ", amn.data.shape)
     print("mmn.shape = ", w90data.mmn.data.shape)
     print("eig.shape = ", w90data.eig.data.shape)
@@ -365,7 +365,8 @@ def test_create_amn_diamond_p_bond():
     print("prefix = ", prefix)
     symmetrizer.spacegroup.show()
 
-    w90data = wberri.w90files.Wannier90data(seedname=os.path.join(tmp_dir, prefix),
+    w90data = wberri.w90files.Wannier90data().from_w90_files(
+                                            seedname=os.path.join(tmp_dir, prefix),
                                             readfiles=["mmn", "eig", "win", "unk"])
     w90data.set_file("amn", amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
@@ -439,7 +440,7 @@ def test_create_amn_diamond_sp3():
                     os.path.join(tmp_dir, prefix + "." + ext))
     symmetrizer.spacegroup.show()
 
-    w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["mmn", "eig", "win"])
+    w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=prefix, readfiles=["mmn", "eig", "win"])
     w90data.set_file("amn", amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)
@@ -504,11 +505,11 @@ def test_create_eig_diamond():
 def test_find_bk_vectors():
     from wannierberri.w90files.mmn import find_bk_vectors
 
-    nkxy=5
-    nkz=4
-    recip_lattice = np.array([[1, 0, 0], [-1/2, np.sqrt(3)/2, 0], [0, 0, 1.8]])
-    wk, bk_cart, bk_latt  = find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkxy, nkxy, nkz))
-    print ("wk = for hex ", wk)
+    nkxy = 5
+    nkz = 4
+    recip_lattice = np.array([[1, 0, 0], [-1 / 2, np.sqrt(3) / 2, 0], [0, 0, 1.8]])
+    wk, bk_cart, bk_latt = find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkxy, nkxy, nkz))
+    print("wk = for hex ", wk)
     assert len(wk) == 8
     assert wk[:6] == approx(wk[:6].mean())
     assert wk[6:] == approx(wk[6:].mean())
@@ -525,15 +526,8 @@ def test_find_bk_vectors():
     assert len(wk) == 12
     assert wk == approx(wk.mean())
 
-    recip_lattice = np.ones((3, 3)) - 2*np.eye(3)
+    recip_lattice = np.ones((3, 3)) - 2 * np.eye(3)
     wk, bk_cart, bk_latt = find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
     print("wk = for fcc ", wk)
     assert len(wk) == 8
     assert wk == approx(wk.mean())
-
-
-
-
-
-    
-    

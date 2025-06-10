@@ -47,7 +47,7 @@ class UXU(W90_file):
                         self.data[ik, ib1, ib2] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
         if bk_reorder is not None:
             for ik in range(NK):
-                self.data[ik,:,:,:] = self.data[ik,bk_reorder[ik],:,:][:, bk_reorder[ik], :, :]
+                self.data[ik, :, :, :] = self.data[ik, bk_reorder[ik], :, :][:, bk_reorder[ik], :, :]
         print(f"----------\n {suffix} OK  \n---------\n")
         f_uXu_in.close()
         return self

@@ -148,11 +148,12 @@ class System_w90(System_R):
             for key in self.needed_R_matrices:
                 _needed_files.update(needed_files[key])
             _needed_files = list(_needed_files)
-            w90data = Wannier90data(self.seedname,
-                                    write_npz_list=write_npz_list, read_npz=read_npz, overwrite_npz=overwrite_npz,
-                                    readfiles=_needed_files,
-                                    write_npz_formatted=write_npz_formatted,
-                                    formatted=formatted)
+            w90data = Wannier90data().from_w90_files(
+                self.seedname,
+                write_npz_list=write_npz_list, read_npz=read_npz, overwrite_npz=overwrite_npz,
+                readfiles=_needed_files,
+                write_npz_formatted=write_npz_formatted,
+                formatted=formatted)
             # w90data.set_chk(kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol, read=True)
         w90data.check_wannierised(msg="creation of System_w90")
         chk = w90data.chk

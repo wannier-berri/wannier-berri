@@ -44,7 +44,7 @@ def test_wannierise(outer_window):
     symmetrizer = SymmetrizerSAWF().from_npz(prefix + ".sawf.npz")
 
     # Read the data from the Wanier90 inputs
-    w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
+    w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     if outer_window is not None:
         w90data.select_bands(win_min=outer_window[0], win_max=outer_window[1])
@@ -213,6 +213,32 @@ def test_create_sawf_Fe(check_sawf, include_TR):
     check_sawf(sawf_new, sawf_ref)
 
 
+def test_create_w90files_Fe():
+    path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
+    path_tmp = os.path.join(OUTPUT_DIR, "Fe-create-w90-files")
+    os.makedirs(path_tmp, exist_ok=True)
+
+    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
+                                normalize=False, magmom=[[0, 0, 1]], include_TR=True)
+    
+    
+    pos = [[0, 0, 0]]
+    proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
+    proj_p = Projection(position_num=pos, orbital='p', spacegroup=bandstructure.spacegroup)
+    proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
+    proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[proj_s, proj_p, proj_d])
+    
+    w90data = wberri.w90files.Wannier90data(
+                ).from_bandstructure(bandstructure, 
+                                    files=["mmn", "eig", "amn", "symmetrizer"], 
+                                    write_npz_list=["amn", "mmn", "eig", "symmetrizer", "chk"],
+                                    seedname=os.path.join(path_tmp, "Fe"),
+                                    projections = proj_set,
+                )
+    
+    
+
+
 @pytest.mark.parametrize("include_TR", [True, False])
 def _test_create_sawf_Fe_444(check_sawf, include_TR):
     "this test is disabled, because the necessary data is not included into repo, but need to be generated with QE"
@@ -236,7 +262,7 @@ def _test_create_sawf_Fe_444(check_sawf, include_TR):
 @pytest.mark.parametrize("use_window", [True, False])
 def test_sitesym_Fe(include_TR, use_window):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
-    w90data = wberri.w90files.Wannier90data(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"], read_npz=True)
+    w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"], read_npz=True)
 
     symmetrizer = SymmetrizerSAWF().from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
     w90data.set_symmetrizer(symmetrizer)

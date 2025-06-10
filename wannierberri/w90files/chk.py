@@ -491,7 +491,6 @@ class CheckPoint:
         """
         SHA or SA (if siu is used instead of shu)
         """
-        # mmn.set_bk_chk(self)
         if sum_b:
             SHA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         else:
@@ -518,7 +517,6 @@ class CheckPoint:
         """
         SHR or SR(if eig is None)
         """
-        # mmn.set_bk_chk(self)
         SHR_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands), f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         assert (mmn.NK, mmn.NB) == (self.num_kpts, self.num_bands), f"mmn file has NK={mmn.NK}, NB={mmn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"

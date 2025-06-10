@@ -122,6 +122,102 @@ class AMN(W90_file):
     #     f_amn_out.close()
 
 
+    def from_bandstructure_s_delta(self, bandstructure, positions, normalize=True):
+        """
+        Create an AMN object from a BandStructure object
+        NOTE!!: Only for delta-localised s-orbitals
+
+        more complete implementation is in from_bandstructure()
+
+        Parameters
+        ----------
+        bandstructure : irrep.bandstructure.BandStructure
+            the band structure object
+        positions : array( (N, 3), dtype=float)
+            the positions of the orbitals
+        normalize : bool
+            if True, the wavefunctions are normalised
+        """
+        data = []
+        pos = np.array(positions)
+        for kp in bandstructure.kpoints:
+            igk = kp.ig[:3, :] + kp.k[:, None]
+            exppgk = np.exp(-2j * np.pi * (pos @ igk))
+            wf = kp.WF.conj()
+            if normalize:
+                wf /= np.linalg.norm(wf, axis=1)[:, None]
+            data.append(wf @ exppgk.T)
+        self.data = np.array(data)
+        return self
+
+
+    def from_bandstructure(self, bandstructure, projections: ProjectionsSet,
+                           normalize=True, verbose=False):
+        """
+        Create an AMN object from a BandStructure object
+        So far only delta-localised s-orbitals are implemented
+
+        Parameters
+        ----------
+        bandstructure : BandStructure
+            the band structure object
+        projections : ProjectionsSet
+            the projections set as an object
+        normalize : bool
+            if True, the wavefunctions are normalised
+        """
+        positions = []
+        orbitals = []
+        basis_list = []
+        print(f"Creating amn. Using projections_set \n{projections}")
+        for proj in projections.projections:
+            pos, orb = proj.get_positions_and_orbitals()
+            positions += pos
+            orbitals += orb
+            basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site)]
+            if verbose:
+                print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
+        spinor = projections.spinor
+
+
+        if verbose:
+            print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
+        data = []
+        pos = np.array(positions)
+        rec_latt = bandstructure.RecLattice
+        bessel = Bessel_j_exp_int()
+        for kp in bandstructure.kpoints:
+            igk = kp.ig[:3, :] + kp.k[:, None]
+            expgk = np.exp(-2j * np.pi * (pos @ igk))
+            wf = kp.WF.conj()
+            if normalize:
+                wf /= np.linalg.norm(wf, axis=1)[:, None]
+            if spinor:
+                wf_up = wf[:, :wf.shape[1] // 2]
+                wf_down = wf[:, wf.shape[1] // 2:]
+
+            gk = igk.T @ rec_latt
+            projector = Projector(gk, bessel)
+            prj = list([projector(orb, basis) for orb, basis in zip(orbitals, basis_list)])
+            # print(f"expgk shape {expgk.shape} igk shape {igk.shape} pos shape {pos.shape}")
+            # print(f"prj shapes {[p.shape for p in prj]} total {np.array(prj).shape}")
+            proj_gk = np.array(prj) * expgk
+            if spinor:
+                proj_up = wf_up @ proj_gk.T
+                proj_down = wf_down @ proj_gk.T
+                datak = []
+                for u, d in zip(proj_up.T, proj_down.T):
+                    datak.append(u)
+                    datak.append(d)
+                data.append(np.array(datak).T)
+            else:
+                data.append(wf @ proj_gk.T)
+        self.data = np.array(data)
+        return self
+
+
+
+
 def amn_from_bandstructure_s_delta(bandstructure, positions, normalize=True, return_object=True):
     """
     Create an AMN object from a BandStructure object
@@ -140,20 +236,11 @@ def amn_from_bandstructure_s_delta(bandstructure, positions, normalize=True, ret
     return_object : bool
         if True, return an AMN object, otherwise return the data as a numpy array
     """
-    data = []
-    pos = np.array(positions)
-    for kp in bandstructure.kpoints:
-        igk = kp.ig[:3, :] + kp.k[:, None]
-        exppgk = np.exp(-2j * np.pi * (pos @ igk))
-        wf = kp.WF.conj()
-        if normalize:
-            wf /= np.linalg.norm(wf, axis=1)[:, None]
-        data.append(wf @ exppgk.T)
-    data = np.array(data)
+    amn = AMN().from_bandstructure_s_delta(bandstructure, positions, normalize=normalize)
     if return_object:
-        return AMN(data=data)
+        return amn
     else:
-        return data
+        return amn.data
 
 
 def amn_from_bandstructure(bandstructure, projections: ProjectionsSet,
@@ -173,54 +260,8 @@ def amn_from_bandstructure(bandstructure, projections: ProjectionsSet,
     return_object : bool
         if True, return an AMN object, otherwise return the data as a numpy array
     """
-    positions = []
-    orbitals = []
-    basis_list = []
-    print(f"Creating amn. Using projections_set \n{projections}")
-    for proj in projections.projections:
-        pos, orb = proj.get_positions_and_orbitals()
-        positions += pos
-        orbitals += orb
-        basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site)]
-        if verbose:
-            print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
-    spinor = projections.spinor
-
-
-    if verbose:
-        print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
-    data = []
-    pos = np.array(positions)
-    rec_latt = bandstructure.RecLattice
-    bessel = Bessel_j_exp_int()
-    for kp in bandstructure.kpoints:
-        igk = kp.ig[:3, :] + kp.k[:, None]
-        expgk = np.exp(-2j * np.pi * (pos @ igk))
-        wf = kp.WF.conj()
-        if normalize:
-            wf /= np.linalg.norm(wf, axis=1)[:, None]
-        if spinor:
-            wf_up = wf[:, :wf.shape[1] // 2]
-            wf_down = wf[:, wf.shape[1] // 2:]
-
-        gk = igk.T @ rec_latt
-        projector = Projector(gk, bessel)
-        prj = list([projector(orb, basis) for orb, basis in zip(orbitals, basis_list)])
-        # print(f"expgk shape {expgk.shape} igk shape {igk.shape} pos shape {pos.shape}")
-        # print(f"prj shapes {[p.shape for p in prj]} total {np.array(prj).shape}")
-        proj_gk = np.array(prj) * expgk
-        if spinor:
-            proj_up = wf_up @ proj_gk.T
-            proj_down = wf_down @ proj_gk.T
-            datak = []
-            for u, d in zip(proj_up.T, proj_down.T):
-                datak.append(u)
-                datak.append(d)
-            data.append(np.array(datak).T)
-        else:
-            data.append(wf @ proj_gk.T)
-    data = np.array(data)
+    amn = AMN().from_bandstructure(bandstructure, projections, normalize=normalize, verbose=verbose)
     if return_object:
-        return AMN().from_dict(data=data)
+        return amn
     else:
-        return data
+        return amn.data
