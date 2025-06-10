@@ -97,98 +97,63 @@ class MMN(W90_file):
         if selected_bands is not None:
             self.data = self.data[:, :, selected_bands, :][:, :, :, selected_bands]
 
-    # def get_disentangled(self, v_left, v_right):
-    #     """
-    #     Reduce number of bands
-
-    #     Parameters
-    #     ----------
-    #     v_matrix : np.ndarray(NB,num_wann)
-    #         the matrix of column vectors defining the Wannier gauge
-    #     v_matrix_dagger : np.ndarray(num_wann,NB)
-    #         the Hermitian conjugate of `v_matrix`
-
-    #     Returns
-    #     -------
-    #     `~wannierberri.system.w90_files.MMN`
-    #         the disentangled MMN object
-    #     """
-    #     print(f"v shape {v_left.shape}  {v_right.shape}")
-    #     data = np.zeros((self.NK, self.NNB, v_right.shape[2], v_right.shape[2]), dtype=complex)
-    #     print(f"shape of data {data.shape} , old {self.data.shape}")
-    #     for ik in range(self.NK):
-    #         for ib, iknb in enumerate(self.neighbours[ik]):
-    #             data[ik, ib] = v_left[ik] @ self.data[ik, ib] @ v_right[iknb]
-    #     return self.__class__(data=data)
-
     
     def set_bk(self, kpt_latt, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
-        try:
-            self.bk_cart
-            self.bk_latt
-            self.bk_reorder
-            self.wk
-            return
-        except AttributeError:
-            mp_grid = np.array(grid_from_kpoints(kpt_latt))
-            bk_latt_all = np.array(
-                np.round(
-                    [
-                        (kpt_latt[nbrs] - kpt_latt + G) * mp_grid[None, :]
-                        for nbrs, G in zip(self.neighbours.T, self.G.transpose(1, 0, 2))
-                    ]).transpose(1, 0, 2),
-                dtype=int)
+        mp_grid = np.array(grid_from_kpoints(kpt_latt))
+        bk_latt_all = np.array(
+            np.round(
+                [
+                    (kpt_latt[nbrs] - kpt_latt + G) * mp_grid[None, :]
+                    for nbrs, G in zip(self.neighbours.T, self.G.transpose(1, 0, 2))
+                ]).transpose(1, 0, 2),
+            dtype=int)
+        
+        self.bk_latt = bk_latt_all[0]
+
+        ## Reorder the bk_latt vectors to match the order of the first k-point
+        bk_latt_tuples_0 = [tuple(b) for b in self.bk_latt]
+        self.bk_reorder = []
+        for ik in range(self.NK):
+            bk_latt_tuples = [tuple(b) for b in bk_latt_all[ik]]
+            srt = [bk_latt_tuples.index(bk) for bk in bk_latt_tuples_0]
+            assert len(srt) == self.NNB, f"Reordering failed for k-point {ik}. Expected {self.NNB} neighbours, got {len(srt)}"
+            assert np.all(self.bk_latt == bk_latt_all[ik, srt]), \
+                f"Reordering failed for k-point {ik}. Expected {self.bk_latt}, got {bk_latt_all[ik, srt]}"
+            self.bk_reorder.append(srt)
+            self.data[ik,:] = self.data[ik,srt, :]
+            self.G[ik,:] = self.G[ik,srt]
+            self.neighbours[ik,:] = self.neighbours[ik,srt]
+        self.bk_reorder = np.array(self.bk_reorder, dtype=int)
+
+        self.bk_cart = self.bk_latt.dot(recip_lattice / mp_grid[:, None])
+        bk_length = np.linalg.norm(self.bk_cart, axis=1)
+        srt = np.argsort(bk_length)
+        srt_inv = np.argsort(srt)
+        bk_length_srt = bk_length[srt]
+        brd = [
+            0,
+        ] + list(np.where(bk_length_srt[1:] - bk_length_srt[:-1] > kmesh_tol)[0] + 1) + [
+            self.NNB,
+        ]
+        shell_mat = []
+        shell_mat = np.array([self.bk_cart[srt[b1:b2]].T.dot(self.bk_cart[srt[b1:b2]]) for b1, b2 in zip(brd, brd[1:])])
+        shell_mat_line = shell_mat.reshape(-1, 9)
+        u, s, v = np.linalg.svd(shell_mat_line, full_matrices=False)
+        s = 1. / s
+        weight_shell = np.eye(3).reshape(1, -1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
+        check_eye = sum(w * m for w, m in zip(weight_shell, shell_mat))
+        tol = np.linalg.norm(check_eye - np.eye(3))
+        if tol > bk_complete_tol:
+            raise RuntimeError(
+                f"Error while determining shell weights. the following matrix :\n {check_eye} \n"
+                f"failed to be identity by an error of {tol}. Further debug information :  \n"
+                f"bk_latt={self.bk_latt} \n bk_cart={self.bk_cart} \n"
+                f"bk_cart_length={bk_length}\n shell_mat={shell_mat}\n"
+                f"weight_shell={weight_shell}, srt={srt}\n")
+        weight = np.array([w for w, b1, b2 in zip(weight_shell, brd, brd[1:]) for i in range(b1, b2)])
+        self.wk = weight[srt_inv]
+        print (f"the weights of the bk vectors are {self.wk} ")
             
-            self.bk_latt = bk_latt_all[0]
-
-            ## Reorder the bk_latt vectors to match the order of the first k-point
-            bk_latt_tuples_0 = [tuple(b) for b in self.bk_latt]
-            self.bk_reorder = []
-            for ik in range(self.NK):
-                bk_latt_tuples = [tuple(b) for b in bk_latt_all[ik]]
-                srt = [bk_latt_tuples.index(bk) for bk in bk_latt_tuples_0]
-                assert len(srt) == self.NNB, f"Reordering failed for k-point {ik}. Expected {self.NNB} neighbours, got {len(srt)}"
-                assert np.all(self.bk_latt == bk_latt_all[ik, srt]), \
-                    f"Reordering failed for k-point {ik}. Expected {self.bk_latt}, got {bk_latt_all[ik, srt]}"
-                self.bk_reorder.append(srt)
-                self.data[ik,:] = self.data[ik,srt, :]
-                self.G[ik,:] = self.G[ik,srt]
-                self.neighbours[ik,:] = self.neighbours[ik,srt]
-            self.bk_reorder = np.array(self.bk_reorder, dtype=int)
-
-            self.bk_cart = self.bk_latt.dot(recip_lattice / mp_grid[:, None])
-            bk_length = np.linalg.norm(self.bk_cart, axis=1)
-            srt = np.argsort(bk_length)
-            srt_inv = np.argsort(srt)
-            bk_length_srt = bk_length[srt]
-            brd = [
-                0,
-            ] + list(np.where(bk_length_srt[1:] - bk_length_srt[:-1] > kmesh_tol)[0] + 1) + [
-                self.NNB,
-            ]
-            shell_mat = []
-            shell_mat = np.array([self.bk_cart[srt[b1:b2]].T.dot(self.bk_cart[srt[b1:b2]]) for b1, b2 in zip(brd, brd[1:])])
-            shell_mat_line = shell_mat.reshape(-1, 9)
-            u, s, v = np.linalg.svd(shell_mat_line, full_matrices=False)
-            s = 1. / s
-            weight_shell = np.eye(3).reshape(1, -1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
-            check_eye = sum(w * m for w, m in zip(weight_shell, shell_mat))
-            tol = np.linalg.norm(check_eye - np.eye(3))
-            if tol > bk_complete_tol:
-                raise RuntimeError(
-                    f"Error while determining shell weights. the following matrix :\n {check_eye} \n"
-                    f"failed to be identity by an error of {tol}. Further debug information :  \n"
-                    f"bk_latt={self.bk_latt} \n bk_cart={self.bk_cart} \n"
-                    f"bk_cart_length={bk_length}\n shell_mat={shell_mat}\n"
-                    f"weight_shell={weight_shell}, srt={srt}\n")
-            weight = np.array([w for w, b1, b2 in zip(weight_shell, brd, brd[1:]) for i in range(b1, b2)])
-            self.wk = weight[srt_inv]
-            print (f"the weights of the bk vectors are {self.wk} ")
-            
-
-    # def set_bk_chk(self, chk, **argv):
-    #     self.set_bk(kpt_latt=chk.kpt_latt, recip_lattice=chk.recip_lattice, **argv)
-
 
 
 def mmn_from_bandstructure(bandstructure,
