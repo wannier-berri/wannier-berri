@@ -636,10 +636,6 @@ def get_wannier_band_structure(system, k_nodes, length=1000, npar=0, parallel=No
     return path, result.results['tabulate']
 
 
-
-
-
-
 def run_pw2wannier(projections=[],
                    win=None,
                    prefix='pwscf',

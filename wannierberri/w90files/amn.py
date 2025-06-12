@@ -249,8 +249,9 @@ def amn_from_bandstructure(bandstructure, projections: ProjectionsSet,
                            normalize=True, return_object=True, verbose=False):
     """
     Create an AMN object from a BandStructure object
-    So far only delta-localised s-orbitals are implemented
-
+    this function is kept for backward compatibility,
+    use `AMN().from_bandstructure()` instead
+    
     Parameters
     ----------
     bandstructure : BandStructure
