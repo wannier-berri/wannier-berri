@@ -94,12 +94,12 @@ class Wannier90data:
         self.bands_were_selected = False
         self._files = {}
 
-    def from_bandstructure(self, bandstructure, 
+    def from_bandstructure(self, bandstructure,
                           seedname="wannier90",
-                          files=("mmn", "eig", "amn", "symmetrizer"), 
-                            write_npz_list=(),
-                        projections = None,
-                        normalize= True):
+                          files=("mmn", "eig", "amn", "symmetrizer"),
+                           write_npz_list=(),
+                        projections=None,
+                        normalize=True):
         if "amn" in files or "symmetrizer" in files:
             assert projections is not None, "projections should be provided if amn or symmetrizer are requested"
         self.read_npz = False
@@ -109,8 +109,8 @@ class Wannier90data:
         mp_grid = grid_from_kpoints(kpt_latt)
         chk = CheckPoint(real_lattice=bandstructure.lattice,
                       num_wann=projections.num_wann,
-                      num_bands= bandstructure.num_bands,
-                      kpt_latt= kpt_latt,
+                      num_bands=bandstructure.num_bands,
+                      kpt_latt=kpt_latt,
                       mp_grid=mp_grid,)
         self.set_file('chk', chk)
         if "eig" in files:
@@ -124,20 +124,22 @@ class Wannier90data:
             if "amn" in self.write_npz_list:
                 amn.to_npz(seedname + ".amn.npz")
         if "mmn" in files:
-            mmn = MMN().from_bandstructure(bandstructure)
+            mmn = MMN().from_bandstructure(bandstructure, normalize=normalize)
             if "mmn" in self.write_npz_list:
                 mmn.to_npz(seedname + ".mmn.npz")
             self.set_file('mmn', mmn)
+        # TODO : use a cutoff ~100eV for symmetrizer
         if "symmetrizer" in files:
             symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure)
             symmetrizer.set_D_wann_from_projections(projections)
             self.set_symmetrizer(symmetrizer)
             if "symmetrizer" in self.write_npz_list:
                 symmetrizer.to_npz(seedname + ".symmetrizer.npz")
-            
+        return self
 
-                      
-        
+
+
+
     def from_w90_files(self, seedname="wannier90",
                      read_npz=True,
                      write_npz_list=('mmn', 'eig', 'amn'),
@@ -260,6 +262,8 @@ class Wannier90data:
 
             val = FILES_CLASSES[key](self.seedname, autoread=True, **kwargs_auto)
         self.check_conform(key, val)
+        if key == 'amn' and self.has_file('chk'):
+            self.get_file('chk').num_wann = val.NW
         self._files[key] = val
 
     def has_file(self, key):

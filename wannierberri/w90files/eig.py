@@ -38,7 +38,7 @@ class EIG(W90_file):
     def from_bandstructure(self, bandstructure, verbose=False):
         """
         Create an EIG object from a BandStructure object
-        
+
         Parameters
         ----------
         bandstructure : bandstructure : irrep.bandstructure.BandStructure
@@ -53,4 +53,3 @@ class EIG(W90_file):
             data.append(kp.Energy_raw)
         self.data = np.array(data)
         return self
-        

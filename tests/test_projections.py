@@ -366,8 +366,8 @@ def test_create_amn_diamond_p_bond():
     symmetrizer.spacegroup.show()
 
     w90data = wberri.w90files.Wannier90data().from_w90_files(
-                                            seedname=os.path.join(tmp_dir, prefix),
-                                            readfiles=["mmn", "eig", "win", "unk"])
+        seedname=os.path.join(tmp_dir, prefix),
+        readfiles=["mmn", "eig", "win", "unk"])
     w90data.set_file("amn", amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)

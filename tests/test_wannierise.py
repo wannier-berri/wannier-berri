@@ -11,6 +11,7 @@ import os
 import shutil
 
 from wannierberri.symmetry.projections import Projection
+from wannierberri.w90files.eig import EIG
 from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
@@ -218,25 +219,56 @@ def test_create_w90files_Fe():
     path_tmp = os.path.join(OUTPUT_DIR, "Fe-create-w90-files")
     os.makedirs(path_tmp, exist_ok=True)
 
-    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
-                                normalize=False, magmom=[[0, 0, 1]], include_TR=True)
-    
-    
+    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe',
+                                normalize=False, magmom=[[0, 0, 1]])
+
+    norms = [np.linalg.norm(kp.WF, axis=1) for kp in bandstructure.kpoints]
+    assert abs(1 - np.array(norms)**2).max() < 1e-8, "norms of wavefunctions are not 1, check the bandstructure"
+
+
     pos = [[0, 0, 0]]
     proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
     proj_p = Projection(position_num=pos, orbital='p', spacegroup=bandstructure.spacegroup)
     proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
     proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[proj_s, proj_p, proj_d])
-    
+
     w90data = wberri.w90files.Wannier90data(
-                ).from_bandstructure(bandstructure, 
-                                    files=["mmn", "eig", "amn", "symmetrizer"], 
-                                    write_npz_list=["amn", "mmn", "eig", "symmetrizer", "chk"],
-                                    seedname=os.path.join(path_tmp, "Fe"),
-                                    projections = proj_set,
+    ).from_bandstructure(bandstructure,
+                         files=["mmn", "eig", "amn", "symmetrizer"],
+                         write_npz_list=["amn", "mmn", "eig", "symmetrizer", "chk"],
+                         seedname=os.path.join(path_tmp, "Fe"),
+                         projections=proj_set,
+                         normalize=False,
                 )
-    
-    
+    eig = w90data.get_file("eig")
+    eig_ref = EIG().from_npz(os.path.join(path_data, "Fe.eig.npz"))
+    assert np.allclose(eig.data, eig_ref.data, atol=1e-6), f"eig data differs by {np.max(np.abs(w90data.eig.data - eig_ref.data))} > 1e-6"
+
+    mmn_new = w90data.get_file("mmn")
+    mmn_ref = wberri.w90files.MMN().from_npz(os.path.join(path_data, "Fe.mmn.npz"))
+    bk_latt_new = np.array(mmn_new.bk_latt)
+    bk_latt_ref = np.array(mmn_ref.bk_latt)
+    bk_latt_new_list = [tuple(bk) for bk in bk_latt_new]
+    bk_new_order = [bk_latt_new_list.index(tuple(bk)) for bk in bk_latt_ref]
+    print(f"bk_new_order = {bk_new_order}")
+    assert np.all(bk_latt_new[bk_new_order] == bk_latt_ref), f"bk_latt differs after reordering: {bk_latt_new[bk_new_order]} != {bk_latt_ref}"
+    assert np.all(mmn_new.neighbours[:, bk_new_order] == mmn_ref.neighbours), f"neighbors differ after reordering: {mmn_new.neighbors[:, bk_new_order]} != {mmn_ref.neighbors}"
+    assert np.all(mmn_new.G[:, bk_new_order] == mmn_ref.G), f"G vectors differ after reordering: {mmn_new.G[:, bk_new_order]} != {mmn_ref.G}"
+
+    mmn_data_new = mmn_new.data[:, bk_new_order]
+    print(f"mmn_data_new[0,:,1,1] = {mmn_data_new[0, :, 1, 1]}")
+    print(f"mmn_ref.data[0,:,1,1] = {mmn_ref.data[0, :, 1, 1]}")
+    assert np.allclose(mmn_data_new, mmn_ref.data, atol=3e-5), f"mmn data differs by {np.max(np.abs(mmn_new.data[:, bk_new_order] - mmn_ref.data))} > 3e-5"
+    print(f"mmn's differ by more than 1e-5 at some points : {np.where(np.abs(mmn_data_new - mmn_ref.data) > 1e-5)}")
+    # TODO - check if accuracy of agreement may be improved
+
+    amn = w90data.get_file("amn")
+    amn_ref = wberri.w90files.AMN().from_npz(os.path.join(path_data, "Fe.amn.npz"))  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
+    assert np.allclose(amn.data, amn_ref.data, atol=1e-6), f"amn data differs by {np.max(np.abs(w90data.amn.data - amn_ref.data))} > 1e-6"
+
+
+
+
 
 
 @pytest.mark.parametrize("include_TR", [True, False])

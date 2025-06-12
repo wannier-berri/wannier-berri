@@ -2,7 +2,7 @@ from itertools import islice
 import multiprocessing
 from time import time
 import numpy as np
-from .utility import convert, get_mp_grid, grid_from_kpoints
+from .utility import convert, grid_from_kpoints
 from .w90file import W90_file
 
 
@@ -17,8 +17,6 @@ class MMN(W90_file):
     ----------
     seedname : str
         the prefix of the file (including relative/absolute path, but not including the extension  `.mmn`)
-    npar : int
-        the number of parallel processes to be used for reading the file
 
     Attributes
     ----------
@@ -37,11 +35,11 @@ class MMN(W90_file):
         """
         return 1
 
-    def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(), **kwargs):
+    def __init__(self, seedname="wannier90", **kwargs):
         self.npz_tags = ["data", "neighbours", "G", "bk_cart", "bk_latt", "bk_reorder", "wk"]
-        super().__init__(seedname=seedname, ext="mmn", npar=npar, **kwargs)
+        super().__init__(seedname=seedname, ext="mmn", **kwargs)
 
-    def from_w90_file(self, seedname, kpt_latt, recip_lattice, npar=1):
+    def from_w90_file(self, seedname, kpt_latt, recip_lattice, npar=multiprocessing.cpu_count()):
         t0 = time()
         f_mmn_in = open(seedname + ".mmn", "r")
         f_mmn_in.readline()
@@ -200,7 +198,7 @@ class MMN(W90_file):
         NNB = len(self.wk)
         NB = bandstructure.num_bands
 
-        k_latt_int = np.rint(kpt_latt * mp_grid[ None, :]).astype(int)
+        k_latt_int = np.rint(kpt_latt * mp_grid[None, :]).astype(int)
 
         self.G = np.zeros((NK, NNB, 3), dtype=int)
         self.neighbours = np.zeros((NK, NNB), dtype=int)
@@ -224,13 +222,13 @@ class MMN(W90_file):
         igmin_k = np.array([kp.ig[:3, :].min(axis=1) for kp in bandstructure.kpoints])
         igmax_k = np.array([kp.ig[:3, :].max(axis=1) for kp in bandstructure.kpoints])
 
-        print (f"igmin_k = {igmin_k}, igmax_k = {igmax_k}")
+        print(f"igmin_k = {igmin_k}, igmax_k = {igmax_k}")
 
-        igmin_glob = igmin_k.min(axis=0) - self.G.max(axis=(0,1))
-        igmax_glob = igmax_k.max(axis=0) - self.G.min(axis=(0,1))
+        igmin_glob = igmin_k.min(axis=0) - self.G.max(axis=(0, 1))
+        igmax_glob = igmax_k.max(axis=0) - self.G.min(axis=(0, 1))
 
         ig_grid = igmax_glob - igmin_glob + 1
-        print (f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
+        print(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
 
 
         bra = np.zeros((NB, nspinor) + tuple(ig_grid), dtype=complex)
@@ -253,12 +251,12 @@ class MMN(W90_file):
                     bra[:, ispinor, g_loc[0], g_loc[1], g_loc[2]] = kp1.WF[:, ig + kp1.NG * ispinor].conj()
             if normalize:
                 bra[:] = bra / norm[ik1][:, None, None, None, None]
-            for ik2, ik2 in enumerate(self.neighbours[ik1]):
+            for ib, ik2 in enumerate(self.neighbours[ik1]):
                 kp2 = bandstructure.kpoints[ik2]
                 for ig, g in enumerate(kp2.ig.T):
-                    g_loc = g[:3] - igmin_glob - self.G[ik1, ik2]
+                    g_loc = g[:3] - igmin_glob - self.G[ik1, ib]
                     assert np.all(g_loc >= 0) and np.all(g_loc < ig_grid), \
-                        f"g_loc {g_loc} out of bounds for ig_grid {ig_grid} at ik1={ik1}, inb={ik2}, ik2={ik2}"
+                        f"g_loc {g_loc} out of bounds for ig_grid {ig_grid} at ik1={ik1}, inb={ib}, ik2={ik2}"
                     for ispinor in range(nspinor):
                         ket[:, ispinor, g_loc[0], g_loc[1], g_loc[2]] = kp2.WF[:, ig + kp2.NG * ispinor]
                 if normalize:
@@ -266,7 +264,7 @@ class MMN(W90_file):
                 if einsum_path is None:
                     path_info = np.einsum_path('asijk,bsijk->ab', bra, ket, optimize='greedy')
                     einsum_path = path_info[0]  # The actual path
-                self.data[ik1, ik2] = np.einsum('asijk,bsijk->ab', bra, ket, optimize=einsum_path)
+                self.data[ik1, ib] = np.einsum('asijk,bsijk->ab', bra, ket, optimize=einsum_path)
 
         self.bk_reorder = None
         return self

@@ -66,7 +66,9 @@ class AMN(W90_file):
         self.npz_tags = ["data"]
         super().__init__(seedname=seedname, ext="amn", npar=npar, **kwargs)
 
-    def from_w90_file(self, seedname, npar):
+    def from_w90_file(self, seedname, npar=None):
+        if npar is None:
+            npar = multiprocessing.cpu_count()
         f_amn_in = open(seedname + ".amn", "r").readlines()
         print(f"reading {seedname}.amn: " + f_amn_in[0].strip())
         s = f_amn_in[1]
